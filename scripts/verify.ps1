@@ -13,7 +13,7 @@ try {
         $arch = switch ([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString()) {
             'X64' { 'x64' }
             'Arm64' { 'arm64' }
-            default { throw "verify: unsupported architecture: $_" }
+            default { throw "verify: unsupported architecture: $_; set RID explicitly, for example RID=win-x64" }
         }
         $env:RID = "win-$arch"
     }

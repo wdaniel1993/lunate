@@ -12,4 +12,8 @@
     <ProjectReference Include="../Lunate.Tui/Lunate.Tui.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="Lunate.Coding.Tests" />
+  </ItemGroup>
+
 </Project>

@@ -16,6 +16,6 @@ public sealed class VersionTests
 
         Assert.Equal(0, exitCode);
         Assert.NotNull(informationalVersion);
-        Assert.Contains(informationalVersion, writer.ToString(), StringComparison.Ordinal);
+        Assert.Equal(informationalVersion + writer.NewLine, writer.ToString());
     }
 }

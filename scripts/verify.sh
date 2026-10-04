@@ -1,32 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-cd "$(dirname "$0")/.."
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+. "${SCRIPT_DIR}/lib.sh"
+
+cd "${SCRIPT_DIR}/.."
 
 BUDGET_MS="${BUDGET_MS:-150}"
 CONFIGURATION="${CONFIGURATION:-Release}"
 PUBLISH_DIR="artifacts/publish"
 
-detect_rid() {
-  local os arch
-
-  case "$(uname -s)" in
-    Darwin) os="osx" ;;
-    Linux) os="linux" ;;
-    MINGW*|MSYS*|CYGWIN*) os="win" ;;
-    *) echo "verify: unsupported OS: $(uname -s)" >&2; exit 1 ;;
-  esac
-
-  case "$(uname -m)" in
-    arm64|aarch64) arch="arm64" ;;
-    x86_64|amd64) arch="x64" ;;
-    *) echo "verify: unsupported architecture: $(uname -m)" >&2; exit 1 ;;
-  esac
-
-  echo "${os}-${arch}"
-}
-
-RID="${RID:-$(detect_rid)}"
+RID="${RID:-$(detect_rid verify)}"
 BINARY="${PUBLISH_DIR}/${RID}/lunate"
 if [ "${RID#win}" != "$RID" ]; then
   BINARY="${BINARY}.exe"
@@ -54,7 +38,7 @@ dotnet publish src/Lunate.Coding/Lunate.Coding.csproj \
   --nologo
 
 step "startup budget"
-BUDGET_MS="$BUDGET_MS" "$(dirname "$0")/perf.sh" "$BINARY"
+BUDGET_MS="$BUDGET_MS" "${SCRIPT_DIR}/perf.sh" "$BINARY"
 
 step "format"
 dotnet format lunate.sln --verify-no-changes --no-restore

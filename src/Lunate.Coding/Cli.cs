@@ -2,9 +2,9 @@ using System.Reflection;
 
 namespace Lunate.Coding;
 
-public static class Cli
+internal static class Cli
 {
-    public static int Run(string[] args, TextWriter output)
+    internal static int Run(string[] args, TextWriter output)
     {
         if (args is ["--version"])
         {
