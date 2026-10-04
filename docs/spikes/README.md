@@ -1,0 +1,44 @@
+# Phase 0 spikes
+
+Throwaway validation code for the load-bearing assumptions behind Lunate's
+architecture (guide card T-03, OpenSpec change `run-phase0-spikes`).
+
+## Rules
+
+- One folder per spike: `S-1` loop (own vs Microsoft Agent Framework harness),
+  `S-2` Git Bash/mintty raw-key input, `S-3` startup baselines and budget
+  calibration, `S-4` in-process Roslyn loading.
+- Each spike contains its throwaway project(s), `report.md` with evidence, and
+  produces one proposed ADR under `adr/` (0003+). Adoption is the maintainer's
+  sign-off; the spike only proposes.
+- Spike projects target `net10.0`, are **not** added to `lunate.sln`, and are
+  **not** part of `scripts/verify.sh` (or the CI gates). They inherit
+  `Directory.Build.props` but nothing depends on them.
+- NuGet packages used here are throwaway and exempt from the "no new packages"
+  product rule. No API keys: stubs and recorded streams only.
+- Spike code is disposable. When a spike is done, its findings live in
+  `report.md` and the ADR; the code can be deleted without ceremony.
+
+## Exclusion from the solution and the gate (task 1.2)
+
+Confirmed 2026-10-04:
+
+- `dotnet sln lunate.sln list` contains only `src/Lunate.*` and
+  `tests/Lunate.*.Tests`; no project under `docs/spikes/`.
+- `scripts/verify.sh` operates on `lunate.sln` (build, test, format), publishes
+  `src/Lunate.Coding/Lunate.Coding.csproj`, and runs `scripts/perf.sh` against
+  that binary. It never globs `docs/`.
+- The architecture test (`tests/Lunate.Coding.Tests/LayeringTests.cs`) reads
+  project files from `src/` only, so spike `.csproj` files cannot violate the
+  layering graph.
+- `.gitignore` excludes `bin/` and `obj/` at any depth, so spike build output
+  stays untracked.
+
+## Status
+
+| Spike | Question | Status | Outcome |
+| --- | --- | --- | --- |
+| S-1 | Own loop or Microsoft Agent Framework harness? | in progress | — |
+| S-2 | Does raw-key reading work in mintty? | pending | — |
+| S-3 | Startup baselines and calibrated budgets | pending | — |
+| S-4 | Does in-process Roslyn load real solutions? | pending | — |

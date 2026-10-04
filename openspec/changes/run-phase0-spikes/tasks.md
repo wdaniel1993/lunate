@@ -1,7 +1,7 @@
 ## 1. Scaffolding
 
-- [ ] 1.1 Create `docs/spikes/` structure (S-1..S-4 folders plus a README explaining the throwaway rules)
-- [ ] 1.2 Confirm spike projects are excluded from `lunate.sln` and the verify gate (the architecture test only inspects `src/`)
+- [x] 1.1 Create `docs/spikes/` structure (S-1..S-4 folders plus a README explaining the throwaway rules)
+- [x] 1.2 Confirm spike projects are excluded from `lunate.sln` and the verify gate (the architecture test only inspects `src/`)
 
 ## 2. S-1 — loop: MAF harness vs own loop
 
