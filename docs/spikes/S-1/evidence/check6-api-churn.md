@@ -48,3 +48,34 @@ Conclusion: the harness is actively developed with a weekly cadence and an
 above-average share of breaking changes in exactly the areas Lunate cares about
 (approvals, session replay, file access). Adopting it means pinning a version
 and budgeting an upgrade spike per bump.
+
+## Addendum — harness-scoped split (ADR-0003 revision, item 4, 2026-10-04)
+
+Method: same GitHub releases fetch (2026-10-04); a line counts as
+harness-scoped if it contains `Harness` (case-insensitive) and is a .NET entry.
+Script: `churn-split.py` (this directory).
+
+| Tag | Published | [BREAKING] lines | harness-scoped |
+| --- | --- | --- | --- |
+| dotnet-1.10.0 | 2026-06-10 | 3 | 0 |
+| dotnet-1.11.0 | 2026-06-23 | 6 | 0 (2 lines are Python) |
+| dotnet-1.11.1 | 2026-06-25 | 3 | 0 |
+| dotnet-1.12.0 | 2026-07-02 | 3 | 0 |
+| dotnet-1.13.0 | 2026-07-03 | 2 | 0 |
+| dotnet-1.14.0 | 2026-07-21 | 8 | 2 |
+| dotnet-1.15.0 | 2026-07-22 | 1 | 0 |
+| dotnet-1.16.0 | 2026-07-30 | 0 | 0 |
+| dotnet-1.17.0 | 2026-08-04 | 0 | 0 |
+| dotnet-1.18.0 | 2026-08-18 | 1 | 0 |
+| dotnet-1.19.0 | 2026-08-22 | 1 | 0 |
+| dotnet-1.20.0 | 2026-08-31 | 0 | 0 |
+| dotnet-1.21.0 | 2026-09-11 | 4 | 0 |
+| dotnet-1.22.0 | 2026-09-18 | 4 | 0 |
+| dotnet-1.23.0 | 2026-10-01 | 5 | 0 |
+
+Window totals: 41 breaking lines across 15 releases; 12 releases with at least
+one; 2 harness-scoped (both dotnet-1.14.0 — "Harness: Switch FileAccess to
+opt-in", "Graduate HarnessAgent"). The curated list above also counts approval
+and file-access contract changes the harness consumes (1.21.0–1.23.0); those
+lines do not say "Harness" but change harness-visible behaviour. Full-history
+context: 108 breaking lines across 55 `dotnet-*` releases since 2025-10.

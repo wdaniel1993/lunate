@@ -34,6 +34,9 @@ internal static class Program
             case "split":
                 await RunSplitAsync();
                 break;
+            case "errorpath":
+                await RunErrorPathAsync();
+                break;
             default:
                 Console.Error.WriteLine($"Unknown mode '{mode}'.");
                 return 2;
@@ -163,6 +166,62 @@ internal static class Program
         HarnessRunner.PrintEvents(HarnessRunner.MapUpdates(updates));
         Console.WriteLine("--- end split-arguments (harness) ---");
         Console.WriteLine($"tool_invocations={updates.SelectMany(u => u.Contents).OfType<FunctionResultContent>().Count()}");
+    }
+
+    private static async Task RunErrorPathAsync()
+    {
+        // Revision item 2: a tool that RETURNS an error result (no exception)
+        // vs a tool that THROWS, through the harness's FIC pipeline.
+        SpikeTool readError = new(
+            "read",
+            SpikeTool.Read.Description,
+            SpikeTool.Read.ParametersSchemaJson,
+            SpikeToolRisk.ReadOnly,
+            args => $"Error: file not found at {args.GetProperty("path").GetString()}. Use bash ls to locate the file.");
+
+        SpikeTool bashThrow = new(
+            "bash",
+            SpikeTool.Bash.Description,
+            SpikeTool.Bash.ParametersSchemaJson,
+            SpikeToolRisk.Execute,
+            _ => throw new InvalidOperationException("bash: command timed out after 120s; consider raising timeout_s or splitting the command."));
+
+        ScriptedChatClient client = new(
+        [
+            new(
+            [
+                Updates.Text("Reading the file."),
+                Updates.Call("call_read_err", "read", """{"path":"src/Missing.cs"}"""),
+                Updates.Finish(ChatFinishReason.ToolCalls),
+            ]),
+            new(
+            [
+                Updates.Text("Running the command."),
+                Updates.Call("call_bash_err", "bash", """{"command":"sleep 999"}"""),
+                Updates.Finish(ChatFinishReason.ToolCalls),
+            ]),
+            new(
+            [
+                Updates.Text("Done."),
+                Updates.Finish(),
+            ]),
+        ]);
+
+        AIAgent agent = HarnessFactory.Create(client, toolsOverride: [readError, bashThrow]);
+        _ = await HarnessRunner.CollectUpdatesAsync(agent, ChatScripts.SystemUserMessage, session: null);
+
+        Console.WriteLine("--- error-path probe (harness) ---");
+        foreach (FunctionResultContent result in client.Requests
+                     .SelectMany(r => r.Messages)
+                     .SelectMany(m => m.Contents)
+                     .OfType<FunctionResultContent>())
+        {
+            string text = result.Result?.ToString() ?? "(null)";
+            string exception = result.Exception is null ? "none" : $"{result.Exception.GetType().Name}: {result.Exception.Message}";
+            Console.WriteLine($"call={result.CallId} result=\"{text}\" exception={exception}");
+        }
+
+        Console.WriteLine("--- end error-path probe (harness) ---");
     }
 
     private static async Task<string> RunTranscriptAsync(IChatClient client)

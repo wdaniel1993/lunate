@@ -171,9 +171,33 @@ Borrow, in priority order:
 2. Session serialization ideas for the JSONL store and `--resume`.
 3. Compaction strategy shape if our own compaction under-delivers.
 
-Re-open the decision if MAF removes the `FunctionInvokingChatClient` coupling,
-adds steering/message-injection semantics we can consume mid-run, and stops
-rewriting tool errors; then only check 6 (churn) remains as a cost.
+Re-open the decision if a released MAF version removes the
+`FunctionInvokingChatClient` coupling, adds steering/message-injection
+semantics we can consume mid-run, yields a terminal cancel event, and
+preserves tool error detail for both returned results and thrown exceptions
+(or exposes `IncludeDetailedErrors`). Measurable check: re-run
+`run-checks.sh` against that version — re-open if checks 2–5 pass cleanly.
+
+## Revision addendum (2026-10-04)
+
+ADR-0003 revision, items 2 and 4:
+
+- **Tool errors (item 2).** A tool that *returns* an error result (no
+  exception) keeps its message through the harness: `Error: file not found at
+  src/Missing.cs. Use bash ls to locate the file.` reached the model verbatim.
+  A tool that *throws* collapses to `Error: Function failed.` (the exception
+  is attached to `FunctionResultContent.Exception` but the message is not
+  sent). `FunctionInvokingChatClient.IncludeDetailedErrors` is **not
+  exposed** by `HarnessAgent` 1.23.0 — no public member, and the harness
+  package contains no reference to it. Evidence:
+  `evidence/errorpath-maf-harness.txt`,
+  `evidence/revision-experimental-and-harness-surface.txt`.
+- **Churn split (item 4).** In the 1.10.0 → 1.23.0 window: 41 `[BREAKING]`
+  lines across 15 releases (12 releases with at least one); only 2 of the 41
+  are harness-scoped (both in 1.14.0: `HarnessAgent` graduation, FileAccess
+  opt-in). The rest are concentrated in packages the harness consumes
+  (approvals, session replay, file access contracts). Full split in
+  `evidence/check6-api-churn.md` (addendum; script: `churn-split.py`).
 
 ## Limits
 

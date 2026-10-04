@@ -1,0 +1,5 @@
+--- error-path probe (harness) ---
+call=call_read_err result="Error: file not found at src/Missing.cs. Use bash ls to locate the file." exception=none
+call=call_read_err result="Error: file not found at src/Missing.cs. Use bash ls to locate the file." exception=none
+call=call_bash_err result="Error: Function failed." exception=InvalidOperationException: bash: command timed out after 120s; consider raising timeout_s or splitting the command.
+--- end error-path probe (harness) ---

@@ -90,4 +90,7 @@ echo "== split-argument robustness =="
 "$OWN" split >"$EVIDENCE/split-own-loop.txt"
 "$MAF" split >"$EVIDENCE/split-maf-harness.txt"
 
+echo "== error-path probe (revision item 2) =="
+"$MAF" errorpath >"$EVIDENCE/errorpath-maf-harness.txt"
+
 echo "evidence written to $EVIDENCE/"

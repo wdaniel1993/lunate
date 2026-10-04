@@ -1,0 +1,55 @@
+Assembly: Microsoft.Extensions.AI.Abstractions 10.10.0.0
+Approval types (7):
+  Microsoft.Extensions.AI.ApprovalRequiredAIFunction
+  Microsoft.Extensions.AI.HostedMcpServerToolAlwaysRequireApprovalMode
+  Microsoft.Extensions.AI.HostedMcpServerToolApprovalMode
+  Microsoft.Extensions.AI.HostedMcpServerToolNeverRequireApprovalMode
+  Microsoft.Extensions.AI.HostedMcpServerToolRequireSpecificApprovalMode
+  Microsoft.Extensions.AI.ToolApprovalRequestContent
+  Microsoft.Extensions.AI.ToolApprovalResponseContent
+IChatReducer attributes: NullableContextAttribute
+IChatReducer Experimental: False
+Reducing types (0): 
+Microsoft.Extensions.AI: Reduc* (6): Microsoft.Extensions.AI.ReducingChatClient, Microsoft.Extensions.AI.ReducingChatClientBuilderExtensions, Microsoft.Extensions.AI.MessageCountingChatReducer, Microsoft.Extensions.AI.SummarizingChatReducer, Microsoft.Extensions.AI.MessageCountingChatReducer+<GetReducedMessages>d__3, Microsoft.Extensions.AI.SummarizingChatReducer+<ReduceAsync>d__10
+Microsoft.Extensions.AI.Abstractions: Reduc* (1): Microsoft.Extensions.AI.IChatReducer
+--- experimental checks ---
+Microsoft.Extensions.AI.ToolApprovalRequestContent: NullableAttribute
+Microsoft.Extensions.AI.ToolApprovalResponseContent: NullableAttribute
+Microsoft.Extensions.AI.SummarizingChatReducer: NullableAttribute, ExperimentalAttribute
+Microsoft.Extensions.AI.MessageCountingChatReducer: ExperimentalAttribute
+--- harness surface ---
+Harness assembly: Microsoft.Agents.AI.Harness 1.23.0.0
+public members mentioning Detailed/FunctionInvok: 0
+HarnessAgentOptions public properties:
+  AgentModeProviderOptions
+  AgentSkillsSource
+  AIContextProviders
+  BackgroundAgents
+  BackgroundAgentsProviderOptions
+  ChatHistoryProvider
+  ChatOptions
+  CompactionStrategy
+  Description
+  DisableAgentModeProvider
+  DisableAgentSkillsProvider
+  DisableApprovalNotRequiredFunctionBypassing
+  DisableApprovalResponseBinding
+  DisableCompaction
+  DisableFileMemory
+  DisableOpenTelemetry
+  DisableTodoProvider
+  DisableToolAutoApproval
+  DisableWebSearch
+  FileAccessProviderOptions
+  FileAccessStore
+  FileMemoryStore
+  HarnessInstructions
+  Id
+  LoopAgentOptions
+  LoopEvaluators
+  MaxContextWindowTokens
+  MaximumIterationsPerRequest
+  MaxOutputTokens
+  Name
+  OpenTelemetrySourceName
+  ToolApprovalAgentOptions

@@ -169,3 +169,20 @@ Operational requirements this evidence forces (all proposed in ADR 0006):
   workspace update storms, analyzer loading, or long-running memory pressure.
 - Spike code is throwaway and lives outside `lunate.sln`; nothing here changes
   `src/`.
+
+## Addendum — memory (ADR-0003 revision, 2c, 2026-10-04)
+
+Peak RSS was not measured in the first pass. Method: `mem-sample.sh` samples
+the whole process tree every 150 ms (the Roslyn build host is a child process,
+so a plain `/usr/bin/time -l` on the parent would undercount); three runs each
+on Polly at the pinned commit, `MSBUILDDISABLENODEREUSE=1`.
+
+| Run | Peak RSS, process tree (KB) |
+| --- | --- |
+| load only | 501,520 · 500,816 · 498,256 → median ≈ 489 MB |
+| load + 10 edit cycles | 495,168 · 489,312 · 501,536 → median ≈ 484 MB |
+
+A 47-project workspace costs ≈ 0.5 GB peak RSS, dominated by the load;
+10 edit cycles do not measurably add to it. Sampling at 150 ms may miss
+sub-150 ms peaks. The startup budgets (ADR 0005) do not cover this — it is
+lazy, first-use cost that should be documented in the TUI/README.

@@ -20,10 +20,11 @@ Tools: read, write, edit, bash.
         IChatClient client,
         bool approvalRequiredBash = false,
         bool defaultHarnessInstructions = false,
-        ToolApprovalAgentOptions? toolApprovalOptions = null)
+        ToolApprovalAgentOptions? toolApprovalOptions = null,
+        IReadOnlyList<SpikeTool>? toolsOverride = null)
     {
         List<AITool> tools = [];
-        foreach (SpikeTool tool in SpikeTool.All)
+        foreach (SpikeTool tool in toolsOverride ?? SpikeTool.All)
         {
             AIFunction function = new SpikeAIFunction(tool);
             tools.Add(approvalRequiredBash && tool.Name == "bash" ? new ApprovalRequiredAIFunction(function) : function);

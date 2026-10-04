@@ -17,13 +17,16 @@ Result summary (details in the report): the harness passes checks 2 (prompt
 size), 4 (approvals) and 5 (deterministic replay, plus session serialization),
 but check 3 is only partial — it does not stream steering, its cancel path
 throws without a terminal event or a cancelled tool result, run lifecycle
-events must be synthesized, and `FunctionInvokingChatClient` rewrites tool
-failures to `Error: Function failed.`, which conflicts with Lunate's rule that
+events must be synthesized, and `FunctionInvokingChatClient` rewrites *thrown*
+tool failures to `Error: Function failed.` (returned error results pass
+through — revision item 2), which conflicts with Lunate's rule that
 tool errors tell the model what failed and what to do next. The harness also
 hardwires `FunctionInvokingChatClient`, while AGENTS.md forbids it because
 approvals, cancellation and events must stay under the loop's control. Check 6
-shows high churn: 15 .NET releases in 115 days, breaking changes in 11 of them,
-concentrated in approvals, session replay and file access.
+shows high churn in the package family: 15 .NET releases in 115 days, 12 of
+them with `[BREAKING]` lines, concentrated in approvals, session replay and
+file access; only 2 of the 41 breaking lines are harness-scoped (revision
+item 4, check 6 addendum).
 
 ## Why the tool loop must be ours
 
@@ -54,6 +57,17 @@ package (see S-1 check 6). The MAF Harness always builds FIC into its
 pipeline, so adopting it means handing the loop to the framework
 permanently.
 
+Revision evidence on tool errors (item 2): a tool that *returns* an error
+result keeps its message through the harness — "Error: file not found at
+src/Missing.cs. Use bash ls to locate the file." reached the model verbatim;
+a tool that *throws* collapses to `Error: Function failed.` and
+`FunctionInvokingChatClient.IncludeDetailedErrors` is not exposed by
+`HarnessAgent` (no public member in 1.23.0; evidence:
+`docs/spikes/S-1/evidence/errorpath-maf-harness.txt` and
+`revision-experimental-and-harness-surface.txt`). Lunate's tools return error
+results rather than throwing, but any escaped exception (MCP wrappers, tool
+bugs) would lose its teaching message under the harness.
+
 This is not a flaw in Microsoft.Extensions.AI; it is the wrong layer
 for a coding agent. Lunate uses Microsoft's standard for talking to
 models (`IChatClient`, `ChatMessage`) and keeps the loop itself (about
@@ -72,9 +86,15 @@ models (`IChatClient`, `ChatMessage`) and keeps the loop itself (about
   content shapes) as the reference for Lunate's own approval policy and event
   mapping; use its session serialization approach as a reference for our JSONL
   store; revisit its compaction strategy if ours under-delivers.
-- **Re-open conditions**: MAF removes the `FunctionInvokingChatClient` coupling,
-  exposes mid-run steering/message injection we can consume, stops rewriting
-  tool error detail, and reduces release churn.
+- **Re-open conditions (measurable)**: re-open if, in a released MAF version,
+  all of the following hold — (1) `HarnessAgent` no longer hardwires
+  `FunctionInvokingChatClient`; (2) a mid-run steering/message-injection API
+  exists; (3) cancel yields a terminal event instead of a thrown
+  `OperationCanceledException`; (4) tool error detail is preserved for
+  returned results and thrown exceptions, or `IncludeDetailedErrors` is
+  exposed. The check is scripted: re-run `docs/spikes/S-1/run-checks.sh`
+  against that version — re-open if checks 2–5 pass cleanly. Churn remains a
+  cost to weigh at that point.
 
 ## Alternatives considered
 

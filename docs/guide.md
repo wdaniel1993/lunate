@@ -196,7 +196,7 @@ public sealed class ReplayChatClient(string fixturePath) : IChatClient { }
 - `UseOpenTelemetry()`: spans and metrics for every model call (model, tokens, duration), following the OpenTelemetry GenAI conventions. Off by default; on when configured (settings or `OTEL_*` environment variables). Prompt and tool content is not recorded unless explicitly enabled.
 - `UseLogging()`: model-call logging through `ILogger`.
 - `AIJsonUtilities`: serialization options for MEAI types (sessions, fixtures).
-- Approval content types: `ToolApprovalRequestContent` / `ToolApprovalResponseContent` (confirmed present in Microsoft.Extensions.AI.Abstractions 10.10.x) shape our approval events and policy without new message types.
+- Approval content types: `ToolApprovalRequestContent` / `ToolApprovalResponseContent` (confirmed present and not `[Experimental]` in Microsoft.Extensions.AI.Abstractions 10.10.x) shape our approval events and policy without new message types.
 - Pipeline order in `IChatClientFactory`, outermost first: **OpenTelemetry -> logging -> recorder (`LUNATE_RECORD=1`) -> provider**. Replay replaces recorder + provider, so tests still run through the telemetry and logging layers.
 
 **Recorded streams (tests never need API keys)**
@@ -289,7 +289,7 @@ Append-only JSONL, one entry per line, each with `id`, `parentId`, `type` and a 
 
 **Compaction**
 
-- **Shape:** our strategy implements `IChatReducer` (not `[Experimental]` in the pinned Microsoft.Extensions.AI 10.10.x) and the loop calls it before each model request, so it can emit `CompactionApplied` and write the compaction entry. Do not use `ReducingChatClient` — the loop decides when to compact. MEAI also ships `SummarizingChatReducer` and `MessageCountingChatReducer`; evaluate them as the base before writing custom reduction logic.
+- **Shape:** our strategy implements `IChatReducer` (not `[Experimental]` in the pinned Microsoft.Extensions.AI 10.10.x) and the loop calls it before each model request, so it can emit `CompactionApplied` and write the compaction entry. Do not use `ReducingChatClient` — the loop decides when to compact. MEAI also ships `SummarizingChatReducer` and `MessageCountingChatReducer` (both `[Experimental]` in 10.10.x); evaluate them as the base before writing custom reduction logic. A base reducer is only acceptable if it meets our compaction rules: never split a tool call from its result, always keep the system prompt, AGENTS.md and the last turns verbatim, and record a compaction entry. If it does not, wrap it; do not weaken the rules.
 - **Trigger:** estimated context tokens pass 80% of the model's window. Estimate is characters / 4, corrected by the last `UsageReported`. Also on `/compact`.
 - **What stays verbatim:** system prompt, `AGENTS.md`, the last 6 turns, and any turn whose tool call or result would otherwise be split.
 - **What is summarized:** everything older, by the same model with a fixed summarization prompt (goal, decisions, files touched, open problems), stored as a `compaction` entry. The session file keeps the full history; only the request sent to the model is shortened.
@@ -555,7 +555,7 @@ One row per card. Each card becomes one OpenSpec change (see Building it with Op
 | ID | Phase | Card | Depends on | Done when |
 | --- | --- | --- | --- | --- |
 | T-01 | 0 | Repo skeleton: solution, `Directory.Build.props`, `global.json`, `.editorconfig`, analyzers, AGENTS.md, `opencode.json` | – | `scripts/verify.sh` green on empty projects |
-| T-02 | 0 | CI: build and test on 3 OSes, single-file publish for three targets, `scripts/perf.sh` | T-01 | Artifacts for all targets; CI turns red when a budget is exceeded |
+| T-02 | 0 | CI: build and test on 3 OSes, single-file publish for three targets, `scripts/perf.sh`; verify the Roslyn build-host publish target on Windows and Linux (S-4 addendum) | T-01 | Artifacts for all targets; CI turns red when a budget is exceeded |
 | T-03 | 0 | Spikes S-1 MAF Harness, S-2 Git Bash input, S-3 startup baseline, S-4 MSBuildWorkspace reality check | T-02 | One ADR per spike; budgets calibrated |
 | T-04 | 1 | `IChatClientFactory` and model catalog with user override; pipeline order + MEAI reuse list (spec Layer 1) | T-03 | Pipeline built per provider; catalog merge tests |
 | T-05 | 1 | `RecordingChatClient` and `ReplayChatClient` | T-04 | Recorded fixture replays identically |
