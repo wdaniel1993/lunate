@@ -121,7 +121,7 @@ Each spike is throwaway code in `docs/spikes/S-x/` with a short report and an AD
 | Spike | Question | Result |
 | --- | --- | --- |
 | S-1 MAF Harness | Can Lunate's loop be the Microsoft Agent Framework Harness instead of our own? | ADR: own loop, harness, or borrow parts |
-| S-2 Git Bash input | Does raw key reading work for a .NET app inside mintty? | ADR: supported, or documented fallback |
+| S-2 Git Bash input | Does raw key reading work for a .NET app inside mintty? | Supported directly via the MSYS2 pseudo console (Git for Windows 2.52.0); fail-soft diagnostic otherwise — ADR-0004 |
 | S-3 Startup baseline | Single-file ReadyToRun hello-world on all OSes: startup and memory | Calibrated budgets for `scripts/perf.sh` |
 | S-4 MSBuildWorkspace reality check | Does in-process Roslyn load real solutions reliably and fast enough, also from the published single-file build? | ADR: go, move Roslyn out of process, or narrow the C# claim; calibrated Roslyn budgets |
 
@@ -256,7 +256,7 @@ The harness exposes them as `IAsyncEnumerable<AgentEvent>` from `AgentHarness.Ru
 2. Build the request: system prompt + session messages after compaction, and `ChatOptions` with the declarations of all enabled tools.
 3. Call `GetStreamingResponseAsync`; emit text events as updates arrive; collect complete function calls through the `StreamAccumulator`.
 4. No function calls: append the assistant message, emit `RunFinished`.
-5. For each call: check the approval policy, execute the `ITool`, append a tool-role `ChatMessage` with `FunctionResultContent`, emit the tool events. Unknown tools and bad JSON become error results, never exceptions.
+5. For each call: check the approval policy, execute the `ITool`, append a tool-role `ChatMessage` with `FunctionResultContent`, emit the tool events. Unknown tools and bad JSON become error results, never exceptions — and any exception thrown by a tool (bugs, MCP wrappers) is caught and turned into an error result that tells the model what to do next (ADR-0003).
 6. Back to step 2. After `MaxSteps` (default 50) emit `StepLimitReached`, then `RunFinished`.
 
 **Cross-cutting rules**
@@ -456,7 +456,7 @@ Self-contained single-file builds with ReadyToRun — no single-file compression
 | Windows Terminal | 1 | Full colour, VT, bracketed paste |
 | Classic console (conhost, Windows 10 1809+) | 1 | VT enabled at startup; verify paste and resize |
 | VS Code integrated terminal (all OSes) | 1 | Common daily environment |
-| Git Bash (mintty) | 2 | .NET console input has had problems under mintty in the past; test early, document a fallback (Windows Terminal profile) |
+| Git Bash (mintty) | 1 | Works directly under the MSYS2 pseudo console (verified Git for Windows 2.52.0, ADR-0004); without it, a fail-soft diagnostic instead of a crash |
 | macOS Terminal.app | 1 | No 24-bit colour, so 256 colours; Option is not Meta by default |
 | iTerm2, Ghostty, WezTerm, Kitty, Alacritty | 1 | Full features |
 | Linux terminals (GNOME Terminal, Konsole, others) | 1 | Full features |
@@ -573,7 +573,7 @@ One row per card. Each card becomes one OpenSpec change (see Building it with Op
 | T-07 | 1 | `AgentEvent` types, aligned with AG-UI | T-04 | Event sequence rules tested |
 | T-08 | 2 | `ITool`, `ToolDeclaration` adapter, registry, output truncation | T-04 | Schemas reach the model unchanged; truncation tests |
 | T-09 | 2 | Agent loop on `IChatClient`: run, tool execution, max steps, events; run and tool spans (spec Layer 2) | T-06, T-07, T-08 | Snapshot of 3 replayed sessions; a replayed session produces one run span with nested model and tool spans (in-memory exporter) |
-| T-10 | 2 | Error paths: bad JSON, unknown tool, cancel, retries | T-09 | One replay test per path; history stays valid |
+| T-10 | 2 | Error paths: bad JSON, unknown tool, tool exceptions, cancel, retries | T-09 | One replay test per path; history stays valid |
 | T-11 | 2 | Session JSONL store, resume, golden files | T-09 | Golden files round-trip byte for byte |
 | T-12 | 3 | Workspace paths, `read`, `write` | T-08 | Boundary tests incl. symlinks and case-insensitive file systems |
 | T-13 | 3 | `edit` tiers 1–2 + corpus | T-12 | Corpus cases for tiers 1–2 pass |

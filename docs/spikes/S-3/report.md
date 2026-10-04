@@ -14,7 +14,7 @@
   [`evidence/ci-medians.txt`](evidence/ci-medians.txt),
   [`evidence/run-list.json`](evidence/run-list.json).
 - ADR draft: [`adr/0005-budget-calibration.md`](../../../adr/0005-budget-calibration.md)
-  (proposed — awaiting maintainer sign-off).
+  (accepted 2026-10-04).
 
 ## Measurements
 

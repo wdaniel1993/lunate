@@ -1,6 +1,6 @@
 # 0003 — Loop: own loop on IChatClient, borrowing Microsoft Agent Framework patterns
 
-- Status: proposed — awaiting maintainer sign-off
+- Status: accepted — 2026-10-04 (maintainer sign-off; adds the tool-exception consequence)
 - Date: 2026-10-04
 - Spike: `docs/spikes/S-1/report.md` (evidence under `docs/spikes/S-1/evidence/`)
 
@@ -114,5 +114,11 @@ models (`IChatClient`, `ChatMessage`) and keeps the loop itself (about
 - `Lunate.Agent` implements approval decisions with per-tool and per-arguments
   granularity plus an "always for this session" cache (spike `OwnLoop` shows a
   minimal working shape).
+- **Tool exceptions become teaching error results.** Any exception thrown by a
+  tool — bugs, MCP wrapper failures — is caught by the loop and turned into an
+  error result that tells the model what to do next. This is exactly the
+  guarantee FIC breaks for thrown exceptions (revision item 2); the own loop
+  must not replicate the weakness in its own code (maintainer condition,
+  2026-10-04).
 - A follow-up change tracks MAF releases for ideas; any future proposal to adopt
   it must re-run S-1's check matrix against the then-current version.

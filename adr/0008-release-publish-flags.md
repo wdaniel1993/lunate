@@ -1,6 +1,6 @@
 # 0008 — Release builds: single file + ReadyToRun, no single-file compression
 
-- Status: proposed — awaiting maintainer sign-off
+- Status: accepted — 2026-10-04 (maintainer sign-off)
 - Date: 2026-10-04
 - Spike: `docs/spikes/S-5/report.md` (crash evidence under `docs/spikes/S-5/evidence/startup-crashes.txt`)
 - Relates to: ADR 0001 (single-file releases), ADR 0005 (startup budgets)
@@ -25,7 +25,7 @@ Download size is unaffected in practice: release archives (`.tar.gz` / `.zip`)
 compress the binary at the distribution layer, so users still download a
 ~30 MB archive; only the on-disk binary is larger (~105 MB).
 
-## Decision (proposed)
+## Decision
 
 - **Release builds are single file + ReadyToRun without
   `EnableCompressionInSingleFile`.** `scripts/verify.sh` and the release

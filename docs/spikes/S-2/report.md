@@ -13,7 +13,7 @@
   (ConPTY). With pseudo-console support disabled (`MSYS=disable_pcon`) the
   historical failure returns. See [Manual results](#manual-results-windows-11-git-for-windows-2520).
 - ADR draft: [`adr/0004-mintty-input-support.md`](../../../adr/0004-mintty-input-support.md)
-  (proposed — awaiting maintainer sign-off).
+  (accepted 2026-10-04).
 
 ## What was built
 

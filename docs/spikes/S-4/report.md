@@ -17,7 +17,7 @@
   *build host* is left on disk next to the binary (or all content is
   self-extracted).
 - ADR draft: [`adr/0006-roslyn-placement.md`](../../../adr/0006-roslyn-placement.md)
-  (proposed — awaiting maintainer sign-off).
+  (accepted 2026-10-04).
 
 ## Environment
 

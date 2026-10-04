@@ -18,7 +18,7 @@ jobs:
       matrix:
         include:
           # budget_ms: calibrated in spike S-3 (docs/spikes/S-3/report.md, ADR 0005
-          # proposed) — runner startup median + ~50% headroom, rounded up to 50 ms.
+          # accepted 2026-10-04) — runner startup median + ~50% headroom, rounded up to 50 ms.
           # Re-calibrate when a runner image or baseline shifts. The local default
           # in scripts/perf.sh stays 150 ms.
           - os: ubuntu-latest

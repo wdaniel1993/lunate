@@ -1,6 +1,6 @@
 # 0004 — Windows terminals: Windows Terminal and Git Bash (mintty) supported, fail soft without a console
 
-- Status: proposed — awaiting maintainer sign-off (S-2 manual run done 2026-10-04)
+- Status: accepted — 2026-10-04 (maintainer sign-off; the S-2 manual run supports the decision)
 - Date: 2026-10-04
 - Spike: `docs/spikes/S-2/report.md` (automated and manual evidence under `docs/spikes/S-2/evidence/`)
 
@@ -32,7 +32,7 @@ check on a real Git Bash (mintty) window on Windows 11 (Git for Windows
 
 `winpty` was not needed and not run.
 
-## Decision (proposed)
+## Decision
 
 - **Interactive input is read through Lunate's own VT input layer, not
   `Console.ReadKey`.** The spike's `ReadKey` mode exists to measure the legacy

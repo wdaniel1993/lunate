@@ -1,6 +1,6 @@
 # 0006 — In-process Roslyn; the MSBuild build host ships beside the single file
 
-- Status: proposed — awaiting maintainer sign-off
+- Status: accepted — 2026-10-04 (maintainer sign-off)
 - Date: 2026-10-04
 - Spike: `docs/spikes/S-4/report.md` (raw evidence under `docs/spikes/S-4/evidence/`)
 - Relates to: ADR 0001 (single-file releases), ADR 0002 (layering)
@@ -32,7 +32,7 @@ the solution restores. But three real constraints emerged:
 3. Multi-targeting multiplies Roslyn projects (21 `.csproj` → 47 projects,
    75 → 308), and `.slnx` is now common (both repos above, Spectre.Console).
 
-## Decision (proposed)
+## Decision
 
 - **Roslyn stays in-process** (`Lunate.Roslyn`, loaded on first use). No
   language-server process: the measured latency does not justify IPC and a

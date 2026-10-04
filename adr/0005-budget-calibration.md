@@ -1,6 +1,6 @@
 # 0005 — Startup budgets: median plus 50% headroom, re-calibrated from the pipeline
 
-- Status: proposed — awaiting maintainer sign-off
+- Status: accepted — 2026-10-04 (maintainer sign-off)
 - Date: 2026-10-04
 - Spike: `docs/spikes/S-3/report.md` (raw evidence under `docs/spikes/S-3/evidence/`)
 
@@ -15,7 +15,7 @@ ranged 165–380 ms and two dispatch runs failed the old 250 ms macOS budget —
 so budgets must be derived from repeated measurements and re-checked when a
 baseline shifts, exactly as the `repo-foundation` spec requires.
 
-## Decision (proposed)
+## Decision
 
 - **Budget rule**: per environment, take the median of the measured startup
   medians, add roughly 50% headroom, and round **up** to the next 50 ms. The
