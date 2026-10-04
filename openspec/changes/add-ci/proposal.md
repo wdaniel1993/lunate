@@ -19,5 +19,5 @@ The repository's build-and-verification contract exists and one command decides 
 
 ## Impact
 
-- New `.github/workflows/`; no product code changes, no new NuGet packages, no marketplace actions beyond `actions/checkout` and `actions/setup-dotnet`.
+- New `.github/workflows/`; no product code changes, no new NuGet packages, no marketplace actions beyond the first-party `actions/checkout`, `actions/setup-dotnet`, `actions/upload-artifact` and `actions/download-artifact`.
 - CI minutes are free for this public repository; per-commit cost is a three-runner matrix.

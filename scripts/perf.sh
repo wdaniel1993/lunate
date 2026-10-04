@@ -25,10 +25,19 @@ if [ ! -x "$BINARY" ]; then
   exit 1
 fi
 
-mkdir -p "$(dirname "$RESULTS_FILE")"
-hyperfine --warmup "$WARMUP" --runs "$RUNS" --export-json "$RESULTS_FILE" "\"$BINARY\" --version" >/dev/null
+if ! "$BINARY" --version >/dev/null 2>&1; then
+  echo "perf: preflight failed: cannot run '$BINARY --version'" >&2
+  exit 1
+fi
 
-MEDIAN_MS="$(jq -r '.results[0].median * 1000 | round' "$RESULTS_FILE")"
+mkdir -p "$(dirname "$RESULTS_FILE")"
+RESULTS_ABS="$(cd "$(dirname "$RESULTS_FILE")" && pwd)/$(basename "$RESULTS_FILE")"
+BINARY_DIR="$(cd "$(dirname "$BINARY")" && pwd)"
+BINARY_NAME="$(basename "$BINARY")"
+
+(cd "$BINARY_DIR" && hyperfine --warmup "$WARMUP" --runs "$RUNS" --export-json "$RESULTS_ABS" "./$BINARY_NAME --version" >/dev/null)
+
+MEDIAN_MS="$(jq -r '.results[0].median * 1000 | round' "$RESULTS_ABS")"
 printf 'startup median: %s ms (budget %s ms)\n' "$MEDIAN_MS" "$BUDGET_MS"
 
 if [ "$MEDIAN_MS" -gt "$BUDGET_MS" ]; then

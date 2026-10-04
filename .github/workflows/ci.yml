@@ -17,17 +17,25 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # budget_ms: CI-runner calibration, pending spike S-3. Runners are slower
+          # than dev machines (measured: ubuntu 159 ms, macos 177 ms); the local
+          # default in scripts/verify.sh stays 150 ms.
           - os: ubuntu-latest
             rid: linux-x64
+            budget_ms: 250
           - os: macos-latest
             rid: osx-arm64
+            budget_ms: 250
           - os: windows-latest
             rid: win-x64
+            budget_ms: 300
     env:
       RID: ${{ matrix.rid }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        # Force LF checkout on windows: the public-API step diffs tracked
+        # *PublicAPI.Shipped.txt files, so autocrlf rewrites would show as noise.
         env:
           GIT_CONFIG_COUNT: 1
           GIT_CONFIG_KEY_0: core.autocrlf
@@ -85,8 +93,33 @@ jobs:
           Add-Content -Path $env:GITHUB_PATH -Value (Split-Path $binary)
           & $binary --version
 
+      - name: Install jq (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          if (Get-Command jq -ErrorAction SilentlyContinue) {
+            jq --version
+            exit 0
+          }
+          $version = '1.7.1'
+          $asset = 'jq-windows-amd64.exe'
+          $exe = Join-Path $env:RUNNER_TEMP $asset
+          Invoke-WebRequest -Uri "https://github.com/jqlang/jq/releases/download/jq-$version/$asset" -OutFile $exe
+          $expected = '7451fbbf37feffb9bf262bd97c54f0da558c63f0748e64152dd87b0a07b6d6ab'
+          $actual = (Get-FileHash -Algorithm SHA256 -Path $exe).Hash.ToLowerInvariant()
+          if ($actual -ne $expected) {
+            throw "jq: checksum mismatch for $asset ($actual)"
+          }
+          $dir = Join-Path $env:RUNNER_TEMP "jq-$version"
+          New-Item -ItemType Directory -Force -Path $dir | Out-Null
+          Move-Item -Path $exe -Destination (Join-Path $dir 'jq.exe')
+          Add-Content -Path $env:GITHUB_PATH -Value $dir
+          & (Join-Path $dir 'jq.exe') --version
+
       - name: Verify (bash)
         shell: bash
+        env:
+          BUDGET_MS: ${{ matrix.budget_ms }}
         run: bash scripts/verify.sh
 
       - name: Gate self-tests
@@ -96,6 +129,8 @@ jobs:
       - name: Verify (PowerShell)
         if: runner.os == 'Windows'
         shell: pwsh
+        env:
+          BUDGET_MS: ${{ matrix.budget_ms }}
         run: ./scripts/verify.ps1
 
       - name: Upload verification artifacts

@@ -6,13 +6,12 @@ on:
       - 'v*'
   workflow_dispatch:
 
-permissions:
-  contents: write
-
 jobs:
   publish:
     name: publish (${{ matrix.rid }})
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
     strategy:
       fail-fast: false
       matrix:
@@ -71,6 +70,8 @@ jobs:
     needs: publish
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Download target archives
         uses: actions/download-artifact@v8
