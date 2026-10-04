@@ -39,6 +39,7 @@ flowchart TD
 ## Risks / Trade-offs
 
 - [First single-file publish may exceed the 150 ms placeholder on some machines] → S-3 calibrates; `BUDGET_MS` is env-overridable, CI is the strict gate.
+- [SDK 10.0.103 forwards `dotnet test --nologo` to the MTP test host, so the handshake fails with "Zero tests ran" (exit 5; dotnet/sdk#55309)] → `verify.sh` / `verify.ps1` never pass `--nologo` to `dotnet test`; revisit when the `global.json` pin moves past 10.0.103.
 - [dotnet format noise on a fresh repo] → `.editorconfig` kept close to SDK defaults; formatting issues are fixed during apply.
 - [xUnit v3 runner details on .NET 10] → implementation follows current xUnit v3 guidance; placeholder tests prove the runner in apply.
 - [Empty projects feel like ceremony] → that is exactly the T-01 contract; later changes extend instead of rebuild.

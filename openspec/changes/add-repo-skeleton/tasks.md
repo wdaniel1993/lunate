@@ -23,6 +23,6 @@
 
 ## 5. Prove and close
 
-- [ ] 5.1 Run `scripts/verify.sh` green on the skeleton; record measured startup median
-- [ ] 5.2 Run `openspec validate add-repo-skeleton --type change --strict`
-- [ ] 5.3 Commit the implementation (conventional commits per group); update the change's artifacts if reality diverged
+- [x] 5.1 Run `scripts/verify.sh` green on the skeleton; record measured startup median (97 ms, osx-arm64, budget 150 ms)
+- [x] 5.2 Run `openspec validate add-repo-skeleton --type change --strict`
+- [x] 5.3 Commit the implementation (conventional commits per group); update the change's artifacts if reality diverged
