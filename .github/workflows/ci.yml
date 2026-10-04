@@ -3,8 +3,20 @@ name: CI
 on:
   push:
     branches: [main]
+    # Docs/spec-only pushes skip CI (they cannot break the build). A push that
+    # touches any code or workflow file still runs the full matrix.
+    paths-ignore:
+      - 'docs/**'
+      - 'adr/**'
+      - 'openspec/**'
+      - '*.md'
   pull_request:
   workflow_dispatch:
+
+# Supersede in-flight runs for the same ref instead of queueing duplicates.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read

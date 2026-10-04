@@ -1,6 +1,6 @@
 # 0009 — Memory budgets: idle, working set, Roslyn (method and values)
 
-- Status: proposed — awaiting maintainer sign-off
+- Status: accepted — 2026-10-04 (maintainer sign-off)
 - Date: 2026-10-04
 - Evidence: `docs/spikes/S-5/evidence/mem-decomposition.txt` (probe: `docs/spikes/S-5/mem-probe.sh`), S-3 report (method + decomposition), S-4 report addendum (Roslyn)
 - Relates to: ADR 0005 (startup budgets — same calibration rule), ADR 0001 (single-file releases), ADR 0008 (no single-file compression)

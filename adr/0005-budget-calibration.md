@@ -36,6 +36,12 @@ baseline shifts, exactly as the `repo-foundation` spec requires.
   regression (a doubling trips every budget) or a runner-noise spike"; a
   single extreme-runner failure is a re-calibration trigger, not automatically
   a code defect.
+- **Noise policy**: `scripts/perf.sh` re-runs the measurement once when the
+  first median exceeds the budget and fails only on two consecutive misses —
+  a noise burst does not redden the gate, a material regression still does.
+  CI config mirrors this: docs/spec-only pushes skip the matrix
+  (`paths-ignore`) and superseded runs are cancelled (`concurrency`), so red
+  history stays meaningful without a separate dev branch.
 
 ## Alternatives considered
 

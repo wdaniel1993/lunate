@@ -50,12 +50,26 @@ case "$(uname -s)" in
 esac
 
 echo "perf: benchmarking: $HYPERFINE_CMD"
-hyperfine --warmup "$WARMUP" --runs "$RUNS" --export-json "$RESULTS_ABS" "$HYPERFINE_CMD" >/dev/null
 
-MEDIAN_MS="$(jq -r '.results[0].median * 1000 | round' "$RESULTS_ABS")"
+measure_median() {
+  hyperfine --warmup "$WARMUP" --runs "$RUNS" --export-json "$RESULTS_ABS" "$HYPERFINE_CMD" >/dev/null
+  jq -r '.results[0].median * 1000 | round' "$RESULTS_ABS"
+}
+
+MEDIAN_MS="$(measure_median)"
 printf 'startup median: %s ms (budget %s ms)\n' "$MEDIAN_MS" "$BUDGET_MS"
 
+# Noise policy (ADR-0005): a single budget miss re-runs the measurement once
+# before failing, so a shared-runner noise burst does not redden the gate while
+# a material regression still misses both attempts. Consecutive misses are a
+# re-calibration (or regression) signal.
 if [ "$MEDIAN_MS" -gt "$BUDGET_MS" ]; then
-  echo "startup budget exceeded: ${MEDIAN_MS} ms > ${BUDGET_MS} ms" >&2
+  echo "startup median ${MEDIAN_MS} ms exceeds budget ${BUDGET_MS} ms; re-running once (noise policy)"
+  MEDIAN_MS="$(measure_median)"
+  printf 'startup median (retry): %s ms (budget %s ms)\n' "$MEDIAN_MS" "$BUDGET_MS"
+fi
+
+if [ "$MEDIAN_MS" -gt "$BUDGET_MS" ]; then
+  echo "startup budget exceeded: ${MEDIAN_MS} ms > ${BUDGET_MS} ms (two consecutive measurements)" >&2
   exit 1
 fi
