@@ -6,9 +6,9 @@
 
 ## 2. Project wiring
 
-- [ ] 2.1 Wire project references to the downward-only graph (Ai ← Agent ← Protocols/Coding; Tui standalone)
-- [ ] 2.2 Add PublicApiAnalyzers + empty PublicAPI.Shipped/Unshipped baselines to the four libraries
-- [ ] 2.3 Add one placeholder xUnit v3 test per test project; prove `dotnet test` runs
+- [x] 2.1 Wire project references to the downward-only graph (Ai ← Agent ← Protocols/Coding; Tui standalone)
+- [x] 2.2 Add PublicApiAnalyzers + empty PublicAPI.Shipped/Unshipped baselines to the four libraries
+- [x] 2.3 Add one placeholder xUnit v3 test per test project; prove `dotnet test` runs
 
 ## 3. Entry point and guards
 

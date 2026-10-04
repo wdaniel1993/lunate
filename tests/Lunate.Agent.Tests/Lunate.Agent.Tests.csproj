@@ -6,6 +6,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="../../src/Lunate.Agent/Lunate.Agent.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="xunit.v3" Version="4.0.1" />
     <Using Include="Xunit" />
   </ItemGroup>

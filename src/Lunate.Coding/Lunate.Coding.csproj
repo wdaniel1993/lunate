@@ -6,4 +6,10 @@
     <RootNamespace>Lunate.Coding</RootNamespace>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="../Lunate.Agent/Lunate.Agent.csproj" />
+    <ProjectReference Include="../Lunate.Protocols/Lunate.Protocols.csproj" />
+    <ProjectReference Include="../Lunate.Tui/Lunate.Tui.csproj" />
+  </ItemGroup>
+
 </Project>
