@@ -1,0 +1,15 @@
+S-2 probe: environment and console capability
+os: macOS 26.3.1
+arch: Arm64
+term: (unset)
+term_program: (unset)
+msystem: (unset)
+wt_session: (unset)
+sessionname: (unset)
+stdin_redirected: True
+stdout_redirected: True
+stderr_redirected: True
+windows_console_attached: n/a (not windows)
+key_available: throws InvalidOperationException: Cannot see if a key has been pressed when either application does not have a console or when console input has been redirected from a file. Try Console.In.Peek.
+next: run without arguments to test interactive Console.ReadKey
+exit=0

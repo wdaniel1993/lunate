@@ -1,0 +1,8 @@
+headless: decoding stdin bytes as VT input
+key H char='h' raw=h
+key E char='e' raw=e
+key L char='l' raw=l
+key L char='l' raw=l
+key O char='o' raw=o
+decoded_bytes: 5/5
+exit=0

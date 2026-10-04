@@ -1,0 +1,3 @@
+headless: decoding stdin bytes as VT input
+decoded_bytes: 0/0
+exit=0

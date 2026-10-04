@@ -1,0 +1,16 @@
+headless: decoding stdin bytes as VT input
+key Up raw=\x1b[A
+key Down raw=\x1b[B
+key F1 raw=\x1bOP
+key Ctrl+Right raw=\x1b[1;5C
+key Ctrl+C raw=\x03
+key Alt+X char='x' raw=\x1bx
+key Unicode char='ä' raw=\xc3\xa4
+key Enter raw=\x0d
+key Tab raw=\x09
+key Backspace raw=\x7f
+key Delete raw=\x1b[3~
+key F5 raw=\x1b[15~
+key F12 raw=\x1b[24~
+decoded_bytes: 37/37
+exit=0
