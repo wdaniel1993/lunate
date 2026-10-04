@@ -2,7 +2,7 @@ schema: intent-driven
 
 context: |
   Tech stack: C# / .NET 10 (SDK pinned in global.json), C# 14, xUnit v3.
-  Project: Sigma — a native C# coding agent for the terminal (background: docs/guide.md).
+  Project: Lunate — a native C# coding agent for the terminal (background: docs/guide.md).
   OpenSpec specs under openspec/specs/ are the source of truth for behaviour;
   docs/guide.md is background material only.
 

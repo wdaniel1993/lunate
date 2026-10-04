@@ -14,10 +14,10 @@ The repository SHALL build all projects on .NET 10 with compiler warnings treate
 - **THEN** the build fails and reports the warning as an error
 
 ### Requirement: Enforced layering
-Project references SHALL point only downward in the architecture: `Sigma.Ai` ← `Sigma.Agent` ← `Sigma.Protocols` / `Sigma.Coding`, and `Sigma.Tui` SHALL reference no other Sigma project.
+Project references SHALL point only downward in the architecture: `Lunate.Ai` ← `Lunate.Agent` ← `Lunate.Protocols` / `Lunate.Coding`, and `Lunate.Tui` SHALL reference no other Lunate project.
 
 #### Scenario: Upward reference is rejected
-- **GIVEN** a project graph containing an upward reference, e.g. `Sigma.Ai` → `Sigma.Agent`
+- **GIVEN** a project graph containing an upward reference, e.g. `Lunate.Ai` → `Lunate.Agent`
 - **WHEN** the architecture test runs
 - **THEN** it fails and names the offending reference
 
@@ -27,10 +27,10 @@ Project references SHALL point only downward in the architecture: `Sigma.Ai` ←
 - **THEN** it passes
 
 ### Requirement: Version entry point
-`Sigma.Coding` SHALL provide `sigma --version`, printing the product version and exiting zero within the startup budget.
+`Lunate.Coding` SHALL provide `lunate --version`, printing the product version and exiting zero within the startup budget.
 
 #### Scenario: Version flag on the published binary
-- **GIVEN** the published single-file `sigma` binary
+- **GIVEN** the published single-file `lunate` binary
 - **WHEN** it is invoked with `--version`
 - **THEN** it prints the version, exits 0, and startup stays within the configured budget
 

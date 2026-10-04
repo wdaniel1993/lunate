@@ -5,11 +5,11 @@
 
 ## Context
 
-Sigma needs a dependency structure that keeps the agent core reusable and testable, and a single message model that fits the ecosystem (MCP SDK, telemetry middleware) without a mapping layer of our own.
+Lunate needs a dependency structure that keeps the agent core reusable and testable, and a single message model that fits the ecosystem (MCP SDK, telemetry middleware) without a mapping layer of our own.
 
 ## Decision
 
-- The project graph is downward-only: `Sigma.Ai` ← `Sigma.Agent` ← `Sigma.Protocols` / `Sigma.Coding`; `Sigma.Tui` references no other Sigma project; `Sigma.Agent` references only `Microsoft.Extensions.AI.Abstractions`, `Sigma.Ai` and the BCL.
+- The project graph is downward-only: `Lunate.Ai` ← `Lunate.Agent` ← `Lunate.Protocols` / `Lunate.Coding`; `Lunate.Tui` references no other Lunate project; `Lunate.Agent` references only `Microsoft.Extensions.AI.Abstractions`, `Lunate.Ai` and the BCL.
 - All message and model types are Microsoft.Extensions.AI types (`IChatClient`, `ChatMessage`, `AIContent`, `ChatOptions`, `ChatResponseUpdate`). Own types exist only for tools (`ITool`) and events (`AgentEvent`).
 - The loop runs tools itself: never `FunctionInvokingChatClient`, never `AIFunctionFactory`.
 

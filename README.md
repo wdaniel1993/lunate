@@ -1,4 +1,4 @@
-# Sigma
+# Lunate
 
 A native C# coding agent for the terminal — a reliable core loop, four core tools (`read`, `write`, `edit`, `bash`), a Spectre-based TUI, and first-class C# support through Roslyn.
 

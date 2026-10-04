@@ -15,5 +15,8 @@ TestResults/
 # macOS
 .DS_Store
 
-# Sigma local data
-.sigma/
+# Lunate local data
+.lunate/
+
+# opencode local cache
+.opencode/node_modules/

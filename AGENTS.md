@@ -1,6 +1,6 @@
-# Sigma — rules for coding agents
+# Lunate — rules for coding agents
 
-Sigma is a native C# coding agent for the terminal. Background: `docs/guide.md`.
+Lunate is a native C# coding agent for the terminal. Background: `docs/guide.md`.
 This repo is developed with OpenCode and OpenSpec (schema: `intent-driven`).
 
 ## Workflow (OpenSpec)
@@ -15,12 +15,12 @@ This repo is developed with OpenCode and OpenSpec (schema: `intent-driven`).
 - `scripts/verify.sh` (Windows: `scripts/verify.ps1`) must pass before a change is done: build, tests, single-file publish, performance budgets, public API and format checks.
 
 ## Architecture
-- `Sigma.Ai` <- `Sigma.Agent` <- `Sigma.Protocols` / `Sigma.Coding`. Never reference upward.
-- `Sigma.Tui` references no other Sigma project.
-- `Sigma.Agent` references only `Microsoft.Extensions.AI.Abstractions`, `Sigma.Ai` and the BCL.
+- `Lunate.Ai` <- `Lunate.Agent` <- `Lunate.Protocols` / `Lunate.Coding`. Never reference upward.
+- `Lunate.Tui` references no other Lunate project.
+- `Lunate.Agent` references only `Microsoft.Extensions.AI.Abstractions`, `Lunate.Ai` and the BCL.
 - Model types are Microsoft.Extensions.AI types (`IChatClient`, `ChatMessage`, `AIContent`). Do not add parallel message types. Tools (`ITool`) and events (`AgentEvent`) are ours.
 - Never use `FunctionInvokingChatClient` or `AIFunctionFactory`. The loop runs tools.
-- `Sigma.Roslyn`, MCP servers and extensions load on first use, never at startup.
+- `Lunate.Roslyn`, MCP servers and extensions load on first use, never at startup.
 
 ## Rules
 - No new NuGet packages. Ask first.

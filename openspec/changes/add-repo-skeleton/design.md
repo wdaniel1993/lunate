@@ -6,12 +6,12 @@ Project graph (component level):
 
 ```mermaid
 flowchart TD
-  Coding[Sigma.Coding exe] --> Tui[Sigma.Tui]
-  Coding --> Protocols[Sigma.Protocols]
-  Coding --> Agent[Sigma.Agent]
+  Coding[Lunate.Coding exe] --> Tui[Lunate.Tui]
+  Coding --> Protocols[Lunate.Protocols]
+  Coding --> Agent[Lunate.Agent]
   Protocols --> Agent
-  Agent --> Ai[Sigma.Ai]
-  Roslyn[Sigma.Roslyn extension] -.->|loaded at first C# tool call| Coding
+  Agent --> Ai[Lunate.Ai]
+  Roslyn[Lunate.Roslyn extension] -.->|loaded at first C# tool call| Coding
 ```
 
 ## Goals / Non-Goals
@@ -30,8 +30,8 @@ flowchart TD
 - **Central build rules in `Directory.Build.props`**: nullable, `TreatWarningsAsErrors`, deterministic, code style enforced in build. Alternatives: per-project settings — rejected (drift).
 - **Six source + six test projects**, empty, with one placeholder xUnit v3 test each so the runner is proven. Alternatives: a single test project — rejected; per-project isolation matches the guide layout.
 - **Public API tracking** via `Microsoft.CodeAnalysis.PublicApiAnalyzers` on the four libraries with empty baselines. Alternative: start tracking later — rejected; an empty baseline is cheapest now.
-- **`sigma --version` without System.CommandLine yet** — a tiny argument check in `Program.cs`; the CLI parser arrives with real commands (Phase 3). Alternative: add System.CommandLine now — rejected; keeps the skeleton dependency-light and the startup budget easy.
-- **Architecture test** as a small pure checker over (project → `ProjectReference` list) in `tests/Sigma.Coding.Tests`, unit-tested against a synthetic violating graph and asserted against the real graph. Alternative: a reflection-based architecture library — rejected (extra package).
+- **`lunate --version` without System.CommandLine yet** — a tiny argument check in `Program.cs`; the CLI parser arrives with real commands (Phase 3). Alternative: add System.CommandLine now — rejected; keeps the skeleton dependency-light and the startup budget easy.
+- **Architecture test** as a small pure checker over (project → `ProjectReference` list) in `tests/Lunate.Coding.Tests`, unit-tested against a synthetic violating graph and asserted against the real graph. Alternative: a reflection-based architecture library — rejected (extra package).
 - **`verify.sh` pipeline**: build → test → publish (single-file, ReadyToRun, `RID` env) → `scripts/perf.sh` (hyperfine + jq, `BUDGET_MS`, default 150) → `dotnet format --verify-no-changes` → `git diff --exit-code -- '*PublicAPI.Shipped.txt'`. `verify.ps1` mirrors it. Alternatives: Cake/Nuke — rejected; plain scripts stay readable and CI-simple.
 - **Platform-aware RID default**: `verify.sh` detects the host OS/arch for `RID` when not set (ReadyToRun does not cross-compile); CI passes `RID` per runner explicitly.
 - **Budgets are placeholders** until S-3 calibrates (startup 150 ms). The idle-memory budget joins when the TUI exists; T-01 checks startup only.

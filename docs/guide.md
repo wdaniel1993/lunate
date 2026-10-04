@@ -1,10 +1,10 @@
-# Sigma — A Native C# Coding Agent for the Terminal
+# Lunate — A Native C# Coding Agent for the Terminal
 
-Implementation guide · Oct 3, 2026 · @Daniel
+Implementation guide · v3 · Oct 4, 2026 · @Daniel
 
 ## Purpose, goals and non-goals
 
-Sigma (working name) is a fast, native terminal coding agent in C#, built as a daily driver: a reliable core loop, four core tools, a Spectre-based TUI and first-class C# support through Roslyn. It is a personal, MIT-licensed project, and it is built card by card with Claude Code from this guide.
+Lunate is a fast, native terminal coding agent in C#, built as a daily driver: a reliable core loop, four core tools, a Spectre-based TUI and first-class C# support through Roslyn. It is a personal, MIT-licensed project, and it is built change by change with OpenCode and OpenSpec from this guide.
 
 **Why it should exist next to Pi and OpenCode**
 
@@ -12,70 +12,71 @@ Sigma (working name) is a fast, native terminal coding agent in C#, built as a d
 - **One file, no runtime to install:** self-contained single file, fast start, no Node or Python runtime, and extensions loaded at runtime like Pi's.
 - **Editor and local-model friendly:** runs inside Zed or JetBrains via ACP and works with any OpenAI-compatible endpoint, including the home lab.
 
-These claims age quickly, so the Phase 5 gate tests them head to head: the same C# task suite with Sigma, Claude Code with its C# LSP plugin, and OpenCode with its C# tooling. If Sigma does not win on C# tasks, it stays a personal tool and a learning project, which is fine.
+These claims age quickly, so the Phase 5 gate tests them head to head: the same C# task suite with Lunate, Claude Code with its C# LSP plugin, and OpenCode with its C# tooling. If Lunate does not win on C# tasks, it stays a personal tool and a learning project, which is fine.
 
 **Goals**
 
-- A working agent `sigma` with interactive TUI, print mode and ACP mode, for OpenAI-compatible, Anthropic and local models.
+- A working agent `lunate` with interactive TUI, print mode and ACP mode, for OpenAI-compatible, Anthropic and local models.
 - Reliability first: the `edit` tool tolerates harmless formatting differences but never applies an ambiguous change, and every failure is a message the model can act on.
 - Self-contained single-file releases (ReadyToRun) for osx-arm64, win-x64 and linux-x64 (more targets on demand), held to startup and memory budgets in CI.
 - Semantic C# tools through Roslyn, loaded only when first needed, and runtime extensions for tools, slash commands and event handlers.
 - Plain, readable C# in small files; no hard line-count target.
-- Buildable by Claude Code from task cards, with rules enforced by analyzers, hooks and CI.
+- Buildable by OpenCode from OpenSpec changes, with rules enforced by analyzers, verification scripts and CI.
 
 **Non-goals**
 
 - Sub-agents, plan mode, long-term memory.
 - Own IDE plugins (ACP instead) and any web frontend.
-- Hosting as an embeddable agent server: no AG-UI endpoint, no A2A. Using the MAF Harness internally is a separate question, decided by spike S-1. `Sigma.Agent` stays a clean library, without product promises.
+- Hosting as an embeddable agent server: no AG-UI endpoint, no A2A. Using the MAF Harness internally is a separate question, decided by spike S-1. `Lunate.Agent` stays a clean library, without product promises.
 - Supporting every provider: OpenAI-compatible, Anthropic and local via OpenAI-compatible endpoints are enough.
 
 ## Design principles
 
-Every feature request and every Claude Code plan is checked against these seven rules; when in doubt, leave it out or make it an extension.
+Every feature request and every OpenCode plan is checked against these seven rules; when in doubt, leave it out or make it an extension.
 
 1. **Primitives, not features.** The core ships four tools: `read`, `write`, `edit`, `bash`. Everything else (Roslyn, MCP) is opt-in.
 2. **Robust, never silently wrong.** Tools tolerate harmless differences (line endings, indentation) but refuse anything ambiguous. Every fallback is visible: the result says which match tier was used and the TUI shows the diff.
 3. **Performance budgets are a gate.** Startup time and idle memory are measured in CI on every commit. Heavy components (Roslyn, MCP servers, extensions) load on first use, never at startup.
 4. **Small system prompt.** Under 1,000 tokens, asserted in a test. Project rules come from `AGENTS.md`, not from the harness.
-5. **The core knows nothing about UIs or protocols.** `Sigma.Agent` emits events; the TUI, print mode and ACP mode are consumers.
+5. **The core knows nothing about UIs or protocols.** `Lunate.Agent` emits events; the TUI, print mode and ACP mode are consumers.
 6. **Everything is replayable.** Sessions are append-only JSONL. A session file plus a recorded model stream reproduces a run exactly, so tests never need API keys.
-7. **Spec before code.** Public types, file formats and protocol mappings are written in this guide or an ADR before Claude Code implements them. Code that disagrees with the spec is a bug in one of them, and the spec is fixed first.
+7. **Spec before code.** Public types, file formats and protocol mappings are written in this guide or an ADR before OpenCode implements them. Code that disagrees with the spec is a bug in one of them, and the spec is fixed first.
 
 ## Architecture
 
 Three core projects with strict downward dependencies, like Tau's `tau_coding → tau_agent → tau_ai`, built on Microsoft.Extensions.AI. Around them: a TUI library, a protocols project on the MCP and ACP SDKs, and Roslyn as a built-in extension that loads on first use.
 
-&#91;embedded content: Sigma architecture · 3 core layers, TUI, protocols, Roslyn extension, external MCP servers\]
+&#91;embedded content: Lunate architecture · 3 core layers, TUI, protocols, Roslyn extension, external MCP servers\]
 
-Arrows point from a project to what it depends on or calls; the dashed box is a separate process. `Sigma.Protocols` references `Sigma.Agent` (MCP tools become `ITool`s, ACP drives the loop); `Sigma.Tui` references no other Sigma project; `Sigma.Roslyn` is loaded through the extension loader, so Roslyn and MSBuild assemblies are not touched until the first C# tool call.
+Arrows point from a project to what it depends on or calls; the dashed box is a separate process. `Lunate.Protocols` references `Lunate.Agent` (MCP tools become `ITool`s, ACP drives the loop); `Lunate.Tui` references no other Lunate project; `Lunate.Roslyn` is loaded through the extension loader, so Roslyn and MSBuild assemblies are not touched until the first C# tool call.
 
 **Solution layout**
 
 ```text
-sigma/
+lunate/
   AGENTS.md                    # rules for any coding agent (source of truth)
-  CLAUDE.md                    # @AGENTS.md + Claude Code notes
-  .claude/settings.json        # permissions + hooks
-  .claude/hooks/               # format-changed.sh, quick-verify.sh
-  .claude/skills/              # next-card, verify, eval, adr
-  .claude/agents/reviewer.md   # read-only review subagent
-  .editorconfig
-  global.json                  # pins the .NET SDK
-  Directory.Build.props        # net10.0, nullable, warnings as errors, PublicAPI analyzers
-  docs/spec/                   # this guide, one file per section
-  docs/tasks/                  # T-xx.md cards + index.md (status per card)
-  docs/decisions/              # ADR-xxx.md
+  opencode.json                # model pin, plugins, permissions
+  .opencode/commands/          # opsx-* lifecycle commands
+  .opencode/skills/            # openspec-* lifecycle skills + adversarial-authoring
+  .opencode/agent/             # senior-dev, senior-qa, adversarial-author/reviewer
+  .agents/skills/              # companion skills (grill-me, ADRs, C4, gherkin, TDD, ...)
+  openspec/config.yaml         # schema: intent-driven, rules, project context
+  openspec/schemas/            # intent-driven schema (local copy)
+  openspec/specs/              # current truth, one folder per capability
+  openspec/changes/            # proposals, deltas, tasks (archive/ for done)
+  adr/                         # durable architectural decisions (0001-...)
+  docs/guide.md                # this guide
   docs/spikes/                 # spike code and reports (S-1 to S-4)
+  docs/eval/                   # eval write-ups (T-35)
   scripts/verify.sh            # + verify.ps1: build, tests, publish, budgets, API and format checks
   scripts/perf.sh              # startup and memory budgets
-  src/Sigma.Ai/                # IChatClient setup, model catalog, record and replay clients
-  src/Sigma.Agent/             # loop on IChatClient, events, ITool, sessions, compaction, extension contract
-  src/Sigma.Tui/               # Spectre output, own input line and live area
-  src/Sigma.Protocols/         # MCP client and ACP server on the SDKs
-  src/Sigma.Roslyn/            # built-in extension: semantic C# tools, loaded on first use
-  src/Sigma.Coding/            # exe: sigma (self-contained single file): TUI, print and ACP modes, extension loader
-  tests/Sigma.*.Tests/         # one test project per src project
+  src/Lunate.Ai/               # IChatClient setup, model catalog, record and replay clients
+  src/Lunate.Agent/            # loop on IChatClient, events, ITool, sessions, compaction, extension contract
+  src/Lunate.Tui/              # Spectre output, own input line and live area
+  src/Lunate.Protocols/        # MCP client and ACP server on the SDKs
+  src/Lunate.Roslyn/           # built-in extension: semantic C# tools, loaded on first use
+  src/Lunate.Coding/           # exe: lunate (self-contained single file): TUI, print and ACP modes, extension loader
+  tests/Lunate.*.Tests/        # one test project per src project
   tests/fixtures/streams/      # recorded provider streams (JSONL)
   tests/fixtures/sessions/     # golden session files
   tests/fixtures/edit-corpus/  # edit tool cases
@@ -94,24 +95,24 @@ Stick to .NET 10, Microsoft.Extensions.AI and a few well-known packages. No Nati
 | Concern | Choice | Project | Why |
 | --- | --- | --- | --- |
 | Runtime | .NET 10, C# 14, SDK pinned in `global.json` | all | Current LTS |
-| Release build | Self-contained single file, ReadyToRun, compression on, three targets | Sigma.Coding | One file, no runtime install, fast start |
-| Model access | `IChatClient`, `ChatMessage`, `ChatResponseUpdate` everywhere; no `FunctionInvokingChatClient` (the loop runs tools) | Sigma.Ai, Sigma.Agent | The .NET standard, maintained by Microsoft |
-| Providers | OpenAI-compatible via the Microsoft.Extensions.AI OpenAI adapter; Anthropic via an `IChatClient` implementation (check the official SDK first) | Sigma.Ai | One abstraction for every model |
-| Telemetry | OpenTelemetry via `IChatClient` middleware + own `ActivitySource`, opt-in | Sigma.Ai, Sigma.Agent | Traces of model and tool calls |
+| Release build | Self-contained single file, ReadyToRun, compression on, three targets | Lunate.Coding | One file, no runtime install, fast start |
+| Model access | `IChatClient`, `ChatMessage`, `ChatResponseUpdate` everywhere; no `FunctionInvokingChatClient` (the loop runs tools) | Lunate.Ai, Lunate.Agent | The .NET standard, maintained by Microsoft |
+| Providers | OpenAI-compatible via the Microsoft.Extensions.AI OpenAI adapter; Anthropic via an `IChatClient` implementation (check the official SDK first) | Lunate.Ai | One abstraction for every model |
+| Telemetry | OpenTelemetry via `IChatClient` middleware + own `ActivitySource`, opt-in | Lunate.Ai, Lunate.Agent | Traces of model and tool calls |
 | JSON | `System.Text.Json`; `AIJsonUtilities` options for Microsoft.Extensions.AI types; source generation where it is cheap | all | Fast, consistent |
-| CLI parsing | `System.CommandLine` | Sigma.Coding | Standard |
-| Output rendering | `Spectre.Console` | Sigma.Tui | Robust markup, tables, panels, colours |
-| Input line and live area | Own code on `System.Console` + VT sequences | Sigma.Tui | Typing while the agent streams |
-| Markdown | Own subset renderer to Spectre renderables | Sigma.Tui | Spectre has no Markdown widget |
-| Diffs | Own Myers line diff (about 150 lines) | Sigma.Tui | No extra dependency |
-| MCP client | Official MCP C# SDK | Sigma.Protocols | MCP tools arrive as Microsoft.Extensions.AI functions |
-| ACP server | Community SDK (`AcpSdk`, `AgentClientProtocol` or `LibAcp`) behind `IAcpServer`; choice recorded in an ADR in T-27 | Sigma.Protocols | No hand-written protocol |
-| Roslyn | `Microsoft.CodeAnalysis.CSharp.Workspaces`, `MSBuildWorkspace`, `Microsoft.Build.Locator`, in process, loaded on first use | Sigma.Roslyn | No sidecar needed without AOT |
-| Extensions | `AssemblyLoadContext` per extension | Sigma.Coding | Runtime loading like Pi |
-| Process execution | `System.Diagnostics.Process` behind `IShell` | Sigma.Coding | Easy to fake |
+| CLI parsing | `System.CommandLine` | Lunate.Coding | Standard |
+| Output rendering | `Spectre.Console` | Lunate.Tui | Robust markup, tables, panels, colours |
+| Input line and live area | Own code on `System.Console` + VT sequences | Lunate.Tui | Typing while the agent streams |
+| Markdown | Own subset renderer to Spectre renderables | Lunate.Tui | Spectre has no Markdown widget |
+| Diffs | Own Myers line diff (about 150 lines) | Lunate.Tui | No extra dependency |
+| MCP client | Official MCP C# SDK | Lunate.Protocols | MCP tools arrive as Microsoft.Extensions.AI functions |
+| ACP server | Community SDK (`AcpSdk`, `AgentClientProtocol` or `LibAcp`) behind `IAcpServer`; choice recorded in an ADR in T-27 | Lunate.Protocols | No hand-written protocol |
+| Roslyn | `Microsoft.CodeAnalysis.CSharp.Workspaces`, `MSBuildWorkspace`, `Microsoft.Build.Locator`, in process, loaded on first use | Lunate.Roslyn | No sidecar needed without AOT |
+| Extensions | `AssemblyLoadContext` per extension | Lunate.Coding | Runtime loading like Pi |
+| Process execution | `System.Diagnostics.Process` behind `IShell` | Lunate.Coding | Easy to fake |
 | API tracking | `Microsoft.CodeAnalysis.PublicApiAnalyzers` | libraries | Public API changes become visible diffs |
 | Tests | xUnit v3, `Verify`, `Spectre.Console.Testing` | tests/ | Snapshots of events, sessions, screens |
-| Agent framework | Microsoft Agent Framework Harness, only if spike S-1 says so | Sigma.Agent | See below |
+| Agent framework | Microsoft Agent Framework Harness, only if spike S-1 says so | Lunate.Agent | See below |
 
 **Spikes (task T-03)**
 
@@ -119,7 +120,7 @@ Each spike is throwaway code in `docs/spikes/S-x/` with a short report and an AD
 
 | Spike | Question | Result |
 | --- | --- | --- |
-| S-1 MAF Harness | Can Sigma's loop be the Microsoft Agent Framework Harness instead of our own? | ADR: own loop, harness, or borrow parts |
+| S-1 MAF Harness | Can Lunate's loop be the Microsoft Agent Framework Harness instead of our own? | ADR: own loop, harness, or borrow parts |
 | S-2 Git Bash input | Does raw key reading work for a .NET app inside mintty? | ADR: supported, or documented fallback |
 | S-3 Startup baseline | Single-file ReadyToRun hello-world on all OSes: startup and memory | Calibrated budgets for `scripts/perf.sh` |
 | S-4 MSBuildWorkspace reality check | Does in-process Roslyn load real solutions reliably and fast enough, also from the published single-file build? | ADR: go, move Roslyn out of process, or narrow the C# claim; calibrated Roslyn budgets |
@@ -149,29 +150,29 @@ If loading is unreliable, decide before Phase 5: fix it, move Roslyn out of proc
 
 | Measure | Budget |
 | --- | --- |
-| `sigma --version` | under 150 ms |
+| `lunate --version` | under 150 ms |
 | First TUI frame | under 300 ms |
 | Idle memory in the TUI | under 100 MB |
 | First C# tool call (Roslyn load, small solution; calibrated by S-4) | under 5 s |
 
-Adding a package is a design decision: add a row here (and an ADR) before Claude Code touches a `.csproj`.
+Adding a package is a design decision: add a row here (and an ADR) before OpenCode touches a `.csproj`.
 
-## Layer 1: Sigma.Ai (providers)
+## Layer 1: Lunate.Ai (providers)
 
-`Sigma.Ai` builds `IChatClient` pipelines and keeps the model catalog; it defines no message types of its own. The whole core works with Microsoft.Extensions.AI types directly: `ChatMessage`, `AIContent` (text, `FunctionCallContent`, `FunctionResultContent`, reasoning), `ChatOptions` and `ChatResponseUpdate`.
+`Lunate.Ai` builds `IChatClient` pipelines and keeps the model catalog; it defines no message types of its own. The whole core works with Microsoft.Extensions.AI types directly: `ChatMessage`, `AIContent` (text, `FunctionCallContent`, `FunctionResultContent`, reasoning), `ChatOptions` and `ChatResponseUpdate`.
 
 **Why `IChatClient` all the way**
 
 It is the .NET standard abstraction, maintained by Microsoft. MCP SDK tools arrive as Microsoft.Extensions.AI functions, telemetry and logging come as middleware, and there is no mapping layer to maintain. The two risks are covered below: the session format (golden tests) and streaming details (one accumulator, tested on recorded streams).
 
-**What Sigma.Ai contains**
+**What Lunate.Ai contains**
 
 ```csharp
 public sealed record ModelInfo(string Id, string Provider, Uri? Endpoint, int ContextWindow, bool SupportsTools);
 
 public interface IChatClientFactory
 {
-    // provider client -> OpenTelemetry (opt-in) -> logging -> recorder (SIGMA_RECORD=1)
+    // provider client -> OpenTelemetry (opt-in) -> logging -> recorder (LUNATE_RECORD=1)
     IChatClient Create(ModelInfo model);
 }
 
@@ -179,7 +180,7 @@ public sealed class RecordingChatClient(IChatClient inner, string fixturePath) :
 public sealed class ReplayChatClient(string fixturePath) : IChatClient { }
 ```
 
-- `ModelCatalog`: a built-in `models.json` (id, provider, endpoint, context window, tool support) merged with `~/.sigma/models.json`. Adding a model never needs a code change.
+- `ModelCatalog`: a built-in `models.json` (id, provider, endpoint, context window, tool support) merged with `~/.lunate/models.json`. Adding a model never needs a code change.
 - `RecordingChatClient` and `ReplayChatClient`: record and replay `ChatResponseUpdate` streams as JSONL, serialized with `AIJsonUtilities` options.
 - `ProviderErrors`: classifies exceptions as retryable or not.
 
@@ -192,11 +193,11 @@ public sealed class ReplayChatClient(string fixturePath) : IChatClient { }
 
 **Recorded streams (tests never need API keys)**
 
-Contract tests run against real endpoints only when `SIGMA_LIVE=1`. With `SIGMA_RECORD=1` the factory adds the recorder, which saves every update to `tests/fixtures/streams/<scenario>.jsonl` with a header line (model id, request hash). `ReplayChatClient` plays them back. You record fixtures once; Claude Code only replays them.
+Contract tests run against real endpoints only when `LUNATE_LIVE=1`. With `LUNATE_RECORD=1` the factory adds the recorder, which saves every update to `tests/fixtures/streams/<scenario>.jsonl` with a header line (model id, request hash). `ReplayChatClient` plays them back. You record fixtures once; OpenCode only replays them.
 
-## Layer 2: Sigma.Agent (the reusable brain)
+## Layer 2: Lunate.Agent (the reusable brain)
 
-`Sigma.Agent` owns the loop, tools, events, sessions, compaction and the extension contract. It references only `Microsoft.Extensions.AI.Abstractions`, `Sigma.Ai` and the BCL.
+`Lunate.Agent` owns the loop, tools, events, sessions, compaction and the extension contract. It references only `Microsoft.Extensions.AI.Abstractions`, `Lunate.Ai` and the BCL.
 
 **Tools**
 
@@ -225,9 +226,9 @@ internal sealed class ToolDeclaration(ITool tool) : AIFunction { /* Name, Descri
 
 **Events (the only output of the core)**
 
-Events are our own type, named and sequenced like AG-UI's so that the TUI, ACP and a possible web frontend later are thin mappings. Sigma-specific events are marked as extensions; in AG-UI they would travel as custom events. Check the AG-UI and ACP names against the pinned spec versions when writing the mappers.
+Events are our own type, named and sequenced like AG-UI's so that the TUI, ACP and a possible web frontend later are thin mappings. Lunate-specific events are marked as extensions; in AG-UI they would travel as custom events. Check the AG-UI and ACP names against the pinned spec versions when writing the mappers.
 
-| Sigma event | AG-UI | ACP | TUI |
+| Lunate event | AG-UI | ACP | TUI |
 | --- | --- | --- | --- |
 | `RunStarted`, `RunFinished(stopReason)`, `RunError` | Run started, finished, error | Prompt response with stop reason | Spinner, footer |
 | `TextMessageStart`, `TextMessageContent`, `TextMessageEnd` | Text message start, content, end | Agent message chunks | Streaming text |
@@ -277,9 +278,9 @@ Append-only JSONL, one entry per line, each with `id`, `parentId`, `type` and a 
 - **Never:** split a tool call from its result, or summarize the current turn.
 - **Test:** a recorded long session compacts once, the next request is under 60% of the window, and replay still matches.
 
-## Layer 3: Sigma.Coding (the app)
+## Layer 3: Lunate.Coding (the app)
 
-`Sigma.Coding` turns the brain into a coding agent: the four tools, project instructions, config, sessions on disk and two frontends.
+`Lunate.Coding` turns the brain into a coding agent: the four tools, project instructions, config, sessions on disk and two frontends.
 
 **The four tools**
 
@@ -338,7 +339,7 @@ One folder per case: `input` file, `request.json`, and `expected` file or `expec
 First draft of `system-prompt.md` (T-16 refines it and asserts the token budget):
 
 ```markdown
-You are Sigma, a coding agent working in the user's repository at {cwd} on {os}, shell {shell}.
+You are Lunate, a coding agent working in the user's repository at {cwd} on {os}, shell {shell}.
 Tools: read, write, edit, bash{extra_tools}.
 - Read a file before you edit it. Prefer edit over write for existing files.
 - Keep old_text in edit short but unique; include start_line if the text repeats.
@@ -350,29 +351,29 @@ Tools: read, write, edit, bash{extra_tools}.
 
 **Config**
 
-`~/.sigma/settings.json` (default model, approval policy, output limits) and `~/.sigma/auth.json` (API keys, file permissions restricted). Environment variables override both.
+`~/.lunate/settings.json` (default model, approval policy, output limits) and `~/.lunate/auth.json` (API keys, file permissions restricted). Environment variables override both.
 
 **Sessions on disk**
 
-One JSONL file per session under `~/.sigma/sessions/<project-hash>/`. Flags: `--continue` (latest session), `--resume` (pick from a list).
+One JSONL file per session under `~/.lunate/sessions/<project-hash>/`. Flags: `--continue` (latest session), `--resume` (pick from a list).
 
 **Frontends**
 
-- **Interactive mode** (`sigma`): the Sigma.Tui frontend (see Terminal UI) with streaming view, multi-line editor, `Esc` to cancel, slash commands `/model`, `/new`, `/resume`, `/compact`, `/quit`.
-- **Print mode** (`sigma -p "prompt"`): writes the final answer to stdout and exits; `--json` writes every event as JSON lines for scripts and CI.
-- **ACP mode** (`sigma --acp`): speaks the Agent Client Protocol over stdio, so editors like Zed or JetBrains start Sigma as their agent. Editor file reads, writes and permission prompts map onto Sigma's tools and approval policy. Nothing may write to stdout except the protocol.
+- **Interactive mode** (`lunate`): the Lunate.Tui frontend (see Terminal UI) with streaming view, multi-line editor, `Esc` to cancel, slash commands `/model`, `/new`, `/resume`, `/compact`, `/quit`.
+- **Print mode** (`lunate -p "prompt"`): writes the final answer to stdout and exits; `--json` writes every event as JSON lines for scripts and CI.
+- **ACP mode** (`lunate --acp`): speaks the Agent Client Protocol over stdio, so editors like Zed or JetBrains start Lunate as their agent. Editor file reads, writes and permission prompts map onto Lunate's tools and approval policy. Nothing may write to stdout except the protocol.
 
 **Extensions**
 
-An extension is an assembly implementing `ISigmaExtension` (defined in `Sigma.Agent`) that registers tools, slash commands and event handlers. Sigma loads extensions at runtime, like Pi:
+An extension is an assembly implementing `ILunateExtension` (defined in `Lunate.Agent`) that registers tools, slash commands and event handlers. Lunate loads extensions at runtime, like Pi:
 
-- From `~/.sigma/extensions/` (global) and `.sigma/extensions/` (per project), each in its own `AssemblyLoadContext`.
+- From `~/.lunate/extensions/` (global) and `.lunate/extensions/` (per project), each in its own `AssemblyLoadContext`.
 - Each extension has an `extension.json` (name, version, entry assembly, declared tools and commands). Manifests are read at startup; assemblies load on first use, so startup budgets hold.
 - Project-local extensions run code from the repository, so they need a one-time approval per repository.
-- `Sigma.Roslyn` ships as a built-in extension and uses the same mechanism.
-- External tools can also come through MCP (`~/.sigma/mcp.json`, see Protocols).
+- `Lunate.Roslyn` ships as a built-in extension and uses the same mechanism.
+- External tools can also come through MCP (`~/.lunate/mcp.json`, see Protocols).
 
-## Terminal UI (Sigma.Tui)
+## Terminal UI (Lunate.Tui)
 
 Finished output is rendered with Spectre.Console; the input line and a small live area at the bottom are our own code. Spectre's live display does not combine well with typing, so this split keeps steering (typing while the agent streams) without writing a full renderer.
 
@@ -388,7 +389,7 @@ Finished output is rendered with Spectre.Console; the input line and a small liv
 - `ToolBlock`: tool name and argument summary, status, first and last lines of output, and a red/green diff panel for `edit` and `write` with the match tier.
 - `ApprovalPrompt`: yes, no, always for this session; shown in the live area.
 - `StatusFooter`: model, tokens, context used in percent, working directory, git branch.
-- `InputLine`: multi-line editing, history in `~/.sigma/history`, bracketed paste, `Tab` completion for `/commands` and `@paths`.
+- `InputLine`: multi-line editing, history in `~/.lunate/history`, bracketed paste, `Tab` completion for `/commands` and `@paths`.
 - `SelectList`: model and session pickers inside the live area.
 
 **Key bindings (one meaning each)**
@@ -414,7 +415,7 @@ Spectre renderables are snapshot-tested with `TestConsole`. The input line and l
 
 ## Platforms, shells and terminals
 
-Sigma should run wherever Pi runs: macOS, Linux and Windows, in the terminals people actually use. Support is defined per environment, tested in CI where possible, and every capability has a fallback.
+Lunate should run wherever Pi runs: macOS, Linux and Windows, in the terminals people actually use. Support is defined per environment, tested in CI where possible, and every capability has a fallback.
 
 **Release targets**
 
@@ -446,7 +447,7 @@ Self-contained single-file builds with ReadyToRun and compression for `osx-arm64
 
 | Platform | Order | Invocation |
 | --- | --- | --- |
-| macOS, Linux | `bash`, then `/bin/sh` | `bash -c` (no login shell: Sigma already inherits the user's environment, and login profiles are slow or print banners) |
+| macOS, Linux | `bash`, then `/bin/sh` | `bash -c` (no login shell: Lunate already inherits the user's environment, and login profiles are slow or print banners) |
 | Windows | Git Bash, then `pwsh` 7, then Windows PowerShell 5.1, then `cmd` | Git Bash via its install path; PowerShell with `-NoProfile -NonInteractive` |
 
 - Models write bash best, so bash wins whenever it exists.
@@ -465,15 +466,15 @@ Self-contained single-file builds with ReadyToRun and compression for `osx-arm64
 
 Build and test on `ubuntu`, `macos` and `windows` runners for every commit; publish all three targets on release tags. Manual checks before each release: Windows Terminal, conhost, Git Bash, macOS Terminal, one Linux terminal, tmux over SSH.
 
-## Protocols (Sigma.Protocols)
+## Protocols (Lunate.Protocols)
 
-MCP and ACP live in `Sigma.Protocols` and use existing SDKs; without AOT there is no reason to write our own JSON-RPC.
+MCP and ACP live in `Lunate.Protocols` and use existing SDKs; without AOT there is no reason to write our own JSON-RPC.
 
 **MCP client (official MCP C# SDK)**
 
-- Servers are configured in `~/.sigma/mcp.json` (command, args, env) and start on first use.
+- Servers are configured in `~/.lunate/mcp.json` (command, args, env) and start on first use.
 - Their tools arrive from the SDK as Microsoft.Extensions.AI functions and are wrapped as `ITool`s with risk `Execute`, so the approval policy applies. Names are prefixed `server__tool` to avoid collisions.
-- Refresh on tool list changes; cancel calls when a turn is cancelled; time out hanging servers. A crashing server becomes a tool error, never a crash of Sigma.
+- Refresh on tool list changes; cancel calls when a turn is cancelled; time out hanging servers. A crashing server becomes a tool error, never a crash of Lunate.
 - v1 uses stdio servers; remote servers over HTTP follow when needed, using the SDK's transports.
 - Out of scope for v1: resources, prompts, sampling.
 
@@ -487,7 +488,7 @@ public interface IAcpServer
 ```
 
 - T-27 compares `AcpSdk`, `AgentClientProtocol` and `LibAcp` (spec coverage, activity, license) and records the choice in an ADR. The interface keeps a later switch cheap.
-- `sigma --acp` speaks ACP over stdio; nothing else may write to stdout. Logs go to stderr or `~/.sigma/logs/`.
+- `lunate --acp` speaks ACP over stdio; nothing else may write to stdout. Logs go to stderr or `~/.lunate/logs/`.
 - Handles initialize, new session, prompt (one run, streaming updates mapped from `AgentEvent`s), and cancel.
 - Approvals map to the client's permission request; file reads and writes use the editor's file system when it offers that capability, so unsaved buffers are respected.
 
@@ -497,7 +498,7 @@ public interface IAcpServer
 
 ## Roslyn extension (the .NET edge)
 
-`Sigma.Roslyn` is a built-in extension that gives the model semantic C# tools bash cannot match; it is the main reason this project should exist in C#.
+`Lunate.Roslyn` is a built-in extension that gives the model semantic C# tools bash cannot match; it is the main reason this project should exist in C#.
 
 **Loading model**
 
@@ -515,27 +516,27 @@ Roslyn loads in process on the first C# tool call. `MSBuildLocator` finds the in
 
 Phase 5 ships `cs_diagnostics` and `cs_find_symbol`, because they carry the main claim (a compile check right after an edit). The other three follow in Phase 6. Tests use small solutions in `tests/fixtures/solutions/` (a console app, and a library with a test project) so a workspace loads in seconds.
 
-The Phase 5 gate is external (T-35): the same C# task suite with Sigma, with Claude Code plus its C# LSP plugin, and with OpenCode plus its C# tooling. Record setup steps needed, pass rate, steps, tokens, edit tiers used and wall time. Sigma has to win on reliability and steps, not only work.
+The Phase 5 gate is external (T-35): the same C# task suite with Lunate, with Claude Code plus its C# LSP plugin, and with OpenCode plus its C# tooling. Record setup steps needed, pass rate, steps, tokens, edit tiers used and wall time. Lunate has to win on reliability and steps, not only work.
 
 **Rules**
 
 - Outputs are compact text, not JSON dumps. Cap at the same limit as other tools.
 - If the solution fails to load, tools return a clear error and the agent falls back to the four core tools.
-- Measure it: run the same task set with and without `Sigma.Roslyn` and compare success rate and tokens (see Testing).
+- Measure it: run the same task set with and without `Lunate.Roslyn` and compare success rate and tokens (see Testing).
 
 ## Roadmap
 
-Seven phases (0 to 6), each closed by a gate you check yourself. Phase 3 is the turning point: from then on Sigma can help build Sigma. The differentiators (Roslyn, ACP) come right after the TUI, so the main claim is tested early. Phase 0 also decides, through spike S-1, whether the loop is our own or the MAF Harness.
+Seven phases (0 to 6), each closed by a gate you check yourself. Phase 3 is the turning point: from then on Lunate can help build Lunate. The differentiators (Roslyn, ACP) come right after the TUI, so the main claim is tested early. Phase 0 also decides, through spike S-1, whether the loop is our own or the MAF Harness.
 
 &#91;embedded content: Roadmap · 7 phases, a gate after each\]
 
 **Task cards**
 
-One row per card. Each becomes `docs/tasks/T-xx.md` (template below) before Claude Code starts it; `docs/tasks/index.md` tracks status. A card is ready when everything in "Depends on" is done.
+One row per card. Each card becomes one OpenSpec change (see Building it with OpenCode) before implementation starts; the card ids stay as traceability labels in the change proposals. A card is ready when everything in "Depends on" is done.
 
 | ID | Phase | Card | Depends on | Done when |
 | --- | --- | --- | --- | --- |
-| T-01 | 0 | Repo skeleton: solution, `Directory.Build.props`, `global.json`, `.editorconfig`, analyzers, AGENTS.md, CLAUDE.md, `.claude/` | – | `scripts/verify.sh` green on empty projects |
+| T-01 | 0 | Repo skeleton: solution, `Directory.Build.props`, `global.json`, `.editorconfig`, analyzers, AGENTS.md, `opencode.json` | – | `scripts/verify.sh` green on empty projects |
 | T-02 | 0 | CI: build and test on 3 OSes, single-file publish for three targets, `scripts/perf.sh` | T-01 | Artifacts for all targets; CI turns red when a budget is exceeded |
 | T-03 | 0 | Spikes S-1 MAF Harness, S-2 Git Bash input, S-3 startup baseline, S-4 MSBuildWorkspace reality check | T-02 | One ADR per spike; budgets calibrated |
 | T-04 | 1 | `IChatClientFactory` and model catalog with user override | T-03 | Pipeline built per provider; catalog merge tests |
@@ -559,7 +560,7 @@ One row per card. Each becomes `docs/tasks/T-xx.md` (template below) before Clau
 | T-22 | 4 | Wire events, steering, `Esc` cancel, slash commands, pickers | T-09, T-18 to T-21 | End-to-end scripted session snapshot |
 | T-23 | 4 | Compaction | T-11 | Replay: long session compacts; tool pairs never split |
 | T-24 | 5 | Extension loader: manifests, `AssemblyLoadContext`, lazy load, project approval | T-09 | Sample extension loads; startup budget unchanged |
-| T-25 | 5 | `Sigma.Roslyn` extension: `MSBuildLocator`, workspace load, file sync, `cs_diagnostics` | T-24 | Detects an error introduced by `edit`; first-call budget met |
+| T-25 | 5 | `Lunate.Roslyn` extension: `MSBuildLocator`, workspace load, file sync, `cs_diagnostics` | T-24 | Detects an error introduced by `edit`; first-call budget met |
 | T-26 | 5 | `cs_find_symbol` | T-25 | Finds definitions in fixture solutions |
 | T-27 | 5 | ACP server: SDK choice (ADR), initialize, session, prompt, updates, cancel | T-09 | In-process client tests |
 | T-28 | 5 | ACP permissions and editor file system | T-27 | Approval round trip; one real Zed session |
@@ -569,275 +570,116 @@ One row per card. Each becomes `docs/tasks/T-xx.md` (template below) before Clau
 | T-32 | 4 | Distribution: release workflow, install scripts, Homebrew, Scoop, winget, `dotnet tool` | T-02, T-17 | Fresh install works on Windows, macOS and Linux with one command |
 | T-33 | 4 | Terminal capability detection and fallbacks; manual terminal matrix check | T-18, T-19 | Every tier-1 terminal checked and noted in the card |
 | T-34 | 6 | Extension authoring: template project, docs, one sample extension | T-24 | A new extension builds from the template and loads |
-| T-35 | 5 | Head-to-head C# eval: Sigma vs Claude Code with the C# LSP plugin vs OpenCode with its C# tooling; same tasks and model where possible; pass rate, steps, tokens, edit tiers, time | T-17, T-25, T-26 | One results row per tool in eval/results.csv and a short write-up in docs/eval/ |
+| T-35 | 5 | Head-to-head C# eval: Lunate vs Claude Code with the C# LSP plugin vs OpenCode with its C# tooling; same tasks and model where possible; pass rate, steps, tokens, edit tiers, time | T-17, T-25, T-26 | One results row per tool in eval/results.csv and a short write-up in docs/eval/ |
 
 Independent tracks can run in parallel in separate git worktrees, for example T-18/T-19 (TUI) next to T-12 to T-15 (tools).
 
-## Building it with Claude Code
+## Building it with OpenCode
 
-Claude Code implements one task card per session; you own the specs, the public types and the review. The repo is set up so the important rules are enforced by tools (analyzers, hooks, CI), not only written down, because written rules get skipped and failing builds do not.
+OpenCode implements one OpenSpec change per session; you own the guide, the specs and the review. The repo is set up so the important rules are enforced by tools (analyzers, verification scripts, CI and the OpenSpec lifecycle), not only written down, because written rules get skipped and failing builds do not.
 
 **Division of work**
 
-- **You:** this guide and its specs, task cards, ADRs, public types in the libraries, recording provider fixtures (needs API keys), manual checks on real terminals and in Zed, eval runs on real models, final review of every diff.
-- **Claude Code:** implementations, tests, corpus cases, docs updates the card asks for. It may propose spec or API changes but stops and asks.
-- **From Phase 3 on:** also use Sigma itself for small cards. Every failure of Sigma on its own repo becomes a test or eval case.
+- **You:** this guide and the OpenSpec specs it distills into, change proposals, ADRs, public types in the libraries, recording provider fixtures (needs API keys), manual checks on real terminals and in Zed, eval runs on real models, final review of every diff.
+- **OpenCode** (agent `build`; model pinned in `opencode.json`): implementations, tests, corpus cases, docs updates the change asks for. It may propose spec or API changes but stops and asks.
+- **From Phase 3 on:** also use Lunate itself for small changes. Every failure of Lunate on its own repo becomes a test or eval case.
 
-**Bootstrapping (before T-01)**
+Changes can run interactively in the OpenCode TUI or headless: `opencode run --model opencode-go/deepseek-v4.1-flash --variant max` with the change name; the opsx apply skill drives the work.
 
-1. Export this guide as Markdown and save it as `docs/guide.md`.
-2. In the first Claude Code session, ask it to split the guide by `##` heading into `docs/spec/01-purpose.md`, `02-principles.md` and so on, and to create one `docs/tasks/T-xx.md` per row of the task table using the card template below. Review those files yourself; they are the contract for everything after.
-3. Then run T-01. From here on, cards reference spec files instead of the whole guide, which keeps each session's context small.
+**Bootstrapping (done)**
 
-**Repo files for Claude Code**
+The repo already carries the harness this guide describes: the OpenSpec CLI with the `intent-driven` schema, the opsx commands and skills under `.opencode/`, the companion skills under `.agents/skills/`, `AGENTS.md`, and this guide at `docs/guide.md`. New work starts with a change: `/opsx-new` or a hand-written proposal. From here on, changes reference `openspec/specs/` instead of the whole guide, which keeps each session's context small.
+
+**Repo files for OpenCode**
 
 | File | Purpose |
 | --- | --- |
-| `AGENTS.md` | Rules for any coding agent (Claude Code, Sigma itself, others). Source of truth |
-| `CLAUDE.md` | Imports `AGENTS.md` and adds Claude Code workflow notes |
-| `.claude/settings.json` | Permissions and hooks, committed |
-| `.claude/settings.local.json` | Your personal overrides, not committed |
-| `.claude/hooks/*.sh` | Format after edits; build and fast tests before Claude stops |
-| `.claude/skills/*/SKILL.md` | Repeatable procedures: `next-card`, `verify`, `eval`, `adr` |
-| `.claude/agents/reviewer.md` | Read-only reviewer subagent |
-| `docs/spec/`, `docs/tasks/`, `docs/decisions/` | Specs, cards with status, ADRs |
+| `AGENTS.md` | Rules for any coding agent (OpenCode, Lunate itself, others). Source of truth |
+| `opencode.json` | Model pin, plugins and permissions |
+| `.opencode/commands/opsx-*.md` | OpenSpec lifecycle commands: new, propose, continue, apply, verify, sync, archive |
+| `.opencode/skills/openspec-*` | The lifecycle skills those commands drive, plus `adversarial-authoring` |
+| `.opencode/agent/*.md` | Subagents: `senior-dev` (test-first), `senior-qa` (acceptance tests), `adversarial-author`, `adversarial-reviewer` |
+| `.agents/skills/` | Companion skills: `grill-me`, `architectural-decision-records`, `c4-diagrams`, `gherkin-authoring`, `glossary`, `openspec-git-discipline`, `spec-as-source` (opt-in), `test-driven-development`, `acceptance-test-authoring` |
+| `openspec/` | `config.yaml` (schema, rules, project context), `schemas/intent-driven/`, `specs/` (current truth), `changes/` (proposals, deltas, tasks) |
+| `adr/` | Durable architectural decisions; immutable once accepted |
+| `docs/guide.md`, `docs/spikes/`, `docs/eval/` | This guide, spike reports, eval write-ups |
 | `scripts/verify.sh` / `.ps1` | The one command that decides "done" |
+
+OpenCode reads `AGENTS.md` natively; there is no separate editor-specific memory file.
 
 **AGENTS.md**
 
 ```markdown
-# Sigma: rules for coding agents
+# Lunate — rules for coding agents
 
-Specs live in docs/spec/. Read the files your task card lists before writing code.
-The task card in docs/tasks/ defines the scope. Do only what it asks.
+Lunate is a native C# coding agent for the terminal. Background: `docs/guide.md`.
+This repo is developed with OpenCode and OpenSpec (schema: `intent-driven`).
+
+## Workflow (OpenSpec)
+- Work happens through OpenSpec changes. Never hand-write files under `openspec/changes/` or `openspec/specs/`; use the opsx commands/skills and the `openspec` CLI (new → propose → continue → apply → verify → sync → archive).
+- For propose/apply/verify/archive workflows, use the local `openspec-git-discipline` skill: proposals land on `main` before apply, implementation lands on `main` before archive.
+- OpenSpec specs are the source of truth for behaviour. If spec and code disagree, stop and report — fix the spec first.
+- One change per session. Do only what the change's `tasks.md` asks; anything else becomes a follow-up change.
+- src work goes through the `senior-dev` subagent (test-first, `test-driven-development` skill); acceptance-test work through `senior-qa`.
 
 ## Build
-- .NET 10 (pinned in global.json), C# 14, nullable, warnings as errors.
-- scripts/verify.sh (Windows: scripts/verify.ps1) must pass before a card is done:
-  build, tests, single-file publish, performance budgets, Public API and format checks.
+- .NET 10 (pinned in `global.json`), C# 14, nullable, warnings as errors.
+- `scripts/verify.sh` (Windows: `scripts/verify.ps1`) must pass before a change is done: build, tests, single-file publish, performance budgets, public API and format checks.
 
 ## Architecture
-- Sigma.Ai <- Sigma.Agent <- Sigma.Protocols / Sigma.Coding. Never reference upward.
-- Sigma.Tui references no other Sigma project.
-- Sigma.Agent references only Microsoft.Extensions.AI.Abstractions, Sigma.Ai and the BCL.
-- Model types are Microsoft.Extensions.AI types (IChatClient, ChatMessage, AIContent).
-  Do not add parallel message types. Tools (ITool) and events (AgentEvent) are ours.
-- Never use FunctionInvokingChatClient or AIFunctionFactory. The loop runs tools.
-- Sigma.Roslyn, MCP servers and extensions load on first use, never at startup.
+- `Lunate.Ai` <- `Lunate.Agent` <- `Lunate.Protocols` / `Lunate.Coding`. Never reference upward.
+- `Lunate.Tui` references no other Lunate project.
+- `Lunate.Agent` references only `Microsoft.Extensions.AI.Abstractions`, `Lunate.Ai` and the BCL.
+- Model types are Microsoft.Extensions.AI types (`IChatClient`, `ChatMessage`, `AIContent`). Do not add parallel message types. Tools (`ITool`) and events (`AgentEvent`) are ours.
+- Never use `FunctionInvokingChatClient` or `AIFunctionFactory`. The loop runs tools.
+- `Lunate.Roslyn`, MCP servers and extensions load on first use, never at startup.
 
 ## Rules
 - No new NuGet packages. Ask first.
-- Public API changes appear in PublicAPI.Unshipped.txt. Change public types in Sigma.Ai, Sigma.Agent,
-  Sigma.Tui or Sigma.Protocols only if the card says so; otherwise propose the change and stop.
-- A failing golden session test means the session format changed. Stop and report; never update
-  golden files to make a test pass.
+- Public API changes appear in `PublicAPI.Unshipped.txt`. Change public types only if the change says so; otherwise propose the change and stop.
+- A failing golden session test means the session format changed. Stop and report; never update golden files to make a test pass.
 - In ACP mode nothing writes to stdout except the protocol.
 - Tool error messages are read by a model: say what failed and what to do next.
-- Every behaviour change has a test. Tests use fixtures in tests/fixtures, never live APIs.
+- Every behaviour change has a test. Tests use fixtures in `tests/fixtures/`, never live APIs.
 - Keep files under about 300 lines. Prefer plain code over abstractions.
-- If the spec and the code disagree, stop and say so. Do not silently pick one.
+- No secrets in git. Commit small, conventional-commit messages.
 ```
 
-**CLAUDE.md**
+**Enforcement**
 
-Claude Code can read `AGENTS.md` directly in recent versions, but not in every session, so an import from `CLAUDE.md` is the safe setup ([Claude Code memory docs](https://code.claude.com/docs/en/memory)).
+- The rules above are enforced by tools, not trust: warnings-as-errors and analyzers (build), the architecture test (layering), `PublicAPI.Shipped.txt` diffs (API changes), `scripts/verify.sh` (build → tests → publish → budgets → format → API), `openspec validate --strict` (artifacts), and CI on every commit (T-02).
+- Formatting: `dotnet format` runs inside `verify.sh`; a change is not done while verify is red.
+- Review: run the `adversarial-reviewer` subagent over the diff (read-only; scope, layering, startup, tests, error messages), then the maintainer reads the diff — especially `PublicAPI.Unshipped.txt` and anything under `openspec/specs/`.
 
-```markdown
-@AGENTS.md
+**Changes and cards**
 
-## Claude Code workflow
-- One task card per session. Start in plan mode: read the card and the spec files it lists,
-  then propose files to touch, public types affected and the tests you will write. Wait for approval.
-- Write the tests first, then the implementation.
-- Run /verify before saying a card is done and paste its summary.
-- Ask the reviewer subagent to check the diff, then fix what it reports.
-- Commit as "T-xx: <summary>" and update the card's status in docs/tasks/index.md.
-- If the card is ambiguous, list your questions instead of guessing.
-```
+Every card in the roadmap (T-xx) becomes one OpenSpec change with the artifact flow `proposal → (specs, design) → adr → tasks`. The card's **Acceptance** list becomes `tasks.md`; the card's **Specs** references point at `openspec/specs/`; the card id stays as a traceability label in the proposal.
 
-**.claude/settings.json**
+Example: T-13 (edit tool, tiers 1–2) becomes the change `add-edit-tool-tiers`:
 
-Allow the routine commands so Claude Code is not interrupted, ask before spec or API baseline changes, and deny pushes and secrets. Check the rule syntax against the current [hooks](https://code.claude.com/docs/en/hooks) and settings docs when you set it up.
+- `proposal.md` — why edit reliability is the core promise; capability `edit-tool`.
+- `specs/edit-tool/spec.md` — Gherkin deltas for tiers 1–2 and file-state preservation.
+- `design.md` — tier algorithm, `start_line` handling, guardrails.
+- `adr.md` — review manifest (tier policy is already an in-force ADR candidate).
+- `tasks.md` — corpus cases, implementation via `senior-dev`, the 5 MB performance case.
 
-```json
-{
-  "permissions": {
-    "allow": [
-      "Bash(dotnet build *)", "Bash(dotnet test *)", "Bash(dotnet format *)",
-      "Bash(dotnet publish *)", "Bash(./scripts/verify.sh *)",
-      "Bash(git status)", "Bash(git diff *)", "Bash(git log *)",
-      "Bash(git add *)", "Bash(git commit *)"
-    ],
-    "ask": [
-      "Edit(docs/spec/**)", "Edit(docs/decisions/**)",
-      "Edit(**/PublicAPI.Shipped.txt)", "Bash(dotnet add package *)"
-    ],
-    "deny": [
-      "Bash(git push *)", "Bash(rm -rf *)", "Read(./.env)", "Read(~/.sigma/auth.json)"
-    ]
-  },
-  "hooks": {
-    "PostToolUse": [
-      { "matcher": "Edit|Write",
-        "hooks": [{ "type": "command", "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/format-changed.sh" }] }
-    ],
-    "Stop": [
-      { "hooks": [{ "type": "command", "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/quick-verify.sh" }] }
-    ]
-  }
-}
-```
+**Working loop per change**
 
-**Hooks**
-
-`format-changed.sh` formats a changed C# file and never blocks:
-
-```bash
-#!/usr/bin/env bash
-f=$(jq -r '.tool_input.file_path // empty')
-[[ "$f" == *.cs ]] || exit 0
-dotnet format whitespace --folder --include "$f" >/dev/null 2>&1 || true
-exit 0
-```
-
-`quick-verify.sh` keeps Claude working until the build and fast tests pass. Exit code 2 sends the message back to Claude instead of letting it stop; the `stop_hook_active` check prevents an endless loop.
-
-```bash
-#!/usr/bin/env bash
-input=$(cat)
-[ "$(echo "$input" | jq -r '.stop_hook_active')" = "true" ] && exit 0
-out=$(dotnet build -warnaserror -v q 2>&1 && dotnet test --no-build --filter "Category!=Slow" -v q 2>&1)
-if [ $? -ne 0 ]; then
-  echo "Build or fast tests fail. Fix this before finishing:" >&2
-  echo "$out" | tail -40 >&2
-  exit 2
-fi
-exit 0
-```
-
-Both need `jq`; on Windows, Claude Code runs hooks through Git Bash. If the Stop hook slows down planning conversations, disable it in `settings.local.json` for that session.
-
-**scripts/verify.sh**
-
-The single definition of "done". CI runs the same script; the PowerShell twin does the same on Windows. `scripts/perf.sh` uses `hyperfine`, installed in CI and on your machine; memory is checked by a smoke test that starts the TUI against the replay client.
-
-```bash
-#!/usr/bin/env bash
-set -euo pipefail
-RID=${RID:-linux-x64}
-dotnet build -warnaserror
-dotnet test --no-build
-dotnet publish src/Sigma.Coding -c Release -r "$RID" --self-contained \
-  -p:PublishSingleFile=true -p:PublishReadyToRun=true -o "artifacts/$RID"
-./scripts/perf.sh "artifacts/$RID/sigma"
-dotnet format --verify-no-changes
-git diff --exit-code -- '*PublicAPI.Shipped.txt'
-echo "verify: OK"
-```
-
-```bash
-#!/usr/bin/env bash
-# scripts/perf.sh: fails when the startup budget is exceeded (budget calibrated by S-3)
-set -euo pipefail
-BUDGET_MS=${BUDGET_MS:-150}
-hyperfine --warmup 2 --runs 10 --export-json /tmp/sigma-perf.json "$1 --version" >/dev/null
-ms=$(jq '.results[0].median * 1000 | floor' /tmp/sigma-perf.json)
-echo "startup median: ${ms} ms (budget ${BUDGET_MS} ms)"
-[ "$ms" -le "$BUDGET_MS" ] || { echo "startup budget exceeded" >&2; exit 1; }
-```
-
-**Skills**
-
-Each skill is a folder under `.claude/skills/` with a `SKILL.md`; Claude Code can use them on its own when they fit, or you call them by name.
-
-| Skill | What it does |
-| --- | --- |
-| `next-card` | Reads `docs/tasks/index.md`, picks the first ready card, reads it and its specs, and starts planning |
-| `verify` | Runs `scripts/verify.sh` and reports in a fixed format; never fixes anything |
-| `eval` | Runs the task suite with a given model and appends a row to `eval/results.csv` |
-| `adr` | Creates `docs/decisions/ADR-xxx.md` from the template: context, decision, consequences |
-
-```markdown
----
-name: verify
-description: Run the full Sigma verification (build, tests, publish, budgets, API and format checks) and summarize it. Use before declaring a task card done.
----
-Run ./scripts/verify.sh (Windows: pwsh scripts/verify.ps1). Report exactly:
-- Build: ok, or the first 10 errors
-- Tests: passed count, or the names of failing tests
-- Publish and budgets: ok, or which budget failed and by how much
-- Public API: unchanged, or the diff of PublicAPI.Unshipped.txt
-- Format: ok, or the files to format
-Do not fix anything here. Only report.
-```
-
-**Reviewer subagent (`.claude/agents/reviewer.md`)**
-
-A second pair of eyes with a narrow brief and no write access. It catches scope creep, layering and startup mistakes before you read the diff.
-
-```markdown
----
-name: reviewer
-description: Read-only reviewer for Sigma diffs. Use after implementing a task card, before committing.
-tools: Read, Grep, Glob, Bash
----
-Review the current diff (git diff and git diff --staged) against the task card and docs/spec.
-Never edit files. Report, most serious first:
-1. Scope: anything the card did not ask for.
-2. Layering: references that break AGENTS.md.
-3. Public API: changes in PublicAPI.Unshipped.txt the card did not allow.
-4. Startup: eager loading of Roslyn, MCP servers or extensions; heavy work before the first frame.
-5. Tests: behaviour without a test, tests that only assert "no exception", live API calls.
-6. Errors: tool messages a model could not act on.
-7. Readability: long methods, clever code, needless abstractions.
-End with APPROVE, or CHANGES NEEDED and a numbered list.
-```
-
-**Task card template, with a real example**
-
-```markdown
-# T-13: edit tool, tiers 1–2
-Status: ready        Phase: 3        Depends on: T-12
-Specs: docs/spec/07-layer-3.md (edit tool, edit corpus), docs/spec/02-principles.md
-
-## Goal
-Implement the edit tool with tier 1 (exact) and tier 2 (normalized) as specified.
-
-## Public API
-None. EditTool is internal to Sigma.Coding and implements ITool.
-
-## Acceptance
-- [ ] Corpus cases for tiers 1–2 pass (data-driven test, one case per folder)
-- [ ] File keeps line endings, encoding, BOM and trailing-newline state
-- [ ] Result text and Details diff match the spec format
-- [ ] 5 MB file under 200 ms (Category=Slow)
-
-## Out of scope
-Tier 3, start_line, closest-region hints (T-14). Any change to ITool.
-
-## Verify
-/verify, then the reviewer subagent.
-
-## Notes for Claude
-Add new corpus cases as files, never as inline strings.
-```
-
-**Working loop per card**
-
-1. `/clear`, then the `next-card` skill (or name the card).
-2. Plan mode: correct the plan, not the code. Typical fixes: scope creep, a missing edge case, a new public type.
-3. Tests first, then implementation. The Stop hook keeps the build and fast tests green.
-4. `verify` skill, then the reviewer subagent; Claude fixes what they report.
-5. You read the diff, especially `PublicAPI.Unshipped.txt` and anything under `docs/spec/`.
-6. Commit `T-xx: ...`, set the card to done in `docs/tasks/index.md`.
+1. Draft the change — proposal first; `grill-me` stress-tests it. Spec quality is the critical path.
+2. Review: the proposal (and in early phases the full artifact set) is reviewed before apply.
+3. Apply: `/opsx-apply`; tasks in small batches through `senior-dev` (TDD); commits per logical group.
+4. Verify: `/opsx-verify` and `scripts/verify.sh` green; `adversarial-reviewer` over the diff; fix what it reports.
+5. Read the diff — especially `PublicAPI.Unshipped.txt` and anything under `openspec/specs/`.
+6. Sync and archive: `/opsx-sync`, `/opsx-archive`; spec deltas merge into `openspec/specs/`; commit `T-xx: <summary>`.
 7. Anything that surprised you becomes one line in `AGENTS.md` or a new corpus or eval case.
 
-**Definition of done (every card)**
+**Definition of done (every change)**
 
-- [ ] All acceptance items ticked in the card
+- [ ] All acceptance items ticked in `tasks.md`
 - [ ] `scripts/verify.sh` green, including the performance budgets
-- [ ] Reviewer subagent approved, or its remaining points are written into a follow-up card
-- [ ] No public API change unless the card allowed it
+- [ ] `openspec validate <change> --type change --strict` green
+- [ ] Reviewer approved, or its remaining points are written into a follow-up change
+- [ ] No public API change unless the change allowed it
 - [ ] No new package without an ADR
 
 **Prompts that help**
@@ -845,11 +687,11 @@ Add new corpus cases as files, never as inline strings.
 - "Explain how one turn flows through the files you changed, in five sentences." (readability check)
 - "What happens if the model sends malformed JSON for this tool?"
 - "Which corpus or eval case would have caught the bug you just fixed? Add it."
-- "Delete anything in this diff the card did not ask for."
+- "Delete anything in this diff the change did not ask for."
 
 ## Testing and evaluation
 
-Tests are how Claude Code knows it is done: every level below runs without API keys except the contract tests, and the task suite is the scoreboard for real quality.
+Tests are how OpenCode knows it is done: every level below runs without API keys except the contract tests, and the task suite is the scoreboard for real quality.
 
 | Level | What | How | Runs |
 | --- | --- | --- | --- |
@@ -860,28 +702,28 @@ Tests are how Claude Code knows it is done: every level below runs without API k
 | Protocols | MCP client and ACP server | `TestMcpServer`; in-process ACP client over a pipe pair | Every commit |
 | Roslyn | Diagnostics and symbol lookup | Fixture solutions in `tests/fixtures/solutions/` | Every commit (Category=Slow) |
 | Performance budgets | Startup time and idle memory | `scripts/verify.sh` publish step and scripts/perf.sh on all three CI runners | Every commit |
-| Contract | Provider adapters against real endpoints | `SIGMA_LIVE=1`; local model on the home lab costs nothing | Manual / nightly |
-| Task suite | 15–20 small coding tasks (mostly C#, some Python and TypeScript) with a check script each | `sigma -p --json`; pass/fail, steps, tokens, time, edit tiers used | Per phase gate; Phase 5 also runs Claude Code and OpenCode on the C# tasks |
+| Contract | Provider adapters against real endpoints | `LUNATE_LIVE=1`; local model on the home lab costs nothing | Manual / nightly |
+| Task suite | 15–20 small coding tasks (mostly C#, some Python and TypeScript) with a check script each | `lunate -p --json`; pass/fail, steps, tokens, time, edit tiers used | Per phase gate; Phase 5 also runs Claude Code and OpenCode on the C# tasks |
 
 Results go to `eval/results.csv` per phase and model. Use the suite to decide whether Roslyn tools, a prompt change or compaction actually help, not intuition.
 
 ## Security and safety
 
-Sigma runs model-chosen shell commands with your user's rights, so the defaults must be safe and the risk must be visible.
+Lunate runs model-chosen shell commands with your user's rights, so the defaults must be safe and the risk must be visible.
 
 - **Approval policy** with three levels: `ask` (default: confirm every `bash`, every MCP tool and every write outside tracked git files), `auto-edit` (edits run, `bash` and MCP ask), `yolo` (nothing asks; needs a flag every run, never a saved setting).
 - **Workspace boundary:** file tools resolve real paths (including symlinks) and refuse anything outside the working directory unless `--allow-path` is given.
 - **Edit safety:** ambiguous matches are refused, never guessed; every edit shows its diff and match tier.
 - **Secrets:** API keys only in `auth.json` (owner-only file permissions) or environment variables; known key patterns are redacted from tool output and session files.
 - **Prompt injection:** file contents, command output and MCP results are data. The system prompt says so; approval is the real guard.
-- **MCP servers** are third-party code: only servers listed in `mcp.json` start, and their output is truncated like any tool output. Extensions are third-party code too: project-local ones need a one-time approval per repository, and sigma --no-extensions starts without any.
+- **MCP servers** are third-party code: only servers listed in `mcp.json` start, and their output is truncated like any tool output. Extensions are third-party code too: project-local ones need a one-time approval per repository, and lunate --no-extensions starts without any.
 - **ACP mode** uses the editor's permission prompts; a request coming from an editor is never auto-approved.
 - **Unattended runs:** document a container setup for print mode in CI; recommend it for `yolo`.
 - **No telemetry** by default; OpenTelemetry export is opt-in and goes only where you point it.
 
 ## Decisions and open questions
 
-These decisions are settled; T-01 turns each into an ADR in `docs/decisions/` so Claude Code can find the reasoning.
+These decisions are settled; the foundational ones are recorded as durable ADRs under `adr/` (see 0001 and 0002), and the rest become ADRs as changes touch them.
 
 | Decision | Choice | Why |
 | --- | --- | --- |
@@ -901,7 +743,7 @@ These decisions are settled; T-01 turns each into an ADR in `docs/decisions/` so
 
 **Resolved after review**
 
-- [x] **Name.** Decided: Sigma as product and command name. The NuGet id sigma is taken, so packages use sigma-agent (free on NuGet; Homebrew core free; winget still to check).
+- [x] **Name.** Decided: Lunate as product and command name (renamed from Sigma on 2026-10-04, before first release). NuGet `lunate` is free, Homebrew core is free, the GitHub repo is `wdaniel1993/lunate`; winget to check before release.
 - [x] **Own provider types or `IChatClient` all the way?** Revised: `IChatClient` all the way; own types only for tools and events (reasons in Layer 1).
 - [x] **Shells.** Decided: broad support like Pi. Detection per platform (bash on Unix; Git Bash, pwsh, Windows PowerShell, cmd on Windows) and a terminal matrix; see Platforms, shells and terminals.
 - [x] **Default model for dogfooding and the eval baseline.** Decided: a cloud model, with the exact model id pinned in every eval row (T-17).

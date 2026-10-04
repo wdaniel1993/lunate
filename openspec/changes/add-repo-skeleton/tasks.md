@@ -2,7 +2,7 @@
 
 - [ ] 1.1 Add `global.json` (SDK 10.0.103, rollForward latestFeature) and `.editorconfig`
 - [ ] 1.2 Add `Directory.Build.props` (net10.0, nullable, warnings-as-errors, deterministic, code-style enforcement)
-- [ ] 1.3 Create `sigma.sln` with six src projects + six test projects (empty, building)
+- [ ] 1.3 Create `lunate.sln` with six src projects + six test projects (empty, building)
 
 ## 2. Project wiring
 
@@ -12,7 +12,7 @@
 
 ## 3. Entry point and guards
 
-- [ ] 3.1 Implement `sigma --version` in Sigma.Coding (assembly version, exit 0)
+- [ ] 3.1 Implement `lunate --version` in Lunate.Coding (assembly version, exit 0)
 - [ ] 3.2 Add architecture test: checker + synthetic-violation unit test + real-graph assertion
 
 ## 4. Verification scripts

@@ -5,7 +5,7 @@
 
 ## Context
 
-Sigma ships to developers who should not need to install a .NET runtime. The options were Native AOT versus a self-contained single file with ReadyToRun. AOT would break runtime-loaded extensions, in-process Roslyn and several SDKs — and model and network latency dominate Sigma's runtime anyway.
+Lunate ships to developers who should not need to install a .NET runtime. The options were Native AOT versus a self-contained single file with ReadyToRun. AOT would break runtime-loaded extensions, in-process Roslyn and several SDKs — and model and network latency dominate Lunate's runtime anyway.
 
 ## Decision
 
