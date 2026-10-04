@@ -1,0 +1,2 @@
+perf: benchmarking: /Users/danielwallner/dev/lunate/artifacts/publish/osx-arm64/lunate --version
+startup median: 95 ms (budget 10000 ms)

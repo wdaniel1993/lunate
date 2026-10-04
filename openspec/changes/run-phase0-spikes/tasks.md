@@ -18,9 +18,9 @@
 
 ## 4. S-3 — startup baselines and budget calibration
 
-- [ ] 4.1 Dispatch the CI matrix several times; collect startup medians per OS runner; measure the dev machine
-- [ ] 4.2 Derive budgets (median + roughly 50% headroom, rounded); update `scripts/perf.sh` default and the CI matrix; document the methodology in `docs/spikes/S-3/report.md`
-- [ ] 4.3 Draft `adr/0005-budget-calibration.md`
+- [x] 4.1 Dispatch the CI matrix several times; collect startup medians per OS runner; measure the dev machine
+- [x] 4.2 Derive budgets (median + roughly 50% headroom, rounded); update `scripts/perf.sh` default and the CI matrix; document the methodology in `docs/spikes/S-3/report.md`
+- [x] 4.3 Draft `adr/0005-budget-calibration.md`
 
 ## 5. S-4 — MSBuildWorkspace reality check
 
