@@ -5,10 +5,10 @@
 
 ## 2. S-1 — loop: MAF harness vs own loop
 
-- [ ] 2.1 Build the minimal own-loop agent (IChatClient, four tools, stub stream) and the minimal MAF-harness agent (optional features off), both driven by the shared stub chat client
-- [ ] 2.2 Run the six checks: startup/idle memory; prompt size (under 1k tokens with everything off); event stream incl. steering and cancel; approval hooks; replay determinism; API-churn review
-- [ ] 2.3 Write `docs/spikes/S-1/report.md` with the check matrix and the recommendation (own loop / harness / borrow parts)
-- [ ] 2.4 Draft `adr/0003-loop-own-vs-maf-harness.md` for maintainer sign-off
+- [x] 2.1 Build the minimal own-loop agent (IChatClient, four tools, stub stream) and the minimal MAF-harness agent (optional features off), both driven by the shared stub chat client
+- [x] 2.2 Run the six checks: startup/idle memory; prompt size (under 1k tokens with everything off); event stream incl. steering and cancel; approval hooks; replay determinism; API-churn review
+- [x] 2.3 Write `docs/spikes/S-1/report.md` with the check matrix and the recommendation (own loop / harness / borrow parts)
+- [x] 2.4 Draft `adr/0003-loop-own-vs-maf-harness.md` for maintainer sign-off
 
 ## 3. S-2 — Git Bash (mintty) input
 

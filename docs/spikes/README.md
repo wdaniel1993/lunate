@@ -38,7 +38,7 @@ Confirmed 2026-10-04:
 
 | Spike | Question | Status | Outcome |
 | --- | --- | --- | --- |
-| S-1 | Own loop or Microsoft Agent Framework harness? | in progress | — |
+| S-1 | Own loop or Microsoft Agent Framework harness? | done 2026-10-04 | Own loop; borrow MAF approvals/session patterns (ADR 0003 proposed) |
 | S-2 | Does raw-key reading work in mintty? | pending | — |
 | S-3 | Startup baselines and calibrated budgets | pending | — |
 | S-4 | Does in-process Roslyn load real solutions? | pending | — |
