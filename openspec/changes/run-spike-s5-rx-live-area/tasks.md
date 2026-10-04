@@ -16,8 +16,8 @@
 
 ## 3. Report and ADR
 
-- [ ] 3.1 `docs/spikes/S-5/report.md` with check matrix, evidence files, surprises, limits
-- [ ] 3.2 Draft `adr/0007-<name>.md` (proposed — awaiting maintainer sign-off) with the A/B/B+ recommendation
+- [x] 3.1 `docs/spikes/S-5/report.md` with check matrix, evidence files, surprises, limits
+- [x] 3.2 Draft `adr/0007-<name>.md` (proposed — awaiting maintainer sign-off) with the A/B/B+ recommendation
 
 ## 4. Close
 

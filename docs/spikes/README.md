@@ -42,3 +42,4 @@ Confirmed 2026-10-04:
 | S-2 | Does raw-key reading work in mintty? | automated done 2026-10-04; manual run pending | Probe + headless VT decode green on macOS; ADR 0004 proposed |
 | S-3 | Startup baselines and calibrated budgets | done 2026-10-04 | CI 250/300/350 ms, local 150 ms; ADR 0005 proposed |
 | S-4 | Does in-process Roslyn load real solutions? | done 2026-10-04 | Go in-process; single-file keeps the MSBuild build host loose (ADR 0006 proposed) |
+| S-5 | Rx or plain async for the TUI live area, optionally plus ReactiveUI? | done 2026-10-04 | System.Reactive at the TUI boundary, no ReactiveUI (ADR 0007 proposed) |
