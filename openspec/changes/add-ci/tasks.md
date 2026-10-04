@@ -13,7 +13,7 @@
 
 ## 3. Prove and close
 
-- [ ] 3.1 Push and confirm the three matrix jobs green on GitHub
-- [ ] 3.2 Dispatch the release workflow in dry-run mode; confirm three target artifacts
-- [ ] 3.3 Confirm the gate self-tests fail CI when the budget check breaks
+- [x] 3.1 Push and confirm the three matrix jobs green on GitHub (run 37182111577; medians: linux 160, macos 161, win 220 ms vs budgets 250/250/300)
+- [x] 3.2 Dispatch the release workflow in dry-run mode; confirm three target artifacts (run 37181574733: osx-arm64 32.1 MB, linux-x64 34.6 MB, win-x64 34.7 MB)
+- [x] 3.3 Confirm the gate self-tests fail CI when the budget check breaks (proof run 37181975820: broken check caught on ubuntu + macos — "budget breach was not detected" — CI red; proof branch deleted)
 - [x] 3.4 Run `openspec validate add-ci --type change --strict`; commit per group
