@@ -20,6 +20,19 @@ MIN_TICKS="${MEMORY_SAMPLES_MIN:-5}"
 
 tree() { echo "$1"; local c; for c in $(pgrep -P "$1" 2>/dev/null || true); do tree "$c"; done; }
 
+# RSS (KB) for a pid. macOS/Linux: `ps -o rss=`. Git Bash (MSYS): its ps has no
+# `-o`, so map the MSYS pid to its WINPID and ask tasklist instead.
+rss_kb() {
+  local p="$1" out winpid
+  out=$(ps -o rss= -p "$p" 2>/dev/null | tr -d ' ' || true)
+  if [ -n "$out" ]; then echo "$out"; return 0; fi
+  winpid=$(ps -p "$p" 2>/dev/null | awk 'NR==2 {print $4}' || true)
+  [ -n "$winpid" ] || return 0
+  out=$(tasklist //FI "PID eq $winpid" //FO CSV //NH 2>/dev/null | awk -F'","' '{print $5}' | tr -cd '0-9' || true)
+  [ -n "$out" ] && echo "$out"
+  return 0
+}
+
 # Runs CMD and samples peak RSS (KB, whole process tree) every 150 ms.
 # Prints "<peak_kb> <ticks>".
 sample_peak() {
@@ -28,7 +41,7 @@ sample_peak() {
   while kill -0 "$pid" 2>/dev/null; do
     total=0
     for p in $(tree "$pid"); do
-      rss=$(ps -o rss= -p "$p" 2>/dev/null | tr -d ' ' || true)
+      rss=$(rss_kb "$p")
       if [ -n "$rss" ]; then total=$((total + rss)); fi
     done
     if [ "$total" -gt "$peak" ]; then peak=$total; fi
