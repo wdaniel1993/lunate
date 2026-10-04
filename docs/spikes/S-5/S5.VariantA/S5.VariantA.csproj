@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>S5.VariantA</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../S5.Harness/S5.Harness.csproj" />
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" Version="10.4.0" />
+  </ItemGroup>
+
+</Project>

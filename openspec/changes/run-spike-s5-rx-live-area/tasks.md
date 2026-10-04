@@ -1,9 +1,9 @@
 ## 1. Scaffolding
 
-- [ ] 1.1 Create `docs/spikes/S-5/` (throwaway, net10.0, outside `lunate.sln`): shared scenario harness — replayed `AgentEvent` fixture, fake console with a scripted key sequence, one resize event, spinner timer; pin all package versions
-- [ ] 1.2 Variant A: plain async — `Channel<T>` merge of sources, `PeriodicTimer` frame clock
-- [ ] 1.3 Variant B: System.Reactive — merged observables, `Sample`/`Throttle`, `TestScheduler` in tests
-- [ ] 1.4 Variant B+: ReactiveUI view models for status footer and approval prompt, subscribed by a render function; no view bindings
+- [x] 1.1 Create `docs/spikes/S-5/` (throwaway, net10.0, outside `lunate.sln`): shared scenario harness — replayed `AgentEvent` fixture, fake console with a scripted key sequence, one resize event, spinner timer; pin all package versions
+- [x] 1.2 Variant A: plain async — `Channel<T>` merge of sources, `PeriodicTimer` frame clock
+- [x] 1.3 Variant B: System.Reactive — merged observables, `Sample`/`Throttle`, `TestScheduler` in tests
+- [x] 1.4 Variant B+: ReactiveUI view models for status footer and approval prompt, subscribed by a render function; no view bindings
 
 ## 2. Measurements
 
