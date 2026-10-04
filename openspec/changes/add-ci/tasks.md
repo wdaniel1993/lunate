@@ -16,4 +16,4 @@
 - [ ] 3.1 Push and confirm the three matrix jobs green on GitHub
 - [ ] 3.2 Dispatch the release workflow in dry-run mode; confirm three target artifacts
 - [ ] 3.3 Confirm the gate self-tests fail CI when the budget check breaks
-- [ ] 3.4 Run `openspec validate add-ci --type change --strict`; commit per group
+- [x] 3.4 Run `openspec validate add-ci --type change --strict`; commit per group
