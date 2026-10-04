@@ -58,3 +58,19 @@ public sealed class SpikeToolDeclaration(SpikeTool tool) : AIFunctionDeclaration
 
     public override JsonElement JsonSchema { get; } = JsonDocument.Parse(tool.ParametersSchemaJson).RootElement.Clone();
 }
+
+public sealed class SpikeAIFunction(SpikeTool tool) : AIFunction
+{
+    public override string Name { get; } = tool.Name;
+
+    public override string Description { get; } = tool.Description;
+
+    public override JsonElement JsonSchema { get; } = JsonDocument.Parse(tool.ParametersSchemaJson).RootElement.Clone();
+
+    protected override ValueTask<object?> InvokeCoreAsync(AIFunctionArguments arguments, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        JsonElement args = JsonSerializer.SerializeToElement(arguments);
+        return ValueTask.FromResult<object?>(tool.Stub(args));
+    }
+}

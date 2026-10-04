@@ -46,12 +46,18 @@ static async Task ProbeAsync()
 {
     DateTime processStart = System.Diagnostics.Process.GetCurrentProcess().StartTime;
     var buildWatch = System.Diagnostics.Stopwatch.StartNew();
-    ScriptedChatClient client = new([]);
+    ScriptedChatClient client = new([new([Updates.Text("ready")])]);
     OwnLoopAgent agent = new(client, SpikeTool.All, SystemPrompt, (_, _) => ValueTask.FromResult(ApprovalDecision.AllowOnce));
     buildWatch.Stop();
 
     Console.WriteLine($"agent_build_ms={buildWatch.Elapsed.TotalMilliseconds:F1}");
     Console.WriteLine($"startup_ms={(DateTime.Now - processStart).TotalMilliseconds:F1}");
+
+    var firstRunWatch = System.Diagnostics.Stopwatch.StartNew();
+    _ = await CollectAsync(agent.RunAsync("hello"));
+    firstRunWatch.Stop();
+    Console.WriteLine($"first_run_ms={firstRunWatch.Elapsed.TotalMilliseconds:F1}");
+
     Console.WriteLine($"managed_heap_bytes={GC.GetTotalMemory(forceFullCollection: true)}");
     Console.WriteLine($"pid={Environment.ProcessId}");
     Console.WriteLine("READY");
