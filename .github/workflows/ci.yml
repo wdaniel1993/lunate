@@ -17,18 +17,19 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # budget_ms: CI-runner calibration, pending spike S-3. Runners are slower
-          # than dev machines (measured: ubuntu 159 ms, macos 177 ms); the local
-          # default in scripts/verify.sh stays 150 ms.
+          # budget_ms: calibrated in spike S-3 (docs/spikes/S-3/report.md, ADR 0005
+          # proposed) — runner startup median + ~50% headroom, rounded up to 50 ms.
+          # Re-calibrate when a runner image or baseline shifts. The local default
+          # in scripts/perf.sh stays 150 ms.
           - os: ubuntu-latest
             rid: linux-x64
             budget_ms: 250
           - os: macos-latest
             rid: osx-arm64
-            budget_ms: 250
+            budget_ms: 300
           - os: windows-latest
             rid: win-x64
-            budget_ms: 300
+            budget_ms: 350
     env:
       RID: ${{ matrix.rid }}
     steps:
