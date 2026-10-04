@@ -1,0 +1,33 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Fixture.Lib", "src\Fixture.Lib\Fixture.Lib.csproj", "{50C03E39-1EF9-4E0F-ADA2-12D5BB013B22}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Fixture.App", "src\Fixture.App\Fixture.App.csproj", "{9AFE24A3-1E4E-467C-AFEF-C3CF6DB7BC1F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Fixture.Tests", "tests\Fixture.Tests\Fixture.Tests.csproj", "{E73B2B75-0156-4924-A5D3-C0917F1CBBBB}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{50C03E39-1EF9-4E0F-ADA2-12D5BB013B22}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{50C03E39-1EF9-4E0F-ADA2-12D5BB013B22}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{50C03E39-1EF9-4E0F-ADA2-12D5BB013B22}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{50C03E39-1EF9-4E0F-ADA2-12D5BB013B22}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9AFE24A3-1E4E-467C-AFEF-C3CF6DB7BC1F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9AFE24A3-1E4E-467C-AFEF-C3CF6DB7BC1F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9AFE24A3-1E4E-467C-AFEF-C3CF6DB7BC1F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9AFE24A3-1E4E-467C-AFEF-C3CF6DB7BC1F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E73B2B75-0156-4924-A5D3-C0917F1CBBBB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E73B2B75-0156-4924-A5D3-C0917F1CBBBB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E73B2B75-0156-4924-A5D3-C0917F1CBBBB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E73B2B75-0156-4924-A5D3-C0917F1CBBBB}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
