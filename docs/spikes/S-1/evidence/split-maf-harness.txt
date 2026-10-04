@@ -1,0 +1,32 @@
+--- transcript split-arguments (harness) ---
+text_message_start m1
+text_message_content m1 "Reading the file; arguments may arrive in pieces."
+text_message_end m1
+tool_call_start call_read_split read
+tool_call_args call_read_split {"$raw":"{\u0022pa"}
+tool_call_end call_read_split
+tool_call_start call_read_split read
+tool_call_args call_read_split {"$raw":"th\u0022:\u0022src/Ca"}
+tool_call_end call_read_split
+tool_call_start call_read_split read
+tool_call_args call_read_split {"$raw":"lculator.cs\u0022}"}
+tool_call_end call_read_split
+tool_call_result call_read_split "Error: Function failed."
+tool_call_result call_read_split "Error: Function failed."
+tool_call_result call_read_split "Error: Function failed."
+text_message_start m2
+text_message_content m2 "Applying the edit."
+text_message_end m2
+tool_call_start call_edit_split edit
+tool_call_args call_edit_split {"$raw":"{\u0022path\u0022:\u0022src/Calculator.cs\u0022,\u0022old_text\u0022:\u0022return a -"}
+tool_call_end call_edit_split
+tool_call_start call_edit_split edit
+tool_call_args call_edit_split {"$raw":" b;\u0022,\u0022new_text\u0022:\u0022return a \u002B b;\u0022}"}
+tool_call_end call_edit_split
+tool_call_result call_edit_split "Error: Function failed."
+tool_call_result call_edit_split "Error: Function failed."
+text_message_start m3
+text_message_content m3 "Fixed after assembling split argument chunks."
+text_message_end m3
+--- end split-arguments (harness) ---
+tool_invocations=5

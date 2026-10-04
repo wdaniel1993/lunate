@@ -1,0 +1,6 @@
+recording_file=/Users/danielwallner/dev/lunate/docs/spikes/S-1/MafHarness/bin/Release/net10.0/recorded-maf.jsonl
+transcript_recorded_sha256=611F9A350D9D7041
+transcript_replayed_sha256=611F9A350D9D7041
+replay_deterministic=true
+session_serialized_chars=1361
+session_roundtrip=true

@@ -1,0 +1,28 @@
+--- transcript canonical (harness) ---
+text_message_start m1
+text_message_content m1 "I\u0027ll read the file first."
+text_message_end m1
+tool_call_start call_read_1 read
+tool_call_args call_read_1 {"path":"src/Calculator.cs"}
+tool_call_end call_read_1
+tool_call_result call_read_1 "     1  public class Calculator\n     2  {\n     3      public int Add(int a, int b) =\u003E a - b;\n[stub read: src/Calculator.cs]"
+text_message_start m2
+text_message_content m2 "I found the bug. "
+text_message_content m2 "Applying a minimal edit."
+text_message_end m2
+tool_call_start call_edit_1 edit
+tool_call_args call_edit_1 {"path":"src/Calculator.cs","old_text":"return a - b;","new_text":"return a \u002B b;"}
+tool_call_end call_edit_1
+tool_call_result call_edit_1 "edited src/Calculator.cs lines 3-3 (match: exact)"
+text_message_start m3
+text_message_content m3 "Done: read the file, fixed the operator, and applied the edit."
+usage_updated in=1834 out=41
+text_message_end m3
+--- end canonical (harness) ---
+--- transcript cancel (harness) ---
+text_message_start m1
+text_message_content m1 "Reading "
+text_message_end m1
+run_cancelled_exception=OperationCanceledException
+--- end cancel (harness) ---
+steering_built_in=false (AIAgent exposes no steer/inject API; the app must queue and replay messages itself)

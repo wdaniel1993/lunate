@@ -1,0 +1,15 @@
+--- approval: allow once, per call, args visible ---
+approval_request_args={"command":"dotnet build"}
+allow_once_tool_executed=true
+allow_once_next_call_prompts_again=true
+--- approval: always for this session, per tool ---
+always_tool_second_call_prompts=false
+always_tool_second_call_executed=true
+--- approval: always for this session, per exact arguments ---
+always_tool_with_args_same_args_prompts=false
+always_tool_with_args_same_args_executed=true
+always_tool_with_args_different_args_prompts=true
+--- approval: auto-approval rule inspects per-call arguments ---
+auto_rule_safe_command_prompts=false
+auto_rule_safe_command_executed=true
+auto_rule_destructive_command_prompts=true

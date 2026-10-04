@@ -1,0 +1,48 @@
+--- transcript approval-session ---
+run_started run_1
+text_message_start m0
+text_message_content m0 "Building."
+text_message_end m0
+tool_call_start c1 bash
+tool_call_args c1 {"command":"dotnet build"}
+tool_call_end c1
+approval_requested c1 bash {"command":"dotnet build"}
+approval_decided c1 AllowForSession
+tool_call_result c1 is_error=false "[stub bash] dotnet build -\u003E exit 0"
+text_message_start m1
+text_message_content m1 "Testing."
+text_message_end m1
+tool_call_start c2 bash
+tool_call_args c2 {"command":"dotnet test"}
+tool_call_end c2
+tool_call_result c2 is_error=false "[stub bash] dotnet test -\u003E exit 0"
+text_message_start m2
+text_message_content m2 "Done."
+text_message_end m2
+run_finished Completed
+--- end approval-session ---
+approval_callback_invocations=1
+approval_callback name=bash args={"command":"dotnet build"}
+--- transcript approval-per-arguments ---
+run_started run_1
+text_message_start m0
+text_message_content m0 "Running both."
+text_message_end m0
+tool_call_start c1 bash
+tool_call_args c1 {"command":"rm -rf bin"}
+tool_call_end c1
+approval_requested c1 bash {"command":"rm -rf bin"}
+approval_decided c1 Deny
+tool_call_result c1 is_error=true "Denied by the user: \u0027bash\u0027 was not run. Explain why the call is needed and ask before retrying."
+tool_call_start c2 bash
+tool_call_args c2 {"command":"dotnet build"}
+tool_call_end c2
+approval_requested c2 bash {"command":"dotnet build"}
+approval_decided c2 AllowOnce
+tool_call_result c2 is_error=false "[stub bash] dotnet build -\u003E exit 0"
+text_message_start m1
+text_message_content m1 "I skipped the destructive one."
+text_message_end m1
+run_finished Completed
+--- end approval-per-arguments ---
+argument_callback_invocations=2

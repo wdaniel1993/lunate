@@ -1,0 +1,9 @@
+--- prompt surface (own loop) ---
+prompt_instructions_chars=0
+prompt_system_message_chars=499
+prompt_tool_chars name=read chars=218
+prompt_tool_chars name=write chars=181
+prompt_tool_chars name=edit chars=259
+prompt_tool_chars name=bash chars=180
+prompt_total_chars=1337
+prompt_estimated_tokens=335

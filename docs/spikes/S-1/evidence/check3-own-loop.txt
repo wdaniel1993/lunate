@@ -1,0 +1,53 @@
+--- transcript canonical ---
+run_started run_1
+text_message_start m0
+text_message_content m0 "I\u0027ll read the file first."
+text_message_end m0
+tool_call_start call_read_1 read
+tool_call_args call_read_1 {"path":"src/Calculator.cs"}
+tool_call_end call_read_1
+tool_call_result call_read_1 is_error=false "     1  public class Calculator\n     2  {\n     3      public int Add(int a, int b) =\u003E a - b;\n[stub read: src/Calculator.cs]"
+text_message_start m1
+text_message_content m1 "I found the bug. "
+text_message_content m1 "Applying a minimal edit."
+text_message_end m1
+tool_call_start call_edit_1 edit
+tool_call_args call_edit_1 {"path":"src/Calculator.cs","old_text":"return a - b;","new_text":"return a \u002B b;"}
+tool_call_end call_edit_1
+approval_requested call_edit_1 edit {"path":"src/Calculator.cs","old_text":"return a - b;","new_text":"return a \u002B b;"}
+approval_decided call_edit_1 AllowOnce
+tool_call_result call_edit_1 is_error=false "edited src/Calculator.cs lines 3-3 (match: exact)"
+text_message_start m2
+text_message_content m2 "Done: read the file, fixed the operator, and applied the edit."
+usage_updated in=1834 out=41
+text_message_end m2
+run_finished Completed
+--- end canonical ---
+--- transcript steering ---
+run_started run_1
+text_message_start m0
+text_message_content m0 "Reading first."
+text_message_end m0
+tool_call_start call_read_1 read
+tool_call_args call_read_1 {"path":"src/Calculator.cs"}
+tool_call_end call_read_1
+tool_call_result call_read_1 is_error=false "     1  public class Calculator\n     2  {\n     3      public int Add(int a, int b) =\u003E a - b;\n[stub read: src/Calculator.cs]"
+steering_injected "Also check the tests after the fix."
+text_message_start m1
+text_message_content m1 "Noted; I will also check the tests."
+text_message_end m1
+run_finished Completed
+--- end steering ---
+steering_seen_in_next_request=true
+--- transcript cancel ---
+run_started run_1
+text_message_start m0
+text_message_content m0 "Reading "
+text_message_content m0 "and then..."
+text_message_end m0
+tool_call_start call_read_1 read
+tool_call_args call_read_1 {"path":"src/Calculator.cs"}
+tool_call_end call_read_1
+tool_call_result call_read_1 is_error=true "Cancelled by the user before execution."
+run_finished Cancelled
+--- end cancel ---

@@ -1,0 +1,8 @@
+own-loop: startup_ms median=54.5 runs=[202.2, 53.3, 54.9, 54.5, 32.9]
+own-loop: first_run_ms median=4.8
+own-loop: rss_kb median=48704.0
+own-loop: managed_heap_bytes median=302224.0
+maf-harness: startup_ms median=64.5 runs=[232.9, 56.0, 65.1, 64.5, 61.0]
+maf-harness: first_run_ms median=18.8
+maf-harness: rss_kb median=54288.0
+maf-harness: managed_heap_bytes median=453176.0

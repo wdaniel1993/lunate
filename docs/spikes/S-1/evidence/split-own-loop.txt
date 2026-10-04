@@ -1,0 +1,24 @@
+--- transcript split-arguments ---
+run_started run_1
+text_message_start m0
+text_message_content m0 "Reading the file; arguments may arrive in pieces."
+text_message_end m0
+tool_call_start call_read_split read
+tool_call_args call_read_split {"path":"src/Calculator.cs"}
+tool_call_end call_read_split
+tool_call_result call_read_split is_error=false "     1  public class Calculator\n     2  {\n     3      public int Add(int a, int b) =\u003E a - b;\n[stub read: src/Calculator.cs]"
+text_message_start m1
+text_message_content m1 "Applying the edit."
+text_message_end m1
+tool_call_start call_edit_split edit
+tool_call_args call_edit_split {"path":"src/Calculator.cs","old_text":"return a - b;","new_text":"return a + b;"}
+tool_call_end call_edit_split
+approval_requested call_edit_split edit {"path":"src/Calculator.cs","old_text":"return a - b;","new_text":"return a + b;"}
+approval_decided call_edit_split AllowOnce
+tool_call_result call_edit_split is_error=false "edited src/Calculator.cs lines 3-3 (match: exact)"
+text_message_start m2
+text_message_content m2 "Fixed after assembling split argument chunks."
+text_message_end m2
+run_finished Completed
+--- end split-arguments ---
+split_arguments_assembled=true
