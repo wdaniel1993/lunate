@@ -10,3 +10,10 @@ VariantB compressed: runs=100 non_zero_exit=0
 VariantB uncompressed: runs=100 non_zero_exit=0
 VariantBPlus compressed: runs=100 non_zero_exit=13
 VariantBPlus uncompressed: runs=100 non_zero_exit=0
+
+## Sample crash stack (VariantBPlus compressed, 1 of 13)
+
+Fatal error.
+System.AccessViolationException: Attempted to read or write protected memory. This is often an indication that other memory is corrupt.
+   at System.Threading.Thread+StartHelper.InitializeCulture()
+   at System.Threading.Thread.StartCallback()
