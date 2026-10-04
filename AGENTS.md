@@ -19,7 +19,7 @@ This repo is developed with OpenCode and OpenSpec (schema: `intent-driven`).
 - `Lunate.Tui` references no other Lunate project.
 - `Lunate.Agent` references only `Microsoft.Extensions.AI.Abstractions`, `Lunate.Ai` and the BCL.
 - Model types are Microsoft.Extensions.AI types (`IChatClient`, `ChatMessage`, `AIContent`). Do not add parallel message types. Tools (`ITool`) and events (`AgentEvent`) are ours.
-- Never use `FunctionInvokingChatClient` or `AIFunctionFactory`. The loop runs tools.
+- Never use `FunctionInvokingChatClient` or `AIFunctionFactory`. The loop in `Lunate.Agent` runs tools, because approvals, events, steering, cancel, error messages and compaction all happen between tool calls. See ADR-0003.
 - `Lunate.Roslyn`, MCP servers and extensions load on first use, never at startup.
 
 ## Rules

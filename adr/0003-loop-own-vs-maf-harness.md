@@ -25,6 +25,40 @@ approvals, cancellation and events must stay under the loop's control. Check 6
 shows high churn: 15 .NET releases in 115 days, breaking changes in 11 of them,
 concentrated in approvals, session replay and file access.
 
+## Why the tool loop must be ours
+
+`FunctionInvokingChatClient` (FIC) runs the tool loop inside the chat
+client: when the model requests a tool, FIC executes it, sends the
+result back and repeats until the model answers without tool calls.
+The caller sees mainly the final response. For apps with a few simple
+functions this is ideal.
+
+For Lunate the tool loop is the product. Almost every feature acts
+between "the model requested a tool" and "the next model call":
+
+- approvals: our policy (risk level, standing rules, ACP permission
+  requests) decides before anything runs;
+- events: tool blocks, diffs from `ToolResult.Details` and match tiers
+  for the TUI and ACP, which never go to the model;
+- steering: queued user messages are injected before the next call;
+- cancel: `Esc` ends the run with a cancelled tool result and a valid
+  history, so the session can continue;
+- model-facing output: our error messages and truncation, exactly;
+- compaction, step limits, retries and session recording between
+  iterations.
+
+With FIC each of these becomes a hook into a loop we do not own: some
+have extension points, some need workarounds, some are not possible
+today. Workarounds depend on internal behaviour of a fast-moving
+package (see S-1 check 6). The MAF Harness always builds FIC into its
+pipeline, so adopting it means handing the loop to the framework
+permanently.
+
+This is not a flaw in Microsoft.Extensions.AI; it is the wrong layer
+for a coding agent. Lunate uses Microsoft's standard for talking to
+models (`IChatClient`, `ChatMessage`) and keeps the loop itself (about
+200 lines in `Lunate.Agent`).
+
 ## Decision
 
 - **The loop stays ours**: a plain loop on `IChatClient` with Microsoft.Extensions.AI
