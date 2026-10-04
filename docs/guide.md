@@ -743,7 +743,7 @@ These decisions are settled; the foundational ones are recorded as durable ADRs 
 
 **Resolved after review**
 
-- [x] **Name.** Decided: Lunate as product and command name (renamed from Sigma on 2026-10-04, before first release). NuGet `lunate` is free, Homebrew core is free, the GitHub repo is `wdaniel1993/lunate`; winget to check before release.
+- [x] **Name.** Decided: Lunate as product and command name (renamed from Sigma on 2026-10-04, before first release). The name is the lunate sigma (Ϲ) — the ancient crescent-shaped sigma that reads like a Latin "C": it stays in the Greek-letter family of Pi and Tau, keeps the sigma idea, and points directly at C#. NuGet `lunate` is free, Homebrew core is free, the GitHub repo is `wdaniel1993/lunate`; winget to check before release.
 - [x] **Own provider types or `IChatClient` all the way?** Revised: `IChatClient` all the way; own types only for tools and events (reasons in Layer 1).
 - [x] **Shells.** Decided: broad support like Pi. Detection per platform (bash on Unix; Git Bash, pwsh, Windows PowerShell, cmd on Windows) and a terminal matrix; see Platforms, shells and terminals.
 - [x] **Default model for dogfooding and the eval baseline.** Decided: a cloud model, with the exact model id pinned in every eval row (T-17).
