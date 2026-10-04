@@ -1,0 +1,107 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: verify (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            rid: linux-x64
+          - os: macos-latest
+            rid: osx-arm64
+          - os: windows-latest
+            rid: win-x64
+    env:
+      RID: ${{ matrix.rid }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        env:
+          GIT_CONFIG_COUNT: 1
+          GIT_CONFIG_KEY_0: core.autocrlf
+          GIT_CONFIG_VALUE_0: "false"
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+          cache: true
+          cache-dependency-path: |
+            global.json
+            Directory.Build.props
+            **/*.csproj
+
+      - name: Install hyperfine (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          set -euo pipefail
+          version=1.20.0
+          asset="hyperfine-v${version}-x86_64-unknown-linux-musl.tar.gz"
+          curl -fsSL -o "${RUNNER_TEMP}/${asset}" \
+            "https://github.com/sharkdp/hyperfine/releases/download/v${version}/${asset}"
+          printf '%s  %s\n' \
+            3285ec7959285288137043dd81dce0dde056227018a8277532d9a364b4f03c2b \
+            "${RUNNER_TEMP}/${asset}" | sha256sum -c -
+          tar -xzf "${RUNNER_TEMP}/${asset}" -C "${RUNNER_TEMP}"
+          install "${RUNNER_TEMP}/hyperfine-v${version}-x86_64-unknown-linux-musl/hyperfine" \
+            /usr/local/bin/hyperfine
+          hyperfine --version
+
+      - name: Install hyperfine (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          set -euo pipefail
+          brew install hyperfine
+          hyperfine --version
+
+      - name: Install hyperfine (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $version = '1.20.0'
+          $asset = "hyperfine-v$version-x86_64-pc-windows-msvc.zip"
+          $zip = Join-Path $env:RUNNER_TEMP $asset
+          Invoke-WebRequest -Uri "https://github.com/sharkdp/hyperfine/releases/download/v$version/$asset" -OutFile $zip
+          $expected = '2508c549b049b1d4342d08edc1cb42bfac169082b6e3069431b5bab9822dbb32'
+          $actual = (Get-FileHash -Algorithm SHA256 -Path $zip).Hash.ToLowerInvariant()
+          if ($actual -ne $expected) {
+            throw "hyperfine: checksum mismatch for $asset ($actual)"
+          }
+          $dir = Join-Path $env:RUNNER_TEMP "hyperfine-$version"
+          Expand-Archive -Path $zip -DestinationPath $dir -Force
+          $binary = Join-Path $dir "hyperfine-v$version-x86_64-pc-windows-msvc/hyperfine.exe"
+          Add-Content -Path $env:GITHUB_PATH -Value (Split-Path $binary)
+          & $binary --version
+
+      - name: Verify (bash)
+        shell: bash
+        run: bash scripts/verify.sh
+
+      - name: Gate self-tests
+        shell: bash
+        run: bash scripts/gate-tests.sh
+
+      - name: Verify (PowerShell)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./scripts/verify.ps1
+
+      - name: Upload verification artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: verify-${{ matrix.rid }}
+          path: artifacts/
+          if-no-files-found: warn

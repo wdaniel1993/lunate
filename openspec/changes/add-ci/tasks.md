@@ -1,9 +1,9 @@
 ## 1. CI workflow
 
-- [ ] 1.1 Add `.github/workflows/ci.yml`: push/PR triggers, three-OS matrix (ubuntu, macos, windows), `actions/setup-dotnet` 10.0.x, NuGet cache
-- [ ] 1.2 Per-OS job: run `scripts/verify.sh` with the runner's RID; windows additionally runs `scripts/verify.ps1`
-- [ ] 1.3 Run `scripts/gate-tests.sh` in the matrix (budget negative path — the "CI turns red" proof)
-- [ ] 1.4 Upload verification outputs (`artifacts/`) as workflow artifacts
+- [x] 1.1 Add `.github/workflows/ci.yml`: push/PR triggers, three-OS matrix (ubuntu, macos, windows), `actions/setup-dotnet` 10.0.x, NuGet cache
+- [x] 1.2 Per-OS job: run `scripts/verify.sh` with the runner's RID; windows additionally runs `scripts/verify.ps1`
+- [x] 1.3 Run `scripts/gate-tests.sh` in the matrix (budget negative path — the "CI turns red" proof)
+- [x] 1.4 Upload verification outputs (`artifacts/`) as workflow artifacts
 
 ## 2. Release workflow
 
