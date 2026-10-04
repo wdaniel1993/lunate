@@ -1,0 +1,19 @@
+# Build output
+bin/
+obj/
+artifacts/
+*.user
+
+# IDE
+.vs/
+.vscode/
+.idea/
+
+# Test results
+TestResults/
+
+# macOS
+.DS_Store
+
+# Sigma local data
+.sigma/

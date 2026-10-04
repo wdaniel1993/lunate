@@ -1,0 +1,34 @@
+schema: intent-driven
+
+context: |
+  Tech stack: C# / .NET 10 (SDK pinned in global.json), C# 14, xUnit v3.
+  Project: Sigma — a native C# coding agent for the terminal (background: docs/guide.md).
+  OpenSpec specs under openspec/specs/ are the source of truth for behaviour;
+  docs/guide.md is background material only.
+
+  Use senior-dev sub-agent for all src related work and senior-qa for acceptance tests.
+  Do not batch the tasks for senior-dev and senior-qa; call them as many times as
+  necessary in smaller batches as dev and qa work may be interleaved.
+
+rules:
+  proposal:
+    - Must use grill-me skill
+    # - Must use adversarial-authoring skill
+    # - Must use glossary skill
+  design:
+    - Must use c4-diagrams skill
+    # - Must use glossary skill
+  adr:
+    - Must use architectural-decision-records skill
+  specs:
+    # - Must use spec-as-source skill
+  tasks:
+    # - Must use spec-as-source skill
+
+operations:
+  apply:
+    guidance:
+      - Must use test-driven-development skill
+  archive:
+    guidance:
+      - Must run OpenSpec Sync before archiving
