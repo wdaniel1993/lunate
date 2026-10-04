@@ -208,6 +208,15 @@ small view models.
 5. **The 30 fps cap needed no throttling operator in A.** Gating the paint on
    the frame input gives the same cap as `Sample` in B, so the cap is a
    property of the render gate, not of Rx.
+6. **The footer was locale-dependent.** `{ContextPercent:0.#}` formatted with
+   the current culture, so under a German locale the footer showed `12,5% ctx`,
+   one test per variant failed and the scenario transcript sha changed. Fixed
+   to invariant formatting in the shared renderer and in the B+ view model —
+   which duplicated the format string (the readability review's "duplicated
+   state" point, observed in practice). Technical readouts must be
+   culture-invariant; T-18/T-19 tests must not depend on the machine locale.
+   The committed scenario evidence (sha `2416c072…`) is invariant and
+   reproduces after the fix.
 
 ## Limits
 

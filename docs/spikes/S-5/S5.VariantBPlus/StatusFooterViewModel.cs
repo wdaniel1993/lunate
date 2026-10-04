@@ -85,7 +85,7 @@ public sealed class StatusFooterViewModel : ReactiveObject
                 parts.Add($"{InputTokens + OutputTokens} tok");
             }
 
-            parts.Add($"{ContextPercent:0.#}% ctx");
+            parts.Add(FormattableString.Invariant($"{ContextPercent:0.#}% ctx"));
             return string.Join(" · ", parts);
         }
     }

@@ -90,6 +90,9 @@ health. Findings that drive this decision:
   `Lunate.Agent`/`Lunate.Ai`/`Lunate.Protocols`/`Lunate.Coding` do not.
 - T-18/T-19 must build the live area with an injected `IScheduler` and cover the
   time-based behaviours with `TestScheduler`; no `Thread.Sleep`-based TUI tests.
+- Technical readouts (footer percent, token counts) format with invariant
+  culture; TUI tests must not depend on the machine locale (found in S-5
+  verification: `12,5%` under a German locale).
 - The live-area render path must stay single-writer; the spike's cross-thread
   reads with an implicit drain contract are explicitly not the production shape.
 - Follow-up work (separate change, not this spike):

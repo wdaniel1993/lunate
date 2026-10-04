@@ -92,7 +92,7 @@ public sealed class LiveAreaState
             footer.Add($"{InputTokens + OutputTokens} tok");
         }
 
-        footer.Add($"{ContextPercent:0.#}% ctx");
+        footer.Add(FormattableString.Invariant($"{ContextPercent:0.#}% ctx"));
 
         return new LiveAreaView
         {
