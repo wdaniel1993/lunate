@@ -31,4 +31,4 @@
 ## 6. Close
 
 - [ ] 6.1 Maintainer sign-off on each proposed ADR; finalize the change's `adr.md` manifest with the actual ADR files
-- [ ] 6.2 Run `openspec validate run-phase0-spikes --type change --strict`; commit per spike
+- [x] 6.2 Run `openspec validate run-phase0-spikes --type change --strict`; commit per spike

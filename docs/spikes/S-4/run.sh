@@ -45,9 +45,16 @@ rsync -a --exclude bin --exclude obj docs/spikes/S-4/fixture/ "$SCRATCH/fixture-
 "$BIN" load "$SCRATCH/fixture-norestore/Fixture.sln" --diagnostics \
   --label fixture-norestore | tee "$EVIDENCE/fixture-norestore.txt"
 
-echo "== single-file publish (plain) =="
+echo "== single-file publish (plain; build host bundled, expected to fail) =="
 dotnet publish "$PROBE_SRC" -c Release -r osx-arm64 --self-contained false \
-  -p:PublishSingleFile=true -o "$SCRATCH/single-file"
+  -p:PublishSingleFile=true -p:KeepBuildHostLoose=false -o "$SCRATCH/single-file"
+
+echo "== plain single-file load (expected to fail) =="
+if "$SCRATCH/single-file/WorkspaceProbe" load "$FIXTURE" --label single-file-plain >"$EVIDENCE/single-file-plain-load.txt" 2>&1; then
+  echo "UNEXPECTED: plain single-file load succeeded" >&2
+  exit 1
+fi
+echo "expected failure observed (evidence/single-file-plain-load.txt)"
 
 echo "== single-file publish (build host kept loose) =="
 dotnet publish "$PROBE_SRC" -c Release -r osx-arm64 --self-contained false \
