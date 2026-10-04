@@ -1,0 +1,8 @@
+label=Baseline exit=0 peak_rss_kb_total=84064
+ready heap_bytes=24640
+label=VariantA exit=0 peak_rss_kb_total=85488
+ready heap_bytes=82208
+label=VariantB exit=0 peak_rss_kb_total=91344
+ready heap_bytes=90360
+label=VariantBPlus-stable exit=0 peak_rss_kb_total=92416
+ready heap_bytes=98632

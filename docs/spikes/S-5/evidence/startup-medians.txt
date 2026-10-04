@@ -1,0 +1,4 @@
+Baseline       median_ms=103 min=101 max=105
+VariantA       median_ms=106 min=105 max=122
+VariantB       median_ms=116 min=115 max=118
+VariantBPlus   median_ms=36 min=36 max=39

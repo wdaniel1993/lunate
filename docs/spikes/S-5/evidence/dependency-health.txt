@@ -1,0 +1,39 @@
+== pinned versions ==
+Spectre.Console 0.57.2: published=2026-07-02 license=MIT
+System.Reactive 7.0.0: published=2026-07-17 license=MIT
+Microsoft.Reactive.Testing 7.0.0: published=2026-07-17 license=MIT
+ReactiveUI 26.0.1: published=2026-10-04 license=MIT
+Splat 21.0.0: published=2026-08-03 license=MIT
+Microsoft.Extensions.TimeProvider.Testing 10.4.0: published=2026-03-10 license=MIT
+xunit.v3 4.0.1: published=2026-09-12 license=Apache-2.0
+ReactiveUI.Core 26.0.1: published=2026-10-04 license=MIT
+ReactiveUI.Binding 9.1.0: published=2026-10-04 license=MIT
+ReactiveUI.Primitives 9.0.0: published=2026-10-03 license=MIT
+
+== release cadence (last stable releases) ==
+Spectre.Console: ~31.3 days between releases over the last 8
+  0.53.1 (2025-11-25), 0.55.0 (2026-04-03), 0.55.1 (2026-04-16), 0.55.2 (2026-04-17), 0.56.0 (2026-06-05), 0.57.0 (2026-06-11), 0.57.1 (2026-06-24), 0.57.2 (2026-07-02)
+System.Reactive: ~342.3 days between releases over the last 8
+  4.3.2 (2019-12-24), 4.4.1 (2020-04-02), 5.0.0 (2020-11-10), 6.0.0 (2023-05-19), 6.0.1 (2024-05-22), 6.0.2 (2025-08-29), 6.1.0 (2025-10-03), 7.0.0 (2026-07-17)
+Microsoft.Reactive.Testing: ~342.3 days between releases over the last 8
+  4.3.2 (2019-12-24), 4.4.1 (2020-04-02), 5.0.0 (2020-11-10), 6.0.0 (2023-05-19), 6.0.1 (2024-05-22), 6.0.2 (2025-08-29), 6.1.0 (2025-10-03), 7.0.0 (2026-07-17)
+ReactiveUI: ~4.1 days between releases over the last 8
+  24.2.0 (2026-09-04), 24.3.0 (2026-09-24), 25.0.0 (2026-09-27), 25.0.1 (2026-09-27), 25.1.0 (2026-09-28), 25.1.1 (2026-09-28), 26.0.0 (2026-10-03), 26.0.1 (2026-10-04)
+Splat: ~30.3 days between releases over the last 8
+  19.1.1 (2026-01-02), 19.2.1 (2026-01-09), 19.4.0 (2026-05-23), 19.4.1 (2026-06-03), 20.0.0 (2026-06-12), 20.1.0 (2026-07-23), 20.2.0 (2026-07-25), 21.0.0 (2026-08-03)
+Microsoft.Extensions.TimeProvider.Testing: ~30.0 days between releases over the last 8
+  10.3.0 (2026-02-10), 10.4.0 (2026-03-10), 10.5.0 (2026-04-15), 10.6.0 (2026-05-12), 10.7.0 (2026-06-09), 10.8.0 (2026-07-14), 10.9.0 (2026-08-11), 10.10.0 (2026-09-09)
+xunit.v3: ~60.7 days between releases over the last 8
+  3.0.0 (2025-07-14), 3.0.1 (2025-08-16), 3.1.0 (2025-09-27), 3.2.0 (2025-11-02), 3.2.1 (2025-11-28), 3.2.2 (2026-01-14), 4.0.0 (2026-08-15), 4.0.1 (2026-09-12)
+ReactiveUI.Core: ~4.1 days between releases over the last 8
+  24.2.0 (2026-09-04), 24.3.0 (2026-09-24), 25.0.0 (2026-09-27), 25.0.1 (2026-09-27), 25.1.0 (2026-09-28), 25.1.1 (2026-09-28), 26.0.0 (2026-10-03), 26.0.1 (2026-10-04)
+ReactiveUI.Binding: ~1.0 days between releases over the last 8
+  8.4.0 (2026-09-26), 8.5.0 (2026-09-27), 8.6.0 (2026-09-27), 8.7.0 (2026-09-28), 8.8.0 (2026-09-28), 8.8.1 (2026-10-01), 9.0.0 (2026-10-03), 9.1.0 (2026-10-04)
+ReactiveUI.Primitives: ~3.9 days between releases over the last 8
+  7.4.0 (2026-09-06), 7.5.0 (2026-09-14), 8.0.0 (2026-09-16), 8.1.0 (2026-09-21), 8.2.0 (2026-09-24), 8.3.0 (2026-09-28), 8.4.0 (2026-09-28), 9.0.0 (2026-10-03)
+
+== notes ==
+ReactiveUI 26.x does not depend on System.Reactive; it ships its own
+ReactiveUI.Primitives (RxVoid, ISignals, ISequencer) and Splat 21.
+Mixing it with System.Reactive requires explicit interop at IObservable seams
+(and Subscribe() extension calls are ambiguous - see S5.VariantBPlus).

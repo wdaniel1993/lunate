@@ -1,0 +1,39 @@
+== S5.Baseline
+      69 docs/spikes/S-5/S5.Baseline/BaselineSession.cs
+       3 docs/spikes/S-5/S5.Baseline/Program.cs
+      72 total
+== S5.VariantA
+       5 docs/spikes/S-5/S5.VariantA/Program.cs
+     159 docs/spikes/S-5/S5.VariantA/VariantASession.cs
+     164 total
+== S5.VariantB
+       5 docs/spikes/S-5/S5.VariantB/Program.cs
+     109 docs/spikes/S-5/S5.VariantB/VariantBSession.cs
+     114 total
+== S5.VariantBPlus
+      58 docs/spikes/S-5/S5.VariantBPlus/ApprovalViewModel.cs
+       5 docs/spikes/S-5/S5.VariantBPlus/Program.cs
+      92 docs/spikes/S-5/S5.VariantBPlus/StatusFooterViewModel.cs
+     143 docs/spikes/S-5/S5.VariantBPlus/VariantBPlusSession.cs
+     298 total
+== S5.Harness
+      27 docs/spikes/S-5/S5.Harness/AgentEvent.cs
+      48 docs/spikes/S-5/S5.Harness/FakeTerminal.cs
+      35 docs/spikes/S-5/S5.Harness/ISession.cs
+      16 docs/spikes/S-5/S5.Harness/Keys.cs
+      55 docs/spikes/S-5/S5.Harness/LiveAreaRenderer.cs
+     320 docs/spikes/S-5/S5.Harness/LiveAreaState.cs
+      18 docs/spikes/S-5/S5.Harness/LiveAreaView.cs
+      30 docs/spikes/S-5/S5.Harness/LiveInput.cs
+      13 docs/spikes/S-5/S5.Harness/Scenario.cs
+      76 docs/spikes/S-5/S5.Harness/ScenarioRunner.cs
+      87 docs/spikes/S-5/S5.Harness/ScenarioScript.cs
+      26 docs/spikes/S-5/S5.Harness/SpectreBlocks.cs
+      56 docs/spikes/S-5/S5.Harness/SpikeProgram.cs
+      11 docs/spikes/S-5/S5.Harness/Spinner.cs
+     818 total
+== S5.Tests
+       1 docs/spikes/S-5/S5.Tests/AssemblyInfo.cs
+     318 docs/spikes/S-5/S5.Tests/LiveAreaTests.cs
+      48 docs/spikes/S-5/S5.Tests/VariantFixtures.cs
+     367 total

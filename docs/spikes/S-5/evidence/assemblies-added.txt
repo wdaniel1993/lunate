@@ -1,0 +1,22 @@
+== VariantA (vs Baseline)
+Microsoft.Extensions.TimeProvider.Testing.dll
+S5.VariantA.dll
+== VariantB (vs Baseline)
+Microsoft.Reactive.Testing.dll
+S5.VariantB.dll
+System.Reactive.dll
+== VariantBPlus (vs Baseline)
+Microsoft.Reactive.Testing.dll
+ReactiveUI.Binding.dll
+ReactiveUI.Core.dll
+ReactiveUI.Disposables.dll
+ReactiveUI.dll
+ReactiveUI.Primitives.Core.dll
+ReactiveUI.Primitives.dll
+ReactiveUI.SourceGenerators.dll
+S5.VariantBPlus.dll
+Splat.Builder.dll
+Splat.Core.dll
+Splat.dll
+Splat.Logging.dll
+System.Reactive.dll

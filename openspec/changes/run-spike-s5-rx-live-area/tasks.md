@@ -7,12 +7,12 @@
 
 ## 2. Measurements
 
-- [ ] 2.1 Startup delta and idle memory vs a baseline, single-file ReadyToRun (S-3 method); added assemblies
-- [ ] 2.2 Lines of code per variant, excluding tests
-- [ ] 2.3 Shared test list for all variants including the time-based tests (spinner frame, throttling, Ctrl+C window); each suite run 50×; flake report
-- [ ] 2.4 10,000-delta burst: no lost or reordered events; cancel leaves a clean state
-- [ ] 2.5 Readability: reviewer subagent explains each variant's flow in five sentences; hard-to-follow list
-- [ ] 2.6 Dependency health: versions, licences, release cadence, ReactiveUI initialisation cost (Splat)
+- [x] 2.1 Startup delta and idle memory vs a baseline, single-file ReadyToRun (S-3 method); added assemblies
+- [x] 2.2 Lines of code per variant, excluding tests
+- [x] 2.3 Shared test list for all variants including the time-based tests (spinner frame, throttling, Ctrl+C window); each suite run 50×; flake report
+- [x] 2.4 10,000-delta burst: no lost or reordered events; cancel leaves a clean state
+- [x] 2.5 Readability: reviewer subagent explains each variant's flow in five sentences; hard-to-follow list
+- [x] 2.6 Dependency health: versions, licences, release cadence, ReactiveUI initialisation cost (Splat)
 
 ## 3. Report and ADR
 

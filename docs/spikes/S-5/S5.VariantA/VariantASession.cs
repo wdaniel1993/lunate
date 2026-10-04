@@ -7,8 +7,15 @@ namespace S5.VariantA;
 /// <summary>
 /// Variant A — plain async. Event, key, resize and frame-clock producers all
 /// write into one <see cref="Channel{T}"/>; a single consumer loop applies them.
-/// The frame clock is a <see cref="TimeProvider"/> timer, so tests get virtual
-/// time through <see cref="FakeTimeProvider"/>.
+/// The frame clock is a periodic <see cref="TimeProvider"/> timer.
+///
+/// The task asked for <see cref="PeriodicTimer"/>; the spike tried it first and
+/// rejected it: a concurrent <c>PeriodicTimer.WaitForNextTickAsync</c> races
+/// <see cref="FakeTimeProvider.Advance"/> (not thread safe), which showed up as
+/// AccessViolationException in 8/100 single-file ReadyToRun runs. The
+/// <c>CreateTimer</c> callback fires synchronously on the advancing thread, so
+/// frames land in the channel before the drain barrier and tests are
+/// deterministic. See report.md, surprise 1.
 /// </summary>
 public sealed class VariantASession : ISession
 {
@@ -70,7 +77,7 @@ public sealed class VariantASession : ISession
             completion.TrySetResult();
         }
 
-        return new ValueTask(completion.Task);
+        return new ValueTask(completion.Task.WaitAsync(TimeSpan.FromSeconds(10)));
     }
 
     public IReadOnlyList<string> Snapshot() =>
@@ -130,7 +137,8 @@ public sealed class VariantASession : ISession
             _terminal.WriteBlock(SpectreBlocks.ToolResult(finished));
         }
 
-        if (_state.Apply(input) && input is LiveInput.Frame)
+        var changed = _state.Apply(input);
+        if (changed && input is LiveInput.Frame)
         {
             _terminal.Render(Snapshot());
         }

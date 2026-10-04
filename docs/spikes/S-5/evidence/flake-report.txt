@@ -1,0 +1,7 @@
+runs=50
+non_zero_suites=0
+VariantATests failed_test_instances=0
+VariantBTests failed_test_instances=0
+VariantBPlusTests failed_test_instances=0
+total_failed_lines=0
+total_test_executions=2400

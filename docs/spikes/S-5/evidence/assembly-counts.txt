@@ -1,0 +1,6 @@
+      22 docs/spikes/S-5/evidence/assemblies-added.txt
+     176 docs/spikes/S-5/evidence/assemblies-Baseline.txt
+     177 docs/spikes/S-5/evidence/assemblies-VariantA.txt
+     178 docs/spikes/S-5/evidence/assemblies-VariantB.txt
+     189 docs/spikes/S-5/evidence/assemblies-VariantBPlus.txt
+     742 total

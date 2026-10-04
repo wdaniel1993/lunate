@@ -1,0 +1,4 @@
+startup_ms=3.07 frames=1 heap_bytes=24640
+startup_ms=4.27 frames=1 heap_bytes=90208
+startup_ms=13.82 frames=1 heap_bytes=90400
+startup_ms=11.69 frames=2 heap_bytes=106816

@@ -1,0 +1,4 @@
+Baseline       stable_median_ms=24 min=24 max=26
+VariantA       stable_median_ms=28 min=28 max=31
+VariantB       stable_median_ms=34 min=34 max=38
+VariantBPlus   stable_median_ms=37 min=36 max=40
