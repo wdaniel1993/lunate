@@ -1,8 +1,8 @@
 ## 1. Toolchain files
 
-- [ ] 1.1 Add `global.json` (SDK 10.0.103, rollForward latestFeature) and `.editorconfig`
-- [ ] 1.2 Add `Directory.Build.props` (net10.0, nullable, warnings-as-errors, deterministic, code-style enforcement)
-- [ ] 1.3 Create `lunate.sln` with six src projects + six test projects (empty, building)
+- [x] 1.1 Add `global.json` (SDK 10.0.103, rollForward latestFeature) and `.editorconfig`
+- [x] 1.2 Add `Directory.Build.props` (net10.0, nullable, warnings-as-errors, deterministic, code-style enforcement)
+- [x] 1.3 Create `lunate.sln` with six src projects + six test projects (empty, building)
 
 ## 2. Project wiring
 
