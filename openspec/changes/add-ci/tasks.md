@@ -7,9 +7,9 @@
 
 ## 2. Release workflow
 
-- [ ] 2.1 Add `.github/workflows/release.yml`: `v*` tags plus `workflow_dispatch` dry run
-- [ ] 2.2 Publish osx-arm64, win-x64 and linux-x64 single-file binaries on their native runners
-- [ ] 2.3 Attach one archive per target to the GitHub release via `gh` (dry run: workflow artifacts only)
+- [x] 2.1 Add `.github/workflows/release.yml`: `v*` tags plus `workflow_dispatch` dry run
+- [x] 2.2 Publish osx-arm64, win-x64 and linux-x64 single-file binaries on their native runners
+- [x] 2.3 Attach one archive per target to the GitHub release via `gh` (dry run: workflow artifacts only)
 
 ## 3. Prove and close
 
