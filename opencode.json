@@ -1,5 +1,13 @@
 {
   "$schema": "https://opencode.ai/config.json",
   "model": "opencode-go/deepseek-v4.1-flash",
-  "plugin": ["superpowers@git+https://github.com/obra/superpowers.git"]
+  "plugin": ["superpowers@git+https://github.com/obra/superpowers.git"],
+  "agent": {
+    "build": { "steps": 300 },
+    "general": { "steps": 300 },
+    "senior-dev": { "steps": 300 },
+    "senior-qa": { "steps": 300 },
+    "adversarial-author": { "steps": 300 },
+    "adversarial-reviewer": { "steps": 300 }
+  }
 }
