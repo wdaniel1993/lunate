@@ -17,9 +17,9 @@
 
 ## 4. Verification scripts
 
-- [ ] 4.1 Add `scripts/verify.sh` (build → tests → publish → perf → format → API diff), platform-aware RID default
-- [ ] 4.2 Add `scripts/perf.sh` (hyperfine, `BUDGET_MS`, jq)
-- [ ] 4.3 Add `scripts/verify.ps1` mirroring verify.sh
+- [x] 4.1 Add `scripts/verify.sh` (build → tests → publish → perf → format → API diff), platform-aware RID default
+- [x] 4.2 Add `scripts/perf.sh` (hyperfine, `BUDGET_MS`, jq)
+- [x] 4.3 Add `scripts/verify.ps1` mirroring verify.sh
 
 ## 5. Prove and close
 

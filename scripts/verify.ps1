@@ -1,0 +1,67 @@
+#!/usr/bin/env pwsh
+$ErrorActionPreference = 'Stop'
+$PSNativeCommandUseErrorActionPreference = $false
+Set-StrictMode -Version Latest
+
+Push-Location (Join-Path $PSScriptRoot '..')
+try {
+    $budgetMs = if ($env:BUDGET_MS) { [int]$env:BUDGET_MS } else { 150 }
+    $configuration = if ($env:CONFIGURATION) { $env:CONFIGURATION } else { 'Release' }
+    $publishDir = 'artifacts/publish'
+
+    if (-not $env:RID) {
+        $arch = switch ([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString()) {
+            'X64' { 'x64' }
+            'Arm64' { 'arm64' }
+            default { throw "verify: unsupported architecture: $_" }
+        }
+        $env:RID = "win-$arch"
+    }
+
+    Write-Host "`n==> build"
+    dotnet build lunate.sln -c $configuration --nologo
+    if ($LASTEXITCODE -ne 0) { throw 'verify: build failed' }
+
+    Write-Host "`n==> test"
+    dotnet test --solution lunate.sln -c $configuration
+    if ($LASTEXITCODE -ne 0) { throw 'verify: tests failed' }
+
+    $binary = Join-Path (Join-Path $publishDir $env:RID) 'lunate.exe'
+    Write-Host "`n==> publish ($env:RID)"
+    dotnet publish src/Lunate.Coding/Lunate.Coding.csproj `
+        -c $configuration `
+        -r $env:RID `
+        --self-contained true `
+        -p:PublishSingleFile=true `
+        -p:PublishReadyToRun=true `
+        -p:EnableCompressionInSingleFile=true `
+        -o (Join-Path $publishDir $env:RID) `
+        --nologo
+    if ($LASTEXITCODE -ne 0) { throw 'verify: publish failed' }
+
+    Write-Host "`n==> startup budget"
+    $resultsFile = 'artifacts/perf.json'
+    New-Item -ItemType Directory -Force -Path (Split-Path $resultsFile) | Out-Null
+    hyperfine --warmup 3 --runs 20 --export-json $resultsFile "`"$binary`" --version" | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw 'verify: hyperfine failed' }
+
+    $medianMs = [math]::Round(((Get-Content $resultsFile -Raw | ConvertFrom-Json).results[0].median) * 1000)
+    Write-Host "startup median: $medianMs ms (budget $budgetMs ms)"
+    if ($medianMs -gt $budgetMs) {
+        Write-Error "startup budget exceeded: $medianMs ms > $budgetMs ms" -ErrorAction Continue
+        exit 1
+    }
+
+    Write-Host "`n==> format"
+    dotnet format lunate.sln --verify-no-changes --no-restore
+    if ($LASTEXITCODE -ne 0) { throw 'verify: format check failed' }
+
+    Write-Host "`n==> public API"
+    git diff --exit-code -- '*PublicAPI.Shipped.txt'
+    if ($LASTEXITCODE -ne 0) { throw 'verify: PublicAPI.Shipped.txt changed' }
+
+    Write-Host 'verify: OK'
+}
+finally {
+    Pop-Location
+}
