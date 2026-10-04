@@ -42,7 +42,13 @@ try {
     Write-Host "`n==> startup budget"
     $resultsFile = 'artifacts/perf.json'
     New-Item -ItemType Directory -Force -Path (Split-Path $resultsFile) | Out-Null
-    hyperfine --warmup 3 --runs 20 --export-json $resultsFile "`"$binary`" --version" | Out-Null
+    # hyperfine runs commands through cmd.exe on Windows, which cannot execute quoted
+    # relative paths; pass the absolute Windows path instead.
+    $binaryFull = (Resolve-Path $binary).Path
+    & $binaryFull --version | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "verify: binary failed to run: $binaryFull" }
+    Write-Host "verify: benchmarking: $binaryFull --version"
+    hyperfine --warmup 3 --runs 20 --export-json $resultsFile "$binaryFull --version" | Out-Null
     if ($LASTEXITCODE -ne 0) { throw 'verify: hyperfine failed' }
 
     $medianMs = [math]::Round(((Get-Content $resultsFile -Raw | ConvertFrom-Json).results[0].median) * 1000)

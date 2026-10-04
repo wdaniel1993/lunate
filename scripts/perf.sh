@@ -32,10 +32,25 @@ fi
 
 mkdir -p "$(dirname "$RESULTS_FILE")"
 RESULTS_ABS="$(cd "$(dirname "$RESULTS_FILE")" && pwd)/$(basename "$RESULTS_FILE")"
-BINARY_DIR="$(cd "$(dirname "$BINARY")" && pwd)"
-BINARY_NAME="$(basename "$BINARY")"
+# hyperfine executes commands through the system shell (sh on Unix, cmd.exe on
+# Windows). cmd.exe cannot run POSIX-style relative paths such as ./name, so on
+# Windows convert to the absolute Windows path (backslash form) via cygpath.
+BINARY_ABS="$(cd "$(dirname "$BINARY")" && pwd)/$(basename "$BINARY")"
+case "$(uname -s)" in
+  MINGW*|MSYS*|CYGWIN*)
+    if command -v cygpath >/dev/null 2>&1; then
+      HYPERFINE_CMD="$(cygpath -w "$BINARY_ABS") --version"
+    else
+      HYPERFINE_CMD="$BINARY_ABS --version"
+    fi
+    ;;
+  *)
+    HYPERFINE_CMD="$BINARY_ABS --version"
+    ;;
+esac
 
-(cd "$BINARY_DIR" && hyperfine --warmup "$WARMUP" --runs "$RUNS" --export-json "$RESULTS_ABS" "./$BINARY_NAME --version" >/dev/null)
+echo "perf: benchmarking: $HYPERFINE_CMD"
+hyperfine --warmup "$WARMUP" --runs "$RUNS" --export-json "$RESULTS_ABS" "$HYPERFINE_CMD" >/dev/null
 
 MEDIAN_MS="$(jq -r '.results[0].median * 1000 | round' "$RESULTS_ABS")"
 printf 'startup median: %s ms (budget %s ms)\n' "$MEDIAN_MS" "$BUDGET_MS"
