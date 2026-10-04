@@ -735,7 +735,7 @@ Tests are how OpenCode knows it is done: every level below runs without API keys
 
 Results go to `eval/results.csv` per phase and model. Use the suite to decide whether Roslyn tools, a prompt change or compaction actually help, not intuition.
 
-The test suite also runs once under a non-English culture (`de-AT`) on Unix (in `scripts/verify.sh` and CI), so tests never depend on the machine locale; technical output is formatted with `CultureInfo.InvariantCulture`.
+The test suite also runs once under a non-English culture (`de-AT`) on Unix (in `scripts/verify.sh` and CI), so tests never depend on the machine locale; technical output is formatted with `CultureInfo.InvariantCulture` — English first, other cultures supported.
 
 ## Security and safety
 
@@ -758,6 +758,7 @@ These decisions are settled; the foundational ones are recorded as durable ADRs 
 | Decision | Choice | Why |
 | --- | --- | --- |
 | Audience | Polished daily-driver CLI; readability stays a principle | The project's value is daily use and C# depth |
+| Language and culture | English-first output; technical formatting culture-invariant; identical behaviour under any machine culture (tests prove it) | Target group is programmers; other cultures are supported |
 | License and home | Personal open source, MIT | Free to use anywhere |
 | Hosting and embedding | No AG-UI endpoint, A2A or web UI | Smaller scope, focus on the terminal and editors |
 | TUI | Spectre for finished output; own input line and live area | Robust rendering and steering |
