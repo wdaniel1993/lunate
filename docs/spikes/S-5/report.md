@@ -12,8 +12,8 @@
   single-file ReadyToRun binaries; one shared xunit test list run 50× per
   variant; a 10,000-delta burst; an adversarial-reviewer readability pass.
 - Outcome: **recommend B (System.Reactive), reject B+ (ReactiveUI)** — see
-  [ADR draft](../../../adr/0007-live-area-concurrency.md), status proposed —
-  awaiting maintainer sign-off. B's whole-process startup delta is **+10 ms**
+  [ADR 0007](../../../adr/0007-live-area-concurrency.md), **accepted
+  2026-10-04** (conditions of adoption in the ADR). B's whole-process startup delta is **+10 ms**
   (baseline 24 ms → 34 ms) and its time-based tests are materially simpler to
   drive than A's; B+ costs 2.6× A's code, duplicates state and hit a
   packaging crash that A/B/baseline did not.
@@ -209,7 +209,8 @@ small view models.
    the frame input gives the same cap as `Sample` in B, so the cap is a
    property of the render gate, not of Rx.
 6. **The footer was locale-dependent.** `{ContextPercent:0.#}` formatted with
-   the current culture, so under a German locale the footer showed `12,5% ctx`,
+   the current culture, so on the dev machine (culture `en-AT` — English UI
+   with Austrian region, comma decimals) the footer showed `12,5% ctx`,
    one test per variant failed and the scenario transcript sha changed. Fixed
    to invariant formatting in the shared renderer and in the B+ view model —
    which duplicated the format string (the readability review's "duplicated
@@ -254,4 +255,4 @@ smallest. B+ is rejected on code, duplication, dependency churn and packaging
 risk. Full rationale and the conditions for adoption (pins, scheduler seam,
 T-18/T-19 test requirements, the open packaging crash) are in
 [`adr/0007-live-area-concurrency.md`](../../../adr/0007-live-area-concurrency.md),
-status **proposed — awaiting maintainer sign-off**.
+status **accepted (2026-10-04)**.

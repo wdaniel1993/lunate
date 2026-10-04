@@ -1,6 +1,6 @@
 # 0007 — TUI live-area concurrency: System.Reactive at the boundary
 
-- Status: proposed — awaiting maintainer sign-off
+- Status: accepted — 2026-10-04 (maintainer sign-off with conditions; see "Conditions of adoption")
 - Date: 2026-10-04
 - Spike: `docs/spikes/S-5/report.md` (raw evidence under `docs/spikes/S-5/evidence/`)
 - Relates to: ADR 0002 (layering and Microsoft.Extensions.AI model types), ADR 0001 (single-file releases), ADR 0005 (startup budgets)
@@ -42,7 +42,7 @@ health. Findings that drive this decision:
    `AccessViolationException` in 11/100 starts and A in 1/100; baseline and B
    were stable (0/100). Root cause not isolated in the timebox; see Follow-ups.
 
-## Decision (proposed)
+## Decision
 
 - **Adopt System.Reactive for the `Lunate.Tui` live area only.** The agent
   contract stays `IAsyncEnumerable<AgentEvent>`; the TUI converts at the
@@ -66,6 +66,21 @@ health. Findings that drive this decision:
   protocols): Rx is a TUI-boundary tool, not a project-wide style.
 - **Startup budget:** the live area adds ~10 ms whole-process; ADR 0005's
   local budget (150 ms) is unaffected. Record the delta in the TUI change.
+
+## Conditions of adoption (maintainer, 2026-10-04)
+
+- **Rx is confined to the live area in `Lunate.Tui`.** `Lunate.Agent` keeps
+  `IAsyncEnumerable<AgentEvent>`; conversion happens only at the TUI boundary.
+- **The scheduler is injected (`IScheduler`).** Production uses a real
+  scheduler; tests use `TestScheduler`.
+- **The spike's `ISession` seam becomes the real contract for the live area,**
+  so switching to variant A later only replaces the implementation.
+- **The "drain before read" rule the readability review flagged is written
+  down as an explicit threading contract in the spec** and covered by
+  T-18/T-19 tests.
+- **Trade-off stated openly:** the review rated A easiest to read; B was
+  chosen for test simplicity and less plumbing. If T-18/T-19 show Rx making
+  the code harder to follow, revisit.
 
 ## Alternatives considered
 
@@ -92,7 +107,8 @@ health. Findings that drive this decision:
   time-based behaviours with `TestScheduler`; no `Thread.Sleep`-based TUI tests.
 - Technical readouts (footer percent, token counts) format with invariant
   culture; TUI tests must not depend on the machine locale (found in S-5
-  verification: `12,5%` under a German locale).
+  verification: `12,5%` on the dev machine's `en-AT` culture, comma decimals;
+  a de-AT pass in `verify.sh` pins a non-English culture).
 - The live-area render path must stay single-writer; the spike's cross-thread
   reads with an implicit drain contract are explicitly not the production shape.
 - Follow-up work (separate change, not this spike):

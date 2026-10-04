@@ -22,4 +22,4 @@
 ## 4. Close
 
 - [x] 4.1 `openspec validate run-spike-s5-rx-live-area --type change --strict`; commit per group
-- [ ] 4.2 Maintainer sign-off on ADR-0007; archive
+- [x] 4.2 Maintainer sign-off on ADR-0007; archive
