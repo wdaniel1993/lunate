@@ -23,6 +23,7 @@ This repo is developed with OpenCode and OpenSpec (schema: `intent-driven`).
 - `Lunate.Roslyn`, MCP servers and extensions load on first use, never at startup.
 
 ## Rules
+- Architecture decisions (loop, tool contracts, protocols, dependencies) require maintainer sign-off: propose and stop.
 - No new NuGet packages. Ask first.
 - Public API changes appear in `PublicAPI.Unshipped.txt`. Change public types only if the change says so; otherwise propose the change and stop.
 - A failing golden session test means the session format changed. Stop and report; never update golden files to make a test pass.
