@@ -1,0 +1,5 @@
+locator_instances: 1
+locator_instance: name=.NET Core SDK version=10.0.103 discovery=DotNetSdk msbuild_path=/Users/danielwallner/.dotnet/sdk/10.0.103
+locator_registered: name=.NET Core SDK version=10.0.103 discovery=DotNetSdk
+msbuild_exe_path: /Users/danielwallner/.dotnet/sdk/10.0.103/MSBuild.dll
+msbuild_sdk: /Users/danielwallner/.dotnet/sdk/10.0.103/Sdks

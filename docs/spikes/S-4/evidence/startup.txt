@@ -1,0 +1,30 @@
+=== process startup (selftest), framework-dependent x3 ===
+real 0.02
+user 0.01
+sys 0.00
+real 0.02
+user 0.01
+sys 0.00
+real 0.02
+user 0.01
+sys 0.00
+=== process startup (selftest), plain single-file x3 ===
+real 0.02
+user 0.01
+sys 0.00
+real 0.02
+user 0.01
+sys 0.00
+real 0.02
+user 0.01
+sys 0.00
+=== process startup (selftest), single-file+loose build host x3 ===
+real 0.02
+user 0.01
+sys 0.00
+real 0.02
+user 0.01
+sys 0.00
+real 0.02
+user 0.01
+sys 0.00

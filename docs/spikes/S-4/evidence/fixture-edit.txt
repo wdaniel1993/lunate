@@ -1,0 +1,17 @@
+locator: registered name=.NET Core SDK version=10.0.103 discovery=DotNetSdk
+locator: msbuild_path=/Users/danielwallner/.dotnet/sdk/10.0.103
+locator: msbuild_exe_path=/Users/danielwallner/.dotnet/sdk/10.0.103/MSBuild.dll
+probe: load
+label: fixture-edit
+solution: /Users/danielwallner/dev/lunate/docs/spikes/S-4/fixture/Fixture.sln
+run: 1 load_ms=631.3 projects=3 documents=16 workspace_failures=0
+edit_file: /Users/danielwallner/dev/lunate/docs/spikes/S-4/fixture/src/Fixture.Lib/Calculator.cs
+edit_cycle: iteration=1 inject=True total_ms=505.1 apply_ms=504.9 errors=1 warnings=0 info=0 hidden=12
+edit_cycle: iteration=2 inject=False total_ms=19.7 apply_ms=19.5 errors=0 warnings=0 info=0 hidden=12
+edit_cycle: iteration=3 inject=True total_ms=2.3 apply_ms=2.2 errors=1 warnings=0 info=0 hidden=12
+edit_cycle: iteration=4 inject=False total_ms=2.0 apply_ms=1.9 errors=0 warnings=0 info=0 hidden=12
+edit_cycle: iteration=5 inject=True total_ms=2.0 apply_ms=2.0 errors=1 warnings=0 info=0 hidden=12
+edit_cycle: iteration=6 inject=False total_ms=2.0 apply_ms=1.9 errors=0 warnings=0 info=0 hidden=12
+edit_restore: original_written=true
+edit_median_ms: 2.2
+load_median_ms: 631.3

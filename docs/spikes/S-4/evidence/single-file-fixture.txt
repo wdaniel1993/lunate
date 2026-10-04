@@ -1,0 +1,52 @@
+=== single-file fixture load ===
+locator: registered name=.NET Core SDK version=10.0.103 discovery=DotNetSdk
+locator: msbuild_path=/Users/danielwallner/.dotnet/sdk/10.0.103
+locator: msbuild_exe_path=/Users/danielwallner/.dotnet/sdk/10.0.103/MSBuild.dll
+probe: load
+label: single-file-fixture
+solution: /Users/danielwallner/dev/lunate/docs/spikes/S-4/fixture/Fixture.sln
+Unhandled exception. System.Exception: The build host could not be found at '/Users/danielwallner/dev/lunate/artifacts/s4-scratch/single-file/BuildHost-netcore/Microsoft.CodeAnalysis.Workspaces.MSBuild.BuildHost.dll'
+   at Microsoft.CodeAnalysis.MSBuild.BuildHostProcessManager.GetBuildHostPath(String contentFolderName, String assemblyName)
+   at Microsoft.CodeAnalysis.MSBuild.BuildHostProcessManager.GetNetCoreBuildHostPath()
+   at Microsoft.CodeAnalysis.MSBuild.BuildHostProcessManager.CreateDotNetCoreBuildHostStartInfo(String pipeName, String dotnetPath)
+   at Microsoft.CodeAnalysis.MSBuild.BuildHostProcessManager.CreateBuildHostStartInfo(BuildHostProcessKind buildHostKind, String pipeName, String dotnetPath)
+   at Microsoft.CodeAnalysis.MSBuild.BuildHostProcessManager.<GetBuildHostAsync>g__NoLock_GetBuildHostAsync|17_0(BuildHostProcessKind buildHostKind, String projectOrSolutionFilePath, String dotnetPath, CancellationToken cancellationToken)
+   at Microsoft.CodeAnalysis.MSBuild.BuildHostProcessManager.GetBuildHostAsync(BuildHostProcessKind buildHostKind, String projectOrSolutionFilePath, String dotnetPath, CancellationToken cancellationToken)
+   at Microsoft.CodeAnalysis.MSBuild.BuildHostProcessManager.GetBuildHostWithFallbackAsync(BuildHostProcessKind buildHostKind, String projectOrSolutionFilePath, CancellationToken cancellationToken)
+   at Microsoft.CodeAnalysis.MSBuild.BuildHostProjectFileInfoProvider.LoadProjectFileInfosAsync(String projectPath, DiagnosticReportingOptions reportingOptions, CancellationToken cancellationToken)
+   at Microsoft.CodeAnalysis.MSBuild.MSBuildProjectLoader.Worker.LoadProjectInfosFromPathAsync(String projectPath, DiagnosticReportingOptions reportingOptions, CancellationToken cancellationToken)
+   at Microsoft.CodeAnalysis.MSBuild.MSBuildProjectLoader.Worker.LoadAsync(CancellationToken cancellationToken)
+   at Microsoft.CodeAnalysis.MSBuild.MSBuildProjectLoader.LoadInfoAsync(ImmutableArray`1 projectPaths, ProjectMap projectMap, IProgress`1 progress, ILogger msbuildLogger, DiagnosticReportingOptions requestedProjectOptions, DiagnosticReportingOptions discoveredProjectOptions, Boolean preferMetadataForReferencesOfDiscoveredProjects, CancellationToken cancellationToken)
+   at Microsoft.CodeAnalysis.MSBuild.MSBuildProjectLoader.LoadInfoAsync(ImmutableArray`1 projectPaths, ProjectMap projectMap, IProgress`1 progress, ILogger msbuildLogger, DiagnosticReportingOptions requestedProjectOptions, DiagnosticReportingOptions discoveredProjectOptions, Boolean preferMetadataForReferencesOfDiscoveredProjects, CancellationToken cancellationToken)
+   at Microsoft.CodeAnalysis.MSBuild.MSBuildProjectLoader.LoadSolutionInfoAsync(String solutionFilePath, IProgress`1 progress, ILogger msbuildLogger, CancellationToken cancellationToken)
+   at Microsoft.CodeAnalysis.MSBuild.MSBuildWorkspace.OpenSolutionAsync(String solutionFilePath, ILogger msbuildLogger, IProgress`1 progress, CancellationToken cancellationToken)
+   at Spike.WorkspaceProbe.Load.RunCoreAsync(LoadOptions options) in /Users/danielwallner/dev/lunate/docs/spikes/S-4/WorkspaceProbe/Load.cs:line 35
+   at Spike.WorkspaceProbe.Program.Main(String[] args) in /Users/danielwallner/dev/lunate/docs/spikes/S-4/WorkspaceProbe/Program.cs:line 16
+   at Spike.WorkspaceProbe.Program.<Main>(String[] args)
+load_exit=134
+=== single-file fixture edit ===
+locator: registered name=.NET Core SDK version=10.0.103 discovery=DotNetSdk
+locator: msbuild_path=/Users/danielwallner/.dotnet/sdk/10.0.103
+locator: msbuild_exe_path=/Users/danielwallner/.dotnet/sdk/10.0.103/MSBuild.dll
+probe: load
+label: single-file-fixture-edit
+solution: /Users/danielwallner/dev/lunate/docs/spikes/S-4/fixture/Fixture.sln
+Unhandled exception. System.Exception: The build host could not be found at '/Users/danielwallner/dev/lunate/artifacts/s4-scratch/single-file/BuildHost-netcore/Microsoft.CodeAnalysis.Workspaces.MSBuild.BuildHost.dll'
+   at Microsoft.CodeAnalysis.MSBuild.BuildHostProcessManager.GetBuildHostPath(String contentFolderName, String assemblyName)
+   at Microsoft.CodeAnalysis.MSBuild.BuildHostProcessManager.GetNetCoreBuildHostPath()
+   at Microsoft.CodeAnalysis.MSBuild.BuildHostProcessManager.CreateDotNetCoreBuildHostStartInfo(String pipeName, String dotnetPath)
+   at Microsoft.CodeAnalysis.MSBuild.BuildHostProcessManager.CreateBuildHostStartInfo(BuildHostProcessKind buildHostKind, String pipeName, String dotnetPath)
+   at Microsoft.CodeAnalysis.MSBuild.BuildHostProcessManager.<GetBuildHostAsync>g__NoLock_GetBuildHostAsync|17_0(BuildHostProcessKind buildHostKind, String projectOrSolutionFilePath, String dotnetPath, CancellationToken cancellationToken)
+   at Microsoft.CodeAnalysis.MSBuild.BuildHostProcessManager.GetBuildHostAsync(BuildHostProcessKind buildHostKind, String projectOrSolutionFilePath, String dotnetPath, CancellationToken cancellationToken)
+   at Microsoft.CodeAnalysis.MSBuild.BuildHostProcessManager.GetBuildHostWithFallbackAsync(BuildHostProcessKind buildHostKind, String projectOrSolutionFilePath, CancellationToken cancellationToken)
+   at Microsoft.CodeAnalysis.MSBuild.BuildHostProjectFileInfoProvider.LoadProjectFileInfosAsync(String projectPath, DiagnosticReportingOptions reportingOptions, CancellationToken cancellationToken)
+   at Microsoft.CodeAnalysis.MSBuild.MSBuildProjectLoader.Worker.LoadProjectInfosFromPathAsync(String projectPath, DiagnosticReportingOptions reportingOptions, CancellationToken cancellationToken)
+   at Microsoft.CodeAnalysis.MSBuild.MSBuildProjectLoader.Worker.LoadAsync(CancellationToken cancellationToken)
+   at Microsoft.CodeAnalysis.MSBuild.MSBuildProjectLoader.LoadInfoAsync(ImmutableArray`1 projectPaths, ProjectMap projectMap, IProgress`1 progress, ILogger msbuildLogger, DiagnosticReportingOptions requestedProjectOptions, DiagnosticReportingOptions discoveredProjectOptions, Boolean preferMetadataForReferencesOfDiscoveredProjects, CancellationToken cancellationToken)
+   at Microsoft.CodeAnalysis.MSBuild.MSBuildProjectLoader.LoadInfoAsync(ImmutableArray`1 projectPaths, ProjectMap projectMap, IProgress`1 progress, ILogger msbuildLogger, DiagnosticReportingOptions requestedProjectOptions, DiagnosticReportingOptions discoveredProjectOptions, Boolean preferMetadataForReferencesOfDiscoveredProjects, CancellationToken cancellationToken)
+   at Microsoft.CodeAnalysis.MSBuild.MSBuildProjectLoader.LoadSolutionInfoAsync(String solutionFilePath, IProgress`1 progress, ILogger msbuildLogger, CancellationToken cancellationToken)
+   at Microsoft.CodeAnalysis.MSBuild.MSBuildWorkspace.OpenSolutionAsync(String solutionFilePath, ILogger msbuildLogger, IProgress`1 progress, CancellationToken cancellationToken)
+   at Spike.WorkspaceProbe.Load.RunCoreAsync(LoadOptions options) in /Users/danielwallner/dev/lunate/docs/spikes/S-4/WorkspaceProbe/Load.cs:line 35
+   at Spike.WorkspaceProbe.Program.Main(String[] args) in /Users/danielwallner/dev/lunate/docs/spikes/S-4/WorkspaceProbe/Program.cs:line 16
+   at Spike.WorkspaceProbe.Program.<Main>(String[] args)
+edit_exit=134

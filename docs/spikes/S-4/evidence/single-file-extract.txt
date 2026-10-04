@@ -1,0 +1,21 @@
+=== self-extract (all content) startup first run ===
+real 1.01
+user 0.02
+sys 0.12
+=== self-extract (all content) startup second run ===
+real 0.02
+user 0.01
+sys 0.00
+=== self-extract (all content) fixture load ===
+locator: registered name=.NET Core SDK version=10.0.103 discovery=DotNetSdk
+locator: msbuild_path=/Users/danielwallner/.dotnet/sdk/10.0.103
+locator: msbuild_exe_path=/Users/danielwallner/.dotnet/sdk/10.0.103/MSBuild.dll
+probe: load
+label: self-extract-fixture
+solution: /Users/danielwallner/dev/lunate/docs/spikes/S-4/fixture/Fixture.sln
+run: 1 load_ms=635.2 projects=3 documents=16 workspace_failures=0
+diagnostics: project=Fixture.App errors=0 warnings=0 info=0 hidden=12 error_ids=[]
+diagnostics: project=Fixture.Lib errors=0 warnings=0 info=0 hidden=12 error_ids=[]
+diagnostics: project=Fixture.Tests errors=0 warnings=0 info=0 hidden=12 error_ids=[]
+load_median_ms: 635.2
+load_exit=0

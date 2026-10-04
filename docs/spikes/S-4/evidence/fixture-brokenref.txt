@@ -1,0 +1,23 @@
+=== broken reference: ProjectReference to missing project ===
+--- dotnet restore (expected to fail) ---
+  Determining projects to restore...
+  Skipping project "/Users/danielwallner/dev/lunate/artifacts/s4-scratch/fixture-brokenref/src/Missing/Missing.csproj" because it was not found.
+  Skipping project "/Users/danielwallner/dev/lunate/artifacts/s4-scratch/fixture-brokenref/src/Missing/Missing.csproj" because it was not found.
+  Restored /Users/danielwallner/dev/lunate/artifacts/s4-scratch/fixture-brokenref/src/Fixture.Lib/Fixture.Lib.csproj (in 28 ms).
+  Restored /Users/danielwallner/dev/lunate/artifacts/s4-scratch/fixture-brokenref/src/Fixture.App/Fixture.App.csproj (in 28 ms).
+  Restored /Users/danielwallner/dev/lunate/artifacts/s4-scratch/fixture-brokenref/tests/Fixture.Tests/Fixture.Tests.csproj (in 70 ms).
+restore_exit=0
+--- workspace load ---
+locator: registered name=.NET Core SDK version=10.0.103 discovery=DotNetSdk
+locator: msbuild_path=/Users/danielwallner/.dotnet/sdk/10.0.103
+locator: msbuild_exe_path=/Users/danielwallner/.dotnet/sdk/10.0.103/MSBuild.dll
+probe: load
+label: fixture-brokenref
+solution: /Users/danielwallner/dev/lunate/artifacts/s4-scratch/fixture-brokenref/Fixture.sln
+run: 1 load_ms=650.9 projects=3 documents=16 workspace_failures=2
+workspace_failure: Failure: Msbuild failed when processing the file '/Users/danielwallner/dev/lunate/artifacts/s4-scratch/fixture-brokenref/src/Fixture.App/Fixture.App.csproj' with message: The referenced project ../Missing/Missing.csproj does not exist.
+workspace_failure: Failure: Project file not found: '/Users/danielwallner/dev/lunate/artifacts/s4-scratch/fixture-brokenref/src/Missing/Missing.csproj'
+diagnostics: project=Fixture.App errors=2 warnings=0 info=0 hidden=13 error_ids=[CS0246,CS0103]
+diagnostics: project=Fixture.Lib errors=0 warnings=0 info=0 hidden=12 error_ids=[]
+load_median_ms: 650.9
+exit=0

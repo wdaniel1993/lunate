@@ -1,0 +1,44 @@
+=== ReactiveUI (slnx) load without restore; repo targets net11, SDK is 10.0.103 ===
+commit: 88312688d0281fd260977dfd78bb12e1c85ffaaa
+locator: registered name=.NET Core SDK version=10.0.103 discovery=DotNetSdk
+locator: msbuild_path=/Users/danielwallner/.dotnet/sdk/10.0.103
+locator: msbuild_exe_path=/Users/danielwallner/.dotnet/sdk/10.0.103/MSBuild.dll
+probe: load
+label: reactiveui-slnx-norestore
+solution: /Users/danielwallner/dev/lunate/artifacts/s4-scratch/reactiveui/src/reactiveui.slnx
+run: 1 load_ms=15236.7 projects=308 documents=11041 workspace_failures=167
+workspace_failure: Failure: Msbuild failed when processing the file '/Users/danielwallner/dev/lunate/artifacts/s4-scratch/reactiveui/src/ReactiveUI.AndroidX/ReactiveUI.AndroidX.csproj' with message: System.IO.FileNotFoundException: Could not load assembly 'netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51'. Perhaps it doesn't exist in the Mono for Android profile?
+File name: 'netstandard.dll'
+   at Java.Interop.Tools.Cecil.DirectoryAssemblyResolver.Resolve(AssemblyNameReference reference, ReaderParameters parameters)
+   at Java.Interop.Tools.Cecil.DirectoryAssemblyResolver.Resolve(AssemblyNameReference reference)
+   at Xamarin.Android.Tasks.GenerateResourceDesignerAssembly.Run(DirectoryAssemblyResolver res)
+   at Xamarin.Android.Tasks.GenerateResourceDesignerAssembly.RunTask()
+   at Microsoft.Android.Build.Tasks.AndroidTask.Execute()
+workspace_failure: Failure: Msbuild failed when processing the file '/Users/danielwallner/dev/lunate/artifacts/s4-scratch/reactiveui/src/ReactiveUI.AndroidX/ReactiveUI.AndroidX.csproj' with message: The target platform identifier android was not recognized.
+workspace_failure: Failure: Msbuild failed when processing the file '/Users/danielwallner/dev/lunate/artifacts/s4-scratch/reactiveui/src/ReactiveUI/ReactiveUI.csproj' with message: The reference assemblies for .NETFramework,Version=v4.6.2 were not found. To resolve this, install the Developer Pack (SDK/Targeting Pack) for this framework version or retarget your application. You can download .NET Framework Developer Packs at https://aka.ms/msbuild/developerpacks
+workspace_failure: Failure: Msbuild failed when processing the file '/Users/danielwallner/dev/lunate/artifacts/s4-scratch/reactiveui/src/ReactiveUI/ReactiveUI.csproj' with message: The reference assemblies for .NETFramework,Version=v4.7.2 were not found. To resolve this, install the Developer Pack (SDK/Targeting Pack) for this framework version or retarget your application. You can download .NET Framework Developer Packs at https://aka.ms/msbuild/developerpacks
+workspace_failure: Failure: Msbuild failed when processing the file '/Users/danielwallner/dev/lunate/artifacts/s4-scratch/reactiveui/src/ReactiveUI/ReactiveUI.csproj' with message: The reference assemblies for .NETFramework,Version=v4.8.1 were not found. To resolve this, install the Developer Pack (SDK/Targeting Pack) for this framework version or retarget your application. You can download .NET Framework Developer Packs at https://aka.ms/msbuild/developerpacks
+workspace_failure: Failure: Msbuild failed when processing the file '/Users/danielwallner/dev/lunate/artifacts/s4-scratch/reactiveui/src/ReactiveUI/ReactiveUI.csproj' with message: System.IO.FileNotFoundException: Could not load assembly 'netstandard, Version=2.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51'. Perhaps it doesn't exist in the Mono for Android profile?
+File name: 'netstandard.dll'
+   at Java.Interop.Tools.Cecil.DirectoryAssemblyResolver.Resolve(AssemblyNameReference reference, ReaderParameters parameters)
+   at Java.Interop.Tools.Cecil.DirectoryAssemblyResolver.Resolve(AssemblyNameReference reference)
+   at Xamarin.Android.Tasks.GenerateResourceDesignerAssembly.Run(DirectoryAssemblyResolver res)
+   at Xamarin.Android.Tasks.GenerateResourceDesignerAssembly.RunTask()
+   at Microsoft.Android.Build.Tasks.AndroidTask.Execute()
+workspace_failure: Failure: Msbuild failed when processing the file '/Users/danielwallner/dev/lunate/artifacts/s4-scratch/reactiveui/src/ReactiveUI/ReactiveUI.csproj' with message: The target platform identifier android was not recognized.
+workspace_failure: Failure: Msbuild failed when processing the file '/Users/danielwallner/dev/lunate/artifacts/s4-scratch/reactiveui/src/ReactiveUI.Core/ReactiveUI.Core.csproj' with message: The reference assemblies for .NETFramework,Version=v4.6.2 were not found. To resolve this, install the Developer Pack (SDK/Targeting Pack) for this framework version or retarget your application. You can download .NET Framework Developer Packs at https://aka.ms/msbuild/developerpacks
+workspace_failure: Failure: Msbuild failed when processing the file '/Users/danielwallner/dev/lunate/artifacts/s4-scratch/reactiveui/src/ReactiveUI.Core/ReactiveUI.Core.csproj' with message: The reference assemblies for .NETFramework,Version=v4.7.2 were not found. To resolve this, install the Developer Pack (SDK/Targeting Pack) for this framework version or retarget your application. You can download .NET Framework Developer Packs at https://aka.ms/msbuild/developerpacks
+workspace_failure: Failure: Msbuild failed when processing the file '/Users/danielwallner/dev/lunate/artifacts/s4-scratch/reactiveui/src/ReactiveUI.Core/ReactiveUI.Core.csproj' with message: The reference assemblies for .NETFramework,Version=v4.8.1 were not found. To resolve this, install the Developer Pack (SDK/Targeting Pack) for this framework version or retarget your application. You can download .NET Framework Developer Packs at https://aka.ms/msbuild/developerpacks
+workspace_failure: Warning: Unresolved metadata reference removed from project: /mscorlib.dll
+workspace_failure: Warning: Unresolved metadata reference removed from project: /mscorlib.dll
+workspace_failure: Warning: Unresolved metadata reference removed from project: /mscorlib.dll
+workspace_failure: Warning: Unresolved metadata reference removed from project: /mscorlib.dll
+workspace_failure: Warning: Unresolved metadata reference removed from project: /mscorlib.dll
+workspace_failure: Warning: Unresolved metadata reference removed from project: /mscorlib.dll
+workspace_failure: Warning: Unresolved metadata reference removed from project: /Users/danielwallner/dev/lunate/artifacts/s4-scratch/reactiveui/src/ReactiveUI/obj/Debug/net10.0-android36.0/designtime/_Microsoft.Android.Resource.Designer.dll
+workspace_failure: Warning: Found project reference without a matching metadata reference: /Users/danielwallner/dev/lunate/artifacts/s4-scratch/reactiveui/src/ReactiveUI.Core/ReactiveUI.Core.csproj
+workspace_failure: Warning: Unresolved metadata reference removed from project: /Users/danielwallner/dev/lunate/artifacts/s4-scratch/reactiveui/src/ReactiveUI.AndroidX/obj/Debug/net10.0-android36.0/designtime/_Microsoft.Android.Resource.Designer.dll
+workspace_failure: Warning: Found project reference without a matching metadata reference: /Users/danielwallner/dev/lunate/artifacts/s4-scratch/reactiveui/src/ReactiveUI/ReactiveUI.csproj
+diagnostics: project=ReactiveUI(net10.0) errors=598 warnings=0 info=0 hidden=71 error_ids=[CS0234,CS0246,CS0677,CS0109,CS0103,CS0314,CS8821,CS1061]
+load_median_ms: 15236.7
+exit=0

@@ -1,0 +1,45 @@
+=== fixture cold run 1 ===
+locator: registered name=.NET Core SDK version=10.0.103 discovery=DotNetSdk
+locator: msbuild_path=/Users/danielwallner/.dotnet/sdk/10.0.103
+locator: msbuild_exe_path=/Users/danielwallner/.dotnet/sdk/10.0.103/MSBuild.dll
+probe: load
+label: fixture
+solution: /Users/danielwallner/dev/lunate/docs/spikes/S-4/fixture/Fixture.sln
+run: 1 load_ms=666.8 projects=3 documents=16 workspace_failures=0
+diagnostics: project=Fixture.App errors=0 warnings=0 info=0 hidden=12 error_ids=[]
+diagnostics: project=Fixture.Lib errors=0 warnings=0 info=0 hidden=12 error_ids=[]
+diagnostics: project=Fixture.Tests errors=0 warnings=0 info=0 hidden=12 error_ids=[]
+load_median_ms: 666.8
+real 1.46
+user 1.38
+sys 0.16
+=== fixture cold run 2 ===
+locator: registered name=.NET Core SDK version=10.0.103 discovery=DotNetSdk
+locator: msbuild_path=/Users/danielwallner/.dotnet/sdk/10.0.103
+locator: msbuild_exe_path=/Users/danielwallner/.dotnet/sdk/10.0.103/MSBuild.dll
+probe: load
+label: fixture
+solution: /Users/danielwallner/dev/lunate/docs/spikes/S-4/fixture/Fixture.sln
+run: 1 load_ms=624.2 projects=3 documents=16 workspace_failures=0
+diagnostics: project=Fixture.App errors=0 warnings=0 info=0 hidden=12 error_ids=[]
+diagnostics: project=Fixture.Lib errors=0 warnings=0 info=0 hidden=12 error_ids=[]
+diagnostics: project=Fixture.Tests errors=0 warnings=0 info=0 hidden=12 error_ids=[]
+load_median_ms: 624.2
+real 1.38
+user 1.35
+sys 0.16
+=== fixture cold run 3 ===
+locator: registered name=.NET Core SDK version=10.0.103 discovery=DotNetSdk
+locator: msbuild_path=/Users/danielwallner/.dotnet/sdk/10.0.103
+locator: msbuild_exe_path=/Users/danielwallner/.dotnet/sdk/10.0.103/MSBuild.dll
+probe: load
+label: fixture
+solution: /Users/danielwallner/dev/lunate/docs/spikes/S-4/fixture/Fixture.sln
+run: 1 load_ms=644.7 projects=3 documents=16 workspace_failures=0
+diagnostics: project=Fixture.App errors=0 warnings=0 info=0 hidden=12 error_ids=[]
+diagnostics: project=Fixture.Lib errors=0 warnings=0 info=0 hidden=12 error_ids=[]
+diagnostics: project=Fixture.Tests errors=0 warnings=0 info=0 hidden=12 error_ids=[]
+load_median_ms: 644.7
+real 1.41
+user 1.38
+sys 0.16

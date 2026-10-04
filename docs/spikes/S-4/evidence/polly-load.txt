@@ -1,0 +1,15 @@
+=== Polly load x3 (restored; global.json patched to installed SDK), commit 0cb0aa74d11b25a9c6fe32951a1ec4a3a3d79948 ===
+locator: registered name=.NET Core SDK version=10.0.103 discovery=DotNetSdk
+locator: msbuild_path=/Users/danielwallner/.dotnet/sdk/10.0.103
+locator: msbuild_exe_path=/Users/danielwallner/.dotnet/sdk/10.0.103/MSBuild.dll
+probe: load
+label: polly
+solution: /Users/danielwallner/dev/lunate/artifacts/s4-scratch/polly/Polly.slnx
+run: 1 load_ms=3537.6 projects=47 documents=3145 workspace_failures=0
+run: 2 load_ms=3041.4 projects=47 documents=3145 workspace_failures=0
+run: 3 load_ms=3323.1 projects=47 documents=3145 workspace_failures=0
+load_median_ms: 3323.1
+real 10.03
+user 9.57
+sys 2.32
+exit=0

@@ -1,0 +1,29 @@
+=== Polly without restore (obj/ absent) ===
+locator: registered name=.NET Core SDK version=10.0.103 discovery=DotNetSdk
+locator: msbuild_path=/Users/danielwallner/.dotnet/sdk/10.0.103
+locator: msbuild_exe_path=/Users/danielwallner/.dotnet/sdk/10.0.103/MSBuild.dll
+probe: load
+label: polly-norestore
+solution: /Users/danielwallner/dev/lunate/artifacts/s4-scratch/polly-norestore/Polly.slnx
+run: 1 load_ms=2769.7 projects=47 documents=3085 workspace_failures=16
+workspace_failure: Failure: Msbuild failed when processing the file '/Users/danielwallner/dev/lunate/artifacts/s4-scratch/polly-norestore/src/Polly/Polly.csproj' with message: The reference assemblies for .NETFramework,Version=v4.7.2 were not found. To resolve this, install the Developer Pack (SDK/Targeting Pack) for this framework version or retarget your application. You can download .NET Framework Developer Packs at https://aka.ms/msbuild/developerpacks
+workspace_failure: Failure: Msbuild failed when processing the file '/Users/danielwallner/dev/lunate/artifacts/s4-scratch/polly-norestore/src/Polly/Polly.csproj' with message: The reference assemblies for .NETFramework,Version=v4.6.2 were not found. To resolve this, install the Developer Pack (SDK/Targeting Pack) for this framework version or retarget your application. You can download .NET Framework Developer Packs at https://aka.ms/msbuild/developerpacks
+workspace_failure: Failure: Msbuild failed when processing the file '/Users/danielwallner/dev/lunate/artifacts/s4-scratch/polly-norestore/src/Polly.Core/Polly.Core.csproj' with message: The reference assemblies for .NETFramework,Version=v4.7.2 were not found. To resolve this, install the Developer Pack (SDK/Targeting Pack) for this framework version or retarget your application. You can download .NET Framework Developer Packs at https://aka.ms/msbuild/developerpacks
+workspace_failure: Failure: Msbuild failed when processing the file '/Users/danielwallner/dev/lunate/artifacts/s4-scratch/polly-norestore/src/Polly.Core/Polly.Core.csproj' with message: The reference assemblies for .NETFramework,Version=v4.6.2 were not found. To resolve this, install the Developer Pack (SDK/Targeting Pack) for this framework version or retarget your application. You can download .NET Framework Developer Packs at https://aka.ms/msbuild/developerpacks
+workspace_failure: Warning: Unresolved metadata reference removed from project: /mscorlib.dll
+workspace_failure: Warning: Unresolved metadata reference removed from project: /mscorlib.dll
+workspace_failure: Warning: Unresolved metadata reference removed from project: /mscorlib.dll
+workspace_failure: Warning: Unresolved metadata reference removed from project: /mscorlib.dll
+workspace_failure: Failure: Msbuild failed when processing the file '/Users/danielwallner/dev/lunate/artifacts/s4-scratch/polly-norestore/src/Polly.Extensions/Polly.Extensions.csproj' with message: The reference assemblies for .NETFramework,Version=v4.7.2 were not found. To resolve this, install the Developer Pack (SDK/Targeting Pack) for this framework version or retarget your application. You can download .NET Framework Developer Packs at https://aka.ms/msbuild/developerpacks
+workspace_failure: Failure: Msbuild failed when processing the file '/Users/danielwallner/dev/lunate/artifacts/s4-scratch/polly-norestore/src/Polly.Extensions/Polly.Extensions.csproj' with message: The reference assemblies for .NETFramework,Version=v4.6.2 were not found. To resolve this, install the Developer Pack (SDK/Targeting Pack) for this framework version or retarget your application. You can download .NET Framework Developer Packs at https://aka.ms/msbuild/developerpacks
+workspace_failure: Warning: Unresolved metadata reference removed from project: /mscorlib.dll
+workspace_failure: Warning: Unresolved metadata reference removed from project: /mscorlib.dll
+workspace_failure: Failure: Msbuild failed when processing the file '/Users/danielwallner/dev/lunate/artifacts/s4-scratch/polly-norestore/src/Polly.RateLimiting/Polly.RateLimiting.csproj' with message: The reference assemblies for .NETFramework,Version=v4.7.2 were not found. To resolve this, install the Developer Pack (SDK/Targeting Pack) for this framework version or retarget your application. You can download .NET Framework Developer Packs at https://aka.ms/msbuild/developerpacks
+workspace_failure: Failure: Msbuild failed when processing the file '/Users/danielwallner/dev/lunate/artifacts/s4-scratch/polly-norestore/src/Polly.RateLimiting/Polly.RateLimiting.csproj' with message: The reference assemblies for .NETFramework,Version=v4.6.2 were not found. To resolve this, install the Developer Pack (SDK/Targeting Pack) for this framework version or retarget your application. You can download .NET Framework Developer Packs at https://aka.ms/msbuild/developerpacks
+workspace_failure: Warning: Unresolved metadata reference removed from project: /mscorlib.dll
+workspace_failure: Warning: Unresolved metadata reference removed from project: /mscorlib.dll
+diagnostics: project=Polly(net462) errors=17109 warnings=1330 info=0 hidden=22 error_ids=[CS0246,CS0234,CS0518,CS0103,CS1110,CS0538,CS0616,CS8137]
+diagnostics: project=Polly(net472) errors=17109 warnings=1330 info=0 hidden=22 error_ids=[CS0246,CS0234,CS0518,CS0103,CS1110,CS0616,CS8137,CS8179]
+diagnostics: project=Polly(net6.0) errors=17090 warnings=1328 info=0 hidden=21 error_ids=[CS0246,CS0234,CS0518,CS0103,CS1110,CS0616,CS8137,CS8179]
+load_median_ms: 2769.7
+exit=0

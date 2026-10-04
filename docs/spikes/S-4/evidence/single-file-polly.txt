@@ -1,0 +1,32 @@
+=== single-file (loose build host) Polly load x3 ===
+locator: registered name=.NET Core SDK version=10.0.103 discovery=DotNetSdk
+locator: msbuild_path=/Users/danielwallner/.dotnet/sdk/10.0.103
+locator: msbuild_exe_path=/Users/danielwallner/.dotnet/sdk/10.0.103/MSBuild.dll
+probe: load
+label: single-file-polly
+solution: /Users/danielwallner/dev/lunate/artifacts/s4-scratch/polly/Polly.slnx
+run: 1 load_ms=3330.3 projects=47 documents=3145 workspace_failures=0
+run: 2 load_ms=3115.9 projects=47 documents=3145 workspace_failures=0
+run: 3 load_ms=3034.3 projects=47 documents=3145 workspace_failures=0
+load_median_ms: 3115.9
+real 9.61
+user 9.43
+sys 2.17
+load_exit=0
+=== single-file (loose build host) Polly edit ===
+locator: registered name=.NET Core SDK version=10.0.103 discovery=DotNetSdk
+locator: msbuild_path=/Users/danielwallner/.dotnet/sdk/10.0.103
+locator: msbuild_exe_path=/Users/danielwallner/.dotnet/sdk/10.0.103/MSBuild.dll
+probe: load
+label: single-file-polly-edit
+solution: /Users/danielwallner/dev/lunate/artifacts/s4-scratch/polly/Polly.slnx
+run: 1 load_ms=3401.5 projects=47 documents=3145 workspace_failures=0
+edit_file: /Users/danielwallner/dev/lunate/artifacts/s4-scratch/polly/src/Polly.Core/Retry/RetryStrategyOptions.cs
+edit_cycle: iteration=1 inject=True total_ms=741.4 apply_ms=741.2 errors=1 warnings=0 info=0 hidden=19
+edit_cycle: iteration=2 inject=False total_ms=135.5 apply_ms=135.3 errors=0 warnings=0 info=0 hidden=19
+edit_cycle: iteration=3 inject=True total_ms=89.4 apply_ms=89.2 errors=1 warnings=0 info=0 hidden=19
+edit_cycle: iteration=4 inject=False total_ms=90.2 apply_ms=90.0 errors=0 warnings=0 info=0 hidden=19
+edit_restore: original_written=true
+edit_median_ms: 112.9
+load_median_ms: 3401.5
+edit_exit=0

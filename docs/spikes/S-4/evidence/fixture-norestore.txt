@@ -1,0 +1,13 @@
+=== missing restore: no obj/, never restored ===
+locator: registered name=.NET Core SDK version=10.0.103 discovery=DotNetSdk
+locator: msbuild_path=/Users/danielwallner/.dotnet/sdk/10.0.103
+locator: msbuild_exe_path=/Users/danielwallner/.dotnet/sdk/10.0.103/MSBuild.dll
+probe: load
+label: fixture-norestore
+solution: /Users/danielwallner/dev/lunate/artifacts/s4-scratch/fixture-norestore/Fixture.sln
+run: 1 load_ms=616.5 projects=3 documents=12 workspace_failures=0
+diagnostics: project=Fixture.App errors=0 warnings=0 info=0 hidden=12 error_ids=[]
+diagnostics: project=Fixture.Lib errors=0 warnings=0 info=0 hidden=12 error_ids=[]
+diagnostics: project=Fixture.Tests errors=8 warnings=0 info=0 hidden=13 error_ids=[CS0246,CS5001,CS0103]
+load_median_ms: 616.5
+exit=0

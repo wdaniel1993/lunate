@@ -1,0 +1,17 @@
+=== Polly edit-to-diagnostics (RetryStrategyOptions.cs) ===
+locator: registered name=.NET Core SDK version=10.0.103 discovery=DotNetSdk
+locator: msbuild_path=/Users/danielwallner/.dotnet/sdk/10.0.103
+locator: msbuild_exe_path=/Users/danielwallner/.dotnet/sdk/10.0.103/MSBuild.dll
+probe: load
+label: polly-edit
+solution: /Users/danielwallner/dev/lunate/artifacts/s4-scratch/polly/Polly.slnx
+run: 1 load_ms=3170.8 projects=47 documents=3145 workspace_failures=0
+edit_file: /Users/danielwallner/dev/lunate/artifacts/s4-scratch/polly/src/Polly.Core/Retry/RetryStrategyOptions.cs
+edit_cycle: iteration=1 inject=True total_ms=783.8 apply_ms=783.6 errors=1 warnings=0 info=0 hidden=19
+edit_cycle: iteration=2 inject=False total_ms=105.9 apply_ms=105.7 errors=0 warnings=0 info=0 hidden=19
+edit_cycle: iteration=3 inject=True total_ms=89.8 apply_ms=89.5 errors=1 warnings=0 info=0 hidden=19
+edit_cycle: iteration=4 inject=False total_ms=86.3 apply_ms=86.2 errors=0 warnings=0 info=0 hidden=19
+edit_restore: original_written=true
+edit_median_ms: 97.8
+load_median_ms: 3170.8
+exit=0
