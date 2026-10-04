@@ -24,9 +24,9 @@
 
 ## 5. S-4 — MSBuildWorkspace reality check
 
-- [ ] 5.1 Build the workspace spike: `MSBuildLocator` + fixture solution (console + library + tests); measure cold load and edit-to-diagnostics latency
-- [ ] 5.2 Repeat with one large real OSS solution (pinned by commit) and from a published single-file build; record failure modes (missing restore, broken references)
-- [ ] 5.3 Write `docs/spikes/S-4/report.md`; draft `adr/0006-roslyn-placement.md`
+- [x] 5.1 Build the workspace spike: `MSBuildLocator` + fixture solution (console + library + tests); measure cold load and edit-to-diagnostics latency
+- [x] 5.2 Repeat with one large real OSS solution (pinned by commit) and from a published single-file build; record failure modes (missing restore, broken references)
+- [x] 5.3 Write `docs/spikes/S-4/report.md`; draft `adr/0006-roslyn-placement.md`
 
 ## 6. Close
 

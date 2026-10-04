@@ -41,4 +41,4 @@ Confirmed 2026-10-04:
 | S-1 | Own loop or Microsoft Agent Framework harness? | done 2026-10-04 | Own loop; borrow MAF approvals/session patterns (ADR 0003 proposed) |
 | S-2 | Does raw-key reading work in mintty? | automated done 2026-10-04; manual run pending | Probe + headless VT decode green on macOS; ADR 0004 proposed |
 | S-3 | Startup baselines and calibrated budgets | done 2026-10-04 | CI 250/300/350 ms, local 150 ms; ADR 0005 proposed |
-| S-4 | Does in-process Roslyn load real solutions? | pending | — |
+| S-4 | Does in-process Roslyn load real solutions? | done 2026-10-04 | Go in-process; single-file keeps the MSBuild build host loose (ADR 0006 proposed) |
