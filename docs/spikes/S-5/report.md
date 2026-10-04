@@ -119,6 +119,21 @@ release risk for anything that adds a timer-heavy dependency, and B+'s stable
 numbers above are from the same publish minus compression. The spike did not
 isolate the root cause; see Limits.
 
+#### Crash probe follow-up (2026-10-04, ADR-0008)
+
+- **CI runners, exact flags:** `win-x64` and `linux-x64` each ran 100 starts ×
+  4 variants × both flag sets: **0 crashes** (workflow run 37209985856;
+  [`evidence/crash-probe-ci.txt`](evidence/crash-probe-ci.txt)). The crash is
+  macOS-specific so far.
+- **macOS re-run (independent):** `crash-probe.sh osx-arm64` re-confirmed it —
+  VariantBPlus **13/100** compressed, VariantA 0/100 (was 1/100), Baseline and
+  VariantB 0/100, all uncompressed 0/100
+  ([`evidence/crash-probe-local.txt`](evidence/crash-probe-local.txt)).
+- **Minimal repro (macOS, exact flags):** timer-only and Rx+timer apps without
+  Lunate code did **not** reproduce it (0/200 compressed and 0/100 uncompressed
+  each). No `dotnet/runtime` issue is drafted (the
+  reproduce-without-our-code condition is unmet); deeper isolation stays open.
+
 ### 2. Lines of code
 
 [`loc.txt`](evidence/loc.txt): Baseline 72, A 164, B 114, B+ 298 (excluding

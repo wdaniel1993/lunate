@@ -152,8 +152,11 @@ If loading is unreliable, decide before Phase 5: fix it, move Roslyn out of proc
 | --- | --- |
 | `lunate --version` | under 150 ms |
 | First TUI frame | under 300 ms |
-| Idle memory in the TUI | under 100 MB |
+| Idle memory in the TUI (no Roslyn) | under 100 MB |
+| Idle memory after the first C# tool call (Roslyn loaded) | set in T-25 from measured workspace cost (S-4: ~0.5 GB peak on a 47-project solution) |
 | First C# tool call (Roslyn load, small solution; calibrated by S-4) | under 5 s |
+
+Idle memory is dominated by the .NET runtime and the ReadyToRun image (~70 MB floor for a hello single-file R2R build; Spectre adds ~10 MB; GC settings do not materially change it — S-5 decomposition, `docs/spikes/S-5/evidence/mem-decomposition.txt`).
 
 Adding a package is a design decision: add a row here (and an ADR) before OpenCode touches a `.csproj`.
 

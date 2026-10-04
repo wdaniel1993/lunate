@@ -31,11 +31,13 @@ compress the binary at the distribution layer, so users still download a
   `EnableCompressionInSingleFile`.** `scripts/verify.sh` and the release
   workflow publish uncompressed; release archives stay compressed.
 - This supersedes the "compression on" wording of ADR 0001's release row.
-- **Follow-up:** re-run the crash probe on `win-x64` and `linux-x64` (CI
-  runners) and attempt a minimal repro without Lunate code; results land in
-  `docs/spikes/S-5/`. If it reproduces without our code, a draft
-  `dotnet/runtime` issue is prepared in the spike folder (filing is the
-  maintainer's).
+- **Follow-up results (2026-10-04):** the crash probe on CI runners
+  (`win-x64`, `linux-x64`; 100 starts × 4 variants × 2 flag sets each) found
+  **0 crashes** — the crash is macOS-specific so far. On macOS the independent
+  re-run reproduced it (VariantBPlus 13/100 compressed) while minimal
+  timer-only apps without Lunate code did **not** (0/600). No `dotnet/runtime`
+  issue is drafted; deeper isolation stays open. Evidence:
+  `docs/spikes/S-5/evidence/crash-probe-ci.txt` and `crash-probe-local.txt`.
 
 ## Alternatives considered
 
@@ -53,5 +55,6 @@ compress the binary at the distribution layer, so users still download a
   `EnableCompressionInSingleFile`.
 - The verify gate now exercises the release flag set without compression; a
   future re-introduction of compression must cite new evidence.
-- The crash probe and minimal-repro results land in `docs/spikes/S-5/` and the
-  S-5 report; open until then.
+- The crash probe and minimal-repro results are recorded in `docs/spikes/S-5/`
+  and the S-5 report (macOS-only and non-minimal so far); deeper isolation is
+  open follow-up work.

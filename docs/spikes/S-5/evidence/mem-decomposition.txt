@@ -1,0 +1,30 @@
+label=hello-1 exit=0 peak_rss_kb_total=72128
+label=hello-2 exit=0 peak_rss_kb_total=72048
+label=hello-3 exit=0 peak_rss_kb_total=71952
+label=hello-spectre-1 exit=0 peak_rss_kb_total=82336
+label=hello-spectre-2 exit=0 peak_rss_kb_total=82368
+label=hello-spectre-3 exit=0 peak_rss_kb_total=82336
+label=baseline-default-1 exit=0 peak_rss_kb_total=76608
+ready heap_bytes=24640
+label=baseline-default-2 exit=0 peak_rss_kb_total=80784
+ready heap_bytes=24640
+label=baseline-default-3 exit=0 peak_rss_kb_total=76704
+ready heap_bytes=24640
+label=baseline-conserve9-1 exit=0 peak_rss_kb_total=76560
+ready heap_bytes=24640
+label=baseline-conserve9-2 exit=0 peak_rss_kb_total=76624
+ready heap_bytes=24640
+label=baseline-conserve9-3 exit=0 peak_rss_kb_total=76800
+ready heap_bytes=24640
+label=baseline-servergc-1 exit=0 peak_rss_kb_total=78464
+ready heap_bytes=26152
+label=baseline-servergc-2 exit=0 peak_rss_kb_total=78608
+ready heap_bytes=26152
+label=baseline-servergc-3 exit=0 peak_rss_kb_total=78576
+ready heap_bytes=26152
+label=baseline-tieredoff-1 exit=0 peak_rss_kb_total=76816
+ready heap_bytes=24640
+label=baseline-tieredoff-2 exit=0 peak_rss_kb_total=76896
+ready heap_bytes=24640
+label=baseline-tieredoff-3 exit=0 peak_rss_kb_total=76880
+ready heap_bytes=24640

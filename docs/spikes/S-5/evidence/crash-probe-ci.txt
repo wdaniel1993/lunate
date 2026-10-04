@@ -1,0 +1,24 @@
+# S-5 crash probe on CI runners (ADR-0008 follow-up, 2026-10-04)
+# workflow run 37209985856 (s5-crash-probe.yml), 100 starts per config.
+# macOS (local, S-5): B+ 11/100 and A 1/100 compressed; all clean uncompressed.
+
+## s5-crash-probe-linux-x64
+Baseline compressed: runs=100 non_zero_exit=0
+Baseline uncompressed: runs=100 non_zero_exit=0
+VariantA compressed: runs=100 non_zero_exit=0
+VariantA uncompressed: runs=100 non_zero_exit=0
+VariantB compressed: runs=100 non_zero_exit=0
+VariantB uncompressed: runs=100 non_zero_exit=0
+VariantBPlus compressed: runs=100 non_zero_exit=0
+VariantBPlus uncompressed: runs=100 non_zero_exit=0
+
+## s5-crash-probe-win-x64
+Baseline compressed: runs=100 non_zero_exit=0
+Baseline uncompressed: runs=100 non_zero_exit=0
+VariantA compressed: runs=100 non_zero_exit=0
+VariantA uncompressed: runs=100 non_zero_exit=0
+VariantB compressed: runs=100 non_zero_exit=0
+VariantB uncompressed: runs=100 non_zero_exit=0
+VariantBPlus compressed: runs=100 non_zero_exit=0
+VariantBPlus uncompressed: runs=100 non_zero_exit=0
+

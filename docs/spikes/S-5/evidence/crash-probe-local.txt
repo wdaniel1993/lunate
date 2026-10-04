@@ -1,0 +1,12 @@
+# S-5 crash probe re-run on macOS arm64 (ADR-0008 follow-up, 2026-10-04)
+# crash-probe.sh osx-arm64, 100 starts per config.
+# S-5 original run: VariantBPlus 11/100, VariantA 1/100 compressed; all clean uncompressed.
+
+Baseline compressed: runs=100 non_zero_exit=0
+Baseline uncompressed: runs=100 non_zero_exit=0
+VariantA compressed: runs=100 non_zero_exit=0
+VariantA uncompressed: runs=100 non_zero_exit=0
+VariantB compressed: runs=100 non_zero_exit=0
+VariantB uncompressed: runs=100 non_zero_exit=0
+VariantBPlus compressed: runs=100 non_zero_exit=13
+VariantBPlus uncompressed: runs=100 non_zero_exit=0
