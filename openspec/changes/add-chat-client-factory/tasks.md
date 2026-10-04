@@ -10,8 +10,8 @@
 
 ## 3. Catalog
 
-- [ ] 3.1 `ModelCatalog`: merge embedded + `~/.lunate/models.json` (user overrides by id, duplicate-id error, missing user file tolerated)
-- [ ] 3.2 Catalog tests (override wins, new id selectable, duplicate error, missing file)
+- [x] 3.1 `ModelCatalog`: merge embedded + `~/.lunate/models.json` (user overrides by id, duplicate-id error, missing user file tolerated)
+- [x] 3.2 Catalog tests (override wins, new id selectable, duplicate error, missing file)
 
 ## 4. Close
 

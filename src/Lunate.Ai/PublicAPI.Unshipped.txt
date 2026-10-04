@@ -4,6 +4,10 @@ Lunate.Ai.ChatClientFactory.ChatClientFactory(Microsoft.Extensions.Logging.ILogg
 Lunate.Ai.ChatClientFactory.Create(Lunate.Ai.ModelInfo! model) -> Microsoft.Extensions.AI.IChatClient!
 Lunate.Ai.IChatClientFactory
 Lunate.Ai.IChatClientFactory.Create(Lunate.Ai.ModelInfo! model) -> Microsoft.Extensions.AI.IChatClient!
+Lunate.Ai.ModelCatalog
+Lunate.Ai.ModelCatalog.Find(string! id) -> Lunate.Ai.ModelInfo?
+static Lunate.Ai.ModelCatalog.Load(string? userFilePath = null) -> Lunate.Ai.ModelCatalog!
+Lunate.Ai.ModelCatalog.Models.get -> System.Collections.Generic.IReadOnlyList<Lunate.Ai.ModelInfo!>!
 Lunate.Ai.ModelInfo
 Lunate.Ai.ModelInfo.<Clone>$() -> Lunate.Ai.ModelInfo!
 Lunate.Ai.ModelInfo.ContextWindow.get -> int
