@@ -8,17 +8,17 @@ Sigma (working name) is a fast, native terminal coding agent in C#, built as a d
 
 **Why it should exist next to Pi and OpenCode**
 
-- **Semantic C# tools:** a compile check after every edit and symbol navigation through Roslyn. No mainstream terminal agent ships this.
+- **Zero-setup, reliable C#:** Roslyn is built in, with no plugin or language server to install. Compile checks after every edit, and refactor-class tools (find references, rename) as first-class agent tools with mandatory diffs. Claude Code and OpenCode reach C# through LSP plugins, which need setup and have known reliability problems.
 - **One file, no runtime to install:** self-contained single file, fast start, no Node or Python runtime, and extensions loaded at runtime like Pi's.
 - **Editor and local-model friendly:** runs inside Zed or JetBrains via ACP and works with any OpenAI-compatible endpoint, including the home lab.
 
-The Phase 5 gate tests the first claim with the task suite. If it does not hold, Sigma stays a learning project, which is fine.
+These claims age quickly, so the Phase 5 gate tests them head to head: the same C# task suite with Sigma, Claude Code with its C# LSP plugin, and OpenCode with its C# tooling. If Sigma does not win on C# tasks, it stays a personal tool and a learning project, which is fine.
 
 **Goals**
 
 - A working agent `sigma` with interactive TUI, print mode and ACP mode, for OpenAI-compatible, Anthropic and local models.
 - Reliability first: the `edit` tool tolerates harmless formatting differences but never applies an ambiguous change, and every failure is a message the model can act on.
-- Self-contained single-file releases (ReadyToRun) for win-x64, win-arm64, linux-x64, linux-arm64, osx-arm64 and osx-x64, held to startup and memory budgets in CI.
+- Self-contained single-file releases (ReadyToRun) for osx-arm64, win-x64 and linux-x64 (more targets on demand), held to startup and memory budgets in CI.
 - Semantic C# tools through Roslyn, loaded only when first needed, and runtime extensions for tools, slash commands and event handlers.
 - Plain, readable C# in small files; no hard line-count target.
 - Buildable by Claude Code from task cards, with rules enforced by analyzers, hooks and CI.
@@ -66,7 +66,7 @@ sigma/
   docs/spec/                   # this guide, one file per section
   docs/tasks/                  # T-xx.md cards + index.md (status per card)
   docs/decisions/              # ADR-xxx.md
-  docs/spikes/                 # spike code and reports (S-1 MAF Harness, S-2 Git Bash input)
+  docs/spikes/                 # spike code and reports (S-1 to S-4)
   scripts/verify.sh            # + verify.ps1: build, tests, publish, budgets, API and format checks
   scripts/perf.sh              # startup and memory budgets
   src/Sigma.Ai/                # IChatClient setup, model catalog, record and replay clients
@@ -94,7 +94,7 @@ Stick to .NET 10, Microsoft.Extensions.AI and a few well-known packages. No Nati
 | Concern | Choice | Project | Why |
 | --- | --- | --- | --- |
 | Runtime | .NET 10, C# 14, SDK pinned in `global.json` | all | Current LTS |
-| Release build | Self-contained single file, ReadyToRun, compression on, six targets | Sigma.Coding | One file, no runtime install, fast start |
+| Release build | Self-contained single file, ReadyToRun, compression on, three targets | Sigma.Coding | One file, no runtime install, fast start |
 | Model access | `IChatClient`, `ChatMessage`, `ChatResponseUpdate` everywhere; no `FunctionInvokingChatClient` (the loop runs tools) | Sigma.Ai, Sigma.Agent | The .NET standard, maintained by Microsoft |
 | Providers | OpenAI-compatible via the Microsoft.Extensions.AI OpenAI adapter; Anthropic via an `IChatClient` implementation (check the official SDK first) | Sigma.Ai | One abstraction for every model |
 | Telemetry | OpenTelemetry via `IChatClient` middleware + own `ActivitySource`, opt-in | Sigma.Ai, Sigma.Agent | Traces of model and tool calls |
@@ -122,6 +122,7 @@ Each spike is throwaway code in `docs/spikes/S-x/` with a short report and an AD
 | S-1 MAF Harness | Can Sigma's loop be the Microsoft Agent Framework Harness instead of our own? | ADR: own loop, harness, or borrow parts |
 | S-2 Git Bash input | Does raw key reading work for a .NET app inside mintty? | ADR: supported, or documented fallback |
 | S-3 Startup baseline | Single-file ReadyToRun hello-world on all OSes: startup and memory | Calibrated budgets for `scripts/perf.sh` |
+| S-4 MSBuildWorkspace reality check | Does in-process Roslyn load real solutions reliably and fast enough, also from the published single-file build? | ADR: go, move Roslyn out of process, or narrow the C# claim; calibrated Roslyn budgets |
 
 **S-1 in detail.** Build a minimal harness agent with our four tools and every optional harness feature (todos, modes, web search, file memory, file access) switched off. Check six things:
 
@@ -134,6 +135,16 @@ Each spike is throwaway code in `docs/spikes/S-x/` with a short report and an AD
 
 Default is our own loop on `IChatClient`. Switch to the harness only if it passes 2 to 5; if it fails some, borrow its parts (compaction strategy, approval middleware) instead.
 
+**S-4 in detail.** The C# differentiator rests on in-process Roslyn beating the plugin paths, and loading workspaces is historically the painful part. Use the fixture solution plus one large real solution, and check:
+
+1. `MSBuildLocator` finds the right SDK on all three OSes, including a machine with several SDKs and a `global.json` pin.
+2. Cold load time and memory for both solutions.
+3. Edit to diagnostics latency after a change made through the `edit` tool.
+4. Behaviour on design-time build problems: missing restore, unsupported project types, broken references.
+5. All of the above again from the published single-file build. As far as I know, recent `MSBuildWorkspace` versions run design-time builds in a separate build-host process, so check that it ships and starts correctly from a single-file app.
+
+If loading is unreliable, decide before Phase 5: fix it, move Roslyn out of process, or narrow the C# claim.
+
 **Performance budgets (starting points, calibrated by S-3)**
 
 | Measure | Budget |
@@ -141,7 +152,7 @@ Default is our own loop on `IChatClient`. Switch to the harness only if it passe
 | `sigma --version` | under 150 ms |
 | First TUI frame | under 300 ms |
 | Idle memory in the TUI | under 100 MB |
-| First C# tool call (Roslyn load, small solution) | under 5 s |
+| First C# tool call (Roslyn load, small solution; calibrated by S-4) | under 5 s |
 
 Adding a package is a design decision: add a row here (and an ADR) before Claude Code touches a `.csproj`.
 
@@ -407,7 +418,7 @@ Sigma should run wherever Pi runs: macOS, Linux and Windows, in the terminals pe
 
 **Release targets**
 
-Self-contained single-file builds with ReadyToRun and compression for `win-x64`, `win-arm64`, `linux-x64`, `linux-arm64`, `osx-arm64` and `osx-x64`. Users install no .NET runtime. CI publishes each target and runs `scripts/perf.sh` on the three OS runners.
+Self-contained single-file builds with ReadyToRun and compression for `osx-arm64`, `win-x64` and `linux-x64` (more targets on demand). Users install no .NET runtime. CI publishes each target and runs `scripts/perf.sh` on the three OS runners.
 
 **Terminal support**
 
@@ -452,7 +463,7 @@ Self-contained single-file builds with ReadyToRun and compression for `win-x64`,
 
 **CI matrix**
 
-Build and test on `ubuntu`, `macos` and `windows` runners for every commit; publish all six targets on release tags. Manual checks before each release: Windows Terminal, conhost, Git Bash, macOS Terminal, one Linux terminal, tmux over SSH.
+Build and test on `ubuntu`, `macos` and `windows` runners for every commit; publish all three targets on release tags. Manual checks before each release: Windows Terminal, conhost, Git Bash, macOS Terminal, one Linux terminal, tmux over SSH.
 
 ## Protocols (Sigma.Protocols)
 
@@ -504,6 +515,8 @@ Roslyn loads in process on the first C# tool call. `MSBuildLocator` finds the in
 
 Phase 5 ships `cs_diagnostics` and `cs_find_symbol`, because they carry the main claim (a compile check right after an edit). The other three follow in Phase 6. Tests use small solutions in `tests/fixtures/solutions/` (a console app, and a library with a test project) so a workspace loads in seconds.
 
+The Phase 5 gate is external (T-35): the same C# task suite with Sigma, with Claude Code plus its C# LSP plugin, and with OpenCode plus its C# tooling. Record setup steps needed, pass rate, steps, tokens, edit tiers used and wall time. Sigma has to win on reliability and steps, not only work.
+
 **Rules**
 
 - Outputs are compact text, not JSON dumps. Cap at the same limit as other tools.
@@ -523,8 +536,8 @@ One row per card. Each becomes `docs/tasks/T-xx.md` (template below) before Clau
 | ID | Phase | Card | Depends on | Done when |
 | --- | --- | --- | --- | --- |
 | T-01 | 0 | Repo skeleton: solution, `Directory.Build.props`, `global.json`, `.editorconfig`, analyzers, AGENTS.md, CLAUDE.md, `.claude/` | – | `scripts/verify.sh` green on empty projects |
-| T-02 | 0 | CI: build and test on 3 OSes, single-file publish for six targets, `scripts/perf.sh` | T-01 | Artifacts for all targets; CI turns red when a budget is exceeded |
-| T-03 | 0 | Spikes S-1 MAF Harness, S-2 Git Bash input, S-3 startup baseline | T-02 | One ADR per spike; budgets calibrated |
+| T-02 | 0 | CI: build and test on 3 OSes, single-file publish for three targets, `scripts/perf.sh` | T-01 | Artifacts for all targets; CI turns red when a budget is exceeded |
+| T-03 | 0 | Spikes S-1 MAF Harness, S-2 Git Bash input, S-3 startup baseline, S-4 MSBuildWorkspace reality check | T-02 | One ADR per spike; budgets calibrated |
 | T-04 | 1 | `IChatClientFactory` and model catalog with user override | T-03 | Pipeline built per provider; catalog merge tests |
 | T-05 | 1 | `RecordingChatClient` and `ReplayChatClient` | T-04 | Recorded fixture replays identically |
 | T-06 | 1 | Providers (OpenAI-compatible, Anthropic) and `StreamAccumulator` | T-05 | Contract tests; fixtures from each provider committed |
@@ -556,6 +569,7 @@ One row per card. Each becomes `docs/tasks/T-xx.md` (template below) before Clau
 | T-32 | 4 | Distribution: release workflow, install scripts, Homebrew, Scoop, winget, `dotnet tool` | T-02, T-17 | Fresh install works on Windows, macOS and Linux with one command |
 | T-33 | 4 | Terminal capability detection and fallbacks; manual terminal matrix check | T-18, T-19 | Every tier-1 terminal checked and noted in the card |
 | T-34 | 6 | Extension authoring: template project, docs, one sample extension | T-24 | A new extension builds from the template and loads |
+| T-35 | 5 | Head-to-head C# eval: Sigma vs Claude Code with the C# LSP plugin vs OpenCode with its C# tooling; same tasks and model where possible; pass rate, steps, tokens, edit tiers, time | T-17, T-25, T-26 | One results row per tool in eval/results.csv and a short write-up in docs/eval/ |
 
 Independent tracks can run in parallel in separate git worktrees, for example T-18/T-19 (TUI) next to T-12 to T-15 (tools).
 
@@ -847,7 +861,7 @@ Tests are how Claude Code knows it is done: every level below runs without API k
 | Roslyn | Diagnostics and symbol lookup | Fixture solutions in `tests/fixtures/solutions/` | Every commit (Category=Slow) |
 | Performance budgets | Startup time and idle memory | `scripts/verify.sh` publish step and scripts/perf.sh on all three CI runners | Every commit |
 | Contract | Provider adapters against real endpoints | `SIGMA_LIVE=1`; local model on the home lab costs nothing | Manual / nightly |
-| Task suite | 15–20 small coding tasks (mostly C#, some Python and TypeScript) with a check script each | `sigma -p --json`; pass/fail, steps, tokens, time, edit tiers used | Per phase gate |
+| Task suite | 15–20 small coding tasks (mostly C#, some Python and TypeScript) with a check script each | `sigma -p --json`; pass/fail, steps, tokens, time, edit tiers used | Per phase gate; Phase 5 also runs Claude Code and OpenCode on the C# tasks |
 
 Results go to `eval/results.csv` per phase and model. Use the suite to decide whether Roslyn tools, a prompt change or compaction actually help, not intuition.
 
@@ -887,7 +901,7 @@ These decisions are settled; T-01 turns each into an ADR in `docs/decisions/` so
 
 **Resolved after review**
 
-- [x] **Name.** Decided: Sigma. Reserve the NuGet, Homebrew and winget names early (with a fallback such as sigma-agent if sigma is taken).
+- [x] **Name.** Decided: Sigma as product and command name. The NuGet id sigma is taken, so packages use sigma-agent (free on NuGet; Homebrew core free; winget still to check).
 - [x] **Own provider types or `IChatClient` all the way?** Revised: `IChatClient` all the way; own types only for tools and events (reasons in Layer 1).
 - [x] **Shells.** Decided: broad support like Pi. Detection per platform (bash on Unix; Git Bash, pwsh, Windows PowerShell, cmd on Windows) and a terminal matrix; see Platforms, shells and terminals.
 - [x] **Default model for dogfooding and the eval baseline.** Decided: a cloud model, with the exact model id pinned in every eval row (T-17).
