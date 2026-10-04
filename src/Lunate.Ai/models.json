@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "models": [
+    { "id": "gpt-4o-mini", "provider": "openai", "endpoint": null, "contextWindow": 128000, "supportsTools": true },
+    { "id": "gpt-4o", "provider": "openai", "endpoint": null, "contextWindow": 128000, "supportsTools": true }
+  ]
+}

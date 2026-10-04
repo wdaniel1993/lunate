@@ -1,7 +1,7 @@
 ## 1. Scaffolding
 
-- [ ] 1.1 Add the Layer 1 packages to `src/Lunate.Ai` (exact pins per design; `Microsoft.Extensions.AI.OpenAI` fetched from nuget.org; stop and ask if a pin needs a version the design did not list)
-- [ ] 1.2 Embed `models.json` (schema version + a small starter set) as a resource; wire the resource into the csproj
+- [x] 1.1 Add the Layer 1 packages to `src/Lunate.Ai` (exact pins per design; `Microsoft.Extensions.AI.OpenAI` fetched from nuget.org; stop and ask if a pin needs a version the design did not list)
+- [x] 1.2 Embed `models.json` (schema version + a small starter set) as a resource; wire the resource into the csproj
 
 ## 2. Factory
 
