@@ -172,7 +172,7 @@ public sealed record ModelInfo(string Id, string Provider, Uri? Endpoint, int Co
 
 public interface IChatClientFactory
 {
-    // provider client -> OpenTelemetry (opt-in) -> logging -> recorder (LUNATE_RECORD=1)
+    // outermost first: OpenTelemetry (opt-in) -> logging -> recorder (LUNATE_RECORD=1) -> provider
     IChatClient Create(ModelInfo model);
 }
 
@@ -190,6 +190,14 @@ public sealed class ReplayChatClient(string fixturePath) : IChatClient { }
 - The loop acts only on complete function calls. If an adapter streams arguments in pieces, one `StreamAccumulator` assembles them, tested on recorded streams from every provider.
 - Finish reasons come from `ChatFinishReason`; an unknown value counts as stop and raises a warning event.
 - No retries here. Retries live in the loop, so they show up as events.
+
+**Reuse list — MEAI building blocks we do not write ourselves**
+
+- `UseOpenTelemetry()`: spans and metrics for every model call (model, tokens, duration), following the OpenTelemetry GenAI conventions. Off by default; on when configured (settings or `OTEL_*` environment variables). Prompt and tool content is not recorded unless explicitly enabled.
+- `UseLogging()`: model-call logging through `ILogger`.
+- `AIJsonUtilities`: serialization options for MEAI types (sessions, fixtures).
+- Approval content types: `ToolApprovalRequestContent` / `ToolApprovalResponseContent` (confirmed present in Microsoft.Extensions.AI.Abstractions 10.10.x) shape our approval events and policy without new message types.
+- Pipeline order in `IChatClientFactory`, outermost first: **OpenTelemetry -> logging -> recorder (`LUNATE_RECORD=1`) -> provider**. Replay replaces recorder + provider, so tests still run through the telemetry and logging layers.
 
 **Recorded streams (tests never need API keys)**
 
@@ -252,8 +260,17 @@ The harness exposes them as `IAsyncEnumerable<AgentEvent>` from `AgentHarness.Ru
 
 - Cancellation: `Esc` in the UI cancels the `CancellationToken`; the loop records a cancelled tool result so the history stays valid.
 - Retries: transient provider errors retry 3 times with backoff, each attempt raising `Retrying`.
-- Compaction: an `ICompactionStrategy` runs when estimated tokens pass 80% of the model's context window. The first version summarizes old turns with the same model and keeps the last N turns verbatim.
+- Compaction: our strategy implements `IChatReducer` and runs when estimated tokens pass 80% of the model's context window. The first version summarizes old turns with the same model and keeps the last N turns verbatim.
 - Steering: the user may type while a turn runs; the message is queued and injected before the next model call.
+
+**Telemetry in the loop**
+
+`FunctionInvokingChatClient` and the MAF harness would have created this; we do it:
+
+- One `ActivitySource`, `"Lunate.Agent"`.
+- One span per run (operation `invoke_agent`) and one child span per tool call (operation `execute_tool`) carrying the tool name and call id. Span names follow the OpenTelemetry GenAI agent conventions (`invoke_agent {gen_ai.agent.name}`, `execute_tool {gen_ai.tool.name}`; attributes `gen_ai.operation.name`, `gen_ai.tool.name`, `gen_ai.tool.call.id`; the conventions are in Development status — verify the exact names again when implementing).
+- Lunate attributes on tool spans: `lunate.tool.is_error`, `lunate.edit.match_tier`, `lunate.approval.decision`.
+- Model-call spans from `UseOpenTelemetry()` nest under the run span.
 
 **Session entries**
 
@@ -272,6 +289,7 @@ Append-only JSONL, one entry per line, each with `id`, `parentId`, `type` and a 
 
 **Compaction**
 
+- **Shape:** our strategy implements `IChatReducer` (not `[Experimental]` in the pinned Microsoft.Extensions.AI 10.10.x) and the loop calls it before each model request, so it can emit `CompactionApplied` and write the compaction entry. Do not use `ReducingChatClient` — the loop decides when to compact. MEAI also ships `SummarizingChatReducer` and `MessageCountingChatReducer`; evaluate them as the base before writing custom reduction logic.
 - **Trigger:** estimated context tokens pass 80% of the model's window. Estimate is characters / 4, corrected by the last `UsageReported`. Also on `/compact`.
 - **What stays verbatim:** system prompt, `AGENTS.md`, the last 6 turns, and any turn whose tool call or result would otherwise be split.
 - **What is summarized:** everything older, by the same model with a fixed summarization prompt (goal, decisions, files touched, open problems), stored as a `compaction` entry. The session file keeps the full history; only the request sent to the model is shortened.
@@ -539,12 +557,12 @@ One row per card. Each card becomes one OpenSpec change (see Building it with Op
 | T-01 | 0 | Repo skeleton: solution, `Directory.Build.props`, `global.json`, `.editorconfig`, analyzers, AGENTS.md, `opencode.json` | – | `scripts/verify.sh` green on empty projects |
 | T-02 | 0 | CI: build and test on 3 OSes, single-file publish for three targets, `scripts/perf.sh` | T-01 | Artifacts for all targets; CI turns red when a budget is exceeded |
 | T-03 | 0 | Spikes S-1 MAF Harness, S-2 Git Bash input, S-3 startup baseline, S-4 MSBuildWorkspace reality check | T-02 | One ADR per spike; budgets calibrated |
-| T-04 | 1 | `IChatClientFactory` and model catalog with user override | T-03 | Pipeline built per provider; catalog merge tests |
+| T-04 | 1 | `IChatClientFactory` and model catalog with user override; pipeline order + MEAI reuse list (spec Layer 1) | T-03 | Pipeline built per provider; catalog merge tests |
 | T-05 | 1 | `RecordingChatClient` and `ReplayChatClient` | T-04 | Recorded fixture replays identically |
 | T-06 | 1 | Providers (OpenAI-compatible, Anthropic) and `StreamAccumulator` | T-05 | Contract tests; fixtures from each provider committed |
 | T-07 | 1 | `AgentEvent` types, aligned with AG-UI | T-04 | Event sequence rules tested |
 | T-08 | 2 | `ITool`, `ToolDeclaration` adapter, registry, output truncation | T-04 | Schemas reach the model unchanged; truncation tests |
-| T-09 | 2 | Agent loop on `IChatClient`: run, tool execution, max steps, events | T-06, T-07, T-08 | Snapshot of 3 replayed sessions |
+| T-09 | 2 | Agent loop on `IChatClient`: run, tool execution, max steps, events; run and tool spans (spec Layer 2) | T-06, T-07, T-08 | Snapshot of 3 replayed sessions; a replayed session produces one run span with nested model and tool spans (in-memory exporter) |
 | T-10 | 2 | Error paths: bad JSON, unknown tool, cancel, retries | T-09 | One replay test per path; history stays valid |
 | T-11 | 2 | Session JSONL store, resume, golden files | T-09 | Golden files round-trip byte for byte |
 | T-12 | 3 | Workspace paths, `read`, `write` | T-08 | Boundary tests incl. symlinks and case-insensitive file systems |
@@ -558,7 +576,7 @@ One row per card. Each card becomes one OpenSpec change (see Building it with Op
 | T-20 | 4 | `ToolBlock` and Myers diff rendering | T-19, T-13 | Snapshots incl. match tier |
 | T-21 | 4 | Approval prompt, status footer, key bindings | T-18 | Scripted key tests for every binding |
 | T-22 | 4 | Wire events, steering, `Esc` cancel, slash commands, pickers | T-09, T-18 to T-21 | End-to-end scripted session snapshot |
-| T-23 | 4 | Compaction | T-11 | Replay: long session compacts; tool pairs never split |
+| T-23 | 4 | Compaction as `IChatReducer` (loop-invoked; not `ReducingChatClient`) | T-11 | Replay: long session compacts; tool pairs never split |
 | T-24 | 5 | Extension loader: manifests, `AssemblyLoadContext`, lazy load, project approval | T-09 | Sample extension loads; startup budget unchanged |
 | T-25 | 5 | `Lunate.Roslyn` extension: `MSBuildLocator`, workspace load, file sync, `cs_diagnostics` | T-24 | Detects an error introduced by `edit`; first-call budget met |
 | T-26 | 5 | `cs_find_symbol` | T-25 | Finds definitions in fixture solutions |

@@ -66,6 +66,7 @@ models (`IChatClient`, `ChatMessage`) and keeps the loop itself (about
   cancellation contract and our session JSONL store, as specified in the guide.
 - **Do not reference Microsoft.Agents.AI packages from `src/`.** MAF is not a
   product dependency in any layer.
+- **Own loop is narrow: reuse MEAI telemetry, logging, JSON utilities and chat reducers; see spec Layer 1 and 2.**
 - **Borrow patterns, not the harness**: use MAF's approval semantics
   (per-tool and per-tool+arguments standing rules, approval request/response
   content shapes) as the reference for Lunate's own approval policy and event
