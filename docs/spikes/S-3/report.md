@@ -133,32 +133,38 @@ Repeatable, no code changes needed:
 - Spike code is throwaway and lives outside `lunate.sln`; nothing here changes
   `src/`.
 
-## Addendum — idle-memory decomposition (2026-10-04)
+## Addendum — memory budgets and the idle decomposition (2026-10-04, ADR-0009)
 
-The S-5 baseline's 82.1 MB idle peak RSS against the 100 MB budget prompted a
-decomposition: what is the memory made of, and do GC settings help? Method:
-`docs/spikes/S-5/mem-probe.sh` publishes minimal single-file ReadyToRun probes
-(uncompressed, per ADR-0008) and samples peak RSS of the process tree (150 ms,
-3 runs each, macOS arm64). Raw results:
-`docs/spikes/S-5/evidence/mem-decomposition.txt`.
+The 100 MB idle budget was a guess; the maintainer's brief set it against
+reference points — Pi (Node) ~91.5 MiB at ready, ~170 MB in a 30-tool session;
+a quick container check: Pi 0.73.1 idle 158 MB, Tau 0.4.7 idle 75 MB. Lunate's
+S-5 baseline sits at 82 MB. Conclusion: idle is fine for the class; growth
+during work is the risk. ADR-0009 therefore defines three budgets — idle
+(gate 150 / target 100), working set (placeholder 250, enabled by T-22),
+Roslyn (gate 750, from the S-4 addendum) — with the same median+50% rule as
+the startup budgets.
 
-| Configuration | Peak RSS (median, MB) |
+**Method (ADR-0009).** Peak RSS is sampled from outside the process with the
+same sampler on all OSes (`scripts/memory.sh`; 150 ms ticks, whole process
+tree). macOS/Linux/Windows account RSS differently, so budgets are per OS,
+like the startup budgets. The working-set run will use `ReplayChatClient` +
+a committed fixture — no API keys, CI-safe. CI wires `memory_gate_mb` per OS
+and runs the sampler self-test now; the idle subject activates with T-18.
+
+**Decomposition** (macOS arm64, uncompressed; probe `docs/spikes/S-5/mem-probe.sh`, raw `evidence/mem-decomposition.txt`):
+
+| Component | Peak RSS (median) |
 | --- | --- |
-| `hello` (runtime + R2R floor) | ~70.4 |
-| `hello` + Spectre.Console | ~80.4 |
-| S5.Baseline `--idle`, default env | ~74.9 |
-| S5.Baseline + `DOTNET_GCConserveMemory=9` | ~74.8 |
-| S5.Baseline + `DOTNET_gcServer=1` | ~76.7 |
-| S5.Baseline + `DOTNET_TieredCompilation=0` | ~75.1 |
+| .NET runtime, framework-dependent hello | ~36.5 MB |
+| single-file packaging, no R2R | ~33.0 MB |
+| + ReadyToRun images (floor) | ~70.3 MB |
+| + Spectre.Console | ~80.3 MB |
+| + harness/state (S5.Baseline `--idle`) | ~74.9 MB |
+| managed GC heap | ~25 KB |
 
-Findings: the floor is the .NET runtime plus the ReadyToRun image (~70 MB for
-a hello-world single-file R2R app on this machine); the managed heap is
-negligible (~25 KB); Spectre adds ~10 MB; the GC knobs move nothing
-(ConserveMemory has nothing to conserve; server GC is slightly worse).
-
-Recommendation: **keep the 100 MB idle budget, scoped to the TUI without
-Roslyn loaded** — the measured range (~75–82 MB) leaves ~20 MB headroom for
-the real TUI, and no settings change is proposed for `Lunate.Coding`. Roslyn-
-loaded memory is a separate, lazy state (S-4: ~0.5 GB peak on a 47-project
-workspace) and gets its own budget when T-25 lands. Memory levers are
-runtime/packaging choices, not GC flags.
+GC settings move nothing: `DOTNET_GCConserveMemory=9` ~74.9 MB,
+`DOTNET_TieredCompilation=0` ~75.0 MB, `DOTNET_gcServer=1` ~76.8 MB — all
+within noise of the default. The ReadyToRun images are the largest single
+component (~+37 MB over the no-R2R build); the floor is the runtime's price
+for the packaging, and no settings change is proposed (ADR-0009). T-18/T-19
+flip idle from report to gate once the real TUI subject exists.

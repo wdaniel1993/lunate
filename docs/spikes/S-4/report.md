@@ -186,3 +186,5 @@ A 47-project workspace costs ≈ 0.5 GB peak RSS, dominated by the load;
 10 edit cycles do not measurably add to it. Sampling at 150 ms may miss
 sub-150 ms peaks. The startup budgets (ADR 0005) do not cover this — it is
 lazy, first-use cost that should be documented in the TUI/README.
+- Budget: the Roslyn gate is 750 MB peak RSS (process tree) for a ~50-project
+  workspace — these medians × 1.5, rounded up (ADR 0009).

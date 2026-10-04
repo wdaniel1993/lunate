@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# S-5 memory decomposition (revision item 3): what is the ~82 MB idle RSS made
-# of, and which GC settings change it? Publishes minimal probes and measures
-# peak RSS of the process tree (mem-sample.sh, 150 ms sampling).
+# S-5 memory decomposition (revision item 3 + ADR-0009): what is the ~82 MB
+# idle RSS made of (runtime, single-file packaging, R2R, Spectre, GC), and
+# which GC settings change it? Publishes minimal probes and measures peak RSS
+# of the process tree (mem-sample.sh, 150 ms sampling).
 # Usage: bash docs/spikes/S-5/mem-probe.sh
 set -euo pipefail
 
@@ -19,15 +20,28 @@ case "$(uname -m)" in
   *) echo "unsupported arch" >&2; exit 1 ;;
 esac
 
-publish() {
+publish() { # csproj outdir  (single file + R2R, uncompressed per ADR-0008)
   dotnet publish "$1" -c Release -r "$RID" --self-contained true \
     -p:PublishSingleFile=true -p:PublishReadyToRun=true \
     -o "$2" --nologo -v q
 }
 
-echo "== publish minimal probes (single-file R2R, uncompressed per ADR-0008) =="
+publish_fd() { # framework-dependent, no single file, no R2R
+  dotnet publish "$1" -c Release -r "$RID" --self-contained false \
+    -o "$2" --nologo -v q
+}
+
+publish_sf() { # single file, no R2R
+  dotnet publish "$1" -c Release -r "$RID" --self-contained true \
+    -p:PublishSingleFile=true -p:PublishReadyToRun=false \
+    -o "$2" --nologo -v q
+}
+
+echo "== publish minimal probes =="
 publish "$S5/mem-probe/hello/hello.csproj" "$OUT/hello"
 publish "$S5/mem-probe/hello-spectre/hello-spectre.csproj" "$OUT/hello-spectre"
+publish_fd "$S5/mem-probe/hello/hello.csproj" "$OUT/hello-fd"
+publish_sf "$S5/mem-probe/hello/hello.csproj" "$OUT/hello-sf"
 
 S5BASE=artifacts/s5/Baseline-stable/S5.Baseline
 if [ ! -f "$S5BASE" ]; then
@@ -45,7 +59,11 @@ run3() {
   done
 }
 
-echo "== floor: hello (runtime + R2R only) =="
+echo "== floor split: framework-dependent (runtime only) =="
+run3 hello-fd dotnet "$OUT/hello-fd/hello.dll"
+echo "== floor split: single-file without R2R =="
+run3 hello-sf "$OUT/hello-sf/hello"
+echo "== floor: hello (runtime + single-file + R2R) =="
 run3 hello "$OUT/hello/hello"
 echo "== floor + Spectre =="
 run3 hello-spectre "$OUT/hello-spectre/hello-spectre"

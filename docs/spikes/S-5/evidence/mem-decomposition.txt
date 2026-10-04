@@ -1,30 +1,36 @@
-label=hello-1 exit=0 peak_rss_kb_total=72128
-label=hello-2 exit=0 peak_rss_kb_total=72048
-label=hello-3 exit=0 peak_rss_kb_total=71952
-label=hello-spectre-1 exit=0 peak_rss_kb_total=82336
+label=hello-fd-1 exit=0 peak_rss_kb_total=37376
+label=hello-fd-2 exit=0 peak_rss_kb_total=37360
+label=hello-fd-3 exit=0 peak_rss_kb_total=37360
+label=hello-sf-1 exit=0 peak_rss_kb_total=33840
+label=hello-sf-2 exit=0 peak_rss_kb_total=33840
+label=hello-sf-3 exit=0 peak_rss_kb_total=33808
+label=hello-1 exit=0 peak_rss_kb_total=71984
+label=hello-2 exit=0 peak_rss_kb_total=71968
+label=hello-3 exit=0 peak_rss_kb_total=72016
+label=hello-spectre-1 exit=0 peak_rss_kb_total=82240
 label=hello-spectre-2 exit=0 peak_rss_kb_total=82368
-label=hello-spectre-3 exit=0 peak_rss_kb_total=82336
-label=baseline-default-1 exit=0 peak_rss_kb_total=76608
+label=hello-spectre-3 exit=0 peak_rss_kb_total=82208
+label=baseline-default-1 exit=0 peak_rss_kb_total=76800
 ready heap_bytes=24640
-label=baseline-default-2 exit=0 peak_rss_kb_total=80784
+label=baseline-default-2 exit=0 peak_rss_kb_total=76688
 ready heap_bytes=24640
 label=baseline-default-3 exit=0 peak_rss_kb_total=76704
 ready heap_bytes=24640
-label=baseline-conserve9-1 exit=0 peak_rss_kb_total=76560
+label=baseline-conserve9-1 exit=0 peak_rss_kb_total=76816
 ready heap_bytes=24640
-label=baseline-conserve9-2 exit=0 peak_rss_kb_total=76624
+label=baseline-conserve9-2 exit=0 peak_rss_kb_total=76672
 ready heap_bytes=24640
-label=baseline-conserve9-3 exit=0 peak_rss_kb_total=76800
+label=baseline-conserve9-3 exit=0 peak_rss_kb_total=76560
 ready heap_bytes=24640
-label=baseline-servergc-1 exit=0 peak_rss_kb_total=78464
+label=baseline-servergc-1 exit=0 peak_rss_kb_total=78640
 ready heap_bytes=26152
 label=baseline-servergc-2 exit=0 peak_rss_kb_total=78608
 ready heap_bytes=26152
-label=baseline-servergc-3 exit=0 peak_rss_kb_total=78576
+label=baseline-servergc-3 exit=0 peak_rss_kb_total=78416
 ready heap_bytes=26152
-label=baseline-tieredoff-1 exit=0 peak_rss_kb_total=76816
+label=baseline-tieredoff-1 exit=0 peak_rss_kb_total=76864
 ready heap_bytes=24640
-label=baseline-tieredoff-2 exit=0 peak_rss_kb_total=76896
+label=baseline-tieredoff-2 exit=0 peak_rss_kb_total=76912
 ready heap_bytes=24640
-label=baseline-tieredoff-3 exit=0 peak_rss_kb_total=76880
+label=baseline-tieredoff-3 exit=0 peak_rss_kb_total=76816
 ready heap_bytes=24640

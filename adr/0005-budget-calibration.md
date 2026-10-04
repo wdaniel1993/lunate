@@ -21,6 +21,8 @@ baseline shifts, exactly as the `repo-foundation` spec requires.
   medians, add roughly 50% headroom, and round **up** to the next 50 ms. The
   rule deliberately rounds up so the budget never falls below the intended
   headroom.
+- **Memory budgets** are separate: ADR 0009 extends the same calibration rule
+  (median + ~50%, rounded up) to idle, working-set and Roslyn memory.
 - **Calibrated values** (2026-10-04): CI matrix `budget_ms` Ubuntu 250,
   macOS 300, Windows 350; local `scripts/perf.sh` default stays 150 ms.
 - **Ownership**: budgets live in `.github/workflows/ci.yml` (per-runner via

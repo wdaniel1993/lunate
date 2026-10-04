@@ -21,15 +21,20 @@ jobs:
           # accepted 2026-10-04) — runner startup median + ~50% headroom, rounded up to 50 ms.
           # Re-calibrate when a runner image or baseline shifts. The local default
           # in scripts/perf.sh stays 150 ms.
+          # memory_gate_mb: idle peak-RSS gate (MB) per OS (ADR 0009); provisional
+          # 150 until the T-18 TUI subject exists (report-only until then).
           - os: ubuntu-latest
             rid: linux-x64
             budget_ms: 250
+            memory_gate_mb: 150
           - os: macos-latest
             rid: osx-arm64
             budget_ms: 300
+            memory_gate_mb: 150
           - os: windows-latest
             rid: win-x64
             budget_ms: 350
+            memory_gate_mb: 150
     env:
       RID: ${{ matrix.rid }}
     steps:
@@ -126,6 +131,12 @@ jobs:
       - name: Gate self-tests
         shell: bash
         run: bash scripts/gate-tests.sh
+
+      - name: Memory checks (ADR-0009)
+        shell: bash
+        env:
+          MEMORY_GATE_MB: ${{ matrix.memory_gate_mb }}
+        run: bash scripts/memory.sh ci
 
       - name: Verify (PowerShell)
         if: runner.os == 'Windows'
