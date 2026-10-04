@@ -12,8 +12,8 @@
 
 ## 3. Entry point and guards
 
-- [ ] 3.1 Implement `lunate --version` in Lunate.Coding (assembly version, exit 0)
-- [ ] 3.2 Add architecture test: checker + synthetic-violation unit test + real-graph assertion
+- [x] 3.1 Implement `lunate --version` in Lunate.Coding (assembly version, exit 0)
+- [x] 3.2 Add architecture test: checker + synthetic-violation unit test + real-graph assertion
 
 ## 4. Verification scripts
 

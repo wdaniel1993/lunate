@@ -1,1 +1,3 @@
-return 0;
+using Lunate.Coding;
+
+return Cli.Run(args, Console.Out);
