@@ -1,7 +1,7 @@
 # repo-foundation Specification
 
 ## Purpose
-TBD - created by archiving change add-repo-skeleton. Update Purpose after archive.
+The repository's build-and-verification contract: every Lunate project builds on .NET 10 with warnings as errors, the project graph stays downward-only, the core libraries' public surface is tracked, and one command (`scripts/verify.sh`) decides whether the repository is done. Later capabilities extend this contract rather than rebuilding it.
 
 ## Requirements
 
