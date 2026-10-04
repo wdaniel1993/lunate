@@ -26,6 +26,11 @@ dotnet build lunate.sln -c "$CONFIGURATION" --nologo
 step "test"
 dotnet test --solution lunate.sln -c "$CONFIGURATION"
 
+step "test (de-AT culture)"
+# Non-English culture pass (S-5 finding). Effective on macOS/Linux; Windows
+# runners keep the OS culture (LANG is not honored there).
+LANG=de_AT.UTF-8 LC_ALL=de_AT.UTF-8 dotnet test --solution lunate.sln -c "$CONFIGURATION" --no-build
+
 step "publish (${RID})"
 dotnet publish src/Lunate.Coding/Lunate.Coding.csproj \
   -c "$CONFIGURATION" \
@@ -33,7 +38,6 @@ dotnet publish src/Lunate.Coding/Lunate.Coding.csproj \
   --self-contained true \
   -p:PublishSingleFile=true \
   -p:PublishReadyToRun=true \
-  -p:EnableCompressionInSingleFile=true \
   -o "${PUBLISH_DIR}/${RID}" \
   --nologo
 

@@ -95,7 +95,7 @@ Stick to .NET 10, Microsoft.Extensions.AI and a few well-known packages. No Nati
 | Concern | Choice | Project | Why |
 | --- | --- | --- | --- |
 | Runtime | .NET 10, C# 14, SDK pinned in `global.json` | all | Current LTS |
-| Release build | Self-contained single file, ReadyToRun, compression on, three targets | Lunate.Coding | One file, no runtime install, fast start |
+| Release build | Self-contained single file, ReadyToRun, no single-file compression (ADR-0008); release archives are compressed, three targets | Lunate.Coding | One file, no runtime install, fast start |
 | Model access | `IChatClient`, `ChatMessage`, `ChatResponseUpdate` everywhere; no `FunctionInvokingChatClient` (the loop runs tools) | Lunate.Ai, Lunate.Agent | The .NET standard, maintained by Microsoft |
 | Providers | OpenAI-compatible via the Microsoft.Extensions.AI OpenAI adapter; Anthropic via an `IChatClient` implementation (check the official SDK first) | Lunate.Ai | One abstraction for every model |
 | Telemetry | OpenTelemetry via `IChatClient` middleware + own `ActivitySource`, opt-in | Lunate.Ai, Lunate.Agent | Traces of model and tool calls |
@@ -395,6 +395,13 @@ An extension is an assembly implementing `ILunateExtension` (defined in `Lunate.
 
 Finished output is rendered with Spectre.Console; the input line and a small live area at the bottom are our own code. Spectre's live display does not combine well with typing, so this split keeps steering (typing while the agent streams) without writing a full renderer.
 
+**Threading contract (ADR-0007, S-5)**
+
+- The live area is a merged observable pipeline on System.Reactive (ADR-0007); the scheduler is injected (`IScheduler`) — production uses a real scheduler, tests use `TestScheduler`.
+- One writer paints the live area from a state snapshot; observers read state only after the pipeline has drained — an explicit contract, not an implicit assumption (S-5 readability finding).
+- No `Thread.Sleep`-based TUI tests; the 30 fps cap, spinner and `Ctrl+C` window run on virtual time.
+- Technical readouts (footer, token counts) are culture-invariant.
+
 **Screen model**
 
 - **Scrollback:** finished blocks (user message, assistant message, tool block) are written once through `IAnsiConsole.Write` and never redrawn. Native scrollback, copy and search keep working.
@@ -437,7 +444,7 @@ Lunate should run wherever Pi runs: macOS, Linux and Windows, in the terminals p
 
 **Release targets**
 
-Self-contained single-file builds with ReadyToRun and compression for `osx-arm64`, `win-x64` and `linux-x64` (more targets on demand). Users install no .NET runtime. CI publishes each target and runs `scripts/perf.sh` on the three OS runners.
+Self-contained single-file builds with ReadyToRun — no single-file compression, since it crashed some variants and cost ~80 ms startup; release archives are compressed instead (ADR-0008) — for `osx-arm64`, `win-x64` and `linux-x64` (more targets on demand). Users install no .NET runtime. CI publishes each target and runs `scripts/perf.sh` on the three OS runners.
 
 **Terminal support**
 
@@ -555,7 +562,7 @@ One row per card. Each card becomes one OpenSpec change (see Building it with Op
 | ID | Phase | Card | Depends on | Done when |
 | --- | --- | --- | --- | --- |
 | T-01 | 0 | Repo skeleton: solution, `Directory.Build.props`, `global.json`, `.editorconfig`, analyzers, AGENTS.md, `opencode.json` | – | `scripts/verify.sh` green on empty projects |
-| T-02 | 0 | CI: build and test on 3 OSes, single-file publish for three targets, `scripts/perf.sh`; verify the Roslyn build-host publish target on Windows and Linux (S-4 addendum) | T-01 | Artifacts for all targets; CI turns red when a budget is exceeded |
+| T-02 | 0 | CI: build and test on 3 OSes, single-file publish for three targets, `scripts/perf.sh`; verify the Roslyn build-host publish target on Windows and Linux (S-4 addendum); a de-AT culture pass on Unix runners; uncompressed release flags (ADR-0008) | T-01 | Artifacts for all targets; CI turns red when a budget is exceeded |
 | T-03 | 0 | Spikes S-1 MAF Harness, S-2 Git Bash input, S-3 startup baseline, S-4 MSBuildWorkspace reality check | T-02 | One ADR per spike; budgets calibrated |
 | T-04 | 1 | `IChatClientFactory` and model catalog with user override; pipeline order + MEAI reuse list (spec Layer 1) | T-03 | Pipeline built per provider; catalog merge tests |
 | T-05 | 1 | `RecordingChatClient` and `ReplayChatClient` | T-04 | Recorded fixture replays identically |
@@ -571,8 +578,8 @@ One row per card. Each card becomes one OpenSpec change (see Building it with Op
 | T-15 | 3 | `bash`: shell resolution per platform, UTF-8, timeout, process-tree kill, truncation | T-08 | Tests pass on all three CI runners |
 | T-16 | 3 | System prompt, AGENTS.md loading, config | T-09 | Prompt under 1,000 tokens (asserted) |
 | T-17 | 3 | Print mode `-p`, `--json`; first eval run | T-11 to T-16 | Baseline row in `eval/results.csv` |
-| T-18 | 4 | `IConsoleIO`, live area, input line (VT, raw keys, paste) | T-03 | Frame snapshots; manual check in Windows Terminal |
-| T-19 | 4 | Markdown subset to Spectre renderables | T-01 | Snapshot per Markdown feature |
+| T-18 | 4 | `IConsoleIO`, live area on System.Reactive (ADR-0007: injected `IScheduler`, `ISession` seam, explicit threading contract), input line (VT, raw keys, paste) | T-03 | Frame snapshots; manual check in Windows Terminal; `TestScheduler` covers time-based behaviour |
+| T-19 | 4 | Markdown subset to Spectre renderables; culture-invariant formatting for technical output | T-01 | Snapshot per Markdown feature |
 | T-20 | 4 | `ToolBlock` and Myers diff rendering | T-19, T-13 | Snapshots incl. match tier |
 | T-21 | 4 | Approval prompt, status footer, key bindings | T-18 | Scripted key tests for every binding |
 | T-22 | 4 | Wire events, steering, `Esc` cancel, slash commands, pickers | T-09, T-18 to T-21 | End-to-end scripted session snapshot |
@@ -724,6 +731,8 @@ Tests are how OpenCode knows it is done: every level below runs without API keys
 | Task suite | 15–20 small coding tasks (mostly C#, some Python and TypeScript) with a check script each | `lunate -p --json`; pass/fail, steps, tokens, time, edit tiers used | Per phase gate; Phase 5 also runs Claude Code and OpenCode on the C# tasks |
 
 Results go to `eval/results.csv` per phase and model. Use the suite to decide whether Roslyn tools, a prompt change or compaction actually help, not intuition.
+
+The test suite also runs once under a non-English culture (`de-AT`) on Unix (in `scripts/verify.sh` and CI), so tests never depend on the machine locale; technical output is formatted with `CultureInfo.InvariantCulture`.
 
 ## Security and safety
 

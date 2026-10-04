@@ -1,0 +1,48 @@
+name: S-5 crash probe
+
+# One-off investigation (ADR-0008 follow-up): does the single-file + ReadyToRun
+# + compression AccessViolationException reproduce on linux-x64 and win-x64?
+# Manual dispatch only; safe to delete once ADR-0008 is settled.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    name: probe (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            rid: linux-x64
+          - os: windows-latest
+            rid: win-x64
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+          cache: true
+          cache-dependency-path: |
+            global.json
+            Directory.Build.props
+            **/*.csproj
+
+      - name: Probe (${{ matrix.rid }})
+        shell: bash
+        run: bash docs/spikes/S-5/crash-probe.sh "${{ matrix.rid }}" 100 artifacts/s5-crash-probe
+
+      - name: Upload probe results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: s5-crash-probe-${{ matrix.rid }}
+          path: artifacts/s5-crash-probe/
+          if-no-files-found: warn

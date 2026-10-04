@@ -29,6 +29,7 @@ This repo is developed with OpenCode and OpenSpec (schema: `intent-driven`).
 - A failing golden session test means the session format changed. Stop and report; never update golden files to make a test pass.
 - In ACP mode nothing writes to stdout except the protocol.
 - Tool error messages are read by a model: say what failed and what to do next.
+- Format all technical output (numbers, percentages, dates, sizes) with `CultureInfo.InvariantCulture`. Tests must not depend on the machine locale.
 - Every behaviour change has a test. Tests use fixtures in `tests/fixtures/`, never live APIs.
 - Keep files under about 300 lines. Prefer plain code over abstractions.
 - No secrets in git. Commit small, conventional-commit messages.

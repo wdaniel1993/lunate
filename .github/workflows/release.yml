@@ -44,7 +44,6 @@ jobs:
           --self-contained true
           -p:PublishSingleFile=true
           -p:PublishReadyToRun=true
-          -p:EnableCompressionInSingleFile=true
           -o artifacts/publish/${{ matrix.rid }}
           --nologo
 
