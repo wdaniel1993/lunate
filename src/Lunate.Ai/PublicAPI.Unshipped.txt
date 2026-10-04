@@ -1,1 +1,26 @@
 #nullable enable
+Lunate.Ai.ChatClientFactory
+Lunate.Ai.ChatClientFactory.ChatClientFactory(Microsoft.Extensions.Logging.ILoggerFactory! loggerFactory, bool enableOpenTelemetry = false, System.Func<Lunate.Ai.ModelInfo!, Microsoft.Extensions.AI.IChatClient!>? providerClientFactory = null, System.Func<Microsoft.Extensions.AI.IChatClient!, Microsoft.Extensions.AI.IChatClient!>? recorderDecorator = null) -> void
+Lunate.Ai.ChatClientFactory.Create(Lunate.Ai.ModelInfo! model) -> Microsoft.Extensions.AI.IChatClient!
+Lunate.Ai.IChatClientFactory
+Lunate.Ai.IChatClientFactory.Create(Lunate.Ai.ModelInfo! model) -> Microsoft.Extensions.AI.IChatClient!
+Lunate.Ai.ModelInfo
+Lunate.Ai.ModelInfo.<Clone>$() -> Lunate.Ai.ModelInfo!
+Lunate.Ai.ModelInfo.ContextWindow.get -> int
+Lunate.Ai.ModelInfo.ContextWindow.init -> void
+Lunate.Ai.ModelInfo.Deconstruct(out string! Id, out string! Provider, out System.Uri? Endpoint, out int ContextWindow, out bool SupportsTools) -> void
+Lunate.Ai.ModelInfo.Endpoint.get -> System.Uri?
+Lunate.Ai.ModelInfo.Endpoint.init -> void
+Lunate.Ai.ModelInfo.Equals(Lunate.Ai.ModelInfo? other) -> bool
+Lunate.Ai.ModelInfo.Id.get -> string!
+Lunate.Ai.ModelInfo.Id.init -> void
+Lunate.Ai.ModelInfo.ModelInfo(string! Id, string! Provider, System.Uri? Endpoint, int ContextWindow, bool SupportsTools) -> void
+Lunate.Ai.ModelInfo.Provider.get -> string!
+Lunate.Ai.ModelInfo.Provider.init -> void
+Lunate.Ai.ModelInfo.SupportsTools.get -> bool
+Lunate.Ai.ModelInfo.SupportsTools.init -> void
+override Lunate.Ai.ModelInfo.Equals(object? obj) -> bool
+override Lunate.Ai.ModelInfo.GetHashCode() -> int
+override Lunate.Ai.ModelInfo.ToString() -> string!
+static Lunate.Ai.ModelInfo.operator !=(Lunate.Ai.ModelInfo? left, Lunate.Ai.ModelInfo? right) -> bool
+static Lunate.Ai.ModelInfo.operator ==(Lunate.Ai.ModelInfo? left, Lunate.Ai.ModelInfo? right) -> bool

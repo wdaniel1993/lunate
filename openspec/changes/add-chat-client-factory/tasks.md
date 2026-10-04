@@ -5,8 +5,8 @@
 
 ## 2. Factory
 
-- [ ] 2.1 `ModelInfo` + `IChatClientFactory` with the fixed pipeline order (telemetry opt-in → logging → recorder slot → provider); stub-testable; no FIC/AIFunctionFactory
-- [ ] 2.2 Pipeline-order tests (order observable via test doubles) + no-FIC test; PublicAPI.Unshipped.txt updated
+- [x] 2.1 `ModelInfo` + `IChatClientFactory` with the fixed pipeline order (telemetry opt-in → logging → recorder slot → provider); stub-testable; no FIC/AIFunctionFactory
+- [x] 2.2 Pipeline-order tests (order observable via test doubles) + no-FIC test; PublicAPI.Unshipped.txt updated
 
 ## 3. Catalog
 
