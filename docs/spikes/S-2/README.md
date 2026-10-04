@@ -5,7 +5,8 @@ Bash), and if not, what is the fallback?
 
 - Spike: `RawKeys/` (throwaway console app, not in `lunate.sln`).
 - Automated checks: done 2026-10-04 — see [report.md](report.md).
-- Manual mintty check on Windows: **awaiting the maintainer run** (procedure in
-  `report.md`, evidence to be captured under `evidence/`).
+- Manual mintty check on Windows: done 2026-10-04 — `Console.ReadKey` works
+  directly in mintty on Git for Windows 2.52.0 (pseudo console on by default);
+  fails with `MSYS=disable_pcon`. Evidence in `evidence/manual-*.txt`.
 - ADR draft: [`adr/0004-mintty-input-support.md`](../../../adr/0004-mintty-input-support.md)
-  (proposed; Windows Terminal fallback included).
+  (proposed; fail-soft diagnostic and Windows Terminal fallback included).

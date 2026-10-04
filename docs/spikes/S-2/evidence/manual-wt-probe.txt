@@ -1,0 +1,14 @@
+S-2 probe: environment and console capability
+os: Microsoft Windows 10.0.26200
+arch: X64
+term: (unset)
+term_program: (unset)
+msystem: (unset)
+wt_session: 185c8a43-432b-42e2-8f56-de22debe1c03
+sessionname: Console
+stdin_redirected: False
+stdout_redirected: True
+stderr_redirected: False
+windows_console_attached: yes (GetConsoleMode on stdin succeeded)
+key_available: no (no key buffered)
+next: run without arguments to test interactive Console.ReadKey

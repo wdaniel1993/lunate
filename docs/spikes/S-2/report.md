@@ -7,11 +7,13 @@
 - Method: throwaway console spike (`RawKeys/`, net10.0, outside `lunate.sln`),
   automated decode/probe checks on macOS, and a step-by-step manual check in a
   real Git Bash window on Windows.
-- Status: **automated checks pass; the manual mintty run is awaiting the
-  maintainer's Windows machine.** The outcome row in the procedure table below
-  is filled in by that run.
+- Status: **done.** Automated checks pass; the manual Windows run (2026-10-04)
+  shows `Console.ReadKey` works **directly in mintty** on Git for Windows
+  2.52.0, because the MSYS2 runtime hands native console apps a pseudo console
+  (ConPTY). With pseudo-console support disabled (`MSYS=disable_pcon`) the
+  historical failure returns. See [Manual results](#manual-results-windows-11-git-for-windows-2520).
 - ADR draft: [`adr/0004-mintty-input-support.md`](../../../adr/0004-mintty-input-support.md)
-  (proposed — awaiting maintainer sign-off and the manual run).
+  (proposed — awaiting maintainer sign-off).
 
 ## What was built
 
@@ -100,15 +102,16 @@ winpty "$BIN" 2>&1 | tee docs/spikes/S-2/evidence/manual-winpty-interactive.txt
 Repeat the same key sequence. `winpty` allocates a hidden console for the
 native process; if this works, mintty support = "launch via winpty".
 
-**Step 4 — optional: ConPTY variants**
+**Step 4 — ConPTY on/off**
 
-Some Git for Windows builds can hand native console apps a pseudo console. If
-this build supports it (`MSYS=enable_pcon`), repeat Step 1/2 once with it set
-and record the result:
+Recent MSYS2 runtimes hand native console apps a pseudo console (ConPTY) by
+default, so Steps 1–2 already exercise the ConPTY path and `MSYS=enable_pcon`
+is a no-op. The useful variant is the opposite: disable it and repeat Steps
+1–2 to see whether ConPTY is what makes mintty work.
 
 ```bash
-MSYS=enable_pcon "$BIN" --probe | tee docs/spikes/S-2/evidence/manual-pcon-probe.txt
-MSYS=enable_pcon "$BIN"
+MSYS=disable_pcon "$BIN" --probe | tee docs/spikes/S-2/evidence/manual-nopcon-probe.txt
+MSYS=disable_pcon "$BIN" 2>&1 | tee docs/spikes/S-2/evidence/manual-nopcon-interactive.txt
 ```
 
 **Step 5 — fallback terminal (control)**
@@ -119,12 +122,12 @@ This is the environment Lunate will officially recommend if mintty fails.
 
 **Step 6 — fill in the outcome table**
 
-| Path | Expected if supported | Observed (maintainer fills in) |
+| Path | Expected if supported | Observed (2026-10-04) |
 | --- | --- | --- |
-| mintty direct (`RawKeys`) | probe shows console attached, interactive prints correct keys, exit 0 | _pending_ |
-| mintty + `winpty` | same as above, under winpty | _pending_ |
-| mintty + `MSYS=enable_pcon` | same as above, if build supports it | _pending_ |
-| Windows Terminal | same as above | _pending_ |
+| mintty direct (`RawKeys`, ConPTY on by default) | probe shows console attached, interactive prints correct keys, exit 0 | **supported**: console attached, 15/15 keys correct, exit 0 |
+| mintty + `winpty` | same as above, under winpty | not run (direct works) |
+| mintty + `MSYS=disable_pcon` | expected to fail (no console) | **fails**: stdin is a pipe, `GetConsoleMode` error 6, `KeyAvailable` throws, interactive falls back to headless |
+| Windows Terminal (PowerShell tab) | same as direct | **supported**: console attached, 15/15 keys correct, exit 0 |
 
 Outcome meanings:
 
@@ -139,16 +142,43 @@ Outcome meanings:
   partial support; record exact bytes (`--probe` plus a `--headless` pipe test
   with the bytes mintty sends) and treat as not supported until decoded.
 
-This run is **pending** as of 2026-10-04; no evidence files exist for it yet.
+Outcome: **direct works with correct keys**, on condition that the MSYS2
+runtime's pseudo-console support is on (the default on the tested build).
+
+## Manual results (Windows 11, Git for Windows 2.52.0)
+
+Environment ([`evidence/manual-baseline.txt`](evidence/manual-baseline.txt)):
+Windows 11 Pro 10.0.26200 x64, .NET SDK 10.0.201, Git for Windows
+2.52.0.windows.1, MSYS2 runtime 3.6.5, winpty 0.4.3, `MSYSTEM=MINGW64`,
+`TERM=xterm`, `TERM_PROGRAM=mintty`.
+
+| Run | stdin | `GetConsoleMode` | `Console.KeyAvailable` | Interactive `ReadKey` | Evidence |
+| --- | --- | --- | --- | --- | --- |
+| mintty direct | console | succeeds | `no` (returns, no throw) | 15/15 keys correct (incl. `Shift+A`, `Ctrl+→` = `RightArrow`+`Control`, `Alt+x`, F1/F5/F12), exit 0 | [`probe`](evidence/manual-mintty-probe.txt), [`interactive`](evidence/manual-mintty-interactive.txt) |
+| mintty, `MSYS=disable_pcon` | pipe (`stdin_redirected: True`) | fails, win32 error 6 (invalid handle) | throws `InvalidOperationException` | not reachable; the spike falls back to headless, and mintty's pty stays in cooked mode (echoes typed bytes, delivers only on Enter). Run aborted with Ctrl+C | [`probe`](evidence/manual-nopcon-probe.txt), [`interactive`](evidence/manual-nopcon-interactive.txt) |
+| Windows Terminal, PowerShell tab | console (`WT_SESSION` set) | succeeds | `no` (returns, no throw) | 15/15 keys correct, exit 0 (one extra `Alt+a` line is an operator misclick, not a decode error) | [`probe`](evidence/manual-wt-probe.txt), [`interactive`](evidence/manual-wt-interactive.txt) |
+
+Notes:
+
+- `stdout_redirected: True` in the probes comes from piping into `tee`, not
+  from the terminal.
+- Terminal echo next to the `readkey` lines was not explicitly recorded; the
+  captured output contains only the spike's own lines.
+- Windows Terminal was run with a PowerShell tab (no Git Bash profile was
+  configured); it is the same console host either way.
+- winpty (Step 3) was not run because direct mintty works.
 
 ## Fallback
 
-The documented fallback is **Windows Terminal** (already the guide's primary
-Windows terminal). If mintty direct/ConPTY fails, `winpty` is recorded as a
-workaround, and the app must fail soft: detect the no-console condition and
-print "this terminal cannot deliver raw keys; use Windows Terminal (or
-`winpty`)" instead of crashing with an unhandled exception. The proposed
-decision is in [ADR 0004](../../../adr/0004-mintty-input-support.md).
+mintty works directly when the MSYS2 runtime provides a pseudo console, so no
+launch wrapper is needed on current Git for Windows. The fallback covers the
+case where it does not (pseudo console disabled via `MSYS=disable_pcon`, or an
+older runtime without it): the app must fail soft — detect the no-console
+condition (`GetConsoleMode` fails on stdin / `Console.IsInputRedirected` while
+`MSYSTEM` is set) and print "this terminal cannot deliver raw keys; use
+Windows Terminal, or re-enable pseudo-console support" instead of crashing with
+an unhandled exception. **Windows Terminal** stays the no-caveat path. The
+proposed decision is in [ADR 0004](../../../adr/0004-mintty-input-support.md).
 
 ## Surprises
 
@@ -162,11 +192,22 @@ decision is in [ADR 0004](../../../adr/0004-mintty-input-support.md).
 - xterm's function-key numbering is not linear: `16~` and `22~` are skipped, so
   `24~` is F12. The self-test caught the linear `F{code-10}` bug (F12 showed
   up as F14) before it could reach the report.
+- The "mintty problem" is effectively solved upstream: the MSYS2 runtime's
+  pseudo-console support gives native apps a real console, and `ReadKey`
+  decodes every tested key under mintty exactly as under Windows Terminal.
+  Turning it off reproduces the historical failure one-for-one, which pins the
+  dependency precisely.
 
 ## Limits
 
-- The manual mintty check has not run yet; all Windows conclusions are pending
-  it.
+- The manual run covers one machine and one Git for Windows build (2.52.0,
+  MSYS2 runtime 3.6.5). Older builds were not tested; which version first
+  enabled pseudo-console support by default was not verified, so the fail-soft
+  path is what covers them.
+- Only the keyboard path through `Console.ReadKey` was tested under mintty;
+  the VT decoder was not fed mintty's raw bytes (not needed, since `ReadKey`
+  works).
+- Windows Terminal ran a PowerShell tab, not a Git Bash profile.
 - The decoder covers keyboard input only (no mouse reporting, bracketed
   paste, or kitty keyboard protocol); it is a probe, not the TUI input layer.
 - The macOS probe ran without a TTY; it demonstrates the no-console failure

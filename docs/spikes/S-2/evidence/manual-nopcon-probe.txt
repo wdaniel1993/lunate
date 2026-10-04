@@ -1,0 +1,14 @@
+S-2 probe: environment and console capability
+os: Microsoft Windows 10.0.26200
+arch: X64
+term: xterm
+term_program: mintty
+msystem: MINGW64
+wt_session: (unset)
+sessionname: Console
+stdin_redirected: True
+stdout_redirected: True
+stderr_redirected: True
+windows_console_attached: no (GetConsoleMode failed, win32 error 6)
+key_available: throws InvalidOperationException: Cannot see if a key has been pressed when either application does not have a console or when console input has been redirected from a file. Try Console.In.Peek.
+next: run without arguments to test interactive Console.ReadKey

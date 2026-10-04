@@ -1,0 +1,6 @@
+date: 2026-10-04
+dotnet: 10.0.201
+git version 2.52.0.windows.1
+winpty version 0.4.3
+MSYSTEM=MINGW64 TERM=xterm
+3.6.5-22c95533.x86_64

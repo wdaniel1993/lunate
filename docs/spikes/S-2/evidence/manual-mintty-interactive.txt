@@ -1,0 +1,17 @@
+interactive: Console.ReadKey(intercept: true); press keys, Esc or Ctrl+C exits
+readkey key=A char='a' mods=None
+readkey key=A char='A' mods=Shift
+readkey key=UpArrow char=\u0000 mods=None
+readkey key=DownArrow char=\u0000 mods=None
+readkey key=LeftArrow char=\u0000 mods=None
+readkey key=RightArrow char=\u0000 mods=None
+readkey key=F1 char=\u0000 mods=None
+readkey key=F5 char=\u0000 mods=None
+readkey key=F12 char=\u0000 mods=None
+readkey key=RightArrow char=\u0000 mods=Control
+readkey key=X char='x' mods=Alt
+readkey key=Backspace char=\u0008 mods=None
+readkey key=Delete char=\u0000 mods=None
+readkey key=PageUp char=\u0000 mods=None
+readkey key=Escape char=\u001b mods=None
+interactive: ended normally

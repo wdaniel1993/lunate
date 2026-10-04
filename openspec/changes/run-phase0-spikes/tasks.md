@@ -13,7 +13,7 @@
 ## 3. S-2 — Git Bash (mintty) input
 
 - [x] 3.1 Build the raw-key console spike; automate the redirected-input behaviour
-- [ ] 3.2 Document and run the manual check procedure in a real Git Bash window on Windows (maintainer)
+- [x] 3.2 Document and run the manual check procedure in a real Git Bash window on Windows (maintainer)
 - [x] 3.3 Write `docs/spikes/S-2/report.md`; draft `adr/0004-mintty-input-support.md`
 
 ## 4. S-3 — startup baselines and budget calibration
