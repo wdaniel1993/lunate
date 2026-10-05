@@ -15,13 +15,23 @@ public sealed class CommittedFixtureTests
         {
             string[] lines = File.ReadAllLines(path);
             FixtureDocument document = FixtureFormat.ReadFile(path);
-            DateTimeOffset recordedAt = DateTimeOffset.Parse(document.Header.RecordedAt, CultureInfo.InvariantCulture);
-            Assert.Equal(FixtureFormat.SerializeHeader(document.Header.Model, recordedAt), lines[0]);
+            DateTimeOffset recordedAt = DateTimeOffset.Parse(
+                document.Header.RecordedAt,
+                CultureInfo.InvariantCulture
+            );
+            Assert.Equal(
+                FixtureFormat.SerializeHeader(document.Header.Model, recordedAt),
+                lines[0]
+            );
             for (int index = 0; index < document.Exchanges.Count; index++)
             {
                 Assert.Equal(
-                    FixtureFormat.SerializeExchange(document.Exchanges[index].RequestDigest, document.Exchanges[index].Updates),
-                    lines[index + 1]);
+                    FixtureFormat.SerializeExchange(
+                        document.Exchanges[index].RequestDigest,
+                        document.Exchanges[index].Updates
+                    ),
+                    lines[index + 1]
+                );
             }
 
             Assert.Equal(document.Exchanges.Count + 1, lines.Length);
@@ -43,7 +53,11 @@ public sealed class CommittedFixtureTests
         foreach (SampleScript.SampleExchange exchange in SampleScript.Exchanges)
         {
             await recorder
-                .GetStreamingResponseAsync(exchange.Messages, exchange.Options, TestContext.Current.CancellationToken)
+                .GetStreamingResponseAsync(
+                    exchange.Messages,
+                    exchange.Options,
+                    TestContext.Current.CancellationToken
+                )
                 .ToListAsync(TestContext.Current.CancellationToken);
         }
 
@@ -64,30 +78,44 @@ public sealed class CommittedFixtureTests
         using var environment = new EnvironmentScope(
             ("OPENAI_API_KEY", null),
             ("LUNATE_RECORD", null),
-            ("LUNATE_RECORD_PATH", null));
+            ("LUNATE_RECORD_PATH", null)
+        );
         var factory = new ChatClientFactory(
             new MarkingLoggerFactory(static () => { }),
             enableOpenTelemetry: true,
             providerClientFactory: _ => throwing,
-            recorderDecorator: _ => new ReplayChatClient(CommittedSamplePath()));
-        IChatClient client = factory.Create(new ModelInfo(SampleScript.ModelId, "openai", null, 128_000, true));
+            recorderDecorator: _ => new ReplayChatClient(CommittedSamplePath())
+        );
+        IChatClient client = factory.Create(
+            new ModelInfo(SampleScript.ModelId, "openai", null, 128_000, true)
+        );
 
         var replayed = new List<ChatResponseUpdate>();
         foreach (SampleScript.SampleExchange exchange in SampleScript.Exchanges)
         {
-            replayed.AddRange(await client
-                .GetStreamingResponseAsync(exchange.Messages, exchange.Options, TestContext.Current.CancellationToken)
-                .ToListAsync(TestContext.Current.CancellationToken));
+            replayed.AddRange(
+                await client
+                    .GetStreamingResponseAsync(
+                        exchange.Messages,
+                        exchange.Options,
+                        TestContext.Current.CancellationToken
+                    )
+                    .ToListAsync(TestContext.Current.CancellationToken)
+            );
         }
 
-        Assert.Equal(Serialize(SampleScript.Exchanges.SelectMany(exchange => exchange.Updates)), Serialize(replayed));
+        Assert.Equal(
+            Serialize(SampleScript.Exchanges.SelectMany(exchange => exchange.Updates)),
+            Serialize(replayed)
+        );
         Assert.False(throwing.Called);
     }
 
     private static string FixtureDirectory() =>
         Path.Combine(TestPaths.FindRepositoryRoot(), "tests", "fixtures", "streams");
 
-    private static string CommittedSamplePath() => Path.Combine(FixtureDirectory(), SampleScript.FileName);
+    private static string CommittedSamplePath() =>
+        Path.Combine(FixtureDirectory(), SampleScript.FileName);
 
     private static IEnumerable<string> Serialize(IEnumerable<ChatResponseUpdate> updates) =>
         updates.Select(update => JsonSerializer.Serialize(update, FixtureFormat.JsonOptions));

@@ -4,9 +4,13 @@ using Microsoft.Extensions.AI;
 
 namespace Spike.Shared;
 
-public sealed class RecordingChatClient(IChatClient inner, string path) : DelegatingChatClient(inner)
+public sealed class RecordingChatClient(IChatClient inner, string path)
+    : DelegatingChatClient(inner)
 {
-    private static readonly JsonSerializerOptions JsonlOptions = new(AIJsonUtilities.DefaultOptions) { WriteIndented = false };
+    private static readonly JsonSerializerOptions JsonlOptions = new(AIJsonUtilities.DefaultOptions)
+    {
+        WriteIndented = false,
+    };
 
     private bool _headerWritten;
     private int _turnIndex;
@@ -14,29 +18,40 @@ public sealed class RecordingChatClient(IChatClient inner, string path) : Delega
     public override async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
         IEnumerable<ChatMessage> messages,
         ChatOptions? options = null,
-        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        [EnumeratorCancellation] CancellationToken cancellationToken = default
+    )
     {
         if (!_headerWritten)
         {
             File.Delete(path);
             await File.AppendAllTextAsync(
                 path,
-                """{"type":"header","schema":1,"model":"spike-stub","created":"2026-10-04T00:00:00Z"}""" + "\n",
-                cancellationToken);
+                """{"type":"header","schema":1,"model":"spike-stub","created":"2026-10-04T00:00:00Z"}"""
+                    + "\n",
+                cancellationToken
+            );
             _headerWritten = true;
         }
 
         await File.AppendAllTextAsync(
             path,
             $$"""{"type":"turn","index":{{_turnIndex++}}}""" + "\n",
-            cancellationToken);
+            cancellationToken
+        );
 
-        await foreach (ChatResponseUpdate update in base.GetStreamingResponseAsync(messages, options, cancellationToken))
+        await foreach (
+            ChatResponseUpdate update in base.GetStreamingResponseAsync(
+                messages,
+                options,
+                cancellationToken
+            )
+        )
         {
             await File.AppendAllTextAsync(
                 path,
                 JsonSerializer.Serialize(update, JsonlOptions) + "\n",
-                cancellationToken);
+                cancellationToken
+            );
             yield return update;
         }
     }
@@ -44,7 +59,10 @@ public sealed class RecordingChatClient(IChatClient inner, string path) : Delega
 
 public sealed class ReplayChatClient(string path) : IChatClient
 {
-    private static readonly JsonSerializerOptions JsonlOptions = new(AIJsonUtilities.DefaultOptions) { WriteIndented = false };
+    private static readonly JsonSerializerOptions JsonlOptions = new(AIJsonUtilities.DefaultOptions)
+    {
+        WriteIndented = false,
+    };
 
     private List<List<ChatResponseUpdate>>? _turns;
     private int _nextTurn;
@@ -52,13 +70,14 @@ public sealed class ReplayChatClient(string path) : IChatClient
     public Task<ChatResponse> GetResponseAsync(
         IEnumerable<ChatMessage> messages,
         ChatOptions? options = null,
-        CancellationToken cancellationToken = default) =>
-        throw new NotSupportedException("The spike replay client is streaming-only.");
+        CancellationToken cancellationToken = default
+    ) => throw new NotSupportedException("The spike replay client is streaming-only.");
 
     public async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
         IEnumerable<ChatMessage> messages,
         ChatOptions? options = null,
-        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        [EnumeratorCancellation] CancellationToken cancellationToken = default
+    )
     {
         _ = messages;
         _ = options;
@@ -77,11 +96,12 @@ public sealed class ReplayChatClient(string path) : IChatClient
 
     public object? GetService(Type serviceType, object? serviceKey = null) => null;
 
-    public void Dispose()
-    {
-    }
+    public void Dispose() { }
 
-    private static async Task<List<List<ChatResponseUpdate>>> ReadTurnsAsync(string path, CancellationToken cancellationToken)
+    private static async Task<List<List<ChatResponseUpdate>>> ReadTurnsAsync(
+        string path,
+        CancellationToken cancellationToken
+    )
     {
         List<List<ChatResponseUpdate>> turns = [];
 
@@ -101,7 +121,8 @@ public sealed class ReplayChatClient(string path) : IChatClient
                 }
             }
 
-            ChatResponseUpdate update = JsonSerializer.Deserialize<ChatResponseUpdate>(line, JsonlOptions)
+            ChatResponseUpdate update =
+                JsonSerializer.Deserialize<ChatResponseUpdate>(line, JsonlOptions)
                 ?? throw new InvalidOperationException($"Could not deserialize update: {line}");
             if (turns.Count == 0)
             {

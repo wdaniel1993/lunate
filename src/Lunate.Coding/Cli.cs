@@ -18,7 +18,9 @@ internal static class Cli
     {
         var assembly = typeof(Cli).Assembly;
 
-        return assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
+        return assembly
+                .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
+                ?.InformationalVersion
             ?? assembly.GetName().Version?.ToString()
             ?? "unknown";
     }

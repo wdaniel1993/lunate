@@ -18,11 +18,7 @@ internal sealed class TempDirectory : IDisposable
         {
             Directory.Delete(Root, recursive: true);
         }
-        catch (IOException)
-        {
-        }
-        catch (UnauthorizedAccessException)
-        {
-        }
+        catch (IOException) { }
+        catch (UnauthorizedAccessException) { }
     }
 }

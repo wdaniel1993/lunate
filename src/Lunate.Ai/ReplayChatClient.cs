@@ -21,7 +21,8 @@ public sealed class ReplayChatClient : IChatClient
     public async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
         IEnumerable<ChatMessage> messages,
         ChatOptions? options = null,
-        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        [EnumeratorCancellation] CancellationToken cancellationToken = default
+    )
     {
         FixtureExchange exchange = NextExchange(messages, options);
         await Task.CompletedTask;
@@ -35,7 +36,8 @@ public sealed class ReplayChatClient : IChatClient
     public async Task<ChatResponse> GetResponseAsync(
         IEnumerable<ChatMessage> messages,
         ChatOptions? options = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         FixtureExchange exchange = NextExchange(messages, options);
         await Task.CompletedTask;
@@ -44,9 +46,7 @@ public sealed class ReplayChatClient : IChatClient
 
     public object? GetService(Type serviceType, object? serviceKey = null) => null;
 
-    public void Dispose()
-    {
-    }
+    public void Dispose() { }
 
     private FixtureExchange NextExchange(IEnumerable<ChatMessage> messages, ChatOptions? options)
     {
@@ -54,7 +54,8 @@ public sealed class ReplayChatClient : IChatClient
         if (_nextExchange >= _document.Exchanges.Count)
         {
             throw new InvalidOperationException(
-                $"Fixture '{_fixturePath}' is exhausted: it has {_document.Exchanges.Count} exchange(s) and request {_nextExchange + 1} arrived. Re-record the fixture with LUNATE_RECORD=1 if the request sequence changed.");
+                $"Fixture '{_fixturePath}' is exhausted: it has {_document.Exchanges.Count} exchange(s) and request {_nextExchange + 1} arrived. Re-record the fixture with LUNATE_RECORD=1 if the request sequence changed."
+            );
         }
 
         FixtureExchange exchange = _document.Exchanges[_nextExchange];
@@ -62,7 +63,8 @@ public sealed class ReplayChatClient : IChatClient
         if (!string.Equals(exchange.RequestDigest, actualDigest, StringComparison.Ordinal))
         {
             throw new InvalidOperationException(
-                $"Fixture '{_fixturePath}' has a request mismatch at exchange {_nextExchange + 1}: expected digest '{Display(exchange.RequestDigest)}' but got '{Display(actualDigest)}'. The request differs from the recorded one; re-record the fixture with LUNATE_RECORD=1 if that change is intentional.");
+                $"Fixture '{_fixturePath}' has a request mismatch at exchange {_nextExchange + 1}: expected digest '{Display(exchange.RequestDigest)}' but got '{Display(actualDigest)}'. The request differs from the recorded one; re-record the fixture with LUNATE_RECORD=1 if that change is intentional."
+            );
         }
 
         _nextExchange++;

@@ -99,7 +99,9 @@ public sealed class LiveAreaState
             Tail = TailLines(),
             SpinnerGlyph = spinnerGlyph,
             Footer = string.Join(" · ", footer),
-            ApprovalPrompt = PendingApprovalText is null ? null : $"approve {PendingApprovalText}? [y]es [n]o [a]lways",
+            ApprovalPrompt = PendingApprovalText is null
+                ? null
+                : $"approve {PendingApprovalText}? [y]es [n]o [a]lways",
             QueuedSteering = [.. Steering.TakeLast(MaxSteeringLines)],
             Input = Input,
             Status = Status,

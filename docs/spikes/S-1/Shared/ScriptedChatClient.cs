@@ -23,10 +23,16 @@ public sealed class ScriptedChatClient(IEnumerable<ScriptedTurn> turns) : IChatC
     public Task<ChatResponse> GetResponseAsync(
         IEnumerable<ChatMessage> messages,
         ChatOptions? options = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         cancellationToken.ThrowIfCancellationRequested();
-        Requests.Add(new RecordedRequest(messages as IReadOnlyList<ChatMessage> ?? messages.ToList(), options));
+        Requests.Add(
+            new RecordedRequest(
+                messages as IReadOnlyList<ChatMessage> ?? messages.ToList(),
+                options
+            )
+        );
 
         if (_turns.Count == 0)
         {
@@ -40,9 +46,15 @@ public sealed class ScriptedChatClient(IEnumerable<ScriptedTurn> turns) : IChatC
     public async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
         IEnumerable<ChatMessage> messages,
         ChatOptions? options = null,
-        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        [EnumeratorCancellation] CancellationToken cancellationToken = default
+    )
     {
-        Requests.Add(new RecordedRequest(messages as IReadOnlyList<ChatMessage> ?? messages.ToList(), options));
+        Requests.Add(
+            new RecordedRequest(
+                messages as IReadOnlyList<ChatMessage> ?? messages.ToList(),
+                options
+            )
+        );
 
         if (_turns.Count == 0)
         {
@@ -60,7 +72,5 @@ public sealed class ScriptedChatClient(IEnumerable<ScriptedTurn> turns) : IChatC
 
     public object? GetService(Type serviceType, object? serviceKey = null) => null;
 
-    public void Dispose()
-    {
-    }
+    public void Dispose() { }
 }

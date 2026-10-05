@@ -1,12 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <RootNamespace>S5.Baseline</RootNamespace>
+    </PropertyGroup>
 
-  <PropertyGroup>
-    <OutputType>Exe</OutputType>
-    <RootNamespace>S5.Baseline</RootNamespace>
-  </PropertyGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="../S5.Harness/S5.Harness.csproj" />
-  </ItemGroup>
-
+    <ItemGroup>
+        <ProjectReference Include="../S5.Harness/S5.Harness.csproj" />
+    </ItemGroup>
 </Project>

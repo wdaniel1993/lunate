@@ -8,8 +8,8 @@ public sealed class VersionTests
     public void Run_with_version_flag_writes_product_version_and_returns_zero()
     {
         using var writer = new StringWriter();
-        var informationalVersion = typeof(Cli).Assembly
-            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
+        var informationalVersion = typeof(Cli)
+            .Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()
             ?.InformationalVersion;
 
         var exitCode = Cli.Run(["--version"], writer);

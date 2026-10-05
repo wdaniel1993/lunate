@@ -7,14 +7,18 @@ namespace Spike.OwnLoop;
 
 public sealed record ApprovalContext(string CallId, SpikeTool Tool, string ArgsJson);
 
-public delegate ValueTask<ApprovalDecision> ApprovalCallback(ApprovalContext context, CancellationToken cancellationToken);
+public delegate ValueTask<ApprovalDecision> ApprovalCallback(
+    ApprovalContext context,
+    CancellationToken cancellationToken
+);
 
 public sealed class OwnLoopAgent(
     IChatClient client,
     IReadOnlyList<SpikeTool> tools,
     string systemPrompt,
     ApprovalCallback approval,
-    int maxSteps = 20)
+    int maxSteps = 20
+)
 {
     private readonly List<ChatMessage> _history = [];
     private readonly HashSet<string> _sessionApproved = new(StringComparer.Ordinal);
@@ -27,7 +31,8 @@ public sealed class OwnLoopAgent(
 
     public async IAsyncEnumerable<OwnLoopEvent> RunAsync(
         string userInput,
-        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        [EnumeratorCancellation] CancellationToken cancellationToken = default
+    )
     {
         string runId = $"run_{++this._runCounter}";
         this._history.Add(new ChatMessage(ChatRole.User, userInput));
@@ -49,9 +54,22 @@ public sealed class OwnLoopAgent(
 
             try
             {
-                List<ChatMessage> messages = [new ChatMessage(ChatRole.System, systemPrompt), .. this._history];
-                ChatOptions options = new() { Tools = tools.Select(t => (AITool)t.Declare()).ToList() };
-                await foreach (ChatResponseUpdate update in client.GetStreamingResponseAsync(messages, options, cancellationToken))
+                List<ChatMessage> messages =
+                [
+                    new ChatMessage(ChatRole.System, systemPrompt),
+                    .. this._history,
+                ];
+                ChatOptions options = new()
+                {
+                    Tools = tools.Select(t => (AITool)t.Declare()).ToList(),
+                };
+                await foreach (
+                    ChatResponseUpdate update in client.GetStreamingResponseAsync(
+                        messages,
+                        options,
+                        cancellationToken
+                    )
+                )
                 {
                     buffered.AddRange(accumulator.Process(update));
                 }
@@ -95,7 +113,11 @@ public sealed class OwnLoopAgent(
             foreach (AccumulatedCall call in calls)
             {
                 List<OwnLoopEvent> toolEvents = [];
-                (bool toolCancelled, string output) = await this.ExecuteCallAsync(call, toolEvents, cancellationToken);
+                (bool toolCancelled, string output) = await this.ExecuteCallAsync(
+                    call,
+                    toolEvents,
+                    cancellationToken
+                );
                 foreach (OwnLoopEvent item in toolEvents)
                 {
                     yield return item;
@@ -131,7 +153,8 @@ public sealed class OwnLoopAgent(
     private async Task<(bool Cancelled, string Output)> ExecuteCallAsync(
         AccumulatedCall call,
         List<OwnLoopEvent> events,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         events.Add(new ToolCallStart(call.CallId, call.Name));
         events.Add(new ToolCallArgs(call.CallId, call.ArgumentsJson));
@@ -140,14 +163,16 @@ public sealed class OwnLoopAgent(
         SpikeTool? tool = tools.FirstOrDefault(t => t.Name == call.Name);
         if (tool is null)
         {
-            string message = $"Unknown tool '{call.Name}'. Available tools: {string.Join(", ", tools.Select(t => t.Name))}.";
+            string message =
+                $"Unknown tool '{call.Name}'. Available tools: {string.Join(", ", tools.Select(t => t.Name))}.";
             events.Add(new ToolCallResult(call.CallId, message, IsError: true));
             return (false, message);
         }
 
         if (!call.TryGetArguments(out var arguments, out string? parseError))
         {
-            string message = $"Invalid JSON arguments for '{call.Name}': {parseError}. Fix the arguments and retry.";
+            string message =
+                $"Invalid JSON arguments for '{call.Name}': {parseError}. Fix the arguments and retry.";
             events.Add(new ToolCallResult(call.CallId, message, IsError: true));
             return (false, message);
         }
@@ -159,7 +184,10 @@ public sealed class OwnLoopAgent(
             ApprovalDecision decision;
             try
             {
-                decision = await approval(new ApprovalContext(call.CallId, tool, call.ArgumentsJson), cancellationToken);
+                decision = await approval(
+                    new ApprovalContext(call.CallId, tool, call.ArgumentsJson),
+                    cancellationToken
+                );
             }
             catch (OperationCanceledException)
             {
@@ -173,7 +201,8 @@ public sealed class OwnLoopAgent(
 
             if (decision == ApprovalDecision.Deny)
             {
-                string denied = $"Denied by the user: '{tool.Name}' was not run. Explain why the call is needed and ask before retrying.";
+                string denied =
+                    $"Denied by the user: '{tool.Name}' was not run. Explain why the call is needed and ask before retrying.";
                 events.Add(new ToolCallResult(call.CallId, denied, IsError: true));
                 return (false, denied);
             }

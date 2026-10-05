@@ -22,7 +22,10 @@ public sealed class ChatClientFactoryTests
         var factory = CreateFactory(sequence, enableOpenTelemetry: true);
 
         IChatClient client = factory.Create(TestModel());
-        await client.GetResponseAsync([new ChatMessage(ChatRole.User, "hello")], cancellationToken: TestContext.Current.CancellationToken);
+        await client.GetResponseAsync(
+            [new ChatMessage(ChatRole.User, "hello")],
+            cancellationToken: TestContext.Current.CancellationToken
+        );
 
         Assert.Equal(new[] { "telemetry", "logging", "recorder", "provider" }, sequence);
     }
@@ -35,7 +38,10 @@ public sealed class ChatClientFactoryTests
         var factory = CreateFactory(sequence, enableOpenTelemetry: false);
 
         IChatClient client = factory.Create(TestModel());
-        await client.GetResponseAsync([new ChatMessage(ChatRole.User, "hello")], cancellationToken: TestContext.Current.CancellationToken);
+        await client.GetResponseAsync(
+            [new ChatMessage(ChatRole.User, "hello")],
+            cancellationToken: TestContext.Current.CancellationToken
+        );
 
         Assert.Equal(new[] { "logging", "recorder", "provider" }, sequence);
     }
@@ -50,10 +56,14 @@ public sealed class ChatClientFactoryTests
         using var listener = ListenForTelemetry(sequence);
         using var environment = new EnvironmentScope(
             (OpenTelemetryOptInVariable, optIn),
-            (OtlpEndpointVariable, null));
+            (OtlpEndpointVariable, null)
+        );
 
         IChatClient client = CreateFactoryWithoutExplicitTelemetry(sequence).Create(TestModel());
-        await client.GetResponseAsync([new ChatMessage(ChatRole.User, "hello")], cancellationToken: TestContext.Current.CancellationToken);
+        await client.GetResponseAsync(
+            [new ChatMessage(ChatRole.User, "hello")],
+            cancellationToken: TestContext.Current.CancellationToken
+        );
 
         Assert.Contains("telemetry", sequence);
     }
@@ -65,10 +75,14 @@ public sealed class ChatClientFactoryTests
         using var listener = ListenForTelemetry(sequence);
         using var environment = new EnvironmentScope(
             (OpenTelemetryOptInVariable, null),
-            (OtlpEndpointVariable, "http://localhost:4317"));
+            (OtlpEndpointVariable, "http://localhost:4317")
+        );
 
         IChatClient client = CreateFactoryWithoutExplicitTelemetry(sequence).Create(TestModel());
-        await client.GetResponseAsync([new ChatMessage(ChatRole.User, "hello")], cancellationToken: TestContext.Current.CancellationToken);
+        await client.GetResponseAsync(
+            [new ChatMessage(ChatRole.User, "hello")],
+            cancellationToken: TestContext.Current.CancellationToken
+        );
 
         Assert.Contains("telemetry", sequence);
     }
@@ -80,10 +94,14 @@ public sealed class ChatClientFactoryTests
         using var listener = ListenForTelemetry(sequence);
         using var environment = new EnvironmentScope(
             (OpenTelemetryOptInVariable, null),
-            (OtlpEndpointVariable, null));
+            (OtlpEndpointVariable, null)
+        );
 
         IChatClient client = CreateFactoryWithoutExplicitTelemetry(sequence).Create(TestModel());
-        await client.GetResponseAsync([new ChatMessage(ChatRole.User, "hello")], cancellationToken: TestContext.Current.CancellationToken);
+        await client.GetResponseAsync(
+            [new ChatMessage(ChatRole.User, "hello")],
+            cancellationToken: TestContext.Current.CancellationToken
+        );
 
         Assert.DoesNotContain("telemetry", sequence);
     }
@@ -95,10 +113,15 @@ public sealed class ChatClientFactoryTests
         using var listener = ListenForTelemetry(sequence);
         using var environment = new EnvironmentScope(
             (OpenTelemetryOptInVariable, "1"),
-            (OtlpEndpointVariable, null));
+            (OtlpEndpointVariable, null)
+        );
 
-        IChatClient client = CreateFactory(sequence, enableOpenTelemetry: false).Create(TestModel());
-        await client.GetResponseAsync([new ChatMessage(ChatRole.User, "hello")], cancellationToken: TestContext.Current.CancellationToken);
+        IChatClient client = CreateFactory(sequence, enableOpenTelemetry: false)
+            .Create(TestModel());
+        await client.GetResponseAsync(
+            [new ChatMessage(ChatRole.User, "hello")],
+            cancellationToken: TestContext.Current.CancellationToken
+        );
 
         Assert.DoesNotContain("telemetry", sequence);
     }
@@ -112,15 +135,22 @@ public sealed class ChatClientFactoryTests
             new MarkingLoggerFactory(() => sequence.Add("logging")),
             enableOpenTelemetry: true,
             providerClientFactory: _ => new ProviderStub(sequence),
-            recorderDecorator: inner => recorder = new MarkerChatClient("recorder", sequence, inner));
+            recorderDecorator: inner => recorder = new MarkerChatClient("recorder", sequence, inner)
+        );
 
         IChatClient client = factory.Create(TestModel());
-        await client.GetResponseAsync([new ChatMessage(ChatRole.User, "hello")], cancellationToken: TestContext.Current.CancellationToken);
+        await client.GetResponseAsync(
+            [new ChatMessage(ChatRole.User, "hello")],
+            cancellationToken: TestContext.Current.CancellationToken
+        );
 
         Assert.NotNull(recorder);
         IChatClient[] chain = [.. WalkChain(client)];
         Assert.DoesNotContain(chain, candidate => candidate is FunctionInvokingChatClient);
-        int recorderIndex = Array.FindIndex(chain, candidate => ReferenceEquals(candidate, recorder));
+        int recorderIndex = Array.FindIndex(
+            chain,
+            candidate => ReferenceEquals(candidate, recorder)
+        );
         Assert.True(recorderIndex > 0);
         Assert.IsType<StreamAccumulator>(chain[recorderIndex - 1]);
         Assert.IsType<ProviderStub>(chain[^1]);
@@ -143,13 +173,7 @@ public sealed class ChatClientFactoryTests
                 "MarkerChatClient",
                 "ProviderStub",
             ]
-            :
-            [
-                "LoggingChatClient",
-                "StreamAccumulator",
-                "MarkerChatClient",
-                "ProviderStub",
-            ];
+            : ["LoggingChatClient", "StreamAccumulator", "MarkerChatClient", "ProviderStub"];
 
         Assert.Equal(expected, chain.Select(candidate => candidate.GetType().Name));
     }
@@ -176,7 +200,9 @@ public sealed class ChatClientFactoryTests
         var factory = new ChatClientFactory(new MarkingLoggerFactory(static () => { }));
         var model = new ModelInfo("gemini-2.5-pro", provider, null, 128_000, true);
 
-        NotSupportedException exception = Assert.Throws<NotSupportedException>(() => factory.Create(model));
+        NotSupportedException exception = Assert.Throws<NotSupportedException>(() =>
+            factory.Create(model)
+        );
 
         Assert.Contains(provider, exception.Message, StringComparison.Ordinal);
         Assert.Contains("openai", exception.Message, StringComparison.OrdinalIgnoreCase);
@@ -189,7 +215,8 @@ public sealed class ChatClientFactoryTests
         using var environment = new EnvironmentScope(
             (OpenAiApiKeyVariable, "test-key"),
             (OpenTelemetryOptInVariable, null),
-            (OtlpEndpointVariable, null));
+            (OtlpEndpointVariable, null)
+        );
         var factory = new ChatClientFactory(new MarkingLoggerFactory(static () => { }));
         var endpoint = new Uri("https://example.test/v1");
         var model = new ModelInfo("gpt-4o-mini", "openai", endpoint, 128_000, true);
@@ -209,7 +236,9 @@ public sealed class ChatClientFactoryTests
         var factory = new ChatClientFactory(new MarkingLoggerFactory(static () => { }));
         var model = new ModelInfo("gpt-4o-mini", "OpenAI", null, 128_000, true);
 
-        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() => factory.Create(model));
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+            factory.Create(model)
+        );
 
         Assert.Contains(OpenAiApiKeyVariable, exception.Message, StringComparison.Ordinal);
         Assert.Contains("T-16", exception.Message, StringComparison.Ordinal);
@@ -236,7 +265,10 @@ public sealed class ChatClientFactoryTests
         OpenAIClientOptions options = ChatClientFactory.CreateOpenAiClientOptions(TestModel());
 
         ClientRetryPolicy policy = Assert.IsType<ClientRetryPolicy>(options.RetryPolicy);
-        FieldInfo? maxRetries = typeof(ClientRetryPolicy).GetField("_maxRetries", BindingFlags.Instance | BindingFlags.NonPublic);
+        FieldInfo? maxRetries = typeof(ClientRetryPolicy).GetField(
+            "_maxRetries",
+            BindingFlags.Instance | BindingFlags.NonPublic
+        );
         Assert.NotNull(maxRetries);
         Assert.Equal(0, maxRetries.GetValue(policy));
     }
@@ -244,7 +276,9 @@ public sealed class ChatClientFactoryTests
     [Fact]
     public void Create_with_anthropic_provider_builds_the_client_without_network()
     {
-        using var environment = new EnvironmentScope((AnthropicApiKeyVariable, "anthropic-test-key"));
+        using var environment = new EnvironmentScope(
+            (AnthropicApiKeyVariable, "anthropic-test-key")
+        );
         var factory = new ChatClientFactory(new MarkingLoggerFactory(static () => { }));
         var model = new ModelInfo("claude-sonnet-5-5", "Anthropic", null, 1_000_000, true);
 
@@ -259,7 +293,9 @@ public sealed class ChatClientFactoryTests
     [Fact]
     public void Create_assigns_the_model_endpoint_to_the_anthropic_base_url()
     {
-        using var environment = new EnvironmentScope((AnthropicApiKeyVariable, "anthropic-test-key"));
+        using var environment = new EnvironmentScope(
+            (AnthropicApiKeyVariable, "anthropic-test-key")
+        );
         var factory = new ChatClientFactory(new MarkingLoggerFactory(static () => { }));
         var endpoint = new Uri("https://anthropic.example.test");
         var model = new ModelInfo("claude-sonnet-5-5", "anthropic", endpoint, 1_000_000, true);
@@ -274,8 +310,16 @@ public sealed class ChatClientFactoryTests
     [Fact]
     public void Create_anthropic_client_disables_transport_retries()
     {
-        using var environment = new EnvironmentScope((AnthropicApiKeyVariable, "anthropic-test-key"));
-        var model = new ModelInfo("claude-sonnet-5-5", "anthropic", new Uri("https://anthropic.example.test"), 1_000_000, true);
+        using var environment = new EnvironmentScope(
+            (AnthropicApiKeyVariable, "anthropic-test-key")
+        );
+        var model = new ModelInfo(
+            "claude-sonnet-5-5",
+            "anthropic",
+            new Uri("https://anthropic.example.test"),
+            1_000_000,
+            true
+        );
 
         AnthropicClient client = ChatClientFactory.CreateAnthropicClient(model);
 
@@ -291,24 +335,31 @@ public sealed class ChatClientFactoryTests
         var factory = new ChatClientFactory(new MarkingLoggerFactory(static () => { }));
         var model = new ModelInfo("claude-sonnet-5-5", "anthropic", null, 1_000_000, true);
 
-        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() => factory.Create(model));
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+            factory.Create(model)
+        );
 
         Assert.Contains(AnthropicApiKeyVariable, exception.Message, StringComparison.Ordinal);
         Assert.Contains("T-16", exception.Message, StringComparison.Ordinal);
     }
 
-    private static ChatClientFactory CreateFactory(List<string> sequence, bool enableOpenTelemetry) =>
+    private static ChatClientFactory CreateFactory(
+        List<string> sequence,
+        bool enableOpenTelemetry
+    ) =>
         new(
             new MarkingLoggerFactory(() => sequence.Add("logging")),
             enableOpenTelemetry,
             _ => new ProviderStub(sequence),
-            inner => new MarkerChatClient("recorder", sequence, inner));
+            inner => new MarkerChatClient("recorder", sequence, inner)
+        );
 
     private static ChatClientFactory CreateFactoryWithoutExplicitTelemetry(List<string> sequence) =>
         new(
             new MarkingLoggerFactory(() => sequence.Add("logging")),
             providerClientFactory: _ => new ProviderStub(sequence),
-            recorderDecorator: inner => new MarkerChatClient("recorder", sequence, inner));
+            recorderDecorator: inner => new MarkerChatClient("recorder", sequence, inner)
+        );
 
     private static ModelInfo TestModel() => new("gpt-4o-mini", "openai", null, 128_000, true);
 
@@ -328,7 +379,8 @@ public sealed class ChatClientFactoryTests
         {
             PropertyInfo? property = type.GetProperty(
                 "InnerClient",
-                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
+            );
             if (property is not null)
             {
                 return (IChatClient?)property.GetValue(client);
@@ -342,8 +394,10 @@ public sealed class ChatClientFactoryTests
     {
         var listener = new ActivityListener
         {
-            ShouldListenTo = static source => source.Name.Contains("Microsoft.Extensions.AI", StringComparison.Ordinal),
-            Sample = static (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
+            ShouldListenTo = static source =>
+                source.Name.Contains("Microsoft.Extensions.AI", StringComparison.Ordinal),
+            Sample = static (ref ActivityCreationOptions<ActivityContext> _) =>
+                ActivitySamplingResult.AllData,
             ActivityStarted = _ => sequence.Add("telemetry"),
         };
         ActivitySource.AddActivityListener(listener);
@@ -358,7 +412,8 @@ public sealed class ChatClientFactoryTests
         public override Task<ChatResponse> GetResponseAsync(
             IEnumerable<ChatMessage> messages,
             ChatOptions? options = null,
-            CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default
+        )
         {
             sequence.Add(marker);
             return base.GetResponseAsync(messages, options, cancellationToken);
@@ -367,16 +422,15 @@ public sealed class ChatClientFactoryTests
 
     private sealed class ProviderStub(List<string> sequence) : IChatClient
     {
-        public void Dispose()
-        {
-        }
+        public void Dispose() { }
 
         public object? GetService(Type serviceType, object? serviceKey = null) => null;
 
         public Task<ChatResponse> GetResponseAsync(
             IEnumerable<ChatMessage> messages,
             ChatOptions? options = null,
-            CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default
+        )
         {
             sequence.Add("provider");
             return Task.FromResult(new ChatResponse(new ChatMessage(ChatRole.Assistant, "stub")));
@@ -385,8 +439,7 @@ public sealed class ChatClientFactoryTests
         public IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
             IEnumerable<ChatMessage> messages,
             ChatOptions? options = null,
-            CancellationToken cancellationToken = default) =>
-            throw new NotSupportedException();
+            CancellationToken cancellationToken = default
+        ) => throw new NotSupportedException();
     }
-
 }

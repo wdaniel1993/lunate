@@ -1,21 +1,19 @@
 <Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <RootNamespace>S5.Tests</RootNamespace>
+    </PropertyGroup>
 
-  <PropertyGroup>
-    <OutputType>Exe</OutputType>
-    <RootNamespace>S5.Tests</RootNamespace>
-  </PropertyGroup>
+    <ItemGroup>
+        <ProjectReference Include="../S5.Harness/S5.Harness.csproj" />
+        <ProjectReference Include="../S5.VariantA/S5.VariantA.csproj" />
+        <ProjectReference Include="../S5.VariantB/S5.VariantB.csproj" />
+        <ProjectReference Include="../S5.VariantBPlus/S5.VariantBPlus.csproj" />
+    </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="../S5.Harness/S5.Harness.csproj" />
-    <ProjectReference Include="../S5.VariantA/S5.VariantA.csproj" />
-    <ProjectReference Include="../S5.VariantB/S5.VariantB.csproj" />
-    <ProjectReference Include="../S5.VariantBPlus/S5.VariantBPlus.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="xunit.v3" Version="4.0.1" />
-    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" Version="10.4.0" />
-    <Using Include="Xunit" />
-  </ItemGroup>
-
+    <ItemGroup>
+        <PackageReference Include="xunit.v3" Version="4.0.1" />
+        <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" Version="10.4.0" />
+        <Using Include="Xunit" />
+    </ItemGroup>
 </Project>

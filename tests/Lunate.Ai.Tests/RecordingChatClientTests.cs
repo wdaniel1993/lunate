@@ -12,8 +12,15 @@ public sealed class RecordingChatClientTests
         string path = temp.File("recordings/stream.jsonl");
         List<ChatResponseUpdate> script =
         [
-            new ChatResponseUpdate(ChatRole.Assistant, [new TextContent("Hello")]) { ModelId = "gpt-4o-mini" },
-            new ChatResponseUpdate(ChatRole.Assistant, [new TextContent(" world")]) { ModelId = "gpt-4o-mini", FinishReason = ChatFinishReason.Stop },
+            new ChatResponseUpdate(ChatRole.Assistant, [new TextContent("Hello")])
+            {
+                ModelId = "gpt-4o-mini",
+            },
+            new ChatResponseUpdate(ChatRole.Assistant, [new TextContent(" world")])
+            {
+                ModelId = "gpt-4o-mini",
+                FinishReason = ChatFinishReason.Stop,
+            },
         ];
         var inner = new ScriptedChatClient().Enqueue([.. script]);
         var client = new RecordingChatClient(inner, path, "gpt-4o-mini");
@@ -43,8 +50,18 @@ public sealed class RecordingChatClientTests
             .Enqueue(new ChatResponseUpdate(ChatRole.Assistant, [new TextContent("two")]));
         var client = new RecordingChatClient(inner, path, "gpt-4o-mini");
 
-        await client.GetStreamingResponseAsync([new ChatMessage(ChatRole.User, "first")], cancellationToken: TestContext.Current.CancellationToken).ToListAsync(TestContext.Current.CancellationToken);
-        await client.GetStreamingResponseAsync([new ChatMessage(ChatRole.User, "second")], cancellationToken: TestContext.Current.CancellationToken).ToListAsync(TestContext.Current.CancellationToken);
+        await client
+            .GetStreamingResponseAsync(
+                [new ChatMessage(ChatRole.User, "first")],
+                cancellationToken: TestContext.Current.CancellationToken
+            )
+            .ToListAsync(TestContext.Current.CancellationToken);
+        await client
+            .GetStreamingResponseAsync(
+                [new ChatMessage(ChatRole.User, "second")],
+                cancellationToken: TestContext.Current.CancellationToken
+            )
+            .ToListAsync(TestContext.Current.CancellationToken);
 
         FixtureDocument document = FixtureFormat.ReadFile(path);
         Assert.Equal(2, document.Exchanges.Count);
@@ -58,12 +75,30 @@ public sealed class RecordingChatClientTests
         using var temp = new TempDirectory();
         string path = temp.File("stream.jsonl");
         DateTimeOffset recordedAt = new(2026, 10, 5, 12, 34, 56, TimeSpan.Zero);
-        var inner = new ScriptedChatClient().Enqueue(new ChatResponseUpdate(ChatRole.Assistant, [new TextContent("one")]));
-        var client = new RecordingChatClient(inner, path, "gpt-4o-mini", new FixedTimeProvider(recordedAt));
+        var inner = new ScriptedChatClient().Enqueue(
+            new ChatResponseUpdate(ChatRole.Assistant, [new TextContent("one")])
+        );
+        var client = new RecordingChatClient(
+            inner,
+            path,
+            "gpt-4o-mini",
+            new FixedTimeProvider(recordedAt)
+        );
 
-        await client.GetStreamingResponseAsync([new ChatMessage(ChatRole.User, "first")], cancellationToken: TestContext.Current.CancellationToken).ToListAsync(TestContext.Current.CancellationToken);
+        await client
+            .GetStreamingResponseAsync(
+                [new ChatMessage(ChatRole.User, "first")],
+                cancellationToken: TestContext.Current.CancellationToken
+            )
+            .ToListAsync(TestContext.Current.CancellationToken);
 
-        Assert.Equal(recordedAt, DateTimeOffset.Parse(FixtureFormat.ReadFile(path).Header.RecordedAt, System.Globalization.CultureInfo.InvariantCulture));
+        Assert.Equal(
+            recordedAt,
+            DateTimeOffset.Parse(
+                FixtureFormat.ReadFile(path).Header.RecordedAt,
+                System.Globalization.CultureInfo.InvariantCulture
+            )
+        );
     }
 
     [Fact]
@@ -73,11 +108,18 @@ public sealed class RecordingChatClientTests
         string path = temp.File("stream.jsonl");
         var inner = new ScriptedChatClient().EnqueueFailure(
             new InvalidOperationException("provider boom"),
-            new ChatResponseUpdate(ChatRole.Assistant, [new TextContent("partial")]));
+            new ChatResponseUpdate(ChatRole.Assistant, [new TextContent("partial")])
+        );
         var client = new RecordingChatClient(inner, path, "gpt-4o-mini");
 
-        await Assert.ThrowsAsync<InvalidOperationException>(
-            () => client.GetStreamingResponseAsync([new ChatMessage(ChatRole.User, "hello")], cancellationToken: TestContext.Current.CancellationToken).ToListAsync(TestContext.Current.CancellationToken));
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            client
+                .GetStreamingResponseAsync(
+                    [new ChatMessage(ChatRole.User, "hello")],
+                    cancellationToken: TestContext.Current.CancellationToken
+                )
+                .ToListAsync(TestContext.Current.CancellationToken)
+        );
 
         Assert.False(File.Exists(path));
     }
@@ -87,13 +129,20 @@ public sealed class RecordingChatClientTests
     {
         using var temp = new TempDirectory();
         string path = temp.File("stream.jsonl");
-        var response = new ChatResponse(new ChatMessage(ChatRole.Assistant, "stub")) { ModelId = "gpt-4o-mini" };
+        var response = new ChatResponse(new ChatMessage(ChatRole.Assistant, "stub"))
+        {
+            ModelId = "gpt-4o-mini",
+        };
         var inner = new ScriptedChatClient().Enqueue(response);
         var client = new RecordingChatClient(inner, path, "gpt-4o-mini");
         ChatMessage[] messages = [new(ChatRole.User, "hello")];
         var options = new ChatOptions { ModelId = "gpt-4o-mini" };
 
-        ChatResponse returned = await client.GetResponseAsync(messages, options, TestContext.Current.CancellationToken);
+        ChatResponse returned = await client.GetResponseAsync(
+            messages,
+            options,
+            TestContext.Current.CancellationToken
+        );
 
         Assert.Same(response, returned);
         FixtureExchange exchange = Assert.Single(FixtureFormat.ReadFile(path).Exchanges);

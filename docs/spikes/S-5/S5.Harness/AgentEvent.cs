@@ -17,7 +17,8 @@ public abstract record AgentEvent
 
     public sealed record ToolFinished(string Tool, bool Ok, string Summary) : AgentEvent;
 
-    public sealed record Usage(long InputTokens, long OutputTokens, double ContextPercent) : AgentEvent;
+    public sealed record Usage(long InputTokens, long OutputTokens, double ContextPercent)
+        : AgentEvent;
 
     public sealed record RunCompleted : AgentEvent;
 

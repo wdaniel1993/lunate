@@ -30,7 +30,8 @@ internal sealed class ScriptedChatClient : IChatClient
     public Task<ChatResponse> GetResponseAsync(
         IEnumerable<ChatMessage> messages,
         ChatOptions? options = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         Script script = Dequeue(messages, options);
         return script.Failure is not null
@@ -41,7 +42,8 @@ internal sealed class ScriptedChatClient : IChatClient
     public async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
         IEnumerable<ChatMessage> messages,
         ChatOptions? options = null,
-        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        [EnumeratorCancellation] CancellationToken cancellationToken = default
+    )
     {
         Script script = Dequeue(messages, options);
         foreach (ChatResponseUpdate update in script.Updates)
@@ -57,19 +59,23 @@ internal sealed class ScriptedChatClient : IChatClient
 
     public object? GetService(Type serviceType, object? serviceKey = null) => null;
 
-    public void Dispose()
-    {
-    }
+    public void Dispose() { }
 
     private Script Dequeue(IEnumerable<ChatMessage> messages, ChatOptions? options)
     {
         Requests.Add(new ScriptedRequest([.. messages], options));
         return _scripts.Count > 0
             ? _scripts.Dequeue()
-            : throw new InvalidOperationException("ScriptedChatClient has no scripted response left.");
+            : throw new InvalidOperationException(
+                "ScriptedChatClient has no scripted response left."
+            );
     }
 
-    private sealed record Script(IReadOnlyList<ChatResponseUpdate> Updates, ChatResponse? Response, Exception? Failure);
+    private sealed record Script(
+        IReadOnlyList<ChatResponseUpdate> Updates,
+        ChatResponse? Response,
+        Exception? Failure
+    );
 }
 
 internal sealed record ScriptedRequest(IReadOnlyList<ChatMessage> Messages, ChatOptions? Options);
@@ -78,7 +84,8 @@ internal static class AsyncEnumerableExtensions
 {
     public static async Task<List<T>> ToListAsync<T>(
         this IAsyncEnumerable<T> source,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         var list = new List<T>();
         await foreach (T item in source.WithCancellation(cancellationToken))

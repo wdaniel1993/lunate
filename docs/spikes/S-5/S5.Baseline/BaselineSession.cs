@@ -51,11 +51,10 @@ public sealed class BaselineSession : ISession
     public IReadOnlyList<string> Snapshot() =>
         LiveAreaRenderer.Render(
             _state.Capture(Spinner.Glyph(_state.ToolRunning, _state.FrameNumber)),
-            _terminal.Width);
+            _terminal.Width
+        );
 
-    public void Dispose()
-    {
-    }
+    public void Dispose() { }
 
     private void Apply(LiveInput input)
     {

@@ -18,7 +18,9 @@ internal static class Headless
             }
             else
             {
-                Console.WriteLine($"partial bytes={BitConverter.ToString(bytes, offset).Replace('-', ' ').ToLowerInvariant()}");
+                Console.WriteLine(
+                    $"partial bytes={BitConverter.ToString(bytes, offset).Replace('-', ' ').ToLowerInvariant()}"
+                );
                 break;
             }
         }

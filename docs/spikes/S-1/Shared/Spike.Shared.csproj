@@ -1,11 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <RootNamespace>Spike.Shared</RootNamespace>
+    </PropertyGroup>
 
-  <PropertyGroup>
-    <RootNamespace>Spike.Shared</RootNamespace>
-  </PropertyGroup>
-
-  <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.AI.Abstractions" Version="10.10.1" />
-  </ItemGroup>
-
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Extensions.AI.Abstractions" Version="10.10.1" />
+    </ItemGroup>
 </Project>

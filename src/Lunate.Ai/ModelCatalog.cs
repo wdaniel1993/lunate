@@ -41,10 +41,14 @@ public sealed class ModelCatalog
 
     private static List<ModelInfo> ParseEmbedded()
     {
-        using Stream? stream = typeof(ModelCatalog).Assembly.GetManifestResourceStream(EmbeddedResourceName);
+        using Stream? stream = typeof(ModelCatalog).Assembly.GetManifestResourceStream(
+            EmbeddedResourceName
+        );
         if (stream is null)
         {
-            throw new InvalidOperationException($"The embedded resource '{EmbeddedResourceName}' was not found.");
+            throw new InvalidOperationException(
+                $"The embedded resource '{EmbeddedResourceName}' was not found."
+            );
         }
 
         using var reader = new StreamReader(stream);
@@ -55,18 +59,23 @@ public sealed class ModelCatalog
         Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
             ".lunate",
-            "models.json");
+            "models.json"
+        );
 
     private static List<ModelInfo> Parse(string json, string source)
     {
-        CatalogFile? file = JsonSerializer.Deserialize<CatalogFile>(json, AIJsonUtilities.DefaultOptions);
+        CatalogFile? file = JsonSerializer.Deserialize<CatalogFile>(
+            json,
+            AIJsonUtilities.DefaultOptions
+        );
         if (file?.SchemaVersion != SupportedSchemaVersion)
         {
             string version = file?.SchemaVersion is int value
                 ? value.ToString(CultureInfo.InvariantCulture)
                 : "missing";
             throw new InvalidDataException(
-                $"Unsupported schemaVersion '{version}' in {source}; expected {SupportedSchemaVersion}.");
+                $"Unsupported schemaVersion '{version}' in {source}; expected {SupportedSchemaVersion}."
+            );
         }
 
         List<ModelEntry> entries = file.Models ?? [];
@@ -95,10 +104,18 @@ public sealed class ModelCatalog
 
         if (string.IsNullOrEmpty(entry.Provider))
         {
-            throw new InvalidDataException($"Model '{entry.Id}' in {source} is missing a provider.");
+            throw new InvalidDataException(
+                $"Model '{entry.Id}' in {source} is missing a provider."
+            );
         }
 
-        return new ModelInfo(entry.Id, entry.Provider, entry.Endpoint, entry.ContextWindow, entry.SupportsTools);
+        return new ModelInfo(
+            entry.Id,
+            entry.Provider,
+            entry.Endpoint,
+            entry.ContextWindow,
+            entry.SupportsTools
+        );
     }
 
     private static List<ModelInfo> Merge(List<ModelInfo> embedded, List<ModelInfo> user)
@@ -109,7 +126,9 @@ public sealed class ModelCatalog
         foreach (ModelInfo model in embedded)
         {
             embeddedIds.Add(model.Id);
-            merged.Add(userById.TryGetValue(model.Id, out ModelInfo? userModel) ? userModel : model);
+            merged.Add(
+                userById.TryGetValue(model.Id, out ModelInfo? userModel) ? userModel : model
+            );
         }
 
         merged.AddRange(user.Where(model => !embeddedIds.Contains(model.Id)));

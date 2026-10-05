@@ -11,8 +11,6 @@ internal static class Stats
 
         var sorted = values.Order().ToArray();
         var middle = sorted.Length / 2;
-        return sorted.Length % 2 == 1
-            ? sorted[middle]
-            : (sorted[middle - 1] + sorted[middle]) / 2;
+        return sorted.Length % 2 == 1 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
     }
 }

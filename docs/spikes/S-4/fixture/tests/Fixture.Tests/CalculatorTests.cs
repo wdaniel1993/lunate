@@ -8,5 +8,6 @@ public class CalculatorTests
     public void Add_returns_sum() => Assert.Equal(3, Calculator.Add(1, 2));
 
     [Fact]
-    public void Divide_by_zero_throws() => Assert.Throws<DivideByZeroException>(() => Calculator.Divide(1, 0));
+    public void Divide_by_zero_throws() =>
+        Assert.Throws<DivideByZeroException>(() => Calculator.Divide(1, 0));
 }

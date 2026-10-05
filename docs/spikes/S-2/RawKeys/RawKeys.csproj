@@ -1,9 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
-  <PropertyGroup>
-    <OutputType>Exe</OutputType>
-    <RootNamespace>Spike.RawKeys</RootNamespace>
-    <AssemblyName>RawKeys</AssemblyName>
-  </PropertyGroup>
-
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <RootNamespace>Spike.RawKeys</RootNamespace>
+        <AssemblyName>RawKeys</AssemblyName>
+    </PropertyGroup>
 </Project>

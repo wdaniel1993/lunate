@@ -11,11 +11,14 @@ public sealed class RecordingChatClient : DelegatingChatClient
     private readonly Lock _writeLock = new();
 
     public RecordingChatClient(IChatClient innerClient, string fixturePath, string? modelId = null)
-        : this(innerClient, fixturePath, modelId, TimeProvider.System)
-    {
-    }
+        : this(innerClient, fixturePath, modelId, TimeProvider.System) { }
 
-    internal RecordingChatClient(IChatClient innerClient, string fixturePath, string? modelId, TimeProvider timeProvider)
+    internal RecordingChatClient(
+        IChatClient innerClient,
+        string fixturePath,
+        string? modelId,
+        TimeProvider timeProvider
+    )
         : base(innerClient)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(fixturePath);
@@ -27,12 +30,19 @@ public sealed class RecordingChatClient : DelegatingChatClient
     public override async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
         IEnumerable<ChatMessage> messages,
         ChatOptions? options = null,
-        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        [EnumeratorCancellation] CancellationToken cancellationToken = default
+    )
     {
         IReadOnlyList<ChatMessage> request = Materialize(messages);
         string requestDigest = FixtureFormat.ComputeRequestDigest(request, options);
         var recorded = new List<ChatResponseUpdate>();
-        await foreach (ChatResponseUpdate update in base.GetStreamingResponseAsync(request, options, cancellationToken))
+        await foreach (
+            ChatResponseUpdate update in base.GetStreamingResponseAsync(
+                request,
+                options,
+                cancellationToken
+            )
+        )
         {
             recorded.Add(update);
             yield return update;
@@ -44,7 +54,8 @@ public sealed class RecordingChatClient : DelegatingChatClient
     public override async Task<ChatResponse> GetResponseAsync(
         IEnumerable<ChatMessage> messages,
         ChatOptions? options = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         IReadOnlyList<ChatMessage> request = Materialize(messages);
         string requestDigest = FixtureFormat.ComputeRequestDigest(request, options);
@@ -73,7 +84,9 @@ public sealed class RecordingChatClient : DelegatingChatClient
             using var writer = new StreamWriter(_fixturePath, append: true);
             if (writer.BaseStream.Length == 0)
             {
-                writer.WriteLine(FixtureFormat.SerializeHeader(_modelId ?? "unknown", _timeProvider.GetUtcNow()));
+                writer.WriteLine(
+                    FixtureFormat.SerializeHeader(_modelId ?? "unknown", _timeProvider.GetUtcNow())
+                );
             }
 
             writer.WriteLine(line);

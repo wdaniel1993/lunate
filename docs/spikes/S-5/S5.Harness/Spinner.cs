@@ -7,5 +7,6 @@ public static class Spinner
     public static string? Glyph(bool busy, int frameNumber) =>
         busy ? Frames[frameNumber % Frames.Length].ToString() : null;
 
-    public static bool IsGlyphLine(string line) => line.Length >= 2 && line[1] == ' ' && Frames.Contains(line[0]);
+    public static bool IsGlyphLine(string line) =>
+        line.Length >= 2 && line[1] == ' ' && Frames.Contains(line[0]);
 }

@@ -9,7 +9,8 @@ public static class KeyDecoder
     {
         key = null;
         consumed = 0;
-        if (input.IsEmpty) return false;
+        if (input.IsEmpty)
+            return false;
 
         if (input[0] == 0x1B)
         {
@@ -28,9 +29,11 @@ public static class KeyDecoder
             };
         }
 
-        if (!TryDecodeUtf8(input, out var ch, out var n)) return false;
+        if (!TryDecodeUtf8(input, out var ch, out var n))
+            return false;
 
-        if (n == 1 && ch < 0x20) return TryDecodeControl((byte)ch, out key, out consumed);
+        if (n == 1 && ch < 0x20)
+            return TryDecodeControl((byte)ch, out key, out consumed);
 
         if (n == 1 && ch == 0x7F)
         {
@@ -69,7 +72,14 @@ public static class KeyDecoder
             0x09 => new KeyEvent("Tab", null, false, false, false, [b]),
             0x0D => new KeyEvent("Enter", null, false, false, false, [b]),
             <= 0x1A => new KeyEvent(((char)(b + 0x40)).ToString(), null, true, false, false, [b]),
-            0x1C or 0x1D or 0x1E or 0x1F => new KeyEvent(((char)(b + 0x40)).ToString(), null, true, false, false, [b]),
+            0x1C or 0x1D or 0x1E or 0x1F => new KeyEvent(
+                ((char)(b + 0x40)).ToString(),
+                null,
+                true,
+                false,
+                false,
+                [b]
+            ),
             _ => new KeyEvent("Unknown", null, true, false, false, [b]),
         };
         return true;
@@ -80,8 +90,10 @@ public static class KeyDecoder
         key = null;
         consumed = 0;
         var i = 2;
-        while (i < input.Length && input[i] is >= 0x20 and <= 0x3F) i++;
-        if (i >= input.Length) return false;
+        while (i < input.Length && input[i] is >= 0x20 and <= 0x3F)
+            i++;
+        if (i >= input.Length)
+            return false;
         if (input[i] is < 0x40 or > 0x7E)
         {
             key = new KeyEvent("Unknown", null, false, false, false, input[..2].ToArray());
@@ -137,7 +149,8 @@ public static class KeyDecoder
     {
         key = null;
         consumed = 0;
-        if (input.Length < 3) return false;
+        if (input.Length < 3)
+            return false;
         var name = input[2] switch
         {
             (byte)'A' => "Up",
@@ -157,22 +170,23 @@ public static class KeyDecoder
         return true;
     }
 
-    private static string? FKeyName(int code) => code switch
-    {
-        11 => "F1",
-        12 => "F2",
-        13 => "F3",
-        14 => "F4",
-        15 => "F5",
-        17 => "F6",
-        18 => "F7",
-        19 => "F8",
-        20 => "F9",
-        21 => "F10",
-        23 => "F11",
-        24 => "F12",
-        _ => null,
-    };
+    private static string? FKeyName(int code) =>
+        code switch
+        {
+            11 => "F1",
+            12 => "F2",
+            13 => "F3",
+            14 => "F4",
+            15 => "F5",
+            17 => "F6",
+            18 => "F7",
+            19 => "F8",
+            20 => "F9",
+            21 => "F10",
+            23 => "F11",
+            24 => "F12",
+            _ => null,
+        };
 
     private static (bool Shift, bool Alt, bool Ctrl) Modifiers(int value)
     {
@@ -182,7 +196,8 @@ public static class KeyDecoder
 
     private static int[] ParseParameters(ReadOnlySpan<byte> span)
     {
-        if (span.IsEmpty) return [];
+        if (span.IsEmpty)
+            return [];
         var parts = new List<int>();
         var value = 0;
         var has = false;
@@ -208,18 +223,21 @@ public static class KeyDecoder
     {
         ch = default;
         consumed = 0;
-        if (input.IsEmpty) return false;
+        if (input.IsEmpty)
+            return false;
         var status = Rune.DecodeFromUtf8(input, out var rune, out var n);
-        if (status == OperationStatus.NeedMoreData) return false;
+        if (status == OperationStatus.NeedMoreData)
+            return false;
         consumed = status == OperationStatus.Done ? n : 1;
         ch = status == OperationStatus.Done && rune.IsBmp ? (char)rune.Value : '\uFFFD';
         return true;
     }
 
-    private static string NameFor(char ch) => ch switch
-    {
-        ' ' => "Space",
-        _ when char.IsAscii(ch) => char.ToUpperInvariant(ch).ToString(),
-        _ => "Unicode",
-    };
+    private static string NameFor(char ch) =>
+        ch switch
+        {
+            ' ' => "Space",
+            _ when char.IsAscii(ch) => char.ToUpperInvariant(ch).ToString(),
+            _ => "Unicode",
+        };
 }

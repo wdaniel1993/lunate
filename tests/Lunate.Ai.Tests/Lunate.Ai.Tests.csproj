@@ -1,21 +1,19 @@
 <Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <RootNamespace>Lunate.Ai.Tests</RootNamespace>
+    </PropertyGroup>
 
-  <PropertyGroup>
-    <OutputType>Exe</OutputType>
-    <RootNamespace>Lunate.Ai.Tests</RootNamespace>
-  </PropertyGroup>
+    <ItemGroup>
+        <ProjectReference Include="../../src/Lunate.Ai/Lunate.Ai.csproj" />
+    </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="../../src/Lunate.Ai/Lunate.Ai.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <!-- Lunate.Ai keeps these compile-private (PrivateAssets=compile); tests that exercise the real pipeline need the compile surface locally. -->
-    <PackageReference Include="Anthropic" Version="12.53.0" />
-    <PackageReference Include="Microsoft.Extensions.AI" Version="10.10.0" />
-    <PackageReference Include="Microsoft.Extensions.AI.OpenAI" Version="10.10.1" />
-    <PackageReference Include="xunit.v3" Version="4.0.1" />
-    <Using Include="Xunit" />
-  </ItemGroup>
-
+    <ItemGroup>
+        <!-- Lunate.Ai keeps these compile-private (PrivateAssets=compile); tests that exercise the real pipeline need the compile surface locally. -->
+        <PackageReference Include="Anthropic" Version="12.53.0" />
+        <PackageReference Include="Microsoft.Extensions.AI" Version="10.10.0" />
+        <PackageReference Include="Microsoft.Extensions.AI.OpenAI" Version="10.10.1" />
+        <PackageReference Include="xunit.v3" Version="4.0.1" />
+        <Using Include="Xunit" />
+    </ItemGroup>
 </Project>

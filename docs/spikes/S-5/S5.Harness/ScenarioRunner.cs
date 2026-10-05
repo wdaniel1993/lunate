@@ -7,7 +7,8 @@ public sealed record ScenarioResult(
     IReadOnlyList<string> LiveArea,
     bool QuitRequested,
     bool CancelRequested,
-    string TailText);
+    string TailText
+);
 
 public static class ScenarioRunner
 {
@@ -51,7 +52,8 @@ public static class ScenarioRunner
             [.. snapshot],
             session.IsQuitRequested,
             session.IsCancelRequested,
-            session.TailText);
+            session.TailText
+        );
     }
 
     public static string ToTranscript(ScenarioResult result)
@@ -69,8 +71,10 @@ public static class ScenarioRunner
             text.AppendLine(line);
         }
 
-        text.AppendLine($"quit={result.QuitRequested.ToString().ToLowerInvariant()} " +
-            $"cancel={result.CancelRequested.ToString().ToLowerInvariant()}");
+        text.AppendLine(
+            $"quit={result.QuitRequested.ToString().ToLowerInvariant()} "
+                + $"cancel={result.CancelRequested.ToString().ToLowerInvariant()}"
+        );
         return text.ToString();
     }
 }

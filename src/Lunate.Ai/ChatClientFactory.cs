@@ -30,7 +30,8 @@ public sealed class ChatClientFactory : IChatClientFactory
         ILoggerFactory loggerFactory,
         bool? enableOpenTelemetry = null,
         Func<ModelInfo, IChatClient>? providerClientFactory = null,
-        Func<IChatClient, IChatClient>? recorderDecorator = null)
+        Func<IChatClient, IChatClient>? recorderDecorator = null
+    )
     {
         ArgumentNullException.ThrowIfNull(loggerFactory);
         _loggerFactory = loggerFactory;
@@ -74,9 +75,7 @@ public sealed class ChatClientFactory : IChatClientFactory
     {
         if (string.Equals(model.Provider, OpenAiProvider, StringComparison.OrdinalIgnoreCase))
         {
-            return CreateOpenAiClient(model)
-                .GetChatClient(model.Id)
-                .AsIChatClient();
+            return CreateOpenAiClient(model).GetChatClient(model.Id).AsIChatClient();
         }
 
         if (string.Equals(model.Provider, AnthropicProvider, StringComparison.OrdinalIgnoreCase))
@@ -85,7 +84,8 @@ public sealed class ChatClientFactory : IChatClientFactory
         }
 
         throw new NotSupportedException(
-            $"Provider '{model.Provider}' is not supported. Supported providers: {OpenAiProvider}, {AnthropicProvider}.");
+            $"Provider '{model.Provider}' is not supported. Supported providers: {OpenAiProvider}, {AnthropicProvider}."
+        );
     }
 
     internal static OpenAIClient CreateOpenAiClient(ModelInfo model)
@@ -96,8 +96,9 @@ public sealed class ChatClientFactory : IChatClientFactory
             if (model.Endpoint is null)
             {
                 throw new InvalidOperationException(
-                    $"The {OpenAiApiKeyVariable} environment variable is not set. " +
-                    $"Set {OpenAiApiKeyVariable} to an OpenAI API key; settings and auth.json support arrive with T-16.");
+                    $"The {OpenAiApiKeyVariable} environment variable is not set. "
+                        + $"Set {OpenAiApiKeyVariable} to an OpenAI API key; settings and auth.json support arrive with T-16."
+                );
             }
 
             apiKey = PlaceholderCredential;
@@ -108,10 +109,7 @@ public sealed class ChatClientFactory : IChatClientFactory
 
     internal static OpenAIClientOptions CreateOpenAiClientOptions(ModelInfo model)
     {
-        OpenAIClientOptions options = new()
-        {
-            RetryPolicy = new ClientRetryPolicy(maxRetries: 0),
-        };
+        OpenAIClientOptions options = new() { RetryPolicy = new ClientRetryPolicy(maxRetries: 0) };
 
         if (model.Endpoint is not null)
         {
@@ -127,17 +125,14 @@ public sealed class ChatClientFactory : IChatClientFactory
         if (string.IsNullOrEmpty(apiKey))
         {
             throw new InvalidOperationException(
-                $"The {AnthropicApiKeyVariable} environment variable is not set. " +
-                $"Set {AnthropicApiKeyVariable} to an Anthropic API key; settings and auth.json support arrive with T-16.");
+                $"The {AnthropicApiKeyVariable} environment variable is not set. "
+                    + $"Set {AnthropicApiKeyVariable} to an Anthropic API key; settings and auth.json support arrive with T-16."
+            );
         }
 
         if (model.Endpoint is null)
         {
-            return new AnthropicClient
-            {
-                ApiKey = apiKey,
-                MaxRetries = 0,
-            };
+            return new AnthropicClient { ApiKey = apiKey, MaxRetries = 0 };
         }
 
         return new AnthropicClient
@@ -156,13 +151,15 @@ public sealed class ChatClientFactory : IChatClientFactory
                 DateTimeOffset.UtcNow.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture),
                 "-",
                 Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(4)),
-                ".jsonl"));
+                ".jsonl"
+            )
+        );
 
     private static bool RecordingRequestedFromEnvironment()
     {
         string? value = Environment.GetEnvironmentVariable(RecordVariable);
-        return string.Equals(value, "1", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(value, "true", StringComparison.OrdinalIgnoreCase);
+        return string.Equals(value, "1", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(value, "true", StringComparison.OrdinalIgnoreCase);
     }
 
     private static string? RecordingPathFromEnvironment()
@@ -174,8 +171,10 @@ public sealed class ChatClientFactory : IChatClientFactory
     private static bool OpenTelemetryEnabledFromEnvironment()
     {
         string? optIn = Environment.GetEnvironmentVariable(OpenTelemetryOptInVariable);
-        if (string.Equals(optIn, "1", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(optIn, "true", StringComparison.OrdinalIgnoreCase))
+        if (
+            string.Equals(optIn, "1", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(optIn, "true", StringComparison.OrdinalIgnoreCase)
+        )
         {
             return true;
         }

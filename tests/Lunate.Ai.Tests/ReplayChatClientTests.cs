@@ -12,16 +12,29 @@ public sealed class ReplayChatClientTests
         string path = temp.File("fixture.jsonl");
         ChatMessage[] first = [new(ChatRole.User, "one")];
         ChatMessage[] second = [new(ChatRole.User, "two")];
-        var firstUpdate = new ChatResponseUpdate(ChatRole.Assistant, [new TextContent("first")]) { ModelId = "gpt-4o-mini" };
-        var secondUpdate = new ChatResponseUpdate(ChatRole.Assistant, [new TextContent("second")]) { ModelId = "gpt-4o-mini", FinishReason = ChatFinishReason.Stop };
+        var firstUpdate = new ChatResponseUpdate(ChatRole.Assistant, [new TextContent("first")])
+        {
+            ModelId = "gpt-4o-mini",
+        };
+        var secondUpdate = new ChatResponseUpdate(ChatRole.Assistant, [new TextContent("second")])
+        {
+            ModelId = "gpt-4o-mini",
+            FinishReason = ChatFinishReason.Stop,
+        };
         WriteFixture(path, (first, null, [firstUpdate]), (second, null, [secondUpdate]));
         var client = new ReplayChatClient(path);
 
         List<ChatResponseUpdate> replayedFirst = await client
-            .GetStreamingResponseAsync(first, cancellationToken: TestContext.Current.CancellationToken)
+            .GetStreamingResponseAsync(
+                first,
+                cancellationToken: TestContext.Current.CancellationToken
+            )
             .ToListAsync(TestContext.Current.CancellationToken);
         List<ChatResponseUpdate> replayedSecond = await client
-            .GetStreamingResponseAsync(second, cancellationToken: TestContext.Current.CancellationToken)
+            .GetStreamingResponseAsync(
+                second,
+                cancellationToken: TestContext.Current.CancellationToken
+            )
             .ToListAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal(Serialize([firstUpdate]), Serialize(replayedFirst));
@@ -37,14 +50,29 @@ public sealed class ReplayChatClientTests
         var options = new ChatOptions { ModelId = "gpt-4o-mini" };
         WriteFixture(
             path,
-            (messages, options,
-            [
-                new ChatResponseUpdate(ChatRole.Assistant, [new TextContent("Hello ")]) { ModelId = "gpt-4o-mini" },
-                new ChatResponseUpdate(ChatRole.Assistant, [new TextContent("world")]) { ModelId = "gpt-4o-mini", FinishReason = ChatFinishReason.Stop },
-            ]));
+            (
+                messages,
+                options,
+                [
+                    new ChatResponseUpdate(ChatRole.Assistant, [new TextContent("Hello ")])
+                    {
+                        ModelId = "gpt-4o-mini",
+                    },
+                    new ChatResponseUpdate(ChatRole.Assistant, [new TextContent("world")])
+                    {
+                        ModelId = "gpt-4o-mini",
+                        FinishReason = ChatFinishReason.Stop,
+                    },
+                ]
+            )
+        );
         var client = new ReplayChatClient(path);
 
-        ChatResponse response = await client.GetResponseAsync(messages, options, TestContext.Current.CancellationToken);
+        ChatResponse response = await client.GetResponseAsync(
+            messages,
+            options,
+            TestContext.Current.CancellationToken
+        );
 
         Assert.Equal("Hello world", response.Text);
         Assert.Equal("gpt-4o-mini", response.ModelId);
@@ -57,11 +85,19 @@ public sealed class ReplayChatClientTests
         string path = temp.File("aggregate-roundtrip.jsonl");
         ChatMessage[] messages = [new(ChatRole.User, "list the files")];
         var options = new ChatOptions { ModelId = "gpt-4o-mini" };
-        var response = new ChatResponse(new ChatMessage(ChatRole.Assistant,
-        [
-            new TextContent("Checking the workspace."),
-            new FunctionCallContent("call-1", "list_files", new Dictionary<string, object?> { ["path"] = "." }),
-        ]))
+        var response = new ChatResponse(
+            new ChatMessage(
+                ChatRole.Assistant,
+                [
+                    new TextContent("Checking the workspace."),
+                    new FunctionCallContent(
+                        "call-1",
+                        "list_files",
+                        new Dictionary<string, object?> { ["path"] = "." }
+                    ),
+                ]
+            )
+        )
         {
             ModelId = "gpt-4o-mini",
             ResponseId = "resp-1",
@@ -69,10 +105,22 @@ public sealed class ReplayChatClientTests
             CreatedAt = new DateTimeOffset(2026, 10, 5, 12, 0, 0, TimeSpan.Zero),
             Usage = new UsageDetails { InputTokenCount = 42, OutputTokenCount = 7 },
         };
-        var recorder = new RecordingChatClient(new ScriptedChatClient().Enqueue(response), path, "gpt-4o-mini");
+        var recorder = new RecordingChatClient(
+            new ScriptedChatClient().Enqueue(response),
+            path,
+            "gpt-4o-mini"
+        );
 
-        ChatResponse recorded = await recorder.GetResponseAsync(messages, options, TestContext.Current.CancellationToken);
-        ChatResponse replayed = await new ReplayChatClient(path).GetResponseAsync(messages, options, TestContext.Current.CancellationToken);
+        ChatResponse recorded = await recorder.GetResponseAsync(
+            messages,
+            options,
+            TestContext.Current.CancellationToken
+        );
+        ChatResponse replayed = await new ReplayChatClient(path).GetResponseAsync(
+            messages,
+            options,
+            TestContext.Current.CancellationToken
+        );
 
         Assert.NotSame(recorded, replayed);
         Assert.Equal(recorded.Text, replayed.Text);
@@ -84,15 +132,17 @@ public sealed class ReplayChatClientTests
         Assert.Equal(recorded.Usage?.OutputTokenCount, replayed.Usage?.OutputTokenCount);
         Assert.Equal(
             Assert.Single(recorded.Messages).Contents.Select(DescribeContent),
-            Assert.Single(replayed.Messages).Contents.Select(DescribeContent));
+            Assert.Single(replayed.Messages).Contents.Select(DescribeContent)
+        );
     }
 
-    private static string DescribeContent(AIContent content) => content switch
-    {
-        FunctionCallContent call => $"function-call:{call.CallId}:{call.Name}",
-        TextContent text => $"text:{text.Text}",
-        _ => content.GetType().Name,
-    };
+    private static string DescribeContent(AIContent content) =>
+        content switch
+        {
+            FunctionCallContent call => $"function-call:{call.CallId}:{call.Name}",
+            TextContent text => $"text:{text.Text}",
+            _ => content.GetType().Name,
+        };
 
     [Fact]
     public async Task Request_digest_mismatch_fails_actionably()
@@ -101,11 +151,21 @@ public sealed class ReplayChatClientTests
         string path = temp.File("fixture.jsonl");
         ChatMessage[] recorded = [new(ChatRole.User, "hello")];
         ChatMessage[] actual = [new(ChatRole.User, "different")];
-        WriteFixture(path, (recorded, null, [new ChatResponseUpdate(ChatRole.Assistant, [new TextContent("hi")])]));
+        WriteFixture(
+            path,
+            (recorded, null, [new ChatResponseUpdate(ChatRole.Assistant, [new TextContent("hi")])])
+        );
         var client = new ReplayChatClient(path);
 
         InvalidOperationException exception = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => client.GetStreamingResponseAsync(actual, cancellationToken: TestContext.Current.CancellationToken).ToListAsync(TestContext.Current.CancellationToken));
+            () =>
+                client
+                    .GetStreamingResponseAsync(
+                        actual,
+                        cancellationToken: TestContext.Current.CancellationToken
+                    )
+                    .ToListAsync(TestContext.Current.CancellationToken)
+        );
 
         string expectedDigest = FixtureFormat.ComputeRequestDigest(recorded, null);
         string actualDigest = FixtureFormat.ComputeRequestDigest(actual, null);
@@ -126,11 +186,23 @@ public sealed class ReplayChatClientTests
         WriteFixture(
             path,
             (first, null, [new ChatResponseUpdate(ChatRole.Assistant, [new TextContent("first")])]),
-            (second, null, [new ChatResponseUpdate(ChatRole.Assistant, [new TextContent("second")])]));
+            (
+                second,
+                null,
+                [new ChatResponseUpdate(ChatRole.Assistant, [new TextContent("second")])]
+            )
+        );
         var client = new ReplayChatClient(path);
 
         InvalidOperationException exception = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => client.GetStreamingResponseAsync(second, cancellationToken: TestContext.Current.CancellationToken).ToListAsync(TestContext.Current.CancellationToken));
+            () =>
+                client
+                    .GetStreamingResponseAsync(
+                        second,
+                        cancellationToken: TestContext.Current.CancellationToken
+                    )
+                    .ToListAsync(TestContext.Current.CancellationToken)
+        );
 
         Assert.Contains("exchange 1", exception.Message, StringComparison.Ordinal);
     }
@@ -141,12 +213,27 @@ public sealed class ReplayChatClientTests
         using var temp = new TempDirectory();
         string path = temp.File("fixture.jsonl");
         ChatMessage[] messages = [new(ChatRole.User, "hello")];
-        WriteFixture(path, (messages, null, [new ChatResponseUpdate(ChatRole.Assistant, [new TextContent("hi")])]));
+        WriteFixture(
+            path,
+            (messages, null, [new ChatResponseUpdate(ChatRole.Assistant, [new TextContent("hi")])])
+        );
         var client = new ReplayChatClient(path);
-        await client.GetStreamingResponseAsync(messages, cancellationToken: TestContext.Current.CancellationToken).ToListAsync(TestContext.Current.CancellationToken);
+        await client
+            .GetStreamingResponseAsync(
+                messages,
+                cancellationToken: TestContext.Current.CancellationToken
+            )
+            .ToListAsync(TestContext.Current.CancellationToken);
 
         InvalidOperationException exception = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => client.GetStreamingResponseAsync(messages, cancellationToken: TestContext.Current.CancellationToken).ToListAsync(TestContext.Current.CancellationToken));
+            () =>
+                client
+                    .GetStreamingResponseAsync(
+                        messages,
+                        cancellationToken: TestContext.Current.CancellationToken
+                    )
+                    .ToListAsync(TestContext.Current.CancellationToken)
+        );
 
         Assert.Contains(path, exception.Message, StringComparison.Ordinal);
         Assert.Contains("exhausted", exception.Message, StringComparison.OrdinalIgnoreCase);
@@ -159,13 +246,31 @@ public sealed class ReplayChatClientTests
         using var temp = new TempDirectory();
         string path = temp.File("fixture.jsonl");
         ChatMessage[] messages = [new(ChatRole.User, "hello")];
-        WriteFixture(path, (messages, null, [new ChatResponseUpdate(ChatRole.Assistant, [new TextContent("hi")]) { ModelId = "m" }]));
+        WriteFixture(
+            path,
+            (
+                messages,
+                null,
+                [
+                    new ChatResponseUpdate(ChatRole.Assistant, [new TextContent("hi")])
+                    {
+                        ModelId = "m",
+                    },
+                ]
+            )
+        );
 
         List<ChatResponseUpdate> first = await new ReplayChatClient(path)
-            .GetStreamingResponseAsync(messages, cancellationToken: TestContext.Current.CancellationToken)
+            .GetStreamingResponseAsync(
+                messages,
+                cancellationToken: TestContext.Current.CancellationToken
+            )
             .ToListAsync(TestContext.Current.CancellationToken);
         List<ChatResponseUpdate> second = await new ReplayChatClient(path)
-            .GetStreamingResponseAsync(messages, cancellationToken: TestContext.Current.CancellationToken)
+            .GetStreamingResponseAsync(
+                messages,
+                cancellationToken: TestContext.Current.CancellationToken
+            )
             .ToListAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal(Serialize(first), Serialize(second));
@@ -176,9 +281,14 @@ public sealed class ReplayChatClientTests
     {
         using var temp = new TempDirectory();
         string path = temp.File("fixture.jsonl");
-        File.WriteAllText(path, "{\"type\":\"header\",\"schema\":2,\"model\":\"m\",\"recordedAt\":\"2026-10-05T00:00:00+00:00\"}\n");
+        File.WriteAllText(
+            path,
+            "{\"type\":\"header\",\"schema\":2,\"model\":\"m\",\"recordedAt\":\"2026-10-05T00:00:00+00:00\"}\n"
+        );
 
-        InvalidDataException exception = Assert.Throws<InvalidDataException>(() => new ReplayChatClient(path));
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+            new ReplayChatClient(path)
+        );
 
         Assert.Contains(path, exception.Message, StringComparison.Ordinal);
     }
@@ -189,12 +299,36 @@ public sealed class ReplayChatClientTests
         Assert.Throws<ArgumentException>("fixturePath", () => new ReplayChatClient(" "));
     }
 
-    private static void WriteFixture(string path, params (ChatMessage[] Messages, ChatOptions? Options, ChatResponseUpdate[] Updates)[] exchanges)
+    private static void WriteFixture(
+        string path,
+        params (
+            ChatMessage[] Messages,
+            ChatOptions? Options,
+            ChatResponseUpdate[] Updates
+        )[] exchanges
+    )
     {
-        var lines = new List<string> { FixtureFormat.SerializeHeader("gpt-4o-mini", new DateTimeOffset(2026, 10, 5, 12, 0, 0, TimeSpan.Zero)) };
-        foreach ((ChatMessage[] messages, ChatOptions? options, ChatResponseUpdate[] updates) in exchanges)
+        var lines = new List<string>
         {
-            lines.Add(FixtureFormat.SerializeExchange(FixtureFormat.ComputeRequestDigest(messages, options), updates));
+            FixtureFormat.SerializeHeader(
+                "gpt-4o-mini",
+                new DateTimeOffset(2026, 10, 5, 12, 0, 0, TimeSpan.Zero)
+            ),
+        };
+        foreach (
+            (
+                ChatMessage[] messages,
+                ChatOptions? options,
+                ChatResponseUpdate[] updates
+            ) in exchanges
+        )
+        {
+            lines.Add(
+                FixtureFormat.SerializeExchange(
+                    FixtureFormat.ComputeRequestDigest(messages, options),
+                    updates
+                )
+            );
         }
 
         File.WriteAllText(path, string.Join("\n", lines) + "\n");

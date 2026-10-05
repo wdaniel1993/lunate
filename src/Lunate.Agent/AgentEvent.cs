@@ -16,11 +16,13 @@ public sealed record RunError(string RunId, string Message) : AgentEvent(RunId);
 
 public sealed record TextMessageStart(string RunId, string MessageId) : AgentEvent(RunId);
 
-public sealed record TextMessageContent(string RunId, string MessageId, string Text) : AgentEvent(RunId);
+public sealed record TextMessageContent(string RunId, string MessageId, string Text)
+    : AgentEvent(RunId);
 
 public sealed record TextMessageEnd(string RunId, string MessageId) : AgentEvent(RunId);
 
-public sealed record ToolCallStart(string RunId, string CallId, string ToolName) : AgentEvent(RunId);
+public sealed record ToolCallStart(string RunId, string CallId, string ToolName)
+    : AgentEvent(RunId);
 
 public sealed record ToolCallArgs(string RunId, string CallId, string Args) : AgentEvent(RunId);
 
@@ -31,16 +33,14 @@ public sealed record ToolCallResult(
     string CallId,
     string Output,
     bool IsError,
-    object? Details = null) : AgentEvent(RunId);
+    object? Details = null
+) : AgentEvent(RunId);
 
 /// <summary>Base for Lunate-specific events; mappers forward or filter them generically.</summary>
 public abstract record ExtensionEvent(string RunId) : AgentEvent(RunId);
 
-public sealed record ApprovalRequested(
-    string RunId,
-    string CallId,
-    string ToolName,
-    string Args) : ExtensionEvent(RunId);
+public sealed record ApprovalRequested(string RunId, string CallId, string ToolName, string Args)
+    : ExtensionEvent(RunId);
 
 public sealed record UsageUpdated(string RunId, UsageDetails Usage) : ExtensionEvent(RunId);
 

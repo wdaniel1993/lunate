@@ -12,7 +12,9 @@ internal static class LayeringChecker
             ("Lunate.Coding", "Lunate.Tui"),
         };
 
-    public static IReadOnlyList<string> FindViolations(IEnumerable<(string From, string To)> references)
+    public static IReadOnlyList<string> FindViolations(
+        IEnumerable<(string From, string To)> references
+    )
     {
         var violations = new List<string>();
 

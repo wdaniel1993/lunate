@@ -29,17 +29,21 @@ internal static class Load
             var failures = new List<string>();
             using var workspace = MSBuildWorkspace.Create();
             workspace.RegisterWorkspaceFailedHandler(e =>
-                failures.Add($"{e.Diagnostic.Kind}: {e.Diagnostic.Message}"));
+                failures.Add($"{e.Diagnostic.Kind}: {e.Diagnostic.Message}")
+            );
 
             var stopwatch = Stopwatch.StartNew();
-            var solution = await workspace.OpenSolutionAsync(options.SolutionPath).ConfigureAwait(false);
+            var solution = await workspace
+                .OpenSolutionAsync(options.SolutionPath)
+                .ConfigureAwait(false);
             stopwatch.Stop();
 
             var documents = solution.Projects.Sum(project => project.DocumentIds.Count);
             loadTimes.Add(stopwatch.Elapsed.TotalMilliseconds);
             Console.WriteLine(
                 $"run: {run} load_ms={Ms(stopwatch.Elapsed.TotalMilliseconds)} "
-                + $"projects={solution.ProjectIds.Count} documents={documents} workspace_failures={failures.Count}");
+                    + $"projects={solution.ProjectIds.Count} documents={documents} workspace_failures={failures.Count}"
+            );
 
             foreach (var failure in failures.Take(20))
             {
@@ -63,7 +67,9 @@ internal static class Load
 
     private static async Task PrintDiagnosticsAsync(Solution solution, int maxProjects)
     {
-        var projects = solution.Projects.OrderBy(project => project.Name, StringComparer.Ordinal).ToList();
+        var projects = solution
+            .Projects.OrderBy(project => project.Name, StringComparer.Ordinal)
+            .ToList();
         foreach (var project in projects.Take(maxProjects))
         {
             var compilation = await project.GetCompilationAsync().ConfigureAwait(false);
@@ -80,16 +86,20 @@ internal static class Load
                 .Select(diagnostic => diagnostic.Id)
                 .Distinct(StringComparer.Ordinal)
                 .Take(8);
-            Console.WriteLine($"diagnostics: project={project.Name} {summary} error_ids=[{string.Join(",", firstErrors)}]");
+            Console.WriteLine(
+                $"diagnostics: project={project.Name} {summary} error_ids=[{string.Join(",", firstErrors)}]"
+            );
         }
     }
 
     private static async Task MeasureEditsAsync(Solution solution, LoadOptions options)
     {
-        var document = solution.Projects
-            .SelectMany(project => project.Documents)
-            .FirstOrDefault(doc => doc.FilePath is not null
-                && doc.FilePath.EndsWith(options.EditFile!, StringComparison.Ordinal));
+        var document = solution
+            .Projects.SelectMany(project => project.Documents)
+            .FirstOrDefault(doc =>
+                doc.FilePath is not null
+                && doc.FilePath.EndsWith(options.EditFile!, StringComparison.Ordinal)
+            );
         if (document?.FilePath is null)
         {
             Console.WriteLine($"edit: no document matching {options.EditFile}");
@@ -116,8 +126,12 @@ internal static class Load
             await File.WriteAllTextAsync(filePath, editedText).ConfigureAwait(false);
             var apply = Stopwatch.StartNew();
             var editedDocument = currentSolution.GetDocument(document.Id)!;
-            var changedDocument = editedDocument.WithText(SourceText.From(editedText, Encoding.UTF8));
-            var compilation = await changedDocument.Project.GetCompilationAsync().ConfigureAwait(false);
+            var changedDocument = editedDocument.WithText(
+                SourceText.From(editedText, Encoding.UTF8)
+            );
+            var compilation = await changedDocument
+                .Project.GetCompilationAsync()
+                .ConfigureAwait(false);
             var diagnostics = compilation!.GetDiagnostics();
             apply.Stop();
             total.Stop();
@@ -126,7 +140,8 @@ internal static class Load
             durations.Add(total.Elapsed.TotalMilliseconds);
             Console.WriteLine(
                 $"edit_cycle: iteration={iteration} inject={inject} total_ms={Ms(total.Elapsed.TotalMilliseconds)} "
-                + $"apply_ms={Ms(apply.Elapsed.TotalMilliseconds)} {summary}");
+                    + $"apply_ms={Ms(apply.Elapsed.TotalMilliseconds)} {summary}"
+            );
 
             currentSolution = changedDocument.Project.Solution;
             currentText = editedText;
@@ -147,13 +162,16 @@ internal static class Load
         int EditIterations,
         bool Diagnostics,
         int DiagProjects,
-        string Label)
+        string Label
+    )
     {
         public static LoadOptions Parse(string[] args)
         {
             if (args.Length == 0)
             {
-                throw new ArgumentException("usage: load <solution> [--runs N] [--file <substring>] [--edit-iterations N] [--diagnostics] [--diag-projects N] [--label <text>]");
+                throw new ArgumentException(
+                    "usage: load <solution> [--runs N] [--file <substring>] [--edit-iterations N] [--diagnostics] [--diag-projects N] [--label <text>]"
+                );
             }
 
             var solutionPath = Path.GetFullPath(args[0]);
@@ -190,7 +208,15 @@ internal static class Load
                 }
             }
 
-            return new LoadOptions(solutionPath, runs, editFile, editIterations, diagnostics, diagProjects, label);
+            return new LoadOptions(
+                solutionPath,
+                runs,
+                editFile,
+                editIterations,
+                diagnostics,
+                diagProjects,
+                label
+            );
         }
     }
 }

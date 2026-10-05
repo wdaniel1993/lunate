@@ -28,34 +28,45 @@ public sealed class VariantBSession : ISession
         _start = scheduler.Now;
 
         var states = _inputs
-            .Scan(_state, (state, input) =>
-            {
-                state.Apply(input);
-                return state;
-            })
+            .Scan(
+                _state,
+                (state, input) =>
+                {
+                    state.Apply(input);
+                    return state;
+                }
+            )
             .Replay(1)
             .RefCount();
 
         _subscriptions.Add(states.Subscribe(_ => { }));
-        _subscriptions.Add(_inputs.OfType<LiveInput.Event>()
-            .Select(e => e.Value)
-            .OfType<AgentEvent.ToolFinished>()
-            .Subscribe(finished => _terminal.WriteBlock(SpectreBlocks.ToolResult(finished))));
+        _subscriptions.Add(
+            _inputs
+                .OfType<LiveInput.Event>()
+                .Select(e => e.Value)
+                .OfType<AgentEvent.ToolFinished>()
+                .Subscribe(finished => _terminal.WriteBlock(SpectreBlocks.ToolResult(finished)))
+        );
 
         var pulse = states
             .Select(_ => 0L)
-            .Merge(Observable.Interval(Scenario.FrameInterval, scheduler)
-                .Where(_ => _state.ToolRunning || _state.PendingApprovalText is not null)
-                .Select(_ => 0L))
+            .Merge(
+                Observable
+                    .Interval(Scenario.FrameInterval, scheduler)
+                    .Where(_ => _state.ToolRunning || _state.PendingApprovalText is not null)
+                    .Select(_ => 0L)
+            )
             .Sample(Scenario.FrameInterval, scheduler);
 
-        _subscriptions.Add(pulse.Subscribe(_ =>
-        {
-            if (_state.Apply(new LiveInput.Frame()))
+        _subscriptions.Add(
+            pulse.Subscribe(_ =>
             {
-                _terminal.Render(Snapshot());
-            }
-        }));
+                if (_state.Apply(new LiveInput.Frame()))
+                {
+                    _terminal.Render(Snapshot());
+                }
+            })
+        );
     }
 
     public FakeTerminal Terminal => _terminal;
@@ -74,7 +85,8 @@ public sealed class VariantBSession : ISession
 
     public void Post(AgentEvent value) => _inputs.OnNext(new LiveInput.Event(value));
 
-    public void Key(ConsoleKeyInfo key) => _inputs.OnNext(new LiveInput.Key(key, _scheduler.Now - _start));
+    public void Key(ConsoleKeyInfo key) =>
+        _inputs.OnNext(new LiveInput.Key(key, _scheduler.Now - _start));
 
     public void Resize(int width, int height)
     {
@@ -89,7 +101,8 @@ public sealed class VariantBSession : ISession
     public IReadOnlyList<string> Snapshot() =>
         LiveAreaRenderer.Render(
             _state.Capture(Spinner.Glyph(_state.ToolRunning, _state.FrameNumber)),
-            _terminal.Width);
+            _terminal.Width
+        );
 
     public void Dispose()
     {

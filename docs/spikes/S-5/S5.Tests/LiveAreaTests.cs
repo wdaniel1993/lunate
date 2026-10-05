@@ -19,11 +19,22 @@ public abstract class LiveAreaTests
 
         Assert.True(result.QuitRequested);
         Assert.True(result.CancelRequested);
-        Assert.Contains(result.Scrollback, block => block.Contains("bash ok: 48 passed", StringComparison.Ordinal));
+        Assert.Contains(
+            result.Scrollback,
+            block => block.Contains("bash ok: 48 passed", StringComparison.Ordinal)
+        );
         Assert.Contains(
             session.Terminal.Frames,
-            frame => frame.Lines.Any(line => line.Contains("run cancelled (user)", StringComparison.Ordinal)));
-        Assert.Contains("queued: also check the tests", string.Join('\n', result.LiveArea), StringComparison.Ordinal);
+            frame =>
+                frame.Lines.Any(line =>
+                    line.Contains("run cancelled (user)", StringComparison.Ordinal)
+                )
+        );
+        Assert.Contains(
+            "queued: also check the tests",
+            string.Join('\n', result.LiveArea),
+            StringComparison.Ordinal
+        );
     }
 
     [Fact]
@@ -119,7 +130,11 @@ public abstract class LiveAreaTests
         session.Post(new AgentEvent.ApprovalRequested("bash", "dotnet test"));
         await AdvanceFrames(session, 1);
         Assert.True(session.IsApprovalPending);
-        Assert.Contains("approve bash: dotnet test?", session.Terminal.LiveText, StringComparison.Ordinal);
+        Assert.Contains(
+            "approve bash: dotnet test?",
+            session.Terminal.LiveText,
+            StringComparison.Ordinal
+        );
 
         session.Key(Keys.Letter('y'));
         await AdvanceFrames(session, 1);
@@ -154,7 +169,11 @@ public abstract class LiveAreaTests
         await AdvanceFrames(session, 1);
 
         Assert.False(session.IsApprovalPending);
-        Assert.Contains("auto-approved bash (always)", session.Terminal.LiveText, StringComparison.Ordinal);
+        Assert.Contains(
+            "auto-approved bash (always)",
+            session.Terminal.LiveText,
+            StringComparison.Ordinal
+        );
     }
 
     [Fact]

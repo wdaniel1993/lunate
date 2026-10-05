@@ -6,7 +6,8 @@ internal static class Locate
 {
     public static int Run()
     {
-        var instances = MSBuildLocator.QueryVisualStudioInstances()
+        var instances = MSBuildLocator
+            .QueryVisualStudioInstances()
             .OrderByDescending(instance => instance.Version)
             .ToArray();
         Console.WriteLine($"locator_instances: {instances.Length}");
@@ -14,7 +15,8 @@ internal static class Locate
         {
             Console.WriteLine(
                 $"locator_instance: name={instance.Name} version={instance.Version} "
-                + $"discovery={instance.DiscoveryType} msbuild_path={instance.MSBuildPath}");
+                    + $"discovery={instance.DiscoveryType} msbuild_path={instance.MSBuildPath}"
+            );
         }
 
         if (!MSBuildLocator.IsRegistered)
@@ -22,15 +24,20 @@ internal static class Locate
             var registered = MSBuildLocator.RegisterDefaults();
             Console.WriteLine(
                 $"locator_registered: name={registered.Name} version={registered.Version} "
-                + $"discovery={registered.DiscoveryType}");
+                    + $"discovery={registered.DiscoveryType}"
+            );
         }
         else
         {
             Console.WriteLine("locator_registered: already");
         }
 
-        Console.WriteLine($"msbuild_exe_path: {Environment.GetEnvironmentVariable("MSBUILD_EXE_PATH") ?? "<unset>"}");
-        Console.WriteLine($"msbuild_sdk: {Environment.GetEnvironmentVariable("MSBuildSDKsPath") ?? "<unset>"}");
+        Console.WriteLine(
+            $"msbuild_exe_path: {Environment.GetEnvironmentVariable("MSBUILD_EXE_PATH") ?? "<unset>"}"
+        );
+        Console.WriteLine(
+            $"msbuild_sdk: {Environment.GetEnvironmentVariable("MSBuildSDKsPath") ?? "<unset>"}"
+        );
         return 0;
     }
 }

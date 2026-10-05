@@ -27,9 +27,10 @@ public static class SpikeProgram
         watch.Stop();
 
         Console.WriteLine(
-            $"startup_ms={watch.Elapsed.TotalMilliseconds:F2} " +
-            $"frames={session.Terminal.Frames.Count} " +
-            $"heap_bytes={GC.GetTotalMemory(forceFullCollection: false)}");
+            $"startup_ms={watch.Elapsed.TotalMilliseconds:F2} "
+                + $"frames={session.Terminal.Frames.Count} "
+                + $"heap_bytes={GC.GetTotalMemory(forceFullCollection: false)}"
+        );
         return session.Terminal.Frames.Count > 0 ? 0 : 1;
     }
 
