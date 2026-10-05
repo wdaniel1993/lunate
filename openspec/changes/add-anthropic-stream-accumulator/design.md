@@ -2,18 +2,20 @@
 
 Guide Layer 1: "Anthropic via an `IChatClient` implementation (check the official SDK first)" and "The loop acts only on complete function calls. If an adapter streams arguments in pieces, one `StreamAccumulator` assembles them, tested on recorded streams from every provider." T-04 built the factory, catalog and the OpenAI-compatible path; T-05 built recording/replay. This change adds the second adapter and the accumulator.
 
+**Amendment (2026-10-05, maintainer decision — option A):** the official `Anthropic` package (12.53.0) ships a first-party MEAI adapter (`Microsoft.Extensions.AI.AnthropicClientExtensions.AsIChatClient`, a private `AnthropicChatClient : IChatClient`). The maintainer chose to use it instead of writing our own mapping (~300 lines we would own and maintain). Verified in the SDK source before deciding: no `ActivitySource` and no `ILogger` usage in the package (no telemetry/logging duplication with our middleware); typed exception hierarchy (`Anthropic4xxException`, `Anthropic5xxException`, `AnthropicIOException`, `AnthropicBadRequestException`, …) for `ProviderErrors`; tool-call arguments are assembled internally (`input_json_delta` accumulation into per-block buffers).
+
 ## Goals / Non-Goals
 
 **Goals:** Anthropic as a first-class provider behind the factory; a pipeline guarantee that consumers only see complete function calls; raw recordings; local endpoints usable without dummy keys; contract tests + fixtures prepared for the maintainer's recording session.
 
-**Non-Goals:** auth.json/settings loading (T-16); retries (loop, T-10); further providers; ACP/TUI surface work.
+**Non-Goals:** auth.json/settings loading (T-16); retries (loop, T-10); further providers; ACP/TUI surface work; custom Anthropic protocol mapping (option B — revisited only if a mapping need appears; the factory keeps the choice swappable).
 
 ## Decisions
 
-- **Anthropic adapter**: official `Anthropic` package (12.x, exact pin at apply from nuget.org) behind our own `IChatClient` implementation in `Lunate.Ai` (internal; the factory is the only construction point). No third-party MEAI adapter — see ADR-0010. Auth: `ANTHROPIC_API_KEY`; optional base-URL override if the SDK supports one (for proxies); inspect the pinned SDK surface during apply.
-- **Testability without network**: the adapter takes an injectable seam for the SDK's stream (a delegate/interface over `MessageCreateParams → IAsyncEnumerable<raw stream events>`), so mapping is unit-tested with scripted SDK event sequences. If the SDK makes a seam impractical, stop and propose an alternative rather than testing only live.
-- **SDK-level retries**: decide during apply whether to disable the SDK's transport retries so retry behavior stays exclusively the loop's (T-10); record the outcome in ADR-0010 consequences.
-- **StreamAccumulator**: internal `DelegatingChatClient`; merges `FunctionCallContent` fragments by `CallId` (concatenating argument JSON fragments, keeping the name from the first fragment); passes everything else through unchanged; a no-op when calls are already complete. Placement: **between logging and recorder** (outermost-first: OpenTelemetry → logging → accumulator → recorder → provider), so the recorder captures raw provider output and the replay path still exercises the accumulator. Guide pipeline-order lines updated to match.
+- **Anthropic adapter (option A)**: official `Anthropic` package (12.x, exact pin at apply from nuget.org) via its **first-party MEAI adapter**: `AnthropicClient` (auth `ANTHROPIC_API_KEY`, optional `ClientOptions.BaseUrl`, `MaxRetries = 0`) → `.AsIChatClient(modelId)`. `defaultMaxOutputTokens` and `thinkingMode` use the adapter's defaults until a need appears. The factory is the only construction point. See ADR-0010.
+- **Testability**: mapping correctness is the SDK's responsibility. Ours: factory-wiring tests (construction without network, provider selection, `MaxRetries = 0`), live-gated contract tests (`LUNATE_LIVE=1`), and recorded fixtures. The injectable-seam task from the pre-amendment design is dropped.
+- **SDK-level retries**: resolved — `MaxRetries = 0`, so retry behavior stays exclusively the loop's (T-10). Recorded in ADR-0010.
+- **StreamAccumulator**: internal `DelegatingChatClient`; merges `FunctionCallContent` fragments by `CallId` (concatenating argument JSON fragments, keeping the name from the first fragment); passes everything else through unchanged; a no-op when calls are already complete (which covers Anthropic — verified). Placement: **between logging and recorder** (outermost-first: OpenTelemetry → logging → accumulator → recorder → provider), so the recorder captures raw provider output and the replay path still exercises the accumulator. Guide pipeline-order lines updated to match.
 - **Catalog**: add a small Anthropic starter set (for example `claude-sonnet-4.6`, `claude-opus-4.7`) to the embedded `models.json`; user overrides unchanged.
 - **Local-endpoint polish**: when `ModelInfo.Endpoint` is set and no key is configured, the OpenAI-compatible path constructs the client with a placeholder credential instead of failing (local servers ignore it).
 - **Contract tests**: `LUNATE_LIVE=1` gated; skipped otherwise; both providers; document required env vars in the test file.
@@ -22,9 +24,9 @@ Guide Layer 1: "Anthropic via an `IChatClient` implementation (check the officia
 
 ## Risks / Trade-offs
 
-- [SDK churn] → exact pin; adapter isolates it; contract tests catch surface changes.
-- [Mapping gaps (tools, stop reasons, usage)] → scripted-event unit tests + recorded fixtures.
-- [Accumulator over/under-merging] → fragment-merge tests incl. multiple concurrent calls and interleaved text.
+- [SDK churn] → exact pin; adapter isolated behind the factory; contract tests catch surface changes.
+- [Mapping gaps] → mapping is the SDK's, but contract tests + recorded fixtures verify the integration we ship; the factory keeps option B one swap away.
+- [Accumulator over/under-merging] → fragment-merge tests incl. multiple concurrent calls, interleaved text, and already-complete pass-through.
 
 ## Migration Plan
 
@@ -32,4 +34,4 @@ Not applicable — additive.
 
 ## Open Questions
 
-- SDK retry default (resolved during apply, recorded in ADR-0010).
+- None open — the adapter decision (option A) and the SDK retry setting are resolved and recorded in ADR-0010.

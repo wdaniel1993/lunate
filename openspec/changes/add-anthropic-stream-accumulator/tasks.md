@@ -1,12 +1,12 @@
-## 1. Anthropic adapter
+## 1. Anthropic adapter (option A)
 
-- [ ] 1.1 Pin the official Anthropic package; adapter skeleton with the injectable stream seam; `ANTHROPIC_API_KEY` auth
-- [ ] 1.2 Message/tool/stream mapping + unit tests (scripted SDK events, no network)
-- [ ] 1.3 Factory wiring (provider `anthropic`) + catalog starter entries
+- [ ] 1.1 Pin the official Anthropic package; factory constructs `AnthropicClient` (`ANTHROPIC_API_KEY`, optional base URL, `MaxRetries = 0`) and wraps it via `AsIChatClient(modelId)`
+- [ ] 1.2 Factory-wiring tests (provider selection, construction without network, retry setting)
+- [ ] 1.3 Catalog starter entries for Anthropic
 
 ## 2. StreamAccumulator
 
-- [ ] 2.1 Accumulator middleware (merge by call id, fragment concatenation, no-op when complete) + unit tests (multiple concurrent calls, interleaved text)
+- [ ] 2.1 Accumulator middleware (merge by call id, fragment concatenation, already-complete pass-through) + unit tests (multiple concurrent calls, interleaved text)
 - [ ] 2.2 Pipeline placement (accumulator between logging and recorder) + pipeline-order test update; guide lines updated
 
 ## 3. Local-endpoint polish
@@ -20,7 +20,7 @@
 
 ## 5. Docs
 
-- [ ] 5.1 ADR-0010 (proposed); guide tech-stack row updated to name the official package
+- [ ] 5.1 ADR-0010 (proposed, amended for option A); guide tech-stack row updated to name the official package + first-party adapter
 
 ## 6. Close
 
