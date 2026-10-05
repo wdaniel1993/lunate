@@ -1,0 +1,42 @@
+name: Bug report
+description: Report a defect in Lunate
+labels: [bug]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you do, what happened, and what did you expect instead?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: How can it be reproduced?
+      description: Minimal steps, a repository or a prompt that triggers it. Session files under `~/.lunate/sessions/` help.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Lunate version
+      description: Output of `lunate --version`.
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - macOS
+        - Linux
+        - Windows
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or output
+      description: Relevant stderr, print-mode `--json` output or terminal screenshots.
+    validations:
+      required: false
