@@ -12,14 +12,9 @@ namespace Lunate.Ai;
 /// Fragments are merged by call id and emitted as one complete call when the stream ends; everything else
 /// (including already-complete calls) passes through unchanged.
 /// </summary>
-internal sealed class StreamAccumulator : DelegatingChatClient
+internal sealed class StreamAccumulator(IChatClient innerClient) : DelegatingChatClient(innerClient)
 {
     internal const string ArgumentsFragmentKey = "$arguments";
-
-    internal StreamAccumulator(IChatClient innerClient)
-        : base(innerClient)
-    {
-    }
 
     public override async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
         IEnumerable<ChatMessage> messages,
@@ -40,7 +35,7 @@ internal sealed class StreamAccumulator : DelegatingChatClient
             bool hasFragments = false;
             foreach (AIContent content in update.Contents)
             {
-                if (content is not FunctionCallContent call || !TryGetFragment(call, out string fragment))
+                if (content is not FunctionCallContent call || FragmentOf(call) is not { } fragment)
                 {
                     continue;
                 }
@@ -64,7 +59,7 @@ internal sealed class StreamAccumulator : DelegatingChatClient
             }
 
             List<AIContent> passThrough = [.. update.Contents.Where(
-                content => content is not FunctionCallContent call || !TryGetFragment(call, out _))];
+                content => content is not FunctionCallContent call || FragmentOf(call) is null)];
             yield return ShallowCopy(update, passThrough);
         }
 
@@ -75,26 +70,20 @@ internal sealed class StreamAccumulator : DelegatingChatClient
         }
     }
 
-    private static bool TryGetFragment(FunctionCallContent call, out string fragment)
+    private static string? FragmentOf(FunctionCallContent call)
     {
-        fragment = string.Empty;
         if (call.Arguments is not { Count: 1 } arguments ||
             !arguments.TryGetValue(ArgumentsFragmentKey, out object? value))
         {
-            return false;
+            return null;
         }
 
-        switch (value)
+        return value switch
         {
-            case string text:
-                fragment = text;
-                return true;
-            case JsonElement { ValueKind: JsonValueKind.String } element:
-                fragment = element.GetString()!;
-                return true;
-            default:
-                return false;
-        }
+            string text => text,
+            JsonElement { ValueKind: JsonValueKind.String } element => element.GetString(),
+            _ => null,
+        };
     }
 
     private static ChatResponseUpdate ShallowCopy(ChatResponseUpdate update, IList<AIContent> contents) =>

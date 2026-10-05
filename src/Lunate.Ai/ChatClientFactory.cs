@@ -74,22 +74,7 @@ public sealed class ChatClientFactory : IChatClientFactory
     {
         if (string.Equals(model.Provider, OpenAiProvider, StringComparison.OrdinalIgnoreCase))
         {
-            string? apiKey = Environment.GetEnvironmentVariable(OpenAiApiKeyVariable);
-            if (string.IsNullOrEmpty(apiKey))
-            {
-                if (model.Endpoint is null)
-                {
-                    throw new InvalidOperationException(
-                        $"The {OpenAiApiKeyVariable} environment variable is not set. " +
-                        $"Set {OpenAiApiKeyVariable} to an OpenAI API key; settings and auth.json support arrive with T-16.");
-                }
-
-                apiKey = PlaceholderCredential;
-            }
-
-            OpenAIClientOptions options = CreateOpenAiClientOptions(model);
-
-            return new OpenAIClient(new ApiKeyCredential(apiKey), options)
+            return CreateOpenAiClient(model)
                 .GetChatClient(model.Id)
                 .AsIChatClient();
         }
@@ -101,6 +86,24 @@ public sealed class ChatClientFactory : IChatClientFactory
 
         throw new NotSupportedException(
             $"Provider '{model.Provider}' is not supported. Supported providers: {OpenAiProvider}, {AnthropicProvider}.");
+    }
+
+    internal static OpenAIClient CreateOpenAiClient(ModelInfo model)
+    {
+        string? apiKey = Environment.GetEnvironmentVariable(OpenAiApiKeyVariable);
+        if (string.IsNullOrEmpty(apiKey))
+        {
+            if (model.Endpoint is null)
+            {
+                throw new InvalidOperationException(
+                    $"The {OpenAiApiKeyVariable} environment variable is not set. " +
+                    $"Set {OpenAiApiKeyVariable} to an OpenAI API key; settings and auth.json support arrive with T-16.");
+            }
+
+            apiKey = PlaceholderCredential;
+        }
+
+        return new OpenAIClient(new ApiKeyCredential(apiKey), CreateOpenAiClientOptions(model));
     }
 
     internal static OpenAIClientOptions CreateOpenAiClientOptions(ModelInfo model)
