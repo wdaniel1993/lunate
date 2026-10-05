@@ -10,7 +10,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Lunate.Ai marks these PrivateAssets=all so the OpenAI SDK stays out of Lunate.Agent's closure; tests that exercise the real pipeline need them copied locally. -->
+    <!-- Lunate.Ai marks these PrivateAssets=all so the provider SDKs stay out of Lunate.Agent's closure; tests that exercise the real pipeline need them copied locally. -->
+    <PackageReference Include="Anthropic" Version="12.53.0" />
     <PackageReference Include="Microsoft.Extensions.AI" Version="10.10.0" />
     <PackageReference Include="Microsoft.Extensions.AI.OpenAI" Version="10.10.1" />
     <PackageReference Include="xunit.v3" Version="4.0.1" />

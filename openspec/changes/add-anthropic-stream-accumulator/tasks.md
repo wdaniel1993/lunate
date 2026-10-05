@@ -1,8 +1,8 @@
 ## 1. Anthropic adapter (option A)
 
-- [ ] 1.1 Pin the official Anthropic package; factory constructs `AnthropicClient` (`ANTHROPIC_API_KEY`, optional base URL, `MaxRetries = 0`) and wraps it via `AsIChatClient(modelId)`
-- [ ] 1.2 Factory-wiring tests (provider selection, construction without network, retry setting)
-- [ ] 1.3 Catalog starter entries for Anthropic
+- [x] 1.1 Pin the official Anthropic package; factory constructs `AnthropicClient` (`ANTHROPIC_API_KEY`, optional base URL, `MaxRetries = 0`) and wraps it via `AsIChatClient(modelId)`
+- [x] 1.2 Factory-wiring tests (provider selection, construction without network, retry setting)
+- [x] 1.3 Catalog starter entries for Anthropic
 
 ## 2. StreamAccumulator
 

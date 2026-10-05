@@ -1,6 +1,7 @@
 using System.ClientModel;
 using System.Globalization;
 using System.Security.Cryptography;
+using Anthropic;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 using OpenAI;
@@ -9,6 +10,8 @@ namespace Lunate.Ai;
 
 public sealed class ChatClientFactory : IChatClientFactory
 {
+    private const string AnthropicApiKeyVariable = "ANTHROPIC_API_KEY";
+    private const string AnthropicProvider = "anthropic";
     private const string OpenAiApiKeyVariable = "OPENAI_API_KEY";
     private const string OpenAiProvider = "openai";
     private const string OpenTelemetryOptInVariable = "LUNATE_OTEL";
@@ -86,8 +89,40 @@ public sealed class ChatClientFactory : IChatClientFactory
                 .AsIChatClient();
         }
 
+        if (string.Equals(model.Provider, AnthropicProvider, StringComparison.OrdinalIgnoreCase))
+        {
+            return CreateAnthropicClient(model).AsIChatClient(model.Id);
+        }
+
         throw new NotSupportedException(
-            $"Provider '{model.Provider}' is not supported. Supported providers: {OpenAiProvider}.");
+            $"Provider '{model.Provider}' is not supported. Supported providers: {OpenAiProvider}, {AnthropicProvider}.");
+    }
+
+    internal static AnthropicClient CreateAnthropicClient(ModelInfo model)
+    {
+        string? apiKey = Environment.GetEnvironmentVariable(AnthropicApiKeyVariable);
+        if (string.IsNullOrEmpty(apiKey))
+        {
+            throw new InvalidOperationException(
+                $"The {AnthropicApiKeyVariable} environment variable is not set. " +
+                $"Set {AnthropicApiKeyVariable} to an Anthropic API key; settings and auth.json support arrive with T-16.");
+        }
+
+        if (model.Endpoint is null)
+        {
+            return new AnthropicClient
+            {
+                ApiKey = apiKey,
+                MaxRetries = 0,
+            };
+        }
+
+        return new AnthropicClient
+        {
+            ApiKey = apiKey,
+            MaxRetries = 0,
+            BaseUrl = model.Endpoint.AbsoluteUri,
+        };
     }
 
     internal static string DefaultRecordingPath() =>

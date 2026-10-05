@@ -23,6 +23,20 @@ public sealed class ModelCatalogTests
             Assert.Null(full.Endpoint);
             Assert.Equal(128_000, full.ContextWindow);
             Assert.True(full.SupportsTools);
+
+            ModelInfo sonnet = catalog.Find("claude-sonnet-4.6")!;
+            Assert.NotNull(sonnet);
+            Assert.Equal("anthropic", sonnet.Provider);
+            Assert.Null(sonnet.Endpoint);
+            Assert.Equal(200_000, sonnet.ContextWindow);
+            Assert.True(sonnet.SupportsTools);
+
+            ModelInfo opus = catalog.Find("claude-opus-4.7")!;
+            Assert.NotNull(opus);
+            Assert.Equal("anthropic", opus.Provider);
+            Assert.Null(opus.Endpoint);
+            Assert.Equal(200_000, opus.ContextWindow);
+            Assert.True(opus.SupportsTools);
         }
         finally
         {
@@ -134,9 +148,11 @@ public sealed class ModelCatalogTests
         {
             ModelCatalog catalog = ModelCatalog.Load(Path.Combine(directory, "does-not-exist.json"));
 
-            Assert.Equal(2, catalog.Models.Count);
+            Assert.Equal(4, catalog.Models.Count);
             Assert.Contains(catalog.Models, model => model.Id == "gpt-4o-mini");
             Assert.Contains(catalog.Models, model => model.Id == "gpt-4o");
+            Assert.Contains(catalog.Models, model => model.Id == "claude-sonnet-4.6");
+            Assert.Contains(catalog.Models, model => model.Id == "claude-opus-4.7");
         }
         finally
         {

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Anthropic;
 using Microsoft.Extensions.AI;
 
 namespace Lunate.Ai.Tests;
@@ -6,6 +7,7 @@ namespace Lunate.Ai.Tests;
 public sealed class ChatClientFactoryTests
 {
     private const string OpenAiApiKeyVariable = "OPENAI_API_KEY";
+    private const string AnthropicApiKeyVariable = "ANTHROPIC_API_KEY";
     private const string OpenTelemetryOptInVariable = "LUNATE_OTEL";
     private const string OtlpEndpointVariable = "OTEL_EXPORTER_OTLP_ENDPOINT";
 
@@ -131,17 +133,18 @@ public sealed class ChatClientFactoryTests
     }
 
     [Theory]
-    [InlineData("anthropic")]
-    [InlineData("Anthropic")]
+    [InlineData("gemini")]
+    [InlineData("Gemini")]
     public void Create_throws_NotSupportedException_for_unknown_provider(string provider)
     {
         var factory = new ChatClientFactory(new MarkingLoggerFactory(static () => { }));
-        var model = new ModelInfo("claude-sonnet-4-5", provider, null, 200_000, true);
+        var model = new ModelInfo("gemini-2.5-pro", provider, null, 128_000, true);
 
         NotSupportedException exception = Assert.Throws<NotSupportedException>(() => factory.Create(model));
 
         Assert.Contains(provider, exception.Message, StringComparison.Ordinal);
         Assert.Contains("openai", exception.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("anthropic", exception.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -173,6 +176,62 @@ public sealed class ChatClientFactoryTests
         InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() => factory.Create(model));
 
         Assert.Contains(OpenAiApiKeyVariable, exception.Message, StringComparison.Ordinal);
+        Assert.Contains("T-16", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Create_with_anthropic_provider_builds_the_client_without_network()
+    {
+        using var environment = new EnvironmentScope((AnthropicApiKeyVariable, "anthropic-test-key"));
+        var factory = new ChatClientFactory(new MarkingLoggerFactory(static () => { }));
+        var model = new ModelInfo("claude-sonnet-4.6", "Anthropic", null, 200_000, true);
+
+        IChatClient client = factory.Create(model);
+        var metadata = (ChatClientMetadata?)client.GetService(typeof(ChatClientMetadata));
+
+        Assert.NotNull(metadata);
+        Assert.Equal("anthropic", metadata.ProviderName);
+        Assert.Equal(model.Id, metadata.DefaultModelId);
+    }
+
+    [Fact]
+    public void Create_assigns_the_model_endpoint_to_the_anthropic_base_url()
+    {
+        using var environment = new EnvironmentScope((AnthropicApiKeyVariable, "anthropic-test-key"));
+        var factory = new ChatClientFactory(new MarkingLoggerFactory(static () => { }));
+        var endpoint = new Uri("https://anthropic.example.test");
+        var model = new ModelInfo("claude-sonnet-4.6", "anthropic", endpoint, 200_000, true);
+
+        IChatClient client = factory.Create(model);
+        var metadata = (ChatClientMetadata?)client.GetService(typeof(ChatClientMetadata));
+
+        Assert.NotNull(metadata);
+        Assert.Equal(endpoint, metadata.ProviderUri);
+    }
+
+    [Fact]
+    public void Create_anthropic_client_disables_transport_retries()
+    {
+        using var environment = new EnvironmentScope((AnthropicApiKeyVariable, "anthropic-test-key"));
+        var model = new ModelInfo("claude-sonnet-4.6", "anthropic", new Uri("https://anthropic.example.test"), 200_000, true);
+
+        AnthropicClient client = ChatClientFactory.CreateAnthropicClient(model);
+
+        Assert.Equal(0, client.MaxRetries);
+        Assert.Equal("anthropic-test-key", client.ApiKey);
+        Assert.Equal(model.Endpoint!.AbsoluteUri, client.BaseUrl);
+    }
+
+    [Fact]
+    public void Create_throws_InvalidOperationException_when_anthropic_api_key_is_not_set()
+    {
+        using var environment = new EnvironmentScope((AnthropicApiKeyVariable, null));
+        var factory = new ChatClientFactory(new MarkingLoggerFactory(static () => { }));
+        var model = new ModelInfo("claude-sonnet-4.6", "anthropic", null, 200_000, true);
+
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() => factory.Create(model));
+
+        Assert.Contains(AnthropicApiKeyVariable, exception.Message, StringComparison.Ordinal);
         Assert.Contains("T-16", exception.Message, StringComparison.Ordinal);
     }
 
