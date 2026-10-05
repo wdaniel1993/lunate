@@ -188,6 +188,13 @@ public sealed class ReplayChatClient(string fixturePath) : IChatClient { }
 - `RecordingChatClient` and `ReplayChatClient`: record and replay `ChatResponseUpdate` streams as JSONL, serialized with `AIJsonUtilities` options.
 - `ProviderErrors`: classifies exceptions as retryable or not.
 
+**How the references handle model catalogs (checked 2026-10)**
+
+- Pi: bundled catalog with an overlay refreshed from pi.dev (cached offline, `pi update --models`); `models.json` for compatible endpoints (static id list; `$ENV`/`!command` interpolation); real discovery is a provider-extension concern; llama.cpp gets a curated router integration.
+- Tau: `catalog.toml` generated from Pi's provider metadata, plus a `~/.tau/catalog.toml` overlay with the same schema; background catalog refresh with a cache; scoped live discovery for the Codex account inventory and dynamic local backends.
+- Neither sweeps `/v1/models` into the catalog: endpoint lists give ids, metadata stays curated — the same split as here. Both merge a user file over the built-in, like `~/.lunate/models.json`.
+- Not planned yet: a remote catalog refresh (needs a hosted catalog). On-demand discovery (list an endpoint's models, draft user-catalog entries) is folded into T-16.
+
 **Rules for this layer**
 
 - Never use `FunctionInvokingChatClient`: the loop runs tools itself, so approvals, cancellation and events stay under our control. See ADR-0003.
@@ -580,7 +587,7 @@ One row per card. Each card becomes one OpenSpec change (see Building it with Op
 | T-13 | 3 | `edit` tiers 1–2 + corpus | T-12 | Corpus cases for tiers 1–2 pass |
 | T-14 | 3 | `edit` tier 3, `start_line`, closest-region errors | T-13 | Full corpus passes |
 | T-15 | 3 | `bash`: shell resolution per platform, UTF-8, timeout, process-tree kill, truncation | T-08 | Tests pass on all three CI runners |
-| T-16 | 3 | System prompt, AGENTS.md loading, config | T-09 | Prompt under 1,000 tokens (asserted) |
+| T-16 | 3 | System prompt, AGENTS.md loading, config; model discovery helper (`--discover` drafts user-catalog entries) | T-09 | Prompt under 1,000 tokens (asserted) |
 | T-17 | 3 | Print mode `-p`, `--json`; first eval run | T-11 to T-16 | Baseline row in `eval/results.csv` |
 | T-18 | 4 | `IConsoleIO`, live area on System.Reactive (ADR-0007: injected `IScheduler`, `ISession` seam, explicit threading contract), input line (VT, raw keys, paste) | T-03 | Frame snapshots; manual check in Windows Terminal; `TestScheduler` covers time-based behaviour |
 | T-19 | 4 | Markdown subset to Spectre renderables; culture-invariant formatting for technical output | T-01 | Snapshot per Markdown feature |
