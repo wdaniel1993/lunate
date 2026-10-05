@@ -20,6 +20,17 @@ step() {
   printf '\n==> %s\n' "$1"
 }
 
+step "tools"
+# CSharpier is pinned in .config/dotnet-tools.json; restore makes it available locally.
+if ! dotnet tool restore; then
+  echo "verify: dotnet tool restore failed; run it from the repository root to install CSharpier (pinned in .config/dotnet-tools.json)" >&2
+  exit 1
+fi
+if ! dotnet csharpier --version >/dev/null 2>&1; then
+  echo "verify: csharpier not found; install it with: dotnet tool restore" >&2
+  exit 1
+fi
+
 step "build"
 dotnet build lunate.sln -c "$CONFIGURATION" --nologo
 
@@ -55,7 +66,10 @@ step "startup budget"
 BUDGET_MS="$BUDGET_MS" "${SCRIPT_DIR}/perf.sh" "$BINARY"
 
 step "format"
-dotnet format lunate.sln --verify-no-changes --no-restore
+# CSharpier owns formatting; dotnet format keeps style and analyzer duties.
+dotnet csharpier check .
+dotnet format style lunate.sln --verify-no-changes --no-restore
+dotnet format analyzers lunate.sln --verify-no-changes --no-restore
 
 step "public API"
 if ! git diff --exit-code -- '*PublicAPI.Shipped.txt'; then
