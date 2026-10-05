@@ -1,4 +1,5 @@
 using System.ClientModel;
+using System.Globalization;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 using OpenAI;
@@ -11,6 +12,8 @@ public sealed class ChatClientFactory : IChatClientFactory
     private const string OpenAiProvider = "openai";
     private const string OpenTelemetryOptInVariable = "LUNATE_OTEL";
     private const string OtlpEndpointVariable = "OTEL_EXPORTER_OTLP_ENDPOINT";
+    private const string RecordVariable = "LUNATE_RECORD";
+    private const string RecordPathVariable = "LUNATE_RECORD_PATH";
 
     private readonly ILoggerFactory _loggerFactory;
     private readonly bool _enableOpenTelemetry;
@@ -38,9 +41,16 @@ public sealed class ChatClientFactory : IChatClientFactory
             ? _providerClientFactory(model)
             : CreateProviderClient(model);
 
-        if (_recorderDecorator is not null)
+        Func<IChatClient, IChatClient>? decorator = _recorderDecorator;
+        if (decorator is null && RecordingRequestedFromEnvironment())
         {
-            inner = _recorderDecorator(inner);
+            string path = RecordingPathFromEnvironment() ?? DefaultRecordingPath();
+            decorator = client => new RecordingChatClient(client, path, model.Id);
+        }
+
+        if (decorator is not null)
+        {
+            inner = decorator(inner);
         }
 
         ChatClientBuilder builder = new(inner);
@@ -77,6 +87,25 @@ public sealed class ChatClientFactory : IChatClientFactory
 
         throw new NotSupportedException(
             $"Provider '{model.Provider}' is not supported. Supported providers: {OpenAiProvider}.");
+    }
+
+    internal static string DefaultRecordingPath() =>
+        Path.Combine(
+            "artifacts",
+            "recordings",
+            DateTimeOffset.UtcNow.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture) + ".jsonl");
+
+    private static bool RecordingRequestedFromEnvironment()
+    {
+        string? value = Environment.GetEnvironmentVariable(RecordVariable);
+        return string.Equals(value, "1", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(value, "true", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string? RecordingPathFromEnvironment()
+    {
+        string? path = Environment.GetEnvironmentVariable(RecordPathVariable);
+        return string.IsNullOrWhiteSpace(path) ? null : path;
     }
 
     private static bool OpenTelemetryEnabledFromEnvironment()

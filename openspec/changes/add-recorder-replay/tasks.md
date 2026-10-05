@@ -12,7 +12,7 @@
 
 ## 4. Factory wiring
 
-- [ ] 4.1 `LUNATE_RECORD`/`LUNATE_RECORD_PATH` wiring (explicit decorator wins); default path gitignored + tests
+- [x] 4.1 `LUNATE_RECORD`/`LUNATE_RECORD_PATH` wiring (explicit decorator wins); default path gitignored + tests
 
 ## 5. End to end
 
