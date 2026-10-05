@@ -14,6 +14,7 @@ public sealed class ChatClientFactory : IChatClientFactory
     private const string AnthropicProvider = "anthropic";
     private const string OpenAiApiKeyVariable = "OPENAI_API_KEY";
     private const string OpenAiProvider = "openai";
+    private const string PlaceholderCredential = "unused-local-endpoint";
     private const string OpenTelemetryOptInVariable = "LUNATE_OTEL";
     private const string OtlpEndpointVariable = "OTEL_EXPORTER_OTLP_ENDPOINT";
     private const string RecordVariable = "LUNATE_RECORD";
@@ -75,9 +76,14 @@ public sealed class ChatClientFactory : IChatClientFactory
             string? apiKey = Environment.GetEnvironmentVariable(OpenAiApiKeyVariable);
             if (string.IsNullOrEmpty(apiKey))
             {
-                throw new InvalidOperationException(
-                    $"The {OpenAiApiKeyVariable} environment variable is not set. " +
-                    $"Set {OpenAiApiKeyVariable} to an OpenAI API key; settings and auth.json support arrive with T-16.");
+                if (model.Endpoint is null)
+                {
+                    throw new InvalidOperationException(
+                        $"The {OpenAiApiKeyVariable} environment variable is not set. " +
+                        $"Set {OpenAiApiKeyVariable} to an OpenAI API key; settings and auth.json support arrive with T-16.");
+                }
+
+                apiKey = PlaceholderCredential;
             }
 
             OpenAIClientOptions options = new();

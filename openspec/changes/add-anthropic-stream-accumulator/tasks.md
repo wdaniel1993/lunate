@@ -11,7 +11,7 @@
 
 ## 3. Local-endpoint polish
 
-- [ ] 3.1 Placeholder credential when a custom endpoint is set and no key is configured + tests
+- [x] 3.1 Placeholder credential when a custom endpoint is set and no key is configured + tests
 
 ## 4. Contract + fixtures
 

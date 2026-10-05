@@ -203,6 +203,21 @@ public sealed class ChatClientFactoryTests
     }
 
     [Fact]
+    public void Create_with_a_custom_endpoint_and_no_openai_api_key_uses_a_placeholder_credential()
+    {
+        using var environment = new EnvironmentScope((OpenAiApiKeyVariable, null));
+        var factory = new ChatClientFactory(new MarkingLoggerFactory(static () => { }));
+        var endpoint = new Uri("http://localhost:11434/v1");
+        var model = new ModelInfo("local-llama", "openai", endpoint, 8192, true);
+
+        IChatClient client = factory.Create(model);
+        var metadata = (ChatClientMetadata?)client.GetService(typeof(ChatClientMetadata));
+
+        Assert.NotNull(metadata);
+        Assert.Equal(endpoint, metadata.ProviderUri);
+    }
+
+    [Fact]
     public void Create_with_anthropic_provider_builds_the_client_without_network()
     {
         using var environment = new EnvironmentScope((AnthropicApiKeyVariable, "anthropic-test-key"));
