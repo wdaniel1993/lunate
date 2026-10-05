@@ -16,7 +16,7 @@
 
 ## 5. End to end
 
-- [ ] 5.1 Committed sample fixture + record→replay identical test through the factory pipeline (telemetry + logging active)
+- [x] 5.1 Committed sample fixture + record→replay identical test through the factory pipeline (telemetry + logging active)
 
 ## 6. Close
 

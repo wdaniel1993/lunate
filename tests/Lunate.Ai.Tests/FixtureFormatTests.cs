@@ -181,9 +181,4 @@ public sealed class FixtureFormatTests
     }
 
     private static ChatOptions Options() => new() { ModelId = "gpt-4o-mini", Tools = [new NamedTool("read")] };
-
-    private sealed class NamedTool(string name) : AITool
-    {
-        public override string Name => name;
-    }
 }

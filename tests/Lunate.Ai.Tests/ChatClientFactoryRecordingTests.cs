@@ -106,22 +106,9 @@ public sealed class ChatClientFactoryRecordingTests
         string path = ChatClientFactory.DefaultRecordingPath().Replace('\\', '/');
 
         Assert.Matches(@"^artifacts/recordings/\d{8}-\d{6}\.jsonl$", path);
-        string[] ignoreLines = File.ReadAllLines(Path.Combine(FindRepositoryRoot(), ".gitignore"));
+        string[] ignoreLines = File.ReadAllLines(Path.Combine(TestPaths.FindRepositoryRoot(), ".gitignore"));
         Assert.Contains(ignoreLines, line => line.Trim().TrimEnd('/') == "artifacts");
     }
 
     private static ModelInfo TestModel() => new("gpt-4o-mini", "openai", null, 128_000, true);
-
-    private static string FindRepositoryRoot()
-    {
-        for (var directory = new DirectoryInfo(AppContext.BaseDirectory); directory is not null; directory = directory.Parent)
-        {
-            if (File.Exists(Path.Combine(directory.FullName, "lunate.sln")))
-            {
-                return directory.FullName;
-            }
-        }
-
-        throw new InvalidOperationException($"Could not find lunate.sln above {AppContext.BaseDirectory}.");
-    }
 }
