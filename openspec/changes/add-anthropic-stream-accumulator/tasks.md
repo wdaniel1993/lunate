@@ -34,4 +34,4 @@
 - [x] 7.3 Fragment representation (`$arguments` key, merge by call id, synthesized call at stream end) documented in spec and design, with collision and ordering risks
 - [x] 7.4 Pipeline layer order pinned by test (OpenTelemetry -> logging -> accumulator -> recorder -> provider); guide reuse list updated
 - [x] 7.5 OpenAI transport retries disabled; FinishReason and ShallowCopy regression tests added; SDK/abstractions version-skew risk noted; ADR-0010 decision names both providers
-- [ ] 7.6 `scripts/verify.sh` green after the fixes
+- [x] 7.6 `scripts/verify.sh` green after the fixes
