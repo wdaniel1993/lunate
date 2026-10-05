@@ -23,6 +23,16 @@ step() {
 step "build"
 dotnet build lunate.sln -c "$CONFIGURATION" --nologo
 
+step "provider runtime assets"
+# Providers are compile-private to Lunate.Ai, but their runtime assets must reach
+# the app output or provider construction fails at run time.
+for assembly in Anthropic OpenAI Microsoft.Extensions.AI; do
+  if [ ! -f "src/Lunate.Coding/bin/${CONFIGURATION}/net10.0/${assembly}.dll" ]; then
+    echo "verify: ${assembly}.dll is missing from the Lunate.Coding build output" >&2
+    exit 1
+  fi
+done
+
 step "test"
 dotnet test --solution lunate.sln -c "$CONFIGURATION"
 
