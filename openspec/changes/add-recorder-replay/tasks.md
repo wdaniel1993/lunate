@@ -20,5 +20,5 @@
 
 ## 6. Close
 
-- [ ] 6.1 `scripts/verify.sh` green; reviewer pass; fix what it reports
-- [ ] 6.2 `openspec validate add-recorder-replay --type change --strict`; commit per group
+- [x] 6.1 `scripts/verify.sh` green; reviewer pass; fix what it reports
+- [x] 6.2 `openspec validate add-recorder-replay --type change --strict`; commit per group
