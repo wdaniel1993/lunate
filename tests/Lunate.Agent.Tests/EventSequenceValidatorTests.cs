@@ -144,6 +144,75 @@ public sealed class EventSequenceValidatorTests
     }
 
     [Fact]
+    public void A_second_RunStarted_reports_a_duplicate_start()
+    {
+        IReadOnlyList<AgentEvent> sequence = Sequence(
+            new RunStarted(RunId),
+            new RunStarted(RunId),
+            new RunFinished(RunId, StopReasons.Stop));
+
+        EventSequenceViolation violation = Assert.Single(EventSequenceValidator.Validate(sequence));
+
+        Assert.Equal(EventSequenceViolationKind.DuplicateRunStarted, violation.Kind);
+        Assert.Same(sequence[1], violation.Event);
+    }
+
+    [Fact]
+    public void Text_message_end_without_a_start_reports_an_unbracketed_message()
+    {
+        IReadOnlyList<AgentEvent> sequence = Sequence(
+            new RunStarted(RunId),
+            new TextMessageEnd(RunId, "msg_1"),
+            new RunFinished(RunId, StopReasons.Stop));
+
+        EventSequenceViolation violation = Assert.Single(EventSequenceValidator.Validate(sequence));
+
+        Assert.Equal(EventSequenceViolationKind.UnbracketedTextMessage, violation.Kind);
+        Assert.Same(sequence[1], violation.Event);
+    }
+
+    [Fact]
+    public void A_duplicate_TextMessageStart_reports_an_unbracketed_message()
+    {
+        IReadOnlyList<AgentEvent> sequence = Sequence(
+            new RunStarted(RunId),
+            new TextMessageStart(RunId, "msg_1"),
+            new TextMessageStart(RunId, "msg_1"),
+            new TextMessageEnd(RunId, "msg_1"),
+            new RunFinished(RunId, StopReasons.Stop));
+
+        EventSequenceViolation violation = Assert.Single(EventSequenceValidator.Validate(sequence));
+
+        Assert.Equal(EventSequenceViolationKind.UnbracketedTextMessage, violation.Kind);
+        Assert.Same(sequence[2], violation.Event);
+    }
+
+    [Fact]
+    public void A_second_terminal_event_and_what_follows_it_are_reported()
+    {
+        IReadOnlyList<AgentEvent> sequence = Sequence(
+            new RunStarted(RunId),
+            new RunFinished(RunId, StopReasons.Stop),
+            new RunError(RunId, "provider failed"),
+            new UsageUpdated(RunId, new UsageDetails()));
+
+        IReadOnlyList<EventSequenceViolation> violations = EventSequenceValidator.Validate(sequence);
+
+        Assert.Collection(
+            violations,
+            violation =>
+            {
+                Assert.Equal(EventSequenceViolationKind.EventAfterTerminal, violation.Kind);
+                Assert.Same(sequence[2], violation.Event);
+            },
+            violation =>
+            {
+                Assert.Equal(EventSequenceViolationKind.EventAfterTerminal, violation.Kind);
+                Assert.Same(sequence[3], violation.Event);
+            });
+    }
+
+    [Fact]
     public void An_event_after_the_terminal_event_reports_the_offending_event()
     {
         IReadOnlyList<AgentEvent> sequence = Sequence(

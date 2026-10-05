@@ -3,6 +3,7 @@ namespace Lunate.Agent;
 internal enum EventSequenceViolationKind
 {
     MissingRunStarted,
+    DuplicateRunStarted,
     MissingTerminalEvent,
     EventAfterTerminal,
     UnbracketedTextMessage,
@@ -41,6 +42,7 @@ internal static class EventSequenceValidator
                 "A run must begin with RunStarted."));
         }
 
+        bool runStartedSeen = false;
         bool terminalSeen = false;
         HashSet<string> openTextMessages = [];
         Dictionary<string, ToolCallState> toolCalls = [];
@@ -58,7 +60,14 @@ internal static class EventSequenceValidator
 
             switch (agentEvent)
             {
+                case RunStarted start when runStartedSeen:
+                    violations.Add(new(
+                        EventSequenceViolationKind.DuplicateRunStarted,
+                        start,
+                        "A run must have exactly one RunStarted."));
+                    break;
                 case RunStarted:
+                    runStartedSeen = true;
                     break;
                 case RunFinished or RunError:
                     terminalSeen = true;
