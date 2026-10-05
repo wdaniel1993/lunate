@@ -18,4 +18,8 @@
     <EmbeddedResource Include="models.json" LogicalName="Lunate.Ai.models.json" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="Lunate.Ai.Tests" />
+  </ItemGroup>
+
 </Project>

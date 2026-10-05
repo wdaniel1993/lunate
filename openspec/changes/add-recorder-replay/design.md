@@ -24,7 +24,9 @@ Guide Layer 1 ("Recorded streams", "What Lunate.Ai contains") defines the shape:
 ## Risks / Trade-offs
 
 - [MEAI type serialization gaps] → round-trip guard test; if a consumed type lacks converters, project only what the loop consumes and record that decision here.
+  - **Resolved during apply (schema 1):** `AIJsonUtilities.DefaultOptions` resolves types through a source-generated context that rejects unannotated roots (`ChatResponseUpdate[]`, wrapper records). No projection was needed: the fixture serializer clones the MEAI options and swaps in `DefaultJsonTypeInfoResolver`; MEAI's converters still own the wire shape (`$type: text` / `functionCall` / `functionResult` / `usage` / `error`, camelCase, declaration order). The round-trip guard pins all of it.
 - [Digest brittleness] → digest inputs are one helper + one test; changes are explicit schema events, never silent.
+  - **Frozen during apply:** request digest = SHA-256 of `{"messages":[...],"modelId":...,"toolNames":[...]}` serialized with the fixture options; the exact value is asserted by `Request_digest_matches_the_frozen_schema_value`.
 
 ## Migration Plan
 

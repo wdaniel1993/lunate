@@ -1,6 +1,6 @@
 ## 1. Fixture format
 
-- [ ] 1.1 Fixture schema + serialization helper (header, exchanges, request digest) with `AIJsonUtilities` options; round-trip guard test
+- [x] 1.1 Fixture schema + serialization helper (header, exchanges, request digest) with `AIJsonUtilities` options; round-trip guard test
 
 ## 2. Recording
 
