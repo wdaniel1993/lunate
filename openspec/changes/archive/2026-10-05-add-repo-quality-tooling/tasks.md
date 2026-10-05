@@ -22,7 +22,7 @@
 ## 4. Code scanning
 
 - [x] 4.1 `.github/workflows/codeql.yml` (csharp; build-mode manual: dotnet restore + build; security-extended; push/PR main + weekly cron; security-events permission; fork guard)
-- [ ] 4.2 Confirm a green CodeQL run on the change PR; triage any alerts as follow-ups (security-relevant ones are blockers)
+- [x] 4.2 Confirm a green CodeQL run on the change PR (run 37375070558, codeql-action v4, 0 alerts); triage any alerts as follow-ups (security-relevant ones are blockers)
 
 ## 5. Documentation entry points
 
