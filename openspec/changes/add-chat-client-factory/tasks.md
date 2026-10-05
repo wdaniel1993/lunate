@@ -15,5 +15,5 @@
 
 ## 4. Close
 
-- [ ] 4.1 `scripts/verify.sh` green; reviewer subagent pass; fix what it reports
-- [ ] 4.2 `openspec validate add-chat-client-factory --type change --strict`; commit per group; update `docs/tasks`-equivalent status if applicable
+- [x] 4.1 `scripts/verify.sh` green; reviewer subagent pass; fix what it reports
+- [x] 4.2 `openspec validate add-chat-client-factory --type change --strict`; commit per group; update `docs/tasks`-equivalent status if applicable

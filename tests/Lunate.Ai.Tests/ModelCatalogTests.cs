@@ -144,6 +144,22 @@ public sealed class ModelCatalogTests
         }
     }
 
+    [Fact]
+    public void Find_with_unknown_id_returns_null()
+    {
+        string directory = CreateTempDirectory();
+        try
+        {
+            ModelCatalog catalog = ModelCatalog.Load(Path.Combine(directory, "missing.json"));
+
+            Assert.Null(catalog.Find("unknown-model"));
+        }
+        finally
+        {
+            DeleteTempDirectory(directory);
+        }
+    }
+
     [Theory]
     [InlineData("""{ "schemaVersion": 2, "models": [] }""", "2")]
     [InlineData("""{ "models": [] }""", "missing")]

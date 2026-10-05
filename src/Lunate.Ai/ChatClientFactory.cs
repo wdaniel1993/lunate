@@ -9,6 +9,8 @@ public sealed class ChatClientFactory : IChatClientFactory
 {
     private const string OpenAiApiKeyVariable = "OPENAI_API_KEY";
     private const string OpenAiProvider = "openai";
+    private const string OpenTelemetryOptInVariable = "LUNATE_OTEL";
+    private const string OtlpEndpointVariable = "OTEL_EXPORTER_OTLP_ENDPOINT";
 
     private readonly ILoggerFactory _loggerFactory;
     private readonly bool _enableOpenTelemetry;
@@ -17,13 +19,13 @@ public sealed class ChatClientFactory : IChatClientFactory
 
     public ChatClientFactory(
         ILoggerFactory loggerFactory,
-        bool enableOpenTelemetry = false,
+        bool? enableOpenTelemetry = null,
         Func<ModelInfo, IChatClient>? providerClientFactory = null,
         Func<IChatClient, IChatClient>? recorderDecorator = null)
     {
         ArgumentNullException.ThrowIfNull(loggerFactory);
         _loggerFactory = loggerFactory;
-        _enableOpenTelemetry = enableOpenTelemetry;
+        _enableOpenTelemetry = enableOpenTelemetry ?? OpenTelemetryEnabledFromEnvironment();
         _providerClientFactory = providerClientFactory;
         _recorderDecorator = recorderDecorator;
     }
@@ -75,5 +77,17 @@ public sealed class ChatClientFactory : IChatClientFactory
 
         throw new NotSupportedException(
             $"Provider '{model.Provider}' is not supported. Supported providers: {OpenAiProvider}.");
+    }
+
+    private static bool OpenTelemetryEnabledFromEnvironment()
+    {
+        string? optIn = Environment.GetEnvironmentVariable(OpenTelemetryOptInVariable);
+        if (string.Equals(optIn, "1", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(optIn, "true", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        return !string.IsNullOrEmpty(Environment.GetEnvironmentVariable(OtlpEndpointVariable));
     }
 }

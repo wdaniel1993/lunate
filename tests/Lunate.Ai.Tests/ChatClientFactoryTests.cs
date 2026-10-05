@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Reflection;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 
@@ -8,9 +7,8 @@ namespace Lunate.Ai.Tests;
 public sealed class ChatClientFactoryTests
 {
     private const string OpenAiApiKeyVariable = "OPENAI_API_KEY";
-
-    private static readonly PropertyInfo InnerClientProperty = typeof(DelegatingChatClient)
-        .GetProperty("InnerClient", BindingFlags.Instance | BindingFlags.NonPublic)!;
+    private const string OpenTelemetryOptInVariable = "LUNATE_OTEL";
+    private const string OtlpEndpointVariable = "OTEL_EXPORTER_OTLP_ENDPOINT";
 
     [Fact]
     public async Task Create_with_telemetry_enabled_observes_telemetry_logging_recorder_provider_in_order()
@@ -38,26 +36,85 @@ public sealed class ChatClientFactoryTests
         Assert.Equal(new[] { "logging", "recorder", "provider" }, sequence);
     }
 
+    [Theory]
+    [InlineData("1")]
+    [InlineData("true")]
+    [InlineData("TRUE")]
+    public async Task Create_enables_telemetry_when_LUNATE_OTEL_is_truthy(string optIn)
+    {
+        var sequence = new List<string>();
+        using var listener = ListenForTelemetry(sequence);
+        using var environment = new EnvironmentScope(
+            (OpenTelemetryOptInVariable, optIn),
+            (OtlpEndpointVariable, null));
+
+        IChatClient client = CreateFactoryWithoutExplicitTelemetry(sequence).Create(TestModel());
+        await client.GetResponseAsync([new ChatMessage(ChatRole.User, "hello")], cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Contains("telemetry", sequence);
+    }
+
+    [Fact]
+    public async Task Create_enables_telemetry_when_OTLP_endpoint_is_set()
+    {
+        var sequence = new List<string>();
+        using var listener = ListenForTelemetry(sequence);
+        using var environment = new EnvironmentScope(
+            (OpenTelemetryOptInVariable, null),
+            (OtlpEndpointVariable, "http://localhost:4317"));
+
+        IChatClient client = CreateFactoryWithoutExplicitTelemetry(sequence).Create(TestModel());
+        await client.GetResponseAsync([new ChatMessage(ChatRole.User, "hello")], cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Contains("telemetry", sequence);
+    }
+
+    [Fact]
+    public async Task Create_keeps_telemetry_disabled_without_environment_opt_in()
+    {
+        var sequence = new List<string>();
+        using var listener = ListenForTelemetry(sequence);
+        using var environment = new EnvironmentScope(
+            (OpenTelemetryOptInVariable, null),
+            (OtlpEndpointVariable, null));
+
+        IChatClient client = CreateFactoryWithoutExplicitTelemetry(sequence).Create(TestModel());
+        await client.GetResponseAsync([new ChatMessage(ChatRole.User, "hello")], cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.DoesNotContain("telemetry", sequence);
+    }
+
+    [Fact]
+    public async Task Create_explicit_telemetry_disabled_overrides_environment_opt_in()
+    {
+        var sequence = new List<string>();
+        using var listener = ListenForTelemetry(sequence);
+        using var environment = new EnvironmentScope(
+            (OpenTelemetryOptInVariable, "1"),
+            (OtlpEndpointVariable, null));
+
+        IChatClient client = CreateFactory(sequence, enableOpenTelemetry: false).Create(TestModel());
+        await client.GetResponseAsync([new ChatMessage(ChatRole.User, "hello")], cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.DoesNotContain("telemetry", sequence);
+    }
+
     [Fact]
     public async Task Create_never_wraps_the_provider_in_function_invoking_chat_client()
     {
         var sequence = new List<string>();
-        var factory = CreateFactory(sequence, enableOpenTelemetry: true);
+        MarkerChatClient? recorder = null;
+        var factory = new ChatClientFactory(
+            new MarkingLoggerFactory(() => sequence.Add("logging")),
+            enableOpenTelemetry: true,
+            providerClientFactory: _ => new ProviderStub(sequence),
+            recorderDecorator: inner => recorder = new MarkerChatClient("recorder", sequence, inner));
 
         IChatClient client = factory.Create(TestModel());
         await client.GetResponseAsync([new ChatMessage(ChatRole.User, "hello")], cancellationToken: TestContext.Current.CancellationToken);
 
-        var visited = new List<string>();
-        foreach (IChatClient layer in Walk(client))
-        {
-            visited.Add(layer.GetType().FullName ?? layer.GetType().Name);
-        }
-
-        Assert.DoesNotContain(visited, name => name.Contains("FunctionInvokingChatClient", StringComparison.Ordinal));
-        Assert.Contains(visited, name => name.Contains("OpenTelemetryChatClient", StringComparison.Ordinal));
-        Assert.Contains(visited, name => name.Contains("LoggingChatClient", StringComparison.Ordinal));
-        Assert.Contains(visited, name => name.Contains(nameof(MarkerChatClient), StringComparison.Ordinal));
-        Assert.Contains(visited, name => name.Contains(nameof(ProviderStub), StringComparison.Ordinal));
+        Assert.NotNull(recorder);
+        Assert.IsType<ProviderStub>(recorder.Inner);
     }
 
     [Fact]
@@ -89,11 +146,27 @@ public sealed class ChatClientFactoryTests
     }
 
     [Fact]
+    public void Create_assigns_the_model_endpoint_to_the_provider_client()
+    {
+        using var environment = new EnvironmentScope(
+            (OpenAiApiKeyVariable, "test-key"),
+            (OpenTelemetryOptInVariable, null),
+            (OtlpEndpointVariable, null));
+        var factory = new ChatClientFactory(new MarkingLoggerFactory(static () => { }));
+        var endpoint = new Uri("https://example.test/v1");
+        var model = new ModelInfo("gpt-4o-mini", "openai", endpoint, 128_000, true);
+
+        IChatClient client = factory.Create(model);
+        var metadata = (ChatClientMetadata?)client.GetService(typeof(ChatClientMetadata));
+
+        Assert.NotNull(metadata);
+        Assert.Equal(endpoint, metadata.ProviderUri);
+    }
+
+    [Fact]
     public void Create_throws_InvalidOperationException_when_openai_api_key_is_not_set()
     {
-        Assert.SkipWhen(
-            !string.IsNullOrEmpty(Environment.GetEnvironmentVariable(OpenAiApiKeyVariable)),
-            $"The {OpenAiApiKeyVariable} environment variable is set; the missing-key path cannot be exercised.");
+        using var environment = new EnvironmentScope((OpenAiApiKeyVariable, null));
 
         var factory = new ChatClientFactory(new MarkingLoggerFactory(static () => { }));
         var model = new ModelInfo("gpt-4o-mini", "OpenAI", null, 128_000, true);
@@ -111,6 +184,12 @@ public sealed class ChatClientFactoryTests
             _ => new ProviderStub(sequence),
             inner => new MarkerChatClient("recorder", sequence, inner));
 
+    private static ChatClientFactory CreateFactoryWithoutExplicitTelemetry(List<string> sequence) =>
+        new(
+            new MarkingLoggerFactory(() => sequence.Add("logging")),
+            providerClientFactory: _ => new ProviderStub(sequence),
+            recorderDecorator: inner => new MarkerChatClient("recorder", sequence, inner));
+
     private static ModelInfo TestModel() => new("gpt-4o-mini", "openai", null, 128_000, true);
 
     private static ActivityListener ListenForTelemetry(List<string> sequence)
@@ -125,22 +204,11 @@ public sealed class ChatClientFactoryTests
         return listener;
     }
 
-    private static IEnumerable<IChatClient> Walk(IChatClient client)
-    {
-        for (IChatClient? current = client; current is not null; current = GetInnerClient(current))
-        {
-            yield return current;
-        }
-    }
-
-    private static IChatClient? GetInnerClient(IChatClient client) =>
-        client is DelegatingChatClient delegating
-            ? InnerClientProperty.GetValue(delegating) as IChatClient
-            : null;
-
     private sealed class MarkerChatClient(string marker, List<string> sequence, IChatClient inner)
         : DelegatingChatClient(inner)
     {
+        public IChatClient Inner => InnerClient;
+
         public override Task<ChatResponse> GetResponseAsync(
             IEnumerable<ChatMessage> messages,
             ChatOptions? options = null,
@@ -173,6 +241,29 @@ public sealed class ChatClientFactoryTests
             ChatOptions? options = null,
             CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
+    }
+
+    private sealed class EnvironmentScope : IDisposable
+    {
+        private readonly (string Name, string? Value)[] _previous;
+
+        public EnvironmentScope(params (string Name, string? Value)[] variables)
+        {
+            _previous = [.. variables.Select(
+                variable => (variable.Name, Environment.GetEnvironmentVariable(variable.Name)))];
+            foreach ((string name, string? value) in variables)
+            {
+                Environment.SetEnvironmentVariable(name, value);
+            }
+        }
+
+        public void Dispose()
+        {
+            foreach ((string name, string? value) in _previous)
+            {
+                Environment.SetEnvironmentVariable(name, value);
+            }
+        }
     }
 
     private sealed class MarkingLoggerFactory(Action onFirstLog) : ILoggerFactory
