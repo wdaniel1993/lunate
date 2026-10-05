@@ -97,7 +97,7 @@ Stick to .NET 10, Microsoft.Extensions.AI and a few well-known packages. No Nati
 | Runtime | .NET 10, C# 14, SDK pinned in `global.json` | all | Current LTS |
 | Release build | Self-contained single file, ReadyToRun, no single-file compression (ADR-0008); release archives are compressed, three targets | Lunate.Coding | One file, no runtime install, fast start |
 | Model access | `IChatClient`, `ChatMessage`, `ChatResponseUpdate` everywhere; no `FunctionInvokingChatClient` (the loop runs tools) | Lunate.Ai, Lunate.Agent | The .NET standard, maintained by Microsoft |
-| Providers | OpenAI-compatible via the Microsoft.Extensions.AI OpenAI adapter; Anthropic via an `IChatClient` implementation (check the official SDK first) | Lunate.Ai | One abstraction for every model |
+| Providers | OpenAI-compatible via the Microsoft.Extensions.AI OpenAI adapter; Anthropic via the official `Anthropic` package and its first-party Microsoft.Extensions.AI adapter (`AsIChatClient`) | Lunate.Ai | One abstraction for every model |
 | Telemetry | OpenTelemetry via `IChatClient` middleware + own `ActivitySource`, opt-in | Lunate.Ai, Lunate.Agent | Traces of model and tool calls |
 | JSON | `System.Text.Json`; `AIJsonUtilities` options for Microsoft.Extensions.AI types; source generation where it is cheap | all | Fast, consistent |
 | CLI parsing | `System.CommandLine` | Lunate.Coding | Standard |

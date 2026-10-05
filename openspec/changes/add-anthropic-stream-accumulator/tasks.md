@@ -20,7 +20,7 @@
 
 ## 5. Docs
 
-- [ ] 5.1 ADR-0010 (proposed, amended for option A); guide tech-stack row updated to name the official package + first-party adapter
+- [x] 5.1 ADR-0010 (proposed, amended for option A); guide tech-stack row updated to name the official package + first-party adapter
 
 ## 6. Close
 
