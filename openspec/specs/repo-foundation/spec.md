@@ -40,7 +40,7 @@ Project references SHALL point only downward in the architecture: `Lunate.Ai` â†
 - **THEN** it prints the version, exits 0, and startup stays within the configured budget
 
 ### Requirement: Verification gate
-`scripts/verify.sh` SHALL run build, tests, single-file publish, startup budget, format check and public API check, and SHALL exit non-zero on any failure.
+`scripts/verify.sh` SHALL run build, tests, single-file publish, startup budget, formatting (CSharpier), documentation lint and public API checks, and SHALL exit non-zero on any failure.
 
 #### Scenario: Green on the skeleton
 - **GIVEN** the skeleton repository

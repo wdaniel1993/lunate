@@ -46,3 +46,11 @@ On `v*` tags, CI SHALL publish self-contained single-file binaries for osx-arm64
 - **GIVEN** a manual workflow dispatch in dry-run mode
 - **WHEN** the release workflow runs
 - **THEN** the three target artifacts are produced and uploaded as workflow artifacts
+
+### Requirement: Code scanning
+A CodeQL workflow SHALL analyze the C# code on pushes to `main`, pull requests to `main` and a weekly schedule, uploading results to GitHub code scanning.
+
+#### Scenario: Analysis on a clean change
+- **GIVEN** a pull request that satisfies the gate
+- **WHEN** the CodeQL workflow runs
+- **THEN** the analysis completes green and results are uploaded to code scanning
