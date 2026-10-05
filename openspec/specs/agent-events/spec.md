@@ -1,7 +1,7 @@
 # agent-events Specification
 
 ## Purpose
-TBD - created by archiving change add-agent-events. Update Purpose after archive.
+Define the observable contract between the agent loop and its consumers (TUI, recorders, tests): a closed, sealed event set aligned with AG-UI, a non-blocking emission interface, and sequence rules that make malformed streams detectable. The loop (T-09) emits these events, the TUI (T-10) renders them, and fixtures replay them deterministically.
 
 ## Requirements
 
