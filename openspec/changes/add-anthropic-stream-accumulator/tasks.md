@@ -26,3 +26,12 @@
 
 - [x] 6.1 `scripts/verify.sh` green; reviewer pass; fix what it reports
 - [x] 6.2 `openspec validate add-anthropic-stream-accumulator --type change --strict`; commit per group
+
+## 7. Adversarial review fixes (2026-10-05)
+
+- [x] 7.1 Provider runtime assets (Anthropic, OpenAI, Microsoft.Extensions.AI) reach the app build output; `verify.sh` checks for them
+- [x] 7.2 Catalog ids corrected to `claude-sonnet-5-5` / `claude-opus-5-5` with the 1M-token context window (platform.claude.com, 2026-10-05)
+- [x] 7.3 Fragment representation (`$arguments` key, merge by call id, synthesized call at stream end) documented in spec and design, with collision and ordering risks
+- [x] 7.4 Pipeline layer order pinned by test (OpenTelemetry -> logging -> accumulator -> recorder -> provider); guide reuse list updated
+- [x] 7.5 OpenAI transport retries disabled; FinishReason and ShallowCopy regression tests added; SDK/abstractions version-skew risk noted; ADR-0010 decision names both providers
+- [ ] 7.6 `scripts/verify.sh` green after the fixes

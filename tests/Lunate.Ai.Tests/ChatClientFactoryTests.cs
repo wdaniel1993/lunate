@@ -1,7 +1,9 @@
+using System.ClientModel.Primitives;
 using System.Diagnostics;
 using System.Reflection;
 using Anthropic;
 using Microsoft.Extensions.AI;
+using OpenAI;
 
 namespace Lunate.Ai.Tests;
 
@@ -226,6 +228,17 @@ public sealed class ChatClientFactoryTests
 
         Assert.NotNull(metadata);
         Assert.Equal(endpoint, metadata.ProviderUri);
+    }
+
+    [Fact]
+    public void Create_openai_client_options_disable_transport_retries()
+    {
+        OpenAIClientOptions options = ChatClientFactory.CreateOpenAiClientOptions(TestModel());
+
+        ClientRetryPolicy policy = Assert.IsType<ClientRetryPolicy>(options.RetryPolicy);
+        FieldInfo? maxRetries = typeof(ClientRetryPolicy).GetField("_maxRetries", BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.NotNull(maxRetries);
+        Assert.Equal(0, maxRetries.GetValue(policy));
     }
 
     [Fact]

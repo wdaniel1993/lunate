@@ -11,7 +11,7 @@ T-06 adds the second provider adapter. The guide says to check the official SDK 
 ## Decision
 
 - Use the official `Anthropic` package (pinned exactly), **including its first-party MEAI adapter** (`AsIChatClient`). No custom mapping, no third-party MEAI adapter package (option A, maintainer choice 2026-10-05).
-- The factory constructs `AnthropicClient` with `ANTHROPIC_API_KEY`, an optional base URL, and **`MaxRetries = 0`** so retry behavior is exclusively the loop's (T-10); it passes the model id and uses the adapter's defaults for max output tokens and thinking mode until a need appears.
+- The factory constructs `AnthropicClient` with `ANTHROPIC_API_KEY`, an optional base URL, and **`MaxRetries = 0`** so retry behavior is exclusively the loop's (T-10); it passes the model id and uses the adapter's defaults for max output tokens and thinking mode until a need appears. The OpenAI-compatible path disables transport retries the same way (`OpenAIClientOptions.RetryPolicy = new ClientRetryPolicy(maxRetries: 0)`).
 - Adapter names: `openai` (OpenAI-compatible protocol path) and `anthropic` stay as named by the maintainer.
 
 ## Consequences

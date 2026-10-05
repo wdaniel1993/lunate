@@ -112,6 +112,52 @@ public sealed class StreamAccumulatorTests
     }
 
     [Fact]
+    public async Task GetStreamingResponseAsync_preserves_finish_reason_on_a_fragment_only_update()
+    {
+        var provider = new ScriptedChatClient()
+            .Enqueue(new ChatResponseUpdate(ChatRole.Assistant, [Fragment("call-1", "list_files", "{\"path\":\"a.txt\"}")])
+            {
+                ModelId = "gpt-4o-mini",
+                FinishReason = ChatFinishReason.ToolCalls,
+            });
+        var accumulator = new StreamAccumulator(provider);
+
+        List<ChatResponseUpdate> updates = await Stream(accumulator);
+
+        ChatResponseUpdate fragmentUpdate = updates[0];
+        Assert.Empty(fragmentUpdate.Contents);
+        Assert.Equal(ChatFinishReason.ToolCalls, fragmentUpdate.FinishReason);
+    }
+
+    [Fact]
+    public async Task GetStreamingResponseAsync_copies_update_fields_when_stripping_fragments()
+    {
+        DateTimeOffset createdAt = new(2026, 10, 5, 12, 0, 0, TimeSpan.Zero);
+        object rawRepresentation = new();
+        var provider = new ScriptedChatClient()
+            .Enqueue(new ChatResponseUpdate(ChatRole.Assistant, [Fragment("call-1", "list_files", "{\"path\":\"a.txt\"}")])
+            {
+                ModelId = "gpt-4o-mini",
+                AuthorName = "assistant-author",
+                ConversationId = "conversation-1",
+                CreatedAt = createdAt,
+                AdditionalProperties = new AdditionalPropertiesDictionary { ["trace"] = "abc" },
+                RawRepresentation = rawRepresentation,
+            });
+        var accumulator = new StreamAccumulator(provider);
+
+        List<ChatResponseUpdate> updates = await Stream(accumulator);
+
+        ChatResponseUpdate stripped = updates[0];
+        Assert.Empty(stripped.Contents);
+        Assert.Equal("assistant-author", stripped.AuthorName);
+        Assert.Equal("conversation-1", stripped.ConversationId);
+        Assert.Equal(createdAt, stripped.CreatedAt);
+        Assert.Equal("abc", stripped.AdditionalProperties!["trace"]);
+        Assert.Same(rawRepresentation, stripped.RawRepresentation);
+    }
+
+    [Fact]
     public async Task GetStreamingResponseAsync_surfaces_unparseable_assembled_arguments_as_an_exception()
     {
         var provider = new ScriptedChatClient()

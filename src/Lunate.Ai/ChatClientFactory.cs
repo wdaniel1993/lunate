@@ -1,4 +1,5 @@
 using System.ClientModel;
+using System.ClientModel.Primitives;
 using System.Globalization;
 using System.Security.Cryptography;
 using Anthropic;
@@ -86,11 +87,7 @@ public sealed class ChatClientFactory : IChatClientFactory
                 apiKey = PlaceholderCredential;
             }
 
-            OpenAIClientOptions options = new();
-            if (model.Endpoint is not null)
-            {
-                options.Endpoint = model.Endpoint;
-            }
+            OpenAIClientOptions options = CreateOpenAiClientOptions(model);
 
             return new OpenAIClient(new ApiKeyCredential(apiKey), options)
                 .GetChatClient(model.Id)
@@ -104,6 +101,21 @@ public sealed class ChatClientFactory : IChatClientFactory
 
         throw new NotSupportedException(
             $"Provider '{model.Provider}' is not supported. Supported providers: {OpenAiProvider}, {AnthropicProvider}.");
+    }
+
+    internal static OpenAIClientOptions CreateOpenAiClientOptions(ModelInfo model)
+    {
+        OpenAIClientOptions options = new()
+        {
+            RetryPolicy = new ClientRetryPolicy(maxRetries: 0),
+        };
+
+        if (model.Endpoint is not null)
+        {
+            options.Endpoint = model.Endpoint;
+        }
+
+        return options;
     }
 
     internal static AnthropicClient CreateAnthropicClient(ModelInfo model)
