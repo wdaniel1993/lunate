@@ -56,6 +56,10 @@ Lunate.Agent.StepLimitReached.Equals(Lunate.Agent.StepLimitReached? other) -> bo
 Lunate.Agent.StepLimitReached.MaxSteps.get -> int
 Lunate.Agent.StepLimitReached.MaxSteps.init -> void
 Lunate.Agent.StepLimitReached.StepLimitReached(string! RunId, int MaxSteps) -> void
+Lunate.Agent.StopReasons
+const Lunate.Agent.StopReasons.Cancelled = "cancelled" -> string!
+const Lunate.Agent.StopReasons.StepLimit = "step_limit" -> string!
+const Lunate.Agent.StopReasons.Stop = "stop" -> string!
 Lunate.Agent.TextMessageContent
 Lunate.Agent.TextMessageContent.Deconstruct(out string! RunId, out string! MessageId, out string! Text) -> void
 Lunate.Agent.TextMessageContent.Equals(Lunate.Agent.TextMessageContent? other) -> bool

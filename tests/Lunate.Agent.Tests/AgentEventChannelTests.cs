@@ -10,7 +10,7 @@ public sealed class AgentEventChannelTests
         var channel = new AgentEventChannel();
         AgentEvent started = new RunStarted(RunId);
         AgentEvent text = new TextMessageContent(RunId, "msg_1", "hello");
-        AgentEvent finished = new RunFinished(RunId, "end_turn");
+        AgentEvent finished = new RunFinished(RunId, StopReasons.Stop);
         channel.Emit(started);
         channel.Emit(text);
         channel.Emit(finished);

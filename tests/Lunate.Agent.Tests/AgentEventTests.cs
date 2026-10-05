@@ -10,7 +10,7 @@ public sealed class AgentEventTests
         new()
         {
             new RunStarted(RunId),
-            new RunFinished(RunId, "end_turn"),
+            new RunFinished(RunId, StopReasons.Stop),
             new RunError(RunId, "provider failed"),
             new TextMessageStart(RunId, "msg_1"),
             new TextMessageContent(RunId, "msg_1", "hello"),
@@ -77,12 +77,20 @@ public sealed class AgentEventTests
     }
 
     [Fact]
+    public void The_stop_reason_vocabulary_is_pinned()
+    {
+        Assert.Equal("stop", StopReasons.Stop);
+        Assert.Equal("cancelled", StopReasons.Cancelled);
+        Assert.Equal("step_limit", StopReasons.StepLimit);
+    }
+
+    [Fact]
     public void Run_events_expose_their_fields()
     {
-        var finished = new RunFinished(RunId, "end_turn");
+        var finished = new RunFinished(RunId, StopReasons.Stop);
         var error = new RunError(RunId, "provider failed");
 
-        Assert.Equal("end_turn", finished.StopReason);
+        Assert.Equal(StopReasons.Stop, finished.StopReason);
         Assert.Equal("provider failed", error.Message);
     }
 

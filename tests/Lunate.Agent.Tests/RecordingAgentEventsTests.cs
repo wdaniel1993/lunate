@@ -7,7 +7,7 @@ public sealed class RecordingAgentEventsTests
     {
         var recording = new RecordingAgentEvents();
         AgentEvent started = new RunStarted("run_1");
-        AgentEvent finished = new RunFinished("run_1", "end_turn");
+        AgentEvent finished = new RunFinished("run_1", StopReasons.Stop);
 
         recording.Emit(started);
         recording.Emit(finished);

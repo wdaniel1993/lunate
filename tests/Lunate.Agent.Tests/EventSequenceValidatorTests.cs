@@ -25,7 +25,7 @@ public sealed class EventSequenceValidatorTests
             new ToolCallArgs(RunId, "call_2", """{"command":"echo ok"}"""),
             new ToolCallEnd(RunId, "call_2"),
             new ToolCallResult(RunId, "call_2", "ok", IsError: false),
-            new RunFinished(RunId, "end_turn"));
+            new RunFinished(RunId, StopReasons.Stop));
 
         Assert.Empty(EventSequenceValidator.Validate(sequence));
     }
@@ -55,7 +55,7 @@ public sealed class EventSequenceValidatorTests
         IReadOnlyList<AgentEvent> sequence = Sequence(
             new TextMessageStart(RunId, "msg_1"),
             new TextMessageEnd(RunId, "msg_1"),
-            new RunFinished(RunId, "end_turn"));
+            new RunFinished(RunId, StopReasons.Stop));
 
         EventSequenceViolation violation = Assert.Single(EventSequenceValidator.Validate(sequence));
 
@@ -69,7 +69,7 @@ public sealed class EventSequenceValidatorTests
         IReadOnlyList<AgentEvent> sequence = Sequence(
             new RunStarted(RunId),
             new TextMessageContent(RunId, "msg_1", "unbracketed"),
-            new RunFinished(RunId, "end_turn"));
+            new RunFinished(RunId, StopReasons.Stop));
 
         EventSequenceViolation violation = Assert.Single(EventSequenceValidator.Validate(sequence));
 
@@ -85,7 +85,7 @@ public sealed class EventSequenceValidatorTests
             new TextMessageStart(RunId, "msg_1"),
             new TextMessageEnd(RunId, "msg_1"),
             new TextMessageContent(RunId, "msg_1", "late"),
-            new RunFinished(RunId, "end_turn"));
+            new RunFinished(RunId, StopReasons.Stop));
 
         EventSequenceViolation violation = Assert.Single(EventSequenceValidator.Validate(sequence));
 
@@ -102,7 +102,7 @@ public sealed class EventSequenceValidatorTests
             new ToolCallArgs(RunId, "call_1", """{"path":"a.txt"}"""),
             new ToolCallResult(RunId, "call_1", "1  hello", IsError: false),
             new ToolCallEnd(RunId, "call_1"),
-            new RunFinished(RunId, "end_turn"));
+            new RunFinished(RunId, StopReasons.Stop));
 
         EventSequenceViolation violation = Assert.Single(EventSequenceValidator.Validate(sequence));
 
@@ -120,7 +120,7 @@ public sealed class EventSequenceValidatorTests
             new ToolCallEnd(RunId, "call_1"),
             new ToolCallArgs(RunId, "call_1", """{"path":"b.txt"}"""),
             new ToolCallResult(RunId, "call_1", "1  hello", IsError: false),
-            new RunFinished(RunId, "end_turn"));
+            new RunFinished(RunId, StopReasons.Stop));
 
         EventSequenceViolation violation = Assert.Single(EventSequenceValidator.Validate(sequence));
 
@@ -135,7 +135,7 @@ public sealed class EventSequenceValidatorTests
             new RunStarted(RunId),
             new ToolCallStart(RunId, "call_1", "read"),
             new ToolCallEnd(RunId, "call_1"),
-            new RunFinished(RunId, "end_turn"));
+            new RunFinished(RunId, StopReasons.Stop));
 
         EventSequenceViolation violation = Assert.Single(EventSequenceValidator.Validate(sequence));
 
@@ -148,7 +148,7 @@ public sealed class EventSequenceValidatorTests
     {
         IReadOnlyList<AgentEvent> sequence = Sequence(
             new RunStarted(RunId),
-            new RunFinished(RunId, "end_turn"),
+            new RunFinished(RunId, StopReasons.Stop),
             new UsageUpdated(RunId, new UsageDetails()));
 
         EventSequenceViolation violation = Assert.Single(EventSequenceValidator.Validate(sequence));
