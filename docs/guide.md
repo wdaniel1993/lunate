@@ -687,8 +687,12 @@ This repo is developed with OpenCode and OpenSpec (schema: `intent-driven`).
 **Enforcement**
 
 - The rules above are enforced by tools, not trust: warnings-as-errors and analyzers (build), the architecture test (layering), `PublicAPI.Shipped.txt` diffs (API changes), `scripts/verify.sh` (build → tests → publish → budgets → format → API), `openspec validate --strict` (artifacts), and CI on every commit (T-02).
-- Formatting: `dotnet format` runs inside `verify.sh`; a change is not done while verify is red.
+- Formatting: CSharpier and the `dotnet format` style/analyzer split run inside `verify.sh`; a change is not done while verify is red.
 - Review: run the `adversarial-reviewer` subagent over the diff (read-only; scope, layering, startup, tests, error messages), then the maintainer reads the diff — especially `PublicAPI.Unshipped.txt` and anything under `openspec/specs/`.
+
+**Repository quality (ADR-0011)**
+
+Formatting is deterministic: CSharpier owns C# whitespace (`dotnet csharpier format .`; the gate runs `dotnet csharpier check .`), while `dotnet format style` and `dotnet format analyzers` keep the style and analyzer duties. Markdown is linted with markdownlint-cli2, CodeQL scans pushes and pull requests to `main` plus a weekly schedule, and every document kind has exactly one home in `docs/README.md`. See ADR-0011.
 
 **Changes and cards**
 
