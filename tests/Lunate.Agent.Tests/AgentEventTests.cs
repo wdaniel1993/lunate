@@ -26,7 +26,7 @@ public sealed class AgentEventTests
             new StepLimitReached(RunId, 50),
         };
 
-    public static TheoryData<ExtensionEvent> ExtensionEvents() =>
+    public static TheoryData<AgentEvent> ExtensionEvents() =>
         new()
         {
             new ApprovalRequested(RunId, "call_1", "bash", "{}"),
@@ -43,8 +43,8 @@ public sealed class AgentEventTests
 
     [Theory]
     [MemberData(nameof(ExtensionEvents))]
-    public void Extension_events_are_identifiable_as_extensions(ExtensionEvent extensionEvent) =>
-        Assert.IsAssignableFrom<AgentEvent>(extensionEvent);
+    public void Extension_events_are_identifiable_as_extensions(AgentEvent extensionEvent) =>
+        Assert.IsAssignableFrom<ExtensionEvent>(extensionEvent);
 
     [Fact]
     public void Core_events_are_not_extensions()
