@@ -32,4 +32,5 @@ This repo is developed with OpenCode and OpenSpec (schema: `intent-driven`).
 - Format all technical output (numbers, percentages, dates, sizes) with `CultureInfo.InvariantCulture`. The product is English-first (user- and model-facing strings in English) and must behave identically under any machine culture. Tests must not depend on the machine locale.
 - Every behaviour change has a test. Tests use fixtures in `tests/fixtures/`, never live APIs.
 - Keep files under about 300 lines. Prefer plain code over abstractions.
+- Use current C# language features where they simplify the code. Keep sibling code paths (for example provider adapters) structurally symmetric.
 - No secrets in git. Commit small, conventional-commit messages.

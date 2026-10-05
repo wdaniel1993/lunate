@@ -94,7 +94,7 @@ Stick to .NET 10, Microsoft.Extensions.AI and a few well-known packages. No Nati
 
 | Concern | Choice | Project | Why |
 | --- | --- | --- | --- |
-| Runtime | .NET 10, C# 14, SDK pinned in `global.json` | all | Current LTS |
+| Runtime | .NET 10, C# 14, SDK pinned in `global.json` (C# 15 and unions evaluated at .NET 11 GA — spike S-6) | all | Current LTS |
 | Release build | Self-contained single file, ReadyToRun, no single-file compression (ADR-0008); release archives are compressed, three targets | Lunate.Coding | One file, no runtime install, fast start |
 | Model access | `IChatClient`, `ChatMessage`, `ChatResponseUpdate` everywhere; no `FunctionInvokingChatClient` (the loop runs tools) | Lunate.Ai, Lunate.Agent | The .NET standard, maintained by Microsoft |
 | Providers | OpenAI-compatible via the Microsoft.Extensions.AI OpenAI adapter; Anthropic via the official `Anthropic` package and its first-party Microsoft.Extensions.AI adapter (`AsIChatClient`) | Lunate.Ai | One abstraction for every model |
@@ -247,6 +247,8 @@ internal sealed class ToolDeclaration(ITool tool) : AIFunction { /* Name, Descri
 **Events (the only output of the core)**
 
 Events are our own type, named and sequenced like AG-UI's so that the TUI, ACP and a possible web frontend later are thin mappings. Lunate-specific events are marked as extensions; in AG-UI they would travel as custom events. Check the AG-UI and ACP names against the pinned spec versions when writing the mappers.
+
+**Union-ready:** `AgentEvent` stays a closed, sealed set — it is the designated candidate for the C# 15 `union` keyword. When .NET 11 reaches GA (Nov 2026), spike S-6 evaluates: SDK bump, `LangVersion` 15, unions for `AgentEvent`, analyzer/tooling compatibility and unchanged budgets — adopt on evidence.
 
 | Lunate event | AG-UI | ACP | TUI |
 | --- | --- | --- | --- |
