@@ -71,6 +71,13 @@ dotnet csharpier check .
 dotnet format style lunate.sln --verify-no-changes --no-restore
 dotnet format analyzers lunate.sln --verify-no-changes --no-restore
 
+step "docs lint"
+if ! command -v node >/dev/null 2>&1; then
+  echo "verify: node is required for the documentation lint step; install Node.js (npx runs the pinned markdownlint-cli2)" >&2
+  exit 1
+fi
+npx --yes markdownlint-cli2@0.23.3
+
 step "public API"
 if ! git diff --exit-code -- '*PublicAPI.Shipped.txt'; then
   echo "verify: PublicAPI.Shipped.txt changed" >&2

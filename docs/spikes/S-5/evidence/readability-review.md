@@ -8,6 +8,7 @@ for exactly five sentences per variant and a concrete hard-to-follow list.
 ## 1. Variant flows
 
 ### Variant A — plain async
+
 1. Agent events, keys, resizes and frame ticks are all written as `LiveInput`s into one unbounded `Channel<LiveInput>`, with the frames produced by a `FakeTimeProvider.CreateTimer` callback, and a single `Task.Run` consumer loop drains them FIFO through `Apply`.
 2. All state lives in one shared mutable `LiveAreaState` that only `Apply` mutates, while public properties and `Snapshot()` read that same object from the caller's thread.
 3. The 30fps cap is emergent: `Apply` renders only when the input is a `LiveInput.Frame` and `LiveAreaState.Apply` returns true, so events, keys and resizes merely set `Dirty` and wait for the next timer tick.
@@ -15,6 +16,7 @@ for exactly five sentences per variant and a concrete hard-to-follow list.
 5. Esc and double-Ctrl+C are queued like any other key and observed only after the loop applies them, and `DrainAsync` writes a sentinel plus completion source after the producers so the barrier is FIFO as long as channel writes and timer callbacks happen on the calling thread.
 
 ### Variant B — System.Reactive
+
 1. Events, keys and resizes go into one `Subject<LiveInput>` and are folded by `Scan(_state, …)` into the same mutable `LiveAreaState` instance, so the "state stream" emits that one shared object rather than snapshots.
 2. `Replay(1).RefCount()` plus a no-op `Subscribe(_ => { })` keeps the fold alive, but the session's properties and `Snapshot()` still read `_state` directly.
 3. The pulse merges state changes with `Interval(FrameInterval)` filtered on `_state.ToolRunning`/`PendingApprovalText` and passes the result through `Sample(FrameInterval)`, whose callback then applies `new LiveInput.Frame()` directly to `_state`, bypassing the subject and `Scan`, and renders when that returns true.
@@ -22,6 +24,7 @@ for exactly five sentences per variant and a concrete hard-to-follow list.
 5. Esc and double-Ctrl+C travel as `LiveInput.Key` through the subject and are applied inside `Scan`, while `DrainAsync` is a no-op because `TestScheduler`/`Subject` delivery happens synchronously on the caller.
 
 ### Variant B+ — B plus ReactiveUI view models
+
 1. It reuses B's subject → `Scan(_state)` → `Replay/RefCount` fold, but subscribes `SyncViewModels` to copy the shared state into `StatusFooterViewModel` and `ApprovalViewModel` on every input.
 2. In `Key`, approval keys are resolved by `ApprovalViewModel.TryResolve`, which executes a `ReactiveCommand` whose callback pushes `LiveInput.Approval` back into the subject synchronously, re-entering the pipeline from inside a key handler, and only unclaimed keys are forwarded as `LiveInput.Key`.
 3. Rendering has three triggers: the sampled `FrameInterval` pulse plus `Changed` notifications filtered to `Text` and `Prompt`, and each `RequestRender` applies a `Frame` directly to `_state` outside the `Sample` cap.

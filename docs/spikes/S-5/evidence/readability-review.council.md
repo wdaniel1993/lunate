@@ -1,12 +1,14 @@
 # Council Notes: readability-review.md
 
 ## Author Summary
+
 No adversarial-author draft was produced for this artifact because task 2.5 is a
 review, not an authored design artifact. The `adversarial-reviewer` subagent was
 dispatched directly with the variant sources and the shared test list, and asked
 for a five-sentence flow per variant plus a concrete hard-to-follow list.
 
 ## Reviewer Challenges
+
 - A's load-bearing fake-clock/FIFO ordering is comment-only.
 - A's `Apply(input) && input is Frame` ordering reads confusingly.
 - A and B read mutable state across threads with only an implicit drain contract.
@@ -18,6 +20,7 @@ for a five-sentence flow per variant plus a concrete hard-to-follow list.
   view model.
 
 ## Resolutions
+
 - Accepted: clarified A's render condition to `var changed = _state.Apply(input);
   if (changed && input is LiveInput.Frame)` so the apply/render split is explicit.
 - Accepted: all other findings are recorded verbatim in the review and used in the
@@ -27,6 +30,7 @@ for a five-sentence flow per variant plus a concrete hard-to-follow list.
   unification are production T-18/T-19 concerns, out of the spike timebox.
 
 ## Remaining Risks
+
 - The review snapshots the code before the one-line A edit; line numbers for that
   file may shift by one. The review was not re-run for that trivial change.
 - A single reviewer (one model family) ranked readability; the ranking is

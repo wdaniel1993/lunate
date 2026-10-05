@@ -1,0 +1,15 @@
+# markdownlint-cli2 configuration (see docs/README.md).
+# Scope: README.md, AGENTS.md, docs/**/*.md, adr/**/*.md. openspec/ is
+# tool-managed and intentionally out of scope.
+globs:
+  - "README.md"
+  - "AGENTS.md"
+  - "docs/**/*.md"
+  - "adr/**/*.md"
+config:
+  # Long lines are normal in documentation (long links, tables); MD013 off.
+  MD013: false
+  # The guide and the historical spike reports use bold lead-ins as visual
+  # subsection markers; converting them to headings would restructure the
+  # maintainer's documents, so MD036 stays off here.
+  MD036: false

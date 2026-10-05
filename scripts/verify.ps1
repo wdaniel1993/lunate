@@ -93,6 +93,13 @@ try {
     dotnet format analyzers lunate.sln --verify-no-changes --no-restore
     if ($LASTEXITCODE -ne 0) { throw 'verify: analyzers check failed' }
 
+    Write-Host "`n==> docs lint"
+    if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
+        throw 'verify: Node.js is required for the documentation lint step; install Node.js (npx runs the pinned markdownlint-cli2)'
+    }
+    npx --yes markdownlint-cli2@0.23.3
+    if ($LASTEXITCODE -ne 0) { throw 'verify: documentation lint failed' }
+
     Write-Host "`n==> public API"
     git diff --exit-code -- '*PublicAPI.Shipped.txt'
     if ($LASTEXITCODE -ne 0) { throw 'verify: PublicAPI.Shipped.txt changed' }
