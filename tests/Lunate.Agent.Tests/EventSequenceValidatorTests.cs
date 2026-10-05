@@ -22,6 +22,7 @@ public sealed class EventSequenceValidatorTests
             new ToolCallResult(RunId, "call_1", "1  hello", IsError: false),
             new ApprovalRequested(RunId, "call_1", "read", """{"path":"a.txt"}"""),
             new ToolCallStart(RunId, "call_2", "bash"),
+            new ToolCallArgs(RunId, "call_2", """{"command":"echo ok"}"""),
             new ToolCallEnd(RunId, "call_2"),
             new ToolCallResult(RunId, "call_2", "ok", IsError: false),
             new RunFinished(RunId, "end_turn"));
@@ -98,6 +99,7 @@ public sealed class EventSequenceValidatorTests
         IReadOnlyList<AgentEvent> sequence = Sequence(
             new RunStarted(RunId),
             new ToolCallStart(RunId, "call_1", "read"),
+            new ToolCallArgs(RunId, "call_1", """{"path":"a.txt"}"""),
             new ToolCallResult(RunId, "call_1", "1  hello", IsError: false),
             new ToolCallEnd(RunId, "call_1"),
             new RunFinished(RunId, "end_turn"));
@@ -105,7 +107,7 @@ public sealed class EventSequenceValidatorTests
         EventSequenceViolation violation = Assert.Single(EventSequenceValidator.Validate(sequence));
 
         Assert.Equal(EventSequenceViolationKind.ToolCallOutOfOrder, violation.Kind);
-        Assert.Same(sequence[2], violation.Event);
+        Assert.Same(sequence[3], violation.Event);
     }
 
     [Fact]
@@ -114,15 +116,31 @@ public sealed class EventSequenceValidatorTests
         IReadOnlyList<AgentEvent> sequence = Sequence(
             new RunStarted(RunId),
             new ToolCallStart(RunId, "call_1", "read"),
-            new ToolCallEnd(RunId, "call_1"),
             new ToolCallArgs(RunId, "call_1", """{"path":"a.txt"}"""),
+            new ToolCallEnd(RunId, "call_1"),
+            new ToolCallArgs(RunId, "call_1", """{"path":"b.txt"}"""),
             new ToolCallResult(RunId, "call_1", "1  hello", IsError: false),
             new RunFinished(RunId, "end_turn"));
 
         EventSequenceViolation violation = Assert.Single(EventSequenceValidator.Validate(sequence));
 
         Assert.Equal(EventSequenceViolationKind.ToolCallOutOfOrder, violation.Kind);
-        Assert.Same(sequence[3], violation.Event);
+        Assert.Same(sequence[4], violation.Event);
+    }
+
+    [Fact]
+    public void Tool_call_end_before_args_reports_wrong_tool_order()
+    {
+        IReadOnlyList<AgentEvent> sequence = Sequence(
+            new RunStarted(RunId),
+            new ToolCallStart(RunId, "call_1", "read"),
+            new ToolCallEnd(RunId, "call_1"),
+            new RunFinished(RunId, "end_turn"));
+
+        EventSequenceViolation violation = Assert.Single(EventSequenceValidator.Validate(sequence));
+
+        Assert.Equal(EventSequenceViolationKind.ToolCallOutOfOrder, violation.Kind);
+        Assert.Same(sequence[2], violation.Event);
     }
 
     [Fact]

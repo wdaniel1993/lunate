@@ -89,11 +89,14 @@ internal static class EventSequenceValidator
                 case ToolCallArgs args when StateOf(toolCalls, args.CallId) != ToolCallState.Started:
                     violations.Add(ToolCallViolation(args, WrongToolOrder(args.CallId)));
                     break;
-                case ToolCallEnd end when StateOf(toolCalls, end.CallId) != ToolCallState.Started:
+                case ToolCallEnd end when StateOf(toolCalls, end.CallId) != ToolCallState.ArgsSeen:
                     violations.Add(ToolCallViolation(end, WrongToolOrder(end.CallId)));
                     break;
                 case ToolCallResult result when StateOf(toolCalls, result.CallId) != ToolCallState.Ended:
                     violations.Add(ToolCallViolation(result, WrongToolOrder(result.CallId)));
+                    break;
+                case ToolCallArgs args:
+                    toolCalls[args.CallId] = ToolCallState.ArgsSeen;
                     break;
                 case ToolCallEnd end:
                     toolCalls[end.CallId] = ToolCallState.Ended;
@@ -129,6 +132,7 @@ internal static class EventSequenceValidator
     private enum ToolCallState
     {
         Started,
+        ArgsSeen,
         Ended,
         Completed,
     }
