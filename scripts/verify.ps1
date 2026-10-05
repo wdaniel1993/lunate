@@ -9,6 +9,14 @@ try {
     $configuration = if ($env:CONFIGURATION) { $env:CONFIGURATION } else { 'Release' }
     $publishDir = 'artifacts/publish'
 
+    function Measure-StartupMedian {
+        param($Bin, $File)
+        Write-Host "verify: benchmarking: $Bin --version"
+        hyperfine --warmup 3 --runs 20 --export-json $File "$Bin --version" | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw 'verify: hyperfine failed' }
+        return [math]::Round(((Get-Content $File -Raw | ConvertFrom-Json).results[0].median) * 1000)
+    }
+
     if (-not $env:RID) {
         $arch = switch ([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString()) {
             'X64' { 'x64' }
@@ -47,14 +55,19 @@ try {
     $binaryFull = (Resolve-Path $binary).Path
     & $binaryFull --version | Out-Null
     if ($LASTEXITCODE -ne 0) { throw "verify: binary failed to run: $binaryFull" }
-    Write-Host "verify: benchmarking: $binaryFull --version"
-    hyperfine --warmup 3 --runs 20 --export-json $resultsFile "$binaryFull --version" | Out-Null
-    if ($LASTEXITCODE -ne 0) { throw 'verify: hyperfine failed' }
 
-    $medianMs = [math]::Round(((Get-Content $resultsFile -Raw | ConvertFrom-Json).results[0].median) * 1000)
+    $medianMs = Measure-StartupMedian -Bin $binaryFull -File $resultsFile
     Write-Host "startup median: $medianMs ms (budget $budgetMs ms)"
+    # Noise policy (ADR-0005, mirrors scripts/perf.sh): a single budget miss re-runs
+    # the measurement once before failing, so a shared-runner noise burst does not
+    # redden the gate while a material regression still misses both attempts.
     if ($medianMs -gt $budgetMs) {
-        Write-Error "startup budget exceeded: $medianMs ms > $budgetMs ms" -ErrorAction Continue
+        Write-Host "startup median $medianMs ms exceeds budget $budgetMs ms; re-running once (noise policy)"
+        $medianMs = Measure-StartupMedian -Bin $binaryFull -File $resultsFile
+        Write-Host "startup median (retry): $medianMs ms (budget $budgetMs ms)"
+    }
+    if ($medianMs -gt $budgetMs) {
+        Write-Error "startup budget exceeded: $medianMs ms > $budgetMs ms (two consecutive measurements)" -ErrorAction Continue
         exit 1
     }
 
