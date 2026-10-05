@@ -107,6 +107,7 @@ internal sealed class StreamAccumulator : DelegatingChatClient
             CreatedAt = update.CreatedAt,
             FinishReason = update.FinishReason,
             ModelId = update.ModelId,
+            ContinuationToken = update.ContinuationToken,
             AdditionalProperties = update.AdditionalProperties,
             RawRepresentation = update.RawRepresentation,
         };

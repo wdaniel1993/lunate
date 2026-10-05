@@ -90,6 +90,28 @@ public sealed class StreamAccumulatorTests
     }
 
     [Fact]
+    public async Task GetStreamingResponseAsync_carries_update_metadata_through_fragment_updates()
+    {
+        ResponseContinuationToken token = ResponseContinuationToken.FromBytes("resume-1"u8.ToArray());
+        var fragmentUpdate = new ChatResponseUpdate(ChatRole.Assistant, [Fragment("call-1", "list_files", "{\"path\":\"a")])
+        {
+            ModelId = "gpt-4o-mini",
+            ResponseId = "resp-1",
+            MessageId = "msg-1",
+            ContinuationToken = token,
+        };
+        var provider = new ScriptedChatClient()
+            .Enqueue(fragmentUpdate, FragmentUpdate("call-1", string.Empty, ".txt\"}"));
+        var accumulator = new StreamAccumulator(provider);
+
+        List<ChatResponseUpdate> updates = await Stream(accumulator);
+
+        Assert.Equal("resp-1", updates[0].ResponseId);
+        Assert.Equal("msg-1", updates[0].MessageId);
+        Assert.Equal(token.ToBytes().ToArray(), updates[0].ContinuationToken!.ToBytes().ToArray());
+    }
+
+    [Fact]
     public async Task GetStreamingResponseAsync_surfaces_unparseable_assembled_arguments_as_an_exception()
     {
         var provider = new ScriptedChatClient()
