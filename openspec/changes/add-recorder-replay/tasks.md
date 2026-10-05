@@ -8,7 +8,7 @@
 
 ## 3. Replay
 
-- [ ] 3.1 `ReplayChatClient` (streaming + aggregated `GetResponseAsync`, digest check, actionable errors) + tests
+- [x] 3.1 `ReplayChatClient` (streaming + aggregated `GetResponseAsync`, digest check, actionable errors) + tests
 
 ## 4. Factory wiring
 

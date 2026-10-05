@@ -32,3 +32,9 @@ Lunate.Ai.RecordingChatClient
 Lunate.Ai.RecordingChatClient.RecordingChatClient(Microsoft.Extensions.AI.IChatClient! innerClient, string! fixturePath, string? modelId = null) -> void
 override Lunate.Ai.RecordingChatClient.GetResponseAsync(System.Collections.Generic.IEnumerable<Microsoft.Extensions.AI.ChatMessage!>! messages, Microsoft.Extensions.AI.ChatOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Microsoft.Extensions.AI.ChatResponse!>!
 override Lunate.Ai.RecordingChatClient.GetStreamingResponseAsync(System.Collections.Generic.IEnumerable<Microsoft.Extensions.AI.ChatMessage!>! messages, Microsoft.Extensions.AI.ChatOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<Microsoft.Extensions.AI.ChatResponseUpdate!>!
+Lunate.Ai.ReplayChatClient
+Lunate.Ai.ReplayChatClient.ReplayChatClient(string! fixturePath) -> void
+Lunate.Ai.ReplayChatClient.Dispose() -> void
+Lunate.Ai.ReplayChatClient.GetResponseAsync(System.Collections.Generic.IEnumerable<Microsoft.Extensions.AI.ChatMessage!>! messages, Microsoft.Extensions.AI.ChatOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Microsoft.Extensions.AI.ChatResponse!>!
+Lunate.Ai.ReplayChatClient.GetService(System.Type! serviceType, object? serviceKey = null) -> object?
+Lunate.Ai.ReplayChatClient.GetStreamingResponseAsync(System.Collections.Generic.IEnumerable<Microsoft.Extensions.AI.ChatMessage!>! messages, Microsoft.Extensions.AI.ChatOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<Microsoft.Extensions.AI.ChatResponseUpdate!>!
