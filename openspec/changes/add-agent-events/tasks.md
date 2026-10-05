@@ -14,5 +14,5 @@
 
 ## 4. Close
 
-- [ ] 4.1 `scripts/verify.sh` green; reviewer pass; fix what it reports
-- [ ] 4.2 `openspec validate add-agent-events --type change --strict`; commit per group
+- [x] 4.1 `scripts/verify.sh` green; reviewer pass; fix what it reports
+- [x] 4.2 `openspec validate add-agent-events --type change --strict`; commit per group
