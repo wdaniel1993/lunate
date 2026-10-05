@@ -35,6 +35,9 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'verify: tests failed' }
 
     $binary = Join-Path (Join-Path $publishDir $env:RID) 'lunate.exe'
+    # ADR-0008: release builds are single file + ReadyToRun WITHOUT compression
+    # (compression crashed on macOS and costs startup time; archives are
+    # compressed instead). Kept aligned with scripts/verify.sh and release.yml.
     Write-Host "`n==> publish ($env:RID)"
     dotnet publish src/Lunate.Coding/Lunate.Coding.csproj `
         -c $configuration `
@@ -42,7 +45,6 @@ try {
         --self-contained true `
         -p:PublishSingleFile=true `
         -p:PublishReadyToRun=true `
-        -p:EnableCompressionInSingleFile=true `
         -o (Join-Path $publishDir $env:RID) `
         --nologo
     if ($LASTEXITCODE -ne 0) { throw 'verify: publish failed' }
