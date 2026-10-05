@@ -86,6 +86,14 @@ mode_selftest() {
   local out peak ticks fast_ticks
   out=$(sample_peak sleep 2)
   peak=${out%% *}; ticks=${out##* }
+  # Windows (Git Bash + tasklist) paces ~0.4-0.7 s per tick, so a 2 s window can
+  # yield as few as 3 ticks on a loaded runner (observed: green=5, loaded=3).
+  # Retry once with a long window before failing; a healthy sampler still passes
+  # and a broken one fails both attempts (same noise policy as perf.sh, ADR-0005).
+  if [ "$ticks" -lt "$MIN_TICKS" ]; then
+    out=$(sample_peak sleep 10)
+    peak=${out%% *}; ticks=${out##* }
+  fi
   [ "$peak" -gt 0 ] || { echo "FAIL: sampler produced no reading" >&2; exit 1; }
   [ "$ticks" -ge "$MIN_TICKS" ] || { echo "FAIL: too few sampler ticks ($ticks)" >&2; exit 1; }
   if (GATE_MB=1; report x 500000) >/dev/null 2>&1; then
