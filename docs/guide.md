@@ -209,7 +209,7 @@ public sealed class ReplayChatClient(string fixturePath) : IChatClient { }
 - `UseLogging()`: model-call logging through `ILogger`.
 - `AIJsonUtilities`: serialization options for MEAI types (sessions, fixtures).
 - Approval content types: `ToolApprovalRequestContent` / `ToolApprovalResponseContent` (confirmed present and not `[Experimental]` in Microsoft.Extensions.AI.Abstractions 10.10.x) shape our approval events and policy without new message types.
-- Pipeline order in `IChatClientFactory`, outermost first: **OpenTelemetry -> logging -> recorder (`LUNATE_RECORD=1`) -> provider**. Replay replaces recorder + provider, so tests still run through the telemetry and logging layers.
+- Pipeline order in `IChatClientFactory`, outermost first: **OpenTelemetry -> logging -> accumulator -> recorder (`LUNATE_RECORD=1`) -> provider**. Replay replaces recorder + provider, so tests still run through the telemetry, logging and accumulator layers.
 
 **Recorded streams (tests never need API keys)**
 

@@ -124,21 +124,32 @@ public sealed class ChatClientFactoryTests
         Assert.IsType<ProviderStub>(chain[^1]);
     }
 
-    [Fact]
-    public void Create_places_the_accumulator_between_logging_and_recorder()
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Create_places_the_pipeline_layers_outermost_first(bool enableOpenTelemetry)
     {
-        IChatClient client = CreateFactory([], enableOpenTelemetry: false).Create(TestModel());
+        IChatClient client = CreateFactory([], enableOpenTelemetry).Create(TestModel());
 
         IChatClient[] chain = [.. WalkChain(client)];
-        int logging = Array.FindIndex(chain, candidate => candidate is LoggingChatClient);
-        int accumulator = Array.FindIndex(chain, candidate => candidate is StreamAccumulator);
-        int recorder = Array.FindIndex(chain, candidate => candidate is MarkerChatClient);
-        int provider = Array.FindIndex(chain, candidate => candidate is ProviderStub);
+        string[] expected = enableOpenTelemetry
+            ?
+            [
+                "OpenTelemetryChatClient",
+                "LoggingChatClient",
+                "StreamAccumulator",
+                "MarkerChatClient",
+                "ProviderStub",
+            ]
+            :
+            [
+                "LoggingChatClient",
+                "StreamAccumulator",
+                "MarkerChatClient",
+                "ProviderStub",
+            ];
 
-        Assert.True(logging >= 0, $"logging layer missing from {Describe(chain)}");
-        Assert.True(accumulator > logging, $"accumulator must sit under logging: {Describe(chain)}");
-        Assert.True(recorder > accumulator, $"accumulator must sit above the recorder: {Describe(chain)}");
-        Assert.True(provider > recorder, $"recorder must sit above the provider: {Describe(chain)}");
+        Assert.Equal(expected, chain.Select(candidate => candidate.GetType().Name));
     }
 
     [Fact]
@@ -313,9 +324,6 @@ public sealed class ChatClientFactoryTests
 
         return null;
     }
-
-    private static string Describe(IEnumerable<IChatClient> chain) =>
-        string.Join(" -> ", chain.Select(client => client.GetType().Name));
 
     private static ActivityListener ListenForTelemetry(List<string> sequence)
     {
