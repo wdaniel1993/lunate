@@ -15,7 +15,7 @@
 
 ## 4. Contract + fixtures
 
-- [ ] 4.1 `LUNATE_LIVE=1` contract test scaffold for both providers (env vars documented; skipped otherwise)
+- [x] 4.1 `LUNATE_LIVE=1` contract test scaffold for both providers (env vars documented; skipped otherwise)
 - [ ] 4.2 Maintainer recording session: one fixture per provider recorded and committed under `tests/fixtures/streams/` (needs keys; maintainer)
 
 ## 5. Docs
