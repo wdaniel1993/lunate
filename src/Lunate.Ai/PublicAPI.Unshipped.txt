@@ -28,3 +28,7 @@ override Lunate.Ai.ModelInfo.GetHashCode() -> int
 override Lunate.Ai.ModelInfo.ToString() -> string!
 static Lunate.Ai.ModelInfo.operator !=(Lunate.Ai.ModelInfo? left, Lunate.Ai.ModelInfo? right) -> bool
 static Lunate.Ai.ModelInfo.operator ==(Lunate.Ai.ModelInfo? left, Lunate.Ai.ModelInfo? right) -> bool
+Lunate.Ai.RecordingChatClient
+Lunate.Ai.RecordingChatClient.RecordingChatClient(Microsoft.Extensions.AI.IChatClient! innerClient, string! fixturePath, string? modelId = null) -> void
+override Lunate.Ai.RecordingChatClient.GetResponseAsync(System.Collections.Generic.IEnumerable<Microsoft.Extensions.AI.ChatMessage!>! messages, Microsoft.Extensions.AI.ChatOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Microsoft.Extensions.AI.ChatResponse!>!
+override Lunate.Ai.RecordingChatClient.GetStreamingResponseAsync(System.Collections.Generic.IEnumerable<Microsoft.Extensions.AI.ChatMessage!>! messages, Microsoft.Extensions.AI.ChatOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<Microsoft.Extensions.AI.ChatResponseUpdate!>!

@@ -4,7 +4,7 @@
 
 ## 2. Recording
 
-- [ ] 2.1 `RecordingChatClient` (tee, append-per-exchange, dirs, header-on-create, lock) + tests
+- [x] 2.1 `RecordingChatClient` (tee, append-per-exchange, dirs, header-on-create, lock) + tests
 
 ## 3. Replay
 
