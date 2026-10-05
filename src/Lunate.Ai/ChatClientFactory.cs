@@ -57,6 +57,8 @@ public sealed class ChatClientFactory : IChatClientFactory
             inner = decorator(inner);
         }
 
+        inner = new StreamAccumulator(inner);
+
         ChatClientBuilder builder = new(inner);
         if (_enableOpenTelemetry)
         {

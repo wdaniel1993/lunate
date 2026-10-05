@@ -6,8 +6,8 @@
 
 ## 2. StreamAccumulator
 
-- [ ] 2.1 Accumulator middleware (merge by call id, fragment concatenation, already-complete pass-through) + unit tests (multiple concurrent calls, interleaved text)
-- [ ] 2.2 Pipeline placement (accumulator between logging and recorder) + pipeline-order test update; guide lines updated
+- [x] 2.1 Accumulator middleware (merge by call id, fragment concatenation, already-complete pass-through) + unit tests (multiple concurrent calls, interleaved text)
+- [x] 2.2 Pipeline placement (accumulator between logging and recorder) + pipeline-order test update; guide lines updated
 
 ## 3. Local-endpoint polish
 

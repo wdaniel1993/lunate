@@ -176,7 +176,7 @@ public sealed record ModelInfo(string Id, string Provider, Uri? Endpoint, int Co
 
 public interface IChatClientFactory
 {
-    // outermost first: OpenTelemetry (opt-in) -> logging -> recorder (LUNATE_RECORD=1) -> provider
+    // outermost first: OpenTelemetry (opt-in) -> logging -> accumulator -> recorder (LUNATE_RECORD=1) -> provider
     IChatClient Create(ModelInfo model);
 }
 
@@ -186,6 +186,7 @@ public sealed class ReplayChatClient(string fixturePath) : IChatClient { }
 
 - `ModelCatalog`: a built-in `models.json` (id, provider, endpoint, context window, tool support) merged with `~/.lunate/models.json`. Adding a model never needs a code change.
 - `RecordingChatClient` and `ReplayChatClient`: record and replay `ChatResponseUpdate` streams as JSONL, serialized with `AIJsonUtilities` options.
+- `StreamAccumulator` (internal): one `DelegatingChatClient` between logging and the recorder that assembles streamed function-call argument fragments per call id, so consumers only ever see complete calls; recordings stay raw and replay still passes through the accumulator.
 - `ProviderErrors`: classifies exceptions as retryable or not.
 
 **How the references handle model catalogs (checked 2026-10)**

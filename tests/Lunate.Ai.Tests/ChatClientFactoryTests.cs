@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Reflection;
 using Anthropic;
 using Microsoft.Extensions.AI;
 
@@ -115,7 +116,29 @@ public sealed class ChatClientFactoryTests
         await client.GetResponseAsync([new ChatMessage(ChatRole.User, "hello")], cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.NotNull(recorder);
-        Assert.IsType<ProviderStub>(recorder.Inner);
+        IChatClient[] chain = [.. WalkChain(client)];
+        Assert.DoesNotContain(chain, candidate => candidate is FunctionInvokingChatClient);
+        int recorderIndex = Array.FindIndex(chain, candidate => ReferenceEquals(candidate, recorder));
+        Assert.True(recorderIndex > 0);
+        Assert.IsType<StreamAccumulator>(chain[recorderIndex - 1]);
+        Assert.IsType<ProviderStub>(chain[^1]);
+    }
+
+    [Fact]
+    public void Create_places_the_accumulator_between_logging_and_recorder()
+    {
+        IChatClient client = CreateFactory([], enableOpenTelemetry: false).Create(TestModel());
+
+        IChatClient[] chain = [.. WalkChain(client)];
+        int logging = Array.FindIndex(chain, candidate => candidate is LoggingChatClient);
+        int accumulator = Array.FindIndex(chain, candidate => candidate is StreamAccumulator);
+        int recorder = Array.FindIndex(chain, candidate => candidate is MarkerChatClient);
+        int provider = Array.FindIndex(chain, candidate => candidate is ProviderStub);
+
+        Assert.True(logging >= 0, $"logging layer missing from {Describe(chain)}");
+        Assert.True(accumulator > logging, $"accumulator must sit under logging: {Describe(chain)}");
+        Assert.True(recorder > accumulator, $"accumulator must sit above the recorder: {Describe(chain)}");
+        Assert.True(provider > recorder, $"recorder must sit above the provider: {Describe(chain)}");
     }
 
     [Fact]
@@ -249,6 +272,35 @@ public sealed class ChatClientFactoryTests
             recorderDecorator: inner => new MarkerChatClient("recorder", sequence, inner));
 
     private static ModelInfo TestModel() => new("gpt-4o-mini", "openai", null, 128_000, true);
+
+    private static IEnumerable<IChatClient> WalkChain(IChatClient client)
+    {
+        IChatClient? current = client;
+        while (current is not null)
+        {
+            yield return current;
+            current = InnerClientOf(current);
+        }
+    }
+
+    private static IChatClient? InnerClientOf(IChatClient client)
+    {
+        for (Type? type = client.GetType(); type is not null; type = type.BaseType)
+        {
+            PropertyInfo? property = type.GetProperty(
+                "InnerClient",
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            if (property is not null)
+            {
+                return (IChatClient?)property.GetValue(client);
+            }
+        }
+
+        return null;
+    }
+
+    private static string Describe(IEnumerable<IChatClient> chain) =>
+        string.Join(" -> ", chain.Select(client => client.GetType().Name));
 
     private static ActivityListener ListenForTelemetry(List<string> sequence)
     {

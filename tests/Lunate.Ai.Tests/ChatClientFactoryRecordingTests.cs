@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.Extensions.AI;
 
 namespace Lunate.Ai.Tests;
@@ -101,6 +102,45 @@ public sealed class ChatClientFactoryRecordingTests
     }
 
     [Fact]
+    public async Task Create_records_raw_fragments_and_replay_assembles_them()
+    {
+        using var temp = new TempDirectory();
+        string path = temp.File("fragments.jsonl");
+        var provider = new ScriptedChatClient().Enqueue(
+            FragmentUpdate("call-1", "list_files", "{\"path\":\""),
+            FragmentUpdate("call-1", string.Empty, "a.txt\"}"));
+        ChatMessage[] messages = [new(ChatRole.User, "hello")];
+        var recordingFactory = new ChatClientFactory(
+            new MarkingLoggerFactory(static () => { }),
+            enableOpenTelemetry: false,
+            providerClientFactory: _ => provider,
+            recorderDecorator: inner => new RecordingChatClient(inner, path, "gpt-4o-mini"));
+
+        IChatClient recording = recordingFactory.Create(TestModel());
+        await recording
+            .GetStreamingResponseAsync(messages, cancellationToken: TestContext.Current.CancellationToken)
+            .ToListAsync(TestContext.Current.CancellationToken);
+
+        string fixture = File.ReadAllText(path);
+        Assert.Contains(StreamAccumulator.ArgumentsFragmentKey, fixture, StringComparison.Ordinal);
+
+        var replayFactory = new ChatClientFactory(
+            new MarkingLoggerFactory(static () => { }),
+            enableOpenTelemetry: false,
+            providerClientFactory: _ => new ThrowingChatClient(),
+            recorderDecorator: _ => new ReplayChatClient(path));
+        IChatClient replay = replayFactory.Create(TestModel());
+        List<ChatResponseUpdate> updates = await replay
+            .GetStreamingResponseAsync(messages, cancellationToken: TestContext.Current.CancellationToken)
+            .ToListAsync(TestContext.Current.CancellationToken);
+
+        FunctionCallContent call = Assert.Single(updates.SelectMany(update => update.Contents).OfType<FunctionCallContent>());
+        Assert.Equal("call-1", call.CallId);
+        Assert.Equal("list_files", call.Name);
+        Assert.Equal("a.txt", Unwrap(call.Arguments!["path"]));
+    }
+
+    [Fact]
     public void Default_recording_path_is_under_artifacts_recordings_and_gitignored()
     {
         string path = ChatClientFactory.DefaultRecordingPath().Replace('\\', '/');
@@ -117,6 +157,16 @@ public sealed class ChatClientFactoryRecordingTests
 
         Assert.Equal(paths.Length, paths.Distinct(StringComparer.Ordinal).Count());
     }
+
+    private static ChatResponseUpdate FragmentUpdate(string callId, string name, string json) =>
+        new(
+            ChatRole.Assistant,
+            [new FunctionCallContent(callId, name, new Dictionary<string, object?> { [StreamAccumulator.ArgumentsFragmentKey] = json })])
+        {
+            ModelId = "gpt-4o-mini",
+        };
+
+    private static object? Unwrap(object? value) => value is JsonElement element ? element.GetString() : value;
 
     private static ModelInfo TestModel() => new("gpt-4o-mini", "openai", null, 128_000, true);
 }
