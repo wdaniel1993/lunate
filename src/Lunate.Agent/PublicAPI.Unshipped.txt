@@ -24,6 +24,8 @@ Lunate.Agent.ExtensionEvent
 Lunate.Agent.ExtensionEvent.Deconstruct(out string! RunId) -> void
 Lunate.Agent.ExtensionEvent.ExtensionEvent(Lunate.Agent.ExtensionEvent! original) -> void
 Lunate.Agent.ExtensionEvent.ExtensionEvent(string! RunId) -> void
+Lunate.Agent.IAgentEvents
+Lunate.Agent.IAgentEvents.Emit(Lunate.Agent.AgentEvent! agentEvent) -> void
 Lunate.Agent.Retrying
 Lunate.Agent.Retrying.Attempt.get -> int
 Lunate.Agent.Retrying.Attempt.init -> void

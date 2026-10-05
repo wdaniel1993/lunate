@@ -13,4 +13,8 @@
     <AdditionalFiles Include="PublicAPI.Unshipped.txt" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="Lunate.Agent.Tests" />
+  </ItemGroup>
+
 </Project>

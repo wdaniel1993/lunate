@@ -5,8 +5,8 @@
 
 ## 2. Emission
 
-- [ ] 2.1 `IAgentEvents` + internal channel implementation (ordered, completes) + tests
-- [ ] 2.2 Recording implementation in the tests project
+- [x] 2.1 `IAgentEvents` + internal channel implementation (ordered, completes) + tests
+- [x] 2.2 Recording implementation in the tests project
 
 ## 3. Sequence rules
 
