@@ -10,10 +10,10 @@ public sealed class StreamAccumulatorTests
     {
         var provider = new ScriptedChatClient()
             .Enqueue(
-                new ChatResponseUpdate(ChatRole.Assistant, [new TextContent("Checking. ")]) { ModelId = "claude-sonnet-4.6" },
+                new ChatResponseUpdate(ChatRole.Assistant, [new TextContent("Checking. ")]) { ModelId = "claude-sonnet-5-5" },
                 FragmentUpdate("call-1", "list_files", "{\"path\":"),
                 FragmentUpdate("call-1", string.Empty, " \"a.txt\"}"),
-                new ChatResponseUpdate(ChatRole.Assistant, []) { ModelId = "claude-sonnet-4.6", FinishReason = ChatFinishReason.ToolCalls });
+                new ChatResponseUpdate(ChatRole.Assistant, []) { ModelId = "claude-sonnet-5-5", FinishReason = ChatFinishReason.ToolCalls });
         var accumulator = new StreamAccumulator(provider);
 
         List<ChatResponseUpdate> updates = await Stream(accumulator);

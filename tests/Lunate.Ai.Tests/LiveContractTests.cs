@@ -29,7 +29,7 @@ public sealed class LiveContractTests
         Assert.SkipUnless(LiveRequested(), $"Live contracts require {LiveVariable}=1.");
         Assert.SkipWhen(string.IsNullOrEmpty(Environment.GetEnvironmentVariable(AnthropicApiKeyVariable)), $"{AnthropicApiKeyVariable} is not set.");
 
-        await RunStreamedRoundTrip(new ModelInfo("claude-sonnet-4.6", "anthropic", null, 200_000, true));
+        await RunStreamedRoundTrip(new ModelInfo("claude-sonnet-5-5", "anthropic", null, 1_000_000, true));
     }
 
     private static async Task RunStreamedRoundTrip(ModelInfo model)

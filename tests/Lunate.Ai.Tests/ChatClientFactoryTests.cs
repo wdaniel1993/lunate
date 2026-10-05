@@ -222,7 +222,7 @@ public sealed class ChatClientFactoryTests
     {
         using var environment = new EnvironmentScope((AnthropicApiKeyVariable, "anthropic-test-key"));
         var factory = new ChatClientFactory(new MarkingLoggerFactory(static () => { }));
-        var model = new ModelInfo("claude-sonnet-4.6", "Anthropic", null, 200_000, true);
+        var model = new ModelInfo("claude-sonnet-5-5", "Anthropic", null, 1_000_000, true);
 
         IChatClient client = factory.Create(model);
         var metadata = (ChatClientMetadata?)client.GetService(typeof(ChatClientMetadata));
@@ -238,7 +238,7 @@ public sealed class ChatClientFactoryTests
         using var environment = new EnvironmentScope((AnthropicApiKeyVariable, "anthropic-test-key"));
         var factory = new ChatClientFactory(new MarkingLoggerFactory(static () => { }));
         var endpoint = new Uri("https://anthropic.example.test");
-        var model = new ModelInfo("claude-sonnet-4.6", "anthropic", endpoint, 200_000, true);
+        var model = new ModelInfo("claude-sonnet-5-5", "anthropic", endpoint, 1_000_000, true);
 
         IChatClient client = factory.Create(model);
         var metadata = (ChatClientMetadata?)client.GetService(typeof(ChatClientMetadata));
@@ -251,7 +251,7 @@ public sealed class ChatClientFactoryTests
     public void Create_anthropic_client_disables_transport_retries()
     {
         using var environment = new EnvironmentScope((AnthropicApiKeyVariable, "anthropic-test-key"));
-        var model = new ModelInfo("claude-sonnet-4.6", "anthropic", new Uri("https://anthropic.example.test"), 200_000, true);
+        var model = new ModelInfo("claude-sonnet-5-5", "anthropic", new Uri("https://anthropic.example.test"), 1_000_000, true);
 
         AnthropicClient client = ChatClientFactory.CreateAnthropicClient(model);
 
@@ -265,7 +265,7 @@ public sealed class ChatClientFactoryTests
     {
         using var environment = new EnvironmentScope((AnthropicApiKeyVariable, null));
         var factory = new ChatClientFactory(new MarkingLoggerFactory(static () => { }));
-        var model = new ModelInfo("claude-sonnet-4.6", "anthropic", null, 200_000, true);
+        var model = new ModelInfo("claude-sonnet-5-5", "anthropic", null, 1_000_000, true);
 
         InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() => factory.Create(model));
 
