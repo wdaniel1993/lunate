@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Closed event set aligned with AG-UI
-`Lunate.Agent` SHALL define `AgentEvent` as a closed, sealed set of records matching the guide's event table: `RunStarted`, `RunFinished(stopReason)`, `RunError`, `TextMessageStart`, `TextMessageContent`, `TextMessageEnd`, `ToolCallStart`, `ToolCallArgs`, `ToolCallEnd`, `ToolCallResult` (with UI-only `Details`), plus extension events (`ApprovalRequested`, `UsageUpdated`, `Retrying`, `CompactionApplied`, `StepLimitReached`) deriving from a common extension base. Every event SHALL carry a run id.
+`Lunate.Agent` SHALL define `AgentEvent` as a closed, sealed set of records matching the guide's event table: `RunStarted`, `RunFinished(stopReason)`, `RunError`, `TextMessageStart`, `TextMessageContent`, `TextMessageEnd`, `ToolCallStart`, `ToolCallArgs`, `ToolCallEnd`, `ToolCallResult` (with UI-only `Details`), plus extension events (`ApprovalRequested`, `UsageUpdated`, `Retrying`, `CompactionApplied`, `StepLimitReached`) deriving from a common extension base. Every event SHALL carry a run id. `RunFinished.StopReason` SHALL use the documented vocabulary: `stop` for a turn that finished normally, `cancelled` for a run cancelled through its token, and `step_limit` for a run that reached `MaxSteps`; model finish reasons map to `stop` until the loop (T-09) defines richer mapping.
 
 #### Scenario: Set is closed and union-ready
 - **GIVEN** the event types
@@ -22,7 +22,7 @@
 - **THEN** they arrive in emission order and the stream completes when completed
 
 ### Requirement: Event sequence rules
-The event stream SHALL obey: a run begins with `RunStarted`; exactly one terminal event (`RunFinished` or `RunError`) ends it; text content events are bracketed by `TextMessageStart`/`TextMessageEnd` per message; tool events follow start → args → end → result per call id; no event follows the terminal event. Violations SHALL be detectable by a validator used in tests.
+The event stream SHALL obey: a run begins with exactly one `RunStarted`; exactly one terminal event (`RunFinished` or `RunError`) ends it; text content events are bracketed by `TextMessageStart`/`TextMessageEnd` per message; tool events follow start → args → end → result per call id; no event follows the terminal event. Violations SHALL be detectable by a validator used in tests.
 
 #### Scenario: Valid sequence passes
 - **GIVEN** a well-formed run sequence

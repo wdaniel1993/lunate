@@ -1,1 +1,245 @@
 #nullable enable
+abstract Lunate.Agent.AgentEvent.<Clone>$() -> Lunate.Agent.AgentEvent!
+Lunate.Agent.AgentEvent
+Lunate.Agent.AgentEvent.AgentEvent(Lunate.Agent.AgentEvent! original) -> void
+Lunate.Agent.AgentEvent.AgentEvent(string! RunId) -> void
+Lunate.Agent.AgentEvent.Deconstruct(out string! RunId) -> void
+Lunate.Agent.AgentEvent.RunId.get -> string!
+Lunate.Agent.AgentEvent.RunId.init -> void
+Lunate.Agent.ApprovalRequested
+Lunate.Agent.ApprovalRequested.ApprovalRequested(string! RunId, string! CallId, string! ToolName, string! Args) -> void
+Lunate.Agent.ApprovalRequested.Args.get -> string!
+Lunate.Agent.ApprovalRequested.Args.init -> void
+Lunate.Agent.ApprovalRequested.CallId.get -> string!
+Lunate.Agent.ApprovalRequested.CallId.init -> void
+Lunate.Agent.ApprovalRequested.Deconstruct(out string! RunId, out string! CallId, out string! ToolName, out string! Args) -> void
+Lunate.Agent.ApprovalRequested.Equals(Lunate.Agent.ApprovalRequested? other) -> bool
+Lunate.Agent.ApprovalRequested.ToolName.get -> string!
+Lunate.Agent.ApprovalRequested.ToolName.init -> void
+Lunate.Agent.CompactionApplied
+Lunate.Agent.CompactionApplied.CompactionApplied(string! RunId) -> void
+Lunate.Agent.CompactionApplied.Deconstruct(out string! RunId) -> void
+Lunate.Agent.CompactionApplied.Equals(Lunate.Agent.CompactionApplied? other) -> bool
+Lunate.Agent.ExtensionEvent
+Lunate.Agent.ExtensionEvent.Deconstruct(out string! RunId) -> void
+Lunate.Agent.ExtensionEvent.ExtensionEvent(Lunate.Agent.ExtensionEvent! original) -> void
+Lunate.Agent.ExtensionEvent.ExtensionEvent(string! RunId) -> void
+Lunate.Agent.IAgentEvents
+Lunate.Agent.IAgentEvents.Emit(Lunate.Agent.AgentEvent! agentEvent) -> void
+Lunate.Agent.Retrying
+Lunate.Agent.Retrying.Attempt.get -> int
+Lunate.Agent.Retrying.Attempt.init -> void
+Lunate.Agent.Retrying.Deconstruct(out string! RunId, out int Attempt, out string! Reason) -> void
+Lunate.Agent.Retrying.Equals(Lunate.Agent.Retrying? other) -> bool
+Lunate.Agent.Retrying.Reason.get -> string!
+Lunate.Agent.Retrying.Reason.init -> void
+Lunate.Agent.Retrying.Retrying(string! RunId, int Attempt, string! Reason) -> void
+Lunate.Agent.RunError
+Lunate.Agent.RunError.Deconstruct(out string! RunId, out string! Message) -> void
+Lunate.Agent.RunError.Equals(Lunate.Agent.RunError? other) -> bool
+Lunate.Agent.RunError.Message.get -> string!
+Lunate.Agent.RunError.Message.init -> void
+Lunate.Agent.RunError.RunError(string! RunId, string! Message) -> void
+Lunate.Agent.RunFinished
+Lunate.Agent.RunFinished.Deconstruct(out string! RunId, out string! StopReason) -> void
+Lunate.Agent.RunFinished.Equals(Lunate.Agent.RunFinished? other) -> bool
+Lunate.Agent.RunFinished.RunFinished(string! RunId, string! StopReason) -> void
+Lunate.Agent.RunFinished.StopReason.get -> string!
+Lunate.Agent.RunFinished.StopReason.init -> void
+Lunate.Agent.RunStarted
+Lunate.Agent.RunStarted.Deconstruct(out string! RunId) -> void
+Lunate.Agent.RunStarted.Equals(Lunate.Agent.RunStarted? other) -> bool
+Lunate.Agent.RunStarted.RunStarted(string! RunId) -> void
+Lunate.Agent.StepLimitReached
+Lunate.Agent.StepLimitReached.Deconstruct(out string! RunId, out int MaxSteps) -> void
+Lunate.Agent.StepLimitReached.Equals(Lunate.Agent.StepLimitReached? other) -> bool
+Lunate.Agent.StepLimitReached.MaxSteps.get -> int
+Lunate.Agent.StepLimitReached.MaxSteps.init -> void
+Lunate.Agent.StepLimitReached.StepLimitReached(string! RunId, int MaxSteps) -> void
+Lunate.Agent.StopReasons
+const Lunate.Agent.StopReasons.Cancelled = "cancelled" -> string!
+const Lunate.Agent.StopReasons.StepLimit = "step_limit" -> string!
+const Lunate.Agent.StopReasons.Stop = "stop" -> string!
+Lunate.Agent.TextMessageContent
+Lunate.Agent.TextMessageContent.Deconstruct(out string! RunId, out string! MessageId, out string! Text) -> void
+Lunate.Agent.TextMessageContent.Equals(Lunate.Agent.TextMessageContent? other) -> bool
+Lunate.Agent.TextMessageContent.MessageId.get -> string!
+Lunate.Agent.TextMessageContent.MessageId.init -> void
+Lunate.Agent.TextMessageContent.Text.get -> string!
+Lunate.Agent.TextMessageContent.Text.init -> void
+Lunate.Agent.TextMessageContent.TextMessageContent(string! RunId, string! MessageId, string! Text) -> void
+Lunate.Agent.TextMessageEnd
+Lunate.Agent.TextMessageEnd.Deconstruct(out string! RunId, out string! MessageId) -> void
+Lunate.Agent.TextMessageEnd.Equals(Lunate.Agent.TextMessageEnd? other) -> bool
+Lunate.Agent.TextMessageEnd.MessageId.get -> string!
+Lunate.Agent.TextMessageEnd.MessageId.init -> void
+Lunate.Agent.TextMessageEnd.TextMessageEnd(string! RunId, string! MessageId) -> void
+Lunate.Agent.TextMessageStart
+Lunate.Agent.TextMessageStart.Deconstruct(out string! RunId, out string! MessageId) -> void
+Lunate.Agent.TextMessageStart.Equals(Lunate.Agent.TextMessageStart? other) -> bool
+Lunate.Agent.TextMessageStart.MessageId.get -> string!
+Lunate.Agent.TextMessageStart.MessageId.init -> void
+Lunate.Agent.TextMessageStart.TextMessageStart(string! RunId, string! MessageId) -> void
+Lunate.Agent.ToolCallArgs
+Lunate.Agent.ToolCallArgs.Args.get -> string!
+Lunate.Agent.ToolCallArgs.Args.init -> void
+Lunate.Agent.ToolCallArgs.CallId.get -> string!
+Lunate.Agent.ToolCallArgs.CallId.init -> void
+Lunate.Agent.ToolCallArgs.Deconstruct(out string! RunId, out string! CallId, out string! Args) -> void
+Lunate.Agent.ToolCallArgs.Equals(Lunate.Agent.ToolCallArgs? other) -> bool
+Lunate.Agent.ToolCallArgs.ToolCallArgs(string! RunId, string! CallId, string! Args) -> void
+Lunate.Agent.ToolCallEnd
+Lunate.Agent.ToolCallEnd.CallId.get -> string!
+Lunate.Agent.ToolCallEnd.CallId.init -> void
+Lunate.Agent.ToolCallEnd.Deconstruct(out string! RunId, out string! CallId) -> void
+Lunate.Agent.ToolCallEnd.Equals(Lunate.Agent.ToolCallEnd? other) -> bool
+Lunate.Agent.ToolCallEnd.ToolCallEnd(string! RunId, string! CallId) -> void
+Lunate.Agent.ToolCallResult
+Lunate.Agent.ToolCallResult.CallId.get -> string!
+Lunate.Agent.ToolCallResult.CallId.init -> void
+Lunate.Agent.ToolCallResult.Deconstruct(out string! RunId, out string! CallId, out string! Output, out bool IsError, out object? Details) -> void
+Lunate.Agent.ToolCallResult.Details.get -> object?
+Lunate.Agent.ToolCallResult.Details.init -> void
+Lunate.Agent.ToolCallResult.Equals(Lunate.Agent.ToolCallResult? other) -> bool
+Lunate.Agent.ToolCallResult.IsError.get -> bool
+Lunate.Agent.ToolCallResult.IsError.init -> void
+Lunate.Agent.ToolCallResult.Output.get -> string!
+Lunate.Agent.ToolCallResult.Output.init -> void
+Lunate.Agent.ToolCallResult.ToolCallResult(string! RunId, string! CallId, string! Output, bool IsError, object? Details = null) -> void
+Lunate.Agent.ToolCallStart
+Lunate.Agent.ToolCallStart.CallId.get -> string!
+Lunate.Agent.ToolCallStart.CallId.init -> void
+Lunate.Agent.ToolCallStart.Deconstruct(out string! RunId, out string! CallId, out string! ToolName) -> void
+Lunate.Agent.ToolCallStart.Equals(Lunate.Agent.ToolCallStart? other) -> bool
+Lunate.Agent.ToolCallStart.ToolCallStart(string! RunId, string! CallId, string! ToolName) -> void
+Lunate.Agent.ToolCallStart.ToolName.get -> string!
+Lunate.Agent.ToolCallStart.ToolName.init -> void
+Lunate.Agent.UsageUpdated
+Lunate.Agent.UsageUpdated.Deconstruct(out string! RunId, out Microsoft.Extensions.AI.UsageDetails! Usage) -> void
+Lunate.Agent.UsageUpdated.Equals(Lunate.Agent.UsageUpdated? other) -> bool
+Lunate.Agent.UsageUpdated.Usage.get -> Microsoft.Extensions.AI.UsageDetails!
+Lunate.Agent.UsageUpdated.Usage.init -> void
+Lunate.Agent.UsageUpdated.UsageUpdated(string! RunId, Microsoft.Extensions.AI.UsageDetails! Usage) -> void
+override abstract Lunate.Agent.ExtensionEvent.<Clone>$() -> Lunate.Agent.ExtensionEvent!
+override Lunate.Agent.AgentEvent.Equals(object? obj) -> bool
+override Lunate.Agent.AgentEvent.GetHashCode() -> int
+override Lunate.Agent.AgentEvent.ToString() -> string!
+override Lunate.Agent.ApprovalRequested.<Clone>$() -> Lunate.Agent.ApprovalRequested!
+override Lunate.Agent.ApprovalRequested.Equals(object? obj) -> bool
+override Lunate.Agent.ApprovalRequested.GetHashCode() -> int
+override Lunate.Agent.ApprovalRequested.ToString() -> string!
+override Lunate.Agent.CompactionApplied.<Clone>$() -> Lunate.Agent.CompactionApplied!
+override Lunate.Agent.CompactionApplied.Equals(object? obj) -> bool
+override Lunate.Agent.CompactionApplied.GetHashCode() -> int
+override Lunate.Agent.CompactionApplied.ToString() -> string!
+override Lunate.Agent.ExtensionEvent.EqualityContract.get -> System.Type!
+override Lunate.Agent.ExtensionEvent.Equals(object? obj) -> bool
+override Lunate.Agent.ExtensionEvent.GetHashCode() -> int
+override Lunate.Agent.ExtensionEvent.PrintMembers(System.Text.StringBuilder! builder) -> bool
+override Lunate.Agent.ExtensionEvent.ToString() -> string!
+override Lunate.Agent.Retrying.<Clone>$() -> Lunate.Agent.Retrying!
+override Lunate.Agent.Retrying.Equals(object? obj) -> bool
+override Lunate.Agent.Retrying.GetHashCode() -> int
+override Lunate.Agent.Retrying.ToString() -> string!
+override Lunate.Agent.RunError.<Clone>$() -> Lunate.Agent.RunError!
+override Lunate.Agent.RunError.Equals(object? obj) -> bool
+override Lunate.Agent.RunError.GetHashCode() -> int
+override Lunate.Agent.RunError.ToString() -> string!
+override Lunate.Agent.RunFinished.<Clone>$() -> Lunate.Agent.RunFinished!
+override Lunate.Agent.RunFinished.Equals(object? obj) -> bool
+override Lunate.Agent.RunFinished.GetHashCode() -> int
+override Lunate.Agent.RunFinished.ToString() -> string!
+override Lunate.Agent.RunStarted.<Clone>$() -> Lunate.Agent.RunStarted!
+override Lunate.Agent.RunStarted.Equals(object? obj) -> bool
+override Lunate.Agent.RunStarted.GetHashCode() -> int
+override Lunate.Agent.RunStarted.ToString() -> string!
+override Lunate.Agent.StepLimitReached.<Clone>$() -> Lunate.Agent.StepLimitReached!
+override Lunate.Agent.StepLimitReached.Equals(object? obj) -> bool
+override Lunate.Agent.StepLimitReached.GetHashCode() -> int
+override Lunate.Agent.StepLimitReached.ToString() -> string!
+override Lunate.Agent.TextMessageContent.<Clone>$() -> Lunate.Agent.TextMessageContent!
+override Lunate.Agent.TextMessageContent.Equals(object? obj) -> bool
+override Lunate.Agent.TextMessageContent.GetHashCode() -> int
+override Lunate.Agent.TextMessageContent.ToString() -> string!
+override Lunate.Agent.TextMessageEnd.<Clone>$() -> Lunate.Agent.TextMessageEnd!
+override Lunate.Agent.TextMessageEnd.Equals(object? obj) -> bool
+override Lunate.Agent.TextMessageEnd.GetHashCode() -> int
+override Lunate.Agent.TextMessageEnd.ToString() -> string!
+override Lunate.Agent.TextMessageStart.<Clone>$() -> Lunate.Agent.TextMessageStart!
+override Lunate.Agent.TextMessageStart.Equals(object? obj) -> bool
+override Lunate.Agent.TextMessageStart.GetHashCode() -> int
+override Lunate.Agent.TextMessageStart.ToString() -> string!
+override Lunate.Agent.ToolCallArgs.<Clone>$() -> Lunate.Agent.ToolCallArgs!
+override Lunate.Agent.ToolCallArgs.Equals(object? obj) -> bool
+override Lunate.Agent.ToolCallArgs.GetHashCode() -> int
+override Lunate.Agent.ToolCallArgs.ToString() -> string!
+override Lunate.Agent.ToolCallEnd.<Clone>$() -> Lunate.Agent.ToolCallEnd!
+override Lunate.Agent.ToolCallEnd.Equals(object? obj) -> bool
+override Lunate.Agent.ToolCallEnd.GetHashCode() -> int
+override Lunate.Agent.ToolCallEnd.ToString() -> string!
+override Lunate.Agent.ToolCallResult.<Clone>$() -> Lunate.Agent.ToolCallResult!
+override Lunate.Agent.ToolCallResult.Equals(object? obj) -> bool
+override Lunate.Agent.ToolCallResult.GetHashCode() -> int
+override Lunate.Agent.ToolCallResult.ToString() -> string!
+override Lunate.Agent.ToolCallStart.<Clone>$() -> Lunate.Agent.ToolCallStart!
+override Lunate.Agent.ToolCallStart.Equals(object? obj) -> bool
+override Lunate.Agent.ToolCallStart.GetHashCode() -> int
+override Lunate.Agent.ToolCallStart.ToString() -> string!
+override Lunate.Agent.UsageUpdated.<Clone>$() -> Lunate.Agent.UsageUpdated!
+override Lunate.Agent.UsageUpdated.Equals(object? obj) -> bool
+override Lunate.Agent.UsageUpdated.GetHashCode() -> int
+override Lunate.Agent.UsageUpdated.ToString() -> string!
+override sealed Lunate.Agent.ApprovalRequested.Equals(Lunate.Agent.ExtensionEvent? other) -> bool
+override sealed Lunate.Agent.CompactionApplied.Equals(Lunate.Agent.ExtensionEvent? other) -> bool
+override sealed Lunate.Agent.ExtensionEvent.Equals(Lunate.Agent.AgentEvent? other) -> bool
+override sealed Lunate.Agent.Retrying.Equals(Lunate.Agent.ExtensionEvent? other) -> bool
+override sealed Lunate.Agent.RunError.Equals(Lunate.Agent.AgentEvent? other) -> bool
+override sealed Lunate.Agent.RunFinished.Equals(Lunate.Agent.AgentEvent? other) -> bool
+override sealed Lunate.Agent.RunStarted.Equals(Lunate.Agent.AgentEvent? other) -> bool
+override sealed Lunate.Agent.StepLimitReached.Equals(Lunate.Agent.ExtensionEvent? other) -> bool
+override sealed Lunate.Agent.TextMessageContent.Equals(Lunate.Agent.AgentEvent? other) -> bool
+override sealed Lunate.Agent.TextMessageEnd.Equals(Lunate.Agent.AgentEvent? other) -> bool
+override sealed Lunate.Agent.TextMessageStart.Equals(Lunate.Agent.AgentEvent? other) -> bool
+override sealed Lunate.Agent.ToolCallArgs.Equals(Lunate.Agent.AgentEvent? other) -> bool
+override sealed Lunate.Agent.ToolCallEnd.Equals(Lunate.Agent.AgentEvent? other) -> bool
+override sealed Lunate.Agent.ToolCallResult.Equals(Lunate.Agent.AgentEvent? other) -> bool
+override sealed Lunate.Agent.ToolCallStart.Equals(Lunate.Agent.AgentEvent? other) -> bool
+override sealed Lunate.Agent.UsageUpdated.Equals(Lunate.Agent.ExtensionEvent? other) -> bool
+static Lunate.Agent.AgentEvent.operator !=(Lunate.Agent.AgentEvent? left, Lunate.Agent.AgentEvent? right) -> bool
+static Lunate.Agent.AgentEvent.operator ==(Lunate.Agent.AgentEvent? left, Lunate.Agent.AgentEvent? right) -> bool
+static Lunate.Agent.ApprovalRequested.operator !=(Lunate.Agent.ApprovalRequested? left, Lunate.Agent.ApprovalRequested? right) -> bool
+static Lunate.Agent.ApprovalRequested.operator ==(Lunate.Agent.ApprovalRequested? left, Lunate.Agent.ApprovalRequested? right) -> bool
+static Lunate.Agent.CompactionApplied.operator !=(Lunate.Agent.CompactionApplied? left, Lunate.Agent.CompactionApplied? right) -> bool
+static Lunate.Agent.CompactionApplied.operator ==(Lunate.Agent.CompactionApplied? left, Lunate.Agent.CompactionApplied? right) -> bool
+static Lunate.Agent.ExtensionEvent.operator !=(Lunate.Agent.ExtensionEvent? left, Lunate.Agent.ExtensionEvent? right) -> bool
+static Lunate.Agent.ExtensionEvent.operator ==(Lunate.Agent.ExtensionEvent? left, Lunate.Agent.ExtensionEvent? right) -> bool
+static Lunate.Agent.Retrying.operator !=(Lunate.Agent.Retrying? left, Lunate.Agent.Retrying? right) -> bool
+static Lunate.Agent.Retrying.operator ==(Lunate.Agent.Retrying? left, Lunate.Agent.Retrying? right) -> bool
+static Lunate.Agent.RunError.operator !=(Lunate.Agent.RunError? left, Lunate.Agent.RunError? right) -> bool
+static Lunate.Agent.RunError.operator ==(Lunate.Agent.RunError? left, Lunate.Agent.RunError? right) -> bool
+static Lunate.Agent.RunFinished.operator !=(Lunate.Agent.RunFinished? left, Lunate.Agent.RunFinished? right) -> bool
+static Lunate.Agent.RunFinished.operator ==(Lunate.Agent.RunFinished? left, Lunate.Agent.RunFinished? right) -> bool
+static Lunate.Agent.RunStarted.operator !=(Lunate.Agent.RunStarted? left, Lunate.Agent.RunStarted? right) -> bool
+static Lunate.Agent.RunStarted.operator ==(Lunate.Agent.RunStarted? left, Lunate.Agent.RunStarted? right) -> bool
+static Lunate.Agent.StepLimitReached.operator !=(Lunate.Agent.StepLimitReached? left, Lunate.Agent.StepLimitReached? right) -> bool
+static Lunate.Agent.StepLimitReached.operator ==(Lunate.Agent.StepLimitReached? left, Lunate.Agent.StepLimitReached? right) -> bool
+static Lunate.Agent.TextMessageContent.operator !=(Lunate.Agent.TextMessageContent? left, Lunate.Agent.TextMessageContent? right) -> bool
+static Lunate.Agent.TextMessageContent.operator ==(Lunate.Agent.TextMessageContent? left, Lunate.Agent.TextMessageContent? right) -> bool
+static Lunate.Agent.TextMessageEnd.operator !=(Lunate.Agent.TextMessageEnd? left, Lunate.Agent.TextMessageEnd? right) -> bool
+static Lunate.Agent.TextMessageEnd.operator ==(Lunate.Agent.TextMessageEnd? left, Lunate.Agent.TextMessageEnd? right) -> bool
+static Lunate.Agent.TextMessageStart.operator !=(Lunate.Agent.TextMessageStart? left, Lunate.Agent.TextMessageStart? right) -> bool
+static Lunate.Agent.TextMessageStart.operator ==(Lunate.Agent.TextMessageStart? left, Lunate.Agent.TextMessageStart? right) -> bool
+static Lunate.Agent.ToolCallArgs.operator !=(Lunate.Agent.ToolCallArgs? left, Lunate.Agent.ToolCallArgs? right) -> bool
+static Lunate.Agent.ToolCallArgs.operator ==(Lunate.Agent.ToolCallArgs? left, Lunate.Agent.ToolCallArgs? right) -> bool
+static Lunate.Agent.ToolCallEnd.operator !=(Lunate.Agent.ToolCallEnd? left, Lunate.Agent.ToolCallEnd? right) -> bool
+static Lunate.Agent.ToolCallEnd.operator ==(Lunate.Agent.ToolCallEnd? left, Lunate.Agent.ToolCallEnd? right) -> bool
+static Lunate.Agent.ToolCallResult.operator !=(Lunate.Agent.ToolCallResult? left, Lunate.Agent.ToolCallResult? right) -> bool
+static Lunate.Agent.ToolCallResult.operator ==(Lunate.Agent.ToolCallResult? left, Lunate.Agent.ToolCallResult? right) -> bool
+static Lunate.Agent.ToolCallStart.operator !=(Lunate.Agent.ToolCallStart? left, Lunate.Agent.ToolCallStart? right) -> bool
+static Lunate.Agent.ToolCallStart.operator ==(Lunate.Agent.ToolCallStart? left, Lunate.Agent.ToolCallStart? right) -> bool
+static Lunate.Agent.UsageUpdated.operator !=(Lunate.Agent.UsageUpdated? left, Lunate.Agent.UsageUpdated? right) -> bool
+static Lunate.Agent.UsageUpdated.operator ==(Lunate.Agent.UsageUpdated? left, Lunate.Agent.UsageUpdated? right) -> bool
+virtual Lunate.Agent.AgentEvent.EqualityContract.get -> System.Type!
+virtual Lunate.Agent.AgentEvent.Equals(Lunate.Agent.AgentEvent? other) -> bool
+virtual Lunate.Agent.AgentEvent.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Lunate.Agent.ExtensionEvent.Equals(Lunate.Agent.ExtensionEvent? other) -> bool
