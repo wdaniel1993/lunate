@@ -14,7 +14,7 @@
 - **THEN** the consumer receives Microsoft.Extensions.AI updates (text, tool calls, usage); without the flag the test is skipped
 
 ### Requirement: Complete function calls at the consumer
-The pipeline SHALL present function calls only in complete form: a `StreamAccumulator` above the recorder assembles streamed argument fragments per call id, so consumers never act on partial calls. Recordings SHALL remain raw provider output.
+The pipeline SHALL present function calls only in complete form: a `StreamAccumulator` above the recorder assembles streamed argument fragments per call id, so consumers never act on partial calls. A fragment is a `FunctionCallContent` whose `Arguments` contains exactly one entry under the reserved `$arguments` key holding a raw JSON fragment (a string, or a `JsonElement` of string kind); fragments merge by call id and are emitted as one parsed call in a synthesized update at stream end. Recordings SHALL remain raw provider output.
 
 #### Scenario: Fragmented arguments are assembled
 - **GIVEN** a stream that delivers one function call's arguments in fragments

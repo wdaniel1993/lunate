@@ -1,6 +1,8 @@
 using System.ClientModel;
+using System.ClientModel.Primitives;
 using System.Globalization;
 using System.Security.Cryptography;
+using Anthropic;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 using OpenAI;
@@ -9,8 +11,11 @@ namespace Lunate.Ai;
 
 public sealed class ChatClientFactory : IChatClientFactory
 {
+    private const string AnthropicApiKeyVariable = "ANTHROPIC_API_KEY";
+    private const string AnthropicProvider = "anthropic";
     private const string OpenAiApiKeyVariable = "OPENAI_API_KEY";
     private const string OpenAiProvider = "openai";
+    private const string PlaceholderCredential = "unused-local-endpoint";
     private const string OpenTelemetryOptInVariable = "LUNATE_OTEL";
     private const string OtlpEndpointVariable = "OTEL_EXPORTER_OTLP_ENDPOINT";
     private const string RecordVariable = "LUNATE_RECORD";
@@ -54,6 +59,8 @@ public sealed class ChatClientFactory : IChatClientFactory
             inner = decorator(inner);
         }
 
+        inner = new StreamAccumulator(inner);
+
         ChatClientBuilder builder = new(inner);
         if (_enableOpenTelemetry)
         {
@@ -67,27 +74,78 @@ public sealed class ChatClientFactory : IChatClientFactory
     {
         if (string.Equals(model.Provider, OpenAiProvider, StringComparison.OrdinalIgnoreCase))
         {
-            string? apiKey = Environment.GetEnvironmentVariable(OpenAiApiKeyVariable);
-            if (string.IsNullOrEmpty(apiKey))
+            return CreateOpenAiClient(model)
+                .GetChatClient(model.Id)
+                .AsIChatClient();
+        }
+
+        if (string.Equals(model.Provider, AnthropicProvider, StringComparison.OrdinalIgnoreCase))
+        {
+            return CreateAnthropicClient(model).AsIChatClient(model.Id);
+        }
+
+        throw new NotSupportedException(
+            $"Provider '{model.Provider}' is not supported. Supported providers: {OpenAiProvider}, {AnthropicProvider}.");
+    }
+
+    internal static OpenAIClient CreateOpenAiClient(ModelInfo model)
+    {
+        string? apiKey = Environment.GetEnvironmentVariable(OpenAiApiKeyVariable);
+        if (string.IsNullOrEmpty(apiKey))
+        {
+            if (model.Endpoint is null)
             {
                 throw new InvalidOperationException(
                     $"The {OpenAiApiKeyVariable} environment variable is not set. " +
                     $"Set {OpenAiApiKeyVariable} to an OpenAI API key; settings and auth.json support arrive with T-16.");
             }
 
-            OpenAIClientOptions options = new();
-            if (model.Endpoint is not null)
-            {
-                options.Endpoint = model.Endpoint;
-            }
-
-            return new OpenAIClient(new ApiKeyCredential(apiKey), options)
-                .GetChatClient(model.Id)
-                .AsIChatClient();
+            apiKey = PlaceholderCredential;
         }
 
-        throw new NotSupportedException(
-            $"Provider '{model.Provider}' is not supported. Supported providers: {OpenAiProvider}.");
+        return new OpenAIClient(new ApiKeyCredential(apiKey), CreateOpenAiClientOptions(model));
+    }
+
+    internal static OpenAIClientOptions CreateOpenAiClientOptions(ModelInfo model)
+    {
+        OpenAIClientOptions options = new()
+        {
+            RetryPolicy = new ClientRetryPolicy(maxRetries: 0),
+        };
+
+        if (model.Endpoint is not null)
+        {
+            options.Endpoint = model.Endpoint;
+        }
+
+        return options;
+    }
+
+    internal static AnthropicClient CreateAnthropicClient(ModelInfo model)
+    {
+        string? apiKey = Environment.GetEnvironmentVariable(AnthropicApiKeyVariable);
+        if (string.IsNullOrEmpty(apiKey))
+        {
+            throw new InvalidOperationException(
+                $"The {AnthropicApiKeyVariable} environment variable is not set. " +
+                $"Set {AnthropicApiKeyVariable} to an Anthropic API key; settings and auth.json support arrive with T-16.");
+        }
+
+        if (model.Endpoint is null)
+        {
+            return new AnthropicClient
+            {
+                ApiKey = apiKey,
+                MaxRetries = 0,
+            };
+        }
+
+        return new AnthropicClient
+        {
+            ApiKey = apiKey,
+            MaxRetries = 0,
+            BaseUrl = model.Endpoint.AbsoluteUri,
+        };
     }
 
     internal static string DefaultRecordingPath() =>

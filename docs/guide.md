@@ -94,10 +94,10 @@ Stick to .NET 10, Microsoft.Extensions.AI and a few well-known packages. No Nati
 
 | Concern | Choice | Project | Why |
 | --- | --- | --- | --- |
-| Runtime | .NET 10, C# 14, SDK pinned in `global.json` | all | Current LTS |
+| Runtime | .NET 10, C# 14, SDK pinned in `global.json` (C# 15 and unions evaluated at .NET 11 GA — spike S-6) | all | Current LTS |
 | Release build | Self-contained single file, ReadyToRun, no single-file compression (ADR-0008); release archives are compressed, three targets | Lunate.Coding | One file, no runtime install, fast start |
 | Model access | `IChatClient`, `ChatMessage`, `ChatResponseUpdate` everywhere; no `FunctionInvokingChatClient` (the loop runs tools) | Lunate.Ai, Lunate.Agent | The .NET standard, maintained by Microsoft |
-| Providers | OpenAI-compatible via the Microsoft.Extensions.AI OpenAI adapter; Anthropic via an `IChatClient` implementation (check the official SDK first) | Lunate.Ai | One abstraction for every model |
+| Providers | OpenAI-compatible via the Microsoft.Extensions.AI OpenAI adapter; Anthropic via the official `Anthropic` package and its first-party Microsoft.Extensions.AI adapter (`AsIChatClient`) | Lunate.Ai | One abstraction for every model |
 | Telemetry | OpenTelemetry via `IChatClient` middleware + own `ActivitySource`, opt-in | Lunate.Ai, Lunate.Agent | Traces of model and tool calls |
 | JSON | `System.Text.Json`; `AIJsonUtilities` options for Microsoft.Extensions.AI types; source generation where it is cheap | all | Fast, consistent |
 | CLI parsing | `System.CommandLine` | Lunate.Coding | Standard |
@@ -176,7 +176,7 @@ public sealed record ModelInfo(string Id, string Provider, Uri? Endpoint, int Co
 
 public interface IChatClientFactory
 {
-    // outermost first: OpenTelemetry (opt-in) -> logging -> recorder (LUNATE_RECORD=1) -> provider
+    // outermost first: OpenTelemetry (opt-in) -> logging -> accumulator -> recorder (LUNATE_RECORD=1) -> provider
     IChatClient Create(ModelInfo model);
 }
 
@@ -186,6 +186,7 @@ public sealed class ReplayChatClient(string fixturePath) : IChatClient { }
 
 - `ModelCatalog`: a built-in `models.json` (id, provider, endpoint, context window, tool support) merged with `~/.lunate/models.json`. Adding a model never needs a code change.
 - `RecordingChatClient` and `ReplayChatClient`: record and replay `ChatResponseUpdate` streams as JSONL, serialized with `AIJsonUtilities` options.
+- `StreamAccumulator` (internal): one `DelegatingChatClient` between logging and the recorder that assembles streamed function-call argument fragments per call id, so consumers only ever see complete calls; recordings stay raw and replay still passes through the accumulator.
 - `ProviderErrors`: classifies exceptions as retryable or not.
 
 **How the references handle model catalogs (checked 2026-10)**
@@ -208,7 +209,7 @@ public sealed class ReplayChatClient(string fixturePath) : IChatClient { }
 - `UseLogging()`: model-call logging through `ILogger`.
 - `AIJsonUtilities`: serialization options for MEAI types (sessions, fixtures).
 - Approval content types: `ToolApprovalRequestContent` / `ToolApprovalResponseContent` (confirmed present and not `[Experimental]` in Microsoft.Extensions.AI.Abstractions 10.10.x) shape our approval events and policy without new message types.
-- Pipeline order in `IChatClientFactory`, outermost first: **OpenTelemetry -> logging -> recorder (`LUNATE_RECORD=1`) -> provider**. Replay replaces recorder + provider, so tests still run through the telemetry and logging layers.
+- Pipeline order in `IChatClientFactory`, outermost first: **OpenTelemetry -> logging -> accumulator -> recorder (`LUNATE_RECORD=1`) -> provider**. Replay replaces recorder + provider, so tests still run through the telemetry, logging and accumulator layers.
 
 **Recorded streams (tests never need API keys)**
 
@@ -246,6 +247,8 @@ internal sealed class ToolDeclaration(ITool tool) : AIFunction { /* Name, Descri
 **Events (the only output of the core)**
 
 Events are our own type, named and sequenced like AG-UI's so that the TUI, ACP and a possible web frontend later are thin mappings. Lunate-specific events are marked as extensions; in AG-UI they would travel as custom events. Check the AG-UI and ACP names against the pinned spec versions when writing the mappers.
+
+**Union-ready:** `AgentEvent` stays a closed, sealed set — it is the designated candidate for the C# 15 `union` keyword. When .NET 11 reaches GA (Nov 2026), spike S-6 evaluates: SDK bump, `LangVersion` 15, unions for `AgentEvent`, analyzer/tooling compatibility and unchanged budgets — adopt on evidence.
 
 | Lunate event | AG-UI | ACP | TUI |
 | --- | --- | --- | --- |
