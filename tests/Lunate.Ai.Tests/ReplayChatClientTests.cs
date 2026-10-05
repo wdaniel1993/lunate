@@ -51,6 +51,50 @@ public sealed class ReplayChatClientTests
     }
 
     [Fact]
+    public async Task Aggregated_response_round_trips_through_record_and_replay()
+    {
+        using var temp = new TempDirectory();
+        string path = temp.File("aggregate-roundtrip.jsonl");
+        ChatMessage[] messages = [new(ChatRole.User, "list the files")];
+        var options = new ChatOptions { ModelId = "gpt-4o-mini" };
+        var response = new ChatResponse(new ChatMessage(ChatRole.Assistant,
+        [
+            new TextContent("Checking the workspace."),
+            new FunctionCallContent("call-1", "list_files", new Dictionary<string, object?> { ["path"] = "." }),
+        ]))
+        {
+            ModelId = "gpt-4o-mini",
+            ResponseId = "resp-1",
+            FinishReason = ChatFinishReason.ToolCalls,
+            CreatedAt = new DateTimeOffset(2026, 10, 5, 12, 0, 0, TimeSpan.Zero),
+            Usage = new UsageDetails { InputTokenCount = 42, OutputTokenCount = 7 },
+        };
+        var recorder = new RecordingChatClient(new ScriptedChatClient().Enqueue(response), path, "gpt-4o-mini");
+
+        ChatResponse recorded = await recorder.GetResponseAsync(messages, options, TestContext.Current.CancellationToken);
+        ChatResponse replayed = await new ReplayChatClient(path).GetResponseAsync(messages, options, TestContext.Current.CancellationToken);
+
+        Assert.NotSame(recorded, replayed);
+        Assert.Equal(recorded.Text, replayed.Text);
+        Assert.Equal(recorded.ResponseId, replayed.ResponseId);
+        Assert.Equal(recorded.ModelId, replayed.ModelId);
+        Assert.Equal(recorded.FinishReason, replayed.FinishReason);
+        Assert.Equal(recorded.CreatedAt, replayed.CreatedAt);
+        Assert.Equal(recorded.Usage?.InputTokenCount, replayed.Usage?.InputTokenCount);
+        Assert.Equal(recorded.Usage?.OutputTokenCount, replayed.Usage?.OutputTokenCount);
+        Assert.Equal(
+            Assert.Single(recorded.Messages).Contents.Select(DescribeContent),
+            Assert.Single(replayed.Messages).Contents.Select(DescribeContent));
+    }
+
+    private static string DescribeContent(AIContent content) => content switch
+    {
+        FunctionCallContent call => $"function-call:{call.CallId}:{call.Name}",
+        TextContent text => $"text:{text.Text}",
+        _ => content.GetType().Name,
+    };
+
+    [Fact]
     public async Task Request_digest_mismatch_fails_actionably()
     {
         using var temp = new TempDirectory();

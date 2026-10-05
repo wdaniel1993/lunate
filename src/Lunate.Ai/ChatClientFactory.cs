@@ -1,5 +1,6 @@
 using System.ClientModel;
 using System.Globalization;
+using System.Security.Cryptography;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 using OpenAI;
@@ -93,7 +94,11 @@ public sealed class ChatClientFactory : IChatClientFactory
         Path.Combine(
             "artifacts",
             "recordings",
-            DateTimeOffset.UtcNow.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture) + ".jsonl");
+            string.Concat(
+                DateTimeOffset.UtcNow.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture),
+                "-",
+                Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(4)),
+                ".jsonl"));
 
     private static bool RecordingRequestedFromEnvironment()
     {

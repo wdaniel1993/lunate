@@ -105,9 +105,17 @@ public sealed class ChatClientFactoryRecordingTests
     {
         string path = ChatClientFactory.DefaultRecordingPath().Replace('\\', '/');
 
-        Assert.Matches(@"^artifacts/recordings/\d{8}-\d{6}\.jsonl$", path);
+        Assert.Matches(@"^artifacts/recordings/\d{8}-\d{6}-[0-9a-f]{8}\.jsonl$", path);
         string[] ignoreLines = File.ReadAllLines(Path.Combine(TestPaths.FindRepositoryRoot(), ".gitignore"));
         Assert.Contains(ignoreLines, line => line.Trim().TrimEnd('/') == "artifacts");
+    }
+
+    [Fact]
+    public void Default_recording_paths_are_unique_within_the_same_second()
+    {
+        string[] paths = [.. Enumerable.Range(0, 32).Select(_ => ChatClientFactory.DefaultRecordingPath().Replace('\\', '/'))];
+
+        Assert.Equal(paths.Length, paths.Distinct(StringComparer.Ordinal).Count());
     }
 
     private static ModelInfo TestModel() => new("gpt-4o-mini", "openai", null, 128_000, true);
