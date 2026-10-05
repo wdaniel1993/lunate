@@ -1,7 +1,7 @@
 ## 1. Event types
 
-- [ ] 1.1 `AgentEvent` base + all concrete sealed records (fields per design) + `ExtensionEvent` base; `PublicAPI.Unshipped.txt` updated
-- [ ] 1.2 Tests: every concrete type is sealed; extensions are distinguishable; fields construct correctly
+- [x] 1.1 `AgentEvent` base + all concrete sealed records (fields per design) + `ExtensionEvent` base; `PublicAPI.Unshipped.txt` updated
+- [x] 1.2 Tests: every concrete type is sealed; extensions are distinguishable; fields construct correctly
 
 ## 2. Emission
 
