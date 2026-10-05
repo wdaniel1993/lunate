@@ -10,7 +10,7 @@
 
 ## 3. Sequence rules
 
-- [ ] 3.1 Internal `EventSequenceValidator` + valid/invalid sequence tests (missing start, unbracketed text, wrong tool order, event after terminal)
+- [x] 3.1 Internal `EventSequenceValidator` + valid/invalid sequence tests (missing start, unbracketed text, wrong tool order, event after terminal)
 
 ## 4. Close
 
