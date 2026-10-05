@@ -1,6 +1,6 @@
 # 0010 — Anthropic adapter: official SDK and its first-party MEAI adapter
 
-- Status: proposed — awaiting maintainer sign-off
+- Status: accepted — 2026-10-05 (maintainer sign-off: option A chosen)
 - Date: 2026-10-05 (amended 2026-10-05: maintainer chose option A after the SDK finding)
 - Relates to: ADR 0002 (layering, MEAI types), ADR 0003 (own loop), guide tech stack ("Anthropic via an `IChatClient` implementation (check the official SDK first)")
 
