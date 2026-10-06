@@ -121,7 +121,9 @@ try {
         $base = 'HEAD'
         [Console]::Error.WriteLine('note: no main ref found; comparing the working tree only')
     }
-    git diff --exit-code $base -- '*PublicAPI.Shipped.txt'
+    # Edits and deletions of existing Shipped files fail; a newly added
+    # tracking file is the bootstrap path and does not trip the gate.
+    git diff --exit-code --diff-filter=MD $base -- '*PublicAPI.Shipped.txt'
     if ($LASTEXITCODE -ne 0) { throw "verify: PublicAPI.Shipped.txt changed relative to $base" }
 
     Write-Host 'verify: OK'

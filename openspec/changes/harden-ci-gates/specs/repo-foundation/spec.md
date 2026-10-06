@@ -19,9 +19,14 @@ Project references SHALL point only downward in the architecture: `Lunate.Ai` â†
 - **THEN** it fails and names the offending package
 
 ### Requirement: Public API visibility
-Library projects SHALL track their public surface in `PublicAPI.Shipped.txt` / `PublicAPI.Unshipped.txt`, and verification SHALL fail when a `Shipped` file changes relative to the merge base with `main` (or the branch base where a remote is unavailable).
+Library projects SHALL track their public surface in `PublicAPI.Shipped.txt` / `PublicAPI.Unshipped.txt`, and verification SHALL fail when an existing `Shipped` file is edited or deleted relative to the merge base with `main` (or the branch base where a remote is unavailable). Adding a new tracking file for a project is the bootstrap path and SHALL NOT trip the gate.
 
 #### Scenario: Shipped API change is caught
-- **GIVEN** a committed or uncommitted modification to any `PublicAPI.Shipped.txt` on a branch
+- **GIVEN** a committed or uncommitted edit, or a deletion, of an existing `PublicAPI.Shipped.txt` on a branch
 - **WHEN** `scripts/verify.sh` runs
 - **THEN** it exits non-zero and shows the diff relative to the merge base with `main`
+
+#### Scenario: A new tracking file passes
+- **GIVEN** a branch that adds a `PublicAPI.Shipped.txt` for a project that had none
+- **WHEN** `scripts/verify.sh` runs
+- **THEN** the gate passes, and the new file's surface entries still go through review as a new file

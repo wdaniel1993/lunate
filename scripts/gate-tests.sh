@@ -91,8 +91,28 @@ if (cd "$SHIPPED_DIR" && . "${SCRIPT_DIR}/lib.sh" && check_shipped_api_unchanged
   exit 1
 fi
 
-echo "gate-tests: shipped-API gate must pass on a clean main tree"
+echo "gate-tests: shipped-API gate must fail for a deleted Shipped file"
 git -C "$SHIPPED_DIR" checkout -- src/P/PublicAPI.Shipped.txt
+git -C "$SHIPPED_DIR" rm -q src/P/PublicAPI.Shipped.txt
+git -C "$SHIPPED_DIR" commit -qm "delete shipped"
+if (cd "$SHIPPED_DIR" && . "${SCRIPT_DIR}/lib.sh" && check_shipped_api_unchanged) >/dev/null 2>&1; then
+  echo "gate-tests: FAIL: shipped-API gate passed for a deleted Shipped file" >&2
+  exit 1
+fi
+
+echo "gate-tests: shipped-API gate must pass for a newly added tracking file"
+git -C "$SHIPPED_DIR" checkout -q main
+git -C "$SHIPPED_DIR" checkout -qb bootstrap
+mkdir -p "${SHIPPED_DIR}/src/P2"
+printf '#nullable enable\n' >"${SHIPPED_DIR}/src/P2/PublicAPI.Shipped.txt"
+git -C "$SHIPPED_DIR" add -A
+git -C "$SHIPPED_DIR" commit -qm bootstrap
+if ! (cd "$SHIPPED_DIR" && . "${SCRIPT_DIR}/lib.sh" && check_shipped_api_unchanged) >/dev/null; then
+  echo "gate-tests: FAIL: shipped-API gate failed for a newly added tracking file" >&2
+  exit 1
+fi
+
+echo "gate-tests: shipped-API gate must pass on a clean main tree"
 git -C "$SHIPPED_DIR" checkout -q main
 if ! (cd "$SHIPPED_DIR" && . "${SCRIPT_DIR}/lib.sh" && check_shipped_api_unchanged) >/dev/null; then
   echo "gate-tests: FAIL: shipped-API gate failed on a clean main tree" >&2
