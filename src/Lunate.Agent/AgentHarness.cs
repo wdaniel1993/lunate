@@ -31,6 +31,10 @@ public sealed partial class AgentHarness
         _tools = tools;
         _options = options ?? new AgentHarnessOptions();
         ValidateOptions(_options);
+        if (_options.Session is { } session)
+        {
+            _history.AddRange(session.ToHistory());
+        }
     }
 
     /// <summary>Runs the loop for one user input and streams its events; the stream completes when the run ends.</summary>
@@ -148,7 +152,7 @@ public sealed partial class AgentHarness
         bool terminalEmitted = false;
         try
         {
-            _history.Add(new ChatMessage(ChatRole.User, userInput));
+            AppendHistoryMessage(new ChatMessage(ChatRole.User, userInput));
             channel.Emit(new RunStarted(runId));
             runStarted = true;
 
@@ -165,7 +169,10 @@ public sealed partial class AgentHarness
 
                 modelCalls++;
                 ModelStreamResult stream = await StreamModelWithRetriesAsync(runId, channel, ct);
-                _history.AddRange(stream.Updates.ToChatResponse().Messages);
+                foreach (ChatMessage message in stream.Updates.ToChatResponse().Messages)
+                {
+                    AppendHistoryMessage(message, stream.ModelId, stream.Usage);
+                }
 
                 List<FunctionCallContent> calls = DistinctCalls(stream.Updates);
                 if (calls.Count == 0)
@@ -210,6 +217,8 @@ public sealed partial class AgentHarness
         string? messageId = null;
         bool textOpen = false;
         ChatFinishReason? finishReason = null;
+        string? modelId = null;
+        SessionUsage? usage = null;
 
         try
         {
@@ -222,6 +231,11 @@ public sealed partial class AgentHarness
             )
             {
                 updates.Add(update);
+                if (update.ModelId is { Length: > 0 } updateModelId)
+                {
+                    modelId = updateModelId;
+                }
+
                 if (update.FinishReason is { } reason)
                 {
                     finishReason = reason;
@@ -241,10 +255,14 @@ public sealed partial class AgentHarness
                         attempt.Emitted = true;
                         channel.Emit(new TextMessageContent(runId, messageId!, text));
                     }
-                    else if (content is UsageContent usage)
+                    else if (content is UsageContent usageContent)
                     {
                         attempt.Emitted = true;
-                        channel.Emit(new UsageUpdated(runId, usage.Details));
+                        channel.Emit(new UsageUpdated(runId, usageContent.Details));
+                        usage = new SessionUsage(
+                            (int)(usageContent.Details.InputTokenCount ?? 0),
+                            (int)(usageContent.Details.OutputTokenCount ?? 0)
+                        );
                     }
                 }
             }
@@ -257,7 +275,18 @@ public sealed partial class AgentHarness
             }
         }
 
-        return new ModelStreamResult(updates, finishReason, attempt.Emitted);
+        return new ModelStreamResult(updates, finishReason, attempt.Emitted, modelId, usage);
+    }
+
+    /// <summary>Appends a history message and mirrors it into the session when one is attached.</summary>
+    private void AppendHistoryMessage(
+        ChatMessage message,
+        string? model = null,
+        SessionUsage? usage = null
+    )
+    {
+        _history.Add(message);
+        _options.Session?.AppendMessage(message, model, usage);
     }
 
     private static string MappedStopReason(ChatFinishReason? finishReason) =>

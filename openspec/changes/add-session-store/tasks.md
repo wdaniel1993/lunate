@@ -7,8 +7,8 @@
 
 ## 2. Harness integration
 
-- [ ] 2.1 `AgentHarnessOptions.Session`; constructor seeds history from `ToHistory()`
-- [ ] 2.2 One append helper for every history mutation (user, assistant with model/usage, tool results incl. repaired) that mirrors into the session
+- [x] 2.1 `AgentHarnessOptions.Session`; constructor seeds history from `ToHistory()`
+- [x] 2.2 One append helper for every history mutation (user, assistant with model/usage, tool results incl. repaired) that mirrors into the session
 
 ## 3. Golden files and tests
 

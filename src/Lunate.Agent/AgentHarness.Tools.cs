@@ -61,7 +61,9 @@ public sealed partial class AgentHarness
         toolActivity?.SetTag(AgentTelemetry.ToolIsErrorAttribute, result.IsError);
         string output = ToolOutput.Truncate(result.Output ?? string.Empty);
         channel.Emit(new ToolCallResult(runId, callId, output, result.IsError, result.Details));
-        _history.Add(new ChatMessage(ChatRole.Tool, [new FunctionResultContent(callId, output)]));
+        AppendHistoryMessage(
+            new ChatMessage(ChatRole.Tool, [new FunctionResultContent(callId, output)])
+        );
         _danglingCalls.Remove(call);
     }
 
@@ -75,7 +77,9 @@ public sealed partial class AgentHarness
         string callId = call.CallId ?? string.Empty;
         string output = SyntheticOutput(call, cancelled);
         channel.Emit(new ToolCallResult(runId, callId, output, IsError: true));
-        _history.Add(new ChatMessage(ChatRole.Tool, [new FunctionResultContent(callId, output)]));
+        AppendHistoryMessage(
+            new ChatMessage(ChatRole.Tool, [new FunctionResultContent(callId, output)])
+        );
         _danglingCalls.Remove(call);
     }
 
@@ -84,7 +88,7 @@ public sealed partial class AgentHarness
         foreach (FunctionCallContent call in _danglingCalls)
         {
             string callId = call.CallId ?? string.Empty;
-            _history.Add(
+            AppendHistoryMessage(
                 new ChatMessage(
                     ChatRole.Tool,
                     [new FunctionResultContent(callId, SyntheticOutput(call, cancelled))]

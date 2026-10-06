@@ -434,6 +434,8 @@ static Lunate.Agent.SessionPaths.ForProject(string! cwd) -> string!
 static Lunate.Agent.SessionPaths.SessionFileName(string! sessionId) -> string!
 static Lunate.Agent.SessionUsage.operator !=(Lunate.Agent.SessionUsage? left, Lunate.Agent.SessionUsage? right) -> bool
 static Lunate.Agent.SessionUsage.operator ==(Lunate.Agent.SessionUsage? left, Lunate.Agent.SessionUsage? right) -> bool
+Lunate.Agent.AgentHarnessOptions.Session.get -> Lunate.Agent.Session?
+Lunate.Agent.AgentHarnessOptions.Session.init -> void
 virtual Lunate.Agent.SessionEntry.EqualityContract.get -> System.Type!
 virtual Lunate.Agent.SessionEntry.Equals(Lunate.Agent.SessionEntry? other) -> bool
 virtual Lunate.Agent.SessionEntry.PrintMembers(System.Text.StringBuilder! builder) -> bool

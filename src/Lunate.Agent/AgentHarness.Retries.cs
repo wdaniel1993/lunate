@@ -47,10 +47,12 @@ public sealed partial class AgentHarness
         public bool Emitted { get; set; }
     }
 
-    /// <summary>One model call's updates plus the last finish reason and whether it emitted.</summary>
+    /// <summary>One model call's updates, finish reason, emission flag, model id and usage.</summary>
     private sealed record ModelStreamResult(
         List<ChatResponseUpdate> Updates,
         ChatFinishReason? FinishReason,
-        bool Emitted
+        bool Emitted,
+        string? ModelId,
+        SessionUsage? Usage
     );
 }
