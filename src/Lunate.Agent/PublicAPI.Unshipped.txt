@@ -66,6 +66,7 @@ Lunate.Agent.StopReasons
 const Lunate.Agent.StopReasons.Cancelled = "cancelled" -> string!
 const Lunate.Agent.StopReasons.StepLimit = "step_limit" -> string!
 const Lunate.Agent.StopReasons.Stop = "stop" -> string!
+const Lunate.Agent.ToolOutput.DefaultLimit = 30000 -> int
 Lunate.Agent.TextMessageContent
 Lunate.Agent.TextMessageContent.Deconstruct(out string! RunId, out string! MessageId, out string! Text) -> void
 Lunate.Agent.TextMessageContent.Equals(Lunate.Agent.TextMessageContent? other) -> bool
@@ -129,6 +130,7 @@ Lunate.Agent.ToolContext.Events.init -> void
 Lunate.Agent.ToolContext.ToolContext(string! WorkingDirectory, Lunate.Agent.IAgentEvents! Events) -> void
 Lunate.Agent.ToolContext.WorkingDirectory.get -> string!
 Lunate.Agent.ToolContext.WorkingDirectory.init -> void
+Lunate.Agent.ToolOutput
 Lunate.Agent.ToolRegistry
 Lunate.Agent.ToolRegistry.Add(Lunate.Agent.ITool! tool) -> void
 Lunate.Agent.ToolRegistry.Declarations.get -> System.Collections.Generic.IReadOnlyList<Microsoft.Extensions.AI.AIFunction!>!
@@ -281,6 +283,7 @@ static Lunate.Agent.ToolCallStart.operator !=(Lunate.Agent.ToolCallStart? left, 
 static Lunate.Agent.ToolCallStart.operator ==(Lunate.Agent.ToolCallStart? left, Lunate.Agent.ToolCallStart? right) -> bool
 static Lunate.Agent.ToolContext.operator !=(Lunate.Agent.ToolContext? left, Lunate.Agent.ToolContext? right) -> bool
 static Lunate.Agent.ToolContext.operator ==(Lunate.Agent.ToolContext? left, Lunate.Agent.ToolContext? right) -> bool
+static Lunate.Agent.ToolOutput.Truncate(string! output, int limit = 30000) -> string!
 static Lunate.Agent.ToolResult.operator !=(Lunate.Agent.ToolResult? left, Lunate.Agent.ToolResult? right) -> bool
 static Lunate.Agent.ToolResult.operator ==(Lunate.Agent.ToolResult? left, Lunate.Agent.ToolResult? right) -> bool
 static Lunate.Agent.UsageUpdated.operator !=(Lunate.Agent.UsageUpdated? left, Lunate.Agent.UsageUpdated? right) -> bool

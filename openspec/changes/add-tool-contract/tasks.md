@@ -15,8 +15,8 @@
 
 ## 4. Output truncation
 
-- [ ] 4.1 `ToolOutput` (`DefaultLimit = 30_000`, `Truncate`): unchanged under the limit; middle cut with marker and omitted count (culture-invariant); surrogate-safe cut points; graceful tiny limits
-- [ ] 4.2 Tests: exact boundary (length == limit; limit + 1), head/tail/marker assertions, omitted count, emoji at the cut point, tiny limit, empty string
+- [x] 4.1 `ToolOutput` (`DefaultLimit = 30_000`, `Truncate`): unchanged under the limit; middle cut with marker and omitted count (culture-invariant); surrogate-safe cut points; graceful tiny limits
+- [x] 4.2 Tests: exact boundary (length == limit; limit + 1), head/tail/marker assertions, omitted count, emoji at the cut point, tiny limit, empty string
 
 ## 5. Close
 
