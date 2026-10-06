@@ -47,29 +47,31 @@ public sealed partial class AgentHarness
             );
         }
 
-        string runId = RunIds.Next();
-        _danglingCalls.Clear();
-        var channel = new AgentEventChannel();
-        using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        Task loop = RunLoopAsync(runId, userInput, channel, linked.Token);
         try
         {
-            await foreach (AgentEvent agentEvent in channel.ReadAllAsync(CancellationToken.None))
+            string runId = RunIds.Next();
+            _danglingCalls.Clear();
+            var channel = new AgentEventChannel();
+            using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            Task loop = RunLoopAsync(runId, userInput, channel, linked.Token);
+            try
             {
-                yield return agentEvent;
+                await foreach (
+                    AgentEvent agentEvent in channel.ReadAllAsync(CancellationToken.None)
+                )
+                {
+                    yield return agentEvent;
+                }
+            }
+            finally
+            {
+                linked.Cancel();
+                await loop;
             }
         }
         finally
         {
-            linked.Cancel();
-            try
-            {
-                await loop;
-            }
-            finally
-            {
-                Interlocked.Exchange(ref _runActive, 0);
-            }
+            Interlocked.Exchange(ref _runActive, 0);
         }
     }
 

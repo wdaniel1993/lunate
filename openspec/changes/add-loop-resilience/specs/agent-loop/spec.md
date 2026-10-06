@@ -82,14 +82,14 @@ Unknown tools, malformed arguments and exceptions from a tool SHALL become error
 ## ADDED Requirements
 
 ### Requirement: Cancellation and history repair
-When a run is cancelled or fails after the assistant message was appended, the loop SHALL repair the history before the run ends: every function call in the last assistant message without a result SHALL get a synthetic error result — "cancelled by the user" on cancellation, a failure note on the error path — so the next run on the harness sends a valid history. Cancellation SHALL end with `RunFinished(cancelled)` once `RunStarted` was emitted.
+When a run is cancelled or fails after the assistant message was appended, the loop SHALL repair the history before the run ends: every function call in the last assistant message without a result SHALL get a synthetic error result — "cancelled by the user" on cancellation, a failure note on the error path — so the next run on the harness sends a valid history. A call already in flight SHALL also emit a synthetic `ToolCallResult` event so the event sequence stays valid. Cancellation SHALL end with `RunFinished(cancelled)` once `RunStarted` was emitted.
 
 #### Scenario: A run cancelled mid-tool leaves a valid history
 - **GIVEN** a run cancelled while a tool is executing
 - **WHEN** the next run starts
 - **THEN** the provider receives the assistant message followed by one synthetic cancelled result per dangling call
 
-#### Scenario: A failure after calls repairs too
-- **GIVEN** a run whose next model call fails after the assistant message was appended
+#### Scenario: A failure with pending calls repairs defensively
+- **GIVEN** a failure that escapes while calls are still pending (an invariant break; tool failures normally become error results)
 - **WHEN** the run ends with `RunError`
-- **THEN** every dangling call has a synthetic failure result and the next run sends a valid history
+- **THEN** every pending call has a synthetic failure result and the next run sends a valid history

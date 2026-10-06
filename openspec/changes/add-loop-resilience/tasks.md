@@ -11,7 +11,7 @@
 
 ## 3. Retries
 
-- [x] 3.1 `ProviderErrors.IsRetryable` (internal; timeouts, `HttpRequestException`, `ClientResultException` 408/429/500/502/503/504/529; inner-chain walk)
+- [x] 3.1 `ProviderErrors.IsRetryable` (public in `Lunate.Ai`; timeouts, `HttpRequestException`, `ClientResultException` and `AnthropicApiException` 408/429/500/502/503/504/529; inner-chain walk)
 - [x] 3.2 Per-attempt retry loop: exponential backoff under the token, `Retrying(attempt, reason)` per retry, retry only when the attempt emitted no events; exhausted or non-retryable → `RunError`
 
 ## 4. Observability
