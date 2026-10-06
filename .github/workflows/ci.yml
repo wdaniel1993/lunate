@@ -4,7 +4,8 @@ on:
   push:
     branches: [main]
     # Docs/spec-only pushes skip CI (they cannot break the build). A push that
-    # touches any code or workflow file still runs the full matrix.
+    # touches any code or workflow file still runs the full matrix; docs-only
+    # pushes are linted by the docs-lint workflow instead.
     paths-ignore:
       - 'docs/**'
       - 'adr/**'
@@ -52,6 +53,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          # The public-API step diffs PublicAPI.Shipped.txt against the merge
+          # base with origin/main; PR checkouts are shallow and lack origin/main,
+          # so fetch full history.
+          fetch-depth: 0
         # Force LF checkout on windows: the public-API step diffs tracked
         # *PublicAPI.Shipped.txt files, so autocrlf rewrites would show as noise.
         env:
@@ -62,7 +68,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: 10.0.x
+          global-json-file: global.json
           cache: true
           cache-dependency-path: |
             global.json

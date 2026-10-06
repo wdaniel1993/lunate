@@ -1,0 +1,30 @@
+name: Docs lint
+
+# Docs-only pushes skip the CI matrix (see ci.yml paths-ignore); this workflow
+# keeps their Markdown linted so violations cannot land unseen.
+on:
+  push:
+    branches: [main]
+    paths:
+      - '*.md'
+      - 'docs/**'
+      - 'adr/**'
+      - 'openspec/**'
+
+concurrency:
+  group: docs-lint-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: markdownlint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Lint Markdown
+        run: npx --yes markdownlint-cli2@0.23.3

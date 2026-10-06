@@ -79,8 +79,7 @@ fi
 npx --yes markdownlint-cli2@0.23.3
 
 step "public API"
-if ! git diff --exit-code -- '*PublicAPI.Shipped.txt'; then
-  echo "verify: PublicAPI.Shipped.txt changed" >&2
+if ! check_shipped_api_unchanged; then
   exit 1
 fi
 

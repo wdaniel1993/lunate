@@ -12,6 +12,9 @@ internal static class LayeringChecker
             ("Lunate.Coding", "Lunate.Tui"),
         };
 
+    public static IReadOnlySet<string> AllowedAgentRuntimePackages { get; } =
+        new HashSet<string> { "Microsoft.Extensions.AI.Abstractions" };
+
     public static IReadOnlyList<string> FindViolations(
         IEnumerable<(string From, string To)> references
     )
@@ -24,6 +27,25 @@ internal static class LayeringChecker
             {
                 violations.Add($"{reference.From} -> {reference.To} is not an allowed reference");
             }
+        }
+
+        return violations;
+    }
+
+    public static IReadOnlyList<string> FindPackageViolations(
+        IEnumerable<(string Package, bool IsBuildOnly)> packages
+    )
+    {
+        var violations = new List<string>();
+
+        foreach (var package in packages)
+        {
+            if (package.IsBuildOnly || AllowedAgentRuntimePackages.Contains(package.Package))
+            {
+                continue;
+            }
+
+            violations.Add($"{package.Package} is not an allowed runtime package for Lunate.Agent");
         }
 
         return violations;
