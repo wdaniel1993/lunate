@@ -20,5 +20,5 @@
 
 ## 5. Close
 
-- [ ] 5.1 `scripts/verify.sh` green; `openspec validate add-tool-contract --type change --strict`
-- [ ] 5.2 Self-review pass; fix findings; commit per group (do NOT spawn subagents; the adversarial review is a separate dispatch)
+- [x] 5.1 `scripts/verify.sh` green; `openspec validate add-tool-contract --type change --strict`
+- [x] 5.2 Self-review pass; fix findings; commit per group (do NOT spawn subagents; the adversarial review is a separate dispatch)
