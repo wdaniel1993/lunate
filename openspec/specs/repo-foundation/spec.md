@@ -19,7 +19,7 @@ The repository SHALL build all projects on .NET 10 with compiler warnings treate
 - **THEN** the build fails and reports the warning as an error
 
 ### Requirement: Enforced layering
-Project references SHALL point only downward in the architecture: `Lunate.Ai` ← `Lunate.Agent` ← `Lunate.Protocols` / `Lunate.Coding`, and `Lunate.Tui` SHALL reference no other Lunate project.
+Project references SHALL point only downward in the architecture: `Lunate.Ai` ← `Lunate.Agent` ← `Lunate.Protocols` / `Lunate.Coding`, and `Lunate.Tui` SHALL reference no other Lunate project. `Lunate.Agent` SHALL reference, at runtime, only `Microsoft.Extensions.AI.Abstractions` and the BCL in addition to `Lunate.Ai`; build-only packages with `PrivateAssets="all"` are exempt. The architecture test SHALL enforce both the project-reference and the package rules.
 
 #### Scenario: Upward reference is rejected
 - **GIVEN** a project graph containing an upward reference, e.g. `Lunate.Ai` → `Lunate.Agent`
@@ -30,6 +30,11 @@ Project references SHALL point only downward in the architecture: `Lunate.Ai` �
 - **GIVEN** the repository's actual project graph
 - **WHEN** the architecture test runs
 - **THEN** it passes
+
+#### Scenario: A runtime package outside the allowed set fails the architecture test
+- **GIVEN** a runtime package reference added to `Lunate.Agent` (no `PrivateAssets="all"`) outside the allowed set
+- **WHEN** the architecture test runs
+- **THEN** it fails and names the offending package
 
 ### Requirement: Version entry point
 `Lunate.Coding` SHALL provide `lunate --version`, printing the product version and exiting zero within the startup budget.
@@ -53,12 +58,17 @@ Project references SHALL point only downward in the architecture: `Lunate.Ai` �
 - **THEN** it exits non-zero and reports the startup budget exceeded
 
 ### Requirement: Public API visibility
-Library projects SHALL track their public surface in `PublicAPI.Shipped.txt` / `PublicAPI.Unshipped.txt`, and verification SHALL fail when a `Shipped` file changes.
+Library projects SHALL track their public surface in `PublicAPI.Shipped.txt` / `PublicAPI.Unshipped.txt`, and verification SHALL fail when an existing `Shipped` file is edited or deleted relative to the merge base with `main` (or the branch base where a remote is unavailable). Adding a new tracking file for a project is the bootstrap path and SHALL NOT trip the gate.
 
 #### Scenario: Shipped API change is caught
-- **GIVEN** a modification to any `PublicAPI.Shipped.txt`
+- **GIVEN** a committed or uncommitted edit, or a deletion, of an existing `PublicAPI.Shipped.txt` on a branch
 - **WHEN** `scripts/verify.sh` runs
-- **THEN** it exits non-zero and shows the diff
+- **THEN** it exits non-zero and shows the diff relative to the merge base with `main`
+
+#### Scenario: A new tracking file passes
+- **GIVEN** a branch that adds a `PublicAPI.Shipped.txt` for a project that had none
+- **WHEN** `scripts/verify.sh` runs
+- **THEN** the gate passes, and the new file's surface entries still go through review as a new file
 
 ### Requirement: Calibrated performance budgets
 The startup budget SHALL be calibrated per environment from measured baselines (dev machines and each CI runner) and re-calibrated when a baseline shifts; budgets SHALL keep documented headroom above the measured median so they catch regressions rather than machine noise.
