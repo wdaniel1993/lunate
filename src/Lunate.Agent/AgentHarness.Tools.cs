@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text.Json;
 using Microsoft.Extensions.AI;
 
@@ -21,6 +22,17 @@ public sealed partial class AgentHarness
     {
         string callId = call.CallId ?? string.Empty;
         string toolName = call.Name ?? string.Empty;
+        using Activity? toolActivity = AgentTelemetry.Source.StartActivity(
+            $"{AgentTelemetry.ExecuteToolOperation} {toolName}",
+            ActivityKind.Internal
+        );
+        toolActivity?.SetTag(
+            AgentTelemetry.OperationNameAttribute,
+            AgentTelemetry.ExecuteToolOperation
+        );
+        toolActivity?.SetTag(AgentTelemetry.ToolNameAttribute, toolName);
+        toolActivity?.SetTag(AgentTelemetry.ToolCallIdAttribute, callId);
+
         channel.Emit(new ToolCallStart(runId, callId, toolName));
 
         string argsJson = "{}";
@@ -47,6 +59,7 @@ public sealed partial class AgentHarness
                 IsError: true
             );
 
+        toolActivity?.SetTag(AgentTelemetry.ToolIsErrorAttribute, result.IsError);
         string output = ToolOutput.Truncate(result.Output);
         channel.Emit(new ToolCallResult(runId, callId, output, result.IsError, result.Details));
         _history.Add(new ChatMessage(ChatRole.Tool, [new FunctionResultContent(callId, output)]));

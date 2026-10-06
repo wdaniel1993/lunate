@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using Microsoft.Extensions.AI;
 
@@ -70,6 +71,16 @@ public sealed partial class AgentHarness
         CancellationToken ct
     )
     {
+        using Activity? runActivity = AgentTelemetry.Source.StartActivity(
+            $"{AgentTelemetry.InvokeAgentOperation} {AgentTelemetry.AgentName}",
+            ActivityKind.Internal
+        );
+        runActivity?.SetTag(
+            AgentTelemetry.OperationNameAttribute,
+            AgentTelemetry.InvokeAgentOperation
+        );
+        runActivity?.SetTag(AgentTelemetry.AgentNameAttribute, AgentTelemetry.AgentName);
+
         try
         {
             _history.Add(new ChatMessage(ChatRole.User, userInput));
@@ -108,6 +119,7 @@ public sealed partial class AgentHarness
         }
         catch (Exception exception)
         {
+            runActivity?.SetStatus(ActivityStatusCode.Error, exception.Message);
             channel.Emit(new RunError(runId, $"Run failed: {exception.Message}"));
         }
     }
