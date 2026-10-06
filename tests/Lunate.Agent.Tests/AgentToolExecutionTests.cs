@@ -1,4 +1,5 @@
 using Microsoft.Extensions.AI;
+using static Lunate.Agent.Tests.AgentTestSupport;
 
 namespace Lunate.Agent.Tests;
 
@@ -171,28 +172,6 @@ public sealed class AgentToolExecutionTests
         int toolEvent = events.FindIndex(agentEvent => agentEvent is UsageUpdated);
         int toolResult = events.FindIndex(agentEvent => agentEvent is ToolCallResult);
         Assert.True(callEnd < toolEvent && toolEvent < toolResult);
-    }
-
-    private static async Task<List<AgentEvent>> Run(AgentHarness harness) =>
-        await harness
-            .RunAsync("go", TestContext.Current.CancellationToken)
-            .ToListAsync(TestContext.Current.CancellationToken);
-
-    private static ScriptedTool ReadTool(string output) =>
-        new(
-            "read",
-            "Reads a file.",
-            """{"type":"object","properties":{"path":{"type":"string"}}}"""
-        )
-        {
-            OnExecute = (_, _) => new ToolResult(output, IsError: false),
-        };
-
-    private static ToolRegistry Registry(ITool tool)
-    {
-        var registry = new ToolRegistry();
-        registry.Add(tool);
-        return registry;
     }
 
     private static ChatMessage ToolMessage(ScriptedRequest request) =>

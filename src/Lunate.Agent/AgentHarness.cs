@@ -75,8 +75,17 @@ public sealed partial class AgentHarness
             _history.Add(new ChatMessage(ChatRole.User, userInput));
             channel.Emit(new RunStarted(runId));
 
+            int modelCalls = 0;
             while (true)
             {
+                if (modelCalls == _options.MaxSteps)
+                {
+                    channel.Emit(new StepLimitReached(runId, _options.MaxSteps));
+                    channel.Emit(new RunFinished(runId, StopReasons.StepLimit));
+                    return;
+                }
+
+                modelCalls++;
                 List<ChatResponseUpdate> updates = await StreamModelAsync(runId, channel, ct);
                 _history.AddRange(updates.ToChatResponse().Messages);
 
