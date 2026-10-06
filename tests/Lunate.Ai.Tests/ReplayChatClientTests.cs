@@ -299,6 +299,27 @@ public sealed class ReplayChatClientTests
         Assert.Throws<ArgumentException>("fixturePath", () => new ReplayChatClient(" "));
     }
 
+    [Fact]
+    public void GetService_returns_the_client_for_its_own_type_and_no_key()
+    {
+        using var temp = new TempDirectory();
+        string path = temp.File("fixture.jsonl");
+        WriteFixture(
+            path,
+            (
+                [new ChatMessage(ChatRole.User, "hello")],
+                null,
+                [new ChatResponseUpdate(ChatRole.Assistant, [new TextContent("hi")])]
+            )
+        );
+        var client = new ReplayChatClient(path);
+
+        Assert.Same(client, client.GetService(typeof(ReplayChatClient)));
+        Assert.Same(client, client.GetService(typeof(IChatClient)));
+        Assert.Null(client.GetService(typeof(ReplayChatClient), serviceKey: "key"));
+        Assert.Null(client.GetService(typeof(string)));
+    }
+
     private static void WriteFixture(
         string path,
         params (

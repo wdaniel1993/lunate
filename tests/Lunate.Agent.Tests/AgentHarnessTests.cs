@@ -151,6 +151,90 @@ public sealed class AgentHarnessTests
         Assert.Empty(EventSequenceValidator.Validate(events));
     }
 
+    [Fact]
+    public async Task A_length_finish_reason_maps_to_the_length_stop_reason()
+    {
+        var client = new ScriptedChatClient().Enqueue(
+            LoopScripts.Text("cut off"),
+            new ChatResponseUpdate(ChatRole.Assistant, [])
+            {
+                FinishReason = ChatFinishReason.Length,
+            }
+        );
+        var harness = new AgentHarness(client, new ToolRegistry());
+
+        List<AgentEvent> events = await harness
+            .RunAsync("Hi", TestContext.Current.CancellationToken)
+            .ToListAsync(TestContext.Current.CancellationToken);
+
+        Assert.Empty(EventSequenceValidator.Validate(events));
+        Assert.Equal(StopReasons.Length, Assert.IsType<RunFinished>(events[^1]).StopReason);
+    }
+
+    [Fact]
+    public async Task Provider_usage_reports_become_usage_updated_events()
+    {
+        var client = new ScriptedChatClient().Enqueue(
+            new ChatResponseUpdate(
+                ChatRole.Assistant,
+                [new UsageContent(new UsageDetails { InputTokenCount = 11, OutputTokenCount = 5 })]
+            ),
+            StopUpdate()
+        );
+        var harness = new AgentHarness(client, new ToolRegistry());
+
+        List<AgentEvent> events = await harness
+            .RunAsync("Hi", TestContext.Current.CancellationToken)
+            .ToListAsync(TestContext.Current.CancellationToken);
+
+        Assert.Empty(EventSequenceValidator.Validate(events));
+        UsageUpdated updated = Assert.Single(events.OfType<UsageUpdated>());
+        Assert.Equal(11L, updated.Usage.InputTokenCount!.Value);
+        Assert.Equal(5L, updated.Usage.OutputTokenCount!.Value);
+    }
+
+    [Fact]
+    public void MaxSteps_below_one_is_rejected_at_construction()
+    {
+        ArgumentOutOfRangeException exception = Assert.Throws<ArgumentOutOfRangeException>(() =>
+            new AgentHarness(
+                new ScriptedChatClient(),
+                new ToolRegistry(),
+                new AgentHarnessOptions { MaxSteps = 0 }
+            )
+        );
+
+        Assert.Equal("MaxSteps", exception.ParamName);
+    }
+
+    [Fact]
+    public void A_negative_retry_count_is_rejected_at_construction()
+    {
+        ArgumentOutOfRangeException exception = Assert.Throws<ArgumentOutOfRangeException>(() =>
+            new AgentHarness(
+                new ScriptedChatClient(),
+                new ToolRegistry(),
+                new AgentHarnessOptions { MaxRetries = -1 }
+            )
+        );
+
+        Assert.Equal("MaxRetries", exception.ParamName);
+    }
+
+    [Fact]
+    public void A_negative_retry_delay_is_rejected_at_construction()
+    {
+        ArgumentOutOfRangeException exception = Assert.Throws<ArgumentOutOfRangeException>(() =>
+            new AgentHarness(
+                new ScriptedChatClient(),
+                new ToolRegistry(),
+                new AgentHarnessOptions { RetryBaseDelay = TimeSpan.FromMilliseconds(-1) }
+            )
+        );
+
+        Assert.Equal("RetryBaseDelay", exception.ParamName);
+    }
+
     private static ChatResponseUpdate StopUpdate() =>
         new(ChatRole.Assistant, []) { FinishReason = ChatFinishReason.Stop };
 }

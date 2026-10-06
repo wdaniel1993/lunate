@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using Microsoft.Extensions.AI;
 using static Lunate.Agent.Tests.AgentTestSupport;
 
@@ -172,6 +173,31 @@ public sealed class AgentToolExecutionTests
         int toolEvent = events.FindIndex(agentEvent => agentEvent is UsageUpdated);
         int toolResult = events.FindIndex(agentEvent => agentEvent is ToolCallResult);
         Assert.True(callEnd < toolEvent && toolEvent < toolResult);
+    }
+
+    [Fact]
+    public async Task Calls_that_reach_the_loop_without_a_call_id_do_not_merge()
+    {
+        // The pinned MEAI constructors reject a null call id, so build that shape directly:
+        // two distinct instances must stay distinct instead of collapsing onto one empty id.
+        var first = (FunctionCallContent)
+            RuntimeHelpers.GetUninitializedObject(typeof(FunctionCallContent));
+        first.Arguments = LoopScripts.Args(("path", "a.txt"));
+        var second = (FunctionCallContent)
+            RuntimeHelpers.GetUninitializedObject(typeof(FunctionCallContent));
+        second.Arguments = LoopScripts.Args(("path", "b.txt"));
+        var client = new ScriptedChatClient()
+            .Enqueue(LoopScripts.Calls(first, second), LoopScripts.ToolCalls())
+            .Enqueue(LoopScripts.Text("Done"), LoopScripts.Stop());
+        var harness = new AgentHarness(client, Registry(ReadTool("contents")));
+
+        List<AgentEvent> events = await Run(harness);
+
+        Assert.Equal(2, events.OfType<ToolCallResult>().Count());
+        Assert.Equal(
+            2,
+            client.Requests[1].Messages.Count(message => message.Role == ChatRole.Tool)
+        );
     }
 
     private static ChatMessage ToolMessage(ScriptedRequest request) =>
