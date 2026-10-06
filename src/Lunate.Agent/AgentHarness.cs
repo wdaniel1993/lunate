@@ -8,7 +8,7 @@ namespace Lunate.Agent;
 /// runs tools itself (ADR-0003) and keeps the history valid. Runs on one harness are sequential;
 /// concurrent runs are a later, explicit decision.
 /// </summary>
-public sealed class AgentHarness
+public sealed partial class AgentHarness
 {
     private readonly IChatClient _client;
     private readonly ToolRegistry _tools;
@@ -63,6 +63,115 @@ public sealed class AgentHarness
         }
     }
 
+    private async Task ExecuteRunAsync(
+        string runId,
+        string userInput,
+        AgentEventChannel channel,
+        CancellationToken ct
+    )
+    {
+        try
+        {
+            _history.Add(new ChatMessage(ChatRole.User, userInput));
+            channel.Emit(new RunStarted(runId));
+
+            while (true)
+            {
+                List<ChatResponseUpdate> updates = await StreamModelAsync(runId, channel, ct);
+                _history.AddRange(updates.ToChatResponse().Messages);
+
+                List<FunctionCallContent> calls = CompleteCalls(updates);
+                if (calls.Count == 0)
+                {
+                    channel.Emit(new RunFinished(runId, StopReasons.Stop));
+                    return;
+                }
+
+                foreach (FunctionCallContent call in calls)
+                {
+                    await ExecuteCallAsync(runId, call, channel, ct);
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            channel.Emit(new RunError(runId, $"Run failed: {exception.Message}"));
+        }
+    }
+
+    private async Task<List<ChatResponseUpdate>> StreamModelAsync(
+        string runId,
+        AgentEventChannel channel,
+        CancellationToken ct
+    )
+    {
+        List<ChatResponseUpdate> updates = [];
+        string? messageId = null;
+        bool textOpen = false;
+
+        await foreach (
+            ChatResponseUpdate update in _client.GetStreamingResponseAsync(
+                BuildRequest(),
+                BuildOptions(),
+                ct
+            )
+        )
+        {
+            updates.Add(update);
+            foreach (AIContent content in update.Contents)
+            {
+                if (content is not TextContent { Text: { Length: > 0 } text })
+                {
+                    continue;
+                }
+
+                if (!textOpen)
+                {
+                    textOpen = true;
+                    messageId = RunIds.NextMessage();
+                    channel.Emit(new TextMessageStart(runId, messageId));
+                }
+
+                channel.Emit(new TextMessageContent(runId, messageId!, text));
+            }
+        }
+
+        if (textOpen)
+        {
+            channel.Emit(new TextMessageEnd(runId, messageId!));
+        }
+
+        return updates;
+    }
+
+    private static List<FunctionCallContent> CompleteCalls(List<ChatResponseUpdate> updates)
+    {
+        Dictionary<string, FunctionCallContent> byCallId = new(StringComparer.Ordinal);
+        List<string> order = [];
+        foreach (ChatResponseUpdate update in updates)
+        {
+            foreach (AIContent content in update.Contents)
+            {
+                if (content is not FunctionCallContent call)
+                {
+                    continue;
+                }
+
+                string callId = call.CallId ?? string.Empty;
+                if (byCallId.TryAdd(callId, call))
+                {
+                    order.Add(callId);
+                }
+            }
+        }
+
+        return [.. order.Select(callId => byCallId[callId])];
+    }
+
     private List<ChatMessage> BuildRequest()
     {
         List<ChatMessage> request = [];
@@ -76,65 +185,4 @@ public sealed class AgentHarness
     }
 
     private ChatOptions BuildOptions() => new() { Tools = [.. _tools.Declarations] };
-
-    private async Task ExecuteRunAsync(
-        string runId,
-        string userInput,
-        AgentEventChannel channel,
-        CancellationToken ct
-    )
-    {
-        try
-        {
-            _history.Add(new ChatMessage(ChatRole.User, userInput));
-            channel.Emit(new RunStarted(runId));
-
-            List<ChatResponseUpdate> updates = [];
-            string? messageId = null;
-            bool textOpen = false;
-
-            await foreach (
-                ChatResponseUpdate update in _client.GetStreamingResponseAsync(
-                    BuildRequest(),
-                    BuildOptions(),
-                    ct
-                )
-            )
-            {
-                updates.Add(update);
-                foreach (AIContent content in update.Contents)
-                {
-                    if (content is not TextContent { Text: { Length: > 0 } text })
-                    {
-                        continue;
-                    }
-
-                    if (!textOpen)
-                    {
-                        textOpen = true;
-                        messageId = RunIds.NextMessage();
-                        channel.Emit(new TextMessageStart(runId, messageId));
-                    }
-
-                    channel.Emit(new TextMessageContent(runId, messageId!, text));
-                }
-            }
-
-            if (textOpen)
-            {
-                channel.Emit(new TextMessageEnd(runId, messageId!));
-            }
-
-            _history.AddRange(updates.ToChatResponse().Messages);
-            channel.Emit(new RunFinished(runId, StopReasons.Stop));
-        }
-        catch (OperationCanceledException)
-        {
-            throw;
-        }
-        catch (Exception exception)
-        {
-            channel.Emit(new RunError(runId, $"Run failed: {exception.Message}"));
-        }
-    }
 }
