@@ -16,4 +16,4 @@
 
 ## 4. Close
 
-- [x] 4.1 `scripts/verify.sh` green (203 tests, 2 live-skipped); `openspec validate fix-factory-safety --type change --strict` valid; self-review pass
+- [x] 4.1 `scripts/verify.sh` green (202 tests: 200 passed, 2 live-skipped); `openspec validate fix-factory-safety --type change --strict` valid; self-review pass
