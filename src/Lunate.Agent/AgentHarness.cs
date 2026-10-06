@@ -162,7 +162,11 @@ public sealed partial class AgentHarness
                 }
 
                 modelCalls++;
-                List<ChatResponseUpdate> updates = await StreamModelAsync(runId, channel, ct);
+                List<ChatResponseUpdate> updates = await StreamModelWithRetriesAsync(
+                    runId,
+                    channel,
+                    ct
+                );
                 _history.AddRange(updates.ToChatResponse().Messages);
 
                 List<FunctionCallContent> calls = DistinctCalls(updates);
@@ -200,7 +204,8 @@ public sealed partial class AgentHarness
     private async Task<List<ChatResponseUpdate>> StreamModelAsync(
         string runId,
         AgentEventChannel channel,
-        CancellationToken ct
+        CancellationToken ct,
+        ModelStreamAttempt attempt
     )
     {
         List<ChatResponseUpdate> updates = [];
@@ -232,6 +237,7 @@ public sealed partial class AgentHarness
                         channel.Emit(new TextMessageStart(runId, messageId));
                     }
 
+                    attempt.Emitted = true;
                     channel.Emit(new TextMessageContent(runId, messageId!, text));
                 }
             }
