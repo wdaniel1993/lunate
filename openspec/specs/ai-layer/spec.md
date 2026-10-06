@@ -86,7 +86,7 @@ Model access for Lunate: the factory that builds the correctly ordered `IChatCli
 - **THEN** the consumer receives Microsoft.Extensions.AI updates (text, tool calls, usage); without the flag the test is skipped
 
 ### Requirement: Complete function calls at the consumer
-The pipeline SHALL present function calls only in complete form: a `StreamAccumulator` above the recorder assembles streamed argument fragments per call id, so consumers never act on partial calls. A fragment is a `FunctionCallContent` whose `Arguments` contains exactly one entry under the reserved `$arguments` key holding a raw JSON fragment (a string, or a `JsonElement` of string kind); fragments merge by call id and are emitted as one parsed call in a synthesized update at stream end. Recordings SHALL remain raw provider output.
+The pipeline SHALL present function calls only in complete form: a `StreamAccumulator` above the recorder assembles streamed argument fragments per call id, so consumers never act on partial calls. A fragment is a `FunctionCallContent` whose `Arguments` contains exactly one entry under the reserved `$arguments` key holding a raw JSON fragment (a string, or a `JsonElement` of string kind); fragments merge by call id and are emitted as one parsed call in a synthesized update at stream end. When assembly fails, the synthesized call SHALL keep the concatenated raw fragment text under the reserved `$arguments` key and SHALL set its `Exception`. Recordings SHALL remain raw provider output.
 
 #### Scenario: Fragmented arguments are assembled
 - **GIVEN** a stream that delivers one function call's arguments in fragments
@@ -102,6 +102,11 @@ The pipeline SHALL present function calls only in complete form: a `StreamAccumu
 - **GIVEN** recording is enabled
 - **WHEN** a fragmented stream is recorded
 - **THEN** the fixture contains the raw fragments, and replay through the pipeline still assembles them
+
+#### Scenario: Failed assembly preserves the raw text
+- **GIVEN** a stream whose concatenated function-call arguments are not valid JSON
+- **WHEN** it passes the accumulator
+- **THEN** the emitted call carries the raw fragment text under the reserved `$arguments` key and its `Exception` is set
 
 ### Requirement: Local endpoints without a dummy key
 When a model declares a custom endpoint and no API key is configured, the OpenAI-compatible adapter SHALL construct its client with a placeholder credential instead of failing, so local servers work without dummy environment variables.
