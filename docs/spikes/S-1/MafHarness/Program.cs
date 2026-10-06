@@ -71,7 +71,10 @@ internal static class Program
     {
         ScriptedChatClient emptyHarnessClient = new([new([Updates.Text("ok")])]);
         AIAgent emptyHarness = HarnessFactory.Create(emptyHarnessClient);
-        _ = HarnessRunner.CollectUpdatesAsync(emptyHarness, "hello", session: null).GetAwaiter().GetResult();
+        _ = HarnessRunner
+            .CollectUpdatesAsync(emptyHarness, "hello", session: null)
+            .GetAwaiter()
+            .GetResult();
 
         Console.WriteLine("--- prompt surface (harness, harness instructions omitted) ---");
         foreach (string line in PromptSurface.Measure(emptyHarnessClient.Requests[0]).Lines())
@@ -80,41 +83,62 @@ internal static class Program
         }
 
         ScriptedChatClient defaultInstructionsClient = new([new([Updates.Text("ok")])]);
-        AIAgent defaultInstructions = HarnessFactory.Create(defaultInstructionsClient, defaultHarnessInstructions: true);
-        _ = HarnessRunner.CollectUpdatesAsync(defaultInstructions, "hello", session: null).GetAwaiter().GetResult();
+        AIAgent defaultInstructions = HarnessFactory.Create(
+            defaultInstructionsClient,
+            defaultHarnessInstructions: true
+        );
+        _ = HarnessRunner
+            .CollectUpdatesAsync(defaultInstructions, "hello", session: null)
+            .GetAwaiter()
+            .GetResult();
 
         Console.WriteLine("--- prompt surface (harness, default harness instructions) ---");
-        foreach (string line in PromptSurface.Measure(defaultInstructionsClient.Requests[0]).Lines())
+        foreach (
+            string line in PromptSurface.Measure(defaultInstructionsClient.Requests[0]).Lines()
+        )
         {
             Console.WriteLine(line);
         }
 
-        Console.WriteLine($"harness_default_instructions_chars={HarnessAgent.DefaultInstructions.Length}");
+        Console.WriteLine(
+            $"harness_default_instructions_chars={HarnessAgent.DefaultInstructions.Length}"
+        );
     }
 
     private static async Task RunCheck3Async()
     {
         ScriptedChatClient canonicalClient = new(ChatScripts.Canonical());
         AIAgent canonical = HarnessFactory.Create(canonicalClient);
-        List<AgentResponseUpdate> canonicalUpdates = await HarnessRunner.CollectUpdatesAsync(canonical, ChatScripts.SystemUserMessage, session: null);
+        List<AgentResponseUpdate> canonicalUpdates = await HarnessRunner.CollectUpdatesAsync(
+            canonical,
+            ChatScripts.SystemUserMessage,
+            session: null
+        );
         Console.WriteLine("--- transcript canonical (harness) ---");
         HarnessRunner.PrintEvents(HarnessRunner.MapUpdates(canonicalUpdates));
         Console.WriteLine("--- end canonical (harness) ---");
 
         using CancellationTokenSource cts = new();
-        ScriptedChatClient cancelClient = new(
-        [
-            new(
-            [
+        ScriptedChatClient cancelClient = new([
+            new([
                 Updates.Text("Reading "),
                 Updates.Call("call_read_1", "read", """{"path":"src/Calculator.cs"}"""),
-                new ScriptedUpdate(new ChatResponseUpdate(ChatRole.Assistant, "and then..."), cts.Cancel),
+                new ScriptedUpdate(
+                    new ChatResponseUpdate(ChatRole.Assistant, "and then..."),
+                    cts.Cancel
+                ),
                 Updates.Finish(ChatFinishReason.ToolCalls),
             ]),
         ]);
         AIAgent cancelAgent = HarnessFactory.Create(cancelClient);
         List<string> diagnostics = [];
-        List<AgentResponseUpdate> cancelUpdates = await HarnessRunner.CollectUpdatesAsync(cancelAgent, ChatScripts.SystemUserMessage, session: null, diagnostics, cts.Token);
+        List<AgentResponseUpdate> cancelUpdates = await HarnessRunner.CollectUpdatesAsync(
+            cancelAgent,
+            ChatScripts.SystemUserMessage,
+            session: null,
+            diagnostics,
+            cts.Token
+        );
         Console.WriteLine("--- transcript cancel (harness) ---");
         HarnessRunner.PrintEvents(HarnessRunner.MapUpdates(cancelUpdates));
         foreach (string line in diagnostics)
@@ -123,25 +147,39 @@ internal static class Program
         }
 
         Console.WriteLine("--- end cancel (harness) ---");
-        Console.WriteLine("steering_built_in=false (AIAgent exposes no steer/inject API; the app must queue and replay messages itself)");
+        Console.WriteLine(
+            "steering_built_in=false (AIAgent exposes no steer/inject API; the app must queue and replay messages itself)"
+        );
     }
 
     private static async Task RunCheck5Async()
     {
         string path = Path.Combine(AppContext.BaseDirectory, "recorded-maf.jsonl");
 
-        string first = await RunTranscriptAsync(new RecordingChatClient(new ScriptedChatClient(ChatScripts.Canonical()), path));
+        string first = await RunTranscriptAsync(
+            new RecordingChatClient(new ScriptedChatClient(ChatScripts.Canonical()), path)
+        );
         string second = await RunTranscriptAsync(new ReplayChatClient(path));
 
         Console.WriteLine($"recording_file={path}");
-        Console.WriteLine($"transcript_recorded_sha256={Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(first)))[..16]}");
-        Console.WriteLine($"transcript_replayed_sha256={Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(second)))[..16]}");
-        Console.WriteLine($"replay_deterministic={(first == second).ToString().ToLowerInvariant()}");
+        Console.WriteLine(
+            $"transcript_recorded_sha256={Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(first)))[..16]}"
+        );
+        Console.WriteLine(
+            $"transcript_replayed_sha256={Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(second)))[..16]}"
+        );
+        Console.WriteLine(
+            $"replay_deterministic={(first == second).ToString().ToLowerInvariant()}"
+        );
 
         ScriptedChatClient sessionClient = new(ChatScripts.Canonical());
         AIAgent sessionAgent = HarnessFactory.Create(sessionClient);
         AgentSession session = await sessionAgent.CreateSessionAsync();
-        _ = await HarnessRunner.CollectUpdatesAsync(sessionAgent, ChatScripts.SystemUserMessage, session);
+        _ = await HarnessRunner.CollectUpdatesAsync(
+            sessionAgent,
+            ChatScripts.SystemUserMessage,
+            session
+        );
 
         JsonElement serialized = await sessionAgent.SerializeSessionAsync(session);
         Console.WriteLine($"session_serialized_chars={serialized.GetRawText().Length}");
@@ -161,11 +199,17 @@ internal static class Program
     {
         ScriptedChatClient client = new(ChatScripts.SplitArguments());
         AIAgent agent = HarnessFactory.Create(client);
-        List<AgentResponseUpdate> updates = await HarnessRunner.CollectUpdatesAsync(agent, ChatScripts.SystemUserMessage, session: null);
+        List<AgentResponseUpdate> updates = await HarnessRunner.CollectUpdatesAsync(
+            agent,
+            ChatScripts.SystemUserMessage,
+            session: null
+        );
         Console.WriteLine("--- transcript split-arguments (harness) ---");
         HarnessRunner.PrintEvents(HarnessRunner.MapUpdates(updates));
         Console.WriteLine("--- end split-arguments (harness) ---");
-        Console.WriteLine($"tool_invocations={updates.SelectMany(u => u.Contents).OfType<FunctionResultContent>().Count()}");
+        Console.WriteLine(
+            $"tool_invocations={updates.SelectMany(u => u.Contents).OfType<FunctionResultContent>().Count()}"
+        );
     }
 
     private static async Task RunErrorPathAsync()
@@ -177,47 +221,54 @@ internal static class Program
             SpikeTool.Read.Description,
             SpikeTool.Read.ParametersSchemaJson,
             SpikeToolRisk.ReadOnly,
-            args => $"Error: file not found at {args.GetProperty("path").GetString()}. Use bash ls to locate the file.");
+            args =>
+                $"Error: file not found at {args.GetProperty("path").GetString()}. Use bash ls to locate the file."
+        );
 
         SpikeTool bashThrow = new(
             "bash",
             SpikeTool.Bash.Description,
             SpikeTool.Bash.ParametersSchemaJson,
             SpikeToolRisk.Execute,
-            _ => throw new InvalidOperationException("bash: command timed out after 120s; consider raising timeout_s or splitting the command."));
+            _ =>
+                throw new InvalidOperationException(
+                    "bash: command timed out after 120s; consider raising timeout_s or splitting the command."
+                )
+        );
 
-        ScriptedChatClient client = new(
-        [
-            new(
-            [
+        ScriptedChatClient client = new([
+            new([
                 Updates.Text("Reading the file."),
                 Updates.Call("call_read_err", "read", """{"path":"src/Missing.cs"}"""),
                 Updates.Finish(ChatFinishReason.ToolCalls),
             ]),
-            new(
-            [
+            new([
                 Updates.Text("Running the command."),
                 Updates.Call("call_bash_err", "bash", """{"command":"sleep 999"}"""),
                 Updates.Finish(ChatFinishReason.ToolCalls),
             ]),
-            new(
-            [
-                Updates.Text("Done."),
-                Updates.Finish(),
-            ]),
+            new([Updates.Text("Done."), Updates.Finish()]),
         ]);
 
         AIAgent agent = HarnessFactory.Create(client, toolsOverride: [readError, bashThrow]);
-        _ = await HarnessRunner.CollectUpdatesAsync(agent, ChatScripts.SystemUserMessage, session: null);
+        _ = await HarnessRunner.CollectUpdatesAsync(
+            agent,
+            ChatScripts.SystemUserMessage,
+            session: null
+        );
 
         Console.WriteLine("--- error-path probe (harness) ---");
-        foreach (FunctionResultContent result in client.Requests
-                     .SelectMany(r => r.Messages)
-                     .SelectMany(m => m.Contents)
-                     .OfType<FunctionResultContent>())
+        foreach (
+            FunctionResultContent result in client
+                .Requests.SelectMany(r => r.Messages)
+                .SelectMany(m => m.Contents)
+                .OfType<FunctionResultContent>()
+        )
         {
             string text = result.Result?.ToString() ?? "(null)";
-            string exception = result.Exception is null ? "none" : $"{result.Exception.GetType().Name}: {result.Exception.Message}";
+            string exception = result.Exception is null
+                ? "none"
+                : $"{result.Exception.GetType().Name}: {result.Exception.Message}";
             Console.WriteLine($"call={result.CallId} result=\"{text}\" exception={exception}");
         }
 
@@ -227,7 +278,11 @@ internal static class Program
     private static async Task<string> RunTranscriptAsync(IChatClient client)
     {
         AIAgent agent = HarnessFactory.Create(client);
-        List<AgentResponseUpdate> updates = await HarnessRunner.CollectUpdatesAsync(agent, ChatScripts.SystemUserMessage, session: null);
+        List<AgentResponseUpdate> updates = await HarnessRunner.CollectUpdatesAsync(
+            agent,
+            ChatScripts.SystemUserMessage,
+            session: null
+        );
         StringBuilder transcript = new();
         foreach (MappedEvent item in HarnessRunner.MapUpdates(updates))
         {

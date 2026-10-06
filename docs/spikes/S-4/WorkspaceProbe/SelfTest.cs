@@ -67,7 +67,14 @@ internal static class SelfTest
 
     private static Diagnostic Create(DiagnosticSeverity severity)
     {
-        var descriptor = new DiagnosticDescriptor("PROBE001", "title", "message", "category", severity, true);
+        var descriptor = new DiagnosticDescriptor(
+            "PROBE001",
+            "title",
+            "message",
+            "category",
+            severity,
+            true
+        );
         return Diagnostic.Create(descriptor, Location.None);
     }
 
@@ -75,7 +82,8 @@ internal static class SelfTest
     {
         const string original = "class A\n{\n}\n";
         var injected = EditScript.InjectError(original);
-        var ok = EditScript.HasError(injected)
+        var ok =
+            EditScript.HasError(injected)
             && injected.StartsWith(original, StringComparison.Ordinal)
             && injected.Contains("not an int", StringComparison.Ordinal);
         return (ok, $"has_error={EditScript.HasError(injected)} length={injected.Length}");
@@ -85,7 +93,10 @@ internal static class SelfTest
     {
         const string original = "class A\n{\n}\n";
         var restored = EditScript.RemoveError(EditScript.InjectError(original));
-        return (restored == original, $"restored_length={restored.Length} original_length={original.Length}");
+        return (
+            restored == original,
+            $"restored_length={restored.Length} original_length={original.Length}"
+        );
     }
 
     private static (bool, string) ToggleRoundTrips()
@@ -94,6 +105,9 @@ internal static class SelfTest
         var once = EditScript.Toggle(original);
         var twice = EditScript.Toggle(once);
         var ok = EditScript.HasError(once) && !EditScript.HasError(twice) && twice == original;
-        return (ok, $"once_has_error={EditScript.HasError(once)} twice_has_error={EditScript.HasError(twice)}");
+        return (
+            ok,
+            $"once_has_error={EditScript.HasError(once)} twice_has_error={EditScript.HasError(twice)}"
+        );
     }
 }

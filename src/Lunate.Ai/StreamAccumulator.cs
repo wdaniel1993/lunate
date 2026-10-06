@@ -19,13 +19,20 @@ internal sealed class StreamAccumulator(IChatClient innerClient) : DelegatingCha
     public override async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
         IEnumerable<ChatMessage> messages,
         ChatOptions? options = null,
-        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        [EnumeratorCancellation] CancellationToken cancellationToken = default
+    )
     {
         Dictionary<string, FunctionFragment> fragments = new(StringComparer.Ordinal);
         List<string> order = [];
         string? modelId = null;
 
-        await foreach (ChatResponseUpdate update in base.GetStreamingResponseAsync(messages, options, cancellationToken))
+        await foreach (
+            ChatResponseUpdate update in base.GetStreamingResponseAsync(
+                messages,
+                options,
+                cancellationToken
+            )
+        )
         {
             if (update.ModelId is { } id)
             {
@@ -58,22 +65,31 @@ internal sealed class StreamAccumulator(IChatClient innerClient) : DelegatingCha
                 continue;
             }
 
-            List<AIContent> passThrough = [.. update.Contents.Where(
-                content => content is not FunctionCallContent call || FragmentOf(call) is null)];
+            List<AIContent> passThrough =
+            [
+                .. update.Contents.Where(content =>
+                    content is not FunctionCallContent call || FragmentOf(call) is null
+                ),
+            ];
             yield return ShallowCopy(update, passThrough);
         }
 
         if (order.Count > 0)
         {
-            List<AIContent> calls = [.. order.Select(callId => fragments[callId].ToCompleteCall(callId))];
+            List<AIContent> calls =
+            [
+                .. order.Select(callId => fragments[callId].ToCompleteCall(callId)),
+            ];
             yield return new ChatResponseUpdate(ChatRole.Assistant, calls) { ModelId = modelId };
         }
     }
 
     private static string? FragmentOf(FunctionCallContent call)
     {
-        if (call.Arguments is not { Count: 1 } arguments ||
-            !arguments.TryGetValue(ArgumentsFragmentKey, out object? value))
+        if (
+            call.Arguments is not { Count: 1 } arguments
+            || !arguments.TryGetValue(ArgumentsFragmentKey, out object? value)
+        )
         {
             return null;
         }
@@ -86,7 +102,10 @@ internal sealed class StreamAccumulator(IChatClient innerClient) : DelegatingCha
         };
     }
 
-    private static ChatResponseUpdate ShallowCopy(ChatResponseUpdate update, IList<AIContent> contents) =>
+    private static ChatResponseUpdate ShallowCopy(
+        ChatResponseUpdate update,
+        IList<AIContent> contents
+    ) =>
         new(update.Role, contents)
         {
             AuthorName = update.AuthorName,
@@ -121,6 +140,11 @@ internal sealed class StreamAccumulator(IChatClient innerClient) : DelegatingCha
                 _arguments.ToString(),
                 callId,
                 _name ?? string.Empty,
-                static json => JsonSerializer.Deserialize<IDictionary<string, object>>(json, AIJsonUtilities.DefaultOptions)!);
+                static json =>
+                    JsonSerializer.Deserialize<IDictionary<string, object>>(
+                        json,
+                        AIJsonUtilities.DefaultOptions
+                    )!
+            );
     }
 }

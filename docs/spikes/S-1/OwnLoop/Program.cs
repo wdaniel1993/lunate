@@ -47,7 +47,12 @@ static async Task ProbeAsync()
     DateTime processStart = System.Diagnostics.Process.GetCurrentProcess().StartTime;
     var buildWatch = System.Diagnostics.Stopwatch.StartNew();
     ScriptedChatClient client = new([new([Updates.Text("ready")])]);
-    OwnLoopAgent agent = new(client, SpikeTool.All, SystemPrompt, (_, _) => ValueTask.FromResult(ApprovalDecision.AllowOnce));
+    OwnLoopAgent agent = new(
+        client,
+        SpikeTool.All,
+        SystemPrompt,
+        (_, _) => ValueTask.FromResult(ApprovalDecision.AllowOnce)
+    );
     buildWatch.Stop();
 
     Console.WriteLine($"agent_build_ms={buildWatch.Elapsed.TotalMilliseconds:F1}");
@@ -67,7 +72,12 @@ static async Task ProbeAsync()
 static void RunCheck2()
 {
     ScriptedChatClient client = new([new([Updates.Text("ok")])]);
-    OwnLoopAgent agent = new(client, SpikeTool.All, SystemPrompt, (_, _) => ValueTask.FromResult(ApprovalDecision.AllowOnce));
+    OwnLoopAgent agent = new(
+        client,
+        SpikeTool.All,
+        SystemPrompt,
+        (_, _) => ValueTask.FromResult(ApprovalDecision.AllowOnce)
+    );
     _ = CollectAsync(agent.RunAsync("hello")).GetAwaiter().GetResult();
 
     Console.WriteLine("--- prompt surface (own loop) ---");
@@ -80,72 +90,93 @@ static void RunCheck2()
 static async Task RunCheck3Async()
 {
     ScriptedChatClient canonicalClient = new(ChatScripts.Canonical());
-    OwnLoopAgent canonical = new(canonicalClient, SpikeTool.All, SystemPrompt, (_, _) => ValueTask.FromResult(ApprovalDecision.AllowOnce));
-    PrintTranscript("canonical", await CollectAsync(canonical.RunAsync(ChatScripts.SystemUserMessage)));
+    OwnLoopAgent canonical = new(
+        canonicalClient,
+        SpikeTool.All,
+        SystemPrompt,
+        (_, _) => ValueTask.FromResult(ApprovalDecision.AllowOnce)
+    );
+    PrintTranscript(
+        "canonical",
+        await CollectAsync(canonical.RunAsync(ChatScripts.SystemUserMessage))
+    );
 
     OwnLoopAgent steering = null!;
-    ScriptedChatClient steeringClient = new(
-    [
-        new(
-        [
+    ScriptedChatClient steeringClient = new([
+        new([
             Updates.Text("Reading first."),
             Updates.CallWithSideEffect(
                 "call_read_1",
                 "read",
                 """{"path":"src/Calculator.cs"}""",
-                () => steering.Steer("Also check the tests after the fix.")),
+                () => steering.Steer("Also check the tests after the fix.")
+            ),
             Updates.Finish(ChatFinishReason.ToolCalls),
         ]),
-        new(
-        [
-            Updates.Text("Noted; I will also check the tests."),
-            Updates.Finish(),
-        ]),
+        new([Updates.Text("Noted; I will also check the tests."), Updates.Finish()]),
     ]);
-    steering = new OwnLoopAgent(steeringClient, SpikeTool.All, SystemPrompt, (_, _) => ValueTask.FromResult(ApprovalDecision.AllowOnce));
-    PrintTranscript("steering", await CollectAsync(steering.RunAsync(ChatScripts.SystemUserMessage)));
+    steering = new OwnLoopAgent(
+        steeringClient,
+        SpikeTool.All,
+        SystemPrompt,
+        (_, _) => ValueTask.FromResult(ApprovalDecision.AllowOnce)
+    );
+    PrintTranscript(
+        "steering",
+        await CollectAsync(steering.RunAsync(ChatScripts.SystemUserMessage))
+    );
 
-    bool steeringInjected = steeringClient.Requests.Count > 1
-        && steeringClient.Requests[1].Messages.Any(m => m.Role == ChatRole.User && m.Text.Contains("check the tests", StringComparison.Ordinal));
-    Console.WriteLine($"steering_seen_in_next_request={steeringInjected.ToString().ToLowerInvariant()}");
+    bool steeringInjected =
+        steeringClient.Requests.Count > 1
+        && steeringClient
+            .Requests[1]
+            .Messages.Any(m =>
+                m.Role == ChatRole.User
+                && m.Text.Contains("check the tests", StringComparison.Ordinal)
+            );
+    Console.WriteLine(
+        $"steering_seen_in_next_request={steeringInjected.ToString().ToLowerInvariant()}"
+    );
 
     using CancellationTokenSource cts = new();
-    ScriptedChatClient cancelClient = new(
-    [
-        new(
-        [
+    ScriptedChatClient cancelClient = new([
+        new([
             Updates.Text("Reading "),
             Updates.Call("call_read_1", "read", """{"path":"src/Calculator.cs"}"""),
-            new ScriptedUpdate(new ChatResponseUpdate(ChatRole.Assistant, "and then..."), cts.Cancel),
+            new ScriptedUpdate(
+                new ChatResponseUpdate(ChatRole.Assistant, "and then..."),
+                cts.Cancel
+            ),
             Updates.Finish(ChatFinishReason.ToolCalls),
         ]),
     ]);
-    OwnLoopAgent cancel = new(cancelClient, SpikeTool.All, SystemPrompt, (_, _) => ValueTask.FromResult(ApprovalDecision.AllowOnce));
-    PrintTranscript("cancel", await CollectAsync(cancel.RunAsync(ChatScripts.SystemUserMessage, cts.Token)));
+    OwnLoopAgent cancel = new(
+        cancelClient,
+        SpikeTool.All,
+        SystemPrompt,
+        (_, _) => ValueTask.FromResult(ApprovalDecision.AllowOnce)
+    );
+    PrintTranscript(
+        "cancel",
+        await CollectAsync(cancel.RunAsync(ChatScripts.SystemUserMessage, cts.Token))
+    );
 }
 
 static async Task RunCheck4Async()
 {
     List<string> callbacks = [];
-    ScriptedChatClient client = new(
-    [
-        new(
-        [
+    ScriptedChatClient client = new([
+        new([
             Updates.Text("Building."),
             Updates.Call("c1", "bash", """{"command":"dotnet build"}"""),
             Updates.Finish(ChatFinishReason.ToolCalls),
         ]),
-        new(
-        [
+        new([
             Updates.Text("Testing."),
             Updates.Call("c2", "bash", """{"command":"dotnet test"}"""),
             Updates.Finish(ChatFinishReason.ToolCalls),
         ]),
-        new(
-        [
-            Updates.Text("Done."),
-            Updates.Finish(),
-        ]),
+        new([Updates.Text("Done."), Updates.Finish()]),
     ]);
 
     OwnLoopAgent agent = new(
@@ -156,9 +187,13 @@ static async Task RunCheck4Async()
         {
             callbacks.Add($"name={context.Tool.Name} args={context.ArgsJson}");
             return ValueTask.FromResult(ApprovalDecision.AllowForSession);
-        });
+        }
+    );
 
-    PrintTranscript("approval-session", await CollectAsync(agent.RunAsync(ChatScripts.SystemUserMessage)));
+    PrintTranscript(
+        "approval-session",
+        await CollectAsync(agent.RunAsync(ChatScripts.SystemUserMessage))
+    );
     Console.WriteLine($"approval_callback_invocations={callbacks.Count}");
     foreach (string callback in callbacks)
     {
@@ -166,20 +201,14 @@ static async Task RunCheck4Async()
     }
 
     List<string> argumentCallbacks = [];
-    ScriptedChatClient argumentClient = new(
-    [
-        new(
-        [
+    ScriptedChatClient argumentClient = new([
+        new([
             Updates.Text("Running both."),
             Updates.Call("c1", "bash", """{"command":"rm -rf bin"}"""),
             Updates.Call("c2", "bash", """{"command":"dotnet build"}"""),
             Updates.Finish(ChatFinishReason.ToolCalls),
         ]),
-        new(
-        [
-            Updates.Text("I skipped the destructive one."),
-            Updates.Finish(),
-        ]),
+        new([Updates.Text("I skipped the destructive one."), Updates.Finish()]),
     ]);
 
     OwnLoopAgent argumentAgent = new(
@@ -190,10 +219,16 @@ static async Task RunCheck4Async()
         {
             argumentCallbacks.Add(context.ArgsJson);
             bool destructive = context.ArgsJson.Contains("rm -rf", StringComparison.Ordinal);
-            return ValueTask.FromResult(destructive ? ApprovalDecision.Deny : ApprovalDecision.AllowOnce);
-        });
+            return ValueTask.FromResult(
+                destructive ? ApprovalDecision.Deny : ApprovalDecision.AllowOnce
+            );
+        }
+    );
 
-    PrintTranscript("approval-per-arguments", await CollectAsync(argumentAgent.RunAsync(ChatScripts.SystemUserMessage)));
+    PrintTranscript(
+        "approval-per-arguments",
+        await CollectAsync(argumentAgent.RunAsync(ChatScripts.SystemUserMessage))
+    );
     Console.WriteLine($"argument_callback_invocations={argumentCallbacks.Count}");
 }
 
@@ -201,12 +236,18 @@ static async Task RunCheck5Async()
 {
     string path = Path.Combine(AppContext.BaseDirectory, "recorded-canonical.jsonl");
 
-    string first = await RunTranscriptAsync(new RecordingChatClient(new ScriptedChatClient(ChatScripts.Canonical()), path));
+    string first = await RunTranscriptAsync(
+        new RecordingChatClient(new ScriptedChatClient(ChatScripts.Canonical()), path)
+    );
     string second = await RunTranscriptAsync(new ReplayChatClient(path));
 
     Console.WriteLine($"recording_file={path}");
-    Console.WriteLine($"transcript_recorded_sha256={Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(first)))[..16]}");
-    Console.WriteLine($"transcript_replayed_sha256={Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(second)))[..16]}");
+    Console.WriteLine(
+        $"transcript_recorded_sha256={Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(first)))[..16]}"
+    );
+    Console.WriteLine(
+        $"transcript_replayed_sha256={Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(second)))[..16]}"
+    );
     Console.WriteLine($"replay_deterministic={(first == second).ToString().ToLowerInvariant()}");
 
     if (first != second)
@@ -221,17 +262,31 @@ static async Task RunCheck5Async()
 static async Task RunSplitAsync()
 {
     ScriptedChatClient client = new(ChatScripts.SplitArguments());
-    OwnLoopAgent agent = new(client, SpikeTool.All, SystemPrompt, (_, _) => ValueTask.FromResult(ApprovalDecision.AllowOnce));
-    IReadOnlyList<OwnLoopEvent> events = await CollectAsync(agent.RunAsync(ChatScripts.SystemUserMessage));
+    OwnLoopAgent agent = new(
+        client,
+        SpikeTool.All,
+        SystemPrompt,
+        (_, _) => ValueTask.FromResult(ApprovalDecision.AllowOnce)
+    );
+    IReadOnlyList<OwnLoopEvent> events = await CollectAsync(
+        agent.RunAsync(ChatScripts.SystemUserMessage)
+    );
     PrintTranscript("split-arguments", events);
 
-    bool merged = events.OfType<ToolCallResult>().Any(e => e.Output.Contains("src/Calculator.cs", StringComparison.Ordinal));
+    bool merged = events
+        .OfType<ToolCallResult>()
+        .Any(e => e.Output.Contains("src/Calculator.cs", StringComparison.Ordinal));
     Console.WriteLine($"split_arguments_assembled={merged.ToString().ToLowerInvariant()}");
 }
 
 static async Task<string> RunTranscriptAsync(IChatClient client)
 {
-    OwnLoopAgent agent = new(client, SpikeTool.All, SystemPrompt, (_, _) => ValueTask.FromResult(ApprovalDecision.AllowForSession));
+    OwnLoopAgent agent = new(
+        client,
+        SpikeTool.All,
+        SystemPrompt,
+        (_, _) => ValueTask.FromResult(ApprovalDecision.AllowForSession)
+    );
     StringBuilder transcript = new();
     await foreach (OwnLoopEvent item in agent.RunAsync(ChatScripts.SystemUserMessage))
     {

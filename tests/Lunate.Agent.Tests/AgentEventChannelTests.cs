@@ -17,7 +17,9 @@ public sealed class AgentEventChannelTests
         channel.Complete();
 
         List<AgentEvent> received = [];
-        await foreach (AgentEvent agentEvent in channel.ReadAllAsync(TestContext.Current.CancellationToken))
+        await foreach (
+            AgentEvent agentEvent in channel.ReadAllAsync(TestContext.Current.CancellationToken)
+        )
         {
             received.Add(agentEvent);
         }
@@ -26,7 +28,8 @@ public sealed class AgentEventChannelTests
             received,
             agentEvent => Assert.Same(started, agentEvent),
             agentEvent => Assert.Same(text, agentEvent),
-            agentEvent => Assert.Same(finished, agentEvent));
+            agentEvent => Assert.Same(finished, agentEvent)
+        );
     }
 
     [Fact]
@@ -45,7 +48,8 @@ public sealed class AgentEventChannelTests
 
                 channel.Complete();
             },
-            TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken
+        );
 
         await emitting.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
 
@@ -65,7 +69,9 @@ public sealed class AgentEventChannelTests
         channel.Complete();
 
         List<AgentEvent> received = [];
-        await foreach (AgentEvent agentEvent in channel.ReadAllAsync(TestContext.Current.CancellationToken))
+        await foreach (
+            AgentEvent agentEvent in channel.ReadAllAsync(TestContext.Current.CancellationToken)
+        )
         {
             received.Add(agentEvent);
         }

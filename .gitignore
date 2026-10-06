@@ -4,6 +4,9 @@ obj/
 artifacts/
 *.user
 
+# CSharpier cache
+.csharpier/
+
 # IDE
 .vs/
 .vscode/

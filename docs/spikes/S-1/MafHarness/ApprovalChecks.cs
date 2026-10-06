@@ -22,19 +22,35 @@ internal static class ApprovalChecks
         AIAgent agent = HarnessFactory.Create(client, approvalRequiredBash: true);
         AgentSession session = await agent.CreateSessionAsync();
 
-        List<AgentResponseUpdate> first = await HarnessRunner.CollectUpdatesAsync(agent, "build it", session);
+        List<AgentResponseUpdate> first = await HarnessRunner.CollectUpdatesAsync(
+            agent,
+            "build it",
+            session
+        );
         ToolApprovalRequestContent request = RequireApproval(first, "first bash call");
         FunctionCallContent call = (FunctionCallContent)request.ToolCall;
         Console.WriteLine($"approval_request_args={JsonSerializer.Serialize(call.Arguments)}");
 
         List<AgentResponseUpdate> second = await HarnessRunner.CollectUpdatesAsync(
             agent,
-            new ChatMessage(ChatRole.User, [request.CreateResponse(approved: true, reason: "spike allow once")]),
-            session);
-        Console.WriteLine($"allow_once_tool_executed={HarnessRunner.HasFunctionResult(second).ToString().ToLowerInvariant()}");
+            new ChatMessage(
+                ChatRole.User,
+                [request.CreateResponse(approved: true, reason: "spike allow once")]
+            ),
+            session
+        );
+        Console.WriteLine(
+            $"allow_once_tool_executed={HarnessRunner.HasFunctionResult(second).ToString().ToLowerInvariant()}"
+        );
 
-        List<AgentResponseUpdate> third = await HarnessRunner.CollectUpdatesAsync(agent, "test it", session);
-        Console.WriteLine($"allow_once_next_call_prompts_again={(HarnessRunner.FindApprovalRequest(third) != null).ToString().ToLowerInvariant()}");
+        List<AgentResponseUpdate> third = await HarnessRunner.CollectUpdatesAsync(
+            agent,
+            "test it",
+            session
+        );
+        Console.WriteLine(
+            $"allow_once_next_call_prompts_again={(HarnessRunner.FindApprovalRequest(third) != null).ToString().ToLowerInvariant()}"
+        );
     }
 
     private static async Task AlwaysToolForSessionAsync()
@@ -44,16 +60,32 @@ internal static class ApprovalChecks
         AIAgent agent = HarnessFactory.Create(client, approvalRequiredBash: true);
         AgentSession session = await agent.CreateSessionAsync();
 
-        List<AgentResponseUpdate> first = await HarnessRunner.CollectUpdatesAsync(agent, "build it", session);
+        List<AgentResponseUpdate> first = await HarnessRunner.CollectUpdatesAsync(
+            agent,
+            "build it",
+            session
+        );
         ToolApprovalRequestContent request = RequireApproval(first, "first bash call");
         _ = await HarnessRunner.CollectUpdatesAsync(
             agent,
-            new ChatMessage(ChatRole.User, [request.CreateAlwaysApproveToolResponse(reason: "spike always tool")]),
-            session);
+            new ChatMessage(
+                ChatRole.User,
+                [request.CreateAlwaysApproveToolResponse(reason: "spike always tool")]
+            ),
+            session
+        );
 
-        List<AgentResponseUpdate> third = await HarnessRunner.CollectUpdatesAsync(agent, "test it", session);
-        Console.WriteLine($"always_tool_second_call_prompts={(HarnessRunner.FindApprovalRequest(third) != null).ToString().ToLowerInvariant()}");
-        Console.WriteLine($"always_tool_second_call_executed={HarnessRunner.HasFunctionResult(third).ToString().ToLowerInvariant()}");
+        List<AgentResponseUpdate> third = await HarnessRunner.CollectUpdatesAsync(
+            agent,
+            "test it",
+            session
+        );
+        Console.WriteLine(
+            $"always_tool_second_call_prompts={(HarnessRunner.FindApprovalRequest(third) != null).ToString().ToLowerInvariant()}"
+        );
+        Console.WriteLine(
+            $"always_tool_second_call_executed={HarnessRunner.HasFunctionResult(third).ToString().ToLowerInvariant()}"
+        );
     }
 
     private static async Task AlwaysToolWithArgumentsForSessionAsync()
@@ -63,19 +95,45 @@ internal static class ApprovalChecks
         AIAgent agent = HarnessFactory.Create(client, approvalRequiredBash: true);
         AgentSession session = await agent.CreateSessionAsync();
 
-        List<AgentResponseUpdate> first = await HarnessRunner.CollectUpdatesAsync(agent, "build it", session);
+        List<AgentResponseUpdate> first = await HarnessRunner.CollectUpdatesAsync(
+            agent,
+            "build it",
+            session
+        );
         ToolApprovalRequestContent request = RequireApproval(first, "first bash call");
         _ = await HarnessRunner.CollectUpdatesAsync(
             agent,
-            new ChatMessage(ChatRole.User, [request.CreateAlwaysApproveToolWithArgumentsResponse(reason: "spike always tool+args")]),
-            session);
+            new ChatMessage(
+                ChatRole.User,
+                [
+                    request.CreateAlwaysApproveToolWithArgumentsResponse(
+                        reason: "spike always tool+args"
+                    ),
+                ]
+            ),
+            session
+        );
 
-        List<AgentResponseUpdate> sameArgs = await HarnessRunner.CollectUpdatesAsync(agent, "build it again", session);
-        Console.WriteLine($"always_tool_with_args_same_args_prompts={(HarnessRunner.FindApprovalRequest(sameArgs) != null).ToString().ToLowerInvariant()}");
-        Console.WriteLine($"always_tool_with_args_same_args_executed={HarnessRunner.HasFunctionResult(sameArgs).ToString().ToLowerInvariant()}");
+        List<AgentResponseUpdate> sameArgs = await HarnessRunner.CollectUpdatesAsync(
+            agent,
+            "build it again",
+            session
+        );
+        Console.WriteLine(
+            $"always_tool_with_args_same_args_prompts={(HarnessRunner.FindApprovalRequest(sameArgs) != null).ToString().ToLowerInvariant()}"
+        );
+        Console.WriteLine(
+            $"always_tool_with_args_same_args_executed={HarnessRunner.HasFunctionResult(sameArgs).ToString().ToLowerInvariant()}"
+        );
 
-        List<AgentResponseUpdate> differentArgs = await HarnessRunner.CollectUpdatesAsync(agent, "test it", session);
-        Console.WriteLine($"always_tool_with_args_different_args_prompts={(HarnessRunner.FindApprovalRequest(differentArgs) != null).ToString().ToLowerInvariant()}");
+        List<AgentResponseUpdate> differentArgs = await HarnessRunner.CollectUpdatesAsync(
+            agent,
+            "test it",
+            session
+        );
+        Console.WriteLine(
+            $"always_tool_with_args_different_args_prompts={(HarnessRunner.FindApprovalRequest(differentArgs) != null).ToString().ToLowerInvariant()}"
+        );
     }
 
     private static async Task AutoRulePerArgumentsAsync()
@@ -85,25 +143,57 @@ internal static class ApprovalChecks
         {
             AutoApprovalRules =
             [
-                context => ValueTask.FromResult(
-                    JsonSerializer.Serialize(context.FunctionCallContent.Arguments).Contains("dotnet", StringComparison.Ordinal)),
+                context =>
+                    ValueTask.FromResult(
+                        JsonSerializer
+                            .Serialize(context.FunctionCallContent.Arguments)
+                            .Contains("dotnet", StringComparison.Ordinal)
+                    ),
             ],
         };
 
         ScriptedChatClient client = ApprovalScript("dotnet build", "rm -rf bin");
-        AIAgent agent = HarnessFactory.Create(client, approvalRequiredBash: true, toolApprovalOptions: approvalOptions);
+        AIAgent agent = HarnessFactory.Create(
+            client,
+            approvalRequiredBash: true,
+            toolApprovalOptions: approvalOptions
+        );
         AgentSession session = await agent.CreateSessionAsync();
 
-        List<AgentResponseUpdate> safeRun = await HarnessRunner.CollectUpdatesAsync(agent, "build it", session);
-        Console.WriteLine($"auto_rule_safe_command_prompts={(HarnessRunner.FindApprovalRequest(safeRun) != null).ToString().ToLowerInvariant()}");
-        Console.WriteLine($"auto_rule_safe_command_executed={HarnessRunner.HasFunctionResult(safeRun).ToString().ToLowerInvariant()}");
+        List<AgentResponseUpdate> safeRun = await HarnessRunner.CollectUpdatesAsync(
+            agent,
+            "build it",
+            session
+        );
+        Console.WriteLine(
+            $"auto_rule_safe_command_prompts={(HarnessRunner.FindApprovalRequest(safeRun) != null).ToString().ToLowerInvariant()}"
+        );
+        Console.WriteLine(
+            $"auto_rule_safe_command_executed={HarnessRunner.HasFunctionResult(safeRun).ToString().ToLowerInvariant()}"
+        );
 
-        List<AgentResponseUpdate> destructiveRun = await HarnessRunner.CollectUpdatesAsync(agent, "clean it", session);
-        ToolApprovalRequestContent request = RequireApproval(destructiveRun, "destructive bash call");
+        List<AgentResponseUpdate> destructiveRun = await HarnessRunner.CollectUpdatesAsync(
+            agent,
+            "clean it",
+            session
+        );
+        ToolApprovalRequestContent request = RequireApproval(
+            destructiveRun,
+            "destructive bash call"
+        );
         _ = await HarnessRunner.CollectUpdatesAsync(
             agent,
-            new ChatMessage(ChatRole.User, [request.CreateResponse(approved: false, reason: "spike denies destructive command")]),
-            session);
+            new ChatMessage(
+                ChatRole.User,
+                [
+                    request.CreateResponse(
+                        approved: false,
+                        reason: "spike denies destructive command"
+                    ),
+                ]
+            ),
+            session
+        );
         Console.WriteLine("auto_rule_destructive_command_prompts=true");
     }
 
@@ -114,24 +204,30 @@ internal static class ApprovalChecks
         foreach (string command in commands)
         {
             string callId = $"call_bash_{index}";
-            turns.Add(new(
-            [
-                Updates.Text($"Running command {index}."),
-                Updates.Call(callId, "bash", JsonSerializer.Serialize(new Dictionary<string, string> { ["command"] = command })),
-                Updates.Finish(ChatFinishReason.ToolCalls),
-            ]));
-            turns.Add(new(
-            [
-                Updates.Text($"Command {index} done."),
-                Updates.Finish(),
-            ]));
+            turns.Add(
+                new([
+                    Updates.Text($"Running command {index}."),
+                    Updates.Call(
+                        callId,
+                        "bash",
+                        JsonSerializer.Serialize(
+                            new Dictionary<string, string> { ["command"] = command }
+                        )
+                    ),
+                    Updates.Finish(ChatFinishReason.ToolCalls),
+                ])
+            );
+            turns.Add(new([Updates.Text($"Command {index} done."), Updates.Finish()]));
             index++;
         }
 
         return new ScriptedChatClient(turns);
     }
 
-    private static ToolApprovalRequestContent RequireApproval(IReadOnlyList<AgentResponseUpdate> updates, string what) =>
+    private static ToolApprovalRequestContent RequireApproval(
+        IReadOnlyList<AgentResponseUpdate> updates,
+        string what
+    ) =>
         HarnessRunner.FindApprovalRequest(updates)
         ?? throw new InvalidOperationException($"Expected an approval request for {what}.");
 }

@@ -29,38 +29,76 @@ public sealed class HarnessEventMapper
                     {
                         this._textStarted = true;
                         this._textMessageId = update.MessageId ?? $"m{++this._messageCounter}";
-                        this._events.Add(new MappedEvent("text_message_start", this._textMessageId));
+                        this._events.Add(
+                            new MappedEvent("text_message_start", this._textMessageId)
+                        );
                     }
 
-                    this._events.Add(new MappedEvent("text_message_content", $"{this._textMessageId} {JsonSerializer.Serialize(text.Text)}"));
+                    this._events.Add(
+                        new MappedEvent(
+                            "text_message_content",
+                            $"{this._textMessageId} {JsonSerializer.Serialize(text.Text)}"
+                        )
+                    );
                     break;
 
                 case FunctionCallContent call:
                     this.CloseTextMessage();
-                    this._events.Add(new MappedEvent("tool_call_start", $"{call.CallId} {call.Name}"));
-                    this._events.Add(new MappedEvent("tool_call_args", $"{call.CallId} {JsonSerializer.Serialize(call.Arguments)}"));
+                    this._events.Add(
+                        new MappedEvent("tool_call_start", $"{call.CallId} {call.Name}")
+                    );
+                    this._events.Add(
+                        new MappedEvent(
+                            "tool_call_args",
+                            $"{call.CallId} {JsonSerializer.Serialize(call.Arguments)}"
+                        )
+                    );
                     this._events.Add(new MappedEvent("tool_call_end", call.CallId ?? "-"));
                     break;
 
                 case FunctionResultContent result:
                     this.CloseTextMessage();
-                    this._events.Add(new MappedEvent("tool_call_result", $"{result.CallId} {JsonSerializer.Serialize(result.Result)}"));
+                    this._events.Add(
+                        new MappedEvent(
+                            "tool_call_result",
+                            $"{result.CallId} {JsonSerializer.Serialize(result.Result)}"
+                        )
+                    );
                     break;
 
-                case ToolApprovalRequestContent request when request.ToolCall is FunctionCallContent call:
-                    this._events.Add(new MappedEvent("approval_requested", $"{call.CallId} {call.Name} {JsonSerializer.Serialize(call.Arguments)}"));
+                case ToolApprovalRequestContent request
+                    when request.ToolCall is FunctionCallContent call:
+                    this._events.Add(
+                        new MappedEvent(
+                            "approval_requested",
+                            $"{call.CallId} {call.Name} {JsonSerializer.Serialize(call.Arguments)}"
+                        )
+                    );
                     break;
 
-                case ToolApprovalResponseContent response when response.ToolCall is FunctionCallContent call:
-                    this._events.Add(new MappedEvent("approval_response", $"{call.CallId} approved={response.Approved.ToString().ToLowerInvariant()}"));
+                case ToolApprovalResponseContent response
+                    when response.ToolCall is FunctionCallContent call:
+                    this._events.Add(
+                        new MappedEvent(
+                            "approval_response",
+                            $"{call.CallId} approved={response.Approved.ToString().ToLowerInvariant()}"
+                        )
+                    );
                     break;
 
                 case UsageContent usage:
-                    this._events.Add(new MappedEvent("usage_updated", $"in={usage.Details?.InputTokenCount?.ToString() ?? "-"} out={usage.Details?.OutputTokenCount?.ToString() ?? "-"}"));
+                    this._events.Add(
+                        new MappedEvent(
+                            "usage_updated",
+                            $"in={usage.Details?.InputTokenCount?.ToString() ?? "-"} out={usage.Details?.OutputTokenCount?.ToString() ?? "-"}"
+                        )
+                    );
                     break;
 
                 case ErrorContent error:
-                    this._events.Add(new MappedEvent("error", JsonSerializer.Serialize(error.Message)));
+                    this._events.Add(
+                        new MappedEvent("error", JsonSerializer.Serialize(error.Message))
+                    );
                     break;
 
                 default:

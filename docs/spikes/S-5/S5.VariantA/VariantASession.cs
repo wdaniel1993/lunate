@@ -23,7 +23,8 @@ public sealed class VariantASession : ISession
     private readonly FakeTerminal _terminal;
     private readonly LiveAreaState _state = new();
     private readonly Channel<LiveInput> _input = Channel.CreateUnbounded<LiveInput>(
-        new UnboundedChannelOptions { SingleReader = true });
+        new UnboundedChannelOptions { SingleReader = true }
+    );
     private readonly CancellationTokenSource _cts = new();
     private readonly ITimer _frameClock;
     private readonly Task _loop;
@@ -39,7 +40,8 @@ public sealed class VariantASession : ISession
             _ => _input.Writer.TryWrite(new LiveInput.Frame()),
             state: null,
             dueTime: Scenario.FrameInterval,
-            period: Scenario.FrameInterval);
+            period: Scenario.FrameInterval
+        );
         _loop = Task.Run(RunAsync);
     }
 
@@ -71,7 +73,9 @@ public sealed class VariantASession : ISession
 
     public ValueTask DrainAsync()
     {
-        var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var completion = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously
+        );
         if (!_input.Writer.TryWrite(new LiveInput.Drain(completion)))
         {
             completion.TrySetResult();
@@ -83,7 +87,8 @@ public sealed class VariantASession : ISession
     public IReadOnlyList<string> Snapshot() =>
         LiveAreaRenderer.Render(
             _state.Capture(Spinner.Glyph(_state.ToolRunning, _state.FrameNumber)),
-            _terminal.Width);
+            _terminal.Width
+        );
 
     public void Dispose()
     {
@@ -100,9 +105,7 @@ public sealed class VariantASession : ISession
         {
             _loop.Wait(TimeSpan.FromSeconds(1));
         }
-        catch (AggregateException)
-        {
-        }
+        catch (AggregateException) { }
     }
 
     private TimeSpan Now => _time.GetUtcNow() - _start;
@@ -119,9 +122,7 @@ public sealed class VariantASession : ISession
                 }
             }
         }
-        catch (OperationCanceledException)
-        {
-        }
+        catch (OperationCanceledException) { }
     }
 
     private void Apply(LiveInput input)

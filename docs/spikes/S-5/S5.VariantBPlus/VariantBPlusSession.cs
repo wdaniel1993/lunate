@@ -28,35 +28,50 @@ public sealed class VariantBPlusSession : ISession
         _scheduler = scheduler;
         _terminal = terminal;
         _start = scheduler.Now;
-        _approval = new ApprovalViewModel(decision => _inputs.OnNext(new LiveInput.Approval(decision)));
+        _approval = new ApprovalViewModel(decision =>
+            _inputs.OnNext(new LiveInput.Approval(decision))
+        );
 
         var states = _inputs
-            .Scan(_state, (state, input) =>
-            {
-                state.Apply(input);
-                return state;
-            })
+            .Scan(
+                _state,
+                (state, input) =>
+                {
+                    state.Apply(input);
+                    return state;
+                }
+            )
             .Replay(1)
             .RefCount();
 
         _subscriptions.Add(states.Subscribe(SyncViewModels));
-        _subscriptions.Add(_inputs.OfType<LiveInput.Event>()
-            .Select(e => e.Value)
-            .OfType<AgentEvent.ToolFinished>()
-            .Subscribe(finished => _terminal.WriteBlock(SpectreBlocks.ToolResult(finished))));
+        _subscriptions.Add(
+            _inputs
+                .OfType<LiveInput.Event>()
+                .Select(e => e.Value)
+                .OfType<AgentEvent.ToolFinished>()
+                .Subscribe(finished => _terminal.WriteBlock(SpectreBlocks.ToolResult(finished)))
+        );
 
-        _subscriptions.Add(_footer.Changed
-            .Where(args => args.PropertyName == nameof(StatusFooterViewModel.Text))
-            .Subscribe(_ => RequestRender()));
-        _subscriptions.Add(_approval.Changed
-            .Where(args => args.PropertyName == nameof(ApprovalViewModel.Prompt))
-            .Subscribe(_ => RequestRender()));
+        _subscriptions.Add(
+            _footer
+                .Changed.Where(args => args.PropertyName == nameof(StatusFooterViewModel.Text))
+                .Subscribe(_ => RequestRender())
+        );
+        _subscriptions.Add(
+            _approval
+                .Changed.Where(args => args.PropertyName == nameof(ApprovalViewModel.Prompt))
+                .Subscribe(_ => RequestRender())
+        );
 
         var pulse = states
             .Select(_ => 0L)
-            .Merge(Observable.Interval(Scenario.FrameInterval, scheduler)
-                .Where(_ => _state.ToolRunning || _state.PendingApprovalText is not null)
-                .Select(_ => 0L))
+            .Merge(
+                Observable
+                    .Interval(Scenario.FrameInterval, scheduler)
+                    .Where(_ => _state.ToolRunning || _state.PendingApprovalText is not null)
+                    .Select(_ => 0L)
+            )
             .Sample(Scenario.FrameInterval, scheduler);
 
         _subscriptions.Add(pulse.Subscribe(_ => RequestRender()));

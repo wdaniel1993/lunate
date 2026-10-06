@@ -5,23 +5,29 @@ namespace Spike.Shared;
 public sealed record PromptSurface(
     int InstructionsChars,
     int SystemMessageChars,
-    IReadOnlyList<(string Name, int Chars)> Tools)
+    IReadOnlyList<(string Name, int Chars)> Tools
+)
 {
-    public int TotalChars => this.InstructionsChars + this.SystemMessageChars + this.Tools.Sum(t => t.Chars);
+    public int TotalChars =>
+        this.InstructionsChars + this.SystemMessageChars + this.Tools.Sum(t => t.Chars);
 
     public int EstimatedTokens => (this.TotalChars + 3) / 4;
 
     public static PromptSurface Measure(RecordedRequest request)
     {
         int instructions = request.Options?.Instructions?.Length ?? 0;
-        int system = request.Messages
-            .Where(m => m.Role == ChatRole.System)
-            .Sum(m => m.Text.Length);
+        int system = request.Messages.Where(m => m.Role == ChatRole.System).Sum(m => m.Text.Length);
 
         List<(string, int)> tools = [];
-        foreach (AIFunctionDeclaration tool in (request.Options?.Tools ?? []).OfType<AIFunctionDeclaration>())
+        foreach (
+            AIFunctionDeclaration tool in (
+                request.Options?.Tools ?? []
+            ).OfType<AIFunctionDeclaration>()
+        )
         {
-            tools.Add((tool.Name, (tool.Description?.Length ?? 0) + tool.JsonSchema.GetRawText().Length));
+            tools.Add(
+                (tool.Name, (tool.Description?.Length ?? 0) + tool.JsonSchema.GetRawText().Length)
+            );
         }
 
         return new PromptSurface(instructions, system, tools);

@@ -4,15 +4,21 @@ internal static class Interactive
 {
     public static int Run()
     {
-        Console.WriteLine("interactive: Console.ReadKey(intercept: true); press keys, Esc or Ctrl+C exits");
+        Console.WriteLine(
+            "interactive: Console.ReadKey(intercept: true); press keys, Esc or Ctrl+C exits"
+        );
         try
         {
             while (true)
             {
                 var info = Console.ReadKey(true);
                 Console.WriteLine(Describe(info));
-                if (info.Key == ConsoleKey.Escape
-                    || (info.Key == ConsoleKey.C && info.Modifiers.HasFlag(ConsoleModifiers.Control)))
+                if (
+                    info.Key == ConsoleKey.Escape
+                    || (
+                        info.Key == ConsoleKey.C && info.Modifiers.HasFlag(ConsoleModifiers.Control)
+                    )
+                )
                 {
                     break;
                 }

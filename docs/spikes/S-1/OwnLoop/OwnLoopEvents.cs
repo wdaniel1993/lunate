@@ -33,7 +33,8 @@ public sealed record TextMessageStart(string MessageId) : OwnLoopEvent
 
 public sealed record TextMessageContent(string MessageId, string Delta) : OwnLoopEvent
 {
-    public override string Line => $"text_message_content {this.MessageId} {JsonSerializer.Serialize(this.Delta)}";
+    public override string Line =>
+        $"text_message_content {this.MessageId} {JsonSerializer.Serialize(this.Delta)}";
 }
 
 public sealed record TextMessageEnd(string MessageId) : OwnLoopEvent
@@ -58,7 +59,8 @@ public sealed record ToolCallEnd(string CallId) : OwnLoopEvent
 
 public sealed record ToolCallResult(string CallId, string Output, bool IsError) : OwnLoopEvent
 {
-    public override string Line => $"tool_call_result {this.CallId} is_error={this.IsError.ToString().ToLowerInvariant()} {JsonSerializer.Serialize(this.Output)}";
+    public override string Line =>
+        $"tool_call_result {this.CallId} is_error={this.IsError.ToString().ToLowerInvariant()} {JsonSerializer.Serialize(this.Output)}";
 }
 
 public sealed record ApprovalRequested(string CallId, string Name, string ArgsJson) : OwnLoopEvent
@@ -78,7 +80,8 @@ public sealed record SteeringInjected(string Text) : OwnLoopEvent
 
 public sealed record UsageUpdated(long? InputTokens, long? OutputTokens) : OwnLoopEvent
 {
-    public override string Line => $"usage_updated in={this.InputTokens?.ToString() ?? "-"} out={this.OutputTokens?.ToString() ?? "-"}";
+    public override string Line =>
+        $"usage_updated in={this.InputTokens?.ToString() ?? "-"} out={this.OutputTokens?.ToString() ?? "-"}";
 }
 
 public sealed record RunFinished(RunStopReason Reason) : OwnLoopEvent

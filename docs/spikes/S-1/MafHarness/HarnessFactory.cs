@@ -21,13 +21,18 @@ Tools: read, write, edit, bash.
         bool approvalRequiredBash = false,
         bool defaultHarnessInstructions = false,
         ToolApprovalAgentOptions? toolApprovalOptions = null,
-        IReadOnlyList<SpikeTool>? toolsOverride = null)
+        IReadOnlyList<SpikeTool>? toolsOverride = null
+    )
     {
         List<AITool> tools = [];
         foreach (SpikeTool tool in toolsOverride ?? SpikeTool.All)
         {
             AIFunction function = new SpikeAIFunction(tool);
-            tools.Add(approvalRequiredBash && tool.Name == "bash" ? new ApprovalRequiredAIFunction(function) : function);
+            tools.Add(
+                approvalRequiredBash && tool.Name == "bash"
+                    ? new ApprovalRequiredAIFunction(function)
+                    : function
+            );
         }
 
         HarnessAgentOptions options = new()
@@ -41,11 +46,7 @@ Tools: read, write, edit, bash.
             DisableAgentSkillsProvider = true,
             DisableOpenTelemetry = true,
             ToolApprovalAgentOptions = toolApprovalOptions,
-            ChatOptions = new ChatOptions
-            {
-                Instructions = SystemPrompt,
-                Tools = tools,
-            },
+            ChatOptions = new ChatOptions { Instructions = SystemPrompt, Tools = tools },
         };
 
         if (!defaultHarnessInstructions)
@@ -64,16 +65,24 @@ internal static class HarnessRunner
         string input,
         AgentSession? session,
         List<string>? diagnostics = null,
-        CancellationToken cancellationToken = default) =>
-        await CollectCoreAsync(agent.RunStreamingAsync(input, session, cancellationToken: cancellationToken), diagnostics);
+        CancellationToken cancellationToken = default
+    ) =>
+        await CollectCoreAsync(
+            agent.RunStreamingAsync(input, session, cancellationToken: cancellationToken),
+            diagnostics
+        );
 
     public static async Task<List<AgentResponseUpdate>> CollectUpdatesAsync(
         AIAgent agent,
         ChatMessage message,
         AgentSession? session,
         List<string>? diagnostics = null,
-        CancellationToken cancellationToken = default) =>
-        await CollectCoreAsync(agent.RunStreamingAsync(message, session, cancellationToken: cancellationToken), diagnostics);
+        CancellationToken cancellationToken = default
+    ) =>
+        await CollectCoreAsync(
+            agent.RunStreamingAsync(message, session, cancellationToken: cancellationToken),
+            diagnostics
+        );
 
     public static IReadOnlyList<MappedEvent> MapUpdates(IReadOnlyList<AgentResponseUpdate> updates)
     {
@@ -88,7 +97,9 @@ internal static class HarnessRunner
         return events;
     }
 
-    public static ToolApprovalRequestContent? FindApprovalRequest(IReadOnlyList<AgentResponseUpdate> updates)
+    public static ToolApprovalRequestContent? FindApprovalRequest(
+        IReadOnlyList<AgentResponseUpdate> updates
+    )
     {
         foreach (AgentResponseUpdate update in updates)
         {
@@ -117,7 +128,8 @@ internal static class HarnessRunner
 
     private static async Task<List<AgentResponseUpdate>> CollectCoreAsync(
         IAsyncEnumerable<AgentResponseUpdate> updates,
-        List<string>? diagnostics)
+        List<string>? diagnostics
+    )
     {
         List<AgentResponseUpdate> collected = [];
         try

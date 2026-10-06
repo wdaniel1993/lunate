@@ -7,14 +7,18 @@ internal static class EditScript
     private const string StartMarker = "// <" + ErrorMarker + ">";
     private const string EndMarker = "// </" + ErrorMarker + ">";
 
-    private const string ErrorBlock = StartMarker + "\n"
+    private const string ErrorBlock =
+        StartMarker
+        + "\n"
         + "internal static class ProbeError\n"
         + "{\n"
         + "    public static int Broken() => \"not an int\";\n"
         + "}\n"
-        + EndMarker + "\n";
+        + EndMarker
+        + "\n";
 
-    public static bool HasError(string text) => text.Contains(StartMarker, StringComparison.Ordinal);
+    public static bool HasError(string text) =>
+        text.Contains(StartMarker, StringComparison.Ordinal);
 
     public static string InjectError(string text) => text + ErrorBlock;
 
@@ -37,5 +41,6 @@ internal static class EditScript
         return text.Remove(start, removeThrough - start);
     }
 
-    public static string Toggle(string text) => HasError(text) ? RemoveError(text) : InjectError(text);
+    public static string Toggle(string text) =>
+        HasError(text) ? RemoveError(text) : InjectError(text);
 }

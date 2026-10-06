@@ -59,7 +59,8 @@ public sealed class ModelCatalogTests
                     { "id": "gpt-4o-mini", "provider": "openai", "endpoint": "https://example.test/v1", "contextWindow": 42, "supportsTools": false }
                   ]
                 }
-                """);
+                """
+            );
 
             ModelCatalog catalog = ModelCatalog.Load(userFile);
 
@@ -93,7 +94,8 @@ public sealed class ModelCatalogTests
                     { "id": "local-llama", "provider": "openai", "endpoint": "http://localhost:11434/v1", "contextWindow": 8192, "supportsTools": false }
                   ]
                 }
-                """);
+                """
+            );
 
             ModelCatalog catalog = ModelCatalog.Load(userFile);
 
@@ -128,9 +130,12 @@ public sealed class ModelCatalogTests
                     { "id": "gpt-4o-mini", "provider": "openai", "endpoint": null, "contextWindow": 2, "supportsTools": true }
                   ]
                 }
-                """);
+                """
+            );
 
-            InvalidDataException exception = Assert.Throws<InvalidDataException>(() => ModelCatalog.Load(userFile));
+            InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+                ModelCatalog.Load(userFile)
+            );
 
             Assert.Contains("gpt-4o-mini", exception.Message, StringComparison.Ordinal);
         }
@@ -146,7 +151,9 @@ public sealed class ModelCatalogTests
         string directory = CreateTempDirectory();
         try
         {
-            ModelCatalog catalog = ModelCatalog.Load(Path.Combine(directory, "does-not-exist.json"));
+            ModelCatalog catalog = ModelCatalog.Load(
+                Path.Combine(directory, "does-not-exist.json")
+            );
 
             Assert.Equal(4, catalog.Models.Count);
             Assert.Contains(catalog.Models, model => model.Id == "gpt-4o-mini");
@@ -179,14 +186,19 @@ public sealed class ModelCatalogTests
     [Theory]
     [InlineData("""{ "schemaVersion": 2, "models": [] }""", "2")]
     [InlineData("""{ "models": [] }""", "missing")]
-    public void Load_with_unsupported_schema_version_throws_naming_the_version(string json, string expectedVersion)
+    public void Load_with_unsupported_schema_version_throws_naming_the_version(
+        string json,
+        string expectedVersion
+    )
     {
         string directory = CreateTempDirectory();
         try
         {
             string userFile = WriteUserFile(directory, json);
 
-            InvalidDataException exception = Assert.Throws<InvalidDataException>(() => ModelCatalog.Load(userFile));
+            InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+                ModelCatalog.Load(userFile)
+            );
 
             Assert.Contains(expectedVersion, exception.Message, StringComparison.Ordinal);
         }
@@ -198,7 +210,10 @@ public sealed class ModelCatalogTests
 
     private static string CreateTempDirectory()
     {
-        string directory = Path.Combine(Path.GetTempPath(), $"lunate-model-catalog-{Guid.NewGuid():N}");
+        string directory = Path.Combine(
+            Path.GetTempPath(),
+            $"lunate-model-catalog-{Guid.NewGuid():N}"
+        );
         Directory.CreateDirectory(directory);
         return directory;
     }

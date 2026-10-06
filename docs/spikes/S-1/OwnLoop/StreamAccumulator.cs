@@ -14,9 +14,10 @@ internal sealed class AccumulatedCall
 
     public IDictionary<string, object?>? CompleteArguments { get; set; }
 
-    public string ArgumentsJson => this.CompleteArguments is not null
-        ? JsonSerializer.Serialize(this.CompleteArguments)
-        : this.RawArguments.ToString();
+    public string ArgumentsJson =>
+        this.CompleteArguments is not null
+            ? JsonSerializer.Serialize(this.CompleteArguments)
+            : this.RawArguments.ToString();
 
     public bool TryGetArguments(out JsonElement arguments, out string? error)
     {
@@ -76,7 +77,9 @@ internal sealed class StreamAccumulator(int turn)
                     AccumulatedCall state = this.GetOrAdd(call);
                     if (call.Arguments is { Count: > 0 } arguments)
                     {
-                        if (arguments.TryGetValue("$raw", out object? raw) && raw is string fragment)
+                        if (
+                            arguments.TryGetValue("$raw", out object? raw) && raw is string fragment
+                        )
                         {
                             state.RawArguments.Append(fragment);
                         }
@@ -89,7 +92,12 @@ internal sealed class StreamAccumulator(int turn)
                     break;
 
                 case UsageContent usage:
-                    this._events.Add(new UsageUpdated(usage.Details?.InputTokenCount, usage.Details?.OutputTokenCount));
+                    this._events.Add(
+                        new UsageUpdated(
+                            usage.Details?.InputTokenCount,
+                            usage.Details?.OutputTokenCount
+                        )
+                    );
                     break;
             }
         }
@@ -121,10 +129,17 @@ internal sealed class StreamAccumulator(int turn)
 
         foreach (AccumulatedCall call in this.CompleteCalls())
         {
-            contents.Add(new FunctionCallContent(
-                call.CallId,
-                call.Name,
-                call.CompleteArguments ?? new Dictionary<string, object?> { ["$raw"] = call.RawArguments.ToString() }));
+            contents.Add(
+                new FunctionCallContent(
+                    call.CallId,
+                    call.Name,
+                    call.CompleteArguments
+                        ?? new Dictionary<string, object?>
+                        {
+                            ["$raw"] = call.RawArguments.ToString(),
+                        }
+                )
+            );
         }
 
         return new ChatMessage(ChatRole.Assistant, contents);

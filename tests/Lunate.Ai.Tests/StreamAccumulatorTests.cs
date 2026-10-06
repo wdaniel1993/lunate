@@ -8,18 +8,27 @@ public sealed class StreamAccumulatorTests
     [Fact]
     public async Task GetStreamingResponseAsync_assembles_fragmented_arguments_into_one_complete_call()
     {
-        var provider = new ScriptedChatClient()
-            .Enqueue(
-                new ChatResponseUpdate(ChatRole.Assistant, [new TextContent("Checking. ")]) { ModelId = "claude-sonnet-5-5" },
-                FragmentUpdate("call-1", "list_files", "{\"path\":"),
-                FragmentUpdate("call-1", string.Empty, " \"a.txt\"}"),
-                new ChatResponseUpdate(ChatRole.Assistant, []) { ModelId = "claude-sonnet-5-5", FinishReason = ChatFinishReason.ToolCalls });
+        var provider = new ScriptedChatClient().Enqueue(
+            new ChatResponseUpdate(ChatRole.Assistant, [new TextContent("Checking. ")])
+            {
+                ModelId = "claude-sonnet-5-5",
+            },
+            FragmentUpdate("call-1", "list_files", "{\"path\":"),
+            FragmentUpdate("call-1", string.Empty, " \"a.txt\"}"),
+            new ChatResponseUpdate(ChatRole.Assistant, [])
+            {
+                ModelId = "claude-sonnet-5-5",
+                FinishReason = ChatFinishReason.ToolCalls,
+            }
+        );
         var accumulator = new StreamAccumulator(provider);
 
         List<ChatResponseUpdate> updates = await Stream(accumulator);
 
         Assert.Equal("Checking. ", string.Concat(updates.Select(update => update.Text)));
-        FunctionCallContent call = Assert.Single(updates.SelectMany(update => update.Contents).OfType<FunctionCallContent>());
+        FunctionCallContent call = Assert.Single(
+            updates.SelectMany(update => update.Contents).OfType<FunctionCallContent>()
+        );
         Assert.Equal("call-1", call.CallId);
         Assert.Equal("list_files", call.Name);
         Assert.Equal("a.txt", Unwrap(call.Arguments!["path"]));
@@ -31,7 +40,14 @@ public sealed class StreamAccumulatorTests
     {
         var complete = new ChatResponseUpdate(
             ChatRole.Assistant,
-            [new FunctionCallContent("call-1", "list_files", new Dictionary<string, object?> { ["path"] = "a.txt" })])
+            [
+                new FunctionCallContent(
+                    "call-1",
+                    "list_files",
+                    new Dictionary<string, object?> { ["path"] = "a.txt" }
+                ),
+            ]
+        )
         {
             ModelId = "gpt-4o-mini",
         };
@@ -46,17 +62,20 @@ public sealed class StreamAccumulatorTests
     [Fact]
     public async Task GetStreamingResponseAsync_merges_multiple_concurrent_calls_independently()
     {
-        var provider = new ScriptedChatClient()
-            .Enqueue(
-                FragmentUpdate("call-a", "read", "{\"path\":\"a"),
-                FragmentUpdate("call-b", "write", "{\"path\":\"b"),
-                FragmentUpdate("call-a", string.Empty, ".txt\"}"),
-                FragmentUpdate("call-b", string.Empty, ".txt\"}"));
+        var provider = new ScriptedChatClient().Enqueue(
+            FragmentUpdate("call-a", "read", "{\"path\":\"a"),
+            FragmentUpdate("call-b", "write", "{\"path\":\"b"),
+            FragmentUpdate("call-a", string.Empty, ".txt\"}"),
+            FragmentUpdate("call-b", string.Empty, ".txt\"}")
+        );
         var accumulator = new StreamAccumulator(provider);
 
         List<ChatResponseUpdate> updates = await Stream(accumulator);
 
-        FunctionCallContent[] calls = [.. updates.SelectMany(update => update.Contents).OfType<FunctionCallContent>()];
+        FunctionCallContent[] calls =
+        [
+            .. updates.SelectMany(update => update.Contents).OfType<FunctionCallContent>(),
+        ];
         Assert.Equal(2, calls.Length);
         Assert.Equal("call-a", calls[0].CallId);
         Assert.Equal("read", calls[0].Name);
@@ -69,13 +88,22 @@ public sealed class StreamAccumulatorTests
     [Fact]
     public async Task GetStreamingResponseAsync_keeps_interleaved_text_updates_in_order()
     {
-        var provider = new ScriptedChatClient()
-            .Enqueue(
-                new ChatResponseUpdate(ChatRole.Assistant, [new TextContent("first ")]) { ModelId = "gpt-4o-mini" },
-                FragmentUpdate("call-1", "list_files", "{\"path\":\"a"),
-                new ChatResponseUpdate(ChatRole.Assistant, [new TextContent("second ")]) { ModelId = "gpt-4o-mini" },
-                FragmentUpdate("call-1", string.Empty, ".txt\"}"),
-                new ChatResponseUpdate(ChatRole.Assistant, [new TextContent("third")]) { ModelId = "gpt-4o-mini" });
+        var provider = new ScriptedChatClient().Enqueue(
+            new ChatResponseUpdate(ChatRole.Assistant, [new TextContent("first ")])
+            {
+                ModelId = "gpt-4o-mini",
+            },
+            FragmentUpdate("call-1", "list_files", "{\"path\":\"a"),
+            new ChatResponseUpdate(ChatRole.Assistant, [new TextContent("second ")])
+            {
+                ModelId = "gpt-4o-mini",
+            },
+            FragmentUpdate("call-1", string.Empty, ".txt\"}"),
+            new ChatResponseUpdate(ChatRole.Assistant, [new TextContent("third")])
+            {
+                ModelId = "gpt-4o-mini",
+            }
+        );
         var accumulator = new StreamAccumulator(provider);
 
         List<ChatResponseUpdate> updates = await Stream(accumulator);
@@ -84,24 +112,34 @@ public sealed class StreamAccumulatorTests
         Assert.Equal("first second third", text);
         Assert.DoesNotContain(
             updates.SelectMany(update => update.Contents).OfType<FunctionCallContent>(),
-            call => call.Arguments?.ContainsKey(StreamAccumulator.ArgumentsFragmentKey) == true);
-        FunctionCallContent call = Assert.Single(updates.SelectMany(update => update.Contents).OfType<FunctionCallContent>());
+            call => call.Arguments?.ContainsKey(StreamAccumulator.ArgumentsFragmentKey) == true
+        );
+        FunctionCallContent call = Assert.Single(
+            updates.SelectMany(update => update.Contents).OfType<FunctionCallContent>()
+        );
         Assert.Equal("a.txt", Unwrap(call.Arguments!["path"]));
     }
 
     [Fact]
     public async Task GetStreamingResponseAsync_carries_update_metadata_through_fragment_updates()
     {
-        ResponseContinuationToken token = ResponseContinuationToken.FromBytes("resume-1"u8.ToArray());
-        var fragmentUpdate = new ChatResponseUpdate(ChatRole.Assistant, [Fragment("call-1", "list_files", "{\"path\":\"a")])
+        ResponseContinuationToken token = ResponseContinuationToken.FromBytes(
+            "resume-1"u8.ToArray()
+        );
+        var fragmentUpdate = new ChatResponseUpdate(
+            ChatRole.Assistant,
+            [Fragment("call-1", "list_files", "{\"path\":\"a")]
+        )
         {
             ModelId = "gpt-4o-mini",
             ResponseId = "resp-1",
             MessageId = "msg-1",
             ContinuationToken = token,
         };
-        var provider = new ScriptedChatClient()
-            .Enqueue(fragmentUpdate, FragmentUpdate("call-1", string.Empty, ".txt\"}"));
+        var provider = new ScriptedChatClient().Enqueue(
+            fragmentUpdate,
+            FragmentUpdate("call-1", string.Empty, ".txt\"}")
+        );
         var accumulator = new StreamAccumulator(provider);
 
         List<ChatResponseUpdate> updates = await Stream(accumulator);
@@ -114,12 +152,16 @@ public sealed class StreamAccumulatorTests
     [Fact]
     public async Task GetStreamingResponseAsync_preserves_finish_reason_on_a_fragment_only_update()
     {
-        var provider = new ScriptedChatClient()
-            .Enqueue(new ChatResponseUpdate(ChatRole.Assistant, [Fragment("call-1", "list_files", "{\"path\":\"a.txt\"}")])
+        var provider = new ScriptedChatClient().Enqueue(
+            new ChatResponseUpdate(
+                ChatRole.Assistant,
+                [Fragment("call-1", "list_files", "{\"path\":\"a.txt\"}")]
+            )
             {
                 ModelId = "gpt-4o-mini",
                 FinishReason = ChatFinishReason.ToolCalls,
-            });
+            }
+        );
         var accumulator = new StreamAccumulator(provider);
 
         List<ChatResponseUpdate> updates = await Stream(accumulator);
@@ -134,8 +176,11 @@ public sealed class StreamAccumulatorTests
     {
         DateTimeOffset createdAt = new(2026, 10, 5, 12, 0, 0, TimeSpan.Zero);
         object rawRepresentation = new();
-        var provider = new ScriptedChatClient()
-            .Enqueue(new ChatResponseUpdate(ChatRole.Assistant, [Fragment("call-1", "list_files", "{\"path\":\"a.txt\"}")])
+        var provider = new ScriptedChatClient().Enqueue(
+            new ChatResponseUpdate(
+                ChatRole.Assistant,
+                [Fragment("call-1", "list_files", "{\"path\":\"a.txt\"}")]
+            )
             {
                 ModelId = "gpt-4o-mini",
                 AuthorName = "assistant-author",
@@ -143,7 +188,8 @@ public sealed class StreamAccumulatorTests
                 CreatedAt = createdAt,
                 AdditionalProperties = new AdditionalPropertiesDictionary { ["trace"] = "abc" },
                 RawRepresentation = rawRepresentation,
-            });
+            }
+        );
         var accumulator = new StreamAccumulator(provider);
 
         List<ChatResponseUpdate> updates = await Stream(accumulator);
@@ -160,15 +206,17 @@ public sealed class StreamAccumulatorTests
     [Fact]
     public async Task GetStreamingResponseAsync_surfaces_unparseable_assembled_arguments_as_an_exception()
     {
-        var provider = new ScriptedChatClient()
-            .Enqueue(
-                FragmentUpdate("call-1", "list_files", "{\"path\":"),
-                FragmentUpdate("call-1", string.Empty, " broken"));
+        var provider = new ScriptedChatClient().Enqueue(
+            FragmentUpdate("call-1", "list_files", "{\"path\":"),
+            FragmentUpdate("call-1", string.Empty, " broken")
+        );
         var accumulator = new StreamAccumulator(provider);
 
         List<ChatResponseUpdate> updates = await Stream(accumulator);
 
-        FunctionCallContent call = Assert.Single(updates.SelectMany(update => update.Contents).OfType<FunctionCallContent>());
+        FunctionCallContent call = Assert.Single(
+            updates.SelectMany(update => update.Contents).OfType<FunctionCallContent>()
+        );
         Assert.NotNull(call.Exception);
         Assert.Null(call.Arguments);
     }
@@ -177,12 +225,20 @@ public sealed class StreamAccumulatorTests
         new(ChatRole.Assistant, [Fragment(callId, name, json)]) { ModelId = "gpt-4o-mini" };
 
     private static FunctionCallContent Fragment(string callId, string name, string json) =>
-        new(callId, name, new Dictionary<string, object?> { [StreamAccumulator.ArgumentsFragmentKey] = json });
+        new(
+            callId,
+            name,
+            new Dictionary<string, object?> { [StreamAccumulator.ArgumentsFragmentKey] = json }
+        );
 
-    private static object? Unwrap(object? value) => value is JsonElement element ? element.GetString() : value;
+    private static object? Unwrap(object? value) =>
+        value is JsonElement element ? element.GetString() : value;
 
     private static async Task<List<ChatResponseUpdate>> Stream(IChatClient client) =>
         await client
-            .GetStreamingResponseAsync([new ChatMessage(ChatRole.User, "hello")], cancellationToken: TestContext.Current.CancellationToken)
+            .GetStreamingResponseAsync(
+                [new ChatMessage(ChatRole.User, "hello")],
+                cancellationToken: TestContext.Current.CancellationToken
+            )
             .ToListAsync(TestContext.Current.CancellationToken);
 }

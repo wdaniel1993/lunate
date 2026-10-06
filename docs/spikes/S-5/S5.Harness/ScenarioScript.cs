@@ -20,8 +20,8 @@ public readonly record struct ScriptStep(TimeSpan At, ScriptItem Item);
 public static class ScenarioScript
 {
     private const string Paragraph =
-        "The live area keeps the streaming tail, the spinner, the footer and the " +
-        "approval prompt at the bottom of the screen while finished blocks scroll above it. ";
+        "The live area keeps the streaming tail, the spinner, the footer and the "
+        + "approval prompt at the bottom of the screen while finished blocks scroll above it. ";
 
     public static IReadOnlyList<ScriptStep> Build()
     {
@@ -33,7 +33,11 @@ public static class ScenarioScript
         var at = TimeSpan.FromMilliseconds(10);
         foreach (var word in words)
         {
-            Add(steps, at.TotalMilliseconds, new ScriptItem.Event(new AgentEvent.TextDelta(word + " ")));
+            Add(
+                steps,
+                at.TotalMilliseconds,
+                new ScriptItem.Event(new AgentEvent.TextDelta(word + " "))
+            );
             at += TimeSpan.FromMilliseconds(8);
         }
 
@@ -49,14 +53,26 @@ public static class ScenarioScript
         }
 
         Add(steps, 600 + (19 * 6) + 6, new ScriptItem.Key(Keys.Enter));
-        Add(steps, 800, new ScriptItem.Event(new AgentEvent.ApprovalRequested("bash", "dotnet test")));
+        Add(
+            steps,
+            800,
+            new ScriptItem.Event(new AgentEvent.ApprovalRequested("bash", "dotnet test"))
+        );
         Add(steps, 850, new ScriptItem.Key(Keys.Letter('a')));
         Add(steps, 900, new ScriptItem.Event(new AgentEvent.ToolStarted("bash")));
         Add(steps, 900, new ScriptItem.Event(new AgentEvent.TextDelta("running tests... ")));
-        Add(steps, 1250, new ScriptItem.Event(new AgentEvent.ToolFinished("bash", true, "48 passed")));
+        Add(
+            steps,
+            1250,
+            new ScriptItem.Event(new AgentEvent.ToolFinished("bash", true, "48 passed"))
+        );
         Add(steps, 1300, new ScriptItem.Event(new AgentEvent.Usage(1200, 340, 12.5)));
         Add(steps, 1400, new ScriptItem.Resize(100, 30));
-        Add(steps, 1500, new ScriptItem.Event(new AgentEvent.ApprovalRequested("bash", "dotnet format")));
+        Add(
+            steps,
+            1500,
+            new ScriptItem.Event(new AgentEvent.ApprovalRequested("bash", "dotnet format"))
+        );
         Add(steps, 1550, new ScriptItem.Event(new AgentEvent.ToolStarted("bash")));
         Add(steps, 1800, new ScriptItem.Key(Keys.Escape));
         Add(steps, 1850, new ScriptItem.Event(new AgentEvent.RunCancelled("user")));
@@ -72,7 +88,10 @@ public static class ScenarioScript
         return [.. steps.OrderBy(s => s.At)];
     }
 
-    private static IEnumerable<(ConsoleKeyInfo Key, double Offset)> TypeText(string text, double startMs)
+    private static IEnumerable<(ConsoleKeyInfo Key, double Offset)> TypeText(
+        string text,
+        double startMs
+    )
     {
         var offset = startMs;
         foreach (var c in text)

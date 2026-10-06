@@ -18,7 +18,10 @@ public sealed class LiveContractTests
     public async Task OpenAi_streamed_round_trip_returns_meai_updates()
     {
         Assert.SkipUnless(LiveRequested(), $"Live contracts require {LiveVariable}=1.");
-        Assert.SkipWhen(string.IsNullOrEmpty(Environment.GetEnvironmentVariable(OpenAiApiKeyVariable)), $"{OpenAiApiKeyVariable} is not set.");
+        Assert.SkipWhen(
+            string.IsNullOrEmpty(Environment.GetEnvironmentVariable(OpenAiApiKeyVariable)),
+            $"{OpenAiApiKeyVariable} is not set."
+        );
 
         await RunStreamedRoundTrip(new ModelInfo("gpt-4o-mini", "openai", null, 128_000, true));
     }
@@ -27,28 +30,46 @@ public sealed class LiveContractTests
     public async Task Anthropic_streamed_round_trip_returns_meai_updates()
     {
         Assert.SkipUnless(LiveRequested(), $"Live contracts require {LiveVariable}=1.");
-        Assert.SkipWhen(string.IsNullOrEmpty(Environment.GetEnvironmentVariable(AnthropicApiKeyVariable)), $"{AnthropicApiKeyVariable} is not set.");
+        Assert.SkipWhen(
+            string.IsNullOrEmpty(Environment.GetEnvironmentVariable(AnthropicApiKeyVariable)),
+            $"{AnthropicApiKeyVariable} is not set."
+        );
 
-        await RunStreamedRoundTrip(new ModelInfo("claude-sonnet-5-5", "anthropic", null, 1_000_000, true));
+        await RunStreamedRoundTrip(
+            new ModelInfo("claude-sonnet-5-5", "anthropic", null, 1_000_000, true)
+        );
     }
 
     private static async Task RunStreamedRoundTrip(ModelInfo model)
     {
-        var factory = new ChatClientFactory(new MarkingLoggerFactory(static () => { }), enableOpenTelemetry: false);
+        var factory = new ChatClientFactory(
+            new MarkingLoggerFactory(static () => { }),
+            enableOpenTelemetry: false
+        );
         IChatClient client = factory.Create(model);
         var updates = new List<ChatResponseUpdate>();
-        await foreach (ChatResponseUpdate update in client.GetStreamingResponseAsync(
-            [new ChatMessage(ChatRole.User, "Reply with the single word: pong")],
-            cancellationToken: TestContext.Current.CancellationToken))
+        await foreach (
+            ChatResponseUpdate update in client.GetStreamingResponseAsync(
+                [new ChatMessage(ChatRole.User, "Reply with the single word: pong")],
+                cancellationToken: TestContext.Current.CancellationToken
+            )
+        )
         {
             updates.Add(update);
         }
 
         Assert.NotEmpty(updates);
-        Assert.Contains(updates.SelectMany(update => update.Contents).OfType<TextContent>(), text => !string.IsNullOrWhiteSpace(text.Text));
+        Assert.Contains(
+            updates.SelectMany(update => update.Contents).OfType<TextContent>(),
+            text => !string.IsNullOrWhiteSpace(text.Text)
+        );
         Assert.NotNull(updates[^1].FinishReason);
     }
 
     private static bool LiveRequested() =>
-        string.Equals(Environment.GetEnvironmentVariable(LiveVariable), "1", StringComparison.OrdinalIgnoreCase);
+        string.Equals(
+            Environment.GetEnvironmentVariable(LiveVariable),
+            "1",
+            StringComparison.OrdinalIgnoreCase
+        );
 }

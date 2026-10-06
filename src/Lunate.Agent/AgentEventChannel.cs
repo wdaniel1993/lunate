@@ -12,16 +12,14 @@ namespace Lunate.Agent;
 internal sealed class AgentEventChannel : IAgentEvents
 {
     private readonly Channel<AgentEvent> _channel = Channel.CreateUnbounded<AgentEvent>(
-        new UnboundedChannelOptions
-        {
-            SingleReader = true,
-            SingleWriter = false,
-        });
+        new UnboundedChannelOptions { SingleReader = true, SingleWriter = false }
+    );
 
     public void Emit(AgentEvent agentEvent) => _channel.Writer.TryWrite(agentEvent);
 
     public void Complete() => _channel.Writer.TryComplete();
 
-    public IAsyncEnumerable<AgentEvent> ReadAllAsync(CancellationToken cancellationToken = default) =>
-        _channel.Reader.ReadAllAsync(cancellationToken);
+    public IAsyncEnumerable<AgentEvent> ReadAllAsync(
+        CancellationToken cancellationToken = default
+    ) => _channel.Reader.ReadAllAsync(cancellationToken);
 }

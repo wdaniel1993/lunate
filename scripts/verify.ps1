@@ -26,6 +26,15 @@ try {
         $env:RID = "win-$arch"
     }
 
+    Write-Host "`n==> tools"
+    # CSharpier is pinned in .config/dotnet-tools.json; restore makes it available locally.
+    dotnet tool restore
+    if ($LASTEXITCODE -ne 0) {
+        throw 'verify: dotnet tool restore failed; run it from the repository root to install CSharpier (pinned in .config/dotnet-tools.json)'
+    }
+    dotnet csharpier --version | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw 'verify: csharpier not found; install it with: dotnet tool restore' }
+
     Write-Host "`n==> build"
     dotnet build lunate.sln -c $configuration --nologo
     if ($LASTEXITCODE -ne 0) { throw 'verify: build failed' }
@@ -74,8 +83,22 @@ try {
     }
 
     Write-Host "`n==> format"
-    dotnet format lunate.sln --verify-no-changes --no-restore
-    if ($LASTEXITCODE -ne 0) { throw 'verify: format check failed' }
+    # CSharpier owns formatting; dotnet format keeps style and analyzer duties.
+    dotnet csharpier check .
+    if ($LASTEXITCODE -ne 0) { throw 'verify: format check failed (dotnet csharpier check .)' }
+
+    dotnet format style lunate.sln --verify-no-changes --no-restore
+    if ($LASTEXITCODE -ne 0) { throw 'verify: style check failed' }
+
+    dotnet format analyzers lunate.sln --verify-no-changes --no-restore
+    if ($LASTEXITCODE -ne 0) { throw 'verify: analyzers check failed' }
+
+    Write-Host "`n==> docs lint"
+    if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
+        throw 'verify: Node.js is required for the documentation lint step; install Node.js (npx runs the pinned markdownlint-cli2)'
+    }
+    npx --yes markdownlint-cli2@0.23.3
+    if ($LASTEXITCODE -ne 0) { throw 'verify: documentation lint failed' }
 
     Write-Host "`n==> public API"
     git diff --exit-code -- '*PublicAPI.Shipped.txt'

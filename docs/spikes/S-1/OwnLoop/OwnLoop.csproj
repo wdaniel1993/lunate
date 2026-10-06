@@ -1,13 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <RootNamespace>Spike.OwnLoop</RootNamespace>
+        <AssemblyName>OwnLoop</AssemblyName>
+    </PropertyGroup>
 
-  <PropertyGroup>
-    <OutputType>Exe</OutputType>
-    <RootNamespace>Spike.OwnLoop</RootNamespace>
-    <AssemblyName>OwnLoop</AssemblyName>
-  </PropertyGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="../Shared/Spike.Shared.csproj" />
-  </ItemGroup>
-
+    <ItemGroup>
+        <ProjectReference Include="../Shared/Spike.Shared.csproj" />
+    </ItemGroup>
 </Project>

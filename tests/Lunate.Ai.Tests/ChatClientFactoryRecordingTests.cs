@@ -12,16 +12,27 @@ public sealed class ChatClientFactoryRecordingTests
     [InlineData("1")]
     [InlineData("true")]
     [InlineData("TRUE")]
-    public async Task Create_with_LUNATE_RECORD_records_exchanges_at_the_environment_path(string value)
+    public async Task Create_with_LUNATE_RECORD_records_exchanges_at_the_environment_path(
+        string value
+    )
     {
         using var temp = new TempDirectory();
         string path = temp.File("recording.jsonl");
-        using var environment = new EnvironmentScope((RecordVariable, value), (RecordPathVariable, path));
-        var inner = new ScriptedChatClient().Enqueue(new ChatResponseUpdate(ChatRole.Assistant, [new TextContent("live")]) { ModelId = "gpt-4o-mini" });
+        using var environment = new EnvironmentScope(
+            (RecordVariable, value),
+            (RecordPathVariable, path)
+        );
+        var inner = new ScriptedChatClient().Enqueue(
+            new ChatResponseUpdate(ChatRole.Assistant, [new TextContent("live")])
+            {
+                ModelId = "gpt-4o-mini",
+            }
+        );
         var factory = new ChatClientFactory(
             new MarkingLoggerFactory(static () => { }),
             enableOpenTelemetry: false,
-            providerClientFactory: _ => inner);
+            providerClientFactory: _ => inner
+        );
         ChatMessage[] messages = [new(ChatRole.User, "hello")];
         var options = new ChatOptions { ModelId = "gpt-4o-mini" };
 
@@ -45,15 +56,26 @@ public sealed class ChatClientFactoryRecordingTests
     {
         using var temp = new TempDirectory();
         string path = temp.File("recording.jsonl");
-        using var environment = new EnvironmentScope((RecordVariable, value), (RecordPathVariable, path));
-        var inner = new ScriptedChatClient().Enqueue(new ChatResponseUpdate(ChatRole.Assistant, [new TextContent("live")]));
+        using var environment = new EnvironmentScope(
+            (RecordVariable, value),
+            (RecordPathVariable, path)
+        );
+        var inner = new ScriptedChatClient().Enqueue(
+            new ChatResponseUpdate(ChatRole.Assistant, [new TextContent("live")])
+        );
         var factory = new ChatClientFactory(
             new MarkingLoggerFactory(static () => { }),
             enableOpenTelemetry: false,
-            providerClientFactory: _ => inner);
+            providerClientFactory: _ => inner
+        );
 
         IChatClient client = factory.Create(TestModel());
-        await client.GetStreamingResponseAsync([new ChatMessage(ChatRole.User, "hello")], cancellationToken: TestContext.Current.CancellationToken).ToListAsync(TestContext.Current.CancellationToken);
+        await client
+            .GetStreamingResponseAsync(
+                [new ChatMessage(ChatRole.User, "hello")],
+                cancellationToken: TestContext.Current.CancellationToken
+            )
+            .ToListAsync(TestContext.Current.CancellationToken);
 
         Assert.False(File.Exists(path));
     }
@@ -63,9 +85,14 @@ public sealed class ChatClientFactoryRecordingTests
     {
         using var temp = new TempDirectory();
         string path = temp.File("recording.jsonl");
-        using var environment = new EnvironmentScope((RecordVariable, "1"), (RecordPathVariable, path));
+        using var environment = new EnvironmentScope(
+            (RecordVariable, "1"),
+            (RecordPathVariable, path)
+        );
         bool decoratorCalled = false;
-        var inner = new ScriptedChatClient().Enqueue(new ChatResponseUpdate(ChatRole.Assistant, [new TextContent("live")]));
+        var inner = new ScriptedChatClient().Enqueue(
+            new ChatResponseUpdate(ChatRole.Assistant, [new TextContent("live")])
+        );
         var factory = new ChatClientFactory(
             new MarkingLoggerFactory(static () => { }),
             enableOpenTelemetry: false,
@@ -74,10 +101,16 @@ public sealed class ChatClientFactoryRecordingTests
             {
                 decoratorCalled = true;
                 return client;
-            });
+            }
+        );
 
         IChatClient built = factory.Create(TestModel());
-        await built.GetStreamingResponseAsync([new ChatMessage(ChatRole.User, "hello")], cancellationToken: TestContext.Current.CancellationToken).ToListAsync(TestContext.Current.CancellationToken);
+        await built
+            .GetStreamingResponseAsync(
+                [new ChatMessage(ChatRole.User, "hello")],
+                cancellationToken: TestContext.Current.CancellationToken
+            )
+            .ToListAsync(TestContext.Current.CancellationToken);
 
         Assert.True(decoratorCalled);
         Assert.False(File.Exists(path));
@@ -88,15 +121,26 @@ public sealed class ChatClientFactoryRecordingTests
     {
         using var temp = new TempDirectory();
         string path = temp.File("custom/location.jsonl");
-        using var environment = new EnvironmentScope((RecordVariable, "1"), (RecordPathVariable, path));
-        var inner = new ScriptedChatClient().Enqueue(new ChatResponseUpdate(ChatRole.Assistant, [new TextContent("live")]));
+        using var environment = new EnvironmentScope(
+            (RecordVariable, "1"),
+            (RecordPathVariable, path)
+        );
+        var inner = new ScriptedChatClient().Enqueue(
+            new ChatResponseUpdate(ChatRole.Assistant, [new TextContent("live")])
+        );
         var factory = new ChatClientFactory(
             new MarkingLoggerFactory(static () => { }),
             enableOpenTelemetry: false,
-            providerClientFactory: _ => inner);
+            providerClientFactory: _ => inner
+        );
 
         IChatClient client = factory.Create(TestModel());
-        await client.GetStreamingResponseAsync([new ChatMessage(ChatRole.User, "hello")], cancellationToken: TestContext.Current.CancellationToken).ToListAsync(TestContext.Current.CancellationToken);
+        await client
+            .GetStreamingResponseAsync(
+                [new ChatMessage(ChatRole.User, "hello")],
+                cancellationToken: TestContext.Current.CancellationToken
+            )
+            .ToListAsync(TestContext.Current.CancellationToken);
 
         Assert.True(File.Exists(path));
     }
@@ -108,17 +152,22 @@ public sealed class ChatClientFactoryRecordingTests
         string path = temp.File("fragments.jsonl");
         var provider = new ScriptedChatClient().Enqueue(
             FragmentUpdate("call-1", "list_files", "{\"path\":\""),
-            FragmentUpdate("call-1", string.Empty, "a.txt\"}"));
+            FragmentUpdate("call-1", string.Empty, "a.txt\"}")
+        );
         ChatMessage[] messages = [new(ChatRole.User, "hello")];
         var recordingFactory = new ChatClientFactory(
             new MarkingLoggerFactory(static () => { }),
             enableOpenTelemetry: false,
             providerClientFactory: _ => provider,
-            recorderDecorator: inner => new RecordingChatClient(inner, path, "gpt-4o-mini"));
+            recorderDecorator: inner => new RecordingChatClient(inner, path, "gpt-4o-mini")
+        );
 
         IChatClient recording = recordingFactory.Create(TestModel());
         await recording
-            .GetStreamingResponseAsync(messages, cancellationToken: TestContext.Current.CancellationToken)
+            .GetStreamingResponseAsync(
+                messages,
+                cancellationToken: TestContext.Current.CancellationToken
+            )
             .ToListAsync(TestContext.Current.CancellationToken);
 
         string fixture = File.ReadAllText(path);
@@ -128,13 +177,19 @@ public sealed class ChatClientFactoryRecordingTests
             new MarkingLoggerFactory(static () => { }),
             enableOpenTelemetry: false,
             providerClientFactory: _ => new ThrowingChatClient(),
-            recorderDecorator: _ => new ReplayChatClient(path));
+            recorderDecorator: _ => new ReplayChatClient(path)
+        );
         IChatClient replay = replayFactory.Create(TestModel());
         List<ChatResponseUpdate> updates = await replay
-            .GetStreamingResponseAsync(messages, cancellationToken: TestContext.Current.CancellationToken)
+            .GetStreamingResponseAsync(
+                messages,
+                cancellationToken: TestContext.Current.CancellationToken
+            )
             .ToListAsync(TestContext.Current.CancellationToken);
 
-        FunctionCallContent call = Assert.Single(updates.SelectMany(update => update.Contents).OfType<FunctionCallContent>());
+        FunctionCallContent call = Assert.Single(
+            updates.SelectMany(update => update.Contents).OfType<FunctionCallContent>()
+        );
         Assert.Equal("call-1", call.CallId);
         Assert.Equal("list_files", call.Name);
         Assert.Equal("a.txt", Unwrap(call.Arguments!["path"]));
@@ -146,14 +201,21 @@ public sealed class ChatClientFactoryRecordingTests
         string path = ChatClientFactory.DefaultRecordingPath().Replace('\\', '/');
 
         Assert.Matches(@"^artifacts/recordings/\d{8}-\d{6}-[0-9a-f]{8}\.jsonl$", path);
-        string[] ignoreLines = File.ReadAllLines(Path.Combine(TestPaths.FindRepositoryRoot(), ".gitignore"));
+        string[] ignoreLines = File.ReadAllLines(
+            Path.Combine(TestPaths.FindRepositoryRoot(), ".gitignore")
+        );
         Assert.Contains(ignoreLines, line => line.Trim().TrimEnd('/') == "artifacts");
     }
 
     [Fact]
     public void Default_recording_paths_are_unique_within_the_same_second()
     {
-        string[] paths = [.. Enumerable.Range(0, 32).Select(_ => ChatClientFactory.DefaultRecordingPath().Replace('\\', '/'))];
+        string[] paths =
+        [
+            .. Enumerable
+                .Range(0, 32)
+                .Select(_ => ChatClientFactory.DefaultRecordingPath().Replace('\\', '/')),
+        ];
 
         Assert.Equal(paths.Length, paths.Distinct(StringComparer.Ordinal).Count());
     }
@@ -161,12 +223,23 @@ public sealed class ChatClientFactoryRecordingTests
     private static ChatResponseUpdate FragmentUpdate(string callId, string name, string json) =>
         new(
             ChatRole.Assistant,
-            [new FunctionCallContent(callId, name, new Dictionary<string, object?> { [StreamAccumulator.ArgumentsFragmentKey] = json })])
+            [
+                new FunctionCallContent(
+                    callId,
+                    name,
+                    new Dictionary<string, object?>
+                    {
+                        [StreamAccumulator.ArgumentsFragmentKey] = json,
+                    }
+                ),
+            ]
+        )
         {
             ModelId = "gpt-4o-mini",
         };
 
-    private static object? Unwrap(object? value) => value is JsonElement element ? element.GetString() : value;
+    private static object? Unwrap(object? value) =>
+        value is JsonElement element ? element.GetString() : value;
 
     private static ModelInfo TestModel() => new("gpt-4o-mini", "openai", null, 128_000, true);
 }

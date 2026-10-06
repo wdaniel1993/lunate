@@ -1,7 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
-  <PropertyGroup>
-    <RootNamespace>Fixture.Lib</RootNamespace>
-  </PropertyGroup>
-
+    <PropertyGroup>
+        <RootNamespace>Fixture.Lib</RootNamespace>
+    </PropertyGroup>
 </Project>

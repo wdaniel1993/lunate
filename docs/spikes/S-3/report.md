@@ -87,10 +87,12 @@ every one of them.
 Repeatable, no code changes needed:
 
 1. Dispatch the matrix at least twice and let them finish:
+
    ```bash
    gh workflow run ci.yml --ref main
    gh run list --workflow ci.yml -L 5 --json databaseId,status,conclusion,headSha
    ```
+
 2. Collect the medians per runner: for each run id,
    `gh run view <id> --log | grep "startup median"` (the job name is the first
    tab-separated field). Save the raw output next to this report.

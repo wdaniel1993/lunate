@@ -12,8 +12,12 @@ internal static class Locator
         }
 
         var instance = MSBuildLocator.RegisterDefaults();
-        Console.WriteLine($"locator: registered name={instance.Name} version={instance.Version} discovery={instance.DiscoveryType}");
+        Console.WriteLine(
+            $"locator: registered name={instance.Name} version={instance.Version} discovery={instance.DiscoveryType}"
+        );
         Console.WriteLine($"locator: msbuild_path={instance.MSBuildPath}");
-        Console.WriteLine($"locator: msbuild_exe_path={Environment.GetEnvironmentVariable("MSBUILD_EXE_PATH") ?? "<unset>"}");
+        Console.WriteLine(
+            $"locator: msbuild_exe_path={Environment.GetEnvironmentVariable("MSBUILD_EXE_PATH") ?? "<unset>"}"
+        );
     }
 }

@@ -32,5 +32,6 @@ internal sealed record DiagnosticsSummary(int Errors, int Warnings, int Info, in
         return new DiagnosticsSummary(errors, warnings, info, hidden);
     }
 
-    public override string ToString() => $"errors={Errors} warnings={Warnings} info={Info} hidden={Hidden}";
+    public override string ToString() =>
+        $"errors={Errors} warnings={Warnings} info={Info} hidden={Hidden}";
 }

@@ -19,4 +19,5 @@ dotnet_style_qualification_for_event = false:silent
 dotnet_style_qualification_for_field = false:silent
 dotnet_style_qualification_for_method = false:silent
 dotnet_style_qualification_for_property = false:silent
-dotnet_diagnostic.IDE0055.severity = warning
+# CSharpier owns whitespace formatting; IDE0055's formatting analyzer conflicts with it.
+dotnet_diagnostic.IDE0055.severity = none

@@ -1,19 +1,17 @@
 <Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <AssemblyName>lunate</AssemblyName>
+        <RootNamespace>Lunate.Coding</RootNamespace>
+    </PropertyGroup>
 
-  <PropertyGroup>
-    <OutputType>Exe</OutputType>
-    <AssemblyName>lunate</AssemblyName>
-    <RootNamespace>Lunate.Coding</RootNamespace>
-  </PropertyGroup>
+    <ItemGroup>
+        <ProjectReference Include="../Lunate.Agent/Lunate.Agent.csproj" />
+        <ProjectReference Include="../Lunate.Protocols/Lunate.Protocols.csproj" />
+        <ProjectReference Include="../Lunate.Tui/Lunate.Tui.csproj" />
+    </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="../Lunate.Agent/Lunate.Agent.csproj" />
-    <ProjectReference Include="../Lunate.Protocols/Lunate.Protocols.csproj" />
-    <ProjectReference Include="../Lunate.Tui/Lunate.Tui.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <InternalsVisibleTo Include="Lunate.Coding.Tests" />
-  </ItemGroup>
-
+    <ItemGroup>
+        <InternalsVisibleTo Include="Lunate.Coding.Tests" />
+    </ItemGroup>
 </Project>

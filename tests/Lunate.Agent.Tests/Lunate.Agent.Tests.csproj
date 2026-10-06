@@ -1,17 +1,15 @@
 <Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <RootNamespace>Lunate.Agent.Tests</RootNamespace>
+    </PropertyGroup>
 
-  <PropertyGroup>
-    <OutputType>Exe</OutputType>
-    <RootNamespace>Lunate.Agent.Tests</RootNamespace>
-  </PropertyGroup>
+    <ItemGroup>
+        <ProjectReference Include="../../src/Lunate.Agent/Lunate.Agent.csproj" />
+    </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="../../src/Lunate.Agent/Lunate.Agent.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="xunit.v3" Version="4.0.1" />
-    <Using Include="Xunit" />
-  </ItemGroup>
-
+    <ItemGroup>
+        <PackageReference Include="xunit.v3" Version="4.0.1" />
+        <Using Include="Xunit" />
+    </ItemGroup>
 </Project>

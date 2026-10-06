@@ -10,10 +10,16 @@ internal static class Probe
         Console.WriteLine($"os: {RuntimeInformation.OSDescription}");
         Console.WriteLine($"arch: {RuntimeInformation.OSArchitecture}");
         Console.WriteLine($"term: {Environment.GetEnvironmentVariable("TERM") ?? "(unset)"}");
-        Console.WriteLine($"term_program: {Environment.GetEnvironmentVariable("TERM_PROGRAM") ?? "(unset)"}");
+        Console.WriteLine(
+            $"term_program: {Environment.GetEnvironmentVariable("TERM_PROGRAM") ?? "(unset)"}"
+        );
         Console.WriteLine($"msystem: {Environment.GetEnvironmentVariable("MSYSTEM") ?? "(unset)"}");
-        Console.WriteLine($"wt_session: {Environment.GetEnvironmentVariable("WT_SESSION") ?? "(unset)"}");
-        Console.WriteLine($"sessionname: {Environment.GetEnvironmentVariable("SESSIONNAME") ?? "(unset)"}");
+        Console.WriteLine(
+            $"wt_session: {Environment.GetEnvironmentVariable("WT_SESSION") ?? "(unset)"}"
+        );
+        Console.WriteLine(
+            $"sessionname: {Environment.GetEnvironmentVariable("SESSIONNAME") ?? "(unset)"}"
+        );
         Console.WriteLine($"stdin_redirected: {Console.IsInputRedirected}");
         Console.WriteLine($"stdout_redirected: {Console.IsOutputRedirected}");
         Console.WriteLine($"stderr_redirected: {Console.IsErrorRedirected}");
@@ -25,7 +31,8 @@ internal static class Probe
 
     private static string WindowsConsoleAttached()
     {
-        if (!OperatingSystem.IsWindows()) return "n/a (not windows)";
+        if (!OperatingSystem.IsWindows())
+            return "n/a (not windows)";
         try
         {
             var handle = GetStdHandle(-10);

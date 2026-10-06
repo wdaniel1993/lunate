@@ -20,7 +20,10 @@ public sealed class AgentEventTests
             new ToolCallEnd(RunId, "call_1"),
             new ToolCallResult(RunId, "call_1", "1  hello", IsError: false, Details: "diff"),
             new ApprovalRequested(RunId, "call_1", "bash", """{"command":"ls"}"""),
-            new UsageUpdated(RunId, new UsageDetails { InputTokenCount = 12, OutputTokenCount = 3 }),
+            new UsageUpdated(
+                RunId,
+                new UsageDetails { InputTokenCount = 12, OutputTokenCount = 3 }
+            ),
             new Retrying(RunId, 2, "rate limited"),
             new CompactionApplied(RunId),
             new StepLimitReached(RunId, 50),
@@ -59,12 +62,18 @@ public sealed class AgentEventTests
     [Fact]
     public void Every_concrete_event_type_is_sealed()
     {
-        Type[] concreteTypes = [.. typeof(AgentEvent).Assembly
-            .GetTypes()
-            .Where(type => typeof(AgentEvent).IsAssignableFrom(type) && !type.IsAbstract)];
+        Type[] concreteTypes =
+        [
+            .. typeof(AgentEvent)
+                .Assembly.GetTypes()
+                .Where(type => typeof(AgentEvent).IsAssignableFrom(type) && !type.IsAbstract),
+        ];
 
         Assert.Equal(15, concreteTypes.Length);
-        Assert.All(concreteTypes, type => Assert.True(type.IsSealed, $"{type.Name} must be sealed"));
+        Assert.All(
+            concreteTypes,
+            type => Assert.True(type.IsSealed, $"{type.Name} must be sealed")
+        );
     }
 
     [Fact]
@@ -73,7 +82,8 @@ public sealed class AgentEventTests
         Assert.True(typeof(AgentEvent).IsAbstract);
         Assert.DoesNotContain(
             typeof(AgentEvent).Assembly.GetTypes(),
-            type => typeof(AgentEvent).IsAssignableFrom(type) && type.IsInterface);
+            type => typeof(AgentEvent).IsAssignableFrom(type) && type.IsInterface
+        );
     }
 
     [Fact]
@@ -112,25 +122,38 @@ public sealed class AgentEventTests
         var start = new ToolCallStart(RunId, "call_1", "read");
         var args = new ToolCallArgs(RunId, "call_1", """{"path":"a.txt"}""");
         var end = new ToolCallEnd(RunId, "call_1");
-        var result = new ToolCallResult(RunId, "call_1", "1  hello", IsError: false, Details: "diff");
+        var result = new ToolCallResult(
+            RunId,
+            "call_1",
+            "1  hello",
+            IsError: false,
+            Details: "diff"
+        );
 
         Assert.Equal(("call_1", "read"), (start.CallId, start.ToolName));
         Assert.Equal(("call_1", """{"path":"a.txt"}"""), (args.CallId, args.Args));
         Assert.Equal("call_1", end.CallId);
         Assert.Equal(
             ("call_1", "1  hello", false, "diff"),
-            (result.CallId, result.Output, result.IsError, result.Details));
+            (result.CallId, result.Output, result.IsError, result.Details)
+        );
     }
 
     [Fact]
     public void Extension_events_expose_their_fields()
     {
         var approval = new ApprovalRequested(RunId, "call_1", "bash", """{"command":"ls"}""");
-        var usage = new UsageUpdated(RunId, new UsageDetails { InputTokenCount = 12, OutputTokenCount = 3 });
+        var usage = new UsageUpdated(
+            RunId,
+            new UsageDetails { InputTokenCount = 12, OutputTokenCount = 3 }
+        );
         var retrying = new Retrying(RunId, 2, "rate limited");
         var stepLimit = new StepLimitReached(RunId, 50);
 
-        Assert.Equal(("call_1", "bash", """{"command":"ls"}"""), (approval.CallId, approval.ToolName, approval.Args));
+        Assert.Equal(
+            ("call_1", "bash", """{"command":"ls"}"""),
+            (approval.CallId, approval.ToolName, approval.Args)
+        );
         Assert.Equal(12L, usage.Usage.InputTokenCount);
         Assert.Equal(3L, usage.Usage.OutputTokenCount);
         Assert.Equal((2, "rate limited"), (retrying.Attempt, retrying.Reason));
