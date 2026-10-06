@@ -46,6 +46,15 @@ public sealed class AgentLoopReplayTests
         string expected = File.ReadAllText(session.SnapshotPath).Replace("\r\n", "\n");
         Assert.Equal(expected, EventSequenceSnapshot.Serialize(events));
 
+        List<TextMessageStart> textMessages = [.. events.OfType<TextMessageStart>()];
+        Assert.Equal(
+            textMessages.Count,
+            textMessages
+                .Select(message => message.MessageId)
+                .Distinct(StringComparer.Ordinal)
+                .Count()
+        );
+
         Activity run = Assert.Single(
             listener.Activities,
             activity => activity.DisplayName == "invoke_agent lunate"
