@@ -65,7 +65,7 @@ if ! dotnet csharpier check "$FORMAT_DIR" >/dev/null; then
   exit 1
 fi
 
-echo "gate-tests: shipped-API gate must fail for a committed Shipped change on a branch"
+echo "gate-tests: shipped-API gate must fail for an uncommitted Shipped change"
 SHIPPED_DIR="$(mktemp -d "${SCRIPT_DIR}/../.gate-shipped.XXXXXX")"
 git -C "$SHIPPED_DIR" init -q
 git -C "$SHIPPED_DIR" branch -m main
@@ -77,17 +77,16 @@ git -C "$SHIPPED_DIR" add -A
 git -C "$SHIPPED_DIR" commit -qm "base"
 git -C "$SHIPPED_DIR" checkout -qb change
 printf 'P.Type\n' >>"${SHIPPED_DIR}/src/P/PublicAPI.Shipped.txt"
+if (cd "$SHIPPED_DIR" && . "${SCRIPT_DIR}/lib.sh" && check_shipped_api_unchanged) >/dev/null 2>&1; then
+  echo "gate-tests: FAIL: shipped-API gate passed for an uncommitted Shipped change" >&2
+  exit 1
+fi
+
+echo "gate-tests: shipped-API gate must fail for a committed Shipped change on a branch"
 git -C "$SHIPPED_DIR" add -A
 git -C "$SHIPPED_DIR" commit -qm "change"
 if (cd "$SHIPPED_DIR" && . "${SCRIPT_DIR}/lib.sh" && check_shipped_api_unchanged) >/dev/null 2>&1; then
   echo "gate-tests: FAIL: shipped-API gate passed for a committed Shipped change on a branch" >&2
-  exit 1
-fi
-
-echo "gate-tests: shipped-API gate must fail for an uncommitted Shipped change"
-printf 'P.Other\n' >>"${SHIPPED_DIR}/src/P/PublicAPI.Shipped.txt"
-if (cd "$SHIPPED_DIR" && . "${SCRIPT_DIR}/lib.sh" && check_shipped_api_unchanged) >/dev/null 2>&1; then
-  echo "gate-tests: FAIL: shipped-API gate passed for an uncommitted Shipped change" >&2
   exit 1
 fi
 
