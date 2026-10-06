@@ -319,3 +319,121 @@ override Lunate.Agent.AgentHarnessOptions.GetHashCode() -> int
 override Lunate.Agent.AgentHarnessOptions.ToString() -> string!
 static Lunate.Agent.AgentHarnessOptions.operator !=(Lunate.Agent.AgentHarnessOptions? left, Lunate.Agent.AgentHarnessOptions? right) -> bool
 static Lunate.Agent.AgentHarnessOptions.operator ==(Lunate.Agent.AgentHarnessOptions? left, Lunate.Agent.AgentHarnessOptions? right) -> bool
+abstract Lunate.Agent.SessionEntry.<Clone>$() -> Lunate.Agent.SessionEntry!
+Lunate.Agent.Session
+Lunate.Agent.Session.AppendCompaction(string! summary, System.Collections.Generic.IReadOnlyList<string!>! replaces) -> void
+Lunate.Agent.Session.AppendMessage(Microsoft.Extensions.AI.ChatMessage! message, string? model = null, Lunate.Agent.SessionUsage? usage = null) -> void
+Lunate.Agent.Session.AppendModelChange(string! model) -> void
+Lunate.Agent.Session.Entries.get -> System.Collections.Generic.IReadOnlyList<Lunate.Agent.SessionEntry!>!
+Lunate.Agent.Session.Path.get -> string!
+Lunate.Agent.Session.SessionId.get -> string!
+Lunate.Agent.Session.ToHistory() -> System.Collections.Generic.List<Microsoft.Extensions.AI.ChatMessage!>!
+Lunate.Agent.SessionCompactionEntry
+Lunate.Agent.SessionCompactionEntry.Deconstruct(out string! Id, out string? ParentId, out System.DateTimeOffset Timestamp, out string! Summary, out System.Collections.Generic.IReadOnlyList<string!>! Replaces) -> void
+Lunate.Agent.SessionCompactionEntry.Equals(Lunate.Agent.SessionCompactionEntry? other) -> bool
+Lunate.Agent.SessionCompactionEntry.ParentId.get -> string?
+Lunate.Agent.SessionCompactionEntry.ParentId.init -> void
+Lunate.Agent.SessionCompactionEntry.Replaces.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Lunate.Agent.SessionCompactionEntry.Replaces.init -> void
+Lunate.Agent.SessionCompactionEntry.SessionCompactionEntry(string! Id, string? ParentId, System.DateTimeOffset Timestamp, string! Summary, System.Collections.Generic.IReadOnlyList<string!>! Replaces) -> void
+Lunate.Agent.SessionCompactionEntry.Summary.get -> string!
+Lunate.Agent.SessionCompactionEntry.Summary.init -> void
+Lunate.Agent.SessionCompactionEntry.Timestamp.get -> System.DateTimeOffset
+Lunate.Agent.SessionCompactionEntry.Timestamp.init -> void
+Lunate.Agent.SessionEntry
+Lunate.Agent.SessionEntry.Deconstruct(out string! Id) -> void
+Lunate.Agent.SessionEntry.Id.get -> string!
+Lunate.Agent.SessionEntry.Id.init -> void
+Lunate.Agent.SessionEntry.SessionEntry(Lunate.Agent.SessionEntry! original) -> void
+Lunate.Agent.SessionEntry.SessionEntry(string! Id) -> void
+Lunate.Agent.SessionHeaderEntry
+Lunate.Agent.SessionHeaderEntry.Created.get -> System.DateTimeOffset
+Lunate.Agent.SessionHeaderEntry.Created.init -> void
+Lunate.Agent.SessionHeaderEntry.Cwd.get -> string!
+Lunate.Agent.SessionHeaderEntry.Cwd.init -> void
+Lunate.Agent.SessionHeaderEntry.Deconstruct(out string! Id, out int Schema, out string! Cwd, out System.DateTimeOffset Created, out string! Meai) -> void
+Lunate.Agent.SessionHeaderEntry.Equals(Lunate.Agent.SessionHeaderEntry? other) -> bool
+Lunate.Agent.SessionHeaderEntry.Meai.get -> string!
+Lunate.Agent.SessionHeaderEntry.Meai.init -> void
+Lunate.Agent.SessionHeaderEntry.Schema.get -> int
+Lunate.Agent.SessionHeaderEntry.Schema.init -> void
+Lunate.Agent.SessionHeaderEntry.SessionHeaderEntry(string! Id, int Schema, string! Cwd, System.DateTimeOffset Created, string! Meai) -> void
+Lunate.Agent.SessionMessageEntry
+Lunate.Agent.SessionMessageEntry.Deconstruct(out string! Id, out string? ParentId, out System.DateTimeOffset Timestamp, out Microsoft.Extensions.AI.ChatMessage! Message, out string? Model, out Lunate.Agent.SessionUsage? Usage) -> void
+Lunate.Agent.SessionMessageEntry.Equals(Lunate.Agent.SessionMessageEntry? other) -> bool
+Lunate.Agent.SessionMessageEntry.Message.get -> Microsoft.Extensions.AI.ChatMessage!
+Lunate.Agent.SessionMessageEntry.Message.init -> void
+Lunate.Agent.SessionMessageEntry.Model.get -> string?
+Lunate.Agent.SessionMessageEntry.Model.init -> void
+Lunate.Agent.SessionMessageEntry.ParentId.get -> string?
+Lunate.Agent.SessionMessageEntry.ParentId.init -> void
+Lunate.Agent.SessionMessageEntry.SessionMessageEntry(string! Id, string? ParentId, System.DateTimeOffset Timestamp, Microsoft.Extensions.AI.ChatMessage! Message, string? Model, Lunate.Agent.SessionUsage? Usage) -> void
+Lunate.Agent.SessionMessageEntry.Timestamp.get -> System.DateTimeOffset
+Lunate.Agent.SessionMessageEntry.Timestamp.init -> void
+Lunate.Agent.SessionMessageEntry.Usage.get -> Lunate.Agent.SessionUsage?
+Lunate.Agent.SessionMessageEntry.Usage.init -> void
+Lunate.Agent.SessionModelChangeEntry
+Lunate.Agent.SessionModelChangeEntry.Deconstruct(out string! Id, out string? ParentId, out System.DateTimeOffset Timestamp, out string! Model) -> void
+Lunate.Agent.SessionModelChangeEntry.Equals(Lunate.Agent.SessionModelChangeEntry? other) -> bool
+Lunate.Agent.SessionModelChangeEntry.Model.get -> string!
+Lunate.Agent.SessionModelChangeEntry.Model.init -> void
+Lunate.Agent.SessionModelChangeEntry.ParentId.get -> string?
+Lunate.Agent.SessionModelChangeEntry.ParentId.init -> void
+Lunate.Agent.SessionModelChangeEntry.SessionModelChangeEntry(string! Id, string? ParentId, System.DateTimeOffset Timestamp, string! Model) -> void
+Lunate.Agent.SessionModelChangeEntry.Timestamp.get -> System.DateTimeOffset
+Lunate.Agent.SessionModelChangeEntry.Timestamp.init -> void
+Lunate.Agent.SessionPaths
+Lunate.Agent.SessionUsage
+Lunate.Agent.SessionUsage.<Clone>$() -> Lunate.Agent.SessionUsage!
+Lunate.Agent.SessionUsage.Deconstruct(out int Input, out int Output) -> void
+Lunate.Agent.SessionUsage.Equals(Lunate.Agent.SessionUsage? other) -> bool
+Lunate.Agent.SessionUsage.Input.get -> int
+Lunate.Agent.SessionUsage.Input.init -> void
+Lunate.Agent.SessionUsage.Output.get -> int
+Lunate.Agent.SessionUsage.Output.init -> void
+Lunate.Agent.SessionUsage.SessionUsage(int Input, int Output) -> void
+override Lunate.Agent.SessionCompactionEntry.<Clone>$() -> Lunate.Agent.SessionCompactionEntry!
+override Lunate.Agent.SessionCompactionEntry.Equals(object? obj) -> bool
+override Lunate.Agent.SessionCompactionEntry.GetHashCode() -> int
+override Lunate.Agent.SessionCompactionEntry.ToString() -> string!
+override Lunate.Agent.SessionEntry.Equals(object? obj) -> bool
+override Lunate.Agent.SessionEntry.GetHashCode() -> int
+override Lunate.Agent.SessionEntry.ToString() -> string!
+override Lunate.Agent.SessionHeaderEntry.<Clone>$() -> Lunate.Agent.SessionHeaderEntry!
+override Lunate.Agent.SessionHeaderEntry.Equals(object? obj) -> bool
+override Lunate.Agent.SessionHeaderEntry.GetHashCode() -> int
+override Lunate.Agent.SessionHeaderEntry.ToString() -> string!
+override Lunate.Agent.SessionMessageEntry.<Clone>$() -> Lunate.Agent.SessionMessageEntry!
+override Lunate.Agent.SessionMessageEntry.Equals(object? obj) -> bool
+override Lunate.Agent.SessionMessageEntry.GetHashCode() -> int
+override Lunate.Agent.SessionMessageEntry.ToString() -> string!
+override Lunate.Agent.SessionModelChangeEntry.<Clone>$() -> Lunate.Agent.SessionModelChangeEntry!
+override Lunate.Agent.SessionModelChangeEntry.Equals(object? obj) -> bool
+override Lunate.Agent.SessionModelChangeEntry.GetHashCode() -> int
+override Lunate.Agent.SessionModelChangeEntry.ToString() -> string!
+override Lunate.Agent.SessionUsage.Equals(object? obj) -> bool
+override Lunate.Agent.SessionUsage.GetHashCode() -> int
+override Lunate.Agent.SessionUsage.ToString() -> string!
+override sealed Lunate.Agent.SessionCompactionEntry.Equals(Lunate.Agent.SessionEntry? other) -> bool
+override sealed Lunate.Agent.SessionHeaderEntry.Equals(Lunate.Agent.SessionEntry? other) -> bool
+override sealed Lunate.Agent.SessionMessageEntry.Equals(Lunate.Agent.SessionEntry? other) -> bool
+override sealed Lunate.Agent.SessionModelChangeEntry.Equals(Lunate.Agent.SessionEntry? other) -> bool
+static Lunate.Agent.Session.Create(string! path, string! cwd) -> Lunate.Agent.Session!
+static Lunate.Agent.Session.Load(string! path) -> Lunate.Agent.Session!
+static Lunate.Agent.SessionCompactionEntry.operator !=(Lunate.Agent.SessionCompactionEntry? left, Lunate.Agent.SessionCompactionEntry? right) -> bool
+static Lunate.Agent.SessionCompactionEntry.operator ==(Lunate.Agent.SessionCompactionEntry? left, Lunate.Agent.SessionCompactionEntry? right) -> bool
+static Lunate.Agent.SessionEntry.operator !=(Lunate.Agent.SessionEntry? left, Lunate.Agent.SessionEntry? right) -> bool
+static Lunate.Agent.SessionEntry.operator ==(Lunate.Agent.SessionEntry? left, Lunate.Agent.SessionEntry? right) -> bool
+static Lunate.Agent.SessionHeaderEntry.operator !=(Lunate.Agent.SessionHeaderEntry? left, Lunate.Agent.SessionHeaderEntry? right) -> bool
+static Lunate.Agent.SessionHeaderEntry.operator ==(Lunate.Agent.SessionHeaderEntry? left, Lunate.Agent.SessionHeaderEntry? right) -> bool
+static Lunate.Agent.SessionMessageEntry.operator !=(Lunate.Agent.SessionMessageEntry? left, Lunate.Agent.SessionMessageEntry? right) -> bool
+static Lunate.Agent.SessionMessageEntry.operator ==(Lunate.Agent.SessionMessageEntry? left, Lunate.Agent.SessionMessageEntry? right) -> bool
+static Lunate.Agent.SessionModelChangeEntry.operator !=(Lunate.Agent.SessionModelChangeEntry? left, Lunate.Agent.SessionModelChangeEntry? right) -> bool
+static Lunate.Agent.SessionModelChangeEntry.operator ==(Lunate.Agent.SessionModelChangeEntry? left, Lunate.Agent.SessionModelChangeEntry? right) -> bool
+static Lunate.Agent.SessionPaths.ForProject(string! cwd) -> string!
+static Lunate.Agent.SessionPaths.SessionFileName(string! sessionId) -> string!
+static Lunate.Agent.SessionUsage.operator !=(Lunate.Agent.SessionUsage? left, Lunate.Agent.SessionUsage? right) -> bool
+static Lunate.Agent.SessionUsage.operator ==(Lunate.Agent.SessionUsage? left, Lunate.Agent.SessionUsage? right) -> bool
+virtual Lunate.Agent.SessionEntry.EqualityContract.get -> System.Type!
+virtual Lunate.Agent.SessionEntry.Equals(Lunate.Agent.SessionEntry? other) -> bool
+virtual Lunate.Agent.SessionEntry.PrintMembers(System.Text.StringBuilder! builder) -> bool

@@ -1,9 +1,9 @@
 ## 1. Types and store
 
-- [ ] 1.1 `SessionEntry` hierarchy: header (schema, cwd, created, meai), message (embedded ChatMessage, optional model/usage), compaction (summary, replaces), modelChange (model) — sealed records, UTC timestamps
-- [ ] 1.2 `SessionFormat` (internal): deterministic serialize/parse per the design; message node via `AIJsonUtilities.DefaultOptions`
-- [ ] 1.3 `Session`: create (writes header), append helpers (store-assigned ids/parent chain), load (schema validation with actionable errors), `Entries`, `ToHistory()`
-- [ ] 1.4 `SessionPaths.ForProject(cwd)` → `~/.lunate/sessions/<hash8>/`; file name `<sessionId>.jsonl`
+- [x] 1.1 `SessionEntry` hierarchy: header (schema, cwd, created, meai), message (embedded ChatMessage, optional model/usage), compaction (summary, replaces), modelChange (model) — sealed records, UTC timestamps
+- [x] 1.2 `SessionFormat` (internal): deterministic serialize/parse per the design; message node via `AIJsonUtilities.DefaultOptions`
+- [x] 1.3 `Session`: create (writes header), append helpers (store-assigned ids/parent chain), load (schema validation with actionable errors), `Entries`, `ToHistory()`
+- [x] 1.4 `SessionPaths.ForProject(cwd)` → `~/.lunate/sessions/<hash8>/`; file name `<sessionId>.jsonl`
 
 ## 2. Harness integration
 
