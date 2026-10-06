@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Microsoft.Extensions.AI;
 
 namespace Lunate.Ai.Tests;
@@ -196,15 +197,17 @@ public sealed class ChatClientFactoryRecordingTests
     }
 
     [Fact]
-    public void Default_recording_path_is_under_artifacts_recordings_and_gitignored()
+    public void Default_recording_path_is_under_the_user_profile()
     {
         string path = ChatClientFactory.DefaultRecordingPath().Replace('\\', '/');
+        string root = Environment
+            .GetFolderPath(Environment.SpecialFolder.UserProfile)
+            .Replace('\\', '/');
 
-        Assert.Matches(@"^artifacts/recordings/\d{8}-\d{6}-[0-9a-f]{8}\.jsonl$", path);
-        string[] ignoreLines = File.ReadAllLines(
-            Path.Combine(TestPaths.FindRepositoryRoot(), ".gitignore")
+        Assert.Matches(
+            $@"^{Regex.Escape(root)}/\.lunate/recordings/\d{{8}}-\d{{6}}-[0-9a-f]{{8}}\.jsonl$",
+            path
         );
-        Assert.Contains(ignoreLines, line => line.Trim().TrimEnd('/') == "artifacts");
     }
 
     [Fact]

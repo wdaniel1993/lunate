@@ -15,7 +15,7 @@ public sealed class ChatClientFactory : IChatClientFactory
     private const string AnthropicProvider = "anthropic";
     private const string OpenAiApiKeyVariable = "OPENAI_API_KEY";
     private const string OpenAiProvider = "openai";
-    private const string PlaceholderCredential = "unused-local-endpoint";
+    internal const string PlaceholderCredential = "unused-local-endpoint";
     private const string OpenTelemetryOptInVariable = "LUNATE_OTEL";
     private const string OtlpEndpointVariable = "OTEL_EXPORTER_OTLP_ENDPOINT";
     private const string RecordVariable = "LUNATE_RECORD";
@@ -90,19 +90,7 @@ public sealed class ChatClientFactory : IChatClientFactory
 
     internal static OpenAIClient CreateOpenAiClient(ModelInfo model)
     {
-        string? apiKey = Environment.GetEnvironmentVariable(OpenAiApiKeyVariable);
-        if (string.IsNullOrEmpty(apiKey))
-        {
-            if (model.Endpoint is null)
-            {
-                throw new InvalidOperationException(
-                    $"The {OpenAiApiKeyVariable} environment variable is not set. "
-                        + $"Set {OpenAiApiKeyVariable} to an OpenAI API key; settings and auth.json support arrive with T-16."
-                );
-            }
-
-            apiKey = PlaceholderCredential;
-        }
+        string apiKey = ResolveApiKey(model, OpenAiApiKeyVariable);
 
         return new OpenAIClient(new ApiKeyCredential(apiKey), CreateOpenAiClientOptions(model));
     }
@@ -121,14 +109,7 @@ public sealed class ChatClientFactory : IChatClientFactory
 
     internal static AnthropicClient CreateAnthropicClient(ModelInfo model)
     {
-        string? apiKey = Environment.GetEnvironmentVariable(AnthropicApiKeyVariable);
-        if (string.IsNullOrEmpty(apiKey))
-        {
-            throw new InvalidOperationException(
-                $"The {AnthropicApiKeyVariable} environment variable is not set. "
-                    + $"Set {AnthropicApiKeyVariable} to an Anthropic API key; settings and auth.json support arrive with T-16."
-            );
-        }
+        string apiKey = ResolveApiKey(model, AnthropicApiKeyVariable);
 
         if (model.Endpoint is null)
         {
@@ -143,9 +124,35 @@ public sealed class ChatClientFactory : IChatClientFactory
         };
     }
 
+    /// <summary>
+    /// Resolves the credential for a model: the environment key is used only for
+    /// the provider's default endpoint. A model with a declared endpoint gets the
+    /// placeholder credential, so real keys never reach third-party endpoints
+    /// (explicit per-model key references arrive with T-16).
+    /// </summary>
+    internal static string ResolveApiKey(ModelInfo model, string apiKeyVariable)
+    {
+        if (model.Endpoint is not null)
+        {
+            return PlaceholderCredential;
+        }
+
+        string? apiKey = Environment.GetEnvironmentVariable(apiKeyVariable);
+        if (string.IsNullOrEmpty(apiKey))
+        {
+            throw new InvalidOperationException(
+                $"The {apiKeyVariable} environment variable is not set. "
+                    + $"Set {apiKeyVariable} to your API key; settings and auth.json support arrive with T-16."
+            );
+        }
+
+        return apiKey;
+    }
+
     internal static string DefaultRecordingPath() =>
         Path.Combine(
-            "artifacts",
+            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+            ".lunate",
             "recordings",
             string.Concat(
                 DateTimeOffset.UtcNow.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture),
