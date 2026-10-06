@@ -1,7 +1,7 @@
 ## 1. Tool contract
 
-- [ ] 1.1 `ToolRisk`, `ITool`, `ToolResult`, `ToolContext` in `Lunate.Agent`; `PublicAPI.Unshipped.txt` updated
-- [ ] 1.2 Tests: contract shapes (records construct, enum values, `ITool` implementable by a scripted test tool); `Details` defaults to null
+- [x] 1.1 `ToolRisk`, `ITool`, `ToolResult`, `ToolContext` in `Lunate.Agent`; `PublicAPI.Unshipped.txt` updated
+- [x] 1.2 Tests: contract shapes (records construct, enum values, `ITool` implementable by a scripted test tool); `Details` defaults to null
 
 ## 2. Declaration adapter
 
