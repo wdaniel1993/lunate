@@ -5,8 +5,8 @@
 
 ## 2. Declaration adapter
 
-- [ ] 2.1 `ToolDeclaration : AIFunction` (internal): name, description, schema (raw-text clone); every invocation path throws with ADR-0003 guidance; wrapped tool reachable internally
-- [ ] 2.2 Tests: schema reaches the model unchanged (raw-text equality, including a schema with unusual key order/formatting); description and name exact; invocation throws `NotSupportedException`
+- [x] 2.1 `ToolDeclaration : AIFunction` (internal): name, description, schema (raw-text clone); every invocation path throws with ADR-0003 guidance; wrapped tool reachable internally
+- [x] 2.2 Tests: schema reaches the model unchanged (raw-text equality, including a schema with unusual key order/formatting); description and name exact; invocation throws `NotSupportedException`
 
 ## 3. Registry
 
