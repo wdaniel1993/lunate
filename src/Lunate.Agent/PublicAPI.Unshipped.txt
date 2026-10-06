@@ -64,6 +64,7 @@ Lunate.Agent.StepLimitReached.MaxSteps.init -> void
 Lunate.Agent.StepLimitReached.StepLimitReached(string! RunId, int MaxSteps) -> void
 Lunate.Agent.StopReasons
 const Lunate.Agent.StopReasons.Cancelled = "cancelled" -> string!
+const Lunate.Agent.StopReasons.Length = "length" -> string!
 const Lunate.Agent.StopReasons.StepLimit = "step_limit" -> string!
 const Lunate.Agent.StopReasons.Stop = "stop" -> string!
 const Lunate.Agent.ToolOutput.DefaultLimit = 30000 -> int

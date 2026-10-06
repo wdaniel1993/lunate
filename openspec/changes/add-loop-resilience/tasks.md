@@ -16,7 +16,7 @@
 
 ## 4. Observability
 
-- [ ] 4.1 Finish-reason mapping: `StopReasons.Length` + last-turn mapping in `RunFinished`; `UsageUpdated` emitted from `UsageContent`
+- [x] 4.1 Finish-reason mapping: `StopReasons.Length` + last-turn mapping in `RunFinished`; `UsageUpdated` emitted from `UsageContent`
 
 ## 5. Validator
 

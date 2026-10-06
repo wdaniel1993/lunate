@@ -162,17 +162,13 @@ public sealed partial class AgentHarness
                 }
 
                 modelCalls++;
-                List<ChatResponseUpdate> updates = await StreamModelWithRetriesAsync(
-                    runId,
-                    channel,
-                    ct
-                );
-                _history.AddRange(updates.ToChatResponse().Messages);
+                ModelStreamResult stream = await StreamModelWithRetriesAsync(runId, channel, ct);
+                _history.AddRange(stream.Updates.ToChatResponse().Messages);
 
-                List<FunctionCallContent> calls = DistinctCalls(updates);
+                List<FunctionCallContent> calls = DistinctCalls(stream.Updates);
                 if (calls.Count == 0)
                 {
-                    channel.Emit(new RunFinished(runId, StopReasons.Stop));
+                    channel.Emit(new RunFinished(runId, MappedStopReason(stream.FinishReason)));
                     terminalEmitted = true;
                     return;
                 }
@@ -201,7 +197,7 @@ public sealed partial class AgentHarness
         }
     }
 
-    private async Task<List<ChatResponseUpdate>> StreamModelAsync(
+    private async Task<ModelStreamResult> StreamModelAsync(
         string runId,
         AgentEventChannel channel,
         CancellationToken ct,
@@ -211,6 +207,7 @@ public sealed partial class AgentHarness
         List<ChatResponseUpdate> updates = [];
         string? messageId = null;
         bool textOpen = false;
+        ChatFinishReason? finishReason = null;
 
         try
         {
@@ -223,22 +220,30 @@ public sealed partial class AgentHarness
             )
             {
                 updates.Add(update);
+                if (update.FinishReason is { } reason)
+                {
+                    finishReason = reason;
+                }
+
                 foreach (AIContent content in update.Contents)
                 {
-                    if (content is not TextContent { Text: { Length: > 0 } text })
+                    if (content is TextContent { Text: { Length: > 0 } text })
                     {
-                        continue;
-                    }
+                        if (!textOpen)
+                        {
+                            textOpen = true;
+                            messageId = RunIds.NextMessage();
+                            channel.Emit(new TextMessageStart(runId, messageId));
+                        }
 
-                    if (!textOpen)
+                        attempt.Emitted = true;
+                        channel.Emit(new TextMessageContent(runId, messageId!, text));
+                    }
+                    else if (content is UsageContent usage)
                     {
-                        textOpen = true;
-                        messageId = RunIds.NextMessage();
-                        channel.Emit(new TextMessageStart(runId, messageId));
+                        attempt.Emitted = true;
+                        channel.Emit(new UsageUpdated(runId, usage.Details));
                     }
-
-                    attempt.Emitted = true;
-                    channel.Emit(new TextMessageContent(runId, messageId!, text));
                 }
             }
         }
@@ -250,32 +255,11 @@ public sealed partial class AgentHarness
             }
         }
 
-        return updates;
+        return new ModelStreamResult(updates, finishReason, attempt.Emitted);
     }
 
-    private static List<FunctionCallContent> DistinctCalls(List<ChatResponseUpdate> updates)
-    {
-        Dictionary<string, FunctionCallContent> byCallId = new(StringComparer.Ordinal);
-        List<string> order = [];
-        foreach (ChatResponseUpdate update in updates)
-        {
-            foreach (AIContent content in update.Contents)
-            {
-                if (content is not FunctionCallContent call)
-                {
-                    continue;
-                }
-
-                string callId = call.CallId ?? string.Empty;
-                if (byCallId.TryAdd(callId, call))
-                {
-                    order.Add(callId);
-                }
-            }
-        }
-
-        return [.. order.Select(callId => byCallId[callId])];
-    }
+    private static string MappedStopReason(ChatFinishReason? finishReason) =>
+        finishReason == ChatFinishReason.Length ? StopReasons.Length : StopReasons.Stop;
 
     private List<ChatMessage> BuildRequest()
     {

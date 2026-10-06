@@ -9,7 +9,7 @@ public sealed partial class AgentHarness
     /// Calls the model and retries transient failures with exponential backoff. Only attempts that
     /// emitted nothing retry: a stream that already produced events is never replayed.
     /// </summary>
-    private async Task<List<ChatResponseUpdate>> StreamModelWithRetriesAsync(
+    private async Task<ModelStreamResult> StreamModelWithRetriesAsync(
         string runId,
         AgentEventChannel channel,
         CancellationToken ct
@@ -46,4 +46,11 @@ public sealed partial class AgentHarness
     {
         public bool Emitted { get; set; }
     }
+
+    /// <summary>One model call's updates plus the last finish reason and whether it emitted.</summary>
+    private sealed record ModelStreamResult(
+        List<ChatResponseUpdate> Updates,
+        ChatFinishReason? FinishReason,
+        bool Emitted
+    );
 }

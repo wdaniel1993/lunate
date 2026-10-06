@@ -196,6 +196,30 @@ public sealed partial class AgentHarness
     private static string SerializeArguments(IDictionary<string, object?>? arguments) =>
         arguments is null ? "{}" : JsonSerializer.Serialize(arguments, ArgumentsJson);
 
+    private static List<FunctionCallContent> DistinctCalls(List<ChatResponseUpdate> updates)
+    {
+        Dictionary<string, FunctionCallContent> byCallId = new(StringComparer.Ordinal);
+        List<string> order = [];
+        foreach (ChatResponseUpdate update in updates)
+        {
+            foreach (AIContent content in update.Contents)
+            {
+                if (content is not FunctionCallContent call)
+                {
+                    continue;
+                }
+
+                string callId = call.CallId ?? string.Empty;
+                if (byCallId.TryAdd(callId, call))
+                {
+                    order.Add(callId);
+                }
+            }
+        }
+
+        return [.. order.Select(callId => byCallId[callId])];
+    }
+
     private string AvailableTools() =>
         _tools.Tools.Count == 0
             ? "none"
