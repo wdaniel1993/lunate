@@ -10,8 +10,8 @@
 
 ## 3. Registry
 
-- [ ] 3.1 `ToolRegistry`: insertion-ordered; `Add` (duplicate name fails fast), `Find`, `Declarations` (`IReadOnlyList<AIFunction>`), `Tools`
-- [ ] 3.2 Tests: add/find; duplicate rejected; declarations match tools in registration order; unknown name returns null
+- [x] 3.1 `ToolRegistry`: insertion-ordered; `Add` (duplicate name fails fast), `Find`, `Declarations` (`IReadOnlyList<AIFunction>`), `Tools`
+- [x] 3.2 Tests: add/find; duplicate rejected; declarations match tools in registration order; unknown name returns null
 
 ## 4. Output truncation
 

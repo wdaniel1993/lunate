@@ -129,6 +129,12 @@ Lunate.Agent.ToolContext.Events.init -> void
 Lunate.Agent.ToolContext.ToolContext(string! WorkingDirectory, Lunate.Agent.IAgentEvents! Events) -> void
 Lunate.Agent.ToolContext.WorkingDirectory.get -> string!
 Lunate.Agent.ToolContext.WorkingDirectory.init -> void
+Lunate.Agent.ToolRegistry
+Lunate.Agent.ToolRegistry.Add(Lunate.Agent.ITool! tool) -> void
+Lunate.Agent.ToolRegistry.Declarations.get -> System.Collections.Generic.IReadOnlyList<Microsoft.Extensions.AI.AIFunction!>!
+Lunate.Agent.ToolRegistry.Find(string! name) -> Lunate.Agent.ITool?
+Lunate.Agent.ToolRegistry.ToolRegistry() -> void
+Lunate.Agent.ToolRegistry.Tools.get -> System.Collections.Generic.IReadOnlyList<Lunate.Agent.ITool!>!
 Lunate.Agent.ToolResult
 Lunate.Agent.ToolResult.<Clone>$() -> Lunate.Agent.ToolResult!
 Lunate.Agent.ToolResult.Deconstruct(out string! Output, out bool IsError, out object? Details) -> void
