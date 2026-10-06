@@ -292,3 +292,25 @@ virtual Lunate.Agent.AgentEvent.EqualityContract.get -> System.Type!
 virtual Lunate.Agent.AgentEvent.Equals(Lunate.Agent.AgentEvent? other) -> bool
 virtual Lunate.Agent.AgentEvent.PrintMembers(System.Text.StringBuilder! builder) -> bool
 virtual Lunate.Agent.ExtensionEvent.Equals(Lunate.Agent.ExtensionEvent? other) -> bool
+Lunate.Agent.AgentHarness
+Lunate.Agent.AgentHarness.AgentHarness(Microsoft.Extensions.AI.IChatClient! client, Lunate.Agent.ToolRegistry! tools, Lunate.Agent.AgentHarnessOptions? options = null) -> void
+Lunate.Agent.AgentHarness.RunAsync(string! userInput, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<Lunate.Agent.AgentEvent!>!
+Lunate.Agent.AgentHarnessOptions
+Lunate.Agent.AgentHarnessOptions.<Clone>$() -> Lunate.Agent.AgentHarnessOptions!
+Lunate.Agent.AgentHarnessOptions.AgentHarnessOptions() -> void
+Lunate.Agent.AgentHarnessOptions.Approver.get -> Lunate.Agent.IToolApprover?
+Lunate.Agent.AgentHarnessOptions.Approver.init -> void
+Lunate.Agent.AgentHarnessOptions.Equals(Lunate.Agent.AgentHarnessOptions? other) -> bool
+Lunate.Agent.AgentHarnessOptions.MaxSteps.get -> int
+Lunate.Agent.AgentHarnessOptions.MaxSteps.init -> void
+Lunate.Agent.AgentHarnessOptions.SystemPrompt.get -> string?
+Lunate.Agent.AgentHarnessOptions.SystemPrompt.init -> void
+Lunate.Agent.AgentHarnessOptions.WorkingDirectory.get -> string!
+Lunate.Agent.AgentHarnessOptions.WorkingDirectory.init -> void
+Lunate.Agent.IToolApprover
+Lunate.Agent.IToolApprover.ApproveAsync(Lunate.Agent.ITool! tool, System.Text.Json.JsonElement args, System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask<bool>
+override Lunate.Agent.AgentHarnessOptions.Equals(object? obj) -> bool
+override Lunate.Agent.AgentHarnessOptions.GetHashCode() -> int
+override Lunate.Agent.AgentHarnessOptions.ToString() -> string!
+static Lunate.Agent.AgentHarnessOptions.operator !=(Lunate.Agent.AgentHarnessOptions? left, Lunate.Agent.AgentHarnessOptions? right) -> bool
+static Lunate.Agent.AgentHarnessOptions.operator ==(Lunate.Agent.AgentHarnessOptions? left, Lunate.Agent.AgentHarnessOptions? right) -> bool
