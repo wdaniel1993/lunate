@@ -7,8 +7,64 @@ on:
   workflow_dispatch:
 
 jobs:
+  gate:
+    name: verify gate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          # The public-API step diffs PublicAPI.Shipped.txt against the merge
+          # base with origin/main, so the checkout needs full history.
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: |
+            global.json
+            Directory.Build.props
+            **/*.csproj
+
+      - name: Install hyperfine (Linux)
+        run: |
+          set -euo pipefail
+          version=1.20.0
+          asset="hyperfine-v${version}-x86_64-unknown-linux-musl.tar.gz"
+          curl -fsSL -o "${RUNNER_TEMP}/${asset}" \
+            "https://github.com/sharkdp/hyperfine/releases/download/v${version}/${asset}"
+          printf '%s  %s\n' \
+            3285ec7959285288137043dd81dce0dde056227018a8277532d9a364b4f03c2b \
+            "${RUNNER_TEMP}/${asset}" | sha256sum -c -
+          tar -xzf "${RUNNER_TEMP}/${asset}" -C "${RUNNER_TEMP}"
+          install "${RUNNER_TEMP}/hyperfine-v${version}-x86_64-unknown-linux-musl/hyperfine" \
+            /usr/local/bin/hyperfine
+          hyperfine --version
+
+      - name: Check tag against version
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' Directory.Build.props)"
+          tag="${GITHUB_REF_NAME#v}"
+          if [ -z "$version" ] || [ "$tag" != "$version" ]; then
+            echo "release: tag ${GITHUB_REF_NAME} does not match <Version>${version}</Version> in Directory.Build.props" >&2
+            exit 1
+          fi
+
+      - name: Verify
+        env:
+          BUDGET_MS: 250
+        run: bash scripts/verify.sh
+
   publish:
     name: publish (${{ matrix.rid }})
+    needs: gate
     runs-on: ${{ matrix.os }}
     permissions:
       contents: read
@@ -29,7 +85,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: 10.0.x
+          global-json-file: global.json
           cache: true
           cache-dependency-path: |
             global.json
@@ -78,6 +134,11 @@ jobs:
           pattern: release-*
           merge-multiple: true
           path: dist
+
+      - name: Write checksums
+        run: |
+          set -euo pipefail
+          (cd dist && sha256sum lunate-* > SHA256SUMS && cat SHA256SUMS)
 
       - name: Attach archives to the GitHub release
         env:
