@@ -41,17 +41,65 @@ public sealed partial class AgentHarness
         channel.Emit(new ToolCallArgs(runId, callId, argsJson));
         channel.Emit(new ToolCallEnd(runId, callId));
 
-        ToolResult result = argumentsError is null
-            ? await RunToolAsync(toolName, args, channel, ct)
-            : new ToolResult(
-                $"Invalid JSON arguments for '{toolName}': {argumentsError}. Fix the arguments and retry.",
-                IsError: true
-            );
+        ToolResult result;
+        try
+        {
+            result = argumentsError is null
+                ? await RunToolAsync(toolName, args, channel, ct)
+                : new ToolResult(
+                    $"Invalid JSON arguments for '{toolName}': {argumentsError}. Fix the arguments and retry.",
+                    IsError: true
+                );
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            AppendSyntheticResult(runId, call, channel, cancelled: true);
+            throw;
+        }
 
         toolActivity?.SetTag(AgentTelemetry.ToolIsErrorAttribute, result.IsError);
         string output = ToolOutput.Truncate(result.Output);
         channel.Emit(new ToolCallResult(runId, callId, output, result.IsError, result.Details));
         _history.Add(new ChatMessage(ChatRole.Tool, [new FunctionResultContent(callId, output)]));
+        _danglingCalls.Remove(call);
+    }
+
+    private void AppendSyntheticResult(
+        string runId,
+        FunctionCallContent call,
+        AgentEventChannel channel,
+        bool cancelled
+    )
+    {
+        string callId = call.CallId ?? string.Empty;
+        string output = SyntheticOutput(call, cancelled);
+        channel.Emit(new ToolCallResult(runId, callId, output, IsError: true));
+        _history.Add(new ChatMessage(ChatRole.Tool, [new FunctionResultContent(callId, output)]));
+        _danglingCalls.Remove(call);
+    }
+
+    private void RepairDanglingCalls(string runId, bool cancelled)
+    {
+        foreach (FunctionCallContent call in _danglingCalls)
+        {
+            string callId = call.CallId ?? string.Empty;
+            _history.Add(
+                new ChatMessage(
+                    ChatRole.Tool,
+                    [new FunctionResultContent(callId, SyntheticOutput(call, cancelled))]
+                )
+            );
+        }
+
+        _danglingCalls.Clear();
+    }
+
+    private static string SyntheticOutput(FunctionCallContent call, bool cancelled)
+    {
+        string toolName = call.Name ?? string.Empty;
+        return cancelled
+            ? $"Tool call ({toolName}) was cancelled by the user and was not executed."
+            : $"Tool call ({toolName}) was not executed: the run failed. Do not retry it.";
     }
 
     private async Task<ToolResult> RunToolAsync(
@@ -86,7 +134,7 @@ public sealed partial class AgentHarness
                 ct
             );
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
             throw;
         }

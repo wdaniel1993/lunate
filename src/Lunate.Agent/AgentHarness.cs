@@ -114,9 +114,10 @@ public sealed partial class AgentHarness
         {
             await ExecuteRunAsync(runId, userInput, channel, ct);
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
-            // Cancellation is not a run error (T-10); the channel still completes.
+            // ExecuteRunAsync turns user cancellation into RunFinished(cancelled); this guard
+            // keeps the loop task from faulting should an OCE still escape.
         }
         finally
         {
@@ -141,10 +142,13 @@ public sealed partial class AgentHarness
         );
         runActivity?.SetTag(AgentTelemetry.AgentNameAttribute, AgentTelemetry.AgentName);
 
+        bool runStarted = false;
+        bool terminalEmitted = false;
         try
         {
             _history.Add(new ChatMessage(ChatRole.User, userInput));
             channel.Emit(new RunStarted(runId));
+            runStarted = true;
 
             int modelCalls = 0;
             while (true)
@@ -153,6 +157,7 @@ public sealed partial class AgentHarness
                 {
                     channel.Emit(new StepLimitReached(runId, _options.MaxSteps));
                     channel.Emit(new RunFinished(runId, StopReasons.StepLimit));
+                    terminalEmitted = true;
                     return;
                 }
 
@@ -164,22 +169,30 @@ public sealed partial class AgentHarness
                 if (calls.Count == 0)
                 {
                     channel.Emit(new RunFinished(runId, StopReasons.Stop));
+                    terminalEmitted = true;
                     return;
                 }
 
+                _danglingCalls.Clear();
+                _danglingCalls.AddRange(calls);
                 foreach (FunctionCallContent call in calls)
                 {
                     await ExecuteCallAsync(runId, call, channel, ct);
                 }
             }
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
-            throw;
+            RepairDanglingCalls(runId, cancelled: true);
+            if (runStarted && !terminalEmitted)
+            {
+                channel.Emit(new RunFinished(runId, StopReasons.Cancelled));
+            }
         }
         catch (Exception exception)
         {
             runActivity?.SetStatus(ActivityStatusCode.Error, exception.Message);
+            RepairDanglingCalls(runId, cancelled: false);
             channel.Emit(new RunError(runId, $"Run failed: {exception.Message}"));
         }
     }
@@ -194,36 +207,41 @@ public sealed partial class AgentHarness
         string? messageId = null;
         bool textOpen = false;
 
-        await foreach (
-            ChatResponseUpdate update in _client.GetStreamingResponseAsync(
-                BuildRequest(),
-                BuildOptions(),
-                ct
-            )
-        )
+        try
         {
-            updates.Add(update);
-            foreach (AIContent content in update.Contents)
+            await foreach (
+                ChatResponseUpdate update in _client.GetStreamingResponseAsync(
+                    BuildRequest(),
+                    BuildOptions(),
+                    ct
+                )
+            )
             {
-                if (content is not TextContent { Text: { Length: > 0 } text })
+                updates.Add(update);
+                foreach (AIContent content in update.Contents)
                 {
-                    continue;
-                }
+                    if (content is not TextContent { Text: { Length: > 0 } text })
+                    {
+                        continue;
+                    }
 
-                if (!textOpen)
-                {
-                    textOpen = true;
-                    messageId = RunIds.NextMessage();
-                    channel.Emit(new TextMessageStart(runId, messageId));
-                }
+                    if (!textOpen)
+                    {
+                        textOpen = true;
+                        messageId = RunIds.NextMessage();
+                        channel.Emit(new TextMessageStart(runId, messageId));
+                    }
 
-                channel.Emit(new TextMessageContent(runId, messageId!, text));
+                    channel.Emit(new TextMessageContent(runId, messageId!, text));
+                }
             }
         }
-
-        if (textOpen)
+        finally
         {
-            channel.Emit(new TextMessageEnd(runId, messageId!));
+            if (textOpen)
+            {
+                channel.Emit(new TextMessageEnd(runId, messageId!));
+            }
         }
 
         return updates;

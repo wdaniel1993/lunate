@@ -5,9 +5,9 @@
 
 ## 2. Cancellation and repair
 
-- [ ] 2.1 OCE discrimination everywhere (`when (ct.IsCancellationRequested)`; tool path rethrows only real user cancellation, else error result); non-user OCE is a normal failure
-- [ ] 2.2 History repair (pending-call tracking; synthetic cancelled/aborted results on cancel and on error paths) + `RunFinished(cancelled)` when `RunStarted` was emitted
-- [ ] 2.3 `StreamModelAsync` closes an open text message in `finally` on any failure
+- [x] 2.1 OCE discrimination everywhere (`when (ct.IsCancellationRequested)`; tool path rethrows only real user cancellation, else error result); non-user OCE is a normal failure
+- [x] 2.2 History repair (pending-call tracking; synthetic cancelled/aborted results on cancel and on error paths) + `RunFinished(cancelled)` when `RunStarted` was emitted
+- [x] 2.3 `StreamModelAsync` closes an open text message in `finally` on any failure
 
 ## 3. Retries
 
