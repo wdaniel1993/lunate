@@ -92,12 +92,38 @@ public sealed class AgentToolErrorTests
         List<AgentEvent> events = await Run(harness);
 
         Assert.Empty(EventSequenceValidator.Validate(events));
+        Assert.Equal("""{"path": broken""", Assert.Single(events.OfType<ToolCallArgs>()).Args);
         ToolCallResult result = Assert.Single(events.OfType<ToolCallResult>());
         Assert.True(result.IsError);
         Assert.Contains("read", result.Output);
         Assert.Contains("arguments", result.Output);
         Assert.Null(read.ReceivedContext);
         Assert.Equal(2, provider.Requests.Count);
+    }
+
+    [Fact]
+    public async Task Fragmented_arguments_from_a_raw_client_become_an_error_result()
+    {
+        ScriptedTool read = ReadTool("contents");
+        var client = new ScriptedChatClient()
+            .Enqueue(
+                LoopScripts.CallFragment("call_1", "read", """{"path":"""),
+                LoopScripts.CallFragment("call_1", string.Empty, " broken"),
+                LoopScripts.ToolCalls()
+            )
+            .Enqueue(LoopScripts.Text("Done"), LoopScripts.Stop());
+        var harness = new AgentHarness(client, Registry(read));
+
+        List<AgentEvent> events = await Run(harness);
+
+        Assert.Empty(EventSequenceValidator.Validate(events));
+        Assert.Equal("""{"path":""", Assert.Single(events.OfType<ToolCallArgs>()).Args);
+        ToolCallResult result = Assert.Single(events.OfType<ToolCallResult>());
+        Assert.True(result.IsError);
+        Assert.Contains("read", result.Output);
+        Assert.Contains("arguments", result.Output);
+        Assert.Null(read.ReceivedContext);
+        Assert.Equal(2, client.Requests.Count);
     }
 
     [Fact]

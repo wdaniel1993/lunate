@@ -6,6 +6,8 @@ namespace Lunate.Agent;
 
 public sealed partial class AgentHarness
 {
+    private const string ArgumentsFragmentKey = "$arguments";
+
     private static readonly JsonSerializerOptions ArgumentsJson = new(
         AIJsonUtilities.DefaultOptions
     )
@@ -35,23 +37,7 @@ public sealed partial class AgentHarness
 
         channel.Emit(new ToolCallStart(runId, callId, toolName));
 
-        string argsJson = "{}";
-        JsonElement args = default;
-        string? argumentsError = call.Exception?.Message;
-        if (argumentsError is null)
-        {
-            try
-            {
-                argsJson = SerializeArguments(call.Arguments);
-                using JsonDocument document = JsonDocument.Parse(argsJson);
-                args = document.RootElement.Clone();
-            }
-            catch (Exception exception) when (exception is not OperationCanceledException)
-            {
-                argumentsError = exception.Message;
-            }
-        }
-
+        (string argsJson, JsonElement args, string? argumentsError) = ReadArguments(call);
         channel.Emit(new ToolCallArgs(runId, callId, argsJson));
         channel.Emit(new ToolCallEnd(runId, callId));
 
@@ -111,6 +97,52 @@ public sealed partial class AgentHarness
                 IsError: true
             );
         }
+    }
+
+    private static (string Json, JsonElement Args, string? Error) ReadArguments(
+        FunctionCallContent call
+    )
+    {
+        (bool isFragment, string? raw) = FragmentOf(call.Arguments);
+        if (isFragment || call.Exception is not null)
+        {
+            string error =
+                call.Exception?.Message
+                ?? "the streamed arguments were not assembled into a complete call";
+            return (raw is { Length: > 0 } ? raw : error, default, error);
+        }
+
+        try
+        {
+            string json = SerializeArguments(call.Arguments);
+            using JsonDocument document = JsonDocument.Parse(json);
+            return (json, document.RootElement.Clone(), null);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            return (exception.Message, default, exception.Message);
+        }
+    }
+
+    private static (bool IsFragment, string? Raw) FragmentOf(
+        IDictionary<string, object?>? arguments
+    )
+    {
+        if (
+            arguments is not { } values
+            || !values.TryGetValue(ArgumentsFragmentKey, out object? value)
+        )
+        {
+            return (false, null);
+        }
+
+        string? raw = value switch
+        {
+            string text => text,
+            JsonElement { ValueKind: JsonValueKind.String } element => element.GetString(),
+            _ => null,
+        };
+        return (true, raw);
     }
 
     private static string SerializeArguments(IDictionary<string, object?>? arguments) =>

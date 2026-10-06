@@ -9,6 +9,11 @@ namespace Lunate.Agent;
 /// runs tools itself (ADR-0003) and keeps the history valid. Runs on one harness are sequential;
 /// concurrent runs are a later, explicit decision.
 /// </summary>
+/// <remarks>
+/// The client is expected to be the factory pipeline, which includes the stream accumulator, so
+/// function calls arrive complete. A call that still carries raw argument fragments or a failed
+/// assembly is never executed: it becomes an instructing error result instead.
+/// </remarks>
 public sealed partial class AgentHarness
 {
     private readonly IChatClient _client;
@@ -100,7 +105,7 @@ public sealed partial class AgentHarness
                 List<ChatResponseUpdate> updates = await StreamModelAsync(runId, channel, ct);
                 _history.AddRange(updates.ToChatResponse().Messages);
 
-                List<FunctionCallContent> calls = CompleteCalls(updates);
+                List<FunctionCallContent> calls = DistinctCalls(updates);
                 if (calls.Count == 0)
                 {
                     channel.Emit(new RunFinished(runId, StopReasons.Stop));
@@ -169,7 +174,7 @@ public sealed partial class AgentHarness
         return updates;
     }
 
-    private static List<FunctionCallContent> CompleteCalls(List<ChatResponseUpdate> updates)
+    private static List<FunctionCallContent> DistinctCalls(List<ChatResponseUpdate> updates)
     {
         Dictionary<string, FunctionCallContent> byCallId = new(StringComparer.Ordinal);
         List<string> order = [];

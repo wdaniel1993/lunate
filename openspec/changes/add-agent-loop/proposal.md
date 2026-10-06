@@ -18,7 +18,7 @@ Layers 1 and 2 now have their pieces: the model pipeline (T-04 to T-06), the eve
 - `agent-loop`: the harness surface, turn semantics, tool execution, spans and the run/event lifecycle.
 
 ### Modified Capabilities
-- None.
+- `ai-layer`: failed function-call assembly keeps the raw fragment text in the fragment channel alongside the exception, so consumers can show what the model sent.
 
 ## Impact
 

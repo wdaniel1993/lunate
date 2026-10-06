@@ -135,9 +135,11 @@ internal sealed class StreamAccumulator(IChatClient innerClient) : DelegatingCha
             _ = _arguments.Append(fragment);
         }
 
-        public FunctionCallContent ToCompleteCall(string callId) =>
-            FunctionCallContent.CreateFromParsedArguments(
-                _arguments.ToString(),
+        public FunctionCallContent ToCompleteCall(string callId)
+        {
+            string raw = _arguments.ToString();
+            FunctionCallContent call = FunctionCallContent.CreateFromParsedArguments(
+                raw,
                 callId,
                 _name ?? string.Empty,
                 static json =>
@@ -146,5 +148,12 @@ internal sealed class StreamAccumulator(IChatClient innerClient) : DelegatingCha
                         AIJsonUtilities.DefaultOptions
                     )!
             );
+            if (call.Exception is not null && raw.Length > 0)
+            {
+                call.Arguments = new Dictionary<string, object?> { [ArgumentsFragmentKey] = raw };
+            }
+
+            return call;
+        }
     }
 }
