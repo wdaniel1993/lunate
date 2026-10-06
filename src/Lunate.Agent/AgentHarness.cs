@@ -25,7 +25,7 @@ public sealed partial class AgentHarness
         _options = options ?? new AgentHarnessOptions();
     }
 
-    /// <summary>Runs one turn and streams its events; the stream completes when the run ends.</summary>
+    /// <summary>Runs the loop for one user input and streams its events; the stream completes when the run ends.</summary>
     public async IAsyncEnumerable<AgentEvent> RunAsync(
         string userInput,
         [EnumeratorCancellation] CancellationToken ct = default
