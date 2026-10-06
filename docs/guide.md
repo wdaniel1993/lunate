@@ -8,11 +8,11 @@ Lunate is a fast, native terminal coding agent in C#, built as a daily driver: a
 
 **Why it should exist next to Pi and OpenCode**
 
-- **Zero-setup, reliable C#:** Roslyn is built in, with no plugin or language server to install. Compile checks after every edit, and refactor-class tools (find references, rename) as first-class agent tools with mandatory diffs. Claude Code and OpenCode reach C# through LSP plugins, which need setup and have known reliability problems.
+- **Agent-shaped C# tools with zero setup:** name-based lookup (find symbol, find references), compile checks after every edit, and refactors returned as diffs through the approval policy — no plugin or language server to install, and clear messages for restore, SDK and partial-load problems. C# language servers run Roslyn underneath too; the bet is that tools designed for agents beat editor-style file/line/column requests — T-35 tests that head to head.
 - **One file, no runtime to install:** self-contained single file, fast start, no Node or Python runtime, and extensions loaded at runtime like Pi's.
 - **Editor and local-model friendly:** runs inside Zed or JetBrains via ACP and works with any OpenAI-compatible endpoint, including the home lab.
 
-These claims age quickly, so the Phase 5 gate tests them head to head: the same C# task suite with Lunate, Claude Code with its C# LSP plugin, and OpenCode with its C# tooling. If Lunate does not win on C# tasks, it stays a personal tool and a learning project, which is fine.
+These claims age quickly, so the Phase 5 gate tests them head to head: the same C# task suite with Lunate, Claude Code with its C# LSP plugin, and OpenCode with its C# tooling. If Lunate does not clearly win on C# tasks, the positioning moves to .NET-native extensibility and the daily-driver experience instead of C# intelligence — it stays a personal tool and a learning project, which is fine.
 
 **Goals**
 
@@ -29,6 +29,7 @@ These claims age quickly, so the Phase 5 gate tests them head to head: the same 
 - Own IDE plugins (ACP instead) and any web frontend.
 - Hosting as an embeddable agent server: no AG-UI endpoint, no A2A. Using the MAF Harness internally is a separate question, decided by spike S-1. `Lunate.Agent` stays a clean library, without product promises.
 - Supporting every provider: OpenAI-compatible, Anthropic and local via OpenAI-compatible endpoints are enough.
+- Generic LSP support for other languages: a possible later extension (see the note in the Roslyn section), not v1 scope.
 
 ## Design principles
 
@@ -537,7 +538,7 @@ public interface IAcpServer
 
 ## Roslyn extension (the .NET edge)
 
-`Lunate.Roslyn` is a built-in extension that gives the model semantic C# tools bash cannot match; it is the main reason this project should exist in C#.
+`Lunate.Roslyn` is a built-in extension that gives the model **agent-shaped C# tools**: name-based lookup, compile checks after every edit, refactors returned as diffs. C# language servers run Roslyn underneath too — the difference this project bets on is tool design, not the engine: no plugin or server to set up, diagnostics straight from the compilation, and load problems reported as clear messages. That edge depends on implementing ADR 0006's operational rules well (restore check, SDK mismatch, partial loads), not on Roslyn itself.
 
 **Loading model**
 
@@ -555,13 +556,15 @@ Roslyn loads in process on the first C# tool call. `MSBuildLocator` finds the in
 
 Phase 5 ships `cs_diagnostics` and `cs_find_symbol`, because they carry the main claim (a compile check right after an edit). The other three follow in Phase 6. Tests use small solutions in `tests/fixtures/solutions/` (a console app, and a library with a test project) so a workspace loads in seconds.
 
-The Phase 5 gate is external (T-35): the same C# task suite with Lunate, with Claude Code plus its C# LSP plugin, and with OpenCode plus its C# tooling. Record setup steps needed, pass rate, steps, tokens, edit tiers used and wall time. Lunate has to win on reliability and steps, not only work.
+The Phase 5 gate is external (T-35): the same C# task suite with Lunate, with Claude Code plus its C# LSP plugin, and with OpenCode plus its C# tooling. Record setup steps needed, pass rate, steps, tokens, edit tiers used, wall time and failure categories per run (load/restore/SDK failures, symbol-position errors, wrong edits, other) — that is what tests whether agent-shaped tools are what makes the difference. Lunate has to win on reliability and steps, not only work.
 
 **Rules**
 
 - Outputs are compact text, not JSON dumps. Cap at the same limit as other tools.
 - If the solution fails to load, tools return a clear error and the agent falls back to the four core tools.
 - Measure it: run the same task set with and without `Lunate.Roslyn` and compare success rate and tokens (see Testing).
+
+**Later (no card yet).** A generic LSP client extension would give Lunate baseline diagnostics and navigation for TypeScript, Python and other languages, similar to OpenCode — reusing the same name-based tool shape where possible. Explicitly not v1 scope.
 
 ## Roadmap
 
@@ -599,7 +602,7 @@ One row per card. Each card becomes one OpenSpec change (see Building it with Op
 | T-22 | 4 | Wire events, steering, `Esc` cancel, slash commands, pickers | T-09, T-18 to T-21 | End-to-end scripted session snapshot |
 | T-23 | 4 | Compaction as `IChatReducer` (loop-invoked; not `ReducingChatClient`) | T-11 | Replay: long session compacts; tool pairs never split |
 | T-24 | 5 | Extension loader: manifests, `AssemblyLoadContext`, lazy load, project approval | T-09 | Sample extension loads; startup budget unchanged |
-| T-25 | 5 | `Lunate.Roslyn` extension: `MSBuildLocator`, workspace load, file sync, `cs_diagnostics` | T-24 | Detects an error introduced by `edit`; first-call budget met |
+| T-25 | 5 | `Lunate.Roslyn` extension: `ICSharpBackend` + in-process backend (ADR 0014), `MSBuildLocator`, workspace load, file sync, `cs_diagnostics` | T-24 | Detects an error introduced by `edit`; first-call budget met |
 | T-26 | 5 | `cs_find_symbol` | T-25 | Finds definitions in fixture solutions |
 | T-27 | 5 | ACP server: SDK choice (ADR), initialize, session, prompt, updates, cancel | T-09 | In-process client tests |
 | T-28 | 5 | ACP permissions and editor file system | T-27 | Approval round trip; one real Zed session |
@@ -609,7 +612,7 @@ One row per card. Each card becomes one OpenSpec change (see Building it with Op
 | T-32 | 4 | Distribution: release workflow, install scripts, Homebrew, Scoop, winget, `dotnet tool` | T-02, T-17 | Fresh install works on Windows, macOS and Linux with one command |
 | T-33 | 4 | Terminal capability detection and fallbacks; manual terminal matrix check | T-18, T-19 | Every tier-1 terminal checked and noted in the card |
 | T-34 | 6 | Extension authoring: template project, docs, one sample extension | T-24 | A new extension builds from the template and loads |
-| T-35 | 5 | Head-to-head C# eval: Lunate vs Claude Code with the C# LSP plugin vs OpenCode with its C# tooling; same tasks and model where possible; pass rate, steps, tokens, edit tiers, time | T-17, T-25, T-26 | One results row per tool in eval/results.csv and a short write-up in docs/eval/ |
+| T-35 | 5 | Head-to-head C# eval: Lunate vs Claude Code with the C# LSP plugin vs OpenCode with its C# tooling; same tasks and model where possible; pass rate, steps, tokens, edit tiers, time; failure categories per run (load/restore/SDK failures, symbol-position errors, wrong edits, other) | T-17, T-25, T-26 | One results row per tool in eval/results.csv, a short write-up in docs/eval/, and a conclusion — if Lunate is not clearly better on C# tasks, the guide moves the positioning to .NET-native extensibility and the daily-driver experience instead of C# intelligence |
 
 Independent tracks can run in parallel in separate git worktrees, for example T-18/T-19 (TUI) next to T-12 to T-15 (tools).
 

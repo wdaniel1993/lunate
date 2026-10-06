@@ -3,7 +3,7 @@
 - Status: accepted — 2026-10-04 (maintainer sign-off)
 - Date: 2026-10-04
 - Spike: `docs/spikes/S-4/report.md` (raw evidence under `docs/spikes/S-4/evidence/`)
-- Relates to: ADR 0001 (single-file releases), ADR 0002 (layering)
+- Relates to: ADR 0001 (single-file releases), ADR 0002 (layering), ADR 0014 (C# tools behind a backend interface)
 
 ## Context
 
