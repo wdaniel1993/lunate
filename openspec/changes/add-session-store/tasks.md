@@ -19,9 +19,9 @@
 
 ## 4. Specs and ADR
 
-- [ ] 4.1 New `agent-sessions` capability spec (format, store/resume, guard, location) with scenarios
-- [ ] 4.2 `agent-loop` delta: session mirroring + resume seeding
-- [ ] 4.3 ADR-0015 (proposed): the format is pinned by golden files; schema bumps need migration + ADR — and copy it to `adr/0015-session-format.md` at the repository root (the change-dir copy stays as the proposal record)
+- [x] 4.1 New `agent-sessions` capability spec (format, store/resume, guard, location) with scenarios
+- [x] 4.2 `agent-loop` delta: session mirroring + resume seeding
+- [x] 4.3 ADR-0015 (proposed): the format is pinned by golden files; schema bumps need migration + ADR — and copy it to `adr/0015-session-format.md` at the repository root (the change-dir copy stays as the proposal record)
 
 ## 5. Close
 
