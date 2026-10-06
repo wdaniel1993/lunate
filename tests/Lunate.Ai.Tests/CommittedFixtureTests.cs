@@ -49,7 +49,7 @@ public sealed class CommittedFixtureTests
             provider.Enqueue(exchange.Updates);
         }
 
-        var recorder = new RecordingChatClient(provider, fresh, SampleScript.ModelId);
+        var recorder = new RecordingChatClient(provider, fresh, SampleScript.HeaderModelId);
         foreach (SampleScript.SampleExchange exchange in SampleScript.Exchanges)
         {
             await recorder

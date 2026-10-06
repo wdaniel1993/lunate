@@ -40,6 +40,11 @@ internal static class FixtureFormat
             JsonOptions
         );
 
+    /// <summary>
+    /// Computes the digest that identifies a request: the messages, the model id and the tool names.
+    /// Tool descriptions and schemas are deliberately outside the digest, so presentation changes do
+    /// not invalidate a fixture (revisit if it bites).
+    /// </summary>
     internal static string ComputeRequestDigest(
         IEnumerable<ChatMessage> messages,
         ChatOptions? options

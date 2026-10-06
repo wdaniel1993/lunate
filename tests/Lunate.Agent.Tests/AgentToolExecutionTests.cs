@@ -167,7 +167,7 @@ public sealed class AgentToolExecutionTests
         List<AgentEvent> events = await Run(harness);
 
         Assert.Equal(workingDirectory, tool.ReceivedContext!.WorkingDirectory);
-        Assert.IsType<AgentEventChannel>(tool.ReceivedContext.Events);
+        Assert.IsType<ExtensionOnlyEventSink>(tool.ReceivedContext.Events);
         int callEnd = events.FindIndex(agentEvent => agentEvent is ToolCallEnd);
         int toolEvent = events.FindIndex(agentEvent => agentEvent is UsageUpdated);
         int toolResult = events.FindIndex(agentEvent => agentEvent is ToolCallResult);

@@ -44,7 +44,8 @@ public sealed class ReplayChatClient : IChatClient
         return exchange.Updates.ToChatResponse();
     }
 
-    public object? GetService(Type serviceType, object? serviceKey = null) => null;
+    public object? GetService(Type serviceType, object? serviceKey = null) =>
+        serviceKey is null && serviceType.IsInstanceOfType(this) ? this : null;
 
     public void Dispose() { }
 

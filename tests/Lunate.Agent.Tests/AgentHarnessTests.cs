@@ -10,6 +10,8 @@ public sealed class AgentHarnessTests
         var options = new AgentHarnessOptions();
 
         Assert.Equal(50, options.MaxSteps);
+        Assert.Equal(3, options.MaxRetries);
+        Assert.Equal(TimeSpan.FromMilliseconds(500), options.RetryBaseDelay);
         Assert.Null(options.SystemPrompt);
         Assert.Equal(Environment.CurrentDirectory, options.WorkingDirectory);
         Assert.Null(options.Approver);

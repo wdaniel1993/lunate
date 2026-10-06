@@ -12,9 +12,22 @@ namespace Lunate.Ai;
 /// Fragments are merged by call id and emitted as one complete call when the stream ends; everything else
 /// (including already-complete calls) passes through unchanged.
 /// </summary>
-internal sealed class StreamAccumulator(IChatClient innerClient) : DelegatingChatClient(innerClient)
+public sealed class StreamAccumulator(IChatClient innerClient) : DelegatingChatClient(innerClient)
 {
-    internal const string ArgumentsFragmentKey = "$arguments";
+    /// <summary>The reserved argument key that carries a raw, unassembled JSON fragment.</summary>
+    public const string ArgumentsFragmentKey = "$arguments";
+
+    /// <summary>
+    /// Whether <paramref name="call"/> must not be executed: its assembly failed, or it still carries
+    /// the reserved fragment key. Deliberately looser than the accumulator's merge rule - any value,
+    /// extra keys included - because a call that still holds the reserved key is never complete.
+    /// </summary>
+    public static bool IsUnassembled(FunctionCallContent call)
+    {
+        ArgumentNullException.ThrowIfNull(call);
+        return call.Exception is not null
+            || (call.Arguments?.ContainsKey(ArgumentsFragmentKey) ?? false);
+    }
 
     public override async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
         IEnumerable<ChatMessage> messages,
@@ -84,6 +97,12 @@ internal sealed class StreamAccumulator(IChatClient innerClient) : DelegatingCha
         }
     }
 
+    /// <summary>
+    /// The accumulator's merge rule: only a call whose Arguments dictionary holds exactly one entry
+    /// under the reserved key is a pure wire fragment to merge. This is deliberately narrower than
+    /// <see cref="IsUnassembled"/>, which flags any call still carrying the reserved key so the
+    /// harness never executes it.
+    /// </summary>
     private static string? FragmentOf(FunctionCallContent call)
     {
         if (

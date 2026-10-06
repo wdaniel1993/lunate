@@ -5,6 +5,9 @@ namespace Lunate.Ai.Tests;
 internal static class SampleScript
 {
     internal const string ModelId = "gpt-4o-mini";
+
+    /// <summary>Scripted fixtures are marked as synthetic; requests still carry the script's model id.</summary>
+    internal const string HeaderModelId = "synthetic";
     internal const string FileName = "scripted-chat.jsonl";
 
     internal static IReadOnlyList<SampleExchange> Exchanges { get; } =

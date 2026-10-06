@@ -40,3 +40,8 @@ Lunate.Ai.ReplayChatClient.Dispose() -> void
 Lunate.Ai.ReplayChatClient.GetResponseAsync(System.Collections.Generic.IEnumerable<Microsoft.Extensions.AI.ChatMessage!>! messages, Microsoft.Extensions.AI.ChatOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Microsoft.Extensions.AI.ChatResponse!>!
 Lunate.Ai.ReplayChatClient.GetService(System.Type! serviceType, object? serviceKey = null) -> object?
 Lunate.Ai.ReplayChatClient.GetStreamingResponseAsync(System.Collections.Generic.IEnumerable<Microsoft.Extensions.AI.ChatMessage!>! messages, Microsoft.Extensions.AI.ChatOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<Microsoft.Extensions.AI.ChatResponseUpdate!>!
+Lunate.Ai.StreamAccumulator
+Lunate.Ai.StreamAccumulator.StreamAccumulator(Microsoft.Extensions.AI.IChatClient! innerClient) -> void
+const Lunate.Ai.StreamAccumulator.ArgumentsFragmentKey = "$arguments" -> string!
+static Lunate.Ai.StreamAccumulator.IsUnassembled(Microsoft.Extensions.AI.FunctionCallContent! call) -> bool
+override Lunate.Ai.StreamAccumulator.GetStreamingResponseAsync(System.Collections.Generic.IEnumerable<Microsoft.Extensions.AI.ChatMessage!>! messages, Microsoft.Extensions.AI.ChatOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<Microsoft.Extensions.AI.ChatResponseUpdate!>!

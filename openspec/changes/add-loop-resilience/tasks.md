@@ -24,11 +24,11 @@
 
 ## 6. Small items
 
-- [ ] 6.1 Null call ids dedupe by instance reference (no silent merge)
-- [ ] 6.2 `StreamAccumulator.IsUnassembled` (single predicate; harness uses it and the public fragment key; merge rule documented as internal)
-- [ ] 6.3 Approver failures get an approval-specific error message; tool event sink accepts only extension events
-- [ ] 6.4 Null tool output guarded to empty before truncation; `ReplayChatClient.GetService` returns itself; digest scope documented in `FixtureFormat`; scripted stream fixtures marked `"synthetic"`; stale T-09 comments updated
-- [ ] 6.5 `PublicAPI.Unshipped.txt` for `StopReasons.Length` + `StreamAccumulator.IsUnassembled`
+- [x] 6.1 Null call ids dedupe by instance reference (no silent merge)
+- [x] 6.2 `StreamAccumulator.IsUnassembled` (single predicate; harness uses it and the public fragment key; merge rule documented as internal)
+- [x] 6.3 Approver failures get an approval-specific error message; tool event sink accepts only extension events
+- [x] 6.4 Null tool output guarded to empty before truncation; `ReplayChatClient.GetService` returns itself; digest scope documented in `FixtureFormat`; scripted stream fixtures marked `"synthetic"`; stale T-09 comments updated
+- [x] 6.5 `PublicAPI.Unshipped.txt` for `StopReasons.Length` + `StreamAccumulator.IsUnassembled`
 
 ## 7. Tests and acceptance
 
