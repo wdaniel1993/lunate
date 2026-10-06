@@ -1,17 +1,17 @@
 # ai-layer Specification
 
 ## Purpose
-Model access for Lunate: the factory that builds the correctly ordered `IChatClient` pipeline (OpenTelemetry → logging → recorder → provider), the model catalog that merges built-in and user definitions without code changes, and the layer rules that keep tool invocation and retries out of model access.
+Model access for Lunate: the factory that builds the correctly ordered `IChatClient` pipeline (OpenTelemetry → logging → accumulator → recorder → provider), the model catalog that merges built-in and user definitions without code changes, and the layer rules that keep tool invocation and retries out of model access.
 
 ## Requirements
 
 ### Requirement: Chat-client factory pipeline order
-`IChatClientFactory.Create` SHALL build the pipeline in the fixed order, outermost first: OpenTelemetry (opt-in) → logging → recorder slot → provider. Replay will replace recorder + provider so tests still pass through the telemetry and logging layers.
+`IChatClientFactory.Create` SHALL build the pipeline in the fixed order, outermost first: OpenTelemetry (opt-in) → logging → accumulator → recorder slot → provider. Replay will replace recorder + provider so tests still pass through the telemetry and logging layers.
 
 #### Scenario: Pipeline order is fixed
 - **GIVEN** a factory configured with a stub provider client
 - **WHEN** a pipeline is created and a request flows through it
-- **THEN** the telemetry, logging, recorder and provider layers observe the request in exactly that order
+- **THEN** the telemetry, logging, accumulator, recorder and provider layers observe the request in exactly that order
 
 #### Scenario: FunctionInvokingChatClient is never used
 - **GIVEN** any factory configuration
@@ -45,7 +45,7 @@ Model access for Lunate: the factory that builds the correctly ordered `IChatCli
 - **THEN** the exception surfaces unchanged (no retry inside `Lunate.Ai`)
 
 ### Requirement: Recording and replay of provider streams
-`Lunate.Ai` SHALL record provider exchanges as JSONL when `LUNATE_RECORD=1` for both call styles: a streamed exchange (`GetStreamingResponseAsync`) records its update sequence, and an aggregated exchange (`GetResponseAsync`) records the response as its update sequence so replay serves both call styles from one exchange. `Lunate.Ai` SHALL replay fixtures deterministically: `ReplayChatClient` answers requests from the recorded exchanges in order, verifying each request digest, with actionable errors on mismatch or exhaustion. Fixtures SHALL serialize Microsoft.Extensions.AI types with `AIJsonUtilities` options and replay SHALL NOT require API keys or network access.
+`Lunate.Ai` SHALL record provider exchanges as JSONL when `LUNATE_RECORD=1` for both call styles: a streamed exchange (`GetStreamingResponseAsync`) records its update sequence, and an aggregated exchange (`GetResponseAsync`) records the response as its update sequence so replay serves both call styles from one exchange. `Lunate.Ai` SHALL replay fixtures deterministically: `ReplayChatClient` answers requests from the recorded exchanges in order, verifying each request digest, with actionable errors on mismatch or exhaustion. Fixtures SHALL serialize Microsoft.Extensions.AI types with `AIJsonUtilities` options and replay SHALL NOT require API keys or network access. When `LUNATE_RECORD=1` is set without an explicit path, recordings SHALL default under the user's home directory (`~/.lunate/recordings/`), never inside the current working directory.
 
 #### Scenario: Record then replay is identical
 - **GIVEN** a provider stream recorded to a fixture
@@ -71,6 +71,11 @@ Model access for Lunate: the factory that builds the correctly ordered `IChatCli
 - **GIVEN** `LUNATE_RECORD=1` with a recording path
 - **WHEN** the factory builds a pipeline
 - **THEN** a recorder writes each exchange to the path while the stream passes through unchanged
+
+#### Scenario: Default recordings are user-scoped
+- **GIVEN** `LUNATE_RECORD=1` without `LUNATE_RECORD_PATH`
+- **WHEN** the factory wires the recorder
+- **THEN** the recording path is under `~/.lunate/recordings/`, not inside the current working directory
 
 ### Requirement: Anthropic provider adapter
 `Lunate.Ai` SHALL provide Anthropic support through the official Anthropic .NET package and its first-party Microsoft.Extensions.AI adapter, selected by `ModelInfo.Provider == "anthropic"` and authenticated from `ANTHROPIC_API_KEY`. The factory SHALL construct it with transport retries disabled so retries remain exclusively the loop's.
@@ -109,9 +114,24 @@ The pipeline SHALL present function calls only in complete form: a `StreamAccumu
 - **THEN** the emitted call carries the raw fragment text under the reserved `$arguments` key and its `Exception` is set
 
 ### Requirement: Local endpoints without a dummy key
-When a model declares a custom endpoint and no API key is configured, the OpenAI-compatible adapter SHALL construct its client with a placeholder credential instead of failing, so local servers work without dummy environment variables.
+The factory SHALL send a provider's environment API key only to the provider's default endpoint: when a model declares a custom endpoint, both the OpenAI-compatible and the Anthropic adapter SHALL construct their clients with a placeholder credential instead of the environment key, and SHALL NOT fail for a missing key — so local servers work without dummy environment variables and real keys are never sent to third-party endpoints. A model that spells out the provider's own default URL counts as a custom endpoint. Explicit per-model key references arrive with the settings work (T-16).
 
 #### Scenario: Custom endpoint without a key
 - **GIVEN** a model with a custom endpoint and no `OPENAI_API_KEY`
 - **WHEN** the factory builds the pipeline
 - **THEN** no error is raised and requests target the custom endpoint
+
+#### Scenario: Custom endpoint never receives the environment key
+- **GIVEN** a model with a custom endpoint and `OPENAI_API_KEY` set
+- **WHEN** the factory builds the pipeline
+- **THEN** the client uses the placeholder credential, not the environment key
+
+#### Scenario: The Anthropic adapter is symmetric
+- **GIVEN** an Anthropic model with a custom endpoint and no `ANTHROPIC_API_KEY`
+- **WHEN** the factory builds the pipeline
+- **THEN** no error is raised and the client uses the placeholder credential
+
+#### Scenario: Default endpoint requires the environment key
+- **GIVEN** a model without a custom endpoint and no key in the environment
+- **WHEN** the factory builds the pipeline
+- **THEN** it fails with an actionable error naming the variable and T-16

@@ -324,8 +324,66 @@ public sealed class ChatClientFactoryTests
         AnthropicClient client = ChatClientFactory.CreateAnthropicClient(model);
 
         Assert.Equal(0, client.MaxRetries);
-        Assert.Equal("anthropic-test-key", client.ApiKey);
+        Assert.Equal(ChatClientFactory.PlaceholderCredential, client.ApiKey);
         Assert.Equal(model.Endpoint!.AbsoluteUri, client.BaseUrl);
+    }
+
+    [Fact]
+    public void Create_anthropic_client_with_default_endpoint_uses_the_environment_key()
+    {
+        using var environment = new EnvironmentScope(
+            (AnthropicApiKeyVariable, "anthropic-test-key")
+        );
+        var model = new ModelInfo("claude-sonnet-5-5", "anthropic", null, 1_000_000, true);
+
+        AnthropicClient client = ChatClientFactory.CreateAnthropicClient(model);
+
+        Assert.Equal("anthropic-test-key", client.ApiKey);
+    }
+
+    [Fact]
+    public void Create_anthropic_client_with_a_custom_endpoint_and_no_key_uses_the_placeholder()
+    {
+        using var environment = new EnvironmentScope((AnthropicApiKeyVariable, null));
+        var model = new ModelInfo(
+            "claude-sonnet-5-5",
+            "anthropic",
+            new Uri("https://anthropic.example.test"),
+            1_000_000,
+            true
+        );
+
+        AnthropicClient client = ChatClientFactory.CreateAnthropicClient(model);
+
+        Assert.Equal(ChatClientFactory.PlaceholderCredential, client.ApiKey);
+    }
+
+    [Fact]
+    public void ResolveApiKey_uses_the_placeholder_for_custom_endpoints_even_with_a_key_set()
+    {
+        using var environment = new EnvironmentScope((OpenAiApiKeyVariable, "test-key"));
+        var model = new ModelInfo(
+            "gpt-4o-mini",
+            "openai",
+            new Uri("https://example.test/v1"),
+            128_000,
+            true
+        );
+
+        string credential = ChatClientFactory.ResolveApiKey(model, OpenAiApiKeyVariable);
+
+        Assert.Equal(ChatClientFactory.PlaceholderCredential, credential);
+    }
+
+    [Fact]
+    public void ResolveApiKey_uses_the_environment_key_for_default_endpoints()
+    {
+        using var environment = new EnvironmentScope((OpenAiApiKeyVariable, "test-key"));
+        var model = new ModelInfo("gpt-4o-mini", "openai", null, 128_000, true);
+
+        string credential = ChatClientFactory.ResolveApiKey(model, OpenAiApiKeyVariable);
+
+        Assert.Equal("test-key", credential);
     }
 
     [Fact]
