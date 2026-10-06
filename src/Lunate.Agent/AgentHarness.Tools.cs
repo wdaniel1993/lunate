@@ -1,13 +1,14 @@
 using System.Diagnostics;
+using System.Globalization;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
+using Lunate.Ai;
 using Microsoft.Extensions.AI;
 
 namespace Lunate.Agent;
 
 public sealed partial class AgentHarness
 {
-    private const string ArgumentsFragmentKey = "$arguments";
-
     private static readonly JsonSerializerOptions ArgumentsJson = new(
         AIJsonUtilities.DefaultOptions
     )
@@ -41,17 +42,65 @@ public sealed partial class AgentHarness
         channel.Emit(new ToolCallArgs(runId, callId, argsJson));
         channel.Emit(new ToolCallEnd(runId, callId));
 
-        ToolResult result = argumentsError is null
-            ? await RunToolAsync(toolName, args, channel, ct)
-            : new ToolResult(
-                $"Invalid JSON arguments for '{toolName}': {argumentsError}. Fix the arguments and retry.",
-                IsError: true
-            );
+        ToolResult result;
+        try
+        {
+            result = argumentsError is null
+                ? await RunToolAsync(toolName, args, channel, ct)
+                : new ToolResult(
+                    $"Invalid JSON arguments for '{toolName}': {argumentsError}. Fix the arguments and retry.",
+                    IsError: true
+                );
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            AppendSyntheticResult(runId, call, channel, cancelled: true);
+            throw;
+        }
 
         toolActivity?.SetTag(AgentTelemetry.ToolIsErrorAttribute, result.IsError);
-        string output = ToolOutput.Truncate(result.Output);
+        string output = ToolOutput.Truncate(result.Output ?? string.Empty);
         channel.Emit(new ToolCallResult(runId, callId, output, result.IsError, result.Details));
         _history.Add(new ChatMessage(ChatRole.Tool, [new FunctionResultContent(callId, output)]));
+        _danglingCalls.Remove(call);
+    }
+
+    private void AppendSyntheticResult(
+        string runId,
+        FunctionCallContent call,
+        AgentEventChannel channel,
+        bool cancelled
+    )
+    {
+        string callId = call.CallId ?? string.Empty;
+        string output = SyntheticOutput(call, cancelled);
+        channel.Emit(new ToolCallResult(runId, callId, output, IsError: true));
+        _history.Add(new ChatMessage(ChatRole.Tool, [new FunctionResultContent(callId, output)]));
+        _danglingCalls.Remove(call);
+    }
+
+    private void RepairDanglingCalls(string runId, bool cancelled)
+    {
+        foreach (FunctionCallContent call in _danglingCalls)
+        {
+            string callId = call.CallId ?? string.Empty;
+            _history.Add(
+                new ChatMessage(
+                    ChatRole.Tool,
+                    [new FunctionResultContent(callId, SyntheticOutput(call, cancelled))]
+                )
+            );
+        }
+
+        _danglingCalls.Clear();
+    }
+
+    private static string SyntheticOutput(FunctionCallContent call, bool cancelled)
+    {
+        string toolName = call.Name ?? string.Empty;
+        return cancelled
+            ? $"Tool call ({toolName}) was cancelled by the user and was not executed."
+            : $"Tool call ({toolName}) was not executed: the run failed. Do not retry it.";
     }
 
     private async Task<ToolResult> RunToolAsync(
@@ -79,14 +128,25 @@ public sealed partial class AgentHarness
                     IsError: true
                 );
             }
+        }
+        catch (Exception exception)
+            when (exception is not OperationCanceledException || !ct.IsCancellationRequested)
+        {
+            return new ToolResult(
+                $"Approval for tool '{toolName}' failed: {exception.Message}. The call was not run.",
+                IsError: true
+            );
+        }
 
+        try
+        {
             return await tool.ExecuteAsync(
                 args,
-                new ToolContext(_options.WorkingDirectory, channel),
+                new ToolContext(_options.WorkingDirectory, new ExtensionOnlyEventSink(channel)),
                 ct
             );
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
             throw;
         }
@@ -103,9 +163,9 @@ public sealed partial class AgentHarness
         FunctionCallContent call
     )
     {
-        (bool isFragment, string? raw) = FragmentOf(call.Arguments);
-        if (isFragment || call.Exception is not null)
+        if (StreamAccumulator.IsUnassembled(call))
         {
+            string? raw = FragmentOf(call.Arguments);
             string error =
                 call.Exception?.Message
                 ?? "the streamed arguments were not assembled into a complete call";
@@ -124,29 +184,53 @@ public sealed partial class AgentHarness
         }
     }
 
-    private static (bool IsFragment, string? Raw) FragmentOf(
-        IDictionary<string, object?>? arguments
-    )
+    private static string? FragmentOf(IDictionary<string, object?>? arguments)
     {
         if (
             arguments is not { } values
-            || !values.TryGetValue(ArgumentsFragmentKey, out object? value)
+            || !values.TryGetValue(StreamAccumulator.ArgumentsFragmentKey, out object? value)
         )
         {
-            return (false, null);
+            return null;
         }
 
-        string? raw = value switch
+        return value switch
         {
             string text => text,
             JsonElement { ValueKind: JsonValueKind.String } element => element.GetString(),
             _ => null,
         };
-        return (true, raw);
     }
 
     private static string SerializeArguments(IDictionary<string, object?>? arguments) =>
         arguments is null ? "{}" : JsonSerializer.Serialize(arguments, ArgumentsJson);
+
+    private static List<FunctionCallContent> DistinctCalls(List<ChatResponseUpdate> updates)
+    {
+        Dictionary<string, FunctionCallContent> byCallId = new(StringComparer.Ordinal);
+        List<string> order = [];
+        foreach (ChatResponseUpdate update in updates)
+        {
+            foreach (AIContent content in update.Contents)
+            {
+                if (content is not FunctionCallContent call)
+                {
+                    continue;
+                }
+
+                string callId =
+                    call.CallId
+                    ?? "ref:"
+                        + RuntimeHelpers.GetHashCode(call).ToString(CultureInfo.InvariantCulture);
+                if (byCallId.TryAdd(callId, call))
+                {
+                    order.Add(callId);
+                }
+            }
+        }
+
+        return [.. order.Select(callId => byCallId[callId])];
+    }
 
     private string AvailableTools() =>
         _tools.Tools.Count == 0

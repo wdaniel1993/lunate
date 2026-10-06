@@ -7,7 +7,10 @@ internal enum EventSequenceViolationKind
     MissingTerminalEvent,
     EventAfterTerminal,
     UnbracketedTextMessage,
+    UnclosedTextMessage,
     ToolCallOutOfOrder,
+    IncompleteToolCall,
+    ForeignRunId,
 }
 
 internal sealed record EventSequenceViolation(
@@ -51,11 +54,26 @@ internal static class EventSequenceValidator
 
         bool runStartedSeen = false;
         bool terminalSeen = false;
+        string? runId = null;
         HashSet<string> openTextMessages = [];
         Dictionary<string, ToolCallState> toolCalls = [];
 
         foreach (AgentEvent agentEvent in sequence)
         {
+            if (
+                runId is not null
+                && !string.Equals(agentEvent.RunId, runId, StringComparison.Ordinal)
+            )
+            {
+                violations.Add(
+                    new(
+                        EventSequenceViolationKind.ForeignRunId,
+                        agentEvent,
+                        $"Event '{agentEvent.GetType().Name}' carries run id '{agentEvent.RunId}' but the run's id is '{runId}'."
+                    )
+                );
+            }
+
             if (terminalSeen)
             {
                 violations.Add(
@@ -79,8 +97,9 @@ internal static class EventSequenceValidator
                         )
                     );
                     break;
-                case RunStarted:
+                case RunStarted start:
                     runStartedSeen = true;
+                    runId = start.RunId;
                     break;
                 case RunFinished or RunError:
                     terminalSeen = true;
@@ -143,6 +162,32 @@ internal static class EventSequenceValidator
                     break;
                 default:
                     break;
+            }
+        }
+
+        AgentEvent last = sequence[^1];
+        foreach (string messageId in openTextMessages)
+        {
+            violations.Add(
+                new(
+                    EventSequenceViolationKind.UnclosedTextMessage,
+                    last,
+                    $"Text message '{messageId}' is still open when the run ended."
+                )
+            );
+        }
+
+        foreach ((string callId, ToolCallState state) in toolCalls)
+        {
+            if (state != ToolCallState.Completed)
+            {
+                violations.Add(
+                    new(
+                        EventSequenceViolationKind.IncompleteToolCall,
+                        last,
+                        $"Tool call '{callId}' never reached a result (state: {state})."
+                    )
+                );
             }
         }
 

@@ -112,10 +112,23 @@ public sealed class EventSequenceValidatorTests
             new RunFinished(RunId, StopReasons.Stop)
         );
 
-        EventSequenceViolation violation = Assert.Single(EventSequenceValidator.Validate(sequence));
+        IReadOnlyList<EventSequenceViolation> violations = EventSequenceValidator.Validate(
+            sequence
+        );
 
-        Assert.Equal(EventSequenceViolationKind.ToolCallOutOfOrder, violation.Kind);
-        Assert.Same(sequence[3], violation.Event);
+        Assert.Collection(
+            violations,
+            violation =>
+            {
+                Assert.Equal(EventSequenceViolationKind.ToolCallOutOfOrder, violation.Kind);
+                Assert.Same(sequence[3], violation.Event);
+            },
+            violation =>
+            {
+                Assert.Equal(EventSequenceViolationKind.IncompleteToolCall, violation.Kind);
+                Assert.Same(sequence[^1], violation.Event);
+            }
+        );
     }
 
     [Fact]
@@ -147,10 +160,23 @@ public sealed class EventSequenceValidatorTests
             new RunFinished(RunId, StopReasons.Stop)
         );
 
-        EventSequenceViolation violation = Assert.Single(EventSequenceValidator.Validate(sequence));
+        IReadOnlyList<EventSequenceViolation> violations = EventSequenceValidator.Validate(
+            sequence
+        );
 
-        Assert.Equal(EventSequenceViolationKind.ToolCallOutOfOrder, violation.Kind);
-        Assert.Same(sequence[2], violation.Event);
+        Assert.Collection(
+            violations,
+            violation =>
+            {
+                Assert.Equal(EventSequenceViolationKind.ToolCallOutOfOrder, violation.Kind);
+                Assert.Same(sequence[2], violation.Event);
+            },
+            violation =>
+            {
+                Assert.Equal(EventSequenceViolationKind.IncompleteToolCall, violation.Kind);
+                Assert.Same(sequence[^1], violation.Event);
+            }
+        );
     }
 
     [Fact]
@@ -257,6 +283,54 @@ public sealed class EventSequenceValidatorTests
 
         Assert.Equal(EventSequenceViolationKind.MissingTerminalEvent, violation.Kind);
         Assert.Same(sequence[2], violation.Event);
+    }
+
+    [Fact]
+    public void An_open_text_message_at_the_terminal_event_reports_an_unclosed_message()
+    {
+        IReadOnlyList<AgentEvent> sequence = Sequence(
+            new RunStarted(RunId),
+            new TextMessageStart(RunId, "msg_1"),
+            new TextMessageContent(RunId, "msg_1", "cut off"),
+            new RunFinished(RunId, StopReasons.Length)
+        );
+
+        EventSequenceViolation violation = Assert.Single(EventSequenceValidator.Validate(sequence));
+
+        Assert.Equal(EventSequenceViolationKind.UnclosedTextMessage, violation.Kind);
+        Assert.Same(sequence[^1], violation.Event);
+    }
+
+    [Fact]
+    public void A_tool_call_without_a_result_at_the_terminal_event_reports_an_incomplete_call()
+    {
+        IReadOnlyList<AgentEvent> sequence = Sequence(
+            new RunStarted(RunId),
+            new ToolCallStart(RunId, "call_1", "read"),
+            new ToolCallArgs(RunId, "call_1", """{"path":"a.txt"}"""),
+            new ToolCallEnd(RunId, "call_1"),
+            new RunFinished(RunId, StopReasons.Stop)
+        );
+
+        EventSequenceViolation violation = Assert.Single(EventSequenceValidator.Validate(sequence));
+
+        Assert.Equal(EventSequenceViolationKind.IncompleteToolCall, violation.Kind);
+        Assert.Same(sequence[^1], violation.Event);
+    }
+
+    [Fact]
+    public void An_event_from_a_different_run_reports_a_foreign_run_id()
+    {
+        IReadOnlyList<AgentEvent> sequence = Sequence(
+            new RunStarted(RunId),
+            new UsageUpdated("run_2", new UsageDetails()),
+            new RunFinished(RunId, StopReasons.Stop)
+        );
+
+        EventSequenceViolation violation = Assert.Single(EventSequenceValidator.Validate(sequence));
+
+        Assert.Equal(EventSequenceViolationKind.ForeignRunId, violation.Kind);
+        Assert.Same(sequence[1], violation.Event);
     }
 
     private static IReadOnlyList<AgentEvent> Sequence(params AgentEvent[] events)

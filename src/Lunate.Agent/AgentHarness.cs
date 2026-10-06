@@ -6,8 +6,8 @@ namespace Lunate.Agent;
 
 /// <summary>
 /// The agent loop: a turn on an <see cref="IChatClient"/> that streams model output as events,
-/// runs tools itself (ADR-0003) and keeps the history valid. Runs on one harness are sequential;
-/// concurrent runs are a later, explicit decision.
+/// runs tools itself (ADR-0003) and keeps the history valid. Runs on one harness are sequential:
+/// a second concurrent run is rejected; abandoning the stream stops the run.
 /// </summary>
 /// <remarks>
 /// The client is expected to be the factory pipeline, which includes the stream accumulator, so
@@ -20,6 +20,8 @@ public sealed partial class AgentHarness
     private readonly ToolRegistry _tools;
     private readonly AgentHarnessOptions _options;
     private readonly List<ChatMessage> _history = [];
+    private readonly List<FunctionCallContent> _danglingCalls = [];
+    private int _runActive;
 
     public AgentHarness(IChatClient client, ToolRegistry tools, AgentHarnessOptions? options = null)
     {
@@ -28,6 +30,7 @@ public sealed partial class AgentHarness
         _client = client;
         _tools = tools;
         _options = options ?? new AgentHarnessOptions();
+        ValidateOptions(_options);
     }
 
     /// <summary>Runs the loop for one user input and streams its events; the stream completes when the run ends.</summary>
@@ -37,15 +40,69 @@ public sealed partial class AgentHarness
     )
     {
         ArgumentNullException.ThrowIfNull(userInput);
-        string runId = RunIds.Next();
-        var channel = new AgentEventChannel();
-        Task loop = RunLoopAsync(runId, userInput, channel, ct);
-        await foreach (AgentEvent agentEvent in channel.ReadAllAsync(ct))
+        if (Interlocked.CompareExchange(ref _runActive, 1, 0) != 0)
         {
-            yield return agentEvent;
+            throw new InvalidOperationException(
+                "A run is already in progress on this harness; runs are sequential."
+            );
         }
 
-        await loop;
+        try
+        {
+            string runId = RunIds.Next();
+            _danglingCalls.Clear();
+            var channel = new AgentEventChannel();
+            using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            Task loop = RunLoopAsync(runId, userInput, channel, linked.Token);
+            try
+            {
+                await foreach (
+                    AgentEvent agentEvent in channel.ReadAllAsync(CancellationToken.None)
+                )
+                {
+                    yield return agentEvent;
+                }
+            }
+            finally
+            {
+                linked.Cancel();
+                await loop;
+            }
+        }
+        finally
+        {
+            Interlocked.Exchange(ref _runActive, 0);
+        }
+    }
+
+    private static void ValidateOptions(AgentHarnessOptions options)
+    {
+        if (options.MaxSteps < 1)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(AgentHarnessOptions.MaxSteps),
+                options.MaxSteps,
+                "MaxSteps must be at least 1."
+            );
+        }
+
+        if (options.MaxRetries < 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(AgentHarnessOptions.MaxRetries),
+                options.MaxRetries,
+                "MaxRetries must be zero or greater."
+            );
+        }
+
+        if (options.RetryBaseDelay < TimeSpan.Zero)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(AgentHarnessOptions.RetryBaseDelay),
+                options.RetryBaseDelay,
+                "RetryBaseDelay must be zero or greater."
+            );
+        }
     }
 
     private async Task RunLoopAsync(
@@ -59,9 +116,10 @@ public sealed partial class AgentHarness
         {
             await ExecuteRunAsync(runId, userInput, channel, ct);
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
-            // Cancellation is not a run error (T-10); the channel still completes.
+            // ExecuteRunAsync turns user cancellation into RunFinished(cancelled); this guard
+            // keeps the loop task from faulting should an OCE still escape.
         }
         finally
         {
@@ -86,10 +144,13 @@ public sealed partial class AgentHarness
         );
         runActivity?.SetTag(AgentTelemetry.AgentNameAttribute, AgentTelemetry.AgentName);
 
+        bool runStarted = false;
+        bool terminalEmitted = false;
         try
         {
             _history.Add(new ChatMessage(ChatRole.User, userInput));
             channel.Emit(new RunStarted(runId));
+            runStarted = true;
 
             int modelCalls = 0;
             while (true)
@@ -98,105 +159,109 @@ public sealed partial class AgentHarness
                 {
                     channel.Emit(new StepLimitReached(runId, _options.MaxSteps));
                     channel.Emit(new RunFinished(runId, StopReasons.StepLimit));
+                    terminalEmitted = true;
                     return;
                 }
 
                 modelCalls++;
-                List<ChatResponseUpdate> updates = await StreamModelAsync(runId, channel, ct);
-                _history.AddRange(updates.ToChatResponse().Messages);
+                ModelStreamResult stream = await StreamModelWithRetriesAsync(runId, channel, ct);
+                _history.AddRange(stream.Updates.ToChatResponse().Messages);
 
-                List<FunctionCallContent> calls = DistinctCalls(updates);
+                List<FunctionCallContent> calls = DistinctCalls(stream.Updates);
                 if (calls.Count == 0)
                 {
-                    channel.Emit(new RunFinished(runId, StopReasons.Stop));
+                    channel.Emit(new RunFinished(runId, MappedStopReason(stream.FinishReason)));
+                    terminalEmitted = true;
                     return;
                 }
 
+                _danglingCalls.Clear();
+                _danglingCalls.AddRange(calls);
                 foreach (FunctionCallContent call in calls)
                 {
                     await ExecuteCallAsync(runId, call, channel, ct);
                 }
             }
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
-            throw;
+            RepairDanglingCalls(runId, cancelled: true);
+            if (runStarted && !terminalEmitted)
+            {
+                channel.Emit(new RunFinished(runId, StopReasons.Cancelled));
+            }
         }
         catch (Exception exception)
         {
             runActivity?.SetStatus(ActivityStatusCode.Error, exception.Message);
+            RepairDanglingCalls(runId, cancelled: false);
             channel.Emit(new RunError(runId, $"Run failed: {exception.Message}"));
         }
     }
 
-    private async Task<List<ChatResponseUpdate>> StreamModelAsync(
+    private async Task<ModelStreamResult> StreamModelAsync(
         string runId,
         AgentEventChannel channel,
-        CancellationToken ct
+        CancellationToken ct,
+        ModelStreamAttempt attempt
     )
     {
         List<ChatResponseUpdate> updates = [];
         string? messageId = null;
         bool textOpen = false;
+        ChatFinishReason? finishReason = null;
 
-        await foreach (
-            ChatResponseUpdate update in _client.GetStreamingResponseAsync(
-                BuildRequest(),
-                BuildOptions(),
-                ct
+        try
+        {
+            await foreach (
+                ChatResponseUpdate update in _client.GetStreamingResponseAsync(
+                    BuildRequest(),
+                    BuildOptions(),
+                    ct
+                )
             )
-        )
-        {
-            updates.Add(update);
-            foreach (AIContent content in update.Contents)
             {
-                if (content is not TextContent { Text: { Length: > 0 } text })
+                updates.Add(update);
+                if (update.FinishReason is { } reason)
                 {
-                    continue;
+                    finishReason = reason;
                 }
 
-                if (!textOpen)
+                foreach (AIContent content in update.Contents)
                 {
-                    textOpen = true;
-                    messageId = RunIds.NextMessage();
-                    channel.Emit(new TextMessageStart(runId, messageId));
-                }
+                    if (content is TextContent { Text: { Length: > 0 } text })
+                    {
+                        if (!textOpen)
+                        {
+                            textOpen = true;
+                            messageId = RunIds.NextMessage();
+                            channel.Emit(new TextMessageStart(runId, messageId));
+                        }
 
-                channel.Emit(new TextMessageContent(runId, messageId!, text));
-            }
-        }
-
-        if (textOpen)
-        {
-            channel.Emit(new TextMessageEnd(runId, messageId!));
-        }
-
-        return updates;
-    }
-
-    private static List<FunctionCallContent> DistinctCalls(List<ChatResponseUpdate> updates)
-    {
-        Dictionary<string, FunctionCallContent> byCallId = new(StringComparer.Ordinal);
-        List<string> order = [];
-        foreach (ChatResponseUpdate update in updates)
-        {
-            foreach (AIContent content in update.Contents)
-            {
-                if (content is not FunctionCallContent call)
-                {
-                    continue;
-                }
-
-                string callId = call.CallId ?? string.Empty;
-                if (byCallId.TryAdd(callId, call))
-                {
-                    order.Add(callId);
+                        attempt.Emitted = true;
+                        channel.Emit(new TextMessageContent(runId, messageId!, text));
+                    }
+                    else if (content is UsageContent usage)
+                    {
+                        attempt.Emitted = true;
+                        channel.Emit(new UsageUpdated(runId, usage.Details));
+                    }
                 }
             }
         }
+        finally
+        {
+            if (textOpen)
+            {
+                channel.Emit(new TextMessageEnd(runId, messageId!));
+            }
+        }
 
-        return [.. order.Select(callId => byCallId[callId])];
+        return new ModelStreamResult(updates, finishReason, attempt.Emitted);
     }
+
+    private static string MappedStopReason(ChatFinishReason? finishReason) =>
+        finishReason == ChatFinishReason.Length ? StopReasons.Length : StopReasons.Stop;
 
     private List<ChatMessage> BuildRequest()
     {

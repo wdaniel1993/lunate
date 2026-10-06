@@ -3,7 +3,7 @@ using System.Globalization;
 namespace Lunate.Agent;
 
 /// <summary>
-/// Bounds tool output before the loop appends it to the history (T-09): output at or under the
+/// Bounds tool output before the loop appends it to the history: output at or under the
 /// limit passes through untouched; longer output keeps the first half and the last half of the
 /// budget around a marker that states the omitted character count. Cut points never split a UTF-16
 /// surrogate pair, and tiny limits degrade to the marker plus what fits instead of throwing.

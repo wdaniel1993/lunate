@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.Extensions.AI;
 using static Lunate.Agent.Tests.AgentTestSupport;
 
@@ -199,6 +200,117 @@ public sealed class AgentToolErrorTests
         await Run(harness);
 
         Assert.Empty(approver.Calls);
+    }
+
+    [Fact]
+    public async Task A_tool_cancelled_without_a_run_cancellation_becomes_an_error_result()
+    {
+        ScriptedTool read = ReadTool("contents");
+        read.OnExecute = (_, _) => throw new TaskCanceledException("tool timed out");
+        var client = new ScriptedChatClient()
+            .Enqueue(
+                LoopScripts.Call("call_1", "read", LoopScripts.Args(("path", "a.txt"))),
+                LoopScripts.ToolCalls()
+            )
+            .Enqueue(LoopScripts.Text("Done"), LoopScripts.Stop());
+        var harness = new AgentHarness(client, Registry(read));
+
+        List<AgentEvent> events = await Run(harness);
+
+        Assert.Empty(EventSequenceValidator.Validate(events));
+        ToolCallResult result = Assert.Single(events.OfType<ToolCallResult>());
+        Assert.True(result.IsError);
+        Assert.Contains("tool timed out", result.Output);
+        Assert.Empty(events.OfType<Retrying>());
+        Assert.Equal(StopReasons.Stop, Assert.IsType<RunFinished>(events[^1]).StopReason);
+        Assert.Equal(2, client.Requests.Count);
+    }
+
+    [Fact]
+    public async Task An_approver_exception_becomes_an_approval_error_result()
+    {
+        ScriptedTool read = ReadTool("contents");
+        var client = new ScriptedChatClient()
+            .Enqueue(
+                LoopScripts.Call("call_1", "read", LoopScripts.Args(("path", "a.txt"))),
+                LoopScripts.ToolCalls()
+            )
+            .Enqueue(LoopScripts.Text("Done"), LoopScripts.Stop());
+        var harness = new AgentHarness(
+            client,
+            Registry(read),
+            new AgentHarnessOptions
+            {
+                Approver = new ThrowingApprover(
+                    new InvalidOperationException("approval service down")
+                ),
+            }
+        );
+
+        List<AgentEvent> events = await Run(harness);
+
+        Assert.Empty(EventSequenceValidator.Validate(events));
+        ToolCallResult result = Assert.Single(events.OfType<ToolCallResult>());
+        Assert.True(result.IsError);
+        Assert.Contains("Approval for tool 'read' failed", result.Output);
+        Assert.Contains("approval service down", result.Output);
+        Assert.Contains("The call was not run", result.Output);
+        Assert.Null(read.ReceivedContext);
+        Assert.Equal(2, client.Requests.Count);
+    }
+
+    [Fact]
+    public async Task A_tool_emitting_a_loop_event_is_rejected_and_becomes_an_error_result()
+    {
+        ScriptedTool read = ReadTool("contents");
+        read.OnExecute = (_, context) =>
+        {
+            context.Events.Emit(new RunFinished("from_tool", StopReasons.Stop));
+            return new ToolResult("never returned", IsError: false);
+        };
+        var client = new ScriptedChatClient()
+            .Enqueue(
+                LoopScripts.Call("call_1", "read", LoopScripts.Args(("path", "a.txt"))),
+                LoopScripts.ToolCalls()
+            )
+            .Enqueue(LoopScripts.Text("Done"), LoopScripts.Stop());
+        var harness = new AgentHarness(client, Registry(read));
+
+        List<AgentEvent> events = await Run(harness);
+
+        Assert.Empty(EventSequenceValidator.Validate(events));
+        ToolCallResult result = Assert.Single(events.OfType<ToolCallResult>());
+        Assert.True(result.IsError);
+        Assert.Contains("Tools may only emit extension events", result.Output);
+        Assert.Contains("RunFinished", result.Output);
+        Assert.Equal(StopReasons.Stop, Assert.IsType<RunFinished>(events[^1]).StopReason);
+        Assert.Equal(2, client.Requests.Count);
+    }
+
+    [Fact]
+    public async Task A_null_tool_output_cannot_crash_the_loop()
+    {
+        ScriptedTool read = ReadTool("contents");
+        read.OnExecute = (_, _) => new ToolResult(null!, IsError: false);
+        var client = new ScriptedChatClient()
+            .Enqueue(
+                LoopScripts.Call("call_1", "read", LoopScripts.Args(("path", "a.txt"))),
+                LoopScripts.ToolCalls()
+            )
+            .Enqueue(LoopScripts.Text("Done"), LoopScripts.Stop());
+        var harness = new AgentHarness(client, Registry(read));
+
+        List<AgentEvent> events = await Run(harness);
+
+        Assert.Empty(EventSequenceValidator.Validate(events));
+        Assert.Equal(string.Empty, Assert.Single(events.OfType<ToolCallResult>()).Output);
+        Assert.Equal(StopReasons.Stop, Assert.IsType<RunFinished>(events[^1]).StopReason);
+    }
+
+    private sealed class ThrowingApprover(Exception failure) : IToolApprover
+    {
+        public ValueTask<bool> ApproveAsync(ITool tool, JsonElement args, CancellationToken ct) =>
+            throw failure;
     }
 
     private sealed class CircularNode
