@@ -63,6 +63,20 @@ public sealed class AgentHarness
         }
     }
 
+    private List<ChatMessage> BuildRequest()
+    {
+        List<ChatMessage> request = [];
+        if (_options.SystemPrompt is not null)
+        {
+            request.Add(new ChatMessage(ChatRole.System, _options.SystemPrompt));
+        }
+
+        request.AddRange(_history);
+        return request;
+    }
+
+    private ChatOptions BuildOptions() => new() { Tools = [.. _tools.Declarations] };
+
     private async Task ExecuteRunAsync(
         string runId,
         string userInput,
@@ -81,8 +95,8 @@ public sealed class AgentHarness
 
             await foreach (
                 ChatResponseUpdate update in _client.GetStreamingResponseAsync(
-                    [.. _history],
-                    new ChatOptions(),
+                    BuildRequest(),
+                    BuildOptions(),
                     ct
                 )
             )
@@ -111,6 +125,7 @@ public sealed class AgentHarness
                 channel.Emit(new TextMessageEnd(runId, messageId!));
             }
 
+            _history.AddRange(updates.ToChatResponse().Messages);
             channel.Emit(new RunFinished(runId, StopReasons.Stop));
         }
         catch (OperationCanceledException)
