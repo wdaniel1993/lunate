@@ -23,13 +23,13 @@ internal sealed class ScriptedTool(
 
     public ToolContext? ReceivedContext { get; private set; }
 
-    public Func<JsonElement, ToolResult>? OnExecute { get; set; }
+    public Func<JsonElement, ToolContext, ToolResult>? OnExecute { get; set; }
 
     public Task<ToolResult> ExecuteAsync(JsonElement args, ToolContext ctx, CancellationToken ct)
     {
         ReceivedArgsRaw = args.GetRawText();
         ReceivedContext = ctx;
-        ToolResult? result = OnExecute?.Invoke(args);
+        ToolResult? result = OnExecute?.Invoke(args, ctx);
         return Task.FromResult(result ?? new ToolResult($"ran {Name}", IsError: false));
     }
 

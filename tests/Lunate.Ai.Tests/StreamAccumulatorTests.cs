@@ -204,7 +204,7 @@ public sealed class StreamAccumulatorTests
     }
 
     [Fact]
-    public async Task GetStreamingResponseAsync_surfaces_unparseable_assembled_arguments_as_an_exception()
+    public async Task GetStreamingResponseAsync_preserves_raw_arguments_when_assembly_fails()
     {
         var provider = new ScriptedChatClient().Enqueue(
             FragmentUpdate("call-1", "list_files", "{\"path\":"),
@@ -218,7 +218,10 @@ public sealed class StreamAccumulatorTests
             updates.SelectMany(update => update.Contents).OfType<FunctionCallContent>()
         );
         Assert.NotNull(call.Exception);
-        Assert.Null(call.Arguments);
+        Assert.Equal(
+            "{\"path\": broken",
+            Unwrap(call.Arguments![StreamAccumulator.ArgumentsFragmentKey])
+        );
     }
 
     private static ChatResponseUpdate FragmentUpdate(string callId, string name, string json) =>
