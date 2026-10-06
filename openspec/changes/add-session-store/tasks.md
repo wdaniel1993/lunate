@@ -25,4 +25,4 @@
 
 ## 5. Close
 
-- [ ] 5.1 `scripts/verify.sh` green; `openspec validate add-session-store --type change --strict`; self-review; commit per group
+- [x] 5.1 `scripts/verify.sh` green; `openspec validate add-session-store --type change --strict`; self-review; commit per group
