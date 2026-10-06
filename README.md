@@ -4,7 +4,7 @@ A native C# coding agent for the terminal — a reliable core loop, four core to
 
 Named for the **lunate sigma (Ϲ)**: the ancient crescent-shaped sigma that reads like a Latin "C" — a Greek-letter sibling of π and τ that points directly at C#.
 
-Status: **bootstrap** — the core is built change by change; providers and the agent-event contract have landed, there is no release yet. The plan and roadmap live in [`docs/guide.md`](docs/guide.md).
+Status: **bootstrap** — the core is built change by change; the model pipeline, the event contract, the tools and the agent loop have landed, there is no release yet. The plan and roadmap live in [`docs/guide.md`](docs/guide.md).
 
 ## Prerequisites
 
@@ -45,6 +45,7 @@ bash scripts/verify.sh                  # the full gate (Windows: scripts/verify
 Start at [`docs/README.md`](docs/README.md) — the map of every document kind and the writing guideline. Key entry points:
 
 - [Guide](docs/guide.md) — what Lunate is, the plan and the roadmap
+- [Architecture](docs/architecture.md) — the component map and the runtime flows
 - [Specs](openspec/specs/) — the behaviour source of truth
 - [ADRs](adr/) — decisions with their context
 - [Releases](https://github.com/wdaniel1993/lunate/releases)

@@ -6,6 +6,7 @@ Lunate keeps each kind of document in exactly one home. Start here, then jump to
 | --- | --- | --- |
 | Project entry point | [`../README.md`](../README.md) | What Lunate is, prerequisites, quick start, repository map |
 | Plan and status | [`guide.md`](guide.md) | The implementation plan, phases and roadmap |
+| Architecture overview | [`architecture.md`](architecture.md) | Component map, model pipeline, one run and the event path, as diagrams |
 | Behaviour source of truth | [`../openspec/specs/`](../openspec/specs/) | Current behaviour, one folder per capability |
 | In-flight proposals | [`../openspec/changes/`](../openspec/changes/) | Proposals, deltas, designs and tasks being implemented |
 | Decisions with context | [`../adr/`](../adr/) | Durable architectural decisions, immutable once accepted |

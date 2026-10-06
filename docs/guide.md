@@ -46,9 +46,9 @@ Every feature request and every OpenCode plan is checked against these seven rul
 
 Three core projects with strict downward dependencies, like Tau's `tau_coding → tau_agent → tau_ai`, built on Microsoft.Extensions.AI. Around them: a TUI library, a protocols project on the MCP and ACP SDKs, and Roslyn as a built-in extension that loads on first use.
 
-&#91;embedded content: Lunate architecture · 3 core layers, TUI, protocols, Roslyn extension, external MCP servers\]
+The architecture overview lives in [`architecture.md`](architecture.md) — the component map, the model pipeline, one run and the event path as diagrams.
 
-Arrows point from a project to what it depends on or calls; the dashed box is a separate process. `Lunate.Protocols` references `Lunate.Agent` (MCP tools become `ITool`s, ACP drives the loop); `Lunate.Tui` references no other Lunate project; `Lunate.Roslyn` is loaded through the extension loader, so Roslyn and MSBuild assemblies are not touched until the first C# tool call.
+Arrows point from a project to what it depends on or calls; dashed edges are runtime-only connections (the lazily loaded extension and separate processes). `Lunate.Protocols` references `Lunate.Agent` (MCP tools become `ITool`s, ACP drives the loop); `Lunate.Tui` references no other Lunate project; `Lunate.Roslyn` is loaded through the extension loader, so Roslyn and MSBuild assemblies are not touched until the first C# tool call.
 
 **Solution layout**
 
