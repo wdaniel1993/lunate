@@ -6,7 +6,7 @@ The tool surface of the agent: what a tool is (our own contract with risk levels
 ## Requirements
 
 ### Requirement: Tool contract
-`Lunate.Agent` SHALL define tools as its own type: `ITool` with a name, a description, a hand-written JSON `ParametersSchema`, a `ToolRisk` (`ReadOnly`, `Write`, `Execute`) and `ExecuteAsync(JsonElement args, ToolContext ctx, CancellationToken ct)`; results as `ToolResult` (output, error flag, UI-only `Details`); and `ToolContext` carrying the working directory and the event sink. Schemas SHALL be authored by hand, never built by reflection.
+`Lunate.Agent` SHALL define tools as its own type: `ITool` with a name, a description, a hand-written JSON `ParametersSchema`, a `ToolRisk` (`ReadOnly`, `Write`, `Execute`) and `ExecuteAsync(JsonElement args, ToolContext ctx, CancellationToken ct)`; results as `ToolResult` (output, error flag, UI-only `Details`); and `ToolContext` carrying the working directory and an event sink that accepts only extension events. Schemas SHALL be authored by hand, never built by reflection. Error results SHALL reach the model through their instructing output text; a provider-level error flag is not sent (revisit when real tools and a live fixture exist).
 
 #### Scenario: Contract is implementable without reflection
 - **GIVEN** a tool implemented in a test with a hand-written schema
@@ -15,8 +15,8 @@ The tool surface of the agent: what a tool is (our own contract with risk levels
 
 #### Scenario: Details never travel to the model
 - **GIVEN** a tool result with `Details` set
-- **WHEN** the loop appends the tool result to the conversation (T-09)
-- **THEN** only the output and error flag reach the model; details are UI-only
+- **WHEN** the loop appends the tool result to the conversation
+- **THEN** only the output reaches the model — instructing text for error results — while details stay UI-only and the error flag feeds events and telemetry
 
 ### Requirement: Declaration-only model adapter
 A `ToolDeclaration` SHALL present an `ITool` to Microsoft.Extensions.AI as an `AIFunction` whose name, description and JSON schema are exactly the tool's own, and SHALL refuse execution through Microsoft.Extensions.AI on every invocation path, naming ADR-0003.
