@@ -1,0 +1,2 @@
+{"type":"header","schema":1,"model":"gpt-4o-mini","recordedAt":"2026-10-06T16:06:59.8567530+00:00"}
+{"type":"exchange","requestDigest":"fa14c57d19f0095c0734e85a949dd978a2bdf1f3d5c43568dff0d8431849547e","updates":[{"role":"assistant","contents":[{"$type":"text","text":"Hello! "}]},{"role":"assistant","contents":[{"$type":"text","text":"How can I help?"}]},{"role":"assistant","contents":[],"finishReason":"stop"}]}

@@ -1,0 +1,6 @@
+RunStarted(run)
+TextMessageStart(run, msg)
+TextMessageContent(run, msg, "Hello! ")
+TextMessageContent(run, msg, "How can I help?")
+TextMessageEnd(run, msg)
+RunFinished(run, stop)
