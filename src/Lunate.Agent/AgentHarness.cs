@@ -6,8 +6,8 @@ namespace Lunate.Agent;
 
 /// <summary>
 /// The agent loop: a turn on an <see cref="IChatClient"/> that streams model output as events,
-/// runs tools itself (ADR-0003) and keeps the history valid. Runs on one harness are sequential;
-/// concurrent runs are a later, explicit decision.
+/// runs tools itself (ADR-0003) and keeps the history valid. Runs on one harness are sequential:
+/// a second concurrent run is rejected; abandoning the stream stops the run.
 /// </summary>
 /// <remarks>
 /// The client is expected to be the factory pipeline, which includes the stream accumulator, so
@@ -20,6 +20,8 @@ public sealed partial class AgentHarness
     private readonly ToolRegistry _tools;
     private readonly AgentHarnessOptions _options;
     private readonly List<ChatMessage> _history = [];
+    private readonly List<FunctionCallContent> _danglingCalls = [];
+    private int _runActive;
 
     public AgentHarness(IChatClient client, ToolRegistry tools, AgentHarnessOptions? options = null)
     {
@@ -28,6 +30,7 @@ public sealed partial class AgentHarness
         _client = client;
         _tools = tools;
         _options = options ?? new AgentHarnessOptions();
+        ValidateOptions(_options);
     }
 
     /// <summary>Runs the loop for one user input and streams its events; the stream completes when the run ends.</summary>
@@ -37,15 +40,67 @@ public sealed partial class AgentHarness
     )
     {
         ArgumentNullException.ThrowIfNull(userInput);
-        string runId = RunIds.Next();
-        var channel = new AgentEventChannel();
-        Task loop = RunLoopAsync(runId, userInput, channel, ct);
-        await foreach (AgentEvent agentEvent in channel.ReadAllAsync(ct))
+        if (Interlocked.CompareExchange(ref _runActive, 1, 0) != 0)
         {
-            yield return agentEvent;
+            throw new InvalidOperationException(
+                "A run is already in progress on this harness; runs are sequential."
+            );
         }
 
-        await loop;
+        string runId = RunIds.Next();
+        _danglingCalls.Clear();
+        var channel = new AgentEventChannel();
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        Task loop = RunLoopAsync(runId, userInput, channel, linked.Token);
+        try
+        {
+            await foreach (AgentEvent agentEvent in channel.ReadAllAsync(CancellationToken.None))
+            {
+                yield return agentEvent;
+            }
+        }
+        finally
+        {
+            linked.Cancel();
+            try
+            {
+                await loop;
+            }
+            finally
+            {
+                Interlocked.Exchange(ref _runActive, 0);
+            }
+        }
+    }
+
+    private static void ValidateOptions(AgentHarnessOptions options)
+    {
+        if (options.MaxSteps < 1)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(AgentHarnessOptions.MaxSteps),
+                options.MaxSteps,
+                "MaxSteps must be at least 1."
+            );
+        }
+
+        if (options.MaxRetries < 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(AgentHarnessOptions.MaxRetries),
+                options.MaxRetries,
+                "MaxRetries must be zero or greater."
+            );
+        }
+
+        if (options.RetryBaseDelay < TimeSpan.Zero)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(AgentHarnessOptions.RetryBaseDelay),
+                options.RetryBaseDelay,
+                "RetryBaseDelay must be zero or greater."
+            );
+        }
     }
 
     private async Task RunLoopAsync(

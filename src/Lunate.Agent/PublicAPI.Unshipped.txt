@@ -301,8 +301,12 @@ Lunate.Agent.AgentHarnessOptions.AgentHarnessOptions() -> void
 Lunate.Agent.AgentHarnessOptions.Approver.get -> Lunate.Agent.IToolApprover?
 Lunate.Agent.AgentHarnessOptions.Approver.init -> void
 Lunate.Agent.AgentHarnessOptions.Equals(Lunate.Agent.AgentHarnessOptions? other) -> bool
+Lunate.Agent.AgentHarnessOptions.MaxRetries.get -> int
+Lunate.Agent.AgentHarnessOptions.MaxRetries.init -> void
 Lunate.Agent.AgentHarnessOptions.MaxSteps.get -> int
 Lunate.Agent.AgentHarnessOptions.MaxSteps.init -> void
+Lunate.Agent.AgentHarnessOptions.RetryBaseDelay.get -> System.TimeSpan
+Lunate.Agent.AgentHarnessOptions.RetryBaseDelay.init -> void
 Lunate.Agent.AgentHarnessOptions.SystemPrompt.get -> string?
 Lunate.Agent.AgentHarnessOptions.SystemPrompt.init -> void
 Lunate.Agent.AgentHarnessOptions.WorkingDirectory.get -> string!

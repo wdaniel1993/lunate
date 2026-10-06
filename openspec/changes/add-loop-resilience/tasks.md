@@ -1,7 +1,7 @@
 ## 1. Harness lifecycle
 
-- [ ] 1.1 Sequential guard (`Interlocked`, actionable `InvalidOperationException`), linked CTS, read with `CancellationToken.None`, finally cancels + awaits the loop; class doc updated
-- [ ] 1.2 `AgentHarnessOptions` validation in the harness constructor (`MaxSteps >= 1`, `MaxRetries >= 0`, `RetryBaseDelay >= 0`) + new `MaxRetries` / `RetryBaseDelay` options
+- [x] 1.1 Sequential guard (`Interlocked`, actionable `InvalidOperationException`), linked CTS, read with `CancellationToken.None`, finally cancels + awaits the loop; class doc updated
+- [x] 1.2 `AgentHarnessOptions` validation in the harness constructor (`MaxSteps >= 1`, `MaxRetries >= 0`, `RetryBaseDelay >= 0`) + new `MaxRetries` / `RetryBaseDelay` options
 
 ## 2. Cancellation and repair
 
