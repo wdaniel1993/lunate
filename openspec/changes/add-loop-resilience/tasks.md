@@ -20,7 +20,7 @@
 
 ## 5. Validator
 
-- [ ] 5.1 New violation kinds: unclosed text message at terminal, tool call not completed, foreign run id; tests for each
+- [x] 5.1 New violation kinds: unclosed text message at terminal, tool call not completed, foreign run id; tests for each
 
 ## 6. Small items
 
