@@ -39,6 +39,16 @@ try {
     dotnet build lunate.sln -c $configuration --nologo
     if ($LASTEXITCODE -ne 0) { throw 'verify: build failed' }
 
+    Write-Host "`n==> provider runtime assets"
+    # Providers are compile-private to Lunate.Ai, but their runtime assets must reach
+    # the app output or provider construction fails at run time.
+    foreach ($assembly in @('Anthropic', 'OpenAI', 'Microsoft.Extensions.AI')) {
+        $asset = "src/Lunate.Coding/bin/$configuration/net10.0/${assembly}.dll"
+        if (-not (Test-Path $asset)) {
+            throw "verify: ${assembly}.dll is missing from the Lunate.Coding build output"
+        }
+    }
+
     Write-Host "`n==> test"
     dotnet test --solution lunate.sln -c $configuration
     if ($LASTEXITCODE -ne 0) { throw 'verify: tests failed' }
@@ -101,8 +111,18 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'verify: documentation lint failed' }
 
     Write-Host "`n==> public API"
-    git diff --exit-code -- '*PublicAPI.Shipped.txt'
-    if ($LASTEXITCODE -ne 0) { throw 'verify: PublicAPI.Shipped.txt changed' }
+    # Compare against the merge base with origin/main, then main, then HEAD
+    # (working tree only) when neither exists.
+    $base = git merge-base HEAD origin/main 2>$null
+    if ($LASTEXITCODE -ne 0) {
+        $base = git merge-base HEAD main 2>$null
+    }
+    if ($LASTEXITCODE -ne 0) {
+        $base = 'HEAD'
+        [Console]::Error.WriteLine('note: no main ref found; comparing the working tree only')
+    }
+    git diff --exit-code $base -- '*PublicAPI.Shipped.txt'
+    if ($LASTEXITCODE -ne 0) { throw "verify: PublicAPI.Shipped.txt changed relative to $base" }
 
     Write-Host 'verify: OK'
 }
