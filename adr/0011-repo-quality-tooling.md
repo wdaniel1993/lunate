@@ -1,6 +1,6 @@
 # 0011 — Repository quality tooling
 
-- Status: proposed — 2026-10-05
+- Status: accepted — 2026-10-06 (maintainer sign-off; change merged)
 - Date: 2026-10-05
 
 ## Context
