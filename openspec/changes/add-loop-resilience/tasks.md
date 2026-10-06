@@ -33,12 +33,12 @@
 ## 7. Tests and acceptance
 
 - [x] 7.1 One replay/scripted test per path: cancel mid-tool, cancel mid-stream (open message closed), abandonment stops the run, concurrent run rejected, OCE-without-token (provider → `RunError`; tool → error result), retry success after transient failure, retries exhausted, non-retryable no-retry, `length` finish, `UsageUpdated`, repair makes the next run valid (assert the repaired history reaches the provider)
-- [ ] 7.2 Existing snapshots updated where the new terminal/repair events change them; validator tests extended; de-AT pass
+- [x] 7.2 Existing snapshots updated where the new terminal/repair events change them; validator tests extended; de-AT pass
 
 ## 8. Specs
 
-- [ ] 8.1 Deltas in this change: `agent-events` (vocabulary + producers + sequence rules), `agent-loop` (surface, turn semantics, tool safety, new cancellation requirement), `agent-tools` (error text + sink), `ai-layer` (digest scope)
+- [x] 8.1 Deltas in this change: `agent-events` (vocabulary + producers + sequence rules), `agent-loop` (surface, turn semantics, tool safety, new cancellation requirement), `agent-tools` (error text + sink), `ai-layer` (digest scope)
 
 ## 9. Close
 
-- [ ] 9.1 `scripts/verify.sh` green; `openspec validate add-loop-resilience --type change --strict`; self-review; commit per group
+- [x] 9.1 `scripts/verify.sh` green; `openspec validate add-loop-resilience --type change --strict`; self-review; commit per group
