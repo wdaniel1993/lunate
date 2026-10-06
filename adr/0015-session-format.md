@@ -20,3 +20,4 @@ Sessions are append-only JSONL and embed Microsoft.Extensions.AI types exactly a
 - Format drift is loud and dated: the golden test is the tripwire, and the schema number is the version line.
 - Any change to the envelope or the MEAI embedding is a schema event with a migration and an ADR, not an implementation detail.
 - The goldens double as format documentation and as resume-test input.
+- A session file assumes a single writer (one harness or process per file); concurrent writers are not supported — T-22 keeps one harness per session.

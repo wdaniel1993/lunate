@@ -25,6 +25,18 @@ public static class SessionPaths
     public static string SessionFileName(string sessionId)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(sessionId);
+        if (
+            sessionId.Contains('/')
+            || sessionId.Contains('\\')
+            || sessionId.Contains("..", StringComparison.Ordinal)
+        )
+        {
+            throw new ArgumentException(
+                $"Session id '{sessionId}' must not contain path separators or '..'.",
+                nameof(sessionId)
+            );
+        }
+
         return sessionId + ".jsonl";
     }
 }

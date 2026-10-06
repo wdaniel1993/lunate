@@ -9,6 +9,8 @@ namespace Lunate.Agent;
 /// An append-only JSONL session. Create one, append messages, compaction and model changes; load it
 /// to resume. The store assigns entry ids, the parent chain and the timestamps, so callers pass
 /// payloads only. The byte format is frozen by the golden tests in tests/fixtures/sessions.
+/// Sessions assume a single writer (one harness or process per file); concurrent writers are not
+/// supported.
 /// </summary>
 public sealed class Session
 {

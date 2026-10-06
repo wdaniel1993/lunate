@@ -289,15 +289,15 @@ The harness exposes them as `IAsyncEnumerable<AgentEvent>` from `AgentHarness.Ru
 
 **Session entries**
 
-Append-only JSONL, one entry per line, each with `id`, `parentId`, `type` and a UTC timestamp. Message entries embed the `ChatMessage` exactly as `AIJsonUtilities` serializes it; the example shows the shape, not the exact discriminator names.
+Append-only JSONL, one entry per line, each with `id`, `parentId`, `type` and a UTC timestamp. Message entries embed the `ChatMessage` exactly as `AIJsonUtilities` serializes it; the example below matches the frozen format — the golden files under `tests/fixtures/sessions/` are the byte-level truth (ADR-0015).
 
 ```json
-{"type":"header","schema":1,"id":"s_01","cwd":"/repo","created":"2026-10-03T09:00:00Z","meai":"<package version>"}
-{"type":"message","id":"e_01","parentId":null,"message":{"role":"user","contents":[{"$type":"text","text":"add tests for Calculator"}]}}
-{"type":"message","id":"e_02","parentId":"e_01","model":"<model id>","usage":{"in":1834,"out":41},"message":{"role":"assistant","contents":[{"$type":"functionCall","callId":"c_1","name":"read","arguments":{"path":"src/Calculator.cs"}}]}}
-{"type":"message","id":"e_03","parentId":"e_02","message":{"role":"tool","contents":[{"$type":"functionResult","callId":"c_1","result":"1  public class Calculator ..."}]}}
-{"type":"compaction","id":"e_40","parentId":"e_39","summary":"...","replaces":["e_01","e_30"]}
-{"type":"modelChange","id":"e_41","parentId":"e_40","model":"<model id>"}
+{"type":"header","schema":1,"id":"s_20261003-090000-ab12","cwd":"/repo","created":"2026-10-03T09:00:00.0000000+00:00","meai":"10.10.1"}
+{"type":"message","id":"e_01","parentId":null,"timestamp":"2026-10-03T09:00:01.0000000+00:00","message":{"role":"user","contents":[{"$type":"text","text":"add tests for Calculator"}]}}
+{"type":"message","id":"e_02","parentId":"e_01","timestamp":"2026-10-03T09:00:02.0000000+00:00","message":{"role":"assistant","contents":[{"$type":"functionCall","name":"read","arguments":{"path":"src/Calculator.cs"},"informationalOnly":false,"callId":"c_1"}]},"model":"gpt-4o-mini","usage":{"input":1834,"output":41}}
+{"type":"message","id":"e_03","parentId":"e_02","timestamp":"2026-10-03T09:00:03.0000000+00:00","message":{"role":"tool","contents":[{"$type":"functionResult","result":"1  public class Calculator ...","callId":"c_1"}]}}
+{"type":"compaction","id":"e_40","parentId":"e_39","timestamp":"2026-10-03T09:10:00.0000000+00:00","summary":"...","replaces":["e_01","e_30"]}
+{"type":"modelChange","id":"e_41","parentId":"e_40","timestamp":"2026-10-03T09:11:00.0000000+00:00","model":"gpt-4o"}
 ```
 
 **Format guard:** `tests/fixtures/sessions/` holds golden session files. A test deserializes and re-serializes each one and compares byte for byte. If a Microsoft.Extensions.AI update changes the output, the test fails: bump `schema`, add a migration, and record it in an ADR.

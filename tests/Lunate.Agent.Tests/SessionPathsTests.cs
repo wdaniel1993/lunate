@@ -47,4 +47,13 @@ public sealed class SessionPathsTests
             SessionPaths.SessionFileName("s_20261006-120000-abcd")
         );
     }
+
+    [Theory]
+    [InlineData("s_1/../evil")]
+    [InlineData("a\\b")]
+    [InlineData("..")]
+    public void SessionFileName_rejects_path_separators_and_dot_dot(string sessionId)
+    {
+        Assert.Throws<ArgumentException>(() => SessionPaths.SessionFileName(sessionId));
+    }
 }

@@ -192,6 +192,25 @@ public sealed class SessionTests
         Assert.Equal((byte)'\n', bytes[^1]);
     }
 
+    [Fact]
+    public void Entry_ids_do_not_re_pad_beyond_ninety_nine()
+    {
+        using var temp = new TempDirectory();
+        Session session = Session.Create(
+            temp.File("s.jsonl"),
+            "/work",
+            new FixedTimeProvider(Start)
+        );
+
+        for (int index = 0; index < 100; index++)
+        {
+            session.AppendMessage(new ChatMessage(ChatRole.User, $"m{index}"));
+        }
+
+        Assert.Equal("e_99", session.Entries[98].Id);
+        Assert.Equal("e_100", session.Entries[99].Id);
+    }
+
     private static string[] ReadLines(string path) =>
         File.ReadAllText(path).Split('\n', StringSplitOptions.RemoveEmptyEntries);
 
