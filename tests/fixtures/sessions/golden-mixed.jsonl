@@ -1,0 +1,4 @@
+{"type":"header","schema":1,"id":"s_20261006-120000-e5f6","cwd":"/repo","created":"2026-10-06T12:00:00.0000000+00:00","meai":"10.10.1"}
+{"type":"message","id":"e_01","parentId":null,"timestamp":"2026-10-06T12:00:01.0000000+00:00","message":{"role":"user","contents":[{"$type":"text","text":"Refactor the parser."}]}}
+{"type":"compaction","id":"e_02","parentId":"e_01","timestamp":"2026-10-06T12:00:02.0000000+00:00","summary":"The parser was refactored to a table-driven design.","replaces":["e_01"]}
+{"type":"modelChange","id":"e_03","parentId":"e_02","timestamp":"2026-10-06T12:00:03.0000000+00:00","model":"gpt-4o"}

@@ -12,10 +12,10 @@
 
 ## 3. Golden files and tests
 
-- [ ] 3.1 `tests/fixtures/sessions/`: `golden-text.jsonl`, `golden-tool-call.jsonl`, `golden-mixed.jsonl` (compaction + modelChange shapes included)
-- [ ] 3.2 Format guard test: every golden deserializes and re-serializes byte for byte; parse errors are actionable
-- [ ] 3.3 Store tests: create/append/load round trip; id and parent chain; schema mismatch fails actionably; `ToHistory()` order; `SessionPaths` hash stability
-- [ ] 3.4 Harness tests: a scripted run with a session writes the expected entries (byte-stable snapshot); a resumed session's first request contains the loaded history (scripted client assertion)
+- [x] 3.1 `tests/fixtures/sessions/`: `golden-text.jsonl`, `golden-tool-call.jsonl`, `golden-mixed.jsonl` (compaction + modelChange shapes included)
+- [x] 3.2 Format guard test: every golden deserializes and re-serializes byte for byte; parse errors are actionable
+- [x] 3.3 Store tests: create/append/load round trip; id and parent chain; schema mismatch fails actionably; `ToHistory()` order; `SessionPaths` hash stability
+- [x] 3.4 Harness tests: a scripted run with a session writes the expected entries (byte-stable snapshot); a resumed session's first request contains the loaded history (scripted client assertion)
 
 ## 4. Specs and ADR
 
