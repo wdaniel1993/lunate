@@ -37,16 +37,19 @@ public sealed partial class AgentHarness
 
         string argsJson = "{}";
         JsonElement args = default;
-        string? argumentsError = null;
-        try
+        string? argumentsError = call.Exception?.Message;
+        if (argumentsError is null)
         {
-            argsJson = SerializeArguments(call.Arguments);
-            using JsonDocument document = JsonDocument.Parse(argsJson);
-            args = document.RootElement.Clone();
-        }
-        catch (Exception exception) when (exception is not OperationCanceledException)
-        {
-            argumentsError = exception.Message;
+            try
+            {
+                argsJson = SerializeArguments(call.Arguments);
+                using JsonDocument document = JsonDocument.Parse(argsJson);
+                args = document.RootElement.Clone();
+            }
+            catch (Exception exception) when (exception is not OperationCanceledException)
+            {
+                argumentsError = exception.Message;
+            }
         }
 
         channel.Emit(new ToolCallArgs(runId, callId, argsJson));

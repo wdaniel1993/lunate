@@ -77,6 +77,30 @@ public sealed class AgentToolErrorTests
     }
 
     [Fact]
+    public async Task Malformed_arguments_from_the_pipeline_become_an_error_result()
+    {
+        ScriptedTool read = ReadTool("contents");
+        var provider = new ScriptedChatClient()
+            .Enqueue(
+                LoopScripts.CallFragment("call_1", "read", """{"path":"""),
+                LoopScripts.CallFragment("call_1", string.Empty, " broken"),
+                LoopScripts.ToolCalls()
+            )
+            .Enqueue(LoopScripts.Text("Done"), LoopScripts.Stop());
+        var harness = new AgentHarness(TestPipeline.Create(provider), Registry(read));
+
+        List<AgentEvent> events = await Run(harness);
+
+        Assert.Empty(EventSequenceValidator.Validate(events));
+        ToolCallResult result = Assert.Single(events.OfType<ToolCallResult>());
+        Assert.True(result.IsError);
+        Assert.Contains("read", result.Output);
+        Assert.Contains("arguments", result.Output);
+        Assert.Null(read.ReceivedContext);
+        Assert.Equal(2, provider.Requests.Count);
+    }
+
+    [Fact]
     public async Task A_declined_call_becomes_an_error_result_and_the_tool_does_not_run()
     {
         ScriptedTool read = ReadTool("contents");

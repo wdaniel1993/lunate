@@ -17,6 +17,19 @@ internal static class LoopScripts
     internal static ChatResponseUpdate Calls(params FunctionCallContent[] calls) =>
         new(ChatRole.Assistant, calls);
 
+    /// <summary>A streamed argument fragment in the pipeline's wire shape (T-05).</summary>
+    internal static ChatResponseUpdate CallFragment(string callId, string name, string json) =>
+        new(
+            ChatRole.Assistant,
+            [
+                new FunctionCallContent(
+                    callId,
+                    name,
+                    new Dictionary<string, object?> { ["$arguments"] = json }
+                ),
+            ]
+        );
+
     internal static ChatResponseUpdate Stop() =>
         new(ChatRole.Assistant, []) { FinishReason = ChatFinishReason.Stop };
 
