@@ -1,9 +1,4 @@
-# agent-sessions Specification
-
-## Purpose
-The session file: an append-only JSONL of conversation entries that makes runs durable and resumable, with a byte-for-byte format guard against Microsoft.Extensions.AI serialization drift.
-
-## Requirements
+## ADDED Requirements
 
 ### Requirement: Session file format
 A session file SHALL be append-only JSONL: a header line (schema, session `id`, `cwd`, `created`, `meai` informational version) followed by one entry per line, each with `id`, `parentId`, `type` and a UTC timestamp. Message entries SHALL embed the `ChatMessage` exactly as `AIJsonUtilities` serializes it; assistant entries SHALL carry the model id and usage when known. Entry types SHALL cover messages, compaction (`summary`, `replaces`) and model changes (`model`).
