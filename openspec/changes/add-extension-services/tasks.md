@@ -2,9 +2,9 @@
 
 ## 1. Contract surfaces (TDD, red-first)
 
-- [ ] 1.1 `IBackgroundService` (`StartAsync`/`StopAsync`), `IFileChangedHandler` (handler interface, not a delegate), `IExtensionContext` gains `RegisterService(name, service)`, `SubscribeFileChanged(handler, pattern?)`, `TryGetService(name)` / typed lookup for core services; API version bump as semver-minor; PublicAPI entries
-- [ ] 1.2 Manifest: `modelProviders` array (id, displayName, endpoint, secretName, modelIds) validated per design; malformed entries name file + field
-- [ ] 1.3 JSON conformance for the new DTOs (file change payload, model provider descriptor)
+- [x] 1.1 `IBackgroundService` (`StartAsync`/`StopAsync`), `IFileChangedHandler` (handler interface, not a delegate), `IExtensionContext` gains `RegisterService(name, service)`, `SubscribeFileChanged(handler, pattern?)`, `TryGetService(name)` / typed lookup for core services; API version bump as semver-minor; PublicAPI entries
+- [x] 1.2 Manifest: `modelProviders` array (id, displayName, endpoint, secretName, modelIds) validated per design; malformed entries name file + field
+- [x] 1.3 JSON conformance for the new DTOs (file change payload, model provider descriptor)
 
 ## 2. Service host and lifecycle
 

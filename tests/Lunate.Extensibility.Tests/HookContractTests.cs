@@ -132,6 +132,17 @@ public sealed class HookContractTests
             ("CompactingResult.Provide", new CompactingResult.Provide("summary")),
             ("ModelChangedPayload", new ModelChangedPayload("r1", "model-2")),
             ("ToolsChangedPayload", new ToolsChangedPayload("r1", ["read", "write"])),
+            ("FileChangedPayload", new FileChangedPayload("/work/a.txt", "/work")),
+            (
+                "ModelProviderDescriptor",
+                new ModelProviderDescriptor(
+                    "acme-local",
+                    "Acme Local",
+                    "http://localhost:11434/v1",
+                    "acme-key",
+                    ["acme-7b"]
+                )
+            ),
         ];
     }
 }
