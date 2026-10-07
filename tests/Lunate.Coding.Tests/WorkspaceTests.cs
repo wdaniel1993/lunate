@@ -310,6 +310,42 @@ public sealed class WorkspaceTests
         Assert.Equal(Workspace.Canonicalize(Path.Combine(main, ".git")), workspace.GitCommonDir);
     }
 
+    [Fact]
+    public void A_sibling_worktree_is_refused_from_another_worktree()
+    {
+        using var temp = new TempDirectory();
+        var (_, first) = CreateLinkedWorktree(temp, "a");
+        var (_, second) = CreateLinkedWorktree(temp, "b");
+        File.WriteAllText(Path.Combine(second, "file.txt"), "x");
+        var workspace = new Workspace(first);
+        var target = Path.Combine(second, "file.txt");
+
+        var accepted = workspace.TryResolve(target, out _, out var error);
+
+        Assert.False(accepted);
+        Assert.Contains(Workspace.Canonicalize(target), error);
+        Assert.Contains(Workspace.Canonicalize(first), error);
+    }
+
+    [Fact]
+    public void A_sibling_worktree_granted_as_an_extra_root_is_accepted()
+    {
+        using var temp = new TempDirectory();
+        var (_, first) = CreateLinkedWorktree(temp, "a");
+        var (_, second) = CreateLinkedWorktree(temp, "b");
+        File.WriteAllText(Path.Combine(second, "file.txt"), "x");
+        var workspace = new Workspace(first, [second]);
+
+        var accepted = workspace.TryResolve(
+            Path.Combine(second, "file.txt"),
+            out var resolved,
+            out var error
+        );
+
+        Assert.True(accepted, error);
+        Assert.Equal("file.txt", resolved.RelativePath);
+    }
+
     private static (string Main, string Worktree) CreateLinkedWorktree(
         TempDirectory temp,
         string name

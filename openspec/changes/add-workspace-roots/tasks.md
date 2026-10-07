@@ -8,8 +8,8 @@
 
 ## 2. Boundary across worktrees
 
-- [ ] 2.1 Tests: a path in worktree B resolved from a workspace rooted at A is refused (naming target and allowed roots); granted as an extra root it is accepted
-- [ ] 2.2 Existing boundary tests untouched and green (behaviour unchanged)
+- [x] 2.1 Tests: a path in worktree B resolved from a workspace rooted at A is refused (naming target and allowed roots); granted as an extra root it is accepted
+- [x] 2.2 Existing boundary tests untouched and green (behaviour unchanged)
 
 ## 3. Close
 
