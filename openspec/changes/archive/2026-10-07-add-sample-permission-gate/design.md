@@ -18,7 +18,7 @@ MODIFIED `Hook wiring`: `ToolCalling` fires "before the approval prompt, with th
 ## Sample: `samples/extensions/permission-gate/`
 
 - `PermissionGateExtension/` — abstractions-only csproj; manifest `id: permission-gate`, `apiVersion ^1.3.0`, `settingsSchema`: `mode` (`block` | `confirm`, default `block`); factory; extension registers one `IToolCallingHandler`.
-- Policy: for calls whose tool annotations include `destructive` (using the payload's annotations — never name lists): `block` mode → `ToolCallingResult.Block("permission-gate: destructive tool <name> requires confirmation")`; `confirm` mode → `Proceed(null)` (falls through to the normal approval prompt). Everything else proceeds unchanged. Logs its decisions through `IExtensionLog`.
+- Policy: for calls whose tool annotations include `destructive` (using the payload's annotations — never name lists): `block` mode → `ToolCallingResult.Block("permission-gate: destructive tool '<name>' blocked - set mode=confirm to approve interactively")`; `confirm` mode → `Proceed(null)` (falls through to the normal approval prompt). Everything else proceeds unchanged. Logs its decisions through `IExtensionLog`.
 - `PermissionGateExtension.Tests/` — via the testing kit:
   1. block mode + destructive call → blocked with reason; tool never executes; approval prompt never consulted (ScriptedApprover not called).
   2. block mode + read-only call → proceeds; approval runs as usual.
