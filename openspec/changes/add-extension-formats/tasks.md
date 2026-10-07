@@ -8,10 +8,10 @@
 
 ## 2. Tool contract (TDD)
 
-- [ ] 2.1 New types: `ToolExposure`, `ToolNamespace`, `ToolAnnotations`, `ToolConcurrency`, `ToolRiskResolver`, `IFileMutationQueue` + `FileMutationQueue` (per-path serialization, shared default, platform case rule)
-- [ ] 2.2 `ITool` default interface members (exposure, namespace, annotations, output schema, concurrency, derived risk); explicit `Risk` overrides on existing tools unchanged
-- [ ] 2.3 `ToolResult` gains `StructuredContent` and `Usage`; `ToolRegistry.Declarations` filters to `Direct`/`ModelOnly`
-- [ ] 2.4 Tests: declaration filter; derived vs explicit risk; result shape; queue concurrency (same path serializes with no lost update, different paths independent)
+- [x] 2.1 New types: `ToolExposure`, `ToolNamespace`, `ToolAnnotations`, `ToolConcurrency`, `ToolRiskResolver`, `IFileMutationQueue` + `FileMutationQueue` (per-path serialization, shared default, platform case rule)
+- [x] 2.2 `ITool` default interface members (exposure, namespace, annotations, output schema, concurrency, derived risk); explicit `Risk` overrides on existing tools unchanged
+- [x] 2.3 `ToolResult` gains `StructuredContent` and `Usage`; `ToolRegistry.Declarations` filters to `Direct`/`ModelOnly`
+- [x] 2.4 Tests: declaration filter; derived vs explicit risk; result shape; queue concurrency (same path serializes with no lost update, different paths independent)
 
 ## 3. Nested execution and queue routing (TDD)
 

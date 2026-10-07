@@ -72,6 +72,20 @@ public sealed class ToolRegistryTests
     }
 
     [Fact]
+    public void Declarations_expose_only_direct_and_model_only_tools()
+    {
+        var registry = new ToolRegistry();
+        registry.Add(new ContractTool("direct"));
+        registry.Add(new ContractTool("model_only") { Exposure = ToolExposure.ModelOnly });
+        registry.Add(new ContractTool("programmatic") { Exposure = ToolExposure.Programmatic });
+        registry.Add(new ContractTool("deferred") { Exposure = ToolExposure.Deferred });
+        registry.Add(new ContractTool("hidden") { Exposure = ToolExposure.Hidden });
+
+        Assert.Equal(5, registry.Tools.Count);
+        Assert.Equal(["direct", "model_only"], registry.Declarations.Select(d => d.Name));
+    }
+
+    [Fact]
     public void Declarations_are_adapters_over_the_registered_tools()
     {
         var registry = new ToolRegistry();

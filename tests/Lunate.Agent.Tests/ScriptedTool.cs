@@ -19,6 +19,8 @@ internal sealed class ScriptedTool(
 
     public ToolRisk Risk { get; } = risk;
 
+    public ToolAnnotations? Annotations { get; init; }
+
     public string? ReceivedArgsRaw { get; private set; }
 
     public ToolContext? ReceivedContext { get; private set; }
