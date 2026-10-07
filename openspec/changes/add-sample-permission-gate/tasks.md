@@ -8,7 +8,7 @@
 
 ## 2. Sample
 
-- [ ] 2.1 `samples/extensions/permission-gate/PermissionGateExtension/` per design (manifest, settings schema, factory, ToolCalling policy, logging)
+- [x] 2.1 `samples/extensions/permission-gate/PermissionGateExtension/` per design (manifest, settings schema, factory, ToolCalling policy, logging)
 - [ ] 2.2 `PermissionGateExtension.Tests/` via the kit: the five cases in design.md; fixture stream for destructive + read-only calls (recorded, byte round-trip)
 - [ ] 2.3 README (capabilities proven); both projects in the solution; layering edges in the gate
 

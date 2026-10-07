@@ -1,0 +1,18 @@
+{
+    "id": "permission-gate",
+    "version": "0.1.0",
+    "apiVersion": "^1.3.0",
+    "entryAssembly": "PermissionGateExtension.dll",
+    "hooks": ["tool-calling"],
+    "settingsSchema": {
+        "type": "object",
+        "properties": {
+            "mode": {
+                "type": "string",
+                "enum": ["block", "confirm"],
+                "default": "block",
+                "description": "block denies destructive tool calls before approval; confirm falls through to the approval prompt"
+            }
+        }
+    }
+}

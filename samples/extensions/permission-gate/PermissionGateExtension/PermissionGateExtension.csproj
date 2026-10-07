@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <RootNamespace>PermissionGateExtension</RootNamespace>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="../../../../src/Lunate.Extensibility.Abstractions/Lunate.Extensibility.Abstractions.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Update="extension.json" CopyToOutputDirectory="PreserveNewest" />
+    </ItemGroup>
+</Project>
