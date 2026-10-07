@@ -9,20 +9,20 @@ internal static class AgentTestSupport
             .RunAsync("go", TestContext.Current.CancellationToken)
             .ToListAsync(TestContext.Current.CancellationToken);
 
-    internal static ScriptedTool ReadTool(string output) =>
-        new(
-            "read",
-            "Reads a file.",
-            """{"type":"object","properties":{"path":{"type":"string"}}}"""
-        )
+    internal static ScriptedTool ReadTool(string output, string name = "read") =>
+        new(name, "Reads a file.", """{"type":"object","properties":{"path":{"type":"string"}}}""")
         {
             OnExecute = (_, _) => new ToolResult(output, IsError: false),
         };
 
-    internal static ToolRegistry Registry(ITool tool)
+    internal static ToolRegistry Registry(params ITool[] tools)
     {
         var registry = new ToolRegistry();
-        registry.Add(tool);
+        foreach (ITool tool in tools)
+        {
+            registry.Add(tool);
+        }
+
         return registry;
     }
 }

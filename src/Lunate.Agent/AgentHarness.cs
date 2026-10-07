@@ -22,6 +22,7 @@ public sealed partial class AgentHarness
     private readonly List<ChatMessage> _history = [];
     private readonly List<FunctionCallContent> _danglingCalls = [];
     private int _runActive;
+    private int _nestedCallCounter;
 
     public AgentHarness(IChatClient client, ToolRegistry tools, AgentHarnessOptions? options = null)
     {
@@ -55,6 +56,7 @@ public sealed partial class AgentHarness
         {
             string runId = RunIds.Next();
             _danglingCalls.Clear();
+            Interlocked.Exchange(ref _nestedCallCounter, 0);
             var channel = new AgentEventChannel(_options.Session?.SessionId);
             using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct);
             Task loop = RunLoopAsync(runId, userInput, channel, linked.Token);
@@ -105,6 +107,15 @@ public sealed partial class AgentHarness
                 nameof(AgentHarnessOptions.RetryBaseDelay),
                 options.RetryBaseDelay,
                 "RetryBaseDelay must be zero or greater."
+            );
+        }
+
+        if (options.MaxNestedToolDepth < 1)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(AgentHarnessOptions.MaxNestedToolDepth),
+                options.MaxNestedToolDepth,
+                "MaxNestedToolDepth must be at least 1."
             );
         }
     }

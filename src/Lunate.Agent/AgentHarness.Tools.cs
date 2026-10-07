@@ -46,7 +46,7 @@ public sealed partial class AgentHarness
         try
         {
             result = argumentsError is null
-                ? await RunToolAsync(toolName, args, channel, ct)
+                ? await RunToolAsync(runId, callId, toolName, args, channel, ct)
                 : new ToolResult(
                     $"Invalid JSON arguments for '{toolName}': {argumentsError}. Fix the arguments and retry.",
                     IsError: true
@@ -99,15 +99,17 @@ public sealed partial class AgentHarness
         _danglingCalls.Clear();
     }
 
-    private static string SyntheticOutput(FunctionCallContent call, bool cancelled)
-    {
-        string toolName = call.Name ?? string.Empty;
-        return cancelled
+    private static string SyntheticOutput(FunctionCallContent call, bool cancelled) =>
+        SyntheticOutput(call.Name ?? string.Empty, cancelled);
+
+    private static string SyntheticOutput(string toolName, bool cancelled) =>
+        cancelled
             ? $"Tool call ({toolName}) was cancelled by the user and was not executed."
             : $"Tool call ({toolName}) was not executed: the run failed. Do not retry it.";
-    }
 
     private async Task<ToolResult> RunToolAsync(
+        string runId,
+        string callId,
         string toolName,
         JsonElement args,
         AgentEventChannel channel,
@@ -115,20 +117,111 @@ public sealed partial class AgentHarness
     )
     {
         ITool? tool = _tools.Find(toolName);
+        return tool is null
+            ? UnknownTool(toolName)
+            : await InvokeToolAsync(tool, runId, callId, args, channel, nestedDepth: 1, ct);
+    }
+
+    private async Task<ToolResult> RunNestedToolAsync(
+        string runId,
+        string parentCallId,
+        string toolName,
+        JsonElement args,
+        AgentEventChannel channel,
+        int depth,
+        CancellationToken ct
+    )
+    {
+        ITool? tool = _tools.Find(toolName);
         if (tool is null)
         {
+            return UnknownTool(toolName);
+        }
+
+        if (tool.Exposure is ToolExposure.ModelOnly or ToolExposure.Hidden)
+        {
             return new ToolResult(
-                $"Unknown tool '{toolName}'. Available tools: {AvailableTools()}. Use one of the available tools.",
+                $"Tool {toolName} is not callable programmatically (exposure: {tool.Exposure}). Use a direct or programmatic tool.",
                 IsError: true
             );
         }
 
+        if (depth > _options.MaxNestedToolDepth)
+        {
+            return new ToolResult(
+                $"Nested tool call depth exceeded ({_options.MaxNestedToolDepth}).",
+                IsError: true
+            );
+        }
+
+        string nestedCallId = string.Create(
+            CultureInfo.InvariantCulture,
+            $"{parentCallId}/{Interlocked.Increment(ref _nestedCallCounter)}"
+        );
+        channel.Emit(
+            new ToolCallStart(runId, nestedCallId, toolName) { ParentToolCallId = parentCallId }
+        );
+        channel.Emit(
+            new ToolCallArgs(runId, nestedCallId, args.GetRawText())
+            {
+                ParentToolCallId = parentCallId,
+            }
+        );
+        channel.Emit(new ToolCallEnd(runId, nestedCallId) { ParentToolCallId = parentCallId });
+
+        ToolResult result;
+        try
+        {
+            result = await InvokeToolAsync(tool, runId, nestedCallId, args, channel, depth + 1, ct);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            channel.Emit(
+                new ToolCallResult(
+                    runId,
+                    nestedCallId,
+                    SyntheticOutput(toolName, cancelled: true),
+                    IsError: true
+                )
+                {
+                    ParentToolCallId = parentCallId,
+                }
+            );
+            throw;
+        }
+
+        channel.Emit(
+            new ToolCallResult(
+                runId,
+                nestedCallId,
+                ToolOutput.Truncate(result.Output ?? string.Empty),
+                result.IsError,
+                result.Details
+            )
+            {
+                ParentToolCallId = parentCallId,
+            }
+        );
+        return result;
+    }
+
+    /// <summary>The approval and execution shared by top-level and nested calls.</summary>
+    private async Task<ToolResult> InvokeToolAsync(
+        ITool tool,
+        string runId,
+        string callId,
+        JsonElement args,
+        AgentEventChannel channel,
+        int nestedDepth,
+        CancellationToken ct
+    )
+    {
         try
         {
             if (_options.Approver is { } approver && !await approver.ApproveAsync(tool, args, ct))
             {
                 return new ToolResult(
-                    $"Denied: '{toolName}' was not run. Explain why the call is needed and ask before retrying.",
+                    $"Denied: '{tool.Name}' was not run. Explain why the call is needed and ask before retrying.",
                     IsError: true
                 );
             }
@@ -137,7 +230,7 @@ public sealed partial class AgentHarness
             when (exception is not OperationCanceledException || !ct.IsCancellationRequested)
         {
             return new ToolResult(
-                $"Approval for tool '{toolName}' failed: {exception.Message}. The call was not run.",
+                $"Approval for tool '{tool.Name}' failed: {exception.Message}. The call was not run.",
                 IsError: true
             );
         }
@@ -146,7 +239,7 @@ public sealed partial class AgentHarness
         {
             return await tool.ExecuteAsync(
                 args,
-                new ToolContext(_options.WorkingDirectory, new ExtensionOnlyEventSink(channel)),
+                BuildToolContext(runId, callId, channel, nestedDepth, ct),
                 ct
             );
         }
@@ -157,11 +250,34 @@ public sealed partial class AgentHarness
         catch (Exception exception)
         {
             return new ToolResult(
-                $"Tool '{toolName}' failed: {exception.Message}. Fix the call or try a different approach.",
+                $"Tool '{tool.Name}' failed: {exception.Message}. Fix the call or try a different approach.",
                 IsError: true
             );
         }
     }
+
+    private ToolContext BuildToolContext(
+        string runId,
+        string callId,
+        AgentEventChannel channel,
+        int nestedDepth,
+        CancellationToken ct
+    ) =>
+        new(_options.WorkingDirectory, new ExtensionOnlyEventSink(channel))
+        {
+            RunId = runId,
+            CallId = callId,
+            ExecuteToolAsync = (name, args, _) =>
+                RunNestedToolAsync(runId, callId, name, args, channel, nestedDepth, ct),
+            Progress = message => channel.Emit(new ToolProgressUpdate(runId, callId, message)),
+            FileMutations = _options.FileMutations,
+        };
+
+    private ToolResult UnknownTool(string toolName) =>
+        new(
+            $"Unknown tool '{toolName}'. Available tools: {AvailableTools()}. Use one of the available tools.",
+            IsError: true
+        );
 
     private static (string Json, JsonElement Args, string? Error) ReadArguments(
         FunctionCallContent call

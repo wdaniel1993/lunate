@@ -151,9 +151,19 @@ Lunate.Agent.ToolCallStart.ToolName.get -> string!
 Lunate.Agent.ToolCallStart.ToolName.init -> void
 Lunate.Agent.ToolContext
 Lunate.Agent.ToolContext.<Clone>$() -> Lunate.Agent.ToolContext!
+Lunate.Agent.ToolContext.CallId.get -> string?
+Lunate.Agent.ToolContext.CallId.init -> void
 Lunate.Agent.ToolContext.Deconstruct(out string! WorkingDirectory, out Lunate.Agent.IAgentEvents! Events) -> void
 Lunate.Agent.ToolContext.Equals(Lunate.Agent.ToolContext? other) -> bool
 Lunate.Agent.ToolContext.Events.get -> Lunate.Agent.IAgentEvents!
+Lunate.Agent.ToolContext.ExecuteToolAsync.get -> System.Func<string!, System.Text.Json.JsonElement, System.Threading.CancellationToken, System.Threading.Tasks.Task<Lunate.Agent.ToolResult!>!>?
+Lunate.Agent.ToolContext.ExecuteToolAsync.init -> void
+Lunate.Agent.ToolContext.FileMutations.get -> Lunate.Agent.IFileMutationQueue!
+Lunate.Agent.ToolContext.FileMutations.init -> void
+Lunate.Agent.ToolContext.Progress.get -> System.Action<string!>?
+Lunate.Agent.ToolContext.Progress.init -> void
+Lunate.Agent.ToolContext.RunId.get -> string?
+Lunate.Agent.ToolContext.RunId.init -> void
 Lunate.Agent.ToolContext.Events.init -> void
 Lunate.Agent.ToolContext.ToolContext(string! WorkingDirectory, Lunate.Agent.IAgentEvents! Events) -> void
 Lunate.Agent.ToolContext.WorkingDirectory.get -> string!
@@ -340,6 +350,10 @@ Lunate.Agent.AgentHarnessOptions.AgentHarnessOptions() -> void
 Lunate.Agent.AgentHarnessOptions.Approver.get -> Lunate.Agent.IToolApprover?
 Lunate.Agent.AgentHarnessOptions.Approver.init -> void
 Lunate.Agent.AgentHarnessOptions.Equals(Lunate.Agent.AgentHarnessOptions? other) -> bool
+Lunate.Agent.AgentHarnessOptions.FileMutations.get -> Lunate.Agent.IFileMutationQueue!
+Lunate.Agent.AgentHarnessOptions.FileMutations.init -> void
+Lunate.Agent.AgentHarnessOptions.MaxNestedToolDepth.get -> int
+Lunate.Agent.AgentHarnessOptions.MaxNestedToolDepth.init -> void
 Lunate.Agent.AgentHarnessOptions.MaxRetries.get -> int
 Lunate.Agent.AgentHarnessOptions.MaxRetries.init -> void
 Lunate.Agent.AgentHarnessOptions.MaxSteps.get -> int

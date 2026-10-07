@@ -38,6 +38,22 @@ public sealed class AgentLimitsTests
     }
 
     [Fact]
+    public void Max_nested_tool_depth_must_be_at_least_one()
+    {
+        var client = new ScriptedChatClient();
+
+        ArgumentOutOfRangeException exception = Assert.Throws<ArgumentOutOfRangeException>(() =>
+            new AgentHarness(
+                client,
+                new ToolRegistry(),
+                new AgentHarnessOptions { MaxNestedToolDepth = 0 }
+            )
+        );
+
+        Assert.Equal(nameof(AgentHarnessOptions.MaxNestedToolDepth), exception.ParamName);
+    }
+
+    [Fact]
     public async Task An_answer_on_the_last_allowed_call_finishes_with_stop()
     {
         ScriptedTool read = ReadTool("contents");

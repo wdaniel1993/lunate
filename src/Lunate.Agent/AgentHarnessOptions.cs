@@ -23,4 +23,10 @@ public sealed record AgentHarnessOptions
 
     /// <summary>The session to resume from and mirror into; null keeps the history in memory only.</summary>
     public Session? Session { get; init; }
+
+    /// <summary>The maximum nested tool call depth; deeper calls become error results.</summary>
+    public int MaxNestedToolDepth { get; init; } = 5;
+
+    /// <summary>The file mutation queue shared with tools through <see cref="ToolContext"/>.</summary>
+    public IFileMutationQueue FileMutations { get; init; } = FileMutationQueue.Shared;
 }

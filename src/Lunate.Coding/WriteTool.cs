@@ -6,8 +6,10 @@ using Lunate.Agent;
 namespace Lunate.Coding;
 
 /// <summary>Writes text files inside the workspace, creating parent directories as needed.</summary>
-public sealed class WriteTool(Workspace workspace) : ITool
+public sealed class WriteTool(Workspace workspace, IFileMutationQueue? mutations = null) : ITool
 {
+    private readonly IFileMutationQueue _mutations = mutations ?? FileMutationQueue.Shared;
+
     private static readonly UTF8Encoding Utf8NoBom = new(encoderShouldEmitUTF8Identifier: false);
 
     private static readonly JsonElement Schema = JsonDocument
@@ -37,11 +39,15 @@ public sealed class WriteTool(Workspace workspace) : ITool
 
     public ToolRisk Risk => ToolRisk.Write;
 
-    public Task<ToolResult> ExecuteAsync(JsonElement args, ToolContext ctx, CancellationToken ct)
+    public async Task<ToolResult> ExecuteAsync(
+        JsonElement args,
+        ToolContext ctx,
+        CancellationToken ct
+    )
     {
         if (args.ValueKind != JsonValueKind.Object)
         {
-            return Task.FromResult(Error("arguments must be a JSON object"));
+            return Error("arguments must be a JSON object");
         }
 
         if (
@@ -49,7 +55,7 @@ public sealed class WriteTool(Workspace workspace) : ITool
             || pathElement.ValueKind != JsonValueKind.String
         )
         {
-            return Task.FromResult(Error("path is required and must be a string"));
+            return Error("path is required and must be a string");
         }
 
         if (
@@ -57,38 +63,47 @@ public sealed class WriteTool(Workspace workspace) : ITool
             || contentElement.ValueKind != JsonValueKind.String
         )
         {
-            return Task.FromResult(Error("content is required and must be a string"));
+            return Error("content is required and must be a string");
         }
 
         var content = contentElement.GetString()!;
         if (!workspace.TryResolve(pathElement.GetString()!, out var resolved, out var error))
         {
-            return Task.FromResult(Error(error));
+            return Error(error);
         }
 
         if (Directory.Exists(resolved.AbsolutePath))
         {
-            return Task.FromResult(Error($"{resolved.RelativePath} is a directory"));
+            return Error($"{resolved.RelativePath} is a directory");
         }
 
-        var created = !File.Exists(resolved.AbsolutePath);
-        var oldText = created ? string.Empty : TextFile.ReadAllText(resolved.AbsolutePath);
-        Directory.CreateDirectory(Path.GetDirectoryName(resolved.AbsolutePath)!);
-        File.WriteAllText(resolved.AbsolutePath, content, Utf8NoBom);
+        string target = resolved.AbsolutePath;
+        string relative = resolved.RelativePath;
+        return await _mutations.RunAsync(
+            target,
+            _ =>
+            {
+                var created = !File.Exists(target);
+                var oldText = created ? string.Empty : TextFile.ReadAllText(target);
+                Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+                File.WriteAllText(target, content, Utf8NoBom);
 
-        var lines = CountLines(content);
-        var details = new WriteDetails(
-            resolved.RelativePath,
-            created,
-            lines,
-            LineDiff.Unified(oldText, content, resolved.RelativePath)
-        );
-        var output = string.Create(
-            CultureInfo.InvariantCulture,
-            $"wrote {lines} lines to {resolved.RelativePath} ({(created ? "created" : "replaced")})"
-        );
+                var lines = CountLines(content);
+                var details = new WriteDetails(
+                    relative,
+                    created,
+                    lines,
+                    LineDiff.Unified(oldText, content, relative)
+                );
+                var output = string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"wrote {lines} lines to {relative} ({(created ? "created" : "replaced")})"
+                );
 
-        return Task.FromResult(new ToolResult(output, IsError: false, details));
+                return Task.FromResult(new ToolResult(output, IsError: false, details));
+            },
+            ct
+        );
     }
 
     private static int CountLines(string content)

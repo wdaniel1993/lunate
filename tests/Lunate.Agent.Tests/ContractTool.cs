@@ -21,8 +21,13 @@ internal sealed class ContractTool(string name = "tool") : ITool
 
     public ToolConcurrency Concurrency { get; init; } = ToolConcurrency.Parallel;
 
-    public Task<ToolResult> ExecuteAsync(JsonElement args, ToolContext ctx, CancellationToken ct) =>
-        Task.FromResult(new ToolResult($"ran {Name}", IsError: false));
+    public bool Executed { get; private set; }
+
+    public Task<ToolResult> ExecuteAsync(JsonElement args, ToolContext ctx, CancellationToken ct)
+    {
+        Executed = true;
+        return Task.FromResult(new ToolResult($"ran {Name}", IsError: false));
+    }
 
     private static JsonElement ParseSchema()
     {
