@@ -60,6 +60,7 @@ A session file SHALL be append-only JSONL: a header line (schema, session `id`, 
 Extension entries SHALL use the namespaced type `ext/<extension-id>/<type>` with the standard envelope and an opaque JSON payload. The payload SHALL be preserved as raw JSON text and re-emitted byte for byte when the session is rewritten. Content the core does not know (for example provider-hosted tool results) SHALL be preserved in message entries the same way.
 
 #### Scenario: Extension payloads survive a rewrite byte for byte
+
 - **GIVEN** a session with an extension entry whose payload contains interior whitespace or ordering the writer chose
 - **WHEN** it is loaded and re-serialized
 - **THEN** the payload bytes are identical
