@@ -2,16 +2,16 @@
 
 ## 1. Schema 2 format (TDD, red-first)
 
-- [ ] 1.1 `SessionFormat.SchemaVersion` = 2; loader accepts 1 and 2 (v1 loads unchanged); a newer schema still fails with a message naming schema and file
-- [ ] 1.2 Header: optional `repo` and `worktree` fields (omitted when null; v1 headers parse with nulls); `Session.Create(path, cwd, repo: null, worktree: null)` writes them
-- [ ] 1.3 `SessionPaths.ForRepository(repoIdentity, worktreePath)` → `~/.lunate/sessions/<hash8(repo)>/<hash8(worktree)>/`; `ForProject` stays as the non-repository fallback
-- [ ] 1.4 New entries: `SessionActiveToolsEntry` (`activeTools`), `SessionPromptSectionEntry` (`promptSection`), `SessionChildSessionEntry` (`childSession`), `SessionNestedCallsEntry` (`nestedCalls`)
-- [ ] 1.5 `nestedCalls` bounds enforced at append: args truncated at 200 characters with a `…` marker, at most 32 calls per entry, status in `ok | error | cancelled`
-- [ ] 1.6 `SessionExtensionEntry`: type `ext/<extension-id>/<type>`, envelope + opaque payload preserved as raw JSON text and re-emitted byte-for-byte
-- [ ] 1.7 Unknown content: message round-trip keeps the original node when re-serialization is not deep-equal (`RawMessageJson` fallback)
-- [ ] 1.8 `Session` append methods: `AppendActiveTools`, `AppendPromptSection`, `AppendChildSession`, `AppendNestedCalls`; `Load` handles v1 and v2 and every entry kind
+- [x] 1.1 `SessionFormat.SchemaVersion` = 2; loader accepts 1 and 2 (v1 loads unchanged); a newer schema still fails with a message naming schema and file
+- [x] 1.2 Header: optional `repo` and `worktree` fields (omitted when null; v1 headers parse with nulls); `Session.Create(path, cwd, repo: null, worktree: null)` writes them
+- [x] 1.3 `SessionPaths.ForRepository(repoIdentity, worktreePath)` → `~/.lunate/sessions/<hash8(repo)>/<hash8(worktree)>/`; `ForProject` stays as the non-repository fallback
+- [x] 1.4 New entries: `SessionActiveToolsEntry` (`activeTools`), `SessionPromptSectionEntry` (`promptSection`), `SessionChildSessionEntry` (`childSession`), `SessionNestedCallsEntry` (`nestedCalls`)
+- [x] 1.5 `nestedCalls` bounds enforced at append: args truncated at 200 characters with a `…` marker, at most 32 calls per entry, status in `ok | error | cancelled`
+- [x] 1.6 `SessionExtensionEntry`: type `ext/<extension-id>/<type>`, envelope + opaque payload preserved as raw JSON text and re-emitted byte-for-byte
+- [x] 1.7 Unknown content: message round-trip keeps the original node when re-serialization is not deep-equal (`RawMessageJson` fallback)
+- [x] 1.8 `Session` append methods: `AppendActiveTools`, `AppendPromptSection`, `AppendChildSession`, `AppendNestedCalls`; `Load` handles v1 and v2 and every entry kind
 - [ ] 1.9 Goldens: v2 header (repo/worktree), each new entry, ext entry with a byte-tricky payload, unknown-content message; v1 fixtures re-asserted as load-compatibility
-- [ ] 1.10 ADR-0018 (golden change per AGENTS.md) in both copies, byte-identical
+- [x] 1.10 ADR-0018 (golden change per AGENTS.md) in both copies, byte-identical
 
 ## 2. Harness wiring (nestedCalls)
 

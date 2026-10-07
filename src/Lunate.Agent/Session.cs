@@ -1,6 +1,8 @@
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using Microsoft.Extensions.AI;
 
 namespace Lunate.Agent;
@@ -14,6 +16,9 @@ namespace Lunate.Agent;
 /// </summary>
 public sealed class Session
 {
+    private const int MaxNestedCalls = 32;
+    private const int MaxNestedArgsLength = 200;
+
     private static readonly UTF8Encoding Utf8NoBom = new(encoderShouldEmitUTF8Identifier: false);
 
     private readonly TimeProvider _timeProvider;
@@ -35,10 +40,24 @@ public sealed class Session
     /// <summary>The conversation entries in append order; the header entry is not included.</summary>
     public IReadOnlyList<SessionEntry> Entries => _entries;
 
-    /// <summary>Creates a session file and writes its header.</summary>
-    public static Session Create(string path, string cwd) => Create(path, cwd, TimeProvider.System);
+    /// <summary>Creates a session file and writes its header with the optional repository identity.</summary>
+    public static Session Create(
+        string path,
+        string cwd,
+        string? repo = null,
+        string? worktree = null
+    ) => Create(path, cwd, repo, worktree, TimeProvider.System);
 
-    internal static Session Create(string path, string cwd, TimeProvider timeProvider)
+    internal static Session Create(string path, string cwd, TimeProvider timeProvider) =>
+        Create(path, cwd, repo: null, worktree: null, timeProvider);
+
+    internal static Session Create(
+        string path,
+        string cwd,
+        string? repo,
+        string? worktree,
+        TimeProvider timeProvider
+    )
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
         ArgumentException.ThrowIfNullOrWhiteSpace(cwd);
@@ -51,7 +70,9 @@ public sealed class Session
             SessionFormat.SchemaVersion,
             cwd,
             now,
-            SessionFormat.MeaiVersion
+            SessionFormat.MeaiVersion,
+            repo,
+            worktree
         );
         session.WriteHeader(header);
         return session;
@@ -85,10 +106,10 @@ public sealed class Session
                 $"Session file '{path}' line 1 is not a header; expected a 'header' entry with schema {SessionFormat.SchemaVersion}."
             );
 
-        if (header.Schema != SessionFormat.SchemaVersion)
+        if (header.Schema is not (1 or SessionFormat.SchemaVersion))
         {
             throw new InvalidDataException(
-                $"Session file '{path}' declares schema '{header.Schema}' but this build supports schema {SessionFormat.SchemaVersion}."
+                $"Session file '{path}' declares schema '{header.Schema}' but this build supports schema {SessionFormat.SchemaVersion} (and schema 1)."
             );
         }
 
@@ -151,6 +172,135 @@ public sealed class Session
                 LastEntryId,
                 _timeProvider.GetUtcNow(),
                 model
+            )
+        );
+    }
+
+    /// <summary>Appends the active-tool set in exposure order.</summary>
+    public void AppendActiveTools(IReadOnlyList<string> tools)
+    {
+        ArgumentNullException.ThrowIfNull(tools);
+        AddEntry(
+            new SessionActiveToolsEntry(
+                NextEntryId(),
+                LastEntryId,
+                _timeProvider.GetUtcNow(),
+                [.. tools]
+            )
+        );
+    }
+
+    /// <summary>Appends a system-prompt-section change for deterministic replay.</summary>
+    public void AppendPromptSection(string section, string text)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(section);
+        ArgumentNullException.ThrowIfNull(text);
+        AddEntry(
+            new SessionPromptSectionEntry(
+                NextEntryId(),
+                LastEntryId,
+                _timeProvider.GetUtcNow(),
+                section,
+                text
+            )
+        );
+    }
+
+    /// <summary>Appends a link to a child session run.</summary>
+    public void AppendChildSession(string childSessionId, string runId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(childSessionId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(runId);
+        AddEntry(
+            new SessionChildSessionEntry(
+                NextEntryId(),
+                LastEntryId,
+                _timeProvider.GetUtcNow(),
+                childSessionId,
+                runId
+            )
+        );
+    }
+
+    /// <summary>
+    /// Appends one bounded nested-call record for a top-level tool call: names, capped arguments,
+    /// status and duration only, never results. At most 32 calls are recorded; arguments longer
+    /// than 200 characters are truncated with a trailing marker.
+    /// </summary>
+    public void AppendNestedCalls(string callId, IReadOnlyList<SessionNestedCall> calls)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(callId);
+        ArgumentNullException.ThrowIfNull(calls);
+        List<SessionNestedCall> bounded = [];
+        foreach (SessionNestedCall call in calls)
+        {
+            if (call.Status is not ("ok" or "error" or "cancelled"))
+            {
+                throw new ArgumentException(
+                    $"Nested call status '{call.Status}' must be 'ok', 'error' or 'cancelled'.",
+                    nameof(calls)
+                );
+            }
+
+            if (bounded.Count == MaxNestedCalls)
+            {
+                continue;
+            }
+
+            bounded.Add(
+                call.Args.Length > MaxNestedArgsLength
+                    ? call with
+                    {
+                        Args = call.Args[..MaxNestedArgsLength] + "…",
+                    }
+                    : call
+            );
+        }
+
+        AddEntry(
+            new SessionNestedCallsEntry(
+                NextEntryId(),
+                LastEntryId,
+                _timeProvider.GetUtcNow(),
+                callId,
+                bounded
+            )
+        );
+    }
+
+    /// <summary>Appends an extension entry; the payload is written verbatim as JSON text.</summary>
+    public void AppendExtension(string extensionType, string payloadJson)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(extensionType);
+        ArgumentException.ThrowIfNullOrWhiteSpace(payloadJson);
+        if (!SessionFormat.IsExtensionType(extensionType))
+        {
+            throw new ArgumentException(
+                $"Extension type '{extensionType}' must be of the form 'ext/<extension-id>/<type>'.",
+                nameof(extensionType)
+            );
+        }
+
+        try
+        {
+            _ = JsonNode.Parse(payloadJson);
+        }
+        catch (JsonException exception)
+        {
+            throw new ArgumentException(
+                $"Extension payload is not valid JSON: {exception.Message}",
+                nameof(payloadJson),
+                exception
+            );
+        }
+
+        AddEntry(
+            new SessionExtensionEntry(
+                NextEntryId(),
+                LastEntryId,
+                _timeProvider.GetUtcNow(),
+                extensionType,
+                payloadJson
             )
         );
     }

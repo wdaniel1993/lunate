@@ -22,7 +22,7 @@ public sealed class SessionTests
             SessionFormat.Parse(Assert.Single(ReadLines(path)))
         );
         Assert.Equal(session.SessionId, header.Id);
-        Assert.Equal(1, header.Schema);
+        Assert.Equal(2, header.Schema);
         Assert.Equal("/work", header.Cwd);
         Assert.Equal(Start, header.Created);
         Assert.False(string.IsNullOrWhiteSpace(header.Meai));
