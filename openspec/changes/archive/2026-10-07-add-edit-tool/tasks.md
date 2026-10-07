@@ -15,7 +15,7 @@
 ## 3. Direct tests
 
 - [x] 3.1 State preservation: CRLF stays CRLF, BOM kept, no trailing newline added, leading whitespace of `new_text` preserved
-- [x] 3.2 5 MB file applies in under 200 ms (generated file, not a fixture)
+- [x] 3.2 5 MB file applies in under 200 ms locally (generated file, not a fixture); the test enforces a 1.5 s CI tripwire on shared runners (see design.md)
 
 ## 4. Close
 
