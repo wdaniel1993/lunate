@@ -68,6 +68,10 @@ The byte-level contract is owned by [`agent-tools`](../openspec/specs/agent-tool
 - **IUserInteraction**: notify, confirm, select, input, status, widgets. The TUI implements all; ACP maps confirm to permission requests where possible; print/json use a non-interactive policy (deny unless configured). Custom TUI components only when the mode supports them.
 - **Renderers**: tool and custom-entry renderers resolvable by tool name, including tools not registered yet (MCP tools in a resumed session).
 
+## Workspaces and repository identity
+
+Every run — child runs included — has a workspace: `WorktreeRoot`, `RepoRoot` and `GitCommonDir`. Tools resolve paths and enforce the boundary against the run's workspace; `bash` runs in the worktree root. Project identity is the repository identity (`GitCommonDir`, or the remote URL when available) plus the worktree path: sessions are grouped by repository and distinct per worktree, and the session header records both. Project trust is keyed by repository identity — new worktrees of a trusted repository do not re-prompt — while the extension content-hash check stays per worktree. Per-workspace services — the Roslyn backend, LSP background services — are keyed by `WorktreeRoot`, started lazily and capped (default: two loaded Roslyn workspaces, least-recently-used unloaded); `FileChanged` events carry the workspace id. The approval rule for writes outside tracked files uses the worktree's own index; AGENTS.md and settings discovery start at the worktree root. A fresh worktree without restore output gets an actionable restore hint (ADR-0006: "run `dotnet restore` in the worktree path", or offer to run it), never a diagnostics avalanche. Worktree management — creating and removing worktrees, branch naming, merging results back, conflict handling, cleanup, a `/worktree` command — is extension territory, not core.
+
 ## UI by mode
 
 | Capability | TUI | ACP | print / json |
@@ -88,7 +92,7 @@ The byte-level contract is owned by [`agent-tools`](../openspec/specs/agent-tool
 
 - Every hook payload/result and service call must round-trip through `System.Text.Json`; a conformance test covers all hook DTOs.
 - All hooks are async with cancellation and a per-handler timeout.
-- Later card (T-51): `Lunate.Extensibility.Remote` host speaking JSON-RPC over stdio, enabling TypeScript/Python extensions and real isolation.
+- Later card (T-52): `Lunate.Extensibility.Remote` host speaking JSON-RPC over stdio, enabling TypeScript/Python extensions and real isolation.
 
 ## Trust, performance, testing
 
@@ -108,5 +112,6 @@ The byte-level contract is owned by [`agent-tools`](../openspec/specs/agent-tool
 | code-mode | programmatic tools via ExecuteToolAsync, StructuredContent, script runtime in a child process |
 | model-router | provider + virtual model + nested model call with usage roll-up |
 | ui-showcase | renderer + status widget; degrades cleanly in print/json/ACP |
+| worktree-tasks | workspace per run, per-workspace services and limits, session grouping, trust by repository identity; two subagents in separate worktrees edit and build independently (Roslyn per workspace, cap holds), results merge back via git, worktrees are cleaned up |
 
 Each sample lists the core capabilities it proves. A sample that needs a workaround means the core is missing a primitive.

@@ -405,7 +405,7 @@ An extension is an assembly implementing the `Lunate.Extensibility.Abstractions`
 - Project-local extensions run code from the repository: one-time trust per repository, re-prompted when the extension files change.
 - `Lunate.Roslyn` ships as a built-in extension and uses the same mechanism.
 - External tools can also come through MCP (`~/.lunate/mcp.json`, see Protocols).
-- The architecture is proven by a fitness suite of reference extensions (permission gates, memory, LSP, MCP, subagents, code mode, model routing, UI) running in CI — a sample that needs a workaround means the core is missing a primitive.
+- The architecture is proven by a fitness suite of reference extensions (permission gates, memory, LSP, MCP, subagents, code mode, model routing, UI, worktree tasks) running in CI — a sample that needs a workaround means the core is missing a primitive.
 
 ## Terminal UI (Lunate.Tui)
 
@@ -632,7 +632,8 @@ One row per card. Each card becomes one OpenSpec change (see Building it with Op
 | T-48 | 6 | Sample: code-mode | T-38 | Programmatic tools via ExecuteToolAsync; child-process runtime |
 | T-49 | 6 | Sample: model-router | T-39 | Virtual model routes; usage rolls up to the owning run |
 | T-50 | 6 | Sample: ui-showcase | T-40 | Renderer + status widget; degrades cleanly in print/json/ACP |
-| T-51 | 7 | Out-of-process host (`Lunate.Extensibility.Remote`, JSON-RPC over stdio) — design only until scheduled | T-37 to T-42 | Conformance test: all hook DTOs round-trip through JSON |
+| T-51 | 6 | Sample: worktree-tasks | T-38, T-39, T-47 | Two subagents in separate worktrees edit and build independently (Roslyn per workspace, cap holds); results merge back via git; worktrees cleaned up |
+| T-52 | 7 | Out-of-process host (`Lunate.Extensibility.Remote`, JSON-RPC over stdio) — design only until scheduled | T-37 to T-42 | Conformance test: all hook DTOs round-trip through JSON |
 
 Independent tracks can run in parallel in separate git worktrees, for example T-18/T-19 (TUI) next to T-12 to T-15 (tools).
 
