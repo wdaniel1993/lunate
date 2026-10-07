@@ -20,6 +20,11 @@
     </ItemGroup>
 
     <Target Name="CopyTestExtensions" AfterTargets="Build">
+        <MSBuild
+            Projects="$(MSBuildThisFileDirectory)../TestExtensions/HelloExtension/HelloExtension.csproj"
+            Targets="Build"
+            Properties="Configuration=$(Configuration)"
+        />
         <ItemGroup>
             <TestExtensionFiles Include="$(MSBuildThisFileDirectory)../TestExtensions/HelloExtension/bin/$(Configuration)/$(TargetFramework)/**/*" />
         </ItemGroup>

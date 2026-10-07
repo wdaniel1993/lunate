@@ -22,5 +22,5 @@
 
 ## 4. Budget and close
 
-- [ ] 4.1 Startup budget test: discovering 10 installed extensions (manifests only) under an explicit CI tripwire; report the measured value in the test output
-- [ ] 4.2 `dotnet csharpier format .`; `bash scripts/verify.sh` green (incl. de-AT); `openspec validate add-extension-contract --type change --strict`; self-review; commit per group
+- [x] 4.1 Startup budget test: discovering 10 installed extensions (manifests only) under an explicit CI tripwire; report the measured value in the test output
+- [x] 4.2 `dotnet csharpier format .`; `bash scripts/verify.sh` green (incl. de-AT); `openspec validate add-extension-contract --type change --strict`; self-review; commit per group

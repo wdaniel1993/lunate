@@ -6,6 +6,7 @@ internal static class LayeringChecker
         new HashSet<(string From, string To)>
         {
             ("Lunate.Agent", "Lunate.Ai"),
+            ("Lunate.Extensibility", "Lunate.Extensibility.Abstractions"),
             ("Lunate.Protocols", "Lunate.Agent"),
             ("Lunate.Coding", "Lunate.Agent"),
             ("Lunate.Coding", "Lunate.Protocols"),
