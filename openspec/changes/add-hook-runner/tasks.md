@@ -23,5 +23,5 @@
 
 ## 4. Context tagging and close
 
-- [ ] 4.1 Extension-added context tagged with its source + per-extension token budget enforced
-- [ ] 4.2 `dotnet csharpier format .`; `bash scripts/verify.sh` green (incl. de-AT); `openspec validate add-hook-runner --type change --strict`; self-review; commit per group
+- [x] 4.1 Extension-added context tagged with its source + per-extension token budget enforced
+- [x] 4.2 `dotnet csharpier format .`; `bash scripts/verify.sh` green (incl. de-AT); `openspec validate add-hook-runner --type change --strict`; self-review; commit per group

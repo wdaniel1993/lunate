@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Microsoft.Extensions.AI;
+using static Lunate.Agent.Tests.AgentHookPointsTestSupport;
 using static Lunate.Agent.Tests.AgentTestSupport;
 
 namespace Lunate.Agent.Tests;
@@ -312,46 +313,4 @@ public sealed class AgentHookPointsTests
         );
         Assert.Single(hooks.Settles);
     }
-
-    private static ScriptedChatClient ScriptedClientWithReadCall() =>
-        new ScriptedChatClient()
-            .Enqueue(
-                new ChatResponseUpdate(
-                    ChatRole.Assistant,
-                    [
-                        new FunctionCallContent(
-                            "call-1",
-                            "read",
-                            new Dictionary<string, object?> { ["path"] = "a.txt" }
-                        ),
-                    ]
-                ),
-                new ChatResponseUpdate(ChatRole.Assistant, [])
-                {
-                    FinishReason = ChatFinishReason.ToolCalls,
-                }
-            )
-            .Enqueue(AgentHookTestSupport.TextUpdate("done", ChatFinishReason.Stop));
-
-    private static async Task<List<AgentEvent>> Run(
-        ScriptedChatClient client,
-        ToolRegistry registry,
-        AgentHarnessOptions options
-    )
-    {
-        var harness = new AgentHarness(client, registry, options);
-        return await AgentTestSupport.Run(harness);
-    }
-
-    private static async Task<List<AgentEvent>> Run(AgentHarness harness) =>
-        await AgentTestSupport.Run(harness);
-
-    private static string[] Messages(ScriptedChatClient client) =>
-        [
-            .. client
-                .Requests[0]
-                .Messages.SelectMany(m => m.Contents)
-                .OfType<TextContent>()
-                .Select(t => t.Text),
-        ];
 }

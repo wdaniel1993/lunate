@@ -88,6 +88,31 @@ public sealed class AgentHookAdapterTests
     }
 
     [Fact]
+    public async Task Context_additions_are_source_tagged_and_over_budget_additions_are_dropped()
+    {
+        var log = new RecordingExtensionLog();
+        var runner = new HookRunner(new HookRunnerOptions { ContextBudgetPerExtension = 5 }, log);
+        runner.Register("ext", new FixedContextExtension("123456789012"));
+        runner.Register("ext", new FixedContextExtension("210987654321"));
+        var adapter = new AgentHookAdapter(runner);
+
+        AgentContextBuildingResult result = await adapter.ContextBuildingAsync(
+            new AgentContextBuildingContext("r1", []),
+            Ct
+        );
+
+        AgentContextMessage message = Assert.Single(result.AddedMessages);
+        Assert.Equal("123456789012", message.Text);
+        Assert.Equal("ext", message.Source);
+        Assert.Contains(
+            log.Messages,
+            entry =>
+                entry.Contains("ext", StringComparison.Ordinal)
+                && entry.Contains("budget", StringComparison.Ordinal)
+        );
+    }
+
+    [Fact]
     public async Task A_blocking_tool_calling_handler_denies_the_call_through_the_adapter()
     {
         var runner = new HookRunner();
@@ -217,6 +242,16 @@ public sealed class AgentHookAdapterTests
             Settles++;
             return ValueTask.CompletedTask;
         }
+    }
+
+    private sealed class FixedContextExtension(string text) : IContextBuildingHandler
+    {
+        public int Priority => 0;
+
+        public ValueTask<ContextBuildingResult> HandleAsync(
+            ContextBuildingPayload payload,
+            CancellationToken cancellationToken
+        ) => ValueTask.FromResult(new ContextBuildingResult([new ContextMessage("system", text)]));
     }
 
     private sealed class BlockingExtension : IToolCallingHandler
