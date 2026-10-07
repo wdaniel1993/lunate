@@ -16,9 +16,9 @@
 
 ## 3. Settings, secrets, trust
 
-- [ ] 3.1 Settings store: `~/.lunate/extensions-settings/<id>.json` read + validated against the documented schema subset (top-level `required` + `type`; `properties` one level); violations name the field; `IExtensionSettings.Get(path)` (dot-separated)
-- [ ] 3.2 Secrets store: `~/.lunate/extensions-secrets/<id>.json`, namespaced, read-only API (`TryGet`); never surfaced in logs or session files (test: a session written during a loaded extension contains none of the secret values)
-- [ ] 3.3 Trust: `~/.lunate/trust.json` keyed by repository identity (host-provided string, `GitCommonDir` per ADR-0017); project extensions require approval matching the current content hash (SHA-256 over sorted relative paths + bytes); re-prompt on change; `IExtensionTrustPrompt` (host callback); global extensions are not gated; tests with fake prompt (approve/deny/hash change)
+- [x] 3.1 Settings store: `~/.lunate/extensions-settings/<id>.json` read + validated against the documented schema subset (top-level `required` + `type`; `properties` one level); violations name the field; `IExtensionSettings.Get(path)` (dot-separated)
+- [x] 3.2 Secrets store: `~/.lunate/extensions-secrets/<id>.json`, namespaced, read-only API (`TryGet`); never surfaced in logs or session files (test: a session written during a loaded extension contains none of the secret values)
+- [x] 3.3 Trust: `~/.lunate/trust.json` keyed by repository identity (host-provided string, `GitCommonDir` per ADR-0017); project extensions require approval matching the current content hash (SHA-256 over sorted relative paths + bytes); re-prompt on change; `IExtensionTrustPrompt` (host callback); global extensions are not gated; tests with fake prompt (approve/deny/hash change)
 
 ## 4. Budget and close
 

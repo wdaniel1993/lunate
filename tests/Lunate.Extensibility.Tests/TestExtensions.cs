@@ -53,4 +53,12 @@ internal static class TestExtensions
         WriteManifest(directory, id);
         return directory;
     }
+
+    public static string InstallProjectHelloExtension(string workingDirectory, string id)
+    {
+        string directory = ProjectExtensionDirectory(workingDirectory, id);
+        CopyFixture(directory, "HelloExtension.dll", "HelloExtension.Support.dll");
+        WriteManifest(directory, id);
+        return directory;
+    }
 }

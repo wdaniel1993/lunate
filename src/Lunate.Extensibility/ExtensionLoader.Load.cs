@@ -32,6 +32,18 @@ public sealed partial class ExtensionLoader
             );
         }
 
+        if (descriptor.Scope == ExtensionScope.Project)
+        {
+            await EnsureTrustedAsync(
+                    descriptor,
+                    workingDirectory,
+                    repositoryIdentity,
+                    prompt,
+                    cancellationToken
+                )
+                .ConfigureAwait(false);
+        }
+
         string entryAssembly = descriptor.Manifest.EntryAssembly;
         string entryPath = Path.Combine(descriptor.Directory, entryAssembly);
         if (!File.Exists(entryPath))
@@ -50,8 +62,8 @@ public sealed partial class ExtensionLoader
             IExtensionFactory factory = FindFactory(assembly, descriptor);
             var extensionContext = new ExtensionContext(
                 descriptor.Id,
-                new EmptyExtensionSettings(),
-                new EmptyExtensionSecrets(),
+                ExtensionSettingsStore.Load(_options, descriptor),
+                ExtensionSecretsStore.Load(_options, descriptor.Id),
                 _options.Log ?? NullExtensionLog.Instance
             );
             IExtension extension = factory.Create(extensionContext);
@@ -69,6 +81,51 @@ public sealed partial class ExtensionLoader
         {
             context.Unload();
             throw WrapLoadFailure(descriptor, exception);
+        }
+    }
+
+    private async Task EnsureTrustedAsync(
+        ExtensionDescriptor descriptor,
+        string workingDirectory,
+        string repositoryIdentity,
+        IExtensionTrustPrompt prompt,
+        CancellationToken cancellationToken
+    )
+    {
+        string worktreePath = Path.GetFullPath(workingDirectory);
+        string contentHash = ExtensionTrustStore.ComputeContentHash(descriptor.Directory);
+        var store = new ExtensionTrustStore(_options);
+
+        switch (store.Evaluate(repositoryIdentity, worktreePath, contentHash))
+        {
+            case ExtensionTrustDecision.Trusted:
+                return;
+            case ExtensionTrustDecision.NewWorktree:
+                store.RecordTrusted(
+                    repositoryIdentity,
+                    worktreePath,
+                    contentHash,
+                    DateTimeOffset.UtcNow
+                );
+                return;
+            default:
+                bool approved = await prompt
+                    .ApproveAsync(descriptor, cancellationToken)
+                    .ConfigureAwait(false);
+                if (!approved)
+                {
+                    throw new ExtensionTrustDeniedException(
+                        $"extension '{descriptor.Id}' was not trusted for repository '{repositoryIdentity}'; it was not loaded. Approve the trust prompt to load it."
+                    );
+                }
+
+                store.RecordTrusted(
+                    repositoryIdentity,
+                    worktreePath,
+                    contentHash,
+                    DateTimeOffset.UtcNow
+                );
+                return;
         }
     }
 
