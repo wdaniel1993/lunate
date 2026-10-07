@@ -40,6 +40,28 @@ public sealed class HookContractTests
     }
 
     [Fact]
+    public void Tool_calling_annotations_round_trip_and_default_to_empty()
+    {
+        JsonElement args = JsonDocument.Parse("""{"path":"a.txt"}""").RootElement.Clone();
+        var plain = new ToolCallingPayload("r1", "c1", "read", args);
+        var annotated = plain with { Annotations = ["read-only", "idempotent"] };
+
+        string plainJson = JsonSerializer.Serialize(plain, Options);
+        string annotatedJson = JsonSerializer.Serialize(annotated, Options);
+
+        Assert.Contains("\"annotations\":[]", plainJson, StringComparison.Ordinal);
+        Assert.Contains(
+            "\"annotations\":[\"read-only\",\"idempotent\"]",
+            annotatedJson,
+            StringComparison.Ordinal
+        );
+        Assert.Equal(
+            ["read-only", "idempotent"],
+            JsonSerializer.Deserialize<ToolCallingPayload>(annotatedJson, Options)!.Annotations
+        );
+    }
+
+    [Fact]
     public void Json_element_fields_keep_their_content()
     {
         JsonElement arguments = JsonDocument
@@ -109,7 +131,10 @@ public sealed class HookContractTests
             ("MessageCompletedPayload", new MessageCompletedPayload("r1", "assistant", "text")),
             ("MessageCompletedResult.Keep", new MessageCompletedResult.Keep()),
             ("MessageCompletedResult.Replace", new MessageCompletedResult.Replace("fixed")),
-            ("ToolCallingPayload", new ToolCallingPayload("r1", "c1", "read", args)),
+            (
+                "ToolCallingPayload",
+                new ToolCallingPayload("r1", "c1", "read", args) { Annotations = ["read-only"] }
+            ),
             ("ToolCallingResult.Proceed", new ToolCallingResult.Proceed(null)),
             ("ToolCallingResult.Proceed.Args", new ToolCallingResult.Proceed(args)),
             ("ToolCallingResult.Block", new ToolCallingResult.Block("not allowed")),

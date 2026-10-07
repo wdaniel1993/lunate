@@ -1061,3 +1061,5 @@ static Lunate.Agent.AgentCompactingResult.UseDefault.operator ==(Lunate.Agent.Ag
 virtual Lunate.Agent.AgentCompactingResult.EqualityContract.get -> System.Type!
 virtual Lunate.Agent.AgentCompactingResult.Equals(Lunate.Agent.AgentCompactingResult? other) -> bool
 virtual Lunate.Agent.AgentCompactingResult.PrintMembers(System.Text.StringBuilder! builder) -> bool
+Lunate.Agent.ToolAnnotationNames
+static Lunate.Agent.ToolAnnotationNames.WireNames(Lunate.Agent.ToolAnnotations? annotations) -> System.Collections.Generic.IReadOnlyList<string!>!
