@@ -39,6 +39,16 @@ Pi's extension API is the bar: transforming and blocking hooks, tool exposure mo
 - `ToolContext` exposes nested tool execution and a per-path file mutation queue; nested calls reuse validation, approval, cancellation and events, with parent ids and depth limits.
 - Long-lived integrations use session-scoped background services (lazy start; a crash becomes a notice, never a Lunate crash), a file change bus, a service registry, and a model registry for nested model calls with usage charged to the calling run.
 
+**Workspaces and repository identity**
+
+- Every run — child runs included — has a workspace: `WorktreeRoot`, `RepoRoot` and `GitCommonDir`. Tools resolve paths and enforce the boundary against the run's workspace; `bash` runs in the worktree root.
+- Project identity is the repository identity (`GitCommonDir`, or the remote URL when available) plus the worktree path. Sessions are grouped by repository and distinct per worktree; the session header records both.
+- Project trust is keyed by repository identity — new worktrees of a trusted repository do not re-prompt — while the extension content-hash check still applies per worktree.
+- Per-workspace services (the Roslyn backend, LSP background services) are keyed by `WorktreeRoot`, started lazily and capped (default: two loaded Roslyn workspaces, least-recently-used unloaded). `FileChanged` events carry the workspace id.
+- The approval rule for writes outside tracked files uses the worktree's own index; AGENTS.md and settings discovery start at the worktree root.
+- A fresh worktree has no restore output: the ADR-0006 restore check must answer with an actionable message ("run `dotnet restore` in the worktree path", or offer to run it), never a diagnostics avalanche.
+- Worktree management — creating and removing worktrees, branch naming, merging results back, conflict handling, cleanup, a `/worktree` command — is extension territory, not core.
+
 **Trust**
 
 - Global and project extensions load with a trust prompt; project extensions are re-prompted when their files change (content hash). The `/extensions` view shows scope and state.
