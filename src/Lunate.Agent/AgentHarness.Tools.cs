@@ -117,9 +117,28 @@ public sealed partial class AgentHarness
     )
     {
         ITool? tool = _tools.Find(toolName);
-        return tool is null
-            ? UnknownTool(toolName)
-            : await InvokeToolAsync(tool, runId, callId, args, channel, nestedDepth: 1, ct);
+        if (tool is null)
+        {
+            return UnknownTool(toolName);
+        }
+
+        List<SessionNestedCall>? nestedCalls = _options.Session is null ? null : [];
+        ToolResult result = await InvokeToolAsync(
+            tool,
+            runId,
+            callId,
+            args,
+            channel,
+            nestedDepth: 1,
+            nestedCalls,
+            ct
+        );
+        if (_options.Session is { } session && nestedCalls is { Count: > 0 })
+        {
+            session.AppendNestedCalls(callId, nestedCalls);
+        }
+
+        return result;
     }
 
     private async Task<ToolResult> RunNestedToolAsync(
@@ -129,6 +148,7 @@ public sealed partial class AgentHarness
         JsonElement args,
         AgentEventChannel channel,
         int depth,
+        List<SessionNestedCall>? nestedCalls,
         CancellationToken ct
     )
     {
@@ -169,10 +189,20 @@ public sealed partial class AgentHarness
         );
         channel.Emit(new ToolCallEnd(runId, nestedCallId) { ParentToolCallId = parentCallId });
 
+        long started = Stopwatch.GetTimestamp();
         ToolResult result;
         try
         {
-            result = await InvokeToolAsync(tool, runId, nestedCallId, args, channel, depth + 1, ct);
+            result = await InvokeToolAsync(
+                tool,
+                runId,
+                nestedCallId,
+                args,
+                channel,
+                depth + 1,
+                nestedCalls,
+                ct
+            );
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
@@ -202,6 +232,20 @@ public sealed partial class AgentHarness
                 ParentToolCallId = parentCallId,
             }
         );
+        if (nestedCalls is { } records)
+        {
+            var record = new SessionNestedCall(
+                toolName,
+                args.GetRawText(),
+                result.IsError ? "error" : "ok",
+                (int)Stopwatch.GetElapsedTime(started).TotalMilliseconds
+            );
+            lock (records)
+            {
+                records.Add(record);
+            }
+        }
+
         return result;
     }
 
@@ -213,6 +257,7 @@ public sealed partial class AgentHarness
         JsonElement args,
         AgentEventChannel channel,
         int nestedDepth,
+        List<SessionNestedCall>? nestedCalls,
         CancellationToken ct
     )
     {
@@ -239,7 +284,7 @@ public sealed partial class AgentHarness
         {
             return await tool.ExecuteAsync(
                 args,
-                BuildToolContext(runId, callId, channel, nestedDepth, ct),
+                BuildToolContext(runId, callId, channel, nestedDepth, nestedCalls, ct),
                 ct
             );
         }
@@ -261,6 +306,7 @@ public sealed partial class AgentHarness
         string callId,
         AgentEventChannel channel,
         int nestedDepth,
+        List<SessionNestedCall>? nestedCalls,
         CancellationToken ct
     ) =>
         new(_options.WorkingDirectory, new ExtensionOnlyEventSink(channel))
@@ -268,7 +314,16 @@ public sealed partial class AgentHarness
             RunId = runId,
             CallId = callId,
             ExecuteToolAsync = (name, args, _) =>
-                RunNestedToolAsync(runId, callId, name, args, channel, nestedDepth, ct),
+                RunNestedToolAsync(
+                    runId,
+                    callId,
+                    name,
+                    args,
+                    channel,
+                    nestedDepth,
+                    nestedCalls,
+                    ct
+                ),
             Progress = message => channel.Emit(new ToolProgressUpdate(runId, callId, message)),
             FileMutations = _options.FileMutations,
         };

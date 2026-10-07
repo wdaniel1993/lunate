@@ -15,8 +15,8 @@
 
 ## 2. Harness wiring (nestedCalls)
 
-- [ ] 2.1 `RunNestedToolAsync` records `(name, capped args, status, duration)` per nested call; `RunToolAsync` appends one bounded `nestedCalls` entry per top-level call that had nested calls — never results
-- [ ] 2.2 Tests: caps applied; no entry when there were no nested calls; the entry survives `Load`
+- [x] 2.1 `RunNestedToolAsync` records `(name, capped args, status, duration)` per nested call; `RunToolAsync` appends one bounded `nestedCalls` entry per top-level call that had nested calls — never results
+- [x] 2.2 Tests: caps applied; no entry when there were no nested calls; the entry survives `Load`
 
 ## 3. Close
 
