@@ -5,17 +5,17 @@ namespace Lunate.Coding.Tests;
 public sealed class LayeringTests
 {
     [Fact]
-    public void Source_project_references_have_no_layering_violations()
+    public void Project_references_have_no_layering_violations()
     {
-        var references = ReadSourceReferences();
+        var references = ReadProjectReferences();
 
         Assert.Empty(LayeringChecker.FindViolations(references));
     }
 
     [Fact]
-    public void Source_project_reference_graph_matches_allowed_edges()
+    public void Project_reference_graph_matches_allowed_edges()
     {
-        var references = ReadSourceReferences().ToHashSet();
+        var references = ReadProjectReferences().ToHashSet();
 
         Assert.True(
             LayeringChecker.AllowedReferences.SetEquals(references),
@@ -45,34 +45,43 @@ public sealed class LayeringTests
         );
     }
 
-    private static IReadOnlyList<(string From, string To)> ReadSourceReferences()
+    private static IReadOnlyList<(string From, string To)> ReadProjectReferences()
     {
         var references = new List<(string From, string To)>();
-        var sourceDirectory = Path.Combine(FindRepositoryRoot(), "src");
+        string repositoryRoot = FindRepositoryRoot();
 
-        foreach (
-            var projectFile in Directory.EnumerateFiles(
-                sourceDirectory,
-                "*.csproj",
-                SearchOption.AllDirectories
-            )
-        )
+        foreach (var directoryName in new[] { "src", "templates" })
         {
-            var from = Path.GetFileNameWithoutExtension(projectFile);
-            var document = XDocument.Load(projectFile);
+            var projectRoot = Path.Combine(repositoryRoot, directoryName);
+            if (!Directory.Exists(projectRoot))
+            {
+                continue;
+            }
 
             foreach (
-                var include in document
-                    .Descendants("ProjectReference")
-                    .Select(element => element.Attribute("Include")?.Value)
+                var projectFile in Directory.EnumerateFiles(
+                    projectRoot,
+                    "*.csproj",
+                    SearchOption.AllDirectories
+                )
             )
             {
-                if (include is null)
-                {
-                    continue;
-                }
+                var from = Path.GetFileNameWithoutExtension(projectFile);
+                var document = XDocument.Load(projectFile);
 
-                references.Add((from, Path.GetFileNameWithoutExtension(include)));
+                foreach (
+                    var include in document
+                        .Descendants("ProjectReference")
+                        .Select(element => element.Attribute("Include")?.Value)
+                )
+                {
+                    if (include is null)
+                    {
+                        continue;
+                    }
+
+                    references.Add((from, Path.GetFileNameWithoutExtension(include)));
+                }
             }
         }
 
