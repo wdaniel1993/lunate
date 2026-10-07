@@ -188,7 +188,9 @@ public sealed partial class AgentHarness
                     ct
                 )
                 .ConfigureAwait(false);
-            return result is AgentCompactingResult.Provide { Summary.Length: > 0 } provide
+            return
+                result is AgentCompactingResult.Provide provide
+                && !string.IsNullOrWhiteSpace(provide.Summary)
                 ? provide.Summary
                 : null;
         }

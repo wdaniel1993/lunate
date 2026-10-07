@@ -64,6 +64,29 @@ public sealed class AgentCompactionHookTests
     }
 
     [Fact]
+    public async Task A_whitespace_hook_summary_falls_back_to_the_default()
+    {
+        using var temp = new TempDirectory();
+        Session session = SeedLongSession(temp);
+        var hooks = new RecordingHookPoints
+        {
+            Compacting = _ => new AgentCompactingResult.Provide("   "),
+        };
+        var client = new ScriptedChatClient()
+            .Enqueue(LoopScripts.Text("default summary"))
+            .Enqueue(LoopScripts.Text("done"), LoopScripts.Stop());
+        AgentHarness harness = Harness(client, session, hooks);
+
+        List<AgentEvent> events = await AgentTestSupport.Run(harness);
+
+        Assert.Single(events.OfType<CompactionApplied>());
+        SessionCompactionEntry entry = Assert.Single(
+            session.Entries.OfType<SessionCompactionEntry>()
+        );
+        Assert.Equal("default summary", entry.Summary);
+    }
+
+    [Fact]
     public async Task A_harness_with_empty_hook_points_behaves_like_one_without_hooks()
     {
         using var temp = new TempDirectory();
