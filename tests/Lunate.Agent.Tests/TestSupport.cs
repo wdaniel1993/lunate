@@ -1,6 +1,56 @@
+using System.Diagnostics;
+using System.Globalization;
+using Lunate.Ai;
 using Microsoft.Extensions.AI;
 
 namespace Lunate.Agent.Tests;
+
+internal static class TestCatalog
+{
+    internal const string ModelId = "compaction-test";
+
+    internal static ModelCatalog WithWindow(int window, string modelId = ModelId)
+    {
+        string path = Path.Combine(Path.GetTempPath(), $"lunate-models-{Guid.NewGuid():N}.json");
+        File.WriteAllText(
+            path,
+            $$"""
+            {"schemaVersion":1,"models":[{"id":"{{modelId}}","provider":"openai","contextWindow":{{window.ToString(
+                CultureInfo.InvariantCulture
+            )}},"supportsTools":true}]}
+            """
+        );
+        try
+        {
+            return ModelCatalog.Load(path);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+}
+
+internal sealed class TraceCapture : IDisposable
+{
+    private readonly TextWriterTraceListener _listener;
+    private readonly StringWriter _writer = new();
+
+    public TraceCapture()
+    {
+        _listener = new TextWriterTraceListener(_writer);
+        Trace.Listeners.Add(_listener);
+    }
+
+    public string Text => _writer.ToString();
+
+    public void Dispose()
+    {
+        Trace.Listeners.Remove(_listener);
+        _listener.Dispose();
+        _writer.Dispose();
+    }
+}
 
 internal static class TestPaths
 {

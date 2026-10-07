@@ -1,3 +1,5 @@
+using Lunate.Ai;
+
 namespace Lunate.Agent;
 
 /// <summary>Configuration for an <see cref="AgentHarness"/>.</summary>
@@ -35,4 +37,13 @@ public sealed record AgentHarnessOptions
 
     /// <summary>The file change sink the host injects into file-mutating tools; no-op by default.</summary>
     public IFileChangeSink FileChanges { get; init; } = NullFileChangeSink.Instance;
+
+    /// <summary>The model catalog the compaction context-window lookup uses; null skips the lookup.</summary>
+    public ModelCatalog? ModelCatalog { get; init; }
+
+    /// <summary>The model id the compaction context-window lookup uses; null skips the lookup.</summary>
+    public string? ModelId { get; init; }
+
+    /// <summary>The number of most recent turns compaction keeps verbatim.</summary>
+    public int CompactionKeepTurns { get; init; } = CompactionReducer.DefaultKeepTurns;
 }

@@ -74,7 +74,16 @@ public sealed record UsageUpdated(string RunId, UsageDetails Usage) : ExtensionE
 
 public sealed record Retrying(string RunId, int Attempt, string Reason) : ExtensionEvent(RunId);
 
-public sealed record CompactionApplied(string RunId) : ExtensionEvent(RunId);
+/// <summary>
+/// A compaction that replaced earlier entries with a summary. <see cref="ReplacedEntryIds"/> lists
+/// the session entries the summary replaces; <see cref="EstimatedTokensAfter"/> is the estimated
+/// size of the rebuilt request in tokens.
+/// </summary>
+public sealed record CompactionApplied(
+    string RunId,
+    IReadOnlyList<string> ReplacedEntryIds,
+    int EstimatedTokensAfter
+) : ExtensionEvent(RunId);
 
 public sealed record StepLimitReached(string RunId, int MaxSteps) : ExtensionEvent(RunId);
 

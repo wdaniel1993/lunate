@@ -23,9 +23,13 @@ Lunate.Agent.ApprovalRequested.Equals(Lunate.Agent.ApprovalRequested? other) -> 
 Lunate.Agent.ApprovalRequested.ToolName.get -> string!
 Lunate.Agent.ApprovalRequested.ToolName.init -> void
 Lunate.Agent.CompactionApplied
-Lunate.Agent.CompactionApplied.CompactionApplied(string! RunId) -> void
-Lunate.Agent.CompactionApplied.Deconstruct(out string! RunId) -> void
+Lunate.Agent.CompactionApplied.CompactionApplied(string! RunId, System.Collections.Generic.IReadOnlyList<string!>! ReplacedEntryIds, int EstimatedTokensAfter) -> void
+Lunate.Agent.CompactionApplied.Deconstruct(out string! RunId, out System.Collections.Generic.IReadOnlyList<string!>! ReplacedEntryIds, out int EstimatedTokensAfter) -> void
 Lunate.Agent.CompactionApplied.Equals(Lunate.Agent.CompactionApplied? other) -> bool
+Lunate.Agent.CompactionApplied.EstimatedTokensAfter.get -> int
+Lunate.Agent.CompactionApplied.EstimatedTokensAfter.init -> void
+Lunate.Agent.CompactionApplied.ReplacedEntryIds.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Lunate.Agent.CompactionApplied.ReplacedEntryIds.init -> void
 Lunate.Agent.ExtensionEvent
 Lunate.Agent.ExtensionEvent.Deconstruct(out string! RunId) -> void
 Lunate.Agent.ExtensionEvent.ExtensionEvent(Lunate.Agent.ExtensionEvent! original) -> void
@@ -343,12 +347,15 @@ virtual Lunate.Agent.AgentEvent.PrintMembers(System.Text.StringBuilder! builder)
 virtual Lunate.Agent.ExtensionEvent.Equals(Lunate.Agent.ExtensionEvent? other) -> bool
 Lunate.Agent.AgentHarness
 Lunate.Agent.AgentHarness.AgentHarness(Microsoft.Extensions.AI.IChatClient! client, Lunate.Agent.ToolRegistry! tools, Lunate.Agent.AgentHarnessOptions? options = null) -> void
+Lunate.Agent.AgentHarness.CompactNowAsync(System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
 Lunate.Agent.AgentHarness.RunAsync(string! userInput, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<Lunate.Agent.AgentEvent!>!
 Lunate.Agent.AgentHarnessOptions
 Lunate.Agent.AgentHarnessOptions.<Clone>$() -> Lunate.Agent.AgentHarnessOptions!
 Lunate.Agent.AgentHarnessOptions.AgentHarnessOptions() -> void
 Lunate.Agent.AgentHarnessOptions.Approver.get -> Lunate.Agent.IToolApprover?
 Lunate.Agent.AgentHarnessOptions.Approver.init -> void
+Lunate.Agent.AgentHarnessOptions.CompactionKeepTurns.get -> int
+Lunate.Agent.AgentHarnessOptions.CompactionKeepTurns.init -> void
 Lunate.Agent.AgentHarnessOptions.Equals(Lunate.Agent.AgentHarnessOptions? other) -> bool
 Lunate.Agent.AgentHarnessOptions.FileMutations.get -> Lunate.Agent.IFileMutationQueue!
 Lunate.Agent.AgentHarnessOptions.FileMutations.init -> void
@@ -358,6 +365,10 @@ Lunate.Agent.AgentHarnessOptions.MaxRetries.get -> int
 Lunate.Agent.AgentHarnessOptions.MaxRetries.init -> void
 Lunate.Agent.AgentHarnessOptions.MaxSteps.get -> int
 Lunate.Agent.AgentHarnessOptions.MaxSteps.init -> void
+Lunate.Agent.AgentHarnessOptions.ModelCatalog.get -> Lunate.Ai.ModelCatalog?
+Lunate.Agent.AgentHarnessOptions.ModelCatalog.init -> void
+Lunate.Agent.AgentHarnessOptions.ModelId.get -> string?
+Lunate.Agent.AgentHarnessOptions.ModelId.init -> void
 Lunate.Agent.AgentHarnessOptions.RetryBaseDelay.get -> System.TimeSpan
 Lunate.Agent.AgentHarnessOptions.RetryBaseDelay.init -> void
 Lunate.Agent.AgentHarnessOptions.SystemPrompt.get -> string?

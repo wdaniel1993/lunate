@@ -32,9 +32,25 @@ public sealed partial class AgentHarness
         _tools = tools;
         _options = options ?? new AgentHarnessOptions();
         ValidateOptions(_options);
+        _compactor = new CompactionReducer(_client, _options.CompactionKeepTurns);
         if (_options.Session is { } session)
         {
-            _history.AddRange(session.ToHistory());
+            foreach (SessionHistoryItem item in session.HistoryItems())
+            {
+                _history.Add(item.Message);
+                _historyEntryIds.Add(item.EntryId);
+            }
+
+            if (session.Entries.OfType<SessionCompactionEntry>().LastOrDefault() is not null)
+            {
+                _summaryMessage = _history[0];
+                _replacedEntryIds =
+                [
+                    .. session.Entries.OfType<SessionCompactionEntry>().Last().Replaces,
+                ];
+            }
+
+            _historyUtf8 = CompactionReducer.Utf8Length(_history);
         }
     }
 
@@ -56,6 +72,8 @@ public sealed partial class AgentHarness
         {
             string runId = RunIds.Next();
             _danglingCalls.Clear();
+            _compactionInputTokens = 0;
+            _compactionOutputTokens = 0;
             Interlocked.Exchange(ref _nestedCallCounter, 0);
             var channel = new AgentEventChannel(_options.Session?.SessionId);
             using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct);
@@ -116,6 +134,15 @@ public sealed partial class AgentHarness
                 nameof(AgentHarnessOptions.MaxNestedToolDepth),
                 options.MaxNestedToolDepth,
                 "MaxNestedToolDepth must be at least 1."
+            );
+        }
+
+        if (options.CompactionKeepTurns < 1)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(AgentHarnessOptions.CompactionKeepTurns),
+                options.CompactionKeepTurns,
+                "CompactionKeepTurns must be at least 1."
             );
         }
     }
@@ -202,6 +229,7 @@ public sealed partial class AgentHarness
                 }
 
                 modelCalls++;
+                await CompactBeforeRequestAsync(runId, channel, sections, ct);
                 ModelStreamResult stream = await StreamModelWithRetriesAsync(
                     runId,
                     channel,
@@ -307,6 +335,7 @@ public sealed partial class AgentHarness
         try
         {
             List<ChatMessage> request = BuildRequest(sections);
+            long requestUtf8 = _historyUtf8 + SystemPromptUtf8(sections);
             if (_options.Hooks is { } hookPoints)
             {
                 AgentContextBuildingResult built = await hookPoints.ContextBuildingAsync(
@@ -362,6 +391,8 @@ public sealed partial class AgentHarness
                             (int)(usageContent.Details.InputTokenCount ?? 0),
                             (int)(usageContent.Details.OutputTokenCount ?? 0)
                         );
+                        _lastInputTokens = usage.Input;
+                        _lastRequestUtf8 = requestUtf8;
                     }
                 }
             }
@@ -385,7 +416,15 @@ public sealed partial class AgentHarness
     )
     {
         _history.Add(message);
-        _options.Session?.AppendMessage(message, model, usage);
+        _historyUtf8 += CompactionReducer.Utf8Length(message);
+        string? entryId = null;
+        if (_options.Session is { } session)
+        {
+            session.AppendMessage(message, model, usage);
+            entryId = session.Entries[^1].Id;
+        }
+
+        _historyEntryIds.Add(entryId);
     }
 
     private static string MappedStopReason(ChatFinishReason? finishReason) =>

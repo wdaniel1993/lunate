@@ -7,6 +7,9 @@ using Microsoft.Extensions.AI;
 
 namespace Lunate.Agent;
 
+/// <summary>One history item: a message and the session entry id it came from (null for a summary).</summary>
+internal sealed record SessionHistoryItem(ChatMessage Message, string? EntryId);
+
 /// <summary>
 /// An append-only JSONL session. Create one, append messages, compaction and model changes; load it
 /// to resume. The store assigns entry ids, the parent chain and the timestamps, so callers pass
@@ -306,8 +309,42 @@ public sealed class Session
     }
 
     /// <summary>The message entries in append order, ready to seed a harness.</summary>
-    public List<ChatMessage> ToHistory() =>
-        [.. _entries.OfType<SessionMessageEntry>().Select(entry => entry.Message)];
+    public List<ChatMessage> ToHistory() => [.. HistoryItems().Select(item => item.Message)];
+
+    /// <summary>
+    /// The history items for seeding a harness: the last compaction's summary message (when the
+    /// session was compacted) followed by every message entry the summary does not replace, in
+    /// append order. Each item carries the entry id it came from; the summary has none.
+    /// </summary>
+    internal List<SessionHistoryItem> HistoryItems()
+    {
+        SessionCompactionEntry? compaction = _entries
+            .OfType<SessionCompactionEntry>()
+            .LastOrDefault();
+        HashSet<string>? replaced = compaction is null
+            ? null
+            : new HashSet<string>(compaction.Replaces, StringComparer.Ordinal);
+        List<SessionHistoryItem> items = [];
+        if (compaction is not null)
+        {
+            items.Add(
+                new SessionHistoryItem(
+                    new ChatMessage(ChatRole.Assistant, compaction.Summary),
+                    null
+                )
+            );
+        }
+
+        foreach (SessionMessageEntry entry in _entries.OfType<SessionMessageEntry>())
+        {
+            if (replaced is null || !replaced.Contains(entry.Id))
+            {
+                items.Add(new SessionHistoryItem(entry.Message, entry.Id));
+            }
+        }
+
+        return items;
+    }
 
     private string? LastEntryId => _entries.Count == 0 ? null : _entries[^1].Id;
 
