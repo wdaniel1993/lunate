@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <RootNamespace>PermissionGateExtension.Tests</RootNamespace>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="../../../../src/Lunate.Ai/Lunate.Ai.csproj" />
+        <ProjectReference Include="../../../../src/Lunate.Extensibility.Abstractions/Lunate.Extensibility.Abstractions.csproj" />
+        <ProjectReference Include="../../../../src/Lunate.Extensibility.Testing/Lunate.Extensibility.Testing.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="xunit.v3" Version="4.0.1" />
+        <Using Include="Xunit" />
+    </ItemGroup>
+
+    <Target Name="CopyPermissionGateExtension" AfterTargets="Build">
+        <MSBuild
+            Projects="$(MSBuildThisFileDirectory)../PermissionGateExtension/PermissionGateExtension.csproj"
+            Targets="Build"
+            Properties="Configuration=$(Configuration)"
+        />
+        <ItemGroup>
+            <PermissionGateExtensionFiles Include="$(MSBuildThisFileDirectory)../PermissionGateExtension/bin/$(Configuration)/$(TargetFramework)/**/*" />
+        </ItemGroup>
+        <Copy
+            SourceFiles="@(PermissionGateExtensionFiles)"
+            DestinationFolder="$(OutDir)PermissionGateExtension/%(RecursiveDir)"
+            SkipUnchangedFiles="true"
+        />
+    </Target>
+</Project>
