@@ -9,8 +9,8 @@
 
 ## 2. Corpus
 
-- [ ] 2.1 Folder-per-case scaffolding + `EditCorpusTests` runner (copy `input` to temp, run, assert `expected` bytes or exact `expected-error.txt`)
-- [ ] 2.2 Cases: `unique-exact`, `first-line-match`, `two-matches-error`, `normalized-ambiguity-error`, `crlf-file-lf-old-text`, `trailing-spaces-normalized`, `bom-kept`, `boundary-no-trailing-newline`, `empty-old-text-error`, `identical-old-new-error`, `not-found-error`
+- [x] 2.1 Folder-per-case scaffolding + `EditCorpusTests` runner (copy `input` to temp, run, assert `expected` bytes or exact `expected-error.txt`)
+- [x] 2.2 Cases: `unique-exact`, `first-line-match`, `two-matches-error`, `normalized-ambiguity-error`, `crlf-file-lf-old-text`, `trailing-spaces-normalized`, `bom-kept`, `boundary-no-trailing-newline`, `empty-old-text-error`, `identical-old-new-error`, `not-found-error`
 
 ## 3. Direct tests
 

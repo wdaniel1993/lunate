@@ -1,0 +1,1 @@
+old_text matches 2 places in input.txt at lines 1, 4; make it longer so it matches once
