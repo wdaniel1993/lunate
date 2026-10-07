@@ -16,10 +16,10 @@
 
 ## 3. Wiring (producers that exist today)
 
-- [ ] 3.1 Loader lifecycle: `SessionStarted` (safe to run more than once) and idempotent `SessionEnding`
-- [ ] 3.2 Harness: `RunStarting`, `ContextBuilding`, `ProviderStreamEvent`, `MessageCompleted`, `ToolCalling` (before approval, final arguments approved), `ToolResultReady` (composes in order), `TurnEnded`, `RunSettled` — through the adapter; each with a test
-- [ ] 3.3 `ProjectTrust`: global-extension handlers participate in the loader's trust flow
-- [ ] 3.4 Contract-only hooks (`InputReceived`, `Compacting`) documented as unwired with their future producers named
+- [x] 3.1 Loader lifecycle: `SessionStarted` (safe to run more than once) and idempotent `SessionEnding`
+- [x] 3.2 Harness: `RunStarting`, `ContextBuilding`, `ProviderStreamEvent`, `MessageCompleted`, `ToolCalling` (before approval, final arguments approved), `ToolResultReady` (composes in order), `TurnEnded`, `RunSettled` — through the adapter; each with a test
+- [x] 3.3 `ProjectTrust`: global-extension handlers participate in the loader's trust flow
+- [x] 3.4 Contract-only hooks (`InputReceived`, `Compacting`) documented as unwired with their future producers named
 
 ## 4. Context tagging and close
 

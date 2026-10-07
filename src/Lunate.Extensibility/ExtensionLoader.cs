@@ -14,12 +14,23 @@ public sealed partial class ExtensionLoader
     private readonly Dictionary<string, ExtensionLoadContext> _contexts = new(
         StringComparer.Ordinal
     );
+    private readonly HookRunner _hooks;
+    private bool _sessionStarted;
+    private bool _sessionEnded;
+    private SessionStartedPayload? _session;
 
     public ExtensionLoader(ExtensionHostOptions options)
+        : this(options, null) { }
+
+    public ExtensionLoader(ExtensionHostOptions options, HookRunner? hooks)
     {
         ArgumentNullException.ThrowIfNull(options);
         _options = options;
+        _hooks = hooks ?? new HookRunner(null, options.Log);
     }
+
+    /// <summary>The hook runner handlers registered through extension contexts dispatch to.</summary>
+    public HookRunner Hooks => _hooks;
 
     public IReadOnlyList<ExtensionDescriptor> Descriptors => [.. _descriptors];
 
@@ -54,10 +65,44 @@ public sealed partial class ExtensionLoader
             return;
         }
 
+        _hooks.Unregister(id);
         if (_contexts.Remove(id, out ExtensionLoadContext? context))
         {
             context.Unload();
         }
+    }
+
+    /// <summary>Runs the session-ending hooks once; later calls and calls before a start do nothing.</summary>
+    public async ValueTask EndSessionAsync(CancellationToken cancellationToken = default)
+    {
+        if (_sessionEnded || !_sessionStarted || _session is not { } session)
+        {
+            return;
+        }
+
+        _sessionEnded = true;
+        await _hooks
+            .RunSessionEndingAsync(
+                new SessionEndingPayload(session.WorkingDirectory, session.RepositoryIdentity),
+                cancellationToken
+            )
+            .ConfigureAwait(false);
+    }
+
+    private async ValueTask StartSessionAsync(
+        string workingDirectory,
+        string repositoryIdentity,
+        CancellationToken cancellationToken
+    )
+    {
+        if (_sessionStarted)
+        {
+            return;
+        }
+
+        _sessionStarted = true;
+        _session = new SessionStartedPayload(workingDirectory, repositoryIdentity);
+        await _hooks.RunSessionStartedAsync(_session, cancellationToken).ConfigureAwait(false);
     }
 
     private static string DiscoveredIds(IReadOnlyList<ExtensionDescriptor> descriptors) =>

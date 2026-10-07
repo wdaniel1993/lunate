@@ -666,3 +666,331 @@ static Lunate.Agent.SessionNestedCallsEntry.operator ==(Lunate.Agent.SessionNest
 static Lunate.Agent.SessionPaths.ForRepository(string! repoIdentity, string! worktreePath) -> string!
 static Lunate.Agent.SessionPromptSectionEntry.operator !=(Lunate.Agent.SessionPromptSectionEntry? left, Lunate.Agent.SessionPromptSectionEntry? right) -> bool
 static Lunate.Agent.SessionPromptSectionEntry.operator ==(Lunate.Agent.SessionPromptSectionEntry? left, Lunate.Agent.SessionPromptSectionEntry? right) -> bool
+Lunate.Agent.AgentContextBuildingContext
+Lunate.Agent.AgentContextBuildingContext.<Clone>$() -> Lunate.Agent.AgentContextBuildingContext!
+Lunate.Agent.AgentContextBuildingContext.AgentContextBuildingContext(string! RunId, System.Collections.Generic.IReadOnlyList<Lunate.Agent.AgentContextMessage!>! Messages) -> void
+Lunate.Agent.AgentContextBuildingContext.Deconstruct(out string! RunId, out System.Collections.Generic.IReadOnlyList<Lunate.Agent.AgentContextMessage!>! Messages) -> void
+Lunate.Agent.AgentContextBuildingContext.Equals(Lunate.Agent.AgentContextBuildingContext? other) -> bool
+Lunate.Agent.AgentContextBuildingContext.Messages.get -> System.Collections.Generic.IReadOnlyList<Lunate.Agent.AgentContextMessage!>!
+Lunate.Agent.AgentContextBuildingContext.Messages.init -> void
+Lunate.Agent.AgentContextBuildingContext.RunId.get -> string!
+Lunate.Agent.AgentContextBuildingContext.RunId.init -> void
+Lunate.Agent.AgentContextBuildingResult
+Lunate.Agent.AgentContextBuildingResult.<Clone>$() -> Lunate.Agent.AgentContextBuildingResult!
+Lunate.Agent.AgentContextBuildingResult.AddedMessages.get -> System.Collections.Generic.IReadOnlyList<Lunate.Agent.AgentContextMessage!>!
+Lunate.Agent.AgentContextBuildingResult.AddedMessages.init -> void
+Lunate.Agent.AgentContextBuildingResult.AgentContextBuildingResult(System.Collections.Generic.IReadOnlyList<Lunate.Agent.AgentContextMessage!>! AddedMessages) -> void
+Lunate.Agent.AgentContextBuildingResult.Deconstruct(out System.Collections.Generic.IReadOnlyList<Lunate.Agent.AgentContextMessage!>! AddedMessages) -> void
+Lunate.Agent.AgentContextBuildingResult.Equals(Lunate.Agent.AgentContextBuildingResult? other) -> bool
+Lunate.Agent.AgentContextMessage
+Lunate.Agent.AgentContextMessage.<Clone>$() -> Lunate.Agent.AgentContextMessage!
+Lunate.Agent.AgentContextMessage.AgentContextMessage(string! Role, string! Text, string? Source = null) -> void
+Lunate.Agent.AgentContextMessage.Deconstruct(out string! Role, out string! Text, out string? Source) -> void
+Lunate.Agent.AgentContextMessage.Equals(Lunate.Agent.AgentContextMessage? other) -> bool
+Lunate.Agent.AgentContextMessage.Role.get -> string!
+Lunate.Agent.AgentContextMessage.Role.init -> void
+Lunate.Agent.AgentContextMessage.Source.get -> string?
+Lunate.Agent.AgentContextMessage.Source.init -> void
+Lunate.Agent.AgentContextMessage.Text.get -> string!
+Lunate.Agent.AgentContextMessage.Text.init -> void
+Lunate.Agent.AgentExtensionEntry
+Lunate.Agent.AgentExtensionEntry.<Clone>$() -> Lunate.Agent.AgentExtensionEntry!
+Lunate.Agent.AgentExtensionEntry.AgentExtensionEntry(string! ExtensionId, string! Type, System.Text.Json.JsonElement Payload) -> void
+Lunate.Agent.AgentExtensionEntry.Deconstruct(out string! ExtensionId, out string! Type, out System.Text.Json.JsonElement Payload) -> void
+Lunate.Agent.AgentExtensionEntry.Equals(Lunate.Agent.AgentExtensionEntry? other) -> bool
+Lunate.Agent.AgentExtensionEntry.ExtensionId.get -> string!
+Lunate.Agent.AgentExtensionEntry.ExtensionId.init -> void
+Lunate.Agent.AgentExtensionEntry.Payload.get -> System.Text.Json.JsonElement
+Lunate.Agent.AgentExtensionEntry.Payload.init -> void
+Lunate.Agent.AgentExtensionEntry.Type.get -> string!
+Lunate.Agent.AgentExtensionEntry.Type.init -> void
+Lunate.Agent.AgentHarnessOptions.Hooks.get -> Lunate.Agent.IAgentHookPoints?
+Lunate.Agent.AgentHarnessOptions.Hooks.init -> void
+Lunate.Agent.AgentMessageCompletedContext
+Lunate.Agent.AgentMessageCompletedContext.<Clone>$() -> Lunate.Agent.AgentMessageCompletedContext!
+Lunate.Agent.AgentMessageCompletedContext.AgentMessageCompletedContext(string! RunId, string! Role, string! Text) -> void
+Lunate.Agent.AgentMessageCompletedContext.Deconstruct(out string! RunId, out string! Role, out string! Text) -> void
+Lunate.Agent.AgentMessageCompletedContext.Equals(Lunate.Agent.AgentMessageCompletedContext? other) -> bool
+Lunate.Agent.AgentMessageCompletedContext.Role.get -> string!
+Lunate.Agent.AgentMessageCompletedContext.Role.init -> void
+Lunate.Agent.AgentMessageCompletedContext.RunId.get -> string!
+Lunate.Agent.AgentMessageCompletedContext.RunId.init -> void
+Lunate.Agent.AgentMessageCompletedContext.Text.get -> string!
+Lunate.Agent.AgentMessageCompletedContext.Text.init -> void
+Lunate.Agent.AgentMessageCompletedResult
+Lunate.Agent.AgentMessageCompletedResult.AgentMessageCompletedResult(Lunate.Agent.AgentMessageCompletedResult! original) -> void
+Lunate.Agent.AgentMessageCompletedResult.Keep
+Lunate.Agent.AgentMessageCompletedResult.Keep.Equals(Lunate.Agent.AgentMessageCompletedResult.Keep? other) -> bool
+Lunate.Agent.AgentMessageCompletedResult.Keep.Keep() -> void
+Lunate.Agent.AgentMessageCompletedResult.Replace
+Lunate.Agent.AgentMessageCompletedResult.Replace.Deconstruct(out string! Text) -> void
+Lunate.Agent.AgentMessageCompletedResult.Replace.Equals(Lunate.Agent.AgentMessageCompletedResult.Replace? other) -> bool
+Lunate.Agent.AgentMessageCompletedResult.Replace.Replace(string! Text) -> void
+Lunate.Agent.AgentMessageCompletedResult.Replace.Text.get -> string!
+Lunate.Agent.AgentMessageCompletedResult.Replace.Text.init -> void
+Lunate.Agent.AgentPromptSection
+Lunate.Agent.AgentPromptSection.<Clone>$() -> Lunate.Agent.AgentPromptSection!
+Lunate.Agent.AgentPromptSection.AgentPromptSection(string! Name, string! Text) -> void
+Lunate.Agent.AgentPromptSection.Deconstruct(out string! Name, out string! Text) -> void
+Lunate.Agent.AgentPromptSection.Equals(Lunate.Agent.AgentPromptSection? other) -> bool
+Lunate.Agent.AgentPromptSection.Name.get -> string!
+Lunate.Agent.AgentPromptSection.Name.init -> void
+Lunate.Agent.AgentPromptSection.Text.get -> string!
+Lunate.Agent.AgentPromptSection.Text.init -> void
+Lunate.Agent.AgentPromptSectionEdit
+Lunate.Agent.AgentPromptSectionEdit.<Clone>$() -> Lunate.Agent.AgentPromptSectionEdit!
+Lunate.Agent.AgentPromptSectionEdit.AgentPromptSectionEdit(string! Name, string? Text) -> void
+Lunate.Agent.AgentPromptSectionEdit.Deconstruct(out string! Name, out string? Text) -> void
+Lunate.Agent.AgentPromptSectionEdit.Equals(Lunate.Agent.AgentPromptSectionEdit? other) -> bool
+Lunate.Agent.AgentPromptSectionEdit.Name.get -> string!
+Lunate.Agent.AgentPromptSectionEdit.Name.init -> void
+Lunate.Agent.AgentPromptSectionEdit.Text.get -> string?
+Lunate.Agent.AgentPromptSectionEdit.Text.init -> void
+Lunate.Agent.AgentRunSettledContext
+Lunate.Agent.AgentRunSettledContext.<Clone>$() -> Lunate.Agent.AgentRunSettledContext!
+Lunate.Agent.AgentRunSettledContext.AgentRunSettledContext(string! RunId) -> void
+Lunate.Agent.AgentRunSettledContext.Deconstruct(out string! RunId) -> void
+Lunate.Agent.AgentRunSettledContext.Equals(Lunate.Agent.AgentRunSettledContext? other) -> bool
+Lunate.Agent.AgentRunSettledContext.RunId.get -> string!
+Lunate.Agent.AgentRunSettledContext.RunId.init -> void
+Lunate.Agent.AgentRunStartingContext
+Lunate.Agent.AgentRunStartingContext.<Clone>$() -> Lunate.Agent.AgentRunStartingContext!
+Lunate.Agent.AgentRunStartingContext.AgentRunStartingContext(string! RunId, System.Collections.Generic.IReadOnlyList<Lunate.Agent.AgentPromptSection!>! Sections, System.Collections.Generic.IReadOnlyList<string!>! Tools) -> void
+Lunate.Agent.AgentRunStartingContext.Deconstruct(out string! RunId, out System.Collections.Generic.IReadOnlyList<Lunate.Agent.AgentPromptSection!>! Sections, out System.Collections.Generic.IReadOnlyList<string!>! Tools) -> void
+Lunate.Agent.AgentRunStartingContext.Equals(Lunate.Agent.AgentRunStartingContext? other) -> bool
+Lunate.Agent.AgentRunStartingContext.RunId.get -> string!
+Lunate.Agent.AgentRunStartingContext.RunId.init -> void
+Lunate.Agent.AgentRunStartingContext.Sections.get -> System.Collections.Generic.IReadOnlyList<Lunate.Agent.AgentPromptSection!>!
+Lunate.Agent.AgentRunStartingContext.Sections.init -> void
+Lunate.Agent.AgentRunStartingContext.Tools.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Lunate.Agent.AgentRunStartingContext.Tools.init -> void
+Lunate.Agent.AgentRunStartingResult
+Lunate.Agent.AgentRunStartingResult.AgentRunStartingResult(Lunate.Agent.AgentRunStartingResult! original) -> void
+Lunate.Agent.AgentRunStartingResult.Apply
+Lunate.Agent.AgentRunStartingResult.Apply.ActiveTools.get -> System.Collections.Generic.IReadOnlyList<string!>?
+Lunate.Agent.AgentRunStartingResult.Apply.ActiveTools.init -> void
+Lunate.Agent.AgentRunStartingResult.Apply.Apply(System.Collections.Generic.IReadOnlyList<Lunate.Agent.AgentPromptSectionEdit!>! SectionEdits, System.Collections.Generic.IReadOnlyList<string!>? ActiveTools) -> void
+Lunate.Agent.AgentRunStartingResult.Apply.Deconstruct(out System.Collections.Generic.IReadOnlyList<Lunate.Agent.AgentPromptSectionEdit!>! SectionEdits, out System.Collections.Generic.IReadOnlyList<string!>? ActiveTools) -> void
+Lunate.Agent.AgentRunStartingResult.Apply.Equals(Lunate.Agent.AgentRunStartingResult.Apply? other) -> bool
+Lunate.Agent.AgentRunStartingResult.Apply.SectionEdits.get -> System.Collections.Generic.IReadOnlyList<Lunate.Agent.AgentPromptSectionEdit!>!
+Lunate.Agent.AgentRunStartingResult.Apply.SectionEdits.init -> void
+Lunate.Agent.AgentRunStartingResult.None
+Lunate.Agent.AgentRunStartingResult.None.Equals(Lunate.Agent.AgentRunStartingResult.None? other) -> bool
+Lunate.Agent.AgentRunStartingResult.None.None() -> void
+Lunate.Agent.AgentToolCallingContext
+Lunate.Agent.AgentToolCallingContext.<Clone>$() -> Lunate.Agent.AgentToolCallingContext!
+Lunate.Agent.AgentToolCallingContext.AgentToolCallingContext(string! RunId, string! CallId, string! ToolName, System.Text.Json.JsonElement Arguments) -> void
+Lunate.Agent.AgentToolCallingContext.Arguments.get -> System.Text.Json.JsonElement
+Lunate.Agent.AgentToolCallingContext.Arguments.init -> void
+Lunate.Agent.AgentToolCallingContext.CallId.get -> string!
+Lunate.Agent.AgentToolCallingContext.CallId.init -> void
+Lunate.Agent.AgentToolCallingContext.Deconstruct(out string! RunId, out string! CallId, out string! ToolName, out System.Text.Json.JsonElement Arguments) -> void
+Lunate.Agent.AgentToolCallingContext.Equals(Lunate.Agent.AgentToolCallingContext? other) -> bool
+Lunate.Agent.AgentToolCallingContext.RunId.get -> string!
+Lunate.Agent.AgentToolCallingContext.RunId.init -> void
+Lunate.Agent.AgentToolCallingContext.ToolName.get -> string!
+Lunate.Agent.AgentToolCallingContext.ToolName.init -> void
+Lunate.Agent.AgentToolCallingResult
+Lunate.Agent.AgentToolCallingResult.AgentToolCallingResult(Lunate.Agent.AgentToolCallingResult! original) -> void
+Lunate.Agent.AgentToolCallingResult.Block
+Lunate.Agent.AgentToolCallingResult.Block.Block(string! Reason) -> void
+Lunate.Agent.AgentToolCallingResult.Block.Deconstruct(out string! Reason) -> void
+Lunate.Agent.AgentToolCallingResult.Block.Equals(Lunate.Agent.AgentToolCallingResult.Block? other) -> bool
+Lunate.Agent.AgentToolCallingResult.Block.Reason.get -> string!
+Lunate.Agent.AgentToolCallingResult.Block.Reason.init -> void
+Lunate.Agent.AgentToolCallingResult.Proceed
+Lunate.Agent.AgentToolCallingResult.Proceed.Arguments.get -> System.Text.Json.JsonElement?
+Lunate.Agent.AgentToolCallingResult.Proceed.Arguments.init -> void
+Lunate.Agent.AgentToolCallingResult.Proceed.Deconstruct(out System.Text.Json.JsonElement? Arguments) -> void
+Lunate.Agent.AgentToolCallingResult.Proceed.Equals(Lunate.Agent.AgentToolCallingResult.Proceed? other) -> bool
+Lunate.Agent.AgentToolCallingResult.Proceed.Proceed(System.Text.Json.JsonElement? Arguments) -> void
+Lunate.Agent.AgentToolResultReadyContext
+Lunate.Agent.AgentToolResultReadyContext.<Clone>$() -> Lunate.Agent.AgentToolResultReadyContext!
+Lunate.Agent.AgentToolResultReadyContext.AgentToolResultReadyContext(string! RunId, string! CallId, string! ToolName, string! Output, bool IsError) -> void
+Lunate.Agent.AgentToolResultReadyContext.CallId.get -> string!
+Lunate.Agent.AgentToolResultReadyContext.CallId.init -> void
+Lunate.Agent.AgentToolResultReadyContext.Deconstruct(out string! RunId, out string! CallId, out string! ToolName, out string! Output, out bool IsError) -> void
+Lunate.Agent.AgentToolResultReadyContext.Equals(Lunate.Agent.AgentToolResultReadyContext? other) -> bool
+Lunate.Agent.AgentToolResultReadyContext.IsError.get -> bool
+Lunate.Agent.AgentToolResultReadyContext.IsError.init -> void
+Lunate.Agent.AgentToolResultReadyContext.Output.get -> string!
+Lunate.Agent.AgentToolResultReadyContext.Output.init -> void
+Lunate.Agent.AgentToolResultReadyContext.RunId.get -> string!
+Lunate.Agent.AgentToolResultReadyContext.RunId.init -> void
+Lunate.Agent.AgentToolResultReadyContext.ToolName.get -> string!
+Lunate.Agent.AgentToolResultReadyContext.ToolName.init -> void
+Lunate.Agent.AgentToolResultReadyResult
+Lunate.Agent.AgentToolResultReadyResult.<Clone>$() -> Lunate.Agent.AgentToolResultReadyResult!
+Lunate.Agent.AgentToolResultReadyResult.AgentToolResultReadyResult(string! Output, System.Text.Json.JsonElement? Data) -> void
+Lunate.Agent.AgentToolResultReadyResult.Data.get -> System.Text.Json.JsonElement?
+Lunate.Agent.AgentToolResultReadyResult.Data.init -> void
+Lunate.Agent.AgentToolResultReadyResult.Deconstruct(out string! Output, out System.Text.Json.JsonElement? Data) -> void
+Lunate.Agent.AgentToolResultReadyResult.Equals(Lunate.Agent.AgentToolResultReadyResult? other) -> bool
+Lunate.Agent.AgentToolResultReadyResult.Output.get -> string!
+Lunate.Agent.AgentToolResultReadyResult.Output.init -> void
+Lunate.Agent.AgentTurnEndedContext
+Lunate.Agent.AgentTurnEndedContext.<Clone>$() -> Lunate.Agent.AgentTurnEndedContext!
+Lunate.Agent.AgentTurnEndedContext.AgentTurnEndedContext(string! RunId) -> void
+Lunate.Agent.AgentTurnEndedContext.Deconstruct(out string! RunId) -> void
+Lunate.Agent.AgentTurnEndedContext.Equals(Lunate.Agent.AgentTurnEndedContext? other) -> bool
+Lunate.Agent.AgentTurnEndedContext.RunId.get -> string!
+Lunate.Agent.AgentTurnEndedContext.RunId.init -> void
+Lunate.Agent.AgentTurnEndedResult
+Lunate.Agent.AgentTurnEndedResult.<Clone>$() -> Lunate.Agent.AgentTurnEndedResult!
+Lunate.Agent.AgentTurnEndedResult.AgentTurnEndedResult(System.Collections.Generic.IReadOnlyList<Lunate.Agent.AgentExtensionEntry!>! Entries, bool RequestContinuation) -> void
+Lunate.Agent.AgentTurnEndedResult.Deconstruct(out System.Collections.Generic.IReadOnlyList<Lunate.Agent.AgentExtensionEntry!>! Entries, out bool RequestContinuation) -> void
+Lunate.Agent.AgentTurnEndedResult.Entries.get -> System.Collections.Generic.IReadOnlyList<Lunate.Agent.AgentExtensionEntry!>!
+Lunate.Agent.AgentTurnEndedResult.Entries.init -> void
+Lunate.Agent.AgentTurnEndedResult.Equals(Lunate.Agent.AgentTurnEndedResult? other) -> bool
+Lunate.Agent.AgentTurnEndedResult.RequestContinuation.get -> bool
+Lunate.Agent.AgentTurnEndedResult.RequestContinuation.init -> void
+Lunate.Agent.IAgentHookPoints
+Lunate.Agent.IAgentHookPoints.ContextBuildingAsync(Lunate.Agent.AgentContextBuildingContext! context, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Lunate.Agent.AgentContextBuildingResult!>
+Lunate.Agent.IAgentHookPoints.MessageCompletedAsync(Lunate.Agent.AgentMessageCompletedContext! context, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Lunate.Agent.AgentMessageCompletedResult!>
+Lunate.Agent.IAgentHookPoints.ProviderStreamEventAsync(string! runId, Microsoft.Extensions.AI.ChatResponseUpdate! update, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask
+Lunate.Agent.IAgentHookPoints.RunSettledAsync(Lunate.Agent.AgentRunSettledContext! context, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask
+Lunate.Agent.IAgentHookPoints.RunStartingAsync(Lunate.Agent.AgentRunStartingContext! context, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Lunate.Agent.AgentRunStartingResult!>
+Lunate.Agent.IAgentHookPoints.ToolCallingAsync(Lunate.Agent.AgentToolCallingContext! context, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Lunate.Agent.AgentToolCallingResult!>
+Lunate.Agent.IAgentHookPoints.ToolResultReadyAsync(Lunate.Agent.AgentToolResultReadyContext! context, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Lunate.Agent.AgentToolResultReadyResult!>
+Lunate.Agent.IAgentHookPoints.TurnEndedAsync(Lunate.Agent.AgentTurnEndedContext! context, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Lunate.Agent.AgentTurnEndedResult!>
+abstract Lunate.Agent.AgentMessageCompletedResult.<Clone>$() -> Lunate.Agent.AgentMessageCompletedResult!
+abstract Lunate.Agent.AgentRunStartingResult.<Clone>$() -> Lunate.Agent.AgentRunStartingResult!
+abstract Lunate.Agent.AgentToolCallingResult.<Clone>$() -> Lunate.Agent.AgentToolCallingResult!
+override Lunate.Agent.AgentContextBuildingContext.Equals(object? obj) -> bool
+override Lunate.Agent.AgentContextBuildingContext.GetHashCode() -> int
+override Lunate.Agent.AgentContextBuildingContext.ToString() -> string!
+override Lunate.Agent.AgentContextBuildingResult.Equals(object? obj) -> bool
+override Lunate.Agent.AgentContextBuildingResult.GetHashCode() -> int
+override Lunate.Agent.AgentContextBuildingResult.ToString() -> string!
+override Lunate.Agent.AgentContextMessage.Equals(object? obj) -> bool
+override Lunate.Agent.AgentContextMessage.GetHashCode() -> int
+override Lunate.Agent.AgentContextMessage.ToString() -> string!
+override Lunate.Agent.AgentExtensionEntry.Equals(object? obj) -> bool
+override Lunate.Agent.AgentExtensionEntry.GetHashCode() -> int
+override Lunate.Agent.AgentExtensionEntry.ToString() -> string!
+override Lunate.Agent.AgentMessageCompletedContext.Equals(object? obj) -> bool
+override Lunate.Agent.AgentMessageCompletedContext.GetHashCode() -> int
+override Lunate.Agent.AgentMessageCompletedContext.ToString() -> string!
+override Lunate.Agent.AgentMessageCompletedResult.Equals(object? obj) -> bool
+override Lunate.Agent.AgentMessageCompletedResult.GetHashCode() -> int
+override Lunate.Agent.AgentMessageCompletedResult.Keep.<Clone>$() -> Lunate.Agent.AgentMessageCompletedResult.Keep!
+override Lunate.Agent.AgentMessageCompletedResult.Keep.Equals(object? obj) -> bool
+override Lunate.Agent.AgentMessageCompletedResult.Keep.GetHashCode() -> int
+override Lunate.Agent.AgentMessageCompletedResult.Keep.ToString() -> string!
+override Lunate.Agent.AgentMessageCompletedResult.Replace.<Clone>$() -> Lunate.Agent.AgentMessageCompletedResult.Replace!
+override Lunate.Agent.AgentMessageCompletedResult.Replace.Equals(object? obj) -> bool
+override Lunate.Agent.AgentMessageCompletedResult.Replace.GetHashCode() -> int
+override Lunate.Agent.AgentMessageCompletedResult.Replace.ToString() -> string!
+override Lunate.Agent.AgentMessageCompletedResult.ToString() -> string!
+override Lunate.Agent.AgentPromptSection.Equals(object? obj) -> bool
+override Lunate.Agent.AgentPromptSection.GetHashCode() -> int
+override Lunate.Agent.AgentPromptSection.ToString() -> string!
+override Lunate.Agent.AgentPromptSectionEdit.Equals(object? obj) -> bool
+override Lunate.Agent.AgentPromptSectionEdit.GetHashCode() -> int
+override Lunate.Agent.AgentPromptSectionEdit.ToString() -> string!
+override Lunate.Agent.AgentRunSettledContext.Equals(object? obj) -> bool
+override Lunate.Agent.AgentRunSettledContext.GetHashCode() -> int
+override Lunate.Agent.AgentRunSettledContext.ToString() -> string!
+override Lunate.Agent.AgentRunStartingContext.Equals(object? obj) -> bool
+override Lunate.Agent.AgentRunStartingContext.GetHashCode() -> int
+override Lunate.Agent.AgentRunStartingContext.ToString() -> string!
+override Lunate.Agent.AgentRunStartingResult.Apply.<Clone>$() -> Lunate.Agent.AgentRunStartingResult.Apply!
+override Lunate.Agent.AgentRunStartingResult.Apply.Equals(object? obj) -> bool
+override Lunate.Agent.AgentRunStartingResult.Apply.GetHashCode() -> int
+override Lunate.Agent.AgentRunStartingResult.Apply.ToString() -> string!
+override Lunate.Agent.AgentRunStartingResult.Equals(object? obj) -> bool
+override Lunate.Agent.AgentRunStartingResult.GetHashCode() -> int
+override Lunate.Agent.AgentRunStartingResult.None.<Clone>$() -> Lunate.Agent.AgentRunStartingResult.None!
+override Lunate.Agent.AgentRunStartingResult.None.Equals(object? obj) -> bool
+override Lunate.Agent.AgentRunStartingResult.None.GetHashCode() -> int
+override Lunate.Agent.AgentRunStartingResult.None.ToString() -> string!
+override Lunate.Agent.AgentRunStartingResult.ToString() -> string!
+override Lunate.Agent.AgentToolCallingContext.Equals(object? obj) -> bool
+override Lunate.Agent.AgentToolCallingContext.GetHashCode() -> int
+override Lunate.Agent.AgentToolCallingContext.ToString() -> string!
+override Lunate.Agent.AgentToolCallingResult.Block.<Clone>$() -> Lunate.Agent.AgentToolCallingResult.Block!
+override Lunate.Agent.AgentToolCallingResult.Block.Equals(object? obj) -> bool
+override Lunate.Agent.AgentToolCallingResult.Block.GetHashCode() -> int
+override Lunate.Agent.AgentToolCallingResult.Block.ToString() -> string!
+override Lunate.Agent.AgentToolCallingResult.Equals(object? obj) -> bool
+override Lunate.Agent.AgentToolCallingResult.GetHashCode() -> int
+override Lunate.Agent.AgentToolCallingResult.Proceed.<Clone>$() -> Lunate.Agent.AgentToolCallingResult.Proceed!
+override Lunate.Agent.AgentToolCallingResult.Proceed.Equals(object? obj) -> bool
+override Lunate.Agent.AgentToolCallingResult.Proceed.GetHashCode() -> int
+override Lunate.Agent.AgentToolCallingResult.Proceed.ToString() -> string!
+override Lunate.Agent.AgentToolCallingResult.ToString() -> string!
+override Lunate.Agent.AgentToolResultReadyContext.Equals(object? obj) -> bool
+override Lunate.Agent.AgentToolResultReadyContext.GetHashCode() -> int
+override Lunate.Agent.AgentToolResultReadyContext.ToString() -> string!
+override Lunate.Agent.AgentToolResultReadyResult.Equals(object? obj) -> bool
+override Lunate.Agent.AgentToolResultReadyResult.GetHashCode() -> int
+override Lunate.Agent.AgentToolResultReadyResult.ToString() -> string!
+override Lunate.Agent.AgentTurnEndedContext.Equals(object? obj) -> bool
+override Lunate.Agent.AgentTurnEndedContext.GetHashCode() -> int
+override Lunate.Agent.AgentTurnEndedContext.ToString() -> string!
+override Lunate.Agent.AgentTurnEndedResult.Equals(object? obj) -> bool
+override Lunate.Agent.AgentTurnEndedResult.GetHashCode() -> int
+override Lunate.Agent.AgentTurnEndedResult.ToString() -> string!
+override sealed Lunate.Agent.AgentMessageCompletedResult.Keep.Equals(Lunate.Agent.AgentMessageCompletedResult? other) -> bool
+override sealed Lunate.Agent.AgentMessageCompletedResult.Replace.Equals(Lunate.Agent.AgentMessageCompletedResult? other) -> bool
+override sealed Lunate.Agent.AgentRunStartingResult.Apply.Equals(Lunate.Agent.AgentRunStartingResult? other) -> bool
+override sealed Lunate.Agent.AgentRunStartingResult.None.Equals(Lunate.Agent.AgentRunStartingResult? other) -> bool
+override sealed Lunate.Agent.AgentToolCallingResult.Block.Equals(Lunate.Agent.AgentToolCallingResult? other) -> bool
+override sealed Lunate.Agent.AgentToolCallingResult.Proceed.Equals(Lunate.Agent.AgentToolCallingResult? other) -> bool
+static Lunate.Agent.AgentContextBuildingContext.operator !=(Lunate.Agent.AgentContextBuildingContext? left, Lunate.Agent.AgentContextBuildingContext? right) -> bool
+static Lunate.Agent.AgentContextBuildingContext.operator ==(Lunate.Agent.AgentContextBuildingContext? left, Lunate.Agent.AgentContextBuildingContext? right) -> bool
+static Lunate.Agent.AgentContextBuildingResult.None.get -> Lunate.Agent.AgentContextBuildingResult!
+static Lunate.Agent.AgentContextBuildingResult.operator !=(Lunate.Agent.AgentContextBuildingResult? left, Lunate.Agent.AgentContextBuildingResult? right) -> bool
+static Lunate.Agent.AgentContextBuildingResult.operator ==(Lunate.Agent.AgentContextBuildingResult? left, Lunate.Agent.AgentContextBuildingResult? right) -> bool
+static Lunate.Agent.AgentContextMessage.operator !=(Lunate.Agent.AgentContextMessage? left, Lunate.Agent.AgentContextMessage? right) -> bool
+static Lunate.Agent.AgentContextMessage.operator ==(Lunate.Agent.AgentContextMessage? left, Lunate.Agent.AgentContextMessage? right) -> bool
+static Lunate.Agent.AgentExtensionEntry.operator !=(Lunate.Agent.AgentExtensionEntry? left, Lunate.Agent.AgentExtensionEntry? right) -> bool
+static Lunate.Agent.AgentExtensionEntry.operator ==(Lunate.Agent.AgentExtensionEntry? left, Lunate.Agent.AgentExtensionEntry? right) -> bool
+static Lunate.Agent.AgentMessageCompletedContext.operator !=(Lunate.Agent.AgentMessageCompletedContext? left, Lunate.Agent.AgentMessageCompletedContext? right) -> bool
+static Lunate.Agent.AgentMessageCompletedContext.operator ==(Lunate.Agent.AgentMessageCompletedContext? left, Lunate.Agent.AgentMessageCompletedContext? right) -> bool
+static Lunate.Agent.AgentMessageCompletedResult.Keep.operator !=(Lunate.Agent.AgentMessageCompletedResult.Keep? left, Lunate.Agent.AgentMessageCompletedResult.Keep? right) -> bool
+static Lunate.Agent.AgentMessageCompletedResult.Keep.operator ==(Lunate.Agent.AgentMessageCompletedResult.Keep? left, Lunate.Agent.AgentMessageCompletedResult.Keep? right) -> bool
+static Lunate.Agent.AgentMessageCompletedResult.Replace.operator !=(Lunate.Agent.AgentMessageCompletedResult.Replace? left, Lunate.Agent.AgentMessageCompletedResult.Replace? right) -> bool
+static Lunate.Agent.AgentMessageCompletedResult.Replace.operator ==(Lunate.Agent.AgentMessageCompletedResult.Replace? left, Lunate.Agent.AgentMessageCompletedResult.Replace? right) -> bool
+static Lunate.Agent.AgentMessageCompletedResult.operator !=(Lunate.Agent.AgentMessageCompletedResult? left, Lunate.Agent.AgentMessageCompletedResult? right) -> bool
+static Lunate.Agent.AgentMessageCompletedResult.operator ==(Lunate.Agent.AgentMessageCompletedResult? left, Lunate.Agent.AgentMessageCompletedResult? right) -> bool
+static Lunate.Agent.AgentPromptSection.operator !=(Lunate.Agent.AgentPromptSection? left, Lunate.Agent.AgentPromptSection? right) -> bool
+static Lunate.Agent.AgentPromptSection.operator ==(Lunate.Agent.AgentPromptSection? left, Lunate.Agent.AgentPromptSection? right) -> bool
+static Lunate.Agent.AgentPromptSectionEdit.operator !=(Lunate.Agent.AgentPromptSectionEdit? left, Lunate.Agent.AgentPromptSectionEdit? right) -> bool
+static Lunate.Agent.AgentPromptSectionEdit.operator ==(Lunate.Agent.AgentPromptSectionEdit? left, Lunate.Agent.AgentPromptSectionEdit? right) -> bool
+static Lunate.Agent.AgentRunSettledContext.operator !=(Lunate.Agent.AgentRunSettledContext? left, Lunate.Agent.AgentRunSettledContext? right) -> bool
+static Lunate.Agent.AgentRunSettledContext.operator ==(Lunate.Agent.AgentRunSettledContext? left, Lunate.Agent.AgentRunSettledContext? right) -> bool
+static Lunate.Agent.AgentRunStartingContext.operator !=(Lunate.Agent.AgentRunStartingContext? left, Lunate.Agent.AgentRunStartingContext? right) -> bool
+static Lunate.Agent.AgentRunStartingContext.operator ==(Lunate.Agent.AgentRunStartingContext? left, Lunate.Agent.AgentRunStartingContext? right) -> bool
+static Lunate.Agent.AgentRunStartingResult.Apply.operator !=(Lunate.Agent.AgentRunStartingResult.Apply? left, Lunate.Agent.AgentRunStartingResult.Apply? right) -> bool
+static Lunate.Agent.AgentRunStartingResult.Apply.operator ==(Lunate.Agent.AgentRunStartingResult.Apply? left, Lunate.Agent.AgentRunStartingResult.Apply? right) -> bool
+static Lunate.Agent.AgentRunStartingResult.None.operator !=(Lunate.Agent.AgentRunStartingResult.None? left, Lunate.Agent.AgentRunStartingResult.None? right) -> bool
+static Lunate.Agent.AgentRunStartingResult.None.operator ==(Lunate.Agent.AgentRunStartingResult.None? left, Lunate.Agent.AgentRunStartingResult.None? right) -> bool
+static Lunate.Agent.AgentRunStartingResult.operator !=(Lunate.Agent.AgentRunStartingResult? left, Lunate.Agent.AgentRunStartingResult? right) -> bool
+static Lunate.Agent.AgentRunStartingResult.operator ==(Lunate.Agent.AgentRunStartingResult? left, Lunate.Agent.AgentRunStartingResult? right) -> bool
+static Lunate.Agent.AgentToolCallingContext.operator !=(Lunate.Agent.AgentToolCallingContext? left, Lunate.Agent.AgentToolCallingContext? right) -> bool
+static Lunate.Agent.AgentToolCallingContext.operator ==(Lunate.Agent.AgentToolCallingContext? left, Lunate.Agent.AgentToolCallingContext? right) -> bool
+static Lunate.Agent.AgentToolCallingResult.Block.operator !=(Lunate.Agent.AgentToolCallingResult.Block? left, Lunate.Agent.AgentToolCallingResult.Block? right) -> bool
+static Lunate.Agent.AgentToolCallingResult.Block.operator ==(Lunate.Agent.AgentToolCallingResult.Block? left, Lunate.Agent.AgentToolCallingResult.Block? right) -> bool
+static Lunate.Agent.AgentToolCallingResult.Proceed.operator !=(Lunate.Agent.AgentToolCallingResult.Proceed? left, Lunate.Agent.AgentToolCallingResult.Proceed? right) -> bool
+static Lunate.Agent.AgentToolCallingResult.Proceed.operator ==(Lunate.Agent.AgentToolCallingResult.Proceed? left, Lunate.Agent.AgentToolCallingResult.Proceed? right) -> bool
+static Lunate.Agent.AgentToolCallingResult.operator !=(Lunate.Agent.AgentToolCallingResult? left, Lunate.Agent.AgentToolCallingResult? right) -> bool
+static Lunate.Agent.AgentToolCallingResult.operator ==(Lunate.Agent.AgentToolCallingResult? left, Lunate.Agent.AgentToolCallingResult? right) -> bool
+static Lunate.Agent.AgentToolResultReadyContext.operator !=(Lunate.Agent.AgentToolResultReadyContext? left, Lunate.Agent.AgentToolResultReadyContext? right) -> bool
+static Lunate.Agent.AgentToolResultReadyContext.operator ==(Lunate.Agent.AgentToolResultReadyContext? left, Lunate.Agent.AgentToolResultReadyContext? right) -> bool
+static Lunate.Agent.AgentToolResultReadyResult.operator !=(Lunate.Agent.AgentToolResultReadyResult? left, Lunate.Agent.AgentToolResultReadyResult? right) -> bool
+static Lunate.Agent.AgentToolResultReadyResult.operator ==(Lunate.Agent.AgentToolResultReadyResult? left, Lunate.Agent.AgentToolResultReadyResult? right) -> bool
+static Lunate.Agent.AgentTurnEndedContext.operator !=(Lunate.Agent.AgentTurnEndedContext? left, Lunate.Agent.AgentTurnEndedContext? right) -> bool
+static Lunate.Agent.AgentTurnEndedContext.operator ==(Lunate.Agent.AgentTurnEndedContext? left, Lunate.Agent.AgentTurnEndedContext? right) -> bool
+static Lunate.Agent.AgentTurnEndedResult.None.get -> Lunate.Agent.AgentTurnEndedResult!
+static Lunate.Agent.AgentTurnEndedResult.operator !=(Lunate.Agent.AgentTurnEndedResult? left, Lunate.Agent.AgentTurnEndedResult? right) -> bool
+static Lunate.Agent.AgentTurnEndedResult.operator ==(Lunate.Agent.AgentTurnEndedResult? left, Lunate.Agent.AgentTurnEndedResult? right) -> bool
+virtual Lunate.Agent.AgentMessageCompletedResult.EqualityContract.get -> System.Type!
+virtual Lunate.Agent.AgentMessageCompletedResult.Equals(Lunate.Agent.AgentMessageCompletedResult? other) -> bool
+virtual Lunate.Agent.AgentMessageCompletedResult.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Lunate.Agent.AgentRunStartingResult.EqualityContract.get -> System.Type!
+virtual Lunate.Agent.AgentRunStartingResult.Equals(Lunate.Agent.AgentRunStartingResult? other) -> bool
+virtual Lunate.Agent.AgentRunStartingResult.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Lunate.Agent.AgentToolCallingResult.EqualityContract.get -> System.Type!
+virtual Lunate.Agent.AgentToolCallingResult.Equals(Lunate.Agent.AgentToolCallingResult? other) -> bool
+virtual Lunate.Agent.AgentToolCallingResult.PrintMembers(System.Text.StringBuilder! builder) -> bool

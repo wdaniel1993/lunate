@@ -25,6 +25,8 @@ public sealed class HelloExtensionFactory : IExtensionFactory
         context.Log.Info(
             $"created {context.Id} instance {instance}: {_greeter.Greeting}, secret present: {secretPresent}, shared {shared}"
         );
+        context.Register(new HelloSessionStartedHandler(context.Log));
+        context.Register(new HelloSessionEndingHandler(context.Log));
         return new HelloExtension(_greeter.Greeting);
     }
 }

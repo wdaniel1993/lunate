@@ -64,12 +64,15 @@ public sealed partial class ExtensionLoader
                 descriptor.Id,
                 ExtensionSettingsStore.Load(_options, descriptor),
                 ExtensionSecretsStore.Load(_options, descriptor.Id),
-                _options.Log ?? NullExtensionLog.Instance
+                _options.Log ?? NullExtensionLog.Instance,
+                _hooks.Register
             );
             IExtension extension = factory.Create(extensionContext);
             var loaded = new LoadedExtension(descriptor.Id, extension, descriptor);
             _loaded[descriptor.Id] = loaded;
             _contexts[descriptor.Id] = context;
+            await StartSessionAsync(workingDirectory, repositoryIdentity, cancellationToken)
+                .ConfigureAwait(false);
             return loaded;
         }
         catch (ExtensionLoadException)
@@ -109,6 +112,36 @@ public sealed partial class ExtensionLoader
                 );
                 return;
             default:
+                ProjectTrustDispatch trust = await _hooks
+                    .RunProjectTrustAsync(
+                        new ProjectTrustPayload(
+                            descriptor.Id,
+                            descriptor.Directory,
+                            repositoryIdentity,
+                            worktreePath
+                        ),
+                        GlobalLoadedIds(),
+                        cancellationToken
+                    )
+                    .ConfigureAwait(false);
+                if (trust.Result is ProjectTrustResult.Deny deny)
+                {
+                    throw new ExtensionTrustDeniedException(
+                        $"extension '{descriptor.Id}' was not trusted for repository '{repositoryIdentity}': {deny.Reason} It was not loaded."
+                    );
+                }
+
+                if (trust.HasHandlers)
+                {
+                    store.RecordTrusted(
+                        repositoryIdentity,
+                        worktreePath,
+                        contentHash,
+                        DateTimeOffset.UtcNow
+                    );
+                    return;
+                }
+
                 bool approved = await prompt
                     .ApproveAsync(descriptor, cancellationToken)
                     .ConfigureAwait(false);
@@ -128,6 +161,15 @@ public sealed partial class ExtensionLoader
                 return;
         }
     }
+
+    private IReadOnlyCollection<string> GlobalLoadedIds() =>
+        [
+            .. _descriptorsById
+                .Values.Where(descriptor =>
+                    descriptor.Scope == ExtensionScope.Global && _loaded.ContainsKey(descriptor.Id)
+                )
+                .Select(descriptor => descriptor.Id),
+        ];
 
     private static IExtensionFactory FindFactory(Assembly assembly, ExtensionDescriptor descriptor)
     {

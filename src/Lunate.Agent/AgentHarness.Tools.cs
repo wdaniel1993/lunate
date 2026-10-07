@@ -249,7 +249,7 @@ public sealed partial class AgentHarness
         return result;
     }
 
-    /// <summary>The approval and execution shared by top-level and nested calls.</summary>
+    /// <summary>The hook, approval and execution shared by top-level and nested calls.</summary>
     private async Task<ToolResult> InvokeToolAsync(
         ITool tool,
         string runId,
@@ -261,9 +261,24 @@ public sealed partial class AgentHarness
         CancellationToken ct
     )
     {
+        (JsonElement approvedArgs, ToolResult? blocked) = await ApplyToolCallingAsync(
+            tool,
+            runId,
+            callId,
+            args,
+            ct
+        );
+        if (blocked is { } block)
+        {
+            return block;
+        }
+
         try
         {
-            if (_options.Approver is { } approver && !await approver.ApproveAsync(tool, args, ct))
+            if (
+                _options.Approver is { } approver
+                && !await approver.ApproveAsync(tool, approvedArgs, ct)
+            )
             {
                 return new ToolResult(
                     $"Denied: '{tool.Name}' was not run. Explain why the call is needed and ask before retrying.",
@@ -280,10 +295,11 @@ public sealed partial class AgentHarness
             );
         }
 
+        ToolResult result;
         try
         {
-            return await tool.ExecuteAsync(
-                args,
+            result = await tool.ExecuteAsync(
+                approvedArgs,
                 BuildToolContext(runId, callId, channel, nestedDepth, nestedCalls, ct),
                 ct
             );
@@ -299,6 +315,65 @@ public sealed partial class AgentHarness
                 IsError: true
             );
         }
+
+        return await ApplyToolResultReadyAsync(tool, runId, callId, result, ct);
+    }
+
+    private async ValueTask<(JsonElement Args, ToolResult? Blocked)> ApplyToolCallingAsync(
+        ITool tool,
+        string runId,
+        string callId,
+        JsonElement args,
+        CancellationToken ct
+    )
+    {
+        if (_options.Hooks is not { } hooks)
+        {
+            return (args, null);
+        }
+
+        AgentToolCallingResult result = await hooks.ToolCallingAsync(
+            new AgentToolCallingContext(runId, callId, tool.Name, args),
+            ct
+        );
+        return result switch
+        {
+            AgentToolCallingResult.Block block => (
+                args,
+                new ToolResult(
+                    $"Denied: '{tool.Name}' was blocked: {block.Reason}. Explain why the call is needed and ask before retrying.",
+                    IsError: true
+                )
+            ),
+            AgentToolCallingResult.Proceed { Arguments: { } mutated } => (mutated, null),
+            _ => (args, null),
+        };
+    }
+
+    private async ValueTask<ToolResult> ApplyToolResultReadyAsync(
+        ITool tool,
+        string runId,
+        string callId,
+        ToolResult result,
+        CancellationToken ct
+    )
+    {
+        if (_options.Hooks is not { } hooks)
+        {
+            return result;
+        }
+
+        AgentToolResultReadyResult ready = await hooks.ToolResultReadyAsync(
+            new AgentToolResultReadyContext(
+                runId,
+                callId,
+                tool.Name,
+                result.Output ?? string.Empty,
+                result.IsError
+            ),
+            ct
+        );
+        return result with { Output = ready.Output, Details = ready.Data ?? result.Details };
     }
 
     private ToolContext BuildToolContext(
