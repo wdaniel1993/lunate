@@ -27,6 +27,7 @@ public sealed class AgentEventTests
             new Retrying(RunId, 2, "rate limited"),
             new CompactionApplied(RunId),
             new StepLimitReached(RunId, 50),
+            new ToolProgressUpdate(RunId, "call_1", "half way"),
         };
 
     public static TheoryData<AgentEvent> ExtensionEvents() =>
@@ -69,7 +70,7 @@ public sealed class AgentEventTests
                 .Where(type => typeof(AgentEvent).IsAssignableFrom(type) && !type.IsAbstract),
         ];
 
-        Assert.Equal(15, concreteTypes.Length);
+        Assert.Equal(16, concreteTypes.Length);
         Assert.All(
             concreteTypes,
             type => Assert.True(type.IsSealed, $"{type.Name} must be sealed")

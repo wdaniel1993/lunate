@@ -2,8 +2,8 @@
 
 ## 1. Events (TDD)
 
-- [ ] 1.1 Base init properties `SessionId`, `ParentRunId`, `Source`; `ParentToolCallId` on the four tool events; `ToolProgressUpdate` event
-- [ ] 1.2 `AgentEventChannel` stamps `SessionId` when a session is attached (constructor takes the optional id); harness passes it
+- [x] 1.1 Base init properties `SessionId`, `ParentRunId`, `Source`; `ParentToolCallId` on the four tool events; `ToolProgressUpdate` event
+- [x] 1.2 `AgentEventChannel` stamps `SessionId` when a session is attached (constructor takes the optional id); harness passes it
 - [ ] 1.3 Tests: stamping on every event of a session-attached run; null when detached; progress event emitted from `ctx.Progress`; a small consumer helper proving unknown kinds are ignored
 
 ## 2. Tool contract (TDD)

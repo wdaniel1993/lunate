@@ -55,7 +55,7 @@ public sealed partial class AgentHarness
         {
             string runId = RunIds.Next();
             _danglingCalls.Clear();
-            var channel = new AgentEventChannel();
+            var channel = new AgentEventChannel(_options.Session?.SessionId);
             using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct);
             Task loop = RunLoopAsync(runId, userInput, channel, linked.Token);
             try
