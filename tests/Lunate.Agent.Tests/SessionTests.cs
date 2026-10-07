@@ -22,7 +22,7 @@ public sealed class SessionTests
             SessionFormat.Parse(Assert.Single(ReadLines(path)))
         );
         Assert.Equal(session.SessionId, header.Id);
-        Assert.Equal(1, header.Schema);
+        Assert.Equal(2, header.Schema);
         Assert.Equal("/work", header.Cwd);
         Assert.Equal(Start, header.Created);
         Assert.False(string.IsNullOrWhiteSpace(header.Meai));
@@ -161,6 +161,25 @@ public sealed class SessionTests
         );
 
         Assert.Contains(path, exception.Message);
+    }
+
+    [Fact]
+    public void Load_fails_actionably_for_unrecognized_content()
+    {
+        using var temp = new TempDirectory();
+        string path = temp.File("s.jsonl");
+        Session.Create(path, temp.Root);
+        File.AppendAllText(
+            path,
+            "{\"type\":\"message\",\"id\":\"e_01\",\"parentId\":null,\"timestamp\":\"2026-10-07T09:00:00.0000000+00:00\",\"message\":{\"role\":\"assistant\",\"contents\":[{\"$type\":\"totallyUnknownContent\",\"x\":1}]}}\n"
+        );
+
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+            Session.Load(path)
+        );
+
+        Assert.Contains(path, exception.Message);
+        Assert.Contains("line 2", exception.Message);
     }
 
     [Fact]

@@ -49,7 +49,8 @@ Envelope identical to existing entries (`type, id, parentId, timestamp`; `parent
 ### Unknown content preservation (messages)
 
 - `SessionMessageEntry` gains `public string? RawMessageJson { get; init; }`.
-- On load: parse the message node to `ChatMessage` (as today). Then re-serialize that `ChatMessage` and compare with the original node via `JsonNode.DeepEquals`. If equal → `RawMessageJson = null` (normal path). If not equal (content kinds the core cannot round-trip, e.g. provider-hosted tool results) → keep the original node's raw text in `RawMessageJson`.
+- On load: parse the message node to `ChatMessage` (as today). Then re-serialize that `ChatMessage` and compare with the original node via `JsonNode.DeepEquals`. If equal → `RawMessageJson = null` (normal path). If not equal (content kinds the core can deserialize but not re-serialize byte-identically, e.g. provider-hosted tool results) → keep the original node's raw text in `RawMessageJson`.
+- An unrecognized `$type` discriminator fails the load (MEAI throws on it); the error is wrapped to name the file and the line. Preserving unrecognized discriminators needs a placeholder-message design and is deferred.
 - On serialize: `RawMessageJson != null` → embed raw (byte-for-byte); else serialize the live `ChatMessage` (today's path). New appends always serialize from the live message.
 
 ### Line writing
@@ -59,6 +60,7 @@ Envelope identical to existing entries (`type, id, parentId, timestamp`; `parent
 ## Harness wiring (nestedCalls only)
 
 - `RunNestedToolAsync` (from `add-extension-formats`) already knows each nested call's name, arguments, outcome and timing; it accumulates a bounded `SessionNestedCall` list per top-level call. `RunToolAsync` appends one `nestedCalls` entry per top-level call that had nested calls (never for clean calls), via the session when one is attached.
+- Records are appended on completion, so the flat list is in completion (depth-first) order — inner calls finish before their parent and appear first. `cancelled` is valid in the record contract but the harness never produces it today (whole-run cancellation throws before a result exists); it is reserved for a later wiring.
 - The other new entries are format + API only in this change; their producers are later cards: `activeTools` and `promptSection` with prompt assembly / T-36 trust; `childSession` with the subagent cards.
 
 ## Testing strategy
@@ -67,7 +69,7 @@ Envelope identical to existing entries (`type, id, parentId, timestamp`; `parent
 - v1 fixtures keep their exact bytes and are re-asserted as load-compatibility (schema 1 header, no new fields).
 - Caps: 200-char truncation (boundary at 200/201), 32-call cap (33rd dropped), status set validation.
 - Ext payload preservation: golden with interior whitespace, unicode and unsorted keys; load → rewrite → byte-identical.
-- Unknown-content: a message with an unknown `$type` content element round-trips; a known message round-trips with `RawMessageJson = null`.
+- Unknown-content: a message whose content deserializes but is not re-serialized byte-identically (e.g. `webSearchToolResult`) round-trips via the raw path; a known message round-trips with `RawMessageJson = null`; an unrecognized `$type` discriminator fails actionably (file and line).
 - Grouping: same repo, two worktrees → same repo folder, distinct worktree folders; no repo → fallback unchanged.
 - Both cultures (the suite already runs under de-AT).
 

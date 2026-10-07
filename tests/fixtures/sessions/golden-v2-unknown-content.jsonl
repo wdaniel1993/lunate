@@ -1,0 +1,2 @@
+{"type":"header","schema":2,"id":"s_20261007-090400-c9d0","cwd":"/repo","created":"2026-10-07T09:04:00.0000000+00:00","meai":"10.10.1"}
+{"type":"message","id":"e_01","parentId":null,"timestamp":"2026-10-07T09:04:01.0000000+00:00","message":{"role":"assistant","contents":[{"$type":"webSearchToolResult","callId":"call_w","result":[{"title":"Result","url":"https://example.com"}]}]}}

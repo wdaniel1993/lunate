@@ -2,32 +2,29 @@ using System.Globalization;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using System.Text.Json.Serialization;
-using System.Text.Json.Serialization.Metadata;
 using Microsoft.Extensions.AI;
 
 namespace Lunate.Agent;
 
 /// <summary>
 /// Serializes and parses one session line. The byte shape is frozen by the golden tests in
-/// tests/fixtures/sessions: envelope field order, the UTC "O" timestamps and the embedded
-/// <see cref="ChatMessage"/> node produced by <see cref="AIJsonUtilities.DefaultOptions"/>.
+/// tests/fixtures/sessions: envelope field order, the UTC "O" timestamps, the embedded
+/// <see cref="ChatMessage"/> node produced by <see cref="AIJsonUtilities.DefaultOptions"/> and
+/// extension payloads written back verbatim.
 /// </summary>
-internal static class SessionFormat
+internal static partial class SessionFormat
 {
-    internal const int SchemaVersion = 1;
+    internal const int SchemaVersion = 2;
 
     private const string HeaderType = "header";
     private const string MessageType = "message";
     private const string CompactionType = "compaction";
     private const string ModelChangeType = "modelChange";
-
-    private static readonly JsonSerializerOptions LineJson = new(AIJsonUtilities.DefaultOptions)
-    {
-        WriteIndented = false,
-        DefaultIgnoreCondition = JsonIgnoreCondition.Never,
-        TypeInfoResolver = new DefaultJsonTypeInfoResolver(),
-    };
+    private const string ActiveToolsType = "activeTools";
+    private const string PromptSectionType = "promptSection";
+    private const string ChildSessionType = "childSession";
+    private const string NestedCallsType = "nestedCalls";
+    private const string ExtensionPrefix = "ext/";
 
     /// <summary>The informational version of the Microsoft.Extensions.AI assembly, recorded in the header.</summary>
     internal static string MeaiVersion { get; } =
@@ -36,53 +33,9 @@ internal static class SessionFormat
             ?.InformationalVersion
         ?? "unknown";
 
-    internal static string Serialize(SessionEntry entry) =>
-        entry switch
-        {
-            SessionHeaderEntry header => SerializeLine(
-                new HeaderLine(
-                    HeaderType,
-                    header.Schema,
-                    header.Id,
-                    header.Cwd,
-                    Stamp(header.Created),
-                    header.Meai
-                )
-            ),
-            SessionMessageEntry message => SerializeLine(
-                new MessageLine(
-                    MessageType,
-                    message.Id,
-                    message.ParentId,
-                    Stamp(message.Timestamp),
-                    JsonSerializer.SerializeToNode(message.Message, AIJsonUtilities.DefaultOptions),
-                    message.Model,
-                    message.Usage
-                )
-            ),
-            SessionCompactionEntry compaction => SerializeLine(
-                new CompactionLine(
-                    CompactionType,
-                    compaction.Id,
-                    compaction.ParentId,
-                    Stamp(compaction.Timestamp),
-                    compaction.Summary,
-                    [.. compaction.Replaces]
-                )
-            ),
-            SessionModelChangeEntry modelChange => SerializeLine(
-                new ModelChangeLine(
-                    ModelChangeType,
-                    modelChange.Id,
-                    modelChange.ParentId,
-                    Stamp(modelChange.Timestamp),
-                    modelChange.Model
-                )
-            ),
-            _ => throw new InvalidDataException(
-                $"Session entry type '{entry.GetType().Name}' cannot be serialized."
-            ),
-        };
+    /// <summary>Whether a type is a valid extension type: <c>ext/&lt;extension-id&gt;/&lt;type&gt;</c>.</summary>
+    internal static bool IsExtensionType(string type) =>
+        type.StartsWith(ExtensionPrefix, StringComparison.Ordinal) && type.Split('/').Length >= 3;
 
     internal static SessionEntry Parse(string line)
     {
@@ -115,7 +68,9 @@ internal static class SessionFormat
                     RequiredInt(root, "schema"),
                     RequiredString(root, "cwd"),
                     RequiredTimestamp(root, "created"),
-                    RequiredString(root, "meai")
+                    RequiredString(root, "meai"),
+                    OptionalString(root, "repo"),
+                    OptionalString(root, "worktree")
                 ),
                 MessageType => ParseMessage(root),
                 CompactionType => new SessionCompactionEntry(
@@ -131,18 +86,35 @@ internal static class SessionFormat
                     RequiredTimestamp(root, "timestamp"),
                     RequiredString(root, "model")
                 ),
-                _ => throw new InvalidDataException(
-                    $"Session line has unknown type '{type}'; expected '{HeaderType}', '{MessageType}', '{CompactionType}' or '{ModelChangeType}'."
+                ActiveToolsType => new SessionActiveToolsEntry(
+                    RequiredString(root, "id"),
+                    OptionalString(root, "parentId"),
+                    RequiredTimestamp(root, "timestamp"),
+                    RequiredStrings(root, "tools")
                 ),
+                PromptSectionType => new SessionPromptSectionEntry(
+                    RequiredString(root, "id"),
+                    OptionalString(root, "parentId"),
+                    RequiredTimestamp(root, "timestamp"),
+                    RequiredString(root, "section"),
+                    RequiredString(root, "text")
+                ),
+                ChildSessionType => new SessionChildSessionEntry(
+                    RequiredString(root, "id"),
+                    OptionalString(root, "parentId"),
+                    RequiredTimestamp(root, "timestamp"),
+                    RequiredString(root, "childSessionId"),
+                    RequiredString(root, "runId")
+                ),
+                NestedCallsType => ParseNestedCalls(root),
+                _ => type.StartsWith(ExtensionPrefix, StringComparison.Ordinal)
+                    ? ParseExtension(root, type)
+                    : throw new InvalidDataException(
+                        $"Session line has unknown type '{type}'; expected '{HeaderType}', '{MessageType}', '{CompactionType}', '{ModelChangeType}', '{ActiveToolsType}', '{PromptSectionType}', '{ChildSessionType}', '{NestedCallsType}' or 'ext/<extension-id>/<type>'."
+                    ),
             };
         }
     }
-
-    private static string SerializeLine<TLine>(TLine line) =>
-        JsonSerializer.Serialize(line, LineJson);
-
-    private static string Stamp(DateTimeOffset timestamp) =>
-        timestamp.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture);
 
     private static SessionMessageEntry ParseMessage(JsonElement root)
     {
@@ -160,19 +132,89 @@ internal static class SessionFormat
             messageElement.Deserialize<ChatMessage>(AIJsonUtilities.DefaultOptions)
             ?? throw new InvalidDataException("Session message line has a null 'message'.");
 
+        string rawMessageJson = messageElement.GetRawText();
         SessionUsage? usage =
             root.TryGetProperty("usage", out JsonElement usageElement)
             && usageElement.ValueKind == JsonValueKind.Object
-                ? usageElement.Deserialize<SessionUsage>(LineJson)
+                ? usageElement.Deserialize<SessionUsage>(AIJsonUtilities.DefaultOptions)
                 : null;
 
-        return new SessionMessageEntry(
+        SessionMessageEntry entry = new(
             RequiredString(root, "id"),
             OptionalString(root, "parentId"),
             RequiredTimestamp(root, "timestamp"),
             message,
             OptionalString(root, "model"),
             usage
+        );
+
+        return JsonNode.DeepEquals(
+            JsonNode.Parse(rawMessageJson),
+            JsonSerializer.SerializeToNode(message, AIJsonUtilities.DefaultOptions)
+        )
+            ? entry
+            : entry with
+            {
+                RawMessageJson = rawMessageJson,
+            };
+    }
+
+    private static SessionNestedCallsEntry ParseNestedCalls(JsonElement root)
+    {
+        if (
+            !root.TryGetProperty("calls", out JsonElement callsElement)
+            || callsElement.ValueKind != JsonValueKind.Array
+        )
+        {
+            throw new InvalidDataException(
+                "Session nestedCalls line is missing the 'calls' array."
+            );
+        }
+
+        List<SessionNestedCall> calls = [];
+        foreach (JsonElement call in callsElement.EnumerateArray())
+        {
+            calls.Add(
+                new SessionNestedCall(
+                    RequiredString(call, "name"),
+                    RequiredString(call, "args"),
+                    RequiredString(call, "status"),
+                    RequiredInt(call, "durationMs")
+                )
+            );
+        }
+
+        return new SessionNestedCallsEntry(
+            RequiredString(root, "id"),
+            OptionalString(root, "parentId"),
+            RequiredTimestamp(root, "timestamp"),
+            RequiredString(root, "callId"),
+            calls
+        );
+    }
+
+    private static SessionExtensionEntry ParseExtension(JsonElement root, string type)
+    {
+        if (!IsExtensionType(type))
+        {
+            throw new InvalidDataException(
+                $"Session line type '{type}' is not a valid extension type; expected 'ext/<extension-id>/<type>'."
+            );
+        }
+
+        if (!root.TryGetProperty("payload", out JsonElement payload))
+        {
+            throw new InvalidDataException(
+                "Session extension line is missing the 'payload' field."
+            );
+        }
+
+        return new SessionExtensionEntry(
+            RequiredString(root, "id"),
+            OptionalString(root, "parentId"),
+            RequiredTimestamp(root, "timestamp"),
+            type,
+            payload.GetRawText()
         );
     }
 
@@ -269,40 +311,4 @@ internal static class SessionFormat
 
         return values;
     }
-
-    private sealed record HeaderLine(
-        string Type,
-        int Schema,
-        string Id,
-        string Cwd,
-        string Created,
-        string Meai
-    );
-
-    private sealed record MessageLine(
-        string Type,
-        string Id,
-        string? ParentId,
-        string Timestamp,
-        JsonNode? Message,
-        [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Model,
-        [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] SessionUsage? Usage
-    );
-
-    private sealed record CompactionLine(
-        string Type,
-        string Id,
-        string? ParentId,
-        string Timestamp,
-        string Summary,
-        IReadOnlyList<string> Replaces
-    );
-
-    private sealed record ModelChangeLine(
-        string Type,
-        string Id,
-        string? ParentId,
-        string Timestamp,
-        string Model
-    );
 }

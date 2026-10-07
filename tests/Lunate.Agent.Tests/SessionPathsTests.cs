@@ -1,3 +1,6 @@
+using System.Security.Cryptography;
+using System.Text;
+
 namespace Lunate.Agent.Tests;
 
 public sealed class SessionPathsTests
@@ -40,6 +43,38 @@ public sealed class SessionPathsTests
     }
 
     [Fact]
+    public void ForRepository_lives_under_the_sessions_directory_with_two_hashed_folders()
+    {
+        string worktree = Path.Combine(Path.GetTempPath(), "lunate-paths-worktree");
+
+        string path = SessionPaths.ForRepository("github.com/acme/widgets", worktree);
+
+        string expectedRoot = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+            ".lunate",
+            "sessions"
+        );
+        Assert.Equal(expectedRoot, Path.GetDirectoryName(Path.GetDirectoryName(path)));
+        Assert.Equal(
+            Hash8("github.com/acme/widgets"),
+            Path.GetFileName(Path.GetDirectoryName(path))
+        );
+        Assert.Equal(Hash8(Path.GetFullPath(worktree)), Path.GetFileName(path));
+    }
+
+    [Fact]
+    public void ForRepository_groups_worktrees_of_one_repository_and_separates_repositories()
+    {
+        string first = SessionPaths.ForRepository("github.com/acme/widgets", "/trees/one");
+        string second = SessionPaths.ForRepository("github.com/acme/widgets", "/trees/two");
+        string other = SessionPaths.ForRepository("github.com/acme/other", "/trees/one");
+
+        Assert.Equal(Path.GetDirectoryName(first), Path.GetDirectoryName(second));
+        Assert.NotEqual(first, second);
+        Assert.NotEqual(Path.GetDirectoryName(first), Path.GetDirectoryName(other));
+    }
+
+    [Fact]
     public void SessionFileName_appends_the_jsonl_extension()
     {
         Assert.Equal(
@@ -56,4 +91,7 @@ public sealed class SessionPathsTests
     {
         Assert.Throws<ArgumentException>(() => SessionPaths.SessionFileName(sessionId));
     }
+
+    private static string Hash8(string value) =>
+        Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(value)))[..8];
 }
