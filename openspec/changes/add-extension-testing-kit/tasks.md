@@ -9,9 +9,9 @@
 
 ## 2. Template
 
-- [ ] 2.1 `templates/extension/TemplateExtension/` per design (factory, one ToolCalling handler, one background service, one secret by name); `extension.json`; README
-- [ ] 2.2 `templates/extension/TemplateExtension.Tests/` using the kit: loads the built assembly from a temp directory, runs against a replay fixture, asserts hook fired + service lifecycle + approval + log id
-- [ ] 2.3 Both projects in the solution (they build on all CI runners)
+- [x] 2.1 `templates/extension/TemplateExtension/` per design (factory, one ToolCalling handler, one background service, one secret by name); `extension.json`; README
+- [x] 2.2 `templates/extension/TemplateExtension.Tests/` using the kit: loads the built assembly from a temp directory, runs against a replay fixture, asserts hook fired + service lifecycle + approval + log id
+- [x] 2.3 Both projects in the solution (they build on all CI runners)
 
 ## 3. Close
 

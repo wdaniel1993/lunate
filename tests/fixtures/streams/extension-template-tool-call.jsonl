@@ -1,0 +1,3 @@
+{"type":"header","schema":1,"model":"synthetic","recordedAt":"2026-10-07T20:33:01.2114970+00:00"}
+{"type":"exchange","requestDigest":"c029e7d2650f7b361e967af9224fcac8d7ce0de02298254466e457a6f112a442","updates":[{"role":"assistant","contents":[{"$type":"functionCall","name":"echo","arguments":{"text":"hello"},"informationalOnly":false,"callId":"call-1"}],"finishReason":"tool_calls"}]}
+{"type":"exchange","requestDigest":"8c3c0315e218547ee53fa0e45995bd631927317b8c3fb567d644bbc0dd07875d","updates":[{"role":"assistant","contents":[{"$type":"text","text":"done"}],"finishReason":"stop"}]}
