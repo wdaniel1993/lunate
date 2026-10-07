@@ -2,9 +2,9 @@
 
 ## 1. Hook contract (TDD, red-first)
 
-- [ ] 1.1 Payload/result DTOs for all 13 catalogue hooks (records; JSON shapes per design.md); a conformance test round-trips every DTO through `System.Text.Json`
-- [ ] 1.2 Handler surface per semantics class (observe | transform | replace | block) + registration on `IExtensionContext` (registration only)
-- [ ] 1.3 Semver-minor versioning note: `ExtensionApi.Current` stays compatible; PublicAPI entries for the new surface
+- [x] 1.1 Payload/result DTOs for all 13 catalogue hooks (records; JSON shapes per design.md); a conformance test round-trips every DTO through `System.Text.Json`
+- [x] 1.2 Handler surface per semantics class (observe | transform | replace | block) + registration on `IExtensionContext` (registration only)
+- [x] 1.3 Semver-minor versioning note: `ExtensionApi.Current` stays compatible; PublicAPI entries for the new surface
 
 ## 2. Runner
 

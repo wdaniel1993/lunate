@@ -6,22 +6,24 @@ public sealed class ExtensionApiTests
 {
     [Fact]
     public void Current_is_the_released_contract_version() =>
-        Assert.Equal("1.0.0", ExtensionApi.Current);
+        Assert.Equal("1.1.0", ExtensionApi.Current);
 
     [Theory]
-    [InlineData("1.0.0")]
+    [InlineData("1.1.0")]
+    [InlineData("^1.1.0")]
     [InlineData("^1.0.0")]
+    [InlineData("^1.0.1")]
     public void Exact_and_caret_ranges_accept_the_current_version(string range) =>
         Assert.True(ExtensionApi.IsCompatible(range));
 
     [Theory]
     [InlineData("0.9.9")]
+    [InlineData("1.0.0")]
     [InlineData("1.0.1")]
-    [InlineData("1.1.0")]
+    [InlineData("1.2.0")]
     [InlineData("2.0.0")]
     [InlineData("^0.9.9")]
-    [InlineData("^1.0.1")]
-    [InlineData("^1.1.0")]
+    [InlineData("^1.2.0")]
     [InlineData("^2.0.0")]
     public void Ranges_outside_the_current_version_are_incompatible(string range) =>
         Assert.False(ExtensionApi.IsCompatible(range));
