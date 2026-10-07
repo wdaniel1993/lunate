@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 
@@ -32,6 +33,8 @@ internal static class EventSequenceSnapshot
             ToolCallEnd e => $"ToolCallEnd({Run(e.RunId)}, {e.CallId})",
             ToolCallResult e =>
                 $"ToolCallResult({Run(e.RunId)}, {e.CallId}, {Quote(e.Output)}, {Bool(e.IsError)})",
+            CompactionApplied e =>
+                $"CompactionApplied({Run(e.RunId)}, [{string.Join(", ", e.ReplacedEntryIds)}], {e.EstimatedTokensAfter.ToString(CultureInfo.InvariantCulture)})",
             _ => agentEvent.ToString() ?? agentEvent.GetType().Name,
         };
 
