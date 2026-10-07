@@ -20,5 +20,5 @@
 
 ## 4. Specs, ADR, close
 
-- [ ] 4.1 Copy adr.md content to `adr/0016-workspace-boundary.md` at the repository root (status proposed)
-- [ ] 4.2 `dotnet csharpier format .`, `bash scripts/verify.sh` green (incl. de-AT), `openspec validate add-file-tools --type change --strict`, self-review
+- [x] 4.1 Copy adr.md content to `adr/0016-workspace-boundary.md` at the repository root (status proposed)
+- [x] 4.2 `dotnet csharpier format .`, `bash scripts/verify.sh` green (incl. de-AT), `openspec validate add-file-tools --type change --strict`, self-review
