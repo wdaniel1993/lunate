@@ -57,7 +57,7 @@ A session file SHALL be append-only JSONL: a header line (schema, session `id`, 
 ## ADDED Requirements
 
 ### Requirement: Extension entries and unknown content
-Extension entries SHALL use the namespaced type `ext/<extension-id>/<type>` with the standard envelope and an opaque JSON payload. The payload SHALL be preserved as raw JSON text and re-emitted byte for byte when the session is rewritten. Content the core does not know (for example provider-hosted tool results) SHALL be preserved in message entries the same way.
+Extension entries SHALL use the namespaced type `ext/<extension-id>/<type>` with the standard envelope and an opaque JSON payload. The payload SHALL be preserved as raw JSON text and re-emitted byte for byte when the session is rewritten. Content the core can deserialize but not re-serialize byte-identically (for example provider-hosted tool results) SHALL be preserved in message entries the same way. Content with an unrecognized `$type` discriminator SHALL fail on load with an error naming the file and the line.
 
 #### Scenario: Extension payloads survive a rewrite byte for byte
 
@@ -67,6 +67,12 @@ Extension entries SHALL use the namespaced type `ext/<extension-id>/<type>` with
 
 #### Scenario: Unknown content survives a rewrite
 
-- **GIVEN** a message entry containing a content kind the core cannot re-serialize
+- **GIVEN** a message entry containing a content kind the core can deserialize but cannot re-serialize byte-identically
 - **WHEN** it is loaded and re-serialized
 - **THEN** the original content bytes are preserved
+
+#### Scenario: Unrecognized content fails actionably
+
+- **GIVEN** a message entry with an unrecognized `$type` discriminator
+- **WHEN** it is loaded
+- **THEN** loading fails with an error naming the file and the line

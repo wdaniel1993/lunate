@@ -349,5 +349,12 @@ public sealed class Session
                 exception
             );
         }
+        catch (JsonException exception)
+        {
+            throw new InvalidDataException(
+                $"Session file '{path}' line {lineNumber} is invalid: {exception.Message}",
+                exception
+            );
+        }
     }
 }
