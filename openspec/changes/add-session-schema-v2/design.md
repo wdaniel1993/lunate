@@ -69,7 +69,7 @@ Envelope identical to existing entries (`type, id, parentId, timestamp`; `parent
 - v1 fixtures keep their exact bytes and are re-asserted as load-compatibility (schema 1 header, no new fields).
 - Caps: 200-char truncation (boundary at 200/201), 32-call cap (33rd dropped), status set validation.
 - Ext payload preservation: golden with interior whitespace, unicode and unsorted keys; load → rewrite → byte-identical.
-- Unknown-content: a message with an unknown `$type` content element round-trips; a known message round-trips with `RawMessageJson = null`.
+- Unknown-content: a message whose content deserializes but is not re-serialized byte-identically (e.g. `webSearchToolResult`) round-trips via the raw path; a known message round-trips with `RawMessageJson = null`; an unrecognized `$type` discriminator fails actionably (file and line).
 - Grouping: same repo, two worktrees → same repo folder, distinct worktree folders; no repo → fallback unchanged.
 - Both cultures (the suite already runs under de-AT).
 
