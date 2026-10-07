@@ -38,7 +38,10 @@ public sealed partial class ExtensionLoader
     /// <summary>The hook runner handlers registered through extension contexts dispatch to.</summary>
     public HookRunner Hooks => _hooks;
 
-    /// <summary>The named service registry shared with extensions (core handles included).</summary>
+    /// <summary>
+    /// The named service registry shared with extensions (core handles included). Register core
+    /// handles before loading extensions: subscriptions made at creation time resolve then.
+    /// </summary>
     public ServiceRegistry Services => _backgroundServices.Services;
 
     /// <summary>The model provider declarations of the loaded extensions.</summary>
@@ -97,8 +100,7 @@ public sealed partial class ExtensionLoader
             !_backgroundServices.Services.TryGetCore<IFileChangeBus>(
                 "core/file-bus",
                 out IFileChangeBus? bus
-            )
-            || bus is null
+            ) || bus is null
         )
         {
             (_options.Log ?? NullExtensionLog.Instance).Warn(

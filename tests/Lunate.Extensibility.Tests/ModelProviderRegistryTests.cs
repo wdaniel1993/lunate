@@ -97,8 +97,7 @@ public sealed class ModelProviderRegistryTests
         var registry = new ModelProviderRegistry();
 
         InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
-            registry.Register("a", [Provider("Acme")]
-            )
+            registry.Register("a", [Provider("Acme")])
         );
 
         Assert.Contains("'a'", exception.Message, StringComparison.Ordinal);

@@ -112,7 +112,9 @@ public sealed class ServiceRegistryTests
         );
         registry.RegisterCore("core/workspace", new WorkspaceInfo("/work", "/repo", "/repo/.git"));
 
-        Assert.True(registry.TryGetCore<IFileChangeBus>("core/file-bus", out IFileChangeBus? found));
+        Assert.True(
+            registry.TryGetCore<IFileChangeBus>("core/file-bus", out IFileChangeBus? found)
+        );
         Assert.Same(bus, found);
         Assert.False(registry.TryGetCore<IMutationQueue>("core/file-bus", out _));
 

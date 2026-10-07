@@ -57,10 +57,7 @@ public sealed class ExtensionLoaderFileChangeTests
         Assert.Contains(
             log.Messages,
             message =>
-                message.Contains(
-                    "hello lookups: bus=False, service=True",
-                    StringComparison.Ordinal
-                )
+                message.Contains("hello lookups: bus=False, service=True", StringComparison.Ordinal)
         );
     }
 }

@@ -35,7 +35,10 @@ public sealed class FileChangeIntegrationTests
         Assert.Equal(2, handler.Payloads.Count);
         string canonical = Path.Combine(workspace.WorktreeRoot, "src", "a.txt");
         Assert.All(handler.Payloads, payload => Assert.Equal(canonical, payload.Path));
-        Assert.All(handler.Payloads, payload => Assert.Equal(workspace.WorktreeRoot, payload.WorkspaceId));
+        Assert.All(
+            handler.Payloads,
+            payload => Assert.Equal(workspace.WorktreeRoot, payload.WorkspaceId)
+        );
     }
 
     [Fact]
@@ -91,10 +94,7 @@ public sealed class FileChangeIntegrationTests
         await firstBus.DrainAsync(Ct);
         await secondBus.DrainAsync(Ct);
 
-        Assert.Equal(
-            firstWorkspace.WorktreeRoot,
-            Assert.Single(firstHandler.Payloads).WorkspaceId
-        );
+        Assert.Equal(firstWorkspace.WorktreeRoot, Assert.Single(firstHandler.Payloads).WorkspaceId);
         Assert.Equal(
             secondWorkspace.WorktreeRoot,
             Assert.Single(secondHandler.Payloads).WorkspaceId

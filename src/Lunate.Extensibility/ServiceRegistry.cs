@@ -105,11 +105,7 @@ public sealed class ServiceRegistry
             foreach (
                 string name in _services
                     .Where(pair =>
-                        string.Equals(
-                            pair.Value.ExtensionId,
-                            extensionId,
-                            StringComparison.Ordinal
-                        )
+                        string.Equals(pair.Value.ExtensionId, extensionId, StringComparison.Ordinal)
                     )
                     .Select(pair => pair.Key)
                     .ToList()
@@ -142,9 +138,7 @@ public sealed class ServiceRegistry
 
     private static bool IsLowerSegment(string segment) =>
         segment.Length > 0
-        && segment.All(character =>
-            character is >= 'a' and <= 'z' or >= '0' and <= '9' or '-'
-        );
+        && segment.All(character => character is >= 'a' and <= 'z' or >= '0' and <= '9' or '-');
 
     private sealed record Registration(string ExtensionId, IBackgroundService Service);
 }

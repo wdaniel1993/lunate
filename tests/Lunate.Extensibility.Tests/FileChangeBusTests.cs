@@ -130,10 +130,7 @@ public sealed class FileChangeBusTests
         var options = new HookRunnerOptions { HandlerTimeout = TimeSpan.FromMilliseconds(50) };
         using var bus = new FileChangeBus("/w", log, options);
         bus.Subscribe(
-            new TestFileChangedHandler(
-                0,
-                async (_, ct) => await Task.Delay(Timeout.Infinite, ct)
-            )
+            new TestFileChangedHandler(0, async (_, ct) => await Task.Delay(Timeout.Infinite, ct))
         );
         var survivor = new RecordingFileChangedHandler();
         bus.Subscribe(survivor);

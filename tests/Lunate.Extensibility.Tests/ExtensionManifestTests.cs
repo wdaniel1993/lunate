@@ -87,15 +87,42 @@ public sealed class ExtensionManifestTests
 
     [Theory]
     [InlineData("""[1]""", "modelProviders")]
-    [InlineData("""[{"displayName":"Acme","endpoint":"http://x/v1","secretName":"k","modelIds":["m"]}]""", "modelProviders[0].id")]
-    [InlineData("""[{"id":"Acme","displayName":"Acme","endpoint":"http://x/v1","secretName":"k","modelIds":["m"]}]""", "modelProviders[0].id")]
-    [InlineData("""[{"id":"acme","endpoint":"http://x/v1","secretName":"k","modelIds":["m"]}]""", "modelProviders[0].displayName")]
-    [InlineData("""[{"id":"acme","displayName":"Acme","secretName":"k","modelIds":["m"]}]""", "modelProviders[0].endpoint")]
-    [InlineData("""[{"id":"acme","displayName":"Acme","endpoint":"ftp://x/v1","secretName":"k","modelIds":["m"]}]""", "modelProviders[0].endpoint")]
-    [InlineData("""[{"id":"acme","displayName":"Acme","endpoint":"/v1","secretName":"k","modelIds":["m"]}]""", "modelProviders[0].endpoint")]
-    [InlineData("""[{"id":"acme","displayName":"Acme","endpoint":"http://x/v1","secretName":"","modelIds":["m"]}]""", "modelProviders[0].secretName")]
-    [InlineData("""[{"id":"acme","displayName":"Acme","endpoint":"http://x/v1","secretName":"k","modelIds":[]}]""", "modelProviders[0].modelIds")]
-    [InlineData("""[{"id":"acme","displayName":"Acme","endpoint":"http://x/v1","secretName":"k","modelIds":[1]}]""", "modelProviders[0].modelIds")]
+    [InlineData(
+        """[{"displayName":"Acme","endpoint":"http://x/v1","secretName":"k","modelIds":["m"]}]""",
+        "modelProviders[0].id"
+    )]
+    [InlineData(
+        """[{"id":"Acme","displayName":"Acme","endpoint":"http://x/v1","secretName":"k","modelIds":["m"]}]""",
+        "modelProviders[0].id"
+    )]
+    [InlineData(
+        """[{"id":"acme","endpoint":"http://x/v1","secretName":"k","modelIds":["m"]}]""",
+        "modelProviders[0].displayName"
+    )]
+    [InlineData(
+        """[{"id":"acme","displayName":"Acme","secretName":"k","modelIds":["m"]}]""",
+        "modelProviders[0].endpoint"
+    )]
+    [InlineData(
+        """[{"id":"acme","displayName":"Acme","endpoint":"ftp://x/v1","secretName":"k","modelIds":["m"]}]""",
+        "modelProviders[0].endpoint"
+    )]
+    [InlineData(
+        """[{"id":"acme","displayName":"Acme","endpoint":"/v1","secretName":"k","modelIds":["m"]}]""",
+        "modelProviders[0].endpoint"
+    )]
+    [InlineData(
+        """[{"id":"acme","displayName":"Acme","endpoint":"http://x/v1","secretName":"","modelIds":["m"]}]""",
+        "modelProviders[0].secretName"
+    )]
+    [InlineData(
+        """[{"id":"acme","displayName":"Acme","endpoint":"http://x/v1","secretName":"k","modelIds":[]}]""",
+        "modelProviders[0].modelIds"
+    )]
+    [InlineData(
+        """[{"id":"acme","displayName":"Acme","endpoint":"http://x/v1","secretName":"k","modelIds":[1]}]""",
+        "modelProviders[0].modelIds"
+    )]
     public void Malformed_model_providers_fail_naming_the_file_and_field(
         string providers,
         string field
@@ -108,7 +135,11 @@ public sealed class ExtensionManifestTests
             ExtensionManifest.Parse(json, "extensions/hello/extension.json")
         );
 
-        Assert.Contains("extensions/hello/extension.json", exception.Message, StringComparison.Ordinal);
+        Assert.Contains(
+            "extensions/hello/extension.json",
+            exception.Message,
+            StringComparison.Ordinal
+        );
         Assert.Contains($"'{field}'", exception.Message, StringComparison.Ordinal);
     }
 

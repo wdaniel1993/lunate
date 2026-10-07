@@ -26,4 +26,4 @@
 
 ## 5. Close
 
-- [ ] 5.1 `dotnet csharpier format .`; `bash scripts/verify.sh` green (incl. de-AT); `openspec validate add-extension-services --type change --strict`; self-review; commit per group
+- [x] 5.1 `dotnet csharpier format .`; `bash scripts/verify.sh` green (incl. de-AT); `openspec validate add-extension-services --type change --strict`; self-review; commit per group

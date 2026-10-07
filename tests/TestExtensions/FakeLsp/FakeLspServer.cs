@@ -63,9 +63,7 @@ public sealed class FakeLspServer
         {
             await running.WaitAsync(cancellationToken).ConfigureAwait(false);
         }
-        catch (OperationCanceledException)
-        {
-        }
+        catch (OperationCanceledException) { }
 
         loop.Dispose();
         Interlocked.Increment(ref _stops);
@@ -89,8 +87,6 @@ public sealed class FakeLspServer
                     .ConfigureAwait(false);
             }
         }
-        catch (OperationCanceledException)
-        {
-        }
+        catch (OperationCanceledException) { }
     }
 }

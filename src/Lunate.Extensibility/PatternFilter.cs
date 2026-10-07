@@ -24,7 +24,10 @@ internal static class PatternFilter
         {
             if (
                 patternIndex < pattern.Length
-                && (pattern[patternIndex] == '?' || Same(path[pathIndex], pattern[patternIndex], ignoreCase))
+                && (
+                    pattern[patternIndex] == '?'
+                    || Same(path[pathIndex], pattern[patternIndex], ignoreCase)
+                )
             )
             {
                 patternIndex++;
@@ -57,7 +60,5 @@ internal static class PatternFilter
     }
 
     private static bool Same(char left, char right, bool ignoreCase) =>
-        ignoreCase
-            ? char.ToUpperInvariant(left) == char.ToUpperInvariant(right)
-            : left == right;
+        ignoreCase ? char.ToUpperInvariant(left) == char.ToUpperInvariant(right) : left == right;
 }

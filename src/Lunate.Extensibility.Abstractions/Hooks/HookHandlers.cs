@@ -136,8 +136,5 @@ public interface IToolsChangedHandler : IHookHandler
 /// <summary>Observes file changes the core emits after successful <c>write</c>/<c>edit</c> mutations.</summary>
 public interface IFileChangedHandler : IHookHandler
 {
-    ValueTask OnFileChangedAsync(
-        FileChangedPayload payload,
-        CancellationToken cancellationToken
-    );
+    ValueTask OnFileChangedAsync(FileChangedPayload payload, CancellationToken cancellationToken);
 }

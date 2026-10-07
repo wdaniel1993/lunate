@@ -8,7 +8,8 @@ namespace Lunate.Extensibility;
 /// The in-process file change bus: the core emits one <see cref="FileChangedPayload"/> per
 /// successful queued mutation, delivery is ordered per workspace (one dispatch queue per bus
 /// instance) and pattern-filtered per subscription, and handler failures or timeouts are reported
-/// and contained. <see cref="Notify"/> never throws.
+/// and contained. <see cref="Notify"/> never throws. A mutation outside the workspace root still
+/// carries this bus's workspace id.
 /// </summary>
 public sealed class FileChangeBus : IFileChangeSink, IFileChangeBus, IDisposable
 {
@@ -16,7 +17,8 @@ public sealed class FileChangeBus : IFileChangeSink, IFileChangeBus, IDisposable
     private readonly IExtensionLog _log;
     private readonly HookRunnerOptions _options;
     private readonly object _gate = new();
-    private readonly Channel<FileChangedPayload> _events = Channel.CreateUnbounded<FileChangedPayload>();
+    private readonly Channel<FileChangedPayload> _events =
+        Channel.CreateUnbounded<FileChangedPayload>();
     private readonly List<Subscription> _subscriptions = [];
     private readonly List<Drain> _drains = [];
     private long _sequence;
