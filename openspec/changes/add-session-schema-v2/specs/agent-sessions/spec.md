@@ -65,6 +65,7 @@ Extension entries SHALL use the namespaced type `ext/<extension-id>/<type>` with
 - **THEN** the payload bytes are identical
 
 #### Scenario: Unknown content survives a rewrite
+
 - **GIVEN** a message entry containing a content kind the core cannot re-serialize
 - **WHEN** it is loaded and re-serialized
 - **THEN** the original content bytes are preserved
