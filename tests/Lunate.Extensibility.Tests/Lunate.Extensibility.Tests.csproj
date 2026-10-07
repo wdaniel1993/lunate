@@ -8,6 +8,7 @@
         <ProjectReference Include="../../src/Lunate.Agent/Lunate.Agent.csproj" />
         <ProjectReference Include="../../src/Lunate.Extensibility.Abstractions/Lunate.Extensibility.Abstractions.csproj" />
         <ProjectReference Include="../../src/Lunate.Extensibility/Lunate.Extensibility.csproj" />
+        <ProjectReference Include="../TestExtensions/FakeLsp/FakeLsp.csproj" />
         <ProjectReference
             Include="../TestExtensions/HelloExtension/HelloExtension.csproj"
             ReferenceOutputAssembly="false"

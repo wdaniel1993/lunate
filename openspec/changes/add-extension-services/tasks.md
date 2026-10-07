@@ -8,9 +8,9 @@
 
 ## 2. Service host and lifecycle
 
-- [ ] 2.1 Host starts registered services on `SessionStarted` semantics (safe to run more than once), stops them idempotently on `SessionEnding`; per-extension state tracked; unload drops them
-- [ ] 2.2 Start failure: reported, remaining services of that extension do not start (policy per design); stop failures reported
-- [ ] 2.3 Fake LSP server fixture: lifecycle test — start, serve a request over the fixture's transport, stop; restart-safe
+- [x] 2.1 Host starts registered services on `SessionStarted` semantics (safe to run more than once), stops them idempotently on `SessionEnding`; per-extension state tracked; unload drops them
+- [x] 2.2 Start failure: reported, remaining services of that extension do not start (policy per design); stop failures reported
+- [x] 2.3 Fake LSP server fixture: lifecycle test — start, serve a request over the fixture's transport, stop; restart-safe
 
 ## 3. File change bus
 

@@ -47,8 +47,8 @@ public sealed class ExtensionLoadingTests
             prompt,
             TestContext.Current.CancellationToken
         );
-        loader.Unload("hello");
-        loader.Unload("hello");
+        await loader.Unload("hello");
+        await loader.Unload("hello");
         await loader.Load(
             "hello",
             temp.Root,

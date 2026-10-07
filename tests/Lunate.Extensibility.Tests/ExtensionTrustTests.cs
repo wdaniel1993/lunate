@@ -27,7 +27,7 @@ public sealed class ExtensionTrustTests
         string trustPath = Path.Combine(store, "trust.json");
         Assert.Equal(["trust.json"], Directory.GetFiles(store).Select(Path.GetFileName));
 
-        loader.Unload("hello");
+        await loader.Unload("hello");
         await loader.Load(
             "hello",
             worktree,
@@ -59,7 +59,7 @@ public sealed class ExtensionTrustTests
 
         loader.Discover(first, "repo-1");
         await loader.Load("hello", first, "repo-1", prompt, TestContext.Current.CancellationToken);
-        loader.Unload("hello");
+        await loader.Unload("hello");
         loader.Discover(second, "repo-1");
         await loader.Load("hello", second, "repo-1", prompt, TestContext.Current.CancellationToken);
 
@@ -93,7 +93,7 @@ public sealed class ExtensionTrustTests
             prompt,
             TestContext.Current.CancellationToken
         );
-        loader.Unload("hello");
+        await loader.Unload("hello");
         File.WriteAllText(Path.Combine(directory, "changed.txt"), "changed");
         await loader.Load(
             "hello",

@@ -27,6 +27,10 @@ public sealed class HelloExtensionFactory : IExtensionFactory
         );
         context.Register(new HelloSessionStartedHandler(context.Log));
         context.Register(new HelloSessionEndingHandler(context.Log));
+        context.RegisterService(
+            $"ext/{context.Id}/greeter",
+            new HelloBackgroundService(context.Log)
+        );
         return new HelloExtension(_greeter.Greeting);
     }
 }
