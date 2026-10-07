@@ -65,27 +65,48 @@ public sealed partial class ExtensionLoader
                 ExtensionSettingsStore.Load(_options, descriptor),
                 ExtensionSecretsStore.Load(_options, descriptor.Id),
                 _options.Log ?? NullExtensionLog.Instance,
-                _hooks.Register
+                _hooks.Register,
+                _backgroundServices.Register,
+                SubscribeFileChanged,
+                FindService,
+                FindCoreService
             );
             IExtension extension = factory.Create(extensionContext);
+            _modelProviders.Register(descriptor.Id, descriptor.Manifest.ModelProviders);
             var loaded = new LoadedExtension(descriptor.Id, extension, descriptor);
             _loaded[descriptor.Id] = loaded;
             _contexts[descriptor.Id] = context;
             await StartSessionAsync(workingDirectory, repositoryIdentity, cancellationToken)
                 .ConfigureAwait(false);
+            if (!_sessionEnded)
+            {
+                await _backgroundServices.StartAsync(cancellationToken).ConfigureAwait(false);
+            }
+
             return loaded;
         }
         catch (ExtensionLoadException)
         {
+            await _backgroundServices.DropAsync(descriptor.Id).ConfigureAwait(false);
+            _modelProviders.Unregister(descriptor.Id);
+            DropSubscriptions(descriptor.Id);
             context.Unload();
             throw;
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
+            await _backgroundServices.DropAsync(descriptor.Id).ConfigureAwait(false);
+            _modelProviders.Unregister(descriptor.Id);
+            DropSubscriptions(descriptor.Id);
             context.Unload();
             throw WrapLoadFailure(descriptor, exception);
         }
     }
+
+    private IBackgroundService? FindService(string name) =>
+        _backgroundServices.Services.TryGet(name, out IBackgroundService? service) ? service : null;
+
+    private object? FindCoreService(string name) => _backgroundServices.Services.FindCore(name);
 
     private async Task EnsureTrustedAsync(
         ExtensionDescriptor descriptor,

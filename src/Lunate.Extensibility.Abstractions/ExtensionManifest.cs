@@ -2,7 +2,7 @@ using System.Text.Json;
 
 namespace Lunate.Extensibility.Abstractions;
 
-public sealed record ExtensionManifest
+public sealed partial record ExtensionManifest
 {
     public required string Id { get; init; }
 
@@ -21,6 +21,8 @@ public sealed record ExtensionManifest
     public IReadOnlyList<string> Services { get; init; } = [];
 
     public IReadOnlyList<string> Capabilities { get; init; } = [];
+
+    public IReadOnlyList<ModelProviderDescriptor> ModelProviders { get; init; } = [];
 
     public JsonElement? SettingsSchema { get; init; }
 
@@ -94,6 +96,7 @@ public sealed record ExtensionManifest
                 Hooks = DeclarationArray(root, fileName, "hooks"),
                 Services = DeclarationArray(root, fileName, "services"),
                 Capabilities = StringArray(root, fileName, "capabilities"),
+                ModelProviders = ModelProviderArray(root, fileName),
                 SettingsSchema = OptionalSettingsSchema(root, fileName),
             };
         }

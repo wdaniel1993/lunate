@@ -58,6 +58,110 @@ public sealed class ExtensionManifestTests
     }
 
     [Fact]
+    public void Parses_model_provider_declarations()
+    {
+        const string json = """
+            {"id":"hello","version":"0.1.0","apiVersion":"^1.0.0","entryAssembly":"HelloExtension.dll",
+             "modelProviders":[{"id":"acme-local","displayName":"Acme Local",
+              "endpoint":"http://localhost:11434/v1","secretName":"acme-key",
+              "modelIds":["acme-7b","acme-13b"],"future":"ignored"}]}
+            """;
+
+        ExtensionManifest manifest = ExtensionManifest.Parse(json, "extension.json");
+
+        ModelProviderDescriptor provider = Assert.Single(manifest.ModelProviders);
+        Assert.Equal("acme-local", provider.Id);
+        Assert.Equal("Acme Local", provider.DisplayName);
+        Assert.Equal("http://localhost:11434/v1", provider.Endpoint);
+        Assert.Equal("acme-key", provider.SecretName);
+        Assert.Equal(["acme-7b", "acme-13b"], provider.ModelIds);
+    }
+
+    [Fact]
+    public void Model_providers_default_to_empty()
+    {
+        ExtensionManifest manifest = ExtensionManifest.Parse(Minimal, "extension.json");
+
+        Assert.Empty(manifest.ModelProviders);
+    }
+
+    [Theory]
+    [InlineData("""[1]""", "modelProviders")]
+    [InlineData(
+        """[{"displayName":"Acme","endpoint":"http://x/v1","secretName":"k","modelIds":["m"]}]""",
+        "modelProviders[0].id"
+    )]
+    [InlineData(
+        """[{"id":"Acme","displayName":"Acme","endpoint":"http://x/v1","secretName":"k","modelIds":["m"]}]""",
+        "modelProviders[0].id"
+    )]
+    [InlineData(
+        """[{"id":"acme","endpoint":"http://x/v1","secretName":"k","modelIds":["m"]}]""",
+        "modelProviders[0].displayName"
+    )]
+    [InlineData(
+        """[{"id":"acme","displayName":"Acme","secretName":"k","modelIds":["m"]}]""",
+        "modelProviders[0].endpoint"
+    )]
+    [InlineData(
+        """[{"id":"acme","displayName":"Acme","endpoint":"ftp://x/v1","secretName":"k","modelIds":["m"]}]""",
+        "modelProviders[0].endpoint"
+    )]
+    [InlineData(
+        """[{"id":"acme","displayName":"Acme","endpoint":"/v1","secretName":"k","modelIds":["m"]}]""",
+        "modelProviders[0].endpoint"
+    )]
+    [InlineData(
+        """[{"id":"acme","displayName":"Acme","endpoint":"http://x/v1","secretName":"","modelIds":["m"]}]""",
+        "modelProviders[0].secretName"
+    )]
+    [InlineData(
+        """[{"id":"acme","displayName":"Acme","endpoint":"http://x/v1","secretName":"k","modelIds":[]}]""",
+        "modelProviders[0].modelIds"
+    )]
+    [InlineData(
+        """[{"id":"acme","displayName":"Acme","endpoint":"http://x/v1","secretName":"k","modelIds":[1]}]""",
+        "modelProviders[0].modelIds"
+    )]
+    public void Malformed_model_providers_fail_naming_the_file_and_field(
+        string providers,
+        string field
+    )
+    {
+        string json =
+            $$"""{"id":"hello","version":"0.1.0","apiVersion":"^1.0.0","entryAssembly":"e.dll","modelProviders":{{providers}}}""";
+
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+            ExtensionManifest.Parse(json, "extensions/hello/extension.json")
+        );
+
+        Assert.Contains(
+            "extensions/hello/extension.json",
+            exception.Message,
+            StringComparison.Ordinal
+        );
+        Assert.Contains($"'{field}'", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Duplicate_model_provider_ids_are_rejected()
+    {
+        const string providers = """
+            [{"id":"acme","displayName":"Acme","endpoint":"http://x/v1","secretName":"k","modelIds":["m"]},
+             {"id":"acme","displayName":"Other","endpoint":"http://y/v1","secretName":"k2","modelIds":["m2"]}]
+            """;
+        string json =
+            $$"""{"id":"hello","version":"0.1.0","apiVersion":"^1.0.0","entryAssembly":"e.dll","modelProviders":{{providers}}}""";
+
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+            ExtensionManifest.Parse(json, "extension.json")
+        );
+
+        Assert.Contains("'modelProviders'", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("'acme'", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Parses_an_incompatible_but_syntactically_valid_range()
     {
         const string json =

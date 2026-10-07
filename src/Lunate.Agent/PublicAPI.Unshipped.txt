@@ -994,3 +994,10 @@ virtual Lunate.Agent.AgentRunStartingResult.PrintMembers(System.Text.StringBuild
 virtual Lunate.Agent.AgentToolCallingResult.EqualityContract.get -> System.Type!
 virtual Lunate.Agent.AgentToolCallingResult.Equals(Lunate.Agent.AgentToolCallingResult? other) -> bool
 virtual Lunate.Agent.AgentToolCallingResult.PrintMembers(System.Text.StringBuilder! builder) -> bool
+Lunate.Agent.AgentHarnessOptions.FileChanges.get -> Lunate.Agent.IFileChangeSink!
+Lunate.Agent.AgentHarnessOptions.FileChanges.init -> void
+Lunate.Agent.IFileChangeSink
+Lunate.Agent.IFileChangeSink.Notify(string! absolutePath) -> void
+Lunate.Agent.NullFileChangeSink
+Lunate.Agent.NullFileChangeSink.Notify(string! absolutePath) -> void
+static Lunate.Agent.NullFileChangeSink.Instance.get -> Lunate.Agent.NullFileChangeSink!

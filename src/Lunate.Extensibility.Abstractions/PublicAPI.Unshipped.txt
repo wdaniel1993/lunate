@@ -1,6 +1,6 @@
 #nullable enable
 Lunate.Extensibility.Abstractions.ExtensionApi
-const Lunate.Extensibility.Abstractions.ExtensionApi.Current = "1.1.0" -> string!
+const Lunate.Extensibility.Abstractions.ExtensionApi.Current = "1.2.0" -> string!
 Lunate.Extensibility.Abstractions.ExtensionManifest
 Lunate.Extensibility.Abstractions.ExtensionManifest.<Clone>$() -> Lunate.Extensibility.Abstractions.ExtensionManifest!
 Lunate.Extensibility.Abstractions.ExtensionManifest.ApiVersion.get -> string!
@@ -653,3 +653,68 @@ virtual Lunate.Extensibility.Abstractions.ToolCallingResult.PrintMembers(System.
 virtual Lunate.Extensibility.Abstractions.TurnEndedResult.EqualityContract.get -> System.Type!
 virtual Lunate.Extensibility.Abstractions.TurnEndedResult.Equals(Lunate.Extensibility.Abstractions.TurnEndedResult? other) -> bool
 virtual Lunate.Extensibility.Abstractions.TurnEndedResult.PrintMembers(System.Text.StringBuilder! builder) -> bool
+Lunate.Extensibility.Abstractions.ExtensionManifest.ModelProviders.get -> System.Collections.Generic.IReadOnlyList<Lunate.Extensibility.Abstractions.ModelProviderDescriptor!>!
+Lunate.Extensibility.Abstractions.ExtensionManifest.ModelProviders.init -> void
+Lunate.Extensibility.Abstractions.FileChangedPayload
+Lunate.Extensibility.Abstractions.FileChangedPayload.<Clone>$() -> Lunate.Extensibility.Abstractions.FileChangedPayload!
+Lunate.Extensibility.Abstractions.FileChangedPayload.Deconstruct(out string! Path, out string! WorkspaceId) -> void
+Lunate.Extensibility.Abstractions.FileChangedPayload.Equals(Lunate.Extensibility.Abstractions.FileChangedPayload? other) -> bool
+Lunate.Extensibility.Abstractions.FileChangedPayload.FileChangedPayload(string! Path, string! WorkspaceId) -> void
+Lunate.Extensibility.Abstractions.FileChangedPayload.Path.get -> string!
+Lunate.Extensibility.Abstractions.FileChangedPayload.Path.init -> void
+Lunate.Extensibility.Abstractions.FileChangedPayload.WorkspaceId.get -> string!
+Lunate.Extensibility.Abstractions.FileChangedPayload.WorkspaceId.init -> void
+Lunate.Extensibility.Abstractions.IBackgroundService
+Lunate.Extensibility.Abstractions.IBackgroundService.StartAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask
+Lunate.Extensibility.Abstractions.IBackgroundService.StopAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask
+Lunate.Extensibility.Abstractions.IExtensionContext.RegisterService(string! name, Lunate.Extensibility.Abstractions.IBackgroundService! service) -> void
+Lunate.Extensibility.Abstractions.IExtensionContext.SubscribeFileChanged(Lunate.Extensibility.Abstractions.IFileChangedHandler! handler, string? pathPattern = null) -> void
+Lunate.Extensibility.Abstractions.IExtensionContext.TryGetCoreService<T>(string! name, out T? service) -> bool
+Lunate.Extensibility.Abstractions.IExtensionContext.TryGetService(string! name, out Lunate.Extensibility.Abstractions.IBackgroundService? service) -> bool
+Lunate.Extensibility.Abstractions.IFileChangeBus
+Lunate.Extensibility.Abstractions.IFileChangeBus.Subscribe(Lunate.Extensibility.Abstractions.IFileChangedHandler! handler, string? pathPattern = null) -> System.IDisposable!
+Lunate.Extensibility.Abstractions.IFileChangedHandler
+Lunate.Extensibility.Abstractions.IFileChangedHandler.OnFileChangedAsync(Lunate.Extensibility.Abstractions.FileChangedPayload! payload, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask
+Lunate.Extensibility.Abstractions.IMutationQueue
+Lunate.Extensibility.Abstractions.IMutationQueue.RunAsync<T>(string! path, System.Func<System.Threading.CancellationToken, System.Threading.Tasks.Task<T>!>! mutation, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<T>!
+Lunate.Extensibility.Abstractions.ModelProviderDescriptor
+Lunate.Extensibility.Abstractions.ModelProviderDescriptor.<Clone>$() -> Lunate.Extensibility.Abstractions.ModelProviderDescriptor!
+Lunate.Extensibility.Abstractions.ModelProviderDescriptor.Deconstruct(out string! Id, out string! DisplayName, out string! Endpoint, out string! SecretName, out System.Collections.Generic.IReadOnlyList<string!>! ModelIds) -> void
+Lunate.Extensibility.Abstractions.ModelProviderDescriptor.DisplayName.get -> string!
+Lunate.Extensibility.Abstractions.ModelProviderDescriptor.DisplayName.init -> void
+Lunate.Extensibility.Abstractions.ModelProviderDescriptor.Endpoint.get -> string!
+Lunate.Extensibility.Abstractions.ModelProviderDescriptor.Endpoint.init -> void
+Lunate.Extensibility.Abstractions.ModelProviderDescriptor.Equals(Lunate.Extensibility.Abstractions.ModelProviderDescriptor? other) -> bool
+Lunate.Extensibility.Abstractions.ModelProviderDescriptor.Id.get -> string!
+Lunate.Extensibility.Abstractions.ModelProviderDescriptor.Id.init -> void
+Lunate.Extensibility.Abstractions.ModelProviderDescriptor.ModelIds.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Lunate.Extensibility.Abstractions.ModelProviderDescriptor.ModelIds.init -> void
+Lunate.Extensibility.Abstractions.ModelProviderDescriptor.ModelProviderDescriptor(string! Id, string! DisplayName, string! Endpoint, string! SecretName, System.Collections.Generic.IReadOnlyList<string!>! ModelIds) -> void
+Lunate.Extensibility.Abstractions.ModelProviderDescriptor.SecretName.get -> string!
+Lunate.Extensibility.Abstractions.ModelProviderDescriptor.SecretName.init -> void
+Lunate.Extensibility.Abstractions.WorkspaceInfo
+Lunate.Extensibility.Abstractions.WorkspaceInfo.<Clone>$() -> Lunate.Extensibility.Abstractions.WorkspaceInfo!
+Lunate.Extensibility.Abstractions.WorkspaceInfo.Deconstruct(out string! WorktreeRoot, out string? RepoRoot, out string? GitCommonDir) -> void
+Lunate.Extensibility.Abstractions.WorkspaceInfo.Equals(Lunate.Extensibility.Abstractions.WorkspaceInfo? other) -> bool
+Lunate.Extensibility.Abstractions.WorkspaceInfo.GitCommonDir.get -> string?
+Lunate.Extensibility.Abstractions.WorkspaceInfo.GitCommonDir.init -> void
+Lunate.Extensibility.Abstractions.WorkspaceInfo.RepoRoot.get -> string?
+Lunate.Extensibility.Abstractions.WorkspaceInfo.RepoRoot.init -> void
+Lunate.Extensibility.Abstractions.WorkspaceInfo.WorktreeRoot.get -> string!
+Lunate.Extensibility.Abstractions.WorkspaceInfo.WorktreeRoot.init -> void
+Lunate.Extensibility.Abstractions.WorkspaceInfo.WorkspaceInfo(string! WorktreeRoot, string? RepoRoot, string? GitCommonDir) -> void
+override Lunate.Extensibility.Abstractions.FileChangedPayload.Equals(object? obj) -> bool
+override Lunate.Extensibility.Abstractions.FileChangedPayload.GetHashCode() -> int
+override Lunate.Extensibility.Abstractions.FileChangedPayload.ToString() -> string!
+override Lunate.Extensibility.Abstractions.ModelProviderDescriptor.Equals(object? obj) -> bool
+override Lunate.Extensibility.Abstractions.ModelProviderDescriptor.GetHashCode() -> int
+override Lunate.Extensibility.Abstractions.ModelProviderDescriptor.ToString() -> string!
+override Lunate.Extensibility.Abstractions.WorkspaceInfo.Equals(object? obj) -> bool
+override Lunate.Extensibility.Abstractions.WorkspaceInfo.GetHashCode() -> int
+override Lunate.Extensibility.Abstractions.WorkspaceInfo.ToString() -> string!
+static Lunate.Extensibility.Abstractions.FileChangedPayload.operator !=(Lunate.Extensibility.Abstractions.FileChangedPayload? left, Lunate.Extensibility.Abstractions.FileChangedPayload? right) -> bool
+static Lunate.Extensibility.Abstractions.FileChangedPayload.operator ==(Lunate.Extensibility.Abstractions.FileChangedPayload? left, Lunate.Extensibility.Abstractions.FileChangedPayload? right) -> bool
+static Lunate.Extensibility.Abstractions.ModelProviderDescriptor.operator !=(Lunate.Extensibility.Abstractions.ModelProviderDescriptor? left, Lunate.Extensibility.Abstractions.ModelProviderDescriptor? right) -> bool
+static Lunate.Extensibility.Abstractions.ModelProviderDescriptor.operator ==(Lunate.Extensibility.Abstractions.ModelProviderDescriptor? left, Lunate.Extensibility.Abstractions.ModelProviderDescriptor? right) -> bool
+static Lunate.Extensibility.Abstractions.WorkspaceInfo.operator !=(Lunate.Extensibility.Abstractions.WorkspaceInfo? left, Lunate.Extensibility.Abstractions.WorkspaceInfo? right) -> bool
+static Lunate.Extensibility.Abstractions.WorkspaceInfo.operator ==(Lunate.Extensibility.Abstractions.WorkspaceInfo? left, Lunate.Extensibility.Abstractions.WorkspaceInfo? right) -> bool

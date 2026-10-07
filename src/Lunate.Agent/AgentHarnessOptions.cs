@@ -32,4 +32,7 @@ public sealed record AgentHarnessOptions
 
     /// <summary>The file mutation queue shared with tools through <see cref="ToolContext"/>.</summary>
     public IFileMutationQueue FileMutations { get; init; } = FileMutationQueue.Shared;
+
+    /// <summary>The file change sink the host injects into file-mutating tools; no-op by default.</summary>
+    public IFileChangeSink FileChanges { get; init; } = NullFileChangeSink.Instance;
 }

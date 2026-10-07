@@ -15,6 +15,11 @@ public sealed partial class ExtensionLoader
         StringComparer.Ordinal
     );
     private readonly HookRunner _hooks;
+    private readonly BackgroundServiceHost _backgroundServices;
+    private readonly ModelProviderRegistry _modelProviders = new();
+    private readonly Dictionary<string, List<IDisposable>> _subscriptions = new(
+        StringComparer.Ordinal
+    );
     private bool _sessionStarted;
     private bool _sessionEnded;
     private SessionStartedPayload? _session;
@@ -27,10 +32,20 @@ public sealed partial class ExtensionLoader
         ArgumentNullException.ThrowIfNull(options);
         _options = options;
         _hooks = hooks ?? new HookRunner(null, options.Log);
+        _backgroundServices = new BackgroundServiceHost(options.Log);
     }
 
     /// <summary>The hook runner handlers registered through extension contexts dispatch to.</summary>
     public HookRunner Hooks => _hooks;
+
+    /// <summary>
+    /// The named service registry shared with extensions (core handles included). Register core
+    /// handles before loading extensions: subscriptions made at creation time resolve then.
+    /// </summary>
+    public ServiceRegistry Services => _backgroundServices.Services;
+
+    /// <summary>The model provider declarations of the loaded extensions.</summary>
+    public ModelProviderRegistry ModelProviders => _modelProviders;
 
     public IReadOnlyList<ExtensionDescriptor> Descriptors => [.. _descriptors];
 
@@ -57,7 +72,7 @@ public sealed partial class ExtensionLoader
         return Descriptors;
     }
 
-    public void Unload(string id)
+    public async ValueTask Unload(string id)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(id);
         if (!_loaded.Remove(id))
@@ -66,9 +81,52 @@ public sealed partial class ExtensionLoader
         }
 
         _hooks.Unregister(id);
+        await _backgroundServices.DropAsync(id).ConfigureAwait(false);
+        _modelProviders.Unregister(id);
+        DropSubscriptions(id);
         if (_contexts.Remove(id, out ExtensionLoadContext? context))
         {
             context.Unload();
+        }
+    }
+
+    private void SubscribeFileChanged(
+        string extensionId,
+        IFileChangedHandler handler,
+        string? pathPattern
+    )
+    {
+        if (
+            !_backgroundServices.Services.TryGetCore<IFileChangeBus>(
+                "core/file-bus",
+                out IFileChangeBus? bus
+            ) || bus is null
+        )
+        {
+            (_options.Log ?? NullExtensionLog.Instance).Warn(
+                $"extension '{extensionId}' subscribed to file changes, but no core/file-bus service is registered; the subscription will not receive events."
+            );
+            return;
+        }
+
+        IDisposable subscription = bus.Subscribe(handler, pathPattern);
+        if (!_subscriptions.TryGetValue(extensionId, out List<IDisposable>? subscriptions))
+        {
+            subscriptions = [];
+            _subscriptions[extensionId] = subscriptions;
+        }
+
+        subscriptions.Add(subscription);
+    }
+
+    private void DropSubscriptions(string extensionId)
+    {
+        if (_subscriptions.Remove(extensionId, out List<IDisposable>? subscriptions))
+        {
+            foreach (IDisposable subscription in subscriptions)
+            {
+                subscription.Dispose();
+            }
         }
     }
 
@@ -87,6 +145,7 @@ public sealed partial class ExtensionLoader
                 cancellationToken
             )
             .ConfigureAwait(false);
+        await _backgroundServices.StopAsync(cancellationToken).ConfigureAwait(false);
     }
 
     private async ValueTask StartSessionAsync(

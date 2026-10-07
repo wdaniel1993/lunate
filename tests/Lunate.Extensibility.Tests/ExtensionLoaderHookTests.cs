@@ -47,7 +47,7 @@ public sealed class ExtensionLoaderHookTests
         loader.Discover(temp.Root, "repo");
 
         await loader.Load("hello", temp.Root, "repo", new FakeExtensionTrustPrompt(true), Ct);
-        loader.Unload("hello");
+        await loader.Unload("hello");
         await loader.Load("hello", temp.Root, "repo", new FakeExtensionTrustPrompt(true), Ct);
 
         Assert.Single(
@@ -69,7 +69,7 @@ public sealed class ExtensionLoaderHookTests
         await loader.Hooks.RunSessionStartedAsync(new SessionStartedPayload(temp.Root, "repo"), Ct);
         Assert.Equal(2, Started(log));
 
-        loader.Unload("hello");
+        await loader.Unload("hello");
         await loader.Hooks.RunSessionStartedAsync(new SessionStartedPayload(temp.Root, "repo"), Ct);
         Assert.Equal(2, Started(log));
 

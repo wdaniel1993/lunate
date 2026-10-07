@@ -19,14 +19,17 @@ internal static class TestExtensions
         string id,
         string entryAssembly = "HelloExtension.dll",
         string apiVersion = "^1.0.0",
-        string settingsSchema = ""
+        string settingsSchema = "",
+        string modelProviders = ""
     )
     {
         Directory.CreateDirectory(extensionDirectory);
         string? schema =
             settingsSchema.Length == 0 ? null : $",\"settingsSchema\":{settingsSchema}";
+        string? providers =
+            modelProviders.Length == 0 ? null : $",\"modelProviders\":{modelProviders}";
         string json =
-            $$"""{"id":"{{id}}","version":"0.1.0","apiVersion":"{{apiVersion}}","entryAssembly":"{{entryAssembly}}"{{schema}}}""";
+            $$"""{"id":"{{id}}","version":"0.1.0","apiVersion":"{{apiVersion}}","entryAssembly":"{{entryAssembly}}"{{schema}}{{providers}}}""";
         File.WriteAllText(Path.Combine(extensionDirectory, "extension.json"), json);
     }
 
