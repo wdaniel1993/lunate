@@ -6,7 +6,7 @@ The workspace boundary for the file tools — canonical path resolution (symlink
 ## Requirements
 
 ### Requirement: Workspace boundary
-A `Workspace` SHALL resolve every file-tool path to a canonical absolute path: symlinks resolved for every existing component, the final target deciding whether the path is inside, relative paths combined with the working directory. A path SHALL be accepted only when the canonical target equals an allowed root or sits under it; allowed roots are the working directory plus explicitly configured extra roots. The comparison SHALL be case-insensitive on Windows and macOS and case-sensitive on Linux. Refusals SHALL name the path, the resolved target and the allowed roots.
+A `Workspace` SHALL resolve every file-tool path to a canonical absolute path: symlinks resolved for every existing component, the final target deciding whether the path is inside, relative paths combined with the working directory. A path SHALL be accepted only when the canonical target equals an allowed root or sits under it; allowed roots are the working directory plus explicitly configured extra roots. The comparison SHALL be case-insensitive on Windows and macOS and case-sensitive on Linux. Refusals SHALL name the path, the resolved target and the allowed roots. The workspace SHALL expose its identity: `WorktreeRoot` (the canonical run checkout), and — detected from the file system without running git — `RepoRoot` (the main worktree's root) and `GitCommonDir` (the shared git directory), both null outside a repository. Boundary checks SHALL use `WorktreeRoot`; worktrees of one repository SHALL be separate boundaries unless explicitly granted as extra roots.
 
 #### Scenario: A path inside resolves with its display form
 - **GIVEN** a workspace rooted at a directory and a file inside it
@@ -47,6 +47,21 @@ A `Workspace` SHALL resolve every file-tool path to a canonical absolute path: s
 - **GIVEN** a workspace with an extra allowed root
 - **WHEN** a path under that root is resolved
 - **THEN** it is accepted
+
+#### Scenario: Repository identity is detected from the file system
+- **GIVEN** a linked worktree (a `.git` file with `gitdir:` and a `commondir` file)
+- **WHEN** a workspace is created for it
+- **THEN** `WorktreeRoot`, `RepoRoot` and `GitCommonDir` are reported — without running git
+
+#### Scenario: A non-repository workspace has no identity
+- **GIVEN** a directory without `.git`
+- **WHEN** a workspace is created for it
+- **THEN** the identity members are null and the boundary still works
+
+#### Scenario: Worktrees of one repository are separate boundaries
+- **GIVEN** two worktrees of one repository
+- **WHEN** a path in the other worktree is resolved from one of them
+- **THEN** it is refused unless the other worktree is explicitly granted as an extra root
 
 ### Requirement: read tool
 `read` SHALL take `path`, `offset` (1-based, default 1) and `limit` (default 2,000, clamped to 2,000), and return the requested window as numbered lines in the exact format `{n,6}|{text}` (number right-aligned to `max(6, digits(total))`, culture-invariant) with the footer `[lines {first}–{last} of {total}, use offset to continue]` when more lines remain. It SHALL refuse: paths outside the workspace; missing files; directories (pointing at `bash ls`); binary files (NUL byte in the first 8,192 bytes, with the size named); `offset < 1`, `limit < 1`, and `offset` past the end (naming the total). Display normalizes line endings (one trailing `\r` stripped), strips a UTF-8 BOM and replaces invalid bytes with U+FFFD; the file itself is never modified. An empty file returns `[empty file]`.
