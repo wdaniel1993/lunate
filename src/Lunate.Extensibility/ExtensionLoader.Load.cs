@@ -72,6 +72,7 @@ public sealed partial class ExtensionLoader
                 FindCoreService
             );
             IExtension extension = factory.Create(extensionContext);
+            _modelProviders.Register(descriptor.Id, descriptor.Manifest.ModelProviders);
             var loaded = new LoadedExtension(descriptor.Id, extension, descriptor);
             _loaded[descriptor.Id] = loaded;
             _contexts[descriptor.Id] = context;
@@ -87,6 +88,7 @@ public sealed partial class ExtensionLoader
         catch (ExtensionLoadException)
         {
             await _backgroundServices.DropAsync(descriptor.Id).ConfigureAwait(false);
+            _modelProviders.Unregister(descriptor.Id);
             DropSubscriptions(descriptor.Id);
             context.Unload();
             throw;
@@ -94,6 +96,7 @@ public sealed partial class ExtensionLoader
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
             await _backgroundServices.DropAsync(descriptor.Id).ConfigureAwait(false);
+            _modelProviders.Unregister(descriptor.Id);
             DropSubscriptions(descriptor.Id);
             context.Unload();
             throw WrapLoadFailure(descriptor, exception);

@@ -16,6 +16,7 @@ public sealed partial class ExtensionLoader
     );
     private readonly HookRunner _hooks;
     private readonly BackgroundServiceHost _backgroundServices;
+    private readonly ModelProviderRegistry _modelProviders = new();
     private readonly Dictionary<string, List<IDisposable>> _subscriptions = new(
         StringComparer.Ordinal
     );
@@ -39,6 +40,9 @@ public sealed partial class ExtensionLoader
 
     /// <summary>The named service registry shared with extensions (core handles included).</summary>
     public ServiceRegistry Services => _backgroundServices.Services;
+
+    /// <summary>The model provider declarations of the loaded extensions.</summary>
+    public ModelProviderRegistry ModelProviders => _modelProviders;
 
     public IReadOnlyList<ExtensionDescriptor> Descriptors => [.. _descriptors];
 
@@ -75,6 +79,7 @@ public sealed partial class ExtensionLoader
 
         _hooks.Unregister(id);
         await _backgroundServices.DropAsync(id).ConfigureAwait(false);
+        _modelProviders.Unregister(id);
         DropSubscriptions(id);
         if (_contexts.Remove(id, out ExtensionLoadContext? context))
         {

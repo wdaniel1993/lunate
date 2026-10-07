@@ -20,9 +20,9 @@
 
 ## 4. Registries
 
-- [ ] 4.1 Service registry: named registration + lookup, duplicate names refused (naming both extensions); core services exposed to extensions per design
-- [ ] 4.2 Model provider registry: declared providers validated, listed; secrets referenced by name only (never values); duplicate provider ids refused
-- [ ] 4.3 Tests for both registries including the refusal paths
+- [x] 4.1 Service registry: named registration + lookup, duplicate names refused (naming both extensions); core services exposed to extensions per design
+- [x] 4.2 Model provider registry: declared providers validated, listed; secrets referenced by name only (never values); duplicate provider ids refused
+- [x] 4.3 Tests for both registries including the refusal paths
 
 ## 5. Close
 

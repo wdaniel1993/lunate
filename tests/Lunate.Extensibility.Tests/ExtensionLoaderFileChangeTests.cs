@@ -23,6 +23,11 @@ public sealed class ExtensionLoaderFileChangeTests
             log.Messages,
             message => message.Contains("hello file changed: /work/a.txt", StringComparison.Ordinal)
         );
+        Assert.Contains(
+            log.Messages,
+            message =>
+                message.Contains("hello lookups: bus=True, service=True", StringComparison.Ordinal)
+        );
 
         await loader.Unload("hello");
         bus.Notify("/work/b.txt");
@@ -48,6 +53,14 @@ public sealed class ExtensionLoaderFileChangeTests
         Assert.Contains(
             log.Messages,
             message => message.Contains("no core/file-bus", StringComparison.Ordinal)
+        );
+        Assert.Contains(
+            log.Messages,
+            message =>
+                message.Contains(
+                    "hello lookups: bus=False, service=True",
+                    StringComparison.Ordinal
+                )
         );
     }
 }

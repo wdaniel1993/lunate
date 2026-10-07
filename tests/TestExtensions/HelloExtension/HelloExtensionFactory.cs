@@ -32,6 +32,9 @@ public sealed class HelloExtensionFactory : IExtensionFactory
             new HelloBackgroundService(context.Log)
         );
         context.SubscribeFileChanged(new HelloFileChangedHandler(context.Log));
+        bool hasBus = context.TryGetCoreService<IFileChangeBus>("core/file-bus", out _);
+        bool hasService = context.TryGetService($"ext/{context.Id}/greeter", out _);
+        context.Log.Info($"hello lookups: bus={hasBus}, service={hasService}");
         return new HelloExtension(_greeter.Greeting);
     }
 }
