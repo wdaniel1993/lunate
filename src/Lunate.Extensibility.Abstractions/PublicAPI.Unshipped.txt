@@ -1,0 +1,50 @@
+#nullable enable
+Lunate.Extensibility.Abstractions.ExtensionApi
+const Lunate.Extensibility.Abstractions.ExtensionApi.Current = "1.0.0" -> string!
+Lunate.Extensibility.Abstractions.ExtensionManifest
+Lunate.Extensibility.Abstractions.ExtensionManifest.<Clone>$() -> Lunate.Extensibility.Abstractions.ExtensionManifest!
+Lunate.Extensibility.Abstractions.ExtensionManifest.ApiVersion.get -> string!
+Lunate.Extensibility.Abstractions.ExtensionManifest.ApiVersion.init -> void
+Lunate.Extensibility.Abstractions.ExtensionManifest.Capabilities.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Lunate.Extensibility.Abstractions.ExtensionManifest.Capabilities.init -> void
+Lunate.Extensibility.Abstractions.ExtensionManifest.Commands.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Lunate.Extensibility.Abstractions.ExtensionManifest.Commands.init -> void
+Lunate.Extensibility.Abstractions.ExtensionManifest.EntryAssembly.get -> string!
+Lunate.Extensibility.Abstractions.ExtensionManifest.EntryAssembly.init -> void
+Lunate.Extensibility.Abstractions.ExtensionManifest.Equals(Lunate.Extensibility.Abstractions.ExtensionManifest? other) -> bool
+Lunate.Extensibility.Abstractions.ExtensionManifest.ExtensionManifest() -> void
+Lunate.Extensibility.Abstractions.ExtensionManifest.Hooks.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Lunate.Extensibility.Abstractions.ExtensionManifest.Hooks.init -> void
+Lunate.Extensibility.Abstractions.ExtensionManifest.Id.get -> string!
+Lunate.Extensibility.Abstractions.ExtensionManifest.Id.init -> void
+Lunate.Extensibility.Abstractions.ExtensionManifest.Services.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Lunate.Extensibility.Abstractions.ExtensionManifest.Services.init -> void
+Lunate.Extensibility.Abstractions.ExtensionManifest.SettingsSchema.get -> System.Text.Json.JsonElement?
+Lunate.Extensibility.Abstractions.ExtensionManifest.SettingsSchema.init -> void
+Lunate.Extensibility.Abstractions.ExtensionManifest.Tools.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Lunate.Extensibility.Abstractions.ExtensionManifest.Tools.init -> void
+Lunate.Extensibility.Abstractions.ExtensionManifest.Version.get -> string!
+Lunate.Extensibility.Abstractions.ExtensionManifest.Version.init -> void
+Lunate.Extensibility.Abstractions.IExtension
+Lunate.Extensibility.Abstractions.IExtensionContext
+Lunate.Extensibility.Abstractions.IExtensionContext.Id.get -> string!
+Lunate.Extensibility.Abstractions.IExtensionContext.Log.get -> Lunate.Extensibility.Abstractions.IExtensionLog!
+Lunate.Extensibility.Abstractions.IExtensionContext.Secrets.get -> Lunate.Extensibility.Abstractions.IExtensionSecrets!
+Lunate.Extensibility.Abstractions.IExtensionContext.Settings.get -> Lunate.Extensibility.Abstractions.IExtensionSettings!
+Lunate.Extensibility.Abstractions.IExtensionFactory
+Lunate.Extensibility.Abstractions.IExtensionFactory.Create(Lunate.Extensibility.Abstractions.IExtensionContext! context) -> Lunate.Extensibility.Abstractions.IExtension!
+Lunate.Extensibility.Abstractions.IExtensionLog
+Lunate.Extensibility.Abstractions.IExtensionLog.Error(string! message) -> void
+Lunate.Extensibility.Abstractions.IExtensionLog.Info(string! message) -> void
+Lunate.Extensibility.Abstractions.IExtensionLog.Warn(string! message) -> void
+Lunate.Extensibility.Abstractions.IExtensionSecrets
+Lunate.Extensibility.Abstractions.IExtensionSecrets.TryGet(string! name, out string? value) -> bool
+Lunate.Extensibility.Abstractions.IExtensionSettings
+Lunate.Extensibility.Abstractions.IExtensionSettings.TryGet(string! path, out System.Text.Json.JsonElement value) -> bool
+override Lunate.Extensibility.Abstractions.ExtensionManifest.Equals(object? obj) -> bool
+override Lunate.Extensibility.Abstractions.ExtensionManifest.GetHashCode() -> int
+override Lunate.Extensibility.Abstractions.ExtensionManifest.ToString() -> string!
+static Lunate.Extensibility.Abstractions.ExtensionApi.IsCompatible(string! range) -> bool
+static Lunate.Extensibility.Abstractions.ExtensionManifest.operator !=(Lunate.Extensibility.Abstractions.ExtensionManifest? left, Lunate.Extensibility.Abstractions.ExtensionManifest? right) -> bool
+static Lunate.Extensibility.Abstractions.ExtensionManifest.operator ==(Lunate.Extensibility.Abstractions.ExtensionManifest? left, Lunate.Extensibility.Abstractions.ExtensionManifest? right) -> bool
+static Lunate.Extensibility.Abstractions.ExtensionManifest.Parse(string! json, string! fileName) -> Lunate.Extensibility.Abstractions.ExtensionManifest!

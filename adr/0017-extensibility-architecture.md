@@ -51,7 +51,7 @@ Pi's extension API is the bar: transforming and blocking hooks, tool exposure mo
 
 **Trust**
 
-- Global and project extensions load with a trust prompt; project extensions are re-prompted when their files change (content hash). The `/extensions` view shows scope and state.
+- Project extensions load with a one-time trust prompt per repository identity (re-prompted when their files change — content hash); global extensions are trusted by installation and are not gated. The `/extensions` view shows scope and state.
 
 **Out-of-process (constraint now, build later)**
 
