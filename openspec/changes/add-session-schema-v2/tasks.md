@@ -20,6 +20,6 @@
 
 ## 3. Close
 
-- [ ] 3.1 `PublicAPI.Unshipped.txt` for the new surface; `dotnet csharpier format .`
-- [ ] 3.2 `bash scripts/verify.sh` green (incl. de-AT); `openspec validate add-session-schema-v2 --type change --strict`
-- [ ] 3.3 Self-review; commit per group
+- [x] 3.1 `PublicAPI.Unshipped.txt` for the new surface; `dotnet csharpier format .`
+- [x] 3.2 `bash scripts/verify.sh` green (incl. de-AT); `openspec validate add-session-schema-v2 --type change --strict`
+- [x] 3.3 Self-review; commit per group
