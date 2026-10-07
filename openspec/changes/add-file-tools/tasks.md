@@ -2,8 +2,8 @@
 
 ## 1. Workspace (TDD)
 
-- [ ] 1.1 `Workspace` + `ResolvedPath` + `TryResolve` per design.md (canonicalization walk incl. symlinks, per-platform case comparison, extra roots, instructing errors; roots canonicalized too)
-- [ ] 1.2 Boundary tests: inside (relative + absolute); `..` escape refused; symlink inside→outside refused and inside→inside allowed (`Assert.Skip` when link creation is unavailable); case probe both ways; extra root; display form (forward slashes, relative)
+- [x] 1.1 `Workspace` + `ResolvedPath` + `TryResolve` per design.md (canonicalization walk incl. symlinks, per-platform case comparison, extra roots, instructing errors; roots canonicalized too)
+- [x] 1.2 Boundary tests: inside (relative + absolute); `..` escape refused; symlink inside→outside refused and inside→inside allowed (`Assert.Skip` when link creation is unavailable); case probe both ways; extra root; display form (forward slashes, relative)
 
 ## 2. `read` tool (TDD)
 
