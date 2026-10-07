@@ -1,0 +1,5 @@
+{"type":"header","schema":2,"id":"s_20261007-090100-c3d4","cwd":"/repo","created":"2026-10-07T09:01:00.0000000+00:00","meai":"10.10.1","repo":"github.com/acme/lunate","worktree":"/repo/trees/feature"}
+{"type":"activeTools","id":"e_01","parentId":null,"timestamp":"2026-10-07T09:01:01.0000000+00:00","tools":["read","edit","bash"]}
+{"type":"promptSection","id":"e_02","parentId":"e_01","timestamp":"2026-10-07T09:01:02.0000000+00:00","section":"tools","text":"You may call tools."}
+{"type":"childSession","id":"e_03","parentId":"e_02","timestamp":"2026-10-07T09:01:03.0000000+00:00","childSessionId":"s_20261007-090200-e5f6","runId":"r_20261007-090200-e5f6"}
+{"type":"nestedCalls","id":"e_04","parentId":"e_03","timestamp":"2026-10-07T09:01:04.0000000+00:00","callId":"call_1","calls":[{"name":"read","args":"{\"path\":\"a.txt\"}","status":"ok","durationMs":12},{"name":"bash","args":"{\"command\":\"ls -la\"}","status":"error","durationMs":4}]}

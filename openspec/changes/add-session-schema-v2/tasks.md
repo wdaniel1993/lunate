@@ -10,7 +10,7 @@
 - [x] 1.6 `SessionExtensionEntry`: type `ext/<extension-id>/<type>`, envelope + opaque payload preserved as raw JSON text and re-emitted byte-for-byte
 - [x] 1.7 Unknown content: message round-trip keeps the original node when re-serialization is not deep-equal (`RawMessageJson` fallback)
 - [x] 1.8 `Session` append methods: `AppendActiveTools`, `AppendPromptSection`, `AppendChildSession`, `AppendNestedCalls`; `Load` handles v1 and v2 and every entry kind
-- [ ] 1.9 Goldens: v2 header (repo/worktree), each new entry, ext entry with a byte-tricky payload, unknown-content message; v1 fixtures re-asserted as load-compatibility
+- [x] 1.9 Goldens: v2 header (repo/worktree), each new entry, ext entry with a byte-tricky payload, unknown-content message; v1 fixtures re-asserted as load-compatibility
 - [x] 1.10 ADR-0018 (golden change per AGENTS.md) in both copies, byte-identical
 
 ## 2. Harness wiring (nestedCalls)

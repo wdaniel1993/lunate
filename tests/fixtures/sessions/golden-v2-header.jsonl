@@ -1,0 +1,2 @@
+{"type":"header","schema":2,"id":"s_20261007-090000-b1c2","cwd":"/repo","created":"2026-10-07T09:00:00.0000000+00:00","meai":"10.10.1","repo":"github.com/acme/lunate","worktree":"/repo/trees/feature"}
+{"type":"message","id":"e_01","parentId":null,"timestamp":"2026-10-07T09:00:01.0000000+00:00","message":{"role":"user","contents":[{"$type":"text","text":"Work in the worktree."}]}}
