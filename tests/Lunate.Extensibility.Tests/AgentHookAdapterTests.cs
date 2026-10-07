@@ -191,6 +191,64 @@ public sealed class AgentHookAdapterTests
         Assert.Contains("policy says no", result.Output, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task Tool_calling_payload_carries_the_resolved_tools_annotations()
+    {
+        var capturing = new CapturingToolCallingExtension();
+        var runner = new HookRunner();
+        runner.Register("ext", capturing);
+        var adapter = new AgentHookAdapter(runner);
+        FakeChatClient client = new FakeChatClient()
+            .Enqueue(
+                new ChatResponseUpdate(
+                    ChatRole.Assistant,
+                    [new FunctionCallContent("call-1", "write", new Dictionary<string, object?>())]
+                ),
+                new ChatResponseUpdate(ChatRole.Assistant, [])
+                {
+                    FinishReason = ChatFinishReason.ToolCalls,
+                }
+            )
+            .Enqueue(
+                new ChatResponseUpdate(ChatRole.Assistant, [new TextContent("done")])
+                {
+                    FinishReason = ChatFinishReason.Stop,
+                }
+            );
+        var registry = new ToolRegistry();
+        registry.Add(
+            new FakeTool("write", "unused")
+            {
+                Annotations = new ToolAnnotations(Destructive: true, OpenWorld: true),
+            }
+        );
+        var harness = new AgentHarness(
+            client,
+            registry,
+            new AgentHarnessOptions { Hooks = adapter }
+        );
+
+        await AdapterTestSupport.Run(harness, Ct);
+
+        Assert.Equal(["destructive", "open-world"], capturing.Annotations);
+    }
+
+    private sealed class CapturingToolCallingExtension : IToolCallingHandler
+    {
+        public int Priority => 0;
+
+        public IReadOnlyList<string> Annotations { get; private set; } = [];
+
+        public ValueTask<ToolCallingResult> HandleAsync(
+            ToolCallingPayload payload,
+            CancellationToken cancellationToken
+        )
+        {
+            Annotations = payload.Annotations;
+            return ValueTask.FromResult<ToolCallingResult>(new ToolCallingResult.Proceed(null));
+        }
+    }
+
     private sealed class EndToEndExtension
         : IRunStartingHandler,
             IContextBuildingHandler,

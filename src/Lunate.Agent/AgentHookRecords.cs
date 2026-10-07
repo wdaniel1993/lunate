@@ -67,7 +67,11 @@ public sealed record AgentToolCallingContext(
     string CallId,
     string ToolName,
     JsonElement Arguments
-);
+)
+{
+    /// <summary>The resolved tool's annotations; null when the tool declares none.</summary>
+    public ToolAnnotations? Annotations { get; init; }
+}
 
 /// <summary>The outcome of the tool-calling seam point.</summary>
 public abstract record AgentToolCallingResult

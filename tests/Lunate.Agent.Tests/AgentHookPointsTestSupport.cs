@@ -24,6 +24,9 @@ internal static class AgentHookPointsTestSupport
             )
             .Enqueue(AgentHookTestSupport.TextUpdate("done", ChatFinishReason.Stop));
 
+    public static ScriptedTool AnnotatedReadTool() =>
+        AgentTestSupport.ReadTool("contents", annotations: new ToolAnnotations(ReadOnly: true));
+
     public static async Task<List<AgentEvent>> Run(
         ScriptedChatClient client,
         ToolRegistry registry,
