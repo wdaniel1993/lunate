@@ -1,6 +1,6 @@
 # 0016 — Workspace boundary for file tools
 
-- Status: proposed — 2026-10-07
+- Status: accepted — 2026-10-07 (maintainer sign-off; change merged)
 - Date: 2026-10-07
 - Relates to: ADR 0012 (tool contract); guide "Security and safety"
 

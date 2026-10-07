@@ -1,7 +1,7 @@
 # agent-files Specification
 
 ## Purpose
-The workspace boundary for the file tools — canonical path resolution (symlinks included), the allowed-roots check with its per-platform case rules — and the `read` and `write` tools' parameters, output shapes and instructing errors.
+The workspace boundary for the file tools — canonical path resolution (symlinks included), the allowed-roots check with its per-platform case rules — and the `read`, `write` and `edit` tools' parameters, output shapes and instructing errors.
 
 ## Requirements
 
