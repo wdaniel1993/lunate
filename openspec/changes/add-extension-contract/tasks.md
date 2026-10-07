@@ -2,10 +2,10 @@
 
 ## 1. Contract assembly (TDD, red-first)
 
-- [ ] 1.1 New project `src/Lunate.Extensibility.Abstractions/` (net10.0, nullable, warnings-as-errors, PublicAPI analyzer + `PublicAPI.Shipped.txt`/`PublicAPI.Unshipped.txt`); references `Microsoft.Extensions.AI.Abstractions` only; added to the solution and to the PublicAPI gate list in `scripts/verify.sh`
-- [ ] 1.2 Contract types per design.md: `IExtensionFactory`, `IExtension`, `IExtensionContext` (id, settings, secrets, log), `IExtensionSettings`, `IExtensionSecrets`, `IExtensionLog`, `ExtensionManifest`, `ExtensionApi` (current version const + range matcher)
-- [ ] 1.3 Manifest parsing with actionable errors naming the file and field; unknown fields preserved/ignored per design; duplicate declarations rejected
-- [ ] 1.4 API-version range matcher: exact and caret grammar per design; incompatible ranges refused with a clear message; tests for accept/refuse boundaries
+- [x] 1.1 New project `src/Lunate.Extensibility.Abstractions/` (net10.0, nullable, warnings-as-errors, PublicAPI analyzer + `PublicAPI.Shipped.txt`/`PublicAPI.Unshipped.txt`); references `Microsoft.Extensions.AI.Abstractions` only; added to the solution and to the PublicAPI gate list in `scripts/verify.sh`
+- [x] 1.2 Contract types per design.md: `IExtensionFactory`, `IExtension`, `IExtensionContext` (id, settings, secrets, log), `IExtensionSettings`, `IExtensionSecrets`, `IExtensionLog`, `ExtensionManifest`, `ExtensionApi` (current version const + range matcher)
+- [x] 1.3 Manifest parsing with actionable errors naming the file and field; unknown fields preserved/ignored per design; duplicate declarations rejected
+- [x] 1.4 API-version range matcher: exact and caret grammar per design; incompatible ranges refused with a clear message; tests for accept/refuse boundaries
 
 ## 2. Host loader
 
