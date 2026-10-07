@@ -17,7 +17,7 @@ public interface IExtensionFactory { IExtension Create(IExtensionContext context
 public interface IExtension { }                       // marker; subsystems add capability interfaces over time
 public interface IExtensionContext { string Id { get; } IExtensionSettings Settings { get; } IExtensionSecrets Secrets { get; } IExtensionLog Log { get; } }
 public interface IExtensionSettings { bool TryGet(string path, out JsonElement value); }   // dot-separated path
-public interface IExtensionSecrets { bool TryGet(string name, out string value); }
+public interface IExtensionSecrets { bool TryGet(string name, [NotNullWhen(true)] out string? value); }
 public interface IExtensionLog { void Info(string message); void Warn(string message); void Error(string message); }
 ```
 
