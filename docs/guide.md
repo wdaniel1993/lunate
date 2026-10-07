@@ -25,7 +25,7 @@ These claims age quickly, so the Phase 5 gate tests them head to head: the same 
 
 **Non-goals**
 
-- Sub-agents, plan mode, long-term memory.
+- Sub-agents, plan mode and long-term memory stay out of the core — the core is **subagent-ready** (nested runs, ids, usage roll-up, approval and cancellation propagation) and they ship as reference extensions (fitness suite; ADR-0017).
 - Own IDE plugins (ACP instead) and any web frontend.
 - Hosting as an embeddable agent server: no AG-UI endpoint, no A2A. Using the MAF Harness internally is a separate question, decided by spike S-1. `Lunate.Agent` stays a clean library, without product promises.
 - Supporting every provider: OpenAI-compatible, Anthropic and local via OpenAI-compatible endpoints are enough.
@@ -109,7 +109,7 @@ Stick to .NET 10, Microsoft.Extensions.AI and a few well-known packages. No Nati
 | MCP client | Official MCP C# SDK | Lunate.Protocols | MCP tools arrive as Microsoft.Extensions.AI functions |
 | ACP server | Community SDK (`AcpSdk`, `AgentClientProtocol` or `LibAcp`) behind `IAcpServer`; choice recorded in an ADR in T-27 | Lunate.Protocols | No hand-written protocol |
 | Roslyn | `Microsoft.CodeAnalysis.CSharp.Workspaces`, `MSBuildWorkspace`, `Microsoft.Build.Locator`, in process, loaded on first use | Lunate.Roslyn | No sidecar needed without AOT |
-| Extensions | `AssemblyLoadContext` per extension | Lunate.Coding | Runtime loading like Pi |
+| Extensions | `Lunate.Extensibility.Abstractions` contract + `AssemblyLoadContext` per extension (ADR 0017) | Lunate.Coding | Runtime loading like Pi |
 | Process execution | `System.Diagnostics.Process` behind `IShell` | Lunate.Coding | Easy to fake |
 | API tracking | `Microsoft.CodeAnalysis.PublicApiAnalyzers` | libraries | Public API changes become visible diffs |
 | Tests | xUnit v3, `Verify`, `Spectre.Console.Testing` | tests/ | Snapshots of events, sessions, screens |
@@ -398,13 +398,14 @@ One JSONL file per session under `~/.lunate/sessions/<project-hash>/`. Flags: `-
 
 **Extensions**
 
-An extension is an assembly implementing `ILunateExtension` (defined in `Lunate.Agent`) that registers tools, slash commands and event handlers. Lunate loads extensions at runtime, like Pi:
+An extension is an assembly implementing the `Lunate.Extensibility.Abstractions` contract — hooks, tools, services, commands — and it compiles only against that assembly, never against `Lunate.Agent` internals (ADR-0017; the full model is in `docs/spec/extensibility.md`). Lunate loads extensions at runtime, like Pi:
 
-- From `~/.lunate/extensions/` (global) and `.lunate/extensions/` (per project), each in its own `AssemblyLoadContext`.
-- Each extension has an `extension.json` (name, version, entry assembly, declared tools and commands). Manifests are read at startup; assemblies load on first use, so startup budgets hold.
-- Project-local extensions run code from the repository, so they need a one-time approval per repository.
+- From `~/.lunate/extensions/` (global) and `.lunate/extensions/` (per project), each in its own collectible `AssemblyLoadContext`; the contract assembly, Microsoft.Extensions.AI abstractions and System.Text.Json are shared.
+- Each extension has an `extension.json` (id, version, apiVersion range, entry assembly, declared tools/commands/hooks/services, settings schema). Manifests are read at startup; assemblies load on first use, so startup budgets hold.
+- Project-local extensions run code from the repository: one-time trust per repository, re-prompted when the extension files change.
 - `Lunate.Roslyn` ships as a built-in extension and uses the same mechanism.
 - External tools can also come through MCP (`~/.lunate/mcp.json`, see Protocols).
+- The architecture is proven by a fitness suite of reference extensions (permission gates, memory, LSP, MCP, subagents, code mode, model routing, UI) running in CI — a sample that needs a workaround means the core is missing a primitive.
 
 ## Terminal UI (Lunate.Tui)
 
@@ -601,8 +602,7 @@ One row per card. Each card becomes one OpenSpec change (see Building it with Op
 | T-21 | 4 | Approval prompt, status footer, key bindings | T-18 | Scripted key tests for every binding |
 | T-22 | 4 | Wire events, steering, `Esc` cancel, slash commands, pickers | T-09, T-18 to T-21 | End-to-end scripted session snapshot |
 | T-23 | 4 | Compaction as `IChatReducer` (loop-invoked; not `ReducingChatClient`) | T-11 | Replay: long session compacts; tool pairs never split |
-| T-24 | 5 | Extension loader: manifests, `AssemblyLoadContext`, lazy load, project approval | T-09 | Sample extension loads; startup budget unchanged |
-| T-25 | 5 | `Lunate.Roslyn` extension: `ICSharpBackend` + in-process backend (ADR 0014), `MSBuildLocator`, workspace load, file sync, `cs_diagnostics` | T-24 | Detects an error introduced by `edit`; first-call budget met |
+| T-25 | 5 | `Lunate.Roslyn` extension: `ICSharpBackend` + in-process backend (ADR 0014), `MSBuildLocator`, workspace load, file sync, `cs_diagnostics` | T-36 | Detects an error introduced by `edit`; first-call budget met |
 | T-26 | 5 | `cs_find_symbol` | T-25 | Finds definitions in fixture solutions |
 | T-27 | 5 | ACP server: SDK choice (ADR), initialize, session, prompt, updates, cancel | T-09 | In-process client tests |
 | T-28 | 5 | ACP permissions and editor file system | T-27 | Approval round trip; one real Zed session |
@@ -611,8 +611,28 @@ One row per card. Each card becomes one OpenSpec change (see Building it with Op
 | T-31 | 6 | `cs_find_references`, `cs_outline`, `cs_rename` | T-25 | Fixture tests; eval comparison row |
 | T-32 | 4 | Distribution: release workflow, install scripts, Homebrew, Scoop, winget, `dotnet tool` | T-02, T-17 | Fresh install works on Windows, macOS and Linux with one command |
 | T-33 | 4 | Terminal capability detection and fallbacks; manual terminal matrix check | T-18, T-19 | Every tier-1 terminal checked and noted in the card |
-| T-34 | 6 | Extension authoring: template project, docs, one sample extension | T-24 | A new extension builds from the template and loads |
 | T-35 | 5 | Head-to-head C# eval: Lunate vs Claude Code with the C# LSP plugin vs OpenCode with its C# tooling; same tasks and model where possible; pass rate, steps, tokens, edit tiers, time; failure categories per run (load/restore/SDK failures, symbol-position errors, wrong edits, other) | T-17, T-25, T-26 | One results row per tool in eval/results.csv, a short write-up in docs/eval/, and a conclusion — if Lunate is not clearly better on C# tasks, the guide moves the positioning to .NET-native extensibility and the daily-driver experience instead of C# intelligence |
+
+**Extensibility series (replaces the former T-24 and T-34).** The core ships primitives and is subagent-ready; features ship as extensions, proven by the fitness suite (`docs/spec/extensibility.md`, ADR-0017).
+
+| Card | Phase | Scope | Depends on | Done when |
+| --- | --- | --- | --- | --- |
+| T-36 | 5 | `Lunate.Extensibility.Abstractions` (semver, PublicAPI) + ALC sharing, manifest, lifecycle, settings and secrets | T-09 to T-11 | Contract assembly loads; startup budget unchanged with 10 installed extensions |
+| T-37 | 5 | Hook runner: catalogue semantics, order, failure policy, per-handler timeouts | T-36 | Every hook has a test for its semantics class and its failure policy |
+| T-38 | 5 | Tool model: exposure, namespaces, annotations, OutputSchema/StructuredContent, ExecuteToolAsync, per-tool concurrency | T-37 | Exposure gate, nested call ids and depth limits tested |
+| T-39 | 5 | Services: background services, file change bus, mutation queue, model and service registries | T-37 | Fake LSP server lifecycle; file bus events after write/edit |
+| T-40 | 5 | UI abstraction across modes: `IUserInteraction`, renderers, clean degradation | T-18, T-19, T-39 | One interaction matrix test per mode |
+| T-41 | 5 | MCP from extensions: `RegisterMcpServer`, namespace, exposure | T-39 | `TestMcpServer` registered by an extension works end to end |
+| T-42 | 5 | `Lunate.Extensibility.Testing` + template project | T-37 | Template extension builds and loads in CI |
+| T-43 | 6 | Sample: permission-gate | T-37 | Blocks or confirms via ToolCalling + annotations |
+| T-44 | 6 | Sample: memory-provider | T-39 | Injection survives compaction by re-injection |
+| T-45 | 6 | Sample: lsp-diagnostics | T-39, T-40 | Fake LSP server; diagnostics attached via ToolResultReady |
+| T-46 | 6 | Sample: mcp-from-extension | T-41 | Namespaced MCP tools visible in the TUI |
+| T-47 | 6 | Sample: subagents | T-38, T-39 | Parent/child runs, approvals routed to the parent UI, cancel propagated, limits enforced |
+| T-48 | 6 | Sample: code-mode | T-38 | Programmatic tools via ExecuteToolAsync; child-process runtime |
+| T-49 | 6 | Sample: model-router | T-39 | Virtual model routes; usage rolls up to the owning run |
+| T-50 | 6 | Sample: ui-showcase | T-40 | Renderer + status widget; degrades cleanly in print/json/ACP |
+| T-51 | 7 | Out-of-process host (`Lunate.Extensibility.Remote`, JSON-RPC over stdio) — design only until scheduled | T-37 to T-42 | Conformance test: all hook DTOs round-trip through JSON |
 
 Independent tracks can run in parallel in separate git worktrees, for example T-18/T-19 (TUI) next to T-12 to T-15 (tools).
 

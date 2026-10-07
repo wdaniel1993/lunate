@@ -18,7 +18,7 @@ flowchart TD
     Protocols -. "ACP" .-> Editor(["Editor (ACP client)<br/>separate process"])
 ```
 
-Arrows point from a project to what it depends on or calls; dashed edges are runtime-only connections — the lazily loaded extension and separate processes. `Lunate.Coding` is the composition root: it wires the TUI, the protocols and the agent, and loads `Lunate.Roslyn` on first use. The layering rule and its enforcement live in the [repo-foundation spec](../openspec/specs/repo-foundation/spec.md); the extension contract arrives with T-24 in the [guide](guide.md).
+Arrows point from a project to what it depends on or calls; dashed edges are runtime-only connections — the lazily loaded extension and separate processes. `Lunate.Coding` is the composition root: it wires the TUI, the protocols and the agent, and loads `Lunate.Roslyn` on first use. The layering rule and its enforcement live in the [repo-foundation spec](../openspec/specs/repo-foundation/spec.md); the extension contract arrives with T-36 in the [guide](guide.md) (see the [extensibility spec](spec/extensibility.md)).
 
 ## The model pipeline
 
