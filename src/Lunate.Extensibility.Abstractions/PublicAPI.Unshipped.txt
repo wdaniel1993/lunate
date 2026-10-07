@@ -1,6 +1,6 @@
 #nullable enable
 Lunate.Extensibility.Abstractions.ExtensionApi
-const Lunate.Extensibility.Abstractions.ExtensionApi.Current = "1.0.0" -> string!
+const Lunate.Extensibility.Abstractions.ExtensionApi.Current = "1.1.0" -> string!
 Lunate.Extensibility.Abstractions.ExtensionManifest
 Lunate.Extensibility.Abstractions.ExtensionManifest.<Clone>$() -> Lunate.Extensibility.Abstractions.ExtensionManifest!
 Lunate.Extensibility.Abstractions.ExtensionManifest.ApiVersion.get -> string!
@@ -48,3 +48,608 @@ static Lunate.Extensibility.Abstractions.ExtensionApi.IsCompatible(string! range
 static Lunate.Extensibility.Abstractions.ExtensionManifest.operator !=(Lunate.Extensibility.Abstractions.ExtensionManifest? left, Lunate.Extensibility.Abstractions.ExtensionManifest? right) -> bool
 static Lunate.Extensibility.Abstractions.ExtensionManifest.operator ==(Lunate.Extensibility.Abstractions.ExtensionManifest? left, Lunate.Extensibility.Abstractions.ExtensionManifest? right) -> bool
 static Lunate.Extensibility.Abstractions.ExtensionManifest.Parse(string! json, string! fileName) -> Lunate.Extensibility.Abstractions.ExtensionManifest!
+Lunate.Extensibility.Abstractions.CompactingPayload
+Lunate.Extensibility.Abstractions.CompactingPayload.<Clone>$() -> Lunate.Extensibility.Abstractions.CompactingPayload!
+Lunate.Extensibility.Abstractions.CompactingPayload.CompactingPayload(string! RunId, System.Collections.Generic.IReadOnlyList<Lunate.Extensibility.Abstractions.ContextMessage!>! Messages) -> void
+Lunate.Extensibility.Abstractions.CompactingPayload.Deconstruct(out string! RunId, out System.Collections.Generic.IReadOnlyList<Lunate.Extensibility.Abstractions.ContextMessage!>! Messages) -> void
+Lunate.Extensibility.Abstractions.CompactingPayload.Equals(Lunate.Extensibility.Abstractions.CompactingPayload? other) -> bool
+Lunate.Extensibility.Abstractions.CompactingPayload.Messages.get -> System.Collections.Generic.IReadOnlyList<Lunate.Extensibility.Abstractions.ContextMessage!>!
+Lunate.Extensibility.Abstractions.CompactingPayload.Messages.init -> void
+Lunate.Extensibility.Abstractions.CompactingPayload.RunId.get -> string!
+Lunate.Extensibility.Abstractions.CompactingPayload.RunId.init -> void
+Lunate.Extensibility.Abstractions.CompactingResult
+Lunate.Extensibility.Abstractions.CompactingResult.CompactingResult(Lunate.Extensibility.Abstractions.CompactingResult! original) -> void
+Lunate.Extensibility.Abstractions.CompactingResult.Provide
+Lunate.Extensibility.Abstractions.CompactingResult.Provide.Deconstruct(out string! Summary) -> void
+Lunate.Extensibility.Abstractions.CompactingResult.Provide.Equals(Lunate.Extensibility.Abstractions.CompactingResult.Provide? other) -> bool
+Lunate.Extensibility.Abstractions.CompactingResult.Provide.Provide(string! Summary) -> void
+Lunate.Extensibility.Abstractions.CompactingResult.Provide.Summary.get -> string!
+Lunate.Extensibility.Abstractions.CompactingResult.Provide.Summary.init -> void
+Lunate.Extensibility.Abstractions.CompactingResult.UseDefault
+Lunate.Extensibility.Abstractions.CompactingResult.UseDefault.Equals(Lunate.Extensibility.Abstractions.CompactingResult.UseDefault? other) -> bool
+Lunate.Extensibility.Abstractions.CompactingResult.UseDefault.UseDefault() -> void
+Lunate.Extensibility.Abstractions.ContextBuildingPayload
+Lunate.Extensibility.Abstractions.ContextBuildingPayload.<Clone>$() -> Lunate.Extensibility.Abstractions.ContextBuildingPayload!
+Lunate.Extensibility.Abstractions.ContextBuildingPayload.ContextBuildingPayload(string! RunId, System.Collections.Generic.IReadOnlyList<Lunate.Extensibility.Abstractions.ContextMessage!>! Messages) -> void
+Lunate.Extensibility.Abstractions.ContextBuildingPayload.Deconstruct(out string! RunId, out System.Collections.Generic.IReadOnlyList<Lunate.Extensibility.Abstractions.ContextMessage!>! Messages) -> void
+Lunate.Extensibility.Abstractions.ContextBuildingPayload.Equals(Lunate.Extensibility.Abstractions.ContextBuildingPayload? other) -> bool
+Lunate.Extensibility.Abstractions.ContextBuildingPayload.Messages.get -> System.Collections.Generic.IReadOnlyList<Lunate.Extensibility.Abstractions.ContextMessage!>!
+Lunate.Extensibility.Abstractions.ContextBuildingPayload.Messages.init -> void
+Lunate.Extensibility.Abstractions.ContextBuildingPayload.RunId.get -> string!
+Lunate.Extensibility.Abstractions.ContextBuildingPayload.RunId.init -> void
+Lunate.Extensibility.Abstractions.ContextBuildingResult
+Lunate.Extensibility.Abstractions.ContextBuildingResult.<Clone>$() -> Lunate.Extensibility.Abstractions.ContextBuildingResult!
+Lunate.Extensibility.Abstractions.ContextBuildingResult.AddedMessages.get -> System.Collections.Generic.IReadOnlyList<Lunate.Extensibility.Abstractions.ContextMessage!>!
+Lunate.Extensibility.Abstractions.ContextBuildingResult.AddedMessages.init -> void
+Lunate.Extensibility.Abstractions.ContextBuildingResult.ContextBuildingResult(System.Collections.Generic.IReadOnlyList<Lunate.Extensibility.Abstractions.ContextMessage!>! AddedMessages) -> void
+Lunate.Extensibility.Abstractions.ContextBuildingResult.Deconstruct(out System.Collections.Generic.IReadOnlyList<Lunate.Extensibility.Abstractions.ContextMessage!>! AddedMessages) -> void
+Lunate.Extensibility.Abstractions.ContextBuildingResult.Equals(Lunate.Extensibility.Abstractions.ContextBuildingResult? other) -> bool
+Lunate.Extensibility.Abstractions.ContextMessage
+Lunate.Extensibility.Abstractions.ContextMessage.<Clone>$() -> Lunate.Extensibility.Abstractions.ContextMessage!
+Lunate.Extensibility.Abstractions.ContextMessage.ContextMessage(string! Role, string! Text) -> void
+Lunate.Extensibility.Abstractions.ContextMessage.Deconstruct(out string! Role, out string! Text) -> void
+Lunate.Extensibility.Abstractions.ContextMessage.Equals(Lunate.Extensibility.Abstractions.ContextMessage? other) -> bool
+Lunate.Extensibility.Abstractions.ContextMessage.Role.get -> string!
+Lunate.Extensibility.Abstractions.ContextMessage.Role.init -> void
+Lunate.Extensibility.Abstractions.ContextMessage.Source.get -> string?
+Lunate.Extensibility.Abstractions.ContextMessage.Source.init -> void
+Lunate.Extensibility.Abstractions.ContextMessage.Text.get -> string!
+Lunate.Extensibility.Abstractions.ContextMessage.Text.init -> void
+Lunate.Extensibility.Abstractions.ICompactingHandler
+Lunate.Extensibility.Abstractions.ICompactingHandler.HandleAsync(Lunate.Extensibility.Abstractions.CompactingPayload! payload, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Lunate.Extensibility.Abstractions.CompactingResult!>
+Lunate.Extensibility.Abstractions.IContextBuildingHandler
+Lunate.Extensibility.Abstractions.IContextBuildingHandler.HandleAsync(Lunate.Extensibility.Abstractions.ContextBuildingPayload! payload, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Lunate.Extensibility.Abstractions.ContextBuildingResult!>
+Lunate.Extensibility.Abstractions.IExtensionContext.Register(Lunate.Extensibility.Abstractions.IHookHandler! handler) -> void
+Lunate.Extensibility.Abstractions.IHookHandler
+Lunate.Extensibility.Abstractions.IHookHandler.Priority.get -> int
+Lunate.Extensibility.Abstractions.IInputReceivedHandler
+Lunate.Extensibility.Abstractions.IInputReceivedHandler.HandleAsync(Lunate.Extensibility.Abstractions.InputReceivedPayload! payload, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Lunate.Extensibility.Abstractions.InputReceivedResult!>
+Lunate.Extensibility.Abstractions.IMessageCompletedHandler
+Lunate.Extensibility.Abstractions.IMessageCompletedHandler.HandleAsync(Lunate.Extensibility.Abstractions.MessageCompletedPayload! payload, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Lunate.Extensibility.Abstractions.MessageCompletedResult!>
+Lunate.Extensibility.Abstractions.IModelChangedHandler
+Lunate.Extensibility.Abstractions.IModelChangedHandler.ObserveAsync(Lunate.Extensibility.Abstractions.ModelChangedPayload! payload, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask
+Lunate.Extensibility.Abstractions.IProjectTrustHandler
+Lunate.Extensibility.Abstractions.IProjectTrustHandler.HandleAsync(Lunate.Extensibility.Abstractions.ProjectTrustPayload! payload, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Lunate.Extensibility.Abstractions.ProjectTrustResult!>
+Lunate.Extensibility.Abstractions.IProviderStreamEventHandler
+Lunate.Extensibility.Abstractions.IProviderStreamEventHandler.ObserveAsync(Lunate.Extensibility.Abstractions.ProviderStreamEventPayload! payload, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask
+Lunate.Extensibility.Abstractions.IRunSettledHandler
+Lunate.Extensibility.Abstractions.IRunSettledHandler.ObserveAsync(Lunate.Extensibility.Abstractions.RunSettledPayload! payload, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask
+Lunate.Extensibility.Abstractions.IRunStartingHandler
+Lunate.Extensibility.Abstractions.IRunStartingHandler.HandleAsync(Lunate.Extensibility.Abstractions.RunStartingPayload! payload, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Lunate.Extensibility.Abstractions.RunStartingResult!>
+Lunate.Extensibility.Abstractions.ISessionEndingHandler
+Lunate.Extensibility.Abstractions.ISessionEndingHandler.HandleAsync(Lunate.Extensibility.Abstractions.SessionEndingPayload! payload, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask
+Lunate.Extensibility.Abstractions.ISessionStartedHandler
+Lunate.Extensibility.Abstractions.ISessionStartedHandler.HandleAsync(Lunate.Extensibility.Abstractions.SessionStartedPayload! payload, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask
+Lunate.Extensibility.Abstractions.IToolCallingHandler
+Lunate.Extensibility.Abstractions.IToolCallingHandler.HandleAsync(Lunate.Extensibility.Abstractions.ToolCallingPayload! payload, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Lunate.Extensibility.Abstractions.ToolCallingResult!>
+Lunate.Extensibility.Abstractions.IToolResultReadyHandler
+Lunate.Extensibility.Abstractions.IToolResultReadyHandler.HandleAsync(Lunate.Extensibility.Abstractions.ToolResultReadyPayload! payload, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Lunate.Extensibility.Abstractions.ToolResultReadyResult!>
+Lunate.Extensibility.Abstractions.IToolsChangedHandler
+Lunate.Extensibility.Abstractions.IToolsChangedHandler.ObserveAsync(Lunate.Extensibility.Abstractions.ToolsChangedPayload! payload, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask
+Lunate.Extensibility.Abstractions.ITurnEndedHandler
+Lunate.Extensibility.Abstractions.ITurnEndedHandler.HandleAsync(Lunate.Extensibility.Abstractions.TurnEndedPayload! payload, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Lunate.Extensibility.Abstractions.TurnEndedResult!>
+Lunate.Extensibility.Abstractions.InputReceivedPayload
+Lunate.Extensibility.Abstractions.InputReceivedPayload.<Clone>$() -> Lunate.Extensibility.Abstractions.InputReceivedPayload!
+Lunate.Extensibility.Abstractions.InputReceivedPayload.Deconstruct(out string! Text) -> void
+Lunate.Extensibility.Abstractions.InputReceivedPayload.Equals(Lunate.Extensibility.Abstractions.InputReceivedPayload? other) -> bool
+Lunate.Extensibility.Abstractions.InputReceivedPayload.InputReceivedPayload(string! Text) -> void
+Lunate.Extensibility.Abstractions.InputReceivedPayload.Text.get -> string!
+Lunate.Extensibility.Abstractions.InputReceivedPayload.Text.init -> void
+Lunate.Extensibility.Abstractions.InputReceivedResult
+Lunate.Extensibility.Abstractions.InputReceivedResult.Consume
+Lunate.Extensibility.Abstractions.InputReceivedResult.Consume.Consume() -> void
+Lunate.Extensibility.Abstractions.InputReceivedResult.Consume.Equals(Lunate.Extensibility.Abstractions.InputReceivedResult.Consume? other) -> bool
+Lunate.Extensibility.Abstractions.InputReceivedResult.InputReceivedResult(Lunate.Extensibility.Abstractions.InputReceivedResult! original) -> void
+Lunate.Extensibility.Abstractions.InputReceivedResult.PassThrough
+Lunate.Extensibility.Abstractions.InputReceivedResult.PassThrough.Equals(Lunate.Extensibility.Abstractions.InputReceivedResult.PassThrough? other) -> bool
+Lunate.Extensibility.Abstractions.InputReceivedResult.PassThrough.PassThrough() -> void
+Lunate.Extensibility.Abstractions.InputReceivedResult.Transform
+Lunate.Extensibility.Abstractions.InputReceivedResult.Transform.Deconstruct(out string! Text) -> void
+Lunate.Extensibility.Abstractions.InputReceivedResult.Transform.Equals(Lunate.Extensibility.Abstractions.InputReceivedResult.Transform? other) -> bool
+Lunate.Extensibility.Abstractions.InputReceivedResult.Transform.Text.get -> string!
+Lunate.Extensibility.Abstractions.InputReceivedResult.Transform.Text.init -> void
+Lunate.Extensibility.Abstractions.InputReceivedResult.Transform.Transform(string! Text) -> void
+Lunate.Extensibility.Abstractions.MessageCompletedPayload
+Lunate.Extensibility.Abstractions.MessageCompletedPayload.<Clone>$() -> Lunate.Extensibility.Abstractions.MessageCompletedPayload!
+Lunate.Extensibility.Abstractions.MessageCompletedPayload.Deconstruct(out string! RunId, out string! Role, out string! Text) -> void
+Lunate.Extensibility.Abstractions.MessageCompletedPayload.Equals(Lunate.Extensibility.Abstractions.MessageCompletedPayload? other) -> bool
+Lunate.Extensibility.Abstractions.MessageCompletedPayload.MessageCompletedPayload(string! RunId, string! Role, string! Text) -> void
+Lunate.Extensibility.Abstractions.MessageCompletedPayload.Role.get -> string!
+Lunate.Extensibility.Abstractions.MessageCompletedPayload.Role.init -> void
+Lunate.Extensibility.Abstractions.MessageCompletedPayload.RunId.get -> string!
+Lunate.Extensibility.Abstractions.MessageCompletedPayload.RunId.init -> void
+Lunate.Extensibility.Abstractions.MessageCompletedPayload.Text.get -> string!
+Lunate.Extensibility.Abstractions.MessageCompletedPayload.Text.init -> void
+Lunate.Extensibility.Abstractions.MessageCompletedResult
+Lunate.Extensibility.Abstractions.MessageCompletedResult.Keep
+Lunate.Extensibility.Abstractions.MessageCompletedResult.Keep.Equals(Lunate.Extensibility.Abstractions.MessageCompletedResult.Keep? other) -> bool
+Lunate.Extensibility.Abstractions.MessageCompletedResult.Keep.Keep() -> void
+Lunate.Extensibility.Abstractions.MessageCompletedResult.MessageCompletedResult(Lunate.Extensibility.Abstractions.MessageCompletedResult! original) -> void
+Lunate.Extensibility.Abstractions.MessageCompletedResult.Replace
+Lunate.Extensibility.Abstractions.MessageCompletedResult.Replace.Deconstruct(out string! Text) -> void
+Lunate.Extensibility.Abstractions.MessageCompletedResult.Replace.Equals(Lunate.Extensibility.Abstractions.MessageCompletedResult.Replace? other) -> bool
+Lunate.Extensibility.Abstractions.MessageCompletedResult.Replace.Replace(string! Text) -> void
+Lunate.Extensibility.Abstractions.MessageCompletedResult.Replace.Text.get -> string!
+Lunate.Extensibility.Abstractions.MessageCompletedResult.Replace.Text.init -> void
+Lunate.Extensibility.Abstractions.ModelChangedPayload
+Lunate.Extensibility.Abstractions.ModelChangedPayload.<Clone>$() -> Lunate.Extensibility.Abstractions.ModelChangedPayload!
+Lunate.Extensibility.Abstractions.ModelChangedPayload.Deconstruct(out string! RunId, out string! Model) -> void
+Lunate.Extensibility.Abstractions.ModelChangedPayload.Equals(Lunate.Extensibility.Abstractions.ModelChangedPayload? other) -> bool
+Lunate.Extensibility.Abstractions.ModelChangedPayload.Model.get -> string!
+Lunate.Extensibility.Abstractions.ModelChangedPayload.Model.init -> void
+Lunate.Extensibility.Abstractions.ModelChangedPayload.ModelChangedPayload(string! RunId, string! Model) -> void
+Lunate.Extensibility.Abstractions.ModelChangedPayload.RunId.get -> string!
+Lunate.Extensibility.Abstractions.ModelChangedPayload.RunId.init -> void
+Lunate.Extensibility.Abstractions.ProjectTrustPayload
+Lunate.Extensibility.Abstractions.ProjectTrustPayload.<Clone>$() -> Lunate.Extensibility.Abstractions.ProjectTrustPayload!
+Lunate.Extensibility.Abstractions.ProjectTrustPayload.Deconstruct(out string! ExtensionId, out string! ExtensionDirectory, out string! RepositoryIdentity, out string! WorktreePath) -> void
+Lunate.Extensibility.Abstractions.ProjectTrustPayload.Equals(Lunate.Extensibility.Abstractions.ProjectTrustPayload? other) -> bool
+Lunate.Extensibility.Abstractions.ProjectTrustPayload.ExtensionDirectory.get -> string!
+Lunate.Extensibility.Abstractions.ProjectTrustPayload.ExtensionDirectory.init -> void
+Lunate.Extensibility.Abstractions.ProjectTrustPayload.ExtensionId.get -> string!
+Lunate.Extensibility.Abstractions.ProjectTrustPayload.ExtensionId.init -> void
+Lunate.Extensibility.Abstractions.ProjectTrustPayload.ProjectTrustPayload(string! ExtensionId, string! ExtensionDirectory, string! RepositoryIdentity, string! WorktreePath) -> void
+Lunate.Extensibility.Abstractions.ProjectTrustPayload.RepositoryIdentity.get -> string!
+Lunate.Extensibility.Abstractions.ProjectTrustPayload.RepositoryIdentity.init -> void
+Lunate.Extensibility.Abstractions.ProjectTrustPayload.WorktreePath.get -> string!
+Lunate.Extensibility.Abstractions.ProjectTrustPayload.WorktreePath.init -> void
+Lunate.Extensibility.Abstractions.ProjectTrustResult
+Lunate.Extensibility.Abstractions.ProjectTrustResult.Allow
+Lunate.Extensibility.Abstractions.ProjectTrustResult.Allow.Allow() -> void
+Lunate.Extensibility.Abstractions.ProjectTrustResult.Allow.Equals(Lunate.Extensibility.Abstractions.ProjectTrustResult.Allow? other) -> bool
+Lunate.Extensibility.Abstractions.ProjectTrustResult.Deny
+Lunate.Extensibility.Abstractions.ProjectTrustResult.Deny.Deconstruct(out string! Reason) -> void
+Lunate.Extensibility.Abstractions.ProjectTrustResult.Deny.Deny(string! Reason) -> void
+Lunate.Extensibility.Abstractions.ProjectTrustResult.Deny.Equals(Lunate.Extensibility.Abstractions.ProjectTrustResult.Deny? other) -> bool
+Lunate.Extensibility.Abstractions.ProjectTrustResult.Deny.Reason.get -> string!
+Lunate.Extensibility.Abstractions.ProjectTrustResult.Deny.Reason.init -> void
+Lunate.Extensibility.Abstractions.ProjectTrustResult.ProjectTrustResult(Lunate.Extensibility.Abstractions.ProjectTrustResult! original) -> void
+Lunate.Extensibility.Abstractions.PromptSection
+Lunate.Extensibility.Abstractions.PromptSection.<Clone>$() -> Lunate.Extensibility.Abstractions.PromptSection!
+Lunate.Extensibility.Abstractions.PromptSection.Deconstruct(out string! Name, out string! Text) -> void
+Lunate.Extensibility.Abstractions.PromptSection.Equals(Lunate.Extensibility.Abstractions.PromptSection? other) -> bool
+Lunate.Extensibility.Abstractions.PromptSection.Name.get -> string!
+Lunate.Extensibility.Abstractions.PromptSection.Name.init -> void
+Lunate.Extensibility.Abstractions.PromptSection.PromptSection(string! Name, string! Text) -> void
+Lunate.Extensibility.Abstractions.PromptSection.Source.get -> string?
+Lunate.Extensibility.Abstractions.PromptSection.Source.init -> void
+Lunate.Extensibility.Abstractions.PromptSection.Text.get -> string!
+Lunate.Extensibility.Abstractions.PromptSection.Text.init -> void
+Lunate.Extensibility.Abstractions.PromptSectionEdit
+Lunate.Extensibility.Abstractions.PromptSectionEdit.<Clone>$() -> Lunate.Extensibility.Abstractions.PromptSectionEdit!
+Lunate.Extensibility.Abstractions.PromptSectionEdit.Deconstruct(out string! Name, out string? Text) -> void
+Lunate.Extensibility.Abstractions.PromptSectionEdit.Equals(Lunate.Extensibility.Abstractions.PromptSectionEdit? other) -> bool
+Lunate.Extensibility.Abstractions.PromptSectionEdit.Name.get -> string!
+Lunate.Extensibility.Abstractions.PromptSectionEdit.Name.init -> void
+Lunate.Extensibility.Abstractions.PromptSectionEdit.PromptSectionEdit(string! Name, string? Text) -> void
+Lunate.Extensibility.Abstractions.PromptSectionEdit.Source.get -> string?
+Lunate.Extensibility.Abstractions.PromptSectionEdit.Source.init -> void
+Lunate.Extensibility.Abstractions.PromptSectionEdit.Text.get -> string?
+Lunate.Extensibility.Abstractions.PromptSectionEdit.Text.init -> void
+Lunate.Extensibility.Abstractions.ProviderStreamEventPayload
+Lunate.Extensibility.Abstractions.ProviderStreamEventPayload.<Clone>$() -> Lunate.Extensibility.Abstractions.ProviderStreamEventPayload!
+Lunate.Extensibility.Abstractions.ProviderStreamEventPayload.Deconstruct(out string! RunId, out string? ModelId, out string? Text, out string? FinishReason) -> void
+Lunate.Extensibility.Abstractions.ProviderStreamEventPayload.Equals(Lunate.Extensibility.Abstractions.ProviderStreamEventPayload? other) -> bool
+Lunate.Extensibility.Abstractions.ProviderStreamEventPayload.FinishReason.get -> string?
+Lunate.Extensibility.Abstractions.ProviderStreamEventPayload.FinishReason.init -> void
+Lunate.Extensibility.Abstractions.ProviderStreamEventPayload.ModelId.get -> string?
+Lunate.Extensibility.Abstractions.ProviderStreamEventPayload.ModelId.init -> void
+Lunate.Extensibility.Abstractions.ProviderStreamEventPayload.ProviderStreamEventPayload(string! RunId, string? ModelId, string? Text, string? FinishReason) -> void
+Lunate.Extensibility.Abstractions.ProviderStreamEventPayload.RunId.get -> string!
+Lunate.Extensibility.Abstractions.ProviderStreamEventPayload.RunId.init -> void
+Lunate.Extensibility.Abstractions.ProviderStreamEventPayload.Text.get -> string?
+Lunate.Extensibility.Abstractions.ProviderStreamEventPayload.Text.init -> void
+Lunate.Extensibility.Abstractions.RunSettledPayload
+Lunate.Extensibility.Abstractions.RunSettledPayload.<Clone>$() -> Lunate.Extensibility.Abstractions.RunSettledPayload!
+Lunate.Extensibility.Abstractions.RunSettledPayload.Deconstruct(out string! RunId) -> void
+Lunate.Extensibility.Abstractions.RunSettledPayload.Equals(Lunate.Extensibility.Abstractions.RunSettledPayload? other) -> bool
+Lunate.Extensibility.Abstractions.RunSettledPayload.RunId.get -> string!
+Lunate.Extensibility.Abstractions.RunSettledPayload.RunId.init -> void
+Lunate.Extensibility.Abstractions.RunSettledPayload.RunSettledPayload(string! RunId) -> void
+Lunate.Extensibility.Abstractions.RunStartingPayload
+Lunate.Extensibility.Abstractions.RunStartingPayload.<Clone>$() -> Lunate.Extensibility.Abstractions.RunStartingPayload!
+Lunate.Extensibility.Abstractions.RunStartingPayload.Deconstruct(out string! RunId, out System.Collections.Generic.IReadOnlyList<Lunate.Extensibility.Abstractions.PromptSection!>! Sections, out System.Collections.Generic.IReadOnlyList<string!>! Tools) -> void
+Lunate.Extensibility.Abstractions.RunStartingPayload.Equals(Lunate.Extensibility.Abstractions.RunStartingPayload? other) -> bool
+Lunate.Extensibility.Abstractions.RunStartingPayload.RunId.get -> string!
+Lunate.Extensibility.Abstractions.RunStartingPayload.RunId.init -> void
+Lunate.Extensibility.Abstractions.RunStartingPayload.RunStartingPayload(string! RunId, System.Collections.Generic.IReadOnlyList<Lunate.Extensibility.Abstractions.PromptSection!>! Sections, System.Collections.Generic.IReadOnlyList<string!>! Tools) -> void
+Lunate.Extensibility.Abstractions.RunStartingPayload.Sections.get -> System.Collections.Generic.IReadOnlyList<Lunate.Extensibility.Abstractions.PromptSection!>!
+Lunate.Extensibility.Abstractions.RunStartingPayload.Sections.init -> void
+Lunate.Extensibility.Abstractions.RunStartingPayload.Tools.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Lunate.Extensibility.Abstractions.RunStartingPayload.Tools.init -> void
+Lunate.Extensibility.Abstractions.RunStartingResult
+Lunate.Extensibility.Abstractions.RunStartingResult.Apply
+Lunate.Extensibility.Abstractions.RunStartingResult.Apply.ActiveTools.get -> System.Collections.Generic.IReadOnlyList<string!>?
+Lunate.Extensibility.Abstractions.RunStartingResult.Apply.ActiveTools.init -> void
+Lunate.Extensibility.Abstractions.RunStartingResult.Apply.Apply(System.Collections.Generic.IReadOnlyList<Lunate.Extensibility.Abstractions.PromptSectionEdit!>! SectionEdits, System.Collections.Generic.IReadOnlyList<string!>? ActiveTools) -> void
+Lunate.Extensibility.Abstractions.RunStartingResult.Apply.Deconstruct(out System.Collections.Generic.IReadOnlyList<Lunate.Extensibility.Abstractions.PromptSectionEdit!>! SectionEdits, out System.Collections.Generic.IReadOnlyList<string!>? ActiveTools) -> void
+Lunate.Extensibility.Abstractions.RunStartingResult.Apply.Equals(Lunate.Extensibility.Abstractions.RunStartingResult.Apply? other) -> bool
+Lunate.Extensibility.Abstractions.RunStartingResult.Apply.SectionEdits.get -> System.Collections.Generic.IReadOnlyList<Lunate.Extensibility.Abstractions.PromptSectionEdit!>!
+Lunate.Extensibility.Abstractions.RunStartingResult.Apply.SectionEdits.init -> void
+Lunate.Extensibility.Abstractions.RunStartingResult.None
+Lunate.Extensibility.Abstractions.RunStartingResult.None.Equals(Lunate.Extensibility.Abstractions.RunStartingResult.None? other) -> bool
+Lunate.Extensibility.Abstractions.RunStartingResult.None.None() -> void
+Lunate.Extensibility.Abstractions.RunStartingResult.RunStartingResult(Lunate.Extensibility.Abstractions.RunStartingResult! original) -> void
+Lunate.Extensibility.Abstractions.SessionEndingPayload
+Lunate.Extensibility.Abstractions.SessionEndingPayload.<Clone>$() -> Lunate.Extensibility.Abstractions.SessionEndingPayload!
+Lunate.Extensibility.Abstractions.SessionEndingPayload.Deconstruct(out string! WorkingDirectory, out string! RepositoryIdentity) -> void
+Lunate.Extensibility.Abstractions.SessionEndingPayload.Equals(Lunate.Extensibility.Abstractions.SessionEndingPayload? other) -> bool
+Lunate.Extensibility.Abstractions.SessionEndingPayload.RepositoryIdentity.get -> string!
+Lunate.Extensibility.Abstractions.SessionEndingPayload.RepositoryIdentity.init -> void
+Lunate.Extensibility.Abstractions.SessionEndingPayload.SessionEndingPayload(string! WorkingDirectory, string! RepositoryIdentity) -> void
+Lunate.Extensibility.Abstractions.SessionEndingPayload.WorkingDirectory.get -> string!
+Lunate.Extensibility.Abstractions.SessionEndingPayload.WorkingDirectory.init -> void
+Lunate.Extensibility.Abstractions.SessionStartedPayload
+Lunate.Extensibility.Abstractions.SessionStartedPayload.<Clone>$() -> Lunate.Extensibility.Abstractions.SessionStartedPayload!
+Lunate.Extensibility.Abstractions.SessionStartedPayload.Deconstruct(out string! WorkingDirectory, out string! RepositoryIdentity) -> void
+Lunate.Extensibility.Abstractions.SessionStartedPayload.Equals(Lunate.Extensibility.Abstractions.SessionStartedPayload? other) -> bool
+Lunate.Extensibility.Abstractions.SessionStartedPayload.RepositoryIdentity.get -> string!
+Lunate.Extensibility.Abstractions.SessionStartedPayload.RepositoryIdentity.init -> void
+Lunate.Extensibility.Abstractions.SessionStartedPayload.SessionStartedPayload(string! WorkingDirectory, string! RepositoryIdentity) -> void
+Lunate.Extensibility.Abstractions.SessionStartedPayload.WorkingDirectory.get -> string!
+Lunate.Extensibility.Abstractions.SessionStartedPayload.WorkingDirectory.init -> void
+Lunate.Extensibility.Abstractions.ToolCallingPayload
+Lunate.Extensibility.Abstractions.ToolCallingPayload.<Clone>$() -> Lunate.Extensibility.Abstractions.ToolCallingPayload!
+Lunate.Extensibility.Abstractions.ToolCallingPayload.Arguments.get -> System.Text.Json.JsonElement
+Lunate.Extensibility.Abstractions.ToolCallingPayload.Arguments.init -> void
+Lunate.Extensibility.Abstractions.ToolCallingPayload.CallId.get -> string!
+Lunate.Extensibility.Abstractions.ToolCallingPayload.CallId.init -> void
+Lunate.Extensibility.Abstractions.ToolCallingPayload.Deconstruct(out string! RunId, out string! CallId, out string! ToolName, out System.Text.Json.JsonElement Arguments) -> void
+Lunate.Extensibility.Abstractions.ToolCallingPayload.Equals(Lunate.Extensibility.Abstractions.ToolCallingPayload? other) -> bool
+Lunate.Extensibility.Abstractions.ToolCallingPayload.RunId.get -> string!
+Lunate.Extensibility.Abstractions.ToolCallingPayload.RunId.init -> void
+Lunate.Extensibility.Abstractions.ToolCallingPayload.ToolCallingPayload(string! RunId, string! CallId, string! ToolName, System.Text.Json.JsonElement Arguments) -> void
+Lunate.Extensibility.Abstractions.ToolCallingPayload.ToolName.get -> string!
+Lunate.Extensibility.Abstractions.ToolCallingPayload.ToolName.init -> void
+Lunate.Extensibility.Abstractions.ToolCallingResult
+Lunate.Extensibility.Abstractions.ToolCallingResult.Block
+Lunate.Extensibility.Abstractions.ToolCallingResult.Block.Block(string! Reason) -> void
+Lunate.Extensibility.Abstractions.ToolCallingResult.Block.Deconstruct(out string! Reason) -> void
+Lunate.Extensibility.Abstractions.ToolCallingResult.Block.Equals(Lunate.Extensibility.Abstractions.ToolCallingResult.Block? other) -> bool
+Lunate.Extensibility.Abstractions.ToolCallingResult.Block.Reason.get -> string!
+Lunate.Extensibility.Abstractions.ToolCallingResult.Block.Reason.init -> void
+Lunate.Extensibility.Abstractions.ToolCallingResult.Proceed
+Lunate.Extensibility.Abstractions.ToolCallingResult.Proceed.Arguments.get -> System.Text.Json.JsonElement?
+Lunate.Extensibility.Abstractions.ToolCallingResult.Proceed.Arguments.init -> void
+Lunate.Extensibility.Abstractions.ToolCallingResult.Proceed.Deconstruct(out System.Text.Json.JsonElement? Arguments) -> void
+Lunate.Extensibility.Abstractions.ToolCallingResult.Proceed.Equals(Lunate.Extensibility.Abstractions.ToolCallingResult.Proceed? other) -> bool
+Lunate.Extensibility.Abstractions.ToolCallingResult.Proceed.Proceed(System.Text.Json.JsonElement? Arguments) -> void
+Lunate.Extensibility.Abstractions.ToolCallingResult.ToolCallingResult(Lunate.Extensibility.Abstractions.ToolCallingResult! original) -> void
+Lunate.Extensibility.Abstractions.ToolResultReadyPayload
+Lunate.Extensibility.Abstractions.ToolResultReadyPayload.<Clone>$() -> Lunate.Extensibility.Abstractions.ToolResultReadyPayload!
+Lunate.Extensibility.Abstractions.ToolResultReadyPayload.CallId.get -> string!
+Lunate.Extensibility.Abstractions.ToolResultReadyPayload.CallId.init -> void
+Lunate.Extensibility.Abstractions.ToolResultReadyPayload.Deconstruct(out string! RunId, out string! CallId, out string! ToolName, out string! Output, out bool IsError) -> void
+Lunate.Extensibility.Abstractions.ToolResultReadyPayload.Equals(Lunate.Extensibility.Abstractions.ToolResultReadyPayload? other) -> bool
+Lunate.Extensibility.Abstractions.ToolResultReadyPayload.IsError.get -> bool
+Lunate.Extensibility.Abstractions.ToolResultReadyPayload.IsError.init -> void
+Lunate.Extensibility.Abstractions.ToolResultReadyPayload.Output.get -> string!
+Lunate.Extensibility.Abstractions.ToolResultReadyPayload.Output.init -> void
+Lunate.Extensibility.Abstractions.ToolResultReadyPayload.RunId.get -> string!
+Lunate.Extensibility.Abstractions.ToolResultReadyPayload.RunId.init -> void
+Lunate.Extensibility.Abstractions.ToolResultReadyPayload.ToolName.get -> string!
+Lunate.Extensibility.Abstractions.ToolResultReadyPayload.ToolName.init -> void
+Lunate.Extensibility.Abstractions.ToolResultReadyPayload.ToolResultReadyPayload(string! RunId, string! CallId, string! ToolName, string! Output, bool IsError) -> void
+Lunate.Extensibility.Abstractions.ToolResultReadyResult
+Lunate.Extensibility.Abstractions.ToolResultReadyResult.<Clone>$() -> Lunate.Extensibility.Abstractions.ToolResultReadyResult!
+Lunate.Extensibility.Abstractions.ToolResultReadyResult.Data.get -> System.Text.Json.JsonElement?
+Lunate.Extensibility.Abstractions.ToolResultReadyResult.Data.init -> void
+Lunate.Extensibility.Abstractions.ToolResultReadyResult.Deconstruct(out string! Output, out System.Text.Json.JsonElement? Data) -> void
+Lunate.Extensibility.Abstractions.ToolResultReadyResult.Equals(Lunate.Extensibility.Abstractions.ToolResultReadyResult? other) -> bool
+Lunate.Extensibility.Abstractions.ToolResultReadyResult.Output.get -> string!
+Lunate.Extensibility.Abstractions.ToolResultReadyResult.Output.init -> void
+Lunate.Extensibility.Abstractions.ToolResultReadyResult.ToolResultReadyResult(string! Output, System.Text.Json.JsonElement? Data) -> void
+Lunate.Extensibility.Abstractions.ToolsChangedPayload
+Lunate.Extensibility.Abstractions.ToolsChangedPayload.<Clone>$() -> Lunate.Extensibility.Abstractions.ToolsChangedPayload!
+Lunate.Extensibility.Abstractions.ToolsChangedPayload.Deconstruct(out string! RunId, out System.Collections.Generic.IReadOnlyList<string!>! Tools) -> void
+Lunate.Extensibility.Abstractions.ToolsChangedPayload.Equals(Lunate.Extensibility.Abstractions.ToolsChangedPayload? other) -> bool
+Lunate.Extensibility.Abstractions.ToolsChangedPayload.RunId.get -> string!
+Lunate.Extensibility.Abstractions.ToolsChangedPayload.RunId.init -> void
+Lunate.Extensibility.Abstractions.ToolsChangedPayload.Tools.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Lunate.Extensibility.Abstractions.ToolsChangedPayload.Tools.init -> void
+Lunate.Extensibility.Abstractions.ToolsChangedPayload.ToolsChangedPayload(string! RunId, System.Collections.Generic.IReadOnlyList<string!>! Tools) -> void
+Lunate.Extensibility.Abstractions.TurnEndedEntry
+Lunate.Extensibility.Abstractions.TurnEndedEntry.<Clone>$() -> Lunate.Extensibility.Abstractions.TurnEndedEntry!
+Lunate.Extensibility.Abstractions.TurnEndedEntry.Deconstruct(out string! Type, out System.Text.Json.JsonElement Payload) -> void
+Lunate.Extensibility.Abstractions.TurnEndedEntry.Equals(Lunate.Extensibility.Abstractions.TurnEndedEntry? other) -> bool
+Lunate.Extensibility.Abstractions.TurnEndedEntry.ExtensionId.get -> string?
+Lunate.Extensibility.Abstractions.TurnEndedEntry.ExtensionId.init -> void
+Lunate.Extensibility.Abstractions.TurnEndedEntry.Payload.get -> System.Text.Json.JsonElement
+Lunate.Extensibility.Abstractions.TurnEndedEntry.Payload.init -> void
+Lunate.Extensibility.Abstractions.TurnEndedEntry.TurnEndedEntry(string! Type, System.Text.Json.JsonElement Payload) -> void
+Lunate.Extensibility.Abstractions.TurnEndedEntry.Type.get -> string!
+Lunate.Extensibility.Abstractions.TurnEndedEntry.Type.init -> void
+Lunate.Extensibility.Abstractions.TurnEndedPayload
+Lunate.Extensibility.Abstractions.TurnEndedPayload.<Clone>$() -> Lunate.Extensibility.Abstractions.TurnEndedPayload!
+Lunate.Extensibility.Abstractions.TurnEndedPayload.Deconstruct(out string! RunId) -> void
+Lunate.Extensibility.Abstractions.TurnEndedPayload.Equals(Lunate.Extensibility.Abstractions.TurnEndedPayload? other) -> bool
+Lunate.Extensibility.Abstractions.TurnEndedPayload.RunId.get -> string!
+Lunate.Extensibility.Abstractions.TurnEndedPayload.RunId.init -> void
+Lunate.Extensibility.Abstractions.TurnEndedPayload.TurnEndedPayload(string! RunId) -> void
+Lunate.Extensibility.Abstractions.TurnEndedResult
+Lunate.Extensibility.Abstractions.TurnEndedResult.None
+Lunate.Extensibility.Abstractions.TurnEndedResult.None.Equals(Lunate.Extensibility.Abstractions.TurnEndedResult.None? other) -> bool
+Lunate.Extensibility.Abstractions.TurnEndedResult.None.None() -> void
+Lunate.Extensibility.Abstractions.TurnEndedResult.TurnEnded
+Lunate.Extensibility.Abstractions.TurnEndedResult.TurnEnded.Deconstruct(out System.Collections.Generic.IReadOnlyList<Lunate.Extensibility.Abstractions.TurnEndedEntry!>! Entries, out bool RequestContinuation) -> void
+Lunate.Extensibility.Abstractions.TurnEndedResult.TurnEnded.Entries.get -> System.Collections.Generic.IReadOnlyList<Lunate.Extensibility.Abstractions.TurnEndedEntry!>!
+Lunate.Extensibility.Abstractions.TurnEndedResult.TurnEnded.Entries.init -> void
+Lunate.Extensibility.Abstractions.TurnEndedResult.TurnEnded.Equals(Lunate.Extensibility.Abstractions.TurnEndedResult.TurnEnded? other) -> bool
+Lunate.Extensibility.Abstractions.TurnEndedResult.TurnEnded.RequestContinuation.get -> bool
+Lunate.Extensibility.Abstractions.TurnEndedResult.TurnEnded.RequestContinuation.init -> void
+Lunate.Extensibility.Abstractions.TurnEndedResult.TurnEnded.TurnEnded(System.Collections.Generic.IReadOnlyList<Lunate.Extensibility.Abstractions.TurnEndedEntry!>! Entries, bool RequestContinuation) -> void
+Lunate.Extensibility.Abstractions.TurnEndedResult.TurnEndedResult(Lunate.Extensibility.Abstractions.TurnEndedResult! original) -> void
+abstract Lunate.Extensibility.Abstractions.CompactingResult.<Clone>$() -> Lunate.Extensibility.Abstractions.CompactingResult!
+abstract Lunate.Extensibility.Abstractions.InputReceivedResult.<Clone>$() -> Lunate.Extensibility.Abstractions.InputReceivedResult!
+abstract Lunate.Extensibility.Abstractions.MessageCompletedResult.<Clone>$() -> Lunate.Extensibility.Abstractions.MessageCompletedResult!
+abstract Lunate.Extensibility.Abstractions.ProjectTrustResult.<Clone>$() -> Lunate.Extensibility.Abstractions.ProjectTrustResult!
+abstract Lunate.Extensibility.Abstractions.RunStartingResult.<Clone>$() -> Lunate.Extensibility.Abstractions.RunStartingResult!
+abstract Lunate.Extensibility.Abstractions.ToolCallingResult.<Clone>$() -> Lunate.Extensibility.Abstractions.ToolCallingResult!
+abstract Lunate.Extensibility.Abstractions.TurnEndedResult.<Clone>$() -> Lunate.Extensibility.Abstractions.TurnEndedResult!
+override Lunate.Extensibility.Abstractions.CompactingPayload.Equals(object? obj) -> bool
+override Lunate.Extensibility.Abstractions.CompactingPayload.GetHashCode() -> int
+override Lunate.Extensibility.Abstractions.CompactingPayload.ToString() -> string!
+override Lunate.Extensibility.Abstractions.CompactingResult.Equals(object? obj) -> bool
+override Lunate.Extensibility.Abstractions.CompactingResult.GetHashCode() -> int
+override Lunate.Extensibility.Abstractions.CompactingResult.Provide.<Clone>$() -> Lunate.Extensibility.Abstractions.CompactingResult.Provide!
+override Lunate.Extensibility.Abstractions.CompactingResult.Provide.Equals(object? obj) -> bool
+override Lunate.Extensibility.Abstractions.CompactingResult.Provide.GetHashCode() -> int
+override Lunate.Extensibility.Abstractions.CompactingResult.Provide.ToString() -> string!
+override Lunate.Extensibility.Abstractions.CompactingResult.ToString() -> string!
+override Lunate.Extensibility.Abstractions.CompactingResult.UseDefault.<Clone>$() -> Lunate.Extensibility.Abstractions.CompactingResult.UseDefault!
+override Lunate.Extensibility.Abstractions.CompactingResult.UseDefault.Equals(object? obj) -> bool
+override Lunate.Extensibility.Abstractions.CompactingResult.UseDefault.GetHashCode() -> int
+override Lunate.Extensibility.Abstractions.CompactingResult.UseDefault.ToString() -> string!
+override Lunate.Extensibility.Abstractions.ContextBuildingPayload.Equals(object? obj) -> bool
+override Lunate.Extensibility.Abstractions.ContextBuildingPayload.GetHashCode() -> int
+override Lunate.Extensibility.Abstractions.ContextBuildingPayload.ToString() -> string!
+override Lunate.Extensibility.Abstractions.ContextBuildingResult.Equals(object? obj) -> bool
+override Lunate.Extensibility.Abstractions.ContextBuildingResult.GetHashCode() -> int
+override Lunate.Extensibility.Abstractions.ContextBuildingResult.ToString() -> string!
+override Lunate.Extensibility.Abstractions.ContextMessage.Equals(object? obj) -> bool
+override Lunate.Extensibility.Abstractions.ContextMessage.GetHashCode() -> int
+override Lunate.Extensibility.Abstractions.ContextMessage.ToString() -> string!
+override Lunate.Extensibility.Abstractions.InputReceivedPayload.Equals(object? obj) -> bool
+override Lunate.Extensibility.Abstractions.InputReceivedPayload.GetHashCode() -> int
+override Lunate.Extensibility.Abstractions.InputReceivedPayload.ToString() -> string!
+override Lunate.Extensibility.Abstractions.InputReceivedResult.Consume.<Clone>$() -> Lunate.Extensibility.Abstractions.InputReceivedResult.Consume!
+override Lunate.Extensibility.Abstractions.InputReceivedResult.Consume.Equals(object? obj) -> bool
+override Lunate.Extensibility.Abstractions.InputReceivedResult.Consume.GetHashCode() -> int
+override Lunate.Extensibility.Abstractions.InputReceivedResult.Consume.ToString() -> string!
+override Lunate.Extensibility.Abstractions.InputReceivedResult.Equals(object? obj) -> bool
+override Lunate.Extensibility.Abstractions.InputReceivedResult.GetHashCode() -> int
+override Lunate.Extensibility.Abstractions.InputReceivedResult.PassThrough.<Clone>$() -> Lunate.Extensibility.Abstractions.InputReceivedResult.PassThrough!
+override Lunate.Extensibility.Abstractions.InputReceivedResult.PassThrough.Equals(object? obj) -> bool
+override Lunate.Extensibility.Abstractions.InputReceivedResult.PassThrough.GetHashCode() -> int
+override Lunate.Extensibility.Abstractions.InputReceivedResult.PassThrough.ToString() -> string!
+override Lunate.Extensibility.Abstractions.InputReceivedResult.ToString() -> string!
+override Lunate.Extensibility.Abstractions.InputReceivedResult.Transform.<Clone>$() -> Lunate.Extensibility.Abstractions.InputReceivedResult.Transform!
+override Lunate.Extensibility.Abstractions.InputReceivedResult.Transform.Equals(object? obj) -> bool
+override Lunate.Extensibility.Abstractions.InputReceivedResult.Transform.GetHashCode() -> int
+override Lunate.Extensibility.Abstractions.InputReceivedResult.Transform.ToString() -> string!
+override Lunate.Extensibility.Abstractions.MessageCompletedPayload.Equals(object? obj) -> bool
+override Lunate.Extensibility.Abstractions.MessageCompletedPayload.GetHashCode() -> int
+override Lunate.Extensibility.Abstractions.MessageCompletedPayload.ToString() -> string!
+override Lunate.Extensibility.Abstractions.MessageCompletedResult.Equals(object? obj) -> bool
+override Lunate.Extensibility.Abstractions.MessageCompletedResult.GetHashCode() -> int
+override Lunate.Extensibility.Abstractions.MessageCompletedResult.Keep.<Clone>$() -> Lunate.Extensibility.Abstractions.MessageCompletedResult.Keep!
+override Lunate.Extensibility.Abstractions.MessageCompletedResult.Keep.Equals(object? obj) -> bool
+override Lunate.Extensibility.Abstractions.MessageCompletedResult.Keep.GetHashCode() -> int
+override Lunate.Extensibility.Abstractions.MessageCompletedResult.Keep.ToString() -> string!
+override Lunate.Extensibility.Abstractions.MessageCompletedResult.Replace.<Clone>$() -> Lunate.Extensibility.Abstractions.MessageCompletedResult.Replace!
+override Lunate.Extensibility.Abstractions.MessageCompletedResult.Replace.Equals(object? obj) -> bool
+override Lunate.Extensibility.Abstractions.MessageCompletedResult.Replace.GetHashCode() -> int
+override Lunate.Extensibility.Abstractions.MessageCompletedResult.Replace.ToString() -> string!
+override Lunate.Extensibility.Abstractions.MessageCompletedResult.ToString() -> string!
+override Lunate.Extensibility.Abstractions.ModelChangedPayload.Equals(object? obj) -> bool
+override Lunate.Extensibility.Abstractions.ModelChangedPayload.GetHashCode() -> int
+override Lunate.Extensibility.Abstractions.ModelChangedPayload.ToString() -> string!
+override Lunate.Extensibility.Abstractions.ProjectTrustPayload.Equals(object? obj) -> bool
+override Lunate.Extensibility.Abstractions.ProjectTrustPayload.GetHashCode() -> int
+override Lunate.Extensibility.Abstractions.ProjectTrustPayload.ToString() -> string!
+override Lunate.Extensibility.Abstractions.ProjectTrustResult.Allow.<Clone>$() -> Lunate.Extensibility.Abstractions.ProjectTrustResult.Allow!
+override Lunate.Extensibility.Abstractions.ProjectTrustResult.Allow.Equals(object? obj) -> bool
+override Lunate.Extensibility.Abstractions.ProjectTrustResult.Allow.GetHashCode() -> int
+override Lunate.Extensibility.Abstractions.ProjectTrustResult.Allow.ToString() -> string!
+override Lunate.Extensibility.Abstractions.ProjectTrustResult.Deny.<Clone>$() -> Lunate.Extensibility.Abstractions.ProjectTrustResult.Deny!
+override Lunate.Extensibility.Abstractions.ProjectTrustResult.Deny.Equals(object? obj) -> bool
+override Lunate.Extensibility.Abstractions.ProjectTrustResult.Deny.GetHashCode() -> int
+override Lunate.Extensibility.Abstractions.ProjectTrustResult.Deny.ToString() -> string!
+override Lunate.Extensibility.Abstractions.ProjectTrustResult.Equals(object? obj) -> bool
+override Lunate.Extensibility.Abstractions.ProjectTrustResult.GetHashCode() -> int
+override Lunate.Extensibility.Abstractions.ProjectTrustResult.ToString() -> string!
+override Lunate.Extensibility.Abstractions.PromptSection.Equals(object? obj) -> bool
+override Lunate.Extensibility.Abstractions.PromptSection.GetHashCode() -> int
+override Lunate.Extensibility.Abstractions.PromptSection.ToString() -> string!
+override Lunate.Extensibility.Abstractions.PromptSectionEdit.Equals(object? obj) -> bool
+override Lunate.Extensibility.Abstractions.PromptSectionEdit.GetHashCode() -> int
+override Lunate.Extensibility.Abstractions.PromptSectionEdit.ToString() -> string!
+override Lunate.Extensibility.Abstractions.ProviderStreamEventPayload.Equals(object? obj) -> bool
+override Lunate.Extensibility.Abstractions.ProviderStreamEventPayload.GetHashCode() -> int
+override Lunate.Extensibility.Abstractions.ProviderStreamEventPayload.ToString() -> string!
+override Lunate.Extensibility.Abstractions.RunSettledPayload.Equals(object? obj) -> bool
+override Lunate.Extensibility.Abstractions.RunSettledPayload.GetHashCode() -> int
+override Lunate.Extensibility.Abstractions.RunSettledPayload.ToString() -> string!
+override Lunate.Extensibility.Abstractions.RunStartingPayload.Equals(object? obj) -> bool
+override Lunate.Extensibility.Abstractions.RunStartingPayload.GetHashCode() -> int
+override Lunate.Extensibility.Abstractions.RunStartingPayload.ToString() -> string!
+override Lunate.Extensibility.Abstractions.RunStartingResult.Apply.<Clone>$() -> Lunate.Extensibility.Abstractions.RunStartingResult.Apply!
+override Lunate.Extensibility.Abstractions.RunStartingResult.Apply.Equals(object? obj) -> bool
+override Lunate.Extensibility.Abstractions.RunStartingResult.Apply.GetHashCode() -> int
+override Lunate.Extensibility.Abstractions.RunStartingResult.Apply.ToString() -> string!
+override Lunate.Extensibility.Abstractions.RunStartingResult.Equals(object? obj) -> bool
+override Lunate.Extensibility.Abstractions.RunStartingResult.GetHashCode() -> int
+override Lunate.Extensibility.Abstractions.RunStartingResult.None.<Clone>$() -> Lunate.Extensibility.Abstractions.RunStartingResult.None!
+override Lunate.Extensibility.Abstractions.RunStartingResult.None.Equals(object? obj) -> bool
+override Lunate.Extensibility.Abstractions.RunStartingResult.None.GetHashCode() -> int
+override Lunate.Extensibility.Abstractions.RunStartingResult.None.ToString() -> string!
+override Lunate.Extensibility.Abstractions.RunStartingResult.ToString() -> string!
+override Lunate.Extensibility.Abstractions.SessionEndingPayload.Equals(object? obj) -> bool
+override Lunate.Extensibility.Abstractions.SessionEndingPayload.GetHashCode() -> int
+override Lunate.Extensibility.Abstractions.SessionEndingPayload.ToString() -> string!
+override Lunate.Extensibility.Abstractions.SessionStartedPayload.Equals(object? obj) -> bool
+override Lunate.Extensibility.Abstractions.SessionStartedPayload.GetHashCode() -> int
+override Lunate.Extensibility.Abstractions.SessionStartedPayload.ToString() -> string!
+override Lunate.Extensibility.Abstractions.ToolCallingPayload.Equals(object? obj) -> bool
+override Lunate.Extensibility.Abstractions.ToolCallingPayload.GetHashCode() -> int
+override Lunate.Extensibility.Abstractions.ToolCallingPayload.ToString() -> string!
+override Lunate.Extensibility.Abstractions.ToolCallingResult.Block.<Clone>$() -> Lunate.Extensibility.Abstractions.ToolCallingResult.Block!
+override Lunate.Extensibility.Abstractions.ToolCallingResult.Block.Equals(object? obj) -> bool
+override Lunate.Extensibility.Abstractions.ToolCallingResult.Block.GetHashCode() -> int
+override Lunate.Extensibility.Abstractions.ToolCallingResult.Block.ToString() -> string!
+override Lunate.Extensibility.Abstractions.ToolCallingResult.Equals(object? obj) -> bool
+override Lunate.Extensibility.Abstractions.ToolCallingResult.GetHashCode() -> int
+override Lunate.Extensibility.Abstractions.ToolCallingResult.Proceed.<Clone>$() -> Lunate.Extensibility.Abstractions.ToolCallingResult.Proceed!
+override Lunate.Extensibility.Abstractions.ToolCallingResult.Proceed.Equals(object? obj) -> bool
+override Lunate.Extensibility.Abstractions.ToolCallingResult.Proceed.GetHashCode() -> int
+override Lunate.Extensibility.Abstractions.ToolCallingResult.Proceed.ToString() -> string!
+override Lunate.Extensibility.Abstractions.ToolCallingResult.ToString() -> string!
+override Lunate.Extensibility.Abstractions.ToolResultReadyPayload.Equals(object? obj) -> bool
+override Lunate.Extensibility.Abstractions.ToolResultReadyPayload.GetHashCode() -> int
+override Lunate.Extensibility.Abstractions.ToolResultReadyPayload.ToString() -> string!
+override Lunate.Extensibility.Abstractions.ToolResultReadyResult.Equals(object? obj) -> bool
+override Lunate.Extensibility.Abstractions.ToolResultReadyResult.GetHashCode() -> int
+override Lunate.Extensibility.Abstractions.ToolResultReadyResult.ToString() -> string!
+override Lunate.Extensibility.Abstractions.ToolsChangedPayload.Equals(object? obj) -> bool
+override Lunate.Extensibility.Abstractions.ToolsChangedPayload.GetHashCode() -> int
+override Lunate.Extensibility.Abstractions.ToolsChangedPayload.ToString() -> string!
+override Lunate.Extensibility.Abstractions.TurnEndedEntry.Equals(object? obj) -> bool
+override Lunate.Extensibility.Abstractions.TurnEndedEntry.GetHashCode() -> int
+override Lunate.Extensibility.Abstractions.TurnEndedEntry.ToString() -> string!
+override Lunate.Extensibility.Abstractions.TurnEndedPayload.Equals(object? obj) -> bool
+override Lunate.Extensibility.Abstractions.TurnEndedPayload.GetHashCode() -> int
+override Lunate.Extensibility.Abstractions.TurnEndedPayload.ToString() -> string!
+override Lunate.Extensibility.Abstractions.TurnEndedResult.Equals(object? obj) -> bool
+override Lunate.Extensibility.Abstractions.TurnEndedResult.GetHashCode() -> int
+override Lunate.Extensibility.Abstractions.TurnEndedResult.None.<Clone>$() -> Lunate.Extensibility.Abstractions.TurnEndedResult.None!
+override Lunate.Extensibility.Abstractions.TurnEndedResult.None.Equals(object? obj) -> bool
+override Lunate.Extensibility.Abstractions.TurnEndedResult.None.GetHashCode() -> int
+override Lunate.Extensibility.Abstractions.TurnEndedResult.None.ToString() -> string!
+override Lunate.Extensibility.Abstractions.TurnEndedResult.ToString() -> string!
+override Lunate.Extensibility.Abstractions.TurnEndedResult.TurnEnded.<Clone>$() -> Lunate.Extensibility.Abstractions.TurnEndedResult.TurnEnded!
+override Lunate.Extensibility.Abstractions.TurnEndedResult.TurnEnded.Equals(object? obj) -> bool
+override Lunate.Extensibility.Abstractions.TurnEndedResult.TurnEnded.GetHashCode() -> int
+override Lunate.Extensibility.Abstractions.TurnEndedResult.TurnEnded.ToString() -> string!
+override sealed Lunate.Extensibility.Abstractions.CompactingResult.Provide.Equals(Lunate.Extensibility.Abstractions.CompactingResult? other) -> bool
+override sealed Lunate.Extensibility.Abstractions.CompactingResult.UseDefault.Equals(Lunate.Extensibility.Abstractions.CompactingResult? other) -> bool
+override sealed Lunate.Extensibility.Abstractions.InputReceivedResult.Consume.Equals(Lunate.Extensibility.Abstractions.InputReceivedResult? other) -> bool
+override sealed Lunate.Extensibility.Abstractions.InputReceivedResult.PassThrough.Equals(Lunate.Extensibility.Abstractions.InputReceivedResult? other) -> bool
+override sealed Lunate.Extensibility.Abstractions.InputReceivedResult.Transform.Equals(Lunate.Extensibility.Abstractions.InputReceivedResult? other) -> bool
+override sealed Lunate.Extensibility.Abstractions.MessageCompletedResult.Keep.Equals(Lunate.Extensibility.Abstractions.MessageCompletedResult? other) -> bool
+override sealed Lunate.Extensibility.Abstractions.MessageCompletedResult.Replace.Equals(Lunate.Extensibility.Abstractions.MessageCompletedResult? other) -> bool
+override sealed Lunate.Extensibility.Abstractions.ProjectTrustResult.Allow.Equals(Lunate.Extensibility.Abstractions.ProjectTrustResult? other) -> bool
+override sealed Lunate.Extensibility.Abstractions.ProjectTrustResult.Deny.Equals(Lunate.Extensibility.Abstractions.ProjectTrustResult? other) -> bool
+override sealed Lunate.Extensibility.Abstractions.RunStartingResult.Apply.Equals(Lunate.Extensibility.Abstractions.RunStartingResult? other) -> bool
+override sealed Lunate.Extensibility.Abstractions.RunStartingResult.None.Equals(Lunate.Extensibility.Abstractions.RunStartingResult? other) -> bool
+override sealed Lunate.Extensibility.Abstractions.ToolCallingResult.Block.Equals(Lunate.Extensibility.Abstractions.ToolCallingResult? other) -> bool
+override sealed Lunate.Extensibility.Abstractions.ToolCallingResult.Proceed.Equals(Lunate.Extensibility.Abstractions.ToolCallingResult? other) -> bool
+override sealed Lunate.Extensibility.Abstractions.TurnEndedResult.None.Equals(Lunate.Extensibility.Abstractions.TurnEndedResult? other) -> bool
+override sealed Lunate.Extensibility.Abstractions.TurnEndedResult.TurnEnded.Equals(Lunate.Extensibility.Abstractions.TurnEndedResult? other) -> bool
+static Lunate.Extensibility.Abstractions.CompactingPayload.operator !=(Lunate.Extensibility.Abstractions.CompactingPayload? left, Lunate.Extensibility.Abstractions.CompactingPayload? right) -> bool
+static Lunate.Extensibility.Abstractions.CompactingPayload.operator ==(Lunate.Extensibility.Abstractions.CompactingPayload? left, Lunate.Extensibility.Abstractions.CompactingPayload? right) -> bool
+static Lunate.Extensibility.Abstractions.CompactingResult.Provide.operator !=(Lunate.Extensibility.Abstractions.CompactingResult.Provide? left, Lunate.Extensibility.Abstractions.CompactingResult.Provide? right) -> bool
+static Lunate.Extensibility.Abstractions.CompactingResult.Provide.operator ==(Lunate.Extensibility.Abstractions.CompactingResult.Provide? left, Lunate.Extensibility.Abstractions.CompactingResult.Provide? right) -> bool
+static Lunate.Extensibility.Abstractions.CompactingResult.UseDefault.operator !=(Lunate.Extensibility.Abstractions.CompactingResult.UseDefault? left, Lunate.Extensibility.Abstractions.CompactingResult.UseDefault? right) -> bool
+static Lunate.Extensibility.Abstractions.CompactingResult.UseDefault.operator ==(Lunate.Extensibility.Abstractions.CompactingResult.UseDefault? left, Lunate.Extensibility.Abstractions.CompactingResult.UseDefault? right) -> bool
+static Lunate.Extensibility.Abstractions.CompactingResult.operator !=(Lunate.Extensibility.Abstractions.CompactingResult? left, Lunate.Extensibility.Abstractions.CompactingResult? right) -> bool
+static Lunate.Extensibility.Abstractions.CompactingResult.operator ==(Lunate.Extensibility.Abstractions.CompactingResult? left, Lunate.Extensibility.Abstractions.CompactingResult? right) -> bool
+static Lunate.Extensibility.Abstractions.ContextBuildingPayload.operator !=(Lunate.Extensibility.Abstractions.ContextBuildingPayload? left, Lunate.Extensibility.Abstractions.ContextBuildingPayload? right) -> bool
+static Lunate.Extensibility.Abstractions.ContextBuildingPayload.operator ==(Lunate.Extensibility.Abstractions.ContextBuildingPayload? left, Lunate.Extensibility.Abstractions.ContextBuildingPayload? right) -> bool
+static Lunate.Extensibility.Abstractions.ContextBuildingResult.None.get -> Lunate.Extensibility.Abstractions.ContextBuildingResult!
+static Lunate.Extensibility.Abstractions.ContextBuildingResult.operator !=(Lunate.Extensibility.Abstractions.ContextBuildingResult? left, Lunate.Extensibility.Abstractions.ContextBuildingResult? right) -> bool
+static Lunate.Extensibility.Abstractions.ContextBuildingResult.operator ==(Lunate.Extensibility.Abstractions.ContextBuildingResult? left, Lunate.Extensibility.Abstractions.ContextBuildingResult? right) -> bool
+static Lunate.Extensibility.Abstractions.ContextMessage.operator !=(Lunate.Extensibility.Abstractions.ContextMessage? left, Lunate.Extensibility.Abstractions.ContextMessage? right) -> bool
+static Lunate.Extensibility.Abstractions.ContextMessage.operator ==(Lunate.Extensibility.Abstractions.ContextMessage? left, Lunate.Extensibility.Abstractions.ContextMessage? right) -> bool
+static Lunate.Extensibility.Abstractions.InputReceivedPayload.operator !=(Lunate.Extensibility.Abstractions.InputReceivedPayload? left, Lunate.Extensibility.Abstractions.InputReceivedPayload? right) -> bool
+static Lunate.Extensibility.Abstractions.InputReceivedPayload.operator ==(Lunate.Extensibility.Abstractions.InputReceivedPayload? left, Lunate.Extensibility.Abstractions.InputReceivedPayload? right) -> bool
+static Lunate.Extensibility.Abstractions.InputReceivedResult.Consume.operator !=(Lunate.Extensibility.Abstractions.InputReceivedResult.Consume? left, Lunate.Extensibility.Abstractions.InputReceivedResult.Consume? right) -> bool
+static Lunate.Extensibility.Abstractions.InputReceivedResult.Consume.operator ==(Lunate.Extensibility.Abstractions.InputReceivedResult.Consume? left, Lunate.Extensibility.Abstractions.InputReceivedResult.Consume? right) -> bool
+static Lunate.Extensibility.Abstractions.InputReceivedResult.PassThrough.operator !=(Lunate.Extensibility.Abstractions.InputReceivedResult.PassThrough? left, Lunate.Extensibility.Abstractions.InputReceivedResult.PassThrough? right) -> bool
+static Lunate.Extensibility.Abstractions.InputReceivedResult.PassThrough.operator ==(Lunate.Extensibility.Abstractions.InputReceivedResult.PassThrough? left, Lunate.Extensibility.Abstractions.InputReceivedResult.PassThrough? right) -> bool
+static Lunate.Extensibility.Abstractions.InputReceivedResult.Transform.operator !=(Lunate.Extensibility.Abstractions.InputReceivedResult.Transform? left, Lunate.Extensibility.Abstractions.InputReceivedResult.Transform? right) -> bool
+static Lunate.Extensibility.Abstractions.InputReceivedResult.Transform.operator ==(Lunate.Extensibility.Abstractions.InputReceivedResult.Transform? left, Lunate.Extensibility.Abstractions.InputReceivedResult.Transform? right) -> bool
+static Lunate.Extensibility.Abstractions.InputReceivedResult.operator !=(Lunate.Extensibility.Abstractions.InputReceivedResult? left, Lunate.Extensibility.Abstractions.InputReceivedResult? right) -> bool
+static Lunate.Extensibility.Abstractions.InputReceivedResult.operator ==(Lunate.Extensibility.Abstractions.InputReceivedResult? left, Lunate.Extensibility.Abstractions.InputReceivedResult? right) -> bool
+static Lunate.Extensibility.Abstractions.MessageCompletedPayload.operator !=(Lunate.Extensibility.Abstractions.MessageCompletedPayload? left, Lunate.Extensibility.Abstractions.MessageCompletedPayload? right) -> bool
+static Lunate.Extensibility.Abstractions.MessageCompletedPayload.operator ==(Lunate.Extensibility.Abstractions.MessageCompletedPayload? left, Lunate.Extensibility.Abstractions.MessageCompletedPayload? right) -> bool
+static Lunate.Extensibility.Abstractions.MessageCompletedResult.Keep.operator !=(Lunate.Extensibility.Abstractions.MessageCompletedResult.Keep? left, Lunate.Extensibility.Abstractions.MessageCompletedResult.Keep? right) -> bool
+static Lunate.Extensibility.Abstractions.MessageCompletedResult.Keep.operator ==(Lunate.Extensibility.Abstractions.MessageCompletedResult.Keep? left, Lunate.Extensibility.Abstractions.MessageCompletedResult.Keep? right) -> bool
+static Lunate.Extensibility.Abstractions.MessageCompletedResult.Replace.operator !=(Lunate.Extensibility.Abstractions.MessageCompletedResult.Replace? left, Lunate.Extensibility.Abstractions.MessageCompletedResult.Replace? right) -> bool
+static Lunate.Extensibility.Abstractions.MessageCompletedResult.Replace.operator ==(Lunate.Extensibility.Abstractions.MessageCompletedResult.Replace? left, Lunate.Extensibility.Abstractions.MessageCompletedResult.Replace? right) -> bool
+static Lunate.Extensibility.Abstractions.MessageCompletedResult.operator !=(Lunate.Extensibility.Abstractions.MessageCompletedResult? left, Lunate.Extensibility.Abstractions.MessageCompletedResult? right) -> bool
+static Lunate.Extensibility.Abstractions.MessageCompletedResult.operator ==(Lunate.Extensibility.Abstractions.MessageCompletedResult? left, Lunate.Extensibility.Abstractions.MessageCompletedResult? right) -> bool
+static Lunate.Extensibility.Abstractions.ModelChangedPayload.operator !=(Lunate.Extensibility.Abstractions.ModelChangedPayload? left, Lunate.Extensibility.Abstractions.ModelChangedPayload? right) -> bool
+static Lunate.Extensibility.Abstractions.ModelChangedPayload.operator ==(Lunate.Extensibility.Abstractions.ModelChangedPayload? left, Lunate.Extensibility.Abstractions.ModelChangedPayload? right) -> bool
+static Lunate.Extensibility.Abstractions.ProjectTrustPayload.operator !=(Lunate.Extensibility.Abstractions.ProjectTrustPayload? left, Lunate.Extensibility.Abstractions.ProjectTrustPayload? right) -> bool
+static Lunate.Extensibility.Abstractions.ProjectTrustPayload.operator ==(Lunate.Extensibility.Abstractions.ProjectTrustPayload? left, Lunate.Extensibility.Abstractions.ProjectTrustPayload? right) -> bool
+static Lunate.Extensibility.Abstractions.ProjectTrustResult.Allow.operator !=(Lunate.Extensibility.Abstractions.ProjectTrustResult.Allow? left, Lunate.Extensibility.Abstractions.ProjectTrustResult.Allow? right) -> bool
+static Lunate.Extensibility.Abstractions.ProjectTrustResult.Allow.operator ==(Lunate.Extensibility.Abstractions.ProjectTrustResult.Allow? left, Lunate.Extensibility.Abstractions.ProjectTrustResult.Allow? right) -> bool
+static Lunate.Extensibility.Abstractions.ProjectTrustResult.Deny.operator !=(Lunate.Extensibility.Abstractions.ProjectTrustResult.Deny? left, Lunate.Extensibility.Abstractions.ProjectTrustResult.Deny? right) -> bool
+static Lunate.Extensibility.Abstractions.ProjectTrustResult.Deny.operator ==(Lunate.Extensibility.Abstractions.ProjectTrustResult.Deny? left, Lunate.Extensibility.Abstractions.ProjectTrustResult.Deny? right) -> bool
+static Lunate.Extensibility.Abstractions.ProjectTrustResult.operator !=(Lunate.Extensibility.Abstractions.ProjectTrustResult? left, Lunate.Extensibility.Abstractions.ProjectTrustResult? right) -> bool
+static Lunate.Extensibility.Abstractions.ProjectTrustResult.operator ==(Lunate.Extensibility.Abstractions.ProjectTrustResult? left, Lunate.Extensibility.Abstractions.ProjectTrustResult? right) -> bool
+static Lunate.Extensibility.Abstractions.PromptSection.operator !=(Lunate.Extensibility.Abstractions.PromptSection? left, Lunate.Extensibility.Abstractions.PromptSection? right) -> bool
+static Lunate.Extensibility.Abstractions.PromptSection.operator ==(Lunate.Extensibility.Abstractions.PromptSection? left, Lunate.Extensibility.Abstractions.PromptSection? right) -> bool
+static Lunate.Extensibility.Abstractions.PromptSectionEdit.operator !=(Lunate.Extensibility.Abstractions.PromptSectionEdit? left, Lunate.Extensibility.Abstractions.PromptSectionEdit? right) -> bool
+static Lunate.Extensibility.Abstractions.PromptSectionEdit.operator ==(Lunate.Extensibility.Abstractions.PromptSectionEdit? left, Lunate.Extensibility.Abstractions.PromptSectionEdit? right) -> bool
+static Lunate.Extensibility.Abstractions.ProviderStreamEventPayload.operator !=(Lunate.Extensibility.Abstractions.ProviderStreamEventPayload? left, Lunate.Extensibility.Abstractions.ProviderStreamEventPayload? right) -> bool
+static Lunate.Extensibility.Abstractions.ProviderStreamEventPayload.operator ==(Lunate.Extensibility.Abstractions.ProviderStreamEventPayload? left, Lunate.Extensibility.Abstractions.ProviderStreamEventPayload? right) -> bool
+static Lunate.Extensibility.Abstractions.RunSettledPayload.operator !=(Lunate.Extensibility.Abstractions.RunSettledPayload? left, Lunate.Extensibility.Abstractions.RunSettledPayload? right) -> bool
+static Lunate.Extensibility.Abstractions.RunSettledPayload.operator ==(Lunate.Extensibility.Abstractions.RunSettledPayload? left, Lunate.Extensibility.Abstractions.RunSettledPayload? right) -> bool
+static Lunate.Extensibility.Abstractions.RunStartingPayload.operator !=(Lunate.Extensibility.Abstractions.RunStartingPayload? left, Lunate.Extensibility.Abstractions.RunStartingPayload? right) -> bool
+static Lunate.Extensibility.Abstractions.RunStartingPayload.operator ==(Lunate.Extensibility.Abstractions.RunStartingPayload? left, Lunate.Extensibility.Abstractions.RunStartingPayload? right) -> bool
+static Lunate.Extensibility.Abstractions.RunStartingResult.Apply.operator !=(Lunate.Extensibility.Abstractions.RunStartingResult.Apply? left, Lunate.Extensibility.Abstractions.RunStartingResult.Apply? right) -> bool
+static Lunate.Extensibility.Abstractions.RunStartingResult.Apply.operator ==(Lunate.Extensibility.Abstractions.RunStartingResult.Apply? left, Lunate.Extensibility.Abstractions.RunStartingResult.Apply? right) -> bool
+static Lunate.Extensibility.Abstractions.RunStartingResult.None.operator !=(Lunate.Extensibility.Abstractions.RunStartingResult.None? left, Lunate.Extensibility.Abstractions.RunStartingResult.None? right) -> bool
+static Lunate.Extensibility.Abstractions.RunStartingResult.None.operator ==(Lunate.Extensibility.Abstractions.RunStartingResult.None? left, Lunate.Extensibility.Abstractions.RunStartingResult.None? right) -> bool
+static Lunate.Extensibility.Abstractions.RunStartingResult.operator !=(Lunate.Extensibility.Abstractions.RunStartingResult? left, Lunate.Extensibility.Abstractions.RunStartingResult? right) -> bool
+static Lunate.Extensibility.Abstractions.RunStartingResult.operator ==(Lunate.Extensibility.Abstractions.RunStartingResult? left, Lunate.Extensibility.Abstractions.RunStartingResult? right) -> bool
+static Lunate.Extensibility.Abstractions.SessionEndingPayload.operator !=(Lunate.Extensibility.Abstractions.SessionEndingPayload? left, Lunate.Extensibility.Abstractions.SessionEndingPayload? right) -> bool
+static Lunate.Extensibility.Abstractions.SessionEndingPayload.operator ==(Lunate.Extensibility.Abstractions.SessionEndingPayload? left, Lunate.Extensibility.Abstractions.SessionEndingPayload? right) -> bool
+static Lunate.Extensibility.Abstractions.SessionStartedPayload.operator !=(Lunate.Extensibility.Abstractions.SessionStartedPayload? left, Lunate.Extensibility.Abstractions.SessionStartedPayload? right) -> bool
+static Lunate.Extensibility.Abstractions.SessionStartedPayload.operator ==(Lunate.Extensibility.Abstractions.SessionStartedPayload? left, Lunate.Extensibility.Abstractions.SessionStartedPayload? right) -> bool
+static Lunate.Extensibility.Abstractions.ToolCallingPayload.operator !=(Lunate.Extensibility.Abstractions.ToolCallingPayload? left, Lunate.Extensibility.Abstractions.ToolCallingPayload? right) -> bool
+static Lunate.Extensibility.Abstractions.ToolCallingPayload.operator ==(Lunate.Extensibility.Abstractions.ToolCallingPayload? left, Lunate.Extensibility.Abstractions.ToolCallingPayload? right) -> bool
+static Lunate.Extensibility.Abstractions.ToolCallingResult.Block.operator !=(Lunate.Extensibility.Abstractions.ToolCallingResult.Block? left, Lunate.Extensibility.Abstractions.ToolCallingResult.Block? right) -> bool
+static Lunate.Extensibility.Abstractions.ToolCallingResult.Block.operator ==(Lunate.Extensibility.Abstractions.ToolCallingResult.Block? left, Lunate.Extensibility.Abstractions.ToolCallingResult.Block? right) -> bool
+static Lunate.Extensibility.Abstractions.ToolCallingResult.Proceed.operator !=(Lunate.Extensibility.Abstractions.ToolCallingResult.Proceed? left, Lunate.Extensibility.Abstractions.ToolCallingResult.Proceed? right) -> bool
+static Lunate.Extensibility.Abstractions.ToolCallingResult.Proceed.operator ==(Lunate.Extensibility.Abstractions.ToolCallingResult.Proceed? left, Lunate.Extensibility.Abstractions.ToolCallingResult.Proceed? right) -> bool
+static Lunate.Extensibility.Abstractions.ToolCallingResult.operator !=(Lunate.Extensibility.Abstractions.ToolCallingResult? left, Lunate.Extensibility.Abstractions.ToolCallingResult? right) -> bool
+static Lunate.Extensibility.Abstractions.ToolCallingResult.operator ==(Lunate.Extensibility.Abstractions.ToolCallingResult? left, Lunate.Extensibility.Abstractions.ToolCallingResult? right) -> bool
+static Lunate.Extensibility.Abstractions.ToolResultReadyPayload.operator !=(Lunate.Extensibility.Abstractions.ToolResultReadyPayload? left, Lunate.Extensibility.Abstractions.ToolResultReadyPayload? right) -> bool
+static Lunate.Extensibility.Abstractions.ToolResultReadyPayload.operator ==(Lunate.Extensibility.Abstractions.ToolResultReadyPayload? left, Lunate.Extensibility.Abstractions.ToolResultReadyPayload? right) -> bool
+static Lunate.Extensibility.Abstractions.ToolResultReadyResult.operator !=(Lunate.Extensibility.Abstractions.ToolResultReadyResult? left, Lunate.Extensibility.Abstractions.ToolResultReadyResult? right) -> bool
+static Lunate.Extensibility.Abstractions.ToolResultReadyResult.operator ==(Lunate.Extensibility.Abstractions.ToolResultReadyResult? left, Lunate.Extensibility.Abstractions.ToolResultReadyResult? right) -> bool
+static Lunate.Extensibility.Abstractions.ToolsChangedPayload.operator !=(Lunate.Extensibility.Abstractions.ToolsChangedPayload? left, Lunate.Extensibility.Abstractions.ToolsChangedPayload? right) -> bool
+static Lunate.Extensibility.Abstractions.ToolsChangedPayload.operator ==(Lunate.Extensibility.Abstractions.ToolsChangedPayload? left, Lunate.Extensibility.Abstractions.ToolsChangedPayload? right) -> bool
+static Lunate.Extensibility.Abstractions.TurnEndedEntry.operator !=(Lunate.Extensibility.Abstractions.TurnEndedEntry? left, Lunate.Extensibility.Abstractions.TurnEndedEntry? right) -> bool
+static Lunate.Extensibility.Abstractions.TurnEndedEntry.operator ==(Lunate.Extensibility.Abstractions.TurnEndedEntry? left, Lunate.Extensibility.Abstractions.TurnEndedEntry? right) -> bool
+static Lunate.Extensibility.Abstractions.TurnEndedPayload.operator !=(Lunate.Extensibility.Abstractions.TurnEndedPayload? left, Lunate.Extensibility.Abstractions.TurnEndedPayload? right) -> bool
+static Lunate.Extensibility.Abstractions.TurnEndedPayload.operator ==(Lunate.Extensibility.Abstractions.TurnEndedPayload? left, Lunate.Extensibility.Abstractions.TurnEndedPayload? right) -> bool
+static Lunate.Extensibility.Abstractions.TurnEndedResult.None.operator !=(Lunate.Extensibility.Abstractions.TurnEndedResult.None? left, Lunate.Extensibility.Abstractions.TurnEndedResult.None? right) -> bool
+static Lunate.Extensibility.Abstractions.TurnEndedResult.None.operator ==(Lunate.Extensibility.Abstractions.TurnEndedResult.None? left, Lunate.Extensibility.Abstractions.TurnEndedResult.None? right) -> bool
+static Lunate.Extensibility.Abstractions.TurnEndedResult.TurnEnded.operator !=(Lunate.Extensibility.Abstractions.TurnEndedResult.TurnEnded? left, Lunate.Extensibility.Abstractions.TurnEndedResult.TurnEnded? right) -> bool
+static Lunate.Extensibility.Abstractions.TurnEndedResult.TurnEnded.operator ==(Lunate.Extensibility.Abstractions.TurnEndedResult.TurnEnded? left, Lunate.Extensibility.Abstractions.TurnEndedResult.TurnEnded? right) -> bool
+static Lunate.Extensibility.Abstractions.TurnEndedResult.operator !=(Lunate.Extensibility.Abstractions.TurnEndedResult? left, Lunate.Extensibility.Abstractions.TurnEndedResult? right) -> bool
+static Lunate.Extensibility.Abstractions.TurnEndedResult.operator ==(Lunate.Extensibility.Abstractions.TurnEndedResult? left, Lunate.Extensibility.Abstractions.TurnEndedResult? right) -> bool
+virtual Lunate.Extensibility.Abstractions.CompactingResult.EqualityContract.get -> System.Type!
+virtual Lunate.Extensibility.Abstractions.CompactingResult.Equals(Lunate.Extensibility.Abstractions.CompactingResult? other) -> bool
+virtual Lunate.Extensibility.Abstractions.CompactingResult.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Lunate.Extensibility.Abstractions.InputReceivedResult.EqualityContract.get -> System.Type!
+virtual Lunate.Extensibility.Abstractions.InputReceivedResult.Equals(Lunate.Extensibility.Abstractions.InputReceivedResult? other) -> bool
+virtual Lunate.Extensibility.Abstractions.InputReceivedResult.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Lunate.Extensibility.Abstractions.MessageCompletedResult.EqualityContract.get -> System.Type!
+virtual Lunate.Extensibility.Abstractions.MessageCompletedResult.Equals(Lunate.Extensibility.Abstractions.MessageCompletedResult? other) -> bool
+virtual Lunate.Extensibility.Abstractions.MessageCompletedResult.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Lunate.Extensibility.Abstractions.ProjectTrustResult.EqualityContract.get -> System.Type!
+virtual Lunate.Extensibility.Abstractions.ProjectTrustResult.Equals(Lunate.Extensibility.Abstractions.ProjectTrustResult? other) -> bool
+virtual Lunate.Extensibility.Abstractions.ProjectTrustResult.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Lunate.Extensibility.Abstractions.RunStartingResult.EqualityContract.get -> System.Type!
+virtual Lunate.Extensibility.Abstractions.RunStartingResult.Equals(Lunate.Extensibility.Abstractions.RunStartingResult? other) -> bool
+virtual Lunate.Extensibility.Abstractions.RunStartingResult.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Lunate.Extensibility.Abstractions.ToolCallingResult.EqualityContract.get -> System.Type!
+virtual Lunate.Extensibility.Abstractions.ToolCallingResult.Equals(Lunate.Extensibility.Abstractions.ToolCallingResult? other) -> bool
+virtual Lunate.Extensibility.Abstractions.ToolCallingResult.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual Lunate.Extensibility.Abstractions.TurnEndedResult.EqualityContract.get -> System.Type!
+virtual Lunate.Extensibility.Abstractions.TurnEndedResult.Equals(Lunate.Extensibility.Abstractions.TurnEndedResult? other) -> bool
+virtual Lunate.Extensibility.Abstractions.TurnEndedResult.PrintMembers(System.Text.StringBuilder! builder) -> bool

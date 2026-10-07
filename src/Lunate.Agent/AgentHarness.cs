@@ -138,6 +138,14 @@ public sealed partial class AgentHarness
         }
         finally
         {
+            if (_options.Hooks is { } hooks)
+            {
+                await hooks.RunSettledAsync(
+                    new AgentRunSettledContext(runId),
+                    CancellationToken.None
+                );
+            }
+
             channel.Complete();
         }
     }
@@ -167,6 +175,21 @@ public sealed partial class AgentHarness
             channel.Emit(new RunStarted(runId));
             runStarted = true;
 
+            List<AgentPromptSection> sections = InitialSections();
+            IReadOnlyList<string>? activeTools = null;
+            if (_options.Hooks is { } hookPoints)
+            {
+                AgentRunStartingResult started = await hookPoints.RunStartingAsync(
+                    new AgentRunStartingContext(runId, [.. sections], ToolNames()),
+                    ct
+                );
+                if (started is AgentRunStartingResult.Apply apply)
+                {
+                    sections = ApplySectionEdits(sections, apply.SectionEdits);
+                    activeTools = apply.ActiveTools;
+                }
+            }
+
             int modelCalls = 0;
             while (true)
             {
@@ -179,15 +202,63 @@ public sealed partial class AgentHarness
                 }
 
                 modelCalls++;
-                ModelStreamResult stream = await StreamModelWithRetriesAsync(runId, channel, ct);
+                ModelStreamResult stream = await StreamModelWithRetriesAsync(
+                    runId,
+                    channel,
+                    sections,
+                    activeTools,
+                    ct
+                );
                 foreach (ChatMessage message in stream.Updates.ToChatResponse().Messages)
                 {
-                    AppendHistoryMessage(message, stream.ModelId, stream.Usage);
+                    ChatMessage persisted = message;
+                    if (
+                        _options.Hooks is { } completedHook
+                        && message.Role == ChatRole.Assistant
+                        && message.Contents.OfType<TextContent>().Any()
+                    )
+                    {
+                        AgentMessageCompletedResult completed =
+                            await completedHook.MessageCompletedAsync(
+                                new AgentMessageCompletedContext(
+                                    runId,
+                                    message.Role.Value,
+                                    MessageText(message)
+                                ),
+                                ct
+                            );
+                        if (completed is AgentMessageCompletedResult.Replace replace)
+                        {
+                            persisted = ReplaceMessageText(message, replace.Text);
+                        }
+                    }
+
+                    AppendHistoryMessage(persisted, stream.ModelId, stream.Usage);
                 }
 
                 List<FunctionCallContent> calls = DistinctCalls(stream.Updates);
                 if (calls.Count == 0)
                 {
+                    if (_options.Hooks is { } turnHook)
+                    {
+                        AgentTurnEndedResult turn = await turnHook.TurnEndedAsync(
+                            new AgentTurnEndedContext(runId),
+                            ct
+                        );
+                        foreach (AgentExtensionEntry entry in turn.Entries)
+                        {
+                            _options.Session?.AppendExtension(
+                                $"ext/{entry.ExtensionId}/{entry.Type}",
+                                entry.Payload.GetRawText()
+                            );
+                        }
+
+                        if (turn.RequestContinuation)
+                        {
+                            continue;
+                        }
+                    }
+
                     channel.Emit(new RunFinished(runId, MappedStopReason(stream.FinishReason)));
                     terminalEmitted = true;
                     return;
@@ -220,6 +291,8 @@ public sealed partial class AgentHarness
     private async Task<ModelStreamResult> StreamModelAsync(
         string runId,
         AgentEventChannel channel,
+        IReadOnlyList<AgentPromptSection> sections,
+        IReadOnlyList<string>? activeTools,
         CancellationToken ct,
         ModelStreamAttempt attempt
     )
@@ -233,14 +306,29 @@ public sealed partial class AgentHarness
 
         try
         {
+            List<ChatMessage> request = BuildRequest(sections);
+            if (_options.Hooks is { } hookPoints)
+            {
+                AgentContextBuildingResult built = await hookPoints.ContextBuildingAsync(
+                    new AgentContextBuildingContext(runId, [.. request.Select(ToContextMessage)]),
+                    ct
+                );
+                request = InsertAddedContext(request, built.AddedMessages);
+            }
+
             await foreach (
                 ChatResponseUpdate update in _client.GetStreamingResponseAsync(
-                    BuildRequest(),
-                    BuildOptions(),
+                    request,
+                    BuildOptions(activeTools),
                     ct
                 )
             )
             {
+                if (_options.Hooks is { } streamHook)
+                {
+                    await streamHook.ProviderStreamEventAsync(runId, update, ct);
+                }
+
                 updates.Add(update);
                 if (update.ModelId is { Length: > 0 } updateModelId)
                 {
@@ -303,17 +391,114 @@ public sealed partial class AgentHarness
     private static string MappedStopReason(ChatFinishReason? finishReason) =>
         finishReason == ChatFinishReason.Length ? StopReasons.Length : StopReasons.Stop;
 
-    private List<ChatMessage> BuildRequest()
+    private List<AgentPromptSection> InitialSections() =>
+        _options.SystemPrompt is { } prompt ? [new AgentPromptSection("system", prompt)] : [];
+
+    private IReadOnlyList<string> ToolNames() => [.. _tools.Tools.Select(tool => tool.Name)];
+
+    private static List<AgentPromptSection> ApplySectionEdits(
+        List<AgentPromptSection> sections,
+        IReadOnlyList<AgentPromptSectionEdit> edits
+    )
+    {
+        foreach (AgentPromptSectionEdit edit in edits)
+        {
+            int index = sections.FindIndex(section =>
+                string.Equals(section.Name, edit.Name, StringComparison.Ordinal)
+            );
+            if (edit.Text is null)
+            {
+                if (index >= 0)
+                {
+                    sections.RemoveAt(index);
+                }
+
+                continue;
+            }
+
+            if (index >= 0)
+            {
+                sections[index] = new AgentPromptSection(edit.Name, edit.Text);
+            }
+            else
+            {
+                sections.Add(new AgentPromptSection(edit.Name, edit.Text));
+            }
+        }
+
+        return sections;
+    }
+
+    private static string MessageText(ChatMessage message) =>
+        string.Concat(message.Contents.OfType<TextContent>().Select(content => content.Text));
+
+    private static ChatMessage ReplaceMessageText(ChatMessage message, string text) =>
+        new(
+            message.Role,
+            [
+                new TextContent(text),
+                .. message.Contents.Where(content => content is not TextContent),
+            ]
+        );
+
+    private static AgentContextMessage ToContextMessage(ChatMessage message) =>
+        new(message.Role.Value, MessageText(message));
+
+    private static List<ChatMessage> InsertAddedContext(
+        List<ChatMessage> request,
+        IReadOnlyList<AgentContextMessage> added
+    )
+    {
+        if (added.Count == 0)
+        {
+            return request;
+        }
+
+        int systemCount = 0;
+        while (systemCount < request.Count && request[systemCount].Role == ChatRole.System)
+        {
+            systemCount++;
+        }
+
+        List<ChatMessage> merged = [.. request.Take(systemCount)];
+        merged.AddRange(
+            added.Select(message => new ChatMessage(new ChatRole(message.Role), message.Text))
+        );
+        merged.AddRange(request.Skip(systemCount));
+        return merged;
+    }
+
+    private List<ChatMessage> BuildRequest(IReadOnlyList<AgentPromptSection> sections)
     {
         List<ChatMessage> request = [];
-        if (_options.SystemPrompt is not null)
+        if (sections.Count > 0)
         {
-            request.Add(new ChatMessage(ChatRole.System, _options.SystemPrompt));
+            request.Add(
+                new ChatMessage(
+                    ChatRole.System,
+                    string.Join("\n\n", sections.Select(section => section.Text))
+                )
+            );
         }
 
         request.AddRange(_history);
         return request;
     }
 
-    private ChatOptions BuildOptions() => new() { Tools = [.. _tools.Declarations] };
+    private ChatOptions BuildOptions(IReadOnlyList<string>? activeTools)
+    {
+        if (activeTools is null)
+        {
+            return new() { Tools = [.. _tools.Declarations] };
+        }
+
+        HashSet<string> selected = new(activeTools, StringComparer.Ordinal);
+        return new()
+        {
+            Tools =
+            [
+                .. _tools.Declarations.Where(declaration => selected.Contains(declaration.Name)),
+            ],
+        };
+    }
 }

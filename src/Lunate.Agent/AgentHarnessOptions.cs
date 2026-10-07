@@ -21,6 +21,9 @@ public sealed record AgentHarnessOptions
     /// <summary>The approval seam; null allows every tool call.</summary>
     public IToolApprover? Approver { get; init; }
 
+    /// <summary>The extension seam; null runs without hooks and behaves as before.</summary>
+    public IAgentHookPoints? Hooks { get; init; }
+
     /// <summary>The session to resume from and mirror into; null keeps the history in memory only.</summary>
     public Session? Session { get; init; }
 

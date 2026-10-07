@@ -12,6 +12,8 @@ public sealed partial class AgentHarness
     private async Task<ModelStreamResult> StreamModelWithRetriesAsync(
         string runId,
         AgentEventChannel channel,
+        IReadOnlyList<AgentPromptSection> sections,
+        IReadOnlyList<string>? activeTools,
         CancellationToken ct
     )
     {
@@ -21,7 +23,7 @@ public sealed partial class AgentHarness
             ModelStreamAttempt attempt = new();
             try
             {
-                return await StreamModelAsync(runId, channel, ct, attempt);
+                return await StreamModelAsync(runId, channel, sections, activeTools, ct, attempt);
             }
             catch (Exception exception) when (!ct.IsCancellationRequested)
             {

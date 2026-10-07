@@ -31,7 +31,7 @@ Pi's extension API is the bar: transforming and blocking hooks, tool exposure mo
 **Hooks**
 
 - The catalogue (semantics, order, failure policy, timeouts) is specified in `docs/spec/extensibility.md`; the built-in approval prompt runs after all `ToolCalling` handlers so the user approves the final arguments; continuations are capped per run (default 3).
-- Handlers run in load order, then optional priority. All hooks are async with cancellation and a per-handler timeout.
+- Handlers run by priority descending with a stable load-order tie-break (higher priority first; ties keep load order). All hooks are async with cancellation and a per-handler timeout.
 - Extension context additions are tagged with their source, counted in the context meter, shown by `/context`, budgeted per extension, and persisted only through explicit session entries. Appending beats rewriting the prefix (prompt caching).
 
 **Nested work and services**
