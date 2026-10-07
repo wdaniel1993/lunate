@@ -8,11 +8,11 @@
 
 ## 2. Runner
 
-- [ ] 2.1 Deterministic dispatch: handlers in load order, then optional priority; stable ordering tests
-- [ ] 2.2 Semantics enforcement per hook class; invalid transitions refused (e.g. a transform hook cannot replace)
-- [ ] 2.3 Failure policy per hook: report / skip / keep original / fail-safe block / deny / fall back — one test per hook for its declared policy
-- [ ] 2.4 Per-handler timeout (configurable, default per design); a hanging handler is cut off per policy
-- [ ] 2.5 Continuation caps: continuations requested at turn boundaries are capped per run (default 3)
+- [x] 2.1 Deterministic dispatch: handlers in load order, then optional priority; stable ordering tests
+- [x] 2.2 Semantics enforcement per hook class; invalid transitions refused (e.g. a transform hook cannot replace)
+- [x] 2.3 Failure policy per hook: report / skip / keep original / fail-safe block / deny / fall back — one test per hook for its declared policy
+- [x] 2.4 Per-handler timeout (configurable, default per design); a hanging handler is cut off per policy
+- [x] 2.5 Continuation caps: continuations requested at turn boundaries are capped per run (default 3)
 
 ## 3. Wiring (producers that exist today)
 
