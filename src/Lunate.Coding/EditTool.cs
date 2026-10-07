@@ -5,8 +5,10 @@ using Lunate.Agent;
 namespace Lunate.Coding;
 
 /// <summary>Replaces one unique occurrence of <c>old_text</c> with <c>new_text</c> in a workspace text file.</summary>
-public sealed class EditTool(Workspace workspace) : ITool
+public sealed class EditTool(Workspace workspace, IFileMutationQueue? mutations = null) : ITool
 {
+    private readonly IFileMutationQueue _mutations = mutations ?? FileMutationQueue.Shared;
+
     private static readonly JsonElement Schema = JsonDocument
         .Parse(
             """
@@ -42,11 +44,15 @@ public sealed class EditTool(Workspace workspace) : ITool
 
     public ToolRisk Risk => ToolRisk.Write;
 
-    public Task<ToolResult> ExecuteAsync(JsonElement args, ToolContext ctx, CancellationToken ct)
+    public async Task<ToolResult> ExecuteAsync(
+        JsonElement args,
+        ToolContext ctx,
+        CancellationToken ct
+    )
     {
         if (args.ValueKind != JsonValueKind.Object)
         {
-            return Task.FromResult(Error("arguments must be a JSON object"));
+            return Error("arguments must be a JSON object");
         }
 
         if (
@@ -54,7 +60,7 @@ public sealed class EditTool(Workspace workspace) : ITool
             || pathElement.ValueKind != JsonValueKind.String
         )
         {
-            return Task.FromResult(Error("path is required and must be a string"));
+            return Error("path is required and must be a string");
         }
 
         if (
@@ -62,7 +68,7 @@ public sealed class EditTool(Workspace workspace) : ITool
             || oldElement.ValueKind != JsonValueKind.String
         )
         {
-            return Task.FromResult(Error("old_text is required and must be a string"));
+            return Error("old_text is required and must be a string");
         }
 
         if (
@@ -70,7 +76,7 @@ public sealed class EditTool(Workspace workspace) : ITool
             || newElement.ValueKind != JsonValueKind.String
         )
         {
-            return Task.FromResult(Error("new_text is required and must be a string"));
+            return Error("new_text is required and must be a string");
         }
 
         var oldText = oldElement.GetString()!;
@@ -78,95 +84,105 @@ public sealed class EditTool(Workspace workspace) : ITool
 
         if (!workspace.TryResolve(pathElement.GetString()!, out var resolved, out var error))
         {
-            return Task.FromResult(Error(error));
+            return Error(error);
         }
 
         if (Directory.Exists(resolved.AbsolutePath))
         {
-            return Task.FromResult(Error($"{resolved.RelativePath} is a directory"));
+            return Error($"{resolved.RelativePath} is a directory");
         }
 
         if (!File.Exists(resolved.AbsolutePath))
         {
-            return Task.FromResult(Error($"file not found: {resolved.RelativePath}"));
+            return Error($"file not found: {resolved.RelativePath}");
         }
 
         if (oldText.Length == 0)
         {
-            return Task.FromResult(Error("old_text must not be empty"));
+            return Error("old_text must not be empty");
         }
 
         if (oldText == newText)
         {
-            return Task.FromResult(Error("old_text and new_text are identical; nothing to change"));
+            return Error("old_text and new_text are identical; nothing to change");
         }
 
-        string fileText;
-        bool hasBom;
-        try
-        {
-            (fileText, hasBom) = TextFile.ReadRaw(resolved.AbsolutePath);
-        }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
-        {
-            return Task.FromResult(Error($"could not be read: {exception.Message}"));
-        }
+        return await _mutations.RunAsync(
+            resolved.AbsolutePath,
+            _ =>
+            {
+                string fileText;
+                bool hasBom;
+                try
+                {
+                    (fileText, hasBom) = TextFile.ReadRaw(resolved.AbsolutePath);
+                }
+                catch (Exception exception)
+                    when (exception is IOException or UnauthorizedAccessException)
+                {
+                    return Task.FromResult(Error($"could not be read: {exception.Message}"));
+                }
 
-        var (fileLines, fileEndsWithNewline) = SplitRaw(fileText);
-        var (oldLines, _) = SplitRaw(oldText);
-        var (newRawLines, _) = SplitRaw(newText);
-        var newLines = StripTrailingCarriageReturns(newRawLines);
+                var (fileLines, fileEndsWithNewline) = SplitRaw(fileText);
+                var (oldLines, _) = SplitRaw(oldText);
+                var (newRawLines, _) = SplitRaw(newText);
+                var newLines = StripTrailingCarriageReturns(newRawLines);
 
-        var normalized = false;
-        var matches = FindMatches(fileLines, oldLines, normalized: false);
-        if (matches.Count == 0)
-        {
-            normalized = true;
-            matches = FindMatches(fileLines, oldLines, normalized: true);
-        }
+                var normalized = false;
+                var matches = FindMatches(fileLines, oldLines, normalized: false);
+                if (matches.Count == 0)
+                {
+                    normalized = true;
+                    matches = FindMatches(fileLines, oldLines, normalized: true);
+                }
 
-        if (matches.Count == 0)
-        {
-            return Task.FromResult(Error($"could not find old_text in {resolved.RelativePath}"));
-        }
+                if (matches.Count == 0)
+                {
+                    return Task.FromResult(
+                        Error($"could not find old_text in {resolved.RelativePath}")
+                    );
+                }
 
-        if (matches.Count > 1)
-        {
-            return Task.FromResult(Error(Ambiguity(matches, resolved.RelativePath)));
-        }
+                if (matches.Count > 1)
+                {
+                    return Task.FromResult(Error(Ambiguity(matches, resolved.RelativePath)));
+                }
 
-        var start = matches[0];
-        var tier = normalized ? "normalized" : "exact";
-        var resultLines = ReplaceLines(
-            StripTrailingCarriageReturns(fileLines),
-            start,
-            oldLines.Length,
-            newLines
+                var start = matches[0];
+                var tier = normalized ? "normalized" : "exact";
+                var resultLines = ReplaceLines(
+                    StripTrailingCarriageReturns(fileLines),
+                    start,
+                    oldLines.Length,
+                    newLines
+                );
+                var ending = TextFile.DominantEnding(fileText);
+                var newFileText = string.Join(ending, resultLines);
+                if (fileEndsWithNewline)
+                {
+                    newFileText += ending;
+                }
+
+                TextFile.WriteRaw(resolved.AbsolutePath, newFileText, hasBom);
+
+                var firstLine = start + 1;
+                var lastLine = start + newLines.Length;
+                var output = string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"edited {resolved.RelativePath} lines {firstLine}\u2013{lastLine} (match: {tier})"
+                );
+                var details = new EditDetails(
+                    resolved.RelativePath,
+                    firstLine,
+                    lastLine,
+                    tier,
+                    LineDiff.Unified(fileText, newFileText, resolved.RelativePath)
+                );
+
+                return Task.FromResult(new ToolResult(output, IsError: false, details));
+            },
+            ct
         );
-        var ending = TextFile.DominantEnding(fileText);
-        var newFileText = string.Join(ending, resultLines);
-        if (fileEndsWithNewline)
-        {
-            newFileText += ending;
-        }
-
-        TextFile.WriteRaw(resolved.AbsolutePath, newFileText, hasBom);
-
-        var firstLine = start + 1;
-        var lastLine = start + newLines.Length;
-        var output = string.Create(
-            CultureInfo.InvariantCulture,
-            $"edited {resolved.RelativePath} lines {firstLine}\u2013{lastLine} (match: {tier})"
-        );
-        var details = new EditDetails(
-            resolved.RelativePath,
-            firstLine,
-            lastLine,
-            tier,
-            LineDiff.Unified(fileText, newFileText, resolved.RelativePath)
-        );
-
-        return Task.FromResult(new ToolResult(output, IsError: false, details));
     }
 
     private static (string[] Lines, bool EndsWithNewline) SplitRaw(string text)

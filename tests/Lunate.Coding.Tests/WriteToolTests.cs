@@ -207,6 +207,25 @@ public sealed class WriteToolTests
         Assert.Equal(expected, result.Output);
     }
 
+    [Fact]
+    public async Task Writes_are_routed_through_the_mutation_queue()
+    {
+        using var temp = new TempDirectory();
+        var queue = new RecordingMutationQueue();
+        var tool = new WriteTool(new Workspace(temp.Root), queue);
+        var args = JsonDocument
+            .Parse("""{"path":"Queued.txt","content":"x\n"}""")
+            .RootElement.Clone();
+
+        var result = await tool.ExecuteAsync(args, Context, CancellationToken.None);
+
+        Assert.False(result.IsError);
+        string path = Assert.Single(queue.Paths);
+        Assert.Equal("Queued.txt", Path.GetFileName(path));
+        Assert.True(Path.IsPathFullyQualified(path));
+        Assert.Equal("x\n", File.ReadAllText(temp.File("Queued.txt")));
+    }
+
     private static Task<ToolResult> WriteAsync(TempDirectory temp, string arguments) =>
         WriteAsync(temp.Root, arguments);
 
@@ -216,5 +235,20 @@ public sealed class WriteToolTests
         var args = JsonDocument.Parse(arguments).RootElement.Clone();
 
         return tool.ExecuteAsync(args, Context, CancellationToken.None);
+    }
+
+    private sealed class RecordingMutationQueue : IFileMutationQueue
+    {
+        public List<string> Paths { get; } = [];
+
+        public Task<T> RunAsync<T>(
+            string path,
+            Func<CancellationToken, Task<T>> mutation,
+            CancellationToken ct
+        )
+        {
+            Paths.Add(path);
+            return mutation(ct);
+        }
     }
 }

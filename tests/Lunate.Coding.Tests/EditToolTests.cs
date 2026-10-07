@@ -410,6 +410,48 @@ public sealed class EditToolTests
         );
     }
 
+    [Fact]
+    public async Task Edits_are_routed_through_the_mutation_queue()
+    {
+        using var temp = new TempDirectory();
+        var queue = new RecordingMutationQueue();
+        var tool = new EditTool(new Workspace(temp.Root), queue);
+        File.WriteAllText(temp.File("Queued.txt"), "one\ntwo\n");
+        var args = JsonDocument
+            .Parse("""{"path":"Queued.txt","old_text":"two","new_text":"three"}""")
+            .RootElement.Clone();
+
+        var result = await tool.ExecuteAsync(args, Context, CancellationToken.None);
+
+        Assert.False(result.IsError);
+        string path = Assert.Single(queue.Paths);
+        Assert.Equal("Queued.txt", Path.GetFileName(path));
+        Assert.True(Path.IsPathFullyQualified(path));
+        Assert.Equal("one\nthree\n", File.ReadAllText(temp.File("Queued.txt")));
+    }
+
+    [Fact]
+    public async Task Concurrent_edits_on_one_file_both_apply()
+    {
+        using var temp = new TempDirectory();
+        var queue = new FileMutationQueue();
+        var tool = new EditTool(new Workspace(temp.Root), queue);
+        File.WriteAllText(temp.File("Shared.txt"), "alpha\nbeta\ngamma\n");
+        var firstArgs = JsonDocument
+            .Parse("""{"path":"Shared.txt","old_text":"alpha","new_text":"ALPHA"}""")
+            .RootElement.Clone();
+        var secondArgs = JsonDocument
+            .Parse("""{"path":"Shared.txt","old_text":"gamma","new_text":"GAMMA"}""")
+            .RootElement.Clone();
+
+        var first = tool.ExecuteAsync(firstArgs, Context, CancellationToken.None);
+        var second = tool.ExecuteAsync(secondArgs, Context, CancellationToken.None);
+        var results = await Task.WhenAll(first, second);
+
+        Assert.All(results, result => Assert.False(result.IsError));
+        Assert.Equal("ALPHA\nbeta\nGAMMA\n", File.ReadAllText(temp.File("Shared.txt")));
+    }
+
     private static Task<ToolResult> EditAsync(TempDirectory temp, string arguments) =>
         EditAsync(temp.Root, arguments);
 
@@ -419,5 +461,20 @@ public sealed class EditToolTests
         var args = JsonDocument.Parse(arguments).RootElement.Clone();
 
         return tool.ExecuteAsync(args, Context, CancellationToken.None);
+    }
+
+    private sealed class RecordingMutationQueue : IFileMutationQueue
+    {
+        public List<string> Paths { get; } = [];
+
+        public Task<T> RunAsync<T>(
+            string path,
+            Func<CancellationToken, Task<T>> mutation,
+            CancellationToken ct
+        )
+        {
+            Paths.Add(path);
+            return mutation(ct);
+        }
     }
 }

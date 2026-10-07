@@ -19,16 +19,30 @@ internal sealed class ScriptedTool(
 
     public ToolRisk Risk { get; } = risk;
 
+    public ToolAnnotations? Annotations { get; init; }
+
     public string? ReceivedArgsRaw { get; private set; }
 
     public ToolContext? ReceivedContext { get; private set; }
 
     public Func<JsonElement, ToolContext, ToolResult>? OnExecute { get; set; }
 
+    public Func<
+        JsonElement,
+        ToolContext,
+        CancellationToken,
+        Task<ToolResult>
+    >? OnExecuteAsync { get; set; }
+
     public Task<ToolResult> ExecuteAsync(JsonElement args, ToolContext ctx, CancellationToken ct)
     {
         ReceivedArgsRaw = args.GetRawText();
         ReceivedContext = ctx;
+        if (OnExecuteAsync is { } asyncHandler)
+        {
+            return asyncHandler(args, ctx, ct);
+        }
+
         ToolResult? result = OnExecute?.Invoke(args, ctx);
         return Task.FromResult(result ?? new ToolResult($"ran {Name}", IsError: false));
     }
