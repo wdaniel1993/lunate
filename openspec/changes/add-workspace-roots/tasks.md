@@ -13,5 +13,5 @@
 
 ## 3. Close
 
-- [ ] 3.1 `dotnet csharpier format .`; `bash scripts/verify.sh` green (incl. de-AT); `openspec validate add-workspace-roots --type change --strict`
-- [ ] 3.2 Self-review; commit per group
+- [x] 3.1 `dotnet csharpier format .`; `bash scripts/verify.sh` green (incl. de-AT); `openspec validate add-workspace-roots --type change --strict`
+- [x] 3.2 Self-review; commit per group
