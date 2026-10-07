@@ -14,12 +14,12 @@ The contract assembly SHALL define typed payload/result DTOs and handler interfa
 - **THEN** no processes, sockets or timers are started
 
 ### Requirement: Hook dispatch semantics
-Handlers SHALL run in extension load order, then by priority (descending). Each hook's semantics class SHALL be enforced: observe handlers all run with results ignored; transform handlers chain in order (each sees the previous output, final value used); replace handlers chain and the final value is persisted; block handlers stop at the first block (final mutated arguments are what the user approves). Ordering SHALL be deterministic.
+Handlers SHALL run by priority descending with a stable load-order tie-break (higher priority first; ties keep load order). Each hook's semantics class SHALL be enforced: observe handlers all run with results ignored; transform handlers chain in order (each sees the previous output, final value used); replace handlers chain and the final value is persisted; block handlers stop at the first block (final mutated arguments are what the user approves). Ordering SHALL be deterministic.
 
 #### Scenario: Order is deterministic
 - **GIVEN** handlers from several extensions with and without priorities
 - **WHEN** a hook dispatches
-- **THEN** handlers run in load order, then by priority, stably across runs
+- **THEN** handlers run by priority descending with a stable load-order tie-break, across runs
 
 #### Scenario: Transforms chain
 - **GIVEN** two transform handlers

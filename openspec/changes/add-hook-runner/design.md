@@ -39,7 +39,7 @@ public interface IExtensionContext { /* T-36 members */ void Register(IHookHandl
 
 ## Runner (host)
 
-- `HookRunner` collects handlers per hook kind across all loaded extensions; order = **extension load order, then `Priority` descending** (stable; documented).
+- `HookRunner` collects handlers per hook kind across all loaded extensions; order = **priority descending with a stable extension load-order tie-break** (higher priority first; ties keep load order; documented).
 - Semantics enforcement per class:
   - **observe**: all handlers run; results ignored; failures reported.
   - **transform**: chained in order — each handler sees the previous output; the final value is used.

@@ -23,7 +23,7 @@ Status: working spec under ADR-0017. The durable decisions live in `adr/0017-ext
 
 ## Hook catalogue
 
-Handlers run in load order, then optional priority. All hooks are async with cancellation and a per-handler timeout. `ToolCalling` runs before the built-in approval prompt, so the user approves the final arguments. Continuations requested at turn boundaries are capped per run (default 3).
+Handlers run by priority descending, with a stable load-order tie-break (higher priority first; ties keep load order). All hooks are async with cancellation and a per-handler timeout. `ToolCalling` runs before the built-in approval prompt, so the user approves the final arguments. Continuations requested at turn boundaries are capped per run (default 3).
 
 | Hook | When | May | Handler failure |
 | --- | --- | --- | --- |
