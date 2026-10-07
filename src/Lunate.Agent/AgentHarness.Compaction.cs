@@ -85,8 +85,20 @@ public sealed partial class AgentHarness
         CancellationToken ct
     )
     {
+        int boundary = CompactionReducer.FindTailStart(_history, _options.CompactionKeepTurns);
+        List<ChatMessage> part = CompactionReducer.SummarizablePart(
+            _history,
+            boundary,
+            _summaryMessage
+        );
+        if (part.Count == 0)
+        {
+            return false;
+        }
+
+        string? provided = await ProvidedSummaryAsync(runId, part, ct).ConfigureAwait(false);
         CompactionReduction reduction = await _compactor
-            .ReduceWithDetailsAsync(_history, _summaryMessage, providedSummary: null, ct)
+            .ReduceWithDetailsAsync(_history, _summaryMessage, provided, ct)
             .ConfigureAwait(false);
         if (reduction.SummaryMessage is not { } summaryMessage)
         {
@@ -150,6 +162,47 @@ public sealed partial class AgentHarness
         }
 
         return true;
+    }
+
+    /// <summary>
+    /// Invokes the compacting seam before summarization. The provided summary (last non-null wins,
+    /// mapped by the adapter) replaces the default; a throwing seam falls back to the default and is
+    /// reported. Without hooks this is a no-op.
+    /// </summary>
+    private async ValueTask<string?> ProvidedSummaryAsync(
+        string runId,
+        IReadOnlyList<ChatMessage> part,
+        CancellationToken ct
+    )
+    {
+        if (_options.Hooks is not { } hooks)
+        {
+            return null;
+        }
+
+        try
+        {
+            AgentCompactingResult result = await hooks
+                .CompactingAsync(
+                    new AgentCompactingContext(runId, [.. part.Select(ToContextMessage)]),
+                    ct
+                )
+                .ConfigureAwait(false);
+            return result is AgentCompactingResult.Provide { Summary.Length: > 0 } provide
+                ? provide.Summary
+                : null;
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            Trace.WriteLine(
+                $"lunate: compaction hook failed for run '{runId}': {exception.Message} Falling back to the default summarization."
+            );
+            return null;
+        }
     }
 
     private int ResolveContextWindow()

@@ -113,6 +113,47 @@ public sealed class AgentHookAdapterTests
     }
 
     [Fact]
+    public async Task Compacting_maps_the_context_and_a_provided_summary_through_the_adapter()
+    {
+        var runner = new HookRunner();
+        var extension = new RecordingCompactingExtension(provide: true);
+        runner.Register("ext", extension);
+        var adapter = new AgentHookAdapter(runner);
+
+        AgentCompactingResult result = await adapter.CompactingAsync(
+            new AgentCompactingContext(
+                "r1",
+                [
+                    new AgentContextMessage("user", "old question"),
+                    new AgentContextMessage("assistant", "old answer"),
+                ]
+            ),
+            Ct
+        );
+
+        Assert.Equal("ext summary", Assert.IsType<AgentCompactingResult.Provide>(result).Summary);
+        Assert.Equal(
+            [("user", "old question"), ("assistant", "old answer")],
+            extension.Payload!.Messages.Select(message => (message.Role, message.Text))
+        );
+    }
+
+    [Fact]
+    public async Task Compacting_falls_back_to_the_default_when_a_handler_fails()
+    {
+        var runner = new HookRunner();
+        runner.Register("ext", new RecordingCompactingExtension(provide: false));
+        var adapter = new AgentHookAdapter(runner);
+
+        AgentCompactingResult result = await adapter.CompactingAsync(
+            new AgentCompactingContext("r1", []),
+            Ct
+        );
+
+        Assert.IsType<AgentCompactingResult.UseDefault>(result);
+    }
+
+    [Fact]
     public async Task A_blocking_tool_calling_handler_denies_the_call_through_the_adapter()
     {
         var runner = new HookRunner();
@@ -252,6 +293,26 @@ public sealed class AgentHookAdapterTests
             ContextBuildingPayload payload,
             CancellationToken cancellationToken
         ) => ValueTask.FromResult(new ContextBuildingResult([new ContextMessage("system", text)]));
+    }
+
+    private sealed class RecordingCompactingExtension(bool provide) : ICompactingHandler
+    {
+        public int Priority => 0;
+
+        public CompactingPayload? Payload { get; private set; }
+
+        public ValueTask<CompactingResult> HandleAsync(
+            CompactingPayload payload,
+            CancellationToken cancellationToken
+        )
+        {
+            Payload = payload;
+            return provide
+                ? ValueTask.FromResult<CompactingResult>(
+                    new CompactingResult.Provide("ext summary")
+                )
+                : throw new InvalidOperationException("compaction handler exploded");
+        }
     }
 
     private sealed class BlockingExtension : IToolCallingHandler

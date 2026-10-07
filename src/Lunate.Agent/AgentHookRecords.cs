@@ -111,3 +111,21 @@ public sealed record AgentTurnEndedResult(
 
 /// <summary>The settled run; observation only.</summary>
 public sealed record AgentRunSettledContext(string RunId);
+
+/// <summary>The messages compaction is about to summarize, before the summarization call.</summary>
+public sealed record AgentCompactingContext(
+    string RunId,
+    IReadOnlyList<AgentContextMessage> Messages
+);
+
+/// <summary>The outcome of the compacting seam point.</summary>
+public abstract record AgentCompactingResult
+{
+    private AgentCompactingResult() { }
+
+    /// <summary>Summarize with the default strategy.</summary>
+    public sealed record UseDefault : AgentCompactingResult;
+
+    /// <summary>Use the provided summary instead of summarizing.</summary>
+    public sealed record Provide(string Summary) : AgentCompactingResult;
+}
