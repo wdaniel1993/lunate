@@ -2,10 +2,10 @@
 
 ## 1. Kit (TDD, red-first)
 
-- [ ] 1.1 New project `src/Lunate.Extensibility.Testing/` (net10.0, nullable; references Extensibility inputs: Abstractions, Extensibility, Agent, Ai); solution wiring; layering edges in the architecture test
-- [ ] 1.2 `ExtensionTestHost` per design (real loader, scripted trust, real runner lifecycle, caller-provided `IChatClient`, idempotent stop, unload on dispose)
-- [ ] 1.3 `RecordingExtensionLog`, `ScriptedTrustPrompt` (exhaustion = failure), `ScriptedApprover`, `EventRecorder`, session assertion helpers
-- [ ] 1.4 Kit tests: helper semantics; no real-home access; start/stop idempotence
+- [x] 1.1 New project `src/Lunate.Extensibility.Testing/` (net10.0, nullable; references Extensibility inputs: Abstractions, Extensibility, Agent, Ai); solution wiring; layering edges in the architecture test
+- [x] 1.2 `ExtensionTestHost` per design (real loader, scripted trust, real runner lifecycle, caller-provided `IChatClient`, idempotent stop, unload on dispose)
+- [x] 1.3 `RecordingExtensionLog`, `ScriptedTrustPrompt` (exhaustion = failure), `ScriptedApprover`, `EventRecorder`, session assertion helpers
+- [x] 1.4 Kit tests: helper semantics; no real-home access; start/stop idempotence
 
 ## 2. Template
 
