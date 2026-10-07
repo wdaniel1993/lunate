@@ -35,7 +35,7 @@
 - `tests/fixtures/edit-corpus/<case>/`: `input` (file), `request.json` (`old_text`, `new_text`), and `expected` (exact file bytes) or `expected-error.txt` (exact error output).
 - Runner `EditCorpusTests` iterates every folder: copies `input` into a temp workspace, runs the tool on the copy, then asserts the file matches `expected` byte-for-byte or the result is an error whose output equals `expected-error.txt` exactly. Folders are self-contained so T-14 only adds cases.
 - T-13 cases: `unique-exact`, `first-line-match`, `two-matches-error`, `normalized-ambiguity-error`, `crlf-file-lf-old-text`, `trailing-spaces-normalized`, `bom-kept`, `boundary-no-trailing-newline`, `empty-old-text-error`, `identical-old-new-error`, `not-found-error`.
-- The 5 MB performance case (applied in under 200 ms) is a direct test in `EditToolTests` with a generated file, not a committed fixture.
+- The 5 MB performance case is a direct test in `EditToolTests` with a generated file — a 1.5 s CI tripwire (catches pathological regressions like a quadratic match or diff over 300k lines); the corpus target of 200 ms applies to a development machine, not shared CI runners.
 
 ## Deliberate non-goals
 

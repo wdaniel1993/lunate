@@ -1,0 +1,1 @@
+old_text and new_text are identical; nothing to change
