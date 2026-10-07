@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using Lunate.Agent;
@@ -329,6 +331,80 @@ public sealed class EditToolTests
         Assert.False(result.IsError);
         Assert.Equal("edited File.txt lines 2\u20134 (match: exact)", result.Output);
         Assert.Equal("one\na\nb\nc\nfour\n", File.ReadAllText(temp.File("File.txt")));
+    }
+
+    [Theory]
+    [InlineData("""[]""", "arguments must be a JSON object")]
+    [InlineData("""{}""", "path is required and must be a string")]
+    [InlineData(
+        """{"path":5,"old_text":"a","new_text":"b"}""",
+        "path is required and must be a string"
+    )]
+    [InlineData(
+        """{"path":"File.txt","new_text":"b"}""",
+        "old_text is required and must be a string"
+    )]
+    [InlineData(
+        """{"path":"File.txt","old_text":5,"new_text":"b"}""",
+        "old_text is required and must be a string"
+    )]
+    [InlineData(
+        """{"path":"File.txt","old_text":"a"}""",
+        "new_text is required and must be a string"
+    )]
+    [InlineData(
+        """{"path":"File.txt","old_text":"a","new_text":5}""",
+        "new_text is required and must be a string"
+    )]
+    public async Task Malformed_arguments_are_errors(string arguments, string expected)
+    {
+        using var temp = new TempDirectory();
+        File.WriteAllText(temp.File("File.txt"), "a\nb\n");
+
+        var result = await EditAsync(temp, arguments);
+
+        Assert.True(result.IsError);
+        Assert.Equal(expected, result.Output);
+    }
+
+    [Fact]
+    public async Task A_five_megabyte_file_applies_in_under_200_ms()
+    {
+        using var temp = new TempDirectory();
+        var content = new StringBuilder();
+        var number = 0;
+        while (content.Length < 5 * 1024 * 1024)
+        {
+            number++;
+            content
+                .Append("line ")
+                .Append(number.ToString("D7", CultureInfo.InvariantCulture))
+                .Append('\n');
+        }
+
+        File.WriteAllText(temp.File("Big.txt"), content.ToString());
+        var args = JsonSerializer.Serialize(
+            new
+            {
+                path = "Big.txt",
+                old_text = "line 0060000",
+                new_text = "changed",
+            }
+        );
+
+        var stopwatch = Stopwatch.StartNew();
+        var result = await EditAsync(temp, args);
+        stopwatch.Stop();
+
+        Assert.False(result.IsError);
+        Assert.True(
+            stopwatch.Elapsed < TimeSpan.FromMilliseconds(200),
+            $"edit took {stopwatch.ElapsedMilliseconds} ms"
+        );
+        Assert.Contains(
+            "line 0059999\nchanged\nline 0060001\n",
+            File.ReadAllText(temp.File("Big.txt"))
+        );
     }
 
     private static Task<ToolResult> EditAsync(TempDirectory temp, string arguments) =>
