@@ -29,9 +29,11 @@ internal static class TextFile
 
     public static string ReadAllText(string path) => File.ReadAllText(path, Utf8NoBom);
 
-    public static string[] ReadAllLines(string path)
+    public static string[] ReadAllLines(string path) => SplitLines(ReadAllText(path));
+
+    public static string[] SplitLines(string text)
     {
-        var raw = ReadAllText(path).Split('\n');
+        var raw = text.Split('\n');
         var count = raw.Length;
         if (count > 0 && raw[^1].Length == 0)
         {

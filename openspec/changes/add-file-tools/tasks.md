@@ -13,10 +13,10 @@
 
 ## 3. `write` tool (TDD)
 
-- [ ] 3.1 `WriteTool` + schema + `WriteDetails`; internal `LineDiff` (unified diff, 3 context lines)
-- [ ] 3.2 Result tests: `(created)`/`(replaced)`, line counts (empty, with/without trailing newline), parent creation, relative display path
-- [ ] 3.3 Exactness tests: CRLF preserved, no trailing newline added, non-ASCII, no BOM; replace keeps the file's permissions
-- [ ] 3.4 Error tests: outside workspace, directory; `Details` diff correct for create and replace
+- [x] 3.1 `WriteTool` + schema + `WriteDetails`; internal `LineDiff` (unified diff, 3 context lines)
+- [x] 3.2 Result tests: `(created)`/`(replaced)`, line counts (empty, with/without trailing newline), parent creation, relative display path
+- [x] 3.3 Exactness tests: CRLF preserved, no trailing newline added, non-ASCII, no BOM; replace keeps the file's permissions
+- [x] 3.4 Error tests: outside workspace, directory; `Details` diff correct for create and replace
 
 ## 4. Specs, ADR, close
 
