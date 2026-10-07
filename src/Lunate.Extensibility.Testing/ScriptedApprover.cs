@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using Lunate.Agent;
 
@@ -30,7 +31,7 @@ public sealed class ScriptedApprover : IToolApprover
         if (!_decisions.TryDequeue(out bool decision))
         {
             throw new InvalidOperationException(
-                $"ScriptedApprover has no decision left for tool '{tool.Name}' (call {Calls}). Queue one decision per expected approval request; exhaustion never allows the call implicitly."
+                $"ScriptedApprover has no decision left for tool '{tool.Name}' (call {Calls.ToString(CultureInfo.InvariantCulture)}). Queue one decision per expected approval request; exhaustion never allows the call implicitly."
             );
         }
 

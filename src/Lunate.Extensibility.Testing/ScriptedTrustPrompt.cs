@@ -1,3 +1,4 @@
+using System.Globalization;
 using Lunate.Extensibility;
 
 namespace Lunate.Extensibility.Testing;
@@ -32,7 +33,7 @@ public sealed class ScriptedTrustPrompt : IExtensionTrustPrompt
         if (!_decisions.TryDequeue(out bool decision))
         {
             throw new InvalidOperationException(
-                $"ScriptedTrustPrompt has no decision left for extension '{descriptor.Id}' (call {Calls}). Queue one decision per expected trust prompt; exhaustion never approves implicitly."
+                $"ScriptedTrustPrompt has no decision left for extension '{descriptor.Id}' (call {Calls.ToString(CultureInfo.InvariantCulture)}). Queue one decision per expected trust prompt; exhaustion never approves implicitly."
             );
         }
 
