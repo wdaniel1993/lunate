@@ -1,6 +1,6 @@
 # 0017 — Extensibility architecture: build for the most complex extensions
 
-- Status: proposed — 2026-10-07
+- Status: accepted — 2026-10-07 (maintainer sign-off; change merged)
 - Date: 2026-10-07
 - Relates to: ADR 0003 (own loop), ADR 0012 (tool contract), ADR 0014 (C# backend interface); guide "Extensions"
 
