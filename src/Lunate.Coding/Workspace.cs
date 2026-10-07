@@ -11,11 +11,22 @@ public sealed class Workspace
     private readonly IReadOnlyList<string> _roots;
     private readonly StringComparison _comparison;
 
+    /// <summary>The canonical working directory of this run: the boundary's first allowed root.</summary>
+    public string WorktreeRoot { get; }
+
+    /// <summary>The main worktree's root from the file system, or null outside a repository.</summary>
+    public string? RepoRoot { get; }
+
+    /// <summary>The shared git directory from the file system, or null outside a repository.</summary>
+    public string? GitCommonDir { get; }
+
     public Workspace(string workingDirectory, IReadOnlyList<string>? extraRoots = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(workingDirectory);
 
         _workingDirectory = Canonicalize(workingDirectory);
+        WorktreeRoot = _workingDirectory;
+        (RepoRoot, GitCommonDir) = DetectIdentity(WorktreeRoot);
         var roots = new List<string> { _workingDirectory };
         if (extraRoots is not null)
         {
@@ -133,6 +144,86 @@ public sealed class Workspace
     }
 
     private const int MaxLinkHops = 40;
+
+    /// <summary>
+    /// Best-effort repository identity from the file system only (git is never executed): a
+    /// <c>.git</c> directory is the common dir of a main checkout; a <c>.git</c> file points at a
+    /// linked worktree's gitdir, whose <c>commondir</c> file names the shared git directory.
+    /// Unreadable or malformed input yields nulls instead of throwing.
+    /// </summary>
+    private static (string? RepoRoot, string? GitCommonDir) DetectIdentity(string worktreeRoot)
+    {
+        try
+        {
+            var dotGit = Path.Combine(worktreeRoot, ".git");
+            if (Directory.Exists(dotGit))
+            {
+                return (worktreeRoot, Canonicalize(dotGit));
+            }
+
+            if (!File.Exists(dotGit))
+            {
+                return (null, null);
+            }
+
+            var gitDir = ReadGitDirPointer(dotGit);
+            if (gitDir is null)
+            {
+                return (null, null);
+            }
+
+            var commonDir = ReadCommonDir(gitDir);
+            if (commonDir is null)
+            {
+                return (null, null);
+            }
+
+            var repoRoot =
+                Path.GetFileName(commonDir) == ".git" ? Path.GetDirectoryName(commonDir) : null;
+            return (repoRoot, commonDir);
+        }
+        catch (Exception exception)
+            when (exception
+                    is IOException
+                        or UnauthorizedAccessException
+                        or ArgumentException
+                        or NotSupportedException
+            )
+        {
+            return (null, null);
+        }
+    }
+
+    private static string? ReadGitDirPointer(string dotGitPath)
+    {
+        var line = File.ReadLines(dotGitPath).FirstOrDefault()?.Trim();
+        if (line is null || !line.StartsWith("gitdir:", StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        var target = line["gitdir:".Length..].Trim();
+        if (target.Length == 0)
+        {
+            return null;
+        }
+
+        var resolved = Path.IsPathRooted(target)
+            ? target
+            : Path.Combine(Path.GetDirectoryName(dotGitPath)!, target);
+        return Canonicalize(resolved);
+    }
+
+    private static string? ReadCommonDir(string gitDir)
+    {
+        var line = File.ReadLines(Path.Combine(gitDir, "commondir")).FirstOrDefault()?.Trim();
+        if (string.IsNullOrEmpty(line))
+        {
+            return null;
+        }
+
+        return Canonicalize(Path.Combine(gitDir, line));
+    }
 
     private string? FindRoot(string canonical)
     {
