@@ -2,9 +2,9 @@
 
 ## 1. Workspace identity (TDD, red-first)
 
-- [ ] 1.1 `Workspace` exposes `WorktreeRoot` (canonical working directory), `RepoRoot`, `GitCommonDir` (nullable); detection from `.git` directory / `.git` file + `commondir` per design.md; git never executed
-- [ ] 1.2 Malformed `.git`/`commondir` content yields nulls without throwing; non-repository workspace yields nulls and keeps working
-- [ ] 1.3 Tests: main checkout; linked worktree (fabricated on disk, no git binary); non-repository; malformed; symlinked worktree root canonicalized
+- [x] 1.1 `Workspace` exposes `WorktreeRoot` (canonical working directory), `RepoRoot`, `GitCommonDir` (nullable); detection from `.git` directory / `.git` file + `commondir` per design.md; git never executed
+- [x] 1.2 Malformed `.git`/`commondir` content yields nulls without throwing; non-repository workspace yields nulls and keeps working
+- [x] 1.3 Tests: main checkout; linked worktree (fabricated on disk, no git binary); non-repository; malformed; symlinked worktree root canonicalized
 
 ## 2. Boundary across worktrees
 

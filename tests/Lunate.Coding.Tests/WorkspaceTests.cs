@@ -223,6 +223,111 @@ public sealed class WorkspaceTests
         Assert.Contains("could not be resolved", error);
     }
 
+    [Fact]
+    public void A_main_checkout_exposes_its_repository_identity()
+    {
+        using var temp = new TempDirectory();
+        var root = temp.File("main");
+        Directory.CreateDirectory(Path.Combine(root, ".git"));
+        var workspace = new Workspace(root);
+
+        var canonicalRoot = Workspace.Canonicalize(root);
+        Assert.Equal(canonicalRoot, workspace.WorktreeRoot);
+        Assert.Equal(canonicalRoot, workspace.RepoRoot);
+        Assert.Equal(Workspace.Canonicalize(Path.Combine(root, ".git")), workspace.GitCommonDir);
+    }
+
+    [Fact]
+    public void A_linked_worktree_reports_the_repository_identity()
+    {
+        using var temp = new TempDirectory();
+        var (main, worktree) = CreateLinkedWorktree(temp, "wt");
+        var workspace = new Workspace(worktree);
+
+        Assert.Equal(Workspace.Canonicalize(worktree), workspace.WorktreeRoot);
+        Assert.Equal(Workspace.Canonicalize(main), workspace.RepoRoot);
+        Assert.Equal(Workspace.Canonicalize(Path.Combine(main, ".git")), workspace.GitCommonDir);
+    }
+
+    [Fact]
+    public void A_non_repository_workspace_has_no_identity_and_keeps_working()
+    {
+        using var temp = new TempDirectory();
+        var root = temp.File("plain");
+        Directory.CreateDirectory(root);
+        File.WriteAllText(Path.Combine(root, "file.txt"), "x");
+        var workspace = new Workspace(root);
+
+        Assert.Equal(Workspace.Canonicalize(root), workspace.WorktreeRoot);
+        Assert.Null(workspace.RepoRoot);
+        Assert.Null(workspace.GitCommonDir);
+        Assert.True(workspace.TryResolve("file.txt", out _, out var error), error);
+    }
+
+    [Fact]
+    public void A_malformed_git_file_yields_no_identity_without_throwing()
+    {
+        using var temp = new TempDirectory();
+        var root = temp.File("broken");
+        Directory.CreateDirectory(root);
+        File.WriteAllText(Path.Combine(root, ".git"), "not a gitdir pointer\n");
+        var workspace = new Workspace(root);
+
+        Assert.Equal(Workspace.Canonicalize(root), workspace.WorktreeRoot);
+        Assert.Null(workspace.RepoRoot);
+        Assert.Null(workspace.GitCommonDir);
+    }
+
+    [Fact]
+    public void A_gitdir_without_commondir_yields_no_identity_without_throwing()
+    {
+        using var temp = new TempDirectory();
+        var root = temp.File("broken");
+        Directory.CreateDirectory(root);
+        Directory.CreateDirectory(temp.File("gitdir"));
+        File.WriteAllText(Path.Combine(root, ".git"), "gitdir: ../gitdir\n");
+        var workspace = new Workspace(root);
+
+        Assert.Null(workspace.RepoRoot);
+        Assert.Null(workspace.GitCommonDir);
+    }
+
+    [Fact]
+    public void A_symlinked_worktree_root_is_canonicalized_for_identity()
+    {
+        using var temp = new TempDirectory();
+        var (main, worktree) = CreateLinkedWorktree(temp, "wt");
+        if (!TryCreateDirectoryLink(temp.File("wt-link"), worktree))
+        {
+            Assert.Skip("Symbolic links are not available in this environment.");
+            return;
+        }
+
+        var workspace = new Workspace(temp.File("wt-link"));
+
+        Assert.Equal(Workspace.Canonicalize(worktree), workspace.WorktreeRoot);
+        Assert.Equal(Workspace.Canonicalize(main), workspace.RepoRoot);
+        Assert.Equal(Workspace.Canonicalize(Path.Combine(main, ".git")), workspace.GitCommonDir);
+    }
+
+    private static (string Main, string Worktree) CreateLinkedWorktree(
+        TempDirectory temp,
+        string name
+    )
+    {
+        var main = temp.File("main");
+        var worktree = temp.File(name);
+        var gitDir = Path.Combine(main, ".git", "worktrees", name);
+        Directory.CreateDirectory(gitDir);
+        Directory.CreateDirectory(worktree);
+        File.WriteAllText(
+            Path.Combine(worktree, ".git"),
+            $"gitdir: ../main/.git/worktrees/{name}\n"
+        );
+        File.WriteAllText(Path.Combine(gitDir, "commondir"), "../..\n");
+        return (main, worktree);
+    }
+
     private static bool TryCreateDirectoryLink(string linkPath, string targetPath)
     {
         try
