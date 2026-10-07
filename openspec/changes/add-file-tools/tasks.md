@@ -7,9 +7,9 @@
 
 ## 2. `read` tool (TDD)
 
-- [ ] 2.1 `ReadTool` + hand-written schema; internal `TextFile` helpers (binary check, UTF-8/BOM handling, line splitting)
-- [ ] 2.2 Format tests: exact `{n,6}|{text}` lines, footer `[lines {first}–{last} of {total}, use offset to continue]`, paging, `limit` clamp at 2000, empty file `[empty file]`, CRLF/BOM display normalization
-- [ ] 2.3 Error tests: outside workspace, missing, directory (suggests `bash ls`), binary (size named), `offset`/`limit` < 1, `offset` past end (total named)
+- [x] 2.1 `ReadTool` + hand-written schema; internal `TextFile` helpers (binary check, UTF-8/BOM handling, line splitting)
+- [x] 2.2 Format tests: exact `{n,6}|{text}` lines, footer `[lines {first}–{last} of {total}, use offset to continue]`, paging, `limit` clamp at 2000, empty file `[empty file]`, CRLF/BOM display normalization
+- [x] 2.3 Error tests: outside workspace, missing, directory (suggests `bash ls`), binary (size named), `offset`/`limit` < 1, `offset` past end (total named)
 
 ## 3. `write` tool (TDD)
 
