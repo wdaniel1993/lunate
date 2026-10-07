@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <RootNamespace>Lunate.Extensibility.Testing</RootNamespace>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="../Lunate.Agent/Lunate.Agent.csproj" />
+        <ProjectReference Include="../Lunate.Ai/Lunate.Ai.csproj" />
+        <ProjectReference Include="../Lunate.Extensibility/Lunate.Extensibility.csproj" />
+        <ProjectReference Include="../Lunate.Extensibility.Abstractions/Lunate.Extensibility.Abstractions.csproj" />
+    </ItemGroup>
+</Project>
