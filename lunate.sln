@@ -35,6 +35,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Lunate.Extensibility.Abstra
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Lunate.Extensibility.Tests", "tests\Lunate.Extensibility.Tests\Lunate.Extensibility.Tests.csproj", "{E9C15091-B40D-41DF-9C87-0413C50B23D8}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Lunate.Extensibility", "src\Lunate.Extensibility\Lunate.Extensibility.csproj", "{39A933F6-83C5-4909-A432-AA897AA9EAEB}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -213,6 +215,18 @@ Global
 		{E9C15091-B40D-41DF-9C87-0413C50B23D8}.Release|x64.Build.0 = Release|Any CPU
 		{E9C15091-B40D-41DF-9C87-0413C50B23D8}.Release|x86.ActiveCfg = Release|Any CPU
 		{E9C15091-B40D-41DF-9C87-0413C50B23D8}.Release|x86.Build.0 = Release|Any CPU
+		{39A933F6-83C5-4909-A432-AA897AA9EAEB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{39A933F6-83C5-4909-A432-AA897AA9EAEB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{39A933F6-83C5-4909-A432-AA897AA9EAEB}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{39A933F6-83C5-4909-A432-AA897AA9EAEB}.Debug|x64.Build.0 = Debug|Any CPU
+		{39A933F6-83C5-4909-A432-AA897AA9EAEB}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{39A933F6-83C5-4909-A432-AA897AA9EAEB}.Debug|x86.Build.0 = Debug|Any CPU
+		{39A933F6-83C5-4909-A432-AA897AA9EAEB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{39A933F6-83C5-4909-A432-AA897AA9EAEB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{39A933F6-83C5-4909-A432-AA897AA9EAEB}.Release|x64.ActiveCfg = Release|Any CPU
+		{39A933F6-83C5-4909-A432-AA897AA9EAEB}.Release|x64.Build.0 = Release|Any CPU
+		{39A933F6-83C5-4909-A432-AA897AA9EAEB}.Release|x86.ActiveCfg = Release|Any CPU
+		{39A933F6-83C5-4909-A432-AA897AA9EAEB}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -232,5 +246,6 @@ Global
 		{71458A7E-693D-42AA-A4B7-82FAABAE220F} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 		{E56F61CC-0AEC-4E22-8352-59025677401A} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{E9C15091-B40D-41DF-9C87-0413C50B23D8} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
+		{39A933F6-83C5-4909-A432-AA897AA9EAEB} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 	EndGlobalSection
 EndGlobal

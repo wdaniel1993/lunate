@@ -9,10 +9,10 @@
 
 ## 2. Host loader
 
-- [ ] 2.1 New project `src/Lunate.Extensibility/` (+ solution); discovery of global and project extension directories; manifests read at startup, assemblies not loaded; missing directories are fine
-- [ ] 2.2 `ExtensionLoadContext` (collectible): abstractions, MEAI abstractions and System.Text.Json resolve from the default context; all other dependencies load from the extension directory; missing dependency yields an actionable error
-- [ ] 2.3 `ExtensionLoader`: `Discover`, lazy `Load(id)` (factory `Create`), `Unload(id)`; duplicate ids across scopes are an error naming both paths
-- [ ] 2.4 Test fixture extension: a minimal classlib (`tests/TestExtensions/HelloExtension/`) referencing the abstractions, built with the solution, copied with a manifest into temp extension directories by the tests; real load, real `Create`, real unload (a second load after unload works)
+- [x] 2.1 New project `src/Lunate.Extensibility/` (+ solution); discovery of global and project extension directories; manifests read at startup, assemblies not loaded; missing directories are fine
+- [x] 2.2 `ExtensionLoadContext` (collectible): abstractions, MEAI abstractions and System.Text.Json resolve from the default context; all other dependencies load from the extension directory; missing dependency yields an actionable error
+- [x] 2.3 `ExtensionLoader`: `Discover`, lazy `Load(id)` (factory `Create`), `Unload(id)`; duplicate ids across scopes are an error naming both paths
+- [x] 2.4 Test fixture extension: a minimal classlib (`tests/TestExtensions/HelloExtension/`) referencing the abstractions, built with the solution, copied with a manifest into temp extension directories by the tests; real load, real `Create`, real unload (a second load after unload works)
 
 ## 3. Settings, secrets, trust
 

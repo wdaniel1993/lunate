@@ -6,10 +6,26 @@
 
     <ItemGroup>
         <ProjectReference Include="../../src/Lunate.Extensibility.Abstractions/Lunate.Extensibility.Abstractions.csproj" />
+        <ProjectReference Include="../../src/Lunate.Extensibility/Lunate.Extensibility.csproj" />
+        <ProjectReference
+            Include="../TestExtensions/HelloExtension/HelloExtension.csproj"
+            ReferenceOutputAssembly="false"
+        />
     </ItemGroup>
 
     <ItemGroup>
         <PackageReference Include="xunit.v3" Version="4.0.1" />
         <Using Include="Xunit" />
     </ItemGroup>
+
+    <Target Name="CopyTestExtensions" AfterTargets="Build">
+        <ItemGroup>
+            <TestExtensionFiles Include="$(MSBuildThisFileDirectory)../TestExtensions/HelloExtension/bin/$(Configuration)/$(TargetFramework)/**/*" />
+        </ItemGroup>
+        <Copy
+            SourceFiles="@(TestExtensionFiles)"
+            DestinationFolder="$(OutDir)TestExtensions/HelloExtension/%(RecursiveDir)"
+            SkipUnchangedFiles="true"
+        />
+    </Target>
 </Project>

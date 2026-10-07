@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <ItemGroup>
+        <ProjectReference Include="../Lunate.Extensibility.Abstractions/Lunate.Extensibility.Abstractions.csproj" />
+    </ItemGroup>
+</Project>
