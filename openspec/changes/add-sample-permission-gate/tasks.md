@@ -2,7 +2,7 @@
 
 ## 1. Contract addition (TDD, red-first)
 
-- [ ] 1.1 `ToolCallingPayload` gains annotations (string list, tool-model form, stable order, empty when none); conformance test extended; PublicAPI entries; API 1.3.0 with pinned tests updated
+- [ ] 1.1 `ToolCallingPayload` gains annotations (lowercase kebab wire names in declaration order — `read-only`, `destructive`, `idempotent`, `open-world`; one new mapping helper in `Lunate.Agent` next to `ToolAnnotations`, reused by the adapter; empty when none); conformance test extended; PublicAPI entries; API 1.3.0 with pinned tests updated
 - [ ] 1.2 Agent seam + adapter pass the resolved tool's annotations through (behavior unchanged when hooks are unconfigured — test)
 - [ ] 1.3 Spec delta restated (Hook wiring + new scenario); `openspec validate --strict`
 
