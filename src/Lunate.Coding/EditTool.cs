@@ -5,7 +5,11 @@ using Lunate.Agent;
 namespace Lunate.Coding;
 
 /// <summary>Replaces one unique occurrence of <c>old_text</c> with <c>new_text</c> in a workspace text file.</summary>
-public sealed class EditTool(Workspace workspace, IFileMutationQueue? mutations = null) : ITool
+public sealed class EditTool(
+    Workspace workspace,
+    IFileMutationQueue? mutations = null,
+    IFileChangeSink? changes = null
+) : ITool
 {
     private readonly IFileMutationQueue _mutations = mutations ?? FileMutationQueue.Shared;
 
@@ -164,6 +168,7 @@ public sealed class EditTool(Workspace workspace, IFileMutationQueue? mutations 
                 }
 
                 TextFile.WriteRaw(resolved.AbsolutePath, newFileText, hasBom);
+                changes?.Notify(resolved.AbsolutePath);
 
                 var firstLine = start + 1;
                 var lastLine = start + newLines.Length;

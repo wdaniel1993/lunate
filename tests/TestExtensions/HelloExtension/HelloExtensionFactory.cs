@@ -31,6 +31,7 @@ public sealed class HelloExtensionFactory : IExtensionFactory
             $"ext/{context.Id}/greeter",
             new HelloBackgroundService(context.Log)
         );
+        context.SubscribeFileChanged(new HelloFileChangedHandler(context.Log));
         return new HelloExtension(_greeter.Greeting);
     }
 }

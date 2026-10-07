@@ -6,7 +6,11 @@ using Lunate.Agent;
 namespace Lunate.Coding;
 
 /// <summary>Writes text files inside the workspace, creating parent directories as needed.</summary>
-public sealed class WriteTool(Workspace workspace, IFileMutationQueue? mutations = null) : ITool
+public sealed class WriteTool(
+    Workspace workspace,
+    IFileMutationQueue? mutations = null,
+    IFileChangeSink? changes = null
+) : ITool
 {
     private readonly IFileMutationQueue _mutations = mutations ?? FileMutationQueue.Shared;
 
@@ -87,6 +91,7 @@ public sealed class WriteTool(Workspace workspace, IFileMutationQueue? mutations
                 var oldText = created ? string.Empty : TextFile.ReadAllText(target);
                 Directory.CreateDirectory(Path.GetDirectoryName(target)!);
                 File.WriteAllText(target, content, Utf8NoBom);
+                changes?.Notify(target);
 
                 var lines = CountLines(content);
                 var details = new WriteDetails(

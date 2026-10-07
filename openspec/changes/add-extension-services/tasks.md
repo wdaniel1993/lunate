@@ -14,9 +14,9 @@
 
 ## 3. File change bus
 
-- [ ] 3.1 `IFileChangeSink` seam in `Lunate.Agent` (no-op default); write/edit emit one event after each successful queued mutation, carrying the canonical path
-- [ ] 3.2 Bus in `Lunate.Extensibility`: workspace id on every event (`WorktreeRoot`), per-workspace ordering, handler failures reported (never thrown to the mutation path); pattern filter per design
-- [ ] 3.3 Tests: events after write and edit; none after a refused/failed mutation; ordering under the queue; workspace id correct across two worktrees
+- [x] 3.1 `IFileChangeSink` seam in `Lunate.Agent` (no-op default); write/edit emit one event after each successful queued mutation, carrying the canonical path
+- [x] 3.2 Bus in `Lunate.Extensibility`: workspace id on every event (`WorktreeRoot`), per-workspace ordering, handler failures reported (never thrown to the mutation path); pattern filter per design
+- [x] 3.3 Tests: events after write and edit; none after a refused/failed mutation; ordering under the queue; workspace id correct across two worktrees
 
 ## 4. Registries
 
