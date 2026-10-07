@@ -306,7 +306,7 @@ Append-only JSONL, one entry per line, each with `id`, `parentId`, `type` and a 
 
 - **Shape:** our strategy implements `IChatReducer` (not `[Experimental]` in the pinned Microsoft.Extensions.AI 10.10.x) and the loop calls it before each model request, so it can emit `CompactionApplied` and write the compaction entry. Do not use `ReducingChatClient` — the loop decides when to compact. MEAI also ships `SummarizingChatReducer` and `MessageCountingChatReducer` (both `[Experimental]` in 10.10.x); evaluate them as the base before writing custom reduction logic. A base reducer is only acceptable if it meets our compaction rules: never split a tool call from its result, always keep the system prompt, AGENTS.md and the last turns verbatim, and record a compaction entry. If it does not, wrap it; do not weaken the rules.
 - **Trigger:** estimated context tokens pass 80% of the model's window. Estimate is characters / 4, corrected by the last `UsageReported`. Also on `/compact`.
-- **What stays verbatim:** system prompt, `AGENTS.md`, the last 6 turns, and any turn whose tool call or result would otherwise be split.
+- **What stays verbatim:** system prompt, `AGENTS.md`, the last N turns (default 4, configurable), and any turn whose tool call or result would otherwise be split.
 - **What is summarized:** everything older, by the same model with a fixed summarization prompt (goal, decisions, files touched, open problems), stored as a `compaction` entry. The session file keeps the full history; only the request sent to the model is shortened.
 - **Never:** split a tool call from its result, or summarize the current turn.
 - **Test:** a recorded long session compacts once, the next request is under 60% of the window, and replay still matches.
