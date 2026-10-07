@@ -1,6 +1,6 @@
 # 0015 — Session format pinned by golden files
 
-- Status: proposed — 2026-10-06
+- Status: accepted — 2026-10-07 (maintainer sign-off; change merged)
 - Date: 2026-10-06
 - Relates to: ADR 0002 (layering and MEAI model types), ADR 0013 (agent loop)
 
