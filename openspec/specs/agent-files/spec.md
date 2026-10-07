@@ -1,4 +1,9 @@
-## ADDED Requirements
+# agent-files Specification
+
+## Purpose
+The workspace boundary for the file tools — canonical path resolution (symlinks included), the allowed-roots check with its per-platform case rules — and the `read` and `write` tools' parameters, output shapes and instructing errors.
+
+## Requirements
 
 ### Requirement: Workspace boundary
 A `Workspace` SHALL resolve every file-tool path to a canonical absolute path: symlinks resolved for every existing component, the final target deciding whether the path is inside, relative paths combined with the working directory. A path SHALL be accepted only when the canonical target equals an allowed root or sits under it; allowed roots are the working directory plus explicitly configured extra roots. The comparison SHALL be case-insensitive on Windows and macOS and case-sensitive on Linux. Refusals SHALL name the path, the resolved target and the allowed roots.
@@ -22,6 +27,16 @@ A `Workspace` SHALL resolve every file-tool path to a canonical absolute path: s
 - **GIVEN** a symlink inside the workspace whose target is inside the workspace
 - **WHEN** a path through the symlink is resolved
 - **THEN** it is accepted, and the canonical target is reported
+
+#### Scenario: A dangling symlink pointing outside is refused
+- **GIVEN** a symlink whose target does not exist and lies outside every allowed root
+- **WHEN** a path through the symlink is resolved
+- **THEN** it is refused — a write through it must not create the target outside the boundary
+
+#### Scenario: A symlink cycle is a resolution error
+- **GIVEN** symlinks forming a cycle
+- **WHEN** a path through them is resolved
+- **THEN** the resolution fails with an error instead of hanging or overflowing
 
 #### Scenario: Case variants follow the file system
 - **GIVEN** a workspace on a case-insensitive file system and a path differing only in case from a real path

@@ -10,7 +10,7 @@ The file tools (`read`, `write`, `edit`) run with the user's rights on model-cho
 
 ## Decision
 
-- **Canonical resolution.** Every path is lexically normalized, then canonicalized: each existing component that is a link is replaced by its final target; a non-existing tail (write targets) is appended after the deepest existing ancestor is canonicalized. The roots are canonicalized the same way.
+- **Canonical resolution.** Every path is lexically normalized, then canonicalized: for every component that is a link, the link's **raw target** (resolved against the link's own directory) is followed and canonicalized in turn — dangling links included, so a write through a link whose target does not exist is still resolved and either lands inside the boundary or is refused. Link chains longer than 40 hops (cycles) fail with a resolution error, never a hang. Non-existing components are kept as-is. The roots are canonicalized the same way.
 - **Final-target rule.** A path is inside when its canonical target equals an allowed root or sits under it. A symlink inside the workspace that points outside is refused; one that points inside is allowed.
 - **Allowed roots.** The working directory plus explicitly configured extra roots (the CLI's `--allow-path` maps to these).
 - **Case comparison.** `OrdinalIgnoreCase` on Windows and macOS, `Ordinal` on Linux — following the file system defaults the guide names.
