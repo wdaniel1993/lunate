@@ -19,5 +19,5 @@
 
 ## 4. Close
 
-- [ ] 4.1 `agent-files` spec Purpose updated to cover the third tool (direct edit; delta Purpose is ignored for existing capabilities)
-- [ ] 4.2 `dotnet csharpier format .`, `bash scripts/verify.sh` green (incl. de-AT), `openspec validate add-edit-tool --type change --strict`, self-review
+- [x] 4.1 `agent-files` spec Purpose updated to cover the third tool (direct edit; delta Purpose is ignored for existing capabilities)
+- [x] 4.2 `dotnet csharpier format .`, `bash scripts/verify.sh` green (incl. de-AT), `openspec validate add-edit-tool --type change --strict`, self-review
