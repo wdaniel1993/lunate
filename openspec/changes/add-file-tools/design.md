@@ -11,10 +11,10 @@
 - **Algorithm** (pinned):
   1. Reject null/whitespace with an instructing error.
   2. Combine relative paths with the working directory; `Path.GetFullPath` (lexical normalization first — over-refusal in the safe direction is fine).
-  3. Canonicalize: walk the path's components from the root; for every existing component that is a link, replace it with `ResolveLinkTarget(returnFinalTarget: true)`. The non-existing tail (write targets) is appended after the deepest existing ancestor is canonicalized. The roots themselves are canonicalized the same way (the working directory may sit behind a symlink).
+  3. Canonicalize: walk the path's components from the root; for every component that is a link, replace it with the link's raw target (resolved against the link's own directory) and canonicalize that — this works for dangling links too. Non-existing components are kept as-is (write targets). The roots themselves are canonicalized the same way (the working directory may sit behind a symlink).
   4. **Inside check**: the canonical candidate equals a canonical root or sits under it. Comparison: `OrdinalIgnoreCase` on Windows and macOS, `Ordinal` on Linux (guide: boundary checks are case-insensitive on Windows and default macOS file systems).
   5. Failure: error naming the path, the resolved target and the allowed roots — instructing text per the tool contract.
-- **Symlink rule**: the *final target* decides. A symlink inside the workspace pointing outside is refused; one pointing inside is allowed. Links are never followed silently past the boundary.
+- **Symlink rule**: the *final target* decides. A symlink inside the workspace pointing outside is refused; one pointing inside is allowed. Links are never followed silently past the boundary. A link whose target does not exist is resolved through its raw target anyway — a write through a dangling link must not create the target outside the boundary. Link chains longer than 40 hops (cycles) are reported as a resolution error, never a hang.
 - **TOCTOU**: the check runs at call time; this is a guard rail for a single-user CLI tool, not a sandbox. ADR-0016 records this explicitly.
 
 ## `read` tool

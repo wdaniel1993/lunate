@@ -23,6 +23,16 @@ A `Workspace` SHALL resolve every file-tool path to a canonical absolute path: s
 - **WHEN** a path through the symlink is resolved
 - **THEN** it is accepted, and the canonical target is reported
 
+#### Scenario: A dangling symlink pointing outside is refused
+- **GIVEN** a symlink whose target does not exist and lies outside every allowed root
+- **WHEN** a path through the symlink is resolved
+- **THEN** it is refused — a write through it must not create the target outside the boundary
+
+#### Scenario: A symlink cycle is a resolution error
+- **GIVEN** symlinks forming a cycle
+- **WHEN** a path through them is resolved
+- **THEN** the resolution fails with an error instead of hanging or overflowing
+
 #### Scenario: Case variants follow the file system
 - **GIVEN** a workspace on a case-insensitive file system and a path differing only in case from a real path
 - **WHEN** it is resolved

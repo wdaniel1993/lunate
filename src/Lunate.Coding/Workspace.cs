@@ -58,6 +58,11 @@ public sealed class Workspace
             error = $"path '{path}' is not a valid path";
             return false;
         }
+        catch (IOException exception)
+        {
+            error = $"path '{path}' could not be resolved: {exception.Message}";
+            return false;
+        }
 
         var root = FindRoot(canonical);
         if (root is null)
@@ -75,8 +80,15 @@ public sealed class Workspace
         return true;
     }
 
-    internal static string Canonicalize(string path)
+    internal static string Canonicalize(string path) => Canonicalize(path, depth: 0);
+
+    private static string Canonicalize(string path, int depth)
     {
+        if (depth > MaxLinkHops)
+        {
+            throw new IOException($"too many levels of symbolic links resolving '{path}'");
+        }
+
         var full = Path.GetFullPath(path);
         var root = Path.GetPathRoot(full);
         if (string.IsNullOrEmpty(root))
@@ -94,36 +106,33 @@ public sealed class Workspace
         )
         {
             var next = Path.Combine(current, segment);
-            var link = ResolveLink(next);
-            current = link is null ? next : Canonicalize(link);
+            var linkTarget = LinkTargetOf(next);
+            current = linkTarget is null ? next : Canonicalize(linkTarget, depth + 1);
         }
 
         return current;
     }
 
-    private static string? ResolveLink(string path)
+    /// <summary>
+    /// The link's raw target resolved against the link's own directory, or null when the component
+    /// is not a link. Works for dangling links too — their target does not have to exist, so a
+    /// write through a dangling link cannot slip past the boundary.
+    /// </summary>
+    private static string? LinkTargetOf(string path)
     {
-        FileSystemInfo info;
-        if (Directory.Exists(path))
-        {
-            info = new DirectoryInfo(path);
-        }
-        else if (File.Exists(path))
-        {
-            info = new FileInfo(path);
-        }
-        else
+        FileSystemInfo info = Directory.Exists(path) ? new DirectoryInfo(path) : new FileInfo(path);
+        var target = info.LinkTarget;
+        if (target is null)
         {
             return null;
         }
 
-        if (info.LinkTarget is null)
-        {
-            return null;
-        }
-
-        return info.ResolveLinkTarget(returnFinalTarget: true)?.FullName;
+        return Path.IsPathRooted(target)
+            ? target
+            : Path.Combine(Path.GetDirectoryName(path)!, target);
     }
+
+    private const int MaxLinkHops = 40;
 
     private string? FindRoot(string canonical)
     {

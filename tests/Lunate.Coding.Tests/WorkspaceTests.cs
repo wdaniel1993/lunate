@@ -177,6 +177,52 @@ public sealed class WorkspaceTests
         Assert.Equal("file.txt", resolved.RelativePath);
     }
 
+    [Fact]
+    public void A_dangling_symlink_pointing_outside_is_refused()
+    {
+        using var temp = new TempDirectory();
+        var work = temp.File("work");
+        Directory.CreateDirectory(work);
+        if (!TryCreateDirectoryLink(Path.Combine(work, "link"), temp.File("outside")))
+        {
+            Assert.Skip("Symbolic links are not available in this environment.");
+            return;
+        }
+
+        var workspace = new Workspace(work);
+        var accepted = workspace.TryResolve("link/created-by-escape.txt", out _, out var error);
+
+        Assert.False(accepted);
+        Assert.Contains("outside the workspace", error);
+        Assert.False(File.Exists(temp.File("outside/created-by-escape.txt")));
+    }
+
+    [Fact]
+    public void A_symlink_cycle_is_reported_as_a_resolution_error()
+    {
+        using var temp = new TempDirectory();
+        var work = temp.File("work");
+        Directory.CreateDirectory(work);
+        var first = Path.Combine(work, "a");
+        var second = Path.Combine(work, "b");
+        if (!TryCreateDirectoryLink(first, second))
+        {
+            Assert.Skip("Symbolic links are not available in this environment.");
+            return;
+        }
+        if (!TryCreateDirectoryLink(second, first))
+        {
+            Assert.Skip("Symbolic links are not available in this environment.");
+            return;
+        }
+
+        var workspace = new Workspace(work);
+        var accepted = workspace.TryResolve("a", out _, out var error);
+
+        Assert.False(accepted);
+        Assert.Contains("could not be resolved", error);
+    }
+
     private static bool TryCreateDirectoryLink(string linkPath, string targetPath)
     {
         try
