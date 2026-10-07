@@ -1,6 +1,6 @@
 # Extensibility architecture
 
-Status: working spec under ADR-0017. The durable decisions live in `adr/0017-extensibility-architecture.md`; this document is the detail the cards build against. Behavioural requirements that are already testable live in the OpenSpec specs (`agent-events`, `agent-tools`, `agent-sessions`) and are linked, not duplicated.
+Status: working spec under ADR-0017. The durable decisions live in `adr/0017-extensibility-architecture.md`; this document is the detail the cards build against. Behavioural requirements that are already testable live in the OpenSpec specs ([`agent-events`](../openspec/specs/agent-events/spec.md), [`agent-tools`](../openspec/specs/agent-tools/spec.md), [`agent-sessions`](../openspec/specs/agent-sessions/spec.md)) and are referenced by name, not duplicated.
 
 ## Principles
 
@@ -17,7 +17,7 @@ Status: working spec under ADR-0017. The durable decisions live in `adr/0017-ext
 - **Assembly**: `Lunate.Extensibility.Abstractions` — semver'd, PublicAPI-tracked. Extensions reference it and `Microsoft.Extensions.AI.Abstractions`; nothing else from Lunate.
 - **ALC sharing**: the abstractions assembly, `Microsoft.Extensions.AI.Abstractions` and `System.Text.Json` are shared in the default `AssemblyLoadContext`; everything else an extension brings is private to its collectible ALC.
 - **Manifest** `extension.json`: `id`, `version`, `apiVersion` range, `entryAssembly`, declared `tools`/`commands`/`hooks`/`services`, `settingsSchema` (JSON schema), `capabilities` (informational). Incompatible `apiVersion` → clear refusal at load.
-- **Lifecycle**: the factory registers only (no processes, sockets, timers). Long-lived resources start in `SessionStarted` or on first use and stop in an idempotent `SessionEnding`. Reload unloads the ALC; state does not survive.
+- **Lifecycle**: the factory registers only (no processes, sockets, timers). Long-lived resources start in `SessionStarted` (safe to run more than once) or on first use and stop in an idempotent `SessionEnding`. Reload unloads the ALC; state does not survive.
 - **Settings and secrets**: per-extension settings validated against `settingsSchema`; secrets are namespaced and never written to session files.
 - **Discovery**: `~/.lunate/extensions/` (global) and `.lunate/extensions/` (project). Manifests are read at startup; assemblies load on first use. Project extensions run repository code and need a one-time approval per repository, re-prompted when files change (content hash). `/extensions` shows scope, state, load time.
 
@@ -49,13 +49,13 @@ Rules:
 
 ## Tool model
 
-The byte-level contract lives in `agent-tools`; the summary:
+The byte-level contract is owned by [`agent-tools`](../openspec/specs/agent-tools/spec.md) and is extended by the `add-extension-formats` change; the summary:
 
 - **Exposure**: `Direct` (model + programmatic, default), `ModelOnly` (model only), `Programmatic` (scripts only, never declared), `Deferred` (discoverable, not declared upfront), `Hidden` (internal). The registry declares only what the model should see; nested/programmatic execution respects the same gate.
 - **Namespaces**: name, description, instructions — grouping for discovery and prompt rendering (MCP servers namespace their tools).
 - **Annotations**: `ReadOnly`, `Destructive`, `Idempotent`, `OpenWorld` (MCP meanings and defaults). `ToolRisk` stays an explicit override; otherwise it derives from annotations.
 - **Output schema**: optional `OutputSchema`; when present, `ToolResult.StructuredContent` carries the typed result next to the model-facing text.
-- **Nested calls**: `ToolContext.ExecuteToolAsync(name, args, ct, onUpdate)` — same validation, hooks, approval and cancellation as top-level calls; ids are `"<parent>/<n>"`; depth, concurrency and token limits enforced by the core. Usage from nested model calls rolls up to the owning run.
+- **Nested calls**: `ToolContext` carries `RunId` and `ExecuteToolAsync(name, args, ct, onUpdate)` — same validation, hooks, approval and cancellation as top-level calls; ids are `"<parent>/<n>"`; depth, concurrency and token limits enforced by the core. Usage from nested model calls rolls up to the owning run.
 - **Concurrency**: per-tool `Parallel | Sequential`. File-mutating tools go through `IFileMutationQueue` (per-path, read-modify-write as one unit).
 
 ## Services for long-lived integrations

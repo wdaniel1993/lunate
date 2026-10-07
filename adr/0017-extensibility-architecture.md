@@ -25,7 +25,7 @@ Pi's extension API is the bar: transforming and blocking hooks, tool exposure mo
 - New assembly `Lunate.Extensibility.Abstractions`: semver'd, PublicAPI-tracked. Extensions reference only it (plus Microsoft.Extensions.AI abstractions).
 - Shared in the default `AssemblyLoadContext`: the abstractions assembly, `Microsoft.Extensions.AI.Abstractions`, `System.Text.Json`. Everything else an extension brings is private to its collectible ALC.
 - Manifest (`extension.json`): id, version, apiVersion range, entry assembly, declared tools/commands/hooks/services, settings JSON schema, requested capabilities (informational). The host refuses incompatible apiVersion ranges with a clear message.
-- Lifecycle: the factory registers only — no processes, sockets or timers; long-lived resources start in `SessionStarted` or on first use and stop in an idempotent `SessionEnding`. Reload unloads the ALC; state does not survive reload.
+- Lifecycle: the factory registers only — no processes, sockets or timers; long-lived resources start in `SessionStarted` (safe to run more than once) or on first use and stop in an idempotent `SessionEnding`. Reload unloads the ALC; state does not survive reload.
 - Per-extension settings (validated against the schema) and secrets (namespaced; never written to session files).
 
 **Hooks**
