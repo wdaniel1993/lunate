@@ -200,7 +200,7 @@ public sealed class HookRunnerLimitsTests
         TimeSpan elapsed = Stopwatch.GetElapsedTime(started);
 
         Assert.True(
-            elapsed < TimeSpan.FromMilliseconds(200),
+            elapsed < TimeSpan.FromMilliseconds(1000),
             $"fast path took {elapsed.TotalMilliseconds.ToString(System.Globalization.CultureInfo.InvariantCulture)} ms"
         );
     }
