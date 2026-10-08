@@ -50,6 +50,10 @@ jobs:
             memory_gate_mb: 150
     env:
       RID: ${{ matrix.rid }}
+      # English-first CI logs: pin the dotnet CLI / test-runner UI text. The
+      # de-AT culture pass still sets the test culture via LANG; only UI
+      # strings are pinned (defense in depth over scripts/verify.*).
+      DOTNET_CLI_UI_LANGUAGE: en
     steps:
       - name: Checkout
         uses: actions/checkout@v7

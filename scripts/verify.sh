@@ -10,6 +10,12 @@ BUDGET_MS="${BUDGET_MS:-150}"
 CONFIGURATION="${CONFIGURATION:-Release}"
 PUBLISH_DIR="artifacts/publish"
 
+# English-first gate output: pin the dotnet CLI / test-runner UI language so
+# localized toolchain text never leaks into logs on non-English machines. Only
+# UI strings are pinned — the de-AT pass below still sets the TEST culture via
+# LANG, and the product itself must behave identically under any machine culture.
+export DOTNET_CLI_UI_LANGUAGE="${DOTNET_CLI_UI_LANGUAGE:-en}"
+
 RID="${RID:-$(detect_rid verify)}"
 BINARY="${PUBLISH_DIR}/${RID}/lunate"
 if [ "${RID#win}" != "$RID" ]; then
