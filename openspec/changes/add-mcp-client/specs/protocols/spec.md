@@ -19,7 +19,7 @@ The MCP client SHALL connect stdio servers configured by options (name, command,
 - **THEN** the child process is gone and later calls fail cleanly
 
 ### Requirement: MCP calls honor cancellation, timeouts and failures
-Tool calls SHALL propagate the turn's cancellation as `OperationCanceledException`; a call exceeding the configured timeout SHALL return an error result stating the timeout; a crashing tool or dead server SHALL return error results naming the server — a broken server SHALL never crash Lunate, and the client SHALL remain usable afterwards. Tool-list-change notifications from the server SHALL refresh the wrapped tool set and surface it to the host's callback.
+Tool calls SHALL propagate the turn's cancellation as `OperationCanceledException`; a call exceeding the configured timeout SHALL return an error result stating the timeout; a crashing tool or dead server SHALL return error results naming the server — a broken server SHALL never crash Lunate, and the client SHALL remain usable afterwards. Tool-list-change notifications from the server SHALL refresh the wrapped tool set and surface it to the host's callback. The client SHALL negotiate a protocol revision whose tool-list changes are broadcast (pinned to 2025-11-25 with SDK 2.2.0).
 
 #### Scenario: A slow call is cancelled with the turn
 - **GIVEN** a started server with a slow tool
