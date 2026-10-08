@@ -87,10 +87,10 @@ public sealed class SessionTests
         );
         List<ChatMessage> history = loaded.ToHistory();
         Assert.Equal(
-            ["user", "assistant", "tool", "user"],
+            ["assistant", "assistant", "tool", "user"],
             history.Select(message => message.Role.Value)
         );
-        Assert.Equal("one", history[0].Text);
+        Assert.Equal("summary", history[0].Text);
         Assert.Equal("two", history[1].Text);
         Assert.Equal(
             "ok",

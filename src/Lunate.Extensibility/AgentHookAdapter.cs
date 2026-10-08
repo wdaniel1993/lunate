@@ -185,4 +185,31 @@ public sealed class AgentHookAdapter : IAgentHookPoints
         AgentRunSettledContext context,
         CancellationToken cancellationToken
     ) => await _runner.RunRunSettledAsync(new RunSettledPayload(context.RunId), cancellationToken);
+
+    public async ValueTask<AgentCompactingResult> CompactingAsync(
+        AgentCompactingContext context,
+        CancellationToken cancellationToken
+    )
+    {
+        CompactingResult result = await _runner.RunCompactingAsync(
+            new CompactingPayload(
+                context.RunId,
+                [
+                    .. context.Messages.Select(message => new ContextMessage(
+                        message.Role,
+                        message.Text
+                    )
+                    {
+                        Source = message.Source,
+                    }),
+                ]
+            ),
+            cancellationToken
+        );
+        return result switch
+        {
+            CompactingResult.Provide provide => new AgentCompactingResult.Provide(provide.Summary),
+            _ => new AgentCompactingResult.UseDefault(),
+        };
+    }
 }

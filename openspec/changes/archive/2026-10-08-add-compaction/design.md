@@ -20,7 +20,7 @@ The guide pins the approach (lines 278-312): our strategy implements `IChatReduc
 
 ## Outputs
 
-- `Session.AppendCompaction(summary, replaces)` — `replaces` = the ids of the entries the summary replaces (compile from the session's message entries older than the tail). The session file keeps full history; `ToHistory()` already models compaction (verify; extend if the resume path needs the summary message).
+- `Session.AppendCompaction(summary, replaces)` — `replaces` = the ids of the entries the summary replaces (compile from the session's message entries older than the tail). The session file keeps full history; `ToHistory()` was not compaction-aware — this change makes it so (summary + messages after the replaced entries; scenario in the delta).
 - `CompactionApplied(runId, replacedEntryIds, estimatedTokensAfter)` event (fields pinned here; the event type already exists in the closed set).
 - Next request: system + [compaction summary as the context message] + kept tail — under 60% of the window in the recorded test.
 

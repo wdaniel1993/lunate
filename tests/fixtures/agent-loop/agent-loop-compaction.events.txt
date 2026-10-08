@@ -1,0 +1,6 @@
+RunStarted(run)
+CompactionApplied(run, [e_01, e_02], 43)
+TextMessageStart(run, msg)
+TextMessageContent(run, msg, "done")
+TextMessageEnd(run, msg)
+RunFinished(run, stop)

@@ -23,6 +23,8 @@ internal sealed class RecordingHookPoints : IAgentHookPoints
 
     public List<AgentRunSettledContext> Settles { get; } = [];
 
+    public List<AgentCompactingContext> Compactings { get; } = [];
+
     public Func<AgentRunStartingContext, AgentRunStartingResult> RunStarting { get; set; } =
         static _ => new AgentRunStartingResult.None();
 
@@ -47,6 +49,9 @@ internal sealed class RecordingHookPoints : IAgentHookPoints
 
     public Func<AgentTurnEndedContext, AgentTurnEndedResult> TurnEnded { get; set; } =
         static _ => AgentTurnEndedResult.None;
+
+    public Func<AgentCompactingContext, AgentCompactingResult> Compacting { get; set; } =
+        static _ => new AgentCompactingResult.UseDefault();
 
     public ValueTask<AgentRunStartingResult> RunStartingAsync(
         AgentRunStartingContext context,
@@ -127,6 +132,16 @@ internal sealed class RecordingHookPoints : IAgentHookPoints
         Calls.Add("RunSettled");
         Settles.Add(context);
         return ValueTask.CompletedTask;
+    }
+
+    public ValueTask<AgentCompactingResult> CompactingAsync(
+        AgentCompactingContext context,
+        CancellationToken cancellationToken
+    )
+    {
+        Calls.Add("Compacting");
+        Compactings.Add(context);
+        return ValueTask.FromResult(Compacting(context));
     }
 }
 

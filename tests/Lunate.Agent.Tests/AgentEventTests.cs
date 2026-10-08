@@ -25,7 +25,7 @@ public sealed class AgentEventTests
                 new UsageDetails { InputTokenCount = 12, OutputTokenCount = 3 }
             ),
             new Retrying(RunId, 2, "rate limited"),
-            new CompactionApplied(RunId),
+            new CompactionApplied(RunId, ["e_01", "e_02"], 1234),
             new StepLimitReached(RunId, 50),
             new ToolProgressUpdate(RunId, "call_1", "half way"),
         };
@@ -36,7 +36,7 @@ public sealed class AgentEventTests
             new ApprovalRequested(RunId, "call_1", "bash", "{}"),
             new UsageUpdated(RunId, new UsageDetails()),
             new Retrying(RunId, 1, "boom"),
-            new CompactionApplied(RunId),
+            new CompactionApplied(RunId, ["e_01"], 1234),
             new StepLimitReached(RunId, 50),
         };
 
@@ -159,6 +159,9 @@ public sealed class AgentEventTests
         Assert.Equal(3L, usage.Usage.OutputTokenCount);
         Assert.Equal((2, "rate limited"), (retrying.Attempt, retrying.Reason));
         Assert.Equal(50, stepLimit.MaxSteps);
-        Assert.Equal(RunId, new CompactionApplied(RunId).RunId);
+        var compaction = new CompactionApplied(RunId, ["e_01", "e_02"], 1234);
+        Assert.Equal(RunId, compaction.RunId);
+        Assert.Equal(["e_01", "e_02"], compaction.ReplacedEntryIds);
+        Assert.Equal(1234, compaction.EstimatedTokensAfter);
     }
 }

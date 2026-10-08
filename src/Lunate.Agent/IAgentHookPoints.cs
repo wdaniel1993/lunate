@@ -60,4 +60,10 @@ public interface IAgentHookPoints
         AgentRunSettledContext context,
         CancellationToken cancellationToken
     ) => ValueTask.CompletedTask;
+
+    /// <summary>Called before compaction summarizes; a provided summary wins over the default.</summary>
+    ValueTask<AgentCompactingResult> CompactingAsync(
+        AgentCompactingContext context,
+        CancellationToken cancellationToken
+    ) => ValueTask.FromResult<AgentCompactingResult>(new AgentCompactingResult.UseDefault());
 }

@@ -252,7 +252,7 @@ public sealed class SessionV2Tests
             loaded.Entries.Select(SessionFormat.Serialize)
         );
         Assert.Single(loaded.ToHistory());
-        Assert.Equal("one", loaded.ToHistory()[0].Text);
+        Assert.Equal("summary", loaded.ToHistory()[0].Text);
     }
 
     [Fact]
