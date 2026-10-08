@@ -19,7 +19,7 @@ Fitness row: "memory-provider | ContextBuilding injection, TurnEnded storage via
   4. Service lifecycle: started and stopped exactly once across the session.
   5. Budget: an over-budget memory addition is dropped and logged with the extension id.
 - Fixture: recorded via the temporary `RecordingChatClient` pattern (long session incl. `remember:` markers + compaction); committed; byte round-trip covered by `CommittedFixtureTests`.
-- **README**: capabilities proven (ContextBuilding, MessageCompleted, TurnEnded storage via a registered service, source-tagged context, per-extension budget, compaction re-injection, kit) + the in-memory-store note.
+- **README**: capabilities proven (ContextBuilding capture + injection, TurnEnded storage via a registered service, source-tagged context, per-extension budget, compaction re-injection, testing kit) + the in-memory-store note.
 - **Wiring**: both projects into the solution; `LayeringChecker`: `MemoryProviderExtension -> Lunate.Extensibility.Abstractions` only; `MemoryProviderExtension.Tests -> {Testing, Abstractions, Ai}`.
 
 ## Testing strategy
