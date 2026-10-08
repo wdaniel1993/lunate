@@ -12,27 +12,9 @@ internal readonly record struct BootstrapResult(bool Succeeded, string? FailureM
 /// </summary>
 internal static class MsBuildBootstrap
 {
-    private static readonly object Gate = new();
-    private static BootstrapResult? _cached;
+    private static readonly BootstrapOnce Once = new(Register);
 
-    /// <summary>Test seam replacing the real registration; participates in the cache.</summary>
-    internal static Func<BootstrapResult>? TestRegisterOverride { get; set; }
-
-    internal static void ResetForTests()
-    {
-        lock (Gate)
-        {
-            _cached = null;
-        }
-    }
-
-    internal static BootstrapResult EnsureInitialized()
-    {
-        lock (Gate)
-        {
-            return _cached ??= (TestRegisterOverride ?? Register)();
-        }
-    }
+    internal static BootstrapResult EnsureInitialized() => Once.EnsureInitialized();
 
     [MethodImpl(MethodImplOptions.NoInlining)]
     private static BootstrapResult Register()

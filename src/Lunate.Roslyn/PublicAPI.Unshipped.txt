@@ -105,3 +105,10 @@ Lunate.Roslyn.RoslynBackend.GetDiagnosticsAsync(Lunate.Roslyn.DiagnosticsScope s
 Lunate.Roslyn.RoslynBackend.LoadAsync(System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask<Lunate.Roslyn.WorkspaceLoadResult!>
 Lunate.Roslyn.RoslynBackend.NotifyFileChanged(string! absolutePath) -> void
 Lunate.Roslyn.RoslynBackend.RoslynBackend(string! worktreeRoot) -> void
+Lunate.Roslyn.CsDiagnosticsTool
+Lunate.Roslyn.CsDiagnosticsTool.Annotations.get -> Lunate.Agent.ToolAnnotations!
+Lunate.Roslyn.CsDiagnosticsTool.CsDiagnosticsTool(System.Func<Lunate.Roslyn.ICSharpBackend!>! backendFactory) -> void
+Lunate.Roslyn.CsDiagnosticsTool.Description.get -> string!
+Lunate.Roslyn.CsDiagnosticsTool.ExecuteAsync(System.Text.Json.JsonElement args, Lunate.Agent.ToolContext! ctx, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Lunate.Agent.ToolResult!>!
+Lunate.Roslyn.CsDiagnosticsTool.Name.get -> string!
+Lunate.Roslyn.CsDiagnosticsTool.ParametersSchema.get -> System.Text.Json.JsonElement
