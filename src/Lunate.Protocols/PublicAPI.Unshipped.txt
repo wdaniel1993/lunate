@@ -1,1 +1,36 @@
 #nullable enable
+Lunate.Protocols.McpServerHost
+Lunate.Protocols.McpServerHost.DisposeAsync() -> System.Threading.Tasks.ValueTask
+Lunate.Protocols.McpServerHost.GetToolsAsync(System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask<System.Collections.Generic.IReadOnlyList<Lunate.Agent.ITool!>!>
+Lunate.Protocols.McpServerHost.McpServerHost(Lunate.Protocols.McpServerOptions! options, System.Action<System.Collections.Generic.IReadOnlyList<Lunate.Agent.ITool!>!>? onToolsChanged = null) -> void
+Lunate.Protocols.McpServerHost.Name.get -> string!
+Lunate.Protocols.McpServerHost.Started.get -> bool
+Lunate.Protocols.McpServerOptions
+Lunate.Protocols.McpServerOptions.<Clone>$() -> Lunate.Protocols.McpServerOptions!
+Lunate.Protocols.McpServerOptions.Arguments.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Lunate.Protocols.McpServerOptions.Arguments.init -> void
+Lunate.Protocols.McpServerOptions.CallTimeout.get -> System.TimeSpan?
+Lunate.Protocols.McpServerOptions.CallTimeout.init -> void
+Lunate.Protocols.McpServerOptions.Command.get -> string!
+Lunate.Protocols.McpServerOptions.Command.init -> void
+Lunate.Protocols.McpServerOptions.Deconstruct(out string! Name, out string! Command, out System.Collections.Generic.IReadOnlyList<string!>! Arguments, out System.Collections.Generic.IReadOnlyDictionary<string!, string!>? Environment, out string? WorkingDirectory, out System.TimeSpan? CallTimeout) -> void
+Lunate.Protocols.McpServerOptions.Environment.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>?
+Lunate.Protocols.McpServerOptions.Environment.init -> void
+Lunate.Protocols.McpServerOptions.Equals(Lunate.Protocols.McpServerOptions? other) -> bool
+Lunate.Protocols.McpServerOptions.McpServerOptions(string! Name, string! Command, System.Collections.Generic.IReadOnlyList<string!>! Arguments, System.Collections.Generic.IReadOnlyDictionary<string!, string!>? Environment = null, string? WorkingDirectory = null, System.TimeSpan? CallTimeout = null) -> void
+Lunate.Protocols.McpServerOptions.Name.get -> string!
+Lunate.Protocols.McpServerOptions.Name.init -> void
+Lunate.Protocols.McpServerOptions.WorkingDirectory.get -> string?
+Lunate.Protocols.McpServerOptions.WorkingDirectory.init -> void
+Lunate.Protocols.McpToolAdapter
+Lunate.Protocols.McpToolAdapter.Annotations.get -> Lunate.Agent.ToolAnnotations?
+Lunate.Protocols.McpToolAdapter.Description.get -> string!
+Lunate.Protocols.McpToolAdapter.ExecuteAsync(System.Text.Json.JsonElement args, Lunate.Agent.ToolContext! ctx, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Lunate.Agent.ToolResult!>!
+Lunate.Protocols.McpToolAdapter.Name.get -> string!
+Lunate.Protocols.McpToolAdapter.ParametersSchema.get -> System.Text.Json.JsonElement
+Lunate.Protocols.McpToolAdapter.Risk.get -> Lunate.Agent.ToolRisk
+override Lunate.Protocols.McpServerOptions.Equals(object? obj) -> bool
+override Lunate.Protocols.McpServerOptions.GetHashCode() -> int
+override Lunate.Protocols.McpServerOptions.ToString() -> string!
+static Lunate.Protocols.McpServerOptions.operator !=(Lunate.Protocols.McpServerOptions? left, Lunate.Protocols.McpServerOptions? right) -> bool
+static Lunate.Protocols.McpServerOptions.operator ==(Lunate.Protocols.McpServerOptions? left, Lunate.Protocols.McpServerOptions? right) -> bool

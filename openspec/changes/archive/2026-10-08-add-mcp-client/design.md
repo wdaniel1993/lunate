@@ -46,6 +46,11 @@ public sealed record McpServerOptions(string Name, string Command, IReadOnlyList
 
 No process before first use (marker absent); list → `server__echo`, `server__add`, `server__slow`, `server__boom`, `server__spawn_tool` with schemas + risk `Execute`; `add` round-trip incl. structured content; `slow` cancelled mid-call → `OperationCanceledException` and the server observes cancellation; `slow` with a 200 ms CallTimeout → timeout error result; `boom` → error result, client still usable; `spawn_tool` → onToolsChanged fires with `late_tool` present; server killed (kill the process externally) → error result, no crash; dispose → process gone; double dispose safe; both cultures; startup budget untouched (no MCP at startup — the existing budget gate covers it).
 
+## Deviations
+
+- **Protocol pin: 2025-11-25 (v1 call).** The SDK's default revision (2026-07-28) delivers tool-list changes only over a `subscriptions/listen` unicast stream, and SDK 2.2.0's client exposes no listen API, so broadcast `tools/list_changed` requires the stable 2025-11-25 revision. Downside: the client cannot connect to a server that speaks only 2026-07-28. Re-evaluate when the SDK client supports `subscriptions/listen`.
+- **Cancellation workaround.** `ExecuteAsync` sends `tools/call` through the public `SendRequestAsync` under an explicit request id and, on cancellation or timeout, sends `notifications/cancelled` itself, because SDK 2.2.0 does not deliver cancellation for in-flight calls (modelcontextprotocol/csharp-sdk#1365). The server-observed cancellation test (`slow` writes `slow_cancelled`) is the proof. Forward-compat: drop the workaround and go back to `CallToolAsync` once the SDK ships the fix.
+
 ## Out of scope
 
 `mcp.json` + approvals + TUI (T-30), extension `RegisterMcpServer` (T-41), HTTP transports, resources/prompts/sampling, session persistence.

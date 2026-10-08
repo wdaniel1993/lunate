@@ -1,4 +1,9 @@
-## ADDED Requirements
+# protocols Specification
+
+## Purpose
+Lunate speaks external agent tool protocols from `Lunate.Protocols`. v1 is an MCP client: stdio servers start lazily, their tools become Lunate tools (`server__tool`, risk `Execute` so the approval policy applies), tool-list changes refresh, and calls honor cancellation, timeouts and server failures without ever crashing a run. Remote transports and ACP follow the same split: protocol I/O here, semantics in the core.
+
+## Requirements
 
 ### Requirement: MCP client with lazy servers
 The MCP client SHALL connect stdio servers configured by options (name, command, args, env, cwd) and SHALL start a server process only on first use — never at construction or startup. Server tools SHALL be wrapped as `ITool`s named `server__tool` with the MCP description and input schema, carrying risk `Execute` so the approval policy applies. Disposing the host SHALL stop the process idempotently and leave no orphans; setup and process failures SHALL produce clear, actionable errors naming the server.
@@ -19,7 +24,7 @@ The MCP client SHALL connect stdio servers configured by options (name, command,
 - **THEN** the child process is gone and later calls fail cleanly
 
 ### Requirement: MCP calls honor cancellation, timeouts and failures
-Tool calls SHALL propagate the turn's cancellation as `OperationCanceledException`; a call exceeding the configured timeout SHALL return an error result stating the timeout; a crashing tool or dead server SHALL return error results naming the server — a broken server SHALL never crash Lunate, and the client SHALL remain usable afterwards. Tool-list-change notifications from the server SHALL refresh the wrapped tool set and surface it to the host's callback.
+Tool calls SHALL propagate the turn's cancellation as `OperationCanceledException`; a call exceeding the configured timeout SHALL return an error result stating the timeout; a crashing tool or dead server SHALL return error results naming the server — a broken server SHALL never crash Lunate, and the client SHALL remain usable afterwards. Tool-list-change notifications from the server SHALL refresh the wrapped tool set and surface it to the host's callback. The client SHALL negotiate a protocol revision whose tool-list changes are broadcast (pinned to 2025-11-25 with SDK 2.2.0).
 
 #### Scenario: A slow call is cancelled with the turn
 - **GIVEN** a started server with a slow tool
