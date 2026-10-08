@@ -1,0 +1,4 @@
+{"type":"header","schema":1,"model":"synthetic","recordedAt":"2026-10-08T01:56:37.7919540+00:00"}
+{"type":"exchange","requestDigest":"8b92ae29cfa11cb532462de7fe9ea6c3b12d1e9bb216693a1920188fc823380f","updates":[{"role":"assistant","contents":[{"$type":"text","text":"goal: continue the recorded long session."}]}]}
+{"type":"exchange","requestDigest":"c8659b85734c95629fce104fbee56b702cdfd114f03ab5445132fba4988b1345","updates":[{"role":"assistant","contents":[{"$type":"text","text":"noted"}]}]}
+{"type":"exchange","requestDigest":"c33e1269ebd431f38a8f9a9edd8771ddf7b1b22f77c7cf3f3d59ba2d436b7681","updates":[{"role":"assistant","contents":[{"$type":"text","text":"done"}]},{"role":"assistant","contents":[],"finishReason":"stop"}]}

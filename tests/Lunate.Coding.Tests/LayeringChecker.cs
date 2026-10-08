@@ -24,6 +24,10 @@ internal static class LayeringChecker
             ("PermissionGateExtension.Tests", "Lunate.Ai"),
             ("PermissionGateExtension.Tests", "Lunate.Extensibility.Abstractions"),
             ("PermissionGateExtension.Tests", "Lunate.Extensibility.Testing"),
+            ("MemoryProviderExtension", "Lunate.Extensibility.Abstractions"),
+            ("MemoryProviderExtension.Tests", "Lunate.Ai"),
+            ("MemoryProviderExtension.Tests", "Lunate.Extensibility.Abstractions"),
+            ("MemoryProviderExtension.Tests", "Lunate.Extensibility.Testing"),
         };
 
     public static IReadOnlySet<string> AllowedAgentRuntimePackages { get; } =
