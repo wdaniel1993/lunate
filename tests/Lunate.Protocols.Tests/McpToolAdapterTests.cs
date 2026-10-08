@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Lunate.Agent;
 
 namespace Lunate.Protocols.Tests;
@@ -121,5 +122,45 @@ public sealed class McpToolAdapterTests
 
         Assert.False(echoResult.IsError);
         Assert.Equal("still here", echoResult.Output);
+    }
+
+    [Fact]
+    public void Non_object_result_becomes_a_malformed_error_result()
+    {
+        var result = McpToolAdapter.MapCallResult("server", "tool", JsonNode.Parse("42"));
+
+        AssertMalformed(result);
+    }
+
+    [Fact]
+    public void Wrong_typed_content_becomes_a_malformed_error_result()
+    {
+        var result = McpToolAdapter.MapCallResult(
+            "server",
+            "tool",
+            JsonNode.Parse("""{"content":"not-a-list"}""")
+        );
+
+        AssertMalformed(result);
+    }
+
+    [Fact]
+    public void Non_object_structured_content_becomes_a_malformed_error_result()
+    {
+        var result = McpToolAdapter.MapCallResult(
+            "server",
+            "tool",
+            JsonNode.Parse("""{"structuredContent":42}""")
+        );
+
+        AssertMalformed(result);
+    }
+
+    private static void AssertMalformed(ToolResult result)
+    {
+        Assert.True(result.IsError);
+        Assert.Contains("server", result.Output, StringComparison.Ordinal);
+        Assert.Contains("tool", result.Output, StringComparison.Ordinal);
+        Assert.Contains("malformed", result.Output, StringComparison.OrdinalIgnoreCase);
     }
 }

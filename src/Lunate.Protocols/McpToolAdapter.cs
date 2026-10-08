@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Lunate.Agent;
 using ModelContextProtocol;
 using ModelContextProtocol.Client;
@@ -13,8 +14,9 @@ namespace Lunate.Protocols;
 /// One MCP tool wrapped as an <see cref="ITool"/>. The name is <c>server__tool</c> and the risk is
 /// always <see cref="ToolRisk.Execute"/> so the approval policy applies. Calls map the model's JSON
 /// arguments to <c>tools/call</c>; cancellation is propagated as <c>notifications/cancelled</c>
-/// (the SDK does not yet send it for an in-flight call), a timeout becomes an error result, and
-/// transport or protocol failures become error results naming the server.
+/// (the SDK does not yet send it for an in-flight call; see modelcontextprotocol/csharp-sdk#1365),
+/// a timeout becomes an error result, and transport or protocol failures become error results
+/// naming the server.
 /// </summary>
 public sealed class McpToolAdapter : ITool
 {
@@ -102,38 +104,71 @@ public sealed class McpToolAdapter : ITool
             );
         }
 
-        var result = response.Result is { } node
-            ? JsonSerializer.Deserialize<CallToolResult>(node, McpJsonUtilities.DefaultOptions)
-            : null;
-
-        if (result is null)
-        {
-            return Error(
-                $"MCP server '{serverName}' returned an empty result for '{toolName}'. Check the server; the tool was not executed."
-            );
-        }
-
-        var output = string.Join(
-            "\n",
-            (result.Content ?? []).OfType<TextContentBlock>().Select(block => block.Text)
-        );
-
-        if (result.IsError is true)
-        {
-            return new ToolResult(output, IsError: true);
-        }
-
-        if (output.Length == 0 && result.StructuredContent is { } structured)
-        {
-            output = structured.GetRawText();
-        }
-
-        return new ToolResult(
-            output,
-            IsError: false,
-            StructuredContent: result.StructuredContent?.Clone()
-        );
+        return MapCallResult(serverName, toolName, response.Result);
     }
+
+    internal static ToolResult MapCallResult(
+        string serverName,
+        string toolName,
+        JsonNode? resultNode
+    )
+    {
+        try
+        {
+            var result = resultNode is null
+                ? null
+                : JsonSerializer.Deserialize<CallToolResult>(
+                    resultNode,
+                    McpJsonUtilities.DefaultOptions
+                );
+
+            if (result is null)
+            {
+                return Error(
+                    $"MCP server '{serverName}' returned an empty result for '{toolName}'. Check the server; the tool was not executed."
+                );
+            }
+
+            var output = string.Join(
+                "\n",
+                (result.Content ?? []).OfType<TextContentBlock>().Select(block => block.Text)
+            );
+
+            if (result.IsError is true)
+            {
+                return new ToolResult(output, IsError: true);
+            }
+
+            var structured = result.StructuredContent;
+            if (structured is { } value)
+            {
+                if (value.ValueKind != JsonValueKind.Object)
+                {
+                    return Malformed(
+                        serverName,
+                        toolName,
+                        "structuredContent must be a JSON object"
+                    );
+                }
+
+                if (output.Length == 0)
+                {
+                    output = value.GetRawText();
+                }
+            }
+
+            return new ToolResult(output, IsError: false, StructuredContent: structured?.Clone());
+        }
+        catch (Exception exception)
+        {
+            return Malformed(serverName, toolName, exception.Message);
+        }
+    }
+
+    private static ToolResult Malformed(string serverName, string toolName, string reason) =>
+        Error(
+            $"MCP server '{serverName}' returned a malformed result for '{toolName}': {reason}. Check the server; the call result could not be read."
+        );
 
     private async Task NotifyCancellationAsync(RequestId requestId)
     {
@@ -182,5 +217,5 @@ public sealed class McpToolAdapter : ITool
                 OpenWorld: annotations.OpenWorldHint ?? false
             );
 
-    private ToolResult Error(string output) => new(output, IsError: true);
+    private static ToolResult Error(string output) => new(output, IsError: true);
 }
