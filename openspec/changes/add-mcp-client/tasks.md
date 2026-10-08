@@ -7,9 +7,9 @@
 
 ## 2. Client (TDD, red-first)
 
-- [ ] 2.1 `ModelContextProtocol` package in `Lunate.Protocols`; `McpServerOptions` + `McpServerHost` (lazy start, serialized start, list, list-changed callback, dispose/stops process; PublicAPI entries)
-- [ ] 2.2 `McpToolAdapter : ITool` (prefix, schema, risk Execute, call mapping, structured content, error/timeout/cancel translation per design)
-- [ ] 2.3 Tests per design (lazy marker, listing, call round-trips, cancel, timeout, crash, spawn_tool refresh, server death, dispose, both cultures)
+- [x] 2.1 `ModelContextProtocol` package in `Lunate.Protocols`; `McpServerOptions` + `McpServerHost` (lazy start, serialized start, list, list-changed callback, dispose/stops process; PublicAPI entries)
+- [x] 2.2 `McpToolAdapter : ITool` (prefix, schema, risk Execute, call mapping, structured content, error/timeout/cancel translation per design)
+- [x] 2.3 Tests per design (lazy marker, listing, call round-trips, cancel, timeout, crash, spawn_tool refresh, server death, dispose, both cultures)
 
 ## 3. Close
 

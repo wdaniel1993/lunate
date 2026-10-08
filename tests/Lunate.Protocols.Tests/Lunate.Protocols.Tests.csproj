@@ -6,6 +6,10 @@
 
     <ItemGroup>
         <ProjectReference Include="../../src/Lunate.Protocols/Lunate.Protocols.csproj" />
+        <ProjectReference
+            Include="../tools/TestMcpServer/TestMcpServer.csproj"
+            ReferenceOutputAssembly="false"
+        />
     </ItemGroup>
 
     <ItemGroup>

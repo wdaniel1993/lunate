@@ -39,6 +39,7 @@ tools.Add(
         {
             Name = "echo",
             Description = "Echoes the input text back.",
+            ReadOnly = true,
         }
     )
 );
