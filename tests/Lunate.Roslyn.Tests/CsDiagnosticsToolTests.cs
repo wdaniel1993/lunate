@@ -330,6 +330,16 @@ public sealed class CsDiagnosticsToolTests
             return ValueTask.FromResult(Diagnostics);
         }
 
+        public ValueTask<SymbolSearchResult> FindSymbolAsync(string name, CancellationToken ct) =>
+            ValueTask.FromResult(
+                new SymbolSearchResult(
+                    SymbolSearchStatus.NoSolution,
+                    "no solution is loaded",
+                    [],
+                    0
+                )
+            );
+
         public void NotifyFileChanged(string absolutePath) { }
     }
 }

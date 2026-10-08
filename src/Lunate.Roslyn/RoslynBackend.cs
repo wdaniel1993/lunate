@@ -89,6 +89,32 @@ public sealed class RoslynBackend : ICSharpBackend, IDisposable
         }
     }
 
+    public async ValueTask<SymbolSearchResult> FindSymbolAsync(string name, CancellationToken ct)
+    {
+        await _gate.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            return await FindSymbolCoreAsync(name, ct).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            return new SymbolSearchResult(
+                SymbolSearchStatus.Partial,
+                $"symbol search failed: {exception.Message}",
+                [],
+                0
+            );
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
     public void NotifyFileChanged(string absolutePath)
     {
         if (string.IsNullOrWhiteSpace(absolutePath))
@@ -271,6 +297,108 @@ public sealed class RoslynBackend : ICSharpBackend, IDisposable
         return result;
     }
 
+    private Task<SymbolSearchResult> FindSymbolCoreAsync(string name, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return Task.FromResult(
+                new SymbolSearchResult(
+                    SymbolSearchStatus.Loaded,
+                    "provide a symbol name to search for",
+                    [],
+                    0
+                )
+            );
+        }
+
+        if (
+            _loadedSolution is not { } solutionPath
+            || !_workspaces.TryGet(solutionPath, out var entry)
+        )
+        {
+            return Task.FromResult(
+                new SymbolSearchResult(
+                    SymbolSearchStatus.NoSolution,
+                    "no solution is loaded",
+                    [],
+                    0
+                )
+            );
+        }
+
+        return SearchAsync(name.Trim(), entry, ct);
+    }
+
+    private async Task<SymbolSearchResult> SearchAsync(
+        string query,
+        WorkspaceEntry entry,
+        CancellationToken ct
+    )
+    {
+        var failures = new CappedList<WorkspaceFailure>(MaxFailures);
+        var (solution, _) = SyncChangedDocuments(entry, failures);
+
+        var compilations = new List<Compilation>();
+        foreach (var project in solution.Projects)
+        {
+            if (await project.GetCompilationAsync(ct).ConfigureAwait(false) is { } compilation)
+            {
+                compilations.Add(compilation);
+            }
+        }
+
+        var collected = SymbolCollector.Collect(compilations, query, _root, ct);
+        var status =
+            failures.Total > 0 || _loadedResult is { Status: WorkspaceStatus.Partial }
+                ? SymbolSearchStatus.Partial
+                : SymbolSearchStatus.Loaded;
+
+        return new SymbolSearchResult(
+            status,
+            DescribeSearch(query, collected),
+            collected.Matches,
+            collected.TotalMatchCount
+        )
+        {
+            Truncated = collected.Truncated,
+            Failures = failures.Items,
+            TotalFailureCount = failures.Total,
+        };
+    }
+
+    private static string DescribeSearch(string query, CollectedSymbols collected)
+    {
+        if (collected.TotalMatchCount == 0)
+        {
+            return collected.CaseInsensitiveCandidate is { } candidate
+                ? $"no definition found for '{query}'; C# is case-sensitive — did you mean '{candidate}'?"
+                : $"no definition found for '{query}'; check the spelling or search for the simple name";
+        }
+
+        var noun = collected.TotalMatchCount == 1 ? "definition" : "definitions";
+        var message = string.Create(
+            CultureInfo.InvariantCulture,
+            $"found {collected.TotalMatchCount} {noun} for '{query}'"
+        );
+        if (collected.MetadataMatchCount > 0)
+        {
+            message += string.Create(
+                CultureInfo.InvariantCulture,
+                $"; {collected.MetadataMatchCount} metadata-only (no source file)"
+            );
+        }
+
+        if (collected.Truncated)
+        {
+            message += string.Create(
+                CultureInfo.InvariantCulture,
+                $"; showing the first {SymbolCollector.MaxMatches}"
+            );
+        }
+
+        return message;
+    }
+
     private async Task<DiagnosticsResult> GetDiagnosticsCoreAsync(
         DiagnosticsScope scope,
         CancellationToken ct
@@ -285,24 +413,11 @@ public sealed class RoslynBackend : ICSharpBackend, IDisposable
         }
 
         var failures = new CappedList<WorkspaceFailure>(MaxFailures);
-        var changed = entry.Freshness.TakeChanged(entry.DocumentPaths).ToList();
-        foreach (var path in entry.DocumentPaths)
-        {
-            if (_dirty.Remove(path) && !changed.Contains(path, PathIdentity.Comparer))
-            {
-                changed.Add(path);
-            }
-        }
+        var (solution, changed) = SyncChangedDocuments(entry, failures);
 
         if (scope == DiagnosticsScope.ChangedFiles && changed.Count == 0)
         {
             return new DiagnosticsResult([], 0, 0, false, "no files changed since the last check");
-        }
-
-        var solution = entry.Workspace.CurrentSolution;
-        if (changed.Count > 0)
-        {
-            solution = RefreshDocuments(entry, solution, changed, failures);
         }
 
         IReadOnlySet<string>? onlyFiles =
@@ -337,6 +452,33 @@ public sealed class RoslynBackend : ICSharpBackend, IDisposable
             Failures = failures.Items,
             TotalFailureCount = failures.Total,
         };
+    }
+
+    /// <summary>
+    /// Re-reads files changed since the last sync (content stamps plus explicit dirty marks) into
+    /// the solution snapshot; failures are collected without discarding the workspace.
+    /// </summary>
+    private (Solution Solution, IReadOnlyList<string> Changed) SyncChangedDocuments(
+        WorkspaceEntry entry,
+        CappedList<WorkspaceFailure> failures
+    )
+    {
+        var solution = entry.Workspace.CurrentSolution;
+        var changed = entry.Freshness.TakeChanged(entry.DocumentPaths).ToList();
+        foreach (var path in entry.DocumentPaths)
+        {
+            if (_dirty.Remove(path) && !changed.Contains(path, PathIdentity.Comparer))
+            {
+                changed.Add(path);
+            }
+        }
+
+        if (changed.Count > 0)
+        {
+            solution = RefreshDocuments(entry, solution, changed, failures);
+        }
+
+        return (solution, changed);
     }
 
     /// <summary>
