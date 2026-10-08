@@ -2,16 +2,16 @@
 
 ## Context
 
-Fitness row: "memory-provider | ContextBuilding injection, TurnEnded storage via a registered service; survives compaction by re-injection". All primitives exist: `ContextBuilding` (added, source-tagged, budgeted messages), `MessageCompleted` (role + text), `TurnEnded` (extension entries + continuation), registered services with session lifecycle (T-39), compaction with per-request context building (T-23). The sample must not need a workaround; nothing new is built. No new packages; no ADR; `skip_specs`.
+Fitness row: "memory-provider | ContextBuilding injection, TurnEnded storage via a registered service; survives compaction by re-injection". All primitives exist: `ContextBuilding` (added, source-tagged, budgeted messages — and the only hook that sees user text), `TurnEnded` (extension entries + continuation), registered services with session lifecycle (T-39), compaction with per-request context building (T-23). The sample must not need a workaround; nothing new is built. No new packages; no ADR; `skip_specs`.
 
 ## Sample: `samples/extensions/memory-provider/`
 
-- **Manifest**: id `memory-provider`, apiVersion `^1.2.0` (uses service registration from 1.2), hooks `[message-completed, turn-ended, context-building]`, services `[memory-store]`, settings schema: `maxMemories` (number, default 20).
+- **Manifest**: id `memory-provider`, apiVersion `^1.2.0` (uses service registration from 1.2), hooks `[context-building, turn-ended]`, services `[memory-store]`, settings schema: `maxMemories` (number, default 20).
 - **Service** (`MemoryStore : IBackgroundService`): ordered list of memories (text + timestamp); `Add`, `Commit` (buffer → list, bounded by `maxMemories`, oldest dropped first); `StartAsync`/`StopAsync` track lifecycle counters; the store is in-memory per session — documented as the sample's choice (production extensions own their persistence).
 - **Handlers**:
-  - `MessageCompleted` (user role only): lines starting `remember: ` (case-insensitive, trimmed) go into the buffer; nothing else is stored (deterministic, testable; no heuristics).
+  - `ContextBuilding` (**capture + inject**): scan `ContextBuildingPayload.Messages` for user-role lines starting `remember: ` (case-insensitive after trim) and add each to the service's buffer — `Add` is idempotent (case-insensitive exact-text match), so repeated scans across requests never duplicate; then, when the committed store has memories, add ONE source-tagged message (`## Memory` heading + one bullet per memory, capped at `maxMemories`); the runner's per-extension budget applies (over-budget additions dropped + logged — tested). Capture semantics: memories captured while building request N are committed at the turn end and injected from request N+1 (documented; tested).
   - `TurnEnded`: `store.Commit()` — storage happens at the turn boundary through the registered service (per the fitness row); the result also appends one extension entry (`memory-provider/committed` with the committed count) so the session carries an audit trail.
-  - `ContextBuilding`: when the store has memories, add ONE source-tagged message (`## Memory` heading + one bullet per memory, capped at `maxMemories`); the runner's per-extension budget applies (over-budget additions dropped + logged — exercised by a test).
+  - Note: `MessageCompleted` fires for assistant messages only (contract), so the capture path is ContextBuilding — which is also the only hook that sees user text (the fitness row's "ContextBuilding injection" is the capture surface).
 - **Tests** (kit + replay fixtures):
   1. `remember: X` in a user message → after the turn, the service holds X (via log/state probe through the kit).
   2. The next request contains the memory section with X (ContextBuilding injection, source-tagged).
@@ -19,7 +19,7 @@ Fitness row: "memory-provider | ContextBuilding injection, TurnEnded storage via
   4. Service lifecycle: started and stopped exactly once across the session.
   5. Budget: an over-budget memory addition is dropped and logged with the extension id.
 - Fixture: recorded via the temporary `RecordingChatClient` pattern (long session incl. `remember:` markers + compaction); committed; byte round-trip covered by `CommittedFixtureTests`.
-- **README**: capabilities proven (ContextBuilding, MessageCompleted, TurnEnded storage via a registered service, source-tagged context, per-extension budget, compaction re-injection, kit) + the in-memory-store note.
+- **README**: capabilities proven (ContextBuilding capture + injection, TurnEnded storage via a registered service, source-tagged context, per-extension budget, compaction re-injection, testing kit) + the in-memory-store note.
 - **Wiring**: both projects into the solution; `LayeringChecker`: `MemoryProviderExtension -> Lunate.Extensibility.Abstractions` only; `MemoryProviderExtension.Tests -> {Testing, Abstractions, Ai}`.
 
 ## Testing strategy

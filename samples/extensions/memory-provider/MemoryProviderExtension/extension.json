@@ -1,0 +1,18 @@
+{
+    "id": "memory-provider",
+    "version": "0.1.0",
+    "apiVersion": "^1.2.0",
+    "entryAssembly": "MemoryProviderExtension.dll",
+    "hooks": ["context-building", "turn-ended"],
+    "services": ["memory-store"],
+    "settingsSchema": {
+        "type": "object",
+        "properties": {
+            "maxMemories": {
+                "type": "number",
+                "default": 20,
+                "description": "the maximum number of committed memories; the oldest are dropped first"
+            }
+        }
+    }
+}

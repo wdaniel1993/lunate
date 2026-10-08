@@ -51,7 +51,10 @@ public sealed class ExtensionTestHost : IAsyncDisposable
         Trust = new ScriptedTrustPrompt(options.TrustDecisions?.ToArray() ?? [true]);
         Events = new EventRecorder();
         Tools = new ToolRegistry();
-        Runner = new ExtensionLoader(new ExtensionHostOptions { StorePath = StorePath, Log = Log });
+        Runner = new ExtensionLoader(
+            new ExtensionHostOptions { StorePath = StorePath, Log = Log },
+            options.HookRunnerOptions is { } hookOptions ? new HookRunner(hookOptions, Log) : null
+        );
         _fileChanges = new FileChangeBus(WorkingDirectory, Log);
         Runner.Services.RegisterCore("core/file-bus", _fileChanges);
         InstallExtension(options);
