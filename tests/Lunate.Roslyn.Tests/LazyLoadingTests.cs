@@ -8,22 +8,41 @@ namespace Lunate.Roslyn.Tests;
 [Collection(RoslynIntegrationCollection.Name)]
 public sealed class LazyLoadingTests
 {
-    private const string ProbeVariable = "LUNATE_LAZY_PROBE";
+    private const string ToolVariable = "LUNATE_LAZY_PROBE";
     private const string MarkerVariable = "LUNATE_LAZY_PROBE_MARKER";
+    private const string DiagnosticsTool = "diagnostics";
+    private const string FindSymbolTool = "find_symbol";
 
     [Fact]
-    public async Task The_tool_does_not_touch_roslyn_or_msbuild_before_the_first_call()
+    public Task The_diagnostics_tool_does_not_touch_roslyn_or_msbuild_before_the_first_call() =>
+        RunProbeAsync(
+            DiagnosticsTool,
+            nameof(The_diagnostics_tool_does_not_touch_roslyn_or_msbuild_before_the_first_call)
+        );
+
+    [Fact]
+    public Task The_find_symbol_tool_does_not_touch_roslyn_or_msbuild_before_the_first_call() =>
+        RunProbeAsync(
+            FindSymbolTool,
+            nameof(The_find_symbol_tool_does_not_touch_roslyn_or_msbuild_before_the_first_call)
+        );
+
+    private static async Task RunProbeAsync(string tool, string methodName)
     {
-        if (Environment.GetEnvironmentVariable(ProbeVariable) == "1")
+        if (Environment.GetEnvironmentVariable(ToolVariable) == tool)
         {
-            await ProbeAsync();
+            await ProbeAsync(tool);
             File.WriteAllText(Environment.GetEnvironmentVariable(MarkerVariable)!, "probe ran");
             return;
         }
 
+        var marker = Path.Combine(
+            Path.GetTempPath(),
+            string.Concat("lunate-lazy-probe-", tool, "-", Guid.NewGuid().ToString("N"), ".marker")
+        );
         try
         {
-            using var child = LaunchProbe();
+            using var child = LaunchProbe(methodName, tool, marker);
             var output = child.StandardOutput.ReadToEnd() + child.StandardError.ReadToEnd();
             Assert.True(
                 child.WaitForExit(TimeSpan.FromSeconds(120)),
@@ -34,46 +53,53 @@ public sealed class LazyLoadingTests
                 $"the probe failed (exit code {child.ExitCode}):\n{output}"
             );
             Assert.True(
-                File.Exists(MarkerPath),
+                File.Exists(marker),
                 $"the probe test never ran in the child process:\n{output}"
             );
         }
         finally
         {
-            if (File.Exists(MarkerPath))
+            if (File.Exists(marker))
             {
-                File.Delete(MarkerPath);
+                File.Delete(marker);
             }
         }
     }
 
-    private static async Task ProbeAsync()
+    private static async Task ProbeAsync(string tool)
     {
         Assert.Empty(LoadedRoslynOrMsBuildAssemblies());
 
         using var fixture = Fixtures.CopySolution("console-app");
-        var diagnostics = new CsDiagnosticsTool(() => new RoslynBackend(fixture.Root));
-        var findSymbol = new CsFindSymbolTool(() => new RoslynBackend(fixture.Root));
-
-        Assert.Empty(LoadedRoslynOrMsBuildAssemblies());
-
         var context = new ToolContext(fixture.Root, new NoopAgentEvents());
-        var found = await findSymbol.ExecuteAsync(
-            JsonDocument.Parse("""{"name":"Calculator"}""").RootElement.Clone(),
-            context,
-            CancellationToken.None
-        );
+        ToolResult result;
 
-        Assert.True(found.IsError);
-        Assert.NotEmpty(LoadedRoslynOrMsBuildAssemblies());
+        if (tool == DiagnosticsTool)
+        {
+            var diagnostics = new CsDiagnosticsTool(() => new RoslynBackend(fixture.Root));
+            Assert.Empty(LoadedRoslynOrMsBuildAssemblies());
 
-        var result = await diagnostics.ExecuteAsync(
-            JsonDocument.Parse("{}").RootElement.Clone(),
-            context,
-            CancellationToken.None
-        );
+            result = await diagnostics.ExecuteAsync(
+                JsonDocument.Parse("{}").RootElement.Clone(),
+                context,
+                CancellationToken.None
+            );
+        }
+        else
+        {
+            var findSymbol = new CsFindSymbolTool(() => new RoslynBackend(fixture.Root));
+            Assert.Empty(LoadedRoslynOrMsBuildAssemblies());
 
+            result = await findSymbol.ExecuteAsync(
+                JsonDocument.Parse("""{"name":"Calculator"}""").RootElement.Clone(),
+                context,
+                CancellationToken.None
+            );
+        }
+
+        // The fixture is never restored here, so the first call must report restore-required.
         Assert.True(result.IsError);
+        Assert.NotEmpty(LoadedRoslynOrMsBuildAssemblies());
     }
 
     private static IReadOnlyList<string> LoadedRoslynOrMsBuildAssemblies() =>
@@ -86,14 +112,10 @@ public sealed class LazyLoadingTests
             )
             .ToList();
 
-    private static Process LaunchProbe()
+    private static Process LaunchProbe(string methodName, string tool, string markerPath)
     {
         var assembly = typeof(LazyLoadingTests).Assembly.Location;
-        var method = string.Concat(
-            typeof(LazyLoadingTests).FullName,
-            ".",
-            nameof(The_tool_does_not_touch_roslyn_or_msbuild_before_the_first_call)
-        );
+        var method = string.Concat(typeof(LazyLoadingTests).FullName, ".", methodName);
 
         var processPath = Environment.ProcessPath;
         var direct =
@@ -120,17 +142,11 @@ public sealed class LazyLoadingTests
         startInfo.ArgumentList.Add("-method");
         startInfo.ArgumentList.Add(method);
         startInfo.ArgumentList.Add("-noLogo");
-        startInfo.Environment[ProbeVariable] = "1";
-        startInfo.Environment[MarkerVariable] = MarkerPath;
+        startInfo.Environment[ToolVariable] = tool;
+        startInfo.Environment[MarkerVariable] = markerPath;
 
         return Process.Start(startInfo)!;
     }
-
-    private static string MarkerPath { get; } =
-        Path.Combine(
-            Path.GetTempPath(),
-            string.Concat("lunate-lazy-probe-", Guid.NewGuid().ToString("N"), ".marker")
-        );
 
     private static string DotNetPath()
     {

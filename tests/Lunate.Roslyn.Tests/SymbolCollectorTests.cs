@@ -34,6 +34,126 @@ public sealed class SymbolCollectorTests
     }
 
     [Fact]
+    public void Metadata_matches_are_deduplicated_across_compilations()
+    {
+        var first = Compile(("/first/Empty.cs", "namespace First { }"));
+        var second = Compile(("/second/Empty.cs", "namespace Second { }"));
+
+        var collected = SymbolCollector.Collect(
+            [first, second],
+            "String",
+            "/src",
+            CancellationToken.None
+        );
+
+        var match = Assert.Single(collected.Matches);
+        Assert.True(match.FromMetadata);
+        Assert.Equal("String", match.Name);
+        Assert.Equal(1, collected.TotalMatchCount);
+        Assert.Equal(1, collected.MetadataMatchCount);
+    }
+
+    [Fact]
+    public void Deduplicated_metadata_matches_do_not_depend_on_project_order()
+    {
+        var first = Compile(("/first/Empty.cs", "namespace First { }"));
+        var second = Compile(("/second/Empty.cs", "namespace Second { }"));
+
+        var forward = SymbolCollector.Collect(
+            [first, second],
+            "String",
+            "/src",
+            CancellationToken.None
+        );
+        var reverse = SymbolCollector.Collect(
+            [second, first],
+            "String",
+            "/src",
+            CancellationToken.None
+        );
+
+        Assert.Equal(forward.Matches, reverse.Matches);
+        Assert.Equal(forward.TotalMatchCount, reverse.TotalMatchCount);
+    }
+
+    [Fact]
+    public void Metadata_count_covers_matches_dropped_by_the_cap()
+    {
+        var source = string.Join(
+            '\n',
+            Enumerable.Range(1, 60).Select(_ => "public partial class Object { }")
+        );
+        var compilation = Compile(("/src/Object.cs", source));
+
+        var collected = SymbolCollector.Collect(
+            [compilation],
+            "Object",
+            "/src",
+            CancellationToken.None
+        );
+
+        Assert.Equal(50, collected.Matches.Count);
+        Assert.Equal(61, collected.TotalMatchCount);
+        Assert.True(collected.Truncated);
+        Assert.Equal(1, collected.MetadataMatchCount);
+    }
+
+    [Fact]
+    public void A_dotted_query_finds_a_nested_metadata_type()
+    {
+        var compilation = Compile(("/src/Empty.cs", "namespace Source { }"));
+
+        var collected = SymbolCollector.Collect(
+            [compilation],
+            "Environment.SpecialFolder",
+            "/src",
+            CancellationToken.None
+        );
+
+        var match = Assert.Single(collected.Matches);
+        Assert.True(match.FromMetadata);
+        Assert.Equal("enum", match.Kind);
+        Assert.Equal("SpecialFolder", match.Name);
+        Assert.Equal("System.Environment", match.Container);
+        Assert.Null(match.File);
+        Assert.Equal(0, match.Line);
+        Assert.Equal(0, match.Column);
+    }
+
+    [Fact]
+    public void A_full_dotted_path_finds_a_nested_metadata_type()
+    {
+        var compilation = Compile(("/src/Empty.cs", "namespace Source { }"));
+
+        var collected = SymbolCollector.Collect(
+            [compilation],
+            "System.Environment.SpecialFolder",
+            "/src",
+            CancellationToken.None
+        );
+
+        var match = Assert.Single(collected.Matches);
+        Assert.True(match.FromMetadata);
+        Assert.Equal("enum", match.Kind);
+        Assert.Equal("System.Environment", match.Container);
+    }
+
+    [Fact]
+    public void A_simple_name_still_does_not_find_nested_metadata_types()
+    {
+        var compilation = Compile(("/src/Empty.cs", "namespace Source { }"));
+
+        var collected = SymbolCollector.Collect(
+            [compilation],
+            "SpecialFolder",
+            "/src",
+            CancellationToken.None
+        );
+
+        Assert.Empty(collected.Matches);
+    }
+
+    [Fact]
     public void A_dotted_query_keeps_only_the_matching_container()
     {
         var compilation = Compile(

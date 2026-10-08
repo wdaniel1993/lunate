@@ -16,7 +16,9 @@ internal sealed record CollectedSymbols(
 /// Resolves a name to definition sites across the loaded compilations: deterministic ordering,
 /// bounded, source definitions first. <see cref="Compilation.GetSymbolsWithName(string, SymbolFilter, System.Threading.CancellationToken)"/>
 /// covers source declarations; metadata-only types and namespaces come from walking the referenced
-/// assemblies, because Roslyn's search never returns metadata symbols.
+/// assemblies (see <see cref="MetadataSearch"/>), because Roslyn's search never returns metadata
+/// symbols. Every project's compilation sees the same referenced assemblies, so metadata matches
+/// are deduplicated globally (see <see cref="DeduplicateMetadata"/>).
 /// </summary>
 internal static class SymbolCollector
 {
@@ -37,7 +39,7 @@ internal static class SymbolCollector
         var prefix = lastDot < 0 ? null : query[..lastDot];
 
         List<SymbolMatch> source = [];
-        List<SymbolMatch> metadata = [];
+        List<MetadataCandidate> metadata = [];
         foreach (var compilation in compilations)
         {
             foreach (var symbol in compilation.GetSymbolsWithName(lastSegment, Filter, ct))
@@ -49,9 +51,9 @@ internal static class SymbolCollector
             }
 
             metadata.AddRange(
-                MetadataCandidates(compilation, lastSegment, StringComparison.Ordinal)
-                    .Where(symbol => MatchesPrefix(symbol, prefix, StringComparison.Ordinal))
-                    .Select(ToMetadataMatch)
+                MetadataSearch
+                    .Candidates(compilation, query, StringComparison.Ordinal)
+                    .Select(candidate => ToCandidate(candidate.Assembly, candidate.Symbol))
             );
         }
 
@@ -63,12 +65,13 @@ internal static class SymbolCollector
             .ThenBy(match => match.Name, StringComparer.Ordinal)
             .ThenBy(match => match.Signature, StringComparer.Ordinal)
             .Concat(
-                metadata
+                DeduplicateMetadata(metadata)
                     .OrderBy(match => match.Container ?? string.Empty, StringComparer.Ordinal)
                     .ThenBy(match => match.Kind, StringComparer.Ordinal)
                     .ThenBy(match => match.Name, StringComparer.Ordinal)
                     .ThenBy(match => match.Signature, StringComparer.Ordinal)
-            );
+            )
+            .ToList();
 
         var capped = new CappedList<SymbolMatch>(MaxMatches);
         foreach (var match in ordered)
@@ -80,12 +83,44 @@ internal static class SymbolCollector
             capped.Items,
             capped.Total,
             capped.Truncated,
-            capped.Items.Count(match => match.FromMetadata),
+            ordered.Count(match => match.FromMetadata),
             capped.Total == 0
-                ? CaseInsensitiveCandidate(compilations, lastSegment, prefix, ct)
+                ? CaseInsensitiveCandidate(compilations, query, lastSegment, prefix, ct)
                 : null
         );
     }
+
+    /// <summary>
+    /// Deduplicates metadata matches globally: every project's compilation sees the same
+    /// referenced assemblies, so the same metadata symbol arrives once per project. The key is
+    /// (assembly identity display name, fully-qualified dotted name, kind); candidates are ordered
+    /// by that key (then signature) and the first of each key is kept, so the surviving set does
+    /// not depend on project order. The deduplicated set counts toward the cap.
+    /// </summary>
+    private static IEnumerable<SymbolMatch> DeduplicateMetadata(List<MetadataCandidate> metadata) =>
+        metadata
+            .OrderBy(candidate => candidate.Identity, StringComparer.Ordinal)
+            .ThenBy(candidate => candidate.QualifiedName, StringComparer.Ordinal)
+            .ThenBy(candidate => candidate.Match.Kind, StringComparer.Ordinal)
+            .ThenBy(candidate => candidate.Match.Signature, StringComparer.Ordinal)
+            .DistinctBy(candidate =>
+                (candidate.Identity, candidate.QualifiedName, candidate.Match.Kind)
+            )
+            .Select(candidate => candidate.Match);
+
+    private static MetadataCandidate ToCandidate(IAssemblySymbol assembly, ISymbol symbol) =>
+        new(
+            symbol.ContainingAssembly?.Identity.GetDisplayName()
+                ?? assembly.Identity.GetDisplayName(),
+            QualifiedName(symbol),
+            ToMetadataMatch(symbol)
+        );
+
+    private readonly record struct MetadataCandidate(
+        string Identity,
+        string QualifiedName,
+        SymbolMatch Match
+    );
 
     private static void AddDeclarations(List<SymbolMatch> matches, ISymbol symbol, string root)
     {
@@ -137,68 +172,9 @@ internal static class SymbolCollector
             true
         );
 
-    private static IEnumerable<ISymbol> MetadataCandidates(
-        Compilation compilation,
-        string lastSegment,
-        StringComparison comparison
-    )
-    {
-        foreach (var reference in compilation.References)
-        {
-            if (compilation.GetAssemblyOrModuleSymbol(reference) is not IAssemblySymbol assembly)
-            {
-                continue;
-            }
-
-            if (assembly.Locations.Any(location => location.Kind == LocationKind.SourceFile))
-            {
-                // A project reference: covered by the owning project's own source search.
-                continue;
-            }
-
-            foreach (
-                var symbol in SearchNamespace(assembly.GlobalNamespace, lastSegment, comparison)
-            )
-            {
-                yield return symbol;
-            }
-        }
-    }
-
-    private static IEnumerable<ISymbol> SearchNamespace(
-        INamespaceSymbol containing,
-        string name,
-        StringComparison comparison
-    )
-    {
-        foreach (var child in containing.GetNamespaceMembers())
-        {
-            if (string.Equals(child.Name, name, comparison))
-            {
-                yield return child;
-            }
-
-            foreach (var nested in SearchNamespace(child, name, comparison))
-            {
-                yield return nested;
-            }
-        }
-
-        var types =
-            comparison == StringComparison.Ordinal
-                ? containing.GetTypeMembers(name)
-                : containing
-                    .GetTypeMembers()
-                    .Where(type => string.Equals(type.Name, name, comparison));
-
-        foreach (var type in types)
-        {
-            yield return type;
-        }
-    }
-
     private static string? CaseInsensitiveCandidate(
         IEnumerable<Compilation> compilations,
+        string query,
         string lastSegment,
         string? prefix,
         CancellationToken ct
@@ -225,17 +201,14 @@ internal static class SymbolCollector
             }
 
             foreach (
-                var symbol in MetadataCandidates(
+                var candidate in MetadataSearch.Candidates(
                     compilation,
-                    lastSegment,
+                    query,
                     StringComparison.OrdinalIgnoreCase
                 )
             )
             {
-                if (MatchesPrefix(symbol, prefix, StringComparison.OrdinalIgnoreCase))
-                {
-                    return QualifiedName(symbol);
-                }
+                return QualifiedName(candidate.Symbol);
             }
         }
 

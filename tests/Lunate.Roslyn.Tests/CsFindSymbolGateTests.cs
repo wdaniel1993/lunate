@@ -225,6 +225,23 @@ public sealed class CsFindSymbolGateTests(ITestOutputHelper output)
     }
 
     [Fact]
+    public async Task A_metadata_type_is_listed_once_across_projects()
+    {
+        using var fixture = Fixtures.CopySolution("lib-with-tests");
+        Fixtures.Restore(fixture, "LibWithTests.sln");
+        using var backend = new RoslynBackend(fixture.Root);
+        await backend.LoadAsync(CancellationToken.None);
+
+        var result = await backend.FindSymbolAsync("String", CancellationToken.None);
+
+        var match = Assert.Single(result.Matches, candidate => candidate.Name == "String");
+        Assert.True(match.FromMetadata);
+        Assert.Equal("System", match.Container);
+        Assert.Equal(1, result.TotalMatchCount);
+        Assert.DoesNotContain(result.Matches, candidate => !candidate.FromMetadata);
+    }
+
+    [Fact]
     public async Task Results_are_stable_across_runs()
     {
         using var fixture = Fixtures.CopySolution("console-app");
