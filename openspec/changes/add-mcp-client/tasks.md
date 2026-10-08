@@ -2,8 +2,8 @@
 
 ## 1. TestMcpServer fixture (TDD, red-first)
 
-- [ ] 1.1 `tests/tools/TestMcpServer` console app on the official SDK (stdio; echo/add/slow/boom/spawn_tool; start marker via `LUNATE_TEST_MCP_MARKER`); added to the solution; layering registration if needed
-- [ ] 1.2 Prove it works standalone (manual probe: initialize + tools/list round-trip over stdio)
+- [x] 1.1 `tests/tools/TestMcpServer` console app on the official SDK (stdio; echo/add/slow/boom/spawn_tool; start marker via `LUNATE_TEST_MCP_MARKER`); added to the solution; layering registration if needed
+- [x] 1.2 Prove it works standalone (manual probe: initialize + tools/list round-trip over stdio)
 
 ## 2. Client (TDD, red-first)
 
