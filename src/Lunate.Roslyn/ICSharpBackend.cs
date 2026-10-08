@@ -15,6 +15,14 @@ public interface ICSharpBackend
     /// <summary>Reports compiler errors and warnings for the requested scope.</summary>
     ValueTask<DiagnosticsResult> GetDiagnosticsAsync(DiagnosticsScope scope, CancellationToken ct);
 
+    /// <summary>
+    /// Finds definitions for a simple name or a dotted container path (for example
+    /// <c>Calculator</c> or <c>CalculatorLib.Calculator.Add</c>). Case-sensitive and deterministic;
+    /// an empty name asks for a name, an unknown name is an empty result with a hint, and failures
+    /// return a status instead of throwing.
+    /// </summary>
+    ValueTask<SymbolSearchResult> FindSymbolAsync(string name, CancellationToken ct);
+
     /// <summary>Marks a file dirty so the next diagnostics run re-reads it immediately.</summary>
     void NotifyFileChanged(string absolutePath);
 }

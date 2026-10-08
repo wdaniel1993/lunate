@@ -1,4 +1,18 @@
 #nullable enable
+Lunate.Roslyn.CsDiagnosticsTool
+Lunate.Roslyn.CsDiagnosticsTool.Annotations.get -> Lunate.Agent.ToolAnnotations!
+Lunate.Roslyn.CsDiagnosticsTool.CsDiagnosticsTool(System.Func<Lunate.Roslyn.ICSharpBackend!>! backendFactory) -> void
+Lunate.Roslyn.CsDiagnosticsTool.Description.get -> string!
+Lunate.Roslyn.CsDiagnosticsTool.ExecuteAsync(System.Text.Json.JsonElement args, Lunate.Agent.ToolContext! ctx, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Lunate.Agent.ToolResult!>!
+Lunate.Roslyn.CsDiagnosticsTool.Name.get -> string!
+Lunate.Roslyn.CsDiagnosticsTool.ParametersSchema.get -> System.Text.Json.JsonElement
+Lunate.Roslyn.CsFindSymbolTool
+Lunate.Roslyn.CsFindSymbolTool.Annotations.get -> Lunate.Agent.ToolAnnotations!
+Lunate.Roslyn.CsFindSymbolTool.CsFindSymbolTool(System.Func<Lunate.Roslyn.ICSharpBackend!>! backendFactory) -> void
+Lunate.Roslyn.CsFindSymbolTool.Description.get -> string!
+Lunate.Roslyn.CsFindSymbolTool.ExecuteAsync(System.Text.Json.JsonElement args, Lunate.Agent.ToolContext! ctx, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Lunate.Agent.ToolResult!>!
+Lunate.Roslyn.CsFindSymbolTool.Name.get -> string!
+Lunate.Roslyn.CsFindSymbolTool.ParametersSchema.get -> System.Text.Json.JsonElement
 Lunate.Roslyn.DiagnosticsItem
 Lunate.Roslyn.DiagnosticsItem.<Clone>$() -> Lunate.Roslyn.DiagnosticsItem!
 Lunate.Roslyn.DiagnosticsItem.Column.get -> int
@@ -25,12 +39,12 @@ Lunate.Roslyn.DiagnosticsResult.ErrorCount.get -> int
 Lunate.Roslyn.DiagnosticsResult.ErrorCount.init -> void
 Lunate.Roslyn.DiagnosticsResult.Failures.get -> System.Collections.Generic.IReadOnlyList<Lunate.Roslyn.WorkspaceFailure!>!
 Lunate.Roslyn.DiagnosticsResult.Failures.init -> void
-Lunate.Roslyn.DiagnosticsResult.TotalFailureCount.get -> int
-Lunate.Roslyn.DiagnosticsResult.TotalFailureCount.init -> void
 Lunate.Roslyn.DiagnosticsResult.Items.get -> System.Collections.Generic.IReadOnlyList<Lunate.Roslyn.DiagnosticsItem!>!
 Lunate.Roslyn.DiagnosticsResult.Items.init -> void
 Lunate.Roslyn.DiagnosticsResult.ScopeDescription.get -> string!
 Lunate.Roslyn.DiagnosticsResult.ScopeDescription.init -> void
+Lunate.Roslyn.DiagnosticsResult.TotalFailureCount.get -> int
+Lunate.Roslyn.DiagnosticsResult.TotalFailureCount.init -> void
 Lunate.Roslyn.DiagnosticsResult.Truncated.get -> bool
 Lunate.Roslyn.DiagnosticsResult.Truncated.init -> void
 Lunate.Roslyn.DiagnosticsResult.WarningCount.get -> int
@@ -42,9 +56,63 @@ Lunate.Roslyn.DiagnosticsSeverity
 Lunate.Roslyn.DiagnosticsSeverity.Error = 0 -> Lunate.Roslyn.DiagnosticsSeverity
 Lunate.Roslyn.DiagnosticsSeverity.Warning = 1 -> Lunate.Roslyn.DiagnosticsSeverity
 Lunate.Roslyn.ICSharpBackend
+Lunate.Roslyn.ICSharpBackend.FindSymbolAsync(string! name, System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask<Lunate.Roslyn.SymbolSearchResult!>
 Lunate.Roslyn.ICSharpBackend.GetDiagnosticsAsync(Lunate.Roslyn.DiagnosticsScope scope, System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask<Lunate.Roslyn.DiagnosticsResult!>
 Lunate.Roslyn.ICSharpBackend.LoadAsync(System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask<Lunate.Roslyn.WorkspaceLoadResult!>
 Lunate.Roslyn.ICSharpBackend.NotifyFileChanged(string! absolutePath) -> void
+Lunate.Roslyn.RoslynBackend
+Lunate.Roslyn.RoslynBackend.Dispose() -> void
+Lunate.Roslyn.RoslynBackend.FindSymbolAsync(string! name, System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask<Lunate.Roslyn.SymbolSearchResult!>
+Lunate.Roslyn.RoslynBackend.GetDiagnosticsAsync(Lunate.Roslyn.DiagnosticsScope scope, System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask<Lunate.Roslyn.DiagnosticsResult!>
+Lunate.Roslyn.RoslynBackend.LoadAsync(System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask<Lunate.Roslyn.WorkspaceLoadResult!>
+Lunate.Roslyn.RoslynBackend.NotifyFileChanged(string! absolutePath) -> void
+Lunate.Roslyn.RoslynBackend.RoslynBackend(string! worktreeRoot) -> void
+Lunate.Roslyn.SymbolMatch
+Lunate.Roslyn.SymbolMatch.<Clone>$() -> Lunate.Roslyn.SymbolMatch!
+Lunate.Roslyn.SymbolMatch.Column.get -> int
+Lunate.Roslyn.SymbolMatch.Column.init -> void
+Lunate.Roslyn.SymbolMatch.Container.get -> string?
+Lunate.Roslyn.SymbolMatch.Container.init -> void
+Lunate.Roslyn.SymbolMatch.Deconstruct(out string! Kind, out string! Name, out string? Container, out string? File, out int Line, out int Column, out string! Signature, out bool FromMetadata) -> void
+Lunate.Roslyn.SymbolMatch.Equals(Lunate.Roslyn.SymbolMatch? other) -> bool
+Lunate.Roslyn.SymbolMatch.File.get -> string?
+Lunate.Roslyn.SymbolMatch.File.init -> void
+Lunate.Roslyn.SymbolMatch.FromMetadata.get -> bool
+Lunate.Roslyn.SymbolMatch.FromMetadata.init -> void
+Lunate.Roslyn.SymbolMatch.Kind.get -> string!
+Lunate.Roslyn.SymbolMatch.Kind.init -> void
+Lunate.Roslyn.SymbolMatch.Line.get -> int
+Lunate.Roslyn.SymbolMatch.Line.init -> void
+Lunate.Roslyn.SymbolMatch.Name.get -> string!
+Lunate.Roslyn.SymbolMatch.Name.init -> void
+Lunate.Roslyn.SymbolMatch.Signature.get -> string!
+Lunate.Roslyn.SymbolMatch.Signature.init -> void
+Lunate.Roslyn.SymbolMatch.SymbolMatch(string! Kind, string! Name, string? Container, string? File, int Line, int Column, string! Signature, bool FromMetadata) -> void
+Lunate.Roslyn.SymbolSearchResult
+Lunate.Roslyn.SymbolSearchResult.<Clone>$() -> Lunate.Roslyn.SymbolSearchResult!
+Lunate.Roslyn.SymbolSearchResult.Deconstruct(out Lunate.Roslyn.SymbolSearchStatus Status, out string! Message, out System.Collections.Generic.IReadOnlyList<Lunate.Roslyn.SymbolMatch!>! Matches, out int TotalMatchCount) -> void
+Lunate.Roslyn.SymbolSearchResult.Equals(Lunate.Roslyn.SymbolSearchResult? other) -> bool
+Lunate.Roslyn.SymbolSearchResult.Failures.get -> System.Collections.Generic.IReadOnlyList<Lunate.Roslyn.WorkspaceFailure!>!
+Lunate.Roslyn.SymbolSearchResult.Failures.init -> void
+Lunate.Roslyn.SymbolSearchResult.Matches.get -> System.Collections.Generic.IReadOnlyList<Lunate.Roslyn.SymbolMatch!>!
+Lunate.Roslyn.SymbolSearchResult.Matches.init -> void
+Lunate.Roslyn.SymbolSearchResult.Message.get -> string!
+Lunate.Roslyn.SymbolSearchResult.Message.init -> void
+Lunate.Roslyn.SymbolSearchResult.Status.get -> Lunate.Roslyn.SymbolSearchStatus
+Lunate.Roslyn.SymbolSearchResult.Status.init -> void
+Lunate.Roslyn.SymbolSearchResult.SymbolSearchResult(Lunate.Roslyn.SymbolSearchStatus Status, string! Message, System.Collections.Generic.IReadOnlyList<Lunate.Roslyn.SymbolMatch!>! Matches, int TotalMatchCount) -> void
+Lunate.Roslyn.SymbolSearchResult.TotalFailureCount.get -> int
+Lunate.Roslyn.SymbolSearchResult.TotalFailureCount.init -> void
+Lunate.Roslyn.SymbolSearchResult.TotalMatchCount.get -> int
+Lunate.Roslyn.SymbolSearchResult.TotalMatchCount.init -> void
+Lunate.Roslyn.SymbolSearchResult.Truncated.get -> bool
+Lunate.Roslyn.SymbolSearchResult.Truncated.init -> void
+Lunate.Roslyn.SymbolSearchStatus
+Lunate.Roslyn.SymbolSearchStatus.Loaded = 0 -> Lunate.Roslyn.SymbolSearchStatus
+Lunate.Roslyn.SymbolSearchStatus.NoSdk = 3 -> Lunate.Roslyn.SymbolSearchStatus
+Lunate.Roslyn.SymbolSearchStatus.NoSolution = 4 -> Lunate.Roslyn.SymbolSearchStatus
+Lunate.Roslyn.SymbolSearchStatus.Partial = 1 -> Lunate.Roslyn.SymbolSearchStatus
+Lunate.Roslyn.SymbolSearchStatus.RestoreRequired = 2 -> Lunate.Roslyn.SymbolSearchStatus
 Lunate.Roslyn.WorkspaceFailure
 Lunate.Roslyn.WorkspaceFailure.<Clone>$() -> Lunate.Roslyn.WorkspaceFailure!
 Lunate.Roslyn.WorkspaceFailure.Deconstruct(out string? Project, out string! Message) -> void
@@ -85,6 +153,12 @@ override Lunate.Roslyn.DiagnosticsItem.ToString() -> string!
 override Lunate.Roslyn.DiagnosticsResult.Equals(object? obj) -> bool
 override Lunate.Roslyn.DiagnosticsResult.GetHashCode() -> int
 override Lunate.Roslyn.DiagnosticsResult.ToString() -> string!
+override Lunate.Roslyn.SymbolMatch.Equals(object? obj) -> bool
+override Lunate.Roslyn.SymbolMatch.GetHashCode() -> int
+override Lunate.Roslyn.SymbolMatch.ToString() -> string!
+override Lunate.Roslyn.SymbolSearchResult.Equals(object? obj) -> bool
+override Lunate.Roslyn.SymbolSearchResult.GetHashCode() -> int
+override Lunate.Roslyn.SymbolSearchResult.ToString() -> string!
 override Lunate.Roslyn.WorkspaceFailure.Equals(object? obj) -> bool
 override Lunate.Roslyn.WorkspaceFailure.GetHashCode() -> int
 override Lunate.Roslyn.WorkspaceFailure.ToString() -> string!
@@ -95,20 +169,11 @@ static Lunate.Roslyn.DiagnosticsItem.operator !=(Lunate.Roslyn.DiagnosticsItem? 
 static Lunate.Roslyn.DiagnosticsItem.operator ==(Lunate.Roslyn.DiagnosticsItem? left, Lunate.Roslyn.DiagnosticsItem? right) -> bool
 static Lunate.Roslyn.DiagnosticsResult.operator !=(Lunate.Roslyn.DiagnosticsResult? left, Lunate.Roslyn.DiagnosticsResult? right) -> bool
 static Lunate.Roslyn.DiagnosticsResult.operator ==(Lunate.Roslyn.DiagnosticsResult? left, Lunate.Roslyn.DiagnosticsResult? right) -> bool
+static Lunate.Roslyn.SymbolMatch.operator !=(Lunate.Roslyn.SymbolMatch? left, Lunate.Roslyn.SymbolMatch? right) -> bool
+static Lunate.Roslyn.SymbolMatch.operator ==(Lunate.Roslyn.SymbolMatch? left, Lunate.Roslyn.SymbolMatch? right) -> bool
+static Lunate.Roslyn.SymbolSearchResult.operator !=(Lunate.Roslyn.SymbolSearchResult? left, Lunate.Roslyn.SymbolSearchResult? right) -> bool
+static Lunate.Roslyn.SymbolSearchResult.operator ==(Lunate.Roslyn.SymbolSearchResult? left, Lunate.Roslyn.SymbolSearchResult? right) -> bool
 static Lunate.Roslyn.WorkspaceFailure.operator !=(Lunate.Roslyn.WorkspaceFailure? left, Lunate.Roslyn.WorkspaceFailure? right) -> bool
 static Lunate.Roslyn.WorkspaceFailure.operator ==(Lunate.Roslyn.WorkspaceFailure? left, Lunate.Roslyn.WorkspaceFailure? right) -> bool
 static Lunate.Roslyn.WorkspaceLoadResult.operator !=(Lunate.Roslyn.WorkspaceLoadResult? left, Lunate.Roslyn.WorkspaceLoadResult? right) -> bool
 static Lunate.Roslyn.WorkspaceLoadResult.operator ==(Lunate.Roslyn.WorkspaceLoadResult? left, Lunate.Roslyn.WorkspaceLoadResult? right) -> bool
-Lunate.Roslyn.RoslynBackend
-Lunate.Roslyn.RoslynBackend.Dispose() -> void
-Lunate.Roslyn.RoslynBackend.GetDiagnosticsAsync(Lunate.Roslyn.DiagnosticsScope scope, System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask<Lunate.Roslyn.DiagnosticsResult!>
-Lunate.Roslyn.RoslynBackend.LoadAsync(System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask<Lunate.Roslyn.WorkspaceLoadResult!>
-Lunate.Roslyn.RoslynBackend.NotifyFileChanged(string! absolutePath) -> void
-Lunate.Roslyn.RoslynBackend.RoslynBackend(string! worktreeRoot) -> void
-Lunate.Roslyn.CsDiagnosticsTool
-Lunate.Roslyn.CsDiagnosticsTool.Annotations.get -> Lunate.Agent.ToolAnnotations!
-Lunate.Roslyn.CsDiagnosticsTool.CsDiagnosticsTool(System.Func<Lunate.Roslyn.ICSharpBackend!>! backendFactory) -> void
-Lunate.Roslyn.CsDiagnosticsTool.Description.get -> string!
-Lunate.Roslyn.CsDiagnosticsTool.ExecuteAsync(System.Text.Json.JsonElement args, Lunate.Agent.ToolContext! ctx, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Lunate.Agent.ToolResult!>!
-Lunate.Roslyn.CsDiagnosticsTool.Name.get -> string!
-Lunate.Roslyn.CsDiagnosticsTool.ParametersSchema.get -> System.Text.Json.JsonElement
