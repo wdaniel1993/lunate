@@ -50,7 +50,7 @@ public sealed class LayeringTests
         var references = new List<(string From, string To)>();
         string repositoryRoot = FindRepositoryRoot();
 
-        foreach (var directoryName in new[] { "src", "templates", "samples" })
+        foreach (var directoryName in new[] { "src", "templates", "samples", "tests" })
         {
             var projectRoot = Path.Combine(repositoryRoot, directoryName);
             if (!Directory.Exists(projectRoot))
@@ -66,6 +66,17 @@ public sealed class LayeringTests
                 )
             )
             {
+                // Fixture solutions are test data with their own project graphs.
+                if (
+                    projectFile.Contains(
+                        $"{Path.DirectorySeparatorChar}fixtures{Path.DirectorySeparatorChar}",
+                        StringComparison.Ordinal
+                    )
+                )
+                {
+                    continue;
+                }
+
                 var from = Path.GetFileNameWithoutExtension(projectFile);
                 var document = XDocument.Load(projectFile);
 

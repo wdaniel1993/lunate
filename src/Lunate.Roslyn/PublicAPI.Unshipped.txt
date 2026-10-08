@@ -1,1 +1,114 @@
 #nullable enable
+Lunate.Roslyn.DiagnosticsItem
+Lunate.Roslyn.DiagnosticsItem.<Clone>$() -> Lunate.Roslyn.DiagnosticsItem!
+Lunate.Roslyn.DiagnosticsItem.Column.get -> int
+Lunate.Roslyn.DiagnosticsItem.Column.init -> void
+Lunate.Roslyn.DiagnosticsItem.Deconstruct(out string! File, out int Line, out int Column, out Lunate.Roslyn.DiagnosticsSeverity Severity, out string! Id, out string! Message) -> void
+Lunate.Roslyn.DiagnosticsItem.DiagnosticsItem(string! File, int Line, int Column, Lunate.Roslyn.DiagnosticsSeverity Severity, string! Id, string! Message) -> void
+Lunate.Roslyn.DiagnosticsItem.Equals(Lunate.Roslyn.DiagnosticsItem? other) -> bool
+Lunate.Roslyn.DiagnosticsItem.File.get -> string!
+Lunate.Roslyn.DiagnosticsItem.File.init -> void
+Lunate.Roslyn.DiagnosticsItem.Id.get -> string!
+Lunate.Roslyn.DiagnosticsItem.Id.init -> void
+Lunate.Roslyn.DiagnosticsItem.Line.get -> int
+Lunate.Roslyn.DiagnosticsItem.Line.init -> void
+Lunate.Roslyn.DiagnosticsItem.Message.get -> string!
+Lunate.Roslyn.DiagnosticsItem.Message.init -> void
+Lunate.Roslyn.DiagnosticsItem.Severity.get -> Lunate.Roslyn.DiagnosticsSeverity
+Lunate.Roslyn.DiagnosticsItem.Severity.init -> void
+Lunate.Roslyn.DiagnosticsResult
+Lunate.Roslyn.DiagnosticsResult.<Clone>$() -> Lunate.Roslyn.DiagnosticsResult!
+Lunate.Roslyn.DiagnosticsResult.Deconstruct(out System.Collections.Generic.IReadOnlyList<Lunate.Roslyn.DiagnosticsItem!>! Items, out int ErrorCount, out int WarningCount, out bool Truncated, out string! ScopeDescription) -> void
+Lunate.Roslyn.DiagnosticsResult.DiagnosticsResult(System.Collections.Generic.IReadOnlyList<Lunate.Roslyn.DiagnosticsItem!>! Items, int ErrorCount, int WarningCount, bool Truncated, string! ScopeDescription) -> void
+Lunate.Roslyn.DiagnosticsResult.Equals(Lunate.Roslyn.DiagnosticsResult? other) -> bool
+Lunate.Roslyn.DiagnosticsResult.ErrorCount.get -> int
+Lunate.Roslyn.DiagnosticsResult.ErrorCount.init -> void
+Lunate.Roslyn.DiagnosticsResult.Failures.get -> System.Collections.Generic.IReadOnlyList<Lunate.Roslyn.WorkspaceFailure!>!
+Lunate.Roslyn.DiagnosticsResult.Failures.init -> void
+Lunate.Roslyn.DiagnosticsResult.TotalFailureCount.get -> int
+Lunate.Roslyn.DiagnosticsResult.TotalFailureCount.init -> void
+Lunate.Roslyn.DiagnosticsResult.Items.get -> System.Collections.Generic.IReadOnlyList<Lunate.Roslyn.DiagnosticsItem!>!
+Lunate.Roslyn.DiagnosticsResult.Items.init -> void
+Lunate.Roslyn.DiagnosticsResult.ScopeDescription.get -> string!
+Lunate.Roslyn.DiagnosticsResult.ScopeDescription.init -> void
+Lunate.Roslyn.DiagnosticsResult.Truncated.get -> bool
+Lunate.Roslyn.DiagnosticsResult.Truncated.init -> void
+Lunate.Roslyn.DiagnosticsResult.WarningCount.get -> int
+Lunate.Roslyn.DiagnosticsResult.WarningCount.init -> void
+Lunate.Roslyn.DiagnosticsScope
+Lunate.Roslyn.DiagnosticsScope.ChangedFiles = 0 -> Lunate.Roslyn.DiagnosticsScope
+Lunate.Roslyn.DiagnosticsScope.Solution = 1 -> Lunate.Roslyn.DiagnosticsScope
+Lunate.Roslyn.DiagnosticsSeverity
+Lunate.Roslyn.DiagnosticsSeverity.Error = 0 -> Lunate.Roslyn.DiagnosticsSeverity
+Lunate.Roslyn.DiagnosticsSeverity.Warning = 1 -> Lunate.Roslyn.DiagnosticsSeverity
+Lunate.Roslyn.ICSharpBackend
+Lunate.Roslyn.ICSharpBackend.GetDiagnosticsAsync(Lunate.Roslyn.DiagnosticsScope scope, System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask<Lunate.Roslyn.DiagnosticsResult!>
+Lunate.Roslyn.ICSharpBackend.LoadAsync(System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask<Lunate.Roslyn.WorkspaceLoadResult!>
+Lunate.Roslyn.ICSharpBackend.NotifyFileChanged(string! absolutePath) -> void
+Lunate.Roslyn.WorkspaceFailure
+Lunate.Roslyn.WorkspaceFailure.<Clone>$() -> Lunate.Roslyn.WorkspaceFailure!
+Lunate.Roslyn.WorkspaceFailure.Deconstruct(out string? Project, out string! Message) -> void
+Lunate.Roslyn.WorkspaceFailure.Equals(Lunate.Roslyn.WorkspaceFailure? other) -> bool
+Lunate.Roslyn.WorkspaceFailure.Message.get -> string!
+Lunate.Roslyn.WorkspaceFailure.Message.init -> void
+Lunate.Roslyn.WorkspaceFailure.Project.get -> string?
+Lunate.Roslyn.WorkspaceFailure.Project.init -> void
+Lunate.Roslyn.WorkspaceFailure.WorkspaceFailure(string? Project, string! Message) -> void
+Lunate.Roslyn.WorkspaceLoadResult
+Lunate.Roslyn.WorkspaceLoadResult.<Clone>$() -> Lunate.Roslyn.WorkspaceLoadResult!
+Lunate.Roslyn.WorkspaceLoadResult.Deconstruct(out Lunate.Roslyn.WorkspaceStatus Status, out string! Message, out string? SolutionPath, out int ProjectCount, out int DocumentCount, out System.Collections.Generic.IReadOnlyList<Lunate.Roslyn.WorkspaceFailure!>! Failures) -> void
+Lunate.Roslyn.WorkspaceLoadResult.DocumentCount.get -> int
+Lunate.Roslyn.WorkspaceLoadResult.DocumentCount.init -> void
+Lunate.Roslyn.WorkspaceLoadResult.Equals(Lunate.Roslyn.WorkspaceLoadResult? other) -> bool
+Lunate.Roslyn.WorkspaceLoadResult.Failures.get -> System.Collections.Generic.IReadOnlyList<Lunate.Roslyn.WorkspaceFailure!>!
+Lunate.Roslyn.WorkspaceLoadResult.Failures.init -> void
+Lunate.Roslyn.WorkspaceLoadResult.Message.get -> string!
+Lunate.Roslyn.WorkspaceLoadResult.Message.init -> void
+Lunate.Roslyn.WorkspaceLoadResult.ProjectCount.get -> int
+Lunate.Roslyn.WorkspaceLoadResult.ProjectCount.init -> void
+Lunate.Roslyn.WorkspaceLoadResult.SolutionPath.get -> string?
+Lunate.Roslyn.WorkspaceLoadResult.SolutionPath.init -> void
+Lunate.Roslyn.WorkspaceLoadResult.Status.get -> Lunate.Roslyn.WorkspaceStatus
+Lunate.Roslyn.WorkspaceLoadResult.Status.init -> void
+Lunate.Roslyn.WorkspaceLoadResult.TotalFailureCount.get -> int
+Lunate.Roslyn.WorkspaceLoadResult.TotalFailureCount.init -> void
+Lunate.Roslyn.WorkspaceLoadResult.WorkspaceLoadResult(Lunate.Roslyn.WorkspaceStatus Status, string! Message, string? SolutionPath, int ProjectCount, int DocumentCount, System.Collections.Generic.IReadOnlyList<Lunate.Roslyn.WorkspaceFailure!>! Failures) -> void
+Lunate.Roslyn.WorkspaceStatus
+Lunate.Roslyn.WorkspaceStatus.Loaded = 0 -> Lunate.Roslyn.WorkspaceStatus
+Lunate.Roslyn.WorkspaceStatus.NoSdk = 3 -> Lunate.Roslyn.WorkspaceStatus
+Lunate.Roslyn.WorkspaceStatus.NoSolution = 4 -> Lunate.Roslyn.WorkspaceStatus
+Lunate.Roslyn.WorkspaceStatus.Partial = 1 -> Lunate.Roslyn.WorkspaceStatus
+Lunate.Roslyn.WorkspaceStatus.RestoreRequired = 2 -> Lunate.Roslyn.WorkspaceStatus
+override Lunate.Roslyn.DiagnosticsItem.Equals(object? obj) -> bool
+override Lunate.Roslyn.DiagnosticsItem.GetHashCode() -> int
+override Lunate.Roslyn.DiagnosticsItem.ToString() -> string!
+override Lunate.Roslyn.DiagnosticsResult.Equals(object? obj) -> bool
+override Lunate.Roslyn.DiagnosticsResult.GetHashCode() -> int
+override Lunate.Roslyn.DiagnosticsResult.ToString() -> string!
+override Lunate.Roslyn.WorkspaceFailure.Equals(object? obj) -> bool
+override Lunate.Roslyn.WorkspaceFailure.GetHashCode() -> int
+override Lunate.Roslyn.WorkspaceFailure.ToString() -> string!
+override Lunate.Roslyn.WorkspaceLoadResult.Equals(object? obj) -> bool
+override Lunate.Roslyn.WorkspaceLoadResult.GetHashCode() -> int
+override Lunate.Roslyn.WorkspaceLoadResult.ToString() -> string!
+static Lunate.Roslyn.DiagnosticsItem.operator !=(Lunate.Roslyn.DiagnosticsItem? left, Lunate.Roslyn.DiagnosticsItem? right) -> bool
+static Lunate.Roslyn.DiagnosticsItem.operator ==(Lunate.Roslyn.DiagnosticsItem? left, Lunate.Roslyn.DiagnosticsItem? right) -> bool
+static Lunate.Roslyn.DiagnosticsResult.operator !=(Lunate.Roslyn.DiagnosticsResult? left, Lunate.Roslyn.DiagnosticsResult? right) -> bool
+static Lunate.Roslyn.DiagnosticsResult.operator ==(Lunate.Roslyn.DiagnosticsResult? left, Lunate.Roslyn.DiagnosticsResult? right) -> bool
+static Lunate.Roslyn.WorkspaceFailure.operator !=(Lunate.Roslyn.WorkspaceFailure? left, Lunate.Roslyn.WorkspaceFailure? right) -> bool
+static Lunate.Roslyn.WorkspaceFailure.operator ==(Lunate.Roslyn.WorkspaceFailure? left, Lunate.Roslyn.WorkspaceFailure? right) -> bool
+static Lunate.Roslyn.WorkspaceLoadResult.operator !=(Lunate.Roslyn.WorkspaceLoadResult? left, Lunate.Roslyn.WorkspaceLoadResult? right) -> bool
+static Lunate.Roslyn.WorkspaceLoadResult.operator ==(Lunate.Roslyn.WorkspaceLoadResult? left, Lunate.Roslyn.WorkspaceLoadResult? right) -> bool
+Lunate.Roslyn.RoslynBackend
+Lunate.Roslyn.RoslynBackend.Dispose() -> void
+Lunate.Roslyn.RoslynBackend.GetDiagnosticsAsync(Lunate.Roslyn.DiagnosticsScope scope, System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask<Lunate.Roslyn.DiagnosticsResult!>
+Lunate.Roslyn.RoslynBackend.LoadAsync(System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask<Lunate.Roslyn.WorkspaceLoadResult!>
+Lunate.Roslyn.RoslynBackend.NotifyFileChanged(string! absolutePath) -> void
+Lunate.Roslyn.RoslynBackend.RoslynBackend(string! worktreeRoot) -> void
+Lunate.Roslyn.CsDiagnosticsTool
+Lunate.Roslyn.CsDiagnosticsTool.Annotations.get -> Lunate.Agent.ToolAnnotations!
+Lunate.Roslyn.CsDiagnosticsTool.CsDiagnosticsTool(System.Func<Lunate.Roslyn.ICSharpBackend!>! backendFactory) -> void
+Lunate.Roslyn.CsDiagnosticsTool.Description.get -> string!
+Lunate.Roslyn.CsDiagnosticsTool.ExecuteAsync(System.Text.Json.JsonElement args, Lunate.Agent.ToolContext! ctx, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Lunate.Agent.ToolResult!>!
+Lunate.Roslyn.CsDiagnosticsTool.Name.get -> string!
+Lunate.Roslyn.CsDiagnosticsTool.ParametersSchema.get -> System.Text.Json.JsonElement
