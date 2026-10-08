@@ -8,8 +8,8 @@ Done-gate: tests against `tests/tools/TestMcpServer` (two normal tools, one slow
 
 ## What Changes
 
-- **`Lunate.Protocols` gains the MCP client**: `McpServerHost` (per-server lifecycle: lazy start on first use, stdio transport, dispose stops the process) and `McpToolAdapter : ITool` (name `server__tool`, MCP description + JSON schema, risk `Execute`, `CallToolAsync` mapping, structured content passthrough, timeout/error translation, cancellation via `OperationCanceledException`).
-- **Tool-list changes**: the SDK's list-changed notification triggers a refresh; the host surfaces the updated tool set to a callback.
+- **`Lunate.Protocols` gains the MCP client**: `McpServerHost` (per-server lifecycle: lazy start on first use, stdio transport, dispose stops the process) and `McpToolAdapter : ITool` (name `server__tool`, MCP description + JSON schema, risk `Execute`, call mapping via the SDK's public request API with an explicit request id and the protocol's own cancellation notification — the SDK does not yet deliver cancelled notifications for in-flight calls (csharp-sdk#1365); returns to plain `CallToolAsync` once the SDK ships the fix — structured content passthrough, timeout/error translation, cancellation via `OperationCanceledException`). See design.md "Deviations".
+- **Tool-list changes**: on the pinned stable protocol revision `2025-11-25` (the newer default revision only unicasts list changes to subscription streams the 2.2.0 client cannot open), the SDK's list-changed notification triggers a refresh; the host surfaces the updated tool set to a callback. See design.md "Deviations".
 - **`tests/tools/TestMcpServer`**: tiny stdio MCP server (official SDK server side) with `echo` + `add` (normal), `slow` (cancellable sleep), `boom` (always throws), and `spawn_tool` (registers a new tool + notifies). Writes a start marker (path via env) so tests can prove lazy start.
 - Config parsing (`~/.lunate/mcp.json`) and approval/UI wiring stay in T-30; this change takes an options object (name, command, args, env, cwd).
 - Spec delta: new `protocols` capability.
