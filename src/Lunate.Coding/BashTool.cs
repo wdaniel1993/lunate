@@ -12,8 +12,10 @@ public sealed class BashTool : ITool
 {
     private const int CaptureCap = 1_000_000;
 
-    private const string CapMarker =
-        "... [output capped at 1000000 characters; the rest was discarded]";
+    internal static readonly string CapMarker = string.Create(
+        CultureInfo.InvariantCulture,
+        $"... [output capped at {CaptureCap} characters; the rest was discarded]"
+    );
 
     private const string NoShellText =
         "no shell found; install bash, Git Bash, pwsh, Windows PowerShell or cmd";
@@ -121,6 +123,8 @@ public sealed class BashTool : ITool
                     is Win32Exception
                         or InvalidOperationException
                         or PlatformNotSupportedException
+                        or ArgumentException
+                        or IOException
             )
         {
             var message = string.Create(
@@ -136,6 +140,8 @@ public sealed class BashTool : ITool
         var stderrTask = ReadBoundedAsync(process.StandardError);
 
         var timedOut = false;
+        var stdout = string.Empty;
+        var stderr = string.Empty;
         using (var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct))
         {
             timeoutCts.CancelAfter(_timeout);
@@ -147,6 +153,7 @@ public sealed class BashTool : ITool
             {
                 timedOut = true;
                 await KillTreeAsync(process);
+                (stdout, stderr) = await DrainAsync(stdoutTask, stderrTask);
             }
             catch (OperationCanceledException)
             {
@@ -156,13 +163,13 @@ public sealed class BashTool : ITool
             }
         }
 
-        var stdout = await stdoutTask;
-        var stderr = await stderrTask;
         if (timedOut)
         {
             return Error(ComposeText(stdout, stderr, TimeoutFooter()));
         }
 
+        stdout = await stdoutTask;
+        stderr = await stderrTask;
         var exitCode = process.ExitCode;
         return new ToolResult(ComposeText(stdout, stderr, ExitFooter(exitCode)), exitCode != 0);
     }
@@ -217,13 +224,21 @@ public sealed class BashTool : ITool
         catch (TimeoutException) { }
     }
 
-    private static async Task DrainAsync(Task<string> stdoutTask, Task<string> stderrTask)
+    private static async Task<(string Stdout, string Stderr)> DrainAsync(
+        Task<string> stdoutTask,
+        Task<string> stderrTask
+    )
     {
         try
         {
             await Task.WhenAll(stdoutTask, stderrTask).WaitAsync(TimeSpan.FromSeconds(10));
         }
         catch (TimeoutException) { }
+
+        return (
+            stdoutTask.Status == TaskStatus.RanToCompletion ? stdoutTask.Result : string.Empty,
+            stderrTask.Status == TaskStatus.RanToCompletion ? stderrTask.Result : string.Empty
+        );
     }
 
     private static string ComposeText(string stdout, string stderr, string footer)

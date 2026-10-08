@@ -126,14 +126,26 @@ public sealed class BashToolTests
         var result = await RunAsync(temp, "yes 0123456789 2>/dev/null | head -c 1200000");
 
         Assert.False(result.IsError);
-        Assert.Contains(
-            "... [output capped at 1000000 characters; the rest was discarded]",
-            result.Output
-        );
+        Assert.Contains(BashTool.CapMarker, result.Output);
         Assert.True(
             result.Output.Length < 1_000_100,
             $"captured output should stay bounded, was {result.Output.Length} characters"
         );
+    }
+
+    [Fact]
+    public async Task Output_over_the_cap_completes_while_stderr_stays_open()
+    {
+        using var temp = new TempDirectory();
+
+        var result = await RunAsync(
+            temp,
+            "(sleep 2) & yes 'filler' | head -c 1200000; wait",
+            TimeSpan.FromSeconds(30)
+        );
+
+        Assert.False(result.IsError);
+        Assert.Contains(BashTool.CapMarker, result.Output);
     }
 
     [Fact]
