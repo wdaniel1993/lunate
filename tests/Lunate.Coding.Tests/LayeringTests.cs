@@ -50,7 +50,7 @@ public sealed class LayeringTests
         var references = new List<(string From, string To)>();
         string repositoryRoot = FindRepositoryRoot();
 
-        foreach (var directoryName in new[] { "src", "templates" })
+        foreach (var directoryName in new[] { "src", "templates", "samples" })
         {
             var projectRoot = Path.Combine(repositoryRoot, directoryName);
             if (!Directory.Exists(projectRoot))

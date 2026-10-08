@@ -791,6 +791,8 @@ Lunate.Agent.AgentRunStartingResult.None.None() -> void
 Lunate.Agent.AgentToolCallingContext
 Lunate.Agent.AgentToolCallingContext.<Clone>$() -> Lunate.Agent.AgentToolCallingContext!
 Lunate.Agent.AgentToolCallingContext.AgentToolCallingContext(string! RunId, string! CallId, string! ToolName, System.Text.Json.JsonElement Arguments) -> void
+Lunate.Agent.AgentToolCallingContext.Annotations.get -> Lunate.Agent.ToolAnnotations?
+Lunate.Agent.AgentToolCallingContext.Annotations.init -> void
 Lunate.Agent.AgentToolCallingContext.Arguments.get -> System.Text.Json.JsonElement
 Lunate.Agent.AgentToolCallingContext.Arguments.init -> void
 Lunate.Agent.AgentToolCallingContext.CallId.get -> string!
@@ -1061,3 +1063,5 @@ static Lunate.Agent.AgentCompactingResult.UseDefault.operator ==(Lunate.Agent.Ag
 virtual Lunate.Agent.AgentCompactingResult.EqualityContract.get -> System.Type!
 virtual Lunate.Agent.AgentCompactingResult.Equals(Lunate.Agent.AgentCompactingResult? other) -> bool
 virtual Lunate.Agent.AgentCompactingResult.PrintMembers(System.Text.StringBuilder! builder) -> bool
+Lunate.Agent.ToolAnnotationNames
+static Lunate.Agent.ToolAnnotationNames.WireNames(Lunate.Agent.ToolAnnotations? annotations) -> System.Collections.Generic.IReadOnlyList<string!>!

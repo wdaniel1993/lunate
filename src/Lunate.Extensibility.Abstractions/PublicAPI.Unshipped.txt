@@ -1,6 +1,6 @@
 #nullable enable
 Lunate.Extensibility.Abstractions.ExtensionApi
-const Lunate.Extensibility.Abstractions.ExtensionApi.Current = "1.2.0" -> string!
+const Lunate.Extensibility.Abstractions.ExtensionApi.Current = "1.3.0" -> string!
 Lunate.Extensibility.Abstractions.ExtensionManifest
 Lunate.Extensibility.Abstractions.ExtensionManifest.<Clone>$() -> Lunate.Extensibility.Abstractions.ExtensionManifest!
 Lunate.Extensibility.Abstractions.ExtensionManifest.ApiVersion.get -> string!
@@ -290,6 +290,8 @@ Lunate.Extensibility.Abstractions.SessionStartedPayload.WorkingDirectory.get -> 
 Lunate.Extensibility.Abstractions.SessionStartedPayload.WorkingDirectory.init -> void
 Lunate.Extensibility.Abstractions.ToolCallingPayload
 Lunate.Extensibility.Abstractions.ToolCallingPayload.<Clone>$() -> Lunate.Extensibility.Abstractions.ToolCallingPayload!
+Lunate.Extensibility.Abstractions.ToolCallingPayload.Annotations.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Lunate.Extensibility.Abstractions.ToolCallingPayload.Annotations.init -> void
 Lunate.Extensibility.Abstractions.ToolCallingPayload.Arguments.get -> System.Text.Json.JsonElement
 Lunate.Extensibility.Abstractions.ToolCallingPayload.Arguments.init -> void
 Lunate.Extensibility.Abstractions.ToolCallingPayload.CallId.get -> string!

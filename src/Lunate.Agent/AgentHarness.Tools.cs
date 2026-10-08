@@ -333,7 +333,10 @@ public sealed partial class AgentHarness
         }
 
         AgentToolCallingResult result = await hooks.ToolCallingAsync(
-            new AgentToolCallingContext(runId, callId, tool.Name, args),
+            new AgentToolCallingContext(runId, callId, tool.Name, args)
+            {
+                Annotations = tool.Annotations,
+            },
             ct
         );
         return result switch

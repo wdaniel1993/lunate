@@ -64,6 +64,8 @@ internal sealed class FakeTool(string name, string output) : ITool
     public JsonElement ParametersSchema { get; } =
         JsonDocument.Parse("""{"type":"object"}""").RootElement.Clone();
 
+    public ToolAnnotations? Annotations { get; init; }
+
     public string? ReceivedArgs { get; private set; }
 
     public Task<ToolResult> ExecuteAsync(JsonElement args, ToolContext ctx, CancellationToken ct)

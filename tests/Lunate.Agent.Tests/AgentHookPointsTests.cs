@@ -12,21 +12,17 @@ public sealed class AgentHookPointsTests
     [Fact]
     public async Task A_run_without_hooks_matches_a_run_with_default_hook_points()
     {
-        ScriptedChatClient withoutClient = new ScriptedChatClient().Enqueue(
-            AgentHookTestSupport.TextUpdate("done", ChatFinishReason.Stop)
-        );
+        ScriptedChatClient withoutClient = ScriptedClientWithReadCall();
         List<AgentEvent> without = await Run(
             withoutClient,
-            Registry(ReadTool("contents")),
+            Registry(AnnotatedReadTool()),
             new AgentHarnessOptions { SystemPrompt = "base" }
         );
 
-        ScriptedChatClient withClient = new ScriptedChatClient().Enqueue(
-            AgentHookTestSupport.TextUpdate("done", ChatFinishReason.Stop)
-        );
+        ScriptedChatClient withClient = ScriptedClientWithReadCall();
         List<AgentEvent> with = await Run(
             withClient,
-            Registry(ReadTool("contents")),
+            Registry(AnnotatedReadTool()),
             new AgentHarnessOptions { SystemPrompt = "base", Hooks = new EmptyHookPoints() }
         );
 
@@ -35,6 +31,40 @@ public sealed class AgentHookPointsTests
             with.Select(e => e.GetType())
         );
         Assert.Equal(Messages(withoutClient), Messages(withClient));
+    }
+
+    [Fact]
+    public async Task Tool_calling_context_carries_the_resolved_tools_annotations()
+    {
+        var hooks = new RecordingHookPoints();
+        ScriptedTool write = new("write", "Writes.", """{"type":"object"}""", risk: ToolRisk.Write)
+        {
+            Annotations = new ToolAnnotations(Destructive: true, Idempotent: true),
+        };
+        ScriptedChatClient client = new ScriptedChatClient()
+            .Enqueue(
+                new ChatResponseUpdate(
+                    ChatRole.Assistant,
+                    [new FunctionCallContent("call-1", "write", new Dictionary<string, object?>())]
+                ),
+                new ChatResponseUpdate(ChatRole.Assistant, [])
+                {
+                    FinishReason = ChatFinishReason.ToolCalls,
+                }
+            )
+            .Enqueue(AgentHookTestSupport.TextUpdate("done", ChatFinishReason.Stop));
+        var harness = new AgentHarness(
+            client,
+            Registry(write),
+            new AgentHarnessOptions { Hooks = hooks }
+        );
+
+        await Run(harness);
+
+        Assert.Equal(
+            new ToolAnnotations(Destructive: true, Idempotent: true),
+            hooks.ToolCallings.Single().Annotations
+        );
     }
 
     [Fact]

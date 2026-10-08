@@ -6,7 +6,7 @@ Fitness row: "permission-gate | ToolCalling + annotations → block/confirm". Th
 
 ## Contract addition (1.3.0)
 
-- `ToolCallingPayload` gains `IReadOnlyList<string> Annotations` — the resolved tool's declared annotations, using the same string form the tool model persists (one mapping helper, reused; do not invent a second casing), deterministic order (declaration order of the four flags). Empty list when the tool declares none.
+- `ToolCallingPayload` gains `IReadOnlyList<string> Annotations` — the resolved tool's declared annotations as **lowercase kebab wire names in declaration order: `read-only`, `destructive`, `idempotent`, `open-world`**. No serialized form of annotations exists yet (A1 added the record only), so this change introduces exactly one mapping helper in `Lunate.Agent` next to `ToolAnnotations` (single source of the wire names; the adapter and any future serializer reuse it — never a second casing). Empty list when the tool declares none.
 - `ToolResultReadyPayload` is **not** changed (the sample doesn't need it; minimalism).
 - Agent seam: the `IAgentHookPoints.ToolCalling` invocation already resolves the tool before approval; the seam record carries the flag values so the adapter can map them. Behavior unchanged when hooks are unconfigured.
 - PublicAPI.Unshipped entries; existing pinned tests updated (conformance now checks annotations round-trip).
@@ -18,7 +18,7 @@ MODIFIED `Hook wiring`: `ToolCalling` fires "before the approval prompt, with th
 ## Sample: `samples/extensions/permission-gate/`
 
 - `PermissionGateExtension/` — abstractions-only csproj; manifest `id: permission-gate`, `apiVersion ^1.3.0`, `settingsSchema`: `mode` (`block` | `confirm`, default `block`); factory; extension registers one `IToolCallingHandler`.
-- Policy: for calls whose tool annotations include `destructive` (using the payload's annotations — never name lists): `block` mode → `ToolCallingResult.Block("permission-gate: destructive tool <name> requires confirmation")`; `confirm` mode → `Proceed(null)` (falls through to the normal approval prompt). Everything else proceeds unchanged. Logs its decisions through `IExtensionLog`.
+- Policy: for calls whose tool annotations include `destructive` (using the payload's annotations — never name lists): `block` mode → `ToolCallingResult.Block("permission-gate: destructive tool '<name>' blocked - set mode=confirm to approve interactively")`; `confirm` mode → `Proceed(null)` (falls through to the normal approval prompt). Everything else proceeds unchanged. Logs its decisions through `IExtensionLog`.
 - `PermissionGateExtension.Tests/` — via the testing kit:
   1. block mode + destructive call → blocked with reason; tool never executes; approval prompt never consulted (ScriptedApprover not called).
   2. block mode + read-only call → proceeds; approval runs as usual.

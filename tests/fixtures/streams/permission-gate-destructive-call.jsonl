@@ -1,0 +1,2 @@
+{"type":"header","schema":1,"model":"synthetic","recordedAt":"2026-10-07T21:31:31.8242080+00:00"}
+{"type":"exchange","requestDigest":"2997eb54873fffdcd87d0cd1c94d61b8a20a5957ea4c3a020ea401a331ccf8a9","updates":[{"role":"assistant","contents":[{"$type":"functionCall","name":"wipe","arguments":{},"informationalOnly":false,"callId":"call-1"}]},{"role":"assistant","contents":[],"finishReason":"tool_calls"}]}

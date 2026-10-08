@@ -70,7 +70,15 @@ public sealed record ToolCallingPayload(
     string CallId,
     string ToolName,
     JsonElement Arguments
-);
+)
+{
+    /// <summary>
+    /// The resolved tool's declared annotations as lowercase kebab wire names in declaration order
+    /// (<c>read-only</c>, <c>destructive</c>, <c>idempotent</c>, <c>open-world</c>); empty when the
+    /// tool declares none.
+    /// </summary>
+    public IReadOnlyList<string> Annotations { get; init; } = [];
+}
 
 /// <summary>The result of a tool call, after execution.</summary>
 public sealed record ToolResultReadyPayload(

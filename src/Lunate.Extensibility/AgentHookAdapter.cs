@@ -129,7 +129,10 @@ public sealed class AgentHookAdapter : IAgentHookPoints
                 context.CallId,
                 context.ToolName,
                 context.Arguments
-            ),
+            )
+            {
+                Annotations = ToolAnnotationNames.WireNames(context.Annotations),
+            },
             cancellationToken
         );
         return result switch

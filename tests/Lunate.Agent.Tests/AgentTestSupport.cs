@@ -9,9 +9,14 @@ internal static class AgentTestSupport
             .RunAsync("go", TestContext.Current.CancellationToken)
             .ToListAsync(TestContext.Current.CancellationToken);
 
-    internal static ScriptedTool ReadTool(string output, string name = "read") =>
+    internal static ScriptedTool ReadTool(
+        string output,
+        string name = "read",
+        ToolAnnotations? annotations = null
+    ) =>
         new(name, "Reads a file.", """{"type":"object","properties":{"path":{"type":"string"}}}""")
         {
+            Annotations = annotations,
             OnExecute = (_, _) => new ToolResult(output, IsError: false),
         };
 
