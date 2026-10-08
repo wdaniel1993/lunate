@@ -123,12 +123,11 @@ public sealed class BashTool : ITool
                         or PlatformNotSupportedException
             )
         {
-            return Error(
-                string.Create(
-                    CultureInfo.InvariantCulture,
-                    $"could not start {_shell.DisplayName} ({_shell.ExecutablePath}): {exception.Message}"
-                )
+            var message = string.Create(
+                CultureInfo.InvariantCulture,
+                $"could not start {_shell.DisplayName} ({_shell.ExecutablePath}): {exception.Message}; check the shell installation"
             );
+            return Error(message);
         }
 
         using var running = process;
