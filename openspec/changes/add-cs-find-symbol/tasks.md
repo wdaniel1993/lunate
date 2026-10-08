@@ -8,8 +8,8 @@
 
 ## 2. Tool
 
-- [ ] 2.1 `cs_find_symbol` per design (schema, description, read-only, text + Details, lazy backend, freshness, status texts)
-- [ ] 2.2 Tool-level tests (resolved result, not-found hint, status mapping; lazy-loading unaffected)
+- [x] 2.1 `cs_find_symbol` per design (schema, description, read-only, text + Details, lazy backend, freshness, status texts)
+- [x] 2.2 Tool-level tests (resolved result, not-found hint, status mapping; lazy-loading unaffected)
 
 ## 3. Close
 

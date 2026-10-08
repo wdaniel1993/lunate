@@ -1,5 +1,7 @@
 using System.Diagnostics;
 using System.Globalization;
+using System.Text.Json;
+using Lunate.Agent;
 using Lunate.Roslyn;
 
 namespace Lunate.Roslyn.Tests;
@@ -337,6 +339,29 @@ public sealed class CsFindSymbolGateTests(ITestOutputHelper output)
             "Helper",
             Assert.Single(helper.Matches, candidate => !candidate.FromMetadata).Signature
         );
+    }
+
+    [Fact]
+    public async Task The_tool_finds_a_symbol_on_the_fixture()
+    {
+        using var fixture = Fixtures.CopySolution("console-app");
+        Fixtures.Restore(fixture, "ConsoleApp.slnx");
+        var tool = new CsFindSymbolTool(() => new RoslynBackend(fixture.Root));
+
+        var result = await tool.ExecuteAsync(
+            JsonDocument.Parse("""{"name":"Calculator"}""").RootElement.Clone(),
+            new ToolContext(fixture.Root, new NoopAgentEvents()),
+            CancellationToken.None
+        );
+
+        Assert.False(result.IsError);
+        Assert.Contains(
+            "src/ConsoleApp/Calculator.cs:3 — Calculator",
+            result.Output,
+            StringComparison.Ordinal
+        );
+        var search = Assert.IsType<SymbolSearchResult>(result.Details);
+        Assert.Equal(SymbolSearchStatus.Loaded, search.Status);
     }
 
     [Fact]

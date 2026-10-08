@@ -52,18 +52,28 @@ public sealed class LazyLoadingTests
         Assert.Empty(LoadedRoslynOrMsBuildAssemblies());
 
         using var fixture = Fixtures.CopySolution("console-app");
-        var tool = new CsDiagnosticsTool(() => new RoslynBackend(fixture.Root));
+        var diagnostics = new CsDiagnosticsTool(() => new RoslynBackend(fixture.Root));
+        var findSymbol = new CsFindSymbolTool(() => new RoslynBackend(fixture.Root));
 
         Assert.Empty(LoadedRoslynOrMsBuildAssemblies());
 
-        var result = await tool.ExecuteAsync(
+        var context = new ToolContext(fixture.Root, new NoopAgentEvents());
+        var found = await findSymbol.ExecuteAsync(
+            JsonDocument.Parse("""{"name":"Calculator"}""").RootElement.Clone(),
+            context,
+            CancellationToken.None
+        );
+
+        Assert.True(found.IsError);
+        Assert.NotEmpty(LoadedRoslynOrMsBuildAssemblies());
+
+        var result = await diagnostics.ExecuteAsync(
             JsonDocument.Parse("{}").RootElement.Clone(),
-            new ToolContext(fixture.Root, new NoopAgentEvents()),
+            context,
             CancellationToken.None
         );
 
         Assert.True(result.IsError);
-        Assert.NotEmpty(LoadedRoslynOrMsBuildAssemblies());
     }
 
     private static IReadOnlyList<string> LoadedRoslynOrMsBuildAssemblies() =>

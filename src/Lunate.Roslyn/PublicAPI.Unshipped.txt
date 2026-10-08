@@ -6,6 +6,13 @@ Lunate.Roslyn.CsDiagnosticsTool.Description.get -> string!
 Lunate.Roslyn.CsDiagnosticsTool.ExecuteAsync(System.Text.Json.JsonElement args, Lunate.Agent.ToolContext! ctx, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Lunate.Agent.ToolResult!>!
 Lunate.Roslyn.CsDiagnosticsTool.Name.get -> string!
 Lunate.Roslyn.CsDiagnosticsTool.ParametersSchema.get -> System.Text.Json.JsonElement
+Lunate.Roslyn.CsFindSymbolTool
+Lunate.Roslyn.CsFindSymbolTool.Annotations.get -> Lunate.Agent.ToolAnnotations!
+Lunate.Roslyn.CsFindSymbolTool.CsFindSymbolTool(System.Func<Lunate.Roslyn.ICSharpBackend!>! backendFactory) -> void
+Lunate.Roslyn.CsFindSymbolTool.Description.get -> string!
+Lunate.Roslyn.CsFindSymbolTool.ExecuteAsync(System.Text.Json.JsonElement args, Lunate.Agent.ToolContext! ctx, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Lunate.Agent.ToolResult!>!
+Lunate.Roslyn.CsFindSymbolTool.Name.get -> string!
+Lunate.Roslyn.CsFindSymbolTool.ParametersSchema.get -> System.Text.Json.JsonElement
 Lunate.Roslyn.DiagnosticsItem
 Lunate.Roslyn.DiagnosticsItem.<Clone>$() -> Lunate.Roslyn.DiagnosticsItem!
 Lunate.Roslyn.DiagnosticsItem.Column.get -> int
