@@ -116,13 +116,7 @@ public sealed class CsFindSymbolTool(Func<ICSharpBackend> backendFactory) : IToo
             return false;
         }
 
-        name = element.GetString()?.Trim() ?? string.Empty;
-        if (name.Length == 0)
-        {
-            error = "name is required (a type, member or namespace name)";
-            return false;
-        }
-
+        name = element.GetString() ?? string.Empty;
         return true;
     }
 

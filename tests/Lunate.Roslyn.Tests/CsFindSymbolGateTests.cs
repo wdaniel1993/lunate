@@ -342,6 +342,26 @@ public sealed class CsFindSymbolGateTests(ITestOutputHelper output)
     }
 
     [Fact]
+    public async Task A_file_edited_since_load_is_searched_as_changed()
+    {
+        using var fixture = Fixtures.CopySolution("console-app");
+        Fixtures.Restore(fixture, "ConsoleApp.slnx");
+        using var backend = new RoslynBackend(fixture.Root);
+        await backend.LoadAsync(CancellationToken.None);
+
+        var program = Path.Combine(fixture.Root, "src", "ConsoleApp", "Program.cs");
+        File.AppendAllText(program, "\npublic static class FreshlyAdded { }\n");
+        backend.NotifyFileChanged(program);
+
+        var result = await backend.FindSymbolAsync("FreshlyAdded", CancellationToken.None);
+
+        var match = Assert.Single(result.Matches, candidate => !candidate.FromMetadata);
+        Assert.Equal("src/ConsoleApp/Program.cs", match.File);
+        Assert.Equal("class", match.Kind);
+        Assert.Equal(5, match.Line);
+    }
+
+    [Fact]
     public async Task The_tool_finds_a_symbol_on_the_fixture()
     {
         using var fixture = Fixtures.CopySolution("console-app");

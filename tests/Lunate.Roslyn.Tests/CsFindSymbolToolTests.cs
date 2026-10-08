@@ -37,22 +37,17 @@ public sealed class CsFindSymbolToolTests
     }
 
     [Fact]
-    public async Task A_missing_name_is_an_instructing_error()
+    public async Task An_empty_name_asks_for_a_name()
     {
-        var backend = new FakeBackend();
-        var tool = new CsFindSymbolTool(() => backend);
-
-        var result = await tool.ExecuteAsync(Args("{}"), Context, CancellationToken.None);
-
-        Assert.True(result.IsError);
-        Assert.Contains("name", result.Output, StringComparison.Ordinal);
-        Assert.Equal(0, backend.LoadCalls);
-    }
-
-    [Fact]
-    public async Task An_empty_name_is_an_instructing_error()
-    {
-        var backend = new FakeBackend();
+        var backend = new FakeBackend
+        {
+            Search = new SymbolSearchResult(
+                SymbolSearchStatus.Loaded,
+                "provide a symbol name to search for",
+                [],
+                0
+            ),
+        };
         var tool = new CsFindSymbolTool(() => backend);
 
         var result = await tool.ExecuteAsync(
@@ -61,9 +56,9 @@ public sealed class CsFindSymbolToolTests
             CancellationToken.None
         );
 
-        Assert.True(result.IsError);
-        Assert.Contains("name", result.Output, StringComparison.Ordinal);
-        Assert.Equal(0, backend.LoadCalls);
+        Assert.False(result.IsError);
+        Assert.Contains("symbol name", result.Output, StringComparison.Ordinal);
+        Assert.Equal(1, backend.SearchCalls);
     }
 
     [Fact]
@@ -86,7 +81,7 @@ public sealed class CsFindSymbolToolTests
     }
 
     [Fact]
-    public async Task The_name_is_passed_through_trimmed()
+    public async Task The_name_is_passed_through_to_the_backend()
     {
         var backend = new FakeBackend();
         var tool = new CsFindSymbolTool(() => backend);
@@ -97,7 +92,7 @@ public sealed class CsFindSymbolToolTests
             CancellationToken.None
         );
 
-        Assert.Equal("Calculator", backend.LastQuery);
+        Assert.Equal("  Calculator  ", backend.LastQuery);
     }
 
     [Fact]
