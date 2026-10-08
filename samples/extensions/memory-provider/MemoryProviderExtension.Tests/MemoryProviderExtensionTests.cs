@@ -16,7 +16,11 @@ public sealed class MemoryProviderExtensionTests
         using var temp = new TempDirectory();
         await using var host = CreateHost(temp);
 
-        await host.RunAsync(new ReplayChatClient(Fixture("memory-provider-capture-inject.jsonl")), "remember: alpha", Ct);
+        await host.RunAsync(
+            new ReplayChatClient(Fixture("memory-provider-capture-inject.jsonl")),
+            "remember: alpha",
+            Ct
+        );
         await host.StopAsync(Ct);
 
         Assert.Contains(
@@ -76,7 +80,11 @@ public sealed class MemoryProviderExtensionTests
         using var temp = new TempDirectory();
         await using var host = CreateHost(temp);
 
-        await host.RunAsync(new ReplayChatClient(Fixture("memory-provider-capture-inject.jsonl")), "remember: alpha", Ct);
+        await host.RunAsync(
+            new ReplayChatClient(Fixture("memory-provider-capture-inject.jsonl")),
+            "remember: alpha",
+            Ct
+        );
         await host.StopAsync(Ct);
 
         Assert.Single(
@@ -154,7 +162,10 @@ public sealed class MemoryProviderExtensionTests
             {
                 TempDirectory = temp.Root,
                 ExtensionId = "memory-provider",
-                ExtensionDirectory = Path.Combine(AppContext.BaseDirectory, "MemoryProviderExtension"),
+                ExtensionDirectory = Path.Combine(
+                    AppContext.BaseDirectory,
+                    "MemoryProviderExtension"
+                ),
                 HookRunnerOptions = hookRunnerOptions,
             }
         );

@@ -8,4 +8,4 @@
 
 ## 2. Close
 
-- [ ] 2.1 `dotnet csharpier format .`; `bash scripts/verify.sh` green (incl. de-AT); `openspec validate add-sample-memory-provider --type change --strict`; self-review; commit per group
+- [x] 2.1 `dotnet csharpier format .`; `bash scripts/verify.sh` green (incl. de-AT); `openspec validate add-sample-memory-provider --type change --strict`; self-review; commit per group

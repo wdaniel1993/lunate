@@ -42,7 +42,11 @@ public sealed class MemoryContextBuildingHandler(
             return ValueTask.FromResult(ContextBuildingResult.None);
         }
 
-        List<string> lines = [Heading, .. memories.Take(injected).Select(memory => $"- {memory.Text}")];
+        List<string> lines =
+        [
+            Heading,
+            .. memories.Take(injected).Select(memory => $"- {memory.Text}"),
+        ];
         log.Info(
             $"memory-provider[{extensionId}]: injected {injected} {(injected == 1 ? "memory" : "memories")}"
         );
