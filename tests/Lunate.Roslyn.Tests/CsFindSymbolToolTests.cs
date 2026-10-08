@@ -460,6 +460,18 @@ public sealed class CsFindSymbolToolTests
             return ValueTask.FromResult(Search);
         }
 
+        public ValueTask<ReferencesResult> FindReferencesAsync(string name, CancellationToken ct) =>
+            throw new InvalidOperationException("references are not used by this tool");
+
+        public ValueTask<OutlineResult> OutlineAsync(string file, CancellationToken ct) =>
+            throw new InvalidOperationException("outline is not used by this tool");
+
+        public ValueTask<RenamePlanResult> PlanRenameAsync(
+            string name,
+            string newName,
+            CancellationToken ct
+        ) => throw new InvalidOperationException("rename is not used by this tool");
+
         public void NotifyFileChanged(string absolutePath) { }
     }
 }

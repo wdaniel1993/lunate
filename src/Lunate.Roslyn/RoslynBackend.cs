@@ -1,7 +1,10 @@
 using System.Globalization;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.MSBuild;
+using Microsoft.CodeAnalysis.Rename;
 using Microsoft.CodeAnalysis.Text;
+using SymbolFinder = Microsoft.CodeAnalysis.FindSymbols.SymbolFinder;
 
 namespace Lunate.Roslyn;
 
@@ -23,6 +26,7 @@ public sealed class RoslynBackend : ICSharpBackend, IDisposable
 
     private string? _loadedSolution;
     private WorkspaceLoadResult? _loadedResult;
+    private WorkspaceLoadResult? _lastLoad;
 
     /// <summary>Creates a backend for the run/worktree root; nothing loads until <see cref="LoadAsync"/>.</summary>
     public RoslynBackend(string worktreeRoot)
@@ -40,7 +44,9 @@ public sealed class RoslynBackend : ICSharpBackend, IDisposable
         await _gate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
-            return await LoadCoreAsync(ct).ConfigureAwait(false);
+            var result = await LoadCoreAsync(ct).ConfigureAwait(false);
+            _lastLoad = result;
+            return result;
         }
         catch (OperationCanceledException)
         {
@@ -48,10 +54,12 @@ public sealed class RoslynBackend : ICSharpBackend, IDisposable
         }
         catch (Exception exception)
         {
-            return Failure(
+            var failure = Failure(
                 WorkspaceStatus.Partial,
                 $"the solution could not be loaded: {exception.Message}"
             );
+            _lastLoad = failure;
+            return failure;
         }
         finally
         {
@@ -106,6 +114,87 @@ public sealed class RoslynBackend : ICSharpBackend, IDisposable
                 SymbolSearchStatus.Partial,
                 $"symbol search failed: {exception.Message}",
                 [],
+                0
+            );
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    public async ValueTask<ReferencesResult> FindReferencesAsync(string name, CancellationToken ct)
+    {
+        await _gate.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            return await FindReferencesCoreAsync(name, ct).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            return new ReferencesResult(
+                SymbolSearchStatus.Partial,
+                $"reference search failed: {exception.Message}",
+                null,
+                [],
+                0
+            );
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    public ValueTask<OutlineResult> OutlineAsync(string file, CancellationToken ct)
+    {
+        _gate.Wait(ct);
+        try
+        {
+            return ValueTask.FromResult(OutlineCore(file));
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            return ValueTask.FromResult(
+                new OutlineResult($"outline failed: {exception.Message}", [], 0)
+            );
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    public async ValueTask<RenamePlanResult> PlanRenameAsync(
+        string name,
+        string newName,
+        CancellationToken ct
+    )
+    {
+        await _gate.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            return await PlanRenameCoreAsync(name, newName, ct).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            return new RenamePlanResult(
+                SymbolSearchStatus.Partial,
+                $"rename planning failed: {exception.Message}",
+                [],
+                0,
                 0
             );
         }
@@ -337,21 +426,10 @@ public sealed class RoslynBackend : ICSharpBackend, IDisposable
     {
         var failures = new CappedList<WorkspaceFailure>(MaxFailures);
         var (solution, _) = SyncChangedDocuments(entry, failures);
-
-        var compilations = new List<Compilation>();
-        foreach (var project in solution.Projects)
-        {
-            if (await project.GetCompilationAsync(ct).ConfigureAwait(false) is { } compilation)
-            {
-                compilations.Add(compilation);
-            }
-        }
+        var compilations = await CompilationsAsync(solution, ct).ConfigureAwait(false);
 
         var collected = SymbolCollector.Collect(compilations, query, _root, ct);
-        var status =
-            failures.Total > 0 || _loadedResult is { Status: WorkspaceStatus.Partial }
-                ? SymbolSearchStatus.Partial
-                : SymbolSearchStatus.Loaded;
+        var status = SearchStatus(failures);
 
         return new SymbolSearchResult(
             status,
@@ -398,6 +476,415 @@ public sealed class RoslynBackend : ICSharpBackend, IDisposable
 
         return message;
     }
+
+    private async Task<ReferencesResult> FindReferencesCoreAsync(string name, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return new ReferencesResult(
+                SymbolSearchStatus.Loaded,
+                "provide a symbol name to search for",
+                null,
+                [],
+                0
+            );
+        }
+
+        if (
+            _loadedSolution is not { } solutionPath
+            || !_workspaces.TryGet(solutionPath, out var entry)
+        )
+        {
+            return new ReferencesResult(
+                SymbolSearchStatus.NoSolution,
+                "no solution is loaded",
+                null,
+                [],
+                0
+            );
+        }
+
+        var query = name.Trim();
+        var failures = new CappedList<WorkspaceFailure>(MaxFailures);
+        var (solution, _) = SyncChangedDocuments(entry, failures);
+        var compilations = await CompilationsAsync(solution, ct).ConfigureAwait(false);
+        var resolved = SymbolResolver.Resolve(compilations, query, _root, ct);
+        var status = SearchStatus(failures);
+
+        if (resolved.Sources.Count == 0)
+        {
+            if (resolved.MetadataMatches.Count > 0)
+            {
+                return new ReferencesResult(
+                    status,
+                    "metadata symbol — no source references",
+                    resolved.MetadataMatches[0],
+                    [],
+                    0
+                )
+                {
+                    Failures = failures.Items,
+                    TotalFailureCount = failures.Total,
+                };
+            }
+
+            return new ReferencesResult(
+                status,
+                NotFoundMessage(query, resolved.CaseInsensitiveCandidate),
+                null,
+                [],
+                0
+            )
+            {
+                Failures = failures.Items,
+                TotalFailureCount = failures.Total,
+            };
+        }
+
+        if (resolved.Sources.Count > 1)
+        {
+            return new ReferencesResult(
+                status,
+                string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"'{query}' matches {resolved.Sources.Count} symbols; references need a unique symbol — use a dotted path to disambiguate"
+                ),
+                null,
+                [],
+                0
+            )
+            {
+                Candidates = Candidates(resolved),
+                Failures = failures.Items,
+                TotalFailureCount = failures.Total,
+            };
+        }
+
+        var target = resolved.Sources[0];
+        var declaration = target.Declarations[0];
+        if (declaration.FromMetadata)
+        {
+            return new ReferencesResult(
+                status,
+                "metadata symbol — no source references",
+                declaration,
+                [],
+                0
+            )
+            {
+                Failures = failures.Items,
+                TotalFailureCount = failures.Total,
+            };
+        }
+
+        List<ReferenceLocation> usages = [];
+        var found = await SymbolFinder
+            .FindReferencesAsync(target.Symbol, solution, ct)
+            .ConfigureAwait(false);
+        foreach (var referenced in found)
+        {
+            foreach (var location in referenced.Locations)
+            {
+                if (
+                    location.IsCandidateLocation
+                    || location.Location.SourceTree is not { } tree
+                    || string.IsNullOrWhiteSpace(tree.FilePath)
+                    || IsDeclarationLocation(target.Symbol, tree, location.Location.SourceSpan)
+                )
+                {
+                    continue;
+                }
+
+                var position = location.Location.GetLineSpan().StartLinePosition;
+                usages.Add(
+                    new ReferenceLocation(
+                        PathIdentity.RelativeOrAbsolute(_root, tree.FilePath),
+                        position.Line + 1,
+                        position.Character + 1
+                    )
+                );
+            }
+        }
+
+        var bounded = ReferencesCollector.Build(usages);
+        var message =
+            bounded.Total == 0
+                ? string.Create(CultureInfo.InvariantCulture, $"no references found for '{query}'")
+                : string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"found {bounded.Total} references to '{query}'"
+                );
+
+        return new ReferencesResult(status, message, declaration, bounded.Items, bounded.Total)
+        {
+            Truncated = bounded.Truncated,
+            Failures = failures.Items,
+            TotalFailureCount = failures.Total,
+        };
+    }
+
+    private OutlineResult OutlineCore(string file)
+    {
+        if (string.IsNullOrWhiteSpace(file))
+        {
+            return new OutlineResult("provide a file path relative to the worktree root", [], 0);
+        }
+
+        string canonical;
+        try
+        {
+            var candidate = Path.IsPathRooted(file) ? file : Path.Combine(_root, file);
+            canonical = PathIdentity.Canonicalize(candidate);
+        }
+        catch (Exception exception)
+            when (exception is ArgumentException or IOException or NotSupportedException)
+        {
+            return new OutlineResult(
+                $"the file path '{file}' could not be resolved: {exception.Message}",
+                [],
+                0
+            );
+        }
+
+        var display = PathIdentity.RelativeOrAbsolute(_root, canonical);
+        if (!PathIdentity.IsUnder(_root, canonical))
+        {
+            return new OutlineResult(
+                $"'{display}' is outside the worktree root; outline files inside it",
+                [],
+                0
+            );
+        }
+
+        if (!File.Exists(canonical))
+        {
+            return new OutlineResult(
+                $"file not found: '{display}'; check the path relative to the worktree root",
+                [],
+                0
+            );
+        }
+
+        string text;
+        try
+        {
+            text = File.ReadAllText(canonical);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            return new OutlineResult($"could not read '{display}': {exception.Message}", [], 0);
+        }
+
+        var walked = OutlineCollector.Walk(CSharpSyntaxTree.ParseText(text, path: canonical));
+        var message = walked.Total switch
+        {
+            0 when string.IsNullOrWhiteSpace(text) => "the file is empty",
+            0 => string.Create(
+                CultureInfo.InvariantCulture,
+                $"no declarations found in '{display}'"
+            ),
+            _ => string.Create(
+                CultureInfo.InvariantCulture,
+                $"found {walked.Total} declarations in '{display}'"
+            ),
+        };
+
+        return new OutlineResult(message, walked.Items, walked.Total)
+        {
+            Truncated = walked.Truncated,
+        };
+    }
+
+    private async Task<RenamePlanResult> PlanRenameCoreAsync(
+        string name,
+        string newName,
+        CancellationToken ct
+    )
+    {
+        if (!SyntaxFacts.IsValidIdentifier(newName))
+        {
+            return NoPlan(
+                SymbolSearchStatus.Loaded,
+                $"'{newName}' is not a valid C# identifier: it must start with a letter or underscore, contain only letters, digits or underscores, and not be a C# keyword"
+            );
+        }
+
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return NoPlan(SymbolSearchStatus.Loaded, "provide a symbol name to rename");
+        }
+
+        if (
+            _loadedSolution is not { } solutionPath
+            || !_workspaces.TryGet(solutionPath, out var entry)
+        )
+        {
+            if (
+                _lastLoad is
+                { Status: WorkspaceStatus.RestoreRequired or WorkspaceStatus.NoSdk } last
+            )
+            {
+                return new RenamePlanResult(
+                    last.Status == WorkspaceStatus.RestoreRequired
+                        ? SymbolSearchStatus.RestoreRequired
+                        : SymbolSearchStatus.NoSdk,
+                    last.Message,
+                    [],
+                    0,
+                    0
+                );
+            }
+
+            return new RenamePlanResult(
+                SymbolSearchStatus.NoSolution,
+                "no solution is loaded",
+                [],
+                0,
+                0
+            );
+        }
+
+        var query = name.Trim();
+        var failures = new CappedList<WorkspaceFailure>(MaxFailures);
+        var (solution, _) = SyncChangedDocuments(entry, failures);
+        var compilations = await CompilationsAsync(solution, ct).ConfigureAwait(false);
+        var resolved = SymbolResolver.Resolve(compilations, query, _root, ct);
+        var status = SearchStatus(failures);
+
+        if (resolved.Sources.Count == 0)
+        {
+            return resolved.MetadataMatches.Count > 0
+                ? NoPlan(status, "metadata symbol — no source references")
+                : NoPlan(status, NotFoundMessage(query, resolved.CaseInsensitiveCandidate));
+        }
+
+        if (resolved.Sources.Count > 1)
+        {
+            return NoPlan(
+                status,
+                string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"'{query}' matches {resolved.Sources.Count} symbols; rename needs a unique symbol — use a dotted path to disambiguate"
+                )
+            ) with
+            {
+                Candidates = Candidates(resolved),
+                Failures = failures.Items,
+                TotalFailureCount = failures.Total,
+            };
+        }
+
+        var target = resolved.Sources[0];
+        if (target.Declarations.All(declaration => declaration.FromMetadata))
+        {
+            return NoPlan(status, "metadata symbol — no source references");
+        }
+
+        var renamed = await Renamer
+            .RenameSymbolAsync(solution, target.Symbol, new SymbolRenameOptions(), newName, ct)
+            .ConfigureAwait(false);
+
+        List<RenameText> documents = [];
+        foreach (var document in solution.Projects.SelectMany(project => project.Documents))
+        {
+            if (
+                document.FilePath is not { } path
+                || renamed.GetDocument(document.Id) is not { } updated
+            )
+            {
+                continue;
+            }
+
+            var oldText = (await document.GetTextAsync(ct).ConfigureAwait(false)).ToString();
+            var newText = (await updated.GetTextAsync(ct).ConfigureAwait(false)).ToString();
+            if (!string.Equals(oldText, newText, StringComparison.Ordinal))
+            {
+                documents.Add(
+                    new RenameText(PathIdentity.RelativeOrAbsolute(_root, path), oldText, newText)
+                );
+            }
+        }
+
+        documents.Sort((left, right) => string.CompareOrdinal(left.File, right.File));
+        var plan = RenamePlanner.Build(documents);
+        var message = string.Create(
+            CultureInfo.InvariantCulture,
+            $"planned {plan.TotalChangeCount} change(s) in {plan.TotalFileCount} file(s); nothing was changed — apply via edit/write"
+        );
+
+        return new RenamePlanResult(
+            status,
+            message,
+            plan.Changes,
+            plan.TotalFileCount,
+            plan.TotalChangeCount
+        )
+        {
+            Truncated = plan.Truncated,
+            Failures = failures.Items,
+            TotalFailureCount = failures.Total,
+        };
+    }
+
+    private static async Task<List<Compilation>> CompilationsAsync(
+        Solution solution,
+        CancellationToken ct
+    )
+    {
+        List<Compilation> compilations = [];
+        foreach (var project in solution.Projects)
+        {
+            if (await project.GetCompilationAsync(ct).ConfigureAwait(false) is { } compilation)
+            {
+                compilations.Add(compilation);
+            }
+        }
+
+        return compilations;
+    }
+
+    private static bool IsDeclarationLocation(ISymbol symbol, SyntaxTree tree, TextSpan span)
+    {
+        foreach (var reference in symbol.DeclaringSyntaxReferences)
+        {
+            if (reference.SyntaxTree == tree && reference.Span.Contains(span))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static string NotFoundMessage(string query, string? caseInsensitiveCandidate) =>
+        caseInsensitiveCandidate is { } candidate
+            ? $"no definition found for '{query}'; C# is case-sensitive — did you mean '{candidate}'?"
+            : $"no definition found for '{query}'; check the spelling or search for the simple name";
+
+    private static IReadOnlyList<SymbolMatch> Candidates(ResolvedSymbols resolved)
+    {
+        var capped = new CappedList<SymbolMatch>(SymbolCollector.MaxMatches);
+        foreach (var match in resolved.OrderedMatches)
+        {
+            capped.Add(match);
+        }
+
+        return capped.Items;
+    }
+
+    private static RenamePlanResult NoPlan(SymbolSearchStatus status, string message) =>
+        new(
+            status,
+            string.Concat(message, "; nothing was changed — apply via edit/write"),
+            [],
+            0,
+            0
+        );
+
+    private SymbolSearchStatus SearchStatus(CappedList<WorkspaceFailure> failures) =>
+        failures.Total > 0 || _loadedResult is { Status: WorkspaceStatus.Partial }
+            ? SymbolSearchStatus.Partial
+            : SymbolSearchStatus.Loaded;
 
     private async Task<DiagnosticsResult> GetDiagnosticsCoreAsync(
         DiagnosticsScope scope,

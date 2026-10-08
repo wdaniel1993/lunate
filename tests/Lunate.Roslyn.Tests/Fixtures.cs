@@ -31,7 +31,10 @@ internal static class Fixtures
             Guid.NewGuid().ToString("N")
         );
         CopyDirectory(source, root);
-        return new FixtureSolution(root);
+        // Canonicalize the temp root: on macOS Path.GetTempPath() returns the /var symlink alias,
+        // and a restore graph that mixes /var and /private/var spellings restores the same project
+        // twice, racing on its obj files.
+        return new FixtureSolution(PathIdentity.Canonicalize(root));
     }
 
     /// <summary>Restores the copied solution offline: package-free fixtures and a cleared source list.</summary>

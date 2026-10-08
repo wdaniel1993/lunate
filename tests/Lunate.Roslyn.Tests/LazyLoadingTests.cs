@@ -12,6 +12,9 @@ public sealed class LazyLoadingTests
     private const string MarkerVariable = "LUNATE_LAZY_PROBE_MARKER";
     private const string DiagnosticsTool = "diagnostics";
     private const string FindSymbolTool = "find_symbol";
+    private const string FindReferencesTool = "find_references";
+    private const string OutlineTool = "outline";
+    private const string RenameTool = "rename";
 
     [Fact]
     public Task The_diagnostics_tool_does_not_touch_roslyn_or_msbuild_before_the_first_call() =>
@@ -25,6 +28,27 @@ public sealed class LazyLoadingTests
         RunProbeAsync(
             FindSymbolTool,
             nameof(The_find_symbol_tool_does_not_touch_roslyn_or_msbuild_before_the_first_call)
+        );
+
+    [Fact]
+    public Task The_find_references_tool_does_not_touch_roslyn_or_msbuild_before_the_first_call() =>
+        RunProbeAsync(
+            FindReferencesTool,
+            nameof(The_find_references_tool_does_not_touch_roslyn_or_msbuild_before_the_first_call)
+        );
+
+    [Fact]
+    public Task The_outline_tool_does_not_touch_roslyn_or_msbuild_before_the_first_call() =>
+        RunProbeAsync(
+            OutlineTool,
+            nameof(The_outline_tool_does_not_touch_roslyn_or_msbuild_before_the_first_call)
+        );
+
+    [Fact]
+    public Task The_rename_tool_does_not_touch_roslyn_or_msbuild_before_the_first_call() =>
+        RunProbeAsync(
+            RenameTool,
+            nameof(The_rename_tool_does_not_touch_roslyn_or_msbuild_before_the_first_call)
         );
 
     private static async Task RunProbeAsync(string tool, string methodName)
@@ -73,32 +97,86 @@ public sealed class LazyLoadingTests
         using var fixture = Fixtures.CopySolution("console-app");
         var context = new ToolContext(fixture.Root, new NoopAgentEvents());
         ToolResult result;
+        var expectError = true;
 
-        if (tool == DiagnosticsTool)
+        switch (tool)
         {
-            var diagnostics = new CsDiagnosticsTool(() => new RoslynBackend(fixture.Root));
-            Assert.Empty(LoadedRoslynOrMsBuildAssemblies());
+            case DiagnosticsTool:
+            {
+                var diagnostics = new CsDiagnosticsTool(() => new RoslynBackend(fixture.Root));
+                Assert.Empty(LoadedRoslynOrMsBuildAssemblies());
 
-            result = await diagnostics.ExecuteAsync(
-                JsonDocument.Parse("{}").RootElement.Clone(),
-                context,
-                CancellationToken.None
-            );
+                result = await diagnostics.ExecuteAsync(
+                    JsonDocument.Parse("{}").RootElement.Clone(),
+                    context,
+                    CancellationToken.None
+                );
+                break;
+            }
+
+            case FindSymbolTool:
+            {
+                var findSymbol = new CsFindSymbolTool(() => new RoslynBackend(fixture.Root));
+                Assert.Empty(LoadedRoslynOrMsBuildAssemblies());
+
+                result = await findSymbol.ExecuteAsync(
+                    JsonDocument.Parse("""{"name":"Calculator"}""").RootElement.Clone(),
+                    context,
+                    CancellationToken.None
+                );
+                break;
+            }
+
+            case FindReferencesTool:
+            {
+                var findReferences = new CsFindReferencesTool(() =>
+                    new RoslynBackend(fixture.Root)
+                );
+                Assert.Empty(LoadedRoslynOrMsBuildAssemblies());
+
+                result = await findReferences.ExecuteAsync(
+                    JsonDocument.Parse("""{"name":"Calculator"}""").RootElement.Clone(),
+                    context,
+                    CancellationToken.None
+                );
+                break;
+            }
+
+            case OutlineTool:
+            {
+                var outline = new CsOutlineTool(() => new RoslynBackend(fixture.Root));
+                Assert.Empty(LoadedRoslynOrMsBuildAssemblies());
+
+                result = await outline.ExecuteAsync(
+                    JsonDocument
+                        .Parse("""{"file":"src/ConsoleApp/Calculator.cs"}""")
+                        .RootElement.Clone(),
+                    context,
+                    CancellationToken.None
+                );
+                expectError = false;
+                break;
+            }
+
+            default:
+            {
+                var rename = new CsRenameTool(() => new RoslynBackend(fixture.Root));
+                Assert.Empty(LoadedRoslynOrMsBuildAssemblies());
+
+                result = await rename.ExecuteAsync(
+                    JsonDocument
+                        .Parse("""{"name":"Calculator","newName":"Counter"}""")
+                        .RootElement.Clone(),
+                    context,
+                    CancellationToken.None
+                );
+                break;
+            }
         }
-        else
-        {
-            var findSymbol = new CsFindSymbolTool(() => new RoslynBackend(fixture.Root));
-            Assert.Empty(LoadedRoslynOrMsBuildAssemblies());
 
-            result = await findSymbol.ExecuteAsync(
-                JsonDocument.Parse("""{"name":"Calculator"}""").RootElement.Clone(),
-                context,
-                CancellationToken.None
-            );
-        }
-
-        // The fixture is never restored here, so the first call must report restore-required.
-        Assert.True(result.IsError);
+        // The fixture is never restored here: every load path reports restore-required, while the
+        // syntax-only outline succeeds without a load.
+        Assert.Equal(expectError, result.IsError);
         Assert.NotEmpty(LoadedRoslynOrMsBuildAssemblies());
     }
 

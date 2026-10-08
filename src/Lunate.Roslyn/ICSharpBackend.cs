@@ -23,6 +23,27 @@ public interface ICSharpBackend
     /// </summary>
     ValueTask<SymbolSearchResult> FindSymbolAsync(string name, CancellationToken ct);
 
+    /// <summary>
+    /// Lists the usage sites of an exactly resolved symbol: a simple name only when it is unique,
+    /// a dotted container path to disambiguate. Ambiguous names return candidates instead of
+    /// guessing, metadata symbols return a message, and the declaration site is reported once in
+    /// <see cref="ReferencesResult.Resolved"/>. Failures return a status instead of throwing.
+    /// </summary>
+    ValueTask<ReferencesResult> FindReferencesAsync(string name, CancellationToken ct);
+
+    /// <summary>
+    /// Lists one file's types and member signatures without bodies, straight from the syntax tree.
+    /// Works without a loaded solution; a missing or unreadable file returns an actionable message.
+    /// </summary>
+    ValueTask<OutlineResult> OutlineAsync(string file, CancellationToken ct);
+
+    /// <summary>
+    /// Plans a solution-wide rename and returns the proposed per-file line edits. Nothing is
+    /// applied: the forked solution is compared only, the workspace and disk stay untouched, and
+    /// the plan is applied through the edit path. Failures return a status instead of throwing.
+    /// </summary>
+    ValueTask<RenamePlanResult> PlanRenameAsync(string name, string newName, CancellationToken ct);
+
     /// <summary>Marks a file dirty so the next diagnostics run re-reads it immediately.</summary>
     void NotifyFileChanged(string absolutePath);
 }
