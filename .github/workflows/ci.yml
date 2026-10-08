@@ -79,6 +79,14 @@ jobs:
             Directory.Build.props
             **/*.csproj
 
+      # The de-AT culture pass runs under LC_ALL=de_AT.UTF-8. The ubuntu runner
+      # image does not ship that locale, so bash children warn to stderr
+      # ("setlocale: LC_ALL: cannot change locale"), which tests that capture a
+      # child's stderr exactly would see. Generate it so the pass is faithful.
+      - name: Generate de_AT locale (Linux)
+        if: runner.os == 'Linux'
+        run: sudo locale-gen de_AT.UTF-8
+
       - name: Install hyperfine (Linux)
         if: runner.os == 'Linux'
         run: |
