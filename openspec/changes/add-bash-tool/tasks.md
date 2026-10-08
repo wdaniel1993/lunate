@@ -2,8 +2,8 @@
 
 ## 1. ShellResolver (TDD, red-first)
 
-- [ ] 1.1 Resolution per the guide table (Unix + Windows orders, WSL exclusion, override seam, display names, caching); injectable probes; no-shell → null
-- [ ] 1.2 `ShellResolverTests`: every branch on every OS via probes
+- [x] 1.1 Resolution per the guide table (Unix + Windows orders, WSL exclusion, override seam, display names, caching); injectable probes; no-shell → null
+- [x] 1.2 `ShellResolverTests`: every branch on every OS via probes
 
 ## 2. BashTool (TDD, red-first)
 
