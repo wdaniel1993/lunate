@@ -165,10 +165,19 @@ public sealed class BashToolTests
         using var temp = new TempDirectory();
         var pidFile = temp.File("grandchild.pid");
 
-        var result = await RunAsync(temp, TreeCommand(), TimeSpan.FromSeconds(2));
+        // Windows needs a longer window: PowerShell's cold start on a fresh runner can exceed
+        // the short Unix timeout, so the pid would never be written before the tree is killed.
+        var timeout = OperatingSystem.IsWindows()
+            ? TimeSpan.FromSeconds(10)
+            : TimeSpan.FromSeconds(2);
+
+        var result = await RunAsync(temp, TreeCommand(), timeout);
 
         Assert.True(result.IsError);
-        Assert.Contains("timed out after 2s; process tree killed", result.Output);
+        Assert.Contains(
+            $"timed out after {timeout.TotalSeconds.ToString("0.###", CultureInfo.InvariantCulture)}s; process tree killed",
+            result.Output
+        );
         var pid = await WaitForPidAsync(pidFile);
         await AssertEventuallyDeadAsync(pid);
     }
@@ -241,33 +250,44 @@ public sealed class BashToolTests
 
     private static string TreeCommand() =>
         OperatingSystem.IsWindows()
-            ? "powershell.exe -NoProfile -Command '$PID' > grandchild.pid & sleep 300"
+            ? "powershell.exe -NoProfile -Command 'Set-Content -Path grandchild.pid -Value $PID; Start-Sleep 300' & sleep 300"
             : "sh -c 'echo $$ > grandchild.pid; exec sleep 300' & sleep 300";
 
     private static async Task<int> WaitForPidAsync(string pidFile)
     {
-        for (var attempt = 0; attempt < 50; attempt++)
+        for (var attempt = 0; attempt < 150; attempt++)
         {
             if (File.Exists(pidFile))
             {
-                var text = File.ReadAllText(pidFile).Trim();
-                if (
-                    int.TryParse(
-                        text,
-                        NumberStyles.Integer,
-                        CultureInfo.InvariantCulture,
-                        out var pid
-                    )
-                )
+                try
                 {
-                    return pid;
+                    var text = File.ReadAllText(pidFile).Trim();
+                    if (
+                        int.TryParse(
+                            text,
+                            NumberStyles.Integer,
+                            CultureInfo.InvariantCulture,
+                            out var pid
+                        )
+                    )
+                    {
+                        return pid;
+                    }
+                }
+                catch (IOException)
+                {
+                    // The writer may still hold the file briefly (Windows sharing); retry.
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    // The file exists but is momentarily unreadable; retry.
                 }
             }
 
             await Task.Delay(100);
         }
 
-        Assert.Fail($"no pid was written to {pidFile} within 5 seconds");
+        Assert.Fail($"no pid was written to {pidFile} within 15 seconds");
         return 0;
     }
 
