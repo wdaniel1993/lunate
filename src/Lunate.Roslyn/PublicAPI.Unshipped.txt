@@ -23,6 +23,10 @@ Lunate.Roslyn.DiagnosticsResult.DiagnosticsResult(System.Collections.Generic.IRe
 Lunate.Roslyn.DiagnosticsResult.Equals(Lunate.Roslyn.DiagnosticsResult? other) -> bool
 Lunate.Roslyn.DiagnosticsResult.ErrorCount.get -> int
 Lunate.Roslyn.DiagnosticsResult.ErrorCount.init -> void
+Lunate.Roslyn.DiagnosticsResult.Failures.get -> System.Collections.Generic.IReadOnlyList<Lunate.Roslyn.WorkspaceFailure!>!
+Lunate.Roslyn.DiagnosticsResult.Failures.init -> void
+Lunate.Roslyn.DiagnosticsResult.TotalFailureCount.get -> int
+Lunate.Roslyn.DiagnosticsResult.TotalFailureCount.init -> void
 Lunate.Roslyn.DiagnosticsResult.Items.get -> System.Collections.Generic.IReadOnlyList<Lunate.Roslyn.DiagnosticsItem!>!
 Lunate.Roslyn.DiagnosticsResult.Items.init -> void
 Lunate.Roslyn.DiagnosticsResult.ScopeDescription.get -> string!
@@ -95,3 +99,9 @@ static Lunate.Roslyn.WorkspaceFailure.operator !=(Lunate.Roslyn.WorkspaceFailure
 static Lunate.Roslyn.WorkspaceFailure.operator ==(Lunate.Roslyn.WorkspaceFailure? left, Lunate.Roslyn.WorkspaceFailure? right) -> bool
 static Lunate.Roslyn.WorkspaceLoadResult.operator !=(Lunate.Roslyn.WorkspaceLoadResult? left, Lunate.Roslyn.WorkspaceLoadResult? right) -> bool
 static Lunate.Roslyn.WorkspaceLoadResult.operator ==(Lunate.Roslyn.WorkspaceLoadResult? left, Lunate.Roslyn.WorkspaceLoadResult? right) -> bool
+Lunate.Roslyn.RoslynBackend
+Lunate.Roslyn.RoslynBackend.Dispose() -> void
+Lunate.Roslyn.RoslynBackend.GetDiagnosticsAsync(Lunate.Roslyn.DiagnosticsScope scope, System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask<Lunate.Roslyn.DiagnosticsResult!>
+Lunate.Roslyn.RoslynBackend.LoadAsync(System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask<Lunate.Roslyn.WorkspaceLoadResult!>
+Lunate.Roslyn.RoslynBackend.NotifyFileChanged(string! absolutePath) -> void
+Lunate.Roslyn.RoslynBackend.RoslynBackend(string! worktreeRoot) -> void
