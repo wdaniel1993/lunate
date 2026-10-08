@@ -165,6 +165,34 @@ public sealed class CsRenameGateTests(ITestOutputHelper output)
     }
 
     [Fact]
+    public async Task The_tool_plans_a_rename_and_says_nothing_changed()
+    {
+        using var fixture = Fixtures.CopySolution("lib-with-tests");
+        Fixtures.Restore(fixture, "LibWithTests.sln");
+        var tool = new CsRenameTool(() => new RoslynBackend(fixture.Root));
+
+        var result = await tool.ExecuteAsync(
+            System
+                .Text.Json.JsonDocument.Parse("""{"name":"Divide","newName":"Quotient"}""")
+                .RootElement.Clone(),
+            new Lunate.Agent.ToolContext(fixture.Root, new NoopAgentEvents()),
+            CancellationToken.None
+        );
+
+        Assert.False(result.IsError);
+        Assert.Contains("nothing was changed", result.Output, StringComparison.Ordinal);
+        Assert.Contains("apply via edit/write", result.Output, StringComparison.Ordinal);
+        Assert.Contains(
+            "src/CalculatorLib/Calculator.cs:9",
+            result.Output,
+            StringComparison.Ordinal
+        );
+        var plan = Assert.IsType<RenamePlanResult>(result.Details);
+        Assert.Equal(3, plan.TotalFileCount);
+        Assert.Equal(4, plan.TotalChangeCount);
+    }
+
+    [Fact]
     public async Task A_warm_rename_plan_is_fast()
     {
         using var fixture = Fixtures.CopySolution("lib-with-tests");

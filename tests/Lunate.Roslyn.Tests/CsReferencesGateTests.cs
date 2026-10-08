@@ -183,6 +183,34 @@ public sealed class CsReferencesGateTests(ITestOutputHelper output)
     }
 
     [Fact]
+    public async Task The_tool_finds_references_on_the_fixture()
+    {
+        using var fixture = Fixtures.CopySolution("lib-with-tests");
+        Fixtures.Restore(fixture, "LibWithTests.sln");
+        var tool = new CsFindReferencesTool(() => new RoslynBackend(fixture.Root));
+
+        var result = await tool.ExecuteAsync(
+            System.Text.Json.JsonDocument.Parse("""{"name":"Divide"}""").RootElement.Clone(),
+            new Lunate.Agent.ToolContext(fixture.Root, new NoopAgentEvents()),
+            CancellationToken.None
+        );
+
+        Assert.False(result.IsError);
+        Assert.Contains(
+            "definition: src/CalculatorLib/Calculator.cs:9",
+            result.Output,
+            StringComparison.Ordinal
+        );
+        Assert.Contains(
+            "tests/CalculatorLib.Tests/Program.cs:4:48",
+            result.Output,
+            StringComparison.Ordinal
+        );
+        var references = Assert.IsType<ReferencesResult>(result.Details);
+        Assert.Equal(3, references.TotalReferenceCount);
+    }
+
+    [Fact]
     public async Task A_warm_reference_search_is_fast()
     {
         using var fixture = Fixtures.CopySolution("lib-with-tests");

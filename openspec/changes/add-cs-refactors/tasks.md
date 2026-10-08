@@ -10,8 +10,8 @@
 
 ## 2. Tools
 
-- [ ] 2.1 `cs_find_references`, `cs_outline`, `cs_rename` per design (schemas, descriptions, read-only, text + Details, lazy backend)
-- [ ] 2.2 Tool tests; lazy-loading assertions extended to all five tools
+- [x] 2.1 `cs_find_references`, `cs_outline`, `cs_rename` per design (schemas, descriptions, read-only, text + Details, lazy backend)
+- [x] 2.2 Tool tests; lazy-loading assertions extended to all five tools
 
 ## 3. Close
 

@@ -207,6 +207,25 @@ public sealed class CsOutlineGateTests(ITestOutputHelper output)
     }
 
     [Fact]
+    public async Task The_tool_outlines_the_fixture_file()
+    {
+        using var fixture = Fixtures.CopySolution("console-app");
+        var tool = new CsOutlineTool(() => new RoslynBackend(fixture.Root));
+
+        var result = await tool.ExecuteAsync(
+            System
+                .Text.Json.JsonDocument.Parse("""{"file":"src/ConsoleApp/Calculator.cs"}""")
+                .RootElement.Clone(),
+            new Lunate.Agent.ToolContext(fixture.Root, new NoopAgentEvents()),
+            CancellationToken.None
+        );
+
+        Assert.False(result.IsError);
+        Assert.Contains("public static int Add(int left, int right)", result.Output);
+        Assert.Contains("public static class Calculator", result.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task A_warm_outline_is_fast()
     {
         using var fixture = Fixtures.CopySolution("console-app");
