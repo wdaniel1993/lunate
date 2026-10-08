@@ -1,3 +1,4 @@
+using System.Globalization;
 using Lunate.Extensibility.Abstractions;
 
 namespace MemoryProviderExtension;
@@ -48,7 +49,7 @@ public sealed class MemoryContextBuildingHandler(
             .. memories.Take(injected).Select(memory => $"- {memory.Text}"),
         ];
         log.Info(
-            $"memory-provider[{extensionId}]: injected {injected} {(injected == 1 ? "memory" : "memories")}"
+            $"memory-provider[{extensionId}]: prepared memory section ({injected.ToString(CultureInfo.InvariantCulture)} {(injected == 1 ? "memory" : "memories")}; per-extension budget applies downstream)"
         );
         return ValueTask.FromResult(
             new ContextBuildingResult([new ContextMessage("system", string.Join("\n", lines))])

@@ -50,7 +50,43 @@ public sealed class MemoryProviderExtensionTests
 
         Assert.Contains(
             host.Log.Messages,
-            message => message.Contains("injected 1 memory", StringComparison.Ordinal)
+            message =>
+                message.Contains("prepared memory section (1 memory;", StringComparison.Ordinal)
+        );
+    }
+
+    [Fact]
+    public async Task Re_scans_of_the_same_marker_do_not_duplicate_the_memory()
+    {
+        using var temp = new TempDirectory();
+        await using var host = CreateHost(temp);
+        var client = new ReplayChatClient(Fixture("memory-provider-capture-inject.jsonl"));
+
+        await host.RunAsync(client, "remember: alpha", Ct);
+        await host.RunAsync(client, "go", Ct);
+        await host.RunAsync(new TextReplyChatClient("done"), "again", Ct);
+        await host.StopAsync(Ct);
+
+        Assert.Single(
+            host.Log.Messages,
+            message => message.Contains("remembered: alpha", StringComparison.Ordinal)
+        );
+        SessionExtensionEntry[] entries =
+        [
+            .. Session.Load(host.SessionPath).Entries.OfType<SessionExtensionEntry>(),
+        ];
+        Assert.Equal([1, 0, 0], entries.Select(entry => (int)entry.Payload!["count"]!));
+        Assert.All(
+            host.Log.Messages.Where(message =>
+                message.Contains("prepared memory section", StringComparison.Ordinal)
+            ),
+            message => Assert.Contains("(1 memory;", message, StringComparison.Ordinal)
+        );
+        Assert.Equal(
+            2,
+            host.Log.Messages.Count(message =>
+                message.Contains("prepared memory section", StringComparison.Ordinal)
+            )
         );
     }
 
@@ -69,7 +105,8 @@ public sealed class MemoryProviderExtensionTests
         Assert.Single(first.Events.OfType<CompactionApplied>());
         Assert.Contains(
             host.Log.Messages,
-            message => message.Contains("injected 1 memory", StringComparison.Ordinal)
+            message =>
+                message.Contains("prepared memory section (1 memory;", StringComparison.Ordinal)
         );
         Assert.Equal(2, SessionAssertions.CountExtensions(host.SessionPath, "memory-provider"));
     }
