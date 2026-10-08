@@ -42,4 +42,17 @@ public sealed class CappedListTests
         Assert.Equal(0, list.Total);
         Assert.False(list.Truncated);
     }
+
+    [Fact]
+    public void Items_is_a_snapshot()
+    {
+        var list = new CappedList<int>(3);
+        list.Add(1);
+
+        var captured = list.Items;
+        list.Add(2);
+
+        Assert.Equal(new[] { 1 }, captured);
+        Assert.Equal(new[] { 1, 2 }, list.Items);
+    }
 }
