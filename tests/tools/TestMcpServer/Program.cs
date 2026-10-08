@@ -24,14 +24,10 @@ void Mark(string line)
 Mark(string.Create(CultureInfo.InvariantCulture, $"started pid={Environment.ProcessId}"));
 
 var tools = new McpServerPrimitiveCollection<McpServerTool>();
-var serverOptions = new McpServerOptions
-{
-    ServerInfo = new Implementation { Name = "test-mcp-server", Version = "1.0.0" },
-    Capabilities = new ServerCapabilities { Tools = new ToolsCapability { ListChanged = true } },
-    ToolCollection = tools,
-};
-var server = McpServer.Create(new StdioServerTransport("test-mcp-server"), serverOptions);
 
+// Every tool is added BEFORE McpServer.Create: the server wires the collection's Changed
+// events to tools/list_changed notifications during Create, so adds that happen later but
+// still pre-session can queue stray notifications that land once the client session starts.
 tools.Add(
     McpServerTool.Create(
         (Func<string, string>)Echo,
@@ -80,6 +76,14 @@ tools.Add(
         }
     )
 );
+
+var serverOptions = new McpServerOptions
+{
+    ServerInfo = new Implementation { Name = "test-mcp-server", Version = "1.0.0" },
+    Capabilities = new ServerCapabilities { Tools = new ToolsCapability { ListChanged = true } },
+    ToolCollection = tools,
+};
+var server = McpServer.Create(new StdioServerTransport("test-mcp-server"), serverOptions);
 
 await server.RunAsync();
 

@@ -70,12 +70,26 @@ public sealed class McpServerHostTests
     public async Task Spawn_tool_refreshes_the_tool_set_and_keeps_adapter_identity()
     {
         using var temp = new TempDirectory();
-        var changed = new TaskCompletionSource<IReadOnlyList<ITool>>(
-            TaskCreationOptions.RunContinuationsAsynchronously
-        );
+        // Collect every refresh instead of the first one: the server can emit more than one
+        // tool-list change around a registration (the SDK sends list_changed per collection
+        // change, fire-and-forget), so the assertion targets the refreshed set that contains
+        // the new tool — and waits, bounded, for it to arrive.
+        var refreshes = new List<IReadOnlyList<ITool>>();
+        var seen = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         await using var host = new McpServerHost(
             McpTestEnvironment.Options(temp.File("marker.txt")),
-            tools => changed.TrySetResult(tools)
+            tools =>
+            {
+                lock (refreshes)
+                {
+                    refreshes.Add(tools);
+                }
+
+                if (tools.Any(tool => tool.Name == "server__late_tool"))
+                {
+                    seen.TrySetResult();
+                }
+            }
         );
 
         var first = await host.GetToolsAsync(Ct);
@@ -89,7 +103,14 @@ public sealed class McpServerHostTests
         );
 
         Assert.False(result.IsError);
-        var updated = await changed.Task.WaitAsync(TimeSpan.FromSeconds(15), Ct);
+        await seen.Task.WaitAsync(TimeSpan.FromSeconds(30), Ct);
+
+        IReadOnlyList<ITool> updated;
+        lock (refreshes)
+        {
+            updated = refreshes.First(tools => tools.Any(tool => tool.Name == "server__late_tool"));
+        }
+
         Assert.Contains(updated, tool => tool.Name == "server__late_tool");
         Assert.Same(echoBefore, updated.Single(tool => tool.Name == "server__echo"));
     }
