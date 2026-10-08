@@ -9,6 +9,10 @@ try {
     $configuration = if ($env:CONFIGURATION) { $env:CONFIGURATION } else { 'Release' }
     $publishDir = 'artifacts/publish'
 
+    # English-first gate output: pin the dotnet CLI / test-runner UI language
+    # (parity with scripts/verify.sh). Only UI strings are pinned, never cultures.
+    if (-not $env:DOTNET_CLI_UI_LANGUAGE) { $env:DOTNET_CLI_UI_LANGUAGE = 'en' }
+
     function Measure-StartupMedian {
         param($Bin, $File)
         Write-Host "verify: benchmarking: $Bin --version"
