@@ -1,7 +1,7 @@
 # protocols Specification
 
 ## Purpose
-TBD - created by archiving change add-mcp-client. Update Purpose after archive.
+Lunate speaks external agent tool protocols from `Lunate.Protocols`. v1 is an MCP client: stdio servers start lazily, their tools become Lunate tools (`server__tool`, risk `Execute` so the approval policy applies), tool-list changes refresh, and calls honor cancellation, timeouts and server failures without ever crashing a run. Remote transports and ACP follow the same split: protocol I/O here, semantics in the core.
 
 ## Requirements
 
