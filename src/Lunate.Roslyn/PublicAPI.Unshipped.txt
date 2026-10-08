@@ -56,16 +56,127 @@ Lunate.Roslyn.DiagnosticsSeverity
 Lunate.Roslyn.DiagnosticsSeverity.Error = 0 -> Lunate.Roslyn.DiagnosticsSeverity
 Lunate.Roslyn.DiagnosticsSeverity.Warning = 1 -> Lunate.Roslyn.DiagnosticsSeverity
 Lunate.Roslyn.ICSharpBackend
+Lunate.Roslyn.ICSharpBackend.FindReferencesAsync(string! name, System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask<Lunate.Roslyn.ReferencesResult!>
 Lunate.Roslyn.ICSharpBackend.FindSymbolAsync(string! name, System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask<Lunate.Roslyn.SymbolSearchResult!>
 Lunate.Roslyn.ICSharpBackend.GetDiagnosticsAsync(Lunate.Roslyn.DiagnosticsScope scope, System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask<Lunate.Roslyn.DiagnosticsResult!>
 Lunate.Roslyn.ICSharpBackend.LoadAsync(System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask<Lunate.Roslyn.WorkspaceLoadResult!>
 Lunate.Roslyn.ICSharpBackend.NotifyFileChanged(string! absolutePath) -> void
+Lunate.Roslyn.ICSharpBackend.OutlineAsync(string! file, System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask<Lunate.Roslyn.OutlineResult!>
+Lunate.Roslyn.ICSharpBackend.PlanRenameAsync(string! name, string! newName, System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask<Lunate.Roslyn.RenamePlanResult!>
+Lunate.Roslyn.OutlineItem
+Lunate.Roslyn.OutlineItem.<Clone>$() -> Lunate.Roslyn.OutlineItem!
+Lunate.Roslyn.OutlineItem.Container.get -> string?
+Lunate.Roslyn.OutlineItem.Container.init -> void
+Lunate.Roslyn.OutlineItem.Deconstruct(out string! Kind, out string? Container, out string! Name, out string! Signature, out int Line) -> void
+Lunate.Roslyn.OutlineItem.Equals(Lunate.Roslyn.OutlineItem? other) -> bool
+Lunate.Roslyn.OutlineItem.Kind.get -> string!
+Lunate.Roslyn.OutlineItem.Kind.init -> void
+Lunate.Roslyn.OutlineItem.Line.get -> int
+Lunate.Roslyn.OutlineItem.Line.init -> void
+Lunate.Roslyn.OutlineItem.Name.get -> string!
+Lunate.Roslyn.OutlineItem.Name.init -> void
+Lunate.Roslyn.OutlineItem.OutlineItem(string! Kind, string? Container, string! Name, string! Signature, int Line) -> void
+Lunate.Roslyn.OutlineItem.Signature.get -> string!
+Lunate.Roslyn.OutlineItem.Signature.init -> void
+Lunate.Roslyn.OutlineResult
+Lunate.Roslyn.OutlineResult.<Clone>$() -> Lunate.Roslyn.OutlineResult!
+Lunate.Roslyn.OutlineResult.Deconstruct(out string! Message, out System.Collections.Generic.IReadOnlyList<Lunate.Roslyn.OutlineItem!>! Items, out int TotalItemCount) -> void
+Lunate.Roslyn.OutlineResult.Equals(Lunate.Roslyn.OutlineResult? other) -> bool
+Lunate.Roslyn.OutlineResult.Items.get -> System.Collections.Generic.IReadOnlyList<Lunate.Roslyn.OutlineItem!>!
+Lunate.Roslyn.OutlineResult.Items.init -> void
+Lunate.Roslyn.OutlineResult.Message.get -> string!
+Lunate.Roslyn.OutlineResult.Message.init -> void
+Lunate.Roslyn.OutlineResult.OutlineResult(string! Message, System.Collections.Generic.IReadOnlyList<Lunate.Roslyn.OutlineItem!>! Items, int TotalItemCount) -> void
+Lunate.Roslyn.OutlineResult.TotalItemCount.get -> int
+Lunate.Roslyn.OutlineResult.TotalItemCount.init -> void
+Lunate.Roslyn.OutlineResult.Truncated.get -> bool
+Lunate.Roslyn.OutlineResult.Truncated.init -> void
+Lunate.Roslyn.ReferenceLocation
+Lunate.Roslyn.ReferenceLocation.<Clone>$() -> Lunate.Roslyn.ReferenceLocation!
+Lunate.Roslyn.ReferenceLocation.Column.get -> int
+Lunate.Roslyn.ReferenceLocation.Column.init -> void
+Lunate.Roslyn.ReferenceLocation.Deconstruct(out string! File, out int Line, out int Column) -> void
+Lunate.Roslyn.ReferenceLocation.Equals(Lunate.Roslyn.ReferenceLocation? other) -> bool
+Lunate.Roslyn.ReferenceLocation.File.get -> string!
+Lunate.Roslyn.ReferenceLocation.File.init -> void
+Lunate.Roslyn.ReferenceLocation.Line.get -> int
+Lunate.Roslyn.ReferenceLocation.Line.init -> void
+Lunate.Roslyn.ReferenceLocation.ReferenceLocation(string! File, int Line, int Column) -> void
+Lunate.Roslyn.ReferencesResult
+Lunate.Roslyn.ReferencesResult.<Clone>$() -> Lunate.Roslyn.ReferencesResult!
+Lunate.Roslyn.ReferencesResult.Candidates.get -> System.Collections.Generic.IReadOnlyList<Lunate.Roslyn.SymbolMatch!>!
+Lunate.Roslyn.ReferencesResult.Candidates.init -> void
+Lunate.Roslyn.ReferencesResult.Deconstruct(out Lunate.Roslyn.SymbolSearchStatus Status, out string! Message, out Lunate.Roslyn.SymbolMatch? Resolved, out System.Collections.Generic.IReadOnlyList<Lunate.Roslyn.ReferenceLocation!>! References, out int TotalReferenceCount) -> void
+Lunate.Roslyn.ReferencesResult.Equals(Lunate.Roslyn.ReferencesResult? other) -> bool
+Lunate.Roslyn.ReferencesResult.Failures.get -> System.Collections.Generic.IReadOnlyList<Lunate.Roslyn.WorkspaceFailure!>!
+Lunate.Roslyn.ReferencesResult.Failures.init -> void
+Lunate.Roslyn.ReferencesResult.Message.get -> string!
+Lunate.Roslyn.ReferencesResult.Message.init -> void
+Lunate.Roslyn.ReferencesResult.References.get -> System.Collections.Generic.IReadOnlyList<Lunate.Roslyn.ReferenceLocation!>!
+Lunate.Roslyn.ReferencesResult.References.init -> void
+Lunate.Roslyn.ReferencesResult.ReferencesResult(Lunate.Roslyn.SymbolSearchStatus Status, string! Message, Lunate.Roslyn.SymbolMatch? Resolved, System.Collections.Generic.IReadOnlyList<Lunate.Roslyn.ReferenceLocation!>! References, int TotalReferenceCount) -> void
+Lunate.Roslyn.ReferencesResult.Resolved.get -> Lunate.Roslyn.SymbolMatch?
+Lunate.Roslyn.ReferencesResult.Resolved.init -> void
+Lunate.Roslyn.ReferencesResult.Status.get -> Lunate.Roslyn.SymbolSearchStatus
+Lunate.Roslyn.ReferencesResult.Status.init -> void
+Lunate.Roslyn.ReferencesResult.TotalFailureCount.get -> int
+Lunate.Roslyn.ReferencesResult.TotalFailureCount.init -> void
+Lunate.Roslyn.ReferencesResult.TotalReferenceCount.get -> int
+Lunate.Roslyn.ReferencesResult.TotalReferenceCount.init -> void
+Lunate.Roslyn.ReferencesResult.Truncated.get -> bool
+Lunate.Roslyn.ReferencesResult.Truncated.init -> void
+Lunate.Roslyn.RenameChange
+Lunate.Roslyn.RenameChange.<Clone>$() -> Lunate.Roslyn.RenameChange!
+Lunate.Roslyn.RenameChange.Deconstruct(out string! File, out System.Collections.Generic.IReadOnlyList<Lunate.Roslyn.RenameLineChange!>! Entries) -> void
+Lunate.Roslyn.RenameChange.Entries.get -> System.Collections.Generic.IReadOnlyList<Lunate.Roslyn.RenameLineChange!>!
+Lunate.Roslyn.RenameChange.Entries.init -> void
+Lunate.Roslyn.RenameChange.Equals(Lunate.Roslyn.RenameChange? other) -> bool
+Lunate.Roslyn.RenameChange.File.get -> string!
+Lunate.Roslyn.RenameChange.File.init -> void
+Lunate.Roslyn.RenameChange.RenameChange(string! File, System.Collections.Generic.IReadOnlyList<Lunate.Roslyn.RenameLineChange!>! Entries) -> void
+Lunate.Roslyn.RenameLineChange
+Lunate.Roslyn.RenameLineChange.<Clone>$() -> Lunate.Roslyn.RenameLineChange!
+Lunate.Roslyn.RenameLineChange.Deconstruct(out int Line, out string! OldText, out string! NewText) -> void
+Lunate.Roslyn.RenameLineChange.Equals(Lunate.Roslyn.RenameLineChange? other) -> bool
+Lunate.Roslyn.RenameLineChange.Line.get -> int
+Lunate.Roslyn.RenameLineChange.Line.init -> void
+Lunate.Roslyn.RenameLineChange.NewText.get -> string!
+Lunate.Roslyn.RenameLineChange.NewText.init -> void
+Lunate.Roslyn.RenameLineChange.OldText.get -> string!
+Lunate.Roslyn.RenameLineChange.OldText.init -> void
+Lunate.Roslyn.RenameLineChange.RenameLineChange(int Line, string! OldText, string! NewText) -> void
+Lunate.Roslyn.RenamePlanResult
+Lunate.Roslyn.RenamePlanResult.<Clone>$() -> Lunate.Roslyn.RenamePlanResult!
+Lunate.Roslyn.RenamePlanResult.Candidates.get -> System.Collections.Generic.IReadOnlyList<Lunate.Roslyn.SymbolMatch!>!
+Lunate.Roslyn.RenamePlanResult.Candidates.init -> void
+Lunate.Roslyn.RenamePlanResult.Changes.get -> System.Collections.Generic.IReadOnlyList<Lunate.Roslyn.RenameChange!>!
+Lunate.Roslyn.RenamePlanResult.Changes.init -> void
+Lunate.Roslyn.RenamePlanResult.Deconstruct(out Lunate.Roslyn.SymbolSearchStatus Status, out string! Message, out System.Collections.Generic.IReadOnlyList<Lunate.Roslyn.RenameChange!>! Changes, out int TotalFileCount, out int TotalChangeCount) -> void
+Lunate.Roslyn.RenamePlanResult.Equals(Lunate.Roslyn.RenamePlanResult? other) -> bool
+Lunate.Roslyn.RenamePlanResult.Failures.get -> System.Collections.Generic.IReadOnlyList<Lunate.Roslyn.WorkspaceFailure!>!
+Lunate.Roslyn.RenamePlanResult.Failures.init -> void
+Lunate.Roslyn.RenamePlanResult.Message.get -> string!
+Lunate.Roslyn.RenamePlanResult.Message.init -> void
+Lunate.Roslyn.RenamePlanResult.RenamePlanResult(Lunate.Roslyn.SymbolSearchStatus Status, string! Message, System.Collections.Generic.IReadOnlyList<Lunate.Roslyn.RenameChange!>! Changes, int TotalFileCount, int TotalChangeCount) -> void
+Lunate.Roslyn.RenamePlanResult.Status.get -> Lunate.Roslyn.SymbolSearchStatus
+Lunate.Roslyn.RenamePlanResult.Status.init -> void
+Lunate.Roslyn.RenamePlanResult.TotalChangeCount.get -> int
+Lunate.Roslyn.RenamePlanResult.TotalChangeCount.init -> void
+Lunate.Roslyn.RenamePlanResult.TotalFailureCount.get -> int
+Lunate.Roslyn.RenamePlanResult.TotalFailureCount.init -> void
+Lunate.Roslyn.RenamePlanResult.TotalFileCount.get -> int
+Lunate.Roslyn.RenamePlanResult.TotalFileCount.init -> void
+Lunate.Roslyn.RenamePlanResult.Truncated.get -> bool
+Lunate.Roslyn.RenamePlanResult.Truncated.init -> void
 Lunate.Roslyn.RoslynBackend
 Lunate.Roslyn.RoslynBackend.Dispose() -> void
+Lunate.Roslyn.RoslynBackend.FindReferencesAsync(string! name, System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask<Lunate.Roslyn.ReferencesResult!>
 Lunate.Roslyn.RoslynBackend.FindSymbolAsync(string! name, System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask<Lunate.Roslyn.SymbolSearchResult!>
 Lunate.Roslyn.RoslynBackend.GetDiagnosticsAsync(Lunate.Roslyn.DiagnosticsScope scope, System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask<Lunate.Roslyn.DiagnosticsResult!>
 Lunate.Roslyn.RoslynBackend.LoadAsync(System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask<Lunate.Roslyn.WorkspaceLoadResult!>
 Lunate.Roslyn.RoslynBackend.NotifyFileChanged(string! absolutePath) -> void
+Lunate.Roslyn.RoslynBackend.OutlineAsync(string! file, System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask<Lunate.Roslyn.OutlineResult!>
+Lunate.Roslyn.RoslynBackend.PlanRenameAsync(string! name, string! newName, System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask<Lunate.Roslyn.RenamePlanResult!>
 Lunate.Roslyn.RoslynBackend.RoslynBackend(string! worktreeRoot) -> void
 Lunate.Roslyn.SymbolMatch
 Lunate.Roslyn.SymbolMatch.<Clone>$() -> Lunate.Roslyn.SymbolMatch!
@@ -153,6 +264,27 @@ override Lunate.Roslyn.DiagnosticsItem.ToString() -> string!
 override Lunate.Roslyn.DiagnosticsResult.Equals(object? obj) -> bool
 override Lunate.Roslyn.DiagnosticsResult.GetHashCode() -> int
 override Lunate.Roslyn.DiagnosticsResult.ToString() -> string!
+override Lunate.Roslyn.OutlineItem.Equals(object? obj) -> bool
+override Lunate.Roslyn.OutlineItem.GetHashCode() -> int
+override Lunate.Roslyn.OutlineItem.ToString() -> string!
+override Lunate.Roslyn.OutlineResult.Equals(object? obj) -> bool
+override Lunate.Roslyn.OutlineResult.GetHashCode() -> int
+override Lunate.Roslyn.OutlineResult.ToString() -> string!
+override Lunate.Roslyn.ReferenceLocation.Equals(object? obj) -> bool
+override Lunate.Roslyn.ReferenceLocation.GetHashCode() -> int
+override Lunate.Roslyn.ReferenceLocation.ToString() -> string!
+override Lunate.Roslyn.ReferencesResult.Equals(object? obj) -> bool
+override Lunate.Roslyn.ReferencesResult.GetHashCode() -> int
+override Lunate.Roslyn.ReferencesResult.ToString() -> string!
+override Lunate.Roslyn.RenameChange.Equals(object? obj) -> bool
+override Lunate.Roslyn.RenameChange.GetHashCode() -> int
+override Lunate.Roslyn.RenameChange.ToString() -> string!
+override Lunate.Roslyn.RenameLineChange.Equals(object? obj) -> bool
+override Lunate.Roslyn.RenameLineChange.GetHashCode() -> int
+override Lunate.Roslyn.RenameLineChange.ToString() -> string!
+override Lunate.Roslyn.RenamePlanResult.Equals(object? obj) -> bool
+override Lunate.Roslyn.RenamePlanResult.GetHashCode() -> int
+override Lunate.Roslyn.RenamePlanResult.ToString() -> string!
 override Lunate.Roslyn.SymbolMatch.Equals(object? obj) -> bool
 override Lunate.Roslyn.SymbolMatch.GetHashCode() -> int
 override Lunate.Roslyn.SymbolMatch.ToString() -> string!
@@ -169,6 +301,20 @@ static Lunate.Roslyn.DiagnosticsItem.operator !=(Lunate.Roslyn.DiagnosticsItem? 
 static Lunate.Roslyn.DiagnosticsItem.operator ==(Lunate.Roslyn.DiagnosticsItem? left, Lunate.Roslyn.DiagnosticsItem? right) -> bool
 static Lunate.Roslyn.DiagnosticsResult.operator !=(Lunate.Roslyn.DiagnosticsResult? left, Lunate.Roslyn.DiagnosticsResult? right) -> bool
 static Lunate.Roslyn.DiagnosticsResult.operator ==(Lunate.Roslyn.DiagnosticsResult? left, Lunate.Roslyn.DiagnosticsResult? right) -> bool
+static Lunate.Roslyn.OutlineItem.operator !=(Lunate.Roslyn.OutlineItem? left, Lunate.Roslyn.OutlineItem? right) -> bool
+static Lunate.Roslyn.OutlineItem.operator ==(Lunate.Roslyn.OutlineItem? left, Lunate.Roslyn.OutlineItem? right) -> bool
+static Lunate.Roslyn.OutlineResult.operator !=(Lunate.Roslyn.OutlineResult? left, Lunate.Roslyn.OutlineResult? right) -> bool
+static Lunate.Roslyn.OutlineResult.operator ==(Lunate.Roslyn.OutlineResult? left, Lunate.Roslyn.OutlineResult? right) -> bool
+static Lunate.Roslyn.ReferenceLocation.operator !=(Lunate.Roslyn.ReferenceLocation? left, Lunate.Roslyn.ReferenceLocation? right) -> bool
+static Lunate.Roslyn.ReferenceLocation.operator ==(Lunate.Roslyn.ReferenceLocation? left, Lunate.Roslyn.ReferenceLocation? right) -> bool
+static Lunate.Roslyn.ReferencesResult.operator !=(Lunate.Roslyn.ReferencesResult? left, Lunate.Roslyn.ReferencesResult? right) -> bool
+static Lunate.Roslyn.ReferencesResult.operator ==(Lunate.Roslyn.ReferencesResult? left, Lunate.Roslyn.ReferencesResult? right) -> bool
+static Lunate.Roslyn.RenameChange.operator !=(Lunate.Roslyn.RenameChange? left, Lunate.Roslyn.RenameChange? right) -> bool
+static Lunate.Roslyn.RenameChange.operator ==(Lunate.Roslyn.RenameChange? left, Lunate.Roslyn.RenameChange? right) -> bool
+static Lunate.Roslyn.RenameLineChange.operator !=(Lunate.Roslyn.RenameLineChange? left, Lunate.Roslyn.RenameLineChange? right) -> bool
+static Lunate.Roslyn.RenameLineChange.operator ==(Lunate.Roslyn.RenameLineChange? left, Lunate.Roslyn.RenameLineChange? right) -> bool
+static Lunate.Roslyn.RenamePlanResult.operator !=(Lunate.Roslyn.RenamePlanResult? left, Lunate.Roslyn.RenamePlanResult? right) -> bool
+static Lunate.Roslyn.RenamePlanResult.operator ==(Lunate.Roslyn.RenamePlanResult? left, Lunate.Roslyn.RenamePlanResult? right) -> bool
 static Lunate.Roslyn.SymbolMatch.operator !=(Lunate.Roslyn.SymbolMatch? left, Lunate.Roslyn.SymbolMatch? right) -> bool
 static Lunate.Roslyn.SymbolMatch.operator ==(Lunate.Roslyn.SymbolMatch? left, Lunate.Roslyn.SymbolMatch? right) -> bool
 static Lunate.Roslyn.SymbolSearchResult.operator !=(Lunate.Roslyn.SymbolSearchResult? left, Lunate.Roslyn.SymbolSearchResult? right) -> bool

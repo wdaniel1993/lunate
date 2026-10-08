@@ -2,11 +2,11 @@
 
 ## 1. Backend (TDD, red-first)
 
-- [ ] 1.1 `ReferencesResult`/`OutlineResult`/`RenamePlanResult` + entries per design; contract methods on `ICSharpBackend`; PublicAPI entries
-- [ ] 1.2 `FindReferencesAsync` (resolution reuse, candidates, metadata message, cap, ordering)
-- [ ] 1.3 `OutlineAsync` (syntax-only, no-load path, missing file, syntax-error file)
-- [ ] 1.4 `PlanRenameAsync` (forked solution, identifier validation, plan shape, disk-untouched invariant)
-- [ ] 1.5 Fixture additions (duplicate member name, referenced symbol, mixed/nested file, rename target); tests per design incl. cross-project references + determinism
+- [x] 1.1 `ReferencesResult`/`OutlineResult`/`RenamePlanResult` + entries per design; contract methods on `ICSharpBackend`; PublicAPI entries
+- [x] 1.2 `FindReferencesAsync` (resolution reuse, candidates, metadata message, cap, ordering)
+- [x] 1.3 `OutlineAsync` (syntax-only, no-load path, missing file, syntax-error file)
+- [x] 1.4 `PlanRenameAsync` (forked solution, identifier validation, plan shape, disk-untouched invariant)
+- [x] 1.5 Fixture additions (duplicate member name, referenced symbol, mixed/nested file, rename target); tests per design incl. cross-project references + determinism
 
 ## 2. Tools
 
