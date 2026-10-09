@@ -32,6 +32,9 @@ public sealed record AgentHarnessOptions
     /// <summary>The maximum nested tool call depth; deeper calls become error results.</summary>
     public int MaxNestedToolDepth { get; init; } = 5;
 
+    /// <summary>The character budget for one tool result before truncation; the resolved setting threads here.</summary>
+    public int ToolOutputLimit { get; init; } = ToolOutput.DefaultLimit;
+
     /// <summary>The file mutation queue shared with tools through <see cref="ToolContext"/>.</summary>
     public IFileMutationQueue FileMutations { get; init; } = FileMutationQueue.Shared;
 

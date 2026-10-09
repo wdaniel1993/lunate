@@ -8,10 +8,10 @@
 
 ## 2. Configuration
 
-- [ ] 2.1 `SettingsStore.cs`: schema v1 (`model`, `approval` ∈ {ask, auto}, `output.toolResultLimit`), defaults, all-problems-at-once validation, injectable path
-- [ ] 2.2 Environment overrides (`LUNATE_MODEL`, `LUNATE_APPROVAL`, `LUNATE_TOOL_OUTPUT_LIMIT`); precedence tests file < env
-- [ ] 2.3 `AgentHarnessOptions.ToolOutputLimit` (default 30_000) threaded to both `ToolOutput.Truncate` call sites; test with a small limit asserts the marker; PublicAPI.Unshipped updated (Agent)
-- [ ] 2.4 `AuthStore.cs`: schema v1 named keys, `Save` with owner-only POSIX permissions, missing-key errors name the key but never print the value; env override for provider defaults; tests never touch the real home
+- [x] 2.1 `SettingsStore.cs`: schema v1 (`model`, `approval` ∈ {ask, auto}, `output.toolResultLimit`), defaults, all-problems-at-once validation, injectable path
+- [x] 2.2 Environment overrides (`LUNATE_MODEL`, `LUNATE_APPROVAL`, `LUNATE_TOOL_OUTPUT_LIMIT`); precedence tests file < env
+- [x] 2.3 `AgentHarnessOptions.ToolOutputLimit` (default 30_000) threaded to both `ToolOutput.Truncate` call sites; test with a small limit asserts the marker; PublicAPI.Unshipped updated (Agent)
+- [x] 2.4 `AuthStore.cs`: schema v1 named keys, `Save` with owner-only POSIX permissions, missing-key errors name the key but never print the value; env override for provider defaults; tests never touch the real home
 
 ## 3. Per-model credential references
 
