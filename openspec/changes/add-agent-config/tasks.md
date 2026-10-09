@@ -19,8 +19,8 @@
 
 ## 4. Model discovery
 
-- [ ] 4.1 `DiscoverCommand.cs`: target = catalog name or URL; `GET {base}/models` via injectable `HttpMessageHandler` (30 s timeout); OpenAI-shape parsing with clear errors; draft (schemaVersion + ids, provider/endpoint when known) printed to stdout; nothing written; `Cli.cs` wiring + help text
-- [ ] 4.2 Tests: fake handler round-trip, missing `data`, non-200, auth via seam, URL target, name target; full offline
+- [x] 4.1 `DiscoverCommand.cs`: target = catalog name or URL; `GET {base}/models` via injectable `HttpMessageHandler` (30 s timeout); OpenAI-shape parsing with clear errors; draft (schemaVersion + ids, provider/endpoint when known) printed to stdout; nothing written; `Cli.cs` wiring + help text
+- [x] 4.2 Tests: fake handler round-trip, missing `data`, non-200, auth via seam, URL target, name target; full offline
 
 ## 5. Close
 
