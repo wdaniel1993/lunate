@@ -34,8 +34,8 @@ The factory SHALL send a provider's environment API key only to the provider's d
 - **WHEN** the factory builds the pipeline
 - **THEN** no error is raised and the client uses the placeholder credential
 
-#### Scenario: Default endpoint requires a key from environment or store
+#### Scenario: Default endpoint requires the environment key
 
 - **GIVEN** a model without a custom endpoint and no key in the environment or auth store
 - **WHEN** the factory builds the pipeline
-- **THEN** an actionable error names the environment variable and auth.json
+- **THEN** it fails with an actionable error naming the variable and auth.json
