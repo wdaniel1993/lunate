@@ -13,6 +13,7 @@ public sealed class PublicApiTests
         "Lunate.Tui.InputLineState",
         "Lunate.Tui.KeyEvent",
         "Lunate.Tui.KeyKind",
+        "Lunate.Tui.TechnicalText",
     ];
 
     [Fact]

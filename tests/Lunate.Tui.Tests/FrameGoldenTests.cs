@@ -15,17 +15,11 @@ public sealed class FrameGoldenTests
     [Fact]
     public void Scripted_session_frames_match_the_committed_golden()
     {
-        var frames = RunScriptedSession();
-
-        string[] actual = frames.Select(Escape).ToArray();
-        string path = Path.Combine(FramesDirectory, "scripted-session.txt");
-        if (Environment.GetEnvironmentVariable("LUNATE_TUI_UPDATE_GOLDENS") == "1")
-        {
-            Directory.CreateDirectory(FramesDirectory);
-            File.WriteAllLines(path, actual);
-        }
-
-        Assert.Equal(File.ReadAllLines(path), actual);
+        string[] actual = RunScriptedSession().Select(Escape).ToArray();
+        GoldenFiles.AssertMatchesLines(
+            Path.Combine(FramesDirectory, "scripted-session.txt"),
+            actual
+        );
     }
 
     private static IReadOnlyList<string> RunScriptedSession()

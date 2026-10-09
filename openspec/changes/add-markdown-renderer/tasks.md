@@ -2,9 +2,9 @@
 
 ## 1. Packages and TechnicalText
 
-- [ ] 1.1 `Spectre.Console` 0.57.2 + `Markdig` 1.4.0 (BSD-2-Clause) into `Lunate.Tui`; `Spectre.Console.Testing` 0.57.2 into `Lunate.Tui.Tests`; record approval + licence note in the change
-- [ ] 1.2 `TechnicalText`: `Bytes`, `Tokens`, `Duration`, `Percent` — invariant by construction; table tests incl. boundaries; de-AT pass
-- [ ] 1.3 PublicAPI.Unshipped entries for the public surface; golden regeneration helper shared with the frame goldens
+- [x] 1.1 `Spectre.Console` 0.57.2 + `Markdig` 1.4.0 (BSD-2-Clause) into `Lunate.Tui`; `Spectre.Console.Testing` 0.57.2 into `Lunate.Tui.Tests`; record approval + licence note in the change
+- [x] 1.2 `TechnicalText`: `Bytes`, `Tokens`, `Duration`, `Percent` — invariant by construction; table tests incl. boundaries; de-AT pass
+- [x] 1.3 PublicAPI.Unshipped entries for the public surface; golden regeneration helper shared with the frame goldens
 - [ ] 1.4 Startup/render cost: measure first parse+render (fresh process) and warm parse+render of the mixed document; report numbers, no gate (exe untouched by Tui)
 
 ## 2. Markdig parsing and blocks

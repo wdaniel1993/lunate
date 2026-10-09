@@ -97,3 +97,8 @@ static Lunate.Tui.InputLine.MoveRight(Lunate.Tui.InputLineState! state) -> Lunat
 static Lunate.Tui.InputLineState.operator !=(Lunate.Tui.InputLineState? left, Lunate.Tui.InputLineState? right) -> bool
 static Lunate.Tui.InputLineState.operator ==(Lunate.Tui.InputLineState? left, Lunate.Tui.InputLineState? right) -> bool
 static readonly Lunate.Tui.InputLine.Empty -> Lunate.Tui.InputLineState!
+Lunate.Tui.TechnicalText
+static Lunate.Tui.TechnicalText.Bytes(long bytes) -> string!
+static Lunate.Tui.TechnicalText.Duration(System.TimeSpan duration) -> string!
+static Lunate.Tui.TechnicalText.Percent(double percent) -> string!
+static Lunate.Tui.TechnicalText.Tokens(long tokens) -> string!
