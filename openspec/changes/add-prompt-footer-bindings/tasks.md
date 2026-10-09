@@ -12,8 +12,8 @@
 
 ## 3. Status footer
 
-- [ ] 3.1 `GitBranchReader`: normal repo, worktree `.git` file, detached HEAD, missing repo, unreadable HEAD — temp-dir tests
-- [ ] 3.2 `StatusFooterModel` + renderer: invariant token formatting (raw, k, M; boundary 999/1000/999_999/1_000_000), percent edge (zero window omits), degradation ladder (branch dropped, then cwd), goldens `footer-full.txt`, `footer-narrow.txt`, `footer-minimal.txt`
+- [x] 3.1 `GitBranchReader`: normal repo, worktree `.git` file, detached HEAD, missing repo, unreadable HEAD — temp-dir tests
+- [x] 3.2 `StatusFooterModel` + renderer: invariant token formatting (raw, k, M; boundary 999/1000/999_999/1_000_000), percent edge (zero window omits), degradation ladder (branch dropped, then cwd), goldens `footer-full.txt`, `footer-narrow.txt`, `footer-minimal.txt`
 
 ## 4. Close
 

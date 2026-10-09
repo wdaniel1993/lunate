@@ -13,6 +13,22 @@ public sealed class PromptFooterGoldenTests
             "prompt-footer"
         );
 
+    private static readonly StatusFooterModel Footer = new(
+        "deepseek-v4.1-flash",
+        12400,
+        128000,
+        "~/dev/lunate",
+        "main"
+    );
+
+    public static TheoryData<string, int> FooterGoldens =>
+        new()
+        {
+            { "footer-full", 80 },
+            { "footer-narrow", 60 },
+            { "footer-minimal", 50 },
+        };
+
     [Fact]
     public void Approval_prompt_matches_the_committed_golden()
     {
@@ -26,6 +42,20 @@ public sealed class PromptFooterGoldenTests
 
         GoldenFiles.AssertMatchesText(
             Path.Combine(GoldensDirectory, "approval-prompt.txt"),
+            console.Output
+        );
+    }
+
+    [Theory]
+    [MemberData(nameof(FooterGoldens))]
+    public void Footer_matches_the_committed_golden(string name, int width)
+    {
+        var console = new TestConsole();
+        console.Profile.Width = 200;
+        console.Write(new StatusFooterRenderer().Render(Footer, width));
+
+        GoldenFiles.AssertMatchesText(
+            Path.Combine(GoldensDirectory, name + ".txt"),
             console.Output
         );
     }
