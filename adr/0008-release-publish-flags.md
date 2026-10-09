@@ -38,6 +38,12 @@ compress the binary at the distribution layer, so users still download a
   timer-only apps without Lunate code did **not** (0/600). No `dotnet/runtime`
   issue is drafted; deeper isolation stays open. Evidence:
   `docs/spikes/S-5/evidence/crash-probe-ci.txt` and `crash-probe-local.txt`.
+- **Follow-up (2026-10-09):** the macOS crash reproduces with a third,
+  unrelated dependency stack — XenoAtom.Terminal.UI, 3/300 compressed
+  single-file R2R starts (spike S-6; evidence:
+  `docs/spikes/S-6/evidence/startup-crashes.txt`). Stacks that share only the
+  runtime/thread-pool path exhibit it, strengthening the runtime hypothesis;
+  isolation stays open.
 
 ## Alternatives considered
 

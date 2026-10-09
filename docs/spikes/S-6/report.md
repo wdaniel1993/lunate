@@ -93,15 +93,15 @@ Baseline = the accepted T-18/T-19 stack: `IConsoleIO` + own VT decoder +
 `InputLine` + System.Reactive live area (ADR-0007) and the T-19 own Markdown
 renderer + Spectre blocks. Startup/memory baseline numbers are re-measured in
 this spike from `docs/spikes/S-5/S5.Baseline` with the S-5 publish method
-(single-file ReadyToRun, self-contained, compression off); the acceptance bar
-for a TUI addition is the S-5/ADR-0007 ~20 ms.
+(single-file ReadyToRun, self-contained, compression off). The formal gate is
+ADR-0005's absolute budget (150 ms); the S-5/ADR-0007 ~20 ms delta is context.
 
 | # | Check | Baseline (T-18/T-19 stack) | XenoAtom.Terminal.UI 3.10.0 | Verdict |
 | --- | --- | --- | --- | --- |
-| 1 | Whole-process startup, single-file R2R no compression, hyperfine 3×20 | 32.1 ms median (min 31.2, max 33.0) | 53.3 ms median (min 47.2, **max 92.1**, σ 15.6) | **+21.2 ms**, at/over the ~20 ms bar, unstable |
-| 1b | Self-reported first frame (construct + first paint) | 1.96 ms | 22.08 ms | **+20.1 ms** framework init |
-| 1c | Exact verify flags (compressed) 100 starts | 0 fatal | **1/100**, then 2/200 in the detail probe | release risk (see §1c) |
-| 2 | Idle peak RSS, 150 ms sampling | 76.0 MB (run A) / 86.9 MB (run B) | 101.2 MB / 101.2 MB | **+14…+25 MB**, stable ≈99 MB |
+| 1 | Whole-process startup, single-file R2R no compression, hyperfine 3×20 | 32.1 ms median (min 31.2, max 33.0) | 53.3 ms median (min 47.2, **max 92.1**, σ 15.6) | supporting: **+21.2 ms**, 53 ms absolute — within the ADR 0005 budget; unstable tail |
+| 1b | Self-reported first frame (construct + first paint) | 1.96 ms | 22.08 ms | **+20.1 ms** one-time framework init |
+| 1c | Compressed single-file R2R (**not shipped since ADR 0008**) 100 starts | 0 fatal | **1/100**, then 2/200 in the detail probe | not a shipped config; recorded in ADR 0008 follow-up |
+| 2 | Idle peak RSS, 150 ms sampling | 76.0 MB (run A) / 86.9 MB (run B) | 101.2 MB / 101.2 MB | supporting: +14…+25 MB — **within the ADR 0009 gate (150 MB)** |
 | 3 | Added assemblies vs baseline | Spectre.Console ×2 (T-19) + Rx ×2 (ADR-0007) | **+5** (XenoAtom.Terminal.UI, Terminal, Ansi, Markdig, Wcwidth); closure 6 packages | 5-assembly surface incl. a Markdown engine |
 | 4 | LoC (harness + glue, no tests) | S-5: shared harness 818 + B plumbing 114 | total 1,435; Xeno-specific: model 275 + visual 143 + app 246; S-5-identical scenario infra 188; drivers 258; screen model 325 | comparable; retirement is the real gain |
 | 5 | Tests without a real terminal | `FakeConsoleIO` + `TestScheduler`, public; golden frames exact | `InMemoryTerminalBackend` public (input + output); deterministic ticks only via **reflection into internal APIs**; no byte-stable frame goldens | weaker, version-fragile |
@@ -132,20 +132,23 @@ start. The whole-process median delta (+21.2 ms) matches it, but XenoAtom's
 max (92.1 ms) shows the JIT/init path is far less predictable than the
 baseline's 0.5 ms σ.
 
-#### 1c. Fatal starts under the exact verify flags
+#### 1c. Fatal starts under compressed single-file flags (not a shipped configuration)
 
-The exact CI/verify combination (`PublishSingleFile` + `ReadyToRun` +
-`EnableCompressionInSingleFile`, self-contained) crashed **1/100** starts,
-and the follow-up detail probe reproduced **2/200** more. All were
-`Fatal error. System.AccessViolationException` inside
+The compressed combination (`PublishSingleFile` + `ReadyToRun` +
+`EnableCompressionInSingleFile`, self-contained) — which `verify.sh` and the
+release workflow have **not** used since ADR 0008 — crashed **1/100** starts,
+and the follow-up detail probe reproduced **2/200** more (3/300 total). All
+were `Fatal error. System.AccessViolationException` inside
 `PortableThreadPool.GateThread` (`WaitHandle.WaitOneNoCheck` /
 `GC.GetGCMemoryInfo`); stacks in
 [`startup-crash-detail.txt`](evidence/startup-crash-detail.txt), counts in
 [`startup-crashes.txt`](evidence/startup-crashes.txt). The S-5 baseline was
 0/100 and 0/100 again here. This is the same failure class ADR-0007 recorded
-(A 1/100, B+ 11/100, root cause never isolated and still an open follow-up);
-XenoAtom is not uniquely responsible, but adopting it adopts the exposure.
-The stable-set numbers above (compression off) are unaffected.
+(A 1/100, B+ 11/100, root cause never isolated); XenoAtom is the **third,
+unrelated dependency stack** to reproduce it on macOS, which strengthens the
+runtime hypothesis and is recorded as a follow-up in ADR 0008. Since
+compression is not shipped, this is not a decisive adoption factor — the
+stable-set numbers above (compression off) are unaffected.
 
 #### 2. Idle memory
 
@@ -328,28 +331,40 @@ terminal and `TERM`, and capture the screen:
 
 ## Recommendation
 
-**Stay with the accepted stack: option (c).** Do not adopt
-XenoAtom.Terminal.UI for the live area and input line now, and do not adopt
-its Markdown control as a T-19 shortcut. Full rationale, the retire/keep lists
-for all three options and re-open triggers are in
+**Stay with the accepted stack: option (c).** Do not adopt XenoAtom.Terminal.UI
+for the live area and input line now; its Markdown control is rejected on
+dependency grounds (full-stack closure, global-instance constraint) — the
+parser question itself lives in the T-19 change. Full rationale, the retire/keep
+lists for all three options and the re-open triggers are in
 [ADR 0019](../../../adr/0019-xenoatom-terminal-ui.md) (status **proposed**).
 
-Decisive numbers:
+Decisive reasons:
 
-- **+21 ms** whole-process startup and **+20 ms** first frame against the
-  ~20 ms adoption bar and S-5 B's accepted +10 ms — before any product
-  feature is built on it.
-- **3/300 exact-flag starts fatal** (`AccessViolationException` in the thread
-  pool; baseline 0/200) while ADR-0007's packaging follow-up is still open.
-- **Deterministic frames and byte-stable transcripts are not public API**; the
-  tui spec's golden-frame requirement would be rewritten and tests would lean
-  on reflection into a 30-releases-per-6-months library.
-- **Markdown-only is a trap:** `MarkdownControl` needs the full UI/terminal
-  stack and Markdig, contradicts the guide's "no Markdown library" decision,
-  and still needs `TechnicalText` work for the footer.
+- **Testability:** deterministic frames and virtual time exist only behind
+  internal APIs (`TerminalApp.Tick`); the `tui` spec's golden-frame requirement
+  cannot be met through the public API, and the reflection seam is
+  version-fragile in a ~30-releases-per-6-months library. An upstream request
+  for a public deterministic driver is drafted at
+  [`upstream-issue.md`](upstream-issue.md).
+- **Input model friction:** Ctrl+C is consumed as a built-in copy command;
+  approval keys reach the editor first (bubble-only routing); one global
+  terminal instance with no public isolation.
+- **Dependency churn:** ~30 releases in 6 months, key bindings changed between
+  patch releases, one maintainer, no breaking-change policy.
+
+Supporting data (within budget):
+
+- **+21 ms** whole-process startup (53.3 ms absolute — **within the ADR 0005
+  budget**; the 92 ms tail is the risk) and **+20 ms** first frame (one-time
+  framework init).
+- Idle RSS 101.2 MB — **within the ADR 0009 gate of 150 MB** (+14…+25 MB over
+  baseline).
+- 3/300 fatal starts under compressed single-file flags — a configuration not
+  shipped since ADR 0008; recorded in ADR 0008's follow-up (third unrelated
+  stack reproducing the macOS thread-pool crash).
 
 Retirement is the genuine attraction — option (a) would retire the entire
 `IConsoleIO`/live-area/input/decoder foundation and the System.Reactive
-dependency. If the library stabilises (public deterministic test hooks, a
-breaking-change policy, a fixed packaging crash, verified terminal matrix),
-re-run this spike; the harness and scripts are kept for exactly that.
+dependency. If the library stabilises (public deterministic test driver, a
+breaking-change policy, a verified terminal matrix), re-run this spike; the
+harness and scripts are kept for exactly that.
