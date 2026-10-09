@@ -1,0 +1,4 @@
+runs=50
+failed_suite_runs=0
+total_failed_test_instances=0
+total_test_executions=1000

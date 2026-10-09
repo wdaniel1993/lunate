@@ -1,0 +1,2 @@
+S5Baseline: non_zero_exit=0 fatal_crashes=0
+XenoAtom: non_zero_exit=1 fatal_crashes=1

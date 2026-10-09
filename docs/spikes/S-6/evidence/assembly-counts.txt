@@ -1,0 +1,4 @@
+       8 docs/spikes/S-6/evidence/assemblies-added.txt
+       4 docs/spikes/S-6/evidence/assemblies-S5Baseline.txt
+       7 docs/spikes/S-6/evidence/assemblies-XenoAtom.txt
+      19 total

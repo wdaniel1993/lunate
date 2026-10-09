@@ -1,0 +1,4 @@
+label=S5Baseline exit=0 peak_rss_kb_total=75984
+ready heap_bytes=24640
+label=XenoAtom exit=0 peak_rss_kb_total=101152
+ready heap_bytes=450952

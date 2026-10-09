@@ -1,0 +1,2 @@
+S5Baseline: hyperfine_runs=20 median_ms=32.1 min_ms=31.2 max_ms=33.0 mean_ms=32.0 stddev_ms=0.5
+XenoAtom: hyperfine_runs=20 median_ms=53.3 min_ms=47.2 max_ms=92.1 mean_ms=61.5 stddev_ms=15.6

@@ -1,0 +1,4 @@
+S5.Baseline.dll
+S5.Harness.dll
+Spectre.Console.Ansi.dll
+Spectre.Console.dll

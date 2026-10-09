@@ -40,7 +40,7 @@ public static class SpikeProgram
         var run = Task.Run(() => app.RunAsync(cts.Token));
         app.PostEvent(new AgentEvent.RunStarted(Scenario.Model));
         app.PostEvent(new AgentEvent.TextDelta("hello"));
-        app.WaitForTicksAsync(2, TimeSpan.FromSeconds(10)).GetAwaiter().GetResult();
+        app.WaitForTicksAsync(1, TimeSpan.FromSeconds(10)).GetAwaiter().GetResult();
         app.RequestStop();
         run.GetAwaiter().GetResult();
         watch.Stop();

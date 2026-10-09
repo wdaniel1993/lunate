@@ -1,0 +1,4 @@
+S5Baseline self_reported_startup_ms_median=2.07
+XenoAtom self_reported_startup_ms_median=88.30
+S5Baseline self_reported_startup_ms_median=1.96
+XenoAtom self_reported_startup_ms_median=22.08

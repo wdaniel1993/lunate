@@ -1,0 +1,14 @@
+  Determining projects to restore...
+  Restored /Users/danielwallner/dev/lunate-s6/docs/spikes/S-6/S6.Harness/S6.Harness.csproj (in 108 ms).
+Project 'S6.Harness' has the following package references
+   [net10.0]: 
+   Top-level Package                               Requested   Resolved
+   > XenoAtom.Terminal.UI                          3.10.0      3.10.0  
+   > XenoAtom.Terminal.UI.Extensions.Markdown      3.10.0      3.10.0  
+
+   Transitive Package       Resolved
+   > Markdig                1.4.0   
+   > Wcwidth                4.0.1   
+   > XenoAtom.Ansi          1.7.1   
+   > XenoAtom.Terminal      2.2.0   
+

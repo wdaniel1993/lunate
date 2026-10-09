@@ -1,0 +1,122 @@
+S-6 research — XenoAtom.Terminal.UI
+===================================
+
+Recorded 2026-10-09 from the sources named inline. Verified against the repo
+and NuGet, not assumed.
+
+Identity
+--------
+- Package: XenoAtom.Terminal.UI, latest 3.10.0 (NuGet, published 2026-09-22).
+  https://www.nuget.org/packages/XenoAtom.Terminal.UI
+- Repository: https://github.com/XenoAtom/XenoAtom.Terminal.UI
+  Created 2026-01-07; ~1,028 commits; ~288 stars (GitHub page, 2026-10-09).
+- Maintainer: Alexandre Mutel (xoofx), under the XenoAtom organisation
+  (also Markdig, dotnet-releaser, lunet; DotNetFoundation-adjacent OSS profile).
+- Licence: BSD-2-Clause. Confirmed twice: repo top-level license.txt
+  (GitHub reports BSD-2-Clause) and NuGet package metadata
+  (https://licenses.nuget.org/BSD-2-Clause). Same for XenoAtom.Terminal,
+  XenoAtom.Ansi and XenoAtom.Terminal.UI.Extensions.Markdown.
+- Dependencies (NuGet dependency tab for 3.10.0):
+  XenoAtom.Terminal.UI -> XenoAtom.Ansi >= 1.7.1, XenoAtom.Terminal >= 2.2.0
+  XenoAtom.Terminal   2.2.0 -> XenoAtom.Ansi >= 1.7.0
+  Extensions.Markdown 3.10.0 -> Markdig >= 1.4.0, XenoAtom.Terminal >= 2.2.0,
+  XenoAtom.Terminal.UI >= 3.10.0
+  The closure lands as 5 assemblies in the framework-dependent publish
+  (see dependency-closure.txt and assemblies-added.txt).
+- Targets net10.0 only (C# 14 extension members are load-bearing: Terminal.Write,
+  Terminal.Live and Terminal.Run are extension members in Terminal.UI).
+
+Version history, last 6 months (2026-04-09 .. 2026-10-09)
+---------------------------------------------------------
+Source: NuGet versions pages and GitHub releases (machine-generated changelogs).
+
+  3.10.0  2026-09-22
+  3.9.0   2026-08-07
+  3.8.2   2026-08-03
+  3.8.1   2026-07-20
+  3.8.0   2026-07-19
+  3.7.5   2026-06-22
+  3.7.4   2026-06-19
+  3.7.3   2026-06-14
+  3.7.2   2026-06-03
+  3.7.1   2026-06-02
+  3.7.0   2026-06-01
+  3.6.3   2026-05-30
+  3.6.2   2026-05-27
+  3.6.1   2026-05-24
+  3.6.0   2026-05-24
+  3.5.5   2026-05-21
+  3.5.4   2026-05-19
+  3.5.3   2026-05-18
+  3.5.2   2026-05-17
+  3.5.1   2026-05-17
+  3.5.0   2026-05-16
+  3.4.3   2026-05-16
+  3.4.2   2026-05-14
+  3.4.1   2026-05-12
+  3.4.0   2026-05-10
+  3.3.0   2026-05-09
+  3.2.3   2026-05-08
+  3.2.2   2026-05-07
+  3.2.1   2026-05-06
+  3.2.0   2026-05-04
+
+That is 30 releases in 6 months (11 in May alone, including 3.1.x/3.0.x just
+before 3.2.0). Patches can land days apart; majors/minors weekly to monthly.
+The base package moves too: XenoAtom.Terminal 2.2.0 (2026-05-16) after
+2.1.x/2.0.x in April, 1.x before that; XenoAtom.Ansi last moved 2026-09-02.
+
+Breaking / behavioural changes found in the window (releases list + docs):
+- 3.4.3 -> 3.5.0 changed the PromptEditor newline gesture from Ctrl+N to
+  Shift+Enter (Ctrl+N kept as fallback); 3.4.3 itself had just introduced
+  Ctrl+N. Key bindings are not frozen yet.
+- The hosting docs state that inline/fullscreen loops "now default to
+  LoopMode = Auto" and that "UpdateWaitDuration is no longer the default frame
+  cadence control" — a behaviour change to the host loop default in the 3.x
+  line (documented, not marked as breaking in a changelog).
+- API evolution is continuous: e.g. 3.9.0 added configurable scroll bar
+  visibility; 3.10.0 changed focus/menu and DataGrid behaviour.
+- No migration guide or breaking-change section was found; releases are
+  dotnet-releaser generated "Changes" lists. Semver is followed loosely:
+  UI-affecting changes arrive in minor bumps, not majors.
+
+Testing infrastructure (make-or-break gate)
+-------------------------------------------
+Public in XenoAtom.Terminal (all verified from the user guide and the packages):
+- `InMemoryTerminalBackend`: capture output (`GetOutText()`) and inject events
+  (`PushEvent`, `SetSize(..., raiseEvent: true)`) — scriptable input and output
+  capture with no real terminal.
+- `Terminal.Open(backend, options, force: true)` opens a session on that backend.
+- One-shot rendering: `TerminalInstance.Write(visual)`.
+Internal (not public; used by the library's own tests):
+- `TerminalApp.BeginRun()`, `TerminalApp.Tick(long timestamp)` (virtual clock),
+  `TerminalApp.SetUpdateCallback(...)`, `TerminalApp.EndRun()`, plus the
+  `TerminalAppTestDriver` helper class; the library's test project
+  `src/XenoAtom.Terminal.UI.Tests` (~170 test classes) drives deterministic ticks
+  and an `AnsiTestScreen` parser.
+- S-6 proved the internal hooks are reachable through reflection and used them
+  for the deterministic tests (TickDriver.cs). The public surface alone cannot
+  step frames deterministically.
+- Caveat: only one global `TerminalInstance` can be open at a time; opening a
+  second session (`force: true`) disposes the first. Snapshot renders must run
+  while no other session is live.
+
+Inline/live features relevant to the spike (verified in docs/source)
+--------------------------------------------------------------------
+- `Terminal.Live(visual, onUpdate)` runs an inline live region; `Terminal.Write`
+  writes finished blocks above it (documented and exercised by S-6).
+- `TerminalApp` routes input to the focused visual; KeyDown/TextInput are
+  Bubble-routed. `TextEditorBase` registers a Ctrl+C copy command that consumes
+  the gesture before KeyDown routing (S-6 removes it to honour Lunate's
+  Ctrl+C contract).
+- `PromptEditor` is the promoted prompt input control; `MarkdownControl`
+  (Markdig) lives in the separate Extensions.Markdown package.
+- The inline host repaints via a cell-buffer diff (synchronized output mode
+  2026); the host loop coalesces invalidations (~15 ms active cadence cap).
+
+S-6 pins
+--------
+- XenoAtom.Terminal.UI 3.10.0
+- XenoAtom.Terminal.UI.Extensions.Markdown 3.10.0
+- (transitive) XenoAtom.Terminal 2.2.0, XenoAtom.Ansi 1.7.1, Markdig 1.4.x
+No other packages are used by the S-6 harness.
