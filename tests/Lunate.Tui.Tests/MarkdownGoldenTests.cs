@@ -63,6 +63,61 @@ public sealed class MarkdownGoldenTests
                     this looks like a paragraph but is code
                     """
             },
+            {
+                "bold-italic",
+                """
+                    **bold text**
+
+                    *italic text*
+
+                    ***bold and italic***
+                    """
+            },
+            {
+                "inline-code",
+                """
+                    Inline `code span` and `[brackets]` too.
+                    """
+            },
+            {
+                "escaping",
+                """
+                    [dim]not markup[/]
+
+                    [bold]also not markup[/]
+
+                    nested [[brackets]] stay
+                    """
+            },
+            {
+                "emphasis-edges",
+                """
+                    snake_case_words stays literal
+
+                    2*3*4 follows CommonMark
+
+                    2 * 3 * 4 keeps its asterisks
+                    """
+            },
+            {
+                "unsupported",
+                """
+                    | a | b |
+                    | - | - |
+                    | 1 | 2 |
+
+                    A [link](https://example.com/x) here.
+
+                    ![alt text](https://example.com/i.png)
+
+                    <div class="note">
+                    raw html
+                    </div>
+
+                    - [ ] todo
+                    - [x] done
+                    """
+            },
         };
 
     [Theory]
