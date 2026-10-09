@@ -140,7 +140,7 @@ public sealed class AuthStoreTests
             {
               "schemaVersion": 2,
               "unknown": true,
-              "keys": { "work": 42 }
+              "keys": { "work": { "secret": "leaked-value" } }
             }
             """
         );
@@ -152,6 +152,6 @@ public sealed class AuthStoreTests
         Assert.Contains("schemaVersion", exception.Message, StringComparison.Ordinal);
         Assert.Contains("unknown", exception.Message, StringComparison.Ordinal);
         Assert.Contains("work", exception.Message, StringComparison.Ordinal);
-        Assert.DoesNotContain("42", exception.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("leaked-value", exception.Message, StringComparison.Ordinal);
     }
 }

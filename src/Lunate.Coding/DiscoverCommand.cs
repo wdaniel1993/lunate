@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Lunate.Ai;
@@ -109,7 +110,10 @@ public static class DiscoverCommand
         }
 
         string requestUrl = $"{baseUrl}/models";
-        using var client = new HttpClient(handler ?? new HttpClientHandler(), disposeHandler: false)
+        using var client = new HttpClient(
+            handler ?? new HttpClientHandler(),
+            disposeHandler: handler is null
+        )
         {
             Timeout = RequestTimeout,
         };
@@ -140,7 +144,7 @@ public static class DiscoverCommand
             {
                 return Failure(
                     $"Discovering models from {requestUrl} failed: "
-                        + $"HTTP {(int)response.StatusCode} ({response.ReasonPhrase})."
+                        + $"HTTP {((int)response.StatusCode).ToString(CultureInfo.InvariantCulture)} ({response.ReasonPhrase})."
                 );
             }
 
