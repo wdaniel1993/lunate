@@ -5,7 +5,13 @@ namespace Lunate.Coding;
 
 internal static class Cli
 {
-    internal static int Run(string[] args, TextWriter output, TextWriter errors)
+    internal static int Run(
+        string[] args,
+        TextWriter output,
+        TextWriter errors,
+        CancellationToken ct = default,
+        PrintModeOptions? printOptions = null
+    )
     {
         if (args is ["--version"])
         {
@@ -30,8 +36,88 @@ internal static class Cli
             return Discover(args[1], output, errors);
         }
 
-        return 0;
+        if (!TryParsePrint(args, errors, out PrintModeOptions? parsed))
+        {
+            return 0;
+        }
+
+        if (parsed is null)
+        {
+            return 2;
+        }
+
+        PrintModeOptions options = (printOptions ?? new PrintModeOptions()) with
+        {
+            Prompt = parsed.Prompt,
+            Json = parsed.Json,
+            Yolo = parsed.Yolo,
+        };
+        return PrintMode.RunAsync(options, output, errors, ct).GetAwaiter().GetResult();
     }
+
+    /// <summary>
+    /// Parses the print-mode flags; returns false when no print flag is present. A null
+    /// <paramref name="options"/> means a usage error was written to stderr.
+    /// </summary>
+    private static bool TryParsePrint(
+        string[] args,
+        TextWriter errors,
+        out PrintModeOptions? options
+    )
+    {
+        options = null;
+        if (!args.Contains("-p") && !args.Contains("--print"))
+        {
+            return false;
+        }
+
+        var json = false;
+        var yolo = false;
+        string? prompt = null;
+        foreach (string arg in args)
+        {
+            switch (arg)
+            {
+                case "-p" or "--print":
+                    break;
+                case "--json":
+                    json = true;
+                    break;
+                case "--yolo":
+                    yolo = true;
+                    break;
+                default:
+                    // The prompt is the first (and only) non-flag argument; --json and
+                    // --yolo may come before or after it, so `lunate -p --json "hi"`
+                    // reads naturally. Flag-shaped unknown tokens stay usage errors.
+                    if (prompt is not null || arg.StartsWith('-') || string.IsNullOrWhiteSpace(arg))
+                    {
+                        WritePrintUsage(errors);
+                        return true;
+                    }
+
+                    prompt = arg;
+                    break;
+            }
+        }
+
+        if (prompt is null)
+        {
+            WritePrintUsage(errors);
+            return true;
+        }
+
+        options = new PrintModeOptions
+        {
+            Prompt = prompt,
+            Json = json,
+            Yolo = yolo,
+        };
+        return true;
+    }
+
+    private static void WritePrintUsage(TextWriter errors) =>
+        errors.WriteLine("Usage: lunate -p [--json] [--yolo] <prompt>");
 
     private static int Discover(string target, TextWriter output, TextWriter errors)
     {
@@ -66,6 +152,14 @@ internal static class Cli
         output.WriteLine("Lunate - a coding agent for the terminal.");
         output.WriteLine();
         output.WriteLine("Usage:");
+        output.WriteLine("  lunate -p [--json] [--yolo] <prompt>");
+        output.WriteLine(
+            "                                 run one prompt and print the final answer to stdout;"
+        );
+        output.WriteLine(
+            "                                 --json streams every event as one JSON line, --yolo"
+        );
+        output.WriteLine("                                 approves every tool call for this run");
         output.WriteLine("  lunate --version               print the version");
         output.WriteLine("  lunate --help                  show this help");
         output.WriteLine("  lunate --discover <name-or-url>");

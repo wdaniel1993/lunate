@@ -28,7 +28,7 @@ public sealed class SettingsStoreTests
             {
               "schemaVersion": 1,
               "model": "gpt-4o-mini",
-              "approval": "auto",
+              "approval": "auto-edit",
               "output": { "toolResultLimit": 1234 }
             }
             """
@@ -37,7 +37,7 @@ public sealed class SettingsStoreTests
         AgentSettings settings = SettingsStore.Resolve(temp.File("settings.json"), _ => null);
 
         Assert.Equal("gpt-4o-mini", settings.Model);
-        Assert.Equal(ApprovalPolicy.Auto, settings.Approval);
+        Assert.Equal(ApprovalPolicy.AutoEdit, settings.Approval);
         Assert.Equal(1234, settings.ToolOutputLimit);
     }
 
@@ -51,7 +51,7 @@ public sealed class SettingsStoreTests
             {
               "schemaVersion": 1,
               "model": "file-model",
-              "approval": "auto",
+              "approval": "auto-edit",
               "output": { "toolResultLimit": 1234 }
             }
             """
@@ -115,6 +115,7 @@ public sealed class SettingsStoreTests
     [Theory]
     [InlineData("maybe")]
     [InlineData("Ask")]
+    [InlineData("auto")]
     public void An_invalid_approval_environment_value_names_its_variable(string value)
     {
         using var temp = new TempDirectory();
@@ -128,6 +129,46 @@ public sealed class SettingsStoreTests
 
         Assert.Contains(ApprovalVariable, exception.Message, StringComparison.Ordinal);
         Assert.Contains(value, exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Yolo_in_the_file_is_rejected_as_a_saved_setting()
+    {
+        using var temp = new TempDirectory();
+        File.WriteAllText(
+            temp.File("settings.json"),
+            """
+            {
+              "schemaVersion": 1,
+              "approval": "yolo"
+            }
+            """
+        );
+
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+            SettingsStore.Resolve(temp.File("settings.json"), _ => null)
+        );
+
+        Assert.Contains("yolo", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("per-run", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("No settings were applied", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Yolo_in_the_environment_is_rejected_as_a_saved_setting()
+    {
+        using var temp = new TempDirectory();
+
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+            SettingsStore.Resolve(
+                temp.File("missing.json"),
+                name => name == ApprovalVariable ? "yolo" : null
+            )
+        );
+
+        Assert.Contains(ApprovalVariable, exception.Message, StringComparison.Ordinal);
+        Assert.Contains("yolo", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("per-run", exception.Message, StringComparison.Ordinal);
     }
 
     [Theory]

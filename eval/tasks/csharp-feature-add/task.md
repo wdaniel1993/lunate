@@ -1,0 +1,1 @@
+WordTool prints the number of words in its arguments. Add a `--reverse` flag: when the first argument is `--reverse`, print the remaining words in reverse order, separated by single spaces. Keep the current word-count behavior for every other invocation.

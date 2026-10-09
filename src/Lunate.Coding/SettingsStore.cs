@@ -4,14 +4,14 @@ using Lunate.Agent;
 
 namespace Lunate.Coding;
 
-/// <summary>How Execute-risk tool calls are handled once the approval flow consumes the setting.</summary>
+/// <summary>How tool calls are handled once the non-interactive approver consumes the setting.</summary>
 public enum ApprovalPolicy
 {
-    /// <summary>Require approval for Execute-risk tool calls (default).</summary>
+    /// <summary>Read-only tools run; file writes, edits and commands require approval (default).</summary>
     Ask,
 
-    /// <summary>Approve automatically.</summary>
-    Auto,
+    /// <summary>File writes and edits run; commands require approval.</summary>
+    AutoEdit,
 }
 
 /// <summary>The resolved agent settings: file values overridden by the environment.</summary>
@@ -162,7 +162,12 @@ public static class SettingsStore
             return parsed;
         }
 
-        problems.Add($"'{key}' must be 'ask' or 'auto'");
+        problems.Add(
+            ApprovalError(
+                $"'{key}'",
+                value.ValueKind == JsonValueKind.String ? value.GetString() : null
+            )
+        );
         return ApprovalPolicy.Ask;
     }
 
@@ -220,7 +225,7 @@ public static class SettingsStore
             }
             else
             {
-                problems.Add($"{ApprovalVariable} must be 'ask' or 'auto', but was '{approval}'");
+                problems.Add(ApprovalError(ApprovalVariable, approval));
             }
         }
 
@@ -257,14 +262,20 @@ public static class SettingsStore
             case "ask":
                 parsed = ApprovalPolicy.Ask;
                 return true;
-            case "auto":
-                parsed = ApprovalPolicy.Auto;
+            case "auto-edit":
+                parsed = ApprovalPolicy.AutoEdit;
                 return true;
             default:
                 parsed = ApprovalPolicy.Ask;
                 return false;
         }
     }
+
+    private static string ApprovalError(string subject, string? value) =>
+        value == "yolo"
+            ? $"{subject} is 'yolo'; yolo is a per-run flag, never a saved setting. Use 'ask' or 'auto-edit'"
+        : value is null ? $"{subject} must be 'ask' or 'auto-edit'"
+        : $"{subject} must be 'ask' or 'auto-edit', but was '{value}'";
 
     private static string DefaultFilePath() =>
         Path.Combine(
