@@ -15,9 +15,9 @@
 
 ## 3. Eval suite
 
-- [ ] 3.1 `eval/tasks/` first set — 6 tasks (5 C#: failing-test fix (`dotnet test`), runtime bug (dotnet run assertion), feature add, cross-file rename, multi-file repair; 1 Python); each with `task.md`, `check.sh`, `repo/`; stub `Directory.Build.props` at `eval/tasks/`; `eval/` added to `.csharpierignore`
-- [ ] 3.2 `scripts/eval.sh` + `eval/README.md` + `eval/results.csv` header; runner exercised END TO END against a stub binary (offline red→green: stub JSONL → parsed row printed; no live call)
-- [ ] 3.3 Check scripts validated: each fixture fails its check before the fix (red) and passes after a hand-fix (green) — proven per task, recorded
+- [x] 3.1 `eval/tasks/` first set — 6 tasks (5 C#: failing-test fix (`dotnet test`), runtime bug (dotnet run assertion), feature add, cross-file rename, multi-file repair; 1 Python); each with `task.md`, `check.sh`, `repo/`; stub `Directory.Build.props` at `eval/tasks/`; `eval/` added to `.csharpierignore`
+- [x] 3.2 `scripts/eval.sh` + `eval/README.md` + `eval/results.csv` header; runner exercised END TO END against a stub binary (offline red→green: stub JSONL → parsed row printed; no live call)
+- [x] 3.3 Check scripts validated: each fixture fails its check before the fix (red) and passes after a hand-fix (green) — proven per task, recorded
 
 ## 4. Baseline run (live)
 

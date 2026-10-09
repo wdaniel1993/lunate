@@ -1,0 +1,6 @@
+<Project>
+    <!-- Fixture projects under eval/tasks are intentionally flawed and hermetic.
+         This empty stub stops MSBuild's Directory.Build.props walk-up so the
+         repository's warnings-as-errors and target-framework settings do not
+         apply to them. Fixture projects set their own TargetFramework. -->
+</Project>
