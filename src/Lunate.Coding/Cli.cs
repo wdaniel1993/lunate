@@ -5,10 +5,8 @@ namespace Lunate.Coding;
 
 internal static class Cli
 {
-    internal static int Run(string[] args, TextWriter output, TextWriter? error = null)
+    internal static int Run(string[] args, TextWriter output, TextWriter errors)
     {
-        TextWriter errors = error ?? output;
-
         if (args is ["--version"])
         {
             output.WriteLine(GetProductVersion());

@@ -7,7 +7,7 @@ public sealed class CliTests
     {
         using var writer = new StringWriter();
 
-        var exitCode = Cli.Run([], writer);
+        var exitCode = Cli.Run([], writer, TextWriter.Null);
 
         Assert.Equal(0, exitCode);
         Assert.Empty(writer.ToString());
@@ -18,7 +18,7 @@ public sealed class CliTests
     {
         using var writer = new StringWriter();
 
-        var exitCode = Cli.Run(["--unknown"], writer);
+        var exitCode = Cli.Run(["--unknown"], writer, TextWriter.Null);
 
         Assert.Equal(0, exitCode);
         Assert.Empty(writer.ToString());
@@ -29,7 +29,7 @@ public sealed class CliTests
     {
         using var writer = new StringWriter();
 
-        var exitCode = Cli.Run(["--help"], writer);
+        var exitCode = Cli.Run(["--help"], writer, TextWriter.Null);
 
         Assert.Equal(0, exitCode);
         Assert.Contains("--discover", writer.ToString(), StringComparison.Ordinal);
