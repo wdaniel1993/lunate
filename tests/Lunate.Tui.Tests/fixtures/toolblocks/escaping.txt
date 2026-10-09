@@ -1,0 +1,10 @@
+tool edit [red]src[/].cs ok
+[dim]not markup[/]
+[bold]neither[/]
+[[nested]]
+match: [bold]exact[/]
+--- a/[red]src[/].cs
++++ b/[red]src[/].cs
+@@ -1 +1 @@
+-keep [dim]this[/]
++keep [bold]that[/]

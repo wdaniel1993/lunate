@@ -105,3 +105,46 @@ static Lunate.Tui.TechnicalText.Bytes(long bytes) -> string!
 static Lunate.Tui.TechnicalText.Duration(System.TimeSpan duration) -> string!
 static Lunate.Tui.TechnicalText.Percent(double percent) -> string!
 static Lunate.Tui.TechnicalText.Tokens(long tokens) -> string!
+Lunate.Tui.ToolBlockModel
+Lunate.Tui.ToolBlockModel.<Clone>$() -> Lunate.Tui.ToolBlockModel!
+Lunate.Tui.ToolBlockRenderer
+Lunate.Tui.ToolBlockRenderer.Render(Lunate.Tui.ToolBlockModel! block) -> Spectre.Console.Rendering.IRenderable!
+Lunate.Tui.ToolBlockRenderer.ToolBlockRenderer() -> void
+Lunate.Tui.ToolBlockModel.ArgsSummary.get -> string!
+Lunate.Tui.ToolBlockModel.ArgsSummary.init -> void
+Lunate.Tui.ToolBlockModel.Deconstruct(out string! ToolName, out string! ArgsSummary, out Lunate.Tui.ToolBlockStatus Status, out string? Output, out Lunate.Tui.ToolDiffInfo? Diff) -> void
+Lunate.Tui.ToolBlockModel.Diff.get -> Lunate.Tui.ToolDiffInfo?
+Lunate.Tui.ToolBlockModel.Diff.init -> void
+Lunate.Tui.ToolBlockModel.Equals(Lunate.Tui.ToolBlockModel? other) -> bool
+Lunate.Tui.ToolBlockModel.Output.get -> string?
+Lunate.Tui.ToolBlockModel.Output.init -> void
+Lunate.Tui.ToolBlockModel.Status.get -> Lunate.Tui.ToolBlockStatus
+Lunate.Tui.ToolBlockModel.Status.init -> void
+Lunate.Tui.ToolBlockModel.ToolBlockModel(string! ToolName, string! ArgsSummary, Lunate.Tui.ToolBlockStatus Status, string? Output, Lunate.Tui.ToolDiffInfo? Diff) -> void
+Lunate.Tui.ToolBlockModel.ToolName.get -> string!
+Lunate.Tui.ToolBlockModel.ToolName.init -> void
+Lunate.Tui.ToolBlockStatus
+Lunate.Tui.ToolBlockStatus.Error = 2 -> Lunate.Tui.ToolBlockStatus
+Lunate.Tui.ToolBlockStatus.Ok = 1 -> Lunate.Tui.ToolBlockStatus
+Lunate.Tui.ToolBlockStatus.Running = 0 -> Lunate.Tui.ToolBlockStatus
+Lunate.Tui.ToolDiffInfo
+Lunate.Tui.ToolDiffInfo.<Clone>$() -> Lunate.Tui.ToolDiffInfo!
+Lunate.Tui.ToolDiffInfo.Deconstruct(out string! Path, out string! MatchTier, out string! UnifiedDiff) -> void
+Lunate.Tui.ToolDiffInfo.Equals(Lunate.Tui.ToolDiffInfo? other) -> bool
+Lunate.Tui.ToolDiffInfo.MatchTier.get -> string!
+Lunate.Tui.ToolDiffInfo.MatchTier.init -> void
+Lunate.Tui.ToolDiffInfo.Path.get -> string!
+Lunate.Tui.ToolDiffInfo.Path.init -> void
+Lunate.Tui.ToolDiffInfo.ToolDiffInfo(string! Path, string! MatchTier, string! UnifiedDiff) -> void
+Lunate.Tui.ToolDiffInfo.UnifiedDiff.get -> string!
+Lunate.Tui.ToolDiffInfo.UnifiedDiff.init -> void
+override Lunate.Tui.ToolBlockModel.Equals(object? obj) -> bool
+override Lunate.Tui.ToolBlockModel.GetHashCode() -> int
+override Lunate.Tui.ToolBlockModel.ToString() -> string!
+override Lunate.Tui.ToolDiffInfo.Equals(object? obj) -> bool
+override Lunate.Tui.ToolDiffInfo.GetHashCode() -> int
+override Lunate.Tui.ToolDiffInfo.ToString() -> string!
+static Lunate.Tui.ToolBlockModel.operator !=(Lunate.Tui.ToolBlockModel? left, Lunate.Tui.ToolBlockModel? right) -> bool
+static Lunate.Tui.ToolBlockModel.operator ==(Lunate.Tui.ToolBlockModel? left, Lunate.Tui.ToolBlockModel? right) -> bool
+static Lunate.Tui.ToolDiffInfo.operator !=(Lunate.Tui.ToolDiffInfo? left, Lunate.Tui.ToolDiffInfo? right) -> bool
+static Lunate.Tui.ToolDiffInfo.operator ==(Lunate.Tui.ToolDiffInfo? left, Lunate.Tui.ToolDiffInfo? right) -> bool
