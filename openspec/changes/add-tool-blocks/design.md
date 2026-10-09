@@ -35,6 +35,21 @@ ToolDiffInfo(string Path, string MatchTier, string UnifiedDiff)
 
 Wiring to the event stream / live area / scrollback (T-22); approval prompt and footer (T-21); syntax highlighting inside diffs (v1: plain red/green, no per-language highlighting); wrapping policy for very wide diff lines (terminal width handling stays T-33).
 
+## T-22 wiring seam
+
+`EditDetails(Path, FirstLine, LastLine, MatchTier, Diff)` maps to `ToolDiffInfo(Path, MatchTier, Diff)`;
+`WriteDetails(Path, Created, Lines, Diff)` maps to `ToolDiffInfo(Path, "exact", Diff)` (a write applies
+the content verbatim, no fallback). `ToolBlockModel(ToolName, ArgsSummary: raw args JSON, Status,
+Output, Diff)` is assembled from the `ToolCallStart`/`ToolCallResult` events at the same seam.
+
 ## Deviations
 
-(Filled during apply; empty at proposal time.)
+- `ToolDiffInfo.Path` is carried but not printed in v1: the unified text already carries the paths in
+  its `---`/`+++` headers, so the panel would only duplicate them; T-22 can use the field in the live area.
+- `WriteDetails` has no match tier on the wire. Writes map to `exact` (verbatim content, no fallback)
+  so the label requirement holds; `DiffRenderer` still omits the label when `MatchTier` is empty or
+  whitespace, and styles unknown tiers neutrally.
+- Lines before the first `@@` that are neither `--- `/`+++ ` headers nor a hunk are rendered as dim
+  context instead of being dropped: malformed diffs never lose text and never throw.
+- The hidden-lines marker is pinned verbatim from the design as `… N lines hidden …` (U+2026
+  ellipses) with an invariant count; `OutputExcerpt` owns the constants and the marker format.

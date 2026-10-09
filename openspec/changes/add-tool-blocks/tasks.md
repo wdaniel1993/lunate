@@ -17,5 +17,5 @@
 
 ## 4. Close
 
-- [ ] 4.1 csharpier; `bash scripts/verify.sh` green (incl. de-AT); `openspec validate add-tool-blocks --type change --strict`; self-review; commit per group; no push
-- [ ] 4.2 Deviations recorded in design.md; note the T-22 mapping seam (`EditDetails` → `ToolDiffInfo`)
+- [x] 4.1 csharpier; `bash scripts/verify.sh` green (incl. de-AT); `openspec validate add-tool-blocks --type change --strict`; self-review; commit per group; no push
+- [x] 4.2 Deviations recorded in design.md; note the T-22 mapping seam (`EditDetails` → `ToolDiffInfo`)
