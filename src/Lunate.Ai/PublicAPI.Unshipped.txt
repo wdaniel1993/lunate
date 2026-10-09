@@ -1,6 +1,6 @@
 #nullable enable
 Lunate.Ai.ChatClientFactory
-Lunate.Ai.ChatClientFactory.ChatClientFactory(Microsoft.Extensions.Logging.ILoggerFactory! loggerFactory, bool? enableOpenTelemetry = null, System.Func<Lunate.Ai.ModelInfo!, Microsoft.Extensions.AI.IChatClient!>? providerClientFactory = null, System.Func<Microsoft.Extensions.AI.IChatClient!, Microsoft.Extensions.AI.IChatClient!>? recorderDecorator = null) -> void
+Lunate.Ai.ChatClientFactory.ChatClientFactory(Microsoft.Extensions.Logging.ILoggerFactory! loggerFactory, bool? enableOpenTelemetry = null, System.Func<Lunate.Ai.ModelInfo!, Microsoft.Extensions.AI.IChatClient!>? providerClientFactory = null, System.Func<Microsoft.Extensions.AI.IChatClient!, Microsoft.Extensions.AI.IChatClient!>? recorderDecorator = null, System.Func<string!, string?>? namedKeySource = null) -> void
 Lunate.Ai.ChatClientFactory.Create(Lunate.Ai.ModelInfo! model) -> Microsoft.Extensions.AI.IChatClient!
 Lunate.Ai.IChatClientFactory
 Lunate.Ai.IChatClientFactory.Create(Lunate.Ai.ModelInfo! model) -> Microsoft.Extensions.AI.IChatClient!
@@ -10,15 +10,17 @@ static Lunate.Ai.ModelCatalog.Load(string? userFilePath = null) -> Lunate.Ai.Mod
 Lunate.Ai.ModelCatalog.Models.get -> System.Collections.Generic.IReadOnlyList<Lunate.Ai.ModelInfo!>!
 Lunate.Ai.ModelInfo
 Lunate.Ai.ModelInfo.<Clone>$() -> Lunate.Ai.ModelInfo!
+Lunate.Ai.ModelInfo.AuthRef.get -> string?
+Lunate.Ai.ModelInfo.AuthRef.init -> void
 Lunate.Ai.ModelInfo.ContextWindow.get -> int
 Lunate.Ai.ModelInfo.ContextWindow.init -> void
-Lunate.Ai.ModelInfo.Deconstruct(out string! Id, out string! Provider, out System.Uri? Endpoint, out int ContextWindow, out bool SupportsTools) -> void
+Lunate.Ai.ModelInfo.Deconstruct(out string! Id, out string! Provider, out System.Uri? Endpoint, out int ContextWindow, out bool SupportsTools, out string? AuthRef) -> void
 Lunate.Ai.ModelInfo.Endpoint.get -> System.Uri?
 Lunate.Ai.ModelInfo.Endpoint.init -> void
 Lunate.Ai.ModelInfo.Equals(Lunate.Ai.ModelInfo? other) -> bool
 Lunate.Ai.ModelInfo.Id.get -> string!
 Lunate.Ai.ModelInfo.Id.init -> void
-Lunate.Ai.ModelInfo.ModelInfo(string! Id, string! Provider, System.Uri? Endpoint, int ContextWindow, bool SupportsTools) -> void
+Lunate.Ai.ModelInfo.ModelInfo(string! Id, string! Provider, System.Uri? Endpoint, int ContextWindow, bool SupportsTools, string? AuthRef = null) -> void
 Lunate.Ai.ModelInfo.Provider.get -> string!
 Lunate.Ai.ModelInfo.Provider.init -> void
 Lunate.Ai.ModelInfo.SupportsTools.get -> bool

@@ -59,7 +59,10 @@ public sealed partial class AgentHarness
         }
 
         toolActivity?.SetTag(AgentTelemetry.ToolIsErrorAttribute, result.IsError);
-        string output = ToolOutput.Truncate(result.Output ?? string.Empty);
+        string output = ToolOutput.Truncate(
+            result.Output ?? string.Empty,
+            _options.ToolOutputLimit
+        );
         channel.Emit(new ToolCallResult(runId, callId, output, result.IsError, result.Details));
         AppendHistoryMessage(
             new ChatMessage(ChatRole.Tool, [new FunctionResultContent(callId, output)])
@@ -224,7 +227,7 @@ public sealed partial class AgentHarness
             new ToolCallResult(
                 runId,
                 nestedCallId,
-                ToolOutput.Truncate(result.Output ?? string.Empty),
+                ToolOutput.Truncate(result.Output ?? string.Empty, _options.ToolOutputLimit),
                 result.IsError,
                 result.Details
             )

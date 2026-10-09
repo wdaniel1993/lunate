@@ -373,6 +373,8 @@ Lunate.Agent.AgentHarnessOptions.RetryBaseDelay.get -> System.TimeSpan
 Lunate.Agent.AgentHarnessOptions.RetryBaseDelay.init -> void
 Lunate.Agent.AgentHarnessOptions.SystemPrompt.get -> string?
 Lunate.Agent.AgentHarnessOptions.SystemPrompt.init -> void
+Lunate.Agent.AgentHarnessOptions.ToolOutputLimit.get -> int
+Lunate.Agent.AgentHarnessOptions.ToolOutputLimit.init -> void
 Lunate.Agent.AgentHarnessOptions.WorkingDirectory.get -> string!
 Lunate.Agent.AgentHarnessOptions.WorkingDirectory.init -> void
 Lunate.Agent.IToolApprover

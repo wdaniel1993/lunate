@@ -25,12 +25,14 @@ public sealed class ChatClientFactory : IChatClientFactory
     private readonly bool _enableOpenTelemetry;
     private readonly Func<ModelInfo, IChatClient>? _providerClientFactory;
     private readonly Func<IChatClient, IChatClient>? _recorderDecorator;
+    private readonly Func<string, string?>? _namedKeySource;
 
     public ChatClientFactory(
         ILoggerFactory loggerFactory,
         bool? enableOpenTelemetry = null,
         Func<ModelInfo, IChatClient>? providerClientFactory = null,
-        Func<IChatClient, IChatClient>? recorderDecorator = null
+        Func<IChatClient, IChatClient>? recorderDecorator = null,
+        Func<string, string?>? namedKeySource = null
     )
     {
         ArgumentNullException.ThrowIfNull(loggerFactory);
@@ -38,6 +40,7 @@ public sealed class ChatClientFactory : IChatClientFactory
         _enableOpenTelemetry = enableOpenTelemetry ?? OpenTelemetryEnabledFromEnvironment();
         _providerClientFactory = providerClientFactory;
         _recorderDecorator = recorderDecorator;
+        _namedKeySource = namedKeySource;
     }
 
     public IChatClient Create(ModelInfo model)
@@ -71,16 +74,18 @@ public sealed class ChatClientFactory : IChatClientFactory
         return builder.UseLogging(_loggerFactory).Build();
     }
 
-    private static IChatClient CreateProviderClient(ModelInfo model)
+    private IChatClient CreateProviderClient(ModelInfo model)
     {
         if (string.Equals(model.Provider, OpenAiProvider, StringComparison.OrdinalIgnoreCase))
         {
-            return CreateOpenAiClient(model).GetChatClient(model.Id).AsIChatClient();
+            return CreateOpenAiClient(model, _namedKeySource)
+                .GetChatClient(model.Id)
+                .AsIChatClient();
         }
 
         if (string.Equals(model.Provider, AnthropicProvider, StringComparison.OrdinalIgnoreCase))
         {
-            return CreateAnthropicClient(model).AsIChatClient(model.Id);
+            return CreateAnthropicClient(model, _namedKeySource).AsIChatClient(model.Id);
         }
 
         throw new NotSupportedException(
@@ -88,9 +93,12 @@ public sealed class ChatClientFactory : IChatClientFactory
         );
     }
 
-    internal static OpenAIClient CreateOpenAiClient(ModelInfo model)
+    internal static OpenAIClient CreateOpenAiClient(
+        ModelInfo model,
+        Func<string, string?>? namedKeySource = null
+    )
     {
-        string apiKey = ResolveApiKey(model, OpenAiApiKeyVariable);
+        string apiKey = ResolveApiKey(model, OpenAiApiKeyVariable, namedKeySource);
 
         return new OpenAIClient(new ApiKeyCredential(apiKey), CreateOpenAiClientOptions(model));
     }
@@ -107,9 +115,12 @@ public sealed class ChatClientFactory : IChatClientFactory
         return options;
     }
 
-    internal static AnthropicClient CreateAnthropicClient(ModelInfo model)
+    internal static AnthropicClient CreateAnthropicClient(
+        ModelInfo model,
+        Func<string, string?>? namedKeySource = null
+    )
     {
-        string apiKey = ResolveApiKey(model, AnthropicApiKeyVariable);
+        string apiKey = ResolveApiKey(model, AnthropicApiKeyVariable, namedKeySource);
 
         if (model.Endpoint is null)
         {
@@ -125,29 +136,57 @@ public sealed class ChatClientFactory : IChatClientFactory
     }
 
     /// <summary>
-    /// Resolves the credential for a model: the environment key is used only for
-    /// the provider's default endpoint. A model with a declared endpoint gets the
-    /// placeholder credential, so real keys never reach third-party endpoints
-    /// (explicit per-model key references arrive with T-16).
+    /// Resolves the credential for a model. A declared <see cref="ModelInfo.AuthRef"/> resolves the
+    /// named key from the user's auth store and sends it to the declared endpoint - the explicit
+    /// opt-in. Without a reference, the environment key is used only for the provider's default
+    /// endpoint (the auth store is the fallback); a model with a declared endpoint gets the
+    /// placeholder credential, so real keys never reach third-party endpoints.
     /// </summary>
-    internal static string ResolveApiKey(ModelInfo model, string apiKeyVariable)
+    internal static string ResolveApiKey(
+        ModelInfo model,
+        string apiKeyVariable,
+        Func<string, string?>? namedKeySource = null
+    )
     {
+        if (!string.IsNullOrEmpty(model.AuthRef))
+        {
+            string? named = namedKeySource?.Invoke(model.AuthRef);
+            if (string.IsNullOrEmpty(named))
+            {
+                throw new InvalidOperationException(
+                    $"The auth reference '{model.AuthRef}' for model '{model.Id}' cannot be resolved. "
+                        + $"Add a key named '{model.AuthRef}' to auth.json or set the matching environment variable."
+                );
+            }
+
+            return named;
+        }
+
         if (model.Endpoint is not null)
         {
             return PlaceholderCredential;
         }
 
+        string providerName = ProviderNameFor(apiKeyVariable);
         string? apiKey = Environment.GetEnvironmentVariable(apiKeyVariable);
+        if (string.IsNullOrEmpty(apiKey) && namedKeySource is not null)
+        {
+            apiKey = namedKeySource(providerName);
+        }
+
         if (string.IsNullOrEmpty(apiKey))
         {
             throw new InvalidOperationException(
-                $"The {apiKeyVariable} environment variable is not set. "
-                    + $"Set {apiKeyVariable} to your API key; settings and auth.json support arrive with T-16."
+                $"The {apiKeyVariable} environment variable is not set and no '{providerName}' key is stored. "
+                    + $"Set {apiKeyVariable} or add the key to auth.json."
             );
         }
 
         return apiKey;
     }
+
+    private static string ProviderNameFor(string apiKeyVariable) =>
+        apiKeyVariable == AnthropicApiKeyVariable ? AnthropicProvider : OpenAiProvider;
 
     internal static string DefaultRecordingPath() =>
         Path.Combine(

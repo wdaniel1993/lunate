@@ -10,7 +10,7 @@
 
 ## Configuration files (`~/.lunate/`)
 
-- **settings.json** (`SettingsStore`): `{ "schemaVersion": 1, "model": "...", "approval": "ask" | "auto", "output": { "toolResultLimit": 30000 } }`. All fields optional; missing file = defaults. Validation collects **all** problems into one clear error (unknown keys, bad types, invalid enum values). Defaults: approval `ask`, toolResultLimit 30000.
+- **settings.json** (`SettingsStore`): `{ "schemaVersion": 1, "model": "...", "approval": "ask" | "auto", "output": { "toolResultLimit": 30000 } }`. All fields optional except `schemaVersion` (the version guard, symmetric with auth.json); a missing file = defaults. Validation collects **all** problems into one clear error (unknown keys, bad types, invalid enum values). Defaults: approval `ask`, toolResultLimit 30000.
   - `approval` semantics: `ask` (default) — Execute-risk tool calls require approval once the approval flow lands (T-21+ consumes it); `auto` — approved automatically. Resolution lands here; the consumer is a later card (noted in the spec).
   - **Output limit is made real now**: `AgentHarnessOptions.ToolOutputLimit` (default 30,000) threads to both `ToolOutput.Truncate` call sites in `AgentHarness.Tools.cs`; test asserts a small limit produces the marker.
 - **auth.json** (`AuthStore`): `{ "schemaVersion": 1, "keys": { "<name>": "<secret>" } }`. `Save` writes with owner-only permissions on POSIX (`File.SetUnixFileMode`: `UserRead | UserWrite`; Windows: documented best-effort, no mode). Secrets are never logged or echoed in errors (errors name the key, never the value).
@@ -40,4 +40,7 @@
 
 ## Deviations
 
-(Filled during apply; empty at proposal time.)
+- The composer takes the `Workspace` (so `RepoRoot ?? WorktreeRoot` and the canonical working directory come from one source). When the repository root is not an ancestor of the working directory (a linked worktree), only the working directory's `AGENTS.md` is read; the main checkout's file is not injected.
+- The provider missing-key error text no longer mentions "T-16"; the two placeholder tests now assert that it names `auth.json` (the debt is closed by this change).
+- `--discover` resolves Anthropic provider defaults and sends `x-api-key`/`anthropic-version` for symmetry; the design described OpenAI-compatible endpoints only.
+- `AuthStore`/`SettingsStore` live in `Lunate.Coding`, which has no PublicAPI tracking; only `Lunate.Ai` and `Lunate.Agent` needed `PublicAPI.Unshipped.txt` updates.

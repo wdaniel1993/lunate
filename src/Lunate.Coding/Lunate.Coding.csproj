@@ -14,4 +14,8 @@
     <ItemGroup>
         <InternalsVisibleTo Include="Lunate.Coding.Tests" />
     </ItemGroup>
+
+    <ItemGroup>
+        <EmbeddedResource Include="system-prompt.md" LogicalName="Lunate.Coding.system-prompt.md" />
+    </ItemGroup>
 </Project>
