@@ -2,8 +2,8 @@
 
 ## 1. Model and summaries
 
-- [ ] 1.1 `ToolBlockModel`, `ToolDiffInfo`, `ToolBlockStatus`; PublicAPI.Unshipped entries
-- [ ] 1.2 `ToolArgsSummary`: per-tool rules (read/write/edit path; bash command; cs_* symbol; generic fallback); unit tests incl. adversarial inputs (missing fields, wrong types, invalid JSON, huge strings)
+- [x] 1.1 `ToolBlockModel`, `ToolDiffInfo`, `ToolBlockStatus`; PublicAPI.Unshipped entries
+- [x] 1.2 `ToolArgsSummary`: per-tool rules (read/write/edit path; bash command; cs_* symbol; generic fallback); unit tests incl. adversarial inputs (missing fields, wrong types, invalid JSON, huge strings)
 
 ## 2. Output and status rendering
 
