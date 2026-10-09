@@ -4,24 +4,14 @@ namespace Lunate.Tui.Platform;
 
 internal static class UnixRawMode
 {
-    private const int StandardInputFd = 0;
-    private const int ActionNow = 0;
-    private const int TermiosBufferSize = 128;
+    internal const int StandardInputFd = 0;
+    internal const int ActionNow = 0;
+    internal const int TermiosBufferSize = 128;
 
-    private const int LocalFlagOffset = 12;
-    private const int InputFlagOffset = 0;
-
-    private const uint Echo = 0x0000_0008;
-
-    private static readonly bool IsMacOs = OperatingSystem.IsMacOS();
-
-    private static uint CanonicalFlag => (uint)(IsMacOs ? 0x0000_0100 : 0x0000_0002);
-    private static uint SignalFlag => (uint)(IsMacOs ? 0x0000_0080 : 0x0000_0001);
-    private static uint ExtendedFlag => (uint)(IsMacOs ? 0x0000_0400 : 0x0000_8000);
-    private static uint FlowControlFlag => (uint)(IsMacOs ? 0x0000_0200 : 0x0000_0400);
-
-    private static int VMinOffset => IsMacOs ? 32 : 23;
-    private static int VTimeOffset => IsMacOs ? 33 : 22;
+    // The buffer covers both layouts (Darwin 72 bytes, Linux 60) with slack; the
+    // per-platform offsets live in TermiosLayout and are pinned by tests.
+    internal static TermiosLayout Current { get; } =
+        OperatingSystem.IsMacOS() ? TermiosLayout.MacOs : TermiosLayout.Linux;
 
     [DllImport("libc", SetLastError = true)]
     private static extern int tcgetattr(int fd, byte[] termios);
@@ -40,17 +30,7 @@ internal static class UnixRawMode
         }
 
         var original = (byte[])state.Clone();
-
-        uint local = BitConverter.ToUInt32(state, LocalFlagOffset);
-        local &= ~Echo & ~CanonicalFlag & ~SignalFlag & ~ExtendedFlag;
-        BitConverter.TryWriteBytes(state.AsSpan(LocalFlagOffset), local);
-
-        uint input = BitConverter.ToUInt32(state, InputFlagOffset);
-        input &= ~FlowControlFlag;
-        BitConverter.TryWriteBytes(state.AsSpan(InputFlagOffset), input);
-
-        state[VMinOffset] = 1;
-        state[VTimeOffset] = 0;
+        Current.ApplyRaw(state);
 
         if (tcsetattr(StandardInputFd, ActionNow, state) != 0)
         {

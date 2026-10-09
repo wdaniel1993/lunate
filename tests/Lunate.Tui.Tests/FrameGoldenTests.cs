@@ -54,6 +54,7 @@ public sealed class FrameGoldenTests
         Advance(scheduler, 33);
 
         area.Dispose();
+        Advance(scheduler, 1);
         return console.Writes;
     }
 

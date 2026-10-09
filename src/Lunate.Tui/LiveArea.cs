@@ -4,7 +4,7 @@ using System.Reactive.Subjects;
 
 namespace Lunate.Tui;
 
-public sealed class LiveArea : IDisposable
+internal sealed class LiveArea : IDisposable
 {
     internal static readonly TimeSpan FrameInterval = TimeSpan.FromMilliseconds(33);
     internal static readonly TimeSpan SpinnerInterval = TimeSpan.FromMilliseconds(120);
@@ -99,7 +99,13 @@ public sealed class LiveArea : IDisposable
 
         _subscriptions.Clear();
         _stimuli.Dispose();
-        _writer.Clear();
+
+        // The render subscription is gone, so queue the final clear on the same
+        // scheduler that paints frames; the terminating thread never touches
+        // FrameWriter state concurrently. Dispose the CTS only after the pump has
+        // been cancelled, which keeps its token valid for the in-flight reads.
+        _scheduler.Schedule(() => _writer.Clear());
+        _cts.Dispose();
     }
 
     private void Post(LiveAreaInput input)

@@ -1,6 +1,6 @@
 namespace Lunate.Tui;
 
-public sealed record LiveAreaState
+internal sealed record LiveAreaState
 {
     public InputLineState Input { get; init; } = InputLine.Empty;
 

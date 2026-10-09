@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Runtime.InteropServices;
 
 namespace Lunate.Tui.Platform;
@@ -38,21 +39,34 @@ internal static class WindowsConsoleMode
             );
         }
 
-        SetConsoleMode(
-            input,
+        uint rawInputMode =
             (inputMode & ~(EnableEchoInput | EnableLineInput | EnableProcessedInput))
-                | EnableVirtualTerminalInput
-        );
+            | EnableVirtualTerminalInput;
+        if (!SetConsoleMode(input, rawInputMode))
+        {
+            throw new InvalidOperationException(
+                ModeFailure("virtual-terminal input could not be enabled on the Windows console")
+            );
+        }
 
         var output = GetStdHandle(StandardOutputHandle);
         bool outputChanged = GetConsoleMode(output, out uint outputMode);
-        if (outputChanged)
+        if (outputChanged && !SetConsoleMode(output, outputMode | EnableVirtualTerminalProcessing))
         {
-            SetConsoleMode(output, outputMode | EnableVirtualTerminalProcessing);
+            SetConsoleMode(input, inputMode);
+            throw new InvalidOperationException(
+                ModeFailure("virtual-terminal output could not be enabled on the Windows console")
+            );
         }
 
         return new Restore(input, inputMode, output, outputMode, outputChanged);
     }
+
+    private static string ModeFailure(string message) =>
+        string.Create(
+            CultureInfo.InvariantCulture,
+            $"{message} (error {Marshal.GetLastWin32Error()}); use Windows Terminal, or re-enable pseudo-console support."
+        );
 
     private sealed class Restore(
         IntPtr input,
@@ -62,12 +76,22 @@ internal static class WindowsConsoleMode
         bool outputChanged
     ) : IDisposable
     {
+        // A failed restore leaves the user's terminal in raw mode, so Dispose surfaces
+        // the failure instead of swallowing it.
         public void Dispose()
         {
-            SetConsoleMode(input, inputMode);
-            if (outputChanged)
+            if (!SetConsoleMode(input, inputMode))
             {
-                SetConsoleMode(output, outputMode);
+                throw new InvalidOperationException(
+                    ModeFailure("the Windows console input mode could not be restored")
+                );
+            }
+
+            if (outputChanged && !SetConsoleMode(output, outputMode))
+            {
+                throw new InvalidOperationException(
+                    ModeFailure("the Windows console output mode could not be restored")
+                );
             }
         }
     }

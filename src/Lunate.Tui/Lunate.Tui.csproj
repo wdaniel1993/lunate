@@ -9,7 +9,9 @@
     </ItemGroup>
 
     <ItemGroup>
+        <!-- `lunate` is the Lunate.Coding assembly name; it wires the internal TUI. -->
         <InternalsVisibleTo Include="Lunate.Tui.Tests" />
+        <InternalsVisibleTo Include="lunate" />
     </ItemGroup>
 
     <ItemGroup>

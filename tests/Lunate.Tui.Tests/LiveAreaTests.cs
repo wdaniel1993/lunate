@@ -147,6 +147,7 @@ public sealed class LiveAreaTests
 
         int before = console.Writes.Count;
         area.Dispose();
+        Advance(scheduler, 1);
 
         Assert.Equal(before + 1, console.Writes.Count);
         Assert.Contains("\u001b[1A", console.Writes[^1], StringComparison.Ordinal);
@@ -157,6 +158,28 @@ public sealed class LiveAreaTests
         Assert.Equal(afterClear, console.Writes.Count);
 
         area.Dispose();
+    }
+
+    [Fact]
+    public void Dispose_with_a_pending_render_schedules_exactly_one_clear()
+    {
+        var scheduler = new TestScheduler();
+        using var console = new FakeConsoleIO(scheduler, new ConsoleSize(40, 10));
+        var area = new LiveArea(console, scheduler);
+        area.Start();
+        area.PostKey(Char("a"));
+        Advance(scheduler, 33);
+
+        int before = console.Writes.Count;
+        area.PostKey(Char("b"));
+        area.Dispose();
+
+        Assert.Equal(before, console.Writes.Count);
+
+        Advance(scheduler, 1000);
+
+        Assert.Equal(before + 1, console.Writes.Count);
+        Assert.Contains("\u001b[1A", console.Writes[^1], StringComparison.Ordinal);
     }
 
     [Fact]
