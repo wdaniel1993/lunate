@@ -52,4 +52,10 @@ Every print run persists a session through the T-13 store: id = chronological, f
 
 ## Deviations
 
-(Filled during apply; empty at proposal time.)
+(Filled during apply.)
+
+- **Session attachment**: `Session.Create` owns id generation (the id is not injectable through the public API), so `PrintMode` creates the session at a provisional path, renames the file to `SessionPaths.SessionFileName(session.SessionId)` and reloads it. The stored file is `dir/<id>.jsonl` and the header id matches the name; no internal id helper and no `Lunate.Agent` change were needed.
+- **Serializer exhaustiveness**: `AgentEvent` lives in another assembly, so the compiler cannot prove the switch exhaustive (CS8509 does not fire across assemblies). `PrintEventJson` covers every sealed record and a reflection test (`Every_concrete_event_type_is_handled`) pins the handled set against the assembly, so a new event type fails the test run instead of the build.
+- **Test seams**: `PrintModeOptions` carries `Factory`, `SettingsPath`, `ModelsPath`, `AuthPath`, `SessionDirectory`, `WorkingDirectory` and `Environment` so tests are hermetic (temp dirs, fake clients, never the real `~/.lunate`). Production leaves them null.
+- **Eval results path**: `scripts/eval.sh` writes `eval/results.csv` by default; `LUNATE_EVAL_RESULTS=<path>` overrides it so the offline stub proof does not pollute the committed file.
+- **Smoke run (task 2.5)**: performed with a local OpenAI-compatible stub server on `127.0.0.1` and `HOME` pointed at a temp dir (no external API, no secrets): plain mode printed exactly `Local smoke run OK.` (19 bytes, no trailing newline) with empty stderr and exit 0; `--json -p "Say hello"` streamed `run_started, text_message_start, text_message_content, text_message_end, run_finished` with `stopReason: stop` and a matching `sessionId`, exit 0.

@@ -12,7 +12,12 @@ public sealed class VersionTests
             .Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()
             ?.InformationalVersion;
 
-        var exitCode = Cli.Run(["--version"], writer, TextWriter.Null);
+        var exitCode = Cli.Run(
+            ["--version"],
+            writer,
+            TextWriter.Null,
+            TestContext.Current.CancellationToken
+        );
 
         Assert.Equal(0, exitCode);
         Assert.NotNull(informationalVersion);
