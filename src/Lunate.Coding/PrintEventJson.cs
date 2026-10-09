@@ -93,7 +93,12 @@ internal static class PrintEventJson
             ToolCallResult e => ("tool_call_result", ToolResultBody(e)),
             ApprovalRequested e => (
                 "approval_requested",
-                new JsonObject { ["callId"] = e.CallId, ["toolName"] = e.ToolName, ["args"] = e.Args }
+                new JsonObject
+                {
+                    ["callId"] = e.CallId,
+                    ["toolName"] = e.ToolName,
+                    ["args"] = e.Args,
+                }
             ),
             UsageUpdated e => (
                 "usage_updated",
@@ -118,8 +123,7 @@ internal static class PrintEventJson
             ),
         };
 
-    private static JsonObject MessageBody(string messageId) =>
-        new() { ["messageId"] = messageId };
+    private static JsonObject MessageBody(string messageId) => new() { ["messageId"] = messageId };
 
     private static JsonObject ToolCallBody(
         string callId,

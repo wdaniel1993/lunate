@@ -1,4 +1,3 @@
-using System.Text;
 using Lunate.Agent;
 using Lunate.Ai;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -73,7 +72,11 @@ internal static class PrintMode
             model = ResolveModel(settings.Model, catalog);
             factory = options.Factory ?? CreateFactory(options);
         }
-        catch (Exception exception) when (exception is not OperationCanceledException)
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            return 130;
+        }
+        catch (Exception exception)
         {
             errors.WriteLine($"lunate: {exception.Message}");
             return 1;
@@ -84,13 +87,17 @@ internal static class PrintMode
         {
             harness = CreateHarness(options, settings, model, catalog, factory);
         }
-        catch (Exception exception) when (exception is not OperationCanceledException)
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            return 130;
+        }
+        catch (Exception exception)
         {
             errors.WriteLine($"lunate: {exception.Message}");
             return 1;
         }
 
-        var summary = new RunSummary(settings.Approval);
+        var summary = new PrintRunSummary(settings.Approval);
         bool cancelled = false;
         try
         {
@@ -121,7 +128,7 @@ internal static class PrintMode
     }
 
     private static int Finish(
-        RunSummary summary,
+        PrintRunSummary summary,
         bool cancelled,
         bool json,
         TextWriter output,
@@ -153,7 +160,7 @@ internal static class PrintMode
         }
     }
 
-    private static void WriteAnswer(RunSummary summary, bool json, TextWriter output)
+    private static void WriteAnswer(PrintRunSummary summary, bool json, TextWriter output)
     {
         if (!json && summary.FinalAnswer is { } answer)
         {
@@ -180,7 +187,10 @@ internal static class PrintMode
         Session session = CreateSession(directory, workspace);
         var harnessOptions = new AgentHarnessOptions
         {
-            SystemPrompt = SystemPrompt.Compose(workspace, [.. tools.Tools.Select(tool => tool.Name)]),
+            SystemPrompt = SystemPrompt.Compose(
+                workspace,
+                [.. tools.Tools.Select(tool => tool.Name)]
+            ),
             WorkingDirectory = workspace.WorktreeRoot,
             ToolOutputLimit = settings.ToolOutputLimit,
             Approver = new NonInteractiveApprover(settings.Approval, options.Yolo),
@@ -237,85 +247,5 @@ internal static class PrintMode
         string path = Path.Combine(directory, SessionPaths.SessionFileName(created.SessionId));
         File.Move(provisional, path);
         return Session.Load(path);
-    }
-
-    private sealed class RunSummary(ApprovalPolicy policy)
-    {
-        private readonly Dictionary<string, StringBuilder> _openText = new(StringComparer.Ordinal);
-        private readonly Dictionary<string, string> _toolNames = new(StringComparer.Ordinal);
-
-        public string? FinalAnswer { get; private set; }
-
-        public string? StopReason { get; private set; }
-
-        public string? Error { get; private set; }
-
-        /// <summary>Tracks the run state; returns a stderr diagnostic for an error tool call, else null.</summary>
-        public string? Observe(AgentEvent agentEvent)
-        {
-            switch (agentEvent)
-            {
-                case TextMessageStart start:
-                    _openText[start.MessageId] = new StringBuilder();
-                    break;
-                case TextMessageContent content:
-                    OpenText(content.MessageId).Append(content.Text);
-                    break;
-                case TextMessageEnd end:
-                    if (_openText.Remove(end.MessageId, out var completed) && completed.Length > 0)
-                    {
-                        FinalAnswer = completed.ToString();
-                    }
-
-                    break;
-                case ToolCallStart call:
-                    _toolNames[call.CallId] = call.ToolName;
-                    break;
-                case ToolCallResult result when result.IsError:
-                    return Diagnostic(_toolNames.GetValueOrDefault(result.CallId, "?"), result.Output);
-                case RunFinished finished:
-                    StopReason = finished.StopReason;
-                    break;
-                case RunError error:
-                    Error = error.Message;
-                    break;
-            }
-
-            return null;
-        }
-
-        private StringBuilder OpenText(string messageId) =>
-            _openText.TryGetValue(messageId, out var text)
-                ? text
-                : _openText[messageId] = new StringBuilder();
-
-        private string Diagnostic(string toolName, string output) =>
-            output.StartsWith("Denied:", StringComparison.Ordinal)
-                ? $"tool '{toolName}' denied: approval policy '{PolicyText(policy)}' (pass --yolo to run unattended)"
-                : FirstNonEmptyLine(output) is { } line
-                    ? $"tool '{toolName}' failed: {line}"
-                    : $"tool '{toolName}' failed";
-
-        private static string PolicyText(ApprovalPolicy policy) =>
-            policy switch
-            {
-                ApprovalPolicy.Ask => "ask",
-                ApprovalPolicy.AutoEdit => "auto-edit",
-                _ => policy.ToString(),
-            };
-
-        private static string? FirstNonEmptyLine(string output)
-        {
-            foreach (string line in output.Split('\n'))
-            {
-                string trimmed = line.TrimEnd('\r').Trim();
-                if (trimmed.Length > 0)
-                {
-                    return trimmed;
-                }
-            }
-
-            return null;
-        }
     }
 }

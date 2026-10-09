@@ -274,9 +274,8 @@ public static class SettingsStore
     private static string ApprovalError(string subject, string? value) =>
         value == "yolo"
             ? $"{subject} is 'yolo'; yolo is a per-run flag, never a saved setting. Use 'ask' or 'auto-edit'"
-            : value is null
-                ? $"{subject} must be 'ask' or 'auto-edit'"
-                : $"{subject} must be 'ask' or 'auto-edit', but was '{value}'";
+        : value is null ? $"{subject} must be 'ask' or 'auto-edit'"
+        : $"{subject} must be 'ask' or 'auto-edit', but was '{value}'";
 
     private static string DefaultFilePath() =>
         Path.Combine(

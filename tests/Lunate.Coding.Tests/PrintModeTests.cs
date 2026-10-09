@@ -8,8 +8,11 @@ public sealed class PrintModeTests
     public async Task A_text_only_run_writes_the_answer_to_stdout_and_exits_zero()
     {
         using var temp = new TempDirectory();
-        var client = new ScriptedChatClient()
-            .Enqueue(Scripts.Text("Hello "), Scripts.Text("world"), Scripts.Stop());
+        var client = new ScriptedChatClient().Enqueue(
+            Scripts.Text("Hello "),
+            Scripts.Text("world"),
+            Scripts.Stop()
+        );
         PrintModeOptions options = PrintModeTestSupport.BaseOptions(
             temp,
             new FakeChatClientFactory(client)
@@ -18,18 +21,15 @@ public sealed class PrintModeTests
             Prompt = "Hi",
         };
 
-        (int exitCode, string output, string errors) = await PrintModeTestSupport.RunAsync(
-            options
-        );
+        (int exitCode, string output, string errors) = await PrintModeTestSupport.RunAsync(options);
 
         Assert.Equal(0, exitCode);
         Assert.Equal("Hello world", output);
         Assert.Empty(errors);
         string sessionId = PrintModeTestSupport.SingleSessionId(temp);
         Assert.Matches("^s_[0-9]{8}-[0-9]{6}-[0-9a-f]{4}$", sessionId);
-        string header = File.ReadLines(
-            Path.Combine(temp.File("sessions"), sessionId + ".jsonl")
-        ).First();
+        string header = File.ReadLines(Path.Combine(temp.File("sessions"), sessionId + ".jsonl"))
+            .First();
         Assert.Contains($"\"id\":\"{sessionId}\"", header, StringComparison.Ordinal);
     }
 
@@ -58,9 +58,7 @@ public sealed class PrintModeTests
             Yolo = true,
         };
 
-        (int exitCode, string output, string errors) = await PrintModeTestSupport.RunAsync(
-            options
-        );
+        (int exitCode, string output, string errors) = await PrintModeTestSupport.RunAsync(options);
 
         Assert.Equal(0, exitCode);
         Assert.Empty(errors);
@@ -117,9 +115,7 @@ public sealed class PrintModeTests
             Prompt = "Write a note.",
         };
 
-        (int exitCode, string output, string errors) = await PrintModeTestSupport.RunAsync(
-            options
-        );
+        (int exitCode, string output, string errors) = await PrintModeTestSupport.RunAsync(options);
 
         Assert.Equal(0, exitCode);
         Assert.Equal("Cannot.", output);
@@ -160,9 +156,7 @@ public sealed class PrintModeTests
             Prompt = "Write and run.",
         };
 
-        (int exitCode, string output, string errors) = await PrintModeTestSupport.RunAsync(
-            options
-        );
+        (int exitCode, string output, string errors) = await PrintModeTestSupport.RunAsync(options);
 
         Assert.Equal(0, exitCode);
         Assert.Equal("Done.", output);
@@ -200,9 +194,7 @@ public sealed class PrintModeTests
             Yolo = true,
         };
 
-        (int exitCode, string output, string errors) = await PrintModeTestSupport.RunAsync(
-            options
-        );
+        (int exitCode, string output, string errors) = await PrintModeTestSupport.RunAsync(options);
 
         Assert.Equal(0, exitCode);
         Assert.Equal("Done.", output);
@@ -223,9 +215,7 @@ public sealed class PrintModeTests
             Json = true,
         };
 
-        (int exitCode, string output, string errors) = await PrintModeTestSupport.RunAsync(
-            options
-        );
+        (int exitCode, string output, string errors) = await PrintModeTestSupport.RunAsync(options);
 
         Assert.Equal(2, exitCode);
         string[] diagnostics = errors.Split('\n', StringSplitOptions.RemoveEmptyEntries);
@@ -235,10 +225,7 @@ public sealed class PrintModeTests
             line => Assert.Equal("tool 'read' failed: file not found: missing.txt", line)
         );
         List<JsonElement> lines = PrintModeTestSupport.ParseLines(output);
-        Assert.Contains(
-            lines,
-            line => PrintModeTestSupport.TypeOf(line) == "step_limit_reached"
-        );
+        Assert.Contains(lines, line => PrintModeTestSupport.TypeOf(line) == "step_limit_reached");
         JsonElement last = lines[^1];
         Assert.Equal("run_finished", PrintModeTestSupport.TypeOf(last));
         Assert.Equal("step_limit", last.GetProperty("stopReason").GetString());
@@ -304,9 +291,7 @@ public sealed class PrintModeTests
             Environment = PrintModeTestSupport.Environment(model: null),
         };
 
-        (int exitCode, string output, string errors) = await PrintModeTestSupport.RunAsync(
-            options
-        );
+        (int exitCode, string output, string errors) = await PrintModeTestSupport.RunAsync(options);
 
         Assert.Equal(1, exitCode);
         Assert.Empty(output);
@@ -330,9 +315,7 @@ public sealed class PrintModeTests
             Environment = PrintModeTestSupport.Environment(model: "nope-9000"),
         };
 
-        (int exitCode, string output, string errors) = await PrintModeTestSupport.RunAsync(
-            options
-        );
+        (int exitCode, string output, string errors) = await PrintModeTestSupport.RunAsync(options);
 
         Assert.Equal(1, exitCode);
         Assert.Empty(output);

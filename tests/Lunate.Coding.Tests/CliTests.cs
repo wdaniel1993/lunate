@@ -18,7 +18,12 @@ public sealed class CliTests
     {
         using var writer = new StringWriter();
 
-        var exitCode = Cli.Run(["--unknown"], writer, TextWriter.Null, TestContext.Current.CancellationToken);
+        var exitCode = Cli.Run(
+            ["--unknown"],
+            writer,
+            TextWriter.Null,
+            TestContext.Current.CancellationToken
+        );
 
         Assert.Equal(0, exitCode);
         Assert.Empty(writer.ToString());
@@ -29,7 +34,12 @@ public sealed class CliTests
     {
         using var writer = new StringWriter();
 
-        var exitCode = Cli.Run(["--help"], writer, TextWriter.Null, TestContext.Current.CancellationToken);
+        var exitCode = Cli.Run(
+            ["--help"],
+            writer,
+            TextWriter.Null,
+            TestContext.Current.CancellationToken
+        );
 
         Assert.Equal(0, exitCode);
         Assert.Contains("--discover", writer.ToString(), StringComparison.Ordinal);
@@ -40,7 +50,12 @@ public sealed class CliTests
     {
         using var writer = new StringWriter();
 
-        var exitCode = Cli.Run(["--help"], writer, TextWriter.Null, TestContext.Current.CancellationToken);
+        var exitCode = Cli.Run(
+            ["--help"],
+            writer,
+            TextWriter.Null,
+            TestContext.Current.CancellationToken
+        );
 
         Assert.Equal(0, exitCode);
         string help = writer.ToString();
@@ -68,7 +83,12 @@ public sealed class CliTests
         using var output = new StringWriter();
         using var error = new StringWriter();
 
-        var exitCode = Cli.Run(["-p", "hi", "--bogus"], output, error, TestContext.Current.CancellationToken);
+        var exitCode = Cli.Run(
+            ["-p", "hi", "--bogus"],
+            output,
+            error,
+            TestContext.Current.CancellationToken
+        );
 
         Assert.Equal(2, exitCode);
         Assert.Contains("Usage", error.ToString(), StringComparison.Ordinal);
@@ -109,7 +129,12 @@ public sealed class CliTests
         using var output = new StringWriter();
         using var error = new StringWriter();
 
-        var exitCode = Cli.Run(["--discover"], output, error, TestContext.Current.CancellationToken);
+        var exitCode = Cli.Run(
+            ["--discover"],
+            output,
+            error,
+            TestContext.Current.CancellationToken
+        );
 
         Assert.NotEqual(0, exitCode);
         Assert.Contains("--discover", error.ToString(), StringComparison.Ordinal);
@@ -122,7 +147,12 @@ public sealed class CliTests
         using var output = new StringWriter();
         using var error = new StringWriter();
 
-        var exitCode = Cli.Run(["--discover", "a", "b"], output, error, TestContext.Current.CancellationToken);
+        var exitCode = Cli.Run(
+            ["--discover", "a", "b"],
+            output,
+            error,
+            TestContext.Current.CancellationToken
+        );
 
         Assert.NotEqual(0, exitCode);
         Assert.Contains("--discover", error.ToString(), StringComparison.Ordinal);

@@ -44,7 +44,9 @@ internal sealed class ScriptedChatClient : IChatClient
     private ChatResponseUpdate[] Dequeue() =>
         _scripts.Count > 0
             ? _scripts.Dequeue()
-            : throw new InvalidOperationException("ScriptedChatClient has no scripted response left.");
+            : throw new InvalidOperationException(
+                "ScriptedChatClient has no scripted response left."
+            );
 }
 
 /// <summary>A client that always asks for one missing-file read; reaches the step limit.</summary>
@@ -79,7 +81,11 @@ internal sealed class LoopingChatClient : IChatClient
 
     private ChatResponseUpdate[] Next() =>
         [
-            Scripts.Call($"call-{Interlocked.Increment(ref _calls)}", "read", Scripts.Args(("path", "missing.txt"))),
+            Scripts.Call(
+                $"call-{Interlocked.Increment(ref _calls)}",
+                "read",
+                Scripts.Args(("path", "missing.txt"))
+            ),
             Scripts.ToolCalls(),
         ];
 }

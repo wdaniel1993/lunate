@@ -90,7 +90,10 @@ public sealed class PrintEventJsonTests
 
     [Theory]
     [MemberData(nameof(GoldenLines))]
-    public void Every_event_type_serializes_to_its_golden_line(AgentEvent agentEvent, string expected)
+    public void Every_event_type_serializes_to_its_golden_line(
+        AgentEvent agentEvent,
+        string expected
+    )
     {
         Assert.Equal(expected, PrintEventJson.Serialize(agentEvent));
     }
