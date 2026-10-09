@@ -1,6 +1,6 @@
 # 0019 — XenoAtom.Terminal.UI inline mode: not adopted for the TUI live area and input line
 
-- Status: Proposed — 2026-10-09
+- Status: accepted — 2026-10-09 (maintainer sign-off; recommendation (c) adopted: stay with ADR-0007)
 - Date: 2026-10-09
 - Spike: `docs/spikes/S-6/report.md` (raw evidence under `docs/spikes/S-6/evidence/`)
 - Relates to: ADR 0004 (mintty input support), ADR 0005 (startup budgets),
