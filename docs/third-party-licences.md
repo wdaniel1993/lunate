@@ -12,7 +12,7 @@ Lunate itself is MIT (see [LICENSE](../LICENSE)). This page records the NuGet de
 | Microsoft.CodeAnalysis.PublicApiAnalyzers | 5.6.0 | MIT | build tooling |
 | Microsoft.CodeAnalysis.Workspaces.MSBuild | 5.9.0 | MIT | Lunate.Roslyn |
 | Microsoft.Extensions.AI | 10.10.0 | MIT | Lunate.Ai, tests |
-| Microsoft.Extensions.AI.Abstractions | 10.10.1 | MIT | Lunate.Agent, Lunate.Ai, Lunate.Extensibility.Abstractions, tests |
+| Microsoft.Extensions.AI.Abstractions | 10.10.1 | MIT | Lunate.Agent, Lunate.Ai, Lunate.Extensibility.Abstractions |
 | Microsoft.Extensions.AI.OpenAI | 10.10.1 | MIT | Lunate.Ai, tests |
 | Microsoft.Extensions.Logging.Abstractions | 10.0.12 | MIT | Lunate.Ai |
 | Microsoft.Reactive.Testing | 7.0.0 | MIT | tests |

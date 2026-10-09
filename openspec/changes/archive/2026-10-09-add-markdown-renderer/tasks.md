@@ -23,7 +23,7 @@
 
 - [x] 4.1 Fenced code rendering with `lang` label; unknown language plain; snapshot `fence-csharp.txt`
 - [x] 4.2 Highlighting scanners: C# (keywords/strings/comments), JSON (keys/strings/numbers), shell (keywords/strings/`$vars`) — unit tests per scanner with adversarial inputs; snapshots `fence-json.txt`, `fence-shell.txt`
-- [x] 4.3 `mixed.txt` snapshot: one document containing every feature
+- [x] 4.3 `mixed.txt` snapshot: representative mix of supported features plus key unsupported constructs, matching the fixture
 
 ## 5. Close
 
