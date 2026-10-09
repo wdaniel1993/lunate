@@ -20,7 +20,9 @@ public sealed class XenoLiveApp : IDisposable
     private readonly Func<DateTimeOffset> _clock;
     private readonly ConcurrentQueue<AgentEvent> _events = new();
     private readonly Stopwatch _spinnerClock = Stopwatch.StartNew();
-    private readonly TaskCompletionSource _stopped = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly TaskCompletionSource _stopped = new(
+        TaskCreationOptions.RunContinuationsAsynchronously
+    );
     private readonly List<string> _finishedBlocks = [];
 
     private TimeSpan _lastSpinner;
@@ -74,11 +76,7 @@ public sealed class XenoLiveApp : IDisposable
     public static XenoLiveApp CreateInteractive()
     {
         var session = Terminal.Open(
-            options: new TerminalOptions
-            {
-                ImplicitStartInput = true,
-                TreatControlCAsInput = true,
-            }
+            options: new TerminalOptions { ImplicitStartInput = true, TreatControlCAsInput = true }
         );
         return new XenoLiveApp(session, backend: null);
     }
@@ -155,21 +153,19 @@ public sealed class XenoLiveApp : IDisposable
         WaitForAsync(() => Ticks >= ticks, timeout);
 
     public Task WaitForAsync(Func<bool> condition, TimeSpan timeout) =>
-        Task.Run(
-            async () =>
+        Task.Run(async () =>
+        {
+            var deadline = Stopwatch.StartNew();
+            while (!condition())
             {
-                var deadline = Stopwatch.StartNew();
-                while (!condition())
+                if (deadline.Elapsed > timeout)
                 {
-                    if (deadline.Elapsed > timeout)
-                    {
-                        throw new TimeoutException("Timed out waiting for the live loop.");
-                    }
-
-                    await Task.Delay(5).ConfigureAwait(false);
+                    throw new TimeoutException("Timed out waiting for the live loop.");
                 }
+
+                await Task.Delay(5).ConfigureAwait(false);
             }
-        );
+        });
 
     public string GetOutputText() => _backend?.GetOutText() ?? string.Empty;
 
@@ -227,7 +223,10 @@ public sealed class XenoLiveApp : IDisposable
             }
         }
 
-        if (Model.ToolRunning && _spinnerClock.Elapsed - _lastSpinner >= TimeSpan.FromMilliseconds(120))
+        if (
+            Model.ToolRunning
+            && _spinnerClock.Elapsed - _lastSpinner >= TimeSpan.FromMilliseconds(120)
+        )
         {
             _lastSpinner = _spinnerClock.Elapsed;
             Model.TickSpinner(_spinnerClock.Elapsed, out _);

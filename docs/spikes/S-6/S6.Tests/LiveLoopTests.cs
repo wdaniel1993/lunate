@@ -23,7 +23,10 @@ public sealed class LiveLoopTests
 
         Assert.True(result.QuitRequested);
         Assert.True(result.CancelRequested);
-        Assert.Contains(result.FinishedBlocks, b => b.Contains("48 passed", StringComparison.Ordinal));
+        Assert.Contains(
+            result.FinishedBlocks,
+            b => b.Contains("48 passed", StringComparison.Ordinal)
+        );
         Assert.Contains(
             "queued: also check the tests",
             result.ScreenText,
@@ -110,10 +113,7 @@ public sealed class LiveLoopTests
         await app.WaitForAsync(() => app.Model.AlwaysApproved.Contains("bash"), Wait);
 
         app.PostEvent(new AgentEvent.ApprovalRequested("bash", "dotnet format"));
-        await app.WaitForAsync(
-            () => app.Model.Status == "auto-approved bash (always)",
-            Wait
-        );
+        await app.WaitForAsync(() => app.Model.Status == "auto-approved bash (always)", Wait);
         Assert.Null(app.Model.PendingApprovalText);
     }
 

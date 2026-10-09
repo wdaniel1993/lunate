@@ -94,7 +94,9 @@ public sealed class LiveVisual : ContentVisual
 
     private void OnKeyDownObserved(object? sender, KeyEventArgs e)
     {
-        KeyLog.Add($"key={e.Key} char={(int)(e.Char ?? '\0')} mods={e.Modifiers} handled={e.Handled}");
+        KeyLog.Add(
+            $"key={e.Key} char={(int)(e.Char ?? '\0')} mods={e.Modifiers} handled={e.Handled}"
+        );
 
         if (IsCtrlC(e))
         {

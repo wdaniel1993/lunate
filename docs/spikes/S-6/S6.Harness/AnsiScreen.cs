@@ -84,7 +84,9 @@ public sealed class AnsiScreen
     }
 
     public string GetLine(int row) =>
-        row >= 0 && row < _height ? new string(_cells, row * _width, _width).TrimEnd() : string.Empty;
+        row >= 0 && row < _height
+            ? new string(_cells, row * _width, _width).TrimEnd()
+            : string.Empty;
 
     public IReadOnlyList<string> GetLines() => [.. GetText().Split('\n')];
 

@@ -82,9 +82,7 @@ public sealed class LiveModel
     }
 
     public string? ApprovalPrompt =>
-        PendingApprovalText is null
-            ? null
-            : $"approve {PendingApprovalText}? [y]es [n]o [a]lways";
+        PendingApprovalText is null ? null : $"approve {PendingApprovalText}? [y]es [n]o [a]lways";
 
     public string? SpinnerGlyph { get; private set; }
 
@@ -270,6 +268,5 @@ public sealed class LiveModel
         PendingApprovalText = null;
     }
 
-    private IReadOnlyList<string> TailLines() =>
-        [.. _tail.ToString().Split('\n').TakeLast(6)];
+    private IReadOnlyList<string> TailLines() => [.. _tail.ToString().Split('\n').TakeLast(6)];
 }

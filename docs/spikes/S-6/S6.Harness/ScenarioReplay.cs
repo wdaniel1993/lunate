@@ -55,7 +55,10 @@ public static class ScenarioReplay
         await Task.Delay(TimeSpan.FromMilliseconds(200), cancellationToken);
 
         var raw = app.GetOutputText();
-        var screenText = app.RenderLiveSnapshot(Scenario.InitialWidth + 20, Scenario.InitialHeight + 6);
+        var screenText = app.RenderLiveSnapshot(
+            Scenario.InitialWidth + 20,
+            Scenario.InitialHeight + 6
+        );
         var renderedBlocks = app
             .FinishedBlocks.Select(block => app.RenderMarkdownBlock(block, 60, 4))
             .ToList();

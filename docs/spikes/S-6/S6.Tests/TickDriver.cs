@@ -45,9 +45,15 @@ internal sealed class TickDriver : IDisposable
         );
 
         var callbackType = typeof(Func<TerminalRunningContext, TerminalLoopResult>);
-        var setUpdate = typeof(TerminalApp).GetMethod("SetUpdateCallback", Flags, [callbackType])
-            ?? throw new MissingMethodException("TerminalApp.SetUpdateCallback(Func<...>) not found.");
-        setUpdate.Invoke(_app, [new Func<TerminalRunningContext, TerminalLoopResult>(_ => TerminalLoopResult.Continue)]);
+        var setUpdate =
+            typeof(TerminalApp).GetMethod("SetUpdateCallback", Flags, [callbackType])
+            ?? throw new MissingMethodException(
+                "TerminalApp.SetUpdateCallback(Func<...>) not found."
+            );
+        setUpdate.Invoke(
+            _app,
+            [new Func<TerminalRunningContext, TerminalLoopResult>(_ => TerminalLoopResult.Continue)]
+        );
 
         _beginRun = Require("BeginRun");
         _tick = Require("Tick");
