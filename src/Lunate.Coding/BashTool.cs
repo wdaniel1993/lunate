@@ -207,13 +207,26 @@ public sealed class BashTool : ITool
 
     private static async Task KillTreeAsync(Process process)
     {
-        try
+        if (OperatingSystem.IsWindows())
         {
-            process.Kill(entireProcessTree: true);
+            try
+            {
+                process.Kill(entireProcessTree: true);
+            }
+            catch (Exception exception)
+                when (exception
+                        is InvalidOperationException
+                            or Win32Exception
+                            or NotSupportedException
+                ) { }
         }
-        catch (Exception exception)
-            when (exception is InvalidOperationException or Win32Exception or NotSupportedException)
-        { }
+        else
+        {
+            // System.Diagnostics' entireProcessTree path SIGSTOPs the whole tree first and
+            // wedges macOS CI VMs (runner loses communication; repro on the T-15 PR).
+            // Enumerate with ps and SIGKILL children first instead — see PosixProcessTree.
+            PosixProcessTree.Kill(process.Id);
+        }
 
         try
         {
