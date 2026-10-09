@@ -59,7 +59,7 @@ public sealed class CliTests
 
         Assert.Equal(0, exitCode);
         string help = writer.ToString();
-        Assert.Contains("-p <prompt>", help, StringComparison.Ordinal);
+        Assert.Contains("-p [--json] [--yolo] <prompt>", help, StringComparison.Ordinal);
         Assert.Contains("--json", help, StringComparison.Ordinal);
         Assert.Contains("--yolo", help, StringComparison.Ordinal);
     }
@@ -108,6 +108,34 @@ public sealed class CliTests
 
         var exitCode = Cli.Run(
             ["--json", "--yolo", "-p", "Hi"],
+            output,
+            error,
+            TestContext.Current.CancellationToken,
+            options
+        );
+
+        Assert.Equal(0, exitCode);
+        Assert.StartsWith(
+            """{"type":"run_started","runId":""",
+            output.ToString(),
+            StringComparison.Ordinal
+        );
+        Assert.Empty(error.ToString());
+    }
+
+    [Fact]
+    public void Run_with_print_accepts_flags_before_the_prompt()
+    {
+        using var temp = new TempDirectory();
+        var factory = new FakeChatClientFactory(
+            new ScriptedChatClient().Enqueue(Scripts.Text("ok"), Scripts.Stop())
+        );
+        PrintModeOptions options = PrintModeTestSupport.BaseOptions(temp, factory);
+        using var output = new StringWriter();
+        using var error = new StringWriter();
+
+        var exitCode = Cli.Run(
+            ["-p", "--json", "--yolo", "Hi"],
             output,
             error,
             TestContext.Current.CancellationToken,

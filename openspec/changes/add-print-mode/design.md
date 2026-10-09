@@ -2,7 +2,7 @@
 
 ## Print mode contract
 
-- CLI: `lunate -p "<prompt>"` with optional `--json` and `--yolo` (flags accepted in any order; `-p`/`--print` is one token; the prompt is the next argument). Missing prompt or unknown flags = usage error on stderr, exit 2, nothing on stdout.
+- CLI: `lunate -p "<prompt>"` with optional `--json` and `--yolo`. `-p`/`--print` enables print mode; the prompt is the first non-flag argument, so `lunate -p --json "hi"`, `--json -p "hi"` and `-p "hi" --yolo` all work, while flag-shaped unknown tokens remain usage errors. Missing prompt or unknown flags = usage error on stderr, exit 2, nothing on stdout.
 - **stdout, non-JSON**: exactly the final answer — the text of the last assistant message with content, written once at the end (guide: "writes the final answer to stdout and exits"). Intermediate assistant text and tool activity do **not** reach stdout, so `lunate -p "..." > answer.txt` captures a clean answer.
 - **stdout, `--json`**: one JSON object per line, every event in arrival order (the full stream, for scripts and CI). Nothing else on stdout.
 - **stderr, both modes**: human diagnostics only — one line per denied or error tool call ("tool 'bash' denied: approval policy 'ask' (pass --yolo to run unattended)"), plus warnings. Never JSON.
@@ -59,3 +59,5 @@ Every print run persists a session through the T-13 store: id = chronological, f
 - **Test seams**: `PrintModeOptions` carries `Factory`, `SettingsPath`, `ModelsPath`, `AuthPath`, `SessionDirectory`, `WorkingDirectory` and `Environment` so tests are hermetic (temp dirs, fake clients, never the real `~/.lunate`). Production leaves them null.
 - **Eval results path**: `scripts/eval.sh` writes `eval/results.csv` by default; `LUNATE_EVAL_RESULTS=<path>` overrides it so the offline stub proof does not pollute the committed file.
 - **Smoke run (task 2.5)**: performed with a local OpenAI-compatible stub server on `127.0.0.1` and `HOME` pointed at a temp dir (no external API, no secrets): plain mode printed exactly `Local smoke run OK.` (19 bytes, no trailing newline) with empty stderr and exit 0; `--json -p "Say hello"` streamed `run_started, text_message_start, text_message_content, text_message_end, run_finished` with `stopReason: stop` and a matching `sessionId`, exit 0.
+
+- **Argument-order fix after the first live eval run**: the initial parser bound the token after `-p` as the prompt, so the runner's `-p --json --yolo "<task>"` invocation was a usage error that the stub-binary proof could not catch (a stub ignores its arguments). The parser now reads the prompt as the first non-flag argument, pinned by `Run_with_print_accepts_flags_before_the_prompt`; the invalid run's row was removed and the first honest baseline row replaces it.

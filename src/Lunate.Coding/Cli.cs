@@ -74,24 +74,11 @@ internal static class Cli
         var json = false;
         var yolo = false;
         string? prompt = null;
-        for (var index = 0; index < args.Length; index++)
+        foreach (string arg in args)
         {
-            switch (args[index])
+            switch (arg)
             {
                 case "-p" or "--print":
-                    if (prompt is not null || index + 1 >= args.Length)
-                    {
-                        WritePrintUsage(errors);
-                        return true;
-                    }
-
-                    prompt = args[++index];
-                    if (string.IsNullOrWhiteSpace(prompt))
-                    {
-                        WritePrintUsage(errors);
-                        return true;
-                    }
-
                     break;
                 case "--json":
                     json = true;
@@ -100,8 +87,17 @@ internal static class Cli
                     yolo = true;
                     break;
                 default:
-                    WritePrintUsage(errors);
-                    return true;
+                    // The prompt is the first (and only) non-flag argument; --json and
+                    // --yolo may come before or after it, so `lunate -p --json "hi"`
+                    // reads naturally. Flag-shaped unknown tokens stay usage errors.
+                    if (prompt is not null || arg.StartsWith('-') || string.IsNullOrWhiteSpace(arg))
+                    {
+                        WritePrintUsage(errors);
+                        return true;
+                    }
+
+                    prompt = arg;
+                    break;
             }
         }
 
@@ -121,7 +117,7 @@ internal static class Cli
     }
 
     private static void WritePrintUsage(TextWriter errors) =>
-        errors.WriteLine("Usage: lunate -p <prompt> [--json] [--yolo]");
+        errors.WriteLine("Usage: lunate -p [--json] [--yolo] <prompt>");
 
     private static int Discover(string target, TextWriter output, TextWriter errors)
     {
@@ -156,7 +152,7 @@ internal static class Cli
         output.WriteLine("Lunate - a coding agent for the terminal.");
         output.WriteLine();
         output.WriteLine("Usage:");
-        output.WriteLine("  lunate -p <prompt> [--json] [--yolo]");
+        output.WriteLine("  lunate -p [--json] [--yolo] <prompt>");
         output.WriteLine(
             "                                 run one prompt and print the final answer to stdout;"
         );
