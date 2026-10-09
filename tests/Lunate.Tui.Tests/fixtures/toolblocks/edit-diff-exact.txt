@@ -1,0 +1,11 @@
+tool edit src/Counter.cs ok
+edited src/Counter.cs lines 4–5 (match: exact)
+match: exact
+--- a/src/Counter.cs
++++ b/src/Counter.cs
+@@ -2,4 +2,4 @@
+ public void Increment()
+ {
+-    _count = _count + 1;
++    _count++;
+ }

@@ -12,8 +12,8 @@
 
 ## 3. Diff panel
 
-- [ ] 3.1 `DiffRenderer`: unified-diff parsing (file headers, hunks, +/-/context) + `match: <tier>` label (normalized yellow); unit tests for the parser (malformed input, CRLF, empty diff)
-- [ ] 3.2 Goldens `edit-diff-exact`, `edit-diff-normalized`, `write-diff` + ANSI assertions (green +, red -, yellow normalized)
+- [x] 3.1 `DiffRenderer`: unified-diff parsing (file headers, hunks, +/-/context) + `match: <tier>` label (normalized yellow); unit tests for the parser (malformed input, CRLF, empty diff)
+- [x] 3.2 Goldens `edit-diff-exact`, `edit-diff-normalized`, `write-diff` + ANSI assertions (green +, red -, yellow normalized)
 
 ## 4. Close
 

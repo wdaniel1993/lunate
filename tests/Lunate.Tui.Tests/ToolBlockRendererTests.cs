@@ -106,15 +106,102 @@ public sealed class ToolBlockRendererTests
                 """{"path":"[red]src[/].cs"}""",
                 ToolBlockStatus.Ok,
                 "[dim]not markup[/]\n[bold]neither[/]\n[[nested]]\n",
-                null
+                new ToolDiffInfo(
+                    "[red]src[/].cs",
+                    "[bold]exact[/]",
+                    "--- a/[red]src[/].cs\n+++ b/[red]src[/].cs\n@@ -1 +1 @@\n-keep [dim]this[/]\n+keep [bold]that[/]"
+                )
             )
         );
 
         Assert.Equal(
-            "tool edit [red]src[/].cs ok\n[dim]not markup[/]\n[bold]neither[/]\n[[nested]]\n",
+            "tool edit [red]src[/].cs ok\n"
+                + "[dim]not markup[/]\n"
+                + "[bold]neither[/]\n"
+                + "[[nested]]\n"
+                + "match: [bold]exact[/]\n"
+                + "--- a/[red]src[/].cs\n"
+                + "+++ b/[red]src[/].cs\n"
+                + "@@ -1 +1 @@\n"
+                + "-keep [dim]this[/]\n"
+                + "+keep [bold]that[/]\n",
             output
         );
     }
+
+    [Fact]
+    public void Diff_panel_renders_below_header_and_output() =>
+        Assert.Equal(
+            "tool edit src/x.cs ok\n"
+                + "edited src/x.cs lines 2\u20132 (match: exact)\n"
+                + "match: exact\n"
+                + "--- a/src/x.cs\n"
+                + "+++ b/src/x.cs\n"
+                + "@@ -1,3 +1,3 @@\n"
+                + " int a = 1;\n"
+                + "-int b = 2;\n"
+                + "+int b = 3;\n"
+                + " int c = 4;\n",
+            Render(
+                new ToolBlockModel(
+                    "edit",
+                    """{"path":"src/x.cs"}""",
+                    ToolBlockStatus.Ok,
+                    "edited src/x.cs lines 2\u20132 (match: exact)",
+                    new ToolDiffInfo("src/x.cs", "exact", DiffText)
+                )
+            )
+        );
+
+    [Fact]
+    public void Exact_tier_label_is_dim() =>
+        Assert.Contains("\u001b[2mmatch: exact", RenderAnsi(DiffModel("exact")));
+
+    [Fact]
+    public void Normalized_tier_label_is_yellow() =>
+        Assert.Contains("\u001b[38;5;11mmatch: normalized", RenderAnsi(DiffModel("normalized")));
+
+    [Fact]
+    public void Insertions_are_green_and_deletions_are_red()
+    {
+        string ansi = RenderAnsi(DiffModel("exact"));
+
+        Assert.Contains("\u001b[38;5;2m+int b = 3;", ansi);
+        Assert.Contains("\u001b[38;5;9m-int b = 2;", ansi);
+    }
+
+    [Fact]
+    public void Empty_diff_text_omits_the_panel() =>
+        Assert.Equal(
+            "tool edit src/x.cs ok\n",
+            Render(
+                new ToolBlockModel(
+                    "edit",
+                    """{"path":"src/x.cs"}""",
+                    ToolBlockStatus.Ok,
+                    null,
+                    new ToolDiffInfo("src/x.cs", "exact", "")
+                )
+            )
+        );
+
+    private const string DiffText =
+        "--- a/src/x.cs\n"
+        + "+++ b/src/x.cs\n"
+        + "@@ -1,3 +1,3 @@\n"
+        + " int a = 1;\n"
+        + "-int b = 2;\n"
+        + "+int b = 3;\n"
+        + " int c = 4;";
+
+    private static ToolBlockModel DiffModel(string tier) =>
+        new(
+            "edit",
+            """{"path":"src/x.cs"}""",
+            ToolBlockStatus.Ok,
+            null,
+            new ToolDiffInfo("src/x.cs", tier, DiffText)
+        );
 
     private static string Render(ToolBlockModel block)
     {

@@ -21,6 +21,10 @@ public sealed class ToolBlockRenderer
 
         var lines = new List<StyledLine> { Header(block) };
         AppendOutput(lines, block.Output);
+        if (block.Diff is not null)
+        {
+            DiffRenderer.Append(lines, block.Diff);
+        }
 
         var builder = new StringBuilder();
         foreach (var line in lines)
