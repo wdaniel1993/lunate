@@ -2,19 +2,22 @@
 
 ## 1. Packages and TechnicalText
 
-- [ ] 1.1 `Spectre.Console` 0.57.2 into `Lunate.Tui`; `Spectre.Console.Testing` 0.57.2 into `Lunate.Tui.Tests`; record approval in the change
+- [ ] 1.1 `Spectre.Console` 0.57.2 + `Markdig` 1.4.0 (BSD-2-Clause) into `Lunate.Tui`; `Spectre.Console.Testing` 0.57.2 into `Lunate.Tui.Tests`; record approval + licence note in the change
 - [ ] 1.2 `TechnicalText`: `Bytes`, `Tokens`, `Duration`, `Percent` — invariant by construction; table tests incl. boundaries; de-AT pass
 - [ ] 1.3 PublicAPI.Unshipped entries for the public surface; golden regeneration helper shared with the frame goldens
+- [ ] 1.4 Startup/render cost: measure first parse+render (fresh process) and warm parse+render of the mixed document; report numbers, no gate (exe untouched by Tui)
 
-## 2. Blocks
+## 2. Markdig parsing and blocks
 
-- [ ] 2.1 Block model + line parser: headings, paragraphs, bullets (indent), ordered, quotes, fences with language label; unit tests for the parser (no Spectre needed)
-- [ ] 2.2 Renderables for each block + snapshot per feature: `heading.txt`, `lists.txt`, `quote.txt` (+ paragraph handling inside `mixed.txt`)
+- [ ] 2.1 `MarkdownRenderer.Render(string) -> IRenderable` skeleton + Markdig pipeline (no extensions); AST mapper for headings, paragraphs, lists (incl. nesting), quotes, fences with language label; plain-text fallback for other block types
+- [ ] 2.2 Golden set (block level): `heading.txt`, `lists.txt`, `nested-lists.txt`, `quote.txt` (+ paragraph handling inside `mixed.txt`); `unclosed-fence.txt` (Markdig takes the rest as code)
 
 ## 3. Inline and escaping
 
-- [ ] 3.1 Inline scanner: code > bold > italic; unclosed markers literal; unit tests incl. nasty inputs
-- [ ] 3.2 `Markup.Escape` on every user string; `escaping.txt` snapshot + targeted test that `[dim]…[/]` stays literal
+- [ ] 3.1 Inline mapping: literal, emphasis (bold/italic by delimiter), code, line breaks; links → `label (url)`, images → `alt (url)`, HTML → literal tag text (all plain, no markup)
+- [ ] 3.2 `Markup.Escape` on every user string; `escaping.txt` + targeted test that `[dim]…[/]` stays literal
+- [ ] 3.3 `emphasis-edges.txt` golden: `snake_case_words` stays literal, `2*3*4` stays literal (CommonMark intraword rules via Markdig)
+- [ ] 3.4 `unsupported.txt` golden + one falsifier per construct: table, link, image, HTML, task list render as readable plain text, never markup, never throw
 
 ## 4. Code fences and highlighting
 
@@ -25,4 +28,4 @@
 ## 5. Close
 
 - [ ] 5.1 csharpier; `bash scripts/verify.sh` green (incl. de-AT); `openspec validate add-markdown-renderer --type change --strict`; self-review; commit per group; no push
-- [ ] 5.2 Update the guide's test-stack note only if reality diverged (Verify stays unused; say so in deviations)
+- [ ] 5.2 Deviations: parser replaced by Markdig per maintainer review (already noted in design.md); guide's test-stack note only if reality diverged (Verify stays unused)

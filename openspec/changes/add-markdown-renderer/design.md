@@ -1,45 +1,49 @@
 # Design: Markdown renderer and technical formatting (T-19)
 
-## Placement and surface
+## Packages, licence, startup
 
-New files in `src/Lunate.Tui/`: `Markdown/MarkdownRenderer.cs` (public), `Markdown/MarkdownBlock.cs` (internal block model), `Markdown/InlineScanner.cs` (internal), `Markdown/SyntaxHighlight.cs` (internal, C#/JSON/shell), `TechnicalText.cs` (public). Snapshot fixtures under `tests/Lunate.Tui.Tests/fixtures/markdown/`. `Lunate.Tui` takes `Spectre.Console` 0.57.2; `Lunate.Tui.Tests` takes `Spectre.Console.Testing` 0.57.2 — both approved by the maintainer before apply; nothing else moves.
+`Lunate.Tui` adds `Spectre.Console` 0.57.2 and `Markdig` 1.4.0; `Lunate.Tui.Tests` adds `Spectre.Console.Testing` 0.57.2. **Markdig 1.4.0 is BSD-2-Clause** (permissive; recorded in the licence notes — not MIT like the rest) and has no dependencies on net10.0. Startup: the exe (`lunate`) never touches Tui types, so the 150 ms budget is untouched; Markdig loads lazily on first markdown render. The apply measures and reports (a) first parse+render of the mixed document in a fresh process, (b) warm parse+render — informational, no gate yet; T-22/T-32 and ADR-0009 own real budgets once the TUI sits in the exe's path.
 
-`MarkdownRenderer.Render(string markdown) -> IRenderable` — pure text in, renderable out. No terminal, no `IAnsiConsole`, no live area; T-22 writes the renderable to scrollback, T-20 adds tool blocks around it. Public types: none mention Rx (their only could-be API, `Spectre.Console.Rendering.IRenderable`, is the point of the exercise and is a stable public Spectre surface).
+## Structure
 
-## Parsing (deliberately small)
+New files in `src/Lunate.Tui/`: `Markdown/MarkdownRenderer.cs` (public), `Markdown/MarkdownAstMapper.cs` (internal — Markdig AST → Spectre), `Markdown/SyntaxHighlight.cs` (internal, own scanners), `TechnicalText.cs` (public). Goldens under `tests/Lunate.Tui.Tests/fixtures/markdown/`.
 
-Line-based block parser, then a minimal inline scanner inside block text:
+`MarkdownRenderer.Render(string markdown) -> IRenderable` — pure text in, renderable out. No terminal, no `IAnsiConsole`, no live area; T-22 writes the renderable to scrollback, T-20 adds tool blocks around it. Public types mention no Rx.
 
-- Blocks: ATX headings 1-6; paragraphs (blank-line separated); bullet lists (`-`, `*`, `+`, two-space indent steps, one nesting level rendered with indent); ordered lists (`1.`-style, numbers normalized); blockquotes (`>`); fenced code (```lang, label shown; unknown language renders plain).
-- Inline: `**bold**`, `*italic*`/`_italic_`, `` `code` ``. Precedence: code first (no markup inside), then bold, then italic; no nesting beyond that, no HTML, no links in v1 (guide's subset). Unclosed markers render literally.
-- **Escaping rule (pinned by tests):** every user string goes through `Markup.Escape` before markup assembly; a line like `[dim]not markup[/]` must render literally. Fenced-code content is escaped the same way before highlighting markup is applied around it.
+## Parsing: Markdig
+
+`Markdig.Markdown.Parse(text)` with a deliberately plain pipeline (no extension features; the subset decides what rendering exists, not the parser). The mapper walks `MarkdownDocument`:
+
+- `HeadingBlock` → bold, level 1 slightly stronger (underline); own paragraph.
+- `ParagraphBlock` → inline walk (below), escaped.
+- `ListBlock` (bullet/ordered) → `•` / `n.` with two-space indent per level; nested lists recurse with growing indent (golden pins this).
+- `QuoteBlock` → dim, `│`-prefixed lines.
+- `FencedCodeBlock` / `CodeBlock` → borderless block: dim `lang` label line (unknown language renders plain), code through our highlight scanners. **Unclosed fence**: Markdig takes the rest as code; golden pins it.
+- Every other block type → plain-text path (never markup, never throw).
+
+Inline mapping (all escaped before assembly): `LiteralInline` → text; `EmphasisInline` → bold/italic by delimiter; `CodeInline` → code style (no markup inside); `LineBreakInline` → break/space; links → `label (url)` plain; images → `alt (url)` plain; HTML inline → literal tag text; unrecognized → literal text. Emphasis edge cases (`snake_case_words` must not italicise; `2*3*4` stays literal) are Markdig's intraword rules now — goldens confirm end-to-end.
+
+**Escaping rule (pinned by tests):** every user string goes through `Markup.Escape` before Spectre assembly; `[dim]not markup[/]` renders literally. Highlight markup is assembled around already-escaped content.
 
 ## Rendering decisions
 
-- Heading: bold; level 1-2 get a subtle style (e.g. underlined for 1), rendered as its own paragraph.
-- Inline code: `[invert]`-ish or grey background per Spectre style capabilities — fixed style, snapshot-recorded.
-- Lists: `•` bullets (or `-` when glyphs unavailable later; v1 fixed `•`), ordered uses `n.`; quote: dim with a `│` prefix line.
-- Fenced code: a dim Panel? No — keep scrollback-friendly: a block with a dim `lang` label line, code lines rendered with highlight styles, no border box (borders cost scrollback width; the guide's screen model wants copy-friendly output).
-- Highlighting v1: C# keywords + strings + comments; JSON keys/strings/numbers; shell keywords/strings/`$vars`. Small keyword sets, deterministic scanners (no regex backtracking traps; test each with nasty inputs).
+- Heading bold (level 1 underlined); inline code styled distinctly (fixed style, snapshot-recorded); lists `•`/`n.`; quote dim with `│`.
+- Fenced code **borderless** — a dim language label line, code lines with highlight styles, no box (scrollback copy-friendly).
+- Highlighting v1: C# keywords + strings + comments; JSON keys/strings/numbers; shell keywords/strings/`$vars` — small keyword sets, deterministic scanners, adversarial-input tests (no regex backtracking traps).
 
 ## Snapshots
 
-`Spectre.Console.Testing` `TestConsole` (plain-text profile) renders each feature to a string; compared byte-for-byte against committed goldens in `tests/Lunate.Tui.Tests/fixtures/markdown/` (`heading.txt`, `bold-italic.txt`, `inline-code.txt`, `lists.txt`, `quote.txt`, `fence-csharp.txt`, `fence-json.txt`, `fence-shell.txt`, `mixed.txt`, `escaping.txt`). Regeneration via the existing `LUNATE_TUI_UPDATE_GOLDENS=1` convention (same helper as T-18, refactored for reuse). No color-ANSI goldens in v1 — style correctness is checked by targeted assertions (e.g. inline code is not plain text) where cheap.
+`TestConsole` (plain-text profile) renders each fixture; byte-compared against goldens in `tests/Lunate.Tui.Tests/fixtures/markdown/`: `heading.txt`, `bold-italic.txt`, `inline-code.txt`, `lists.txt`, `nested-lists.txt`, `quote.txt`, `fence-csharp.txt`, `fence-json.txt`, `fence-shell.txt`, `unclosed-fence.txt`, `emphasis-edges.txt`, `escaping.txt`, `unsupported.txt`, `mixed.txt` (all features in one document). Regeneration via the existing `LUNATE_TUI_UPDATE_GOLDENS=1` convention. No color-ANSI goldens in v1 — style correctness via targeted assertions where cheap.
 
-## TechnicalText
+## TechnicalText (unchanged)
 
-Static helpers, invariant by construction (`InvariantCulture` on every `ToString`, tests run under de-AT too):
-
-- `Bytes(long)` → `812 B`, `12.3 KB`, `1.5 MB` (no culture separators).
-- `Tokens(long)` → `1,540` (invariant thousands separators) — footer format.
-- `Duration(TimeSpan)` → `9.2 s`, `1 m 12 s`, `1 h 03 m`.
-- `Percent(double, decimals = 1)` → `12.5%`.
-Table tests per helper incl. boundary values; de-AT pass is the falsifier.
+Static helpers, invariant by construction: `Bytes` (`812 B`, `12.3 KB`), `Tokens` (`1,540`), `Duration` (`9.2 s`, `1 m 12 s`), `Percent` (`12.5%`). Table tests per helper incl. boundaries; de-AT pass is the falsifier.
 
 ## Out of scope
 
-Scrollback commit and streaming paragraph flow (T-22), tool blocks and diffs (T-20), footer assembly (T-21), terminal glyph fallbacks (T-33), links, tables, images, task lists (guide's subset excludes them).
+Scrollback commit and streaming flow (T-22), tool blocks and diffs (T-20), footer assembly (T-21), terminal glyph fallbacks (T-33), rendered links/tables/images (plain text only), TextMate-grade highlighting.
 
 ## Deviations
 
-(Filled during apply; empty at proposal time.)
+- **Parser replaced by Markdig per maintainer review (2026-10-09).** The originally proposed hand-written block parser and `InlineScanner` were dropped before implementation; rationale: CommonMark inline correctness on real agent output (`snake_case`, globs, nested emphasis) is the risky part, not the block level. The renderer (AST → Spectre, escaping, highlighting, snapshots) stays in-house. Recorded per maintainer instruction.
+- **Markdig licence is BSD-2-Clause**, not MIT — checked during the same review and accepted.

@@ -1,19 +1,18 @@
-# Proposal: Markdown subset renderer and technical formatting (T-19)
+# Proposal: Markdown renderer and technical formatting (T-19)
 
 ## Why
 
-T-18 built the interactive foundation; T-19 starts the output side. The guide's screen model commits finished output to scrollback as Spectre renderables, and the assistant's answers arrive as Markdown. Spectre has no Markdown widget, so the guide calls for our own subset renderer: headings, emphasis, inline code, lists, quotes, and fenced code with a language label — plus keyword highlighting for C#, JSON and shell. Alongside it, the technical readouts (footer, token counts, timings) need one culture-invariant formatting home before T-20's tool blocks and T-21's footer consume it.
-
-The S-5 spike prototyped both: finished blocks go through `AnsiConsole.Create` with ANSI disabled for the harness, `Markup.Escape` on every user string (the spike's `SpectreBlocks.cs` is the reference), and it pinned Spectre.Console 0.57.2. T-19 productizes: a real subset parser, renderables that survive `TestConsole` snapshot rendering, and the formatting helpers with de-AT coverage.
+T-18 built the interactive foundation; T-19 starts the output side. The guide's screen model commits finished output to scrollback as Spectre renderables, and the assistant's answers arrive as Markdown. Spectre has no Markdown widget, so we render it ourselves — but parsing is not our business. Real agent output is full of `snake_case`, globs and nested emphasis; CommonMark's inline rules are exactly where a hand-rolled subset parser corrupts the most-read surface. Maintainer review (2026-10-09) settled it: **parse with Markdig, render with our own subset renderer to Spectre**.
 
 ## What changes
 
-- **Packages (maintainer-gated):** `Spectre.Console` 0.57.2 in `Lunate.Tui`; `Spectre.Console.Testing` 0.57.2 in `Lunate.Tui.Tests` — the S-5 pins, MIT. No Markdown library: own subset renderer, per the guide.
-- **`MarkdownRenderer`** (new `rendering` surface in `Lunate.Tui`): own line-based block parser + minimal inline scanner → Spectre `IRenderable`s. Blocks: headings 1-6, paragraphs, bullet lists (indent levels), ordered lists, quotes, fenced code with language label. Inline: bold, italic, inline code. Every user string goes through `Markup.Escape` — bracket text must render literally, never as Spectre markup.
-- **Keyword highlighting (v1):** C#, JSON, shell — keywords, strings, comments via small scanners of our own; no highlighting engine, no new packages.
-- **`TechnicalText`** formatting helpers: bytes, token counts, durations, percents — always `CultureInfo.InvariantCulture`, with the de-AT suite as the falsifier.
-- **Snapshots per Markdown feature:** `TestConsole` renders each feature (and a mixed document) to plain text; goldens committed under `tests/Lunate.Tui.Tests/fixtures/markdown/` with the existing `LUNATE_TUI_UPDATE_GOLDENS=1` regeneration rule.
+- **Packages (maintainer-approved):** `Spectre.Console` 0.57.2 + `Markdig` 1.4.0 (BSD-2-Clause) in `Lunate.Tui`; `Spectre.Console.Testing` 0.57.2 in tests. Markdig has no dependencies on net10.0. No Markdown-rendering library, no TextMate, no snapshot framework.
+- **`MarkdownRenderer`** (public `Lunate.Tui`): `Render(string) -> IRenderable`. Walks Markdig's AST and maps the guide's subset — headings 1-6, paragraphs, bullet/ordered lists (nested), quotes, fenced code with language label, inline bold/italic/code — to Spectre renderables; code blocks stay borderless. Every user string goes through `Markup.Escape`.
+- **Unsupported constructs render as readable plain text** — tables, links, images, HTML, task lists — never raw markup, never throwing (pinned per construct).
+- **Keyword highlighting (v1): own small deterministic scanners** for C#, JSON, shell — no TextMate, no highlighting engine.
+- **`TechnicalText`** formatting helpers: bytes, token counts, durations, percents — always `CultureInfo.InvariantCulture`, de-AT as the falsifier.
+- **Snapshots per feature** via `Spectre.Console.Testing` `TestConsole` → committed goldens, including the edge set: nested lists, unclosed fence, emphasis edge cases (`snake_case_words`, `2*3*4`), escaping, unsupported constructs.
 
 ## Done when
 
-A snapshot exists per Markdown feature (headings, bold, italic, inline code, lists, quotes, fenced code + label, highlighting ×3, mixed document); `TechnicalText` has table tests incl. de-AT; escaping tests prove bracket text stays literal; `scripts/verify.sh` green. Wiring into scrollback and the live area stays out of scope (T-20/T-22), as does diff rendering (T-20).
+A golden exists per Markdown feature and per edge case; escaping tests prove bracket text stays literal; unsupported constructs render plain (no markup, no throw) with a falsifier per construct; `TechnicalText` has table tests incl. de-AT; the licence table records BSD-2-Clause for Markdig; first-render cost measured and reported against the startup budget, which stays untouched while the exe does not load Tui; `scripts/verify.sh` green. Wiring into scrollback/live area stays out of scope (T-20/T-22), as does diff rendering (T-20).
