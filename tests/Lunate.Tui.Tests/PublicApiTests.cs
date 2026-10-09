@@ -16,6 +16,7 @@ public sealed class PublicApiTests
         "Lunate.Tui.MarkdownRenderer",
         "Lunate.Tui.TechnicalText",
         "Lunate.Tui.ToolBlockModel",
+        "Lunate.Tui.ToolBlockRenderer",
         "Lunate.Tui.ToolBlockStatus",
         "Lunate.Tui.ToolDiffInfo",
     ];

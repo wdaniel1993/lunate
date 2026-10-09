@@ -1,0 +1,5 @@
+tool bash dotnet test --project tests/Lunate.Tui.Tests ok
+Test run summary: Passed!
+  total: 286
+  failed: 0
+  succeeded: 286

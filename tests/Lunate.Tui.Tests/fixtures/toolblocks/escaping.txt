@@ -1,0 +1,4 @@
+tool edit [red]src[/].cs ok
+[dim]not markup[/]
+[bold]neither[/]
+[[nested]]

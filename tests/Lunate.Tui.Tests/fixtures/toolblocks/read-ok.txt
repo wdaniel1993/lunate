@@ -1,0 +1,7 @@
+tool read src/Lunate.Tui/FrameWriter.cs ok
+namespace Lunate.Tui;
+
+internal sealed class FrameWriter
+{
+    public void Write(string text) { }
+}

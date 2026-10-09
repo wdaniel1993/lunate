@@ -7,8 +7,8 @@
 
 ## 2. Output and status rendering
 
-- [ ] 2.1 `OutputExcerpt`: first 8 + last 8 with elision marker; boundary tests (≤17 lines whole, 18+ elided, single trailing newline trimmed, empty output)
-- [ ] 2.2 `ToolBlockRenderer`: header + status styles + excerpt; `Markup.Escape` on every user string; goldens `read-ok`, `bash-ok`, `error`, `long-output`, `running`, `no-output`, `escaping` + targeted ANSI assertions (green ok / red failed)
+- [x] 2.1 `OutputExcerpt`: first 8 + last 8 with elision marker; boundary tests (≤17 lines whole, 18+ elided, single trailing newline trimmed, empty output)
+- [x] 2.2 `ToolBlockRenderer`: header + status styles + excerpt; `Markup.Escape` on every user string; goldens `read-ok`, `bash-ok`, `error`, `long-output`, `running`, `no-output`, `escaping` + targeted ANSI assertions (green ok / red failed)
 
 ## 3. Diff panel
 

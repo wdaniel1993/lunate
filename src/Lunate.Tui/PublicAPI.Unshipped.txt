@@ -107,6 +107,9 @@ static Lunate.Tui.TechnicalText.Percent(double percent) -> string!
 static Lunate.Tui.TechnicalText.Tokens(long tokens) -> string!
 Lunate.Tui.ToolBlockModel
 Lunate.Tui.ToolBlockModel.<Clone>$() -> Lunate.Tui.ToolBlockModel!
+Lunate.Tui.ToolBlockRenderer
+Lunate.Tui.ToolBlockRenderer.Render(Lunate.Tui.ToolBlockModel! block) -> Spectre.Console.Rendering.IRenderable!
+Lunate.Tui.ToolBlockRenderer.ToolBlockRenderer() -> void
 Lunate.Tui.ToolBlockModel.ArgsSummary.get -> string!
 Lunate.Tui.ToolBlockModel.ArgsSummary.init -> void
 Lunate.Tui.ToolBlockModel.Deconstruct(out string! ToolName, out string! ArgsSummary, out Lunate.Tui.ToolBlockStatus Status, out string? Output, out Lunate.Tui.ToolDiffInfo? Diff) -> void

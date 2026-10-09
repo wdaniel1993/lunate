@@ -1,0 +1,18 @@
+tool bash dotnet build ok
+step 01 finished
+step 02 finished
+step 03 finished
+step 04 finished
+step 05 finished
+step 06 finished
+step 07 finished
+step 08 finished
+… 14 lines hidden …
+step 23 finished
+step 24 finished
+step 25 finished
+step 26 finished
+step 27 finished
+step 28 finished
+step 29 finished
+step 30 finished
