@@ -1,0 +1,7 @@
+Markdig.dll
+S6.Harness.dll
+Wcwidth.dll
+XenoAtom.Ansi.dll
+XenoAtom.Terminal.dll
+XenoAtom.Terminal.UI.dll
+XenoAtom.Terminal.UI.Extensions.Markdown.dll

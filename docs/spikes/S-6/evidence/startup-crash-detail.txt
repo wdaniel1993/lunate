@@ -1,0 +1,14 @@
+=== run 14 exit=134
+Fatal error.
+System.AccessViolationException: Attempted to read or write protected memory. This is often an indication that other memory is corrupt.
+   at System.Runtime.InteropServices.SafeHandle.DangerousAddRef(Boolean ByRef)
+   at System.Threading.WaitHandle.WaitOneNoCheck(Int32, Boolean, System.Object, WaitHandleWaitSourceMap)
+   at System.Threading.PortableThreadPool+GateThread.GateThreadStart()
+   at System.Threading.Thread.StartCallback()
+=== run 21 exit=134
+Fatal error.
+System.AccessViolationException: Attempted to read or write protected memory. This is often an indication that other memory is corrupt.
+   at System.GC.GetGCMemoryInfo(System.GCKind)
+   at System.Threading.PortableThreadPool.OnGen2GCCallback()
+   at System.Threading.PortableThreadPool+GateThread.GateThreadStart()
+   at System.Threading.Thread.StartCallback()

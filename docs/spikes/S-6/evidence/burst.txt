@@ -1,0 +1,3 @@
+burst_exact=true tail_len=48890 ticks=5 cancel=true
+burst_exact=true tail_len=48890 ticks=3 cancel=true
+burst_exact=true tail_len=48890 ticks=3 cancel=true

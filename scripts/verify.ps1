@@ -21,6 +21,23 @@ try {
         return [math]::Round(((Get-Content $File -Raw | ConvertFrom-Json).results[0].median) * 1000)
     }
 
+    function Invoke-Tests {
+        param([string]$Label, [string[]]$TestArgs)
+        $output = & dotnet @TestArgs 2>&1
+        $exit = $LASTEXITCODE
+        $output | ForEach-Object { Write-Host $_ }
+        if ($exit -ne 0) { throw "verify: $Label failed (exit $exit)" }
+        # A discovery regression (runner or argument drift) must never look
+        # green: the MTP summary line is "total: N"; missing or zero fails.
+        $total = $null
+        foreach ($line in $output) {
+            if ([string]$line -match 'total: (\d+)') { $total = [int]$Matches[1] }
+        }
+        if ($null -eq $total -or $total -eq 0) {
+            throw "verify: $Label executed zero tests - test discovery regression?"
+        }
+    }
+
     if (-not $env:RID) {
         $arch = switch ([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString()) {
             'X64' { 'x64' }
@@ -54,8 +71,7 @@ try {
     }
 
     Write-Host "`n==> test"
-    dotnet test --solution lunate.sln -c $configuration
-    if ($LASTEXITCODE -ne 0) { throw 'verify: tests failed' }
+    Invoke-Tests -Label 'test' -TestArgs @('test', '--solution', 'lunate.sln', '-c', $configuration)
 
     $binary = Join-Path (Join-Path $publishDir $env:RID) 'lunate.exe'
     # ADR-0008: release builds are single file + ReadyToRun WITHOUT compression

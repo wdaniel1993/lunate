@@ -1,0 +1,26 @@
+== S6.Harness
+      30 docs/spikes/S-6/S6.Harness/AgentEvent.cs
+     325 docs/spikes/S-6/S6.Harness/AnsiScreen.cs
+      28 docs/spikes/S-6/S6.Harness/Keys.cs
+     275 docs/spikes/S-6/S6.Harness/LiveModel.cs
+     143 docs/spikes/S-6/S6.Harness/LiveVisual.cs
+      13 docs/spikes/S-6/S6.Harness/Scenario.cs
+     121 docs/spikes/S-6/S6.Harness/ScenarioReplay.cs
+     108 docs/spikes/S-6/S6.Harness/ScenarioScript.cs
+     137 docs/spikes/S-6/S6.Harness/SpikeProgram.cs
+       9 docs/spikes/S-6/S6.Harness/Spinner.cs
+     246 docs/spikes/S-6/S6.Harness/XenoLiveApp.cs
+    1435 total
+== S6.Tests
+       1 docs/spikes/S-6/S6.Tests/AssemblyInfo.cs
+     140 docs/spikes/S-6/S6.Tests/DeterministicRenderTests.cs
+     269 docs/spikes/S-6/S6.Tests/LiveLoopTests.cs
+      57 docs/spikes/S-6/S6.Tests/LiveSession.cs
+      85 docs/spikes/S-6/S6.Tests/TickDriver.cs
+     552 total
+== scripts
+      21 docs/spikes/S-6/scripts/loc.sh
+      97 docs/spikes/S-6/scripts/measure-startup.sh
+      47 docs/spikes/S-6/scripts/run-flake.sh
+      31 docs/spikes/S-6/scripts/run-scenario.sh
+     196 total

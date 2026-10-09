@@ -26,6 +26,31 @@ step() {
   printf '\n==> %s\n' "$1"
 }
 
+# Runs a test pass and fails when it executed zero tests: a discovery
+# regression (runner or argument drift) must never look green in CI. The MTP
+# summary line is "total: N"; a missing or zero count is a failure. PIPESTATUS
+# preserves the test runner's exit code through the tee.
+run_tests() {
+  local label="$1"
+  shift
+  local output status total
+  output="$(mktemp)"
+  set +e
+  "$@" 2>&1 | tee "$output"
+  status="${PIPESTATUS[0]}"
+  set -e
+  total="$(grep -oE 'total: [0-9]+' "$output" | tail -n 1 | grep -oE '[0-9]+' || true)"
+  rm -f "$output"
+  if [ "$status" -ne 0 ]; then
+    echo "verify: ${label} failed (exit ${status})" >&2
+    exit 1
+  fi
+  if [ -z "$total" ] || [ "$total" -eq 0 ]; then
+    echo "verify: ${label} executed zero tests — test discovery regression?" >&2
+    exit 1
+  fi
+}
+
 step "tools"
 # CSharpier is pinned in .config/dotnet-tools.json; restore makes it available locally.
 if ! dotnet tool restore; then
@@ -51,12 +76,12 @@ for assembly in Anthropic OpenAI Microsoft.Extensions.AI; do
 done
 
 step "test"
-dotnet test --solution lunate.sln -c "$CONFIGURATION"
+run_tests "test" dotnet test --solution lunate.sln -c "$CONFIGURATION"
 
 step "test (de-AT culture)"
 # Non-English culture pass (S-5 finding). Effective on macOS/Linux; Windows
 # runners keep the OS culture (LANG is not honored there).
-LANG=de_AT.UTF-8 LC_ALL=de_AT.UTF-8 dotnet test --solution lunate.sln -c "$CONFIGURATION" --no-build
+LANG=de_AT.UTF-8 LC_ALL=de_AT.UTF-8 run_tests "test (de-AT culture)" dotnet test --solution lunate.sln -c "$CONFIGURATION" --no-build
 
 step "publish (${RID})"
 dotnet publish src/Lunate.Coding/Lunate.Coding.csproj \
