@@ -1,0 +1,5 @@
+sh
+if [ -f "$HOME/x" ]; then
+  echo done # comment
+fi
+echo $HOME

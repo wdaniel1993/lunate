@@ -118,6 +118,78 @@ public sealed class MarkdownGoldenTests
                     - [x] done
                     """
             },
+            {
+                "fence-csharp",
+                """
+                    ```csharp
+                    var total = items.Sum(x => x.Count); // sum
+                    /* a block
+                       comment */
+                    Console.WriteLine($"total: {total}");
+                    ```
+                    """
+            },
+            {
+                "fence-json",
+                """
+                    ```json
+                    {
+                      "name": "lunate",
+                      "count": 12.5,
+                      "ok": true
+                    }
+                    ```
+                    """
+            },
+            {
+                "fence-shell",
+                """
+                    ```sh
+                    if [ -f "$HOME/x" ]; then
+                      echo done # comment
+                    fi
+                    echo $HOME
+                    ```
+                    """
+            },
+            {
+                "mixed",
+                """
+                    # Lunate
+
+                    Output with **bold**, *italic*, `inline code`, and a [link](https://example.com).
+
+                    - first
+                      - nested
+                    - second
+
+                    1. ordered one
+                    2. ordered two
+
+                    > quoted line
+                    > continued
+
+                    ```csharp
+                    var x = 1; // one
+                    ```
+
+                    ```json
+                    {"a": 1}
+                    ```
+
+                    ```sh
+                    echo $HOME
+                    ```
+
+                    | a | b |
+                    | - | - |
+                    | 1 | 2 |
+
+                    - [ ] task
+
+                    [dim]not markup[/]
+                    """
+            },
         };
 
     [Theory]

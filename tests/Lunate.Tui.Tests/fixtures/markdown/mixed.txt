@@ -1,0 +1,30 @@
+Lunate
+
+Output with bold, italic, inline code, and a link (https://example.com).
+
+• first
+  • nested
+• second
+
+1. ordered one
+2. ordered two
+
+│ quoted line
+│ continued
+
+csharp
+var x = 1; // one
+
+json
+{"a": 1}
+
+sh
+echo $HOME
+
+| a | b |
+| - | - |
+| 1 | 2 |
+
+• [ ] task
+
+[dim]not markup[/]

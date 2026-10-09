@@ -3,124 +3,10 @@ using System.Text;
 using Markdig.Helpers;
 using Markdig.Syntax;
 using Markdig.Syntax.Inlines;
-using Spectre.Console;
 
 namespace Lunate.Tui;
 
-[Flags]
-internal enum TextStyle
-{
-    None = 0,
-    Bold = 1,
-    Italic = 2,
-    Dim = 4,
-    Underline = 8,
-}
-
-internal readonly record struct SpanStyle(TextStyle Text = TextStyle.None, string? Color = null)
-{
-    public static readonly SpanStyle Plain = new();
-    public static readonly SpanStyle Bold = new(TextStyle.Bold);
-    public static readonly SpanStyle Dim = new(TextStyle.Dim);
-    public static readonly SpanStyle Heading1 = new(TextStyle.Bold | TextStyle.Underline);
-    public static readonly SpanStyle InlineCode = new(Color: "aqua");
-
-    public static string Attributes(SpanStyle style)
-    {
-        var parts = new List<string>(5);
-        if ((style.Text & TextStyle.Bold) != 0)
-        {
-            parts.Add("bold");
-        }
-
-        if ((style.Text & TextStyle.Italic) != 0)
-        {
-            parts.Add("italic");
-        }
-
-        if ((style.Text & TextStyle.Underline) != 0)
-        {
-            parts.Add("underline");
-        }
-
-        if ((style.Text & TextStyle.Dim) != 0)
-        {
-            parts.Add("dim");
-        }
-
-        if (style.Color is not null)
-        {
-            parts.Add(style.Color);
-        }
-
-        return string.Join(' ', parts);
-    }
-}
-
-internal sealed class StyledLine
-{
-    private readonly List<StyledSpan> _spans = [];
-
-    public bool IsBlank => _spans.All(static span => string.IsNullOrWhiteSpace(span.Text));
-
-    public void Add(string text, SpanStyle style)
-    {
-        if (text.Length > 0)
-        {
-            _spans.Add(new StyledSpan(text, style));
-        }
-    }
-
-    public void Append(StyledLine other) => _spans.AddRange(other._spans);
-
-    public string ToMarkup()
-    {
-        var builder = new StringBuilder();
-        foreach (var (text, style) in TrimmedTrailingWhitespace())
-        {
-            string escaped = Markup.Escape(text);
-            string attributes = SpanStyle.Attributes(style);
-            if (attributes.Length == 0)
-            {
-                builder.Append(escaped);
-            }
-            else
-            {
-                builder.Append('[').Append(attributes).Append(']').Append(escaped).Append("[/]");
-            }
-        }
-
-        return builder.ToString();
-    }
-
-    private List<StyledSpan> TrimmedTrailingWhitespace()
-    {
-        var spans = new List<StyledSpan>(_spans);
-        while (spans.Count > 0)
-        {
-            var last = spans[^1];
-            string text = last.Text.TrimEnd();
-            if (text.Length == 0)
-            {
-                spans.RemoveAt(spans.Count - 1);
-                continue;
-            }
-
-            if (text.Length != last.Text.Length)
-            {
-                spans[^1] = last with { Text = text };
-            }
-
-            break;
-        }
-
-        return spans;
-    }
-
-    private readonly record struct StyledSpan(string Text, SpanStyle Style);
-}
-
-internal static class MarkdownAstMapper
+internal static partial class MarkdownAstMapper
 {
     public static string Map(MarkdownDocument document)
     {
@@ -265,11 +151,39 @@ internal static class MarkdownAstMapper
             lines.Add(label);
         }
 
+        string? language = SyntaxHighlight.LanguageKey(info);
+        bool inBlockComment = false;
         for (var i = 0; i < content.Count; i++)
         {
-            AppendPlainLine(lines, content.Lines[i].Slice.ToString());
+            string text = content.Lines[i].Slice.ToString();
+            var line = new StyledLine();
+            if (language is null)
+            {
+                line.Add(text, SpanStyle.Plain);
+            }
+            else
+            {
+                foreach (var span in SyntaxHighlight.Line(language, text, ref inBlockComment))
+                {
+                    line.Add(span.Text, StyleFor(span.Kind));
+                }
+            }
+
+            lines.Add(line);
         }
     }
+
+    private static SpanStyle StyleFor(HighlightKind kind) =>
+        kind switch
+        {
+            HighlightKind.Keyword => SpanStyle.Keyword,
+            HighlightKind.String => SpanStyle.String,
+            HighlightKind.Comment => SpanStyle.Comment,
+            HighlightKind.Number => SpanStyle.Number,
+            HighlightKind.Key => SpanStyle.Key,
+            HighlightKind.Variable => SpanStyle.Variable,
+            _ => SpanStyle.Plain,
+        };
 
     private static void AppendRawLines(StringLineGroup content, List<StyledLine> lines)
     {
@@ -295,97 +209,6 @@ internal static class MarkdownAstMapper
         }
 
         return writer.Finish();
-    }
-
-    private static void AppendInlines(
-        ContainerInline container,
-        InlineWriter writer,
-        SpanStyle style
-    )
-    {
-        foreach (var inline in container)
-        {
-            switch (inline)
-            {
-                case LiteralInline literal:
-                    writer.Write(literal.Content.ToString(), style);
-                    break;
-                case CodeInline code:
-                    writer.Write(code.Content, SpanStyle.InlineCode);
-                    break;
-                case EmphasisInline emphasis:
-                    AppendInlines(emphasis, writer, Emphasis(style, emphasis.DelimiterCount));
-                    break;
-                case LinkInline link:
-                    writer.Write($"{TextOf(link)} ({link.Url ?? string.Empty})", SpanStyle.Plain);
-                    break;
-                case HtmlInline html:
-                    writer.Write(html.Tag, SpanStyle.Plain);
-                    break;
-                case HtmlEntityInline entity:
-                    writer.Write(entity.Transcoded.ToString(), style);
-                    break;
-                case AutolinkInline autolink:
-                    writer.Write(autolink.Url, SpanStyle.Plain);
-                    break;
-                case LineBreakInline:
-                    writer.Break();
-                    break;
-                case ContainerInline nested:
-                    AppendInlines(nested, writer, style);
-                    break;
-            }
-        }
-    }
-
-    private static SpanStyle Emphasis(SpanStyle style, int delimiterCount)
-    {
-        TextStyle added = delimiterCount switch
-        {
-            1 => TextStyle.Italic,
-            2 => TextStyle.Bold,
-            _ => TextStyle.Bold | TextStyle.Italic,
-        };
-        return style with { Text = style.Text | added };
-    }
-
-    private static string TextOf(Inline inline)
-    {
-        var builder = new StringBuilder();
-        CollectText(inline, builder);
-        return builder.ToString();
-    }
-
-    private static void CollectText(Inline inline, StringBuilder builder)
-    {
-        switch (inline)
-        {
-            case LiteralInline literal:
-                builder.Append(literal.Content.ToString());
-                break;
-            case CodeInline code:
-                builder.Append(code.Content);
-                break;
-            case LineBreakInline:
-                builder.Append(' ');
-                break;
-            case HtmlInline html:
-                builder.Append(html.Tag);
-                break;
-            case HtmlEntityInline entity:
-                builder.Append(entity.Transcoded.ToString());
-                break;
-            case AutolinkInline autolink:
-                builder.Append(autolink.Url);
-                break;
-            case ContainerInline container:
-                foreach (var child in container)
-                {
-                    CollectText(child, builder);
-                }
-
-                break;
-        }
     }
 
     private static StyledLine PrefixLine(StyledLine source, string prefix, SpanStyle style)

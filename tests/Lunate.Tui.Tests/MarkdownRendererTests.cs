@@ -77,6 +77,30 @@ public sealed class MarkdownRendererTests
     [Fact]
     public void Quotes_use_the_dim_ansi_style() => Assert.Contains("\u001b[2m", RenderAnsi("> q"));
 
+    [Theory]
+    [InlineData("```nix\nlet x = 1;\n```", "nix\nlet x = 1;\n")]
+    [InlineData("```\nplain\n```", "plain\n")]
+    public void Untagged_or_unknown_fences_render_plain_with_the_label(
+        string markdown,
+        string expected
+    ) => Assert.Equal(expected, Render(markdown));
+
+    [Fact]
+    public void CSharp_keywords_use_the_blue_ansi_style() =>
+        Assert.Contains("\u001b[38;5;12m", RenderAnsi("```csharp\nvar x = 1;\n```"));
+
+    [Fact]
+    public void CSharp_comments_use_the_grey_ansi_style() =>
+        Assert.Contains("\u001b[38;5;8m", RenderAnsi("```csharp\n// note\n```"));
+
+    [Fact]
+    public void Json_keys_use_the_blue_ansi_style() =>
+        Assert.Contains("\u001b[38;5;12m", RenderAnsi("```json\n{\"k\": \"v\"}\n```"));
+
+    [Fact]
+    public void Shell_variables_use_the_yellow_ansi_style() =>
+        Assert.Contains("\u001b[38;5;11m", RenderAnsi("```sh\necho $HOME\n```"));
+
     private static string Render(string markdown)
     {
         var console = new TestConsole();
