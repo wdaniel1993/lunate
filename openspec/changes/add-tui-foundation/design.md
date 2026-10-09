@@ -47,4 +47,9 @@ Port of the S-2 spike decoder (reference, not shipped code), productized as `VtI
 
 ## Deviations
 
-(Filled during apply; empty at proposal time.)
+- **Files added beyond the list:** `src/Lunate.Tui/FakeConsoleIO.cs` (the fake was described but not listed) and `src/Lunate.Tui/LiveAreaRenderer.cs` (the pure state→frame function split out of `LiveArea` to keep files small). `InputLineLayout` is internal and lives in `InputLine.cs`.
+- **Testability seams for the fail-soft and poll paths:** `ConsoleSupport.Describe(console, isWindows)`, `SystemConsoleIO.ComputeIsInteractive(...)` and `SystemConsoleIO.PollSize(...)` are internal statics so every branch is covered with `TestScheduler` without ever constructing `SystemConsoleIO` in tests; the public surface stays as listed.
+- **KeyEvent text for control letters:** `Ctrl+<letter>` is `KeyKind.Character` with lowercase `Text` (e.g. `Ctrl+J` → `Character "j", Ctrl: true`), not the S-2 spike's display `Name`; the 32-case table was ported with the new record shape and identical semantics.
+- **LiveArea inputs:** `PostKey`/`AppendTail`/`SetTool`/`SetFooter` are the public stimulus methods (T-22 wires `ReadKeysAsync` through `PostKey`); `Start()` also starts the console key pump. Tests drive the methods directly so virtual time stays deterministic.
+- **Frame goldens encode the recorded `IConsoleIO.Write` payloads** (one escaped line per write: `\x1b`, `\r`, `\n`, `\t`, doubled backslash) instead of logical frame lines; regeneration via `LUNATE_TUI_UPDATE_GOLDENS=1` is documented in `FrameGoldenTests`.
+- **`Skip(1)` after `StartWith(initial)`** in the pipeline drops the synthetic seed so the idle spinner interval cannot repaint the initial frame; the first real state change still flows to `Sample`.

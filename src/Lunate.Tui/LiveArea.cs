@@ -100,7 +100,6 @@ public sealed class LiveArea : IDisposable
         _subscriptions.Clear();
         _stimuli.Dispose();
         _writer.Clear();
-        _cts.Dispose();
     }
 
     private void Post(LiveAreaInput input)
