@@ -2,9 +2,9 @@
 
 ## 1. System prompt and project instructions
 
-- [ ] 1.1 `src/Lunate.Coding/system-prompt.md` (embedded resource) refined from the guide draft; `SystemPrompt.cs` composer (named-token replacement, runtime facts: OS, shell via `ShellResolver`, canonical cwd, UTC date, tool names); `AgentsInstructions.cs` chain (`RepoRoot ?? WorktreeRoot` → working dir, path-headed blocks)
-- [ ] 1.2 Budget assertion: composed prompt (template + facts + empty AGENTS.md) under 1,000 tokens via the documented chars/4 heuristic; template holds headroom
-- [ ] 1.3 Harness integration test: composer output passed as `AgentHarnessOptions.SystemPrompt` arrives as the leading system message of the request (fake client); chain test: nested AGENTS.md files concatenate root→leaf with the leaf most specific; missing files skipped
+- [x] 1.1 `src/Lunate.Coding/system-prompt.md` (embedded resource) refined from the guide draft; `SystemPrompt.cs` composer (named-token replacement, runtime facts: OS, shell via `ShellResolver`, canonical cwd, UTC date, tool names); `AgentsInstructions.cs` chain (`RepoRoot ?? WorktreeRoot` → working dir, path-headed blocks)
+- [x] 1.2 Budget assertion: composed prompt (template + facts + empty AGENTS.md) under 1,000 tokens via the documented chars/4 heuristic; template holds headroom
+- [x] 1.3 Harness integration test: composer output passed as `AgentHarnessOptions.SystemPrompt` arrives as the leading system message of the request (fake client); chain test: nested AGENTS.md files concatenate root→leaf with the leaf most specific; missing files skipped
 
 ## 2. Configuration
 
