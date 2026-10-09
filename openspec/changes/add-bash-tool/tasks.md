@@ -10,7 +10,7 @@
 - [x] 2.1 Tool per design (schema, description naming the shell, risk Execute, cwd = worktree root, stdin closed)
 - [x] 2.2 Execution + capture (separate bounded streams, cap marker), result text + exit semantics, timeout tree kill, cancel tree kill, spawn-failure path
 - [x] 2.3 `BashToolTests`: all design cases incl. grandchild-pid proof for timeout/cancel kill, UTF-8, cap
-- [ ] 2.4 CI gate: tests green on all three runners (observed in the PR run)
+- [x] 2.4 CI gate: tests green on all three runners (observed in the PR run)
 
 ## 3. Close
 
