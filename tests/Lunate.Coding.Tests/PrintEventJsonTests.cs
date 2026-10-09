@@ -66,9 +66,14 @@ public sealed class PrintEventJsonTests
             {
                 new UsageUpdated(
                     "run_1",
-                    new UsageDetails { InputTokenCount = 11, OutputTokenCount = 5 }
+                    new UsageDetails
+                    {
+                        InputTokenCount = 11,
+                        OutputTokenCount = 5,
+                        TotalTokenCount = 16,
+                    }
                 ),
-                """{"type":"usage_updated","runId":"run_1","usage":{"inputTokenCount":11,"outputTokenCount":5}}"""
+                """{"type":"usage_updated","runId":"run_1","usage":{"inputTokenCount":11,"outputTokenCount":5,"totalTokenCount":16}}"""
             },
             {
                 new Retrying("run_1", 2, "transient"),

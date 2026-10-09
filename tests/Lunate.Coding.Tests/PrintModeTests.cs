@@ -34,6 +34,35 @@ public sealed class PrintModeTests
     }
 
     [Fact]
+    public async Task Only_the_last_assistant_message_reaches_stdout()
+    {
+        using var temp = new TempDirectory();
+        File.WriteAllText(temp.File("note.txt"), "note");
+        var client = new ScriptedChatClient()
+            .Enqueue(
+                Scripts.Text("Reading. "),
+                Scripts.Call("call-1", "read", Scripts.Args(("path", "note.txt"))),
+                Scripts.ToolCalls()
+            )
+            .Enqueue(Scripts.Text("Second."), Scripts.Stop());
+        PrintModeOptions options = PrintModeTestSupport.BaseOptions(
+            temp,
+            new FakeChatClientFactory(client)
+        ) with
+        {
+            Prompt = "Hi",
+        };
+
+        (int exitCode, string output, string errors) = await PrintModeTestSupport.RunAsync(options);
+
+        // "Last assistant message wins": not "Reading. " (first), not
+        // "Reading. Second." (joined), not "Second." (last fragment only).
+        Assert.Equal(0, exitCode);
+        Assert.Equal("Second.", output);
+        Assert.Empty(errors);
+    }
+
+    [Fact]
     public async Task Json_mode_streams_every_event_in_arrival_order_with_the_session_id()
     {
         using var temp = new TempDirectory();
