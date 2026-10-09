@@ -16,13 +16,17 @@ public sealed class SystemPromptTests
         string prompt = SystemPrompt.Compose(
             workspace,
             DefaultTools,
-            new ShellResolver("/bin/bash"),
+            new ShellResolver("/bin/sh"),
             now
         );
 
         Assert.Contains($"at {workspace.WorktreeRoot}", prompt, StringComparison.Ordinal);
         Assert.Contains(RuntimeInformation.OSDescription, prompt, StringComparison.Ordinal);
-        Assert.Contains("shell: bash", prompt, StringComparison.Ordinal);
+        // /bin/sh is the platform-independent resolver branch: its display name is "/bin/sh"
+        // on every OS, unlike "/bin/bash" which maps to "Git Bash" on Windows. This keeps the
+        // assertion a real falsifier (a composer ignoring the resolver would print "bash" or
+        // "Git Bash", never "/bin/sh") while staying deterministic on all three runners.
+        Assert.Contains("shell: /bin/sh", prompt, StringComparison.Ordinal);
         Assert.Contains("date (UTC): 2026-10-09", prompt, StringComparison.Ordinal);
         Assert.Contains("Tools: read, write, edit, bash", prompt, StringComparison.Ordinal);
         Assert.DoesNotContain("{cwd}", prompt, StringComparison.Ordinal);
