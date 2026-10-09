@@ -9,7 +9,7 @@
 
 ## 2. Markdig parsing and blocks
 
-- [ ] 2.1 `MarkdownRenderer.Render(string) -> IRenderable` skeleton + Markdig pipeline (no extensions); AST mapper for headings, paragraphs, lists (incl. nesting), quotes, fences with language label; plain-text fallback for other block types
+- [x] 2.1 `MarkdownRenderer.Render(string) -> IRenderable` skeleton + Markdig pipeline (no extensions); AST mapper for headings, paragraphs, lists (incl. nesting), quotes, fences with language label; plain-text fallback for other block types
 - [ ] 2.2 Golden set (block level): `heading.txt`, `lists.txt`, `nested-lists.txt`, `quote.txt` (+ paragraph handling inside `mixed.txt`); `unclosed-fence.txt` (Markdig takes the rest as code)
 
 ## 3. Inline and escaping
