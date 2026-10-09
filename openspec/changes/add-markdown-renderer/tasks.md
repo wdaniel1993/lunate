@@ -16,7 +16,7 @@
 
 - [x] 3.1 Inline mapping: literal, emphasis (bold/italic by delimiter), code, line breaks; links → `label (url)`, images → `alt (url)`, HTML → literal tag text (all plain, no markup)
 - [x] 3.2 `Markup.Escape` on every user string; `escaping.txt` + targeted test that `[dim]…[/]` stays literal
-- [x] 3.3 `emphasis-edges.txt` golden: `snake_case_words` stays literal, `2*3*4` stays literal (CommonMark intraword rules via Markdig)
+- [x] 3.3 `emphasis-edges.txt` golden: `snake_case_words` stays literal (intraword `_`), `2*3*4` renders intraword emphasis per CommonMark (`2<em>3</em>4`)
 - [x] 3.4 `unsupported.txt` golden + one falsifier per construct: table, link, image, HTML, task list render as readable plain text, never markup, never throw
 
 ## 4. Code fences and highlighting

@@ -159,6 +159,8 @@ public sealed class MarkdownGoldenTests
 
                     Output with **bold**, *italic*, `inline code`, and a [link](https://example.com).
 
+                    An image ![alt text](https://example.com/i.png) and 2*3*4 next to snake_case_words.
+
                     - first
                       - nested
                     - second
@@ -185,7 +187,13 @@ public sealed class MarkdownGoldenTests
                     | - | - |
                     | 1 | 2 |
 
+                    <div class="note">
+                    raw html
+                    </div>
+
                     - [ ] task
+
+                    ---
 
                     [dim]not markup[/]
                     """

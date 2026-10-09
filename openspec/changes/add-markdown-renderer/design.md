@@ -21,7 +21,7 @@ New files in `src/Lunate.Tui/`: `Markdown/MarkdownRenderer.cs` (public), `Markdo
 - `FencedCodeBlock` / `CodeBlock` → borderless block: dim `lang` label line (unknown language renders plain), code through our highlight scanners. **Unclosed fence**: Markdig takes the rest as code; golden pins it.
 - Every other block type → plain-text path (never markup, never throw).
 
-Inline mapping (all escaped before assembly): `LiteralInline` → text; `EmphasisInline` → bold/italic by delimiter; `CodeInline` → code style (no markup inside); `LineBreakInline` → break/space; links → `label (url)` plain; images → `alt (url)` plain; HTML inline → literal tag text; unrecognized → literal text. Emphasis edge cases (`snake_case_words` must not italicise; `2*3*4` stays literal) are Markdig's intraword rules now — goldens confirm end-to-end.
+Inline mapping (all escaped before assembly): `LiteralInline` → text; `EmphasisInline` → bold/italic by delimiter; `CodeInline` → code style (no markup inside); `LineBreakInline` → break/space; links → `label (url)` plain (empty parts omitted); images → `alt (url)` plain; HTML inline → literal tag text; unrecognized → literal text. Emphasis edge cases: `snake_case_words` stays literal (intraword `_` cannot italicise); `2*3*4` renders intraword `*` emphasis per CommonMark (`2<em>3</em>4`) — goldens pin both.
 
 **Escaping rule (pinned by tests):** every user string goes through `Markup.Escape` before Spectre assembly; `[dim]not markup[/]` renders literally. Highlight markup is assembled around already-escaped content.
 
@@ -33,7 +33,7 @@ Inline mapping (all escaped before assembly): `LiteralInline` → text; `Emphasi
 
 ## Snapshots
 
-`TestConsole` (plain-text profile) renders each fixture; byte-compared against goldens in `tests/Lunate.Tui.Tests/fixtures/markdown/`: `heading.txt`, `bold-italic.txt`, `inline-code.txt`, `lists.txt`, `nested-lists.txt`, `quote.txt`, `fence-csharp.txt`, `fence-json.txt`, `fence-shell.txt`, `unclosed-fence.txt`, `emphasis-edges.txt`, `escaping.txt`, `unsupported.txt`, `mixed.txt` (all features in one document). Regeneration via the existing `LUNATE_TUI_UPDATE_GOLDENS=1` convention. No color-ANSI goldens in v1 — style correctness via targeted assertions where cheap.
+`TestConsole` (plain-text profile) renders each fixture; byte-compared against goldens in `tests/Lunate.Tui.Tests/fixtures/markdown/`: `heading.txt`, `bold-italic.txt`, `inline-code.txt`, `lists.txt`, `nested-lists.txt`, `quote.txt`, `fence-csharp.txt`, `fence-json.txt`, `fence-shell.txt`, `unclosed-fence.txt`, `emphasis-edges.txt`, `escaping.txt`, `unsupported.txt`, `mixed.txt` (representative mix of supported features plus key unsupported constructs; unclosed fence and dangling references keep their own fixtures). Regeneration via the existing `LUNATE_TUI_UPDATE_GOLDENS=1` convention. No color-ANSI goldens in v1 — style correctness via targeted assertions where cheap.
 
 ## TechnicalText (unchanged)
 
@@ -46,4 +46,6 @@ Scrollback commit and streaming flow (T-22), tool blocks and diffs (T-20), foote
 ## Deviations
 
 - **Parser replaced by Markdig per maintainer review (2026-10-09).** The originally proposed hand-written block parser and `InlineScanner` were dropped before implementation; rationale: CommonMark inline correctness on real agent output (`snake_case`, globs, nested emphasis) is the risky part, not the block level. The renderer (AST → Spectre, escaping, highlighting, snapshots) stays in-house. Recorded per maintainer instruction.
-- **Markdig licence is BSD-2-Clause**, not MIT — checked during the same review and accepted.
+- **Markdig licence is BSD-2-Clause**, not MIT — checked during the same review and accepted; the persistent record is `docs/third-party-licences.md` (which also records xunit.v3 and ModelContextProtocol as Apache-2.0 — the repo's other non-MIT dependencies).
+- **`2*3*4` text corrected after review**: the task/proposal text initially claimed it renders literally; CommonMark (spec example `5*6*78`) and Markdig render intraword `*` emphasis (`2<em>3</em>4`), and the golden pins the compliant behavior — the "CommonMark-compliant parser" requirement wins over the parenthetical. Docs, golden and code now agree.
+- **Empty link/image parts omitted**: `[]()`, `[](url)`, `[text]()` render as ``, `url`, `text` rather than empty parentheses (review follow-up); dangling reference links render literally (falsifier added).

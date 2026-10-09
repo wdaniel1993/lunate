@@ -17,6 +17,14 @@ public sealed class MarkdownRendererTests
     ) => Assert.Equal(expected, Render(markdown));
 
     [Theory]
+    [InlineData("one [undefined] too", "one [undefined] too\n")]
+    [InlineData("[](https://example.com)", "https://example.com\n")]
+    [InlineData("[text]()", "text\n")]
+    [InlineData("[]()", "")]
+    public void Links_with_missing_parts_stay_readable(string markdown, string expected) =>
+        Assert.Equal(expected, Render(markdown));
+
+    [Theory]
     [InlineData("[dim]not markup[/]")]
     [InlineData("[bold]neither[/]")]
     [InlineData("lone [ bracket and ]")]

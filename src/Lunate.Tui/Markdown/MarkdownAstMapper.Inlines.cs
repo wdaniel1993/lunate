@@ -25,7 +25,7 @@ internal static partial class MarkdownAstMapper
                     AppendInlines(emphasis, writer, Emphasis(style, emphasis.DelimiterCount));
                     break;
                 case LinkInline link:
-                    writer.Write($"{TextOf(link)} ({link.Url ?? string.Empty})", SpanStyle.Plain);
+                    AppendLink(link, writer);
                     break;
                 case HtmlInline html:
                     writer.Write(html.Tag, SpanStyle.Plain);
@@ -43,6 +43,24 @@ internal static partial class MarkdownAstMapper
                     AppendInlines(nested, writer, style);
                     break;
             }
+        }
+    }
+
+    private static void AppendLink(LinkInline link, InlineWriter writer)
+    {
+        string label = TextOf(link);
+        string url = link.Url ?? string.Empty;
+        string text = (label, url) switch
+        {
+            ("", "") => string.Empty,
+            ("", _) => url,
+            (_, "") => label,
+            _ => $"{label} ({url})",
+        };
+
+        if (text.Length > 0)
+        {
+            writer.Write(text, SpanStyle.Plain);
         }
     }
 
