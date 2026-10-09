@@ -7,6 +7,7 @@ public sealed record ScenarioResult(
     string RawOutput,
     string ScreenText,
     IReadOnlyList<string> FinishedBlocks,
+    IReadOnlyList<string> RenderedBlocks,
     bool QuitRequested,
     bool CancelRequested,
     string TailText,
@@ -54,16 +55,16 @@ public static class ScenarioReplay
         await Task.Delay(TimeSpan.FromMilliseconds(200), cancellationToken);
 
         var raw = app.GetOutputText();
-        var screenText = LiveVisual.RenderSnapshot(
-            app.Model,
-            Scenario.InitialWidth + 20,
-            Scenario.InitialHeight + 6
-        );
+        var screenText = app.RenderLiveSnapshot(Scenario.InitialWidth + 20, Scenario.InitialHeight + 6);
+        var renderedBlocks = app
+            .FinishedBlocks.Select(block => app.RenderMarkdownBlock(block, 60, 4))
+            .ToList();
 
         return new ScenarioResult(
             raw,
             screenText,
             [.. app.FinishedBlocks],
+            renderedBlocks,
             app.Model.QuitRequested,
             app.Model.CancelRequested,
             app.Model.TailText,
@@ -77,10 +78,10 @@ public static class ScenarioReplay
     {
         var text = new StringBuilder();
         text.AppendLine("== finished blocks (Terminal.Write + MarkdownControl) ==");
-        foreach (var block in result.FinishedBlocks)
+        for (var i = 0; i < result.FinishedBlocks.Count; i++)
         {
-            text.AppendLine(block);
-            text.AppendLine(LiveVisual.RenderMarkdown(block, 60, 4));
+            text.AppendLine(result.FinishedBlocks[i]);
+            text.AppendLine(result.RenderedBlocks[i]);
         }
 
         text.AppendLine("== live area (final state, one-shot render) ==");

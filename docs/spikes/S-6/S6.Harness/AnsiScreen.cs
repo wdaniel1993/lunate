@@ -216,6 +216,14 @@ public sealed class AnsiScreen
             case 'D':
                 _col = Math.Max(0, _col - First(1));
                 break;
+            case 'E':
+                _row = Math.Min(_height - 1, _row + First(1));
+                _col = 0;
+                break;
+            case 'F':
+                _row = Math.Max(0, _row - First(1));
+                _col = 0;
+                break;
             case 'G':
                 _col = Math.Clamp(First(1) - 1, 0, _width - 1);
                 break;

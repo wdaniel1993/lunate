@@ -92,46 +92,6 @@ public sealed class LiveVisual : ContentVisual
         _approval.Value = _model.ApprovalPrompt ?? string.Empty;
     }
 
-    /// <summary>
-    /// Renders the current model state once to a headless terminal and returns
-    /// the resulting screen text, so the spike transcript is the final live
-    /// area rather than the inline host's diff stream.
-    /// </summary>
-    public static string RenderSnapshot(LiveModel model, int width, int height)
-    {
-        var backend = new XenoAtom.Terminal.Backends.InMemoryTerminalBackend(
-            new XenoAtom.Terminal.TerminalSize(width, height)
-        );
-        using var session = XenoAtom.Terminal.Terminal.Open(
-            backend,
-            new XenoAtom.Terminal.TerminalOptions { ImplicitStartInput = false },
-            force: true
-        );
-        var visual = new LiveVisual(model, () => DateTimeOffset.UtcNow);
-        visual.Refresh();
-        session.Instance.Write(visual);
-        var screen = new AnsiScreen(width, height);
-        screen.Apply(backend.GetOutText());
-        return screen.GetText();
-    }
-
-    /// <summary>Renders one markdown block once, as <c>Terminal.Write</c> does for finished blocks.</summary>
-    public static string RenderMarkdown(string markdown, int width, int height)
-    {
-        var backend = new XenoAtom.Terminal.Backends.InMemoryTerminalBackend(
-            new XenoAtom.Terminal.TerminalSize(width, height)
-        );
-        using var session = XenoAtom.Terminal.Terminal.Open(
-            backend,
-            new XenoAtom.Terminal.TerminalOptions { ImplicitStartInput = false },
-            force: true
-        );
-        session.Instance.Write(new MarkdownControl(markdown));
-        var screen = new AnsiScreen(width, height);
-        screen.Apply(backend.GetOutText());
-        return screen.GetText();
-    }
-
     private void OnKeyDownObserved(object? sender, KeyEventArgs e)
     {
         KeyLog.Add($"key={e.Key} char={(int)(e.Char ?? '\0')} mods={e.Modifiers} handled={e.Handled}");

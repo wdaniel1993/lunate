@@ -17,6 +17,7 @@ public sealed class XenoLiveApp : IDisposable
 {
     private readonly TerminalSession _session;
     private readonly InMemoryTerminalBackend? _backend;
+    private readonly Func<DateTimeOffset> _clock;
     private readonly ConcurrentQueue<AgentEvent> _events = new();
     private readonly Stopwatch _spinnerClock = Stopwatch.StartNew();
     private readonly TaskCompletionSource _stopped = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -26,12 +27,17 @@ public sealed class XenoLiveApp : IDisposable
     private int _stopRequested;
     private TerminalApp? _app;
 
-    public XenoLiveApp(TerminalSession session, InMemoryTerminalBackend? backend)
+    public XenoLiveApp(
+        TerminalSession session,
+        InMemoryTerminalBackend? backend,
+        Func<DateTimeOffset>? clock = null
+    )
     {
         _session = session;
         _backend = backend;
+        _clock = clock ?? (() => DateTimeOffset.UtcNow);
         Model = new LiveModel();
-        Visual = new LiveVisual(Model, () => DateTimeOffset.UtcNow);
+        Visual = new LiveVisual(Model, _clock);
         Visual.Refresh();
     }
 
@@ -50,7 +56,11 @@ public sealed class XenoLiveApp : IDisposable
     /// <summary>Markdown text of every finished block written above the live region.</summary>
     public IReadOnlyList<string> FinishedBlocks => _finishedBlocks;
 
-    public static XenoLiveApp CreateHeadless(int width, int height)
+    public static XenoLiveApp CreateHeadless(
+        int width,
+        int height,
+        Func<DateTimeOffset>? clock = null
+    )
     {
         var backend = new InMemoryTerminalBackend(new TerminalSize(width, height));
         var session = Terminal.Open(
@@ -58,7 +68,7 @@ public sealed class XenoLiveApp : IDisposable
             new TerminalOptions { ImplicitStartInput = true, TreatControlCAsInput = true },
             force: true
         );
-        return new XenoLiveApp(session, backend);
+        return new XenoLiveApp(session, backend, clock);
     }
 
     public static XenoLiveApp CreateInteractive()
@@ -162,6 +172,32 @@ public sealed class XenoLiveApp : IDisposable
         );
 
     public string GetOutputText() => _backend?.GetOutText() ?? string.Empty;
+
+    /// <summary>
+    /// Writes a fresh visual once through this app's terminal session and
+    /// returns the captured screen. Used after the live loop has stopped; there
+    /// is no public isolated TerminalInstance, so opening another global one
+    /// while the loop runs would dispose this session.
+    /// </summary>
+    public string RenderVisualOnce(Visual visual, int width, int height)
+    {
+        var before = _backend?.GetOutText().Length ?? 0;
+        Instance.Write(visual);
+        var delta = _backend is null ? string.Empty : _backend.GetOutText()[before..];
+        var screen = new AnsiScreen(width, height);
+        screen.Apply(delta);
+        return screen.GetText();
+    }
+
+    public string RenderLiveSnapshot(int width, int height)
+    {
+        var visual = new LiveVisual(Model, _clock);
+        visual.Refresh();
+        return RenderVisualOnce(visual, width, height);
+    }
+
+    public string RenderMarkdownBlock(string markdown, int width, int height) =>
+        RenderVisualOnce(new MarkdownControl(markdown), width, height);
 
     public void Dispose()
     {
