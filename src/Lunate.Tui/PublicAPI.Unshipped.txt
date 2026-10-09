@@ -148,3 +148,13 @@ static Lunate.Tui.ToolBlockModel.operator !=(Lunate.Tui.ToolBlockModel? left, Lu
 static Lunate.Tui.ToolBlockModel.operator ==(Lunate.Tui.ToolBlockModel? left, Lunate.Tui.ToolBlockModel? right) -> bool
 static Lunate.Tui.ToolDiffInfo.operator !=(Lunate.Tui.ToolDiffInfo? left, Lunate.Tui.ToolDiffInfo? right) -> bool
 static Lunate.Tui.ToolDiffInfo.operator ==(Lunate.Tui.ToolDiffInfo? left, Lunate.Tui.ToolDiffInfo? right) -> bool
+Lunate.Tui.KeyRouter
+Lunate.Tui.RoutedKey
+Lunate.Tui.RoutedKey.Cancel = 2 -> Lunate.Tui.RoutedKey
+Lunate.Tui.RoutedKey.ClearOrQuit = 3 -> Lunate.Tui.RoutedKey
+Lunate.Tui.RoutedKey.Edit = 0 -> Lunate.Tui.RoutedKey
+Lunate.Tui.RoutedKey.HistoryNext = 6 -> Lunate.Tui.RoutedKey
+Lunate.Tui.RoutedKey.HistoryPrevious = 5 -> Lunate.Tui.RoutedKey
+Lunate.Tui.RoutedKey.ModelPicker = 4 -> Lunate.Tui.RoutedKey
+Lunate.Tui.RoutedKey.Submit = 1 -> Lunate.Tui.RoutedKey
+static Lunate.Tui.KeyRouter.Route(Lunate.Tui.KeyEvent! key) -> Lunate.Tui.RoutedKey

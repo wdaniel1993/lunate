@@ -2,8 +2,8 @@
 
 ## 1. Key routing + Ctrl+C window
 
-- [ ] 1.1 `KeyRouter` + `RoutedKey`; the guide-table matrix as one scripted theory (every binding: Enter, Alt+Enter, Ctrl+J, Esc, Ctrl+C, Ctrl+L, Up, Down) + edge falsifiers (Ctrl+J before generic ctrl, Shift+Enter falls through, unknown keys → Edit)
-- [ ] 1.2 `CtrlCQuitWindow` on `IScheduler`; virtual-time tests: clear on non-empty, arm on empty, quit within 2 s, re-arm after expiry, disarm on clear; never cancels a turn (no cancel path exists)
+- [x] 1.1 `KeyRouter` + `RoutedKey`; the guide-table matrix as one scripted theory (every binding: Enter, Alt+Enter, Ctrl+J, Esc, Ctrl+C, Ctrl+L, Up, Down) + edge falsifiers (Ctrl+J before generic ctrl, Shift+Enter falls through, unknown keys → Edit)
+- [x] 1.2 `CtrlCQuitWindow` on `IScheduler`; virtual-time tests: clear on non-empty, arm on empty, quit within 2 s, re-arm after expiry, disarm on clear; never cancels a turn (no cancel path exists)
 
 ## 2. Approval prompt
 
