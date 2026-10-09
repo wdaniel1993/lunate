@@ -1,3 +1,4 @@
+using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Runtime.CompilerServices;
@@ -10,6 +11,7 @@ internal sealed class FakeConsoleIO : IConsoleIO, IDisposable
     private readonly IObservable<ConsoleSize> _distinctSizes;
     private readonly List<KeyEvent> _keys = [];
     private readonly List<string> _writes = [];
+    private readonly KeyReader? _byteReader;
     private bool _rawMode;
 
     public FakeConsoleIO(ConsoleSize size)
@@ -20,6 +22,15 @@ internal sealed class FakeConsoleIO : IConsoleIO, IDisposable
 
     public FakeConsoleIO()
         : this(new ConsoleSize(80, 24)) { }
+
+    public FakeConsoleIO(IScheduler scheduler, ConsoleSize size)
+        : this(size)
+    {
+        _byteReader = new KeyReader(scheduler, _keys.Add);
+    }
+
+    public FakeConsoleIO(IScheduler scheduler)
+        : this(scheduler, new ConsoleSize(80, 24)) { }
 
     public bool IsInteractive { get; set; } = true;
 
@@ -47,6 +58,18 @@ internal sealed class FakeConsoleIO : IConsoleIO, IDisposable
 
     public void EnqueueKeys(params KeyEvent[] keys) => _keys.AddRange(keys);
 
+    public void FeedBytes(params byte[] bytes)
+    {
+        if (_byteReader is null)
+        {
+            throw new InvalidOperationException(
+                "FakeConsoleIO byte feeding needs a scheduler; use the scheduler constructor."
+            );
+        }
+
+        _byteReader.Feed(bytes);
+    }
+
     public void Write(string text) => _writes.Add(text);
 
     public IDisposable EnterRawMode()
@@ -69,7 +92,11 @@ internal sealed class FakeConsoleIO : IConsoleIO, IDisposable
         await Task.CompletedTask;
     }
 
-    public void Dispose() => _resized.Dispose();
+    public void Dispose()
+    {
+        _byteReader?.Dispose();
+        _resized.Dispose();
+    }
 
     private sealed class RawMode(FakeConsoleIO console) : IDisposable
     {

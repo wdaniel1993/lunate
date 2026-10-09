@@ -1,5 +1,6 @@
 using System.Reactive.Concurrency;
 using System.Reactive.Linq;
+using System.Runtime.CompilerServices;
 using System.Threading.Channels;
 using Lunate.Tui.Platform;
 
@@ -10,6 +11,9 @@ internal sealed class SystemConsoleIO : IConsoleIO
     internal static readonly TimeSpan ResizePollInterval = TimeSpan.FromMilliseconds(250);
 
     private readonly IScheduler _scheduler;
+    private readonly Channel<KeyEvent> _keys = Channel.CreateUnbounded<KeyEvent>(
+        new UnboundedChannelOptions { SingleReader = true }
+    );
 
     public SystemConsoleIO(IScheduler scheduler)
     {
@@ -35,8 +39,24 @@ internal sealed class SystemConsoleIO : IConsoleIO
         Console.Out.Flush();
     }
 
-    public IAsyncEnumerable<KeyEvent> ReadKeysAsync(CancellationToken cancellationToken) =>
-        throw new NotSupportedException("raw key reading is wired with KeyReader in task 2.2.");
+    public async IAsyncEnumerable<KeyEvent> ReadKeysAsync(
+        [EnumeratorCancellation] CancellationToken cancellationToken
+    )
+    {
+        using var reader = new KeyReader(_scheduler, key => _keys.Writer.TryWrite(key));
+        var pump = PumpBytesAsync(reader, cancellationToken);
+        try
+        {
+            await foreach (var key in _keys.Reader.ReadAllAsync(cancellationToken))
+            {
+                yield return key;
+            }
+        }
+        finally
+        {
+            await pump.ConfigureAwait(false);
+        }
+    }
 
     public IDisposable EnterRawMode()
     {
@@ -65,4 +85,28 @@ internal sealed class SystemConsoleIO : IConsoleIO
         TimeSpan interval,
         IScheduler scheduler
     ) => Observable.Interval(interval, scheduler).Select(_ => read()).DistinctUntilChanged();
+
+    private async Task PumpBytesAsync(KeyReader reader, CancellationToken cancellationToken)
+    {
+        var input = Console.OpenStandardInput();
+        var buffer = new byte[4096];
+        try
+        {
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                int read = await input.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
+                if (read == 0)
+                {
+                    break;
+                }
+
+                reader.Feed(buffer.AsSpan(0, read));
+            }
+        }
+        catch (OperationCanceledException) { }
+        finally
+        {
+            _keys.Writer.TryComplete();
+        }
+    }
 }
