@@ -2,7 +2,7 @@
 
 ## Structure
 
-New files in `src/Lunate.Tui/Interaction/`: `KeyRouter.cs` (public enum + pure route), `CtrlCQuitWindow.cs` (public), `ApprovalPrompt.cs` + `ApprovalPromptRenderer.cs` (public), `StatusFooter.cs` + `StatusFooterRenderer.cs` + `GitBranchReader.cs` (public). Goldens under `tests/Lunate.Tui.Tests/fixtures/prompt-footer/`. No new packages (Microsoft.Reactive.Testing already present for virtual time).
+New files in `src/Lunate.Tui/Interaction/`: `KeyRouter.cs` (public enum + pure route), `CtrlCQuitWindow.cs` (internal — an `IScheduler` constructor cannot be public under ADR-0007; see Deviations 1), `ApprovalPrompt.cs` + `ApprovalPromptRenderer.cs` (public), `StatusFooter.cs` + `StatusFooterRenderer.cs` + `GitBranchReader.cs` (public). Goldens under `tests/Lunate.Tui.Tests/fixtures/prompt-footer/`. No new packages (Microsoft.Reactive.Testing already present for virtual time).
 
 ## Key routing (one meaning each, per the guide's table)
 
@@ -59,7 +59,9 @@ routed intent → component effect), plus per-component falsifiers.
 
 Wiring to a running session: steering queue, Esc-cancel semantics, pickers UI, history storage
 (`~/.lunate/history`), Tab completion, footer notices for armed-quit — all T-22. Approval risk levels
-and "always" persistence are adapter concerns (T-22/T-28).
+and "always" persistence are adapter concerns (T-22/T-28). T-22 also reconciles this footer's compact
+k/M token format with `LiveAreaRenderer`'s existing internal footer form (raw `tok`/`% ctx`): this
+renderer is the status/scrollback variant, that one the live-area variant — one format wins at wiring.
 
 ## Deviations
 
