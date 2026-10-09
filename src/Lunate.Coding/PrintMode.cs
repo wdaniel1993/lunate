@@ -105,7 +105,11 @@ internal static class PrintMode
             {
                 if (options.Json)
                 {
-                    output.WriteLine(PrintEventJson.Serialize(agentEvent));
+                    // One JSON object per line, canonically '
+'-terminated: the --json
+                    // stream is a scripting contract and must not depend on the platform.
+                    output.Write(PrintEventJson.Serialize(agentEvent));
+                    output.Write('\n');
                 }
 
                 if (summary.Observe(agentEvent) is { } diagnostic)

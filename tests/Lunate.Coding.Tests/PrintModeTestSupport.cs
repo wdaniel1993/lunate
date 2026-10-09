@@ -43,7 +43,14 @@ internal static class PrintModeTestSupport
             errors,
             TestContext.Current.CancellationToken
         );
-        return (exitCode, output.ToString(), errors.ToString());
+        // stderr diagnostics are human-readable and use the platform newline by design;
+        // tests compare them line-by-line, so normalize to Unix endings here. stdout is
+        // NOT normalized: the answer and the JSONL stream are canonical contracts.
+        return (
+            exitCode,
+            output.ToString(),
+            errors.ToString().Replace("\r\n", "\n", StringComparison.Ordinal)
+        );
     }
 
     internal static string SingleSessionId(TempDirectory temp)
