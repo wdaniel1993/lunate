@@ -103,6 +103,17 @@ public sealed class DiffRendererTests
     }
 
     [Fact]
+    public void Garbage_before_the_first_hunk_renders_as_context_and_keeps_its_text()
+    {
+        var parsed = DiffRenderer.Parse(
+            new ToolDiffInfo("p", "exact", "not a header\n@@ -1 +1 @@\n-a\n+b")
+        );
+
+        Assert.Equal(new DiffLine(DiffLineKind.Context, "not a header"), parsed[1]);
+        Assert.Equal(DiffLineKind.HunkHeader, parsed[2].Kind);
+    }
+
+    [Fact]
     public void Huge_lines_survive()
     {
         string huge = new('x', 1_000_000);

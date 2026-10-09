@@ -171,6 +171,15 @@ public sealed class ToolBlockRendererTests
     }
 
     [Fact]
+    public void File_headers_are_dim_and_hunks_are_dim_cyan()
+    {
+        string ansi = RenderAnsi(DiffModel("exact"));
+
+        Assert.Contains("\u001b[2m--- a/src/x.cs", ansi);
+        Assert.Contains("\u001b[2;38;5;14m@@ -1,3 +1,3 @@", ansi);
+    }
+
+    [Fact]
     public void Empty_diff_text_omits_the_panel() =>
         Assert.Equal(
             "tool edit src/x.cs ok\n",

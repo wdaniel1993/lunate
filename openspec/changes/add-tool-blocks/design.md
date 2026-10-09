@@ -53,3 +53,7 @@ Output, Diff)` is assembled from the `ToolCallStart`/`ToolCallResult` events at 
   context instead of being dropped: malformed diffs never lose text and never throw.
 - The hidden-lines marker is pinned verbatim from the design as `… N lines hidden …` (U+2026
   ellipses) with an invariant count; `OutputExcerpt` owns the constants and the marker format.
+- Trailing whitespace inside diff lines is trimmed by the shared `StyledLine.ToMarkup` path
+  (inherited from T-19; terminal-invisible and keeps width math honest). The `match: normalized`
+  label already keeps fallbacks visible; a git-style trailing-whitespace highlight would be the
+  proper fidelity upgrade and is noted as a candidate for T-33.
