@@ -29,8 +29,12 @@ Order (first hit wins), exactly per the guide table:
 - **Capture**: stdout and stderr read concurrently into separate bounded buffers; each stream capped at **1,000,000 characters** — on hitting the cap the buffer stops and appends a marker line ("... [output capped at 1000000 characters; the rest was discarded]"). Model-facing truncation stays the loop's job (`ToolOutput.Truncate`, 30k) — no double markers.
 - **Result text**: stdout, then a labeled `stderr:` section when non-empty (deterministic order; documented limitation vs interleaving), then a footer line: `exit code: N` (culture-invariant) — or `timed out after 120s; process tree killed` / `no shell found` / spawn-failure text.
 - **Exit semantics**: `IsError = exit != 0 || timedOut || spawnFailed`; the exit code always appears in the text.
-- **Timeout**: default 120 s (ctor-overridable for tests); on expiry → `Process.Kill(entireProcessTree: true)` (guide-pinned), wait briefly, return the error result. **Cancel**: same kill; rethrow `OperationCanceledException` for the loop's cancellation path.
+- **Timeout**: default 120 s (ctor-overridable for tests); on expiry → terminate the process tree, children first (POSIX: `ps` enumeration + SIGKILL via `PosixProcessTree`; Windows: `Process.Kill(entireProcessTree: true)` — see Deviations), wait briefly, return the error result. **Cancel**: same kill; rethrow `OperationCanceledException` for the loop's cancellation path.
 - **Boundary**: cwd is the workspace root (worktree); no path sandboxing — the approval policy is the guard (documented; `bash` asks by default at the policy level).
+
+## Deviations
+
+- **Tree-kill mechanism on POSIX**: the guide pins `Process.Kill(entireProcessTree: true)`. Its Unix implementation SIGSTOPs the whole tree before SIGKILLing it, and on macOS CI (macos-26-arm64 runners) that call **wedges the VM**: the hosted runner loses communication, no logs or step timeouts fire, and the job dies 20–46 minutes later. A minimal repro on the runner (spawn `sh -c 'exec sleep 300' & sleep 300`, then call the framework tree kill) reproduces the wedge every time, while a `ps`-walk + children-first SIGKILL completes in milliseconds (probe evidence on PR #33). POSIX therefore uses `PosixProcessTree` (enumerate with `ps -axo pid=,ppid=`, SIGKILL children before parents, rate-limited by a visited set); Windows keeps the framework path (job objects — unaffected, and green across CI). The requirement is unchanged: the tree must die on timeout/cancel, still proven by the grandchild-PID tests. The guide line will be reconciled when the runner image issue is confirmed fixed or the card closes.
 
 ## Tests
 
