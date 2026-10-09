@@ -1,1 +1,99 @@
 #nullable enable
+Lunate.Tui.ConsoleSize
+Lunate.Tui.ConsoleSize.Columns.get -> int
+Lunate.Tui.ConsoleSize.Columns.init -> void
+Lunate.Tui.ConsoleSize.ConsoleSize() -> void
+Lunate.Tui.ConsoleSize.ConsoleSize(int Columns, int Rows) -> void
+Lunate.Tui.ConsoleSize.Deconstruct(out int Columns, out int Rows) -> void
+Lunate.Tui.ConsoleSize.Equals(Lunate.Tui.ConsoleSize other) -> bool
+Lunate.Tui.ConsoleSize.Rows.get -> int
+Lunate.Tui.ConsoleSize.Rows.init -> void
+Lunate.Tui.ConsoleSupport
+Lunate.Tui.IConsoleIO
+Lunate.Tui.IConsoleIO.EnterRawMode() -> System.IDisposable!
+Lunate.Tui.IConsoleIO.IsInteractive.get -> bool
+Lunate.Tui.IConsoleIO.ReadKeysAsync(System.Threading.CancellationToken cancellationToken) -> System.Collections.Generic.IAsyncEnumerable<Lunate.Tui.KeyEvent!>!
+Lunate.Tui.IConsoleIO.Resized.get -> System.IObservable<Lunate.Tui.ConsoleSize>!
+Lunate.Tui.IConsoleIO.Size.get -> Lunate.Tui.ConsoleSize
+Lunate.Tui.IConsoleIO.Write(string! text) -> void
+Lunate.Tui.KeyEvent
+Lunate.Tui.KeyEvent.<Clone>$() -> Lunate.Tui.KeyEvent!
+Lunate.Tui.KeyEvent.Alt.get -> bool
+Lunate.Tui.KeyEvent.Alt.init -> void
+Lunate.Tui.KeyEvent.Ctrl.get -> bool
+Lunate.Tui.KeyEvent.Ctrl.init -> void
+Lunate.Tui.KeyEvent.Deconstruct(out Lunate.Tui.KeyKind Kind, out string? Text, out bool Ctrl, out bool Shift, out bool Alt) -> void
+Lunate.Tui.KeyEvent.Equals(Lunate.Tui.KeyEvent? other) -> bool
+Lunate.Tui.KeyEvent.KeyEvent(Lunate.Tui.KeyKind Kind, string? Text, bool Ctrl, bool Shift, bool Alt) -> void
+Lunate.Tui.KeyEvent.Kind.get -> Lunate.Tui.KeyKind
+Lunate.Tui.KeyEvent.Kind.init -> void
+Lunate.Tui.KeyEvent.Shift.get -> bool
+Lunate.Tui.KeyEvent.Shift.init -> void
+Lunate.Tui.KeyEvent.Text.get -> string?
+Lunate.Tui.KeyEvent.Text.init -> void
+Lunate.Tui.KeyKind
+Lunate.Tui.KeyKind.Backspace = 4 -> Lunate.Tui.KeyKind
+Lunate.Tui.KeyKind.Character = 0 -> Lunate.Tui.KeyKind
+Lunate.Tui.KeyKind.Delete = 5 -> Lunate.Tui.KeyKind
+Lunate.Tui.KeyKind.Down = 13 -> Lunate.Tui.KeyKind
+Lunate.Tui.KeyKind.End = 9 -> Lunate.Tui.KeyKind
+Lunate.Tui.KeyKind.Enter = 2 -> Lunate.Tui.KeyKind
+Lunate.Tui.KeyKind.Escape = 6 -> Lunate.Tui.KeyKind
+Lunate.Tui.KeyKind.F1 = 16 -> Lunate.Tui.KeyKind
+Lunate.Tui.KeyKind.F10 = 25 -> Lunate.Tui.KeyKind
+Lunate.Tui.KeyKind.F11 = 26 -> Lunate.Tui.KeyKind
+Lunate.Tui.KeyKind.F12 = 27 -> Lunate.Tui.KeyKind
+Lunate.Tui.KeyKind.F2 = 17 -> Lunate.Tui.KeyKind
+Lunate.Tui.KeyKind.F3 = 18 -> Lunate.Tui.KeyKind
+Lunate.Tui.KeyKind.F4 = 19 -> Lunate.Tui.KeyKind
+Lunate.Tui.KeyKind.F5 = 20 -> Lunate.Tui.KeyKind
+Lunate.Tui.KeyKind.F6 = 21 -> Lunate.Tui.KeyKind
+Lunate.Tui.KeyKind.F7 = 22 -> Lunate.Tui.KeyKind
+Lunate.Tui.KeyKind.F8 = 23 -> Lunate.Tui.KeyKind
+Lunate.Tui.KeyKind.F9 = 24 -> Lunate.Tui.KeyKind
+Lunate.Tui.KeyKind.Home = 8 -> Lunate.Tui.KeyKind
+Lunate.Tui.KeyKind.Insert = 7 -> Lunate.Tui.KeyKind
+Lunate.Tui.KeyKind.Left = 14 -> Lunate.Tui.KeyKind
+Lunate.Tui.KeyKind.PageDown = 11 -> Lunate.Tui.KeyKind
+Lunate.Tui.KeyKind.PageUp = 10 -> Lunate.Tui.KeyKind
+Lunate.Tui.KeyKind.Paste = 28 -> Lunate.Tui.KeyKind
+Lunate.Tui.KeyKind.Right = 15 -> Lunate.Tui.KeyKind
+Lunate.Tui.KeyKind.Space = 1 -> Lunate.Tui.KeyKind
+Lunate.Tui.KeyKind.Tab = 3 -> Lunate.Tui.KeyKind
+Lunate.Tui.KeyKind.Unknown = 29 -> Lunate.Tui.KeyKind
+Lunate.Tui.KeyKind.Up = 12 -> Lunate.Tui.KeyKind
+override Lunate.Tui.ConsoleSize.GetHashCode() -> int
+override Lunate.Tui.KeyEvent.Equals(object? obj) -> bool
+override Lunate.Tui.KeyEvent.GetHashCode() -> int
+override Lunate.Tui.KeyEvent.ToString() -> string!
+static Lunate.Tui.ConsoleSize.operator !=(Lunate.Tui.ConsoleSize left, Lunate.Tui.ConsoleSize right) -> bool
+static Lunate.Tui.ConsoleSize.operator ==(Lunate.Tui.ConsoleSize left, Lunate.Tui.ConsoleSize right) -> bool
+static Lunate.Tui.ConsoleSupport.Check(Lunate.Tui.IConsoleIO! console) -> string?
+static Lunate.Tui.KeyEvent.operator !=(Lunate.Tui.KeyEvent? left, Lunate.Tui.KeyEvent? right) -> bool
+static Lunate.Tui.KeyEvent.operator ==(Lunate.Tui.KeyEvent? left, Lunate.Tui.KeyEvent? right) -> bool
+~override Lunate.Tui.ConsoleSize.Equals(object obj) -> bool
+~override Lunate.Tui.ConsoleSize.ToString() -> string
+Lunate.Tui.InputLine
+Lunate.Tui.InputLineState
+Lunate.Tui.InputLineState.<Clone>$() -> Lunate.Tui.InputLineState!
+Lunate.Tui.InputLineState.CursorPosition.get -> int
+Lunate.Tui.InputLineState.CursorPosition.init -> void
+Lunate.Tui.InputLineState.Deconstruct(out string! Text, out int CursorPosition) -> void
+Lunate.Tui.InputLineState.Equals(Lunate.Tui.InputLineState? other) -> bool
+Lunate.Tui.InputLineState.InputLineState(string! Text, int CursorPosition) -> void
+Lunate.Tui.InputLineState.Text.get -> string!
+Lunate.Tui.InputLineState.Text.init -> void
+override Lunate.Tui.InputLineState.Equals(object? obj) -> bool
+override Lunate.Tui.InputLineState.GetHashCode() -> int
+override Lunate.Tui.InputLineState.ToString() -> string!
+static Lunate.Tui.InputLine.Apply(Lunate.Tui.InputLineState! state, Lunate.Tui.KeyEvent! key) -> Lunate.Tui.InputLineState!
+static Lunate.Tui.InputLine.Backspace(Lunate.Tui.InputLineState! state) -> Lunate.Tui.InputLineState!
+static Lunate.Tui.InputLine.Delete(Lunate.Tui.InputLineState! state) -> Lunate.Tui.InputLineState!
+static Lunate.Tui.InputLine.Insert(Lunate.Tui.InputLineState! state, string! text) -> Lunate.Tui.InputLineState!
+static Lunate.Tui.InputLine.MoveEnd(Lunate.Tui.InputLineState! state) -> Lunate.Tui.InputLineState!
+static Lunate.Tui.InputLine.MoveHome(Lunate.Tui.InputLineState! state) -> Lunate.Tui.InputLineState!
+static Lunate.Tui.InputLine.MoveLeft(Lunate.Tui.InputLineState! state) -> Lunate.Tui.InputLineState!
+static Lunate.Tui.InputLine.MoveRight(Lunate.Tui.InputLineState! state) -> Lunate.Tui.InputLineState!
+static Lunate.Tui.InputLineState.operator !=(Lunate.Tui.InputLineState? left, Lunate.Tui.InputLineState? right) -> bool
+static Lunate.Tui.InputLineState.operator ==(Lunate.Tui.InputLineState? left, Lunate.Tui.InputLineState? right) -> bool
+static readonly Lunate.Tui.InputLine.Empty -> Lunate.Tui.InputLineState!

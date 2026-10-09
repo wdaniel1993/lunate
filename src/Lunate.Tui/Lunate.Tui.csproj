@@ -5,6 +5,13 @@
             Version="5.6.0"
             PrivateAssets="all"
         />
+        <PackageReference Include="System.Reactive" Version="7.0.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <!-- `lunate` is the Lunate.Coding assembly name; it wires the internal TUI. -->
+        <InternalsVisibleTo Include="Lunate.Tui.Tests" />
+        <InternalsVisibleTo Include="lunate" />
     </ItemGroup>
 
     <ItemGroup>
