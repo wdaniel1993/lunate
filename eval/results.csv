@@ -1,1 +1,2 @@
 date,phase,tool,model,tasks,passed,pass_rate,steps,total_tokens,seconds,edit_tiers,notes
+2026-10-09,3,lunate,deepseek/deepseek-v4.1-flash,6,6,1.000,39,72798,100.272,exact,

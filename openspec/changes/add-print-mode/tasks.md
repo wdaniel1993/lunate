@@ -21,7 +21,7 @@
 
 ## 4. Baseline run (live)
 
-- [ ] 4.1 With the maintainer-confirmed model/key: run `scripts/eval.sh --model <id> --phase 3` against the full first set; results row appended to `eval/results.csv` (exact model id pinned); sanity-check steps/tokens/edit tiers against the JSONL; commit the row
+- [x] 4.1 With the maintainer-confirmed model/key: run `scripts/eval.sh --model <id> --phase 3` against the full first set; results row appended to `eval/results.csv` (exact model id pinned); sanity-check steps/tokens/edit tiers against the JSONL; commit the row
 
 ## 5. Close
 
