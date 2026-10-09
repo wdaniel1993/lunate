@@ -115,6 +115,37 @@ public sealed class ModelCatalogTests
     }
 
     [Fact]
+    public void Load_reads_the_optional_auth_reference_and_defaults_it_to_null()
+    {
+        string directory = CreateTempDirectory();
+        try
+        {
+            string userFile = WriteUserFile(
+                directory,
+                """
+                {
+                  "schemaVersion": 1,
+                  "models": [
+                    { "id": "work-endpoint", "provider": "openai", "endpoint": "https://example.test/v1", "contextWindow": 1, "supportsTools": true, "auth": "work" },
+                    { "id": "plain-endpoint", "provider": "openai", "endpoint": "https://example.test/v1", "contextWindow": 1, "supportsTools": true }
+                  ]
+                }
+                """
+            );
+
+            ModelCatalog catalog = ModelCatalog.Load(userFile);
+
+            Assert.Equal("work", catalog.Find("work-endpoint")!.AuthRef);
+            Assert.Null(catalog.Find("plain-endpoint")!.AuthRef);
+            Assert.Null(catalog.Find("gpt-4o-mini")!.AuthRef);
+        }
+        finally
+        {
+            DeleteTempDirectory(directory);
+        }
+    }
+
+    [Fact]
     public void Load_with_duplicate_id_in_user_file_throws_naming_the_id()
     {
         string directory = CreateTempDirectory();

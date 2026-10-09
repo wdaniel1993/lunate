@@ -15,7 +15,7 @@
 
 ## 3. Per-model credential references
 
-- [ ] 3.1 `ModelInfo.AuthRef` ("auth" in models.json, additive null default); `ChatClientFactory` named-key seam; `ResolveApiKey` precedence (AuthRef → named key; default endpoint → env > auth.json; custom endpoint → placeholder unless AuthRef); existing placeholder tests stay green; new tests for the reference path; error text updated; PublicAPI.Unshipped updated (Ai)
+- [x] 3.1 `ModelInfo.AuthRef` ("auth" in models.json, additive null default); `ChatClientFactory` named-key seam; `ResolveApiKey` precedence (AuthRef → named key; default endpoint → env > auth.json; custom endpoint → placeholder unless AuthRef); existing placeholder tests stay green; new tests for the reference path; error text updated; PublicAPI.Unshipped updated (Ai)
 
 ## 4. Model discovery
 

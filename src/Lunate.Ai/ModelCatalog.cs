@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.Extensions.AI;
 
 namespace Lunate.Ai;
@@ -114,7 +115,8 @@ public sealed class ModelCatalog
             entry.Provider,
             entry.Endpoint,
             entry.ContextWindow,
-            entry.SupportsTools
+            entry.SupportsTools,
+            entry.AuthRef
         );
     }
 
@@ -153,5 +155,8 @@ public sealed class ModelCatalog
         public int ContextWindow { get; set; }
 
         public bool SupportsTools { get; set; }
+
+        [JsonPropertyName("auth")]
+        public string? AuthRef { get; set; }
     }
 }

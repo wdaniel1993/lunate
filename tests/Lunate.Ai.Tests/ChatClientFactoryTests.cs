@@ -241,7 +241,7 @@ public sealed class ChatClientFactoryTests
         );
 
         Assert.Contains(OpenAiApiKeyVariable, exception.Message, StringComparison.Ordinal);
-        Assert.Contains("T-16", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("auth.json", exception.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -387,6 +387,133 @@ public sealed class ChatClientFactoryTests
     }
 
     [Fact]
+    public void ResolveApiKey_with_an_auth_reference_resolves_the_named_key()
+    {
+        using var environment = new EnvironmentScope((OpenAiApiKeyVariable, "env-key"));
+        var model = new ModelInfo("gpt-4o-mini", "openai", null, 128_000, true, AuthRef: "work");
+
+        string credential = ChatClientFactory.ResolveApiKey(
+            model,
+            OpenAiApiKeyVariable,
+            name => name == "work" ? "work-key" : null
+        );
+
+        Assert.Equal("work-key", credential);
+    }
+
+    [Fact]
+    public void ResolveApiKey_with_an_auth_reference_uses_the_named_key_for_a_custom_endpoint()
+    {
+        using var environment = new EnvironmentScope((OpenAiApiKeyVariable, "env-key"));
+        var model = new ModelInfo(
+            "local-llama",
+            "openai",
+            new Uri("http://localhost:11434/v1"),
+            8192,
+            true,
+            AuthRef: "work"
+        );
+
+        string credential = ChatClientFactory.ResolveApiKey(
+            model,
+            OpenAiApiKeyVariable,
+            name => name == "work" ? "work-key" : null
+        );
+
+        Assert.Equal("work-key", credential);
+    }
+
+    [Fact]
+    public void ResolveApiKey_with_an_unresolvable_auth_reference_names_the_key_and_auth_json()
+    {
+        var model = new ModelInfo(
+            "local-llama",
+            "openai",
+            new Uri("http://localhost:11434/v1"),
+            8192,
+            true,
+            AuthRef: "missing"
+        );
+
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+            ChatClientFactory.ResolveApiKey(model, OpenAiApiKeyVariable, _ => null)
+        );
+
+        Assert.Contains("missing", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("auth.json", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ResolveApiKey_without_a_reference_falls_back_to_the_stored_provider_key()
+    {
+        using var environment = new EnvironmentScope((OpenAiApiKeyVariable, null));
+        var model = new ModelInfo("gpt-4o-mini", "openai", null, 128_000, true);
+
+        string credential = ChatClientFactory.ResolveApiKey(
+            model,
+            OpenAiApiKeyVariable,
+            name => name == "openai" ? "stored-key" : null
+        );
+
+        Assert.Equal("stored-key", credential);
+    }
+
+    [Fact]
+    public void ResolveApiKey_without_any_key_names_the_variable_and_auth_json()
+    {
+        using var environment = new EnvironmentScope((OpenAiApiKeyVariable, null));
+        var model = new ModelInfo("gpt-4o-mini", "openai", null, 128_000, true);
+
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+            ChatClientFactory.ResolveApiKey(model, OpenAiApiKeyVariable, _ => null)
+        );
+
+        Assert.Contains(OpenAiApiKeyVariable, exception.Message, StringComparison.Ordinal);
+        Assert.Contains("auth.json", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Create_anthropic_client_with_an_auth_reference_uses_the_named_key()
+    {
+        using var environment = new EnvironmentScope((AnthropicApiKeyVariable, null));
+        var model = new ModelInfo(
+            "claude-sonnet-5-5",
+            "anthropic",
+            new Uri("https://anthropic.example.test"),
+            1_000_000,
+            true,
+            AuthRef: "work"
+        );
+
+        AnthropicClient client = ChatClientFactory.CreateAnthropicClient(
+            model,
+            name => name == "work" ? "work-key" : null
+        );
+
+        Assert.Equal("work-key", client.ApiKey);
+    }
+
+    [Fact]
+    public void Create_anthropic_client_without_a_reference_still_uses_the_placeholder_for_custom_endpoints()
+    {
+        using var environment = new EnvironmentScope((AnthropicApiKeyVariable, "env-key"));
+        var model = new ModelInfo(
+            "claude-sonnet-5-5",
+            "anthropic",
+            new Uri("https://anthropic.example.test"),
+            1_000_000,
+            true
+        );
+
+        AnthropicClient client = ChatClientFactory.CreateAnthropicClient(
+            model,
+            name => name == "anthropic" ? "stored-key" : null
+        );
+
+        Assert.Equal(ChatClientFactory.PlaceholderCredential, client.ApiKey);
+    }
+
+    [Fact]
     public void Create_throws_InvalidOperationException_when_anthropic_api_key_is_not_set()
     {
         using var environment = new EnvironmentScope((AnthropicApiKeyVariable, null));
@@ -398,7 +525,7 @@ public sealed class ChatClientFactoryTests
         );
 
         Assert.Contains(AnthropicApiKeyVariable, exception.Message, StringComparison.Ordinal);
-        Assert.Contains("T-16", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("auth.json", exception.Message, StringComparison.Ordinal);
     }
 
     private static ChatClientFactory CreateFactory(
