@@ -73,3 +73,27 @@ static Lunate.Tui.KeyEvent.operator !=(Lunate.Tui.KeyEvent? left, Lunate.Tui.Key
 static Lunate.Tui.KeyEvent.operator ==(Lunate.Tui.KeyEvent? left, Lunate.Tui.KeyEvent? right) -> bool
 ~override Lunate.Tui.ConsoleSize.Equals(object obj) -> bool
 ~override Lunate.Tui.ConsoleSize.ToString() -> string
+Lunate.Tui.InputLine
+Lunate.Tui.InputLineState
+Lunate.Tui.InputLineState.<Clone>$() -> Lunate.Tui.InputLineState!
+Lunate.Tui.InputLineState.CursorPosition.get -> int
+Lunate.Tui.InputLineState.CursorPosition.init -> void
+Lunate.Tui.InputLineState.Deconstruct(out string! Text, out int CursorPosition) -> void
+Lunate.Tui.InputLineState.Equals(Lunate.Tui.InputLineState? other) -> bool
+Lunate.Tui.InputLineState.InputLineState(string! Text, int CursorPosition) -> void
+Lunate.Tui.InputLineState.Text.get -> string!
+Lunate.Tui.InputLineState.Text.init -> void
+override Lunate.Tui.InputLineState.Equals(object? obj) -> bool
+override Lunate.Tui.InputLineState.GetHashCode() -> int
+override Lunate.Tui.InputLineState.ToString() -> string!
+static Lunate.Tui.InputLine.Apply(Lunate.Tui.InputLineState! state, Lunate.Tui.KeyEvent! key) -> Lunate.Tui.InputLineState!
+static Lunate.Tui.InputLine.Backspace(Lunate.Tui.InputLineState! state) -> Lunate.Tui.InputLineState!
+static Lunate.Tui.InputLine.Delete(Lunate.Tui.InputLineState! state) -> Lunate.Tui.InputLineState!
+static Lunate.Tui.InputLine.Insert(Lunate.Tui.InputLineState! state, string! text) -> Lunate.Tui.InputLineState!
+static Lunate.Tui.InputLine.MoveEnd(Lunate.Tui.InputLineState! state) -> Lunate.Tui.InputLineState!
+static Lunate.Tui.InputLine.MoveHome(Lunate.Tui.InputLineState! state) -> Lunate.Tui.InputLineState!
+static Lunate.Tui.InputLine.MoveLeft(Lunate.Tui.InputLineState! state) -> Lunate.Tui.InputLineState!
+static Lunate.Tui.InputLine.MoveRight(Lunate.Tui.InputLineState! state) -> Lunate.Tui.InputLineState!
+static Lunate.Tui.InputLineState.operator !=(Lunate.Tui.InputLineState? left, Lunate.Tui.InputLineState? right) -> bool
+static Lunate.Tui.InputLineState.operator ==(Lunate.Tui.InputLineState? left, Lunate.Tui.InputLineState? right) -> bool
+static readonly Lunate.Tui.InputLine.Empty -> Lunate.Tui.InputLineState!
