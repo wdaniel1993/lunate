@@ -7,8 +7,8 @@
 
 ## 2. Approval prompt
 
-- [ ] 2.1 `ApprovalPromptModel` + `Decide`: y/n/a bare only; Enter → Deny; Esc/other → null; modifier falsifiers (Ctrl+Y does not approve)
-- [ ] 2.2 `ApprovalPromptRenderer` + golden `approval-prompt.txt`; escaping (bracket payloads in tool name and summary); ANSI pin for the question marker
+- [x] 2.1 `ApprovalPromptModel` + `Decide`: y/n/a bare only; Enter → Deny; Esc/other → null; modifier falsifiers (Ctrl+Y does not approve)
+- [x] 2.2 `ApprovalPromptRenderer` + golden `approval-prompt.txt`; escaping (bracket payloads in tool name and summary); ANSI pin for the question marker
 
 ## 3. Status footer
 
