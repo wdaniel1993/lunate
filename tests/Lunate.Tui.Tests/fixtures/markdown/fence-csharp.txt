@@ -1,0 +1,5 @@
+csharp
+var total = items.Sum(x => x.Count); // sum
+/* a block
+   comment */
+Console.WriteLine($"total: {total}");

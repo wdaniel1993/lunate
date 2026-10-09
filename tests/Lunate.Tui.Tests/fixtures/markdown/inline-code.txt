@@ -1,0 +1,1 @@
+Inline code span and [brackets] too.

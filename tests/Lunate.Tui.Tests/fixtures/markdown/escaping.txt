@@ -1,0 +1,5 @@
+[dim]not markup[/]
+
+[bold]also not markup[/]
+
+nested [[brackets]] stay

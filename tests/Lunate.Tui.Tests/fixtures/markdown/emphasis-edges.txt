@@ -1,0 +1,5 @@
+snake_case_words stays literal
+
+234 follows CommonMark
+
+2 * 3 * 4 keeps its asterisks

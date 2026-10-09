@@ -1,0 +1,5 @@
+bold text
+
+italic text
+
+bold and italic
