@@ -45,7 +45,19 @@ internal static partial class MarkdownAstMapper
             AppendBlock(block, lines);
         }
 
+        CollapseBlankLines(lines);
         return lines;
+    }
+
+    private static void CollapseBlankLines(List<StyledLine> lines)
+    {
+        for (var i = lines.Count - 1; i > 0; i--)
+        {
+            if (lines[i].IsBlank && lines[i - 1].IsBlank)
+            {
+                lines.RemoveAt(i);
+            }
+        }
     }
 
     private static void AppendBlock(Block block, List<StyledLine> lines)
@@ -128,6 +140,7 @@ internal static partial class MarkdownAstMapper
             AppendBlock(child, lines);
         }
 
+        CollapseBlankLines(lines);
         return lines;
     }
 

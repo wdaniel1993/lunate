@@ -49,6 +49,21 @@ public sealed class MarkdownRendererTests
     }
 
     [Fact]
+    public void Link_reference_definitions_do_not_render()
+    {
+        Assert.Equal("one\n\ntwo\n", Render("one\n\n[ref]: https://example.com\n\ntwo"));
+    }
+
+    [Fact]
+    public void Shortcut_reference_links_render_as_plain_label_and_url()
+    {
+        Assert.Equal(
+            "one ref (https://example.com)\n",
+            Render("one [ref]\n\n[ref]: https://example.com")
+        );
+    }
+
+    [Fact]
     public void Null_markdown_is_rejected()
     {
         Assert.Throws<ArgumentNullException>(() => new MarkdownRenderer().Render(null!));

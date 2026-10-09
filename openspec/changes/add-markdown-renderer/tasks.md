@@ -27,5 +27,5 @@
 
 ## 5. Close
 
-- [ ] 5.1 csharpier; `bash scripts/verify.sh` green (incl. de-AT); `openspec validate add-markdown-renderer --type change --strict`; self-review; commit per group; no push
-- [ ] 5.2 Deviations: parser replaced by Markdig per maintainer review (already noted in design.md); guide's test-stack note only if reality diverged (Verify stays unused)
+- [x] 5.1 csharpier; `bash scripts/verify.sh` green (incl. de-AT); `openspec validate add-markdown-renderer --type change --strict`; self-review; commit per group; no push
+- [x] 5.2 Deviations: parser replaced by Markdig per maintainer review (already noted in design.md); guide's test-stack note only if reality diverged (Verify stays unused)
