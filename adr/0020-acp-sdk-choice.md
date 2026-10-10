@@ -1,6 +1,6 @@
 # 0020 — ACP SDK choice: LibAcp, behind `IAcpServer`
 
-- Status: proposed — awaiting maintainer sign-off (recommendation: LibAcp)
+- Status: accepted — 2026-10-10 (maintainer sign-off: "Use libacp"; recommendation adopted)
 - Date: 2026-10-10
 - Relates to: guide §Frontends (ACP mode), §ACP server; OpenSpec capability `protocols` (T-27; permissions and editor FS follow in T-28)
 - Survey date: 2026-10-10 (versions, activity and download counts as of that day)
