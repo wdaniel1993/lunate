@@ -27,6 +27,8 @@ public sealed class TerminalCapabilitiesTests
     [InlineData("truecolor")]
     [InlineData("TRUECOLOR")]
     [InlineData("24bit")]
+    [InlineData("xterm-truecolor")]
+    [InlineData("24bit-more")]
     public void Colorterm_upgrades_the_colour_depth(string colorTerm)
     {
         var capabilities = Detect(environment: Env(("COLORTERM", colorTerm)));
@@ -86,6 +88,18 @@ public sealed class TerminalCapabilitiesTests
     }
 
     [Fact]
+    public void An_empty_lunate_unicode_is_ignored()
+    {
+        var capabilities = Detect(
+            isWindows: true,
+            environment: Env(("LUNATE_UNICODE", "")),
+            outputCodePage: () => 437
+        );
+
+        Assert.False(capabilities.Unicode);
+    }
+
+    [Fact]
     public void Lunate_unicode_forces_unicode()
     {
         var capabilities = Detect(environment: Env(("LUNATE_UNICODE", "1"), ("TERM", "dumb")));
@@ -114,6 +128,18 @@ public sealed class TerminalCapabilitiesTests
         );
 
         Assert.True(capabilities.Unicode);
+    }
+
+    [Fact]
+    public void An_empty_wt_session_falls_through_to_the_code_page()
+    {
+        var capabilities = Detect(
+            isWindows: true,
+            environment: Env(("WT_SESSION", "")),
+            outputCodePage: () => 437
+        );
+
+        Assert.False(capabilities.Unicode);
     }
 
     [Theory]
