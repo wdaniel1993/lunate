@@ -51,7 +51,15 @@ Runner: `request.json` gains optional `start_line` (passed through) and optional
 
 ## Deviations
 
-(filled during apply; none yet)
+1. The matching engine (tier window finding, indent prefix, ambiguity message, whitespace-significant
+   check and closest-region hint) lives in `src/Lunate.Coding/EditMatcher.cs`, an internal static
+   helper, instead of inside `EditTool.cs` as the Structure section lists. `EditTool.cs` orchestrates
+   the tiers and applies the edit; the extraction keeps both files under the repo's ~300-line rule.
+   Behaviour is exactly as pinned.
+2. A present-but-invalid `start_line` (not an integer, below 1, fractional, `null`) is refused with
+   `start_line must be an integer greater than or equal to 1`; the design pins only the valid shape
+   (optional integer ≥ 1) and says nothing about malformed values. Tool error texts are model-facing,
+   so the tool names the problem and the next step instead of silently ignoring the argument.
 
 ## Seams
 
