@@ -16,10 +16,10 @@ public sealed class ApprovalPromptRenderer
     {
         ArgumentNullException.ThrowIfNull(prompt);
 
-        string summary = ToolArgsSummary.Summarize(prompt.ToolName, prompt.ArgsSummary);
         var line = new StyledLine();
         line.Add("Allow ", SpanStyle.Plain);
         line.Add(prompt.ToolName, SpanStyle.Plain);
+        string summary = ToolArgsSummary.Summarize(prompt.ToolName, prompt.ArgsSummary);
         if (summary.Length > 0)
         {
             line.Add(" ", SpanStyle.Plain);
@@ -29,5 +29,16 @@ public sealed class ApprovalPromptRenderer
         line.Add("?", Question);
         line.Add("  [y]es  [n]o  [a]lways this session", SpanStyle.Plain);
         return new Markup(line.ToMarkup() + "\n");
+    }
+
+    /// <summary>The prompt's plain (unstyled) line as shown in the live area.</summary>
+    internal static string PlainText(ApprovalPromptModel prompt)
+    {
+        string summary = ToolArgsSummary.Summarize(prompt.ToolName, prompt.ArgsSummary);
+        string question =
+            summary.Length > 0
+                ? $"Allow {prompt.ToolName} {summary}?"
+                : $"Allow {prompt.ToolName}?";
+        return question + "  [y]es  [n]o  [a]lways this session";
     }
 }

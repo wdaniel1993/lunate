@@ -10,17 +10,11 @@ internal sealed record LiveAreaState
 
     public int FrameNumber { get; init; }
 
-    public string? Model { get; init; }
+    public string? Notice { get; init; }
 
-    public long InputTokens { get; init; }
+    public ApprovalPromptModel? Approval { get; init; }
 
-    public long OutputTokens { get; init; }
-
-    public double ContextPercent { get; init; }
-
-    public string? WorkingDirectory { get; init; }
-
-    public string? GitBranch { get; init; }
+    public StatusFooterModel? Footer { get; init; }
 
     public ConsoleSize Size { get; init; } = new(80, 24);
 }

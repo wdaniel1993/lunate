@@ -1,8 +1,8 @@
 \r\x1b[2K> \n\x1b[1A\r\x1b[2C
-\x1b[1A\r\x1b[2K| read src/foo.cs\n\r\x1b[2Ktest-model · 1540 tok · 12.5% ctx · /rep\n\r\x1b[2K> hey\n\x1b[1A\r\x1b[5C
-\x1b[3A\r\x1b[2K| read src/foo.cs\n\r\x1b[2Ktest-model · 1540 tok · 12.5% ctx · /rep\n\r\x1b[2K> heya\n\r\x1b[2K  b\n\r\x1b[2K  c\n\x1b[1A\r\x1b[3C
-\x1b[5A\r\x1b[2Ktail one\n\r\x1b[2Ktail two\n\r\x1b[2K| read src/foo.cs\n\r\x1b[2Ktest-model · 1540 tok · 12.5% ctx · /rep\n\r\x1b[2K> heya\n\r\x1b[2K  b\n\r\x1b[2K  \n\x1b[1A\r\x1b[2C
-\x1b[7A\r\x1b[2Ktail one\n\r\x1b[2Ktail two\n\r\x1b[2K/ read src/foo.cs\n\r\x1b[2Ktest-model · 1540 tok · 12.5% ctx · /rep\n\r\x1b[2K> heya\n\r\x1b[2K  b\n\r\x1b[2K  \n\x1b[1A\r\x1b[2C
+\x1b[1A\r\x1b[2K| read src/foo.cs\n\r\x1b[2Ktest-model · 1.5k/12.3k (13%) · /repo\n\r\x1b[2K> hey\n\x1b[1A\r\x1b[5C
+\x1b[3A\r\x1b[2K| read src/foo.cs\n\r\x1b[2Ktest-model · 1.5k/12.3k (13%) · /repo\n\r\x1b[2K> heya\n\r\x1b[2K  b\n\r\x1b[2K  c\n\x1b[1A\r\x1b[3C
+\x1b[5A\r\x1b[2Ktail one\n\r\x1b[2Ktail two\n\r\x1b[2K| read src/foo.cs\n\r\x1b[2Ktest-model · 1.5k/12.3k (13%) · /repo\n\r\x1b[2K> heya\n\r\x1b[2K  b\n\r\x1b[2K  \n\x1b[1A\r\x1b[2C
+\x1b[7A\r\x1b[2Ktail one\n\r\x1b[2Ktail two\n\r\x1b[2K/ read src/foo.cs\n\r\x1b[2Ktest-model · 1.5k/12.3k (13%) · /repo\n\r\x1b[2K> heya\n\r\x1b[2K  b\n\r\x1b[2K  \n\x1b[1A\r\x1b[2C
 \x1b[7A\r\x1b[2Ktail one\n\r\x1b[2Ktail two\n\r\x1b[2K/ read src/f\n\r\x1b[2Ktest-model ·\n\r\x1b[2K> heya\n\r\x1b[2K  b\n\r\x1b[2K  \n\x1b[1A\r\x1b[2C
 \x1b[7A\r\x1b[2Ktail one\n\r\x1b[2Ktail two\n\r\x1b[2Ktest-model ·\n\r\x1b[2K> heya\n\r\x1b[2K  b\n\r\x1b[2K  \n\r\x1b[2K\n\x1b[2A\r\x1b[2C
 \x1b[7A\r\x1b[2K\n\r\x1b[2K\n\r\x1b[2K\n\r\x1b[2K\n\r\x1b[2K\n\r\x1b[2K\n\r\x1b[2K\x1b[6A

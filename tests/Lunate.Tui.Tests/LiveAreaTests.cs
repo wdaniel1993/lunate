@@ -190,11 +190,11 @@ public sealed class LiveAreaTests
         using var area = new LiveArea(console, scheduler);
         area.Start();
 
-        area.SetFooter("test-model", 1200, 340, 12.5, "/repo", "main");
+        area.SetFooter(new StatusFooterModel("test-model", 1540, 12320, "/repo", "main"));
         Advance(scheduler, 33);
 
         Assert.Contains(
-            "test-model · 1540 tok · 12.5% ctx · /repo · main",
+            "test-model · 1.5k/12.3k (13%) · /repo · main",
             console.Writes[^1],
             StringComparison.Ordinal
         );
