@@ -112,6 +112,58 @@ try {
         exit 1
     }
 
+    Write-Host "`n==> install script (fixture release)"
+    $version = [regex]::Match((Get-Content Directory.Build.props -Raw), '<Version>(.*?)</Version>').Groups[1].Value
+    if (-not $version) { throw 'verify: cannot read <Version> from Directory.Build.props' }
+
+    $installTmp = Join-Path ([System.IO.Path]::GetTempPath()) ('lunate-verify-install-' + [guid]::NewGuid().ToString('N'))
+    $fixture = Join-Path $installTmp 'fixture'
+    $prefix = Join-Path $installTmp 'prefix'
+    New-Item -ItemType Directory -Force -Path $fixture, $prefix | Out-Null
+    try {
+        $zip = Join-Path $fixture 'lunate-win-x64.zip'
+        Compress-Archive -Path (Join-Path $publishDir "$env:RID/lunate.exe") -DestinationPath $zip
+        $hash = (Get-FileHash -Algorithm SHA256 -Path $zip).Hash.ToLowerInvariant()
+        Set-Content -Path (Join-Path $fixture 'SHA256SUMS') -Value "$hash  lunate-win-x64.zip" -Encoding ascii
+
+        $env:LUNATE_INSTALL_BASE_URL = 'file:///' + ($fixture -replace '\\', '/')
+        $env:LUNATE_INSTALL_PREFIX = $prefix
+        & ./install.ps1
+        $installed = & (Join-Path $prefix 'lunate.exe') --version
+        $published = & $binaryFull --version
+        if ($installed -ne $published) {
+            throw "verify: installed lunate reports $installed, expected $published"
+        }
+
+        $badFixture = Join-Path $installTmp 'bad-fixture'
+        Copy-Item -Recurse -Path $fixture -Destination $badFixture
+        [System.IO.File]::AppendAllText((Join-Path $badFixture 'lunate-win-x64.zip'), 'corrupt')
+        $badPrefix = Join-Path $installTmp 'bad-prefix'
+        New-Item -ItemType Directory -Force -Path $badPrefix | Out-Null
+        $env:LUNATE_INSTALL_BASE_URL = 'file:///' + ($badFixture -replace '\\', '/')
+        $env:LUNATE_INSTALL_PREFIX = $badPrefix
+        $aborted = $false
+        try { & ./install.ps1 } catch { $aborted = $true }
+        if (-not $aborted) { throw 'verify: install.ps1 accepted a checksum mismatch' }
+        if (Test-Path (Join-Path $badPrefix 'lunate.exe')) {
+            throw 'verify: install.ps1 left a partial install after a checksum mismatch'
+        }
+
+        $previousArch = $env:PROCESSOR_ARCHITECTURE
+        $env:PROCESSOR_ARCHITECTURE = 'ARM64'
+        $refusal = ''
+        try { & ./install.ps1 } catch { $refusal = $_.Exception.Message }
+        $env:PROCESSOR_ARCHITECTURE = $previousArch
+        if ($refusal -notmatch 'win-x64') {
+            throw "verify: install.ps1 did not refuse ARM64: $refusal"
+        }
+    }
+    finally {
+        Remove-Item Env:LUNATE_INSTALL_BASE_URL -ErrorAction SilentlyContinue
+        Remove-Item Env:LUNATE_INSTALL_PREFIX -ErrorAction SilentlyContinue
+        Remove-Item -Recurse -Force -Path $installTmp -ErrorAction SilentlyContinue
+    }
+
     Write-Host "`n==> format"
     # CSharpier owns formatting; dotnet format keeps style and analyzer duties.
     dotnet csharpier check .

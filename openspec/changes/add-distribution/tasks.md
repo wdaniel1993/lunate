@@ -9,9 +9,9 @@
 
 ## 2. install.ps1
 
-- [ ] 2.1 win-x64 detection + refusal; env/param seams; download + Get-FileHash verify
-- [ ] 2.2 Expand + install to `%LOCALAPPDATA%\Programs\lunate` + user PATH update + version/hint output
-- [ ] 2.3 Test fixture flow in `scripts/verify.ps1` (install → run)
+- [x] 2.1 win-x64 detection + refusal; env/param seams; download + Get-FileHash verify
+- [x] 2.2 Expand + install to `%LOCALAPPDATA%\Programs\lunate` + user PATH update + version/hint output
+- [x] 2.3 Test fixture flow in `scripts/verify.ps1` (install → run)
 
 ## 3. Tool packaging
 
