@@ -2,7 +2,7 @@
 
 ## 1. ADR + package
 
-- [ ] 1.1 ADR-0020 finalized (status accepted on sign-off); LibAcp pinned in `Lunate.Protocols` (exact version)
+- [x] 1.1 ADR-0020 finalized (status accepted on sign-off); LibAcp pinned in `Lunate.Protocols` (exact version)
 
 ## 2. Server core (Protocols)
 
