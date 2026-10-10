@@ -42,4 +42,22 @@ Slash commands, pickers, `/command` Tab completion (T-22 part 2); `@path` comple
 
 ## Deviations
 
-(Filled during apply; empty at proposal time.)
+Recorded during apply:
+
+1. **`Lunate.Coding` references `Lunate.Extensibility`** (`src/Lunate.Coding/Lunate.Coding.csproj`): the pinned `InputPipeline` runs `HookRunner.RunInputReceivedAsync`, so the app assembly gains the edge; the layering map (`tests/Lunate.Coding.Tests/LayeringChecker.cs`) records it.
+2. **`ApprovalRequested` is not emitted by the harness.** The approval adapter maps the `IToolApprover` invocation (`InteractiveSession.cs`, `SessionApprover`) onto `ApprovalPromptModel(toolName, raw args)`; policy-allowed risks (ask: read-only; auto-edit: write) run without a prompt via `NonInteractiveApprover.IsAllowed`. When event emission lands (T-27/ACP) the adapter can consume the event instead; no loop behavior changed here.
+3. **Test seams**: `InteractiveSession.PendingApproval`, `IsRunning`, `QueuedSteeringCount`, and `InteractiveSessionOptions.ConfigureHarness` are internal observation/adjustment points used by the deterministic tests (documented, no production behavior).
+4. **Footer reconciliation (the T-21 handoff)**: the live area now formats through `StatusFooterRenderer.PlainText` (compact k/M, one format wins) and `LiveArea.SetFooter` takes a `StatusFooterModel`; the committed Tui frame golden `scripted-session.txt` was regenerated deliberately (the footer line changed from `1540 tok · 12.5% ctx` to `1.5k/12.3k (13%)`).
+5. **`length` is treated as non-normal**: no auto-run, leftover to the input line (the spec pins only error and step limit; the conservative reading).
+6. **Nested tool results do not commit scrollback blocks** (only top-level `ToolCallResult`s); nested results still drive the live tool line. Committed blocks would duplicate nested output.
+7. **CLI entry deferred**: `lunate` with no arguments stays a no-op (`CliTests` pins that); wiring the interactive entry belongs to T-22 part 2 or a follow-up.
+8. **`SteeringQueue.Count`** was added beyond the pinned `Enqueue`/`TryDequeue`: the forward test synchronization needs an honest queued-count signal and the frontend can show "N queued".
+9. **`AnthropicTurnMerge` is internal and sits above the recorder**, so recorded fixtures capture the wire (merged) request; it merges *all* consecutive wire-user messages — the Anthropic adapter maps every non-assistant message to `user`, so two tool results of one batch would also be consecutive user turns. History/session are untouched (new message instances; originals are never mutated).
+10. **Usage accumulation**: `UsageUpdated` counts are summed across events (Anthropic reports input at stream start, output at the end); a provider that sends cumulative totals would double-count — revisit if it bites.
+11. **`CompactionApplied` maps to a notice but is not exercised end-to-end** (it needs a compaction-triggering history); `Retrying` and `StepLimitReached` prove the notice channel in the session tests.
+
+## T-22 part 2 / T-53 seams
+
+- Slash commands, model/session pickers and `/command` Tab completion: `RoutedKey.ModelPicker` is handled as a no-op in the session; `LiveArea`/`InputLine` remain unchanged for that work.
+- `@path` completion (T-53): the input line still routes `Tab` to `Edit` (no-op), unchanged.
+- Steering leftovers are reclaimed through `SteeringQueue.TryDequeue` (Esc / run end); ACP (T-27) can consume `SteeringInjected` and enqueue into the same seam.
