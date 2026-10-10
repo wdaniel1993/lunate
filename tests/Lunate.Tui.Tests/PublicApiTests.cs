@@ -20,6 +20,8 @@ public sealed class PublicApiTests
         "Lunate.Tui.KeyRouter",
         "Lunate.Tui.MarkdownRenderer",
         "Lunate.Tui.RoutedKey",
+        "Lunate.Tui.SelectListModel",
+        "Lunate.Tui.SelectListRenderer",
         "Lunate.Tui.StatusFooterModel",
         "Lunate.Tui.StatusFooterRenderer",
         "Lunate.Tui.TechnicalText",

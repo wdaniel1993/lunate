@@ -87,6 +87,8 @@ internal sealed class LiveArea : IDisposable
 
     public void SetApproval(ApprovalPromptModel? prompt) => Post(new ApprovalInput(prompt));
 
+    public void SetPicker(SelectListModel? picker) => Post(new PickerInput(picker));
+
     public void SetTool(string? toolName) => Post(new ToolInput(toolName));
 
     public void SetFooter(StatusFooterModel? footer) => Post(new FooterInput(footer));
@@ -194,6 +196,7 @@ internal sealed class LiveArea : IDisposable
             TailSetInput tail => state with { TailText = tail.Text },
             NoticeInput notice => state with { Notice = notice.Notice },
             ApprovalInput approval => state with { Approval = approval.Prompt },
+            PickerInput picker => state with { Picker = picker.Picker },
             ToolInput tool => state with { ToolName = tool.Name, FrameNumber = 0 },
             FooterInput footer => state with { Footer = footer.Footer },
             _ => state,
@@ -216,6 +219,8 @@ internal sealed class LiveArea : IDisposable
     private sealed record NoticeInput(string? Notice) : LiveAreaInput;
 
     private sealed record ApprovalInput(ApprovalPromptModel? Prompt) : LiveAreaInput;
+
+    private sealed record PickerInput(SelectListModel? Picker) : LiveAreaInput;
 
     private sealed record ToolInput(string? Name) : LiveAreaInput;
 

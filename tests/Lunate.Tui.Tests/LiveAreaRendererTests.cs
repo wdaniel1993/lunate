@@ -87,6 +87,36 @@ public sealed class LiveAreaRendererTests
     }
 
     [Fact]
+    public void Picker_lines_render_above_the_footer()
+    {
+        var state = new LiveAreaState
+        {
+            Picker = new SelectListModel("Select model", ["a", "b"], 0),
+            Footer = new StatusFooterModel("m", 10, 0, "/w", null),
+            Size = new ConsoleSize(60, 12),
+        };
+
+        var frame = LiveAreaRenderer.Render(state);
+
+        Assert.Equal(["Select model", "> a", "  b", "m · 10/0 · /w", "> "], frame.Lines);
+    }
+
+    [Fact]
+    public void The_picker_replaces_the_streaming_tail()
+    {
+        var state = new LiveAreaState
+        {
+            TailText = "streaming",
+            Picker = new SelectListModel("Select model", ["a"], 0),
+            Size = new ConsoleSize(60, 12),
+        };
+
+        var frame = LiveAreaRenderer.Render(state);
+
+        Assert.Equal(["Select model", "> a", "> "], frame.Lines);
+    }
+
+    [Fact]
     public void Footer_context_percent_is_culture_invariant()
     {
         var state = new LiveAreaState

@@ -14,6 +14,8 @@ internal sealed record LiveAreaState
 
     public ApprovalPromptModel? Approval { get; init; }
 
+    public SelectListModel? Picker { get; init; }
+
     public StatusFooterModel? Footer { get; init; }
 
     public ConsoleSize Size { get; init; } = new(80, 24);

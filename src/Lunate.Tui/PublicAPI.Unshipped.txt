@@ -177,11 +177,32 @@ static Lunate.Tui.KeyRouter.Route(Lunate.Tui.KeyEvent! key) -> Lunate.Tui.Routed
 Lunate.Tui.RoutedKey
 Lunate.Tui.RoutedKey.Cancel = 2 -> Lunate.Tui.RoutedKey
 Lunate.Tui.RoutedKey.ClearOrQuit = 3 -> Lunate.Tui.RoutedKey
+Lunate.Tui.RoutedKey.Complete = 7 -> Lunate.Tui.RoutedKey
 Lunate.Tui.RoutedKey.Edit = 0 -> Lunate.Tui.RoutedKey
 Lunate.Tui.RoutedKey.HistoryNext = 6 -> Lunate.Tui.RoutedKey
 Lunate.Tui.RoutedKey.HistoryPrevious = 5 -> Lunate.Tui.RoutedKey
 Lunate.Tui.RoutedKey.ModelPicker = 4 -> Lunate.Tui.RoutedKey
 Lunate.Tui.RoutedKey.Submit = 1 -> Lunate.Tui.RoutedKey
+Lunate.Tui.SelectListModel
+Lunate.Tui.SelectListModel.<Clone>$() -> Lunate.Tui.SelectListModel!
+Lunate.Tui.SelectListModel.Deconstruct(out string! Title, out System.Collections.Generic.IReadOnlyList<string!>! Items, out int Selected) -> void
+Lunate.Tui.SelectListModel.Equals(Lunate.Tui.SelectListModel? other) -> bool
+Lunate.Tui.SelectListModel.Items.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Lunate.Tui.SelectListModel.Items.init -> void
+Lunate.Tui.SelectListModel.Move(int delta) -> Lunate.Tui.SelectListModel!
+Lunate.Tui.SelectListModel.Selected.get -> int
+Lunate.Tui.SelectListModel.Selected.init -> void
+Lunate.Tui.SelectListModel.SelectListModel(string! Title, System.Collections.Generic.IReadOnlyList<string!>! Items, int Selected) -> void
+Lunate.Tui.SelectListModel.Title.get -> string!
+Lunate.Tui.SelectListModel.Title.init -> void
+Lunate.Tui.SelectListRenderer
+Lunate.Tui.SelectListRenderer.Render(Lunate.Tui.SelectListModel! model) -> Spectre.Console.Rendering.IRenderable!
+Lunate.Tui.SelectListRenderer.SelectListRenderer() -> void
+override Lunate.Tui.SelectListModel.Equals(object? obj) -> bool
+override Lunate.Tui.SelectListModel.GetHashCode() -> int
+override Lunate.Tui.SelectListModel.ToString() -> string!
+static Lunate.Tui.SelectListModel.operator !=(Lunate.Tui.SelectListModel? left, Lunate.Tui.SelectListModel? right) -> bool
+static Lunate.Tui.SelectListModel.operator ==(Lunate.Tui.SelectListModel? left, Lunate.Tui.SelectListModel? right) -> bool
 Lunate.Tui.StatusFooterModel
 Lunate.Tui.StatusFooterModel.<Clone>$() -> Lunate.Tui.StatusFooterModel!
 Lunate.Tui.StatusFooterModel.ContextWindow.get -> long

@@ -10,6 +10,7 @@ public sealed class KeyRouterTests
         (Key(KeyKind.Escape), RoutedKey.Cancel),
         (Key(KeyKind.Character, "c", ctrl: true), RoutedKey.ClearOrQuit),
         (Key(KeyKind.Character, "l", ctrl: true), RoutedKey.ModelPicker),
+        (Key(KeyKind.Tab), RoutedKey.Complete),
         (Key(KeyKind.Up), RoutedKey.HistoryPrevious),
         (Key(KeyKind.Down), RoutedKey.HistoryNext),
     ];
@@ -42,9 +43,19 @@ public sealed class KeyRouterTests
         Assert.Single(intents, intent => intent == RoutedKey.Cancel);
         Assert.Single(intents, intent => intent == RoutedKey.ClearOrQuit);
         Assert.Single(intents, intent => intent == RoutedKey.ModelPicker);
+        Assert.Single(intents, intent => intent == RoutedKey.Complete);
         Assert.Single(intents, intent => intent == RoutedKey.HistoryPrevious);
         Assert.Single(intents, intent => intent == RoutedKey.HistoryNext);
         Assert.Equal(2, intents.Count(intent => intent == RoutedKey.Edit));
+    }
+
+    [Fact]
+    public void Tab_completes_and_modified_tab_edits()
+    {
+        Assert.Equal(RoutedKey.Complete, KeyRouter.Route(Key(KeyKind.Tab)));
+        Assert.Equal(RoutedKey.Edit, KeyRouter.Route(Key(KeyKind.Tab, shift: true)));
+        Assert.Equal(RoutedKey.Edit, KeyRouter.Route(Key(KeyKind.Tab, alt: true)));
+        Assert.Equal(RoutedKey.Edit, KeyRouter.Route(Key(KeyKind.Tab, ctrl: true)));
     }
 
     [Fact]
@@ -60,7 +71,6 @@ public sealed class KeyRouterTests
         Assert.NotEqual(RoutedKey.Cancel, KeyRouter.Route(Key(KeyKind.Character, "c", ctrl: true)));
 
     [Theory]
-    [InlineData(KeyKind.Tab)]
     [InlineData(KeyKind.F5)]
     [InlineData(KeyKind.PageUp)]
     [InlineData(KeyKind.Unknown)]
