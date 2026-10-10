@@ -33,4 +33,4 @@
 
 ## 6. Gate
 
-- [ ] 6.1 `bash scripts/verify.sh` green (incl. the new steps); deviations recorded in design.md
+- [x] 6.1 `bash scripts/verify.sh` green (incl. the new steps); deviations recorded in design.md

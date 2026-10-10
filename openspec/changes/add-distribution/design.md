@@ -49,7 +49,10 @@
 
 ## Deviations
 
-(filled during apply; none yet)
+1. The installers are served from the repository (`raw.githubusercontent.com/wdaniel1993/lunate/main/...`), not attached to the GitHub release: the pinned asset contract lists only the three archives, `SHA256SUMS` and the `.nupkg`. README and runbook use the raw URLs.
+2. `Lunate.Coding.csproj` sets `<IsPackable>true</IsPackable>` next to `PackAsTool=true`: `Directory.Build.props` sets `IsPackable=false` repo-wide, and without the override `dotnet pack` no-ops instead of producing the tool package required by task 3.1.
+3. `install.ps1` resolves `file://` base URLs through the local filesystem (copy): PowerShell 7's `Invoke-WebRequest` rejects the `file` scheme, and the verify fixture seam needs `file://`. http(s) downloads still go through `Invoke-WebRequest`.
+4. `lunate --version` reports the SDK informational version (`<Version>+<commit>`), so the fixture flows compare the installed binary's output with the published binary's output, and the tool roundtrip compares against the `<Version>` prefix before `+`.
 
 ## Seams
 
