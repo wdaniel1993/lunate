@@ -44,6 +44,22 @@ internal static class Cli
             return Discover(args[1], output, errors);
         }
 
+        if (args.Contains("--acp"))
+        {
+            if (args is not ["--acp"])
+            {
+                WriteAcpUsage(errors);
+                return 2;
+            }
+
+            return AcpMode.Run(
+                errors,
+                Console.OpenStandardInput(),
+                Console.OpenStandardOutput(),
+                ct
+            );
+        }
+
         if (!TryParsePrint(args, errors, out PrintModeOptions? parsed))
         {
             return 0;
@@ -126,6 +142,14 @@ internal static class Cli
 
     private static void WritePrintUsage(TextWriter errors) =>
         errors.WriteLine("Usage: lunate -p [--json] [--yolo] <prompt>");
+
+    private static void WriteAcpUsage(TextWriter errors)
+    {
+        errors.WriteLine("Usage: lunate --acp");
+        errors.WriteLine(
+            "lunate: --acp speaks the Agent Client Protocol over stdio and cannot be combined with -p, --json or a prompt"
+        );
+    }
 
     /// <summary>
     /// Bare <c>lunate</c> starts the interactive session; a console that is not a terminal
@@ -213,6 +237,12 @@ internal static class Cli
         );
         output.WriteLine(
             "                                 commands: /model /new /resume /compact /quit"
+        );
+        output.WriteLine(
+            "  lunate --acp                   serve the Agent Client Protocol over stdio for"
+        );
+        output.WriteLine(
+            "                                 editors (nothing but protocol on stdout)"
         );
         output.WriteLine("  lunate --version               print the version");
         output.WriteLine("  lunate --help                  show this help");

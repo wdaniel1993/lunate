@@ -225,6 +225,78 @@ public sealed class CliTests
     }
 
     [Fact]
+    public void Run_with_help_lists_acp_mode()
+    {
+        using var writer = new StringWriter();
+
+        var exitCode = Cli.Run(
+            ["--help"],
+            writer,
+            TextWriter.Null,
+            TestContext.Current.CancellationToken
+        );
+
+        Assert.Equal(0, exitCode);
+        Assert.Contains("--acp", writer.ToString(), StringComparison.Ordinal);
+        Assert.Contains(
+            "Agent Client Protocol over stdio",
+            writer.ToString(),
+            StringComparison.Ordinal
+        );
+    }
+
+    [Fact]
+    public void Run_with_acp_and_print_mode_is_a_usage_error()
+    {
+        using var output = new StringWriter();
+        using var error = new StringWriter();
+
+        var exitCode = Cli.Run(
+            ["--acp", "-p", "hi"],
+            output,
+            error,
+            TestContext.Current.CancellationToken
+        );
+
+        Assert.Equal(2, exitCode);
+        Assert.Contains("Usage: lunate --acp", error.ToString(), StringComparison.Ordinal);
+        Assert.Empty(output.ToString());
+    }
+
+    [Fact]
+    public void Run_with_acp_and_a_prompt_argument_is_a_usage_error()
+    {
+        using var output = new StringWriter();
+        using var error = new StringWriter();
+
+        var exitCode = Cli.Run(
+            ["--acp", "hi"],
+            output,
+            error,
+            TestContext.Current.CancellationToken
+        );
+
+        Assert.Equal(2, exitCode);
+        Assert.Contains("Usage: lunate --acp", error.ToString(), StringComparison.Ordinal);
+        Assert.Empty(output.ToString());
+    }
+
+    [Theory]
+    [InlineData("--acp", "--json")]
+    [InlineData("--acp", "--yolo")]
+    public void Run_with_acp_and_a_print_flag_is_a_usage_error(params string[] args)
+    {
+        using var output = new StringWriter();
+        using var error = new StringWriter();
+
+        var exitCode = Cli.Run(args, output, error, TestContext.Current.CancellationToken);
+
+        Assert.Equal(2, exitCode);
+        Assert.Contains("Usage: lunate --acp", error.ToString(), StringComparison.Ordinal);
+        Assert.Empty(output.ToString());
+    }
+
+    [Fact]
     public void Run_with_discover_and_no_target_is_a_usage_error()
     {
         using var output = new StringWriter();

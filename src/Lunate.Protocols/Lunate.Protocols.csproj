@@ -5,9 +5,12 @@
 
     <ItemGroup>
         <InternalsVisibleTo Include="Lunate.Protocols.Tests" />
+        <!-- `lunate` is the Lunate.Coding assembly name; it wires the internal ACP server mode. -->
+        <InternalsVisibleTo Include="lunate" />
     </ItemGroup>
 
     <ItemGroup>
+        <PackageReference Include="LibAcp" Version="0.1.0" />
         <PackageReference Include="ModelContextProtocol" Version="2.2.0" />
     </ItemGroup>
 
