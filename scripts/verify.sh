@@ -51,6 +51,36 @@ run_tests() {
   fi
 }
 
+VERIFY_TMP_DIRS=()
+
+verify_tmp() {
+  local dir
+  dir="$(mktemp -d)"
+  VERIFY_TMP_DIRS+=("$dir")
+  printf '%s\n' "$dir"
+}
+
+verify_cleanup() {
+  if [ "${#VERIFY_TMP_DIRS[@]}" -gt 0 ]; then
+    rm -rf "${VERIFY_TMP_DIRS[@]}"
+  fi
+}
+
+trap verify_cleanup EXIT
+
+# The release version, exactly as release.yml gates the tag against it.
+product_version() {
+  sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' Directory.Build.props
+}
+
+sha256_file() {
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$1" | awk '{ print $1 }'
+  else
+    shasum -a 256 "$1" | awk '{ print $1 }'
+  fi
+}
+
 step "tools"
 # CSharpier is pinned in .config/dotnet-tools.json; restore makes it available locally.
 if ! dotnet tool restore; then
@@ -95,6 +125,91 @@ dotnet publish src/Lunate.Coding/Lunate.Coding.csproj \
 
 step "startup budget"
 BUDGET_MS="$BUDGET_MS" "${SCRIPT_DIR}/perf.sh" "$BINARY"
+
+step "install script (fixture release)"
+version="$(product_version)"
+if [ -z "$version" ]; then
+  echo "verify: cannot read <Version> from Directory.Build.props" >&2
+  exit 1
+fi
+install_tmp="$(verify_tmp)"
+
+if [ "${RID#win}" != "$RID" ]; then
+  # The Windows bash (Git Bash) must be refused: Windows installs via install.ps1.
+  refusal_log="${install_tmp}/refusal.log"
+  if sh install.sh >"$refusal_log" 2>&1; then
+    echo "verify: install.sh must refuse Windows platforms (use install.ps1), but it exited 0" >&2
+    exit 1
+  fi
+  if ! grep -q 'install.ps1' "$refusal_log"; then
+    echo "verify: install.sh refusal does not point at install.ps1:" >&2
+    cat "$refusal_log" >&2
+    exit 1
+  fi
+else
+  fixture="${install_tmp}/fixture"
+  prefix="${install_tmp}/prefix"
+  bad_fixture="${install_tmp}/bad-fixture"
+  bad_prefix="${install_tmp}/bad-prefix"
+  log="${install_tmp}/install.log"
+  mkdir -p "$fixture" "$prefix" "$bad_fixture" "$bad_prefix"
+
+  install_asset="lunate-${RID}.tar.gz"
+  tar -czf "${fixture}/${install_asset}" -C "${PUBLISH_DIR}/${RID}" lunate
+  printf '%s  %s\n' "$(sha256_file "${fixture}/${install_asset}")" "$install_asset" >"${fixture}/SHA256SUMS"
+
+  if ! LUNATE_INSTALL_BASE_URL="file://${fixture}" LUNATE_INSTALL_PREFIX="$prefix" \
+    sh install.sh --version "v${version}" >"$log" 2>&1; then
+    echo "verify: install.sh failed against the fixture release:" >&2
+    cat "$log" >&2
+    exit 1
+  fi
+  installed="$("${prefix}/lunate" --version)"
+  published="$("${BINARY}" --version)"
+  if [ "$installed" != "$published" ]; then
+    echo "verify: installed lunate reports ${installed}, expected ${published}" >&2
+    exit 1
+  fi
+
+  cp -R "${fixture}/." "$bad_fixture/"
+  printf 'corrupt\n' >>"${bad_fixture}/${install_asset}"
+  if LUNATE_INSTALL_BASE_URL="file://${bad_fixture}" LUNATE_INSTALL_PREFIX="$bad_prefix" \
+    sh install.sh >"$log" 2>&1; then
+    echo "verify: install.sh accepted a checksum mismatch" >&2
+    exit 1
+  fi
+  if [ -e "${bad_prefix}/lunate" ]; then
+    echo "verify: install.sh left a partial install after a checksum mismatch" >&2
+    exit 1
+  fi
+  if ! grep -q 'checksum mismatch' "$log"; then
+    echo "verify: install.sh mismatch error does not mention the checksum:" >&2
+    cat "$log" >&2
+    exit 1
+  fi
+
+  # An unsupported platform must be refused before anything is downloaded.
+  fakebin="${install_tmp}/fakebin"
+  mkdir -p "$fakebin"
+  cat >"${fakebin}/uname" <<'SHIM'
+#!/bin/sh
+case "$1" in
+  -m) printf 'x86_64\n' ;;
+  *) printf 'Darwin\n' ;;
+esac
+SHIM
+  chmod +x "${fakebin}/uname"
+  if PATH="${fakebin}:${PATH}" LUNATE_INSTALL_BASE_URL="file://${fixture}" \
+    sh install.sh >"$log" 2>&1; then
+    echo "verify: install.sh accepted macOS on x86_64" >&2
+    exit 1
+  fi
+  if ! grep -q 'install.ps1' "$log"; then
+    echo "verify: install.sh refusal does not point Windows users at install.ps1:" >&2
+    cat "$log" >&2
+    exit 1
+  fi
+fi
 
 step "format"
 # CSharpier owns formatting; dotnet format keeps style and analyzer duties.

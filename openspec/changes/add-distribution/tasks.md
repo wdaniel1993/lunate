@@ -2,10 +2,10 @@
 
 ## 1. install.sh
 
-- [ ] 1.1 Platform map + refusal path (naming install.ps1) + usage/flags (`--version`, `--prefix`, `--help`)
-- [ ] 1.2 Download + SHA256SUMS parsing + checksum verify (sha256sum/shasum) + abort-on-mismatch + temp cleanup
-- [ ] 1.3 Install to prefix (default `$HOME/.local/bin`), chmod +x, version print, PATH hint
-- [ ] 1.4 Test fixture flow in `scripts/verify.sh` (install → `lunate --version`); Windows bash refusal assertion
+- [x] 1.1 Platform map + refusal path (naming install.ps1) + usage/flags (`--version`, `--prefix`, `--help`)
+- [x] 1.2 Download + SHA256SUMS parsing + checksum verify (sha256sum/shasum) + abort-on-mismatch + temp cleanup
+- [x] 1.3 Install to prefix (default `$HOME/.local/bin`), chmod +x, version print, PATH hint
+- [x] 1.4 Test fixture flow in `scripts/verify.sh` (install → `lunate --version`); Windows bash refusal assertion
 
 ## 2. install.ps1
 
