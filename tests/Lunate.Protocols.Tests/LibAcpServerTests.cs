@@ -186,6 +186,52 @@ public sealed class LibAcpServerTests
     }
 
     [Fact]
+    public async Task Cancel_during_tool_execution_sends_the_failed_result_and_nothing_follows()
+    {
+        using var temp = new TempDirectory();
+        var model = new AcpScriptedChatClient().Enqueue(
+            AcpScripts.Call("call-1", "gate", new Dictionary<string, object?>()),
+            AcpScripts.ToolCalls()
+        );
+        var tool = new GatedTool();
+        await using AcpRuntime runtime = AcpTestSupport.Start(_ =>
+            AcpTestSupport.Harness(model, tool)
+        );
+
+        await runtime.Client.InitializeAsync(AcpTestSupport.InitializeRequest, Ct);
+        NewSessionResponse session = await runtime.Client.NewSessionAsync(
+            new NewSessionRequest { Cwd = temp.Root, McpServers = [] },
+            Ct
+        );
+
+        Task<PromptResponse> prompt = runtime.Client.PromptAsync(
+            new PromptRequest
+            {
+                SessionId = session.SessionId,
+                Prompt = [new TextContent { Text = "hello" }],
+            },
+            Ct
+        );
+        await tool.Started.WaitAsync(TimeSpan.FromSeconds(10), Ct);
+
+        await runtime.Client.CancelAsync(
+            new CancelNotification { SessionId = session.SessionId },
+            Ct
+        );
+        await runtime.State.WaitForUpdatesAsync(4, TimeSpan.FromSeconds(10), Ct);
+        PromptResponse response = await prompt.WaitAsync(TimeSpan.FromSeconds(10), Ct);
+
+        Assert.Equal(StopReason.Cancelled, response.StopReason);
+        Assert.Equal(
+            """{"sessionUpdate":"tool_call_update","toolCallId":"call-1","status":"failed","content":[{"type":"content","content":{"type":"text","text":"Tool call (gate) was cancelled by the user and was not executed."}}]}""",
+            AcpTestSupport.Wire(runtime.State.Updates[^1].Update)
+        );
+        Assert.Equal(4, runtime.State.UpdateCount);
+        await Task.Delay(200, Ct);
+        Assert.Equal(4, runtime.State.UpdateCount);
+    }
+
+    [Fact]
     public async Task Unknown_method_is_a_json_rpc_error()
     {
         var model = new AcpScriptedChatClient();

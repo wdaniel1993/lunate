@@ -230,6 +230,36 @@ internal sealed class AcpGatedChatClient : IChatClient
     public void Dispose() { }
 }
 
+/// <summary>Parks inside <see cref="ExecuteAsync"/> until the run's token is cancelled.</summary>
+internal sealed class GatedTool : ITool
+{
+    private readonly TaskCompletionSource started = new(
+        TaskCreationOptions.RunContinuationsAsynchronously
+    );
+
+    public string Name => "gate";
+
+    public string Description => "Parks until the run is cancelled.";
+
+    public JsonElement ParametersSchema { get; } =
+        JsonSerializer.SerializeToElement(new { type = "object", properties = new { } });
+
+    public ToolRisk Risk => ToolRisk.ReadOnly;
+
+    public Task Started => started.Task;
+
+    public async Task<ToolResult> ExecuteAsync(
+        JsonElement args,
+        ToolContext ctx,
+        CancellationToken ct
+    )
+    {
+        started.TrySetResult();
+        await Task.Delay(Timeout.Infinite, ct).ConfigureAwait(false);
+        return new ToolResult("unreachable", IsError: false);
+    }
+}
+
 internal sealed class EchoTool : ITool
 {
     public string Name => "echo";
