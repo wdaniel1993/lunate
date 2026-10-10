@@ -18,4 +18,4 @@
 
 ## 4. Gate
 
-- [ ] 4.1 `bash scripts/verify.sh` green; deviations recorded in design.md
+- [x] 4.1 `bash scripts/verify.sh` green; deviations recorded in design.md

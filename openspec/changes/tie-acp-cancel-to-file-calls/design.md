@@ -21,7 +21,8 @@
 
 ## Deviations
 
-(filled during apply; none yet)
+- Observation test shape: the pinned "no `TaskScheduler.UnobservedTaskException` fires" assertion proved cross-test-flaky in the full suite — a sibling test abandons a permission request whose connection-closed fault (the permission timeout path's late failure, out of scope for this change) finalizes inside the GC window. The test now flushes finalizable unobserved faults before hooking, then counts only events whose exception chain carries the abandoned request's own late error; the red run (continuation absent) fails with exactly that event, so the coverage still proves the fault is observed.
+- The observation continuation is attached as `_ = request.ContinueWith(...)` (the returned task discarded) instead of a statement expression, to stay clean under the analyzer/style gate; semantics are exactly as pinned.
 
 ## Seams
 
