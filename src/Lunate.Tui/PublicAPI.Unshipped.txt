@@ -170,6 +170,23 @@ override Lunate.Tui.ApprovalPromptModel.GetHashCode() -> int
 override Lunate.Tui.ApprovalPromptModel.ToString() -> string!
 static Lunate.Tui.ApprovalPromptModel.operator !=(Lunate.Tui.ApprovalPromptModel? left, Lunate.Tui.ApprovalPromptModel? right) -> bool
 static Lunate.Tui.ApprovalPromptModel.operator ==(Lunate.Tui.ApprovalPromptModel? left, Lunate.Tui.ApprovalPromptModel? right) -> bool
+Lunate.Tui.Completion
+Lunate.Tui.CompletionResult
+Lunate.Tui.CompletionResult.<Clone>$() -> Lunate.Tui.CompletionResult!
+Lunate.Tui.CompletionResult.Candidates.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Lunate.Tui.CompletionResult.Candidates.init -> void
+Lunate.Tui.CompletionResult.CompletionResult(string? Replacement, System.Collections.Generic.IReadOnlyList<string!>! Candidates) -> void
+Lunate.Tui.CompletionResult.Deconstruct(out string? Replacement, out System.Collections.Generic.IReadOnlyList<string!>! Candidates) -> void
+Lunate.Tui.CompletionResult.Equals(Lunate.Tui.CompletionResult? other) -> bool
+Lunate.Tui.CompletionResult.IsReplacement.get -> bool
+Lunate.Tui.CompletionResult.Replacement.get -> string?
+Lunate.Tui.CompletionResult.Replacement.init -> void
+override Lunate.Tui.CompletionResult.Equals(object? obj) -> bool
+override Lunate.Tui.CompletionResult.GetHashCode() -> int
+override Lunate.Tui.CompletionResult.ToString() -> string!
+static Lunate.Tui.Completion.Complete(string! text, System.Collections.Generic.IReadOnlyList<string!>! candidates) -> Lunate.Tui.CompletionResult!
+static Lunate.Tui.CompletionResult.operator !=(Lunate.Tui.CompletionResult? left, Lunate.Tui.CompletionResult? right) -> bool
+static Lunate.Tui.CompletionResult.operator ==(Lunate.Tui.CompletionResult? left, Lunate.Tui.CompletionResult? right) -> bool
 Lunate.Tui.GitBranchReader
 Lunate.Tui.KeyRouter
 static Lunate.Tui.GitBranchReader.Read(string! workingDirectory) -> string?
