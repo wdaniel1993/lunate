@@ -28,7 +28,7 @@ public sealed class FrameGoldenTests
         using var console = new FakeConsoleIO(scheduler, new ConsoleSize(40, 12));
         var area = new LiveArea(console, scheduler);
         area.Start();
-        area.SetFooter("test-model", 1200, 340, 12.5, "/repo", "main");
+        area.SetFooter(new StatusFooterModel("test-model", 1540, 12320, "/repo", "main"));
         area.SetTool("read src/foo.cs");
 
         Type(area, "hey");

@@ -7,7 +7,7 @@ namespace Lunate.Tui;
 /// <summary>
 /// Renders the status footer as one dim line with middle-dot separators, culture-invariantly.
 /// Narrow widths degrade deterministically: the branch drops first, then the directory; model and
-/// usage always survive.
+/// usage always survive. The live area reuses <see cref="PlainText"/> so one format serves both.
 /// </summary>
 public sealed class StatusFooterRenderer
 {
@@ -17,7 +17,14 @@ public sealed class StatusFooterRenderer
     public IRenderable Render(StatusFooterModel footer, int width)
     {
         ArgumentNullException.ThrowIfNull(footer);
+        var line = new StyledLine();
+        line.Add(PlainText(footer, width), SpanStyle.Dim);
+        return new Markup(line.ToMarkup() + "\n");
+    }
 
+    /// <summary>The footer's plain (unstyled) line, narrowed for the given terminal width.</summary>
+    internal static string PlainText(StatusFooterModel footer, int width)
+    {
         var segments = new List<string> { footer.Model, Usage(footer) };
         if (!string.IsNullOrEmpty(footer.WorkingDirectory))
         {
@@ -37,9 +44,7 @@ public sealed class StatusFooterRenderer
             segments.RemoveAt(segments.Count - 1);
         }
 
-        var line = new StyledLine();
-        line.Add(string.Join(Separator, segments), SpanStyle.Dim);
-        return new Markup(line.ToMarkup() + "\n");
+        return string.Join(Separator, segments);
     }
 
     internal static string FormatTokens(long tokens)

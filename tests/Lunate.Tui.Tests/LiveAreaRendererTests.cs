@@ -10,12 +10,7 @@ public sealed class LiveAreaRendererTests
             Input = new InputLineState("go", 2),
             TailText = "line one\nline two",
             ToolName = "read src/foo.cs",
-            Model = "test-model",
-            InputTokens = 1000,
-            OutputTokens = 200,
-            ContextPercent = 12.5,
-            WorkingDirectory = "/repo",
-            GitBranch = "main",
+            Footer = new StatusFooterModel("test-model", 1540, 12320, "/repo", "main"),
             Size = new ConsoleSize(60, 12),
         };
 
@@ -26,7 +21,7 @@ public sealed class LiveAreaRendererTests
                 "line one",
                 "line two",
                 "| read src/foo.cs",
-                "test-model · 1200 tok · 12.5% ctx · /repo · main",
+                "test-model · 1.5k/12.3k (13%) · /repo · main",
                 "> go",
             ],
             frame.Lines
@@ -64,24 +59,48 @@ public sealed class LiveAreaRendererTests
     {
         var state = new LiveAreaState
         {
-            Model = "m",
-            WorkingDirectory = "/w",
+            Footer = new StatusFooterModel("m", 10, 0, "/w", null),
             Size = new ConsoleSize(60, 8),
         };
 
         var frame = LiveAreaRenderer.Render(state);
 
-        Assert.Equal(["m · /w", "> "], frame.Lines);
+        Assert.Equal(["m · 10/0 · /w", "> "], frame.Lines);
     }
 
     [Fact]
-    public void Context_percent_is_culture_invariant()
+    public void Notice_and_approval_lines_render_between_tool_and_footer()
     {
-        var state = new LiveAreaState { ContextPercent = 12.5, Size = new ConsoleSize(60, 8) };
+        var state = new LiveAreaState
+        {
+            Notice = "retrying (attempt 2)",
+            Approval = new ApprovalPromptModel("bash", """{"command":"ls"}"""),
+            Size = new ConsoleSize(60, 8),
+        };
 
         var frame = LiveAreaRenderer.Render(state);
 
-        Assert.Contains("12.5% ctx", frame.Lines);
+        Assert.Equal(
+            ["retrying (attempt 2)", "Allow bash ls?  [y]es  [n]o  [a]lways this session", "> "],
+            frame.Lines
+        );
+    }
+
+    [Fact]
+    public void Footer_context_percent_is_culture_invariant()
+    {
+        var state = new LiveAreaState
+        {
+            Footer = new StatusFooterModel("m", 1540, 12320, "/w", null),
+            Size = new ConsoleSize(60, 8),
+        };
+
+        var frame = LiveAreaRenderer.Render(state);
+
+        Assert.Contains(
+            frame.Lines,
+            line => line.Contains("1.5k/12.3k (13%)", StringComparison.Ordinal)
+        );
     }
 
     [Fact]

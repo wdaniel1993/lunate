@@ -1,0 +1,26 @@
+para one
+para two
+tool read a.txt ok
+     1|alpha beta
+tool write note.txt ok
+wrote 1 lines to note.txt (created)
+match: created
+--- a/note.txt
++++ b/note.txt
+@@ -0,0 +1,1 @@
++one
+tool write b.txt ok
+wrote 1 lines to b.txt (created)
+match: created
+--- a/b.txt
++++ b/b.txt
+@@ -0,0 +1,1 @@
++two
+tool write c.txt ok
+wrote 1 lines to c.txt (created)
+match: created
+--- a/c.txt
++++ b/c.txt
+@@ -0,0 +1,1 @@
++three
+all done

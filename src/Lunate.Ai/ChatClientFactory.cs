@@ -63,6 +63,12 @@ public sealed class ChatClientFactory : IChatClientFactory
             inner = decorator(inner);
         }
 
+        if (string.Equals(model.Provider, AnthropicProvider, StringComparison.OrdinalIgnoreCase))
+        {
+            // Above the recorder so recordings (and replays) see the wire request.
+            inner = new AnthropicTurnMerge(inner);
+        }
+
         inner = new StreamAccumulator(inner);
 
         ChatClientBuilder builder = new(inner);

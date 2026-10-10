@@ -29,6 +29,9 @@ public sealed record AgentHarnessOptions
     /// <summary>The session to resume from and mirror into; null keeps the history in memory only.</summary>
     public Session? Session { get; init; }
 
+    /// <summary>The steering queue the loop drains before each model request; null disables steering.</summary>
+    public SteeringQueue? Steering { get; init; }
+
     /// <summary>The maximum nested tool call depth; deeper calls become error results.</summary>
     public int MaxNestedToolDepth { get; init; } = 5;
 
