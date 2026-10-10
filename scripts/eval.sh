@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# The task-suite runner (T-17): runs every task under eval/tasks through
-# `lunate -p --json --yolo` in a fresh copy of its fixture repo, checks the
-# result with the task's check.sh, and appends one row per suite run to
-# eval/results.csv. See eval/README.md for the task format and row schema.
+# The task-suite runner (T-17) and the head-to-head driver (T-35): runs every
+# task under eval/tasks through the selected tool in a fresh copy of its
+# fixture repo, checks the result with the task's check.sh, and appends one row
+# per suite run to eval/results.csv. See eval/README.md for the task format,
+# row schema and the per-tool metric mapping.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -15,14 +16,18 @@ DEFAULT_LUNATE_BIN="${ROOT}/src/Lunate.Coding/bin/Release/net10.0/lunate.dll"
 MODEL=""
 FILTER=""
 PHASE="3"
+TOOL="lunate"
 LUNATE_BIN="${DEFAULT_LUNATE_BIN}"
 KEEP=0
 
 usage() {
   cat <<'EOF'
-Usage: scripts/eval.sh --model <id> [--filter <task>] [--phase <n>] [--lunate-bin <path>] [--keep]
+Usage: scripts/eval.sh --model <id> [--tool <lunate|claude|opencode>] [--filter <task>] [--phase <n>] [--lunate-bin <path>] [--keep]
 
-  --model <id>        the exact model id pinned in the results row (LUNATE_MODEL for the run)
+  --model <id>        the model id for the run: exported as LUNATE_MODEL (lunate)
+                      or passed as -m (opencode). For claude the model comes from
+                      the run's own JSON output, so --model is not required.
+  --tool <name>       which tool to run: lunate (default), claude or opencode.
   --filter <task>     run one task by directory name
   --phase <n>         the phase column value (default: 3)
   --lunate-bin <path> the lunate build to run; a .dll is invoked via dotnet
@@ -35,6 +40,10 @@ while [ $# -gt 0 ]; do
   case "$1" in
     --model)
       MODEL="${2:?--model needs a value}"
+      shift 2
+      ;;
+    --tool)
+      TOOL="${2:?--tool needs a value}"
       shift 2
       ;;
     --filter)
@@ -65,8 +74,16 @@ while [ $# -gt 0 ]; do
   esac
 done
 
-if [ -z "$MODEL" ]; then
-  echo "eval: --model <id> is required; the exact model id is pinned in the results row" >&2
+case "$TOOL" in
+  lunate|claude|opencode) ;;
+  *)
+    echo "eval: --tool must be one of lunate, claude, opencode, but was '${TOOL}'" >&2
+    exit 2
+    ;;
+esac
+
+if [ "$TOOL" != "claude" ] && [ -z "$MODEL" ]; then
+  echo "eval: --model <id> is required for tool '${TOOL}'; the exact model id is pinned in the results row" >&2
   exit 2
 fi
 
@@ -77,14 +94,24 @@ case "$PHASE" in
     ;;
 esac
 
-if [ ! -e "$LUNATE_BIN" ]; then
-  echo "eval: lunate build '${LUNATE_BIN}' not found." >&2
-  echo "eval: build it with 'dotnet build src/Lunate.Coding -c Release' (or run scripts/verify.sh), or pass --lunate-bin <path>." >&2
-  exit 1
+if [ "$TOOL" = "lunate" ]; then
+  if [ ! -e "$LUNATE_BIN" ]; then
+    echo "eval: lunate build '${LUNATE_BIN}' not found." >&2
+    echo "eval: build it with 'dotnet build src/Lunate.Coding -c Release' (or run scripts/verify.sh), or pass --lunate-bin <path>." >&2
+    exit 1
+  fi
+else
+  if ! command -v "$TOOL" >/dev/null 2>&1; then
+    echo "eval: '${TOOL}' is not on PATH." >&2
+    exit 1
+  fi
+  if [ "$TOOL" = "claude" ] && ! command -v csharp-ls >/dev/null 2>&1; then
+    echo "eval: warning: csharp-ls is not on PATH; the C# LSP plugin will not start for claude runs" >&2
+  fi
 fi
 
 if ! command -v python3 >/dev/null 2>&1; then
-  echo "eval: python3 is required to parse the JSONL stream and write the results row" >&2
+  echo "eval: python3 is required to parse the tool output and write the results row" >&2
   exit 1
 fi
 
@@ -133,7 +160,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-echo "eval: model=${MODEL} phase=${PHASE} tasks=${#TASKS[@]}"
+echo "eval: tool=${TOOL} model=${MODEL:-<from output>} phase=${PHASE} tasks=${#TASKS[@]}"
 for name in "${TASKS[@]}"; do
   task_dir="${TASKS_DIR}/${name}"
   work="${WORK_ROOT}/${name}"
@@ -143,11 +170,29 @@ for name in "${TASKS[@]}"; do
   echo "==> ${name}"
   start_ns="$(python3 -c 'import time; print(time.monotonic_ns())')"
   set +e
-  (
-    cd "$work" &&
-      LUNATE_MODEL="$MODEL" "${LUNATE_CMD[@]}" -p --json --yolo "$(cat "${task_dir}/task.md")" \
-        >"${WORK_ROOT}/${name}.events.jsonl" 2>"${WORK_ROOT}/${name}.run.log"
-  )
+  case "$TOOL" in
+    lunate)
+      (
+        cd "$work" &&
+          LUNATE_MODEL="$MODEL" "${LUNATE_CMD[@]}" -p --json --yolo "$(cat "${task_dir}/task.md")" \
+            >"${WORK_ROOT}/${name}.events.jsonl" 2>"${WORK_ROOT}/${name}.run.log"
+      )
+      ;;
+    claude)
+      (
+        cd "$work" &&
+          claude -p "$(cat "${task_dir}/task.md")" --output-format json --dangerously-skip-permissions \
+            >"${WORK_ROOT}/${name}.events.jsonl" 2>"${WORK_ROOT}/${name}.run.log"
+      )
+      ;;
+    opencode)
+      (
+        cd "$work" &&
+          opencode run --format json --auto -m "$MODEL" "$(cat "${task_dir}/task.md")" \
+            >"${WORK_ROOT}/${name}.events.jsonl" 2>"${WORK_ROOT}/${name}.run.log"
+      )
+      ;;
+  esac
   run_exit=$?
   set -e
   end_ns="$(python3 -c 'import time; print(time.monotonic_ns())')"
@@ -161,43 +206,72 @@ for name in "${TASKS[@]}"; do
   set -e
 
   metrics="$(
-    python3 - "${WORK_ROOT}/${name}.events.jsonl" <<'PY'
+    python3 - "$TOOL" "${WORK_ROOT}/${name}.events.jsonl" <<'PY'
 import json
 import sys
 
+tool, path = sys.argv[1:3]
 steps = 0
 tokens = 0
 tiers = set()
-tool_names = {}
-try:
-    lines = [json.loads(line) for line in open(sys.argv[1], encoding="utf-8") if line.strip()]
-except FileNotFoundError:
-    lines = []
+model = ""
 
-for line in lines:
-    kind = line.get("type")
-    if kind == "tool_call_start":
-        tool_names[line.get("callId")] = line.get("toolName")
-    elif kind == "usage_updated":
-        steps += 1
-        usage = line.get("usage") or {}
-        total = usage.get("totalTokenCount")
-        if total is None:
-            total = (usage.get("inputTokenCount") or 0) + (usage.get("outputTokenCount") or 0)
-        tokens += total
-    elif kind == "tool_call_result":
-        details = line.get("details")
-        if (
-            isinstance(details, dict)
-            and "matchTier" in details
-            and tool_names.get(line.get("callId")) == "edit"
-        ):
-            tiers.add(details["matchTier"])
 
-print(f"{steps}\t{tokens}\t{';'.join(sorted(tiers)) if tiers else 'none'}")
+def read_lines():
+    try:
+        return [json.loads(line) for line in open(path, encoding="utf-8") if line.strip()]
+    except (FileNotFoundError, json.JSONDecodeError):
+        return []
+
+
+if tool == "lunate":
+    tool_names = {}
+    for line in read_lines():
+        kind = line.get("type")
+        if kind == "tool_call_start":
+            tool_names[line.get("callId")] = line.get("toolName")
+        elif kind == "usage_updated":
+            steps += 1
+            usage = line.get("usage") or {}
+            total = usage.get("totalTokenCount")
+            if total is None:
+                total = (usage.get("inputTokenCount") or 0) + (usage.get("outputTokenCount") or 0)
+            tokens += total
+        elif kind == "tool_call_result":
+            details = line.get("details")
+            if (
+                isinstance(details, dict)
+                and "matchTier" in details
+                and tool_names.get(line.get("callId")) == "edit"
+            ):
+                tiers.add(details["matchTier"])
+elif tool == "claude":
+    lines = read_lines()
+    payload = lines[0] if lines else {}
+    steps = int(payload.get("num_turns") or 0)
+    usage = payload.get("usage") or {}
+    tokens = (
+        (usage.get("input_tokens") or 0)
+        + (usage.get("cache_creation_input_tokens") or 0)
+        + (usage.get("cache_read_input_tokens") or 0)
+        + (usage.get("output_tokens") or 0)
+    )
+    tiers.add("n/a")
+    model_usage = payload.get("modelUsage") or {}
+    if model_usage:
+        model = next(iter(model_usage))
+elif tool == "opencode":
+    for line in read_lines():
+        if line.get("type") == "step_finish":
+            steps += 1
+            part = line.get("part") or {}
+            tokens += (part.get("tokens") or {}).get("total") or 0
+    tiers.add("n/a")
+
+print(f"{steps}\t{tokens}\t{';'.join(sorted(tiers)) if tiers else 'none'}\t{model}")
 PY
   )"
-  IFS=$'\t' read -r steps tokens edit_tiers <<<"$metrics"
+  IFS=$'\t' read -r steps tokens edit_tiers model_used <<<"$metrics"
 
   if [ "$check_exit" -eq 0 ]; then
     passed=1
@@ -210,23 +284,23 @@ PY
     echo "    check log: ${WORK_ROOT}/${name}.check.log" >&2
   fi
 
-  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
-    "$name" "$passed" "$run_exit" "$steps" "$tokens" "$seconds" "$edit_tiers" >>"$SUMMARY"
+  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+    "$name" "$passed" "$run_exit" "$steps" "$tokens" "$seconds" "$edit_tiers" "$model_used" >>"$SUMMARY"
 done
 
-python3 - "$SUMMARY" "$RESULTS_FILE" "$MODEL" "$PHASE" <<'PY'
+python3 - "$SUMMARY" "$RESULTS_FILE" "$MODEL" "$PHASE" "$TOOL" <<'PY'
 import csv
 import datetime
 import sys
 
-summary_path, results_path, model, phase = sys.argv[1:5]
+summary_path, results_path, model, phase, tool = sys.argv[1:6]
 rows = []
 with open(summary_path, encoding="utf-8") as summary:
     for line in summary:
         line = line.rstrip("\n")
         if not line:
             continue
-        name, passed, run_exit, steps, tokens, seconds, edit_tiers = line.split("\t")
+        name, passed, run_exit, steps, tokens, seconds, edit_tiers, model_used = line.split("\t")
         rows.append(
             {
                 "name": name,
@@ -236,6 +310,7 @@ with open(summary_path, encoding="utf-8") as summary:
                 "tokens": int(tokens),
                 "seconds": float(seconds),
                 "tiers": edit_tiers,
+                "model_used": model_used,
             }
         )
 
@@ -250,12 +325,13 @@ failures = [
     for row in rows
     if not row["passed"]
 ]
+run_models = sorted({row["model_used"] for row in rows if row["model_used"]})
 
 row = [
     datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d"),
     phase,
-    "lunate",
-    model,
+    tool,
+    run_models[0] if run_models else model,
     tasks,
     passed,
     f"{passed / tasks:.3f}",
