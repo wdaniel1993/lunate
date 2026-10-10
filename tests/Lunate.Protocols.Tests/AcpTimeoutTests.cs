@@ -109,15 +109,101 @@ public sealed class AcpTimeoutTests
         EventHandler<UnobservedTaskExceptionEventArgs> hook = (_, eventArgs) =>
         {
             eventArgs.SetObserved();
-            // Scope to this request's own late error: a sibling test abandons a permission
-            // request whose connection-closed fault (out of scope for the file seam) can also
-            // surface while the hook is attached.
+            // Scope to this request's own late error, kept as a robustness measure against
+            // other abandoned requests' faults surfacing while the hook is attached.
             if (
                 eventArgs
                     .Exception.Flatten()
                     .InnerExceptions.Any(exception =>
                         exception is RequestErrorException
                         && exception.Message.Contains("late boom", StringComparison.Ordinal)
+                    )
+            )
+            {
+                Interlocked.Increment(ref lateFailures);
+            }
+        };
+
+        TaskScheduler.UnobservedTaskException += hook;
+        try
+        {
+            for (var attempt = 0; attempt < 20 && Volatile.Read(ref lateFailures) == 0; attempt++)
+            {
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+                await Task.Delay(50, Ct);
+            }
+        }
+        finally
+        {
+            TaskScheduler.UnobservedTaskException -= hook;
+        }
+
+        Assert.True(
+            lateFailures == 0,
+            $"the abandoned request's late failure surfaced as an unobserved task exception {lateFailures} time(s)"
+        );
+    }
+
+    [Fact]
+    public async Task A_permission_failure_answered_after_the_timeout_is_observed()
+    {
+        await using RawAcpRuntime runtime = AcpTestSupport.StartRaw();
+        runtime.State.IgnorePermissions = true;
+        var log = new List<string>();
+        var approver = new ClientApprover(
+            runtime.Server,
+            new SessionId("timeout-session"),
+            log.Add,
+            TimeSpan.FromMilliseconds(100)
+        );
+        var tool = new RecordingRiskTool("write-probe", ToolRisk.Write);
+
+        bool approved = await approver
+            .ApproveAsync(tool, default, Ct)
+            .AsTask()
+            .WaitAsync(TimeSpan.FromSeconds(10), Ct);
+        Assert.False(approved);
+        Assert.Single(runtime.State.PermissionRequests);
+
+        // Flush faults finalizable since earlier tests before attaching the hook, so only
+        // this request's late failure is judged. The held request is still pending here.
+        for (var flush = 0; flush < 5; flush++)
+        {
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            await Task.Delay(20, Ct);
+        }
+
+        Assert.True(
+            runtime.State.FailHeldPermission(
+                RequestErrorException.InternalError(additionalMessage: "late permission boom")
+            )
+        );
+        // A follow-up round trip; the bounded GC loop below also gives the late error's
+        // processing on the agent's receive loop time to settle before each collection.
+        runtime.State.IgnorePermissions = false;
+        bool second = await approver
+            .ApproveAsync(tool, default, Ct)
+            .AsTask()
+            .WaitAsync(TimeSpan.FromSeconds(10), Ct);
+        Assert.False(second);
+
+        var lateFailures = 0;
+        EventHandler<UnobservedTaskExceptionEventArgs> hook = (_, eventArgs) =>
+        {
+            eventArgs.SetObserved();
+            // Scope to this request's own late error, kept as a robustness measure against
+            // other abandoned requests' faults surfacing while the hook is attached.
+            if (
+                eventArgs
+                    .Exception.Flatten()
+                    .InnerExceptions.Any(exception =>
+                        exception is RequestErrorException
+                        && exception.Message.Contains(
+                            "late permission boom",
+                            StringComparison.Ordinal
+                        )
                     )
             )
             {

@@ -176,6 +176,7 @@ internal sealed class RecordingClient : IClient
     private readonly List<WriteTextFileRequest> fileWrites = [];
     private readonly SemaphoreSlim signals = new(0);
     private TaskCompletionSource<ReadTextFileResponse>? heldRead;
+    private TaskCompletionSource<RequestPermissionResponse>? heldPermission;
 
     public int UpdateCount
     {
@@ -263,6 +264,21 @@ internal sealed class RecordingClient : IClient
         return held is not null && held.TrySetException(error);
     }
 
+    /// <summary>
+    /// Fails the permission request currently held by <see cref="IgnorePermissions"/> — the late
+    /// answer a client sends for a request the agent already abandoned; false when none is held.
+    /// </summary>
+    public bool FailHeldPermission(Exception error)
+    {
+        TaskCompletionSource<RequestPermissionResponse>? held;
+        lock (permissionRequests)
+        {
+            held = heldPermission;
+        }
+
+        return held is not null && held.TrySetException(error);
+    }
+
     /// <summary>When set, <c>fs/read_text_file</c> answers with this error.</summary>
     public Exception? FileReadError { get; set; }
 
@@ -292,9 +308,15 @@ internal sealed class RecordingClient : IClient
 
         if (IgnorePermissions)
         {
-            return new TaskCompletionSource<RequestPermissionResponse>(
+            var held = new TaskCompletionSource<RequestPermissionResponse>(
                 TaskCreationOptions.RunContinuationsAsynchronously
-            ).Task;
+            );
+            lock (permissionRequests)
+            {
+                heldPermission = held;
+            }
+
+            return held.Task;
         }
 
         return PermissionHandler is { } handler

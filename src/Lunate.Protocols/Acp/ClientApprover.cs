@@ -106,15 +106,22 @@ internal sealed class ClientApprover : IToolApprover
         };
 
         RequestPermissionResponse response;
+        var pending = _connection.RequestPermissionAsync(request, ct);
         try
         {
-            response = await _connection
-                .RequestPermissionAsync(request, ct)
-                .WaitAsync(_permissionTimeout)
-                .ConfigureAwait(false);
+            response = await pending.WaitAsync(_permissionTimeout).ConfigureAwait(false);
         }
         catch (TimeoutException)
         {
+            // The request is abandoned: observe a late failure so it cannot surface as an
+            // unobserved task exception. A late cancellation needs no observation.
+            _ = pending.ContinueWith(
+                static task => _ = task.Exception,
+                CancellationToken.None,
+                TaskContinuationOptions.OnlyOnFaulted
+                    | TaskContinuationOptions.ExecuteSynchronously,
+                TaskScheduler.Default
+            );
             Log(
                 string.Create(
                     CultureInfo.InvariantCulture,
