@@ -71,7 +71,12 @@ try {
     }
 
     Write-Host "`n==> test"
-    Invoke-Tests -Label 'test' -TestArgs @('test', '--solution', 'lunate.sln', '-c', $configuration)
+    # The Category=Perf budget check is excluded from the main pass and runs as
+    # its own step below, so the pass stays fast and the budget is still enforced.
+    Invoke-Tests -Label 'test' -TestArgs @('test', '--solution', 'lunate.sln', '-c', $configuration, '--filter-not-trait', 'Category=Perf')
+
+    Write-Host "`n==> path index budget"
+    Invoke-Tests -Label 'path index budget' -TestArgs @('test', '--project', 'tests/Lunate.Coding.Tests/Lunate.Coding.Tests.csproj', '-c', $configuration, '--no-build', '--filter-trait', 'Category=Perf')
 
     $binary = Join-Path (Join-Path $publishDir $env:RID) 'lunate.exe'
     # ADR-0008: release builds are single file + ReadyToRun WITHOUT compression
