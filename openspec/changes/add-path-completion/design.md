@@ -48,5 +48,7 @@
 
 ## Seams
 
-- Character-class corner cases and `\`-escapes in `.gitignore` are best-effort; documented, not exhaustively git-compatible.
+- Character-class corner cases and `\`-escapes in `.gitignore` are best-effort; specifically `[^…]` negates here while git treats `^` literally, and non-canonical `**` positions (e.g. `a**/b`) over-match. Not exhaustively git-compatible.
+- The index is rooted at the session's working directory: candidates are working-directory-relative and `.gitignore` files above it are not loaded — launch at the repo root for the full git chain. (Rooting at the repo root instead would emit paths the session's tools cannot resolve when launched from a subdirectory.)
+- The warm-query budget guards pathological implementations (e.g. O(n²)); the build budget over a real 20k-file walk is the meaningful assertion.
 - Completion inside quoted strings or mid-token edits beyond the cursor are out of scope (token must END at the cursor).
