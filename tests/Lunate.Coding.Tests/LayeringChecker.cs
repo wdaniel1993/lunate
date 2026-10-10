@@ -17,6 +17,7 @@ internal static class LayeringChecker
             ("Lunate.Roslyn.Tests", "Lunate.Roslyn"),
             ("Lunate.Roslyn.Tests", "Lunate.Agent"),
             ("Lunate.Coding", "Lunate.Agent"),
+            ("Lunate.Coding", "Lunate.Extensibility"),
             ("Lunate.Coding", "Lunate.Protocols"),
             ("Lunate.Coding", "Lunate.Tui"),
             ("Lunate.Agent.Tests", "Lunate.Agent"),
