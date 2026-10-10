@@ -9,21 +9,19 @@ public sealed class InteractiveSessionKeyTests
     {
         using var host = new InteractiveSessionHost();
         host.Client.Enqueue(Scripts.Text("ok"), Scripts.Stop());
-        host.Client.Gate(2);
         Task run = host.RunAsync();
 
         host.Console.SendText("hello");
         host.Console.SendEnter();
+
+        // The committed scrollback is the race-free completion signal: when the run ends, the
+        // live tail is cleared right after the commit, so a frame-based wait would race the
+        // commit and lose deterministically on the slower Windows runners.
         await host.WaitUntilAsync(() =>
         {
             host.Advance(33);
-            return host.Frames.Contains("ok", StringComparison.Ordinal);
+            return host.ScrollbackText.Contains("ok", StringComparison.Ordinal);
         });
-
-        // The streamed tail must be provably painted before the run may end: the run's end
-        // commits the tail and clears it, and without the gate the paint tick would race the
-        // commit (deterministically lost on the slower Windows runners).
-        host.Client.Release(2);
 
         host.Console.Send(new KeyEvent(KeyKind.Up, null, false, false, false));
         await host.WaitUntilAsync(() =>
