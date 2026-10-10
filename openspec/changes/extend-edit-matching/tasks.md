@@ -3,10 +3,10 @@
 ## 1. Matching engine (Coding)
 
 - [x] 1.1 Tier engine: per-tier match collection; zero → next tier; one → apply; several → `start_line` narrowing (|start - start_line| <= 3) → apply or the ambiguity error listing every match; no fall-through
-- [x] 1.2 Tier 3 `indent`: uniform non-empty whitespace prefix rule; apply with `new_text` re-indented; blank-line handling per design
+- [x] 1.2 Tier 3 `indent`: per-line whitespace-agnostic matching (guide 331-335); `new_text` re-indented by the first-non-blank-line offset; blank-line handling per design
 - [x] 1.3 Whitespace-significant refusal (`.py` `.yaml` `.yml` `.mk` `Makefile`, case-insensitive) with the pinned error text
 - [x] 1.4 Closest-region error: best trimmed-equal window (earliest on ties); pinned format; plain message when nothing resembles `old_text`
-- [x] 1.5 Unit tests: tier order, precedence (normalized-none → indent), start_line edges, prefix uniformity, blank lines
+- [x] 1.5 Unit tests: tier order, precedence (normalized-none → indent), start_line edges, per-line trimming, offset edges (positive/negative), blank lines
 
 ## 2. Tool surface (Coding)
 

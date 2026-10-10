@@ -2,7 +2,8 @@
 
 ## Structure
 
-- `src/Lunate.Coding/EditTool.cs`: the tier engine (per-tier match collection, start_line narrowing, tier 3, refusals, closest region), the optional `start_line` argument and the result string.
+- `src/Lunate.Coding/EditMatcher.cs`: the tier engine (per-tier match collection, start_line narrowing, tier 3, refusals, closest region) — extracted from `EditTool.cs` per deviation 1.
+- `src/Lunate.Coding/EditTool.cs`: the tool surface (arguments incl. optional `start_line`, validation, result string).
 - `src/Lunate.Tui/ToolBlocks/DiffRenderer.cs`: `TierStyle` gains `"indent"` next to `"normalized"` (flagged fallback).
 - `tests/Lunate.Coding.Tests/EditCorpusTests.cs`: request passthrough for `start_line` and `file_name`.
 - `tests/fixtures/edit-corpus/`: new cases (below).
