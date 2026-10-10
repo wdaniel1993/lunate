@@ -18,9 +18,9 @@
 
 ## 4. Tests
 
-- [ ] 4.1 In-process client over a pipe pair: handshake, session/new, ordered streaming + `end_turn`, cancel mid-run, unknown method, non-text block
-- [ ] 4.2 Mapper goldens (byte-exact payloads)
-- [ ] 4.3 stdout purity on the built binary (publish-dependent pattern)
+- [x] 4.1 In-process client over a pipe pair: handshake, session/new, ordered streaming + `end_turn`, cancel mid-run, unknown method, non-text block
+- [x] 4.2 Mapper goldens (byte-exact payloads)
+- [x] 4.3 stdout purity on the built binary (publish-dependent pattern)
 
 ## 5. Gate
 

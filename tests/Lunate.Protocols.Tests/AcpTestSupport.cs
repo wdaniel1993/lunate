@@ -1,0 +1,273 @@
+using System.IO.Pipelines;
+using System.Runtime.CompilerServices;
+using System.Text.Json;
+using Acp;
+using Acp.Schema;
+using Acp.Streaming;
+using Lunate.Agent;
+using Lunate.Protocols.Acp;
+using Microsoft.Extensions.AI;
+
+namespace Lunate.Protocols.Tests;
+
+/// <summary>
+/// An in-process ACP runtime: <see cref="LibAcpServer"/> on one end of a pipe pair, LibAcp's
+/// <see cref="ClientSideConnection"/> on the other (guide §Tests).
+/// </summary>
+internal static class AcpTestSupport
+{
+    public static AgentHarness Harness(IChatClient client, params ITool[] tools)
+    {
+        var registry = new ToolRegistry();
+        foreach (ITool tool in tools)
+        {
+            registry.Add(tool);
+        }
+
+        return new AgentHarness(client, registry, new AgentHarnessOptions { MaxRetries = 0 });
+    }
+
+    public static AcpRuntime Start(
+        Func<string, AgentHarness> createHarness,
+        Action<string>? log = null
+    )
+    {
+        var toServer = new Pipe();
+        var toClient = new Pipe();
+        var state = new RecordingClient();
+        Task serverTask = Task.Run(() =>
+            new LibAcpServer(log).RunAsync(
+                toServer.Reader.AsStream(),
+                toClient.Writer.AsStream(),
+                createHarness,
+                CancellationToken.None
+            )
+        );
+        var client = new ClientSideConnection(
+            _ => state,
+            new NdJsonStream(toClient.Reader.AsStream(), toServer.Writer.AsStream())
+        );
+        return new AcpRuntime(client, state, serverTask, toServer);
+    }
+
+    public static InitializeRequest InitializeRequest =>
+        new()
+        {
+            ProtocolVersion = Protocol.Version,
+            ClientInfo = new Implementation { Name = "test-client", Version = "0.0.1" },
+            ClientCapabilities = new ClientCapabilities(),
+        };
+
+    public static string Wire(SessionUpdate update)
+    {
+        ArgumentNullException.ThrowIfNull(update);
+        return JsonSerializer.Serialize(update, AcpJson.Options);
+    }
+}
+
+internal sealed class AcpRuntime(
+    ClientSideConnection client,
+    RecordingClient state,
+    Task serverTask,
+    Pipe toServer
+) : IAsyncDisposable
+{
+    public ClientSideConnection Client { get; } = client;
+
+    public RecordingClient State { get; } = state;
+
+    public async ValueTask DisposeAsync()
+    {
+        await Client.DisposeAsync().ConfigureAwait(false);
+        await toServer.Writer.CompleteAsync().ConfigureAwait(false);
+        await Task.WhenAny(serverTask, Task.Delay(TimeSpan.FromSeconds(10))).ConfigureAwait(false);
+    }
+}
+
+/// <summary>Records the <c>session/update</c> notifications the server sends.</summary>
+internal sealed class RecordingClient : IClient
+{
+    private readonly List<SessionNotification> updates = [];
+    private readonly SemaphoreSlim signals = new(0);
+
+    public int UpdateCount
+    {
+        get
+        {
+            lock (updates)
+            {
+                return updates.Count;
+            }
+        }
+    }
+
+    public IReadOnlyList<SessionNotification> Updates
+    {
+        get
+        {
+            lock (updates)
+            {
+                return [.. updates];
+            }
+        }
+    }
+
+    public Task SessionUpdateAsync(
+        SessionNotification notification,
+        CancellationToken cancellationToken
+    )
+    {
+        lock (updates)
+        {
+            updates.Add(notification);
+        }
+
+        signals.Release();
+        return Task.CompletedTask;
+    }
+
+    public Task<RequestPermissionResponse> RequestPermissionAsync(
+        RequestPermissionRequest request,
+        CancellationToken cancellationToken
+    ) =>
+        Task.FromResult(
+            new RequestPermissionResponse { Outcome = new CancelledPermissionOutcome() }
+        );
+
+    public async Task WaitForUpdatesAsync(int count, TimeSpan timeout, CancellationToken ct)
+    {
+        DateTime deadline = DateTime.UtcNow + timeout;
+        while (UpdateCount < count)
+        {
+            TimeSpan remaining = deadline - DateTime.UtcNow;
+            if (
+                remaining <= TimeSpan.Zero
+                || !await signals.WaitAsync(remaining, ct).ConfigureAwait(false)
+            )
+            {
+                throw new TimeoutException(
+                    $"Expected {count} session/update notifications, saw {UpdateCount}."
+                );
+            }
+        }
+    }
+}
+
+/// <summary>A scripted provider: one queued update list per model call, requests recorded.</summary>
+internal sealed class AcpScriptedChatClient : IChatClient
+{
+    private readonly Queue<ChatResponseUpdate[]> scripts = new();
+
+    public List<IReadOnlyList<ChatMessage>> Requests { get; } = [];
+
+    public string LastUserText => Requests[^1].Last(message => message.Role == ChatRole.User).Text;
+
+    public AcpScriptedChatClient Enqueue(params ChatResponseUpdate[] updates)
+    {
+        scripts.Enqueue(updates);
+        return this;
+    }
+
+    public Task<ChatResponse> GetResponseAsync(
+        IEnumerable<ChatMessage> messages,
+        ChatOptions? options = null,
+        CancellationToken cancellationToken = default
+    ) => Task.FromResult(Dequeue().ToChatResponse());
+
+    public async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
+        IEnumerable<ChatMessage> messages,
+        ChatOptions? options = null,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default
+    )
+    {
+        Requests.Add([.. messages]);
+        ChatResponseUpdate[] updates = Dequeue();
+        foreach (ChatResponseUpdate update in updates)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            yield return update;
+        }
+
+        await Task.CompletedTask;
+    }
+
+    public object? GetService(Type serviceType, object? serviceKey = null) => null;
+
+    public void Dispose() { }
+
+    private ChatResponseUpdate[] Dequeue() =>
+        scripts.Count > 0
+            ? scripts.Dequeue()
+            : throw new InvalidOperationException(
+                "AcpScriptedChatClient has no scripted response left."
+            );
+}
+
+/// <summary>Streams one chunk, then parks until the run is cancelled.</summary>
+internal sealed class AcpGatedChatClient : IChatClient
+{
+    public Task<ChatResponse> GetResponseAsync(
+        IEnumerable<ChatMessage> messages,
+        ChatOptions? options = null,
+        CancellationToken cancellationToken = default
+    ) => Task.FromResult(new ChatResponse());
+
+    public async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
+        IEnumerable<ChatMessage> messages,
+        ChatOptions? options = null,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default
+    )
+    {
+        yield return new ChatResponseUpdate(
+            ChatRole.Assistant,
+            [new Microsoft.Extensions.AI.TextContent("Partial")]
+        );
+        await Task.Delay(Timeout.Infinite, cancellationToken);
+    }
+
+    public object? GetService(Type serviceType, object? serviceKey = null) => null;
+
+    public void Dispose() { }
+}
+
+internal sealed class EchoTool : ITool
+{
+    public string Name => "echo";
+
+    public string Description => "Echoes the message argument.";
+
+    public JsonElement ParametersSchema { get; } =
+        JsonSerializer.SerializeToElement(
+            new
+            {
+                type = "object",
+                properties = new { message = new { type = "string" } },
+                required = new[] { "message" },
+            }
+        );
+
+    public ToolRisk Risk => ToolRisk.ReadOnly;
+
+    public Task<ToolResult> ExecuteAsync(JsonElement args, ToolContext ctx, CancellationToken ct) =>
+        Task.FromResult(
+            new ToolResult("echo: " + args.GetProperty("message").GetString(), IsError: false)
+        );
+}
+
+internal static class AcpScripts
+{
+    public static ChatResponseUpdate Text(string text) =>
+        new(ChatRole.Assistant, [new Microsoft.Extensions.AI.TextContent(text)]);
+
+    public static ChatResponseUpdate Call(
+        string callId,
+        string name,
+        IDictionary<string, object?> arguments
+    ) => new(ChatRole.Assistant, [new FunctionCallContent(callId, name, arguments)]);
+
+    public static ChatResponseUpdate ToolCalls() =>
+        new(ChatRole.Assistant, []) { FinishReason = ChatFinishReason.ToolCalls };
+
+    public static ChatResponseUpdate Stop() =>
+        new(ChatRole.Assistant, []) { FinishReason = ChatFinishReason.Stop };
+}

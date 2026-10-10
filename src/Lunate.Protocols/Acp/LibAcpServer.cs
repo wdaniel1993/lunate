@@ -57,6 +57,9 @@ public sealed class LibAcpServer(Action<string>? log = null) : IAcpServer
         )
         {
             ArgumentNullException.ThrowIfNull(request);
+            Log(
+                $"initialize: {request.ClientInfo?.Name ?? "unknown client"} {request.ClientInfo?.Version ?? "?"} (protocol {request.ProtocolVersion})"
+            );
             if (request.ProtocolVersion > Protocol.Version)
             {
                 Log(
@@ -121,6 +124,7 @@ public sealed class LibAcpServer(Action<string>? log = null) : IAcpServer
             }
             catch (Exception exception) when (exception is not OperationCanceledException)
             {
+                Log($"session/new: failed to create the session harness: {exception.Message}");
                 throw RequestErrorException.InternalError(
                     new { details = exception.Message },
                     $"failed to create the session harness: {exception.Message}"
