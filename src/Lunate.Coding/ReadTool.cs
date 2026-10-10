@@ -85,16 +85,16 @@ public sealed class ReadTool(Workspace workspace, ITextFileAccess? files = null)
             return Task.FromResult(Error($"{resolved.RelativePath} is a directory; use bash ls"));
         }
 
-        if (!_files.Exists(resolved.AbsolutePath))
-        {
-            return Task.FromResult(Error($"file not found: {resolved.RelativePath}"));
-        }
-
         string text;
         bool hasBom;
         (string Text, long Length)? probe;
         try
         {
+            if (!_files.Exists(resolved.AbsolutePath))
+            {
+                return Task.FromResult(Error($"file not found: {resolved.RelativePath}"));
+            }
+
             probe = _files.ReadPrefix(resolved.AbsolutePath, ProbeBytes);
             if (probe is { } bounded && bounded.Text.Contains('\0'))
             {
