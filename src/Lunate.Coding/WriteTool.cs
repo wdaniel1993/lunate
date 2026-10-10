@@ -87,9 +87,29 @@ public sealed class WriteTool(
             target,
             _ =>
             {
-                var created = !_files.Exists(target);
-                var oldText = created ? string.Empty : _files.ReadAllText(target);
-                _files.WriteAllText(target, content);
+                bool created;
+                string oldText;
+                try
+                {
+                    created = !_files.Exists(target);
+                    oldText = created ? string.Empty : _files.ReadAllText(target);
+                }
+                catch (Exception exception)
+                    when (exception is IOException or UnauthorizedAccessException)
+                {
+                    return Task.FromResult(Error($"could not be read: {exception.Message}"));
+                }
+
+                try
+                {
+                    _files.WriteAllText(target, content);
+                }
+                catch (Exception exception)
+                    when (exception is IOException or UnauthorizedAccessException)
+                {
+                    return Task.FromResult(Error($"could not be written: {exception.Message}"));
+                }
+
                 changes?.Notify(target);
 
                 var lines = CountLines(content);
