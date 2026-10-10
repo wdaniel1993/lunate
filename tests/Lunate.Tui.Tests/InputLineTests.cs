@@ -132,6 +132,17 @@ public sealed class InputLineTests
     }
 
     [Fact]
+    public void Shift_enter_inserts_a_newline_where_terminals_report_it()
+    {
+        var result = InputLine.Apply(
+            new InputLineState("ab", 1),
+            new KeyEvent(KeyKind.Enter, null, false, true, false)
+        );
+
+        Assert.Equal(new InputLineState("a\nb", 2), result);
+    }
+
+    [Fact]
     public void Ctrl_character_other_than_j_is_ignored()
     {
         var state = new InputLineState("ab", 1);

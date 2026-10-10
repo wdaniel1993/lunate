@@ -6,14 +6,22 @@ public sealed class PublicApiTests
 {
     private static readonly string[] DocumentedSurface =
     [
+        "Lunate.Tui.ApprovalChoice",
+        "Lunate.Tui.ApprovalPromptModel",
+        "Lunate.Tui.ApprovalPromptRenderer",
         "Lunate.Tui.ConsoleSize",
         "Lunate.Tui.ConsoleSupport",
+        "Lunate.Tui.GitBranchReader",
         "Lunate.Tui.IConsoleIO",
         "Lunate.Tui.InputLine",
         "Lunate.Tui.InputLineState",
         "Lunate.Tui.KeyEvent",
         "Lunate.Tui.KeyKind",
+        "Lunate.Tui.KeyRouter",
         "Lunate.Tui.MarkdownRenderer",
+        "Lunate.Tui.RoutedKey",
+        "Lunate.Tui.StatusFooterModel",
+        "Lunate.Tui.StatusFooterRenderer",
         "Lunate.Tui.TechnicalText",
         "Lunate.Tui.ToolBlockModel",
         "Lunate.Tui.ToolBlockRenderer",

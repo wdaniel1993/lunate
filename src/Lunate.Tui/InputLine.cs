@@ -26,6 +26,7 @@ public static class InputLine
             { Kind: KeyKind.Home } => MoveHome(state),
             { Kind: KeyKind.End } => MoveEnd(state),
             { Kind: KeyKind.Enter, Alt: true } => Insert(state, "\n"),
+            { Kind: KeyKind.Enter, Shift: true } => Insert(state, "\n"),
             { Kind: KeyKind.Character, Ctrl: true, Text: "j" } => Insert(state, "\n"),
             _ => state,
         };

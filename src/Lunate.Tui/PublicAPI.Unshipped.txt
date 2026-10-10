@@ -148,3 +148,60 @@ static Lunate.Tui.ToolBlockModel.operator !=(Lunate.Tui.ToolBlockModel? left, Lu
 static Lunate.Tui.ToolBlockModel.operator ==(Lunate.Tui.ToolBlockModel? left, Lunate.Tui.ToolBlockModel? right) -> bool
 static Lunate.Tui.ToolDiffInfo.operator !=(Lunate.Tui.ToolDiffInfo? left, Lunate.Tui.ToolDiffInfo? right) -> bool
 static Lunate.Tui.ToolDiffInfo.operator ==(Lunate.Tui.ToolDiffInfo? left, Lunate.Tui.ToolDiffInfo? right) -> bool
+Lunate.Tui.ApprovalChoice
+Lunate.Tui.ApprovalChoice.Always = 2 -> Lunate.Tui.ApprovalChoice
+Lunate.Tui.ApprovalChoice.Approve = 0 -> Lunate.Tui.ApprovalChoice
+Lunate.Tui.ApprovalChoice.Deny = 1 -> Lunate.Tui.ApprovalChoice
+Lunate.Tui.ApprovalPromptModel
+Lunate.Tui.ApprovalPromptModel.<Clone>$() -> Lunate.Tui.ApprovalPromptModel!
+Lunate.Tui.ApprovalPromptModel.ApprovalPromptModel(string! ToolName, string! ArgsSummary) -> void
+Lunate.Tui.ApprovalPromptModel.ArgsSummary.get -> string!
+Lunate.Tui.ApprovalPromptModel.ArgsSummary.init -> void
+Lunate.Tui.ApprovalPromptModel.Decide(Lunate.Tui.KeyEvent! key) -> Lunate.Tui.ApprovalChoice?
+Lunate.Tui.ApprovalPromptModel.Deconstruct(out string! ToolName, out string! ArgsSummary) -> void
+Lunate.Tui.ApprovalPromptModel.Equals(Lunate.Tui.ApprovalPromptModel? other) -> bool
+Lunate.Tui.ApprovalPromptModel.ToolName.get -> string!
+Lunate.Tui.ApprovalPromptModel.ToolName.init -> void
+Lunate.Tui.ApprovalPromptRenderer
+Lunate.Tui.ApprovalPromptRenderer.ApprovalPromptRenderer() -> void
+Lunate.Tui.ApprovalPromptRenderer.Render(Lunate.Tui.ApprovalPromptModel! prompt) -> Spectre.Console.Rendering.IRenderable!
+override Lunate.Tui.ApprovalPromptModel.Equals(object? obj) -> bool
+override Lunate.Tui.ApprovalPromptModel.GetHashCode() -> int
+override Lunate.Tui.ApprovalPromptModel.ToString() -> string!
+static Lunate.Tui.ApprovalPromptModel.operator !=(Lunate.Tui.ApprovalPromptModel? left, Lunate.Tui.ApprovalPromptModel? right) -> bool
+static Lunate.Tui.ApprovalPromptModel.operator ==(Lunate.Tui.ApprovalPromptModel? left, Lunate.Tui.ApprovalPromptModel? right) -> bool
+Lunate.Tui.GitBranchReader
+Lunate.Tui.KeyRouter
+static Lunate.Tui.GitBranchReader.Read(string! workingDirectory) -> string?
+static Lunate.Tui.KeyRouter.Route(Lunate.Tui.KeyEvent! key) -> Lunate.Tui.RoutedKey
+Lunate.Tui.RoutedKey
+Lunate.Tui.RoutedKey.Cancel = 2 -> Lunate.Tui.RoutedKey
+Lunate.Tui.RoutedKey.ClearOrQuit = 3 -> Lunate.Tui.RoutedKey
+Lunate.Tui.RoutedKey.Edit = 0 -> Lunate.Tui.RoutedKey
+Lunate.Tui.RoutedKey.HistoryNext = 6 -> Lunate.Tui.RoutedKey
+Lunate.Tui.RoutedKey.HistoryPrevious = 5 -> Lunate.Tui.RoutedKey
+Lunate.Tui.RoutedKey.ModelPicker = 4 -> Lunate.Tui.RoutedKey
+Lunate.Tui.RoutedKey.Submit = 1 -> Lunate.Tui.RoutedKey
+Lunate.Tui.StatusFooterModel
+Lunate.Tui.StatusFooterModel.<Clone>$() -> Lunate.Tui.StatusFooterModel!
+Lunate.Tui.StatusFooterModel.ContextWindow.get -> long
+Lunate.Tui.StatusFooterModel.ContextWindow.init -> void
+Lunate.Tui.StatusFooterModel.Deconstruct(out string! Model, out long TokensUsed, out long ContextWindow, out string! WorkingDirectory, out string? GitBranch) -> void
+Lunate.Tui.StatusFooterModel.Equals(Lunate.Tui.StatusFooterModel? other) -> bool
+Lunate.Tui.StatusFooterModel.GitBranch.get -> string?
+Lunate.Tui.StatusFooterModel.GitBranch.init -> void
+Lunate.Tui.StatusFooterModel.Model.get -> string!
+Lunate.Tui.StatusFooterModel.Model.init -> void
+Lunate.Tui.StatusFooterModel.StatusFooterModel(string! Model, long TokensUsed, long ContextWindow, string! WorkingDirectory, string? GitBranch) -> void
+Lunate.Tui.StatusFooterModel.TokensUsed.get -> long
+Lunate.Tui.StatusFooterModel.TokensUsed.init -> void
+Lunate.Tui.StatusFooterModel.WorkingDirectory.get -> string!
+Lunate.Tui.StatusFooterModel.WorkingDirectory.init -> void
+Lunate.Tui.StatusFooterRenderer
+Lunate.Tui.StatusFooterRenderer.Render(Lunate.Tui.StatusFooterModel! footer, int width) -> Spectre.Console.Rendering.IRenderable!
+Lunate.Tui.StatusFooterRenderer.StatusFooterRenderer() -> void
+override Lunate.Tui.StatusFooterModel.Equals(object? obj) -> bool
+override Lunate.Tui.StatusFooterModel.GetHashCode() -> int
+override Lunate.Tui.StatusFooterModel.ToString() -> string!
+static Lunate.Tui.StatusFooterModel.operator !=(Lunate.Tui.StatusFooterModel? left, Lunate.Tui.StatusFooterModel? right) -> bool
+static Lunate.Tui.StatusFooterModel.operator ==(Lunate.Tui.StatusFooterModel? left, Lunate.Tui.StatusFooterModel? right) -> bool

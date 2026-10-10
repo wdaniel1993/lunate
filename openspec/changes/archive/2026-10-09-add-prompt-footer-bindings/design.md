@@ -2,7 +2,7 @@
 
 ## Structure
 
-New files in `src/Lunate.Tui/Interaction/`: `KeyRouter.cs` (public enum + pure route), `CtrlCQuitWindow.cs` (public), `ApprovalPrompt.cs` + `ApprovalPromptRenderer.cs` (public), `StatusFooter.cs` + `StatusFooterRenderer.cs` + `GitBranchReader.cs` (public). Goldens under `tests/Lunate.Tui.Tests/fixtures/prompt-footer/`. No new packages (Microsoft.Reactive.Testing already present for virtual time).
+New files in `src/Lunate.Tui/Interaction/`: `KeyRouter.cs` (public enum + pure route), `CtrlCQuitWindow.cs` (internal — an `IScheduler` constructor cannot be public under ADR-0007; see Deviations 1), `ApprovalPrompt.cs` + `ApprovalPromptRenderer.cs` (public), `StatusFooter.cs` + `StatusFooterRenderer.cs` + `GitBranchReader.cs` (public). Goldens under `tests/Lunate.Tui.Tests/fixtures/prompt-footer/`. No new packages (Microsoft.Reactive.Testing already present for virtual time).
 
 ## Key routing (one meaning each, per the guide's table)
 
@@ -59,8 +59,41 @@ routed intent → component effect), plus per-component falsifiers.
 
 Wiring to a running session: steering queue, Esc-cancel semantics, pickers UI, history storage
 (`~/.lunate/history`), Tab completion, footer notices for armed-quit — all T-22. Approval risk levels
-and "always" persistence are adapter concerns (T-22/T-28).
+and "always" persistence are adapter concerns (T-22/T-28). T-22 also reconciles this footer's compact
+k/M token format with `LiveAreaRenderer`'s existing internal footer form (raw `tok`/`% ctx`): this
+renderer is the status/scrollback variant, that one the live-area variant — one format wins at wiring.
 
 ## Deviations
 
-(Filled during apply; empty at proposal time.)
+Recorded during apply (T-21):
+
+- **`CtrlCQuitWindow` and `CtrlCAction` are internal, not public.** The constructor takes
+  `IScheduler`, and `PublicApiTests.No_public_member_exposes_a_system_reactive_type` plus the
+  card's "no Rx types public" rule forbid a public member exposing a `System.Reactive` type.
+  The window therefore joins `LiveArea`/`KeyReader` as an internal component; tests and the T-22
+  wiring in `lunate` reach it through `InternalsVisibleTo`.
+- **Footer token format** pins one decimal in k/M segments (`12.4k`, `128.0k`, `1.0M`) and
+  switches to M as soon as the k value rounds to 1000.0 (`999_999 → 1.0M`, `999_949 → 999.9k`),
+  per the apply brief; the design example's `128k` above was informal.
+- **Percent is the rounded integer** (`12_400/128_000 → 10%`), not truncated; this matches the
+  design example.
+- **Zero context window** renders `tokens/0` and omits only the percent segment.
+- **Decision keys live on `ApprovalPromptModel.Decide`** (instance method, pure) rather than a
+  free-standing helper; the renderer calls `ToolArgsSummary` itself so raw JSON works.
+- **Shift+Enter** inserts a newline best-effort (`InputLine.Apply`) and routes to `RoutedKey.Edit`,
+  never `Submit`; the guide documents Alt+Enter and Ctrl+J because terminals usually cannot
+  report Shift+Enter, but the apply brief asked for the fallback.
+- **Unreadable-HEAD test** simulates the failure with a directory named `HEAD` (portable across
+  runners) instead of Unix file modes.
+- **Extreme narrow widths**: the renderer keeps model and usage whole even when the line exceeds
+  the requested width; the client clips. The specification only requires that they survive.
+
+## T-22 seams
+
+- `ApprovalRequested(ToolName, Args)` maps to `ApprovalPromptModel` (raw args summarized with
+  `ToolArgsSummary`, which the renderer already applies) and the `Decide` result; "always"
+  session memory stays in the adapter (T-22/T-28).
+- The armed hint (`CtrlCQuitWindow.IsArmed` + `Hint`) is shown by the live-area footer notice in
+  T-22; nothing is wired here.
+- `KeyRouter.Route` feeds the session loop; `RoutedKey.ClearOrQuit` is resolved by
+  `CtrlCQuitWindow.Press(inputEmpty)`, with the input-empty flag T-22 supplies.
