@@ -175,6 +175,8 @@ internal sealed class RecordingClient : IClient
     private readonly List<ReadTextFileRequest> fileReads = [];
     private readonly List<WriteTextFileRequest> fileWrites = [];
     private readonly SemaphoreSlim signals = new(0);
+    private TaskCompletionSource<ReadTextFileResponse>? heldRead;
+    private TaskCompletionSource<RequestPermissionResponse>? heldPermission;
 
     public int UpdateCount
     {
@@ -247,6 +249,36 @@ internal sealed class RecordingClient : IClient
     /// <summary>When true, every <c>fs/read_text_file</c> request is left unanswered.</summary>
     public bool IgnoreFileReads { get; set; }
 
+    /// <summary>
+    /// Fails the read request currently held by <see cref="IgnoreFileReads"/> — the late answer a
+    /// client sends for a request the agent already abandoned; false when none is held.
+    /// </summary>
+    public bool FailHeldRead(Exception error)
+    {
+        TaskCompletionSource<ReadTextFileResponse>? held;
+        lock (fileReads)
+        {
+            held = heldRead;
+        }
+
+        return held is not null && held.TrySetException(error);
+    }
+
+    /// <summary>
+    /// Fails the permission request currently held by <see cref="IgnorePermissions"/> — the late
+    /// answer a client sends for a request the agent already abandoned; false when none is held.
+    /// </summary>
+    public bool FailHeldPermission(Exception error)
+    {
+        TaskCompletionSource<RequestPermissionResponse>? held;
+        lock (permissionRequests)
+        {
+            held = heldPermission;
+        }
+
+        return held is not null && held.TrySetException(error);
+    }
+
     /// <summary>When set, <c>fs/read_text_file</c> answers with this error.</summary>
     public Exception? FileReadError { get; set; }
 
@@ -276,9 +308,15 @@ internal sealed class RecordingClient : IClient
 
         if (IgnorePermissions)
         {
-            return new TaskCompletionSource<RequestPermissionResponse>(
+            var held = new TaskCompletionSource<RequestPermissionResponse>(
                 TaskCreationOptions.RunContinuationsAsynchronously
-            ).Task;
+            );
+            lock (permissionRequests)
+            {
+                heldPermission = held;
+            }
+
+            return held.Task;
         }
 
         return PermissionHandler is { } handler
@@ -298,11 +336,18 @@ internal sealed class RecordingClient : IClient
             fileReads.Add(request);
         }
 
+        signals.Release();
         if (IgnoreFileReads)
         {
-            return new TaskCompletionSource<ReadTextFileResponse>(
+            var held = new TaskCompletionSource<ReadTextFileResponse>(
                 TaskCreationOptions.RunContinuationsAsynchronously
-            ).Task;
+            );
+            lock (fileReads)
+            {
+                heldRead = held;
+            }
+
+            return held.Task;
         }
 
         if (FileReadError is { } error)
@@ -343,6 +388,24 @@ internal sealed class RecordingClient : IClient
             {
                 throw new TimeoutException(
                     $"Expected {count} session/update notifications, saw {UpdateCount}."
+                );
+            }
+        }
+    }
+
+    public async Task WaitForFileReadsAsync(int count, TimeSpan timeout, CancellationToken ct)
+    {
+        DateTime deadline = DateTime.UtcNow + timeout;
+        while (FileReads.Count < count)
+        {
+            TimeSpan remaining = deadline - DateTime.UtcNow;
+            if (
+                remaining <= TimeSpan.Zero
+                || !await signals.WaitAsync(remaining, ct).ConfigureAwait(false)
+            )
+            {
+                throw new TimeoutException(
+                    $"Expected {count} fs/read_text_file requests, saw {FileReads.Count}."
                 );
             }
         }

@@ -12,14 +12,16 @@ namespace Lunate.Protocols.Acp;
 /// marks are the client's concern: reads report none and writes carry only the text. The ACP read
 /// is line-addressed, so a bounded byte probe cannot be expressed; the client owns the file and
 /// <see cref="ReadPrefix"/> always reports null. Every round trip is bounded (default 30 s): a
-/// request that outlives its timeout fails as an I/O error. A client error with code -32002 maps
-/// to not-found and any other non-zero code to an I/O error — the code alone decides; only an
-/// error without a code falls back to the message, so <see cref="Exists"/> never masks one
+/// request that outlives its timeout fails as an I/O error, while a session cancel cancels the
+/// request through the run's token so the call stops promptly instead. A client error with code
+/// -32002 maps to not-found and any other non-zero code to an I/O error — the code alone decides;
+/// only an error without a code falls back to the message, so <see cref="Exists"/> never masks one
 /// failure as another.
 /// </summary>
 internal sealed class ClientTextFileAccess(
     AgentSideConnection connection,
     SessionId sessionId,
+    SessionRunState state,
     TimeSpan? timeout = null
 ) : ITextFileAccess
 {
@@ -58,7 +60,7 @@ internal sealed class ClientTextFileAccess(
         Await(
             connection.ReadTextFileAsync(
                 new ReadTextFileRequest { SessionId = sessionId, Path = path },
-                CancellationToken.None
+                state.Token
             )
         ).Content;
 
@@ -71,7 +73,7 @@ internal sealed class ClientTextFileAccess(
                     Path = path,
                     Content = content,
                 },
-                CancellationToken.None
+                state.Token
             )
         );
 
@@ -83,6 +85,15 @@ internal sealed class ClientTextFileAccess(
         }
         catch (TimeoutException exception)
         {
+            // The request is abandoned: observe a late failure so it cannot surface as an
+            // unobserved task exception. A late cancellation needs no observation.
+            _ = request.ContinueWith(
+                static task => _ = task.Exception,
+                CancellationToken.None,
+                TaskContinuationOptions.OnlyOnFaulted
+                    | TaskContinuationOptions.ExecuteSynchronously,
+                TaskScheduler.Default
+            );
             throw new IOException(
                 string.Create(
                     CultureInfo.InvariantCulture,
