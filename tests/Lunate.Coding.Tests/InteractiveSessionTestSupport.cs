@@ -18,7 +18,7 @@ internal sealed class ScriptedConsoleIO : IConsoleIO
     private readonly Channel<KeyEvent> _keys = Channel.CreateUnbounded<KeyEvent>();
     private readonly List<string> _writes = [];
 
-    public bool IsInteractive => false;
+    public bool IsInteractive { get; set; }
 
     public ConsoleSize Size { get; set; } = new(80, 24);
 
