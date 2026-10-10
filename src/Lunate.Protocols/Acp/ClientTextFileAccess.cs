@@ -12,9 +12,10 @@ namespace Lunate.Protocols.Acp;
 /// marks are the client's concern: reads report none and writes carry only the text. The ACP read
 /// is line-addressed, so a bounded byte probe cannot be expressed; the client owns the file and
 /// <see cref="ReadPrefix"/> always reports null. Every round trip is bounded (default 30 s): a
-/// request that outlives its timeout fails as an I/O error. A client error that means the file is
-/// missing maps to not-found; other client errors map to I/O errors, so <see cref="Exists"/> never
-/// masks them.
+/// request that outlives its timeout fails as an I/O error. A client error with code -32002 maps
+/// to not-found and any other non-zero code to an I/O error — the code alone decides; only an
+/// error without a code falls back to the message, so <see cref="Exists"/> never masks one
+/// failure as another.
 /// </summary>
 internal sealed class ClientTextFileAccess(
     AgentSideConnection connection,
@@ -25,6 +26,8 @@ internal sealed class ClientTextFileAccess(
     internal const int DefaultTimeoutSeconds = 30;
 
     private const int ResourceNotFoundCode = -32002;
+
+    private const int NoCode = 0;
 
     private readonly TimeSpan _timeout = timeout ?? TimeSpan.FromSeconds(DefaultTimeoutSeconds);
 
@@ -97,8 +100,15 @@ internal sealed class ClientTextFileAccess(
     }
 
     private static bool IsMissingFile(RequestErrorException exception) =>
-        exception.Code == ResourceNotFoundCode
-        || exception.Message.Contains("not found", StringComparison.OrdinalIgnoreCase)
-        || exception.Message.Contains("ENOENT", StringComparison.OrdinalIgnoreCase)
-        || exception.Message.Contains("no such file", StringComparison.OrdinalIgnoreCase);
+        exception.Code switch
+        {
+            ResourceNotFoundCode => true,
+            NoCode => HasMissingFileMessage(exception.Message),
+            _ => false,
+        };
+
+    private static bool HasMissingFileMessage(string message) =>
+        message.Contains("not found", StringComparison.OrdinalIgnoreCase)
+        || message.Contains("ENOENT", StringComparison.OrdinalIgnoreCase)
+        || message.Contains("no such file", StringComparison.OrdinalIgnoreCase);
 }

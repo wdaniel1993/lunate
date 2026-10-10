@@ -200,6 +200,38 @@ public sealed class AcpFileSystemTests
         Assert.Contains("boom", result, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task A_non_not_found_code_is_not_masked_by_a_not_found_message()
+    {
+        using var temp = new TempDirectory();
+
+        string result = await ReadThroughClientAsync(
+            temp,
+            ReadScript("missing.txt"),
+            runtime =>
+                runtime.State.FileReadError = RequestErrorException.InternalError(
+                    additionalMessage: "the buffer is not found"
+                )
+        );
+
+        Assert.Equal("could not be read: Internal error: the buffer is not found", result);
+    }
+
+    [Fact]
+    public async Task A_code_less_error_falls_back_to_the_not_found_message()
+    {
+        using var temp = new TempDirectory();
+
+        string result = await ReadThroughClientAsync(
+            temp,
+            ReadScript("missing.txt"),
+            runtime =>
+                runtime.State.FileReadError = new RequestErrorException(0, "ENOENT: no such file")
+        );
+
+        Assert.Equal("file not found: missing.txt", result);
+    }
+
     private static AgentHarness Harness(IChatClient client, AcpSessionContext context)
     {
         var workspace = new Workspace(context.Cwd);
