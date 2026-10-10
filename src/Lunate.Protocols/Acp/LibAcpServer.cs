@@ -58,7 +58,10 @@ public sealed class LibAcpServer(Action<string>? log = null) : IAcpServer
         {
             ArgumentNullException.ThrowIfNull(request);
             Log(
-                $"initialize: {request.ClientInfo?.Name ?? "unknown client"} {request.ClientInfo?.Version ?? "?"} (protocol {request.ProtocolVersion})"
+                string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"initialize: {request.ClientInfo?.Name ?? "unknown client"} {request.ClientInfo?.Version ?? "?"} (protocol {request.ProtocolVersion})"
+                )
             );
             if (request.ProtocolVersion > Protocol.Version)
             {

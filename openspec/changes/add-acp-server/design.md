@@ -35,7 +35,19 @@ One real Zed session before Phase 5 closes (guide §Tests) — checklist on the 
 
 ## Deviations
 
-(filled during apply; none yet)
+1. **The harness factory carries the session cwd.** The pinned interface took a parameterless
+   `Func<AgentHarness>`, but session/new also pins "the session cwd as the harness workspace", and
+   a parameterless factory cannot carry the cwd. `IAcpServer.RunAsync` (and `LibAcpServer`) take
+   `Func<string, AgentHarness>` — the parameter is the ACP session cwd — so the cwd-to-workspace
+   mapping is implementable and testable. API shape only; no behaviour change.
+2. **ACP mode lives in `AcpMode.cs`.** `Cli.cs` keeps the dispatch, the mutual-exclusion error and
+   the help text; the stdio wiring, stderr logging and the production harness factory sit in
+   `src/Lunate.Coding/AcpMode.cs` so `Cli.cs` stays small.
+3. **LibAcp API shape (verified against the package and its source).** `SessionId`/`ToolCallId`
+   are record structs, `IAgent.AuthenticateAsync` returns `Task<AuthenticateResponse?>`, and the
+   optional agent methods default to `MethodNotFound`. LibAcp dispatches every inbound message on
+   its own task and serializes writes per connection, so `session/cancel` reaches the adapter
+   while a prompt is in flight — the pinned cancel behaviour holds. No blocking deviation.
 
 ## Seams
 
