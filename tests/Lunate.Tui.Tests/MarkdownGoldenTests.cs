@@ -1,3 +1,4 @@
+using Spectre.Console;
 using Spectre.Console.Testing;
 
 namespace Lunate.Tui.Tests;
@@ -210,6 +211,30 @@ public sealed class MarkdownGoldenTests
 
         GoldenFiles.AssertMatchesText(
             Path.Combine(GoldensDirectory, name + ".txt"),
+            console.Output
+        );
+    }
+
+    [Fact]
+    public void Ascii_mode_replaces_bullets_and_quote_prefixes()
+    {
+        string markdown = """
+            - bullet one
+            - bullet two
+
+            > quoted line
+            > continued
+            """;
+        var console = new TestConsole();
+        console.Profile.Width = 80;
+        console.Write(
+            new MarkdownRenderer(
+                new TerminalCapabilities(ColorSystemSupport.NoColors, Unicode: false)
+            ).Render(markdown)
+        );
+
+        GoldenFiles.AssertMatchesText(
+            Path.Combine(GoldensDirectory, "ascii-lists-quote.txt"),
             console.Output
         );
     }

@@ -8,9 +8,9 @@ namespace Lunate.Tui;
 
 internal static partial class MarkdownAstMapper
 {
-    public static string Map(MarkdownDocument document)
+    public static string Map(MarkdownDocument document, TerminalCapabilities capabilities)
     {
-        var lines = RenderBlocks(document);
+        var lines = RenderBlocks(document, capabilities);
         while (lines.Count > 0 && lines[0].IsBlank)
         {
             lines.RemoveAt(0);
@@ -30,7 +30,10 @@ internal static partial class MarkdownAstMapper
         return builder.ToString();
     }
 
-    private static List<StyledLine> RenderBlocks(IEnumerable<Block> blocks)
+    private static List<StyledLine> RenderBlocks(
+        IEnumerable<Block> blocks,
+        TerminalCapabilities capabilities
+    )
     {
         var lines = new List<StyledLine>();
         var first = true;
@@ -42,7 +45,7 @@ internal static partial class MarkdownAstMapper
             }
 
             first = false;
-            AppendBlock(block, lines);
+            AppendBlock(block, lines, capabilities);
         }
 
         CollapseBlankLines(lines);
@@ -60,7 +63,11 @@ internal static partial class MarkdownAstMapper
         }
     }
 
-    private static void AppendBlock(Block block, List<StyledLine> lines)
+    private static void AppendBlock(
+        Block block,
+        List<StyledLine> lines,
+        TerminalCapabilities capabilities
+    )
     {
         switch (block)
         {
@@ -76,10 +83,10 @@ internal static partial class MarkdownAstMapper
                 lines.AddRange(RenderBlockInlines(paragraph.Inline, SpanStyle.Plain));
                 break;
             case ListBlock list:
-                lines.AddRange(RenderList(list));
+                lines.AddRange(RenderList(list, capabilities));
                 break;
             case QuoteBlock quote:
-                lines.AddRange(RenderQuote(quote));
+                lines.AddRange(RenderQuote(quote, capabilities));
                 break;
             case FencedCodeBlock fenced:
                 AppendCode(fenced.Info, fenced.Lines, lines);
@@ -99,21 +106,22 @@ internal static partial class MarkdownAstMapper
                 AppendRawLines(leaf.Lines, lines);
                 break;
             case ContainerBlock container:
-                lines.AddRange(RenderBlocks(container));
+                lines.AddRange(RenderBlocks(container, capabilities));
                 break;
         }
     }
 
-    private static List<StyledLine> RenderList(ListBlock list)
+    private static List<StyledLine> RenderList(ListBlock list, TerminalCapabilities capabilities)
     {
         var lines = new List<StyledLine>();
         int number = OrderedStart(list);
         foreach (var child in list)
         {
-            var content = RenderItem((ListItemBlock)child);
-            string marker = list.IsOrdered
-                ? number.ToString(CultureInfo.InvariantCulture) + ". "
-                : "• ";
+            var content = RenderItem((ListItemBlock)child, capabilities);
+            string marker =
+                list.IsOrdered ? number.ToString(CultureInfo.InvariantCulture) + ". "
+                : capabilities.Unicode ? "• "
+                : "- ";
             for (var i = 0; i < content.Count; i++)
             {
                 lines.Add(PrefixLine(content[i], i == 0 ? marker : "  ", SpanStyle.Plain));
@@ -125,7 +133,10 @@ internal static partial class MarkdownAstMapper
         return lines;
     }
 
-    private static List<StyledLine> RenderItem(ListItemBlock item)
+    private static List<StyledLine> RenderItem(
+        ListItemBlock item,
+        TerminalCapabilities capabilities
+    )
     {
         var lines = new List<StyledLine>();
         var first = true;
@@ -137,19 +148,19 @@ internal static partial class MarkdownAstMapper
             }
 
             first = false;
-            AppendBlock(child, lines);
+            AppendBlock(child, lines, capabilities);
         }
 
         CollapseBlankLines(lines);
         return lines;
     }
 
-    private static List<StyledLine> RenderQuote(QuoteBlock quote)
+    private static List<StyledLine> RenderQuote(QuoteBlock quote, TerminalCapabilities capabilities)
     {
         var lines = new List<StyledLine>();
-        foreach (var line in RenderBlocks(quote))
+        foreach (var line in RenderBlocks(quote, capabilities))
         {
-            lines.Add(PrefixLine(line, "│ ", SpanStyle.Dim));
+            lines.Add(PrefixLine(line, capabilities.Unicode ? "│ " : "| ", SpanStyle.Dim));
         }
 
         return lines;

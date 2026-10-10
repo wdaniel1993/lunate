@@ -8,10 +8,10 @@
 
 ## 2. Fallback wiring
 
-- [ ] 2.1 `MarkdownAstMapper` ASCII variants (`• ` → `- `, `│ ` → `| `) via the capabilities parameter
-- [ ] 2.2 Steering echo `» ` → `> ` in ASCII mode (InteractiveSession)
-- [ ] 2.3 Scrollback console colour from the detected capabilities (non-interactive stays colourless)
-- [ ] 2.4 ASCII golden (markdown bullets + blockquote through the test console) + echo fallback test
+- [x] 2.1 `MarkdownAstMapper` ASCII variants (`• ` → `- `, `│ ` → `| `) via the capabilities parameter
+- [x] 2.2 Steering echo `» ` → `> ` in ASCII mode (InteractiveSession)
+- [x] 2.3 Scrollback console colour from the detected capabilities (non-interactive stays colourless)
+- [x] 2.4 ASCII golden (markdown bullets + blockquote through the test console) + echo fallback test
 
 ## 3. Gate
 

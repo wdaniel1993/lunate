@@ -59,6 +59,41 @@ public sealed class InteractiveSessionSteeringTests
     }
 
     [Fact]
+    public async Task Injected_steering_echoes_the_ascii_prefix_when_unicode_is_off()
+    {
+        Func<string, string?> baseEnvironment = PrintModeTestSupport.Environment();
+        using var host = new InteractiveSessionHost(environment: name =>
+            name == "LUNATE_ASCII" ? "1" : baseEnvironment(name)
+        );
+        File.WriteAllText(host.Temp.File("a.txt"), "contents");
+        host.Client.Enqueue(
+            Scripts.Call("call-1", "read", Scripts.Args(("path", "a.txt"))),
+            Scripts.ToolCalls()
+        );
+        host.Client.Enqueue(Scripts.Text("done"), Scripts.Stop());
+        host.Client.Gate(1);
+        Task run = host.RunAsync();
+
+        host.Console.SendText("hi");
+        host.Console.SendEnter();
+        await host.Client.WaitForCallAsync(1);
+        host.Console.SendText("steer");
+        host.Console.SendEnter();
+        await host.WaitUntilAsync(() => host.Session.QueuedSteeringCount == 1);
+        host.Client.Release(1);
+        await host.Client.WaitForCallAsync(2);
+
+        await host.WaitUntilAsync(() =>
+            host.ScrollbackText.Contains("> steer", StringComparison.Ordinal)
+        );
+        Assert.DoesNotContain("» steer", host.ScrollbackText, StringComparison.Ordinal);
+
+        host.Client.Release(2);
+        host.Console.Complete();
+        await run;
+    }
+
+    [Fact]
     public async Task Steering_returned_to_the_input_line_is_never_echoed()
     {
         using var host = new InteractiveSessionHost();
