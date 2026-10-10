@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Text;
 using System.Text.Json;
 using Lunate.Agent;
 
@@ -9,12 +8,13 @@ namespace Lunate.Coding;
 public sealed class WriteTool(
     Workspace workspace,
     IFileMutationQueue? mutations = null,
-    IFileChangeSink? changes = null
+    IFileChangeSink? changes = null,
+    ITextFileAccess? files = null
 ) : ITool
 {
     private readonly IFileMutationQueue _mutations = mutations ?? FileMutationQueue.Shared;
 
-    private static readonly UTF8Encoding Utf8NoBom = new(encoderShouldEmitUTF8Identifier: false);
+    private readonly ITextFileAccess _files = files ?? LocalTextFileAccess.Instance;
 
     private static readonly JsonElement Schema = JsonDocument
         .Parse(
@@ -87,10 +87,9 @@ public sealed class WriteTool(
             target,
             _ =>
             {
-                var created = !File.Exists(target);
-                var oldText = created ? string.Empty : TextFile.ReadAllText(target);
-                Directory.CreateDirectory(Path.GetDirectoryName(target)!);
-                File.WriteAllText(target, content, Utf8NoBom);
+                var created = !_files.Exists(target);
+                var oldText = created ? string.Empty : _files.ReadAllText(target);
+                _files.WriteAllText(target, content);
                 changes?.Notify(target);
 
                 var lines = CountLines(content);

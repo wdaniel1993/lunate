@@ -1106,3 +1106,9 @@ override Lunate.Agent.SteeringInjected.ToString() -> string!
 override sealed Lunate.Agent.SteeringInjected.Equals(Lunate.Agent.ExtensionEvent? other) -> bool
 static Lunate.Agent.SteeringInjected.operator !=(Lunate.Agent.SteeringInjected? left, Lunate.Agent.SteeringInjected? right) -> bool
 static Lunate.Agent.SteeringInjected.operator ==(Lunate.Agent.SteeringInjected? left, Lunate.Agent.SteeringInjected? right) -> bool
+Lunate.Agent.ITextFileAccess
+Lunate.Agent.ITextFileAccess.Exists(string! path) -> bool
+Lunate.Agent.ITextFileAccess.ReadAllText(string! path) -> string!
+Lunate.Agent.ITextFileAccess.ReadRaw(string! path) -> (string! Text, bool HasBom)
+Lunate.Agent.ITextFileAccess.WriteAllText(string! path, string! content) -> void
+Lunate.Agent.ITextFileAccess.WriteRaw(string! path, string! text, bool hasBom) -> void

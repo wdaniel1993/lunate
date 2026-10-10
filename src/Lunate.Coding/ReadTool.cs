@@ -6,10 +6,12 @@ using Lunate.Agent;
 namespace Lunate.Coding;
 
 /// <summary>Reads text files inside the workspace with numbered lines and a continuation footer.</summary>
-public sealed class ReadTool(Workspace workspace) : ITool
+public sealed class ReadTool(Workspace workspace, ITextFileAccess? files = null) : ITool
 {
     private const int DefaultLimit = 2000;
     private const int MaxLimit = 2000;
+
+    private readonly ITextFileAccess _files = files ?? LocalTextFileAccess.Instance;
 
     private static readonly JsonElement Schema = JsonDocument
         .Parse(
@@ -82,14 +84,25 @@ public sealed class ReadTool(Workspace workspace) : ITool
             return Task.FromResult(Error($"{resolved.RelativePath} is a directory; use bash ls"));
         }
 
-        if (!File.Exists(resolved.AbsolutePath))
+        if (!_files.Exists(resolved.AbsolutePath))
         {
             return Task.FromResult(Error($"file not found: {resolved.RelativePath}"));
         }
 
-        if (TextFile.IsBinary(resolved.AbsolutePath))
+        string text;
+        bool hasBom;
+        try
         {
-            var size = new FileInfo(resolved.AbsolutePath).Length;
+            (text, hasBom) = _files.ReadRaw(resolved.AbsolutePath);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            return Task.FromResult(Error($"could not be read: {exception.Message}"));
+        }
+
+        if (text.Contains('\0'))
+        {
+            var size = Encoding.UTF8.GetByteCount(text) + (hasBom ? 3 : 0);
             return Task.FromResult(
                 Error(
                     string.Create(
@@ -112,15 +125,7 @@ public sealed class ReadTool(Workspace workspace) : ITool
 
         limit = Math.Min(limit, MaxLimit);
 
-        string[] lines;
-        try
-        {
-            lines = TextFile.ReadAllLines(resolved.AbsolutePath);
-        }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
-        {
-            return Task.FromResult(Error($"could not be read: {exception.Message}"));
-        }
+        string[] lines = TextFile.SplitLines(text);
 
         var total = lines.Length;
         if (total == 0)

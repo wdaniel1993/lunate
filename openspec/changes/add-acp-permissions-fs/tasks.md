@@ -2,8 +2,8 @@
 
 ## 1. Seams (Coding)
 
-- [ ] 1.1 `ITextFileAccess` + `LocalTextFileAccess`; Read/Write/Edit tools take it (optional ctor param, default local; PublicAPI entries)
-- [ ] 1.2 `AcpApprover` (policy-first composition over `NonInteractiveApprover.IsAllowed`) + composition tests
+- [x] 1.1 `ITextFileAccess` + `LocalTextFileAccess`; Read/Write/Edit tools take it (optional ctor param, default local; PublicAPI entries)
+- [x] 1.2 `AcpApprover` (policy-first composition over `NonInteractiveApprover.IsAllowed`) + composition tests
 
 ## 2. Client-backed implementations (Protocols)
 
