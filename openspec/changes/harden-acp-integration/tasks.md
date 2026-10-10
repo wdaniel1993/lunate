@@ -13,7 +13,7 @@
 
 ## 3. Docs
 
-- [ ] 3.1 `docs/guide.md` sketch refresh (`AcpSessionContext` factory)
+- [x] 3.1 `docs/guide.md` sketch refresh (`AcpSessionContext` factory)
 
 ## 4. Tests
 
