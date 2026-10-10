@@ -82,6 +82,14 @@ internal sealed partial class InteractiveSession : IDisposable
     private readonly Dictionary<string, string> _toolArgs = new(StringComparer.Ordinal);
     private readonly List<string> _activeCalls = [];
     private readonly HashSet<string> _alwaysApproved = new(StringComparer.Ordinal);
+    private AgentSettings _settings = new();
+    private ModelCatalog _catalog = null!;
+    private IChatClientFactory _factory = null!;
+    private Workspace _workspace = null!;
+    private ToolRegistry _tools = null!;
+    private Session _session = null!;
+    private string _sessionDirectory = string.Empty;
+    private ModelInfo _model = null!;
     private AgentHarness? _harness;
     private SessionApprover? _approver;
     private InputLineState _input = InputLine.Empty;
@@ -91,6 +99,9 @@ internal sealed partial class InteractiveSession : IDisposable
     private CancellationTokenSource? _runCancellation;
     private ApprovalPromptModel? _approvalPrompt;
     private TaskCompletionSource<ApprovalChoice>? _approvalDecision;
+    private SelectListModel? _picker;
+    private PickerKind _pickerKind;
+    private List<string> _pickerValues = [];
     private string _tail = string.Empty;
     private RunOutcome _outcome;
     private long _inputTokens;
@@ -168,35 +179,44 @@ internal sealed partial class InteractiveSession : IDisposable
 
     private void Compose()
     {
-        AgentSettings settings = SettingsStore.Resolve(_options.SettingsPath, _options.Environment);
-        ModelCatalog catalog = ModelCatalog.Load(_options.ModelsPath);
-        ModelInfo model = HarnessFactory.ResolveModel(settings.Model, catalog);
-        IChatClientFactory factory =
+        _settings = SettingsStore.Resolve(_options.SettingsPath, _options.Environment);
+        _catalog = ModelCatalog.Load(_options.ModelsPath);
+        _model = HarnessFactory.ResolveModel(_settings.Model, _catalog);
+        _factory =
             _options.Factory
             ?? HarnessFactory.CreateFactory(_options.AuthPath, _options.Environment);
-        var workspace = new Workspace(_options.WorkingDirectory ?? Environment.CurrentDirectory);
-        ToolRegistry tools = HarnessFactory.CreateTools(workspace);
-        Session session = HarnessFactory.CreateSession(
-            _options.SessionDirectory ?? HarnessFactory.DefaultSessionDirectory(workspace),
-            workspace
-        );
-        _modelId = model.Id;
-        _contextWindow = model.ContextWindow;
-        _workingDirectory = DisplayDirectory(workspace.WorktreeRoot);
-        _branch = GitBranchReader.Read(workspace.WorktreeRoot);
-        _approver = new SessionApprover(this, settings.Approval);
+        _workspace = new Workspace(_options.WorkingDirectory ?? Environment.CurrentDirectory);
+        _tools = HarnessFactory.CreateTools(_workspace);
+        _sessionDirectory =
+            _options.SessionDirectory ?? HarnessFactory.DefaultSessionDirectory(_workspace);
+        _session = HarnessFactory.CreateSession(_sessionDirectory, _workspace);
+        _modelId = _model.Id;
+        _contextWindow = _model.ContextWindow;
+        _workingDirectory = DisplayDirectory(_workspace.WorktreeRoot);
+        _branch = GitBranchReader.Read(_workspace.WorktreeRoot);
+        _approver = new SessionApprover(this, _settings.Approval);
+        _harness = BuildHarness(_model);
+    }
+
+    /// <summary>
+    /// Builds a harness for the given model against the current session; the constructor restores
+    /// the conversation from the session, so this is the rebuild path of <c>/model</c>,
+    /// <c>/new</c> and <c>/resume</c>.
+    /// </summary>
+    private AgentHarness BuildHarness(ModelInfo model)
+    {
         var harnessOptions = new AgentHarnessOptions
         {
             SystemPrompt = SystemPrompt.Compose(
-                workspace,
-                [.. tools.Tools.Select(tool => tool.Name)]
+                _workspace,
+                [.. _tools.Tools.Select(tool => tool.Name)]
             ),
-            WorkingDirectory = workspace.WorktreeRoot,
-            ToolOutputLimit = settings.ToolOutputLimit,
+            WorkingDirectory = _workspace.WorktreeRoot,
+            ToolOutputLimit = _settings.ToolOutputLimit,
             Approver = _approver,
-            Session = session,
+            Session = _session,
             Steering = _steering,
-            ModelCatalog = catalog,
+            ModelCatalog = _catalog,
             ModelId = model.Id,
         };
         if (_options.ConfigureHarness is { } configure)
@@ -204,7 +224,7 @@ internal sealed partial class InteractiveSession : IDisposable
             harnessOptions = configure(harnessOptions);
         }
 
-        _harness = new AgentHarness(factory.Create(model), tools, harnessOptions);
+        return new AgentHarness(_factory.Create(model), _tools, harnessOptions);
     }
 
     /// <summary>The pending approval as shown in the live area; null when none is open.</summary>
@@ -247,6 +267,12 @@ internal sealed partial class InteractiveSession : IDisposable
             return;
         }
 
+        if (_picker is not null)
+        {
+            HandlePickerKey(key);
+            return;
+        }
+
         switch (KeyRouter.Route(key))
         {
             case RoutedKey.Edit:
@@ -270,6 +296,10 @@ internal sealed partial class InteractiveSession : IDisposable
                 NavigateNext();
                 break;
             case RoutedKey.ModelPicker:
+                OpenModelPicker();
+                break;
+            case RoutedKey.Complete:
+                ApplyCompletion();
                 break;
         }
     }
@@ -283,6 +313,13 @@ internal sealed partial class InteractiveSession : IDisposable
         }
 
         SetInput(string.Empty);
+        if (Commands.IsCommand(submitted))
+        {
+            _history.Add(submitted);
+            await DispatchCommandAsync(submitted, ct);
+            return;
+        }
+
         InputPipelineResult processed = await _pipeline.ProcessAsync(submitted, ct);
         if (processed.Consumed)
         {
@@ -382,10 +419,16 @@ internal sealed partial class InteractiveSession : IDisposable
                 _live.SetNotice(CtrlCQuitWindow.Hint);
                 break;
             case CtrlCAction.Quit:
-                _live.SetNotice(null);
-                _lifetime.Cancel();
+                Quit();
                 break;
         }
+    }
+
+    /// <summary>The one quit path: double Ctrl+C and <c>/quit</c> both end the session loop.</summary>
+    private void Quit()
+    {
+        _live.SetNotice(null);
+        _lifetime.Cancel();
     }
 
     private void NavigatePrevious()

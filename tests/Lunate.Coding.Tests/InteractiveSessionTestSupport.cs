@@ -207,11 +207,15 @@ internal sealed class GatedChatClient : IChatClient
         }
     }
 
+    /// <summary>Non-streaming calls (compaction summarization) always yield a canned summary.</summary>
     public Task<ChatResponse> GetResponseAsync(
         IEnumerable<ChatMessage> messages,
         ChatOptions? options = null,
         CancellationToken cancellationToken = default
-    ) => throw new NotSupportedException("The session streams.");
+    ) =>
+        Task.FromResult(
+            new ChatResponse(new ChatMessage(ChatRole.Assistant, "summary of older turns"))
+        );
 
     public async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
         IEnumerable<ChatMessage> messages,
