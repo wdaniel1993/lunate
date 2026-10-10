@@ -442,6 +442,7 @@ Finished output is rendered with Spectre.Console; the input line and a small liv
 | `Esc` | Cancel the running turn; nothing when idle |
 | `Ctrl+C` | Clear the input; on an empty input, press twice within 2 s to quit. Never cancels a turn |
 | `Ctrl+L` | Model picker |
+| `Tab` | Complete a leading `/command` |
 | `Up` / `Down` | History |
 
 **Platform rules**

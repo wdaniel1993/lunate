@@ -20,6 +20,9 @@ internal static class LiveAreaRenderer
         var approvalLine = state.Approval is null
             ? null
             : ApprovalPromptRenderer.PlainText(state.Approval);
+        IReadOnlyList<string> pickerLines = state.Picker is null
+            ? []
+            : SelectListRenderer.PlainLines(state.Picker);
         var footerLine = state.Footer is null
             ? null
             : StatusFooterRenderer.PlainText(state.Footer, width);
@@ -27,11 +30,16 @@ internal static class LiveAreaRenderer
             (toolLine is null ? 0 : 1)
             + (noticeLine is null ? 0 : 1)
             + (approvalLine is null ? 0 : 1)
+            + pickerLines.Count
             + (footerLine is null ? 0 : 1);
         var input = InputLine.Layout(state.Input, width, Math.Max(1, MaxLines - fixedLines));
         var tail = TailLines(
             state.TailText,
-            Math.Max(0, MaxLines - fixedLines - input.Lines.Count),
+            // The picker is modal: while it is open it owns the area above the input.
+            state.Picker
+                is null
+                ? Math.Max(0, MaxLines - fixedLines - input.Lines.Count)
+                : 0,
             width
         );
 
@@ -50,6 +58,11 @@ internal static class LiveAreaRenderer
         if (approvalLine is not null)
         {
             lines.Add(CellText.Clip(approvalLine, width));
+        }
+
+        foreach (string pickerLine in pickerLines)
+        {
+            lines.Add(CellText.Clip(pickerLine, width));
         }
 
         if (footerLine is not null)

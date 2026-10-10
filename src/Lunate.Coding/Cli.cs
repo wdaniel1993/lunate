@@ -1,5 +1,7 @@
+using System.Reactive.Concurrency;
 using System.Reflection;
 using Lunate.Ai;
+using Lunate.Tui;
 
 namespace Lunate.Coding;
 
@@ -10,7 +12,8 @@ internal static class Cli
         TextWriter output,
         TextWriter errors,
         CancellationToken ct = default,
-        PrintModeOptions? printOptions = null
+        PrintModeOptions? printOptions = null,
+        InteractiveSessionOptions? interactiveOptions = null
     )
     {
         if (args is ["--version"])
@@ -23,6 +26,11 @@ internal static class Cli
         {
             WriteHelp(output);
             return 0;
+        }
+
+        if (args.Length == 0)
+        {
+            return RunInteractive(errors, ct, interactiveOptions);
         }
 
         if (args.Length > 0 && args[0] == "--discover")
@@ -119,6 +127,46 @@ internal static class Cli
     private static void WritePrintUsage(TextWriter errors) =>
         errors.WriteLine("Usage: lunate -p [--json] [--yolo] <prompt>");
 
+    /// <summary>
+    /// Bare <c>lunate</c> starts the interactive session; a console that is not a terminal
+    /// (<c>TERM=dumb</c> included) exits with 2 and a hint to print mode.
+    /// </summary>
+    private static int RunInteractive(
+        TextWriter errors,
+        CancellationToken ct,
+        InteractiveSessionOptions? options
+    )
+    {
+        IConsoleIO console;
+        InteractiveSessionOptions resolved;
+        if (options is null)
+        {
+            console = new SystemConsoleIO(Scheduler.Default);
+            resolved = new InteractiveSessionOptions
+            {
+                Console = console,
+                Scheduler = Scheduler.Default,
+            };
+        }
+        else
+        {
+            console = options.Console;
+            resolved = options;
+        }
+
+        if (ConsoleSupport.Check(console) is not null)
+        {
+            errors.WriteLine(
+                "lunate: interactive mode needs a terminal; use lunate -p \"<prompt>\""
+            );
+            return 2;
+        }
+
+        using var session = new InteractiveSession(resolved);
+        session.RunAsync(ct).GetAwaiter().GetResult();
+        return 0;
+    }
+
     private static int Discover(string target, TextWriter output, TextWriter errors)
     {
         DiscoverResult result;
@@ -160,6 +208,12 @@ internal static class Cli
             "                                 --json streams every event as one JSON line, --yolo"
         );
         output.WriteLine("                                 approves every tool call for this run");
+        output.WriteLine(
+            "  lunate                         start the interactive session on a terminal"
+        );
+        output.WriteLine(
+            "                                 commands: /model /new /resume /compact /quit"
+        );
         output.WriteLine("  lunate --version               print the version");
         output.WriteLine("  lunate --help                  show this help");
         output.WriteLine("  lunate --discover <name-or-url>");

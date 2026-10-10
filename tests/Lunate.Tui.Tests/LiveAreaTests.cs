@@ -200,6 +200,27 @@ public sealed class LiveAreaTests
         );
     }
 
+    [Fact]
+    public void A_picker_renders_in_the_live_area_until_dismissed()
+    {
+        var scheduler = new TestScheduler();
+        using var console = new FakeConsoleIO(scheduler, new ConsoleSize(40, 10));
+        using var area = new LiveArea(console, scheduler);
+        area.Start();
+
+        area.SetPicker(new SelectListModel("Select model", ["gpt-4o-mini", "gpt-4o"], 1));
+        Advance(scheduler, 33);
+
+        Assert.Contains("Select model", console.Writes[^1], StringComparison.Ordinal);
+        Assert.Contains("> gpt-4o", console.Writes[^1], StringComparison.Ordinal);
+        Assert.Contains("  gpt-4o-mini", console.Writes[^1], StringComparison.Ordinal);
+
+        area.SetPicker(null);
+        Advance(scheduler, 33);
+
+        Assert.DoesNotContain("Select model", console.Writes[^1], StringComparison.Ordinal);
+    }
+
     private static string Text(FakeConsoleIO console) => string.Concat(console.Writes);
 
     private static KeyEvent Char(string text) => new(KeyKind.Character, text, false, false, false);

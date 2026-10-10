@@ -1,0 +1,9 @@
+Select model
+  * gpt-4o-mini (openai)
+> gpt-4o (openai)
+  claude-sonnet-5-5 (anthropic)
+  claude-opus-5-5 (anthropic)
+  local-llama (ollama)
+  gpt-5 (openai)
+  o4-mini (openai)
+  gemini-3-pro (google)

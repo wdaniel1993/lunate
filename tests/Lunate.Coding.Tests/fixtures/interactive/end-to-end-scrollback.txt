@@ -2,6 +2,7 @@ para one
 para two
 tool read a.txt ok
      1|alpha beta
+» steer mid-run
 tool write note.txt ok
 wrote 1 lines to note.txt (created)
 match: created

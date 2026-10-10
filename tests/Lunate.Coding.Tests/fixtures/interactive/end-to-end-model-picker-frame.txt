@@ -1,0 +1,1 @@
+\x1b[2A\r\x1b[2KSelect model\n\r\x1b[2K> * gpt-4o-mini (openai)\n\r\x1b[2K  gpt-4o (openai)\n\r\x1b[2K  claude-sonnet-5-5 (anthropic)\n\r\x1b[2K  claude-opus-5-5 (anthropic)\n\r\x1b[2Kgpt-4o-mini · 0/128.0k (0%)\n\r\x1b[2K> \n\x1b[1A\r\x1b[2C

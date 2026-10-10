@@ -17,7 +17,7 @@ internal sealed record SessionHistoryItem(ChatMessage Message, string? EntryId);
 /// Sessions assume a single writer (one harness or process per file); concurrent writers are not
 /// supported.
 /// </summary>
-public sealed class Session
+public sealed partial class Session
 {
     private const int MaxNestedCalls = 32;
     private const int MaxNestedArgsLength = 200;

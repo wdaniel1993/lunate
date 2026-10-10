@@ -1,16 +1,89 @@
+using Spectre.Console.Testing;
+
 namespace Lunate.Coding.Tests;
 
 public sealed class CliTests
 {
     [Fact]
-    public void Run_with_empty_args_is_a_no_op()
+    public void Run_with_empty_args_and_no_terminal_hints_at_print_mode()
+    {
+        using var output = new StringWriter();
+        using var error = new StringWriter();
+        var options = new InteractiveSessionOptions
+        {
+            Console = new ScriptedConsoleIO(),
+            Scheduler = new ManualScheduler(),
+        };
+
+        var exitCode = Cli.Run(
+            [],
+            output,
+            error,
+            TestContext.Current.CancellationToken,
+            interactiveOptions: options
+        );
+
+        Assert.Equal(2, exitCode);
+        Assert.Contains("lunate -p", error.ToString(), StringComparison.Ordinal);
+        Assert.Empty(output.ToString());
+    }
+
+    [Fact]
+    public void Run_with_a_scripted_terminal_starts_and_ends_the_session()
+    {
+        using var temp = new TempDirectory();
+        var console = new ScriptedConsoleIO { IsInteractive = true };
+        console.Complete();
+        var options = new InteractiveSessionOptions
+        {
+            Factory = new FakeChatClientFactory(new ScriptedChatClient()),
+            SettingsPath = temp.File("settings.json"),
+            ModelsPath = temp.File("models.json"),
+            AuthPath = temp.File("auth.json"),
+            SessionDirectory = temp.File("sessions"),
+            WorkingDirectory = temp.Root,
+            HistoryPath = temp.File("history"),
+            Environment = PrintModeTestSupport.Environment(),
+            Console = console,
+            Scheduler = new ManualScheduler(),
+            Scrollback = new TestConsole(),
+        };
+        using var output = new StringWriter();
+        using var error = new StringWriter();
+
+        var exitCode = Cli.Run(
+            [],
+            output,
+            error,
+            TestContext.Current.CancellationToken,
+            interactiveOptions: options
+        );
+
+        Assert.Equal(0, exitCode);
+        Assert.Empty(error.ToString());
+        Assert.Empty(output.ToString());
+    }
+
+    [Fact]
+    public void Run_with_help_documents_the_interactive_entry_and_commands()
     {
         using var writer = new StringWriter();
 
-        var exitCode = Cli.Run([], writer, TextWriter.Null, TestContext.Current.CancellationToken);
+        var exitCode = Cli.Run(
+            ["--help"],
+            writer,
+            TextWriter.Null,
+            TestContext.Current.CancellationToken
+        );
 
         Assert.Equal(0, exitCode);
-        Assert.Empty(writer.ToString());
+        string help = writer.ToString();
+        Assert.Contains("start the interactive session", help, StringComparison.Ordinal);
+        Assert.Contains(
+            "commands: /model /new /resume /compact /quit",
+            help,
+            StringComparison.Ordinal
+        );
     }
 
     [Fact]

@@ -393,6 +393,7 @@ Lunate.Agent.Session.Entries.get -> System.Collections.Generic.IReadOnlyList<Lun
 Lunate.Agent.Session.Path.get -> string!
 Lunate.Agent.Session.SessionId.get -> string!
 Lunate.Agent.Session.ToHistory() -> System.Collections.Generic.List<Microsoft.Extensions.AI.ChatMessage!>!
+static Lunate.Agent.Session.List(string! directory) -> System.Collections.Generic.IReadOnlyList<Lunate.Agent.SessionSummary!>!
 Lunate.Agent.SessionCompactionEntry
 Lunate.Agent.SessionCompactionEntry.Deconstruct(out string! Id, out string? ParentId, out System.DateTimeOffset Timestamp, out string! Summary, out System.Collections.Generic.IReadOnlyList<string!>! Replaces) -> void
 Lunate.Agent.SessionCompactionEntry.Equals(Lunate.Agent.SessionCompactionEntry? other) -> bool
@@ -446,6 +447,24 @@ Lunate.Agent.SessionModelChangeEntry.SessionModelChangeEntry(string! Id, string?
 Lunate.Agent.SessionModelChangeEntry.Timestamp.get -> System.DateTimeOffset
 Lunate.Agent.SessionModelChangeEntry.Timestamp.init -> void
 Lunate.Agent.SessionPaths
+Lunate.Agent.SessionSummary
+Lunate.Agent.SessionSummary.<Clone>$() -> Lunate.Agent.SessionSummary!
+Lunate.Agent.SessionSummary.Created.get -> System.DateTimeOffset
+Lunate.Agent.SessionSummary.Created.init -> void
+Lunate.Agent.SessionSummary.Deconstruct(out string! Id, out string! Path, out System.DateTimeOffset Created, out System.DateTimeOffset Modified) -> void
+Lunate.Agent.SessionSummary.Equals(Lunate.Agent.SessionSummary? other) -> bool
+Lunate.Agent.SessionSummary.Id.get -> string!
+Lunate.Agent.SessionSummary.Id.init -> void
+Lunate.Agent.SessionSummary.Modified.get -> System.DateTimeOffset
+Lunate.Agent.SessionSummary.Modified.init -> void
+Lunate.Agent.SessionSummary.Path.get -> string!
+Lunate.Agent.SessionSummary.Path.init -> void
+Lunate.Agent.SessionSummary.SessionSummary(string! Id, string! Path, System.DateTimeOffset Created, System.DateTimeOffset Modified) -> void
+override Lunate.Agent.SessionSummary.Equals(object? obj) -> bool
+override Lunate.Agent.SessionSummary.GetHashCode() -> int
+override Lunate.Agent.SessionSummary.ToString() -> string!
+static Lunate.Agent.SessionSummary.operator !=(Lunate.Agent.SessionSummary? left, Lunate.Agent.SessionSummary? right) -> bool
+static Lunate.Agent.SessionSummary.operator ==(Lunate.Agent.SessionSummary? left, Lunate.Agent.SessionSummary? right) -> bool
 Lunate.Agent.SessionUsage
 Lunate.Agent.SessionUsage.<Clone>$() -> Lunate.Agent.SessionUsage!
 Lunate.Agent.SessionUsage.Deconstruct(out int Input, out int Output) -> void
