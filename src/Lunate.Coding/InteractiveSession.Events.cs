@@ -50,6 +50,9 @@ internal sealed partial class InteractiveSession
             case UsageUpdated usage:
                 AddUsage(usage.Usage);
                 break;
+            case SteeringInjected:
+                EchoSteering();
+                break;
             case Retrying retrying:
                 _live.SetNotice(
                     FormattableString.Invariant($"retrying (attempt {retrying.Attempt})")

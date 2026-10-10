@@ -21,6 +21,95 @@ public sealed class InteractiveSessionSteeringTests
     }
 
     [Fact]
+    public async Task Injected_steering_is_echoed_to_scrollback_in_order()
+    {
+        using var host = new InteractiveSessionHost();
+        File.WriteAllText(host.Temp.File("a.txt"), "contents");
+        host.Client.Enqueue(
+            Scripts.Call("call-1", "read", Scripts.Args(("path", "a.txt"))),
+            Scripts.ToolCalls()
+        );
+        host.Client.Enqueue(Scripts.Text("done"), Scripts.Stop());
+        host.Client.Gate(1);
+        Task run = host.RunAsync();
+
+        host.Console.SendText("hi");
+        host.Console.SendEnter();
+        await host.Client.WaitForCallAsync(1);
+        host.Console.SendText("steer one");
+        host.Console.SendEnter();
+        host.Console.SendText("steer two");
+        host.Console.SendEnter();
+        await host.WaitUntilAsync(() => host.Session.QueuedSteeringCount == 2);
+        host.Client.Release(1);
+        await host.Client.WaitForCallAsync(2);
+
+        await host.WaitUntilAsync(() =>
+            host.ScrollbackText.Contains("» steer one", StringComparison.Ordinal)
+            && host.ScrollbackText.Contains("» steer two", StringComparison.Ordinal)
+        );
+        Assert.True(
+            host.ScrollbackText.IndexOf("» steer one", StringComparison.Ordinal)
+                < host.ScrollbackText.IndexOf("» steer two", StringComparison.Ordinal)
+        );
+
+        host.Client.Release(2);
+        host.Console.Complete();
+        await run;
+    }
+
+    [Fact]
+    public async Task Steering_returned_to_the_input_line_is_never_echoed()
+    {
+        using var host = new InteractiveSessionHost();
+        host.Client.Enqueue(Scripts.Text("never"), Scripts.Stop());
+        host.Client.Gate(1);
+        Task run = host.RunAsync();
+
+        host.Console.SendText("hi");
+        host.Console.SendEnter();
+        await host.Client.WaitForCallAsync(1);
+        host.Console.SendText("unsent");
+        host.Console.SendEnter();
+        await host.WaitUntilAsync(() => host.Session.QueuedSteeringCount == 1);
+        host.Console.SendEscape();
+        await host.WaitUntilAsync(() => !host.Session.IsRunning);
+        await host.WaitUntilAsync(() =>
+        {
+            host.Advance(33);
+            return host.LastFrame.Contains("unsent", StringComparison.Ordinal);
+        });
+
+        Assert.DoesNotContain("» unsent", host.ScrollbackText, StringComparison.Ordinal);
+        host.Console.Complete();
+        await run;
+    }
+
+    [Fact]
+    public async Task Auto_run_leftovers_are_not_echoed()
+    {
+        using var host = new InteractiveSessionHost();
+        host.Client.Enqueue(Scripts.Text("first"), Scripts.Stop());
+        host.Client.Enqueue(Scripts.Text("steered"), Scripts.Stop());
+        host.Client.Gate(1);
+        Task run = host.RunAsync();
+
+        host.Console.SendText("hi");
+        host.Console.SendEnter();
+        await host.Client.WaitForCallAsync(1);
+        host.Console.SendText("again");
+        host.Console.SendEnter();
+        await host.WaitUntilAsync(() => host.Session.QueuedSteeringCount == 1);
+        host.Client.Release(1);
+        await host.Client.WaitForCallAsync(2);
+        await host.WaitUntilAsync(() => !host.Session.IsRunning);
+
+        Assert.DoesNotContain("» again", host.ScrollbackText, StringComparison.Ordinal);
+        host.Console.Complete();
+        await run;
+    }
+
+    [Fact]
     public async Task Enter_while_running_is_injected_before_the_next_model_call()
     {
         using var host = new InteractiveSessionHost();

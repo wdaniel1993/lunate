@@ -75,6 +75,8 @@ internal sealed partial class InteractiveSession : IDisposable
     private readonly InputHistory _history;
     private readonly CtrlCQuitWindow _quitWindow;
     private readonly SteeringQueue _steering = new();
+    private readonly object _steeringGate = new();
+    private readonly List<string> _pendingSteering = [];
     private readonly CancellationTokenSource _lifetime = new();
     private readonly ToolBlockRenderer _toolBlocks = new();
     private readonly MarkdownRenderer _markdown = new();
@@ -331,7 +333,7 @@ internal sealed partial class InteractiveSession : IDisposable
         _live.SetNotice(null);
         if (_turnActive)
         {
-            _steering.Enqueue(processed.Text);
+            EnqueueSteering(processed.Text);
             return;
         }
 
@@ -348,6 +350,7 @@ internal sealed partial class InteractiveSession : IDisposable
                 _outcome = RunOutcome.Unknown;
                 await RunOnceAsync(text, ct);
                 List<string> leftover = DrainSteering();
+                DiscardPendingSteering(leftover.Count);
                 if (_outcome == RunOutcome.Completed && leftover.Count > 0)
                 {
                     text = string.Join("\n", leftover);
@@ -404,6 +407,53 @@ internal sealed partial class InteractiveSession : IDisposable
         }
 
         return leftover;
+    }
+
+    /// <summary>Enqueues steering and mirrors it into the pending FIFO the echo reads.</summary>
+    private void EnqueueSteering(string text)
+    {
+        lock (_steeringGate)
+        {
+            _steering.Enqueue(text);
+            _pendingSteering.Add(text);
+        }
+    }
+
+    /// <summary>The leftovers drained at run end were never injected; they must not echo and are
+    /// removed from the front of the pending FIFO (injection pops from the front too).</summary>
+    private void DiscardPendingSteering(int count)
+    {
+        lock (_steeringGate)
+        {
+            int remove = Math.Min(count, _pendingSteering.Count);
+            if (remove > 0)
+            {
+                _pendingSteering.RemoveRange(0, remove);
+            }
+        }
+    }
+
+    /// <summary>Pops one pending text for a <c>SteeringInjected</c> event and commits its echo.</summary>
+    private void EchoSteering()
+    {
+        string? text;
+        lock (_steeringGate)
+        {
+            text = _pendingSteering.Count > 0 ? _pendingSteering[0] : null;
+            if (text is not null)
+            {
+                _pendingSteering.RemoveAt(0);
+            }
+        }
+
+        if (text is null)
+        {
+            return;
+        }
+
+        _live.WriteScrollback(console =>
+            console.Write(new Markup($"[dim]» {Markup.Escape(text)}[/]\n"))
+        );
     }
 
     private void HandleCtrlC()
