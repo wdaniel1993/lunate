@@ -11,7 +11,7 @@
 - **Cancel semantics**: `session/cancel` → the active run's CTS cancels → the in-flight `fs` request is cancelled with it → `OperationCanceledException` propagates through the sync bridge → the harness rethrows it when the run token is cancelled (`AgentHarness.Tools.cs`: `catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }`) → the prompt response reports the cancellation. No new exception mapping in the bridge: cancellation is not an I/O failure.
 - **No behaviour change when idle**: `state.Token` is `CancellationToken.None` outside runs; the timeout bound (30 s default) is untouched; the latch semantics are moved, not modified.
 - **Observation**: on `TimeoutException`, attach `request.ContinueWith(static t => _ = t.Exception, OnlyOnFaulted | ExecuteSynchronously)` before throwing the `IOException` — the abandoned request's late fault is observed; a late cancellation needs no observation.
-- **Approver untouched**: `ClientApprover` already receives the run token through `IToolApprover.ApproveAsync(…, ct)` and maps cancellation to a decline (T-28 behaviour).
+- **Approver**: `ClientApprover` already receives the run token through `IToolApprover.ApproveAsync(…, ct)` and maps cancellation to a decline (T-28 behaviour); its timeout path now also attaches the same fault-only continuation to the abandoned `RequestPermissionAsync` task, so the observation closes for both round-trip kinds.
 
 ## Tests (pinned)
 
@@ -21,7 +21,7 @@
 
 ## Deviations
 
-- Observation test shape: the pinned "no `TaskScheduler.UnobservedTaskException` fires" assertion proved cross-test-flaky in the full suite — a sibling test abandons a permission request whose connection-closed fault (the permission timeout path's late failure, out of scope for this change) finalizes inside the GC window. The test now flushes finalizable unobserved faults before hooking, then counts only events whose exception chain carries the abandoned request's own late error; the red run (continuation absent) fails with exactly that event, so the coverage still proves the fault is observed.
+- Observation test shape: the pinned "no `TaskScheduler.UnobservedTaskException` fires" assertion proved cross-test-flaky in the full suite — a sibling test abandons a permission request whose connection-closed fault finalizes inside the GC window. That permission timeout path's leak is now fixed by this change (same continuation) and has its own observation test. The file test still flushes finalizable unobserved faults before hooking and counts only events whose exception chain carries the abandoned request's own late error; that scoping stays as a robustness measure, not an out-of-scope carve-out. The red run (continuation absent) fails with exactly that event, so the coverage still proves the fault is observed.
 - The observation continuation is attached as `_ = request.ContinueWith(...)` (the returned task discarded) instead of a statement expression, to stay clean under the analyzer/style gate; semantics are exactly as pinned.
 
 ## Seams
