@@ -225,6 +225,23 @@ if [ "${tool_version%%+*}" != "$version" ]; then
   exit 1
 fi
 
+step "packaging files"
+for packaging_file in \
+  packaging/homebrew/lunate.rb \
+  packaging/scoop/lunate.json \
+  packaging/winget/wdaniel1993.lunate.yaml \
+  packaging/winget/wdaniel1993.lunate.locale.en-US.yaml \
+  packaging/winget/wdaniel1993.lunate.installer.yaml; do
+  if [ ! -f "$packaging_file" ]; then
+    echo "verify: missing packaging file: ${packaging_file}" >&2
+    exit 1
+  fi
+  if ! grep -Fq "$version" "$packaging_file"; then
+    echo "verify: ${packaging_file} does not carry the current version ${version}" >&2
+    exit 1
+  fi
+done
+
 step "format"
 # CSharpier owns formatting; dotnet format keeps style and analyzer duties.
 dotnet csharpier check .

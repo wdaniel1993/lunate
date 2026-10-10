@@ -21,10 +21,10 @@
 
 ## 4. Channel artifacts
 
-- [ ] 4.1 `packaging/homebrew/lunate.rb` (macOS arm64 + Linux x64, sha placeholders)
-- [ ] 4.2 `packaging/scoop/lunate.json` (checkver/autoupdate)
-- [ ] 4.3 `packaging/winget/` three manifests (portable, x64, sha placeholder)
-- [ ] 4.4 Version-consistency step in verify.sh (packaging files carry the current version)
+- [x] 4.1 `packaging/homebrew/lunate.rb` (macOS arm64 + Linux x64, sha placeholders)
+- [x] 4.2 `packaging/scoop/lunate.json` (checkver/autoupdate)
+- [x] 4.3 `packaging/winget/` three manifests (portable, x64, sha placeholder)
+- [x] 4.4 Version-consistency step in verify.sh (packaging files carry the current version)
 
 ## 5. Docs
 
