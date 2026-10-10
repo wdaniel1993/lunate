@@ -16,8 +16,9 @@
 
 ## Tier 3 — `indent` (pinned)
 
-- A window matches when a single non-empty, whitespace-only prefix `P` exists such that every non-blank `old_text` line `p[i]` maps to a file line equal to `P + p[i].TrimEnd()`, and every blank `old_text` line maps to a whitespace-only file line. `P` is identical for all non-blank lines; at least one non-blank line is required.
-- Apply: `new_text` replaces the window with each non-blank line prefixed by `P`; blank `new_text` lines stay blank. File endings/BOM/trailing-newline handling is unchanged from tiers 1–2.
+- A window matches when every `old_text` line equals its file line with leading and trailing whitespace ignored (`Trim`, compared ordinally); a blank `old_text` line maps to a whitespace-only file line, and at least one `old_text` line must be non-blank.
+- Apply: the offset is the leading-whitespace character difference between the first non-blank `old_text` line and its matched file line. Every non-blank `new_text` line is shifted by it — positive prepends that many spaces, negative removes up to that many leading whitespace characters — and blank `new_text` lines stay blank. File endings/BOM/trailing-newline handling is unchanged from tiers 1–2.
+- Rationale: the earlier uniform-prefix pin undershot `docs/guide.md` ("leading whitespace per line ignored. `new_text` is re-indented by the offset between the first line of `old_text` and the matched first line"); the spec is aligned to the guide, which is untouched (review findings 1/5).
 
 ## Whitespace-significant refusal (pinned)
 
@@ -29,7 +30,7 @@
 ## Closest-region error (pinned)
 
 - Non-whitespace-significant files, no match in any tier: score every window (size = `old_text` line count) by the count of lines equal after `TrimEnd` (ordinal); best score ≥ 1 → error with exactly:
-  `could not find old_text in {path}; closest region (lines {first}-{last}):` followed by a newline and the region's lines verbatim (LF-joined).
+  `could not find old_text in {path}; closest region (lines {first}-{last}):` followed by a newline and the region's lines with any trailing `\r` stripped (LF-joined).
   Tie → earliest window. Best score 0, or the file shorter than the window → the existing plain message `could not find old_text in {path}` (the current corpus case stays valid).
 
 ## Tool surface (pinned)
@@ -42,6 +43,11 @@
 Runner: `request.json` gains optional `start_line` (passed through) and optional `file_name` (default `input.txt`; used for the temp copy target and the `path` argument). New cases (minimum):
 - `indent-applied` — C# block indented uniformly 4 spaces more; expected bytes show `new_text` re-indented.
 - `indent-normalized-applied` — indented block that also differs in trailing whitespace (covers the combined case).
+- `indent-crlf-applied` — CRLF file; indent-only difference (flat `old_text`); applies and stays CRLF.
+- `indent-nested-applied` — nested file block (8/12/8 spaces) against a base `old_text`; the offset comes from the first non-blank line pair.
+- `indent-file-trailing-applied` — the file block is indented and carries trailing spaces; the shifted `new_text` replaces the window cleanly.
+- `indent-dedent-applied` — `old_text` more indented than the file block; the negative offset removes leading whitespace from `new_text`.
+- `closest-region-crlf-error` — CRLF file; the closest-region hint carries no `\r`.
 - `indent-refused-python`, `indent-refused-yaml`, `indent-refused-makefile` — indentation-only difference on `.py` / `.yaml` / `Makefile`; `expected-error.txt` pins the refusal text.
 - `start-line-applies` — two exact matches, `start_line` near the second; the second is replaced.
 - `start-line-still-ambiguous` — two matches both within 3 lines of `start_line`; the error lists both.
@@ -51,7 +57,7 @@ Runner: `request.json` gains optional `start_line` (passed through) and optional
 
 ## Deviations
 
-1. The matching engine (tier window finding, indent prefix, ambiguity message, whitespace-significant
+1. The matching engine (tier window finding, indent offset, ambiguity message, whitespace-significant
    check and closest-region hint) lives in `src/Lunate.Coding/EditMatcher.cs`, an internal static
    helper, instead of inside `EditTool.cs` as the Structure section lists. `EditTool.cs` orchestrates
    the tiers and applies the edit; the extraction keeps both files under the repo's ~300-line rule.
@@ -60,6 +66,12 @@ Runner: `request.json` gains optional `start_line` (passed through) and optional
    `start_line must be an integer greater than or equal to 1`; the design pins only the valid shape
    (optional integer ≥ 1) and says nothing about malformed values. Tool error texts are model-facing,
    so the tool names the problem and the next step instead of silently ignoring the argument.
+3. Tier 3 was pinned as a uniform-prefix rule. That undershot `docs/guide.md` (leading whitespace per
+   line ignored; re-indent by the first-line offset) and made tier 3 dead on CRLF files and files with
+   trailing whitespace. The pin is amended above to the guide's per-line rule; the guide is untouched
+   (review findings 1/5).
+4. The closest-region pin joined the raw file lines, leaking a trailing `\r` on CRLF files. The pin is
+   amended above: each region line's trailing `\r` is stripped (review finding 3).
 
 ## Seams
 
