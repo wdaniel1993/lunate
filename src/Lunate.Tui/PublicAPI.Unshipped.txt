@@ -243,3 +243,18 @@ override Lunate.Tui.StatusFooterModel.GetHashCode() -> int
 override Lunate.Tui.StatusFooterModel.ToString() -> string!
 static Lunate.Tui.StatusFooterModel.operator !=(Lunate.Tui.StatusFooterModel? left, Lunate.Tui.StatusFooterModel? right) -> bool
 static Lunate.Tui.StatusFooterModel.operator ==(Lunate.Tui.StatusFooterModel? left, Lunate.Tui.StatusFooterModel? right) -> bool
+Lunate.Tui.TerminalCapabilities
+Lunate.Tui.TerminalCapabilities.<Clone>$() -> Lunate.Tui.TerminalCapabilities!
+Lunate.Tui.TerminalCapabilities.Color.get -> Spectre.Console.ColorSystemSupport
+Lunate.Tui.TerminalCapabilities.Color.init -> void
+Lunate.Tui.TerminalCapabilities.Deconstruct(out Spectre.Console.ColorSystemSupport Color, out bool Unicode) -> void
+Lunate.Tui.TerminalCapabilities.Equals(Lunate.Tui.TerminalCapabilities? other) -> bool
+Lunate.Tui.TerminalCapabilities.TerminalCapabilities(Spectre.Console.ColorSystemSupport Color, bool Unicode) -> void
+Lunate.Tui.TerminalCapabilities.Unicode.get -> bool
+Lunate.Tui.TerminalCapabilities.Unicode.init -> void
+override Lunate.Tui.TerminalCapabilities.Equals(object? obj) -> bool
+override Lunate.Tui.TerminalCapabilities.GetHashCode() -> int
+override Lunate.Tui.TerminalCapabilities.ToString() -> string!
+static Lunate.Tui.TerminalCapabilities.Detect(bool isInteractive, bool isWindows, System.Func<string!, string?>? environment = null, System.Func<int>? outputCodePage = null) -> Lunate.Tui.TerminalCapabilities!
+static Lunate.Tui.TerminalCapabilities.operator !=(Lunate.Tui.TerminalCapabilities? left, Lunate.Tui.TerminalCapabilities? right) -> bool
+static Lunate.Tui.TerminalCapabilities.operator ==(Lunate.Tui.TerminalCapabilities? left, Lunate.Tui.TerminalCapabilities? right) -> bool
