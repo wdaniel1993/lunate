@@ -260,9 +260,10 @@ internal sealed partial class InteractiveSession
     }
 
     /// <summary>
-    /// Tab completion: only while idle and only when the whole input is one slash word with the
-    /// cursor at its end. One match replaces the word; several replace it with their longest common
-    /// prefix; no progress lists the candidates as a notice.
+    /// Tab completion: only while idle; a whole-input slash word completes against the built-in
+    /// commands (single match replaces, several extend to the longest common prefix, no progress
+    /// lists them), otherwise an <c>@token</c> ending at the cursor completes against the lazily
+    /// built file index (indexing notice while it builds).
     /// </summary>
     private void ApplyCompletion()
     {
@@ -271,27 +272,128 @@ internal sealed partial class InteractiveSession
             return;
         }
 
+        if (!TryCompleteSlashWord())
+        {
+            CompletePathToken();
+        }
+    }
+
+    /// <summary>Today's rule: the whole input is one `/word` with the cursor at its end.</summary>
+    private bool TryCompleteSlashWord()
+    {
         string text = _input.Text;
         if (text.Length == 0 || text[0] != '/' || _input.CursorPosition != text.Length)
         {
-            return;
+            return false;
         }
 
         if (text.Any(char.IsWhiteSpace))
         {
-            return;
+            return false;
         }
 
         CompletionResult result = Completion.Complete(text, Commands.BuiltIn);
         if (result.Replacement is { } replacement)
         {
             SetInput(replacement);
-            return;
+            return true;
         }
 
         if (result.Candidates.Count > 0)
         {
             _live.SetNotice("commands: " + string.Join(" ", result.Candidates));
         }
+
+        return true;
     }
+
+    /// <summary>
+    /// The <c>@token</c> rule: scan back from the cursor over non-whitespace (the token must end
+    /// at the cursor), complete the text after the <c>@</c> against the index and re-prefix the
+    /// replacement; a dim notice lists candidates or says there are none.
+    /// </summary>
+    private void CompletePathToken()
+    {
+        string text = _input.Text;
+        int cursor = _input.CursorPosition;
+        if (!TryPathPrefix(text, cursor, out string prefix, out int tokenStart))
+        {
+            return;
+        }
+
+        FileIndex index = FileIndex();
+        if (!index.IsReady)
+        {
+            index.EnsureStarted();
+            _live.SetNotice("file index: indexing…");
+            return;
+        }
+
+        CompletionResult result = Completion.Complete(prefix, index.Match(prefix, 0));
+        if (result.Replacement is { } replacement)
+        {
+            SetInput(text[..tokenStart] + "@" + replacement + text[cursor..]);
+            return;
+        }
+
+        if (result.Candidates.Count == 0)
+        {
+            _live.SetNotice("paths: no matches");
+            return;
+        }
+
+        IEnumerable<string> shown = result.Candidates.Take(MaxPathCandidates);
+        string notice = "paths: " + string.Join(" ", shown);
+        int hidden = result.Candidates.Count - Math.Min(result.Candidates.Count, MaxPathCandidates);
+        if (hidden > 0)
+        {
+            notice += $" … (+{hidden} more)";
+        }
+
+        _live.SetNotice(notice);
+    }
+
+    /// <summary>The lazily created index; the seam falls back to the real workspace walk.</summary>
+    private FileIndex FileIndex() =>
+        _fileIndex ??= new FileIndex(
+            _options.WorkspaceFiles ?? new SystemWorkspaceFiles(_workspace.WorktreeRoot)
+        );
+
+    /// <summary>The token ending at <paramref name="cursor"/> when it starts with `@`.</summary>
+    private static bool TryPathPrefix(
+        string text,
+        int cursor,
+        out string prefix,
+        out int tokenStart
+    )
+    {
+        prefix = string.Empty;
+        tokenStart = 0;
+        if (cursor < 0 || cursor > text.Length)
+        {
+            return false;
+        }
+
+        if (cursor < text.Length && !char.IsWhiteSpace(text[cursor]))
+        {
+            return false;
+        }
+
+        int start = cursor;
+        while (start > 0 && !char.IsWhiteSpace(text[start - 1]))
+        {
+            start--;
+        }
+
+        if (start >= cursor || text[start] != '@')
+        {
+            return false;
+        }
+
+        tokenStart = start;
+        prefix = text[(start + 1)..cursor];
+        return true;
+    }
+
+    private const int MaxPathCandidates = 20;
 }

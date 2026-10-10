@@ -43,6 +43,9 @@ internal sealed record InteractiveSessionOptions
     /// <summary>The terminal the session reads keys from and paints the live area through.</summary>
     public required IConsoleIO Console { get; init; }
 
+    /// <summary>The workspace file seam behind the lazy path index; null walks the real workspace.</summary>
+    public IWorkspaceFiles? WorkspaceFiles { get; init; }
+
     /// <summary>The scheduler for the live area and the Ctrl+C window.</summary>
     public required IScheduler Scheduler { get; init; }
 
@@ -105,6 +108,7 @@ internal sealed partial class InteractiveSession : IDisposable
     private SelectListModel? _picker;
     private PickerKind _pickerKind;
     private List<string> _pickerValues = [];
+    private FileIndex? _fileIndex;
     private string _tail = string.Empty;
     private RunOutcome _outcome;
     private long _inputTokens;

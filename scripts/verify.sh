@@ -106,12 +106,18 @@ for assembly in Anthropic OpenAI Microsoft.Extensions.AI; do
 done
 
 step "test"
-run_tests "test" dotnet test --solution lunate.sln -c "$CONFIGURATION"
+# The Category=Perf budget check is excluded here (and from the culture pass) and
+# runs as its own step below, so the main passes stay fast and the budget is
+# still enforced by the gate.
+run_tests "test" dotnet test --solution lunate.sln -c "$CONFIGURATION" --filter-not-trait Category=Perf
 
 step "test (de-AT culture)"
 # Non-English culture pass (S-5 finding). Effective on macOS/Linux; Windows
 # runners keep the OS culture (LANG is not honored there).
-LANG=de_AT.UTF-8 LC_ALL=de_AT.UTF-8 run_tests "test (de-AT culture)" dotnet test --solution lunate.sln -c "$CONFIGURATION" --no-build
+LANG=de_AT.UTF-8 LC_ALL=de_AT.UTF-8 run_tests "test (de-AT culture)" dotnet test --solution lunate.sln -c "$CONFIGURATION" --no-build --filter-not-trait Category=Perf
+
+step "path index budget"
+run_tests "path index budget" dotnet test --project tests/Lunate.Coding.Tests/Lunate.Coding.Tests.csproj -c "$CONFIGURATION" --no-build --filter-trait Category=Perf
 
 step "publish (${RID})"
 dotnet publish src/Lunate.Coding/Lunate.Coding.csproj \
