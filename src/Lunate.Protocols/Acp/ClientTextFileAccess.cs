@@ -27,6 +27,8 @@ internal sealed class ClientTextFileAccess(AgentSideConnection connection, Sessi
 
     public string ReadAllText(string path) => Read(path);
 
+    public (string Text, long Length)? ReadPrefix(string path, int maxBytes) => null;
+
     public (string Text, bool HasBom) ReadRaw(string path) => (Read(path), false);
 
     public void WriteAllText(string path, string content) => Write(path, content);

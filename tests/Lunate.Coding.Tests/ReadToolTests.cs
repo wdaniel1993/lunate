@@ -151,6 +151,36 @@ public sealed class ReadToolTests
     }
 
     [Fact]
+    public async Task A_large_binary_file_is_an_error_naming_the_exact_total_size()
+    {
+        using var temp = new TempDirectory();
+        byte[] bytes = [0x00, .. Enumerable.Repeat((byte)0x80, 9000)];
+        File.WriteAllBytes(temp.File("big.bin"), bytes);
+
+        var result = await ReadAsync(temp, """{"path":"big.bin"}""");
+
+        Assert.True(result.IsError);
+        Assert.Equal(
+            "big.bin is a binary file (9001 bytes); read handles text files",
+            result.Output
+        );
+    }
+
+    [Fact]
+    public async Task A_NUL_byte_beyond_the_probe_window_reads_as_text()
+    {
+        using var temp = new TempDirectory();
+        byte[] bytes = [.. Enumerable.Repeat((byte)'a', 8192), 0x00, (byte)'b'];
+        File.WriteAllBytes(temp.File("late.bin"), bytes);
+
+        var result = await ReadAsync(temp, """{"path":"late.bin"}""");
+
+        Assert.False(result.IsError);
+        Assert.StartsWith("     1|", result.Output, StringComparison.Ordinal);
+        Assert.Contains('\0', result.Output);
+    }
+
+    [Fact]
     public async Task A_path_outside_the_workspace_is_an_error()
     {
         using var temp = new TempDirectory();

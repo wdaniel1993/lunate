@@ -2,8 +2,8 @@
 
 ## 1. Probe (Coding)
 
-- [ ] 1.1 `ITextFileAccess.ReadPrefix` + `LocalTextFileAccess` implementation (PublicAPI entry)
-- [ ] 1.2 `ReadTool` probe-first flow (exact size on the probe path; whole-text check only when the provider cannot probe)
+- [x] 1.1 `ITextFileAccess.ReadPrefix` + `LocalTextFileAccess` implementation (PublicAPI entry)
+- [x] 1.2 `ReadTool` probe-first flow (exact size on the probe path; whole-text check only when the provider cannot probe)
 
 ## 2. Bounded round trips + taxonomy (Protocols)
 

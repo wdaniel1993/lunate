@@ -1108,6 +1108,7 @@ static Lunate.Agent.SteeringInjected.operator !=(Lunate.Agent.SteeringInjected? 
 static Lunate.Agent.SteeringInjected.operator ==(Lunate.Agent.SteeringInjected? left, Lunate.Agent.SteeringInjected? right) -> bool
 Lunate.Agent.ITextFileAccess
 Lunate.Agent.ITextFileAccess.Exists(string! path) -> bool
+Lunate.Agent.ITextFileAccess.ReadPrefix(string! path, int maxBytes) -> (string! Text, long Length)?
 Lunate.Agent.ITextFileAccess.ReadAllText(string! path) -> string!
 Lunate.Agent.ITextFileAccess.ReadRaw(string! path) -> (string! Text, bool HasBom)
 Lunate.Agent.ITextFileAccess.WriteAllText(string! path, string! content) -> void

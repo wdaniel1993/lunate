@@ -11,6 +11,13 @@ public interface ITextFileAccess
     /// <summary>Whether a text file exists at <paramref name="path"/>.</summary>
     bool Exists(string path);
 
+    /// <summary>
+    /// Reads a bounded prefix of the file as UTF-8 text (byte-order mark stripped) together with
+    /// the file's total length in bytes, when the provider can report both; null when it cannot
+    /// probe.
+    /// </summary>
+    (string Text, long Length)? ReadPrefix(string path, int maxBytes);
+
     /// <summary>Reads the whole file as UTF-8 text, without a byte-order mark.</summary>
     string ReadAllText(string path);
 

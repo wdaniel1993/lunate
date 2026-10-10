@@ -112,6 +112,8 @@ public sealed class TextFileAccessSeamTests
 
         public bool Exists(string path) => Files.ContainsKey(path);
 
+        public (string Text, long Length)? ReadPrefix(string path, int maxBytes) => null;
+
         public string ReadAllText(string path) => Files[path];
 
         public (string Text, bool HasBom) ReadRaw(string path) => (Files[path], false);

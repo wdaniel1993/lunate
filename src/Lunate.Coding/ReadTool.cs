@@ -10,6 +10,7 @@ public sealed class ReadTool(Workspace workspace, ITextFileAccess? files = null)
 {
     private const int DefaultLimit = 2000;
     private const int MaxLimit = 2000;
+    private const int ProbeBytes = 8192;
 
     private readonly ITextFileAccess _files = files ?? LocalTextFileAccess.Instance;
 
@@ -91,8 +92,22 @@ public sealed class ReadTool(Workspace workspace, ITextFileAccess? files = null)
 
         string text;
         bool hasBom;
+        (string Text, long Length)? probe;
         try
         {
+            probe = _files.ReadPrefix(resolved.AbsolutePath, ProbeBytes);
+            if (probe is { } bounded && bounded.Text.Contains('\0'))
+            {
+                return Task.FromResult(
+                    Error(
+                        string.Create(
+                            CultureInfo.InvariantCulture,
+                            $"{resolved.RelativePath} is a binary file ({bounded.Length} bytes); read handles text files"
+                        )
+                    )
+                );
+            }
+
             (text, hasBom) = _files.ReadRaw(resolved.AbsolutePath);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
@@ -100,7 +115,7 @@ public sealed class ReadTool(Workspace workspace, ITextFileAccess? files = null)
             return Task.FromResult(Error($"could not be read: {exception.Message}"));
         }
 
-        if (text.Contains('\0'))
+        if (probe is null && text.Contains('\0'))
         {
             var size = Encoding.UTF8.GetByteCount(text) + (hasBom ? 3 : 0);
             return Task.FromResult(
