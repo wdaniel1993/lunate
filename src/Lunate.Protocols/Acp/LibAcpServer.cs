@@ -136,6 +136,7 @@ internal sealed class LibAcpServer(Action<string>? log = null) : IAcpServer
 
             string id = Guid.NewGuid().ToString("N");
             var sessionId = new SessionId(id);
+            var runState = new SessionRunState();
             var context = new AcpSessionContext(
                 request.Cwd,
                 new ClientApprover(connection, sessionId, log),
@@ -158,7 +159,7 @@ internal sealed class LibAcpServer(Action<string>? log = null) : IAcpServer
 
             lock (sessionsGate)
             {
-                sessions.Add(id, new Session(id, harness, request.Cwd));
+                sessions.Add(id, new Session(id, harness, request.Cwd, runState));
             }
 
             Log(
@@ -382,85 +383,32 @@ internal sealed class LibAcpServer(Action<string>? log = null) : IAcpServer
     }
 
     /// <summary>
-    /// One ACP session: the harness, the session cwd (for resource-link mapping), the dispatched
-    /// prompts (queued behind the connection-wide run gate included) and the in-flight run's
-    /// cancellation.
+    /// One ACP session: the harness, the session cwd (for resource-link mapping) and the run state
+    /// (the dispatched prompts and the in-flight run's cancellation) shared with the client file
+    /// access.
     /// </summary>
-    private sealed class Session(string id, AgentHarness harness, string cwd)
+    private sealed class Session(
+        string id,
+        AgentHarness harness,
+        string cwd,
+        SessionRunState runState
+    )
     {
-        private readonly object gate = new();
-        private CancellationTokenSource? active;
-        private int prompts;
-        private bool cancelPending;
-
         public string Id { get; } = id;
 
         public AgentHarness Harness { get; } = harness;
 
         public string Cwd { get; } = cwd;
 
-        public void BeginPrompt()
-        {
-            lock (gate)
-            {
-                prompts++;
-            }
-        }
+        public void BeginPrompt() => runState.BeginPrompt();
 
-        public void EndPrompt()
-        {
-            lock (gate)
-            {
-                prompts--;
-                if (prompts == 0)
-                {
-                    cancelPending = false;
-                }
-            }
-        }
+        public void EndPrompt() => runState.EndPrompt();
 
-        public void BeginRun(CancellationTokenSource cancellation)
-        {
-            bool cancel;
-            lock (gate)
-            {
-                active = cancellation;
-                cancel = cancelPending;
-                cancelPending = false;
-            }
+        public void BeginRun(CancellationTokenSource cancellation) =>
+            runState.BeginRun(cancellation);
 
-            if (cancel)
-            {
-                cancellation.Cancel();
-            }
-        }
+        public void EndRun() => runState.EndRun();
 
-        public void EndRun()
-        {
-            lock (gate)
-            {
-                active = null;
-            }
-        }
-
-        /// <summary>
-        /// Cancels the in-flight run, or latches onto a dispatched prompt that is still queued
-        /// (consumed by <see cref="BeginRun"/>, so the run begins already cancelled). A cancel
-        /// with no prompt in flight stays a no-op.
-        /// </summary>
-        public void Cancel()
-        {
-            lock (gate)
-            {
-                if (active is not null)
-                {
-                    active.Cancel();
-                }
-                else if (prompts > 0)
-                {
-                    cancelPending = true;
-                }
-            }
-        }
+        public void Cancel() => runState.Cancel();
     }
 }

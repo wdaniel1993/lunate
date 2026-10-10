@@ -2,7 +2,7 @@
 
 ## 1. Run state extraction (Protocols)
 
-- [ ] 1.1 `SessionRunState` (internal) with the moved gate/active/prompts/cancelPending logic + `Token`
+- [x] 1.1 `SessionRunState` (internal) with the moved gate/active/prompts/cancelPending logic + `Token`
 - [ ] 1.2 `LibAcpServer`: create the state before the context; `Session` delegates to it; `ClientTextFileAccess` receives it
 
 ## 2. Bridge (Protocols)
