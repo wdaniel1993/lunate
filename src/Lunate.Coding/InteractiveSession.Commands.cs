@@ -145,7 +145,7 @@ internal sealed partial class InteractiveSession
         var current = 0;
         foreach (SessionSummary summary in Session.List(_sessionDirectory))
         {
-            labels.Add(Id8(summary.Id));
+            labels.Add(summary.Id);
             values.Add(summary.Path);
             if (string.Equals(summary.Id, _session.SessionId, StringComparison.Ordinal))
             {
@@ -246,7 +246,7 @@ internal sealed partial class InteractiveSession
 
         _session = resumed;
         _harness = BuildHarness(_model);
-        _live.SetNotice("resumed " + Id8(resumed.SessionId));
+        _live.SetNotice("resumed " + resumed.SessionId);
     }
 
     /// <summary>Starts a fresh session and rebuilds the harness against it.</summary>
@@ -292,7 +292,4 @@ internal sealed partial class InteractiveSession
             _live.SetNotice("commands: " + string.Join(" ", result.Candidates));
         }
     }
-
-    private static string Id8(string sessionId) =>
-        sessionId.Length <= 8 ? sessionId : sessionId[..8];
 }

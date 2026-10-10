@@ -1,1 +1,1 @@
-\x1b[7A\r\x1b[2Knew session\n\r\x1b[2KSelect session\n\r\x1b[2K> <session>\n\r\x1b[2K  <session>\n\r\x1b[2Kgpt-4o · 0/128.0k (0%)\n\r\x1b[2K> \n\r\x1b[2K\n\x1b[2A\r\x1b[2C
+\x1b[7A\r\x1b[2Knew session\n\r\x1b[2KSelect session\n\r\x1b[2K> <new-session>\n\r\x1b[2K  <old-session>\n\r\x1b[2Kgpt-4o · 0/128.0k (0%)\n\r\x1b[2K> \n\r\x1b[2K\n\x1b[2A\r\x1b[2C

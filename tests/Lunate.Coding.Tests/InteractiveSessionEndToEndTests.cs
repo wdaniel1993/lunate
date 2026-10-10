@@ -134,8 +134,12 @@ public sealed class InteractiveSessionEndToEndTests
             return host.LastFrame.Contains("model: gpt-4o", StringComparison.Ordinal);
         });
 
-        // /new starts a fresh session; /resume lists the directory (id8 labels normalized) and
-        // the current (newest) session is selected first.
+        // /new starts a fresh session; /resume lists the directory (the original id maps to
+        // <old-session> and the new one to <new-session>) with the current (newest) session
+        // selected first.
+        string oldId = Path.GetFileNameWithoutExtension(
+            Assert.Single(Directory.GetFiles(host.Temp.File("sessions"), "*.jsonl"))
+        );
         host.Console.SendText("/new");
         host.Console.SendEnter();
         await host.WaitUntilAsync(() =>
@@ -143,6 +147,17 @@ public sealed class InteractiveSessionEndToEndTests
             host.Advance(33);
             return host.LastFrame.Contains("new session", StringComparison.Ordinal);
         });
+        string[] sessionFiles = Directory.GetFiles(host.Temp.File("sessions"), "*.jsonl");
+        Assert.Equal(2, sessionFiles.Length);
+        string newId = Path.GetFileNameWithoutExtension(
+            sessionFiles.Single(path =>
+                !string.Equals(
+                    Path.GetFileNameWithoutExtension(path),
+                    oldId,
+                    StringComparison.Ordinal
+                )
+            )
+        );
         host.Console.SendText("/resume");
         host.Console.SendEnter();
         await host.WaitUntilAsync(() =>
@@ -150,16 +165,14 @@ public sealed class InteractiveSessionEndToEndTests
             host.Advance(33);
             return host.LastFrame.Contains("Select session", StringComparison.Ordinal);
         });
-        string sessionPickerFrame = Escape(
-            NormalizeSessionLabels(host.LastFrame, host.Temp.File("sessions"))
-        );
+        string sessionPickerFrame = Escape(NormalizeSessionIds(host.LastFrame, oldId, newId));
 
         host.Console.SendEnter();
         await host.WaitUntilAsync(() =>
         {
             host.Advance(33);
-            return NormalizeSessionLabels(host.LastFrame, host.Temp.File("sessions"))
-                .Contains("resumed <session>", StringComparison.Ordinal);
+            return NormalizeSessionIds(host.LastFrame, oldId, newId)
+                .Contains("resumed <new-session>", StringComparison.Ordinal);
         });
 
         host.Console.SendText("/quit");
@@ -175,18 +188,13 @@ public sealed class InteractiveSessionEndToEndTests
         );
     }
 
-    /// <summary>Replaces every listed session's id8 with a stable placeholder; the ids are
-    /// stamped with the wall clock and random bytes, so the golden must not depend on them.</summary>
-    private static string NormalizeSessionLabels(string text, string sessionDirectory)
+    /// <summary>Maps the original session's full id to <c>&lt;old-session&gt;</c> and the
+    /// /new-created session's id to <c>&lt;new-session&gt;</c>; the ids are stamped with the wall
+    /// clock and random bytes, so the golden must not depend on them.</summary>
+    private static string NormalizeSessionIds(string text, string oldId, string newId)
     {
-        foreach (string path in Directory.GetFiles(sessionDirectory, "*.jsonl"))
-        {
-            string id = Path.GetFileNameWithoutExtension(path);
-            string id8 = id.Length <= 8 ? id : id[..8];
-            text = text.Replace(id8, "<session>", StringComparison.Ordinal);
-        }
-
-        return text;
+        text = text.Replace(oldId, "<old-session>", StringComparison.Ordinal);
+        return text.Replace(newId, "<new-session>", StringComparison.Ordinal);
     }
 
     private static void EnqueueScript(InteractiveSessionHost host)

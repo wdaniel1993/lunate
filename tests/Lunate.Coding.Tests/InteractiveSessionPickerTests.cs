@@ -228,14 +228,14 @@ public sealed class InteractiveSessionPickerTests
                     .Entries.OfType<SessionMessageEntry>()
                     .Any(entry => entry.Message.Text == "first question")
         )!;
-        string oldId8 = Path.GetFileNameWithoutExtension(oldPath)[..8];
+        string oldId = Path.GetFileNameWithoutExtension(oldPath);
 
         host.Console.SendText("/resume");
         host.Console.SendEnter();
         // The current session is listed first (newest); Down selects the older one.
         host.Console.Send(new KeyEvent(KeyKind.Down, null, false, false, false));
         host.Console.SendEnter();
-        await InteractiveSessionCommandTests.WaitForFrameAsync(host, "resumed " + oldId8);
+        await InteractiveSessionCommandTests.WaitForFrameAsync(host, "resumed " + oldId);
 
         host.Console.SendText("second question");
         host.Console.SendEnter();
