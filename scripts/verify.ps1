@@ -112,6 +112,140 @@ try {
         exit 1
     }
 
+    Write-Host "`n==> install script (fixture release)"
+    $version = [regex]::Match((Get-Content Directory.Build.props -Raw), '<Version>(.*?)</Version>').Groups[1].Value
+    if (-not $version) { throw 'verify: cannot read <Version> from Directory.Build.props' }
+
+    $installTmp = Join-Path ([System.IO.Path]::GetTempPath()) ('lunate-verify-install-' + [guid]::NewGuid().ToString('N'))
+    $fixture = Join-Path $installTmp 'fixture'
+    $latestDir = Join-Path $fixture 'latest/download'
+    $pinnedDir = Join-Path $fixture "download/v$version"
+    $prefix = Join-Path $installTmp 'prefix'
+    $prefixFlags = Join-Path $installTmp 'prefix-flags'
+    New-Item -ItemType Directory -Force -Path $latestDir, $pinnedDir, $prefix, $prefixFlags | Out-Null
+    # The fixture installs append GUID temp dirs to the user PATH; snapshot it so
+    # the finally block restores it instead of leaving dangling entries behind.
+    $userPathBefore = [Environment]::GetEnvironmentVariable('Path', 'User')
+    try {
+        $zipName = 'lunate-win-x64.zip'
+        $zip = Join-Path $latestDir $zipName
+        Compress-Archive -Path (Join-Path $publishDir "$env:RID/lunate.exe") -DestinationPath $zip
+        $hash = (Get-FileHash -Algorithm SHA256 -Path $zip).Hash.ToLowerInvariant()
+        $sumsLine = "$hash  $zipName"
+        Set-Content -Path (Join-Path $latestDir 'SHA256SUMS') -Value $sumsLine -Encoding ascii
+        Copy-Item -Path $zip -Destination (Join-Path $pinnedDir $zipName)
+        Set-Content -Path (Join-Path $pinnedDir 'SHA256SUMS') -Value $sumsLine -Encoding ascii
+
+        # (a) Default install: the environment supplies only the releases base.
+        $env:LUNATE_INSTALL_BASE_URL = 'file:///' + ($fixture -replace '\\', '/')
+        $env:LUNATE_INSTALL_PREFIX = $prefix
+        Remove-Item Env:LUNATE_INSTALL_VERSION -ErrorAction SilentlyContinue
+        & ./install.ps1
+        $published = & $binaryFull --version
+        $installed = & (Join-Path $prefix 'lunate.exe') --version
+        if ($installed -ne $published) {
+            throw "verify: installed lunate reports $installed, expected $published"
+        }
+
+        # (b) -Version/-Prefix must drive the composed URL and the target directory.
+        Remove-Item Env:LUNATE_INSTALL_PREFIX -ErrorAction SilentlyContinue
+        & ./install.ps1 -Version "v$version" -Prefix $prefixFlags
+        $installedFlags = & (Join-Path $prefixFlags 'lunate.exe') --version
+        if ($installedFlags -ne $published) {
+            throw "verify: installed lunate reports $installedFlags (flags), expected $published"
+        }
+
+        # (c) A tag with no release directory must fail even though latest/ exists:
+        # the tag participates in the URL the script composes.
+        $badTag = $false
+        try {
+            & ./install.ps1 -Version 'v9.9.9' -Prefix (Join-Path $installTmp 'prefix-bad-tag')
+        }
+        catch { $badTag = $true }
+        if (-not $badTag) { throw 'verify: install.ps1 installed a nonexistent version v9.9.9 from the fixture' }
+
+        $badFixture = Join-Path $installTmp 'bad-fixture'
+        Copy-Item -Recurse -Path $fixture -Destination $badFixture
+        [System.IO.File]::AppendAllText((Join-Path $badFixture "latest/download/$zipName"), 'corrupt')
+        $badPrefix = Join-Path $installTmp 'bad-prefix'
+        New-Item -ItemType Directory -Force -Path $badPrefix | Out-Null
+        $env:LUNATE_INSTALL_BASE_URL = 'file:///' + ($badFixture -replace '\\', '/')
+        $env:LUNATE_INSTALL_PREFIX = $badPrefix
+        $aborted = $false
+        try { & ./install.ps1 } catch { $aborted = $true }
+        if (-not $aborted) { throw 'verify: install.ps1 accepted a checksum mismatch' }
+        if (Test-Path (Join-Path $badPrefix 'lunate.exe')) {
+            throw 'verify: install.ps1 left a partial install after a checksum mismatch'
+        }
+
+        # Architecture: ARM64 (either variable) is refused; the WOW64 edge
+        # (32-bit PowerShell on x64) must install.
+        $previousArch = $env:PROCESSOR_ARCHITECTURE
+        $previousArchW6432 = $env:PROCESSOR_ARCHITEW6432
+        try {
+            $env:PROCESSOR_ARCHITECTURE = 'ARM64'
+            $env:PROCESSOR_ARCHITEW6432 = 'ARM64'
+            $refusal = ''
+            try { & ./install.ps1 } catch { $refusal = $_.Exception.Message }
+            if ($refusal -notmatch 'win-x64') {
+                throw "verify: install.ps1 did not refuse ARM64: $refusal"
+            }
+
+            $env:LUNATE_INSTALL_BASE_URL = 'file:///' + ($fixture -replace '\\', '/')
+            $env:PROCESSOR_ARCHITECTURE = 'x86'
+            $env:PROCESSOR_ARCHITEW6432 = 'AMD64'
+            # The trailing slash must match the existing PATH entry from (a):
+            # no duplicate entry, no false 'added to PATH' hint.
+            & ./install.ps1 -Prefix ($prefix + '/')
+            $wow64 = & (Join-Path $prefix 'lunate.exe') --version
+            if ($wow64 -ne $published) {
+                throw "verify: WOW64 install reports $wow64, expected $published"
+            }
+        }
+        finally {
+            $env:PROCESSOR_ARCHITECTURE = $previousArch
+            if ($null -eq $previousArchW6432) {
+                Remove-Item Env:PROCESSOR_ARCHITEW6432 -ErrorAction SilentlyContinue
+            }
+            else {
+                $env:PROCESSOR_ARCHITEW6432 = $previousArchW6432
+            }
+        }
+
+        $entries = @(([Environment]::GetEnvironmentVariable('Path', 'User')) -split ';')
+        $normalizedPrefix = ($prefix -replace '/', '\').TrimEnd('\')
+        $pathMatches = @($entries | Where-Object { $_.Trim().Replace('/', '\').TrimEnd('\') -ieq $normalizedPrefix })
+        if ($pathMatches.Count -ne 1) {
+            throw "verify: the user PATH holds $($pathMatches.Count) entries for $prefix; expected 1 (separators normalize)"
+        }
+    }
+    finally {
+        [Environment]::SetEnvironmentVariable('Path', $userPathBefore, 'User')
+        Remove-Item Env:LUNATE_INSTALL_BASE_URL -ErrorAction SilentlyContinue
+        Remove-Item Env:LUNATE_INSTALL_PREFIX -ErrorAction SilentlyContinue
+        Remove-Item Env:LUNATE_INSTALL_VERSION -ErrorAction SilentlyContinue
+        Remove-Item -Recurse -Force -Path $installTmp -ErrorAction SilentlyContinue
+    }
+
+    Write-Host "`n==> tool package roundtrip"
+    $toolTmp = Join-Path ([System.IO.Path]::GetTempPath()) ('lunate-verify-tool-' + [guid]::NewGuid().ToString('N'))
+    $feed = Join-Path $toolTmp 'feed'
+    $toolPath = Join-Path $toolTmp 'tools'
+    New-Item -ItemType Directory -Force -Path $feed | Out-Null
+    try {
+        dotnet pack src/Lunate.Coding/Lunate.Coding.csproj -c $configuration -o $feed --nologo
+        if ($LASTEXITCODE -ne 0) { throw 'verify: dotnet pack failed' }
+        dotnet tool install --tool-path $toolPath --add-source $feed lunate --version $version
+        if ($LASTEXITCODE -ne 0) { throw 'verify: dotnet tool install failed' }
+        $toolVersion = & (Join-Path $toolPath 'lunate.exe') --version
+        if (($toolVersion -split '\+')[0] -ne $version) {
+            throw "verify: tool roundtrip reports $toolVersion, expected $version"
+        }
+    }
+    finally {
+        Remove-Item -Recurse -Force -Path $toolTmp -ErrorAction SilentlyContinue
+    }
+
     Write-Host "`n==> format"
     # CSharpier owns formatting; dotnet format keeps style and analyzer duties.
     dotnet csharpier check .
