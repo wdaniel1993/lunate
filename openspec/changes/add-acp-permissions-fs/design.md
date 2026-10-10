@@ -33,7 +33,29 @@ One real Zed session: approvals round trip in the editor dialog (allow once / al
 
 ## Deviations
 
-(filled during apply; none yet)
+1. `ITextFileAccess` lives in `Lunate.Agent` (`src/Lunate.Agent/ITextFileAccess.cs`), not
+   `Lunate.Coding`: `AcpSessionContext` is public in `Lunate.Protocols`, which cannot reference
+   `Lunate.Coding` (`Lunate.Coding` -> `Lunate.Protocols` already exists; the reverse edge cycles
+   and fails the layering fitness test). `LocalTextFileAccess` stays in `Lunate.Coding`
+   (internal); the interface shape is exactly as pinned, public API entries in
+   `Lunate.Agent/PublicAPI.Unshipped.txt`.
+2. `tests/Lunate.Protocols.Tests` gained a test-only `Lunate.Coding` project reference (plus
+   `InternalsVisibleTo` in `Lunate.Coding`) so the pinned pipe-pair tests can use the real
+   `ReadTool`/`WriteTool` and `AcpApprover`; the layering table gains
+   `("Lunate.Protocols.Tests", "Lunate.Coding")`.
+3. `ReadTool` binary detection now reads the content through the seam once and reports a file as
+   binary when the decoded text contains a NUL (previously a NUL in the first 8192 local bytes);
+   the error's size is the UTF-8 byte count of the decoded text plus 3 for a BOM. The pinned seam
+   has no byte-level probe and ACP files may not exist on the local disk.
+4. `LibAcpServer.PromptAsync` yields after `session.BeginPrompt` so the run never executes on the
+   connection's receive-loop thread: `ClientTextFileAccess` is pinned synchronous
+   (`GetAwaiter().GetResult()`) and the receive loop delivers the client's response, so a
+   synchronous run path deadlocks the fs round trip. `BeginPrompt` stays synchronous, so the
+   queued-prompt cancel latch is unchanged.
+5. `ClientTextFileAccess.Exists` probes with `fs/read_text_file` (the protocol has no existence
+   call); a read failure reports the file as absent. The client file system is used only when the
+   client advertises both `ReadTextFile` and `WriteTextFile`, because the single seam serves reads
+   and writes.
 
 ## Seams
 

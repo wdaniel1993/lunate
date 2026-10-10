@@ -173,17 +173,16 @@ internal sealed class LibAcpServer(Action<string>? log = null) : IAcpServer
         public async Task<PromptResponse> PromptAsync(PromptRequest request, CancellationToken ct)
         {
             ArgumentNullException.ThrowIfNull(request);
-
-            // The run must never execute on the connection's receive-loop thread: the tools' text
-            // seam blocks on client round trips, and their responses are read by that same loop.
-            await Task.Yield();
-
             Session session = RequireSession(request.SessionId);
             string prompt = PromptText(request, session);
 
             session.BeginPrompt();
             try
             {
+                // Past this point the run must never execute on the connection's receive-loop
+                // thread: the tools' text seam blocks on client round trips, and their responses
+                // are read by that same loop.
+                await Task.Yield();
                 await runs.WaitAsync(ct).ConfigureAwait(false);
                 try
                 {
