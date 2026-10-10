@@ -118,26 +118,52 @@ try {
 
     $installTmp = Join-Path ([System.IO.Path]::GetTempPath()) ('lunate-verify-install-' + [guid]::NewGuid().ToString('N'))
     $fixture = Join-Path $installTmp 'fixture'
+    $latestDir = Join-Path $fixture 'latest/download'
+    $pinnedDir = Join-Path $fixture "download/v$version"
     $prefix = Join-Path $installTmp 'prefix'
-    New-Item -ItemType Directory -Force -Path $fixture, $prefix | Out-Null
+    $prefixFlags = Join-Path $installTmp 'prefix-flags'
+    New-Item -ItemType Directory -Force -Path $latestDir, $pinnedDir, $prefix, $prefixFlags | Out-Null
     try {
-        $zip = Join-Path $fixture 'lunate-win-x64.zip'
+        $zipName = 'lunate-win-x64.zip'
+        $zip = Join-Path $latestDir $zipName
         Compress-Archive -Path (Join-Path $publishDir "$env:RID/lunate.exe") -DestinationPath $zip
         $hash = (Get-FileHash -Algorithm SHA256 -Path $zip).Hash.ToLowerInvariant()
-        Set-Content -Path (Join-Path $fixture 'SHA256SUMS') -Value "$hash  lunate-win-x64.zip" -Encoding ascii
+        $sumsLine = "$hash  $zipName"
+        Set-Content -Path (Join-Path $latestDir 'SHA256SUMS') -Value $sumsLine -Encoding ascii
+        Copy-Item -Path $zip -Destination (Join-Path $pinnedDir $zipName)
+        Set-Content -Path (Join-Path $pinnedDir 'SHA256SUMS') -Value $sumsLine -Encoding ascii
 
+        # (a) Default install: the environment supplies only the releases base.
         $env:LUNATE_INSTALL_BASE_URL = 'file:///' + ($fixture -replace '\\', '/')
         $env:LUNATE_INSTALL_PREFIX = $prefix
+        Remove-Item Env:LUNATE_INSTALL_VERSION -ErrorAction SilentlyContinue
         & ./install.ps1
-        $installed = & (Join-Path $prefix 'lunate.exe') --version
         $published = & $binaryFull --version
+        $installed = & (Join-Path $prefix 'lunate.exe') --version
         if ($installed -ne $published) {
             throw "verify: installed lunate reports $installed, expected $published"
         }
 
+        # (b) -Version/-Prefix must drive the composed URL and the target directory.
+        Remove-Item Env:LUNATE_INSTALL_PREFIX -ErrorAction SilentlyContinue
+        & ./install.ps1 -Version "v$version" -Prefix $prefixFlags
+        $installedFlags = & (Join-Path $prefixFlags 'lunate.exe') --version
+        if ($installedFlags -ne $published) {
+            throw "verify: installed lunate reports $installedFlags (flags), expected $published"
+        }
+
+        # (c) A tag with no release directory must fail even though latest/ exists:
+        # the tag participates in the URL the script composes.
+        $badTag = $false
+        try {
+            & ./install.ps1 -Version 'v9.9.9' -Prefix (Join-Path $installTmp 'prefix-bad-tag')
+        }
+        catch { $badTag = $true }
+        if (-not $badTag) { throw 'verify: install.ps1 installed a nonexistent version v9.9.9 from the fixture' }
+
         $badFixture = Join-Path $installTmp 'bad-fixture'
         Copy-Item -Recurse -Path $fixture -Destination $badFixture
-        [System.IO.File]::AppendAllText((Join-Path $badFixture 'lunate-win-x64.zip'), 'corrupt')
+        [System.IO.File]::AppendAllText((Join-Path $badFixture "latest/download/$zipName"), 'corrupt')
         $badPrefix = Join-Path $installTmp 'bad-prefix'
         New-Item -ItemType Directory -Force -Path $badPrefix | Out-Null
         $env:LUNATE_INSTALL_BASE_URL = 'file:///' + ($badFixture -replace '\\', '/')

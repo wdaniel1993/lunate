@@ -7,7 +7,10 @@
 #   irm https://raw.githubusercontent.com/wdaniel1993/lunate/main/install.ps1 | iex
 #
 # Environment overrides:
-#   LUNATE_INSTALL_BASE_URL  download root (the URL prefix before /<asset>)
+#   LUNATE_INSTALL_BASE_URL  releases base URL
+#                            (default: https://github.com/wdaniel1993/lunate/releases);
+#                            the script downloads from <base>/latest/download
+#                            or <base>/download/<tag>
 #   LUNATE_INSTALL_VERSION   release tag to install, for example v0.1.0
 #   LUNATE_INSTALL_PREFIX    install directory
 #                            (default: %LOCALAPPDATA%\Programs\lunate)
@@ -50,14 +53,15 @@ if (-not $Prefix) {
 
 $baseUrl = $env:LUNATE_INSTALL_BASE_URL
 if (-not $baseUrl) {
-    if ($Version) {
-        $tag = $Version
-        if (-not $tag.StartsWith('v')) { $tag = "v$tag" }
-        $baseUrl = "https://github.com/wdaniel1993/lunate/releases/download/$tag"
-    }
-    else {
-        $baseUrl = 'https://github.com/wdaniel1993/lunate/releases/latest/download'
-    }
+    $baseUrl = 'https://github.com/wdaniel1993/lunate/releases'
+}
+if ($Version) {
+    $tag = $Version
+    if (-not $tag.StartsWith('v')) { $tag = "v$tag" }
+    $rootUrl = "$baseUrl/download/$tag"
+}
+else {
+    $rootUrl = "$baseUrl/latest/download"
 }
 
 $asset = 'lunate-win-x64.zip'
@@ -65,11 +69,11 @@ $tmp = Join-Path ([System.IO.Path]::GetTempPath()) ("lunate-install-" + [guid]::
 New-Item -ItemType Directory -Path $tmp | Out-Null
 
 try {
-    Write-Host "installing lunate from $baseUrl"
+    Write-Host "installing lunate from $rootUrl"
     $archive = Join-Path $tmp $asset
     $sums = Join-Path $tmp 'SHA256SUMS'
-    Save-RemoteFile -Uri "$baseUrl/$asset" -OutFile $archive
-    Save-RemoteFile -Uri "$baseUrl/SHA256SUMS" -OutFile $sums
+    Save-RemoteFile -Uri "$rootUrl/$asset" -OutFile $archive
+    Save-RemoteFile -Uri "$rootUrl/SHA256SUMS" -OutFile $sums
 
     $expected = $null
     foreach ($line in Get-Content -Path $sums) {

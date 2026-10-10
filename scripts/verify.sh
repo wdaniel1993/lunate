@@ -149,17 +149,23 @@ if [ "${RID#win}" != "$RID" ]; then
 else
   fixture="${install_tmp}/fixture"
   prefix="${install_tmp}/prefix"
+  prefix_flags="${install_tmp}/prefix-flags"
   bad_fixture="${install_tmp}/bad-fixture"
   bad_prefix="${install_tmp}/bad-prefix"
   log="${install_tmp}/install.log"
-  mkdir -p "$fixture" "$prefix" "$bad_fixture" "$bad_prefix"
+  mkdir -p "${fixture}/latest/download" "${fixture}/download/v${version}" \
+    "$prefix" "$prefix_flags" "${bad_fixture}/latest/download" "$bad_prefix"
 
   install_asset="lunate-${RID}.tar.gz"
-  tar -czf "${fixture}/${install_asset}" -C "${PUBLISH_DIR}/${RID}" lunate
-  printf '%s  %s\n' "$(sha256_file "${fixture}/${install_asset}")" "$install_asset" >"${fixture}/SHA256SUMS"
+  tar -czf "${fixture}/latest/download/${install_asset}" -C "${PUBLISH_DIR}/${RID}" lunate
+  printf '%s  %s\n' "$(sha256_file "${fixture}/latest/download/${install_asset}")" "$install_asset" \
+    >"${fixture}/latest/download/SHA256SUMS"
+  cp "${fixture}/latest/download/${install_asset}" "${fixture}/download/v${version}/${install_asset}"
+  cp "${fixture}/latest/download/SHA256SUMS" "${fixture}/download/v${version}/SHA256SUMS"
 
+  # (a) Default install: the environment supplies only the releases base.
   if ! LUNATE_INSTALL_BASE_URL="file://${fixture}" LUNATE_INSTALL_PREFIX="$prefix" \
-    sh install.sh --version "v${version}" >"$log" 2>&1; then
+    LUNATE_INSTALL_VERSION= sh install.sh >"$log" 2>&1; then
     echo "verify: install.sh failed against the fixture release:" >&2
     cat "$log" >&2
     exit 1
@@ -171,10 +177,36 @@ else
     exit 1
   fi
 
+  # (b) --version/--prefix must drive the composed URL and the target directory.
+  if ! LUNATE_INSTALL_BASE_URL="file://${fixture}" LUNATE_INSTALL_PREFIX= \
+    sh install.sh --version "v${version}" --prefix "$prefix_flags" >"$log" 2>&1; then
+    echo "verify: install.sh failed with --version/--prefix against the fixture release:" >&2
+    cat "$log" >&2
+    exit 1
+  fi
+  installed_flags="$("${prefix_flags}/lunate" --version)"
+  if [ "$installed_flags" != "$published" ]; then
+    echo "verify: installed lunate reports ${installed_flags}, expected ${published}" >&2
+    exit 1
+  fi
+
+  # (c) A tag with no release directory must fail even though latest/ exists:
+  # the tag participates in the URL the script composes.
+  if LUNATE_INSTALL_BASE_URL="file://${fixture}" LUNATE_INSTALL_PREFIX= \
+    sh install.sh --version v9.9.9 --prefix "${install_tmp}/prefix-bad-tag" >"$log" 2>&1; then
+    echo "verify: install.sh installed a nonexistent version v9.9.9 from the fixture" >&2
+    exit 1
+  fi
+  if ! grep -q 'failed to download' "$log"; then
+    echo "verify: install.sh did not fail on the nonexistent version download:" >&2
+    cat "$log" >&2
+    exit 1
+  fi
+
   cp -R "${fixture}/." "$bad_fixture/"
-  printf 'corrupt\n' >>"${bad_fixture}/${install_asset}"
+  printf 'corrupt\n' >>"${bad_fixture}/latest/download/${install_asset}"
   if LUNATE_INSTALL_BASE_URL="file://${bad_fixture}" LUNATE_INSTALL_PREFIX="$bad_prefix" \
-    sh install.sh >"$log" 2>&1; then
+    LUNATE_INSTALL_VERSION= sh install.sh >"$log" 2>&1; then
     echo "verify: install.sh accepted a checksum mismatch" >&2
     exit 1
   fi

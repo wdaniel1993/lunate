@@ -8,7 +8,8 @@
 #   sh install.sh [--version <tag>] [--prefix <dir>]
 #
 # Environment overrides:
-#   LUNATE_INSTALL_BASE_URL  download root (the URL prefix before /<asset>)
+#   LUNATE_INSTALL_BASE_URL  releases base URL
+#                            (default: https://github.com/wdaniel1993/lunate/releases)
 #   LUNATE_INSTALL_VERSION   release tag to install, for example v0.1.0
 #   LUNATE_INSTALL_PREFIX    install directory (default: $HOME/.local/bin)
 
@@ -31,7 +32,8 @@ Options:
   --help           show this help
 
 Environment:
-  LUNATE_INSTALL_BASE_URL  download root (the URL prefix before /<asset>)
+  LUNATE_INSTALL_BASE_URL  releases base URL; the script downloads from
+                           <base>/latest/download or <base>/download/<tag>
   LUNATE_INSTALL_VERSION   release tag to install (same as --version)
   LUNATE_INSTALL_PREFIX    install directory (same as --prefix)
 EOF
@@ -94,17 +96,15 @@ fi
 
 command -v curl >/dev/null 2>&1 || fail "curl is required but was not found on PATH; install curl and re-run"
 
-base="${LUNATE_INSTALL_BASE_URL:-}"
-if [ -z "$base" ]; then
-  if [ -n "$version" ]; then
-    case "$version" in
-      v*) tag="$version" ;;
-      *) tag="v${version}" ;;
-    esac
-    base="https://github.com/wdaniel1993/lunate/releases/download/${tag}"
-  else
-    base="https://github.com/wdaniel1993/lunate/releases/latest/download"
-  fi
+base="${LUNATE_INSTALL_BASE_URL:-https://github.com/wdaniel1993/lunate/releases}"
+if [ -n "$version" ]; then
+  case "$version" in
+    v*) tag="$version" ;;
+    *) tag="v${version}" ;;
+  esac
+  root="${base}/download/${tag}"
+else
+  root="${base}/latest/download"
 fi
 
 asset="lunate-${rid}.tar.gz"
@@ -114,8 +114,8 @@ cleanup() {
 }
 trap cleanup EXIT
 
-curl -fsSL -o "$tmp/$asset" "$base/$asset" || fail "failed to download ${base}/${asset}"
-curl -fsSL -o "$tmp/SHA256SUMS" "$base/SHA256SUMS" || fail "failed to download ${base}/SHA256SUMS"
+curl -fsSL -o "$tmp/$asset" "$root/$asset" || fail "failed to download ${root}/${asset}"
+curl -fsSL -o "$tmp/SHA256SUMS" "$root/SHA256SUMS" || fail "failed to download ${root}/SHA256SUMS"
 
 expected="$(awk -v name="$asset" '$2 == name { print $1; exit }' "$tmp/SHA256SUMS")"
 [ -n "$expected" ] || fail "SHA256SUMS does not list ${asset}"

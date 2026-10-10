@@ -2,7 +2,7 @@
 
 ### Requirement: Install script (sh)
 
-The repository SHALL provide `install.sh` for macOS and Linux: it detects the platform (`Darwin`+`arm64` → `osx-arm64`, `Linux`+`x86_64` → `linux-x64`), downloads the matching release archive and `SHA256SUMS` (latest, or the tag given via `--version` / `LUNATE_INSTALL_VERSION`), verifies the archive's SHA-256 before extracting, installs the `lunate` binary into `$HOME/.local/bin` (or `--prefix` / `LUNATE_INSTALL_PREFIX`), and prints the installed version plus a PATH hint when the directory is not on `PATH`. `LUNATE_INSTALL_BASE_URL` SHALL override the download root verbatim (the test seam; `file://` URLs SHALL work). Unsupported platforms SHALL be refused with a message pointing Windows users at `install.ps1`, and the script SHALL never require `sudo` or leave a partial install behind.
+The repository SHALL provide `install.sh` for macOS and Linux: it detects the platform (`Darwin`+`arm64` → `osx-arm64`, `Linux`+`x86_64` → `linux-x64`), downloads the matching release archive and `SHA256SUMS` (latest, or the tag given via `--version` / `LUNATE_INSTALL_VERSION`), verifies the archive's SHA-256 before extracting, installs the `lunate` binary into `$HOME/.local/bin` (or `--prefix` / `LUNATE_INSTALL_PREFIX`), and prints the installed version plus a PATH hint when the directory is not on `PATH`. `LUNATE_INSTALL_BASE_URL` SHALL override the releases base (`https://github.com/wdaniel1993/lunate/releases` by default) and the script SHALL compose `latest/download/<asset>` or `download/<tag>/<asset>` from it (the test seam; `file://` URLs SHALL work). Unsupported platforms SHALL be refused with a message pointing Windows users at `install.ps1`, and the script SHALL never require `sudo` or leave a partial install behind.
 
 #### Scenario: A supported platform installs from a release
 - **GIVEN** a release containing the platform's archive and `SHA256SUMS`
@@ -22,7 +22,7 @@ The repository SHALL provide `install.sh` for macOS and Linux: it detects the pl
 #### Scenario: Version and prefix flags are honoured
 - **GIVEN** `--version` and `--prefix` arguments
 - **WHEN** `install.sh` runs
-- **THEN** the download uses that tag and the binary lands in that directory
+- **THEN** the download composes that tag into the URL and the binary lands in that directory
 
 ### Requirement: Install script (PowerShell)
 

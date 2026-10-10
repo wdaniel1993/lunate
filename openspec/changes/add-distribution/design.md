@@ -12,7 +12,7 @@
 
 - Release asset names: `lunate-osx-arm64.tar.gz`, `lunate-linux-x64.tar.gz`, `lunate-win-x64.zip`, `SHA256SUMS` (lines `<hash>  <filename>`, sha256sum format), `lunate.<version>.nupkg` (new).
 - Download URLs: latest = `https://github.com/wdaniel1993/lunate/releases/latest/download/<asset>`; pinned version = `.../releases/download/<tag>/<asset>`.
-- Test seam: `LUNATE_INSTALL_BASE_URL` overrides the **download root** verbatim (the URL prefix before `/<asset>`; `file://` works with curl); `LUNATE_INSTALL_VERSION` / `--version` selects the tag; `LUNATE_INSTALL_PREFIX` / `--prefix` the target directory.
+- Test seam: `LUNATE_INSTALL_BASE_URL` overrides the **releases base** (`https://github.com/wdaniel1993/lunate/releases`; `file://` works with curl), and the script composes `/latest/download/<asset>` or `/download/<tag>/<asset>` from it; `LUNATE_INSTALL_VERSION` / `--version` selects the tag; `LUNATE_INSTALL_PREFIX` / `--prefix` the target directory.
 
 ## install.sh (pinned)
 
@@ -29,9 +29,9 @@
 
 ## Verify-gate proofs (pinned)
 
-- `verify.sh`, after the startup-budget step, on Darwin/Linux: build a fixture release from the just-published binary (`tar -czf lunate-<rid>.tar.gz`, `SHA256SUMS`), run `install.sh` with `LUNATE_INSTALL_BASE_URL=file://<fixture>` and a temp prefix, then run the installed `lunate --version` and compare with the publish version.
+- `verify.sh`, after the startup-budget step, on Darwin/Linux: build a fixture release from the just-published binary (`tar -czf lunate-<rid>.tar.gz`, `SHA256SUMS`) under `<fixture>/latest/download/` and `<fixture>/download/<tag>/`; run `install.sh` (a) with only `LUNATE_INSTALL_BASE_URL=file://<fixture>` and a temp prefix, then (b) with `--version <tag> --prefix <dir2>`, and compare each installed `lunate --version` with the publish version; a nonexistent tag must fail (the tag participates in the URL).
 - `verify.sh` on Windows (MINGW): run `install.sh` and require the refusal (non-zero + message) — the Windows path belongs to `install.ps1`.
-- `verify.ps1`, after the startup-budget step: same fixture flow with the zip + `install.ps1`, assert the installed exe runs.
+- `verify.ps1`, after the startup-budget step: the same fixture layout and (a)/(b) runs with `install.ps1` (flags via `-Version`/`-Prefix`), plus the checksum-mismatch abort and the arch refusal.
 - Tool roundtrip (both scripts): `dotnet pack` the CLI into a temp feed, `dotnet tool install --tool-path <tmp> --add-source <feed> lunate --version <current>`, run `lunate --version`.
 - Packaging consistency: assert every packaging file exists and contains the current `<Version>` string from `Directory.Build.props` (a small bash step in verify.sh; sha256 placeholders are allowed at rest — the runbook fills them at release time).
 
@@ -53,6 +53,7 @@
 2. `Lunate.Coding.csproj` sets `<IsPackable>true</IsPackable>` next to `PackAsTool=true`: `Directory.Build.props` sets `IsPackable=false` repo-wide, and without the override `dotnet pack` no-ops instead of producing the tool package required by task 3.1.
 3. `install.ps1` resolves `file://` base URLs through the local filesystem (copy): PowerShell 7's `Invoke-WebRequest` rejects the `file` scheme, and the verify fixture seam needs `file://`. http(s) downloads still go through `Invoke-WebRequest`.
 4. `lunate --version` reports the SDK informational version (`<Version>+<commit>`), so the fixture flows compare the installed binary's output with the published binary's output, and the tool roundtrip compares against the `<Version>` prefix before `+`.
+5. The test seam overrides the **releases base** (not the download URL): the scripts compose `/latest/download/<asset>` or `/download/<tag>/<asset>` from it, so `--version`/`LUNATE_INSTALL_VERSION` are provable end-to-end (adversarial review risk 1).
 
 ## Seams
 
