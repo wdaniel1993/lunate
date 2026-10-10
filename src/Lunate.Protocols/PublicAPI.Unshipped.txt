@@ -1,4 +1,9 @@
 #nullable enable
+Lunate.Protocols.Acp.IAcpServer
+Lunate.Protocols.Acp.IAcpServer.RunAsync(System.IO.Stream! input, System.IO.Stream! output, System.Func<string!, Lunate.Agent.AgentHarness!>! createHarness, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task!
+Lunate.Protocols.Acp.LibAcpServer
+Lunate.Protocols.Acp.LibAcpServer.LibAcpServer(System.Action<string!>? log = null) -> void
+Lunate.Protocols.Acp.LibAcpServer.RunAsync(System.IO.Stream! input, System.IO.Stream! output, System.Func<string!, Lunate.Agent.AgentHarness!>! createHarness, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task!
 Lunate.Protocols.McpServerHost
 Lunate.Protocols.McpServerHost.DisposeAsync() -> System.Threading.Tasks.ValueTask
 Lunate.Protocols.McpServerHost.GetToolsAsync(System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask<System.Collections.Generic.IReadOnlyList<Lunate.Agent.ITool!>!>

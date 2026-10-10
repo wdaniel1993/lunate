@@ -6,11 +6,11 @@
 
 ## 2. Server core (Protocols)
 
-- [ ] 2.1 `IAcpServer` (public, PublicAPI entry) + `LibAcpServer` adapter: initialize (v1, honest capabilities, log-and-skip unsupported)
-- [ ] 2.2 session/new (harness per session; cwd → workspace; session id map)
-- [ ] 2.3 session/prompt: one run, text blocks only, streaming updates via the mapper, stop-reason mapping
-- [ ] 2.4 session/cancel: token cancel, cancelled stop reason, no post-response updates
-- [ ] 2.5 `AcpEventMapper` (pure) per the guide's table
+- [x] 2.1 `IAcpServer` (public, PublicAPI entry) + `LibAcpServer` adapter: initialize (v1, honest capabilities, log-and-skip unsupported)
+- [x] 2.2 session/new (harness per session; cwd → workspace; session id map)
+- [x] 2.3 session/prompt: one run, text blocks only, streaming updates via the mapper, stop-reason mapping
+- [x] 2.4 session/cancel: token cancel, cancelled stop reason, no post-response updates
+- [x] 2.5 `AcpEventMapper` (pure) per the guide's table
 
 ## 3. CLI mode
 
