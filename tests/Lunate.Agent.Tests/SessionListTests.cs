@@ -44,7 +44,7 @@ public sealed class SessionListTests
     }
 
     [Fact]
-    public void Equal_modification_times_tie_break_on_the_id()
+    public void Equal_modification_times_tie_break_on_the_id_descending()
     {
         using var temp = new TempDirectory();
         Session first = Session.Create(temp.File("a.jsonl"), "/work", new FixedTimeProvider(Start));
@@ -59,12 +59,34 @@ public sealed class SessionListTests
         IReadOnlyList<SessionSummary> summaries = Session.List(temp.Root);
 
         Assert.Equal(
-            summaries.Select(summary => summary.Id).Order(StringComparer.Ordinal),
+            summaries.Select(summary => summary.Id).OrderDescending(StringComparer.Ordinal),
             summaries.Select(summary => summary.Id)
         );
         Assert.Equal(2, summaries.Count);
         Assert.Contains(first.SessionId, summaries.Select(summary => summary.Id));
         Assert.Contains(second.SessionId, summaries.Select(summary => summary.Id));
+    }
+
+    [Fact]
+    public void Equal_modification_times_tie_break_on_the_created_time_descending()
+    {
+        using var temp = new TempDirectory();
+        Session older = Session.Create(
+            temp.File("older.jsonl"),
+            "/work",
+            new FixedTimeProvider(Start)
+        );
+        Session newer = Session.Create(
+            temp.File("newer.jsonl"),
+            "/work",
+            new FixedTimeProvider(Start.AddMinutes(5))
+        );
+        File.SetLastWriteTimeUtc(temp.File("older.jsonl"), Start.UtcDateTime);
+        File.SetLastWriteTimeUtc(temp.File("newer.jsonl"), Start.UtcDateTime);
+
+        IReadOnlyList<SessionSummary> summaries = Session.List(temp.Root);
+
+        Assert.Equal([newer.SessionId, older.SessionId], summaries.Select(summary => summary.Id));
     }
 
     [Fact]

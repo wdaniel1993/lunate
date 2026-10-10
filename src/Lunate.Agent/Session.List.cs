@@ -15,7 +15,8 @@ public sealed partial class Session
 
     /// <summary>
     /// Lists a session directory for the picker: one entry per <c>.jsonl</c> file whose header
-    /// reads, newest last-modified first with the id as tie-break, bounded to
+    /// reads, newest last-modified first with creation time and then the id as descending
+    /// tie-breaks (so same-second sessions still order deterministically), bounded to
     /// <see cref="ListLimit"/>. Files are read as little as possible (the header line only) and
     /// never modified; a missing directory lists nothing.
     /// </summary>
@@ -40,7 +41,13 @@ public sealed partial class Session
             static (left, right) =>
             {
                 int byModified = right.Modified.CompareTo(left.Modified);
-                return byModified != 0 ? byModified : string.CompareOrdinal(left.Id, right.Id);
+                if (byModified != 0)
+                {
+                    return byModified;
+                }
+
+                int byCreated = right.Created.CompareTo(left.Created);
+                return byCreated != 0 ? byCreated : string.CompareOrdinal(right.Id, left.Id);
             }
         );
         return summaries.Count <= ListLimit ? summaries : summaries.GetRange(0, ListLimit);
