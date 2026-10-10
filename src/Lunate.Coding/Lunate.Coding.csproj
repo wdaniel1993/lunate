@@ -3,6 +3,11 @@
         <OutputType>Exe</OutputType>
         <AssemblyName>lunate</AssemblyName>
         <RootNamespace>Lunate.Coding</RootNamespace>
+        <PackAsTool>true</PackAsTool>
+        <IsPackable>true</IsPackable>
+        <ToolCommandName>lunate</ToolCommandName>
+        <PackageId>lunate</PackageId>
+        <Description>A native C# coding agent for the terminal.</Description>
     </PropertyGroup>
 
     <ItemGroup>

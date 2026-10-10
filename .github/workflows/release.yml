@@ -120,15 +120,45 @@ jobs:
           path: artifacts/lunate-*
           if-no-files-found: error
 
+  pack:
+    name: pack (dotnet tool)
+    needs: gate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: |
+            global.json
+            Directory.Build.props
+            **/*.csproj
+
+      - name: Pack tool
+        run: dotnet pack src/Lunate.Coding/Lunate.Coding.csproj -c Release -o dist --nologo
+
+      - name: Upload tool package
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-nupkg
+          path: dist/*.nupkg
+          if-no-files-found: error
+
   release:
     name: attach release assets
-    needs: publish
+    needs: [publish, pack]
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
-      - name: Download target archives
+      - name: Download release artifacts
         uses: actions/download-artifact@v8
         with:
           pattern: release-*

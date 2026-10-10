@@ -15,9 +15,9 @@
 
 ## 3. Tool packaging
 
-- [ ] 3.1 `Lunate.Coding.csproj`: PackAsTool, ToolCommandName `lunate`, PackageId `lunate`
-- [ ] 3.2 `release.yml` pack job + `.nupkg` attached to the release
-- [ ] 3.3 Local pack → `dotnet tool install` → run roundtrip step in both verify scripts
+- [x] 3.1 `Lunate.Coding.csproj`: PackAsTool, ToolCommandName `lunate`, PackageId `lunate`
+- [x] 3.2 `release.yml` pack job + `.nupkg` attached to the release
+- [x] 3.3 Local pack → `dotnet tool install` → run roundtrip step in both verify scripts
 
 ## 4. Channel artifacts
 

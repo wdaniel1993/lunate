@@ -164,6 +164,25 @@ try {
         Remove-Item -Recurse -Force -Path $installTmp -ErrorAction SilentlyContinue
     }
 
+    Write-Host "`n==> tool package roundtrip"
+    $toolTmp = Join-Path ([System.IO.Path]::GetTempPath()) ('lunate-verify-tool-' + [guid]::NewGuid().ToString('N'))
+    $feed = Join-Path $toolTmp 'feed'
+    $toolPath = Join-Path $toolTmp 'tools'
+    New-Item -ItemType Directory -Force -Path $feed | Out-Null
+    try {
+        dotnet pack src/Lunate.Coding/Lunate.Coding.csproj -c $configuration -o $feed --nologo
+        if ($LASTEXITCODE -ne 0) { throw 'verify: dotnet pack failed' }
+        dotnet tool install --tool-path $toolPath --add-source $feed lunate --version $version
+        if ($LASTEXITCODE -ne 0) { throw 'verify: dotnet tool install failed' }
+        $toolVersion = & (Join-Path $toolPath 'lunate.exe') --version
+        if (($toolVersion -split '\+')[0] -ne $version) {
+            throw "verify: tool roundtrip reports $toolVersion, expected $version"
+        }
+    }
+    finally {
+        Remove-Item -Recurse -Force -Path $toolTmp -ErrorAction SilentlyContinue
+    }
+
     Write-Host "`n==> format"
     # CSharpier owns formatting; dotnet format keeps style and analyzer duties.
     dotnet csharpier check .

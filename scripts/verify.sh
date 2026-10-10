@@ -211,6 +211,20 @@ SHIM
   fi
 fi
 
+step "tool package roundtrip"
+tool_tmp="$(verify_tmp)"
+dotnet pack src/Lunate.Coding/Lunate.Coding.csproj -c "$CONFIGURATION" -o "${tool_tmp}/feed" --nologo
+dotnet tool install --tool-path "${tool_tmp}/tools" --add-source "${tool_tmp}/feed" lunate --version "$version"
+tool_bin="${tool_tmp}/tools/lunate"
+if [ "${RID#win}" != "$RID" ]; then
+  tool_bin="${tool_bin}.exe"
+fi
+tool_version="$("$tool_bin" --version)"
+if [ "${tool_version%%+*}" != "$version" ]; then
+  echo "verify: tool roundtrip reports ${tool_version}, expected ${version}" >&2
+  exit 1
+fi
+
 step "format"
 # CSharpier owns formatting; dotnet format keeps style and analyzer duties.
 dotnet csharpier check .
