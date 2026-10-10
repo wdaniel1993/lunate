@@ -10,7 +10,7 @@
 
 ## 2. Tool surface (Coding)
 
-- [ ] 2.1 `start_line` argument (optional integer ≥ 1) + description; result string `(match: exact|normalized|indent)`; `EditDetails` unchanged
+- [x] 2.1 `start_line` argument (optional integer ≥ 1) + description; result string `(match: exact|normalized|indent)`; `EditDetails` unchanged
 
 ## 3. Corpus (Coding)
 

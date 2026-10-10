@@ -8,6 +8,23 @@ public sealed class EditMatchingTests
     private static readonly ToolContext Context = new("unused", new NullAgentEvents());
 
     [Fact]
+    public void The_schema_carries_the_optional_start_line()
+    {
+        var schema = new EditTool(new Workspace(Path.GetTempPath())).ParametersSchema;
+        var startLine = schema.GetProperty("properties").GetProperty("start_line");
+
+        Assert.Equal("integer", startLine.GetProperty("type").GetString());
+        Assert.Equal(
+            "Optional 1-based line where old_text starts; disambiguates when old_text matches several places",
+            startLine.GetProperty("description").GetString()
+        );
+        Assert.DoesNotContain(
+            "start_line",
+            schema.GetProperty("required").EnumerateArray().Select(element => element.GetString())
+        );
+    }
+
+    [Fact]
     public async Task A_unique_indent_match_applies_at_tier_3()
     {
         using var temp = new TempDirectory();

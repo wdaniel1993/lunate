@@ -25,11 +25,16 @@ public sealed class EditTool(
                 },
                 "old_text": {
                   "type": "string",
-                  "description": "The exact text to replace; it must match exactly one place in the file"
+                  "description": "The text to replace; it must match one place in the file (use start_line when it matches several)"
                 },
                 "new_text": {
                   "type": "string",
                   "description": "The replacement text; the file's endings, BOM and trailing newline are kept"
+                },
+                "start_line": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "description": "Optional 1-based line where old_text starts; disambiguates when old_text matches several places"
                 }
               },
               "required": ["path", "old_text", "new_text"]
@@ -41,8 +46,8 @@ public sealed class EditTool(
     public string Name => "edit";
 
     public string Description =>
-        "Replace old_text with new_text in a workspace text file; old_text must match exactly one place "
-        + "(line-ending and trailing-whitespace differences are tolerated).";
+        "Replace old_text with new_text in a workspace text file; matching tolerates line-ending, "
+        + "trailing-whitespace and indentation differences (start_line disambiguates several matches).";
 
     public JsonElement ParametersSchema => Schema;
 
