@@ -60,6 +60,7 @@ Recorded during apply:
 5. **Pending-steering FIFO is lock-guarded and leftovers are discarded from the front**: the key pump can enqueue concurrently with the run task's run-end drain, and the drained leftovers are always the pending FIFO's front segment.
 6. **`Session.ListLimit` (20) is internal**; the public surface is only `Session.List` plus `SessionSummary`.
 7. **`/model <id>` (and confirming the current model) always appends a model change and rebuilds**, even when the id is already current; no short-circuit was specified.
+8. **Adversarial-fix round**: the session picker labels entries and the `resumed` notice with the session's full id (the `id8` helper is gone; the E2E maps the original session's id to `<old-session>` and the `/new`-created id to `<new-session>`, pinning two distinct entries with the new one first); "always" approvals are cleared whenever a rebuild starts a different session (`/new`, `/resume`); `Session.List` orders by last-modified, then creation time, then id — all descending.
 
 ## Part 3 / T-53 seams
 
