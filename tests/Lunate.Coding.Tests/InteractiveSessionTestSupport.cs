@@ -282,7 +282,8 @@ internal sealed class InteractiveSessionHost : IDisposable
     public InteractiveSessionHost(
         HookRunner? hooks = null,
         Func<AgentHarnessOptions, AgentHarnessOptions>? configureHarness = null,
-        IChatClient? chat = null
+        IChatClient? chat = null,
+        Func<string, string?>? environment = null
     )
     {
         Scrollback = new TestConsole();
@@ -298,7 +299,7 @@ internal sealed class InteractiveSessionHost : IDisposable
                 SessionDirectory = Temp.File("sessions"),
                 WorkingDirectory = Temp.Root,
                 HistoryPath = Temp.File("history"),
-                Environment = PrintModeTestSupport.Environment(),
+                Environment = environment ?? PrintModeTestSupport.Environment(),
                 Console = Console,
                 Scheduler = Scheduler,
                 Scrollback = Scrollback,

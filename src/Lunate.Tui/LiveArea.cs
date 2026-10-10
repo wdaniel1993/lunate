@@ -13,6 +13,7 @@ internal sealed class LiveArea : IDisposable
 
     private readonly IConsoleIO _console;
     private readonly IScheduler _scheduler;
+    private readonly TerminalCapabilities _capabilities;
     private readonly Subject<LiveAreaInput> _stimuli = new();
     private readonly List<IDisposable> _subscriptions = [];
     private readonly FrameWriter _writer;
@@ -28,13 +29,16 @@ internal sealed class LiveArea : IDisposable
         IConsoleIO console,
         IScheduler scheduler,
         bool readKeys = true,
-        IAnsiConsole? scrollback = null
+        IAnsiConsole? scrollback = null,
+        TerminalCapabilities? capabilities = null
     )
     {
         _console = console;
         _scheduler = scheduler;
         _readKeys = readKeys;
         _scrollback = scrollback;
+        _capabilities =
+            capabilities ?? new TerminalCapabilities(ColorSystemSupport.Detect, Unicode: true);
         _writer = new FrameWriter(console);
     }
 
@@ -148,7 +152,7 @@ internal sealed class LiveArea : IDisposable
             {
                 Ansi = _console.IsInteractive ? AnsiSupport.Yes : AnsiSupport.No,
                 ColorSystem = _console.IsInteractive
-                    ? ColorSystemSupport.Detect
+                    ? _capabilities.Color
                     : ColorSystemSupport.NoColors,
                 Interactive = InteractionSupport.No,
                 Out = new AnsiConsoleOutput(new ConsoleTextWriter(_console)),

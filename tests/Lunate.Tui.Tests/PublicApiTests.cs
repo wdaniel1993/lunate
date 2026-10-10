@@ -27,6 +27,7 @@ public sealed class PublicApiTests
         "Lunate.Tui.StatusFooterModel",
         "Lunate.Tui.StatusFooterRenderer",
         "Lunate.Tui.TechnicalText",
+        "Lunate.Tui.TerminalCapabilities",
         "Lunate.Tui.ToolBlockModel",
         "Lunate.Tui.ToolBlockRenderer",
         "Lunate.Tui.ToolBlockStatus",

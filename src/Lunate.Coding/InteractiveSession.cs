@@ -70,6 +70,7 @@ internal sealed partial class InteractiveSession : IDisposable
 {
     private readonly InteractiveSessionOptions _options;
     private readonly IConsoleIO _console;
+    private readonly TerminalCapabilities _capabilities;
     private readonly LiveArea _live;
     private readonly InputPipeline _pipeline;
     private readonly InputHistory _history;
@@ -79,7 +80,7 @@ internal sealed partial class InteractiveSession : IDisposable
     private readonly List<string> _pendingSteering = [];
     private readonly CancellationTokenSource _lifetime = new();
     private readonly ToolBlockRenderer _toolBlocks = new();
-    private readonly MarkdownRenderer _markdown = new();
+    private readonly MarkdownRenderer _markdown;
     private readonly Dictionary<string, string> _toolNames = new(StringComparer.Ordinal);
     private readonly Dictionary<string, string> _toolArgs = new(StringComparer.Ordinal);
     private readonly List<string> _activeCalls = [];
@@ -119,12 +120,19 @@ internal sealed partial class InteractiveSession : IDisposable
         ArgumentNullException.ThrowIfNull(options);
         _options = options;
         _console = options.Console;
+        _capabilities = TerminalCapabilities.Detect(
+            options.Console.IsInteractive,
+            OperatingSystem.IsWindows(),
+            options.Environment
+        );
         _live = new LiveArea(
             options.Console,
             options.Scheduler,
             readKeys: false,
-            scrollback: options.Scrollback
+            scrollback: options.Scrollback,
+            capabilities: _capabilities
         );
+        _markdown = new MarkdownRenderer(_capabilities);
         _pipeline = new InputPipeline(options.Hooks);
         _history = new InputHistory(options.HistoryPath ?? InputHistory.DefaultPath);
         _quitWindow = new CtrlCQuitWindow(options.Scheduler);
@@ -452,7 +460,9 @@ internal sealed partial class InteractiveSession : IDisposable
         }
 
         _live.WriteScrollback(console =>
-            console.Write(new Markup($"[dim]» {Markup.Escape(text)}[/]\n"))
+            console.Write(
+                new Markup($"[dim]{(_capabilities.Unicode ? "»" : ">")} {Markup.Escape(text)}[/]\n")
+            )
         );
     }
 

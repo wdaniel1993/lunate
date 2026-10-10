@@ -48,7 +48,10 @@ public sealed class InteractiveSessionEndToEndTests
     [Fact]
     public async Task A_scripted_session_matches_the_committed_scrollback_and_final_frame()
     {
-        using var host = new InteractiveSessionHost();
+        Func<string, string?> baseEnvironment = PrintModeTestSupport.Environment();
+        using var host = new InteractiveSessionHost(environment: name =>
+            name == "LUNATE_UNICODE" ? "1" : baseEnvironment(name)
+        );
         File.WriteAllText(host.Temp.File("a.txt"), "alpha beta");
         EnqueueScript(host);
         host.Client.Gate(1);

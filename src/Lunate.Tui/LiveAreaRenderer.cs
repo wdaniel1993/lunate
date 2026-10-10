@@ -10,6 +10,8 @@ internal static class LiveAreaRenderer
 {
     internal const int MaxLines = 8;
 
+    // ASCII by design: the spinner is the guide's no-Unicode fallback. A Unicode spinner
+    // variant must consult TerminalCapabilities (T-33) before it lands.
     private static readonly char[] SpinnerFrames = ['|', '/', '-', '\\'];
 
     public static RenderedFrame Render(LiveAreaState state)
