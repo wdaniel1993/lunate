@@ -1,6 +1,7 @@
 using Acp.JsonRpc;
 using Acp.Schema;
 using Lunate.Agent;
+using Lunate.Protocols.Acp;
 
 namespace Lunate.Protocols.Tests;
 
@@ -51,11 +52,11 @@ public sealed class LibAcpServerTests
     public async Task Session_new_builds_the_harness_for_the_session_cwd()
     {
         using var temp = new TempDirectory();
-        var capturedCwd = new List<string>();
+        var captured = new List<AcpSessionContext>();
         var model = new AcpScriptedChatClient();
-        await using AcpRuntime runtime = AcpTestSupport.Start(cwd =>
+        await using AcpRuntime runtime = AcpTestSupport.Start(context =>
         {
-            capturedCwd.Add(cwd);
+            captured.Add(context);
             return AcpTestSupport.Harness(model);
         });
 
@@ -66,7 +67,10 @@ public sealed class LibAcpServerTests
         );
 
         Assert.False(string.IsNullOrEmpty(session.SessionId.Value));
-        Assert.Equal(temp.Root, Assert.Single(capturedCwd));
+        AcpSessionContext context = Assert.Single(captured);
+        Assert.Equal(temp.Root, context.Cwd);
+        Assert.NotNull(context.ClientApprover);
+        Assert.Null(context.FileAccess);
     }
 
     [Fact]
@@ -238,8 +242,10 @@ public sealed class LibAcpServerTests
         using var second = new TempDirectory();
         var gated = new AcpGatedChatClient();
         var queued = new AcpScriptedChatClient().Enqueue(AcpScripts.Text("never"));
-        await using AcpRuntime runtime = AcpTestSupport.Start(cwd =>
-            cwd == first.Root ? AcpTestSupport.Harness(gated) : AcpTestSupport.Harness(queued)
+        await using AcpRuntime runtime = AcpTestSupport.Start(context =>
+            context.Cwd == first.Root
+                ? AcpTestSupport.Harness(gated)
+                : AcpTestSupport.Harness(queued)
         );
 
         await runtime.Client.InitializeAsync(AcpTestSupport.InitializeRequest, Ct);

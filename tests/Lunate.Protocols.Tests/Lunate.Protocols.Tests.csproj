@@ -6,6 +6,8 @@
 
     <ItemGroup>
         <ProjectReference Include="../../src/Lunate.Protocols/Lunate.Protocols.csproj" />
+        <!-- The pipe tests wire the real read/write tools and the ACP approver into the server. -->
+        <ProjectReference Include="../../src/Lunate.Coding/Lunate.Coding.csproj" />
         <ProjectReference
             Include="../tools/TestMcpServer/TestMcpServer.csproj"
             ReferenceOutputAssembly="false"

@@ -19,6 +19,8 @@
 
     <ItemGroup>
         <InternalsVisibleTo Include="Lunate.Coding.Tests" />
+        <!-- The ACP pipe tests compose the policy-first approver and the tool seam directly. -->
+        <InternalsVisibleTo Include="Lunate.Protocols.Tests" />
     </ItemGroup>
 
     <ItemGroup>

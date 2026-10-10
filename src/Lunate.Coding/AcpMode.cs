@@ -31,14 +31,14 @@ internal static class AcpMode
         }
     }
 
-    private static AgentHarness CreateHarness(string cwd)
+    private static AgentHarness CreateHarness(AcpSessionContext context)
     {
         AgentSettings settings = SettingsStore.Resolve(null, null);
         ModelCatalog catalog = ModelCatalog.Load(null);
         ModelInfo model = HarnessFactory.ResolveModel(settings.Model, catalog);
         IChatClientFactory factory = HarnessFactory.CreateFactory(null, null);
 
-        var workspace = new Workspace(cwd);
+        var workspace = new Workspace(context.Cwd);
         ToolRegistry tools = HarnessFactory.CreateTools(workspace);
         Session session = HarnessFactory.CreateSession(
             HarnessFactory.DefaultSessionDirectory(workspace),

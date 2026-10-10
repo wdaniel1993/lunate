@@ -7,10 +7,10 @@
 
 ## 2. Client-backed implementations (Protocols)
 
-- [ ] 2.1 `AcpSessionContext` + factory widening in `IAcpServer`/`LibAcpServer` (adapter builds the context per session)
-- [ ] 2.2 `ClientApprover` (request_permission; outcomes; always-memory; cancel/error → decline)
-- [ ] 2.3 `ClientTextFileAccess` (fs capability-gated; read/write through the client)
-- [ ] 2.4 `ResourceLinkContent` mapping in `PromptText` (`@relpath` / `name (uri)`)
+- [x] 2.1 `AcpSessionContext` + factory widening in `IAcpServer`/`LibAcpServer` (adapter builds the context per session)
+- [x] 2.2 `ClientApprover` (request_permission; outcomes; always-memory; cancel/error → decline)
+- [x] 2.3 `ClientTextFileAccess` (fs capability-gated; read/write through the client)
+- [x] 2.4 `ResourceLinkContent` mapping in `PromptText` (`@relpath` / `name (uri)`)
 
 ## 3. Wiring (Coding)
 

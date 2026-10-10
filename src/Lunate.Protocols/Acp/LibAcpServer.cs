@@ -10,8 +10,9 @@ namespace Lunate.Protocols.Acp;
 
 /// <summary>
 /// The <see cref="IAcpServer"/> adapter on LibAcp: initialize (protocol v1, honest text-only
-/// capabilities), session/new (a harness per session, the session cwd as its workspace),
-/// session/prompt (one run, text blocks only, streaming <c>session/update</c> via
+/// capabilities), session/new (a harness per session, the session context carrying the cwd, the
+/// client approver and — when the client offered its file system — the client file access),
+/// session/prompt (one run, text and resource-link blocks, streaming <c>session/update</c> via
 /// <see cref="AcpEventMapper"/>), and session/cancel (cancels the in-flight run's token, or latches
 /// onto a queued prompt so its run begins already cancelled).
 /// Sessions run sequentially per connection — one active run at a time.
@@ -22,7 +23,7 @@ internal sealed class LibAcpServer(Action<string>? log = null) : IAcpServer
     public async Task RunAsync(
         Stream input,
         Stream output,
-        Func<string, AgentHarness> createHarness,
+        Func<AcpSessionContext, AgentHarness> createHarness,
         CancellationToken ct
     )
     {
@@ -44,13 +45,14 @@ internal sealed class LibAcpServer(Action<string>? log = null) : IAcpServer
     /// <summary>One ACP connection: the session map, the run gate and the IAgent surface.</summary>
     private sealed class ConnectionAgent(
         AgentSideConnection connection,
-        Func<string, AgentHarness> createHarness,
+        Func<AcpSessionContext, AgentHarness> createHarness,
         Action<string>? log
     ) : IAgent
     {
         private readonly object sessionsGate = new();
         private readonly Dictionary<string, Session> sessions = new(StringComparer.Ordinal);
         private readonly SemaphoreSlim runs = new(1, 1);
+        private FileSystemCapabilities? clientFileSystem;
 
         public Task<InitializeResponse> InitializeAsync(
             InitializeRequest request,
@@ -75,6 +77,7 @@ internal sealed class LibAcpServer(Action<string>? log = null) : IAcpServer
             }
 
             LogUnsupportedClientCapabilities(request.ClientCapabilities);
+            clientFileSystem = request.ClientCapabilities?.Fs;
             return Task.FromResult(
                 new InitializeResponse
                 {
@@ -121,10 +124,28 @@ internal sealed class LibAcpServer(Action<string>? log = null) : IAcpServer
                 );
             }
 
+            if (request.AdditionalDirectories is { Count: > 0 })
+            {
+                Log(
+                    string.Create(
+                        CultureInfo.InvariantCulture,
+                        $"session/new: ignoring {request.AdditionalDirectories.Count} additional directories; not supported in v1"
+                    )
+                );
+            }
+
+            string id = Guid.NewGuid().ToString("N");
+            var sessionId = new SessionId(id);
+            var context = new AcpSessionContext(
+                request.Cwd,
+                new ClientApprover(connection, sessionId, log),
+                UsesClientFileSystem ? new ClientTextFileAccess(connection, sessionId) : null
+            );
+
             AgentHarness harness;
             try
             {
-                harness = createHarness(request.Cwd);
+                harness = createHarness(context);
             }
             catch (Exception exception) when (exception is not OperationCanceledException)
             {
@@ -135,19 +156,28 @@ internal sealed class LibAcpServer(Action<string>? log = null) : IAcpServer
                 );
             }
 
-            string id = Guid.NewGuid().ToString("N");
             lock (sessionsGate)
             {
-                sessions.Add(id, new Session(id, harness));
+                sessions.Add(id, new Session(id, harness, request.Cwd));
             }
 
-            Log($"session/new: {id} (cwd {request.Cwd})");
-            return Task.FromResult(new NewSessionResponse { SessionId = new SessionId(id) });
+            Log(
+                string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"session/new: {id} (cwd {request.Cwd}, client file system: {UsesClientFileSystem})"
+                )
+            );
+            return Task.FromResult(new NewSessionResponse { SessionId = sessionId });
         }
 
         public async Task<PromptResponse> PromptAsync(PromptRequest request, CancellationToken ct)
         {
             ArgumentNullException.ThrowIfNull(request);
+
+            // The run must never execute on the connection's receive-loop thread: the tools' text
+            // seam blocks on client round trips, and their responses are read by that same loop.
+            await Task.Yield();
+
             Session session = RequireSession(request.SessionId);
             string prompt = PromptText(request, session);
 
@@ -252,31 +282,58 @@ internal sealed class LibAcpServer(Action<string>? log = null) : IAcpServer
             var text = new StringBuilder();
             foreach (ContentBlock block in request.Prompt ?? [])
             {
-                if (block is TextContent content)
+                string? piece = block switch
                 {
-                    if (text.Length > 0)
-                    {
-                        text.Append('\n');
-                    }
-
-                    text.Append(content.Text);
-                }
-                else
+                    TextContent content => content.Text,
+                    ResourceLinkContent link => MapResourceLink(link, session.Cwd),
+                    _ => null,
+                };
+                if (piece is null)
                 {
                     Log(
                         $"session/prompt {session.Id}: skipping non-text content block ({block.Type})"
                     );
+                    continue;
                 }
+
+                if (text.Length > 0)
+                {
+                    text.Append('\n');
+                }
+
+                text.Append(piece);
             }
 
             if (text.Length == 0)
             {
                 throw RequestErrorException.InvalidParams(
-                    additionalMessage: "session/prompt requires at least one text content block; the agent advertises text-only prompt capabilities."
+                    additionalMessage: "session/prompt requires at least one text or resource-link content block; the agent advertises text-only prompt capabilities."
                 );
             }
 
             return text.ToString();
+        }
+
+        /// <summary>
+        /// A resource link becomes model-readable text: a <c>file://</c> URI inside the session
+        /// workspace as <c>@&lt;relative path&gt;</c>, anything else as <c>&lt;name&gt; (&lt;uri&gt;)</c>.
+        /// </summary>
+        private static string MapResourceLink(ResourceLinkContent link, string cwd)
+        {
+            if (Uri.TryCreate(link.Uri, UriKind.Absolute, out Uri? uri) && uri.IsFile)
+            {
+                string full = Path.GetFullPath(uri.LocalPath);
+                string root = Path.GetFullPath(cwd);
+                if (
+                    string.Equals(full, root, StringComparison.Ordinal)
+                    || full.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.Ordinal)
+                )
+                {
+                    return "@" + Path.GetRelativePath(root, full);
+                }
+            }
+
+            return string.Create(CultureInfo.InvariantCulture, $"{link.Name} ({link.Uri})");
         }
 
         private Session RequireSession(SessionId? sessionId) =>
@@ -298,16 +355,24 @@ internal sealed class LibAcpServer(Action<string>? log = null) : IAcpServer
             }
         }
 
+        private bool UsesClientFileSystem =>
+            clientFileSystem is { ReadTextFile: true, WriteTextFile: true };
+
         private void LogUnsupportedClientCapabilities(ClientCapabilities? capabilities)
         {
-            if (capabilities?.Fs is { } fs && (fs.ReadTextFile == true || fs.WriteTextFile == true))
+            if (capabilities?.Fs is { } fs)
             {
-                Log("initialize: client offers its file system; not used in v1 (T-28)");
+                Log(
+                    string.Create(
+                        CultureInfo.InvariantCulture,
+                        $"initialize: client offers its file system (read_text_file: {fs.ReadTextFile == true}, write_text_file: {fs.WriteTextFile == true})"
+                    )
+                );
             }
 
             if (capabilities?.Terminal == true)
             {
-                Log("initialize: client offers terminal support; not used in v1 (T-28)");
+                Log("initialize: client offers terminal support; not used in v1");
             }
         }
 
@@ -318,10 +383,11 @@ internal sealed class LibAcpServer(Action<string>? log = null) : IAcpServer
     }
 
     /// <summary>
-    /// One ACP session: the harness, the dispatched prompts (queued behind the connection-wide run
-    /// gate included) and the in-flight run's cancellation.
+    /// One ACP session: the harness, the session cwd (for resource-link mapping), the dispatched
+    /// prompts (queued behind the connection-wide run gate included) and the in-flight run's
+    /// cancellation.
     /// </summary>
-    private sealed class Session(string id, AgentHarness harness)
+    private sealed class Session(string id, AgentHarness harness, string cwd)
     {
         private readonly object gate = new();
         private CancellationTokenSource? active;
@@ -331,6 +397,8 @@ internal sealed class LibAcpServer(Action<string>? log = null) : IAcpServer
         public string Id { get; } = id;
 
         public AgentHarness Harness { get; } = harness;
+
+        public string Cwd { get; } = cwd;
 
         public void BeginPrompt()
         {

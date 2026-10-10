@@ -8,9 +8,9 @@ namespace Lunate.Protocols.Acp;
 /// later SDK switch stays cheap.
 /// </summary>
 /// <remarks>
-/// The harness factory receives the ACP session's working directory so the server can build the
-/// harness workspace from it (design.md, session/new). The guide's draft signature was
-/// parameterless and could not carry the cwd; recorded in the change's design.md (Deviations 1).
+/// The harness factory receives the <see cref="AcpSessionContext"/> the adapter built for the
+/// session (session/new): the cwd plus the client-backed approver and, when the client offered its
+/// file system at initialize, the client file access.
 /// </remarks>
 public interface IAcpServer
 {
@@ -21,7 +21,7 @@ public interface IAcpServer
     Task RunAsync(
         Stream input,
         Stream output,
-        Func<string, AgentHarness> createHarness,
+        Func<AcpSessionContext, AgentHarness> createHarness,
         CancellationToken ct
     );
 }
