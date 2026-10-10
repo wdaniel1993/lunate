@@ -140,7 +140,9 @@ internal sealed class LibAcpServer(Action<string>? log = null) : IAcpServer
             var context = new AcpSessionContext(
                 request.Cwd,
                 new ClientApprover(connection, sessionId, log),
-                UsesClientFileSystem ? new ClientTextFileAccess(connection, sessionId) : null
+                UsesClientFileSystem
+                    ? new ClientTextFileAccess(connection, sessionId, runState)
+                    : null
             );
 
             AgentHarness harness;
