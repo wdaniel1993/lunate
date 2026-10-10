@@ -2,6 +2,7 @@ using System.IO.Pipelines;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using Acp;
+using Acp.JsonRpc;
 using Acp.Schema;
 using Acp.Streaming;
 using Lunate.Agent;
@@ -28,7 +29,7 @@ internal static class AcpTestSupport
     }
 
     public static AcpRuntime Start(
-        Func<string, AgentHarness> createHarness,
+        Func<AcpSessionContext, AgentHarness> createHarness,
         Action<string>? log = null
     )
     {
@@ -58,6 +59,17 @@ internal static class AcpTestSupport
             ClientCapabilities = new ClientCapabilities(),
         };
 
+    public static InitializeRequest InitializeRequestWithFileSystem =>
+        new()
+        {
+            ProtocolVersion = Protocol.Version,
+            ClientInfo = new Implementation { Name = "test-client", Version = "0.0.1" },
+            ClientCapabilities = new ClientCapabilities
+            {
+                Fs = new FileSystemCapabilities { ReadTextFile = true, WriteTextFile = true },
+            },
+        };
+
     public static string Wire(SessionUpdate update)
     {
         ArgumentNullException.ThrowIfNull(update);
@@ -84,10 +96,14 @@ internal sealed class AcpRuntime(
     }
 }
 
-/// <summary>Records the <c>session/update</c> notifications the server sends.</summary>
+/// <summary>Records the <c>session/update</c> notifications the server sends and answers the
+/// agent's outbound requests (permissions, file system) with deterministic handlers.</summary>
 internal sealed class RecordingClient : IClient
 {
     private readonly List<SessionNotification> updates = [];
+    private readonly List<RequestPermissionRequest> permissionRequests = [];
+    private readonly List<ReadTextFileRequest> fileReads = [];
+    private readonly List<WriteTextFileRequest> fileWrites = [];
     private readonly SemaphoreSlim signals = new(0);
 
     public int UpdateCount
@@ -112,6 +128,49 @@ internal sealed class RecordingClient : IClient
         }
     }
 
+    public IReadOnlyList<RequestPermissionRequest> PermissionRequests
+    {
+        get
+        {
+            lock (permissionRequests)
+            {
+                return [.. permissionRequests];
+            }
+        }
+    }
+
+    public IReadOnlyList<ReadTextFileRequest> FileReads
+    {
+        get
+        {
+            lock (fileReads)
+            {
+                return [.. fileReads];
+            }
+        }
+    }
+
+    public IReadOnlyList<WriteTextFileRequest> FileWrites
+    {
+        get
+        {
+            lock (fileWrites)
+            {
+                return [.. fileWrites];
+            }
+        }
+    }
+
+    /// <summary>Answers <c>session/request_permission</c>; the default cancels the request.</summary>
+    public Func<
+        RequestPermissionRequest,
+        CancellationToken,
+        Task<RequestPermissionResponse>
+    >? PermissionHandler { get; set; }
+
+    /// <summary>Serves <c>fs/read_text_file</c> content; null answers with resource-not-found.</summary>
+    public Func<ReadTextFileRequest, string>? FileReadHandler { get; set; }
+
     public Task SessionUpdateAsync(
         SessionNotification notification,
         CancellationToken cancellationToken
@@ -129,10 +188,49 @@ internal sealed class RecordingClient : IClient
     public Task<RequestPermissionResponse> RequestPermissionAsync(
         RequestPermissionRequest request,
         CancellationToken cancellationToken
-    ) =>
-        Task.FromResult(
-            new RequestPermissionResponse { Outcome = new CancelledPermissionOutcome() }
-        );
+    )
+    {
+        lock (permissionRequests)
+        {
+            permissionRequests.Add(request);
+        }
+
+        return PermissionHandler is { } handler
+            ? handler(request, cancellationToken)
+            : Task.FromResult(
+                new RequestPermissionResponse { Outcome = new CancelledPermissionOutcome() }
+            );
+    }
+
+    public Task<ReadTextFileResponse> ReadTextFileAsync(
+        ReadTextFileRequest request,
+        CancellationToken cancellationToken
+    )
+    {
+        lock (fileReads)
+        {
+            fileReads.Add(request);
+        }
+
+        return FileReadHandler is { } handler
+            ? Task.FromResult(new ReadTextFileResponse { Content = handler(request) })
+            : Task.FromException<ReadTextFileResponse>(
+                RequestErrorException.ResourceNotFound(request.Path)
+            );
+    }
+
+    public Task<WriteTextFileResponse?> WriteTextFileAsync(
+        WriteTextFileRequest request,
+        CancellationToken cancellationToken
+    )
+    {
+        lock (fileWrites)
+        {
+            fileWrites.Add(request);
+        }
+
+        return Task.FromResult<WriteTextFileResponse?>(new WriteTextFileResponse());
+    }
 
     public async Task WaitForUpdatesAsync(int count, TimeSpan timeout, CancellationToken ct)
     {
@@ -160,6 +258,9 @@ internal sealed class AcpScriptedChatClient : IChatClient
 
     public List<IReadOnlyList<ChatMessage>> Requests { get; } = [];
 
+    /// <summary>Parks (observing cancellation) instead of failing when no script is left.</summary>
+    public bool ParkWhenExhausted { get; set; }
+
     public string LastUserText => Requests[^1].Last(message => message.Role == ChatRole.User).Text;
 
     public AcpScriptedChatClient Enqueue(params ChatResponseUpdate[] updates)
@@ -181,6 +282,11 @@ internal sealed class AcpScriptedChatClient : IChatClient
     )
     {
         Requests.Add([.. messages]);
+        if (scripts.Count == 0 && ParkWhenExhausted)
+        {
+            await Task.Delay(Timeout.Infinite, cancellationToken);
+        }
+
         ChatResponseUpdate[] updates = Dequeue();
         foreach (ChatResponseUpdate update in updates)
         {

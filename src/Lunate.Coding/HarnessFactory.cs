@@ -11,12 +11,12 @@ namespace Lunate.Coding;
 /// </summary>
 internal static class HarnessFactory
 {
-    internal static ToolRegistry CreateTools(Workspace workspace)
+    internal static ToolRegistry CreateTools(Workspace workspace, ITextFileAccess? files = null)
     {
         var tools = new ToolRegistry();
-        tools.Add(new ReadTool(workspace));
-        tools.Add(new WriteTool(workspace));
-        tools.Add(new EditTool(workspace));
+        tools.Add(new ReadTool(workspace, files));
+        tools.Add(new WriteTool(workspace, files: files));
+        tools.Add(new EditTool(workspace, files: files));
         tools.Add(new BashTool(workspace));
         return tools;
     }

@@ -8,10 +8,13 @@ namespace Lunate.Coding;
 public sealed class EditTool(
     Workspace workspace,
     IFileMutationQueue? mutations = null,
-    IFileChangeSink? changes = null
+    IFileChangeSink? changes = null,
+    ITextFileAccess? files = null
 ) : ITool
 {
     private readonly IFileMutationQueue _mutations = mutations ?? FileMutationQueue.Shared;
+
+    private readonly ITextFileAccess _files = files ?? LocalTextFileAccess.Instance;
 
     private static readonly JsonElement Schema = JsonDocument
         .Parse(
@@ -116,7 +119,7 @@ public sealed class EditTool(
             return Error($"{resolved.RelativePath} is a directory");
         }
 
-        if (!File.Exists(resolved.AbsolutePath))
+        if (!_files.Exists(resolved.AbsolutePath))
         {
             return Error($"file not found: {resolved.RelativePath}");
         }
@@ -139,7 +142,7 @@ public sealed class EditTool(
                 bool hasBom;
                 try
                 {
-                    (fileText, hasBom) = TextFile.ReadRaw(resolved.AbsolutePath);
+                    (fileText, hasBom) = _files.ReadRaw(resolved.AbsolutePath);
                 }
                 catch (Exception exception)
                     when (exception is IOException or UnauthorizedAccessException)
@@ -218,7 +221,7 @@ public sealed class EditTool(
                     newFileText += ending;
                 }
 
-                TextFile.WriteRaw(resolved.AbsolutePath, newFileText, hasBom);
+                _files.WriteRaw(resolved.AbsolutePath, newFileText, hasBom);
                 changes?.Notify(resolved.AbsolutePath);
 
                 var firstLine = start + 1;

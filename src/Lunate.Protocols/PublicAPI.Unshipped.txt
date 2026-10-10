@@ -1,6 +1,11 @@
 #nullable enable
 Lunate.Protocols.Acp.IAcpServer
-Lunate.Protocols.Acp.IAcpServer.RunAsync(System.IO.Stream! input, System.IO.Stream! output, System.Func<string!, Lunate.Agent.AgentHarness!>! createHarness, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task!
+Lunate.Protocols.Acp.IAcpServer.RunAsync(System.IO.Stream! input, System.IO.Stream! output, System.Func<Lunate.Protocols.Acp.AcpSessionContext!, Lunate.Agent.AgentHarness!>! createHarness, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task!
+Lunate.Protocols.Acp.AcpSessionContext
+Lunate.Protocols.Acp.AcpSessionContext.AcpSessionContext(string! cwd, Lunate.Agent.IToolApprover? clientApprover, Lunate.Agent.ITextFileAccess? fileAccess) -> void
+Lunate.Protocols.Acp.AcpSessionContext.ClientApprover.get -> Lunate.Agent.IToolApprover?
+Lunate.Protocols.Acp.AcpSessionContext.Cwd.get -> string!
+Lunate.Protocols.Acp.AcpSessionContext.FileAccess.get -> Lunate.Agent.ITextFileAccess?
 Lunate.Protocols.McpServerHost
 Lunate.Protocols.McpServerHost.DisposeAsync() -> System.Threading.Tasks.ValueTask
 Lunate.Protocols.McpServerHost.GetToolsAsync(System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask<System.Collections.Generic.IReadOnlyList<Lunate.Agent.ITool!>!>
