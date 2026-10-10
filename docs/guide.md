@@ -600,7 +600,7 @@ One row per card. Each card becomes one OpenSpec change (see Building it with Op
 | T-19 | 4 | Markdown subset to Spectre renderables; culture-invariant formatting for technical output | T-01 | Snapshot per Markdown feature |
 | T-20 | 4 | `ToolBlock` and Myers diff rendering | T-19, T-13 | Snapshots incl. match tier |
 | T-21 | 4 | Approval prompt, status footer, key bindings | T-18 | Scripted key tests for every binding |
-| T-22 | 4 | Wire events, steering, `Esc` cancel, slash commands, pickers | T-09, T-18 to T-21 | End-to-end scripted session snapshot |
+| T-22 | 4 | Wire events, steering, `Esc` cancel, slash commands, pickers — **split**: part 1 `add-interactive-session` (events → scrollback/live, steering seam, `Esc`, approval adapter, history, E2E snapshot); part 2 (commands `/model` `/new` `/resume` `/compact` `/quit`, pickers, `/command` Tab completion) | T-09, T-18 to T-21 | End-to-end scripted session snapshot |
 | T-23 | 4 | Compaction as `IChatReducer` (loop-invoked; not `ReducingChatClient`) | T-11 | Replay: long session compacts; tool pairs never split |
 | T-25 | 5 | `Lunate.Roslyn` extension: `ICSharpBackend` + in-process backend (ADR 0014), `MSBuildLocator`, workspace load, file sync, `cs_diagnostics` | T-36 | Detects an error introduced by `edit`; first-call budget met |
 | T-26 | 5 | `cs_find_symbol` | T-25 | Finds definitions in fixture solutions |
@@ -612,6 +612,7 @@ One row per card. Each card becomes one OpenSpec change (see Building it with Op
 | T-32 | 4 | Distribution: release workflow, install scripts, Homebrew, Scoop, winget, `dotnet tool` | T-02, T-17 | Fresh install works on Windows, macOS and Linux with one command |
 | T-33 | 4 | Terminal capability detection and fallbacks; manual terminal matrix check | T-18, T-19 | Every tier-1 terminal checked and noted in the card |
 | T-35 | 5 | Head-to-head C# eval: Lunate vs Claude Code with the C# LSP plugin vs OpenCode with its C# tooling; same tasks and model where possible; pass rate, steps, tokens, edit tiers, time; failure categories per run (load/restore/SDK failures, symbol-position errors, wrong edits, other) | T-17, T-25, T-26 | One results row per tool in eval/results.csv, a short write-up in docs/eval/, and a conclusion — if Lunate is not clearly better on C# tasks, the guide moves the positioning to .NET-native extensibility and the daily-driver experience instead of C# intelligence; covers the cs_rename comparison scenario |
+| T-53 | 4 | `@path` completion: file index honoring `.gitignore` (built lazily, bounded memory), performance budget on large repositories; `Tab` completion for `@paths` in the input line | T-22 | Completing `@paths` in a large repo stays within the startup and latency budgets and respects ignores |
 
 **Extensibility series (replaces the former T-24 and T-34).** The core ships primitives and is subagent-ready; features ship as extensions, proven by the fitness suite (`docs/spec/extensibility.md`, ADR-0017).
 
