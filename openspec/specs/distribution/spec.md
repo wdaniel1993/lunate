@@ -1,7 +1,8 @@
 # distribution Specification
 
 ## Purpose
-TBD - created by archiving change add-distribution. Update Purpose after archive.
+
+How Lunate reaches users: one-command installs (`install.sh` / `install.ps1`) that fetch checksum-verified release archives, the Homebrew/Scoop/winget artifacts and the `dotnet tool` package, and the runbook that drives the live distribution channels.
 
 ## Requirements
 
