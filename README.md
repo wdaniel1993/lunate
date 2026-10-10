@@ -13,6 +13,49 @@ Status: **bootstrap** — the core is built change by change; the model pipeline
 - [hyperfine](https://github.com/sharkdp/hyperfine) — measures the startup budget
 - `jq` — only for `scripts/memory.sh`
 
+## Install
+
+The channels below go live with the first tagged release; until then, build from source with the quick start below.
+
+**macOS (Apple Silicon) and Linux (x86_64)** — verifies SHA-256, installs into `~/.local/bin`, no `sudo`:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/wdaniel1993/lunate/main/install.sh | sh
+```
+
+**Windows (x86_64)** — verifies SHA-256, installs into `%LOCALAPPDATA%\Programs\lunate`, no admin:
+
+```powershell
+irm https://raw.githubusercontent.com/wdaniel1993/lunate/main/install.ps1 | iex
+```
+
+**Homebrew** (macOS arm64, Linux x64):
+
+```sh
+brew install wdaniel1993/tap/lunate
+```
+
+**Scoop** (Windows):
+
+```powershell
+scoop bucket add lunate https://github.com/wdaniel1993/scoop-bucket
+scoop install lunate
+```
+
+**winget** (Windows):
+
+```powershell
+winget install wdaniel1993.lunate
+```
+
+**`dotnet tool`** (needs the .NET 10 SDK):
+
+```sh
+dotnet tool install --global lunate
+```
+
+Archives, `SHA256SUMS` and the tool package live on the [releases page](https://github.com/wdaniel1993/lunate/releases); each installer refuses unsupported platforms with a clear message. The release runbook is in [`docs/distribution.md`](docs/distribution.md).
+
 ## Quick start
 
 ```bash

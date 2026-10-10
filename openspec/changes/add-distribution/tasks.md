@@ -28,8 +28,8 @@
 
 ## 5. Docs
 
-- [ ] 5.1 README install section (curl | sh, irm | iex, brew, scoop, winget, dotnet tool; channels live at first release)
-- [ ] 5.2 `docs/distribution.md` runbook (tap/bucket repos, winget submission + name check, NuGet push, first-release checklist)
+- [x] 5.1 README install section (curl | sh, irm | iex, brew, scoop, winget, dotnet tool; channels live at first release)
+- [x] 5.2 `docs/distribution.md` runbook (tap/bucket repos, winget submission + name check, NuGet push, first-release checklist)
 
 ## 6. Gate
 
