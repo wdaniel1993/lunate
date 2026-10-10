@@ -1,2 +1,5 @@
 date,phase,tool,model,tasks,passed,pass_rate,steps,total_tokens,seconds,edit_tiers,notes
 2026-10-09,3,lunate,deepseek/deepseek-v4.1-flash,6,6,1.000,39,72798,100.272,exact,
+2026-10-10,5,lunate,deepseek/deepseek-v4.1-flash,6,6,1.000,41,78439,74.407,exact;indent,
+2026-10-10,5,claude,claude-opus-5-5,6,6,1.000,24,451025,74.180,n/a,
+2026-10-10,5,opencode,opencode-go/deepseek-v4.1-flash,6,6,1.000,32,377966,76.291,n/a,
