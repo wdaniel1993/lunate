@@ -201,8 +201,8 @@ public sealed class EditTool(
                 var replacement = newLines;
                 if (indentMatches is not null)
                 {
-                    var prefix = indentMatches.First(match => match.Start == start).Prefix;
-                    replacement = EditMatcher.IndentReplacement(newLines, prefix);
+                    var offset = indentMatches.First(match => match.Start == start).Offset;
+                    replacement = EditMatcher.IndentReplacement(newLines, offset);
                 }
 
                 var resultLines = ReplaceLines(

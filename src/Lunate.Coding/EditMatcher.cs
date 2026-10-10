@@ -2,8 +2,8 @@ using System.Globalization;
 
 namespace Lunate.Coding;
 
-/// <summary>An indent-tier match: the window's start index and the uniform prefix to re-indent with.</summary>
-internal readonly record struct IndentMatch(int Start, string Prefix);
+/// <summary>An indent-tier match: the window's start index and the leading-whitespace offset to re-indent with.</summary>
+internal readonly record struct IndentMatch(int Start, int Offset);
 
 /// <summary>
 /// Window matching for the edit tool: the exact, normalized and indent tiers, plus the
@@ -69,17 +69,42 @@ internal static class EditMatcher
 
         for (var start = 0; start <= lines.Length - pattern.Length; start++)
         {
-            if (IndentPrefix(lines, pattern, start) is { } prefix)
+            if (IndentOffset(lines, pattern, start) is { } offset)
             {
-                matches.Add(new IndentMatch(start, prefix));
+                matches.Add(new IndentMatch(start, offset));
             }
         }
 
         return matches;
     }
 
-    public static string[] IndentReplacement(string[] newLines, string prefix) =>
-        [.. newLines.Select(line => string.IsNullOrWhiteSpace(line) ? line : prefix + line)];
+    public static string[] IndentReplacement(string[] newLines, int offset)
+    {
+        if (offset == 0)
+        {
+            return newLines;
+        }
+
+        var result = new string[newLines.Length];
+        for (var index = 0; index < newLines.Length; index++)
+        {
+            var line = newLines[index];
+            if (string.IsNullOrWhiteSpace(line))
+            {
+                result[index] = line;
+            }
+            else if (offset > 0)
+            {
+                result[index] = new string(' ', offset) + line;
+            }
+            else
+            {
+                result[index] = line[Math.Min(LeadingWhitespace(line), -offset)..];
+            }
+        }
+
+        return result;
+    }
 
     public static string Ambiguity(List<int> matches, string relativePath)
     {
@@ -121,46 +146,36 @@ internal static class EditMatcher
         return header + "\n" + string.Join("\n", fileLines.Skip(start).Take(oldLines.Length));
     }
 
-    private static string? IndentPrefix(string[] lines, string[] pattern, int start)
+    private static int? IndentOffset(string[] lines, string[] pattern, int start)
     {
-        string? prefix = null;
-        var anyNonBlank = false;
-        for (var offset = 0; offset < pattern.Length; offset++)
+        int? offset = null;
+        for (var index = 0; index < pattern.Length; index++)
         {
-            var fileLine = lines[start + offset];
-            var patternLine = pattern[offset];
-            if (string.IsNullOrWhiteSpace(patternLine))
-            {
-                if (!string.IsNullOrWhiteSpace(fileLine))
-                {
-                    return null;
-                }
-
-                continue;
-            }
-
-            var trimmed = patternLine.TrimEnd();
-            if (!fileLine.EndsWith(trimmed, StringComparison.Ordinal))
+            var patternLine = pattern[index];
+            var fileLine = lines[start + index];
+            if (!string.Equals(patternLine.Trim(), fileLine.Trim(), StringComparison.Ordinal))
             {
                 return null;
             }
 
-            var candidate = fileLine[..^trimmed.Length];
-            if (candidate.Length == 0 || !string.IsNullOrWhiteSpace(candidate))
+            if (offset is null && !string.IsNullOrWhiteSpace(patternLine))
             {
-                return null;
+                offset = LeadingWhitespace(fileLine) - LeadingWhitespace(patternLine);
             }
-
-            if (prefix is not null && prefix != candidate)
-            {
-                return null;
-            }
-
-            prefix = candidate;
-            anyNonBlank = true;
         }
 
-        return anyNonBlank ? prefix : null;
+        return offset;
+    }
+
+    private static int LeadingWhitespace(string line)
+    {
+        var count = 0;
+        while (count < line.Length && char.IsWhiteSpace(line[count]))
+        {
+            count++;
+        }
+
+        return count;
     }
 
     private static (int Score, int Start) ClosestWindow(string[] fileLines, string[] oldLines)

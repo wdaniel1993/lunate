@@ -74,16 +74,16 @@ public sealed class EditMatchingTests
     }
 
     [Fact]
-    public async Task Tier_3_requires_one_uniform_prefix()
+    public async Task Tier_3_ignores_each_lines_whitespace_and_offsets_from_the_first_line()
     {
         using var temp = new TempDirectory();
         File.WriteAllText(temp.File("File.txt"), "    x\n      y\n");
 
         var result = await EditAsync(temp, "x\ny", "a\nb");
 
-        Assert.True(result.IsError);
-        Assert.Equal("could not find old_text in File.txt", result.Output);
-        Assert.Equal("    x\n      y\n", File.ReadAllText(temp.File("File.txt")));
+        Assert.False(result.IsError);
+        Assert.Equal("edited File.txt lines 1\u20132 (match: indent)", result.Output);
+        Assert.Equal("    a\n    b\n", File.ReadAllText(temp.File("File.txt")));
     }
 
     [Fact]
