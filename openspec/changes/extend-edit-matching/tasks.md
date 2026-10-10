@@ -14,8 +14,8 @@
 
 ## 3. Corpus (Coding)
 
-- [ ] 3.1 Runner: optional `start_line` passthrough + optional `file_name` (default `input.txt`)
-- [ ] 3.2 New cases per design: `indent-applied`, `indent-normalized-applied`, `indent-refused-python`, `indent-refused-yaml`, `indent-refused-makefile`, `start-line-applies`, `start-line-still-ambiguous`, `start-line-ignored-single-match`, `closest-region-error`, `exact-ambiguity-error` (byte-exact `expected` / `expected-error.txt`)
+- [x] 3.1 Runner: optional `start_line` passthrough + optional `file_name` (default `input.txt`)
+- [x] 3.2 New cases per design: `indent-applied`, `indent-normalized-applied`, `indent-refused-python`, `indent-refused-yaml`, `indent-refused-makefile`, `start-line-applies`, `start-line-still-ambiguous`, `start-line-ignored-single-match`, `closest-region-error`, `exact-ambiguity-error` (byte-exact `expected` / `expected-error.txt`)
 
 ## 4. TUI (Tui)
 

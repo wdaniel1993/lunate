@@ -1,0 +1,7 @@
+class X
+{
+    void N()
+    {
+        return 1;
+    }
+}
