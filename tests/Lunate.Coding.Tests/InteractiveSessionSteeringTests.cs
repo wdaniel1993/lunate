@@ -23,7 +23,10 @@ public sealed class InteractiveSessionSteeringTests
     [Fact]
     public async Task Injected_steering_is_echoed_to_scrollback_in_order()
     {
-        using var host = new InteractiveSessionHost();
+        Func<string, string?> baseEnvironment = PrintModeTestSupport.Environment();
+        using var host = new InteractiveSessionHost(environment: name =>
+            name == "LUNATE_UNICODE" ? "1" : baseEnvironment(name)
+        );
         File.WriteAllText(host.Temp.File("a.txt"), "contents");
         host.Client.Enqueue(
             Scripts.Call("call-1", "read", Scripts.Args(("path", "a.txt"))),
@@ -63,7 +66,7 @@ public sealed class InteractiveSessionSteeringTests
     {
         Func<string, string?> baseEnvironment = PrintModeTestSupport.Environment();
         using var host = new InteractiveSessionHost(environment: name =>
-            name == "LUNATE_ASCII" ? "1" : baseEnvironment(name)
+            name is "LUNATE_ASCII" or "LUNATE_UNICODE" ? "1" : baseEnvironment(name)
         );
         File.WriteAllText(host.Temp.File("a.txt"), "contents");
         host.Client.Enqueue(
@@ -96,7 +99,10 @@ public sealed class InteractiveSessionSteeringTests
     [Fact]
     public async Task Steering_returned_to_the_input_line_is_never_echoed()
     {
-        using var host = new InteractiveSessionHost();
+        Func<string, string?> baseEnvironment = PrintModeTestSupport.Environment();
+        using var host = new InteractiveSessionHost(environment: name =>
+            name == "LUNATE_UNICODE" ? "1" : baseEnvironment(name)
+        );
         host.Client.Enqueue(Scripts.Text("never"), Scripts.Stop());
         host.Client.Gate(1);
         Task run = host.RunAsync();
@@ -123,7 +129,10 @@ public sealed class InteractiveSessionSteeringTests
     [Fact]
     public async Task Auto_run_leftovers_are_not_echoed()
     {
-        using var host = new InteractiveSessionHost();
+        Func<string, string?> baseEnvironment = PrintModeTestSupport.Environment();
+        using var host = new InteractiveSessionHost(environment: name =>
+            name == "LUNATE_UNICODE" ? "1" : baseEnvironment(name)
+        );
         host.Client.Enqueue(Scripts.Text("first"), Scripts.Stop());
         host.Client.Enqueue(Scripts.Text("steered"), Scripts.Stop());
         host.Client.Gate(1);
