@@ -14,7 +14,7 @@ internal static class AcpMode
 {
     internal static int Run(TextWriter errors, Stream input, Stream output, CancellationToken ct)
     {
-        var server = new LibAcpServer(line => errors.WriteLine($"lunate: {line}"));
+        IAcpServer server = new LibAcpServer(line => errors.WriteLine($"lunate: {line}"));
         try
         {
             server.RunAsync(input, output, CreateHarness, ct).GetAwaiter().GetResult();

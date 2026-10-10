@@ -15,7 +15,7 @@ namespace Lunate.Protocols.Acp;
 /// <see cref="AcpEventMapper"/>), and session/cancel (cancels the in-flight run's token).
 /// Sessions run sequentially per connection — one active run at a time.
 /// </summary>
-public sealed class LibAcpServer(Action<string>? log = null) : IAcpServer
+internal sealed class LibAcpServer(Action<string>? log = null) : IAcpServer
 {
     /// <inheritdoc />
     public async Task RunAsync(

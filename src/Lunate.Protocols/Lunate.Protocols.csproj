@@ -5,6 +5,8 @@
 
     <ItemGroup>
         <InternalsVisibleTo Include="Lunate.Protocols.Tests" />
+        <!-- `lunate` is the Lunate.Coding assembly name; it wires the internal ACP server mode. -->
+        <InternalsVisibleTo Include="lunate" />
     </ItemGroup>
 
     <ItemGroup>
