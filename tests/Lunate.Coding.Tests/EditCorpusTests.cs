@@ -29,19 +29,24 @@ public sealed class EditCorpusTests
         var request = JsonDocument
             .Parse(File.ReadAllText(Path.Combine(caseRoot, "request.json")))
             .RootElement;
+        var fileName = request.TryGetProperty("file_name", out var fileNameElement)
+            ? fileNameElement.GetString()!
+            : "input.txt";
         using var temp = new TempDirectory();
-        File.Copy(Path.Combine(caseRoot, "input"), temp.File("input.txt"));
-        var args = JsonSerializer.SerializeToElement(
-            new
-            {
-                path = "input.txt",
-                old_text = request.GetProperty("old_text").GetString()!,
-                new_text = request.GetProperty("new_text").GetString()!,
-            }
-        );
+        File.Copy(Path.Combine(caseRoot, "input"), temp.File(fileName));
+        var args = new Dictionary<string, object?>
+        {
+            ["path"] = fileName,
+            ["old_text"] = request.GetProperty("old_text").GetString()!,
+            ["new_text"] = request.GetProperty("new_text").GetString()!,
+        };
+        if (request.TryGetProperty("start_line", out var startElement))
+        {
+            args["start_line"] = startElement.GetInt32();
+        }
 
         var result = await new EditTool(new Workspace(temp.Root)).ExecuteAsync(
-            args,
+            JsonSerializer.SerializeToElement(args),
             Context,
             CancellationToken.None
         );
@@ -57,7 +62,7 @@ public sealed class EditCorpusTests
             Assert.False(result.IsError, $"{name}: {result.Output}");
             Assert.Equal(
                 File.ReadAllBytes(Path.Combine(caseRoot, "expected")),
-                File.ReadAllBytes(temp.File("input.txt"))
+                File.ReadAllBytes(temp.File(fileName))
             );
         }
     }

@@ -15,7 +15,7 @@ internal readonly record struct DiffLine(DiffLineKind Kind, string Text);
 /// <summary>
 /// Parses the unified diff produced by <c>Lunate.Coding</c>'s <c>LineDiff</c> (and any other
 /// unified text) into styled lines: file headers and context dim, hunks cyan-dim, deletions red,
-/// insertions green, with a leading <c>match: &lt;tier&gt;</c> label (normalized is flagged yellow).
+/// insertions green, with a leading <c>match: &lt;tier&gt;</c> label (normalized and indent are flagged yellow).
 /// Malformed input is tolerated; an empty diff renders nothing. Pure parsing, no throwing.
 /// </summary>
 internal static class DiffRenderer
@@ -96,7 +96,7 @@ internal static class DiffRenderer
         tier switch
         {
             "exact" => SpanStyle.Dim,
-            "normalized" => Normalized,
+            "normalized" or "indent" => Normalized,
             _ => SpanStyle.Plain,
         };
 

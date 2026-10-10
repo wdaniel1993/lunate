@@ -67,11 +67,19 @@ public sealed class DiffRendererTests
     }
 
     [Fact]
-    public void Unknown_tiers_keep_their_name() =>
+    public void Unknown_tiers_keep_their_name_and_render_unstyled()
+    {
+        var lines = new List<StyledLine>();
+        DiffRenderer.Append(lines, new ToolDiffInfo("p", "other", SampleDiff));
+        string markup = lines[0].ToMarkup();
+
         Assert.Equal(
-            new DiffLine(DiffLineKind.MatchTier, "match: indent"),
-            DiffRenderer.Parse(new ToolDiffInfo("p", "indent", SampleDiff))[0]
+            new DiffLine(DiffLineKind.MatchTier, "match: other"),
+            DiffRenderer.Parse(new ToolDiffInfo("p", "other", SampleDiff))[0]
         );
+        Assert.Equal("match: other", markup);
+        Assert.DoesNotContain("[yellow]", markup);
+    }
 
     [Fact]
     public void Malformed_lines_are_tolerated_and_header_like_content_after_a_hunk_stays_content()

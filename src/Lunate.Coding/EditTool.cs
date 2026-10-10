@@ -25,11 +25,16 @@ public sealed class EditTool(
                 },
                 "old_text": {
                   "type": "string",
-                  "description": "The exact text to replace; it must match exactly one place in the file"
+                  "description": "The text to replace; it must match one place in the file (use start_line when it matches several)"
                 },
                 "new_text": {
                   "type": "string",
                   "description": "The replacement text; the file's endings, BOM and trailing newline are kept"
+                },
+                "start_line": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "description": "Optional 1-based line where old_text starts; disambiguates when old_text matches several places"
                 }
               },
               "required": ["path", "old_text", "new_text"]
@@ -41,8 +46,8 @@ public sealed class EditTool(
     public string Name => "edit";
 
     public string Description =>
-        "Replace old_text with new_text in a workspace text file; old_text must match exactly one place "
-        + "(line-ending and trailing-whitespace differences are tolerated).";
+        "Replace old_text with new_text in a workspace text file; matching tolerates line-ending, "
+        + "trailing-whitespace and indentation differences (start_line disambiguates several matches).";
 
     public JsonElement ParametersSchema => Schema;
 
@@ -81,6 +86,21 @@ public sealed class EditTool(
         )
         {
             return Error("new_text is required and must be a string");
+        }
+
+        int? startLine = null;
+        if (args.TryGetProperty("start_line", out var startElement))
+        {
+            if (
+                startElement.ValueKind != JsonValueKind.Number
+                || !startElement.TryGetInt32(out var requestedStart)
+                || requestedStart < 1
+            )
+            {
+                return Error("start_line must be an integer greater than or equal to 1");
+            }
+
+            startLine = requestedStart;
         }
 
         var oldText = oldElement.GetString()!;
@@ -132,33 +152,64 @@ public sealed class EditTool(
                 var (newRawLines, _) = SplitRaw(newText);
                 var newLines = StripTrailingCarriageReturns(newRawLines);
 
-                var normalized = false;
-                var matches = FindMatches(fileLines, oldLines, normalized: false);
+                var matches = EditMatcher.FindMatches(fileLines, oldLines, normalized: false);
+                var tier = "exact";
+                List<IndentMatch>? indentMatches = null;
                 if (matches.Count == 0)
                 {
-                    normalized = true;
-                    matches = FindMatches(fileLines, oldLines, normalized: true);
+                    matches = EditMatcher.FindMatches(fileLines, oldLines, normalized: true);
+                    tier = "normalized";
+                }
+
+                if (
+                    matches.Count == 0
+                    && !EditMatcher.IsWhitespaceSignificant(resolved.RelativePath)
+                )
+                {
+                    indentMatches = EditMatcher.FindIndentMatches(fileLines, oldLines);
+                    matches = [.. indentMatches.Select(match => match.Start)];
+                    tier = "indent";
                 }
 
                 if (matches.Count == 0)
                 {
                     return Task.FromResult(
-                        Error($"could not find old_text in {resolved.RelativePath}")
+                        Error(EditMatcher.NotFound(fileLines, oldLines, resolved.RelativePath))
                     );
                 }
 
-                if (matches.Count > 1)
+                var selected = matches;
+                if (matches.Count > 1 && startLine is int requestedStart)
                 {
-                    return Task.FromResult(Error(Ambiguity(matches, resolved.RelativePath)));
+                    var within = matches
+                        .Where(match => Math.Abs((long)match + 1 - requestedStart) <= 3)
+                        .ToList();
+                    if (within.Count == 1)
+                    {
+                        selected = within;
+                    }
                 }
 
-                var start = matches[0];
-                var tier = normalized ? "normalized" : "exact";
+                if (selected.Count > 1)
+                {
+                    return Task.FromResult(
+                        Error(EditMatcher.Ambiguity(matches, resolved.RelativePath))
+                    );
+                }
+
+                var start = selected[0];
+                var replacement = newLines;
+                if (indentMatches is not null)
+                {
+                    var offset = indentMatches.First(match => match.Start == start).Offset;
+                    replacement = EditMatcher.IndentReplacement(newLines, offset);
+                }
+
                 var resultLines = ReplaceLines(
                     StripTrailingCarriageReturns(fileLines),
                     start,
                     oldLines.Length,
-                    newLines
+                    replacement
                 );
                 var ending = TextFile.DominantEnding(fileText);
                 var newFileText = string.Join(ending, resultLines);
@@ -214,38 +265,6 @@ public sealed class EditTool(
         return lines;
     }
 
-    private static List<int> FindMatches(string[] lines, string[] pattern, bool normalized)
-    {
-        var matches = new List<int>();
-        if (pattern.Length > lines.Length)
-        {
-            return matches;
-        }
-
-        for (var start = 0; start <= lines.Length - pattern.Length; start++)
-        {
-            var matched = true;
-            for (var offset = 0; offset < pattern.Length; offset++)
-            {
-                if (!LineEquals(lines[start + offset], pattern[offset], normalized))
-                {
-                    matched = false;
-                    break;
-                }
-            }
-
-            if (matched)
-            {
-                matches.Add(start);
-            }
-        }
-
-        return matches;
-    }
-
-    private static bool LineEquals(string line, string patternLine, bool normalized) =>
-        normalized ? line.TrimEnd() == patternLine.TrimEnd() : line == patternLine;
-
     private static string[] ReplaceLines(
         string[] lines,
         int start,
@@ -265,19 +284,6 @@ public sealed class EditTool(
         );
 
         return result;
-    }
-
-    private static string Ambiguity(List<int> matches, string relativePath)
-    {
-        var lines = string.Join(
-            ", ",
-            matches.Select(match => (match + 1).ToString(CultureInfo.InvariantCulture))
-        );
-
-        return string.Create(
-            CultureInfo.InvariantCulture,
-            $"old_text matches {matches.Count} places in {relativePath} at lines {lines}; make it longer so it matches once"
-        );
     }
 
     private static ToolResult Error(string output) => new(output, IsError: true);

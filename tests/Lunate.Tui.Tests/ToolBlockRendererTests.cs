@@ -162,6 +162,10 @@ public sealed class ToolBlockRendererTests
         Assert.Contains("\u001b[38;5;11mmatch: normalized", RenderAnsi(DiffModel("normalized")));
 
     [Fact]
+    public void Indent_tier_label_is_yellow() =>
+        Assert.Contains("\u001b[38;5;11mmatch: indent", RenderAnsi(DiffModel("indent")));
+
+    [Fact]
     public void Insertions_are_green_and_deletions_are_red()
     {
         string ansi = RenderAnsi(DiffModel("exact"));
