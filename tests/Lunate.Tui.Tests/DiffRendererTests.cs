@@ -69,8 +69,8 @@ public sealed class DiffRendererTests
     [Fact]
     public void Unknown_tiers_keep_their_name() =>
         Assert.Equal(
-            new DiffLine(DiffLineKind.MatchTier, "match: indent"),
-            DiffRenderer.Parse(new ToolDiffInfo("p", "indent", SampleDiff))[0]
+            new DiffLine(DiffLineKind.MatchTier, "match: other"),
+            DiffRenderer.Parse(new ToolDiffInfo("p", "other", SampleDiff))[0]
         );
 
     [Fact]

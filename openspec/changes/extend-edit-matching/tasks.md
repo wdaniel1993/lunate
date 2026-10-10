@@ -19,7 +19,7 @@
 
 ## 4. TUI (Tui)
 
-- [ ] 4.1 `TierStyle`: `indent` renders as a flagged fallback like `normalized`; renderer test
+- [x] 4.1 `TierStyle`: `indent` renders as a flagged fallback like `normalized`; renderer test
 
 ## 5. Gate
 
