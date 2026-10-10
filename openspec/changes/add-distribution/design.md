@@ -23,15 +23,15 @@
 
 ## install.ps1 (pinned)
 
-- win-x64 only (`PROCESSOR_ARCHITECTURE`); other architectures refused with a clear message.
-- Flow: same base/version seams (env first, `param()` when run as a file; iex-friendly defaults) → download `lunate-win-x64.zip` + `SHA256SUMS` → `Get-FileHash -Algorithm SHA256` vs the parsed line → `Expand-Archive` to a temp dir → copy `lunate.exe` into `$env:LOCALAPPDATA\Programs\lunate` → add that directory to the **user** PATH when missing → print version + restart-shell hint.
+- win-x64 only (`PROCESSOR_ARCHITEW6432` when set — 32-bit PowerShell on x64 — else `PROCESSOR_ARCHITECTURE`); other architectures refused with a clear message.
+- Flow: same base/version seams (env first, `param()` when run as a file; iex-friendly defaults) → download `lunate-win-x64.zip` + `SHA256SUMS` → `Get-FileHash -Algorithm SHA256` vs the parsed line → `Expand-Archive` to a temp dir → copy `lunate.exe` into `$env:LOCALAPPDATA\Programs\lunate` → add that directory to the **user** PATH when missing (comparisons normalize `/`, `\` and trailing separators) → print version + restart-shell hint.
 - No machine-wide changes; no admin.
 
 ## Verify-gate proofs (pinned)
 
 - `verify.sh`, after the startup-budget step, on Darwin/Linux: build a fixture release from the just-published binary (`tar -czf lunate-<rid>.tar.gz`, `SHA256SUMS`) under `<fixture>/latest/download/` and `<fixture>/download/<tag>/`; run `install.sh` (a) with only `LUNATE_INSTALL_BASE_URL=file://<fixture>` and a temp prefix, then (b) with `--version <tag> --prefix <dir2>`, and compare each installed `lunate --version` with the publish version; a nonexistent tag must fail (the tag participates in the URL).
 - `verify.sh` on Windows (MINGW): run `install.sh` and require the refusal (non-zero + message) — the Windows path belongs to `install.ps1`.
-- `verify.ps1`, after the startup-budget step: the same fixture layout and (a)/(b) runs with `install.ps1` (flags via `-Version`/`-Prefix`), plus the checksum-mismatch abort and the arch refusal.
+- `verify.ps1`, after the startup-budget step: the same fixture layout and (a)/(b) runs with `install.ps1` (flags via `-Version`/`-Prefix`), plus the checksum-mismatch abort, the ARM64 refusal, the WOW64 acceptance (`PROCESSOR_ARCHITEW6432=AMD64` with `PROCESSOR_ARCHITECTURE=x86` installs) and a PATH no-duplicate assertion after a trailing-separator prefix.
 - Tool roundtrip (both scripts): `dotnet pack` the CLI into a temp feed, `dotnet tool install --tool-path <tmp> --add-source <feed> lunate --version <current>`, run `lunate --version`.
 - Packaging consistency: assert every packaging file exists and contains the current `<Version>` string from `Directory.Build.props` (a small bash step in verify.sh; sha256 placeholders are allowed at rest — the runbook fills them at release time).
 
@@ -54,6 +54,8 @@
 3. `install.ps1` resolves `file://` base URLs through the local filesystem (copy): PowerShell 7's `Invoke-WebRequest` rejects the `file` scheme, and the verify fixture seam needs `file://`. http(s) downloads still go through `Invoke-WebRequest`.
 4. `lunate --version` reports the SDK informational version (`<Version>+<commit>`), so the fixture flows compare the installed binary's output with the published binary's output, and the tool roundtrip compares against the `<Version>` prefix before `+`.
 5. The test seam overrides the **releases base** (not the download URL): the scripts compose `/latest/download/<asset>` or `/download/<tag>/<asset>` from it, so `--version`/`LUNATE_INSTALL_VERSION` are provable end-to-end (adversarial review risk 1).
+6. `install.ps1` resolves the architecture from `PROCESSOR_ARCHITEW6432` when set (32-bit PowerShell on x64 reports `x86` in `PROCESSOR_ARCHITECTURE`) and refuses only when neither variable names x64 (adversarial review risk 3a).
+7. `install.ps1` normalizes `/`, `\` and trailing separators on both sides of the user-PATH comparison, so `C:\x\` or `C:/x/` match an existing `C:\x` entry — no duplicate entry and no false "already on PATH" hint (adversarial review risk 3b).
 
 ## Seams
 

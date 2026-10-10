@@ -37,7 +37,9 @@ function Save-RemoteFile {
     }
 }
 
-$arch = $env:PROCESSOR_ARCHITECTURE
+# 32-bit PowerShell on x64 reports x86 in PROCESSOR_ARCHITECTURE; when it is
+# present, PROCESSOR_ARCHITEW6432 names the real OS architecture.
+$arch = if ($env:PROCESSOR_ARCHITEW6432) { $env:PROCESSOR_ARCHITEW6432 } else { $env:PROCESSOR_ARCHITECTURE }
 if ($arch -ne 'AMD64') {
     throw "install: unsupported architecture: $arch; lunate publishes a win-x64 build. On other platforms use install.sh"
 }
@@ -104,8 +106,9 @@ try {
 
     $onPath = $false
     $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
+    $prefixNormalized = $Prefix.Trim().Replace('/', '\').TrimEnd('\')
     foreach ($entry in @($userPath -split ';')) {
-        if ($entry.Trim().TrimEnd('\') -ieq $Prefix.TrimEnd('\')) {
+        if ($entry.Trim().Replace('/', '\').TrimEnd('\') -ieq $prefixNormalized) {
             $onPath = $true
             break
         }

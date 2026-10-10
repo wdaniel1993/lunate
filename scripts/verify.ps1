@@ -175,18 +175,51 @@ try {
             throw 'verify: install.ps1 left a partial install after a checksum mismatch'
         }
 
+        # Architecture: ARM64 (either variable) is refused; the WOW64 edge
+        # (32-bit PowerShell on x64) must install.
         $previousArch = $env:PROCESSOR_ARCHITECTURE
-        $env:PROCESSOR_ARCHITECTURE = 'ARM64'
-        $refusal = ''
-        try { & ./install.ps1 } catch { $refusal = $_.Exception.Message }
-        $env:PROCESSOR_ARCHITECTURE = $previousArch
-        if ($refusal -notmatch 'win-x64') {
-            throw "verify: install.ps1 did not refuse ARM64: $refusal"
+        $previousArchW6432 = $env:PROCESSOR_ARCHITEW6432
+        try {
+            $env:PROCESSOR_ARCHITECTURE = 'ARM64'
+            $env:PROCESSOR_ARCHITEW6432 = 'ARM64'
+            $refusal = ''
+            try { & ./install.ps1 } catch { $refusal = $_.Exception.Message }
+            if ($refusal -notmatch 'win-x64') {
+                throw "verify: install.ps1 did not refuse ARM64: $refusal"
+            }
+
+            $env:LUNATE_INSTALL_BASE_URL = 'file:///' + ($fixture -replace '\\', '/')
+            $env:PROCESSOR_ARCHITECTURE = 'x86'
+            $env:PROCESSOR_ARCHITEW6432 = 'AMD64'
+            # The trailing slash must match the existing PATH entry from (a):
+            # no duplicate entry, no false 'added to PATH' hint.
+            & ./install.ps1 -Prefix ($prefix + '/')
+            $wow64 = & (Join-Path $prefix 'lunate.exe') --version
+            if ($wow64 -ne $published) {
+                throw "verify: WOW64 install reports $wow64, expected $published"
+            }
+        }
+        finally {
+            $env:PROCESSOR_ARCHITECTURE = $previousArch
+            if ($null -eq $previousArchW6432) {
+                Remove-Item Env:PROCESSOR_ARCHITEW6432 -ErrorAction SilentlyContinue
+            }
+            else {
+                $env:PROCESSOR_ARCHITEW6432 = $previousArchW6432
+            }
+        }
+
+        $entries = @(([Environment]::GetEnvironmentVariable('Path', 'User')) -split ';')
+        $normalizedPrefix = ($prefix -replace '/', '\').TrimEnd('\')
+        $pathMatches = @($entries | Where-Object { $_.Trim().Replace('/', '\').TrimEnd('\') -ieq $normalizedPrefix })
+        if ($pathMatches.Count -ne 1) {
+            throw "verify: the user PATH holds $($pathMatches.Count) entries for $prefix; expected 1 (separators normalize)"
         }
     }
     finally {
         Remove-Item Env:LUNATE_INSTALL_BASE_URL -ErrorAction SilentlyContinue
         Remove-Item Env:LUNATE_INSTALL_PREFIX -ErrorAction SilentlyContinue
+        Remove-Item Env:LUNATE_INSTALL_VERSION -ErrorAction SilentlyContinue
         Remove-Item -Recurse -Force -Path $installTmp -ErrorAction SilentlyContinue
     }
 
