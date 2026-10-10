@@ -12,6 +12,25 @@ internal sealed class LocalTextFileAccess : ITextFileAccess
 
     public bool Exists(string path) => File.Exists(path);
 
+    public (string Text, long Length)? ReadPrefix(string path, int maxBytes)
+    {
+        using var stream = new FileStream(
+            path,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.ReadWrite
+        );
+        var buffer = new byte[maxBytes];
+        var read = stream.ReadAtLeast(buffer, maxBytes, throwOnEndOfStream: false);
+        var prefix = buffer.AsSpan(0, read);
+        if (prefix.Length >= 3 && prefix[0] == 0xEF && prefix[1] == 0xBB && prefix[2] == 0xBF)
+        {
+            prefix = prefix[3..];
+        }
+
+        return (Utf8NoBom.GetString(prefix), new FileInfo(path).Length);
+    }
+
     public string ReadAllText(string path) => TextFile.ReadAllText(path);
 
     public (string Text, bool HasBom) ReadRaw(string path) => TextFile.ReadRaw(path);

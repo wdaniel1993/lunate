@@ -82,7 +82,7 @@ Tool calls SHALL propagate the turn's cancellation as `OperationCanceledExceptio
 
 ### Requirement: ACP approvals, editor file system and resource links
 
-In ACP mode, tool approvals SHALL compose the configured policy with the client's `session/request_permission`: calls the policy already allows SHALL run without prompting; everything else SHALL ask the editor with allow-once, allow-always and reject options — allow-once executes, allow-always executes and is remembered per tool for the session, reject declines as a tool error, and a cancel or request error resolves as a decline. Commands SHALL prompt under every policy. When the client advertises the file-system capability, the read, write and edit tools SHALL route file access through the client's `fs/read_text_file`/`fs/write_text_file` so editor buffers are respected (the client owns byte-order marks); without the capability they SHALL use the local disk. Prompt `ResourceLinkContent` blocks SHALL map to model-readable text: a `file://` URI inside the workspace becomes `@<relative path>`, anything else becomes `<name> (<uri>)`, in prompt order.
+In ACP mode, tool approvals SHALL compose the configured policy with the client's `session/request_permission`: calls the policy already allows SHALL run without prompting; everything else SHALL ask the editor with allow-once, allow-always and reject options — allow-once executes, allow-always executes and is remembered per tool for the session, reject declines as a tool error, and a cancel or request error resolves as a decline. Every client round trip SHALL be bounded: a file request that outlives its timeout SHALL fail as an I/O error, and a permission request that outlives its timeout SHALL decline (both logged) — a stalled editor degrades, it does not hang. A missing file SHALL surface as a not-found failure and other client failures as I/O errors — never masked into one another. Commands SHALL prompt under every policy. When the client advertises the file-system capability, the read, write and edit tools SHALL route file access through the client's `fs/read_text_file`/`fs/write_text_file` so editor buffers are respected (the client owns byte-order marks); without the capability they SHALL use the local disk. Prompt `ResourceLinkContent` blocks SHALL map to model-readable text: a `file://` URI inside the workspace becomes `@<relative path>`, anything else becomes `<name> (<uri>)`, in prompt order.
 
 #### Scenario: Policy-allowed calls run unprompted
 
@@ -137,3 +137,21 @@ In ACP mode, tool approvals SHALL compose the configured policy with the client'
 - **GIVEN** a prompt containing a resource link to a workspace file and one to an external URI
 - **WHEN** the prompt reaches the model
 - **THEN** the first appears as `@<relative path>` and the second as `<name> (<uri>)`, in order
+
+#### Scenario: A stalled file round trip fails as an error
+
+- **GIVEN** a client that never answers a file request
+- **WHEN** a file tool runs
+- **THEN** it fails as an I/O error after the timeout instead of hanging
+
+#### Scenario: A stalled permission request declines
+
+- **GIVEN** a permission request the client never answers
+- **WHEN** its timeout passes
+- **THEN** the call is declined (logged) and the run continues with the decline
+
+#### Scenario: Missing files are not masked
+
+- **GIVEN** a client whose read reports the file missing
+- **WHEN** a file tool runs
+- **THEN** the result says the file was not found, while other client failures surface as I/O errors

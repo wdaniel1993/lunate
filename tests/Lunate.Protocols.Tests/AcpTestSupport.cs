@@ -51,6 +51,27 @@ internal static class AcpTestSupport
         return new AcpRuntime(client, state, serverTask, toServer);
     }
 
+    /// <summary>
+    /// A bare agent-side connection for tests that build the client-backed approver or file access
+    /// directly with short injected timeouts: the client end answers through a
+    /// <see cref="RecordingClient"/> and leaves requests unanswered on demand.
+    /// </summary>
+    public static RawAcpRuntime StartRaw()
+    {
+        var toClient = new Pipe();
+        var toServer = new Pipe();
+        var state = new RecordingClient();
+        var server = new AgentSideConnection(
+            _ => new SilentAgent(),
+            new NdJsonStream(toServer.Reader.AsStream(), toClient.Writer.AsStream())
+        );
+        var client = new ClientSideConnection(
+            _ => state,
+            new NdJsonStream(toClient.Reader.AsStream(), toServer.Writer.AsStream())
+        );
+        return new RawAcpRuntime(server, client, state, toClient);
+    }
+
     public static InitializeRequest InitializeRequest =>
         new()
         {
@@ -94,6 +115,55 @@ internal sealed class AcpRuntime(
         await toServer.Writer.CompleteAsync().ConfigureAwait(false);
         await Task.WhenAny(serverTask, Task.Delay(TimeSpan.FromSeconds(10))).ConfigureAwait(false);
     }
+}
+
+/// <summary>A bare agent-side connection pair whose client end is a <see cref="RecordingClient"/>.</summary>
+internal sealed class RawAcpRuntime(
+    AgentSideConnection server,
+    ClientSideConnection client,
+    RecordingClient state,
+    Pipe toClient
+) : IAsyncDisposable
+{
+    public AgentSideConnection Server { get; } = server;
+
+    public ClientSideConnection Client { get; } = client;
+
+    public RecordingClient State { get; } = state;
+
+    public async ValueTask DisposeAsync()
+    {
+        await Client.DisposeAsync().ConfigureAwait(false);
+        await Server.DisposeAsync().ConfigureAwait(false);
+        await toClient.Writer.CompleteAsync().ConfigureAwait(false);
+    }
+}
+
+/// <summary>An agent stub for the raw connection: it never receives inbound requests.</summary>
+internal sealed class SilentAgent : IAgent
+{
+    public Task<InitializeResponse> InitializeAsync(
+        InitializeRequest request,
+        CancellationToken cancellationToken
+    ) => throw RequestErrorException.MethodNotFound(AgentMethods.Initialize);
+
+    public Task<AuthenticateResponse?> AuthenticateAsync(
+        AuthenticateRequest request,
+        CancellationToken cancellationToken
+    ) => throw RequestErrorException.MethodNotFound(AgentMethods.Authenticate);
+
+    public Task<NewSessionResponse> NewSessionAsync(
+        NewSessionRequest request,
+        CancellationToken cancellationToken
+    ) => throw RequestErrorException.MethodNotFound(AgentMethods.SessionNew);
+
+    public Task<PromptResponse> PromptAsync(
+        PromptRequest request,
+        CancellationToken cancellationToken
+    ) => throw RequestErrorException.MethodNotFound(AgentMethods.SessionPrompt);
+
+    public Task CancelAsync(CancelNotification notification, CancellationToken cancellationToken) =>
+        Task.CompletedTask;
 }
 
 /// <summary>Records the <c>session/update</c> notifications the server sends and answers the
@@ -168,8 +238,17 @@ internal sealed class RecordingClient : IClient
         Task<RequestPermissionResponse>
     >? PermissionHandler { get; set; }
 
+    /// <summary>When true, every <c>session/request_permission</c> is left unanswered.</summary>
+    public bool IgnorePermissions { get; set; }
+
     /// <summary>Serves <c>fs/read_text_file</c> content; null answers with resource-not-found.</summary>
     public Func<ReadTextFileRequest, string>? FileReadHandler { get; set; }
+
+    /// <summary>When true, every <c>fs/read_text_file</c> request is left unanswered.</summary>
+    public bool IgnoreFileReads { get; set; }
+
+    /// <summary>When set, <c>fs/read_text_file</c> answers with this error.</summary>
+    public Exception? FileReadError { get; set; }
 
     public Task SessionUpdateAsync(
         SessionNotification notification,
@@ -195,6 +274,13 @@ internal sealed class RecordingClient : IClient
             permissionRequests.Add(request);
         }
 
+        if (IgnorePermissions)
+        {
+            return new TaskCompletionSource<RequestPermissionResponse>(
+                TaskCreationOptions.RunContinuationsAsynchronously
+            ).Task;
+        }
+
         return PermissionHandler is { } handler
             ? handler(request, cancellationToken)
             : Task.FromResult(
@@ -210,6 +296,18 @@ internal sealed class RecordingClient : IClient
         lock (fileReads)
         {
             fileReads.Add(request);
+        }
+
+        if (IgnoreFileReads)
+        {
+            return new TaskCompletionSource<ReadTextFileResponse>(
+                TaskCreationOptions.RunContinuationsAsynchronously
+            ).Task;
+        }
+
+        if (FileReadError is { } error)
+        {
+            return Task.FromException<ReadTextFileResponse>(error);
         }
 
         return FileReadHandler is { } handler

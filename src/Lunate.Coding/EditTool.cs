@@ -119,7 +119,17 @@ public sealed class EditTool(
             return Error($"{resolved.RelativePath} is a directory");
         }
 
-        if (!_files.Exists(resolved.AbsolutePath))
+        bool exists;
+        try
+        {
+            exists = _files.Exists(resolved.AbsolutePath);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            return Error($"could not be read: {exception.Message}");
+        }
+
+        if (!exists)
         {
             return Error($"file not found: {resolved.RelativePath}");
         }
@@ -221,7 +231,16 @@ public sealed class EditTool(
                     newFileText += ending;
                 }
 
-                _files.WriteRaw(resolved.AbsolutePath, newFileText, hasBom);
+                try
+                {
+                    _files.WriteRaw(resolved.AbsolutePath, newFileText, hasBom);
+                }
+                catch (Exception exception)
+                    when (exception is IOException or UnauthorizedAccessException)
+                {
+                    return Task.FromResult(Error($"could not be written: {exception.Message}"));
+                }
+
                 changes?.Notify(resolved.AbsolutePath);
 
                 var firstLine = start + 1;

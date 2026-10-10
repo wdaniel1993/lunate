@@ -525,10 +525,11 @@ MCP and ACP live in `Lunate.Protocols` and use existing SDKs; without AOT there 
 ```csharp
 public interface IAcpServer
 {
-    Task RunAsync(Stream input, Stream output, Func<AgentHarness> createHarness, CancellationToken ct);
+    Task RunAsync(Stream input, Stream output, Func<AcpSessionContext, AgentHarness> createHarness, CancellationToken ct);
 }
 ```
 
+- The harness factory receives an `AcpSessionContext`: the session cwd, the client-backed approver, and the client's file access when the editor offers its file system.
 - T-27 compares `AcpSdk`, `AgentClientProtocol` and `LibAcp` (spec coverage, activity, license) and records the choice in an ADR. The interface keeps a later switch cheap.
 - `lunate --acp` speaks ACP over stdio; nothing else may write to stdout. Logs go to stderr or `~/.lunate/logs/`.
 - Handles initialize, new session, prompt (one run, streaming updates mapped from `AgentEvent`s), and cancel.

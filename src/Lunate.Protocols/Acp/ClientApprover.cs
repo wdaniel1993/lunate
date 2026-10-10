@@ -14,6 +14,8 @@ namespace Lunate.Protocols.Acp;
 /// </summary>
 internal sealed class ClientApprover : IToolApprover
 {
+    internal const int DefaultPermissionTimeoutSeconds = 600;
+
     private static readonly IReadOnlyList<PermissionOption> OfferedOptions =
     [
         new PermissionOption
@@ -45,6 +47,7 @@ internal sealed class ClientApprover : IToolApprover
     private readonly AgentSideConnection _connection;
     private readonly SessionId _sessionId;
     private readonly Action<string>? _log;
+    private readonly TimeSpan _permissionTimeout;
     private readonly object _gate = new();
     private readonly HashSet<string> _always = new(StringComparer.Ordinal);
     private readonly HashSet<string> _never = new(StringComparer.Ordinal);
@@ -53,13 +56,16 @@ internal sealed class ClientApprover : IToolApprover
     public ClientApprover(
         AgentSideConnection connection,
         SessionId sessionId,
-        Action<string>? log = null
+        Action<string>? log = null,
+        TimeSpan? permissionTimeout = null
     )
     {
         ArgumentNullException.ThrowIfNull(connection);
         _connection = connection;
         _sessionId = sessionId;
         _log = log;
+        _permissionTimeout =
+            permissionTimeout ?? TimeSpan.FromSeconds(DefaultPermissionTimeoutSeconds);
     }
 
     /// <summary>Returns true to execute the call, false to decline it.</summary>
@@ -102,7 +108,20 @@ internal sealed class ClientApprover : IToolApprover
         RequestPermissionResponse response;
         try
         {
-            response = await _connection.RequestPermissionAsync(request, ct).ConfigureAwait(false);
+            response = await _connection
+                .RequestPermissionAsync(request, ct)
+                .WaitAsync(_permissionTimeout)
+                .ConfigureAwait(false);
+        }
+        catch (TimeoutException)
+        {
+            Log(
+                string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"request_permission {tool.Name}: no answer within {_permissionTimeout.TotalSeconds}s; the call is declined"
+                )
+            );
+            return false;
         }
         catch (OperationCanceledException)
         {

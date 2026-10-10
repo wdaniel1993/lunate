@@ -96,21 +96,95 @@ public sealed class TextFileAccessSeamTests
         Assert.Equal("disk old\n", File.ReadAllText(temp.File("Edit.txt")));
     }
 
+    [Fact]
+    public async Task The_edit_tool_reports_a_rethrown_read_failure_as_could_not_be_read()
+    {
+        using var temp = new TempDirectory();
+        var files = new FakeTextFileAccess { ExistsError = new IOException("editor down") };
+
+        var result = await ExecuteAsync(
+            new EditTool(new Workspace(temp.Root), files: files),
+            """{"path":"Edit.txt","old_text":"old","new_text":"new"}"""
+        );
+
+        Assert.True(result.IsError);
+        Assert.Equal("could not be read: editor down", result.Output);
+    }
+
+    [Fact]
+    public async Task The_edit_tool_reports_a_rethrown_write_failure_as_could_not_be_written()
+    {
+        using var temp = new TempDirectory();
+        var root = new Workspace(temp.Root).WorktreeRoot;
+        var files = new FakeTextFileAccess { WriteError = new IOException("editor down") };
+        files.Files[Path.Combine(root, "Edit.txt")] = "buffer old\n";
+
+        var result = await ExecuteAsync(
+            new EditTool(new Workspace(temp.Root), files: files),
+            """{"path":"Edit.txt","old_text":"buffer old","new_text":"buffer new"}"""
+        );
+
+        Assert.True(result.IsError);
+        Assert.Equal("could not be written: editor down", result.Output);
+    }
+
+    [Fact]
+    public async Task The_write_tool_reports_a_rethrown_read_failure_as_could_not_be_read()
+    {
+        using var temp = new TempDirectory();
+        var files = new FakeTextFileAccess { ExistsError = new IOException("editor down") };
+
+        var result = await ExecuteAsync(
+            new WriteTool(new Workspace(temp.Root), files: files),
+            """{"path":"New.txt","content":"seam write\n"}"""
+        );
+
+        Assert.True(result.IsError);
+        Assert.Equal("could not be read: editor down", result.Output);
+    }
+
+    [Fact]
+    public async Task The_write_tool_reports_a_rethrown_write_failure_as_could_not_be_written()
+    {
+        using var temp = new TempDirectory();
+        var files = new FakeTextFileAccess { WriteError = new IOException("editor down") };
+
+        var result = await ExecuteAsync(
+            new WriteTool(new Workspace(temp.Root), files: files),
+            """{"path":"New.txt","content":"seam write\n"}"""
+        );
+
+        Assert.True(result.IsError);
+        Assert.Equal("could not be written: editor down", result.Output);
+    }
+
     private sealed class FakeTextFileAccess : ITextFileAccess
     {
         public Dictionary<string, string> Files { get; } = new(StringComparer.Ordinal);
 
         public List<(string Path, string Text, bool HasBom)> Writes { get; } = [];
 
+        public Exception? ExistsError { get; set; }
+
+        public Exception? WriteError { get; set; }
+
         public void WriteAllText(string path, string content) => WriteRaw(path, content, false);
 
         public void WriteRaw(string path, string text, bool hasBom)
         {
+            if (WriteError is { } error)
+            {
+                throw error;
+            }
+
             Files[path] = text;
             Writes.Add((path, text, hasBom));
         }
 
-        public bool Exists(string path) => Files.ContainsKey(path);
+        public bool Exists(string path) =>
+            ExistsError is { } error ? throw error : Files.ContainsKey(path);
+
+        public (string Text, long Length)? ReadPrefix(string path, int maxBytes) => null;
 
         public string ReadAllText(string path) => Files[path];
 
