@@ -36,7 +36,9 @@ Checklist (from the guide's tier-1 table): Windows Terminal · conhost · VS Cod
 
 ## Deviations
 
-(filled during apply; none yet)
+1. `MarkdownRenderer` keeps its public parameterless constructor (Unicode on); the detected capabilities flow through a new internal constructor, so the public surface only gains `TerminalCapabilities` (the structure section named only `MarkdownAstMapper`).
+2. `LiveArea` takes the capabilities as an optional constructor parameter (default: Unicode on, colour from Spectre's detection); the interactive session always passes the detected record.
+3. `TerminalCapabilities.Detect` takes `isInteractive` and `isWindows` as explicit parameters beside the two pinned seams, so both platform branches are covered by tests on any OS.
 
 ## Seams
 
