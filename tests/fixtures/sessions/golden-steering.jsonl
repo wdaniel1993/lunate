@@ -1,0 +1,6 @@
+{"type":"header","schema":2,"id":"s_20261009-120000-6217","cwd":"/work","created":"2026-10-09T12:00:00.0000000+00:00","meai":"10.10.1+59e1741f6fb45cf7ae08e2df088aef71537a7bc4"}
+{"type":"message","id":"e_01","parentId":null,"timestamp":"2026-10-09T12:00:00.0000000+00:00","message":{"role":"user","contents":[{"$type":"text","text":"go"}]}}
+{"type":"message","id":"e_02","parentId":"e_01","timestamp":"2026-10-09T12:00:00.0000000+00:00","message":{"role":"assistant","contents":[{"$type":"functionCall","name":"read","arguments":{"path":"a.txt"},"informationalOnly":false,"callId":"call-1"}]}}
+{"type":"message","id":"e_03","parentId":"e_02","timestamp":"2026-10-09T12:00:00.0000000+00:00","message":{"role":"tool","contents":[{"$type":"functionResult","result":"contents","callId":"call-1"}]}}
+{"type":"message","id":"e_04","parentId":"e_03","timestamp":"2026-10-09T12:00:00.0000000+00:00","message":{"role":"user","contents":[{"$type":"text","text":"first steer"}]}}
+{"type":"message","id":"e_05","parentId":"e_04","timestamp":"2026-10-09T12:00:00.0000000+00:00","message":{"role":"assistant","contents":[{"$type":"text","text":"done"}]}}

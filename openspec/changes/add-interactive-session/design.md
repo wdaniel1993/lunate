@@ -21,7 +21,7 @@ Anthropic requires alternating turns; a steering user message appended right aft
 
 ## Session origin stance
 
-No session schema change in v1. A steering message is a normal `SessionMessageEntry`; its position (after tool results, before the next assistant message) identifies it. The deterministic replay test re-injects steering at the step identified by that position and compares the resulting session bytes with the recorded one, using the existing replay conventions (fixed ids/clock as those tests already do). **If implementation proves an origin field is genuinely needed, stop and propose an ADR.**
+No session schema change in v1. A steering message is a normal `SessionMessageEntry`; its position (after tool results, before the next assistant message) identifies it. The deterministic replay test records the scripted steering run fresh and compares it byte-for-byte against the committed golden `tests/fixtures/sessions/golden-steering.jsonl` (ADR-0015's byte-truth convention; header line excluded as elsewhere). **If implementation proves an origin field is genuinely needed, stop and propose an ADR.**
 
 ## Interaction rules (pinned from the maintainer)
 
@@ -55,6 +55,9 @@ Recorded during apply:
 9. **`AnthropicTurnMerge` is internal and sits above the recorder**, so recorded fixtures capture the wire (merged) request; it merges *all* consecutive wire-user messages — the Anthropic adapter maps every non-assistant message to `user`, so two tool results of one batch would also be consecutive user turns. History/session are untouched (new message instances; originals are never mutated).
 10. **Usage accumulation**: `UsageUpdated` counts are summed across events (Anthropic reports input at stream start, output at the end); a provider that sends cumulative totals would double-count — revisit if it bites.
 11. **`CompactionApplied` maps to a notice but is not exercised end-to-end** (it needs a compaction-triggering history); `Retrying` and `StepLimitReached` prove the notice channel in the session tests.
+12. **Steering replay golden (review fix)**: `tests/fixtures/sessions/golden-steering.jsonl` is committed; the test records fresh and compares byte-for-byte against it (header excluded); regenerate with `LUNATE_UPDATE_STEERING_GOLDEN=1`.
+13. **`AnthropicTurnMerge` joins consecutive user texts without a separator** ("one"+"two" -> "onetwo"): unreachable through the frontend (steering is only enqueued while a turn is active, so it always follows tool results); kept minimal deliberately.
+14. **`SteeringInjected` is not echoed to scrollback yet** (no `HandleEvent` case); the steering text returns to the input line on `Esc`. An echo block is a part 2 UX follow-up.
 
 ## T-22 part 2 / T-53 seams
 

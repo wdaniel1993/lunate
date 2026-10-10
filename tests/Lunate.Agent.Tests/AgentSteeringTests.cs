@@ -211,19 +211,29 @@ public sealed class AgentSteeringTests
     }
 
     [Fact]
-    public async Task A_steering_session_recording_reproduces_byte_for_byte()
+    public async Task A_steering_session_recording_matches_the_committed_fixture()
     {
         using var temp = new TempDirectory();
-        string recordedPath = temp.File("recorded.jsonl");
-        string replayPath = temp.File("replay.jsonl");
+        string fresh = temp.File("fresh.jsonl");
 
-        await RecordSteeringRunAsync(recordedPath);
-        await RecordSteeringRunAsync(replayPath);
+        await RecordSteeringRunAsync(fresh);
 
-        string[] recorded = File.ReadAllLines(recordedPath);
-        string[] replay = File.ReadAllLines(replayPath);
-        Assert.Equal(recorded.Length, replay.Length);
-        Assert.Equal(recorded[1..], replay[1..]);
+        string[] recorded = File.ReadAllLines(fresh);
+        string goldenPath = Path.Combine(
+            TestPaths.RepositoryRoot,
+            "tests",
+            "fixtures",
+            "sessions",
+            "golden-steering.jsonl"
+        );
+        if (Environment.GetEnvironmentVariable("LUNATE_UPDATE_STEERING_GOLDEN") == "1")
+        {
+            File.WriteAllLines(goldenPath, recorded);
+        }
+
+        string[] committed = File.ReadAllLines(goldenPath);
+        Assert.Equal(committed.Length, recorded.Length);
+        Assert.Equal(committed[1..], recorded[1..]);
         Assert.Contains("\"parentId\":\"e_03\"", recorded[4], StringComparison.Ordinal);
         Assert.Contains("\"first steer\"", recorded[4], StringComparison.Ordinal);
     }
