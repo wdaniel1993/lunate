@@ -9,8 +9,8 @@
 
 ## 2. Session wiring
 
-- [ ] 2.1 `ApplyCompletion`: `@token` branch (cursor-at-token-end scan, indexing notice, completion + `@` re-prefix, candidates notice capped at 20 with `… (+N more)`); slash behaviour unchanged
-- [ ] 2.2 Tests: token scan cases (mid-text, cursor not at end, no `@`), single/multi/no-progress completion, indexing notice path, session-level flow with a fake index/real temp tree
+- [x] 2.1 `ApplyCompletion`: `@token` branch (cursor-at-token-end scan, indexing notice, completion + `@` re-prefix, candidates notice capped at 20 with `… (+N more)`); slash behaviour unchanged
+- [x] 2.2 Tests: token scan cases (mid-text, cursor not at end, no `@`), single/multi/no-progress completion, indexing notice path, session-level flow with a fake index/real temp tree
 
 ## 3. Budget step
 

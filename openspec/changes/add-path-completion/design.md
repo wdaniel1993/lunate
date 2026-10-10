@@ -40,6 +40,11 @@
    20 candidates.
 2. A directory symlink is neither indexed nor descended: the pinned "not followed" is read as
    "absent from the index" rather than "listed but empty". File symlinks are indexed as files.
+3. Zero matches for an `@token` shows the dim notice `paths: no matches`; the spec's no-progress
+   branch would otherwise render as an empty candidate list.
+4. Completing an `@token` whose cursor sits before trailing text keeps that trailing text (the
+   replacement changes only the token; the cursor lands at the input's end, as after slash
+   completion).
 
 ## Seams
 

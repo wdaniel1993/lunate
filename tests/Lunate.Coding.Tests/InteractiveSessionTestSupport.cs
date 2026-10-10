@@ -283,7 +283,8 @@ internal sealed class InteractiveSessionHost : IDisposable
         HookRunner? hooks = null,
         Func<AgentHarnessOptions, AgentHarnessOptions>? configureHarness = null,
         IChatClient? chat = null,
-        Func<string, string?>? environment = null
+        Func<string, string?>? environment = null,
+        IWorkspaceFiles? workspaceFiles = null
     )
     {
         Scrollback = new TestConsole();
@@ -306,6 +307,7 @@ internal sealed class InteractiveSessionHost : IDisposable
                 Hooks = hooks,
                 Diagnostics = _diagnostics,
                 ConfigureHarness = configureHarness,
+                WorkspaceFiles = workspaceFiles,
             }
         );
     }
