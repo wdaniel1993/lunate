@@ -565,7 +565,7 @@ internal sealed partial class InteractiveSession : IDisposable
         return choice is ApprovalChoice.Approve or ApprovalChoice.Always;
     }
 
-    /// <summary>"Always" is remembered per session; a rebuild starts a different session.</summary>
+    /// <summary>"Always" is remembered per session; every rebuild (/new, any /resume) clears it.</summary>
     private void ResetAlwaysApproved()
     {
         lock (_alwaysApproved)
