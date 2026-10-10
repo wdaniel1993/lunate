@@ -26,7 +26,10 @@
 
 ## Deviations
 
-(filled during apply; none yet)
+- Constructor defaults are expressed as `TimeSpan? timeout = null` (and `TimeSpan? permissionTimeout = null`) plus `internal const int DefaultTimeoutSeconds = 30` / `DefaultPermissionTimeoutSeconds = 600`: C# optional parameters must be compile-time constants, so a `TimeSpan` default cannot be written directly. The observable defaults are the pinned ones.
+- The read tool's `Exists` call sits inside the existing `IOException`/`UnauthorizedAccessException` catch: with the pinned taxonomy `Exists` rethrows non-not-found client failures, and the tool's "could not be read" contract (and the pinned test) requires the boundary to cover it. The `Exists` → probe order is unchanged.
+- LibAcp's error shape was verified against the pinned commit (4bd32b3): an error response surfaces as `Acp.JsonRpc.RequestErrorException` with `Code` and `Message`; `ResourceNotFound` is code `-32002`, message `"Resource not found: {path}"`. No adaptation needed.
+- The permission-timeout tests run the harness directly over the raw connection (a full ACP session uses the pinned 10 min default; the decline-continues-the-run behaviour is asserted at the harness level instead).
 
 ## Seams
 
