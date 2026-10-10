@@ -14,7 +14,7 @@
 
 ## 3. CLI mode
 
-- [ ] 3.1 `lunate --acp`: stdio wiring, stdout purity, stderr logs, mutual exclusion with `-p`/TUI (usage error, exit 2)
+- [x] 3.1 `lunate --acp`: stdio wiring, stdout purity, stderr logs, mutual exclusion with `-p`/TUI (usage error, exit 2)
 
 ## 4. Tests
 
