@@ -87,6 +87,12 @@ public sealed record CompactionApplied(
 
 public sealed record StepLimitReached(string RunId, int MaxSteps) : ExtensionEvent(RunId);
 
+/// <summary>
+/// A steering message the loop injected into the running history, carrying the appended session
+/// entry id (null when no session is attached).
+/// </summary>
+public sealed record SteeringInjected(string RunId, string? EntryId) : ExtensionEvent(RunId);
+
 /// <summary>Streamed progress a tool reports through its context while it runs.</summary>
 public sealed record ToolProgressUpdate(string RunId, string CallId, string Message)
     : ExtensionEvent(RunId);

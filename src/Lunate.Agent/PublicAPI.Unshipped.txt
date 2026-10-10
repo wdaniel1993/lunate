@@ -1067,3 +1067,23 @@ virtual Lunate.Agent.AgentCompactingResult.Equals(Lunate.Agent.AgentCompactingRe
 virtual Lunate.Agent.AgentCompactingResult.PrintMembers(System.Text.StringBuilder! builder) -> bool
 Lunate.Agent.ToolAnnotationNames
 static Lunate.Agent.ToolAnnotationNames.WireNames(Lunate.Agent.ToolAnnotations? annotations) -> System.Collections.Generic.IReadOnlyList<string!>!
+Lunate.Agent.SteeringInjected
+Lunate.Agent.SteeringInjected.Deconstruct(out string! RunId, out string? EntryId) -> void
+Lunate.Agent.SteeringInjected.EntryId.get -> string?
+Lunate.Agent.SteeringInjected.EntryId.init -> void
+Lunate.Agent.SteeringInjected.Equals(Lunate.Agent.SteeringInjected? other) -> bool
+Lunate.Agent.SteeringInjected.SteeringInjected(string! RunId, string? EntryId) -> void
+Lunate.Agent.SteeringQueue
+Lunate.Agent.SteeringQueue.Count.get -> int
+Lunate.Agent.SteeringQueue.Enqueue(string! message) -> void
+Lunate.Agent.SteeringQueue.SteeringQueue() -> void
+Lunate.Agent.SteeringQueue.TryDequeue(out string? message) -> bool
+Lunate.Agent.AgentHarnessOptions.Steering.get -> Lunate.Agent.SteeringQueue?
+Lunate.Agent.AgentHarnessOptions.Steering.init -> void
+override Lunate.Agent.SteeringInjected.<Clone>$() -> Lunate.Agent.SteeringInjected!
+override Lunate.Agent.SteeringInjected.Equals(object? obj) -> bool
+override Lunate.Agent.SteeringInjected.GetHashCode() -> int
+override Lunate.Agent.SteeringInjected.ToString() -> string!
+override sealed Lunate.Agent.SteeringInjected.Equals(Lunate.Agent.ExtensionEvent? other) -> bool
+static Lunate.Agent.SteeringInjected.operator !=(Lunate.Agent.SteeringInjected? left, Lunate.Agent.SteeringInjected? right) -> bool
+static Lunate.Agent.SteeringInjected.operator ==(Lunate.Agent.SteeringInjected? left, Lunate.Agent.SteeringInjected? right) -> bool

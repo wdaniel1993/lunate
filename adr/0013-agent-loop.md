@@ -1,6 +1,6 @@
 # ADR-0013: The agent loop and harness surface
 
-- Status: accepted — 2026-10-06 (maintainer sign-off)
+- Status: accepted — 2026-10-06 (maintainer sign-off); amended 2026-10-09 (steering seam)
 - Date: 2026-10-06
 - Relates to: ADR-0003 (own loop), ADR-0012 (tool contract)
 
@@ -21,3 +21,20 @@ ADR-0003 chose our own loop; T-04 to T-08 built the pipeline, the events and the
 - Frontends and later cards (T-10 to T-23, T-27, T-29) extend the loop without reshaping it.
 - Run behavior is inspectable: the event sequence (validator) and the spans (exporter) are both testable in replay, without keys.
 - The approver seam is dead code until T-21 by design; tests keep it honest.
+
+## Amendment 2026-10-09 — steering seam (T-22 part 1)
+
+The guide promises that the user may type while a turn runs and the message is injected before the
+next model call; T-22 adds that seam to the entry point fixed above.
+
+**Decision 6 — a steering queue on the harness options**: `AgentHarnessOptions.Steering` (a thread-safe
+`SteeringQueue`, default null = feature off) is the frontend's channel into a running turn. The
+top-level loop drains it before each model request build and only after every tool result of the
+previous batch has been appended — never between a tool call and its result; nested calls never
+drain it. Each drained message is appended to the history as a user message and, when a session
+is attached, mirrored as a normal `SessionMessageEntry` whose parent chain position is its
+origin (no schema change), then announced as `SteeringInjected(runId, entryId)` on the same
+ordered channel as every other event. Leftovers stay queued: the harness never auto-runs and the
+frontend reclaims them through `SteeringQueue.TryDequeue` (Esc returns them to the input line).
+The wire merge that keeps consecutive user turns valid for Anthropic is a transport concern of
+`Lunate.Ai` (ADR-0010), not of the loop.

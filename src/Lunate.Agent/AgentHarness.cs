@@ -229,6 +229,7 @@ public sealed partial class AgentHarness
                 }
 
                 modelCalls++;
+                DrainSteering(runId, channel);
                 await CompactBeforeRequestAsync(runId, channel, sections, ct);
                 ModelStreamResult stream = await StreamModelWithRetriesAsync(
                     runId,
@@ -408,8 +409,27 @@ public sealed partial class AgentHarness
         return new ModelStreamResult(updates, finishReason, attempt.Emitted, modelId, usage);
     }
 
+    /// <summary>
+    /// Injects every queued steering message into the history, mirroring it into the session and
+    /// announcing it. Called only by the top-level run, before each model request and after the
+    /// whole previous batch of tool results; nested calls never drain the queue.
+    /// </summary>
+    private void DrainSteering(string runId, AgentEventChannel channel)
+    {
+        if (_options.Steering is not { } steering)
+        {
+            return;
+        }
+
+        while (steering.TryDequeue(out string? message))
+        {
+            string? entryId = AppendHistoryMessage(new ChatMessage(ChatRole.User, message));
+            channel.Emit(new SteeringInjected(runId, entryId));
+        }
+    }
+
     /// <summary>Appends a history message and mirrors it into the session when one is attached.</summary>
-    private void AppendHistoryMessage(
+    private string? AppendHistoryMessage(
         ChatMessage message,
         string? model = null,
         SessionUsage? usage = null
@@ -425,6 +445,7 @@ public sealed partial class AgentHarness
         }
 
         _historyEntryIds.Add(entryId);
+        return entryId;
     }
 
     private static string MappedStopReason(ChatFinishReason? finishReason) =>

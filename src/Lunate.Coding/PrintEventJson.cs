@@ -37,6 +37,7 @@ internal static class PrintEventJson
             typeof(Retrying),
             typeof(CompactionApplied),
             typeof(StepLimitReached),
+            typeof(SteeringInjected),
             typeof(ToolProgressUpdate),
         ];
 
@@ -109,6 +110,7 @@ internal static class PrintEventJson
                 new JsonObject { ["attempt"] = e.Attempt, ["reason"] = e.Reason }
             ),
             CompactionApplied e => ("compaction_applied", CompactionBody(e)),
+            SteeringInjected e => ("steering_injected", SteeringBody(e)),
             StepLimitReached e => (
                 "step_limit_reached",
                 new JsonObject { ["maxSteps"] = e.MaxSteps }
@@ -186,5 +188,16 @@ internal static class PrintEventJson
             ["replacedEntryIds"] = replaced,
             ["estimatedTokensAfter"] = e.EstimatedTokensAfter,
         };
+    }
+
+    private static JsonObject SteeringBody(SteeringInjected e)
+    {
+        var body = new JsonObject();
+        if (e.EntryId is not null)
+        {
+            body["entryId"] = e.EntryId;
+        }
+
+        return body;
     }
 }
