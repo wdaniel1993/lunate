@@ -1,0 +1,57 @@
+# Design: distribution — install scripts, channels, dotnet tool (T-32)
+
+## Structure
+
+- `install.sh` (repo root) — macOS/Linux installer; `install.ps1` (repo root) — Windows installer.
+- `packaging/homebrew/lunate.rb`, `packaging/scoop/lunate.json`, `packaging/winget/{wdaniel1993.lunate.yaml, wdaniel1993.lunate.locale.en-US.yaml, wdaniel1993.lunate.installer.yaml}`.
+- `docs/distribution.md` — channel runbook; README gains the install section.
+- `src/Lunate.Coding/Lunate.Coding.csproj` — tool packaging; `.github/workflows/release.yml` — pack job + `.nupkg` attachment.
+- `scripts/verify.sh` / `scripts/verify.ps1` — install-script and tool-roundtrip steps.
+
+## Asset contract (pinned)
+
+- Release asset names: `lunate-osx-arm64.tar.gz`, `lunate-linux-x64.tar.gz`, `lunate-win-x64.zip`, `SHA256SUMS` (lines `<hash>  <filename>`, sha256sum format), `lunate.<version>.nupkg` (new).
+- Download URLs: latest = `https://github.com/wdaniel1993/lunate/releases/latest/download/<asset>`; pinned version = `.../releases/download/<tag>/<asset>`.
+- Test seam: `LUNATE_INSTALL_BASE_URL` overrides the **download root** verbatim (the URL prefix before `/<asset>`; `file://` works with curl); `LUNATE_INSTALL_VERSION` / `--version` selects the tag; `LUNATE_INSTALL_PREFIX` / `--prefix` the target directory.
+
+## install.sh (pinned)
+
+- Platform map: `Darwin`+`arm64` → `osx-arm64`; `Linux`+`x86_64` → `linux-x64`; anything else → refuse with a message naming the platform and pointing Windows users at `install.ps1`. No `sudo`, ever.
+- Flow: resolve base URL (env > default) → download `<base>/lunate-<rid>.tar.gz` and `<base>/SHA256SUMS` with `curl -fsSL` → extract the expected hash line → compute sha256 (`sha256sum` when present, else `shasum -a 256`) → abort (installing nothing) on mismatch → extract to a temp dir → install `lunate` into `$HOME/.local/bin` (or `--prefix`/env) → `chmod +x` → print installed version and a PATH hint when the directory is not on `PATH`.
+- Flags: `--version <tag>`, `--prefix <dir>`, `--help`; everything else = usage error.
+- Errors are plain English on stderr with exit 1; no partial installs (temp dir cleanup).
+
+## install.ps1 (pinned)
+
+- win-x64 only (`PROCESSOR_ARCHITECTURE`); other architectures refused with a clear message.
+- Flow: same base/version seams (env first, `param()` when run as a file; iex-friendly defaults) → download `lunate-win-x64.zip` + `SHA256SUMS` → `Get-FileHash -Algorithm SHA256` vs the parsed line → `Expand-Archive` to a temp dir → copy `lunate.exe` into `$env:LOCALAPPDATA\Programs\lunate` → add that directory to the **user** PATH when missing → print version + restart-shell hint.
+- No machine-wide changes; no admin.
+
+## Verify-gate proofs (pinned)
+
+- `verify.sh`, after the startup-budget step, on Darwin/Linux: build a fixture release from the just-published binary (`tar -czf lunate-<rid>.tar.gz`, `SHA256SUMS`), run `install.sh` with `LUNATE_INSTALL_BASE_URL=file://<fixture>` and a temp prefix, then run the installed `lunate --version` and compare with the publish version.
+- `verify.sh` on Windows (MINGW): run `install.sh` and require the refusal (non-zero + message) — the Windows path belongs to `install.ps1`.
+- `verify.ps1`, after the startup-budget step: same fixture flow with the zip + `install.ps1`, assert the installed exe runs.
+- Tool roundtrip (both scripts): `dotnet pack` the CLI into a temp feed, `dotnet tool install --tool-path <tmp> --add-source <feed> lunate --version <current>`, run `lunate --version`.
+- Packaging consistency: assert every packaging file exists and contains the current `<Version>` string from `Directory.Build.props` (a small bash step in verify.sh; sha256 placeholders are allowed at rest — the runbook fills them at release time).
+
+## Tool packaging (pinned)
+
+- `Lunate.Coding.csproj`: `PackAsTool=true`, `ToolCommandName=lunate`, `PackageId=lunate`, description; framework-dependent (default). No dependency changes.
+- `release.yml`: new `pack` job (needs gate) producing the `.nupkg`; the release job downloads it with the archives and attaches it (and includes it in the upload glob).
+
+## Channel artifacts (pinned)
+
+- Homebrew: formula with `on_macos`/`on_linux` blocks using the release URLs; `sha256` placeholders (`SHA256_PLACEHOLDER_*`) at rest; the tap repo `wdaniel1993/homebrew-tap` hosts the copy (runbook step).
+- Scoop: manifest with `checkver`/`autoupdate` against GitHub releases; bucket repo `wdaniel1993/scoop-bucket` (runbook step).
+- winget: three manifests (portable, x64) with `InstallerSha256` placeholder; submission to `microsoft/winget-pkgs` via PR (runbook step; the guide's pre-release name check lives there).
+- Runbook (`docs/distribution.md`): first-release checklist (tag → verify assets → fill placeholders → update tap/bucket → winget PR → NuGet push), each step with the exact command.
+
+## Deviations
+
+(filled during apply; none yet)
+
+## Seams
+
+- Live channel execution (first tag, tap/bucket repos, winget PR, NuGet push) is ops after merge — the change proves mechanics; the runbook drives the live part.
+- Automating placeholder updates per release (tap/bucket bots) is future work, noted in the runbook.
