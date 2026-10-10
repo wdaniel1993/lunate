@@ -232,6 +232,61 @@ public sealed class LibAcpServerTests
     }
 
     [Fact]
+    public async Task Cancel_while_a_prompt_is_queued_reports_cancellation_for_that_prompt()
+    {
+        using var first = new TempDirectory();
+        using var second = new TempDirectory();
+        var gated = new AcpGatedChatClient();
+        var queued = new AcpScriptedChatClient().Enqueue(AcpScripts.Text("never"));
+        await using AcpRuntime runtime = AcpTestSupport.Start(cwd =>
+            cwd == first.Root ? AcpTestSupport.Harness(gated) : AcpTestSupport.Harness(queued)
+        );
+
+        await runtime.Client.InitializeAsync(AcpTestSupport.InitializeRequest, Ct);
+        NewSessionResponse session1 = await runtime.Client.NewSessionAsync(
+            new NewSessionRequest { Cwd = first.Root, McpServers = [] },
+            Ct
+        );
+        NewSessionResponse session2 = await runtime.Client.NewSessionAsync(
+            new NewSessionRequest { Cwd = second.Root, McpServers = [] },
+            Ct
+        );
+
+        Task<PromptResponse> firstPrompt = runtime.Client.PromptAsync(
+            new PromptRequest
+            {
+                SessionId = session1.SessionId,
+                Prompt = [new TextContent { Text = "first" }],
+            },
+            Ct
+        );
+        await runtime.State.WaitForUpdatesAsync(1, TimeSpan.FromSeconds(10), Ct);
+
+        Task<PromptResponse> secondPrompt = runtime.Client.PromptAsync(
+            new PromptRequest
+            {
+                SessionId = session2.SessionId,
+                Prompt = [new TextContent { Text = "second" }],
+            },
+            Ct
+        );
+        await runtime.Client.CancelAsync(
+            new CancelNotification { SessionId = session2.SessionId },
+            Ct
+        );
+        await runtime.Client.CancelAsync(
+            new CancelNotification { SessionId = session1.SessionId },
+            Ct
+        );
+
+        PromptResponse firstResponse = await firstPrompt.WaitAsync(TimeSpan.FromSeconds(10), Ct);
+        PromptResponse secondResponse = await secondPrompt.WaitAsync(TimeSpan.FromSeconds(10), Ct);
+
+        Assert.Equal(StopReason.Cancelled, firstResponse.StopReason);
+        Assert.Equal(StopReason.Cancelled, secondResponse.StopReason);
+    }
+
+    [Fact]
     public async Task Unknown_method_is_a_json_rpc_error()
     {
         var model = new AcpScriptedChatClient();

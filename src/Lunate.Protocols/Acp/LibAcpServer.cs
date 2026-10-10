@@ -12,7 +12,8 @@ namespace Lunate.Protocols.Acp;
 /// The <see cref="IAcpServer"/> adapter on LibAcp: initialize (protocol v1, honest text-only
 /// capabilities), session/new (a harness per session, the session cwd as its workspace),
 /// session/prompt (one run, text blocks only, streaming <c>session/update</c> via
-/// <see cref="AcpEventMapper"/>), and session/cancel (cancels the in-flight run's token).
+/// <see cref="AcpEventMapper"/>), and session/cancel (cancels the in-flight run's token, or latches
+/// onto a queued prompt so its run begins already cancelled).
 /// Sessions run sequentially per connection — one active run at a time.
 /// </summary>
 internal sealed class LibAcpServer(Action<string>? log = null) : IAcpServer
@@ -150,56 +151,64 @@ internal sealed class LibAcpServer(Action<string>? log = null) : IAcpServer
             Session session = RequireSession(request.SessionId);
             string prompt = PromptText(request, session);
 
-            await runs.WaitAsync(ct).ConfigureAwait(false);
+            session.BeginPrompt();
             try
             {
-                using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(ct);
-                session.BeginRun(cancellation);
+                await runs.WaitAsync(ct).ConfigureAwait(false);
                 try
                 {
-                    string stopReason = StopReasons.Stop;
-                    string? runError = null;
-                    await foreach (
-                        AgentEvent agentEvent in session.Harness.RunAsync(
-                            prompt,
-                            cancellation.Token
+                    using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                    session.BeginRun(cancellation);
+                    try
+                    {
+                        string stopReason = StopReasons.Stop;
+                        string? runError = null;
+                        await foreach (
+                            AgentEvent agentEvent in session.Harness.RunAsync(
+                                prompt,
+                                cancellation.Token
+                            )
                         )
-                    )
-                    {
-                        switch (agentEvent)
                         {
-                            case RunFinished finished:
-                                stopReason = finished.StopReason;
-                                break;
-                            case RunError error:
-                                runError = error.Message;
-                                Log($"session/prompt {session.Id}: {error.Message}");
-                                break;
-                            case RunStarted or TextMessageStart or TextMessageEnd:
-                                // Lifecycle markers; the prompt response and text chunks carry them.
-                                break;
-                            default:
-                                await SendUpdateAsync(request.SessionId, agentEvent, ct)
-                                    .ConfigureAwait(false);
-                                break;
+                            switch (agentEvent)
+                            {
+                                case RunFinished finished:
+                                    stopReason = finished.StopReason;
+                                    break;
+                                case RunError error:
+                                    runError = error.Message;
+                                    Log($"session/prompt {session.Id}: {error.Message}");
+                                    break;
+                                case RunStarted or TextMessageStart or TextMessageEnd:
+                                    // Lifecycle markers; the prompt response and text chunks carry them.
+                                    break;
+                                default:
+                                    await SendUpdateAsync(request.SessionId, agentEvent, ct)
+                                        .ConfigureAwait(false);
+                                    break;
+                            }
                         }
-                    }
 
-                    return new PromptResponse
+                        return new PromptResponse
+                        {
+                            StopReason = runError is null
+                                ? AcpEventMapper.MapStopReason(stopReason)
+                                : AcpEventMapper.ErrorStopReason,
+                        };
+                    }
+                    finally
                     {
-                        StopReason = runError is null
-                            ? AcpEventMapper.MapStopReason(stopReason)
-                            : AcpEventMapper.ErrorStopReason,
-                    };
+                        session.EndRun();
+                    }
                 }
                 finally
                 {
-                    session.EndRun();
+                    runs.Release();
                 }
             }
             finally
             {
-                runs.Release();
+                session.EndPrompt();
             }
         }
 
@@ -308,21 +317,54 @@ internal sealed class LibAcpServer(Action<string>? log = null) : IAcpServer
             typeof(LibAcpServer).Assembly.GetName().Version?.ToString(3) ?? "0.0.0";
     }
 
-    /// <summary>One ACP session: the harness and the in-flight run's cancellation.</summary>
+    /// <summary>
+    /// One ACP session: the harness, the dispatched prompts (queued behind the connection-wide run
+    /// gate included) and the in-flight run's cancellation.
+    /// </summary>
     private sealed class Session(string id, AgentHarness harness)
     {
         private readonly object gate = new();
         private CancellationTokenSource? active;
+        private int prompts;
+        private bool cancelPending;
 
         public string Id { get; } = id;
 
         public AgentHarness Harness { get; } = harness;
 
-        public void BeginRun(CancellationTokenSource cancellation)
+        public void BeginPrompt()
         {
             lock (gate)
             {
+                prompts++;
+            }
+        }
+
+        public void EndPrompt()
+        {
+            lock (gate)
+            {
+                prompts--;
+                if (prompts == 0)
+                {
+                    cancelPending = false;
+                }
+            }
+        }
+
+        public void BeginRun(CancellationTokenSource cancellation)
+        {
+            bool cancel;
+            lock (gate)
+            {
                 active = cancellation;
+                cancel = cancelPending;
+                cancelPending = false;
+            }
+
+            if (cancel)
+            {
+                cancellation.Cancel();
             }
         }
 
@@ -334,11 +376,23 @@ internal sealed class LibAcpServer(Action<string>? log = null) : IAcpServer
             }
         }
 
+        /// <summary>
+        /// Cancels the in-flight run, or latches onto a dispatched prompt that is still queued
+        /// (consumed by <see cref="BeginRun"/>, so the run begins already cancelled). A cancel
+        /// with no prompt in flight stays a no-op.
+        /// </summary>
         public void Cancel()
         {
             lock (gate)
             {
-                active?.Cancel();
+                if (active is not null)
+                {
+                    active.Cancel();
+                }
+                else if (prompts > 0)
+                {
+                    cancelPending = true;
+                }
             }
         }
     }
