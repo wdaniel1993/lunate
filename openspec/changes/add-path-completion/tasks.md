@@ -16,8 +16,8 @@
 
 - [x] 3.1 `PathIndexBudgetTests` (`Category=Perf`): 20k-file tree, build ≤ 5 s, query ≤ 50 ms, prints measurements, cleans up
 - [x] 3.2 `verify.sh` + `verify.ps1`: exclude `Category=Perf` from both main passes; new "path index budget" step running the trait
-- [ ] 3.3 Calibrate: confirm the budget holds locally and note measured values in the report
+- [x] 3.3 Calibrate: confirm the budget holds locally and note measured values in the report
 
 ## 4. Gate
 
-- [ ] 4.1 `bash scripts/verify.sh` green (incl. the new step); deviations recorded in design.md
+- [x] 4.1 `bash scripts/verify.sh` green (incl. the new step); deviations recorded in design.md
