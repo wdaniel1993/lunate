@@ -51,7 +51,15 @@ Extend `A_scripted_session_matches_the_committed_scrollback_and_final_frame` (sa
 
 ## Deviations
 
-(filled during apply; none yet)
+Recorded during apply:
+
+1. **E2E flow details**: the leftover `unsent steering` in the input is cleared with one Ctrl+C before `/mod` (typing would append to it); the picker renders are two dedicated goldens (`end-to-end-model-picker-frame.txt`, `end-to-end-session-picker-frame.txt`, the latter with both session labels normalized to `<session>`); the closing double-Ctrl+C quit is replaced by `/quit`, whose same-path quit is still pinned by the key tests.
+2. **Interactive-entry hint**: the gate is `ConsoleSupport.Check`, but stderr always carries the pinned platform-independent hint (`lunate -p "<prompt>"`), not the Windows-specific check text; the non-terminal test therefore passes on every OS.
+3. **Compaction tests**: the scripted test client gained a canned `GetResponseAsync` (the summarization call), and the "true" `/compact` test configures `CompactionKeepTurns = 1` (default 4) so scripted histories stay short.
+4. **`ScriptedConsoleIO.IsInteractive` is settable** (default false unchanged) so the CLI-entry test can present a scripted terminal to the gate.
+5. **Pending-steering FIFO is lock-guarded and leftovers are discarded from the front**: the key pump can enqueue concurrently with the run task's run-end drain, and the drained leftovers are always the pending FIFO's front segment.
+6. **`Session.ListLimit` (20) is internal**; the public surface is only `Session.List` plus `SessionSummary`.
+7. **`/model <id>` (and confirming the current model) always appends a model change and rebuilds**, even when the id is already current; no short-circuit was specified.
 
 ## Part 3 / T-53 seams
 

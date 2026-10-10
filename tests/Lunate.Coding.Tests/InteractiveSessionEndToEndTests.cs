@@ -98,14 +98,95 @@ public sealed class InteractiveSessionEndToEndTests
 
         string finalFrame = Escape(host.LastFrame);
 
-        // Quit: the non-empty input clears, the next press arms, the third quits.
+        // Clear the returned leftover, then complete and dispatch a command: /mod + Tab
+        // completes to /model, Enter opens the picker, Down + Enter switches to gpt-4o.
         host.Console.SendCtrlC();
-        host.Console.SendCtrlC();
-        host.Console.SendCtrlC();
+        await host.WaitUntilAsync(() =>
+        {
+            host.Advance(33);
+            return !host.LastFrame.Contains("> unsent steering", StringComparison.Ordinal);
+        });
+        host.Console.SendText("/mod");
+        host.Console.Send(new KeyEvent(KeyKind.Tab, null, false, false, false));
+        await host.WaitUntilAsync(() =>
+        {
+            host.Advance(33);
+            return host.LastFrame.Contains("> /model", StringComparison.Ordinal);
+        });
+        host.Console.SendEnter();
+        await host.WaitUntilAsync(() =>
+        {
+            host.Advance(33);
+            return host.LastFrame.Contains("Select model", StringComparison.Ordinal);
+        });
+        string modelPickerFrame = Escape(host.LastFrame);
+
+        host.Console.Send(new KeyEvent(KeyKind.Down, null, false, false, false));
+        await host.WaitUntilAsync(() =>
+        {
+            host.Advance(33);
+            return host.LastFrame.Contains("> gpt-4o (openai)", StringComparison.Ordinal);
+        });
+        host.Console.SendEnter();
+        await host.WaitUntilAsync(() =>
+        {
+            host.Advance(33);
+            return host.LastFrame.Contains("model: gpt-4o", StringComparison.Ordinal);
+        });
+
+        // /new starts a fresh session; /resume lists the directory (id8 labels normalized) and
+        // the current (newest) session is selected first.
+        host.Console.SendText("/new");
+        host.Console.SendEnter();
+        await host.WaitUntilAsync(() =>
+        {
+            host.Advance(33);
+            return host.LastFrame.Contains("new session", StringComparison.Ordinal);
+        });
+        host.Console.SendText("/resume");
+        host.Console.SendEnter();
+        await host.WaitUntilAsync(() =>
+        {
+            host.Advance(33);
+            return host.LastFrame.Contains("Select session", StringComparison.Ordinal);
+        });
+        string sessionPickerFrame = Escape(
+            NormalizeSessionLabels(host.LastFrame, host.Temp.File("sessions"))
+        );
+
+        host.Console.SendEnter();
+        await host.WaitUntilAsync(() =>
+        {
+            host.Advance(33);
+            return NormalizeSessionLabels(host.LastFrame, host.Temp.File("sessions"))
+                .Contains("resumed <session>", StringComparison.Ordinal);
+        });
+
+        host.Console.SendText("/quit");
+        host.Console.SendEnter();
         await run;
 
         InteractiveGoldens.AssertMatchesText("end-to-end-scrollback.txt", host.ScrollbackText);
         InteractiveGoldens.AssertMatchesText("end-to-end-final-frame.txt", finalFrame);
+        InteractiveGoldens.AssertMatchesText("end-to-end-model-picker-frame.txt", modelPickerFrame);
+        InteractiveGoldens.AssertMatchesText(
+            "end-to-end-session-picker-frame.txt",
+            sessionPickerFrame
+        );
+    }
+
+    /// <summary>Replaces every listed session's id8 with a stable placeholder; the ids are
+    /// stamped with the wall clock and random bytes, so the golden must not depend on them.</summary>
+    private static string NormalizeSessionLabels(string text, string sessionDirectory)
+    {
+        foreach (string path in Directory.GetFiles(sessionDirectory, "*.jsonl"))
+        {
+            string id = Path.GetFileNameWithoutExtension(path);
+            string id8 = id.Length <= 8 ? id : id[..8];
+            text = text.Replace(id8, "<session>", StringComparison.Ordinal);
+        }
+
+        return text;
     }
 
     private static void EnqueueScript(InteractiveSessionHost host)
