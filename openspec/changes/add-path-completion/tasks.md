@@ -2,10 +2,10 @@
 
 ## 1. Ignore engine + index core (Coding)
 
-- [ ] 1.1 `GitIgnore` pattern parser + regex translation + evaluator (comments, negation, dir-only, anchoring, `*`/`**`/`?`/classes, last-match-wins, deeper-file-wins)
-- [ ] 1.2 `IWorkspaceFiles` seam + `SystemWorkspaceFiles` walk (relative entries, no symlink descent, `.git` skipped)
-- [ ] 1.3 `FileIndex`: lazy async build, sorted+ordinal entries, 200,000 cap + truncation flag, prefix query (dirs trailing `/`), thread-safe publication
-- [ ] 1.4 Tests: ignore matrix (per pattern class + nested + negation + dir prune), cap/ordering/truncation via the seam, laziness (nothing built before first use)
+- [x] 1.1 `GitIgnore` pattern parser + regex translation + evaluator (comments, negation, dir-only, anchoring, `*`/`**`/`?`/classes, last-match-wins, deeper-file-wins)
+- [x] 1.2 `IWorkspaceFiles` seam + `SystemWorkspaceFiles` walk (relative entries, no symlink descent, `.git` skipped)
+- [x] 1.3 `FileIndex`: lazy async build, sorted+ordinal entries, 200,000 cap + truncation flag, prefix query (dirs trailing `/`), thread-safe publication
+- [x] 1.4 Tests: ignore matrix (per pattern class + nested + negation + dir prune), cap/ordering/truncation via the seam, laziness (nothing built before first use)
 
 ## 2. Session wiring
 

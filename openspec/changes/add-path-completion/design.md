@@ -34,7 +34,12 @@
 
 ## Deviations
 
-(filled during apply; none yet)
+1. `FileIndex.Match(prefix, max)` treats `max <= 0` as "no cap" (the parameter otherwise caps as
+   pinned). The session requests all matches, because completing the longest common prefix over a
+   truncated first-20 set can insert text not shared by all matches; the notice still lists up to
+   20 candidates.
+2. A directory symlink is neither indexed nor descended: the pinned "not followed" is read as
+   "absent from the index" rather than "listed but empty". File symlinks are indexed as files.
 
 ## Seams
 
