@@ -143,7 +143,9 @@ internal static class EditMatcher
             $"could not find old_text in {relativePath}; closest region (lines {start + 1}-{start + oldLines.Length}):"
         );
 
-        return header + "\n" + string.Join("\n", fileLines.Skip(start).Take(oldLines.Length));
+        var region = fileLines.Skip(start).Take(oldLines.Length).Select(StripCarriageReturn);
+
+        return header + "\n" + string.Join("\n", region);
     }
 
     private static int? IndentOffset(string[] lines, string[] pattern, int start)
@@ -177,6 +179,9 @@ internal static class EditMatcher
 
         return count;
     }
+
+    private static string StripCarriageReturn(string line) =>
+        line.EndsWith('\r') ? line[..^1] : line;
 
     private static (int Score, int Start) ClosestWindow(string[] fileLines, string[] oldLines)
     {
