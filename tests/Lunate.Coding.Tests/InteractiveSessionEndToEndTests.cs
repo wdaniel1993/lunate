@@ -104,10 +104,7 @@ public sealed class InteractiveSessionEndToEndTests
         host.Console.SendCtrlC();
         await run;
 
-        InteractiveGoldens.AssertMatchesText(
-            "end-to-end-scrollback.txt",
-            host.ScrollbackWriter.ToString()
-        );
+        InteractiveGoldens.AssertMatchesText("end-to-end-scrollback.txt", host.ScrollbackText);
         InteractiveGoldens.AssertMatchesText("end-to-end-final-frame.txt", finalFrame);
     }
 

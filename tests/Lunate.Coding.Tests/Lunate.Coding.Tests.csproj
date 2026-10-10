@@ -10,6 +10,7 @@
 
     <ItemGroup>
         <PackageReference Include="xunit.v3" Version="4.0.1" />
+        <PackageReference Include="Spectre.Console.Testing" Version="0.57.2" />
         <Using Include="Xunit" />
     </ItemGroup>
 </Project>

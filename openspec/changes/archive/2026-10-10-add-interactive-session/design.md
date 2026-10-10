@@ -58,6 +58,7 @@ Recorded during apply:
 12. **Steering replay golden (review fix)**: `tests/fixtures/sessions/golden-steering.jsonl` is committed; the test records fresh and compares byte-for-byte against it (header excluded); regenerate with `LUNATE_UPDATE_STEERING_GOLDEN=1`.
 13. **`AnthropicTurnMerge` joins consecutive user texts without a separator** ("one"+"two" -> "onetwo"): unreachable through the frontend (steering is only enqueued while a turn is active, so it always follows tool results); kept minimal deliberately.
 14. **`SteeringInjected` is not echoed to scrollback yet** (no `HandleEvent` case); the steering text returns to the input line on `Esc`. An echo block is a part 2 UX follow-up.
+15. **CI fix (test infrastructure)**: Spectre's CI detection (`GITHUB_ACTIONS`) force-enables ANSI even past `AnsiSupport.No` in `AnsiConsole.Create`, making the scrollback goldens environment-dependent; the test scrollback now uses `Spectre.Console.Testing.TestConsole` (already used by the Tui goldens, renders plain deterministically; `Coding.Tests` references the same pinned `Spectre.Console.Testing 0.57.2`). The wait helper now yields the thread (`Task.Delay`) under a wall-time deadline instead of a two-million-yield spin, which starved the thread pool on the slow Windows runners.
 
 ## T-22 part 2 / T-53 seams
 

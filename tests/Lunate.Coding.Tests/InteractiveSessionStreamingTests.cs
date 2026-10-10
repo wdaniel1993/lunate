@@ -16,9 +16,9 @@ public sealed class InteractiveSessionStreamingTests
 
         host.Console.SendText("go");
         host.Console.SendEnter();
-        await host.WaitUntilAsync(() => host.ScrollbackWriter.ToString().Contains("one"));
+        await host.WaitUntilAsync(() => host.ScrollbackText.Contains("one"));
 
-        string mid = host.ScrollbackWriter.ToString();
+        string mid = host.ScrollbackText;
         Assert.Contains("one", mid, StringComparison.Ordinal);
         Assert.DoesNotContain("two", mid, StringComparison.Ordinal);
         host.Advance(33);
@@ -26,7 +26,7 @@ public sealed class InteractiveSessionStreamingTests
 
         client.Release();
         await host.WaitUntilAsync(() => !host.Session.IsRunning);
-        Assert.Contains("two", host.ScrollbackWriter.ToString(), StringComparison.Ordinal);
+        Assert.Contains("two", host.ScrollbackText, StringComparison.Ordinal);
 
         host.Console.Complete();
         await run;
@@ -47,10 +47,10 @@ public sealed class InteractiveSessionStreamingTests
         host.Console.SendText("go");
         host.Console.SendEnter();
         await host.WaitUntilAsync(() =>
-            host.ScrollbackWriter.ToString().Contains("tool read", StringComparison.Ordinal)
+            host.ScrollbackText.Contains("tool read", StringComparison.Ordinal)
         );
 
-        string scrollback = host.ScrollbackWriter.ToString();
+        string scrollback = host.ScrollbackText;
         Assert.Contains("a.txt", scrollback, StringComparison.Ordinal);
         Assert.Contains("contents", scrollback, StringComparison.Ordinal);
 

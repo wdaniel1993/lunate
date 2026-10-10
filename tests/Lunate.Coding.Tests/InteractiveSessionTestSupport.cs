@@ -8,6 +8,7 @@ using Lunate.Extensibility;
 using Lunate.Tui;
 using Microsoft.Extensions.AI;
 using Spectre.Console;
+using Spectre.Console.Testing;
 
 namespace Lunate.Coding.Tests;
 
@@ -280,8 +281,9 @@ internal sealed class InteractiveSessionHost : IDisposable
         IChatClient? chat = null
     )
     {
-        ScrollbackWriter = new StringWriter();
-        Scrollback = PlainConsole(ScrollbackWriter);
+        Scrollback = new TestConsole();
+        Scrollback.Profile.Width = 80;
+        Scrollback.Profile.Height = 24;
         Session = new InteractiveSession(
             new InteractiveSessionOptions
             {
@@ -311,9 +313,10 @@ internal sealed class InteractiveSessionHost : IDisposable
 
     public GatedChatClient Client { get; } = new();
 
-    public StringWriter ScrollbackWriter { get; }
+    public TestConsole Scrollback { get; }
 
-    public IAnsiConsole Scrollback { get; }
+    /// <summary>The plain scrollback text as the goldens pin it (TestConsole renders without ANSI).</summary>
+    public string ScrollbackText => Scrollback.Output;
 
     public InteractiveSession Session { get; }
 
@@ -330,19 +333,23 @@ internal sealed class InteractiveSessionHost : IDisposable
 
     public async Task WaitUntilAsync(Func<bool> condition)
     {
-        // A generous yield budget: the condition often depends on the session's run task, and the
-        // test suite runs classes in parallel, so the thread pool can be busy for a while.
-        for (var attempt = 0; attempt < 2_000_000; attempt++)
+        // Real-async waits: yield the thread (never a busy spin) so the session's run task and
+        // event pump get scheduled; bounded by wall time so slow runners fail with diagnostics
+        // instead of hanging.
+        DateTime deadline = DateTime.UtcNow + TimeSpan.FromSeconds(10);
+        while (!condition())
         {
-            if (condition())
+            if (DateTime.UtcNow > deadline)
             {
-                return;
+                throw new TimeoutException(
+                    "The condition never became true "
+                        + $"(queued={Session.QueuedSteeringCount} running={Session.IsRunning} "
+                        + $"writes={Console.Writes.Count})."
+                );
             }
 
-            await Task.Yield();
+            await Task.Delay(1, TestContext.Current.CancellationToken);
         }
-
-        throw new TimeoutException("The condition never became true.");
     }
 
     public void Dispose()
@@ -350,21 +357,5 @@ internal sealed class InteractiveSessionHost : IDisposable
         Session.Dispose();
         _diagnostics.Dispose();
         Temp.Dispose();
-    }
-
-    internal static IAnsiConsole PlainConsole(TextWriter writer)
-    {
-        IAnsiConsole console = AnsiConsole.Create(
-            new AnsiConsoleSettings
-            {
-                Ansi = AnsiSupport.No,
-                ColorSystem = ColorSystemSupport.NoColors,
-                Interactive = InteractionSupport.No,
-                Out = new AnsiConsoleOutput(writer),
-            }
-        );
-        console.Profile.Width = 80;
-        console.Profile.Height = 24;
-        return console;
     }
 }
