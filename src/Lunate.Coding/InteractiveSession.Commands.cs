@@ -245,6 +245,7 @@ internal sealed partial class InteractiveSession
         }
 
         _session = resumed;
+        ResetAlwaysApproved();
         _harness = BuildHarness(_model);
         _live.SetNotice("resumed " + resumed.SessionId);
     }
@@ -253,6 +254,7 @@ internal sealed partial class InteractiveSession
     private void StartNewSession()
     {
         _session = HarnessFactory.CreateSession(_sessionDirectory, _workspace);
+        ResetAlwaysApproved();
         _harness = BuildHarness(_model);
         _live.SetNotice("new session");
     }
