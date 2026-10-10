@@ -40,7 +40,8 @@ The windows runner SHALL run `scripts/verify.ps1` in addition to the bash gate.
 - **THEN** it completes with `verify: OK`
 
 ### Requirement: Release artifacts
-On `v*` tags, CI SHALL run the full verification gate before publishing and SHALL fail when the tag does not match the version in `Directory.Build.props`; it SHALL publish self-contained single-file binaries for osx-arm64, win-x64 and linux-x64, attach one archive per target to the GitHub release, and attach `SHA256SUMS` covering the archives.
+
+On `v*` tags, CI SHALL run the full verification gate before publishing and SHALL fail when the tag does not match the version in `Directory.Build.props`; it SHALL publish self-contained single-file binaries for osx-arm64, win-x64 and linux-x64, attach one archive per target to the GitHub release, attach the framework-dependent `dotnet tool` package, and attach `SHA256SUMS` covering the archives.
 
 #### Scenario: Tag produces three artifacts
 - **GIVEN** a `v*` tag
@@ -61,6 +62,11 @@ On `v*` tags, CI SHALL run the full verification gate before publishing and SHAL
 - **GIVEN** a `v*` tag that passes the gate
 - **WHEN** the release completes
 - **THEN** `SHA256SUMS` is attached next to the three archives and matches them
+
+#### Scenario: The tool package ships with the release
+- **GIVEN** a `v*` tag that passes the gate
+- **WHEN** the release completes
+- **THEN** the `lunate` `.nupkg` is attached next to the archives
 
 ### Requirement: Code scanning
 A CodeQL workflow SHALL analyze the C# code on pushes to `main`, pull requests to `main` and a weekly schedule, uploading results to GitHub code scanning.
