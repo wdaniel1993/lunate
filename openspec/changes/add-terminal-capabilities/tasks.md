@@ -1,0 +1,18 @@
+# Tasks: terminal capability detection and fallbacks (T-33)
+
+## 1. Detection (Tui)
+
+- [ ] 1.1 `TerminalCapabilities` record + `Detect` with env and code-page seams; colour rules (NO_COLOR, COLORTERM, Spectre, non-interactive)
+- [ ] 1.2 Unicode rules (LUNATE_ASCII/LUNATE_UNICODE, TERM=dumb, Windows WT_SESSION/code page, Unix locale) + the Windows `GetConsoleOutputCP` P/Invoke
+- [ ] 1.3 Detection-matrix tests over the seams (every branch, incl. both overrides set)
+
+## 2. Fallback wiring
+
+- [ ] 2.1 `MarkdownAstMapper` ASCII variants (`• ` → `- `, `│ ` → `| `) via the capabilities parameter
+- [ ] 2.2 Steering echo `» ` → `> ` in ASCII mode (InteractiveSession)
+- [ ] 2.3 Scrollback console colour from the detected capabilities (non-interactive stays colourless)
+- [ ] 2.4 ASCII golden (markdown bullets + blockquote through the test console) + echo fallback test
+
+## 3. Gate
+
+- [ ] 3.1 `bash scripts/verify.sh` green; deviations recorded in design.md
