@@ -123,6 +123,9 @@ try {
     $prefix = Join-Path $installTmp 'prefix'
     $prefixFlags = Join-Path $installTmp 'prefix-flags'
     New-Item -ItemType Directory -Force -Path $latestDir, $pinnedDir, $prefix, $prefixFlags | Out-Null
+    # The fixture installs append GUID temp dirs to the user PATH; snapshot it so
+    # the finally block restores it instead of leaving dangling entries behind.
+    $userPathBefore = [Environment]::GetEnvironmentVariable('Path', 'User')
     try {
         $zipName = 'lunate-win-x64.zip'
         $zip = Join-Path $latestDir $zipName
@@ -217,6 +220,7 @@ try {
         }
     }
     finally {
+        [Environment]::SetEnvironmentVariable('Path', $userPathBefore, 'User')
         Remove-Item Env:LUNATE_INSTALL_BASE_URL -ErrorAction SilentlyContinue
         Remove-Item Env:LUNATE_INSTALL_PREFIX -ErrorAction SilentlyContinue
         Remove-Item Env:LUNATE_INSTALL_VERSION -ErrorAction SilentlyContinue
