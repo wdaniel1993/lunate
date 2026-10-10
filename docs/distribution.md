@@ -24,6 +24,13 @@ Before tagging, run the terminal matrix from the guide: Windows Terminal, conhos
 
 The commands below use `0.1.0`; substitute the version from `Directory.Build.props` for later releases.
 
+Before the first tag, run the Release workflow once via `workflow_dispatch` (dry run) to exercise the pack job and the archives; the attach job only runs on tags, so nothing is published:
+
+```sh
+gh workflow run release.yml --ref main
+gh run list --workflow release.yml --limit 1
+```
+
 ### 1. Tag the release
 
 CI fails the tag when it does not match `<Version>` in `Directory.Build.props`.
@@ -37,7 +44,7 @@ git push origin v0.1.0
 
 ### 2. Verify the release assets
 
-Wait for the Release workflow, then check the release page carries the three archives, `SHA256SUMS` and the `.nupkg`, and that the checksums verify.
+Wait for the Release workflow, then verify all five release assets are attached — the three archives, `SHA256SUMS` and the `.nupkg` — and that the checksums verify.
 
 ```sh
 gh release view v0.1.0
