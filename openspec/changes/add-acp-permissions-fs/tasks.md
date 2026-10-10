@@ -18,10 +18,10 @@
 
 ## 4. Tests
 
-- [ ] 4.1 Permission round trips (allow once/always, reject once/always, AutoEdit skip, Execute prompts, cancel-during-request)
-- [ ] 4.2 fs routing (buffer read, client write, no-capability fallback)
-- [ ] 4.3 Resource-link mapping (inside/outside workspace, order)
-- [ ] 4.4 Composition + tool-seam defaults
+- [x] 4.1 Permission round trips (allow once/always, reject once/always, AutoEdit skip, Execute prompts, cancel-during-request)
+- [x] 4.2 fs routing (buffer read, client write, no-capability fallback)
+- [x] 4.3 Resource-link mapping (inside/outside workspace, order)
+- [x] 4.4 Composition + tool-seam defaults
 
 ## 5. Gate
 
