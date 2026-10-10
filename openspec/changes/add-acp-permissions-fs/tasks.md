@@ -14,7 +14,7 @@
 
 ## 3. Wiring (Coding)
 
-- [ ] 3.1 `AcpMode`: widened factory; approver + file access into harness options and tools; initialize capability read
+- [x] 3.1 `AcpMode`: widened factory; approver + file access into harness options and tools; initialize capability read
 
 ## 4. Tests
 
