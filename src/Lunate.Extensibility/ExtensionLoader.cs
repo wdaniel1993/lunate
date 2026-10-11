@@ -17,6 +17,8 @@ public sealed partial class ExtensionLoader
     private readonly HookRunner _hooks;
     private readonly BackgroundServiceHost _backgroundServices;
     private readonly ModelProviderRegistry _modelProviders = new();
+    private readonly ToolResultRendererRegistry _toolResultRenderers;
+    private readonly StatusWidgetRegistry _statusWidgets;
     private readonly Dictionary<string, List<IDisposable>> _subscriptions = new(
         StringComparer.Ordinal
     );
@@ -33,10 +35,18 @@ public sealed partial class ExtensionLoader
         _options = options;
         _hooks = hooks ?? new HookRunner(null, options.Log);
         _backgroundServices = new BackgroundServiceHost(options.Log);
+        _toolResultRenderers = new ToolResultRendererRegistry(options.Log);
+        _statusWidgets = new StatusWidgetRegistry(options.Log);
     }
 
     /// <summary>The hook runner handlers registered through extension contexts dispatch to.</summary>
     public HookRunner Hooks => _hooks;
+
+    /// <summary>The tool-result renderers the loaded extensions registered.</summary>
+    public ToolResultRendererRegistry ToolResultRenderers => _toolResultRenderers;
+
+    /// <summary>The status widgets the loaded extensions registered.</summary>
+    public StatusWidgetRegistry StatusWidgets => _statusWidgets;
 
     /// <summary>
     /// The named service registry shared with extensions (core handles included). Register core
@@ -83,6 +93,8 @@ public sealed partial class ExtensionLoader
         _hooks.Unregister(id);
         await _backgroundServices.DropAsync(id).ConfigureAwait(false);
         _modelProviders.Unregister(id);
+        _toolResultRenderers.Unregister(id);
+        _statusWidgets.Unregister(id);
         DropSubscriptions(id);
         if (_contexts.Remove(id, out ExtensionLoadContext? context))
         {

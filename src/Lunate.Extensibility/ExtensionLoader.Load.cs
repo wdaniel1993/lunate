@@ -69,7 +69,9 @@ public sealed partial class ExtensionLoader
                 _backgroundServices.Register,
                 SubscribeFileChanged,
                 FindService,
-                FindCoreService
+                FindCoreService,
+                _toolResultRenderers.Register,
+                _statusWidgets.Register
             );
             IExtension extension = factory.Create(extensionContext);
             _modelProviders.Register(descriptor.Id, descriptor.Manifest.ModelProviders);
@@ -89,6 +91,8 @@ public sealed partial class ExtensionLoader
         {
             await _backgroundServices.DropAsync(descriptor.Id).ConfigureAwait(false);
             _modelProviders.Unregister(descriptor.Id);
+            _toolResultRenderers.Unregister(descriptor.Id);
+            _statusWidgets.Unregister(descriptor.Id);
             DropSubscriptions(descriptor.Id);
             context.Unload();
             throw;
@@ -97,6 +101,8 @@ public sealed partial class ExtensionLoader
         {
             await _backgroundServices.DropAsync(descriptor.Id).ConfigureAwait(false);
             _modelProviders.Unregister(descriptor.Id);
+            _toolResultRenderers.Unregister(descriptor.Id);
+            _statusWidgets.Unregister(descriptor.Id);
             DropSubscriptions(descriptor.Id);
             context.Unload();
             throw WrapLoadFailure(descriptor, exception);

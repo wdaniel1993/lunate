@@ -7,8 +7,8 @@
 
 ## 2. Registries + host plumbing (Extensibility)
 
-- [ ] 2.1 Renderer + widget registries (registration-time only; duplicate/last-wins semantics; failure policy omit+log)
-- [ ] 2.2 Host access surface for the Coding UI host
+- [x] 2.1 Renderer + widget registries (registration-time only; duplicate/last-wins semantics; failure policy omit+log)
+- [x] 2.2 Host access surface for the Coding UI host
 
 ## 3. The seam + per-mode implementations (Coding / Tui)
 
