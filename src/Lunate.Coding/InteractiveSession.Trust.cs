@@ -7,6 +7,9 @@ internal sealed partial class InteractiveSession
 {
     private const int ShortHashLength = 8;
 
+    /// <summary>The key sequence at which the pending trust question armed (test seam).</summary>
+    internal long TrustArmSequence => Interlocked.Read(ref _trustArmSequence);
+
     /// <summary>
     /// Asks one trust question in the live area; true approves. The model carries the precomputed
     /// position (<c>n of m</c>), and the key sequence recorded after the question renders is the

@@ -447,7 +447,7 @@ internal sealed partial class InteractiveSession : IDisposable
         }
     }
 
-    private async Task HandleKeyAsync(KeyEvent key, long sequence, CancellationToken ct)
+    internal async Task HandleKeyAsync(KeyEvent key, long sequence, CancellationToken ct)
     {
         if (_trustDecision is { } trustPending)
         {

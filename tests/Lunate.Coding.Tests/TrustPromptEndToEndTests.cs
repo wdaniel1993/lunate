@@ -179,6 +179,32 @@ public sealed class TrustPromptEndToEndTests
     }
 
     [Fact]
+    public async Task A_key_stamped_before_the_arm_never_decides()
+    {
+        using var session = new TrustSession();
+        await session.QuestionAsync();
+
+        long arm = session.Host.Session.TrustArmSequence;
+        await session.Host.Session.HandleKeyAsync(
+            new KeyEvent(KeyKind.Character, "y", false, false, false),
+            arm,
+            TestContext.Current.CancellationToken
+        );
+
+        Assert.NotNull(session.Host.Session.PendingTrustPrompt);
+        Assert.False(session.Log.Contains("created hello"));
+
+        await session.Host.Session.HandleKeyAsync(
+            new KeyEvent(KeyKind.Character, "y", false, false, false),
+            arm + 1,
+            TestContext.Current.CancellationToken
+        );
+
+        await session.Host.WaitUntilAsync(() => session.Log.Contains("created hello"));
+        await session.QuitAsync();
+    }
+
+    [Fact]
     public async Task Several_pending_questions_are_asked_one_at_a_time()
     {
         using var temp = new TempDirectory();

@@ -273,6 +273,65 @@ public sealed class McpConfigCompositionTests
         );
     }
 
+    [Fact]
+    public async Task A_malformed_project_file_reports_errors_only_when_trusted()
+    {
+        using var temp = new TempDirectory();
+        string globalConfig = temp.File("global-mcp.json");
+        File.WriteAllText(globalConfig, """{ "mcpServers": {} }""");
+        string projectConfig = McpComposition.ProjectConfigPath(temp.Root);
+        Directory.CreateDirectory(Path.GetDirectoryName(projectConfig)!);
+        File.WriteAllText(projectConfig, """{ "mcpServers": { """);
+        string storePath = temp.File("store");
+        string malformed = ".lunate/mcp.json' is not valid JSON";
+
+        var untrustedLog = new RecordingExtensionLog();
+        var untrustedClient = new ScriptedChatClient().Enqueue(Scripts.Text("ok"), Scripts.Stop());
+        PrintModeOptions untrusted = PrintModeTestSupport.BaseOptions(
+            temp,
+            new FakeChatClientFactory(untrustedClient)
+        ) with
+        {
+            Prompt = "Hi",
+            Json = true,
+            McpConfigPath = globalConfig,
+            Extensions = new ExtensionSeams { StorePath = storePath, Log = untrustedLog },
+        };
+
+        (int untrustedExit, _, string untrustedErrors) = await PrintModeTestSupport.RunAsync(
+            untrusted
+        );
+
+        Assert.Equal(0, untrustedExit);
+        Assert.Contains(
+            untrustedLog.Messages,
+            message => message.Contains("was not trusted", StringComparison.Ordinal)
+        );
+        Assert.DoesNotContain(malformed, untrustedErrors, StringComparison.Ordinal);
+
+        TrustProjectFile(storePath, temp.Root, projectConfig);
+        var trustedClient = new ScriptedChatClient().Enqueue(Scripts.Text("ok"), Scripts.Stop());
+        PrintModeOptions trusted = PrintModeTestSupport.BaseOptions(
+            temp,
+            new FakeChatClientFactory(trustedClient)
+        ) with
+        {
+            Prompt = "Hi",
+            Json = true,
+            McpConfigPath = globalConfig,
+            Extensions = new ExtensionSeams
+            {
+                StorePath = storePath,
+                Log = new RecordingExtensionLog(),
+            },
+        };
+
+        (int trustedExit, _, string trustedErrors) = await PrintModeTestSupport.RunAsync(trusted);
+
+        Assert.Equal(0, trustedExit);
+        Assert.Contains(malformed, trustedErrors, StringComparison.Ordinal);
+    }
+
     private static void TrustProjectFile(string storePath, string worktreeRoot, string configPath)
     {
         var store = new ExtensionTrustStore(new ExtensionHostOptions { StorePath = storePath });
