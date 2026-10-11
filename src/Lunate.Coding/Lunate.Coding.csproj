@@ -21,6 +21,8 @@
         <InternalsVisibleTo Include="Lunate.Coding.Tests" />
         <!-- The ACP pipe tests compose the policy-first approver and the tool seam directly. -->
         <InternalsVisibleTo Include="Lunate.Protocols.Tests" />
+        <!-- The MCP-from-extensions test composes the real extension host with the server mapping. -->
+        <InternalsVisibleTo Include="Lunate.Extensibility.Testing.Tests" />
     </ItemGroup>
 
     <ItemGroup>

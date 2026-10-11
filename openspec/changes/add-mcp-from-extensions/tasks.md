@@ -18,8 +18,8 @@
 
 ## 4. Coding mapping + end to end
 
-- [ ] 4.1 `ExtensionMcpServers` mapping (registration → options/host, lazy)
-- [ ] 4.2 Fixture extension registering the real `TestMcpServer`; e2e test: namespaced, `Hidden` gated out of Declarations, one call round-trips
+- [x] 4.1 `ExtensionMcpServers` mapping (registration → options/host, lazy)
+- [x] 4.2 Fixture extension registering the real `TestMcpServer`; e2e test: namespaced, `Hidden` gated out of Declarations, one call round-trips
 
 ## 5. Gate
 
