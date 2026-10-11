@@ -9,7 +9,6 @@ Lunate.Protocols.Acp.AcpSessionContext.FileAccess.get -> Lunate.Agent.ITextFileA
 Lunate.Protocols.McpServerHost
 Lunate.Protocols.McpServerHost.DisposeAsync() -> System.Threading.Tasks.ValueTask
 Lunate.Protocols.McpServerHost.GetToolsAsync(System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask<System.Collections.Generic.IReadOnlyList<Lunate.Agent.ITool!>!>
-Lunate.Protocols.McpServerHost.McpServerHost(Lunate.Protocols.McpServerOptions! options, System.Action<System.Collections.Generic.IReadOnlyList<Lunate.Agent.ITool!>!>? onToolsChanged = null) -> void
 Lunate.Protocols.McpServerHost.Name.get -> string!
 Lunate.Protocols.McpServerHost.Started.get -> bool
 Lunate.Protocols.McpServerOptions
@@ -20,11 +19,9 @@ Lunate.Protocols.McpServerOptions.CallTimeout.get -> System.TimeSpan?
 Lunate.Protocols.McpServerOptions.CallTimeout.init -> void
 Lunate.Protocols.McpServerOptions.Command.get -> string!
 Lunate.Protocols.McpServerOptions.Command.init -> void
-Lunate.Protocols.McpServerOptions.Deconstruct(out string! Name, out string! Command, out System.Collections.Generic.IReadOnlyList<string!>! Arguments, out System.Collections.Generic.IReadOnlyDictionary<string!, string!>? Environment, out string? WorkingDirectory, out System.TimeSpan? CallTimeout) -> void
 Lunate.Protocols.McpServerOptions.Environment.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>?
 Lunate.Protocols.McpServerOptions.Environment.init -> void
 Lunate.Protocols.McpServerOptions.Equals(Lunate.Protocols.McpServerOptions? other) -> bool
-Lunate.Protocols.McpServerOptions.McpServerOptions(string! Name, string! Command, System.Collections.Generic.IReadOnlyList<string!>! Arguments, System.Collections.Generic.IReadOnlyDictionary<string!, string!>? Environment = null, string? WorkingDirectory = null, System.TimeSpan? CallTimeout = null) -> void
 Lunate.Protocols.McpServerOptions.Name.get -> string!
 Lunate.Protocols.McpServerOptions.Name.init -> void
 Lunate.Protocols.McpServerOptions.WorkingDirectory.get -> string?
@@ -41,3 +38,14 @@ override Lunate.Protocols.McpServerOptions.GetHashCode() -> int
 override Lunate.Protocols.McpServerOptions.ToString() -> string!
 static Lunate.Protocols.McpServerOptions.operator !=(Lunate.Protocols.McpServerOptions? left, Lunate.Protocols.McpServerOptions? right) -> bool
 static Lunate.Protocols.McpServerOptions.operator ==(Lunate.Protocols.McpServerOptions? left, Lunate.Protocols.McpServerOptions? right) -> bool
+Lunate.Protocols.McpServerHost.McpServerHost(Lunate.Protocols.McpServerOptions! options, System.Action<System.Collections.Generic.IReadOnlyList<Lunate.Agent.ITool!>!>? onToolsChanged = null, System.Action<string!>? log = null) -> void
+Lunate.Protocols.McpServerOptions.Deconstruct(out string! Name, out string! Command, out System.Collections.Generic.IReadOnlyList<string!>! Arguments, out System.Collections.Generic.IReadOnlyDictionary<string!, string!>? Environment, out string? WorkingDirectory, out System.TimeSpan? CallTimeout, out Lunate.Agent.ToolExposure Exposure, out System.Collections.Generic.IReadOnlyDictionary<string!, Lunate.Agent.ToolExposure>? ExposureOverrides, out string? NamespaceName) -> void
+Lunate.Protocols.McpServerOptions.Exposure.get -> Lunate.Agent.ToolExposure
+Lunate.Protocols.McpServerOptions.Exposure.init -> void
+Lunate.Protocols.McpServerOptions.ExposureOverrides.get -> System.Collections.Generic.IReadOnlyDictionary<string!, Lunate.Agent.ToolExposure>?
+Lunate.Protocols.McpServerOptions.ExposureOverrides.init -> void
+Lunate.Protocols.McpServerOptions.McpServerOptions(string! Name, string! Command, System.Collections.Generic.IReadOnlyList<string!>! Arguments, System.Collections.Generic.IReadOnlyDictionary<string!, string!>? Environment = null, string? WorkingDirectory = null, System.TimeSpan? CallTimeout = null, Lunate.Agent.ToolExposure Exposure = Lunate.Agent.ToolExposure.Direct, System.Collections.Generic.IReadOnlyDictionary<string!, Lunate.Agent.ToolExposure>? ExposureOverrides = null, string? NamespaceName = null) -> void
+Lunate.Protocols.McpServerOptions.NamespaceName.get -> string?
+Lunate.Protocols.McpServerOptions.NamespaceName.init -> void
+Lunate.Protocols.McpToolAdapter.Exposure.get -> Lunate.Agent.ToolExposure
+Lunate.Protocols.McpToolAdapter.Namespace.get -> Lunate.Agent.ToolNamespace!

@@ -11,9 +11,11 @@ using McpAnnotations = ModelContextProtocol.Protocol.ToolAnnotations;
 namespace Lunate.Protocols;
 
 /// <summary>
-/// One MCP tool wrapped as an <see cref="ITool"/>. The name is <c>server__tool</c> and the risk is
-/// always <see cref="ToolRisk.Execute"/> so the approval policy applies. Calls map the model's JSON
-/// arguments to <c>tools/call</c>; cancellation is propagated as <c>notifications/cancelled</c>
+/// One MCP tool wrapped as an <see cref="ITool"/>. The name is <c>server__tool</c>, the namespace is
+/// the configured server namespace and the exposure is the configured server or per-tool exposure;
+/// the risk is always <see cref="ToolRisk.Execute"/> so the approval policy applies. Calls map the
+/// model's JSON arguments to <c>tools/call</c>; cancellation is propagated as
+/// <c>notifications/cancelled</c>
 /// (the SDK does not yet send it for an in-flight call; see modelcontextprotocol/csharp-sdk#1365),
 /// a timeout becomes an error result, and transport or protocol failures become error results
 /// naming the server.
@@ -24,11 +26,14 @@ public sealed class McpToolAdapter : ITool
     private readonly string serverName;
     private readonly string toolName;
     private readonly TimeSpan callTimeout;
+    private readonly ToolNamespace toolNamespace;
     private readonly LunateAnnotations? annotations;
 
     internal McpToolAdapter(
         McpClient client,
         string serverName,
+        string namespaceName,
+        ToolExposure exposure,
         McpClientTool tool,
         TimeSpan callTimeout
     )
@@ -40,6 +45,8 @@ public sealed class McpToolAdapter : ITool
         Description = tool.ProtocolTool.Description ?? string.Empty;
         ParametersSchema = tool.ProtocolTool.InputSchema.Clone();
         annotations = MapAnnotations(tool.ProtocolTool.Annotations);
+        Exposure = exposure;
+        toolNamespace = new ToolNamespace(namespaceName);
     }
 
     public string Name => $"{serverName}__{toolName}";
@@ -47,6 +54,10 @@ public sealed class McpToolAdapter : ITool
     public string Description { get; }
 
     public JsonElement ParametersSchema { get; }
+
+    public ToolExposure Exposure { get; }
+
+    public ToolNamespace Namespace => toolNamespace;
 
     public ToolRisk Risk => ToolRisk.Execute;
 

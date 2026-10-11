@@ -12,9 +12,9 @@
 
 ## 3. Protocols wiring
 
-- [ ] 3.1 `McpServerOptions` gains exposure (default Direct), overrides and namespace name (default server name)
-- [ ] 3.2 `McpToolAdapter` carries resolved exposure + namespace; unknown override logged
-- [ ] 3.3 Regression: existing MCP suites green
+- [x] 3.1 `McpServerOptions` gains exposure (default Direct), overrides and namespace name (default server name)
+- [x] 3.2 `McpToolAdapter` carries resolved exposure + namespace; unknown override logged
+- [x] 3.3 Regression: existing MCP suites green
 
 ## 4. Coding mapping + end to end
 

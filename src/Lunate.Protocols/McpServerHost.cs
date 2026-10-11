@@ -25,6 +25,7 @@ public sealed class McpServerHost : IAsyncDisposable
 
     private readonly McpServerOptions options;
     private readonly Action<IReadOnlyList<ITool>>? onToolsChanged;
+    private readonly Action<string>? log;
     private readonly SemaphoreSlim gate = new(1, 1);
     private readonly Dictionary<string, McpToolAdapter> adapters = new(StringComparer.Ordinal);
     private McpClient? client;
@@ -34,12 +35,14 @@ public sealed class McpServerHost : IAsyncDisposable
 
     public McpServerHost(
         McpServerOptions options,
-        Action<IReadOnlyList<ITool>>? onToolsChanged = null
+        Action<IReadOnlyList<ITool>>? onToolsChanged = null,
+        Action<string>? log = null
     )
     {
         ArgumentNullException.ThrowIfNull(options);
         this.options = options;
         this.onToolsChanged = onToolsChanged;
+        this.log = log;
     }
 
     public string Name => options.Name;
@@ -183,18 +186,49 @@ public sealed class McpServerHost : IAsyncDisposable
     {
         var listed = await client!.ListToolsAsync(cancellationToken: ct).ConfigureAwait(false);
         var callTimeout = options.CallTimeout ?? DefaultCallTimeout;
+        var namespaceName = options.NamespaceName ?? options.Name;
+        var unmatched = options.ExposureOverrides is { } overrides
+            ? new HashSet<string>(overrides.Keys, StringComparer.Ordinal)
+            : null;
         var wrapped = new List<ITool>(listed.Count);
 
         foreach (var tool in listed)
         {
             var key = tool.ProtocolTool.Name;
+            unmatched?.Remove(key);
             if (!adapters.TryGetValue(key, out var adapter))
             {
-                adapter = new McpToolAdapter(client, options.Name, tool, callTimeout);
+                var exposure = options.Exposure;
+                if (
+                    options.ExposureOverrides is { } exposureOverrides
+                    && exposureOverrides.TryGetValue(key, out var overridden)
+                )
+                {
+                    exposure = overridden;
+                }
+
+                adapter = new McpToolAdapter(
+                    client,
+                    options.Name,
+                    namespaceName,
+                    exposure,
+                    tool,
+                    callTimeout
+                );
                 adapters[key] = adapter;
             }
 
             wrapped.Add(adapter);
+        }
+
+        if (unmatched is { Count: > 0 })
+        {
+            foreach (string unknown in unmatched.Order(StringComparer.Ordinal))
+            {
+                log?.Invoke(
+                    $"MCP server '{options.Name}': exposure override names unknown tool '{unknown}'. Check the tool name in the server configuration; the override is ignored."
+                );
+            }
         }
 
         return wrapped;
