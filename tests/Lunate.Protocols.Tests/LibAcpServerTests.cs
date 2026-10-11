@@ -1,6 +1,9 @@
+using System.Diagnostics;
+using System.Globalization;
 using Acp.JsonRpc;
 using Acp.Schema;
 using Lunate.Agent;
+using Lunate.Coding;
 using Lunate.Protocols.Acp;
 
 namespace Lunate.Protocols.Tests;
@@ -233,6 +236,63 @@ public sealed class LibAcpServerTests
         Assert.Equal(4, runtime.State.UpdateCount);
         await Task.Delay(200, Ct);
         Assert.Equal(4, runtime.State.UpdateCount);
+    }
+
+    [Fact]
+    public async Task Cancel_during_a_file_round_trip_stops_it_promptly()
+    {
+        using var temp = new TempDirectory();
+        var model = new AcpScriptedChatClient().Enqueue(
+            AcpScripts.Call(
+                "call-1",
+                "read",
+                new Dictionary<string, object?> { ["path"] = "buffer.txt" }
+            ),
+            AcpScripts.ToolCalls()
+        );
+        await using AcpRuntime runtime = AcpTestSupport.Start(context =>
+        {
+            var workspace = new Workspace(context.Cwd);
+            var registry = new ToolRegistry();
+            registry.Add(new ReadTool(workspace, context.FileAccess));
+            return new AgentHarness(model, registry, new AgentHarnessOptions { MaxRetries = 0 });
+        });
+        await runtime.Client.InitializeAsync(AcpTestSupport.InitializeRequestWithFileSystem, Ct);
+        runtime.State.IgnoreFileReads = true;
+        NewSessionResponse session = await runtime.Client.NewSessionAsync(
+            new NewSessionRequest { Cwd = temp.Root, McpServers = [] },
+            Ct
+        );
+
+        Task<PromptResponse> prompt = runtime.Client.PromptAsync(
+            new PromptRequest
+            {
+                SessionId = session.SessionId,
+                Prompt = [new TextContent { Text = "read the buffer" }],
+            },
+            Ct
+        );
+        await runtime.State.WaitForFileReadsAsync(1, TimeSpan.FromSeconds(10), Ct);
+
+        var elapsed = Stopwatch.StartNew();
+        await runtime.Client.CancelAsync(
+            new CancelNotification { SessionId = session.SessionId },
+            Ct
+        );
+        PromptResponse response = await prompt.WaitAsync(TimeSpan.FromSeconds(15), Ct);
+        elapsed.Stop();
+
+        Assert.Equal(StopReason.Cancelled, response.StopReason);
+        Assert.True(
+            elapsed.Elapsed < TimeSpan.FromSeconds(10),
+            string.Create(
+                CultureInfo.InvariantCulture,
+                $"the cancelled file round trip took {elapsed.Elapsed.TotalSeconds:0.0}s; it must stop promptly, well before the 30s client timeout"
+            )
+        );
+        int updates = runtime.State.UpdateCount;
+        await Task.Delay(200, Ct);
+        Assert.Equal(updates, runtime.State.UpdateCount);
     }
 
     [Fact]
