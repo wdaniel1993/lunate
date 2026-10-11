@@ -2,10 +2,11 @@
 
 ## 1. The fix
 
-- [x] 1.1 Root cause via probe branch (`probe/windows-test-exit`): `tee` + MSBuild node-reuse workers/MSBuild server holding the inherited pipe; snapshots during the stall; no stall without a pipe
-- [x] 1.2 `scripts/verify.sh`: `MSBUILDDISABLENODEREUSE=1` + `DOTNET_CLI_USE_MSBUILD_SERVER=0`
-- [x] 1.3 `scripts/verify.ps1`: same (parity)
-- [x] 1.4 Probe re-run with the fix: windows `verify.sh` green, 1858 tests, both passes
+- [x] 1.1 Root cause via probe branch (`probe/windows-test-exit`): captured test steps stalled on pipe EOF; snapshots name the survivors (first MSBuild node-reuse workers + VBCSCompiler; after node-reuse disable, VBCSCompiler alone for 3m16s)
+- [x] 1.2 `scripts/verify.sh`: `run_tests` captures to a file and prints at command end (no pipe, no EOF dependency)
+- [x] 1.3 `scripts/verify.ps1`: `Invoke-Tests` same (parity)
+- [x] 1.4 Node-reuse / MSBuild-server env vars tried, shaved ~45s, insufficient — reverted (design.md records why)
+- [x] 1.5 Probe re-runs: file capture green, 1858 tests, both passes
 
 ## 2. The bump (kept, independent)
 
@@ -13,7 +14,7 @@
 
 ## 3. Spec
 
-- [ ] 3.1 ci-pipeline: MODIFIED "SDK pinning" (band policy) + ADDED "no lingering build workers" (both in the delta)
+- [x] 3.1 ci-pipeline: MODIFIED "SDK pinning" (band policy) + ADDED "Captured gate steps end with their commands" (both in the delta)
 
 ## 4. Measurement (in the PR)
 

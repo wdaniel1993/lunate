@@ -18,18 +18,18 @@ The CI, CodeQL and release workflows SHALL install the .NET SDK version pinned i
 
 ## ADDED Requirements
 
-### Requirement: No build workers outlive a captured gate step
+### Requirement: Captured gate steps end with their commands
 
-The gate scripts SHALL run with MSBuild node reuse and the MSBuild server disabled (`MSBUILDDISABLENODEREUSE=1`, `DOTNET_CLI_USE_MSBUILD_SERVER=0`) so that build worker processes cannot inherit and hold the stdout pipe of a captured step. A captured test step SHALL end when its test run ends, not when stray workers time out. The settings SHALL be no-ops where node reuse is absent and SHALL NOT change what is built or tested.
+The gate scripts SHALL capture step output without depending on pipe EOF — writing to a file and printing it when the command ends — so a captured step ends when its command ends, even when build workers that inherited its output outlive it (MSBuild node-reuse workers and the compiler server do, by design). The zero-test guard SHALL parse the same captured output.
 
 #### Scenario: A captured test step ends with its test run
 
 - **GIVEN** the gate runs a captured test step on Windows
 - **WHEN** the test run completes
-- **THEN** the step ends without waiting for build workers, and the gate's test totals and coverage are unchanged
+- **THEN** the step ends without waiting for surviving build workers, and the gate's test totals and coverage are unchanged
 
-#### Scenario: The setting is harmless off Windows
+#### Scenario: The capture still guards discovery
 
-- **GIVEN** a gate run on macOS or Linux
-- **WHEN** the scripts set the disable variables
-- **THEN** the gate behaves exactly as before
+- **GIVEN** a test run whose output lacks a non-zero MTP summary
+- **WHEN** the captured step completes
+- **THEN** the gate fails with the discovery-regression error

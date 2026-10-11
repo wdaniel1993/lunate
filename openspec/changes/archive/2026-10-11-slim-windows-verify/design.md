@@ -11,36 +11,35 @@ Per-step windows wall time, PR #54 job 114415862515 (bash leg) and 114415862622 
 | test de-AT (exec) | 1m27 | n/a | 2m03 | 1m52 |
 | **silent stall after de-AT** | **3m59** | n/a | **0** | **0** |
 
-The stalls are silent, Windows-only, and stable across runs (3m04–3m59, PRs #39–#55); they account for ~8m of the bash leg and ~3m22 of the pwsh leg. The per-pass wall is a near-constant ~5m35 regardless of test duration — the stall absorbs the difference.
+The stalls are silent, Windows-only, and stable across runs (3m02–3m59, PRs #39–#55); they account for ~8m of the bash leg and ~3m of the pwsh leg.
 
 ## Root cause (probe-verified)
 
-The gate's test steps capture output through `tee`; `tee` ends at EOF, and EOF needs **every** writer of the pipe to close. `dotnet test` spawns MSBuild **node-reuse workers** and the **MSBuild server** during evaluation/build; those workers inherit the stdout pipe and, by design, outlive the command. After `dotnet test` exits, the workers keep the pipe open and the step stalls until they time out — minutes per pass.
+`tee` ends only at EOF, and EOF requires every writer of the pipe to close. `dotnet test` spawns build workers that inherit the stdout pipe and outlive the command by design, so the captured step stalls until they exit. Probe evidence (throwaway `probe/windows-test-exit` branch; `verify.sh` run in the background with 20 s process-tree snapshots):
 
-Evidence (throwaway `probe/windows-test-exit` branch; `verify.sh` run in the background with 20 s process-tree snapshots):
-
-- The stall reproduces with `verify.sh` and with a bare `dotnet test … | tee` pipeline; it does **not** reproduce with output redirected to a file (no pipe → nothing to wait for) — the same command exits ~4 s after the summary.
-- Snapshots during the stall show: `tee` alive, **no** `dotnet test` process, **no** test apps — but three `dotnet.exe … MSBuild.dll` worker nodes and `VBCSCompiler.exe` alive, holding the inherited pipe.
+- The stall reproduces with `verify.sh` and with a bare `dotnet test … | tee` pipeline; it does **not** reproduce with output redirected to a file — the same command exits seconds after its summary.
+- Snapshots during the stall show the waiting `tee` and, as the only surviving worker, **VBCSCompiler** (the Roslyn compiler server; started during the build, kept alive by its idle timeout, inheriting the pipe). MSBuild node-reuse workers were also present in the first probe; disabling node reuse and the MSBuild server shaved ~45s but left VBCSCompiler holding the pass open 3m16s — a partial mitigation, reverted.
 - The standalone `build` step never stalls: it is not piped.
 
-**First hypothesis (investigated, insufficient):** the SDK band. dotnet/sdk#52558 caps the MTP runner's output-consumption wait at 5 s after process exit; it is present in 10.0.401 and absent in our old 10.0.103 pin (both verified by IL inspection). Bumping the pin did **not** remove the stall — the wait is on the pipe's writers, not the runner's own output drain. The bump is kept as an independent modernization: current supported band, contains the upstream hardening.
+**First hypothesis (investigated, insufficient):** the SDK band. dotnet/sdk#52558 caps the MTP runner's output-consumption wait at 5 s after process exit; it is present in 10.0.401 and absent in our old 10.0.103 pin (both verified by IL inspection). Bumping the pin did **not** remove the stall — the wait is on the pipe's writers, not the runner's own output drain. The bump is kept as an independent modernization.
 
 ## The fix
 
-Both gate scripts disable node reuse and the MSBuild server for the whole run (`MSBUILDDISABLENODEREUSE=1`, `DOTNET_CLI_USE_MSBUILD_SERVER=0`) so no worker inherits a captured step's pipe. Probe-verified: with the fix, `verify.sh` on Windows completes green (1858 tests, 0 failed, both passes) and the test steps end with their test runs. The settings are no-ops where node reuse is absent (macOS, Linux CI) and change nothing about what is built or tested — only who lingers afterwards.
+Both gate scripts capture test-pass output to a file and print it when the command ends (`run_tests` in bash; `Invoke-Tests` in pwsh) — no pipe, so no EOF dependency: the step ends when its command ends, regardless of which worker inherits the output. Trade-off: a pass's output appears when the pass finishes rather than streaming live. Probe-verified green with the file capture (1858 tests, 0 failed, both passes).
 
 ## Pins
 
 - Fix lives in `scripts/verify.sh` + `scripts/verify.ps1` (single source for CI and local gates; no workflow-level knobs to drift).
+- The node-reuse / MSBuild-server env vars are **not** kept: they were a partial mitigation and the file capture makes them unnecessary; the comment in `run_tests` records the mechanism.
 - The SDK bump to 10.0.401 stays in this change (separate justification above); `rollForward: latestFeature` and the MTP runner setting unchanged.
-- Coverage unchanged: all steps, all jobs, the de-AT pass, budgets, publish proof.
+- Coverage unchanged: all steps, all jobs, the de-AT pass, budgets, publish proof; the zero-test guard parses the same captured file.
 - The PR's own windows legs are the before/after measurement.
 
 ## Deviations
 
-- The stall's exact duration is set by the workers' idle timeouts (observed 3m04–3m59); the fix removes the wait entirely rather than tuning a timeout.
+- The stall's exact duration is set by the surviving workers' idle timeouts (observed 3m02–3m59); the fix removes the wait entirely rather than tuning a timeout.
 
 ## Seams
 
-- If a future captured step stalls again, check for new pipe-inheriting survivors first (the snapshot recipe is in the probe branch's history; the branch is deleted after use).
-- The probe branch (`probe/windows-test-exit`) is throwaway and deleted after this change merges.
+- If a captured step ever stalls again, check for pipe-inheriting survivors first (snapshot recipe in the probe branch's history; the branch is deleted after this change merges).
+- Restoring live streaming would need a pipe whose EOF the step does not depend on (e.g. a follow-that-stops-when-the-command-exits); not worth the portability cost now.

@@ -16,15 +16,6 @@ PUBLISH_DIR="artifacts/publish"
 # LANG, and the product itself must behave identically under any machine culture.
 export DOTNET_CLI_UI_LANGUAGE="${DOTNET_CLI_UI_LANGUAGE:-en}"
 
-# MSBuild's node-reuse workers and the MSBuild server survive a build by design,
-# and they inherit the stdout pipe of the process that spawned them. The test
-# passes below run through `tee`, so on Windows those workers keep the pipe open
-# after `dotnet test` exits and the step stalls until they time out (minutes per
-# pass in CI; verified via process snapshots in a probe run). Disable both so a
-# captured step ends when its test run ends. No-op where node reuse is absent.
-export MSBUILDDISABLENODEREUSE=1
-export DOTNET_CLI_USE_MSBUILD_SERVER=0
-
 RID="${RID:-$(detect_rid verify)}"
 BINARY="${PUBLISH_DIR}/${RID}/lunate"
 if [ "${RID#win}" != "$RID" ]; then
@@ -37,17 +28,24 @@ step() {
 
 # Runs a test pass and fails when it executed zero tests: a discovery
 # regression (runner or argument drift) must never look green in CI. The MTP
-# summary line is "total: N"; a missing or zero count is a failure. PIPESTATUS
-# preserves the test runner's exit code through the tee.
+# summary line is "total: N"; a missing or zero count is a failure.
+#
+# Output goes to a file and is printed when the command ends — not through a
+# pipe. `tee` ends only at EOF, and EOF needs every writer of the pipe to
+# close; build workers (MSBuild node reuse, the compiler server) inherit the
+# pipe and can outlive the command by design, stalling the step for minutes on
+# Windows CI (probe-verified: VBCSCompiler alone held a captured pass open for
+# 3m16s). A file has no such dependency: the step ends when the command ends.
 run_tests() {
   local label="$1"
   shift
   local output status total
   output="$(mktemp)"
   set +e
-  "$@" 2>&1 | tee "$output"
-  status="${PIPESTATUS[0]}"
+  "$@" > "$output" 2>&1
+  status=$?
   set -e
+  cat "$output"
   total="$(grep -oE 'total: [0-9]+' "$output" | tail -n 1 | grep -oE '[0-9]+' || true)"
   rm -f "$output"
   if [ "$status" -ne 0 ]; then

@@ -13,14 +13,6 @@ try {
     # (parity with scripts/verify.sh). Only UI strings are pinned, never cultures.
     if (-not $env:DOTNET_CLI_UI_LANGUAGE) { $env:DOTNET_CLI_UI_LANGUAGE = 'en' }
 
-    # MSBuild node-reuse workers and the MSBuild server inherit the stdout pipe
-    # of the process that spawned them and keep it open after `dotnet test`
-    # exits; on Windows a captured test step then stalls until they time out
-    # (minutes per pass; parity with scripts/verify.sh). Disable both so a
-    # captured step ends when its test run ends.
-    $env:MSBUILDDISABLENODEREUSE = '1'
-    $env:DOTNET_CLI_USE_MSBUILD_SERVER = '0'
-
     function Measure-StartupMedian {
         param($Bin, $File)
         Write-Host "verify: benchmarking: $Bin --version"
@@ -31,16 +23,27 @@ try {
 
     function Invoke-Tests {
         param([string]$Label, [string[]]$TestArgs)
-        $output = & dotnet @TestArgs 2>&1
+        # Output goes to a file and is printed when the command ends - not
+        # through a pipeline. Pipes end only at EOF, and EOF needs every writer
+        # to close; build workers (MSBuild node reuse, the compiler server)
+        # inherit the pipe and can outlive the command by design, stalling the
+        # step for minutes on Windows CI (probe-verified; parity with
+        # scripts/verify.sh). A file has no such dependency.
+        $tmp = [System.IO.Path]::GetTempFileName()
+        & dotnet @TestArgs *> $tmp
         $exit = $LASTEXITCODE
-        $output | ForEach-Object { Write-Host $_ }
-        if ($exit -ne 0) { throw "verify: $Label failed (exit $exit)" }
+        Get-Content $tmp | ForEach-Object { Write-Host $_ }
+        if ($exit -ne 0) {
+            Remove-Item $tmp -ErrorAction SilentlyContinue
+            throw "verify: $Label failed (exit $exit)"
+        }
         # A discovery regression (runner or argument drift) must never look
         # green: the MTP summary line is "total: N"; missing or zero fails.
         $total = $null
-        foreach ($line in $output) {
+        foreach ($line in Get-Content $tmp) {
             if ([string]$line -match 'total: (\d+)') { $total = [int]$Matches[1] }
         }
+        Remove-Item $tmp -ErrorAction SilentlyContinue
         if ($null -eq $total -or $total -eq 0) {
             throw "verify: $Label executed zero tests - test discovery regression?"
         }
