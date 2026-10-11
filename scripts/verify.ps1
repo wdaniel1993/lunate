@@ -13,6 +13,14 @@ try {
     # (parity with scripts/verify.sh). Only UI strings are pinned, never cultures.
     if (-not $env:DOTNET_CLI_UI_LANGUAGE) { $env:DOTNET_CLI_UI_LANGUAGE = 'en' }
 
+    # MSBuild node-reuse workers and the MSBuild server inherit the stdout pipe
+    # of the process that spawned them and keep it open after `dotnet test`
+    # exits; on Windows a captured test step then stalls until they time out
+    # (minutes per pass; parity with scripts/verify.sh). Disable both so a
+    # captured step ends when its test run ends.
+    $env:MSBUILDDISABLENODEREUSE = '1'
+    $env:DOTNET_CLI_USE_MSBUILD_SERVER = '0'
+
     function Measure-StartupMedian {
         param($Bin, $File)
         Write-Host "verify: benchmarking: $Bin --version"

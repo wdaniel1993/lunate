@@ -16,6 +16,15 @@ PUBLISH_DIR="artifacts/publish"
 # LANG, and the product itself must behave identically under any machine culture.
 export DOTNET_CLI_UI_LANGUAGE="${DOTNET_CLI_UI_LANGUAGE:-en}"
 
+# MSBuild's node-reuse workers and the MSBuild server survive a build by design,
+# and they inherit the stdout pipe of the process that spawned them. The test
+# passes below run through `tee`, so on Windows those workers keep the pipe open
+# after `dotnet test` exits and the step stalls until they time out (minutes per
+# pass in CI; verified via process snapshots in a probe run). Disable both so a
+# captured step ends when its test run ends. No-op where node reuse is absent.
+export MSBUILDDISABLENODEREUSE=1
+export DOTNET_CLI_USE_MSBUILD_SERVER=0
+
 RID="${RID:-$(detect_rid verify)}"
 BINARY="${PUBLISH_DIR}/${RID}/lunate"
 if [ "${RID#win}" != "$RID" ]; then
