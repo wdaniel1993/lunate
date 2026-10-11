@@ -60,7 +60,8 @@ public sealed class ExtensionTrustStore
 
     /// <summary>
     /// The equivalent of <see cref="ComputeContentHash(string)"/> for a single file: the file name
-    /// plays the relative-path role, so a file's hash never collides with a directory's.
+    /// plays the relative-path role. The two hash families feed disjoint trust sections, so a
+    /// coincidence between them can never cross-approve.
     /// </summary>
     public static string ComputeFileContentHash(string path)
     {
