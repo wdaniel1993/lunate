@@ -10,6 +10,11 @@
             Include="../TestExtensions/HelloExtension/HelloExtension.csproj"
             ReferenceOutputAssembly="false"
         />
+        <!-- The MCP config e2e tests spawn the shared stdio test server. -->
+        <ProjectReference
+            Include="../tools/TestMcpServer/TestMcpServer.csproj"
+            ReferenceOutputAssembly="false"
+        />
     </ItemGroup>
 
     <ItemGroup>

@@ -18,6 +18,13 @@ internal sealed record ExtensionSeams
 
     /// <summary>Where extension diagnostics are reported; null writes to the mode's stderr.</summary>
     public IExtensionLog? Log { get; init; }
+
+    /// <summary>
+    /// True skips composing the extension host entirely (the <c>--no-extensions</c> flag):
+    /// extension hooks, renderers, widgets and extension MCP servers are absent. Configured
+    /// <c>mcp.json</c> servers are unaffected.
+    /// </summary>
+    public bool NoExtensions { get; init; }
 }
 
 /// <summary>A discovery or load failure the session reported and continued past.</summary>

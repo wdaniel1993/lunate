@@ -8,6 +8,9 @@ namespace Lunate.Extensibility;
 
 public sealed class ExtensionTrustStore
 {
+    private const string RepositoriesSection = "repositories";
+    private const string McpConfigSection = "mcpConfig";
+
     private readonly ExtensionHostOptions _options;
 
     public ExtensionTrustStore(ExtensionHostOptions options)
@@ -55,7 +58,69 @@ public sealed class ExtensionTrustStore
         return Convert.ToHexStringLower(hash.GetHashAndReset());
     }
 
+    /// <summary>
+    /// The equivalent of <see cref="ComputeContentHash(string)"/> for a single file: the file name
+    /// plays the relative-path role. The two hash families feed disjoint trust sections, so a
+    /// coincidence between them can never cross-approve.
+    /// </summary>
+    public static string ComputeFileContentHash(string path)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+
+        using IncrementalHash hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        if (File.Exists(path))
+        {
+            byte[] separator = [0];
+            hash.AppendData(Encoding.UTF8.GetBytes(Path.GetFileName(path)));
+            hash.AppendData(separator);
+
+            byte[] buffer = new byte[81920];
+            using FileStream stream = File.OpenRead(path);
+            int read;
+            while ((read = stream.Read(buffer, 0, buffer.Length)) > 0)
+            {
+                hash.AppendData(buffer, 0, read);
+            }
+
+            hash.AppendData(separator);
+        }
+
+        return Convert.ToHexStringLower(hash.GetHashAndReset());
+    }
+
     public ExtensionTrustDecision Evaluate(
+        string repositoryIdentity,
+        string worktreePath,
+        string contentHash
+    ) => EvaluateIn(RepositoriesSection, repositoryIdentity, worktreePath, contentHash);
+
+    /// <summary>
+    /// The mcp.json record: the same per-repository/hash semantics as extension trust, kept in a
+    /// distinct section so extension trust is never weakened or shared with a config file.
+    /// </summary>
+    public ExtensionTrustDecision EvaluateMcpConfig(
+        string repositoryIdentity,
+        string worktreePath,
+        string contentHash
+    ) => EvaluateIn(McpConfigSection, repositoryIdentity, worktreePath, contentHash);
+
+    public void RecordTrusted(
+        string repositoryIdentity,
+        string worktreePath,
+        string contentHash,
+        DateTimeOffset trustedAt
+    ) => RecordIn(RepositoriesSection, repositoryIdentity, worktreePath, contentHash, trustedAt);
+
+    /// <summary>Records the mcp.json trust decision in its own section of the trust file.</summary>
+    public void RecordMcpConfigTrusted(
+        string repositoryIdentity,
+        string worktreePath,
+        string contentHash,
+        DateTimeOffset trustedAt
+    ) => RecordIn(McpConfigSection, repositoryIdentity, worktreePath, contentHash, trustedAt);
+
+    private ExtensionTrustDecision EvaluateIn(
+        string section,
         string repositoryIdentity,
         string worktreePath,
         string contentHash
@@ -67,7 +132,7 @@ public sealed class ExtensionTrustStore
 
         JsonObject document = ReadDocument();
         if (
-            document["repositories"] is not JsonObject repositories
+            document[section] is not JsonObject repositories
             || repositories[repositoryIdentity] is not JsonObject repository
         )
         {
@@ -92,7 +157,8 @@ public sealed class ExtensionTrustStore
             : ExtensionTrustDecision.Prompt;
     }
 
-    public void RecordTrusted(
+    private void RecordIn(
+        string section,
         string repositoryIdentity,
         string worktreePath,
         string contentHash,
@@ -104,8 +170,8 @@ public sealed class ExtensionTrustStore
         ArgumentException.ThrowIfNullOrWhiteSpace(contentHash);
 
         JsonObject document = ReadDocument();
-        JsonObject repositories = document["repositories"] as JsonObject ?? new JsonObject();
-        document["repositories"] = repositories;
+        JsonObject repositories = document[section] as JsonObject ?? new JsonObject();
+        document[section] = repositories;
 
         JsonObject repository = repositories[repositoryIdentity] as JsonObject ?? new JsonObject();
         repositories[repositoryIdentity] = repository;

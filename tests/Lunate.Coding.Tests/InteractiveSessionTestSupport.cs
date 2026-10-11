@@ -287,7 +287,8 @@ internal sealed class InteractiveSessionHost : IDisposable
         IWorkspaceFiles? workspaceFiles = null,
         ToolResultRendererRegistry? toolResultRenderers = null,
         StatusWidgetRegistry? statusWidgets = null,
-        ExtensionSeams? extensions = null
+        ExtensionSeams? extensions = null,
+        string? mcpConfigPath = null
     )
     {
         Scrollback = new TestConsole();
@@ -311,6 +312,7 @@ internal sealed class InteractiveSessionHost : IDisposable
                 ToolResultRenderers = toolResultRenderers,
                 StatusWidgets = statusWidgets,
                 Extensions = extensions ?? TestExtensionSeams.Empty(Temp),
+                McpConfigPath = mcpConfigPath,
                 Diagnostics = _diagnostics,
                 ConfigureHarness = configureHarness,
                 WorkspaceFiles = workspaceFiles,

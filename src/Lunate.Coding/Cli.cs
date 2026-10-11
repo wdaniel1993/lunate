@@ -17,6 +17,18 @@ internal static class Cli
         ExtensionSeams? extensions = null
     )
     {
+        var noExtensions = false;
+        if (args.Contains("--no-extensions"))
+        {
+            noExtensions = true;
+            args =
+            [
+                .. args.Where(arg =>
+                    !string.Equals(arg, "--no-extensions", StringComparison.Ordinal)
+                ),
+            ];
+        }
+
         if (args is ["--version"])
         {
             output.WriteLine(GetProductVersion());
@@ -31,7 +43,12 @@ internal static class Cli
 
         if (args.Length == 0)
         {
-            return RunInteractive(errors, ct, interactiveOptions, extensions);
+            return RunInteractive(
+                errors,
+                ct,
+                interactiveOptions,
+                noExtensions ? Suppress(extensions ?? interactiveOptions?.Extensions) : extensions
+            );
         }
 
         if (args.Length > 0 && args[0] == "--discover")
@@ -58,7 +75,7 @@ internal static class Cli
                 Console.OpenStandardInput(),
                 Console.OpenStandardOutput(),
                 ct,
-                extensions
+                extensions: noExtensions ? Suppress(extensions) : extensions
             );
         }
 
@@ -72,15 +89,28 @@ internal static class Cli
             return 2;
         }
 
+        ExtensionSeams? seams = extensions ?? printOptions?.Extensions;
+        if (noExtensions)
+        {
+            seams = Suppress(seams);
+        }
+
         PrintModeOptions options = (printOptions ?? new PrintModeOptions()) with
         {
             Prompt = parsed.Prompt,
             Json = parsed.Json,
             Yolo = parsed.Yolo,
-            Extensions = extensions ?? printOptions?.Extensions,
+            Extensions = seams,
         };
         return PrintMode.RunAsync(options, output, errors, ct).GetAwaiter().GetResult();
     }
+
+    /// <summary>The <c>--no-extensions</c> seam: the same store and log, the host switch off.</summary>
+    private static ExtensionSeams Suppress(ExtensionSeams? seams) =>
+        (seams ?? new ExtensionSeams()) with
+        {
+            NoExtensions = true,
+        };
 
     /// <summary>
     /// Parses the print-mode flags; returns false when no print flag is present. A null
@@ -242,8 +272,15 @@ internal static class Cli
             "  lunate                         start the interactive session on a terminal"
         );
         output.WriteLine(
-            "                                 commands: /model /new /resume /compact /quit"
+            "                                 commands: /model /new /resume /compact /mcp /quit"
         );
+        output.WriteLine(
+            "  lunate --no-extensions         start any mode without loading extensions (their"
+        );
+        output.WriteLine(
+            "                                 hooks, widgets and MCP servers are absent; configured"
+        );
+        output.WriteLine("                                 mcp.json servers still run)");
         output.WriteLine(
             "  lunate --acp                   serve the Agent Client Protocol over stdio for"
         );

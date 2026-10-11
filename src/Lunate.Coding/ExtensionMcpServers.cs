@@ -8,16 +8,17 @@ using ContractExposure = Lunate.Extensibility.Abstractions.ToolExposure;
 namespace Lunate.Coding;
 
 /// <summary>
-/// Maps extension MCP-server registrations to protocol hosts: one <see cref="McpServerHost"/> per
+/// Maps extension MCP-server registrations onto the shared <see cref="McpToolSet"/>: one host per
 /// registration that starts nothing until the first <see cref="ListToolsAsync"/> and stops on
 /// disposal. A server that fails to start or list is logged with the server and extension named and
 /// the session continues without its tools. This is the single mapping the extension-host
-/// composition reuses.
+/// composition reuses; config-file servers feed the same set.
 /// </summary>
 internal sealed class ExtensionMcpServers : IAsyncDisposable
 {
     private readonly IExtensionLog _log;
-    private readonly List<Server> _servers;
+    private readonly Dictionary<string, string> _extensionByServer;
+    private readonly McpToolSet _set;
 
     internal ExtensionMcpServers(
         IExtensionLog log,
@@ -27,33 +28,30 @@ internal sealed class ExtensionMcpServers : IAsyncDisposable
         ArgumentNullException.ThrowIfNull(log);
         ArgumentNullException.ThrowIfNull(registrations);
         _log = log;
-        _servers =
-        [
-            .. registrations.Select(registration => new Server(
-                registration,
-                new McpServerHost(Map(registration.Registration), log: log.Warn)
-            )),
-        ];
+        _extensionByServer = registrations.ToDictionary(
+            registration => registration.Name,
+            registration => registration.ExtensionId,
+            StringComparer.Ordinal
+        );
+        _set = new McpToolSet(
+            [.. registrations.Select(registration => Map(registration.Registration))],
+            log.Error,
+            log.Warn,
+            options =>
+                $"extension MCP server '{options.Name}' from extension '{_extensionByServer[options.Name]}'"
+        );
     }
 
     /// <summary>Lists every server's tools, starting each server once; failures log and skip it.</summary>
     internal async Task<IReadOnlyList<ITool>> ListToolsAsync(CancellationToken ct)
     {
-        List<ITool> tools = [];
-        foreach (Server server in _servers)
+        IReadOnlyList<ITool> tools = await _set.ListToolsAsync(ct).ConfigureAwait(false);
+        foreach (McpServerStatus status in _set.Statuses)
         {
-            try
-            {
-                tools.AddRange(await server.Host.GetToolsAsync(ct).ConfigureAwait(false));
-            }
-            catch (OperationCanceledException) when (ct.IsCancellationRequested)
-            {
-                throw;
-            }
-            catch (Exception exception)
+            if (status.State is McpServerState.Failed)
             {
                 _log.Error(
-                    $"extension MCP server '{server.Registration.Name}' from extension '{server.Registration.ExtensionId}' failed to start or list its tools: {exception.Message} The session continues without this server's tools."
+                    $"extension MCP server '{status.Name}' from extension '{_extensionByServer[status.Name]}' failed to start or list its tools: {status.Reason} The session continues without this server's tools."
                 );
             }
         }
@@ -61,22 +59,7 @@ internal sealed class ExtensionMcpServers : IAsyncDisposable
         return tools;
     }
 
-    public async ValueTask DisposeAsync()
-    {
-        foreach (Server server in _servers)
-        {
-            try
-            {
-                await server.Host.DisposeAsync().ConfigureAwait(false);
-            }
-            catch (Exception exception)
-            {
-                _log.Error(
-                    $"extension MCP server '{server.Registration.Name}' failed to stop: {exception.Message} Check for a leftover child process."
-                );
-            }
-        }
-    }
+    public ValueTask DisposeAsync() => _set.DisposeAsync();
 
     private static McpServerOptions Map(McpServerRegistration registration) =>
         new(
@@ -105,6 +88,4 @@ internal sealed class ExtensionMcpServers : IAsyncDisposable
             ContractExposure.Hidden => AgentExposure.Hidden,
             _ => throw new ArgumentOutOfRangeException(nameof(exposure), exposure, null),
         };
-
-    private sealed record Server(RegisteredMcpServer Registration, McpServerHost Host);
 }

@@ -65,6 +65,9 @@ internal sealed record InteractiveSessionOptions
     /// <summary>The extension host seams; null takes the store, prompt and log defaults.</summary>
     public ExtensionSeams? Extensions { get; init; }
 
+    /// <summary>The global mcp.json path; null uses <c>~/.lunate/mcp.json</c>.</summary>
+    public string? McpConfigPath { get; init; }
+
     /// <summary>Where composition errors are reported; null uses stderr.</summary>
     public TextWriter? Diagnostics { get; init; }
 
@@ -129,6 +132,9 @@ internal sealed partial class InteractiveSession : IDisposable
     private string _workingDirectory = string.Empty;
     private string? _branch;
     private ExtensionSession? _extensions;
+    private McpToolSet? _mcp;
+    private readonly List<UserNotice> _pendingNotices = [];
+    private bool _composed;
     private ToolResultRendererRegistry? _toolResultRenderers;
     private StatusWidgetRegistry? _statusWidgets;
     private bool _disposed;
@@ -178,6 +184,8 @@ internal sealed partial class InteractiveSession : IDisposable
 
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct, _lifetime.Token);
         _live.Start();
+        _composed = true;
+        FlushPendingNotices();
         UpdateStatus();
         try
         {
@@ -232,6 +240,7 @@ internal sealed partial class InteractiveSession : IDisposable
         _branch = GitBranchReader.Read(_workspace.WorktreeRoot);
         _approver = new SessionApprover(this, _settings.Approval);
         await ComposeExtensionsAsync(ct);
+        await ComposeMcpAsync(ct);
         _harness = BuildHarness(_model);
         _pipeline = new InputPipeline(_options.Hooks ?? _extensions?.HookRunner);
     }
@@ -240,11 +249,19 @@ internal sealed partial class InteractiveSession : IDisposable
     /// Composes the session's extension host as the session starts: the workspace is resolved, so
     /// trust keys on the worktree root (or the git common dir inside a repository). A composition
     /// failure is reported and the session runs without extensions; a per-extension failure is
-    /// already isolated by the host. The host's MCP tools are listed once, here.
+    /// already isolated by the host. The host's MCP tools are listed once, here. With
+    /// <c>--no-extensions</c> the host is not composed at all.
     /// </summary>
     private async Task ComposeExtensionsAsync(CancellationToken ct)
     {
         TextWriter diagnostics = _options.Diagnostics ?? Console.Error;
+        if (_options.Extensions?.NoExtensions is true)
+        {
+            _toolResultRenderers = _options.ToolResultRenderers;
+            _statusWidgets = _options.StatusWidgets;
+            return;
+        }
+
         try
         {
             ExtensionSeams seams = (_options.Extensions ?? new ExtensionSeams()) with
@@ -283,9 +300,68 @@ internal sealed partial class InteractiveSession : IDisposable
         _statusWidgets = _options.StatusWidgets ?? _extensions?.StatusWidgets;
     }
 
-    /// <summary>The session end of the host lifecycle: session-ending hooks and MCP servers stop.</summary>
+    /// <summary>
+    /// Composes the configured MCP servers at session start, next to the extension host: the global
+    /// mcp.json plus the trusted project file, tools listed once and added to the registry. Config
+    /// errors and failed servers become notices; a failure here never aborts the session.
+    /// </summary>
+    private async Task ComposeMcpAsync(CancellationToken ct)
+    {
+        TextWriter diagnostics = _options.Diagnostics ?? Console.Error;
+        try
+        {
+            IExtensionLog log = _options.Extensions?.Log ?? new StderrExtensionLog(diagnostics);
+            _mcp = await McpComposition
+                .ComposeAsync(
+                    _workspace,
+                    _options.McpConfigPath,
+                    _options.Extensions,
+                    new ConsoleMcpConfigTrustPrompt(diagnostics, Console.In),
+                    log,
+                    Notify,
+                    ct
+                )
+                .ConfigureAwait(false);
+            if (_mcp is null)
+            {
+                return;
+            }
+
+            foreach (ITool tool in await _mcp.ListToolsAsync(ct).ConfigureAwait(false))
+            {
+                _tools.Add(tool);
+            }
+
+            McpComposition.NotifyFailures(_mcp, Notify);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            Notify("the MCP servers were not composed: " + exception.Message, NoticeLevel.Error);
+        }
+    }
+
+    /// <summary>The session end of the composition lifecycle: MCP servers and the extension host stop.</summary>
     private async ValueTask DisposeExtensionsAsync()
     {
+        if (_mcp is { } mcp)
+        {
+            _mcp = null;
+            try
+            {
+                await mcp.DisposeAsync().ConfigureAwait(false);
+            }
+            catch (Exception exception)
+            {
+                (_options.Diagnostics ?? Console.Error).WriteLine(
+                    $"lunate: the MCP servers failed to stop cleanly: {exception.Message}"
+                );
+            }
+        }
+
         if (_extensions is not { } host)
         {
             return;
@@ -714,8 +790,39 @@ internal sealed partial class InteractiveSession : IDisposable
         );
     }
 
-    private void Notify(string message, NoticeLevel level = NoticeLevel.Info) =>
+    private void Notify(string message, NoticeLevel level = NoticeLevel.Info)
+    {
+        if (!_composed)
+        {
+            _pendingNotices.Add(new UserNotice(level, message));
+            return;
+        }
+
         _interaction.Notify(new UserNotice(level, message));
+    }
+
+    private void Notify(UserNotice notice) => Notify(notice.Message, notice.Level);
+
+    /// <summary>
+    /// Composition-time notices are held until the live area starts (a notice posted before
+    /// <see cref="LiveArea.Start"/> would be dropped); they replay as the joined message.
+    /// </summary>
+    private void FlushPendingNotices()
+    {
+        if (_pendingNotices.Count == 0)
+        {
+            return;
+        }
+
+        NoticeLevel level =
+            _pendingNotices.Any(notice => notice.Level is NoticeLevel.Error) ? NoticeLevel.Error
+            : _pendingNotices.Any(notice => notice.Level is NoticeLevel.Warning)
+                ? NoticeLevel.Warning
+            : NoticeLevel.Info;
+        string message = string.Join("; ", _pendingNotices.Select(notice => notice.Message));
+        _pendingNotices.Clear();
+        _interaction.Notify(new UserNotice(level, message));
+    }
 
     private void MapOutcome(string stopReason) =>
         _outcome = stopReason switch
