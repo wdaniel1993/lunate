@@ -7,8 +7,8 @@
 
 ## 2. Loader registry (Extensibility)
 
-- [ ] 2.1 `McpServerRegistry` collected at creation time; exposed on the loader; duplicate names refused + logged naming both ids
-- [ ] 2.2 Registration-only test (nothing starts, nothing spawns)
+- [x] 2.1 `McpServerRegistry` collected at creation time; exposed on the loader; duplicate names refused + logged naming both ids
+- [x] 2.2 Registration-only test (nothing starts, nothing spawns)
 
 ## 3. Protocols wiring
 
