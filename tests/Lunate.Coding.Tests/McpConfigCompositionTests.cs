@@ -283,7 +283,7 @@ public sealed class McpConfigCompositionTests
         Directory.CreateDirectory(Path.GetDirectoryName(projectConfig)!);
         File.WriteAllText(projectConfig, """{ "mcpServers": { """);
         string storePath = temp.File("store");
-        string malformed = ".lunate/mcp.json' is not valid JSON";
+        string malformed = Path.Combine(".lunate", "mcp.json") + "' is not valid JSON";
 
         var untrustedLog = new RecordingExtensionLog();
         var untrustedClient = new ScriptedChatClient().Enqueue(Scripts.Text("ok"), Scripts.Stop());
