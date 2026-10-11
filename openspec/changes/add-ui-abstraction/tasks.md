@@ -19,9 +19,9 @@
 
 ## 4. Tests (the interaction matrix)
 
-- [ ] 4.1 One test file per mode (TUI, print, JSON, ACP)
-- [ ] 4.2 Contract round-trip + registration semantics + API version
-- [ ] 4.3 Failure degradation (omitted + logged, next update retries)
+- [x] 4.1 One test file per mode (TUI, print, JSON, ACP)
+- [x] 4.2 Contract round-trip + registration semantics + API version
+- [x] 4.3 Failure degradation (omitted + logged, next update retries)
 
 ## 5. Gate
 
