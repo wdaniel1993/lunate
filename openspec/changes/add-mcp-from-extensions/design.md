@@ -26,7 +26,9 @@
 
 ## Deviations
 
-(filled during apply; none yet)
+- **API version bumped to 1.5.0** (not named in the draft): the repo convention is one minor bump per contract extension (`ExtensionApi.Current`), and without it a 1.4.0 host would load an extension that calls `RegisterMcpServer` and fail at runtime. `ExtensionApi` and `ExtensionApiTests` updated.
+- **Unknown-override logging uses an optional `Action<string>? log` parameter on `McpServerHost`**: `Lunate.Protocols` has no logging abstraction and must not reference `Lunate.Extensibility`; the coding mapping passes the extension log (warn level) through that parameter.
+- **The fixture registers settings-driven command/args/marker** (settings written by the test into the host store before load); with no settings it registers the default command that cannot exist, which is what the registration-only tests exercise.
 
 ## Seams
 
