@@ -95,7 +95,8 @@ internal sealed class LiveArea : IDisposable
 
     public void SetTool(string? toolName) => Post(new ToolInput(toolName));
 
-    public void SetFooter(StatusFooterModel? footer) => Post(new FooterInput(footer));
+    public void SetFooter(StatusFooterModel? footer, IReadOnlyList<string>? widgets = null) =>
+        Post(new FooterInput(footer, widgets ?? []));
 
     /// <summary>
     /// Writes finished scrollback through the one writer: the live frame is cleared first and the
@@ -202,7 +203,11 @@ internal sealed class LiveArea : IDisposable
             ApprovalInput approval => state with { Approval = approval.Prompt },
             PickerInput picker => state with { Picker = picker.Picker },
             ToolInput tool => state with { ToolName = tool.Name, FrameNumber = 0 },
-            FooterInput footer => state with { Footer = footer.Footer },
+            FooterInput footer => state with
+            {
+                Footer = footer.Footer,
+                FooterWidgets = footer.Widgets,
+            },
             _ => state,
         };
 
@@ -228,7 +233,8 @@ internal sealed class LiveArea : IDisposable
 
     private sealed record ToolInput(string? Name) : LiveAreaInput;
 
-    private sealed record FooterInput(StatusFooterModel? Footer) : LiveAreaInput;
+    private sealed record FooterInput(StatusFooterModel? Footer, IReadOnlyList<string> Widgets)
+        : LiveAreaInput;
 
     private sealed class ConsoleTextWriter(IConsoleIO console) : TextWriter
     {

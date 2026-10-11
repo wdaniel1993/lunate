@@ -284,7 +284,9 @@ internal sealed class InteractiveSessionHost : IDisposable
         Func<AgentHarnessOptions, AgentHarnessOptions>? configureHarness = null,
         IChatClient? chat = null,
         Func<string, string?>? environment = null,
-        IWorkspaceFiles? workspaceFiles = null
+        IWorkspaceFiles? workspaceFiles = null,
+        ToolResultRendererRegistry? toolResultRenderers = null,
+        StatusWidgetRegistry? statusWidgets = null
     )
     {
         Scrollback = new TestConsole();
@@ -305,6 +307,8 @@ internal sealed class InteractiveSessionHost : IDisposable
                 Scheduler = Scheduler,
                 Scrollback = Scrollback,
                 Hooks = hooks,
+                ToolResultRenderers = toolResultRenderers,
+                StatusWidgets = statusWidgets,
                 Diagnostics = _diagnostics,
                 ConfigureHarness = configureHarness,
                 WorkspaceFiles = workspaceFiles,

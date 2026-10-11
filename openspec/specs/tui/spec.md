@@ -219,7 +219,7 @@ A pending approval SHALL render as a live-area prompt naming the tool and its ar
 
 ### Requirement: Status footer
 
-The footer SHALL show model, tokens used against the context window with percent, working directory and git branch as one dim line, formatted culture-invariantly. It SHALL degrade deterministically at narrow widths (branch dropped first, then directory; model and usage survive) and omit percent when the window is unknown.
+The footer SHALL show model, tokens used against the context window with percent, working directory and git branch as one dim line, formatted culture-invariantly. Extension status widgets, when registered, SHALL append their segments after the core fields in registration order. It SHALL degrade deterministically at narrow widths (branch dropped first, then directory; model and usage survive; widget segments drop before the branch) and omit percent when the window is unknown.
 
 #### Scenario: Narrow width degrades in order
 
@@ -232,6 +232,12 @@ The footer SHALL show model, tokens used against the context window with percent
 - **GIVEN** a working directory outside a git repository
 - **WHEN** the footer renders
 - **THEN** the branch segment is absent and the rest renders normally
+
+#### Scenario: Widget segments append after the core fields
+
+- **GIVEN** a registered status widget returning a segment
+- **WHEN** the footer renders
+- **THEN** the segment appears after model, usage, directory and branch, and drops before them at narrow widths
 
 ### Requirement: Git branch discovery without processes
 

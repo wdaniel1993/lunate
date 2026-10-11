@@ -25,6 +25,18 @@ public interface IExtensionContext
     /// <summary>Subscribes to file changes after successful mutations, optionally filtered by pattern.</summary>
     void SubscribeFileChanged(IFileChangedHandler handler, string? pathPattern = null);
 
+    /// <summary>
+    /// Registers a tool-result renderer. Registration is registration only: it must not render or
+    /// start processes, sockets or timers.
+    /// </summary>
+    void RegisterToolResultRenderer(IToolResultRenderer renderer);
+
+    /// <summary>
+    /// Registers a status widget. Registration is registration only: it must not render or start
+    /// processes, sockets or timers.
+    /// </summary>
+    void RegisterStatusWidget(IStatusWidget widget);
+
     /// <summary>Looks up a service another extension registered by its name.</summary>
     bool TryGetService(string name, out IBackgroundService? service);
 

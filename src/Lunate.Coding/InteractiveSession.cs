@@ -4,6 +4,7 @@ using System.Text.Json;
 using Lunate.Agent;
 using Lunate.Ai;
 using Lunate.Extensibility;
+using Lunate.Extensibility.Abstractions;
 using Lunate.Tui;
 using Microsoft.Extensions.Logging.Abstractions;
 using Spectre.Console;
@@ -55,6 +56,12 @@ internal sealed record InteractiveSessionOptions
     /// <summary>The extension hook runner behind the input pipeline; null passes input through.</summary>
     public HookRunner? Hooks { get; init; }
 
+    /// <summary>The tool-result renderers the extension host registered; null renders no extension blocks.</summary>
+    public ToolResultRendererRegistry? ToolResultRenderers { get; init; }
+
+    /// <summary>The status widgets the extension host registered; null contributes no widget segments.</summary>
+    public StatusWidgetRegistry? StatusWidgets { get; init; }
+
     /// <summary>Where composition errors are reported; null uses stderr.</summary>
     public TextWriter? Diagnostics { get; init; }
 
@@ -78,6 +85,7 @@ internal sealed partial class InteractiveSession : IDisposable
     private readonly InputPipeline _pipeline;
     private readonly InputHistory _history;
     private readonly CtrlCQuitWindow _quitWindow;
+    private readonly IUserInteraction _interaction;
     private readonly SteeringQueue _steering = new();
     private readonly object _steeringGate = new();
     private readonly List<string> _pendingSteering = [];
@@ -140,6 +148,7 @@ internal sealed partial class InteractiveSession : IDisposable
         _pipeline = new InputPipeline(options.Hooks);
         _history = new InputHistory(options.HistoryPath ?? InputHistory.DefaultPath);
         _quitWindow = new CtrlCQuitWindow(options.Scheduler);
+        _interaction = new TuiUserInteraction(_live);
     }
 
     /// <summary>Runs the input loop until the terminal's key stream ends or the quit window quits.</summary>
@@ -157,7 +166,7 @@ internal sealed partial class InteractiveSession : IDisposable
 
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct, _lifetime.Token);
         _live.Start();
-        _live.SetFooter(Footer());
+        UpdateStatus();
         try
         {
             await PumpKeysAsync(linked.Token);
@@ -337,7 +346,7 @@ internal sealed partial class InteractiveSession : IDisposable
         InputPipelineResult processed = await _pipeline.ProcessAsync(submitted, ct);
         if (processed.Consumed)
         {
-            _live.SetNotice("input consumed by an extension hook");
+            Notify("input consumed by an extension hook");
             return;
         }
 
@@ -480,7 +489,7 @@ internal sealed partial class InteractiveSession : IDisposable
                 break;
             case CtrlCAction.Arm:
             case CtrlCAction.ReArm:
-                _live.SetNotice(CtrlCQuitWindow.Hint);
+                Notify(CtrlCQuitWindow.Hint, NoticeLevel.Warning);
                 break;
             case CtrlCAction.Quit:
                 Quit();
@@ -599,8 +608,30 @@ internal sealed partial class InteractiveSession : IDisposable
         pending.TrySetResult(choice);
     }
 
-    private StatusFooterModel Footer() =>
-        new(_modelId, _inputTokens + _outputTokens, _contextWindow, _workingDirectory, _branch);
+    private void UpdateStatus()
+    {
+        var view = new StatusView(
+            _modelId,
+            _inputTokens + _outputTokens,
+            _contextWindow,
+            _workingDirectory,
+            _branch
+        );
+        IReadOnlyList<TextSegment> widgets = _options.StatusWidgets?.Segments(view) ?? [];
+        _interaction.UpdateStatus(
+            new UserStatus(
+                view.Model,
+                view.TokensUsed,
+                view.ContextWindow,
+                view.WorkingDirectory,
+                view.GitBranch,
+                widgets
+            )
+        );
+    }
+
+    private void Notify(string message, NoticeLevel level = NoticeLevel.Info) =>
+        _interaction.Notify(new UserNotice(level, message));
 
     private void MapOutcome(string stopReason) =>
         _outcome = stopReason switch
