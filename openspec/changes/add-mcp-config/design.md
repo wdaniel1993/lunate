@@ -60,3 +60,17 @@ A CLI flag accepted in every mode: skips composing the extension host (so extens
 
 - A hanging `mcp.json` server is bounded by the existing call timeout + dispose paths (T-29); start failures are notices, never session failures.
 - The `McpToolSet` refactor touches the extension MCP path shipped in compose-extension-host — its tests must stay green unchanged (regression gate).
+
+## Deviations
+
+Implementation as shipped, where it differs from or sharpens this draft:
+
+- **`/mcp` is one joined notice.** The live-area notice is a single line (and Tui's seam exposes one string), so the server segments join with `; `: `a — started, 5 tools; b — failed: <reason>`. The scenario's "a notice lists both servers" wins over "one line per server". Empty config renders `mcp: no servers configured`.
+- **Composition-time notices are buffered.** A notice posted before `LiveArea.Start` is dropped by the subject, so interactive composition notices queue and replay (joined) right after the live area starts.
+- **Trust record placement.** The mcp.json decision lives in the same `trust.json` under a new `mcpConfig` section with its own `EvaluateMcpConfig`/`RecordMcpConfigTrusted`/`ComputeFileContentHash` APIs on `ExtensionTrustStore` (public; Extensibility has no PublicAPI analyzer). Extension records are never read or written by the config path. `NewWorktree` auto-records without prompting, exactly mirroring the extension discipline.
+- **Refusal is logged once, by the gate.** `NonInteractiveMcpConfigTrustPrompt` refuses silently; `McpConfigTrust` emits the single `log.Warn` line ("… was not trusted … Run an interactive session to approve it."), so print/ACP see one actionable line and interactive denial sees the same.
+- **ACP composes config servers at serve start**, the same point as the extension host (one listing for every session), not per session.
+- **`--no-extensions` rides `ExtensionSeams.NoExtensions`** (a new internal flag on the existing seams record), so the store path and log stay available for the project-file trust gate while the host itself is never composed.
+- **Test wiring:** `Lunate.Coding.Tests` gained a build-only `TestMcpServer` project reference and the layering allowlist gained `Lunate.Coding.Tests -> TestMcpServer` for the MCP config e2e tests.
+- **Protocols API:** `McpConfig`/`McpConfigResult` are internal (`InternalsVisibleTo` covers `lunate` and `Lunate.Protocols.Tests`); no public API change in `Lunate.Protocols`.
+
