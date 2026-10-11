@@ -54,6 +54,7 @@ Session-level tests construct `PrintModeOptions`/`InteractiveSessionOptions` (3 
 
 ## Deviations
 
+- **Post-review fix**: cancellation mid-compose stops already-started services before surfacing (`EndSessionAsync` in the cancellation path; `Cancellation_mid_compose_stops_what_already_started` covers it).
 - `ModelProviders` is exposed by the composed host but has no production consumer today (no model-catalog seam reads it yet); wiring it is deferred to the model-provider consumer change. The registry stays loader-owned.
 - Extension MCP servers start at their first listing — which the composition performs at session start; "registration is registration only" (T-41) is unchanged.
 - The trust prompt is line-based on the console (v1); a TUI-native prompt is a seam. Follow-up card: t_d80be84b (TUI-native trust prompt).

@@ -274,4 +274,67 @@ public sealed class ExtensionSessionTests
             $$"""{"id":"{{id}}","version":"0.1.0","apiVersion":"^1.5.0","entryAssembly":"Broken.dll"}"""
         );
     }
+
+    [Fact]
+    public async Task Cancellation_mid_compose_stops_what_already_started()
+    {
+        using var temp = new TempDirectory();
+        string worktree = temp.File("worktree");
+        Directory.CreateDirectory(worktree);
+        string store = temp.File("store");
+        HelloFixture.Install(Path.Combine(store, "extensions", "hello-one"), id: "hello-one");
+        HelloFixture.Install(Path.Combine(store, "extensions", "hello-two"), id: "hello-two");
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(Ct);
+        // The first extension's background service is up when its start line is logged; cancel
+        // right there so the second extension's load observes cancellation while the first is
+        // still running. The host must stop it before surfacing the cancellation.
+        var log = new CancelOnMessageLog(cts, "hello service started");
+
+        await Assert.ThrowsAsync<OperationCanceledException>(() =>
+            ExtensionSession.StartAsync(
+                worktree,
+                worktree,
+                new ExtensionSeams { StorePath = store, Log = log },
+                cts.Token
+            )
+        );
+
+        Assert.True(log.Contains("hello service started"));
+        Assert.True(log.Contains("hello service stopped"));
+    }
+
+    /// <summary>Cancels a source the moment a matching log line is recorded.</summary>
+    private sealed class CancelOnMessageLog(CancellationTokenSource source, string trigger)
+        : IExtensionLog
+    {
+        private readonly object _gate = new();
+        private readonly List<string> _messages = [];
+
+        public void Info(string message) => Add(message);
+
+        public void Warn(string message) => Add(message);
+
+        public void Error(string message) => Add(message);
+
+        public bool Contains(string text)
+        {
+            lock (_gate)
+            {
+                return _messages.Any(message => message.Contains(text, StringComparison.Ordinal));
+            }
+        }
+
+        private void Add(string message)
+        {
+            lock (_gate)
+            {
+                _messages.Add(message);
+            }
+
+            if (message.Contains(trigger, StringComparison.Ordinal))
+            {
+                source.Cancel();
+            }
+        }
+    }
 }

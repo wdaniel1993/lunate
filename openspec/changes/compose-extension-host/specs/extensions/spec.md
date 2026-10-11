@@ -31,7 +31,7 @@ The host SHALL discover extensions in `~/.lunate/extensions/` (global) and `.lun
 #### Scenario: Non-session commands never touch the store
 
 - **GIVEN** any installed extension
-- **WHEN** `lunate --version` or `lunate --help` runs
+- **WHEN** a non-session command (`lunate --version`, `lunate --help`, `lunate --discover`) runs
 - **THEN** no manifest is read and no assembly is loaded
 
 #### Scenario: One broken extension does not stop the session

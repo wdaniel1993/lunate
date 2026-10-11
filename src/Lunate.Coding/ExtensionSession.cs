@@ -88,6 +88,9 @@ internal sealed class ExtensionSession : IAsyncDisposable
             }
             catch (OperationCanceledException)
             {
+                // Cancellation mid-compose: stop whatever already started (earlier extensions'
+                // background services) before surfacing; the host is never returned.
+                await loader.EndSessionAsync(CancellationToken.None).ConfigureAwait(false);
                 throw;
             }
             catch (ExtensionTrustDeniedException exception)
