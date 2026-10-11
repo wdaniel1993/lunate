@@ -4,9 +4,9 @@
 
 - [x] 1.1 Root cause via probe branch (`probe/windows-test-exit`): captured test steps stalled on pipe EOF; snapshots name the survivors (first MSBuild node-reuse workers + VBCSCompiler; after node-reuse disable, VBCSCompiler alone for 3m16s)
 - [x] 1.2 `scripts/verify.sh`: `run_tests` captures to a file and prints at command end (no pipe, no EOF dependency)
-- [x] 1.3 `scripts/verify.ps1`: `Invoke-Tests` same (parity)
+- [x] 1.3 `scripts/verify.ps1`: `Invoke-Tests` via `Start-Process` file redirection (`*>` still piped and kept the stall)
 - [x] 1.4 Node-reuse / MSBuild-server env vars tried, shaved ~45s, insufficient — reverted (design.md records why)
-- [x] 1.5 Probe re-runs: file capture green, 1858 tests, both passes
+- [x] 1.5 PR CI with the file capture: all four jobs green, 1858 tests both passes, stalls gone (windows bash 16m45 → 11m17; pwsh test step 5m38 with `*>` → Start-Process in this push)
 
 ## 2. The bump (kept, independent)
 

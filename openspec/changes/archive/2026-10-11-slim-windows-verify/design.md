@@ -25,7 +25,7 @@ The stalls are silent, Windows-only, and stable across runs (3m02–3m59, PRs #3
 
 ## The fix
 
-Both gate scripts capture test-pass output to a file and print it when the command ends (`run_tests` in bash; `Invoke-Tests` in pwsh) — no pipe, so no EOF dependency: the step ends when its command ends, regardless of which worker inherits the output. Trade-off: a pass's output appears when the pass finishes rather than streaming live. Probe-verified green with the file capture (1858 tests, 0 failed, both passes).
+Both gate scripts capture test-pass output to a file and print it when the command ends — no pipe, so no EOF dependency: the step ends when its command ends, regardless of which worker inherits the output. The bash side (`run_tests`) uses a plain shell redirect; PowerShell needs `Start-Process` with `-RedirectStandardOutput`/`-RedirectStandardError`, because its `*>` redirection still captures through a pipeline (measured: the pwsh test step kept its ~3m40 stall with `*>`, gone after the switch). Trade-off: a pass's output appears when the pass finishes rather than streaming live. Verified green on the PR's own CI with the file capture (all four jobs; 1858 tests both passes; windows bash 16m45 → 11m17).
 
 ## Pins
 
