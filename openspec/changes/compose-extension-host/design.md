@@ -57,6 +57,12 @@ Session-level tests construct `PrintModeOptions`/`InteractiveSessionOptions` (3 
 - `ModelProviders` is exposed by the composed host but has no production consumer today (no model-catalog seam reads it yet); wiring it is deferred to the model-provider consumer change. The registry stays loader-owned.
 - Extension MCP servers start at their first listing — which the composition performs at session start; "registration is registration only" (T-41) is unchanged.
 - The trust prompt is line-based on the console (v1); a TUI-native prompt is a seam. Follow-up card: t_d80be84b (TUI-native trust prompt).
+- Interactive composition runs through an awaited `ComposeAsync` in `RunAsync` instead of blocking the constructor with `GetAwaiter().GetResult()`: the workspace must exist first, the session already had a compose phase, and the first `BuildHarness` still sees the host's hooks. The host's MCP tools are listed in that same phase, before the first harness is built.
+- The interactive session also re-wires its input pipeline from the host's hook runner when the direct `Hooks` seam is null, so `IInputReceivedHandler` contributions have a production effect like every other hook.
+- `Cli.Run` gained an optional `ExtensionSeams? extensions` parameter, threaded to interactive, print and ACP. The non-session paths (`--version`, `--help`, `--discover`, flag parsing) return before it is read; it exists so tests can point a poisoned store at those paths and prove they never touch it.
+- ACP composes at serve start against the process working directory (the only workspace known before the first `session/new`); session harnesses still build against each session's own cwd, and the MCP tool list resolved once is reused for every session.
+- `HelloExtension` fixture edits (fixture-only): a `HelloToolCallingHandler` that logs `tool call observed: <name>` and an optional `markerPath` setting whose presence makes the factory write a load-marker file (the poisoned-store proof).
+- `Lunate.Coding.Tests` now builds and copies the `HelloExtension` fixture into its output (the interactive end-to-end test needs the Coding session harness); the layering allow-list gained that one edge.
 
 ## Risks
 

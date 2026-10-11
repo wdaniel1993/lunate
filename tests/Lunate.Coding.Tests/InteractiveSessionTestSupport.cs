@@ -286,7 +286,8 @@ internal sealed class InteractiveSessionHost : IDisposable
         Func<string, string?>? environment = null,
         IWorkspaceFiles? workspaceFiles = null,
         ToolResultRendererRegistry? toolResultRenderers = null,
-        StatusWidgetRegistry? statusWidgets = null
+        StatusWidgetRegistry? statusWidgets = null,
+        ExtensionSeams? extensions = null
     )
     {
         Scrollback = new TestConsole();
@@ -309,6 +310,7 @@ internal sealed class InteractiveSessionHost : IDisposable
                 Hooks = hooks,
                 ToolResultRenderers = toolResultRenderers,
                 StatusWidgets = statusWidgets,
+                Extensions = extensions ?? TestExtensionSeams.Empty(Temp),
                 Diagnostics = _diagnostics,
                 ConfigureHarness = configureHarness,
                 WorkspaceFiles = workspaceFiles,

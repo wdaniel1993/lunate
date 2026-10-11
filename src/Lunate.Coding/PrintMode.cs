@@ -40,6 +40,9 @@ internal sealed record PrintModeOptions
 
     /// <summary>The environment lookup for settings and auth; null reads the process environment.</summary>
     public Func<string, string?>? Environment { get; init; }
+
+    /// <summary>The extension host seams; null takes the store, prompt and log defaults.</summary>
+    public ExtensionSeams? Extensions { get; init; }
 }
 
 /// <summary>
@@ -85,57 +88,108 @@ internal static class PrintMode
             return 1;
         }
 
-        AgentHarness harness;
+        ExtensionSession? extensions = null;
         try
         {
-            harness = CreateHarness(options, settings, model, catalog, factory);
-        }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
-        {
-            return 130;
-        }
-        catch (Exception exception)
-        {
-            interaction.Notify(new UserNotice(NoticeLevel.Error, exception.Message));
-            return 1;
-        }
-
-        var summary = new PrintRunSummary(settings.Approval);
-        bool cancelled = false;
-        try
-        {
-            await foreach (AgentEvent agentEvent in harness.RunAsync(options.Prompt, ct))
+            IReadOnlyList<ITool> mcpTools = [];
+            Workspace workspace;
+            try
             {
-                if (options.Json)
-                {
-                    // One JSON object per line, canonically '\n'-terminated: the --json
-                    // stream is a scripting contract and must not depend on the platform.
-                    output.Write(PrintEventJson.Serialize(agentEvent));
-                    output.Write('\n');
-                }
+                workspace = new Workspace(options.WorkingDirectory ?? Environment.CurrentDirectory);
+                extensions = await ComposeExtensionsAsync(options.Extensions, workspace, errors, ct)
+                    .ConfigureAwait(false);
+                mcpTools = await extensions.McpServers.ListToolsAsync(ct).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                return 130;
+            }
+            catch (Exception exception)
+            {
+                interaction.Notify(new UserNotice(NoticeLevel.Error, exception.Message));
+                return 1;
+            }
 
-                if (summary.Observe(agentEvent) is { } diagnostic)
-                {
-                    errors.WriteLine(diagnostic);
-                }
+            AgentHarness harness;
+            try
+            {
+                harness = CreateHarness(
+                    options,
+                    workspace,
+                    settings,
+                    model,
+                    catalog,
+                    factory,
+                    extensions,
+                    mcpTools
+                );
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                return 130;
+            }
+            catch (Exception exception)
+            {
+                interaction.Notify(new UserNotice(NoticeLevel.Error, exception.Message));
+                return 1;
+            }
 
-                if (NoticeFor(agentEvent) is { } notice)
+            var summary = new PrintRunSummary(settings.Approval);
+            bool cancelled = false;
+            try
+            {
+                await foreach (AgentEvent agentEvent in harness.RunAsync(options.Prompt, ct))
                 {
-                    interaction.Notify(notice);
+                    if (options.Json)
+                    {
+                        // One JSON object per line, canonically '\n'-terminated: the --json
+                        // stream is a scripting contract and must not depend on the platform.
+                        output.Write(PrintEventJson.Serialize(agentEvent));
+                        output.Write('\n');
+                    }
+
+                    if (summary.Observe(agentEvent) is { } diagnostic)
+                    {
+                        errors.WriteLine(diagnostic);
+                    }
+
+                    if (NoticeFor(agentEvent) is { } notice)
+                    {
+                        interaction.Notify(notice);
+                    }
+                }
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                cancelled = true;
+            }
+            catch (Exception exception)
+            {
+                interaction.Notify(new UserNotice(NoticeLevel.Error, exception.Message));
+                return 1;
+            }
+
+            return Finish(summary, cancelled, options.Json, output, interaction);
+        }
+        finally
+        {
+            if (extensions is not null)
+            {
+                try
+                {
+                    await extensions.DisposeAsync().ConfigureAwait(false);
+                }
+                catch (Exception exception)
+                {
+                    interaction.Notify(
+                        new UserNotice(
+                            NoticeLevel.Error,
+                            "the extension host failed to stop cleanly: " + exception.Message
+                        )
+                    );
                 }
             }
         }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
-        {
-            cancelled = true;
-        }
-        catch (Exception exception)
-        {
-            interaction.Notify(new UserNotice(NoticeLevel.Error, exception.Message));
-            return 1;
-        }
-
-        return Finish(summary, cancelled, options.Json, output, interaction);
     }
 
     /// <summary>The events print mode now surfaces as ambient notices on stderr; the answer and
@@ -198,16 +252,49 @@ internal static class PrintMode
         }
     }
 
+    /// <summary>
+    /// Composes the session's extension host: the mode's stderr writer receives host diagnostics;
+    /// the trust prompt defaults to the non-interactive refusal (a terminal-less run never approves
+    /// repository code).
+    /// </summary>
+    private static async Task<ExtensionSession> ComposeExtensionsAsync(
+        ExtensionSeams? seams,
+        Workspace workspace,
+        TextWriter errors,
+        CancellationToken ct
+    )
+    {
+        ExtensionSeams resolved = (seams ?? new ExtensionSeams()) with
+        {
+            Log = seams?.Log ?? new StderrExtensionLog(errors),
+        };
+        return await ExtensionSession
+            .StartAsync(
+                workspace.WorktreeRoot,
+                workspace.GitCommonDir ?? workspace.WorktreeRoot,
+                resolved,
+                ct
+            )
+            .ConfigureAwait(false);
+    }
+
     private static AgentHarness CreateHarness(
         PrintModeOptions options,
+        Workspace workspace,
         AgentSettings settings,
         ModelInfo model,
         ModelCatalog catalog,
-        IChatClientFactory factory
+        IChatClientFactory factory,
+        ExtensionSession? extensions,
+        IReadOnlyList<ITool> mcpTools
     )
     {
-        var workspace = new Workspace(options.WorkingDirectory ?? Environment.CurrentDirectory);
         ToolRegistry tools = HarnessFactory.CreateTools(workspace);
+        foreach (ITool tool in mcpTools)
+        {
+            tools.Add(tool);
+        }
+
         string directory =
             options.SessionDirectory ?? HarnessFactory.DefaultSessionDirectory(workspace);
         Session session = HarnessFactory.CreateSession(directory, workspace);
@@ -220,6 +307,7 @@ internal static class PrintMode
             WorkingDirectory = workspace.WorktreeRoot,
             ToolOutputLimit = settings.ToolOutputLimit,
             Approver = new NonInteractiveApprover(settings.Approval, options.Yolo),
+            Hooks = extensions?.Hooks,
             Session = session,
             ModelCatalog = catalog,
             ModelId = model.Id,

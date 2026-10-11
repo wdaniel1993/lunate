@@ -23,3 +23,17 @@ public sealed class HelloSessionEndingHandler(IExtensionLog log) : ISessionEndin
         return ValueTask.CompletedTask;
     }
 }
+
+public sealed class HelloToolCallingHandler(IExtensionLog log) : IToolCallingHandler
+{
+    public int Priority => 0;
+
+    public ValueTask<ToolCallingResult> HandleAsync(
+        ToolCallingPayload payload,
+        CancellationToken cancellationToken
+    )
+    {
+        log.Info($"tool call observed: {payload.ToolName}");
+        return ValueTask.FromResult<ToolCallingResult>(new ToolCallingResult.Proceed(null));
+    }
+}

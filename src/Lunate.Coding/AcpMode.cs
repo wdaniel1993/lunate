@@ -13,15 +13,44 @@ namespace Lunate.Coding;
 /// </summary>
 internal static class AcpMode
 {
-    internal static int Run(TextWriter errors, Stream input, Stream output, CancellationToken ct)
+    internal static int Run(
+        TextWriter errors,
+        Stream input,
+        Stream output,
+        CancellationToken ct,
+        ExtensionSeams? extensions = null
+    )
     {
         var interaction = new AcpUserInteraction(line => errors.WriteLine($"lunate: {line}"));
         IAcpServer server = new LibAcpServer(line =>
             interaction.Notify(new UserNotice(NoticeLevel.Info, line))
         );
+
+        // The host composes once at serve start (the session's first use) and every session/new
+        // reuses the same hook seam and the MCP tools listed once here.
+        ExtensionSession? host = null;
+        IReadOnlyList<ITool> mcpTools = [];
         try
         {
-            server.RunAsync(input, output, CreateHarness, ct).GetAwaiter().GetResult();
+            host = ComposeExtensions(errors, extensions, ct);
+            mcpTools = host.McpServers.ListToolsAsync(ct).GetAwaiter().GetResult();
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            DisposeHost(host, errors);
+            return 130;
+        }
+        catch (Exception exception)
+        {
+            errors.WriteLine($"lunate: the extension host was not composed: {exception.Message}");
+        }
+
+        try
+        {
+            server
+                .RunAsync(input, output, context => CreateHarness(context, host, mcpTools), ct)
+                .GetAwaiter()
+                .GetResult();
             return 0;
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -33,9 +62,63 @@ internal static class AcpMode
             errors.WriteLine($"lunate: {exception.Message}");
             return 1;
         }
+        finally
+        {
+            DisposeHost(host, errors);
+        }
     }
 
-    private static AgentHarness CreateHarness(AcpSessionContext context)
+    /// <summary>
+    /// Composes the ACP host before the first frame is served: the process working directory is the
+    /// serve-time workspace (session cwds follow the editor's per-session roots); the trust prompt
+    /// defaults to the non-interactive refusal.
+    /// </summary>
+    private static ExtensionSession ComposeExtensions(
+        TextWriter errors,
+        ExtensionSeams? extensions,
+        CancellationToken ct
+    )
+    {
+        var workspace = new Workspace(Environment.CurrentDirectory);
+        ExtensionSeams resolved = (extensions ?? new ExtensionSeams()) with
+        {
+            Log = extensions?.Log ?? new StderrExtensionLog(errors),
+        };
+        return ExtensionSession
+            .StartAsync(
+                workspace.WorktreeRoot,
+                workspace.GitCommonDir ?? workspace.WorktreeRoot,
+                resolved,
+                ct
+            )
+            .GetAwaiter()
+            .GetResult();
+    }
+
+    private static void DisposeHost(ExtensionSession? host, TextWriter errors)
+    {
+        if (host is null)
+        {
+            return;
+        }
+
+        try
+        {
+            host.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        }
+        catch (Exception exception)
+        {
+            errors.WriteLine(
+                $"lunate: the extension host failed to stop cleanly: {exception.Message}"
+            );
+        }
+    }
+
+    private static AgentHarness CreateHarness(
+        AcpSessionContext context,
+        ExtensionSession? host,
+        IReadOnlyList<ITool> mcpTools
+    )
     {
         AgentSettings settings = SettingsStore.Resolve(null, null);
         ModelCatalog catalog = ModelCatalog.Load(null);
@@ -44,6 +127,11 @@ internal static class AcpMode
 
         var workspace = new Workspace(context.Cwd);
         ToolRegistry tools = HarnessFactory.CreateTools(workspace, context.FileAccess);
+        foreach (ITool tool in mcpTools)
+        {
+            tools.Add(tool);
+        }
+
         Session session = HarnessFactory.CreateSession(
             HarnessFactory.DefaultSessionDirectory(workspace),
             workspace
@@ -59,6 +147,7 @@ internal static class AcpMode
             Approver = context.ClientApprover is { } clientApprover
                 ? new AcpApprover(settings.Approval, clientApprover)
                 : new NonInteractiveApprover(settings.Approval, yolo: false),
+            Hooks = host?.Hooks,
             Session = session,
             ModelCatalog = catalog,
             ModelId = model.Id,

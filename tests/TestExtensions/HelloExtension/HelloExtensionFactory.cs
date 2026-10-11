@@ -20,6 +20,14 @@ public sealed class HelloExtensionFactory : IExtensionFactory
     public IExtension Create(IExtensionContext context)
     {
         int instance = Interlocked.Increment(ref _created);
+        if (
+            context.Settings.TryGet("markerPath", out JsonElement marker)
+            && marker.ValueKind == JsonValueKind.String
+        )
+        {
+            File.WriteAllText(marker.GetString()!, $"{context.Id} factory ran");
+        }
+
         bool secretPresent = context.Secrets.TryGet("token", out _);
         string shared = $"{JsonSerializer.Serialize(context.Id)}/{typeof(ChatMessage).Name}";
         context.Log.Info(
@@ -27,6 +35,7 @@ public sealed class HelloExtensionFactory : IExtensionFactory
         );
         context.Register(new HelloSessionStartedHandler(context.Log));
         context.Register(new HelloSessionEndingHandler(context.Log));
+        context.Register(new HelloToolCallingHandler(context.Log));
         context.RegisterToolResultRenderer(new HelloToolResultRenderer(context.Log));
         context.RegisterStatusWidget(new HelloStatusWidget(context.Log));
         context.RegisterService(

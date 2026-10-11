@@ -17,6 +17,7 @@ internal static class PrintModeTestSupport
             SessionDirectory = temp.File("sessions"),
             WorkingDirectory = temp.Root,
             Environment = Environment(),
+            Extensions = TestExtensionSeams.Empty(temp),
         };
 
     internal static Func<string, string?> Environment(

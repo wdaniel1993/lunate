@@ -47,6 +47,7 @@ public sealed class CliTests
             Console = console,
             Scheduler = new ManualScheduler(),
             Scrollback = new TestConsole(),
+            Extensions = TestExtensionSeams.Empty(temp),
         };
         using var output = new StringWriter();
         using var error = new StringWriter();
