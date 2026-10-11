@@ -33,11 +33,18 @@ public sealed class AcpInteractionTests
     [Fact]
     public void An_empty_acp_run_writes_nothing_to_stdout()
     {
+        using var temp = new TempDirectory();
         using var input = new MemoryStream();
         using var output = new MemoryStream();
         using var errors = new StringWriter();
 
-        int exitCode = AcpMode.Run(errors, input, output, TestContext.Current.CancellationToken);
+        int exitCode = AcpMode.Run(
+            errors,
+            input,
+            output,
+            TestContext.Current.CancellationToken,
+            TestExtensionSeams.Empty(temp)
+        );
 
         Assert.Equal(0, exitCode);
         Assert.Empty(output.ToArray());

@@ -13,7 +13,8 @@ internal static class Cli
         TextWriter errors,
         CancellationToken ct = default,
         PrintModeOptions? printOptions = null,
-        InteractiveSessionOptions? interactiveOptions = null
+        InteractiveSessionOptions? interactiveOptions = null,
+        ExtensionSeams? extensions = null
     )
     {
         if (args is ["--version"])
@@ -30,7 +31,7 @@ internal static class Cli
 
         if (args.Length == 0)
         {
-            return RunInteractive(errors, ct, interactiveOptions);
+            return RunInteractive(errors, ct, interactiveOptions, extensions);
         }
 
         if (args.Length > 0 && args[0] == "--discover")
@@ -56,7 +57,8 @@ internal static class Cli
                 errors,
                 Console.OpenStandardInput(),
                 Console.OpenStandardOutput(),
-                ct
+                ct,
+                extensions
             );
         }
 
@@ -75,6 +77,7 @@ internal static class Cli
             Prompt = parsed.Prompt,
             Json = parsed.Json,
             Yolo = parsed.Yolo,
+            Extensions = extensions ?? printOptions?.Extensions,
         };
         return PrintMode.RunAsync(options, output, errors, ct).GetAwaiter().GetResult();
     }
@@ -158,7 +161,8 @@ internal static class Cli
     private static int RunInteractive(
         TextWriter errors,
         CancellationToken ct,
-        InteractiveSessionOptions? options
+        InteractiveSessionOptions? options,
+        ExtensionSeams? extensions
     )
     {
         IConsoleIO console;
@@ -177,6 +181,8 @@ internal static class Cli
             console = options.Console;
             resolved = options;
         }
+
+        resolved = resolved with { Extensions = extensions ?? options?.Extensions };
 
         if (ConsoleSupport.Check(console) is not null)
         {

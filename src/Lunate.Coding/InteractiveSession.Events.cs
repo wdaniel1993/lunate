@@ -153,7 +153,7 @@ internal sealed partial class InteractiveSession
     /// styled block above the live area; unmatched or failing renderers render nothing extra.</summary>
     private void RenderExtensionBlock(string toolName, ToolCallResult result)
     {
-        if (_options.ToolResultRenderers is not { } renderers)
+        if (_toolResultRenderers is not { } renderers)
         {
             return;
         }

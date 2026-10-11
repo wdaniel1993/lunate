@@ -62,6 +62,9 @@ internal sealed record InteractiveSessionOptions
     /// <summary>The status widgets the extension host registered; null contributes no widget segments.</summary>
     public StatusWidgetRegistry? StatusWidgets { get; init; }
 
+    /// <summary>The extension host seams; null takes the store, prompt and log defaults.</summary>
+    public ExtensionSeams? Extensions { get; init; }
+
     /// <summary>Where composition errors are reported; null uses stderr.</summary>
     public TextWriter? Diagnostics { get; init; }
 
@@ -82,7 +85,7 @@ internal sealed partial class InteractiveSession : IDisposable
     private readonly IConsoleIO _console;
     private readonly TerminalCapabilities _capabilities;
     private readonly LiveArea _live;
-    private readonly InputPipeline _pipeline;
+    private InputPipeline _pipeline;
     private readonly InputHistory _history;
     private readonly CtrlCQuitWindow _quitWindow;
     private readonly IUserInteraction _interaction;
@@ -125,6 +128,9 @@ internal sealed partial class InteractiveSession : IDisposable
     private long _contextWindow;
     private string _workingDirectory = string.Empty;
     private string? _branch;
+    private ExtensionSession? _extensions;
+    private ToolResultRendererRegistry? _toolResultRenderers;
+    private StatusWidgetRegistry? _statusWidgets;
     private bool _disposed;
 
     public InteractiveSession(InteractiveSessionOptions options)
@@ -156,11 +162,17 @@ internal sealed partial class InteractiveSession : IDisposable
     {
         try
         {
-            Compose();
+            await ComposeAsync(ct);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            await DisposeExtensionsAsync();
+            return;
         }
         catch (Exception exception)
         {
             (_options.Diagnostics ?? Console.Error).WriteLine($"lunate: {exception.Message}");
+            await DisposeExtensionsAsync();
             return;
         }
 
@@ -184,6 +196,7 @@ internal sealed partial class InteractiveSession : IDisposable
                 catch (OperationCanceledException) { }
             }
 
+            await DisposeExtensionsAsync();
             _live.Dispose();
         }
     }
@@ -200,7 +213,7 @@ internal sealed partial class InteractiveSession : IDisposable
         _lifetime.Dispose();
     }
 
-    private void Compose()
+    private async Task ComposeAsync(CancellationToken ct)
     {
         _settings = SettingsStore.Resolve(_options.SettingsPath, _options.Environment);
         _catalog = ModelCatalog.Load(_options.ModelsPath);
@@ -218,7 +231,77 @@ internal sealed partial class InteractiveSession : IDisposable
         _workingDirectory = DisplayDirectory(_workspace.WorktreeRoot);
         _branch = GitBranchReader.Read(_workspace.WorktreeRoot);
         _approver = new SessionApprover(this, _settings.Approval);
+        await ComposeExtensionsAsync(ct);
         _harness = BuildHarness(_model);
+        _pipeline = new InputPipeline(_options.Hooks ?? _extensions?.HookRunner);
+    }
+
+    /// <summary>
+    /// Composes the session's extension host as the session starts: the workspace is resolved, so
+    /// trust keys on the worktree root (or the git common dir inside a repository). A composition
+    /// failure is reported and the session runs without extensions; a per-extension failure is
+    /// already isolated by the host. The host's MCP tools are listed once, here.
+    /// </summary>
+    private async Task ComposeExtensionsAsync(CancellationToken ct)
+    {
+        TextWriter diagnostics = _options.Diagnostics ?? Console.Error;
+        try
+        {
+            ExtensionSeams seams = (_options.Extensions ?? new ExtensionSeams()) with
+            {
+                Log = _options.Extensions?.Log ?? new StderrExtensionLog(diagnostics),
+                Prompt =
+                    _options.Extensions?.Prompt ?? new ConsoleTrustPrompt(diagnostics, Console.In),
+            };
+            _extensions = await ExtensionSession
+                .StartAsync(
+                    _workspace.WorktreeRoot,
+                    _workspace.GitCommonDir ?? _workspace.WorktreeRoot,
+                    seams,
+                    ct
+                )
+                .ConfigureAwait(false);
+            foreach (
+                ITool tool in await _extensions.McpServers.ListToolsAsync(ct).ConfigureAwait(false)
+            )
+            {
+                _tools.Add(tool);
+            }
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            diagnostics.WriteLine(
+                $"lunate: the extension host was not composed: {exception.Message}"
+            );
+        }
+
+        _toolResultRenderers = _options.ToolResultRenderers ?? _extensions?.ToolResultRenderers;
+        _statusWidgets = _options.StatusWidgets ?? _extensions?.StatusWidgets;
+    }
+
+    /// <summary>The session end of the host lifecycle: session-ending hooks and MCP servers stop.</summary>
+    private async ValueTask DisposeExtensionsAsync()
+    {
+        if (_extensions is not { } host)
+        {
+            return;
+        }
+
+        _extensions = null;
+        try
+        {
+            await host.DisposeAsync().ConfigureAwait(false);
+        }
+        catch (Exception exception)
+        {
+            (_options.Diagnostics ?? Console.Error).WriteLine(
+                $"lunate: the extension host failed to stop cleanly: {exception.Message}"
+            );
+        }
     }
 
     /// <summary>
@@ -237,6 +320,7 @@ internal sealed partial class InteractiveSession : IDisposable
             WorkingDirectory = _workspace.WorktreeRoot,
             ToolOutputLimit = _settings.ToolOutputLimit,
             Approver = _approver,
+            Hooks = _extensions?.Hooks,
             Session = _session,
             Steering = _steering,
             ModelCatalog = _catalog,
@@ -617,7 +701,7 @@ internal sealed partial class InteractiveSession : IDisposable
             _workingDirectory,
             _branch
         );
-        IReadOnlyList<TextSegment> widgets = _options.StatusWidgets?.Segments(view) ?? [];
+        IReadOnlyList<TextSegment> widgets = _statusWidgets?.Segments(view) ?? [];
         _interaction.UpdateStatus(
             new UserStatus(
                 view.Model,
