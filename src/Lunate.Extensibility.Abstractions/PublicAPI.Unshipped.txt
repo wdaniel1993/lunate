@@ -1,6 +1,6 @@
 #nullable enable
 Lunate.Extensibility.Abstractions.ExtensionApi
-const Lunate.Extensibility.Abstractions.ExtensionApi.Current = "1.3.0" -> string!
+const Lunate.Extensibility.Abstractions.ExtensionApi.Current = "1.4.0" -> string!
 Lunate.Extensibility.Abstractions.ExtensionManifest
 Lunate.Extensibility.Abstractions.ExtensionManifest.<Clone>$() -> Lunate.Extensibility.Abstractions.ExtensionManifest!
 Lunate.Extensibility.Abstractions.ExtensionManifest.ApiVersion.get -> string!
@@ -720,3 +720,68 @@ static Lunate.Extensibility.Abstractions.ModelProviderDescriptor.operator !=(Lun
 static Lunate.Extensibility.Abstractions.ModelProviderDescriptor.operator ==(Lunate.Extensibility.Abstractions.ModelProviderDescriptor? left, Lunate.Extensibility.Abstractions.ModelProviderDescriptor? right) -> bool
 static Lunate.Extensibility.Abstractions.WorkspaceInfo.operator !=(Lunate.Extensibility.Abstractions.WorkspaceInfo? left, Lunate.Extensibility.Abstractions.WorkspaceInfo? right) -> bool
 static Lunate.Extensibility.Abstractions.WorkspaceInfo.operator ==(Lunate.Extensibility.Abstractions.WorkspaceInfo? left, Lunate.Extensibility.Abstractions.WorkspaceInfo? right) -> bool
+Lunate.Extensibility.Abstractions.IExtensionContext.RegisterStatusWidget(Lunate.Extensibility.Abstractions.IStatusWidget! widget) -> void
+Lunate.Extensibility.Abstractions.IExtensionContext.RegisterToolResultRenderer(Lunate.Extensibility.Abstractions.IToolResultRenderer! renderer) -> void
+Lunate.Extensibility.Abstractions.IStatusWidget
+Lunate.Extensibility.Abstractions.IStatusWidget.Segments(Lunate.Extensibility.Abstractions.StatusView! view) -> System.Collections.Generic.IReadOnlyList<Lunate.Extensibility.Abstractions.TextSegment!>!
+Lunate.Extensibility.Abstractions.IToolResultRenderer
+Lunate.Extensibility.Abstractions.IToolResultRenderer.Render(Lunate.Extensibility.Abstractions.ToolResultView! view) -> System.Collections.Generic.IReadOnlyList<Lunate.Extensibility.Abstractions.TextSegment!>!
+Lunate.Extensibility.Abstractions.IToolResultRenderer.ToolName.get -> string!
+Lunate.Extensibility.Abstractions.StatusView
+Lunate.Extensibility.Abstractions.StatusView.<Clone>$() -> Lunate.Extensibility.Abstractions.StatusView!
+Lunate.Extensibility.Abstractions.StatusView.ContextWindow.get -> long
+Lunate.Extensibility.Abstractions.StatusView.ContextWindow.init -> void
+Lunate.Extensibility.Abstractions.StatusView.Deconstruct(out string! Model, out long TokensUsed, out long ContextWindow, out string! WorkingDirectory, out string? GitBranch) -> void
+Lunate.Extensibility.Abstractions.StatusView.Equals(Lunate.Extensibility.Abstractions.StatusView? other) -> bool
+Lunate.Extensibility.Abstractions.StatusView.GitBranch.get -> string?
+Lunate.Extensibility.Abstractions.StatusView.GitBranch.init -> void
+Lunate.Extensibility.Abstractions.StatusView.Model.get -> string!
+Lunate.Extensibility.Abstractions.StatusView.Model.init -> void
+Lunate.Extensibility.Abstractions.StatusView.StatusView(string! Model, long TokensUsed, long ContextWindow, string! WorkingDirectory, string? GitBranch) -> void
+Lunate.Extensibility.Abstractions.StatusView.TokensUsed.get -> long
+Lunate.Extensibility.Abstractions.StatusView.TokensUsed.init -> void
+Lunate.Extensibility.Abstractions.StatusView.WorkingDirectory.get -> string!
+Lunate.Extensibility.Abstractions.StatusView.WorkingDirectory.init -> void
+Lunate.Extensibility.Abstractions.TextSegment
+Lunate.Extensibility.Abstractions.TextSegment.<Clone>$() -> Lunate.Extensibility.Abstractions.TextSegment!
+Lunate.Extensibility.Abstractions.TextSegment.Deconstruct(out string! Text, out Lunate.Extensibility.Abstractions.TextStyle Style) -> void
+Lunate.Extensibility.Abstractions.TextSegment.Equals(Lunate.Extensibility.Abstractions.TextSegment? other) -> bool
+Lunate.Extensibility.Abstractions.TextSegment.Style.get -> Lunate.Extensibility.Abstractions.TextStyle
+Lunate.Extensibility.Abstractions.TextSegment.Style.init -> void
+Lunate.Extensibility.Abstractions.TextSegment.Text.get -> string!
+Lunate.Extensibility.Abstractions.TextSegment.Text.init -> void
+Lunate.Extensibility.Abstractions.TextSegment.TextSegment(string! Text, Lunate.Extensibility.Abstractions.TextStyle Style) -> void
+Lunate.Extensibility.Abstractions.TextStyle
+Lunate.Extensibility.Abstractions.TextStyle.Accent = 2 -> Lunate.Extensibility.Abstractions.TextStyle
+Lunate.Extensibility.Abstractions.TextStyle.Dim = 1 -> Lunate.Extensibility.Abstractions.TextStyle
+Lunate.Extensibility.Abstractions.TextStyle.Error = 4 -> Lunate.Extensibility.Abstractions.TextStyle
+Lunate.Extensibility.Abstractions.TextStyle.Plain = 0 -> Lunate.Extensibility.Abstractions.TextStyle
+Lunate.Extensibility.Abstractions.TextStyle.Warning = 3 -> Lunate.Extensibility.Abstractions.TextStyle
+Lunate.Extensibility.Abstractions.ToolResultView
+Lunate.Extensibility.Abstractions.ToolResultView.<Clone>$() -> Lunate.Extensibility.Abstractions.ToolResultView!
+Lunate.Extensibility.Abstractions.ToolResultView.CallId.get -> string!
+Lunate.Extensibility.Abstractions.ToolResultView.CallId.init -> void
+Lunate.Extensibility.Abstractions.ToolResultView.Deconstruct(out string! ToolName, out string! CallId, out string! ResultText, out bool IsError) -> void
+Lunate.Extensibility.Abstractions.ToolResultView.Equals(Lunate.Extensibility.Abstractions.ToolResultView? other) -> bool
+Lunate.Extensibility.Abstractions.ToolResultView.IsError.get -> bool
+Lunate.Extensibility.Abstractions.ToolResultView.IsError.init -> void
+Lunate.Extensibility.Abstractions.ToolResultView.ResultText.get -> string!
+Lunate.Extensibility.Abstractions.ToolResultView.ResultText.init -> void
+Lunate.Extensibility.Abstractions.ToolResultView.ToolName.get -> string!
+Lunate.Extensibility.Abstractions.ToolResultView.ToolName.init -> void
+Lunate.Extensibility.Abstractions.ToolResultView.ToolResultView(string! ToolName, string! CallId, string! ResultText, bool IsError) -> void
+override Lunate.Extensibility.Abstractions.StatusView.Equals(object? obj) -> bool
+override Lunate.Extensibility.Abstractions.StatusView.GetHashCode() -> int
+override Lunate.Extensibility.Abstractions.StatusView.ToString() -> string!
+override Lunate.Extensibility.Abstractions.TextSegment.Equals(object? obj) -> bool
+override Lunate.Extensibility.Abstractions.TextSegment.GetHashCode() -> int
+override Lunate.Extensibility.Abstractions.TextSegment.ToString() -> string!
+override Lunate.Extensibility.Abstractions.ToolResultView.Equals(object? obj) -> bool
+override Lunate.Extensibility.Abstractions.ToolResultView.GetHashCode() -> int
+override Lunate.Extensibility.Abstractions.ToolResultView.ToString() -> string!
+static Lunate.Extensibility.Abstractions.StatusView.operator !=(Lunate.Extensibility.Abstractions.StatusView? left, Lunate.Extensibility.Abstractions.StatusView? right) -> bool
+static Lunate.Extensibility.Abstractions.StatusView.operator ==(Lunate.Extensibility.Abstractions.StatusView? left, Lunate.Extensibility.Abstractions.StatusView? right) -> bool
+static Lunate.Extensibility.Abstractions.TextSegment.operator !=(Lunate.Extensibility.Abstractions.TextSegment? left, Lunate.Extensibility.Abstractions.TextSegment? right) -> bool
+static Lunate.Extensibility.Abstractions.TextSegment.operator ==(Lunate.Extensibility.Abstractions.TextSegment? left, Lunate.Extensibility.Abstractions.TextSegment? right) -> bool
+static Lunate.Extensibility.Abstractions.ToolResultView.operator !=(Lunate.Extensibility.Abstractions.ToolResultView? left, Lunate.Extensibility.Abstractions.ToolResultView? right) -> bool
+static Lunate.Extensibility.Abstractions.ToolResultView.operator ==(Lunate.Extensibility.Abstractions.ToolResultView? left, Lunate.Extensibility.Abstractions.ToolResultView? right) -> bool

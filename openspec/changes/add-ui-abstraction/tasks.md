@@ -2,8 +2,8 @@
 
 ## 1. Contract (Extensibility.Abstractions)
 
-- [ ] 1.1 `TextSegment` + `TextStyle`, `ToolResultView`, `StatusView` (STJ round-trip tests)
-- [ ] 1.2 `IToolResultRenderer`, `IStatusWidget`; `IExtensionContext.RegisterToolResultRenderer`/`RegisterStatusWidget`; API 1.4.0
+- [x] 1.1 `TextSegment` + `TextStyle`, `ToolResultView`, `StatusView` (STJ round-trip tests)
+- [x] 1.2 `IToolResultRenderer`, `IStatusWidget`; `IExtensionContext.RegisterToolResultRenderer`/`RegisterStatusWidget`; API 1.4.0
 
 ## 2. Registries + host plumbing (Extensibility)
 

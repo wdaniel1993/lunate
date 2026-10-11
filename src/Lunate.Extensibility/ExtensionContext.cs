@@ -7,6 +7,8 @@ internal sealed class ExtensionContext : IExtensionContext
     private readonly Action<string, IHookHandler>? _register;
     private readonly Action<string, string, IBackgroundService>? _registerService;
     private readonly Action<string, IFileChangedHandler, string?>? _subscribeFileChanged;
+    private readonly Action<string, IToolResultRenderer>? _registerToolResultRenderer;
+    private readonly Action<string, IStatusWidget>? _registerStatusWidget;
     private readonly Func<string, IBackgroundService?>? _findService;
     private readonly Func<string, object?>? _findCoreService;
 
@@ -19,7 +21,9 @@ internal sealed class ExtensionContext : IExtensionContext
         Action<string, string, IBackgroundService>? registerService = null,
         Action<string, IFileChangedHandler, string?>? subscribeFileChanged = null,
         Func<string, IBackgroundService?>? findService = null,
-        Func<string, object?>? findCoreService = null
+        Func<string, object?>? findCoreService = null,
+        Action<string, IToolResultRenderer>? registerToolResultRenderer = null,
+        Action<string, IStatusWidget>? registerStatusWidget = null
     )
     {
         Id = id;
@@ -29,6 +33,8 @@ internal sealed class ExtensionContext : IExtensionContext
         _register = register;
         _registerService = registerService;
         _subscribeFileChanged = subscribeFileChanged;
+        _registerToolResultRenderer = registerToolResultRenderer;
+        _registerStatusWidget = registerStatusWidget;
         _findService = findService;
         _findCoreService = findCoreService;
     }
@@ -58,6 +64,18 @@ internal sealed class ExtensionContext : IExtensionContext
     {
         ArgumentNullException.ThrowIfNull(handler);
         _subscribeFileChanged?.Invoke(Id, handler, pathPattern);
+    }
+
+    public void RegisterToolResultRenderer(IToolResultRenderer renderer)
+    {
+        ArgumentNullException.ThrowIfNull(renderer);
+        _registerToolResultRenderer?.Invoke(Id, renderer);
+    }
+
+    public void RegisterStatusWidget(IStatusWidget widget)
+    {
+        ArgumentNullException.ThrowIfNull(widget);
+        _registerStatusWidget?.Invoke(Id, widget);
     }
 
     public bool TryGetService(string name, out IBackgroundService? service)
