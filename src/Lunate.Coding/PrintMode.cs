@@ -1,5 +1,6 @@
 using Lunate.Agent;
 using Lunate.Ai;
+using Lunate.Extensibility.Abstractions;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Lunate.Coding;
@@ -43,6 +44,9 @@ internal sealed record PrintModeOptions
 
     /// <summary>The extension host seams; null takes the store, prompt and log defaults.</summary>
     public ExtensionSeams? Extensions { get; init; }
+
+    /// <summary>The global mcp.json path; null uses <c>~/.lunate/mcp.json</c>.</summary>
+    public string? McpConfigPath { get; init; }
 }
 
 /// <summary>
@@ -89,6 +93,7 @@ internal static class PrintMode
         }
 
         ExtensionSession? extensions = null;
+        McpToolSet? mcp = null;
         try
         {
             IReadOnlyList<ITool> mcpTools = [];
@@ -96,9 +101,44 @@ internal static class PrintMode
             try
             {
                 workspace = new Workspace(options.WorkingDirectory ?? Environment.CurrentDirectory);
-                extensions = await ComposeExtensionsAsync(options.Extensions, workspace, errors, ct)
+                IExtensionLog log = options.Extensions?.Log ?? new StderrExtensionLog(errors);
+                if (options.Extensions?.NoExtensions is not true)
+                {
+                    extensions = await ComposeExtensionsAsync(
+                            options.Extensions,
+                            workspace,
+                            errors,
+                            ct
+                        )
+                        .ConfigureAwait(false);
+                }
+
+                List<ITool> tools = [];
+                if (extensions is not null)
+                {
+                    tools.AddRange(
+                        await extensions.McpServers.ListToolsAsync(ct).ConfigureAwait(false)
+                    );
+                }
+
+                mcp = await McpComposition
+                    .ComposeAsync(
+                        workspace,
+                        options.McpConfigPath,
+                        options.Extensions,
+                        new NonInteractiveMcpConfigTrustPrompt(),
+                        log,
+                        notice => interaction.Notify(notice),
+                        ct
+                    )
                     .ConfigureAwait(false);
-                mcpTools = await extensions.McpServers.ListToolsAsync(ct).ConfigureAwait(false);
+                if (mcp is not null)
+                {
+                    tools.AddRange(await mcp.ListToolsAsync(ct).ConfigureAwait(false));
+                    McpComposition.NotifyFailures(mcp, notice => interaction.Notify(notice));
+                }
+
+                mcpTools = tools;
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
@@ -173,6 +213,23 @@ internal static class PrintMode
         }
         finally
         {
+            if (mcp is not null)
+            {
+                try
+                {
+                    await mcp.DisposeAsync().ConfigureAwait(false);
+                }
+                catch (Exception exception)
+                {
+                    interaction.Notify(
+                        new UserNotice(
+                            NoticeLevel.Error,
+                            "the MCP servers failed to stop cleanly: " + exception.Message
+                        )
+                    );
+                }
+            }
+
             if (extensions is not null)
             {
                 try

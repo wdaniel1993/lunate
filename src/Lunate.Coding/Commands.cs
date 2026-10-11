@@ -11,6 +11,7 @@ internal static class Commands
     public static readonly IReadOnlyList<string> BuiltIn =
     [
         "/compact",
+        "/mcp",
         "/model",
         "/new",
         "/quit",

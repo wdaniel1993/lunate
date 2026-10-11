@@ -34,6 +34,9 @@ internal sealed partial class InteractiveSession
                 bool compacted = await _harness!.CompactNowAsync(ct);
                 Notify(compacted ? "context compacted" : "nothing to compact");
                 return;
+            case "/mcp":
+                Notify(McpStatusText());
+                return;
             case "/model":
                 if (RefusedWhileBusy())
                 {
@@ -81,6 +84,33 @@ internal sealed partial class InteractiveSession
 
         Notify("a turn is running — Esc to cancel first", NoticeLevel.Warning);
         return true;
+    }
+
+    /// <summary>
+    /// The <c>/mcp</c> notice: one segment per configured server from the live status
+    /// (<c>name — started, N tools</c> / <c>not started</c> / <c>failed: reason</c>); no servers at
+    /// all reads as such. A live-area notice is a single line, so the segments join with semicolons.
+    /// </summary>
+    private string McpStatusText()
+    {
+        if (_mcp is null)
+        {
+            return "mcp: no servers configured";
+        }
+
+        return string.Join(
+            "; ",
+            _mcp.Statuses.Select(status =>
+                status.State switch
+                {
+                    McpServerState.Started => FormattableString.Invariant(
+                        $"{status.Name} — started, {status.ToolCount} tools"
+                    ),
+                    McpServerState.Failed => $"{status.Name} — failed: {status.Reason}",
+                    _ => status.Name + " — not started",
+                }
+            )
+        );
     }
 
     /// <summary>Switches to a catalog model by id; an unknown id produces a notice.</summary>

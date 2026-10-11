@@ -1,5 +1,6 @@
 using Lunate.Agent;
 using Lunate.Ai;
+using Lunate.Extensibility.Abstractions;
 using Lunate.Protocols.Acp;
 
 namespace Lunate.Coding;
@@ -18,7 +19,8 @@ internal static class AcpMode
         Stream input,
         Stream output,
         CancellationToken ct,
-        ExtensionSeams? extensions = null
+        ExtensionSeams? extensions = null,
+        string? mcpConfigPath = null
     )
     {
         var interaction = new AcpUserInteraction(line => errors.WriteLine($"lunate: {line}"));
@@ -29,20 +31,48 @@ internal static class AcpMode
         // The host composes once at serve start (the session's first use) and every session/new
         // reuses the same hook seam and the MCP tools listed once here.
         ExtensionSession? host = null;
-        IReadOnlyList<ITool> mcpTools = [];
+        McpToolSet? mcp = null;
+        List<ITool> mcpTools = [];
         try
         {
-            host = ComposeExtensions(errors, extensions, ct);
-            mcpTools = host.McpServers.ListToolsAsync(ct).GetAwaiter().GetResult();
+            var workspace = new Workspace(Environment.CurrentDirectory);
+            IExtensionLog log = extensions?.Log ?? new StderrExtensionLog(errors);
+            if (extensions?.NoExtensions is not true)
+            {
+                host = ComposeExtensions(extensions, workspace, errors, ct);
+            }
+
+            if (host is not null)
+            {
+                mcpTools.AddRange(host.McpServers.ListToolsAsync(ct).GetAwaiter().GetResult());
+            }
+
+            mcp = McpComposition
+                .ComposeAsync(
+                    workspace,
+                    mcpConfigPath,
+                    extensions,
+                    new NonInteractiveMcpConfigTrustPrompt(),
+                    log,
+                    notice => interaction.Notify(notice),
+                    ct
+                )
+                .GetAwaiter()
+                .GetResult();
+            if (mcp is not null)
+            {
+                mcpTools.AddRange(mcp.ListToolsAsync(ct).GetAwaiter().GetResult());
+                McpComposition.NotifyFailures(mcp, notice => interaction.Notify(notice));
+            }
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
-            DisposeHost(host, errors);
+            DisposeComposition(host, mcp, errors);
             return 130;
         }
         catch (Exception exception)
         {
-            errors.WriteLine($"lunate: the extension host was not composed: {exception.Message}");
+            errors.WriteLine($"lunate: the session composition failed: {exception.Message}");
         }
 
         try
@@ -64,7 +94,7 @@ internal static class AcpMode
         }
         finally
         {
-            DisposeHost(host, errors);
+            DisposeComposition(host, mcp, errors);
         }
     }
 
@@ -74,12 +104,12 @@ internal static class AcpMode
     /// defaults to the non-interactive refusal.
     /// </summary>
     private static ExtensionSession ComposeExtensions(
-        TextWriter errors,
         ExtensionSeams? extensions,
+        Workspace workspace,
+        TextWriter errors,
         CancellationToken ct
     )
     {
-        var workspace = new Workspace(Environment.CurrentDirectory);
         ExtensionSeams resolved = (extensions ?? new ExtensionSeams()) with
         {
             Log = extensions?.Log ?? new StderrExtensionLog(errors),
@@ -95,8 +125,26 @@ internal static class AcpMode
             .GetResult();
     }
 
-    private static void DisposeHost(ExtensionSession? host, TextWriter errors)
+    private static void DisposeComposition(
+        ExtensionSession? host,
+        McpToolSet? mcp,
+        TextWriter errors
+    )
     {
+        if (mcp is not null)
+        {
+            try
+            {
+                mcp.DisposeAsync().AsTask().GetAwaiter().GetResult();
+            }
+            catch (Exception exception)
+            {
+                errors.WriteLine(
+                    $"lunate: the MCP servers failed to stop cleanly: {exception.Message}"
+                );
+            }
+        }
+
         if (host is null)
         {
             return;
