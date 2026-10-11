@@ -24,6 +24,7 @@ internal static class LayeringChecker
             ("Lunate.Ai.Tests", "Lunate.Ai"),
             ("Lunate.Coding.Tests", "Lunate.Coding"),
             ("Lunate.Coding.Tests", "HelloExtension"),
+            ("Lunate.Coding.Tests", "TestMcpServer"),
             ("Lunate.Protocols.Tests", "Lunate.Protocols"),
             ("Lunate.Protocols.Tests", "Lunate.Coding"),
             ("Lunate.Protocols.Tests", "TestMcpServer"),
