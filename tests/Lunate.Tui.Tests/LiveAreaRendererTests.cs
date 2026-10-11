@@ -87,6 +87,50 @@ public sealed class LiveAreaRendererTests
     }
 
     [Fact]
+    public void Trust_lines_render_above_the_footer()
+    {
+        var state = new LiveAreaState
+        {
+            Trust = new TrustPromptModel(
+                "Load project extension 'hello' 0.1.0 from /w",
+                ["test — dotnet exec x.dll"],
+                1,
+                2
+            ),
+            Footer = new StatusFooterModel("m", 10, 0, "/w", null),
+            Size = new ConsoleSize(120, 12),
+        };
+
+        var frame = LiveAreaRenderer.Render(state);
+
+        Assert.Equal(
+            [
+                "Load project extension 'hello' 0.1.0 from /w?  1 of 2  [y]es  [n]o",
+                "test — dotnet exec x.dll",
+                "m · 10/0 · /w",
+                "> ",
+            ],
+            frame.Lines
+        );
+        Assert.Equal(3, frame.CursorRow);
+    }
+
+    [Fact]
+    public void Loading_status_takes_the_footer_slot_until_cleared()
+    {
+        var state = new LiveAreaState
+        {
+            Loading = "loading project…",
+            Footer = new StatusFooterModel("m", 10, 0, "/w", null),
+            Size = new ConsoleSize(60, 8),
+        };
+
+        var frame = LiveAreaRenderer.Render(state);
+
+        Assert.Equal(["loading project…", "> "], frame.Lines);
+    }
+
+    [Fact]
     public void Picker_lines_render_above_the_footer()
     {
         var state = new LiveAreaState

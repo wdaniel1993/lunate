@@ -172,8 +172,14 @@ public sealed partial class ExtensionLoader
                     return;
                 }
 
+                bool filesChanged = store
+                    .Records(repositoryIdentity)
+                    .Any(record => record.Section is TrustSection.Extensions);
                 bool approved = await prompt
-                    .ApproveAsync(descriptor, cancellationToken)
+                    .ApproveAsync(
+                        new ExtensionTrustRequest(descriptor, filesChanged),
+                        cancellationToken
+                    )
                     .ConfigureAwait(false);
                 if (!approved)
                 {

@@ -1,4 +1,4 @@
-using Lunate.Extensibility.Abstractions;
+using Lunate.Extensibility;
 
 namespace Lunate.Extensibility.Tests;
 
@@ -6,12 +6,15 @@ internal sealed class FakeExtensionTrustPrompt(bool approve) : IExtensionTrustPr
 {
     public int Calls { get; private set; }
 
+    public bool? LastFilesChanged { get; private set; }
+
     public ValueTask<bool> ApproveAsync(
-        ExtensionDescriptor descriptor,
+        ExtensionTrustRequest request,
         CancellationToken cancellationToken
     )
     {
         Calls++;
+        LastFilesChanged = request.FilesChanged;
         return ValueTask.FromResult(approve);
     }
 }

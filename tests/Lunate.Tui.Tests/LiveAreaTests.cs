@@ -201,6 +201,34 @@ public sealed class LiveAreaTests
     }
 
     [Fact]
+    public void A_trust_prompt_and_loading_status_reach_the_frame_until_cleared()
+    {
+        var scheduler = new TestScheduler();
+        using var console = new FakeConsoleIO(scheduler, new ConsoleSize(60, 10));
+        using var area = new LiveArea(console, scheduler);
+        area.Start();
+
+        area.SetTrustPrompt(new TrustPromptModel("Load extension", [], 0, 0));
+        area.SetLoading("loading project…");
+        Advance(scheduler, 33);
+
+        Assert.Contains(
+            "Load extension?  [y]es  [n]o",
+            console.Writes[^1],
+            StringComparison.Ordinal
+        );
+        Assert.Contains("loading project…", console.Writes[^1], StringComparison.Ordinal);
+
+        area.SetTrustPrompt(null);
+        area.SetLoading(null);
+        area.SetFooter(new StatusFooterModel("m", 0, 0, "/w", null));
+        Advance(scheduler, 33);
+
+        Assert.DoesNotContain("Load extension", console.Writes[^1], StringComparison.Ordinal);
+        Assert.DoesNotContain("loading project…", console.Writes[^1], StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void A_picker_renders_in_the_live_area_until_dismissed()
     {
         var scheduler = new TestScheduler();

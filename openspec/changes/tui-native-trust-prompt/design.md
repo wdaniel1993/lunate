@@ -55,4 +55,11 @@ Type-ahead guard: the pump stamps every key with a read-time sequence number; a 
 
 ## Deviations
 
-*(the apply records deviations here)*
+- **Store API shape**: the "recorded-before query" landed as `ExtensionTrustStore.Records(repositoryIdentity)` returning `TrustRecord(Section, WorktreePath, ContentHash)` for both sections (the loader derives "recorded before" from the Extensions section; `/trust` lists all of them), plus `ClearRepository(repositoryIdentity)` clearing both sections. Same two APIs, richer query.
+- **Extension seam**: `IExtensionTrustPrompt.ApproveAsync` now takes `ExtensionTrustRequest(Descriptor, FilesChanged)` (a request record rather than an extra parameter); `IMcpConfigTrustPrompt.ApproveAsync` takes the parsed `IReadOnlyList<McpServerOptions>`, so `McpComposition` parses the project file before the trust gate (errors are still reported only when trusted). `ExtensionLoader` computes `FilesChanged` from `Records`.
+- **Denial notice**: nothing is recorded on a denial (the gate only records approvals), so the denial notice says "nothing was recorded, so the next load asks again" and points at `/trust`; only an approval states the decision is remembered. The spec's "after any answer … remembered" is read as the approval case.
+- **`n of m` label**: shown only when more than one question is pending (`m > 1`); a single question reads without a label.
+- **Loading status**: `LiveArea.SetLoading(text)` renders a dedicated line in the footer slot (the status model has no free-text field); `RunAsync` clears it and posts the real footer when composition completes.
+- **mcp.json question**: "server"/"servers" is pluralized by count; detail commands are truncated at 60 characters with `…`.
+- **Existing e2e tests**: the interactive tests that type ordinary input immediately after `RunAsync` now wait for `Session.IsComposed` (inert type-ahead is the specified behavior; only `McpInteractiveEndToEndTests` needed the wait).
+- **PublicAPI**: `Lunate.Extensibility` has no PublicApiAnalyzers/`PublicAPI.*` files (only the contract assembly tracks its surface), so no Extensibility entries were added; the new Tui surface is in `PublicAPI.Unshipped.txt` and `PublicApiTests.DocumentedSurface`.

@@ -288,7 +288,8 @@ internal sealed class InteractiveSessionHost : IDisposable
         ToolResultRendererRegistry? toolResultRenderers = null,
         StatusWidgetRegistry? statusWidgets = null,
         ExtensionSeams? extensions = null,
-        string? mcpConfigPath = null
+        string? mcpConfigPath = null,
+        string? workingDirectory = null
     )
     {
         Scrollback = new TestConsole();
@@ -302,7 +303,7 @@ internal sealed class InteractiveSessionHost : IDisposable
                 ModelsPath = Temp.File("models.json"),
                 AuthPath = Temp.File("auth.json"),
                 SessionDirectory = Temp.File("sessions"),
-                WorkingDirectory = Temp.Root,
+                WorkingDirectory = workingDirectory ?? Temp.Root,
                 HistoryPath = Temp.File("history"),
                 Environment = environment ?? PrintModeTestSupport.Environment(),
                 Console = Console,

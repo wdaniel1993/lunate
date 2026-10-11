@@ -16,6 +16,7 @@ internal static class Commands
         "/new",
         "/quit",
         "/resume",
+        "/trust",
     ];
 
     /// <summary>Whether the first non-space character of the submitted line is <c>/</c>.</summary>

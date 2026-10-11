@@ -14,7 +14,11 @@ internal sealed record LiveAreaState
 
     public ApprovalPromptModel? Approval { get; init; }
 
+    public TrustPromptModel? Trust { get; init; }
+
     public SelectListModel? Picker { get; init; }
+
+    public string? Loading { get; init; }
 
     public StatusFooterModel? Footer { get; init; }
 

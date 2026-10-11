@@ -1,53 +1,60 @@
 using Lunate.Extensibility;
 using Lunate.Extensibility.Abstractions;
+using Lunate.Protocols;
 
 namespace Lunate.Coding;
 
 /// <summary>
 /// The project <c>mcp.json</c> trust prompt: the sibling of <see cref="IExtensionTrustPrompt"/> for
-/// repository-provided server configs. The question text names the config file.
+/// repository-provided server configs. The question names the config file and its servers.
 /// </summary>
 internal interface IMcpConfigTrustPrompt
 {
-    ValueTask<bool> ApproveAsync(string configPath, CancellationToken cancellationToken);
+    ValueTask<bool> ApproveAsync(
+        string configPath,
+        IReadOnlyList<McpServerOptions> servers,
+        CancellationToken cancellationToken
+    );
 }
 
 /// <summary>
-/// The interactive trust prompt (line-based, mirroring the extension prompt): it asks on the mode's
-/// diagnostics writer and only <c>y</c> or <c>yes</c> (case-insensitive) approves. The trust store
-/// records an approval once per repository and content hash, so this is only reached when nothing
-/// has approved the file.
+/// The interactive mcp.json trust prompt: it builds the question (the path, one detail line per
+/// server with its truncated command, and the count) and hands it to the session's live-area
+/// question path. The trust store records an approval once per repository and file hash, so this is
+/// only reached when nothing has approved the file.
 /// </summary>
-internal sealed class ConsoleMcpConfigTrustPrompt : IMcpConfigTrustPrompt
+internal sealed class TuiMcpConfigTrustPrompt(TrustQuestion ask) : IMcpConfigTrustPrompt
 {
-    private readonly TextWriter _errors;
-    private readonly TextReader _input;
+    private const int MaxCommandLength = 60;
 
-    internal ConsoleMcpConfigTrustPrompt(TextWriter errors, TextReader input)
-    {
-        ArgumentNullException.ThrowIfNull(errors);
-        ArgumentNullException.ThrowIfNull(input);
-        _errors = errors;
-        _input = input;
-    }
-
-    public ValueTask<bool> ApproveAsync(string configPath, CancellationToken cancellationToken)
+    public ValueTask<bool> ApproveAsync(
+        string configPath,
+        IReadOnlyList<McpServerOptions> servers,
+        CancellationToken cancellationToken
+    )
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(configPath);
+        ArgumentNullException.ThrowIfNull(servers);
         cancellationToken.ThrowIfCancellationRequested();
-        _errors.WriteLine(
-            $"lunate: project MCP config '{configPath}' runs commands from this repository. Start its servers? [y/N]"
+
+        string noun = servers.Count == 1 ? "server" : "servers";
+        string title = FormattableString.Invariant(
+            $"Start {servers.Count} {noun} from project mcp.json '{configPath}'"
         );
-        string? answer = _input.ReadLine();
-        return ValueTask.FromResult(Approves(answer));
+        List<string> details =
+        [
+            .. servers.Select(server => $"{server.Name} — {Truncate(Command(server))}"),
+        ];
+        return ask(title, details, cancellationToken);
     }
 
-    private static bool Approves(string? answer)
-    {
-        string trimmed = answer?.Trim() ?? string.Empty;
-        return trimmed.Equals("y", StringComparison.OrdinalIgnoreCase)
-            || trimmed.Equals("yes", StringComparison.OrdinalIgnoreCase);
-    }
+    private static string Command(McpServerOptions server) =>
+        server.Arguments.Count == 0
+            ? server.Command
+            : server.Command + " " + string.Join(' ', server.Arguments);
+
+    private static string Truncate(string text) =>
+        text.Length <= MaxCommandLength ? text : text[..MaxCommandLength] + "…";
 }
 
 /// <summary>
@@ -56,9 +63,14 @@ internal sealed class ConsoleMcpConfigTrustPrompt : IMcpConfigTrustPrompt
 /// </summary>
 internal sealed class NonInteractiveMcpConfigTrustPrompt : IMcpConfigTrustPrompt
 {
-    public ValueTask<bool> ApproveAsync(string configPath, CancellationToken cancellationToken)
+    public ValueTask<bool> ApproveAsync(
+        string configPath,
+        IReadOnlyList<McpServerOptions> servers,
+        CancellationToken cancellationToken
+    )
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(configPath);
+        ArgumentNullException.ThrowIfNull(servers);
         cancellationToken.ThrowIfCancellationRequested();
         return ValueTask.FromResult(false);
     }
@@ -75,11 +87,13 @@ internal sealed class McpConfigTrust(ExtensionTrustStore store)
         string repositoryIdentity,
         string worktreePath,
         string configPath,
+        IReadOnlyList<McpServerOptions> servers,
         IMcpConfigTrustPrompt prompt,
         IExtensionLog log,
         CancellationToken ct
     )
     {
+        ArgumentNullException.ThrowIfNull(servers);
         ArgumentNullException.ThrowIfNull(prompt);
         ArgumentNullException.ThrowIfNull(log);
 
@@ -97,7 +111,7 @@ internal sealed class McpConfigTrust(ExtensionTrustStore store)
                 );
                 return true;
             default:
-                if (await prompt.ApproveAsync(configPath, ct).ConfigureAwait(false))
+                if (await prompt.ApproveAsync(configPath, servers, ct).ConfigureAwait(false))
                 {
                     store.RecordMcpConfigTrusted(
                         repositoryIdentity,

@@ -22,16 +22,21 @@ internal static class LiveAreaRenderer
         var approvalLine = state.Approval is null
             ? null
             : ApprovalPromptRenderer.PlainText(state.Approval);
+        IReadOnlyList<string> trustLines = state.Trust is null
+            ? []
+            : TrustPromptRenderer.PlainLines(state.Trust);
         IReadOnlyList<string> pickerLines = state.Picker is null
             ? []
             : SelectListRenderer.PlainLines(state.Picker);
-        var footerLine = state.Footer is null
-            ? null
+        var footerLine =
+            state.Loading is { Length: > 0 } loading ? loading
+            : state.Footer is null ? null
             : StatusFooterRenderer.PlainText(state.Footer, width, state.FooterWidgets);
         int fixedLines =
             (toolLine is null ? 0 : 1)
             + (noticeLine is null ? 0 : 1)
             + (approvalLine is null ? 0 : 1)
+            + trustLines.Count
             + pickerLines.Count
             + (footerLine is null ? 0 : 1);
         var input = InputLine.Layout(state.Input, width, Math.Max(1, MaxLines - fixedLines));
@@ -60,6 +65,11 @@ internal static class LiveAreaRenderer
         if (approvalLine is not null)
         {
             lines.Add(CellText.Clip(approvalLine, width));
+        }
+
+        foreach (string trustLine in trustLines)
+        {
+            lines.Add(CellText.Clip(trustLine, width));
         }
 
         foreach (string pickerLine in pickerLines)

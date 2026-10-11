@@ -19,9 +19,13 @@ public sealed class McpConfigTrustTests
         var prompt = new ScriptedMcpConfigTrustPrompt(true, false);
         var log = new RecordingExtensionLog();
 
-        Assert.True(await trust.EnsureTrustedAsync(worktree, worktree, config, prompt, log, Ct));
+        Assert.True(
+            await trust.EnsureTrustedAsync(worktree, worktree, config, [], prompt, log, Ct)
+        );
         Assert.Equal(1, prompt.Calls);
-        Assert.True(await trust.EnsureTrustedAsync(worktree, worktree, config, prompt, log, Ct));
+        Assert.True(
+            await trust.EnsureTrustedAsync(worktree, worktree, config, [], prompt, log, Ct)
+        );
         Assert.Equal(1, prompt.Calls);
         Assert.Empty(log.Messages);
     }
@@ -38,9 +42,13 @@ public sealed class McpConfigTrustTests
         var prompt = new ScriptedMcpConfigTrustPrompt(true, true);
         var log = new RecordingExtensionLog();
 
-        Assert.True(await trust.EnsureTrustedAsync(worktree, worktree, config, prompt, log, Ct));
+        Assert.True(
+            await trust.EnsureTrustedAsync(worktree, worktree, config, [], prompt, log, Ct)
+        );
         File.WriteAllText(config, """{ "mcpServers": { "srv": { "command": "y" } } }""");
-        Assert.True(await trust.EnsureTrustedAsync(worktree, worktree, config, prompt, log, Ct));
+        Assert.True(
+            await trust.EnsureTrustedAsync(worktree, worktree, config, [], prompt, log, Ct)
+        );
 
         Assert.Equal(2, prompt.Calls);
     }
@@ -56,10 +64,10 @@ public sealed class McpConfigTrustTests
         var log = new RecordingExtensionLog();
 
         Assert.True(
-            await trust.EnsureTrustedAsync("repo-1", first, Config(first), prompt, log, Ct)
+            await trust.EnsureTrustedAsync("repo-1", first, Config(first), [], prompt, log, Ct)
         );
         Assert.True(
-            await trust.EnsureTrustedAsync("repo-1", second, Config(second), prompt, log, Ct)
+            await trust.EnsureTrustedAsync("repo-1", second, Config(second), [], prompt, log, Ct)
         );
 
         Assert.Equal(1, prompt.Calls);
@@ -77,7 +85,9 @@ public sealed class McpConfigTrustTests
         var prompt = new ScriptedMcpConfigTrustPrompt(false);
         var log = new RecordingExtensionLog();
 
-        Assert.False(await trust.EnsureTrustedAsync(worktree, worktree, config, prompt, log, Ct));
+        Assert.False(
+            await trust.EnsureTrustedAsync(worktree, worktree, config, [], prompt, log, Ct)
+        );
 
         Assert.Contains(
             log.Messages,
@@ -119,7 +129,11 @@ public sealed class McpConfigTrustTests
 
         public int Calls { get; private set; }
 
-        public ValueTask<bool> ApproveAsync(string configPath, CancellationToken cancellationToken)
+        public ValueTask<bool> ApproveAsync(
+            string configPath,
+            IReadOnlyList<McpServerOptions> servers,
+            CancellationToken cancellationToken
+        )
         {
             Calls++;
             if (!_decisions.TryDequeue(out bool decision))

@@ -24,16 +24,16 @@ public sealed class ScriptedTrustPrompt : IExtensionTrustPrompt
     public int Denials { get; private set; }
 
     public ValueTask<bool> ApproveAsync(
-        ExtensionDescriptor descriptor,
+        ExtensionTrustRequest request,
         CancellationToken cancellationToken
     )
     {
-        ArgumentNullException.ThrowIfNull(descriptor);
+        ArgumentNullException.ThrowIfNull(request);
         Calls++;
         if (!_decisions.TryDequeue(out bool decision))
         {
             throw new InvalidOperationException(
-                $"ScriptedTrustPrompt has no decision left for extension '{descriptor.Id}' (call {Calls.ToString(CultureInfo.InvariantCulture)}). Queue one decision per expected trust prompt; exhaustion never approves implicitly."
+                $"ScriptedTrustPrompt has no decision left for extension '{request.Descriptor.Id}' (call {Calls.ToString(CultureInfo.InvariantCulture)}). Queue one decision per expected trust prompt; exhaustion never approves implicitly."
             );
         }
 
