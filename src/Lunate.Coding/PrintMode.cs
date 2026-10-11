@@ -60,6 +60,7 @@ internal static class PrintMode
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(output);
         ArgumentNullException.ThrowIfNull(errors);
+        var interaction = new PrintUserInteraction(errors);
 
         AgentSettings settings;
         ModelInfo model;
@@ -80,7 +81,7 @@ internal static class PrintMode
         }
         catch (Exception exception)
         {
-            errors.WriteLine($"lunate: {exception.Message}");
+            interaction.Notify(new UserNotice(NoticeLevel.Error, exception.Message));
             return 1;
         }
 
@@ -95,7 +96,7 @@ internal static class PrintMode
         }
         catch (Exception exception)
         {
-            errors.WriteLine($"lunate: {exception.Message}");
+            interaction.Notify(new UserNotice(NoticeLevel.Error, exception.Message));
             return 1;
         }
 
@@ -117,6 +118,11 @@ internal static class PrintMode
                 {
                     errors.WriteLine(diagnostic);
                 }
+
+                if (NoticeFor(agentEvent) is { } notice)
+                {
+                    interaction.Notify(notice);
+                }
             }
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -125,19 +131,36 @@ internal static class PrintMode
         }
         catch (Exception exception)
         {
-            errors.WriteLine($"lunate: {exception.Message}");
+            interaction.Notify(new UserNotice(NoticeLevel.Error, exception.Message));
             return 1;
         }
 
-        return Finish(summary, cancelled, options.Json, output, errors);
+        return Finish(summary, cancelled, options.Json, output, interaction);
     }
+
+    /// <summary>The events print mode now surfaces as ambient notices on stderr; the answer and
+    /// the JSON event stream on stdout are untouched.</summary>
+    private static UserNotice? NoticeFor(AgentEvent agentEvent) =>
+        agentEvent switch
+        {
+            Retrying retrying => new UserNotice(
+                NoticeLevel.Warning,
+                FormattableString.Invariant($"retrying (attempt {retrying.Attempt})")
+            ),
+            CompactionApplied => new UserNotice(NoticeLevel.Info, "context compacted"),
+            StepLimitReached limit => new UserNotice(
+                NoticeLevel.Warning,
+                FormattableString.Invariant($"step limit reached ({limit.MaxSteps} steps)")
+            ),
+            _ => null,
+        };
 
     private static int Finish(
         PrintRunSummary summary,
         bool cancelled,
         bool json,
         TextWriter output,
-        TextWriter errors
+        PrintUserInteraction interaction
     )
     {
         if (cancelled || summary.StopReason == StopReasons.Cancelled)
@@ -147,7 +170,7 @@ internal static class PrintMode
 
         if (summary.Error is { } error)
         {
-            errors.WriteLine($"lunate: {error}");
+            interaction.Notify(new UserNotice(NoticeLevel.Error, error));
             return 1;
         }
 
@@ -160,7 +183,9 @@ internal static class PrintMode
                 WriteAnswer(summary, json, output);
                 return 2;
             default:
-                errors.WriteLine("lunate: the run ended without a finish event.");
+                interaction.Notify(
+                    new UserNotice(NoticeLevel.Error, "the run ended without a finish event.")
+                );
                 return 1;
         }
     }

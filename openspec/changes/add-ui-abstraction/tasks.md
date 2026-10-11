@@ -12,10 +12,10 @@
 
 ## 3. The seam + per-mode implementations (Coding / Tui)
 
-- [ ] 3.1 `IUserInteraction` + records (internal)
-- [ ] 3.2 `TuiUserInteraction` (live area, footer + widgets, styled blocks)
-- [ ] 3.3 `PrintUserInteraction` (stderr; no-ops) and `AcpUserInteraction` (log)
-- [ ] 3.4 `InteractiveSession` routes notices/footer through the seam; renderer blocks on `ToolCallResult`; `PrintMode` notices; `AcpMode` log impl
+- [x] 3.1 `IUserInteraction` + records (internal)
+- [x] 3.2 `TuiUserInteraction` (live area, footer + widgets, styled blocks)
+- [x] 3.3 `PrintUserInteraction` (stderr; no-ops) and `AcpUserInteraction` (log)
+- [x] 3.4 `InteractiveSession` routes notices/footer through the seam; renderer blocks on `ToolCallResult`; `PrintMode` notices; `AcpMode` log impl
 
 ## 4. Tests (the interaction matrix)
 

@@ -1,5 +1,6 @@
 using System.Globalization;
 using Lunate.Agent;
+using Lunate.Extensibility.Abstractions;
 using Lunate.Tui;
 using Microsoft.Extensions.AI;
 
@@ -54,16 +55,18 @@ internal sealed partial class InteractiveSession
                 EchoSteering();
                 break;
             case Retrying retrying:
-                _live.SetNotice(
-                    FormattableString.Invariant($"retrying (attempt {retrying.Attempt})")
+                Notify(
+                    FormattableString.Invariant($"retrying (attempt {retrying.Attempt})"),
+                    NoticeLevel.Warning
                 );
                 break;
             case CompactionApplied:
-                _live.SetNotice("context compacted");
+                Notify("context compacted");
                 break;
             case StepLimitReached limit:
-                _live.SetNotice(
-                    FormattableString.Invariant($"step limit reached ({limit.MaxSteps} steps)")
+                Notify(
+                    FormattableString.Invariant($"step limit reached ({limit.MaxSteps} steps)"),
+                    NoticeLevel.Warning
                 );
                 break;
             case RunFinished finished:
@@ -71,7 +74,7 @@ internal sealed partial class InteractiveSession
                 break;
             case RunError error:
                 _outcome = RunOutcome.Failed;
-                _live.SetNotice("run failed: " + error.Message);
+                Notify("run failed: " + error.Message, NoticeLevel.Error);
                 break;
         }
     }
@@ -131,6 +134,7 @@ internal sealed partial class InteractiveSession
             DiffFor(result.Details)
         );
         _live.WriteScrollback(console => console.Write(_toolBlocks.Render(block)));
+        RenderExtensionBlock(name, result);
     }
 
     private static ToolDiffInfo? DiffFor(object? details) =>
@@ -145,10 +149,29 @@ internal sealed partial class InteractiveSession
             _ => null,
         };
 
+    /// <summary>Queries the renderer registry by tool name and shows a matching contribution as a
+    /// styled block above the live area; unmatched or failing renderers render nothing extra.</summary>
+    private void RenderExtensionBlock(string toolName, ToolCallResult result)
+    {
+        if (_options.ToolResultRenderers is not { } renderers)
+        {
+            return;
+        }
+
+        var view = new ToolResultView(toolName, result.CallId, result.Output, result.IsError);
+        if (
+            renderers.TryRender(toolName, view, out IReadOnlyList<TextSegment> segments)
+            && segments.Count > 0
+        )
+        {
+            _interaction.RenderExtension(new ExtensionBlock(toolName, segments));
+        }
+    }
+
     private void AddUsage(UsageDetails usage)
     {
         _inputTokens += usage.InputTokenCount ?? 0;
         _outputTokens += usage.OutputTokenCount ?? 0;
-        _live.SetFooter(Footer());
+        UpdateStatus();
     }
 }

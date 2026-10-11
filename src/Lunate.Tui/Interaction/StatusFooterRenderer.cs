@@ -22,8 +22,13 @@ public sealed class StatusFooterRenderer
         return new Markup(line.ToMarkup() + "\n");
     }
 
-    /// <summary>The footer's plain (unstyled) line, narrowed for the given terminal width.</summary>
-    internal static string PlainText(StatusFooterModel footer, int width)
+    /// <summary>The footer's plain (unstyled) line, narrowed for the given terminal width.
+    /// Extension widget texts append after the core fields in registration order and drop first.</summary>
+    internal static string PlainText(
+        StatusFooterModel footer,
+        int width,
+        IReadOnlyList<string>? widgets = null
+    )
     {
         var segments = new List<string> { footer.Model, Usage(footer) };
         if (!string.IsNullOrEmpty(footer.WorkingDirectory))
@@ -34,6 +39,17 @@ public sealed class StatusFooterRenderer
         if (!string.IsNullOrEmpty(footer.GitBranch))
         {
             segments.Add(footer.GitBranch);
+        }
+
+        if (widgets is not null)
+        {
+            foreach (string widget in widgets)
+            {
+                if (!string.IsNullOrEmpty(widget))
+                {
+                    segments.Add(widget);
+                }
+            }
         }
 
         while (

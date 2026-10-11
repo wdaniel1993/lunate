@@ -248,11 +248,12 @@ public sealed class PrintModeTests
 
         Assert.Equal(2, exitCode);
         string[] diagnostics = errors.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-        Assert.Equal(50, diagnostics.Length);
+        Assert.Equal(51, diagnostics.Length);
         Assert.All(
-            diagnostics,
+            diagnostics[..^1],
             line => Assert.Equal("tool 'read' failed: file not found: missing.txt", line)
         );
+        Assert.Equal("lunate: step limit reached (50 steps)", diagnostics[^1]);
         List<JsonElement> lines = PrintModeTestSupport.ParseLines(output);
         Assert.Contains(lines, line => PrintModeTestSupport.TypeOf(line) == "step_limit_reached");
         JsonElement last = lines[^1];

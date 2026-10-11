@@ -18,5 +18,7 @@ internal sealed record LiveAreaState
 
     public StatusFooterModel? Footer { get; init; }
 
+    public IReadOnlyList<string> FooterWidgets { get; init; } = [];
+
     public ConsoleSize Size { get; init; } = new(80, 24);
 }

@@ -1,0 +1,43 @@
+using Lunate.Extensibility.Abstractions;
+
+namespace Lunate.Coding;
+
+/// <summary>How urgent a transient notice is; modes may present levels differently in the future.</summary>
+internal enum NoticeLevel
+{
+    Info,
+    Warning,
+    Error,
+}
+
+/// <summary>A transient user-facing notice: retry, compaction, step limit, run failure, feedback.</summary>
+internal sealed record UserNotice(NoticeLevel Level, string Message);
+
+/// <summary>The footer's data: the core fields plus the segments status widgets contributed.</summary>
+internal sealed record UserStatus(
+    string Model,
+    long TokensUsed,
+    long ContextWindow,
+    string WorkingDirectory,
+    string? GitBranch,
+    IReadOnlyList<TextSegment> Widgets
+);
+
+/// <summary>One tool result's extension-contributed block: styled segments for that tool.</summary>
+internal sealed record ExtensionBlock(string ToolName, IReadOnlyList<TextSegment> Segments);
+
+/// <summary>
+/// The mode-facing seam for ambient user interaction: transient notices, the status footer's data
+/// and extension-contributed blocks. Approvals keep their own per-mode chain; this seam carries
+/// output only. One implementation per mode: the TUI presents all three, print mode writes
+/// notices to stderr and treats status/blocks as no-ops, ACP logs them (the protocol has no
+/// notice frame).
+/// </summary>
+internal interface IUserInteraction
+{
+    void Notify(UserNotice notice);
+
+    void UpdateStatus(UserStatus status);
+
+    void RenderExtension(ExtensionBlock block);
+}

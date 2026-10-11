@@ -112,6 +112,27 @@ public sealed class StatusFooterRendererTests
         }
     }
 
+    [Fact]
+    public void Widget_segments_append_after_the_core_fields() =>
+        Assert.Equal(
+            "deepseek-v4.1-flash · 12.4k/128.0k (10%) · ~/dev/lunate · main · widget-a · widget-b",
+            StatusFooterRenderer.PlainText(Full, width: 200, ["widget-a", "widget-b"])
+        );
+
+    [Fact]
+    public void Widget_segments_drop_before_the_branch() =>
+        Assert.Equal(
+            "deepseek-v4.1-flash · 12.4k/128.0k (10%) · ~/dev/lunate · main",
+            StatusFooterRenderer.PlainText(Full, width: 70, ["widget-a"])
+        );
+
+    [Fact]
+    public void Empty_widget_segments_are_absent() =>
+        Assert.Equal(
+            "deepseek-v4.1-flash · 12.4k/128.0k (10%) · ~/dev/lunate · main · widget-a",
+            StatusFooterRenderer.PlainText(Full, width: 200, ["", "widget-a"])
+        );
+
     private static string Render(StatusFooterModel footer, int width)
     {
         var console = new TestConsole();

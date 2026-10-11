@@ -27,7 +27,7 @@ internal static class LiveAreaRenderer
             : SelectListRenderer.PlainLines(state.Picker);
         var footerLine = state.Footer is null
             ? null
-            : StatusFooterRenderer.PlainText(state.Footer, width);
+            : StatusFooterRenderer.PlainText(state.Footer, width, state.FooterWidgets);
         int fixedLines =
             (toolLine is null ? 0 : 1)
             + (noticeLine is null ? 0 : 1)

@@ -32,7 +32,7 @@ internal sealed partial class InteractiveSession
                 }
 
                 bool compacted = await _harness!.CompactNowAsync(ct);
-                _live.SetNotice(compacted ? "context compacted" : "nothing to compact");
+                Notify(compacted ? "context compacted" : "nothing to compact");
                 return;
             case "/model":
                 if (RefusedWhileBusy())
@@ -67,7 +67,7 @@ internal sealed partial class InteractiveSession
                 OpenSessionPicker();
                 return;
             default:
-                _live.SetNotice("unknown command: " + name);
+                Notify("unknown command: " + name);
                 return;
         }
     }
@@ -79,7 +79,7 @@ internal sealed partial class InteractiveSession
             return false;
         }
 
-        _live.SetNotice("a turn is running — Esc to cancel first");
+        Notify("a turn is running — Esc to cancel first", NoticeLevel.Warning);
         return true;
     }
 
@@ -88,7 +88,7 @@ internal sealed partial class InteractiveSession
     {
         if (_catalog.Find(id) is not { } model)
         {
-            _live.SetNotice("unknown model: " + id);
+            Notify("unknown model: " + id, NoticeLevel.Warning);
             return;
         }
 
@@ -106,8 +106,8 @@ internal sealed partial class InteractiveSession
         _modelId = model.Id;
         _contextWindow = model.ContextWindow;
         _harness = BuildHarness(model);
-        _live.SetFooter(Footer());
-        _live.SetNotice("model: " + model.Id);
+        UpdateStatus();
+        Notify("model: " + model.Id);
     }
 
     /// <summary>Opens the model picker: catalog order, the current model marked with `* `.</summary>
@@ -240,14 +240,14 @@ internal sealed partial class InteractiveSession
         catch (Exception exception)
             when (exception is IOException or InvalidDataException or UnauthorizedAccessException)
         {
-            _live.SetNotice("could not resume: " + exception.Message);
+            Notify("could not resume: " + exception.Message, NoticeLevel.Error);
             return;
         }
 
         _session = resumed;
         ResetAlwaysApproved();
         _harness = BuildHarness(_model);
-        _live.SetNotice("resumed " + resumed.SessionId);
+        Notify("resumed " + resumed.SessionId);
     }
 
     /// <summary>Starts a fresh session and rebuilds the harness against it.</summary>
@@ -256,7 +256,7 @@ internal sealed partial class InteractiveSession
         _session = HarnessFactory.CreateSession(_sessionDirectory, _workspace);
         ResetAlwaysApproved();
         _harness = BuildHarness(_model);
-        _live.SetNotice("new session");
+        Notify("new session");
     }
 
     /// <summary>
@@ -301,7 +301,7 @@ internal sealed partial class InteractiveSession
 
         if (result.Candidates.Count > 0)
         {
-            _live.SetNotice("commands: " + string.Join(" ", result.Candidates));
+            Notify("commands: " + string.Join(" ", result.Candidates));
         }
 
         return true;
@@ -325,7 +325,7 @@ internal sealed partial class InteractiveSession
         if (!index.IsReady)
         {
             index.EnsureStarted();
-            _live.SetNotice("file index: indexing…");
+            Notify("file index: indexing…");
             return;
         }
 
@@ -338,7 +338,7 @@ internal sealed partial class InteractiveSession
 
         if (result.Candidates.Count == 0)
         {
-            _live.SetNotice("paths: no matches");
+            Notify("paths: no matches");
             return;
         }
 
@@ -350,7 +350,7 @@ internal sealed partial class InteractiveSession
             notice += $" … (+{hidden} more)";
         }
 
-        _live.SetNotice(notice);
+        Notify(notice);
     }
 
     /// <summary>The lazily created index; the seam falls back to the real workspace walk.</summary>
