@@ -33,8 +33,10 @@ internal static class TestExtensions
         File.WriteAllText(Path.Combine(extensionDirectory, "extension.json"), json);
     }
 
-    public static string FixtureFile(string fileName) =>
-        Path.Combine(AppContext.BaseDirectory, "TestExtensions", "HelloExtension", fileName);
+    public static string FixtureFile(string fileName) => FixtureFile("HelloExtension", fileName);
+
+    public static string FixtureFile(string fixture, string fileName) =>
+        Path.Combine(AppContext.BaseDirectory, "TestExtensions", fixture, fileName);
 
     public static void CopyFixture(string destinationDirectory, params string[] fileNames)
     {
@@ -54,6 +56,19 @@ internal static class TestExtensions
         string directory = GlobalExtensionDirectory(temp, id);
         CopyFixture(directory, "HelloExtension.dll", "HelloExtension.Support.dll");
         WriteManifest(directory, id);
+        return directory;
+    }
+
+    public static string InstallMcpExtension(TempDirectory temp, string id)
+    {
+        string directory = GlobalExtensionDirectory(temp, id);
+        Directory.CreateDirectory(directory);
+        File.Copy(
+            FixtureFile("McpExtension", "McpExtension.dll"),
+            Path.Combine(directory, "McpExtension.dll"),
+            overwrite: true
+        );
+        WriteManifest(directory, id, entryAssembly: "McpExtension.dll");
         return directory;
     }
 

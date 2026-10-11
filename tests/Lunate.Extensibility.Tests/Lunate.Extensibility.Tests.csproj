@@ -14,6 +14,10 @@
             Include="../TestExtensions/HelloExtension/HelloExtension.csproj"
             ReferenceOutputAssembly="false"
         />
+        <ProjectReference
+            Include="../TestExtensions/McpExtension/McpExtension.csproj"
+            ReferenceOutputAssembly="false"
+        />
     </ItemGroup>
 
     <ItemGroup>
@@ -27,12 +31,23 @@
             Targets="Build"
             Properties="Configuration=$(Configuration)"
         />
+        <MSBuild
+            Projects="$(MSBuildThisFileDirectory)../TestExtensions/McpExtension/McpExtension.csproj"
+            Targets="Build"
+            Properties="Configuration=$(Configuration)"
+        />
         <ItemGroup>
-            <TestExtensionFiles Include="$(MSBuildThisFileDirectory)../TestExtensions/HelloExtension/bin/$(Configuration)/$(TargetFramework)/**/*" />
+            <HelloExtensionFiles Include="$(MSBuildThisFileDirectory)../TestExtensions/HelloExtension/bin/$(Configuration)/$(TargetFramework)/**/*" />
+            <McpExtensionFiles Include="$(MSBuildThisFileDirectory)../TestExtensions/McpExtension/bin/$(Configuration)/$(TargetFramework)/**/*" />
         </ItemGroup>
         <Copy
-            SourceFiles="@(TestExtensionFiles)"
+            SourceFiles="@(HelloExtensionFiles)"
             DestinationFolder="$(OutDir)TestExtensions/HelloExtension/%(RecursiveDir)"
+            SkipUnchangedFiles="true"
+        />
+        <Copy
+            SourceFiles="@(McpExtensionFiles)"
+            DestinationFolder="$(OutDir)TestExtensions/McpExtension/%(RecursiveDir)"
             SkipUnchangedFiles="true"
         />
     </Target>

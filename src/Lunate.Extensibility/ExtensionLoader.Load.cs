@@ -71,7 +71,8 @@ public sealed partial class ExtensionLoader
                 FindService,
                 FindCoreService,
                 _toolResultRenderers.Register,
-                _statusWidgets.Register
+                _statusWidgets.Register,
+                _mcpServers.Register
             );
             IExtension extension = factory.Create(extensionContext);
             _modelProviders.Register(descriptor.Id, descriptor.Manifest.ModelProviders);
@@ -93,6 +94,7 @@ public sealed partial class ExtensionLoader
             _modelProviders.Unregister(descriptor.Id);
             _toolResultRenderers.Unregister(descriptor.Id);
             _statusWidgets.Unregister(descriptor.Id);
+            _mcpServers.Unregister(descriptor.Id);
             DropSubscriptions(descriptor.Id);
             context.Unload();
             throw;
@@ -103,6 +105,7 @@ public sealed partial class ExtensionLoader
             _modelProviders.Unregister(descriptor.Id);
             _toolResultRenderers.Unregister(descriptor.Id);
             _statusWidgets.Unregister(descriptor.Id);
+            _mcpServers.Unregister(descriptor.Id);
             DropSubscriptions(descriptor.Id);
             context.Unload();
             throw WrapLoadFailure(descriptor, exception);

@@ -9,6 +9,7 @@ internal sealed class ExtensionContext : IExtensionContext
     private readonly Action<string, IFileChangedHandler, string?>? _subscribeFileChanged;
     private readonly Action<string, IToolResultRenderer>? _registerToolResultRenderer;
     private readonly Action<string, IStatusWidget>? _registerStatusWidget;
+    private readonly Action<string, McpServerRegistration>? _registerMcpServer;
     private readonly Func<string, IBackgroundService?>? _findService;
     private readonly Func<string, object?>? _findCoreService;
 
@@ -23,7 +24,8 @@ internal sealed class ExtensionContext : IExtensionContext
         Func<string, IBackgroundService?>? findService = null,
         Func<string, object?>? findCoreService = null,
         Action<string, IToolResultRenderer>? registerToolResultRenderer = null,
-        Action<string, IStatusWidget>? registerStatusWidget = null
+        Action<string, IStatusWidget>? registerStatusWidget = null,
+        Action<string, McpServerRegistration>? registerMcpServer = null
     )
     {
         Id = id;
@@ -35,6 +37,7 @@ internal sealed class ExtensionContext : IExtensionContext
         _subscribeFileChanged = subscribeFileChanged;
         _registerToolResultRenderer = registerToolResultRenderer;
         _registerStatusWidget = registerStatusWidget;
+        _registerMcpServer = registerMcpServer;
         _findService = findService;
         _findCoreService = findCoreService;
     }
@@ -76,6 +79,12 @@ internal sealed class ExtensionContext : IExtensionContext
     {
         ArgumentNullException.ThrowIfNull(widget);
         _registerStatusWidget?.Invoke(Id, widget);
+    }
+
+    public void RegisterMcpServer(McpServerRegistration registration)
+    {
+        ArgumentNullException.ThrowIfNull(registration);
+        _registerMcpServer?.Invoke(Id, registration);
     }
 
     public bool TryGetService(string name, out IBackgroundService? service)

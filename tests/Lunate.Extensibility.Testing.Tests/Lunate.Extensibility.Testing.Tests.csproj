@@ -5,10 +5,20 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <ProjectReference Include="../../src/Lunate.Coding/Lunate.Coding.csproj" />
         <ProjectReference Include="../../src/Lunate.Extensibility.Testing/Lunate.Extensibility.Testing.csproj" />
+        <ProjectReference Include="../../src/Lunate.Extensibility/Lunate.Extensibility.csproj" />
         <ProjectReference Include="../../src/Lunate.Extensibility.Abstractions/Lunate.Extensibility.Abstractions.csproj" />
         <ProjectReference
             Include="../TestExtensions/HelloExtension/HelloExtension.csproj"
+            ReferenceOutputAssembly="false"
+        />
+        <ProjectReference
+            Include="../TestExtensions/McpExtension/McpExtension.csproj"
+            ReferenceOutputAssembly="false"
+        />
+        <ProjectReference
+            Include="../tools/TestMcpServer/TestMcpServer.csproj"
             ReferenceOutputAssembly="false"
         />
     </ItemGroup>
@@ -24,12 +34,23 @@
             Targets="Build"
             Properties="Configuration=$(Configuration)"
         />
+        <MSBuild
+            Projects="$(MSBuildThisFileDirectory)../TestExtensions/McpExtension/McpExtension.csproj"
+            Targets="Build"
+            Properties="Configuration=$(Configuration)"
+        />
         <ItemGroup>
-            <TestExtensionFiles Include="$(MSBuildThisFileDirectory)../TestExtensions/HelloExtension/bin/$(Configuration)/$(TargetFramework)/**/*" />
+            <HelloExtensionFiles Include="$(MSBuildThisFileDirectory)../TestExtensions/HelloExtension/bin/$(Configuration)/$(TargetFramework)/**/*" />
+            <McpExtensionFiles Include="$(MSBuildThisFileDirectory)../TestExtensions/McpExtension/bin/$(Configuration)/$(TargetFramework)/**/*" />
         </ItemGroup>
         <Copy
-            SourceFiles="@(TestExtensionFiles)"
+            SourceFiles="@(HelloExtensionFiles)"
             DestinationFolder="$(OutDir)TestExtensions/HelloExtension/%(RecursiveDir)"
+            SkipUnchangedFiles="true"
+        />
+        <Copy
+            SourceFiles="@(McpExtensionFiles)"
+            DestinationFolder="$(OutDir)TestExtensions/McpExtension/%(RecursiveDir)"
             SkipUnchangedFiles="true"
         />
     </Target>
