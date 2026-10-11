@@ -6,7 +6,7 @@ The CI, CodeQL and release workflows SHALL install the .NET SDK version pinned i
 
 #### Scenario: Workflows resolve the pinned SDK
 
-- **GIVEN** a workflow that sets up the .NET SDK
+- **GIVEN** a workflow run on any runner
 - **WHEN** the SDK is set up
 - **THEN** the installed version is the one pinned in `global.json`
 
