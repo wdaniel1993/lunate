@@ -2,7 +2,7 @@
 
 ### Requirement: MCP servers from mcp.json
 
-The CLI SHALL read stdio server configurations from `~/.lunate/mcp.json` — a `mcpServers` map keyed by server name, each entry carrying `command` (required), `args`, `env`, optional `cwd` and optional `callTimeoutSeconds`; unknown fields SHALL be ignored. The file SHALL be read when a session starts — never during CLI startup; `--version`, `--help`, `--discover` and flag parsing SHALL NOT read it. Only servers listed in the file SHALL ever start. Each configured server SHALL follow the existing lazy-server contract: nothing starts before its first listing, tools are named `server__tool` with the server's namespace and risk `Execute`, and a server that fails to start or list SHALL produce an actionable notice naming the server while the session continues without its tools. A malformed entry SHALL be reported naming the server and field and the server skipped; a malformed or unreadable file SHALL be reported with its path and the session SHALL continue without configured servers.
+The CLI SHALL read stdio server configurations from `~/.lunate/mcp.json` — a `mcpServers` map keyed by server name, each entry carrying `command` (required), `args`, `env`, optional `cwd` and optional `callTimeoutSeconds`; unknown fields SHALL be ignored. It SHALL also read `.lunate/mcp.json` inside the worktree; entries SHALL merge by server name with the project file winning. Because a project file runs repository-provided commands, it SHALL require a one-time trust decision per repository identity, re-prompted when the file changes (the project-extension discipline); non-interactive modes SHALL refuse an untrusted project file with a logged hint and continue with the global servers only. The files SHALL be read when a session starts — never during CLI startup; `--version`, `--help`, `--discover` and flag parsing SHALL NOT read them. Only servers listed in the files SHALL ever start. Each configured server SHALL follow the existing lazy-server contract: nothing starts before its first listing, tools are named `server__tool` with the server's namespace and risk `Execute`, and a server that fails to start or list SHALL produce an actionable notice naming the server while the session continues without its tools. A malformed entry SHALL be reported naming the server and field and the server skipped; a malformed or unreadable file SHALL be reported with its path and the session SHALL continue without its servers.
 
 #### Scenario: A configured server works in a session
 
@@ -27,6 +27,24 @@ The CLI SHALL read stdio server configurations from `~/.lunate/mcp.json` — a `
 - **GIVEN** a configured server that cannot start
 - **WHEN** a session starts
 - **THEN** a notice names the server, the session continues without its tools, and other tools behave normally
+
+#### Scenario: An untrusted project file prompts once
+
+- **GIVEN** a repository with a project `mcp.json` and no trust record
+- **WHEN** an interactive session starts and the prompt is approved
+- **THEN** the decision is recorded and a later session does not prompt again; a changed file re-prompts
+
+#### Scenario: A denied project file never starts its servers
+
+- **GIVEN** a project `mcp.json` whose trust is denied
+- **WHEN** a session starts
+- **THEN** the project servers do not start (a log line says how to approve), and global servers still work
+
+#### Scenario: A project entry overrides a same-named global entry
+
+- **GIVEN** a server name configured in both the global and the trusted project file
+- **WHEN** a session starts
+- **THEN** the project file's definition is the one used
 
 #### Scenario: MCP calls follow the approval policy
 

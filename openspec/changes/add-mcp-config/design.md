@@ -24,6 +24,12 @@
 - Parsing lives in `Lunate.Protocols` (`McpConfig.Load(path)` → server options + error list; Protocols owns the MCP domain). No new packages.
 - Read **at session start only**; `--version`/`--help`/`--discover`/flag parsing never touch the file (the same discipline the extension store follows; proven by a poisoned-file test).
 
+## Project scope and trust
+
+- `.lunate/mcp.json` inside the worktree is read in addition to the global file. Entries **merge by server name with the project winning** (most-specific-wins — the ecosystem convention for MCP configs; unlike extension ids, a same-named server is the same logical server with different parameters).
+- A project file runs repository-provided commands, so it is **trust-gated**: one-time trust per repository identity, re-prompted when the file's content hash changes — the project-extension discipline. Reuse the trust store's record semantics (per repository + hash) with a distinct record for the config file; do not weaken extension trust. Interactive sessions prompt (the existing prompt seam); print/ACP refuse an untrusted project file with a logged hint and continue with the global servers only.
+- Malformed project files follow the same error discipline as the global file.
+
 ## Composition (harmonized with the extension host)
 
 - The extension host's `ExtensionMcpServers` mapping is generalized into a shared **`McpToolSet`** (Coding, internal): constructed from a list of `McpServerOptions` + the mode's log; `ListToolsAsync` starts each server once, isolates failures, and records a **per-server status** (not started / started + tool count / failed + reason); `DisposeAsync` stops all. `ExtensionMcpServers`' registration→options mapping stays and feeds the same set — one listing/dispose path for config and extension servers.

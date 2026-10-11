@@ -42,6 +42,6 @@ The host SHALL discover extensions in `~/.lunate/extensions/` (global) and `.lun
 
 #### Scenario: --no-extensions starts without the host
 
-- **GIVEN** an installed extension and a configured `mcp.json` server
+- **GIVEN** an installed extension and a globally configured `mcp.json` server
 - **WHEN** a session starts with `--no-extensions`
 - **THEN** the extension store is not read, its hook never runs, and the configured MCP server still works

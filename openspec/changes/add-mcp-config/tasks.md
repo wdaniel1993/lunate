@@ -4,6 +4,7 @@
 
 - [ ] 1.1 `McpConfig.Load(path)` — parse `mcpServers` (command/args/env/cwd/callTimeoutSeconds), collect per-entry errors (name + field) and file-level errors; unknown fields ignored (TDD: valid file, malformed entry, malformed file, missing file = zero servers + no error, unknown fields)
 - [ ] 1.2 No startup reads: nothing in `Cli`/`Program` touches the path
+- [ ] 1.3 Project scope: `.lunate/mcp.json` from the worktree, merged by server name (project wins); trust-gated — one-time per repository, re-prompted on content change, non-interactive refusal logged (tests: prompt-once-then-remember; changed file re-prompts; denial refuses and the global servers still work; project overrides a same-named global server)
 
 ## 2. Harmonized composition (Coding)
 
