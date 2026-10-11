@@ -39,7 +39,7 @@ An extension SHALL declare an `extension.json` manifest with `id` (lowercase, `[
 
 ### Requirement: Extension loading
 
-The host SHALL discover extensions in `~/.lunate/extensions/` (global) and `.lunate/extensions/` (project), reading manifests only — assemblies SHALL load lazily on first use into a collectible `AssemblyLoadContext` that shares the abstractions, `Microsoft.Extensions.AI.Abstractions` and `System.Text.Json` with the default context and isolates every other dependency. Unload SHALL be idempotent; a later load SHALL work; state SHALL not survive. Duplicate ids across scopes SHALL be an error naming both paths. Missing dependencies SHALL yield an actionable error. The CLI SHALL compose the host when a session starts — the host's first use — for interactive, print and ACP sessions; `--version`, `--help` and non-session commands SHALL NOT read the extension store. A discovery or load failure SHALL be logged through the host log and SHALL NOT abort the session.
+The host SHALL discover extensions in `~/.lunate/extensions/` (global) and `.lunate/extensions/` (project), reading manifests only — assemblies SHALL load lazily on first use into a collectible `AssemblyLoadContext` that shares the abstractions, `Microsoft.Extensions.AI.Abstractions` and `System.Text.Json` with the default context and isolates every other dependency. Unload SHALL be idempotent; a later load SHALL work; state SHALL not survive. Duplicate ids across scopes SHALL be an error naming both paths. Missing dependencies SHALL yield an actionable error. The CLI SHALL compose the host when a session starts — the host's first use — for interactive, print and ACP sessions; `--version`, `--help` and non-session commands SHALL NOT read the extension store. `--no-extensions` SHALL start every mode without composing the host (extension hooks, renderers, widgets and extension MCP servers absent; configured `mcp.json` servers unaffected). A discovery or load failure SHALL be logged through the host log and SHALL NOT abort the session.
 
 #### Scenario: Manifests are read without loading assemblies
 
@@ -76,6 +76,12 @@ The host SHALL discover extensions in `~/.lunate/extensions/` (global) and `.lun
 - **GIVEN** an installed extension whose load fails
 - **WHEN** a session starts
 - **THEN** the failure is logged through the host log and the session runs without that extension
+
+#### Scenario: --no-extensions starts without the host
+
+- **GIVEN** an installed extension and a globally configured `mcp.json` server
+- **WHEN** a session starts with `--no-extensions`
+- **THEN** the extension store is not read, its hook never runs, and the configured MCP server still works
 
 ### Requirement: Extension settings and secrets
 Per-extension settings SHALL be read from the host store and validated against a documented subset of the manifest's `settingsSchema` (top-level `required` and one-level `type` checks), with violations naming the extension and the field. Secrets SHALL be namespaced per extension, exposed read-only, and SHALL never be written to session files or logs.
