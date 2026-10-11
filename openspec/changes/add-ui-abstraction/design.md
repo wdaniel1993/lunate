@@ -47,7 +47,11 @@ Machine modes stay clean by design: stdout carries only the answer (print) or th
 
 ## Deviations
 
-(filled during apply; none yet)
+- **`TuiUserInteraction` lives in `src/Lunate.Coding/`, not `src/Lunate.Tui/`.** `Lunate.Tui` references no other Lunate project (architecture rule, layering-tested), so it cannot see the Coding-internal `IUserInteraction` nor the `Lunate.Extensibility.Abstractions` segment types; only Coding can implement the seam. Coding already references Tui and Tui exposes its internals to the `lunate` assembly (`InternalsVisibleTo`), so the TUI implementation of the seam sits in Coding and uses the TUI's internal palette (`SpanStyle`, `StyledLine`) directly. Behaviour matches the pinned `TuiUserInteraction` entry exactly.
+- **`IToolResultRenderer` declares `ToolName`.** The structure sketch listed only `Render`; the renderer-matching pin ("a renderer declares the tool name it renders") is realised as a `string ToolName { get; }` interface member.
+- **Footer widget styles are text-only in the live area.** `UserStatus.Widgets` reach `LiveArea.SetFooter` as texts: the live-area footer line is plain today (even the core footer's dim styling only exists in the markup `Render` path the live area never calls), so widget style attributes have no styled surface there; append order and drop order follow the spec. The palette mapping applies to extension blocks, the styled surface.
+- **Print mode's per-tool diagnostics stay direct stderr writes.** `PrintUserInteraction` carries composition/run errors and the new retry/compaction/step-limit notices (`lunate: …`); the `tool 'x' denied/failed` lines are not notices and keep their unprefixed byte-exact format. `PrintModeTests`' step-limit expectation now accounts for the new notice line (the pinned new behaviour).
+- **Test fixture touched outside the design's list.** `tests/TestExtensions/HelloExtension/` registers a renderer and a widget (and logs invocations) to prove registration-through-`IExtensionContext` and registration-is-registration-only end to end. Footer widget append/drop asserts live in the existing `StatusFooterRendererTests` (the status-footer regression suite) rather than being duplicated in `TuiInteractionTests`.
 
 ## Seams
 
