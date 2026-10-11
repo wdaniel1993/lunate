@@ -2,39 +2,45 @@
 
 ## Measurements (the evidence)
 
-Per-step windows wall time, PR #54 job 114415862515 (bash leg) and 114415862622 (pwsh leg), extracted from step timestamps:
+Per-step windows wall time, PR #54 job 114415862515 (bash leg) and 114415862622 (pwsh leg), from step timestamps:
 
 | Step | windows bash | windows pwsh | macos (ref) | ubuntu (ref) |
 | --- | --- | --- | --- | --- |
 | test (exec) | 1m31 | 2m20 | 2m06 | 1m56 |
-| **gap after test summary** | **3m57** | **~3m22** | **0** | **0** |
+| **silent stall after test** | **3m57** | **~3m22** | **0** | **0** |
 | test de-AT (exec) | 1m27 | n/a | 2m03 | 1m52 |
-| **gap after de-AT summary** | **3m59** | n/a | **0** | **0** |
-| publish | 1m44 | 2m28 | 1m52 | 1m58 |
-| build | 44s | 59s | 29s | 36s |
-| format + docs lint | 64s | 75s | 55s | 77s |
-| everything else | <30s | <30s | <30s | <30s |
+| **silent stall after de-AT** | **3m59** | n/a | **0** | **0** |
 
-The gaps are silent (no log lines between the MTP summary and the next step), Windows-only, and consistent across runs (3m06–3m59 across PRs #53/#54). They account for ~8m of the 15m39s bash leg and ~3m22s of the 12m10s pwsh leg.
+The stalls are silent, Windows-only, and stable across runs (3m04–3m59, PRs #39–#55); they account for ~8m of the bash leg and ~3m22 of the pwsh leg. The per-pass wall is a near-constant ~5m35 regardless of test duration — the stall absorbs the difference.
 
-## Root cause
+## Root cause (probe-verified)
 
-dotnet/sdk PR #52558 ("Fix dotnet test hang when the test app process exits but a child process of it remains alive"): the MTP runner (`dotnet test`) consumed the test app's stdout/stderr and kept waiting while a child process holding inherited handles lingered. The fix waits for process exit independently of output and caps output consumption at 5s after exit. Merged to `main` 2026-02-11; backported to `release/10.0.3xx` 2026-03-08. Our pin (10.0.103) is the 10.0.1xx band — feature bands never receive each other's fixes.
+The gate's test steps capture output through `tee`; `tee` ends at EOF, and EOF needs **every** writer of the pipe to close. `dotnet test` spawns MSBuild **node-reuse workers** and the **MSBuild server** during evaluation/build; those workers inherit the stdout pipe and, by design, outlive the command. After `dotnet test` exits, the workers keep the pipe open and the step stalls until they time out — minutes per pass.
 
-The exact lingering child is not identified (no Windows box to sample; candidates: MSBuild node-reuse/server processes, or a test-spawned child on Windows only). The upstream fix is deliberately robust to *any* lingering child, which is why the band bump is the right lever rather than hunting the child.
+Evidence (throwaway `probe/windows-test-exit` branch; `verify.sh` run in the background with 20 s process-tree snapshots):
+
+- The stall reproduces with `verify.sh` and with a bare `dotnet test … | tee` pipeline; it does **not** reproduce with output redirected to a file (no pipe → nothing to wait for) — the same command exits ~4 s after the summary.
+- Snapshots during the stall show: `tee` alive, **no** `dotnet test` process, **no** test apps — but three `dotnet.exe … MSBuild.dll` worker nodes and `VBCSCompiler.exe` alive, holding the inherited pipe.
+- The standalone `build` step never stalls: it is not piped.
+
+**First hypothesis (investigated, insufficient):** the SDK band. dotnet/sdk#52558 caps the MTP runner's output-consumption wait at 5 s after process exit; it is present in 10.0.401 and absent in our old 10.0.103 pin (both verified by IL inspection). Bumping the pin did **not** remove the stall — the wait is on the pipe's writers, not the runner's own output drain. The bump is kept as an independent modernization: current supported band, contains the upstream hardening.
+
+## The fix
+
+Both gate scripts disable node reuse and the MSBuild server for the whole run (`MSBUILDDISABLENODEREUSE=1`, `DOTNET_CLI_USE_MSBUILD_SERVER=0`) so no worker inherits a captured step's pipe. Probe-verified: with the fix, `verify.sh` on Windows completes green (1858 tests, 0 failed, both passes) and the test steps end with their test runs. The settings are no-ops where node reuse is absent (macOS, Linux CI) and change nothing about what is built or tested — only who lingers afterwards.
 
 ## Pins
 
-- Pin **10.0.401** (latest active .NET 10 SDK, 2026-09-08). If 10.0.401 surfaces unrelated gate breakage (analyzers/formatter drift), fall back to the latest 10.0.3xx — same fix — and record the choice as a deviation.
-- `rollForward: latestFeature` and the `test.runner: Microsoft.Testing.Platform` setting stay unchanged.
-- Local pre-validation: install 10.0.401 side-by-side (user-local `~/.dotnet`), run the full gate under it before pushing.
-- Coverage unchanged: all steps, all jobs, de-AT pass, budgets, publish proof. The PR measures before/after from the PR's own windows legs.
+- Fix lives in `scripts/verify.sh` + `scripts/verify.ps1` (single source for CI and local gates; no workflow-level knobs to drift).
+- The SDK bump to 10.0.401 stays in this change (separate justification above); `rollForward: latestFeature` and the MTP runner setting unchanged.
+- Coverage unchanged: all steps, all jobs, the de-AT pass, budgets, publish proof.
+- The PR's own windows legs are the before/after measurement.
 
 ## Deviations
 
-(filled during apply; none yet)
+- The stall's exact duration is set by the workers' idle timeouts (observed 3m04–3m59); the fix removes the wait entirely rather than tuning a timeout.
 
 ## Seams
 
-- If the gap persists after the bump, the next probe is `MSBUILDDISABLENODEREUSE=1` + `DOTNET_CLI_USE_MSBUILD_SERVER=0` (recorded in the proposal), then hunting the child.
-- Future SDK bumps inherit the policy added to the ci-pipeline "SDK pinning" requirement.
+- If a future captured step stalls again, check for new pipe-inheriting survivors first (the snapshot recipe is in the probe branch's history; the branch is deleted after use).
+- The probe branch (`probe/windows-test-exit`) is throwaway and deleted after this change merges.

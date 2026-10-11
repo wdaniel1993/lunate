@@ -1,26 +1,20 @@
-# Proposal: slim the windows-latest verify job (T-40-era card)
+# Proposal: slim the windows-latest verify job
 
 ## Why
 
-The windows legs are the CI bottleneck (verify 15m39s, pwsh 12m10s on PR #54) and the wall time is not the tests: on Windows, each `dotnet test` pass finishes its summary and then sits **silent for 3–4 minutes** before the next step (bash leg: 3m57s + 3m59s; pwsh leg: ~3m22s). macOS and ubuntu show zero such gap. That is ~8 of the windows leg's 15 minutes.
+The windows legs are the CI bottleneck (verify 15m39s–16m45s, pwsh 11m27s–12m10s) and the wall time is not the tests: on Windows, each captured `dotnet test` step sits **silent for 3–4 minutes** after its summary before the next step starts (macOS and ubuntu: zero). That is ~8m of the bash leg and ~3m22 of the pwsh leg.
 
-## Root cause (measured)
+## Root cause (probe-verified)
 
-The dotnet SDK's MTP `dotnet test` runner waits on the test app's stdout/stderr consumption after the app exits; a lingering child process that inherited those handles keeps the wait open (dotnet/sdk#52558). The fix — wait for process exit independently of output, with a 5-second cap — merged to `main` on 2026-02-11 and was backported to **release/10.0.3xx**. Our pin is **10.0.103** (the 10.0.1xx band), which never receives band fixes.
+The gate captures test output through `tee`; `tee` ends at EOF, and EOF requires every writer of the pipe to close. MSBuild's **node-reuse workers** and the **MSBuild server** — spawned during evaluation/build — inherit the pipe and outlive `dotnet test` by design, so the step stalls until they time out. A probe run (background `verify.sh`, 20 s process-tree snapshots) shows, during the stall: `tee` alive, no test processes, but `dotnet.exe … MSBuild.dll` workers and `VBCSCompiler.exe` holding the inherited pipe. Redirecting output to a file removes the stall entirely — the wait is on the pipe, not on the runner.
 
 ## What changes
 
-- `global.json`: SDK pin **10.0.103 → 10.0.401** (latest active .NET 10 band, contains the fix). `rollForward: latestFeature` and the MTP runner setting stay.
-- Spec: the "SDK pinning" requirement gains the policy the incident teaches — the pin tracks a supported feature band, and moves when a newer band carries gate-relevant fixes.
-- No coverage changes: every step stays; no job is dropped; the publish proof and startup budget still run on every leg.
-
-## Alternatives (measured/considered)
-
-- **MSBuild node-reuse / server env knobs** (`MSBUILDDISABLENODEREUSE=1`, `DOTNET_CLI_USE_MSBUILD_SERVER=0`): targets a different child class; deferred — if the gap persists after the bump, this is the next probe.
-- **ReadyToRun off for CI publish** (~1m44s on windows): rejected for now — the publish step and startup budget must reflect the shipped artifact shape; revisit only if the band fix under-delivers.
-- **npm/markdownlint caching** (~20–40s): deferred, small.
-- **Dropping the pwsh twin or the de-AT pass**: rejected — coverage is the point of the gate.
+- `scripts/verify.sh` + `scripts/verify.ps1`: disable node reuse and the MSBuild server (`MSBUILDDISABLENODEREUSE=1`, `DOTNET_CLI_USE_MSBUILD_SERVER=0`) so no worker holds a captured step's pipe. No-ops on runners without node reuse; nothing built or tested changes.
+- `global.json`: SDK pin 10.0.103 → 10.0.401 (independent modernization — current supported band; contains dotnet/sdk#52558's MTP hardening, which the investigation showed is necessary but not sufficient).
+- Spec: ci-pipeline gains the no-lingering-workers contract; the SDK-pinning requirement gains the band policy.
+- No coverage changes: every step stays; no job is dropped; publish proof and budgets still run on every leg.
 
 ## Done when
 
-The PR's own windows legs show the gap gone (windows verify back toward ~8m, pwsh toward ~9m) with all checks green and identical test counts, and the rationale (measurements + upstream reference) is in the PR body.
+The PR's own windows legs show the stalls gone (bash toward ~8m, pwsh toward ~9m) with all checks green and identical test counts, and the rationale (measurements + probe evidence) is in the PR body.
