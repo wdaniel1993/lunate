@@ -1,6 +1,5 @@
 #nullable enable
 Lunate.Extensibility.Abstractions.ExtensionApi
-const Lunate.Extensibility.Abstractions.ExtensionApi.Current = "1.4.0" -> string!
 Lunate.Extensibility.Abstractions.ExtensionManifest
 Lunate.Extensibility.Abstractions.ExtensionManifest.<Clone>$() -> Lunate.Extensibility.Abstractions.ExtensionManifest!
 Lunate.Extensibility.Abstractions.ExtensionManifest.ApiVersion.get -> string!
@@ -785,3 +784,49 @@ static Lunate.Extensibility.Abstractions.TextSegment.operator !=(Lunate.Extensib
 static Lunate.Extensibility.Abstractions.TextSegment.operator ==(Lunate.Extensibility.Abstractions.TextSegment? left, Lunate.Extensibility.Abstractions.TextSegment? right) -> bool
 static Lunate.Extensibility.Abstractions.ToolResultView.operator !=(Lunate.Extensibility.Abstractions.ToolResultView? left, Lunate.Extensibility.Abstractions.ToolResultView? right) -> bool
 static Lunate.Extensibility.Abstractions.ToolResultView.operator ==(Lunate.Extensibility.Abstractions.ToolResultView? left, Lunate.Extensibility.Abstractions.ToolResultView? right) -> bool
+const Lunate.Extensibility.Abstractions.ExtensionApi.Current = "1.5.0" -> string!
+Lunate.Extensibility.Abstractions.IExtensionContext.RegisterMcpServer(Lunate.Extensibility.Abstractions.McpServerRegistration! registration) -> void
+Lunate.Extensibility.Abstractions.McpServerConfig
+Lunate.Extensibility.Abstractions.McpServerConfig.<Clone>$() -> Lunate.Extensibility.Abstractions.McpServerConfig!
+Lunate.Extensibility.Abstractions.McpServerConfig.Arguments.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Lunate.Extensibility.Abstractions.McpServerConfig.Arguments.init -> void
+Lunate.Extensibility.Abstractions.McpServerConfig.CallTimeout.get -> System.TimeSpan?
+Lunate.Extensibility.Abstractions.McpServerConfig.CallTimeout.init -> void
+Lunate.Extensibility.Abstractions.McpServerConfig.Command.get -> string!
+Lunate.Extensibility.Abstractions.McpServerConfig.Command.init -> void
+Lunate.Extensibility.Abstractions.McpServerConfig.Deconstruct(out string! Command, out System.Collections.Generic.IReadOnlyList<string!>! Arguments, out System.Collections.Generic.IReadOnlyDictionary<string!, string!>? Environment, out string? WorkingDirectory, out System.TimeSpan? CallTimeout) -> void
+Lunate.Extensibility.Abstractions.McpServerConfig.Environment.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>?
+Lunate.Extensibility.Abstractions.McpServerConfig.Environment.init -> void
+Lunate.Extensibility.Abstractions.McpServerConfig.Equals(Lunate.Extensibility.Abstractions.McpServerConfig? other) -> bool
+Lunate.Extensibility.Abstractions.McpServerConfig.McpServerConfig(string! Command, System.Collections.Generic.IReadOnlyList<string!>! Arguments, System.Collections.Generic.IReadOnlyDictionary<string!, string!>? Environment = null, string? WorkingDirectory = null, System.TimeSpan? CallTimeout = null) -> void
+Lunate.Extensibility.Abstractions.McpServerConfig.WorkingDirectory.get -> string?
+Lunate.Extensibility.Abstractions.McpServerConfig.WorkingDirectory.init -> void
+Lunate.Extensibility.Abstractions.McpServerRegistration
+Lunate.Extensibility.Abstractions.McpServerRegistration.<Clone>$() -> Lunate.Extensibility.Abstractions.McpServerRegistration!
+Lunate.Extensibility.Abstractions.McpServerRegistration.Config.get -> Lunate.Extensibility.Abstractions.McpServerConfig!
+Lunate.Extensibility.Abstractions.McpServerRegistration.Config.init -> void
+Lunate.Extensibility.Abstractions.McpServerRegistration.Deconstruct(out string! Name, out Lunate.Extensibility.Abstractions.McpServerConfig! Config, out Lunate.Extensibility.Abstractions.ToolExposure Exposure, out System.Collections.Generic.IReadOnlyDictionary<string!, Lunate.Extensibility.Abstractions.ToolExposure>? ExposureOverrides) -> void
+Lunate.Extensibility.Abstractions.McpServerRegistration.Equals(Lunate.Extensibility.Abstractions.McpServerRegistration? other) -> bool
+Lunate.Extensibility.Abstractions.McpServerRegistration.Exposure.get -> Lunate.Extensibility.Abstractions.ToolExposure
+Lunate.Extensibility.Abstractions.McpServerRegistration.Exposure.init -> void
+Lunate.Extensibility.Abstractions.McpServerRegistration.ExposureOverrides.get -> System.Collections.Generic.IReadOnlyDictionary<string!, Lunate.Extensibility.Abstractions.ToolExposure>?
+Lunate.Extensibility.Abstractions.McpServerRegistration.ExposureOverrides.init -> void
+Lunate.Extensibility.Abstractions.McpServerRegistration.McpServerRegistration(string! Name, Lunate.Extensibility.Abstractions.McpServerConfig! Config, Lunate.Extensibility.Abstractions.ToolExposure Exposure = Lunate.Extensibility.Abstractions.ToolExposure.Direct, System.Collections.Generic.IReadOnlyDictionary<string!, Lunate.Extensibility.Abstractions.ToolExposure>? ExposureOverrides = null) -> void
+Lunate.Extensibility.Abstractions.McpServerRegistration.Name.get -> string!
+Lunate.Extensibility.Abstractions.McpServerRegistration.Name.init -> void
+Lunate.Extensibility.Abstractions.ToolExposure
+Lunate.Extensibility.Abstractions.ToolExposure.Deferred = 3 -> Lunate.Extensibility.Abstractions.ToolExposure
+Lunate.Extensibility.Abstractions.ToolExposure.Direct = 0 -> Lunate.Extensibility.Abstractions.ToolExposure
+Lunate.Extensibility.Abstractions.ToolExposure.Hidden = 4 -> Lunate.Extensibility.Abstractions.ToolExposure
+Lunate.Extensibility.Abstractions.ToolExposure.ModelOnly = 1 -> Lunate.Extensibility.Abstractions.ToolExposure
+Lunate.Extensibility.Abstractions.ToolExposure.Programmatic = 2 -> Lunate.Extensibility.Abstractions.ToolExposure
+override Lunate.Extensibility.Abstractions.McpServerConfig.Equals(object? obj) -> bool
+override Lunate.Extensibility.Abstractions.McpServerConfig.GetHashCode() -> int
+override Lunate.Extensibility.Abstractions.McpServerConfig.ToString() -> string!
+override Lunate.Extensibility.Abstractions.McpServerRegistration.Equals(object? obj) -> bool
+override Lunate.Extensibility.Abstractions.McpServerRegistration.GetHashCode() -> int
+override Lunate.Extensibility.Abstractions.McpServerRegistration.ToString() -> string!
+static Lunate.Extensibility.Abstractions.McpServerConfig.operator !=(Lunate.Extensibility.Abstractions.McpServerConfig? left, Lunate.Extensibility.Abstractions.McpServerConfig? right) -> bool
+static Lunate.Extensibility.Abstractions.McpServerConfig.operator ==(Lunate.Extensibility.Abstractions.McpServerConfig? left, Lunate.Extensibility.Abstractions.McpServerConfig? right) -> bool
+static Lunate.Extensibility.Abstractions.McpServerRegistration.operator !=(Lunate.Extensibility.Abstractions.McpServerRegistration? left, Lunate.Extensibility.Abstractions.McpServerRegistration? right) -> bool
+static Lunate.Extensibility.Abstractions.McpServerRegistration.operator ==(Lunate.Extensibility.Abstractions.McpServerRegistration? left, Lunate.Extensibility.Abstractions.McpServerRegistration? right) -> bool

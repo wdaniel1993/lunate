@@ -2,8 +2,8 @@
 
 ## 1. Contract (Extensibility.Abstractions)
 
-- [ ] 1.1 `McpServerConfig`, `McpServerRegistration`, `ToolExposure` (STJ round-trip tests)
-- [ ] 1.2 `IExtensionContext.RegisterMcpServer`; PublicAPI.Unshipped
+- [x] 1.1 `McpServerConfig`, `McpServerRegistration`, `ToolExposure` (STJ round-trip tests)
+- [x] 1.2 `IExtensionContext.RegisterMcpServer`; PublicAPI.Unshipped
 
 ## 2. Loader registry (Extensibility)
 

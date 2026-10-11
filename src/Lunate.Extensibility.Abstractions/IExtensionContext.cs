@@ -37,6 +37,13 @@ public interface IExtensionContext
     /// </summary>
     void RegisterStatusWidget(IStatusWidget widget);
 
+    /// <summary>
+    /// Registers an MCP server. Registration is registration only: it must not start processes,
+    /// sockets or timers. The first registration per server name wins; a duplicate is refused and
+    /// logged. The process starts on the first tool listing.
+    /// </summary>
+    void RegisterMcpServer(McpServerRegistration registration);
+
     /// <summary>Looks up a service another extension registered by its name.</summary>
     bool TryGetService(string name, out IBackgroundService? service);
 
