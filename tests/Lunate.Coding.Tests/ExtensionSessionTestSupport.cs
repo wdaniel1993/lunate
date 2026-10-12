@@ -47,18 +47,18 @@ internal sealed class ScriptedTrustPrompt(params bool[] decisions) : IExtensionT
     public int Calls { get; private set; }
 
     public ValueTask<bool> ApproveAsync(
-        ExtensionDescriptor descriptor,
+        ExtensionTrustRequest request,
         CancellationToken cancellationToken
     )
     {
-        ArgumentNullException.ThrowIfNull(descriptor);
+        ArgumentNullException.ThrowIfNull(request);
         Calls++;
         if (!_decisions.TryDequeue(out bool decision))
         {
             throw new InvalidOperationException(
                 string.Create(
                     CultureInfo.InvariantCulture,
-                    $"ScriptedTrustPrompt has no decision left for extension '{descriptor.Id}' (call {Calls}); queue one decision per expected trust prompt."
+                    $"ScriptedTrustPrompt has no decision left for extension '{request.Descriptor.Id}' (call {Calls}); queue one decision per expected trust prompt."
                 )
             );
         }

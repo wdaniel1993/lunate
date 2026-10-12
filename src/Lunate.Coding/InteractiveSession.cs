@@ -119,6 +119,12 @@ internal sealed partial class InteractiveSession : IDisposable
     private CancellationTokenSource? _runCancellation;
     private ApprovalPromptModel? _approvalPrompt;
     private TaskCompletionSource<ApprovalChoice>? _approvalDecision;
+    private TrustPromptModel? _trustPrompt;
+    private TaskCompletionSource<TrustChoice>? _trustDecision;
+    private long _keySequence;
+    private long _trustArmSequence;
+    private int _trustAsked;
+    private int _trustTotal;
     private SelectListModel? _picker;
     private PickerKind _pickerKind;
     private List<string> _pickerValues = [];
@@ -166,32 +172,33 @@ internal sealed partial class InteractiveSession : IDisposable
     /// <summary>Runs the input loop until the terminal's key stream ends or the quit window quits.</summary>
     public async Task RunAsync(CancellationToken ct = default)
     {
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct, _lifetime.Token);
+        _live.Start();
+        _live.SetLoading(_capabilities.Unicode ? "loading project…" : "loading project...");
+        Task pump = PumpKeysAsync(linked.Token);
         try
         {
-            await ComposeAsync(ct);
+            await ComposeAsync(linked.Token);
+            _composed = true;
+            _live.SetLoading(null);
+            FlushPendingNotices();
+            UpdateStatus();
         }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        catch (OperationCanceledException) when (linked.IsCancellationRequested)
         {
-            await DisposeExtensionsAsync();
-            return;
+            // A quit (or the caller's token) during composition: never surface it as an error.
         }
         catch (Exception exception)
         {
+            _lifetime.Cancel();
             (_options.Diagnostics ?? Console.Error).WriteLine($"lunate: {exception.Message}");
-            await DisposeExtensionsAsync();
-            return;
         }
 
-        using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct, _lifetime.Token);
-        _live.Start();
-        _composed = true;
-        FlushPendingNotices();
-        UpdateStatus();
         try
         {
-            await PumpKeysAsync(linked.Token);
+            await pump;
         }
-        catch (OperationCanceledException) when (linked.IsCancellationRequested) { }
+        catch (OperationCanceledException) { }
         finally
         {
             _lifetime.Cancel();
@@ -238,6 +245,7 @@ internal sealed partial class InteractiveSession : IDisposable
         _contextWindow = _model.ContextWindow;
         _workingDirectory = DisplayDirectory(_workspace.WorktreeRoot);
         _branch = GitBranchReader.Read(_workspace.WorktreeRoot);
+        _trustTotal = CountPendingTrustQuestions();
         _approver = new SessionApprover(this, _settings.Approval);
         await ComposeExtensionsAsync(ct);
         await ComposeMcpAsync(ct);
@@ -267,8 +275,7 @@ internal sealed partial class InteractiveSession : IDisposable
             ExtensionSeams seams = (_options.Extensions ?? new ExtensionSeams()) with
             {
                 Log = _options.Extensions?.Log ?? new StderrExtensionLog(diagnostics),
-                Prompt =
-                    _options.Extensions?.Prompt ?? new ConsoleTrustPrompt(diagnostics, Console.In),
+                Prompt = _options.Extensions?.Prompt ?? new TuiExtensionTrustPrompt(AskTrustAsync),
             };
             _extensions = await ExtensionSession
                 .StartAsync(
@@ -316,7 +323,7 @@ internal sealed partial class InteractiveSession : IDisposable
                     _workspace,
                     _options.McpConfigPath,
                     _options.Extensions,
-                    new ConsoleMcpConfigTrustPrompt(diagnostics, Console.In),
+                    new TuiMcpConfigTrustPrompt(AskTrustAsync),
                     log,
                     Notify,
                     ct
@@ -413,6 +420,12 @@ internal sealed partial class InteractiveSession : IDisposable
     /// <summary>The pending approval as shown in the live area; null when none is open.</summary>
     internal ApprovalPromptModel? PendingApproval => _approvalPrompt;
 
+    /// <summary>The pending trust question as shown in the live area; null when none is open.</summary>
+    internal TrustPromptModel? PendingTrustPrompt => _trustPrompt;
+
+    /// <summary>Whether composition finished; false while the session composes.</summary>
+    internal bool IsComposed => _composed;
+
     /// <summary>Whether a turn (or its auto-run chain) is currently active.</summary>
     internal bool IsRunning => _turnActive;
 
@@ -428,12 +441,33 @@ internal sealed partial class InteractiveSession : IDisposable
                 break;
             }
 
-            await HandleKeyAsync(key, ct);
+            // The read-time sequence stamps every key: keys read before a trust question armed
+            // can never answer it (the type-ahead guard).
+            await HandleKeyAsync(key, Interlocked.Increment(ref _keySequence), ct);
         }
     }
 
-    private async Task HandleKeyAsync(KeyEvent key, CancellationToken ct)
+    internal async Task HandleKeyAsync(KeyEvent key, long sequence, CancellationToken ct)
     {
+        if (_trustDecision is { } trustPending)
+        {
+            if (KeyRouter.Route(key) == RoutedKey.ClearOrQuit)
+            {
+                HandleCtrlC();
+                return;
+            }
+
+            if (
+                sequence > Interlocked.Read(ref _trustArmSequence)
+                && _trustPrompt?.Decide(key) is { } trustChoice
+            )
+            {
+                ResolveTrust(trustPending, trustChoice);
+            }
+
+            return;
+        }
+
         if (_approvalDecision is { } pending)
         {
             if (KeyRouter.Route(key) == RoutedKey.ClearOrQuit)
@@ -445,6 +479,17 @@ internal sealed partial class InteractiveSession : IDisposable
             if (_approvalPrompt?.Decide(key) is { } decision)
             {
                 ResolveApproval(pending, decision);
+            }
+
+            return;
+        }
+
+        if (!_composed)
+        {
+            // Composition is still running: ordinary input is inert; only the quit window acts.
+            if (KeyRouter.Route(key) == RoutedKey.ClearOrQuit)
+            {
+                HandleCtrlC();
             }
 
             return;

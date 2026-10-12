@@ -258,3 +258,28 @@ override Lunate.Tui.TerminalCapabilities.ToString() -> string!
 static Lunate.Tui.TerminalCapabilities.Detect(bool isInteractive, bool isWindows, System.Func<string!, string?>? environment = null, System.Func<int>? outputCodePage = null) -> Lunate.Tui.TerminalCapabilities!
 static Lunate.Tui.TerminalCapabilities.operator !=(Lunate.Tui.TerminalCapabilities? left, Lunate.Tui.TerminalCapabilities? right) -> bool
 static Lunate.Tui.TerminalCapabilities.operator ==(Lunate.Tui.TerminalCapabilities? left, Lunate.Tui.TerminalCapabilities? right) -> bool
+Lunate.Tui.TrustChoice
+Lunate.Tui.TrustChoice.Approve = 0 -> Lunate.Tui.TrustChoice
+Lunate.Tui.TrustChoice.Deny = 1 -> Lunate.Tui.TrustChoice
+Lunate.Tui.TrustPromptModel
+Lunate.Tui.TrustPromptModel.<Clone>$() -> Lunate.Tui.TrustPromptModel!
+Lunate.Tui.TrustPromptModel.Decide(Lunate.Tui.KeyEvent! key) -> Lunate.Tui.TrustChoice?
+Lunate.Tui.TrustPromptModel.Deconstruct(out string! Title, out System.Collections.Generic.IReadOnlyList<string!>! Details, out int Step, out int Total) -> void
+Lunate.Tui.TrustPromptModel.Details.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Lunate.Tui.TrustPromptModel.Details.init -> void
+Lunate.Tui.TrustPromptModel.Equals(Lunate.Tui.TrustPromptModel? other) -> bool
+Lunate.Tui.TrustPromptModel.Step.get -> int
+Lunate.Tui.TrustPromptModel.Step.init -> void
+Lunate.Tui.TrustPromptModel.Title.get -> string!
+Lunate.Tui.TrustPromptModel.Title.init -> void
+Lunate.Tui.TrustPromptModel.Total.get -> int
+Lunate.Tui.TrustPromptModel.Total.init -> void
+Lunate.Tui.TrustPromptModel.TrustPromptModel(string! Title, System.Collections.Generic.IReadOnlyList<string!>! Details, int Step, int Total) -> void
+Lunate.Tui.TrustPromptRenderer
+Lunate.Tui.TrustPromptRenderer.Render(Lunate.Tui.TrustPromptModel! prompt) -> Spectre.Console.Rendering.IRenderable!
+Lunate.Tui.TrustPromptRenderer.TrustPromptRenderer() -> void
+override Lunate.Tui.TrustPromptModel.Equals(object? obj) -> bool
+override Lunate.Tui.TrustPromptModel.GetHashCode() -> int
+override Lunate.Tui.TrustPromptModel.ToString() -> string!
+static Lunate.Tui.TrustPromptModel.operator !=(Lunate.Tui.TrustPromptModel? left, Lunate.Tui.TrustPromptModel? right) -> bool
+static Lunate.Tui.TrustPromptModel.operator ==(Lunate.Tui.TrustPromptModel? left, Lunate.Tui.TrustPromptModel? right) -> bool

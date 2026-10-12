@@ -272,7 +272,7 @@ internal static class Cli
             "  lunate                         start the interactive session on a terminal"
         );
         output.WriteLine(
-            "                                 commands: /model /new /resume /compact /mcp /quit"
+            "                                 commands: /model /new /resume /compact /mcp /trust /quit"
         );
         output.WriteLine(
             "  lunate --no-extensions         start any mode without loading extensions (their"

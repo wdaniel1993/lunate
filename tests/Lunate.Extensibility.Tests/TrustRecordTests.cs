@@ -1,0 +1,80 @@
+namespace Lunate.Extensibility.Tests;
+
+/// <summary>
+/// The record query behind the changed-files re-prompt wording and <c>/trust</c>: it lists both
+/// sections for one repository, and clearing removes both so the next load asks again.
+/// </summary>
+public sealed class TrustRecordTests
+{
+    [Fact]
+    public void Records_lists_both_sections_with_their_worktree_and_hash()
+    {
+        using var temp = new TempDirectory();
+        var store = new ExtensionTrustStore(TestExtensions.Options(temp.Subdirectory("store")));
+        store.RecordTrusted("repo-1", "/w1", "ext-hash", DateTimeOffset.UtcNow);
+        store.RecordMcpConfigTrusted("repo-1", "/w1", "mcp-hash", DateTimeOffset.UtcNow);
+        store.RecordTrusted("repo-2", "/w2", "other-hash", DateTimeOffset.UtcNow);
+
+        IReadOnlyList<TrustRecord> records = store.Records("repo-1");
+
+        Assert.Equal(
+            [
+                new TrustRecord(TrustSection.Extensions, "/w1", "ext-hash"),
+                new TrustRecord(TrustSection.McpConfig, "/w1", "mcp-hash"),
+            ],
+            records
+        );
+    }
+
+    [Fact]
+    public void Records_orders_worktrees_within_a_section()
+    {
+        using var temp = new TempDirectory();
+        var store = new ExtensionTrustStore(TestExtensions.Options(temp.Subdirectory("store")));
+        store.RecordTrusted("repo-1", "/b", "hash-b", DateTimeOffset.UtcNow);
+        store.RecordTrusted("repo-1", "/a", "hash-a", DateTimeOffset.UtcNow);
+
+        Assert.Equal(["/a", "/b"], store.Records("repo-1").Select(record => record.WorktreePath));
+    }
+
+    [Fact]
+    public void Records_is_empty_without_a_file_or_records()
+    {
+        using var temp = new TempDirectory();
+        var store = new ExtensionTrustStore(TestExtensions.Options(temp.Subdirectory("store")));
+
+        Assert.Empty(store.Records("repo-1"));
+    }
+
+    [Fact]
+    public void ClearRepository_removes_both_sections_and_leaves_other_repositories()
+    {
+        using var temp = new TempDirectory();
+        var store = new ExtensionTrustStore(TestExtensions.Options(temp.Subdirectory("store")));
+        store.RecordTrusted("repo-1", "/w1", "ext-hash", DateTimeOffset.UtcNow);
+        store.RecordMcpConfigTrusted("repo-1", "/w1", "mcp-hash", DateTimeOffset.UtcNow);
+        store.RecordTrusted("repo-2", "/w2", "keep", DateTimeOffset.UtcNow);
+
+        store.ClearRepository("repo-1");
+
+        Assert.Empty(store.Records("repo-1"));
+        Assert.Equal(ExtensionTrustDecision.Prompt, store.Evaluate("repo-1", "/w1", "ext-hash"));
+        Assert.Equal(
+            ExtensionTrustDecision.Prompt,
+            store.EvaluateMcpConfig("repo-1", "/w1", "mcp-hash")
+        );
+        Assert.Equal(ExtensionTrustDecision.Trusted, store.Evaluate("repo-2", "/w2", "keep"));
+    }
+
+    [Fact]
+    public void Clearing_an_unknown_repository_writes_nothing()
+    {
+        using var temp = new TempDirectory();
+        string storePath = temp.Subdirectory("store");
+        var store = new ExtensionTrustStore(TestExtensions.Options(storePath));
+
+        store.ClearRepository("repo-1");
+
+        Assert.False(File.Exists(Path.Combine(storePath, "trust.json")));
+    }
+}

@@ -43,6 +43,9 @@ internal static class McpComposition
         string projectPath = ProjectConfigPath(workspace.WorktreeRoot);
         if (File.Exists(projectPath))
         {
+            // The file is parsed before the trust gate so the question can name its servers;
+            // nothing starts and errors are reported only when the file is trusted.
+            McpConfigResult project = McpConfig.Load(projectPath);
             var store = new ExtensionTrustStore(
                 new ExtensionHostOptions
                 {
@@ -54,6 +57,7 @@ internal static class McpComposition
                     workspace.GitCommonDir ?? workspace.WorktreeRoot,
                     workspace.WorktreeRoot,
                     projectPath,
+                    project.Servers,
                     prompt,
                     log,
                     ct
@@ -61,7 +65,6 @@ internal static class McpComposition
                 .ConfigureAwait(false);
             if (trusted)
             {
-                McpConfigResult project = McpConfig.Load(projectPath);
                 ReportErrors(project.Errors, notify);
                 Merge(servers, project.Servers);
             }

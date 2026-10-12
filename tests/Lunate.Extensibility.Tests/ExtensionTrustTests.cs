@@ -24,6 +24,7 @@ public sealed class ExtensionTrustTests
         );
 
         Assert.Equal(1, prompt.Calls);
+        Assert.False(prompt.LastFilesChanged);
         string trustPath = Path.Combine(store, "trust.json");
         Assert.Equal(["trust.json"], Directory.GetFiles(store).Select(Path.GetFileName));
 
@@ -104,6 +105,7 @@ public sealed class ExtensionTrustTests
         );
 
         Assert.Equal(2, prompt.Calls);
+        Assert.True(prompt.LastFilesChanged);
     }
 
     [Fact]

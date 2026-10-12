@@ -119,6 +119,94 @@ public sealed class ExtensionTrustStore
         DateTimeOffset trustedAt
     ) => RecordIn(McpConfigSection, repositoryIdentity, worktreePath, contentHash, trustedAt);
 
+    /// <summary>
+    /// Every trust record this repository holds across both sections (extension trust and the
+    /// project mcp.json), ordered by section then worktree: the changed-files re-prompt wording
+    /// reads it, and <c>/trust</c> lists it.
+    /// </summary>
+    public IReadOnlyList<TrustRecord> Records(string repositoryIdentity)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(repositoryIdentity);
+
+        JsonObject document = ReadDocument();
+        List<TrustRecord> records = [];
+        Collect(
+            document,
+            RepositoriesSection,
+            TrustSection.Extensions,
+            repositoryIdentity,
+            records
+        );
+        Collect(document, McpConfigSection, TrustSection.McpConfig, repositoryIdentity, records);
+        records.Sort(
+            (left, right) =>
+            {
+                int section = left.Section.CompareTo(right.Section);
+                return section != 0
+                    ? section
+                    : StringComparer.Ordinal.Compare(left.WorktreePath, right.WorktreePath);
+            }
+        );
+        return records;
+    }
+
+    /// <summary>
+    /// Removes every record for the repository from both sections, so the next load asks again.
+    /// Other repositories and unrelated keys are untouched; nothing is written when there is no
+    /// record to clear.
+    /// </summary>
+    public void ClearRepository(string repositoryIdentity)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(repositoryIdentity);
+
+        JsonObject document = ReadDocument();
+        var changed = false;
+        foreach (string section in new[] { RepositoriesSection, McpConfigSection })
+        {
+            if (
+                document[section] is JsonObject repositories
+                && repositories.Remove(repositoryIdentity)
+            )
+            {
+                changed = true;
+            }
+        }
+
+        if (changed)
+        {
+            WriteAtomically(document);
+        }
+    }
+
+    private static void Collect(
+        JsonObject document,
+        string section,
+        TrustSection kind,
+        string repositoryIdentity,
+        List<TrustRecord> records
+    )
+    {
+        if (
+            document[section] is not JsonObject repositories
+            || repositories[repositoryIdentity] is not JsonObject repository
+            || repository["worktrees"] is not JsonObject worktrees
+        )
+        {
+            return;
+        }
+
+        foreach (KeyValuePair<string, JsonNode?> entry in worktrees)
+        {
+            if (
+                entry.Value is JsonValue value
+                && value.TryGetValue<string>(out string? recordedHash)
+            )
+            {
+                records.Add(new TrustRecord(kind, entry.Key, recordedHash));
+            }
+        }
+    }
+
     private ExtensionTrustDecision EvaluateIn(
         string section,
         string repositoryIdentity,

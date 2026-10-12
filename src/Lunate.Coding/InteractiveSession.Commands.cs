@@ -37,6 +37,9 @@ internal sealed partial class InteractiveSession
             case "/mcp":
                 Notify(McpStatusText());
                 return;
+            case "/trust":
+                HandleTrustCommand(argument);
+                return;
             case "/model":
                 if (RefusedWhileBusy())
                 {

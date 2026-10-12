@@ -32,6 +32,9 @@ public sealed class PublicApiTests
         "Lunate.Tui.ToolBlockRenderer",
         "Lunate.Tui.ToolBlockStatus",
         "Lunate.Tui.ToolDiffInfo",
+        "Lunate.Tui.TrustChoice",
+        "Lunate.Tui.TrustPromptModel",
+        "Lunate.Tui.TrustPromptRenderer",
     ];
 
     [Fact]

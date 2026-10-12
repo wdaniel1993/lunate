@@ -91,6 +91,10 @@ internal sealed class LiveArea : IDisposable
 
     public void SetApproval(ApprovalPromptModel? prompt) => Post(new ApprovalInput(prompt));
 
+    public void SetTrustPrompt(TrustPromptModel? prompt) => Post(new TrustPromptInput(prompt));
+
+    public void SetLoading(string? text) => Post(new LoadingInput(text));
+
     public void SetPicker(SelectListModel? picker) => Post(new PickerInput(picker));
 
     public void SetTool(string? toolName) => Post(new ToolInput(toolName));
@@ -201,6 +205,8 @@ internal sealed class LiveArea : IDisposable
             TailSetInput tail => state with { TailText = tail.Text },
             NoticeInput notice => state with { Notice = notice.Notice },
             ApprovalInput approval => state with { Approval = approval.Prompt },
+            TrustPromptInput trust => state with { Trust = trust.Prompt },
+            LoadingInput loading => state with { Loading = loading.Text },
             PickerInput picker => state with { Picker = picker.Picker },
             ToolInput tool => state with { ToolName = tool.Name, FrameNumber = 0 },
             FooterInput footer => state with
@@ -228,6 +234,10 @@ internal sealed class LiveArea : IDisposable
     private sealed record NoticeInput(string? Notice) : LiveAreaInput;
 
     private sealed record ApprovalInput(ApprovalPromptModel? Prompt) : LiveAreaInput;
+
+    private sealed record TrustPromptInput(TrustPromptModel? Prompt) : LiveAreaInput;
+
+    private sealed record LoadingInput(string? Text) : LiveAreaInput;
 
     private sealed record PickerInput(SelectListModel? Picker) : LiveAreaInput;
 

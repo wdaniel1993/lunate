@@ -9,8 +9,8 @@ public sealed class ScriptedTrustPromptTests
     {
         var prompt = new ScriptedTrustPrompt(true, false);
 
-        Assert.True(await prompt.ApproveAsync(Descriptor("first"), CancellationToken.None));
-        Assert.False(await prompt.ApproveAsync(Descriptor("second"), CancellationToken.None));
+        Assert.True(await prompt.ApproveAsync(Request("first"), CancellationToken.None));
+        Assert.False(await prompt.ApproveAsync(Request("second"), CancellationToken.None));
 
         Assert.Equal(2, prompt.Calls);
         Assert.Equal(1, prompt.Approvals);
@@ -21,11 +21,11 @@ public sealed class ScriptedTrustPromptTests
     public async Task Exhaustion_throws_and_never_approves_implicitly()
     {
         var prompt = new ScriptedTrustPrompt(true);
-        _ = await prompt.ApproveAsync(Descriptor("first"), CancellationToken.None);
+        _ = await prompt.ApproveAsync(Request("first"), CancellationToken.None);
 
         InvalidOperationException exception = await Assert.ThrowsAsync<InvalidOperationException>(
             async () =>
-                await prompt.ApproveAsync(Descriptor("second"), CancellationToken.None)
+                await prompt.ApproveAsync(Request("second"), CancellationToken.None)
         );
 
         Assert.Contains("second", exception.Message, StringComparison.Ordinal);
@@ -35,8 +35,8 @@ public sealed class ScriptedTrustPromptTests
         Assert.Equal(0, prompt.Denials);
     }
 
-    private static ExtensionDescriptor Descriptor(string id) =>
-        new(id, "0.1.0", ExtensionScope.Project, ".", Manifest(id));
+    private static ExtensionTrustRequest Request(string id) =>
+        new(new ExtensionDescriptor(id, "0.1.0", ExtensionScope.Project, ".", Manifest(id)), false);
 
     private static Lunate.Extensibility.Abstractions.ExtensionManifest Manifest(string id) =>
         new()

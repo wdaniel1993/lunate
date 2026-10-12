@@ -3,7 +3,7 @@ namespace Lunate.Extensibility;
 public interface IExtensionTrustPrompt
 {
     ValueTask<bool> ApproveAsync(
-        ExtensionDescriptor descriptor,
+        ExtensionTrustRequest request,
         CancellationToken cancellationToken
     );
 }

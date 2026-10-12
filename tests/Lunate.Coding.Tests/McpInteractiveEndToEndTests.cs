@@ -22,6 +22,7 @@ public sealed class McpInteractiveEndToEndTests
         );
         host.Client.Enqueue(Scripts.Text("done"), Scripts.Stop());
         Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
 
         host.Console.SendText("go");
         host.Console.SendEnter();
