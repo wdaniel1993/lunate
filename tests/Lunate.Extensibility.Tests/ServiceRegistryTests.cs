@@ -79,6 +79,18 @@ public sealed class ServiceRegistryTests
     }
 
     [Fact]
+    public void A_core_lookup_before_registration_fails_soft()
+    {
+        var registry = new ServiceRegistry();
+
+        Assert.False(
+            registry.TryGetCore<WorkspaceInfo>("core/workspace", out WorkspaceInfo? service)
+        );
+        Assert.Null(service);
+        Assert.Null(registry.FindCore("core/workspace"));
+    }
+
+    [Fact]
     public void Unknown_names_are_not_found()
     {
         var registry = new ServiceRegistry();

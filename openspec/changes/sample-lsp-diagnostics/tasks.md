@@ -8,9 +8,9 @@
 
 ## 2. Core: workspace identity registration
 
-- [ ] 2.1 Register `core/workspace` (the session's `WorkspaceInfo`) at composition in `ExtensionSession.StartAsync` (production) and `ExtensionTestHost` (kit parity), before any extension loads; plumb the identity from the Coding layer's workspace; per-composition value, no static
-- [ ] 2.2 Own tests (independent of the sample): the handle is reachable in a composed session and matches the session's workspace; lookup before registration fails soft (no throw)
-- [ ] 2.3 Composition test pinning the core services registered in production composition (not-yet-wired set named in the test: `core/file-bus`, `core/mutation-queue`)
+- [x] 2.1 Register `core/workspace` (the session's `WorkspaceInfo`) at composition in `ExtensionSession.StartAsync` (production) and `ExtensionTestHost` (kit parity), before any extension loads; plumb the identity from the Coding layer's workspace; per-composition value, no static
+- [x] 2.2 Own tests (independent of the sample): the handle is reachable in a composed session and matches the session's workspace; lookup before registration fails soft (no throw)
+- [x] 2.3 Composition test pinning the core services registered in production composition (not-yet-wired set named in the test: `core/file-bus`, `core/mutation-queue`)
 
 ## 3. The LSP client (sample)
 

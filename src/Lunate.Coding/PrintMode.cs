@@ -326,12 +326,7 @@ internal static class PrintMode
             Log = seams?.Log ?? new StderrExtensionLog(errors),
         };
         return await ExtensionSession
-            .StartAsync(
-                workspace.WorktreeRoot,
-                workspace.GitCommonDir ?? workspace.WorktreeRoot,
-                resolved,
-                ct
-            )
+            .StartAsync(workspace.Identity, resolved, ct)
             .ConfigureAwait(false);
     }
 

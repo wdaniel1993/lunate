@@ -1,3 +1,5 @@
+using Lunate.Extensibility.Abstractions;
+
 namespace Lunate.Coding;
 
 /// <summary>
@@ -19,6 +21,9 @@ public sealed class Workspace
 
     /// <summary>The shared git directory from the file system, or null outside a repository.</summary>
     public string? GitCommonDir { get; }
+
+    /// <summary>The identity extensions receive through the <c>core/workspace</c> handle.</summary>
+    public WorkspaceInfo Identity => new(WorktreeRoot, RepoRoot, GitCommonDir);
 
     public Workspace(string workingDirectory, IReadOnlyList<string>? extraRoots = null)
     {

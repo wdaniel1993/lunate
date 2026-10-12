@@ -1,4 +1,5 @@
 using Lunate.Agent;
+using Lunate.Extensibility.Abstractions;
 using Microsoft.Extensions.AI;
 
 namespace Lunate.Extensibility.Testing;
@@ -57,6 +58,10 @@ public sealed class ExtensionTestHost : IAsyncDisposable
         );
         _fileChanges = new FileChangeBus(WorkingDirectory, Log);
         Runner.Services.RegisterCore("core/file-bus", _fileChanges);
+        Runner.Services.RegisterCore(
+            "core/workspace",
+            new WorkspaceInfo(Path.GetFullPath(WorkingDirectory), null, null)
+        );
         InstallExtension(options);
     }
 
