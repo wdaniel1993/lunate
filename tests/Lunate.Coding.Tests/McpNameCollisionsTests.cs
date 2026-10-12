@@ -4,6 +4,7 @@ using Lunate.Protocols;
 
 namespace Lunate.Coding.Tests;
 
+[Collection("mcp-processes")]
 public sealed class McpNameCollisionsTests
 {
     [Fact]

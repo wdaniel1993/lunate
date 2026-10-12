@@ -25,4 +25,14 @@ public sealed class CellTextTests
     [InlineData("a\u0301b", 1, "a\u0301")]
     public void Clip_never_exceeds_the_cell_width(string text, int width, string expected) =>
         Assert.Equal(expected, CellText.Clip(text, width));
+
+    [Theory]
+    [InlineData("a\r\nb\tc  d", "a b c d")]
+    [InlineData("a\u0001b", "ab")]
+    [InlineData("a\u007fb", "ab")]
+    [InlineData("  \r\n\t ", "")]
+    public void SingleLine_collapses_whitespace_and_drops_control_characters(
+        string text,
+        string expected
+    ) => Assert.Equal(expected, CellText.SingleLine(text));
 }

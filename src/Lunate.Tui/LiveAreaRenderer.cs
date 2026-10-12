@@ -18,7 +18,10 @@ internal static class LiveAreaRenderer
     {
         int width = Math.Max(1, state.Size.Columns);
         var toolLine = ToolLine(state);
-        var noticeLine = string.IsNullOrEmpty(state.Notice) ? null : state.Notice;
+        // A notice is always one physical line: embedded newlines or controls would split the
+        // frame, so sanitize before clipping; a notice that sanitizes to empty renders as none.
+        string? notice = state.Notice is null ? null : CellText.SingleLine(state.Notice);
+        var noticeLine = string.IsNullOrEmpty(notice) ? null : notice;
         var approvalLine = state.Approval is null
             ? null
             : ApprovalPromptRenderer.PlainText(state.Approval);

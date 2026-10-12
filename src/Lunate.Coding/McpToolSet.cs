@@ -113,6 +113,11 @@ internal sealed class McpToolSet : IAsyncDisposable
                     exception.Message,
                     server.Options.Source
                 );
+                // The notices show a shortened reason; the log keeps the full one (stderr may
+                // carry multiple lines).
+                _log?.Invoke(
+                    $"{_describe(server.Options)} failed to start or list its tools: {exception.Message} The session continues without this server's tools."
+                );
             }
         }
 

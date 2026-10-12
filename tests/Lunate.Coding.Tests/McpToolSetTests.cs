@@ -3,6 +3,7 @@ using Lunate.Protocols;
 
 namespace Lunate.Coding.Tests;
 
+[Collection("mcp-processes")]
 public sealed class McpToolSetTests
 {
     private static CancellationToken Ct => TestContext.Current.CancellationToken;

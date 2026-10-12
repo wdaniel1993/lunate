@@ -7,6 +7,7 @@ namespace Lunate.Coding.Tests;
 /// <c>server__tool</c>, its call round-trips through approval and renders, <c>/mcp</c> shows the
 /// live status, and a broken server notifies without harming the session.
 /// </summary>
+[Collection("mcp-processes")]
 public sealed class McpInteractiveEndToEndTests
 {
     [Fact]
@@ -70,13 +71,6 @@ public sealed class McpInteractiveEndToEndTests
         host.Console.SendText("/mcp");
         host.Console.SendEnter();
         await InteractiveSessionCommandTests.WaitForFrameAsync(host, "broken — failed:");
-        if (!host.LastFrame.Contains("test — started, 5 tools", StringComparison.Ordinal))
-        {
-            throw new InvalidOperationException(
-                "WINDIAG>>>\n" + DiagnosticDump.Dump(host) + "\n<<<END"
-            );
-        }
-
         Assert.Contains("test — started, 5 tools", host.LastFrame, StringComparison.Ordinal);
 
         host.Console.SendText("/quit");

@@ -5,6 +5,7 @@ namespace Lunate.Coding.Tests;
 /// server's name is skipped before listing (the configured server starts, the registration never
 /// does), the collision is logged naming both sources, and the run continues.
 /// </summary>
+[Collection("mcp-processes")]
 public sealed class McpCollisionCompositionTests
 {
     [Fact]

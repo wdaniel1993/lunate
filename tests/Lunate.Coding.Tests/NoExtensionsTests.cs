@@ -5,6 +5,7 @@ namespace Lunate.Coding.Tests;
 /// configured mcp.json server still works (configured servers are user-curated, not third-party
 /// bundles).
 /// </summary>
+[Collection("mcp-processes")]
 public sealed class NoExtensionsTests
 {
     [Fact]

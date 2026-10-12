@@ -136,7 +136,8 @@ internal sealed partial class InteractiveSession
             McpServerState.Started => FormattableString.Invariant(
                 $"{status.Name} — started, {status.ToolCount} tools{source}"
             ),
-            McpServerState.Failed => $"{status.Name} — failed: {status.Reason}{source}",
+            McpServerState.Failed =>
+                $"{status.Name} — failed: {McpComposition.ShortReason(status.Reason)}{source}",
             _ => status.Name + " — not started" + source,
         };
     }

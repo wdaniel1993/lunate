@@ -6,6 +6,7 @@ namespace Lunate.Coding.Tests;
 /// The approval proof with the real policy: every MCP tool carries risk Execute, so the default
 /// <c>ask</c> policy refuses a call with an approval error result and <c>--yolo</c> runs it.
 /// </summary>
+[Collection("mcp-processes")]
 public sealed class McpApprovalProofTests
 {
     [Fact]
