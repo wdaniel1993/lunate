@@ -197,7 +197,17 @@ public sealed class LspServerService : IBackgroundService
         {
             if (!session.Process.WaitForExit(2000))
             {
-                session.Process.Kill(entireProcessTree: true);
+                if (OperatingSystem.IsWindows())
+                {
+                    session.Process.Kill(entireProcessTree: true);
+                }
+                else
+                {
+                    // The framework's tree kill SIGSTOPs the whole tree on POSIX and has wedged
+                    // macOS CI VMs; the language server is a single process there.
+                    session.Process.Kill();
+                }
+
                 session.Process.WaitForExit(2000);
             }
         }

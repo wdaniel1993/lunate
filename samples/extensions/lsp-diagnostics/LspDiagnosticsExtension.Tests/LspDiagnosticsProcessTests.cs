@@ -31,6 +31,9 @@ public sealed class LspDiagnosticsProcessTests
             .Enqueue(ModelScripts.Text("done"));
 
         ExtensionRunResult first = await host.RunAsync(client, "write one", Ct);
+        int timedOutPid = TestSupport.MarkerPid(marker);
+        Assert.Throws<ArgumentException>(() => Process.GetProcessById(timedOutPid));
+
         ExtensionRunResult second = await host.RunAsync(client, "write two", Ct);
 
         Assert.DoesNotContain(
