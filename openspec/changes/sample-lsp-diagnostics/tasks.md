@@ -14,31 +14,31 @@
 
 ## 3. The LSP client (sample)
 
-- [ ] 3.1 `LspClient`: stdio JSON-RPC with `Content-Length` framing; `initialize` → `initialized` → `didOpen` (v1) / `didChange` (vN, full text) → bounded wait for `publishDiagnostics` **with the matching version** (stale versions ignored, wait continues); one request in flight (lock)
-- [ ] 3.2 `LspServerService` (`IBackgroundService`): lazy start on first use, idempotent stop (shutdown → exit → kill fallback → dispose); settings `serverCommand` (default `csharp-ls`), `serverArgs`, `timeoutMs` (default 2000, under the runner's 5 s per-handler timeout), `maxDiagnostics` (default 5); a dead process is restarted on next use
-- [ ] 3.3 URI conversion as a pure, unit-tested function: Windows drive paths (`C:\src\Foo.cs` → `file:///C:/src/Foo.cs`) and POSIX paths; separator-agnostic resolution
+- [x] 3.1 `LspClient`: stdio JSON-RPC with `Content-Length` framing; `initialize` → `initialized` → `didOpen` (v1) / `didChange` (vN, full text) → bounded wait for `publishDiagnostics` **with the matching version** (stale versions ignored, wait continues); one request in flight (lock)
+- [x] 3.2 `LspServerService` (`IBackgroundService`): lazy start on first use, idempotent stop (shutdown → exit → kill fallback → dispose); settings `serverCommand` (default `csharp-ls`), `serverArgs`, `timeoutMs` (default 2000, under the runner's 5 s per-handler timeout), `maxDiagnostics` (default 5); a dead process is restarted on next use
+- [x] 3.3 URI conversion as a pure, unit-tested function: Windows drive paths (`C:\src\Foo.cs` → `file:///C:/src/Foo.cs`) and POSIX paths; separator-agnostic resolution
 
 ## 4. The handler (sample)
 
-- [ ] 4.1 `LspDiagnosticsToolResultReadyHandler`: acts on `write`/`edit` when the call's arguments carry a `.cs` `path`; resolves via `core/workspace`; pass-through when not applicable (other tools, non-C#, no path, no identity)
-- [ ] 4.2 Attach: labeled text section (source label, errors+warnings only, cap + `+n more`, 1-based positions) + `StructuredContent`; zero → no attach + info log; every failure → original result + log (keep-original policy)
-- [ ] 4.3 Manifest (`hooks: ["tool-result-ready"]`, settings schema), factory, README (capability table like the other samples)
+- [x] 4.1 `LspDiagnosticsToolResultReadyHandler`: acts on `write`/`edit` when the call's arguments carry a `.cs` `path`; resolves via `core/workspace`; pass-through when not applicable (other tools, non-C#, no path, no identity)
+- [x] 4.2 Attach: labeled text section (source label, errors+warnings only, cap + `+n more`, 1-based positions) + `StructuredContent`; zero → no attach + info log; every failure → original result + log (keep-original policy)
+- [x] 4.3 Manifest (`hooks: ["tool-result-ready"]`, settings schema), factory, README (capability table like the other samples)
 
 ## 5. Fake LSP server
 
-- [ ] 5.1 `FakeLspServer` console project (referenced by the tests so its dll lands in the test output): initialize capabilities, didOpen/didChange → deterministic diagnostics (`TODO` line → warning `todo-check`), stale-version-first mode, `--silent`, `--marker <path>`, `--crash-after <n>`, shutdown/exit handling
-- [ ] 5.2 Tests set `serverCommand = "dotnet"` + `serverArgs` with the fake's dll path (cross-platform)
+- [x] 5.1 `FakeLspServer` console project (referenced by the tests so its dll lands in the test output): initialize capabilities, didOpen/didChange → deterministic diagnostics (`TODO` line → warning `todo-check`), stale-version-first mode, `--silent`, `--marker <path>`, `--crash-after <n>`, shutdown/exit handling
+- [x] 5.2 Tests set `serverCommand = "dotnet"` + `serverArgs` with the fake's dll path (cross-platform)
 
 ## 6. Tests (the done-when)
 
-- [ ] 6.1 `write` a `.cs` with a `TODO` → the tool result text carries the labeled diagnostics section, the result carries `StructuredContent`, and **the exact next model request contains the diagnostics text** (scripted client captures requests); the marker proves the fake started once
-- [ ] 6.2 `edit` a `.cs` → same attachment path (didChange vN)
-- [ ] 6.3 Non-C# `write` → output untouched, fake never started (no marker, no log)
-- [ ] 6.4 Stale version first → only the matching version's diagnostics are attached
-- [ ] 6.5 `--silent` fake → timeout → original output unchanged + logged; a later call still works (restart)
-- [ ] 6.6 `--crash-after` → the next call restarts the server; persistent failure is logged and the result passes through
-- [ ] 6.7 Server starts once across mutations and stops once at session end (marker + log + no lingering process)
-- [ ] 6.8 Cap + filter: >`maxDiagnostics` errors/warnings → capped with `+n more`; info/hint severities excluded
+- [x] 6.1 `write` a `.cs` with a `TODO` → the tool result text carries the labeled diagnostics section, the result carries `StructuredContent`, and **the exact next model request contains the diagnostics text** (scripted client captures requests); the marker proves the fake started once
+- [x] 6.2 `edit` a `.cs` → same attachment path (didChange vN)
+- [x] 6.3 Non-C# `write` → output untouched, fake never started (no marker, no log)
+- [x] 6.4 Stale version first → only the matching version's diagnostics are attached
+- [x] 6.5 `--silent` fake → timeout → original output unchanged + logged; a later call still works (restart)
+- [x] 6.6 `--crash-after` → the next call restarts the server; persistent failure is logged and the result passes through
+- [x] 6.7 Server starts once across mutations and stops once at session end (marker + log + no lingering process)
+- [x] 6.8 Cap + filter: >`maxDiagnostics` errors/warnings → capped with `+n more`; info/hint severities excluded
 
 ## 7. Gate + record
 

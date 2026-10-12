@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <RootNamespace>LspDiagnosticsExtension.Tests</RootNamespace>
+        <!-- FakeLspServer is a sibling project nested in this folder; keep its sources out of
+             this project's default globs (its obj/ would otherwise be compiled twice). -->
+        <DefaultItemExcludes>$(DefaultItemExcludes);FakeLspServer/**</DefaultItemExcludes>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="../../../../src/Lunate.Coding/Lunate.Coding.csproj" />
+        <ProjectReference Include="../../../../src/Lunate.Extensibility.Abstractions/Lunate.Extensibility.Abstractions.csproj" />
+        <ProjectReference Include="../../../../src/Lunate.Extensibility.Testing/Lunate.Extensibility.Testing.csproj" />
+        <ProjectReference Include="../LspDiagnosticsExtension/LspDiagnosticsExtension.csproj" />
+        <ProjectReference Include="FakeLspServer/FakeLspServer.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="xunit.v3" Version="4.0.1" />
+        <Using Include="Xunit" />
+    </ItemGroup>
+
+    <Target Name="CopyLspDiagnosticsExtension" AfterTargets="Build">
+        <MSBuild
+            Projects="$(MSBuildThisFileDirectory)../LspDiagnosticsExtension/LspDiagnosticsExtension.csproj"
+            Targets="Build"
+            Properties="Configuration=$(Configuration)"
+        />
+        <ItemGroup>
+            <LspDiagnosticsExtensionFiles Include="$(MSBuildThisFileDirectory)../LspDiagnosticsExtension/bin/$(Configuration)/$(TargetFramework)/**/*" />
+        </ItemGroup>
+        <Copy
+            SourceFiles="@(LspDiagnosticsExtensionFiles)"
+            DestinationFolder="$(OutDir)LspDiagnosticsExtension/%(RecursiveDir)"
+            SkipUnchangedFiles="true"
+        />
+    </Target>
+</Project>
