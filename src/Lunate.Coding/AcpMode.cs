@@ -115,12 +115,7 @@ internal static class AcpMode
             Log = extensions?.Log ?? new StderrExtensionLog(errors),
         };
         return ExtensionSession
-            .StartAsync(
-                workspace.WorktreeRoot,
-                workspace.GitCommonDir ?? workspace.WorktreeRoot,
-                resolved,
-                ct
-            )
+            .StartAsync(workspace.Identity, resolved, ct)
             .GetAwaiter()
             .GetResult();
     }

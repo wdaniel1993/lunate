@@ -35,7 +35,7 @@ Handlers run by priority descending, with a stable load-order tie-break (higher 
 | ProviderStreamEvent | each raw update | observe only (fast path, budgeted) | report |
 | MessageCompleted | assistant message final | replace (same role) | report, keep original |
 | ToolCalling | before approval and execution | mutate args, block with reason | block (fail-safe) |
-| ToolResultReady | after execution | transform/redact (composes in order), attach data | report, keep original |
+| ToolResultReady | after execution | transform/redact (composes in order); replace output, attach structured content, set UI details | report, keep original |
 | TurnEnded / RunSettling | actionable boundaries | append entries, request one continuation | report |
 | RunSettled | final | observe | report |
 | Compacting | before compaction | supply summary or strategy | fall back to default |
@@ -46,6 +46,7 @@ Rules:
 - Context added by extensions is tagged with its source, counted in the context meter, shown by `/context`, has a per-extension token budget, and is persisted only through explicit session entries.
 - Prefer appending prompt/tool changes over rewriting the prefix (prompt caching).
 - Every hook payload and result is a JSON DTO; a conformance test round-trips them all through `System.Text.Json`.
+- The `ToolResultReady` payload carries the call's arguments as approved, so handlers act on what ran without parsing output text; the result may replace the output, attach model-facing structured content, and set UI-only details.
 
 ## Tool model
 
@@ -106,7 +107,7 @@ Every run — child runs included — has a workspace: `WorktreeRoot`, `RepoRoot
 | --- | --- |
 | permission-gate | ToolCalling + annotations → block/confirm |
 | memory-provider | ContextBuilding injection, TurnEnded storage via a registered service; survives compaction by re-injection |
-| lsp-diagnostics | background service + file change bus + ToolResultReady attaches diagnostics; tested against a fake LSP server |
+| lsp-diagnostics | background service + ToolResultReady attaches diagnostics (the call's arguments carry the path; structured content on the result); tested against a fake LSP server |
 | mcp-from-extension | RegisterMcpServer, namespace, exposure |
 | subagents | child harness, RunId/ParentRunId, linked child session, approvals routed to the parent UI, cancel propagated, depth/concurrency/token limits enforced by core |
 | code-mode | programmatic tools via ExecuteToolAsync, StructuredContent, script runtime in a child process |

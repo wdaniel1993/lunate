@@ -250,6 +250,75 @@ public sealed class AgentHookPointsTests
     }
 
     [Fact]
+    public async Task Tool_result_ready_context_carries_the_approved_arguments()
+    {
+        var hooks = new RecordingHookPoints
+        {
+            ToolCalling = _ => new AgentToolCallingResult.Proceed(
+                AgentHookTestSupport.Json("""{"path":"b.txt"}""")
+            ),
+        };
+        ScriptedChatClient client = ScriptedClientWithReadCall();
+        var harness = new AgentHarness(
+            client,
+            Registry(ReadTool("contents")),
+            new AgentHarnessOptions { Hooks = hooks }
+        );
+
+        await Run(harness);
+
+        Assert.Equal("b.txt", hooks.ToolResults.Single().Arguments.GetProperty("path").GetString());
+    }
+
+    [Fact]
+    public async Task Tool_result_ready_attaches_structured_content_to_the_tool_result()
+    {
+        ToolResult? nested = null;
+        var inner = new ScriptedTool("inner", "Inner.", """{"type":"object"}""");
+        var outer = new ScriptedTool("outer", "Calls inner.", """{"type":"object"}""");
+        outer.OnExecuteAsync = async (_, ctx, ct) =>
+        {
+            nested = await ctx.ExecuteToolAsync!(
+                "inner",
+                JsonDocument.Parse("{}").RootElement.Clone(),
+                ct
+            );
+            return new ToolResult($"outer saw: {nested.Output}", IsError: nested.IsError);
+        };
+        var hooks = new RecordingHookPoints
+        {
+            ToolResultReady = context => new AgentToolResultReadyResult(
+                context.Output + " +diagnostics",
+                null,
+                AgentHookTestSupport.Json("""{"diagnostics":[{"code":"todo-check"}]}""")
+            ),
+        };
+        ScriptedChatClient client = new ScriptedChatClient()
+            .Enqueue(
+                LoopScripts.Call("call_1", "outer", LoopScripts.Args(("x", "1"))),
+                LoopScripts.ToolCalls()
+            )
+            .Enqueue(LoopScripts.Text("Done"), LoopScripts.Stop());
+        var harness = new AgentHarness(
+            client,
+            Registry(outer, inner),
+            new AgentHarnessOptions { Hooks = hooks }
+        );
+
+        await Run(harness);
+
+        Assert.NotNull(nested);
+        Assert.Equal("ran inner +diagnostics", nested!.Output);
+        Assert.Equal(
+            "todo-check",
+            nested
+                .StructuredContent!.Value.GetProperty("diagnostics")[0]
+                .GetProperty("code")
+                .GetString()
+        );
+    }
+
+    [Fact]
     public async Task Tool_result_ready_transforms_output_and_attaches_data()
     {
         var hooks = new RecordingHookPoints

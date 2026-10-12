@@ -1,0 +1,37 @@
+{
+    "id": "lsp-diagnostics",
+    "version": "0.1.0",
+    "apiVersion": "^1.6.0",
+    "entryAssembly": "LspDiagnosticsExtension.dll",
+    "hooks": ["tool-result-ready"],
+    "services": ["ext/lsp-diagnostics/server"],
+    "settingsSchema": {
+        "type": "object",
+        "properties": {
+            "serverCommand": {
+                "type": "string",
+                "default": "csharp-ls",
+                "description": "the language server executable to run"
+            },
+            "serverArgs": {
+                "type": "array",
+                "default": [],
+                "description": "arguments passed to the language server"
+            },
+            "timeoutMs": {
+                "type": "number",
+                "default": 2000,
+                "description": "the whole round trip budget in milliseconds; must stay under the hook runner's 5 s per-handler timeout"
+            },
+            "maxDiagnostics": {
+                "type": "number",
+                "default": 5,
+                "description": "the maximum number of errors and warnings attached to one tool result"
+            }
+        }
+    },
+    "capabilities": [
+        "attaches language-server diagnostics to write/edit tool results",
+        "one lazily started language server process per session, restarted after a crash"
+    ]
+}

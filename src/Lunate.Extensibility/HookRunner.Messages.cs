@@ -88,7 +88,7 @@ public sealed partial class HookRunner
 
     /// <summary>
     /// Runs <see cref="IToolResultReadyHandler"/> handlers in order; each handler sees the current
-    /// output, and the last attached JSON data wins.
+    /// output, and the last attached JSON data and structured content win.
     /// </summary>
     public async ValueTask<ToolResultReadyDispatch> RunToolResultReadyAsync(
         ToolResultReadyPayload payload,
@@ -97,6 +97,7 @@ public sealed partial class HookRunner
     {
         string output = payload.Output;
         JsonElement? data = null;
+        JsonElement? structuredContent = null;
         foreach (Registration registration in Ordered<IToolResultReadyHandler>())
         {
             var handler = (IToolResultReadyHandler)registration.Handler;
@@ -117,8 +118,13 @@ public sealed partial class HookRunner
             {
                 data = attached;
             }
+
+            if (outcome.Value.StructuredContent is { } structured)
+            {
+                structuredContent = structured;
+            }
         }
 
-        return new ToolResultReadyDispatch(output, data);
+        return new ToolResultReadyDispatch(output, data, structuredContent);
     }
 }

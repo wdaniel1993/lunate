@@ -76,7 +76,11 @@ public abstract record ToolCallingResult
 }
 
 /// <summary>The tool result after extensions transformed it.</summary>
-public sealed record ToolResultReadyResult(string Output, JsonElement? Data);
+public sealed record ToolResultReadyResult(
+    string Output,
+    JsonElement? Data,
+    JsonElement? StructuredContent = null
+);
 
 /// <summary>The outcome of the turn-ended hook.</summary>
 public abstract record TurnEndedResult

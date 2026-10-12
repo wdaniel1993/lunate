@@ -140,10 +140,11 @@ public sealed class HookContractTests
             ("ToolCallingResult.Block", new ToolCallingResult.Block("not allowed")),
             (
                 "ToolResultReadyPayload",
-                new ToolResultReadyPayload("r1", "c1", "read", "output", false)
+                new ToolResultReadyPayload("r1", "c1", "read", args, "output", false)
             ),
             ("ToolResultReadyResult", new ToolResultReadyResult("output", null)),
             ("ToolResultReadyResult.Data", new ToolResultReadyResult("output", data)),
+            ("ToolResultReadyResult.Structured", new ToolResultReadyResult("output", data, data)),
             ("TurnEndedPayload", new TurnEndedPayload("r1")),
             ("TurnEndedEntry", new TurnEndedEntry("memory", entry) { ExtensionId = "ext" }),
             ("TurnEndedResult.None", new TurnEndedResult.None()),

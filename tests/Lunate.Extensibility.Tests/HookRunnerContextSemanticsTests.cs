@@ -12,13 +12,19 @@ public sealed class HookRunnerContextSemanticsTests
     {
         var runner = new HookRunner();
         JsonElement first = JsonDocument.Parse("""{"from":"a"}""").RootElement.Clone();
+        JsonElement structured = JsonDocument
+            .Parse("""{"from":"structured"}""")
+            .RootElement.Clone();
         runner.Register(
             "a",
             new TestToolResultReadyHandler(
                 (payload, _) =>
                 {
                     Assert.Equal("original", payload.Output);
-                    return ValueTask.FromResult(new ToolResultReadyResult("redacted", first));
+                    Assert.Equal("a.txt", payload.Arguments.GetProperty("path").GetString());
+                    return ValueTask.FromResult(
+                        new ToolResultReadyResult("redacted", first, structured)
+                    );
                 }
             )
         );
@@ -40,6 +46,35 @@ public sealed class HookRunnerContextSemanticsTests
 
         Assert.Equal("redacted twice", result.Output);
         Assert.Equal("a", result.Data!.Value.GetProperty("from").GetString());
+        Assert.Equal("structured", result.StructuredContent!.Value.GetProperty("from").GetString());
+    }
+
+    [Fact]
+    public async Task Tool_result_ready_last_attached_structured_content_wins()
+    {
+        var runner = new HookRunner();
+        JsonElement first = JsonDocument.Parse("""{"from":"a"}""").RootElement.Clone();
+        JsonElement second = JsonDocument.Parse("""{"from":"b"}""").RootElement.Clone();
+        runner.Register(
+            "a",
+            new TestToolResultReadyHandler(
+                (_, _) => ValueTask.FromResult(new ToolResultReadyResult("one", null, first))
+            )
+        );
+        runner.Register(
+            "b",
+            new TestToolResultReadyHandler(
+                (_, _) => ValueTask.FromResult(new ToolResultReadyResult("two", null, second))
+            )
+        );
+
+        ToolResultReadyDispatch result = await runner.RunToolResultReadyAsync(
+            TestHookPayloads.ToolResultReady,
+            Ct
+        );
+
+        Assert.Equal("two", result.Output);
+        Assert.Equal("b", result.StructuredContent!.Value.GetProperty("from").GetString());
     }
 
     [Fact]

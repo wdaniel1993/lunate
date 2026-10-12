@@ -278,12 +278,7 @@ internal sealed partial class InteractiveSession : IDisposable
                 Prompt = _options.Extensions?.Prompt ?? new TuiExtensionTrustPrompt(AskTrustAsync),
             };
             _extensions = await ExtensionSession
-                .StartAsync(
-                    _workspace.WorktreeRoot,
-                    _workspace.GitCommonDir ?? _workspace.WorktreeRoot,
-                    seams,
-                    ct
-                )
+                .StartAsync(_workspace.Identity, seams, ct)
                 .ConfigureAwait(false);
             foreach (
                 ITool tool in await _extensions.McpServers.ListToolsAsync(ct).ConfigureAwait(false)

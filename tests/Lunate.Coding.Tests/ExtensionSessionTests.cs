@@ -21,8 +21,7 @@ public sealed class ExtensionSessionTests
         var log = new RecordingExtensionLog();
 
         await using var host = await ExtensionSession.StartAsync(
-            worktree,
-            worktree,
+            Identity(worktree),
             new ExtensionSeams { StorePath = temp.File("store"), Log = log },
             Ct
         );
@@ -31,6 +30,54 @@ public sealed class ExtensionSessionTests
         Assert.Empty(host.Errors);
         Assert.Empty(await host.McpServers.ListToolsAsync(Ct));
         Assert.Empty(log.Messages);
+    }
+
+    [Fact]
+    public async Task The_workspace_identity_is_reachable_in_a_composed_session()
+    {
+        using var temp = new TempDirectory();
+        string worktree = temp.File("worktree");
+        Directory.CreateDirectory(Path.Combine(worktree, ".git"));
+        var workspace = new Workspace(worktree);
+
+        await using var host = await ExtensionSession.StartAsync(
+            workspace.Identity,
+            new ExtensionSeams
+            {
+                StorePath = temp.File("store"),
+                Log = new RecordingExtensionLog(),
+            },
+            Ct
+        );
+
+        Assert.True(
+            host.Services.TryGetCore<WorkspaceInfo>("core/workspace", out WorkspaceInfo? found)
+        );
+        Assert.Equal(workspace.Identity, found);
+    }
+
+    [Fact]
+    public async Task The_production_composition_pins_the_core_services_it_registers()
+    {
+        using var temp = new TempDirectory();
+        string worktree = temp.File("worktree");
+        Directory.CreateDirectory(worktree);
+
+        await using var host = await ExtensionSession.StartAsync(
+            Identity(worktree),
+            new ExtensionSeams
+            {
+                StorePath = temp.File("store"),
+                Log = new RecordingExtensionLog(),
+            },
+            Ct
+        );
+
+        Assert.NotNull(host.Services.FindCore("core/workspace"));
+        // Not yet wired in production: the file bus is registered by the test kit only, and the
+        // mutation queue has no consumer. Wiring them flips these two assertions.
+        Assert.Null(host.Services.FindCore("core/file-bus"));
+        Assert.Null(host.Services.FindCore("core/mutation-queue"));
     }
 
     [Fact]
@@ -44,8 +91,7 @@ public sealed class ExtensionSessionTests
         var log = new RecordingExtensionLog();
 
         var host = await ExtensionSession.StartAsync(
-            worktree,
-            worktree,
+            Identity(worktree),
             new ExtensionSeams { StorePath = store, Log = log },
             Ct
         );
@@ -97,8 +143,7 @@ public sealed class ExtensionSessionTests
         var log = new RecordingExtensionLog();
 
         await using var host = await ExtensionSession.StartAsync(
-            worktree,
-            worktree,
+            Identity(worktree),
             new ExtensionSeams { StorePath = store, Log = log },
             Ct
         );
@@ -126,8 +171,7 @@ public sealed class ExtensionSessionTests
         var prompt = new ScriptedTrustPrompt(false);
 
         await using var host = await ExtensionSession.StartAsync(
-            worktree,
-            worktree,
+            Identity(worktree),
             new ExtensionSeams
             {
                 StorePath = store,
@@ -156,8 +200,7 @@ public sealed class ExtensionSessionTests
         var log = new RecordingExtensionLog();
 
         await using var host = await ExtensionSession.StartAsync(
-            worktree,
-            worktree,
+            Identity(worktree),
             new ExtensionSeams { StorePath = temp.File("store"), Log = log },
             Ct
         );
@@ -185,8 +228,7 @@ public sealed class ExtensionSessionTests
 
         await using (
             await ExtensionSession.StartAsync(
-                workspace.WorktreeRoot,
-                workspace.GitCommonDir ?? workspace.WorktreeRoot,
+                workspace.Identity,
                 new ExtensionSeams
                 {
                     StorePath = store,
@@ -204,8 +246,7 @@ public sealed class ExtensionSessionTests
         var secondLog = new RecordingExtensionLog();
         await using (
             await ExtensionSession.StartAsync(
-                workspace.WorktreeRoot,
-                workspace.GitCommonDir ?? workspace.WorktreeRoot,
+                workspace.Identity,
                 new ExtensionSeams
                 {
                     StorePath = store,
@@ -233,8 +274,7 @@ public sealed class ExtensionSessionTests
 
         await using (
             await ExtensionSession.StartAsync(
-                workspace.WorktreeRoot,
-                workspace.GitCommonDir ?? workspace.WorktreeRoot,
+                workspace.Identity,
                 new ExtensionSeams
                 {
                     StorePath = store,
@@ -251,6 +291,9 @@ public sealed class ExtensionSessionTests
             TrustedRepositories(store)
         );
     }
+
+    private static WorkspaceInfo Identity(string worktree) =>
+        new(Workspace.Canonicalize(worktree), null, null);
 
     private static IReadOnlyList<string> TrustedRepositories(string storePath)
     {
@@ -292,8 +335,7 @@ public sealed class ExtensionSessionTests
 
         await Assert.ThrowsAsync<OperationCanceledException>(() =>
             ExtensionSession.StartAsync(
-                worktree,
-                worktree,
+                Identity(worktree),
                 new ExtensionSeams { StorePath = store, Log = log },
                 cts.Token
             )

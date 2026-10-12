@@ -57,16 +57,17 @@ internal sealed class ExtensionSession : IAsyncDisposable
 
     /// <summary>Loads and composes the host; per-extension failures are isolated, not thrown.</summary>
     internal static async Task<ExtensionSession> StartAsync(
-        string workingDirectory,
-        string repositoryIdentity,
+        WorkspaceInfo workspace,
         ExtensionSeams seams,
         CancellationToken ct = default
     )
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(workingDirectory);
-        ArgumentException.ThrowIfNullOrWhiteSpace(repositoryIdentity);
+        ArgumentNullException.ThrowIfNull(workspace);
+        ArgumentException.ThrowIfNullOrWhiteSpace(workspace.WorktreeRoot);
         ArgumentNullException.ThrowIfNull(seams);
 
+        string workingDirectory = workspace.WorktreeRoot;
+        string repositoryIdentity = workspace.GitCommonDir ?? workspace.WorktreeRoot;
         IExtensionLog log = seams.Log ?? new StderrExtensionLog(Console.Error);
         IExtensionTrustPrompt prompt = seams.Prompt ?? new NonInteractiveTrustPrompt(log);
         var loader = new ExtensionLoader(
@@ -76,6 +77,7 @@ internal sealed class ExtensionSession : IAsyncDisposable
                 Log = log,
             }
         );
+        loader.Services.RegisterCore("core/workspace", workspace);
         List<ExtensionSessionError> errors = [];
 
         loader.Discover(workingDirectory, repositoryIdentity);
@@ -124,6 +126,9 @@ internal sealed class ExtensionSession : IAsyncDisposable
 
     /// <summary>The raw hook runner behind the input pipeline.</summary>
     internal HookRunner HookRunner => _loader.Hooks;
+
+    /// <summary>The named service registry (core handles included).</summary>
+    internal ServiceRegistry Services => _loader.Services;
 
     /// <summary>The loaded extensions' tool-result renderers.</summary>
     internal ToolResultRendererRegistry ToolResultRenderers => _loader.ToolResultRenderers;

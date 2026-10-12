@@ -155,12 +155,17 @@ public sealed class AgentHookAdapter : IAgentHookPoints
                 context.RunId,
                 context.CallId,
                 context.ToolName,
+                context.Arguments,
                 context.Output,
                 context.IsError
             ),
             cancellationToken
         );
-        return new AgentToolResultReadyResult(dispatch.Output, dispatch.Data);
+        return new AgentToolResultReadyResult(
+            dispatch.Output,
+            dispatch.Data,
+            dispatch.StructuredContent
+        );
     }
 
     public async ValueTask<AgentTurnEndedResult> TurnEndedAsync(
