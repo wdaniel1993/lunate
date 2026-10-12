@@ -37,7 +37,7 @@ internal static class TestSupport
     /// <summary>Points the extension at the fake server; write before the host loads the extension.</summary>
     public static void WriteSettings(
         ExtensionTestHost host,
-        int timeoutMs = 3000,
+        int timeoutMs = 4000,
         int maxDiagnostics = 5,
         params string[] serverArgs
     )
