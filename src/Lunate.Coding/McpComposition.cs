@@ -75,6 +75,41 @@ internal static class McpComposition
             : new McpToolSet(servers, log: log.Error, serverLog: log.Warn);
     }
 
+    /// <summary>The longest a failure reason may be inside a live-area notice.</summary>
+    private const int MaxReasonLength = 100;
+
+    /// <summary>
+    /// One bounded single-line rendering of an MCP failure reason: whitespace runs (spaces, tabs,
+    /// CR, LF) collapse to one space, and a result longer than <c>MaxReasonLength</c> characters is
+    /// clipped with an ellipsis. Null, empty and whitespace-only reasons become the empty string so
+    /// callers keep their own wording. A notice is one live-area line: the raw reason may be
+    /// multi-line and arbitrarily long, which would break the frame and push later entries out of
+    /// <c>/mcp</c> under clipping. The full reason stays in the session log.
+    /// </summary>
+    internal static string ShortReason(string? reason)
+    {
+        if (string.IsNullOrWhiteSpace(reason))
+        {
+            return string.Empty;
+        }
+
+        string collapsed = string.Join(
+            ' ',
+            reason.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)
+        );
+        return collapsed.Length > MaxReasonLength ? collapsed[..MaxReasonLength] + "…" : collapsed;
+    }
+
+    /// <summary>
+    /// The one notice per MCP server whose process exited after starting; the status carries the
+    /// pinned reason. The interactive session wires this to the live area.
+    /// </summary>
+    internal static UserNotice ServerExitedNotice(McpServerStatus status) =>
+        new(
+            NoticeLevel.Warning,
+            $"MCP server '{status.Name}' failed: {ShortReason(status.Reason)}. The session continues without this server's tools."
+        );
+
     /// <summary>Reports every failed server as a warning naming it; the session continues.</summary>
     internal static void NotifyFailures(McpToolSet set, Action<UserNotice> notify)
     {
@@ -85,7 +120,7 @@ internal static class McpComposition
                 notify(
                     new UserNotice(
                         NoticeLevel.Warning,
-                        $"MCP server '{status.Name}' failed to start or list its tools: {status.Reason} The session continues without this server's tools."
+                        $"MCP server '{status.Name}' failed to start or list its tools: {ShortReason(status.Reason)} The session continues without this server's tools."
                     )
                 );
             }

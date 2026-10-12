@@ -87,6 +87,26 @@ public sealed class LiveAreaRendererTests
     }
 
     [Fact]
+    public void A_multiline_notice_renders_as_one_physical_line()
+    {
+        var state = new LiveAreaState
+        {
+            Notice = "MCP server 'x' failed: first\r\nsecond\nthird. Continuing.",
+            Size = new ConsoleSize(120, 8),
+        };
+
+        var frame = LiveAreaRenderer.Render(state);
+
+        string notice = Assert.Single(
+            frame.Lines,
+            line => line.Contains("MCP server", StringComparison.Ordinal)
+        );
+        Assert.Equal("MCP server 'x' failed: first second third. Continuing.", notice);
+        Assert.DoesNotContain("\n", notice, StringComparison.Ordinal);
+        Assert.DoesNotContain("\r", notice, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Trust_lines_render_above_the_footer()
     {
         var state = new LiveAreaState

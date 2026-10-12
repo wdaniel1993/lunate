@@ -28,7 +28,9 @@ public sealed class ExtensionSessionTests
 
         Assert.Empty(host.Descriptors);
         Assert.Empty(host.Errors);
-        Assert.Empty(await host.McpServers.ListToolsAsync(Ct));
+        Assert.Null(host.McpServers);
+        ExtensionMcpServers servers = host.ComposeMcpServers(configuredServers: null);
+        Assert.Empty(await servers.ListToolsAsync(Ct));
         Assert.Empty(log.Messages);
     }
 

@@ -8,6 +8,15 @@ using ModelContextProtocol.Server;
 var markerPath = Environment.GetEnvironmentVariable("LUNATE_TEST_MCP_MARKER");
 var markerLock = new object();
 
+// LUNATE_TEST_MCP_SLOW_LIST_MS delays every tools/list after the first by the given milliseconds,
+// so a client's bounded liveness probe times out against an otherwise healthy server.
+_ = int.TryParse(
+    Environment.GetEnvironmentVariable("LUNATE_TEST_MCP_SLOW_LIST_MS"),
+    NumberStyles.Integer,
+    CultureInfo.InvariantCulture,
+    out var slowListMs
+);
+
 void Mark(string line)
 {
     if (string.IsNullOrEmpty(markerPath))
@@ -83,6 +92,22 @@ var serverOptions = new McpServerOptions
     Capabilities = new ServerCapabilities { Tools = new ToolsCapability { ListChanged = true } },
     ToolCollection = tools,
 };
+if (slowListMs > 0)
+{
+    // The handler answers immediately on the first tools/list so a host starts normally; the SDK
+    // appends the collection's tools to the empty result the handler returns.
+    var listCalls = 0;
+    serverOptions.Handlers.ListToolsHandler = async (_, cancellationToken) =>
+    {
+        if (Interlocked.Increment(ref listCalls) > 1)
+        {
+            await Task.Delay(slowListMs, cancellationToken);
+        }
+
+        return new ListToolsResult();
+    };
+}
+
 var server = McpServer.Create(new StdioServerTransport("test-mcp-server"), serverOptions);
 
 await server.RunAsync();

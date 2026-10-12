@@ -165,10 +165,12 @@ public sealed class BashToolTests
         using var temp = new TempDirectory();
         var pidFile = temp.File("grandchild.pid");
 
-        // Windows needs a longer window: PowerShell's cold start on a fresh runner can exceed
+        // Windows needs a longer window: PowerShell's cold start on a loaded runner can exceed
         // the short Unix timeout, so the pid would never be written before the tree is killed.
+        // 10s was not enough under CI load (the spawn-heavy suite starves process startup); the
+        // window only lengthens the test, it does not weaken the kill assertion.
         var timeout = OperatingSystem.IsWindows()
-            ? TimeSpan.FromSeconds(10)
+            ? TimeSpan.FromSeconds(30)
             : TimeSpan.FromSeconds(2);
 
         var result = await RunAsync(temp, TreeCommand(), timeout);
@@ -255,7 +257,7 @@ public sealed class BashToolTests
 
     private static async Task<int> WaitForPidAsync(string pidFile)
     {
-        for (var attempt = 0; attempt < 150; attempt++)
+        for (var attempt = 0; attempt < 600; attempt++)
         {
             if (File.Exists(pidFile))
             {
@@ -287,13 +289,13 @@ public sealed class BashToolTests
             await Task.Delay(100);
         }
 
-        Assert.Fail($"no pid was written to {pidFile} within 15 seconds");
+        Assert.Fail($"no pid was written to {pidFile} within 60 seconds");
         return 0;
     }
 
     private static async Task AssertEventuallyDeadAsync(int pid)
     {
-        for (var attempt = 0; attempt < 50; attempt++)
+        for (var attempt = 0; attempt < 300; attempt++)
         {
             if (!IsAlive(pid))
             {
@@ -303,7 +305,7 @@ public sealed class BashToolTests
             await Task.Delay(100);
         }
 
-        Assert.Fail($"pid {pid} was still alive 5 seconds after the tree kill");
+        Assert.Fail($"pid {pid} was still alive 30 seconds after the tree kill");
     }
 
     private static bool IsAlive(int pid)

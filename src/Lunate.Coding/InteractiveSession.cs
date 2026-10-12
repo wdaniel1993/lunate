@@ -248,7 +248,8 @@ internal sealed partial class InteractiveSession : IDisposable
         _trustTotal = CountPendingTrustQuestions();
         _approver = new SessionApprover(this, _settings.Approval);
         await ComposeExtensionsAsync(ct);
-        await ComposeMcpAsync(ct);
+        await ComposeMcpConfigAsync(ct);
+        await ComposeMcpToolsAsync(ct);
         _harness = BuildHarness(_model);
         _pipeline = new InputPipeline(_options.Hooks ?? _extensions?.HookRunner);
     }
@@ -257,8 +258,10 @@ internal sealed partial class InteractiveSession : IDisposable
     /// Composes the session's extension host as the session starts: the workspace is resolved, so
     /// trust keys on the worktree root (or the git common dir inside a repository). A composition
     /// failure is reported and the session runs without extensions; a per-extension failure is
-    /// already isolated by the host. The host's MCP tools are listed once, here. With
-    /// <c>--no-extensions</c> the host is not composed at all.
+    /// already isolated by the host. The configured MCP servers are already composed, so a
+    /// registration sharing a configured server's name is skipped before listing and shown as
+    /// shadowed by `/mcp`. The host's MCP tools are listed once, here, and a server whose process
+    /// exits later fires one notice. With <c>--no-extensions</c> the host is not composed at all.
     /// </summary>
     private async Task ComposeExtensionsAsync(CancellationToken ct)
     {
@@ -280,12 +283,6 @@ internal sealed partial class InteractiveSession : IDisposable
             _extensions = await ExtensionSession
                 .StartAsync(_workspace.Identity, seams, ct)
                 .ConfigureAwait(false);
-            foreach (
-                ITool tool in await _extensions.McpServers.ListToolsAsync(ct).ConfigureAwait(false)
-            )
-            {
-                _tools.Add(tool);
-            }
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
@@ -304,10 +301,10 @@ internal sealed partial class InteractiveSession : IDisposable
 
     /// <summary>
     /// Composes the configured MCP servers at session start, next to the extension host: the global
-    /// mcp.json plus the trusted project file, tools listed once and added to the registry. Config
-    /// errors and failed servers become notices; a failure here never aborts the session.
+    /// mcp.json plus the trusted project file. Nothing starts before listing; config errors and a
+    /// failure here never abort the session.
     /// </summary>
-    private async Task ComposeMcpAsync(CancellationToken ct)
+    private async Task ComposeMcpConfigAsync(CancellationToken ct)
     {
         TextWriter diagnostics = _options.Diagnostics ?? Console.Error;
         try
@@ -324,17 +321,51 @@ internal sealed partial class InteractiveSession : IDisposable
                     ct
                 )
                 .ConfigureAwait(false);
-            if (_mcp is null)
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            Notify("the MCP servers were not composed: " + exception.Message, NoticeLevel.Error);
+        }
+    }
+
+    /// <summary>
+    /// The listing half of MCP composition, after both sets are known: the extension mapping is
+    /// built with the configured names as the collision baseline (the configured server wins, the
+    /// registration is skipped before listing and shown shadowed), then the extension tools and the
+    /// configured tools are listed once and added; a server whose process exits later fires one
+    /// notice, and failed configured servers become notices. A failure here never aborts the
+    /// session.
+    /// </summary>
+    private async Task ComposeMcpToolsAsync(CancellationToken ct)
+    {
+        try
+        {
+            if (_extensions is { } extensions)
             {
-                return;
+                ExtensionMcpServers servers = extensions.ComposeMcpServers(
+                    McpNameCollisions.ConfiguredServers(_mcp)
+                );
+                servers.OnServerExited(status => Notify(McpComposition.ServerExitedNotice(status)));
+                foreach (ITool tool in await servers.ListToolsAsync(ct).ConfigureAwait(false))
+                {
+                    _tools.Add(tool);
+                }
             }
 
-            foreach (ITool tool in await _mcp.ListToolsAsync(ct).ConfigureAwait(false))
+            if (_mcp is { } mcp)
             {
-                _tools.Add(tool);
-            }
+                mcp.OnServerExited(status => Notify(McpComposition.ServerExitedNotice(status)));
+                foreach (ITool tool in await mcp.ListToolsAsync(ct).ConfigureAwait(false))
+                {
+                    _tools.Add(tool);
+                }
 
-            McpComposition.NotifyFailures(_mcp, Notify);
+                McpComposition.NotifyFailures(mcp, Notify);
+            }
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {

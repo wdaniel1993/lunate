@@ -35,7 +35,7 @@ internal sealed partial class InteractiveSession
                 Notify(compacted ? "context compacted" : "nothing to compact");
                 return;
             case "/mcp":
-                Notify(McpStatusText());
+                Notify(await McpStatusTextAsync(ct));
                 return;
             case "/trust":
                 HandleTrustCommand(argument);
@@ -90,30 +90,56 @@ internal sealed partial class InteractiveSession
     }
 
     /// <summary>
-    /// The <c>/mcp</c> notice: one segment per configured server from the live status
-    /// (<c>name — started, N tools</c> / <c>not started</c> / <c>failed: reason</c>); no servers at
-    /// all reads as such. A live-area notice is a single line, so the segments join with semicolons.
+    /// The <c>/mcp</c> notice: one segment per configured and extension-registered server from the
+    /// live status (<c>name — started, N tools (source)</c> / <c>not started</c> /
+    /// <c>failed: reason</c>); a registration shadowed by a configured server reads
+    /// <c>shadowed by {source}</c>. Started servers are liveness-probed first, so a server whose
+    /// process exited shows as failed. No servers at all reads as such. The notice never prints
+    /// environment values or headers. A live-area notice is a single line, so segments join with
+    /// semicolons.
     /// </summary>
-    private string McpStatusText()
+    private async Task<string> McpStatusTextAsync(CancellationToken ct)
     {
-        if (_mcp is null)
+        List<McpServerStatus> statuses = [];
+        if (_mcp is { } configured)
+        {
+            statuses.AddRange(await configured.ObserveStatusesAsync(ct).ConfigureAwait(false));
+        }
+
+        if (_extensions?.McpServers is { } extensionServers)
+        {
+            statuses.AddRange(
+                await extensionServers.ObserveStatusesAsync(ct).ConfigureAwait(false)
+            );
+        }
+
+        IReadOnlyList<ShadowedMcpServer> shadowed = _extensions?.ShadowedMcpServers ?? [];
+        if (statuses.Count == 0 && shadowed.Count == 0)
         {
             return "mcp: no servers configured";
         }
 
-        return string.Join(
-            "; ",
-            _mcp.Statuses.Select(status =>
-                status.State switch
-                {
-                    McpServerState.Started => FormattableString.Invariant(
-                        $"{status.Name} — started, {status.ToolCount} tools"
-                    ),
-                    McpServerState.Failed => $"{status.Name} — failed: {status.Reason}",
-                    _ => status.Name + " — not started",
-                }
+        List<string> segments = [.. statuses.Select(FormatMcpStatus)];
+        segments.AddRange(
+            shadowed.Select(entry =>
+                $"{entry.Name} — shadowed by {(entry.ConfiguredSource is { Length: > 0 } source ? source : "the configured server")}"
             )
         );
+        return string.Join("; ", segments);
+    }
+
+    private static string FormatMcpStatus(McpServerStatus status)
+    {
+        string source = status.Source is { Length: > 0 } value ? $" ({value})" : string.Empty;
+        return status.State switch
+        {
+            McpServerState.Started => FormattableString.Invariant(
+                $"{status.Name} — started, {status.ToolCount} tools{source}"
+            ),
+            McpServerState.Failed =>
+                $"{status.Name} — failed: {McpComposition.ShortReason(status.Reason)}{source}",
+            _ => status.Name + " — not started" + source,
+        };
     }
 
     /// <summary>Switches to a catalog model by id; an unknown id produces a notice.</summary>

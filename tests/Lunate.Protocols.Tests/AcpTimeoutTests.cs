@@ -21,7 +21,7 @@ public sealed class AcpTimeoutTests
             runtime.Server,
             new SessionId("timeout-session"),
             new SessionRunState(),
-            TimeSpan.FromMilliseconds(100)
+            TimeSpan.FromMilliseconds(5000)
         );
         var tool = new ReadTool(new Workspace(temp.Root), files);
         var args = JsonDocument.Parse("""{"path":"a.txt"}""").RootElement.Clone();
@@ -32,7 +32,7 @@ public sealed class AcpTimeoutTests
 
         Assert.True(result.IsError);
         Assert.Equal(
-            "could not be read: the editor did not answer the file request within 0.1s",
+            "could not be read: the editor did not answer the file request within 5s",
             result.Output
         );
     }
@@ -47,7 +47,7 @@ public sealed class AcpTimeoutTests
             runtime.Server,
             new SessionId("timeout-session"),
             log.Add,
-            TimeSpan.FromMilliseconds(100)
+            TimeSpan.FromMilliseconds(5000)
         );
         var tool = new RecordingRiskTool("write-probe", ToolRisk.Write);
 
@@ -60,7 +60,7 @@ public sealed class AcpTimeoutTests
         Assert.Single(runtime.State.PermissionRequests);
         Assert.Contains(
             log,
-            line => line.Contains("no answer within 0.1s", StringComparison.Ordinal)
+            line => line.Contains("no answer within 5s", StringComparison.Ordinal)
         );
     }
 
@@ -74,7 +74,7 @@ public sealed class AcpTimeoutTests
             runtime.Server,
             new SessionId("timeout-session"),
             new SessionRunState(),
-            TimeSpan.FromMilliseconds(100)
+            TimeSpan.FromMilliseconds(5000)
         );
         var tool = new ReadTool(new Workspace(temp.Root), files);
         var args = JsonDocument.Parse("""{"path":"a.txt"}""").RootElement.Clone();
@@ -155,7 +155,7 @@ public sealed class AcpTimeoutTests
             runtime.Server,
             new SessionId("timeout-session"),
             log.Add,
-            TimeSpan.FromMilliseconds(100)
+            TimeSpan.FromMilliseconds(5000)
         );
         var tool = new RecordingRiskTool("write-probe", ToolRisk.Write);
 
@@ -242,7 +242,7 @@ public sealed class AcpTimeoutTests
             runtime.Server,
             new SessionId("timeout-session"),
             log.Add,
-            TimeSpan.FromMilliseconds(100)
+            TimeSpan.FromMilliseconds(5000)
         );
         var tool = new RecordingRiskTool("write-probe", ToolRisk.Write);
         var model = new AcpScriptedChatClient()

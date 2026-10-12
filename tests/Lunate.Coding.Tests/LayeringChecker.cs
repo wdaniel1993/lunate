@@ -10,6 +10,8 @@ internal static class LayeringChecker
             ("Lunate.Extensibility", "Lunate.Extensibility.Abstractions"),
             ("Lunate.Extensibility.Testing", "Lunate.Agent"),
             ("Lunate.Extensibility.Testing", "Lunate.Ai"),
+            // The kit composes MCP registrations through the production mapping in Coding.
+            ("Lunate.Extensibility.Testing", "Lunate.Coding"),
             ("Lunate.Extensibility.Testing", "Lunate.Extensibility"),
             ("Lunate.Extensibility.Testing", "Lunate.Extensibility.Abstractions"),
             ("Lunate.Protocols", "Lunate.Agent"),
@@ -24,6 +26,7 @@ internal static class LayeringChecker
             ("Lunate.Ai.Tests", "Lunate.Ai"),
             ("Lunate.Coding.Tests", "Lunate.Coding"),
             ("Lunate.Coding.Tests", "HelloExtension"),
+            ("Lunate.Coding.Tests", "McpExtension"),
             ("Lunate.Coding.Tests", "TestMcpServer"),
             ("Lunate.Protocols.Tests", "Lunate.Protocols"),
             ("Lunate.Protocols.Tests", "Lunate.Coding"),
@@ -68,6 +71,11 @@ internal static class LayeringChecker
             ("LspDiagnosticsExtension.Tests", "Lunate.Coding"),
             ("LspDiagnosticsExtension.Tests", "Lunate.Extensibility.Abstractions"),
             ("LspDiagnosticsExtension.Tests", "Lunate.Extensibility.Testing"),
+            // The MCP sample's tests use only the kit and the extension (the public surface).
+            ("McpFromExtensionExtension", "Lunate.Extensibility.Abstractions"),
+            ("McpFromExtensionExtension.Tests", "FakeMcpServer"),
+            ("McpFromExtensionExtension.Tests", "McpFromExtensionExtension"),
+            ("McpFromExtensionExtension.Tests", "Lunate.Extensibility.Testing"),
         };
 
     public static IReadOnlySet<string> AllowedAgentRuntimePackages { get; } =

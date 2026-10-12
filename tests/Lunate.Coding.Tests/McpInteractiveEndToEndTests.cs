@@ -7,6 +7,7 @@ namespace Lunate.Coding.Tests;
 /// <c>server__tool</c>, its call round-trips through approval and renders, <c>/mcp</c> shows the
 /// live status, and a broken server notifies without harming the session.
 /// </summary>
+[Collection("mcp-processes")]
 public sealed class McpInteractiveEndToEndTests
 {
     [Fact]

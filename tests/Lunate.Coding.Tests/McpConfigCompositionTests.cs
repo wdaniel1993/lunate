@@ -8,6 +8,7 @@ namespace Lunate.Coding.Tests;
 /// The configured-server composition in print mode: startup poison, broken-server isolation,
 /// malformed entries, and the project-file trust gate with the global file still working.
 /// </summary>
+[Collection("mcp-processes")]
 public sealed class McpConfigCompositionTests
 {
     [Theory]

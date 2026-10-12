@@ -37,6 +37,9 @@ internal sealed partial class InteractiveSession
                 _toolArgs[args.CallId] = args.Args;
                 break;
             case ToolCallResult result:
+                string? failedTool = result.IsError
+                    ? _toolNames.GetValueOrDefault(result.CallId)
+                    : null;
                 CommitToolBlock(result);
                 if (result.ParentToolCallId is null && _activeCalls.Remove(result.CallId))
                 {
@@ -45,6 +48,11 @@ internal sealed partial class InteractiveSession
                             ? null
                             : _toolNames.GetValueOrDefault(_activeCalls[^1])
                     );
+                }
+
+                if (failedTool is not null)
+                {
+                    ObserveMcpAfterFailedCall(failedTool);
                 }
 
                 break;
@@ -165,6 +173,48 @@ internal sealed partial class InteractiveSession
         )
         {
             _interaction.RenderExtension(new ExtensionBlock(toolName, segments));
+        }
+    }
+
+    /// <summary>
+    /// A failed call to an MCP server's tool is an observation point: the server is liveness-probed
+    /// in the background (the call already produced its error result); an exited process flips to
+    /// failed and fires its one notice. Failures of unrelated tools never probe.
+    /// </summary>
+    private void ObserveMcpAfterFailedCall(string toolName)
+    {
+        bool configured = IsToolOfServer(toolName, _mcp?.Statuses);
+        bool extension = IsToolOfServer(toolName, _extensions?.McpServers?.Statuses);
+        if (configured || extension)
+        {
+            _ = ObserveMcpAsync(configured, extension, _lifetime.Token);
+        }
+    }
+
+    private static bool IsToolOfServer(string toolName, IReadOnlyList<McpServerStatus>? statuses) =>
+        statuses is not null
+        && statuses.Any(status =>
+            toolName.StartsWith(status.Name + "__", StringComparison.Ordinal)
+        );
+
+    private async Task ObserveMcpAsync(bool configured, bool extension, CancellationToken ct)
+    {
+        try
+        {
+            if (configured && _mcp is { } set)
+            {
+                await set.ObserveStatusesAsync(ct).ConfigureAwait(false);
+            }
+
+            if (extension && _extensions?.McpServers is { } servers)
+            {
+                await servers.ObserveStatusesAsync(ct).ConfigureAwait(false);
+            }
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception)
+        {
+            // Liveness observation is best-effort and must never take the session down.
         }
     }
 

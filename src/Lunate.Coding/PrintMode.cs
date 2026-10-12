@@ -113,14 +113,6 @@ internal static class PrintMode
                         .ConfigureAwait(false);
                 }
 
-                List<ITool> tools = [];
-                if (extensions is not null)
-                {
-                    tools.AddRange(
-                        await extensions.McpServers.ListToolsAsync(ct).ConfigureAwait(false)
-                    );
-                }
-
                 mcp = await McpComposition
                     .ComposeAsync(
                         workspace,
@@ -132,6 +124,18 @@ internal static class PrintMode
                         ct
                     )
                     .ConfigureAwait(false);
+
+                List<ITool> tools = [];
+                if (extensions is not null)
+                {
+                    // The configured names are the collision baseline: a same-named registration
+                    // is skipped before listing (the configured server wins); nothing starts yet.
+                    ExtensionMcpServers servers = extensions.ComposeMcpServers(
+                        McpNameCollisions.ConfiguredServers(mcp)
+                    );
+                    tools.AddRange(await servers.ListToolsAsync(ct).ConfigureAwait(false));
+                }
+
                 if (mcp is not null)
                 {
                     tools.AddRange(await mcp.ListToolsAsync(ct).ConfigureAwait(false));

@@ -145,6 +145,51 @@ public sealed class McpServerHostTests
     }
 
     [Fact]
+    public async Task Probe_reports_unresponsive_before_start_alive_after_start_and_exited_after_the_process_dies()
+    {
+        using var temp = new TempDirectory();
+        var marker = temp.File("marker.txt");
+        await using var host = new McpServerHost(McpTestEnvironment.Options(marker));
+
+        Assert.Equal(McpProbeOutcome.Unresponsive, await host.ProbeAsync(Ct));
+
+        await host.GetToolsAsync(Ct);
+
+        Assert.Equal(McpProbeOutcome.Alive, await host.ProbeAsync(Ct));
+
+        var pid = McpTestEnvironment.StartedPid(marker);
+        using (var process = Process.GetProcessById(pid))
+        {
+            process.Kill();
+            await process.WaitForExitAsync(Ct);
+        }
+
+        await McpTestEnvironment.WaitForProcessExitAsync(pid, TimeSpan.FromSeconds(10));
+
+        Assert.Equal(McpProbeOutcome.Exited, await host.ProbeAsync(Ct));
+    }
+
+    [Fact]
+    public async Task Probe_reports_unresponsive_when_the_server_misses_the_probe_bound()
+    {
+        using var temp = new TempDirectory();
+        var marker = temp.File("marker.txt");
+        var options = McpTestEnvironment.Options(marker) with
+        {
+            Environment = new Dictionary<string, string>
+            {
+                ["LUNATE_TEST_MCP_MARKER"] = marker,
+                ["LUNATE_TEST_MCP_SLOW_LIST_MS"] = "2500",
+            },
+        };
+        await using var host = new McpServerHost(options);
+
+        Assert.NotEmpty(await host.GetToolsAsync(Ct));
+
+        Assert.Equal(McpProbeOutcome.Unresponsive, await host.ProbeAsync(Ct));
+    }
+
+    [Fact]
     public async Task Dispose_stops_the_process_and_is_idempotent()
     {
         using var temp = new TempDirectory();

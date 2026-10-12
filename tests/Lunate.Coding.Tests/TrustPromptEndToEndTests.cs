@@ -8,6 +8,7 @@ namespace Lunate.Coding.Tests;
 /// keys answer it through the normal key path (type-ahead never can), several pending questions are
 /// asked one at a time, and <c>/trust</c> lists and clears the records.
 /// </summary>
+[Collection("mcp-processes")]
 public sealed class TrustPromptEndToEndTests
 {
     [Fact]

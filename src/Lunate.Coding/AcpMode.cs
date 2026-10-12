@@ -37,14 +37,10 @@ internal static class AcpMode
         {
             var workspace = new Workspace(Environment.CurrentDirectory);
             IExtensionLog log = extensions?.Log ?? new StderrExtensionLog(errors);
+
             if (extensions?.NoExtensions is not true)
             {
                 host = ComposeExtensions(extensions, workspace, errors, ct);
-            }
-
-            if (host is not null)
-            {
-                mcpTools.AddRange(host.McpServers.ListToolsAsync(ct).GetAwaiter().GetResult());
             }
 
             mcp = McpComposition
@@ -59,6 +55,17 @@ internal static class AcpMode
                 )
                 .GetAwaiter()
                 .GetResult();
+
+            if (host is not null)
+            {
+                // The configured names are the collision baseline: a same-named registration is
+                // skipped before listing (the configured server wins); nothing starts before.
+                ExtensionMcpServers servers = host.ComposeMcpServers(
+                    McpNameCollisions.ConfiguredServers(mcp)
+                );
+                mcpTools.AddRange(servers.ListToolsAsync(ct).GetAwaiter().GetResult());
+            }
+
             if (mcp is not null)
             {
                 mcpTools.AddRange(mcp.ListToolsAsync(ct).GetAwaiter().GetResult());

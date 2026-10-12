@@ -1,0 +1,48 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <RootNamespace>McpFromExtensionExtension.Tests</RootNamespace>
+        <!-- FakeMcpServer is a sibling project nested in this folder; keep its sources out of
+             this project's default globs (its obj/ would otherwise be compiled twice). -->
+        <DefaultItemExcludes>$(DefaultItemExcludes);FakeMcpServer/**</DefaultItemExcludes>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="../../../../src/Lunate.Extensibility.Testing/Lunate.Extensibility.Testing.csproj" />
+        <ProjectReference Include="../McpFromExtensionExtension/McpFromExtensionExtension.csproj" />
+        <ProjectReference Include="FakeMcpServer/FakeMcpServer.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="xunit.v3" Version="4.0.1" />
+        <Using Include="Xunit" />
+    </ItemGroup>
+
+    <Target Name="CopySampleExtension" AfterTargets="Build">
+        <MSBuild
+            Projects="$(MSBuildThisFileDirectory)../McpFromExtensionExtension/McpFromExtensionExtension.csproj"
+            Targets="Build"
+            Properties="Configuration=$(Configuration)"
+        />
+        <MSBuild
+            Projects="$(MSBuildThisFileDirectory)FakeMcpServer/FakeMcpServer.csproj"
+            Targets="Build"
+            Properties="Configuration=$(Configuration)"
+        />
+        <ItemGroup>
+            <SampleExtensionFiles Include="$(MSBuildThisFileDirectory)../McpFromExtensionExtension/bin/$(Configuration)/$(TargetFramework)/**/*" />
+            <!-- The extension resolves FakeMcpServer.dll next to its own assembly. -->
+            <FakeServerFiles Include="$(MSBuildThisFileDirectory)FakeMcpServer/bin/$(Configuration)/$(TargetFramework)/**/*" />
+        </ItemGroup>
+        <Copy
+            SourceFiles="@(SampleExtensionFiles)"
+            DestinationFolder="$(OutDir)McpFromExtensionExtension/%(RecursiveDir)"
+            SkipUnchangedFiles="true"
+        />
+        <Copy
+            SourceFiles="@(FakeServerFiles)"
+            DestinationFolder="$(OutDir)McpFromExtensionExtension/%(RecursiveDir)"
+            SkipUnchangedFiles="true"
+        />
+    </Target>
+</Project>

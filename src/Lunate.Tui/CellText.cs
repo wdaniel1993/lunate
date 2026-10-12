@@ -37,6 +37,40 @@ internal static class CellText
         return IsWide(rune.Value) ? 2 : 1;
     }
 
+    /// <summary>
+    /// One physical line from arbitrary text: whitespace runs (space, tab, CR, LF) collapse to
+    /// single spaces, any remaining C0 control characters (U+0000–U+001F, U+007F) are dropped, and
+    /// the result is trimmed. Empty output means there is nothing printable to show.
+    /// </summary>
+    internal static string SingleLine(string text)
+    {
+        var builder = new StringBuilder(text.Length);
+        var pendingSpace = false;
+        foreach (char c in text)
+        {
+            if (c is ' ' or '\t' or '\r' or '\n')
+            {
+                pendingSpace = builder.Length > 0;
+                continue;
+            }
+
+            if (c <= '\u001f' || c == '\u007f')
+            {
+                continue;
+            }
+
+            if (pendingSpace)
+            {
+                builder.Append(' ');
+                pendingSpace = false;
+            }
+
+            builder.Append(c);
+        }
+
+        return builder.ToString();
+    }
+
     internal static string Clip(string text, int width)
     {
         if (width <= 0)

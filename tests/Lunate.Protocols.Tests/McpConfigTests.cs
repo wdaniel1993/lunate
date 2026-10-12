@@ -50,8 +50,10 @@ public sealed class McpConfigTests
         Assert.Equal(TimeSpan.FromSeconds(30), files.CallTimeout);
         Assert.Equal("files", files.NamespaceName);
         Assert.Equal(ToolExposure.Direct, files.Exposure);
+        Assert.Equal(path, files.Source);
         McpServerOptions plain = result.Servers[1];
         Assert.Equal("plain", plain.NamespaceName);
+        Assert.Equal(path, plain.Source);
         Assert.Null(plain.CallTimeout);
         Assert.Null(plain.Environment);
         Assert.Null(plain.WorkingDirectory);

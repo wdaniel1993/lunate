@@ -34,6 +34,14 @@ internal static class McpTestServerSupport
     internal static string ConfigJson(string name = "test", string? markerPath = null) =>
         $$"""{ "mcpServers": { "{{Escape(name)}}": {{EntryJson(markerPath)}} } }""";
 
+    /// <summary>Kills the server process and waits for it to exit.</summary>
+    internal static async Task KillAsync(int pid)
+    {
+        using var process = Process.GetProcessById(pid);
+        process.Kill();
+        await process.WaitForExitAsync();
+    }
+
     internal static int StartedPid(string markerPath)
     {
         const string Prefix = "started pid=";
