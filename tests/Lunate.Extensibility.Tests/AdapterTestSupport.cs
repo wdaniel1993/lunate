@@ -68,10 +68,19 @@ internal sealed class FakeTool(string name, string output) : ITool
 
     public string? ReceivedArgs { get; private set; }
 
+    public Func<
+        JsonElement,
+        ToolContext,
+        CancellationToken,
+        Task<ToolResult>
+    >? OnExecuteAsync { get; init; }
+
     public Task<ToolResult> ExecuteAsync(JsonElement args, ToolContext ctx, CancellationToken ct)
     {
         ReceivedArgs = args.GetRawText();
-        return Task.FromResult(new ToolResult(output, IsError: false));
+        return OnExecuteAsync is { } handler
+            ? handler(args, ctx, ct)
+            : Task.FromResult(new ToolResult(output, IsError: false));
     }
 }
 

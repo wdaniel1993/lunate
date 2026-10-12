@@ -2,9 +2,9 @@
 
 ## 1. Core primitives (payload arguments + structured content)
 
-- [ ] 1.1 `ToolResultReadyPayload` / `AgentToolResultReadyContext` gain `Arguments` (JsonElement, the call's arguments as approved after `ToolCalling`); thread `approvedArgs` at the execution site (`AgentHarness.Tools.cs:304-322`) through `AgentHookRecords`/the adapter to the DTO
-- [ ] 1.2 `ToolResultReadyResult` / `AgentToolResultReadyResult` gain `StructuredContent` (JsonElement?); the harness maps `StructuredContent = ready.StructuredContent ?? result.StructuredContent` (Details mapping unchanged)
-- [ ] 1.3 DTO conformance round-trip tests updated for both fields; harness-level test: a handler returning structured content sees it on the tool result
+- [x] 1.1 `ToolResultReadyPayload` / `AgentToolResultReadyContext` gain `Arguments` (JsonElement, the call's arguments as approved after `ToolCalling`); thread `approvedArgs` at the execution site (`AgentHarness.Tools.cs:304-322`) through `AgentHookRecords`/the adapter to the DTO
+- [x] 1.2 `ToolResultReadyResult` / `AgentToolResultReadyResult` gain `StructuredContent` (JsonElement?); the harness maps `StructuredContent = ready.StructuredContent ?? result.StructuredContent` (Details mapping unchanged)
+- [x] 1.3 DTO conformance round-trip tests updated for both fields; harness-level test: a handler returning structured content sees it on the tool result
 
 ## 2. Core: workspace identity registration
 

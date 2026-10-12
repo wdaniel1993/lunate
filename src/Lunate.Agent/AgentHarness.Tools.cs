@@ -319,7 +319,7 @@ public sealed partial class AgentHarness
             );
         }
 
-        return await ApplyToolResultReadyAsync(tool, runId, callId, result, ct);
+        return await ApplyToolResultReadyAsync(tool, runId, callId, approvedArgs, result, ct);
     }
 
     private async ValueTask<(JsonElement Args, ToolResult? Blocked)> ApplyToolCallingAsync(
@@ -360,6 +360,7 @@ public sealed partial class AgentHarness
         ITool tool,
         string runId,
         string callId,
+        JsonElement approvedArgs,
         ToolResult result,
         CancellationToken ct
     )
@@ -374,12 +375,18 @@ public sealed partial class AgentHarness
                 runId,
                 callId,
                 tool.Name,
+                approvedArgs,
                 result.Output ?? string.Empty,
                 result.IsError
             ),
             ct
         );
-        return result with { Output = ready.Output, Details = ready.Data ?? result.Details };
+        return result with
+        {
+            Output = ready.Output,
+            Details = ready.Data ?? result.Details,
+            StructuredContent = ready.StructuredContent ?? result.StructuredContent,
+        };
     }
 
     private ToolContext BuildToolContext(

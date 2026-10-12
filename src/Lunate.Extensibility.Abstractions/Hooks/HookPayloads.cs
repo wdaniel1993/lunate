@@ -85,6 +85,7 @@ public sealed record ToolResultReadyPayload(
     string RunId,
     string CallId,
     string ToolName,
+    JsonElement Arguments,
     string Output,
     bool IsError
 );

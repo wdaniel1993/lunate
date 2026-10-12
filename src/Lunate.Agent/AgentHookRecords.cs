@@ -90,12 +90,17 @@ public sealed record AgentToolResultReadyContext(
     string RunId,
     string CallId,
     string ToolName,
+    JsonElement Arguments,
     string Output,
     bool IsError
 );
 
-/// <summary>The composed tool-result text and attached JSON data.</summary>
-public sealed record AgentToolResultReadyResult(string Output, JsonElement? Data);
+/// <summary>The composed tool-result text, attached JSON data and typed structured content.</summary>
+public sealed record AgentToolResultReadyResult(
+    string Output,
+    JsonElement? Data,
+    JsonElement? StructuredContent = null
+);
 
 /// <summary>One extension entry to append to the session at a turn boundary.</summary>
 public sealed record AgentExtensionEntry(string ExtensionId, string Type, JsonElement Payload);

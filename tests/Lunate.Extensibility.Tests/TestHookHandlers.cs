@@ -201,7 +201,14 @@ internal static class TestHookPayloads
         new("r1", "c1", "read", System.Text.Json.JsonDocument.Parse("{}").RootElement.Clone());
 
     public static ToolResultReadyPayload ToolResultReady =>
-        new("r1", "c1", "read", "original", false);
+        new(
+            "r1",
+            "c1",
+            "read",
+            System.Text.Json.JsonDocument.Parse("""{"path":"a.txt"}""").RootElement.Clone(),
+            "original",
+            false
+        );
 
     public static TurnEndedPayload TurnEnded => new("r1");
 

@@ -77,6 +77,10 @@ public sealed class AgentHookAdapterTests
                 && AdapterTestSupport.Text(entry.Message) == "final"
         );
         Assert.Contains("b.txt", read.ReceivedArgs!, StringComparison.Ordinal);
+        Assert.Equal(
+            "b.txt",
+            extension.LastToolResultReady!.Arguments.GetProperty("path").GetString()
+        );
         ToolCallResult toolResult = events.OfType<ToolCallResult>().Single();
         Assert.Equal("redacted", toolResult.Output);
         Assert.True(((JsonElement)toolResult.Details!).GetProperty("ok").GetBoolean());
@@ -85,6 +89,55 @@ public sealed class AgentHookAdapterTests
         Assert.Equal(2, extension.TurnEnds);
         Assert.Equal(1, extension.Settles);
         Assert.Equal(3, client.Requests.Count);
+    }
+
+    [Fact]
+    public async Task A_handler_attaching_structured_content_sees_it_on_the_tool_result()
+    {
+        var runner = new HookRunner();
+        runner.Register("ext", new StructuredContentExtension());
+        var adapter = new AgentHookAdapter(runner);
+        ToolResult? nested = null;
+        var inner = new FakeTool("inner", "inner contents");
+        var outer = new FakeTool("outer", "unused")
+        {
+            OnExecuteAsync = async (_, ctx, ct) =>
+            {
+                nested = await ctx.ExecuteToolAsync!("inner", AdapterTestSupport.Json("{}"), ct);
+                return new ToolResult($"outer saw: {nested.Output}", IsError: nested.IsError);
+            },
+        };
+        var registry = new ToolRegistry();
+        registry.Add(outer);
+        registry.Add(inner);
+        FakeChatClient client = new FakeChatClient()
+            .Enqueue(
+                new ChatResponseUpdate(
+                    ChatRole.Assistant,
+                    [new FunctionCallContent("call-1", "outer", new Dictionary<string, object?>())]
+                ),
+                new ChatResponseUpdate(ChatRole.Assistant, [])
+                {
+                    FinishReason = ChatFinishReason.ToolCalls,
+                }
+            )
+            .Enqueue(
+                new ChatResponseUpdate(ChatRole.Assistant, [new TextContent("done")])
+                {
+                    FinishReason = ChatFinishReason.Stop,
+                }
+            );
+        var harness = new AgentHarness(
+            client,
+            registry,
+            new AgentHarnessOptions { Hooks = adapter }
+        );
+
+        await AdapterTestSupport.Run(harness, Ct);
+
+        Assert.NotNull(nested);
+        Assert.Equal("redacted", nested!.Output);
+        Assert.True(nested.StructuredContent!.Value.GetProperty("ok").GetBoolean());
     }
 
     [Fact]
@@ -309,13 +362,22 @@ public sealed class AgentHookAdapterTests
                 new ToolCallingResult.Proceed(AdapterTestSupport.Json("""{"path":"b.txt"}"""))
             );
 
+        public ToolResultReadyPayload? LastToolResultReady { get; private set; }
+
         public ValueTask<ToolResultReadyResult> HandleAsync(
             ToolResultReadyPayload payload,
             CancellationToken cancellationToken
-        ) =>
-            ValueTask.FromResult(
-                new ToolResultReadyResult("redacted", AdapterTestSupport.Json("""{"ok":true}"""))
+        )
+        {
+            LastToolResultReady = payload;
+            return ValueTask.FromResult(
+                new ToolResultReadyResult(
+                    "redacted",
+                    AdapterTestSupport.Json("""{"ok":true}"""),
+                    AdapterTestSupport.Json("""{"diagnostics":[{"code":"todo-check"}]}""")
+                )
             );
+        }
 
         public ValueTask<TurnEndedResult> HandleAsync(
             TurnEndedPayload payload,
@@ -341,6 +403,23 @@ public sealed class AgentHookAdapterTests
             Settles++;
             return ValueTask.CompletedTask;
         }
+    }
+
+    private sealed class StructuredContentExtension : IToolResultReadyHandler
+    {
+        public int Priority => 0;
+
+        public ValueTask<ToolResultReadyResult> HandleAsync(
+            ToolResultReadyPayload payload,
+            CancellationToken cancellationToken
+        ) =>
+            ValueTask.FromResult(
+                new ToolResultReadyResult(
+                    "redacted",
+                    null,
+                    AdapterTestSupport.Json("""{"ok":true}""")
+                )
+            );
     }
 
     private sealed class FixedContextExtension(string text) : IContextBuildingHandler

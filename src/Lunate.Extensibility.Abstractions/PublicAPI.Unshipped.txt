@@ -318,9 +318,11 @@ Lunate.Extensibility.Abstractions.ToolCallingResult.Proceed.Proceed(System.Text.
 Lunate.Extensibility.Abstractions.ToolCallingResult.ToolCallingResult(Lunate.Extensibility.Abstractions.ToolCallingResult! original) -> void
 Lunate.Extensibility.Abstractions.ToolResultReadyPayload
 Lunate.Extensibility.Abstractions.ToolResultReadyPayload.<Clone>$() -> Lunate.Extensibility.Abstractions.ToolResultReadyPayload!
+Lunate.Extensibility.Abstractions.ToolResultReadyPayload.Arguments.get -> System.Text.Json.JsonElement
+Lunate.Extensibility.Abstractions.ToolResultReadyPayload.Arguments.init -> void
 Lunate.Extensibility.Abstractions.ToolResultReadyPayload.CallId.get -> string!
 Lunate.Extensibility.Abstractions.ToolResultReadyPayload.CallId.init -> void
-Lunate.Extensibility.Abstractions.ToolResultReadyPayload.Deconstruct(out string! RunId, out string! CallId, out string! ToolName, out string! Output, out bool IsError) -> void
+Lunate.Extensibility.Abstractions.ToolResultReadyPayload.Deconstruct(out string! RunId, out string! CallId, out string! ToolName, out System.Text.Json.JsonElement Arguments, out string! Output, out bool IsError) -> void
 Lunate.Extensibility.Abstractions.ToolResultReadyPayload.Equals(Lunate.Extensibility.Abstractions.ToolResultReadyPayload? other) -> bool
 Lunate.Extensibility.Abstractions.ToolResultReadyPayload.IsError.get -> bool
 Lunate.Extensibility.Abstractions.ToolResultReadyPayload.IsError.init -> void
@@ -330,16 +332,18 @@ Lunate.Extensibility.Abstractions.ToolResultReadyPayload.RunId.get -> string!
 Lunate.Extensibility.Abstractions.ToolResultReadyPayload.RunId.init -> void
 Lunate.Extensibility.Abstractions.ToolResultReadyPayload.ToolName.get -> string!
 Lunate.Extensibility.Abstractions.ToolResultReadyPayload.ToolName.init -> void
-Lunate.Extensibility.Abstractions.ToolResultReadyPayload.ToolResultReadyPayload(string! RunId, string! CallId, string! ToolName, string! Output, bool IsError) -> void
+Lunate.Extensibility.Abstractions.ToolResultReadyPayload.ToolResultReadyPayload(string! RunId, string! CallId, string! ToolName, System.Text.Json.JsonElement Arguments, string! Output, bool IsError) -> void
 Lunate.Extensibility.Abstractions.ToolResultReadyResult
 Lunate.Extensibility.Abstractions.ToolResultReadyResult.<Clone>$() -> Lunate.Extensibility.Abstractions.ToolResultReadyResult!
 Lunate.Extensibility.Abstractions.ToolResultReadyResult.Data.get -> System.Text.Json.JsonElement?
 Lunate.Extensibility.Abstractions.ToolResultReadyResult.Data.init -> void
-Lunate.Extensibility.Abstractions.ToolResultReadyResult.Deconstruct(out string! Output, out System.Text.Json.JsonElement? Data) -> void
+Lunate.Extensibility.Abstractions.ToolResultReadyResult.Deconstruct(out string! Output, out System.Text.Json.JsonElement? Data, out System.Text.Json.JsonElement? StructuredContent) -> void
 Lunate.Extensibility.Abstractions.ToolResultReadyResult.Equals(Lunate.Extensibility.Abstractions.ToolResultReadyResult? other) -> bool
 Lunate.Extensibility.Abstractions.ToolResultReadyResult.Output.get -> string!
 Lunate.Extensibility.Abstractions.ToolResultReadyResult.Output.init -> void
-Lunate.Extensibility.Abstractions.ToolResultReadyResult.ToolResultReadyResult(string! Output, System.Text.Json.JsonElement? Data) -> void
+Lunate.Extensibility.Abstractions.ToolResultReadyResult.StructuredContent.get -> System.Text.Json.JsonElement?
+Lunate.Extensibility.Abstractions.ToolResultReadyResult.StructuredContent.init -> void
+Lunate.Extensibility.Abstractions.ToolResultReadyResult.ToolResultReadyResult(string! Output, System.Text.Json.JsonElement? Data, System.Text.Json.JsonElement? StructuredContent = null) -> void
 Lunate.Extensibility.Abstractions.ToolsChangedPayload
 Lunate.Extensibility.Abstractions.ToolsChangedPayload.<Clone>$() -> Lunate.Extensibility.Abstractions.ToolsChangedPayload!
 Lunate.Extensibility.Abstractions.ToolsChangedPayload.Deconstruct(out string! RunId, out System.Collections.Generic.IReadOnlyList<string!>! Tools) -> void

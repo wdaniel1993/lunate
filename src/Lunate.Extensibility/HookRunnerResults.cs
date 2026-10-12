@@ -19,8 +19,12 @@ public sealed record RunStartingDispatch(
 /// <summary>The merged, source-tagged context additions after the per-extension budget.</summary>
 public sealed record ContextBuildingDispatch(IReadOnlyList<ContextMessage> AddedMessages);
 
-/// <summary>The composed tool-result text and the last attached JSON data.</summary>
-public sealed record ToolResultReadyDispatch(string Output, JsonElement? Data);
+/// <summary>The composed tool-result text and the last attached JSON data and structured content.</summary>
+public sealed record ToolResultReadyDispatch(
+    string Output,
+    JsonElement? Data,
+    JsonElement? StructuredContent = null
+);
 
 /// <summary>The collected turn entries and whether one continuation was granted.</summary>
 public sealed record TurnEndedDispatch(

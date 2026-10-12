@@ -840,10 +840,12 @@ Lunate.Agent.AgentToolCallingResult.Proceed.Equals(Lunate.Agent.AgentToolCalling
 Lunate.Agent.AgentToolCallingResult.Proceed.Proceed(System.Text.Json.JsonElement? Arguments) -> void
 Lunate.Agent.AgentToolResultReadyContext
 Lunate.Agent.AgentToolResultReadyContext.<Clone>$() -> Lunate.Agent.AgentToolResultReadyContext!
-Lunate.Agent.AgentToolResultReadyContext.AgentToolResultReadyContext(string! RunId, string! CallId, string! ToolName, string! Output, bool IsError) -> void
+Lunate.Agent.AgentToolResultReadyContext.AgentToolResultReadyContext(string! RunId, string! CallId, string! ToolName, System.Text.Json.JsonElement Arguments, string! Output, bool IsError) -> void
+Lunate.Agent.AgentToolResultReadyContext.Arguments.get -> System.Text.Json.JsonElement
+Lunate.Agent.AgentToolResultReadyContext.Arguments.init -> void
 Lunate.Agent.AgentToolResultReadyContext.CallId.get -> string!
 Lunate.Agent.AgentToolResultReadyContext.CallId.init -> void
-Lunate.Agent.AgentToolResultReadyContext.Deconstruct(out string! RunId, out string! CallId, out string! ToolName, out string! Output, out bool IsError) -> void
+Lunate.Agent.AgentToolResultReadyContext.Deconstruct(out string! RunId, out string! CallId, out string! ToolName, out System.Text.Json.JsonElement Arguments, out string! Output, out bool IsError) -> void
 Lunate.Agent.AgentToolResultReadyContext.Equals(Lunate.Agent.AgentToolResultReadyContext? other) -> bool
 Lunate.Agent.AgentToolResultReadyContext.IsError.get -> bool
 Lunate.Agent.AgentToolResultReadyContext.IsError.init -> void
@@ -855,13 +857,15 @@ Lunate.Agent.AgentToolResultReadyContext.ToolName.get -> string!
 Lunate.Agent.AgentToolResultReadyContext.ToolName.init -> void
 Lunate.Agent.AgentToolResultReadyResult
 Lunate.Agent.AgentToolResultReadyResult.<Clone>$() -> Lunate.Agent.AgentToolResultReadyResult!
-Lunate.Agent.AgentToolResultReadyResult.AgentToolResultReadyResult(string! Output, System.Text.Json.JsonElement? Data) -> void
+Lunate.Agent.AgentToolResultReadyResult.AgentToolResultReadyResult(string! Output, System.Text.Json.JsonElement? Data, System.Text.Json.JsonElement? StructuredContent = null) -> void
 Lunate.Agent.AgentToolResultReadyResult.Data.get -> System.Text.Json.JsonElement?
 Lunate.Agent.AgentToolResultReadyResult.Data.init -> void
-Lunate.Agent.AgentToolResultReadyResult.Deconstruct(out string! Output, out System.Text.Json.JsonElement? Data) -> void
+Lunate.Agent.AgentToolResultReadyResult.Deconstruct(out string! Output, out System.Text.Json.JsonElement? Data, out System.Text.Json.JsonElement? StructuredContent) -> void
 Lunate.Agent.AgentToolResultReadyResult.Equals(Lunate.Agent.AgentToolResultReadyResult? other) -> bool
 Lunate.Agent.AgentToolResultReadyResult.Output.get -> string!
 Lunate.Agent.AgentToolResultReadyResult.Output.init -> void
+Lunate.Agent.AgentToolResultReadyResult.StructuredContent.get -> System.Text.Json.JsonElement?
+Lunate.Agent.AgentToolResultReadyResult.StructuredContent.init -> void
 Lunate.Agent.AgentTurnEndedContext
 Lunate.Agent.AgentTurnEndedContext.<Clone>$() -> Lunate.Agent.AgentTurnEndedContext!
 Lunate.Agent.AgentTurnEndedContext.AgentTurnEndedContext(string! RunId) -> void
