@@ -1,4 +1,5 @@
 using Lunate.Agent;
+using Lunate.Coding;
 using Lunate.Extensibility.Abstractions;
 using Microsoft.Extensions.AI;
 
@@ -18,6 +19,7 @@ public sealed class ExtensionTestHost : IAsyncDisposable
     private readonly FileChangeBus _fileChanges;
     private LoadedExtension? _loaded;
     private Session? _session;
+    private ExtensionMcpServers? _mcpServers;
     private bool _stopped;
     private bool _disposed;
 
@@ -165,6 +167,39 @@ public sealed class ExtensionTestHost : IAsyncDisposable
         return new ExtensionRunResult(events, session.Path);
     }
 
+    /// <summary>
+    /// Composes the extension MCP-server registrations through the production mapping
+    /// (<see cref="ExtensionMcpServers"/>): the first call lists every server once (starting each
+    /// exactly once), merges the listed tools into <see cref="Tools"/> and returns the public
+    /// statuses; later calls re-observe the composed set with bounded liveness probes (no restart,
+    /// no duplicate tools) and return fresh statuses. The host owns the composed set:
+    /// <see cref="StopAsync"/> and <see cref="DisposeAsync"/> stop the servers.
+    /// </summary>
+    public async Task<IReadOnlyList<ExtensionMcpServerStatus>> ComposeMcpServersAsync(
+        CancellationToken cancellationToken = default
+    )
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        await StartAsync(cancellationToken).ConfigureAwait(false);
+        if (_mcpServers is null)
+        {
+            _mcpServers = new ExtensionMcpServers(Log, Runner.McpServers.List());
+            IReadOnlyList<ITool> tools = await _mcpServers
+                .ListToolsAsync(cancellationToken)
+                .ConfigureAwait(false);
+            foreach (ITool tool in tools)
+            {
+                Tools.Add(tool);
+            }
+        }
+        else
+        {
+            await _mcpServers.ObserveStatusesAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        return [.. _mcpServers.Statuses.Select(ToPublicStatus)];
+    }
+
     /// <summary>Ends the session through the real lifecycle; later calls do nothing.</summary>
     public async ValueTask StopAsync(CancellationToken cancellationToken = default)
     {
@@ -174,6 +209,12 @@ public sealed class ExtensionTestHost : IAsyncDisposable
         }
 
         _stopped = true;
+        if (_mcpServers is { } servers)
+        {
+            _mcpServers = null;
+            await servers.DisposeAsync().ConfigureAwait(false);
+        }
+
         await Runner.EndSessionAsync(cancellationToken).ConfigureAwait(false);
     }
 
@@ -213,6 +254,20 @@ public sealed class ExtensionTestHost : IAsyncDisposable
             );
         return _session;
     }
+
+    private static ExtensionMcpServerStatus ToPublicStatus(McpServerStatus status) =>
+        new(
+            status.Name,
+            status.State switch
+            {
+                McpServerState.NotStarted => ExtensionMcpServerState.NotStarted,
+                McpServerState.Started => ExtensionMcpServerState.Started,
+                _ => ExtensionMcpServerState.Failed,
+            },
+            status.ToolCount,
+            status.Reason,
+            status.Source
+        );
 
     private void InstallExtension(ExtensionTestHostOptions options)
     {

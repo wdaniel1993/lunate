@@ -2,7 +2,6 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Text.Json;
 using Lunate.Agent;
-using Lunate.Coding;
 using Lunate.Extensibility;
 using Lunate.Extensibility.Abstractions;
 
@@ -24,30 +23,36 @@ public sealed class McpFromExtensionEndToEndTests
         Assert.Equal("test", registered.Name);
         Assert.Equal("mcp", registered.ExtensionId);
 
-        await using var servers = new ExtensionMcpServers(host.Log, host.Runner.McpServers.List());
-
         Assert.False(File.Exists(marker), "registration must start nothing");
 
-        IReadOnlyList<ITool> tools = await servers.ListToolsAsync(Ct);
+        IReadOnlyList<ExtensionMcpServerStatus> statuses = await host.ComposeMcpServersAsync(Ct);
+
+        ExtensionMcpServerStatus status = Assert.Single(statuses);
+        Assert.Equal("test", status.Name);
+        Assert.Equal(ExtensionMcpServerState.Started, status.State);
+        Assert.Equal(5, status.ToolCount);
+        Assert.Equal("extension 'mcp'", status.Source);
 
         var pid = StartedPid(marker);
         Assert.True(IsProcessAlive(pid));
         Assert.Equal(
             ["test__add", "test__boom", "test__echo", "test__slow", "test__spawn_tool"],
-            tools.Select(tool => tool.Name).Order(StringComparer.Ordinal)
+            host.Tools.Tools.Select(tool => tool.Name).Order(StringComparer.Ordinal)
         );
-        Assert.All(tools, tool => Assert.Equal("test", tool.Namespace?.Name));
-
-        foreach (ITool tool in tools)
-        {
-            host.Tools.Add(tool);
-        }
-
+        Assert.All(host.Tools.Tools, tool => Assert.Equal("test", tool.Namespace?.Name));
         Assert.Contains(host.Tools.Declarations, declaration => declaration.Name == "test__add");
         Assert.Contains(host.Tools.Tools, tool => tool.Name == "test__echo");
         Assert.DoesNotContain(
             host.Tools.Declarations,
             declaration => declaration.Name == "test__echo"
+        );
+
+        IReadOnlyList<ExtensionMcpServerStatus> again = await host.ComposeMcpServersAsync(Ct);
+
+        Assert.Equal(ExtensionMcpServerState.Started, Assert.Single(again).State);
+        Assert.Single(
+            File.ReadAllLines(marker),
+            line => line.StartsWith("started pid=", StringComparison.Ordinal)
         );
 
         await host.RunAsync(
@@ -64,7 +69,7 @@ public sealed class McpFromExtensionEndToEndTests
         Assert.Contains("5", result.Output, StringComparison.Ordinal);
         Assert.Contains(host.Events.Of<ToolCallStart>(), start => start.ToolName == "test__add");
 
-        await servers.DisposeAsync();
+        await host.StopAsync(Ct);
         await WaitForProcessExitAsync(pid, TimeSpan.FromSeconds(10));
     }
 

@@ -23,6 +23,8 @@
         <InternalsVisibleTo Include="Lunate.Protocols.Tests" />
         <!-- The MCP-from-extensions test composes the real extension host with the server mapping. -->
         <InternalsVisibleTo Include="Lunate.Extensibility.Testing.Tests" />
+        <!-- The testing kit composes the production MCP mapping over real registrations. -->
+        <InternalsVisibleTo Include="Lunate.Extensibility.Testing" />
     </ItemGroup>
 
     <ItemGroup>

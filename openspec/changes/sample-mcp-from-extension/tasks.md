@@ -2,10 +2,10 @@
 
 ## 1. Core: sources, collisions, crash, /mcp merge
 
-- [ ] 1.1 Per-server source: `McpServerOptions` gains `Source` (set by `McpConfig.Load` to its file path); `ExtensionMcpServers` sets `extension '{id}'`; `McpServerStatus` gains `Source`
-- [ ] 1.2 Collision filter (config wins), shared by interactive/print/ACP: registrations whose name matches a configured server are skipped before listing; the collision is logged naming both sources; interactive compose order adjusted so both sets are known before the extension listing
-- [ ] 1.3 Crash handling: a started server that has exited flips to `Failed` ("the server process exited") when next observed — `/mcp` liveness probe + after a failed tool call — with one notice per server (deduped on the transition); tools read unavailable
-- [ ] 1.4 `ExtensionMcpServers.Statuses` passthrough (source included); `McpStatusText()` merges both sets with sources (`name — started, N tools (source)`; `shadowed by {source}` for collisions; "no servers configured" only when both empty); never prints env values or headers
+- [x] 1.1 Per-server source: `McpServerOptions` gains `Source` (set by `McpConfig.Load` to its file path); `ExtensionMcpServers` sets `extension '{id}'`; `McpServerStatus` gains `Source`
+- [x] 1.2 Collision filter (config wins), shared by interactive/print/ACP: registrations whose name matches a configured server are skipped before listing; the collision is logged naming both sources; interactive compose order adjusted so both sets are known before the extension listing
+- [x] 1.3 Crash handling: a started server that has exited flips to `Failed` ("the server process exited") when next observed — `/mcp` liveness probe + after a failed tool call — with one notice per server (deduped on the transition); tools read unavailable
+- [x] 1.4 `ExtensionMcpServers.Statuses` passthrough (source included); `McpStatusText()` merges both sets with sources (`name — started, N tools (source)`; `shadowed by {source}` for collisions; "no servers configured" only when both empty); never prints env values or headers
 
 ## 2. Kit: public MCP composition (maintainer steer — no sample IVT)
 
