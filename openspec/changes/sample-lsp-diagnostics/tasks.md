@@ -1,36 +1,46 @@
 # Tasks: sample-lsp-diagnostics
 
-## 1. Core: workspace identity registration
+## 1. Core primitives (payload arguments + structured content)
 
-- [ ] 1.1 Register `core/workspace` (the session's `WorkspaceInfo`) at composition in `ExtensionSession.StartAsync` (production) and `ExtensionTestHost` (kit parity), before any extension loads; plumb the identity from the Coding layer's workspace
-- [ ] 1.2 Tests: the handle is reachable in a composed session and carries the worktree root; lookup before registration still fails soft (no throw)
+- [ ] 1.1 `ToolResultReadyPayload` / `AgentToolResultReadyContext` gain `Arguments` (JsonElement, the call's arguments as approved after `ToolCalling`); thread `approvedArgs` at the execution site (`AgentHarness.Tools.cs:304-322`) through `AgentHookRecords`/the adapter to the DTO
+- [ ] 1.2 `ToolResultReadyResult` / `AgentToolResultReadyResult` gain `StructuredContent` (JsonElement?); the harness maps `StructuredContent = ready.StructuredContent ?? result.StructuredContent` (Details mapping unchanged)
+- [ ] 1.3 DTO conformance round-trip tests updated for both fields; harness-level test: a handler returning structured content sees it on the tool result
 
-## 2. The LSP client (sample)
+## 2. Core: workspace identity registration
 
-- [ ] 2.1 `LspClient`: stdio JSON-RPC with `Content-Length` framing; `initialize` → `initialized` → `textDocument/didOpen` → bounded wait for `textDocument/publishDiagnostics`; one request in flight (lock); separator-agnostic URI conversion
-- [ ] 2.2 `LspServerService` (`IBackgroundService`): lazy start on first use, idempotent stop (shutdown → exit → kill fallback → dispose); settings `serverCommand` (default `csharp-ls`), `serverArgs`, `timeoutMs` (default 2000); a dead process is restarted on next use
+- [ ] 2.1 Register `core/workspace` (the session's `WorkspaceInfo`) at composition in `ExtensionSession.StartAsync` (production) and `ExtensionTestHost` (kit parity), before any extension loads; plumb the identity from the Coding layer's workspace; per-composition value, no static
+- [ ] 2.2 Own tests (independent of the sample): the handle is reachable in a composed session and matches the session's workspace; lookup before registration fails soft (no throw)
+- [ ] 2.3 Composition test pinning the core services registered in production composition (not-yet-wired set named in the test: `core/file-bus`, `core/mutation-queue`)
 
-## 3. The handler (sample)
+## 3. The LSP client (sample)
 
-- [ ] 3.1 `LspDiagnosticsToolResultReadyHandler`: acts on `write`/`edit` results with a `.cs` path (the two documented formats + token-scan fallback); resolves via `core/workspace`; pass-through when not applicable
-- [ ] 3.2 Attach: readable output section + structured `Data` (`path`, `diagnostics[{severity,line,character,code,message}]`, 1-based); zero diagnostics → no attach + info log; every failure → original output + log (keep-original policy)
-- [ ] 3.3 Manifest (`hooks: ["tool-result-ready"]`, settings schema), factory, README (capability table like the other samples)
+- [ ] 3.1 `LspClient`: stdio JSON-RPC with `Content-Length` framing; `initialize` → `initialized` → `didOpen` (v1) / `didChange` (vN, full text) → bounded wait for `publishDiagnostics` **with the matching version** (stale versions ignored, wait continues); one request in flight (lock)
+- [ ] 3.2 `LspServerService` (`IBackgroundService`): lazy start on first use, idempotent stop (shutdown → exit → kill fallback → dispose); settings `serverCommand` (default `csharp-ls`), `serverArgs`, `timeoutMs` (default 2000, under the runner's 5 s per-handler timeout), `maxDiagnostics` (default 5); a dead process is restarted on next use
+- [ ] 3.3 URI conversion as a pure, unit-tested function: Windows drive paths (`C:\src\Foo.cs` → `file:///C:/src/Foo.cs`) and POSIX paths; separator-agnostic resolution
 
-## 4. Fake LSP server
+## 4. The handler (sample)
 
-- [ ] 4.1 `FakeLspServer` console project (referenced by the tests so its dll lands in the test output): initialize capabilities, didOpen → deterministic diagnostics (`TODO` line → warning `todo-check`), `--silent` mode, `--marker <path>` mode, shutdown/exit handling
-- [ ] 4.2 Tests set `serverCommand = "dotnet"` + `serverArgs` with the fake's dll path (cross-platform)
+- [ ] 4.1 `LspDiagnosticsToolResultReadyHandler`: acts on `write`/`edit` when the call's arguments carry a `.cs` `path`; resolves via `core/workspace`; pass-through when not applicable (other tools, non-C#, no path, no identity)
+- [ ] 4.2 Attach: labeled text section (source label, errors+warnings only, cap + `+n more`, 1-based positions) + `StructuredContent`; zero → no attach + info log; every failure → original result + log (keep-original policy)
+- [ ] 4.3 Manifest (`hooks: ["tool-result-ready"]`, settings schema), factory, README (capability table like the other samples)
 
-## 5. Tests (the done-when)
+## 5. Fake LSP server
 
-- [ ] 5.1 `write` a `.cs` with a `TODO` → the tool result text carries the diagnostics section and the details carry the structured data (asserted from the session); the marker proves the fake started once
-- [ ] 5.2 `edit` a `.cs` → same attachment path
-- [ ] 5.3 Non-C# `write` → output untouched, fake never started (no marker, no log)
-- [ ] 5.4 `--silent` fake → timeout → original output unchanged + logged; a later call still works (restart)
-- [ ] 5.5 Server starts once across mutations and stops once at session end (marker + log + no lingering process)
-- [ ] 5.6 Scripted model client (local, deterministic); no fixtures needed
+- [ ] 5.1 `FakeLspServer` console project (referenced by the tests so its dll lands in the test output): initialize capabilities, didOpen/didChange → deterministic diagnostics (`TODO` line → warning `todo-check`), stale-version-first mode, `--silent`, `--marker <path>`, `--crash-after <n>`, shutdown/exit handling
+- [ ] 5.2 Tests set `serverCommand = "dotnet"` + `serverArgs` with the fake's dll path (cross-platform)
 
-## 6. Gate + record
+## 6. Tests (the done-when)
 
-- [ ] 6.1 Both sample projects join `lunate.sln`; `bash scripts/verify.sh` green (the gate picks the new test project up); deviations recorded in design.md
-- [ ] 6.2 Archive, PR, CI green
+- [ ] 6.1 `write` a `.cs` with a `TODO` → the tool result text carries the labeled diagnostics section, the result carries `StructuredContent`, and **the exact next model request contains the diagnostics text** (scripted client captures requests); the marker proves the fake started once
+- [ ] 6.2 `edit` a `.cs` → same attachment path (didChange vN)
+- [ ] 6.3 Non-C# `write` → output untouched, fake never started (no marker, no log)
+- [ ] 6.4 Stale version first → only the matching version's diagnostics are attached
+- [ ] 6.5 `--silent` fake → timeout → original output unchanged + logged; a later call still works (restart)
+- [ ] 6.6 `--crash-after` → the next call restarts the server; persistent failure is logged and the result passes through
+- [ ] 6.7 Server starts once across mutations and stops once at session end (marker + log + no lingering process)
+- [ ] 6.8 Cap + filter: >`maxDiagnostics` errors/warnings → capped with `+n more`; info/hint severities excluded
+
+## 7. Gate + record
+
+- [ ] 7.1 Both sample projects join `lunate.sln`; `bash scripts/verify.sh` green (the gate picks the new test project up); deviations recorded in design.md
+- [ ] 7.2 Archive, PR, CI green
