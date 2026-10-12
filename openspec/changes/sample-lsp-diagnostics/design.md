@@ -69,4 +69,10 @@ Kit-based (`ExtensionTestHost`), the real loader, the real harness, the real `wr
 
 ## Deviations
 
-*(the apply records deviations here)*
+- **`ExtensionApi.Current` bumped 1.5.0 → 1.6.0** (`ExtensionApiTests` updated): the contract's own requirement for the sample's `^1.6.0` manifest; the caret ranges of the older samples stay compatible.
+- **D7 plumbing**: `ExtensionSession.StartAsync` now takes a `WorkspaceInfo` (the widened-parameter option D7 allows) and derives the repository identity as `GitCommonDir ?? WorktreeRoot`; `Workspace.Identity` supplies it at the production call sites. The kit registers `WorkspaceInfo(Path.GetFullPath(WorkingDirectory), null, null)`: its temp worktree has no repository identity to detect.
+- **Sample test project references `Lunate.Coding` and the extension project** (real `write`/`edit`/`read` tools; unit tests for `FileUri` and handler pass-throughs). The layering allowlist gained the sample's six edges — precedent: `Lunate.Extensibility.Tests → Lunate.Coding`. `FakeLspServer` is nested inside the tests folder and excluded from the test project's default globs.
+- **Structured content is the capped copy**, not the full filtered list: text and `StructuredContent` carry the same diagnostics (the `+n more` line covers the remainder).
+- **Observability of `didChange`**: the fake server answers a duplicate `didOpen` for an open document with a protocol-error diagnostic, so the edit test proves the `didChange` path without an extra log mode. Likewise, the structured content reaching `ToolResult` is asserted through a nested-call probe (`write-probe`), because `ToolCallResult` — the observable event — intentionally carries only output/details per the `agent-events` spec.
+- **Teardown after failure is not graceful**: a timeout or dead session is killed directly (no shutdown handshake) so an unresponsive server cannot stall the handler; a clean session end still runs shutdown → exit → kill fallback → dispose.
+- **`ToolResultReadyPayload.Arguments` sits after `ToolName`**, mirroring `ToolCallingPayload`; `StructuredContent` is appended with a `null` default to both result records and the dispatch, keeping the two-argument call sites source-compatible.

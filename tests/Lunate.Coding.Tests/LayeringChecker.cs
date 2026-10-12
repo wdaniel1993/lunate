@@ -60,6 +60,14 @@ internal static class LayeringChecker
             ("MemoryProviderExtension.Tests", "Lunate.Ai"),
             ("MemoryProviderExtension.Tests", "Lunate.Extensibility.Abstractions"),
             ("MemoryProviderExtension.Tests", "Lunate.Extensibility.Testing"),
+            ("LspDiagnosticsExtension", "Lunate.Extensibility.Abstractions"),
+            // The sample's tests drive the real write/edit tools and unit-test the extension's
+            // pure helpers, so they reference the Coding layer and the extension project.
+            ("LspDiagnosticsExtension.Tests", "FakeLspServer"),
+            ("LspDiagnosticsExtension.Tests", "LspDiagnosticsExtension"),
+            ("LspDiagnosticsExtension.Tests", "Lunate.Coding"),
+            ("LspDiagnosticsExtension.Tests", "Lunate.Extensibility.Abstractions"),
+            ("LspDiagnosticsExtension.Tests", "Lunate.Extensibility.Testing"),
         };
 
     public static IReadOnlySet<string> AllowedAgentRuntimePackages { get; } =
