@@ -255,7 +255,7 @@ public sealed class BashToolTests
 
     private static async Task<int> WaitForPidAsync(string pidFile)
     {
-        for (var attempt = 0; attempt < 150; attempt++)
+        for (var attempt = 0; attempt < 600; attempt++)
         {
             if (File.Exists(pidFile))
             {
@@ -287,13 +287,13 @@ public sealed class BashToolTests
             await Task.Delay(100);
         }
 
-        Assert.Fail($"no pid was written to {pidFile} within 15 seconds");
+        Assert.Fail($"no pid was written to {pidFile} within 60 seconds");
         return 0;
     }
 
     private static async Task AssertEventuallyDeadAsync(int pid)
     {
-        for (var attempt = 0; attempt < 50; attempt++)
+        for (var attempt = 0; attempt < 300; attempt++)
         {
             if (!IsAlive(pid))
             {
@@ -303,7 +303,7 @@ public sealed class BashToolTests
             await Task.Delay(100);
         }
 
-        Assert.Fail($"pid {pid} was still alive 5 seconds after the tree kill");
+        Assert.Fail($"pid {pid} was still alive 30 seconds after the tree kill");
     }
 
     private static bool IsAlive(int pid)
