@@ -23,7 +23,10 @@ public sealed class McpServerHost : IAsyncDisposable
     private static readonly TimeSpan DefaultCallTimeout = TimeSpan.FromSeconds(60);
     private static readonly TimeSpan ShutdownTimeout = TimeSpan.FromSeconds(5);
 
-    /// <summary>The bound of one liveness probe; short enough for command and call paths.</summary>
+    /// <summary>
+    /// The bound of one liveness probe, short enough for command and call paths. It is a UI bound
+    /// only: a probe that outlives it is <see cref="McpProbeOutcome.Unresponsive"/>, not a dead server.
+    /// </summary>
     private static readonly TimeSpan ProbeTimeout = TimeSpan.FromSeconds(2);
 
     private readonly McpServerOptions options;
@@ -73,17 +76,21 @@ public sealed class McpServerHost : IAsyncDisposable
 
     /// <summary>
     /// A bounded liveness probe: the SDK client hides the process, so a short tool-list round trip
-    /// is the check. True when the server answered inside the probe bound; false when it did not
-    /// answer or was never started. The cancellation token is the caller's; cancellation throws.
+    /// is the check. <see cref="McpProbeOutcome.Alive"/> when the server answered inside the probe
+    /// bound; <see cref="McpProbeOutcome.Exited"/> when the call failed with a transport-level error
+    /// (evidence the process is gone); <see cref="McpProbeOutcome.Unresponsive"/> when the probe
+    /// bound elapsed without an answer or the host was never started or was disposed — no evidence
+    /// either way, so it never counts as an exit. The cancellation token is the caller's;
+    /// cancellation throws.
     /// </summary>
-    public async ValueTask<bool> ProbeAsync(CancellationToken ct)
+    public async ValueTask<McpProbeOutcome> ProbeAsync(CancellationToken ct)
     {
         await gate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
             if (disposed || !Started || client is null)
             {
-                return false;
+                return McpProbeOutcome.Unresponsive;
             }
 
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
@@ -91,15 +98,19 @@ public sealed class McpServerHost : IAsyncDisposable
             try
             {
                 await client.ListToolsAsync(cancellationToken: timeout.Token).ConfigureAwait(false);
-                return true;
+                return McpProbeOutcome.Alive;
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
                 throw;
             }
+            catch (OperationCanceledException)
+            {
+                return McpProbeOutcome.Unresponsive;
+            }
             catch (Exception)
             {
-                return false;
+                return McpProbeOutcome.Exited;
             }
         }
         finally

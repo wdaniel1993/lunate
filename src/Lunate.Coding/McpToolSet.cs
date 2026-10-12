@@ -27,9 +27,11 @@ internal sealed record McpServerStatus(
 /// One session's MCP servers: a <see cref="McpServerHost"/> per option that starts nothing until
 /// the first <see cref="ListToolsAsync"/>, which starts each server once, isolates a failing server
 /// to a recorded status and returns the union of the listed tools. <see cref="ObserveStatusesAsync"/>
-/// liveness-checks started servers with a bounded probe and flips a server whose process exited to
-/// <see cref="McpServerState.Failed"/> with <see cref="ServerExitedReason"/> — once per server, with
-/// one log line and one callback. <see cref="DisposeAsync"/> stops every server. Extension-registered
+/// liveness-checks started servers with a bounded probe and flips a server whose process exited (a
+/// definite transport failure) to <see cref="McpServerState.Failed"/> with
+/// <see cref="ServerExitedReason"/> — once per server, with one log line and one callback; a probe
+/// timeout is inconclusive and leaves the server started. <see cref="DisposeAsync"/> stops every
+/// server. Extension-registered
 /// and config-file servers share this one listing, status and disposal path.
 /// </summary>
 internal sealed class McpToolSet : IAsyncDisposable
@@ -119,8 +121,9 @@ internal sealed class McpToolSet : IAsyncDisposable
 
     /// <summary>
     /// Liveness-checks every started server with a bounded probe and flips a server whose process
-    /// exited to failed, logging and invoking <see cref="OnServerExited"/> once per server; returns
-    /// the current statuses.
+    /// exited (a definite transport failure) to failed, logging and invoking
+    /// <see cref="OnServerExited"/> once per server; a probe timeout is inconclusive and leaves the
+    /// server started. Returns the current statuses.
     /// </summary>
     internal async Task<IReadOnlyList<McpServerStatus>> ObserveStatusesAsync(CancellationToken ct)
     {
@@ -131,7 +134,7 @@ internal sealed class McpToolSet : IAsyncDisposable
                 continue;
             }
 
-            if (!await server.Host.ProbeAsync(ct).ConfigureAwait(false))
+            if (await server.Host.ProbeAsync(ct).ConfigureAwait(false) is McpProbeOutcome.Exited)
             {
                 MarkExited(server);
             }

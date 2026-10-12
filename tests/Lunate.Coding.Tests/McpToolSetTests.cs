@@ -99,6 +99,44 @@ public sealed class McpToolSetTests
     }
 
     [Fact]
+    public async Task A_slow_server_times_out_the_probe_but_stays_started_without_notices()
+    {
+        using var temp = new TempDirectory();
+        string marker = temp.File("marker.txt");
+        List<string> log = [];
+        List<McpServerStatus> notified = [];
+        await using var set = new McpToolSet(
+            [
+                new McpServerOptions(
+                    "test",
+                    McpTestServerSupport.DotnetPath,
+                    ["exec", McpTestServerSupport.ServerDll],
+                    new Dictionary<string, string>
+                    {
+                        ["LUNATE_TEST_MCP_MARKER"] = marker,
+                        ["LUNATE_TEST_MCP_SLOW_LIST_MS"] = "2500",
+                    },
+                    NamespaceName: "test",
+                    Source: "test-source"
+                ),
+            ],
+            log: log.Add
+        );
+        set.OnServerExited(status => notified.Add(status));
+
+        Assert.Equal(5, (await set.ListToolsAsync(Ct)).Count);
+
+        IReadOnlyList<McpServerStatus> observed = await set.ObserveStatusesAsync(Ct);
+
+        McpServerStatus status = Assert.Single(observed);
+        Assert.Equal(McpServerState.Started, status.State);
+        Assert.Equal(5, status.ToolCount);
+        Assert.Null(status.Reason);
+        Assert.Empty(notified);
+        Assert.Empty(log);
+    }
+
+    [Fact]
     public async Task A_failing_server_is_isolated_recorded_and_the_others_still_work()
     {
         using var temp = new TempDirectory();
