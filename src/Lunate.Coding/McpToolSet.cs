@@ -166,12 +166,11 @@ internal sealed class McpToolSet : IAsyncDisposable
             ServerExitedReason,
             server.Options.Source
         );
-        if (server.ExitNotified)
+        if (!server.TryMarkExitNotified())
         {
             return;
         }
 
-        server.ExitNotified = true;
         _log?.Invoke(
             $"{_describe(server.Options)}: {ServerExitedReason}. The session continues without this server's tools."
         );
@@ -180,11 +179,15 @@ internal sealed class McpToolSet : IAsyncDisposable
 
     private sealed class Server(McpServerOptions options, McpServerHost host)
     {
+        private int _exitNotified;
+
         public McpServerOptions Options { get; } = options;
 
         public McpServerHost Host { get; } = host;
 
-        public bool ExitNotified { get; set; }
+        public bool ExitNotified => Volatile.Read(ref _exitNotified) == 1;
+
+        public bool TryMarkExitNotified() => Interlocked.Exchange(ref _exitNotified, 1) == 0;
 
         public McpServerStatus Status { get; set; } =
             new(options.Name, McpServerState.NotStarted, 0, null, options.Source);
