@@ -102,9 +102,17 @@ internal static class PrintMode
             {
                 workspace = new Workspace(options.WorkingDirectory ?? Environment.CurrentDirectory);
                 IExtensionLog log = options.Extensions?.Log ?? new StderrExtensionLog(errors);
+                if (options.Extensions?.NoExtensions is not true)
+                {
+                    extensions = await ComposeExtensionsAsync(
+                            options.Extensions,
+                            workspace,
+                            errors,
+                            ct
+                        )
+                        .ConfigureAwait(false);
+                }
 
-                // The config set composes first so a same-named extension registration is skipped
-                // before listing (the configured server wins); nothing starts before listing.
                 mcp = await McpComposition
                     .ComposeAsync(
                         workspace,
@@ -116,24 +124,16 @@ internal static class PrintMode
                         ct
                     )
                     .ConfigureAwait(false);
-                if (options.Extensions?.NoExtensions is not true)
-                {
-                    extensions = await ComposeExtensionsAsync(
-                            options.Extensions,
-                            workspace,
-                            errors,
-                            McpNameCollisions.ConfiguredServers(mcp),
-                            ct
-                        )
-                        .ConfigureAwait(false);
-                }
 
                 List<ITool> tools = [];
                 if (extensions is not null)
                 {
-                    tools.AddRange(
-                        await extensions.McpServers.ListToolsAsync(ct).ConfigureAwait(false)
+                    // The configured names are the collision baseline: a same-named registration
+                    // is skipped before listing (the configured server wins); nothing starts yet.
+                    ExtensionMcpServers servers = extensions.ComposeMcpServers(
+                        McpNameCollisions.ConfiguredServers(mcp)
                     );
+                    tools.AddRange(await servers.ListToolsAsync(ct).ConfigureAwait(false));
                 }
 
                 if (mcp is not null)
@@ -322,7 +322,6 @@ internal static class PrintMode
         ExtensionSeams? seams,
         Workspace workspace,
         TextWriter errors,
-        IReadOnlyDictionary<string, string?>? configuredMcpServers,
         CancellationToken ct
     )
     {
@@ -331,7 +330,7 @@ internal static class PrintMode
             Log = seams?.Log ?? new StderrExtensionLog(errors),
         };
         return await ExtensionSession
-            .StartAsync(workspace.Identity, resolved, ct, configuredMcpServers)
+            .StartAsync(workspace.Identity, resolved, ct)
             .ConfigureAwait(false);
     }
 

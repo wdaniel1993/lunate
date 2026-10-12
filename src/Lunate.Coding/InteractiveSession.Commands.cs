@@ -106,10 +106,10 @@ internal sealed partial class InteractiveSession
             statuses.AddRange(await configured.ObserveStatusesAsync(ct).ConfigureAwait(false));
         }
 
-        if (_extensions is { } extensions)
+        if (_extensions?.McpServers is { } extensionServers)
         {
             statuses.AddRange(
-                await extensions.McpServers.ObserveStatusesAsync(ct).ConfigureAwait(false)
+                await extensionServers.ObserveStatusesAsync(ct).ConfigureAwait(false)
             );
         }
 

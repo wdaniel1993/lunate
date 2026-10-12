@@ -38,8 +38,11 @@ internal static class AcpMode
             var workspace = new Workspace(Environment.CurrentDirectory);
             IExtensionLog log = extensions?.Log ?? new StderrExtensionLog(errors);
 
-            // The config set composes first so a same-named extension registration is skipped
-            // before listing (the configured server wins); nothing starts before listing.
+            if (extensions?.NoExtensions is not true)
+            {
+                host = ComposeExtensions(extensions, workspace, errors, ct);
+            }
+
             mcp = McpComposition
                 .ComposeAsync(
                     workspace,
@@ -52,20 +55,15 @@ internal static class AcpMode
                 )
                 .GetAwaiter()
                 .GetResult();
-            if (extensions?.NoExtensions is not true)
-            {
-                host = ComposeExtensions(
-                    extensions,
-                    workspace,
-                    errors,
-                    McpNameCollisions.ConfiguredServers(mcp),
-                    ct
-                );
-            }
 
             if (host is not null)
             {
-                mcpTools.AddRange(host.McpServers.ListToolsAsync(ct).GetAwaiter().GetResult());
+                // The configured names are the collision baseline: a same-named registration is
+                // skipped before listing (the configured server wins); nothing starts before.
+                ExtensionMcpServers servers = host.ComposeMcpServers(
+                    McpNameCollisions.ConfiguredServers(mcp)
+                );
+                mcpTools.AddRange(servers.ListToolsAsync(ct).GetAwaiter().GetResult());
             }
 
             if (mcp is not null)
@@ -116,7 +114,6 @@ internal static class AcpMode
         ExtensionSeams? extensions,
         Workspace workspace,
         TextWriter errors,
-        IReadOnlyDictionary<string, string?>? configuredMcpServers,
         CancellationToken ct
     )
     {
@@ -125,7 +122,7 @@ internal static class AcpMode
             Log = extensions?.Log ?? new StderrExtensionLog(errors),
         };
         return ExtensionSession
-            .StartAsync(workspace.Identity, resolved, ct, configuredMcpServers)
+            .StartAsync(workspace.Identity, resolved, ct)
             .GetAwaiter()
             .GetResult();
     }

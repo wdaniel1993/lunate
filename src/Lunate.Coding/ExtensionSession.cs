@@ -39,35 +39,28 @@ internal sealed record ExtensionSessionError(string? ExtensionId, string Message
 internal sealed class ExtensionSession : IAsyncDisposable
 {
     private readonly ExtensionLoader _loader;
-    private readonly ExtensionMcpServers _mcpServers;
+    private readonly IExtensionLog _log;
     private readonly AgentHookAdapter _hooks;
+    private ExtensionMcpServers? _mcpServers;
     private bool _disposed;
 
     private ExtensionSession(
         ExtensionLoader loader,
-        ExtensionMcpServers mcpServers,
-        IReadOnlyList<ShadowedMcpServer> shadowedMcpServers,
+        IExtensionLog log,
         IReadOnlyList<ExtensionSessionError> errors
     )
     {
         _loader = loader;
-        _mcpServers = mcpServers;
-        ShadowedMcpServers = shadowedMcpServers;
+        _log = log;
         _hooks = new AgentHookAdapter(loader.Hooks);
         Errors = errors;
     }
 
-    /// <summary>
-    /// Loads and composes the host; per-extension failures are isolated, not thrown. Registrations
-    /// whose name matches a configured server are skipped before listing (the configured server
-    /// wins) and logged naming both sources; <paramref name="configuredMcpServers"/> maps the
-    /// configured names to their sources, and null or empty keeps every registration.
-    /// </summary>
+    /// <summary>Loads and composes the host; per-extension failures are isolated, not thrown.</summary>
     internal static async Task<ExtensionSession> StartAsync(
         WorkspaceInfo workspace,
         ExtensionSeams seams,
-        CancellationToken ct = default,
-        IReadOnlyDictionary<string, string?>? configuredMcpServers = null
+        CancellationToken ct = default
     )
     {
         ArgumentNullException.ThrowIfNull(workspace);
@@ -122,16 +115,7 @@ internal sealed class ExtensionSession : IAsyncDisposable
             }
         }
 
-        (IReadOnlyList<RegisteredMcpServer> kept, IReadOnlyList<ShadowedMcpServer> shadowed) =
-            McpNameCollisions.Filter(loader.McpServers.List(), configuredMcpServers);
-        foreach (ShadowedMcpServer entry in shadowed)
-        {
-            log.Warn(
-                $"extension MCP server '{entry.Name}' from extension '{entry.ExtensionId}' was skipped: the configured server '{entry.Name}' from {(entry.ConfiguredSource is { Length: > 0 } source ? $"'{source}'" : "the mcp.json config")} wins the name collision."
-            );
-        }
-
-        return new ExtensionSession(loader, new ExtensionMcpServers(log, kept), shadowed, errors);
+        return new ExtensionSession(loader, log, errors);
     }
 
     /// <summary>The harness hook seam over the loaded extensions' hook runner.</summary>
@@ -152,14 +136,45 @@ internal sealed class ExtensionSession : IAsyncDisposable
     /// <summary>The loaded extensions' model provider declarations; no consumer yet.</summary>
     internal ModelProviderRegistry ModelProviders => _loader.ModelProviders;
 
-    /// <summary>The loaded extensions' MCP servers; registration starts nothing until listing.</summary>
-    internal ExtensionMcpServers McpServers => _mcpServers;
+    /// <summary>
+    /// The extension MCP mapping built by <see cref="ComposeMcpServers"/>; null until composed.
+    /// </summary>
+    internal ExtensionMcpServers? McpServers => _mcpServers;
 
     /// <summary>
-    /// The registrations skipped because a configured server owns the name; `/mcp` shows them as
-    /// shadowed by the configured source.
+    /// The registrations skipped by <see cref="ComposeMcpServers"/> because a configured server
+    /// owns the name; `/mcp` shows them as shadowed by the configured source. Empty until composed.
     /// </summary>
-    internal IReadOnlyList<ShadowedMcpServer> ShadowedMcpServers { get; }
+    internal IReadOnlyList<ShadowedMcpServer> ShadowedMcpServers { get; private set; } = [];
+
+    /// <summary>
+    /// Builds the MCP mapping over the loaded registrations: a registration whose name matches a
+    /// configured server is skipped before listing (the configured server wins) and the collision
+    /// is logged naming both sources; null or no configured servers keeps every registration.
+    /// Idempotent; the mapping starts nothing until its first listing.
+    /// </summary>
+    internal ExtensionMcpServers ComposeMcpServers(
+        IReadOnlyDictionary<string, string?>? configuredServers
+    )
+    {
+        if (_mcpServers is { } existing)
+        {
+            return existing;
+        }
+
+        (IReadOnlyList<RegisteredMcpServer> kept, IReadOnlyList<ShadowedMcpServer> shadowed) =
+            McpNameCollisions.Filter(_loader.McpServers.List(), configuredServers);
+        foreach (ShadowedMcpServer entry in shadowed)
+        {
+            _log.Warn(
+                $"extension MCP server '{entry.Name}' from extension '{entry.ExtensionId}' was skipped: the configured server '{entry.Name}' from {(entry.ConfiguredSource is { Length: > 0 } source ? $"'{source}'" : "the mcp.json config")} wins the name collision."
+            );
+        }
+
+        ShadowedMcpServers = shadowed;
+        _mcpServers = new ExtensionMcpServers(_log, kept);
+        return _mcpServers;
+    }
 
     /// <summary>Every discovered descriptor, loaded or not.</summary>
     internal IReadOnlyList<ExtensionDescriptor> Descriptors => _loader.Descriptors;
@@ -177,6 +192,10 @@ internal sealed class ExtensionSession : IAsyncDisposable
 
         _disposed = true;
         await _loader.EndSessionAsync().ConfigureAwait(false);
-        await _mcpServers.DisposeAsync().ConfigureAwait(false);
+        if (_mcpServers is { } servers)
+        {
+            _mcpServers = null;
+            await servers.DisposeAsync().ConfigureAwait(false);
+        }
     }
 }

@@ -184,7 +184,7 @@ internal sealed partial class InteractiveSession
     private void ObserveMcpAfterFailedCall(string toolName)
     {
         bool configured = IsToolOfServer(toolName, _mcp?.Statuses);
-        bool extension = IsToolOfServer(toolName, _extensions?.McpServers.Statuses);
+        bool extension = IsToolOfServer(toolName, _extensions?.McpServers?.Statuses);
         if (configured || extension)
         {
             _ = ObserveMcpAsync(configured, extension, _lifetime.Token);
@@ -206,9 +206,9 @@ internal sealed partial class InteractiveSession
                 await set.ObserveStatusesAsync(ct).ConfigureAwait(false);
             }
 
-            if (extension && _extensions is { } host)
+            if (extension && _extensions?.McpServers is { } servers)
             {
-                await host.McpServers.ObserveStatusesAsync(ct).ConfigureAwait(false);
+                await servers.ObserveStatusesAsync(ct).ConfigureAwait(false);
             }
         }
         catch (OperationCanceledException) { }

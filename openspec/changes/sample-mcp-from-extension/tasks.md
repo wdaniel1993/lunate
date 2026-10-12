@@ -37,5 +37,5 @@
 
 ## 6. Gate + record
 
-- [ ] 6.1 Both sample projects join `lunate.sln`; `bash scripts/verify.sh` green (both cultures); deviations in design.md
+- [x] 6.1 Both sample projects join `lunate.sln`; `bash scripts/verify.sh` green (both cultures); deviations in design.md
 - [ ] 6.2 Archive, PR, CI green
