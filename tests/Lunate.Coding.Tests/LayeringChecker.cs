@@ -71,6 +71,11 @@ internal static class LayeringChecker
             ("LspDiagnosticsExtension.Tests", "Lunate.Coding"),
             ("LspDiagnosticsExtension.Tests", "Lunate.Extensibility.Abstractions"),
             ("LspDiagnosticsExtension.Tests", "Lunate.Extensibility.Testing"),
+            // The MCP sample's tests use only the kit and the extension (the public surface).
+            ("McpFromExtensionExtension", "Lunate.Extensibility.Abstractions"),
+            ("McpFromExtensionExtension.Tests", "FakeMcpServer"),
+            ("McpFromExtensionExtension.Tests", "McpFromExtensionExtension"),
+            ("McpFromExtensionExtension.Tests", "Lunate.Extensibility.Testing"),
         };
 
     public static IReadOnlySet<string> AllowedAgentRuntimePackages { get; } =

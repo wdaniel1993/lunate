@@ -9,24 +9,24 @@
 
 ## 2. Kit: public MCP composition (maintainer steer — no sample IVT)
 
-- [ ] 2.1 `Lunate.Extensibility.Testing` references `Lunate.Coding` (+ allowlist edge `Testing → Coding`); `Lunate.Coding.csproj` gains `InternalsVisibleTo("Lunate.Extensibility.Testing")`
-- [ ] 2.2 `ExtensionTestHost.ComposeMcpServersAsync(ct)`: production mapping (`ExtensionMcpServers`) over `Runner.McpServers.List()`, list once, merge into `Tools`, return public statuses (name, state, toolCount, reason, source) + public state enum; the host owns the set (disposed on `StopAsync`/`DisposeAsync`)
-- [ ] 2.3 The kit's own `McpFromExtensionEndToEndTests` moves onto the public API (behavior preserved)
+- [x] 2.1 `Lunate.Extensibility.Testing` references `Lunate.Coding` (+ allowlist edge `Testing → Coding`); `Lunate.Coding.csproj` gains `InternalsVisibleTo("Lunate.Extensibility.Testing")`
+- [x] 2.2 `ExtensionTestHost.ComposeMcpServersAsync(ct)`: production mapping (`ExtensionMcpServers`) over `Runner.McpServers.List()`, list once, merge into `Tools`, return public statuses (name, state, toolCount, reason, source) + public state enum; the host owns the set (disposed on `StopAsync`/`DisposeAsync`)
+- [x] 2.3 The kit's own `McpFromExtensionEndToEndTests` moves onto the public API (behavior preserved)
 
 ## 3. The sample extension
 
-- [ ] 3.1 `samples/extensions/mcp-from-extension/McpFromExtensionExtension/`: manifest (id `mcp-from-extension`, apiVersion), factory registering `fake` (Direct; `{"secret": Hidden}`; env marker from settings), settings schema (`markerPath`), README capability table
-- [ ] 3.2 `FakeMcpServer` console project (official `ModelContextProtocol`, in-repo): `echo`, `add` (structured), `secret`, `crash`; tools added before `McpServer.Create`; marker file via the env var; stderr for the rest
+- [x] 3.1 `samples/extensions/mcp-from-extension/McpFromExtensionExtension/`: manifest (id `mcp-from-extension`, apiVersion), factory registering `fake` (Direct; `{"secret": Hidden}`; env marker from settings), settings schema (`markerPath`), README capability table
+- [x] 3.2 `FakeMcpServer` console project (official `ModelContextProtocol`, in-repo): `echo`, `add` (structured), `secret`, `crash`; tools added before `McpServer.Create`; marker file via the env var; stderr for the rest
 
 ## 4. The sample tests (the done-when)
 
-- [ ] 4.1 Registration collected (name/command/exposure/override); nothing started at registration (no marker)
-- [ ] 4.2 `ComposeMcpServersAsync`: names `fake__echo`/`fake__add`/`fake__secret`/`fake__crash` with exposures `Direct`/`Direct`/`Hidden`/`Direct`; one start across listings (marker count)
-- [ ] 4.3 Scripted run: `fake__echo` declared + call through approval (risk `Execute`) with output; `fake__add` structured result asserted; `fake__secret` neither declared nor callable via a nested-execution probe
-- [ ] 4.4 Failure isolation: test-local registration with a missing binary → logged (server + extension), session continues
-- [ ] 4.5 Unload/stop stops the server: PID gone after `StopAsync`/`DisposeAsync`
-- [ ] 4.6 Crash: `fake__crash` call errors; server reads failed ("the server process exited") with one notice; tools unavailable
-- [ ] 4.7 Suite serialized (`Parallelization(Mode = None)`); budgets under the runner's per-handler timeout
+- [x] 4.1 Registration collected (name/command/exposure/override); nothing started at registration (no marker)
+- [x] 4.2 `ComposeMcpServersAsync`: names `fake__echo`/`fake__add`/`fake__secret`/`fake__crash` with exposures `Direct`/`Direct`/`Hidden`/`Direct`; one start across listings (marker count)
+- [x] 4.3 Scripted run: `fake__echo` declared + call through approval (risk `Execute`) with output; `fake__add` structured result asserted; `fake__secret` neither declared nor callable via a nested-execution probe
+- [x] 4.4 Failure isolation: test-local registration with a missing binary → logged (server + extension), session continues
+- [x] 4.5 Unload/stop stops the server: PID gone after `StopAsync`/`DisposeAsync`
+- [x] 4.6 Crash: `fake__crash` call errors; server reads failed ("the server process exited") with one notice; tools unavailable
+- [x] 4.7 Suite serialized (`Parallelization(Mode = None)`); budgets under the runner's per-handler timeout
 
 ## 5. Interactive tests (`Lunate.Coding.Tests`)
 
