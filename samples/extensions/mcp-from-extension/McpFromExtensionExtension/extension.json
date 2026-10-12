@@ -1,0 +1,19 @@
+{
+    "id": "mcp-from-extension",
+    "version": "0.1.0",
+    "apiVersion": "^1.6.0",
+    "entryAssembly": "McpFromExtensionExtension.dll",
+    "settingsSchema": {
+        "type": "object",
+        "properties": {
+            "markerPath": {
+                "type": "string",
+                "description": "the file the fake server appends its start marker and call lines to; unset writes no marker"
+            }
+        }
+    },
+    "capabilities": [
+        "registers one MCP server (RegisterMcpServer), started lazily on the first tool listing",
+        "namespaces its tools server__tool and gates them by exposure (Direct with a Hidden override)"
+    ]
+}
