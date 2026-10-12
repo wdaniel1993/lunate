@@ -30,10 +30,10 @@
 
 ## 5. Interactive tests (`Lunate.Coding.Tests`)
 
-- [ ] 5.1 Extension store + test extension registering the fake → `/mcp` lists it with status + `extension '{id}'` source (no configured servers → not "no servers configured")
-- [ ] 5.2 Collision: configured + colliding registration → shown shadowed, configured wins, no duplicate-name throw
-- [ ] 5.3 Sentinel env values in both sets → absent from the `/mcp` notice
-- [ ] 5.4 Crashed server → `/mcp` shows failed + notice fired
+- [x] 5.1 Extension store + test extension registering the fake → `/mcp` lists it with status + `extension '{id}'` source (no configured servers → not "no servers configured")
+- [x] 5.2 Collision: configured + colliding registration → shown shadowed, configured wins, no duplicate-name throw
+- [x] 5.3 Sentinel env values in both sets → absent from the `/mcp` notice
+- [x] 5.4 Crashed server → `/mcp` shows failed + notice fired
 
 ## 6. Gate + record
 
