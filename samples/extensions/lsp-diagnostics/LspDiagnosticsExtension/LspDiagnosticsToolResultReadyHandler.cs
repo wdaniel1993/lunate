@@ -27,7 +27,7 @@ public sealed class LspDiagnosticsToolResultReadyHandler(
     {
         ArgumentNullException.ThrowIfNull(payload);
 
-        if (payload.ToolName is not ("write" or "edit") || workspace is null)
+        if (payload.IsError || payload.ToolName is not ("write" or "edit") || workspace is null)
         {
             return PassThrough(payload);
         }

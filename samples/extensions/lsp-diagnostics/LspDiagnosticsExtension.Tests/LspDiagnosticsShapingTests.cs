@@ -93,4 +93,36 @@ public sealed class LspDiagnosticsShapingTests
         Assert.False(File.Exists(marker));
         Assert.Empty(host.Log.Entries);
     }
+
+    [Fact]
+    public async Task A_failed_edit_passes_through_without_starting_the_server()
+    {
+        using var temp = new TempDirectory();
+        await using var host = TestSupport.CreateHost(temp);
+        string marker = TestSupport.MarkerPath(host);
+        TestSupport.WriteSettings(host, serverArgs: ["--marker", marker]);
+        Directory.CreateDirectory(Path.Combine(host.WorkingDirectory, "src"));
+        File.WriteAllText(
+            Path.Combine(host.WorkingDirectory, "src", "Unchanged.cs"),
+            "// TODO present\n"
+        );
+        var client = new ScriptedModelClient()
+            .Enqueue(
+                ModelScripts.Edit(
+                    "call-1",
+                    "src/Unchanged.cs",
+                    "// TODO absent",
+                    "// TODO replacement"
+                )
+            )
+            .Enqueue(ModelScripts.Text("done"));
+
+        ExtensionRunResult run = await host.RunAsync(client, "edit", Ct);
+
+        ToolCallResult result = TestSupport.SingleToolResult(run);
+        Assert.True(result.IsError);
+        Assert.DoesNotContain("lsp-diagnostics", result.Output, StringComparison.Ordinal);
+        Assert.False(File.Exists(marker));
+        Assert.Empty(host.Log.Entries);
+    }
 }
