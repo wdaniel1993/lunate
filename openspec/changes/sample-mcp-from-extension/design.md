@@ -5,59 +5,75 @@
 T-46: a reference extension contributing an MCP server. Facts the design leans on (verified against the tree):
 
 - `McpServerRegistration(Name, Config, Exposure = Direct, ExposureOverrides?)` and `McpServerConfig(Command, Arguments, Environment?, WorkingDirectory?, CallTimeout?)` — the `mcp.json` shape (`Abstractions/Mcp/McpServerRegistration.cs`). `ToolExposure`: `Direct | ModelOnly | Programmatic | Deferred | Hidden`.
-- `IExtensionContext.RegisterMcpServer` — "registration is registration only: it must not start processes, sockets or timers. The first registration per server name wins; a duplicate is refused and logged. The process starts on the first tool listing." The loader collects registrations at creation (`ExtensionLoader.McpServers`, public).
-- Namespacing and exposure live in `Lunate.Protocols/McpToolAdapter.cs` (public): `Name => "{server}__{tool}"`, `Exposure`, `Namespace`. The Coding mapping `ExtensionMcpServers` (internal) wraps `McpToolSet` (internal) — one host per registration, lazily started on first `ListToolsAsync`, failures logged naming server + extension, session continues. `InteractiveSession` merges those tools into the registry (`:284`) and separately composes the `mcp.json` set (`_mcp`).
-- **The gap**: `/mcp` (`InteractiveSession.Commands.cs` `McpStatusText`) reads only `_mcp.Statuses` (the configured set). Extension-registered servers' statuses are unreachable — and `_mcp is null` returns "mcp: no servers configured" even when an extension registered one.
-- The interactive test host supports real extension stores (`ExtensionSeams.StorePath`; `ExtensionCompositionEndToEndTests` precedent), so the `/mcp` merge is testable end-to-end.
-- `tests/tools/TestMcpServer` (official `ModelContextProtocol` 2.2.0, marker via `LUNATE_TEST_MCP_MARKER`, tools pre-added before `McpServer.Create`) is the proven pattern the sample's fake mirrors. The package is already in the repo (T-29) — not a new dependency.
+- `IExtensionContext.RegisterMcpServer` — registration only; first registration per server name wins (extension-vs-extension); the process starts on the first tool listing. `ExtensionLoader.McpServers` is public.
+- Namespacing and exposure live in `Lunate.Protocols/McpToolAdapter.cs` (public): `Name => "{server}__{tool}"`, `Exposure`, `Namespace`. The Coding mapping `ExtensionMcpServers` (internal) wraps `McpToolSet` (internal); `ExtensionSession` builds it from the loader's registrations; all three modes (interactive `:284`, print, ACP) merge its tools into the registry and separately compose the `mcp.json` set.
+- **Gap 1**: `/mcp` (`InteractiveSession.Commands.cs` `McpStatusText`) reads only `_mcp.Statuses`; extension statuses are unreachable ("no servers configured" even when one is registered).
+- **Gap 2**: no rule covers a configured-vs-extension name collision; `ToolRegistry.Add` throws on duplicate names ("a collision is a wiring bug") — so a collision currently breaks composition in every mode.
+- **Gap 3**: a server that exits after listing keeps its "started" status; `McpServerHost` holds the SDK client (no process handle exposed), so liveness is a probe (a client round trip), not a handle check.
+- `McpConfig.Load` (Protocols) knows each server's file; `McpConfigResult` drops the origin. `McpServerOptions` (Protocols) is the per-server carrier.
+- The kit (`Lunate.Extensibility.Testing`) references Agent/Ai/Extensibility(+Abstractions); its own test suite already exercises `ExtensionMcpServers` via IVT (`Lunate.Extensibility.Testing.Tests → Lunate.Coding` allowlist edge + IVT). `ToolCallingChatClient` (kit) drives tool calls.
+- `tests/tools/TestMcpServer` (official `ModelContextProtocol` 2.2.0, marker via `LUNATE_TEST_MCP_MARKER`) is the proven pattern the sample's fake mirrors; the package is already in the repo.
 
 ## Decisions
 
 ### D1 — The sample registers one server, with the marker in the config's environment
 
-Factory calls `context.RegisterMcpServer(new McpServerRegistration("fake", config, Exposure: Direct, ExposureOverrides: {"secret": Hidden}))` where the config is `dotnet <FakeMcpServer.dll>` with `Environment = {"LUNATE_FAKE_MCP_MARKER": <path from settings>}`. The marker path comes from the extension's settings (`markerPath`, optional) so the test proves both the registration config's env passing and the process lifecycle. No manifest field — registrations happen at creation (the T-41 contract).
+Factory calls `context.RegisterMcpServer(new McpServerRegistration("fake", config, Exposure: Direct, ExposureOverrides: {"secret": Hidden}))`; config = `dotnet <FakeMcpServer.dll>` with `Environment = {"LUNATE_FAKE_MCP_MARKER": <settings markerPath>}` (settings schema: `markerPath`). No manifest field — registrations happen at creation.
 
 ### D2 — The fake server mirrors TestMcpServer, minimally
 
-`FakeMcpServer` console project (in the sample, referenced by the tests so its dll lands in the test output): official SDK, stdio only, tools added before `McpServer.Create`:
-- `echo` (text → text), `add` (int,int → structured `{sum}`), `secret` (text → text; the tool that must never be declared to the model).
-- Marker file: `started pid=<n>` at startup (via the env var), appended lines for calls; everything else to stderr. Mirroring the TestMcpServer conventions keeps one mental model for both.
+Console project in the sample (referenced by the tests so its dll lands in the test output): official SDK, stdio only, tools added before `McpServer.Create` — `echo` (text), `add` (int,int → structured `{sum}`), `secret` (text; the tool that must never reach the model), `crash` (exits the process; the liveness story). Marker file: `started pid=<n>` at startup via the env var, call lines appended; everything else to stderr.
 
-### D3 — The composition proof uses the production mapping, via `InternalsVisibleTo`
+### D3 — The kit gets the public composition (maintainer steer: no sample IVT)
 
-The sample's tests build `ExtensionMcpServers` over `host.Runner.McpServers.List()` exactly as `ExtensionSession` does, list once, and add the tools to the kit's registry. That is the real seam (not a re-implementation): `Lunate.Coding.csproj` gains `InternalsVisibleTo("McpFromExtensionExtension.Tests")` — precedent: `Lunate.Protocols.Tests` and `Lunate.Extensibility.Testing.Tests` are already IVT'd into Coding. The layering allowlist gains the sample's edges (precedent: the lsp sample's six edges).
+`ExtensionTestHost` gains `ComposeMcpServersAsync(ct)`: builds `ExtensionMcpServers` over `Runner.McpServers.List()` exactly as `ExtensionSession` does, lists once, adds the tools to `Tools`, and returns public status records (name, state, tool count, reason, source) + a public state enum; the composed set is owned by the host and disposed on `StopAsync`/`DisposeAsync` (servers stop). Plumbing: `Lunate.Extensibility.Testing.csproj` references `Lunate.Coding` (allowlist edge `Testing → Coding`); `Lunate.Coding.csproj` gains `InternalsVisibleTo("Lunate.Extensibility.Testing")`. The kit's own `McpFromExtensionEndToEndTests` moves onto the public API (it keeps proving the internals-level behavior through it). The sample's tests use only the kit + the extension — the public surface a third-party extension gets.
 
-### D4 — `/mcp` merges both sets
+### D4 — `/mcp` merges both sets, with sources, never secrets
 
-`ExtensionMcpServers` gains an internal `Statuses` passthrough. `McpStatusText()` becomes: statuses = configured (`_mcp?.Statuses ?? []`) + extension (`_extensions?.McpServers.Statuses ?? []`), same segment shape and join; "no servers configured" only when both are empty (and still when the extension host is absent). No new labels — names are the identity; a cross-set name collision would show two segments (noted in the proposal as out of scope).
+- Per-server source: `McpServerOptions` gains `Source`; `McpConfig.Load` sets it to the file path it read; `ExtensionMcpServers` sets `extension '{id}'`. `McpServerStatus` gains `Source`.
+- `McpStatusText()` merges configured + extension statuses; segment shape: `name — started, N tools (source)` / `not started` / `failed: reason`; "no servers configured" only when both sets are empty.
+- The notice never prints environment values or headers (the status records never carry them; a test asserts with a sentinel).
 
-### D5 — Tests
+### D5 — Collisions: the configured server wins, in every mode
 
-Sample (`McpFromExtensionExtension.Tests`, kit + production mapping):
-- Registration collected: `host.Runner.McpServers.List()` has `fake` with the right command/exposure and the override.
-- Composition: tools listed once (marker proves one start), names `fake__echo` / `fake__add` / `fake__secret`, exposures `Direct`/`Direct`/`Hidden` on the tool list; a second `ListToolsAsync` does not restart (marker count stays one).
-- Scripted run: `fake__echo` is declared to the model (the scripted client's first request contains the name), a call round-trips through the approval prompt (risk `Execute` → the scripted approver) with the echoed output; `fake__secret` appears in neither the declaration nor a callable path; `fake__add`'s structured result rides through (T-30 mapping behavior, asserted on the tool result).
-- Failure isolation: a fake that cannot start (bad command via a second registration in a test-local variant, or a config pointing at a missing binary) → logged with server + extension named, session continues (no tools from it). Keep this at the kit level with a test-local registration, not a second sample server.
-- `Lunate.Coding.Tests` (interactive path): a temp extension store with a minimal test extension registering an MCP server (the fake server dll) → `/mcp` notice lists it with `started, N tools`; and with no configured servers the notice is NOT "no servers configured". Precedent for the store pattern: `ExtensionCompositionEndToEndTests`.
+A shared filter (small helper in Coding) takes the config server names + the registrations and returns (kept, shadowed); each mode skips shadowed registrations before listing (no duplicate names reach the registry) and logs the collision naming both sources. Interactive additionally shows the shadowed entry in `/mcp` (`name — shadowed by {configured source}`). The filter runs where both sets are known — the interactive compose order (extensions first, config later) needs the config names before the extension listing; the implementation may reorder the compose phases or defer the extension listing — behavior is what the spec pins.
 
-### D6 — Spec delta
+### D6 — Crash: status flips, one notice, tools read unavailable
 
-tui "Slash commands": the `/mcp` clause reads "lists the configured and extension-registered MCP servers with their status"; the original scenario stays verbatim and a new scenario covers the extension-registered case. No other capability changes.
+Detection is probe-based (`McpServerHost` exposes no process handle): a started server is liveness-checked at the next observation — `/mcp` and after a failed tool call — via a bounded client round trip; a dead server flips to `Failed` with reason `the server process exited` and fires **one** notice per server (deduped on the Started→Failed transition; where a notice surface exists — interactive). Tool calls to a dead server keep their existing actionable error result. The fake's `crash` tool makes this deterministic.
+
+### D7 — Tests
+
+Sample (`McpFromExtensionExtension.Tests`, kit-only public surface):
+- Registration collected: name/command/exposure/override; nothing started (no marker).
+- Composition via `ComposeMcpServersAsync`: tools `fake__echo` / `fake__add` / `fake__secret` / `fake__crash` with exposures `Direct`/`Direct`/`Hidden`/`Direct`; one start (marker); a second listing does not restart.
+- Scripted run: `fake__echo` declared to the model, call round-trips through approval (risk `Execute`) with the echoed output; `fake__add` structured result asserted; `fake__secret` is **neither model-visible nor callable via nested execution** (a nested-call probe à la the lsp sample attempts it → refused; and absent from declarations).
+- Failure isolation: a test-local registration with a missing binary → logged naming server + extension, session continues.
+- Unload/stop stops the server: after `StopAsync`/`DisposeAsync` the fake's PID is gone (the lsp sample's PID-dead assertion pattern).
+- Crash: call `fake__crash` → the call errors; the server then reads failed ("the server process exited") with one notice; its tools read unavailable.
+- Suite serialized from the start (`Parallelization(Mode = None)`); budgets under the runner's per-handler timeout.
+
+`Lunate.Coding.Tests` (interactive path): temp extension store + a test extension registering the fake server → `/mcp` lists it with status + `extension '{id}'` source; a configured server + a colliding registration → collision shown, configured wins; sentinel env values → absent from the notice. Precedent: `ExtensionCompositionEndToEndTests` store pattern.
+
+### D8 — Follow-up card (maintainer ask)
+
+Per-test isolation for process-spawning suites (per-test temp dirs + unique markers, no shared state) so serialization can be lifted and suites run in parallel again. Filed at drafting time.
 
 ## Alternatives considered (devil's advocate)
 
-- **Re-implement the registration → options mapping in the tests** (avoid IVT): rejected — that tests a copy, not the product seam; the fitness point is the real composition.
-- **Kit-level MCP support** (so samples don't need IVT): rejected for now — the kit cannot reference Coding (layering), and the sample tests already reference Coding for the real tools (precedent).
-- **Assert `/mcp` only at the formatter level**: rejected — the interactive path with a real extension store exists and is the honest surface.
-- **A second sample server for the failure case**: rejected — the failure path is already covered by `ExtensionMcpServersTests`; the sample pins the happy path plus one test-local failing registration.
-- **Harmonize failure notices** (extension failures → TUI notice like config failures): deferred — the extensions spec says "logged by the host"; changing that is its own question.
+- **IVT for the sample's test assembly** (the pre-sign-off plan): rejected by the maintainer — samples prove the public surface; the kit carries the internals instead.
+- **Kit-level MCP support with its own composition copy**: rejected — the kit must use the production mapping (`ExtensionMcpServers`), not a re-implementation.
+- **Process-handle liveness check**: rejected — the SDK client hides the process; a bounded probe is the honest mechanism. (If a future SDK exposes the handle, swap the probe.)
+- **Reorder-to-fix collisions by sorting sets**: rejected — order alone can't decide; the filter makes config-wins explicit and testable in all modes.
+- **Notice parity for extension failures beyond crashes**: still out of scope; the spec's crash sentence covers the required case.
 
 ## Risks
 
-- **IVT widening**: one test assembly sees Coding internals — precedent exists; the alternative (public surface for the mapping) is a bigger change than the card warrants.
-- **SDK version coupling**: the fake pins `ModelContextProtocol` 2.2.0 like `tests/tools/TestMcpServer`; a future bump moves both together.
-- **Process-spawn timing on CI**: the sample spawns a `dotnet` process per test — the lsp sample's lesson applies: serialize the suite (`Parallelization(Mode = None)`) from the start and keep budgets under the runner's per-handler timeout.
-- **Windows paths**: marker paths and tool names are platform-neutral; expected strings built with `Path.Combine` where the code builds paths.
+- **Kit → Coding dependency**: the kit becomes heavier (pulls the app assembly). Accepted per the steer; the alternative (public Coding surface for the mapping) is a larger API change.
+- **Probe cost**: the `/mcp` liveness probe is one bounded round trip per started server; bounded and only on the command path.
+- **Compose-order change**: interactive composes extensions before the config set; the collision filter needs both — the reorder/defer is small but touches startup; tests pin the behavior (no duplicate throw, configured wins).
+- **Process-spawn timing on CI**: serialized suite + budgets under the runner timeout (the lsp lesson).
+- **Windows paths**: marker paths and expected strings built with `Path.Combine` where the code builds paths.
 
 ## Deviations
 
