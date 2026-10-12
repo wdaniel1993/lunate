@@ -165,10 +165,12 @@ public sealed class BashToolTests
         using var temp = new TempDirectory();
         var pidFile = temp.File("grandchild.pid");
 
-        // Windows needs a longer window: PowerShell's cold start on a fresh runner can exceed
+        // Windows needs a longer window: PowerShell's cold start on a loaded runner can exceed
         // the short Unix timeout, so the pid would never be written before the tree is killed.
+        // 10s was not enough under CI load (the spawn-heavy suite starves process startup); the
+        // window only lengthens the test, it does not weaken the kill assertion.
         var timeout = OperatingSystem.IsWindows()
-            ? TimeSpan.FromSeconds(10)
+            ? TimeSpan.FromSeconds(30)
             : TimeSpan.FromSeconds(2);
 
         var result = await RunAsync(temp, TreeCommand(), timeout);
