@@ -70,6 +70,13 @@ public sealed class McpInteractiveEndToEndTests
         host.Console.SendText("/mcp");
         host.Console.SendEnter();
         await InteractiveSessionCommandTests.WaitForFrameAsync(host, "broken — failed:");
+        if (!host.LastFrame.Contains("test — started, 5 tools", StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException(
+                "WINDIAG>>>\n" + DiagnosticDump.Dump(host) + "\n<<<END"
+            );
+        }
+
         Assert.Contains("test — started, 5 tools", host.LastFrame, StringComparison.Ordinal);
 
         host.Console.SendText("/quit");

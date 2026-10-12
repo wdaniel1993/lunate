@@ -23,7 +23,16 @@ public sealed class McpExtensionInteractiveTests
         );
         host.Console.Size = new ConsoleSize(400, 24);
         Task run = host.RunAsync();
-        await host.WaitUntilAsync(() => host.Session.IsComposed);
+        try
+        {
+            await host.WaitUntilAsync(() => host.Session.IsComposed);
+        }
+        catch (TimeoutException)
+        {
+            throw new InvalidOperationException(
+                "WINDIAG2>>>\n" + DiagnosticDump.Dump(host) + "\n<<<END"
+            );
+        }
 
         host.Console.SendText("/mcp");
         host.Console.SendEnter();
@@ -56,7 +65,16 @@ public sealed class McpExtensionInteractiveTests
         );
         host.Console.Size = new ConsoleSize(400, 24);
         Task run = host.RunAsync();
-        await host.WaitUntilAsync(() => host.Session.IsComposed);
+        try
+        {
+            await host.WaitUntilAsync(() => host.Session.IsComposed);
+        }
+        catch (TimeoutException)
+        {
+            throw new InvalidOperationException(
+                "WINDIAG2>>>\n" + DiagnosticDump.Dump(host) + "\n<<<END"
+            );
+        }
 
         Assert.True(File.Exists(configMarker), "the configured server must start");
         Assert.False(File.Exists(extensionMarker), "the shadowed registration must never start");
@@ -116,7 +134,16 @@ public sealed class McpExtensionInteractiveTests
         );
         host.Console.Size = new ConsoleSize(400, 24);
         Task run = host.RunAsync();
-        await host.WaitUntilAsync(() => host.Session.IsComposed);
+        try
+        {
+            await host.WaitUntilAsync(() => host.Session.IsComposed);
+        }
+        catch (TimeoutException)
+        {
+            throw new InvalidOperationException(
+                "WINDIAG2>>>\n" + DiagnosticDump.Dump(host) + "\n<<<END"
+            );
+        }
 
         host.Console.SendText("/mcp");
         host.Console.SendEnter();
@@ -149,7 +176,16 @@ public sealed class McpExtensionInteractiveTests
         using var host = new InteractiveSessionHost(mcpConfigPath: config);
         host.Console.Size = new ConsoleSize(400, 24);
         Task run = host.RunAsync();
-        await host.WaitUntilAsync(() => host.Session.IsComposed);
+        try
+        {
+            await host.WaitUntilAsync(() => host.Session.IsComposed);
+        }
+        catch (TimeoutException)
+        {
+            throw new InvalidOperationException(
+                "WINDIAG2>>>\n" + DiagnosticDump.Dump(host) + "\n<<<END"
+            );
+        }
 
         await McpTestServerSupport.KillAsync(McpTestServerSupport.StartedPid(marker));
 
@@ -187,7 +223,16 @@ public sealed class McpExtensionInteractiveTests
         );
         host.Client.Enqueue(Scripts.Text("done"), Scripts.Stop());
         Task run = host.RunAsync();
-        await host.WaitUntilAsync(() => host.Session.IsComposed);
+        try
+        {
+            await host.WaitUntilAsync(() => host.Session.IsComposed);
+        }
+        catch (TimeoutException)
+        {
+            throw new InvalidOperationException(
+                "WINDIAG2>>>\n" + DiagnosticDump.Dump(host) + "\n<<<END"
+            );
+        }
 
         await McpTestServerSupport.KillAsync(McpTestServerSupport.StartedPid(marker));
 
