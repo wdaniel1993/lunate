@@ -58,11 +58,12 @@ public sealed class LspServerService : IBackgroundService
         await _gate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
-            Session session = await EnsureSessionAsync(worktreeRoot, ct).ConfigureAwait(false);
             using var roundTrip = CancellationTokenSource.CreateLinkedTokenSource(ct);
             roundTrip.CancelAfter(_settings.Timeout);
             try
             {
+                Session session = await EnsureSessionAsync(worktreeRoot, roundTrip.Token)
+                    .ConfigureAwait(false);
                 return await session
                     .Client.GetDiagnosticsAsync(absolutePath, text, roundTrip.Token)
                     .ConfigureAwait(false);
@@ -87,6 +88,7 @@ public sealed class LspServerService : IBackgroundService
         }
     }
 
+    /// <summary>Starts the server when needed; the caller's token bounds the whole round trip.</summary>
     private async Task<Session> EnsureSessionAsync(string worktreeRoot, CancellationToken ct)
     {
         if (_session is { } existing && !existing.HasExited())
@@ -102,25 +104,14 @@ public sealed class LspServerService : IBackgroundService
             process.StandardInput.BaseStream
         );
         client.Start();
-        using var initialize = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        initialize.CancelAfter(_settings.Timeout);
         try
         {
-            await client.InitializeAsync(worktreeRoot, initialize.Token).ConfigureAwait(false);
+            await client.InitializeAsync(worktreeRoot, ct).ConfigureAwait(false);
         }
-        catch (Exception exception)
+        catch
         {
             await DisposeSessionAsync(new Session(process, client), graceful: false)
                 .ConfigureAwait(false);
-            if (
-                exception is OperationCanceledException
-                && initialize.IsCancellationRequested
-                && !ct.IsCancellationRequested
-            )
-            {
-                throw TimedOut();
-            }
-
             throw;
         }
 
