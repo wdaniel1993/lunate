@@ -46,20 +46,28 @@ internal sealed class ExtensionSession : IAsyncDisposable
     private ExtensionSession(
         ExtensionLoader loader,
         ExtensionMcpServers mcpServers,
+        IReadOnlyList<ShadowedMcpServer> shadowedMcpServers,
         IReadOnlyList<ExtensionSessionError> errors
     )
     {
         _loader = loader;
         _mcpServers = mcpServers;
+        ShadowedMcpServers = shadowedMcpServers;
         _hooks = new AgentHookAdapter(loader.Hooks);
         Errors = errors;
     }
 
-    /// <summary>Loads and composes the host; per-extension failures are isolated, not thrown.</summary>
+    /// <summary>
+    /// Loads and composes the host; per-extension failures are isolated, not thrown. Registrations
+    /// whose name matches a configured server are skipped before listing (the configured server
+    /// wins) and logged naming both sources; <paramref name="configuredMcpServers"/> maps the
+    /// configured names to their sources, and null or empty keeps every registration.
+    /// </summary>
     internal static async Task<ExtensionSession> StartAsync(
         WorkspaceInfo workspace,
         ExtensionSeams seams,
-        CancellationToken ct = default
+        CancellationToken ct = default,
+        IReadOnlyDictionary<string, string?>? configuredMcpServers = null
     )
     {
         ArgumentNullException.ThrowIfNull(workspace);
@@ -114,11 +122,16 @@ internal sealed class ExtensionSession : IAsyncDisposable
             }
         }
 
-        return new ExtensionSession(
-            loader,
-            new ExtensionMcpServers(log, loader.McpServers.List()),
-            errors
-        );
+        (IReadOnlyList<RegisteredMcpServer> kept, IReadOnlyList<ShadowedMcpServer> shadowed) =
+            McpNameCollisions.Filter(loader.McpServers.List(), configuredMcpServers);
+        foreach (ShadowedMcpServer entry in shadowed)
+        {
+            log.Warn(
+                $"extension MCP server '{entry.Name}' from extension '{entry.ExtensionId}' was skipped: the configured server '{entry.Name}' from {(entry.ConfiguredSource is { Length: > 0 } source ? $"'{source}'" : "the mcp.json config")} wins the name collision."
+            );
+        }
+
+        return new ExtensionSession(loader, new ExtensionMcpServers(log, kept), shadowed, errors);
     }
 
     /// <summary>The harness hook seam over the loaded extensions' hook runner.</summary>
@@ -141,6 +154,12 @@ internal sealed class ExtensionSession : IAsyncDisposable
 
     /// <summary>The loaded extensions' MCP servers; registration starts nothing until listing.</summary>
     internal ExtensionMcpServers McpServers => _mcpServers;
+
+    /// <summary>
+    /// The registrations skipped because a configured server owns the name; `/mcp` shows them as
+    /// shadowed by the configured source.
+    /// </summary>
+    internal IReadOnlyList<ShadowedMcpServer> ShadowedMcpServers { get; }
 
     /// <summary>Every discovered descriptor, loaded or not.</summary>
     internal IReadOnlyList<ExtensionDescriptor> Descriptors => _loader.Descriptors;

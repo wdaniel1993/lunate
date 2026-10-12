@@ -10,6 +10,11 @@
             Include="../TestExtensions/HelloExtension/HelloExtension.csproj"
             ReferenceOutputAssembly="false"
         />
+        <!-- The extension-MCP tests install this fixture extension into a temp store. -->
+        <ProjectReference
+            Include="../TestExtensions/McpExtension/McpExtension.csproj"
+            ReferenceOutputAssembly="false"
+        />
         <!-- The MCP config e2e tests spawn the shared stdio test server. -->
         <ProjectReference
             Include="../tools/TestMcpServer/TestMcpServer.csproj"
@@ -29,12 +34,23 @@
             Targets="Build"
             Properties="Configuration=$(Configuration)"
         />
+        <MSBuild
+            Projects="$(MSBuildThisFileDirectory)../TestExtensions/McpExtension/McpExtension.csproj"
+            Targets="Build"
+            Properties="Configuration=$(Configuration)"
+        />
         <ItemGroup>
             <HelloExtensionFiles Include="$(MSBuildThisFileDirectory)../TestExtensions/HelloExtension/bin/$(Configuration)/$(TargetFramework)/**/*" />
+            <McpExtensionFiles Include="$(MSBuildThisFileDirectory)../TestExtensions/McpExtension/bin/$(Configuration)/$(TargetFramework)/**/*" />
         </ItemGroup>
         <Copy
             SourceFiles="@(HelloExtensionFiles)"
             DestinationFolder="$(OutDir)TestExtensions/HelloExtension/%(RecursiveDir)"
+            SkipUnchangedFiles="true"
+        />
+        <Copy
+            SourceFiles="@(McpExtensionFiles)"
+            DestinationFolder="$(OutDir)TestExtensions/McpExtension/%(RecursiveDir)"
             SkipUnchangedFiles="true"
         />
     </Target>

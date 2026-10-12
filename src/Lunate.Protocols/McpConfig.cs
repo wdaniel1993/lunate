@@ -201,7 +201,8 @@ internal static class McpConfig
             environment,
             workingDirectory,
             callTimeout,
-            NamespaceName: name
+            NamespaceName: name,
+            Source: path
         );
     }
 

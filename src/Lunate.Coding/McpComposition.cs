@@ -75,6 +75,16 @@ internal static class McpComposition
             : new McpToolSet(servers, log: log.Error, serverLog: log.Warn);
     }
 
+    /// <summary>
+    /// The one notice per MCP server whose process exited after starting; the status carries the
+    /// pinned reason. The interactive session wires this to the live area.
+    /// </summary>
+    internal static UserNotice ServerExitedNotice(McpServerStatus status) =>
+        new(
+            NoticeLevel.Warning,
+            $"MCP server '{status.Name}' failed: {status.Reason}. The session continues without this server's tools."
+        );
+
     /// <summary>Reports every failed server as a warning naming it; the session continues.</summary>
     internal static void NotifyFailures(McpToolSet set, Action<UserNotice> notify)
     {

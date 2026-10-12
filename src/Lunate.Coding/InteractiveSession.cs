@@ -247,8 +247,8 @@ internal sealed partial class InteractiveSession : IDisposable
         _branch = GitBranchReader.Read(_workspace.WorktreeRoot);
         _trustTotal = CountPendingTrustQuestions();
         _approver = new SessionApprover(this, _settings.Approval);
-        await ComposeExtensionsAsync(ct);
         await ComposeMcpAsync(ct);
+        await ComposeExtensionsAsync(ct);
         _harness = BuildHarness(_model);
         _pipeline = new InputPipeline(_options.Hooks ?? _extensions?.HookRunner);
     }
@@ -257,8 +257,10 @@ internal sealed partial class InteractiveSession : IDisposable
     /// Composes the session's extension host as the session starts: the workspace is resolved, so
     /// trust keys on the worktree root (or the git common dir inside a repository). A composition
     /// failure is reported and the session runs without extensions; a per-extension failure is
-    /// already isolated by the host. The host's MCP tools are listed once, here. With
-    /// <c>--no-extensions</c> the host is not composed at all.
+    /// already isolated by the host. The configured MCP servers are already composed, so a
+    /// registration sharing a configured server's name is skipped before listing and shown as
+    /// shadowed by `/mcp`. The host's MCP tools are listed once, here, and a server whose process
+    /// exits later fires one notice. With <c>--no-extensions</c> the host is not composed at all.
     /// </summary>
     private async Task ComposeExtensionsAsync(CancellationToken ct)
     {
@@ -278,8 +280,16 @@ internal sealed partial class InteractiveSession : IDisposable
                 Prompt = _options.Extensions?.Prompt ?? new TuiExtensionTrustPrompt(AskTrustAsync),
             };
             _extensions = await ExtensionSession
-                .StartAsync(_workspace.Identity, seams, ct)
+                .StartAsync(
+                    _workspace.Identity,
+                    seams,
+                    ct,
+                    McpNameCollisions.ConfiguredServers(_mcp)
+                )
                 .ConfigureAwait(false);
+            _extensions.McpServers.OnServerExited(status =>
+                Notify(McpComposition.ServerExitedNotice(status))
+            );
             foreach (
                 ITool tool in await _extensions.McpServers.ListToolsAsync(ct).ConfigureAwait(false)
             )
@@ -329,6 +339,7 @@ internal sealed partial class InteractiveSession : IDisposable
                 return;
             }
 
+            _mcp.OnServerExited(status => Notify(McpComposition.ServerExitedNotice(status)));
             foreach (ITool tool in await _mcp.ListToolsAsync(ct).ConfigureAwait(false))
             {
                 _tools.Add(tool);

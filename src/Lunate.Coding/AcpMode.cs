@@ -37,16 +37,9 @@ internal static class AcpMode
         {
             var workspace = new Workspace(Environment.CurrentDirectory);
             IExtensionLog log = extensions?.Log ?? new StderrExtensionLog(errors);
-            if (extensions?.NoExtensions is not true)
-            {
-                host = ComposeExtensions(extensions, workspace, errors, ct);
-            }
 
-            if (host is not null)
-            {
-                mcpTools.AddRange(host.McpServers.ListToolsAsync(ct).GetAwaiter().GetResult());
-            }
-
+            // The config set composes first so a same-named extension registration is skipped
+            // before listing (the configured server wins); nothing starts before listing.
             mcp = McpComposition
                 .ComposeAsync(
                     workspace,
@@ -59,6 +52,22 @@ internal static class AcpMode
                 )
                 .GetAwaiter()
                 .GetResult();
+            if (extensions?.NoExtensions is not true)
+            {
+                host = ComposeExtensions(
+                    extensions,
+                    workspace,
+                    errors,
+                    McpNameCollisions.ConfiguredServers(mcp),
+                    ct
+                );
+            }
+
+            if (host is not null)
+            {
+                mcpTools.AddRange(host.McpServers.ListToolsAsync(ct).GetAwaiter().GetResult());
+            }
+
             if (mcp is not null)
             {
                 mcpTools.AddRange(mcp.ListToolsAsync(ct).GetAwaiter().GetResult());
@@ -107,6 +116,7 @@ internal static class AcpMode
         ExtensionSeams? extensions,
         Workspace workspace,
         TextWriter errors,
+        IReadOnlyDictionary<string, string?>? configuredMcpServers,
         CancellationToken ct
     )
     {
@@ -115,7 +125,7 @@ internal static class AcpMode
             Log = extensions?.Log ?? new StderrExtensionLog(errors),
         };
         return ExtensionSession
-            .StartAsync(workspace.Identity, resolved, ct)
+            .StartAsync(workspace.Identity, resolved, ct, configuredMcpServers)
             .GetAwaiter()
             .GetResult();
     }

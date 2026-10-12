@@ -145,6 +145,31 @@ public sealed class McpServerHostTests
     }
 
     [Fact]
+    public async Task Probe_reports_false_before_start_and_after_the_process_exits()
+    {
+        using var temp = new TempDirectory();
+        var marker = temp.File("marker.txt");
+        await using var host = new McpServerHost(McpTestEnvironment.Options(marker));
+
+        Assert.False(await host.ProbeAsync(Ct), "an unstarted server is not alive");
+
+        await host.GetToolsAsync(Ct);
+
+        Assert.True(await host.ProbeAsync(Ct));
+
+        var pid = McpTestEnvironment.StartedPid(marker);
+        using (var process = Process.GetProcessById(pid))
+        {
+            process.Kill();
+            await process.WaitForExitAsync(Ct);
+        }
+
+        await McpTestEnvironment.WaitForProcessExitAsync(pid, TimeSpan.FromSeconds(10));
+
+        Assert.False(await host.ProbeAsync(Ct), "an exited server must fail its probe");
+    }
+
+    [Fact]
     public async Task Dispose_stops_the_process_and_is_idempotent()
     {
         using var temp = new TempDirectory();

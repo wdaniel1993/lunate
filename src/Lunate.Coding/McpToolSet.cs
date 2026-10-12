@@ -11,26 +11,36 @@ internal enum McpServerState
     Failed,
 }
 
-/// <summary>One server's live status: its state, listed tool count and failure reason.</summary>
+/// <summary>
+/// One server's live status: its state, listed tool count, failure reason and source (the config
+/// file it came from, or an extension attribution). Never carries environment values or headers.
+/// </summary>
 internal sealed record McpServerStatus(
     string Name,
     McpServerState State,
     int ToolCount,
-    string? Reason
+    string? Reason,
+    string? Source
 );
 
 /// <summary>
-/// One session's configured MCP servers: a <see cref="McpServerHost"/> per option that starts
-/// nothing until the first <see cref="ListToolsAsync"/>, which starts each server once, isolates a
-/// failing server to a recorded status and returns the union of the listed tools.
-/// <see cref="DisposeAsync"/> stops every server. Extension-registered and config-file servers
-/// share this one listing, status and disposal path.
+/// One session's MCP servers: a <see cref="McpServerHost"/> per option that starts nothing until
+/// the first <see cref="ListToolsAsync"/>, which starts each server once, isolates a failing server
+/// to a recorded status and returns the union of the listed tools. <see cref="ObserveStatusesAsync"/>
+/// liveness-checks started servers with a bounded probe and flips a server whose process exited to
+/// <see cref="McpServerState.Failed"/> with <see cref="ServerExitedReason"/> — once per server, with
+/// one log line and one callback. <see cref="DisposeAsync"/> stops every server. Extension-registered
+/// and config-file servers share this one listing, status and disposal path.
 /// </summary>
 internal sealed class McpToolSet : IAsyncDisposable
 {
+    /// <summary>The pinned failure reason of a server whose process exited after starting.</summary>
+    internal const string ServerExitedReason = "the server process exited";
+
     private readonly List<Server> _servers;
     private readonly Action<string>? _log;
     private readonly Func<McpServerOptions, string> _describe;
+    private Action<McpServerStatus>? _onServerExited;
 
     internal McpToolSet(
         IReadOnlyList<McpServerOptions> servers,
@@ -55,12 +65,25 @@ internal sealed class McpToolSet : IAsyncDisposable
     internal IReadOnlyList<McpServerStatus> Statuses =>
         [.. _servers.Select(server => server.Status)];
 
+    /// <summary>
+    /// Receives one callback per server that flips <see cref="McpServerState.Started"/> to
+    /// <see cref="McpServerState.Failed"/> by the liveness probe; setting replaces the previous
+    /// callback. Interactive mode wires it to its notice; other modes leave it null.
+    /// </summary>
+    internal void OnServerExited(Action<McpServerStatus>? callback) => _onServerExited = callback;
+
     /// <summary>Lists every server's tools, starting each once; failures are isolated.</summary>
     internal async Task<IReadOnlyList<ITool>> ListToolsAsync(CancellationToken ct)
     {
         List<ITool> tools = [];
         foreach (Server server in _servers)
         {
+            if (server.ExitNotified)
+            {
+                // The process exited; its status stays failed and its stale tools are not handed out.
+                continue;
+            }
+
             try
             {
                 IReadOnlyList<ITool> listed = await server
@@ -70,7 +93,8 @@ internal sealed class McpToolSet : IAsyncDisposable
                     server.Options.Name,
                     McpServerState.Started,
                     listed.Count,
-                    null
+                    null,
+                    server.Options.Source
                 );
                 tools.AddRange(listed);
             }
@@ -84,12 +108,36 @@ internal sealed class McpToolSet : IAsyncDisposable
                     server.Options.Name,
                     McpServerState.Failed,
                     0,
-                    exception.Message
+                    exception.Message,
+                    server.Options.Source
                 );
             }
         }
 
         return tools;
+    }
+
+    /// <summary>
+    /// Liveness-checks every started server with a bounded probe and flips a server whose process
+    /// exited to failed, logging and invoking <see cref="OnServerExited"/> once per server; returns
+    /// the current statuses.
+    /// </summary>
+    internal async Task<IReadOnlyList<McpServerStatus>> ObserveStatusesAsync(CancellationToken ct)
+    {
+        foreach (Server server in _servers)
+        {
+            if (server.Status.State is not McpServerState.Started || server.ExitNotified)
+            {
+                continue;
+            }
+
+            if (!await server.Host.ProbeAsync(ct).ConfigureAwait(false))
+            {
+                MarkExited(server);
+            }
+        }
+
+        return Statuses;
     }
 
     public async ValueTask DisposeAsync()
@@ -109,13 +157,36 @@ internal sealed class McpToolSet : IAsyncDisposable
         }
     }
 
+    private void MarkExited(Server server)
+    {
+        server.Status = new McpServerStatus(
+            server.Options.Name,
+            McpServerState.Failed,
+            0,
+            ServerExitedReason,
+            server.Options.Source
+        );
+        if (server.ExitNotified)
+        {
+            return;
+        }
+
+        server.ExitNotified = true;
+        _log?.Invoke(
+            $"{_describe(server.Options)}: {ServerExitedReason}. The session continues without this server's tools."
+        );
+        _onServerExited?.Invoke(server.Status);
+    }
+
     private sealed class Server(McpServerOptions options, McpServerHost host)
     {
         public McpServerOptions Options { get; } = options;
 
         public McpServerHost Host { get; } = host;
 
+        public bool ExitNotified { get; set; }
+
         public McpServerStatus Status { get; set; } =
-            new(options.Name, McpServerState.NotStarted, 0, null);
+            new(options.Name, McpServerState.NotStarted, 0, null, options.Source);
     }
 }
