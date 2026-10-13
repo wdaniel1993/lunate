@@ -67,6 +67,19 @@ bash scripts/verify.sh                  # the full gate (Windows: scripts/verify
 
 `scripts/verify.sh` runs the build, all tests (including a `de-AT` culture pass), a single-file publish, the startup budget, formatting (CSharpier), the documentation lint and the public-API check.
 
+### Trust in scripted runs
+
+A repository's project extensions and its project `.lunate/mcp.json` run repository-provided code, so each needs a one-time trust decision. Records live in `~/.lunate/trust.json` — per user and machine — so an ephemeral CI runner starts untrusted and runs the trust step in every job:
+
+```bash
+lunate trust            # inspect: the records, the pending decisions and one digest
+lunate trust --yes      # record the pending decisions
+lunate trust --json     # the inspection as one JSON document, for scripts
+lunate trust --clear    # remove this repository's records
+```
+
+`lunate trust` exits 3 when decisions are pending, so it doubles as a CI check. `--yes` records exactly what it prints: use it only for checkouts you control, never on untrusted pull requests or forks. To review before trusting in CI, inspect `lunate trust --json` on the reviewed revision, pin the digest it prints, and let the job run `lunate trust --yes --digest <sha>`: it records only when the recomputed digest matches, and a stale digest records nothing and exits 4.
+
 ## Repository map
 
 | Path | What lives there |
