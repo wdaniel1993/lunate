@@ -103,6 +103,16 @@ public static class ToolStubs
         IReadOnlyList<string>? enumValues
     )
     {
+        // An unrecognised construct degrades the parameter even when a recognised sibling (type,
+        // enum) exists: the mapping cannot honour what it does not understand.
+        foreach (string construct in UnsupportedConstructs)
+        {
+            if (property.TryGetProperty(construct, out _))
+            {
+                return ("any", $"unsupported schema construct: {construct}");
+            }
+        }
+
         if (enumValues is { Count: > 0 })
         {
             return ("enum", null);
@@ -113,14 +123,6 @@ public static class ToolStubs
             || typeElement.ValueKind != JsonValueKind.String
         )
         {
-            foreach (string construct in UnsupportedConstructs)
-            {
-                if (property.TryGetProperty(construct, out _))
-                {
-                    return ("any", $"unsupported schema construct: {construct}");
-                }
-            }
-
             return ("any", "missing type");
         }
 

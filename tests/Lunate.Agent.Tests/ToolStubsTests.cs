@@ -102,7 +102,8 @@ public sealed class ToolStubsTests
                 "unknown": { "type": "date" },
                 "ref": { "$ref": "#/definitions/x" },
                 "anyOf": { "anyOf": [{ "type": "string" }] },
-                "booleanSchema": true
+                "booleanSchema": true,
+                "coexist": { "type": "string", "oneOf": [{ "type": "string" }] }
               }
             }
             """
@@ -119,6 +120,9 @@ public sealed class ToolStubsTests
             "unsupported schema construct: the property schema is not an object",
             stub.Parameters[4].Note
         );
+        // A recognised type does not rescue a sibling construct the mapping cannot honour.
+        Assert.Equal("any", stub.Parameters[5].Type);
+        Assert.Equal("unsupported schema construct: oneOf", stub.Parameters[5].Note);
     }
 
     [Fact]

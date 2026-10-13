@@ -207,3 +207,31 @@ internal sealed class AlwaysApprover(params string[] alwaysGranted) : IToolAppro
         return ValueTask.FromResult(decision);
     }
 }
+
+/// <summary>
+/// An approver that leaves asks for the named tool pending until released or cancelled, so tests
+/// can observe a bridged call that is still awaiting approval (for example when a script timeout
+/// fires). Every other tool is approved silently.
+/// </summary>
+internal sealed class BlockingApprover(string blockedTool) : IToolApprover
+{
+    private readonly TaskCompletionSource<bool> _decision = new(
+        TaskCreationOptions.RunContinuationsAsynchronously
+    );
+
+    public TaskCompletionSource<bool> Asked { get; } =
+        new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    public ValueTask<bool> ApproveAsync(ApprovalRequest request, CancellationToken ct)
+    {
+        if (!string.Equals(request.Tool.Name, blockedTool, StringComparison.Ordinal))
+        {
+            return ValueTask.FromResult(true);
+        }
+
+        Asked.TrySetResult(true);
+        return new ValueTask<bool>(_decision.Task.WaitAsync(ct));
+    }
+
+    public void Release(bool approved) => _decision.TrySetResult(approved);
+}

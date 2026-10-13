@@ -68,10 +68,9 @@ file at `~/.lunate/extensions-settings/codemode.json` overrides the defaults, fo
 - **Scrubbed environment.** The child starts with an explicit allow-list (`PATH`, `HOME`,
   `TMPDIR`/`TEMP`/`TMP`, `SystemRoot`, `USERPROFILE`) and never inherits Lunate's environment, so
   provider keys cannot leak. The process itself is not isolated otherwise.
-- **Derived nested ids.** The structured `toolCalls` list derives `"<parent>/<n>"` from the script's
-  call ordinal; that matches the canonical ids whenever the bridged calls are the run's only nested
-  calls. A bridged tool that itself nests advances the core's counter, so the list is then
-  best-effort — the event stream and the session always carry the canonical ids.
+- **Canonical nested ids.** The structured `toolCalls` list carries the canonical `"<parent>/<n>"`
+  ids the core assigned (`ToolResult.CallId`), so it agrees with the event stream and the session
+  exactly — even when a bridged tool itself nests.
 - **The runtime is external.** The extension ships no interpreter; `node` (or whatever `runtime`
   names) must be installed. A missing runtime is a teaching error with an install hint.
 - **No in-process runtimes.** Roslyn scripting or Jint would be a separate opt-in and are not a

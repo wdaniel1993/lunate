@@ -151,4 +151,50 @@ public sealed class CodeModeHarnessTests
         Assert.Equal("caught", TestSupport.LastToolResult(client, 1));
         Assert.Single(Session.Load(result.SessionPath).Entries.OfType<SessionNestedCallsEntry>());
     }
+
+    [Fact]
+    public async Task A_timeout_cancels_a_pending_bridged_call_and_the_tool_never_runs()
+    {
+        using var temp = new TempDirectory();
+        var approver = new BlockingApprover("destructive-fixture");
+        await using ExtensionTestHost host = TestSupport.CreateHost(
+            temp,
+            approver,
+            timeoutSeconds: 8
+        );
+        await host.StartAsync(Ct);
+        host.ComposeTools();
+        var fixture = new FixtureTool("destructive-fixture", destructive: true);
+        host.Tools.Add(fixture);
+        var client = new ScriptedModelClient()
+            .Enqueue(
+                ModelScripts.Call(
+                    "call_1",
+                    "codemode__run",
+                    ModelScripts.Args(
+                        (
+                            "code",
+                            """
+                            console.log(process.pid);
+                            await tools["destructive-fixture"]({});
+                            return "done";
+                            """
+                        )
+                    )
+                )
+            )
+            .Enqueue(ModelScripts.Text("done"));
+
+        ExtensionRunResult result = await host.RunAsync(client, "go", Ct);
+
+        // The child timed out while the bridged ask was pending: the run reported it, and the
+        // pending call was cancelled with the child.
+        string toolResult = TestSupport.LastToolResult(client, 1);
+        Assert.Contains("timed out", toolResult, StringComparison.Ordinal);
+        Assert.True(approver.Asked.Task.IsCompleted);
+        // A late approval must not run the tool: the ask was cancelled with the child.
+        approver.Release(approved: true);
+        await Task.Delay(500, Ct);
+        Assert.Equal(0, fixture.Calls);
+    }
 }

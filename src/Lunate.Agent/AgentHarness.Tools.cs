@@ -411,17 +411,23 @@ public sealed partial class AgentHarness
         {
             RunId = runId,
             CallId = callId,
-            ExecuteToolAsync = (name, args, _) =>
-                RunNestedToolAsync(
-                    runId,
-                    callId,
-                    name,
-                    args,
-                    channel,
-                    nestedDepth,
-                    nestedCalls,
-                    ct
-                ),
+            ExecuteToolAsync = async (name, args, callCt) =>
+            {
+                // The caller's token (for example the code-mode bridge's timeout) composes with the
+                // run's: either one cancels the nested call.
+                using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct, callCt);
+                return await RunNestedToolAsync(
+                        runId,
+                        callId,
+                        name,
+                        args,
+                        channel,
+                        nestedDepth,
+                        nestedCalls,
+                        linked.Token
+                    )
+                    .ConfigureAwait(false);
+            },
             Progress = message => channel.Emit(new ToolProgressUpdate(runId, callId, message)),
             FileMutations = _options.FileMutations,
             FileChanges = new RunFileChangeSink(

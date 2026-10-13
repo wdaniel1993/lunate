@@ -117,6 +117,53 @@ public sealed class AgentNestedToolTests
     }
 
     [Fact]
+    public async Task A_nested_call_honors_the_callers_cancellation_token()
+    {
+        var inner = new ScriptedTool("inner", "Waits for its token.", """{"type":"object"}""");
+        inner.OnExecuteAsync = async (_, _, innerCt) =>
+        {
+            await Task.Delay(Timeout.InfiniteTimeSpan, innerCt);
+            return new ToolResult("never", IsError: false);
+        };
+        var outer = new ScriptedTool("outer", "Cancels its nested call.", """{"type":"object"}""");
+        OperationCanceledException? cancelled = null;
+        outer.OnExecuteAsync = async (_, ctx, ct) =>
+        {
+            var execute =
+                ctx.ExecuteToolAsync
+                ?? throw new InvalidOperationException("The context has no nested executor.");
+            using var source = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            source.CancelAfter(TimeSpan.FromMilliseconds(100));
+            try
+            {
+                await execute("inner", EmptyArgs(), source.Token);
+            }
+            catch (OperationCanceledException exception)
+            {
+                cancelled = exception;
+            }
+
+            return new ToolResult("done", IsError: false);
+        };
+        var client = new ScriptedChatClient()
+            .Enqueue(
+                LoopScripts.Call("call_1", "outer", LoopScripts.Args(("x", "1"))),
+                LoopScripts.ToolCalls()
+            )
+            .Enqueue(LoopScripts.Text("Done"), LoopScripts.Stop());
+        var harness = new AgentHarness(client, Registry(outer, inner));
+
+        List<AgentEvent> events = await Run(harness);
+
+        Assert.NotNull(cancelled);
+        ToolCallResult nestedResult = Assert.Single(
+            events.OfType<ToolCallResult>(),
+            e => e.CallId == "call_1/1"
+        );
+        Assert.True(nestedResult.IsError);
+    }
+
+    [Fact]
     public async Task The_nested_depth_cap_is_enforced()
     {
         var recurse = new ScriptedTool("recurse", "Calls itself.", """{"type":"object"}""");

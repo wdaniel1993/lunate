@@ -16,7 +16,7 @@ public sealed class BashTool : ITool
 
     internal static readonly string CapMarker = string.Create(
         CultureInfo.InvariantCulture,
-        $"... [output capped at {CaptureCap} characters; the rest was discarded]"
+        $"... [output capped at {CaptureCap} bytes; the rest was discarded]"
     );
 
     private const string NoShellText =
