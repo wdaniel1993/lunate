@@ -9,21 +9,28 @@ Card `t_ea4a1b32` (filed during the T-45 recon) closes the gap: production sessi
 ## What
 
 - **The session owns the bus**: `ExtensionSession.StartAsync` creates one `FileChangeBus` (workspace id = worktree root, the session's log) before any extension loads, registers it as `core/file-bus` next to `core/workspace`, and exposes it for the frontends.
-- **`core/mutation-queue` is registered too**: `MutationQueueHandle` over the same queue the core tools use (`FileMutationQueue.Shared`), so handle-scheduled mutations serialize with core writes — the documented read-only handles become fully reachable.
-- **The tools publish**: `HarnessFactory.CreateTools` gains the sink and passes it to `WriteTool`/`EditTool` (their `Notify` call sites already exist and are already tested in the kit). The three modes (interactive, print, ACP) pass the session bus; the interactive session's tool creation moves after extension composition so the bus exists when the tools are built.
-- **The harness options carry it**: `AgentHarnessOptions.FileChanges` is set from the session bus in all three modes (the property currently has no consumer inside the harness — the tools are the producers — and is set for coherence and future consumers).
-- **Lifecycle**: session disposal drains the bus (pending events reach still-subscribed handlers; per-handler timeouts bound the drain) and disposes it, before the session-ending hooks and MCP teardown; the start-cancellation path disposes it too.
-- **Spec deltas**: the "File change bus" requirement drops the "not yet wired in production" sentence (everything else and all scenarios stay); the "Service registry" requirement's registration sentence covers all three core handles and gains a scenario proving the handles are reachable and live in a composed session.
+- **`core/mutation-queue` is registered too**: `MutationQueueHandle` over the same queue the core tools use (`FileMutationQueue.Shared`) — and the queue's keys are normalized (symlinks resolved; case-insensitive on Windows/macOS) so two spellings of one file share one lock.
+- **Tools publish through `ToolContext`** — one path for core, extension and MCP tools: no sink parameter on `CreateTools` or the tools' constructors. `IFileChangeSink.Notify(FileChangeEvent)` with `(AbsolutePath, RelativePath, WorkspaceId, RunId, Kind)`; the harness stamps run id and workspace into each run's `ToolContext.FileChanges` (it knows both; session-level tool creation does not — and subagents stamp their own). Events are published inside the queued mutation after the file write, so ordering matches the queue and a subscriber reading the file sees the new content.
+- **`AgentHarnessOptions.FileChanges` gains its consumer**: the harness forwards it into `ToolContext`, making the option live instead of decorative.
+- **The payload is enriched**: `FileChangedPayload` carries absolute path, workspace-relative path, workspace id, run id and change kind (`created`/`modified`) — contract + conformance round-trip updated; subscriptions keep matching the absolute path with the existing filter.
+- **Decided and spec'd**: a write with identical content still emits (`modified`); after a drain begins, notifications are dropped with a log line; slow handlers can never stall tools; `bash`-made file changes are not published (honest limit — extension/MCP tools that write publish through their own context).
+- **Lifecycle**: drain → dispose at session end (bounded by handler timeouts); start-cancellation path disposes too.
+- **Spec deltas**: the "File change bus" caveat sentence is replaced by those limits plus the enriched payload/kind rules; the "Service registry" registration sentence covers all three handles and gains a scenario proving they are reachable **and live**.
+- **Follow-up card** (filed): wire the Roslyn backend as the first real subscriber (workspace sync) — its own change, since it needs Roslyn-layer work and integration tests.
 
 ## Impact
 
-- `src/Lunate.Coding/`: `ExtensionSession` (bus creation, registration, exposure, disposal), `HarnessFactory.CreateTools` (sink parameter), `InteractiveSession` (tool-creation order + sink), `PrintMode`, `AcpMode` (sink in harness options + tools).
-- `tests/Lunate.Coding.Tests/`: production-path e2e (print session, project extension subscribing `*.cs`, one event per successful mutation, none for a refused mutation), the session-composition test updates (`core/file-bus` / `core/mutation-queue` become reachable), a mutation-queue reachability test.
+- `src/Lunate.Agent/`: `IFileChangeSink` + `FileChangeEvent` + `FileChangeKind`; `ToolContext.FileChanges`; the harness stamps it per run; `FileMutationQueue` key normalization. (`PublicAPI.Unshipped` updates.)
+- `src/Lunate.Extensibility.Abstractions/`: `FileChangedPayload` enriched + conformance test.
+- `src/Lunate.Extensibility/`: `FileChangeBus` consumes events, maps to payloads, drains with drop-and-log; `ExtensionLoaderFileChangeTests`/`FileChangeBusTests` updated.
+- `src/Lunate.Coding/`: `ExtensionSession` (bus creation, registration, exposure, disposal); `HarnessFactory.CreateTools` unchanged; `WriteTool`/`EditTool` publish via context (ctor sink parameter dropped); the three modes set `AgentHarnessOptions.FileChanges`.
+- `tests/Lunate.Coding.Tests/`: production-path e2e (one event per successful mutation with full payload, none for refused/non-matching), ToolContext path test, ordering + read-sees-content, identical-content, session composition (all three handles), mutation-queue reachability, lifecycle drain/drop.
 - Specs: extensions (two requirements).
-- No new packages, no ADR (the design is the spec's own intent; no public API change — `FileChangeBus`, the handles and `CreateTools` are internal/kit-internal where new).
+- No new packages, no ADR (the design is the spec's own intent).
 
 ## Out of scope
 
-- Background services beyond the bus/queue wiring (the rest of T-39 is already landed).
-- An `AgentHarness`-internal consumer of `FileChanges` (nothing mutates files inside the harness today).
-- HTTP/remote extension hosts (T-52) and the remaining fitness samples.
+- The Roslyn backend subscription (follow-up card; `core/file-bus` named as its path).
+- Publishing `bash`-made file changes (no reliable boundary — honest limit in the spec).
+- A `deleted` kind (no tool deletes) and HTTP/remote hosts (T-52).
+

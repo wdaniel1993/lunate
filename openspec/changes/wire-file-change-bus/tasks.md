@@ -1,26 +1,39 @@
 # Tasks: wire-file-change-bus
 
-## 1. The session owns the bus
+## 1. The event contract and the bus
 
-- [ ] 1.1 `ExtensionSession.StartAsync`: create the per-session `FileChangeBus` (workspace id = `WorktreeRoot`, the session's log) before any extension loads; register it as `core/file-bus` beside `core/workspace`; expose it as `ExtensionSession.FileChanges`.
-- [ ] 1.2 Register `core/mutation-queue` as `MutationQueueHandle(FileMutationQueue.Shared)`.
-- [ ] 1.3 Dispose the bus on the start-cancellation path; on `DisposeAsync`: drain (bounded by handler timeouts) → dispose → existing session-ending hooks + MCP teardown.
-- [ ] 1.4 Session-composition tests: `core/file-bus` and `core/mutation-queue` reachable in a composed session; `core/workspace` unchanged; `--no-extensions` composes nothing.
+- [ ] 1.1 `Lunate.Agent`: `FileChangeKind { Created, Modified }`, `FileChangeEvent(AbsolutePath, RelativePath, WorkspaceId, RunId, Kind)`, `IFileChangeSink.Notify(FileChangeEvent)` (NullFileChangeSink no-ops); PublicAPI.Unshipped updated.
+- [ ] 1.2 `FileChangedPayload` gains `RelativePath`, `RunId`, `Kind` (contract assembly; serialization per the hook DTO conventions; conformance round-trip test updated).
+- [ ] 1.3 `FileChangeBus` consumes events (IFileChangeSink), maps them to payloads for handlers, keeps ordered delivery/pattern filtering (absolute path)/handler timeouts; drop-and-log once a drain has begun; `Dispose` unchanged otherwise.
+- [ ] 1.4 Kit tests updated for the event-shaped API (`FileChangeBusTests`, `FileChangeIntegrationTests`, `ExtensionLoaderFileChangeTests`); new: drain-drop logged; notifications after drain do not throw.
 
-## 2. The tools publish
+## 2. The mutation queue
 
-- [ ] 2.1 `HarnessFactory.CreateTools` gains the sink parameter and passes it to `WriteTool`/`EditTool`.
-- [ ] 2.2 InteractiveSession: build `_tools` after `ComposeExtensionsAsync` (before `ComposeMcpToolsAsync`) with `changes: _extensions?.FileChanges`.
-- [ ] 2.3 PrintMode and AcpMode: pass the session bus to `CreateTools` and set `AgentHarnessOptions.FileChanges` from it (all three modes; note the option currently has no in-harness consumer).
+- [ ] 2.1 `FileMutationQueue`: normalize keys before locking — full path, symlinks resolved, case-insensitive comparison on Windows and macOS, ordinal on Linux — so two spellings share one lock.
+- [ ] 2.2 Tests: case-variant spellings serialize as one lock (macOS/Windows); a symlinked spelling shares the lock; Linux stays ordinal; queued order still per key.
 
-## 3. Production-path end-to-end
+## 3. Session composition
 
-- [ ] 3.1 Print-mode e2e: project extension subscribing `core/file-bus` with a `*.cs` pattern — `write` and `edit` on matching files emit exactly one event each (canonical path, worktree-root workspace id); a non-matching file emits none; a refused `edit` emits none.
-- [ ] 3.2 Mutation-queue reachability: an extension schedules a read-modify-write through `core/mutation-queue` in a composed session — it applies and serializes with a core write on the same path (order asserted).
-- [ ] 3.3 Lifecycle: an event enqueued just before disposal still reaches a handler subscribed during load (drain proof); a disposed bus rejects further notifications without throwing.
-- [ ] 3.4 New process-spawning tests join the `mcp-processes` collection.
+- [ ] 3.1 `ExtensionSession.StartAsync`: create the per-session `FileChangeBus` (workspace id = `WorktreeRoot`, the session's log) before any extension loads; register `core/file-bus` and `core/mutation-queue` (`MutationQueueHandle(FileMutationQueue.Shared)`) beside `core/workspace`; expose `ExtensionSession.FileChanges`.
+- [ ] 3.2 Dispose on the start-cancellation path; on `DisposeAsync`: drain (bounded by handler timeouts) → dispose → existing session-ending hooks + MCP teardown.
+- [ ] 3.3 Session-composition tests: `core/workspace`, `core/file-bus` and `core/mutation-queue` all reachable (the T-45 sign-off composition test); `--no-extensions` composes nothing.
 
-## 4. Gate
+## 4. The ToolContext path
 
-- [ ] 4.1 `scripts/verify.sh` green (both cultures), `openspec validate --all --strict` clean, csharpier + markdownlint clean.
-- [ ] 4.2 Spec deltas stay in sync at archive (extensions: file change bus caveat dropped; service registry sentence + live-handles scenario).
+- [ ] 4.1 `ToolContext.FileChanges` (IFileChangeSink, default NullFileChangeSink); the harness forwards `AgentHarnessOptions.FileChanges` into it per run, stamped with workspace root + run id.
+- [ ] 4.2 `WriteTool`/`EditTool`: drop the ctor sink parameter; build the event from the harness-stamped context values and publish **inside the queued mutation, after the file write** — kind `created` for a new file, `modified` otherwise; a write with identical content still emits (`modified`).
+- [ ] 4.3 The three modes set `AgentHarnessOptions.FileChanges` from the session bus (InteractiveSession, PrintMode, AcpMode); `CreateTools` unchanged.
+- [ ] 4.4 Test: an extension tool publishing via `ctx.FileChanges` yields one event with the correct run id and workspace.
+
+## 5. Production-path end-to-end
+
+- [ ] 5.1 Print-mode e2e: project extension subscribing `core/file-bus` with a `*.cs` pattern — `write` and `edit` on matching files emit exactly one event each (absolute path, workspace-relative path, worktree-root workspace id, run id, kind); a non-matching file emits none; a refused `edit` emits none.
+- [ ] 5.2 Ordering + content: concurrent queued mutations on one file → events in the same order as the mutations applied; a subscriber reading the file on delivery sees the new content.
+- [ ] 5.3 Mutation-queue reachability: an extension schedules a read-modify-write through `core/mutation-queue` in a composed session — it applies and serializes with a core write on the same path.
+- [ ] 5.4 Lifecycle: an event enqueued just before disposal still reaches a handler subscribed during load (drain proof); a slow handler never stalls a producer (enqueue returns immediately).
+- [ ] 5.5 New process-spawning tests join the `mcp-processes` collection.
+
+## 6. Gate
+
+- [ ] 6.1 `scripts/verify.sh` green (both cultures), `openspec validate --all --strict` clean, csharpier + markdownlint clean.
+- [ ] 6.2 Spec deltas stay in sync at archive (extensions: file change bus — caveat replaced by the limits + payload/kind/identical-content/drain rules; service registry sentence + live-handles scenario).
