@@ -26,10 +26,7 @@ internal sealed class TuiExtensionTrustPrompt(TrustQuestion ask) : IExtensionTru
         ArgumentNullException.ThrowIfNull(request);
         cancellationToken.ThrowIfCancellationRequested();
 
-        ExtensionDescriptor descriptor = request.Descriptor;
-        string title = request.FilesChanged
-            ? $"Load project extension '{descriptor.Id}' {descriptor.Version} from {descriptor.Directory} — its files changed since this repository trusted it. Load the new version"
-            : $"Load project extension '{descriptor.Id}' {descriptor.Version} from {descriptor.Directory}";
+        string title = TrustFormat.ExtensionQuestion(request.Descriptor, request.FilesChanged);
         return ask(title, [], cancellationToken);
     }
 }

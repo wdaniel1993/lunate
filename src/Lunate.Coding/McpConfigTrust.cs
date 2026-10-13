@@ -25,8 +25,6 @@ internal interface IMcpConfigTrustPrompt
 /// </summary>
 internal sealed class TuiMcpConfigTrustPrompt(TrustQuestion ask) : IMcpConfigTrustPrompt
 {
-    private const int MaxCommandLength = 60;
-
     public ValueTask<bool> ApproveAsync(
         string configPath,
         IReadOnlyList<McpServerOptions> servers,
@@ -37,24 +35,12 @@ internal sealed class TuiMcpConfigTrustPrompt(TrustQuestion ask) : IMcpConfigTru
         ArgumentNullException.ThrowIfNull(servers);
         cancellationToken.ThrowIfCancellationRequested();
 
-        string noun = servers.Count == 1 ? "server" : "servers";
-        string title = FormattableString.Invariant(
-            $"Start {servers.Count} {noun} from project mcp.json '{configPath}'"
+        return ask(
+            TrustFormat.McpQuestionTitle(configPath, servers.Count),
+            TrustFormat.McpQuestionDetails(servers),
+            cancellationToken
         );
-        List<string> details =
-        [
-            .. servers.Select(server => $"{server.Name} — {Truncate(Command(server))}"),
-        ];
-        return ask(title, details, cancellationToken);
     }
-
-    private static string Command(McpServerOptions server) =>
-        server.Arguments.Count == 0
-            ? server.Command
-            : server.Command + " " + string.Join(' ', server.Arguments);
-
-    private static string Truncate(string text) =>
-        text.Length <= MaxCommandLength ? text : text[..MaxCommandLength] + "…";
 }
 
 /// <summary>
