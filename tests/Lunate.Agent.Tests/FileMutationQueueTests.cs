@@ -95,6 +95,8 @@ public sealed class FileMutationQueueTests
     [Fact]
     public async Task The_path_comparison_follows_the_platform_case_rule()
     {
+        using var temp = new TempDirectory();
+        File.WriteAllText(temp.File("Case.txt"), "x");
         var queue = new FileMutationQueue();
         var firstEntered = new TaskCompletionSource(
             TaskCreationOptions.RunContinuationsAsynchronously
@@ -103,7 +105,7 @@ public sealed class FileMutationQueueTests
             TaskCreationOptions.RunContinuationsAsynchronously
         );
         Task<int> first = queue.RunAsync(
-            "Case.txt",
+            temp.File("Case.txt"),
             async _ =>
             {
                 firstEntered.SetResult();
@@ -117,7 +119,7 @@ public sealed class FileMutationQueueTests
             TaskCreationOptions.RunContinuationsAsynchronously
         );
         Task<int> second = queue.RunAsync(
-            "case.txt",
+            temp.File("case.txt"),
             _ =>
             {
                 secondEntered.SetResult();
@@ -134,6 +136,79 @@ public sealed class FileMutationQueueTests
         {
             Assert.False(secondEntered.Task.IsCompleted);
         }
+
+        releaseFirst.SetResult();
+        int[] results = await Task.WhenAll(first, second);
+
+        Assert.Equal([1, 2], results);
+    }
+
+    [Fact]
+    public void NormalizeKey_resolves_symlinks_of_existing_components()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        using var temp = new TempDirectory();
+        string real = temp.File("real-directory");
+        Directory.CreateDirectory(real);
+        string link = temp.File("link-directory");
+        Directory.CreateSymbolicLink(link, real);
+
+        string viaLink = FileMutationQueue.NormalizeKey(Path.Combine(link, "new.txt"));
+        string viaReal = FileMutationQueue.NormalizeKey(Path.Combine(real, "new.txt"));
+
+        Assert.Equal(viaReal, viaLink);
+    }
+
+    [Fact]
+    public async Task A_symlinked_spelling_shares_one_gate()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        using var temp = new TempDirectory();
+        string real = temp.File("real.txt");
+        File.WriteAllText(real, "x");
+        string link = temp.File("link.txt");
+        File.CreateSymbolicLink(link, real);
+        var queue = new FileMutationQueue();
+        var firstEntered = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously
+        );
+        var releaseFirst = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously
+        );
+        Task<int> first = queue.RunAsync(
+            link,
+            async _ =>
+            {
+                firstEntered.SetResult();
+                await releaseFirst.Task;
+                return 1;
+            },
+            Ct
+        );
+        await firstEntered.Task;
+        var secondEntered = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously
+        );
+        Task<int> second = queue.RunAsync(
+            real,
+            _ =>
+            {
+                secondEntered.SetResult();
+                return Task.FromResult(2);
+            },
+            Ct
+        );
+
+        // The symlink resolves to the same file, so the second mutation must wait for the gate.
+        Assert.False(secondEntered.Task.IsCompleted);
 
         releaseFirst.SetResult();
         int[] results = await Task.WhenAll(first, second);

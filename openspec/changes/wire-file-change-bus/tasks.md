@@ -9,8 +9,8 @@
 
 ## 2. The mutation queue
 
-- [ ] 2.1 `FileMutationQueue`: normalize keys before locking — full path, symlinks resolved, case-insensitive comparison on Windows and macOS, ordinal on Linux — so two spellings share one lock.
-- [ ] 2.2 Tests: case-variant spellings serialize as one lock (macOS/Windows); a symlinked spelling shares the lock; Linux stays ordinal; queued order still per key.
+- [x] 2.1 `FileMutationQueue`: normalize keys before locking — full path, symlinks resolved, case-insensitive comparison on Windows and macOS, ordinal on Linux — so two spellings share one lock.
+- [x] 2.2 Tests: case-variant spellings serialize as one lock (macOS/Windows); a symlinked spelling shares the lock; Linux stays ordinal; queued order still per key.
 
 ## 3. Session composition
 
