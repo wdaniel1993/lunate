@@ -118,6 +118,41 @@ internal static class HelloFixture
     }
 }
 
+/// <summary>The ToolExtension fixture copied into this test project's output.</summary>
+internal static class ToolFixture
+{
+    internal static string SourceDirectory =>
+        Path.Combine(AppContext.BaseDirectory, "TestExtensions", "ToolExtension");
+
+    internal static string Install(
+        string storePath,
+        string id = "tools",
+        string tools = """["echo"]""",
+        string? settings = """{"tools":[{"name":"echo"}]}"""
+    )
+    {
+        string directory = Path.Combine(storePath, "extensions", id);
+        Directory.CreateDirectory(directory);
+        File.Copy(
+            Path.Combine(SourceDirectory, "ToolExtension.dll"),
+            Path.Combine(directory, "ToolExtension.dll"),
+            overwrite: true
+        );
+        File.WriteAllText(
+            Path.Combine(directory, "extension.json"),
+            $$"""{"id":"{{id}}","version":"0.1.0","apiVersion":"^1.5.0","entryAssembly":"ToolExtension.dll","tools":{{tools}}}"""
+        );
+        if (settings is not null)
+        {
+            string settingsDirectory = Path.Combine(storePath, "extensions-settings");
+            Directory.CreateDirectory(settingsDirectory);
+            File.WriteAllText(Path.Combine(settingsDirectory, id + ".json"), settings);
+        }
+
+        return directory;
+    }
+}
+
 /// <summary>The seams every session-level test uses so the real store is never read.</summary>
 internal static class TestExtensionSeams
 {

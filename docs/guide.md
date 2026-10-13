@@ -398,10 +398,11 @@ One JSONL file per session under `~/.lunate/sessions/<project-hash>/`. Flags: `-
 
 **Extensions**
 
-An extension is an assembly implementing the `Lunate.Extensibility.Abstractions` contract — hooks, tools, services, commands — and it compiles only against that assembly, never against `Lunate.Agent` internals (ADR-0017; the full model is in `docs/spec/extensibility.md`). Lunate loads extensions at runtime, like Pi:
+An extension is an assembly implementing the `Lunate.Extensibility.Abstractions` contract — hooks, tools, services, commands — and it compiles only against that assembly, never against `Lunate.Agent` internals (ADR-0017; the full model is in `docs/spec/extensibility.md`). The contract carries the core tool types (`ToolContext`, `ToolResult`), so a tool handler is written against the same tool model the core uses. Lunate loads extensions at runtime, like Pi:
 
-- From `~/.lunate/extensions/` (global) and `.lunate/extensions/` (per project), each in its own collectible `AssemblyLoadContext`; the contract assembly, Microsoft.Extensions.AI abstractions and System.Text.Json are shared.
+- From `~/.lunate/extensions/` (global) and `.lunate/extensions/` (per project), each in its own collectible `AssemblyLoadContext`; the contract assemblies, Microsoft.Extensions.AI abstractions and System.Text.Json are shared.
 - Each extension has an `extension.json` (id, version, apiVersion range, entry assembly, declared tools/commands/hooks/services, settings schema). Manifests are read at startup; assemblies load on first use, so startup budgets hold.
+- An extension registers tools through `IExtensionContext.RegisterTool`; the model-facing name is `<extension-id>__<name>`, the manifest `tools` list must declare every registered tool, and unloading the extension removes its tools and cancels in-flight calls.
 - Project-local extensions run code from the repository: one-time trust per repository, re-prompted when the extension files change.
 - `Lunate.Roslyn` ships as a built-in extension and uses the same mechanism.
 - External tools can also come through MCP (`~/.lunate/mcp.json`, see Protocols).

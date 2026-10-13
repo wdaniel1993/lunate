@@ -28,6 +28,7 @@ Lunate.Extensibility.Abstractions.IExtension
 Lunate.Extensibility.Abstractions.IExtensionContext
 Lunate.Extensibility.Abstractions.IExtensionContext.Id.get -> string!
 Lunate.Extensibility.Abstractions.IExtensionContext.Log.get -> Lunate.Extensibility.Abstractions.IExtensionLog!
+Lunate.Extensibility.Abstractions.IExtensionContext.RegisterTool(Lunate.Extensibility.Abstractions.ExtensionToolRegistration! registration) -> void
 Lunate.Extensibility.Abstractions.IExtensionContext.Secrets.get -> Lunate.Extensibility.Abstractions.IExtensionSecrets!
 Lunate.Extensibility.Abstractions.IExtensionContext.Settings.get -> Lunate.Extensibility.Abstractions.IExtensionSettings!
 Lunate.Extensibility.Abstractions.IExtensionFactory
@@ -36,6 +37,33 @@ Lunate.Extensibility.Abstractions.IExtensionLog
 Lunate.Extensibility.Abstractions.IExtensionLog.Error(string! message) -> void
 Lunate.Extensibility.Abstractions.IExtensionLog.Info(string! message) -> void
 Lunate.Extensibility.Abstractions.IExtensionLog.Warn(string! message) -> void
+Lunate.Extensibility.Abstractions.IExtensionToolHandler
+Lunate.Extensibility.Abstractions.IExtensionToolHandler.InvokeAsync(System.Text.Json.JsonElement arguments, Lunate.Agent.ToolContext! context, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Lunate.Agent.ToolResult!>!
+Lunate.Extensibility.Abstractions.ExtensionToolRegistration
+Lunate.Extensibility.Abstractions.ExtensionToolRegistration.<Clone>$() -> Lunate.Extensibility.Abstractions.ExtensionToolRegistration!
+Lunate.Extensibility.Abstractions.ExtensionToolRegistration.Annotations.get -> Lunate.Agent.ToolAnnotations?
+Lunate.Extensibility.Abstractions.ExtensionToolRegistration.Annotations.init -> void
+Lunate.Extensibility.Abstractions.ExtensionToolRegistration.Description.get -> string!
+Lunate.Extensibility.Abstractions.ExtensionToolRegistration.Description.init -> void
+Lunate.Extensibility.Abstractions.ExtensionToolRegistration.Equals(Lunate.Extensibility.Abstractions.ExtensionToolRegistration? other) -> bool
+Lunate.Extensibility.Abstractions.ExtensionToolRegistration.Exposure.get -> Lunate.Agent.ToolExposure
+Lunate.Extensibility.Abstractions.ExtensionToolRegistration.Exposure.init -> void
+Lunate.Extensibility.Abstractions.ExtensionToolRegistration.ExtensionToolRegistration() -> void
+Lunate.Extensibility.Abstractions.ExtensionToolRegistration.Handler.get -> Lunate.Extensibility.Abstractions.IExtensionToolHandler!
+Lunate.Extensibility.Abstractions.ExtensionToolRegistration.Handler.init -> void
+Lunate.Extensibility.Abstractions.ExtensionToolRegistration.Name.get -> string!
+Lunate.Extensibility.Abstractions.ExtensionToolRegistration.Name.init -> void
+Lunate.Extensibility.Abstractions.ExtensionToolRegistration.OutputSchema.get -> System.Text.Json.JsonElement?
+Lunate.Extensibility.Abstractions.ExtensionToolRegistration.OutputSchema.init -> void
+Lunate.Extensibility.Abstractions.ExtensionToolRegistration.ParametersSchema.get -> System.Text.Json.JsonElement
+Lunate.Extensibility.Abstractions.ExtensionToolRegistration.ParametersSchema.init -> void
+Lunate.Extensibility.Abstractions.ExtensionToolRegistration.Risk.get -> Lunate.Agent.ToolRisk?
+Lunate.Extensibility.Abstractions.ExtensionToolRegistration.Risk.init -> void
+override Lunate.Extensibility.Abstractions.ExtensionToolRegistration.Equals(object? obj) -> bool
+override Lunate.Extensibility.Abstractions.ExtensionToolRegistration.GetHashCode() -> int
+override Lunate.Extensibility.Abstractions.ExtensionToolRegistration.ToString() -> string!
+static Lunate.Extensibility.Abstractions.ExtensionToolRegistration.operator !=(Lunate.Extensibility.Abstractions.ExtensionToolRegistration? left, Lunate.Extensibility.Abstractions.ExtensionToolRegistration? right) -> bool
+static Lunate.Extensibility.Abstractions.ExtensionToolRegistration.operator ==(Lunate.Extensibility.Abstractions.ExtensionToolRegistration? left, Lunate.Extensibility.Abstractions.ExtensionToolRegistration? right) -> bool
 Lunate.Extensibility.Abstractions.IExtensionSecrets
 Lunate.Extensibility.Abstractions.IExtensionSecrets.TryGet(string! name, out string? value) -> bool
 Lunate.Extensibility.Abstractions.IExtensionSettings
@@ -794,7 +822,7 @@ static Lunate.Extensibility.Abstractions.TextSegment.operator !=(Lunate.Extensib
 static Lunate.Extensibility.Abstractions.TextSegment.operator ==(Lunate.Extensibility.Abstractions.TextSegment? left, Lunate.Extensibility.Abstractions.TextSegment? right) -> bool
 static Lunate.Extensibility.Abstractions.ToolResultView.operator !=(Lunate.Extensibility.Abstractions.ToolResultView? left, Lunate.Extensibility.Abstractions.ToolResultView? right) -> bool
 static Lunate.Extensibility.Abstractions.ToolResultView.operator ==(Lunate.Extensibility.Abstractions.ToolResultView? left, Lunate.Extensibility.Abstractions.ToolResultView? right) -> bool
-const Lunate.Extensibility.Abstractions.ExtensionApi.Current = "1.6.0" -> string!
+const Lunate.Extensibility.Abstractions.ExtensionApi.Current = "1.7.0" -> string!
 Lunate.Extensibility.Abstractions.IExtensionContext.RegisterMcpServer(Lunate.Extensibility.Abstractions.McpServerRegistration! registration) -> void
 Lunate.Extensibility.Abstractions.McpServerConfig
 Lunate.Extensibility.Abstractions.McpServerConfig.<Clone>$() -> Lunate.Extensibility.Abstractions.McpServerConfig!

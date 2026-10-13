@@ -128,17 +128,29 @@ internal static class PrintMode
                 List<ITool> tools = [];
                 if (extensions is not null)
                 {
+                    // Extension tools first, in registration order, then the MCP tools (design D7).
+                    tools.AddRange(extensions.Tools);
                     // The configured names are the collision baseline: a same-named registration
                     // is skipped before listing (the configured server wins); nothing starts yet.
                     ExtensionMcpServers servers = extensions.ComposeMcpServers(
                         McpNameCollisions.ConfiguredServers(mcp)
                     );
-                    tools.AddRange(await servers.ListToolsAsync(ct).ConfigureAwait(false));
+                    ToolComposition.AddSkippingTaken(
+                        tools,
+                        await servers.ListToolsAsync(ct).ConfigureAwait(false),
+                        "an extension-registered MCP server",
+                        notice => interaction.Notify(new UserNotice(NoticeLevel.Warning, notice))
+                    );
                 }
 
                 if (mcp is not null)
                 {
-                    tools.AddRange(await mcp.ListToolsAsync(ct).ConfigureAwait(false));
+                    ToolComposition.AddSkippingTaken(
+                        tools,
+                        await mcp.ListToolsAsync(ct).ConfigureAwait(false),
+                        "mcp.json",
+                        notice => interaction.Notify(new UserNotice(NoticeLevel.Warning, notice))
+                    );
                     McpComposition.NotifyFailures(mcp, notice => interaction.Notify(notice));
                 }
 

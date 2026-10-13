@@ -96,4 +96,52 @@ public sealed class ToolRegistryTests
 
         Assert.Equal(read.ParametersSchema.GetRawText(), declaration.JsonSchema.GetRawText());
     }
+
+    [Fact]
+    public void Remove_removes_the_tool_and_keeps_declaration_order_for_the_rest()
+    {
+        var registry = new ToolRegistry();
+        var read = new ScriptedTool("read", "Reads a file.", Schema);
+        var write = new ScriptedTool("write", "Writes a file.", Schema);
+        var edit = new ScriptedTool("edit", "Edits a file.", Schema);
+        registry.Add(read);
+        registry.Add(write);
+        registry.Add(edit);
+
+        Assert.True(registry.Remove("write"));
+
+        Assert.Equal(["read", "edit"], registry.Tools.Select(tool => tool.Name));
+        Assert.Equal(
+            ["read", "edit"],
+            registry.Declarations.Select(declaration => declaration.Name)
+        );
+        Assert.Null(registry.Find("write"));
+    }
+
+    [Fact]
+    public void Remove_of_an_unknown_name_returns_false_and_changes_nothing()
+    {
+        var registry = new ToolRegistry();
+        registry.Add(new ScriptedTool("read", "Reads a file.", Schema));
+
+        Assert.False(registry.Remove("write"));
+
+        Assert.Equal(["read"], registry.Tools.Select(tool => tool.Name));
+        Assert.Equal(["read"], registry.Declarations.Select(declaration => declaration.Name));
+    }
+
+    [Fact]
+    public void A_removed_name_can_be_added_again()
+    {
+        var registry = new ToolRegistry();
+        var read = new ScriptedTool("read", "Reads a file.", Schema);
+        var replacement = new ScriptedTool("read", "Reads again.", Schema);
+        registry.Add(read);
+        registry.Remove("read");
+
+        registry.Add(replacement);
+
+        Assert.Same(replacement, registry.Find("read"));
+        Assert.Single(registry.Declarations);
+    }
 }

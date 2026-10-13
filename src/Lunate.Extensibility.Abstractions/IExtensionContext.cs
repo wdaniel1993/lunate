@@ -38,6 +38,13 @@ public interface IExtensionContext
     void RegisterStatusWidget(IStatusWidget widget);
 
     /// <summary>
+    /// Registers a tool. Registration is registration only: it must not start processes, sockets or
+    /// timers. At most 32 tools per extension; malformed registrations and duplicate names are
+    /// refused naming the extension and the field.
+    /// </summary>
+    void RegisterTool(ExtensionToolRegistration registration);
+
+    /// <summary>
     /// Registers an MCP server. Registration is registration only: it must not start processes,
     /// sockets or timers. The first registration per server name wins; a duplicate is refused and
     /// logged. The process starts on the first tool listing.

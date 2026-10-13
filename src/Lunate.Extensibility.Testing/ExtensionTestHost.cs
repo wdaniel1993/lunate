@@ -172,6 +172,55 @@ public sealed class ExtensionTestHost : IAsyncDisposable
     }
 
     /// <summary>
+    /// Composes the loaded extension's registered tools into <see cref="Tools"/> in registration
+    /// order — the production order: extension tools before MCP tools, so call this before
+    /// <see cref="ComposeMcpServersAsync"/>. Tools already present are left alone. Throws before
+    /// the extension was started.
+    /// </summary>
+    public IReadOnlyList<ExtensionToolAdapter> ComposeTools()
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        if (_loaded is null)
+        {
+            throw new InvalidOperationException(
+                "The extension is not loaded yet; call StartAsync or RunAsync first."
+            );
+        }
+
+        IReadOnlyList<ExtensionToolAdapter> registered = Runner.Tools.List();
+        foreach (ExtensionToolAdapter tool in registered)
+        {
+            if (Tools.Find(tool.Name) is null)
+            {
+                Tools.Add(tool);
+            }
+        }
+
+        return registered;
+    }
+
+    /// <summary>
+    /// Unloads the extension through the real loader: its tools leave the loader's registry, its
+    /// in-flight calls are cancelled and <c>ToolsChanged</c> fires; the composed <see cref="Tools"/>
+    /// entries are removed too. Idempotent.
+    /// </summary>
+    public async ValueTask UnloadAsync(CancellationToken cancellationToken = default)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        if (_loaded is null)
+        {
+            return;
+        }
+
+        IReadOnlyList<ExtensionToolAdapter> registered = Runner.Tools.List();
+        await Runner.Unload(_loaded.Id).ConfigureAwait(false);
+        foreach (ExtensionToolAdapter tool in registered)
+        {
+            Tools.Remove(tool.Name);
+        }
+    }
+
+    /// <summary>
     /// Composes the extension MCP-server registrations through the production mapping
     /// (<see cref="ExtensionMcpServers"/>): the first call lists every server once (starting each
     /// exactly once), merges the listed tools into <see cref="Tools"/> and returns the public

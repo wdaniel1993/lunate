@@ -14,8 +14,8 @@ Status: working spec under ADR-0017. The durable decisions live in `adr/0017-ext
 
 ## Contract and loading
 
-- **Assembly**: `Lunate.Extensibility.Abstractions` — semver'd, PublicAPI-tracked. Extensions reference it and `Microsoft.Extensions.AI.Abstractions`; nothing else from Lunate.
-- **ALC sharing**: the abstractions assembly, `Microsoft.Extensions.AI.Abstractions` and `System.Text.Json` are shared in the default `AssemblyLoadContext`; everything else an extension brings is private to its collectible ALC.
+- **Assembly**: `Lunate.Extensibility.Abstractions` — semver'd, PublicAPI-tracked. Extensions reference it and `Microsoft.Extensions.AI.Abstractions`; nothing else from Lunate. The contract carries the core `Lunate.Agent` tool types (`ToolContext`, `ToolResult`, annotations, exposure, risk) transitively, so a tool handler is written against the one core tool model.
+- **ALC sharing**: the contract assemblies (`Lunate.Extensibility.Abstractions` and the `Lunate.Agent` types it references), `Microsoft.Extensions.AI.Abstractions` and `System.Text.Json` are shared in the default `AssemblyLoadContext`; everything else an extension brings is private to its collectible ALC.
 - **Manifest** `extension.json`: `id`, `version`, `apiVersion` range, `entryAssembly`, declared `tools`/`commands`/`hooks`/`services`, `settingsSchema` (JSON schema), `capabilities` (informational). Incompatible `apiVersion` → clear refusal at load.
 - **Lifecycle**: the factory registers only (no processes, sockets, timers). Long-lived resources start in `SessionStarted` (safe to run more than once) or on first use and stop in an idempotent `SessionEnding`. Reload unloads the ALC; state does not survive.
 - **Settings and secrets**: per-extension settings validated against `settingsSchema`; secrets are namespaced and never written to session files.
@@ -58,6 +58,7 @@ The byte-level contract is owned by [`agent-tools`](../openspec/specs/agent-tool
 - **Output schema**: optional `OutputSchema`; when present, `ToolResult.StructuredContent` carries the typed result next to the model-facing text.
 - **Nested calls**: `ToolContext` carries `RunId` and `ExecuteToolAsync(name, args, ct, onUpdate)` — same validation, hooks, approval and cancellation as top-level calls; ids are `"<parent>/<n>"`; depth, concurrency and token limits enforced by the core. Usage from nested model calls rolls up to the owning run.
 - **Concurrency**: per-tool `Parallel | Sequential`. File-mutating tools go through `IFileMutationQueue` (per-path, read-modify-write as one unit).
+- **Extension tools**: `IExtensionContext.RegisterTool` takes an `ExtensionToolRegistration` (local name, description, hand-written parameters schema, optional output schema, annotations, exposure, explicit risk override and an `IExtensionToolHandler`). The handler receives the same `ToolContext` and returns the same `ToolResult` as core tools. The model-facing name is `<extension-id>__<name>`, sanitized to `[A-Za-z0-9_-]` and at most 64 characters; the namespace is the extension id; the manifest `tools` list must declare every registration (registered-but-undeclared refuses the load, declared-but-unregistered warns and drops). Registered tools enter the same `ToolRegistry` at composition before the MCP tools, behave identically (exposure gate, annotations, approval with MCP defaults when no hints are declared, bounded results, teaching error on a throwing handler) and leave it on unload, which fires `ToolsChanged` and cancels in-flight calls into a cancelled result. A model-facing name collision with a later-composed MCP tool resolves first-composition-wins: the MCP tool is skipped with one single-line diagnostic naming both sources.
 
 ## Services for long-lived integrations
 
