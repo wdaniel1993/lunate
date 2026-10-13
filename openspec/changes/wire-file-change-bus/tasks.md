@@ -35,5 +35,5 @@
 
 ## 6. Gate
 
-- [ ] 6.1 `scripts/verify.sh` green (both cultures), `openspec validate --all --strict` clean, csharpier + markdownlint clean.
+- [x] 6.1 `scripts/verify.sh` green (both cultures), `openspec validate --all --strict` clean, csharpier + markdownlint clean.
 - [ ] 6.2 Spec deltas stay in sync at archive (extensions: file change bus — caveat replaced by the limits + payload/kind/identical-content/drain rules; service registry sentence + live-handles scenario).
