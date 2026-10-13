@@ -162,6 +162,8 @@ Lunate.Agent.ToolContext.Equals(Lunate.Agent.ToolContext? other) -> bool
 Lunate.Agent.ToolContext.Events.get -> Lunate.Agent.IAgentEvents!
 Lunate.Agent.ToolContext.ExecuteToolAsync.get -> System.Func<string!, System.Text.Json.JsonElement, System.Threading.CancellationToken, System.Threading.Tasks.Task<Lunate.Agent.ToolResult!>!>?
 Lunate.Agent.ToolContext.ExecuteToolAsync.init -> void
+Lunate.Agent.ToolContext.FileChanges.get -> Lunate.Agent.IFileChangeSink!
+Lunate.Agent.ToolContext.FileChanges.init -> void
 Lunate.Agent.ToolContext.FileMutations.get -> Lunate.Agent.IFileMutationQueue!
 Lunate.Agent.ToolContext.FileMutations.init -> void
 Lunate.Agent.ToolContext.Progress.get -> System.Action<string!>?

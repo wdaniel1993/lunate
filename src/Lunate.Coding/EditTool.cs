@@ -8,7 +8,6 @@ namespace Lunate.Coding;
 public sealed class EditTool(
     Workspace workspace,
     IFileMutationQueue? mutations = null,
-    IFileChangeSink? changes = null,
     ITextFileAccess? files = null
 ) : ITool
 {
@@ -241,12 +240,12 @@ public sealed class EditTool(
                     return Task.FromResult(Error($"could not be written: {exception.Message}"));
                 }
 
-                changes?.Notify(
+                ctx.FileChanges.Notify(
                     new FileChangeEvent(
                         resolved.AbsolutePath,
                         resolved.RelativePath,
-                        workspace.WorktreeRoot,
-                        null,
+                        ctx.WorkingDirectory,
+                        ctx.RunId,
                         FileChangeKind.Modified
                     )
                 );

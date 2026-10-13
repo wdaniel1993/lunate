@@ -432,6 +432,7 @@ internal sealed partial class InteractiveSession : IDisposable
             Hooks = _extensions?.Hooks,
             Session = _session,
             Steering = _steering,
+            FileChanges = (IFileChangeSink?)_extensions?.FileChanges ?? NullFileChangeSink.Instance,
             ModelCatalog = _catalog,
             ModelId = model.Id,
         };

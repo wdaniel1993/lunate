@@ -20,10 +20,10 @@
 
 ## 4. The ToolContext path
 
-- [ ] 4.1 `ToolContext.FileChanges` (IFileChangeSink, default NullFileChangeSink); the harness forwards `AgentHarnessOptions.FileChanges` into it per run, stamped with workspace root + run id.
-- [ ] 4.2 `WriteTool`/`EditTool`: drop the ctor sink parameter; build the event from the harness-stamped context values and publish **inside the queued mutation, after the file write** — kind `created` for a new file, `modified` otherwise; a write with identical content still emits (`modified`).
-- [ ] 4.3 The three modes set `AgentHarnessOptions.FileChanges` from the session bus (InteractiveSession, PrintMode, AcpMode); `CreateTools` unchanged.
-- [ ] 4.4 Test: an extension tool publishing via `ctx.FileChanges` yields one event with the correct run id and workspace.
+- [x] 4.1 `ToolContext.FileChanges` (IFileChangeSink, default NullFileChangeSink); the harness forwards `AgentHarnessOptions.FileChanges` into it per run, stamped with workspace root + run id.
+- [x] 4.2 `WriteTool`/`EditTool`: drop the ctor sink parameter; build the event from the harness-stamped context values and publish **inside the queued mutation, after the file write** — kind `created` for a new file, `modified` otherwise; a write with identical content still emits (`modified`).
+- [x] 4.3 The three modes set `AgentHarnessOptions.FileChanges` from the session bus (InteractiveSession, PrintMode, AcpMode); `CreateTools` unchanged.
+- [x] 4.4 Test: an extension tool publishing via `ctx.FileChanges` yields one event with the correct run id and workspace.
 
 ## 5. Production-path end-to-end
 

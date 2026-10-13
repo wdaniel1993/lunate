@@ -365,6 +365,7 @@ internal static class PrintMode
             Approver = new NonInteractiveApprover(settings.Approval, options.Yolo),
             Hooks = extensions?.Hooks,
             Session = session,
+            FileChanges = (IFileChangeSink?)extensions?.FileChanges ?? NullFileChangeSink.Instance,
             ModelCatalog = catalog,
             ModelId = model.Id,
         };
