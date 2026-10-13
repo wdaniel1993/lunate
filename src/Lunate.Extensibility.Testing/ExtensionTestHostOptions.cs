@@ -38,6 +38,9 @@ public sealed record ExtensionTestHostOptions
     /// <summary>The subagent limits of the run tree; null uses the defaults.</summary>
     public SubagentLimits? SubagentLimits { get; init; }
 
+    /// <summary>Adjusts the composed harness options; tests replace hooks or pin budgets here.</summary>
+    public Func<AgentHarnessOptions, AgentHarnessOptions>? ConfigureHarness { get; init; }
+
     /// <summary>The hook runner options; null uses the runner's defaults.</summary>
     public HookRunnerOptions? HookRunnerOptions { get; init; }
 }

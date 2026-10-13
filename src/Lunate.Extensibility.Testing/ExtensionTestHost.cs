@@ -141,21 +141,23 @@ public sealed class ExtensionTestHost : IAsyncDisposable
         await StartAsync(cancellationToken).ConfigureAwait(false);
 
         Session session = EnsureSession();
-        var harness = new AgentHarness(
-            client,
-            Tools,
-            new AgentHarnessOptions
-            {
-                MaxSteps = _options.MaxSteps,
-                SystemPrompt = _options.SystemPrompt,
-                WorkingDirectory = WorkingDirectory,
-                SubagentLimits = _options.SubagentLimits ?? new SubagentLimits(),
-                Approver = _options.Approver,
-                Hooks = new AgentHookAdapter(Runner.Hooks),
-                Session = session,
-                FileChanges = _fileChanges,
-            }
-        );
+        var harnessOptions = new AgentHarnessOptions
+        {
+            MaxSteps = _options.MaxSteps,
+            SystemPrompt = _options.SystemPrompt,
+            WorkingDirectory = WorkingDirectory,
+            SubagentLimits = _options.SubagentLimits ?? new SubagentLimits(),
+            Approver = _options.Approver,
+            Hooks = new AgentHookAdapter(Runner.Hooks),
+            Session = session,
+            FileChanges = _fileChanges,
+        };
+        if (_options.ConfigureHarness is { } configure)
+        {
+            harnessOptions = configure(harnessOptions);
+        }
+
+        var harness = new AgentHarness(client, Tools, harnessOptions);
 
         List<AgentEvent> events = [];
         await foreach (

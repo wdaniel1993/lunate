@@ -1,0 +1,26 @@
+{
+    "id": "subagents",
+    "version": "0.1.0",
+    "apiVersion": "^1.7.0",
+    "entryAssembly": "SubagentsExtension.dll",
+    "tools": ["spawn"],
+    "settingsSchema": {
+        "type": "object",
+        "properties": {
+            "defaultMaxSteps": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "the step ceiling the spawn tool passes when the model omits maxSteps; the run's own ceiling still clamps it"
+            },
+            "description": {
+                "type": "string",
+                "description": "overrides the tool description the model reads"
+            }
+        }
+    },
+    "capabilities": [
+        "registers one tool (spawn) that runs a child agent through ToolContext.Subagents",
+        "the spawn result carries the child's final text; refusals (depth/concurrency/token) surface as teaching error results",
+        "annotations: not read-only, destructive-capable, so the call asks"
+    ]
+}
