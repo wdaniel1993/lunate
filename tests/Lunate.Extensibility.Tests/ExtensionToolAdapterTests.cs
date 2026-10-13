@@ -176,6 +176,63 @@ public sealed class ExtensionToolAdapterTests
         Assert.Same(expected, result);
     }
 
+    [Fact]
+    public void The_registration_output_schema_reaches_the_adapter()
+    {
+        JsonElement outputSchema = JsonDocument
+            .Parse("""{"type":"object","properties":{"echoed":{"type":"string"}}}""")
+            .RootElement.Clone();
+        var registry = new ExtensionToolRegistry();
+        registry.Register(
+            "tools",
+            new ExtensionToolRegistration
+            {
+                Name = "echo",
+                Description = "Echoes.",
+                ParametersSchema = Schema(),
+                OutputSchema = outputSchema,
+                Handler = new DelegateToolHandler(
+                    (_, _, _) => Task.FromResult(new ToolResult("ok", false))
+                ),
+            }
+        );
+
+        Assert.Equal(
+            outputSchema.GetRawText(),
+            Assert.Single(registry.List()).OutputSchema!.Value.GetRawText()
+        );
+    }
+
+    [Fact]
+    public async Task A_structured_result_keeps_its_content_by_value()
+    {
+        JsonElement expected = JsonDocument.Parse("""{"echoed":"hi"}""").RootElement.Clone();
+        var registry = new ExtensionToolRegistry();
+        registry.Register(
+            "tools",
+            new ExtensionToolRegistration
+            {
+                Name = "echo",
+                Description = "Echoes.",
+                ParametersSchema = Schema(),
+                Handler = new DelegateToolHandler(
+                    (_, _, _) =>
+                        Task.FromResult(
+                            new ToolResult("echoed: hi", false, StructuredContent: expected)
+                        )
+                ),
+            }
+        );
+
+        ToolResult result = await Assert
+            .Single(registry.List())
+            .ExecuteAsync(Schema(), new ToolContext("/work", new NullAgentEvents()), Ct);
+
+        Assert.False(result.IsError);
+        Assert.Equal("echoed: hi", result.Output);
+        Assert.Equal(expected.GetRawText(), result.StructuredContent!.Value.GetRawText());
+    }
+
     private static JsonElement Schema() =>
         JsonDocument.Parse("""{"type":"object"}""").RootElement.Clone();
 

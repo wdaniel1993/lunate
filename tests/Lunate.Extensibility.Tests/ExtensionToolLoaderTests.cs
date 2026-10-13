@@ -1,3 +1,6 @@
+using System.Reflection;
+using System.Runtime.CompilerServices;
+using System.Runtime.Loader;
 using System.Text.Json;
 using Lunate.Agent;
 using Lunate.Extensibility.Abstractions;
@@ -123,6 +126,78 @@ public sealed class ExtensionToolLoaderTests
         await loader.Load("tools", temp.Root, "repo", new FakeExtensionTrustPrompt(true), Ct);
 
         Assert.Equal("tools__echo", Assert.Single(loader.Tools.List()).Name);
+    }
+
+    [Fact]
+    public async Task Unloading_releases_the_extension_assembly()
+    {
+        using var temp = new TempDirectory();
+        TestExtensions.InstallToolExtension(
+            temp,
+            "tools",
+            tools: """["echo"]""",
+            settings: """{"tools":[{"name":"echo"}]}"""
+        );
+        var loader = new ExtensionLoader(
+            TestExtensions.Options(temp.Subdirectory("store"), new RecordingExtensionLog())
+        );
+        loader.Discover(temp.Root, "repo");
+
+        HashSet<Assembly> before = [.. AppDomain.CurrentDomain.GetAssemblies()];
+        LoadAndDrop(loader, temp.Root);
+        (WeakReference reference, WeakReference contextReference) = CaptureExtensionAssembly(
+            before
+        );
+        Assert.True(reference.IsAlive);
+
+        await loader.Unload("tools");
+        // The assembly frees first; the collectible context object is unrooted but is only swept by
+        // a later pass, so the loop yields and runs against a deadline instead of a cycle count
+        // (gcroot-proven: the context has no roots once the load result is dropped).
+        DateTime deadline = DateTime.UtcNow + TimeSpan.FromSeconds(5);
+        while ((reference.IsAlive || contextReference.IsAlive) && DateTime.UtcNow < deadline)
+        {
+            GC.Collect(2, GCCollectionMode.Forced, blocking: true, compacting: true);
+            GC.WaitForPendingFinalizers();
+            await Task.Delay(20, Ct);
+        }
+
+        Assert.False(reference.IsAlive, "the extension assembly still pins after unload.");
+        Assert.False(
+            contextReference.IsAlive,
+            "the collectible load context still pins after unload."
+        );
+
+        // The load call returns the LoadedExtension (extension instance, context, factory); a
+        // caller that awaited it into this method's async state machine would pin the load context
+        // for the whole test — the exact root the assertion above hunts (proven with a gcroot
+        // walk). Loading through this NoInlining helper drops the result in a callee frame that
+        // dies on return.
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        static void LoadAndDrop(ExtensionLoader loader, string workingDirectory) =>
+            loader
+                .Load("tools", workingDirectory, "repo", new FakeExtensionTrustPrompt(true), Ct)
+                .GetAwaiter()
+                .GetResult();
+
+        // NoInlining keeps the strong reference in the callee's frame, so the assembly is only
+        // held by the collectible load context and the assertions test real collection. The
+        // before/after diff isolates this load from copies other tests loaded earlier.
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        static (WeakReference Assembly, WeakReference Context) CaptureExtensionAssembly(
+            HashSet<Assembly> before
+        )
+        {
+            Assembly loaded = AppDomain
+                .CurrentDomain.GetAssemblies()
+                .Single(assembly =>
+                    assembly.GetName().Name == "ToolExtension" && !before.Contains(assembly)
+                );
+            return (
+                new WeakReference(loaded),
+                new WeakReference(AssemblyLoadContext.GetLoadContext(loaded))
+            );
+        }
     }
 
     [Fact]

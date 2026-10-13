@@ -65,12 +65,22 @@ internal static class AcpMode
                 ExtensionMcpServers servers = host.ComposeMcpServers(
                     McpNameCollisions.ConfiguredServers(mcp)
                 );
-                mcpTools.AddRange(servers.ListToolsAsync(ct).GetAwaiter().GetResult());
+                ToolComposition.AddSkippingTaken(
+                    mcpTools,
+                    servers.ListToolsAsync(ct).GetAwaiter().GetResult(),
+                    "an extension-registered MCP server",
+                    notice => interaction.Notify(new UserNotice(NoticeLevel.Warning, notice))
+                );
             }
 
             if (mcp is not null)
             {
-                mcpTools.AddRange(mcp.ListToolsAsync(ct).GetAwaiter().GetResult());
+                ToolComposition.AddSkippingTaken(
+                    mcpTools,
+                    mcp.ListToolsAsync(ct).GetAwaiter().GetResult(),
+                    "mcp.json",
+                    notice => interaction.Notify(new UserNotice(NoticeLevel.Warning, notice))
+                );
                 McpComposition.NotifyFailures(mcp, notice => interaction.Notify(notice));
             }
         }

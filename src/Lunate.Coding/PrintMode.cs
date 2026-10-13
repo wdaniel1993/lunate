@@ -135,12 +135,22 @@ internal static class PrintMode
                     ExtensionMcpServers servers = extensions.ComposeMcpServers(
                         McpNameCollisions.ConfiguredServers(mcp)
                     );
-                    tools.AddRange(await servers.ListToolsAsync(ct).ConfigureAwait(false));
+                    ToolComposition.AddSkippingTaken(
+                        tools,
+                        await servers.ListToolsAsync(ct).ConfigureAwait(false),
+                        "an extension-registered MCP server",
+                        notice => interaction.Notify(new UserNotice(NoticeLevel.Warning, notice))
+                    );
                 }
 
                 if (mcp is not null)
                 {
-                    tools.AddRange(await mcp.ListToolsAsync(ct).ConfigureAwait(false));
+                    ToolComposition.AddSkippingTaken(
+                        tools,
+                        await mcp.ListToolsAsync(ct).ConfigureAwait(false),
+                        "mcp.json",
+                        notice => interaction.Notify(new UserNotice(NoticeLevel.Warning, notice))
+                    );
                     McpComposition.NotifyFailures(mcp, notice => interaction.Notify(notice));
                 }
 

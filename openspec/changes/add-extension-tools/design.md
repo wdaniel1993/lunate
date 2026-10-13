@@ -72,4 +72,5 @@ A throwing/timed-out handler becomes an **error result with instructing text** (
 
 ## Deviations
 
-None yet.
+- Apply: `Lunate.Agent` joined `ExtensionLoadContext.SharedAssemblies` (without it, an `Agent.dll` beside the extension duplicates the type and handler identity breaks); the extensions delta gained a MODIFIED "Extension loading" requirement to match.
+- Review fixes (this round): the collision guard (`ToolComposition.AddSkippingTaken`, all three modes, first-composition-wins diagnostic) + spec/delta updates (uniqueness scope, collision scenario, cooperative cancellation, "timed-out" removed, contract-assembly requirement synced); test additions (guard units, OutputSchema/StructuredContent by value, real interactive render path for an absent tool, unload-releases-the-assembly with a gcroot-verified drop discipline — the loader's `Load` result must not be awaited into a state machine that outlives the collection check; the collectible context object is unrooted but swept by a later GC pass, so the loop is deadline-based).

@@ -356,19 +356,23 @@ internal sealed partial class InteractiveSession : IDisposable
                     McpNameCollisions.ConfiguredServers(_mcp)
                 );
                 servers.OnServerExited(status => Notify(McpComposition.ServerExitedNotice(status)));
-                foreach (ITool tool in await servers.ListToolsAsync(ct).ConfigureAwait(false))
-                {
-                    _tools.Add(tool);
-                }
+                ToolComposition.AddSkippingTaken(
+                    _tools,
+                    await servers.ListToolsAsync(ct).ConfigureAwait(false),
+                    "an extension-registered MCP server",
+                    message => Notify(message, NoticeLevel.Warning)
+                );
             }
 
             if (_mcp is { } mcp)
             {
                 mcp.OnServerExited(status => Notify(McpComposition.ServerExitedNotice(status)));
-                foreach (ITool tool in await mcp.ListToolsAsync(ct).ConfigureAwait(false))
-                {
-                    _tools.Add(tool);
-                }
+                ToolComposition.AddSkippingTaken(
+                    _tools,
+                    await mcp.ListToolsAsync(ct).ConfigureAwait(false),
+                    "mcp.json",
+                    message => Notify(message, NoticeLevel.Warning)
+                );
 
                 McpComposition.NotifyFailures(mcp, Notify);
             }

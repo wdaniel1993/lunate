@@ -1,6 +1,5 @@
 using Lunate.Agent;
 using Lunate.Extensibility.Abstractions;
-using Lunate.Tui;
 using Microsoft.Extensions.AI;
 
 namespace Lunate.Coding.Tests;
@@ -72,24 +71,38 @@ public sealed class ExtensionToolResumeTests
 
         Assert.Equal(StopReasons.Stop, Assert.Single(events.OfType<RunFinished>()).StopReason);
 
-        // No renderer is registered for the absent extension tool: the renderer path falls back to
-        // the default tool block, which renders the call without a crash.
-        host.ToolResultRenderers.TryRender(
-            "tools__echo",
-            new ToolResultView("tools__echo", "call-1", "echo: earlier", IsError: false),
-            out IReadOnlyList<TextSegment> segments
-        );
-        Assert.Empty(segments);
-        var blocks = new ToolBlockRenderer();
-        var block = blocks.Render(
-            new ToolBlockModel(
+        // No renderer is registered for the absent extension tool: the resolution signal the
+        // session's fallback rides on is false (the real session path is driven by the
+        // interactive test below).
+        Assert.False(
+            host.ToolResultRenderers.TryRender(
                 "tools__echo",
-                "{}",
-                ToolBlockStatus.Error,
-                "Unknown tool 'tools__echo'.",
-                Diff: null
+                new ToolResultView("tools__echo", "call-1", "echo: earlier", IsError: false),
+                out IReadOnlyList<TextSegment> segments
             )
         );
-        Assert.NotNull(block);
+        Assert.Empty(segments);
+    }
+
+    [Fact]
+    public async Task A_call_to_an_absent_extension_tool_renders_through_the_session()
+    {
+        using var host = new InteractiveSessionHost();
+        host.Client.Enqueue(
+            Scripts.Call("call-1", "tools__echo", Scripts.Args(("text", "hi"))),
+            Scripts.ToolCalls()
+        );
+        host.Client.Enqueue(Scripts.Text("done"), Scripts.Stop());
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+
+        host.Console.SendText("go");
+        host.Console.SendEnter();
+        await host.Client.WaitForCallAsync(2);
+        await InteractiveSessionCommandTests.WaitForScrollbackAsync(host, "tool tools__echo");
+
+        host.Console.SendText("/quit");
+        host.Console.SendEnter();
+        await run;
     }
 }
