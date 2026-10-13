@@ -58,6 +58,8 @@ internal static class AcpMode
 
             if (host is not null)
             {
+                // Extension tools first, in registration order, then the MCP tools (design D7).
+                mcpTools.AddRange(host.Tools);
                 // The configured names are the collision baseline: a same-named registration is
                 // skipped before listing (the configured server wins); nothing starts before.
                 ExtensionMcpServers servers = host.ComposeMcpServers(

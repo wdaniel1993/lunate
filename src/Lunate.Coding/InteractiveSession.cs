@@ -346,6 +346,12 @@ internal sealed partial class InteractiveSession : IDisposable
         {
             if (_extensions is { } extensions)
             {
+                // Extension tools first, in registration order, then the MCP tools (design D7).
+                foreach (ITool tool in extensions.Tools)
+                {
+                    _tools.Add(tool);
+                }
+
                 ExtensionMcpServers servers = extensions.ComposeMcpServers(
                     McpNameCollisions.ConfiguredServers(_mcp)
                 );

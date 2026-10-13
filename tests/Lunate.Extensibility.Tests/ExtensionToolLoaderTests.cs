@@ -101,6 +101,31 @@ public sealed class ExtensionToolLoaderTests
     }
 
     [Fact]
+    public async Task A_tool_extension_loads_although_its_directory_carries_an_agent_copy()
+    {
+        using var temp = new TempDirectory();
+        string directory = TestExtensions.InstallToolExtension(
+            temp,
+            "tools",
+            tools: """["echo"]""",
+            settings: """{"tools":[{"name":"echo"}]}"""
+        );
+        File.Copy(
+            TestExtensions.FixtureFile("ToolExtension", "ToolExtension.dll"),
+            Path.Combine(directory, "Lunate.Agent.dll"),
+            overwrite: true
+        );
+        var loader = new ExtensionLoader(
+            TestExtensions.Options(temp.Subdirectory("store"), new RecordingExtensionLog())
+        );
+        loader.Discover(temp.Root, "repo");
+
+        await loader.Load("tools", temp.Root, "repo", new FakeExtensionTrustPrompt(true), Ct);
+
+        Assert.Equal("tools__echo", Assert.Single(loader.Tools.List()).Name);
+    }
+
+    [Fact]
     public async Task A_registered_tool_the_manifest_does_not_declare_refuses_the_load()
     {
         using var temp = new TempDirectory();

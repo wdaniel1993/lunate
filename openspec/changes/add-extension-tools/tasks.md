@@ -22,9 +22,9 @@
 
 ## 4. Composition and pipeline behavior
 
-- [ ] 4.1 `ExtensionSession` exposes composed extension tools; the three modes add them (extension tools first, then MCP) per D7.
-- [ ] 4.2 Same pipeline: annotations → `ToolCalling` payload; no-annotation tools ask (risk `Write`, MCP defaults); approval; result bounding; `OutputSchema`/`StructuredContent`; handler throw → teaching error result, never a crash (D5, D10).
-- [ ] 4.3 Resumed-session rendering: a recorded call to an absent extension tool renders via the default view (D9).
+- [x] 4.1 `ExtensionSession` exposes composed extension tools; the three modes add them (extension tools first, then MCP) per D7.
+- [x] 4.2 Same pipeline: annotations → `ToolCalling` payload; no-annotation tools ask (risk `Write`, MCP defaults); approval; result bounding; `OutputSchema`/`StructuredContent`; handler throw → teaching error result, never a crash (D5, D10).
+- [x] 4.3 Resumed-session rendering: a recorded call to an absent extension tool renders via the default view (D9).
 - [ ] 4.4 Kit: loads/composes/unloads extension tools.
 
 ## 5. Proof

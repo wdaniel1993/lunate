@@ -36,6 +36,26 @@ public sealed class ExtensionSessionTests
     }
 
     [Fact]
+    public async Task A_composed_session_exposes_the_registered_extension_tools()
+    {
+        using var temp = new TempDirectory();
+        string worktree = temp.File("worktree");
+        Directory.CreateDirectory(worktree);
+        string store = temp.File("store");
+        ToolFixture.Install(store);
+
+        await using var host = await ExtensionSession.StartAsync(
+            Identity(worktree),
+            new ExtensionSeams { StorePath = store, Log = new RecordingExtensionLog() },
+            Ct
+        );
+
+        ITool tool = Assert.Single(host.Tools);
+        Assert.Equal("tools__echo", tool.Name);
+        Assert.Equal("tools", tool.Namespace?.Name);
+    }
+
+    [Fact]
     public async Task The_workspace_identity_is_reachable_in_a_composed_session()
     {
         using var temp = new TempDirectory();

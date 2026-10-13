@@ -128,6 +128,8 @@ internal static class PrintMode
                 List<ITool> tools = [];
                 if (extensions is not null)
                 {
+                    // Extension tools first, in registration order, then the MCP tools (design D7).
+                    tools.AddRange(extensions.Tools);
                     // The configured names are the collision baseline: a same-named registration
                     // is skipped before listing (the configured server wins); nothing starts yet.
                     ExtensionMcpServers servers = extensions.ComposeMcpServers(
