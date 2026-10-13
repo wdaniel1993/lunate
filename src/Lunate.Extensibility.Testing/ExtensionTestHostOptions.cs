@@ -35,6 +35,9 @@ public sealed record ExtensionTestHostOptions
     /// <summary>The maximum number of model calls per run.</summary>
     public int MaxSteps { get; init; } = 8;
 
+    /// <summary>The subagent limits of the run tree; null uses the defaults.</summary>
+    public SubagentLimits? SubagentLimits { get; init; }
+
     /// <summary>The hook runner options; null uses the runner's defaults.</summary>
     public HookRunnerOptions? HookRunnerOptions { get; init; }
 }

@@ -438,6 +438,7 @@ internal sealed partial class InteractiveSession : IDisposable
             ),
             WorkingDirectory = _workspace.WorktreeRoot,
             ToolOutputLimit = _settings.ToolOutputLimit,
+            SubagentLimits = _settings.Subagents,
             Approver = _approver,
             Hooks = _extensions?.Hooks,
             Session = _session,

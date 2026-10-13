@@ -149,6 +149,7 @@ public sealed class ExtensionTestHost : IAsyncDisposable
                 MaxSteps = _options.MaxSteps,
                 SystemPrompt = _options.SystemPrompt,
                 WorkingDirectory = WorkingDirectory,
+                SubagentLimits = _options.SubagentLimits ?? new SubagentLimits(),
                 Approver = _options.Approver,
                 Hooks = new AgentHookAdapter(Runner.Hooks),
                 Session = session,
