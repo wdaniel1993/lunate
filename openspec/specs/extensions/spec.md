@@ -204,7 +204,7 @@ Each handler SHALL run under a per-handler timeout (configurable; `ProviderStrea
 
 ### Requirement: Hook wiring
 
-Hooks SHALL fire where their producers exist: `SessionStarted`/`SessionEnding` (loader lifecycle; started safe to run more than once, ending idempotent), `RunStarting`, `ContextBuilding`, `ProviderStreamEvent`, `MessageCompleted`, `ToolCalling` (before the approval prompt, with the resolved tool's annotations — lowercase kebab wire names in declaration order: `read-only`, `destructive`, `idempotent`, `open-world` — on the payload so policy handlers can decide on them), `ToolResultReady` (composing in order; the payload carries the call's arguments as approved, and the result may replace the output, attach model-facing structured content, and set UI-only details), `TurnEnded`, `RunSettled`, `ProjectTrust` (global-extension handlers in the trust flow), and `Compacting` (before compaction; the last provided summary wins, and handler failure falls back to the default summarization). Hooks without producers yet (`InputReceived`) SHALL be contract-complete and documented as unwired. The harness SHALL NOT depend on the extension system: it exposes no-op seam points, and the host adapter maps to the hook DTOs.
+Hooks SHALL fire where their producers exist: `SessionStarted`/`SessionEnding` (loader lifecycle; started safe to run more than once, ending idempotent), `RunStarting`, `ContextBuilding`, `ProviderStreamEvent`, `MessageCompleted`, `ToolCalling` (before the approval prompt, with the resolved tool's annotations — lowercase kebab wire names in declaration order: `read-only`, `destructive`, `idempotent`, `open-world` — on the payload so policy handlers can decide on them), `ToolResultReady` (composing in order; the payload carries the call's arguments as approved, and the result may replace the output, attach model-facing structured content, and set UI-only details), `TurnEnded`, `RunSettled`, `ProjectTrust` (global-extension handlers in the trust flow), and `Compacting` (before compaction; the last provided summary wins, and handler failure falls back to the default summarization). Hooks without producers yet (`InputReceived`) SHALL be contract-complete and documented as unwired. The harness SHALL NOT depend on the extension system: it exposes no-op seam points, and the host adapter maps to the hook DTOs. During a child run, the harness hook payload family (`IParentRunIdPayload`: run starting, context building, provider stream events, message completion, tool calling, tool results, turn ended, run settled, compacting) SHALL carry the child's run id and the parent run id, so handlers can correlate a run tree.
 
 #### Scenario: ToolCalling runs before approval
 
@@ -235,6 +235,12 @@ Hooks SHALL fire where their producers exist: `SessionStarted`/`SessionEnding` (
 - **GIVEN** a ToolResultReady handler
 - **WHEN** a tool call completes
 - **THEN** the payload carries the call's arguments as approved, and a handler returning structured content sees it on the tool result
+
+#### Scenario: Child-run hook payloads carry both run ids
+
+- **GIVEN** a tool call inside a child (subagent) run
+- **WHEN** its ToolCalling hook fires
+- **THEN** the payload carries the child's run id and the parent run id
 
 ### Requirement: Extension context tagging
 Context added by extensions SHALL be tagged with its source extension id and SHALL respect a per-extension token budget; over-budget additions SHALL be dropped and logged.
