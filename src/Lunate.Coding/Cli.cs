@@ -55,7 +55,13 @@ internal static class Cli
 
         if (args.Length > 0 && args[0] == "trust")
         {
-            return TrustCommand.Run(args[1..], workingDirectory, output, errors, extensions);
+            return TrustCommand.Run(
+                args[1..],
+                workingDirectory,
+                output,
+                errors,
+                noExtensions ? Suppress(extensions) : extensions
+            );
         }
 
         if (args.Length > 0 && args[0] == "--discover")

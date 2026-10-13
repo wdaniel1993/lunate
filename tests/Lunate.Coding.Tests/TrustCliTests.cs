@@ -58,6 +58,37 @@ public sealed class TrustCliTests
     }
 
     [Fact]
+    public void Trust_with_no_extensions_records_only_the_project_config()
+    {
+        using var temp = new TempDirectory();
+        string worktree = temp.File("worktree");
+        Directory.CreateDirectory(Path.Combine(worktree, ".git"));
+        HelloFixture.Install(Path.Combine(worktree, ".lunate", "extensions", "hello"));
+        string config = McpComposition.ProjectConfigPath(worktree);
+        Directory.CreateDirectory(Path.GetDirectoryName(config)!);
+        File.WriteAllText(config, """{ "mcpServers": { "srv": { "command": "x" } } }""");
+        worktree = Workspace.Canonicalize(worktree);
+        string store = temp.File("store");
+
+        int exitCode = Cli.Run(
+            ["trust", "--yes", "--no-extensions"],
+            TextWriter.Null,
+            TextWriter.Null,
+            TestContext.Current.CancellationToken,
+            extensions: new ExtensionSeams { StorePath = store },
+            workingDirectory: worktree
+        );
+
+        Assert.Equal(TrustCommand.ExitOk, exitCode);
+        TrustRecord record = Assert.Single(
+            new ExtensionTrustStore(new ExtensionHostOptions { StorePath = store }).Records(
+                new Workspace(worktree).GitCommonDir ?? worktree
+            )
+        );
+        Assert.Equal(TrustSection.McpConfig, record.Section);
+    }
+
+    [Fact]
     public void Trust_usage_errors_go_to_stderr_with_exit_two()
     {
         using var temp = new TempDirectory();
