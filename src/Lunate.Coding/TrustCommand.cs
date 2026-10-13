@@ -261,7 +261,8 @@ internal static class TrustCommand
                 case "--digest"
                     when digest is null
                         && index + 1 < args.Length
-                        && !string.IsNullOrWhiteSpace(args[index + 1]):
+                        && !string.IsNullOrWhiteSpace(args[index + 1])
+                        && !args[index + 1].StartsWith("--", StringComparison.Ordinal):
                     digest = args[++index];
                     break;
                 default:

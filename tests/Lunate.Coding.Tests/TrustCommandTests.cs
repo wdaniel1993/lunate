@@ -119,6 +119,8 @@ public sealed class TrustCommandTests
     [InlineData("--json", "--clear")]
     [InlineData("--digest", "abc")]
     [InlineData("--yes", "--digest")]
+    [InlineData("--yes", "--digest", "--json")]
+    [InlineData("--json", "--digest", "abc")]
     [InlineData("--yes", "--yes")]
     [InlineData("stray")]
     public void Usage_errors_exit_two_with_nothing_on_stdout(params string[] args)
