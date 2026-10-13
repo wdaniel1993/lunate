@@ -1307,3 +1307,5 @@ static Lunate.Agent.ToolStub.operator ==(Lunate.Agent.ToolStub? left, Lunate.Age
 static Lunate.Agent.ToolStubParameter.operator !=(Lunate.Agent.ToolStubParameter? left, Lunate.Agent.ToolStubParameter? right) -> bool
 static Lunate.Agent.ToolStubParameter.operator ==(Lunate.Agent.ToolStubParameter? left, Lunate.Agent.ToolStubParameter? right) -> bool
 static Lunate.Agent.ToolStubs.Describe(Lunate.Agent.ITool! tool) -> Lunate.Agent.ToolStub!
+Lunate.Agent.ToolResult.CallId.get -> string?
+Lunate.Agent.ToolResult.CallId.init -> void

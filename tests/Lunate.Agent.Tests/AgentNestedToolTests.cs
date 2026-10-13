@@ -49,6 +49,74 @@ public sealed class AgentNestedToolTests
     }
 
     [Fact]
+    public async Task A_nested_result_carries_the_canonical_call_id()
+    {
+        ScriptedTool inner = ReadTool("nested contents", "inner");
+        var outer = new ScriptedTool(
+            "outer",
+            "Returns the nested result.",
+            """{"type":"object"}"""
+        );
+        ToolResult? nested = null;
+        outer.OnExecuteAsync = async (_, ctx, ct) =>
+        {
+            var execute =
+                ctx.ExecuteToolAsync
+                ?? throw new InvalidOperationException("The context has no nested executor.");
+            nested = await execute("inner", EmptyArgs(), ct);
+            return new ToolResult("ok", IsError: false);
+        };
+        var client = new ScriptedChatClient()
+            .Enqueue(
+                LoopScripts.Call("call_1", "outer", LoopScripts.Args(("x", "1"))),
+                LoopScripts.ToolCalls()
+            )
+            .Enqueue(LoopScripts.Text("Done"), LoopScripts.Stop());
+        var harness = new AgentHarness(client, Registry(outer, inner));
+
+        List<AgentEvent> events = await Run(harness);
+
+        ToolCallStart nestedStart = Assert.Single(
+            events.OfType<ToolCallStart>(),
+            e => e.ToolName == "inner"
+        );
+        Assert.Equal("call_1/1", nestedStart.CallId);
+        Assert.Equal(nestedStart.CallId, nested!.CallId);
+    }
+
+    [Fact]
+    public async Task A_refused_nested_call_carries_no_call_id()
+    {
+        var modelOnly = new ContractTool("model_only") { Exposure = ToolExposure.ModelOnly };
+        var outer = new ScriptedTool(
+            "outer",
+            "Returns the nested result.",
+            """{"type":"object"}"""
+        );
+        ToolResult? nested = null;
+        outer.OnExecuteAsync = async (_, ctx, ct) =>
+        {
+            var execute =
+                ctx.ExecuteToolAsync
+                ?? throw new InvalidOperationException("The context has no nested executor.");
+            nested = await execute("model_only", EmptyArgs(), ct);
+            return new ToolResult("done", IsError: false);
+        };
+        var client = new ScriptedChatClient()
+            .Enqueue(
+                LoopScripts.Call("call_1", "outer", LoopScripts.Args(("x", "1"))),
+                LoopScripts.ToolCalls()
+            )
+            .Enqueue(LoopScripts.Text("Done"), LoopScripts.Stop());
+        var harness = new AgentHarness(client, Registry(outer, modelOnly));
+
+        await Run(harness);
+
+        Assert.True(nested!.IsError);
+        Assert.Null(nested.CallId);
+    }
+
+    [Fact]
     public async Task The_nested_depth_cap_is_enforced()
     {
         var recurse = new ScriptedTool("recurse", "Calls itself.", """{"type":"object"}""");

@@ -268,20 +268,30 @@ public sealed class CodeModeResultTests
     )
     {
         IReadOnlyList<ITool> tools = bridged ?? [];
+        int nestedCalls = 0;
         return new ToolContext(host.WorkingDirectory, new EventRecorder())
         {
             RunId = "run_direct",
             CallId = "call_1",
-            ExecuteToolAsync = (name, args, _) =>
+            ExecuteToolAsync = async (name, args, _) =>
             {
                 ITool? tool = tools.FirstOrDefault(candidate => candidate.Name == name);
-                return tool is null
-                    ? Task.FromResult(new ToolResult($"Unknown tool '{name}'.", IsError: true))
-                    : tool.ExecuteAsync(
-                        args,
-                        new ToolContext(host.WorkingDirectory, new EventRecorder()),
-                        Ct
-                    );
+                if (tool is null)
+                {
+                    return new ToolResult($"Unknown tool '{name}'.", IsError: true);
+                }
+
+                // Mirror the pipeline: a ran nested call carries its canonical call id; refusals do not.
+                string callId = string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"call_1/{Interlocked.Increment(ref nestedCalls)}"
+                );
+                ToolResult result = await tool.ExecuteAsync(
+                    args,
+                    new ToolContext(host.WorkingDirectory, new EventRecorder()),
+                    Ct
+                );
+                return result with { CallId = callId };
             },
             ToolStubs = stubs,
         };

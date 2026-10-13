@@ -6,7 +6,7 @@ using Lunate.Agent;
 namespace CodeModeExtension;
 
 /// <summary>One bridged call as the structured result reports it.</summary>
-internal sealed record BridgedCall(string CallId, string Tool, bool IsError);
+internal sealed record BridgedCall(string? CallId, string Tool, bool IsError);
 
 /// <summary>
 /// The protocol half of the bridge: parses the child's stdout frames, records logs, the final
@@ -171,10 +171,6 @@ internal sealed class CodeModeBridge(ToolContext context, CodeModeSettings setti
         }
 
         _callCount++;
-        string callId = string.Create(
-            CultureInfo.InvariantCulture,
-            $"{context.CallId}/{_callCount}"
-        );
         JsonElement args =
             frame.TryGetProperty("args", out JsonElement argsElement)
             && argsElement.ValueKind == JsonValueKind.Object
@@ -198,7 +194,7 @@ internal sealed class CodeModeBridge(ToolContext context, CodeModeSettings setti
             );
         }
 
-        _calls.Add(new BridgedCall(callId, tool, result.IsError));
+        _calls.Add(new BridgedCall(result.CallId, tool, result.IsError));
         return ResultFrame(id, result.IsError, result.Output ?? string.Empty);
     }
 

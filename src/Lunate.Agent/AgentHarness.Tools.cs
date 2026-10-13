@@ -249,7 +249,10 @@ public sealed partial class AgentHarness
             }
         }
 
-        return result;
+        return result with
+        {
+            CallId = nestedCallId,
+        };
     }
 
     /// <summary>The hook, approval and execution shared by top-level and nested calls.</summary>
