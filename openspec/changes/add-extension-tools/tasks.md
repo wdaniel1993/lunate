@@ -2,16 +2,16 @@
 
 ## 1. The contract (Abstractions + layer)
 
-- [ ] 1.1 `Lunate.Extensibility.Abstractions` gains a one-way reference to `Lunate.Agent`; `LayeringChecker` gains the pair.
-- [ ] 1.2 `ExtensionToolRegistration` (name, description, schema, optional output schema, `ToolAnnotations?`, `ToolExposure`, `ToolRisk?`, handler) + `IExtensionToolHandler.InvokeAsync(JsonElement, ToolContext, CancellationToken) → Task<ToolResult>` — the core types verbatim.
-- [ ] 1.3 `IExtensionContext.RegisterTool`; `ExtensionApi.Current` → `1.7.0`; PublicAPI.Unshipped updates (Abstractions, Agent, Extensibility).
+- [x] 1.1 `Lunate.Extensibility.Abstractions` gains a one-way reference to `Lunate.Agent`; `LayeringChecker` gains the pair.
+- [x] 1.2 `ExtensionToolRegistration` (name, description, schema, optional output schema, `ToolAnnotations?`, `ToolExposure`, `ToolRisk?`, handler) + `IExtensionToolHandler.InvokeAsync(JsonElement, ToolContext, CancellationToken) → Task<ToolResult>` — the core types verbatim.
+- [x] 1.3 `IExtensionContext.RegisterTool`; `ExtensionApi.Current` → `1.7.0`; PublicAPI.Unshipped updates (Abstractions, Agent, Extensibility).
 
 ## 2. Registry and unload
 
-- [ ] 2.1 `ToolRegistry.Remove(name)`: removes the tool, keeps declaration order for the rest, PublicAPI updated.
-- [ ] 2.2 `ExtensionToolAdapter` (registration → `ITool`: prefixed name, namespace = extension id, pass-through fields) with per-extension in-flight call tracking.
-- [ ] 2.3 Loader unload wiring: unload removes the extension's tools, fires `ToolsChanged`, cancels its in-flight calls (a cancelled call settles as a cancelled result, never a crash); reload = unload+load.
-- [ ] 2.4 Tests: removal keeps order; `ToolsChanged` on add and remove; an in-flight call is cancelled on unload.
+- [x] 2.1 `ToolRegistry.Remove(name)`: removes the tool, keeps declaration order for the rest, PublicAPI updated.
+- [x] 2.2 `ExtensionToolAdapter` (registration → `ITool`: prefixed name, namespace = extension id, pass-through fields) with per-extension in-flight call tracking.
+- [x] 2.3 Loader unload wiring: unload removes the extension's tools, fires `ToolsChanged`, cancels its in-flight calls (a cancelled call settles as a cancelled result, never a crash); reload = unload+load.
+- [x] 2.4 Tests: removal keeps order; `ToolsChanged` on add and remove; an in-flight call is cancelled on unload.
 
 ## 3. Registration, validation, naming
 

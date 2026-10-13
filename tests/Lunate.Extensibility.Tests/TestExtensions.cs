@@ -20,7 +20,8 @@ internal static class TestExtensions
         string entryAssembly = "HelloExtension.dll",
         string apiVersion = "^1.0.0",
         string settingsSchema = "",
-        string modelProviders = ""
+        string modelProviders = "",
+        string tools = ""
     )
     {
         Directory.CreateDirectory(extensionDirectory);
@@ -28,8 +29,9 @@ internal static class TestExtensions
             settingsSchema.Length == 0 ? null : $",\"settingsSchema\":{settingsSchema}";
         string? providers =
             modelProviders.Length == 0 ? null : $",\"modelProviders\":{modelProviders}";
+        string? declaredTools = tools.Length == 0 ? null : $",\"tools\":{tools}";
         string json =
-            $$"""{"id":"{{id}}","version":"0.1.0","apiVersion":"{{apiVersion}}","entryAssembly":"{{entryAssembly}}"{{schema}}{{providers}}}""";
+            $$"""{"id":"{{id}}","version":"0.1.0","apiVersion":"{{apiVersion}}","entryAssembly":"{{entryAssembly}}"{{schema}}{{providers}}{{declaredTools}}}""";
         File.WriteAllText(Path.Combine(extensionDirectory, "extension.json"), json);
     }
 
@@ -78,5 +80,35 @@ internal static class TestExtensions
         CopyFixture(directory, "HelloExtension.dll", "HelloExtension.Support.dll");
         WriteManifest(directory, id);
         return directory;
+    }
+
+    public static string InstallToolExtension(
+        TempDirectory temp,
+        string id,
+        string tools,
+        string? settings = null
+    )
+    {
+        string directory = GlobalExtensionDirectory(temp, id);
+        Directory.CreateDirectory(directory);
+        File.Copy(
+            FixtureFile("ToolExtension", "ToolExtension.dll"),
+            Path.Combine(directory, "ToolExtension.dll"),
+            overwrite: true
+        );
+        WriteManifest(directory, id, entryAssembly: "ToolExtension.dll", tools: tools);
+        if (settings is not null)
+        {
+            WriteSettings(temp, id, settings);
+        }
+
+        return directory;
+    }
+
+    public static void WriteSettings(TempDirectory temp, string id, string settings)
+    {
+        string directory = Path.Combine(temp.Subdirectory("store"), "extensions-settings");
+        Directory.CreateDirectory(directory);
+        File.WriteAllText(Path.Combine(directory, id + ".json"), settings);
     }
 }

@@ -20,6 +20,7 @@ public sealed partial class ExtensionLoader
     private readonly ToolResultRendererRegistry _toolResultRenderers;
     private readonly StatusWidgetRegistry _statusWidgets;
     private readonly McpServerRegistry _mcpServers;
+    private readonly ExtensionToolRegistry _tools = new();
     private readonly Dictionary<string, List<IDisposable>> _subscriptions = new(
         StringComparer.Ordinal
     );
@@ -52,6 +53,9 @@ public sealed partial class ExtensionLoader
 
     /// <summary>The MCP servers the loaded extensions registered.</summary>
     public McpServerRegistry McpServers => _mcpServers;
+
+    /// <summary>The tools the loaded extensions registered, in registration order.</summary>
+    public ExtensionToolRegistry Tools => _tools;
 
     /// <summary>
     /// The named service registry shared with extensions (core handles included). Register core
@@ -95,6 +99,7 @@ public sealed partial class ExtensionLoader
             return;
         }
 
+        IReadOnlyList<string> removedTools = _tools.Unregister(id);
         _hooks.Unregister(id);
         await _backgroundServices.DropAsync(id).ConfigureAwait(false);
         _modelProviders.Unregister(id);
@@ -106,7 +111,21 @@ public sealed partial class ExtensionLoader
         {
             context.Unload();
         }
+
+        if (removedTools.Count > 0)
+        {
+            await NotifyToolsChangedAsync().ConfigureAwait(false);
+        }
     }
+
+    /// <summary>
+    /// Fires <c>ToolsChanged</c> with the extension tool names now registered. Add and remove
+    /// happen outside a run, so the payload carries an empty run id.
+    /// </summary>
+    private ValueTask NotifyToolsChangedAsync() =>
+        _hooks.RunToolsChangedAsync(
+            new ToolsChangedPayload(string.Empty, [.. _tools.List().Select(tool => tool.Name)])
+        );
 
     private void SubscribeFileChanged(
         string extensionId,

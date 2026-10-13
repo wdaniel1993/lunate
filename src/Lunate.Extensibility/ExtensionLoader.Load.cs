@@ -56,6 +56,7 @@ public sealed partial class ExtensionLoader
         cancellationToken.ThrowIfCancellationRequested();
 
         var context = new ExtensionLoadContext(descriptor.Id, descriptor.Directory);
+        int toolCountBefore = _tools.List().Count;
         try
         {
             Assembly assembly = context.LoadFromAssemblyPath(entryPath);
@@ -72,7 +73,8 @@ public sealed partial class ExtensionLoader
                 FindCoreService,
                 _toolResultRenderers.Register,
                 _statusWidgets.Register,
-                _mcpServers.Register
+                _mcpServers.Register,
+                _tools.Register
             );
             IExtension extension = factory.Create(extensionContext);
             _modelProviders.Register(descriptor.Id, descriptor.Manifest.ModelProviders);
@@ -86,10 +88,16 @@ public sealed partial class ExtensionLoader
                 await _backgroundServices.StartAsync(cancellationToken).ConfigureAwait(false);
             }
 
+            if (_tools.List().Count != toolCountBefore)
+            {
+                await NotifyToolsChangedAsync().ConfigureAwait(false);
+            }
+
             return loaded;
         }
         catch (ExtensionLoadException)
         {
+            _tools.Unregister(descriptor.Id);
             await _backgroundServices.DropAsync(descriptor.Id).ConfigureAwait(false);
             _modelProviders.Unregister(descriptor.Id);
             _toolResultRenderers.Unregister(descriptor.Id);
@@ -99,8 +107,14 @@ public sealed partial class ExtensionLoader
             context.Unload();
             throw;
         }
+        catch (OperationCanceledException)
+        {
+            _tools.Unregister(descriptor.Id);
+            throw;
+        }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
+            _tools.Unregister(descriptor.Id);
             await _backgroundServices.DropAsync(descriptor.Id).ConfigureAwait(false);
             _modelProviders.Unregister(descriptor.Id);
             _toolResultRenderers.Unregister(descriptor.Id);

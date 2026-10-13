@@ -179,6 +179,7 @@ Lunate.Agent.ToolRegistry
 Lunate.Agent.ToolRegistry.Add(Lunate.Agent.ITool! tool) -> void
 Lunate.Agent.ToolRegistry.Declarations.get -> System.Collections.Generic.IReadOnlyList<Microsoft.Extensions.AI.AIFunction!>!
 Lunate.Agent.ToolRegistry.Find(string! name) -> Lunate.Agent.ITool?
+Lunate.Agent.ToolRegistry.Remove(string! name) -> bool
 Lunate.Agent.ToolRegistry.ToolRegistry() -> void
 Lunate.Agent.ToolRegistry.Tools.get -> System.Collections.Generic.IReadOnlyList<Lunate.Agent.ITool!>!
 Lunate.Agent.ToolResult

@@ -44,4 +44,23 @@ public sealed class ToolRegistry
 
     /// <summary>Returns the tool with the given name, or null when none is registered.</summary>
     public ITool? Find(string name) => _toolsByName.GetValueOrDefault(name);
+
+    /// <summary>
+    /// Removes the tool with the given name; returns false when none is registered. Declaration
+    /// order is preserved for the remaining tools.
+    /// </summary>
+    public bool Remove(string name)
+    {
+        ArgumentNullException.ThrowIfNull(name);
+        if (!_toolsByName.Remove(name, out ITool? tool))
+        {
+            return false;
+        }
+
+        _tools.Remove(tool);
+        _declarations.RemoveAll(declaration =>
+            string.Equals(declaration.Name, name, StringComparison.Ordinal)
+        );
+        return true;
+    }
 }
