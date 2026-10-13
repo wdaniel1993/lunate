@@ -52,7 +52,7 @@ Plain `--yes` remains for local scripts; the docs mark it "only for checkouts yo
 
 ### D9 — `--json` is the inspect output contract
 
-`lunate trust --json` prints one JSON document on stdout — `records`, `pending`, and `digest` — for scripts. Canonical conventions: `\n` line endings, invariant culture, deterministic order (the same sort as the digest). `--json` with `--yes` or `--clear` is a usage error (2): the flag describes inspection, and recording output stays human-readable. The text form is not a scripting contract; the JSON is.
+`lunate trust --json` prints one JSON document on stdout — `records`, `pending`, and `digest` — for scripts. Canonical conventions: `\n` line endings, invariant culture, deterministic order (the same sort as the digest). Each pending server's `env` is the sorted list of key names only — never values, so a literal secret in the project file can never be echoed; the digest still hashes the full raw env map, so a value change still changes the digest. `--json` with `--yes` or `--clear` is a usage error (2): the flag describes inspection, and recording output stays human-readable. The text form is not a scripting contract; the JSON is.
 
 ### D10 — The mcp.json trust hash is over raw server definitions
 

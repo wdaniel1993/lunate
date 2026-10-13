@@ -282,6 +282,51 @@ public sealed class TrustCommandTests
     }
 
     [Fact]
+    public void Json_lists_env_key_names_but_never_values()
+    {
+        using var temp = new TempDirectory();
+        Fixture fixture = Fixture.Create(temp, withConfig: true);
+        File.WriteAllText(
+            fixture.ConfigPath,
+            """{ "mcpServers": { "srv": { "command": "x", "env": { "TOKEN": "the test value", "ALPHA": "1" } } } }"""
+        );
+
+        (int exitCode, string output, _) = fixture.Run("--json");
+
+        Assert.Equal(TrustCommand.ExitPending, exitCode);
+        Assert.DoesNotContain("the test value", output, StringComparison.Ordinal);
+        using JsonDocument document = JsonDocument.Parse(output);
+        JsonElement env = document
+            .RootElement.GetProperty("pending")[1]
+            .GetProperty("servers")[0]
+            .GetProperty("env");
+        Assert.Equal(
+            new[] { "ALPHA", "TOKEN" },
+            env.EnumerateArray().Select(item => item.GetString()).ToArray()
+        );
+    }
+
+    [Fact]
+    public void The_digest_changes_when_an_env_value_changes()
+    {
+        using var temp = new TempDirectory();
+        Fixture fixture = Fixture.Create(temp, withConfig: true);
+        File.WriteAllText(
+            fixture.ConfigPath,
+            """{ "mcpServers": { "srv": { "command": "x", "env": { "TOKEN": "one" } } } }"""
+        );
+        string first = fixture.PrintedDigest();
+
+        File.WriteAllText(
+            fixture.ConfigPath,
+            """{ "mcpServers": { "srv": { "command": "x", "env": { "TOKEN": "two" } } } }"""
+        );
+        string second = fixture.PrintedDigest();
+
+        Assert.NotEqual(first, second);
+    }
+
+    [Fact]
     public void Json_with_nothing_pending_carries_a_null_digest_and_exits_zero()
     {
         using var temp = new TempDirectory();

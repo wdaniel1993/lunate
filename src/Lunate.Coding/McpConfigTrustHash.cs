@@ -27,14 +27,19 @@ internal static class McpConfigTrustHash
             )
         )
         {
-            definitions.Add(DefinitionNode(server));
+            definitions.Add(DefinitionNode(server, includeValues: true));
         }
 
         return Hash(definitions);
     }
 
-    /// <summary>One server's canonical raw definition; shared with the pending JSON contract.</summary>
-    internal static JsonObject DefinitionNode(McpServerOptions server)
+    /// <summary>
+    /// One server's canonical raw definition. With <paramref name="includeValues"/> the env map
+    /// carries its values — the digest input, which must change with a value; without, env is the
+    /// sorted key-name list (empty when none) — the inspectable <c>--json</c> form that never
+    /// carries a value.
+    /// </summary>
+    internal static JsonObject DefinitionNode(McpServerOptions server, bool includeValues)
     {
         var arguments = new JsonArray();
         foreach (string argument in server.Arguments)
@@ -42,19 +47,43 @@ internal static class McpConfigTrustHash
             arguments.Add(argument);
         }
 
-        JsonObject? environment = null;
+        JsonNode? environment = null;
         if (server.Environment is not null)
         {
-            environment = new JsonObject();
-            foreach (
-                KeyValuePair<string, string> entry in server.Environment.OrderBy(
-                    entry => entry.Key,
-                    StringComparer.Ordinal
-                )
-            )
+            if (includeValues)
             {
-                environment[entry.Key] = entry.Value;
+                var values = new JsonObject();
+                foreach (
+                    KeyValuePair<string, string> entry in server.Environment.OrderBy(
+                        entry => entry.Key,
+                        StringComparer.Ordinal
+                    )
+                )
+                {
+                    values[entry.Key] = entry.Value;
+                }
+
+                environment = values;
             }
+            else
+            {
+                var names = new JsonArray();
+                foreach (
+                    string name in server.Environment.Keys.OrderBy(
+                        name => name,
+                        StringComparer.Ordinal
+                    )
+                )
+                {
+                    names.Add(name);
+                }
+
+                environment = names;
+            }
+        }
+        else if (!includeValues)
+        {
+            environment = new JsonArray();
         }
 
         double? callTimeoutSeconds = server.CallTimeout?.TotalSeconds;

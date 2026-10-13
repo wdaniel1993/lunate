@@ -90,16 +90,19 @@ internal sealed class TrustInventory
 
     /// <summary>The pending decisions as the <c>--json</c> contract: extensions id-ordered, then
     /// the mcp.json with name-sorted servers; the human-useful locations (directory, path) stay
-    /// in this form — they help operators — but never enter the digest.
+    /// in this form — they help operators — but never enter the digest, and env is key names
+    /// only, never values.
     /// </summary>
-    internal JsonArray BuildPendingNode() => BuildPendingNode(includeLocations: true);
+    internal JsonArray BuildPendingNode() =>
+        BuildPendingNode(includeLocations: true, includeEnvValues: false);
 
     /// <summary>
     /// The canonical pending node. With <paramref name="includeLocations"/> false it carries
     /// content only — the digest input; the machine-local directory and path are only added for
-    /// the <c>--json</c> contract.
+    /// the <c>--json</c> contract. <paramref name="includeEnvValues"/> keeps the raw env values
+    /// in the digest (a value change must change it) and reduces env to key names in the JSON.
     /// </summary>
-    private JsonArray BuildPendingNode(bool includeLocations)
+    private JsonArray BuildPendingNode(bool includeLocations, bool includeEnvValues)
     {
         var pending = new JsonArray();
         foreach (
@@ -134,7 +137,7 @@ internal sealed class TrustInventory
                 )
             )
             {
-                servers.Add(McpConfigTrustHash.DefinitionNode(server));
+                servers.Add(McpConfigTrustHash.DefinitionNode(server, includeEnvValues));
             }
 
             var configNode = new JsonObject { ["kind"] = "mcp.json" };
@@ -158,7 +161,7 @@ internal sealed class TrustInventory
             return null;
         }
 
-        JsonArray canonical = BuildPendingNode(includeLocations: false);
+        JsonArray canonical = BuildPendingNode(includeLocations: false, includeEnvValues: true);
         return Convert.ToHexStringLower(
             SHA256.HashData(Encoding.UTF8.GetBytes(canonical.ToJsonString()))
         );
