@@ -12,7 +12,10 @@ public enum ToolExposure
     /// <summary>Callable from nested execution only; never declared to the model.</summary>
     Programmatic,
 
-    /// <summary>Discoverable but not declared upfront (code mode); nested execution refines this later.</summary>
+    /// <summary>
+    /// Never declared to the model; discoverable through the run's tool stubs and callable from
+    /// nested execution (code mode).
+    /// </summary>
     Deferred,
 
     /// <summary>Internal; neither declared nor callable programmatically.</summary>

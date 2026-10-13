@@ -8,8 +8,8 @@
 
 ## 2. Exposure spec closure
 
-- [ ] 2.1 Update `ToolExposure.Deferred` doc comment (D3) — no behaviour change.
-- [ ] 2.2 `agent-tools` delta: ADDED "Tool stubs"; MODIFIED "Tool exposure and registry declarations" (nested allows Direct/Programmatic/Deferred; Deferred never declared, stub-discoverable) with original scenarios preserved + one new scenario.
+- [x] 2.1 Update `ToolExposure.Deferred` doc comment (D3) — no behaviour change.
+- [x] 2.2 `agent-tools` delta: ADDED "Tool stubs"; MODIFIED "Tool exposure and registry declarations" (nested allows Direct/Programmatic/Deferred; Deferred never declared, stub-discoverable) with original scenarios preserved + one new scenario.
 
 ## 3. `core/process` service (Q1 outcome — sign-off)
 
