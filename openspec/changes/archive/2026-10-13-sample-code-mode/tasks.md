@@ -33,6 +33,6 @@
 
 ## 6. Verify, review, archive
 
-- [ ] 6.1 `scripts/verify.sh` green (both cultures); `openspec validate --all --strict` green.
-- [ ] 6.2 Adversarial review; fix findings; focused re-review.
+- [x] 6.1 `scripts/verify.sh` green (both cultures); `openspec validate --all --strict` green.
+- [x] 6.2 Adversarial review; fix findings; focused re-review.
 - [ ] 6.3 Archive; push; PR.
