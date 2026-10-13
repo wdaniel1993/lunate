@@ -340,7 +340,7 @@ public sealed class McpConfigCompositionTests
         store.RecordMcpConfigTrusted(
             canonical,
             canonical,
-            ExtensionTrustStore.ComputeFileContentHash(configPath),
+            McpConfigTrustHash.ComputeFile(configPath),
             DateTimeOffset.UtcNow
         );
     }

@@ -83,7 +83,7 @@ internal sealed class McpConfigTrust(ExtensionTrustStore store)
         ArgumentNullException.ThrowIfNull(prompt);
         ArgumentNullException.ThrowIfNull(log);
 
-        string contentHash = ExtensionTrustStore.ComputeFileContentHash(configPath);
+        string contentHash = McpConfigTrustHash.ComputeFile(configPath);
         switch (store.EvaluateMcpConfig(repositoryIdentity, worktreePath, contentHash))
         {
             case ExtensionTrustDecision.Trusted:
