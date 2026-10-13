@@ -96,7 +96,9 @@ public sealed class ProcessRunnerTests
             OperatingSystem.IsWindows()
                 ? new ProcessRunRequest(
                     "cmd.exe",
-                    ["/c", "echo out& echo err 1>&2& exit /b 7"],
+                    // '>&2 echo err' (redirect-first) avoids the trailing space cmd.exe leaves in
+                    // 'echo err 1>&2'.
+                    ["/c", "echo out& >&2 echo err& exit /b 7"],
                     temp.Root
                 )
                 : new ProcessRunRequest(
