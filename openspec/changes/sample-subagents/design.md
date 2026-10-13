@@ -99,3 +99,13 @@ The child run's token is linked to the caller's `ct` — which is the spawning t
 ## D13 — Replay determinism
 
 A parent session with linked child sessions **replays deterministically**: loading the parent produces the same reconstructed messages and the same rendered child-link lines across repeated loads, and loading each child produces exactly the child's own history. The test uses a committed fixture pair of session files and asserts stability (deterministic replay, not wall-clock-dependent output).
+
+## Deviations
+
+- D8's result vocabulary omits two cases; both report `StopReason = "error"` (`StopReasons.Error`) with `IsError: true`: a child run that ends in `RunError`, and a spawn refused for a non-limit reason (an unknown allow-list name, whose teaching error names it). A child error message leads the `Output` so the parent model reads what failed.
+- The loop's token-budget check runs after the `MaxSteps` check, so an exhausted step ceiling keeps precedence at the boundary (`step_limit` over `token_limit`).
+- Depth refusals name `subagents.depth` as the key although depth is not configurable in this version (fixed at 1); the message says so, keeping "name the limit and its setting key" literal.
+- Hook `ParentRunId` lives on the `Lunate.Agent` hook records (`AgentHookRecords`); the extension-facing hook DTOs in `Lunate.Extensibility.Abstractions` stay unchanged per the proposal ("API stays 1.7"), so extension handlers correlate a child run by its run id while the parent run id is available at the harness seam.
+- `ProviderStreamEventAsync` keeps its `(string runId, update, ct)` signature — it carries no payload record to extend — so the raw-update hook is the one hook without `ParentRunId`.
+- The sample's concurrency-refusal test drives two concurrent spawns through a test probe tool: the loop executes a turn's calls sequentially, so only a programmatic caller can hold the tree concurrency in this version.
+- `ExtensionTestHostOptions` (the testing kit, not product API) gained `SubagentLimits` and `ConfigureHarness` so sample tests can pin budgets and observe the harness hook seam.
