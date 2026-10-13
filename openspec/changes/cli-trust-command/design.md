@@ -18,11 +18,11 @@ The CLI is flags (`--version`, `--help`, `--discover`, `--acp`, `-p`) with no su
 
 ### D3 — Inspect, approve, clear — three explicit verbs
 
-- `lunate trust` (no flags) — prints the repository's records (short hashes, the `/trust` line format) and, for every **pending** decision, the same content the interactive question shows — extension: `Load project extension '{id}' {version} from {directory}`, plus the changed-files sentence when re-prompting; mcp.json: `Start {n} {server|servers} from project mcp.json '{path}'` with one `{name} — {truncated command}` detail line per server — then a hint to run `lunate trust --yes`. Records nothing.
-- `lunate trust --yes` — prints the same pending decisions, records them (extension section and mcp.json section), and prints what was recorded. Idempotent: a second run finds nothing pending and exits 0.
-- `lunate trust --clear` — clears the repository's records from both sections (the store's `ClearRepository`), prints the outcome.
+- `lunate trust` (no flags) — prints the repository's records (short hashes, the `/trust` line format), every **pending** decision with the same content the interactive question shows, and **one digest over all pending decisions** (D8). Records nothing. Exit 0 when nothing is pending, **3 when pending decisions exist** (usable as a CI check).
+- `lunate trust --yes` — prints the same pending decisions, records them (extension section and mcp.json section), and prints what was recorded. Idempotent: a second run finds nothing pending and exits 0. With `--digest <sha>` it records only on a match (D8).
+- `lunate trust --clear` — clears the repository's records from both sections (the store's `ClearRepository`) and **prints what it removed** (or that there was nothing to clear).
 
-`--yes` and `--clear` together, or any unknown flag, print usage on stderr and exit 2. Unexpected failures exit 1 (the `--discover` pattern); nothing pending or already trusted exits 0.
+Exit codes: **0** success (inspect: nothing pending; `--yes`: recorded or already trusted; `--clear`: cleared) · **1** unexpected failure (the `--discover` pattern) · **2** usage (unknown flags, `--yes` with `--clear`, `--json` with `--yes`/`--clear`) · **3** inspect found pending decisions · **4** digest mismatch (nothing recorded, D8).
 
 ### D4 — What `--yes` records: everything a session would
 
@@ -42,14 +42,47 @@ Explicit-only, per the directive: no environment variable, config key, or flag r
 
 The trust model is unchanged: same store, same repository/worktree/hash keys, same sections, same explicit decision. The command is an additional approval surface, not a model change. Recorded here; the maintainer can overrule at sign-off.
 
+### D8 — Digest pinning is the CI form
+
+Inspect prints one digest over all pending decisions. The digest is SHA-256 over a canonical serialization of the pending set — each entry's kind, repository identity, worktree path, item hash and printed content (id/version/directory/changed flag for extensions; config path and raw server definitions for mcp.json), sorted deterministically, invariant culture. It appears only when something is pending (nothing to pin otherwise; `--json` carries `null`).
+
+`lunate trust --yes --digest <sha>` recomputes the digest and records **only on an exact match**. On mismatch: nothing is recorded, the exit code is 4, and the command shows the difference — the pinned digest, the computed digest, and the current pending set (the full current evidence; a whole-set digest cannot localize per item, and the pending list is what an operator needs to see what changed). The pinning flow lets CI verify that what it is about to trust is exactly what a human reviewed: `lunate trust --json` on the reviewed revision, pin the digest, then `--yes --digest` in the job.
+
+Plain `--yes` remains for local scripts; the docs mark it "only for checkouts you control" (never on untrusted PRs/forks). Pinning does not weaken `--yes` — both record the same explicit decision — but the digest gate binds the recorded set to a reviewed one.
+
+### D9 — `--json` is the inspect output contract
+
+`lunate trust --json` prints one JSON document on stdout — `records`, `pending`, and `digest` — for scripts. Canonical conventions: `\n` line endings, invariant culture, deterministic order (the same sort as the digest). `--json` with `--yes` or `--clear` is a usage error (2): the flag describes inspection, and recording output stays human-readable. The text form is not a scripting contract; the JSON is.
+
+### D10 — The mcp.json trust hash is over raw server definitions
+
+The project file's trust hash changes from the file-content hash to a hash over **each server's raw definition as parsed from the file, before any `${VAR}` expansion** — name, command, args, env, cwd, call timeout as written (unknown fields excluded), canonically serialized and name-sorted, invariant culture. Consequences: machine-independent (no expanded environment values can enter it), no secret value can influence it, and formatting or key-order changes no longer re-prompt. `${VAR}` expansion does not exist in the loader today; the guarantee binds any future expansion (the hash is computed at trust time from the file as written, expansion being a use-time concern).
+
+Existing mcp.json records are keyed by the old hash, so they re-prompt once after this change — acceptable pre-1.0 (the store is per-user and local). Extension directory hashing is unchanged.
+
+### D11 — `--clear` prints what it removed
+
+The removed record lines (the `/trust` format) or an explicit "no records to clear". Clear stays silent about other repositories, matching the store's `ClearRepository`.
+
+### D12 — The printout reuses the interactive question's content
+
+Extension: `Load project extension '{id}' {version} from {directory}`, plus the changed-files sentence when re-prompting. mcp.json: `Start {n} {server|servers} from project mcp.json '{path}'` with one `{name} — {truncated command}` detail line per server, truncated at the same length the TUI uses. The TUI prompt's command/truncate helpers move to a shared internal helper so the two surfaces cannot drift.
+
+### D13 — Docs
+
+The README gains a short "trust in scripted runs" subsection (under Quick start): records live in `~/.lunate/trust.json` per user and machine, so ephemeral CI runners run the trust step in every job; `lunate trust` / `--yes` / `--digest` usage; the `--yes` warning (only for checkouts you control — never on untrusted PRs/forks). The help text carries the one-line version.
+
 ## Deviations
 
 None yet.
 
 ## Test plan
 
-- `TrustCommandTests` (new; in-process `Cli.Run` with `ExtensionSeams { StorePath, Log }`, the `CliExtensionStoreTests` pattern): inspect prints pending and records nothing (trust.json absent or unchanged); `--yes` records both sections with the printed hashes; second `--yes` is a no-op success; `--clear` removes both sections; `--yes --clear` and unknown flags exit 2 with usage on stderr; changed-files re-prompt wording appears when a recorded hash differs.
+- `TrustCommandTests` (new; in-process `Cli.Run` with `ExtensionSeams { StorePath, Log }`, the `CliExtensionStoreTests` pattern): inspect prints pending and records nothing; inspect exits 3 with pending, 0 without; `--yes` records both sections with the printed hashes; second `--yes` is a no-op success; `--clear` removes both sections and prints the removed lines; `--yes --clear`, `--json --yes`, unknown flags → exit 2; changed-files re-prompt wording appears when a recorded hash differs; new-worktree entry recorded by `--yes`.
+- Digest: inspect prints the digest; `--yes --digest` with the printed value records; with a wrong value records nothing, exits 4, prints both digests and the pending set; the digest changes when any pending content changes (e.g. an edit to the extension directory) and is stable across invocations and formatting-only edits.
+- `--json`: one document, canonical `\n`, deterministic order; `digest` null when nothing is pending; parseable by `System.Text.Json` in tests.
+- Raw-definition hashing: two files with identical server definitions but different formatting/key order produce the same hash; different env variable *values* in the environment do not change it; a secret value never appears in trust.json.
 - Never-loads proof: a test extension whose factory writes a marker; `lunate trust --yes` records without the marker appearing.
-- E2E (print mode): an untrusted repository with a project extension refuses with the hint naming `lunate trust`; after `lunate trust --yes` (same store), the print session loads the extension (marker present) and no hint is logged. Same for a project `mcp.json` (server starts after trust; the refusal hint names both paths).
+- E2E (print mode): an untrusted repository with a project extension refuses with the hint naming `lunate trust`; after `lunate trust --yes` (same store), the print session loads the extension (marker present) and no hint is logged. Same for a project `mcp.json` (server starts after trust; the refusal hint names both paths; inspect starts nothing).
 - Existing refusal-hint assertions updated (`ExtensionTrustPromptTests`, `McpConfigTrustTests` or whichever assert the exact sentence).
 - The suite's process-spawning classes keep their `mcp-processes` collection; new tests that spawn (the mcp.json e2e) join it.
