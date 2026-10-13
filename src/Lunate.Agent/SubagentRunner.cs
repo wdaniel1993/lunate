@@ -215,8 +215,9 @@ internal sealed class SubagentRunner : ISubagentRunner
                         long used =
                             (usage.Usage.InputTokenCount ?? 0)
                             + (usage.Usage.OutputTokenCount ?? 0);
+                        // The tree accounting is fed by the child harness itself (synchronously);
+                        // the runner only totals the child's usage for its result.
                         tokensUsed += used;
-                        _tree.AddTokens(used);
                         break;
                     case RunFinished finished:
                         stopReason = finished.StopReason;
@@ -272,7 +273,9 @@ internal sealed class SubagentRunner : ISubagentRunner
             Session = childSession,
             Steering = null,
             MaxSteps = ClampSteps(request.MaxSteps),
-            TokenBudget = ResolveBudget(),
+            // The per-child ceiling. The tree's remaining budget is checked live by the child
+            // loop before every model call, so concurrent children cannot freeze it at spawn.
+            TokenBudget = _tree.Limits.TokenBudget,
         };
         return new AgentHarness(_harness.ChatClient, BuildRegistry(allowedTools), childOptions)
         {
@@ -281,16 +284,6 @@ internal sealed class SubagentRunner : ISubagentRunner
             InheritedTreeState = _tree,
         };
     }
-
-    /// <summary>The child budget: the tighter of its own budget and the tree's remaining budget.</summary>
-    private long? ResolveBudget() =>
-        (_tree.Limits.TokenBudget, _tree.RemainingTokens) switch
-        {
-            (null, null) => null,
-            (null, long treeRemaining) => treeRemaining,
-            (long perChild, null) => perChild,
-            (long perChild, long treeRemaining) => Math.Min(perChild, treeRemaining),
-        };
 
     /// <summary>Per-spawn step requests clamp to the resolved ceiling; they never loosen it.</summary>
     private int ClampSteps(int? requested) =>

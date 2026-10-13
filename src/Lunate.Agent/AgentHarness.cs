@@ -301,6 +301,18 @@ public sealed partial class AgentHarness
                     return;
                 }
 
+                // A child run also stops when the whole tree's budget is exhausted — checked live,
+                // so concurrent children cannot freeze the tree's remaining budget at spawn time.
+                if (
+                    InheritedTreeState is { RemainingTokens: { } treeRemaining }
+                    && treeRemaining <= 0
+                )
+                {
+                    channel.Emit(new RunFinished(runId, StopReasons.TokenLimit));
+                    terminalEmitted = true;
+                    return;
+                }
+
                 modelCalls++;
                 DrainSteering(runId, channel);
                 await CompactBeforeRequestAsync(runId, channel, sections, ct);
@@ -467,9 +479,14 @@ public sealed partial class AgentHarness
                     {
                         attempt.Emitted = true;
                         channel.Emit(new UsageUpdated(runId, usageContent.Details));
-                        _tokenBudgetUsed +=
+                        long used =
                             (usageContent.Details.InputTokenCount ?? 0)
                             + (usageContent.Details.OutputTokenCount ?? 0);
+                        _tokenBudgetUsed += used;
+                        // A child run feeds its own usage into the shared tree accounting
+                        // synchronously here (not via the runner's event consumer), so the
+                        // pre-call budget check below can never race its own consumption.
+                        InheritedTreeState?.AddTokens(used);
                         usage = new SessionUsage(
                             (int)(usageContent.Details.InputTokenCount ?? 0),
                             (int)(usageContent.Details.OutputTokenCount ?? 0)

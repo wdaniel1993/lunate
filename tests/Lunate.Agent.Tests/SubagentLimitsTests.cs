@@ -263,6 +263,90 @@ public sealed class SubagentLimitsTests
     }
 
     [Fact]
+    public async Task Concurrent_children_share_the_live_tree_budget_not_a_frozen_copy()
+    {
+        var captured = new List<SubagentResult>();
+        ScriptedChatClient? client = null;
+        ScriptedTool spawn = SpawnTool(
+            async (ctx, ct) =>
+            {
+                ISubagentRunner runner = ctx.Subagents!;
+                Task<SubagentResult> firstTask = runner.RunAsync(new SubagentRequest("one"), ct);
+                await client!.WaitForCallAsync(2);
+                Task<SubagentResult> secondTask = runner.RunAsync(new SubagentRequest("two"), ct);
+                await client.WaitForCallAsync(3);
+                client.Release(2);
+                // A's first call completed: it passes its own pre-call check (the tree is not yet
+                // over) and issues its second call — only then is B's first call released.
+                await client.WaitForCallAsync(4);
+                client.Release(3);
+                SubagentResult first = await firstTask;
+                SubagentResult second = await secondTask;
+                captured.Add(first);
+                captured.Add(second);
+                return second;
+            }
+        );
+        ScriptedTool read = ReadTool("contents");
+        // Both children spawn while the tree is still untouched, then run concurrently: an
+        // implementation that freezes the tree's remaining budget at spawn would let both pass
+        // their own frozen ceilings; the live check stops them instead.
+        client = new ScriptedChatClient()
+            .Enqueue(
+                LoopScripts.Call("call_1", "spawn", LoopScripts.Args(("prompt", "one"))),
+                LoopScripts.ToolCalls()
+            )
+            .Enqueue(
+                LoopScripts.Text("A part"),
+                LoopScripts.Usage(input: 30, output: 30),
+                LoopScripts.Call("call_1", "read", LoopScripts.Args(("path", "a.txt"))),
+                LoopScripts.ToolCalls()
+            )
+            .Enqueue(
+                LoopScripts.Text("B part"),
+                LoopScripts.Usage(input: 30, output: 30),
+                LoopScripts.Call("call_1", "read", LoopScripts.Args(("path", "a.txt"))),
+                LoopScripts.ToolCalls()
+            )
+            .Enqueue(
+                LoopScripts.Usage(input: 30, output: 30),
+                LoopScripts.Call("call_1", "read", LoopScripts.Args(("path", "a.txt"))),
+                LoopScripts.ToolCalls()
+            )
+            .Enqueue(LoopScripts.Text("parent done"), LoopScripts.Stop());
+        client.Gate(2);
+        client.Gate(3);
+        var harness = new AgentHarness(
+            client,
+            Registry(read, spawn),
+            new AgentHarnessOptions
+            {
+                SubagentLimits = new SubagentLimits(
+                    Concurrency: 4,
+                    TokenBudget: 1_000,
+                    TreeTokenBudget: 100
+                ),
+            }
+        );
+
+        await Run(harness);
+
+        Assert.Equal(2, captured.Count);
+        SubagentResult first = captured[0];
+        SubagentResult second = captured[1];
+        Assert.Equal(StopReasons.TokenLimit, first.StopReason);
+        Assert.Equal(StopReasons.TokenLimit, second.StopReason);
+        Assert.True(first.IsError);
+        Assert.True(second.IsError);
+        // The second child stopped right at its first call (tree already over); the first child's
+        // second call ran, and the live check stopped it before its third.
+        Assert.Equal(60, second.TokensUsed);
+        Assert.Equal(120, first.TokensUsed);
+        Assert.Equal(180, harness.SubagentUsage.TokensUsed);
+        Assert.Equal(5, client.Requests.Count);
+    }
+
+    [Fact]
     public void Invalid_subagent_limits_fail_fast()
     {
         var client = new ScriptedChatClient();

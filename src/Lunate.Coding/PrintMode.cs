@@ -209,7 +209,7 @@ internal static class PrintMode
                         errors.WriteLine(diagnostic);
                     }
 
-                    if (NoticeFor(agentEvent) is { } notice)
+                    if (agentEvent.ParentRunId is null && NoticeFor(agentEvent) is { } notice)
                     {
                         interaction.Notify(notice);
                     }
