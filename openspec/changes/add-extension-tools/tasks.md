@@ -1,34 +1,40 @@
 # Tasks: add-extension-tools
 
-## 1. The contract (Abstractions)
+## 1. The contract (Abstractions + layer)
 
-- [ ] 1.1 `ExtensionToolRegistration` + `IExtensionToolHandler` + `ExtensionToolResult` + mirrored enums (annotations, exposure, risk, kind) per design D2.
-- [ ] 1.2 `IExtensionToolContext` (working directory, run id, file-change publish, nested `ExecuteToolAsync`) per D3.
-- [ ] 1.3 `IExtensionContext.RegisterTool`; `ExtensionApi.Current` → `1.7.0`; PublicAPI.Unshipped updates.
+- [ ] 1.1 `Lunate.Extensibility.Abstractions` gains a one-way reference to `Lunate.Agent`; `LayeringChecker` gains the pair.
+- [ ] 1.2 `ExtensionToolRegistration` (name, description, schema, optional output schema, `ToolAnnotations?`, `ToolExposure`, `ToolRisk?`, handler) + `IExtensionToolHandler.InvokeAsync(JsonElement, ToolContext, CancellationToken) → Task<ToolResult>` — the core types verbatim.
+- [ ] 1.3 `IExtensionContext.RegisterTool`; `ExtensionApi.Current` → `1.7.0`; PublicAPI.Unshipped updates (Abstractions, Agent, Extensibility).
 
-## 2. Registration and validation (Extensibility)
+## 2. Registry and unload
 
-- [ ] 2.1 `ExtensionContext.RegisterTool`: registration-only, bounded (32), refusals naming the extension and field/name.
-- [ ] 2.2 Duplicate rules: within the extension, across extensions, against core names — refused naming both sources.
-- [ ] 2.3 Manifest `tools` mismatch logged as a warning (D7).
-- [ ] 2.4 Tests: malformed name/schema/handler refused; duplicates refused; the bound holds; mismatch warns.
+- [ ] 2.1 `ToolRegistry.Remove(name)`: removes the tool, keeps declaration order for the rest, PublicAPI updated.
+- [ ] 2.2 `ExtensionToolAdapter` (registration → `ITool`: prefixed name, namespace = extension id, pass-through fields) with per-extension in-flight call tracking.
+- [ ] 2.3 Loader unload wiring: unload removes the extension's tools, fires `ToolsChanged`, cancels its in-flight calls (a cancelled call settles as a cancelled result, never a crash); reload = unload+load.
+- [ ] 2.4 Tests: removal keeps order; `ToolsChanged` on add and remove; an in-flight call is cancelled on unload.
 
-## 3. The adapter and composition
+## 3. Registration, validation, naming
 
-- [ ] 3.1 `ExtensionToolAdapter` mapping a registration to `ITool` (enums, namespace default = extension id, risk override, result mapping) per D4.
-- [ ] 3.2 `ExtensionSession` exposes composed extension tools; the three modes add them (extension tools first, then MCP) per D5.
-- [ ] 3.3 Execution through the same pipeline: annotations in the `ToolCalling` payload, approval, result bounding, error results on handler throw, `ToolsChanged` fires.
-- [ ] 3.4 Kit: loads and composes extension tools.
+- [ ] 3.1 `ExtensionContext.RegisterTool`: registration-only, ≤32, refusals naming extension + field.
+- [ ] 3.2 Naming per D4: model-facing `<extension-id>__<name>`, sanitized `[A-Za-z0-9_-]`, ≤64, no `:`; core names reserved; namespace = extension id.
+- [ ] 3.3 Manifest cross-check (asymmetric, D6): registered-but-undeclared → load refused; declared-but-unregistered → warn + dropped from the offered set.
+- [ ] 3.4 Tests: malformed refusals; duplicate refusals; both manifest mismatches.
 
-## 4. Proof
+## 4. Composition and pipeline behavior
 
-- [ ] 4.1 Kit test extension: declaration with authored schema, invocation, exposure gates (`Hidden`/`Programmatic` not declared), `OutputSchema`/`StructuredContent`, nested `ExecuteToolAsync` with `"<parent>/<n>"` ids.
-- [ ] 4.2 The context's file-change publish lands on the bus: one event, full payload (absolute + relative path, workspace id, run id, kind).
-- [ ] 4.3 Print-mode e2e: the model calls an extension tool; result surfaces; no extension → unchanged.
-- [ ] 4.4 Process-spawning tests join the `mcp-processes` collection.
+- [ ] 4.1 `ExtensionSession` exposes composed extension tools; the three modes add them (extension tools first, then MCP) per D7.
+- [ ] 4.2 Same pipeline: annotations → `ToolCalling` payload; no-annotation tools ask (risk `Write`, MCP defaults); approval; result bounding; `OutputSchema`/`StructuredContent`; handler throw → teaching error result, never a crash (D5, D10).
+- [ ] 4.3 Resumed-session rendering: a recorded call to an absent extension tool renders via the default view (D9).
+- [ ] 4.4 Kit: loads/composes/unloads extension tools.
 
-## 5. Specs and docs
+## 5. Proof
 
-- [ ] 5.1 Extensions delta: new "Extension tools" requirement with scenarios (registered tool declared and runs; annotations reach ToolCalling; exposure gates; duplicates refused; the context publishes file changes and runs nested calls).
-- [ ] 5.2 docs/spec/extensibility.md: tool-model section gains the registration surface; guide note.
-- [ ] 5.3 Gate: `scripts/verify.sh` (both cultures), `openspec validate --all --strict` clean, csharpier + markdownlint clean.
+- [ ] 5.1 Kit test extension: declared with prefixed name + authored schema; invocation receives the real `ToolContext`; file-change publish lands on the bus (one event, full payload); nested `ExecuteToolAsync` with `"<parent>/<n>"` ids; exposure gates (`Hidden`/`Programmatic` not declared).
+- [ ] 5.2 Print-mode e2e: the model calls an extension tool; result surfaces; a throwing tool yields the teaching error; unload mid-call settles cleanly.
+- [ ] 5.3 Process-spawning tests join the `mcp-processes` collection.
+
+## 6. Specs, docs, gate
+
+- [ ] 6.1 Extensions delta: the "Extension tools" requirement updated to the sign-off text (ToolContext/ToolResult, naming grammar, approval defaults, asymmetric manifest rule, teaching errors, unload + in-flight cancel, resumed rendering).
+- [ ] 6.2 docs/spec/extensibility.md tool-model section; guide note.
+- [ ] 6.3 `scripts/verify.sh` (both cultures), `openspec validate --all --strict` clean, csharpier + markdownlint clean.

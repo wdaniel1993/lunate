@@ -2,76 +2,74 @@
 
 ## Context
 
-The core tool model (`Lunate.Agent.ITool`, agent-tools spec) is complete: name, description, hand-written schema, `ToolExposure`, `ToolNamespace`, `ToolAnnotations`, `OutputSchema`, concurrency, derived `Risk`, executability only through our own loop (ADR-0003). The registry rejects duplicates, keeps declaration order, and the exposure gate covers nested/programmatic execution. `ToolContext` carries the working directory, run id, the file-change sink and nested `ExecuteToolAsync`. What is missing is the extension-facing registration surface and the adapter into that model. Samples compile against `Lunate.Extensibility.Abstractions` only, so the surface must live there (with mirrored enums — the assembly is a leaf).
+The core tool model (`Lunate.Agent.ITool`, agent-tools spec) is complete: name, description, hand-written schema, `ToolExposure`, `ToolNamespace`, `ToolAnnotations`, `OutputSchema`, concurrency, derived `Risk`, executability only through our own loop (ADR-0003). The registry rejects duplicates and keeps declaration order, but has **no removal**; the exposure gate covers nested/programmatic execution; `ToolContext` carries the working directory, run id, the file-change sink and nested `ExecuteToolAsync`. What is missing is the extension-facing registration surface, the adapter into that model, and the unload path. Samples compile against `Lunate.Extensibility.Abstractions`, which today is a leaf — the sign-off fixes the handler on the core `ToolContext`, so the contract assembly gains a `Lunate.Agent` reference (one way; no cycle: `Extensibility` already depends on both).
 
 ## Decisions
 
 ### D1 — Registration surface
 
-`IExtensionContext.RegisterTool(ExtensionToolRegistration registration)` — registration only; must not start processes, sockets or timers (the same rule every other registration carries). Called at extension creation; a max of 32 registrations per extension (mirrors the bounded-records idiom). Returns void; refusals throw with an error naming the extension and the field/name.
+`IExtensionContext.RegisterTool(ExtensionToolRegistration registration)` — registration only; must not start processes, sockets or timers. Called at extension creation; at most 32 registrations per extension. Returns void; refusals throw with an error naming the extension and the field/name.
 
-### D2 — The registration record (contract)
+### D2 — The registration record and the handler (contract)
 
 ```
 ExtensionToolRegistration
-  Name            required, model-facing, unique in the registry, validated pattern
+  Name            required, the tool's local name; the model-facing name is <extension-id>__<name> (D7)
   Description     required, non-blank
   ParametersSchema required JsonElement, must parse as a JSON object
   OutputSchema    optional JsonElement
-  Annotations     flags enum (None default): ReadOnly, Destructive, Idempotent, OpenWorld
-  Exposure        mirror of ToolExposure, Direct default
-  Risk            optional explicit override (enum mirror); default derives from annotations (same resolver rule as core)
-  Namespace       optional; defaults to the extension id (discovery grouping, mirroring how MCP servers namespace)
+  Annotations     Lunate.Agent.ToolAnnotations? (null default — no hints)
+  Exposure        Lunate.Agent.ToolExposure (Direct default)
+  Risk            Lunate.Agent.ToolRisk? (explicit override for special needs)
   Handler         IExtensionToolHandler
 ```
 
-`IExtensionToolHandler.InvokeAsync(JsonElement arguments, IExtensionToolContext context, CancellationToken ct)` returns `ExtensionToolResult(Output, IsError = false)` with optional `StructuredContent`.
+`IExtensionToolHandler.InvokeAsync(JsonElement arguments, ToolContext context, CancellationToken ct)` → `Task<ToolResult>` — **the same `ToolContext` and `ToolResult` as core tools**: one tool model, no mirrored context. The context's existing members cover everything an extension writer needs (`WorkingDirectory`, `RunId`, `FileChanges`, `ExecuteToolAsync`, `FileMutations`, `Progress`); zero new context surface is added. Because `ToolContext` is in `Lunate.Agent`, `Lunate.Extensibility.Abstractions` gains a `ProjectReference` to `Lunate.Agent` (one-way; `Extensibility` already references both; the layering checker gains the pair). Extension authors get `ToolContext` transitively through the contract assembly.
 
-### D3 — The tool context
+### D3 — Validation and duplicate rules
 
-```
-IExtensionToolContext
-  WorkingDirectory  string      — the run's workspace root
-  RunId             string?     — the calling run (null outside a run)
-  FileChanges       sink        — publishes through the SAME stamped sink the core tools use
-                                  (the file-change-bus rule: writer tools publish through their own context)
-  ExecuteToolAsync(name, args, ct) — nested call through the same pipeline: validation, hooks,
-                                  approval, cancellation, depth limits, "<parent>/<n>" ids
-```
+At load: blank/invalid names, non-object schemas, null handlers and unknown exposure values are refused with errors naming the extension and field. Duplicates (same name twice in one extension, across extensions, or colliding with a core tool name — after the D7 prefix, core collisions are impossible by construction; the check stays as defence) are refused naming both sources. Bounded at 32 per extension.
 
-The file-change mirror is minimal: `PublishFileChanged(absolutePath, kind)` with a mirrored kind enum; the adapter forwards to the run's stamped `ToolContext.FileChanges` (workspace id, relative path and run id are stamped by the harness as for core tools — no re-implementation).
+### D4 — Naming: literal prefix
 
-### D4 — The adapter
+The model-facing name is **`<extension-id>__<name>`** — the same literal `__` convention MCP tools use (`fake__echo`), sanitized to `[A-Za-z0-9_-]`, at most 64 characters (provider limits; no `:`). The namespace (grouping for discovery and rendering) is the extension id. The registration's local name is what the manifest declares.
 
-`ExtensionToolAdapter` (Lunate.Extensibility) maps one registration to `ITool`: name/description passed through; `ParametersSchema`/`OutputSchema` as authored; annotations and risk mapped to the core enums; namespace mapped to `ToolNamespace`; `ExecuteAsync` builds the `IExtensionToolContext` around the real `ToolContext` (working dir, run id, sink, nested delegate) and invokes the handler. Result mapping: `Output` → the model-facing text, `IsError` → the error flag, `StructuredContent` → `ToolResult.StructuredContent`; output bounding happens in the core pipeline as for every tool.
+### D5 — Approval defaults
 
-### D5 — Composition
+Risk derives through the existing resolver: explicit `Risk` wins; otherwise annotations decide; **no annotations means not read-only and possibly destructive — the MCP default — so the call asks** (`ToolRiskResolver.FromAnnotations(null)` already yields `Write`; the requirement is spec'd and tested, not re-implemented).
 
-Registrations are composed into the `ToolRegistry` **after extension load and before the harness builds** — the same window in which MCP tools are composed; extension tools first, in registration order, then MCP tools, keeping the existing "extension tools first" ordering rule. `ExtensionSession` exposes the composed tools; the three modes add them where they add MCP tools today. The `ToolsChanged` hook fires as it does for any composition change. An extension tool whose handler throws produces an error result with instructing text and a report — never a harness failure (matches core tool semantics).
+### D6 — The manifest `tools` list, asymmetric
 
-### D6 — Validation and duplicate rules
+The manifest is what the user trusted before any code loaded, so:
+- **Registered but not declared in the manifest → refused** at load (the manifest must cover everything the code contributes).
+- **Declared but not registered → a warning, and the entry is dropped from the offered set** (an installed extension may predict tools from a newer API version; nothing insists).
 
-At load: blank/invalid names, non-object schemas, unknown exposure values and null handlers are refused with errors naming the extension and field. Duplicates: the same name twice within one extension, across extensions, or against a core tool name → refused, naming both sources; the core registry's own duplicate rule is the second line of defence. The tool list is bounded (32) to keep startup bounded with 10 installed extensions.
+### D7 — The adapter and composition
 
-### D7 — The manifest `tools` list
+`ExtensionToolAdapter` maps a registration to `ITool` (all fields pass through; `Namespace` = extension id; `Name` = the prefixed name) and its `ExecuteAsync` invokes the handler with the **real** `ToolContext` and returns its `ToolResult`; output bounding, events, nested-call ids and the file-change stamping all happen in the existing pipeline. Composition: registrations enter the `ToolRegistry` after extension load and before the harness builds — the same window as MCP tools; extension tools first in registration order, then MCP tools. `ToolsChanged` fires for additions and removals.
 
-The manifest keeps declaring contributed tool names (discovery); a mismatch (declared but not registered, or registered but not declared) is **logged as a warning**, not refused — refused would break installed extensions updating across API versions, and the registry itself is already authoritative. (Decision to confirm at sign-off.)
+### D8 — Unload, reload, and in-flight calls
 
-### D8 — API version and contracts
+`ToolRegistry` gains `Remove(name)` (declaration order preserved for the rest). The loader's existing `Unload(id)` path is wired at composition: unloading an extension **removes its tools from the registry**, fires `ToolsChanged`, and **cancels its in-flight calls** — the adapter tracks each extension's active calls under a per-extension lifetime source the unload path cancels; a cancelled call settles as a cancelled tool result, never a crash. Reload is unload+load with the same semantics. (Where the production unload entry point should be — `/extensions reload`-style command or trust-change path — is out of scope here if it doesn't already exist; the semantics are proven at the loader/composition seam plus a test through the extension session.)
 
-`ExtensionApi.Current` 1.6.0 → 1.7.0 (semver-minor: new members on `IExtensionContext`, new types). `PublicAPI.Unshipped.txt` updated in Abstractions and Extensibility. No wire DTOs are added (registrations are runtime objects with delegates; nothing round-trips through JSON), so the conformance suite is untouched.
+### D9 — Resumed sessions render missing tools
 
-### D9 — Proof
+A resumed session may contain calls to an extension tool that is no longer present. Rendering resolves by tool name with a default view when no renderer is registered — the rule the renderer spec already states for MCP tools — and this change extends the proof to extension tools: a session containing a recorded call to an absent extension tool renders without any renderer registered and without a crash.
 
-- Kit: a test extension registering 2–3 tools; assertions: declared to the model with the authored schema, invocation works, annotations reach the `ToolCalling` payload, `Hidden`/`Programmatic` are not declared, `OutputSchema` + `StructuredContent` pass through, the context's `FileChanges` publish lands on the bus (one event, full payload), nested `ExecuteToolAsync` runs with `"<parent>/<n>"` ids, duplicates and malformed registrations are refused naming the field.
-- Coding e2e (print mode): the model calls an extension tool and the result surfaces; with the feature off (no extension) nothing changes.
-- The existing exposure-gate tests extend to extension-registered tools.
+### D10 — Handler failures
+
+A throwing/timed-out handler becomes an **error result with instructing text** (the model learns what happened and can adapt — ADR-0003's teaching-error spirit), logged; the run continues. Never a harness failure.
+
+### D11 — API version and contracts
+
+`ExtensionApi.Current` 1.6.0 → 1.7.0 (semver-minor). `PublicAPI.Unshipped.txt` updated in Abstractions, Agent (registry `Remove`) and Extensibility. No wire DTOs (registrations are runtime objects); the conformance suite is untouched.
+
+### D12 — Proof
+
+- Kit: a test extension registering tools; assertions: declared with the prefixed name and authored schema; invocation passes the real `ToolContext` (file-change publish lands on the bus with the full payload; nested `ExecuteToolAsync` uses `"<parent>/<n>"` ids); annotations reach `ToolCalling`; no-annotation tools ask (risk `Write`); `Hidden`/`Programmatic` are not declared; `OutputSchema`/`StructuredContent` pass through; handler throw → teaching error result; duplicates/malformed/undeclared-registration refusals name the field; unload removes the tools, fires `ToolsChanged`, cancels an in-flight call; a resumed session with a call to a missing tool renders.
+- Coding e2e (print mode): the model calls an extension tool; result surfaces; worse-case paths (throw, unload mid-call) settle cleanly.
+- Existing exposure-gate tests extend to extension-registered tools.
 
 ## Deviations
 
 None yet.
-
-## Open items for sign-off
-
-- D7 (manifest mismatch = warn vs refused).
-- Tool naming: plain declared name (no `extension-id` prefix) with the namespace carrying the grouping — recommended, mirroring MCP where the server IS the namespace. An id prefix would make every prompt mention unwieldy longer.
