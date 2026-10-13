@@ -35,6 +35,6 @@
 
 ## 6. Specs, docs, gate
 
-- [ ] 6.1 Extensions delta: the "Extension tools" requirement updated to the sign-off text (ToolContext/ToolResult, naming grammar, approval defaults, asymmetric manifest rule, teaching errors, unload + in-flight cancel, resumed rendering).
-- [ ] 6.2 docs/spec/extensibility.md tool-model section; guide note.
-- [ ] 6.3 `scripts/verify.sh` (both cultures), `openspec validate --all --strict` clean, csharpier + markdownlint clean.
+- [x] 6.1 Extensions delta: the "Extension tools" requirement updated to the sign-off text (ToolContext/ToolResult, naming grammar, approval defaults, asymmetric manifest rule, teaching errors, unload + in-flight cancel, resumed rendering).
+- [x] 6.2 docs/spec/extensibility.md tool-model section; guide note.
+- [x] 6.3 `scripts/verify.sh` (both cultures), `openspec validate --all --strict` clean, csharpier + markdownlint clean.
