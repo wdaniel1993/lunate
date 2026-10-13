@@ -1,3 +1,6 @@
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json.Nodes;
 using Lunate.Extensibility;
 using Lunate.Protocols;
 
@@ -27,6 +30,9 @@ internal sealed record PendingMcpConfig(
 /// </summary>
 internal sealed class TrustInventory
 {
+    private string? _digest;
+    private bool _digestComputed;
+
     private TrustInventory(
         string repositoryIdentity,
         string worktreePath,
@@ -61,6 +67,94 @@ internal sealed class TrustInventory
         + (ProjectMcpConfig is { Decision: ExtensionTrustDecision.Prompt } ? 1 : 0);
 
     internal bool HasPending => PendingCount > 0;
+
+    /// <summary>
+    /// One digest over the pending decisions — the CI pinning value — computed over a canonical,
+    /// deterministic serialization of the pending set; null when nothing is pending.
+    /// </summary>
+    internal string? Digest
+    {
+        get
+        {
+            if (!_digestComputed)
+            {
+                _digest = ComputeDigest();
+                _digestComputed = true;
+            }
+
+            return _digest;
+        }
+    }
+
+    /// <summary>The pending decisions as the canonical JSON node (the digest input and the
+    /// <c>--json</c> contract): extensions id-ordered, then the mcp.json with name-sorted servers.
+    /// </summary>
+    internal JsonArray BuildPendingNode()
+    {
+        var pending = new JsonArray();
+        foreach (
+            PendingExtension extension in Extensions.Where(extension =>
+                extension.Decision is ExtensionTrustDecision.Prompt
+            )
+        )
+        {
+            pending.Add(
+                new JsonObject
+                {
+                    ["kind"] = "extension",
+                    ["id"] = extension.Descriptor.Id,
+                    ["version"] = extension.Descriptor.Version,
+                    ["directory"] = extension.Descriptor.Directory,
+                    ["filesChanged"] = extension.FilesChanged,
+                    ["hash"] = extension.ContentHash,
+                }
+            );
+        }
+
+        if (ProjectMcpConfig is { Decision: ExtensionTrustDecision.Prompt } config)
+        {
+            var servers = new JsonArray();
+            foreach (
+                McpServerOptions server in config.Servers.OrderBy(
+                    server => server.Name,
+                    StringComparer.Ordinal
+                )
+            )
+            {
+                servers.Add(McpConfigTrustHash.DefinitionNode(server));
+            }
+
+            pending.Add(
+                new JsonObject
+                {
+                    ["kind"] = "mcp.json",
+                    ["path"] = config.Path,
+                    ["servers"] = servers,
+                    ["hash"] = config.ContentHash,
+                }
+            );
+        }
+
+        return pending;
+    }
+
+    private string? ComputeDigest()
+    {
+        if (!HasPending)
+        {
+            return null;
+        }
+
+        var canonical = new JsonObject
+        {
+            ["repository"] = RepositoryIdentity,
+            ["worktree"] = WorktreePath,
+            ["pending"] = BuildPendingNode(),
+        };
+        return Convert.ToHexStringLower(
+            SHA256.HashData(Encoding.UTF8.GetBytes(canonical.ToJsonString()))
+        );
+    }
 
     internal static TrustInventory Create(Workspace workspace, ExtensionSeams? seams)
     {
