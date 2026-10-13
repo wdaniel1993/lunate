@@ -358,6 +358,21 @@ public sealed class TrustCommandTests
     }
 
     [Fact]
+    public void An_unwritable_store_reports_failure_and_records_nothing()
+    {
+        using var temp = new TempDirectory();
+        string store = temp.File("store-file");
+        File.WriteAllText(store, "not a directory");
+        Fixture fixture = Fixture.Create(temp, store: store);
+
+        (int exitCode, _, string errors) = fixture.Run("--yes");
+
+        Assert.Equal(TrustCommand.ExitFailure, exitCode);
+        Assert.StartsWith("lunate: ", errors, StringComparison.Ordinal);
+        Assert.False(File.Exists(fixture.TrustFile));
+    }
+
+    [Fact]
     public void Approval_never_loads_extension_code()
     {
         using var temp = new TempDirectory();
@@ -402,12 +417,20 @@ public sealed class TrustCommandTests
 
         public string ConfigPath => McpComposition.ProjectConfigPath(Worktree);
 
-        public static Fixture Create(TempDirectory temp, bool withConfig = false)
+        public static Fixture Create(
+            TempDirectory temp,
+            bool withConfig = false,
+            string? store = null
+        )
         {
             string worktree = temp.File("worktree");
             Directory.CreateDirectory(Path.Combine(worktree, ".git"));
             HelloFixture.Install(Path.Combine(worktree, ".lunate", "extensions", "hello"));
-            return new Fixture(Workspace.Canonicalize(worktree), temp.File("store"), withConfig);
+            return new Fixture(
+                Workspace.Canonicalize(worktree),
+                store ?? temp.File("store"),
+                withConfig
+            );
         }
 
         public (int ExitCode, string Output, string Errors) Run(params string[] args)
