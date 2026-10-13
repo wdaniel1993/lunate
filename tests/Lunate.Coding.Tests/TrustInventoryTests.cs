@@ -107,6 +107,31 @@ public sealed class TrustInventoryTests
     }
 
     [Fact]
+    public void The_digest_is_machine_independent_and_content_sensitive()
+    {
+        using var temp = new TempDirectory();
+        string firstWorktree = InstallProject(temp, "first-worktree");
+        string secondWorktree = InstallProject(temp, "second-worktree");
+        string store = temp.File("store");
+
+        string? first = Create(firstWorktree, store).Digest;
+        string? second = Create(secondWorktree, store).Digest;
+
+        Assert.NotNull(first);
+        Assert.NotNull(second);
+        Assert.Equal(first, second);
+
+        File.WriteAllText(
+            McpComposition.ProjectConfigPath(secondWorktree),
+            """{ "mcpServers": { "srv": { "command": "y" } } }"""
+        );
+        string? changed = Create(secondWorktree, store).Digest;
+
+        Assert.NotNull(changed);
+        Assert.NotEqual(first, changed);
+    }
+
+    [Fact]
     public void No_extensions_skips_extension_discovery_but_not_the_config()
     {
         using var temp = new TempDirectory();
@@ -132,6 +157,15 @@ public sealed class TrustInventoryTests
         string worktree = temp.File("worktree");
         Directory.CreateDirectory(Path.Combine(worktree, ".git"));
         HelloFixture.Install(Path.Combine(worktree, ".lunate", "extensions", "hello"));
+        return Workspace.Canonicalize(worktree);
+    }
+
+    private static string InstallProject(TempDirectory temp, string name)
+    {
+        string worktree = temp.File(name);
+        Directory.CreateDirectory(Path.Combine(worktree, ".git"));
+        HelloFixture.Install(Path.Combine(worktree, ".lunate", "extensions", "hello"));
+        WriteProjectConfig(worktree);
         return Workspace.Canonicalize(worktree);
     }
 

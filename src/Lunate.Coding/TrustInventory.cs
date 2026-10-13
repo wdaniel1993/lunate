@@ -70,7 +70,9 @@ internal sealed class TrustInventory
 
     /// <summary>
     /// One digest over the pending decisions — the CI pinning value — computed over a canonical,
-    /// deterministic serialization of the pending set; null when nothing is pending.
+    /// deterministic serialization of the pending content only (no repository, worktree or path
+    /// input, so a digest pinned on any machine matches the same pending content anywhere); null
+    /// when nothing is pending.
     /// </summary>
     internal string? Digest
     {
@@ -86,10 +88,18 @@ internal sealed class TrustInventory
         }
     }
 
-    /// <summary>The pending decisions as the canonical JSON node (the digest input and the
-    /// <c>--json</c> contract): extensions id-ordered, then the mcp.json with name-sorted servers.
+    /// <summary>The pending decisions as the <c>--json</c> contract: extensions id-ordered, then
+    /// the mcp.json with name-sorted servers; the human-useful locations (directory, path) stay
+    /// in this form — they help operators — but never enter the digest.
     /// </summary>
-    internal JsonArray BuildPendingNode()
+    internal JsonArray BuildPendingNode() => BuildPendingNode(includeLocations: true);
+
+    /// <summary>
+    /// The canonical pending node. With <paramref name="includeLocations"/> false it carries
+    /// content only — the digest input; the machine-local directory and path are only added for
+    /// the <c>--json</c> contract.
+    /// </summary>
+    private JsonArray BuildPendingNode(bool includeLocations)
     {
         var pending = new JsonArray();
         foreach (
@@ -98,17 +108,20 @@ internal sealed class TrustInventory
             )
         )
         {
-            pending.Add(
-                new JsonObject
-                {
-                    ["kind"] = "extension",
-                    ["id"] = extension.Descriptor.Id,
-                    ["version"] = extension.Descriptor.Version,
-                    ["directory"] = extension.Descriptor.Directory,
-                    ["filesChanged"] = extension.FilesChanged,
-                    ["hash"] = extension.ContentHash,
-                }
-            );
+            var node = new JsonObject
+            {
+                ["kind"] = "extension",
+                ["id"] = extension.Descriptor.Id,
+                ["version"] = extension.Descriptor.Version,
+            };
+            if (includeLocations)
+            {
+                node["directory"] = extension.Descriptor.Directory;
+            }
+
+            node["filesChanged"] = extension.FilesChanged;
+            node["hash"] = extension.ContentHash;
+            pending.Add(node);
         }
 
         if (ProjectMcpConfig is { Decision: ExtensionTrustDecision.Prompt } config)
@@ -124,15 +137,15 @@ internal sealed class TrustInventory
                 servers.Add(McpConfigTrustHash.DefinitionNode(server));
             }
 
-            pending.Add(
-                new JsonObject
-                {
-                    ["kind"] = "mcp.json",
-                    ["path"] = config.Path,
-                    ["servers"] = servers,
-                    ["hash"] = config.ContentHash,
-                }
-            );
+            var configNode = new JsonObject { ["kind"] = "mcp.json" };
+            if (includeLocations)
+            {
+                configNode["path"] = config.Path;
+            }
+
+            configNode["servers"] = servers;
+            configNode["hash"] = config.ContentHash;
+            pending.Add(configNode);
         }
 
         return pending;
@@ -145,12 +158,7 @@ internal sealed class TrustInventory
             return null;
         }
 
-        var canonical = new JsonObject
-        {
-            ["repository"] = RepositoryIdentity,
-            ["worktree"] = WorktreePath,
-            ["pending"] = BuildPendingNode(),
-        };
+        JsonArray canonical = BuildPendingNode(includeLocations: false);
         return Convert.ToHexStringLower(
             SHA256.HashData(Encoding.UTF8.GetBytes(canonical.ToJsonString()))
         );
