@@ -2,33 +2,40 @@
 
 ## 1. Runner core (`Lunate.Agent`)
 
-- [ ] 1.1 `ISubagentRunner`, `SubagentRequest`, `SubagentResult` (public, XML-documented); `ToolContext.Subagents` init property (null outside a run); `AgentHarnessOptions`: `MaxSubagentDepth` (2), `MaxConcurrentSubagents` (4), `SubagentTokenBudget` (100 000).
-- [ ] 1.2 `SubagentRunner`: child `AgentHarness` from the parent's live facts (D2); child session beside the parent + `AppendChildSession` before start + no-session path (`ChildSessionId` null); linked cancellation token; joins the child before returning.
-- [ ] 1.3 Event forwarding: every child event `with { ParentRunId = parentRunId }` onto the parent channel; call ids untouched.
-- [ ] 1.4 Limits: depth/concurrency/token (`UsageUpdated` summation; exceeding cancels the child) — refusals as teaching error results with `depth_limit`/`concurrency_limit`/`token_limit`; concurrency refused immediately when held.
-- [ ] 1.5 `BuildToolContext` stamps `Subagents` (same place as `RunId`/`FileChanges`); PublicAPI.Unshipped updated for `Lunate.Agent`.
+- [ ] 1.1 `ISubagentRunner`, `SubagentRequest` (Prompt, MaxSteps, AllowedTools), `SubagentResult` (child session id, run id, output, stop reason, error flag, tokens used) — public, XML-documented; `ToolContext.Subagents` init property (null outside a run).
+- [ ] 1.2 `SubagentRunner`: child `AgentHarness` from the parent's live facts (D2); **tool allow-list** — subset of the run's own tools by name, unknown name refuses the spawn, null = full set; per-spawn values clamp (never loosen).
+- [ ] 1.3 Child session: file beside the parent's + `AppendChildSession` before start + no-session path (`ChildSessionId` null); linked cancellation token; joins the child before returning.
+- [ ] 1.4 Event forwarding: every child event `with { ParentRunId = parentRunId }` onto the parent channel; call ids untouched; **hook payloads during a child run carry the child run id + parent run id**.
+- [ ] 1.5 Limits: **depth fixed at 1** (depth-1 runner refuses every spawn); **tree-wide concurrency** (shared tree state, refused immediately while held); **per-child + per-tree token budgets** checked **before each model call** (loop seam) → `token_limit` + **partial result**; refusals name the limit **and the setting key**.
+- [ ] 1.6 Approval seam carries the asking run (run id, parent run id, depth); "always for this session" is session/tree-wide (interactive approver memory unchanged in scope, now exercised from child runs).
+- [ ] 1.7 Settings: `subagents` section (`concurrency`, `tokenBudget`, `treeTokenBudget`, `unlimited` literal) parsed + validated like existing keys; defaults 4 / 100 000 / 500 000; one-way clamp rule for per-spawn (and future project-scope) values.
+- [ ] 1.8 `BuildToolContext` stamps `Subagents`; PublicAPI.Unshipped updated for `Lunate.Agent`.
 
-## 2. Consumer run-scoping
+## 2. Frontends (`Lunate.Coding`, `Lunate.Tui`)
 
-- [ ] 2.1 Interactive pump: call maps keyed by `(RunId, CallId)`; only the primary run's top-level calls take over the live tool indicator; child tool blocks commit normally.
-- [ ] 2.2 Regression test: parent and child both emit call id `call_1` — no cross-talk in blocks, args, diffs or the live indicator.
-- [ ] 2.3 Print mode: child events reach the JSONL with `runId`/`parentRunId` intact; resume of the parent renders the child-session link line; resume of the child loads its history.
+- [ ] 2.1 Interactive pump: call maps keyed by `(RunId, CallId)`; **child text and child tool blocks hidden**; live area shows `subagent running` while a child is live; child `UsageUpdated` still rolls into the footer.
+- [ ] 2.2 `/context`: resolved subagent limits + current tree usage lines added to the command.
+- [ ] 2.3 Print mode: human renderer suppresses child text; JSONL keeps child events with `runId`/`parentRunId`.
+- [ ] 2.4 ACP: child-run events filtered from `session/update` (never raw); approvals unaffected.
+- [ ] 2.5 Regression test: parent and child both emit call id `call_1` — no cross-talk in blocks, args, diffs, footer or the live indicator.
 
-## 3. Tests (`tests/Lunate.Agent.Tests`)
+## 3. Tests (`tests/Lunate.Agent.Tests` + Coding)
 
-- [ ] 3.1 Runner units (scripted client): happy path (child output returned; child session file + parent link match the child's ids); depth refusal; concurrency refusal (parallel spawns); token-budget stop (`token_limit`, child cancelled); cancel propagation (`cancelled`, no hang); approval routed to the parent approver (recording approver: allow + deny); event forwarding (`ParentRunId` stamped, child ids intact); no-session path.
-- [ ] 3.2 Interactive/print scoping tests from 2.x.
+- [ ] 3.1 Runner units (scripted client): happy path (child output + usage; child session file + parent link match); allow-list subset + unknown-name refusal; depth refusal (child cannot spawn); tree-wide concurrency refusal (parallel spawns); per-child budget stop (`token_limit`, partial result) and pre-call check timing; tree budget exhaustion (spawn refusal + running child stops); cancel propagation (`cancelled`, no hang); approval routed with asking-run context (allow + deny) and tree-wide "always"; hooks carry `ParentRunId`; no-session path.
+- [ ] 3.2 Frontend tests from 2.x (pump suppression + status, `/context` lines, print suppression + JSONL, ACP filter).
+- [ ] 3.3 Replay determinism (D13): fixture parent + child session files replay identically across loads; each child loads its own history.
 
 ## 4. Sample extension (`samples/extensions/subagents`)
 
-- [ ] 4.1 `SubagentsExtension`: tool `spawn` (`subagents__spawn`; schema `prompt` + optional `maxSteps`; annotations: not read-only, destructive-capable → asks); setting for the default `maxSteps` and description; manifest declares the tool.
-- [ ] 4.2 Sample tests (own project, mirroring `mcp-from-extension`): registration/manifest; the four behaviours end to end (child events + link; approval routing; cancel; limits) through the real composition, plus the refusal teaching texts.
+- [ ] 4.1 `SubagentsExtension`: tool `spawn` (`subagents__spawn`; schema `prompt` + optional `maxSteps` + optional `tools` allow-list; annotations: not read-only, destructive-capable → asks); setting for the default `maxSteps` and description; manifest declares the tool.
+- [ ] 4.2 Sample tests (own project, mirroring `mcp-from-extension`): registration/manifest; the behaviours end to end (child events + link + hook `ParentRunId`; approval routing + labels; cancel; depth/concurrency/token refusals; token-limit partial result; happy path) through the real composition.
 - [ ] 4.3 README: build, install, what it proves.
 
 ## 5. Docs
 
-- [ ] 5.1 `docs/spec/extensibility.md`: subagents row (production path = `ToolContext.Subagents` + sample; four behaviours); fitness-suite wording.
-- [ ] 5.2 `docs/guide.md`: T-47 row → part 2 done note (done at archive).
+- [ ] 5.1 `docs/spec/extensibility.md`: subagents row (production path = `ToolContext.Subagents` + sample; four behaviours; limits); fitness-suite wording.
+- [ ] 5.2 Settings documentation: the `subagents` keys where the existing keys are documented.
+- [ ] 5.3 `docs/guide.md`: T-47 row → part 2 done note (done at archive).
 
 ## 6. Verify, review, archive
 
