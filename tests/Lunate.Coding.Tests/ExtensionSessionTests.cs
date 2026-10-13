@@ -59,7 +59,7 @@ public sealed class ExtensionSessionTests
     }
 
     [Fact]
-    public async Task The_production_composition_pins_the_core_services_it_registers()
+    public async Task A_composed_session_exposes_the_three_core_handles()
     {
         using var temp = new TempDirectory();
         string worktree = temp.File("worktree");
@@ -76,10 +76,10 @@ public sealed class ExtensionSessionTests
         );
 
         Assert.NotNull(host.Services.FindCore("core/workspace"));
-        // Not yet wired in production: the file bus is registered by the test kit only, and the
-        // mutation queue has no consumer. Wiring them flips these two assertions.
-        Assert.Null(host.Services.FindCore("core/file-bus"));
-        Assert.Null(host.Services.FindCore("core/mutation-queue"));
+        Assert.Same(host.FileChanges, host.Services.FindCore("core/file-bus"));
+        Assert.True(
+            host.Services.TryGetCore<IMutationQueue>("core/mutation-queue", out IMutationQueue? _)
+        );
     }
 
     [Fact]

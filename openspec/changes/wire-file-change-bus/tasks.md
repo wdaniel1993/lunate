@@ -14,9 +14,9 @@
 
 ## 3. Session composition
 
-- [ ] 3.1 `ExtensionSession.StartAsync`: create the per-session `FileChangeBus` (workspace id = `WorktreeRoot`, the session's log) before any extension loads; register `core/file-bus` and `core/mutation-queue` (`MutationQueueHandle(FileMutationQueue.Shared)`) beside `core/workspace`; expose `ExtensionSession.FileChanges`.
-- [ ] 3.2 Dispose on the start-cancellation path; on `DisposeAsync`: drain (bounded by handler timeouts) → dispose → existing session-ending hooks + MCP teardown.
-- [ ] 3.3 Session-composition tests: `core/workspace`, `core/file-bus` and `core/mutation-queue` all reachable (the T-45 sign-off composition test); `--no-extensions` composes nothing.
+- [x] 3.1 `ExtensionSession.StartAsync`: create the per-session `FileChangeBus` (workspace id = `WorktreeRoot`, the session's log) before any extension loads; register `core/file-bus` and `core/mutation-queue` (`MutationQueueHandle(FileMutationQueue.Shared)`) beside `core/workspace`; expose `ExtensionSession.FileChanges`.
+- [x] 3.2 Dispose on the start-cancellation path; on `DisposeAsync`: drain (bounded by handler timeouts) → dispose → existing session-ending hooks + MCP teardown.
+- [x] 3.3 Session-composition tests: `core/workspace`, `core/file-bus` and `core/mutation-queue` all reachable (the T-45 sign-off composition test); `--no-extensions` composes nothing.
 
 ## 4. The ToolContext path
 
