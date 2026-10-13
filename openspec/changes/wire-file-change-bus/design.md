@@ -65,7 +65,9 @@ The design is the spec's own intent. Note: with the ToolContext path (D3), no fr
 
 ## Deviations
 
-None yet.
+- Apply: the payload's `WorkspaceId` maps from the event (harness stamp) with a fallback to the bus's own id — the old always-bus-id behavior was dropped, which also makes ACP per-session cwds stamp correctly. `DrainAsync` is a one-way latch by design.
+- Review fixes (b7e8f39): `ResolveLinks` now `GetFullPath`-collapses relative symlink targets with parent segments before recursing (the first cut could yield two gates for one file via the extension path — falsified by a new test that fails without the fix); the bus logs drops after `Dispose` too and logs a completed-channel write; the e2e dropped its print-summary wording coupling; the contract round-trip covers the null-`RunId` wire form.
+- Deferred: `ExtensionTestHost` one-run ergonomics (a second `RunAsync` silently drops file changes) — follow-up card.
 
 ## Test plan
 
