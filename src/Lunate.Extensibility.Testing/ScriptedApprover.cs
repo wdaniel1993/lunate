@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Text.Json;
 using Lunate.Agent;
 
 namespace Lunate.Extensibility.Testing;
@@ -24,14 +23,14 @@ public sealed class ScriptedApprover : IToolApprover
 
     public int Denials { get; private set; }
 
-    public ValueTask<bool> ApproveAsync(ITool tool, JsonElement args, CancellationToken ct)
+    public ValueTask<bool> ApproveAsync(ApprovalRequest request, CancellationToken ct)
     {
-        ArgumentNullException.ThrowIfNull(tool);
+        ArgumentNullException.ThrowIfNull(request);
         Calls++;
         if (!_decisions.TryDequeue(out bool decision))
         {
             throw new InvalidOperationException(
-                $"ScriptedApprover has no decision left for tool '{tool.Name}' (call {Calls.ToString(CultureInfo.InvariantCulture)}). Queue one decision per expected approval request; exhaustion never allows the call implicitly."
+                $"ScriptedApprover has no decision left for tool '{request.Tool.Name}' (call {Calls.ToString(CultureInfo.InvariantCulture)}). Queue one decision per expected approval request; exhaustion never allows the call implicitly."
             );
         }
 

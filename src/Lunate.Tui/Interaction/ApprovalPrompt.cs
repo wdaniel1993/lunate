@@ -11,9 +11,11 @@ public enum ApprovalChoice
 /// <summary>
 /// A pending approval as presented to the user: the tool and a one-line argument summary
 /// (T-20's <see cref="ToolArgsSummary"/> summarizes raw JSON when the wiring layer passes it).
-/// The prompt only produces a choice; "always for this session" memory belongs to the wiring layer.
+/// <see cref="Asker"/> labels the asking run when it is a subagent (for example
+/// <c>subagent (depth 1)</c>). The prompt only produces a choice; "always for this session"
+/// memory belongs to the wiring layer and applies across the whole run tree.
 /// </summary>
-public sealed record ApprovalPromptModel(string ToolName, string ArgsSummary)
+public sealed record ApprovalPromptModel(string ToolName, string ArgsSummary, string? Asker = null)
 {
     /// <summary>
     /// Decides from a single key: bare <c>y</c>/<c>n</c>/<c>a</c> only. A bare Enter denies —

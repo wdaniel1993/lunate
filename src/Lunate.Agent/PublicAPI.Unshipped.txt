@@ -381,7 +381,6 @@ Lunate.Agent.AgentHarnessOptions.ToolOutputLimit.init -> void
 Lunate.Agent.AgentHarnessOptions.WorkingDirectory.get -> string!
 Lunate.Agent.AgentHarnessOptions.WorkingDirectory.init -> void
 Lunate.Agent.IToolApprover
-Lunate.Agent.IToolApprover.ApproveAsync(Lunate.Agent.ITool! tool, System.Text.Json.JsonElement args, System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask<bool>
 override Lunate.Agent.AgentHarnessOptions.Equals(object? obj) -> bool
 override Lunate.Agent.AgentHarnessOptions.GetHashCode() -> int
 override Lunate.Agent.AgentHarnessOptions.ToString() -> string!
@@ -1241,3 +1240,24 @@ static Lunate.Agent.SubagentResult.operator !=(Lunate.Agent.SubagentResult? left
 static Lunate.Agent.SubagentResult.operator ==(Lunate.Agent.SubagentResult? left, Lunate.Agent.SubagentResult? right) -> bool
 static Lunate.Agent.SubagentUsage.operator !=(Lunate.Agent.SubagentUsage left, Lunate.Agent.SubagentUsage right) -> bool
 static Lunate.Agent.SubagentUsage.operator ==(Lunate.Agent.SubagentUsage left, Lunate.Agent.SubagentUsage right) -> bool
+Lunate.Agent.ApprovalRequest
+Lunate.Agent.ApprovalRequest.<Clone>$() -> Lunate.Agent.ApprovalRequest!
+Lunate.Agent.ApprovalRequest.ApprovalRequest(Lunate.Agent.ITool! Tool, System.Text.Json.JsonElement Args, string? RunId, string? ParentRunId, int Depth) -> void
+Lunate.Agent.ApprovalRequest.Args.get -> System.Text.Json.JsonElement
+Lunate.Agent.ApprovalRequest.Args.init -> void
+Lunate.Agent.ApprovalRequest.Deconstruct(out Lunate.Agent.ITool! Tool, out System.Text.Json.JsonElement Args, out string? RunId, out string? ParentRunId, out int Depth) -> void
+Lunate.Agent.ApprovalRequest.Depth.get -> int
+Lunate.Agent.ApprovalRequest.Depth.init -> void
+Lunate.Agent.ApprovalRequest.Equals(Lunate.Agent.ApprovalRequest? other) -> bool
+Lunate.Agent.ApprovalRequest.ParentRunId.get -> string?
+Lunate.Agent.ApprovalRequest.ParentRunId.init -> void
+Lunate.Agent.ApprovalRequest.RunId.get -> string?
+Lunate.Agent.ApprovalRequest.RunId.init -> void
+Lunate.Agent.ApprovalRequest.Tool.get -> Lunate.Agent.ITool!
+Lunate.Agent.ApprovalRequest.Tool.init -> void
+Lunate.Agent.IToolApprover.ApproveAsync(Lunate.Agent.ApprovalRequest! request, System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask<bool>
+override Lunate.Agent.ApprovalRequest.Equals(object? obj) -> bool
+override Lunate.Agent.ApprovalRequest.GetHashCode() -> int
+override Lunate.Agent.ApprovalRequest.ToString() -> string!
+static Lunate.Agent.ApprovalRequest.operator !=(Lunate.Agent.ApprovalRequest? left, Lunate.Agent.ApprovalRequest? right) -> bool
+static Lunate.Agent.ApprovalRequest.operator ==(Lunate.Agent.ApprovalRequest? left, Lunate.Agent.ApprovalRequest? right) -> bool

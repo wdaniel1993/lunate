@@ -320,10 +320,10 @@ public sealed class AgentNestedToolTests
     {
         public List<string> SawTools { get; } = [];
 
-        public ValueTask<bool> ApproveAsync(ITool tool, JsonElement args, CancellationToken ct)
+        public ValueTask<bool> ApproveAsync(ApprovalRequest request, CancellationToken ct)
         {
-            SawTools.Add(tool.Name);
-            return ValueTask.FromResult(tool.Name != "inner");
+            SawTools.Add(request.Tool.Name);
+            return ValueTask.FromResult(request.Tool.Name != "inner");
         }
     }
 }

@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Lunate.Agent;
 
 namespace Lunate.Coding;
@@ -19,10 +18,10 @@ internal sealed class NonInteractiveApprover(ApprovalPolicy policy, bool yolo) :
     public bool Yolo { get; } = yolo;
 
     /// <summary>Returns true to execute the call, false to decline it.</summary>
-    public ValueTask<bool> ApproveAsync(ITool tool, JsonElement args, CancellationToken ct)
+    public ValueTask<bool> ApproveAsync(ApprovalRequest request, CancellationToken ct)
     {
-        ArgumentNullException.ThrowIfNull(tool);
-        return ValueTask.FromResult(Yolo || IsAllowed(Policy, tool.Risk));
+        ArgumentNullException.ThrowIfNull(request);
+        return ValueTask.FromResult(Yolo || IsAllowed(Policy, request.Tool.Risk));
     }
 
     /// <summary>The policy × risk matrix; an unknown policy denies everything.</summary>

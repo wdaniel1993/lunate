@@ -154,11 +154,9 @@ Lunate.Tui.ApprovalChoice.Approve = 0 -> Lunate.Tui.ApprovalChoice
 Lunate.Tui.ApprovalChoice.Deny = 1 -> Lunate.Tui.ApprovalChoice
 Lunate.Tui.ApprovalPromptModel
 Lunate.Tui.ApprovalPromptModel.<Clone>$() -> Lunate.Tui.ApprovalPromptModel!
-Lunate.Tui.ApprovalPromptModel.ApprovalPromptModel(string! ToolName, string! ArgsSummary) -> void
 Lunate.Tui.ApprovalPromptModel.ArgsSummary.get -> string!
 Lunate.Tui.ApprovalPromptModel.ArgsSummary.init -> void
 Lunate.Tui.ApprovalPromptModel.Decide(Lunate.Tui.KeyEvent! key) -> Lunate.Tui.ApprovalChoice?
-Lunate.Tui.ApprovalPromptModel.Deconstruct(out string! ToolName, out string! ArgsSummary) -> void
 Lunate.Tui.ApprovalPromptModel.Equals(Lunate.Tui.ApprovalPromptModel? other) -> bool
 Lunate.Tui.ApprovalPromptModel.ToolName.get -> string!
 Lunate.Tui.ApprovalPromptModel.ToolName.init -> void
@@ -283,3 +281,7 @@ override Lunate.Tui.TrustPromptModel.GetHashCode() -> int
 override Lunate.Tui.TrustPromptModel.ToString() -> string!
 static Lunate.Tui.TrustPromptModel.operator !=(Lunate.Tui.TrustPromptModel? left, Lunate.Tui.TrustPromptModel? right) -> bool
 static Lunate.Tui.TrustPromptModel.operator ==(Lunate.Tui.TrustPromptModel? left, Lunate.Tui.TrustPromptModel? right) -> bool
+Lunate.Tui.ApprovalPromptModel.ApprovalPromptModel(string! ToolName, string! ArgsSummary, string? Asker = null) -> void
+Lunate.Tui.ApprovalPromptModel.Asker.get -> string?
+Lunate.Tui.ApprovalPromptModel.Asker.init -> void
+Lunate.Tui.ApprovalPromptModel.Deconstruct(out string! ToolName, out string! ArgsSummary, out string? Asker) -> void

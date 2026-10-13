@@ -280,7 +280,10 @@ public sealed partial class AgentHarness
         {
             if (
                 _options.Approver is { } approver
-                && !await approver.ApproveAsync(tool, approvedArgs, ct)
+                && !await approver.ApproveAsync(
+                    new ApprovalRequest(tool, approvedArgs, runId, ParentRunId, SpawnDepth),
+                    ct
+                )
             )
             {
                 return new ToolResult(

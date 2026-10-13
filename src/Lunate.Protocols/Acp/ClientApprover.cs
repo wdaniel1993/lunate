@@ -69,9 +69,11 @@ internal sealed class ClientApprover : IToolApprover
     }
 
     /// <summary>Returns true to execute the call, false to decline it.</summary>
-    public async ValueTask<bool> ApproveAsync(ITool tool, JsonElement args, CancellationToken ct)
+    public async ValueTask<bool> ApproveAsync(ApprovalRequest request, CancellationToken ct)
     {
-        ArgumentNullException.ThrowIfNull(tool);
+        ArgumentNullException.ThrowIfNull(request);
+        ITool tool = request.Tool;
+        JsonElement args = request.Args;
 
         lock (_gate)
         {
@@ -86,7 +88,7 @@ internal sealed class ClientApprover : IToolApprover
             }
         }
 
-        var request = new RequestPermissionRequest
+        var permission = new RequestPermissionRequest
         {
             SessionId = _sessionId,
             ToolCall = new ToolCallUpdate
@@ -106,7 +108,7 @@ internal sealed class ClientApprover : IToolApprover
         };
 
         RequestPermissionResponse response;
-        var pending = _connection.RequestPermissionAsync(request, ct);
+        var pending = _connection.RequestPermissionAsync(permission, ct);
         try
         {
             response = await pending.WaitAsync(_permissionTimeout).ConfigureAwait(false);

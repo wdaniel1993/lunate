@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Lunate.Agent;
 
 namespace Lunate.Coding;
@@ -12,11 +11,11 @@ namespace Lunate.Coding;
 internal sealed class AcpApprover(ApprovalPolicy policy, IToolApprover client) : IToolApprover
 {
     /// <summary>Returns true to execute the call, false to decline it.</summary>
-    public ValueTask<bool> ApproveAsync(ITool tool, JsonElement args, CancellationToken ct)
+    public ValueTask<bool> ApproveAsync(ApprovalRequest request, CancellationToken ct)
     {
-        ArgumentNullException.ThrowIfNull(tool);
-        return NonInteractiveApprover.IsAllowed(policy, tool.Risk)
+        ArgumentNullException.ThrowIfNull(request);
+        return NonInteractiveApprover.IsAllowed(policy, request.Tool.Risk)
             ? ValueTask.FromResult(true)
-            : client.ApproveAsync(tool, args, ct);
+            : client.ApproveAsync(request, ct);
     }
 }

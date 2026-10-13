@@ -237,9 +237,9 @@ public sealed class ExtensionToolPipelineTests
     {
         public List<ITool> Seen { get; } = [];
 
-        public ValueTask<bool> ApproveAsync(ITool tool, JsonElement args, CancellationToken ct)
+        public ValueTask<bool> ApproveAsync(ApprovalRequest request, CancellationToken ct)
         {
-            Seen.Add(tool);
+            Seen.Add(request.Tool);
             return ValueTask.FromResult(approve);
         }
     }
