@@ -76,6 +76,16 @@ public sealed class HookContractTests
     }
 
     [Fact]
+    public void A_file_changed_payload_without_a_run_round_trips()
+    {
+        var payload = new FileChangedPayload("/w/a.cs", "a.cs", "/w", null, "modified");
+
+        string json = JsonSerializer.Serialize(payload, Options);
+
+        Assert.Equal(payload, JsonSerializer.Deserialize<FileChangedPayload>(json, Options));
+    }
+
+    [Fact]
     public void Json_element_fields_keep_their_content()
     {
         JsonElement arguments = JsonDocument

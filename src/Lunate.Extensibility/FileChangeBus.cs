@@ -55,12 +55,7 @@ public sealed class FileChangeBus : IFileChangeSink, IFileChangeBus, IDisposable
         bool dropped = false;
         lock (_gate)
         {
-            if (_disposed)
-            {
-                return;
-            }
-
-            if (_drainStarted)
+            if (_disposed || _drainStarted)
             {
                 dropped = true;
             }
@@ -79,7 +74,12 @@ public sealed class FileChangeBus : IFileChangeSink, IFileChangeBus, IDisposable
             return;
         }
 
-        _events.Writer.TryWrite(ToPayload(change));
+        if (!_events.Writer.TryWrite(ToPayload(change)))
+        {
+            _log.Warn(
+                $"file change: notification for '{change.AbsolutePath}' dropped: the bus is closed."
+            );
+        }
     }
 
     public IDisposable Subscribe(IFileChangedHandler handler, string? pathPattern = null)

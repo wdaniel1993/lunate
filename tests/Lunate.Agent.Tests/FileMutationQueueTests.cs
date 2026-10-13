@@ -215,4 +215,26 @@ public sealed class FileMutationQueueTests
 
         Assert.Equal([1, 2], results);
     }
+
+    [Fact]
+    public void NormalizeKey_resolves_relative_link_targets_with_parent_segments()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        using var temp = new TempDirectory();
+        string sibling = temp.File("sibling");
+        Directory.CreateDirectory(sibling);
+        string dir = temp.File("dir");
+        Directory.CreateDirectory(dir);
+        string link = Path.Combine(dir, "link");
+        Directory.CreateSymbolicLink(link, Path.Combine("..", "sibling"));
+
+        string viaLink = FileMutationQueue.NormalizeKey(Path.Combine(link, "x.txt"));
+        string viaReal = FileMutationQueue.NormalizeKey(Path.Combine(sibling, "x.txt"));
+
+        Assert.Equal(viaReal, viaLink);
+    }
 }

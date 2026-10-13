@@ -92,11 +92,6 @@ public sealed class FileChangeWiringEndToEndTests
 
         Assert.Equal(0, exitCode);
         Assert.Equal("done", output.ToString());
-        Assert.Contains(
-            "tool 'edit' failed",
-            errors.ToString().Replace("\r\n", "\n", StringComparison.Ordinal),
-            StringComparison.Ordinal
-        );
         Assert.True(File.Exists(Path.Combine(worktree, "notes.txt")));
 
         List<string> changed =

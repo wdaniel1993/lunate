@@ -72,7 +72,7 @@ public sealed class FileMutationQueue : IFileMutationQueue
         {
             string next = Path.Combine(current, segment);
             string? target = LinkTargetOf(next);
-            current = target is null ? next : ResolveLinks(target, depth + 1);
+            current = target is null ? next : ResolveLinks(Path.GetFullPath(target), depth + 1);
         }
 
         return current;
