@@ -427,7 +427,25 @@ public sealed partial class AgentHarness
                 runId
             ),
             Subagents = _subagentRunner,
+            ToolStubs = CallableToolStubs(),
         };
+
+    /// <summary>
+    /// The stubs of exactly the tools callable via <see cref="ToolContext.ExecuteToolAsync"/> for
+    /// this run, in registration order. The run's own registry means a narrowed child registry
+    /// narrows its stubs too.
+    /// </summary>
+    private IReadOnlyList<ToolStub> CallableToolStubs() =>
+        [
+            .. _tools
+                .Tools.Where(tool =>
+                    tool.Exposure
+                        is ToolExposure.Direct
+                            or ToolExposure.Programmatic
+                            or ToolExposure.Deferred
+                )
+                .Select(ToolStubs.Describe),
+        ];
 
     private ToolResult UnknownTool(string toolName) =>
         new(

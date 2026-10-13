@@ -39,4 +39,11 @@ public sealed record ToolContext(string WorkingDirectory, IAgentEvents Events)
     /// outside the loop.
     /// </summary>
     public ISubagentRunner? Subagents { get; init; }
+
+    /// <summary>
+    /// The stubs of the run's programmatically callable tools (<see cref="ToolExposure.Direct"/>,
+    /// <see cref="ToolExposure.Programmatic"/> and <see cref="ToolExposure.Deferred"/>), in
+    /// registration order; the harness stamps them in. Null when the tool runs outside the loop.
+    /// </summary>
+    public IReadOnlyList<ToolStub>? ToolStubs { get; init; }
 }

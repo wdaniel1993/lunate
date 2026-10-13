@@ -2,9 +2,9 @@
 
 ## 1. Core stubs (`Lunate.Agent`)
 
-- [ ] 1.1 `ToolStubParameter` (with `Note`), `ToolStub`, `ToolStubs.Describe(ITool)` per D1 (mapping table, degrade-to-any with a note, missing schema, `HasStructuredOutput`); XML docs; PublicAPI.Unshipped.
-- [ ] 1.2 `ToolContext.ToolStubs` init property; `AgentHarness.BuildToolContext` stamps the callable set (Direct/Programmatic/Deferred, registry order); null outside a run (D2).
-- [ ] 1.3 Units: describe mapping table + degrade note; stamped set composition, order, run/no-run, and a narrowed (subagent allow-list) registry.
+- [x] 1.1 `ToolStubParameter` (with `Note`), `ToolStub`, `ToolStubs.Describe(ITool)` per D1 (mapping table, degrade-to-any with a note, missing schema, `HasStructuredOutput`); XML docs; PublicAPI.Unshipped.
+- [x] 1.2 `ToolContext.ToolStubs` init property; `AgentHarness.BuildToolContext` stamps the callable set (Direct/Programmatic/Deferred, registry order); null outside a run (D2).
+- [x] 1.3 Units: describe mapping table + degrade note; stamped set composition, order, run/no-run, and a narrowed (subagent allow-list) registry.
 
 ## 2. Exposure spec closure
 

@@ -19,7 +19,11 @@ internal sealed class ScriptedTool(
 
     public ToolRisk Risk { get; } = risk;
 
+    public ToolExposure Exposure { get; init; } = ToolExposure.Direct;
+
     public ToolAnnotations? Annotations { get; init; }
+
+    public JsonElement? OutputSchema { get; init; }
 
     public string? ReceivedArgsRaw { get; private set; }
 

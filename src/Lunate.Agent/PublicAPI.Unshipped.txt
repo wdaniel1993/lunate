@@ -1261,3 +1261,49 @@ override Lunate.Agent.ApprovalRequest.GetHashCode() -> int
 override Lunate.Agent.ApprovalRequest.ToString() -> string!
 static Lunate.Agent.ApprovalRequest.operator !=(Lunate.Agent.ApprovalRequest? left, Lunate.Agent.ApprovalRequest? right) -> bool
 static Lunate.Agent.ApprovalRequest.operator ==(Lunate.Agent.ApprovalRequest? left, Lunate.Agent.ApprovalRequest? right) -> bool
+Lunate.Agent.ToolContext.ToolStubs.get -> System.Collections.Generic.IReadOnlyList<Lunate.Agent.ToolStub!>?
+Lunate.Agent.ToolContext.ToolStubs.init -> void
+Lunate.Agent.ToolStub
+Lunate.Agent.ToolStub.<Clone>$() -> Lunate.Agent.ToolStub!
+Lunate.Agent.ToolStub.Deconstruct(out string! Name, out string! Description, out System.Collections.Generic.IReadOnlyList<Lunate.Agent.ToolStubParameter!>! Parameters, out bool HasStructuredOutput) -> void
+Lunate.Agent.ToolStub.Description.get -> string!
+Lunate.Agent.ToolStub.Description.init -> void
+Lunate.Agent.ToolStub.Equals(Lunate.Agent.ToolStub? other) -> bool
+Lunate.Agent.ToolStub.HasStructuredOutput.get -> bool
+Lunate.Agent.ToolStub.HasStructuredOutput.init -> void
+Lunate.Agent.ToolStub.Name.get -> string!
+Lunate.Agent.ToolStub.Name.init -> void
+Lunate.Agent.ToolStub.Parameters.get -> System.Collections.Generic.IReadOnlyList<Lunate.Agent.ToolStubParameter!>!
+Lunate.Agent.ToolStub.Parameters.init -> void
+Lunate.Agent.ToolStub.ToolStub(string! Name, string! Description, System.Collections.Generic.IReadOnlyList<Lunate.Agent.ToolStubParameter!>! Parameters, bool HasStructuredOutput) -> void
+Lunate.Agent.ToolStubParameter
+Lunate.Agent.ToolStubParameter.<Clone>$() -> Lunate.Agent.ToolStubParameter!
+Lunate.Agent.ToolStubParameter.Deconstruct(out string! Name, out string! Type, out bool Required, out string? Description, out string? Default, out System.Collections.Generic.IReadOnlyList<string!>? Enum, out string? Note) -> void
+Lunate.Agent.ToolStubParameter.Default.get -> string?
+Lunate.Agent.ToolStubParameter.Default.init -> void
+Lunate.Agent.ToolStubParameter.Description.get -> string?
+Lunate.Agent.ToolStubParameter.Description.init -> void
+Lunate.Agent.ToolStubParameter.Enum.get -> System.Collections.Generic.IReadOnlyList<string!>?
+Lunate.Agent.ToolStubParameter.Enum.init -> void
+Lunate.Agent.ToolStubParameter.Equals(Lunate.Agent.ToolStubParameter? other) -> bool
+Lunate.Agent.ToolStubParameter.Name.get -> string!
+Lunate.Agent.ToolStubParameter.Name.init -> void
+Lunate.Agent.ToolStubParameter.Note.get -> string?
+Lunate.Agent.ToolStubParameter.Note.init -> void
+Lunate.Agent.ToolStubParameter.Required.get -> bool
+Lunate.Agent.ToolStubParameter.Required.init -> void
+Lunate.Agent.ToolStubParameter.ToolStubParameter(string! Name, string! Type, bool Required, string? Description, string? Default, System.Collections.Generic.IReadOnlyList<string!>? Enum, string? Note) -> void
+Lunate.Agent.ToolStubParameter.Type.get -> string!
+Lunate.Agent.ToolStubParameter.Type.init -> void
+Lunate.Agent.ToolStubs
+override Lunate.Agent.ToolStub.Equals(object? obj) -> bool
+override Lunate.Agent.ToolStub.GetHashCode() -> int
+override Lunate.Agent.ToolStub.ToString() -> string!
+override Lunate.Agent.ToolStubParameter.Equals(object? obj) -> bool
+override Lunate.Agent.ToolStubParameter.GetHashCode() -> int
+override Lunate.Agent.ToolStubParameter.ToString() -> string!
+static Lunate.Agent.ToolStub.operator !=(Lunate.Agent.ToolStub? left, Lunate.Agent.ToolStub? right) -> bool
+static Lunate.Agent.ToolStub.operator ==(Lunate.Agent.ToolStub? left, Lunate.Agent.ToolStub? right) -> bool
+static Lunate.Agent.ToolStubParameter.operator !=(Lunate.Agent.ToolStubParameter? left, Lunate.Agent.ToolStubParameter? right) -> bool
+static Lunate.Agent.ToolStubParameter.operator ==(Lunate.Agent.ToolStubParameter? left, Lunate.Agent.ToolStubParameter? right) -> bool
+static Lunate.Agent.ToolStubs.Describe(Lunate.Agent.ITool! tool) -> Lunate.Agent.ToolStub!
