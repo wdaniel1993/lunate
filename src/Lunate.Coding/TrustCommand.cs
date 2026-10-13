@@ -91,16 +91,22 @@ internal static class TrustCommand
     )
     {
         WriteReport(inventory, output);
-        if (
-            inventory.Digest is { } computed
-            && pinned is not null
-            && !string.Equals(pinned, computed, StringComparison.Ordinal)
-        )
+        if (pinned is not null)
         {
-            output.WriteLine("trust: nothing was recorded");
-            output.WriteLine($"pinned digest: {pinned}");
-            output.WriteLine($"computed digest: {computed}");
-            return ExitDigestMismatch;
+            if (inventory.Digest is not { } computed)
+            {
+                output.WriteLine("trust: nothing is pending; the pinned digest cannot be verified");
+                output.WriteLine($"pinned digest: {pinned}");
+                return ExitDigestMismatch;
+            }
+
+            if (!string.Equals(pinned, computed, StringComparison.Ordinal))
+            {
+                output.WriteLine("trust: nothing was recorded");
+                output.WriteLine($"pinned digest: {pinned}");
+                output.WriteLine($"computed digest: {computed}");
+                return ExitDigestMismatch;
+            }
         }
 
         ExtensionTrustStore store = Store(seams);

@@ -210,6 +210,27 @@ public sealed class TrustCommandTests
     }
 
     [Fact]
+    public void A_pinned_digest_with_nothing_pending_cannot_be_verified()
+    {
+        using var temp = new TempDirectory();
+        Fixture fixture = Fixture.Create(temp);
+        fixture.TrustEverything();
+        var pinned = new string('a', 64);
+
+        (int exitCode, string output, string errors) = fixture.Run("--yes", "--digest", pinned);
+
+        Assert.Equal(TrustCommand.ExitDigestMismatch, exitCode);
+        Assert.Empty(errors);
+        Assert.Contains(
+            "trust: nothing is pending; the pinned digest cannot be verified",
+            output,
+            StringComparison.Ordinal
+        );
+        Assert.Contains($"pinned digest: {pinned}", output, StringComparison.Ordinal);
+        Assert.Single(fixture.Records());
+    }
+
+    [Fact]
     public void The_digest_is_stable_across_invocations_and_formatting_only_edits()
     {
         using var temp = new TempDirectory();
