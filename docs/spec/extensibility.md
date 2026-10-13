@@ -70,6 +70,7 @@ The byte-level contract is owned by [`agent-tools`](../openspec/specs/agent-tool
 - **MCP**: `RegisterMcpServer(name, config)` with the `mcp.json` shape plus exposure per server/tool; each server gets a namespace.
 - **IUserInteraction**: notify, confirm, select, input, status, widgets. The TUI implements all; ACP maps confirm to permission requests where possible; print/json use a non-interactive policy (deny unless configured). Custom TUI components only when the mode supports them.
 - **Renderers**: tool and custom-entry renderers resolvable by tool name, including tools not registered yet (MCP tools in a resumed session).
+- **Core handles**: the host registers reserved `core/…` services looked up with `TryGetCoreService<T>` — `core/workspace`, `core/file-bus`, `core/mutation-queue` and `core/process` (`IProcessRunner`: runs one child with a timeout, an output cap and a tree kill on timeout/cancel; the environment is exactly what the caller passes, `null` inherits; extensions pass an allow-list).
 
 ## Workspaces and repository identity
 
@@ -87,8 +88,10 @@ Every run — child runs included — has a workspace: `WorktreeRoot`, `RepoRoot
 
 ## Code mode and hosted tools
 
-- The core provides only: `Programmatic`/`Deferred` exposure, namespaces, `OutputSchema` + `StructuredContent`, `ExecuteToolAsync`, and typed stub generation from JSON schemas.
-- The code-mode extension owns the script runtime. Default: a **separate process** with timeout and resource limits, because the code is model-written. In-process options (Roslyn scripting, Jint) are opt-in and documented as not a sandbox.
+- The core provides only: `Programmatic`/`Deferred` exposure, namespaces, `OutputSchema` + `StructuredContent`, `ExecuteToolAsync`, and typed stub generation from JSON schemas — `ToolStubs.Describe(ITool)` derives the model-facing name and description, typed parameters (name, mapped type, required flag, description, raw default text, enum values) and whether the tool declares an output schema. Unrecognised schema constructs degrade to `any` with a note naming the construct; an absent or non-object schema yields zero parameters; nothing here fails a run.
+- The run's programmatically callable tools are stamped into `ToolContext.ToolStubs` (`Direct` + `Programmatic` + `Deferred`, registration order, null outside a run). This is what `Deferred` is for: never declared to the model, discoverable through the stubs, callable from nested execution.
+- The code-mode extension owns the script runtime. Default: a **separate process** with timeout and resource limits, because the code is model-written. The sample `code-mode` extension runs model-written JavaScript in a `core/process` child with a scrubbed environment allow-list, renders the stamped stubs into a JSDoc-annotated JavaScript prelude, and bridges every script-side tool call back through `ExecuteToolAsync` over a framed JSON-lines protocol — validation, hooks, approvals, cancellation and nested `"<parent>/<n>"` ids stay in the core pipeline, and the result carries `StructuredContent` (exit code, timeout flag, the script's value, output, stderr, bridged calls). Script output can never be mistaken for protocol: `console.*` and `process.stdout.write` become log frames.
+- The child process is a **lifecycle boundary** (timeout, crash containment, kill-on-cancel), not a security sandbox: model-written code runs with the user's privileges, matching the in-process trust model; the tool's destructive annotation and the approval ask are the consent gate. In-process options (Roslyn scripting, Jint) are opt-in and documented as not a sandbox either.
 - Provider-hosted tools (MEAI hosted tool types, e.g. code interpreter, web search) pass through `ChatOptions`; their result content is preserved in sessions and events.
 
 ## Out-of-process extensions (design constraint now, build later)
@@ -112,7 +115,7 @@ Every run — child runs included — has a workspace: `WorktreeRoot`, `RepoRoot
 | lsp-diagnostics | background service + ToolResultReady attaches diagnostics (the call's arguments carry the path; structured content on the result); tested against a fake LSP server |
 | mcp-from-extension | RegisterMcpServer, namespace, exposure |
 | subagents | `ToolContext.Subagents` + one spawn tool: parent/child runs on a child harness, linked child session beside the parent's, events forwarded with `ParentRunId`, approvals routed to the parent UI with the asking run, cancel propagated and joined, depth (fixed 1) / tree-wide concurrency / per-child and per-tree token budgets enforced by core (`subagents.*` settings) |
-| code-mode | programmatic tools via ExecuteToolAsync, StructuredContent, script runtime in a child process |
+| code-mode | typed tool stubs + the stamped callable set, programmatic tools via ExecuteToolAsync (approvals, nested ids), StructuredContent, model-written script in a `core/process` child with a scrubbed environment and a framed protocol |
 | model-router | provider + virtual model + nested model call with usage roll-up |
 | ui-showcase | renderer + status widget; degrades cleanly in print/json/ACP |
 | worktree-tasks | workspace per run, per-workspace services and limits, session grouping, trust by repository identity; two subagents in separate worktrees edit and build independently (Roslyn per workspace, cap holds), results merge back via git, worktrees are cleaned up |

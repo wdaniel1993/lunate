@@ -28,8 +28,8 @@
 
 ## 5. Docs
 
-- [ ] 5.1 `docs/spec/extensibility.md`: code-mode section — stub primitive production path, the sample, honest limits; fitness-suite row updated; `core/process` named in the services section.
-- [ ] 5.2 Sample README + settings documentation where the existing extension settings are documented.
+- [x] 5.1 `docs/spec/extensibility.md`: code-mode section — stub primitive production path, the sample, honest limits; fitness-suite row updated; `core/process` named in the services section.
+- [x] 5.2 Sample README + settings documentation where the existing extension settings are documented.
 
 ## 6. Verify, review, archive
 
