@@ -53,7 +53,7 @@ internal sealed class NonInteractiveTrustPrompt : IExtensionTrustPrompt
         ArgumentNullException.ThrowIfNull(request);
         cancellationToken.ThrowIfCancellationRequested();
         _log.Warn(
-            $"project extension '{request.Descriptor.Id}' was not trusted; run an interactive session to approve it."
+            $"project extension '{request.Descriptor.Id}' was not trusted; run an interactive session or 'lunate trust' to approve it."
         );
         return ValueTask.FromResult(false);
     }

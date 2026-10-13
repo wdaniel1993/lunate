@@ -109,7 +109,7 @@ internal sealed class McpConfigTrust(ExtensionTrustStore store)
                 }
 
                 log.Warn(
-                    $"project MCP config '{configPath}' was not trusted; its servers were not started. Run an interactive session to approve it."
+                    $"project MCP config '{configPath}' was not trusted; its servers were not started. Run an interactive session or 'lunate trust' to approve it."
                 );
                 return false;
         }

@@ -211,7 +211,7 @@ public sealed class ExtensionSessionTests
         Assert.Equal("hello", error.ExtensionId);
         Assert.True(
             log.Contains(
-                "project extension 'hello' was not trusted; run an interactive session to approve it."
+                "project extension 'hello' was not trusted; run an interactive session or 'lunate trust' to approve it."
             )
         );
         Assert.False(log.Contains("created hello"));

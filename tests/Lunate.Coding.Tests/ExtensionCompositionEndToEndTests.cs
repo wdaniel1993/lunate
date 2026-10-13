@@ -144,7 +144,7 @@ public sealed class ExtensionCompositionEndToEndTests
         Assert.Empty(errors);
         Assert.True(
             log.Contains(
-                "project extension 'hello' was not trusted; run an interactive session to approve it."
+                "project extension 'hello' was not trusted; run an interactive session or 'lunate trust' to approve it."
             ),
             "the non-interactive run must log the interactive hint; log:\n"
                 + string.Join("\n", log.Messages)

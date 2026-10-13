@@ -22,7 +22,7 @@ public sealed class ExtensionTrustPromptTests
 
         Assert.False(approved);
         Assert.Contains(
-            "project extension 'hello' was not trusted; run an interactive session to approve it.",
+            "project extension 'hello' was not trusted; run an interactive session or 'lunate trust' to approve it.",
             log.Messages
         );
     }

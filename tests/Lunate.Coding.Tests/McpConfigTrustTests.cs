@@ -125,6 +125,7 @@ public sealed class McpConfigTrustTests
             message =>
                 message.Contains("was not trusted", StringComparison.Ordinal)
                 && message.Contains("interactive", StringComparison.Ordinal)
+                && message.Contains("'lunate trust'", StringComparison.Ordinal)
         );
     }
 
