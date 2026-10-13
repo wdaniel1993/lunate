@@ -1,9 +1,12 @@
 namespace Lunate.Agent;
 
 /// <summary>
-/// The vocabulary for <see cref="RunFinished.StopReason"/>. The loop maps the final turn's model
-/// finish reason: <c>ChatFinishReason.Length</c> to <see cref="Length"/>, everything else to
-/// <see cref="Stop"/>.
+/// The vocabulary for <see cref="RunFinished.StopReason"/> and <see cref="SubagentResult.StopReason"/>.
+/// The loop maps the final turn's model finish reason: <c>ChatFinishReason.Length</c> to
+/// <see cref="Length"/>, everything else to <see cref="Stop"/>. Subagent results additionally use
+/// the runner refusals (<see cref="DepthLimit"/>, <see cref="ConcurrencyLimit"/>) and
+/// <see cref="TokenLimit"/>; <see cref="Error"/> reports a child run that ended in
+/// <see cref="RunError"/> or a non-limit spawn refusal.
 /// </summary>
 public static class StopReasons
 {
@@ -18,4 +21,16 @@ public static class StopReasons
 
     /// <summary>The run reached the step limit (MaxSteps).</summary>
     public const string StepLimit = "step_limit";
+
+    /// <summary>The run stopped before a model call because its token budget was exhausted.</summary>
+    public const string TokenLimit = "token_limit";
+
+    /// <summary>A subagent spawn was refused because the spawn depth (fixed at 1) is reached.</summary>
+    public const string DepthLimit = "depth_limit";
+
+    /// <summary>A subagent spawn was refused because the tree-wide concurrency limit is held.</summary>
+    public const string ConcurrencyLimit = "concurrency_limit";
+
+    /// <summary>A child run failed with a <see cref="RunError"/>, or a spawn was refused for a reason other than a limit.</summary>
+    public const string Error = "error";
 }

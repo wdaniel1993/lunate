@@ -52,4 +52,14 @@ public sealed record AgentHarnessOptions
 
     /// <summary>The number of most recent turns compaction keeps verbatim.</summary>
     public int CompactionKeepTurns { get; init; } = CompactionReducer.DefaultKeepTurns;
+
+    /// <summary>
+    /// The cumulative input+output token budget of this run, checked before each model call; null
+    /// means unlimited. The subagent runner sets the child run's budget to the tighter of the
+    /// per-child and the tree's remaining budget.
+    /// </summary>
+    public long? TokenBudget { get; init; }
+
+    /// <summary>The resolved subagent limits of the run tree; the runner threads the tree state down.</summary>
+    public SubagentLimits SubagentLimits { get; init; } = new();
 }

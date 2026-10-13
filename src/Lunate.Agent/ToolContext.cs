@@ -33,4 +33,10 @@ public sealed record ToolContext(string WorkingDirectory, IAgentEvents Events)
     /// workspace id and run id into it. No-op outside a run.
     /// </summary>
     public IFileChangeSink FileChanges { get; init; } = NullFileChangeSink.Instance;
+
+    /// <summary>
+    /// The per-run subagent seam; the harness stamps the run's runner in. Null when the tool runs
+    /// outside the loop.
+    /// </summary>
+    public ISubagentRunner? Subagents { get; init; }
 }

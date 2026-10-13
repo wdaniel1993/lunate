@@ -23,6 +23,9 @@ public sealed partial class AgentHarness
     private readonly List<FunctionCallContent> _danglingCalls = [];
     private int _runActive;
     private int _nestedCallCounter;
+    private SubagentTreeState? _treeState;
+    private SubagentRunner? _subagentRunner;
+    private long _tokenBudgetUsed;
 
     public AgentHarness(IChatClient client, ToolRegistry tools, AgentHarnessOptions? options = null)
     {
@@ -54,9 +57,40 @@ public sealed partial class AgentHarness
         }
     }
 
+    /// <summary>The parent run id when this harness runs a child (subagent) run; null otherwise.</summary>
+    internal string? ParentRunId { get; init; }
+
+    /// <summary>The run's spawn depth: 0 for a top-level run, 1 for a subagent run.</summary>
+    internal int SpawnDepth { get; init; }
+
+    /// <summary>The run tree's shared state when this harness is a child; null for a top-level harness.</summary>
+    internal SubagentTreeState? InheritedTreeState { get; init; }
+
+    /// <summary>The client the loop streams from; the subagent runner composes children with it.</summary>
+    internal IChatClient ChatClient => _client;
+
+    /// <summary>The run's tool registry; the subagent runner derives the child's registry from it.</summary>
+    internal ToolRegistry Tools => _tools;
+
+    /// <summary>The run's options; the subagent runner composes the child's options from them.</summary>
+    internal AgentHarnessOptions Options => _options;
+
+    /// <summary>
+    /// The subagent accounting of the current or most recent top-level run tree: tokens consumed
+    /// by its child runs and live children. Zero before any run.
+    /// </summary>
+    public SubagentUsage SubagentUsage => _treeState?.Snapshot ?? default;
+
     /// <summary>Runs the loop for one user input and streams its events; the stream completes when the run ends.</summary>
-    public async IAsyncEnumerable<AgentEvent> RunAsync(
+    public IAsyncEnumerable<AgentEvent> RunAsync(
         string userInput,
+        CancellationToken ct = default
+    ) => RunAsync(userInput, RunIds.Next(), ct);
+
+    /// <summary>Runs the loop under a caller-provided run id (the subagent runner links sessions by it).</summary>
+    internal async IAsyncEnumerable<AgentEvent> RunAsync(
+        string userInput,
+        string runId,
         [EnumeratorCancellation] CancellationToken ct = default
     )
     {
@@ -70,12 +104,14 @@ public sealed partial class AgentHarness
 
         try
         {
-            string runId = RunIds.Next();
+            _treeState = InheritedTreeState ?? new SubagentTreeState(_options.SubagentLimits);
+            _tokenBudgetUsed = 0;
             _danglingCalls.Clear();
             _compactionInputTokens = 0;
             _compactionOutputTokens = 0;
             Interlocked.Exchange(ref _nestedCallCounter, 0);
             var channel = new AgentEventChannel(_options.Session?.SessionId);
+            _subagentRunner = new SubagentRunner(this, channel, runId, _treeState!, SpawnDepth);
             using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct);
             Task loop = RunLoopAsync(runId, userInput, channel, linked.Token);
             try
@@ -145,6 +181,33 @@ public sealed partial class AgentHarness
                 "CompactionKeepTurns must be at least 1."
             );
         }
+
+        if (options.SubagentLimits.Concurrency is { } concurrency && concurrency < 1)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(AgentHarnessOptions.SubagentLimits),
+                concurrency,
+                "The subagent concurrency limit must be at least 1 or null (unlimited)."
+            );
+        }
+
+        if (options.SubagentLimits.TokenBudget is { } tokenBudget && tokenBudget < 1)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(AgentHarnessOptions.SubagentLimits),
+                tokenBudget,
+                "The subagent token budget must be at least 1 or null (unlimited)."
+            );
+        }
+
+        if (options.SubagentLimits.TreeTokenBudget is { } treeBudget && treeBudget < 1)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(AgentHarnessOptions.SubagentLimits),
+                treeBudget,
+                "The subagent tree token budget must be at least 1 or null (unlimited)."
+            );
+        }
     }
 
     private async Task RunLoopAsync(
@@ -168,7 +231,7 @@ public sealed partial class AgentHarness
             if (_options.Hooks is { } hooks)
             {
                 await hooks.RunSettledAsync(
-                    new AgentRunSettledContext(runId),
+                    new AgentRunSettledContext(runId) { ParentRunId = ParentRunId },
                     CancellationToken.None
                 );
             }
@@ -207,7 +270,10 @@ public sealed partial class AgentHarness
             if (_options.Hooks is { } hookPoints)
             {
                 AgentRunStartingResult started = await hookPoints.RunStartingAsync(
-                    new AgentRunStartingContext(runId, [.. sections], ToolNames()),
+                    new AgentRunStartingContext(runId, [.. sections], ToolNames())
+                    {
+                        ParentRunId = ParentRunId,
+                    },
                     ct
                 );
                 if (started is AgentRunStartingResult.Apply apply)
@@ -224,6 +290,13 @@ public sealed partial class AgentHarness
                 {
                     channel.Emit(new StepLimitReached(runId, _options.MaxSteps));
                     channel.Emit(new RunFinished(runId, StopReasons.StepLimit));
+                    terminalEmitted = true;
+                    return;
+                }
+
+                if (_options.TokenBudget is { } tokenBudget && _tokenBudgetUsed >= tokenBudget)
+                {
+                    channel.Emit(new RunFinished(runId, StopReasons.TokenLimit));
                     terminalEmitted = true;
                     return;
                 }
@@ -253,7 +326,10 @@ public sealed partial class AgentHarness
                                     runId,
                                     message.Role.Value,
                                     MessageText(message)
-                                ),
+                                )
+                                {
+                                    ParentRunId = ParentRunId,
+                                },
                                 ct
                             );
                         if (completed is AgentMessageCompletedResult.Replace replace)
@@ -271,7 +347,7 @@ public sealed partial class AgentHarness
                     if (_options.Hooks is { } turnHook)
                     {
                         AgentTurnEndedResult turn = await turnHook.TurnEndedAsync(
-                            new AgentTurnEndedContext(runId),
+                            new AgentTurnEndedContext(runId) { ParentRunId = ParentRunId },
                             ct
                         );
                         foreach (AgentExtensionEntry entry in turn.Entries)
@@ -340,7 +416,10 @@ public sealed partial class AgentHarness
             if (_options.Hooks is { } hookPoints)
             {
                 AgentContextBuildingResult built = await hookPoints.ContextBuildingAsync(
-                    new AgentContextBuildingContext(runId, [.. request.Select(ToContextMessage)]),
+                    new AgentContextBuildingContext(runId, [.. request.Select(ToContextMessage)])
+                    {
+                        ParentRunId = ParentRunId,
+                    },
                     ct
                 );
                 request = InsertAddedContext(request, built.AddedMessages);
@@ -388,6 +467,9 @@ public sealed partial class AgentHarness
                     {
                         attempt.Emitted = true;
                         channel.Emit(new UsageUpdated(runId, usageContent.Details));
+                        _tokenBudgetUsed +=
+                            (usageContent.Details.InputTokenCount ?? 0)
+                            + (usageContent.Details.OutputTokenCount ?? 0);
                         usage = new SessionUsage(
                             (int)(usageContent.Details.InputTokenCount ?? 0),
                             (int)(usageContent.Details.OutputTokenCount ?? 0)

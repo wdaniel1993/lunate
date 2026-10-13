@@ -1143,3 +1143,101 @@ Lunate.Agent.ITextFileAccess.ReadAllText(string! path) -> string!
 Lunate.Agent.ITextFileAccess.ReadRaw(string! path) -> (string! Text, bool HasBom)
 Lunate.Agent.ITextFileAccess.WriteAllText(string! path, string! content) -> void
 Lunate.Agent.ITextFileAccess.WriteRaw(string! path, string! text, bool hasBom) -> void
+~override Lunate.Agent.SubagentUsage.Equals(object obj) -> bool
+~override Lunate.Agent.SubagentUsage.ToString() -> string
+const Lunate.Agent.StopReasons.ConcurrencyLimit = "concurrency_limit" -> string!
+const Lunate.Agent.StopReasons.DepthLimit = "depth_limit" -> string!
+const Lunate.Agent.StopReasons.Error = "error" -> string!
+const Lunate.Agent.StopReasons.TokenLimit = "token_limit" -> string!
+Lunate.Agent.AgentCompactingContext.ParentRunId.get -> string?
+Lunate.Agent.AgentCompactingContext.ParentRunId.init -> void
+Lunate.Agent.AgentContextBuildingContext.ParentRunId.get -> string?
+Lunate.Agent.AgentContextBuildingContext.ParentRunId.init -> void
+Lunate.Agent.AgentHarness.SubagentUsage.get -> Lunate.Agent.SubagentUsage
+Lunate.Agent.AgentHarnessOptions.SubagentLimits.get -> Lunate.Agent.SubagentLimits!
+Lunate.Agent.AgentHarnessOptions.SubagentLimits.init -> void
+Lunate.Agent.AgentHarnessOptions.TokenBudget.get -> long?
+Lunate.Agent.AgentHarnessOptions.TokenBudget.init -> void
+Lunate.Agent.AgentMessageCompletedContext.ParentRunId.get -> string?
+Lunate.Agent.AgentMessageCompletedContext.ParentRunId.init -> void
+Lunate.Agent.AgentRunSettledContext.ParentRunId.get -> string?
+Lunate.Agent.AgentRunSettledContext.ParentRunId.init -> void
+Lunate.Agent.AgentRunStartingContext.ParentRunId.get -> string?
+Lunate.Agent.AgentRunStartingContext.ParentRunId.init -> void
+Lunate.Agent.AgentToolCallingContext.ParentRunId.get -> string?
+Lunate.Agent.AgentToolCallingContext.ParentRunId.init -> void
+Lunate.Agent.AgentToolResultReadyContext.ParentRunId.get -> string?
+Lunate.Agent.AgentToolResultReadyContext.ParentRunId.init -> void
+Lunate.Agent.AgentTurnEndedContext.ParentRunId.get -> string?
+Lunate.Agent.AgentTurnEndedContext.ParentRunId.init -> void
+Lunate.Agent.ISubagentRunner
+Lunate.Agent.ISubagentRunner.Depth.get -> int
+Lunate.Agent.ISubagentRunner.RunAsync(Lunate.Agent.SubagentRequest! request, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Lunate.Agent.SubagentResult!>!
+Lunate.Agent.SubagentLimits
+Lunate.Agent.SubagentLimits.<Clone>$() -> Lunate.Agent.SubagentLimits!
+Lunate.Agent.SubagentLimits.Concurrency.get -> int?
+Lunate.Agent.SubagentLimits.Concurrency.init -> void
+Lunate.Agent.SubagentLimits.Deconstruct(out int? Concurrency, out long? TokenBudget, out long? TreeTokenBudget) -> void
+Lunate.Agent.SubagentLimits.Equals(Lunate.Agent.SubagentLimits? other) -> bool
+Lunate.Agent.SubagentLimits.SubagentLimits(int? Concurrency = 4, long? TokenBudget = 100000, long? TreeTokenBudget = 500000) -> void
+Lunate.Agent.SubagentLimits.TokenBudget.get -> long?
+Lunate.Agent.SubagentLimits.TokenBudget.init -> void
+Lunate.Agent.SubagentLimits.TreeTokenBudget.get -> long?
+Lunate.Agent.SubagentLimits.TreeTokenBudget.init -> void
+Lunate.Agent.SubagentRequest
+Lunate.Agent.SubagentRequest.<Clone>$() -> Lunate.Agent.SubagentRequest!
+Lunate.Agent.SubagentRequest.AllowedTools.get -> System.Collections.Generic.IReadOnlyList<string!>?
+Lunate.Agent.SubagentRequest.AllowedTools.init -> void
+Lunate.Agent.SubagentRequest.Deconstruct(out string! Prompt, out int? MaxSteps, out System.Collections.Generic.IReadOnlyList<string!>? AllowedTools) -> void
+Lunate.Agent.SubagentRequest.Equals(Lunate.Agent.SubagentRequest? other) -> bool
+Lunate.Agent.SubagentRequest.MaxSteps.get -> int?
+Lunate.Agent.SubagentRequest.MaxSteps.init -> void
+Lunate.Agent.SubagentRequest.Prompt.get -> string!
+Lunate.Agent.SubagentRequest.Prompt.init -> void
+Lunate.Agent.SubagentRequest.SubagentRequest(string! Prompt, int? MaxSteps = null, System.Collections.Generic.IReadOnlyList<string!>? AllowedTools = null) -> void
+Lunate.Agent.SubagentResult
+Lunate.Agent.SubagentResult.<Clone>$() -> Lunate.Agent.SubagentResult!
+Lunate.Agent.SubagentResult.ChildSessionId.get -> string?
+Lunate.Agent.SubagentResult.ChildSessionId.init -> void
+Lunate.Agent.SubagentResult.Deconstruct(out string? ChildSessionId, out string? RunId, out string! Output, out string! StopReason, out bool IsError, out long TokensUsed) -> void
+Lunate.Agent.SubagentResult.Equals(Lunate.Agent.SubagentResult? other) -> bool
+Lunate.Agent.SubagentResult.IsError.get -> bool
+Lunate.Agent.SubagentResult.IsError.init -> void
+Lunate.Agent.SubagentResult.Output.get -> string!
+Lunate.Agent.SubagentResult.Output.init -> void
+Lunate.Agent.SubagentResult.RunId.get -> string?
+Lunate.Agent.SubagentResult.RunId.init -> void
+Lunate.Agent.SubagentResult.StopReason.get -> string!
+Lunate.Agent.SubagentResult.StopReason.init -> void
+Lunate.Agent.SubagentResult.SubagentResult(string? ChildSessionId, string? RunId, string! Output, string! StopReason, bool IsError, long TokensUsed) -> void
+Lunate.Agent.SubagentResult.TokensUsed.get -> long
+Lunate.Agent.SubagentResult.TokensUsed.init -> void
+Lunate.Agent.SubagentUsage
+Lunate.Agent.SubagentUsage.Deconstruct(out long TokensUsed, out int LiveChildren) -> void
+Lunate.Agent.SubagentUsage.Equals(Lunate.Agent.SubagentUsage other) -> bool
+Lunate.Agent.SubagentUsage.LiveChildren.get -> int
+Lunate.Agent.SubagentUsage.LiveChildren.init -> void
+Lunate.Agent.SubagentUsage.SubagentUsage() -> void
+Lunate.Agent.SubagentUsage.SubagentUsage(long TokensUsed, int LiveChildren) -> void
+Lunate.Agent.SubagentUsage.TokensUsed.get -> long
+Lunate.Agent.SubagentUsage.TokensUsed.init -> void
+Lunate.Agent.ToolContext.Subagents.get -> Lunate.Agent.ISubagentRunner?
+Lunate.Agent.ToolContext.Subagents.init -> void
+override Lunate.Agent.SubagentLimits.Equals(object? obj) -> bool
+override Lunate.Agent.SubagentLimits.GetHashCode() -> int
+override Lunate.Agent.SubagentLimits.ToString() -> string!
+override Lunate.Agent.SubagentRequest.Equals(object? obj) -> bool
+override Lunate.Agent.SubagentRequest.GetHashCode() -> int
+override Lunate.Agent.SubagentRequest.ToString() -> string!
+override Lunate.Agent.SubagentResult.Equals(object? obj) -> bool
+override Lunate.Agent.SubagentResult.GetHashCode() -> int
+override Lunate.Agent.SubagentResult.ToString() -> string!
+override Lunate.Agent.SubagentUsage.GetHashCode() -> int
+static Lunate.Agent.SubagentLimits.operator !=(Lunate.Agent.SubagentLimits? left, Lunate.Agent.SubagentLimits? right) -> bool
+static Lunate.Agent.SubagentLimits.operator ==(Lunate.Agent.SubagentLimits? left, Lunate.Agent.SubagentLimits? right) -> bool
+static Lunate.Agent.SubagentRequest.operator !=(Lunate.Agent.SubagentRequest? left, Lunate.Agent.SubagentRequest? right) -> bool
+static Lunate.Agent.SubagentRequest.operator ==(Lunate.Agent.SubagentRequest? left, Lunate.Agent.SubagentRequest? right) -> bool
+static Lunate.Agent.SubagentResult.operator !=(Lunate.Agent.SubagentResult? left, Lunate.Agent.SubagentResult? right) -> bool
+static Lunate.Agent.SubagentResult.operator ==(Lunate.Agent.SubagentResult? left, Lunate.Agent.SubagentResult? right) -> bool
+static Lunate.Agent.SubagentUsage.operator !=(Lunate.Agent.SubagentUsage left, Lunate.Agent.SubagentUsage right) -> bool
+static Lunate.Agent.SubagentUsage.operator ==(Lunate.Agent.SubagentUsage left, Lunate.Agent.SubagentUsage right) -> bool

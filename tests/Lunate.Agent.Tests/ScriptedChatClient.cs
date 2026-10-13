@@ -6,8 +6,42 @@ namespace Lunate.Agent.Tests;
 internal sealed class ScriptedChatClient : IChatClient
 {
     private readonly Queue<Script> _scripts = new();
+    private readonly Dictionary<int, TaskCompletionSource> _started = new();
+    private readonly Dictionary<int, TaskCompletionSource> _release = new();
 
     public List<ScriptedRequest> Requests { get; } = [];
+
+    /// <summary>The start of one call as an awaitable; 1-based over the call order.</summary>
+    public Task WaitForCallAsync(int call)
+    {
+        lock (_started)
+        {
+            return Started(call).Task;
+        }
+    }
+
+    /// <summary>Holds the given call until <see cref="Release"/> is called.</summary>
+    public void Gate(int call)
+    {
+        lock (_release)
+        {
+            _release[call] = new TaskCompletionSource(
+                TaskCreationOptions.RunContinuationsAsynchronously
+            );
+        }
+    }
+
+    /// <summary>Releases a gated call.</summary>
+    public void Release(int call)
+    {
+        lock (_release)
+        {
+            if (_release.TryGetValue(call, out TaskCompletionSource? gate))
+            {
+                gate.TrySetResult();
+            }
+        }
+    }
 
     public ScriptedChatClient Enqueue(params ChatResponseUpdate[] updates)
     {
@@ -21,16 +55,19 @@ internal sealed class ScriptedChatClient : IChatClient
         return this;
     }
 
-    public Task<ChatResponse> GetResponseAsync(
+    public async Task<ChatResponse> GetResponseAsync(
         IEnumerable<ChatMessage> messages,
         ChatOptions? options = null,
         CancellationToken cancellationToken = default
     )
     {
-        Script script = Dequeue(messages, options);
-        return script.Failure is not null
-            ? Task.FromException<ChatResponse>(script.Failure)
-            : Task.FromResult(script.Updates.ToChatResponse());
+        (Script script, Task? gate) = Dequeue(messages, options);
+        if (gate is not null)
+        {
+            await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        return script.Failure is not null ? throw script.Failure : script.Updates.ToChatResponse();
     }
 
     public async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
@@ -39,7 +76,12 @@ internal sealed class ScriptedChatClient : IChatClient
         [EnumeratorCancellation] CancellationToken cancellationToken = default
     )
     {
-        Script script = Dequeue(messages, options);
+        (Script script, Task? gate) = Dequeue(messages, options);
+        if (gate is not null)
+        {
+            await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        }
+
         foreach (ChatResponseUpdate update in script.Updates)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -56,14 +98,46 @@ internal sealed class ScriptedChatClient : IChatClient
 
     public void Dispose() { }
 
-    private Script Dequeue(IEnumerable<ChatMessage> messages, ChatOptions? options)
+    private (Script Script, Task? Gate) Dequeue(
+        IEnumerable<ChatMessage> messages,
+        ChatOptions? options
+    )
     {
-        Requests.Add(new ScriptedRequest([.. messages], options));
-        return _scripts.Count > 0
-            ? _scripts.Dequeue()
-            : throw new InvalidOperationException(
-                "ScriptedChatClient has no scripted response left."
+        int call;
+        lock (_started)
+        {
+            Requests.Add(new ScriptedRequest([.. messages], options));
+            call = Requests.Count;
+            Started(call).TrySetResult();
+        }
+
+        Task? gate;
+        lock (_release)
+        {
+            gate = _release.TryGetValue(call, out TaskCompletionSource? pending)
+                ? pending.Task
+                : null;
+        }
+
+        Script script =
+            _scripts.Count > 0
+                ? _scripts.Dequeue()
+                : throw new InvalidOperationException(
+                    "ScriptedChatClient has no scripted response left."
+                );
+        return (script, gate);
+    }
+
+    private TaskCompletionSource Started(int call)
+    {
+        if (!_started.TryGetValue(call, out TaskCompletionSource? started))
+        {
+            _started[call] = started = new TaskCompletionSource(
+                TaskCreationOptions.RunContinuationsAsynchronously
             );
+        }
+
+        return started;
     }
 
     private sealed record Script(IReadOnlyList<ChatResponseUpdate> Updates, Exception? Failure);

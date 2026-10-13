@@ -26,6 +26,7 @@ public sealed partial class Session
 
     private readonly TimeProvider _timeProvider;
     private readonly List<SessionEntry> _entries = [];
+    private SessionHeaderEntry? _header;
 
     internal Session(string path, string sessionId, TimeProvider timeProvider)
     {
@@ -33,6 +34,16 @@ public sealed partial class Session
         SessionId = sessionId;
         _timeProvider = timeProvider;
     }
+
+    /// <summary>
+    /// The session's header line: schema, id, working directory, creation time, MEAI version and
+    /// the optional repository identity. Used to mirror a parent's header onto a child session.
+    /// </summary>
+    internal SessionHeaderEntry Header =>
+        _header
+        ?? throw new InvalidOperationException(
+            $"Session '{SessionId}' has no header; only created or loaded sessions can be used."
+        );
 
     /// <summary>The session id, also the header's id.</summary>
     public string SessionId { get; }
@@ -78,6 +89,7 @@ public sealed partial class Session
             worktree
         );
         session.WriteHeader(header);
+        session._header = header;
         return session;
     }
 
@@ -116,7 +128,7 @@ public sealed partial class Session
             );
         }
 
-        var session = new Session(path, header.Id, timeProvider);
+        var session = new Session(path, header.Id, timeProvider) { _header = header };
         for (int index = 1; index < count; index++)
         {
             SessionEntry entry = ParseLine(lines[index], path, index + 1);

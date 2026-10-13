@@ -184,7 +184,10 @@ public sealed partial class AgentHarness
         {
             AgentCompactingResult result = await hooks
                 .CompactingAsync(
-                    new AgentCompactingContext(runId, [.. part.Select(ToContextMessage)]),
+                    new AgentCompactingContext(runId, [.. part.Select(ToContextMessage)])
+                    {
+                        ParentRunId = ParentRunId,
+                    },
                     ct
                 )
                 .ConfigureAwait(false);

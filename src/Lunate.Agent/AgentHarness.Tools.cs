@@ -339,6 +339,7 @@ public sealed partial class AgentHarness
             new AgentToolCallingContext(runId, callId, tool.Name, args)
             {
                 Annotations = tool.Annotations,
+                ParentRunId = ParentRunId,
             },
             ct
         );
@@ -378,7 +379,10 @@ public sealed partial class AgentHarness
                 approvedArgs,
                 result.Output ?? string.Empty,
                 result.IsError
-            ),
+            )
+            {
+                ParentRunId = ParentRunId,
+            },
             ct
         );
         return result with
@@ -419,6 +423,7 @@ public sealed partial class AgentHarness
                 _options.WorkingDirectory,
                 runId
             ),
+            Subagents = _subagentRunner,
         };
 
     private ToolResult UnknownTool(string toolName) =>
