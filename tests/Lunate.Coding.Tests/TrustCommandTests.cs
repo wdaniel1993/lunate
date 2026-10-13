@@ -327,6 +327,22 @@ public sealed class TrustCommandTests
     }
 
     [Fact]
+    public void Absent_env_and_an_empty_env_digest_equal()
+    {
+        using var temp = new TempDirectory();
+        Fixture fixture = Fixture.Create(temp, withConfig: true);
+        string absent = fixture.PrintedDigest();
+
+        File.WriteAllText(
+            fixture.ConfigPath,
+            """{ "mcpServers": { "srv": { "command": "x", "env": {} } } }"""
+        );
+        string empty = fixture.PrintedDigest();
+
+        Assert.Equal(absent, empty);
+    }
+
+    [Fact]
     public void Json_with_nothing_pending_carries_a_null_digest_and_exits_zero()
     {
         using var temp = new TempDirectory();

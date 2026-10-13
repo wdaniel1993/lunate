@@ -98,6 +98,18 @@ public sealed class McpConfigTrustHashTests
     }
 
     [Fact]
+    public void Absent_env_hashes_like_an_empty_env()
+    {
+        using var temp = new TempDirectory();
+        string absent = temp.File("absent.json");
+        File.WriteAllText(absent, """{ "mcpServers": { "srv": { "command": "x" } } }""");
+        string empty = temp.File("empty.json");
+        File.WriteAllText(empty, """{ "mcpServers": { "srv": { "command": "x", "env": {} } } }""");
+
+        Assert.Equal(McpConfigTrustHash.ComputeFile(absent), McpConfigTrustHash.ComputeFile(empty));
+    }
+
+    [Fact]
     public void A_missing_file_hashes_like_an_empty_definition_set()
     {
         using var temp = new TempDirectory();

@@ -8,9 +8,10 @@ namespace Lunate.Coding;
 /// <summary>
 /// The project <c>mcp.json</c> trust hash: SHA-256 over the servers' raw definitions as parsed from
 /// the file — name, command, args, env, cwd and call timeout as written, unknown fields excluded —
-/// name-sorted and canonically serialized with invariant culture. Nothing expanded enters it, so no
-/// environment value or secret can influence it, and formatting or key-order edits do not change
-/// it.
+/// name-sorted and canonically serialized with invariant culture. An absent <c>env</c> is
+/// normalized to an empty map, so absent and <c>"env": {}</c> hash the same. Nothing expanded
+/// enters it, so no environment value or secret can influence it, and formatting or key-order
+/// edits do not change it.
 /// </summary>
 internal static class McpConfigTrustHash
 {
@@ -47,12 +48,12 @@ internal static class McpConfigTrustHash
             arguments.Add(argument);
         }
 
-        JsonNode? environment = null;
-        if (server.Environment is not null)
+        JsonNode environment;
+        if (includeValues)
         {
-            if (includeValues)
+            var values = new JsonObject();
+            if (server.Environment is not null)
             {
-                var values = new JsonObject();
                 foreach (
                     KeyValuePair<string, string> entry in server.Environment.OrderBy(
                         entry => entry.Key,
@@ -62,12 +63,15 @@ internal static class McpConfigTrustHash
                 {
                     values[entry.Key] = entry.Value;
                 }
-
-                environment = values;
             }
-            else
+
+            environment = values;
+        }
+        else
+        {
+            var names = new JsonArray();
+            if (server.Environment is not null)
             {
-                var names = new JsonArray();
                 foreach (
                     string name in server.Environment.Keys.OrderBy(
                         name => name,
@@ -77,13 +81,9 @@ internal static class McpConfigTrustHash
                 {
                     names.Add(name);
                 }
-
-                environment = names;
             }
-        }
-        else if (!includeValues)
-        {
-            environment = new JsonArray();
+
+            environment = names;
         }
 
         double? callTimeoutSeconds = server.CallTimeout?.TotalSeconds;
