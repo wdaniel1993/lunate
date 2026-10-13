@@ -1,9 +1,9 @@
 using System.ComponentModel;
-using System.Diagnostics;
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using Lunate.Agent;
+using Lunate.Extensibility.Abstractions;
 
 namespace Lunate.Coding;
 
@@ -11,6 +11,8 @@ namespace Lunate.Coding;
 public sealed class BashTool : ITool
 {
     private const int CaptureCap = 1_000_000;
+
+    private static readonly ProcessRunner Runner = new();
 
     internal static readonly string CapMarker = string.Create(
         CultureInfo.InvariantCulture,
@@ -25,8 +27,6 @@ public sealed class BashTool : ITool
         + "the process tree is killed on timeout or cancel.";
 
     private static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(120);
-
-    private static readonly UTF8Encoding Utf8 = new(encoderShouldEmitUTF8Identifier: false);
 
     private static readonly JsonElement Schema = JsonDocument
         .Parse(
@@ -93,30 +93,19 @@ public sealed class BashTool : ITool
 
         ct.ThrowIfCancellationRequested();
 
-        var startInfo = new ProcessStartInfo
-        {
-            FileName = _shell.ExecutablePath,
-            WorkingDirectory = _workspace.WorktreeRoot,
-            UseShellExecute = false,
-            RedirectStandardInput = true,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            StandardOutputEncoding = Utf8,
-            StandardErrorEncoding = Utf8,
-        };
-        foreach (var prefix in _shell.ArgumentsPrefix)
-        {
-            startInfo.ArgumentList.Add(prefix);
-        }
-
-        startInfo.ArgumentList.Add(commandElement.GetString()!);
-
-        Process process;
+        ProcessRunResult run;
         try
         {
-            process =
-                Process.Start(startInfo)
-                ?? throw new InvalidOperationException("the process did not start");
+            run = await Runner.RunAsync(
+                new ProcessRunRequest(
+                    _shell.ExecutablePath,
+                    [.. _shell.ArgumentsPrefix, commandElement.GetString()!],
+                    _workspace.WorktreeRoot,
+                    Timeout: _timeout,
+                    OutputCapBytes: CaptureCap
+                ),
+                ct
+            );
         }
         catch (Exception exception)
             when (exception
@@ -134,125 +123,19 @@ public sealed class BashTool : ITool
             return Error(message);
         }
 
-        using var running = process;
-        process.StandardInput.Close();
-        var stdoutTask = ReadBoundedAsync(process.StandardOutput);
-        var stderrTask = ReadBoundedAsync(process.StandardError);
-
-        var timedOut = false;
-        var stdout = string.Empty;
-        var stderr = string.Empty;
-        using (var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct))
-        {
-            timeoutCts.CancelAfter(_timeout);
-            try
-            {
-                await process.WaitForExitAsync(timeoutCts.Token);
-            }
-            catch (OperationCanceledException) when (!ct.IsCancellationRequested)
-            {
-                timedOut = true;
-                await KillTreeAsync(process);
-                (stdout, stderr) = await DrainAsync(stdoutTask, stderrTask);
-            }
-            catch (OperationCanceledException)
-            {
-                await KillTreeAsync(process);
-                await DrainAsync(stdoutTask, stderrTask);
-                throw;
-            }
-        }
-
-        if (timedOut)
+        var stdout = WithCapMarker(run.Stdout, run.StdoutCapped);
+        var stderr = WithCapMarker(run.Stderr, run.StderrCapped);
+        if (run.TimedOut)
         {
             return Error(ComposeText(stdout, stderr, TimeoutFooter()));
         }
 
-        stdout = await stdoutTask;
-        stderr = await stderrTask;
-        var exitCode = process.ExitCode;
+        var exitCode = run.ExitCode!.Value;
         return new ToolResult(ComposeText(stdout, stderr, ExitFooter(exitCode)), exitCode != 0);
     }
 
-    private static async Task<string> ReadBoundedAsync(StreamReader reader)
-    {
-        var builder = new StringBuilder();
-        var buffer = new char[8192];
-        var capped = false;
-        while (true)
-        {
-            var read = await reader.ReadAsync(buffer.AsMemory());
-            if (read == 0)
-            {
-                return builder.ToString();
-            }
-
-            if (capped)
-            {
-                continue;
-            }
-
-            var remaining = CaptureCap - builder.Length;
-            if (read <= remaining)
-            {
-                builder.Append(buffer, 0, read);
-                continue;
-            }
-
-            builder.Append(buffer, 0, remaining);
-            builder.Append('\n').Append(CapMarker);
-            capped = true;
-        }
-    }
-
-    private static async Task KillTreeAsync(Process process)
-    {
-        if (OperatingSystem.IsWindows())
-        {
-            try
-            {
-                process.Kill(entireProcessTree: true);
-            }
-            catch (Exception exception)
-                when (exception
-                        is InvalidOperationException
-                            or Win32Exception
-                            or NotSupportedException
-                ) { }
-        }
-        else
-        {
-            // System.Diagnostics' entireProcessTree path SIGSTOPs the whole tree first and
-            // wedges macOS CI VMs (runner loses communication; repro on the T-15 PR).
-            // Enumerate with ps and SIGKILL children first instead — see PosixProcessTree.
-            PosixProcessTree.Kill(process.Id);
-        }
-
-        try
-        {
-            await process
-                .WaitForExitAsync(CancellationToken.None)
-                .WaitAsync(TimeSpan.FromSeconds(5));
-        }
-        catch (TimeoutException) { }
-    }
-
-    private static async Task<(string Stdout, string Stderr)> DrainAsync(
-        Task<string> stdoutTask,
-        Task<string> stderrTask
-    )
-    {
-        try
-        {
-            await Task.WhenAll(stdoutTask, stderrTask).WaitAsync(TimeSpan.FromSeconds(10));
-        }
-        catch (TimeoutException) { }
-
-        return (
-            stdoutTask.Status == TaskStatus.RanToCompletion ? stdoutTask.Result : string.Empty,
-            stderrTask.Status == TaskStatus.RanToCompletion ? stderrTask.Result : string.Empty
-        );
-    }
+    private static string WithCapMarker(string text, bool capped) =>
+        capped ? text + "\n" + CapMarker : text;
 
     private static string ComposeText(string stdout, string stderr, string footer)
     {

@@ -92,6 +92,7 @@ internal sealed class ExtensionSession : IAsyncDisposable
             "core/mutation-queue",
             new MutationQueueHandle(FileMutationQueue.Shared)
         );
+        loader.Services.RegisterCore("core/process", new ProcessRunner());
         List<ExtensionSessionError> errors = [];
 
         loader.Discover(workingDirectory, repositoryIdentity);

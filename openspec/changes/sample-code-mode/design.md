@@ -87,3 +87,9 @@ The child process is a **lifecycle boundary** (timeout, crash containment, kill-
 ## D12 — Non-goals
 
 A sandbox (D11), in-process runtimes (future opt-ins), provider-hosted tool passthrough, T-52, lazy/partial tool declaration beyond the stub list, language-specific stub renderers in core (core emits typed data; renderers live in consumers).
+
+## Deviations
+
+- **`ProcessRunRequest.LineHandler`** — an optional stdout-line/stdin-answer pump on the request. D10's brace list names the batch fields only, but the sample bridge (D4: call frames answered on the child's stdin) needs bidirectional I/O through the runner; without it the handler could not use the service for the bridge at all. Batch callers (the bash tool) leave it null and keep stdin closed.
+- **`ProcessRunResult.StdoutCapped`/`StderrCapped`** — per-stream cap flags, with `OutputCapped` kept as the (computed) either-stream flag D10 names. The singular flag could not tell the bash tool which stream to mark, and marking both would add a false cap notice to the other stream.
+- **`ProcessRunResult.ExitCode` is nullable** — `null` when the run timed out and the tree was killed, where no exit code is meaningful; D10 names the member without a type.

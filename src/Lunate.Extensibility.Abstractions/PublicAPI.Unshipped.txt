@@ -822,7 +822,7 @@ static Lunate.Extensibility.Abstractions.TextSegment.operator !=(Lunate.Extensib
 static Lunate.Extensibility.Abstractions.TextSegment.operator ==(Lunate.Extensibility.Abstractions.TextSegment? left, Lunate.Extensibility.Abstractions.TextSegment? right) -> bool
 static Lunate.Extensibility.Abstractions.ToolResultView.operator !=(Lunate.Extensibility.Abstractions.ToolResultView? left, Lunate.Extensibility.Abstractions.ToolResultView? right) -> bool
 static Lunate.Extensibility.Abstractions.ToolResultView.operator ==(Lunate.Extensibility.Abstractions.ToolResultView? left, Lunate.Extensibility.Abstractions.ToolResultView? right) -> bool
-const Lunate.Extensibility.Abstractions.ExtensionApi.Current = "1.8.0" -> string!
+const Lunate.Extensibility.Abstractions.ExtensionApi.Current = "1.9.0" -> string!
 Lunate.Extensibility.Abstractions.IExtensionContext.RegisterMcpServer(Lunate.Extensibility.Abstractions.McpServerRegistration! registration) -> void
 Lunate.Extensibility.Abstractions.McpServerConfig
 Lunate.Extensibility.Abstractions.McpServerConfig.<Clone>$() -> Lunate.Extensibility.Abstractions.McpServerConfig!
@@ -888,3 +888,52 @@ Lunate.Extensibility.Abstractions.ToolResultReadyPayload.ParentRunId.get -> stri
 Lunate.Extensibility.Abstractions.ToolResultReadyPayload.ParentRunId.init -> void
 Lunate.Extensibility.Abstractions.TurnEndedPayload.ParentRunId.get -> string?
 Lunate.Extensibility.Abstractions.TurnEndedPayload.ParentRunId.init -> void
+Lunate.Extensibility.Abstractions.IProcessRunner
+Lunate.Extensibility.Abstractions.IProcessRunner.RunAsync(Lunate.Extensibility.Abstractions.ProcessRunRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Lunate.Extensibility.Abstractions.ProcessRunResult!>!
+Lunate.Extensibility.Abstractions.ProcessRunRequest
+Lunate.Extensibility.Abstractions.ProcessRunRequest.<Clone>$() -> Lunate.Extensibility.Abstractions.ProcessRunRequest!
+Lunate.Extensibility.Abstractions.ProcessRunRequest.Arguments.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Lunate.Extensibility.Abstractions.ProcessRunRequest.Arguments.init -> void
+Lunate.Extensibility.Abstractions.ProcessRunRequest.Deconstruct(out string! FileName, out System.Collections.Generic.IReadOnlyList<string!>! Arguments, out string! WorkingDirectory, out System.Collections.Generic.IReadOnlyDictionary<string!, string!>? Environment, out System.TimeSpan? Timeout, out int? OutputCapBytes) -> void
+Lunate.Extensibility.Abstractions.ProcessRunRequest.Environment.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>?
+Lunate.Extensibility.Abstractions.ProcessRunRequest.Environment.init -> void
+Lunate.Extensibility.Abstractions.ProcessRunRequest.Equals(Lunate.Extensibility.Abstractions.ProcessRunRequest? other) -> bool
+Lunate.Extensibility.Abstractions.ProcessRunRequest.FileName.get -> string!
+Lunate.Extensibility.Abstractions.ProcessRunRequest.FileName.init -> void
+Lunate.Extensibility.Abstractions.ProcessRunRequest.LineHandler.get -> System.Func<string!, System.Threading.CancellationToken, System.Threading.Tasks.Task<string?>!>?
+Lunate.Extensibility.Abstractions.ProcessRunRequest.LineHandler.init -> void
+Lunate.Extensibility.Abstractions.ProcessRunRequest.OutputCapBytes.get -> int?
+Lunate.Extensibility.Abstractions.ProcessRunRequest.OutputCapBytes.init -> void
+Lunate.Extensibility.Abstractions.ProcessRunRequest.ProcessRunRequest(string! FileName, System.Collections.Generic.IReadOnlyList<string!>! Arguments, string! WorkingDirectory, System.Collections.Generic.IReadOnlyDictionary<string!, string!>? Environment = null, System.TimeSpan? Timeout = null, int? OutputCapBytes = null) -> void
+Lunate.Extensibility.Abstractions.ProcessRunRequest.Timeout.get -> System.TimeSpan?
+Lunate.Extensibility.Abstractions.ProcessRunRequest.Timeout.init -> void
+Lunate.Extensibility.Abstractions.ProcessRunRequest.WorkingDirectory.get -> string!
+Lunate.Extensibility.Abstractions.ProcessRunRequest.WorkingDirectory.init -> void
+Lunate.Extensibility.Abstractions.ProcessRunResult
+Lunate.Extensibility.Abstractions.ProcessRunResult.<Clone>$() -> Lunate.Extensibility.Abstractions.ProcessRunResult!
+Lunate.Extensibility.Abstractions.ProcessRunResult.Deconstruct(out int? ExitCode, out string! Stdout, out string! Stderr, out bool TimedOut) -> void
+Lunate.Extensibility.Abstractions.ProcessRunResult.Equals(Lunate.Extensibility.Abstractions.ProcessRunResult? other) -> bool
+Lunate.Extensibility.Abstractions.ProcessRunResult.ExitCode.get -> int?
+Lunate.Extensibility.Abstractions.ProcessRunResult.ExitCode.init -> void
+Lunate.Extensibility.Abstractions.ProcessRunResult.OutputCapped.get -> bool
+Lunate.Extensibility.Abstractions.ProcessRunResult.ProcessRunResult(int? ExitCode, string! Stdout, string! Stderr, bool TimedOut) -> void
+Lunate.Extensibility.Abstractions.ProcessRunResult.Stderr.get -> string!
+Lunate.Extensibility.Abstractions.ProcessRunResult.Stderr.init -> void
+Lunate.Extensibility.Abstractions.ProcessRunResult.StderrCapped.get -> bool
+Lunate.Extensibility.Abstractions.ProcessRunResult.StderrCapped.init -> void
+Lunate.Extensibility.Abstractions.ProcessRunResult.Stdout.get -> string!
+Lunate.Extensibility.Abstractions.ProcessRunResult.Stdout.init -> void
+Lunate.Extensibility.Abstractions.ProcessRunResult.StdoutCapped.get -> bool
+Lunate.Extensibility.Abstractions.ProcessRunResult.StdoutCapped.init -> void
+Lunate.Extensibility.Abstractions.ProcessRunResult.TimedOut.get -> bool
+Lunate.Extensibility.Abstractions.ProcessRunResult.TimedOut.init -> void
+override Lunate.Extensibility.Abstractions.ProcessRunRequest.Equals(object? obj) -> bool
+override Lunate.Extensibility.Abstractions.ProcessRunRequest.GetHashCode() -> int
+override Lunate.Extensibility.Abstractions.ProcessRunRequest.ToString() -> string!
+override Lunate.Extensibility.Abstractions.ProcessRunResult.Equals(object? obj) -> bool
+override Lunate.Extensibility.Abstractions.ProcessRunResult.GetHashCode() -> int
+override Lunate.Extensibility.Abstractions.ProcessRunResult.ToString() -> string!
+static Lunate.Extensibility.Abstractions.ProcessRunRequest.operator !=(Lunate.Extensibility.Abstractions.ProcessRunRequest? left, Lunate.Extensibility.Abstractions.ProcessRunRequest? right) -> bool
+static Lunate.Extensibility.Abstractions.ProcessRunRequest.operator ==(Lunate.Extensibility.Abstractions.ProcessRunRequest? left, Lunate.Extensibility.Abstractions.ProcessRunRequest? right) -> bool
+static Lunate.Extensibility.Abstractions.ProcessRunResult.operator !=(Lunate.Extensibility.Abstractions.ProcessRunResult? left, Lunate.Extensibility.Abstractions.ProcessRunResult? right) -> bool
+static Lunate.Extensibility.Abstractions.ProcessRunResult.operator ==(Lunate.Extensibility.Abstractions.ProcessRunResult? left, Lunate.Extensibility.Abstractions.ProcessRunResult? right) -> bool

@@ -13,10 +13,10 @@
 
 ## 3. `core/process` service (Q1 outcome — sign-off)
 
-- [ ] 3.1 Contract in `Lunate.Extensibility.Abstractions` (`Services.cs`): `IProcessRunner`, `ProcessRunRequest`, `ProcessRunResult` per D10 (tree-kill/timeout/output-cap/cancellation semantics in XML docs; environment = exactly what the caller passes, `null` = inherit; Windows job path documented as the fallback); PublicAPI.Unshipped.
-- [ ] 3.2 Implementation `ProcessRunner` in `Lunate.Coding` (absorbs `PosixProcessTree` + the bash kill/cap/drain logic); register `core/process` in `ExtensionSession` beside `core/workspace`/`core/file-bus`.
-- [ ] 3.3 `BashTool` uses the runner internally (environment policy unchanged: inherit); remove the local `PosixProcessTree`; repoint `PosixProcessTreeTests` → runner tests (both runtime paths green).
-- [ ] 3.4 Service units: timeout kills the tree, output cap, cancellation, environment passthrough, exit codes.
+- [x] 3.1 Contract in `Lunate.Extensibility.Abstractions` (`Services.cs`): `IProcessRunner`, `ProcessRunRequest`, `ProcessRunResult` per D10 (tree-kill/timeout/output-cap/cancellation semantics in XML docs; environment = exactly what the caller passes, `null` = inherit; Windows job path documented as the fallback); PublicAPI.Unshipped.
+- [x] 3.2 Implementation `ProcessRunner` in `Lunate.Coding` (absorbs `PosixProcessTree` + the bash kill/cap/drain logic); register `core/process` in `ExtensionSession` beside `core/workspace`/`core/file-bus`.
+- [x] 3.3 `BashTool` uses the runner internally (environment policy unchanged: inherit); remove the local `PosixProcessTree`; repoint `PosixProcessTreeTests` → runner tests (both runtime paths green).
+- [x] 3.4 Service units: timeout kills the tree, output cap, cancellation, environment passthrough, exit codes.
 
 ## 4. Sample extension (`samples/extensions/code-mode`)
 
