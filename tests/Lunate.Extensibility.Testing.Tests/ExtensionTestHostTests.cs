@@ -1,3 +1,5 @@
+using System.Text.Json;
+using Lunate.Agent;
 using Microsoft.Extensions.AI;
 
 namespace Lunate.Extensibility.Testing.Tests;
@@ -86,6 +88,31 @@ public sealed class ExtensionTestHostTests
     }
 
     [Fact]
+    public async Task A_tool_publishing_via_the_context_reaches_the_subscribed_extension()
+    {
+        using var temp = new TempDirectory();
+        await using var host = HelloHost(temp);
+        host.Tools.Add(new PublishingTool());
+
+        await host.RunAsync(
+            new ToolCallingChatClient("publish-file", new Dictionary<string, object?>()),
+            "publish",
+            Ct
+        );
+
+        string line = Assert
+            .Single(
+                host.Log.Entries,
+                entry => entry.Message.Contains("hello file changed:", StringComparison.Ordinal)
+            )
+            .Message;
+        Assert.Contains("relative=published.cs", line, StringComparison.Ordinal);
+        Assert.Contains($"workspace={host.WorkingDirectory}", line, StringComparison.Ordinal);
+        Assert.Matches(@"run=run_[0-9a-f]{32}", line);
+        Assert.Contains("kind=modified", line, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Dispose_without_start_or_stop_is_quiet_and_idempotent()
     {
         using var temp = new TempDirectory();
@@ -95,6 +122,35 @@ public sealed class ExtensionTestHostTests
         await host.DisposeAsync();
 
         Assert.Equal(0, host.Trust.Calls);
+    }
+
+    /// <summary>Publishes through the tool context the way an extension or MCP tool would.</summary>
+    private sealed class PublishingTool : ITool
+    {
+        public string Name => "publish-file";
+
+        public string Description => "Publishes a file change through the run context.";
+
+        public JsonElement ParametersSchema { get; } =
+            JsonDocument.Parse("""{"type":"object"}""").RootElement.Clone();
+
+        public Task<ToolResult> ExecuteAsync(
+            JsonElement args,
+            ToolContext ctx,
+            CancellationToken ct
+        )
+        {
+            ctx.FileChanges.Notify(
+                new FileChangeEvent(
+                    Path.Combine(ctx.WorkingDirectory, "published.cs"),
+                    "published.cs",
+                    string.Empty,
+                    null,
+                    FileChangeKind.Modified
+                )
+            );
+            return Task.FromResult(new ToolResult("published", IsError: false));
+        }
     }
 
     private static ExtensionTestHost HelloHost(TempDirectory temp) =>

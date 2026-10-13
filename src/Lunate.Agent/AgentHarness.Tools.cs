@@ -414,6 +414,11 @@ public sealed partial class AgentHarness
                 ),
             Progress = message => channel.Emit(new ToolProgressUpdate(runId, callId, message)),
             FileMutations = _options.FileMutations,
+            FileChanges = new RunFileChangeSink(
+                _options.FileChanges,
+                _options.WorkingDirectory,
+                runId
+            ),
         };
 
     private ToolResult UnknownTool(string toolName) =>

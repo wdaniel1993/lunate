@@ -8,7 +8,6 @@ namespace Lunate.Coding;
 public sealed class WriteTool(
     Workspace workspace,
     IFileMutationQueue? mutations = null,
-    IFileChangeSink? changes = null,
     ITextFileAccess? files = null
 ) : ITool
 {
@@ -110,7 +109,15 @@ public sealed class WriteTool(
                     return Task.FromResult(Error($"could not be written: {exception.Message}"));
                 }
 
-                changes?.Notify(target);
+                ctx.FileChanges.Notify(
+                    new FileChangeEvent(
+                        target,
+                        relative,
+                        ctx.WorkingDirectory,
+                        ctx.RunId,
+                        created ? FileChangeKind.Created : FileChangeKind.Modified
+                    )
+                );
 
                 var lines = CountLines(content);
                 var details = new WriteDetails(

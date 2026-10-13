@@ -61,6 +61,10 @@ public sealed class ExtensionTestHost : IAsyncDisposable
         _fileChanges = new FileChangeBus(WorkingDirectory, Log);
         Runner.Services.RegisterCore("core/file-bus", _fileChanges);
         Runner.Services.RegisterCore(
+            "core/mutation-queue",
+            new MutationQueueHandle(FileMutationQueue.Shared)
+        );
+        Runner.Services.RegisterCore(
             "core/workspace",
             new WorkspaceInfo(Path.GetFullPath(WorkingDirectory), null, null)
         );

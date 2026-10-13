@@ -199,6 +199,7 @@ internal static class AcpMode
                 : new NonInteractiveApprover(settings.Approval, yolo: false),
             Hooks = host?.Hooks,
             Session = session,
+            FileChanges = (IFileChangeSink?)host?.FileChanges ?? NullFileChangeSink.Instance,
             ModelCatalog = catalog,
             ModelId = model.Id,
         };

@@ -8,18 +8,57 @@ public sealed class FileChangeBusTests
     private static readonly CancellationToken Ct = TestContext.Current.CancellationToken;
 
     [Fact]
-    public async Task A_notification_carries_the_canonical_path_and_the_workspace_id()
+    public async Task A_notification_maps_the_full_event_and_the_wire_kind()
     {
         using var bus = new FileChangeBus("/work");
         var handler = new RecordingFileChangedHandler();
         bus.Subscribe(handler);
 
-        bus.Notify("/work/a.txt");
+        bus.Notify(
+            new FileChangeEvent(
+                "/work/src/a.cs",
+                "src/a.cs",
+                "/work",
+                "run_1",
+                FileChangeKind.Created
+            )
+        );
         await bus.DrainAsync(Ct);
 
         FileChangedPayload payload = Assert.Single(handler.Payloads);
-        Assert.Equal("/work/a.txt", payload.Path);
+        Assert.Equal("/work/src/a.cs", payload.Path);
+        Assert.Equal("src/a.cs", payload.RelativePath);
         Assert.Equal("/work", payload.WorkspaceId);
+        Assert.Equal("run_1", payload.RunId);
+        Assert.Equal("created", payload.Kind);
+    }
+
+    [Fact]
+    public async Task A_modified_event_maps_the_modified_wire_kind()
+    {
+        using var bus = new FileChangeBus("/work");
+        var handler = new RecordingFileChangedHandler();
+        bus.Subscribe(handler);
+
+        bus.Notify(Changes.Event("/work/a.cs", kind: FileChangeKind.Modified));
+        await bus.DrainAsync(Ct);
+
+        Assert.Equal("modified", Assert.Single(handler.Payloads).Kind);
+    }
+
+    [Fact]
+    public async Task The_bus_workspace_id_is_the_fallback_for_unstamped_events()
+    {
+        using var bus = new FileChangeBus("/work");
+        var handler = new RecordingFileChangedHandler();
+        bus.Subscribe(handler);
+
+        bus.Notify(
+            new FileChangeEvent("/work/a.cs", "a.cs", string.Empty, null, FileChangeKind.Modified)
+        );
+        await bus.DrainAsync(Ct);
+
+        Assert.Equal("/work", Assert.Single(handler.Payloads).WorkspaceId);
     }
 
     [Fact]
@@ -31,7 +70,7 @@ public sealed class FileChangeBusTests
         bus.Subscribe(Handler(10, () => order.Add("high")));
         bus.Subscribe(Handler(0, () => order.Add("second-low")));
 
-        bus.Notify("/w/a.txt");
+        bus.Notify(Changes.Event("/w/a.txt"));
         await bus.DrainAsync(Ct);
 
         Assert.Equal(["high", "first-low", "second-low"], order);
@@ -45,7 +84,7 @@ public sealed class FileChangeBusTests
         IDisposable subscription = bus.Subscribe(handler);
 
         subscription.Dispose();
-        bus.Notify("/w/a.txt");
+        bus.Notify(Changes.Event("/w/a.txt"));
         await bus.DrainAsync(Ct);
 
         Assert.Empty(handler.Payloads);
@@ -72,7 +111,7 @@ public sealed class FileChangeBusTests
         var handler = new RecordingFileChangedHandler();
         bus.Subscribe(handler, pattern);
 
-        bus.Notify(path);
+        bus.Notify(Changes.Event(path));
         await bus.DrainAsync(Ct);
 
         Assert.Equal(expected ? 1 : 0, handler.Payloads.Count);
@@ -85,7 +124,7 @@ public sealed class FileChangeBusTests
         var handler = new RecordingFileChangedHandler();
         bus.Subscribe(handler, "*.TXT");
 
-        bus.Notify("/w/a.txt");
+        bus.Notify(Changes.Event("/w/a.txt"));
         await bus.DrainAsync(Ct);
 
         Assert.Equal(OperatingSystem.IsLinux() ? 0 : 1, handler.Payloads.Count);
@@ -107,7 +146,7 @@ public sealed class FileChangeBusTests
 
         try
         {
-            bus.Notify("/w/a.txt");
+            bus.Notify(Changes.Event("/w/a.txt"));
         }
         catch (Exception exception)
         {
@@ -135,7 +174,7 @@ public sealed class FileChangeBusTests
         var survivor = new RecordingFileChangedHandler();
         bus.Subscribe(survivor);
 
-        bus.Notify("/w/a.txt");
+        bus.Notify(Changes.Event("/w/a.txt"));
         await bus.DrainAsync(Ct);
 
         Assert.Single(survivor.Payloads);
@@ -182,7 +221,7 @@ public sealed class FileChangeBusTests
                                 applied.Add($"/w/f-{index}");
                             }
 
-                            bus.Notify($"/w/f-{index}");
+                            bus.Notify(Changes.Event($"/w/f-{index}"));
                             return Task.FromResult(0);
                         },
                         Ct
@@ -193,6 +232,82 @@ public sealed class FileChangeBusTests
         await bus.DrainAsync(Ct);
 
         Assert.Equal(applied, delivered);
+    }
+
+    [Fact]
+    public async Task Notifications_after_a_drain_begins_are_dropped_and_logged()
+    {
+        var log = new RecordingExtensionLog();
+        using var bus = new FileChangeBus("/w", log);
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        bus.Subscribe(
+            new TestFileChangedHandler(
+                0,
+                async (_, _) =>
+                {
+                    entered.TrySetResult();
+                    await release.Task;
+                }
+            )
+        );
+        var handler = new RecordingFileChangedHandler();
+        bus.Subscribe(handler);
+
+        bus.Notify(Changes.Event("/w/a.txt"));
+        await entered.Task.WaitAsync(TimeSpan.FromSeconds(5), Ct);
+        // DrainAsync flips the bus into drain mode synchronously before it awaits.
+        Task drain = bus.DrainAsync(Ct).AsTask();
+
+        try
+        {
+            bus.Notify(Changes.Event("/w/b.txt"));
+        }
+        catch (Exception exception)
+        {
+            Assert.Fail($"Notify after a drain began threw: {exception}");
+        }
+
+        release.SetResult();
+        await drain.WaitAsync(TimeSpan.FromSeconds(5), Ct);
+
+        FileChangedPayload payload = Assert.Single(handler.Payloads);
+        Assert.Equal("/w/a.txt", payload.Path);
+        Assert.Contains(
+            log.Messages,
+            message =>
+                message.Contains("dropped", StringComparison.Ordinal)
+                && message.Contains("/w/b.txt", StringComparison.Ordinal)
+        );
+    }
+
+    [Fact]
+    public async Task A_slow_handler_never_stalls_a_producer()
+    {
+        using var bus = new FileChangeBus("/w");
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        bus.Subscribe(
+            new TestFileChangedHandler(
+                0,
+                async (_, _) =>
+                {
+                    entered.TrySetResult();
+                    await release.Task;
+                }
+            )
+        );
+        var handler = new RecordingFileChangedHandler();
+        bus.Subscribe(handler);
+
+        bus.Notify(Changes.Event("/w/a.txt"));
+        await entered.Task.WaitAsync(TimeSpan.FromSeconds(5), Ct);
+        // The pump is inside the slow handler; a second enqueue must return immediately.
+        bus.Notify(Changes.Event("/w/b.txt"));
+        release.SetResult();
+        await bus.DrainAsync(Ct);
+
+        Assert.Equal(["/w/a.txt", "/w/b.txt"], handler.Payloads.Select(payload => payload.Path));
     }
 
     private static TestFileChangedHandler Handler(int priority, Action action) =>

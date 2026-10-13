@@ -42,10 +42,11 @@ public sealed class HelloExtensionFactory : IExtensionFactory
             $"ext/{context.Id}/greeter",
             new HelloBackgroundService(context.Log)
         );
-        context.SubscribeFileChanged(new HelloFileChangedHandler(context.Log));
+        context.SubscribeFileChanged(new HelloFileChangedHandler(context.Log), "*.cs");
         bool hasBus = context.TryGetCoreService<IFileChangeBus>("core/file-bus", out _);
+        bool hasQueue = context.TryGetCoreService<IMutationQueue>("core/mutation-queue", out _);
         bool hasService = context.TryGetService($"ext/{context.Id}/greeter", out _);
-        context.Log.Info($"hello lookups: bus={hasBus}, service={hasService}");
+        context.Log.Info($"hello lookups: bus={hasBus}, queue={hasQueue}, service={hasService}");
         return new HelloExtension(_greeter.Greeting);
     }
 }

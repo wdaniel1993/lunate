@@ -1,3 +1,4 @@
+using Lunate.Agent;
 using Lunate.Extensibility;
 using Lunate.Extensibility.Abstractions;
 
@@ -40,6 +41,7 @@ internal sealed class ExtensionSession : IAsyncDisposable
 {
     private readonly ExtensionLoader _loader;
     private readonly IExtensionLog _log;
+    private readonly FileChangeBus _fileChanges;
     private readonly AgentHookAdapter _hooks;
     private ExtensionMcpServers? _mcpServers;
     private bool _disposed;
@@ -47,11 +49,13 @@ internal sealed class ExtensionSession : IAsyncDisposable
     private ExtensionSession(
         ExtensionLoader loader,
         IExtensionLog log,
+        FileChangeBus fileChanges,
         IReadOnlyList<ExtensionSessionError> errors
     )
     {
         _loader = loader;
         _log = log;
+        _fileChanges = fileChanges;
         _hooks = new AgentHookAdapter(loader.Hooks);
         Errors = errors;
     }
@@ -78,7 +82,16 @@ internal sealed class ExtensionSession : IAsyncDisposable
                 Log = log,
             }
         );
+        // The session owns one bus, created before any extension loads so a subscriber
+        // registering during load is subscribed for the whole session. The mutation queue
+        // handle wraps the queue the core tools use, so extension mutations serialize with them.
+        var fileChanges = new FileChangeBus(workspace.WorktreeRoot, log);
         loader.Services.RegisterCore("core/workspace", workspace);
+        loader.Services.RegisterCore("core/file-bus", fileChanges);
+        loader.Services.RegisterCore(
+            "core/mutation-queue",
+            new MutationQueueHandle(FileMutationQueue.Shared)
+        );
         List<ExtensionSessionError> errors = [];
 
         loader.Discover(workingDirectory, repositoryIdentity);
@@ -99,7 +112,9 @@ internal sealed class ExtensionSession : IAsyncDisposable
             catch (OperationCanceledException)
             {
                 // Cancellation mid-compose: stop whatever already started (earlier extensions'
-                // background services) before surfacing; the host is never returned.
+                // background services) and release the bus before surfacing; the host is never
+                // returned.
+                fileChanges.Dispose();
                 await loader.EndSessionAsync(CancellationToken.None).ConfigureAwait(false);
                 throw;
             }
@@ -115,11 +130,14 @@ internal sealed class ExtensionSession : IAsyncDisposable
             }
         }
 
-        return new ExtensionSession(loader, log, errors);
+        return new ExtensionSession(loader, log, fileChanges, errors);
     }
 
     /// <summary>The harness hook seam over the loaded extensions' hook runner.</summary>
     internal AgentHookAdapter Hooks => _hooks;
+
+    /// <summary>The session's file change bus (the <c>core/file-bus</c> handle); the modes hand it to the harness.</summary>
+    internal FileChangeBus FileChanges => _fileChanges;
 
     /// <summary>The raw hook runner behind the input pipeline.</summary>
     internal HookRunner HookRunner => _loader.Hooks;
@@ -182,7 +200,11 @@ internal sealed class ExtensionSession : IAsyncDisposable
     /// <summary>The discovery and load failures this session continued past.</summary>
     internal IReadOnlyList<ExtensionSessionError> Errors { get; }
 
-    /// <summary>Runs the session-ending hooks and stops the MCP mappings; later calls do nothing.</summary>
+    /// <summary>
+    /// Drains (and then disposes) the file change bus, runs the session-ending hooks and stops the
+    /// MCP mappings; later calls do nothing. The drain delivers what was enqueued, each dispatch
+    /// bounded by the handler timeout, so a slow handler cannot hang teardown.
+    /// </summary>
     public async ValueTask DisposeAsync()
     {
         if (_disposed)
@@ -191,6 +213,15 @@ internal sealed class ExtensionSession : IAsyncDisposable
         }
 
         _disposed = true;
+        try
+        {
+            await _fileChanges.DrainAsync(CancellationToken.None).ConfigureAwait(false);
+        }
+        finally
+        {
+            _fileChanges.Dispose();
+        }
+
         await _loader.EndSessionAsync().ConfigureAwait(false);
         if (_mcpServers is { } servers)
         {

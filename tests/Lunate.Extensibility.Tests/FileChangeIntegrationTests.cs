@@ -18,14 +18,14 @@ public sealed class FileChangeIntegrationTests
         var handler = new RecordingFileChangedHandler();
         bus.Subscribe(handler);
 
-        ToolResult write = await new WriteTool(workspace, changes: bus).ExecuteAsync(
+        ToolResult write = await new WriteTool(workspace).ExecuteAsync(
             Args("""{"path":"src/a.txt","content":"hello\nworld\n"}"""),
-            Context,
+            For(workspace, bus),
             Ct
         );
-        ToolResult edit = await new EditTool(workspace, changes: bus).ExecuteAsync(
+        ToolResult edit = await new EditTool(workspace).ExecuteAsync(
             Args("""{"path":"src/a.txt","old_text":"world","new_text":"there"}"""),
-            Context,
+            For(workspace, bus),
             Ct
         );
         await bus.DrainAsync(Ct);
@@ -39,6 +39,9 @@ public sealed class FileChangeIntegrationTests
             handler.Payloads,
             payload => Assert.Equal(workspace.WorktreeRoot, payload.WorkspaceId)
         );
+        Assert.All(handler.Payloads, payload => Assert.Equal("src/a.txt", payload.RelativePath));
+        Assert.All(handler.Payloads, payload => Assert.Equal("run_test", payload.RunId));
+        Assert.Equal(["created", "modified"], handler.Payloads.Select(payload => payload.Kind));
     }
 
     [Fact]
@@ -50,14 +53,14 @@ public sealed class FileChangeIntegrationTests
         var handler = new RecordingFileChangedHandler();
         bus.Subscribe(handler);
 
-        ToolResult refusedEdit = await new EditTool(workspace, changes: bus).ExecuteAsync(
+        ToolResult refusedEdit = await new EditTool(workspace).ExecuteAsync(
             Args("""{"path":"missing.txt","old_text":"a","new_text":"b"}"""),
-            Context,
+            For(workspace, bus),
             Ct
         );
-        ToolResult refusedWrite = await new WriteTool(workspace, changes: bus).ExecuteAsync(
+        ToolResult refusedWrite = await new WriteTool(workspace).ExecuteAsync(
             Args("""{"path":"../outside.txt","content":"x"}"""),
-            Context,
+            For(workspace, bus),
             Ct
         );
         await bus.DrainAsync(Ct);
@@ -81,14 +84,14 @@ public sealed class FileChangeIntegrationTests
         firstBus.Subscribe(firstHandler);
         secondBus.Subscribe(secondHandler);
 
-        await new WriteTool(firstWorkspace, changes: firstBus).ExecuteAsync(
+        await new WriteTool(firstWorkspace).ExecuteAsync(
             Args("""{"path":"a.txt","content":"one\n"}"""),
-            Context,
+            For(firstWorkspace, firstBus),
             Ct
         );
-        await new WriteTool(secondWorkspace, changes: secondBus).ExecuteAsync(
+        await new WriteTool(secondWorkspace).ExecuteAsync(
             Args("""{"path":"b.txt","content":"two\n"}"""),
-            Context,
+            For(secondWorkspace, secondBus),
             Ct
         );
         await firstBus.DrainAsync(Ct);
@@ -116,9 +119,9 @@ public sealed class FileChangeIntegrationTests
             )
         );
 
-        ToolResult result = await new WriteTool(workspace, changes: bus).ExecuteAsync(
+        ToolResult result = await new WriteTool(workspace).ExecuteAsync(
             Args("""{"path":"a.txt","content":"written\n"}"""),
-            Context,
+            For(workspace, bus),
             Ct
         );
         await bus.DrainAsync(Ct);
@@ -130,6 +133,47 @@ public sealed class FileChangeIntegrationTests
             message => message.Contains("failed", StringComparison.Ordinal)
         );
     }
+
+    [Fact]
+    public async Task A_subscriber_reading_the_file_on_delivery_sees_the_new_content()
+    {
+        using var temp = new TempDirectory();
+        var workspace = new Workspace(temp.Root);
+        using var bus = new FileChangeBus(workspace.WorktreeRoot);
+        string? observed = null;
+        bus.Subscribe(
+            new TestFileChangedHandler(
+                0,
+                (payload, _) =>
+                {
+                    observed = File.ReadAllText(payload.Path);
+                    return ValueTask.CompletedTask;
+                }
+            )
+        );
+
+        ToolResult result = await new WriteTool(workspace).ExecuteAsync(
+            Args("""{"path":"a.txt","content":"hello\nworld\n"}"""),
+            For(workspace, bus),
+            Ct
+        );
+        await bus.DrainAsync(Ct);
+
+        Assert.False(result.IsError);
+        Assert.Equal("hello\nworld\n", observed);
+    }
+
+    private static ToolContext For(
+        Workspace workspace,
+        IFileChangeSink sink,
+        string? runId = "run_test"
+    ) =>
+        Context with
+        {
+            WorkingDirectory = workspace.WorktreeRoot,
+            RunId = runId,
+            FileChanges = sink,
+        };
 
     private static JsonElement Args(string json) => JsonDocument.Parse(json).RootElement.Clone();
 }
