@@ -15,10 +15,10 @@
 
 ## 3. Registration, validation, naming
 
-- [ ] 3.1 `ExtensionContext.RegisterTool`: registration-only, ≤32, refusals naming extension + field.
-- [ ] 3.2 Naming per D4: model-facing `<extension-id>__<name>`, sanitized `[A-Za-z0-9_-]`, ≤64, no `:`; core names reserved; namespace = extension id.
-- [ ] 3.3 Manifest cross-check (asymmetric, D6): registered-but-undeclared → load refused; declared-but-unregistered → warn + dropped from the offered set.
-- [ ] 3.4 Tests: malformed refusals; duplicate refusals; both manifest mismatches.
+- [x] 3.1 `ExtensionContext.RegisterTool`: registration-only, ≤32, refusals naming extension + field.
+- [x] 3.2 Naming per D4: model-facing `<extension-id>__<name>`, sanitized `[A-Za-z0-9_-]`, ≤64, no `:`; core names reserved; namespace = extension id.
+- [x] 3.3 Manifest cross-check (asymmetric, D6): registered-but-undeclared → load refused; declared-but-unregistered → warn + dropped from the offered set.
+- [x] 3.4 Tests: malformed refusals; duplicate refusals; both manifest mismatches.
 
 ## 4. Composition and pipeline behavior
 

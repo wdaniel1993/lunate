@@ -77,6 +77,7 @@ public sealed partial class ExtensionLoader
                 _tools.Register
             );
             IExtension extension = factory.Create(extensionContext);
+            CrossCheckManifestTools(descriptor);
             _modelProviders.Register(descriptor.Id, descriptor.Manifest.ModelProviders);
             var loaded = new LoadedExtension(descriptor.Id, extension, descriptor);
             _loaded[descriptor.Id] = loaded;
@@ -130,6 +131,48 @@ public sealed partial class ExtensionLoader
         _backgroundServices.Services.TryGet(name, out IBackgroundService? service) ? service : null;
 
     private object? FindCoreService(string name) => _backgroundServices.Services.FindCore(name);
+
+    /// <summary>
+    /// The asymmetric manifest rule (design D6): the manifest is what the user trusted before any
+    /// code loaded, so every registered tool must be declared — a registered-but-undeclared tool
+    /// refuses the load. A declared-but-unregistered name is logged as a warning and dropped from
+    /// the offered set (it was never registered, so nothing is offered).
+    /// </summary>
+    private void CrossCheckManifestTools(ExtensionDescriptor descriptor)
+    {
+        IReadOnlyList<ExtensionToolAdapter> registered =
+        [
+            .. _tools
+                .List()
+                .Where(tool =>
+                    string.Equals(tool.ExtensionId, descriptor.Id, StringComparison.Ordinal)
+                ),
+        ];
+        HashSet<string> declared = new(descriptor.Manifest.Tools, StringComparer.Ordinal);
+        foreach (ExtensionToolAdapter tool in registered)
+        {
+            if (!declared.Contains(tool.LocalName))
+            {
+                throw new ExtensionLoadException(
+                    $"extension '{descriptor.Id}': tool '{tool.LocalName}' is registered by code but not declared in the manifest 'tools' list; the manifest must cover everything the code contributes. Declare it or remove the registration."
+                );
+            }
+        }
+
+        foreach (string name in descriptor.Manifest.Tools)
+        {
+            if (
+                !registered.Any(tool =>
+                    string.Equals(tool.LocalName, name, StringComparison.Ordinal)
+                )
+            )
+            {
+                (_options.Log ?? NullExtensionLog.Instance).Warn(
+                    $"extension '{descriptor.Id}': manifest declares tool '{name}' but no registration matched; the entry is dropped from the offered set."
+                );
+            }
+        }
+    }
 
     private async Task EnsureTrustedAsync(
         ExtensionDescriptor descriptor,

@@ -100,6 +100,80 @@ public sealed class ExtensionToolLoaderTests
         Assert.Empty(loader.Tools.List());
     }
 
+    [Fact]
+    public async Task A_registered_tool_the_manifest_does_not_declare_refuses_the_load()
+    {
+        using var temp = new TempDirectory();
+        TestExtensions.InstallToolExtension(
+            temp,
+            "tools",
+            tools: """["echo"]""",
+            settings: """{"tools":[{"name":"echo"},{"name":"extra"}]}"""
+        );
+        var loader = new ExtensionLoader(
+            TestExtensions.Options(temp.Subdirectory("store"), new RecordingExtensionLog())
+        );
+        loader.Discover(temp.Root, "repo");
+
+        ExtensionLoadException exception = await Assert.ThrowsAsync<ExtensionLoadException>(() =>
+            loader.Load("tools", temp.Root, "repo", new FakeExtensionTrustPrompt(true), Ct)
+        );
+
+        Assert.Contains("extension 'tools'", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("'extra'", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("manifest", exception.Message, StringComparison.Ordinal);
+        Assert.Empty(loader.Tools.List());
+    }
+
+    [Fact]
+    public async Task A_declared_tool_without_a_registration_is_warned_and_dropped()
+    {
+        using var temp = new TempDirectory();
+        TestExtensions.InstallToolExtension(
+            temp,
+            "tools",
+            tools: """["echo","ghost"]""",
+            settings: """{"tools":[{"name":"echo"}]}"""
+        );
+        var log = new RecordingExtensionLog();
+        var loader = new ExtensionLoader(TestExtensions.Options(temp.Subdirectory("store"), log));
+        loader.Discover(temp.Root, "repo");
+
+        await loader.Load("tools", temp.Root, "repo", new FakeExtensionTrustPrompt(true), Ct);
+
+        Assert.Equal(["tools__echo"], loader.Tools.List().Select(tool => tool.Name));
+        Assert.Contains(
+            log.Messages,
+            message =>
+                message.Contains("'ghost'", StringComparison.Ordinal)
+                && message.Contains("dropped", StringComparison.Ordinal)
+        );
+    }
+
+    [Fact]
+    public async Task A_malformed_registration_refuses_the_load_naming_the_field()
+    {
+        using var temp = new TempDirectory();
+        TestExtensions.InstallToolExtension(
+            temp,
+            "tools",
+            tools: """["bad"]""",
+            settings: """{"tools":[{"name":"bad","schema":"text"}]}"""
+        );
+        var loader = new ExtensionLoader(
+            TestExtensions.Options(temp.Subdirectory("store"), new RecordingExtensionLog())
+        );
+        loader.Discover(temp.Root, "repo");
+
+        ExtensionLoadException exception = await Assert.ThrowsAsync<ExtensionLoadException>(() =>
+            loader.Load("tools", temp.Root, "repo", new FakeExtensionTrustPrompt(true), Ct)
+        );
+
+        Assert.Contains("extension 'tools'", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("field 'parametersSchema'", exception.Message, StringComparison.Ordinal);
+        Assert.Empty(loader.Tools.List());
+    }
+
     private static List<ToolsChangedPayload> ObserveToolChanges(ExtensionLoader loader)
     {
         List<ToolsChangedPayload> changes = [];

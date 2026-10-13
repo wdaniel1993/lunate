@@ -25,11 +25,13 @@ public sealed class ToolExtensionFactory : IExtensionFactory
         return new ToolExtension();
     }
 
-    private static ExtensionToolRegistration ReadRegistration(JsonElement tool) =>
-        new()
+    private static ExtensionToolRegistration ReadRegistration(JsonElement tool)
+    {
+        string name = ReadString(tool, "name") ?? string.Empty;
+        return new ExtensionToolRegistration
         {
-            Name = ReadString(tool, "name") ?? string.Empty,
-            Description = ReadString(tool, "description") ?? string.Empty,
+            Name = name,
+            Description = ReadString(tool, "description") ?? $"Tool '{name}'.",
             ParametersSchema = ReadSchema(tool, "schema") ?? ObjectSchema(),
             OutputSchema = ReadOptionalSchema(tool, "outputSchema"),
             Annotations = ReadAnnotations(tool),
@@ -40,6 +42,7 @@ public sealed class ToolExtensionFactory : IExtensionFactory
                 ReadString(tool, "marker")
             ),
         };
+    }
 
     private static string? ReadString(JsonElement tool, string name) =>
         tool.ValueKind == JsonValueKind.Object

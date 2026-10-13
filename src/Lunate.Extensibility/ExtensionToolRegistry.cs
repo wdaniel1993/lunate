@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Lunate.Extensibility.Abstractions;
 
 namespace Lunate.Extensibility;
@@ -10,8 +11,13 @@ namespace Lunate.Extensibility;
 /// </summary>
 public sealed class ExtensionToolRegistry
 {
+    private const int MaxToolsPerExtension = 32;
+    private const int MaxNameLength = 64;
+
     private readonly object _gate = new();
     private readonly List<ExtensionToolAdapter> _tools = [];
+    private readonly Dictionary<string, ExtensionToolAdapter> _byName = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, int> _countByExtension = new(StringComparer.Ordinal);
 
     // The lifetime source is cancelled, never disposed: an adapter may be mid-construction or
     // mid-call while the extension unloads, and a cancelled token keeps working from any snapshot.
@@ -24,12 +30,33 @@ public sealed class ExtensionToolRegistry
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(extensionId);
         ArgumentNullException.ThrowIfNull(registration);
+        Validate(extensionId, registration);
 
         lock (_gate)
         {
-            _tools.Add(
-                new ExtensionToolAdapter(extensionId, registration, Lifetime(extensionId).Token)
+            string name = ExtensionToolNaming.ModelFacing(extensionId, registration.Name);
+            if (_byName.TryGetValue(name, out ExtensionToolAdapter? existing))
+            {
+                throw new InvalidOperationException(
+                    $"extension '{extensionId}': tool '{registration.Name}' was refused: the model-facing name '{name}' is already registered by extension '{existing.ExtensionId}' tool '{existing.LocalName}'."
+                );
+            }
+
+            if (_countByExtension.GetValueOrDefault(extensionId) >= MaxToolsPerExtension)
+            {
+                throw new InvalidOperationException(
+                    $"extension '{extensionId}': tool '{registration.Name}' was refused: the limit of {MaxToolsPerExtension} tools per extension is reached."
+                );
+            }
+
+            var tool = new ExtensionToolAdapter(
+                extensionId,
+                registration,
+                Lifetime(extensionId).Token
             );
+            _tools.Add(tool);
+            _byName[name] = tool;
+            _countByExtension[extensionId] = _countByExtension.GetValueOrDefault(extensionId) + 1;
         }
     }
 
@@ -58,12 +85,18 @@ public sealed class ExtensionToolRegistry
                 if (string.Equals(_tools[index].ExtensionId, extensionId, StringComparison.Ordinal))
                 {
                     removed.Add(_tools[index].Name);
+                    _byName.Remove(_tools[index].Name);
                     _tools.RemoveAt(index);
                 }
                 else
                 {
                     index++;
                 }
+            }
+
+            if (removed.Count > 0)
+            {
+                _countByExtension.Remove(extensionId);
             }
 
             if (_lifetimes.Remove(extensionId, out CancellationTokenSource? lifetime))
@@ -85,6 +118,75 @@ public sealed class ExtensionToolRegistry
 
         return lifetime;
     }
+
+    private static void Validate(string extensionId, ExtensionToolRegistration registration)
+    {
+        string name = registration.Name ?? string.Empty;
+        if (name.Length == 0 || !name.All(IsValidNameCharacter))
+        {
+            throw Refused(
+                extensionId,
+                name,
+                "field 'name' must be a non-empty name matching [A-Za-z0-9_-]."
+            );
+        }
+
+        string modelFacing = ExtensionToolNaming.ModelFacing(extensionId, name);
+        if (modelFacing.Length > MaxNameLength)
+        {
+            throw Refused(
+                extensionId,
+                name,
+                $"field 'name' makes the model-facing name '{modelFacing}' longer than {MaxNameLength} characters."
+            );
+        }
+
+        if (string.IsNullOrWhiteSpace(registration.Description))
+        {
+            throw Refused(
+                extensionId,
+                name,
+                "field 'description' must be a non-empty description."
+            );
+        }
+
+        if (registration.ParametersSchema.ValueKind != JsonValueKind.Object)
+        {
+            throw Refused(extensionId, name, "field 'parametersSchema' must be a JSON object.");
+        }
+
+        if (
+            registration.OutputSchema is
+            { ValueKind: not (JsonValueKind.Object or JsonValueKind.Null) }
+        )
+        {
+            throw Refused(extensionId, name, "field 'outputSchema' must be a JSON object.");
+        }
+
+        if (registration.Handler is null)
+        {
+            throw Refused(extensionId, name, "field 'handler' is required.");
+        }
+
+        if (!Enum.IsDefined(registration.Exposure))
+        {
+            throw Refused(extensionId, name, "field 'exposure' has an unknown value.");
+        }
+    }
+
+    private static bool IsValidNameCharacter(char character) =>
+        character is >= 'a' and <= 'z' or >= 'A' and <= 'Z' or >= '0' and <= '9' or '_' or '-';
+
+    private static InvalidOperationException Refused(
+        string extensionId,
+        string name,
+        string reason
+    ) =>
+        new(
+            name.Length == 0
+                ? $"extension '{extensionId}': tool registration was refused: {reason}"
+                : $"extension '{extensionId}': tool '{name}' was refused: {reason}"
+        );
 }
 
 /// <summary>The naming grammar of extension tools: the literal MCP-style double underscore prefix.</summary>
