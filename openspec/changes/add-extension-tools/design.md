@@ -58,7 +58,7 @@ A resumed session may contain calls to an extension tool that is no longer prese
 
 ### D10 — Handler failures
 
-A throwing/timed-out handler becomes an **error result with instructing text** (the model learns what happened and can adapt — ADR-0003's teaching-error spirit), logged; the run continues. Never a harness failure.
+A throwing handler — or an in-flight call cancelled by extension unload — becomes an **error result with instructing text** (the model learns what happened and can adapt — ADR-0003's teaching-error spirit), logged; the run continues. Never a harness failure.
 
 ### D11 — API version and contracts
 
