@@ -54,6 +54,37 @@ public sealed class McpConfigTrustTests
     }
 
     [Fact]
+    public async Task A_formatting_only_edit_does_not_prompt_again()
+    {
+        using var temp = new TempDirectory();
+        string worktree = Worktree(temp);
+        string config = McpComposition.ProjectConfigPath(worktree);
+        Directory.CreateDirectory(Path.GetDirectoryName(config)!);
+        File.WriteAllText(config, """{ "mcpServers": { "srv": { "command": "x" } } }""");
+        var trust = new McpConfigTrust(Store(temp));
+        var prompt = new ScriptedMcpConfigTrustPrompt(true);
+        var log = new RecordingExtensionLog();
+
+        Assert.True(
+            await trust.EnsureTrustedAsync(worktree, worktree, config, [], prompt, log, Ct)
+        );
+        File.WriteAllText(
+            config,
+            """
+
+            {
+              "mcpServers": { "srv": { "command": "x" } }
+            }
+            """
+        );
+        Assert.True(
+            await trust.EnsureTrustedAsync(worktree, worktree, config, [], prompt, log, Ct)
+        );
+
+        Assert.Equal(1, prompt.Calls);
+    }
+
+    [Fact]
     public async Task A_new_worktree_of_a_trusted_repository_does_not_prompt()
     {
         using var temp = new TempDirectory();
@@ -94,6 +125,7 @@ public sealed class McpConfigTrustTests
             message =>
                 message.Contains("was not trusted", StringComparison.Ordinal)
                 && message.Contains("interactive", StringComparison.Ordinal)
+                && message.Contains("'lunate trust'", StringComparison.Ordinal)
         );
     }
 

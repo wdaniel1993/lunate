@@ -14,7 +14,9 @@ internal static class Cli
         CancellationToken ct = default,
         PrintModeOptions? printOptions = null,
         InteractiveSessionOptions? interactiveOptions = null,
-        ExtensionSeams? extensions = null
+        ExtensionSeams? extensions = null,
+        // The trust command's repository root; null uses the process working directory.
+        string? workingDirectory = null
     )
     {
         var noExtensions = false;
@@ -48,6 +50,17 @@ internal static class Cli
                 ct,
                 interactiveOptions,
                 noExtensions ? Suppress(extensions ?? interactiveOptions?.Extensions) : extensions
+            );
+        }
+
+        if (args.Length > 0 && args[0] == "trust")
+        {
+            return TrustCommand.Run(
+                args[1..],
+                workingDirectory,
+                output,
+                errors,
+                noExtensions ? Suppress(extensions) : extensions
             );
         }
 
@@ -296,6 +309,23 @@ internal static class Cli
         output.WriteLine(
             "                                 print a models.json draft to stdout (nothing is written)"
         );
+        output.WriteLine("  lunate trust [--yes [--digest <sha>]] [--json] [--clear]");
+        output.WriteLine(
+            "                                 show this repository's trust records and pending"
+        );
+        output.WriteLine(
+            "                                 project-extension/mcp.json decisions (exit 3 when"
+        );
+        output.WriteLine(
+            "                                 pending); --yes records exactly what it prints — for"
+        );
+        output.WriteLine(
+            "                                 checkouts you control, never untrusted PRs; gate CI"
+        );
+        output.WriteLine(
+            "                                 with --digest <sha>; --json for scripts; --clear"
+        );
+        output.WriteLine("                                 removes this repository's records");
     }
 
     private static string GetProductVersion()
