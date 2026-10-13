@@ -303,8 +303,13 @@ public sealed class CodeModeResultTests
     {
         if (OperatingSystem.IsWindows())
         {
-            // cmd.exe cannot run the .js script: it writes to stderr and exits without a protocol.
-            return "cmd.exe";
+            // A runtime that writes its input file to stdout and exits: more.com prints the script
+            // (whose first line is not a protocol frame), where cmd.exe would sit on stdin until
+            // the timeout instead.
+            return Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.System),
+                "more.com"
+            );
         }
 
         string path = temp.File("fake-runtime");

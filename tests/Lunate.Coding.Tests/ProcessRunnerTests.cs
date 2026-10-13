@@ -108,28 +108,39 @@ public sealed class ProcessRunnerTests
 
         Assert.Equal(7, result.ExitCode);
         Assert.False(result.TimedOut);
-        Assert.Equal("out\n", result.Stdout);
-        Assert.Equal("err\n", result.Stderr);
+        // The runner passes the child's bytes through verbatim (cmd.exe writes CRLF); normalize at
+        // the test seam per the scripting-contract rule.
+        Assert.Equal("out\n", result.Stdout.ReplaceLineEndings("\n"));
+        Assert.Equal("err\n", result.Stderr.ReplaceLineEndings("\n"));
     }
 
     [Fact]
     public async Task The_environment_is_exactly_what_the_caller_passes()
     {
         using var temp = new TempDirectory();
+        var environment = new Dictionary<string, string> { ["LUNATE_SERVICE_PROBE"] = "planted" };
+        if (OperatingSystem.IsWindows())
+        {
+            // Windows cannot start a process without SystemRoot (DLL resolution); it is supplied
+            // explicitly like any other caller-chosen variable — nothing else leaks in.
+            environment["SystemRoot"] =
+                Environment.GetEnvironmentVariable("SystemRoot") ?? @"C:\Windows";
+        }
+
         var request = NodeRequest(
             temp,
             "console.log(process.env.LUNATE_SERVICE_PROBE ?? 'none');"
                 + "console.log(process.env.PATH ?? 'none');"
         ) with
         {
-            Environment = new Dictionary<string, string> { ["LUNATE_SERVICE_PROBE"] = "planted" },
+            Environment = environment,
         };
 
         ProcessRunResult result = await RunAsync(temp, request);
 
         Assert.Equal(0, result.ExitCode);
         // The supplied variable arrives; the runner's own environment (PATH included) does not.
-        Assert.Equal("planted\nnone\n", result.Stdout);
+        Assert.Equal("planted\nnone\n", result.Stdout.ReplaceLineEndings("\n"));
     }
 
     [Fact]
