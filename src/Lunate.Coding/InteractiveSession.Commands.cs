@@ -340,6 +340,16 @@ internal sealed partial class InteractiveSession
         ResetAlwaysApproved();
         _harness = BuildHarness(_model);
         Notify("resumed " + resumed.SessionId);
+        foreach (
+            SessionChildSessionEntry link in resumed.Entries.OfType<SessionChildSessionEntry>()
+        )
+        {
+            Notify(
+                FormattableString.Invariant(
+                    $"child session: {link.ChildSessionId} (run {link.RunId})"
+                )
+            );
+        }
     }
 
     /// <summary>Starts a fresh session and rebuilds the harness against it.</summary>

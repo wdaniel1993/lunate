@@ -1,0 +1,3 @@
+{"type":"header","schema":2,"id":"s_20261013-090100-c3d4","cwd":"/repo","created":"2026-10-13T09:01:00.0000000+00:00","meai":"10.10.1","repo":"github.com/acme/lunate","worktree":"/repo/trees/subagents"}
+{"type":"message","id":"e_01","parentId":null,"timestamp":"2026-10-13T09:01:01.0000000+00:00","message":{"role":"user","contents":[{"$type":"text","text":"child prompt"}]}}
+{"type":"message","id":"e_02","parentId":"e_01","timestamp":"2026-10-13T09:01:02.0000000+00:00","message":{"role":"assistant","contents":[{"$type":"text","text":"child answer"}]},"model":"gpt-4o-mini","usage":{"input":8,"output":3}}
