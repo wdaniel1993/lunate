@@ -98,9 +98,10 @@ internal sealed partial class InteractiveSession : IDisposable
     private readonly CancellationTokenSource _lifetime = new();
     private readonly ToolBlockRenderer _toolBlocks = new();
     private readonly MarkdownRenderer _markdown;
-    private readonly Dictionary<string, string> _toolNames = new(StringComparer.Ordinal);
-    private readonly Dictionary<string, string> _toolArgs = new(StringComparer.Ordinal);
-    private readonly List<string> _activeCalls = [];
+    private readonly Dictionary<(string RunId, string CallId), string> _toolNames = [];
+    private readonly Dictionary<(string RunId, string CallId), string> _toolArgs = [];
+    private readonly List<(string RunId, string CallId)> _activeCalls = [];
+    private int _liveChildren;
     private readonly HashSet<string> _alwaysApproved = new(StringComparer.Ordinal);
     private AgentSettings _settings = new();
     private ModelCatalog _catalog = null!;

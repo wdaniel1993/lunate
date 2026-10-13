@@ -18,6 +18,7 @@ internal static class LiveAreaRenderer
     {
         int width = Math.Max(1, state.Size.Columns);
         var toolLine = ToolLine(state);
+        var subagentLine = state.SubagentRunning ? "subagent running" : null;
         // A notice is always one physical line: embedded newlines or controls would split the
         // frame, so sanitize before clipping; a notice that sanitizes to empty renders as none.
         string? notice = state.Notice is null ? null : CellText.SingleLine(state.Notice);
@@ -37,6 +38,7 @@ internal static class LiveAreaRenderer
             : StatusFooterRenderer.PlainText(state.Footer, width, state.FooterWidgets);
         int fixedLines =
             (toolLine is null ? 0 : 1)
+            + (subagentLine is null ? 0 : 1)
             + (noticeLine is null ? 0 : 1)
             + (approvalLine is null ? 0 : 1)
             + trustLines.Count
@@ -58,6 +60,11 @@ internal static class LiveAreaRenderer
         if (toolLine is not null)
         {
             lines.Add(CellText.Clip(toolLine, width));
+        }
+
+        if (subagentLine is not null)
+        {
+            lines.Add(CellText.Clip(subagentLine, width));
         }
 
         if (noticeLine is not null)

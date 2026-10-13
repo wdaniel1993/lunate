@@ -1,3 +1,4 @@
+using System.Globalization;
 using Lunate.Agent;
 using Lunate.Ai;
 using Lunate.Tui;
@@ -33,6 +34,9 @@ internal sealed partial class InteractiveSession
 
                 bool compacted = await _harness!.CompactNowAsync(ct);
                 Notify(compacted ? "context compacted" : "nothing to compact");
+                return;
+            case "/context":
+                Notify(ContextText());
                 return;
             case "/mcp":
                 Notify(await McpStatusTextAsync(ct));
@@ -77,6 +81,35 @@ internal sealed partial class InteractiveSession
                 return;
         }
     }
+
+    /// <summary>
+    /// The <c>/context</c> notice: the context usage (the footer's own format), the resolved
+    /// subagent limits (concurrency, per-child and per-tree token budgets, the fixed depth) and
+    /// the current run tree's usage. Every number is formatted culture-invariantly.
+    /// </summary>
+    private string ContextText()
+    {
+        var usage = new Lunate.Tui.StatusFooterModel(
+            _modelId,
+            _inputTokens + _outputTokens,
+            _contextWindow,
+            _workingDirectory,
+            _branch
+        );
+        SubagentLimits limits = _settings.Subagents;
+        SubagentUsage tree = _harness?.SubagentUsage ?? default;
+        string context = Lunate.Tui.StatusFooterRenderer.PlainText(usage, int.MaxValue);
+        string treeTokens = Lunate.Tui.StatusFooterRenderer.FormatTokens(tree.TokensUsed);
+        return FormattableString.Invariant(
+            $"context: {context}; subagents: concurrency {Limit(limits.Concurrency)}, {Limit(limits.TokenBudget)} tokens per child, {Limit(limits.TreeTokenBudget)} tokens per tree, depth 1 (fixed); tree usage: {treeTokens} tokens, {tree.LiveChildren} running"
+        );
+    }
+
+    private static string Limit(int? value) =>
+        value?.ToString(CultureInfo.InvariantCulture) ?? "unlimited";
+
+    private static string Limit(long? value) =>
+        value?.ToString(CultureInfo.InvariantCulture) ?? "unlimited";
 
     private bool RefusedWhileBusy()
     {

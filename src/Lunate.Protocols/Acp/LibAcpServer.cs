@@ -204,6 +204,11 @@ internal sealed class LibAcpServer(Action<string>? log = null) : IAcpServer
                         {
                             switch (agentEvent)
                             {
+                                // Child-run (subagent) events are never passed to ACP clients
+                                // raw in this version: they stay off session/update and cannot
+                                // overwrite the parent run's stop reason.
+                                case { ParentRunId: not null }:
+                                    break;
                                 case RunFinished finished:
                                     stopReason = finished.StopReason;
                                     break;

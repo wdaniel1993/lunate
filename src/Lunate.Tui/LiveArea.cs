@@ -99,6 +99,8 @@ internal sealed class LiveArea : IDisposable
 
     public void SetTool(string? toolName) => Post(new ToolInput(toolName));
 
+    public void SetSubagentRunning(bool running) => Post(new SubagentInput(running));
+
     public void SetFooter(StatusFooterModel? footer, IReadOnlyList<string>? widgets = null) =>
         Post(new FooterInput(footer, widgets ?? []));
 
@@ -209,6 +211,7 @@ internal sealed class LiveArea : IDisposable
             LoadingInput loading => state with { Loading = loading.Text },
             PickerInput picker => state with { Picker = picker.Picker },
             ToolInput tool => state with { ToolName = tool.Name, FrameNumber = 0 },
+            SubagentInput subagent => state with { SubagentRunning = subagent.Running },
             FooterInput footer => state with
             {
                 Footer = footer.Footer,
@@ -242,6 +245,8 @@ internal sealed class LiveArea : IDisposable
     private sealed record PickerInput(SelectListModel? Picker) : LiveAreaInput;
 
     private sealed record ToolInput(string? Name) : LiveAreaInput;
+
+    private sealed record SubagentInput(bool Running) : LiveAreaInput;
 
     private sealed record FooterInput(StatusFooterModel? Footer, IReadOnlyList<string> Widgets)
         : LiveAreaInput;
