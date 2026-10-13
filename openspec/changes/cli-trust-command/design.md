@@ -74,7 +74,14 @@ The README gains a short "trust in scripted runs" subsection (under Quick start)
 
 ## Deviations
 
-None yet.
+Adversarial-review amendments (2026-10-13), one line each:
+
+- **F1 (blocking) — content-only digest.** The digest folded repository identity, worktree path, extension directory and mcp.json path, so a digest pinned on a reviewer's checkout could never match a CI runner's checkout. It now canonicalizes the pending content only; the `--json` contract keeps the human-useful paths.
+- **F2 — the pin needs pending content.** `--yes --digest <sha>` with nothing pending silently recorded nothing and succeeded; it now reports that the pinned digest cannot be verified and exits 4. Plain `--yes` with nothing pending stays exit 0.
+- **F3 — `--no-extensions` respected.** `Cli.Run` passed the seams unchanged to the trust command; it now suppresses extension discovery and recording (the project `mcp.json` is still handled), matching every other mode.
+- **F4 — flag-shaped digest rejected.** `--yes --digest --json` consumed the following flag as the digest; a value starting with `--` is now a usage error (exit 2).
+- **F5 — no env values in `--json`.** The pending JSON echoed the raw env map, so a literal secret in a project `mcp.json` would be printed; it now carries the sorted key names only while the digest still hashes the raw map.
+- **F6 — absent vs empty env normalized.** Absent `env` serialized as null and `"env": {}` as `{}`, hashing semantically-equal definitions differently; the canonical definition always emits the sorted map (`{}` when none), the JSON key list `[]`.
 
 ## Test plan
 
