@@ -25,13 +25,13 @@
 - [x] 4.1 `ExtensionSession` exposes composed extension tools; the three modes add them (extension tools first, then MCP) per D7.
 - [x] 4.2 Same pipeline: annotations → `ToolCalling` payload; no-annotation tools ask (risk `Write`, MCP defaults); approval; result bounding; `OutputSchema`/`StructuredContent`; handler throw → teaching error result, never a crash (D5, D10).
 - [x] 4.3 Resumed-session rendering: a recorded call to an absent extension tool renders via the default view (D9).
-- [ ] 4.4 Kit: loads/composes/unloads extension tools.
+- [x] 4.4 Kit: loads/composes/unloads extension tools.
 
 ## 5. Proof
 
-- [ ] 5.1 Kit test extension: declared with prefixed name + authored schema; invocation receives the real `ToolContext`; file-change publish lands on the bus (one event, full payload); nested `ExecuteToolAsync` with `"<parent>/<n>"` ids; exposure gates (`Hidden`/`Programmatic` not declared).
-- [ ] 5.2 Print-mode e2e: the model calls an extension tool; result surfaces; a throwing tool yields the teaching error; unload mid-call settles cleanly.
-- [ ] 5.3 Process-spawning tests join the `mcp-processes` collection.
+- [x] 5.1 Kit test extension: declared with prefixed name + authored schema; invocation receives the real `ToolContext`; file-change publish lands on the bus (one event, full payload); nested `ExecuteToolAsync` with `"<parent>/<n>"` ids; exposure gates (`Hidden`/`Programmatic` not declared).
+- [x] 5.2 Print-mode e2e: the model calls an extension tool; result surfaces; a throwing tool yields the teaching error; unload mid-call settles cleanly.
+- [x] 5.3 Process-spawning tests join the `mcp-processes` collection.
 
 ## 6. Specs, docs, gate
 

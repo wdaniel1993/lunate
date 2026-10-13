@@ -39,7 +39,8 @@ public sealed class ToolExtensionFactory : IExtensionFactory
             Risk = ReadRisk(tool),
             Handler = new ScriptedToolHandler(
                 ReadString(tool, "behavior") ?? "echo",
-                ReadString(tool, "marker")
+                ReadString(tool, "marker"),
+                ReadString(tool, "nestedTarget") ?? "read"
             ),
         };
     }
@@ -103,8 +104,11 @@ public sealed class ToolExtensionFactory : IExtensionFactory
         JsonDocument.Parse("""{"type":"object"}""").RootElement.Clone();
 }
 
-internal sealed class ScriptedToolHandler(string behavior, string? marker = null)
-    : IExtensionToolHandler
+internal sealed class ScriptedToolHandler(
+    string behavior,
+    string? marker = null,
+    string nestedTarget = "read"
+) : IExtensionToolHandler
 {
     public async Task<ToolResult> InvokeAsync(
         JsonElement arguments,
@@ -129,6 +133,35 @@ internal sealed class ScriptedToolHandler(string behavior, string? marker = null
             case "block":
                 await Task.Delay(Timeout.Infinite, ct).ConfigureAwait(false);
                 return new ToolResult("unreachable", false);
+            case "publish":
+                context.FileChanges.Notify(
+                    new FileChangeEvent(
+                        Path.Combine(context.WorkingDirectory, "published.txt"),
+                        "published.txt",
+                        context.WorkingDirectory,
+                        context.RunId,
+                        FileChangeKind.Modified
+                    )
+                );
+                return new ToolResult("published", false);
+            case "nested":
+                if (context.ExecuteToolAsync is not { } execute)
+                {
+                    return new ToolResult("no nested execution is available", IsError: true);
+                }
+
+                ToolResult nested = await execute(nestedTarget, arguments, ct)
+                    .ConfigureAwait(false);
+                return new ToolResult(
+                    FormattableString.Invariant($"nested {nestedTarget}: {nested.Output}"),
+                    nested.IsError
+                );
+            case "structured":
+                return new ToolResult(
+                    "structured output",
+                    false,
+                    StructuredContent: JsonDocument.Parse("""{"ok":true}""").RootElement.Clone()
+                );
             default:
                 return new ToolResult(
                     FormattableString.Invariant(
