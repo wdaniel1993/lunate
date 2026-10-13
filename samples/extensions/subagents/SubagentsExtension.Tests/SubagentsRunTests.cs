@@ -94,7 +94,7 @@ public sealed class SubagentsRunTests
 
         string refusal = LastToolResult(client, 2);
         Assert.Contains("depth_limit", refusal, StringComparison.Ordinal);
-        Assert.Contains("subagents.depth", refusal, StringComparison.Ordinal);
+        Assert.Contains("fixed at 1", refusal, StringComparison.Ordinal);
         Assert.Equal(4, client.Requests.Count);
         Session session = Session.Load(result.SessionPath);
         Assert.Single(session.Entries.OfType<SessionChildSessionEntry>());
