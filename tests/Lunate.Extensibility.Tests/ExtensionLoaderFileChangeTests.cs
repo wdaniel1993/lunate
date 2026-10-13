@@ -1,3 +1,5 @@
+using Lunate.Agent;
+
 namespace Lunate.Extensibility.Tests;
 
 public sealed class ExtensionLoaderFileChangeTests
@@ -14,24 +16,38 @@ public sealed class ExtensionLoaderFileChangeTests
         loader.Discover(temp.Root, "repo");
         using var bus = new FileChangeBus(Path.GetFullPath(temp.Root), log);
         loader.Services.RegisterCore("core/file-bus", bus);
+        loader.Services.RegisterCore(
+            "core/mutation-queue",
+            new MutationQueueHandle(FileMutationQueue.Shared)
+        );
         await loader.Load("hello", temp.Root, "repo", new FakeExtensionTrustPrompt(true), Ct);
 
-        bus.Notify(Changes.Event("/work/a.txt"));
-        await WaitForLineAsync(log, "hello file changed: /work/a.txt", Ct);
+        bus.Notify(
+            Changes.Event("/work/a.cs", "a.cs", "/work", "run_test", FileChangeKind.Created)
+        );
+        await WaitForLineAsync(
+            log,
+            "hello file changed: path=/work/a.cs, relative=a.cs, workspace=/work, run=run_test, kind=created",
+            Ct
+        );
 
         Assert.Contains(
             log.Messages,
             message =>
-                message.Contains("hello lookups: bus=True, service=True", StringComparison.Ordinal)
+                message.Contains(
+                    "hello lookups: bus=True, queue=True, service=True",
+                    StringComparison.Ordinal
+                )
         );
 
         await loader.Unload("hello");
-        bus.Notify(Changes.Event("/work/b.txt"));
+        bus.Notify(Changes.Event("/work/b.cs"));
         await bus.DrainAsync(Ct);
 
         Assert.DoesNotContain(
             log.Messages,
-            message => message.Contains("hello file changed: /work/b.txt", StringComparison.Ordinal)
+            message =>
+                message.Contains("hello file changed: path=/work/b.cs", StringComparison.Ordinal)
         );
     }
 
@@ -53,7 +69,10 @@ public sealed class ExtensionLoaderFileChangeTests
         Assert.Contains(
             log.Messages,
             message =>
-                message.Contains("hello lookups: bus=False, service=True", StringComparison.Ordinal)
+                message.Contains(
+                    "hello lookups: bus=False, queue=False, service=True",
+                    StringComparison.Ordinal
+                )
         );
     }
 

@@ -27,11 +27,11 @@
 
 ## 5. Production-path end-to-end
 
-- [ ] 5.1 Print-mode e2e: project extension subscribing `core/file-bus` with a `*.cs` pattern — `write` and `edit` on matching files emit exactly one event each (absolute path, workspace-relative path, worktree-root workspace id, run id, kind); a non-matching file emits none; a refused `edit` emits none.
-- [ ] 5.2 Ordering + content: concurrent queued mutations on one file → events in the same order as the mutations applied; a subscriber reading the file on delivery sees the new content.
-- [ ] 5.3 Mutation-queue reachability: an extension schedules a read-modify-write through `core/mutation-queue` in a composed session — it applies and serializes with a core write on the same path.
-- [ ] 5.4 Lifecycle: an event enqueued just before disposal still reaches a handler subscribed during load (drain proof); a slow handler never stalls a producer (enqueue returns immediately).
-- [ ] 5.5 New process-spawning tests join the `mcp-processes` collection.
+- [x] 5.1 Print-mode e2e: project extension subscribing `core/file-bus` with a `*.cs` pattern — `write` and `edit` on matching files emit exactly one event each (absolute path, workspace-relative path, worktree-root workspace id, run id, kind); a non-matching file emits none; a refused `edit` emits none.
+- [x] 5.2 Ordering + content: concurrent queued mutations on one file → events in the same order as the mutations applied; a subscriber reading the file on delivery sees the new content.
+- [x] 5.3 Mutation-queue reachability: an extension schedules a read-modify-write through `core/mutation-queue` in a composed session — it applies and serializes with a core write on the same path.
+- [x] 5.4 Lifecycle: an event enqueued just before disposal still reaches a handler subscribed during load (drain proof); a slow handler never stalls a producer (enqueue returns immediately).
+- [x] 5.5 New process-spawning tests join the `mcp-processes` collection. (No new test in this change spawns a process.)
 
 ## 6. Gate
 

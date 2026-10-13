@@ -134,6 +134,35 @@ public sealed class FileChangeIntegrationTests
         );
     }
 
+    [Fact]
+    public async Task A_subscriber_reading_the_file_on_delivery_sees_the_new_content()
+    {
+        using var temp = new TempDirectory();
+        var workspace = new Workspace(temp.Root);
+        using var bus = new FileChangeBus(workspace.WorktreeRoot);
+        string? observed = null;
+        bus.Subscribe(
+            new TestFileChangedHandler(
+                0,
+                (payload, _) =>
+                {
+                    observed = File.ReadAllText(payload.Path);
+                    return ValueTask.CompletedTask;
+                }
+            )
+        );
+
+        ToolResult result = await new WriteTool(workspace).ExecuteAsync(
+            Args("""{"path":"a.txt","content":"hello\nworld\n"}"""),
+            For(workspace, bus),
+            Ct
+        );
+        await bus.DrainAsync(Ct);
+
+        Assert.False(result.IsError);
+        Assert.Equal("hello\nworld\n", observed);
+    }
+
     private static ToolContext For(
         Workspace workspace,
         IFileChangeSink sink,

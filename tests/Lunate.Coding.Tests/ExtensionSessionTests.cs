@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Lunate.Agent;
 using Lunate.Extensibility;
 using Lunate.Extensibility.Abstractions;
 
@@ -80,6 +81,101 @@ public sealed class ExtensionSessionTests
         Assert.True(
             host.Services.TryGetCore<IMutationQueue>("core/mutation-queue", out IMutationQueue? _)
         );
+    }
+
+    [Fact]
+    public async Task A_change_enqueued_just_before_disposal_still_reaches_a_loaded_subscriber()
+    {
+        using var temp = new TempDirectory();
+        string worktree = temp.File("worktree");
+        Directory.CreateDirectory(worktree);
+        string store = temp.File("store");
+        HelloFixture.Install(Path.Combine(store, "extensions", "hello"));
+        var log = new RecordingExtensionLog();
+
+        var host = await ExtensionSession.StartAsync(
+            Identity(worktree),
+            new ExtensionSeams { StorePath = store, Log = log },
+            Ct
+        );
+        string path = Path.Combine(worktree, "late.cs");
+        host.FileChanges.Notify(
+            new FileChangeEvent(path, "late.cs", worktree, "run_drain", FileChangeKind.Created)
+        );
+
+        await host.DisposeAsync();
+
+        Assert.True(
+            log.Contains($"hello file changed: path={path}"),
+            "the drain must deliver a change enqueued just before disposal; log:\n"
+                + string.Join("\n", log.Messages)
+        );
+
+        // A notification after disposal is dropped, not thrown.
+        host.FileChanges.Notify(
+            new FileChangeEvent(path, "late.cs", worktree, "run_drain", FileChangeKind.Modified)
+        );
+    }
+
+    [Fact]
+    public async Task The_mutation_queue_handle_serializes_with_a_core_write_on_one_path()
+    {
+        using var temp = new TempDirectory();
+        string worktree = temp.File("worktree");
+        Directory.CreateDirectory(worktree);
+
+        await using var host = await ExtensionSession.StartAsync(
+            Identity(worktree),
+            new ExtensionSeams
+            {
+                StorePath = temp.File("store"),
+                Log = new RecordingExtensionLog(),
+            },
+            Ct
+        );
+
+        Assert.True(
+            host.Services.TryGetCore<IMutationQueue>(
+                "core/mutation-queue",
+                out IMutationQueue? queue
+            ) && queue is not null
+        );
+        var workspace = new Workspace(worktree);
+        string path = Path.Combine(workspace.WorktreeRoot, "shared.txt");
+        File.WriteAllText(path, "start\n");
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        // An extension schedules its read-modify-write through the handle it looked up.
+        Task<int> scheduled = queue.RunAsync(
+            path,
+            async _ =>
+            {
+                entered.SetResult();
+                await release.Task;
+                File.WriteAllText(path, File.ReadAllText(path) + "ext\n");
+                return 0;
+            },
+            Ct
+        );
+        await entered.Task.WaitAsync(TimeSpan.FromSeconds(5), Ct);
+
+        Task<ToolResult> write = new WriteTool(workspace).ExecuteAsync(
+            Args("""{"path":"shared.txt","content":"core\n"}"""),
+            new ToolContext(workspace.WorktreeRoot, new NullAgentEvents()),
+            Ct
+        );
+
+        Assert.False(
+            write.IsCompleted,
+            "the core write must wait behind the extension's queued mutation"
+        );
+        Assert.Equal("start\n", File.ReadAllText(path));
+
+        release.SetResult();
+        await scheduled.WaitAsync(TimeSpan.FromSeconds(5), Ct);
+        ToolResult result = await write.WaitAsync(TimeSpan.FromSeconds(5), Ct);
+        Assert.False(result.IsError);
+        Assert.Equal("core\n", File.ReadAllText(path));
     }
 
     [Fact]
@@ -296,6 +392,8 @@ public sealed class ExtensionSessionTests
 
     private static WorkspaceInfo Identity(string worktree) =>
         new(Workspace.Canonicalize(worktree), null, null);
+
+    private static JsonElement Args(string json) => JsonDocument.Parse(json).RootElement.Clone();
 
     private static IReadOnlyList<string> TrustedRepositories(string storePath)
     {
