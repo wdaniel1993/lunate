@@ -10,6 +10,7 @@ internal sealed class ExtensionContext : IExtensionContext
     private readonly Action<string, IToolResultRenderer>? _registerToolResultRenderer;
     private readonly Action<string, IStatusWidget>? _registerStatusWidget;
     private readonly Action<string, McpServerRegistration>? _registerMcpServer;
+    private readonly Action<string, ExtensionToolRegistration>? _registerTool;
     private readonly Func<string, IBackgroundService?>? _findService;
     private readonly Func<string, object?>? _findCoreService;
 
@@ -25,7 +26,8 @@ internal sealed class ExtensionContext : IExtensionContext
         Func<string, object?>? findCoreService = null,
         Action<string, IToolResultRenderer>? registerToolResultRenderer = null,
         Action<string, IStatusWidget>? registerStatusWidget = null,
-        Action<string, McpServerRegistration>? registerMcpServer = null
+        Action<string, McpServerRegistration>? registerMcpServer = null,
+        Action<string, ExtensionToolRegistration>? registerTool = null
     )
     {
         Id = id;
@@ -38,6 +40,7 @@ internal sealed class ExtensionContext : IExtensionContext
         _registerToolResultRenderer = registerToolResultRenderer;
         _registerStatusWidget = registerStatusWidget;
         _registerMcpServer = registerMcpServer;
+        _registerTool = registerTool;
         _findService = findService;
         _findCoreService = findCoreService;
     }
@@ -79,6 +82,12 @@ internal sealed class ExtensionContext : IExtensionContext
     {
         ArgumentNullException.ThrowIfNull(widget);
         _registerStatusWidget?.Invoke(Id, widget);
+    }
+
+    public void RegisterTool(ExtensionToolRegistration registration)
+    {
+        ArgumentNullException.ThrowIfNull(registration);
+        _registerTool?.Invoke(Id, registration);
     }
 
     public void RegisterMcpServer(McpServerRegistration registration)

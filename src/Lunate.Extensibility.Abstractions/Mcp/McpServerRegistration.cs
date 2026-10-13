@@ -1,7 +1,10 @@
 namespace Lunate.Extensibility.Abstractions;
 
 /// <summary>Where a tool is visible: the model, nested execution, both or neither.</summary>
-/// <remarks>Mirrors <c>Lunate.Agent.ToolExposure</c> one-to-one; this assembly references no Lunate project.</remarks>
+/// <remarks>
+/// Mirrors <c>Lunate.Agent.ToolExposure</c> one-to-one; MCP registrations keep this contract enum
+/// while tool registrations carry the core enum directly.
+/// </remarks>
 public enum ToolExposure
 {
     /// <summary>Declared to the model and callable from nested execution; the default.</summary>

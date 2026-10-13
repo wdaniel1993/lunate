@@ -8,6 +8,7 @@ internal static class LayeringChecker
             ("Lunate.Agent", "Lunate.Ai"),
             ("Lunate.Extensibility", "Lunate.Agent"),
             ("Lunate.Extensibility", "Lunate.Extensibility.Abstractions"),
+            ("Lunate.Extensibility.Abstractions", "Lunate.Agent"),
             ("Lunate.Extensibility.Testing", "Lunate.Agent"),
             ("Lunate.Extensibility.Testing", "Lunate.Ai"),
             // The kit composes MCP registrations through the production mapping in Coding.
