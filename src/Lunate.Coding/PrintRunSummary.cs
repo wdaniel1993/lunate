@@ -21,9 +21,19 @@ internal sealed class PrintRunSummary(ApprovalPolicy policy)
     /// <summary>The run error message, or null when the run did not fail.</summary>
     public string? Error { get; private set; }
 
-    /// <summary>Tracks the event; returns a stderr diagnostic for an error tool call, else null.</summary>
+    /// <summary>
+    /// Tracks the event; returns a stderr diagnostic for an error tool call, else null. Child-run
+    /// (subagent) events never reach the human summary — the JSONL path serializes them separately
+    /// with their run ids — so child text cannot become the printed answer and a child's terminal
+    /// event cannot overwrite the parent's stop reason.
+    /// </summary>
     public string? Observe(AgentEvent agentEvent)
     {
+        if (agentEvent.ParentRunId is not null)
+        {
+            return null;
+        }
+
         switch (agentEvent)
         {
             case TextMessageStart start:

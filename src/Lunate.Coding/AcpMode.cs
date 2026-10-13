@@ -206,6 +206,7 @@ internal static class AcpMode
             ),
             WorkingDirectory = workspace.WorktreeRoot,
             ToolOutputLimit = settings.ToolOutputLimit,
+            SubagentLimits = settings.Subagents,
             Approver = context.ClientApprover is { } clientApprover
                 ? new AcpApprover(settings.Approval, clientApprover)
                 : new NonInteractiveApprover(settings.Approval, yolo: false),

@@ -23,8 +23,7 @@ public sealed class AcpApproverTests
         var approver = new AcpApprover(policy, client);
 
         bool approved = await approver.ApproveAsync(
-            new RiskTool(risk),
-            default,
+            Request(new RiskTool(risk)),
             TestContext.Current.CancellationToken
         );
 
@@ -38,19 +37,21 @@ public sealed class AcpApproverTests
         var approver = new AcpApprover(ApprovalPolicy.Ask, new CountingApprover(result: false));
 
         bool approved = await approver.ApproveAsync(
-            new RiskTool(ToolRisk.Write),
-            default,
+            Request(new RiskTool(ToolRisk.Write)),
             TestContext.Current.CancellationToken
         );
 
         Assert.False(approved);
     }
 
+    private static ApprovalRequest Request(ITool tool) =>
+        new(tool, JsonDocument.Parse("{}").RootElement.Clone(), "run_1", null, 0);
+
     private sealed class CountingApprover(bool result) : IToolApprover
     {
         public int Calls { get; private set; }
 
-        public ValueTask<bool> ApproveAsync(ITool tool, JsonElement args, CancellationToken ct)
+        public ValueTask<bool> ApproveAsync(ApprovalRequest request, CancellationToken ct)
         {
             Calls++;
             return ValueTask.FromResult(result);

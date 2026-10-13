@@ -13,7 +13,11 @@ public sealed record AgentRunStartingContext(
     string RunId,
     IReadOnlyList<AgentPromptSection> Sections,
     IReadOnlyList<string> Tools
-);
+)
+{
+    /// <summary>The parent run id when this run is a child (subagent) run; null otherwise.</summary>
+    public string? ParentRunId { get; init; }
+}
 
 /// <summary>The outcome of the run-starting seam point.</summary>
 public abstract record AgentRunStartingResult
@@ -37,7 +41,11 @@ public sealed record AgentContextMessage(string Role, string Text, string? Sourc
 public sealed record AgentContextBuildingContext(
     string RunId,
     IReadOnlyList<AgentContextMessage> Messages
-);
+)
+{
+    /// <summary>The parent run id when this run is a child (subagent) run; null otherwise.</summary>
+    public string? ParentRunId { get; init; }
+}
 
 /// <summary>The request-local messages the seam adds.</summary>
 public sealed record AgentContextBuildingResult(IReadOnlyList<AgentContextMessage> AddedMessages)
@@ -47,7 +55,11 @@ public sealed record AgentContextBuildingResult(IReadOnlyList<AgentContextMessag
 }
 
 /// <summary>The final assistant message of a model call.</summary>
-public sealed record AgentMessageCompletedContext(string RunId, string Role, string Text);
+public sealed record AgentMessageCompletedContext(string RunId, string Role, string Text)
+{
+    /// <summary>The parent run id when this run is a child (subagent) run; null otherwise.</summary>
+    public string? ParentRunId { get; init; }
+}
 
 /// <summary>The outcome of the message-completed seam point.</summary>
 public abstract record AgentMessageCompletedResult
@@ -71,6 +83,9 @@ public sealed record AgentToolCallingContext(
 {
     /// <summary>The resolved tool's annotations; null when the tool declares none.</summary>
     public ToolAnnotations? Annotations { get; init; }
+
+    /// <summary>The parent run id when this run is a child (subagent) run; null otherwise.</summary>
+    public string? ParentRunId { get; init; }
 }
 
 /// <summary>The outcome of the tool-calling seam point.</summary>
@@ -93,7 +108,11 @@ public sealed record AgentToolResultReadyContext(
     JsonElement Arguments,
     string Output,
     bool IsError
-);
+)
+{
+    /// <summary>The parent run id when this run is a child (subagent) run; null otherwise.</summary>
+    public string? ParentRunId { get; init; }
+}
 
 /// <summary>The composed tool-result text, attached JSON data and typed structured content.</summary>
 public sealed record AgentToolResultReadyResult(
@@ -106,7 +125,11 @@ public sealed record AgentToolResultReadyResult(
 public sealed record AgentExtensionEntry(string ExtensionId, string Type, JsonElement Payload);
 
 /// <summary>An actionable turn boundary.</summary>
-public sealed record AgentTurnEndedContext(string RunId);
+public sealed record AgentTurnEndedContext(string RunId)
+{
+    /// <summary>The parent run id when this run is a child (subagent) run; null otherwise.</summary>
+    public string? ParentRunId { get; init; }
+}
 
 /// <summary>The entries to append and whether one continuation is requested.</summary>
 public sealed record AgentTurnEndedResult(
@@ -119,13 +142,21 @@ public sealed record AgentTurnEndedResult(
 }
 
 /// <summary>The settled run; observation only.</summary>
-public sealed record AgentRunSettledContext(string RunId);
+public sealed record AgentRunSettledContext(string RunId)
+{
+    /// <summary>The parent run id when this run is a child (subagent) run; null otherwise.</summary>
+    public string? ParentRunId { get; init; }
+}
 
 /// <summary>The messages compaction is about to summarize, before the summarization call.</summary>
 public sealed record AgentCompactingContext(
     string RunId,
     IReadOnlyList<AgentContextMessage> Messages
-);
+)
+{
+    /// <summary>The parent run id when this run is a child (subagent) run; null otherwise.</summary>
+    public string? ParentRunId { get; init; }
+}
 
 /// <summary>The outcome of the compacting seam point.</summary>
 public abstract record AgentCompactingResult

@@ -209,7 +209,7 @@ internal static class PrintMode
                         errors.WriteLine(diagnostic);
                     }
 
-                    if (NoticeFor(agentEvent) is { } notice)
+                    if (agentEvent.ParentRunId is null && NoticeFor(agentEvent) is { } notice)
                     {
                         interaction.Notify(notice);
                     }
@@ -374,6 +374,7 @@ internal static class PrintMode
             ),
             WorkingDirectory = workspace.WorktreeRoot,
             ToolOutputLimit = settings.ToolOutputLimit,
+            SubagentLimits = settings.Subagents,
             Approver = new NonInteractiveApprover(settings.Approval, options.Yolo),
             Hooks = extensions?.Hooks,
             Session = session,

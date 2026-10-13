@@ -29,7 +29,8 @@ A session file SHALL be append-only JSONL: a header line (schema, session `id`, 
 - **THEN** arguments are truncated with a marker and at most 32 calls are recorded, never results
 
 ### Requirement: Session store and resume
-`Session` SHALL create a file (writing the header with the optional repository identity and worktree), append entries with store-assigned ids and parent chain (`AppendMessage`, `AppendCompaction`, `AppendModelChange`, `AppendActiveTools`, `AppendPromptSection`, `AppendChildSession`, `AppendNestedCalls`, `AppendExtension`), load a file validating the header schema — accepting schema 1 and 2, failing with an actionable error naming the schema and the file for anything newer — and reconstruct the message history for resume via `ToHistory()`.
+
+`Session` SHALL create a file (writing the header with the optional repository identity and worktree), append entries with store-assigned ids and parent chain (`AppendMessage`, `AppendCompaction`, `AppendModelChange`, `AppendActiveTools`, `AppendPromptSection`, `AppendChildSession`, `AppendNestedCalls`, `AppendExtension`), load a file validating the header schema — accepting schema 1 and 2, failing with an actionable error naming the schema and the file for anything newer — and reconstruct the message history for resume via `ToHistory()`. A child session started by the subagent runner SHALL be a session file beside its parent's (same sessions directory) with a fresh id, and the parent SHALL carry the `AppendChildSession(childSessionId, runId)` link before the child run starts; resuming the parent SHALL surface the link and resuming the child SHALL load the child's own history. A parent session with linked child sessions SHALL replay deterministically: repeated loads reconstruct the same messages and links, and the rendered link lines are stable.
 
 #### Scenario: Append and load round-trip
 - **GIVEN** a session with appended messages
@@ -45,6 +46,16 @@ A session file SHALL be append-only JSONL: a header line (schema, session `id`, 
 - **GIVEN** a loaded session
 - **WHEN** its history is reconstructed
 - **THEN** the messages appear in append order, ready to seed a harness
+
+#### Scenario: Child sessions link before the child runs
+- **GIVEN** a subagent child run started from a parent with a session
+- **WHEN** the child session file and the parent link are inspected
+- **THEN** the child file sits beside the parent's with its own id, and the parent's child-session link (appended before the child started) names the child's session id and run id
+
+#### Scenario: Linked sessions replay deterministically
+- **GIVEN** a parent session with child-session links and the linked child files
+- **WHEN** the files are loaded and rendered repeatedly
+- **THEN** the reconstructed messages, the links and the rendered link lines are identical every time
 
 ### Requirement: Format guard
 The golden files SHALL be verified byte for byte in the test suite; when a Microsoft.Extensions.AI update changes serialization, the schema SHALL be bumped and a migration added, recorded in an ADR — goldens SHALL NOT be edited silently to match new output.

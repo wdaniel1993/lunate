@@ -1,3 +1,5 @@
+using Lunate.Agent;
+
 namespace Lunate.Coding.Tests;
 
 public sealed class SettingsStoreTests
@@ -5,6 +7,9 @@ public sealed class SettingsStoreTests
     private const string ModelVariable = "LUNATE_MODEL";
     private const string ApprovalVariable = "LUNATE_APPROVAL";
     private const string LimitVariable = "LUNATE_TOOL_OUTPUT_LIMIT";
+    private const string SubagentConcurrencyVariable = "LUNATE_SUBAGENTS_CONCURRENCY";
+    private const string SubagentTokenBudgetVariable = "LUNATE_SUBAGENTS_TOKEN_BUDGET";
+    private const string SubagentTreeTokenBudgetVariable = "LUNATE_SUBAGENTS_TREE_TOKEN_BUDGET";
 
     [Fact]
     public void Missing_file_yields_defaults()
@@ -16,6 +21,7 @@ public sealed class SettingsStoreTests
         Assert.Null(settings.Model);
         Assert.Equal(ApprovalPolicy.Ask, settings.Approval);
         Assert.Equal(30_000, settings.ToolOutputLimit);
+        Assert.Equal(new SubagentLimits(), settings.Subagents);
     }
 
     [Fact]
@@ -72,6 +78,118 @@ public sealed class SettingsStoreTests
         Assert.Equal("env-model", settings.Model);
         Assert.Equal(ApprovalPolicy.Ask, settings.Approval);
         Assert.Equal(999, settings.ToolOutputLimit);
+    }
+
+    [Fact]
+    public void The_subagents_section_sets_all_three_limits()
+    {
+        using var temp = new TempDirectory();
+        File.WriteAllText(
+            temp.File("settings.json"),
+            """
+            {
+              "schemaVersion": 1,
+              "subagents": { "concurrency": 2, "tokenBudget": 500, "treeTokenBudget": 2000 }
+            }
+            """
+        );
+
+        AgentSettings settings = SettingsStore.Resolve(temp.File("settings.json"), _ => null);
+
+        Assert.Equal(
+            new SubagentLimits(Concurrency: 2, TokenBudget: 500, TreeTokenBudget: 2000),
+            settings.Subagents
+        );
+    }
+
+    [Fact]
+    public void Unlimited_is_the_explicit_literal()
+    {
+        using var temp = new TempDirectory();
+        File.WriteAllText(
+            temp.File("settings.json"),
+            """
+            {
+              "schemaVersion": 1,
+              "subagents": {
+                "concurrency": "unlimited",
+                "tokenBudget": "unlimited",
+                "treeTokenBudget": "unlimited"
+              }
+            }
+            """
+        );
+
+        AgentSettings settings = SettingsStore.Resolve(temp.File("settings.json"), _ => null);
+
+        Assert.Equal(new SubagentLimits(null, null, null), settings.Subagents);
+    }
+
+    [Fact]
+    public void Subagent_environment_overrides_apply()
+    {
+        using var temp = new TempDirectory();
+
+        AgentSettings settings = SettingsStore.Resolve(
+            temp.File("missing.json"),
+            name =>
+                name switch
+                {
+                    SubagentConcurrencyVariable => "7",
+                    SubagentTokenBudgetVariable => "12345",
+                    SubagentTreeTokenBudgetVariable => "unlimited",
+                    _ => null,
+                }
+        );
+
+        Assert.Equal(
+            new SubagentLimits(Concurrency: 7, TokenBudget: 12345, TreeTokenBudget: null),
+            settings.Subagents
+        );
+    }
+
+    [Theory]
+    [InlineData("0")]
+    [InlineData("-1")]
+    [InlineData("many")]
+    [InlineData("Unlimited")]
+    public void An_invalid_subagent_environment_value_names_its_variable(string value)
+    {
+        using var temp = new TempDirectory();
+
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+            SettingsStore.Resolve(
+                temp.File("missing.json"),
+                name => name == SubagentConcurrencyVariable ? value : null
+            )
+        );
+
+        Assert.Contains(SubagentConcurrencyVariable, exception.Message, StringComparison.Ordinal);
+        Assert.Contains("unlimited", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Invalid_subagent_file_values_are_reported()
+    {
+        using var temp = new TempDirectory();
+        File.WriteAllText(
+            temp.File("settings.json"),
+            """
+            {
+              "schemaVersion": 1,
+              "subagents": { "concurrency": 0, "tokenBudget": "lots", "other": 1 }
+            }
+            """
+        );
+
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+            SettingsStore.Resolve(temp.File("settings.json"), _ => null)
+        );
+
+        Assert.Contains("subagents.concurrency", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("subagents.tokenBudget", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("subagents.other", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("No settings were applied", exception.Message, StringComparison.Ordinal);
     }
 
     [Fact]

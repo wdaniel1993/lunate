@@ -75,6 +75,7 @@ internal sealed class RecordingHookPoints : IAgentHookPoints
 
     public ValueTask ProviderStreamEventAsync(
         string runId,
+        string? parentRunId,
         ChatResponseUpdate update,
         CancellationToken cancellationToken
     )

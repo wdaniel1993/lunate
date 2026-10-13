@@ -98,9 +98,10 @@ internal sealed partial class InteractiveSession : IDisposable
     private readonly CancellationTokenSource _lifetime = new();
     private readonly ToolBlockRenderer _toolBlocks = new();
     private readonly MarkdownRenderer _markdown;
-    private readonly Dictionary<string, string> _toolNames = new(StringComparer.Ordinal);
-    private readonly Dictionary<string, string> _toolArgs = new(StringComparer.Ordinal);
-    private readonly List<string> _activeCalls = [];
+    private readonly Dictionary<(string RunId, string CallId), string> _toolNames = [];
+    private readonly Dictionary<(string RunId, string CallId), string> _toolArgs = [];
+    private readonly List<(string RunId, string CallId)> _activeCalls = [];
+    private int _liveChildren;
     private readonly HashSet<string> _alwaysApproved = new(StringComparer.Ordinal);
     private AgentSettings _settings = new();
     private ModelCatalog _catalog = null!;
@@ -438,6 +439,7 @@ internal sealed partial class InteractiveSession : IDisposable
             ),
             WorkingDirectory = _workspace.WorktreeRoot,
             ToolOutputLimit = _settings.ToolOutputLimit,
+            SubagentLimits = _settings.Subagents,
             Approver = _approver,
             Hooks = _extensions?.Hooks,
             Session = _session,
@@ -456,6 +458,9 @@ internal sealed partial class InteractiveSession : IDisposable
 
     /// <summary>The pending approval as shown in the live area; null when none is open.</summary>
     internal ApprovalPromptModel? PendingApproval => _approvalPrompt;
+
+    /// <summary>The session's approval seam, composed at session start; null before composition.</summary>
+    internal IToolApprover? Approver => _approver;
 
     /// <summary>The pending trust question as shown in the live area; null when none is open.</summary>
     internal TrustPromptModel? PendingTrustPrompt => _trustPrompt;
@@ -785,11 +790,11 @@ internal sealed partial class InteractiveSession : IDisposable
     }
 
     private async ValueTask<bool> RequestApprovalAsync(
-        string toolName,
-        string args,
+        ApprovalRequest request,
         CancellationToken ct
     )
     {
+        string toolName = request.Tool.Name;
         lock (_alwaysApproved)
         {
             if (_alwaysApproved.Contains(toolName))
@@ -801,7 +806,13 @@ internal sealed partial class InteractiveSession : IDisposable
         var decision = new TaskCompletionSource<ApprovalChoice>(
             TaskCreationOptions.RunContinuationsAsynchronously
         );
-        _approvalPrompt = new ApprovalPromptModel(toolName, args);
+        _approvalPrompt = new ApprovalPromptModel(
+            toolName,
+            request.Args.GetRawText(),
+            request.Depth > 0
+                ? FormattableString.Invariant($"subagent (depth {request.Depth})")
+                : null
+        );
         _approvalDecision = decision;
         _live.SetApproval(_approvalPrompt);
         using CancellationTokenRegistration registration = ct.Register(() =>
@@ -923,13 +934,14 @@ internal sealed partial class InteractiveSession : IDisposable
     }
 
     /// <summary>The approval seam: policy-allowed calls run silently; the rest prompt in the live
-    /// area, with "always" remembered per tool name for the session.</summary>
+    /// area, with "always" remembered per tool name for the session — one grant covers the tool in
+    /// every run of the tree, including subagents.</summary>
     private sealed class SessionApprover(InteractiveSession session, ApprovalPolicy policy)
         : IToolApprover
     {
-        public ValueTask<bool> ApproveAsync(ITool tool, JsonElement args, CancellationToken ct) =>
-            NonInteractiveApprover.IsAllowed(policy, tool.Risk)
+        public ValueTask<bool> ApproveAsync(ApprovalRequest request, CancellationToken ct) =>
+            NonInteractiveApprover.IsAllowed(policy, request.Tool.Risk)
                 ? ValueTask.FromResult(true)
-                : session.RequestApprovalAsync(tool.Name, args.GetRawText(), ct);
+                : session.RequestApprovalAsync(request, ct);
     }
 }

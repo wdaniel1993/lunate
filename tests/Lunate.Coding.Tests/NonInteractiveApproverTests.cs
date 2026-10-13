@@ -21,8 +21,7 @@ public sealed class NonInteractiveApproverTests
         var approver = new NonInteractiveApprover(policy, yolo: false);
 
         bool approved = await approver.ApproveAsync(
-            new RiskTool(risk),
-            default,
+            Request(new RiskTool(risk)),
             TestContext.Current.CancellationToken
         );
 
@@ -40,13 +39,15 @@ public sealed class NonInteractiveApproverTests
         {
             Assert.True(
                 await approver.ApproveAsync(
-                    new RiskTool(risk),
-                    default,
+                    Request(new RiskTool(risk)),
                     TestContext.Current.CancellationToken
                 )
             );
         }
     }
+
+    private static ApprovalRequest Request(ITool tool) =>
+        new(tool, JsonDocument.Parse("{}").RootElement.Clone(), "run_1", null, 0);
 
     private sealed class RiskTool(ToolRisk risk) : ITool
     {

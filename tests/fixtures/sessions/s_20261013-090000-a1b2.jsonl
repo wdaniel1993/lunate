@@ -1,0 +1,6 @@
+{"type":"header","schema":2,"id":"s_20261013-090000-a1b2","cwd":"/repo","created":"2026-10-13T09:00:00.0000000+00:00","meai":"10.10.1","repo":"github.com/acme/lunate","worktree":"/repo/trees/subagents"}
+{"type":"message","id":"e_01","parentId":null,"timestamp":"2026-10-13T09:00:01.0000000+00:00","message":{"role":"user","contents":[{"$type":"text","text":"Spawn a helper and summarise."}]}}
+{"type":"message","id":"e_02","parentId":"e_01","timestamp":"2026-10-13T09:00:02.0000000+00:00","message":{"role":"assistant","contents":[{"$type":"functionCall","name":"subagents__spawn","arguments":{"prompt":"child prompt"},"informationalOnly":false,"callId":"call_1"}]},"model":"gpt-4o-mini","usage":{"input":12,"output":6}}
+{"type":"childSession","id":"e_03","parentId":"e_02","timestamp":"2026-10-13T09:00:03.0000000+00:00","childSessionId":"s_20261013-090100-c3d4","runId":"run_20261013-090100-c3d4"}
+{"type":"message","id":"e_04","parentId":"e_03","timestamp":"2026-10-13T09:00:04.0000000+00:00","message":{"role":"tool","contents":[{"$type":"functionResult","result":"child answer","callId":"call_1"}]}}
+{"type":"message","id":"e_05","parentId":"e_04","timestamp":"2026-10-13T09:00:05.0000000+00:00","message":{"role":"assistant","contents":[{"$type":"text","text":"The helper answered: child answer."}]},"model":"gpt-4o-mini","usage":{"input":30,"output":9}}

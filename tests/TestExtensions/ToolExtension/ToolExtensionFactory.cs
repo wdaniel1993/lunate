@@ -162,6 +162,16 @@ internal sealed class ScriptedToolHandler(
                     false,
                     StructuredContent: JsonDocument.Parse("""{"ok":true}""").RootElement.Clone()
                 );
+            case "spawn":
+                if (context.Subagents is not { } runner)
+                {
+                    return new ToolResult("no subagent runner is available", IsError: true);
+                }
+
+                SubagentResult child = await runner
+                    .RunAsync(new SubagentRequest("child prompt", MaxSteps: 1), ct)
+                    .ConfigureAwait(false);
+                return new ToolResult(child.Output, child.IsError);
             default:
                 return new ToolResult(
                     FormattableString.Invariant(

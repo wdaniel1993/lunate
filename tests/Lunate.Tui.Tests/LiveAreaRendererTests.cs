@@ -31,6 +31,21 @@ public sealed class LiveAreaRendererTests
     }
 
     [Fact]
+    public void A_live_subagent_renders_a_status_line_below_the_tool_line()
+    {
+        var state = new LiveAreaState
+        {
+            ToolName = "subagents__spawn",
+            SubagentRunning = true,
+            Size = new ConsoleSize(60, 8),
+        };
+
+        var frame = LiveAreaRenderer.Render(state);
+
+        Assert.Equal(["| subagents__spawn", "subagent running", "> "], frame.Lines);
+    }
+
+    [Fact]
     public void Render_is_bounded_to_the_eight_line_area()
     {
         string tail = string.Join('\n', Enumerable.Range(1, 20).Select(i => $"line {i}"));

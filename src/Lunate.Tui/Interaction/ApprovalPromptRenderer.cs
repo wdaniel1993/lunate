@@ -5,8 +5,9 @@ namespace Lunate.Tui;
 
 /// <summary>
 /// Renders a pending approval as one borderless line:
-/// <c>Allow &lt;tool&gt; &lt;summary&gt;?  [y]es  [n]o  [a]lways this session</c>. All user-derived
-/// text is markup-escaped; the question marker is yellow.
+/// <c>Allow &lt;tool&gt; &lt;summary&gt;?  [y]es  [n]o  [a]lways this session</c>; a subagent asker
+/// precedes it as <c>&lt;asker&gt; asks: ...</c>. All user-derived text is markup-escaped; the
+/// question marker is yellow.
 /// </summary>
 public sealed class ApprovalPromptRenderer
 {
@@ -17,6 +18,7 @@ public sealed class ApprovalPromptRenderer
         ArgumentNullException.ThrowIfNull(prompt);
 
         var line = new StyledLine();
+        AddAsker(line, prompt);
         line.Add("Allow ", SpanStyle.Plain);
         line.Add(prompt.ToolName, SpanStyle.Plain);
         string summary = ToolArgsSummary.Summarize(prompt.ToolName, prompt.ArgsSummary);
@@ -39,6 +41,16 @@ public sealed class ApprovalPromptRenderer
             summary.Length > 0
                 ? $"Allow {prompt.ToolName} {summary}?"
                 : $"Allow {prompt.ToolName}?";
-        return question + "  [y]es  [n]o  [a]lways this session";
+        string asker = prompt.Asker is { Length: > 0 } label ? $"{label} asks: " : string.Empty;
+        return asker + question + "  [y]es  [n]o  [a]lways this session";
+    }
+
+    private static void AddAsker(StyledLine line, ApprovalPromptModel prompt)
+    {
+        if (prompt.Asker is { Length: > 0 } label)
+        {
+            line.Add(label, SpanStyle.Plain);
+            line.Add(" asks: ", SpanStyle.Plain);
+        }
     }
 }

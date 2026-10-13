@@ -223,6 +223,30 @@ public sealed class InteractiveSessionCommandTests
         await run;
     }
 
+    [Fact]
+    public async Task Context_lists_the_subagent_limits_and_the_tree_usage()
+    {
+        using var host = new InteractiveSessionHost();
+        host.Console.Size = new Lunate.Tui.ConsoleSize(400, 24);
+        Task run = host.RunAsync();
+
+        host.Console.SendText("/context");
+        host.Console.SendEnter();
+        await WaitForFrameAsync(host, "subagents: concurrency 4");
+
+        Assert.Contains("depth 1 (fixed)", host.LastFrame, StringComparison.Ordinal);
+        Assert.Contains(
+            "tree usage: 0 tokens, 0 running",
+            host.LastFrame,
+            StringComparison.Ordinal
+        );
+        Assert.Empty(host.Client.Requests);
+
+        host.Console.SendText("/quit");
+        host.Console.SendEnter();
+        await run;
+    }
+
     internal static async Task WaitForFrameAsync(InteractiveSessionHost host, string text)
     {
         await host.WaitUntilAsync(() =>

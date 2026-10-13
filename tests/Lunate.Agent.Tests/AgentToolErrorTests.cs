@@ -309,7 +309,7 @@ public sealed class AgentToolErrorTests
 
     private sealed class ThrowingApprover(Exception failure) : IToolApprover
     {
-        public ValueTask<bool> ApproveAsync(ITool tool, JsonElement args, CancellationToken ct) =>
+        public ValueTask<bool> ApproveAsync(ApprovalRequest request, CancellationToken ct) =>
             throw failure;
     }
 

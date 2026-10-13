@@ -30,6 +30,23 @@ public sealed class ApprovalPromptRendererTests
         );
 
     [Fact]
+    public void A_subagent_asker_is_labelled_with_its_depth()
+    {
+        var console = new TestConsole();
+        console.Profile.Width = 140;
+        console.Write(
+            new ApprovalPromptRenderer().Render(
+                new ApprovalPromptModel("bash", "dotnet format", "subagent (depth 1)")
+            )
+        );
+
+        Assert.Equal(
+            "subagent (depth 1) asks: Allow bash dotnet format?  [y]es  [n]o  [a]lways this session\n",
+            console.Output
+        );
+    }
+
+    [Fact]
     public void Escaping_keeps_bracket_text_literal()
     {
         string output = Render(

@@ -8,6 +8,9 @@ internal sealed record LiveAreaState
 
     public string? ToolName { get; init; }
 
+    /// <summary>True while a child (subagent) run of the current run is live.</summary>
+    public bool SubagentRunning { get; init; }
+
     public int FrameNumber { get; init; }
 
     public string? Notice { get; init; }

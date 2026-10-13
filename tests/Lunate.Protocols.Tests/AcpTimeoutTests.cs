@@ -11,6 +11,9 @@ public sealed class AcpTimeoutTests
 {
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
+    private static ApprovalRequest Request(ITool tool) =>
+        new(tool, JsonDocument.Parse("{}").RootElement.Clone(), "run_1", null, 0);
+
     [Fact]
     public async Task A_file_request_the_client_ignores_fails_the_tool_as_an_io_error()
     {
@@ -52,7 +55,7 @@ public sealed class AcpTimeoutTests
         var tool = new RecordingRiskTool("write-probe", ToolRisk.Write);
 
         bool approved = await approver
-            .ApproveAsync(tool, default, Ct)
+            .ApproveAsync(Request(tool), Ct)
             .AsTask()
             .WaitAsync(TimeSpan.FromSeconds(10), Ct);
 
@@ -160,7 +163,7 @@ public sealed class AcpTimeoutTests
         var tool = new RecordingRiskTool("write-probe", ToolRisk.Write);
 
         bool approved = await approver
-            .ApproveAsync(tool, default, Ct)
+            .ApproveAsync(Request(tool), Ct)
             .AsTask()
             .WaitAsync(TimeSpan.FromSeconds(10), Ct);
         Assert.False(approved);
@@ -184,7 +187,7 @@ public sealed class AcpTimeoutTests
         // processing on the agent's receive loop time to settle before each collection.
         runtime.State.IgnorePermissions = false;
         bool second = await approver
-            .ApproveAsync(tool, default, Ct)
+            .ApproveAsync(Request(tool), Ct)
             .AsTask()
             .WaitAsync(TimeSpan.FromSeconds(10), Ct);
         Assert.False(second);

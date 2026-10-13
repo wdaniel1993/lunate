@@ -8,40 +8,55 @@ namespace Lunate.Coding;
 
 internal sealed partial class InteractiveSession
 {
-    /// <summary>The event pump: streamed text into the live tail and scrollback, tool results into
-    /// blocks, usage into the footer, control events into notices.</summary>
-    private void HandleEvent(AgentEvent agentEvent)
+    /// <summary>
+    /// The event pump: streamed text into the live tail and scrollback, tool results into blocks,
+    /// usage into the footer, control events into notices. Child-run (subagent) events are scoped
+    /// by run id and suppressed from the transcript — the live area shows a <c>subagent running</c>
+    /// status while a child is live, and the child's usage still feeds the footer.
+    /// </summary>
+    internal void HandleEvent(AgentEvent agentEvent)
     {
+        bool child = agentEvent.ParentRunId is not null;
         switch (agentEvent)
         {
+            case RunStarted when child:
+                _liveChildren++;
+                _live.SetSubagentRunning(true);
+                break;
             case RunStarted:
                 _live.SetNotice(null);
                 break;
-            case TextMessageContent content:
+            case TextMessageContent content when !child:
                 AppendTail(content.Text);
                 break;
-            case TextMessageEnd:
+            case TextMessageEnd when !child:
                 CommitTail();
                 break;
             case ToolCallStart start:
-                _toolNames[start.CallId] = start.ToolName;
-                _toolArgs[start.CallId] = string.Empty;
-                if (start.ParentToolCallId is null)
+                var startKey = (start.RunId, start.CallId);
+                _toolNames[startKey] = start.ToolName;
+                _toolArgs[startKey] = string.Empty;
+                if (!child && start.ParentToolCallId is null)
                 {
-                    _activeCalls.Add(start.CallId);
+                    _activeCalls.Add(startKey);
                     _live.SetTool(start.ToolName);
                 }
 
                 break;
             case ToolCallArgs args:
-                _toolArgs[args.CallId] = args.Args;
+                _toolArgs[(args.RunId, args.CallId)] = args.Args;
+                break;
+            case ToolCallResult result when child:
+                _toolNames.Remove((result.RunId, result.CallId));
+                _toolArgs.Remove((result.RunId, result.CallId));
                 break;
             case ToolCallResult result:
+                var resultKey = (result.RunId, result.CallId);
                 string? failedTool = result.IsError
-                    ? _toolNames.GetValueOrDefault(result.CallId)
+                    ? _toolNames.GetValueOrDefault(resultKey)
                     : null;
                 CommitToolBlock(result);
-                if (result.ParentToolCallId is null && _activeCalls.Remove(result.CallId))
+                if (result.ParentToolCallId is null && _activeCalls.Remove(resultKey))
                 {
                     _live.SetTool(
                         _activeCalls.Count == 0
@@ -58,6 +73,22 @@ internal sealed partial class InteractiveSession
                 break;
             case UsageUpdated usage:
                 AddUsage(usage.Usage);
+                break;
+            case RunFinished when child:
+            case RunError when child:
+                _liveChildren = Math.Max(0, _liveChildren - 1);
+                if (_liveChildren == 0)
+                {
+                    _live.SetSubagentRunning(false);
+                }
+
+                break;
+            case RunFinished finished:
+                MapOutcome(finished.StopReason);
+                break;
+            case RunError error:
+                _outcome = RunOutcome.Failed;
+                Notify("run failed: " + error.Message, NoticeLevel.Error);
                 break;
             case SteeringInjected:
                 EchoSteering();
@@ -76,13 +107,6 @@ internal sealed partial class InteractiveSession
                     FormattableString.Invariant($"step limit reached ({limit.MaxSteps} steps)"),
                     NoticeLevel.Warning
                 );
-                break;
-            case RunFinished finished:
-                MapOutcome(finished.StopReason);
-                break;
-            case RunError error:
-                _outcome = RunOutcome.Failed;
-                Notify("run failed: " + error.Message, NoticeLevel.Error);
                 break;
         }
     }
@@ -130,10 +154,9 @@ internal sealed partial class InteractiveSession
             return;
         }
 
-        string name = _toolNames.Remove(result.CallId, out string? toolName) ? toolName : "tool";
-        string args = _toolArgs.Remove(result.CallId, out string? toolArgs)
-            ? toolArgs
-            : string.Empty;
+        var key = (result.RunId, result.CallId);
+        string name = _toolNames.Remove(key, out string? toolName) ? toolName : "tool";
+        string args = _toolArgs.Remove(key, out string? toolArgs) ? toolArgs : string.Empty;
         var block = new ToolBlockModel(
             name,
             args,

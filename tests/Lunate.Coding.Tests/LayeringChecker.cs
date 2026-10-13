@@ -81,6 +81,10 @@ internal static class LayeringChecker
             ("McpFromExtensionExtension.Tests", "FakeMcpServer"),
             ("McpFromExtensionExtension.Tests", "McpFromExtensionExtension"),
             ("McpFromExtensionExtension.Tests", "Lunate.Extensibility.Testing"),
+            // The subagents sample's tests use only the kit and the extension (the public surface).
+            ("SubagentsExtension", "Lunate.Extensibility.Abstractions"),
+            ("SubagentsExtension.Tests", "SubagentsExtension"),
+            ("SubagentsExtension.Tests", "Lunate.Extensibility.Testing"),
         };
 
     public static IReadOnlySet<string> AllowedAgentRuntimePackages { get; } =

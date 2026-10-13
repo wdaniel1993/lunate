@@ -98,4 +98,46 @@ public sealed class ExtensionToolPrintModeTests
         );
         Assert.Contains("recovered", output, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public async Task A_child_runs_text_and_ambient_notices_stay_out_of_print_output()
+    {
+        using var temp = new TempDirectory();
+        File.WriteAllText(temp.File("a.txt"), "hello");
+        string store = temp.File("store");
+        ToolFixture.Install(
+            store,
+            tools: """["spawn"]""",
+            settings: """{"tools":[{"name":"spawn","behavior":"spawn"}]}"""
+        );
+        var log = new RecordingExtensionLog();
+        var client = new ScriptedChatClient()
+            .Enqueue(
+                Scripts.Call("call-1", "tools__spawn", Scripts.Args(("prompt", "child prompt"))),
+                Scripts.ToolCalls()
+            )
+            .Enqueue(
+                Scripts.Text("child partial"),
+                Scripts.Call("call-1", "read", Scripts.Args(("path", "a.txt"))),
+                Scripts.ToolCalls()
+            )
+            .Enqueue(Scripts.Text("parent done"), Scripts.Stop());
+        PrintModeOptions options = PrintModeTestSupport.BaseOptions(
+            temp,
+            new FakeChatClientFactory(client)
+        ) with
+        {
+            Prompt = "go",
+            Yolo = true,
+            Extensions = new ExtensionSeams { StorePath = store, Log = log },
+        };
+
+        (int exitCode, string output, string errors) = await PrintModeTestSupport.RunAsync(options);
+
+        Assert.Equal(0, exitCode);
+        Assert.Contains("parent done", output, StringComparison.Ordinal);
+        // The child's stream and its step-limit notice are hidden from the human output.
+        Assert.DoesNotContain("child partial", output, StringComparison.Ordinal);
+        Assert.DoesNotContain("step limit reached", errors, StringComparison.Ordinal);
+    }
 }

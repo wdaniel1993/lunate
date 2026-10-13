@@ -58,7 +58,7 @@ Tool calls SHALL propagate the turn's cancellation as `OperationCanceledExceptio
 
 ### Requirement: ACP server over stdio
 
-`lunate --acp` SHALL speak the Agent Client Protocol over stdio so editors drive Lunate as their agent, behind an `IAcpServer` seam (`RunAsync(input, output, createHarness, ct)`) that keeps a later SDK switch cheap. The server SHALL implement `initialize` (protocol version 1, honest capabilities, negotiate down, log unsupported), session creation (a fresh harness per ACP session; the factory receives the session context — cwd, the client-backed approver, and the client file access when offered), `session/prompt` (one run; text and resource-link content blocks — resource links map to model-readable text, other kinds are logged and skipped; streaming `session/update` notifications mapped from `AgentEvent`s per the guide's event table; the response carries the stop reason) and `session/cancel` (cancels the in-flight run; the prompt response reports the cancellation; no updates follow it). Nothing but protocol frames may be written to stdout; logs go to stderr. The mode SHALL be mutually exclusive with print mode and the TUI (usage error, exit 2). The server SHALL be tested with an in-process client over a pipe pair.
+`lunate --acp` SHALL speak the Agent Client Protocol over stdio so editors drive Lunate as their agent, behind an `IAcpServer` seam (`RunAsync(input, output, createHarness, ct)`) that keeps a later SDK switch cheap. The server SHALL implement `initialize` (protocol version 1, honest capabilities, negotiate down, log unsupported), session creation (a fresh harness per ACP session; the factory receives the session context — cwd, the client-backed approver, and the client file access when offered), `session/prompt` (one run; text and resource-link content blocks — resource links map to model-readable text, other kinds are logged and skipped; streaming `session/update` notifications mapped from `AgentEvent`s per the guide's event table; the response carries the stop reason) and `session/cancel` (cancels the in-flight run; the prompt response reports the cancellation; no updates follow it). Child-run (subagent) events SHALL NOT be passed to ACP clients raw: in this version the server filters them out of `session/update` (approvals continue to surface through the client-backed approver). Nothing but protocol frames may be written to stdout; logs go to stderr. The mode SHALL be mutually exclusive with print mode and the TUI (usage error, exit 2). The server SHALL be tested with an in-process client over a pipe pair.
 
 #### Scenario: Initialize negotiates the protocol version
 
@@ -89,6 +89,12 @@ Tool calls SHALL propagate the turn's cancellation as `OperationCanceledExceptio
 - **GIVEN** `lunate --acp` combined with `-p` or a prompt
 - **WHEN** it starts
 - **THEN** it exits with a usage error (exit 2) and speaks no protocol
+
+#### Scenario: Child events never reach the client raw
+
+- **GIVEN** a run that spawns a subagent streaming its own text and tool events
+- **WHEN** the client reads `session/update`
+- **THEN** no child-run event appears on the wire, while the parent's own updates and the spawn result do
 
 ### Requirement: ACP approvals, editor file system and resource links
 

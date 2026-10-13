@@ -2,6 +2,13 @@ using System.Text.Json;
 
 namespace Lunate.Extensibility.Abstractions;
 
+/// <summary>The parent run id of a child (subagent) run; null for top-level runs.</summary>
+public interface IParentRunIdPayload
+{
+    /// <summary>The parent run id when the event fired during a child (subagent) run; null otherwise.</summary>
+    string? ParentRunId { get; }
+}
+
 /// <summary>The project extension awaiting a trust decision.</summary>
 public sealed record ProjectTrustPayload(
     string ExtensionId,
@@ -41,7 +48,11 @@ public sealed record RunStartingPayload(
     string RunId,
     IReadOnlyList<PromptSection> Sections,
     IReadOnlyList<string> Tools
-);
+) : IParentRunIdPayload
+{
+    /// <summary>The parent run id when this run is a child (subagent) run; null otherwise.</summary>
+    public string? ParentRunId { get; init; }
+}
 
 /// <summary>A request-local message; text only, so it crosses the JSON boundary.</summary>
 public sealed record ContextMessage(string Role, string Text)
@@ -51,7 +62,12 @@ public sealed record ContextMessage(string Role, string Text)
 }
 
 /// <summary>The request messages before a model call.</summary>
-public sealed record ContextBuildingPayload(string RunId, IReadOnlyList<ContextMessage> Messages);
+public sealed record ContextBuildingPayload(string RunId, IReadOnlyList<ContextMessage> Messages)
+    : IParentRunIdPayload
+{
+    /// <summary>The parent run id when this run is a child (subagent) run; null otherwise.</summary>
+    public string? ParentRunId { get; init; }
+}
 
 /// <summary>One raw provider update; observation only.</summary>
 public sealed record ProviderStreamEventPayload(
@@ -59,10 +75,19 @@ public sealed record ProviderStreamEventPayload(
     string? ModelId,
     string? Text,
     string? FinishReason
-);
+) : IParentRunIdPayload
+{
+    /// <summary>The parent run id when this run is a child (subagent) run; null otherwise.</summary>
+    public string? ParentRunId { get; init; }
+}
 
 /// <summary>The final assistant message of one model call.</summary>
-public sealed record MessageCompletedPayload(string RunId, string Role, string Text);
+public sealed record MessageCompletedPayload(string RunId, string Role, string Text)
+    : IParentRunIdPayload
+{
+    /// <summary>The parent run id when this run is a child (subagent) run; null otherwise.</summary>
+    public string? ParentRunId { get; init; }
+}
 
 /// <summary>The tool call the model requested, before approval and execution.</summary>
 public sealed record ToolCallingPayload(
@@ -70,7 +95,7 @@ public sealed record ToolCallingPayload(
     string CallId,
     string ToolName,
     JsonElement Arguments
-)
+) : IParentRunIdPayload
 {
     /// <summary>
     /// The resolved tool's declared annotations as lowercase kebab wire names in declaration order
@@ -78,6 +103,9 @@ public sealed record ToolCallingPayload(
     /// tool declares none.
     /// </summary>
     public IReadOnlyList<string> Annotations { get; init; } = [];
+
+    /// <summary>The parent run id when this run is a child (subagent) run; null otherwise.</summary>
+    public string? ParentRunId { get; init; }
 }
 
 /// <summary>The result of a tool call, after execution.</summary>
@@ -88,10 +116,18 @@ public sealed record ToolResultReadyPayload(
     JsonElement Arguments,
     string Output,
     bool IsError
-);
+) : IParentRunIdPayload
+{
+    /// <summary>The parent run id when this run is a child (subagent) run; null otherwise.</summary>
+    public string? ParentRunId { get; init; }
+}
 
 /// <summary>An actionable turn boundary.</summary>
-public sealed record TurnEndedPayload(string RunId);
+public sealed record TurnEndedPayload(string RunId) : IParentRunIdPayload
+{
+    /// <summary>The parent run id when this run is a child (subagent) run; null otherwise.</summary>
+    public string? ParentRunId { get; init; }
+}
 
 /// <summary>One extension entry to append to the session at a turn boundary.</summary>
 public sealed record TurnEndedEntry(string Type, JsonElement Payload)
@@ -101,13 +137,22 @@ public sealed record TurnEndedEntry(string Type, JsonElement Payload)
 }
 
 /// <summary>The end of a run; observation only.</summary>
-public sealed record RunSettledPayload(string RunId);
+public sealed record RunSettledPayload(string RunId) : IParentRunIdPayload
+{
+    /// <summary>The parent run id when this run is a child (subagent) run; null otherwise.</summary>
+    public string? ParentRunId { get; init; }
+}
 
 /// <summary>
 /// The conversation before compaction. Contract-complete but unwired in this change:
 /// the compaction layer will produce it.
 /// </summary>
-public sealed record CompactingPayload(string RunId, IReadOnlyList<ContextMessage> Messages);
+public sealed record CompactingPayload(string RunId, IReadOnlyList<ContextMessage> Messages)
+    : IParentRunIdPayload
+{
+    /// <summary>The parent run id when this run is a child (subagent) run; null otherwise.</summary>
+    public string? ParentRunId { get; init; }
+}
 
 /// <summary>The active model after a change; observation only.</summary>
 public sealed record ModelChangedPayload(string RunId, string Model);

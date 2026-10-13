@@ -1,14 +1,16 @@
-using System.Text.Json;
-
 namespace Lunate.Agent.Tests;
 
 internal sealed class RecordingApprover(bool decision) : IToolApprover
 {
     public List<(ITool Tool, string Args)> Calls { get; } = [];
 
-    public ValueTask<bool> ApproveAsync(ITool tool, JsonElement args, CancellationToken ct)
+    /// <summary>Every ask with its asking-run identity, in order.</summary>
+    public List<ApprovalRequest> Requests { get; } = [];
+
+    public ValueTask<bool> ApproveAsync(ApprovalRequest request, CancellationToken ct)
     {
-        Calls.Add((tool, args.GetRawText()));
+        Calls.Add((request.Tool, request.Args.GetRawText()));
+        Requests.Add(request);
         return ValueTask.FromResult(decision);
     }
 }
