@@ -33,4 +33,4 @@ Done-when (T-47 row): *parent/child runs, approvals routed to the parent UI, can
 - `Lunate.Coding`: settings `subagents` section, `/context`, the interactive pump's child-run behaviour, print renderer suppression, ACP filtering.
 - `samples/extensions/subagents/**`: the sample extension + tests.
 - Specs: `agent-loop` (ADD "Subagent runs"; MODIFIED "Tool execution safety"), `agent-tools` (MODIFIED "Tool contract"), `agent-sessions` (MODIFIED "Session store and resume"), `agent-events` (MODIFIED "Closed event set"), `extensions` (MODIFIED hooks-fire requirement), `tui` (MODIFIED "Tool block rendering", "Approval prompt", "Status footer"), `protocols` (MODIFIED "ACP server over stdio").
-- No new packages. `Lunate.Extensibility.Abstractions` unchanged (API stays 1.7) — extension code reaches the runner through the `Lunate.Agent` reference established in part 1.
+- No new packages. `Lunate.Extensibility.Abstractions` changes additively only (API 1.7 → 1.8: the parent run id on the run-scoped hook payloads) — extension code reaches the runner through the `Lunate.Agent` reference established in part 1.

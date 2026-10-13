@@ -128,8 +128,8 @@ internal sealed class SubagentRunner : ISubagentRunner
         {
             return Refusal(
                 StopReasons.DepthLimit,
-                "Subagent spawn refused (depth_limit): subagents.depth is fixed at 1 in this version, "
-                    + "so a subagent cannot spawn another subagent."
+                "Subagent spawn refused (depth_limit): the subagent depth limit is fixed at 1 in "
+                    + "this version (not configurable), so a subagent cannot spawn another subagent."
             );
         }
 

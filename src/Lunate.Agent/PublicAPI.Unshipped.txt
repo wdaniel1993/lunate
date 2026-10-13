@@ -887,7 +887,7 @@ Lunate.Agent.AgentTurnEndedResult.RequestContinuation.init -> void
 Lunate.Agent.IAgentHookPoints
 Lunate.Agent.IAgentHookPoints.ContextBuildingAsync(Lunate.Agent.AgentContextBuildingContext! context, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Lunate.Agent.AgentContextBuildingResult!>
 Lunate.Agent.IAgentHookPoints.MessageCompletedAsync(Lunate.Agent.AgentMessageCompletedContext! context, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Lunate.Agent.AgentMessageCompletedResult!>
-Lunate.Agent.IAgentHookPoints.ProviderStreamEventAsync(string! runId, Microsoft.Extensions.AI.ChatResponseUpdate! update, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask
+Lunate.Agent.IAgentHookPoints.ProviderStreamEventAsync(string! runId, string? parentRunId, Microsoft.Extensions.AI.ChatResponseUpdate! update, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask
 Lunate.Agent.IAgentHookPoints.RunSettledAsync(Lunate.Agent.AgentRunSettledContext! context, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask
 Lunate.Agent.IAgentHookPoints.RunStartingAsync(Lunate.Agent.AgentRunStartingContext! context, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Lunate.Agent.AgentRunStartingResult!>
 Lunate.Agent.IAgentHookPoints.ToolCallingAsync(Lunate.Agent.AgentToolCallingContext! context, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Lunate.Agent.AgentToolCallingResult!>

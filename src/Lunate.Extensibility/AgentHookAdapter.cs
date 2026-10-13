@@ -33,7 +33,10 @@ public sealed class AgentHookAdapter : IAgentHookPoints
                     )),
                 ],
                 context.Tools
-            ),
+            )
+            {
+                ParentRunId = context.ParentRunId,
+            },
             cancellationToken
         );
         if (dispatch.SectionEdits.Count == 0 && dispatch.ActiveTools is null)
@@ -69,7 +72,10 @@ public sealed class AgentHookAdapter : IAgentHookPoints
                         Source = message.Source,
                     }),
                 ]
-            ),
+            )
+            {
+                ParentRunId = context.ParentRunId,
+            },
             cancellationToken
         );
         return new AgentContextBuildingResult([
@@ -83,6 +89,7 @@ public sealed class AgentHookAdapter : IAgentHookPoints
 
     public async ValueTask ProviderStreamEventAsync(
         string runId,
+        string? parentRunId,
         ChatResponseUpdate update,
         CancellationToken cancellationToken
     )
@@ -95,7 +102,10 @@ public sealed class AgentHookAdapter : IAgentHookPoints
                     update.Contents.OfType<TextContent>().Select(content => content.Text)
                 ),
                 update.FinishReason?.Value
-            ),
+            )
+            {
+                ParentRunId = parentRunId,
+            },
             cancellationToken
         );
     }
@@ -106,7 +116,10 @@ public sealed class AgentHookAdapter : IAgentHookPoints
     )
     {
         MessageCompletedResult result = await _runner.RunMessageCompletedAsync(
-            new MessageCompletedPayload(context.RunId, context.Role, context.Text),
+            new MessageCompletedPayload(context.RunId, context.Role, context.Text)
+            {
+                ParentRunId = context.ParentRunId,
+            },
             cancellationToken
         );
         return result switch
@@ -132,6 +145,7 @@ public sealed class AgentHookAdapter : IAgentHookPoints
             )
             {
                 Annotations = ToolAnnotationNames.WireNames(context.Annotations),
+                ParentRunId = context.ParentRunId,
             },
             cancellationToken
         );
@@ -158,7 +172,10 @@ public sealed class AgentHookAdapter : IAgentHookPoints
                 context.Arguments,
                 context.Output,
                 context.IsError
-            ),
+            )
+            {
+                ParentRunId = context.ParentRunId,
+            },
             cancellationToken
         );
         return new AgentToolResultReadyResult(
@@ -174,7 +191,7 @@ public sealed class AgentHookAdapter : IAgentHookPoints
     )
     {
         TurnEndedDispatch dispatch = await _runner.RunTurnEndedAsync(
-            new TurnEndedPayload(context.RunId),
+            new TurnEndedPayload(context.RunId) { ParentRunId = context.ParentRunId },
             cancellationToken
         );
         return new AgentTurnEndedResult(
@@ -192,7 +209,11 @@ public sealed class AgentHookAdapter : IAgentHookPoints
     public async ValueTask RunSettledAsync(
         AgentRunSettledContext context,
         CancellationToken cancellationToken
-    ) => await _runner.RunRunSettledAsync(new RunSettledPayload(context.RunId), cancellationToken);
+    ) =>
+        await _runner.RunRunSettledAsync(
+            new RunSettledPayload(context.RunId) { ParentRunId = context.ParentRunId },
+            cancellationToken
+        );
 
     public async ValueTask<AgentCompactingResult> CompactingAsync(
         AgentCompactingContext context,
@@ -211,7 +232,10 @@ public sealed class AgentHookAdapter : IAgentHookPoints
                         Source = message.Source,
                     }),
                 ]
-            ),
+            )
+            {
+                ParentRunId = context.ParentRunId,
+            },
             cancellationToken
         );
         return result switch

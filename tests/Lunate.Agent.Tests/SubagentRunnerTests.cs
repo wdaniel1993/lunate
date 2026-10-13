@@ -170,7 +170,7 @@ public sealed class SubagentRunnerTests
         Assert.NotNull(captured);
         Assert.Equal(StopReasons.DepthLimit, captured.StopReason);
         Assert.Contains("depth_limit", captured.Output, StringComparison.Ordinal);
-        Assert.Contains("subagents.depth", captured.Output, StringComparison.Ordinal);
+        Assert.Contains("fixed at 1", captured.Output, StringComparison.Ordinal);
         Assert.DoesNotContain(events, agentEvent => agentEvent.ParentRunId is not null);
     }
 

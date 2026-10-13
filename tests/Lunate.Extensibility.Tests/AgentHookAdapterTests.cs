@@ -286,11 +286,37 @@ public sealed class AgentHookAdapterTests
         Assert.Equal(["destructive", "open-world"], capturing.Annotations);
     }
 
+    [Fact]
+    public async Task Tool_calling_payload_carries_the_parent_run_id_of_a_child_run()
+    {
+        var capturing = new CapturingToolCallingExtension();
+        var runner = new HookRunner();
+        runner.Register("ext", capturing);
+        var adapter = new AgentHookAdapter(runner);
+
+        await adapter.ToolCallingAsync(
+            new AgentToolCallingContext(
+                "run_child",
+                "call-1",
+                "read",
+                AdapterTestSupport.Json("""{"path":"a.txt"}""")
+            )
+            {
+                ParentRunId = "run_parent",
+            },
+            Ct
+        );
+
+        Assert.Equal("run_parent", capturing.ParentRunId);
+    }
+
     private sealed class CapturingToolCallingExtension : IToolCallingHandler
     {
         public int Priority => 0;
 
         public IReadOnlyList<string> Annotations { get; private set; } = [];
+
+        public string? ParentRunId { get; private set; }
 
         public ValueTask<ToolCallingResult> HandleAsync(
             ToolCallingPayload payload,
@@ -298,6 +324,7 @@ public sealed class AgentHookAdapterTests
         )
         {
             Annotations = payload.Annotations;
+            ParentRunId = payload.ParentRunId;
             return ValueTask.FromResult<ToolCallingResult>(new ToolCallingResult.Proceed(null));
         }
     }

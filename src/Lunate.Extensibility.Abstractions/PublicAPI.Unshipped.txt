@@ -822,7 +822,7 @@ static Lunate.Extensibility.Abstractions.TextSegment.operator !=(Lunate.Extensib
 static Lunate.Extensibility.Abstractions.TextSegment.operator ==(Lunate.Extensibility.Abstractions.TextSegment? left, Lunate.Extensibility.Abstractions.TextSegment? right) -> bool
 static Lunate.Extensibility.Abstractions.ToolResultView.operator !=(Lunate.Extensibility.Abstractions.ToolResultView? left, Lunate.Extensibility.Abstractions.ToolResultView? right) -> bool
 static Lunate.Extensibility.Abstractions.ToolResultView.operator ==(Lunate.Extensibility.Abstractions.ToolResultView? left, Lunate.Extensibility.Abstractions.ToolResultView? right) -> bool
-const Lunate.Extensibility.Abstractions.ExtensionApi.Current = "1.7.0" -> string!
+const Lunate.Extensibility.Abstractions.ExtensionApi.Current = "1.8.0" -> string!
 Lunate.Extensibility.Abstractions.IExtensionContext.RegisterMcpServer(Lunate.Extensibility.Abstractions.McpServerRegistration! registration) -> void
 Lunate.Extensibility.Abstractions.McpServerConfig
 Lunate.Extensibility.Abstractions.McpServerConfig.<Clone>$() -> Lunate.Extensibility.Abstractions.McpServerConfig!
@@ -868,3 +868,23 @@ static Lunate.Extensibility.Abstractions.McpServerConfig.operator !=(Lunate.Exte
 static Lunate.Extensibility.Abstractions.McpServerConfig.operator ==(Lunate.Extensibility.Abstractions.McpServerConfig? left, Lunate.Extensibility.Abstractions.McpServerConfig? right) -> bool
 static Lunate.Extensibility.Abstractions.McpServerRegistration.operator !=(Lunate.Extensibility.Abstractions.McpServerRegistration? left, Lunate.Extensibility.Abstractions.McpServerRegistration? right) -> bool
 static Lunate.Extensibility.Abstractions.McpServerRegistration.operator ==(Lunate.Extensibility.Abstractions.McpServerRegistration? left, Lunate.Extensibility.Abstractions.McpServerRegistration? right) -> bool
+Lunate.Extensibility.Abstractions.IParentRunIdPayload
+Lunate.Extensibility.Abstractions.IParentRunIdPayload.ParentRunId.get -> string?
+Lunate.Extensibility.Abstractions.CompactingPayload.ParentRunId.get -> string?
+Lunate.Extensibility.Abstractions.CompactingPayload.ParentRunId.init -> void
+Lunate.Extensibility.Abstractions.ContextBuildingPayload.ParentRunId.get -> string?
+Lunate.Extensibility.Abstractions.ContextBuildingPayload.ParentRunId.init -> void
+Lunate.Extensibility.Abstractions.MessageCompletedPayload.ParentRunId.get -> string?
+Lunate.Extensibility.Abstractions.MessageCompletedPayload.ParentRunId.init -> void
+Lunate.Extensibility.Abstractions.ProviderStreamEventPayload.ParentRunId.get -> string?
+Lunate.Extensibility.Abstractions.ProviderStreamEventPayload.ParentRunId.init -> void
+Lunate.Extensibility.Abstractions.RunSettledPayload.ParentRunId.get -> string?
+Lunate.Extensibility.Abstractions.RunSettledPayload.ParentRunId.init -> void
+Lunate.Extensibility.Abstractions.RunStartingPayload.ParentRunId.get -> string?
+Lunate.Extensibility.Abstractions.RunStartingPayload.ParentRunId.init -> void
+Lunate.Extensibility.Abstractions.ToolCallingPayload.ParentRunId.get -> string?
+Lunate.Extensibility.Abstractions.ToolCallingPayload.ParentRunId.init -> void
+Lunate.Extensibility.Abstractions.ToolResultReadyPayload.ParentRunId.get -> string?
+Lunate.Extensibility.Abstractions.ToolResultReadyPayload.ParentRunId.init -> void
+Lunate.Extensibility.Abstractions.TurnEndedPayload.ParentRunId.get -> string?
+Lunate.Extensibility.Abstractions.TurnEndedPayload.ParentRunId.init -> void

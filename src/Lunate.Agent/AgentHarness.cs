@@ -435,7 +435,7 @@ public sealed partial class AgentHarness
             {
                 if (_options.Hooks is { } streamHook)
                 {
-                    await streamHook.ProviderStreamEventAsync(runId, update, ct);
+                    await streamHook.ProviderStreamEventAsync(runId, ParentRunId, update, ct);
                 }
 
                 updates.Add(update);

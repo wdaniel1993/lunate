@@ -24,6 +24,7 @@ public interface IAgentHookPoints
     /// <summary>Called for every raw provider update; observation only.</summary>
     ValueTask ProviderStreamEventAsync(
         string runId,
+        string? parentRunId,
         ChatResponseUpdate update,
         CancellationToken cancellationToken
     ) => ValueTask.CompletedTask;
