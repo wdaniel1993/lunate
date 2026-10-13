@@ -8,6 +8,18 @@ internal sealed class NullAgentEvents : IAgentEvents
     public void Emit(AgentEvent agentEvent) { }
 }
 
+internal static class Changes
+{
+    internal static FileChangeEvent Event(
+        string absolutePath,
+        string? relativePath = null,
+        string workspaceId = "/work",
+        string? runId = null,
+        FileChangeKind kind = FileChangeKind.Modified
+    ) =>
+        new(absolutePath, relativePath ?? Path.GetFileName(absolutePath), workspaceId, runId, kind);
+}
+
 internal sealed class TestFileChangedHandler(
     int priority,
     Func<FileChangedPayload, CancellationToken, ValueTask> handler

@@ -62,6 +62,20 @@ public sealed class HookContractTests
     }
 
     [Fact]
+    public void The_file_changed_kind_is_a_lowercase_wire_value()
+    {
+        var payload = new FileChangedPayload("/w/a.cs", "a.cs", "/w", "run_1", "created");
+
+        string json = JsonSerializer.Serialize(payload, Options);
+
+        Assert.Contains("\"kind\":\"created\"", json, StringComparison.Ordinal);
+        Assert.Equal(
+            "created",
+            JsonSerializer.Deserialize<FileChangedPayload>(json, Options)!.Kind
+        );
+    }
+
+    [Fact]
     public void Json_element_fields_keep_their_content()
     {
         JsonElement arguments = JsonDocument
@@ -158,7 +172,10 @@ public sealed class HookContractTests
             ("CompactingResult.Provide", new CompactingResult.Provide("summary")),
             ("ModelChangedPayload", new ModelChangedPayload("r1", "model-2")),
             ("ToolsChangedPayload", new ToolsChangedPayload("r1", ["read", "write"])),
-            ("FileChangedPayload", new FileChangedPayload("/work/a.txt", "/work")),
+            (
+                "FileChangedPayload",
+                new FileChangedPayload("/work/a.txt", "a.txt", "/work", "r1", "modified")
+            ),
             (
                 "ModelProviderDescriptor",
                 new ModelProviderDescriptor(

@@ -16,13 +16,9 @@ public sealed class ExtensionLoaderFileChangeTests
         loader.Services.RegisterCore("core/file-bus", bus);
         await loader.Load("hello", temp.Root, "repo", new FakeExtensionTrustPrompt(true), Ct);
 
-        bus.Notify("/work/a.txt");
-        await bus.DrainAsync(Ct);
+        bus.Notify(Changes.Event("/work/a.txt"));
+        await WaitForLineAsync(log, "hello file changed: /work/a.txt", Ct);
 
-        Assert.Contains(
-            log.Messages,
-            message => message.Contains("hello file changed: /work/a.txt", StringComparison.Ordinal)
-        );
         Assert.Contains(
             log.Messages,
             message =>
@@ -30,7 +26,7 @@ public sealed class ExtensionLoaderFileChangeTests
         );
 
         await loader.Unload("hello");
-        bus.Notify("/work/b.txt");
+        bus.Notify(Changes.Event("/work/b.txt"));
         await bus.DrainAsync(Ct);
 
         Assert.DoesNotContain(
@@ -59,5 +55,25 @@ public sealed class ExtensionLoaderFileChangeTests
             message =>
                 message.Contains("hello lookups: bus=False, service=True", StringComparison.Ordinal)
         );
+    }
+
+    private static async Task WaitForLineAsync(
+        RecordingExtensionLog log,
+        string text,
+        CancellationToken ct
+    )
+    {
+        DateTime deadline = DateTime.UtcNow.AddSeconds(5);
+        while (!log.Messages.Any(message => message.Contains(text, StringComparison.Ordinal)))
+        {
+            if (DateTime.UtcNow > deadline)
+            {
+                throw new TimeoutException(
+                    $"the log never contained '{text}'; log:\n{string.Join("\n", log.Messages)}"
+                );
+            }
+
+            await Task.Delay(10, ct);
+        }
     }
 }

@@ -241,7 +241,15 @@ public sealed class EditTool(
                     return Task.FromResult(Error($"could not be written: {exception.Message}"));
                 }
 
-                changes?.Notify(resolved.AbsolutePath);
+                changes?.Notify(
+                    new FileChangeEvent(
+                        resolved.AbsolutePath,
+                        resolved.RelativePath,
+                        workspace.WorktreeRoot,
+                        null,
+                        FileChangeKind.Modified
+                    )
+                );
 
                 var firstLine = start + 1;
                 var lastLine = start + newLines.Length;

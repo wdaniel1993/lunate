@@ -6,10 +6,11 @@ namespace Lunate.Extensibility;
 
 /// <summary>
 /// The in-process file change bus: the core emits one <see cref="FileChangedPayload"/> per
-/// successful queued mutation, delivery is ordered per workspace (one dispatch queue per bus
-/// instance) and pattern-filtered per subscription, and handler failures or timeouts are reported
-/// and contained. <see cref="Notify"/> never throws. A mutation outside the workspace root still
-/// carries this bus's workspace id.
+/// successful queued mutation (a <see cref="FileChangeEvent"/> mapped to the contract DTO),
+/// delivery is ordered per workspace (one dispatch queue per bus instance) and pattern-filtered
+/// per subscription, and handler failures or timeouts are reported and contained.
+/// <see cref="Notify"/> never throws. The payload carries the event's workspace id (the harness
+/// stamps the run's workspace), falling back to this bus's own id.
 /// </summary>
 public sealed class FileChangeBus : IFileChangeSink, IFileChangeBus, IDisposable
 {
@@ -25,6 +26,7 @@ public sealed class FileChangeBus : IFileChangeSink, IFileChangeBus, IDisposable
     private long _enqueued;
     private long _processed;
     private Task? _pump;
+    private bool _drainStarted;
     private bool _disposed;
 
     public FileChangeBus(
@@ -41,10 +43,16 @@ public sealed class FileChangeBus : IFileChangeSink, IFileChangeBus, IDisposable
 
     public string WorkspaceId => _workspaceId;
 
-    /// <summary>Publishes a successful mutation; callers are never affected by handler failures.</summary>
-    public void Notify(string absolutePath)
+    /// <summary>
+    /// Publishes a successful mutation; callers are never affected by handler failures. Once a
+    /// drain has begun, further notifications are dropped with one log line each.
+    /// </summary>
+    public void Notify(FileChangeEvent change)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(absolutePath);
+        ArgumentNullException.ThrowIfNull(change);
+        ArgumentException.ThrowIfNullOrWhiteSpace(change.AbsolutePath);
+
+        bool dropped = false;
         lock (_gate)
         {
             if (_disposed)
@@ -52,11 +60,26 @@ public sealed class FileChangeBus : IFileChangeSink, IFileChangeBus, IDisposable
                 return;
             }
 
-            _enqueued++;
-            _pump ??= Task.Run(PumpAsync);
+            if (_drainStarted)
+            {
+                dropped = true;
+            }
+            else
+            {
+                _enqueued++;
+                _pump ??= Task.Run(PumpAsync);
+            }
         }
 
-        _events.Writer.TryWrite(new FileChangedPayload(absolutePath, _workspaceId));
+        if (dropped)
+        {
+            _log.Warn(
+                $"file change: notification for '{change.AbsolutePath}' dropped: a drain has begun."
+            );
+            return;
+        }
+
+        _events.Writer.TryWrite(ToPayload(change));
     }
 
     public IDisposable Subscribe(IFileChangedHandler handler, string? pathPattern = null)
@@ -71,12 +94,17 @@ public sealed class FileChangeBus : IFileChangeSink, IFileChangeBus, IDisposable
         return new Unsubscriber(this, subscription);
     }
 
-    /// <summary>Completes when every notification enqueued so far has been dispatched.</summary>
+    /// <summary>
+    /// Completes when every notification enqueued so far has been dispatched. Beginning the drain
+    /// is one-way: notifications arriving afterwards are dropped and logged, so a slow handler can
+    /// never extend session teardown.
+    /// </summary>
     public async ValueTask DrainAsync(CancellationToken cancellationToken = default)
     {
         Task completion;
         lock (_gate)
         {
+            _drainStarted = true;
             if (_processed >= _enqueued)
             {
                 return;
@@ -97,10 +125,27 @@ public sealed class FileChangeBus : IFileChangeSink, IFileChangeBus, IDisposable
         lock (_gate)
         {
             _disposed = true;
+            _drainStarted = true;
         }
 
         _events.Writer.TryComplete();
     }
+
+    private FileChangedPayload ToPayload(FileChangeEvent change) =>
+        new(
+            change.AbsolutePath,
+            change.RelativePath,
+            string.IsNullOrWhiteSpace(change.WorkspaceId) ? _workspaceId : change.WorkspaceId,
+            change.RunId,
+            WireKind(change.Kind)
+        );
+
+    private static string WireKind(FileChangeKind kind) =>
+        kind switch
+        {
+            FileChangeKind.Created => "created",
+            _ => "modified",
+        };
 
     private async Task PumpAsync()
     {

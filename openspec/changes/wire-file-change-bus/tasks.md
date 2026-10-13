@@ -2,10 +2,10 @@
 
 ## 1. The event contract and the bus
 
-- [ ] 1.1 `Lunate.Agent`: `FileChangeKind { Created, Modified }`, `FileChangeEvent(AbsolutePath, RelativePath, WorkspaceId, RunId, Kind)`, `IFileChangeSink.Notify(FileChangeEvent)` (NullFileChangeSink no-ops); PublicAPI.Unshipped updated.
-- [ ] 1.2 `FileChangedPayload` gains `RelativePath`, `RunId`, `Kind` (contract assembly; serialization per the hook DTO conventions; conformance round-trip test updated).
-- [ ] 1.3 `FileChangeBus` consumes events (IFileChangeSink), maps them to payloads for handlers, keeps ordered delivery/pattern filtering (absolute path)/handler timeouts; drop-and-log once a drain has begun; `Dispose` unchanged otherwise.
-- [ ] 1.4 Kit tests updated for the event-shaped API (`FileChangeBusTests`, `FileChangeIntegrationTests`, `ExtensionLoaderFileChangeTests`); new: drain-drop logged; notifications after drain do not throw.
+- [x] 1.1 `Lunate.Agent`: `FileChangeKind { Created, Modified }`, `FileChangeEvent(AbsolutePath, RelativePath, WorkspaceId, RunId, Kind)`, `IFileChangeSink.Notify(FileChangeEvent)` (NullFileChangeSink no-ops); PublicAPI.Unshipped updated.
+- [x] 1.2 `FileChangedPayload` gains `RelativePath`, `RunId`, `Kind` (contract assembly; serialization per the hook DTO conventions; conformance round-trip test updated).
+- [x] 1.3 `FileChangeBus` consumes events (IFileChangeSink), maps them to payloads for handlers, keeps ordered delivery/pattern filtering (absolute path)/handler timeouts; drop-and-log once a drain has begun; `Dispose` unchanged otherwise.
+- [x] 1.4 Kit tests updated for the event-shaped API (`FileChangeBusTests`, `FileChangeIntegrationTests`, `ExtensionLoaderFileChangeTests`); new: drain-drop logged; notifications after drain do not throw.
 
 ## 2. The mutation queue
 

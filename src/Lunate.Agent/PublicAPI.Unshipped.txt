@@ -1034,10 +1034,33 @@ virtual Lunate.Agent.AgentToolCallingResult.Equals(Lunate.Agent.AgentToolCalling
 virtual Lunate.Agent.AgentToolCallingResult.PrintMembers(System.Text.StringBuilder! builder) -> bool
 Lunate.Agent.AgentHarnessOptions.FileChanges.get -> Lunate.Agent.IFileChangeSink!
 Lunate.Agent.AgentHarnessOptions.FileChanges.init -> void
+Lunate.Agent.FileChangeEvent
+Lunate.Agent.FileChangeEvent.<Clone>$() -> Lunate.Agent.FileChangeEvent!
+Lunate.Agent.FileChangeEvent.AbsolutePath.get -> string!
+Lunate.Agent.FileChangeEvent.AbsolutePath.init -> void
+Lunate.Agent.FileChangeEvent.Deconstruct(out string! AbsolutePath, out string! RelativePath, out string! WorkspaceId, out string? RunId, out Lunate.Agent.FileChangeKind Kind) -> void
+Lunate.Agent.FileChangeEvent.Equals(Lunate.Agent.FileChangeEvent? other) -> bool
+Lunate.Agent.FileChangeEvent.FileChangeEvent(string! AbsolutePath, string! RelativePath, string! WorkspaceId, string? RunId, Lunate.Agent.FileChangeKind Kind) -> void
+Lunate.Agent.FileChangeEvent.Kind.get -> Lunate.Agent.FileChangeKind
+Lunate.Agent.FileChangeEvent.Kind.init -> void
+Lunate.Agent.FileChangeEvent.RelativePath.get -> string!
+Lunate.Agent.FileChangeEvent.RelativePath.init -> void
+Lunate.Agent.FileChangeEvent.RunId.get -> string?
+Lunate.Agent.FileChangeEvent.RunId.init -> void
+Lunate.Agent.FileChangeEvent.WorkspaceId.get -> string!
+Lunate.Agent.FileChangeEvent.WorkspaceId.init -> void
+Lunate.Agent.FileChangeKind
+Lunate.Agent.FileChangeKind.Created = 0 -> Lunate.Agent.FileChangeKind
+Lunate.Agent.FileChangeKind.Modified = 1 -> Lunate.Agent.FileChangeKind
 Lunate.Agent.IFileChangeSink
-Lunate.Agent.IFileChangeSink.Notify(string! absolutePath) -> void
+Lunate.Agent.IFileChangeSink.Notify(Lunate.Agent.FileChangeEvent! change) -> void
 Lunate.Agent.NullFileChangeSink
-Lunate.Agent.NullFileChangeSink.Notify(string! absolutePath) -> void
+Lunate.Agent.NullFileChangeSink.Notify(Lunate.Agent.FileChangeEvent! change) -> void
+override Lunate.Agent.FileChangeEvent.Equals(object? obj) -> bool
+override Lunate.Agent.FileChangeEvent.GetHashCode() -> int
+override Lunate.Agent.FileChangeEvent.ToString() -> string!
+static Lunate.Agent.FileChangeEvent.operator !=(Lunate.Agent.FileChangeEvent? left, Lunate.Agent.FileChangeEvent? right) -> bool
+static Lunate.Agent.FileChangeEvent.operator ==(Lunate.Agent.FileChangeEvent? left, Lunate.Agent.FileChangeEvent? right) -> bool
 static Lunate.Agent.NullFileChangeSink.Instance.get -> Lunate.Agent.NullFileChangeSink!
 Lunate.Agent.AgentCompactingContext
 Lunate.Agent.AgentCompactingContext.<Clone>$() -> Lunate.Agent.AgentCompactingContext!

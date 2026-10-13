@@ -115,5 +115,15 @@ public sealed record ModelChangedPayload(string RunId, string Model);
 /// <summary>The active tool set after a change; observation only.</summary>
 public sealed record ToolsChangedPayload(string RunId, IReadOnlyList<string> Tools);
 
-/// <summary>A successful file mutation; <see cref="Path"/> is canonical and absolute.</summary>
-public sealed record FileChangedPayload(string Path, string WorkspaceId);
+/// <summary>
+/// A successful file mutation; <see cref="Path"/> is canonical and absolute. <see cref="Kind"/> is
+/// the lowercase wire value <c>created</c> or <c>modified</c>; <see cref="RunId"/> is null for
+/// mutations outside a run.
+/// </summary>
+public sealed record FileChangedPayload(
+    string Path,
+    string RelativePath,
+    string WorkspaceId,
+    string? RunId,
+    string Kind
+);

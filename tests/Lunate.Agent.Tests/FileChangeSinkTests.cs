@@ -9,6 +9,14 @@ public sealed class FileChangeSinkTests
     {
         var options = new AgentHarnessOptions();
 
-        options.FileChanges.Notify("/anywhere/a.txt");
+        options.FileChanges.Notify(
+            new FileChangeEvent(
+                "/anywhere/a.txt",
+                "a.txt",
+                "/anywhere",
+                null,
+                FileChangeKind.Modified
+            )
+        );
     }
 }

@@ -110,7 +110,15 @@ public sealed class WriteTool(
                     return Task.FromResult(Error($"could not be written: {exception.Message}"));
                 }
 
-                changes?.Notify(target);
+                changes?.Notify(
+                    new FileChangeEvent(
+                        target,
+                        relative,
+                        workspace.WorktreeRoot,
+                        null,
+                        created ? FileChangeKind.Created : FileChangeKind.Modified
+                    )
+                );
 
                 var lines = CountLines(content);
                 var details = new WriteDetails(

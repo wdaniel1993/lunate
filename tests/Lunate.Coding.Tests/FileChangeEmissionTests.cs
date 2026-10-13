@@ -21,11 +21,12 @@ public sealed class FileChangeEmissionTests
         );
 
         Assert.False(result.IsError);
-        string path = Assert.Single(sink.Paths);
+        FileChangeEvent change = Assert.Single(sink.Events);
         Assert.Equal(
             Path.Combine(Workspace.Canonicalize(temp.Root), "nested", "a.txt"),
-            Workspace.Canonicalize(path)
+            Workspace.Canonicalize(change.AbsolutePath)
         );
+        Assert.Equal(Workspace.Canonicalize(temp.Root), change.WorkspaceId);
     }
 
     [Fact]
@@ -43,8 +44,8 @@ public sealed class FileChangeEmissionTests
         );
 
         Assert.False(result.IsError);
-        string path = Assert.Single(sink.Paths);
-        Assert.Equal(Path.Combine(Workspace.Canonicalize(temp.Root), "a.txt"), path);
+        FileChangeEvent change = Assert.Single(sink.Events);
+        Assert.Equal(Path.Combine(Workspace.Canonicalize(temp.Root), "a.txt"), change.AbsolutePath);
     }
 
     [Fact]
@@ -62,7 +63,7 @@ public sealed class FileChangeEmissionTests
         );
 
         Assert.True(result.IsError);
-        Assert.Empty(sink.Paths);
+        Assert.Empty(sink.Events);
     }
 
     [Fact]
@@ -80,7 +81,7 @@ public sealed class FileChangeEmissionTests
         );
 
         Assert.True(result.IsError);
-        Assert.Empty(sink.Paths);
+        Assert.Empty(sink.Events);
     }
 
     [Theory]
@@ -101,7 +102,7 @@ public sealed class FileChangeEmissionTests
         );
 
         Assert.True(result.IsError);
-        Assert.Empty(sink.Paths);
+        Assert.Empty(sink.Events);
     }
 
     [Fact]
@@ -123,8 +124,8 @@ public sealed class FileChangeEmissionTests
 
     private sealed class RecordingFileChangeSink : IFileChangeSink
     {
-        public List<string> Paths { get; } = [];
+        public List<FileChangeEvent> Events { get; } = [];
 
-        public void Notify(string absolutePath) => Paths.Add(absolutePath);
+        public void Notify(FileChangeEvent change) => Events.Add(change);
     }
 }
