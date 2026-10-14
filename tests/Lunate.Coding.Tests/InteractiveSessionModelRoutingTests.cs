@@ -52,6 +52,9 @@ public sealed class InteractiveSessionModelRoutingTests
         host.Console.SendText("hello");
         host.Console.SendEnter();
         await InteractiveSessionCommandTests.WaitForFrameAsync(host, "auto → fixture-model");
+        // The turn must finish before /model: a picker opens only while idle, and a command
+        // sent mid-turn is refused.
+        await host.WaitUntilAsync(() => !host.Session.IsRunning);
 
         host.Console.SendText("/model");
         host.Console.SendEnter();
