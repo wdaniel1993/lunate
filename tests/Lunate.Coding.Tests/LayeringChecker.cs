@@ -101,10 +101,12 @@ internal static class LayeringChecker
             ("CodeModeExtension.Tests", "CodeModeExtension"),
             ("CodeModeExtension.Tests", "Lunate.Coding"),
             ("CodeModeExtension.Tests", "Lunate.Extensibility.Testing"),
-            // The ui-showcase sample is Abstractions-only; its tests use only the kit.
+            // The ui-showcase sample is Abstractions-only; its tests use the kit and reference
+            // the extension project itself (the sibling pattern).
             ("UiShowcaseExtension", "Lunate.Extensibility.Abstractions"),
             ("UiShowcaseExtension.Tests", "Lunate.Extensibility.Abstractions"),
             ("UiShowcaseExtension.Tests", "Lunate.Extensibility.Testing"),
+            ("UiShowcaseExtension.Tests", "UiShowcaseExtension"),
         };
 
     public static IReadOnlySet<string> AllowedAgentRuntimePackages { get; } =
