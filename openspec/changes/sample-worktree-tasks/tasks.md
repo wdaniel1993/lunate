@@ -18,8 +18,8 @@
 
 ## 3. Sample (`samples/extensions/worktree-tasks`)
 
-- [ ] 3.1 Extension: `worktree__start` / `__merge` / `__clean` / `__list` over `core/process` + `ctx.Subagents` (start spawns one child with `WorkspaceRoot` and a fixed allow-list; name sanitization + `git check-ref-format --branch` + refuse-existing-branch; merge refuses dirty target and `--abort`s conflicts; clean refuses while a run is active and deletes the branch only if merged); annotations; README with the capability table.
-- [ ] 3.2 Kit tests against real temp git repos: registration; start (worktree + branch + child in the worktree + file isolation + child header); merge (arrives as merge commit; dirty refusal; conflict → `--abort` + teaching error naming files); clean (removes; dirty refusal; active-run refusal; merged-only branch delete); list; bad names refused.
+- [x] 3.1 Extension: `worktree__start` / `__merge` / `__clean` / `__list` over `core/process` + `ctx.Subagents` (start spawns one child with `WorkspaceRoot` and a fixed allow-list; name sanitization + `git check-ref-format --branch` + refuse-existing-branch; merge refuses dirty target and `--abort`s conflicts; clean refuses while a run is active and deletes the branch only if merged); annotations; README with the capability table.
+- [x] 3.2 Kit tests against real temp git repos: registration; start (worktree + branch + child in the worktree + file isolation + child header); merge (arrives as merge commit; dirty refusal; conflict → `--abort` + teaching error naming files); clean (removes; dirty refusal; active-run refusal; merged-only branch delete); list; bad names refused.
 
 ## 4. Coding-level proofs + trust
 

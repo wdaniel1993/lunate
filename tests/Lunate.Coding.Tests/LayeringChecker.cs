@@ -97,6 +97,12 @@ internal static class LayeringChecker
             ("SubagentsExtension", "Lunate.Extensibility.Abstractions"),
             ("SubagentsExtension.Tests", "SubagentsExtension"),
             ("SubagentsExtension.Tests", "Lunate.Extensibility.Testing"),
+            // The worktree-tasks sample is Abstractions-only; its tests build the child's real
+            // coding tools, so they reference the Coding layer and the extension project.
+            ("WorktreeTasksExtension", "Lunate.Extensibility.Abstractions"),
+            ("WorktreeTasksExtension.Tests", "WorktreeTasksExtension"),
+            ("WorktreeTasksExtension.Tests", "Lunate.Coding"),
+            ("WorktreeTasksExtension.Tests", "Lunate.Extensibility.Testing"),
             // The code-mode extension itself references Abstractions only; its tests bridge the
             // real read tool, so they also reference the Coding layer and the extension project.
             ("CodeModeExtension", "Lunate.Extensibility.Abstractions"),

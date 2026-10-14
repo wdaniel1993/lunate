@@ -1,0 +1,14 @@
+{
+    "id": "worktree",
+    "version": "0.1.0",
+    "apiVersion": "^1.10.0",
+    "entryAssembly": "WorktreeTasksExtension.dll",
+    "tools": ["start", "merge", "clean", "list"],
+    "capabilities": [
+        "worktree__start creates a git worktree and branch, then runs one subagent in it through ToolContext.Subagents with a fixed allow-list",
+        "worktree__merge merges the worktree branch back, refuses a dirty target and aborts conflicts (never leaves a half-merged tree)",
+        "worktree__clean removes a worktree and its merged branch, refusing while a run is active in it",
+        "worktree__list renders git worktree list --porcelain",
+        "all git calls run through the core/process service; worktree management stays extension territory"
+    ]
+}
