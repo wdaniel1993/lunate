@@ -1,4 +1,5 @@
 using Lunate.Agent;
+using Lunate.Ai;
 using Lunate.Coding;
 using Lunate.Extensibility.Abstractions;
 using Microsoft.Extensions.AI;
@@ -55,7 +56,16 @@ public sealed class ExtensionTestHost : IAsyncDisposable
         Events = new EventRecorder();
         Tools = new ToolRegistry();
         Runner = new ExtensionLoader(
-            new ExtensionHostOptions { StorePath = StorePath, Log = Log },
+            new ExtensionHostOptions
+            {
+                StorePath = StorePath,
+                Log = Log,
+                ClientFactory =
+                    options.ClientFactory
+                    ?? new ChatClientFactory(
+                        Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance
+                    ),
+            },
             options.HookRunnerOptions is { } hookOptions ? new HookRunner(hookOptions, Log) : null
         );
         _fileChanges = new FileChangeBus(WorkingDirectory, Log);
@@ -152,6 +162,7 @@ public sealed class ExtensionTestHost : IAsyncDisposable
             Hooks = new AgentHookAdapter(Runner.Hooks),
             Session = session,
             FileChanges = _fileChanges,
+            ModelRegistry = Runner.ModelRegistry,
         };
         if (_options.ConfigureHarness is { } configure)
         {

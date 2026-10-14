@@ -718,7 +718,6 @@ Lunate.Extensibility.Abstractions.IMutationQueue
 Lunate.Extensibility.Abstractions.IMutationQueue.RunAsync<T>(string! path, System.Func<System.Threading.CancellationToken, System.Threading.Tasks.Task<T>!>! mutation, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<T>!
 Lunate.Extensibility.Abstractions.ModelProviderDescriptor
 Lunate.Extensibility.Abstractions.ModelProviderDescriptor.<Clone>$() -> Lunate.Extensibility.Abstractions.ModelProviderDescriptor!
-Lunate.Extensibility.Abstractions.ModelProviderDescriptor.Deconstruct(out string! Id, out string! DisplayName, out string! Endpoint, out string! SecretName, out System.Collections.Generic.IReadOnlyList<string!>! ModelIds) -> void
 Lunate.Extensibility.Abstractions.ModelProviderDescriptor.DisplayName.get -> string!
 Lunate.Extensibility.Abstractions.ModelProviderDescriptor.DisplayName.init -> void
 Lunate.Extensibility.Abstractions.ModelProviderDescriptor.Endpoint.get -> string!
@@ -728,7 +727,6 @@ Lunate.Extensibility.Abstractions.ModelProviderDescriptor.Id.get -> string!
 Lunate.Extensibility.Abstractions.ModelProviderDescriptor.Id.init -> void
 Lunate.Extensibility.Abstractions.ModelProviderDescriptor.ModelIds.get -> System.Collections.Generic.IReadOnlyList<string!>!
 Lunate.Extensibility.Abstractions.ModelProviderDescriptor.ModelIds.init -> void
-Lunate.Extensibility.Abstractions.ModelProviderDescriptor.ModelProviderDescriptor(string! Id, string! DisplayName, string! Endpoint, string! SecretName, System.Collections.Generic.IReadOnlyList<string!>! ModelIds) -> void
 Lunate.Extensibility.Abstractions.ModelProviderDescriptor.SecretName.get -> string!
 Lunate.Extensibility.Abstractions.ModelProviderDescriptor.SecretName.init -> void
 Lunate.Extensibility.Abstractions.WorkspaceInfo
@@ -822,7 +820,6 @@ static Lunate.Extensibility.Abstractions.TextSegment.operator !=(Lunate.Extensib
 static Lunate.Extensibility.Abstractions.TextSegment.operator ==(Lunate.Extensibility.Abstractions.TextSegment? left, Lunate.Extensibility.Abstractions.TextSegment? right) -> bool
 static Lunate.Extensibility.Abstractions.ToolResultView.operator !=(Lunate.Extensibility.Abstractions.ToolResultView? left, Lunate.Extensibility.Abstractions.ToolResultView? right) -> bool
 static Lunate.Extensibility.Abstractions.ToolResultView.operator ==(Lunate.Extensibility.Abstractions.ToolResultView? left, Lunate.Extensibility.Abstractions.ToolResultView? right) -> bool
-const Lunate.Extensibility.Abstractions.ExtensionApi.Current = "1.9.0" -> string!
 Lunate.Extensibility.Abstractions.IExtensionContext.RegisterMcpServer(Lunate.Extensibility.Abstractions.McpServerRegistration! registration) -> void
 Lunate.Extensibility.Abstractions.McpServerConfig
 Lunate.Extensibility.Abstractions.McpServerConfig.<Clone>$() -> Lunate.Extensibility.Abstractions.McpServerConfig!
@@ -937,3 +934,73 @@ static Lunate.Extensibility.Abstractions.ProcessRunRequest.operator !=(Lunate.Ex
 static Lunate.Extensibility.Abstractions.ProcessRunRequest.operator ==(Lunate.Extensibility.Abstractions.ProcessRunRequest? left, Lunate.Extensibility.Abstractions.ProcessRunRequest? right) -> bool
 static Lunate.Extensibility.Abstractions.ProcessRunResult.operator !=(Lunate.Extensibility.Abstractions.ProcessRunResult? left, Lunate.Extensibility.Abstractions.ProcessRunResult? right) -> bool
 static Lunate.Extensibility.Abstractions.ProcessRunResult.operator ==(Lunate.Extensibility.Abstractions.ProcessRunResult? left, Lunate.Extensibility.Abstractions.ProcessRunResult? right) -> bool
+const Lunate.Extensibility.Abstractions.ExtensionApi.Current = "1.10.0" -> string!
+Lunate.Extensibility.Abstractions.ExtensionModelMiddleware
+Lunate.Extensibility.Abstractions.ExtensionModelMiddleware.<Clone>$() -> Lunate.Extensibility.Abstractions.ExtensionModelMiddleware!
+Lunate.Extensibility.Abstractions.ExtensionModelMiddleware.Deconstruct(out Lunate.Extensibility.Abstractions.ModelMiddlewareSlot Slot, out int Priority, out System.Func<Microsoft.Extensions.AI.IChatClient!, Microsoft.Extensions.AI.IChatClient!>! Wrap) -> void
+Lunate.Extensibility.Abstractions.ExtensionModelMiddleware.Equals(Lunate.Extensibility.Abstractions.ExtensionModelMiddleware? other) -> bool
+Lunate.Extensibility.Abstractions.ExtensionModelMiddleware.ExtensionModelMiddleware(Lunate.Extensibility.Abstractions.ModelMiddlewareSlot Slot, int Priority, System.Func<Microsoft.Extensions.AI.IChatClient!, Microsoft.Extensions.AI.IChatClient!>! Wrap) -> void
+Lunate.Extensibility.Abstractions.ExtensionModelMiddleware.Priority.get -> int
+Lunate.Extensibility.Abstractions.ExtensionModelMiddleware.Priority.init -> void
+Lunate.Extensibility.Abstractions.ExtensionModelMiddleware.Slot.get -> Lunate.Extensibility.Abstractions.ModelMiddlewareSlot
+Lunate.Extensibility.Abstractions.ExtensionModelMiddleware.Slot.init -> void
+Lunate.Extensibility.Abstractions.ExtensionModelMiddleware.Wrap.get -> System.Func<Microsoft.Extensions.AI.IChatClient!, Microsoft.Extensions.AI.IChatClient!>!
+Lunate.Extensibility.Abstractions.ExtensionModelMiddleware.Wrap.init -> void
+Lunate.Extensibility.Abstractions.ExtensionModelProvider
+Lunate.Extensibility.Abstractions.ExtensionModelProvider.<Clone>$() -> Lunate.Extensibility.Abstractions.ExtensionModelProvider!
+Lunate.Extensibility.Abstractions.ExtensionModelProvider.Create.get -> System.Func<Microsoft.Extensions.AI.IChatClient!>!
+Lunate.Extensibility.Abstractions.ExtensionModelProvider.Create.init -> void
+Lunate.Extensibility.Abstractions.ExtensionModelProvider.Deconstruct(out string! Id, out System.Collections.Generic.IReadOnlyList<string!>! ModelIds, out System.Func<Microsoft.Extensions.AI.IChatClient!>! Create) -> void
+Lunate.Extensibility.Abstractions.ExtensionModelProvider.Equals(Lunate.Extensibility.Abstractions.ExtensionModelProvider? other) -> bool
+Lunate.Extensibility.Abstractions.ExtensionModelProvider.ExtensionModelProvider(string! Id, System.Collections.Generic.IReadOnlyList<string!>! ModelIds, System.Func<Microsoft.Extensions.AI.IChatClient!>! Create) -> void
+Lunate.Extensibility.Abstractions.ExtensionModelProvider.Id.get -> string!
+Lunate.Extensibility.Abstractions.ExtensionModelProvider.Id.init -> void
+Lunate.Extensibility.Abstractions.ExtensionModelProvider.ModelIds.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Lunate.Extensibility.Abstractions.ExtensionModelProvider.ModelIds.init -> void
+Lunate.Extensibility.Abstractions.IExtensionContext.RegisterModelMiddleware(Lunate.Extensibility.Abstractions.ExtensionModelMiddleware! middleware) -> void
+Lunate.Extensibility.Abstractions.IExtensionContext.RegisterModelProvider(Lunate.Extensibility.Abstractions.ExtensionModelProvider! provider) -> void
+Lunate.Extensibility.Abstractions.IExtensionContext.RegisterVirtualModel(Lunate.Extensibility.Abstractions.VirtualModelRegistration! model) -> void
+Lunate.Extensibility.Abstractions.ModelMiddlewareSlot
+Lunate.Extensibility.Abstractions.ModelMiddlewareSlot.AroundBackend = 1 -> Lunate.Extensibility.Abstractions.ModelMiddlewareSlot
+Lunate.Extensibility.Abstractions.ModelMiddlewareSlot.BeforeRouting = 0 -> Lunate.Extensibility.Abstractions.ModelMiddlewareSlot
+Lunate.Extensibility.Abstractions.ModelProviderDescriptor.ContextWindow.get -> int
+Lunate.Extensibility.Abstractions.ModelProviderDescriptor.ContextWindow.init -> void
+Lunate.Extensibility.Abstractions.ModelProviderDescriptor.Deconstruct(out string! Id, out string! DisplayName, out string! Endpoint, out string! SecretName, out System.Collections.Generic.IReadOnlyList<string!>! ModelIds, out int ContextWindow, out bool SupportsTools) -> void
+Lunate.Extensibility.Abstractions.ModelProviderDescriptor.ModelProviderDescriptor(string! Id, string! DisplayName, string! Endpoint, string! SecretName, System.Collections.Generic.IReadOnlyList<string!>! ModelIds, int ContextWindow, bool SupportsTools = true) -> void
+Lunate.Extensibility.Abstractions.ModelProviderDescriptor.SupportsTools.get -> bool
+Lunate.Extensibility.Abstractions.ModelProviderDescriptor.SupportsTools.init -> void
+Lunate.Extensibility.Abstractions.ModelRouteContext
+Lunate.Extensibility.Abstractions.ModelRouteContext.Messages.get -> System.Collections.Generic.IReadOnlyList<Microsoft.Extensions.AI.ChatMessage!>!
+Lunate.Extensibility.Abstractions.ModelRouteContext.ModelRouteContext(System.Collections.Generic.IReadOnlyList<Microsoft.Extensions.AI.ChatMessage!>! messages, string! virtualModelId, Microsoft.Extensions.AI.ChatOptions? options = null) -> void
+Lunate.Extensibility.Abstractions.ModelRouteContext.Options.get -> Microsoft.Extensions.AI.ChatOptions?
+Lunate.Extensibility.Abstractions.ModelRouteContext.VirtualModelId.get -> string!
+Lunate.Extensibility.Abstractions.VirtualModelRegistration
+Lunate.Extensibility.Abstractions.VirtualModelRegistration.<Clone>$() -> Lunate.Extensibility.Abstractions.VirtualModelRegistration!
+Lunate.Extensibility.Abstractions.VirtualModelRegistration.Backends.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Lunate.Extensibility.Abstractions.VirtualModelRegistration.Backends.init -> void
+Lunate.Extensibility.Abstractions.VirtualModelRegistration.ContextWindow.get -> int?
+Lunate.Extensibility.Abstractions.VirtualModelRegistration.ContextWindow.init -> void
+Lunate.Extensibility.Abstractions.VirtualModelRegistration.Deconstruct(out string! Id, out System.Collections.Generic.IReadOnlyList<string!>! Backends, out System.Func<Lunate.Extensibility.Abstractions.ModelRouteContext!, string!>! Select, out int? ContextWindow, out bool? SupportsTools) -> void
+Lunate.Extensibility.Abstractions.VirtualModelRegistration.Equals(Lunate.Extensibility.Abstractions.VirtualModelRegistration? other) -> bool
+Lunate.Extensibility.Abstractions.VirtualModelRegistration.Id.get -> string!
+Lunate.Extensibility.Abstractions.VirtualModelRegistration.Id.init -> void
+Lunate.Extensibility.Abstractions.VirtualModelRegistration.Select.get -> System.Func<Lunate.Extensibility.Abstractions.ModelRouteContext!, string!>!
+Lunate.Extensibility.Abstractions.VirtualModelRegistration.Select.init -> void
+Lunate.Extensibility.Abstractions.VirtualModelRegistration.SupportsTools.get -> bool?
+Lunate.Extensibility.Abstractions.VirtualModelRegistration.SupportsTools.init -> void
+Lunate.Extensibility.Abstractions.VirtualModelRegistration.VirtualModelRegistration(string! Id, System.Collections.Generic.IReadOnlyList<string!>! Backends, System.Func<Lunate.Extensibility.Abstractions.ModelRouteContext!, string!>! Select, int? ContextWindow = null, bool? SupportsTools = null) -> void
+override Lunate.Extensibility.Abstractions.ExtensionModelMiddleware.Equals(object? obj) -> bool
+override Lunate.Extensibility.Abstractions.ExtensionModelMiddleware.GetHashCode() -> int
+override Lunate.Extensibility.Abstractions.ExtensionModelMiddleware.ToString() -> string!
+override Lunate.Extensibility.Abstractions.ExtensionModelProvider.Equals(object? obj) -> bool
+override Lunate.Extensibility.Abstractions.ExtensionModelProvider.GetHashCode() -> int
+override Lunate.Extensibility.Abstractions.ExtensionModelProvider.ToString() -> string!
+override Lunate.Extensibility.Abstractions.VirtualModelRegistration.Equals(object? obj) -> bool
+override Lunate.Extensibility.Abstractions.VirtualModelRegistration.GetHashCode() -> int
+override Lunate.Extensibility.Abstractions.VirtualModelRegistration.ToString() -> string!
+static Lunate.Extensibility.Abstractions.ExtensionModelMiddleware.operator !=(Lunate.Extensibility.Abstractions.ExtensionModelMiddleware? left, Lunate.Extensibility.Abstractions.ExtensionModelMiddleware? right) -> bool
+static Lunate.Extensibility.Abstractions.ExtensionModelMiddleware.operator ==(Lunate.Extensibility.Abstractions.ExtensionModelMiddleware? left, Lunate.Extensibility.Abstractions.ExtensionModelMiddleware? right) -> bool
+static Lunate.Extensibility.Abstractions.ExtensionModelProvider.operator !=(Lunate.Extensibility.Abstractions.ExtensionModelProvider? left, Lunate.Extensibility.Abstractions.ExtensionModelProvider? right) -> bool
+static Lunate.Extensibility.Abstractions.ExtensionModelProvider.operator ==(Lunate.Extensibility.Abstractions.ExtensionModelProvider? left, Lunate.Extensibility.Abstractions.ExtensionModelProvider? right) -> bool
+static Lunate.Extensibility.Abstractions.VirtualModelRegistration.operator !=(Lunate.Extensibility.Abstractions.VirtualModelRegistration? left, Lunate.Extensibility.Abstractions.VirtualModelRegistration? right) -> bool
+static Lunate.Extensibility.Abstractions.VirtualModelRegistration.operator ==(Lunate.Extensibility.Abstractions.VirtualModelRegistration? left, Lunate.Extensibility.Abstractions.VirtualModelRegistration? right) -> bool

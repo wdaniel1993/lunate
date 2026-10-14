@@ -1,4 +1,5 @@
 using Lunate.Agent;
+using Lunate.Ai;
 using Lunate.Extensibility;
 using Lunate.Extensibility.Abstractions;
 
@@ -19,6 +20,12 @@ internal sealed record ExtensionSeams
 
     /// <summary>Where extension diagnostics are reported; null writes to the mode's stderr.</summary>
     public IExtensionLog? Log { get; init; }
+
+    /// <summary>The session catalog the model registry falls back to; null disables the fallback.</summary>
+    public ModelCatalog? ModelCatalog { get; init; }
+
+    /// <summary>The client factory the model registry uses; null leaves those paths teaching errors.</summary>
+    public IChatClientFactory? ClientFactory { get; init; }
 
     /// <summary>
     /// True skips composing the extension host entirely (the <c>--no-extensions</c> flag):
@@ -80,6 +87,8 @@ internal sealed class ExtensionSession : IAsyncDisposable
             {
                 StorePath = seams.StorePath ?? ExtensionHostOptions.Default.StorePath,
                 Log = log,
+                ModelCatalog = seams.ModelCatalog,
+                ClientFactory = seams.ClientFactory,
             }
         );
         // The session owns one bus, created before any extension loads so a subscriber
@@ -158,8 +167,8 @@ internal sealed class ExtensionSession : IAsyncDisposable
     /// <summary>The loaded extensions' status widgets.</summary>
     internal StatusWidgetRegistry StatusWidgets => _loader.StatusWidgets;
 
-    /// <summary>The loaded extensions' model provider declarations; no consumer yet.</summary>
-    internal ModelProviderRegistry ModelProviders => _loader.ModelProviders;
+    /// <summary>The live model registry of the loaded extensions.</summary>
+    internal ModelRegistry ModelRegistry => _loader.ModelRegistry;
 
     /// <summary>
     /// The extension MCP mapping built by <see cref="ComposeMcpServers"/>; null until composed.

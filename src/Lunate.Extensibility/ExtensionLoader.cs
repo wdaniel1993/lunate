@@ -16,7 +16,7 @@ public sealed partial class ExtensionLoader
     );
     private readonly HookRunner _hooks;
     private readonly BackgroundServiceHost _backgroundServices;
-    private readonly ModelProviderRegistry _modelProviders = new();
+    private readonly ModelRegistry _modelRegistry;
     private readonly ToolResultRendererRegistry _toolResultRenderers;
     private readonly StatusWidgetRegistry _statusWidgets;
     private readonly McpServerRegistry _mcpServers;
@@ -40,6 +40,7 @@ public sealed partial class ExtensionLoader
         _toolResultRenderers = new ToolResultRendererRegistry(options.Log);
         _statusWidgets = new StatusWidgetRegistry(options.Log);
         _mcpServers = new McpServerRegistry(options.Log);
+        _modelRegistry = new ModelRegistry(options.ModelCatalog, options.ClientFactory);
     }
 
     /// <summary>The hook runner handlers registered through extension contexts dispatch to.</summary>
@@ -63,8 +64,8 @@ public sealed partial class ExtensionLoader
     /// </summary>
     public ServiceRegistry Services => _backgroundServices.Services;
 
-    /// <summary>The model provider declarations of the loaded extensions.</summary>
-    public ModelProviderRegistry ModelProviders => _modelProviders;
+    /// <summary>The live model registry of the loaded extensions (declarations included).</summary>
+    public ModelRegistry ModelRegistry => _modelRegistry;
 
     public IReadOnlyList<ExtensionDescriptor> Descriptors => [.. _descriptors];
 
@@ -102,7 +103,7 @@ public sealed partial class ExtensionLoader
         IReadOnlyList<string> removedTools = _tools.Unregister(id);
         _hooks.Unregister(id);
         await _backgroundServices.DropAsync(id).ConfigureAwait(false);
-        _modelProviders.Unregister(id);
+        _modelRegistry.Unregister(id);
         _toolResultRenderers.Unregister(id);
         _statusWidgets.Unregister(id);
         _mcpServers.Unregister(id);

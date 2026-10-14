@@ -46,4 +46,10 @@ public sealed record ToolContext(string WorkingDirectory, IAgentEvents Events)
     /// registration order; the harness stamps them in. Null when the tool runs outside the loop.
     /// </summary>
     public IReadOnlyList<ToolStub>? ToolStubs { get; init; }
+
+    /// <summary>
+    /// Run-bound model access: every nested call through it charges this run's usage and reports
+    /// its routing. Null outside a run or when the run has no model registry.
+    /// </summary>
+    public IModelAccess? Models { get; init; }
 }

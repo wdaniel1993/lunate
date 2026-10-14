@@ -31,7 +31,7 @@ public sealed class RecorderReplayEndToEndTests
             var recordingFactory = new ChatClientFactory(
                 loggerFactory,
                 enableOpenTelemetry: true,
-                providerClientFactory: _ => recordingProvider
+                providerClientFactory: (_, _) => recordingProvider
             );
             IChatClient recordingClient = recordingFactory.Create(SampleModel());
             foreach (SampleScript.SampleExchange exchange in SampleScript.Exchanges)
@@ -61,7 +61,7 @@ public sealed class RecorderReplayEndToEndTests
             var replayFactory = new ChatClientFactory(
                 loggerFactory,
                 enableOpenTelemetry: true,
-                providerClientFactory: _ => throwing,
+                providerClientFactory: (_, _) => throwing,
                 recorderDecorator: _ => new ReplayChatClient(path)
             );
             IChatClient replayClient = replayFactory.Create(SampleModel());

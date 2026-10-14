@@ -6,6 +6,7 @@ using Lunate.Ai;
 using Lunate.Extensibility;
 using Lunate.Extensibility.Abstractions;
 using Lunate.Tui;
+using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging.Abstractions;
 using Spectre.Console;
 
@@ -135,6 +136,8 @@ internal sealed partial class InteractiveSession : IDisposable
     private long _inputTokens;
     private long _outputTokens;
     private string _modelId = "unknown";
+    private string? _extensionModelId;
+    private string? _modelRoute;
     private long _contextWindow;
     private string _workingDirectory = string.Empty;
     private string? _branch;
@@ -233,7 +236,6 @@ internal sealed partial class InteractiveSession : IDisposable
     {
         _settings = SettingsStore.Resolve(_options.SettingsPath, _options.Environment);
         _catalog = ModelCatalog.Load(_options.ModelsPath);
-        _model = HarnessFactory.ResolveModel(_settings.Model, _catalog);
         _factory =
             _options.Factory
             ?? HarnessFactory.CreateFactory(_options.AuthPath, _options.Environment);
@@ -242,8 +244,6 @@ internal sealed partial class InteractiveSession : IDisposable
         _sessionDirectory =
             _options.SessionDirectory ?? HarnessFactory.DefaultSessionDirectory(_workspace);
         _session = HarnessFactory.CreateSession(_sessionDirectory, _workspace);
-        _modelId = _model.Id;
-        _contextWindow = _model.ContextWindow;
         _workingDirectory = DisplayDirectory(_workspace.WorktreeRoot);
         _branch = GitBranchReader.Read(_workspace.WorktreeRoot);
         _trustTotal = CountPendingTrustQuestions();
@@ -251,8 +251,62 @@ internal sealed partial class InteractiveSession : IDisposable
         await ComposeExtensionsAsync(ct);
         await ComposeMcpConfigAsync(ct);
         await ComposeMcpToolsAsync(ct);
+        // The model resolves after the extension host: the configured id may name a virtual or
+        // extension-registered model, which only the registry knows.
+        ResolveSessionModel();
         _harness = BuildHarness(_model);
         _pipeline = new InputPipeline(_options.Hooks ?? _extensions?.HookRunner);
+    }
+
+    /// <summary>
+    /// Resolves the configured model: an extension-registered id (virtual models included) comes
+    /// from the registry with its derived capabilities; everything else stays a catalog lookup.
+    /// With <c>--no-extensions</c> the registry never exists, so extension ids fail as unknown.
+    /// </summary>
+    private void ResolveSessionModel()
+    {
+        string? configured = _settings.Model;
+        ModelCapabilities? capabilities = null;
+        if (!string.IsNullOrWhiteSpace(configured) && _extensions is not null)
+        {
+            try
+            {
+                capabilities = _extensions.ModelRegistry.FindCapabilities(configured);
+            }
+            catch (InvalidOperationException exception)
+            {
+                // A registered extension model can be broken at resolve time (unknown backend,
+                // cycle, bad capability declaration). There is no catalog default to fall back
+                // to — a session cannot start without a model — so surface one clear,
+                // actionable line instead of the raw teaching error mid-composition.
+                throw new InvalidOperationException(
+                    $"The configured model '{configured}' did not resolve: {exception.Message}",
+                    exception
+                );
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(configured) && capabilities is { } resolved)
+        {
+            _extensionModelId = configured;
+            _modelRoute = null;
+            _model = new ModelInfo(
+                configured,
+                "extension",
+                Endpoint: null,
+                resolved.ContextWindow,
+                resolved.SupportsTools
+            );
+        }
+        else
+        {
+            _extensionModelId = null;
+            _modelRoute = null;
+            _model = HarnessFactory.ResolveModel(configured, _catalog);
+        }
+
+        _modelId = _model.Id;
+        _contextWindow = _model.ContextWindow;
     }
 
     /// <summary>
@@ -280,6 +334,8 @@ internal sealed partial class InteractiveSession : IDisposable
             {
                 Log = _options.Extensions?.Log ?? new StderrExtensionLog(diagnostics),
                 Prompt = _options.Extensions?.Prompt ?? new TuiExtensionTrustPrompt(AskTrustAsync),
+                ModelCatalog = _catalog,
+                ClientFactory = _factory,
             };
             _extensions = await ExtensionSession
                 .StartAsync(_workspace.Identity, seams, ct)
@@ -447,13 +503,40 @@ internal sealed partial class InteractiveSession : IDisposable
             FileChanges = (IFileChangeSink?)_extensions?.FileChanges ?? NullFileChangeSink.Instance,
             ModelCatalog = _catalog,
             ModelId = model.Id,
+            ModelRegistry = _extensions?.ModelRegistry,
         };
         if (_options.ConfigureHarness is { } configure)
         {
             harnessOptions = configure(harnessOptions);
         }
 
-        return new AgentHarness(_factory.Create(model), _tools, harnessOptions);
+        IChatClient client = _extensionModelId is { } extensionModelId
+            ? _extensions!.ModelRegistry.Resolve(extensionModelId)
+            : _factory.Create(model);
+        return new AgentHarness(client, _tools, harnessOptions);
+    }
+
+    /// <summary>
+    /// The footer's model segment: for an extension-registered session model it shortens the
+    /// namespaced id and appends the last routed resolution (<c>auto → deep</c>); a catalog model
+    /// renders exactly as before.
+    /// </summary>
+    private string DisplayModel()
+    {
+        if (_extensionModelId is null)
+        {
+            return _modelId;
+        }
+
+        string model = ShortModelName(_modelId);
+        return _modelRoute is { } route ? $"{model} → {ShortModelName(route)}" : model;
+    }
+
+    /// <summary>The last path segment: <c>ext/model-router/auto</c> shows as <c>auto</c>.</summary>
+    private static string ShortModelName(string modelId)
+    {
+        int slash = modelId.LastIndexOf('/');
+        return slash >= 0 ? modelId[(slash + 1)..] : modelId;
     }
 
     /// <summary>The pending approval as shown in the live area; null when none is open.</summary>
@@ -864,7 +947,7 @@ internal sealed partial class InteractiveSession : IDisposable
     private void UpdateStatus()
     {
         var view = new StatusView(
-            _modelId,
+            DisplayModel(),
             _inputTokens + _outputTokens,
             _contextWindow,
             _workingDirectory,

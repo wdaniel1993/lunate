@@ -70,7 +70,21 @@ public abstract record ExtensionEvent(string RunId) : AgentEvent(RunId);
 public sealed record ApprovalRequested(string RunId, string CallId, string ToolName, string Args)
     : ExtensionEvent(RunId);
 
-public sealed record UsageUpdated(string RunId, UsageDetails Usage) : ExtensionEvent(RunId);
+public sealed record UsageUpdated(string RunId, UsageDetails Usage) : ExtensionEvent(RunId)
+{
+    /// <summary>
+    /// The resolved model the usage belongs to: the backend for routed calls, the requested model
+    /// otherwise; null when the emitter does not know (older streams and test fixtures).
+    /// </summary>
+    public string? ModelId { get; init; }
+}
+
+/// <summary>
+/// A call routed through a virtual model: the requested (virtual) model id and the resolved
+/// backend id, emitted when the resolution happens.
+/// </summary>
+public sealed record ModelRouted(string RunId, string RequestedModel, string ResolvedModel)
+    : ExtensionEvent(RunId);
 
 public sealed record Retrying(string RunId, int Attempt, string Reason) : ExtensionEvent(RunId);
 

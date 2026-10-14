@@ -32,7 +32,7 @@ public sealed class ChatClientFactoryRecordingTests
         var factory = new ChatClientFactory(
             new MarkingLoggerFactory(static () => { }),
             enableOpenTelemetry: false,
-            providerClientFactory: _ => inner
+            providerClientFactory: (_, _) => inner
         );
         ChatMessage[] messages = [new(ChatRole.User, "hello")];
         var options = new ChatOptions { ModelId = "gpt-4o-mini" };
@@ -67,7 +67,7 @@ public sealed class ChatClientFactoryRecordingTests
         var factory = new ChatClientFactory(
             new MarkingLoggerFactory(static () => { }),
             enableOpenTelemetry: false,
-            providerClientFactory: _ => inner
+            providerClientFactory: (_, _) => inner
         );
 
         IChatClient client = factory.Create(TestModel());
@@ -97,7 +97,7 @@ public sealed class ChatClientFactoryRecordingTests
         var factory = new ChatClientFactory(
             new MarkingLoggerFactory(static () => { }),
             enableOpenTelemetry: false,
-            providerClientFactory: _ => inner,
+            providerClientFactory: (_, _) => inner,
             recorderDecorator: client =>
             {
                 decoratorCalled = true;
@@ -132,7 +132,7 @@ public sealed class ChatClientFactoryRecordingTests
         var factory = new ChatClientFactory(
             new MarkingLoggerFactory(static () => { }),
             enableOpenTelemetry: false,
-            providerClientFactory: _ => inner
+            providerClientFactory: (_, _) => inner
         );
 
         IChatClient client = factory.Create(TestModel());
@@ -159,7 +159,7 @@ public sealed class ChatClientFactoryRecordingTests
         var recordingFactory = new ChatClientFactory(
             new MarkingLoggerFactory(static () => { }),
             enableOpenTelemetry: false,
-            providerClientFactory: _ => provider,
+            providerClientFactory: (_, _) => provider,
             recorderDecorator: inner => new RecordingChatClient(inner, path, "gpt-4o-mini")
         );
 
@@ -177,7 +177,7 @@ public sealed class ChatClientFactoryRecordingTests
         var replayFactory = new ChatClientFactory(
             new MarkingLoggerFactory(static () => { }),
             enableOpenTelemetry: false,
-            providerClientFactory: _ => new ThrowingChatClient(),
+            providerClientFactory: (_, _) => new ThrowingChatClient(),
             recorderDecorator: _ => new ReplayChatClient(path)
         );
         IChatClient replay = replayFactory.Create(TestModel());

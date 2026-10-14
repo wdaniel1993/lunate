@@ -74,6 +74,16 @@ internal sealed partial class InteractiveSession
             case UsageUpdated usage:
                 AddUsage(usage.Usage);
                 break;
+            case ModelRouted routed when !child:
+                // Only the session's own extension-registered/virtual model shows routing; a
+                // catalog model's footer is untouched even when a nested call routes.
+                if (_extensionModelId is not null)
+                {
+                    _modelRoute = routed.ResolvedModel;
+                    UpdateStatus();
+                }
+
+                break;
             case RunFinished when child:
             case RunError when child:
                 _liveChildren = Math.Max(0, _liveChildren - 1);

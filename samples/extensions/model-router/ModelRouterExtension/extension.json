@@ -1,0 +1,27 @@
+{
+    "id": "model-router",
+    "version": "0.1.0",
+    "apiVersion": "^1.10.0",
+    "entryAssembly": "ModelRouterExtension.dll",
+    "tools": ["ask"],
+    "settingsSchema": {
+        "type": "object",
+        "properties": {
+            "deepThresholdChars": {
+                "type": "number",
+                "default": 4000,
+                "description": "a request with more characters than this routes to the deep backend"
+            }
+        }
+    },
+    "modelProviders": [
+        {
+            "id": "router-local",
+            "displayName": "Router Local",
+            "endpoint": "http://127.0.0.1:11434/v1",
+            "secretName": "router-key",
+            "modelIds": ["fast", "deep"],
+            "contextWindow": 32768
+        }
+    ]
+}

@@ -193,7 +193,8 @@ public sealed class HookContractTests
                     "Acme Local",
                     "http://localhost:11434/v1",
                     "acme-key",
-                    ["acme-7b"]
+                    ["acme-7b"],
+                    32768
                 )
             ),
         ];

@@ -90,7 +90,7 @@ internal sealed partial class InteractiveSession
     private string ContextText()
     {
         var usage = new Lunate.Tui.StatusFooterModel(
-            _modelId,
+            DisplayModel(),
             _inputTokens + _outputTokens,
             _contextWindow,
             _workingDirectory,
@@ -197,12 +197,18 @@ internal sealed partial class InteractiveSession
         _model = model;
         _modelId = model.Id;
         _contextWindow = model.ContextWindow;
+        _extensionModelId = null;
+        _modelRoute = null;
         _harness = BuildHarness(model);
         UpdateStatus();
         Notify("model: " + model.Id);
     }
 
-    /// <summary>Opens the model picker: catalog order, the current model marked with `* `.</summary>
+    /// <summary>
+    /// Opens the model picker: catalog order, the current model marked with `* `. When the current
+    /// model is an extension-registered or virtual model — not in the catalog — the title's
+    /// current-model line shows its last routed resolution (<c>auto → deep</c>).
+    /// </summary>
     private void OpenModelPicker()
     {
         if (RefusedWhileBusy())
@@ -226,7 +232,10 @@ internal sealed partial class InteractiveSession
             values.Add(model.Id);
         }
 
-        OpenPicker(PickerKind.Model, "Select model", labels, values, current);
+        string title = _extensionModelId is not null
+            ? "Select model — current " + DisplayModel()
+            : "Select model";
+        OpenPicker(PickerKind.Model, title, labels, values, current);
     }
 
     /// <summary>Opens the session picker: the directory listing, newest first, the current one selected.</summary>

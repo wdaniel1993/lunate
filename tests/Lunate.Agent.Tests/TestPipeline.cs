@@ -10,6 +10,6 @@ internal static class TestPipeline
         new ChatClientFactory(
             NullLoggerFactory.Instance,
             enableOpenTelemetry: enableOpenTelemetry,
-            providerClientFactory: _ => provider
+            providerClientFactory: (_, _) => provider
         ).Create(new ModelInfo("gpt-4o-mini", "openai", null, 128_000, true));
 }

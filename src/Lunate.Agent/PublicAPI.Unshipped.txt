@@ -1309,3 +1309,31 @@ static Lunate.Agent.ToolStubParameter.operator ==(Lunate.Agent.ToolStubParameter
 static Lunate.Agent.ToolStubs.Describe(Lunate.Agent.ITool! tool) -> Lunate.Agent.ToolStub!
 Lunate.Agent.ToolResult.CallId.get -> string?
 Lunate.Agent.ToolResult.CallId.init -> void
+Lunate.Agent.IModelRegistry
+Lunate.Agent.IModelRegistry.Resolve(string! modelId) -> Microsoft.Extensions.AI.IChatClient!
+Lunate.Agent.IModelAccess
+Lunate.Agent.IModelAccess.For(string! modelId) -> Microsoft.Extensions.AI.IChatClient!
+Lunate.Agent.ModelRouteObserver
+static Lunate.Agent.ModelRouteObserver.Scope(System.Action<string!, string!>! onRouted) -> System.IDisposable!
+static Lunate.Agent.ModelRouteObserver.Report(string! requestedModelId, string! resolvedModelId) -> void
+Lunate.Agent.AgentHarnessOptions.ModelRegistry.get -> Lunate.Agent.IModelRegistry?
+Lunate.Agent.AgentHarnessOptions.ModelRegistry.init -> void
+Lunate.Agent.ModelRouted
+Lunate.Agent.ModelRouted.Deconstruct(out string! RunId, out string! RequestedModel, out string! ResolvedModel) -> void
+Lunate.Agent.ModelRouted.Equals(Lunate.Agent.ModelRouted? other) -> bool
+Lunate.Agent.ModelRouted.ModelRouted(string! RunId, string! RequestedModel, string! ResolvedModel) -> void
+Lunate.Agent.ModelRouted.RequestedModel.get -> string!
+Lunate.Agent.ModelRouted.RequestedModel.init -> void
+Lunate.Agent.ModelRouted.ResolvedModel.get -> string!
+Lunate.Agent.ModelRouted.ResolvedModel.init -> void
+Lunate.Agent.ToolContext.Models.get -> Lunate.Agent.IModelAccess?
+Lunate.Agent.ToolContext.Models.init -> void
+Lunate.Agent.UsageUpdated.ModelId.get -> string?
+Lunate.Agent.UsageUpdated.ModelId.init -> void
+override Lunate.Agent.ModelRouted.<Clone>$() -> Lunate.Agent.ModelRouted!
+override Lunate.Agent.ModelRouted.Equals(object? obj) -> bool
+override Lunate.Agent.ModelRouted.GetHashCode() -> int
+override Lunate.Agent.ModelRouted.ToString() -> string!
+override sealed Lunate.Agent.ModelRouted.Equals(Lunate.Agent.ExtensionEvent? other) -> bool
+static Lunate.Agent.ModelRouted.operator !=(Lunate.Agent.ModelRouted? left, Lunate.Agent.ModelRouted? right) -> bool
+static Lunate.Agent.ModelRouted.operator ==(Lunate.Agent.ModelRouted? left, Lunate.Agent.ModelRouted? right) -> bool
