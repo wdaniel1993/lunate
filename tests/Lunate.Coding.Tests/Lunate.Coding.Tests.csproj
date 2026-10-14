@@ -25,6 +25,11 @@
             Include="../TestExtensions/ModelExtension/ModelExtension.csproj"
             ReferenceOutputAssembly="false"
         />
+        <!-- The ui-showcase mode proofs install the sample into a temp store. -->
+        <ProjectReference
+            Include="../../samples/extensions/ui-showcase/UiShowcaseExtension/UiShowcaseExtension.csproj"
+            ReferenceOutputAssembly="false"
+        />
         <!-- The MCP config e2e tests spawn the shared stdio test server. -->
         <ProjectReference
             Include="../tools/TestMcpServer/TestMcpServer.csproj"
@@ -59,11 +64,17 @@
             Targets="Build"
             Properties="Configuration=$(Configuration)"
         />
+        <MSBuild
+            Projects="$(MSBuildThisFileDirectory)../../samples/extensions/ui-showcase/UiShowcaseExtension/UiShowcaseExtension.csproj"
+            Targets="Build"
+            Properties="Configuration=$(Configuration)"
+        />
         <ItemGroup>
             <HelloExtensionFiles Include="$(MSBuildThisFileDirectory)../TestExtensions/HelloExtension/bin/$(Configuration)/$(TargetFramework)/**/*" />
             <McpExtensionFiles Include="$(MSBuildThisFileDirectory)../TestExtensions/McpExtension/bin/$(Configuration)/$(TargetFramework)/**/*" />
             <ToolExtensionFiles Include="$(MSBuildThisFileDirectory)../TestExtensions/ToolExtension/bin/$(Configuration)/$(TargetFramework)/**/*" />
             <ModelExtensionFiles Include="$(MSBuildThisFileDirectory)../TestExtensions/ModelExtension/bin/$(Configuration)/$(TargetFramework)/**/*" />
+            <UiShowcaseExtensionFiles Include="$(MSBuildThisFileDirectory)../../samples/extensions/ui-showcase/UiShowcaseExtension/bin/$(Configuration)/$(TargetFramework)/**/*" />
         </ItemGroup>
         <Copy
             SourceFiles="@(HelloExtensionFiles)"
@@ -83,6 +94,11 @@
         <Copy
             SourceFiles="@(ModelExtensionFiles)"
             DestinationFolder="$(OutDir)TestExtensions/ModelExtension/%(RecursiveDir)"
+            SkipUnchangedFiles="true"
+        />
+        <Copy
+            SourceFiles="@(UiShowcaseExtensionFiles)"
+            DestinationFolder="$(OutDir)Samples/UiShowcaseExtension/%(RecursiveDir)"
             SkipUnchangedFiles="true"
         />
     </Target>
