@@ -2,12 +2,12 @@
 
 ## 1. Child-run workspaces (`Lunate.Agent`, TDD)
 
-- [ ] 1.1 `GitIdentity.Detect(root)` extracted (never executes git; `.git` dir or file + `commondir`); Coding's `Workspace` delegates to it (no behavior change; Coding workspace tests stay green).
-- [ ] 1.2 `SubagentRequest.WorkspaceRoot` (canonicalized; null inherits); refusals as teaching error results: `workspace_missing` (missing/non-directory, naming the path) and `workspace_outside_repository` (root not a worktree of the same repository — same git-common-dir); parent-root-named behaves as inherit.
-- [ ] 1.3 `AgentHarnessOptions.WorkspaceTools` factory seam; child composition: another root → `WorkspaceTools(root)` (allow-list applies to that set; missing seam → `workspace_tools_unavailable` refusal); no root/parent root → the parent's instances exactly as today; project MCP tools excluded from a different-root child unless their server is marked `workspaceIndependent`; the parent session's loaded extensions are used as-is (no rediscovery, no mid-run trust prompts).
-- [ ] 1.4 Child session header records the child's own repo/worktree when the root differs; mirrors the parent's otherwise; file stays beside the parent's; the child keeps the parent's system prompt verbatim (no AGENTS.md re-discovery).
-- [ ] 1.5 `ApprovalRequest` + `ApprovalRequested` carry the asking run's workspace root; the TUI prompt shows the child root (and the ACP mapping carries it); tests pin the label.
-- [ ] 1.6 Agent tests: workspace child edits isolated; cross-worktree write refused; header; refusals; allow-list against the child's own set; approval label; inherit path unchanged (existing T-47 suites stay green).
+- [x] 1.1 `GitIdentity.Detect(root)` extracted (never executes git; `.git` dir or file + `commondir`); Coding's `Workspace` delegates to it (no behavior change; Coding workspace tests stay green).
+- [x] 1.2 `SubagentRequest.WorkspaceRoot` (canonicalized; null inherits); refusals as teaching error results: `workspace_missing` (missing/non-directory, naming the path) and `workspace_outside_repository` (root not a worktree of the same repository — same git-common-dir); parent-root-named behaves as inherit.
+- [x] 1.3 `AgentHarnessOptions.WorkspaceTools` factory seam; child composition: another root → `WorkspaceTools(root)` (allow-list applies to that set; missing seam → `workspace_tools_unavailable` refusal); no root/parent root → the parent's instances exactly as today; project MCP tools excluded from a different-root child unless their server is marked `workspaceIndependent`; the parent session's loaded extensions are used as-is (no rediscovery, no mid-run trust prompts).
+- [x] 1.4 Child session header records the child's own repo/worktree when the root differs; mirrors the parent's otherwise; file stays beside the parent's; the child keeps the parent's system prompt verbatim (no AGENTS.md re-discovery).
+- [x] 1.5 `ApprovalRequest` + `ApprovalRequested` carry the asking run's workspace root; the TUI prompt shows the child root (and the ACP mapping carries it); tests pin the label.
+- [x] 1.6 Agent tests: workspace child edits isolated; cross-worktree write refused; header; refusals; allow-list against the child's own set; approval label; inherit path unchanged (existing T-47 suites stay green).
 
 ## 2. Per-workspace services + Roslyn wiring (`Lunate.Coding`, `Lunate.Roslyn`)
 
