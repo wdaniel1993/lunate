@@ -26,7 +26,7 @@ All in `tests/Lunate.Coding.Tests`, one new file (`UiShowcaseSampleTests`), with
 
 - **TUI** (`InteractiveSessionHost`): install → run a scripted turn calling `uikit__bars` (scripted model client enqueues the call) → the scrollback contains the rendered bars, the footer contains the widget segment. This is the first renderer/widget path exercised through store → loader → registry → session (the T-40 tests inject registries directly).
 - **print** (`PrintMode.RunAsync`, in-process): with the sample loaded and a turn calling the tool — stdout contains the raw result text, contains no `█`/`▰` glyphs and no widget text; exit 0; stderr has no UI lines.
-- **JSON** (`JsonMode`): the JSONL stream stays pure — the same event kinds in order as a no-extension run of the same script (payloads differ only where expected: the no-extension run's unknown-tool result carries `isError: true`) and free of UI artifacts; the tool-result event carries the raw text.
+- **JSON** (`JsonMode`): the JSONL stream stays pure — the same event kinds in order as a no-extension run of the same script (the test compares kinds, not payloads: run/session ids differ, and the no-extension run's unknown-tool result carries `isError: true`) and free of UI artifacts; the tool-result event carries the raw text.
 - **ACP** (`AcpMode`, the AcpInteractionTests pattern): the session starts and exits cleanly with the sample loaded; stdout carries no UI artifacts.
 
 ## D4 — Wiring decision: Coding.Tests references the sample
