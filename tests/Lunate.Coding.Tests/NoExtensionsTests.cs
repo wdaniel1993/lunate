@@ -9,6 +9,53 @@ namespace Lunate.Coding.Tests;
 public sealed class NoExtensionsTests
 {
     [Fact]
+    public void Interactive_mode_with_the_flag_cannot_resolve_extension_models()
+    {
+        using var temp = new TempDirectory();
+        string store = temp.File("store");
+        ModelFixture.Install(store);
+        File.WriteAllText(
+            temp.File("settings.json"),
+            """{"schemaVersion":1,"model":"ext/model-fixture/auto"}"""
+        );
+        var console = new ScriptedConsoleIO { IsInteractive = true };
+        console.Complete();
+        using var diagnostics = new StringWriter();
+        var options = new InteractiveSessionOptions
+        {
+            Factory = new FakeChatClientFactory(new ScriptedChatClient()),
+            SettingsPath = temp.File("settings.json"),
+            ModelsPath = temp.File("models.json"),
+            AuthPath = temp.File("auth.json"),
+            SessionDirectory = temp.File("sessions"),
+            WorkingDirectory = temp.Root,
+            HistoryPath = temp.File("history"),
+            Environment = _ => null,
+            Console = console,
+            Scheduler = new ManualScheduler(),
+            Scrollback = new Spectre.Console.Testing.TestConsole(),
+            Diagnostics = diagnostics,
+        };
+
+        int exitCode = Cli.Run(
+            ["--no-extensions"],
+            new StringWriter(),
+            new StringWriter(),
+            TestContext.Current.CancellationToken,
+            interactiveOptions: options,
+            extensions: new ExtensionSeams { StorePath = store, Log = new RecordingExtensionLog() }
+        );
+
+        Assert.Equal(0, exitCode);
+        // Without the host there is no registry: the extension-only id fails as a catalog lookup.
+        Assert.Contains(
+            "'ext/model-fixture/auto' is not in the catalog",
+            diagnostics.ToString(),
+            StringComparison.Ordinal
+        );
+    }
+
+    [Fact]
     public async Task Print_mode_with_the_flag_skips_the_store_and_keeps_configured_servers()
     {
         using var temp = new TempDirectory();

@@ -153,6 +153,34 @@ internal static class ToolFixture
     }
 }
 
+/// <summary>The ModelExtension fixture copied into this test project's output.</summary>
+internal static class ModelFixture
+{
+    internal static string SourceDirectory =>
+        Path.Combine(AppContext.BaseDirectory, "TestExtensions", "ModelExtension");
+
+    /// <summary>
+    /// Installs the fixture as a global extension (no trust prompt): a programmatic provider
+    /// serving <c>fixture-model</c>, a response-tagging BeforeRouting middleware and the virtual
+    /// model <c>ext/&lt;id&gt;/auto</c> over that backend.
+    /// </summary>
+    internal static string Install(string storePath, string id = "model-fixture")
+    {
+        string directory = Path.Combine(storePath, "extensions", id);
+        Directory.CreateDirectory(directory);
+        File.Copy(
+            Path.Combine(SourceDirectory, "ModelExtension.dll"),
+            Path.Combine(directory, "ModelExtension.dll"),
+            overwrite: true
+        );
+        File.WriteAllText(
+            Path.Combine(directory, "extension.json"),
+            $$"""{"id":"{{id}}","version":"0.1.0","apiVersion":"^1.0.0","entryAssembly":"ModelExtension.dll"}"""
+        );
+        return directory;
+    }
+}
+
 /// <summary>The seams every session-level test uses so the real store is never read.</summary>
 internal static class TestExtensionSeams
 {

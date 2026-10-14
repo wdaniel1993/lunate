@@ -107,6 +107,8 @@ internal static class PrintMode
                     extensions = await ComposeExtensionsAsync(
                             options.Extensions,
                             workspace,
+                            catalog,
+                            factory,
                             errors,
                             ct
                         )
@@ -333,6 +335,8 @@ internal static class PrintMode
     private static async Task<ExtensionSession> ComposeExtensionsAsync(
         ExtensionSeams? seams,
         Workspace workspace,
+        ModelCatalog catalog,
+        IChatClientFactory factory,
         TextWriter errors,
         CancellationToken ct
     )
@@ -340,6 +344,8 @@ internal static class PrintMode
         ExtensionSeams resolved = (seams ?? new ExtensionSeams()) with
         {
             Log = seams?.Log ?? new StderrExtensionLog(errors),
+            ModelCatalog = seams?.ModelCatalog ?? catalog,
+            ClientFactory = seams?.ClientFactory ?? factory,
         };
         return await ExtensionSession
             .StartAsync(workspace.Identity, resolved, ct)
@@ -381,6 +387,7 @@ internal static class PrintMode
             FileChanges = (IFileChangeSink?)extensions?.FileChanges ?? NullFileChangeSink.Instance,
             ModelCatalog = catalog,
             ModelId = model.Id,
+            ModelRegistry = extensions?.ModelRegistry,
         };
 
         return new AgentHarness(factory.Create(model), tools, harnessOptions);
