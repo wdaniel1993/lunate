@@ -109,3 +109,13 @@ Core units: resolution order incl. catalog fallback; namespacing/duplicates/caps
 ## D10 — Non-goals
 
 T-52 remote host; provider auth flows; streaming special-casing; pricing/costs; per-model concurrency beyond provider clients.
+
+## Deviations
+
+1. **Registry contracts live in `Lunate.Agent`, not Abstractions** (`src/Lunate.Agent/ModelRouting.cs`: `IModelRegistry`, `IModelAccess`, `ModelRouteObserver`). D7's placement was wrong: the harness stamps these into `ToolContext`, and `Lunate.Agent` cannot reference `Lunate.Extensibility.Abstractions` — Abstractions sits *above* Agent and references it. Extensions see them transitively (exactly like `ToolContext` itself); registration records and the manifest surface stay in Abstractions.
+2. **The live `ModelRegistry` absorbed the declaration-level `ModelProviderRegistry`** — its listing role is now `ModelRegistry.List()` (declared providers, registration order); tests renamed accordingly.
+3. **Fake endpoint is a raw `TcpListener`** with an ephemeral `127.0.0.1` port instead of the design's `HttpListener` (http.sys URL ACLs make `HttpListener` unreliable on Windows CI).
+4. **The sample test rewrites the manifest endpoint** to the ephemeral port before loading (the fake endpoint picks the port at runtime).
+5. **Programmatic providers have no declared capabilities**: `FindCapabilities` reports window 0 (unknown — percent omitted) and tools true; declared providers use the manifest's `contextWindow`/`supportsTools`; virtual models derive from backends.
+6. **`IChatClientFactory` gained an explicit-key overload** (Ai-side, additive) so declared providers can use extension secrets without an auth-store entry.
+7. **Tools-unsupported is a pre-flight refusal** for `supportsTools: false` (teaching error naming the declaration) rather than translating a provider-side error.
