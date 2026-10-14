@@ -23,10 +23,10 @@
 
 ## 4. Coding-level proofs + trust
 
-- [ ] 4.1 Two subagents in two worktrees (scripted): isolated edits, both child sessions beside the parent's with their own headers, both event streams forwarded.
-- [ ] 4.2 Roslyn per workspace + cap proof (2.3 shape, end to end through the sample flow).
-- [ ] 4.3 Trust by repository identity: new worktree of a trusted repository does not re-prompt; content-hash stays per worktree (Extensibility.Tests; product change only if the store misbehaves).
-- [ ] 4.4 Wiring: solution entries; layering edges; gate stays green.
+- [x] 4.1 Two subagents in two worktrees (scripted): isolated edits, both child sessions beside the parent's with their own headers, both event streams forwarded.
+- [x] 4.2 Roslyn per workspace + cap proof (2.3 shape, end to end through the sample flow).
+- [x] 4.3 Trust by repository identity: new worktree of a trusted repository does not re-prompt; content-hash stays per worktree (Extensibility.Tests; product change only if the store misbehaves).
+- [x] 4.4 Wiring: solution entries; layering edges; gate stays green.
 
 ## 5. Verify, review, archive
 
