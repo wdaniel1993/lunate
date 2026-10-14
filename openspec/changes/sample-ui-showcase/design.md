@@ -42,3 +42,9 @@ The mode proofs must load the **sample** (not a fixture double), but mode seams 
 ## D6 — Errors and limits
 
 Renderer garbage → empty segments (never a throw; and a throw would be omitted + logged + retried per the contract). Widget unknown window → `ctx n/a`. Bar glyph cap 40. No settings; no background services; no network.
+
+## Deviations
+
+1. **Manifest id is `uikit`** (directory stays `ui-showcase`). The tool-naming grammar is `<extension-id>__<local-name>`, so the pinned model-facing name `uikit__bars` requires id `uikit` + local `bars`; precedent: directory `code-mode` → id `codemode`. The design's "manifest `ui-showcase`" line was inconsistent with the pinned tool name.
+2. **Print proof interpretation:** print-mode stdout is the final answer only — the proof pins stdout byte-equal to the raw JSON result text (no glyphs, no widget), empty stderr, exit 0.
+3. **Renderer/widget constants are `internal`** in the sample (self-documenting, no public surface added).
