@@ -23,6 +23,6 @@
 
 ## 4. Verify, review, archive
 
-- [ ] 4.1 `scripts/verify.sh` green (both cultures); `openspec validate --all --strict` green; csharpier/style/analyzers/markdownlint clean.
-- [ ] 4.2 Adversarial review; fix findings; focused re-review.
-- [ ] 4.3 Archive; push; PR.
+- [x] 4.1 `scripts/verify.sh` green (both cultures); `openspec validate --all --strict` green; csharpier/style/analyzers/markdownlint clean.
+- [x] 4.2 Adversarial review; fix findings; focused re-review.
+- [x] 4.3 Archive; push; PR.
