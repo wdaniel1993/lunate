@@ -546,7 +546,7 @@ public interface IAcpServer
 
 **Loading model**
 
-Roslyn loads in process on the first C# tool call. `MSBuildLocator` finds the installed .NET SDK, and `MSBuildWorkspace` opens the solution for the working directory and keeps it loaded for the session. File changes made by `write` and `edit` are applied to the workspace, so it stays current without reloading. Without an installed .NET SDK the C# tools are simply not offered. If memory on very large solutions becomes a problem, the same tools can move into a child process later without changing their contracts.
+Roslyn loads in process on the first C# tool call. `MSBuildLocator` finds the installed .NET SDK, and `MSBuildWorkspace` opens the solution for the working directory and keeps it loaded for the session. File changes made by `write` and `edit` are applied to the workspace, so it stays current without reloading. The five `cs_*` tools are offered only where the workspace looks like C# (a `.sln`, `.slnx` or `.csproj` at the root — a cheap scan, no Roslyn load); child runs in a worktree get their own tools bound to their root. Backends are keyed per worktree root and the loaded-workspace cap (`roslyn.maxLoadedWorkspaces`, default 2, least-recently-used unloaded) never unloads a workspace under an in-flight call; up to 2× the reference-workspace budget is the documented worst case (ADR-0021). Without an installed .NET SDK the C# tools are simply not offered. If memory on very large solutions becomes a problem, the same tools can move into a child process later without changing their contracts.
 
 **Tools, in build order**
 

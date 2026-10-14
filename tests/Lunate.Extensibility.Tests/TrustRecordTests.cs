@@ -77,4 +77,34 @@ public sealed class TrustRecordTests
 
         Assert.False(File.Exists(Path.Combine(storePath, "trust.json")));
     }
+
+    [Fact]
+    public void A_new_worktree_of_a_trusted_repository_does_not_prompt()
+    {
+        using var temp = new TempDirectory();
+        var store = new ExtensionTrustStore(TestExtensions.Options(temp.Subdirectory("store")));
+        store.RecordTrusted("repo-1", "/main", "hash-v1", DateTimeOffset.UtcNow);
+
+        // NewWorktree is the loader's no-prompt path: the new worktree is recorded silently.
+        Assert.Equal(
+            ExtensionTrustDecision.NewWorktree,
+            store.Evaluate("repo-1", "/wt-new", "hash-v1")
+        );
+        Assert.Equal(ExtensionTrustDecision.Trusted, store.Evaluate("repo-1", "/main", "hash-v1"));
+    }
+
+    [Fact]
+    public void The_content_hash_check_stays_per_worktree()
+    {
+        using var temp = new TempDirectory();
+        var store = new ExtensionTrustStore(TestExtensions.Options(temp.Subdirectory("store")));
+        store.RecordTrusted("repo-1", "/main", "hash-v1", DateTimeOffset.UtcNow);
+        store.RecordTrusted("repo-1", "/wt", "hash-v1", DateTimeOffset.UtcNow);
+
+        // The extension changed: the worktree that saw the change re-prompts...
+        Assert.Equal(ExtensionTrustDecision.Prompt, store.Evaluate("repo-1", "/main", "hash-v2"));
+        // ...while the other worktree's own hash check is untouched by that.
+        Assert.Equal(ExtensionTrustDecision.Trusted, store.Evaluate("repo-1", "/wt", "hash-v1"));
+        Assert.Equal(ExtensionTrustDecision.Prompt, store.Evaluate("repo-1", "/wt", "hash-v2"));
+    }
 }
