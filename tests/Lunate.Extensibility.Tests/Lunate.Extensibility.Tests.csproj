@@ -22,6 +22,10 @@
             Include="../TestExtensions/ToolExtension/ToolExtension.csproj"
             ReferenceOutputAssembly="false"
         />
+        <ProjectReference
+            Include="../TestExtensions/ModelExtension/ModelExtension.csproj"
+            ReferenceOutputAssembly="false"
+        />
     </ItemGroup>
 
     <ItemGroup>
@@ -45,10 +49,16 @@
             Targets="Build"
             Properties="Configuration=$(Configuration)"
         />
+        <MSBuild
+            Projects="$(MSBuildThisFileDirectory)../TestExtensions/ModelExtension/ModelExtension.csproj"
+            Targets="Build"
+            Properties="Configuration=$(Configuration)"
+        />
         <ItemGroup>
             <HelloExtensionFiles Include="$(MSBuildThisFileDirectory)../TestExtensions/HelloExtension/bin/$(Configuration)/$(TargetFramework)/**/*" />
             <McpExtensionFiles Include="$(MSBuildThisFileDirectory)../TestExtensions/McpExtension/bin/$(Configuration)/$(TargetFramework)/**/*" />
             <ToolExtensionFiles Include="$(MSBuildThisFileDirectory)../TestExtensions/ToolExtension/bin/$(Configuration)/$(TargetFramework)/**/*" />
+            <ModelExtensionFiles Include="$(MSBuildThisFileDirectory)../TestExtensions/ModelExtension/bin/$(Configuration)/$(TargetFramework)/**/*" />
         </ItemGroup>
         <Copy
             SourceFiles="@(HelloExtensionFiles)"
@@ -63,6 +73,11 @@
         <Copy
             SourceFiles="@(ToolExtensionFiles)"
             DestinationFolder="$(OutDir)TestExtensions/ToolExtension/%(RecursiveDir)"
+            SkipUnchangedFiles="true"
+        />
+        <Copy
+            SourceFiles="@(ModelExtensionFiles)"
+            DestinationFolder="$(OutDir)TestExtensions/ModelExtension/%(RecursiveDir)"
             SkipUnchangedFiles="true"
         />
     </Target>

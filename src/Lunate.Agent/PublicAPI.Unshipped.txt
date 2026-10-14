@@ -1309,3 +1309,10 @@ static Lunate.Agent.ToolStubParameter.operator ==(Lunate.Agent.ToolStubParameter
 static Lunate.Agent.ToolStubs.Describe(Lunate.Agent.ITool! tool) -> Lunate.Agent.ToolStub!
 Lunate.Agent.ToolResult.CallId.get -> string?
 Lunate.Agent.ToolResult.CallId.init -> void
+Lunate.Agent.IModelRegistry
+Lunate.Agent.IModelRegistry.Resolve(string! modelId) -> Microsoft.Extensions.AI.IChatClient!
+Lunate.Agent.IModelAccess
+Lunate.Agent.IModelAccess.For(string! modelId) -> Microsoft.Extensions.AI.IChatClient!
+Lunate.Agent.ModelRouteObserver
+static Lunate.Agent.ModelRouteObserver.Scope(System.Action<string!, string!>! onRouted) -> System.IDisposable!
+static Lunate.Agent.ModelRouteObserver.Report(string! requestedModelId, string! resolvedModelId) -> void

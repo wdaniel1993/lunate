@@ -43,13 +43,20 @@ public sealed class ChatClientFactory : IChatClientFactory
         _namedKeySource = namedKeySource;
     }
 
-    public IChatClient Create(ModelInfo model)
+    public IChatClient Create(ModelInfo model) => Create(model, apiKey: null);
+
+    /// <summary>
+    /// Creates the client with an explicit credential, bypassing the environment/auth-store
+    /// resolution: declared extension providers hand the host-read secret in here, so the value
+    /// only ever reaches the client's request headers.
+    /// </summary>
+    public IChatClient Create(ModelInfo model, string? apiKey)
     {
         ArgumentNullException.ThrowIfNull(model);
 
         IChatClient inner = _providerClientFactory is not null
             ? _providerClientFactory(model)
-            : CreateProviderClient(model);
+            : CreateProviderClient(model, apiKey);
 
         Func<IChatClient, IChatClient>? decorator = _recorderDecorator;
         if (decorator is null && RecordingRequestedFromEnvironment())
@@ -80,18 +87,18 @@ public sealed class ChatClientFactory : IChatClientFactory
         return builder.UseLogging(_loggerFactory).Build();
     }
 
-    private IChatClient CreateProviderClient(ModelInfo model)
+    private IChatClient CreateProviderClient(ModelInfo model, string? apiKey)
     {
         if (string.Equals(model.Provider, OpenAiProvider, StringComparison.OrdinalIgnoreCase))
         {
-            return CreateOpenAiClient(model, _namedKeySource)
+            return CreateOpenAiClient(model, _namedKeySource, apiKey)
                 .GetChatClient(model.Id)
                 .AsIChatClient();
         }
 
         if (string.Equals(model.Provider, AnthropicProvider, StringComparison.OrdinalIgnoreCase))
         {
-            return CreateAnthropicClient(model, _namedKeySource).AsIChatClient(model.Id);
+            return CreateAnthropicClient(model, _namedKeySource, apiKey).AsIChatClient(model.Id);
         }
 
         throw new NotSupportedException(
@@ -101,12 +108,13 @@ public sealed class ChatClientFactory : IChatClientFactory
 
     internal static OpenAIClient CreateOpenAiClient(
         ModelInfo model,
-        Func<string, string?>? namedKeySource = null
+        Func<string, string?>? namedKeySource = null,
+        string? apiKey = null
     )
     {
-        string apiKey = ResolveApiKey(model, OpenAiApiKeyVariable, namedKeySource);
+        string credential = apiKey ?? ResolveApiKey(model, OpenAiApiKeyVariable, namedKeySource);
 
-        return new OpenAIClient(new ApiKeyCredential(apiKey), CreateOpenAiClientOptions(model));
+        return new OpenAIClient(new ApiKeyCredential(credential), CreateOpenAiClientOptions(model));
     }
 
     internal static OpenAIClientOptions CreateOpenAiClientOptions(ModelInfo model)
@@ -123,19 +131,20 @@ public sealed class ChatClientFactory : IChatClientFactory
 
     internal static AnthropicClient CreateAnthropicClient(
         ModelInfo model,
-        Func<string, string?>? namedKeySource = null
+        Func<string, string?>? namedKeySource = null,
+        string? apiKey = null
     )
     {
-        string apiKey = ResolveApiKey(model, AnthropicApiKeyVariable, namedKeySource);
+        string credential = apiKey ?? ResolveApiKey(model, AnthropicApiKeyVariable, namedKeySource);
 
         if (model.Endpoint is null)
         {
-            return new AnthropicClient { ApiKey = apiKey, MaxRetries = 0 };
+            return new AnthropicClient { ApiKey = credential, MaxRetries = 0 };
         }
 
         return new AnthropicClient
         {
-            ApiKey = apiKey,
+            ApiKey = credential,
             MaxRetries = 0,
             BaseUrl = model.Endpoint.AbsoluteUri,
         };

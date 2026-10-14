@@ -158,8 +158,8 @@ internal sealed class ExtensionSession : IAsyncDisposable
     /// <summary>The loaded extensions' status widgets.</summary>
     internal StatusWidgetRegistry StatusWidgets => _loader.StatusWidgets;
 
-    /// <summary>The loaded extensions' model provider declarations; no consumer yet.</summary>
-    internal ModelProviderRegistry ModelProviders => _loader.ModelProviders;
+    /// <summary>The live model registry of the loaded extensions.</summary>
+    internal ModelRegistry ModelRegistry => _loader.ModelRegistry;
 
     /// <summary>
     /// The extension MCP mapping built by <see cref="ComposeMcpServers"/>; null until composed.

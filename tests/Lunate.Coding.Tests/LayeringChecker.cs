@@ -7,6 +7,7 @@ internal static class LayeringChecker
         {
             ("Lunate.Agent", "Lunate.Ai"),
             ("Lunate.Extensibility", "Lunate.Agent"),
+            ("Lunate.Extensibility", "Lunate.Ai"),
             ("Lunate.Extensibility", "Lunate.Extensibility.Abstractions"),
             ("Lunate.Extensibility.Abstractions", "Lunate.Agent"),
             ("Lunate.Extensibility.Testing", "Lunate.Agent"),
@@ -41,6 +42,7 @@ internal static class LayeringChecker
             ("Lunate.Extensibility.Tests", "FakeLsp"),
             ("Lunate.Extensibility.Tests", "HelloExtension"),
             ("Lunate.Extensibility.Tests", "McpExtension"),
+            ("Lunate.Extensibility.Tests", "ModelExtension"),
             ("Lunate.Extensibility.Tests", "ToolExtension"),
             ("Lunate.Extensibility.Testing.Tests", "Lunate.Coding"),
             ("Lunate.Extensibility.Testing.Tests", "Lunate.Extensibility"),
@@ -55,6 +57,7 @@ internal static class LayeringChecker
             ("HelloExtension.Support", "Lunate.Extensibility.Abstractions"),
             ("McpExtension", "Lunate.Extensibility.Abstractions"),
             ("ToolExtension", "Lunate.Extensibility.Abstractions"),
+            ("ModelExtension", "Lunate.Extensibility.Abstractions"),
             ("FakeLsp", "Lunate.Extensibility.Abstractions"),
             ("TemplateExtension", "Lunate.Extensibility.Abstractions"),
             ("TemplateExtension.Tests", "Lunate.Ai"),

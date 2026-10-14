@@ -131,6 +131,12 @@ internal sealed class FakeChatClientFactory(IChatClient client) : IChatClientFac
         CreatedModel = model;
         return client;
     }
+
+    public IChatClient Create(ModelInfo model, string? apiKey)
+    {
+        CreatedModel = model;
+        return client;
+    }
 }
 
 /// <summary>Builders for scripted provider updates.</summary>

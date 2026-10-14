@@ -61,10 +61,11 @@ public sealed partial class ExtensionLoader
         {
             Assembly assembly = context.LoadFromAssemblyPath(entryPath);
             IExtensionFactory factory = FindFactory(assembly, descriptor);
+            IExtensionSecrets secrets = ExtensionSecretsStore.Load(_options, descriptor.Id);
             var extensionContext = new ExtensionContext(
                 descriptor.Id,
                 ExtensionSettingsStore.Load(_options, descriptor),
-                ExtensionSecretsStore.Load(_options, descriptor.Id),
+                secrets,
                 _options.Log ?? NullExtensionLog.Instance,
                 _hooks.Register,
                 _backgroundServices.Register,
@@ -74,11 +75,18 @@ public sealed partial class ExtensionLoader
                 _toolResultRenderers.Register,
                 _statusWidgets.Register,
                 _mcpServers.Register,
-                _tools.Register
+                _tools.Register,
+                _modelRegistry.RegisterProvider,
+                _modelRegistry.RegisterModelMiddleware,
+                _modelRegistry.RegisterVirtualModel
             );
             IExtension extension = factory.Create(extensionContext);
             CrossCheckManifestTools(descriptor);
-            _modelProviders.Register(descriptor.Id, descriptor.Manifest.ModelProviders);
+            _modelRegistry.RegisterDeclared(
+                descriptor.Id,
+                descriptor.Manifest.ModelProviders,
+                secrets
+            );
             var loaded = new LoadedExtension(descriptor.Id, extension, descriptor);
             _loaded[descriptor.Id] = loaded;
             _contexts[descriptor.Id] = context;
@@ -100,7 +108,7 @@ public sealed partial class ExtensionLoader
         {
             _tools.Unregister(descriptor.Id);
             await _backgroundServices.DropAsync(descriptor.Id).ConfigureAwait(false);
-            _modelProviders.Unregister(descriptor.Id);
+            _modelRegistry.Unregister(descriptor.Id);
             _toolResultRenderers.Unregister(descriptor.Id);
             _statusWidgets.Unregister(descriptor.Id);
             _mcpServers.Unregister(descriptor.Id);
@@ -117,7 +125,7 @@ public sealed partial class ExtensionLoader
         {
             _tools.Unregister(descriptor.Id);
             await _backgroundServices.DropAsync(descriptor.Id).ConfigureAwait(false);
-            _modelProviders.Unregister(descriptor.Id);
+            _modelRegistry.Unregister(descriptor.Id);
             _toolResultRenderers.Unregister(descriptor.Id);
             _statusWidgets.Unregister(descriptor.Id);
             _mcpServers.Unregister(descriptor.Id);

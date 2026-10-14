@@ -47,3 +47,5 @@ Lunate.Ai.StreamAccumulator.StreamAccumulator(Microsoft.Extensions.AI.IChatClien
 const Lunate.Ai.StreamAccumulator.ArgumentsFragmentKey = "$arguments" -> string!
 static Lunate.Ai.StreamAccumulator.IsUnassembled(Microsoft.Extensions.AI.FunctionCallContent! call) -> bool
 override Lunate.Ai.StreamAccumulator.GetStreamingResponseAsync(System.Collections.Generic.IEnumerable<Microsoft.Extensions.AI.ChatMessage!>! messages, Microsoft.Extensions.AI.ChatOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<Microsoft.Extensions.AI.ChatResponseUpdate!>!
+Lunate.Ai.ChatClientFactory.Create(Lunate.Ai.ModelInfo! model, string? apiKey) -> Microsoft.Extensions.AI.IChatClient!
+Lunate.Ai.IChatClientFactory.Create(Lunate.Ai.ModelInfo! model, string? apiKey) -> Microsoft.Extensions.AI.IChatClient!
