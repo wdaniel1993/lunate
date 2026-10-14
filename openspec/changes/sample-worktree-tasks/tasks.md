@@ -30,6 +30,6 @@
 
 ## 5. Verify, review, archive
 
-- [ ] 5.1 `scripts/verify.sh` green (both cultures); openspec strict; csharpier/style/analyzers/markdownlint clean.
-- [ ] 5.2 Adversarial review; fix findings; focused re-review.
+- [x] 5.1 `scripts/verify.sh` green (both cultures); openspec strict; csharpier/style/analyzers/markdownlint clean.
+- [x] 5.2 Adversarial review; fix findings; focused re-review.
 - [ ] 5.3 Full short ADR `adr/0021-per-run-workspaces.md` ("per-run workspaces and per-workspace services", amending 0006/0016/0017); archive; push; PR.

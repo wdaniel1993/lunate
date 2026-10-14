@@ -117,7 +117,7 @@ internal sealed class WorktreeMergeHandler(GitProbe git) : IExtensionToolHandler
         if (!inProgress.Succeeded)
         {
             return Error(
-                $"merge: merging '{branch}' failed: {merge.Detail} No merge is in progress, so nothing is left half-merged. Inspect the branch and retry."
+                $"merge: merging '{branch}' failed: {merge.Detail}. No merge is in progress, so nothing is left half-merged. Inspect the branch and retry."
             );
         }
 
