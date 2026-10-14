@@ -437,6 +437,9 @@ public sealed partial class AgentHarness
             ),
             Subagents = _subagentRunner,
             ToolStubs = CallableToolStubs(),
+            Models = _options.ModelRegistry is { } registry
+                ? new RunModelAccess(registry, this, channel, runId)
+                : null,
         };
 
     /// <summary>

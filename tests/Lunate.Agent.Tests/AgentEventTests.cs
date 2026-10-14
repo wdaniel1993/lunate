@@ -20,10 +20,11 @@ public sealed class AgentEventTests
             new ToolCallEnd(RunId, "call_1"),
             new ToolCallResult(RunId, "call_1", "1  hello", IsError: false, Details: "diff"),
             new ApprovalRequested(RunId, "call_1", "bash", """{"command":"ls"}"""),
-            new UsageUpdated(
-                RunId,
-                new UsageDetails { InputTokenCount = 12, OutputTokenCount = 3 }
-            ),
+            new UsageUpdated(RunId, new UsageDetails { InputTokenCount = 12, OutputTokenCount = 3 })
+            {
+                ModelId = "deep",
+            },
+            new ModelRouted(RunId, "ext/e/auto", "deep"),
             new Retrying(RunId, 2, "rate limited"),
             new CompactionApplied(RunId, ["e_01", "e_02"], 1234),
             new StepLimitReached(RunId, 50),
@@ -35,6 +36,7 @@ public sealed class AgentEventTests
         {
             new ApprovalRequested(RunId, "call_1", "bash", "{}"),
             new UsageUpdated(RunId, new UsageDetails()),
+            new ModelRouted(RunId, "ext/e/auto", "deep"),
             new Retrying(RunId, 1, "boom"),
             new CompactionApplied(RunId, ["e_01"], 1234),
             new StepLimitReached(RunId, 50),
@@ -70,7 +72,7 @@ public sealed class AgentEventTests
                 .Where(type => typeof(AgentEvent).IsAssignableFrom(type) && !type.IsAbstract),
         ];
 
-        Assert.Equal(17, concreteTypes.Length);
+        Assert.Equal(18, concreteTypes.Length);
         Assert.All(
             concreteTypes,
             type => Assert.True(type.IsSealed, $"{type.Name} must be sealed")
@@ -157,6 +159,8 @@ public sealed class AgentEventTests
         );
         Assert.Equal(12L, usage.Usage.InputTokenCount);
         Assert.Equal(3L, usage.Usage.OutputTokenCount);
+        var routed = new ModelRouted(RunId, "ext/e/auto", "deep");
+        Assert.Equal(("ext/e/auto", "deep"), (routed.RequestedModel, routed.ResolvedModel));
         Assert.Equal((2, "rate limited"), (retrying.Attempt, retrying.Reason));
         Assert.Equal(50, stepLimit.MaxSteps);
         var compaction = new CompactionApplied(RunId, ["e_01", "e_02"], 1234);

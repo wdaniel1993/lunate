@@ -47,6 +47,12 @@ public sealed record AgentHarnessOptions
     /// <summary>The model catalog the compaction context-window lookup uses; null skips the lookup.</summary>
     public ModelCatalog? ModelCatalog { get; init; }
 
+    /// <summary>
+    /// The run's model registry: it backs <see cref="ToolContext.Models"/> and attributes routed
+    /// calls; null leaves tools without model access.
+    /// </summary>
+    public IModelRegistry? ModelRegistry { get; init; }
+
     /// <summary>The model id the compaction context-window lookup uses; null skips the lookup.</summary>
     public string? ModelId { get; init; }
 

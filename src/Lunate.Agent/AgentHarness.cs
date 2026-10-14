@@ -419,6 +419,7 @@ public sealed partial class AgentHarness
         bool textOpen = false;
         ChatFinishReason? finishReason = null;
         string? modelId = null;
+        string? routedModelId = null;
         SessionUsage? usage = null;
 
         try
@@ -437,62 +438,70 @@ public sealed partial class AgentHarness
                 request = InsertAddedContext(request, built.AddedMessages);
             }
 
-            await foreach (
-                ChatResponseUpdate update in _client.GetStreamingResponseAsync(
-                    request,
-                    BuildOptions(activeTools),
-                    ct
+            using (
+                ModelRouteObserver.Scope(
+                    (requested, resolved) =>
+                    {
+                        routedModelId = resolved;
+                        channel.Emit(new ModelRouted(runId, requested, resolved));
+                    }
                 )
             )
             {
-                if (_options.Hooks is { } streamHook)
+                await foreach (
+                    ChatResponseUpdate update in _client.GetStreamingResponseAsync(
+                        request,
+                        BuildOptions(activeTools),
+                        ct
+                    )
+                )
                 {
-                    await streamHook.ProviderStreamEventAsync(runId, ParentRunId, update, ct);
-                }
-
-                updates.Add(update);
-                if (update.ModelId is { Length: > 0 } updateModelId)
-                {
-                    modelId = updateModelId;
-                }
-
-                if (update.FinishReason is { } reason)
-                {
-                    finishReason = reason;
-                }
-
-                foreach (AIContent content in update.Contents)
-                {
-                    if (content is TextContent { Text: { Length: > 0 } text })
+                    if (_options.Hooks is { } streamHook)
                     {
-                        if (!textOpen)
-                        {
-                            textOpen = true;
-                            messageId = RunIds.NextMessage();
-                            channel.Emit(new TextMessageStart(runId, messageId));
-                        }
-
-                        attempt.Emitted = true;
-                        channel.Emit(new TextMessageContent(runId, messageId!, text));
+                        await streamHook.ProviderStreamEventAsync(runId, ParentRunId, update, ct);
                     }
-                    else if (content is UsageContent usageContent)
+
+                    updates.Add(update);
+                    if (update.ModelId is { Length: > 0 } updateModelId)
                     {
-                        attempt.Emitted = true;
-                        channel.Emit(new UsageUpdated(runId, usageContent.Details));
-                        long used =
-                            (usageContent.Details.InputTokenCount ?? 0)
-                            + (usageContent.Details.OutputTokenCount ?? 0);
-                        _tokenBudgetUsed += used;
-                        // A child run feeds its own usage into the shared tree accounting
-                        // synchronously here (not via the runner's event consumer), so the
-                        // pre-call budget check below can never race its own consumption.
-                        InheritedTreeState?.AddTokens(used);
-                        usage = new SessionUsage(
-                            (int)(usageContent.Details.InputTokenCount ?? 0),
-                            (int)(usageContent.Details.OutputTokenCount ?? 0)
-                        );
-                        _lastInputTokens = usage.Input;
-                        _lastRequestUtf8 = requestUtf8;
+                        modelId = updateModelId;
+                    }
+
+                    if (update.FinishReason is { } reason)
+                    {
+                        finishReason = reason;
+                    }
+
+                    foreach (AIContent content in update.Contents)
+                    {
+                        if (content is TextContent { Text: { Length: > 0 } text })
+                        {
+                            if (!textOpen)
+                            {
+                                textOpen = true;
+                                messageId = RunIds.NextMessage();
+                                channel.Emit(new TextMessageStart(runId, messageId));
+                            }
+
+                            attempt.Emitted = true;
+                            channel.Emit(new TextMessageContent(runId, messageId!, text));
+                        }
+                        else if (content is UsageContent usageContent)
+                        {
+                            attempt.Emitted = true;
+                            AccumulateUsage(
+                                runId,
+                                channel,
+                                usageContent.Details,
+                                routedModelId ?? modelId ?? _options.ModelId
+                            );
+                            usage = new SessionUsage(
+                                (int)(usageContent.Details.InputTokenCount ?? 0),
+                                (int)(usageContent.Details.OutputTokenCount ?? 0)
+                            );
+                            _lastInputTokens = usage.Input;
+                            _lastRequestUtf8 = requestUtf8;
+                        }
                     }
                 }
             }
@@ -505,7 +514,33 @@ public sealed partial class AgentHarness
             }
         }
 
-        return new ModelStreamResult(updates, finishReason, attempt.Emitted, modelId, usage);
+        return new ModelStreamResult(
+            updates,
+            finishReason,
+            attempt.Emitted,
+            routedModelId ?? modelId,
+            usage
+        );
+    }
+
+    /// <summary>
+    /// The one usage-accounting path, shared by the run's own model calls and nested calls through
+    /// <see cref="ToolContext.Models"/>: emit <c>UsageUpdated</c> with the resolved model id,
+    /// count into the run's token budget, and feed the inherited tree accounting when the run is a
+    /// child. A child run feeds the tree synchronously here (not via the runner's event consumer),
+    /// so the pre-call budget check can never race its own consumption.
+    /// </summary>
+    internal void AccumulateUsage(
+        string runId,
+        AgentEventChannel channel,
+        UsageDetails details,
+        string? modelId
+    )
+    {
+        channel.Emit(new UsageUpdated(runId, details) { ModelId = modelId });
+        long used = (details.InputTokenCount ?? 0) + (details.OutputTokenCount ?? 0);
+        _tokenBudgetUsed += used;
+        InheritedTreeState?.AddTokens(used);
     }
 
     /// <summary>

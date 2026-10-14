@@ -34,6 +34,7 @@ internal static class PrintEventJson
             typeof(ToolCallResult),
             typeof(ApprovalRequested),
             typeof(UsageUpdated),
+            typeof(ModelRouted),
             typeof(Retrying),
             typeof(CompactionApplied),
             typeof(StepLimitReached),
@@ -101,9 +102,14 @@ internal static class PrintEventJson
                     ["args"] = e.Args,
                 }
             ),
-            UsageUpdated e => (
-                "usage_updated",
-                new JsonObject { ["usage"] = JsonSerializer.SerializeToNode(e.Usage, Options) }
+            UsageUpdated e => ("usage_updated", UsageBody(e)),
+            ModelRouted e => (
+                "model_routed",
+                new JsonObject
+                {
+                    ["requestedModel"] = e.RequestedModel,
+                    ["resolvedModel"] = e.ResolvedModel,
+                }
             ),
             Retrying e => (
                 "retrying",
@@ -126,6 +132,17 @@ internal static class PrintEventJson
         };
 
     private static JsonObject MessageBody(string messageId) => new() { ["messageId"] = messageId };
+
+    private static JsonObject UsageBody(UsageUpdated e)
+    {
+        var body = new JsonObject { ["usage"] = JsonSerializer.SerializeToNode(e.Usage, Options) };
+        if (e.ModelId is { Length: > 0 } modelId)
+        {
+            body["modelId"] = modelId;
+        }
+
+        return body;
+    }
 
     private static JsonObject ToolCallBody(
         string callId,
