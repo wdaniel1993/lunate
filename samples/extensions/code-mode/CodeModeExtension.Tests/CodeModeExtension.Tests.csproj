@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <RootNamespace>CodeModeExtension.Tests</RootNamespace>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="../../../../src/Lunate.Coding/Lunate.Coding.csproj" />
+        <ProjectReference Include="../../../../src/Lunate.Extensibility.Testing/Lunate.Extensibility.Testing.csproj" />
+        <ProjectReference Include="../CodeModeExtension/CodeModeExtension.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="xunit.v3" Version="4.0.1" />
+        <Using Include="Xunit" />
+    </ItemGroup>
+
+    <Target Name="CopySampleExtension" AfterTargets="Build">
+        <MSBuild
+            Projects="$(MSBuildThisFileDirectory)../CodeModeExtension/CodeModeExtension.csproj"
+            Targets="Build"
+            Properties="Configuration=$(Configuration)"
+        />
+        <ItemGroup>
+            <SampleExtensionFiles Include="$(MSBuildThisFileDirectory)../CodeModeExtension/bin/$(Configuration)/$(TargetFramework)/**/*" />
+        </ItemGroup>
+        <Copy
+            SourceFiles="@(SampleExtensionFiles)"
+            DestinationFolder="$(OutDir)CodeModeExtension/%(RecursiveDir)"
+            SkipUnchangedFiles="true"
+        />
+    </Target>
+</Project>

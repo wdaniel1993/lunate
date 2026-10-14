@@ -249,7 +249,10 @@ public sealed partial class AgentHarness
             }
         }
 
-        return result;
+        return result with
+        {
+            CallId = nestedCallId,
+        };
     }
 
     /// <summary>The hook, approval and execution shared by top-level and nested calls.</summary>
@@ -408,17 +411,23 @@ public sealed partial class AgentHarness
         {
             RunId = runId,
             CallId = callId,
-            ExecuteToolAsync = (name, args, _) =>
-                RunNestedToolAsync(
-                    runId,
-                    callId,
-                    name,
-                    args,
-                    channel,
-                    nestedDepth,
-                    nestedCalls,
-                    ct
-                ),
+            ExecuteToolAsync = async (name, args, callCt) =>
+            {
+                // The caller's token (for example the code-mode bridge's timeout) composes with the
+                // run's: either one cancels the nested call.
+                using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct, callCt);
+                return await RunNestedToolAsync(
+                        runId,
+                        callId,
+                        name,
+                        args,
+                        channel,
+                        nestedDepth,
+                        nestedCalls,
+                        linked.Token
+                    )
+                    .ConfigureAwait(false);
+            },
             Progress = message => channel.Emit(new ToolProgressUpdate(runId, callId, message)),
             FileMutations = _options.FileMutations,
             FileChanges = new RunFileChangeSink(
@@ -427,7 +436,25 @@ public sealed partial class AgentHarness
                 runId
             ),
             Subagents = _subagentRunner,
+            ToolStubs = CallableToolStubs(),
         };
+
+    /// <summary>
+    /// The stubs of exactly the tools callable via <see cref="ToolContext.ExecuteToolAsync"/> for
+    /// this run, in registration order. The run's own registry means a narrowed child registry
+    /// narrows its stubs too.
+    /// </summary>
+    private IReadOnlyList<ToolStub> CallableToolStubs() =>
+        [
+            .. _tools
+                .Tools.Where(tool =>
+                    tool.Exposure
+                        is ToolExposure.Direct
+                            or ToolExposure.Programmatic
+                            or ToolExposure.Deferred
+                )
+                .Select(ToolStubs.Describe),
+        ];
 
     private ToolResult UnknownTool(string toolName) =>
         new(

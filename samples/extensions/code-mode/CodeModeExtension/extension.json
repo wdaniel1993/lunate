@@ -1,0 +1,38 @@
+{
+    "id": "codemode",
+    "version": "0.1.0",
+    "apiVersion": "^1.9.0",
+    "entryAssembly": "CodeModeExtension.dll",
+    "tools": ["run"],
+    "settingsSchema": {
+        "type": "object",
+        "properties": {
+            "runtime": {
+                "type": "string",
+                "description": "the script runtime executable; the default is \"node\""
+            },
+            "timeoutSeconds": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 600,
+                "description": "the script deadline in seconds (default 30); a call may only tighten it"
+            },
+            "maxOutputBytes": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "the captured-output cap in bytes (default 65536)"
+            },
+            "maxToolCalls": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "the bridged tool-call cap per script (default 100); beyond it calls are refused with a teaching error"
+            }
+        }
+    },
+    "capabilities": [
+        "registers one tool (run) that executes model-written JavaScript in a child process via core/process",
+        "the script bridges back through ToolContext.ExecuteToolAsync, so approvals, hooks, nested ids and cancellation stay in the core pipeline",
+        "the child starts with a scrubbed environment allow-list; the host's environment (provider keys included) never leaks",
+        "annotations: not read-only, destructive-capable, so the call asks"
+    ]
+}

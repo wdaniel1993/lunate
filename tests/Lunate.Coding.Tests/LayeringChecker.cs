@@ -85,6 +85,12 @@ internal static class LayeringChecker
             ("SubagentsExtension", "Lunate.Extensibility.Abstractions"),
             ("SubagentsExtension.Tests", "SubagentsExtension"),
             ("SubagentsExtension.Tests", "Lunate.Extensibility.Testing"),
+            // The code-mode extension itself references Abstractions only; its tests bridge the
+            // real read tool, so they also reference the Coding layer and the extension project.
+            ("CodeModeExtension", "Lunate.Extensibility.Abstractions"),
+            ("CodeModeExtension.Tests", "CodeModeExtension"),
+            ("CodeModeExtension.Tests", "Lunate.Coding"),
+            ("CodeModeExtension.Tests", "Lunate.Extensibility.Testing"),
         };
 
     public static IReadOnlySet<string> AllowedAgentRuntimePackages { get; } =

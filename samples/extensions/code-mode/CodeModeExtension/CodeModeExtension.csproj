@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <RootNamespace>CodeModeExtension</RootNamespace>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="../../../../src/Lunate.Extensibility.Abstractions/Lunate.Extensibility.Abstractions.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Update="extension.json" CopyToOutputDirectory="PreserveNewest" />
+        <EmbeddedResource Include="CodeModeRuntime.js" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="CodeModeExtension.Tests" />
+    </ItemGroup>
+</Project>

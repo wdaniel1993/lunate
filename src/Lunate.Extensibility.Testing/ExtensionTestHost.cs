@@ -68,6 +68,7 @@ public sealed class ExtensionTestHost : IAsyncDisposable
             "core/workspace",
             new WorkspaceInfo(Path.GetFullPath(WorkingDirectory), null, null)
         );
+        Runner.Services.RegisterCore("core/process", new ProcessRunner());
         InstallExtension(options);
     }
 
