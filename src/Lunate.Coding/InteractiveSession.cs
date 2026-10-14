@@ -275,11 +275,13 @@ internal sealed partial class InteractiveSession : IDisposable
             }
             catch (InvalidOperationException exception)
             {
-                // A misconfigured extension model (unknown backend, cycle, bad capability
-                // declaration) degrades to the catalog default with a notice — like a failed
-                // extension host, it never aborts the session.
-                (_options.Diagnostics ?? Console.Error).WriteLine(
-                    $"lunate: the configured model '{configured}' did not resolve: {exception.Message}; using the catalog default"
+                // A registered extension model can be broken at resolve time (unknown backend,
+                // cycle, bad capability declaration). There is no catalog default to fall back
+                // to — a session cannot start without a model — so surface one clear,
+                // actionable line instead of the raw teaching error mid-composition.
+                throw new InvalidOperationException(
+                    $"The configured model '{configured}' did not resolve: {exception.Message}",
+                    exception
                 );
             }
         }

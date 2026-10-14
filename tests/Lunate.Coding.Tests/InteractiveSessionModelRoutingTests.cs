@@ -67,6 +67,24 @@ public sealed class InteractiveSessionModelRoutingTests
     }
 
     [Fact]
+    public async Task A_misconfigured_extension_model_fails_with_one_clear_message()
+    {
+        using var host = new InteractiveSessionHost(environment: _ => null);
+        ModelFixture.Install(host.Temp.File("extensions-store"));
+        File.WriteAllText(
+            host.Temp.File("settings.json"),
+            """{"schemaVersion":1,"model":"ext/model-fixture/broken"}"""
+        );
+
+        // Composition surfaces the failure as one clear diagnostic line and the session ends
+        // (a session cannot run without a model) — never a raw exception mid-composition.
+        await host.RunAsync();
+
+        Assert.Contains("ext/model-fixture/broken", host.Diagnostics, StringComparison.Ordinal);
+        Assert.Contains("did not resolve", host.Diagnostics, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task A_catalog_session_model_keeps_its_plain_footer_and_picker_title()
     {
         using var host = new InteractiveSessionHost();

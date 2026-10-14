@@ -7,7 +7,8 @@ public sealed class ModelExtension : IExtension;
 
 /// <summary>
 /// A fixture extension that exercises the load-time model registration members: a programmatic
-/// provider, a BeforeRouting middleware that tags responses, and a virtual model over the backend.
+/// provider, a BeforeRouting middleware that tags responses, a virtual model over the backend and
+/// a deliberately broken virtual over a missing backend (for the degrade-to-default path).
 /// </summary>
 public sealed class ModelExtensionFactory : IExtensionFactory
 {
@@ -25,6 +26,13 @@ public sealed class ModelExtensionFactory : IExtensionFactory
         );
         context.RegisterVirtualModel(
             new VirtualModelRegistration("auto", ["fixture-model"], _ => "fixture-model")
+        );
+        context.RegisterVirtualModel(
+            new VirtualModelRegistration(
+                "broken",
+                ["ext/model-fixture/missing"],
+                _ => "ext/model-fixture/missing"
+            )
         );
         return new ModelExtension();
     }
