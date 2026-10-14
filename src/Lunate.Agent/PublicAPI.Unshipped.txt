@@ -22,6 +22,8 @@ Lunate.Agent.ApprovalRequested.Deconstruct(out string! RunId, out string! CallId
 Lunate.Agent.ApprovalRequested.Equals(Lunate.Agent.ApprovalRequested? other) -> bool
 Lunate.Agent.ApprovalRequested.ToolName.get -> string!
 Lunate.Agent.ApprovalRequested.ToolName.init -> void
+Lunate.Agent.ApprovalRequested.WorkspaceRoot.get -> string?
+Lunate.Agent.ApprovalRequested.WorkspaceRoot.init -> void
 Lunate.Agent.CompactionApplied
 Lunate.Agent.CompactionApplied.CompactionApplied(string! RunId, System.Collections.Generic.IReadOnlyList<string!>! ReplacedEntryIds, int EstimatedTokensAfter) -> void
 Lunate.Agent.CompactionApplied.Deconstruct(out string! RunId, out System.Collections.Generic.IReadOnlyList<string!>! ReplacedEntryIds, out int EstimatedTokensAfter) -> void
@@ -380,6 +382,8 @@ Lunate.Agent.AgentHarnessOptions.ToolOutputLimit.get -> int
 Lunate.Agent.AgentHarnessOptions.ToolOutputLimit.init -> void
 Lunate.Agent.AgentHarnessOptions.WorkingDirectory.get -> string!
 Lunate.Agent.AgentHarnessOptions.WorkingDirectory.init -> void
+Lunate.Agent.AgentHarnessOptions.WorkspaceTools.get -> System.Func<string!, Lunate.Agent.ToolRegistry!>?
+Lunate.Agent.AgentHarnessOptions.WorkspaceTools.init -> void
 Lunate.Agent.IToolApprover
 override Lunate.Agent.AgentHarnessOptions.Equals(object? obj) -> bool
 override Lunate.Agent.AgentHarnessOptions.GetHashCode() -> int
@@ -448,6 +452,9 @@ Lunate.Agent.SessionModelChangeEntry.ParentId.init -> void
 Lunate.Agent.SessionModelChangeEntry.SessionModelChangeEntry(string! Id, string? ParentId, System.DateTimeOffset Timestamp, string! Model) -> void
 Lunate.Agent.SessionModelChangeEntry.Timestamp.get -> System.DateTimeOffset
 Lunate.Agent.SessionModelChangeEntry.Timestamp.init -> void
+Lunate.Agent.GitIdentity
+static Lunate.Agent.GitIdentity.Canonicalize(string! path) -> string!
+static Lunate.Agent.GitIdentity.Detect(string! worktreeRoot) -> (string? RepoRoot, string? GitCommonDir)
 Lunate.Agent.SessionPaths
 Lunate.Agent.SessionSummary
 Lunate.Agent.SessionSummary.<Clone>$() -> Lunate.Agent.SessionSummary!
@@ -1147,6 +1154,9 @@ Lunate.Agent.ITextFileAccess.WriteRaw(string! path, string! text, bool hasBom) -
 const Lunate.Agent.StopReasons.ConcurrencyLimit = "concurrency_limit" -> string!
 const Lunate.Agent.StopReasons.DepthLimit = "depth_limit" -> string!
 const Lunate.Agent.StopReasons.Error = "error" -> string!
+const Lunate.Agent.StopReasons.WorkspaceMissing = "workspace_missing" -> string!
+const Lunate.Agent.StopReasons.WorkspaceOutsideRepository = "workspace_outside_repository" -> string!
+const Lunate.Agent.StopReasons.WorkspaceToolsUnavailable = "workspace_tools_unavailable" -> string!
 const Lunate.Agent.StopReasons.TokenLimit = "token_limit" -> string!
 Lunate.Agent.AgentCompactingContext.ParentRunId.get -> string?
 Lunate.Agent.AgentCompactingContext.ParentRunId.init -> void
@@ -1187,13 +1197,15 @@ Lunate.Agent.SubagentRequest
 Lunate.Agent.SubagentRequest.<Clone>$() -> Lunate.Agent.SubagentRequest!
 Lunate.Agent.SubagentRequest.AllowedTools.get -> System.Collections.Generic.IReadOnlyList<string!>?
 Lunate.Agent.SubagentRequest.AllowedTools.init -> void
-Lunate.Agent.SubagentRequest.Deconstruct(out string! Prompt, out int? MaxSteps, out System.Collections.Generic.IReadOnlyList<string!>? AllowedTools) -> void
+Lunate.Agent.SubagentRequest.Deconstruct(out string! Prompt, out int? MaxSteps, out System.Collections.Generic.IReadOnlyList<string!>? AllowedTools, out string? WorkspaceRoot) -> void
 Lunate.Agent.SubagentRequest.Equals(Lunate.Agent.SubagentRequest? other) -> bool
 Lunate.Agent.SubagentRequest.MaxSteps.get -> int?
 Lunate.Agent.SubagentRequest.MaxSteps.init -> void
+Lunate.Agent.SubagentRequest.WorkspaceRoot.get -> string?
+Lunate.Agent.SubagentRequest.WorkspaceRoot.init -> void
 Lunate.Agent.SubagentRequest.Prompt.get -> string!
 Lunate.Agent.SubagentRequest.Prompt.init -> void
-Lunate.Agent.SubagentRequest.SubagentRequest(string! Prompt, int? MaxSteps = null, System.Collections.Generic.IReadOnlyList<string!>? AllowedTools = null) -> void
+Lunate.Agent.SubagentRequest.SubagentRequest(string! Prompt, int? MaxSteps = null, System.Collections.Generic.IReadOnlyList<string!>? AllowedTools = null, string? WorkspaceRoot = null) -> void
 Lunate.Agent.SubagentResult
 Lunate.Agent.SubagentResult.<Clone>$() -> Lunate.Agent.SubagentResult!
 Lunate.Agent.SubagentResult.ChildSessionId.get -> string?
@@ -1242,10 +1254,10 @@ static Lunate.Agent.SubagentUsage.operator !=(Lunate.Agent.SubagentUsage left, L
 static Lunate.Agent.SubagentUsage.operator ==(Lunate.Agent.SubagentUsage left, Lunate.Agent.SubagentUsage right) -> bool
 Lunate.Agent.ApprovalRequest
 Lunate.Agent.ApprovalRequest.<Clone>$() -> Lunate.Agent.ApprovalRequest!
-Lunate.Agent.ApprovalRequest.ApprovalRequest(Lunate.Agent.ITool! Tool, System.Text.Json.JsonElement Args, string? RunId, string? ParentRunId, int Depth) -> void
+Lunate.Agent.ApprovalRequest.ApprovalRequest(Lunate.Agent.ITool! Tool, System.Text.Json.JsonElement Args, string? RunId, string? ParentRunId, int Depth, string? WorkspaceRoot = null) -> void
 Lunate.Agent.ApprovalRequest.Args.get -> System.Text.Json.JsonElement
 Lunate.Agent.ApprovalRequest.Args.init -> void
-Lunate.Agent.ApprovalRequest.Deconstruct(out Lunate.Agent.ITool! Tool, out System.Text.Json.JsonElement Args, out string? RunId, out string? ParentRunId, out int Depth) -> void
+Lunate.Agent.ApprovalRequest.Deconstruct(out Lunate.Agent.ITool! Tool, out System.Text.Json.JsonElement Args, out string? RunId, out string? ParentRunId, out int Depth, out string? WorkspaceRoot) -> void
 Lunate.Agent.ApprovalRequest.Depth.get -> int
 Lunate.Agent.ApprovalRequest.Depth.init -> void
 Lunate.Agent.ApprovalRequest.Equals(Lunate.Agent.ApprovalRequest? other) -> bool
@@ -1253,6 +1265,8 @@ Lunate.Agent.ApprovalRequest.ParentRunId.get -> string?
 Lunate.Agent.ApprovalRequest.ParentRunId.init -> void
 Lunate.Agent.ApprovalRequest.RunId.get -> string?
 Lunate.Agent.ApprovalRequest.RunId.init -> void
+Lunate.Agent.ApprovalRequest.WorkspaceRoot.get -> string?
+Lunate.Agent.ApprovalRequest.WorkspaceRoot.init -> void
 Lunate.Agent.ApprovalRequest.Tool.get -> Lunate.Agent.ITool!
 Lunate.Agent.ApprovalRequest.Tool.init -> void
 Lunate.Agent.IToolApprover.ApproveAsync(Lunate.Agent.ApprovalRequest! request, System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask<bool>

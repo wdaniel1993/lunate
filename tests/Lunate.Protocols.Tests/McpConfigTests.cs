@@ -51,6 +51,7 @@ public sealed class McpConfigTests
         Assert.Equal("files", files.NamespaceName);
         Assert.Equal(ToolExposure.Direct, files.Exposure);
         Assert.Equal(path, files.Source);
+        Assert.False(files.WorkspaceIndependent);
         McpServerOptions plain = result.Servers[1];
         Assert.Equal("plain", plain.NamespaceName);
         Assert.Equal(path, plain.Source);
@@ -89,6 +90,30 @@ public sealed class McpConfigTests
     }
 
     [Fact]
+    public void Workspace_independent_is_an_optional_boolean()
+    {
+        using var temp = new TempDirectory();
+        string path = temp.File("mcp.json");
+        File.WriteAllText(
+            path,
+            """
+            {
+              "mcpServers": {
+                "global": { "command": "x", "workspaceIndependent": true },
+                "project": { "command": "y" }
+              }
+            }
+            """
+        );
+
+        McpConfigResult result = McpConfig.Load(path);
+
+        Assert.Empty(result.Errors);
+        Assert.True(Assert.Single(result.Servers, s => s.Name == "global").WorkspaceIndependent);
+        Assert.False(Assert.Single(result.Servers, s => s.Name == "project").WorkspaceIndependent);
+    }
+
+    [Fact]
     public void A_malformed_entry_is_reported_naming_the_server_and_field_and_skipped()
     {
         using var temp = new TempDirectory();
@@ -123,6 +148,7 @@ public sealed class McpConfigTests
     [InlineData("""{ "command": "x", "cwd": 3 }""", "'cwd'")]
     [InlineData("""{ "command": "x", "callTimeoutSeconds": "30" }""", "'callTimeoutSeconds'")]
     [InlineData("""{ "command": "x", "callTimeoutSeconds": 0 }""", "'callTimeoutSeconds'")]
+    [InlineData("""{ "command": "x", "workspaceIndependent": "yes" }""", "'workspaceIndependent'")]
     [InlineData("""{ "command": "" }""", "'command'")]
     public void A_malformed_field_is_reported_and_the_server_skipped(string entry, string field)
     {

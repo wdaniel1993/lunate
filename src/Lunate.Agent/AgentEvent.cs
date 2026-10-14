@@ -68,7 +68,11 @@ public sealed record ToolCallResult(
 public abstract record ExtensionEvent(string RunId) : AgentEvent(RunId);
 
 public sealed record ApprovalRequested(string RunId, string CallId, string ToolName, string Args)
-    : ExtensionEvent(RunId);
+    : ExtensionEvent(RunId)
+{
+    /// <summary>The asking run's workspace root: where the call will act; null when unknown.</summary>
+    public string? WorkspaceRoot { get; init; }
+}
 
 public sealed record UsageUpdated(string RunId, UsageDetails Usage) : ExtensionEvent(RunId)
 {

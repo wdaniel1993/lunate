@@ -36,7 +36,7 @@ A session file SHALL be append-only JSONL: a header line (schema, session `id`, 
 
 ### Requirement: Session store and resume
 
-`Session` SHALL create a file (writing the header with the optional repository identity and worktree), append entries with store-assigned ids and parent chain (`AppendMessage`, `AppendCompaction`, `AppendModelChange`, `AppendActiveTools`, `AppendPromptSection`, `AppendChildSession`, `AppendNestedCalls`, `AppendExtension`), load a file validating the header schema — accepting schema 1 and 2, failing with an actionable error naming the schema and the file for anything newer — and reconstruct the message history for resume via `ToHistory()`. A child session started by the subagent runner SHALL be a session file beside its parent's (same sessions directory) with a fresh id, and the parent SHALL carry the `AppendChildSession(childSessionId, runId)` link before the child run starts; resuming the parent SHALL surface the link and resuming the child SHALL load the child's own history. A parent session with linked child sessions SHALL replay deterministically: repeated loads reconstruct the same messages and links, and the rendered link lines are stable.
+`Session` SHALL create a file (writing the header with the optional repository identity and worktree), append entries with store-assigned ids and parent chain (`AppendMessage`, `AppendCompaction`, `AppendModelChange`, `AppendActiveTools`, `AppendPromptSection`, `AppendChildSession`, `AppendNestedCalls`, `AppendExtension`), load a file validating the header schema — accepting schema 1 and 2, failing with an actionable error naming the schema and the file for anything newer — and reconstruct the message history for resume via `ToHistory()`. A child session started by the subagent runner SHALL be a session file beside its parent's (same sessions directory) with a fresh id, and its header SHALL record the repository identity and worktree of the workspace the child actually runs in — the child's own root when the spawn named one, the parent's fields otherwise — and the parent SHALL carry the `AppendChildSession(childSessionId, runId)` link before the child run starts; resuming the parent SHALL surface the link and resuming the child SHALL load the child's own history. A parent session with linked child sessions SHALL replay deterministically: repeated loads reconstruct the same messages and links, and the rendered link lines are stable.
 
 #### Scenario: Append and load round-trip
 - **GIVEN** a session with appended messages
@@ -62,6 +62,11 @@ A session file SHALL be append-only JSONL: a header line (schema, session `id`, 
 - **GIVEN** a parent session with child-session links and the linked child files
 - **WHEN** the files are loaded and rendered repeatedly
 - **THEN** the reconstructed messages, the links and the rendered link lines are identical every time
+
+#### Scenario: A worktree child's header records its own worktree
+- **GIVEN** a subagent spawn naming a workspace root in another worktree of the same repository
+- **WHEN** the child session file is inspected
+- **THEN** it sits beside the parent's and its header records the child root's repository identity and worktree path, distinct from the parent's worktree field
 
 ### Requirement: Format guard
 The golden files SHALL be verified byte for byte in the test suite; when a Microsoft.Extensions.AI update changes serialization, the schema SHALL be bumped and a migration added, recorded in an ADR — goldens SHALL NOT be edited silently to match new output.

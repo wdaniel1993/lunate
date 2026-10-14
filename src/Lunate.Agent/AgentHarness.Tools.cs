@@ -284,7 +284,14 @@ public sealed partial class AgentHarness
             if (
                 _options.Approver is { } approver
                 && !await approver.ApproveAsync(
-                    new ApprovalRequest(tool, approvedArgs, runId, ParentRunId, SpawnDepth),
+                    new ApprovalRequest(
+                        tool,
+                        approvedArgs,
+                        runId,
+                        ParentRunId,
+                        SpawnDepth,
+                        WorkspaceRoot: _options.WorkingDirectory
+                    ),
                     ct
                 )
             )

@@ -93,15 +93,7 @@ internal static class PrintEventJson
             ),
             ToolCallEnd e => ("tool_call_end", ToolCallBody(e.CallId, e.ParentToolCallId)),
             ToolCallResult e => ("tool_call_result", ToolResultBody(e)),
-            ApprovalRequested e => (
-                "approval_requested",
-                new JsonObject
-                {
-                    ["callId"] = e.CallId,
-                    ["toolName"] = e.ToolName,
-                    ["args"] = e.Args,
-                }
-            ),
+            ApprovalRequested e => ("approval_requested", ApprovalBody(e)),
             UsageUpdated e => ("usage_updated", UsageBody(e)),
             ModelRouted e => (
                 "model_routed",
@@ -132,6 +124,22 @@ internal static class PrintEventJson
         };
 
     private static JsonObject MessageBody(string messageId) => new() { ["messageId"] = messageId };
+
+    private static JsonObject ApprovalBody(ApprovalRequested e)
+    {
+        var body = new JsonObject
+        {
+            ["callId"] = e.CallId,
+            ["toolName"] = e.ToolName,
+            ["args"] = e.Args,
+        };
+        if (e.WorkspaceRoot is { Length: > 0 } root)
+        {
+            body["workspaceRoot"] = root;
+        }
+
+        return body;
+    }
 
     private static JsonObject UsageBody(UsageUpdated e)
     {

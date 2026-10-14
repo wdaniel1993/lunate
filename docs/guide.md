@@ -155,7 +155,7 @@ If loading is unreliable, decide before Phase 5: fix it, move Roslyn out of proc
 | First TUI frame | under 300 ms |
 | Idle memory in the TUI (no Roslyn) | target 100 MB, gate 150 MB peak RSS — report until T-18 provides the subject (ADR-0009) |
 | Working set: replay a session (~30 tool calls) | gate 250 MB placeholder until calibrated (T-09/T-22; ADR-0009) |
-| Roslyn: peak RSS, load + 10 edit cycles | gate 750 MB for the reference workspace (S-4; ADR-0009) |
+| Roslyn: peak RSS, load + 10 edit cycles | gate 750 MB per loaded workspace for the reference workspace (S-4; ADR-0009); the per-workspace cap (`roslyn.maxLoadedWorkspaces`, default 2) makes 2× the worst case (ADR-0021) |
 | First C# tool call (Roslyn load, small solution; calibrated by S-4) | under 5 s |
 
 Memory budgets and the sampler live in ADR-0009 and `scripts/memory.sh`; the decomposition (runtime ~36 MB, R2R images ~+37 MB, Spectre ~+10 MB, GC heap ~25 KB) is in the S-3 report addendum.
@@ -546,7 +546,7 @@ public interface IAcpServer
 
 **Loading model**
 
-Roslyn loads in process on the first C# tool call. `MSBuildLocator` finds the installed .NET SDK, and `MSBuildWorkspace` opens the solution for the working directory and keeps it loaded for the session. File changes made by `write` and `edit` are applied to the workspace, so it stays current without reloading. Without an installed .NET SDK the C# tools are simply not offered. If memory on very large solutions becomes a problem, the same tools can move into a child process later without changing their contracts.
+Roslyn loads in process on the first C# tool call. `MSBuildLocator` finds the installed .NET SDK, and `MSBuildWorkspace` opens the solution for the working directory and keeps it loaded for the session. File changes made by `write` and `edit` are applied to the workspace, so it stays current without reloading. The five `cs_*` tools are offered only where the workspace looks like C# (a `.sln`, `.slnx` or `.csproj` at the root — a cheap scan, no Roslyn load); child runs in a worktree get their own tools bound to their root. Backends are keyed per worktree root and the loaded-workspace cap (`roslyn.maxLoadedWorkspaces`, default 2, least-recently-used unloaded) never unloads a workspace under an in-flight call; up to 2× the reference-workspace budget is the documented worst case (ADR-0021). Without an installed .NET SDK the C# tools are simply not offered. If memory on very large solutions becomes a problem, the same tools can move into a child process later without changing their contracts.
 
 **Tools, in build order**
 

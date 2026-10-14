@@ -97,6 +97,7 @@ internal static class PrintMode
         try
         {
             IReadOnlyList<ITool> mcpTools = [];
+            IReadOnlyList<ITool> inheritedTools = [];
             Workspace workspace;
             try
             {
@@ -128,10 +129,12 @@ internal static class PrintMode
                     .ConfigureAwait(false);
 
                 List<ITool> tools = [];
+                List<ITool> inherited = [];
                 if (extensions is not null)
                 {
                     // Extension tools first, in registration order, then the MCP tools (design D7).
                     tools.AddRange(extensions.Tools);
+                    inherited.AddRange(extensions.Tools);
                     // The configured names are the collision baseline: a same-named registration
                     // is skipped before listing (the configured server wins); nothing starts yet.
                     ExtensionMcpServers servers = extensions.ComposeMcpServers(
@@ -153,10 +156,24 @@ internal static class PrintMode
                         "mcp.json",
                         notice => interaction.Notify(new UserNotice(NoticeLevel.Warning, notice))
                     );
+                    // A child run in another worktree may be offered the tools of servers
+                    // explicitly marked workspace-independent (and only those); skipped
+                    // collisions stay skipped.
+                    foreach (
+                        ITool tool in mcp.ListedToolsFrom(options => options.WorkspaceIndependent)
+                    )
+                    {
+                        if (tools.Contains(tool))
+                        {
+                            inherited.Add(tool);
+                        }
+                    }
+
                     McpComposition.NotifyFailures(mcp, notice => interaction.Notify(notice));
                 }
 
                 mcpTools = tools;
+                inheritedTools = inherited;
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
@@ -168,6 +185,9 @@ internal static class PrintMode
                 return 1;
             }
 
+            using var workspaceServices = new WorkspaceServices(
+                settings.Roslyn.MaxLoadedWorkspaces
+            );
             AgentHarness harness;
             try
             {
@@ -179,7 +199,9 @@ internal static class PrintMode
                     catalog,
                     factory,
                     extensions,
-                    mcpTools
+                    mcpTools,
+                    workspaceServices,
+                    inheritedTools
                 );
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -360,10 +382,12 @@ internal static class PrintMode
         ModelCatalog catalog,
         IChatClientFactory factory,
         ExtensionSession? extensions,
-        IReadOnlyList<ITool> mcpTools
+        IReadOnlyList<ITool> mcpTools,
+        WorkspaceServices workspaceServices,
+        IReadOnlyList<ITool> inheritedTools
     )
     {
-        ToolRegistry tools = HarnessFactory.CreateTools(workspace);
+        ToolRegistry tools = HarnessFactory.CreateTools(workspace, services: workspaceServices);
         foreach (ITool tool in mcpTools)
         {
             tools.Add(tool);
@@ -388,6 +412,7 @@ internal static class PrintMode
             ModelCatalog = catalog,
             ModelId = model.Id,
             ModelRegistry = extensions?.ModelRegistry,
+            WorkspaceTools = HarnessFactory.CreateWorkspaceTools(workspaceServices, inheritedTools),
         };
 
         return new AgentHarness(factory.Create(model), tools, harnessOptions);

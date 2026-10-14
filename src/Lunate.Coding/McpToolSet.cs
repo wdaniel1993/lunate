@@ -91,6 +91,7 @@ internal sealed class McpToolSet : IAsyncDisposable
                 IReadOnlyList<ITool> listed = await server
                     .Host.GetToolsAsync(ct)
                     .ConfigureAwait(false);
+                server.ListedTools = listed;
                 server.Status = new McpServerStatus(
                     server.Options.Name,
                     McpServerState.Started,
@@ -122,6 +123,21 @@ internal sealed class McpToolSet : IAsyncDisposable
         }
 
         return tools;
+    }
+
+    /// <summary>
+    /// The tools listed from the servers matching <paramref name="predicate"/>, after a listing;
+    /// used to identify the workspace-independent servers' tools for child runs in other roots.
+    /// </summary>
+    internal IReadOnlyList<ITool> ListedToolsFrom(Func<McpServerOptions, bool> predicate)
+    {
+        ArgumentNullException.ThrowIfNull(predicate);
+        return
+        [
+            .. _servers
+                .Where(server => predicate(server.Options))
+                .SelectMany(server => server.ListedTools),
+        ];
     }
 
     /// <summary>
@@ -192,6 +208,9 @@ internal sealed class McpToolSet : IAsyncDisposable
         public McpServerOptions Options { get; } = options;
 
         public McpServerHost Host { get; } = host;
+
+        /// <summary>The tools the server's last listing returned; empty until listed.</summary>
+        public IReadOnlyList<ITool> ListedTools { get; set; } = [];
 
         public bool ExitNotified => Volatile.Read(ref _exitNotified) == 1;
 

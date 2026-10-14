@@ -99,7 +99,7 @@ internal sealed class ClientApprover : IToolApprover
                         $"permission-{Interlocked.Increment(ref _requests)}"
                     )
                 ),
-                Title = Title(tool, args),
+                Title = Title(tool, args, request),
                 Kind = KindOf(tool.Risk),
                 Status = ToolCallStatus.Pending,
                 RawInput = args.ValueKind == JsonValueKind.Undefined ? null : args.Clone(),
@@ -182,12 +182,19 @@ internal sealed class ClientApprover : IToolApprover
         return option.Kind is PermissionOptionKind.AllowOnce or PermissionOptionKind.AllowAlways;
     }
 
-    private static string Title(ITool tool, JsonElement args)
+    private static string Title(ITool tool, JsonElement args, ApprovalRequest request)
     {
         string summary = Summary(args);
-        return summary.Length == 0
-            ? tool.Name
-            : string.Create(CultureInfo.InvariantCulture, $"{tool.Name}: {summary}");
+        string title =
+            summary.Length == 0
+                ? tool.Name
+                : string.Create(CultureInfo.InvariantCulture, $"{tool.Name}: {summary}");
+        return request is { Depth: > 0, WorkspaceRoot: { Length: > 0 } root }
+            ? string.Create(
+                CultureInfo.InvariantCulture,
+                $"{title} (subagent depth {request.Depth} in {root})"
+            )
+            : title;
     }
 
     private static string Summary(JsonElement args)
