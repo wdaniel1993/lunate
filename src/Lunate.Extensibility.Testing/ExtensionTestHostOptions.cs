@@ -1,10 +1,18 @@
 using Lunate.Agent;
+using Lunate.Ai;
 
 namespace Lunate.Extensibility.Testing;
 
 /// <summary>Options for an <see cref="ExtensionTestHost"/>.</summary>
 public sealed record ExtensionTestHostOptions
 {
+    /// <summary>
+    /// The client factory the model registry uses for catalog models and declared providers; null
+    /// builds the real <see cref="ChatClientFactory"/> (declared providers then reach their
+    /// declared endpoints with the host-read secret).
+    /// </summary>
+    public IChatClientFactory? ClientFactory { get; init; }
+
     /// <summary>
     /// The caller-owned temp directory every piece of host state lives under. The host creates its
     /// worktree, store and session inside it and never touches the real <c>~/.lunate</c>.

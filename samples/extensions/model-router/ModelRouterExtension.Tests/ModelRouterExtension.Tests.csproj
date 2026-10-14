@@ -1,0 +1,48 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <RootNamespace>ModelRouterExtension.Tests</RootNamespace>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="../../../../src/Lunate.Ai/Lunate.Ai.csproj" />
+        <ProjectReference Include="../../../../src/Lunate.Extensibility.Testing/Lunate.Extensibility.Testing.csproj" />
+        <ProjectReference Include="../ModelRouterExtension/ModelRouterExtension.csproj" />
+        <ProjectReference
+            Include="../../subagents/SubagentsExtension/SubagentsExtension.csproj"
+            ReferenceOutputAssembly="false"
+        />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="xunit.v3" Version="4.0.1" />
+        <Using Include="Xunit" />
+    </ItemGroup>
+
+    <Target Name="CopySampleExtensions" AfterTargets="Build">
+        <MSBuild
+            Projects="$(MSBuildThisFileDirectory)../ModelRouterExtension/ModelRouterExtension.csproj"
+            Targets="Build"
+            Properties="Configuration=$(Configuration)"
+        />
+        <MSBuild
+            Projects="$(MSBuildThisFileDirectory)../../subagents/SubagentsExtension/SubagentsExtension.csproj"
+            Targets="Build"
+            Properties="Configuration=$(Configuration)"
+        />
+        <ItemGroup>
+            <ModelRouterFiles Include="$(MSBuildThisFileDirectory)../ModelRouterExtension/bin/$(Configuration)/$(TargetFramework)/**/*" />
+            <SubagentsFiles Include="$(MSBuildThisFileDirectory)../../subagents/SubagentsExtension/bin/$(Configuration)/$(TargetFramework)/**/*" />
+        </ItemGroup>
+        <Copy
+            SourceFiles="@(ModelRouterFiles)"
+            DestinationFolder="$(OutDir)ModelRouterExtension/%(RecursiveDir)"
+            SkipUnchangedFiles="true"
+        />
+        <Copy
+            SourceFiles="@(SubagentsFiles)"
+            DestinationFolder="$(OutDir)SubagentsExtension/%(RecursiveDir)"
+            SkipUnchangedFiles="true"
+        />
+    </Target>
+</Project>
