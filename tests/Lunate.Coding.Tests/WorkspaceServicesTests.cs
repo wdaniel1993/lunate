@@ -126,6 +126,65 @@ public sealed class WorkspaceServicesTests
         Assert.All(backends, backend => Assert.True(backend.Disposed));
     }
 
+    [Fact]
+    public async Task A_waiter_woken_by_dispose_fails_and_disposes_every_constructed_backend()
+    {
+        using var temp = new TempDirectory();
+        string a = CreateRoot(temp, "a");
+        string b = CreateRoot(temp, "b");
+        string canonicalA = GitIdentity.Canonicalize(a);
+        string canonicalB = GitIdentity.Canonicalize(b);
+        var backends = new List<FakeWorkspaceBackend>();
+        var backendA = new FakeWorkspaceBackend(canonicalA) { Hold = new TaskCompletionSource() };
+        var bBuilt = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var services = new WorkspaceServices(
+            1,
+            root =>
+            {
+                FakeWorkspaceBackend backend =
+                    root == canonicalA ? backendA : new FakeWorkspaceBackend(root);
+                lock (backends)
+                {
+                    backends.Add(backend);
+                }
+
+                if (root == canonicalB)
+                {
+                    bBuilt.TrySetResult();
+                }
+
+                return backend;
+            }
+        );
+        await services.BackendFor(a).LoadAsync(Ct);
+
+        Task<DiagnosticsResult> pinned = services
+            .BackendFor(a)
+            .GetDiagnosticsAsync(DiagnosticsScope.Solution, Ct)
+            .AsTask();
+        await backendA.Started.Task.WaitAsync(TimeSpan.FromSeconds(10), Ct);
+        // B's load builds its backend first and then waits: the cap is held by the pinned call.
+        Task<WorkspaceLoadResult> loadB = Task.Run(
+            async () => await services.BackendFor(b).LoadAsync(Ct).ConfigureAwait(false),
+            Ct
+        );
+        await bBuilt.Task.WaitAsync(TimeSpan.FromSeconds(10), Ct);
+
+        services.Dispose();
+        backendA.Hold!.TrySetResult();
+
+        await Assert.ThrowsAnyAsync<ObjectDisposedException>(() => loadB);
+        await pinned.WaitAsync(TimeSpan.FromSeconds(10), Ct);
+        FakeWorkspaceBackend[] constructed;
+        lock (backends)
+        {
+            constructed = [.. backends];
+        }
+
+        Assert.Equal(2, constructed.Length);
+        Assert.All(constructed, backend => Assert.Equal(1, backend.DisposeCalls));
+    }
+
     private static string CreateRoot(TempDirectory temp, string name)
     {
         string root = temp.File(name);

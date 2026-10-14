@@ -210,6 +210,14 @@ internal sealed class WorktreeStartHandler(WorktreeTasksState state, GitProbe gi
         )
         {
             baseRef = baseValue.GetString()!.Trim();
+            // argv has no shell, but git would still read a leading '-' as an option (for example
+            // '--detach'); refuse before it reaches git.
+            if (baseRef.StartsWith('-'))
+            {
+                error =
+                    $"start: 'base' must name a git ref (branch, tag or commit), not an option: '{baseRef}' starts with '-'. Retry with the ref to branch from.";
+                return false;
+            }
         }
 
         return true;

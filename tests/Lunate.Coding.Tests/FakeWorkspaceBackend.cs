@@ -14,6 +14,8 @@ internal sealed class FakeWorkspaceBackend(string root) : ICSharpBackend, IDispo
 
     public bool Disposed { get; private set; }
 
+    public int DisposeCalls { get; private set; }
+
     public int LoadCalls { get; private set; }
 
     public ValueTask<WorkspaceLoadResult> LoadAsync(CancellationToken ct)
@@ -55,5 +57,9 @@ internal sealed class FakeWorkspaceBackend(string root) : ICSharpBackend, IDispo
 
     public void NotifyFileChanged(string absolutePath) { }
 
-    public void Dispose() => Disposed = true;
+    public void Dispose()
+    {
+        Disposed = true;
+        DisposeCalls++;
+    }
 }

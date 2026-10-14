@@ -161,13 +161,15 @@ internal sealed class WorkspaceServices : IDisposable
     }
 
     /// <summary>
-    /// The root's entry, created on first request. Construction runs outside the gate and is
-    /// double-checked on insert, so a concurrent creator's backend is disposed.
+    /// The root's entry, created on first request; a disposed registry refuses before constructing
+    /// anything. Construction runs outside the gate and is double-checked on insert: a concurrent
+    /// creator's backend, or one built while the registry disposed, is disposed outside the gate.
     /// </summary>
     private Entry EnsureEntry(string root)
     {
         lock (_gate)
         {
+            ObjectDisposedException.ThrowIf(_disposed, this);
             if (_backends.TryGetValue(root, out Entry? existing))
             {
                 return existing;
@@ -175,19 +177,27 @@ internal sealed class WorkspaceServices : IDisposable
         }
 
         ICSharpBackend created = _createBackend(root);
+        Entry? duplicate = null;
         lock (_gate)
         {
             if (_backends.TryGetValue(root, out Entry? existing))
             {
-                DisposeBackend(created);
-                return existing;
+                duplicate = existing;
             }
-
-            var entry = new Entry(created);
-            _backends[root] = entry;
-            _order.AddFirst(root);
-            return entry;
+            else if (!_disposed)
+            {
+                var entry = new Entry(created);
+                _backends[root] = entry;
+                _order.AddFirst(root);
+                return entry;
+            }
         }
+
+        // Not registered after all: a duplicate won the race, or the registry disposed while the
+        // backend was being built. Dispose it outside the gate, then surface the failure.
+        DisposeBackend(created);
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        return duplicate!;
     }
 
     /// <summary>Releases one pin and wakes waiters when the set becomes evictable again.</summary>

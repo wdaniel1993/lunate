@@ -106,6 +106,21 @@ internal sealed class WorktreeMergeHandler(GitProbe git) : IExtensionToolHandler
             );
         }
 
+        // Only a merge that actually started can be rolled back; a failure before that (for
+        // example unrelated histories) leaves the worktree untouched and gets git's own words.
+        GitProbeResult inProgress = await git.RunAsync(
+                root,
+                ["rev-parse", "-q", "--verify", "MERGE_HEAD"],
+                ct
+            )
+            .ConfigureAwait(false);
+        if (!inProgress.Succeeded)
+        {
+            return Error(
+                $"merge: merging '{branch}' failed: {merge.Detail} No merge is in progress, so nothing is left half-merged. Inspect the branch and retry."
+            );
+        }
+
         GitProbeResult conflicts = await git.RunAsync(
                 root,
                 ["diff", "--name-only", "--diff-filter=U"],
