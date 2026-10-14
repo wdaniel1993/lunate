@@ -62,7 +62,12 @@ public sealed class InteractiveSessionSubagentApprovalTests
 
         ValueTask<bool> decision = approver.ApproveAsync(child, Ct);
         await host.WaitUntilAsync(() => host.Session.PendingApproval is not null);
-        Assert.Equal($"subagent (depth 1) in {childRoot}", host.Session.PendingApproval!.Asker);
+        // The prompt displays the root as the product does: home-relative paths abbreviate to "~".
+        string home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        string displayed = childRoot.StartsWith(home, StringComparison.Ordinal)
+            ? "~" + childRoot[home.Length..]
+            : childRoot;
+        Assert.Equal($"subagent (depth 1) in {displayed}", host.Session.PendingApproval!.Asker);
         host.Console.SendText("n");
 
         Assert.False(await decision);

@@ -446,7 +446,8 @@ public sealed class WorktreeTasksRunTests
 
         string list = LastToolResult(client, 3);
         Assert.Contains("2 worktrees:", list, StringComparison.Ordinal);
-        Assert.Contains(host.WorkingDirectory, list, StringComparison.Ordinal);
+        // git porcelain reports paths with forward slashes on every platform.
+        Assert.Contains(host.WorkingDirectory.Replace('\\', '/'), list, StringComparison.Ordinal);
         Assert.Contains("lunate/wt-a", list, StringComparison.Ordinal);
     }
 
