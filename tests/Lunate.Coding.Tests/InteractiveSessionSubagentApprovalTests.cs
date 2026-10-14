@@ -42,6 +42,36 @@ public sealed class InteractiveSessionSubagentApprovalTests
         await run;
     }
 
+    [Fact]
+    public async Task A_workspace_childs_ask_names_the_root_it_will_act_in()
+    {
+        using var host = new InteractiveSessionHost();
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+        IToolApprover approver = host.Session.Approver!;
+        string childRoot = Path.Combine(host.Temp.Root, "worktree-b");
+        Directory.CreateDirectory(childRoot);
+        ApprovalRequest child = new(
+            new WriteRiskTool(),
+            JsonDocument.Parse("{}").RootElement.Clone(),
+            RunId: "run_child",
+            ParentRunId: "run_parent",
+            Depth: 1,
+            WorkspaceRoot: childRoot
+        );
+
+        ValueTask<bool> decision = approver.ApproveAsync(child, Ct);
+        await host.WaitUntilAsync(() => host.Session.PendingApproval is not null);
+        Assert.Equal($"subagent (depth 1) in {childRoot}", host.Session.PendingApproval!.Asker);
+        host.Console.SendText("n");
+
+        Assert.False(await decision);
+        Assert.Null(host.Session.PendingApproval);
+
+        host.Console.Complete();
+        await run;
+    }
+
     private sealed class WriteRiskTool : ITool
     {
         public string Name => "write-risk";

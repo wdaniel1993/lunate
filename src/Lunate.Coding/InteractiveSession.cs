@@ -892,9 +892,7 @@ internal sealed partial class InteractiveSession : IDisposable
         _approvalPrompt = new ApprovalPromptModel(
             toolName,
             request.Args.GetRawText(),
-            request.Depth > 0
-                ? FormattableString.Invariant($"subagent (depth {request.Depth})")
-                : null
+            AskerLabel(request)
         );
         _approvalDecision = decision;
         _live.SetApproval(_approvalPrompt);
@@ -923,6 +921,39 @@ internal sealed partial class InteractiveSession : IDisposable
 
         return choice is ApprovalChoice.Approve or ApprovalChoice.Always;
     }
+
+    /// <summary>
+    /// The asking-run label of an approval prompt: a subagent ask names its depth, and a child in
+    /// another worktree also names the root the call will act in (a child in the session's own
+    /// root needs no root label). Top-level asks carry no label.
+    /// </summary>
+    private string? AskerLabel(ApprovalRequest request)
+    {
+        if (request.Depth <= 0)
+        {
+            return null;
+        }
+
+        string label = FormattableString.Invariant($"subagent (depth {request.Depth})");
+        if (
+            request.WorkspaceRoot is { Length: > 0 } root
+            && !SameRoot(root, _workspace.WorktreeRoot)
+        )
+        {
+            return FormattableString.Invariant($"{label} in {DisplayDirectory(root)}");
+        }
+
+        return label;
+    }
+
+    private static bool SameRoot(string left, string right) =>
+        string.Equals(
+            left,
+            right,
+            OperatingSystem.IsLinux()
+                ? StringComparison.Ordinal
+                : StringComparison.OrdinalIgnoreCase
+        );
 
     /// <summary>"Always" is remembered per session; every rebuild (/new, any /resume) clears it.</summary>
     private void ResetAlwaysApproved()

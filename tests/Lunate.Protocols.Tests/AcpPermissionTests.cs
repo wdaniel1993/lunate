@@ -2,6 +2,7 @@ using System.Text.Json;
 using Acp.Schema;
 using Lunate.Agent;
 using Lunate.Coding;
+using Lunate.Protocols.Acp;
 using ChatRole = Microsoft.Extensions.AI.ChatRole;
 using FunctionResultContent = Microsoft.Extensions.AI.FunctionResultContent;
 using IChatClient = Microsoft.Extensions.AI.IChatClient;
@@ -205,6 +206,33 @@ public sealed class AcpPermissionTests
 
         Assert.Equal(StopReason.Cancelled, response.StopReason);
         Assert.Equal(0, tool.Executions);
+    }
+
+    [Fact]
+    public async Task A_subagent_permission_names_its_workspace_root()
+    {
+        await using RawAcpRuntime runtime = AcpTestSupport.StartRaw();
+        runtime.State.PermissionHandler = (request, _) =>
+            Task.FromResult(Answer(request, PermissionOptionKind.AllowOnce));
+        var approver = new ClientApprover(runtime.Server, new SessionId("subagent-session"));
+        var tool = new RecordingRiskTool("write-probe", ToolRisk.Write);
+        ApprovalRequest request = new(
+            tool,
+            JsonDocument.Parse("""{"path":"a.cs"}""").RootElement.Clone(),
+            "run_child",
+            "run_parent",
+            Depth: 1,
+            WorkspaceRoot: "/worktrees/b"
+        );
+
+        bool approved = await approver.ApproveAsync(request, Ct);
+
+        Assert.True(approved);
+        RequestPermissionRequest permission = Assert.Single(runtime.State.PermissionRequests);
+        Assert.Equal(
+            "write-probe: a.cs (subagent depth 1 in /worktrees/b)",
+            permission.ToolCall.Title
+        );
     }
 
     private static AcpRuntime Start(

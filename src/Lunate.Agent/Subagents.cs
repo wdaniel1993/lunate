@@ -29,10 +29,17 @@ public interface ISubagentRunner
 /// The model-facing names of the tools to offer the child — a subset of the run's own tools. An
 /// unknown name refuses the spawn with a teaching error; null offers the parent's full set.
 /// </param>
+/// <param name="WorkspaceRoot">
+/// The child run's worktree root: canonicalized and required to be a worktree of the same
+/// repository (the same git-common-dir) as the parent; null inherits the parent's workspace, and
+/// naming the parent's own root behaves as the inherit case. A missing path, a root outside the
+/// repository or a missing workspace-tool factory refuses the spawn with a teaching error result.
+/// </param>
 public sealed record SubagentRequest(
     string Prompt,
     int? MaxSteps = null,
-    IReadOnlyList<string>? AllowedTools = null
+    IReadOnlyList<string>? AllowedTools = null,
+    string? WorkspaceRoot = null
 );
 
 /// <summary>The outcome of one child run: its session and run identity, output and accounting.</summary>

@@ -20,6 +20,14 @@ public sealed record AgentHarnessOptions
     /// <summary>The directory tools run in.</summary>
     public string WorkingDirectory { get; init; } = Environment.CurrentDirectory;
 
+    /// <summary>
+    /// Builds the tool set of a child run that names another workspace root. Without it such a
+    /// spawn is refused with a teaching error (<c>workspace_tools_unavailable</c>): the child must
+    /// never run with the parent's tools in the wrong directory. Null keeps the inherit path
+    /// unchanged.
+    /// </summary>
+    public Func<string, ToolRegistry>? WorkspaceTools { get; init; }
+
     /// <summary>The approval seam; null allows every tool call.</summary>
     public IToolApprover? Approver { get; init; }
 

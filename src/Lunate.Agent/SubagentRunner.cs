@@ -133,8 +133,33 @@ internal sealed class SubagentRunner : ISubagentRunner
             );
         }
 
+        ChildWorkspace? workspace = ResolveWorkspace(request, out SubagentResult? workspaceRefusal);
+        if (workspaceRefusal is not null)
+        {
+            return workspaceRefusal;
+        }
+
+        ToolRegistry? workspaceTools = null;
+        if (workspace is { } target)
+        {
+            if (_harness.Options.WorkspaceTools is not { } factory)
+            {
+                return Refusal(
+                    StopReasons.WorkspaceToolsUnavailable,
+                    $"Subagent spawn refused (workspace_tools_unavailable): no workspace-tool "
+                        + $"factory is configured, so a child run in '{target.Root}' cannot be given "
+                        + "tools built for that workspace. The composer must supply "
+                        + "AgentHarnessOptions.WorkspaceTools; never run a child with the parent's "
+                        + "tools in the wrong directory."
+                );
+            }
+
+            workspaceTools = factory(target.Root);
+        }
+
         IReadOnlyList<string>? allowedTools = ResolveAllowList(
             request.AllowedTools,
+            workspaceTools ?? _harness.Tools,
             out string? unknown
         );
         if (unknown is not null)
@@ -162,7 +187,8 @@ internal sealed class SubagentRunner : ISubagentRunner
 
         try
         {
-            return await RunChildAsync(request, allowedTools, ct).ConfigureAwait(false);
+            return await RunChildAsync(request, allowedTools, workspace, workspaceTools, ct)
+                .ConfigureAwait(false);
         }
         finally
         {
@@ -173,21 +199,130 @@ internal sealed class SubagentRunner : ISubagentRunner
     private static SubagentResult Refusal(string stopReason, string message) =>
         new(null, null, message, stopReason, IsError: true, TokensUsed: 0);
 
+    /// <summary>
+    /// Resolves the request's workspace root: null means the inherit path (no root named, or the
+    /// parent's own root); a value means the child runs in another worktree of the parent's
+    /// repository. Every refusal is a teaching error result, never an exception.
+    /// </summary>
+    private ChildWorkspace? ResolveWorkspace(SubagentRequest request, out SubagentResult? refusal)
+    {
+        refusal = null;
+        string requested = request.WorkspaceRoot ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(requested))
+        {
+            return null;
+        }
+
+        string canonical;
+        try
+        {
+            canonical = GitIdentity.Canonicalize(requested);
+        }
+        catch (Exception exception)
+            when (exception
+                    is IOException
+                        or UnauthorizedAccessException
+                        or ArgumentException
+                        or NotSupportedException
+            )
+        {
+            refusal = Refusal(StopReasons.WorkspaceMissing, MissingMessage(requested));
+            return null;
+        }
+
+        if (!Directory.Exists(canonical))
+        {
+            refusal = Refusal(StopReasons.WorkspaceMissing, MissingMessage(requested));
+            return null;
+        }
+
+        string parentRoot = CanonicalParentRoot();
+        if (PathsEqual(canonical, parentRoot))
+        {
+            return null;
+        }
+
+        (_, string? parentCommonDir) = GitIdentity.Detect(parentRoot);
+        (_, string? childCommonDir) = GitIdentity.Detect(canonical);
+        if (
+            parentCommonDir is null
+            || childCommonDir is null
+            || !PathsEqual(parentCommonDir, childCommonDir)
+        )
+        {
+            refusal = Refusal(
+                StopReasons.WorkspaceOutsideRepository,
+                $"Subagent spawn refused (workspace_outside_repository): the workspace root "
+                    + $"'{canonical}' is not a worktree of the parent run's repository (it must "
+                    + "share the same git-common-dir). Child runs may only target worktrees of the "
+                    + "repository the parent runs in; create one with 'git worktree add' and retry."
+            );
+            return null;
+        }
+
+        return new ChildWorkspace(canonical, childCommonDir);
+    }
+
+    private static string MissingMessage(string requested) =>
+        $"Subagent spawn refused (workspace_missing): the workspace root '{requested}' does not "
+        + "exist or is not a directory. Create the worktree first (for example with 'git worktree "
+        + "add') and retry, or omit the workspace root to inherit the parent's.";
+
+    /// <summary>The parent run's canonical workspace root; best effort outside a valid path.</summary>
+    private string CanonicalParentRoot()
+    {
+        string root = _harness.Options.WorkingDirectory;
+        try
+        {
+            return GitIdentity.Canonicalize(root);
+        }
+        catch (Exception exception)
+            when (exception
+                    is IOException
+                        or UnauthorizedAccessException
+                        or ArgumentException
+                        or NotSupportedException
+            )
+        {
+            return Path.GetFullPath(root);
+        }
+    }
+
+    private static bool PathsEqual(string left, string right) =>
+        string.Equals(
+            left,
+            right,
+            OperatingSystem.IsLinux()
+                ? StringComparison.Ordinal
+                : StringComparison.OrdinalIgnoreCase
+        );
+
     private async Task<SubagentResult> RunChildAsync(
         SubagentRequest request,
         IReadOnlyList<string>? allowedTools,
+        ChildWorkspace? workspace,
+        ToolRegistry? workspaceTools,
         CancellationToken ct
     )
     {
         string childRunId = RunIds.Next();
         Session? parentSession = _harness.Options.Session;
-        Session? childSession = parentSession is null ? null : CreateChildSession(parentSession);
+        Session? childSession = parentSession is null
+            ? null
+            : CreateChildSession(parentSession, workspace);
         if (parentSession is not null && childSession is not null)
         {
             parentSession.AppendChildSession(childSession.SessionId, childRunId);
         }
 
-        AgentHarness child = CreateChildHarness(request, allowedTools, childSession, childRunId);
+        AgentHarness child = CreateChildHarness(
+            request,
+            allowedTools,
+            childSession,
+            childRunId,
+            workspace,
+            workspaceTools
+        );
         var completedText = new StringBuilder();
         var currentText = new StringBuilder();
         long tokensUsed = 0;
@@ -264,7 +399,9 @@ internal sealed class SubagentRunner : ISubagentRunner
         SubagentRequest request,
         IReadOnlyList<string>? allowedTools,
         Session? childSession,
-        string childRunId
+        string childRunId,
+        ChildWorkspace? workspace,
+        ToolRegistry? workspaceTools
     )
     {
         AgentHarnessOptions parentOptions = _harness.Options;
@@ -276,8 +413,12 @@ internal sealed class SubagentRunner : ISubagentRunner
             // The per-child ceiling. The tree's remaining budget is checked live by the child
             // loop before every model call, so concurrent children cannot freeze it at spawn.
             TokenBudget = _tree.Limits.TokenBudget,
+            // The working directory follows the request's workspace; without a root it stays the
+            // parent's, bit-for-bit.
+            WorkingDirectory = workspace?.Root ?? parentOptions.WorkingDirectory,
         };
-        return new AgentHarness(_harness.ChatClient, BuildRegistry(allowedTools), childOptions)
+        ToolRegistry childTools = BuildRegistry(allowedTools, workspaceTools ?? _harness.Tools);
+        return new AgentHarness(_harness.ChatClient, childTools, childOptions)
         {
             ParentRunId = _parentRunId,
             SpawnDepth = Depth + 1,
@@ -291,13 +432,16 @@ internal sealed class SubagentRunner : ISubagentRunner
             ? Math.Clamp(value, 1, _harness.Options.MaxSteps)
             : _harness.Options.MaxSteps;
 
-    /// <summary>The named subset in the parent's registration order; null names the parent's full set.</summary>
-    private ToolRegistry BuildRegistry(IReadOnlyList<string>? allowedTools)
+    /// <summary>The named subset in the source's registration order; null keeps the source's full set.</summary>
+    private static ToolRegistry BuildRegistry(
+        IReadOnlyList<string>? allowedTools,
+        ToolRegistry source
+    )
     {
         var registry = new ToolRegistry();
         if (allowedTools is null)
         {
-            foreach (ITool tool in _harness.Tools.Tools)
+            foreach (ITool tool in source.Tools)
             {
                 registry.Add(tool);
             }
@@ -306,7 +450,7 @@ internal sealed class SubagentRunner : ISubagentRunner
         }
 
         HashSet<string> selected = new(allowedTools, StringComparer.Ordinal);
-        foreach (ITool tool in _harness.Tools.Tools)
+        foreach (ITool tool in source.Tools)
         {
             if (selected.Contains(tool.Name))
             {
@@ -317,8 +461,10 @@ internal sealed class SubagentRunner : ISubagentRunner
         return registry;
     }
 
-    private IReadOnlyList<string>? ResolveAllowList(
+    /// <summary>The allow-list may only name tools of the child's own offered set.</summary>
+    private static IReadOnlyList<string>? ResolveAllowList(
         IReadOnlyList<string>? names,
+        ToolRegistry source,
         out string? unknown
     )
     {
@@ -330,7 +476,7 @@ internal sealed class SubagentRunner : ISubagentRunner
 
         foreach (string name in names)
         {
-            if (_harness.Tools.Find(name) is null)
+            if (source.Find(name) is null)
             {
                 unknown = name;
                 return null;
@@ -342,9 +488,10 @@ internal sealed class SubagentRunner : ISubagentRunner
 
     /// <summary>
     /// Creates the child session file beside the parent's (same sessions directory, fresh id) and
-    /// mirrors the parent's header fields, so the worktree/repo grouping is preserved.
+    /// mirrors the parent's header fields, so the worktree/repo grouping is preserved. A child in
+    /// another workspace root records its own repository identity and worktree instead.
     /// </summary>
-    private static Session CreateChildSession(Session parent)
+    private static Session CreateChildSession(Session parent, ChildWorkspace? workspace)
     {
         string directory =
             Path.GetDirectoryName(Path.GetFullPath(parent.Path))
@@ -353,14 +500,19 @@ internal sealed class SubagentRunner : ISubagentRunner
             );
         Directory.CreateDirectory(directory);
         string provisional = Path.Combine(directory, Path.GetRandomFileName());
-        Session created = Session.Create(
-            provisional,
-            parent.Header.Cwd,
-            parent.Header.Repo,
-            parent.Header.Worktree
-        );
+        Session created = workspace is { } target
+            ? Session.Create(provisional, target.Root, target.GitCommonDir, target.Root)
+            : Session.Create(
+                provisional,
+                parent.Header.Cwd,
+                parent.Header.Repo,
+                parent.Header.Worktree
+            );
         string path = Path.Combine(directory, SessionPaths.SessionFileName(created.SessionId));
         File.Move(provisional, path);
         return Session.Load(path);
     }
+
+    /// <summary>The canonical root and git-common-dir of a child running in another worktree.</summary>
+    private sealed record ChildWorkspace(string Root, string? GitCommonDir);
 }
