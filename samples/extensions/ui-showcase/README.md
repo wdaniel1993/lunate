@@ -13,8 +13,8 @@ that print, JSON and ACP modes degrade cleanly when both contributions are loade
 | Renderer through the real loader | `UiShowcaseBarsRenderer` is registered by the factory, matched by the model-facing tool name `uikit__bars` (ordinal), and its segments reach the scrollback in the interactive session — the first renderer path exercised through the extension store and loader, not an injected registry. |
 | Status widget | `UiShowcaseUsageWidget` appends one segment to the footer on every status update: `▰▰▱▱▱▱▱▱ 25%` (accent below 80%, warning at or above; `ctx n/a` in dim when the context window is unknown). |
 | Empty-list degradation | Unparsable, empty or non-integer result text renders nothing (the renderer returns an empty list); a throwing renderer would be omitted, logged and retried by the registry. |
-| Glyph cap | A value is drawn with at most 40 `█` glyphs (the true number stays visible), so a hostile value cannot flood the view. |
-| Mode degradation | **TUI**: bars render; the footer carries the widget. **print**: stdout stays the raw text — no glyphs, no widget. **JSON**: the JSONL stream is structurally identical to a run without the extension — no UI artifacts anywhere. **ACP**: nothing new on stdout; the session runs. |
+| Glyph cap | A value is drawn with at most 40 `█` glyphs (the true number stays visible), so a hostile value cannot flood the view; a non-positive value shows no bar. At most 64 values render — the remainder is summarized (`… (+N more)`). |
+| Mode degradation | **TUI**: bars render; the footer carries the widget. **print**: stdout stays the raw text — no glyphs, no widget. **JSON**: the JSONL stream has the same event kinds in order as a run without the extension — no UI artifacts anywhere. **ACP**: nothing new on stdout; the session starts and exits cleanly with the extension loaded. |
 | Testing kit | `UiShowcaseExtension.Tests` installs the built extension through the real loader in a temp store and asserts registration, renderer output, widget output and the `System.Text.Json` round-trip of the produced segments; `tests/Lunate.Coding.Tests` proves the four modes with the sample installed into a temp store. |
 
 ## Layout
@@ -32,7 +32,8 @@ samples/extensions/ui-showcase/
   text is the compact JSON echo `{"values":[3,7,1,9]}` — exactly what the model sees; an invalid
   argument is a teaching error naming the fix.
 - **Renderer** — one line per value: `█` repeated `value` times in `Accent`, then the numeric value
-  in `Dim` (`███████ 7`). Garbage and empty results return an empty list.
+  in `Dim` (`███████ 7`). Garbage and empty results return an empty list; non-positive values show
+  only their number; at most 64 values render, the remainder summarized (`… (+N more)`).
 - **Widget** — the usage ratio (`TokensUsed / ContextWindow`) rounds to the percentage and to the
   filled cells of an eight-cell bar. Below 80% the segment is `Accent`, at or above it `Warning`;
   a window of 0 shows `ctx n/a` in `Dim`. The text is formatted with

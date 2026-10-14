@@ -4,10 +4,10 @@ No open questions: this change adds a sample and its proofs, no contract surface
 
 ## D1 — The sample
 
-`samples/extensions/ui-showcase/`: `UiShowcaseExtension` + `UiShowcaseExtension.Tests`. Abstractions-only (ADR-0017), manifest `ui-showcase`, settings file pattern like the other samples (none needed — no settings).
+`samples/extensions/ui-showcase/`: `UiShowcaseExtension` + `UiShowcaseExtension.Tests`. Abstractions-only (ADR-0017), manifest id `uikit` (see Deviations), settings file pattern like the other samples (none needed — no settings).
 
 - **Tool `uikit__bars`** (read-only; `values`: array of integers, required): returns a compact JSON result text `{"values":[3,7,1,9]}` (the renderer's input; the model sees exactly this).
-- **Renderer** (`IToolResultRenderer`, `ToolName = "uikit__bars"`): parses the result text; one segment line per value — `█` repeated `value` times in `Accent`, then the numeric value in `Dim` (e.g. `███████ 7`). Unparsable or empty input returns an empty list (shows nothing — the contract's degradation path). Bars are capped (max 40 glyphs) so a hostile value cannot flood the view.
+- **Renderer** (`IToolResultRenderer`, `ToolName = "uikit__bars"`): parses the result text; one segment line per value — `█` repeated `value` times in `Accent`, then the numeric value in `Dim` (e.g. `███████ 7`). Unparsable or empty input returns an empty list (shows nothing — the contract's degradation path). Bars are capped (max 40 glyphs) so a hostile value cannot flood the view; **at most 64 values render and the remainder is summarized** (`… (+N more)`); a non-positive value shows no bar, only its number.
 - **Status widget** (`IStatusWidget`): a usage bar from `StatusView` — `▰▰▱▱▱▱▱▱ 25%` (`Accent` under 80%, `Warning` at/above 80%); `ctx n/a` in `Dim` when `ContextWindow` is 0 (unknown); rounds with `CultureInfo.InvariantCulture`.
 
 ## D2 — Sample tests (testing kit)
@@ -26,8 +26,8 @@ All in `tests/Lunate.Coding.Tests`, one new file (`UiShowcaseSampleTests`), with
 
 - **TUI** (`InteractiveSessionHost`): install → run a scripted turn calling `uikit__bars` (scripted model client enqueues the call) → the scrollback contains the rendered bars, the footer contains the widget segment. This is the first renderer/widget path exercised through store → loader → registry → session (the T-40 tests inject registries directly).
 - **print** (`PrintMode.RunAsync`, in-process): with the sample loaded and a turn calling the tool — stdout contains the raw result text, contains no `█`/`▰` glyphs and no widget text; exit 0; stderr has no UI lines.
-- **JSON** (`JsonMode`): the JSONL stream stays pure — structurally equivalent to a no-extension run of the same script (same event kinds in order, payloads modulo run/session ids) and free of UI artifacts; the tool-result event carries the raw text.
-- **ACP** (`AcpMode`, the AcpInteractionTests pattern): the session runs with the sample loaded; stdout carries no UI artifacts.
+- **JSON** (`JsonMode`): the JSONL stream stays pure — the same event kinds in order as a no-extension run of the same script (payloads differ only where expected: the no-extension run's unknown-tool result carries `isError: true`) and free of UI artifacts; the tool-result event carries the raw text.
+- **ACP** (`AcpMode`, the AcpInteractionTests pattern): the session starts and exits cleanly with the sample loaded; stdout carries no UI artifacts.
 
 ## D4 — Wiring decision: Coding.Tests references the sample
 
@@ -41,7 +41,7 @@ The mode proofs must load the **sample** (not a fixture double), but mode seams 
 
 ## D6 — Errors and limits
 
-Renderer garbage → empty segments (never a throw; and a throw would be omitted + logged + retried per the contract). Widget unknown window → `ctx n/a`. Bar glyph cap 40. No settings; no background services; no network.
+Renderer garbage → empty segments (never a throw; and a throw would be omitted + logged + retried per the contract). Widget unknown window → `ctx n/a`. Caps: 40 glyphs per value, 64 rendered values (remainder summarized); non-positive values show no bar. No settings; no background services; no network.
 
 ## Deviations
 

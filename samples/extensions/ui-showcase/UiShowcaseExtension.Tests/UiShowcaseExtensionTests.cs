@@ -127,6 +127,53 @@ public sealed class UiShowcaseExtensionTests
     }
 
     [Fact]
+    public async Task Non_positive_values_show_their_number_without_a_bar()
+    {
+        using var temp = new TempDirectory();
+        await using var host = CreateHost(temp);
+        await host.StartAsync(Ct);
+
+        Assert.True(
+            host.Runner.ToolResultRenderers.TryRender(
+                "uikit__bars",
+                View("""{"values":[-5,0,2]}"""),
+                out IReadOnlyList<TextSegment> segments
+            )
+        );
+
+        Assert.Equal(
+            [
+                new TextSegment("-5\n", TextStyle.Dim),
+                new TextSegment("0\n", TextStyle.Dim),
+                new TextSegment("██ ", TextStyle.Accent),
+                new TextSegment("2", TextStyle.Dim),
+            ],
+            segments
+        );
+    }
+
+    [Fact]
+    public async Task At_most_sixty_four_values_render_and_the_remainder_is_summarized()
+    {
+        using var temp = new TempDirectory();
+        await using var host = CreateHost(temp);
+        await host.StartAsync(Ct);
+
+        string resultText = "{\"values\":[" + string.Join(',', Enumerable.Range(1, 70)) + "]}";
+        Assert.True(
+            host.Runner.ToolResultRenderers.TryRender(
+                "uikit__bars",
+                View(resultText),
+                out IReadOnlyList<TextSegment> segments
+            )
+        );
+
+        Assert.Equal((64 * 2) + 1, segments.Count);
+        Assert.Equal(new TextSegment("64\n", TextStyle.Dim), segments[^2]);
+        Assert.Equal(new TextSegment("… (+6 more)", TextStyle.Dim), segments[^1]);
+    }
+
+    [Fact]
     public async Task The_widget_shows_low_usage_in_accent()
     {
         using var temp = new TempDirectory();
