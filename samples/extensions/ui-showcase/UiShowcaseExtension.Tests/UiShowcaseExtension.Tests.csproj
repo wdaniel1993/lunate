@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <RootNamespace>UiShowcaseExtension.Tests</RootNamespace>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="../../../../src/Lunate.Extensibility.Abstractions/Lunate.Extensibility.Abstractions.csproj" />
+        <ProjectReference Include="../../../../src/Lunate.Extensibility.Testing/Lunate.Extensibility.Testing.csproj" />
+        <ProjectReference Include="../UiShowcaseExtension/UiShowcaseExtension.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="xunit.v3" Version="4.0.1" />
+        <Using Include="Xunit" />
+    </ItemGroup>
+
+    <Target Name="CopyUiShowcaseExtension" AfterTargets="Build">
+        <MSBuild
+            Projects="$(MSBuildThisFileDirectory)../UiShowcaseExtension/UiShowcaseExtension.csproj"
+            Targets="Build"
+            Properties="Configuration=$(Configuration)"
+        />
+        <ItemGroup>
+            <UiShowcaseExtensionFiles Include="$(MSBuildThisFileDirectory)../UiShowcaseExtension/bin/$(Configuration)/$(TargetFramework)/**/*" />
+        </ItemGroup>
+        <Copy
+            SourceFiles="@(UiShowcaseExtensionFiles)"
+            DestinationFolder="$(OutDir)UiShowcaseExtension/%(RecursiveDir)"
+            SkipUnchangedFiles="true"
+        />
+    </Target>
+</Project>
