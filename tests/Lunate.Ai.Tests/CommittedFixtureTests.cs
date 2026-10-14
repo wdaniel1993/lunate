@@ -83,7 +83,7 @@ public sealed class CommittedFixtureTests
         var factory = new ChatClientFactory(
             new MarkingLoggerFactory(static () => { }),
             enableOpenTelemetry: true,
-            providerClientFactory: _ => throwing,
+            providerClientFactory: (_, _) => throwing,
             recorderDecorator: _ => new ReplayChatClient(CommittedSamplePath())
         );
         IChatClient client = factory.Create(

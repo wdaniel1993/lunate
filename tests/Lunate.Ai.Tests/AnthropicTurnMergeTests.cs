@@ -90,7 +90,7 @@ public sealed class AnthropicTurnMergeTests
         var factory = new ChatClientFactory(
             new MarkingLoggerFactory(static () => { }),
             enableOpenTelemetry: false,
-            providerClientFactory: _ => throwing,
+            providerClientFactory: (_, _) => throwing,
             recorderDecorator: _ => new ReplayChatClient(
                 Path.Combine(FixturesDirectory, fixtureName)
             )
@@ -134,7 +134,7 @@ public sealed class AnthropicTurnMergeTests
         var factory = new ChatClientFactory(
             new MarkingLoggerFactory(static () => { }),
             enableOpenTelemetry: false,
-            providerClientFactory: _ => provider
+            providerClientFactory: (_, _) => provider
         );
         IChatClient client = factory.Create(
             new ModelInfo("claude-sonnet-5-5", "anthropic", null, 128_000, true)
@@ -167,7 +167,7 @@ public sealed class AnthropicTurnMergeTests
         var factory = new ChatClientFactory(
             new MarkingLoggerFactory(static () => { }),
             enableOpenTelemetry: false,
-            providerClientFactory: _ => provider
+            providerClientFactory: (_, _) => provider
         );
         IChatClient client = factory.Create(
             new ModelInfo("gpt-4o-mini", "openai", null, 128_000, true)

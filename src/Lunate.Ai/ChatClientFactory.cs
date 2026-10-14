@@ -23,14 +23,14 @@ public sealed class ChatClientFactory : IChatClientFactory
 
     private readonly ILoggerFactory _loggerFactory;
     private readonly bool _enableOpenTelemetry;
-    private readonly Func<ModelInfo, IChatClient>? _providerClientFactory;
+    private readonly Func<ModelInfo, string?, IChatClient>? _providerClientFactory;
     private readonly Func<IChatClient, IChatClient>? _recorderDecorator;
     private readonly Func<string, string?>? _namedKeySource;
 
     public ChatClientFactory(
         ILoggerFactory loggerFactory,
         bool? enableOpenTelemetry = null,
-        Func<ModelInfo, IChatClient>? providerClientFactory = null,
+        Func<ModelInfo, string?, IChatClient>? providerClientFactory = null,
         Func<IChatClient, IChatClient>? recorderDecorator = null,
         Func<string, string?>? namedKeySource = null
     )
@@ -55,7 +55,7 @@ public sealed class ChatClientFactory : IChatClientFactory
         ArgumentNullException.ThrowIfNull(model);
 
         IChatClient inner = _providerClientFactory is not null
-            ? _providerClientFactory(model)
+            ? _providerClientFactory(model, apiKey)
             : CreateProviderClient(model, apiKey);
 
         Func<IChatClient, IChatClient>? decorator = _recorderDecorator;

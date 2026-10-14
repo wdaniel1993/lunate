@@ -30,7 +30,7 @@ internal static class AgentLoopReplay
         var factory = new ChatClientFactory(
             NullLoggerFactory.Instance,
             enableOpenTelemetry: true,
-            providerClientFactory: _ => provider
+            providerClientFactory: (_, _) => provider
         );
         var harness = new AgentHarness(factory.Create(Model()), session.CreateTools());
         await harness
@@ -43,7 +43,7 @@ internal static class AgentLoopReplay
         IChatClient replay = new ChatClientFactory(
             NullLoggerFactory.Instance,
             enableOpenTelemetry: true,
-            providerClientFactory: _ => new ThrowingChatClient(),
+            providerClientFactory: (_, _) => new ThrowingChatClient(),
             recorderDecorator: _ => new ReplayChatClient(session.FixturePath)
         ).Create(Model());
         return new AgentHarness(replay, session.CreateTools());

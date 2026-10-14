@@ -266,10 +266,25 @@ internal sealed partial class InteractiveSession : IDisposable
     private void ResolveSessionModel()
     {
         string? configured = _settings.Model;
-        if (
-            !string.IsNullOrWhiteSpace(configured)
-            && _extensions?.ModelRegistry.FindCapabilities(configured) is { } capabilities
-        )
+        ModelCapabilities? capabilities = null;
+        if (!string.IsNullOrWhiteSpace(configured) && _extensions is not null)
+        {
+            try
+            {
+                capabilities = _extensions.ModelRegistry.FindCapabilities(configured);
+            }
+            catch (InvalidOperationException exception)
+            {
+                // A misconfigured extension model (unknown backend, cycle, bad capability
+                // declaration) degrades to the catalog default with a notice — like a failed
+                // extension host, it never aborts the session.
+                (_options.Diagnostics ?? Console.Error).WriteLine(
+                    $"lunate: the configured model '{configured}' did not resolve: {exception.Message}; using the catalog default"
+                );
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(configured) && capabilities is { } resolved)
         {
             _extensionModelId = configured;
             _modelRoute = null;
@@ -277,8 +292,8 @@ internal sealed partial class InteractiveSession : IDisposable
                 configured,
                 "extension",
                 Endpoint: null,
-                capabilities.ContextWindow,
-                capabilities.SupportsTools
+                resolved.ContextWindow,
+                resolved.SupportsTools
             );
         }
         else

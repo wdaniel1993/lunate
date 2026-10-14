@@ -93,6 +93,42 @@ public sealed class AgentModelAccessTests
     }
 
     [Fact]
+    public async Task A_multi_hop_route_reports_every_hop_and_charges_the_final_backend()
+    {
+        var routed = new MultiHopClient(
+            [("ext/e/auto", "ext/e/step"), ("ext/e/step", "fast")],
+            inputTokens: 7,
+            outputTokens: 3
+        );
+        var registry = new ScriptedRegistry { ["ext/e/auto"] = routed };
+        var tool = NestedCallTool("ext/e/auto");
+        var client = new ScriptedChatClient()
+            .Enqueue(LoopScripts.Call("c1", "nested"), LoopScripts.ToolCalls())
+            .Enqueue(LoopScripts.Text("done"), LoopScripts.Stop());
+        var harness = new AgentHarness(
+            client,
+            AgentTestSupport.Registry(tool),
+            new AgentHarnessOptions { ModelRegistry = registry }
+        );
+
+        List<AgentEvent> events = await harness.RunAsync("go", Ct).ToListAsync(Ct);
+
+        List<ModelRouted> routes = [.. events.OfType<ModelRouted>()];
+        Assert.Equal(2, routes.Count);
+        Assert.Equal(
+            ("ext/e/auto", "ext/e/step"),
+            (routes[0].RequestedModel, routes[0].ResolvedModel)
+        );
+        Assert.Equal(("ext/e/step", "fast"), (routes[1].RequestedModel, routes[1].ResolvedModel));
+        Assert.Equal(
+            "fast",
+            Assert
+                .Single(events.OfType<UsageUpdated>(), update => update.ModelId is not null)
+                .ModelId
+        );
+    }
+
+    [Fact]
     public async Task A_resolution_failure_is_a_teaching_error_through_the_seam()
     {
         var registry = new ScriptedRegistry();
@@ -232,6 +268,55 @@ public sealed class AgentModelAccessTests
                 ChatRole.Assistant,
                 [new UsageContent(new UsageDetails { InputTokenCount = 4, OutputTokenCount = 2 })]
             );
+        }
+
+        public object? GetService(Type serviceType, object? serviceKey = null) => null;
+
+        public void Dispose() { }
+    }
+
+    /// <summary>A client that reports each hop of a multi-hop virtual route, then usage.</summary>
+    private sealed class MultiHopClient(
+        (string Requested, string Resolved)[] hops,
+        long inputTokens,
+        long outputTokens
+    ) : IChatClient
+    {
+        public Task<ChatResponse> GetResponseAsync(
+            IEnumerable<ChatMessage> messages,
+            ChatOptions? options = null,
+            CancellationToken cancellationToken = default
+        )
+        {
+            foreach ((string requested, string resolved) in hops)
+            {
+                ModelRouteObserver.Report(requested, resolved);
+            }
+
+            return Task.FromResult(
+                new ChatResponse(new ChatMessage(ChatRole.Assistant, "routed"))
+                {
+                    ModelId = hops[^1].Resolved,
+                    Usage = new UsageDetails
+                    {
+                        InputTokenCount = inputTokens,
+                        OutputTokenCount = outputTokens,
+                    },
+                }
+            );
+        }
+
+        public async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
+            IEnumerable<ChatMessage> messages,
+            ChatOptions? options = null,
+            [EnumeratorCancellation] CancellationToken cancellationToken = default
+        )
+        {
+            await Task.Yield();
+            yield return new ChatResponseUpdate(ChatRole.Assistant, "routed")
+            {
+                ModelId = hops[^1].Resolved,
+            };
         }
 
         public object? GetService(Type serviceType, object? serviceKey = null) => null;

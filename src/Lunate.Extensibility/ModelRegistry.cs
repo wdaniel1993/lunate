@@ -233,6 +233,11 @@ public sealed partial class ModelRegistry : IModelRegistry
             _programmatic.RemoveAll(entry => IsOwner(entry.ExtensionId, extensionId));
             _virtuals.RemoveAll(entry => IsOwner(entry.ExtensionId, extensionId));
             _middlewares.RemoveAll(entry => IsOwner(entry.ExtensionId, extensionId));
+
+            // Derived capabilities and first-resolve validation may depend on backends owned by
+            // other extensions: clear them wholesale so dependents revalidate on next use.
+            _validatedVirtuals.Clear();
+            _capabilities.Clear();
             _declared.RemoveAll(provider => IsOwner(provider.ExtensionId, extensionId));
             foreach (string id in _providerIds.Keys.ToList())
             {

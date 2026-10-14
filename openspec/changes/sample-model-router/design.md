@@ -117,5 +117,5 @@ T-52 remote host; provider auth flows; streaming special-casing; pricing/costs; 
 3. **Fake endpoint is a raw `TcpListener`** with an ephemeral `127.0.0.1` port instead of the design's `HttpListener` (http.sys URL ACLs make `HttpListener` unreliable on Windows CI).
 4. **The sample test rewrites the manifest endpoint** to the ephemeral port before loading (the fake endpoint picks the port at runtime).
 5. **Programmatic providers have no declared capabilities**: `FindCapabilities` reports window 0 (unknown — percent omitted) and tools true; declared providers use the manifest's `contextWindow`/`supportsTools`; virtual models derive from backends.
-6. **`IChatClientFactory` gained an explicit-key overload** (Ai-side, additive) so declared providers can use extension secrets without an auth-store entry.
+6. **`IChatClientFactory` gained an explicit-key overload** (Ai-side; technically breaking for external implementers — there are none, it is a host-internal seam) so declared providers can use extension secrets without an auth-store entry; the test-only `providerClientFactory` seam now receives the explicit key too, so an injected seam can no longer silently drop it.
 7. **Tools-unsupported is a pre-flight refusal** for `supportsTools: false` (teaching error naming the declaration) rather than translating a provider-side error.

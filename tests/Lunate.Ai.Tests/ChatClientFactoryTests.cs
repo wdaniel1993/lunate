@@ -134,7 +134,7 @@ public sealed class ChatClientFactoryTests
         var factory = new ChatClientFactory(
             new MarkingLoggerFactory(() => sequence.Add("logging")),
             enableOpenTelemetry: true,
-            providerClientFactory: _ => new ProviderStub(sequence),
+            providerClientFactory: (_, _) => new ProviderStub(sequence),
             recorderDecorator: inner => recorder = new MarkerChatClient("recorder", sequence, inner)
         );
 
@@ -535,14 +535,14 @@ public sealed class ChatClientFactoryTests
         new(
             new MarkingLoggerFactory(() => sequence.Add("logging")),
             enableOpenTelemetry,
-            _ => new ProviderStub(sequence),
+            (_, _) => new ProviderStub(sequence),
             inner => new MarkerChatClient("recorder", sequence, inner)
         );
 
     private static ChatClientFactory CreateFactoryWithoutExplicitTelemetry(List<string> sequence) =>
         new(
             new MarkingLoggerFactory(() => sequence.Add("logging")),
-            providerClientFactory: _ => new ProviderStub(sequence),
+            providerClientFactory: (_, _) => new ProviderStub(sequence),
             recorderDecorator: inner => new MarkerChatClient("recorder", sequence, inner)
         );
 
