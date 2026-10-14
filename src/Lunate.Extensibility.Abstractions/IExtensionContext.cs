@@ -51,6 +51,26 @@ public interface IExtensionContext
     /// </summary>
     void RegisterMcpServer(McpServerRegistration registration);
 
+    /// <summary>
+    /// Registers a model provider. Registration is registration only: it must not start processes,
+    /// sockets or timers; the provider's client is created lazily at first use. At most 8 providers
+    /// per extension; duplicate ids and served model ids are refused naming both extensions.
+    /// </summary>
+    void RegisterModelProvider(ExtensionModelProvider provider);
+
+    /// <summary>
+    /// Registers a model middleware at its pipeline slot. Registration is registration only: it
+    /// must not start processes, sockets or timers. At most 16 middlewares per extension.
+    /// </summary>
+    void RegisterModelMiddleware(ExtensionModelMiddleware middleware);
+
+    /// <summary>
+    /// Registers a virtual model. Registration is registration only: it must not start processes,
+    /// sockets or timers. At most 8 virtual models per extension; duplicate ids are refused naming
+    /// both extensions, and backends are validated at first resolve.
+    /// </summary>
+    void RegisterVirtualModel(VirtualModelRegistration model);
+
     /// <summary>Looks up a service another extension registered by its name.</summary>
     bool TryGetService(string name, out IBackgroundService? service);
 

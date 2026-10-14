@@ -61,7 +61,9 @@ public sealed partial record ExtensionManifest
                     RequiredProviderString(item, fileName, "displayName", $"{path}.displayName"),
                     endpoint,
                     RequiredProviderString(item, fileName, "secretName", $"{path}.secretName"),
-                    RequiredModelIds(item, fileName, $"{path}.modelIds")
+                    RequiredModelIds(item, fileName, $"{path}.modelIds"),
+                    RequiredContextWindow(item, fileName, $"{path}.contextWindow"),
+                    OptionalSupportsTools(item, fileName, $"{path}.supportsTools")
                 )
             );
             index++;
@@ -105,6 +107,42 @@ public sealed partial record ExtensionManifest
         }
 
         return element.GetString()!;
+    }
+
+    private static int RequiredContextWindow(JsonElement item, string fileName, string path)
+    {
+        if (!item.TryGetProperty("contextWindow", out JsonElement element))
+        {
+            throw new InvalidDataException($"{fileName}: field '{path}' is required.");
+        }
+
+        if (
+            element.ValueKind != JsonValueKind.Number
+            || !element.TryGetInt32(out int value)
+            || value <= 0
+        )
+        {
+            throw new InvalidDataException(
+                $"{fileName}: field '{path}' must be a positive integer."
+            );
+        }
+
+        return value;
+    }
+
+    private static bool OptionalSupportsTools(JsonElement item, string fileName, string path)
+    {
+        if (!item.TryGetProperty("supportsTools", out JsonElement element))
+        {
+            return true;
+        }
+
+        if (element.ValueKind is not (JsonValueKind.True or JsonValueKind.False))
+        {
+            throw new InvalidDataException($"{fileName}: field '{path}' must be a boolean.");
+        }
+
+        return element.GetBoolean();
     }
 
     private static IReadOnlyList<string> RequiredModelIds(

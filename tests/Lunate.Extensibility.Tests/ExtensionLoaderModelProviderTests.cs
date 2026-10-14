@@ -6,7 +6,7 @@ public sealed class ExtensionLoaderModelProviderTests
 
     private const string AcmeProvider = """
         [{"id":"acme-local","displayName":"Acme Local","endpoint":"http://localhost:11434/v1",
-          "secretName":"acme-key","modelIds":["acme-7b"]}]
+          "secretName":"acme-key","modelIds":["acme-7b"],"contextWindow":32768}]
         """;
 
     [Fact]

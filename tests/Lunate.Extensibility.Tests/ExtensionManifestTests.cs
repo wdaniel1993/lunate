@@ -64,7 +64,8 @@ public sealed class ExtensionManifestTests
             {"id":"hello","version":"0.1.0","apiVersion":"^1.0.0","entryAssembly":"HelloExtension.dll",
              "modelProviders":[{"id":"acme-local","displayName":"Acme Local",
               "endpoint":"http://localhost:11434/v1","secretName":"acme-key",
-              "modelIds":["acme-7b","acme-13b"],"future":"ignored"}]}
+              "modelIds":["acme-7b","acme-13b"],"contextWindow":32768,
+              "supportsTools":false,"future":"ignored"}]}
             """;
 
         ExtensionManifest manifest = ExtensionManifest.Parse(json, "extension.json");
@@ -75,6 +76,23 @@ public sealed class ExtensionManifestTests
         Assert.Equal("http://localhost:11434/v1", provider.Endpoint);
         Assert.Equal("acme-key", provider.SecretName);
         Assert.Equal(["acme-7b", "acme-13b"], provider.ModelIds);
+        Assert.Equal(32768, provider.ContextWindow);
+        Assert.False(provider.SupportsTools);
+    }
+
+    [Fact]
+    public void A_provider_without_supportsTools_defaults_to_true()
+    {
+        const string json = """
+            {"id":"hello","version":"0.1.0","apiVersion":"^1.0.0","entryAssembly":"HelloExtension.dll",
+             "modelProviders":[{"id":"acme-local","displayName":"Acme Local",
+              "endpoint":"http://localhost:11434/v1","secretName":"acme-key",
+              "modelIds":["acme-7b"],"contextWindow":32768}]}
+            """;
+
+        ExtensionManifest manifest = ExtensionManifest.Parse(json, "extension.json");
+
+        Assert.True(Assert.Single(manifest.ModelProviders).SupportsTools);
     }
 
     [Fact]
@@ -88,40 +106,64 @@ public sealed class ExtensionManifestTests
     [Theory]
     [InlineData("""[1]""", "modelProviders")]
     [InlineData(
-        """[{"displayName":"Acme","endpoint":"http://x/v1","secretName":"k","modelIds":["m"]}]""",
+        """[{"displayName":"Acme","endpoint":"http://x/v1","secretName":"k","modelIds":["m"],"contextWindow":8}]""",
         "modelProviders[0].id"
     )]
     [InlineData(
-        """[{"id":"Acme","displayName":"Acme","endpoint":"http://x/v1","secretName":"k","modelIds":["m"]}]""",
+        """[{"id":"Acme","displayName":"Acme","endpoint":"http://x/v1","secretName":"k","modelIds":["m"],"contextWindow":8}]""",
         "modelProviders[0].id"
     )]
     [InlineData(
-        """[{"id":"acme","endpoint":"http://x/v1","secretName":"k","modelIds":["m"]}]""",
+        """[{"id":"acme","endpoint":"http://x/v1","secretName":"k","modelIds":["m"],"contextWindow":8}]""",
         "modelProviders[0].displayName"
     )]
     [InlineData(
-        """[{"id":"acme","displayName":"Acme","secretName":"k","modelIds":["m"]}]""",
+        """[{"id":"acme","displayName":"Acme","secretName":"k","modelIds":["m"],"contextWindow":8}]""",
         "modelProviders[0].endpoint"
     )]
     [InlineData(
-        """[{"id":"acme","displayName":"Acme","endpoint":"ftp://x/v1","secretName":"k","modelIds":["m"]}]""",
+        """[{"id":"acme","displayName":"Acme","endpoint":"ftp://x/v1","secretName":"k","modelIds":["m"],"contextWindow":8}]""",
         "modelProviders[0].endpoint"
     )]
     [InlineData(
-        """[{"id":"acme","displayName":"Acme","endpoint":"/v1","secretName":"k","modelIds":["m"]}]""",
+        """[{"id":"acme","displayName":"Acme","endpoint":"/v1","secretName":"k","modelIds":["m"],"contextWindow":8}]""",
         "modelProviders[0].endpoint"
     )]
     [InlineData(
-        """[{"id":"acme","displayName":"Acme","endpoint":"http://x/v1","secretName":"","modelIds":["m"]}]""",
+        """[{"id":"acme","displayName":"Acme","endpoint":"http://x/v1","secretName":"","modelIds":["m"],"contextWindow":8}]""",
         "modelProviders[0].secretName"
     )]
     [InlineData(
-        """[{"id":"acme","displayName":"Acme","endpoint":"http://x/v1","secretName":"k","modelIds":[]}]""",
+        """[{"id":"acme","displayName":"Acme","endpoint":"http://x/v1","secretName":"k","modelIds":[],"contextWindow":8}]""",
         "modelProviders[0].modelIds"
     )]
     [InlineData(
-        """[{"id":"acme","displayName":"Acme","endpoint":"http://x/v1","secretName":"k","modelIds":[1]}]""",
+        """[{"id":"acme","displayName":"Acme","endpoint":"http://x/v1","secretName":"k","modelIds":[1],"contextWindow":8}]""",
         "modelProviders[0].modelIds"
+    )]
+    [InlineData(
+        """[{"id":"acme","displayName":"Acme","endpoint":"http://x/v1","secretName":"k","modelIds":["m"]}]""",
+        "modelProviders[0].contextWindow"
+    )]
+    [InlineData(
+        """[{"id":"acme","displayName":"Acme","endpoint":"http://x/v1","secretName":"k","modelIds":["m"],"contextWindow":0}]""",
+        "modelProviders[0].contextWindow"
+    )]
+    [InlineData(
+        """[{"id":"acme","displayName":"Acme","endpoint":"http://x/v1","secretName":"k","modelIds":["m"],"contextWindow":-8}]""",
+        "modelProviders[0].contextWindow"
+    )]
+    [InlineData(
+        """[{"id":"acme","displayName":"Acme","endpoint":"http://x/v1","secretName":"k","modelIds":["m"],"contextWindow":1.5}]""",
+        "modelProviders[0].contextWindow"
+    )]
+    [InlineData(
+        """[{"id":"acme","displayName":"Acme","endpoint":"http://x/v1","secretName":"k","modelIds":["m"],"contextWindow":"8k"}]""",
+        "modelProviders[0].contextWindow"
+    )]
+    [InlineData(
+        """[{"id":"acme","displayName":"Acme","endpoint":"http://x/v1","secretName":"k","modelIds":["m"],"contextWindow":8,"supportsTools":"yes"}]""",
+        "modelProviders[0].supportsTools"
     )]
     public void Malformed_model_providers_fail_naming_the_file_and_field(
         string providers,
@@ -147,8 +189,8 @@ public sealed class ExtensionManifestTests
     public void Duplicate_model_provider_ids_are_rejected()
     {
         const string providers = """
-            [{"id":"acme","displayName":"Acme","endpoint":"http://x/v1","secretName":"k","modelIds":["m"]},
-             {"id":"acme","displayName":"Other","endpoint":"http://y/v1","secretName":"k2","modelIds":["m2"]}]
+            [{"id":"acme","displayName":"Acme","endpoint":"http://x/v1","secretName":"k","modelIds":["m"],"contextWindow":8},
+             {"id":"acme","displayName":"Other","endpoint":"http://y/v1","secretName":"k2","modelIds":["m2"],"contextWindow":8}]
             """;
         string json =
             $$"""{"id":"hello","version":"0.1.0","apiVersion":"^1.0.0","entryAssembly":"e.dll","modelProviders":{{providers}}}""";

@@ -17,7 +17,8 @@ public sealed class ModelProviderRegistryTests
                     "Acme Local",
                     "http://localhost:11434/v1",
                     "acme-key",
-                    ["acme-7b", "acme-13b"]
+                    ["acme-7b", "acme-13b"],
+                    32768
                 ),
             ]
         );
@@ -52,7 +53,8 @@ public sealed class ModelProviderRegistryTests
                     "Acme Local",
                     "http://localhost:11434/v1",
                     "acme-key",
-                    ["acme-7b"]
+                    ["acme-7b"],
+                    32768
                 ),
             ]
         );
@@ -118,5 +120,5 @@ public sealed class ModelProviderRegistryTests
     }
 
     private static ModelProviderDescriptor Provider(string id) =>
-        new(id, id, "http://localhost:11434/v1", "key", ["model"]);
+        new(id, id, "http://localhost:11434/v1", "key", ["model"], 4096);
 }
