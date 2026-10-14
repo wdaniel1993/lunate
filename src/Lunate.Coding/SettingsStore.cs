@@ -28,6 +28,23 @@ public sealed record AgentSettings
 
     /// <summary>The resolved subagent limits (the <c>subagents</c> section; defaults 4/100000/500000).</summary>
     public SubagentLimits Subagents { get; init; } = new();
+
+    /// <summary>The resolved Roslyn settings (the <c>roslyn</c> section).</summary>
+    public RoslynSettings Roslyn { get; init; } = new();
+}
+
+/// <summary>The per-workspace Roslyn limits (the <c>roslyn</c> settings section).</summary>
+public sealed record RoslynSettings
+{
+    /// <summary>The documented default of <see cref="MaxLoadedWorkspaces"/>.</summary>
+    public const int DefaultMaxLoadedWorkspaces = 2;
+
+    /// <summary>
+    /// The maximum number of loaded Roslyn workspaces across roots; a further root's load evicts
+    /// the least-recently-used unpinned backend. Never <c>unlimited</c>: the doubled worst-case
+    /// memory (up to 2× the ADR-0009 Roslyn budget) is the documented cost of concurrency.
+    /// </summary>
+    public int MaxLoadedWorkspaces { get; init; } = DefaultMaxLoadedWorkspaces;
 }
 
 /// <summary>
@@ -142,6 +159,9 @@ public static class SettingsStore
                         {
                             Subagents = ReadSubagents(property.Value, problems),
                         };
+                        break;
+                    case "roslyn":
+                        settings = settings with { Roslyn = ReadRoslyn(property.Value, problems) };
                         break;
                     default:
                         problems.Add($"unknown key '{property.Name}'");
@@ -273,6 +293,43 @@ public static class SettingsStore
         }
 
         return limits;
+    }
+
+    /// <summary>
+    /// Reads the <c>roslyn</c> section: <c>maxLoadedWorkspaces</c> is a positive integer; a
+    /// missing key keeps the documented default. <c>unlimited</c> is not offered.
+    /// </summary>
+    private static RoslynSettings ReadRoslyn(JsonElement value, List<string> problems)
+    {
+        var settings = new RoslynSettings();
+        if (value.ValueKind != JsonValueKind.Object)
+        {
+            problems.Add("'roslyn' must be an object");
+            return settings;
+        }
+
+        foreach (JsonProperty property in value.EnumerateObject())
+        {
+            if (property.Name != "maxLoadedWorkspaces")
+            {
+                problems.Add($"unknown key 'roslyn.{property.Name}'");
+                continue;
+            }
+
+            if (
+                property.Value.ValueKind != JsonValueKind.Number
+                || !property.Value.TryGetInt32(out int parsed)
+                || parsed < 1
+            )
+            {
+                problems.Add("'roslyn.maxLoadedWorkspaces' must be a positive integer");
+                continue;
+            }
+
+            settings = settings with { MaxLoadedWorkspaces = parsed };
+        }
+
+        return settings;
     }
 
     private static int? ReadConcurrency(JsonElement value, List<string> problems)

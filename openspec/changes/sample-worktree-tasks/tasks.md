@@ -11,10 +11,10 @@
 
 ## 2. Per-workspace services + Roslyn wiring (`Lunate.Coding`, `Lunate.Roslyn`)
 
-- [ ] 2.1 `WorkspaceServices`: canonical-root keyed, lazy, thread-safe; loaded-workspace cap `roslyn.maxLoadedWorkspaces` (default 2, LRU unload + dispose); in-flight calls pin their workspace (never unload under a call; all-pinned → cancellation-aware wait); observable eviction for tests; invalid values refused with a teaching error naming the key; memory documented (up to 2× the ADR-0009 budget) and included in the memory measurement notes.
-- [ ] 2.2 `HarnessFactory` composes the five `cs_*` tools into every run (all modes) bound to the run's workspace through the registry, offered only where the workspace has `.sln`/`.slnx`/`.csproj` (cheap detection, no Roslyn); child runs in a worktree get them bound to the child root; laziness preserved (no Roslyn load before first call; startup budget gate stays green).
-- [ ] 2.3 Tests: two roots load two workspaces; third root evicts the LRU victim (assert the root); touch-before-load keeps the touched one; in-flight call pins (cap waits); fresh worktree returns the restore hint; no-solution workspace offers no cs tools; SDK-absent path unchanged.
-- [ ] 2.4 MCP `workspaceIndependent` (optional bool, default false) parsed from `mcp.json` entries; exclusion test in the child composition.
+- [x] 2.1 `WorkspaceServices`: canonical-root keyed, lazy, thread-safe; loaded-workspace cap `roslyn.maxLoadedWorkspaces` (default 2, LRU unload + dispose); in-flight calls pin their workspace (never unload under a call; all-pinned → cancellation-aware wait); observable eviction for tests; invalid values refused with a teaching error naming the key; memory documented (up to 2× the ADR-0009 budget) and included in the memory measurement notes.
+- [x] 2.2 `HarnessFactory` composes the five `cs_*` tools into every run (all modes) bound to the run's workspace through the registry, offered only where the workspace has `.sln`/`.slnx`/`.csproj` (cheap detection, no Roslyn); child runs in a worktree get them bound to the child root; laziness preserved (no Roslyn load before first call; startup budget gate stays green).
+- [x] 2.3 Tests: two roots load two workspaces; third root evicts the LRU victim (assert the root); touch-before-load keeps the touched one; in-flight call pins (cap waits); fresh worktree returns the restore hint; no-solution workspace offers no cs tools; SDK-absent path unchanged.
+- [x] 2.4 MCP `workspaceIndependent` (optional bool, default false) parsed from `mcp.json` entries; exclusion test in the child composition.
 
 ## 3. Sample (`samples/extensions/worktree-tasks`)
 

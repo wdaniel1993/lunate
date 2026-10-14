@@ -15,11 +15,11 @@ internal sealed record McpConfigResult(
 
 /// <summary>
 /// The <c>mcp.json</c> parser: the Claude-Desktop-compatible <c>mcpServers</c> map keyed by server
-/// name. <c>command</c> is required; <c>args</c>, <c>env</c>, <c>cwd</c> and
-/// <c>callTimeoutSeconds</c> are optional; unknown fields are ignored. A malformed entry yields an
-/// error naming the server and field and is skipped; a malformed or unreadable file yields one error
-/// carrying the path. A missing file is zero servers and zero errors. The file is read by the
-/// caller at session start only.
+/// name. <c>command</c> is required; <c>args</c>, <c>env</c>, <c>cwd</c>,
+/// <c>callTimeoutSeconds</c> and <c>workspaceIndependent</c> are optional; unknown fields are
+/// ignored. A malformed entry yields an error naming the server and field and is skipped; a
+/// malformed or unreadable file yields one error carrying the path. A missing file is zero servers
+/// and zero errors. The file is read by the caller at session start only.
 /// </summary>
 internal static class McpConfig
 {
@@ -194,6 +194,20 @@ internal static class McpConfig
             callTimeout = TimeSpan.FromSeconds(seconds);
         }
 
+        bool workspaceIndependent = false;
+        if (server.ContainsKey("workspaceIndependent"))
+        {
+            if (
+                server["workspaceIndependent"] is not JsonValue value
+                || !value.TryGetValue<bool>(out bool parsed)
+            )
+            {
+                return Malformed(name, "workspaceIndependent", "a boolean", path, errors);
+            }
+
+            workspaceIndependent = parsed;
+        }
+
         return new McpServerOptions(
             name,
             command,
@@ -202,7 +216,8 @@ internal static class McpConfig
             workingDirectory,
             callTimeout,
             NamespaceName: name,
-            Source: path
+            Source: path,
+            WorkspaceIndependent: workspaceIndependent
         );
     }
 

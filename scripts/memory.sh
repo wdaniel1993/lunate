@@ -8,7 +8,9 @@
 #   selftest      proves the sampler and the gate logic
 #   idle CMD...   measure CMD's peak RSS; CMD must stay alive (gate: MEMORY_GATE_MB)
 #   workingset    TODO - enabled by T-22 (placeholder gate 250 MB)
-#   roslyn        TODO - enabled by T-25 (gate 750 MB from the S-4 addendum)
+#   roslyn        TODO - enabled by T-25 (gate 750 MB from the S-4 addendum per loaded
+#                 workspace); the per-workspace cap (default 2, roslyn.maxLoadedWorkspaces)
+#                 makes up to 2x the measured peak the worst case (ADR-0021)
 #
 # Env: MEMORY_GATE_MB (default 150), MEMORY_TARGET_MB (default 100),
 #      MEMORY_SAMPLES_MIN (default 5; minimum ticks for a valid idle window).

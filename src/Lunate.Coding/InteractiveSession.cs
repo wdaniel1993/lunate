@@ -109,6 +109,9 @@ internal sealed partial class InteractiveSession : IDisposable
     private IChatClientFactory _factory = null!;
     private Workspace _workspace = null!;
     private ToolRegistry _tools = null!;
+    private WorkspaceServices? _workspaceServices;
+    private Func<string, ToolRegistry>? _workspaceTools;
+    private readonly List<ITool> _inheritedTools = [];
     private Session _session = null!;
     private string _sessionDirectory = string.Empty;
     private ModelInfo _model = null!;
@@ -216,6 +219,8 @@ internal sealed partial class InteractiveSession : IDisposable
             }
 
             await DisposeExtensionsAsync();
+            _workspaceServices?.Dispose();
+            _workspaceServices = null;
             _live.Dispose();
         }
     }
@@ -240,7 +245,8 @@ internal sealed partial class InteractiveSession : IDisposable
             _options.Factory
             ?? HarnessFactory.CreateFactory(_options.AuthPath, _options.Environment);
         _workspace = new Workspace(_options.WorkingDirectory ?? Environment.CurrentDirectory);
-        _tools = HarnessFactory.CreateTools(_workspace);
+        _workspaceServices = new WorkspaceServices(_settings.Roslyn.MaxLoadedWorkspaces);
+        _tools = HarnessFactory.CreateTools(_workspace, services: _workspaceServices);
         _sessionDirectory =
             _options.SessionDirectory ?? HarnessFactory.DefaultSessionDirectory(_workspace);
         _session = HarnessFactory.CreateSession(_sessionDirectory, _workspace);
@@ -251,6 +257,7 @@ internal sealed partial class InteractiveSession : IDisposable
         await ComposeExtensionsAsync(ct);
         await ComposeMcpConfigAsync(ct);
         await ComposeMcpToolsAsync(ct);
+        _workspaceTools = HarnessFactory.CreateWorkspaceTools(_workspaceServices, _inheritedTools);
         // The model resolves after the extension host: the configured id may name a virtual or
         // extension-registered model, which only the registry knows.
         ResolveSessionModel();
@@ -407,6 +414,7 @@ internal sealed partial class InteractiveSession : IDisposable
                 foreach (ITool tool in extensions.Tools)
                 {
                     _tools.Add(tool);
+                    _inheritedTools.Add(tool);
                 }
 
                 ExtensionMcpServers servers = extensions.ComposeMcpServers(
@@ -430,6 +438,16 @@ internal sealed partial class InteractiveSession : IDisposable
                     "mcp.json",
                     message => Notify(message, NoticeLevel.Warning)
                 );
+
+                // A child run in another worktree may be offered the tools of servers explicitly
+                // marked workspace-independent (and only those); skipped collisions stay skipped.
+                foreach (ITool tool in mcp.ListedToolsFrom(options => options.WorkspaceIndependent))
+                {
+                    if (_tools.Tools.Contains(tool))
+                    {
+                        _inheritedTools.Add(tool);
+                    }
+                }
 
                 McpComposition.NotifyFailures(mcp, Notify);
             }
@@ -504,6 +522,7 @@ internal sealed partial class InteractiveSession : IDisposable
             ModelCatalog = _catalog,
             ModelId = model.Id,
             ModelRegistry = _extensions?.ModelRegistry,
+            WorkspaceTools = _workspaceTools,
         };
         if (_options.ConfigureHarness is { } configure)
         {

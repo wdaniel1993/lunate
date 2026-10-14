@@ -33,10 +33,16 @@ internal static class AcpMode
         ExtensionSession? host = null;
         McpToolSet? mcp = null;
         List<ITool> mcpTools = [];
+        List<ITool> inheritedTools = [];
+        var workspaceServices = new WorkspaceServices(RoslynSettings.DefaultMaxLoadedWorkspaces);
         try
         {
             var workspace = new Workspace(Environment.CurrentDirectory);
             IExtensionLog log = extensions?.Log ?? new StderrExtensionLog(errors);
+            AgentSettings settings = SettingsStore.Resolve(null, null);
+            WorkspaceServices configured = new(settings.Roslyn.MaxLoadedWorkspaces);
+            workspaceServices.Dispose();
+            workspaceServices = configured;
 
             if (extensions?.NoExtensions is not true)
             {
@@ -60,6 +66,7 @@ internal static class AcpMode
             {
                 // Extension tools first, in registration order, then the MCP tools (design D7).
                 mcpTools.AddRange(host.Tools);
+                inheritedTools.AddRange(host.Tools);
                 // The configured names are the collision baseline: a same-named registration is
                 // skipped before listing (the configured server wins); nothing starts before.
                 ExtensionMcpServers servers = host.ComposeMcpServers(
@@ -81,6 +88,16 @@ internal static class AcpMode
                     "mcp.json",
                     notice => interaction.Notify(new UserNotice(NoticeLevel.Warning, notice))
                 );
+                // A child run in another worktree may be offered the tools of servers explicitly
+                // marked workspace-independent (and only those); skipped collisions stay skipped.
+                foreach (ITool tool in mcp.ListedToolsFrom(options => options.WorkspaceIndependent))
+                {
+                    if (mcpTools.Contains(tool))
+                    {
+                        inheritedTools.Add(tool);
+                    }
+                }
+
                 McpComposition.NotifyFailures(mcp, notice => interaction.Notify(notice));
             }
         }
@@ -97,7 +114,13 @@ internal static class AcpMode
         try
         {
             server
-                .RunAsync(input, output, context => CreateHarness(context, host, mcpTools), ct)
+                .RunAsync(
+                    input,
+                    output,
+                    context =>
+                        CreateHarness(context, host, mcpTools, inheritedTools, workspaceServices),
+                    ct
+                )
                 .GetAwaiter()
                 .GetResult();
             return 0;
@@ -114,6 +137,7 @@ internal static class AcpMode
         finally
         {
             DisposeComposition(host, mcp, errors);
+            workspaceServices.Dispose();
         }
     }
 
@@ -179,7 +203,9 @@ internal static class AcpMode
     private static AgentHarness CreateHarness(
         AcpSessionContext context,
         ExtensionSession? host,
-        IReadOnlyList<ITool> mcpTools
+        IReadOnlyList<ITool> mcpTools,
+        IReadOnlyList<ITool> inheritedTools,
+        WorkspaceServices workspaceServices
     )
     {
         AgentSettings settings = SettingsStore.Resolve(null, null);
@@ -188,7 +214,11 @@ internal static class AcpMode
         IChatClientFactory factory = HarnessFactory.CreateFactory(null, null);
 
         var workspace = new Workspace(context.Cwd);
-        ToolRegistry tools = HarnessFactory.CreateTools(workspace, context.FileAccess);
+        ToolRegistry tools = HarnessFactory.CreateTools(
+            workspace,
+            context.FileAccess,
+            workspaceServices
+        );
         foreach (ITool tool in mcpTools)
         {
             tools.Add(tool);
@@ -215,6 +245,7 @@ internal static class AcpMode
             FileChanges = (IFileChangeSink?)host?.FileChanges ?? NullFileChangeSink.Instance,
             ModelCatalog = catalog,
             ModelId = model.Id,
+            WorkspaceTools = HarnessFactory.CreateWorkspaceTools(workspaceServices, inheritedTools),
         };
 
         return new AgentHarness(factory.Create(model), tools, options);

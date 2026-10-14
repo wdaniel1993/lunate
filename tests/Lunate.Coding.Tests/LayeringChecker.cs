@@ -23,6 +23,8 @@ internal static class LayeringChecker
             ("Lunate.Coding", "Lunate.Agent"),
             ("Lunate.Coding", "Lunate.Extensibility"),
             ("Lunate.Coding", "Lunate.Protocols"),
+            // The composition owns the per-workspace Roslyn services and composes the cs_* tools.
+            ("Lunate.Coding", "Lunate.Roslyn"),
             ("Lunate.Coding", "Lunate.Tui"),
             ("Lunate.Agent.Tests", "Lunate.Agent"),
             ("Lunate.Ai.Tests", "Lunate.Ai"),

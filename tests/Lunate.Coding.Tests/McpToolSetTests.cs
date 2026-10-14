@@ -50,6 +50,41 @@ public sealed class McpToolSetTests
     }
 
     [Fact]
+    public async Task Only_workspace_independent_servers_tools_are_offered_to_other_roots()
+    {
+        using var temp = new TempDirectory();
+        await using var set = new McpToolSet([
+            new McpServerOptions(
+                "project",
+                McpTestServerSupport.DotnetPath,
+                ["exec", McpTestServerSupport.ServerDll],
+                NamespaceName: "project",
+                Source: "mcp.json"
+            ),
+            new McpServerOptions(
+                "global",
+                McpTestServerSupport.DotnetPath,
+                ["exec", McpTestServerSupport.ServerDll],
+                NamespaceName: "global",
+                Source: "mcp.json",
+                WorkspaceIndependent: true
+            ),
+        ]);
+
+        IReadOnlyList<ITool> tools = await set.ListToolsAsync(Ct);
+
+        Assert.Equal(10, tools.Count);
+        IReadOnlyList<ITool> independent = set.ListedToolsFrom(options =>
+            options.WorkspaceIndependent
+        );
+        Assert.Equal(5, independent.Count);
+        Assert.All(
+            independent,
+            tool => Assert.StartsWith("global__", tool.Name, StringComparison.Ordinal)
+        );
+    }
+
+    [Fact]
     public async Task A_crashed_server_flips_to_failed_once_and_notifies_once()
     {
         using var temp = new TempDirectory();

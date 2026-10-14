@@ -319,4 +319,59 @@ public sealed class SettingsStoreTests
         Assert.Equal(ApprovalPolicy.Ask, settings.Approval);
         Assert.Equal(30_000, settings.ToolOutputLimit);
     }
+
+    [Fact]
+    public void The_roslyn_section_sets_the_loaded_workspace_cap()
+    {
+        using var temp = new TempDirectory();
+        File.WriteAllText(
+            temp.File("settings.json"),
+            """
+            {
+              "schemaVersion": 1,
+              "roslyn": { "maxLoadedWorkspaces": 3 }
+            }
+            """
+        );
+
+        AgentSettings settings = SettingsStore.Resolve(temp.File("settings.json"), _ => null);
+
+        Assert.Equal(3, settings.Roslyn.MaxLoadedWorkspaces);
+    }
+
+    [Fact]
+    public void The_roslyn_default_cap_is_two()
+    {
+        using var temp = new TempDirectory();
+
+        AgentSettings settings = SettingsStore.Resolve(temp.File("missing.json"), _ => null);
+
+        Assert.Equal(2, settings.Roslyn.MaxLoadedWorkspaces);
+    }
+
+    [Fact]
+    public void Invalid_roslyn_values_are_refused_naming_their_key()
+    {
+        using var temp = new TempDirectory();
+        File.WriteAllText(
+            temp.File("settings.json"),
+            """
+            {
+              "schemaVersion": 1,
+              "roslyn": { "maxLoadedWorkspaces": 0, "extra": true }
+            }
+            """
+        );
+
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+            SettingsStore.Resolve(temp.File("settings.json"), _ => null)
+        );
+
+        Assert.Contains(
+            "'roslyn.maxLoadedWorkspaces' must be a positive integer",
+            exception.Message,
+            StringComparison.Ordinal
+        );
+        Assert.Contains("unknown key 'roslyn.extra'", exception.Message, StringComparison.Ordinal);
+    }
 }
