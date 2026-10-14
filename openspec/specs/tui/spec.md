@@ -231,7 +231,7 @@ A pending approval SHALL render as a live-area prompt naming the tool and its ar
 
 ### Requirement: Status footer
 
-The footer SHALL show model, tokens used against the context window with percent, working directory and git branch as one dim line, formatted culture-invariantly. Extension status widgets, when registered, SHALL append their segments after the core fields in registration order. It SHALL degrade deterministically at narrow widths (branch dropped first, then directory; model and usage survive; widget segments drop before the branch) and omit percent when the window is unknown. The interactive session SHALL provide a `/context` command showing the context usage plus the resolved subagent limits (concurrency, per-child and per-tree token budgets, the fixed depth) with the current tree usage.
+The footer SHALL show model, tokens used against the context window with percent, working directory and git branch as one dim line, formatted culture-invariantly. When the session's model is a virtual or extension-registered model, the model segment SHALL show the last routed resolution (`auto → deep`), updating as `ModelRouted` events arrive. Extension status widgets, when registered, SHALL append their segments after the core fields in registration order. It SHALL degrade deterministically at narrow widths (branch dropped first, then directory; model and usage survive; widget segments drop before the branch) and omit percent when the window is unknown. The interactive session SHALL provide a `/context` command showing the context usage plus the resolved subagent limits (concurrency, per-child and per-tree token budgets, the fixed depth) with the current tree usage.
 
 #### Scenario: Narrow width degrades in order
 
@@ -256,6 +256,12 @@ The footer SHALL show model, tokens used against the context window with percent
 - **GIVEN** an interactive session after a subagent ran
 - **WHEN** `/context` is entered
 - **THEN** the context usage and the resolved subagent limits with the current tree usage are shown
+
+#### Scenario: The footer shows the last route
+
+- **GIVEN** a session on a virtual model
+- **WHEN** a call routes to the `deep` backend
+- **THEN** the footer's model segment shows `auto → deep`
 
 ### Requirement: Git branch discovery without processes
 
@@ -329,7 +335,7 @@ The interactive session SHALL consume the harness's event stream: streaming text
 
 ### Requirement: Slash commands
 
-A submitted line whose first non-space character is `/` SHALL dispatch as a client command and never reach the model: `/model` opens the model picker (`/model <id>` switches directly when the id is in the catalog), `/new` starts a fresh session, `/resume` opens the session picker, `/compact` requests an explicit out-of-run compaction, `/mcp` lists the configured and extension-registered MCP servers with their status and source (the config file path it came from, or `extension '{id}'`), with a name collision shown as the configured server winning and the registration marked shadowed, and never printing environment values or headers, `/trust` lists this repository's trust records (`/trust clear` clears them, so the next load asks again), `/quit` quits. Commands SHALL append to the input history and skip the input pipeline; an unknown command SHALL produce a dim notice naming it. While a turn is running, `/new`, `/resume`, `/model` and `/compact` SHALL be refused with a notice; `/quit` SHALL quit at any time (cancelling a running turn). While an approval prompt or a picker is open, no input is submitted, so no command can dispatch.
+A submitted line whose first non-space character is `/` SHALL dispatch as a client command and never reach the model: `/model` opens the model picker (`/model <id>` switches directly when the id is in the catalog), and when the current model is an extension-registered or virtual model the picker's current-model line and `/model` SHALL show its last routed resolution (`auto → deep`); `/new` starts a fresh session, `/resume` opens the session picker, `/compact` requests an explicit out-of-run compaction, `/mcp` lists the configured and extension-registered MCP servers with their status and source (the config file path it came from, or `extension '{id}'`), with a name collision shown as the configured server winning and the registration marked shadowed, and never printing environment values or headers, `/trust` lists this repository's trust records (`/trust clear` clears them, so the next load asks again), `/quit` quits. Commands SHALL append to the input history and skip the input pipeline; an unknown command SHALL produce a dim notice naming it. While a turn is running, `/new`, `/resume`, `/model` and `/compact` SHALL be refused with a notice; `/quit` SHALL quit at any time (cancelling a running turn). While an approval prompt or a picker is open, no input is submitted, so no command can dispatch.
 
 #### Scenario: Every built-in command dispatches without a model call
 
@@ -396,6 +402,12 @@ A submitted line whose first non-space character is `/` SHALL dispatch as a clie
 - **GIVEN** a repository with recorded trust decisions
 - **WHEN** `/trust` is submitted
 - **THEN** a notice lists them, and after `/trust clear` the records are gone and a later load asks again
+
+#### Scenario: The picker shows routing for a virtual model
+
+- **GIVEN** a session whose model is a virtual model with a recorded last resolution
+- **WHEN** the model picker opens
+- **THEN** its current-model line shows `auto → deep`
 
 ### Requirement: SelectList pickers
 

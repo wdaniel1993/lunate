@@ -7,7 +7,7 @@ Define the observable contract between the agent loop and its consumers (TUI, re
 
 ### Requirement: Closed event set aligned with AG-UI
 
-`Lunate.Agent` SHALL define `AgentEvent` as a closed, sealed set of records matching the guide's event table: `RunStarted`, `RunFinished(stopReason)`, `RunError`, `TextMessageStart`, `TextMessageContent`, `TextMessageEnd`, `ToolCallStart`, `ToolCallArgs`, `ToolCallEnd`, `ToolCallResult` (with UI-only `Details`), plus extension events (`ApprovalRequested`, `UsageUpdated`, `Retrying`, `CompactionApplied`, `StepLimitReached`) deriving from a common extension base. Every event SHALL carry a run id. Child-run events forwarded onto a parent run's stream SHALL keep their own run id and session id and SHALL carry `ParentRunId` set to the parent run id; consumers of a stream SHALL scope events by run id and SHALL NOT assume a single run per stream. `RunFinished.StopReason` SHALL use the documented vocabulary: `stop` for a turn that finished normally, `cancelled` for a run cancelled through its token, `step_limit` for a run that reached `MaxSteps`, `length` for a turn the model's token limit cut off, and `token_limit` for a run that stopped because its configured token budget was exhausted before a model call; the loop maps the final turn's model finish reason accordingly (`length` → `length`, any other value → `stop`). The loop SHALL emit `Retrying` before each retry attempt and `UsageUpdated` when the provider reports usage.
+`Lunate.Agent` SHALL define `AgentEvent` as a closed, sealed set of records matching the guide's event table: `RunStarted`, `RunFinished(stopReason)`, `RunError`, `TextMessageStart`, `TextMessageContent`, `TextMessageEnd`, `ToolCallStart`, `ToolCallArgs`, `ToolCallEnd`, `ToolCallResult` (with UI-only `Details`), plus extension events (`ApprovalRequested`, `UsageUpdated`, `Retrying`, `CompactionApplied`, `StepLimitReached`, `ModelRouted`) deriving from a common extension base. Every event SHALL carry a run id. Child-run events forwarded onto a parent run's stream SHALL keep their own run id and session id and SHALL carry `ParentRunId` set to the parent run id; consumers of a stream SHALL scope events by run id and SHALL NOT assume a single run per stream. `RunFinished.StopReason` SHALL use the documented vocabulary: `stop` for a turn that finished normally, `cancelled` for a run cancelled through its token, `step_limit` for a run that reached `MaxSteps`, `length` for a turn the model's token limit cut off, and `token_limit` for a run that stopped because its configured token budget was exhausted before a model call; the loop maps the final turn's model finish reason accordingly (`length` → `length`, any other value → `stop`). The loop SHALL emit `Retrying` before each retry attempt and `UsageUpdated` when the provider reports usage; `UsageUpdated` SHALL carry the model id the usage belongs to (`ModelId` — the resolved backend for routed calls, the requested model otherwise), and a call routed through a virtual model SHALL emit `ModelRouted(requestedModel, resolvedModel)` when the resolution happens.
 
 #### Scenario: Set is closed and union-ready
 - **GIVEN** the event types
@@ -28,6 +28,11 @@ Define the observable contract between the agent loop and its consumers (TUI, re
 - **GIVEN** a child run's events forwarded onto its parent's stream
 - **WHEN** a consumer reads them
 - **THEN** each carries the child's run id and session id with `ParentRunId` naming the parent run, so a run-scoped consumer can never confuse the two runs
+
+#### Scenario: Routed calls are attributable
+- **GIVEN** a call routed through a virtual model to a backend
+- **WHEN** the call runs
+- **THEN** `ModelRouted` names the requested and the resolved model ids, and the usage event for that call carries the resolved model id
 
 ### Requirement: Event emission interface
 `IAgentEvents` SHALL provide `Emit(AgentEvent)`. A channel-backed implementation SHALL expose emitted events as an `IAsyncEnumerable` for the harness boundary; tests SHALL use a recording implementation.
