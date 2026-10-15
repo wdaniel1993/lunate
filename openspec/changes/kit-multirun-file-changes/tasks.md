@@ -7,9 +7,9 @@
 
 ## 2. The kit
 
-- [ ] 2.1 `ExtensionTestHost.RunAsync` flushes instead of draining; docstring states multi-run + session-end drain.
-- [ ] 2.2 `StopAsync` drains before `EndSessionAsync` (session-end final flush, production order).
-- [ ] 2.3 Kit test: two runs on one host deliver both runs' events in order, no drop warning (RED before the fix); existing single-run payload test still green.
+- [x] 2.1 `ExtensionTestHost.RunAsync` flushes instead of draining; docstring states multi-run + session-end drain.
+- [x] 2.2 `StopAsync` drains before `EndSessionAsync` (session-end final flush, production order).
+- [x] 2.3 Kit test: two runs on one host deliver both runs' events in order, no drop warning (RED before the fix); existing single-run payload test still green.
 
 ## 3. Spec + docs
 

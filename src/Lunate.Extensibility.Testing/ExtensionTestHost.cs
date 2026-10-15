@@ -140,7 +140,12 @@ public sealed class ExtensionTestHost : IAsyncDisposable
             .ConfigureAwait(false);
     }
 
-    /// <summary>Starts the session, runs one prompt through the real harness and drains file changes.</summary>
+    /// <summary>
+    /// Starts the session, runs one prompt through the real harness and flushes file changes.
+    /// Runs may repeat on one host — each call is one prompt in the same session; the flush makes
+    /// this run's deliveries observable without ending them, and the one-way drain happens at
+    /// <see cref="StopAsync"/> (session end), mirroring the production teardown.
+    /// </summary>
     public async Task<ExtensionRunResult> RunAsync(
         IChatClient client,
         string prompt,
@@ -182,7 +187,7 @@ public sealed class ExtensionTestHost : IAsyncDisposable
             events.Add(agentEvent);
         }
 
-        await _fileChanges.DrainAsync(cancellationToken).ConfigureAwait(false);
+        await _fileChanges.FlushAsync(cancellationToken).ConfigureAwait(false);
         return new ExtensionRunResult(events, session.Path);
     }
 
@@ -268,7 +273,11 @@ public sealed class ExtensionTestHost : IAsyncDisposable
         return [.. _mcpServers.Statuses.Select(ToPublicStatus)];
     }
 
-    /// <summary>Ends the session through the real lifecycle; later calls do nothing.</summary>
+    /// <summary>
+    /// Ends the session through the real lifecycle: file changes drain one-way (the session-end
+    /// final flush, before the session ends), so later notifications are dropped and logged; later
+    /// calls do nothing.
+    /// </summary>
     public async ValueTask StopAsync(CancellationToken cancellationToken = default)
     {
         if (_stopped)
@@ -283,6 +292,7 @@ public sealed class ExtensionTestHost : IAsyncDisposable
             await servers.DisposeAsync().ConfigureAwait(false);
         }
 
+        await _fileChanges.DrainAsync(cancellationToken).ConfigureAwait(false);
         await Runner.EndSessionAsync(cancellationToken).ConfigureAwait(false);
     }
 
