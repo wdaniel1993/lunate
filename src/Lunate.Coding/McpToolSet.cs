@@ -46,12 +46,13 @@ internal sealed class McpToolSet : IAsyncDisposable
 
     internal McpToolSet(
         IReadOnlyList<McpServerOptions> servers,
-        Action<string>? log = null,
+        Action<string> log,
         Action<string>? serverLog = null,
         Func<McpServerOptions, string>? describe = null
     )
     {
         ArgumentNullException.ThrowIfNull(servers);
+        ArgumentNullException.ThrowIfNull(log);
         _log = log;
         _describe = describe ?? (options => $"MCP server '{options.Name}'");
         _servers =

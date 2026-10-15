@@ -14,16 +14,19 @@ public sealed class McpToolSetTests
     {
         using var temp = new TempDirectory();
         string marker = temp.File("marker.txt");
-        await using var set = new McpToolSet([
-            new McpServerOptions(
-                "test",
-                TestMcpServer.DotnetPath,
-                ["exec", TestMcpServer.ServerDll],
-                new Dictionary<string, string> { ["LUNATE_TEST_MCP_MARKER"] = marker },
-                NamespaceName: "test",
-                Source: "test-source"
-            ),
-        ]);
+        await using var set = new McpToolSet(
+            [
+                new McpServerOptions(
+                    "test",
+                    TestMcpServer.DotnetPath,
+                    ["exec", TestMcpServer.ServerDll],
+                    new Dictionary<string, string> { ["LUNATE_TEST_MCP_MARKER"] = marker },
+                    NamespaceName: "test",
+                    Source: "test-source"
+                ),
+            ],
+            log: static _ => { }
+        );
 
         McpServerStatus before = Assert.Single(set.Statuses);
         Assert.Equal(McpServerState.NotStarted, before.State);
@@ -54,23 +57,26 @@ public sealed class McpToolSetTests
     public async Task Only_workspace_independent_servers_tools_are_offered_to_other_roots()
     {
         using var temp = new TempDirectory();
-        await using var set = new McpToolSet([
-            new McpServerOptions(
-                "project",
-                TestMcpServer.DotnetPath,
-                ["exec", TestMcpServer.ServerDll],
-                NamespaceName: "project",
-                Source: "mcp.json"
-            ),
-            new McpServerOptions(
-                "global",
-                TestMcpServer.DotnetPath,
-                ["exec", TestMcpServer.ServerDll],
-                NamespaceName: "global",
-                Source: "mcp.json",
-                WorkspaceIndependent: true
-            ),
-        ]);
+        await using var set = new McpToolSet(
+            [
+                new McpServerOptions(
+                    "project",
+                    TestMcpServer.DotnetPath,
+                    ["exec", TestMcpServer.ServerDll],
+                    NamespaceName: "project",
+                    Source: "mcp.json"
+                ),
+                new McpServerOptions(
+                    "global",
+                    TestMcpServer.DotnetPath,
+                    ["exec", TestMcpServer.ServerDll],
+                    NamespaceName: "global",
+                    Source: "mcp.json",
+                    WorkspaceIndependent: true
+                ),
+            ],
+            log: static _ => { }
+        );
 
         IReadOnlyList<ITool> tools = await set.ListToolsAsync(Ct);
 
@@ -177,24 +183,27 @@ public sealed class McpToolSetTests
     public async Task A_failing_server_is_isolated_recorded_and_the_others_still_work()
     {
         using var temp = new TempDirectory();
-        await using var set = new McpToolSet([
-            new McpServerOptions(
-                "broken",
-                "lunate-mcp-command-that-cannot-exist",
-                [],
-                NamespaceName: "broken"
-            ),
-            new McpServerOptions(
-                "test",
-                TestMcpServer.DotnetPath,
-                ["exec", TestMcpServer.ServerDll],
-                new Dictionary<string, string>
-                {
-                    ["LUNATE_TEST_MCP_MARKER"] = temp.File("marker.txt"),
-                },
-                NamespaceName: "test"
-            ),
-        ]);
+        await using var set = new McpToolSet(
+            [
+                new McpServerOptions(
+                    "broken",
+                    "lunate-mcp-command-that-cannot-exist",
+                    [],
+                    NamespaceName: "broken"
+                ),
+                new McpServerOptions(
+                    "test",
+                    TestMcpServer.DotnetPath,
+                    ["exec", TestMcpServer.ServerDll],
+                    new Dictionary<string, string>
+                    {
+                        ["LUNATE_TEST_MCP_MARKER"] = temp.File("marker.txt"),
+                    },
+                    NamespaceName: "test"
+                ),
+            ],
+            log: static _ => { }
+        );
 
         IReadOnlyList<ITool> tools = await set.ListToolsAsync(Ct);
 
