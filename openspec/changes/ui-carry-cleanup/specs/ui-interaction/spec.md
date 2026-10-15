@@ -28,7 +28,7 @@ Every mode SHALL present ambient user interaction through one seam with per-mode
 
 - **GIVEN** an extension block with styled segments
 - **WHEN** it is rendered under `NO_COLOR` and under the ASCII fallback
-- **THEN** the visible text is identical across both and carries no non-ASCII glyphs under ASCII
+- **THEN** the block's visible text is identical across both, and the ASCII run's output carries no non-ASCII glyphs
 
 #### Scenario: A failing contribution degrades to omission
 

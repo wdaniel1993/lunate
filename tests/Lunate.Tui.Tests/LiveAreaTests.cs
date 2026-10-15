@@ -160,6 +160,7 @@ public sealed class LiveAreaTests
         string plainText = string.Concat(plainConsole.Writes);
 
         Assert.Contains("\u001b[", coloredText, StringComparison.Ordinal);
+        Assert.Contains("alert", coloredText, StringComparison.Ordinal);
         Assert.Contains("alert", plainText, StringComparison.Ordinal);
         Assert.DoesNotContain("\u001b[", plainText, StringComparison.Ordinal);
     }

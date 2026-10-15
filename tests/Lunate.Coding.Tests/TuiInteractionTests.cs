@@ -71,12 +71,17 @@ public sealed class TuiInteractionTests
     [Fact]
     public async Task The_block_text_survives_the_no_color_and_ascii_fallbacks()
     {
-        string defaultScrollback = await RunBlockScenarioAsync(environment: null);
-        string fallbackScrollback = await RunBlockScenarioAsync(FallbackEnvironment());
+        string defaultScrollback = await RunBlockScenarioAsync(PrintModeTestSupport.Environment());
+        string noColorScrollback = await RunBlockScenarioAsync(EnvironmentWith("NO_COLOR", "1"));
+        string asciiScrollback = await RunBlockScenarioAsync(EnvironmentWith("LUNATE_ASCII", "1"));
 
-        Assert.Contains("extension saw the read", fallbackScrollback, StringComparison.Ordinal);
-        Assert.Equal(BlockText(defaultScrollback), BlockText(fallbackScrollback));
-        Assert.True(fallbackScrollback.All(character => character <= 0x7F), fallbackScrollback);
+        Assert.Contains("extension saw the read", asciiScrollback, StringComparison.Ordinal);
+        Assert.Equal(BlockText(defaultScrollback), BlockText(noColorScrollback));
+        Assert.Equal(BlockText(defaultScrollback), BlockText(asciiScrollback));
+        Assert.Contains("• first bullet", defaultScrollback, StringComparison.Ordinal);
+        Assert.DoesNotContain("•", asciiScrollback, StringComparison.Ordinal);
+        Assert.Contains("- first bullet", asciiScrollback, StringComparison.Ordinal);
+        Assert.True(asciiScrollback.All(character => character <= 0x7F), asciiScrollback);
     }
 
     [Fact]
@@ -136,7 +141,7 @@ public sealed class TuiInteractionTests
             Scripts.Call("call-1", "read", Scripts.Args(("path", "a.txt"))),
             Scripts.ToolCalls()
         );
-        host.Client.Enqueue(Scripts.Text("done"), Scripts.Stop());
+        host.Client.Enqueue(Scripts.Text("done\n\n- first bullet"), Scripts.Stop());
         Task run = host.RunAsync();
 
         host.Console.SendText("go");
@@ -148,16 +153,13 @@ public sealed class TuiInteractionTests
         return host.ScrollbackText;
     }
 
-    private static Func<string, string?> FallbackEnvironment()
+    private static Func<string, string?> EnvironmentWith(string name, string value)
     {
         Func<string, string?> baseEnvironment = PrintModeTestSupport.Environment();
-        return name =>
-            name switch
-            {
-                "NO_COLOR" => "1",
-                "LUNATE_ASCII" => "1",
-                _ => baseEnvironment(name),
-            };
+        return variable =>
+            string.Equals(variable, name, StringComparison.Ordinal)
+                ? value
+                : baseEnvironment(variable);
     }
 
     private static string BlockText(string scrollback) =>
