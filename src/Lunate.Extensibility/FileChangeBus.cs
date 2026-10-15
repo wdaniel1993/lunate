@@ -95,9 +95,36 @@ public sealed class FileChangeBus : IFileChangeSink, IFileChangeBus, IDisposable
     }
 
     /// <summary>
-    /// Completes when every notification enqueued so far has been dispatched. Beginning the drain
-    /// is one-way: notifications arriving afterwards are dropped and logged, so a slow handler can
-    /// never extend session teardown.
+    /// Completes when every notification enqueued so far has been dispatched, without beginning the
+    /// drain: notifications arriving afterwards are still delivered, so a flush may be repeated as
+    /// later notifications arrive. Unlike <see cref="DrainAsync"/>, the one-way session-end latch,
+    /// it never ends delivery and never drops anything.
+    /// </summary>
+    public async ValueTask FlushAsync(CancellationToken cancellationToken = default)
+    {
+        Task completion;
+        lock (_gate)
+        {
+            if (_processed >= _enqueued)
+            {
+                return;
+            }
+
+            var source = new TaskCompletionSource(
+                TaskCreationOptions.RunContinuationsAsynchronously
+            );
+            _drains.Add(new Drain(_enqueued, source));
+            completion = source.Task;
+        }
+
+        await completion.WaitAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Completes when every notification enqueued so far has been dispatched. Unlike
+    /// <see cref="FlushAsync"/>, it begins the one-way drain: notifications arriving afterwards are
+    /// dropped and logged, so a slow handler can never extend session teardown. Use it at session
+    /// end; use the flush when delivery must continue after it completes.
     /// </summary>
     public async ValueTask DrainAsync(CancellationToken cancellationToken = default)
     {

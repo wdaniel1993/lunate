@@ -2,8 +2,8 @@
 
 ## 1. The primitive
 
-- [ ] 1.1 `FileChangeBus.FlushAsync` (public, additive): completes when everything enqueued so far is dispatched; does not begin the drain; `DrainAsync` doc sentence distinguishing the two.
-- [ ] 1.2 Bus tests: flush observes delivery without ending it; drain after flush still latches (late notify dropped + logged).
+- [x] 1.1 `FileChangeBus.FlushAsync` (public, additive): completes when everything enqueued so far is dispatched; does not begin the drain; `DrainAsync` doc sentence distinguishing the two.
+- [x] 1.2 Bus tests: flush observes delivery without ending it; drain after flush still latches (late notify dropped + logged).
 
 ## 2. The kit
 
