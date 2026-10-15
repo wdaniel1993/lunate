@@ -23,6 +23,6 @@
 
 ## 5. Verify, review, archive
 
-- [ ] 5.1 `scripts/verify.sh` green (both cultures); csharpier/style/analyzers/markdownlint clean.
-- [ ] 5.2 Adversarial review; fix findings.
-- [ ] 5.3 Archive; push; PR.
+- [x] 5.1 `scripts/verify.sh` green (both cultures); csharpier/style/analyzers/markdownlint clean.
+- [x] 5.2 Adversarial review; fix findings.
+- [x] 5.3 Archive; push; PR.
