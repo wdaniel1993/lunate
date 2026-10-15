@@ -473,5 +473,7 @@ public sealed class CsFindSymbolToolTests
         ) => throw new InvalidOperationException("rename is not used by this tool");
 
         public void NotifyFileChanged(string absolutePath) { }
+
+        public void NotifyProjectChanged() { }
     }
 }

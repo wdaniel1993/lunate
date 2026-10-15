@@ -46,4 +46,10 @@ public interface ICSharpBackend
 
     /// <summary>Marks a file dirty so the next diagnostics run re-reads it immediately.</summary>
     void NotifyFileChanged(string absolutePath);
+
+    /// <summary>
+    /// Marks the workspace for a reload: a changed project, solution or build-configuration file
+    /// invalidates the whole compilation, so the next load reads the solution from disk again.
+    /// </summary>
+    void NotifyProjectChanged();
 }

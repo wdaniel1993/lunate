@@ -2,10 +2,10 @@
 
 ## 1. Roslyn backend
 
-- [ ] 1.1 `_dirty` → `ConcurrentDictionary<string, byte>` (`PathIdentity.Comparer`); `NotifyFileChanged` mark-only (no `_gate`); `SyncChangedDocuments` drains via `TryRemove` (parity with the old semantics; bus mark + scan idempotent — one compile, one changed-file count).
-- [ ] 1.2 `ReloadRequested` on the entry; the next call on the root disposes the loaded solution and reloads before reporting; load count observable for tests; trigger list: `.csproj`, `.sln`, `.slnx`, `Directory.Build.props`, `Directory.Build.targets`, `Directory.Packages.props`, `global.json`.
-- [ ] 1.3 Roslyn.Tests: mark completes while the gate is held (lock-free); drain parity; reload flag → next call reloads once; existing suites green.
-- [ ] 1.4 Restore-hint path after a reload with new package references (missing/stale restore output): pin with a test; extend the ADR-0006 check only if the test proves a gap.
+- [x] 1.1 `_dirty` → `ConcurrentDictionary<string, byte>` (`PathIdentity.Comparer`); `NotifyFileChanged` mark-only (no `_gate`); `SyncChangedDocuments` drains via `TryRemove` (parity with the old semantics; bus mark + scan idempotent — one compile, one changed-file count).
+- [x] 1.2 `ReloadRequested` on the entry; the next call on the root disposes the loaded solution and reloads before reporting; load count observable for tests; trigger list: `.csproj`, `.sln`, `.slnx`, `Directory.Build.props`, `Directory.Build.targets`, `Directory.Packages.props`, `global.json`.
+- [x] 1.3 Roslyn.Tests: mark completes while the gate is held (lock-free); drain parity; reload flag → next call reloads once; existing suites green.
+- [x] 1.4 Restore-hint path after a reload with new package references (missing/stale restore output): pin with a test; extend the ADR-0006 check only if the test proves a gap.
 
 ## 2. Coding wiring
 

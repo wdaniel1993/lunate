@@ -40,6 +40,16 @@ internal sealed class LruCache<TValue>(int capacity) : IDisposable
         }
     }
 
+    /// <summary>Removes and disposes the entry for <paramref name="key"/>; a missing key is a no-op.</summary>
+    public void Remove(string key)
+    {
+        if (_map.Remove(key, out var node))
+        {
+            _order.Remove(node);
+            node.Value.Value.Dispose();
+        }
+    }
+
     public void Dispose()
     {
         foreach (var entry in _order)
