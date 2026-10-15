@@ -8,7 +8,7 @@
 ## 2. Implementation
 
 - [x] 2.1 `SwitchToModel`: after the state change, resolve the active runner (`_options.Hooks ?? _extensions?.HookRunner`) and await `RunModelChangedAsync(new ModelChangedPayload(string.Empty, model.Id), ct)`; thread `ValueTask` + `ct` through `SwitchModel` → `ConfirmPicker` → `HandlePickerKey` → the `HandleKeyAsync` call site and the `/model` command case.
-- [x] 2.2 Tests (production path, `tests/Lunate.Coding.Tests`): `/model <id>` switch emits `ModelChanged` with the new id + empty run id to a registered handler; the picker-confirm path does the same (or a focused test through `HandleKeyAsync`); no emission for an unknown id; no emission without a runner (session unchanged).
+- [x] 2.2 Tests (production path, `tests/Lunate.Coding.Tests`): `/model <id>` switch emits `ModelChanged` with the new id + empty run id to a registered handler; the picker-confirm path does the same (or a focused test through `HandleKeyAsync`); no emission for an unknown id; without a runner the switch still completes and records the session model-change entry.
 - [x] 2.3 Confirm no other surface changes the active model (grep for `_modelId =` / `_model =` assignments outside `SwitchToModel`); if one exists, decide and record it.
 
 ## 3. Spec + docs
