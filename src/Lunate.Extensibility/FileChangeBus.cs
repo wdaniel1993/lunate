@@ -52,34 +52,36 @@ public sealed class FileChangeBus : IFileChangeSink, IFileChangeBus, IDisposable
         ArgumentNullException.ThrowIfNull(change);
         ArgumentException.ThrowIfNullOrWhiteSpace(change.AbsolutePath);
 
-        bool dropped = false;
+        bool accepted = false;
+        bool closed;
         lock (_gate)
         {
-            if (_disposed || _drainStarted)
+            closed = _disposed;
+            if (!closed && !_drainStarted)
             {
-                dropped = true;
-            }
-            else
-            {
-                _enqueued++;
-                _pump ??= Task.Run(PumpAsync);
+                if (_events.Writer.TryWrite(ToPayload(change)))
+                {
+                    _enqueued++;
+                    _pump ??= Task.Run(PumpAsync);
+                    accepted = true;
+                }
+                else
+                {
+                    closed = true;
+                }
             }
         }
 
-        if (dropped)
+        if (accepted)
         {
-            _log.Warn(
-                $"file change: notification for '{change.AbsolutePath}' dropped: a drain has begun."
-            );
             return;
         }
 
-        if (!_events.Writer.TryWrite(ToPayload(change)))
-        {
-            _log.Warn(
-                $"file change: notification for '{change.AbsolutePath}' dropped: the bus is closed."
-            );
-        }
+        _log.Warn(
+            closed
+                ? $"file change: notification for '{change.AbsolutePath}' dropped: the bus is closed."
+                : $"file change: notification for '{change.AbsolutePath}' dropped: a drain has begun."
+        );
     }
 
     public IDisposable Subscribe(IFileChangedHandler handler, string? pathPattern = null)
@@ -95,9 +97,36 @@ public sealed class FileChangeBus : IFileChangeSink, IFileChangeBus, IDisposable
     }
 
     /// <summary>
-    /// Completes when every notification enqueued so far has been dispatched. Beginning the drain
-    /// is one-way: notifications arriving afterwards are dropped and logged, so a slow handler can
-    /// never extend session teardown.
+    /// Completes when every notification enqueued so far has been dispatched, without beginning the
+    /// drain: notifications arriving afterwards are still delivered, so a flush may be repeated as
+    /// later notifications arrive. Unlike <see cref="DrainAsync"/>, the one-way session-end latch,
+    /// it never ends delivery and never drops anything.
+    /// </summary>
+    public async ValueTask FlushAsync(CancellationToken cancellationToken = default)
+    {
+        Task completion;
+        lock (_gate)
+        {
+            if (_processed >= _enqueued)
+            {
+                return;
+            }
+
+            var source = new TaskCompletionSource(
+                TaskCreationOptions.RunContinuationsAsynchronously
+            );
+            _drains.Add(new Drain(_enqueued, source));
+            completion = source.Task;
+        }
+
+        await completion.WaitAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Completes when every notification enqueued so far has been dispatched. Unlike
+    /// <see cref="FlushAsync"/>, it begins the one-way drain: notifications arriving afterwards are
+    /// dropped and logged, so a slow handler can never extend session teardown. Use it at session
+    /// end; use the flush when delivery must continue after it completes.
     /// </summary>
     public async ValueTask DrainAsync(CancellationToken cancellationToken = default)
     {

@@ -647,7 +647,7 @@ internal sealed partial class InteractiveSession : IDisposable
 
         if (_picker is not null)
         {
-            HandlePickerKey(key);
+            await HandlePickerKey(key, ct);
             return;
         }
 

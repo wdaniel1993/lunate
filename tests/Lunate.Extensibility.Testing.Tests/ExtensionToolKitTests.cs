@@ -88,6 +88,49 @@ public sealed class ExtensionToolKitTests
     }
 
     [Fact]
+    public async Task Two_runs_on_one_host_deliver_both_runs_file_changes()
+    {
+        using var temp = new TempDirectory();
+        await using var host = Host(temp);
+        Settings(host, """{"tools":[{"name":"publish","behavior":"publish"}]}""");
+        await host.StartAsync(Ct);
+        host.ComposeTools();
+        Assert.True(
+            host.Runner.Services.TryGetCore<IFileChangeBus>(
+                "core/file-bus",
+                out IFileChangeBus? bus
+            )
+        );
+        List<FileChangedPayload> changes = [];
+        using IDisposable subscription = bus!.Subscribe(new CollectingFileChangedHandler(changes));
+        string published = Path.Combine(host.WorkingDirectory, "published.txt");
+
+        ExtensionRunResult first = await host.RunAsync(
+            new ToolCallingChatClient("tools__publish", new Dictionary<string, object?>()),
+            "go",
+            Ct
+        );
+        ExtensionRunResult second = await host.RunAsync(
+            new ToolCallingChatClient("tools__publish", new Dictionary<string, object?>()),
+            "go",
+            Ct
+        );
+
+        Assert.Equal([published, published], changes.Select(change => change.Path));
+        Assert.Equal(
+            [
+                Assert.Single(first.Events.OfType<RunStarted>()).RunId,
+                Assert.Single(second.Events.OfType<RunStarted>()).RunId,
+            ],
+            changes.Select(change => change.RunId)
+        );
+        Assert.DoesNotContain(
+            host.Log.Entries,
+            entry => entry.Message.Contains("a drain has begun", StringComparison.Ordinal)
+        );
+    }
+
+    [Fact]
     public async Task A_nested_execute_tool_call_uses_slash_ids_and_the_real_pipeline()
     {
         using var temp = new TempDirectory();

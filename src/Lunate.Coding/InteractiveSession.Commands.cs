@@ -1,6 +1,7 @@
 using System.Globalization;
 using Lunate.Agent;
 using Lunate.Ai;
+using Lunate.Extensibility.Abstractions;
 using Lunate.Tui;
 
 namespace Lunate.Coding;
@@ -52,7 +53,7 @@ internal sealed partial class InteractiveSession
 
                 if (argument.Length > 0)
                 {
-                    SwitchModel(argument);
+                    await SwitchModel(argument, ct);
                 }
                 else
                 {
@@ -176,7 +177,7 @@ internal sealed partial class InteractiveSession
     }
 
     /// <summary>Switches to a catalog model by id; an unknown id produces a notice.</summary>
-    private void SwitchModel(string id)
+    private async ValueTask SwitchModel(string id, CancellationToken ct)
     {
         if (_catalog.Find(id) is not { } model)
         {
@@ -184,14 +185,16 @@ internal sealed partial class InteractiveSession
             return;
         }
 
-        SwitchToModel(model);
+        await SwitchToModel(model, ct).ConfigureAwait(false);
     }
 
     /// <summary>
     /// Records the model change in the session, rebuilds the harness against the same session
-    /// (the conversation continues) and updates the footer.
+    /// (the conversation continues), updates the footer and fires <c>ModelChanged</c> with the
+    /// new model id — the switch happens outside a run, so the run id is empty (the
+    /// <c>ToolsChanged</c> convention).
     /// </summary>
-    private void SwitchToModel(ModelInfo model)
+    private async ValueTask SwitchToModel(ModelInfo model, CancellationToken ct)
     {
         _session.AppendModelChange(model.Id);
         _model = model;
@@ -202,6 +205,12 @@ internal sealed partial class InteractiveSession
         _harness = BuildHarness(model);
         UpdateStatus();
         Notify("model: " + model.Id);
+        if ((_options.Hooks ?? _extensions?.HookRunner) is { } hooks)
+        {
+            await hooks
+                .RunModelChangedAsync(new ModelChangedPayload(string.Empty, model.Id), ct)
+                .ConfigureAwait(false);
+        }
     }
 
     /// <summary>
@@ -273,7 +282,7 @@ internal sealed partial class InteractiveSession
 
     /// <summary>Picker keys are intercepted first: Up/Down move clamped, Enter confirms, Esc
     /// dismisses; every other key is ignored.</summary>
-    private void HandlePickerKey(KeyEvent key)
+    private async ValueTask HandlePickerKey(KeyEvent key, CancellationToken ct)
     {
         SelectListModel picker = _picker!;
         switch (key.Kind)
@@ -285,7 +294,7 @@ internal sealed partial class InteractiveSession
                 SetPicker(picker.Move(1));
                 break;
             case KeyKind.Enter when !key.Ctrl && !key.Shift && !key.Alt:
-                ConfirmPicker();
+                await ConfirmPicker(ct).ConfigureAwait(false);
                 break;
             case KeyKind.Escape:
                 DismissPicker();
@@ -306,7 +315,7 @@ internal sealed partial class InteractiveSession
         _live.SetPicker(null);
     }
 
-    private void ConfirmPicker()
+    private async ValueTask ConfirmPicker(CancellationToken ct)
     {
         SelectListModel picker = _picker!;
         PickerKind kind = _pickerKind;
@@ -322,7 +331,7 @@ internal sealed partial class InteractiveSession
 
         if (kind is PickerKind.Model)
         {
-            SwitchModel(value);
+            await SwitchModel(value, ct).ConfigureAwait(false);
         }
         else
         {

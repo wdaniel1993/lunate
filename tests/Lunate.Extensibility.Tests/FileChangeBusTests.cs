@@ -282,6 +282,46 @@ public sealed class FileChangeBusTests
     }
 
     [Fact]
+    public async Task A_flush_observes_delivery_without_ending_it()
+    {
+        using var bus = new FileChangeBus("/w");
+        var handler = new RecordingFileChangedHandler();
+        bus.Subscribe(handler);
+
+        bus.Notify(Changes.Event("/w/a.txt"));
+        await bus.FlushAsync(Ct);
+
+        Assert.Equal("/w/a.txt", Assert.Single(handler.Payloads).Path);
+
+        bus.Notify(Changes.Event("/w/b.txt"));
+        await bus.FlushAsync(Ct);
+
+        Assert.Equal(["/w/a.txt", "/w/b.txt"], handler.Payloads.Select(payload => payload.Path));
+    }
+
+    [Fact]
+    public async Task A_drain_after_a_flush_still_latches()
+    {
+        var log = new RecordingExtensionLog();
+        using var bus = new FileChangeBus("/w", log);
+        var handler = new RecordingFileChangedHandler();
+        bus.Subscribe(handler);
+
+        bus.Notify(Changes.Event("/w/a.txt"));
+        await bus.FlushAsync(Ct);
+        await bus.DrainAsync(Ct);
+        bus.Notify(Changes.Event("/w/b.txt"));
+
+        Assert.Equal("/w/a.txt", Assert.Single(handler.Payloads).Path);
+        Assert.Contains(
+            log.Messages,
+            message =>
+                message.Contains("dropped", StringComparison.Ordinal)
+                && message.Contains("/w/b.txt", StringComparison.Ordinal)
+        );
+    }
+
+    [Fact]
     public async Task A_slow_handler_never_stalls_a_producer()
     {
         using var bus = new FileChangeBus("/w");

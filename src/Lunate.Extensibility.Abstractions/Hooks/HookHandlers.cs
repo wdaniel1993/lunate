@@ -32,8 +32,7 @@ public interface ISessionEndingHandler : IHookHandler
 }
 
 /// <summary>
-/// Observes raw user input. Contract-complete but unwired in this change; the input layer/TUI
-/// will produce it.
+/// Observes raw user input; produced by the input pipeline before anything starts or queues.
 /// </summary>
 public interface IInputReceivedHandler : IHookHandler
 {
@@ -110,8 +109,7 @@ public interface IRunSettledHandler : IHookHandler
 }
 
 /// <summary>
-/// Supplies a compaction summary. Contract-complete but unwired in this change; the compaction
-/// layer will produce it.
+/// Supplies a compaction summary; produced by the compaction layer before compaction.
 /// </summary>
 public interface ICompactingHandler : IHookHandler
 {
