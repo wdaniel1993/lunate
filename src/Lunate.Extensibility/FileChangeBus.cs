@@ -52,34 +52,36 @@ public sealed class FileChangeBus : IFileChangeSink, IFileChangeBus, IDisposable
         ArgumentNullException.ThrowIfNull(change);
         ArgumentException.ThrowIfNullOrWhiteSpace(change.AbsolutePath);
 
-        bool dropped = false;
+        bool accepted = false;
+        bool closed;
         lock (_gate)
         {
-            if (_disposed || _drainStarted)
+            closed = _disposed;
+            if (!closed && !_drainStarted)
             {
-                dropped = true;
-            }
-            else
-            {
-                _enqueued++;
-                _pump ??= Task.Run(PumpAsync);
+                if (_events.Writer.TryWrite(ToPayload(change)))
+                {
+                    _enqueued++;
+                    _pump ??= Task.Run(PumpAsync);
+                    accepted = true;
+                }
+                else
+                {
+                    closed = true;
+                }
             }
         }
 
-        if (dropped)
+        if (accepted)
         {
-            _log.Warn(
-                $"file change: notification for '{change.AbsolutePath}' dropped: a drain has begun."
-            );
             return;
         }
 
-        if (!_events.Writer.TryWrite(ToPayload(change)))
-        {
-            _log.Warn(
-                $"file change: notification for '{change.AbsolutePath}' dropped: the bus is closed."
-            );
-        }
+        _log.Warn(
+            closed
+                ? $"file change: notification for '{change.AbsolutePath}' dropped: the bus is closed."
+                : $"file change: notification for '{change.AbsolutePath}' dropped: a drain has begun."
+        );
     }
 
     public IDisposable Subscribe(IFileChangedHandler handler, string? pathPattern = null)

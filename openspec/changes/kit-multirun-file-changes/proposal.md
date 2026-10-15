@@ -13,5 +13,5 @@ Card `t_4b1b2bf9` (deferred from the wire-file-change-bus review): `ExtensionTes
 ## Impact
 
 - Spec delta: **extensions** (MODIFIED "File change bus": the flush sentence + one scenario).
-- Public API: one additive method on `FileChangeBus` (Unshipped surface; the extension-facing `IFileChangeBus` handle is untouched — flush is an owner-side capability).
+- Public API: one additive method on the public `FileChangeBus` (no PublicAPI tracking file exists for this assembly — nothing to update; the extension-facing `IFileChangeBus` handle is untouched — flush is an owner-side capability).
 - No behaviour change in production (nothing production-side drains twice); no new packages; no ADR (the card pins the resolution; the design records why the other two options were rejected).
