@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Globalization;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -22,11 +23,13 @@ public sealed class RoslynBackend : ICSharpBackend, IDisposable
     private readonly Func<BootstrapResult> _bootstrap;
     private readonly SemaphoreSlim _gate = new(1, 1);
     private readonly LruCache<WorkspaceEntry> _workspaces = new(MaxWorkspaces);
-    private readonly HashSet<string> _dirty = new(PathIdentity.Comparer);
+    private readonly ConcurrentDictionary<string, byte> _dirty = new(PathIdentity.Comparer);
 
     private string? _loadedSolution;
     private WorkspaceLoadResult? _loadedResult;
     private WorkspaceLoadResult? _lastLoad;
+    private int _reloadRequested;
+    private int _loadCount;
 
     /// <summary>Creates a backend for the run/worktree root; nothing loads until <see cref="LoadAsync"/>.</summary>
     public RoslynBackend(string worktreeRoot)
@@ -204,6 +207,9 @@ public sealed class RoslynBackend : ICSharpBackend, IDisposable
         }
     }
 
+    /// <summary>How often a solution was actually loaded; observable for tests.</summary>
+    internal int LoadCount => Volatile.Read(ref _loadCount);
+
     public void NotifyFileChanged(string absolutePath)
     {
         if (string.IsNullOrWhiteSpace(absolutePath))
@@ -222,16 +228,17 @@ public sealed class RoslynBackend : ICSharpBackend, IDisposable
             return;
         }
 
-        _gate.Wait();
-        try
-        {
-            _dirty.Add(canonical);
-        }
-        finally
-        {
-            _gate.Release();
-        }
+        // Mark-only and lock-free: the file-change bus runs handlers under a timeout, so a mark
+        // must never wait for the workspace gate (a cold load or long compile holds it).
+        _dirty[canonical] = 0;
     }
+
+    /// <summary>
+    /// Marks the workspace for a reload: a changed project, solution or build-configuration file
+    /// invalidates the whole compilation, so the next load disposes the loaded solution and reads
+    /// disk again. Lock-free like <see cref="NotifyFileChanged"/>.
+    /// </summary>
+    public void NotifyProjectChanged() => Interlocked.Exchange(ref _reloadRequested, 1);
 
     public void Dispose()
     {
@@ -250,6 +257,11 @@ public sealed class RoslynBackend : ICSharpBackend, IDisposable
 
     private async Task<WorkspaceLoadResult> LoadCoreAsync(CancellationToken ct)
     {
+        if (Interlocked.Exchange(ref _reloadRequested, 0) == 1)
+        {
+            DiscardLoadedSolution();
+        }
+
         if (
             _loadedSolution is { } cachedPath
             && _loadedResult is { } cachedResult
@@ -285,6 +297,7 @@ public sealed class RoslynBackend : ICSharpBackend, IDisposable
         }
 
         var failures = new CappedList<WorkspaceFailure>(MaxFailures);
+        Interlocked.Increment(ref _loadCount);
         var workspace = MSBuildWorkspace.Create();
         try
         {
@@ -312,6 +325,21 @@ public sealed class RoslynBackend : ICSharpBackend, IDisposable
                     $"the solution could not be loaded: {exception.Message}"
                 );
         }
+    }
+
+    /// <summary>
+    /// Drops the loaded solution (disposed through the workspace cache), so the next check opens
+    /// the solution from disk again.
+    /// </summary>
+    private void DiscardLoadedSolution()
+    {
+        if (_loadedSolution is { } loaded)
+        {
+            _workspaces.Remove(loaded);
+        }
+
+        _loadedSolution = null;
+        _loadedResult = null;
     }
 
     private WorkspaceLoadResult CompleteLoad(
@@ -954,7 +982,7 @@ public sealed class RoslynBackend : ICSharpBackend, IDisposable
         var changed = entry.Freshness.TakeChanged(entry.DocumentPaths).ToList();
         foreach (var path in entry.DocumentPaths)
         {
-            if (_dirty.Remove(path) && !changed.Contains(path, PathIdentity.Comparer))
+            if (_dirty.TryRemove(path, out _) && !changed.Contains(path, PathIdentity.Comparer))
             {
                 changed.Add(path);
             }

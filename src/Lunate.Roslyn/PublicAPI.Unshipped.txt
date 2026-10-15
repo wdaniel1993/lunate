@@ -82,6 +82,7 @@ Lunate.Roslyn.ICSharpBackend.FindSymbolAsync(string! name, System.Threading.Canc
 Lunate.Roslyn.ICSharpBackend.GetDiagnosticsAsync(Lunate.Roslyn.DiagnosticsScope scope, System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask<Lunate.Roslyn.DiagnosticsResult!>
 Lunate.Roslyn.ICSharpBackend.LoadAsync(System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask<Lunate.Roslyn.WorkspaceLoadResult!>
 Lunate.Roslyn.ICSharpBackend.NotifyFileChanged(string! absolutePath) -> void
+Lunate.Roslyn.ICSharpBackend.NotifyProjectChanged() -> void
 Lunate.Roslyn.ICSharpBackend.OutlineAsync(string! file, System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask<Lunate.Roslyn.OutlineResult!>
 Lunate.Roslyn.ICSharpBackend.PlanRenameAsync(string! name, string! newName, System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask<Lunate.Roslyn.RenamePlanResult!>
 Lunate.Roslyn.OutlineItem
@@ -196,6 +197,7 @@ Lunate.Roslyn.RoslynBackend.FindSymbolAsync(string! name, System.Threading.Cance
 Lunate.Roslyn.RoslynBackend.GetDiagnosticsAsync(Lunate.Roslyn.DiagnosticsScope scope, System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask<Lunate.Roslyn.DiagnosticsResult!>
 Lunate.Roslyn.RoslynBackend.LoadAsync(System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask<Lunate.Roslyn.WorkspaceLoadResult!>
 Lunate.Roslyn.RoslynBackend.NotifyFileChanged(string! absolutePath) -> void
+Lunate.Roslyn.RoslynBackend.NotifyProjectChanged() -> void
 Lunate.Roslyn.RoslynBackend.OutlineAsync(string! file, System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask<Lunate.Roslyn.OutlineResult!>
 Lunate.Roslyn.RoslynBackend.PlanRenameAsync(string! name, string! newName, System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask<Lunate.Roslyn.RenamePlanResult!>
 Lunate.Roslyn.RoslynBackend.RoslynBackend(string! worktreeRoot) -> void

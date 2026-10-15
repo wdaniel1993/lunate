@@ -255,6 +255,12 @@ internal sealed partial class InteractiveSession : IDisposable
         _trustTotal = CountPendingTrustQuestions();
         _approver = new SessionApprover(this, _settings.Approval);
         await ComposeExtensionsAsync(ct);
+        // The bus exists only when the extension host composed; scan-only without extensions.
+        if (_extensions is { } extensionHost)
+        {
+            _workspaceServices.Connect(extensionHost.FileChanges);
+        }
+
         await ComposeMcpConfigAsync(ct);
         await ComposeMcpToolsAsync(ct);
         _workspaceTools = HarnessFactory.CreateWorkspaceTools(_workspaceServices, _inheritedTools);

@@ -15,7 +15,7 @@ namespace Lunate.Coding;
 /// evictions are observable for tests through <see cref="LoadedWorkspaces"/> and
 /// <see cref="Evictions"/>.
 /// </summary>
-internal sealed class WorkspaceServices : IDisposable
+internal sealed partial class WorkspaceServices : IDisposable
 {
     /// <summary>The wait slice of the all-pinned wait; cancellation is checked between slices.</summary>
     private const int WaitSliceMilliseconds = 25;
@@ -78,10 +78,12 @@ internal sealed class WorkspaceServices : IDisposable
         return new LeasedCSharpBackend(this, GitIdentity.Canonicalize(worktreeRoot));
     }
 
-    /// <summary>Disposes every backend and releases pinned waiters; later calls fail the lease.</summary>
+    /// <summary>Disposes every backend and the file-change subscription, and releases pinned
+    /// waiters; later calls fail the lease.</summary>
     public void Dispose()
     {
         List<ICSharpBackend> backends;
+        IDisposable? fileChanges;
         lock (_gate)
         {
             if (_disposed)
@@ -90,6 +92,8 @@ internal sealed class WorkspaceServices : IDisposable
             }
 
             _disposed = true;
+            fileChanges = _fileChanges;
+            _fileChanges = null;
             backends = [.. _backends.Values.Select(entry => entry.Backend)];
             _backends.Clear();
             _order.Clear();
@@ -100,6 +104,8 @@ internal sealed class WorkspaceServices : IDisposable
         {
             DisposeBackend(backend);
         }
+
+        fileChanges?.Dispose();
     }
 
     /// <summary>
@@ -362,10 +368,9 @@ internal sealed class WorkspaceServices : IDisposable
             return await lease.Backend.PlanRenameAsync(name, newName, ct).ConfigureAwait(false);
         }
 
-        public void NotifyFileChanged(string absolutePath)
-        {
-            using Lease lease = services.Acquire(root, needsLoad: false, CancellationToken.None);
-            lease.Backend.NotifyFileChanged(absolutePath);
-        }
+        public void NotifyFileChanged(string absolutePath) =>
+            services.MarkChanged(root, absolutePath);
+
+        public void NotifyProjectChanged() => services.MarkProjectChanged(root);
     }
 }

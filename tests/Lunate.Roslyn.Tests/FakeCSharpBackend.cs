@@ -98,4 +98,6 @@ internal sealed class FakeCSharpBackend : ICSharpBackend
     }
 
     public void NotifyFileChanged(string absolutePath) { }
+
+    public void NotifyProjectChanged() { }
 }
