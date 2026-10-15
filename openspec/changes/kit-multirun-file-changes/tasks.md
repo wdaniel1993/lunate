@@ -13,8 +13,8 @@
 
 ## 3. Spec + docs
 
-- [ ] 3.1 Delta: extensions spec "File change bus" — flush sentence + scenario; originals verbatim; `openspec validate --all --strict` clean.
-- [ ] 3.2 `docs/spec/extensibility.md` File change bus section: the flush/drain clause.
+- [x] 3.1 Delta: extensions spec "File change bus" — flush sentence + scenario; originals verbatim; `openspec validate --all --strict` clean.
+- [x] 3.2 `docs/spec/extensibility.md` File change bus section: the flush/drain clause.
 
 ## 4. Verify, review, archive
 
