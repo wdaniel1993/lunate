@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <RootNamespace>Lunate.TestSupport</RootNamespace>
+    </PropertyGroup>
+</Project>

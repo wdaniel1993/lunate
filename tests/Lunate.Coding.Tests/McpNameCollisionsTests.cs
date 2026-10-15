@@ -1,6 +1,7 @@
 using Lunate.Extensibility;
 using Lunate.Extensibility.Abstractions;
 using Lunate.Protocols;
+using Lunate.TestSupport;
 
 namespace Lunate.Coding.Tests;
 
@@ -48,18 +49,21 @@ public sealed class McpNameCollisionsTests
 
         using var temp = new TempDirectory();
         string source = temp.File("mcp.json");
-        await using var set = new McpToolSet([
-            new McpServerOptions(
-                "test",
-                McpTestServerSupport.DotnetPath,
-                ["exec", McpTestServerSupport.ServerDll],
-                new Dictionary<string, string>
-                {
-                    ["LUNATE_TEST_MCP_MARKER"] = temp.File("marker.txt"),
-                },
-                Source: source
-            ),
-        ]);
+        await using var set = new McpToolSet(
+            [
+                new McpServerOptions(
+                    "test",
+                    TestMcpServer.DotnetPath,
+                    ["exec", TestMcpServer.ServerDll],
+                    new Dictionary<string, string>
+                    {
+                        ["LUNATE_TEST_MCP_MARKER"] = temp.File("marker.txt"),
+                    },
+                    Source: source
+                ),
+            ],
+            log: static _ => { }
+        );
 
         IReadOnlyDictionary<string, string?>? configured = McpNameCollisions.ConfiguredServers(set);
 

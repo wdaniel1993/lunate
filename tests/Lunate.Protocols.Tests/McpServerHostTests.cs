@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Text.Json;
 using Lunate.Agent;
+using Lunate.TestSupport;
 
 namespace Lunate.Protocols.Tests;
 
@@ -125,14 +126,14 @@ public sealed class McpServerHostTests
         var echo = tools.Single(tool => tool.Name == "server__echo");
         var args = JsonSerializer.SerializeToElement(new { text = "hi" });
 
-        var pid = McpTestEnvironment.StartedPid(marker);
+        var pid = TestMcpServer.StartedPid(marker);
         using (var process = Process.GetProcessById(pid))
         {
             process.Kill();
             await process.WaitForExitAsync(Ct);
         }
 
-        await McpTestEnvironment.WaitForProcessExitAsync(pid, TimeSpan.FromSeconds(10));
+        await TestMcpServer.WaitForProcessExitAsync(pid, TimeSpan.FromSeconds(10));
 
         var result = await echo.ExecuteAsync(args, McpTestEnvironment.Context, Ct);
 
@@ -157,14 +158,14 @@ public sealed class McpServerHostTests
 
         Assert.Equal(McpProbeOutcome.Alive, await host.ProbeAsync(Ct));
 
-        var pid = McpTestEnvironment.StartedPid(marker);
+        var pid = TestMcpServer.StartedPid(marker);
         using (var process = Process.GetProcessById(pid))
         {
             process.Kill();
             await process.WaitForExitAsync(Ct);
         }
 
-        await McpTestEnvironment.WaitForProcessExitAsync(pid, TimeSpan.FromSeconds(10));
+        await TestMcpServer.WaitForProcessExitAsync(pid, TimeSpan.FromSeconds(10));
 
         Assert.Equal(McpProbeOutcome.Exited, await host.ProbeAsync(Ct));
     }
@@ -196,13 +197,13 @@ public sealed class McpServerHostTests
         var marker = temp.File("marker.txt");
         var host = new McpServerHost(McpTestEnvironment.Options(marker));
         var echo = (await host.GetToolsAsync(Ct)).Single(tool => tool.Name == "server__echo");
-        var pid = McpTestEnvironment.StartedPid(marker);
-        Assert.True(McpTestEnvironment.IsProcessAlive(pid));
+        var pid = TestMcpServer.StartedPid(marker);
+        Assert.True(TestMcpServer.IsProcessAlive(pid));
 
         await host.DisposeAsync();
 
-        await McpTestEnvironment.WaitForProcessExitAsync(pid, TimeSpan.FromSeconds(10));
-        Assert.False(McpTestEnvironment.IsProcessAlive(pid));
+        await TestMcpServer.WaitForProcessExitAsync(pid, TimeSpan.FromSeconds(10));
+        Assert.False(TestMcpServer.IsProcessAlive(pid));
 
         await host.DisposeAsync();
 
@@ -216,7 +217,7 @@ public sealed class McpServerHostTests
     }
 
     private static IReadOnlyList<string> StartedLines(string markerPath) =>
-        McpTestEnvironment
+        TestMcpServer
             .MarkerLines(markerPath)
             .Where(line => line.StartsWith("started ", StringComparison.Ordinal))
             .ToList();

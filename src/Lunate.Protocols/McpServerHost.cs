@@ -39,6 +39,12 @@ public sealed class McpServerHost : IAsyncDisposable
     private IReadOnlyList<ITool> tools = [];
     private bool disposed;
 
+    /// <param name="log">
+    /// Receives the warning when an exposure override names a tool that is not listed. The spec
+    /// invariant is that such an override is never silently ignored: production always supplies a
+    /// log delegate — the internal MCP tool set enforces it at the only production construction
+    /// path — and the parameter stays optional for tests, which legitimately omit it.
+    /// </param>
     public McpServerHost(
         McpServerOptions options,
         Action<IReadOnlyList<ITool>>? onToolsChanged = null,

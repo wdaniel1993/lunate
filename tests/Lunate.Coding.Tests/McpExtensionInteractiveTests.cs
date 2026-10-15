@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Lunate.TestSupport;
 using Lunate.Tui;
 
 namespace Lunate.Coding.Tests;
@@ -100,8 +101,8 @@ public sealed class McpExtensionInteractiveTests
                     {
                         ["test"] = new
                         {
-                            command = McpTestServerSupport.DotnetPath,
-                            args = new[] { "exec", McpTestServerSupport.ServerDll },
+                            command = TestMcpServer.DotnetPath,
+                            args = new[] { "exec", TestMcpServer.ServerDll },
                             env = new Dictionary<string, string>
                             {
                                 ["LUNATE_SENTINEL_ENV"] = "configured-sentinel-value",
@@ -152,7 +153,7 @@ public sealed class McpExtensionInteractiveTests
         Task run = host.RunAsync();
         await host.WaitUntilAsync(() => host.Session.IsComposed);
 
-        await McpTestServerSupport.KillAsync(McpTestServerSupport.StartedPid(marker));
+        await TestMcpServer.KillAsync(TestMcpServer.StartedPid(marker));
 
         host.Console.SendText("/mcp");
         host.Console.SendEnter();
@@ -190,7 +191,7 @@ public sealed class McpExtensionInteractiveTests
         Task run = host.RunAsync();
         await host.WaitUntilAsync(() => host.Session.IsComposed);
 
-        await McpTestServerSupport.KillAsync(McpTestServerSupport.StartedPid(marker));
+        await TestMcpServer.KillAsync(TestMcpServer.StartedPid(marker));
 
         host.Console.SendText("go");
         host.Console.SendEnter();

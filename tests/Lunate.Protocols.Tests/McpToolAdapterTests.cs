@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Lunate.Agent;
+using Lunate.TestSupport;
 
 namespace Lunate.Protocols.Tests;
 
@@ -74,7 +75,7 @@ public sealed class McpToolAdapterTests
             cancellation.Token
         );
 
-        await McpTestEnvironment.WaitForMarkerLineAsync(
+        await TestMcpServer.WaitForMarkerLineAsync(
             marker,
             "slow_started",
             TimeSpan.FromSeconds(15)
@@ -83,7 +84,7 @@ public sealed class McpToolAdapterTests
         cancellation.Cancel();
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => call);
-        await McpTestEnvironment.WaitForMarkerLineAsync(
+        await TestMcpServer.WaitForMarkerLineAsync(
             marker,
             "slow_cancelled",
             TimeSpan.FromSeconds(15)

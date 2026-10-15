@@ -40,18 +40,19 @@ internal sealed class McpToolSet : IAsyncDisposable
     internal const string ServerExitedReason = "the server process exited";
 
     private readonly List<Server> _servers;
-    private readonly Action<string>? _log;
+    private readonly Action<string> _log;
     private readonly Func<McpServerOptions, string> _describe;
     private Action<McpServerStatus>? _onServerExited;
 
     internal McpToolSet(
         IReadOnlyList<McpServerOptions> servers,
-        Action<string>? log = null,
+        Action<string> log,
         Action<string>? serverLog = null,
         Func<McpServerOptions, string>? describe = null
     )
     {
         ArgumentNullException.ThrowIfNull(servers);
+        ArgumentNullException.ThrowIfNull(log);
         _log = log;
         _describe = describe ?? (options => $"MCP server '{options.Name}'");
         _servers =
@@ -116,7 +117,7 @@ internal sealed class McpToolSet : IAsyncDisposable
                 );
                 // The notices show a shortened reason; the log keeps the full one (stderr may
                 // carry multiple lines).
-                _log?.Invoke(
+                _log.Invoke(
                     $"{_describe(server.Options)} failed to start or list its tools: {exception.Message} The session continues without this server's tools."
                 );
             }
@@ -174,7 +175,7 @@ internal sealed class McpToolSet : IAsyncDisposable
             }
             catch (Exception exception)
             {
-                _log?.Invoke(
+                _log.Invoke(
                     $"{_describe(server.Options)} failed to stop: {exception.Message} Check for a leftover child process."
                 );
             }
@@ -195,7 +196,7 @@ internal sealed class McpToolSet : IAsyncDisposable
             return;
         }
 
-        _log?.Invoke(
+        _log.Invoke(
             $"{_describe(server.Options)}: {ServerExitedReason}. The session continues without this server's tools."
         );
         _onServerExited?.Invoke(server.Status);

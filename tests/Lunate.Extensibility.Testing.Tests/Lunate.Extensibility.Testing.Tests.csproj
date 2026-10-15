@@ -25,6 +25,7 @@
             Include="../tools/TestMcpServer/TestMcpServer.csproj"
             ReferenceOutputAssembly="false"
         />
+        <ProjectReference Include="../../tests/Lunate.TestSupport/Lunate.TestSupport.csproj" />
     </ItemGroup>
 
     <ItemGroup>
