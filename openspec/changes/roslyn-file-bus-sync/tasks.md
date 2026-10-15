@@ -15,10 +15,10 @@
 
 ## 3. Integration proofs
 
-- [ ] 3.1 Real-Roslyn: fixture solution + real `FileChangeBus` → a rewrite with an **unchanged content stamp** (same length, timestamp reset) refreshes `cs_diagnostics` with **load count unchanged** (no reload).
-- [ ] 3.2 Real-Roslyn: a project-file change through the bus → the next call reloads once, then reports; **`Directory.Build.props` change → reload**; reload after a package-reference change surfaces the restore hint when restore output is missing/stale.
-- [ ] 3.3 Real-Roslyn: **an edit during a load is not lost** (mark while the load is in flight → post-load diagnostics see it); **bus + scan idempotent** (flagged by both → one changed-file count).
-- [ ] 3.4 Session e2e: composed session (store extension so the bus exists) + scripted `write` → `cs_diagnostics` fresh, load count 1.
+- [x] 3.1 Real-Roslyn: fixture solution + real `FileChangeBus` → a rewrite with an **unchanged content stamp** (same length, timestamp reset) refreshes `cs_diagnostics` with **load count unchanged** (no reload).
+- [x] 3.2 Real-Roslyn: a project-file change through the bus → the next call reloads once, then reports; **`Directory.Build.props` change → reload**; reload after a package-reference change surfaces the restore hint when restore output is missing/stale.
+- [x] 3.3 Real-Roslyn: **an edit during a load is not lost** (mark while the load is in flight → post-load diagnostics see it); **bus + scan idempotent** (flagged by both → one changed-file count).
+- [x] 3.4 Session e2e: composed session (store extension so the bus exists) + scripted `write` → `cs_diagnostics` fresh, load count 1.
 
 ## 4. Docs + delta
 
