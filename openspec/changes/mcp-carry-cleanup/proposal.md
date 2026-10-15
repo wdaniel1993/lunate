@@ -13,5 +13,5 @@ Three non-blocking observations from the T-41 review (card `t_37c40a60`), all ab
 ## Impact
 
 - No spec deltas (`skip_specs`) — every requirement already says what it says; this change enforces and pins, it does not change behaviour.
-- No public-API change (the shipped freeze is the constraint that shapes item 1); no new packages; one new test-support project + solution entry + three declared layering edges.
+- No public-API change — the ctor is pre-ship (`PublicAPI.Unshipped.txt`), so tightening it would be legal, but the AGENTS.md public-type policy shapes item 1: the carry keeps the surface as-is and enforces at the internal seam; no new packages; one new test-support project + solution entry + three declared layering edges.
 - No sign-off needed: the card pre-authorizes "resolved or explicitly documented".
