@@ -25,7 +25,7 @@ The bus's documented limit (sign-off D9 of `wire-file-change-bus`): `bash` mutat
 - **Mark before any load**: ignored (no entry) or queued in `_dirty` (entry exists, not loaded) — both correct; the load reads disk and the refresh drains marks.
 - **Mark during a load**: queued in `_dirty` and applied after the load completes — **no edit is lost**; the post-load refresh drains it (pinned by a test).
 - **Mark during eviction/dispose**: the services gate serializes lookup vs eviction; the worst case is a mark landing on a just-disposed backend — harmless (state dies; next create reloads).
-- **Handler speed**: mark-only path, no backend gate, no I/O — completes in microseconds, far under the bus timeout; delivery order stays the bus's per-workspace order.
+- **Handler speed**: mark-only path, no backend gate, no disk I/O beyond canonicalization's symlink stats — completes in microseconds, far under the bus timeout; delivery order stays the bus's per-workspace order.
 - **Ordering vs the mutation queue**: `write`/`edit` publish after the mutation completes (bus contract), so a mark is never delivered before the new content is on disk.
 - **Session end**: the subscription is disposed with `WorkspaceServices` (the bus's own `Dispose` drops it regardless).
 

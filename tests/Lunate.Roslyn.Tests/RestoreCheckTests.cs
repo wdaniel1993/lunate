@@ -118,6 +118,62 @@ public sealed class RestoreCheckTests
     }
 
     [Fact]
+    public void A_conditioned_package_reference_missing_from_the_assets_file_is_not_reported()
+    {
+        using var temp = new TempDirectory();
+        var projectDir = temp.Subdirectory("App");
+        var project = Path.Combine(projectDir, "App.csproj");
+        System.IO.File.WriteAllText(
+            project,
+            """
+            <Project Sdk="Microsoft.NET.Sdk">
+              <ItemGroup>
+                <PackageReference Include="Newtonsoft.Json" Version="13.0.3" Condition="'$(TargetFramework)' == 'net9.0'" />
+              </ItemGroup>
+            </Project>
+            """
+        );
+        var obj = Path.Combine(projectDir, "obj");
+        System.IO.Directory.CreateDirectory(obj);
+        System.IO.File.WriteAllText(
+            Path.Combine(obj, "project.assets.json"),
+            """{"libraries":{}}"""
+        );
+
+        var missing = RestoreCheck.FindMissing([project]);
+
+        Assert.Empty(missing);
+    }
+
+    [Fact]
+    public void A_package_reference_under_a_conditioned_item_group_is_not_reported()
+    {
+        using var temp = new TempDirectory();
+        var projectDir = temp.Subdirectory("App");
+        var project = Path.Combine(projectDir, "App.csproj");
+        System.IO.File.WriteAllText(
+            project,
+            """
+            <Project Sdk="Microsoft.NET.Sdk">
+              <ItemGroup Condition="'$(TargetFramework)' == 'net9.0'">
+                <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+              </ItemGroup>
+            </Project>
+            """
+        );
+        var obj = Path.Combine(projectDir, "obj");
+        System.IO.Directory.CreateDirectory(obj);
+        System.IO.File.WriteAllText(
+            Path.Combine(obj, "project.assets.json"),
+            """{"libraries":{}}"""
+        );
+
+        var missing = RestoreCheck.FindMissing([project]);
+
+        Assert.Empty(missing);
+    }
+
+    [Fact]
     public void Missing_directories_are_deduplicated_and_ordered()
     {
         using var temp = new TempDirectory();

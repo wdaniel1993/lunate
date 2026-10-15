@@ -38,8 +38,10 @@ internal static class RestoreCheck
 
     /// <summary>
     /// Whether the assets file covers every literal package reference the project declares; a
-    /// project that cannot be read is covered (the workspace load reports its own failure), and a
-    /// dynamic id (MSBuild property syntax) cannot be checked and is left to the restore itself.
+    /// project that cannot be read is covered (the workspace load reports its own failure), a
+    /// dynamic id (MSBuild property syntax) cannot be checked and is left to the restore itself,
+    /// and a conditioned reference (own or inherited <c>Condition</c> attribute) may legitimately
+    /// be absent from the assets file (multi-targeting), so it is skipped.
     /// </summary>
     private static bool CoversPackageReferences(string projectPath, string assetsPath)
     {
@@ -52,6 +54,7 @@ internal static class RestoreCheck
                     .Load(projectPath)
                     .Descendants()
                     .Where(element => element.Name.LocalName == "PackageReference")
+                    .Where(element => !IsConditioned(element))
                     .Select(element => element.Attribute("Include")?.Value)
                     .OfType<string>()
                     .Where(id => id.Length > 0 && !id.Contains('$'))
@@ -82,6 +85,10 @@ internal static class RestoreCheck
 
         return ids.All(id => assets.Contains($"\"{id}/", StringComparison.OrdinalIgnoreCase));
     }
+
+    /// <summary>Whether the element or any ancestor carries a <c>Condition</c> attribute.</summary>
+    private static bool IsConditioned(XElement element) =>
+        element.AncestorsAndSelf().Any(ancestor => ancestor.Attribute("Condition") is not null);
 
     /// <summary>The actionable restore message: the command, the first few project directories and the total.</summary>
     public static string BuildMessage(IReadOnlyList<string> missingDirectories)
