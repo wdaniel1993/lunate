@@ -4,7 +4,7 @@
 
 ### Requirement: C# diagnostics tool
 
-The optional `cs_diagnostics` tool SHALL report compiler errors and warnings for files changed since the last check (default) or for the whole solution, without requiring a full `dotnet build`. In-session mutations SHALL be tracked through the file-change bus as exact marks — a change SHALL be detected even when its content stamp is unchanged — while changes made outside the tool path SHALL be detected by content stamps; a change to a project or solution file SHALL mark the workspace for a reload on the next call. It SHALL be marked read-only and SHALL load the C# backend lazily on first use — no Roslyn or MSBuild assembly SHALL be touched before the first call. Results SHALL carry file, 1-based line and column, severity, code and message, capped with a truncation flag; the tool text SHALL summarize counts and surface actionable statuses (`no SDK`, `restore required`, `no solution`, partial load) instead of raw exceptions. A backend failure SHALL never crash the run.
+The optional `cs_diagnostics` tool SHALL report compiler errors and warnings for files changed since the last check (default) or for the whole solution, without requiring a full `dotnet build`. In-session mutations SHALL be tracked through the file-change bus as exact marks — a tool edit SHALL be detected even when its content stamp is unchanged — while changes made outside the tool path SHALL be detected by content stamps; a same-stamp change made outside the tool path is seen only at the next reload. A change to a project, solution or build-configuration file (`.csproj`, `.sln`, `.slnx`, `Directory.Build.props`, `Directory.Build.targets`, `Directory.Packages.props`, `global.json`) SHALL mark the workspace for a reload on the next call. A file flagged by both the mark and the stamp scan SHALL be refreshed once (one compile, one changed-file count). It SHALL be marked read-only and SHALL load the C# backend lazily on first use — no Roslyn or MSBuild assembly SHALL be touched before the first call. Results SHALL carry file, 1-based line and column, severity, code and message, capped with a truncation flag; the tool text SHALL summarize counts and surface actionable statuses (`no SDK`, `restore required`, `no solution`, partial load) instead of raw exceptions. A backend failure SHALL never crash the run.
 
 #### Scenario: An error introduced by an edit is reported
 
@@ -21,8 +21,20 @@ The optional `cs_diagnostics` tool SHALL report compiler errors and warnings for
 #### Scenario: A project file change reloads the workspace
 
 - **GIVEN** a loaded solution copy
-- **WHEN** a project or solution file changes and the file-change bus delivers the change
+- **WHEN** a project, solution or build-configuration file (`.csproj`, `.sln`, `.slnx`, `Directory.Build.props`, `Directory.Build.targets`, `Directory.Packages.props`, `global.json`) changes and the file-change bus delivers the change
 - **THEN** the next diagnostics call reloads the workspace once before reporting
+
+#### Scenario: An edit during a load is not lost
+
+- **GIVEN** a workspace whose first load is in flight
+- **WHEN** a tool edit arrives through the bus before the load completes
+- **THEN** the load completes and the edit is reflected in the next diagnostics call
+
+#### Scenario: A file flagged by both paths is refreshed once
+
+- **GIVEN** a loaded solution copy where a file is flagged by both the bus mark and the stamp scan
+- **WHEN** diagnostics run for changed files
+- **THEN** the file is reported once (one changed-file count)
 
 #### Scenario: No SDK is a clear message
 
