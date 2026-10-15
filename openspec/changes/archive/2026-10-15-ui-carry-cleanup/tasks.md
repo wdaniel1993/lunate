@@ -12,6 +12,6 @@
 
 ## 3. Verify, review, archive
 
-- [ ] 3.1 `scripts/verify.sh` green (both cultures); csharpier/style/analyzers/markdownlint clean.
-- [ ] 3.2 Adversarial review (small diff); fix findings.
-- [ ] 3.3 Archive; push; PR.
+- [x] 3.1 `scripts/verify.sh` green (both cultures); csharpier/style/analyzers/markdownlint clean.
+- [x] 3.2 Adversarial review (small diff); fix findings.
+- [x] 3.3 Archive; push; PR.

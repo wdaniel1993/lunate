@@ -7,7 +7,7 @@ User-facing interaction beyond approvals, stated once for every mode: transient 
 
 ### Requirement: User interaction across modes
 
-Every mode SHALL present ambient user interaction through one seam with per-mode implementations: transient notices (`Notify`), status data (`UpdateStatus`) and extension-contributed blocks (`RenderExtension`). The interactive mode SHALL show notices in the live area, status in the footer and extension blocks as styled output; print mode (text and JSON) SHALL write notices to stderr and treat status and extension blocks as no-ops, keeping stdout pure (the answer, or the event stream); ACP mode SHALL write them to the host log — the protocol has no notice frame. A failing extension contribution SHALL be omitted for that update and reported through the host log, never breaking the run, and SHALL be retried on the next update. Approvals SHALL keep their existing per-mode chain; the seam carries output only.
+Every mode SHALL present ambient user interaction through one seam with per-mode implementations: transient notices (`Notify`), status data (`UpdateStatus`) and extension-contributed blocks (`RenderExtension`). The interactive mode SHALL show notices in the live area, status in the footer and extension blocks as styled output; print mode (text and JSON) SHALL write notices to stderr and treat status and extension blocks as no-ops, keeping stdout pure (the answer, or the event stream); ACP mode SHALL write them to the host log — the protocol has no notice frame. Notices carry a level (info, warning, error); every mode currently presents the levels uniformly — print and JSON write one `lunate: <message>` line per notice to stderr, ACP logs the message, and the live area shows the message — and level-specific presentation is deliberately deferred. Extension blocks SHALL render as plain styled text: their visible text SHALL be identical under the `NO_COLOR` and ASCII fallbacks, with only colour attributes dropped and no non-ASCII glyphs added. A failing extension contribution SHALL be omitted for that update and reported through the host log, never breaking the run, and SHALL be retried on the next update. Approvals SHALL keep their existing per-mode chain; the seam carries output only.
 
 #### Scenario: A notice reaches each mode the stated way
 
@@ -25,7 +25,13 @@ Every mode SHALL present ambient user interaction through one seam with per-mode
 
 - **GIVEN** an extension-contributed block for a tool result
 - **WHEN** it is presented
-- **THEN** the interactive mode renders it with its style mapping and the machine modes skip it (ACP logging it), with no stdout output anywhere
+- **THEN** the interactive mode renders it with its style mapping and the machine modes skip it, with no stdout output anywhere
+
+#### Scenario: The block text survives the fallbacks
+
+- **GIVEN** an extension block with styled segments
+- **WHEN** it is rendered under `NO_COLOR` and under the ASCII fallback
+- **THEN** the block's visible text is identical across both, and the ASCII run's output carries no non-ASCII glyphs
 
 #### Scenario: A failing contribution degrades to omission
 
