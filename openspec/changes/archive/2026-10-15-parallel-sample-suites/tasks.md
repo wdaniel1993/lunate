@@ -26,6 +26,6 @@
 
 ## 6. CI evidence loop (acceptance)
 
-- [ ] 6.1 Watch CI; on a load-dependent failure apply the D2 ladder for the failing suite and repeat. Acceptance = **three consecutive green runs** (all legs) on the final tree — the archive commit's run counts.
-- [ ] 6.2 Update the `lunate-dev` skill's serialization rule to the outcome (parallel where proven; bounded where bounded; serialize only where documented).
-- [ ] 6.3 Closing comment on the PR with the run ids of the three green runs; the maintainer merges.
+- [x] 6.1 Watch CI; on a load-dependent failure apply the D2 ladder for the failing suite and repeat. Acceptance = **three consecutive green runs** (all legs) on the final tree — the archive commit's run counts.
+- [x] 6.2 Update the `lunate-dev` skill's serialization rule to the outcome (parallel where proven; bounded where bounded; serialize only where documented).
+- [x] 6.3 Closing comment on the PR with the run ids of the three green runs; the maintainer merges.
