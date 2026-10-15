@@ -1,6 +1,7 @@
 using Lunate.Extensibility;
 using Lunate.Extensibility.Abstractions;
 using Lunate.Protocols;
+using Lunate.TestSupport;
 
 namespace Lunate.Coding.Tests;
 
@@ -51,8 +52,8 @@ public sealed class McpNameCollisionsTests
         await using var set = new McpToolSet([
             new McpServerOptions(
                 "test",
-                McpTestServerSupport.DotnetPath,
-                ["exec", McpTestServerSupport.ServerDll],
+                TestMcpServer.DotnetPath,
+                ["exec", TestMcpServer.ServerDll],
                 new Dictionary<string, string>
                 {
                     ["LUNATE_TEST_MCP_MARKER"] = temp.File("marker.txt"),

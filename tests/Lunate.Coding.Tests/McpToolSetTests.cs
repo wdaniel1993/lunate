@@ -1,5 +1,6 @@
 using Lunate.Agent;
 using Lunate.Protocols;
+using Lunate.TestSupport;
 
 namespace Lunate.Coding.Tests;
 
@@ -16,8 +17,8 @@ public sealed class McpToolSetTests
         await using var set = new McpToolSet([
             new McpServerOptions(
                 "test",
-                McpTestServerSupport.DotnetPath,
-                ["exec", McpTestServerSupport.ServerDll],
+                TestMcpServer.DotnetPath,
+                ["exec", TestMcpServer.ServerDll],
                 new Dictionary<string, string> { ["LUNATE_TEST_MCP_MARKER"] = marker },
                 NamespaceName: "test",
                 Source: "test-source"
@@ -38,7 +39,7 @@ public sealed class McpToolSetTests
         Assert.Null(after.Reason);
         Assert.Equal("test-source", after.Source);
 
-        int pid = McpTestServerSupport.StartedPid(marker);
+        int pid = TestMcpServer.StartedPid(marker);
         await set.ListToolsAsync(Ct);
         Assert.Single(
             File.ReadAllLines(marker),
@@ -46,7 +47,7 @@ public sealed class McpToolSetTests
         );
 
         await set.DisposeAsync();
-        await McpTestServerSupport.WaitForProcessExitAsync(pid, TimeSpan.FromSeconds(10));
+        await TestMcpServer.WaitForProcessExitAsync(pid, TimeSpan.FromSeconds(10));
     }
 
     [Fact]
@@ -56,15 +57,15 @@ public sealed class McpToolSetTests
         await using var set = new McpToolSet([
             new McpServerOptions(
                 "project",
-                McpTestServerSupport.DotnetPath,
-                ["exec", McpTestServerSupport.ServerDll],
+                TestMcpServer.DotnetPath,
+                ["exec", TestMcpServer.ServerDll],
                 NamespaceName: "project",
                 Source: "mcp.json"
             ),
             new McpServerOptions(
                 "global",
-                McpTestServerSupport.DotnetPath,
-                ["exec", McpTestServerSupport.ServerDll],
+                TestMcpServer.DotnetPath,
+                ["exec", TestMcpServer.ServerDll],
                 NamespaceName: "global",
                 Source: "mcp.json",
                 WorkspaceIndependent: true
@@ -95,8 +96,8 @@ public sealed class McpToolSetTests
             [
                 new McpServerOptions(
                     "test",
-                    McpTestServerSupport.DotnetPath,
-                    ["exec", McpTestServerSupport.ServerDll],
+                    TestMcpServer.DotnetPath,
+                    ["exec", TestMcpServer.ServerDll],
                     new Dictionary<string, string> { ["LUNATE_TEST_MCP_MARKER"] = marker },
                     NamespaceName: "test",
                     Source: "test-source"
@@ -107,8 +108,8 @@ public sealed class McpToolSetTests
         set.OnServerExited(status => notified.Add(status));
 
         Assert.Equal(5, (await set.ListToolsAsync(Ct)).Count);
-        int pid = McpTestServerSupport.StartedPid(marker);
-        await McpTestServerSupport.KillAsync(pid);
+        int pid = TestMcpServer.StartedPid(marker);
+        await TestMcpServer.KillAsync(pid);
 
         IReadOnlyList<McpServerStatus> observed = await set.ObserveStatusesAsync(Ct);
 
@@ -145,8 +146,8 @@ public sealed class McpToolSetTests
             [
                 new McpServerOptions(
                     "test",
-                    McpTestServerSupport.DotnetPath,
-                    ["exec", McpTestServerSupport.ServerDll],
+                    TestMcpServer.DotnetPath,
+                    ["exec", TestMcpServer.ServerDll],
                     new Dictionary<string, string>
                     {
                         ["LUNATE_TEST_MCP_MARKER"] = marker,
@@ -185,8 +186,8 @@ public sealed class McpToolSetTests
             ),
             new McpServerOptions(
                 "test",
-                McpTestServerSupport.DotnetPath,
-                ["exec", McpTestServerSupport.ServerDll],
+                TestMcpServer.DotnetPath,
+                ["exec", TestMcpServer.ServerDll],
                 new Dictionary<string, string>
                 {
                     ["LUNATE_TEST_MCP_MARKER"] = temp.File("marker.txt"),

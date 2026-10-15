@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Lunate.TestSupport;
 
 namespace Lunate.Coding.Tests;
 
@@ -31,8 +32,8 @@ internal static class McpExtensionFixture
             JsonSerializer.Serialize(
                 new
                 {
-                    command = McpTestServerSupport.DotnetPath,
-                    arguments = new[] { "exec", McpTestServerSupport.ServerDll },
+                    command = TestMcpServer.DotnetPath,
+                    arguments = new[] { "exec", TestMcpServer.ServerDll },
                     marker = markerPath,
                     serverName,
                 }

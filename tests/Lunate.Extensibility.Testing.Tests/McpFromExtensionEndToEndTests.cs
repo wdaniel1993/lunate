@@ -1,9 +1,8 @@
-using System.Diagnostics;
-using System.Globalization;
 using System.Text.Json;
 using Lunate.Agent;
 using Lunate.Extensibility;
 using Lunate.Extensibility.Abstractions;
+using Lunate.TestSupport;
 
 namespace Lunate.Extensibility.Testing.Tests;
 
@@ -33,8 +32,8 @@ public sealed class McpFromExtensionEndToEndTests
         Assert.Equal(5, status.ToolCount);
         Assert.Equal("extension 'mcp'", status.Source);
 
-        var pid = StartedPid(marker);
-        Assert.True(IsProcessAlive(pid));
+        var pid = TestMcpServer.StartedPid(marker);
+        Assert.True(TestMcpServer.IsProcessAlive(pid));
         Assert.Equal(
             ["test__add", "test__boom", "test__echo", "test__slow", "test__spawn_tool"],
             host.Tools.Tools.Select(tool => tool.Name).Order(StringComparer.Ordinal)
@@ -70,7 +69,7 @@ public sealed class McpFromExtensionEndToEndTests
         Assert.Contains(host.Events.Of<ToolCallStart>(), start => start.ToolName == "test__add");
 
         await host.StopAsync(Ct);
-        await WaitForProcessExitAsync(pid, TimeSpan.FromSeconds(10));
+        await TestMcpServer.WaitForProcessExitAsync(pid, TimeSpan.FromSeconds(10));
     }
 
     private static ExtensionTestHost CreateHost(TempDirectory temp, string marker)
@@ -99,115 +98,13 @@ public sealed class McpFromExtensionEndToEndTests
             JsonSerializer.Serialize(
                 new
                 {
-                    command = DotnetPath,
-                    arguments = new[] { "exec", ServerDll },
+                    command = TestMcpServer.DotnetPath,
+                    arguments = new[] { "exec", TestMcpServer.ServerDll },
                     marker,
                     serverName = "test",
                 }
             )
         );
         return host;
-    }
-
-    private static string DotnetPath { get; } =
-        Environment.GetEnvironmentVariable("DOTNET_HOST_PATH") is { Length: > 0 } path
-        && File.Exists(path)
-            ? path
-            : "dotnet";
-
-    private static string RepositoryRoot { get; } = FindRepositoryRoot();
-
-    private static string ServerDll { get; } =
-        Path.Combine(
-            RepositoryRoot,
-            "tests",
-            "tools",
-            "TestMcpServer",
-            "bin",
-            Configuration,
-            "net10.0",
-            "TestMcpServer.dll"
-        );
-
-    private static string Configuration
-    {
-        get
-        {
-            var frameworkDirectory = new DirectoryInfo(
-                AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar)
-            );
-            return frameworkDirectory.Parent?.Name ?? "Debug";
-        }
-    }
-
-    private static string FindRepositoryRoot()
-    {
-        for (
-            var directory = new DirectoryInfo(AppContext.BaseDirectory);
-            directory is not null;
-            directory = directory.Parent
-        )
-        {
-            if (File.Exists(Path.Combine(directory.FullName, "lunate.sln")))
-            {
-                return directory.FullName;
-            }
-        }
-
-        throw new InvalidOperationException(
-            $"Could not find lunate.sln above {AppContext.BaseDirectory}."
-        );
-    }
-
-    private static int StartedPid(string markerPath)
-    {
-        const string Prefix = "started pid=";
-        string line = ReadMarkerLines(markerPath)
-            .First(entry => entry.StartsWith(Prefix, StringComparison.Ordinal));
-        return int.Parse(line[Prefix.Length..], CultureInfo.InvariantCulture);
-    }
-
-    private static bool IsProcessAlive(int pid)
-    {
-        try
-        {
-            using var process = Process.GetProcessById(pid);
-            return !process.HasExited;
-        }
-        catch (ArgumentException)
-        {
-            return false;
-        }
-    }
-
-    private static async Task WaitForProcessExitAsync(int pid, TimeSpan timeout)
-    {
-        var deadline = DateTime.UtcNow + timeout;
-        while (DateTime.UtcNow < deadline)
-        {
-            if (!IsProcessAlive(pid))
-            {
-                return;
-            }
-
-            await Task.Delay(25);
-        }
-
-        throw new TimeoutException($"Process {pid} is still alive after {timeout}.");
-    }
-
-    private static IReadOnlyList<string> ReadMarkerLines(string markerPath)
-    {
-        for (var attempt = 0; ; attempt++)
-        {
-            try
-            {
-                return File.Exists(markerPath) ? File.ReadAllLines(markerPath) : [];
-            }
-            catch (IOException) when (attempt < 20)
-            {
-                Thread.Sleep(20);
-            }
-        }
     }
 }
