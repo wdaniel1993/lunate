@@ -78,6 +78,7 @@ lunate/
   src/Lunate.Roslyn/           # built-in extension: semantic C# tools, loaded on first use
   src/Lunate.Coding/           # exe: lunate (self-contained single file): TUI, print and ACP modes, extension loader
   tests/Lunate.*.Tests/        # one test project per src project
+  tests/Lunate.TestSupport/    # shared test helpers (TestMcpServer resolution); no tests of its own
   tests/fixtures/streams/      # recorded provider streams (JSONL)
   tests/fixtures/sessions/     # golden session files
   tests/fixtures/edit-corpus/  # edit tool cases

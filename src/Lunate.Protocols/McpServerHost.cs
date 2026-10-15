@@ -41,10 +41,9 @@ public sealed class McpServerHost : IAsyncDisposable
 
     /// <param name="log">
     /// Receives the warning when an exposure override names a tool that is not listed. The spec
-    /// invariant is that such an override is never silently ignored: production requires a log
-    /// delegate, enforced by the internal MCP tool set that is the only production construction
-    /// path. The parameter stays optional because the shipped public surface is frozen and tests
-    /// legitimately omit it.
+    /// invariant is that such an override is never silently ignored: production always supplies a
+    /// log delegate — the internal MCP tool set enforces it at the only production construction
+    /// path — and the parameter stays optional for tests, which legitimately omit it.
     /// </param>
     public McpServerHost(
         McpServerOptions options,
