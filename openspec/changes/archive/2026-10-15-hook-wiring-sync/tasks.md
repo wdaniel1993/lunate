@@ -19,6 +19,6 @@
 
 ## 4. Gate
 
-- [ ] 4.1 `scripts/verify.sh` green (both cultures); csharpier/style/analyzers/markdownlint clean.
-- [ ] 4.2 Adversarial review; fix findings.
-- [ ] 4.3 Archive; push; PR.
+- [x] 4.1 `scripts/verify.sh` green (both cultures); csharpier/style/analyzers/markdownlint clean.
+- [x] 4.2 Adversarial review; fix findings.
+- [x] 4.3 Archive; push; PR.
