@@ -63,28 +63,20 @@ public sealed class TuiInteractionTests
     [Fact]
     public async Task A_tool_result_renderer_renders_a_block_above_the_live_area()
     {
-        var renderers = new ToolResultRendererRegistry();
-        renderers.Register(
-            "ext.renderer",
-            new FixedRenderer("read", [Segment("extension saw the read", TextStyle.Accent)])
-        );
-        using var host = new InteractiveSessionHost(toolResultRenderers: renderers);
-        File.WriteAllText(host.Temp.File("a.txt"), "contents");
-        host.Client.Enqueue(
-            Scripts.Call("call-1", "read", Scripts.Args(("path", "a.txt"))),
-            Scripts.ToolCalls()
-        );
-        host.Client.Enqueue(Scripts.Text("done"), Scripts.Stop());
-        Task run = host.RunAsync();
+        string scrollback = await RunBlockScenarioAsync(environment: null);
 
-        host.Console.SendText("go");
-        host.Console.SendEnter();
-        await InteractiveSessionCommandTests.WaitForScrollbackAsync(host, "extension saw the read");
+        Assert.Contains("extension saw the read", scrollback, StringComparison.Ordinal);
+    }
 
-        Assert.Contains("extension saw the read", host.ScrollbackText, StringComparison.Ordinal);
+    [Fact]
+    public async Task The_block_text_survives_the_no_color_and_ascii_fallbacks()
+    {
+        string defaultScrollback = await RunBlockScenarioAsync(environment: null);
+        string fallbackScrollback = await RunBlockScenarioAsync(FallbackEnvironment());
 
-        host.Console.Complete();
-        await run;
+        Assert.Contains("extension saw the read", fallbackScrollback, StringComparison.Ordinal);
+        Assert.Equal(BlockText(defaultScrollback), BlockText(fallbackScrollback));
+        Assert.True(fallbackScrollback.All(character => character <= 0x7F), fallbackScrollback);
     }
 
     [Fact]
@@ -127,6 +119,51 @@ public sealed class TuiInteractionTests
         host.Console.Complete();
         await run;
     }
+
+    private static async Task<string> RunBlockScenarioAsync(Func<string, string?>? environment)
+    {
+        var renderers = new ToolResultRendererRegistry();
+        renderers.Register(
+            "ext.renderer",
+            new FixedRenderer("read", [Segment("extension saw the read", TextStyle.Accent)])
+        );
+        using var host = new InteractiveSessionHost(
+            toolResultRenderers: renderers,
+            environment: environment
+        );
+        File.WriteAllText(host.Temp.File("a.txt"), "contents");
+        host.Client.Enqueue(
+            Scripts.Call("call-1", "read", Scripts.Args(("path", "a.txt"))),
+            Scripts.ToolCalls()
+        );
+        host.Client.Enqueue(Scripts.Text("done"), Scripts.Stop());
+        Task run = host.RunAsync();
+
+        host.Console.SendText("go");
+        host.Console.SendEnter();
+        await InteractiveSessionCommandTests.WaitForScrollbackAsync(host, "extension saw the read");
+
+        host.Console.Complete();
+        await run;
+        return host.ScrollbackText;
+    }
+
+    private static Func<string, string?> FallbackEnvironment()
+    {
+        Func<string, string?> baseEnvironment = PrintModeTestSupport.Environment();
+        return name =>
+            name switch
+            {
+                "NO_COLOR" => "1",
+                "LUNATE_ASCII" => "1",
+                _ => baseEnvironment(name),
+            };
+    }
+
+    private static string BlockText(string scrollback) =>
+        scrollback
+            .Split('\n')
+            .Single(line => line.Contains("extension saw the read", StringComparison.Ordinal));
 
     private static ChatResponseUpdate UsageUpdate() =>
         new(

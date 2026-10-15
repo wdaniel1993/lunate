@@ -1,4 +1,5 @@
 using Microsoft.Reactive.Testing;
+using Spectre.Console;
 
 namespace Lunate.Tui.Tests;
 
@@ -133,6 +134,34 @@ public sealed class LiveAreaTests
 
         Assert.Equal(1, tracking.MaxDepth);
         Assert.True(console.Writes.Count > 1);
+    }
+
+    [Fact]
+    public void WriteScrollback_carries_colour_under_truecolor_and_drops_it_under_no_colors()
+    {
+        var scheduler = new TestScheduler();
+        using var coloredConsole = new FakeConsoleIO(scheduler, new ConsoleSize(40, 10));
+        using var colored = new LiveArea(
+            coloredConsole,
+            scheduler,
+            capabilities: new TerminalCapabilities(ColorSystemSupport.TrueColor, Unicode: true)
+        );
+        using var plainConsole = new FakeConsoleIO(scheduler, new ConsoleSize(40, 10));
+        using var plain = new LiveArea(
+            plainConsole,
+            scheduler,
+            capabilities: new TerminalCapabilities(ColorSystemSupport.NoColors, Unicode: true)
+        );
+
+        colored.WriteScrollback(console => console.Write(new Markup("[red]alert[/]")));
+        plain.WriteScrollback(console => console.Write(new Markup("[red]alert[/]")));
+
+        string coloredText = string.Concat(coloredConsole.Writes);
+        string plainText = string.Concat(plainConsole.Writes);
+
+        Assert.Contains("\u001b[", coloredText, StringComparison.Ordinal);
+        Assert.Contains("alert", plainText, StringComparison.Ordinal);
+        Assert.DoesNotContain("\u001b[", plainText, StringComparison.Ordinal);
     }
 
     [Fact]
