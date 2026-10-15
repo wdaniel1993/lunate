@@ -1,9 +1,12 @@
 using Xunit.Sdk;
 using Xunit.v3;
 
-// Bounded, not serial: full parallel collections starve the dotnet language-server start on the
-// small Windows CI runners (run 38794819725, 2026-10-15: attachment and process-timeout tests
-// failed on both Windows legs, different sets per leg — load-dependent). Two concurrent
-// collections keep the suite parallel without the self-contention. Evidence protocol and ladder:
-// the parallel-sample-suites change (design D2).
-[assembly: Parallelization(Mode = ParallelMode.Collections, MaxThreads = 2)]
+// Serialized, with evidence — the parallel-sample-suites change, design D2 ladder:
+// - Full parallel (run 38794819725): attachment and process-timeout tests failed on both Windows
+//   legs (bash 1 error, PowerShell 3 errors — different sets per leg, load-dependent).
+// - Bounded MaxThreads = 2 (run 38797312304, attempt 3): the Windows bash leg passed, the
+//   PowerShell leg still starved the per-test `dotnet` language-server start (attachment notices
+//   never arrived).
+// Two concurrent server starts still exceed the PowerShell leg's budget; serializing removes the
+// self-contention. Revisit if the runner images change or the suite gains per-test server reuse.
+[assembly: Parallelization(Mode = ParallelMode.None)]
