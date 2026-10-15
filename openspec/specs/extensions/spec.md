@@ -265,7 +265,7 @@ Extensions SHALL register background services (`IBackgroundService` with `StartA
 
 ### Requirement: File change bus
 
-The core SHALL emit exactly one `FileChanged` notification after every successful file mutation performed by the `write` and `edit` tools; refused or failed mutations SHALL emit nothing. Each notification SHALL carry the canonical absolute path, the workspace-relative path, the workspace id, the run id when the mutation ran inside a run, and the change kind (`created` or `modified`); a write whose content is identical to the existing file still emits (`modified`). The workspace id SHALL be the run's `WorktreeRoot`. Extensions SHALL subscribe with a handler interface and an optional `*`/`?` pattern filter matched against the absolute path. Delivery SHALL be ordered per workspace and SHALL never throw into the mutation path; handler failures follow the hook failure policy (report); an event SHALL be observable only after the file write has completed — a subscriber reading the file on delivery SHALL see the new content. Once a drain begins, further notifications SHALL be dropped and logged. Limits: file mutations made by the `bash` tool are not published; extension and MCP tools that write files publish through their `ToolContext` file-change sink themselves — the same mechanism the core tools use. No `deleted` kind exists (no tool deletes files).
+The core SHALL emit exactly one `FileChanged` notification after every successful file mutation performed by the `write` and `edit` tools; refused or failed mutations SHALL emit nothing. Each notification SHALL carry the canonical absolute path, the workspace-relative path, the workspace id, the run id when the mutation ran inside a run, and the change kind (`created` or `modified`); a write whose content is identical to the existing file still emits (`modified`). The workspace id SHALL be the run's `WorktreeRoot`. Extensions SHALL subscribe with a handler interface and an optional `*`/`?` pattern filter matched against the absolute path. Delivery SHALL be ordered per workspace and SHALL never throw into the mutation path; handler failures follow the hook failure policy (report); an event SHALL be observable only after the file write has completed — a subscriber reading the file on delivery SHALL see the new content. A flush SHALL complete when every notification enqueued so far has been dispatched, without beginning the drain — notifications arriving afterwards are still delivered. Once a drain begins, further notifications SHALL be dropped and logged. Limits: file mutations made by the `bash` tool are not published; extension and MCP tools that write files publish through their `ToolContext` file-change sink themselves — the same mechanism the core tools use. No `deleted` kind exists (no tool deletes files).
 
 #### Scenario: Events after write and edit
 
@@ -302,6 +302,12 @@ The core SHALL emit exactly one `FileChanged` notification after every successfu
 - **GIVEN** a subscriber that reads the file when an event arrives
 - **WHEN** a `write` completes
 - **THEN** the read observes the new content
+
+#### Scenario: A flush observes delivery without ending it
+
+- **GIVEN** a subscribed extension and a dispatched notification
+- **WHEN** a flush completes
+- **THEN** the subscriber has seen the notification and a later mutation still delivers
 
 #### Scenario: Events after a drain begins are dropped
 
