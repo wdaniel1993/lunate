@@ -7,9 +7,9 @@
 
 ## 2. Flip + local evidence
 
-- [ ] 2.1 Remove `[assembly: Parallelization(Mode = ParallelMode.None)]` from all seven sample suites' `AssemblyInfo.cs` (subagents, model-router, lsp-diagnostics, code-mode, mcp-from-extension, ui-showcase, worktree-tasks).
-- [ ] 2.2 Build Release; run each suite binary 5× in a row (parallel collections on); record pass/fail per run.
-- [ ] 2.3 If a suite fails locally 5× evidence: apply the D2 ladder for it (bounded → restore+document) before proceeding.
+- [x] 2.1 Remove `[assembly: Parallelization(Mode = ParallelMode.None)]` from all seven sample suites' `AssemblyInfo.cs` (subagents, model-router, lsp-diagnostics, code-mode, mcp-from-extension, ui-showcase, worktree-tasks).
+- [x] 2.2 Build Release; run each suite binary 5× in a row (parallel collections on); record pass/fail per run.
+- [x] 2.3 If a suite fails locally 5× evidence: apply the D2 ladder for it (bounded → restore+document) before proceeding.
 
 ## 3. Gate
 
