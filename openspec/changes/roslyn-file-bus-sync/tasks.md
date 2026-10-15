@@ -22,8 +22,8 @@
 
 ## 4. Docs + delta
 
-- [ ] 4.1 `docs/spec/extensibility.md` "File change bus" section: the honest rule (tool edits exact via the bus; bash/external via the stamp scan; same-stamp out-of-band seen at next reload) + the first-core-subscriber sentence.
-- [ ] 4.2 Delta validates strict; `openspec validate --all --strict`.
+- [x] 4.1 `docs/spec/extensibility.md` "File change bus" section: the honest rule (tool edits exact via the bus; bash/external via the stamp scan; same-stamp out-of-band seen at next reload) + the first-core-subscriber sentence.
+- [x] 4.2 Delta validates strict; `openspec validate --all --strict`.
 
 ## 5. Verify, review, archive
 
