@@ -23,6 +23,7 @@ public sealed class McpFromExtensionEndToEndTests
         Assert.Equal("mcp", registered.ExtensionId);
 
         Assert.False(File.Exists(marker), "registration must start nothing");
+        Assert.Empty(host.Log.Messages);
 
         IReadOnlyList<ExtensionMcpServerStatus> statuses = await host.ComposeMcpServersAsync(Ct);
 
