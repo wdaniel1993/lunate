@@ -159,6 +159,10 @@ cleanup() {
   fi
 }
 trap cleanup EXIT
+# Route signals into a plain exit so a killed run still fires the EXIT trap.
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 echo "eval: tool=${TOOL} model=${MODEL:-<from output>} phase=${PHASE} tasks=${#TASKS[@]}"
 for name in "${TASKS[@]}"; do
