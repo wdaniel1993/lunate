@@ -50,10 +50,14 @@ case "$(uname -s)" in
 esac
 
 echo "perf: benchmarking: $HYPERFINE_CMD"
+echo "perf: $(hyperfine --version)"
 
 measure_median() {
   hyperfine --warmup "$WARMUP" --runs "$RUNS" --export-json "$RESULTS_ABS" "$HYPERFINE_CMD" >/dev/null
-  jq -r '.results[0].median * 1000 | round' "$RESULTS_ABS"
+  # hyperfine 2.x moved the statistics into .results[].summary (wall clock =
+  # time_wall_clock); 1.x exposes .median at the top level. Read whichever the
+  # installed version wrote — runner images and developer machines drift.
+  jq -r '(.results[0].median // .results[0].summary.time_wall_clock.median) * 1000 | round' "$RESULTS_ABS"
 }
 
 MEDIAN_MS="$(measure_median)"
