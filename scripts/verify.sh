@@ -40,7 +40,7 @@ run_tests() {
   local label="$1"
   shift
   local output status total
-  output="$(mktemp)"
+  output="$(mktemp "${VERIFY_TMP_ROOT}/out.XXXXXX")"
   set +e
   "$@" > "$output" 2>&1
   status=$?
@@ -58,22 +58,43 @@ run_tests() {
   fi
 }
 
-VERIFY_TMP_DIRS=()
+VERIFY_TMP_ROOT=""
+
+# One scratch root per run, created and registered at top level — never inside a
+# command substitution. The old design registered each dir from inside
+# `verify_tmp` called via `$(...)`, so the registration happened in a subshell
+# and the cleanup never saw the dirs: every run leaked its ~0.7 GB staging dirs
+# even on success. verify_tmp now hands out subdirs inside this root.
+VERIFY_TMP_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/lunate-verify.XXXXXX")"
+
+# Stale scratch sweep: a hard-killed run (timeout kill, closed terminal —
+# anything that bypasses the traps below) can leave a lunate-verify.* root
+# behind; remove ones older than 4 hours. A live gate run never lasts that
+# long, and the name-prefix is ours by attribution. (Older anonymous tmp.*
+# leftovers from before the prefix existed are swept by the Mac Mini's
+# tmp-leak guard.)
+find "${TMPDIR:-/tmp}" -maxdepth 1 -type d -name 'lunate-verify.*' -mmin +240 -exec rm -rf {} + 2>/dev/null || true
 
 verify_tmp() {
   local dir
-  dir="$(mktemp -d)"
-  VERIFY_TMP_DIRS+=("$dir")
+  dir="$(mktemp -d "${VERIFY_TMP_ROOT}/scratch.XXXXXX")"
   printf '%s\n' "$dir"
 }
 
 verify_cleanup() {
-  if [ "${#VERIFY_TMP_DIRS[@]}" -gt 0 ]; then
-    rm -rf "${VERIFY_TMP_DIRS[@]}"
+  if [ -n "$VERIFY_TMP_ROOT" ] && [ -d "$VERIFY_TMP_ROOT" ]; then
+    rm -rf "$VERIFY_TMP_ROOT"
   fi
+  VERIFY_TMP_ROOT=""
 }
 
+# The EXIT trap does the cleanup; route signals into a plain exit so a killed
+# run still fires it. Without these, TERM/INT/HUP terminate bash without the
+# EXIT trap and leave the full install-staging dir behind (~0.7 GB per run).
 trap verify_cleanup EXIT
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 # The release version, exactly as release.yml gates the tag against it.
 product_version() {

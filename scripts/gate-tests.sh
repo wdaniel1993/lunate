@@ -48,6 +48,14 @@ cleanup() {
   fi
 }
 trap cleanup EXIT
+# Route signals into a plain exit so a killed run still fires the EXIT trap.
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
+# Stale scratch sweep: a hard-killed run can leave a .gate-* dir in the repo
+# root; remove ones older than 4 hours (a live run never lasts that long).
+find "${SCRIPT_DIR}/.." -maxdepth 1 -type d -name '.gate-*' -mmin +240 -exec rm -rf {} + 2>/dev/null || true
 
 echo "gate-tests: formatting gate must fail on an unformatted file"
 FORMAT_DIR="$(mktemp -d "${SCRIPT_DIR}/../.gate-format.XXXXXX")"

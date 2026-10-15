@@ -13,6 +13,13 @@ try {
     # (parity with scripts/verify.sh). Only UI strings are pinned, never cultures.
     if (-not $env:DOTNET_CLI_UI_LANGUAGE) { $env:DOTNET_CLI_UI_LANGUAGE = 'en' }
 
+    # Stale scratch sweep (parity with scripts/verify.sh): a hard-killed run can
+    # leave a lunate-verify-* dir in the temp path; remove ones older than 4
+    # hours (a live gate run never lasts that long).
+    Get-ChildItem -Path ([System.IO.Path]::GetTempPath()) -Directory -Filter 'lunate-verify-*' -ErrorAction SilentlyContinue |
+        Where-Object { $_.LastWriteTime -lt (Get-Date).AddHours(-4) } |
+        Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+
     function Measure-StartupMedian {
         param($Bin, $File)
         Write-Host "verify: benchmarking: $Bin --version"
