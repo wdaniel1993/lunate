@@ -18,6 +18,12 @@ internal sealed class FakeWorkspaceBackend(string root) : ICSharpBackend, IDispo
 
     public int LoadCalls { get; private set; }
 
+    /// <summary>The file paths marked through the bus-adjacent mark path, in delivery order.</summary>
+    public List<string> FileMarks { get; } = [];
+
+    /// <summary>How often the workspace was marked for a reload; observable for tests.</summary>
+    public int ProjectChangeMarks { get; private set; }
+
     public ValueTask<WorkspaceLoadResult> LoadAsync(CancellationToken ct)
     {
         LoadCalls++;
@@ -55,7 +61,9 @@ internal sealed class FakeWorkspaceBackend(string root) : ICSharpBackend, IDispo
         CancellationToken ct
     ) => ValueTask.FromResult(new RenamePlanResult(SymbolSearchStatus.Loaded, "planned", [], 0, 0));
 
-    public void NotifyFileChanged(string absolutePath) { }
+    public void NotifyFileChanged(string absolutePath) => FileMarks.Add(absolutePath);
+
+    public void NotifyProjectChanged() => ProjectChangeMarks++;
 
     public void Dispose()
     {

@@ -9,9 +9,9 @@
 
 ## 2. Coding wiring
 
-- [ ] 2.1 `WorkspaceServices.Connect(IFileChangeBus)` (one subscription, `pathPattern: null`), handler → `MarkChanged(workspaceId, path)`: non-creating lookup under the services gate; `.cs` (case-insensitive suffix) → backend mark; `.csproj`/`.sln`/`.slnx` → reload mark; everything else ignored; disposal with the services.
-- [ ] 2.2 Wire in the three modes (`InteractiveSession`, `PrintMode`, `AcpMode`) right after extensions compose; no extensions → no subscription (scan-only, unchanged).
-- [ ] 2.3 Coding.Tests (fakes): routing to the right root; unknown root creates nothing; non-`.cs` ignored; project files set the reload flag; disposed services → no-op; suffix case-insensitivity.
+- [x] 2.1 `WorkspaceServices.Connect(IFileChangeBus)` (one subscription, `pathPattern: null`), handler → `MarkChanged(workspaceId, path)`: non-creating lookup under the services gate; `.cs` (case-insensitive suffix) → backend mark; `.csproj`/`.sln`/`.slnx` → reload mark; everything else ignored; disposal with the services.
+- [x] 2.2 Wire in the three modes (`InteractiveSession`, `PrintMode`, `AcpMode`) right after extensions compose; no extensions → no subscription (scan-only, unchanged).
+- [x] 2.3 Coding.Tests (fakes): routing to the right root; unknown root creates nothing; non-`.cs` ignored; project files set the reload flag; disposed services → no-op; suffix case-insensitivity.
 
 ## 3. Integration proofs
 

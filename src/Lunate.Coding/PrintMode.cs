@@ -188,6 +188,12 @@ internal static class PrintMode
             using var workspaceServices = new WorkspaceServices(
                 settings.Roslyn.MaxLoadedWorkspaces
             );
+            // The bus exists only when the extension host composed; scan-only without extensions.
+            if (extensions is not null)
+            {
+                workspaceServices.Connect(extensions.FileChanges);
+            }
+
             AgentHarness harness;
             try
             {

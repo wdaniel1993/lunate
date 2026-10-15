@@ -49,6 +49,12 @@ internal static class AcpMode
                 host = ComposeExtensions(extensions, workspace, errors, ct);
             }
 
+            // The bus exists only when the extension host composed; scan-only without extensions.
+            if (host is not null)
+            {
+                workspaceServices.Connect(host.FileChanges);
+            }
+
             mcp = McpComposition
                 .ComposeAsync(
                     workspace,
