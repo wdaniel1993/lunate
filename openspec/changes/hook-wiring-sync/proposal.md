@@ -13,6 +13,6 @@ Card `t_7dd717e9` (gap from the spec-vs-production audit, `t_298479fe`): the doc
 ## Impact
 
 - **Behaviour change: one new hook emission** (session model switch) → sign-off card `t_798193d8` (maintainer decision, per the card's "needs a sign-off at draft time if wired").
-- Spec delta: **extensions** (MODIFIED "Hook wiring": wired list + retired unwired sentence + one scenario; the four existing scenarios preserved verbatim).
+- Spec delta: **extensions** (MODIFIED "Hook wiring": wired list + retired unwired sentence + one scenario; the six existing scenarios preserved verbatim).
 - Public API: none (no new types; `SwitchToModel` and friends are private).
 - No new packages; no ADR (the catalogue already promised the hook — this completes it; the alternative "document as unwired" is recorded in the design).

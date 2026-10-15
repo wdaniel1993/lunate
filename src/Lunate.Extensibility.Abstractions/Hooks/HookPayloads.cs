@@ -24,8 +24,8 @@ public sealed record SessionStartedPayload(string WorkingDirectory, string Repos
 public sealed record SessionEndingPayload(string WorkingDirectory, string RepositoryIdentity);
 
 /// <summary>
-/// Raw user input, before it reaches the model. Contract-complete but unwired in this change:
-/// the input layer/TUI will produce it.
+/// Raw user input, before it reaches the model; produced by the input pipeline before
+/// anything starts or queues.
 /// </summary>
 public sealed record InputReceivedPayload(string Text);
 
@@ -144,8 +144,7 @@ public sealed record RunSettledPayload(string RunId) : IParentRunIdPayload
 }
 
 /// <summary>
-/// The conversation before compaction. Contract-complete but unwired in this change:
-/// the compaction layer will produce it.
+/// The conversation before compaction; produced by the compaction layer before compaction.
 /// </summary>
 public sealed record CompactingPayload(string RunId, IReadOnlyList<ContextMessage> Messages)
     : IParentRunIdPayload

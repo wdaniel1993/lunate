@@ -13,7 +13,7 @@
 
 ## 3. Spec + docs
 
-- [x] 3.1 MODIFIED "Hook wiring" delta: wired list += `InputReceived`/`ToolsChanged`/`ModelChanged`; retire the unwired sentence; four existing scenarios verbatim + one new `ModelChanged` scenario.
+- [x] 3.1 MODIFIED "Hook wiring" delta: wired list += `InputReceived`/`ToolsChanged`/`ModelChanged`; retire the unwired sentence; six existing scenarios verbatim + one new `ModelChanged` scenario.
 - [x] 3.2 Spot-check every catalogue hook has a producer (grep per hook) before asserting "every catalogue hook SHALL have a producer".
 - [x] 3.3 `docs/spec/extensibility.md`: no edit expected — confirm the catalogue table stays accurate.
 
