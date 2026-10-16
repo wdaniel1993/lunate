@@ -11,7 +11,9 @@ namespace Lunate.Coding;
 /// trust-gated. Entries merge by server name with the later file winning; every shadowed
 /// definition is logged naming the server and both files. File errors and expansion warnings
 /// become notices through the mode's interaction; a failed server becomes a warning naming it.
-/// Nothing here starts before the caller's first listing.
+/// Nothing here starts before the caller's first listing. A denied project file reports the
+/// per-server questions it skipped through the optional callback, so an interactive caller can
+/// keep its <c>n of m</c> count truthful.
 /// </summary>
 internal static class McpComposition
 {
@@ -59,7 +61,8 @@ internal static class McpComposition
         IMcpServerApprovalPrompt serverPrompt,
         IExtensionLog log,
         Action<UserNotice> notify,
-        CancellationToken ct
+        CancellationToken ct,
+        Action<int>? skippedServerQuestions = null
     )
     {
         ArgumentNullException.ThrowIfNull(workspace);
@@ -104,6 +107,18 @@ internal static class McpComposition
                 .ConfigureAwait(false);
             if (!trusted)
             {
+                if (skippedServerQuestions is { } skippedCallback)
+                {
+                    int skipped = parsed.RawServers.Count(raw =>
+                        store.EvaluateMcpServer(identity, McpConfigTrustHash.ComputeDefinition(raw))
+                            is not ExtensionTrustDecision.Trusted
+                    );
+                    if (skipped > 0)
+                    {
+                        skippedCallback(skipped);
+                    }
+                }
+
                 continue;
             }
 

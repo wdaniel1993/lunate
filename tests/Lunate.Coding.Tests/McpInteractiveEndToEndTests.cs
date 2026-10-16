@@ -101,6 +101,27 @@ public sealed class McpInteractiveEndToEndTests
     }
 
     [Fact]
+    public async Task Mcp_shows_the_agents_config_path_as_the_source()
+    {
+        using var temp = new TempDirectory();
+        string config = temp.File("agents-mcp.json");
+        File.WriteAllText(config, McpTestServerSupport.ConfigJson("test"));
+        using var host = new InteractiveSessionHost(mcpAgentsConfigPath: config);
+        host.Console.Size = new ConsoleSize(400, 24);
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+
+        host.Console.SendText("/mcp");
+        host.Console.SendEnter();
+        await InteractiveSessionCommandTests.WaitForFrameAsync(host, "test — started");
+        Assert.Contains($"({config})", host.LastFrame, StringComparison.Ordinal);
+
+        host.Console.SendText("/quit");
+        host.Console.SendEnter();
+        await run;
+    }
+
+    [Fact]
     public async Task Mcp_shows_a_missing_variable_warning_next_to_the_server()
     {
         const string Variable = "LUNATE_TEST_UNSET_9b41";

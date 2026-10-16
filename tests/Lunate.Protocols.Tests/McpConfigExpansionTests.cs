@@ -152,8 +152,61 @@ public sealed class McpConfigExpansionTests
         Assert.Equal("${VALUE}", raw.Environment!["K"]);
     }
 
+    [Fact]
+    public void Multiple_references_in_one_value_expand_independently()
+    {
+        using var temp = new TempDirectory();
+
+        McpConfigResult result = Load(
+            temp,
+            """{ "command": "run", "args": ["prefix-${A}-${B}"] }""",
+            name =>
+                name switch
+                {
+                    "A" => "alpha",
+                    "B" => "beta",
+                    _ => null,
+                }
+        );
+
+        Assert.Equal(["prefix-alpha-beta"], Assert.Single(result.Servers).Arguments);
+        Assert.Empty(result.Warnings);
+    }
+
+    [Fact]
+    public void Variable_names_are_case_sensitive()
+    {
+        using var temp = new TempDirectory();
+
+        McpConfigResult result = Load(
+            temp,
+            """{ "command": "run", "args": ["${VAR}-${var}"] }""",
+            name => name == "VAR" ? "upper" : null
+        );
+
+        Assert.Equal(["upper-${var}"], Assert.Single(result.Servers).Arguments);
+        McpServerWarning warning = Assert.Single(result.Warnings);
+        Assert.Equal("var", warning.Variable);
+    }
+
+    [Fact]
+    public void A_double_dollar_stays_literal()
+    {
+        using var temp = new TempDirectory();
+
+        McpConfigResult result = Load(
+            temp,
+            """{ "command": "run", "args": ["$$", "cost $$5"] }""",
+            _ => null
+        );
+
+        Assert.Equal(["$$", "cost $$5"], Assert.Single(result.Servers).Arguments);
+        Assert.Empty(result.Warnings);
+    }
+
     [Theory]
     [InlineData("$VAR")]
+    [InlineData("before $VAR after")]
     [InlineData("${}")]
     [InlineData("${1BAD}")]
     [InlineData("${UNCLOSED")]

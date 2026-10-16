@@ -108,7 +108,9 @@ public sealed class ExtensionTrustStore
     /// The project mcp.json file record: the same per-repository/hash semantics as extension
     /// trust, kept in a distinct section so extension trust is never weakened or shared with a
     /// config file. Each of the standard project files is its own record, keyed by the config
-    /// file's path (three files in one worktree must not overwrite each other).
+    /// file's path (three files in one worktree must not overwrite each other). A repository
+    /// object without the entries map — a store written by a layout that predates the keying —
+    /// cannot answer the question, so it prompts like an unknown repository.
     /// </summary>
     public ExtensionTrustDecision EvaluateMcpConfig(
         string repositoryIdentity,
@@ -364,7 +366,7 @@ public sealed class ExtensionTrustStore
 
         if (repository[entriesKey] is not JsonObject entries)
         {
-            return ExtensionTrustDecision.NewWorktree;
+            return ExtensionTrustDecision.Prompt;
         }
 
         if (

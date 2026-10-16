@@ -68,8 +68,8 @@ internal sealed partial class InteractiveSession
     /// <summary>
     /// The number of trust questions this session will ask, from the shared inventory: project
     /// extensions whose trust evaluates to <c>Prompt</c> (discovery and content hash only, no
-    /// assembly load) plus one for an untrusted project <c>mcp.json</c>. The count labels each
-    /// question <c>n of m</c>.
+    /// assembly load), plus one per untrusted project <c>mcp.json</c> file and one per unapproved
+    /// project-scoped server definition. The count labels each question <c>n of m</c>.
     /// </summary>
     private int CountPendingTrustQuestions() =>
         TrustInventory.Create(_workspace, _options.Extensions).PendingCount;

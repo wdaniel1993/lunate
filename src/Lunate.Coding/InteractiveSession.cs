@@ -393,7 +393,9 @@ internal sealed partial class InteractiveSession : IDisposable
                     new TuiMcpServerApprovalPrompt(AskTrustAsync),
                     log,
                     Notify,
-                    ct
+                    ct,
+                    skippedServerQuestions: skipped =>
+                        _trustTotal = Math.Max(_trustAsked, _trustTotal - skipped)
                 )
                 .ConfigureAwait(false);
         }
