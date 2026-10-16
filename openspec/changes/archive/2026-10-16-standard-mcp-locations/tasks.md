@@ -16,13 +16,13 @@
 
 ## 3. Gate
 
-- [ ] 3.1 `scripts/verify.sh` green (both cultures); csharpier/style clean.
+- [x] 3.1 `scripts/verify.sh` green (both cultures); csharpier/style clean.
 
 ## 4. Review
 
-- [ ] 4.1 Adversarial review; fix findings; focused re-review on fixes.
+- [x] 4.1 Adversarial review; fix findings; focused re-review on fixes.
 
 ## 5. Archive + PR
 
-- [ ] 5.1 Archive; tick tasks; push.
+- [x] 5.1 Archive; tick tasks; push.
 - [ ] 5.2 PR (self-contained body: the problem, what lands, review map, verification); watch CI to green; closing comment; the maintainer merges.
