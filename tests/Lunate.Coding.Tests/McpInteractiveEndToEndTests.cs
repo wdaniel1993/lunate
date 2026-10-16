@@ -145,11 +145,11 @@ public sealed class McpInteractiveEndToEndTests
         string config = temp.File("mcp.json");
         File.WriteAllText(
             config,
-            $$"""
-            { "mcpServers": { "test": { "command": "{{TestMcpServer.DotnetPath}}", "args": ["exec", "{{TestMcpServer.ServerDll}}"], "env": { "LUNATE_TEST_MCP_MARKER": "{{temp.File(
-                "marker.txt"
-            )}}", "TOKEN": "${LUNATE_TEST_UNSET_9b41}" } } } }
-            """
+            McpTestServerSupport.ConfigJson(
+                "test",
+                temp.File("marker.txt"),
+                ("TOKEN", "${LUNATE_TEST_UNSET_9b41}")
+            )
         );
         using var host = new InteractiveSessionHost(mcpConfigPath: config);
         host.Console.Size = new ConsoleSize(400, 24);
