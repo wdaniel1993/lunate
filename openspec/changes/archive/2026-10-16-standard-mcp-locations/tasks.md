@@ -25,4 +25,4 @@
 ## 5. Archive + PR
 
 - [x] 5.1 Archive; tick tasks; push.
-- [ ] 5.2 PR (self-contained body: the problem, what lands, review map, verification); watch CI to green; closing comment; the maintainer merges.
+- [x] 5.2 PR (self-contained body: the problem, what lands, review map, verification); watch CI to green; closing comment; the maintainer merges.
