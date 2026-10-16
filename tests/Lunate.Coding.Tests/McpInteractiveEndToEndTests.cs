@@ -1,3 +1,4 @@
+using Lunate.TestSupport;
 using Lunate.Tui;
 
 namespace Lunate.Coding.Tests;
@@ -72,6 +73,61 @@ public sealed class McpInteractiveEndToEndTests
         host.Console.SendEnter();
         await InteractiveSessionCommandTests.WaitForFrameAsync(host, "broken — failed:");
         Assert.Contains("test — started, 5 tools", host.LastFrame, StringComparison.Ordinal);
+
+        host.Console.SendText("/quit");
+        host.Console.SendEnter();
+        await run;
+    }
+
+    [Fact]
+    public async Task Mcp_shows_the_config_path_as_the_source()
+    {
+        using var temp = new TempDirectory();
+        string config = temp.File("mcp.json");
+        File.WriteAllText(config, McpTestServerSupport.ConfigJson("test"));
+        using var host = new InteractiveSessionHost(mcpConfigPath: config);
+        host.Console.Size = new ConsoleSize(400, 24);
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+
+        host.Console.SendText("/mcp");
+        host.Console.SendEnter();
+        await InteractiveSessionCommandTests.WaitForFrameAsync(host, "test — started");
+        Assert.Contains($"({config})", host.LastFrame, StringComparison.Ordinal);
+
+        host.Console.SendText("/quit");
+        host.Console.SendEnter();
+        await run;
+    }
+
+    [Fact]
+    public async Task Mcp_shows_a_missing_variable_warning_next_to_the_server()
+    {
+        const string Variable = "LUNATE_TEST_UNSET_9b41";
+        Environment.SetEnvironmentVariable(Variable, null);
+        using var temp = new TempDirectory();
+        string config = temp.File("mcp.json");
+        File.WriteAllText(
+            config,
+            $$"""
+            { "mcpServers": { "test": { "command": "{{TestMcpServer.DotnetPath}}", "args": ["exec", "{{TestMcpServer.ServerDll}}"], "env": { "LUNATE_TEST_MCP_MARKER": "{{temp.File(
+                "marker.txt"
+            )}}", "TOKEN": "${LUNATE_TEST_UNSET_9b41}" } } } }
+            """
+        );
+        using var host = new InteractiveSessionHost(mcpConfigPath: config);
+        host.Console.Size = new ConsoleSize(400, 24);
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+
+        host.Console.SendText("/mcp");
+        host.Console.SendEnter();
+        await InteractiveSessionCommandTests.WaitForFrameAsync(host, "test — started");
+        Assert.Contains(
+            "[missing ${LUNATE_TEST_UNSET_9b41}]",
+            host.LastFrame,
+            StringComparison.Ordinal
+        );
 
         host.Console.SendText("/quit");
         host.Console.SendEnter();
