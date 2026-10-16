@@ -23,10 +23,17 @@ internal sealed record PendingMcpConfig(
 );
 
 /// <summary>
-/// The discovery and evaluation behind every trust decision: project extensions (directory hash)
-/// and the project <c>mcp.json</c> (definition hash), evaluated against the store. It reads
-/// descriptors and computes hashes only — no assembly load, no hook dispatch, no server start — so
-/// the interactive session's question count and the trust command cannot drift.
+/// One project-scoped server definition without its per-server approval: the raw definition as
+/// written and its canonical definition hash (the approval key).
+/// </summary>
+internal sealed record PendingMcpServer(McpServerOptions Definition, string Hash);
+
+/// <summary>
+/// The discovery and evaluation behind every trust decision: project extensions (directory hash),
+/// the project <c>mcp.json</c> files (definition hash) and the per-server approvals (definition
+/// hash), evaluated against the store. It reads descriptors and computes hashes only — no assembly
+/// load, no hook dispatch, no server start — so the interactive session's question count and the
+/// trust command cannot drift.
 /// </summary>
 internal sealed class TrustInventory
 {
@@ -38,33 +45,46 @@ internal sealed class TrustInventory
         string worktreePath,
         IReadOnlyList<TrustRecord> records,
         IReadOnlyList<PendingExtension> extensions,
-        PendingMcpConfig? mcpConfig
+        IReadOnlyList<PendingMcpConfig> mcpConfigs,
+        IReadOnlyList<PendingMcpServer> mcpServers
     )
     {
         RepositoryIdentity = repositoryIdentity;
         WorktreePath = worktreePath;
         Records = records;
         Extensions = extensions;
-        ProjectMcpConfig = mcpConfig;
+        ProjectMcpConfigs = mcpConfigs;
+        McpServers = mcpServers;
     }
 
     internal string RepositoryIdentity { get; }
 
     internal string WorktreePath { get; }
 
-    /// <summary>This repository's records across both store sections.</summary>
+    /// <summary>This repository's records across all store sections.</summary>
     internal IReadOnlyList<TrustRecord> Records { get; }
 
     /// <summary>Every project extension that is not already trusted, id-ordered.</summary>
     internal IReadOnlyList<PendingExtension> Extensions { get; }
 
-    /// <summary>The project <c>mcp.json</c> when one exists and is not already trusted.</summary>
-    internal PendingMcpConfig? ProjectMcpConfig { get; }
+    /// <summary>
+    /// The project files that exist and are not already trusted, in precedence order
+    /// (<c>.lunate</c>, <c>.agents</c>, root <c>.mcp.json</c>).
+    /// </summary>
+    internal IReadOnlyList<PendingMcpConfig> ProjectMcpConfigs { get; }
+
+    /// <summary>
+    /// Every project-scoped server definition without its per-server approval, file order then
+    /// definition order — a session asks for these after the file trust, and the trust command
+    /// records them.
+    /// </summary>
+    internal IReadOnlyList<PendingMcpServer> McpServers { get; }
 
     /// <summary>Decisions a session would ask about: unknown or changed hashes.</summary>
     internal int PendingCount =>
         Extensions.Count(extension => extension.Decision is ExtensionTrustDecision.Prompt)
-        + (ProjectMcpConfig is { Decision: ExtensionTrustDecision.Prompt } ? 1 : 0);
+        + ProjectMcpConfigs.Count(config => config.Decision is ExtensionTrustDecision.Prompt)
+        + McpServers.Count;
 
     internal bool HasPending => PendingCount > 0;
 
@@ -89,18 +109,19 @@ internal sealed class TrustInventory
     }
 
     /// <summary>The pending decisions as the <c>--json</c> contract: extensions id-ordered, then
-    /// the mcp.json with name-sorted servers; the human-useful locations (directory, path) stay
-    /// in this form — they help operators — but never enter the digest, and env is key names
-    /// only, never values.
+    /// each mcp.json with name-sorted servers, then the per-server approvals; the human-useful
+    /// locations (directory, path, source) stay in this form — they help operators — but never
+    /// enter the digest, and env is key names only, never values.
     /// </summary>
     internal JsonArray BuildPendingNode() =>
         BuildPendingNode(includeLocations: true, includeEnvValues: false);
 
     /// <summary>
     /// The canonical pending node. With <paramref name="includeLocations"/> false it carries
-    /// content only — the digest input; the machine-local directory and path are only added for
-    /// the <c>--json</c> contract. <paramref name="includeEnvValues"/> keeps the raw env values
-    /// in the digest (a value change must change it) and reduces env to key names in the JSON.
+    /// content only — the digest input; the machine-local directory, path and source file are only
+    /// added for the <c>--json</c> contract. <paramref name="includeEnvValues"/> keeps the raw env
+    /// values in the digest (a value change must change it) and reduces env to key names in the
+    /// JSON.
     /// </summary>
     private JsonArray BuildPendingNode(bool includeLocations, bool includeEnvValues)
     {
@@ -127,7 +148,11 @@ internal sealed class TrustInventory
             pending.Add(node);
         }
 
-        if (ProjectMcpConfig is { Decision: ExtensionTrustDecision.Prompt } config)
+        foreach (
+            PendingMcpConfig config in ProjectMcpConfigs.Where(config =>
+                config.Decision is ExtensionTrustDecision.Prompt
+            )
+        )
         {
             var servers = new JsonArray();
             foreach (
@@ -149,6 +174,22 @@ internal sealed class TrustInventory
             configNode["servers"] = servers;
             configNode["hash"] = config.ContentHash;
             pending.Add(configNode);
+        }
+
+        foreach (PendingMcpServer server in McpServers)
+        {
+            var node = new JsonObject
+            {
+                ["kind"] = "mcpServer",
+                ["server"] = McpConfigTrustHash.DefinitionNode(server.Definition, includeEnvValues),
+            };
+            if (includeLocations)
+            {
+                node["source"] = server.Definition.Source;
+            }
+
+            node["hash"] = server.Hash;
+            pending.Add(node);
         }
 
         return pending;
@@ -206,19 +247,42 @@ internal sealed class TrustInventory
             );
         }
 
-        PendingMcpConfig? mcpConfig = null;
-        string projectConfig = McpComposition.ProjectConfigPath(worktree);
-        if (File.Exists(projectConfig))
+        List<PendingMcpConfig> mcpConfigs = [];
+        List<PendingMcpServer> mcpServers = [];
+        foreach (string projectConfig in McpComposition.ProjectConfigPaths(worktree))
         {
+            if (!File.Exists(projectConfig))
+            {
+                continue;
+            }
+
             McpConfigResult parsed = McpConfig.Load(projectConfig);
-            string hash = McpConfigTrustHash.Compute(parsed.Servers);
-            ExtensionTrustDecision decision = store.EvaluateMcpConfig(identity, worktree, hash);
+            string hash = McpConfigTrustHash.Compute(parsed.RawServers);
+            ExtensionTrustDecision decision = store.EvaluateMcpConfig(
+                identity,
+                projectConfig,
+                hash
+            );
             if (decision is not ExtensionTrustDecision.Trusted)
             {
-                mcpConfig = new PendingMcpConfig(projectConfig, parsed.Servers, hash, decision);
+                mcpConfigs.Add(
+                    new PendingMcpConfig(projectConfig, parsed.RawServers, hash, decision)
+                );
+            }
+
+            foreach (McpServerOptions raw in parsed.RawServers)
+            {
+                string definitionHash = McpConfigTrustHash.ComputeDefinition(raw);
+                if (
+                    store.EvaluateMcpServer(identity, definitionHash)
+                    is not ExtensionTrustDecision.Trusted
+                )
+                {
+                    mcpServers.Add(new PendingMcpServer(raw, definitionHash));
+                }
             }
         }
 
-        return new TrustInventory(identity, worktree, records, extensions, mcpConfig);
+        return new TrustInventory(identity, worktree, records, extensions, mcpConfigs, mcpServers);
     }
 }

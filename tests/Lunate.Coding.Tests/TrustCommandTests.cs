@@ -30,7 +30,13 @@ public sealed class TrustCommandTests
         );
         Assert.Contains("Start 1 server from project mcp.json", output, StringComparison.Ordinal);
         Assert.Contains("  srv — x", output, StringComparison.Ordinal);
-        Assert.Equal(2, fixture.PrintedHashes(output).Count);
+        Assert.Contains(
+            $"Run project MCP server 'srv' from '{fixture.ConfigPath}'",
+            output,
+            StringComparison.Ordinal
+        );
+        Assert.Contains("\n  x\n", output, StringComparison.Ordinal);
+        Assert.Equal(3, fixture.PrintedHashes(output).Count);
         Assert.Contains("digest: ", output, StringComparison.Ordinal);
         Assert.False(File.Exists(fixture.TrustFile), "inspect must never write the trust file");
     }
@@ -51,7 +57,7 @@ public sealed class TrustCommandTests
     }
 
     [Fact]
-    public void Yes_records_the_hashes_it_printed_in_both_sections()
+    public void Yes_records_the_hashes_it_printed_in_all_sections()
     {
         using var temp = new TempDirectory();
         Fixture fixture = Fixture.Create(temp, withConfig: true);
@@ -62,12 +68,48 @@ public sealed class TrustCommandTests
         Assert.Empty(errors);
         Assert.Contains("trust: recorded extensions — ", output, StringComparison.Ordinal);
         Assert.Contains("trust: recorded mcp.json — ", output, StringComparison.Ordinal);
+        Assert.Contains("trust: recorded mcp server — ", output, StringComparison.Ordinal);
         List<string> printed = fixture.PrintedHashes(output);
-        Assert.Equal(2, printed.Count);
+        Assert.Equal(3, printed.Count);
         Assert.All(
             fixture.Records(),
             record => Assert.Contains(record.ContentHash, printed, StringComparer.Ordinal)
         );
+    }
+
+    [Fact]
+    public void Per_server_approvals_are_pending_decisions_too()
+    {
+        using var temp = new TempDirectory();
+        Fixture fixture = Fixture.Create(temp, withConfig: true);
+        new ExtensionTrustStore(
+            new ExtensionHostOptions { StorePath = fixture.Store }
+        ).RecordMcpConfigTrusted(
+            fixture.Identity(),
+            fixture.ConfigPath,
+            McpConfigTrustHash.ComputeFile(fixture.ConfigPath),
+            DateTimeOffset.UtcNow
+        );
+
+        (int inspectExit, string inspect, _) = fixture.Run();
+
+        Assert.Equal(TrustCommand.ExitPending, inspectExit);
+        Assert.Contains(
+            $"Run project MCP server 'srv' from '{fixture.ConfigPath}'",
+            inspect,
+            StringComparison.Ordinal
+        );
+        Assert.Contains("\n  x\n", inspect, StringComparison.Ordinal);
+
+        (int yesExit, string yes, _) = fixture.Run("--yes");
+
+        Assert.Equal(TrustCommand.ExitOk, yesExit);
+        Assert.Contains("trust: recorded mcp server — ", yes, StringComparison.Ordinal);
+
+        (int afterExit, string after, _) = fixture.Run();
+
+        Assert.Equal(TrustCommand.ExitOk, afterExit);
+        Assert.Contains("trust: nothing pending", after, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -96,6 +138,7 @@ public sealed class TrustCommandTests
         Assert.Equal(TrustCommand.ExitOk, exitCode);
         Assert.Contains("trust: cleared extensions — ", output, StringComparison.Ordinal);
         Assert.Contains("trust: cleared mcp.json — ", output, StringComparison.Ordinal);
+        Assert.Contains("trust: cleared mcp server — ", output, StringComparison.Ordinal);
         Assert.Empty(fixture.Records());
         Assert.Equal(TrustCommand.ExitPending, fixture.Run().ExitCode);
     }
@@ -190,7 +233,7 @@ public sealed class TrustCommandTests
 
         Assert.Equal(TrustCommand.ExitOk, exitCode);
         Assert.Empty(errors);
-        Assert.Equal(2, fixture.Records().Count);
+        Assert.Equal(3, fixture.Records().Count);
     }
 
     [Fact]
@@ -272,12 +315,15 @@ public sealed class TrustCommandTests
         JsonElement root = document.RootElement;
         Assert.Equal(0, root.GetProperty("records").GetArrayLength());
         JsonElement pending = root.GetProperty("pending");
-        Assert.Equal(2, pending.GetArrayLength());
+        Assert.Equal(3, pending.GetArrayLength());
         Assert.Equal("extension", pending[0].GetProperty("kind").GetString());
         Assert.Equal("hello", pending[0].GetProperty("id").GetString());
         Assert.False(pending[0].GetProperty("filesChanged").GetBoolean());
         Assert.Equal("mcp.json", pending[1].GetProperty("kind").GetString());
         Assert.Equal("srv", pending[1].GetProperty("servers")[0].GetProperty("name").GetString());
+        Assert.Equal("mcpServer", pending[2].GetProperty("kind").GetString());
+        Assert.Equal("srv", pending[2].GetProperty("server").GetProperty("name").GetString());
+        Assert.Equal(fixture.ConfigPath, pending[2].GetProperty("source").GetString());
         Assert.Equal(fixture.PrintedDigest(), root.GetProperty("digest").GetString());
     }
 

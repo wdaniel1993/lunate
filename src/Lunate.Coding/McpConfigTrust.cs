@@ -65,13 +65,13 @@ internal sealed class NonInteractiveMcpConfigTrustPrompt : IMcpConfigTrustPrompt
 /// <summary>
 /// The project-file trust gate: the extension trust discipline (one-time per repository, re-prompted
 /// when the content hash changes) over the distinct mcp.json record, so extension trust is neither
-/// shared nor weakened.
+/// shared nor weakened. Each of the standard project files is keyed by its own path, so trusting
+/// one never answers another.
 /// </summary>
 internal sealed class McpConfigTrust(ExtensionTrustStore store)
 {
     internal async ValueTask<bool> EnsureTrustedAsync(
         string repositoryIdentity,
-        string worktreePath,
         string configPath,
         IReadOnlyList<McpServerOptions> servers,
         IMcpConfigTrustPrompt prompt,
@@ -84,14 +84,14 @@ internal sealed class McpConfigTrust(ExtensionTrustStore store)
         ArgumentNullException.ThrowIfNull(log);
 
         string contentHash = McpConfigTrustHash.ComputeFile(configPath);
-        switch (store.EvaluateMcpConfig(repositoryIdentity, worktreePath, contentHash))
+        switch (store.EvaluateMcpConfig(repositoryIdentity, configPath, contentHash))
         {
             case ExtensionTrustDecision.Trusted:
                 return true;
             case ExtensionTrustDecision.NewWorktree:
                 store.RecordMcpConfigTrusted(
                     repositoryIdentity,
-                    worktreePath,
+                    configPath,
                     contentHash,
                     DateTimeOffset.UtcNow
                 );
@@ -101,7 +101,7 @@ internal sealed class McpConfigTrust(ExtensionTrustStore store)
                 {
                     store.RecordMcpConfigTrusted(
                         repositoryIdentity,
-                        worktreePath,
+                        configPath,
                         contentHash,
                         DateTimeOffset.UtcNow
                     );

@@ -48,6 +48,8 @@ public sealed class CliTests
             Scheduler = new ManualScheduler(),
             Scrollback = new TestConsole(),
             Extensions = TestExtensionSeams.Empty(temp),
+            McpConfigPath = temp.File("global-mcp.json"),
+            McpAgentsConfigPath = temp.File("agents-mcp.json"),
         };
         using var output = new StringWriter();
         using var error = new StringWriter();

@@ -6,17 +6,37 @@ using Lunate.Protocols;
 namespace Lunate.Coding;
 
 /// <summary>
-/// The project <c>mcp.json</c> trust hash: SHA-256 over the servers' raw definitions as parsed from
-/// the file — name, command, args, env, cwd and call timeout as written, unknown fields excluded —
-/// name-sorted and canonically serialized with invariant culture. An absent <c>env</c> is
-/// normalized to an empty map, so absent and <c>"env": {}</c> hash the same. Nothing expanded
+/// The trust hashes: SHA-256 over the servers' raw definitions as parsed from the file — name,
+/// command, args, env, cwd, call timeout and workspace independence as written, unknown fields
+/// excluded — name-sorted and canonically serialized with invariant culture. An absent <c>env</c>
+/// is normalized to an empty map, so absent and <c>"env": {}</c> hash the same. Nothing expanded
 /// enters it, so no environment value or secret can influence it, and formatting or key-order
-/// edits do not change it.
+/// edits do not change it. <see cref="ComputeFile"/> hashes the whole file (the file-trust key);
+/// <see cref="ComputeDefinition"/> hashes one server (the per-server approval key).
 /// </summary>
 internal static class McpConfigTrustHash
 {
     internal static string ComputeFile(string configPath) =>
-        Compute(McpConfig.Load(configPath).Servers);
+        Compute(McpConfig.Load(configPath).RawServers);
+
+    /// <summary>
+    /// One server's canonical definition hash — the per-server approval key. Raw values as written;
+    /// nothing expanded enters it.
+    /// </summary>
+    internal static string ComputeDefinition(McpServerOptions server) =>
+        Hash(DefinitionNode(server, includeValues: true));
+
+    /// <summary>Each raw server of the file, keyed by name: the per-server approval keys.</summary>
+    internal static IReadOnlyDictionary<string, string> ComputeDefinitions(string configPath)
+    {
+        Dictionary<string, string> hashes = new(StringComparer.Ordinal);
+        foreach (McpServerOptions server in McpConfig.Load(configPath).RawServers)
+        {
+            hashes[server.Name] = ComputeDefinition(server);
+        }
+
+        return hashes;
+    }
 
     internal static string Compute(IReadOnlyList<McpServerOptions> servers)
     {
@@ -95,6 +115,7 @@ internal static class McpConfigTrustHash
             ["env"] = environment,
             ["cwd"] = server.WorkingDirectory,
             ["callTimeoutSeconds"] = callTimeoutSeconds,
+            ["workspaceIndependent"] = server.WorkspaceIndependent,
         };
     }
 

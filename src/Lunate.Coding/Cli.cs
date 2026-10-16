@@ -314,16 +314,16 @@ internal static class Cli
             "                                 show this repository's trust records and pending"
         );
         output.WriteLine(
-            "                                 project-extension/mcp.json decisions (exit 3 when"
+            "                                 project-extension/mcp.json/server decisions (exit 3"
         );
         output.WriteLine(
-            "                                 pending); --yes records exactly what it prints — for"
+            "                                 when pending); --yes records exactly what it prints —"
         );
         output.WriteLine(
-            "                                 checkouts you control, never untrusted PRs; gate CI"
+            "                                 for checkouts you control, never untrusted PRs; gate"
         );
         output.WriteLine(
-            "                                 with --digest <sha>; --json for scripts; --clear"
+            "                                 CI with --digest <sha>; --json for scripts; --clear"
         );
         output.WriteLine("                                 removes this repository's records");
     }

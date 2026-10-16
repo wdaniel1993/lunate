@@ -69,6 +69,9 @@ internal sealed record InteractiveSessionOptions
     /// <summary>The global mcp.json path; null uses <c>~/.lunate/mcp.json</c>.</summary>
     public string? McpConfigPath { get; init; }
 
+    /// <summary>The standard user-scope mcp.json path; null uses <c>~/.agents/mcp.json</c>.</summary>
+    public string? McpAgentsConfigPath { get; init; }
+
     /// <summary>Where composition errors are reported; null uses stderr.</summary>
     public TextWriter? Diagnostics { get; init; }
 
@@ -384,11 +387,15 @@ internal sealed partial class InteractiveSession : IDisposable
                 .ComposeAsync(
                     _workspace,
                     _options.McpConfigPath,
+                    _options.McpAgentsConfigPath,
                     _options.Extensions,
                     new TuiMcpConfigTrustPrompt(AskTrustAsync),
+                    new TuiMcpServerApprovalPrompt(AskTrustAsync),
                     log,
                     Notify,
-                    ct
+                    ct,
+                    skippedServerQuestions: skipped =>
+                        _trustTotal = Math.Max(_trustAsked, _trustTotal - skipped)
                 )
                 .ConfigureAwait(false);
         }

@@ -19,13 +19,9 @@ public sealed class McpConfigTrustTests
         var prompt = new ScriptedMcpConfigTrustPrompt(true, false);
         var log = new RecordingExtensionLog();
 
-        Assert.True(
-            await trust.EnsureTrustedAsync(worktree, worktree, config, [], prompt, log, Ct)
-        );
+        Assert.True(await trust.EnsureTrustedAsync(worktree, config, [], prompt, log, Ct));
         Assert.Equal(1, prompt.Calls);
-        Assert.True(
-            await trust.EnsureTrustedAsync(worktree, worktree, config, [], prompt, log, Ct)
-        );
+        Assert.True(await trust.EnsureTrustedAsync(worktree, config, [], prompt, log, Ct));
         Assert.Equal(1, prompt.Calls);
         Assert.Empty(log.Messages);
     }
@@ -42,13 +38,9 @@ public sealed class McpConfigTrustTests
         var prompt = new ScriptedMcpConfigTrustPrompt(true, true);
         var log = new RecordingExtensionLog();
 
-        Assert.True(
-            await trust.EnsureTrustedAsync(worktree, worktree, config, [], prompt, log, Ct)
-        );
+        Assert.True(await trust.EnsureTrustedAsync(worktree, config, [], prompt, log, Ct));
         File.WriteAllText(config, """{ "mcpServers": { "srv": { "command": "y" } } }""");
-        Assert.True(
-            await trust.EnsureTrustedAsync(worktree, worktree, config, [], prompt, log, Ct)
-        );
+        Assert.True(await trust.EnsureTrustedAsync(worktree, config, [], prompt, log, Ct));
 
         Assert.Equal(2, prompt.Calls);
     }
@@ -65,9 +57,7 @@ public sealed class McpConfigTrustTests
         var prompt = new ScriptedMcpConfigTrustPrompt(true);
         var log = new RecordingExtensionLog();
 
-        Assert.True(
-            await trust.EnsureTrustedAsync(worktree, worktree, config, [], prompt, log, Ct)
-        );
+        Assert.True(await trust.EnsureTrustedAsync(worktree, config, [], prompt, log, Ct));
         File.WriteAllText(
             config,
             """
@@ -77,9 +67,7 @@ public sealed class McpConfigTrustTests
             }
             """
         );
-        Assert.True(
-            await trust.EnsureTrustedAsync(worktree, worktree, config, [], prompt, log, Ct)
-        );
+        Assert.True(await trust.EnsureTrustedAsync(worktree, config, [], prompt, log, Ct));
 
         Assert.Equal(1, prompt.Calls);
     }
@@ -94,12 +82,8 @@ public sealed class McpConfigTrustTests
         var prompt = new ScriptedMcpConfigTrustPrompt(true, false);
         var log = new RecordingExtensionLog();
 
-        Assert.True(
-            await trust.EnsureTrustedAsync("repo-1", first, Config(first), [], prompt, log, Ct)
-        );
-        Assert.True(
-            await trust.EnsureTrustedAsync("repo-1", second, Config(second), [], prompt, log, Ct)
-        );
+        Assert.True(await trust.EnsureTrustedAsync("repo-1", Config(first), [], prompt, log, Ct));
+        Assert.True(await trust.EnsureTrustedAsync("repo-1", Config(second), [], prompt, log, Ct));
 
         Assert.Equal(1, prompt.Calls);
     }
@@ -116,9 +100,7 @@ public sealed class McpConfigTrustTests
         var prompt = new ScriptedMcpConfigTrustPrompt(false);
         var log = new RecordingExtensionLog();
 
-        Assert.False(
-            await trust.EnsureTrustedAsync(worktree, worktree, config, [], prompt, log, Ct)
-        );
+        Assert.False(await trust.EnsureTrustedAsync(worktree, config, [], prompt, log, Ct));
 
         Assert.Contains(
             log.Messages,
@@ -127,19 +109,6 @@ public sealed class McpConfigTrustTests
                 && message.Contains("interactive", StringComparison.Ordinal)
                 && message.Contains("'lunate trust'", StringComparison.Ordinal)
         );
-    }
-
-    [Fact]
-    public void Project_entries_merge_by_name_and_win()
-    {
-        List<McpServerOptions> global = [new("a", "global-a", []), new("b", "global-b", [])];
-
-        McpComposition.Merge(global, [new("b", "project-b", []), new("c", "project-c", [])]);
-
-        Assert.Equal(["a", "b", "c"], global.Select(server => server.Name));
-        Assert.Equal("global-a", global[0].Command);
-        Assert.Equal("project-b", global[1].Command);
-        Assert.Equal("project-c", global[2].Command);
     }
 
     private static string Worktree(TempDirectory temp, string name = "worktree")

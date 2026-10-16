@@ -335,7 +335,7 @@ The interactive session SHALL consume the harness's event stream: streaming text
 
 ### Requirement: Slash commands
 
-A submitted line whose first non-space character is `/` SHALL dispatch as a client command and never reach the model: `/model` opens the model picker (`/model <id>` switches directly when the id is in the catalog), and when the current model is an extension-registered or virtual model the picker's current-model line and `/model` SHALL show its last routed resolution (`auto → deep`); `/new` starts a fresh session, `/resume` opens the session picker, `/compact` requests an explicit out-of-run compaction, `/mcp` lists the configured and extension-registered MCP servers with their status and source (the config file path it came from, or `extension '{id}'`), with a name collision shown as the configured server winning and the registration marked shadowed, and never printing environment values or headers, `/trust` lists this repository's trust records (`/trust clear` clears them, so the next load asks again), `/quit` quits. Commands SHALL append to the input history and skip the input pipeline; an unknown command SHALL produce a dim notice naming it. While a turn is running, `/new`, `/resume`, `/model` and `/compact` SHALL be refused with a notice; `/quit` SHALL quit at any time (cancelling a running turn). While an approval prompt or a picker is open, no input is submitted, so no command can dispatch.
+A submitted line whose first non-space character is `/` SHALL dispatch as a client command and never reach the model: `/model` opens the model picker (`/model <id>` switches directly when the id is in the catalog), and when the current model is an extension-registered or virtual model the picker's current-model line and `/model` SHALL show its last routed resolution (`auto → deep`); `/new` starts a fresh session, `/resume` opens the session picker, `/compact` requests an explicit out-of-run compaction, `/mcp` lists the configured and extension-registered MCP servers with their status and source (the config file path it came from, or `extension '{id}'`), with a name collision shown as the configured server winning and the registration marked shadowed, a server whose definition references an unset environment variable without a default shown with that missing-variable warning next to it, and never printing environment values or headers, `/trust` lists this repository's trust records (`/trust clear` clears them, so the next load asks again), `/quit` quits. Commands SHALL append to the input history and skip the input pipeline; an unknown command SHALL produce a dim notice naming it. While a turn is running, `/new`, `/resume`, `/model` and `/compact` SHALL be refused with a notice; `/quit` SHALL quit at any time (cancelling a running turn). While an approval prompt or a picker is open, no input is submitted, so no command can dispatch.
 
 #### Scenario: Every built-in command dispatches without a model call
 
@@ -408,6 +408,12 @@ A submitted line whose first non-space character is `/` SHALL dispatch as a clie
 - **GIVEN** a session whose model is a virtual model with a recorded last resolution
 - **WHEN** the model picker opens
 - **THEN** its current-model line shows `auto → deep`
+
+#### Scenario: /mcp shows a missing-variable warning next to the server
+
+- **GIVEN** an idle session whose server definition references an unset `${VAR}` with no default
+- **WHEN** `/mcp` is submitted
+- **THEN** the server's entry carries the missing-variable warning, and no model call happens
 
 ### Requirement: SelectList pickers
 
@@ -573,7 +579,7 @@ Tab in the input line SHALL complete an `@path` token: when the cursor sits at t
 
 ### Requirement: Trust prompt
 
-A pending trust decision (a project extension or a project `mcp.json`) SHALL render as a live-area prompt naming what is trusted — for an extension its id, version, scope and directory (saying so when it re-prompts because files changed); for a config file its path, its server names and their truncated commands with a count — with `[y]es` `[n]o`. Only a bare `y` or `Y` SHALL approve; `n`, `Enter` and `Esc` SHALL deny (nothing loads by accident); Ctrl+C SHALL neither approve nor deny (the quit window keeps its behavior); all other keys SHALL not decide. Keys received before the question is shown SHALL never answer it. While it is open the input line SHALL accept no text, like an approval. When several decisions are pending they SHALL be asked one at a time, labeled `n of m`. It SHALL be answered through the normal key path — the session's key pump runs while the session composes — never through a raw stdin line read.
+A pending trust decision (a project extension, a project `mcp.json` file, or a per-server approval) SHALL render as a live-area prompt naming what is trusted — for an extension its id, version, scope and directory (saying so when it re-prompts because files changed); for a config file its path, its server names and their truncated commands with a count; for a per-server approval the server's name, its source file and its full command, untruncated — with `[y]es` `[n]o`. Only a bare `y` or `Y` SHALL approve; `n`, `Enter` and `Esc` SHALL deny (nothing loads by accident); Ctrl+C SHALL neither approve nor deny (the quit window keeps its behavior); all other keys SHALL not decide. Keys received before the question is shown SHALL never answer it. While it is open the input line SHALL accept no text, like an approval. When several decisions are pending they SHALL be asked one at a time, labeled `n of m`. It SHALL be answered through the normal key path — the session's key pump runs while the session composes — never through a raw stdin line read.
 
 #### Scenario: y or Y approves
 
@@ -616,3 +622,9 @@ A pending trust decision (a project extension or a project `mcp.json`) SHALL ren
 - **GIVEN** an untrusted project extension and an interactive session starting
 - **WHEN** the trust prompt appears during composition
 - **THEN** keys answer it through the same key path the running session uses
+
+#### Scenario: A per-server approval shows the full command
+
+- **GIVEN** a pending per-server approval whose command is longer than the config-file prompt's truncation
+- **WHEN** the prompt appears
+- **THEN** it names the server, its source file and the full untruncated command, and `y` approves it

@@ -1,4 +1,5 @@
 using Lunate.Extensibility;
+using Lunate.TestSupport;
 using Lunate.Tui;
 
 namespace Lunate.Coding.Tests;
@@ -230,11 +231,11 @@ public sealed class TrustPromptEndToEndTests
         host.Console.Size = new ConsoleSize(400, 24);
         Task run = host.RunAsync();
 
-        await InteractiveSessionCommandTests.WaitForFrameAsync(host, "1 of 2");
+        await InteractiveSessionCommandTests.WaitForFrameAsync(host, "1 of 4");
         Assert.Contains("Load project extension 'hello'", host.LastFrame, StringComparison.Ordinal);
 
         host.Console.SendText("y");
-        await InteractiveSessionCommandTests.WaitForFrameAsync(host, "2 of 2");
+        await InteractiveSessionCommandTests.WaitForFrameAsync(host, "2 of 4");
         Assert.Contains(
             "Start 2 servers from project mcp.json",
             host.LastFrame,
@@ -244,11 +245,177 @@ public sealed class TrustPromptEndToEndTests
         Assert.Contains("beta — ", host.LastFrame, StringComparison.Ordinal);
 
         host.Console.SendText("y");
+        await InteractiveSessionCommandTests.WaitForFrameAsync(host, "3 of 4");
+        Assert.Contains(
+            "Run project MCP server 'alpha' from",
+            host.LastFrame,
+            StringComparison.Ordinal
+        );
+
+        host.Console.SendText("y");
+        await InteractiveSessionCommandTests.WaitForFrameAsync(host, "4 of 4");
+        Assert.Contains(
+            "Run project MCP server 'beta' from",
+            host.LastFrame,
+            StringComparison.Ordinal
+        );
+
+        host.Console.SendText("y");
         await host.WaitUntilAsync(() => File.Exists(alphaMarker) && File.Exists(betaMarker));
         await host.WaitUntilAsync(() => host.Session.IsComposed);
         host.Console.SendText("/quit");
         host.Console.SendEnter();
         await run;
+    }
+
+    [Fact]
+    public async Task A_denied_file_shrinks_the_remaining_question_count()
+    {
+        using var temp = new TempDirectory();
+        string worktree = temp.File("worktree");
+        Directory.CreateDirectory(worktree);
+        worktree = Workspace.Canonicalize(worktree);
+        string rootMarker = temp.File("root-marker.txt");
+        string projectMarker = temp.File("project-marker.txt");
+        string rootConfig = Path.Combine(worktree, ".mcp.json");
+        File.WriteAllText(
+            rootConfig,
+            $$"""{ "mcpServers": { "root-srv": {{McpTestServerSupport.EntryJson(rootMarker)}} } }"""
+        );
+        string projectConfig = Path.Combine(worktree, ".lunate", "mcp.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(projectConfig)!);
+        File.WriteAllText(
+            projectConfig,
+            $$"""{ "mcpServers": { "project-srv": {{McpTestServerSupport.EntryJson(projectMarker)}} } }"""
+        );
+        string storePath = temp.File("store");
+        var store = new ExtensionTrustStore(new ExtensionHostOptions { StorePath = storePath });
+        store.RecordMcpConfigTrusted(
+            worktree,
+            projectConfig,
+            McpConfigTrustHash.ComputeFile(projectConfig),
+            DateTimeOffset.UtcNow
+        );
+        store.RecordMcpConfigTrusted(
+            worktree,
+            rootConfig,
+            "a-previous-hash",
+            DateTimeOffset.UtcNow
+        );
+        var log = new RecordingExtensionLog();
+        using var host = new InteractiveSessionHost(
+            extensions: new ExtensionSeams { StorePath = storePath, Log = log },
+            workingDirectory: worktree
+        );
+        host.Console.Size = new ConsoleSize(400, 24);
+        Task run = host.RunAsync();
+
+        await InteractiveSessionCommandTests.WaitForFrameAsync(host, "1 of 3");
+        Assert.Contains(
+            "Start 1 server from project mcp.json",
+            host.LastFrame,
+            StringComparison.Ordinal
+        );
+
+        host.Console.SendText("n");
+        await InteractiveSessionCommandTests.WaitForFrameAsync(
+            host,
+            "Run project MCP server 'project-srv'"
+        );
+        Assert.Contains("2 of 2", host.LastFrame, StringComparison.Ordinal);
+        Assert.DoesNotContain("2 of 3", host.LastFrame, StringComparison.Ordinal);
+
+        host.Console.SendText("y");
+        await host.WaitUntilAsync(() => File.Exists(projectMarker));
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+        host.Console.SendText("/quit");
+        host.Console.SendEnter();
+        await run;
+
+        var reader = new ExtensionTrustStore(new ExtensionHostOptions { StorePath = storePath });
+        Assert.Equal(
+            ExtensionTrustDecision.Prompt,
+            reader.EvaluateMcpConfig(
+                worktree,
+                rootConfig,
+                McpConfigTrustHash.ComputeFile(rootConfig)
+            )
+        );
+        Assert.Equal(
+            ExtensionTrustDecision.Trusted,
+            reader.EvaluateMcpConfig(worktree, rootConfig, "a-previous-hash")
+        );
+        Assert.Equal(
+            ExtensionTrustDecision.Prompt,
+            reader.EvaluateMcpServer(
+                worktree,
+                McpConfigTrustHash.ComputeDefinitions(rootConfig)["root-srv"]
+            )
+        );
+        Assert.Equal(
+            ExtensionTrustDecision.Trusted,
+            reader.EvaluateMcpServer(
+                worktree,
+                McpConfigTrustHash.ComputeDefinitions(projectConfig)["project-srv"]
+            )
+        );
+    }
+
+    [Fact]
+    public async Task A_per_server_approval_shows_the_full_command_and_y_approves_it()
+    {
+        using var temp = new TempDirectory();
+        string worktree = temp.File("worktree");
+        Directory.CreateDirectory(worktree);
+        worktree = Workspace.Canonicalize(worktree);
+        string marker = temp.File("server-marker.txt");
+        string config = Path.Combine(worktree, ".lunate", "mcp.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(config)!);
+        File.WriteAllText(config, McpTestServerSupport.ConfigJson("srv", marker));
+        string store = temp.File("store");
+        var log = new RecordingExtensionLog();
+        using var host = new InteractiveSessionHost(
+            extensions: new ExtensionSeams { StorePath = store, Log = log },
+            workingDirectory: worktree
+        );
+        host.Console.Size = new ConsoleSize(400, 24);
+        Task run = host.RunAsync();
+
+        await InteractiveSessionCommandTests.WaitForFrameAsync(
+            host,
+            "Start 1 server from project mcp.json"
+        );
+        host.Console.SendText("y");
+        await InteractiveSessionCommandTests.WaitForFrameAsync(
+            host,
+            "Run project MCP server 'srv'"
+        );
+        Assert.Contains("from '" + config + "'", host.LastFrame, StringComparison.Ordinal);
+        Assert.Contains(
+            $"{TestMcpServer.DotnetPath} exec {TestMcpServer.ServerDll}",
+            host.LastFrame,
+            StringComparison.Ordinal
+        );
+
+        host.Console.SendText("y");
+        await host.WaitUntilAsync(() => File.Exists(marker));
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+        host.Console.SendText("/quit");
+        host.Console.SendEnter();
+        await run;
+
+        using var second = new InteractiveSessionHost(
+            extensions: new ExtensionSeams { StorePath = store, Log = new RecordingExtensionLog() },
+            workingDirectory: worktree
+        );
+        Task secondRun = second.RunAsync();
+        await second.WaitUntilAsync(() => second.Session.IsComposed);
+
+        Assert.DoesNotContain("Run project MCP server", second.Frames, StringComparison.Ordinal);
+
+        second.Console.SendText("/quit");
+        second.Console.SendEnter();
+        await secondRun;
     }
 
     [Fact]

@@ -67,7 +67,8 @@ public sealed class McpCollisionCompositionTests
             output,
             TestContext.Current.CancellationToken,
             new ExtensionSeams { StorePath = store, Log = log },
-            mcpConfigPath: config
+            mcpConfigPath: config,
+            mcpAgentsConfigPath: temp.File("agents-mcp.json")
         );
 
         Assert.Equal(0, exitCode);

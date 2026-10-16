@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Lunate.Extensibility;
 using Lunate.Extensibility.Abstractions;
+using Lunate.Protocols;
 
 namespace Lunate.Coding.Tests;
 
@@ -248,6 +249,94 @@ public sealed class McpConfigCompositionTests
     }
 
     [Fact]
+    public async Task The_lunate_user_file_wins_over_the_user_agents_file()
+    {
+        using var temp = new TempDirectory();
+        string lunateMarker = temp.File("lunate-marker.txt");
+        string agentsMarker = temp.File("agents-marker.txt");
+        string lunateConfig = temp.File("global-mcp.json");
+        File.WriteAllText(lunateConfig, McpTestServerSupport.ConfigJson("test", lunateMarker));
+        string agentsConfig = temp.File("agents-mcp.json");
+        File.WriteAllText(agentsConfig, McpTestServerSupport.ConfigJson("test", agentsMarker));
+        var log = new RecordingExtensionLog();
+        var client = new ScriptedChatClient().Enqueue(Scripts.Text("ok"), Scripts.Stop());
+        PrintModeOptions options = PrintModeTestSupport.BaseOptions(
+            temp,
+            new FakeChatClientFactory(client)
+        ) with
+        {
+            Prompt = "Hi",
+            Extensions = new ExtensionSeams { StorePath = temp.File("store"), Log = log },
+        };
+
+        (int exitCode, string output, _) = await PrintModeTestSupport.RunAsync(options);
+
+        Assert.Equal(0, exitCode);
+        Assert.Equal("ok", output);
+        Assert.True(
+            File.Exists(lunateMarker),
+            "the ~/.lunate/mcp.json definition must win and start"
+        );
+        Assert.False(
+            File.Exists(agentsMarker),
+            "the shadowed ~/.agents/mcp.json definition must not start"
+        );
+        Assert.True(
+            log.Contains(
+                $"server 'test' from '{lunateConfig}' replaces the same name from '{agentsConfig}'"
+            ),
+            "the collision must be logged; log:\n" + string.Join("\n", log.Messages)
+        );
+    }
+
+    [Fact]
+    public async Task A_standard_location_server_wins_over_the_root_file_and_logs_the_collision()
+    {
+        using var temp = new TempDirectory();
+        string agentsMarker = temp.File("agents-marker.txt");
+        string rootMarker = temp.File("root-marker.txt");
+        string agentsConfig = McpComposition.ProjectAgentsConfigPath(temp.Root);
+        Directory.CreateDirectory(Path.GetDirectoryName(agentsConfig)!);
+        File.WriteAllText(agentsConfig, McpTestServerSupport.ConfigJson("test", agentsMarker));
+        string rootConfig = McpComposition.ProjectRootConfigPath(temp.Root);
+        File.WriteAllText(rootConfig, McpTestServerSupport.ConfigJson("test", rootMarker));
+        string storePath = temp.File("store");
+        TrustProjectFile(storePath, temp.Root, agentsConfig);
+        TrustProjectFile(storePath, temp.Root, rootConfig);
+        var log = new RecordingExtensionLog();
+        var client = new ScriptedChatClient().Enqueue(Scripts.Text("ok"), Scripts.Stop());
+        PrintModeOptions options = PrintModeTestSupport.BaseOptions(
+            temp,
+            new FakeChatClientFactory(client)
+        ) with
+        {
+            Prompt = "Hi",
+            Extensions = new ExtensionSeams { StorePath = storePath, Log = log },
+        };
+
+        (int exitCode, string output, _) = await PrintModeTestSupport.RunAsync(options);
+
+        Assert.Equal(0, exitCode);
+        Assert.Equal("ok", output);
+        Assert.True(
+            File.Exists(agentsMarker),
+            "the .agents/mcp.json definition must win; log:\n" + string.Join("\n", log.Messages)
+        );
+        Assert.False(
+            File.Exists(rootMarker),
+            "the shadowed root .mcp.json definition must not start"
+        );
+        string canonicalRoot = Workspace.Canonicalize(temp.Root);
+        Assert.True(
+            log.Contains(
+                $"server 'test' from '{Path.Combine(canonicalRoot, ".agents", "mcp.json")}' replaces the same name from '{Path.Combine(canonicalRoot, ".mcp.json")}'"
+            ),
+            "the collision must be logged naming both files; log:\n"
+                + string.Join("\n", log.Messages)
+        );
+    }
+
+    [Fact]
     public void Acp_composes_configured_servers_at_serve_start()
     {
         using var temp = new TempDirectory();
@@ -264,7 +353,8 @@ public sealed class McpConfigCompositionTests
             output,
             TestContext.Current.CancellationToken,
             TestExtensionSeams.Empty(temp),
-            mcpConfigPath: config
+            mcpConfigPath: config,
+            mcpAgentsConfigPath: temp.File("agents-mcp.json")
         );
 
         Assert.Equal(0, exitCode);
@@ -334,15 +424,96 @@ public sealed class McpConfigCompositionTests
         Assert.Contains(malformed, trustedErrors, StringComparison.Ordinal);
     }
 
-    private static void TrustProjectFile(string storePath, string worktreeRoot, string configPath)
+    [Fact]
+    public async Task An_unapproved_project_server_is_refused_with_the_hint_and_the_global_runs()
+    {
+        using var temp = new TempDirectory();
+        string globalMarker = temp.File("global-marker.txt");
+        string projectMarker = temp.File("project-marker.txt");
+        string globalConfig = temp.File("global-mcp.json");
+        File.WriteAllText(
+            globalConfig,
+            $$"""{ "mcpServers": { "global-srv": {{McpTestServerSupport.EntryJson(globalMarker)}} } }"""
+        );
+        string projectConfig = McpComposition.ProjectConfigPath(temp.Root);
+        Directory.CreateDirectory(Path.GetDirectoryName(projectConfig)!);
+        File.WriteAllText(
+            projectConfig,
+            $$"""{ "mcpServers": { "project-srv": {{McpTestServerSupport.EntryJson(projectMarker)}} } }"""
+        );
+        string storePath = temp.File("store");
+        TrustProjectFile(storePath, temp.Root, projectConfig, servers: false);
+        var log = new RecordingExtensionLog();
+        var client = new ScriptedChatClient()
+            .Enqueue(
+                Scripts.Call("call-1", "global-srv__echo", Scripts.Args(("text", "from global"))),
+                Scripts.ToolCalls()
+            )
+            .Enqueue(Scripts.Text("done"), Scripts.Stop());
+        PrintModeOptions options = PrintModeTestSupport.BaseOptions(
+            temp,
+            new FakeChatClientFactory(client)
+        ) with
+        {
+            Prompt = "echo",
+            Json = true,
+            Yolo = true,
+            McpConfigPath = globalConfig,
+            Extensions = new ExtensionSeams { StorePath = storePath, Log = log },
+        };
+
+        (int exitCode, string output, _) = await PrintModeTestSupport.RunAsync(options);
+
+        Assert.Equal(0, exitCode);
+        Assert.True(File.Exists(globalMarker), "the global server must start");
+        Assert.False(File.Exists(projectMarker), "an unapproved project server must not start");
+        string canonicalConfig = Path.Combine(
+            Workspace.Canonicalize(temp.Root),
+            ".lunate",
+            "mcp.json"
+        );
+        Assert.True(
+            log.Contains($"server 'project-srv' from project MCP config '{canonicalConfig}'")
+                && log.Contains("interactive")
+                && log.Contains("'lunate trust'"),
+            "the refusal hint must name the server and both approval paths; log:\n"
+                + string.Join("\n", log.Messages)
+        );
+        JsonElement result = Assert.Single(
+            PrintModeTestSupport.ParseLines(output),
+            line => PrintModeTestSupport.TypeOf(line) == "tool_call_result"
+        );
+        Assert.Equal("from global", result.GetProperty("output").GetString());
+    }
+
+    private static void TrustProjectFile(
+        string storePath,
+        string worktreeRoot,
+        string configPath,
+        bool servers = true
+    )
     {
         var store = new ExtensionTrustStore(new ExtensionHostOptions { StorePath = storePath });
         string canonical = Workspace.Canonicalize(worktreeRoot);
         store.RecordMcpConfigTrusted(
             canonical,
-            canonical,
+            configPath,
             McpConfigTrustHash.ComputeFile(configPath),
             DateTimeOffset.UtcNow
         );
+        if (servers)
+        {
+            foreach (
+                (_, string definitionHash) in McpConfigTrustHash.ComputeDefinitions(configPath)
+            )
+            {
+                store.RecordMcpServerTrusted(
+                    canonical,
+                    canonical,
+                    definitionHash,
+                    DateTimeOffset.UtcNow
+                );
+            }
+        }
     }
 }

@@ -289,6 +289,7 @@ internal sealed class InteractiveSessionHost : IDisposable
         StatusWidgetRegistry? statusWidgets = null,
         ExtensionSeams? extensions = null,
         string? mcpConfigPath = null,
+        string? mcpAgentsConfigPath = null,
         string? workingDirectory = null
     )
     {
@@ -313,7 +314,8 @@ internal sealed class InteractiveSessionHost : IDisposable
                 ToolResultRenderers = toolResultRenderers,
                 StatusWidgets = statusWidgets,
                 Extensions = extensions ?? TestExtensionSeams.Empty(Temp),
-                McpConfigPath = mcpConfigPath,
+                McpConfigPath = mcpConfigPath ?? Temp.File("global-mcp.json"),
+                McpAgentsConfigPath = mcpAgentsConfigPath ?? Temp.File("agents-mcp.json"),
                 Diagnostics = _diagnostics,
                 ConfigureHarness = configureHarness,
                 WorkspaceFiles = workspaceFiles,
@@ -347,12 +349,14 @@ internal sealed class InteractiveSessionHost : IDisposable
 
     public string Frames => string.Concat(Console.Writes);
 
-    public async Task WaitUntilAsync(Func<bool> condition)
+    public async Task WaitUntilAsync(Func<bool> condition, TimeSpan? timeout = null)
     {
         // Real-async waits: yield the thread (never a busy spin) so the session's run task and
         // event pump get scheduled; bounded by wall time so slow runners fail with diagnostics
-        // instead of hanging.
-        DateTime deadline = DateTime.UtcNow + TimeSpan.FromSeconds(10);
+        // instead of hanging. The default suits in-process frames; spawn-dependent waits (a
+        // child process starting on a cold CI runner) pass a wider window — the repo's
+        // spawn-window idiom, mirroring the BashToolTests 30s windows.
+        DateTime deadline = DateTime.UtcNow + (timeout ?? TimeSpan.FromSeconds(10));
         while (!condition())
         {
             if (DateTime.UtcNow > deadline)

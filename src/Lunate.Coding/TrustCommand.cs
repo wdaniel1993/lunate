@@ -124,11 +124,11 @@ internal static class TrustCommand
             );
         }
 
-        if (inventory.ProjectMcpConfig is { } config)
+        foreach (PendingMcpConfig config in inventory.ProjectMcpConfigs)
         {
             store.RecordMcpConfigTrusted(
                 inventory.RepositoryIdentity,
-                inventory.WorktreePath,
+                config.Path,
                 config.ContentHash,
                 now
             );
@@ -137,7 +137,24 @@ internal static class TrustCommand
             );
         }
 
-        if (inventory.Extensions.Count == 0 && inventory.ProjectMcpConfig is null)
+        foreach (PendingMcpServer server in inventory.McpServers)
+        {
+            store.RecordMcpServerTrusted(
+                inventory.RepositoryIdentity,
+                inventory.WorktreePath,
+                server.Hash,
+                now
+            );
+            output.WriteLine(
+                $"trust: recorded {RecordedLine(TrustSection.McpServer, inventory, server.Hash)}"
+            );
+        }
+
+        if (
+            inventory.Extensions.Count == 0
+            && inventory.ProjectMcpConfigs.Count == 0
+            && inventory.McpServers.Count == 0
+        )
         {
             output.WriteLine("trust: nothing to record");
         }
@@ -172,7 +189,12 @@ internal static class TrustCommand
             records.Add(
                 new JsonObject
                 {
-                    ["kind"] = record.Section is TrustSection.McpConfig ? "mcp.json" : "extensions",
+                    ["kind"] = record.Section switch
+                    {
+                        TrustSection.McpConfig => "mcp.json",
+                        TrustSection.McpServer => "mcpServer",
+                        _ => "extensions",
+                    },
                     ["worktree"] = record.WorktreePath,
                     ["hash"] = record.ContentHash,
                 }
@@ -211,7 +233,11 @@ internal static class TrustCommand
             output.WriteLine($"hash: {extension.ContentHash}");
         }
 
-        if (inventory.ProjectMcpConfig is { Decision: ExtensionTrustDecision.Prompt } config)
+        foreach (
+            PendingMcpConfig config in inventory.ProjectMcpConfigs.Where(config =>
+                config.Decision is ExtensionTrustDecision.Prompt
+            )
+        )
         {
             output.WriteLine(TrustFormat.McpQuestionTitle(config.Path, config.Servers.Count));
             foreach (string detail in TrustFormat.McpQuestionDetails(config.Servers))
@@ -220,6 +246,13 @@ internal static class TrustCommand
             }
 
             output.WriteLine($"hash: {config.ContentHash}");
+        }
+
+        foreach (PendingMcpServer server in inventory.McpServers)
+        {
+            output.WriteLine(TrustFormat.McpServerQuestion(server.Definition));
+            output.WriteLine($"  {TrustFormat.Command(server.Definition)}");
+            output.WriteLine($"hash: {server.Hash}");
         }
     }
 

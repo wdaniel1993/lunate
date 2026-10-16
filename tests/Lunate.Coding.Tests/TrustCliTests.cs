@@ -26,7 +26,13 @@ public sealed class TrustCliTests
         Assert.Equal(TrustCommand.ExitPending, exitCode);
         Assert.Empty(errors.ToString());
         using JsonDocument document = JsonDocument.Parse(output.ToString());
-        Assert.Single(document.RootElement.GetProperty("pending").EnumerateArray());
+        Assert.Equal(
+            ["mcp.json", "mcpServer"],
+            document
+                .RootElement.GetProperty("pending")
+                .EnumerateArray()
+                .Select(node => node.GetProperty("kind").GetString())
+        );
     }
 
     [Fact]
@@ -58,7 +64,7 @@ public sealed class TrustCliTests
     }
 
     [Fact]
-    public void Trust_with_no_extensions_records_only_the_project_config()
+    public void Trust_with_no_extensions_records_the_project_config_and_its_servers()
     {
         using var temp = new TempDirectory();
         string worktree = temp.File("worktree");
@@ -80,12 +86,13 @@ public sealed class TrustCliTests
         );
 
         Assert.Equal(TrustCommand.ExitOk, exitCode);
-        TrustRecord record = Assert.Single(
-            new ExtensionTrustStore(new ExtensionHostOptions { StorePath = store }).Records(
-                new Workspace(worktree).GitCommonDir ?? worktree
-            )
+        IReadOnlyList<TrustRecord> records = new ExtensionTrustStore(
+            new ExtensionHostOptions { StorePath = store }
+        ).Records(new Workspace(worktree).GitCommonDir ?? worktree);
+        Assert.Equal(
+            [TrustSection.McpConfig, TrustSection.McpServer],
+            records.Select(record => record.Section)
         );
-        Assert.Equal(TrustSection.McpConfig, record.Section);
     }
 
     [Fact]

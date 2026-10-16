@@ -47,6 +47,9 @@ internal sealed record PrintModeOptions
 
     /// <summary>The global mcp.json path; null uses <c>~/.lunate/mcp.json</c>.</summary>
     public string? McpConfigPath { get; init; }
+
+    /// <summary>The standard user-scope mcp.json path; null uses <c>~/.agents/mcp.json</c>.</summary>
+    public string? McpAgentsConfigPath { get; init; }
 }
 
 /// <summary>
@@ -120,8 +123,10 @@ internal static class PrintMode
                     .ComposeAsync(
                         workspace,
                         options.McpConfigPath,
+                        options.McpAgentsConfigPath,
                         options.Extensions,
                         new NonInteractiveMcpConfigTrustPrompt(),
+                        new NonInteractiveMcpServerApprovalPrompt(),
                         log,
                         notice => interaction.Notify(notice),
                         ct

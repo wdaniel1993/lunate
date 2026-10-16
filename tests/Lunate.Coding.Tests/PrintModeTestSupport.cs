@@ -18,6 +18,8 @@ internal static class PrintModeTestSupport
             WorkingDirectory = temp.Root,
             Environment = Environment(),
             Extensions = TestExtensionSeams.Empty(temp),
+            McpConfigPath = temp.File("global-mcp.json"),
+            McpAgentsConfigPath = temp.File("agents-mcp.json"),
         };
 
     internal static Func<string, string?> Environment(

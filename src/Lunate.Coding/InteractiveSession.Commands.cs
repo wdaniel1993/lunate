@@ -165,14 +165,17 @@ internal sealed partial class InteractiveSession
     private static string FormatMcpStatus(McpServerStatus status)
     {
         string source = status.Source is { Length: > 0 } value ? $" ({value})" : string.Empty;
+        string missing = status.MissingVariables is { Count: > 0 } variables
+            ? $" [missing {string.Join(", ", variables.Select(variable => "${" + variable + "}"))}]"
+            : string.Empty;
         return status.State switch
         {
             McpServerState.Started => FormattableString.Invariant(
-                $"{status.Name} — started, {status.ToolCount} tools{source}"
+                $"{status.Name} — started, {status.ToolCount} tools{source}{missing}"
             ),
             McpServerState.Failed =>
-                $"{status.Name} — failed: {McpComposition.ShortReason(status.Reason)}{source}",
-            _ => status.Name + " — not started" + source,
+                $"{status.Name} — failed: {McpComposition.ShortReason(status.Reason)}{source}{missing}",
+            _ => status.Name + " — not started" + source + missing,
         };
     }
 

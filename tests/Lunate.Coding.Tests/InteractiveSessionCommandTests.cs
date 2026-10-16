@@ -247,13 +247,20 @@ public sealed class InteractiveSessionCommandTests
         await run;
     }
 
-    internal static async Task WaitForFrameAsync(InteractiveSessionHost host, string text)
+    internal static async Task WaitForFrameAsync(
+        InteractiveSessionHost host,
+        string text,
+        TimeSpan? timeout = null
+    )
     {
-        await host.WaitUntilAsync(() =>
-        {
-            host.Advance(33);
-            return host.LastFrame.Contains(text, StringComparison.Ordinal);
-        });
+        await host.WaitUntilAsync(
+            () =>
+            {
+                host.Advance(33);
+                return host.LastFrame.Contains(text, StringComparison.Ordinal);
+            },
+            timeout
+        );
     }
 
     internal static async Task WaitForFrameGoneAsync(InteractiveSessionHost host, string text)
@@ -265,14 +272,21 @@ public sealed class InteractiveSessionCommandTests
         });
     }
 
-    internal static async Task WaitForScrollbackAsync(InteractiveSessionHost host, string text)
+    internal static async Task WaitForScrollbackAsync(
+        InteractiveSessionHost host,
+        string text,
+        TimeSpan? timeout = null
+    )
     {
-        await host.WaitUntilAsync(() =>
-        {
-            host.Advance(33);
-            return host.ScrollbackText.Contains(text, StringComparison.Ordinal)
-                && !host.Session.IsRunning;
-        });
+        await host.WaitUntilAsync(
+            () =>
+            {
+                host.Advance(33);
+                return host.ScrollbackText.Contains(text, StringComparison.Ordinal)
+                    && !host.Session.IsRunning;
+            },
+            timeout
+        );
     }
 
     private sealed class ConsumingHandler : IInputReceivedHandler

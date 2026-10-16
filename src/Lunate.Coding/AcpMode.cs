@@ -20,7 +20,8 @@ internal static class AcpMode
         Stream output,
         CancellationToken ct,
         ExtensionSeams? extensions = null,
-        string? mcpConfigPath = null
+        string? mcpConfigPath = null,
+        string? mcpAgentsConfigPath = null
     )
     {
         var interaction = new AcpUserInteraction(line => errors.WriteLine($"lunate: {line}"));
@@ -59,8 +60,10 @@ internal static class AcpMode
                 .ComposeAsync(
                     workspace,
                     mcpConfigPath,
+                    mcpAgentsConfigPath,
                     extensions,
                     new NonInteractiveMcpConfigTrustPrompt(),
+                    new NonInteractiveMcpServerApprovalPrompt(),
                     log,
                     notice => interaction.Notify(notice),
                     ct
