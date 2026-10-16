@@ -97,6 +97,25 @@ public sealed class SkillIndexTests
     }
 
     [Fact]
+    public void A_description_cut_never_splits_a_surrogate_pair()
+    {
+        using var temp = new TempDirectory();
+        string description = new string('a', 199) + "\U0001F600" + new string('b', 40);
+
+        SkillIndex.Composed index = SkillIndex.Compose(
+            [Skill(temp, "greek", description)],
+            temp.Root,
+            2000
+        );
+
+        int start = index.Text.IndexOf("greek: ", StringComparison.Ordinal) + "greek: ".Length;
+        int end = index.Text.IndexOf(" [", start, StringComparison.Ordinal);
+        string carried = index.Text[start..end];
+        Assert.EndsWith("a…", carried, StringComparison.Ordinal);
+        Assert.DoesNotContain(carried, char.IsSurrogate);
+    }
+
+    [Fact]
     public void Command_only_skills_stay_out_of_the_index()
     {
         using var temp = new TempDirectory();

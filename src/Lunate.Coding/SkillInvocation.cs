@@ -5,8 +5,8 @@ namespace Lunate.Coding;
 /// <summary>
 /// The wrapped user turn <c>/skill:&lt;name&gt;</c> submits: the skill body inside
 /// <c>&lt;skill name="…" dir="…"&gt;</c> so relative references resolve from the skill directory.
-/// <c>$ARGUMENTS</c> in the body is substituted when present; otherwise non-empty arguments append
-/// as a final <c>ARGUMENTS: …</c> line.
+/// <c>$ARGUMENTS</c> in the body is substituted when present (empty text with no arguments);
+/// otherwise non-empty arguments append as a final <c>ARGUMENTS: …</c> line.
 /// </summary>
 internal static class SkillInvocation
 {
@@ -18,10 +18,9 @@ internal static class SkillInvocation
         ArgumentNullException.ThrowIfNull(arguments);
 
         bool substitutes = skill.Body.Contains(ArgumentsToken, StringComparison.Ordinal);
-        string body =
-            substitutes && arguments.Length > 0
-                ? skill.Body.Replace(ArgumentsToken, arguments, StringComparison.Ordinal)
-                : skill.Body;
+        string body = substitutes
+            ? skill.Body.Replace(ArgumentsToken, arguments, StringComparison.Ordinal)
+            : skill.Body;
 
         var text = new StringBuilder();
         text.Append("<skill name=\"")

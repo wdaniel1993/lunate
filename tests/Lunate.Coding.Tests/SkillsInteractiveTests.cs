@@ -315,6 +315,31 @@ public sealed class SkillsInteractiveTests
     }
 
     [Fact]
+    public async Task Arguments_token_without_arguments_substitutes_empty()
+    {
+        using var fixture = new SkillsHost();
+        fixture.ProjectSkill("sub", body: "Translate $ARGUMENTS now.");
+        fixture.TrustProjectSkills();
+        InteractiveSessionHost host = fixture.Host;
+        host.Client.Enqueue(Scripts.Text("one"), Scripts.Stop());
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+
+        host.Console.SendText("/skill:sub");
+        host.Console.SendEnter();
+        await host.Client.WaitForCallAsync(1);
+        await InteractiveSessionCommandTests.WaitForScrollbackAsync(host, "one");
+        string text = host.Client.Requests[0].Single(m => m.Role == ChatRole.User).Text;
+        Assert.Contains("Translate  now.", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("$ARGUMENTS", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("ARGUMENTS: ", text, StringComparison.Ordinal);
+
+        host.Console.SendText("/quit");
+        host.Console.SendEnter();
+        await run;
+    }
+
+    [Fact]
     public async Task An_unknown_skill_is_a_dim_notice_without_a_run()
     {
         using var fixture = new SkillsHost();

@@ -100,7 +100,22 @@ internal static class SkillIndex
     private static string TruncateDescription(string description) =>
         description.Length <= MaxDescriptionLength
             ? description
-            : description[..MaxDescriptionLength] + "…";
+            : SafeSlice(description, MaxDescriptionLength) + "…";
+
+    /// <summary>
+    /// Slices to <paramref name="length"/> UTF-16 code units, dropping a trailing high surrogate so
+    /// a boundary cut can never emit half of a surrogate pair.
+    /// </summary>
+    private static string SafeSlice(string value, int length)
+    {
+        int end = length;
+        if (char.IsHighSurrogate(value[end - 1]))
+        {
+            end--;
+        }
+
+        return value[..end];
+    }
 
     private static string Render(
         IReadOnlyList<(SkillDescriptor Skill, string Line)> kept,
@@ -126,7 +141,7 @@ internal static class SkillIndex
         string names = string.Join(", ", overflow.Select(skill => skill.Name));
         if (names.Length > MaxOverflowNamesLength)
         {
-            names = names[..MaxOverflowNamesLength] + "…";
+            names = SafeSlice(names, MaxOverflowNamesLength) + "…";
         }
 
         return $"+{overflow.Count} more skills (not indexed): {names}";

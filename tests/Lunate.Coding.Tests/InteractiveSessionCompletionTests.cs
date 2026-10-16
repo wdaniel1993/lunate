@@ -33,7 +33,6 @@ public sealed class InteractiveSessionCompletionTests
             "commands: /compact /context /extensions /mcp /model /new /quit /resume /skills"
         );
         Assert.Contains("> /", host.LastFrame, StringComparison.Ordinal);
-        Assert.Contains("> /", host.LastFrame, StringComparison.Ordinal);
 
         host.Console.Complete();
         await run;
