@@ -64,6 +64,17 @@ internal static class Cli
             );
         }
 
+        if (args.Length > 0 && args[0] == "extensions")
+        {
+            return ExtensionsCommand.Run(
+                args[1..],
+                workingDirectory,
+                output,
+                errors,
+                noExtensions ? Suppress(extensions) : extensions
+            );
+        }
+
         if (args.Length > 0 && args[0] == "--discover")
         {
             if (args.Length != 2 || string.IsNullOrWhiteSpace(args[1]))
@@ -285,7 +296,7 @@ internal static class Cli
             "  lunate                         start the interactive session on a terminal"
         );
         output.WriteLine(
-            "                                 commands: /model /new /resume /compact /mcp /trust /quit"
+            "                                 commands: /model /new /resume /compact /mcp /extensions /trust /quit"
         );
         output.WriteLine(
             "  lunate --no-extensions         start any mode without loading extensions (their"
@@ -309,6 +320,17 @@ internal static class Cli
         output.WriteLine(
             "                                 print a models.json draft to stdout (nothing is written)"
         );
+        output.WriteLine("  lunate extensions [--json]");
+        output.WriteLine(
+            "                                 list discovered extensions with scope, state,"
+        );
+        output.WriteLine(
+            "                                 load time and contributions; --json prints a"
+        );
+        output.WriteLine(
+            "                                 machine-readable array (exit 1 when an extension"
+        );
+        output.WriteLine("                                 fails to load)");
         output.WriteLine("  lunate trust [--yes [--digest <sha>]] [--json] [--clear]");
         output.WriteLine(
             "                                 show this repository's trust records and pending"
