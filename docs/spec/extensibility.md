@@ -20,6 +20,7 @@ Status: working spec under ADR-0017. The durable decisions live in `adr/0017-ext
 - **Lifecycle**: the factory registers only (no processes, sockets, timers). Long-lived resources start in `SessionStarted` (safe to run more than once) or on first use and stop in an idempotent `SessionEnding`. Reload unloads the ALC; state does not survive.
 - **Settings and secrets**: per-extension settings validated against `settingsSchema`; secrets are namespaced and never written to session files.
 - **Discovery**: `~/.lunate/extensions/` (global) and `.lunate/extensions/` (project). Manifests are read at startup; assemblies load on first use. Project extensions run repository code and need a one-time approval per repository, re-prompted when files change (content hash). `/extensions` shows scope, state, load time.
+- **Skill sources**: extensions register `ISkillSource` — skill directories on disk inside the extension's own folder (v1 disk-only). Contributed skills join the session skills index and `/skills` tagged `extension '<id>'`, inherit the extension's trust and disable state, and count under the extension's context budget (enforced before the global index cap). The resource-discovery entry point of the catalogue (see the `skills` capability spec and the ADR 0017 skills addendum).
 
 ## Hook catalogue
 

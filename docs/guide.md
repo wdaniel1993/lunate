@@ -38,7 +38,7 @@ Every feature request and every OpenCode plan is checked against these seven rul
 1. **Primitives, not features.** The core ships four tools: `read`, `write`, `edit`, `bash`. Everything else (Roslyn, MCP) is opt-in.
 2. **Robust, never silently wrong.** Tools tolerate harmless differences (line endings, indentation) but refuse anything ambiguous. Every fallback is visible: the result says which match tier was used and the TUI shows the diff.
 3. **Performance budgets are a gate.** Startup time and idle memory are measured in CI on every commit. Heavy components (Roslyn, MCP servers, extensions) load on first use, never at startup.
-4. **Small system prompt.** Under 1,000 tokens, asserted in a test. Project rules come from `AGENTS.md`, not from the harness.
+4. **Small system prompt.** Under 1,000 tokens, asserted in a test — the base prompt; the session skills index is a separate section with its own cap. Project rules come from `AGENTS.md`, not from the harness.
 5. **The core knows nothing about UIs or protocols.** `Lunate.Agent` emits events; the TUI, print mode and ACP mode are consumers.
 6. **Everything is replayable.** Sessions are append-only JSONL. A session file plus a recorded model stream reproduces a run exactly, so tests never need API keys.
 7. **Spec before code.** Public types, file formats and protocol mappings are written in this guide or an ADR before OpenCode implements them. Code that disagrees with the spec is a bug in one of them, and the spec is fixed first.
