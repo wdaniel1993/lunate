@@ -24,8 +24,10 @@ single-line notice discipline:
   registered). Load time above **500 ms** carries `(slow)`.
 - trust-denied / failed: `ext-two 0.2.0 (project) trust-denied, tools 1, commands 0, hooks 0,
   services 1` — counts are the manifest's **declared** lists (nothing loaded).
-- failed: `failed: {first sentence} — see the log` (first sentence = up to and including its
-  first `.`; the ` — see the log` pointer appears when the message was truncated).
+- failed: `failed: {first sentence} — see the log` (first sentence = up to and including the
+  first sentence-ending period — a `.` followed by a space or the end of the message — so dotted
+  tokens like `Broken.dll` never split; the ` — see the log` pointer appears when the message was
+  truncated).
 - empty: `extensions: none configured`; `--no-extensions`: `extensions disabled
   (--no-extensions)`.
 - **Slow threshold: 500 ms per extension** — pinned here because the spec's "warn above a
@@ -33,7 +35,8 @@ single-line notice discipline:
   whole 10-extension discovery budget is 250 ms, so 500 ms is clearly pathological. The formatter
   owns the constant.
 
-Milliseconds via `CultureInfo.InvariantCulture`. Discovery errors are not part of the view (they
+Milliseconds as whole numbers (rounded half away from zero), identical in text and JSON, via
+`CultureInfo.InvariantCulture`. Discovery errors are not part of the view (they
 stay on the host log). The view never prints settings values, secrets or environment values.
 
 ## D3 — CLI: `lunate extensions [--json]`
@@ -42,7 +45,7 @@ Mirrors `lunate trust`'s shape (routing in `Cli.cs`, `Run(args, workingDirectory
 seams)`). **Register-only inspect mode**: it composes the host like a session start but with
 `ExtensionSeams.Inspect = true` → `StartAsync` passes `startSession: false` to `Load`, which skips
 `StartSessionAsync` (no session events), the background-service start, and the `ToolsChanged`
-hook. Factories run and register; nothing starts. The default non-interactive prompt applies —
+notification — at load and at inspect teardown (the unload path takes a notify flag). Factories run and register; nothing starts. The default non-interactive prompt applies —
 never interactive, so an untrusted project extension reads `trust-denied`. After rendering, each
 loaded extension is unloaded (releasing its collectible context) and the host disposed. **Exit
 code**: 1 when any extension is `Failed`, else 0 (denied is expected without trust — not an
