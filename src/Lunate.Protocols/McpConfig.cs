@@ -4,13 +4,20 @@ using System.Text.Json.Nodes;
 
 namespace Lunate.Protocols;
 
-/// <summary>The configured MCP servers and the skipped-entry errors of one config file.</summary>
+/// <summary>
+/// The load result of one config file. <see cref="RawServers"/> are the definitions exactly as
+/// written — the input of trust hashes; <see cref="Servers"/> are the same servers after
+/// <c>${VAR}</c> expansion — the definitions that run. <see cref="Warnings"/> names each server
+/// whose definition referenced an unset variable with no default.
+/// </summary>
 internal sealed record McpConfigResult(
     IReadOnlyList<McpServerOptions> Servers,
-    IReadOnlyList<string> Errors
+    IReadOnlyList<McpServerOptions> RawServers,
+    IReadOnlyList<string> Errors,
+    IReadOnlyList<McpServerWarning> Warnings
 )
 {
-    internal static McpConfigResult Empty { get; } = new([], []);
+    internal static McpConfigResult Empty { get; } = new([], [], [], []);
 }
 
 /// <summary>
@@ -19,11 +26,19 @@ internal sealed record McpConfigResult(
 /// <c>callTimeoutSeconds</c> and <c>workspaceIndependent</c> are optional; unknown fields are
 /// ignored. A malformed entry yields an error naming the server and field and is skipped; a
 /// malformed or unreadable file yields one error carrying the path. A missing file is zero servers
-/// and zero errors. The file is read by the caller at session start only.
+/// and zero errors. <c>command</c>, <c>args</c> and <c>env</c> values are expanded at load
+/// (Claude Code-compatible <c>${VAR}</c> / <c>${VAR:-default}</c>; see
+/// <see cref="McpConfigExpansion"/>), while the raw definitions stay available for trust hashing.
+/// The file is read by the caller at session start only.
 /// </summary>
 internal static class McpConfig
 {
-    internal static McpConfigResult Load(string path)
+    internal static McpConfigResult Load(string path) => Load(path, environment: null);
+
+    /// <summary>
+    /// Loads with an explicit variable resolver; null reads the process environment.
+    /// </summary>
+    internal static McpConfigResult Load(string path, Func<string, string?>? environment)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
 
@@ -39,10 +54,7 @@ internal static class McpConfig
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
-            return new McpConfigResult(
-                [],
-                [$"MCP config file '{path}' could not be read: {exception.Message}"]
-            );
+            return Error($"MCP config file '{path}' could not be read: {exception.Message}");
         }
 
         JsonNode? root;
@@ -52,18 +64,12 @@ internal static class McpConfig
         }
         catch (JsonException exception)
         {
-            return new McpConfigResult(
-                [],
-                [$"MCP config file '{path}' is not valid JSON: {Position(exception)}"]
-            );
+            return Error($"MCP config file '{path}' is not valid JSON: {Position(exception)}");
         }
 
         if (root is not JsonObject document)
         {
-            return new McpConfigResult(
-                [],
-                [$"MCP config file '{path}' must contain a JSON object."]
-            );
+            return Error($"MCP config file '{path}' must contain a JSON object.");
         }
 
         if (document["mcpServers"] is null)
@@ -73,15 +79,12 @@ internal static class McpConfig
 
         if (document["mcpServers"] is not JsonObject servers)
         {
-            return new McpConfigResult(
-                [],
-                [
-                    $"MCP config file '{path}': 'mcpServers' must be an object mapping server names to server definitions.",
-                ]
+            return Error(
+                $"MCP config file '{path}': 'mcpServers' must be an object mapping server names to server definitions."
             );
         }
 
-        List<McpServerOptions> options = [];
+        List<McpServerOptions> raw = [];
         List<string> errors = [];
         foreach ((string name, JsonNode? entry) in servers)
         {
@@ -95,12 +98,21 @@ internal static class McpConfig
 
             if (TryRead(name, server, path, errors) is { } option)
             {
-                options.Add(option);
+                raw.Add(option);
             }
         }
 
-        return new McpConfigResult(options, errors);
+        List<McpServerWarning> warnings = [];
+        List<McpServerOptions> expanded = [];
+        foreach (McpServerOptions server in raw)
+        {
+            expanded.Add(McpConfigExpansion.Expand(server, environment, warnings));
+        }
+
+        return new McpConfigResult(expanded, raw, errors, warnings);
     }
+
+    private static McpConfigResult Error(string message) => new([], [], [message], []);
 
     private static McpServerOptions? TryRead(
         string name,

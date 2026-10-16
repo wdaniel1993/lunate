@@ -16,7 +16,14 @@ namespace Lunate.Coding;
 internal static class McpConfigTrustHash
 {
     internal static string ComputeFile(string configPath) =>
-        Compute(McpConfig.Load(configPath).Servers);
+        Compute(McpConfig.Load(configPath).RawServers);
+
+    /// <summary>
+    /// One server's canonical definition hash — the per-server approval key. Raw values as written;
+    /// nothing expanded enters it.
+    /// </summary>
+    internal static string ComputeDefinition(McpServerOptions server) =>
+        Hash(DefinitionNode(server, includeValues: true));
 
     internal static string Compute(IReadOnlyList<McpServerOptions> servers)
     {

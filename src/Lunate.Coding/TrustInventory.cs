@@ -211,11 +211,11 @@ internal sealed class TrustInventory
         if (File.Exists(projectConfig))
         {
             McpConfigResult parsed = McpConfig.Load(projectConfig);
-            string hash = McpConfigTrustHash.Compute(parsed.Servers);
+            string hash = McpConfigTrustHash.Compute(parsed.RawServers);
             ExtensionTrustDecision decision = store.EvaluateMcpConfig(identity, worktree, hash);
             if (decision is not ExtensionTrustDecision.Trusted)
             {
-                mcpConfig = new PendingMcpConfig(projectConfig, parsed.Servers, hash, decision);
+                mcpConfig = new PendingMcpConfig(projectConfig, parsed.RawServers, hash, decision);
             }
         }
 
