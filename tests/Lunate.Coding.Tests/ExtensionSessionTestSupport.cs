@@ -153,6 +153,21 @@ internal static class ToolFixture
     }
 }
 
+/// <summary>A fixture whose load fails: the manifest points at a missing entry assembly.</summary>
+internal static class BrokenFixture
+{
+    internal static string Install(string storePath, string id = "broken")
+    {
+        string directory = Path.Combine(storePath, "extensions", id);
+        Directory.CreateDirectory(directory);
+        File.WriteAllText(
+            Path.Combine(directory, "extension.json"),
+            $$"""{"id":"{{id}}","version":"0.1.0","apiVersion":"^1.5.0","entryAssembly":"Broken.dll"}"""
+        );
+        return directory;
+    }
+}
+
 /// <summary>The ModelExtension fixture copied into this test project's output.</summary>
 internal static class ModelFixture
 {
