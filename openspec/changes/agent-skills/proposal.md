@@ -10,7 +10,7 @@ The repository itself already carries nine skills under `.agents/skills/` (compa
 
 - **Discovery**: project scope `.lunate/skills` > `.agents/skills` > `.claude/skills`, walking up from the worktree root to the repository root; user scope `~/.lunate/skills` > `~/.agents/skills`. Project wins over user; name collisions are warned once and listed in the new `/skills` view.
 - **Exposure**: the index (name, description, path) is injected into the system prompt as its own budgeted section — the model loads a full `SKILL.md` with the existing read tool; no new tool. The index has its own cap, reported in `/context`; the "core prompt under 1,000 tokens" rule is amended to exclude the index explicitly.
-- **Invocation**: `/skill:<name> [args]` through the existing command router; the skill body becomes a session-recorded prompt section and a run starts. `disable-model-invocation` is honoured (index-excluded, still user-invokable).
+- **Invocation**: `/skill:<name> [args]` through the existing command router; the skill body is submitted as a wrapped user turn (session-recorded, cache-stable), and `disable-model-invocation` is honoured (index-excluded, still user-invokable).
 - **Security**: project skills load only in trusted repositories, listed in the trust question; `allowed-tools` is accepted and never a permission grant; a malformed `SKILL.md` is a warning, never a load.
 - **Extensions**: extensions contribute skills through a new `ISkillSource` service — tagged, budgeted per extension, trusted via the extension's own trust (ADR-0017 catalogue gains the entry).
 - **Sample story**: a Lunate session inside this repository discovers `.agents/skills`, uses one when asked, and a `/skill:<name>` run is scripted end-to-end.
