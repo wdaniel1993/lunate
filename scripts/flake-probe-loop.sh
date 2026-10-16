@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Diagnostic loop for the ProcessRunner line-handler flake (macOS CI only).
-# Runs the original test once (cold shot), then the instrumented probe repeatedly.
-# Failures are recorded in the log + copied into flake-artifacts/ (uploaded by the workflow).
+# Round 2: the sightings happened MID-SUITE, so this loops the full test suite (suite context:
+# warm host, prior process churn) and, cheaply, a few isolated probe runs. Failures are recorded
+# in the log + copied into flake-artifacts/ (uploaded by the workflow).
 set -uo pipefail
 
 shard="${1:-0}"
@@ -18,22 +19,40 @@ LOG="flake-probe-$shard.log"
 
 fails=0
 runs=0
-run_once() { # $1 = fully-qualified test, $2 = label
+
+run_isolated() { # $1 = fully-qualified test, $2 = label
   local out
   runs=$((runs + 1))
   out=$("$BIN" -noLogo -method "$1" 2>&1)
   if ! grep -q "Failed: 0" <<<"$out"; then
     fails=$((fails + 1))
     {
-      echo "==== FAIL [$2] run $runs $(date -u +%FT%TZ) ===="
+      echo "==== FAIL [$2 isolated] run $runs $(date -u +%FT%TZ) ===="
       echo "$out" | tail -100
     } >> "$LOG"
   fi
 }
 
-run_once "Lunate.Coding.Tests.ProcessRunnerTests.The_line_handler_answers_every_stdout_line_in_order" original
-for _ in $(seq 1 "${PROBE_ITERS:-250}"); do
-  run_once "Lunate.Coding.Tests.ProcessRunnerFlakeProbe.The_probe_reproduces_the_line_handler_round_trip" probe
+# Cheap isolated warm-up: the instrumented probe only.
+for _ in $(seq 1 "${PROBE_ITERS:-50}"); do
+  run_isolated "Lunate.Coding.Tests.ProcessRunnerFlakeProbe.The_probe_reproduces_the_line_handler_round_trip" probe
+done
+
+# Suite context: the full Coding suite, repeated. Both the original test and the instrumented
+# probe run inside every suite invocation.
+for i in $(seq 1 "${SUITE_RUNS:-4}"); do
+  out=$("$BIN" -noLogo 2>&1)
+  runs=$((runs + 1))
+  if ! grep -qE "Failed: 0" <<<"$out"; then
+    fails=$((fails + 1))
+    {
+      echo "==== FAIL [suite] iter $i $(date -u +%FT%TZ) ===="
+      grep -E "failed |Failed:" <<<"$out" | head -20
+      echo "---"
+      echo "$out" | tail -120
+    } >> "$LOG"
+  fi
+  echo "suite $i done $(date -u +%FT%TZ)" >> "$LOG"
 done
 
 {
