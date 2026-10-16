@@ -1,8 +1,12 @@
 using Xunit.Sdk;
 using Xunit.v3;
 
-// The suite spawns a real `dotnet` language-server process (plus an extension host) per test.
-// Running tests in parallel starves process startup on small CI runners, so round trips
-// occasionally exceed the handler budget and tests fail with no attachment. Serializing the
-// suite removes the self-contention; the Windows CI legs are the reason this exists.
+// Serialized, with evidence — the parallel-sample-suites change, design D2 ladder:
+// - Full parallel (run 38794819725): attachment and process-timeout tests failed on both Windows
+//   legs (bash 1 error, PowerShell 3 errors — different sets per leg, load-dependent).
+// - Bounded MaxThreads = 2 (run 38797312304, attempt 3): the Windows bash leg passed, the
+//   PowerShell leg still starved the per-test `dotnet` language-server start (attachment notices
+//   never arrived).
+// Two concurrent server starts still exceed the PowerShell leg's budget; serializing removes the
+// self-contention. Revisit if the runner images change or the suite gains per-test server reuse.
 [assembly: Parallelization(Mode = ParallelMode.None)]
