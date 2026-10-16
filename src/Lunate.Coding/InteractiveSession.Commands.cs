@@ -42,6 +42,9 @@ internal sealed partial class InteractiveSession
             case "/mcp":
                 Notify(await McpStatusTextAsync(ct));
                 return;
+            case "/extensions":
+                Notify(ExtensionsText());
+                return;
             case "/trust":
                 HandleTrustCommand(argument);
                 return;
@@ -177,6 +180,35 @@ internal sealed partial class InteractiveSession
                 $"{status.Name} — failed: {McpComposition.ShortReason(status.Reason)}{source}{missing}",
             _ => status.Name + " — not started" + source + missing,
         };
+    }
+
+    /// <summary>
+    /// The <c>/extensions</c> notice: one segment per discovered extension ordered failed →
+    /// trust-denied → loaded, then by id (design D2), joined <c>; </c> under the
+    /// <c>extensions: </c> prefix; no extensions reads as such and a <c>--no-extensions</c>
+    /// session (no host) reads disabled. Read-only, so it is allowed while a turn runs, and it
+    /// never prints settings values, secrets or environment values.
+    /// </summary>
+    private string ExtensionsText()
+    {
+        if (_options.Extensions?.NoExtensions is true)
+        {
+            return ExtensionsView.DisabledText;
+        }
+
+        if (_extensions is not { } host)
+        {
+            return ExtensionsView.NoneText;
+        }
+
+        IReadOnlyList<string> segments = ExtensionsView.Segments(
+            host.Descriptors,
+            host.LoadResults,
+            host.RegisteredCounts
+        );
+        return segments.Count == 0
+            ? ExtensionsView.NoneText
+            : "extensions: " + string.Join("; ", segments);
     }
 
     /// <summary>Switches to a catalog model by id; an unknown id produces a notice.</summary>

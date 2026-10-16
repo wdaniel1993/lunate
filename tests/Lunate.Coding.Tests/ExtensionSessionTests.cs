@@ -410,6 +410,91 @@ public sealed class ExtensionSessionTests
         );
     }
 
+    [Fact]
+    public async Task A_composed_session_records_one_load_result_per_descriptor()
+    {
+        using var temp = new TempDirectory();
+        string worktree = temp.File("worktree");
+        Directory.CreateDirectory(worktree);
+        string store = temp.File("store");
+        HelloFixture.Install(Path.Combine(store, "extensions", "hello"));
+        BrokenFixture.Install(store);
+        HelloFixture.Install(
+            Path.Combine(worktree, ".lunate", "extensions", "hello-project"),
+            id: "hello-project"
+        );
+
+        await using var host = await ExtensionSession.StartAsync(
+            Identity(worktree),
+            new ExtensionSeams
+            {
+                StorePath = store,
+                Prompt = new ScriptedTrustPrompt(false),
+                Log = new RecordingExtensionLog(),
+            },
+            Ct
+        );
+
+        Assert.Equal(["broken", "hello", "hello-project"], host.LoadResults.Select(r => r.Id));
+        Assert.Equal(ExtensionLoadState.Failed, host.LoadResults[0].State);
+        Assert.Contains("Broken.dll", host.LoadResults[0].Message, StringComparison.Ordinal);
+        Assert.Equal(ExtensionLoadState.Loaded, host.LoadResults[1].State);
+        Assert.Null(host.LoadResults[1].Message);
+        Assert.Equal(ExtensionLoadState.TrustDenied, host.LoadResults[2].State);
+        Assert.All(
+            host.LoadResults,
+            result =>
+            {
+                Assert.True(result.Elapsed >= TimeSpan.Zero);
+                Assert.True(
+                    result.Elapsed < TimeSpan.FromMinutes(1),
+                    "the recorded load time must be this load's elapsed time"
+                );
+            }
+        );
+    }
+
+    [Fact]
+    public async Task Inspect_mode_loads_and_registers_but_starts_nothing_and_ends_cleanly()
+    {
+        using var temp = new TempDirectory();
+        string worktree = temp.File("worktree");
+        Directory.CreateDirectory(worktree);
+        string store = temp.File("store");
+        HelloFixture.Install(Path.Combine(store, "extensions", "hello"));
+        var log = new RecordingExtensionLog();
+
+        var host = await ExtensionSession.StartAsync(
+            Identity(worktree),
+            new ExtensionSeams
+            {
+                StorePath = store,
+                Log = log,
+                Inspect = true,
+            },
+            Ct
+        );
+        try
+        {
+            Assert.True(log.Contains("created hello"));
+            Assert.Equal(ExtensionLoadState.Loaded, Assert.Single(host.LoadResults).State);
+            Assert.False(log.Contains("hello service started"), "no background service may start");
+            Assert.False(log.Contains("hello session started"), "no session-start hook may run");
+            Assert.Equal(new ExtensionCounts(0, 0, 3, 1), host.RegisteredCounts("hello"));
+
+            await host.UnloadAsync("hello");
+            Assert.Equal(new ExtensionCounts(0, 0, 0, 0), host.RegisteredCounts("hello"));
+        }
+        finally
+        {
+            await host.DisposeAsync();
+        }
+
+        // EndSessionAsync must no-op when the session never started.
+        Assert.False(log.Contains("hello service stopped"), "no background service may stop");
+        Assert.False(log.Contains("hello session ended"), "no session-ending hook may run");
+    }
+
     private static WorkspaceInfo Identity(string worktree) =>
         new(Workspace.Canonicalize(worktree), null, null);
 

@@ -5,12 +5,19 @@ namespace Lunate.Extensibility;
 
 public sealed partial class ExtensionLoader
 {
+    /// <summary>
+    /// Loads one extension into its collectible context. <paramref name="startSession"/> false
+    /// composes in register-only inspect mode: the factory runs and registrations stand, but no
+    /// session-start hooks run, no background service starts and no <c>ToolsChanged</c> is
+    /// dispatched (the <c>lunate extensions</c> path, design D3).
+    /// </summary>
     public async Task<LoadedExtension> Load(
         string id,
         string workingDirectory,
         string repositoryIdentity,
         IExtensionTrustPrompt prompt,
-        CancellationToken cancellationToken = default
+        CancellationToken cancellationToken = default,
+        bool startSession = true
     )
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(id);
@@ -90,16 +97,19 @@ public sealed partial class ExtensionLoader
             var loaded = new LoadedExtension(descriptor.Id, extension, descriptor);
             _loaded[descriptor.Id] = loaded;
             _contexts[descriptor.Id] = context;
-            await StartSessionAsync(workingDirectory, repositoryIdentity, cancellationToken)
-                .ConfigureAwait(false);
-            if (!_sessionEnded)
+            if (startSession)
             {
-                await _backgroundServices.StartAsync(cancellationToken).ConfigureAwait(false);
-            }
+                await StartSessionAsync(workingDirectory, repositoryIdentity, cancellationToken)
+                    .ConfigureAwait(false);
+                if (!_sessionEnded)
+                {
+                    await _backgroundServices.StartAsync(cancellationToken).ConfigureAwait(false);
+                }
 
-            if (_tools.List().Count != toolCountBefore)
-            {
-                await NotifyToolsChangedAsync().ConfigureAwait(false);
+                if (_tools.List().Count != toolCountBefore)
+                {
+                    await NotifyToolsChangedAsync().ConfigureAwait(false);
+                }
             }
 
             return loaded;

@@ -30,7 +30,7 @@ public sealed class InteractiveSessionCompletionTests
         host.Console.Send(Tab);
         await InteractiveSessionCommandTests.WaitForFrameAsync(
             host,
-            "commands: /compact /context /mcp /model /new /quit /resume /trust"
+            "commands: /compact /context /extensions /mcp /model /new /quit /resume /trust"
         );
         Assert.Contains("> /", host.LastFrame, StringComparison.Ordinal);
 

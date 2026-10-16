@@ -92,7 +92,12 @@ public sealed partial class ExtensionLoader
         return Descriptors;
     }
 
-    public async ValueTask Unload(string id)
+    /// <summary>
+    /// Unloads one extension and removes its contributions. <paramref name="notifyToolsChanged"/>
+    /// false unloads silently — the register-only inspect teardown (design D3) — skipping the
+    /// <c>ToolsChanged</c> dispatch.
+    /// </summary>
+    public async ValueTask Unload(string id, bool notifyToolsChanged = true)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(id);
         if (!_loaded.Remove(id))
@@ -113,7 +118,7 @@ public sealed partial class ExtensionLoader
             context.Unload();
         }
 
-        if (removedTools.Count > 0)
+        if (notifyToolsChanged && removedTools.Count > 0)
         {
             await NotifyToolsChangedAsync().ConfigureAwait(false);
         }
