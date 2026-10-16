@@ -43,7 +43,9 @@ public sealed class AcpInteractionTests
             input,
             output,
             TestContext.Current.CancellationToken,
-            TestExtensionSeams.Empty(temp)
+            TestExtensionSeams.Empty(temp),
+            mcpConfigPath: temp.File("global-mcp.json"),
+            mcpAgentsConfigPath: temp.File("agents-mcp.json")
         );
 
         Assert.Equal(0, exitCode);

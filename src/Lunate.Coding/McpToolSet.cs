@@ -13,14 +13,17 @@ internal enum McpServerState
 
 /// <summary>
 /// One server's live status: its state, listed tool count, failure reason and source (the config
-/// file it came from, or an extension attribution). Never carries environment values or headers.
+/// file it came from, or an extension attribution). <see cref="MissingVariables"/> names the
+/// environment variables its definition referenced while unset and without a default. Never
+/// carries environment values or headers.
 /// </summary>
 internal sealed record McpServerStatus(
     string Name,
     McpServerState State,
     int ToolCount,
     string? Reason,
-    string? Source
+    string? Source,
+    IReadOnlyList<string>? MissingVariables = null
 );
 
 /// <summary>
@@ -48,7 +51,8 @@ internal sealed class McpToolSet : IAsyncDisposable
         IReadOnlyList<McpServerOptions> servers,
         Action<string> log,
         Action<string>? serverLog = null,
-        Func<McpServerOptions, string>? describe = null
+        Func<McpServerOptions, string>? describe = null,
+        IReadOnlyDictionary<string, IReadOnlyList<string>>? missingVariables = null
     )
     {
         ArgumentNullException.ThrowIfNull(servers);
@@ -59,7 +63,8 @@ internal sealed class McpToolSet : IAsyncDisposable
         [
             .. servers.Select(options => new Server(
                 options,
-                new McpServerHost(options, log: serverLog ?? log)
+                new McpServerHost(options, log: serverLog ?? log),
+                missingVariables?.GetValueOrDefault(options.Name) ?? []
             )),
         ];
     }
@@ -98,7 +103,8 @@ internal sealed class McpToolSet : IAsyncDisposable
                     McpServerState.Started,
                     listed.Count,
                     null,
-                    server.Options.Source
+                    server.Options.Source,
+                    server.MissingVariables
                 );
                 tools.AddRange(listed);
             }
@@ -113,7 +119,8 @@ internal sealed class McpToolSet : IAsyncDisposable
                     McpServerState.Failed,
                     0,
                     exception.Message,
-                    server.Options.Source
+                    server.Options.Source,
+                    server.MissingVariables
                 );
                 // The notices show a shortened reason; the log keeps the full one (stderr may
                 // carry multiple lines).
@@ -189,7 +196,8 @@ internal sealed class McpToolSet : IAsyncDisposable
             McpServerState.Failed,
             0,
             ServerExitedReason,
-            server.Options.Source
+            server.Options.Source,
+            server.MissingVariables
         );
         if (!server.TryMarkExitNotified())
         {
@@ -202,13 +210,20 @@ internal sealed class McpToolSet : IAsyncDisposable
         _onServerExited?.Invoke(server.Status);
     }
 
-    private sealed class Server(McpServerOptions options, McpServerHost host)
+    private sealed class Server(
+        McpServerOptions options,
+        McpServerHost host,
+        IReadOnlyList<string> missingVariables
+    )
     {
         private int _exitNotified;
 
         public McpServerOptions Options { get; } = options;
 
         public McpServerHost Host { get; } = host;
+
+        /// <summary>The definition's unset variables without defaults; empty when none.</summary>
+        public IReadOnlyList<string> MissingVariables { get; } = missingVariables;
 
         /// <summary>The tools the server's last listing returned; empty until listed.</summary>
         public IReadOnlyList<ITool> ListedTools { get; set; } = [];
@@ -218,6 +233,6 @@ internal sealed class McpToolSet : IAsyncDisposable
         public bool TryMarkExitNotified() => Interlocked.Exchange(ref _exitNotified, 1) == 0;
 
         public McpServerStatus Status { get; set; } =
-            new(options.Name, McpServerState.NotStarted, 0, null, options.Source);
+            new(options.Name, McpServerState.NotStarted, 0, null, options.Source, missingVariables);
     }
 }

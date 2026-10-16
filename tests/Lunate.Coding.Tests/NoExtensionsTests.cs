@@ -35,6 +35,8 @@ public sealed class NoExtensionsTests
             Scheduler = new ManualScheduler(),
             Scrollback = new Spectre.Console.Testing.TestConsole(),
             Diagnostics = diagnostics,
+            McpConfigPath = temp.File("global-mcp.json"),
+            McpAgentsConfigPath = temp.File("agents-mcp.json"),
         };
 
         int exitCode = Cli.Run(
@@ -124,6 +126,7 @@ public sealed class NoExtensionsTests
             Scheduler = new ManualScheduler(),
             Scrollback = new Spectre.Console.Testing.TestConsole(),
             McpConfigPath = config,
+            McpAgentsConfigPath = temp.File("agents-mcp.json"),
         };
         using var output = new StringWriter();
         using var errors = new StringWriter();
@@ -171,7 +174,8 @@ public sealed class NoExtensionsTests
                 Log = new RecordingExtensionLog(),
                 NoExtensions = true,
             },
-            mcpConfigPath: config
+            mcpConfigPath: config,
+            mcpAgentsConfigPath: temp.File("agents-mcp.json")
         );
 
         Assert.Equal(0, exitCode);

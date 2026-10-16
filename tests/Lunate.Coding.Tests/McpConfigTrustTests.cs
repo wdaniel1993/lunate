@@ -129,19 +129,6 @@ public sealed class McpConfigTrustTests
         );
     }
 
-    [Fact]
-    public void Project_entries_merge_by_name_and_win()
-    {
-        List<McpServerOptions> global = [new("a", "global-a", []), new("b", "global-b", [])];
-
-        McpComposition.Merge(global, [new("b", "project-b", []), new("c", "project-c", [])]);
-
-        Assert.Equal(["a", "b", "c"], global.Select(server => server.Name));
-        Assert.Equal("global-a", global[0].Command);
-        Assert.Equal("project-b", global[1].Command);
-        Assert.Equal("project-c", global[2].Command);
-    }
-
     private static string Worktree(TempDirectory temp, string name = "worktree")
     {
         string path = temp.File(name);

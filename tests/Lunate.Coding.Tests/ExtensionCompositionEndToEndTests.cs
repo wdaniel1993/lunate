@@ -105,7 +105,9 @@ public sealed class ExtensionCompositionEndToEndTests
             input,
             output,
             TestContext.Current.CancellationToken,
-            new ExtensionSeams { StorePath = store, Log = log }
+            new ExtensionSeams { StorePath = store, Log = log },
+            mcpConfigPath: temp.File("global-mcp.json"),
+            mcpAgentsConfigPath: temp.File("agents-mcp.json")
         );
 
         Assert.Equal(0, exitCode);

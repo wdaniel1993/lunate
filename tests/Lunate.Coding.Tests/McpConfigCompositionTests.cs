@@ -248,6 +248,44 @@ public sealed class McpConfigCompositionTests
     }
 
     [Fact]
+    public async Task The_user_agents_file_is_read_and_its_server_wins_over_the_lunate_file()
+    {
+        using var temp = new TempDirectory();
+        string lunateMarker = temp.File("lunate-marker.txt");
+        string agentsMarker = temp.File("agents-marker.txt");
+        string lunateConfig = temp.File("global-mcp.json");
+        File.WriteAllText(lunateConfig, McpTestServerSupport.ConfigJson("test", lunateMarker));
+        string agentsConfig = temp.File("agents-mcp.json");
+        File.WriteAllText(agentsConfig, McpTestServerSupport.ConfigJson("test", agentsMarker));
+        var log = new RecordingExtensionLog();
+        var client = new ScriptedChatClient().Enqueue(Scripts.Text("ok"), Scripts.Stop());
+        PrintModeOptions options = PrintModeTestSupport.BaseOptions(
+            temp,
+            new FakeChatClientFactory(client)
+        ) with
+        {
+            Prompt = "Hi",
+            Extensions = new ExtensionSeams { StorePath = temp.File("store"), Log = log },
+        };
+
+        (int exitCode, string output, _) = await PrintModeTestSupport.RunAsync(options);
+
+        Assert.Equal(0, exitCode);
+        Assert.Equal("ok", output);
+        Assert.False(
+            File.Exists(lunateMarker),
+            "the shadowed ~/.lunate/mcp.json definition must not start"
+        );
+        Assert.True(File.Exists(agentsMarker), "the ~/.agents/mcp.json definition must win");
+        Assert.True(
+            log.Contains(
+                $"server 'test' from '{agentsConfig}' replaces the same name from '{lunateConfig}'"
+            ),
+            "the collision must be logged; log:\n" + string.Join("\n", log.Messages)
+        );
+    }
+
+    [Fact]
     public void Acp_composes_configured_servers_at_serve_start()
     {
         using var temp = new TempDirectory();
@@ -264,7 +302,8 @@ public sealed class McpConfigCompositionTests
             output,
             TestContext.Current.CancellationToken,
             TestExtensionSeams.Empty(temp),
-            mcpConfigPath: config
+            mcpConfigPath: config,
+            mcpAgentsConfigPath: temp.File("agents-mcp.json")
         );
 
         Assert.Equal(0, exitCode);

@@ -289,6 +289,7 @@ internal sealed class InteractiveSessionHost : IDisposable
         StatusWidgetRegistry? statusWidgets = null,
         ExtensionSeams? extensions = null,
         string? mcpConfigPath = null,
+        string? mcpAgentsConfigPath = null,
         string? workingDirectory = null
     )
     {
@@ -313,7 +314,8 @@ internal sealed class InteractiveSessionHost : IDisposable
                 ToolResultRenderers = toolResultRenderers,
                 StatusWidgets = statusWidgets,
                 Extensions = extensions ?? TestExtensionSeams.Empty(Temp),
-                McpConfigPath = mcpConfigPath,
+                McpConfigPath = mcpConfigPath ?? Temp.File("global-mcp.json"),
+                McpAgentsConfigPath = mcpAgentsConfigPath ?? Temp.File("agents-mcp.json"),
                 Diagnostics = _diagnostics,
                 ConfigureHarness = configureHarness,
                 WorkspaceFiles = workspaceFiles,
