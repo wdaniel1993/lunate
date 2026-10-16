@@ -138,6 +138,21 @@ internal static partial class SessionFormat
             && usageElement.ValueKind == JsonValueKind.Object
                 ? usageElement.Deserialize<SessionUsage>(AIJsonUtilities.DefaultOptions)
                 : null;
+        SessionSkillMetadata? skill = null;
+        if (root.TryGetProperty("skill", out JsonElement skillElement))
+        {
+            if (skillElement.ValueKind != JsonValueKind.Object)
+            {
+                throw new InvalidDataException(
+                    "Session message line property 'skill' is not an object."
+                );
+            }
+
+            skill = new SessionSkillMetadata(
+                RequiredString(skillElement, "name"),
+                RequiredString(skillElement, "dir")
+            );
+        }
 
         SessionMessageEntry entry = new(
             RequiredString(root, "id"),
@@ -146,7 +161,10 @@ internal static partial class SessionFormat
             message,
             OptionalString(root, "model"),
             usage
-        );
+        )
+        {
+            Skill = skill,
+        };
 
         return JsonNode.DeepEquals(
             JsonNode.Parse(rawMessageJson),

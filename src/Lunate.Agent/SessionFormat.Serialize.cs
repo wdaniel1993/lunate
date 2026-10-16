@@ -119,6 +119,15 @@ internal static partial class SessionFormat
             writer.WriteEndObject();
         }
 
+        if (message.Skill is { } skill)
+        {
+            writer.WritePropertyName("skill");
+            writer.WriteStartObject();
+            writer.WriteString("name", skill.Name);
+            writer.WriteString("dir", skill.Dir);
+            writer.WriteEndObject();
+        }
+
         writer.WriteEndObject();
     }
 

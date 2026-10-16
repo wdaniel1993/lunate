@@ -85,11 +85,28 @@ public sealed partial class AgentHarness
     public IAsyncEnumerable<AgentEvent> RunAsync(
         string userInput,
         CancellationToken ct = default
-    ) => RunAsync(userInput, RunIds.Next(), ct);
+    ) => RunAsync(userInput, skill: null, RunIds.Next(), ct);
+
+    /// <summary>
+    /// Runs the loop for one skill invocation: the user turn carries the skill metadata into the
+    /// session entry (the <c>/skill:&lt;name&gt;</c> path).
+    /// </summary>
+    internal IAsyncEnumerable<AgentEvent> RunAsync(
+        string userInput,
+        SessionSkillMetadata? skill,
+        CancellationToken ct = default
+    ) => RunAsync(userInput, skill, RunIds.Next(), ct);
 
     /// <summary>Runs the loop under a caller-provided run id (the subagent runner links sessions by it).</summary>
+    internal IAsyncEnumerable<AgentEvent> RunAsync(
+        string userInput,
+        string runId,
+        CancellationToken ct = default
+    ) => RunAsync(userInput, skill: null, runId, ct);
+
     internal async IAsyncEnumerable<AgentEvent> RunAsync(
         string userInput,
+        SessionSkillMetadata? skill,
         string runId,
         [EnumeratorCancellation] CancellationToken ct = default
     )
@@ -113,7 +130,7 @@ public sealed partial class AgentHarness
             var channel = new AgentEventChannel(_options.Session?.SessionId);
             _subagentRunner = new SubagentRunner(this, channel, runId, _treeState!, SpawnDepth);
             using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            Task loop = RunLoopAsync(runId, userInput, channel, linked.Token);
+            Task loop = RunLoopAsync(runId, userInput, skill, channel, linked.Token);
             try
             {
                 await foreach (
@@ -213,13 +230,14 @@ public sealed partial class AgentHarness
     private async Task RunLoopAsync(
         string runId,
         string userInput,
+        SessionSkillMetadata? skill,
         AgentEventChannel channel,
         CancellationToken ct
     )
     {
         try
         {
-            await ExecuteRunAsync(runId, userInput, channel, ct);
+            await ExecuteRunAsync(runId, userInput, skill, channel, ct);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
@@ -243,6 +261,7 @@ public sealed partial class AgentHarness
     private async Task ExecuteRunAsync(
         string runId,
         string userInput,
+        SessionSkillMetadata? skill,
         AgentEventChannel channel,
         CancellationToken ct
     )
@@ -261,7 +280,7 @@ public sealed partial class AgentHarness
         bool terminalEmitted = false;
         try
         {
-            AppendHistoryMessage(new ChatMessage(ChatRole.User, userInput));
+            AppendHistoryMessage(new ChatMessage(ChatRole.User, userInput), skill: skill);
             channel.Emit(new RunStarted(runId));
             runStarted = true;
 
@@ -555,9 +574,17 @@ public sealed partial class AgentHarness
             return;
         }
 
-        while (steering.TryDequeue(out string? message))
+        while (steering.TryDequeueMessage(out SteeringMessage? message))
         {
-            string? entryId = AppendHistoryMessage(new ChatMessage(ChatRole.User, message));
+            if (message is null)
+            {
+                continue;
+            }
+
+            string? entryId = AppendHistoryMessage(
+                new ChatMessage(ChatRole.User, message.Text),
+                skill: message.Skill
+            );
             channel.Emit(new SteeringInjected(runId, entryId));
         }
     }
@@ -566,7 +593,8 @@ public sealed partial class AgentHarness
     private string? AppendHistoryMessage(
         ChatMessage message,
         string? model = null,
-        SessionUsage? usage = null
+        SessionUsage? usage = null,
+        SessionSkillMetadata? skill = null
     )
     {
         _history.Add(message);
@@ -574,7 +602,15 @@ public sealed partial class AgentHarness
         string? entryId = null;
         if (_options.Session is { } session)
         {
-            session.AppendMessage(message, model, usage);
+            if (skill is null)
+            {
+                session.AppendMessage(message, model, usage);
+            }
+            else
+            {
+                session.AppendSkillMessage(message, skill, model, usage);
+            }
+
             entryId = session.Entries[^1].Id;
         }
 
@@ -585,8 +621,21 @@ public sealed partial class AgentHarness
     private static string MappedStopReason(ChatFinishReason? finishReason) =>
         finishReason == ChatFinishReason.Length ? StopReasons.Length : StopReasons.Stop;
 
-    private List<AgentPromptSection> InitialSections() =>
-        _options.SystemPrompt is { } prompt ? [new AgentPromptSection("system", prompt)] : [];
+    private List<AgentPromptSection> InitialSections()
+    {
+        List<AgentPromptSection> sections = [];
+        if (_options.SystemPrompt is { } prompt)
+        {
+            sections.Add(new AgentPromptSection("system", prompt));
+        }
+
+        if (_options.PromptSections is { } appended)
+        {
+            sections.AddRange(appended);
+        }
+
+        return sections;
+    }
 
     private IReadOnlyList<string> ToolNames() => [.. _tools.Tools.Select(tool => tool.Name)];
 
