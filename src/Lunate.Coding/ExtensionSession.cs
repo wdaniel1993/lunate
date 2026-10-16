@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Lunate.Agent;
 using Lunate.Ai;
 using Lunate.Extensibility;
@@ -38,6 +39,25 @@ internal sealed record ExtensionSeams
 /// <summary>A discovery or load failure the session reported and continued past.</summary>
 internal sealed record ExtensionSessionError(string? ExtensionId, string Message);
 
+/// <summary>The compose outcome of one discovered extension (design D1).</summary>
+internal enum ExtensionLoadState
+{
+    Loaded,
+    TrustDenied,
+    Failed,
+}
+
+/// <summary>
+/// One discovered extension's compose outcome: the state, how long the load path took and the
+/// failure message when it was denied or failed (the <c>/extensions</c> view's data).
+/// </summary>
+internal sealed record ExtensionLoadResult(
+    string Id,
+    ExtensionLoadState State,
+    TimeSpan Elapsed,
+    string? Message
+);
+
 /// <summary>
 /// The composed extension host of one session: it discovers the store at session start, loads each
 /// extension with per-extension failure isolation, exposes the contributions the frontends wire
@@ -57,7 +77,8 @@ internal sealed class ExtensionSession : IAsyncDisposable
         ExtensionLoader loader,
         IExtensionLog log,
         FileChangeBus fileChanges,
-        IReadOnlyList<ExtensionSessionError> errors
+        IReadOnlyList<ExtensionSessionError> errors,
+        IReadOnlyList<ExtensionLoadResult> loadResults
     )
     {
         _loader = loader;
@@ -65,6 +86,7 @@ internal sealed class ExtensionSession : IAsyncDisposable
         _fileChanges = fileChanges;
         _hooks = new AgentHookAdapter(loader.Hooks);
         Errors = errors;
+        LoadResults = loadResults;
     }
 
     /// <summary>Loads and composes the host; per-extension failures are isolated, not thrown.</summary>
@@ -111,13 +133,23 @@ internal sealed class ExtensionSession : IAsyncDisposable
             errors.Add(new ExtensionSessionError(null, discovery.Message));
         }
 
+        List<ExtensionLoadResult> loadResults = [];
         foreach (ExtensionDescriptor descriptor in loader.Descriptors)
         {
+            var stopwatch = Stopwatch.StartNew();
             try
             {
                 await loader
                     .Load(descriptor.Id, workingDirectory, repositoryIdentity, prompt, ct)
                     .ConfigureAwait(false);
+                loadResults.Add(
+                    new ExtensionLoadResult(
+                        descriptor.Id,
+                        ExtensionLoadState.Loaded,
+                        stopwatch.Elapsed,
+                        null
+                    )
+                );
             }
             catch (OperationCanceledException)
             {
@@ -132,15 +164,31 @@ internal sealed class ExtensionSession : IAsyncDisposable
             {
                 log.Warn(exception.Message);
                 errors.Add(new ExtensionSessionError(descriptor.Id, exception.Message));
+                loadResults.Add(
+                    new ExtensionLoadResult(
+                        descriptor.Id,
+                        ExtensionLoadState.TrustDenied,
+                        stopwatch.Elapsed,
+                        exception.Message
+                    )
+                );
             }
             catch (ExtensionLoadException exception)
             {
                 log.Error(exception.Message);
                 errors.Add(new ExtensionSessionError(descriptor.Id, exception.Message));
+                loadResults.Add(
+                    new ExtensionLoadResult(
+                        descriptor.Id,
+                        ExtensionLoadState.Failed,
+                        stopwatch.Elapsed,
+                        exception.Message
+                    )
+                );
             }
         }
 
-        return new ExtensionSession(loader, log, fileChanges, errors);
+        return new ExtensionSession(loader, log, fileChanges, errors, loadResults);
     }
 
     /// <summary>The harness hook seam over the loaded extensions' hook runner.</summary>
@@ -215,6 +263,12 @@ internal sealed class ExtensionSession : IAsyncDisposable
 
     /// <summary>The discovery and load failures this session continued past.</summary>
     internal IReadOnlyList<ExtensionSessionError> Errors { get; }
+
+    /// <summary>
+    /// One compose outcome per discovered descriptor, in discovery order (the
+    /// <c>/extensions</c> view's data; the <c>lunate extensions</c> path included).
+    /// </summary>
+    internal IReadOnlyList<ExtensionLoadResult> LoadResults { get; }
 
     /// <summary>
     /// Drains (and then disposes) the file change bus, runs the session-ending hooks and stops the
