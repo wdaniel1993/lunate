@@ -1,0 +1,55 @@
+# Diagnostic probe for the macOS CI flake in
+# ProcessRunnerTests.The_line_handler_answers_every_stdout_line_in_order (card t_8e1833ba).
+# Eight fresh macos-latest VMs (cold-start exposure), each running the original test once and the
+# instrumented probe repeatedly. Diagnostic only — never a required check.
+name: Flake probe
+
+on:
+  push:
+    branches: [flake-probe]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4, 5, 6, 7, 8]
+    runs-on: macos-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: |
+            global.json
+            Directory.Build.props
+            **/*.csproj
+
+      - name: Report node
+        run: |
+          which -a node || true
+          node --version || true
+
+      - name: Build the test project (Release)
+        run: dotnet build tests/Lunate.Coding.Tests/Lunate.Coding.Tests.csproj -c Release
+
+      - name: Probe loop
+        run: bash scripts/flake-probe-loop.sh "${{ matrix.shard }}"
+
+      - name: Upload probe logs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: flake-probe-${{ matrix.shard }}
+          path: |
+            flake-probe-${{ matrix.shard }}.log
+            flake-artifacts/
+          if-no-files-found: ignore
