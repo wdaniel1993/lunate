@@ -1004,3 +1004,7 @@ static Lunate.Extensibility.Abstractions.ExtensionModelProvider.operator !=(Luna
 static Lunate.Extensibility.Abstractions.ExtensionModelProvider.operator ==(Lunate.Extensibility.Abstractions.ExtensionModelProvider? left, Lunate.Extensibility.Abstractions.ExtensionModelProvider? right) -> bool
 static Lunate.Extensibility.Abstractions.VirtualModelRegistration.operator !=(Lunate.Extensibility.Abstractions.VirtualModelRegistration? left, Lunate.Extensibility.Abstractions.VirtualModelRegistration? right) -> bool
 static Lunate.Extensibility.Abstractions.VirtualModelRegistration.operator ==(Lunate.Extensibility.Abstractions.VirtualModelRegistration? left, Lunate.Extensibility.Abstractions.VirtualModelRegistration? right) -> bool
+Lunate.Extensibility.Abstractions.IExtensionContext.RegisterSkillSource(Lunate.Extensibility.Abstractions.ISkillSource! source) -> void
+Lunate.Extensibility.Abstractions.ISkillSource
+Lunate.Extensibility.Abstractions.ISkillSource.Id.get -> string!
+Lunate.Extensibility.Abstractions.ISkillSource.SkillDirectories.get -> System.Collections.Generic.IReadOnlyList<string!>!

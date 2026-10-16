@@ -224,6 +224,37 @@ internal sealed class ExtensionSession : IAsyncDisposable
     /// <summary>The raw hook runner behind the input pipeline.</summary>
     internal HookRunner HookRunner => _loader.Hooks;
 
+    /// <summary>Where extension diagnostics are reported.</summary>
+    internal IExtensionLog Log => _log;
+
+    /// <summary>The loaded extensions' registered skill sources, each with the extension's own
+    /// folder as its boundary (the skills discovery input).</summary>
+    internal IReadOnlyList<ExtensionSkillSource> SkillContributions() =>
+        [
+            .. _loader
+                .SkillSources.List()
+                .Select(registered =>
+                {
+                    ExtensionDescriptor? descriptor = _loader.Descriptors.FirstOrDefault(
+                        candidate =>
+                            string.Equals(
+                                candidate.Id,
+                                registered.ExtensionId,
+                                StringComparison.Ordinal
+                            )
+                    );
+                    return descriptor is null
+                        ? null
+                        : new ExtensionSkillSource(
+                            registered.ExtensionId,
+                            registered.Source.Id,
+                            descriptor.Directory,
+                            registered.Source.SkillDirectories
+                        );
+                })
+                .OfType<ExtensionSkillSource>(),
+        ];
+
     /// <summary>The named service registry (core handles included).</summary>
     internal ServiceRegistry Services => _loader.Services;
 
