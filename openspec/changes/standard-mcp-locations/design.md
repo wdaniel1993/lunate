@@ -10,7 +10,7 @@
 | project | `.agents/mcp.json` | file trust + per-server approval — new |
 | project | root `.mcp.json` | file trust + per-server approval — new |
 
-Merge by server name, later source wins within a scope; project wins over user (existing rule). Order: user files merge first (`~/.lunate/mcp.json`, then `~/.agents/mcp.json`), then project files (`.lunate/mcp.json`, then `.agents/mcp.json`, then root `.mcp.json`). Every replacement is a logged collision naming both source files and the server — the existing global-vs-project merge is silent; that changes to a log line too (same mechanism, uniform).
+Merge by server name with later-wins; the read order is lowest precedence first: user files (`~/.agents/mcp.json`, then `~/.lunate/mcp.json`), then project files (root `.mcp.json`, then `.agents/mcp.json`, then `.lunate/mcp.json`) — so the table's precedence wins and every project file beats every user file. Every replacement is a logged collision naming both source files and the server — the existing global-vs-project merge is silent; that changes to a log line too (same mechanism, uniform). The `mcpConfig` trust section keys each file record by the config file's path (three project files in one worktree must not overwrite each other's record).
 
 `.agents/` is read as a file only — never a directory walk; `.cursor/` and `.vscode/` are deliberately not read (different shapes). Nothing is ever written to the standard files.
 
