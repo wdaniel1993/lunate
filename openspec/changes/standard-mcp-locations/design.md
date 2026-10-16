@@ -26,9 +26,10 @@ Claude Code parity, verified against the official docs (2026-10-15):
 ## D3 — Per-server approval (the new gate)
 
 - **Scope**: every server from a project-scoped file, uniformly — `.lunate/mcp.json` included (a principle, not a new-files-only carve-out: project trust alone is not enough anywhere).
-- **Identity**: a canonical hash of the server's raw definition as written (name, command, args, env key/values, cwd, timeout, exposure fields — pre-expansion), reusing the canonical-serialization machinery the file hash already uses. Machine-independent; no expanded value or secret can influence it.
-- **Store**: a new section in the trust file keyed by that hash alone (not per repository — the same definition approved anywhere is the same command). The record also carries the worktree that first approved it for audit.
-- **Timing**: at session compose, after file trust, before anything can start — one prompt per unapproved project server, n-of-m in the existing prompt flow. Prompt content: the server name, its source file and the **full** command (untruncated — it is what is being approved). "First use" is therefore the first session that would include the server; a definition change re-prompts.
+- **Identity**: a canonical hash of the server's raw definition as written (name, command, args, env key/values, cwd, timeout, exposure fields — pre-expansion), reusing the canonical-serialization machinery the file hash already uses, **combined with the repository identity as the record key** — the same definition can run different code per repository (relative paths like `./mcp/index.js`; `npx` resolving a local `node_modules/.bin`), so an approval never travels between repositories (matching Claude Code's per-project approval model). Machine-independent; no expanded value or secret can influence it.
+- **Store**: a new section in the trust file keyed by the repository identity and the definition hash; the record carries the worktree it was approved in for audit.
+- **Timing**: at session compose, after file trust, before anything can start — one prompt per unapproved project server. Each server is its own decision, asked one at a time in the existing `n of m` flow, never one blanket keystroke for all pending servers. Prompt content: the server name, its source file and the **full** command (untruncated — it is what is being approved). "First use" is therefore the first session that would include the server; a definition change re-prompts.
+- **`/mcp` surfacing**: a server whose definition references an unset variable without a default shows the missing-variable warning next to its entry; `~/.agents/mcp.json` servers show that path as their source like any other file.
 - **Non-interactive modes** (print, ACP): refuse an unapproved server with the existing logged hint (interactive session or `lunate trust`); the rest of the session continues.
 - **`lunate trust`**: the per-server approvals are pending decisions exactly like the file decisions — inspect prints them (name, source, full command), `--yes` records them, the pinned digest covers them, `--clear` removes the repository's per-server records (the definitions present in its files). No environment variable or flag can record them implicitly.
 
@@ -43,11 +44,13 @@ Claude Code parity, verified against the official docs (2026-10-15):
 - No HTTP/SSE transports (stdio only, unchanged).
 - No change to `~/.lunate/mcp.json` / `.lunate/mcp.json` semantics beyond the uniform per-server gate and the now-logged collisions.
 
-## D6 — Sign-off decisions (maintainer)
+## D6 — Sign-off (Daniel, 2026-10-15)
 
-1. **Per-server scope** — uniform for all project files (recommended) vs new standard files only. *(recommended: uniform — "project trust alone is not enough" as a principle; the file trust stays the first gate either way)*
-2. **Prompt timing** — compose-time (recommended: deterministic, testable, no mid-turn prompts) vs lazy first-start.
-3. **Unset-no-default** — Claude Code parity: warn + keep literal (recommended) vs skip the server / fail the file.
-4. **`~/.agents/mcp.json`** — no prompts (user-owned, recommended) vs same gate as project files.
-5. **Per-server record keying** — global by definition hash (recommended, per "keyed by a hash of the server definition") vs repository-bound.
-6. **`lunate trust` coverage** — per-server approvals included in inspect/`--yes`/digest/`--clear` (recommended: keeps the command the only non-interactive path for the whole surface).
+All six answered; #5 changed, plus two additions:
+
+1. **Scope** — uniform for all project files ✓ (file trust stays the first gate).
+2. **Timing** — compose-time; start stays lazy on first use; each pending server is its own decision, asked one at a time in the `n of m` flow, not one blanket keystroke ✓.
+3. **Unset-no-default** — warn + keep literal ✓; **addition: the missing-variable warning shows next to the server in `/mcp`**.
+4. **`~/.agents/mcp.json`** — no prompts ✓; **addition: `/mcp` shows `~/.agents/mcp.json` as the source (other tools may write it)**.
+5. **Changed: repository-bound keying** — key = repository identity + definition hash (a definition can run different code per repo: relative paths, `npx` resolving local `node_modules/.bin`; a global key would auto-approve a foreign repo's script; matches Claude Code's per-project approvals).
+6. **Trust coverage** — per-server decisions included in the digest, so CI pinning catches a changed server command ✓.
