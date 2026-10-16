@@ -46,8 +46,8 @@ Design-first change: groups 1–7 are the implementation plan for the follow-up 
 
 - [x] 7.1 **Production composition test (host-level, not a test-double)**: through the real host, assert the skills index appears in the actual composed system prompt and that `/skill:<name>` content reaches the model — the "spec'd but not wired" guard.
 - [x] 7.2 E2E: a Lunate session inside this repository discovers `.agents/skills`, the index carries the nine skills, one is used when asked (scripted), and `/skill:<name>` runs (groups 3/4 E2E cover the command side).
-- [ ] 7.3 README/docs map + guide updates; `openspec validate --all --strict` clean; `scripts/verify.sh` green; **AGENTS.md untouched**; no new packages.
+- [x] 7.3 README/docs map + guide updates; `openspec validate --all --strict` clean; `scripts/verify.sh` green; **AGENTS.md untouched**; no new packages.
 
 ## 8. This draft
 
-- [ ] 8.1 Fold the sign-off answers into `design.md` (SIGN-OFF notes) and the deltas; archive `agent-skills`; the follow-up apply card carries groups 1–7.
+- [x] 8.1 Fold the sign-off answers into `design.md` (SIGN-OFF notes) and the deltas; archive `agent-skills`; the follow-up apply card carries groups 1–7.

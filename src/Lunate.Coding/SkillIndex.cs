@@ -4,8 +4,9 @@ namespace Lunate.Coding;
 
 /// <summary>
 /// The <c>skills</c> prompt section: a lead line naming the read tool plus one line per
-/// model-visible skill (<c>- name: description [path]</c>, descriptions truncated at 200
-/// characters). Order is project, then user, then extension, each group by name; extension lines
+/// model-visible skill (<c>- name: description [path]</c>, descriptions truncated at 200 characters
+/// and overflow names at 400, never splitting a surrogate pair). Order is project, then user, then
+/// extension, each group by name; extension lines
 /// are enforced per extension first (over-budget lines drop and log), then the global 1,000
 /// estimated-token cap cuts strictly from the end and appends a names-only footer the model can act
 /// on. One token is estimated as four characters, rounded up.
