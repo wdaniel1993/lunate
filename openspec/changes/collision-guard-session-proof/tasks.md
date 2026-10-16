@@ -6,9 +6,9 @@
 
 ## 2. Apply
 
-- [ ] 2.1 Session-level test `An_extension_tool_beats_a_colliding_mcp_tool_through_session_composition` in `tests/Lunate.Coding.Tests/ExtensionToolCompositionTests.cs` (per D1: single declaration via the system prompt, skip diagnostic naming both sources, extension handler executes).
-- [ ] 2.2 Scope decision documented in `src/Lunate.Coding/ToolComposition.cs` doc comment (per D2).
-- [ ] 2.3 Touched suite green (`Lunate.Coding.Tests`, Perf trait excluded).
+- [x] 2.1 Session-level test `An_extension_tool_beats_a_colliding_mcp_tool_through_session_composition` in `tests/Lunate.Coding.Tests/ExtensionToolCompositionTests.cs` (per D1: single declaration via the system prompt, skip diagnostic naming both sources, extension handler executes).
+- [x] 2.2 Scope decision documented in `src/Lunate.Coding/ToolComposition.cs` doc comment (per D2).
+- [x] 2.3 Touched suite green (`Lunate.Coding.Tests`, Perf trait excluded).
 
 ## 3. Gate
 
