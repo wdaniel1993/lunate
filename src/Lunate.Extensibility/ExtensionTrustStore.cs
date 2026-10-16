@@ -10,6 +10,7 @@ public sealed class ExtensionTrustStore
 {
     private const string RepositoriesSection = "repositories";
     private const string McpConfigSection = "mcpConfig";
+    private const string McpServerSection = "mcpServers";
 
     private readonly ExtensionHostOptions _options;
 
@@ -104,6 +105,34 @@ public sealed class ExtensionTrustStore
         string contentHash
     ) => EvaluateIn(McpConfigSection, repositoryIdentity, worktreePath, contentHash);
 
+    /// <summary>
+    /// The per-server approval record: keyed by repository identity and the canonical hash of the
+    /// server's raw definition (never by worktree — a definition can run different code per
+    /// repository, so the repository is the boundary; the recorded worktree is audit).
+    /// </summary>
+    public ExtensionTrustDecision EvaluateMcpServer(
+        string repositoryIdentity,
+        string definitionHash
+    )
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(repositoryIdentity);
+        ArgumentException.ThrowIfNullOrWhiteSpace(definitionHash);
+
+        JsonObject document = ReadDocument();
+        if (
+            document[McpServerSection] is not JsonObject repositories
+            || repositories[repositoryIdentity] is not JsonObject repository
+            || repository["definitions"] is not JsonObject definitions
+        )
+        {
+            return ExtensionTrustDecision.Prompt;
+        }
+
+        return definitions.ContainsKey(definitionHash)
+            ? ExtensionTrustDecision.Trusted
+            : ExtensionTrustDecision.Prompt;
+    }
+
     public void RecordTrusted(
         string repositoryIdentity,
         string worktreePath,
@@ -120,9 +149,39 @@ public sealed class ExtensionTrustStore
     ) => RecordIn(McpConfigSection, repositoryIdentity, worktreePath, contentHash, trustedAt);
 
     /// <summary>
-    /// Every trust record this repository holds across both sections (extension trust and the
-    /// project mcp.json), ordered by section then worktree: the changed-files re-prompt wording
-    /// reads it, and <c>/trust</c> lists it.
+    /// Records one server definition's approval for the repository; the worktree is kept as the
+    /// approving worktree for audit.
+    /// </summary>
+    public void RecordMcpServerTrusted(
+        string repositoryIdentity,
+        string worktreePath,
+        string definitionHash,
+        DateTimeOffset trustedAt
+    )
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(repositoryIdentity);
+        ArgumentException.ThrowIfNullOrWhiteSpace(worktreePath);
+        ArgumentException.ThrowIfNullOrWhiteSpace(definitionHash);
+
+        JsonObject document = ReadDocument();
+        JsonObject repositories = document[McpServerSection] as JsonObject ?? new JsonObject();
+        document[McpServerSection] = repositories;
+
+        JsonObject repository = repositories[repositoryIdentity] as JsonObject ?? new JsonObject();
+        repositories[repositoryIdentity] = repository;
+        repository["trustedAt"] ??= trustedAt.ToString("O", CultureInfo.InvariantCulture);
+
+        JsonObject definitions = repository["definitions"] as JsonObject ?? new JsonObject();
+        repository["definitions"] = definitions;
+        definitions[definitionHash] = worktreePath;
+
+        WriteAtomically(document);
+    }
+
+    /// <summary>
+    /// Every trust record this repository holds across all three sections (extension trust, the
+    /// project mcp.json files, and the per-server approvals), ordered by section then worktree: the
+    /// changed-files re-prompt wording reads it, and <c>/trust</c> lists it.
     /// </summary>
     public IReadOnlyList<TrustRecord> Records(string repositoryIdentity)
     {
@@ -138,6 +197,13 @@ public sealed class ExtensionTrustStore
             records
         );
         Collect(document, McpConfigSection, TrustSection.McpConfig, repositoryIdentity, records);
+        CollectDefinitions(
+            document,
+            McpServerSection,
+            TrustSection.McpServer,
+            repositoryIdentity,
+            records
+        );
         records.Sort(
             (left, right) =>
             {
@@ -151,9 +217,9 @@ public sealed class ExtensionTrustStore
     }
 
     /// <summary>
-    /// Removes every record for the repository from both sections, so the next load asks again.
-    /// Other repositories and unrelated keys are untouched; nothing is written when there is no
-    /// record to clear.
+    /// Removes every record for the repository from all sections (file records and per-server
+    /// approvals), so the next load asks again. Other repositories and unrelated keys are
+    /// untouched; nothing is written when there is no record to clear.
     /// </summary>
     public void ClearRepository(string repositoryIdentity)
     {
@@ -161,7 +227,9 @@ public sealed class ExtensionTrustStore
 
         JsonObject document = ReadDocument();
         var changed = false;
-        foreach (string section in new[] { RepositoriesSection, McpConfigSection })
+        foreach (
+            string section in new[] { RepositoriesSection, McpConfigSection, McpServerSection }
+        )
         {
             if (
                 document[section] is JsonObject repositories
@@ -203,6 +271,36 @@ public sealed class ExtensionTrustStore
             )
             {
                 records.Add(new TrustRecord(kind, entry.Key, recordedHash));
+            }
+        }
+    }
+
+    /// <summary>
+    /// The per-server collector: the section stores <c>definitions: hash → approving worktree</c>,
+    /// the inversion of the file sections' <c>worktrees</c> map.
+    /// </summary>
+    private static void CollectDefinitions(
+        JsonObject document,
+        string section,
+        TrustSection kind,
+        string repositoryIdentity,
+        List<TrustRecord> records
+    )
+    {
+        if (
+            document[section] is not JsonObject repositories
+            || repositories[repositoryIdentity] is not JsonObject repository
+            || repository["definitions"] is not JsonObject definitions
+        )
+        {
+            return;
+        }
+
+        foreach (KeyValuePair<string, JsonNode?> entry in definitions)
+        {
+            if (entry.Value is JsonValue value && value.TryGetValue<string>(out string? worktree))
+            {
+                records.Add(new TrustRecord(kind, worktree, entry.Key));
             }
         }
     }

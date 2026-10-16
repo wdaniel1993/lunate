@@ -53,11 +53,12 @@ public sealed class TrustInventoryTests
 
         TrustInventory inventory = Create(worktree, store);
 
-        Assert.Equal(2, inventory.PendingCount);
-        PendingMcpConfig config = Assert.IsType<PendingMcpConfig>(inventory.ProjectMcpConfig);
+        Assert.Equal(3, inventory.PendingCount);
+        PendingMcpConfig config = Assert.Single(inventory.ProjectMcpConfigs);
         Assert.Equal(McpComposition.ProjectConfigPath(worktree), config.Path);
         Assert.Equal(ExtensionTrustDecision.Prompt, config.Decision);
         Assert.Equal("srv", Assert.Single(config.Servers).Name);
+        Assert.Equal("srv", Assert.Single(inventory.McpServers).Definition.Name);
     }
 
     [Fact]
@@ -102,7 +103,8 @@ public sealed class TrustInventoryTests
 
         Assert.Equal(0, inventory.PendingCount);
         Assert.Empty(inventory.Extensions);
-        Assert.Null(inventory.ProjectMcpConfig);
+        Assert.Empty(inventory.ProjectMcpConfigs);
+        Assert.Empty(inventory.McpServers);
         Assert.NotEmpty(inventory.Records);
     }
 
@@ -145,8 +147,100 @@ public sealed class TrustInventoryTests
         );
 
         Assert.Empty(inventory.Extensions);
-        Assert.Equal(1, inventory.PendingCount);
-        Assert.NotNull(inventory.ProjectMcpConfig);
+        Assert.Equal(2, inventory.PendingCount);
+        Assert.Single(inventory.ProjectMcpConfigs);
+    }
+
+    [Fact]
+    public void A_trusted_file_with_an_unapproved_server_still_pends_per_server()
+    {
+        using var temp = new TempDirectory();
+        string worktree = InstallProject(temp, "worktree");
+        string store = temp.File("store");
+        Store(store)
+            .RecordMcpConfigTrusted(
+                Identity(worktree),
+                worktree,
+                McpConfigTrustHash.ComputeFile(McpComposition.ProjectConfigPath(worktree)),
+                DateTimeOffset.UtcNow
+            );
+
+        TrustInventory inventory = Create(worktree, store);
+
+        Assert.Empty(inventory.ProjectMcpConfigs);
+        PendingMcpServer server = Assert.Single(inventory.McpServers);
+        Assert.Equal("srv", server.Definition.Name);
+        Assert.Equal(McpConfigTrustHash.ComputeDefinition(server.Definition), server.Hash);
+    }
+
+    [Fact]
+    public void Each_project_file_pends_its_file_decision_and_its_servers()
+    {
+        using var temp = new TempDirectory();
+        string worktree = Workspace.Canonicalize(temp.File("worktree"));
+        Directory.CreateDirectory(Path.Combine(worktree, ".git"));
+        Directory.CreateDirectory(Path.Combine(worktree, ".lunate"));
+        File.WriteAllText(
+            McpComposition.ProjectConfigPath(worktree),
+            """{ "mcpServers": { "one": { "command": "x" } } }"""
+        );
+        Directory.CreateDirectory(Path.Combine(worktree, ".agents"));
+        File.WriteAllText(
+            McpComposition.ProjectAgentsConfigPath(worktree),
+            """{ "mcpServers": { "two": { "command": "x" } } }"""
+        );
+        File.WriteAllText(
+            McpComposition.ProjectRootConfigPath(worktree),
+            """{ "mcpServers": { "three": { "command": "x" } } }"""
+        );
+
+        TrustInventory inventory = Create(worktree, temp.File("store"));
+
+        Assert.Equal(6, inventory.PendingCount);
+        Assert.Equal(
+            [
+                McpComposition.ProjectConfigPath(worktree),
+                McpComposition.ProjectAgentsConfigPath(worktree),
+                McpComposition.ProjectRootConfigPath(worktree),
+            ],
+            inventory.ProjectMcpConfigs.Select(config => config.Path)
+        );
+        Assert.Equal(
+            ["one", "two", "three"],
+            inventory.McpServers.Select(server => server.Definition.Name)
+        );
+    }
+
+    [Fact]
+    public void The_digest_covers_per_server_decisions()
+    {
+        using var temp = new TempDirectory();
+        string worktree = InstallProject(temp, "worktree");
+        string store = temp.File("store");
+        string config = McpComposition.ProjectConfigPath(worktree);
+        Store(store)
+            .RecordMcpConfigTrusted(
+                Identity(worktree),
+                worktree,
+                McpConfigTrustHash.ComputeFile(config),
+                DateTimeOffset.UtcNow
+            );
+
+        string? first = Create(worktree, store).Digest;
+
+        File.WriteAllText(config, """{ "mcpServers": { "srv": { "command": "y" } } }""");
+        Store(store)
+            .RecordMcpConfigTrusted(
+                Identity(worktree),
+                worktree,
+                McpConfigTrustHash.ComputeFile(config),
+                DateTimeOffset.UtcNow
+            );
+        string? changed = Create(worktree, store).Digest;
+
+        Assert.NotNull(first);
+        Assert.NotNull(changed);
+        Assert.NotEqual(first, changed);
     }
 
     private static TrustInventory Create(string worktree, string store) =>

@@ -106,7 +106,7 @@ Every run — child runs included — has a workspace: `WorktreeRoot`, `RepoRoot
 
 ## Trust, performance, testing
 
-- Project extensions: trust prompt plus a content hash; re-prompt when extension files change. Global vs project scope shown in `/extensions`.
+- Project extensions: trust prompt plus a content hash; re-prompt when extension files change. Each project MCP config file (`.lunate/mcp.json`, `.agents/mcp.json`, root `.mcp.json`) needs the same file-level decision, and every server it defines a one-time per-server approval keyed by repository identity and the canonical hash of its raw definition — the prompt shows the full command, and a changed definition re-asks. Global vs project scope shown in `/extensions`.
 - Startup reads manifests only; assemblies load on first use. Per-extension load time and per-hook time are recorded; warn above a threshold. Startup budget unchanged with 10 installed extensions (tested).
 - `Lunate.Extensibility.Testing`: test host with `ReplayChatClient`, scripted user interaction, event and session assertions. The template project uses it.
 

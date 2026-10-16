@@ -63,6 +63,7 @@ internal static class AcpMode
                     mcpAgentsConfigPath,
                     extensions,
                     new NonInteractiveMcpConfigTrustPrompt(),
+                    new NonInteractiveMcpServerApprovalPrompt(),
                     log,
                     notice => interaction.Notify(notice),
                     ct

@@ -390,6 +390,7 @@ internal sealed partial class InteractiveSession : IDisposable
                     _options.McpAgentsConfigPath,
                     _options.Extensions,
                     new TuiMcpConfigTrustPrompt(AskTrustAsync),
+                    new TuiMcpServerApprovalPrompt(AskTrustAsync),
                     log,
                     Notify,
                     ct

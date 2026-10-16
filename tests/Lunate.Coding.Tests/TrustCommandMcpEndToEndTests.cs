@@ -37,9 +37,18 @@ public sealed class TrustCommandMcpEndToEndTests
                 + string.Join("\n", firstLog.Messages)
         );
 
-        (int inspectExit, string _, string inspectErrors) = RunTrust(["trust"], worktree, store);
+        (int inspectExit, string inspectOutput, string inspectErrors) = RunTrust(
+            ["trust"],
+            worktree,
+            store
+        );
         Assert.Equal(TrustCommand.ExitPending, inspectExit);
         Assert.Empty(inspectErrors);
+        Assert.Contains(
+            $"Run project MCP server 'srv' from '{config}'",
+            inspectOutput,
+            StringComparison.Ordinal
+        );
         Assert.False(File.Exists(marker), "inspect must start nothing");
 
         (int approveExit, string _, string approveErrors) = RunTrust(
@@ -49,6 +58,12 @@ public sealed class TrustCommandMcpEndToEndTests
         );
         Assert.Equal(TrustCommand.ExitOk, approveExit);
         Assert.Empty(approveErrors);
+        Assert.Equal(
+            ExtensionTrustDecision.Trusted,
+            new ExtensionTrustStore(
+                new ExtensionHostOptions { StorePath = store }
+            ).EvaluateMcpServer(worktree, McpConfigTrustHash.ComputeDefinitions(config)["srv"])
+        );
         Assert.False(File.Exists(marker), "recording trust must start nothing");
 
         (int secondExit, string secondOutput, RecordingExtensionLog secondLog) = RunPrint(

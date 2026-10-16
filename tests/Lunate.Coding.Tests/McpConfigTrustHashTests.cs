@@ -1,4 +1,5 @@
 using Lunate.Extensibility;
+using Lunate.Protocols;
 
 namespace Lunate.Coding.Tests;
 
@@ -122,6 +123,52 @@ public sealed class McpConfigTrustHashTests
             McpConfigTrustHash.ComputeFile(empty)
         );
         Assert.Equal(McpConfigTrustHash.Compute([]), McpConfigTrustHash.ComputeFile(missing));
+    }
+
+    [Fact]
+    public void A_definition_hash_is_stable_for_the_same_definition()
+    {
+        McpServerOptions first = new("srv", "run", ["--flag"], Source: "/a/mcp.json");
+        McpServerOptions same = new("srv", "run", ["--flag"], Source: "/b/mcp.json");
+
+        Assert.Equal(
+            McpConfigTrustHash.ComputeDefinition(first),
+            McpConfigTrustHash.ComputeDefinition(same)
+        );
+    }
+
+    [Fact]
+    public void A_changed_definition_hash_tracks_the_workspace_independent_flag()
+    {
+        McpServerOptions local = new("srv", "run", []);
+        McpServerOptions shared = new("srv", "run", [], WorkspaceIndependent: true);
+
+        Assert.NotEqual(
+            McpConfigTrustHash.ComputeDefinition(local),
+            McpConfigTrustHash.ComputeDefinition(shared)
+        );
+    }
+
+    [Fact]
+    public void A_definition_hash_never_changes_with_the_environment()
+    {
+        McpServerOptions raw = new(
+            "srv",
+            "run",
+            [],
+            new Dictionary<string, string> { ["TOKEN"] = "${LUNATE_TEST_TOKEN}" }
+        );
+
+        string without = McpConfigTrustHash.ComputeDefinition(raw);
+        Environment.SetEnvironmentVariable("LUNATE_TEST_TOKEN", "the test value");
+        try
+        {
+            Assert.Equal(without, McpConfigTrustHash.ComputeDefinition(raw));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("LUNATE_TEST_TOKEN", null);
+        }
     }
 
     private static string ConfigDefinition(TempDirectory temp, string name, string command)

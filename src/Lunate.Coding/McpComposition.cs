@@ -56,6 +56,7 @@ internal static class McpComposition
         string? agentsConfigPath,
         ExtensionSeams? seams,
         IMcpConfigTrustPrompt prompt,
+        IMcpServerApprovalPrompt serverPrompt,
         IExtensionLog log,
         Action<UserNotice> notify,
         CancellationToken ct
@@ -63,6 +64,7 @@ internal static class McpComposition
     {
         ArgumentNullException.ThrowIfNull(workspace);
         ArgumentNullException.ThrowIfNull(prompt);
+        ArgumentNullException.ThrowIfNull(serverPrompt);
         ArgumentNullException.ThrowIfNull(log);
         ArgumentNullException.ThrowIfNull(notify);
 
@@ -83,7 +85,8 @@ internal static class McpComposition
             }
         );
 
-        // Project scope: each file its own trust decision; later files win per D1.
+        // Project scope: each file its own trust decision, then each server its own approval;
+        // later files win per D1.
         foreach (string path in ProjectConfigPaths(worktree))
         {
             if (!File.Exists(path))
@@ -102,7 +105,8 @@ internal static class McpComposition
                 continue;
             }
 
-            Add(parsed);
+            ReportErrors(parsed.Errors, notify);
+            MergeFile(parsed, await ApproveServersAsync(path, parsed).ConfigureAwait(false));
         }
 
         NotifyWarnings(servers, missingVariables, notify);
@@ -119,21 +123,56 @@ internal static class McpComposition
         void Add(McpConfigResult parsed)
         {
             ReportErrors(parsed.Errors, notify);
+            MergeFile(parsed, parsed.Servers);
+        }
+
+        void MergeFile(McpConfigResult parsed, IReadOnlyList<McpServerOptions> chosen) =>
             MergeInto(
                 servers,
                 index,
                 missingVariables,
-                parsed.Servers,
-                server =>
-                    [
-                        .. parsed
-                            .Warnings.Where(warning =>
-                                string.Equals(warning.Server, server.Name, StringComparison.Ordinal)
-                            )
-                            .Select(warning => warning.Variable),
-                    ],
+                chosen,
+                server => MissingVariablesOf(parsed, server),
                 log.Warn
             );
+
+        // One decision per unapproved project server, asked one at a time; an approved definition
+        // is recorded for the repository, a refused one is skipped with the approval hint.
+        async Task<IReadOnlyList<McpServerOptions>> ApproveServersAsync(
+            string path,
+            McpConfigResult parsed
+        )
+        {
+            List<McpServerOptions> approved = [];
+            for (var position = 0; position < parsed.RawServers.Count; position++)
+            {
+                McpServerOptions raw = parsed.RawServers[position];
+                string definitionHash = McpConfigTrustHash.ComputeDefinition(raw);
+                if (
+                    store.EvaluateMcpServer(identity, definitionHash)
+                    is not ExtensionTrustDecision.Trusted
+                )
+                {
+                    if (!await serverPrompt.ApproveAsync(raw, ct).ConfigureAwait(false))
+                    {
+                        log.Warn(
+                            $"server '{raw.Name}' from project MCP config '{path}' is not approved; it was not started. Run an interactive session or 'lunate trust' to approve it."
+                        );
+                        continue;
+                    }
+
+                    store.RecordMcpServerTrusted(
+                        identity,
+                        worktree,
+                        definitionHash,
+                        DateTimeOffset.UtcNow
+                    );
+                }
+
+                approved.Add(parsed.Servers[position]);
+            }
+
+            return approved;
         }
     }
 
@@ -221,6 +260,18 @@ internal static class McpComposition
             missingVariables[server.Name] = missingVariablesOf(server);
         }
     }
+
+    private static IReadOnlyList<string> MissingVariablesOf(
+        McpConfigResult parsed,
+        McpServerOptions server
+    ) =>
+        [
+            .. parsed
+                .Warnings.Where(warning =>
+                    string.Equals(warning.Server, server.Name, StringComparison.Ordinal)
+                )
+                .Select(warning => warning.Variable),
+        ];
 
     private static void NotifyWarnings(
         IReadOnlyList<McpServerOptions> servers,

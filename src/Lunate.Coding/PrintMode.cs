@@ -126,6 +126,7 @@ internal static class PrintMode
                         options.McpAgentsConfigPath,
                         options.Extensions,
                         new NonInteractiveMcpConfigTrustPrompt(),
+                        new NonInteractiveMcpServerApprovalPrompt(),
                         log,
                         notice => interaction.Notify(notice),
                         ct

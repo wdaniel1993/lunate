@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Lunate.Extensibility;
 using Lunate.Extensibility.Abstractions;
+using Lunate.Protocols;
 
 namespace Lunate.Coding.Tests;
 
@@ -373,7 +374,74 @@ public sealed class McpConfigCompositionTests
         Assert.Contains(malformed, trustedErrors, StringComparison.Ordinal);
     }
 
-    private static void TrustProjectFile(string storePath, string worktreeRoot, string configPath)
+    [Fact]
+    public async Task An_unapproved_project_server_is_refused_with_the_hint_and_the_global_runs()
+    {
+        using var temp = new TempDirectory();
+        string globalMarker = temp.File("global-marker.txt");
+        string projectMarker = temp.File("project-marker.txt");
+        string globalConfig = temp.File("global-mcp.json");
+        File.WriteAllText(
+            globalConfig,
+            $$"""{ "mcpServers": { "global-srv": {{McpTestServerSupport.EntryJson(globalMarker)}} } }"""
+        );
+        string projectConfig = McpComposition.ProjectConfigPath(temp.Root);
+        Directory.CreateDirectory(Path.GetDirectoryName(projectConfig)!);
+        File.WriteAllText(
+            projectConfig,
+            $$"""{ "mcpServers": { "project-srv": {{McpTestServerSupport.EntryJson(projectMarker)}} } }"""
+        );
+        string storePath = temp.File("store");
+        TrustProjectFile(storePath, temp.Root, projectConfig, servers: false);
+        var log = new RecordingExtensionLog();
+        var client = new ScriptedChatClient()
+            .Enqueue(
+                Scripts.Call("call-1", "global-srv__echo", Scripts.Args(("text", "from global"))),
+                Scripts.ToolCalls()
+            )
+            .Enqueue(Scripts.Text("done"), Scripts.Stop());
+        PrintModeOptions options = PrintModeTestSupport.BaseOptions(
+            temp,
+            new FakeChatClientFactory(client)
+        ) with
+        {
+            Prompt = "echo",
+            Json = true,
+            Yolo = true,
+            McpConfigPath = globalConfig,
+            Extensions = new ExtensionSeams { StorePath = storePath, Log = log },
+        };
+
+        (int exitCode, string output, _) = await PrintModeTestSupport.RunAsync(options);
+
+        Assert.Equal(0, exitCode);
+        Assert.True(File.Exists(globalMarker), "the global server must start");
+        Assert.False(File.Exists(projectMarker), "an unapproved project server must not start");
+        string canonicalConfig = Path.Combine(
+            Workspace.Canonicalize(temp.Root),
+            ".lunate",
+            "mcp.json"
+        );
+        Assert.True(
+            log.Contains($"server 'project-srv' from project MCP config '{canonicalConfig}'")
+                && log.Contains("interactive")
+                && log.Contains("'lunate trust'"),
+            "the refusal hint must name the server and both approval paths; log:\n"
+                + string.Join("\n", log.Messages)
+        );
+        JsonElement result = Assert.Single(
+            PrintModeTestSupport.ParseLines(output),
+            line => PrintModeTestSupport.TypeOf(line) == "tool_call_result"
+        );
+        Assert.Equal("from global", result.GetProperty("output").GetString());
+    }
+
+    private static void TrustProjectFile(
+        string storePath,
+        string worktreeRoot,
+        string configPath,
+        bool servers = true
+    )
     {
         var store = new ExtensionTrustStore(new ExtensionHostOptions { StorePath = storePath });
         string canonical = Workspace.Canonicalize(worktreeRoot);
@@ -383,5 +451,19 @@ public sealed class McpConfigCompositionTests
             McpConfigTrustHash.ComputeFile(configPath),
             DateTimeOffset.UtcNow
         );
+        if (servers)
+        {
+            foreach (
+                (_, string definitionHash) in McpConfigTrustHash.ComputeDefinitions(configPath)
+            )
+            {
+                store.RecordMcpServerTrusted(
+                    canonical,
+                    canonical,
+                    definitionHash,
+                    DateTimeOffset.UtcNow
+                );
+            }
+        }
     }
 }

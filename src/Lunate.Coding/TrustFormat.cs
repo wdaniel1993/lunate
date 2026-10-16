@@ -21,7 +21,12 @@ internal static class TrustFormat
 
     internal static string RecordText(TrustRecord record)
     {
-        string kind = record.Section is TrustSection.McpConfig ? "mcp.json" : "extensions";
+        string kind = record.Section switch
+        {
+            TrustSection.McpConfig => "mcp.json",
+            TrustSection.McpServer => "mcp server",
+            _ => "extensions",
+        };
         return $"{kind} — {record.WorktreePath} {ShortHash(record.ContentHash)}";
     }
 
@@ -42,6 +47,14 @@ internal static class TrustFormat
     internal static IReadOnlyList<string> McpQuestionDetails(
         IReadOnlyList<McpServerOptions> servers
     ) => [.. servers.Select(server => $"{server.Name} — {Truncate(Command(server))}")];
+
+    /// <summary>
+    /// The interactive per-server approval question; its one detail line is
+    /// <see cref="Command"/> — the full command, never truncated (the config-file prompt's
+    /// truncation does not apply to what is being approved).
+    /// </summary>
+    internal static string McpServerQuestion(McpServerOptions server) =>
+        $"Run project MCP server '{server.Name}' from '{server.Source}'";
 
     internal static string Command(McpServerOptions server) =>
         server.Arguments.Count == 0

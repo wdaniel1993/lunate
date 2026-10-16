@@ -171,6 +171,7 @@ public sealed class McpConfigLocationsTests
             agentsPath,
             new ExtensionSeams { StorePath = Path.Combine(worktree, "store"), Log = log },
             new RefusingPrompt(),
+            new RefusingApprovalPrompt(),
             log,
             notice => notices?.Add(notice),
             TestContext.Current.CancellationToken
@@ -181,6 +182,14 @@ public sealed class McpConfigLocationsTests
         public ValueTask<bool> ApproveAsync(
             string configPath,
             IReadOnlyList<McpServerOptions> servers,
+            CancellationToken cancellationToken
+        ) => ValueTask.FromResult(false);
+    }
+
+    private sealed class RefusingApprovalPrompt : IMcpServerApprovalPrompt
+    {
+        public ValueTask<bool> ApproveAsync(
+            McpServerOptions server,
             CancellationToken cancellationToken
         ) => ValueTask.FromResult(false);
     }
