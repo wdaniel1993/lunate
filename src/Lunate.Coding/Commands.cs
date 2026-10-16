@@ -12,6 +12,7 @@ internal static class Commands
     [
         "/compact",
         "/context",
+        "/extensions",
         "/mcp",
         "/model",
         "/new",
