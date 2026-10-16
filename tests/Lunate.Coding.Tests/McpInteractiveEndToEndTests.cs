@@ -11,6 +11,13 @@ namespace Lunate.Coding.Tests;
 [Collection("mcp-processes")]
 public sealed class McpInteractiveEndToEndTests
 {
+    /// <summary>
+    /// The frame-wait window for frames that depend on a child process starting: the first spawn
+    /// in a run is cold (dotnet exec on a loaded CI runner), and 10 seconds is not enough there —
+    /// the repo's spawn-window idiom (BashToolTests uses 30s for the same race).
+    /// </summary>
+    private static readonly TimeSpan SpawnWait = TimeSpan.FromSeconds(30);
+
     [Fact]
     public async Task A_configured_server_round_trips_renders_and_mcp_lists_its_status()
     {
@@ -28,18 +35,22 @@ public sealed class McpInteractiveEndToEndTests
 
         host.Console.SendText("go");
         host.Console.SendEnter();
-        await host.WaitUntilAsync(() => host.Session.PendingApproval is not null);
+        await host.WaitUntilAsync(() => host.Session.PendingApproval is not null, SpawnWait);
         Assert.Equal("test__echo", host.Session.PendingApproval!.ToolName);
         host.Console.SendText("y");
         await host.Client.WaitForCallAsync(2);
-        await InteractiveSessionCommandTests.WaitForScrollbackAsync(host, "hello mcp");
+        await InteractiveSessionCommandTests.WaitForScrollbackAsync(host, "hello mcp", SpawnWait);
 
         Assert.Contains("test__echo", host.Client.Requests[0][0].Text!, StringComparison.Ordinal);
         Assert.Contains("tool test__echo", host.ScrollbackText, StringComparison.Ordinal);
 
         host.Console.SendText("/mcp");
         host.Console.SendEnter();
-        await InteractiveSessionCommandTests.WaitForFrameAsync(host, "test — started, 5 tools");
+        await InteractiveSessionCommandTests.WaitForFrameAsync(
+            host,
+            "test — started, 5 tools",
+            SpawnWait
+        );
 
         host.Console.SendText("/quit");
         host.Console.SendEnter();
@@ -66,12 +77,16 @@ public sealed class McpInteractiveEndToEndTests
         host.Console.Size = new ConsoleSize(400, 24);
         Task run = host.RunAsync();
 
-        await InteractiveSessionCommandTests.WaitForFrameAsync(host, "MCP server 'broken'");
+        await InteractiveSessionCommandTests.WaitForFrameAsync(
+            host,
+            "MCP server 'broken'",
+            SpawnWait
+        );
         Assert.Contains("The session continues", host.LastFrame, StringComparison.Ordinal);
 
         host.Console.SendText("/mcp");
         host.Console.SendEnter();
-        await InteractiveSessionCommandTests.WaitForFrameAsync(host, "broken — failed:");
+        await InteractiveSessionCommandTests.WaitForFrameAsync(host, "broken — failed:", SpawnWait);
         Assert.Contains("test — started, 5 tools", host.LastFrame, StringComparison.Ordinal);
 
         host.Console.SendText("/quit");
@@ -92,7 +107,7 @@ public sealed class McpInteractiveEndToEndTests
 
         host.Console.SendText("/mcp");
         host.Console.SendEnter();
-        await InteractiveSessionCommandTests.WaitForFrameAsync(host, "test — started");
+        await InteractiveSessionCommandTests.WaitForFrameAsync(host, "test — started", SpawnWait);
         Assert.Contains($"({config})", host.LastFrame, StringComparison.Ordinal);
 
         host.Console.SendText("/quit");
@@ -113,7 +128,7 @@ public sealed class McpInteractiveEndToEndTests
 
         host.Console.SendText("/mcp");
         host.Console.SendEnter();
-        await InteractiveSessionCommandTests.WaitForFrameAsync(host, "test — started");
+        await InteractiveSessionCommandTests.WaitForFrameAsync(host, "test — started", SpawnWait);
         Assert.Contains($"({config})", host.LastFrame, StringComparison.Ordinal);
 
         host.Console.SendText("/quit");
@@ -143,7 +158,7 @@ public sealed class McpInteractiveEndToEndTests
 
         host.Console.SendText("/mcp");
         host.Console.SendEnter();
-        await InteractiveSessionCommandTests.WaitForFrameAsync(host, "test — started");
+        await InteractiveSessionCommandTests.WaitForFrameAsync(host, "test — started", SpawnWait);
         Assert.Contains(
             "[missing ${LUNATE_TEST_UNSET_9b41}]",
             host.LastFrame,
