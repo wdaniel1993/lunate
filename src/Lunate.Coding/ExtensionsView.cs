@@ -150,7 +150,7 @@ internal static class ExtensionsView
         {
             ExtensionLoadState.Loaded => head
                 + FormattableString.Invariant(
-                    $" loaded in {Milliseconds(result.Elapsed)}{LoadMarkers(result.Elapsed, cliMeasured)}"
+                    $" loaded in {Milliseconds(result.Elapsed)} ms{LoadMarkers(result.Elapsed, cliMeasured)}"
                 )
                 + RegisteredCounts(descriptor, registeredCounts(descriptor.Id)),
             ExtensionLoadState.TrustDenied => head + " trust-denied" + DeclaredCounts(descriptor),
