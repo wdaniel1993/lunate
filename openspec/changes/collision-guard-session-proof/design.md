@@ -9,7 +9,7 @@ extension tools. Walking the composition pipeline (`InteractiveSession.ComposeMc
   tool-level collision — `McpNameCollisions` keeps the registration out of the listing (configured
   wins, registration shown shadowed) before any tool is listed.
 - **Two configured servers with the same name**: unreachable — a JSON map cannot repeat a key.
-- **Two extension registrations with the same name**: unreachable — same shadowing rule.
+- **Two extension registrations with the same name**: unreachable — the extension MCP-server registry keeps the first registration.
 - **A direct extension tool vs an MCP tool**: **reachable and the intended case.** Direct extension
   tools are added first, unguarded (`extensions.Tools`, design D7 order); the later MCP tool with
   the same model-facing name hits the guard and is skipped with the diagnostic.
@@ -17,8 +17,8 @@ extension tools. Walking the composition pipeline (`InteractiveSession.ComposeMc
 The test therefore collides a direct extension tool (`ToolFixture.Install(store, id: "test")` →
 `test__echo`) with a configured server (`McpTestServerSupport.ConfigJson("test")` → server `test`,
 tool `echo` → `test__echo`), and proves all three observable consequences through the real
-session: exactly one declaration (the extension's description in the system prompt, the MCP
-description absent), the skip diagnostic (naming `mcp.json` and the extension namespace), and
+session: exactly one declaration (the extension's description in the model-facing declarations, the
+MCP description absent), the skip diagnostic (naming `mcp.json` and the extension namespace), and
 execution identity (the scrollback shows the extension handler's `echo: args=…` output, never the
 MCP server's).
 
