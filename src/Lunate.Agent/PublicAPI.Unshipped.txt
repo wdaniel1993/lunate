@@ -1371,3 +1371,4 @@ override Lunate.Agent.SessionSkillMetadata.GetHashCode() -> int
 override Lunate.Agent.SessionSkillMetadata.ToString() -> string!
 static Lunate.Agent.SessionSkillMetadata.operator !=(Lunate.Agent.SessionSkillMetadata? left, Lunate.Agent.SessionSkillMetadata? right) -> bool
 static Lunate.Agent.SessionSkillMetadata.operator ==(Lunate.Agent.SessionSkillMetadata? left, Lunate.Agent.SessionSkillMetadata? right) -> bool
+Lunate.Agent.AgentHarness.RunSkillAsync(string! userInput, Lunate.Agent.SessionSkillMetadata! skill, System.Threading.CancellationToken ct) -> System.Collections.Generic.IAsyncEnumerable<Lunate.Agent.AgentEvent!>!

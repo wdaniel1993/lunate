@@ -72,6 +72,9 @@ internal sealed record InteractiveSessionOptions
     /// <summary>The standard user-scope mcp.json path; null uses <c>~/.agents/mcp.json</c>.</summary>
     public string? McpAgentsConfigPath { get; init; }
 
+    /// <summary>The user-profile root the skill user scope resolves under; null uses the profile.</summary>
+    public string? HomeDirectory { get; init; }
+
     /// <summary>Where composition errors are reported; null uses stderr.</summary>
     public TextWriter? Diagnostics { get; init; }
 
@@ -98,7 +101,7 @@ internal sealed partial class InteractiveSession : IDisposable
     private readonly IUserInteraction _interaction;
     private readonly SteeringQueue _steering = new();
     private readonly object _steeringGate = new();
-    private readonly List<string> _pendingSteering = [];
+    private readonly List<(string Text, SessionSkillMetadata? Skill)> _pendingSteering = [];
     private readonly CancellationTokenSource _lifetime = new();
     private readonly ToolBlockRenderer _toolBlocks = new();
     private readonly MarkdownRenderer _markdown;
@@ -116,6 +119,9 @@ internal sealed partial class InteractiveSession : IDisposable
     private Func<string, ToolRegistry>? _workspaceTools;
     private readonly List<ITool> _inheritedTools = [];
     private Session _session = null!;
+    private SkillCatalog? _skills;
+    private string? _skillSection;
+    private readonly SkillReadAllowance _skillAllowance = new();
     private string _sessionDirectory = string.Empty;
     private ModelInfo _model = null!;
     private AgentHarness? _harness;
@@ -249,7 +255,6 @@ internal sealed partial class InteractiveSession : IDisposable
             ?? HarnessFactory.CreateFactory(_options.AuthPath, _options.Environment);
         _workspace = new Workspace(_options.WorkingDirectory ?? Environment.CurrentDirectory);
         _workspaceServices = new WorkspaceServices(_settings.Roslyn.MaxLoadedWorkspaces);
-        _tools = HarnessFactory.CreateTools(_workspace, services: _workspaceServices);
         _sessionDirectory =
             _options.SessionDirectory ?? HarnessFactory.DefaultSessionDirectory(_workspace);
         _session = HarnessFactory.CreateSession(_sessionDirectory, _workspace);
@@ -264,9 +269,21 @@ internal sealed partial class InteractiveSession : IDisposable
             _workspaceServices.Connect(extensionHost.FileChanges);
         }
 
+        // Skills compose after the extension host (its sources contribute) and before the tools
+        // (the read tool carries their allowance); discovery and the trust question run here.
+        await ComposeSkillsAsync(ct);
+        _tools = HarnessFactory.CreateTools(
+            _workspace,
+            services: _workspaceServices,
+            skillReadAllowance: _skillAllowance
+        );
         await ComposeMcpConfigAsync(ct);
         await ComposeMcpToolsAsync(ct);
-        _workspaceTools = HarnessFactory.CreateWorkspaceTools(_workspaceServices, _inheritedTools);
+        _workspaceTools = HarnessFactory.CreateWorkspaceTools(
+            _workspaceServices,
+            _inheritedTools,
+            root => _skills?.ReadRootsFor(root) ?? []
+        );
         // The model resolves after the extension host: the configured id may name a virtual or
         // extension-registered model, which only the registry knows.
         ResolveSessionModel();
@@ -524,6 +541,9 @@ internal sealed partial class InteractiveSession : IDisposable
                 _workspace,
                 [.. _tools.Tools.Select(tool => tool.Name)]
             ),
+            PromptSections = _skillSection is { } skills
+                ? [new AgentPromptSection("skills", skills)]
+                : null,
             WorkingDirectory = _workspace.WorktreeRoot,
             ToolOutputLimit = _settings.ToolOutputLimit,
             SubagentLimits = _settings.Subagents,
@@ -705,7 +725,22 @@ internal sealed partial class InteractiveSession : IDisposable
             return;
         }
 
-        InputPipelineResult processed = await _pipeline.ProcessAsync(submitted, ct);
+        await SubmitPromptAsync(submitted, skill: null, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// The one prompt submission path shared by typed text and <c>/skill:&lt;name&gt;</c>: the
+    /// input pipeline runs, history records the text and a busy session queues it (identical
+    /// queue/steer behaviour); an idle session starts the run, carrying the skill metadata when
+    /// the submission was a skill invocation.
+    /// </summary>
+    private async Task SubmitPromptAsync(
+        string text,
+        SessionSkillMetadata? skill,
+        CancellationToken ct
+    )
+    {
+        InputPipelineResult processed = await _pipeline.ProcessAsync(text, ct);
         if (processed.Consumed)
         {
             Notify("input consumed by an extension hook");
@@ -716,33 +751,33 @@ internal sealed partial class InteractiveSession : IDisposable
         _live.SetNotice(null);
         if (_turnActive)
         {
-            EnqueueSteering(processed.Text);
+            EnqueueSteering(processed.Text, skill);
             return;
         }
 
         _turnActive = true;
-        _run = RunTurnsAsync(processed.Text, ct);
+        _run = RunTurnsAsync(processed.Text, skill, ct);
     }
 
-    private async Task RunTurnsAsync(string text, CancellationToken ct)
+    private async Task RunTurnsAsync(string text, SessionSkillMetadata? skill, CancellationToken ct)
     {
         try
         {
             while (true)
             {
                 _outcome = RunOutcome.Unknown;
-                await RunOnceAsync(text, ct);
-                List<string> leftover = DrainSteering();
-                DiscardPendingSteering(leftover.Count);
+                await RunOnceAsync(text, skill, ct);
+                List<(string Text, SessionSkillMetadata? Skill)> leftover = DrainSteering();
                 if (_outcome == RunOutcome.Completed && leftover.Count > 0)
                 {
-                    text = string.Join("\n", leftover);
+                    text = string.Join("\n", leftover.Select(entry => entry.Text));
+                    skill = leftover.Count == 1 ? leftover[0].Skill : null;
                     continue;
                 }
 
                 if (leftover.Count > 0)
                 {
-                    SetInput(string.Join("\n", leftover));
+                    SetInput(string.Join("\n", leftover.Select(entry => entry.Text)));
                 }
 
                 return;
@@ -756,13 +791,16 @@ internal sealed partial class InteractiveSession : IDisposable
         }
     }
 
-    private async Task RunOnceAsync(string text, CancellationToken ct)
+    private async Task RunOnceAsync(string text, SessionSkillMetadata? skill, CancellationToken ct)
     {
         using var runCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         _runCancellation = runCts;
         try
         {
-            await foreach (AgentEvent agentEvent in _harness!.RunAsync(text, runCts.Token))
+            IAsyncEnumerable<AgentEvent> events = skill is { } metadata
+                ? _harness!.RunSkillAsync(text, metadata, runCts.Token)
+                : _harness!.RunAsync(text, runCts.Token);
+            await foreach (AgentEvent agentEvent in events)
             {
                 HandleEvent(agentEvent);
             }
@@ -778,14 +816,23 @@ internal sealed partial class InteractiveSession : IDisposable
         }
     }
 
-    private List<string> DrainSteering()
+    /// <summary>
+    /// Drains the steering messages the harness did not inject, popping their pending-FIFO mirrors
+    /// in the same order so the echo list stays consistent; each entry keeps its skill metadata for
+    /// the auto-run of a single leftover (a joined multi-leftover run is a plain turn).
+    /// </summary>
+    private List<(string Text, SessionSkillMetadata? Skill)> DrainSteering()
     {
-        List<string> leftover = [];
-        while (_steering.TryDequeue(out string? message))
+        List<(string Text, SessionSkillMetadata? Skill)> leftover = [];
+        while (_steering.TryDequeue(out _))
         {
-            if (message is not null)
+            lock (_steeringGate)
             {
-                leftover.Add(message);
+                if (_pendingSteering.Count > 0)
+                {
+                    leftover.Add(_pendingSteering[0]);
+                    _pendingSteering.RemoveAt(0);
+                }
             }
         }
 
@@ -793,26 +840,12 @@ internal sealed partial class InteractiveSession : IDisposable
     }
 
     /// <summary>Enqueues steering and mirrors it into the pending FIFO the echo reads.</summary>
-    private void EnqueueSteering(string text)
+    private void EnqueueSteering(string text, SessionSkillMetadata? skill)
     {
         lock (_steeringGate)
         {
-            _steering.Enqueue(text);
-            _pendingSteering.Add(text);
-        }
-    }
-
-    /// <summary>The leftovers drained at run end were never injected; they must not echo and are
-    /// removed from the front of the pending FIFO (injection pops from the front too).</summary>
-    private void DiscardPendingSteering(int count)
-    {
-        lock (_steeringGate)
-        {
-            int remove = Math.Min(count, _pendingSteering.Count);
-            if (remove > 0)
-            {
-                _pendingSteering.RemoveRange(0, remove);
-            }
+            _steering.Enqueue(text, skill);
+            _pendingSteering.Add((text, skill));
         }
     }
 
@@ -822,7 +855,7 @@ internal sealed partial class InteractiveSession : IDisposable
         string? text;
         lock (_steeringGate)
         {
-            text = _pendingSteering.Count > 0 ? _pendingSteering[0] : null;
+            text = _pendingSteering.Count > 0 ? _pendingSteering[0].Text : null;
             if (text is not null)
             {
                 _pendingSteering.RemoveAt(0);

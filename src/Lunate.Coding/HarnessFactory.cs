@@ -18,11 +18,12 @@ internal static class HarnessFactory
     internal static ToolRegistry CreateTools(
         Workspace workspace,
         ITextFileAccess? files = null,
-        WorkspaceServices? services = null
+        WorkspaceServices? services = null,
+        SkillReadAllowance? skillReadAllowance = null
     )
     {
         var tools = new ToolRegistry();
-        tools.Add(new ReadTool(workspace, files));
+        tools.Add(new ReadTool(workspace, files, skillReadAllowance));
         tools.Add(new WriteTool(workspace, files: files));
         tools.Add(new EditTool(workspace, files: files));
         tools.Add(new BashTool(workspace));
@@ -43,14 +44,21 @@ internal static class HarnessFactory
     /// </summary>
     internal static Func<string, ToolRegistry> CreateWorkspaceTools(
         WorkspaceServices services,
-        IReadOnlyList<ITool> inheritedTools
+        IReadOnlyList<ITool> inheritedTools,
+        Func<string, IReadOnlyList<string>>? skillReadRoots = null
     )
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(inheritedTools);
         return root =>
         {
-            ToolRegistry tools = CreateTools(new Workspace(root), services: services);
+            ToolRegistry tools = CreateTools(
+                new Workspace(root),
+                services: services,
+                skillReadAllowance: skillReadRoots is null
+                    ? null
+                    : new SkillReadAllowance(skillReadRoots(root))
+            );
             foreach (ITool tool in inheritedTools)
             {
                 if (tools.Find(tool.Name) is null)

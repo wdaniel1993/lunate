@@ -91,10 +91,10 @@ public sealed partial class AgentHarness
     /// Runs the loop for one skill invocation: the user turn carries the skill metadata into the
     /// session entry (the <c>/skill:&lt;name&gt;</c> path).
     /// </summary>
-    internal IAsyncEnumerable<AgentEvent> RunAsync(
+    public IAsyncEnumerable<AgentEvent> RunSkillAsync(
         string userInput,
-        SessionSkillMetadata? skill,
-        CancellationToken ct = default
+        SessionSkillMetadata skill,
+        CancellationToken ct
     ) => RunAsync(userInput, skill, RunIds.Next(), ct);
 
     /// <summary>Runs the loop under a caller-provided run id (the subagent runner links sessions by it).</summary>
