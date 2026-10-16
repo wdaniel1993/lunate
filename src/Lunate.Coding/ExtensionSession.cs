@@ -66,6 +66,9 @@ internal sealed record ExtensionLoadResult(
     string? Message
 );
 
+/// <summary>The four contribution counts of one extension (the <c>/extensions</c> view's count row).</summary>
+internal readonly record struct ExtensionCounts(int Tools, int Commands, int Hooks, int Services);
+
 /// <summary>
 /// The composed extension host of one session: it discovers the store at session start, loads each
 /// extension with per-extension failure isolation, exposes the contributions the frontends wire
@@ -284,6 +287,23 @@ internal sealed class ExtensionSession : IAsyncDisposable
     /// <c>/extensions</c> view's data; the <c>lunate extensions</c> path included).
     /// </summary>
     internal IReadOnlyList<ExtensionLoadResult> LoadResults { get; }
+
+    /// <summary>
+    /// The registered contribution counts of one extension — the view's counts: tools from the
+    /// tool registry, hooks and services from their registries; registered commands are always 0
+    /// (no registration API exists, design D5).
+    /// </summary>
+    internal ExtensionCounts RegisteredCounts(string extensionId) =>
+        new(
+            _loader
+                .Tools.List()
+                .Count(tool =>
+                    string.Equals(tool.ExtensionId, extensionId, StringComparison.Ordinal)
+                ),
+            0,
+            _loader.Hooks.Count(extensionId),
+            _loader.Services.Count(extensionId)
+        );
 
     /// <summary>
     /// Releases one loaded extension and its collectible context (the register-only

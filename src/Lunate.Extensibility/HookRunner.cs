@@ -41,6 +41,15 @@ public sealed partial class HookRunner
         );
     }
 
+    /// <summary>The number of handlers the extension registered (the <c>/extensions</c> view).</summary>
+    public int Count(string extensionId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(extensionId);
+        return _handlers.Count(registration =>
+            string.Equals(registration.ExtensionId, extensionId, StringComparison.Ordinal)
+        );
+    }
+
     private List<Registration> Ordered<THandler>(IReadOnlyCollection<string>? extensionIds = null)
         where THandler : IHookHandler =>
         [

@@ -96,6 +96,18 @@ public sealed class ServiceRegistry
         }
     }
 
+    /// <summary>The number of services the extension registered (the <c>/extensions</c> view).</summary>
+    public int Count(string extensionId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(extensionId);
+        lock (_gate)
+        {
+            return _services.Values.Count(registration =>
+                string.Equals(registration.ExtensionId, extensionId, StringComparison.Ordinal)
+            );
+        }
+    }
+
     /// <summary>Removes every service the extension registered.</summary>
     public void Unregister(string extensionId)
     {
