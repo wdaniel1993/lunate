@@ -144,11 +144,7 @@ public sealed class ExtensionsCommandTests
             StringComparison.Ordinal
         );
         Assert.DoesNotContain("see the log", failed, StringComparison.Ordinal);
-        Assert.Contains(
-            "hello 0.1.0 (global) loaded in ",
-            text,
-            StringComparison.Ordinal
-        );
+        Assert.Contains("hello 0.1.0 (global) loaded in ", text, StringComparison.Ordinal);
     }
 
     [Fact]
