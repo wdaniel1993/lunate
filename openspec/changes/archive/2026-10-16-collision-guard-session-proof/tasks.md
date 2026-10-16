@@ -21,4 +21,4 @@
 ## 5. Close
 
 - [x] 5.1 Archive (`openspec archive collision-guard-session-proof --yes`); tick tasks.
-- [ ] 5.2 PR + CI green + closing comment.
+- [x] 5.2 PR + CI green + closing comment.
