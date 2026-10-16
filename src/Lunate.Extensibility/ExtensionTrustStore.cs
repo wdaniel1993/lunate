@@ -11,6 +11,7 @@ public sealed class ExtensionTrustStore
     private const string RepositoriesSection = "repositories";
     private const string McpConfigSection = "mcpConfig";
     private const string McpServerSection = "mcpServers";
+    private const string SkillsSection = "skills";
     private const string WorktreesKey = "worktrees";
     private const string FilesKey = "files";
 
@@ -119,6 +120,16 @@ public sealed class ExtensionTrustStore
     ) => EvaluateIn(FilesKey, McpConfigSection, repositoryIdentity, configPath, contentHash);
 
     /// <summary>
+    /// The project-skill trust record: the same per-repository/worktree/hash semantics as
+    /// extension trust, kept in a distinct section so skill trust is never shared with it.
+    /// </summary>
+    public ExtensionTrustDecision EvaluateSkills(
+        string repositoryIdentity,
+        string worktreePath,
+        string contentHash
+    ) => EvaluateIn(WorktreesKey, SkillsSection, repositoryIdentity, worktreePath, contentHash);
+
+    /// <summary>
     /// The per-server approval record: keyed by repository identity and the canonical hash of the
     /// server's raw definition (never by worktree — a definition can run different code per
     /// repository, so the repository is the boundary; the recorded worktree is audit).
@@ -177,6 +188,22 @@ public sealed class ExtensionTrustStore
             trustedAt
         );
 
+    /// <summary>Records one worktree's project-skill trust decision, keyed like extension trust.</summary>
+    public void RecordSkillsTrusted(
+        string repositoryIdentity,
+        string worktreePath,
+        string contentHash,
+        DateTimeOffset trustedAt
+    ) =>
+        RecordIn(
+            WorktreesKey,
+            SkillsSection,
+            repositoryIdentity,
+            worktreePath,
+            contentHash,
+            trustedAt
+        );
+
     /// <summary>
     /// Records one server definition's approval for the repository; the worktree is kept as the
     /// approving worktree for audit.
@@ -208,9 +235,9 @@ public sealed class ExtensionTrustStore
     }
 
     /// <summary>
-    /// Every trust record this repository holds across all three sections (extension trust, the
-    /// project mcp.json files, and the per-server approvals), ordered by section then worktree: the
-    /// changed-files re-prompt wording reads it, and <c>/trust</c> lists it.
+    /// Every trust record this repository holds across all four sections (extension trust, the
+    /// project mcp.json files, the per-server approvals and project skills), ordered by section
+    /// then worktree: the changed-files re-prompt wording reads it, and <c>/trust</c> lists it.
     /// </summary>
     public IReadOnlyList<TrustRecord> Records(string repositoryIdentity)
     {
@@ -231,6 +258,14 @@ public sealed class ExtensionTrustStore
             FilesKey,
             McpConfigSection,
             TrustSection.McpConfig,
+            repositoryIdentity,
+            records
+        );
+        Collect(
+            document,
+            WorktreesKey,
+            SkillsSection,
+            TrustSection.Skills,
             repositoryIdentity,
             records
         );
@@ -265,7 +300,13 @@ public sealed class ExtensionTrustStore
         JsonObject document = ReadDocument();
         var changed = false;
         foreach (
-            string section in new[] { RepositoriesSection, McpConfigSection, McpServerSection }
+            string section in new[]
+            {
+                RepositoriesSection,
+                McpConfigSection,
+                McpServerSection,
+                SkillsSection,
+            }
         )
         {
             if (

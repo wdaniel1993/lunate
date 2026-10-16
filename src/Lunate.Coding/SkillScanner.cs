@@ -59,6 +59,28 @@ internal static partial class SkillScanner
     }
 
     /// <summary>
+    /// The project-scope discovery alone (the trust inventory's needs): the same walk and
+    /// validation, without user or extension roots.
+    /// </summary>
+    internal static SkillScanResult ScanProject(SkillScanRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        var warnings = new List<string>();
+        List<SkillDescriptor> candidates = [];
+        List<SkillDescriptor> invalid = [];
+        var scan = new ScanState(candidates, invalid, warnings, [], []);
+        scan.Roots(
+            ProjectRoots(request.WorktreeRoot, request.RepoRoot),
+            SkillScope.Project,
+            extensionId: null,
+            projectBoundary: request.RepoRoot ?? request.WorktreeRoot
+        );
+        List<SkillDescriptor> skills = Resolve(candidates, warnings);
+        skills.AddRange(invalid);
+        return new SkillScanResult(skills, warnings, []);
+    }
+
+    /// <summary>
     /// The project skill roots in ranking order: the worktree root first, then each ancestor up to
     /// (and including) the repository root — never above it. Within one level the earlier kind wins.
     /// </summary>
@@ -128,7 +150,7 @@ internal static partial class SkillScanner
             }
         }
 
-        winners.Sort(SkillOrder.Instance);
+        winners.Sort(SkillDescriptor.IndexOrderComparer);
         return winners;
     }
 
@@ -443,23 +465,6 @@ internal static partial class SkillScanner
             Valid: false,
             InvalidReason: reason
         );
-
-    /// <summary>The index and /skills order: project, then user, then extension, each group by name.</summary>
-    private sealed class SkillOrder : IComparer<SkillDescriptor>
-    {
-        internal static SkillOrder Instance { get; } = new();
-
-        public int Compare(SkillDescriptor? left, SkillDescriptor? right)
-        {
-            if (left is null || right is null)
-            {
-                return left is null ? (right is null ? 0 : -1) : 1;
-            }
-
-            int scope = left.Scope.CompareTo(right.Scope);
-            return scope != 0 ? scope : string.CompareOrdinal(left.Name, right.Name);
-        }
-    }
 
     /// <summary>The collision rank: scope, then nearest project level, then kind, then extension id.</summary>
     private sealed class RankOrder : IComparer<SkillDescriptor>

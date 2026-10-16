@@ -22,6 +22,14 @@ internal sealed record PendingMcpConfig(
     ExtensionTrustDecision Decision
 );
 
+/// <summary>The project skills' trust state in a worktree: the discovered names and the combined
+/// directory-content hash.</summary>
+internal sealed record PendingProjectSkills(
+    IReadOnlyList<string> Names,
+    string ContentHash,
+    ExtensionTrustDecision Decision
+);
+
 /// <summary>
 /// One project-scoped server definition without its per-server approval: the raw definition as
 /// written and its canonical definition hash (the approval key).
@@ -46,7 +54,8 @@ internal sealed class TrustInventory
         IReadOnlyList<TrustRecord> records,
         IReadOnlyList<PendingExtension> extensions,
         IReadOnlyList<PendingMcpConfig> mcpConfigs,
-        IReadOnlyList<PendingMcpServer> mcpServers
+        IReadOnlyList<PendingMcpServer> mcpServers,
+        PendingProjectSkills? projectSkills
     )
     {
         RepositoryIdentity = repositoryIdentity;
@@ -55,6 +64,7 @@ internal sealed class TrustInventory
         Extensions = extensions;
         ProjectMcpConfigs = mcpConfigs;
         McpServers = mcpServers;
+        ProjectSkills = projectSkills;
     }
 
     internal string RepositoryIdentity { get; }
@@ -80,11 +90,18 @@ internal sealed class TrustInventory
     /// </summary>
     internal IReadOnlyList<PendingMcpServer> McpServers { get; }
 
+    /// <summary>
+    /// The project skills' pending trust state, when skills were discovered and not already
+    /// trusted for this worktree; null when there is nothing to ask about.
+    /// </summary>
+    internal PendingProjectSkills? ProjectSkills { get; }
+
     /// <summary>Decisions a session would ask about: unknown or changed hashes.</summary>
     internal int PendingCount =>
         Extensions.Count(extension => extension.Decision is ExtensionTrustDecision.Prompt)
         + ProjectMcpConfigs.Count(config => config.Decision is ExtensionTrustDecision.Prompt)
-        + McpServers.Count;
+        + McpServers.Count
+        + (ProjectSkills is { Decision: ExtensionTrustDecision.Prompt } ? 1 : 0);
 
     internal bool HasPending => PendingCount > 0;
 
@@ -192,6 +209,24 @@ internal sealed class TrustInventory
             pending.Add(node);
         }
 
+        if (ProjectSkills is { Decision: ExtensionTrustDecision.Prompt } skills)
+        {
+            var names = new JsonArray();
+            foreach (string name in skills.Names)
+            {
+                names.Add(name);
+            }
+
+            var node = new JsonObject { ["kind"] = "skills", ["names"] = names };
+            if (includeLocations)
+            {
+                node["worktree"] = WorktreePath;
+            }
+
+            node["hash"] = skills.ContentHash;
+            pending.Add(node);
+        }
+
         return pending;
     }
 
@@ -283,6 +318,37 @@ internal sealed class TrustInventory
             }
         }
 
-        return new TrustInventory(identity, worktree, records, extensions, mcpConfigs, mcpServers);
+        PendingProjectSkills? projectSkills = null;
+        List<SkillDescriptor> discovered =
+        [
+            .. SkillScanner
+                .ScanProject(
+                    new SkillScanRequest(worktree, workspace.RepoRoot, HomeDirectory: "", [])
+                )
+                .Skills.Where(skill => skill is { Valid: true, Scope: SkillScope.Project }),
+        ];
+        if (discovered.Count > 0)
+        {
+            string hash = SkillTrust.ComputeContentHash(discovered, workspace.RepoRoot ?? worktree);
+            ExtensionTrustDecision decision = store.EvaluateSkills(identity, worktree, hash);
+            if (decision is not ExtensionTrustDecision.Trusted)
+            {
+                projectSkills = new PendingProjectSkills(
+                    SkillTrust.Names(discovered),
+                    hash,
+                    decision
+                );
+            }
+        }
+
+        return new TrustInventory(
+            identity,
+            worktree,
+            records,
+            extensions,
+            mcpConfigs,
+            mcpServers,
+            projectSkills
+        );
     }
 }

@@ -25,6 +25,7 @@ internal static class TrustFormat
         {
             TrustSection.McpConfig => "mcp.json",
             TrustSection.McpServer => "mcp server",
+            TrustSection.Skills => "skills",
             _ => "extensions",
         };
         return $"{kind} — {record.WorktreePath} {ShortHash(record.ContentHash)}";

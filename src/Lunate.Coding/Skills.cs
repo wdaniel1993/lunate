@@ -58,6 +58,23 @@ internal sealed record SkillDescriptor(
 
     /// <summary>Whether this entry is eligible for the model index (valid, model-visible, trusted).</summary>
     internal bool IndexEligible => Valid && !CommandOnly && !Untrusted;
+
+    /// <summary>The index order: project, then user, then extension, each group by name (ordinal).</summary>
+    internal static IComparer<SkillDescriptor> IndexOrderComparer { get; } = new IndexOrder();
+
+    private sealed class IndexOrder : IComparer<SkillDescriptor>
+    {
+        public int Compare(SkillDescriptor? left, SkillDescriptor? right)
+        {
+            if (left is null || right is null)
+            {
+                return left is null ? (right is null ? 0 : -1) : 1;
+            }
+
+            int scope = left.Scope.CompareTo(right.Scope);
+            return scope != 0 ? scope : string.CompareOrdinal(left.Name, right.Name);
+        }
+    }
 }
 
 /// <summary>The raw discovery input: the boundaries discovery may read and the extension sources.</summary>
