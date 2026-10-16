@@ -52,6 +52,7 @@ public sealed class ExtensionsCommandTests
         Directory.CreateDirectory(worktree);
         string store = temp.File("store");
         HelloFixture.Install(Path.Combine(store, "extensions", "hello"));
+        ToolFixture.Install(store);
         string marker = temp.File("load-marker.txt");
         HelloFixture.WriteSettings(store, "hello", marker);
         HelloFixture.Install(
@@ -92,6 +93,16 @@ public sealed class ExtensionsCommandTests
             StringComparison.Ordinal
         );
         Assert.Contains("(CLI-measured)", output.ToString(), StringComparison.Ordinal);
+        string tools = Assert.Single(
+            output.ToString().Split('\n', StringSplitOptions.RemoveEmptyEntries),
+            line => line.StartsWith("tools ", StringComparison.Ordinal)
+        );
+        Assert.Contains(" loaded in ", tools, StringComparison.Ordinal);
+        Assert.Contains(
+            ", tools 1, commands 0, hooks 0, services 0",
+            tools,
+            StringComparison.Ordinal
+        );
     }
 
     [Fact]
@@ -120,8 +131,17 @@ public sealed class ExtensionsCommandTests
             output.ToString().Split('\n', StringSplitOptions.RemoveEmptyEntries),
             line => line.StartsWith("broken ", StringComparison.Ordinal)
         );
-        Assert.Contains("failed: ", failed, StringComparison.Ordinal);
-        Assert.Contains(" — see the log", failed, StringComparison.Ordinal);
+        Assert.Contains(
+            "failed: extension 'broken': entry assembly 'Broken.dll' was not found in '",
+            failed,
+            StringComparison.Ordinal
+        );
+        Assert.EndsWith(
+            "'., tools 0, commands 0, hooks 0, services 0",
+            failed,
+            StringComparison.Ordinal
+        );
+        Assert.DoesNotContain("see the log", failed, StringComparison.Ordinal);
         Assert.Contains(
             "hello 0.1.0 (global) loaded in ",
             output.ToString(),

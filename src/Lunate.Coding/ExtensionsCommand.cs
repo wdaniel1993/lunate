@@ -112,7 +112,7 @@ internal static class ExtensionsCommand
         {
             foreach (ExtensionLoadResult result in results)
             {
-                await host.UnloadAsync(result.Id).ConfigureAwait(false);
+                await host.UnloadAsync(result.Id, notifyToolsChanged: false).ConfigureAwait(false);
             }
         }
     }

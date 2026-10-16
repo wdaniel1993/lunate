@@ -84,7 +84,7 @@ internal static class ExtensionsView
             };
             if (result.State == ExtensionLoadState.Loaded)
             {
-                node["loadMs"] = (long)Math.Round(result.Elapsed.TotalMilliseconds);
+                node["loadMs"] = Milliseconds(result.Elapsed);
                 if (IsSlow(result.Elapsed))
                 {
                     node["slow"] = true;
@@ -207,18 +207,32 @@ internal static class ExtensionsView
 
     private static bool IsSlow(TimeSpan elapsed) => elapsed.TotalMilliseconds > SlowThresholdMs;
 
-    private static string Milliseconds(TimeSpan elapsed) =>
-        elapsed.TotalMilliseconds.ToString("0.###", CultureInfo.InvariantCulture);
+    /// <summary>
+    /// A whole-millisecond representation, rounded half away from zero and shared by the text and
+    /// JSON renderings (design D2).
+    /// </summary>
+    private static long Milliseconds(TimeSpan elapsed) =>
+        (long)Math.Round(elapsed.TotalMilliseconds, MidpointRounding.AwayFromZero);
 
     /// <summary>
-    /// The failure line: the message's first sentence (up to and including its first <c>.</c>)
-    /// plus the <c> — see the log</c> pointer when the message was truncated; a message without a
-    /// sentence end passes through whole.
+    /// The failure line: the message's first sentence (up to and including the first
+    /// sentence-ending period — a <c>.</c> followed by a space or the end of the message) plus the
+    /// <c> — see the log</c> pointer when the message was truncated; a message without such a
+    /// period passes through whole, so dotted tokens like <c>Broken.dll</c> never split.
     /// </summary>
     private static string FailedMessage(string? message)
     {
         string text = message ?? string.Empty;
-        int end = text.IndexOf('.', StringComparison.Ordinal);
+        int end = -1;
+        for (var index = 0; index < text.Length; index++)
+        {
+            if (text[index] == '.' && (index == text.Length - 1 || text[index + 1] == ' '))
+            {
+                end = index;
+                break;
+            }
+        }
+
         if (end < 0)
         {
             return text;

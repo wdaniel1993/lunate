@@ -50,6 +50,21 @@ public sealed class ExtensionsViewJsonTests
     }
 
     [Fact]
+    public void Json_and_text_round_the_load_time_identically_to_whole_milliseconds()
+    {
+        IReadOnlyList<ExtensionDescriptor> descriptors = [Descriptor("ext-one")];
+        IReadOnlyList<ExtensionLoadResult> results = [Loaded("ext-one", milliseconds: 1234.5)];
+
+        string segment = Assert.Single(ExtensionsView.Segments(descriptors, results, NoCounts));
+        using JsonDocument document = JsonDocument.Parse(
+            ExtensionsView.Json(descriptors, results, NoCounts)
+        );
+
+        Assert.Contains("loaded in 1235 ms", segment, StringComparison.Ordinal);
+        Assert.Equal(1235, document.RootElement[0].GetProperty("loadMs").GetInt64());
+    }
+
+    [Fact]
     public void Json_marks_a_slow_load()
     {
         IReadOnlyList<ExtensionDescriptor> descriptors = [Descriptor("ext-one")];

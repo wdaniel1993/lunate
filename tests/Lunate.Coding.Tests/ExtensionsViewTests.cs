@@ -135,9 +135,31 @@ public sealed class ExtensionsViewTests
         );
     }
 
+    [Fact]
+    public void A_dotted_token_before_the_first_sentence_period_survives_truncation()
+    {
+        IReadOnlyList<ExtensionDescriptor> descriptors = [Descriptor("broken")];
+        IReadOnlyList<ExtensionLoadResult> results =
+        [
+            Failed(
+                "broken",
+                "extension 'broken': entry assembly 'Broken.dll' was not found. Install it or drop it."
+            ),
+        ];
+
+        string segment = Assert.Single(ExtensionsView.Segments(descriptors, results, NoCounts));
+
+        Assert.StartsWith(
+            "broken 0.1.0 (global) failed: extension 'broken': entry assembly 'Broken.dll' was not found. — see the log,",
+            segment,
+            StringComparison.Ordinal
+        );
+    }
+
     [Theory]
     [InlineData("one thing failed.")]
     [InlineData("one thing failed")]
+    [InlineData("entry 'Broken.dll' was not found")]
     public void A_message_not_truncated_carries_no_log_pointer(string message)
     {
         IReadOnlyList<ExtensionDescriptor> descriptors = [Descriptor("broken")];
@@ -204,7 +226,7 @@ public sealed class ExtensionsViewTests
             ExtensionsView.Segments(descriptors, results, _ => new ExtensionCounts(1540, 0, 0, 0))
         );
 
-        Assert.Contains("loaded in 1234.5 ms", segment, StringComparison.Ordinal);
+        Assert.Contains("loaded in 1235 ms", segment, StringComparison.Ordinal);
         Assert.Contains("tools 1540 (0 declared)", segment, StringComparison.Ordinal);
     }
 

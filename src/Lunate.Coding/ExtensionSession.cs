@@ -308,9 +308,11 @@ internal sealed class ExtensionSession : IAsyncDisposable
     /// <summary>
     /// Releases one loaded extension and its collectible context (the register-only
     /// <c>lunate extensions</c> teardown); unloading stops its background services when they
-    /// started, which inspect mode never did.
+    /// started, which inspect mode never did. <paramref name="notifyToolsChanged"/> false unloads
+    /// silently, skipping the <c>ToolsChanged</c> dispatch (design D3).
     /// </summary>
-    internal ValueTask UnloadAsync(string id) => _loader.Unload(id);
+    internal ValueTask UnloadAsync(string id, bool notifyToolsChanged = true) =>
+        _loader.Unload(id, notifyToolsChanged);
 
     /// <summary>
     /// Drains (and then disposes) the file change bus, runs the session-ending hooks and stops the
