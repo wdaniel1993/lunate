@@ -34,6 +34,14 @@ internal sealed record ExtensionSeams
     /// <c>mcp.json</c> servers are unaffected.
     /// </summary>
     public bool NoExtensions { get; init; }
+
+    /// <summary>
+    /// True composes in register-only inspect mode (the <c>lunate extensions</c> path): trusted
+    /// extensions load and register, but nothing starts — no session-start hooks, no background
+    /// services and no <c>ToolsChanged</c> dispatch (design D3). Never prompts beyond the seam's
+    /// default.
+    /// </summary>
+    public bool Inspect { get; init; }
 }
 
 /// <summary>A discovery or load failure the session reported and continued past.</summary>
@@ -140,7 +148,14 @@ internal sealed class ExtensionSession : IAsyncDisposable
             try
             {
                 await loader
-                    .Load(descriptor.Id, workingDirectory, repositoryIdentity, prompt, ct)
+                    .Load(
+                        descriptor.Id,
+                        workingDirectory,
+                        repositoryIdentity,
+                        prompt,
+                        ct,
+                        startSession: !seams.Inspect
+                    )
                     .ConfigureAwait(false);
                 loadResults.Add(
                     new ExtensionLoadResult(
@@ -269,6 +284,13 @@ internal sealed class ExtensionSession : IAsyncDisposable
     /// <c>/extensions</c> view's data; the <c>lunate extensions</c> path included).
     /// </summary>
     internal IReadOnlyList<ExtensionLoadResult> LoadResults { get; }
+
+    /// <summary>
+    /// Releases one loaded extension and its collectible context (the register-only
+    /// <c>lunate extensions</c> teardown); unloading stops its background services when they
+    /// started, which inspect mode never did.
+    /// </summary>
+    internal ValueTask UnloadAsync(string id) => _loader.Unload(id);
 
     /// <summary>
     /// Drains (and then disposes) the file change bus, runs the session-ending hooks and stops the
