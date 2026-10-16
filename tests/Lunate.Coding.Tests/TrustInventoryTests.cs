@@ -160,7 +160,7 @@ public sealed class TrustInventoryTests
         Store(store)
             .RecordMcpConfigTrusted(
                 Identity(worktree),
-                worktree,
+                McpComposition.ProjectConfigPath(worktree),
                 McpConfigTrustHash.ComputeFile(McpComposition.ProjectConfigPath(worktree)),
                 DateTimeOffset.UtcNow
             );
@@ -221,7 +221,7 @@ public sealed class TrustInventoryTests
         Store(store)
             .RecordMcpConfigTrusted(
                 Identity(worktree),
-                worktree,
+                McpComposition.ProjectConfigPath(worktree),
                 McpConfigTrustHash.ComputeFile(config),
                 DateTimeOffset.UtcNow
             );
@@ -232,7 +232,7 @@ public sealed class TrustInventoryTests
         Store(store)
             .RecordMcpConfigTrusted(
                 Identity(worktree),
-                worktree,
+                McpComposition.ProjectConfigPath(worktree),
                 McpConfigTrustHash.ComputeFile(config),
                 DateTimeOffset.UtcNow
             );

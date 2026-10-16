@@ -72,9 +72,12 @@ internal static class McpComposition
         Dictionary<string, int> index = new(StringComparer.Ordinal);
         Dictionary<string, IReadOnlyList<string>> missingVariables = new(StringComparer.Ordinal);
 
-        // User scope: user-owned files, no trust gate; the standard sibling is read additively.
-        Add(McpConfig.Load(configPath ?? DefaultConfigPath));
+        // Merge lowest-precedence first so the highest-precedence definition wins (later wins):
+        // ~/.agents/mcp.json, then ~/.lunate/mcp.json, then root .mcp.json, .agents/mcp.json and
+        // .lunate/mcp.json — Lunate's own files keep winning and every project file over every
+        // user file.
         Add(McpConfig.Load(agentsConfigPath ?? DefaultAgentsConfigPath));
+        Add(McpConfig.Load(configPath ?? DefaultConfigPath));
 
         string identity = workspace.GitCommonDir ?? workspace.WorktreeRoot;
         string worktree = workspace.WorktreeRoot;
@@ -85,9 +88,8 @@ internal static class McpComposition
             }
         );
 
-        // Project scope: each file its own trust decision, then each server its own approval;
-        // later files win per D1.
-        foreach (string path in ProjectConfigPaths(worktree))
+        // Project scope: each file its own trust decision, then each server its own approval.
+        foreach (string path in ProjectConfigPaths(worktree).Reverse())
         {
             if (!File.Exists(path))
             {
@@ -98,7 +100,7 @@ internal static class McpComposition
             // nothing starts and errors are reported only when the file is trusted.
             McpConfigResult parsed = McpConfig.Load(path);
             bool trusted = await new McpConfigTrust(store)
-                .EnsureTrustedAsync(identity, worktree, path, parsed.RawServers, prompt, log, ct)
+                .EnsureTrustedAsync(identity, path, parsed.RawServers, prompt, log, ct)
                 .ConfigureAwait(false);
             if (!trusted)
             {

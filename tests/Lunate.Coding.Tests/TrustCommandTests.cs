@@ -86,7 +86,7 @@ public sealed class TrustCommandTests
             new ExtensionHostOptions { StorePath = fixture.Store }
         ).RecordMcpConfigTrusted(
             fixture.Identity(),
-            fixture.Worktree,
+            fixture.ConfigPath,
             McpConfigTrustHash.ComputeFile(fixture.ConfigPath),
             DateTimeOffset.UtcNow
         );

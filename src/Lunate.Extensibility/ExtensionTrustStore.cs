@@ -11,6 +11,8 @@ public sealed class ExtensionTrustStore
     private const string RepositoriesSection = "repositories";
     private const string McpConfigSection = "mcpConfig";
     private const string McpServerSection = "mcpServers";
+    private const string WorktreesKey = "worktrees";
+    private const string FilesKey = "files";
 
     private readonly ExtensionHostOptions _options;
 
@@ -93,17 +95,26 @@ public sealed class ExtensionTrustStore
         string repositoryIdentity,
         string worktreePath,
         string contentHash
-    ) => EvaluateIn(RepositoriesSection, repositoryIdentity, worktreePath, contentHash);
+    ) =>
+        EvaluateIn(
+            WorktreesKey,
+            RepositoriesSection,
+            repositoryIdentity,
+            worktreePath,
+            contentHash
+        );
 
     /// <summary>
-    /// The mcp.json record: the same per-repository/hash semantics as extension trust, kept in a
-    /// distinct section so extension trust is never weakened or shared with a config file.
+    /// The project mcp.json file record: the same per-repository/hash semantics as extension
+    /// trust, kept in a distinct section so extension trust is never weakened or shared with a
+    /// config file. Each of the standard project files is its own record, keyed by the config
+    /// file's path (three files in one worktree must not overwrite each other).
     /// </summary>
     public ExtensionTrustDecision EvaluateMcpConfig(
         string repositoryIdentity,
-        string worktreePath,
+        string configPath,
         string contentHash
-    ) => EvaluateIn(McpConfigSection, repositoryIdentity, worktreePath, contentHash);
+    ) => EvaluateIn(FilesKey, McpConfigSection, repositoryIdentity, configPath, contentHash);
 
     /// <summary>
     /// The per-server approval record: keyed by repository identity and the canonical hash of the
@@ -138,15 +149,31 @@ public sealed class ExtensionTrustStore
         string worktreePath,
         string contentHash,
         DateTimeOffset trustedAt
-    ) => RecordIn(RepositoriesSection, repositoryIdentity, worktreePath, contentHash, trustedAt);
+    ) =>
+        RecordIn(
+            WorktreesKey,
+            RepositoriesSection,
+            repositoryIdentity,
+            worktreePath,
+            contentHash,
+            trustedAt
+        );
 
-    /// <summary>Records the mcp.json trust decision in its own section of the trust file.</summary>
+    /// <summary>Records one project mcp.json file's trust decision, keyed by its path.</summary>
     public void RecordMcpConfigTrusted(
         string repositoryIdentity,
-        string worktreePath,
+        string configPath,
         string contentHash,
         DateTimeOffset trustedAt
-    ) => RecordIn(McpConfigSection, repositoryIdentity, worktreePath, contentHash, trustedAt);
+    ) =>
+        RecordIn(
+            FilesKey,
+            McpConfigSection,
+            repositoryIdentity,
+            configPath,
+            contentHash,
+            trustedAt
+        );
 
     /// <summary>
     /// Records one server definition's approval for the repository; the worktree is kept as the
@@ -191,12 +218,20 @@ public sealed class ExtensionTrustStore
         List<TrustRecord> records = [];
         Collect(
             document,
+            WorktreesKey,
             RepositoriesSection,
             TrustSection.Extensions,
             repositoryIdentity,
             records
         );
-        Collect(document, McpConfigSection, TrustSection.McpConfig, repositoryIdentity, records);
+        Collect(
+            document,
+            FilesKey,
+            McpConfigSection,
+            TrustSection.McpConfig,
+            repositoryIdentity,
+            records
+        );
         CollectDefinitions(
             document,
             McpServerSection,
@@ -248,6 +283,7 @@ public sealed class ExtensionTrustStore
 
     private static void Collect(
         JsonObject document,
+        string entriesKey,
         string section,
         TrustSection kind,
         string repositoryIdentity,
@@ -257,13 +293,13 @@ public sealed class ExtensionTrustStore
         if (
             document[section] is not JsonObject repositories
             || repositories[repositoryIdentity] is not JsonObject repository
-            || repository["worktrees"] is not JsonObject worktrees
+            || repository[entriesKey] is not JsonObject entries
         )
         {
             return;
         }
 
-        foreach (KeyValuePair<string, JsonNode?> entry in worktrees)
+        foreach (KeyValuePair<string, JsonNode?> entry in entries)
         {
             if (
                 entry.Value is JsonValue value
@@ -306,14 +342,15 @@ public sealed class ExtensionTrustStore
     }
 
     private ExtensionTrustDecision EvaluateIn(
+        string entriesKey,
         string section,
         string repositoryIdentity,
-        string worktreePath,
+        string entryKey,
         string contentHash
     )
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(repositoryIdentity);
-        ArgumentException.ThrowIfNullOrWhiteSpace(worktreePath);
+        ArgumentException.ThrowIfNullOrWhiteSpace(entryKey);
         ArgumentException.ThrowIfNullOrWhiteSpace(contentHash);
 
         JsonObject document = ReadDocument();
@@ -325,13 +362,13 @@ public sealed class ExtensionTrustStore
             return ExtensionTrustDecision.Prompt;
         }
 
-        if (repository["worktrees"] is not JsonObject worktrees)
+        if (repository[entriesKey] is not JsonObject entries)
         {
             return ExtensionTrustDecision.NewWorktree;
         }
 
         if (
-            worktrees[worktreePath] is not JsonValue recorded
+            entries[entryKey] is not JsonValue recorded
             || !recorded.TryGetValue<string>(out string? recordedHash)
         )
         {
@@ -344,15 +381,16 @@ public sealed class ExtensionTrustStore
     }
 
     private void RecordIn(
+        string entriesKey,
         string section,
         string repositoryIdentity,
-        string worktreePath,
+        string entryKey,
         string contentHash,
         DateTimeOffset trustedAt
     )
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(repositoryIdentity);
-        ArgumentException.ThrowIfNullOrWhiteSpace(worktreePath);
+        ArgumentException.ThrowIfNullOrWhiteSpace(entryKey);
         ArgumentException.ThrowIfNullOrWhiteSpace(contentHash);
 
         JsonObject document = ReadDocument();
@@ -363,9 +401,9 @@ public sealed class ExtensionTrustStore
         repositories[repositoryIdentity] = repository;
         repository["trustedAt"] ??= trustedAt.ToString("O", CultureInfo.InvariantCulture);
 
-        JsonObject worktrees = repository["worktrees"] as JsonObject ?? new JsonObject();
-        repository["worktrees"] = worktrees;
-        worktrees[worktreePath] = contentHash;
+        JsonObject entries = repository[entriesKey] as JsonObject ?? new JsonObject();
+        repository[entriesKey] = entries;
+        entries[entryKey] = contentHash;
 
         WriteAtomically(document);
     }

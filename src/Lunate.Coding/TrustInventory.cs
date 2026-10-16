@@ -258,7 +258,11 @@ internal sealed class TrustInventory
 
             McpConfigResult parsed = McpConfig.Load(projectConfig);
             string hash = McpConfigTrustHash.Compute(parsed.RawServers);
-            ExtensionTrustDecision decision = store.EvaluateMcpConfig(identity, worktree, hash);
+            ExtensionTrustDecision decision = store.EvaluateMcpConfig(
+                identity,
+                projectConfig,
+                hash
+            );
             if (decision is not ExtensionTrustDecision.Trusted)
             {
                 mcpConfigs.Add(

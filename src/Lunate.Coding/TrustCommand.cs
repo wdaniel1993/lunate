@@ -128,7 +128,7 @@ internal static class TrustCommand
         {
             store.RecordMcpConfigTrusted(
                 inventory.RepositoryIdentity,
-                inventory.WorktreePath,
+                config.Path,
                 config.ContentHash,
                 now
             );

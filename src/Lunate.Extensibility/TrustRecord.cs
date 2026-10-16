@@ -17,8 +17,10 @@ public enum TrustSection
 }
 
 /// <summary>
-/// One recorded trust decision: the section it lives in, the worktree it was recorded for (for a
-/// per-server approval: the worktree that approved the definition) and the content hash that was
-/// approved (an extension directory hash, an mcp.json file hash, or a server definition hash).
+/// One recorded trust decision: the section it lives in, the location it was recorded for — for
+/// extension trust the worktree (or a stale worktree path), for a project mcp.json file the config
+/// file's path, for a per-server approval the worktree that approved the definition — and the
+/// content hash that was approved (an extension directory hash, an mcp.json file hash, or a server
+/// definition hash).
 /// </summary>
 public sealed record TrustRecord(TrustSection Section, string WorktreePath, string ContentHash);

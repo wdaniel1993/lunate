@@ -249,7 +249,7 @@ public sealed class McpConfigCompositionTests
     }
 
     [Fact]
-    public async Task The_user_agents_file_is_read_and_its_server_wins_over_the_lunate_file()
+    public async Task The_lunate_user_file_wins_over_the_user_agents_file()
     {
         using var temp = new TempDirectory();
         string lunateMarker = temp.File("lunate-marker.txt");
@@ -273,16 +273,66 @@ public sealed class McpConfigCompositionTests
 
         Assert.Equal(0, exitCode);
         Assert.Equal("ok", output);
-        Assert.False(
+        Assert.True(
             File.Exists(lunateMarker),
-            "the shadowed ~/.lunate/mcp.json definition must not start"
+            "the ~/.lunate/mcp.json definition must win and start"
         );
-        Assert.True(File.Exists(agentsMarker), "the ~/.agents/mcp.json definition must win");
+        Assert.False(
+            File.Exists(agentsMarker),
+            "the shadowed ~/.agents/mcp.json definition must not start"
+        );
         Assert.True(
             log.Contains(
-                $"server 'test' from '{agentsConfig}' replaces the same name from '{lunateConfig}'"
+                $"server 'test' from '{lunateConfig}' replaces the same name from '{agentsConfig}'"
             ),
             "the collision must be logged; log:\n" + string.Join("\n", log.Messages)
+        );
+    }
+
+    [Fact]
+    public async Task A_standard_location_server_wins_over_the_root_file_and_logs_the_collision()
+    {
+        using var temp = new TempDirectory();
+        string agentsMarker = temp.File("agents-marker.txt");
+        string rootMarker = temp.File("root-marker.txt");
+        string agentsConfig = McpComposition.ProjectAgentsConfigPath(temp.Root);
+        Directory.CreateDirectory(Path.GetDirectoryName(agentsConfig)!);
+        File.WriteAllText(agentsConfig, McpTestServerSupport.ConfigJson("test", agentsMarker));
+        string rootConfig = McpComposition.ProjectRootConfigPath(temp.Root);
+        File.WriteAllText(rootConfig, McpTestServerSupport.ConfigJson("test", rootMarker));
+        string storePath = temp.File("store");
+        TrustProjectFile(storePath, temp.Root, agentsConfig);
+        TrustProjectFile(storePath, temp.Root, rootConfig);
+        var log = new RecordingExtensionLog();
+        var client = new ScriptedChatClient().Enqueue(Scripts.Text("ok"), Scripts.Stop());
+        PrintModeOptions options = PrintModeTestSupport.BaseOptions(
+            temp,
+            new FakeChatClientFactory(client)
+        ) with
+        {
+            Prompt = "Hi",
+            Extensions = new ExtensionSeams { StorePath = storePath, Log = log },
+        };
+
+        (int exitCode, string output, _) = await PrintModeTestSupport.RunAsync(options);
+
+        Assert.Equal(0, exitCode);
+        Assert.Equal("ok", output);
+        Assert.True(
+            File.Exists(agentsMarker),
+            "the .agents/mcp.json definition must win; log:\n" + string.Join("\n", log.Messages)
+        );
+        Assert.False(
+            File.Exists(rootMarker),
+            "the shadowed root .mcp.json definition must not start"
+        );
+        string canonicalRoot = Workspace.Canonicalize(temp.Root);
+        Assert.True(
+            log.Contains(
+                $"server 'test' from '{Path.Combine(canonicalRoot, ".agents", "mcp.json")}' replaces the same name from '{Path.Combine(canonicalRoot, ".mcp.json")}'"
+            ),
+            "the collision must be logged naming both files; log:\n"
+                + string.Join("\n", log.Messages)
         );
     }
 
@@ -447,7 +497,7 @@ public sealed class McpConfigCompositionTests
         string canonical = Workspace.Canonicalize(worktreeRoot);
         store.RecordMcpConfigTrusted(
             canonical,
-            canonical,
+            configPath,
             McpConfigTrustHash.ComputeFile(configPath),
             DateTimeOffset.UtcNow
         );

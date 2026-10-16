@@ -82,16 +82,30 @@ public sealed class McpConfigTrustHashTests
         Directory.CreateDirectory(Path.GetDirectoryName(config)!);
         File.WriteAllText(
             config,
-            """{ "mcpServers": { "srv": { "command": "x", "env": { "TOKEN": "the test value" } } } }"""
+            """{ "mcpServers": { "srv": { "command": "x", "env": { "TOKEN": "${LUNATE_TEST_TOKEN}" } } } }"""
         );
         string storePath = temp.File("store");
         var store = new ExtensionTrustStore(new ExtensionHostOptions { StorePath = storePath });
-        store.RecordMcpConfigTrusted(
-            worktree,
-            worktree,
-            McpConfigTrustHash.ComputeFile(config),
-            DateTimeOffset.UtcNow
-        );
+        Environment.SetEnvironmentVariable("LUNATE_TEST_TOKEN", "the test value");
+        try
+        {
+            store.RecordMcpConfigTrusted(
+                worktree,
+                config,
+                McpConfigTrustHash.ComputeFile(config),
+                DateTimeOffset.UtcNow
+            );
+            store.RecordMcpServerTrusted(
+                worktree,
+                worktree,
+                McpConfigTrustHash.ComputeDefinitions(config)["srv"],
+                DateTimeOffset.UtcNow
+            );
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("LUNATE_TEST_TOKEN", null);
+        }
 
         string trustFile = File.ReadAllText(Path.Combine(storePath, "trust.json"));
 

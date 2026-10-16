@@ -79,7 +79,7 @@ public sealed class McpConfigLocationsTests
     }
 
     [Fact]
-    public async Task The_user_agents_file_wins_over_the_lunate_user_file_and_logs_the_collision()
+    public async Task The_lunate_user_file_wins_over_the_user_agents_file_and_logs_the_collision()
     {
         using var temp = new TempDirectory();
         string worktree = Directory.CreateDirectory(temp.File("worktree")).FullName;
@@ -93,9 +93,9 @@ public sealed class McpConfigLocationsTests
 
         McpServerStatus status = Assert.Single(set!.Statuses);
         Assert.Equal("srv", status.Name);
-        Assert.Equal(agents, status.Source);
+        Assert.Equal(lunate, status.Source);
         Assert.True(
-            log.Contains($"server 'srv' from '{agents}' replaces the same name from '{lunate}'"),
+            log.Contains($"server 'srv' from '{lunate}' replaces the same name from '{agents}'"),
             "the collision must be logged; log:\n" + string.Join("\n", log.Messages)
         );
     }
@@ -139,12 +139,12 @@ public sealed class McpConfigLocationsTests
         using var temp = new TempDirectory();
         string worktree = Directory.CreateDirectory(temp.File("worktree")).FullName;
         string lunate = temp.File("user-lunate-mcp.json");
+        File.WriteAllText(lunate, """{ "mcpServers": { "srv": { "command": "fine" } } }""");
+        string agents = temp.File("user-agents-mcp.json");
         File.WriteAllText(
-            lunate,
+            agents,
             $$"""{ "mcpServers": { "srv": { "command": "${LUNATE_TEST_UNSET_5c1d}" } } }"""
         );
-        string agents = temp.File("user-agents-mcp.json");
-        File.WriteAllText(agents, """{ "mcpServers": { "srv": { "command": "fine" } } }""");
         List<UserNotice> notices = [];
 
         McpToolSet set = (

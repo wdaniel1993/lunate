@@ -173,7 +173,7 @@ public sealed class McpServerApprovalComposeTests
         Store(storePath)
             .RecordMcpConfigTrusted(
                 worktree,
-                worktree,
+                configPath,
                 McpConfigTrustHash.ComputeFile(configPath),
                 DateTimeOffset.UtcNow
             );
