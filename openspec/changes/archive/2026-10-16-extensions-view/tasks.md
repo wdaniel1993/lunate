@@ -17,13 +17,13 @@
 
 ## 3. Gate
 
-- [ ] 3.1 `scripts/verify.sh` green (both cultures).
+- [x] 3.1 `scripts/verify.sh` green (both cultures).
 
 ## 4. Review
 
-- [ ] 4.1 Adversarial review; fix findings; focused re-review.
+- [x] 4.1 Adversarial review; fix findings; focused re-review.
 
 ## 5. Close
 
-- [ ] 5.1 Archive (`openspec archive extensions-view --yes`); tick tasks.
-- [ ] 5.2 PR + CI green + closing comment.
+- [x] 5.1 Archive (`openspec archive extensions-view --yes`); tick tasks.
+- [x] 5.2 PR + CI green + closing comment.
