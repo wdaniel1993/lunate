@@ -127,8 +127,10 @@ public sealed class ExtensionsCommandTests
         );
 
         Assert.Equal(ExtensionsCommand.ExitFailure, exitCode);
+        // Windows text output ends lines with \r\n; normalize at the test seam.
+        string text = output.ToString().ReplaceLineEndings("\n");
         string failed = Assert.Single(
-            output.ToString().Split('\n', StringSplitOptions.RemoveEmptyEntries),
+            text.Split('\n', StringSplitOptions.RemoveEmptyEntries),
             line => line.StartsWith("broken ", StringComparison.Ordinal)
         );
         Assert.Contains(
@@ -144,7 +146,7 @@ public sealed class ExtensionsCommandTests
         Assert.DoesNotContain("see the log", failed, StringComparison.Ordinal);
         Assert.Contains(
             "hello 0.1.0 (global) loaded in ",
-            output.ToString(),
+            text,
             StringComparison.Ordinal
         );
     }
