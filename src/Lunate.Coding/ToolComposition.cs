@@ -7,6 +7,13 @@ namespace Lunate.Coding;
 /// both sources — any tool whose model-facing name is already taken. Extension tools compose first,
 /// so an extension tool wins over a later MCP tool with the same name; the registry's own duplicate
 /// throw stays as the second line of defence (review of add-extension-tools, finding 2).
+/// The skip is deliberately source-agnostic: any later duplicate, whatever its source, is skipped
+/// with that diagnostic rather than reaching the registry's throw, and the extension-first ordering
+/// is what guarantees extension tools beat MCP tools. MCP-versus-MCP duplicates are unreachable
+/// today — the configured-wins shadowing keeps same-name servers out before listing, a JSON map
+/// cannot repeat a key, and the extension MCP-server registry keeps the first registration — but
+/// were one ever to become reachable, skip plus diagnostic is the safer degradation
+/// (collision-guard-session-proof, design D2).
 /// </summary>
 internal static class ToolComposition
 {

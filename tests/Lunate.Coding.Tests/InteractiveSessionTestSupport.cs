@@ -165,6 +165,9 @@ internal sealed class GatedChatClient : IChatClient
 
     public List<IReadOnlyList<ChatMessage>> Requests { get; } = [];
 
+    /// <summary>The options each streaming call arrived with, indexed like <see cref="Requests"/>.</summary>
+    public List<ChatOptions?> RequestOptions { get; } = [];
+
     public GatedChatClient Enqueue(params ChatResponseUpdate[] updates)
     {
         _scripts.Enqueue(new Script(updates, null));
@@ -228,6 +231,7 @@ internal sealed class GatedChatClient : IChatClient
         lock (_started)
         {
             Requests.Add([.. messages]);
+            RequestOptions.Add(options);
             call = Requests.Count;
             Started(call).TrySetResult();
         }
