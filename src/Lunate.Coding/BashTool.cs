@@ -48,12 +48,19 @@ public sealed class BashTool : ITool
     private readonly Workspace _workspace;
     private readonly ResolvedShell? _shell;
     private readonly TimeSpan _timeout;
+    private readonly BashChangeTracker _changes;
 
-    public BashTool(Workspace workspace, ShellResolver? resolver = null, TimeSpan? timeout = null)
+    public BashTool(
+        Workspace workspace,
+        ShellResolver? resolver = null,
+        TimeSpan? timeout = null,
+        IExtensionLog? log = null
+    )
     {
         _workspace = workspace;
         _shell = (resolver ?? new ShellResolver()).Resolve();
         _timeout = timeout ?? DefaultTimeout;
+        _changes = new BashChangeTracker(log);
         Description = _shell is null
             ? $"Run a command in the platform shell (no shell was found on this machine). {Rules}"
             : $"Run a command in {_shell.DisplayName} ({Dialect(_shell.Kind)}). {Rules}";
@@ -107,6 +114,13 @@ public sealed class BashTool : ITool
                 ct
             );
         }
+        catch (OperationCanceledException)
+        {
+            // A user-cancelled command may have half-written files while the run continues; the
+            // scan carries its own short timeout, not the cancelled token.
+            await PublishChangesAsync(ctx).ConfigureAwait(false);
+            throw;
+        }
         catch (Exception exception)
             when (exception
                     is Win32Exception
@@ -123,6 +137,9 @@ public sealed class BashTool : ITool
             return Error(message);
         }
 
+        // The command ran (success, non-zero exit or timeout): report what it changed.
+        await PublishChangesAsync(ctx).ConfigureAwait(false);
+
         var stdout = WithCapMarker(run.Stdout, run.StdoutCapped);
         var stderr = WithCapMarker(run.Stderr, run.StderrCapped);
         if (run.TimedOut)
@@ -132,6 +149,49 @@ public sealed class BashTool : ITool
 
         var exitCode = run.ExitCode!.Value;
         return new ToolResult(ComposeText(stdout, stderr, ExitFooter(exitCode)), exitCode != 0);
+    }
+
+    /// <summary>
+    /// Publishes the run's bash-made changes (the git-status diffed scan; source <c>bash</c>).
+    /// Never affects the tool result: failures are silent and the content-stamp scan stays the
+    /// backstop. The scan keeps its own short timeout, so a cancelled call is still scanned.
+    /// </summary>
+    private async Task PublishChangesAsync(ToolContext ctx)
+    {
+        if (_workspace.GitCommonDir is null)
+        {
+            return;
+        }
+
+        try
+        {
+            IReadOnlyList<BashChangeTracker.Change> changes = await _changes
+                .ObserveAsync(ctx.RunId, ctx.WorkingDirectory, CancellationToken.None)
+                .ConfigureAwait(false);
+            foreach (BashChangeTracker.Change change in changes)
+            {
+                string absolute = Workspace.Canonicalize(
+                    Path.Combine(
+                        ctx.WorkingDirectory,
+                        change.RelativePath.Replace('/', Path.DirectorySeparatorChar)
+                    )
+                );
+                ctx.FileChanges.Notify(
+                    new FileChangeEvent(
+                        absolute,
+                        change.RelativePath,
+                        ctx.WorkingDirectory,
+                        ctx.RunId,
+                        change.Kind,
+                        Source: "bash"
+                    )
+                );
+            }
+        }
+        catch (Exception)
+        {
+            // The change report must never affect the tool's result.
+        }
     }
 
     private static string WithCapMarker(string text, bool capped) =>

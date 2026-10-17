@@ -690,9 +690,9 @@ Lunate.Extensibility.Abstractions.ExtensionManifest.ModelProviders.get -> System
 Lunate.Extensibility.Abstractions.ExtensionManifest.ModelProviders.init -> void
 Lunate.Extensibility.Abstractions.FileChangedPayload
 Lunate.Extensibility.Abstractions.FileChangedPayload.<Clone>$() -> Lunate.Extensibility.Abstractions.FileChangedPayload!
-Lunate.Extensibility.Abstractions.FileChangedPayload.Deconstruct(out string! Path, out string! RelativePath, out string! WorkspaceId, out string? RunId, out string! Kind) -> void
+Lunate.Extensibility.Abstractions.FileChangedPayload.Deconstruct(out string! Path, out string! RelativePath, out string! WorkspaceId, out string? RunId, out string! Kind, out string! Source) -> void
 Lunate.Extensibility.Abstractions.FileChangedPayload.Equals(Lunate.Extensibility.Abstractions.FileChangedPayload? other) -> bool
-Lunate.Extensibility.Abstractions.FileChangedPayload.FileChangedPayload(string! Path, string! RelativePath, string! WorkspaceId, string? RunId, string! Kind) -> void
+Lunate.Extensibility.Abstractions.FileChangedPayload.FileChangedPayload(string! Path, string! RelativePath, string! WorkspaceId, string? RunId, string! Kind, string! Source = "tool") -> void
 Lunate.Extensibility.Abstractions.FileChangedPayload.Kind.get -> string!
 Lunate.Extensibility.Abstractions.FileChangedPayload.Kind.init -> void
 Lunate.Extensibility.Abstractions.FileChangedPayload.Path.get -> string!
@@ -701,6 +701,8 @@ Lunate.Extensibility.Abstractions.FileChangedPayload.RelativePath.get -> string!
 Lunate.Extensibility.Abstractions.FileChangedPayload.RelativePath.init -> void
 Lunate.Extensibility.Abstractions.FileChangedPayload.RunId.get -> string?
 Lunate.Extensibility.Abstractions.FileChangedPayload.RunId.init -> void
+Lunate.Extensibility.Abstractions.FileChangedPayload.Source.get -> string!
+Lunate.Extensibility.Abstractions.FileChangedPayload.Source.init -> void
 Lunate.Extensibility.Abstractions.FileChangedPayload.WorkspaceId.get -> string!
 Lunate.Extensibility.Abstractions.FileChangedPayload.WorkspaceId.init -> void
 Lunate.Extensibility.Abstractions.IBackgroundService

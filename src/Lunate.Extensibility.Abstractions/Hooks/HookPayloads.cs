@@ -169,5 +169,6 @@ public sealed record FileChangedPayload(
     string RelativePath,
     string WorkspaceId,
     string? RunId,
-    string Kind
+    string Kind,
+    string Source = "tool"
 );

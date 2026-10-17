@@ -149,7 +149,7 @@ A `ToolRegistry` SHALL hold tools by name in registration order, SHALL reject du
 
 ### Requirement: C# diagnostics tool
 
-The optional `cs_diagnostics` tool SHALL report compiler errors and warnings for files changed since the last check (default) or for the whole solution, without requiring a full `dotnet build`. In-session mutations SHALL be tracked through the file-change bus as exact marks — a tool edit SHALL be detected even when its content stamp is unchanged — while changes made outside the tool path SHALL be detected by content stamps; a same-stamp change made outside the tool path is seen only at the next reload. A change to a project, solution or build-configuration file (`.csproj`, `.sln`, `.slnx`, `Directory.Build.props`, `Directory.Build.targets`, `Directory.Packages.props`, `global.json`) SHALL mark the workspace for a reload on the next call. A file flagged by both the mark and the stamp scan SHALL be refreshed once (one compile, one changed-file count). A refresh SHALL NOT re-flag the refreshed file: the freshness baseline SHALL be re-taken after the refreshed text is applied, so a check with no further edits reports no changed files. A write racing a refresh SHALL NOT be overwritten by the refresh or swallowed by its re-baseline: only a read whose stamp still matches the disk SHALL be applied, and the baseline SHALL be re-taken only when the disk still holds the applied text, recorded as that verified state itself (never a stamp read after the verification). It SHALL be marked read-only and SHALL load the C# backend lazily on first use — no Roslyn or MSBuild assembly SHALL be touched before the first call. Results SHALL carry file, 1-based line and column, severity, code and message, capped with a truncation flag; the tool text SHALL summarize counts and surface actionable statuses (`no SDK`, `restore required`, `no solution`, partial load) instead of raw exceptions. A backend failure SHALL never crash the run.
+The optional `cs_diagnostics` tool SHALL report compiler errors and warnings for files changed since the last check (default) or for the whole solution, without requiring a full `dotnet build`. In-session mutations SHALL be tracked through the file-change bus as exact marks — a tool edit SHALL be detected even when its content stamp is unchanged — while changes made outside the tool path SHALL be detected by content stamps; after each bash call the workspace's git status SHALL additionally be diffed against the previous scan of the same run and every path that really changed SHALL be published as an exact mark — a same-stamp bash edit to an already-dirty file included — and an already-dirty file SHALL NOT be re-published without a real change (a revert SHALL be published, a commit SHALL NOT); a same-stamp change made by any other out-of-band writer is seen only at the next reload. A change to a project, solution or build-configuration file (`.csproj`, `.sln`, `.slnx`, `Directory.Build.props`, `Directory.Build.targets`, `Directory.Packages.props`, `global.json`) SHALL mark the workspace for a reload on the next call. A file flagged by both the mark and the stamp scan SHALL be refreshed once (one compile, one changed-file count). A refresh SHALL NOT re-flag the refreshed file: the freshness baseline SHALL be re-taken after the refreshed text is applied, so a check with no further edits reports no changed files. A write racing a refresh SHALL NOT be overwritten by the refresh or swallowed by its re-baseline: only a read whose stamp still matches the disk SHALL be applied, and the baseline SHALL be re-taken only when the disk still holds the applied text, recorded as that verified state itself (never a stamp read after the verification). It SHALL be marked read-only and SHALL load the C# backend lazily on first use — no Roslyn or MSBuild assembly SHALL be touched before the first call. Results SHALL carry file, 1-based line and column, severity, code and message, capped with a truncation flag; the tool text SHALL summarize counts and surface actionable statuses (`no SDK`, `restore required`, `no solution`, partial load) instead of raw exceptions. A backend failure SHALL never crash the run.
 
 #### Scenario: An error introduced by an edit is reported
 
@@ -216,6 +216,24 @@ The optional `cs_diagnostics` tool SHALL report compiler errors and warnings for
 - **GIVEN** a loaded solution copy
 - **WHEN** a source file is written while a refresh is reading it, and diagnostics run again
 - **THEN** the racing write remains on disk and the next run reports the file as changed
+
+#### Scenario: A same-stamp bash edit is marked and refreshes without a reload
+
+- **GIVEN** a loaded solution copy with clean diagnostics and a bash call that rewrote a source file with different content but an unchanged content stamp
+- **WHEN** the next diagnostics call runs for changed files
+- **THEN** the new state is reported without reloading the workspace
+
+#### Scenario: An already-dirty file is not re-published by an unrelated bash call
+
+- **GIVEN** a workspace with a file that was already dirty when the run's first bash call baselined
+- **WHEN** a later bash call changes a different file
+- **THEN** only the different file is published; the already-dirty file is not re-flagged
+
+#### Scenario: A cancelled bash call is still scanned
+
+- **GIVEN** a bash call cancelled mid-command that had already written a file
+- **WHEN** the cancellation propagates
+- **THEN** the change is still published before the cancellation surfaces
 
 ### Requirement: C# symbol lookup tool
 The optional `cs_find_symbol` tool SHALL find definitions for a type, member or namespace name in the loaded solution and return their signature and source location (file, 1-based line and column), without grepping. It SHALL be read-only, SHALL load the C# backend lazily on first use, and SHALL reuse the diagnostics tool's load statuses (`no SDK`, `restore required`, `no solution`, partial load) as actionable messages. Matches SHALL be deterministic (stable ordering), bounded with a truncation flag, and SHALL mark metadata-only symbols (no source location) distinctly. An unknown name SHALL produce an empty result with a short hint, never an error.

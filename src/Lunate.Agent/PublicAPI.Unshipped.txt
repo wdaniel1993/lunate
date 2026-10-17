@@ -1047,15 +1047,17 @@ Lunate.Agent.FileChangeEvent
 Lunate.Agent.FileChangeEvent.<Clone>$() -> Lunate.Agent.FileChangeEvent!
 Lunate.Agent.FileChangeEvent.AbsolutePath.get -> string!
 Lunate.Agent.FileChangeEvent.AbsolutePath.init -> void
-Lunate.Agent.FileChangeEvent.Deconstruct(out string! AbsolutePath, out string! RelativePath, out string! WorkspaceId, out string? RunId, out Lunate.Agent.FileChangeKind Kind) -> void
+Lunate.Agent.FileChangeEvent.Deconstruct(out string! AbsolutePath, out string! RelativePath, out string! WorkspaceId, out string? RunId, out Lunate.Agent.FileChangeKind Kind, out string! Source) -> void
 Lunate.Agent.FileChangeEvent.Equals(Lunate.Agent.FileChangeEvent? other) -> bool
-Lunate.Agent.FileChangeEvent.FileChangeEvent(string! AbsolutePath, string! RelativePath, string! WorkspaceId, string? RunId, Lunate.Agent.FileChangeKind Kind) -> void
+Lunate.Agent.FileChangeEvent.FileChangeEvent(string! AbsolutePath, string! RelativePath, string! WorkspaceId, string? RunId, Lunate.Agent.FileChangeKind Kind, string! Source = "tool") -> void
 Lunate.Agent.FileChangeEvent.Kind.get -> Lunate.Agent.FileChangeKind
 Lunate.Agent.FileChangeEvent.Kind.init -> void
 Lunate.Agent.FileChangeEvent.RelativePath.get -> string!
 Lunate.Agent.FileChangeEvent.RelativePath.init -> void
 Lunate.Agent.FileChangeEvent.RunId.get -> string?
 Lunate.Agent.FileChangeEvent.RunId.init -> void
+Lunate.Agent.FileChangeEvent.Source.get -> string!
+Lunate.Agent.FileChangeEvent.Source.init -> void
 Lunate.Agent.FileChangeEvent.WorkspaceId.get -> string!
 Lunate.Agent.FileChangeEvent.WorkspaceId.init -> void
 Lunate.Agent.FileChangeKind

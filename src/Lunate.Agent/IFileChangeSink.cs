@@ -13,14 +13,16 @@ public enum FileChangeKind
 /// <summary>
 /// One successful file mutation as a tool reports it: the canonical absolute path, the
 /// workspace-relative path, the workspace id (the run's <c>WorktreeRoot</c>), the run id when the
-/// mutation ran inside a run, and the change kind.
+/// mutation ran inside a run, the change kind, and the source that reported it (<c>tool</c> for
+/// the file tools, <c>bash</c> for the git-status scan after a bash call).
 /// </summary>
 public sealed record FileChangeEvent(
     string AbsolutePath,
     string RelativePath,
     string WorkspaceId,
     string? RunId,
-    FileChangeKind Kind
+    FileChangeKind Kind,
+    string Source = "tool"
 );
 
 /// <summary>
