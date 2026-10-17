@@ -580,8 +580,39 @@ public sealed partial class RemoteExtension : IExtension, IAsyncDisposable
     private string ResolveCommand(string command) =>
         LooksLikePath(command) ? ResolvePath(command) : command;
 
-    private string ResolveArgument(string argument) =>
-        LooksLikePath(argument) ? ResolvePath(argument) : argument;
+    /// <summary>
+    /// Resolves a relative argument against the extension directory. An explicitly relative path
+    /// (<c>./</c> or <c>../</c>) is the author's intent and resolves even when the file is not
+    /// there yet — the spawn error then names the resolved path. Any other token resolves only
+    /// when it names an existing entry under the directory; a token that merely contains a
+    /// separator (a script body, a pattern) is passed verbatim, and the child's working directory
+    /// is the extension directory, so a path it creates later resolves the same way.
+    /// </summary>
+    private string ResolveArgument(string argument)
+    {
+        if (Path.IsPathRooted(argument))
+        {
+            return argument;
+        }
+
+        if (
+            argument.StartsWith("./", StringComparison.Ordinal)
+            || argument.StartsWith(".\\", StringComparison.Ordinal)
+            || argument.StartsWith("../", StringComparison.Ordinal)
+            || argument.StartsWith("..\\", StringComparison.Ordinal)
+        )
+        {
+            return ResolvePath(argument);
+        }
+
+        if (!LooksLikePath(argument))
+        {
+            return argument;
+        }
+
+        string candidate = ResolvePath(argument);
+        return File.Exists(candidate) || Directory.Exists(candidate) ? candidate : argument;
+    }
 
     private static bool LooksLikePath(string token) =>
         token.StartsWith('.') || token.Contains('/') || token.Contains('\\');

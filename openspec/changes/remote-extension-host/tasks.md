@@ -24,5 +24,5 @@
 
 ## 4 Close-out
 
-- [ ] 4.1 Spec deltas (`extensions`) + `adr/0017-addendum-remote-host.md` + docs (extension authoring page: remote manifest and wire reference incl. the JSON Schema).
+- [x] 4.1 Spec deltas (`extensions`) + `adr/0017-addendum-remote-host.md` + docs (extension authoring page: remote manifest and wire reference incl. the JSON Schema).
 - [ ] 4.2 Full gate (`scripts/verify.sh`, both cultures), adversarial review, archive, PR.

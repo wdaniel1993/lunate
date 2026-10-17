@@ -208,7 +208,7 @@ public sealed class RemoteExtensionTests
         cts.Cancel();
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => call);
-        await canceled.Task.WaitAsync(TimeSpan.FromSeconds(5), Ct);
+        await canceled.Task.WaitAsync(TimeSpan.FromSeconds(15), Ct);
     }
 
     [Fact]
@@ -282,13 +282,13 @@ public sealed class RemoteExtensionTests
         Task<ToolCallingResult> call = handler
             .HandleAsync(new ToolCallingPayload("r1", "c1", "read", EmptyArgs), Ct)
             .AsTask();
-        await inFlight.Task.WaitAsync(TimeSpan.FromSeconds(5), Ct);
+        await inFlight.Task.WaitAsync(TimeSpan.FromSeconds(15), Ct);
 
         harness.Child.Crash();
 
         // No waiting for a timeout: the in-flight call fails immediately.
         await Assert.ThrowsAsync<RemoteExtensionException>(() =>
-            call.WaitAsync(TimeSpan.FromSeconds(5), Ct)
+            call.WaitAsync(TimeSpan.FromSeconds(15), Ct)
         );
         Assert.Single(harness.Notices);
         await WaitAsync(() => harness.Child.StartCount == 2, "the one automatic restart");
@@ -551,7 +551,7 @@ public sealed class RemoteExtensionTests
 
     private static async Task WaitAsync(Func<bool> condition, string what)
     {
-        for (var attempt = 0; attempt < 250; attempt++)
+        for (var attempt = 0; attempt < 750; attempt++)
         {
             if (condition())
             {

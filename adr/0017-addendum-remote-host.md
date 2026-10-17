@@ -1,6 +1,6 @@
 # 0017 addendum — remote extension host
 
-- Status: proposed (2026-10-17)
+- Status: accepted — 2026-10-17 (addendum to ADR 0017; remote-extension-host sign-off; T-52)
 - Relates to: ADR-0017 ("Out-of-process (constraint now, build later)"), OpenSpec change `remote-extension-host`
 - Amends: ADR-0017
 
