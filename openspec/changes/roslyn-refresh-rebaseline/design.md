@@ -14,7 +14,7 @@ A probe (temporary test, run 2026-10-17) dumped the disk stamp + content hash of
 
 1. **Read + stamp**: per path, stamp → read → stamp. A stamp that moves across the read means a write raced the read; the path is skipped this round (the scan baseline still differs from disk, so it re-flags on its own).
 2. **Revalidate + apply**: immediately before applying, each read's stamp is re-checked against the disk. Only still-matching reads enter the solution and the `TryApplyChanges` batch — so the write-back cannot **clobber** a write that landed after the read (the racing write stays on disk untouched and re-flags next check; the workspace stays stale for exactly one check).
-3. **Verify + re-baseline**: after the apply (which bumps mtimes), the freshness baseline is re-taken **only when the disk still holds exactly the text that was applied**. A mismatch (a write racing the apply) leaves the old baseline in place, so the next scan re-flags instead of swallowing — and once its content is refreshed, the file converges.
+3. **Verify + re-baseline**: after the apply (which bumps mtimes), the baseline is re-taken **only when the disk still holds exactly the text that was applied**, stamped on both sides of the verification read and recorded as that verified stamp directly (never via a fresh `stat`, which could absorb a racing write). A mismatch (a write racing the apply) leaves the old baseline in place, so the next scan re-flags instead of swallowing — and once its content is refreshed, the file converges.
 
 ## Why not "baseline := the stamp captured at read time"
 

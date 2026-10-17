@@ -1106,16 +1106,20 @@ public sealed class RoslynBackend : ICSharpBackend, IDisposable
         }
 
         // Phase 3: the apply can write the refreshed text back with a fresh mtime, so re-take the
-        // baseline - but only when the disk still holds exactly the applied text. Anything else (a
-        // write racing the apply) keeps the old baseline and re-flags on the next scan instead of
-        // being swallowed by a blind post-apply re-baseline.
+        // baseline - but only when the disk still holds exactly the applied text, stamped on both
+        // sides of that verification read. The verified stamp is recorded directly (never a fresh
+        // stat), so a write landing after the verification still differs from the baseline and
+        // re-flags on the next scan instead of being swallowed.
         foreach (var read in applied)
         {
             try
             {
-                if (File.ReadAllText(read.Path) == read.Text)
+                var before = DocumentFreshness.StampOf(read.Path);
+                var disk = File.ReadAllText(read.Path);
+                var after = DocumentFreshness.StampOf(read.Path);
+                if (disk == read.Text && before is { } verified && verified == after)
                 {
-                    entry.Freshness.Track(read.Path);
+                    entry.Freshness.Track(read.Path, verified);
                 }
             }
             catch (Exception exception)
