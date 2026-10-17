@@ -226,7 +226,8 @@ internal static class AcpMode
         ToolRegistry tools = HarnessFactory.CreateTools(
             workspace,
             context.FileAccess,
-            workspaceServices
+            workspaceServices,
+            log: host?.Log
         );
         foreach (ITool tool in mcpTools)
         {
@@ -254,7 +255,11 @@ internal static class AcpMode
             FileChanges = (IFileChangeSink?)host?.FileChanges ?? NullFileChangeSink.Instance,
             ModelCatalog = catalog,
             ModelId = model.Id,
-            WorkspaceTools = HarnessFactory.CreateWorkspaceTools(workspaceServices, inheritedTools),
+            WorkspaceTools = HarnessFactory.CreateWorkspaceTools(
+                workspaceServices,
+                inheritedTools,
+                log: host?.Log
+            ),
         };
 
         return new AgentHarness(factory.Create(model), tools, options);

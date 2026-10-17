@@ -490,7 +490,8 @@ internal static class PrintMode
         ToolRegistry tools = HarnessFactory.CreateTools(
             workspace,
             services: workspaceServices,
-            skillReadAllowance: new SkillReadAllowance(skills.ReadRoots)
+            skillReadAllowance: new SkillReadAllowance(skills.ReadRoots),
+            log: extensions?.Log
         );
         foreach (ITool tool in mcpTools)
         {
@@ -528,7 +529,8 @@ internal static class PrintMode
             WorkspaceTools = HarnessFactory.CreateWorkspaceTools(
                 workspaceServices,
                 inheritedTools,
-                root => skills.ReadRootsFor(root)
+                root => skills.ReadRootsFor(root),
+                log: extensions?.Log
             ),
         };
 

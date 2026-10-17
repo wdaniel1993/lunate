@@ -1,0 +1,456 @@
+using System.ComponentModel;
+using System.Security.Cryptography;
+using Lunate.Agent;
+using Lunate.Extensibility.Abstractions;
+
+namespace Lunate.Coding;
+
+/// <summary>
+/// Tracks what a run's bash calls change in a git worktree and reports only real changes: a
+/// per-run snapshot (HEAD oid, the root's prefix inside the repository, and the content hash of
+/// every path the last scan saw) is diffed against each new scan — <c>git status</c> answers
+/// "what differs from HEAD", so publishing it raw would re-flag already-dirty files after every
+/// call and would miss clean-to-clean changes. Failures (no git, no repository, timeout, parse
+/// trouble) yield no events; the content-stamp scan stays the backstop.
+/// </summary>
+internal sealed class BashChangeTracker(IExtensionLog? log = null)
+{
+    private static readonly TimeSpan ScanTimeout = TimeSpan.FromSeconds(2);
+    private static readonly ProcessRunner Runner = new();
+
+    private readonly SemaphoreSlim _scanGate = new(1, 1);
+    private readonly Dictionary<(string? RunId, string Root), Snapshot> _snapshots = [];
+
+    /// <summary>One publishable change: the workspace-relative path and its kind.</summary>
+    internal sealed record Change(string RelativePath, FileChangeKind Kind);
+
+    /// <summary>
+    /// Scans the run's workspace root and returns the changes since this run's previous scan; the
+    /// first scan of a run only baselines (nothing is published for pre-existing state). Never
+    /// throws.
+    /// </summary>
+    internal async Task<IReadOnlyList<Change>> ObserveAsync(
+        string? runId,
+        string root,
+        CancellationToken cancellationToken = default
+    )
+    {
+        await _scanGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            Scan? scan = await ScanAsync(root, cancellationToken).ConfigureAwait(false);
+            if (scan is null)
+            {
+                // Unreachable git, a non-repository root, a scan timeout or parse trouble: no
+                // events, and the previous snapshot stays — the next scan still sees the change.
+                return [];
+            }
+
+            var key = (runId, root);
+            if (!_snapshots.TryGetValue(key, out Snapshot? previous))
+            {
+                _snapshots[key] = Snapshot.Baseline(scan);
+                return [];
+            }
+
+            (IReadOnlyList<Change> changes, Snapshot next) = await DiffAsync(
+                    previous,
+                    scan,
+                    root,
+                    cancellationToken
+                )
+                .ConfigureAwait(false);
+            _snapshots[key] = next;
+            return changes;
+        }
+        finally
+        {
+            _scanGate.Release();
+        }
+    }
+
+    private async Task<(IReadOnlyList<Change> Changes, Snapshot Next)> DiffAsync(
+        Snapshot previous,
+        Scan scan,
+        string root,
+        CancellationToken cancellationToken
+    )
+    {
+        var changes = new List<Change>();
+        var published = new HashSet<string>(StringComparer.Ordinal);
+        var next = previous.Advance(scan);
+
+        // (a) In the current status set: new, or content differs from the last scan (a null hash
+        // means the file is missing — a deletion counts). This catches same-stamp edits to
+        // already-dirty files (the reason raw status must not be published).
+        foreach ((string path, FileChangeKind kind) in scan.Entries)
+        {
+            if (
+                !previous.Status.TryGetValue(path, out string? previousHash)
+                || !string.Equals(previousHash, scan.Status[path], StringComparison.Ordinal)
+            )
+            {
+                changes.Add(new Change(path, kind));
+                published.Add(path);
+            }
+        }
+
+        // (b) Left the status set: a revert (checkout --, reset, stash) has content different from
+        // the last scan; a commit leaves the content unchanged and is skipped.
+        foreach ((string path, string? previousHash) in previous.Status)
+        {
+            if (scan.Status.ContainsKey(path))
+            {
+                continue;
+            }
+
+            string? now = HashOf(root, path);
+            if (!string.Equals(now, previousHash, StringComparison.Ordinal))
+            {
+                changes.Add(new Change(path, FileChangeKind.Modified));
+                published.Add(path);
+            }
+
+            if (now is null)
+            {
+                next.Disk.Remove(path);
+            }
+            else
+            {
+                next.Disk[path] = now;
+            }
+        }
+
+        // (c) HEAD moved (checkout, pull, rebase): the paths the two heads differ in, content
+        // filtered so a commit (unchanged content) stays quiet. A renamed path publishes both
+        // sides; the letter decides Created vs Modified.
+        if (
+            previous.Head is not null
+            && scan.Head is not null
+            && !string.Equals(previous.Head, scan.Head, StringComparison.Ordinal)
+        )
+        {
+            foreach (
+                (string letter, string path) in await GitDiffNamesAsync(
+                        root,
+                        previous.Head,
+                        scan.Head,
+                        cancellationToken
+                    )
+                    .ConfigureAwait(false)
+            )
+            {
+                if (!path.StartsWith(scan.Prefix, StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                string relative = path[scan.Prefix.Length..];
+                if (published.Contains(relative))
+                {
+                    continue;
+                }
+
+                string? now = HashOf(root, relative);
+                if (
+                    !previous.Disk.TryGetValue(relative, out string? cached)
+                    || !string.Equals(cached, now, StringComparison.Ordinal)
+                )
+                {
+                    changes.Add(
+                        new Change(
+                            relative,
+                            letter.StartsWith('A')
+                                ? FileChangeKind.Created
+                                : FileChangeKind.Modified
+                        )
+                    );
+                    published.Add(relative);
+                }
+
+                if (now is null)
+                {
+                    next.Disk.Remove(relative);
+                }
+                else
+                {
+                    next.Disk[relative] = now;
+                }
+            }
+        }
+
+        return (changes, next);
+    }
+
+    private async Task<Scan?> ScanAsync(string root, CancellationToken cancellationToken)
+    {
+        ProcessRunResult? status = await RunGitAsync(
+                root,
+                ["status", "--porcelain", "-z", "--ignore-submodules=dirty", "-unormal", "--", "."],
+                cancellationToken
+            )
+            .ConfigureAwait(false);
+        if (status is null)
+        {
+            return null;
+        }
+
+        if (status.TimedOut)
+        {
+            log?.Warn("bash change scan timed out; the content-stamp scan stays the backstop.");
+            return null;
+        }
+
+        if (status.ExitCode != 0)
+        {
+            // Not a repository (or a git failure): silent — the stamp scan covers it.
+            return null;
+        }
+
+        IReadOnlyList<(string Path, FileChangeKind Kind)> parsed = ParsePorcelain(status.Stdout);
+
+        string? head = null;
+        string prefix = "";
+        ProcessRunResult? identity = await RunGitAsync(
+                root,
+                ["rev-parse", "HEAD", "--show-prefix"],
+                cancellationToken
+            )
+            .ConfigureAwait(false);
+        if (identity is { TimedOut: false, ExitCode: 0 })
+        {
+            string[] lines = identity.Stdout.ReplaceLineEndings("\n").Split('\n');
+            if (lines.Length >= 1 && lines[0].Trim().Length > 0)
+            {
+                head = lines[0].Trim();
+            }
+
+            if (lines.Length >= 2)
+            {
+                prefix = lines[1].Trim();
+            }
+        }
+
+        var entries = new List<(string Path, FileChangeKind Kind)>();
+        var hashes = new Dictionary<string, string?>(StringComparer.Ordinal);
+        foreach ((string path, FileChangeKind kind) in parsed)
+        {
+            if (!path.StartsWith(prefix, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            string relative = path[prefix.Length..];
+            entries.Add((relative, kind));
+            hashes[relative] = HashOf(root, relative);
+        }
+
+        return new Scan(head, prefix, entries, hashes);
+    }
+
+    /// <summary>
+    /// Parses <c>git status --porcelain -z</c> output: NUL-separated entries, rename entries
+    /// carry the origin path in the following field, untracked directories (a trailing slash) are
+    /// skipped, and the origin of a rename is published (the file moved away) while a copy's
+    /// origin is not (it still exists).
+    /// </summary>
+    internal static IReadOnlyList<(string Path, FileChangeKind Kind)> ParsePorcelain(string output)
+    {
+        var entries = new List<(string Path, FileChangeKind Kind)>();
+        string[] fields = output.Split('\0');
+        for (int i = 0; i < fields.Length; i++)
+        {
+            string field = fields[i];
+            if (field.Length < 4)
+            {
+                continue;
+            }
+
+            char x = field[0];
+            string path = field[3..];
+            if (path.EndsWith('/'))
+            {
+                continue;
+            }
+
+            entries.Add(
+                (
+                    path,
+                    x is '?' or 'A' or 'R' or 'C' ? FileChangeKind.Created : FileChangeKind.Modified
+                )
+            );
+
+            if (x == 'R' && i + 1 < fields.Length && fields[i + 1].Length > 0)
+            {
+                entries.Add((fields[++i], FileChangeKind.Modified));
+            }
+        }
+
+        return entries;
+    }
+
+    private static string? HashOf(string root, string relativePath)
+    {
+        string absolute = Path.Combine(
+            root,
+            relativePath.Replace('/', Path.DirectorySeparatorChar)
+        );
+        try
+        {
+            using FileStream stream = new(
+                absolute,
+                FileMode.Open,
+                FileAccess.Read,
+                FileShare.ReadWrite
+            );
+            return Convert.ToHexStringLower(SHA256.HashData(stream));
+        }
+        catch (Exception exception)
+            when (exception
+                    is IOException
+                        or UnauthorizedAccessException
+                        or NotSupportedException
+                        or System.Security.SecurityException
+            )
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// The <c>git diff --name-status -z</c> entries between two heads: the status letter and each
+    /// path (a rename or copy entry carries two paths — both are returned).
+    /// </summary>
+    private async Task<IReadOnlyList<(string Letter, string Path)>> GitDiffNamesAsync(
+        string root,
+        string fromHead,
+        string toHead,
+        CancellationToken cancellationToken
+    )
+    {
+        ProcessRunResult? diff = await RunGitAsync(
+                root,
+                ["diff", "--name-status", "-z", fromHead, toHead],
+                cancellationToken
+            )
+            .ConfigureAwait(false);
+        if (diff is null || diff.TimedOut || diff.ExitCode != 0)
+        {
+            return [];
+        }
+
+        var entries = new List<(string Letter, string Path)>();
+        string[] fields = diff.Stdout.Split('\0');
+        for (int i = 0; i < fields.Length; i++)
+        {
+            string letter = fields[i];
+            if (letter.Length == 0)
+            {
+                continue;
+            }
+
+            if (i + 1 >= fields.Length)
+            {
+                break;
+            }
+
+            entries.Add((letter, fields[++i]));
+            if (letter.StartsWith('R') || letter.StartsWith('C'))
+            {
+                if (i + 1 >= fields.Length)
+                {
+                    break;
+                }
+
+                entries.Add((letter, fields[++i]));
+            }
+        }
+
+        return entries;
+    }
+
+    private static async Task<ProcessRunResult?> RunGitAsync(
+        string root,
+        IReadOnlyList<string> arguments,
+        CancellationToken cancellationToken
+    )
+    {
+        try
+        {
+            return await Runner
+                .RunAsync(
+                    new ProcessRunRequest(
+                        "git",
+                        ["--no-optional-locks", .. arguments],
+                        root,
+                        Timeout: ScanTimeout,
+                        OutputCapBytes: 1_000_000
+                    ),
+                    cancellationToken
+                )
+                .ConfigureAwait(false);
+        }
+        catch (Exception exception)
+            when (exception
+                    is Win32Exception
+                        or InvalidOperationException
+                        or PlatformNotSupportedException
+                        or ArgumentException
+                        or IOException
+            )
+        {
+            // No git on the machine (or it cannot start): silent — the stamp scan is the backstop.
+            return null;
+        }
+    }
+
+    private sealed record Scan(
+        string? Head,
+        string Prefix,
+        IReadOnlyList<(string Path, FileChangeKind Kind)> Entries,
+        Dictionary<string, string?> Status
+    );
+
+    private sealed class Snapshot
+    {
+        public required string? Head { get; init; }
+
+        public required string Prefix { get; init; }
+
+        public required Dictionary<string, string?> Status { get; init; }
+
+        public required Dictionary<string, string> Disk { get; init; }
+
+        public static Snapshot Baseline(Scan scan) =>
+            new()
+            {
+                Head = scan.Head,
+                Prefix = scan.Prefix,
+                Status = scan.Status,
+                Disk = Existing(scan.Status),
+            };
+
+        public Snapshot Advance(Scan scan) =>
+            new()
+            {
+                Head = scan.Head,
+                Prefix = scan.Prefix,
+                Status = scan.Status,
+                Disk = new Dictionary<string, string>(Disk, StringComparer.Ordinal),
+            };
+
+        private static Dictionary<string, string> Existing(Dictionary<string, string?> status)
+        {
+            var disk = new Dictionary<string, string>(StringComparer.Ordinal);
+            foreach ((string path, string? hash) in status)
+            {
+                if (hash is not null)
+                {
+                    disk[path] = hash;
+                }
+            }
+
+            return disk;
+        }
+    }
+}

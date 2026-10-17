@@ -1,6 +1,7 @@
 using System.Runtime.CompilerServices;
 using Lunate.Agent;
 using Lunate.Ai;
+using Lunate.Extensibility.Abstractions;
 using Lunate.Roslyn;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -19,14 +20,15 @@ internal static class HarnessFactory
         Workspace workspace,
         ITextFileAccess? files = null,
         WorkspaceServices? services = null,
-        SkillReadAllowance? skillReadAllowance = null
+        SkillReadAllowance? skillReadAllowance = null,
+        IExtensionLog? log = null
     )
     {
         var tools = new ToolRegistry();
         tools.Add(new ReadTool(workspace, files, skillReadAllowance));
         tools.Add(new WriteTool(workspace, files: files));
         tools.Add(new EditTool(workspace, files: files));
-        tools.Add(new BashTool(workspace));
+        tools.Add(new BashTool(workspace, log: log));
         if (services is not null && LooksLikeCSharpWorkspace(workspace.WorktreeRoot))
         {
             AddCSharpTools(tools, services, workspace.WorktreeRoot);
@@ -45,7 +47,8 @@ internal static class HarnessFactory
     internal static Func<string, ToolRegistry> CreateWorkspaceTools(
         WorkspaceServices services,
         IReadOnlyList<ITool> inheritedTools,
-        Func<string, IReadOnlyList<string>>? skillReadRoots = null
+        Func<string, IReadOnlyList<string>>? skillReadRoots = null,
+        IExtensionLog? log = null
     )
     {
         ArgumentNullException.ThrowIfNull(services);
@@ -57,7 +60,8 @@ internal static class HarnessFactory
                 services: services,
                 skillReadAllowance: skillReadRoots is null
                     ? null
-                    : new SkillReadAllowance(skillReadRoots(root))
+                    : new SkillReadAllowance(skillReadRoots(root)),
+                log: log
             );
             foreach (ITool tool in inheritedTools)
             {

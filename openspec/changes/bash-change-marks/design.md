@@ -1,42 +1,47 @@
-# Bash change marks (git status)
+# Bash change marks (git status) — final design (approved 2026-10-17)
 
 ## Problem
 
-The file-change bus's documented limit (sign-off D9 of `wire-file-change-bus`): **bash mutations are not published**. Tool edits are exact via the bus; bash/external edits are caught by the content-stamp scan; a **same-stamp change made outside the tool path is seen only at the next reload** (the scan cannot distinguish it). This change closes that residual limit for bash: after a bash call, detect changed files via `git status` and publish them through the same `IFileChangeSink` path tool edits use.
+The file-change bus's documented limit (D9 of `wire-file-change-bus`): **bash mutations are not published**. Tool edits are exact via the bus; bash/external edits are caught by the content-stamp scan; a same-stamp change outside the tool path is seen only at the next reload. This change closes that limit for bash.
 
-## Change (proposed)
+## Core: the publisher diffs against the previous scan
 
-- `BashTool` scans the workspace after a command ran (success, non-zero exit, timeout) and publishes one `FileChangeEvent` per changed path via `ctx.FileChanges` — the exact path EditTool/WriteTool use.
-- New `GitChangeScanner` (Lunate.Coding): runs `git status --porcelain -z --relative --no-optional-locks` with the workspace root as cwd, parses the NUL-separated output, maps paths to canonical absolute + workspace-relative pairs, and returns the change set. Errors are silent (never fail the bash result).
-- Scope and edge cases per the decisions below.
+`git status` answers "what differs from HEAD", **not** "what did this call change". Publishing raw status would re-flag every already-dirty file after every bash call (the `t_6fcf625a` symptom: endless re-flagging), and would miss clean→clean changes. So the publisher keeps a **per-run snapshot** — HEAD oid + `{path → content hash}` for every path in the last status set — and after each bash call publishes a path only when:
 
-## Decisions (sign-off requested)
+- **(a)** it is in the current status set and is **new or its content hash differs** — catches same-stamp edits to already-dirty files (the D9 case) and genuinely changed files;
+- **(b)** it was in the previous set but is **no longer in the current one, with content different from the cached hash** — a revert (`checkout --`, `reset`). A **commit leaves content unchanged → skipped**;
+- **(c)** it is in `git diff --name-only <oldHEAD> <newHEAD>` when **HEAD moved** (`checkout`, `pull`, `rebase`, `stash pop` with commits).
 
-- **Q1 trigger** — recommended: every bash call, gated on `workspace.GitCommonDir is not null` (a cheap startup-known fact; no new seams). Alternatives: gate on a live Roslyn backend (cheaper in non-C# sessions, but couples `BashTool` to the Roslyn registry and starves non-Roslyn bus subscribers); gate on root-level `.sln`/`.csproj` presence (static, misses nested projects).
-- **Q2 publish scope** — recommended: **every changed path**; the bus delivers per subscriber pattern, exactly as for tool edits (the Roslyn subscriber already filters `.cs` vs reload triggers). Pre-filtering in the publisher would duplicate the subscriber's filter and starve other subscribers.
-- **Q3 untracked** — recommended: `-unormal`; publish untracked **files** (`??` without trailing slash) but skip untracked **directories**. Rationale: new files are stamp-visible (fresh mtime — the scan already catches them); only same-stamp edits need the exact mark, and those are tracked-file modifications. `-uall` on a repo with big untracked trees is pathologically expensive.
-- **Q4 timeout/cancel** — recommended: scan after success, non-zero exit and timeout; **skip on cancellation** (run teardown; the next session's first load reads disk). Alternative: best-effort scan on the cancel path (more surface for a marginal case).
-- **Q5 deletions/renames** — recommended: publish deletions as `Modified` (the backend's mark path already handles missing files — the refresh flags the deletion); renames publish both paths (new = `Created`, old = `Modified`). Status kinds: `??`/`A` → `Created`, everything else → `Modified`.
+Only status-listed paths are hashed — the set is small, and that is the cost model. The snapshot is taken lazily at a run's first bash call (equivalent to run start; the first call then has a baseline), keyed by `ctx.RunId` + the run's workspace root.
+
+## Decisions (approved with adjustments)
+
+- **Q1 trigger** — every bash call, gated on `workspace.GitCommonDir is not null`. The scan runs **from the run's workspace root** (`ctx.WorkingDirectory`), not the bash tool's cwd (commands may `cd`; per-run workspaces / child worktrees differ). `git --no-optional-locks status` (or `GIT_OPTIONAL_LOCKS=0`) so we never take `index.lock` and race the user's or the command's own git operations. The git call gets its **own ~2 s timeout**; on timeout: log and skip — the stamp scan stays the backstop. Non-git workspace: no change, stamp scan only.
+- **Q2 scope** — publish all changed paths, subscribers filter — applied to the **diffed set** above, never raw status. Events are **tagged `source = bash`**.
+- **Q3 untracked** — untracked files published, untracked directories skipped. A test proves a new `.cs` inside a new untracked directory still reaches `cs_diagnostics`: new files are not documents until a load, so the test pairs the file with a project change the same bash call publishes, and the reload brings it in. `--ignore-submodules=dirty`. `.gitignore`d files (`bin`/`obj`, generated output) are out of scope — stated in the spec.
+- **Q4 timeout/cancel** — scan after success, non-zero exit **and user cancellation** (Esc on a long command may leave half-written files and the run continues) — with a short **independent** timeout, not the cancelled token. Only run/session teardown skips (a best-effort scan under teardown silently no-ops; the scanner never throws).
+- **Q5 deletions/renames** — deletions publish a `Modified` mark (the backend's mark path already handles missing files); renames publish both paths. Note: a plain `mv` shows up as **delete + untracked**, not as a rename entry (only staged renames do) — both shapes get a test. Status kinds: `??`/`A` → `Created`, everything else → `Modified`.
 
 ## Mechanics
 
-- One git invocation per scanned bash call: `git status --porcelain -z --relative --no-optional-locks` (cwd = workspace root, timeout 10 s, output cap consistent with the tool's capture). `--relative` yields workspace-root-relative paths in one call (no `rev-parse` second spawn) and inherently excludes paths outside the root.
-- NUL-separated parsing (`-z`) — no quoting ambiguity for exotic paths; rename entries carry two paths (publish both).
-- Event shape mirrors `EditTool`: `new FileChangeEvent(absolute, relative, ctx.WorkingDirectory, ctx.RunId, kind)`; the run sink stamps the run's workspace/run ids as for tool edits.
-- The scanner never throws into the tool path; a missing git binary, a non-repo root or a scan timeout means "no events".
-- Cost: one `git status` per bash call in git worktrees. Bash calls are seconds-scale; the scan is tens of milliseconds. A task measures it on a large repo and records the number; if it ever hurts, a future knob can gate it — not in v1.
+- One `git status --porcelain -z --relative --no-optional-locks --ignore-submodules=dirty -unormal` per scanned call (cwd = run workspace root; `--relative` yields root-relative paths in one invocation and excludes paths outside the root). NUL-separated parsing; rename entries carry two paths.
+- Content hash: the repository's content-hash helper (same algorithm as the trust/extension pins).
+- HEAD tracking: read `git rev-parse HEAD`; when it moved, `git diff --name-only <old> <new>` feeds rule (c), then the snapshot's HEAD updates.
+- Event shape mirrors `EditTool`: `new FileChangeEvent(absolute, relative, ctx.WorkingDirectory, ctx.RunId, kind)` plus `Source = "bash"`; the run sink stamps workspace/run ids as for tool edits; the bus forwards the source onto `FileChangedPayload`.
+- Failure discipline: missing git, non-repo root, scan timeout or parse trouble → no events, never an exception into the tool path; the stamp scan remains the backstop.
+- Cost (measured 2026-10-17): one status + hashing the status set per bash call in git worktrees — ~0.01 s on the project repo, 0.19–0.52 s on a larger repository (~/.hermes/hermes-agent; the first run is the cold one). Bash calls are seconds-scale; acceptable, with the design's own timeout as the guard.
 
 ## Spec deltas (at apply)
 
-- `agent-tools` MODIFIED ("C# diagnostics tool"): the "files changed since the last check" definition gains bash-marked changes; new scenarios — a same-stamp bash edit is seen by the next `cs_diagnostics` without a reload; a non-git workspace is unaffected.
-- `extensions` MODIFIED (the file-change-bus limit sentence): "bash mutations are not published" becomes "bash mutations are published exactly via the git-status scan after each bash call (git worktrees; untracked files included; untracked directories and cancelled runs excluded)". Original scenarios preserved verbatim; new scenario for the bash mark.
+- `agent-tools` MODIFIED ("C# diagnostics tool"): the files-changed definition gains bash-marked changes (diffed publisher); scenarios — a same-stamp bash edit seen without a reload; an already-dirty file is not re-flagged by an unrelated bash call; a cancelled call is still scanned.
+- `extensions` MODIFIED (bus limit sentence): "bash mutations are not published" becomes the git-status diffed-publish rule (git worktrees; untracked files included, untracked directories and `.gitignore`d files excluded; submodule dirty state ignored; scan timeout falls back to the stamp scan). Original scenarios preserved verbatim; new scenarios for the bash mark + revert/commit behaviour.
 
-## Tests (at apply)
+## Tests
 
-- Unit: scanner parse (canned porcelain incl. renames/untracked/deleted); real-repo fixtures (modified same-stamp, added, deleted, renamed, untracked file, untracked dir skipped); non-repo root → no events; workspace-as-subdirectory (`--relative` mapping).
-- `BashToolTests`: a recording sink receives the right events after `echo x > a.cs`-style commands; sink errors never fail the tool; non-git workspace emits nothing.
-- Integration (real Roslyn): bash edit with a reset timestamp (same stamp) → next `cs_diagnostics` reports the new state **without a reload** (the residual limit closed); bash mark + stamp scan idempotent (one changed-file count).
+- **Scanner/tracker unit** (canned porcelain + real-repo fixtures): parse (renames, untracked, deleted); rule (a) new/changed; **same-stamp edit to a dirty file caught**; **already-dirty file NOT re-flagged on an unrelated call**; rule (b) **`git checkout -- f` revert caught**, **`git commit` not flagged**; rule (c) **branch switch flags the diffed files**; untracked file yes / untracked dir skipped; plain `mv` = delete + untracked; staged rename both paths; non-repo root → nothing; workspace-as-subdirectory (`--relative` mapping).
+- **BashToolTests**: a recording sink receives the right tagged events after commands; sink/scanner failures never fail the tool; non-git workspace emits nothing; **a cancelled call is still scanned** (independent timeout).
+- **Integration (real Roslyn, Coding.Tests)**: a same-stamp bash edit → the next `cs_diagnostics` reports the new state **without a reload** (the residual limit closed); bash mark + stamp scan idempotent (one changed-file count); new `.cs` in an untracked directory → the reload a project change triggers brings it in (asserted at solution scope — a reload re-baselines the changed scope).
 
 ## Non-goals
 
-- No `FileSystemWatcher`; no marks for non-bash tools (already exact); no change to the stamp-scan backstop (it stays for external editors); no per-extension hooks.
+- No `FileSystemWatcher`; no marks for non-bash tools (already exact); stamp-scan backstop unchanged (external editors); no per-extension hooks; no `-uall`; no index-lock interaction.

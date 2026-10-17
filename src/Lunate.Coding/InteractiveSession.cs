@@ -275,14 +275,16 @@ internal sealed partial class InteractiveSession : IDisposable
         _tools = HarnessFactory.CreateTools(
             _workspace,
             services: _workspaceServices,
-            skillReadAllowance: _skillAllowance
+            skillReadAllowance: _skillAllowance,
+            log: _extensions?.Log
         );
         await ComposeMcpConfigAsync(ct);
         await ComposeMcpToolsAsync(ct);
         _workspaceTools = HarnessFactory.CreateWorkspaceTools(
             _workspaceServices,
             _inheritedTools,
-            root => _skills?.ReadRootsFor(root) ?? []
+            root => _skills?.ReadRootsFor(root) ?? [],
+            log: _extensions?.Log
         );
         // The model resolves after the extension host: the configured id may name a virtual or
         // extension-registered model, which only the registry knows.

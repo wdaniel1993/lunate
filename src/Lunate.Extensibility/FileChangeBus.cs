@@ -166,7 +166,8 @@ public sealed class FileChangeBus : IFileChangeSink, IFileChangeBus, IDisposable
             change.RelativePath,
             string.IsNullOrWhiteSpace(change.WorkspaceId) ? _workspaceId : change.WorkspaceId,
             change.RunId,
-            WireKind(change.Kind)
+            WireKind(change.Kind),
+            change.Source
         );
 
     private static string WireKind(FileChangeKind kind) =>
