@@ -4,7 +4,7 @@
 
 ### Requirement: Aggregate merge gate
 
-The CI workflow SHALL expose a single aggregate status check (`ci-ok`) that succeeds only when every verification job has completed successfully, and the repository's required status checks SHALL select that aggregate check, so renaming, adding, or removing a matrix leg cannot silently drop required coverage. The aggregate SHALL report a result on every pull request: the workflow SHALL NOT apply path filters to pull-request events. A needed job that is skipped or cancelled SHALL NOT count as success.
+The CI workflow SHALL expose a single aggregate status check (`ci-ok`) that succeeds only when every verification job has completed successfully, so renaming, adding, or removing a matrix leg cannot silently drop required coverage. The repository ruleset SHALL require the aggregate check for `main` — a one-time maintainer configuration outside the workflow's control. The aggregate SHALL report a result on every pull request: the workflow SHALL NOT apply path filters to pull-request events. A needed job that is skipped or cancelled SHALL NOT count as success.
 
 #### Scenario: Aggregate green when every job passes
 

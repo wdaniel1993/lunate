@@ -18,4 +18,4 @@
 
 ## Rollout note
 
-PR #79 merged before this job existed, so `ci-ok` has no check run on that PR's head. If the board's completion contract only accepts checks that ran on the head, `t_83462076` closes against the four leg runs as a documented one-off; from the next PR on, `ci-ok` is the gate.
+The agent-skills apply card `t_83462076` (PR #79, merged 2026-10-17) predates this job, so `ci-ok` has no check run on that PR's head. If the board's completion contract only accepts checks that ran on the head, `t_83462076` closes against the four leg runs as a documented one-off; from this change's own PR (which carries `ci-ok` on its head) onwards, `ci-ok` is the gate for every PR.

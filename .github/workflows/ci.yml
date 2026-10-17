@@ -247,8 +247,9 @@ jobs:
   # "ci-ok", so renaming, adding or removing a matrix leg cannot silently drop
   # a required check. always() so a failed leg produces a definitive red
   # instead of a skipped (missing) check; skipped or cancelled legs are not
-  # success. No path filters exist on pull_request, so this check reports on
-  # every PR.
+  # success. No path filters exist on pull_request, so no path filter can
+  # leave this check pending on a PR; new top-level verification jobs must be
+  # added to "needs" here to stay covered.
   ci-ok:
     name: ci-ok
     needs: [verify, verify-powershell]
