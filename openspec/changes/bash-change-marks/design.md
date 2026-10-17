@@ -24,7 +24,7 @@ Only status-listed paths are hashed — the set is small, and that is the cost m
 
 ## Mechanics
 
-- One `git status --porcelain -z --relative --no-optional-locks --ignore-submodules=dirty -unormal` per scanned call (cwd = run workspace root; `--relative` yields root-relative paths in one invocation and excludes paths outside the root). NUL-separated parsing; rename entries carry two paths.
+- One `git --no-optional-locks status --porcelain -z --ignore-submodules=dirty -unormal -- .` per scanned call (cwd = run workspace root; `git status` has no `--relative` — paths stay repo-root-relative and the workspace prefix from `git rev-parse HEAD --show-prefix` is stripped, which also excludes paths outside the root). NUL-separated parsing; rename entries carry two paths.
 - Content hash: the repository's content-hash helper (same algorithm as the trust/extension pins).
 - HEAD tracking: read `git rev-parse HEAD`; when it moved, `git diff --name-only <old> <new>` feeds rule (c), then the snapshot's HEAD updates.
 - Event shape mirrors `EditTool`: `new FileChangeEvent(absolute, relative, ctx.WorkingDirectory, ctx.RunId, kind)` plus `Source = "bash"`; the run sink stamps workspace/run ids as for tool edits; the bus forwards the source onto `FileChangedPayload`.
@@ -38,7 +38,7 @@ Only status-listed paths are hashed — the set is small, and that is the cost m
 
 ## Tests
 
-- **Scanner/tracker unit** (canned porcelain + real-repo fixtures): parse (renames, untracked, deleted); rule (a) new/changed; **same-stamp edit to a dirty file caught**; **already-dirty file NOT re-flagged on an unrelated call**; rule (b) **`git checkout -- f` revert caught**, **`git commit` not flagged**; rule (c) **branch switch flags the diffed files**; untracked file yes / untracked dir skipped; plain `mv` = delete + untracked; staged rename both paths; non-repo root → nothing; workspace-as-subdirectory (`--relative` mapping).
+- **Scanner/tracker unit** (canned porcelain + real-repo fixtures): parse (renames, untracked, deleted); rule (a) new/changed; **same-stamp edit to a dirty file caught**; **already-dirty file NOT re-flagged on an unrelated call**; rule (b) **`git checkout -- f` revert caught**, **`git commit` not flagged**; rule (c) **branch switch flags the diffed files**; untracked file yes / untracked dir skipped; plain `mv` = delete + untracked; staged rename both paths; non-repo root → nothing; workspace-as-subdirectory prefix mapping.
 - **BashToolTests**: a recording sink receives the right tagged events after commands; sink/scanner failures never fail the tool; non-git workspace emits nothing; **a cancelled call is still scanned** (independent timeout).
 - **Integration (real Roslyn, Coding.Tests)**: a same-stamp bash edit → the next `cs_diagnostics` reports the new state **without a reload** (the residual limit closed); bash mark + stamp scan idempotent (one changed-file count); new `.cs` in an untracked directory → the reload a project change triggers brings it in (asserted at solution scope — a reload re-baselines the changed scope).
 

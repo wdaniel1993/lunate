@@ -18,6 +18,9 @@ internal sealed class BashChangeTracker(IExtensionLog? log = null)
     private static readonly TimeSpan ScanTimeout = TimeSpan.FromSeconds(2);
     private static readonly ProcessRunner Runner = new();
 
+    /// <summary>The snapshot cap: past this, the least recently used run's snapshot is evicted.</summary>
+    internal const int MaxSnapshots = 64;
+
     private readonly SemaphoreSlim _scanGate = new(1, 1);
     private readonly Dictionary<(string? RunId, string Root), Snapshot> _snapshots = [];
 
@@ -26,8 +29,9 @@ internal sealed class BashChangeTracker(IExtensionLog? log = null)
 
     /// <summary>
     /// Scans the run's workspace root and returns the changes since this run's previous scan; the
-    /// first scan of a run only baselines (nothing is published for pre-existing state). Never
-    /// throws.
+    /// first scan of a run only baselines (nothing is published for pre-existing state). Scan
+    /// trouble returns an empty list — the content-stamp scan stays the backstop; only a
+    /// cancelled token propagates.
     /// </summary>
     internal async Task<IReadOnlyList<Change>> ObserveAsync(
         string? runId,
@@ -49,6 +53,11 @@ internal sealed class BashChangeTracker(IExtensionLog? log = null)
             var key = (runId, root);
             if (!_snapshots.TryGetValue(key, out Snapshot? previous))
             {
+                if (_snapshots.Count >= MaxSnapshots)
+                {
+                    _snapshots.Remove(_snapshots.Keys.First());
+                }
+
                 _snapshots[key] = Snapshot.Baseline(scan);
                 return [];
             }
@@ -60,6 +69,8 @@ internal sealed class BashChangeTracker(IExtensionLog? log = null)
                     cancellationToken
                 )
                 .ConfigureAwait(false);
+            // Re-insert so the dictionary order tracks recency: the first key is the oldest.
+            _snapshots.Remove(key);
             _snapshots[key] = next;
             return changes;
         }
@@ -93,6 +104,9 @@ internal sealed class BashChangeTracker(IExtensionLog? log = null)
                 changes.Add(new Change(path, kind));
                 published.Add(path);
             }
+
+            // Remember what was observed so rule (c)'s content filter sees mid-run edits too.
+            next.Disk[path] = scan.Status[path];
         }
 
         // (b) Left the status set: a revert (checkout --, reset, stash) has content different from
@@ -111,14 +125,7 @@ internal sealed class BashChangeTracker(IExtensionLog? log = null)
                 published.Add(path);
             }
 
-            if (now is null)
-            {
-                next.Disk.Remove(path);
-            }
-            else
-            {
-                next.Disk[path] = now;
-            }
+            next.Disk[path] = now;
         }
 
         // (c) HEAD moved (checkout, pull, rebase): the paths the two heads differ in, content
@@ -131,7 +138,7 @@ internal sealed class BashChangeTracker(IExtensionLog? log = null)
         )
         {
             foreach (
-                (string letter, string path) in await GitDiffNamesAsync(
+                (string path, FileChangeKind kind) in await GitDiffNamesAsync(
                         root,
                         previous.Head,
                         scan.Head,
@@ -157,25 +164,11 @@ internal sealed class BashChangeTracker(IExtensionLog? log = null)
                     || !string.Equals(cached, now, StringComparison.Ordinal)
                 )
                 {
-                    changes.Add(
-                        new Change(
-                            relative,
-                            letter.StartsWith('A')
-                                ? FileChangeKind.Created
-                                : FileChangeKind.Modified
-                        )
-                    );
+                    changes.Add(new Change(relative, kind));
                     published.Add(relative);
                 }
 
-                if (now is null)
-                {
-                    next.Disk.Remove(relative);
-                }
-                else
-                {
-                    next.Disk[relative] = now;
-                }
+                next.Disk[relative] = now;
             }
         }
 
@@ -249,10 +242,10 @@ internal sealed class BashChangeTracker(IExtensionLog? log = null)
     }
 
     /// <summary>
-    /// Parses <c>git status --porcelain -z</c> output: NUL-separated entries, rename entries
-    /// carry the origin path in the following field, untracked directories (a trailing slash) are
-    /// skipped, and the origin of a rename is published (the file moved away) while a copy's
-    /// origin is not (it still exists).
+    /// Parses <c>git status --porcelain -z</c> output: NUL-separated entries; a rename or copy
+    /// entry carries its origin path in the following field (consumed either way); untracked
+    /// directories (a trailing slash) are skipped; a rename's origin is published (the file moved
+    /// away) while a copy's origin is not (it still exists).
     /// </summary>
     internal static IReadOnlyList<(string Path, FileChangeKind Kind)> ParsePorcelain(string output)
     {
@@ -280,9 +273,13 @@ internal sealed class BashChangeTracker(IExtensionLog? log = null)
                 )
             );
 
-            if (x == 'R' && i + 1 < fields.Length && fields[i + 1].Length > 0)
+            if (x is 'R' or 'C' && i + 1 < fields.Length && fields[i + 1].Length > 0)
             {
-                entries.Add((fields[++i], FileChangeKind.Modified));
+                string origin = fields[++i];
+                if (x == 'R')
+                {
+                    entries.Add((origin, FileChangeKind.Modified));
+                }
             }
         }
 
@@ -318,10 +315,12 @@ internal sealed class BashChangeTracker(IExtensionLog? log = null)
     }
 
     /// <summary>
-    /// The <c>git diff --name-status -z</c> entries between two heads: the status letter and each
-    /// path (a rename or copy entry carries two paths — both are returned).
+    /// The <c>git diff --name-status -z</c> entries between two heads, resolved to publishable
+    /// changes: an add is Created, everything else Modified; a rename publishes its old path
+    /// (moved away, Modified) and its new path (Created); a copy publishes only its new path
+    /// (Created — the origin is unchanged).
     /// </summary>
-    private async Task<IReadOnlyList<(string Letter, string Path)>> GitDiffNamesAsync(
+    private async Task<IReadOnlyList<(string Path, FileChangeKind Kind)>> GitDiffNamesAsync(
         string root,
         string fromHead,
         string toHead,
@@ -339,7 +338,7 @@ internal sealed class BashChangeTracker(IExtensionLog? log = null)
             return [];
         }
 
-        var entries = new List<(string Letter, string Path)>();
+        var entries = new List<(string Path, FileChangeKind Kind)>();
         string[] fields = diff.Stdout.Split('\0');
         for (int i = 0; i < fields.Length; i++)
         {
@@ -354,15 +353,26 @@ internal sealed class BashChangeTracker(IExtensionLog? log = null)
                 break;
             }
 
-            entries.Add((letter, fields[++i]));
-            if (letter.StartsWith('R') || letter.StartsWith('C'))
+            char code = letter[0];
+            string path = fields[++i];
+            if (code is 'R' or 'C')
             {
                 if (i + 1 >= fields.Length)
                 {
                     break;
                 }
 
-                entries.Add((letter, fields[++i]));
+                string newPath = fields[++i];
+                if (code is 'R')
+                {
+                    entries.Add((path, FileChangeKind.Modified));
+                }
+
+                entries.Add((newPath, FileChangeKind.Created));
+            }
+            else
+            {
+                entries.Add((path, code is 'A' ? FileChangeKind.Created : FileChangeKind.Modified));
             }
         }
 
@@ -419,7 +429,7 @@ internal sealed class BashChangeTracker(IExtensionLog? log = null)
 
         public required Dictionary<string, string?> Status { get; init; }
 
-        public required Dictionary<string, string> Disk { get; init; }
+        public required Dictionary<string, string?> Disk { get; init; }
 
         public static Snapshot Baseline(Scan scan) =>
             new()
@@ -427,7 +437,7 @@ internal sealed class BashChangeTracker(IExtensionLog? log = null)
                 Head = scan.Head,
                 Prefix = scan.Prefix,
                 Status = scan.Status,
-                Disk = Existing(scan.Status),
+                Disk = new Dictionary<string, string?>(scan.Status, StringComparer.Ordinal),
             };
 
         public Snapshot Advance(Scan scan) =>
@@ -436,21 +446,7 @@ internal sealed class BashChangeTracker(IExtensionLog? log = null)
                 Head = scan.Head,
                 Prefix = scan.Prefix,
                 Status = scan.Status,
-                Disk = new Dictionary<string, string>(Disk, StringComparer.Ordinal),
+                Disk = new Dictionary<string, string?>(Disk, StringComparer.Ordinal),
             };
-
-        private static Dictionary<string, string> Existing(Dictionary<string, string?> status)
-        {
-            var disk = new Dictionary<string, string>(StringComparer.Ordinal);
-            foreach ((string path, string? hash) in status)
-            {
-                if (hash is not null)
-                {
-                    disk[path] = hash;
-                }
-            }
-
-            return disk;
-        }
     }
 }

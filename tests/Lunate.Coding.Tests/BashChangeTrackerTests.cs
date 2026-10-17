@@ -295,4 +295,110 @@ public sealed class BashChangeTrackerTests
 
         Assert.Equal([new BashChangeTracker.Change("a.cs", FileChangeKind.Modified)], changes);
     }
+
+    [Fact]
+    public async Task An_edit_then_a_commit_is_not_republished()
+    {
+        using var repo = new GitTestRepo();
+        repo.Write("a.cs", "class A { }\n");
+        repo.CommitAll();
+        var tracker = new BashChangeTracker();
+        await tracker.ObserveAsync("run_1", repo.Root, Ct);
+        repo.Write("a.cs", "class A { int x; }\n");
+        Assert.Single(await tracker.ObserveAsync("run_1", repo.Root, Ct));
+
+        // The commit moves HEAD and the content is unchanged: nothing may be published.
+        repo.CommitAll();
+        IReadOnlyList<BashChangeTracker.Change> committed = await tracker.ObserveAsync(
+            "run_1",
+            repo.Root,
+            Ct
+        );
+
+        Assert.Empty(committed);
+    }
+
+    [Fact]
+    public async Task A_revert_of_a_mid_run_edit_is_published()
+    {
+        using var repo = new GitTestRepo();
+        repo.Write("a.cs", "class A { }\n");
+        repo.CommitAll();
+        var tracker = new BashChangeTracker();
+        await tracker.ObserveAsync("run_1", repo.Root, Ct);
+        repo.Write("a.cs", "class A { int x; }\n");
+        Assert.Single(await tracker.ObserveAsync("run_1", repo.Root, Ct));
+
+        repo.Run("checkout", "--", "a.cs");
+        IReadOnlyList<BashChangeTracker.Change> reverted = await tracker.ObserveAsync(
+            "run_1",
+            repo.Root,
+            Ct
+        );
+
+        Assert.Equal([new BashChangeTracker.Change("a.cs", FileChangeKind.Modified)], reverted);
+    }
+
+    [Fact]
+    public void Parse_consumes_copy_origins_without_a_bogus_entry()
+    {
+        const string porcelain = "C  new.cs\0old.cs\0";
+
+        var entries = BashChangeTracker.ParsePorcelain(porcelain);
+
+        Assert.Equal([("new.cs", FileChangeKind.Created)], entries);
+    }
+
+    [Fact]
+    public async Task A_committed_rename_publishes_the_new_side_as_created()
+    {
+        using var repo = new GitTestRepo();
+        repo.Write("a.cs", "class A { }\n");
+        repo.CommitAll();
+        var tracker = new BashChangeTracker();
+        await tracker.ObserveAsync("run_1", repo.Root, Ct);
+
+        repo.Run("mv", "a.cs", "b.cs");
+        repo.CommitAll();
+        IReadOnlyList<BashChangeTracker.Change> changes = await tracker.ObserveAsync(
+            "run_1",
+            repo.Root,
+            Ct
+        );
+
+        Assert.Equal(
+            [
+                new BashChangeTracker.Change("a.cs", FileChangeKind.Modified),
+                new BashChangeTracker.Change("b.cs", FileChangeKind.Created),
+            ],
+            changes
+        );
+    }
+
+    [Fact]
+    public async Task The_least_recently_used_snapshot_is_evicted_past_the_cap()
+    {
+        using var repo = new GitTestRepo();
+        repo.Write("a.cs", "class A { }\n");
+        repo.CommitAll();
+        var tracker = new BashChangeTracker();
+        await tracker.ObserveAsync("run_old", repo.Root, Ct);
+        repo.Write("a.cs", "class A { int x; }\n");
+        Assert.Single(await tracker.ObserveAsync("run_old", repo.Root, Ct));
+
+        for (int i = 0; i < BashChangeTracker.MaxSnapshots; i++)
+        {
+            await tracker.ObserveAsync($"run_{i}", repo.Root, Ct);
+        }
+
+        // The oldest snapshot was evicted, so this scan baselines afresh and publishes nothing.
+        repo.Write("a.cs", "class A { int y; }\n");
+        IReadOnlyList<BashChangeTracker.Change> afterEviction = await tracker.ObserveAsync(
+            "run_old",
+            repo.Root,
+            Ct
+        );
+
+        Assert.Empty(afterEviction);
+    }
 }
