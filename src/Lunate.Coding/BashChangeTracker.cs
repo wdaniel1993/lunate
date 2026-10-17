@@ -22,7 +22,11 @@ internal sealed class BashChangeTracker(IExtensionLog? log = null)
     internal const int MaxSnapshots = 64;
 
     private readonly SemaphoreSlim _scanGate = new(1, 1);
-    private readonly Dictionary<(string? RunId, string Root), Snapshot> _snapshots = [];
+    private readonly Dictionary<
+        (string? RunId, string Root),
+        (Snapshot Snapshot, long Tick)
+    > _snapshots = [];
+    private long _tick;
 
     /// <summary>One publishable change: the workspace-relative path and its kind.</summary>
     internal sealed record Change(string RelativePath, FileChangeKind Kind);
@@ -51,27 +55,26 @@ internal sealed class BashChangeTracker(IExtensionLog? log = null)
             }
 
             var key = (runId, root);
-            if (!_snapshots.TryGetValue(key, out Snapshot? previous))
+            if (!_snapshots.TryGetValue(key, out (Snapshot Snapshot, long Tick) previous))
             {
                 if (_snapshots.Count >= MaxSnapshots)
                 {
-                    _snapshots.Remove(_snapshots.Keys.First());
+                    _snapshots.Remove(_snapshots.MinBy(entry => entry.Value.Tick).Key);
                 }
 
-                _snapshots[key] = Snapshot.Baseline(scan);
+                _snapshots[key] = (Snapshot.Baseline(scan), ++_tick);
                 return [];
             }
 
             (IReadOnlyList<Change> changes, Snapshot next) = await DiffAsync(
-                    previous,
+                    previous.Snapshot,
                     scan,
                     root,
                     cancellationToken
                 )
                 .ConfigureAwait(false);
-            // Re-insert so the dictionary order tracks recency: the first key is the oldest.
-            _snapshots.Remove(key);
-            _snapshots[key] = next;
+            // A fresh tick marks this snapshot as the most recently used.
+            _snapshots[key] = (next, ++_tick);
             return changes;
         }
         finally
