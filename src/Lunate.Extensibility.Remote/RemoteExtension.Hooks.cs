@@ -109,10 +109,54 @@ public sealed partial class RemoteExtension
         CancellationToken cancellationToken
     )
     {
+        // The session-started dispatch happens during load — before the session is live. A remote
+        // child must never start on the startup path: the payload is held and delivered by
+        // MarkSessionLiveAsync (the post-ready point), which starts the child then.
+        if (string.Equals(contract.Name, SessionStartedContract.Name, StringComparison.Ordinal))
+        {
+            lock (_sessionGate)
+            {
+                // Only a dispatch that would START the child is deferred: an already started (or
+                // failed) extension proceeds normally — its failure must still be dropped and
+                // reported like any other observer.
+                if (!_sessionLive && Status.State == RemoteExtensionState.NotStarted)
+                {
+                    _pendingSessionStart = (SessionStartedPayload)payload;
+                    return;
+                }
+            }
+        }
+
         RemoteWire wire = await EnsureStartedAsync(cancellationToken).ConfigureAwait(false);
         await wire.NotifyAsync(contract.Method, EncodeCall(contract, payload), cancellationToken)
             .ConfigureAwait(false);
     }
+
+    /// <summary>
+    /// Marks the session live (the post-ready point) and delivers a deferred <c>SessionStarted</c>
+    /// to an extension that subscribed to it — the earliest moment a non-background child may
+    /// start. Background children start through their own path; both are idempotent.
+    /// </summary>
+    public async ValueTask MarkSessionLiveAsync(CancellationToken cancellationToken = default)
+    {
+        SessionStartedPayload? pending;
+        lock (_sessionGate)
+        {
+            _sessionLive = true;
+            pending = _pendingSessionStart;
+            _pendingSessionStart = null;
+        }
+
+        if (pending is not null)
+        {
+            await ObserveAsync(SessionStartedContract, pending, cancellationToken)
+                .ConfigureAwait(false);
+        }
+    }
+
+    private static readonly HookContract SessionStartedContract = HookContracts.FindByDeclaration(
+        "session-started"
+    )!;
 
     /// <summary>
     /// Sends an interceptor hook as a request and decodes the result. Cancellation maps to

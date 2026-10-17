@@ -324,7 +324,20 @@ public sealed class RemoteWire : IAsyncDisposable
                         : null;
                 if (method == "$/cancelRequest")
                 {
-                    HandleCancel(idElement.Clone());
+                    // The target rides in params.id (the JSON-RPC cancelRequest convention; the
+                    // frame is normally a notification, which carries no top-level id). A
+                    // malformed cancel must never throw or tear the wire down.
+                    JsonElement? target =
+                        parameters is { ValueKind: JsonValueKind.Object } body
+                        && body.TryGetProperty("id", out JsonElement targetElement)
+                        && targetElement.ValueKind is JsonValueKind.String or JsonValueKind.Number
+                            ? targetElement.Clone()
+                            : null;
+                    if (target is { } targetId)
+                    {
+                        HandleCancel(targetId);
+                    }
+
                     if (hasId)
                     {
                         RespondWithResult(idElement.Clone(), null);

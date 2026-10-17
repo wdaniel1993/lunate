@@ -2,7 +2,6 @@ using System.Globalization;
 using Lunate.Agent;
 using Lunate.Ai;
 using Lunate.Extensibility.Abstractions;
-using Lunate.Extensibility.Remote;
 using Lunate.Tui;
 
 namespace Lunate.Coding;

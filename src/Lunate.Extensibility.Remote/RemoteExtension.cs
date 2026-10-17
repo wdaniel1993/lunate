@@ -17,6 +17,9 @@ public sealed partial class RemoteExtension : IExtension, IAsyncDisposable
     private readonly RemoteExtensionOptions _options;
     private readonly SemaphoreSlim _startGate = new(1, 1);
     private readonly object _gate = new();
+    private readonly object _sessionGate = new();
+    private SessionStartedPayload? _pendingSessionStart;
+    private bool _sessionLive;
     private RemoteWire? _wire;
     private RemoteProcessChannel? _channel;
     private RemoteExtensionStatus _status = new(RemoteExtensionState.NotStarted, null);

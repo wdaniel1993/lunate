@@ -16,6 +16,35 @@ public sealed class RemoteConformanceTests
     private static readonly WorkspaceInfo Workspace = new("/work", "/repo", "/repo/.git");
 
     [Fact]
+    public async Task A_child_that_never_calls_back_still_passes_the_mandatory_steps()
+    {
+        var child = new ScriptedChild();
+        child.HookAnswers = (_, _, _) =>
+            ValueTask.FromResult<JsonElement?>(
+                JsonSerializer.SerializeToElement(new { outcome = "proceed" })
+            );
+
+        RemoteConformanceReport report = await RemoteConformanceRunner.RunAsync(
+            new RemoteConformanceOptions
+            {
+                FileName = "node",
+                WorkingDirectory = Path.GetTempPath(),
+                ProcessRunner = child.Runner,
+                Timeout = TimeSpan.FromSeconds(15),
+            },
+            Ct
+        );
+
+        RemoteConformanceStep childToHost = Assert.Single(
+            report.Steps,
+            step => step.Name == "service call child -> host"
+        );
+        Assert.False(childToHost.Passed);
+        Assert.False(childToHost.Required);
+        Assert.True(report.Succeeded, report.Summary);
+    }
+
+    [Fact]
     public void The_inventory_covers_every_hook_payload_and_result_dto()
     {
         Assert.Empty(RemoteConformance.MissingCoverage());

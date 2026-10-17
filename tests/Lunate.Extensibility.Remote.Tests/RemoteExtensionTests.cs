@@ -216,6 +216,15 @@ public sealed class RemoteExtensionTests
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => call);
         await canceled.Task.WaitAsync(TimeSpan.FromSeconds(15), Ct);
+
+        // The wire survived the cancel (a cancel that threw on the receiving side would have
+        // closed it): a following hook call still round-trips and the child was not restarted.
+        harness.Child.HookAnswers = (_, _, _) =>
+            ValueTask.FromResult<JsonElement?>(
+                JsonDocument.Parse("""{"outcome":"proceed"}""").RootElement.Clone()
+            );
+        await handler.HandleAsync(new ToolCallingPayload("r1", "c2", "read", EmptyArgs), Ct);
+        Assert.Equal(1, harness.Child.StartCount);
     }
 
     [Fact]

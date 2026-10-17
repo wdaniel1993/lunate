@@ -1074,3 +1074,25 @@ static Lunate.Extensibility.Abstractions.ExtensionRuntime.operator ==(Lunate.Ext
 Lunate.Extensibility.Abstractions.EnvironmentScrubber
 static Lunate.Extensibility.Abstractions.EnvironmentScrubber.BaseNames.get -> System.Collections.Generic.IReadOnlyList<string!>!
 static Lunate.Extensibility.Abstractions.EnvironmentScrubber.Build(System.Func<string!, string?>? read = null, System.Collections.Generic.IReadOnlyDictionary<string!, string!>? set = null, System.Collections.Generic.IReadOnlyList<string!>? passthrough = null) -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>!
+Lunate.Extensibility.Abstractions.RemoteExtensionState
+Lunate.Extensibility.Abstractions.RemoteExtensionState.Failed = 3 -> Lunate.Extensibility.Abstractions.RemoteExtensionState
+Lunate.Extensibility.Abstractions.RemoteExtensionState.NotStarted = 0 -> Lunate.Extensibility.Abstractions.RemoteExtensionState
+Lunate.Extensibility.Abstractions.RemoteExtensionState.Ready = 2 -> Lunate.Extensibility.Abstractions.RemoteExtensionState
+Lunate.Extensibility.Abstractions.RemoteExtensionState.Refused = 4 -> Lunate.Extensibility.Abstractions.RemoteExtensionState
+Lunate.Extensibility.Abstractions.RemoteExtensionState.Starting = 1 -> Lunate.Extensibility.Abstractions.RemoteExtensionState
+Lunate.Extensibility.Abstractions.RemoteExtensionState.Stopped = 5 -> Lunate.Extensibility.Abstractions.RemoteExtensionState
+Lunate.Extensibility.Abstractions.RemoteExtensionStatus
+Lunate.Extensibility.Abstractions.RemoteExtensionStatus.<Clone>$() -> Lunate.Extensibility.Abstractions.RemoteExtensionStatus!
+Lunate.Extensibility.Abstractions.RemoteExtensionStatus.Deconstruct(out Lunate.Extensibility.Abstractions.RemoteExtensionState State, out string? Reason) -> void
+Lunate.Extensibility.Abstractions.RemoteExtensionStatus.Equals(Lunate.Extensibility.Abstractions.RemoteExtensionStatus? other) -> bool
+Lunate.Extensibility.Abstractions.RemoteExtensionStatus.IsFailed.get -> bool
+Lunate.Extensibility.Abstractions.RemoteExtensionStatus.Reason.get -> string?
+Lunate.Extensibility.Abstractions.RemoteExtensionStatus.Reason.init -> void
+Lunate.Extensibility.Abstractions.RemoteExtensionStatus.RemoteExtensionStatus(Lunate.Extensibility.Abstractions.RemoteExtensionState State, string? Reason) -> void
+Lunate.Extensibility.Abstractions.RemoteExtensionStatus.State.get -> Lunate.Extensibility.Abstractions.RemoteExtensionState
+Lunate.Extensibility.Abstractions.RemoteExtensionStatus.State.init -> void
+override Lunate.Extensibility.Abstractions.RemoteExtensionStatus.Equals(object? obj) -> bool
+override Lunate.Extensibility.Abstractions.RemoteExtensionStatus.GetHashCode() -> int
+override Lunate.Extensibility.Abstractions.RemoteExtensionStatus.ToString() -> string!
+static Lunate.Extensibility.Abstractions.RemoteExtensionStatus.operator !=(Lunate.Extensibility.Abstractions.RemoteExtensionStatus? left, Lunate.Extensibility.Abstractions.RemoteExtensionStatus? right) -> bool
+static Lunate.Extensibility.Abstractions.RemoteExtensionStatus.operator ==(Lunate.Extensibility.Abstractions.RemoteExtensionStatus? left, Lunate.Extensibility.Abstractions.RemoteExtensionStatus? right) -> bool

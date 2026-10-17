@@ -45,18 +45,31 @@ public sealed class RemoteConformanceOptions
     public IProcessRunner? ProcessRunner { get; init; }
 }
 
-/// <summary>One conformance step and its outcome.</summary>
-public sealed record RemoteConformanceStep(string Name, bool Passed, string Detail);
+/// <summary>
+/// One conformance step and its outcome. <paramref name="Required"/> false marks a best-effort
+/// step the runner cannot force (a child that never calls back is conforming, just not exercised);
+/// only a failed required step fails the run.
+/// </summary>
+public sealed record RemoteConformanceStep(
+    string Name,
+    bool Passed,
+    string Detail,
+    bool Required = true
+);
 
-/// <summary>The runner's report: every step in order; <see cref="Succeeded"/> is all green.</summary>
+/// <summary>The runner's report: every step in order; <see cref="Succeeded"/> is every required step green.</summary>
 public sealed record RemoteConformanceReport(IReadOnlyList<RemoteConformanceStep> Steps)
 {
-    public bool Succeeded => Steps.All(step => step.Passed);
+    public bool Succeeded => Steps.All(step => step.Passed || !step.Required);
 
     public string Summary =>
         string.Join(
             "; ",
-            Steps.Select(step => $"{step.Name}: {(step.Passed ? "ok" : "FAILED — " + step.Detail)}")
+            Steps.Select(step =>
+                step.Passed ? $"{step.Name}: ok"
+                : step.Required ? $"{step.Name}: FAILED — {step.Detail}"
+                : $"{step.Name}: not exercised — {step.Detail}"
+            )
         );
 }
 
@@ -230,7 +243,10 @@ public static class RemoteConformanceRunner
                     childServiceCalls.Count > 0,
                     childServiceCalls.Count > 0
                         ? $"observed {string.Join(", ", childServiceCalls)}"
-                        : "the child made no host service call while the hook was in flight"
+                        : "the child made no host service call while the hook was in flight",
+                    // The runner cannot force a child-initiated call: a child that never calls back
+                    // is conforming, just not exercised. The probe hook is the window.
+                    Required: false
                 )
             );
 

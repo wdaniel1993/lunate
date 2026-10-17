@@ -34,11 +34,20 @@ internal static class TrustFormat
     internal static string ShortHash(string hash) =>
         hash.Length > ShortHashLength ? hash[..ShortHashLength] : hash;
 
-    /// <summary>The interactive extension question; a re-prompt says the files changed.</summary>
-    internal static string ExtensionQuestion(ExtensionDescriptor descriptor, bool filesChanged) =>
-        filesChanged
-            ? $"Load project extension '{descriptor.Id}' {descriptor.Version} from {descriptor.Directory} — its files changed since this repository trusted it; it runs with your user privileges. Load the new version"
-            : $"Load project extension '{descriptor.Id}' {descriptor.Version} from {descriptor.Directory} — it runs with your user privileges";
+    /// <summary>
+    /// The interactive extension question; a re-prompt says the files changed. An out-of-process
+    /// extension additionally states that it runs with the user's privileges (the process
+    /// boundary is isolation, not a sandbox).
+    /// </summary>
+    internal static string ExtensionQuestion(ExtensionDescriptor descriptor, bool filesChanged)
+    {
+        string privileges = descriptor.Manifest.Runtime is not null
+            ? " — it runs with your user privileges"
+            : "";
+        return filesChanged
+            ? $"Load project extension '{descriptor.Id}' {descriptor.Version} from {descriptor.Directory} — its files changed since this repository trusted it{privileges}. Load the new version"
+            : $"Load project extension '{descriptor.Id}' {descriptor.Version} from {descriptor.Directory}{privileges}";
+    }
 
     internal static string McpQuestionTitle(string configPath, int serverCount) =>
         FormattableString.Invariant(

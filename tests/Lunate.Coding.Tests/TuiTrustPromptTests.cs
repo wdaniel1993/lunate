@@ -29,7 +29,7 @@ public sealed class TuiTrustPromptTests
 
         Assert.True(approved);
         Assert.Equal(
-            "Load project extension 'hello' 0.1.0 from /work/.lunate/extensions/hello — it runs with your user privileges",
+            "Load project extension 'hello' 0.1.0 from /work/.lunate/extensions/hello",
             title
         );
         Assert.Empty(details!);
@@ -57,7 +57,7 @@ public sealed class TuiTrustPromptTests
 
         Assert.False(approved);
         Assert.Equal(
-            "Load project extension 'hello' 0.1.0 from /work/.lunate/extensions/hello — its files changed since this repository trusted it; it runs with your user privileges. Load the new version",
+            "Load project extension 'hello' 0.1.0 from /work/.lunate/extensions/hello — its files changed since this repository trusted it. Load the new version",
             title
         );
     }

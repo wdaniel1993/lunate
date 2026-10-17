@@ -2,15 +2,15 @@ namespace Lunate.Extensibility.Abstractions;
 
 /// <summary>
 /// Builds a child process environment that can never inherit Lunate's own variables by omission:
-/// the minimal base set (PATH, HOME/USERPROFILE, SYSTEMROOT, TEMP/TMP, LANG), plus the declared
-/// pass-through names, plus the declared values — nothing else. The one implementation shared by
-/// the code-mode sample and the remote extension host.
+/// the minimal base set (PATH, HOME/USERPROFILE, SYSTEMROOT, TEMP/TMP/TMPDIR, LANG), plus the
+/// declared pass-through names, plus the declared values — nothing else. The one implementation
+/// shared by the code-mode sample and the remote extension host.
 /// </summary>
 public static class EnvironmentScrubber
 {
     /// <summary>The minimal base names every scrubbed child receives when the parent has them.</summary>
     public static IReadOnlyList<string> BaseNames { get; } =
-    ["PATH", "HOME", "USERPROFILE", "SystemRoot", "TEMP", "TMP", "LANG"];
+    ["PATH", "HOME", "USERPROFILE", "SystemRoot", "TEMP", "TMP", "TMPDIR", "LANG"];
 
     /// <summary>
     /// Builds the exact environment: each base name present in the parent (read through
@@ -27,7 +27,11 @@ public static class EnvironmentScrubber
     )
     {
         read ??= Environment.GetEnvironmentVariable;
-        var environment = new Dictionary<string, string>(StringComparer.Ordinal);
+        // Windows environment names are case-insensitive: a declared name differing only in case
+        // from a base or pass-through name must replace it, never duplicate it.
+        var environment = new Dictionary<string, string>(
+            OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal
+        );
         foreach (string name in BaseNames)
         {
             if (read(name) is { Length: > 0 } value)

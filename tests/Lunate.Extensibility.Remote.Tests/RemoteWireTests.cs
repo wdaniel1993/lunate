@@ -104,15 +104,15 @@ public sealed class RemoteWireTests
         (InMemoryLineChannel a, InMemoryLineChannel b) = InMemoryLineChannel.Pair();
         await using var host = new RemoteWire(a);
         await using var child = new RemoteWire(b);
-        child.NotificationReceived += (method, parameters, _) =>
+        var canceled = new TaskCompletionSource();
+        child.RequestReceived += async (method, _, ct) =>
         {
-            Assert.Equal("$/cancelRequest", method);
-            Assert.Equal(1, parameters!.Value.GetProperty("id").GetInt32());
-            return ValueTask.CompletedTask;
-        };
-        child.RequestReceived += async (_, _, ct) =>
-        {
-            await Task.Delay(Timeout.Infinite, ct);
+            if (method == "slow")
+            {
+                using var registration = ct.Register(canceled.SetResult);
+                await Task.Delay(Timeout.Infinite, ct);
+            }
+
             return null;
         };
         host.Start();
@@ -121,6 +121,40 @@ public sealed class RemoteWireTests
         await Assert.ThrowsAsync<TimeoutException>(() =>
             host.CallAsync("slow", timeout: TimeSpan.FromMilliseconds(50), cancellationToken: Ct)
         );
+
+        // The cancel reached its target: the child's request token fired. And the wire survived
+        // it — a cancel that threw on the receiving side would have closed the connection — so a
+        // following call still round-trips.
+        await canceled.Task.WaitAsync(TimeSpan.FromSeconds(15), Ct);
+        await host.CallAsync("fast", cancellationToken: Ct);
+    }
+
+    [Fact]
+    public async Task A_malformed_cancel_request_is_ignored_and_the_wire_survives()
+    {
+        (InMemoryLineChannel a, InMemoryLineChannel b) = InMemoryLineChannel.Pair();
+        var raw = new RawPeer(b);
+        await using var host = new RemoteWire(a);
+        host.Start();
+
+        // A notification-form cancel with no params at all, and one naming an unknown id: both
+        // are no-ops — never an exception, never a closed wire.
+        raw.Write("""{"jsonrpc":"2.0","method":"$/cancelRequest"}""");
+        raw.Write("""{"jsonrpc":"2.0","method":"$/cancelRequest","params":{"id":9999}}""");
+
+        // The wire is still healthy: a request round-trips.
+        var received = new TaskCompletionSource();
+        host.RequestReceived += (_, _, _) =>
+        {
+            received.TrySetResult();
+            return ValueTask.FromResult<JsonElement?>(null);
+        };
+        raw.Write("""{"jsonrpc":"2.0","id":7,"method":"probe"}""");
+        await received.Task.WaitAsync(TimeSpan.FromSeconds(15), Ct);
+        string response = await raw.WaitFor(line =>
+            line.Contains("\"id\":7", StringComparison.Ordinal)
+        );
+        Assert.Contains("result", response, StringComparison.Ordinal);
     }
 
     [Fact]

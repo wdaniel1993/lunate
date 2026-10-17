@@ -80,6 +80,14 @@ public sealed partial class ExtensionLoader
         CancellationToken cancellationToken = default
     )
     {
+        // Marking the session live first delivers a deferred session-started to a subscriber
+        // (starting its child here, post-ready, never on the startup path); background children
+        // start next, and both paths are idempotent.
+        foreach (RemoteExtension extension in _remoteExtensions.Values)
+        {
+            await extension.MarkSessionLiveAsync(cancellationToken).ConfigureAwait(false);
+        }
+
         RemoteExtension[] background =
         [
             .. _remoteExtensions.Values.Where(extension => extension.StartsInBackground),

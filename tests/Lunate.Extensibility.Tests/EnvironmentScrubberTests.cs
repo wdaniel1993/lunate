@@ -28,6 +28,27 @@ public sealed class EnvironmentScrubberTests
         name => source.TryGetValue(name, out string? value) ? value : null;
 
     [Fact]
+    public void Windows_replaces_a_case_differing_name_instead_of_duplicating_it()
+    {
+        IReadOnlyDictionary<string, string> environment = EnvironmentScrubber.Build(
+            read: name => name == "PATH" ? "/usr/bin" : null,
+            set: new Dictionary<string, string> { ["Path"] = "over" }
+        );
+
+        if (OperatingSystem.IsWindows())
+        {
+            // Windows environment names are case-insensitive: the declared value replaces the
+            // base one instead of coexisting with it.
+            Assert.Single(environment);
+            Assert.Equal("over", environment["PATH"]);
+        }
+        else
+        {
+            Assert.Equal(2, environment.Count);
+        }
+    }
+
+    [Fact]
     public void The_base_set_is_present_and_nothing_else_inherits()
     {
         IReadOnlyDictionary<string, string> environment = EnvironmentScrubber.Build(Read(Parent));
@@ -39,8 +60,8 @@ public sealed class EnvironmentScrubberTests
         Assert.Equal("/tmp", environment["TEMP"]);
         Assert.Equal("/tmp", environment["TMP"]);
         Assert.Equal("en_US.UTF-8", environment["LANG"]);
+        Assert.Equal("/var/tmp", environment["TMPDIR"]);
         Assert.DoesNotContain("ANTHROPIC_API_KEY", environment.Keys);
-        Assert.DoesNotContain("TMPDIR", environment.Keys);
         Assert.Equal(EnvironmentScrubber.BaseNames.Count, environment.Count);
     }
 

@@ -49,6 +49,30 @@ public sealed class LoaderRemoteTests
     }
 
     [Fact]
+    public async Task A_session_started_subscriber_starts_only_when_the_session_is_live()
+    {
+        using var workspace = new TempWorkspace(hooks: ["session-started"]);
+        ScriptedChild child = workspace.Child;
+        ExtensionLoader loader = workspace.CreateLoader();
+
+        // The load carries the session-start dispatch: the child must not start (never on the
+        // startup path) and the payload is held.
+        LoadedExtension loaded = await workspace.LoadAsync(loader);
+
+        Assert.Equal("remote-sample", loaded.Id);
+        Assert.Equal(0, child.StartCount);
+
+        // The post-ready point delivers the deferred session-started and starts the child then.
+        await loader.StartBackgroundExtensionsAsync(Ct);
+
+        await WaitAsync(() => child.StartCount == 1, "the child started post-ready");
+        await WaitAsync(
+            () => child.Notifications.Any(n => n.Method == "hook/SessionStarted"),
+            "the deferred session-started arrived"
+        );
+    }
+
+    [Fact]
     public async Task Background_mode_starts_after_the_explicit_trigger_only()
     {
         using var workspace = new TempWorkspace(startup: "background");
@@ -135,13 +159,32 @@ public sealed class LoaderRemoteTests
         Assert.False(await loader.RestartRemoteAsync("absent", Ct));
     }
 
+    private static async Task WaitAsync(Func<bool> condition, string what)
+    {
+        for (var attempt = 0; attempt < 750; attempt++)
+        {
+            if (condition())
+            {
+                return;
+            }
+
+            await Task.Delay(20, Ct);
+        }
+
+        Assert.Fail($"condition not reached: {what}");
+    }
+
     private sealed class TempWorkspace : IDisposable
     {
         private readonly string _root;
         private readonly string _extensionDirectory;
         private readonly string _scriptPath;
 
-        public TempWorkspace(bool project = false, string? startup = null)
+        public TempWorkspace(
+            bool project = false,
+            string? startup = null,
+            IReadOnlyList<string>? hooks = null
+        )
         {
             _root = Path.Combine(
                 Path.GetTempPath(),
@@ -163,7 +206,7 @@ public sealed class LoaderRemoteTests
                 : $"\"runtime\":{{\"command\":\"node\",\"args\":[\"index.js\"],\"startup\":\"{startup}\"}}";
             File.WriteAllText(
                 Path.Combine(_extensionDirectory, "extension.json"),
-                $$"""{"id":"remote-sample","version":"0.1.0","apiVersion":"^1.0.0","hooks":["tool-calling"],{{runtime}}}"""
+                $$"""{"id":"remote-sample","version":"0.1.0","apiVersion":"^1.0.0","hooks":[{{string.Join(",", (hooks ?? ["tool-calling"]).Select(hook => $"\"{hook}\""))}}],{{runtime}}}"""
             );
             StorePath = storePath;
             Worktree = worktree;
