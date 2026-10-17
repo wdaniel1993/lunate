@@ -242,3 +242,28 @@ jobs:
           name: verify-win-x64-powershell
           path: artifacts/
           if-no-files-found: warn
+
+  # Single aggregate check for branch protection: the ruleset requires only
+  # "ci-ok", so renaming, adding or removing a matrix leg cannot silently drop
+  # a required check. always() so a failed leg produces a definitive red
+  # instead of a skipped (missing) check; skipped or cancelled legs are not
+  # success. No path filters exist on pull_request, so no path filter can
+  # leave this check pending on a PR; new top-level verification jobs must be
+  # added to "needs" here to stay covered.
+  ci-ok:
+    name: ci-ok
+    needs: [verify, verify-powershell]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Every required job succeeded
+        run: |
+          set -euo pipefail
+          verify='${{ needs.verify.result }}'
+          powershell='${{ needs.verify-powershell.result }}'
+          echo "verify=$verify verify-powershell=$powershell"
+          if [ "$verify" != "success" ] || [ "$powershell" != "success" ]; then
+            echo "::error::ci-ok: a required job did not succeed (verify=$verify, verify-powershell=$powershell)"
+            exit 1
+          fi
+          echo "ci-ok: all required jobs succeeded"
