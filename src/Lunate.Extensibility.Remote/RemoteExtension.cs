@@ -111,7 +111,14 @@ public sealed partial class RemoteExtension : IExtension, IAsyncDisposable
                 _status = new RemoteExtensionStatus(RemoteExtensionState.Starting, null);
             }
 
-            return await StartCoreAsync(cancellationToken).ConfigureAwait(false);
+            RemoteWire wire = await StartCoreAsync(cancellationToken).ConfigureAwait(false);
+
+            // A session-started held from the load-time dispatch is delivered on the first
+            // successful start, so a programmatic load that never reaches the ready point does
+            // not drop it (the ready point is the common case and wins the race).
+            await FlushPendingSessionStartAsync(cancellationToken).ConfigureAwait(false);
+
+            return wire;
         }
         finally
         {

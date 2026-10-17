@@ -73,6 +73,33 @@ public sealed class LoaderRemoteTests
     }
 
     [Fact]
+    public async Task A_deferred_session_started_is_delivered_on_the_first_lazy_use()
+    {
+        using var workspace = new TempWorkspace(hooks: ["session-started", "tool-calling"]);
+        ScriptedChild child = workspace.Child;
+        ExtensionLoader loader = workspace.CreateLoader();
+
+        LoadedExtension loaded = await workspace.LoadAsync(loader);
+
+        Assert.Equal(0, child.StartCount);
+
+        // No ready point in this flow: the first use starts the child and the held
+        // session-started is delivered before the triggering hook.
+        await loader.Hooks.RunToolCallingAsync(
+            new ToolCallingPayload(
+                "r1",
+                "c1",
+                "read",
+                JsonDocument.Parse("{}").RootElement.Clone()
+            ),
+            Ct
+        );
+
+        await WaitAsync(() => child.StartCount == 1, "the child started on first use");
+        Assert.Contains(child.Notifications, n => n.Method == "hook/SessionStarted");
+    }
+
+    [Fact]
     public async Task Background_mode_starts_after_the_explicit_trigger_only()
     {
         using var workspace = new TempWorkspace(startup: "background");

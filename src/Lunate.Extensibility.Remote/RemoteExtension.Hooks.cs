@@ -139,18 +139,47 @@ public sealed partial class RemoteExtension
     /// </summary>
     public async ValueTask MarkSessionLiveAsync(CancellationToken cancellationToken = default)
     {
-        SessionStartedPayload? pending;
         lock (_sessionGate)
         {
             _sessionLive = true;
+        }
+
+        await FlushPendingSessionStartAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Delivers a held <c>SessionStarted</c>, once, to the child. Called by the ready point and
+    /// by the first successful start (whichever comes first); a delivery failure is contained
+    /// like any other observer's — dropped and reported.
+    /// </summary>
+    private async ValueTask FlushPendingSessionStartAsync(CancellationToken cancellationToken)
+    {
+        SessionStartedPayload? pending;
+        lock (_sessionGate)
+        {
             pending = _pendingSessionStart;
             _pendingSessionStart = null;
         }
 
-        if (pending is not null)
+        if (pending is null)
+        {
+            return;
+        }
+
+        try
         {
             await ObserveAsync(SessionStartedContract, pending, cancellationToken)
                 .ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            _options.Context.Log.Warn(
+                $"extension '{Id}': the session-started delivery failed: {Explain(exception)}"
+            );
         }
     }
 

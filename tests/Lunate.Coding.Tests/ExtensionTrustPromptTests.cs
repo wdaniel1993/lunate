@@ -27,8 +27,33 @@ public sealed class ExtensionTrustPromptTests
         );
     }
 
-    internal static ExtensionDescriptor Descriptor(string id, string directory) =>
-        new(
+    [Fact]
+    public void An_out_of_process_descriptor_states_the_privileges_and_an_in_process_one_does_not()
+    {
+        string first = TrustFormat.ExtensionQuestion(
+            Descriptor("hello", "/work/x", remote: true),
+            filesChanged: false
+        );
+        string reprompt = TrustFormat.ExtensionQuestion(
+            Descriptor("hello", "/work/x", remote: true),
+            filesChanged: true
+        );
+        string inProcess = TrustFormat.ExtensionQuestion(
+            Descriptor("hello", "/work/x"),
+            filesChanged: false
+        );
+
+        Assert.Contains(" — it runs with your user privileges", first, StringComparison.Ordinal);
+        Assert.Contains(" — it runs with your user privileges", reprompt, StringComparison.Ordinal);
+        Assert.DoesNotContain("user privileges", inProcess, StringComparison.Ordinal);
+    }
+
+    internal static ExtensionDescriptor Descriptor(string id, string directory, bool remote = false)
+    {
+        string runtime = remote
+            ? "\"runtime\":{\"command\":\"node\"}"
+            : "\"entryAssembly\":\"E.dll\"";
+        return new(
             id,
             "0.1.0",
             ExtensionScope.Project,
@@ -36,9 +61,10 @@ public sealed class ExtensionTrustPromptTests
             ExtensionManifest.Parse(
                 string.Create(
                     CultureInfo.InvariantCulture,
-                    $$"""{"id":"{{id}}","version":"0.1.0","apiVersion":"^1.0.0","entryAssembly":"E.dll"}"""
+                    $$"""{"id":"{{id}}","version":"0.1.0","apiVersion":"^1.0.0",{{runtime}}}"""
                 ),
                 Path.Combine(directory, "extension.json")
             )
         );
+    }
 }

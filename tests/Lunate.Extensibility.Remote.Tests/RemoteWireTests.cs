@@ -137,10 +137,13 @@ public sealed class RemoteWireTests
         await using var host = new RemoteWire(a);
         host.Start();
 
-        // A notification-form cancel with no params at all, and one naming an unknown id: both
-        // are no-ops — never an exception, never a closed wire.
+        // Every malformed shape is a no-op — never an exception, never a closed wire: no params
+        // at all, an unknown id, a non-object params, an absent id and a non-scalar id.
         raw.Write("""{"jsonrpc":"2.0","method":"$/cancelRequest"}""");
         raw.Write("""{"jsonrpc":"2.0","method":"$/cancelRequest","params":{"id":9999}}""");
+        raw.Write("""{"jsonrpc":"2.0","method":"$/cancelRequest","params":5}""");
+        raw.Write("""{"jsonrpc":"2.0","method":"$/cancelRequest","params":{}}""");
+        raw.Write("""{"jsonrpc":"2.0","method":"$/cancelRequest","params":{"id":{"nested":1}}}""");
 
         // The wire is still healthy: a request round-trips.
         var received = new TaskCompletionSource();
