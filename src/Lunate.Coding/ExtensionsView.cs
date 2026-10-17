@@ -74,8 +74,8 @@ internal static class ExtensionsView
     /// The <c>--json</c> contract: the same data, in the same order, as an array of
     /// <c>{id, version, scope, state, loadMs?, slow?, tools, commands, hooks, services,
     /// hookTimings?, startMs?}</c> objects (load time and slow marker only on loaded extensions;
-    /// <c>hookTimings</c> — one <c>{hook, calls, totalMs, lastMs, maxMs, slowCount, timedOut,
-    /// cancelled}</c> per timed hook — only on loaded extensions that dispatched, and
+    /// <c>hookTimings</c> — one <c>{hook, calls, totalMs, lastMs, maxMs, slowCount, completed,
+    /// timedOut, cancelled}</c> per timed hook — only on loaded extensions that dispatched, and
     /// <c>startMs</c> only when a remote extension's most recent start is known).
     /// </summary>
     internal static string Json(
