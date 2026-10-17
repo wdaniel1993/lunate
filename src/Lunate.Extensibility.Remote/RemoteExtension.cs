@@ -302,6 +302,16 @@ public sealed partial class RemoteExtension : IExtension, IAsyncDisposable
                 throw;
             }
 
+            // The caller's own cancellation is not a start failure: it propagates as the
+            // cancellation it is (the repo's OCE convention), after the child was stopped.
+            if (
+                exception is OperationCanceledException
+                && cancellationToken.IsCancellationRequested
+            )
+            {
+                throw;
+            }
+
             throw Fail(
                 $"the handshake failed: {Explain(exception)}. The extension was stopped.",
                 exception

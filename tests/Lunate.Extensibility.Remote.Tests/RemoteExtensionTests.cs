@@ -42,9 +42,12 @@ public sealed class RemoteExtensionTests
         await handler.ObserveAsync(new ProviderStreamEventPayload("r1", "m", "x", null), Ct);
 
         Assert.Equal(1, harness.Child.StartCount);
-        Assert.Contains(
-            harness.Child.Notifications,
-            notification => notification.Method == "hook/ProviderStreamEvent"
+        await WaitAsync(
+            () =>
+                harness.Child.Notifications.Any(notification =>
+                    notification.Method == "hook/ProviderStreamEvent"
+                ),
+            "the notification arrived"
         );
         Assert.DoesNotContain(
             harness.Child.Notifications,
@@ -193,8 +196,10 @@ public sealed class RemoteExtensionTests
         Harness harness = Harness.Create(hooks: ["tool-calling"]);
         var handler = (IToolCallingHandler)Assert.Single(harness.Context.Handlers);
         var canceled = new TaskCompletionSource();
+        var inFlight = new TaskCompletionSource();
         harness.Child.HookAnswers = async (_, _, ct) =>
         {
+            inFlight.TrySetResult();
             using var registration = ct.Register(canceled.SetResult);
             await Task.Delay(Timeout.Infinite, ct).ConfigureAwait(false);
             return null;
@@ -204,7 +209,9 @@ public sealed class RemoteExtensionTests
         Task<ToolCallingResult> call = handler
             .HandleAsync(new ToolCallingPayload("r1", "c1", "read", EmptyArgs), cts.Token)
             .AsTask();
-        await WaitAsync(() => harness.Child.StartCount == 1, "the child started");
+        // Cancel only once the child is handling the call: a cancel that lands during the
+        // handshake is a different path (and covered by the handshake tests).
+        await inFlight.Task.WaitAsync(TimeSpan.FromSeconds(15), Ct);
         cts.Cancel();
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => call);
