@@ -349,8 +349,6 @@ public sealed class RoslynFileBusSyncTests
             .ExecuteAsync(Args("""{"command":"echo warm"}"""), context, Ct);
         Assert.False(warm.IsError, warm.Output);
 
-        // A bash call edits a file with the same length and the original timestamp restored: the
-        // content stamp cannot see it, so only the bash mark can carry the change.
         var calculator = Path.Combine(fixture.Root, "src", "ConsoleApp", "Calculator.cs");
         var original = File.ReadAllText(calculator);
         var broken = original.Replace(
@@ -361,17 +359,52 @@ public sealed class RoslynFileBusSyncTests
         Assert.NotEqual(original, broken);
         Assert.Equal(original.Length, broken.Length);
         File.WriteAllText(Path.Combine(fixture.Root, ".edit.tmp"), broken);
+
+        // Stage 1: a bash edit git can see (the timestamp moves). The mark delivers it, and the
+        // refresh rewrites the file, advancing the freshness baseline to the rewritten stamp.
         ToolResult edited = await tools
             .Find("bash")!
             .ExecuteAsync(
-                Args(
-                    """{"command":"cp -p src/ConsoleApp/Calculator.cs .keep.tmp && cp .edit.tmp src/ConsoleApp/Calculator.cs && touch -r .keep.tmp src/ConsoleApp/Calculator.cs"}"""
-                ),
+                Args("""{"command":"cp .edit.tmp src/ConsoleApp/Calculator.cs"}"""),
                 context,
                 Ct
             );
         Assert.False(edited.IsError, edited.Output);
-        await host.FileChanges.DrainAsync(Ct);
+        await host.FileChanges.FlushAsync(Ct);
+        ToolResult refreshed = await RunDiagnosticsAsync(tools, fixture.Root);
+        Assert.False(refreshed.IsError, refreshed.Output);
+        Assert.Contains("CS0103", refreshed.Output, StringComparison.Ordinal);
+        Assert.Contains(
+            "1 file(s) changed since the last check",
+            refreshed.Output,
+            StringComparison.Ordinal
+        );
+        Assert.Equal(1, backend.LoadCount);
+
+        // Stage 2: another same-length bash edit, with the timestamp restored to the refreshed
+        // file's stamp. The content stamp cannot see it, so only the bash mark can carry the
+        // change. The file must be dirty in git's eyes first: for a file git still believes clean,
+        // a restored stat can match the index cache exactly and git skips the content check
+        // (measured on Windows CI, where there is no ctime to betray the edit).
+        DateTime stamp = File.GetLastWriteTimeUtc(calculator);
+        var brokenAgain = original.Replace(
+            "left + right + third",
+            "left + right + oth3r",
+            StringComparison.Ordinal
+        );
+        Assert.NotEqual(broken, brokenAgain);
+        Assert.Equal(original.Length, brokenAgain.Length);
+        File.WriteAllText(Path.Combine(fixture.Root, ".edit2.tmp"), brokenAgain);
+        ToolResult editedAgain = await tools
+            .Find("bash")!
+            .ExecuteAsync(
+                Args("""{"command":"cp .edit2.tmp src/ConsoleApp/Calculator.cs"}"""),
+                context,
+                Ct
+            );
+        Assert.False(editedAgain.IsError, editedAgain.Output);
+        File.SetLastWriteTimeUtc(calculator, stamp);
+        await host.FileChanges.FlushAsync(Ct);
 
         ToolResult second = await RunDiagnosticsAsync(tools, fixture.Root);
 
