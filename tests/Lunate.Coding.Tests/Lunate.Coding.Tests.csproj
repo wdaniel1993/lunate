@@ -30,6 +30,11 @@
             Include="../TestExtensions/SkillSourceExtension/SkillSourceExtension.csproj"
             ReferenceOutputAssembly="false"
         />
+        <!-- The service-composition tests install this fixture extension into a temp store. -->
+        <ProjectReference
+            Include="../TestExtensions/ServiceConsumerExtension/ServiceConsumerExtension.csproj"
+            ReferenceOutputAssembly="false"
+        />
         <!-- The ui-showcase mode proofs install the sample into a temp store. -->
         <ProjectReference
             Include="../../samples/extensions/ui-showcase/UiShowcaseExtension/UiShowcaseExtension.csproj"
@@ -76,6 +81,11 @@
             Properties="Configuration=$(Configuration)"
         />
         <MSBuild
+            Projects="$(MSBuildThisFileDirectory)../TestExtensions/ServiceConsumerExtension/ServiceConsumerExtension.csproj"
+            Targets="Build"
+            Properties="Configuration=$(Configuration)"
+        />
+        <MSBuild
             Projects="$(MSBuildThisFileDirectory)../../samples/extensions/ui-showcase/UiShowcaseExtension/UiShowcaseExtension.csproj"
             Targets="Build"
             Properties="Configuration=$(Configuration)"
@@ -86,6 +96,7 @@
             <ToolExtensionFiles Include="$(MSBuildThisFileDirectory)../TestExtensions/ToolExtension/bin/$(Configuration)/$(TargetFramework)/**/*" />
             <ModelExtensionFiles Include="$(MSBuildThisFileDirectory)../TestExtensions/ModelExtension/bin/$(Configuration)/$(TargetFramework)/**/*" />
             <SkillSourceExtensionFiles Include="$(MSBuildThisFileDirectory)../TestExtensions/SkillSourceExtension/bin/$(Configuration)/$(TargetFramework)/**/*" />
+            <ServiceConsumerExtensionFiles Include="$(MSBuildThisFileDirectory)../TestExtensions/ServiceConsumerExtension/bin/$(Configuration)/$(TargetFramework)/**/*" />
             <UiShowcaseExtensionFiles Include="$(MSBuildThisFileDirectory)../../samples/extensions/ui-showcase/UiShowcaseExtension/bin/$(Configuration)/$(TargetFramework)/**/*" />
         </ItemGroup>
         <Copy
@@ -111,6 +122,11 @@
         <Copy
             SourceFiles="@(SkillSourceExtensionFiles)"
             DestinationFolder="$(OutDir)TestExtensions/SkillSourceExtension/%(RecursiveDir)"
+            SkipUnchangedFiles="true"
+        />
+        <Copy
+            SourceFiles="@(ServiceConsumerExtensionFiles)"
+            DestinationFolder="$(OutDir)TestExtensions/ServiceConsumerExtension/%(RecursiveDir)"
             SkipUnchangedFiles="true"
         />
         <Copy
