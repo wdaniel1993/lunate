@@ -26,7 +26,7 @@ Only status-listed paths are hashed — the set is small, and that is the cost m
 
 - One `git --no-optional-locks status --porcelain -z --ignore-submodules=dirty -unormal -- .` per scanned call (cwd = run workspace root; `git status` has no `--relative` — paths stay repo-root-relative and the workspace prefix from `git rev-parse HEAD --show-prefix` is stripped, which also excludes paths outside the root). NUL-separated parsing; rename entries carry two paths.
 - Content hash: the repository's content-hash helper (same algorithm as the trust/extension pins).
-- HEAD tracking: read `git rev-parse HEAD`; when it moved, `git diff --name-only <old> <new>` feeds rule (c), then the snapshot's HEAD updates.
+- HEAD tracking: read `git rev-parse HEAD`; when it moved, `git diff --name-status -z <old> <new>` feeds rule (c), then the snapshot's HEAD updates.
 - Event shape mirrors `EditTool`: `new FileChangeEvent(absolute, relative, ctx.WorkingDirectory, ctx.RunId, kind)` plus `Source = "bash"`; the run sink stamps workspace/run ids as for tool edits; the bus forwards the source onto `FileChangedPayload`.
 - Failure discipline: missing git, non-repo root, scan timeout or parse trouble → no events, never an exception into the tool path; the stamp scan remains the backstop.
 - Cost (measured 2026-10-17): one status + hashing the status set per bash call in git worktrees — ~0.01 s on the project repo, 0.19–0.52 s on a larger repository (~/.hermes/hermes-agent; the first run is the cold one). Bash calls are seconds-scale; acceptable, with the design's own timeout as the guard.
