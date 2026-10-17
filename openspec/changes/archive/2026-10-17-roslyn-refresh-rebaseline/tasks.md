@@ -10,4 +10,4 @@
 ## 2. Spec and gate
 
 - [ ] 2.1 `agent-tools` delta: refresh does not re-flag + racing writes are never overwritten or swallowed (sentence + scenario).
-- [ ] 2.2 `scripts/verify.sh` green; archive `roslyn-refresh-rebaseline`; adversarial review; PR.
+- [x] 2.2 `scripts/verify.sh` green; archive `roslyn-refresh-rebaseline`; adversarial review; PR.
