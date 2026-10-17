@@ -1,4 +1,5 @@
 using Lunate.Extensibility.Abstractions;
+using Lunate.Extensibility.Remote;
 
 namespace Lunate.Extensibility;
 
@@ -124,6 +125,11 @@ public sealed partial class ExtensionLoader
             context.Unload();
         }
 
+        if (_remoteExtensions.Remove(id, out RemoteExtension? remote))
+        {
+            await remote.DisposeAsync().ConfigureAwait(false);
+        }
+
         if (notifyToolsChanged && removedTools.Count > 0)
         {
             await NotifyToolsChangedAsync().ConfigureAwait(false);
@@ -195,6 +201,7 @@ public sealed partial class ExtensionLoader
             )
             .ConfigureAwait(false);
         await _backgroundServices.StopAsync(cancellationToken).ConfigureAwait(false);
+        await ShutdownRemotesAsync(cancellationToken).ConfigureAwait(false);
     }
 
     private async ValueTask StartSessionAsync(

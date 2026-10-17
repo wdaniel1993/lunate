@@ -638,7 +638,7 @@ One row per card. Each card becomes one OpenSpec change (see Building it with Op
 | T-49 | 6 | Sample: model-router | T-39 | Virtual model routes; usage rolls up to the owning run |
 | T-50 | 6 | Sample: ui-showcase | T-40 | Renderer + status widget; degrades cleanly in print/json/ACP |
 | T-51 | 6 | Sample: worktree-tasks | T-38, T-39, T-47 | Two subagents in separate worktrees edit and build independently (Roslyn per workspace, cap holds); results merge back via git; worktrees cleaned up |
-| T-52 | 7 | Out-of-process host (`Lunate.Extensibility.Remote`, JSON-RPC over stdio) — design only until scheduled | T-37 to T-42 | Conformance test: all hook DTOs round-trip through JSON |
+| T-52 | 7 | Out-of-process host (`Lunate.Extensibility.Remote`, JSON-RPC over stdio) + node reference sample | T-37 to T-42 | Conformance test: all hook DTOs round-trip through the wire; the node sample passes its fitness tests |
 
 Independent tracks can run in parallel in separate git worktrees, for example T-18/T-19 (TUI) next to T-12 to T-15 (tools).
 

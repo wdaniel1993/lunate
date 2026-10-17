@@ -44,6 +44,19 @@ public sealed partial class HookRunner
         );
     }
 
+    /// <summary>
+    /// Removes one registered handler (the remote handshake's declared-but-not-implemented drop).
+    /// </summary>
+    public void Unregister(string extensionId, IHookHandler handler)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(extensionId);
+        ArgumentNullException.ThrowIfNull(handler);
+        _handlers.RemoveAll(registration =>
+            ReferenceEquals(registration.Handler, handler)
+            && string.Equals(registration.ExtensionId, extensionId, StringComparison.Ordinal)
+        );
+    }
+
     /// <summary>The number of handlers the extension registered (the <c>/extensions</c> view).</summary>
     public int Count(string extensionId)
     {

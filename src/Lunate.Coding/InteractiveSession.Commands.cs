@@ -52,6 +52,18 @@ internal sealed partial class InteractiveSession
                 Notify(await McpStatusTextAsync(ct));
                 return;
             case "/extensions":
+                if (argument.StartsWith("restart ", StringComparison.Ordinal))
+                {
+                    await RestartExtension(argument["restart ".Length..].Trim(), ct);
+                    return;
+                }
+
+                if (argument.Length > 0)
+                {
+                    Notify("usage: /extensions or /extensions restart <id>");
+                    return;
+                }
+
                 Notify(ExtensionsText());
                 return;
             case "/trust":
@@ -210,14 +222,55 @@ internal sealed partial class InteractiveSession
             return ExtensionsView.NoneText;
         }
 
-        IReadOnlyList<string> segments = ExtensionsView.Segments(
-            host.Descriptors,
-            host.LoadResults,
-            host.RegisteredCounts
-        );
+        List<string> segments =
+        [
+            .. ExtensionsView.Segments(host.Descriptors, host.LoadResults, host.RegisteredCounts),
+        ];
+        foreach ((string id, RemoteExtensionStatus status) in host.FailedRemoteStatuses())
+        {
+            segments.Add(
+                $"{id} — remote {status.State.ToString().ToLowerInvariant()}: {status.Reason}"
+            );
+        }
+
         return segments.Count == 0
             ? ExtensionsView.NoneText
             : "extensions: " + string.Join("; ", segments);
+    }
+
+    /// <summary>
+    /// The <c>/extensions restart &lt;id&gt;</c> action: restarts one loaded remote extension (the
+    /// manual restart after an exhausted automatic budget). A non-remote id and a failed restart
+    /// produce notices; the session continues either way.
+    /// </summary>
+    private async ValueTask RestartExtension(string id, CancellationToken ct)
+    {
+        if (id.Length == 0)
+        {
+            Notify("usage: /extensions restart <id>");
+            return;
+        }
+
+        if (_extensions is not { } host)
+        {
+            Notify(ExtensionsText());
+            return;
+        }
+
+        try
+        {
+            bool restarted = await host.RestartExtensionAsync(id, ct).ConfigureAwait(false);
+            Notify(
+                restarted
+                    ? $"extension '{id}' restarted"
+                    : $"'{id}' is not a loaded remote extension",
+                restarted ? NoticeLevel.Info : NoticeLevel.Warning
+            );
+        }
+        catch (Exception exception)
+        {
+            Notify($"extension '{id}' was not restarted: {exception.Message}", NoticeLevel.Warning);
+        }
     }
 
     /// <summary>Switches to a catalog model by id; an unknown id produces a notice.</summary>

@@ -1,0 +1,292 @@
+using System.Text.Json;
+using Lunate.Extensibility.Abstractions;
+using Lunate.Extensibility.Remote;
+using Lunate.Extensibility.Testing;
+
+namespace Lunate.Extensibility.Remote.Tests;
+
+/// <summary>
+/// Remote extensions through the real loader and hook runner: discovery and trust, lazy load
+/// with declaration-driven proxies, background startup after the UI is ready, failed extensions
+/// contained, the trust digest covering the bundled files, and the manual restart path.
+/// </summary>
+public sealed class LoaderRemoteTests
+{
+    private static readonly CancellationToken Ct = TestContext.Current.CancellationToken;
+
+    [Fact]
+    public async Task A_remote_extension_loads_lazily_and_answers_through_the_hook_runner()
+    {
+        using var workspace = new TempWorkspace();
+        ScriptedChild child = workspace.Child;
+        child.HookAnswers = (_, _, _) =>
+            ValueTask.FromResult<JsonElement?>(
+                HookResultCodec.EncodeResult(
+                    HookContracts.Find("ToolCalling")!,
+                    new ToolCallingResult.Block("held")
+                )
+            );
+        ExtensionLoader loader = workspace.CreateLoader();
+
+        LoadedExtension loaded = await workspace.LoadAsync(loader);
+
+        Assert.Equal("remote-sample", loaded.Id);
+        Assert.Equal(0, child.StartCount);
+        Assert.Equal(1, loader.Hooks.Count("remote-sample"));
+
+        ToolCallingResult result = await loader.Hooks.RunToolCallingAsync(
+            new ToolCallingPayload(
+                "r1",
+                "c1",
+                "read",
+                JsonDocument.Parse("{}").RootElement.Clone()
+            ),
+            Ct
+        );
+
+        Assert.Equal(new ToolCallingResult.Block("held"), result);
+        Assert.Equal(1, child.StartCount);
+    }
+
+    [Fact]
+    public async Task A_session_started_subscriber_starts_only_when_the_session_is_live()
+    {
+        using var workspace = new TempWorkspace(hooks: ["session-started"]);
+        ScriptedChild child = workspace.Child;
+        ExtensionLoader loader = workspace.CreateLoader();
+
+        // The load carries the session-start dispatch: the child must not start (never on the
+        // startup path) and the payload is held.
+        LoadedExtension loaded = await workspace.LoadAsync(loader);
+
+        Assert.Equal("remote-sample", loaded.Id);
+        Assert.Equal(0, child.StartCount);
+
+        // The post-ready point delivers the deferred session-started and starts the child then.
+        await loader.StartBackgroundExtensionsAsync(Ct);
+
+        await WaitAsync(() => child.StartCount == 1, "the child started post-ready");
+        await WaitAsync(
+            () => child.Notifications.Any(n => n.Method == "hook/SessionStarted"),
+            "the deferred session-started arrived"
+        );
+    }
+
+    [Fact]
+    public async Task A_deferred_session_started_is_delivered_on_the_first_lazy_use()
+    {
+        using var workspace = new TempWorkspace(hooks: ["session-started", "tool-calling"]);
+        ScriptedChild child = workspace.Child;
+        ExtensionLoader loader = workspace.CreateLoader();
+
+        LoadedExtension loaded = await workspace.LoadAsync(loader);
+
+        Assert.Equal(0, child.StartCount);
+
+        // No ready point in this flow: the first use starts the child and the held
+        // session-started is delivered before the triggering hook.
+        await loader.Hooks.RunToolCallingAsync(
+            new ToolCallingPayload(
+                "r1",
+                "c1",
+                "read",
+                JsonDocument.Parse("{}").RootElement.Clone()
+            ),
+            Ct
+        );
+
+        await WaitAsync(() => child.StartCount == 1, "the child started on first use");
+        // The notification is written before the triggering hook proceeds, but the child records
+        // it on its own read loop — wait for it instead of racing that loop.
+        await WaitAsync(
+            () => child.Notifications.Any(n => n.Method == "hook/SessionStarted"),
+            "the deferred session-started arrived"
+        );
+    }
+
+    [Fact]
+    public async Task Background_mode_starts_after_the_explicit_trigger_only()
+    {
+        using var workspace = new TempWorkspace(startup: "background");
+        ExtensionLoader loader = workspace.CreateLoader();
+
+        await workspace.LoadAsync(loader);
+
+        Assert.Equal(0, workspace.Child.StartCount);
+
+        await loader.StartBackgroundExtensionsAsync(Ct);
+
+        Assert.Equal(1, workspace.Child.StartCount);
+    }
+
+    [Fact]
+    public async Task A_refused_remote_extension_is_contained_and_the_session_continues()
+    {
+        using var workspace = new TempWorkspace();
+        workspace.Child.Handshake = request => new InitializeResult(99, request.Hooks, []);
+        ExtensionLoader loader = workspace.CreateLoader();
+        await workspace.LoadAsync(loader);
+
+        ToolCallingResult result = await loader.Hooks.RunToolCallingAsync(
+            new ToolCallingPayload(
+                "r1",
+                "c1",
+                "read",
+                JsonDocument.Parse("{}").RootElement.Clone()
+            ),
+            Ct
+        );
+
+        // The failure policy applies: ToolCalling blocks fail-safe; nothing throws into the run.
+        Assert.IsType<ToolCallingResult.Block>(result);
+        Assert.Contains(
+            workspace.Log.Errors,
+            entry => entry.Contains("was refused", StringComparison.Ordinal)
+        );
+        Assert.Equal(RemoteExtensionState.Refused, loader.RemoteStatus("remote-sample")!.State);
+    }
+
+    [Fact]
+    public async Task The_trust_digest_covers_the_extension_directory_contents()
+    {
+        using var workspace = new TempWorkspace(project: true);
+        ExtensionLoader first = workspace.CreateLoader();
+        var prompt = new ScriptedTrustPrompt(true);
+
+        await workspace.LoadAsync(first, prompt);
+
+        Assert.Equal(1, prompt.Calls);
+
+        // Swapping a bundled file after trust re-prompts (the digest covers the directory).
+        workspace.RewriteBundledScript("// changed");
+
+        ExtensionLoader second = workspace.CreateLoader();
+        var secondPrompt = new ScriptedTrustPrompt(true);
+        await workspace.LoadAsync(second, secondPrompt);
+
+        Assert.Equal(1, secondPrompt.Calls);
+        Assert.True(secondPrompt.Approvals >= 1);
+    }
+
+    [Fact]
+    public async Task A_manual_restart_through_the_loader_starts_a_fresh_child()
+    {
+        using var workspace = new TempWorkspace();
+        ExtensionLoader loader = workspace.CreateLoader();
+        await workspace.LoadAsync(loader);
+        await loader.Hooks.RunToolCallingAsync(
+            new ToolCallingPayload(
+                "r1",
+                "c1",
+                "read",
+                JsonDocument.Parse("{}").RootElement.Clone()
+            ),
+            Ct
+        );
+        Assert.Equal(1, workspace.Child.StartCount);
+
+        Assert.True(await loader.RestartRemoteAsync("remote-sample", Ct));
+
+        Assert.Equal(2, workspace.Child.StartCount);
+        Assert.False(await loader.RestartRemoteAsync("absent", Ct));
+    }
+
+    private static async Task WaitAsync(Func<bool> condition, string what)
+    {
+        for (var attempt = 0; attempt < 750; attempt++)
+        {
+            if (condition())
+            {
+                return;
+            }
+
+            await Task.Delay(20, Ct);
+        }
+
+        Assert.Fail($"condition not reached: {what}");
+    }
+
+    private sealed class TempWorkspace : IDisposable
+    {
+        private readonly string _root;
+        private readonly string _extensionDirectory;
+        private readonly string _scriptPath;
+
+        public TempWorkspace(
+            bool project = false,
+            string? startup = null,
+            IReadOnlyList<string>? hooks = null
+        )
+        {
+            _root = Path.Combine(
+                Path.GetTempPath(),
+                "lunate-remote-loader-tests",
+                Guid.NewGuid().ToString("N")
+            );
+            string worktree = Path.Combine(_root, "worktree");
+            System.IO.Directory.CreateDirectory(worktree);
+            string storePath = Path.Combine(_root, "store");
+            System.IO.Directory.CreateDirectory(storePath);
+            _extensionDirectory = project
+                ? Path.Combine(worktree, ".lunate", "extensions", "remote-sample")
+                : Path.Combine(storePath, "extensions", "remote-sample");
+            System.IO.Directory.CreateDirectory(_extensionDirectory);
+            _scriptPath = Path.Combine(_extensionDirectory, "index.js");
+            File.WriteAllText(_scriptPath, "// script");
+            string runtime = startup is null
+                ? "\"runtime\":{\"command\":\"node\",\"args\":[\"index.js\"]}"
+                : $"\"runtime\":{{\"command\":\"node\",\"args\":[\"index.js\"],\"startup\":\"{startup}\"}}";
+            File.WriteAllText(
+                Path.Combine(_extensionDirectory, "extension.json"),
+                $$"""{"id":"remote-sample","version":"0.1.0","apiVersion":"^1.0.0","hooks":[{{string.Join(",", (hooks ?? ["tool-calling"]).Select(hook => $"\"{hook}\""))}}],{{runtime}}}"""
+            );
+            StorePath = storePath;
+            Worktree = worktree;
+            Log = new RecordingLog();
+            Child = new ScriptedChild();
+        }
+
+        public string StorePath { get; }
+
+        public string Worktree { get; }
+
+        public RecordingLog Log { get; }
+
+        public ScriptedChild Child { get; }
+
+        public ExtensionLoader CreateLoader()
+        {
+            var loader = new ExtensionLoader(
+                new ExtensionHostOptions { StorePath = StorePath, Log = Log }
+            );
+            loader.Services.RegisterCore("core/process", Child.Runner);
+            loader.Services.RegisterCore("core/workspace", new WorkspaceInfo(Worktree, null, null));
+            loader.Discover(Worktree, "repo");
+            return loader;
+        }
+
+        public Task<LoadedExtension> LoadAsync(
+            ExtensionLoader loader,
+            ScriptedTrustPrompt? prompt = null
+        ) =>
+            loader.Load(
+                "remote-sample",
+                Worktree,
+                "repo",
+                prompt ?? new ScriptedTrustPrompt(true),
+                Ct
+            );
+
+        public void RewriteBundledScript(string content) => File.WriteAllText(_scriptPath, content);
+
+        public void Dispose()
+        {
+            try
+            {
+                System.IO.Directory.Delete(_root, recursive: true);
+            }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
+        }
+    }
+}

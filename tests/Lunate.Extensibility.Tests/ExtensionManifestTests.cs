@@ -355,4 +355,136 @@ public sealed class ExtensionManifestTests
 
         Assert.Contains("extension.json", exception.Message, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void A_remote_manifest_parses_the_runtime()
+    {
+        const string json = """
+            {"id":"remote","version":"0.1.0","apiVersion":"^1.0.0",
+             "runtime":{"command":"node","args":["index.js"],"workingDirectory":"bin",
+              "env":{"HELLO":"world"},"envPassthrough":["GITHUB_TOKEN"],"callTimeout":12.5,
+              "startup":"background","future":"ignored"}}
+            """;
+
+        ExtensionManifest manifest = ExtensionManifest.Parse(json, "extension.json");
+
+        Assert.Null(manifest.EntryAssembly);
+        ExtensionRuntime runtime = manifest.Runtime!;
+        Assert.Equal("node", runtime.Command);
+        Assert.Equal(["index.js"], runtime.Arguments);
+        Assert.Equal("bin", runtime.WorkingDirectory);
+        Assert.Equal("world", runtime.Environment!["HELLO"]);
+        Assert.Equal(["GITHUB_TOKEN"], runtime.EnvironmentPassthrough);
+        Assert.Equal(TimeSpan.FromSeconds(12.5), runtime.CallTimeout);
+        Assert.True(runtime.StartsInBackground);
+    }
+
+    [Fact]
+    public void A_remote_manifest_defaults_the_optional_runtime_fields()
+    {
+        const string json =
+            """{"id":"remote","version":"0.1.0","apiVersion":"^1.0.0","runtime":{"command":"node"}}""";
+
+        ExtensionManifest manifest = ExtensionManifest.Parse(json, "extension.json");
+
+        ExtensionRuntime runtime = manifest.Runtime!;
+        Assert.Empty(runtime.Arguments);
+        Assert.Null(runtime.WorkingDirectory);
+        Assert.Null(runtime.Environment);
+        Assert.Null(runtime.EnvironmentPassthrough);
+        Assert.Null(runtime.CallTimeout);
+        Assert.Null(runtime.Startup);
+        Assert.False(runtime.StartsInBackground);
+    }
+
+    [Fact]
+    public void Both_runtime_kinds_are_refused_naming_the_file_and_conflict()
+    {
+        const string json = """
+            {"id":"remote","version":"0.1.0","apiVersion":"^1.0.0",
+             "entryAssembly":"e.dll","runtime":{"command":"node"}}
+            """;
+
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+            ExtensionManifest.Parse(json, "extensions/remote/extension.json")
+        );
+
+        Assert.Contains(
+            "extensions/remote/extension.json",
+            exception.Message,
+            StringComparison.Ordinal
+        );
+        Assert.Contains("exactly one runtime kind", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Neither_runtime_kind_is_refused_naming_the_file_and_conflict()
+    {
+        const string json = """{"id":"remote","version":"0.1.0","apiVersion":"^1.0.0"}""";
+
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+            ExtensionManifest.Parse(json, "extensions/remote/extension.json")
+        );
+
+        Assert.Contains(
+            "extensions/remote/extension.json",
+            exception.Message,
+            StringComparison.Ordinal
+        );
+        Assert.Contains(
+            "neither 'entryAssembly' nor 'runtime'",
+            exception.Message,
+            StringComparison.Ordinal
+        );
+    }
+
+    [Theory]
+    [InlineData("""{"args":["a"]}""", "runtime.command")]
+    [InlineData("""{"command":""}""", "runtime.command")]
+    [InlineData("""{"command":"node","args":"index.js"}""", "runtime.args")]
+    [InlineData("""{"command":"node","args":[1]}""", "runtime.args")]
+    [InlineData("""{"command":"node","workingDirectory":""}""", "runtime.workingDirectory")]
+    [InlineData("""{"command":"node","env":[]}""", "runtime.env")]
+    [InlineData("""{"command":"node","env":{"A":1}}""", "runtime.env")]
+    [InlineData("""{"command":"node","envPassthrough":"PATH"}""", "runtime.envPassthrough")]
+    [InlineData(
+        """{"command":"node","envPassthrough":["PATH","PATH"]}""",
+        "runtime.envPassthrough"
+    )]
+    [InlineData("""{"command":"node","callTimeout":0}""", "runtime.callTimeout")]
+    [InlineData("""{"command":"node","callTimeout":-2}""", "runtime.callTimeout")]
+    [InlineData("""{"command":"node","callTimeout":"5s"}""", "runtime.callTimeout")]
+    [InlineData("""{"command":"node","startup":"eager"}""", "runtime.startup")]
+    public void Malformed_runtime_fields_fail_naming_the_file_and_field(
+        string runtime,
+        string field
+    )
+    {
+        string json =
+            $$"""{"id":"remote","version":"0.1.0","apiVersion":"^1.0.0","runtime":{{runtime}}}""";
+
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+            ExtensionManifest.Parse(json, "extensions/remote/extension.json")
+        );
+
+        Assert.Contains(
+            "extensions/remote/extension.json",
+            exception.Message,
+            StringComparison.Ordinal
+        );
+        Assert.Contains($"'{field}'", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_runtime_that_is_not_an_object_is_refused()
+    {
+        const string json =
+            """{"id":"remote","version":"0.1.0","apiVersion":"^1.0.0","runtime":"node"}""";
+
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+            ExtensionManifest.Parse(json, "extension.json")
+        );
+
+        Assert.Contains("'runtime'", exception.Message, StringComparison.Ordinal);
+    }
 }

@@ -199,6 +199,12 @@ internal sealed partial class InteractiveSession : IDisposable
             _live.SetLoading(null);
             FlushPendingNotices();
             UpdateStatus();
+            // Background remote extensions start only now, after the UI is ready; the startup
+            // path and its budget never touch them.
+            if (_extensions is { } backgroundHost)
+            {
+                _ = StartBackgroundExtensionsAsync(backgroundHost, linked.Token);
+            }
         }
         catch (OperationCanceledException) when (linked.IsCancellationRequested)
         {
@@ -244,6 +250,26 @@ internal sealed partial class InteractiveSession : IDisposable
         _disposed = true;
         _lifetime.Cancel();
         _lifetime.Dispose();
+    }
+
+    /// <summary>
+    /// Fires the background startup without blocking the UI; per-extension failures are already
+    /// contained and logged by the host.
+    /// </summary>
+    private static async Task StartBackgroundExtensionsAsync(
+        ExtensionSession host,
+        CancellationToken ct
+    )
+    {
+        try
+        {
+            await host.StartBackgroundAsync(ct).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception exception)
+        {
+            host.Log.Warn($"background extension startup failed: {exception.Message}");
+        }
     }
 
     private async Task ComposeAsync(CancellationToken ct)
@@ -369,6 +395,9 @@ internal sealed partial class InteractiveSession : IDisposable
             {
                 Log = _options.Extensions?.Log ?? new StderrExtensionLog(diagnostics),
                 Prompt = _options.Extensions?.Prompt ?? new TuiExtensionTrustPrompt(AskTrustAsync),
+                Notice =
+                    _options.Extensions?.Notice
+                    ?? (message => Notify(message, NoticeLevel.Warning)),
                 ModelCatalog = _catalog,
                 ClientFactory = _factory,
             };

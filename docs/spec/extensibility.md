@@ -66,12 +66,12 @@ The byte-level contract is owned by [`agent-tools`](../openspec/specs/agent-tool
 
 - **IBackgroundService**: session-scoped, lazy start; a crash becomes a notice, never a Lunate crash (LSP servers, watchers, memory DB connections).
 - **IFileChangeBus**: core publishes `FileChanged` after write/edit/rename; `bash` mutations are not published (see the file change bus section). The Roslyn backend is the first consumer; LSP extensions subscribe.
-- **IServiceRegistry**: extensions provide/consume services by contract (typed via the abstractions, or string id + JSON for out-of-process later) — for example a memory store used by several extensions.
+- **IServiceRegistry**: extensions provide/consume services by contract (typed via the abstractions); a service that remote children consume or a remote extension's service the host calls implements `IJsonService` (async-only by construction) — for example a memory store used by several extensions.
 - **Model registry**: extensions register providers (`IChatClient` factories), middleware (`DelegatingChatClient` wrappers at the `BeforeRouting`/`AroundBackend` slots — deterministic order, fail-closed) and virtual models that route per request — at load time via `IExtensionContext`, ids namespaced `ext/<extension-id>/…`; manifest-declared providers instantiate lazily with the host reading the secret (hygiene, not a security boundary). Runs reach them through `ToolContext.Models`: nested model calls charge the owning run — `UsageUpdated` carries the resolved model, with budget and tree roll-up — and resolution is virtual → programmatic → declared → catalog.
 - **MCP**: `RegisterMcpServer(name, config)` with the `mcp.json` shape plus exposure per server/tool; each server gets a namespace. A server may declare `workspaceIndependent: true` to remain offered to child runs in another worktree (default false — its process runs in the parent's directory).
 - **IUserInteraction**: notify, confirm, select, input, status, widgets. The TUI implements all; ACP maps confirm to permission requests where possible; print/json use a non-interactive policy (deny unless configured). Custom TUI components only when the mode supports them.
 - **Renderers**: tool and custom-entry renderers resolvable by tool name, including tools not registered yet (MCP tools in a resumed session).
-- **Core handles**: the host registers reserved `core/…` services looked up with `TryGetCoreService<T>` — `core/workspace`, `core/file-bus`, `core/mutation-queue` and `core/process` (`IProcessRunner`: runs one child with a timeout, an output cap and a tree kill on timeout/cancel; the environment is exactly what the caller passes, `null` inherits; extensions pass an allow-list).
+- **Core handles**: the host registers reserved `core/…` services looked up with `TryGetCoreService<T>` — `core/workspace`, `core/file-bus`, `core/mutation-queue` and `core/process` (`IProcessRunner`: runs one child with a timeout, an output cap and a tree kill on timeout/cancel, and starts an interactive child (`StartSessionAsync`/`IProcessSession`, line-oriented, bounded, same tree kill) for the remote extension host; the environment is exactly what the caller passes, `null` inherits for `RunAsync`; extensions pass an allow-list).
 
 ## File change bus
 
@@ -99,11 +99,12 @@ Every run — child runs included — has a workspace: `WorktreeRoot`, `RepoRoot
 - The child process is a **lifecycle boundary** (timeout, crash containment, kill-on-cancel), not a security sandbox: model-written code runs with the user's privileges, matching the in-process trust model; the tool's destructive annotation and the approval ask are the consent gate. In-process options (Roslyn scripting, Jint) are opt-in and documented as not a sandbox either.
 - Provider-hosted tools (MEAI hosted tool types, e.g. code interpreter, web search) pass through `ChatOptions`; their result content is preserved in sessions and events.
 
-## Out-of-process extensions (design constraint now, build later)
+## Out-of-process extensions
 
-- Every hook payload/result and service call must round-trip through `System.Text.Json`; a conformance test covers all hook DTOs.
+- Every hook payload/result and service call round-trips through `System.Text.Json`; the wire conformance suite covers the catalogue exhaustively (a new DTO without a wire entry fails by name).
 - All hooks are async with cancellation and a per-handler timeout.
-- Later card (T-52): `Lunate.Extensibility.Remote` host speaking JSON-RPC over stdio, enabling TypeScript/Python extensions and real isolation.
+- `Lunate.Extensibility.Remote` (T-52) hosts an extension declaring a manifest `runtime` as a child process speaking newline-delimited JSON-RPC 2.0 over stdio. Manifest and wire reference for authors, with the generated JSON Schema and the conformance runner: [`docs/extensions-remote.md`](../extensions-remote.md). The reference extension is the `node-remote` sample in the fitness suite.
+- The process boundary is runtime isolation (dependencies, language, crash containment), not a permission boundary; in-process trust and the trust prompt (now stating the extension runs with the user's privileges) are unchanged (ADR-0017).
 
 ## Trust, performance, testing
 
@@ -124,5 +125,6 @@ Every run — child runs included — has a workspace: `WorktreeRoot`, `RepoRoot
 | model-router | provider + virtual model + nested model call with usage roll-up |
 | ui-showcase | renderer + status widget; degrades cleanly in print/json/ACP |
 | worktree-tasks | workspace per run, per-workspace services and limits, session grouping, trust by repository identity; two subagents in separate worktrees edit and build independently (Roslyn per workspace, cap holds), results merge back via git, worktrees are cleaned up |
+| node-remote | out-of-process host: a Node child speaks the wire (handshake, hook forwarding with reentrancy, services both ways, shutdown); conformance runner green; loaded through the real host |
 
 Each sample lists the core capabilities it proves. A sample that needs a workaround means the core is missing a primitive.

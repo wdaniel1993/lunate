@@ -9,6 +9,12 @@ internal static class LayeringChecker
             ("Lunate.Extensibility", "Lunate.Agent"),
             ("Lunate.Extensibility", "Lunate.Ai"),
             ("Lunate.Extensibility", "Lunate.Extensibility.Abstractions"),
+            ("Lunate.Extensibility", "Lunate.Extensibility.Remote"),
+            ("Lunate.Extensibility.Remote", "Lunate.Extensibility.Abstractions"),
+            ("Lunate.Extensibility.Remote.Tests", "Lunate.Extensibility.Abstractions"),
+            ("Lunate.Extensibility.Remote.Tests", "Lunate.Extensibility.Remote"),
+            ("Lunate.Extensibility.Remote.Tests", "Lunate.Extensibility"),
+            ("Lunate.Extensibility.Remote.Tests", "Lunate.Extensibility.Testing"),
             ("Lunate.Extensibility.Abstractions", "Lunate.Agent"),
             ("Lunate.Extensibility.Testing", "Lunate.Agent"),
             ("Lunate.Extensibility.Testing", "Lunate.Ai"),
@@ -16,6 +22,7 @@ internal static class LayeringChecker
             ("Lunate.Extensibility.Testing", "Lunate.Coding"),
             ("Lunate.Extensibility.Testing", "Lunate.Extensibility"),
             ("Lunate.Extensibility.Testing", "Lunate.Extensibility.Abstractions"),
+            ("Lunate.Extensibility.Testing", "Lunate.Extensibility.Remote"),
             ("Lunate.Protocols", "Lunate.Agent"),
             ("Lunate.Roslyn", "Lunate.Agent"),
             ("Lunate.Roslyn.Tests", "Lunate.Roslyn"),
@@ -117,6 +124,11 @@ internal static class LayeringChecker
             ("CodeModeExtension.Tests", "CodeModeExtension"),
             ("CodeModeExtension.Tests", "Lunate.Coding"),
             ("CodeModeExtension.Tests", "Lunate.Extensibility.Testing"),
+            // The node-remote sample is a real Node child; its tests drive the conformance
+            // runner and the real host.
+            ("NodeRemoteExtension.Tests", "Lunate.Extensibility"),
+            ("NodeRemoteExtension.Tests", "Lunate.Extensibility.Abstractions"),
+            ("NodeRemoteExtension.Tests", "Lunate.Extensibility.Testing"),
             // The ui-showcase sample is Abstractions-only; its tests use the kit and reference
             // the extension project itself (the sibling pattern).
             ("UiShowcaseExtension", "Lunate.Extensibility.Abstractions"),

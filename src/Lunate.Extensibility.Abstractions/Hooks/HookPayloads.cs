@@ -9,25 +9,40 @@ public interface IParentRunIdPayload
     string? ParentRunId { get; }
 }
 
+/// <summary>
+/// Marks a top-level hook payload DTO. The remote conformance suite enumerates every implementer
+/// and fails when one has no wire round-trip entry, so a new payload cannot ship wire-less.
+/// </summary>
+public interface IHookPayload;
+
+/// <summary>
+/// Marks a hook result DTO (concrete records and abstract result families; every concrete variant
+/// of a marked family is covered too). The remote conformance suite enforces a wire round-trip
+/// entry per implementer.
+/// </summary>
+public interface IHookResult;
+
 /// <summary>The project extension awaiting a trust decision.</summary>
 public sealed record ProjectTrustPayload(
     string ExtensionId,
     string ExtensionDirectory,
     string RepositoryIdentity,
     string WorktreePath
-);
+) : IHookPayload;
 
 /// <summary>Payload of the session-lifecycle hooks.</summary>
-public sealed record SessionStartedPayload(string WorkingDirectory, string RepositoryIdentity);
+public sealed record SessionStartedPayload(string WorkingDirectory, string RepositoryIdentity)
+    : IHookPayload;
 
 /// <summary>Payload of the session-lifecycle hooks.</summary>
-public sealed record SessionEndingPayload(string WorkingDirectory, string RepositoryIdentity);
+public sealed record SessionEndingPayload(string WorkingDirectory, string RepositoryIdentity)
+    : IHookPayload;
 
 /// <summary>
 /// Raw user input, before it reaches the model; produced by the input pipeline before
 /// anything starts or queues.
 /// </summary>
-public sealed record InputReceivedPayload(string Text);
+public sealed record InputReceivedPayload(string Text) : IHookPayload;
 
 /// <summary>A named, source-tagged block of the system prompt.</summary>
 public sealed record PromptSection(string Name, string Text)
@@ -48,7 +63,7 @@ public sealed record RunStartingPayload(
     string RunId,
     IReadOnlyList<PromptSection> Sections,
     IReadOnlyList<string> Tools
-) : IParentRunIdPayload
+) : IHookPayload, IParentRunIdPayload
 {
     /// <summary>The parent run id when this run is a child (subagent) run; null otherwise.</summary>
     public string? ParentRunId { get; init; }
@@ -63,7 +78,8 @@ public sealed record ContextMessage(string Role, string Text)
 
 /// <summary>The request messages before a model call.</summary>
 public sealed record ContextBuildingPayload(string RunId, IReadOnlyList<ContextMessage> Messages)
-    : IParentRunIdPayload
+    : IHookPayload,
+        IParentRunIdPayload
 {
     /// <summary>The parent run id when this run is a child (subagent) run; null otherwise.</summary>
     public string? ParentRunId { get; init; }
@@ -75,7 +91,7 @@ public sealed record ProviderStreamEventPayload(
     string? ModelId,
     string? Text,
     string? FinishReason
-) : IParentRunIdPayload
+) : IHookPayload, IParentRunIdPayload
 {
     /// <summary>The parent run id when this run is a child (subagent) run; null otherwise.</summary>
     public string? ParentRunId { get; init; }
@@ -83,7 +99,8 @@ public sealed record ProviderStreamEventPayload(
 
 /// <summary>The final assistant message of one model call.</summary>
 public sealed record MessageCompletedPayload(string RunId, string Role, string Text)
-    : IParentRunIdPayload
+    : IHookPayload,
+        IParentRunIdPayload
 {
     /// <summary>The parent run id when this run is a child (subagent) run; null otherwise.</summary>
     public string? ParentRunId { get; init; }
@@ -95,7 +112,7 @@ public sealed record ToolCallingPayload(
     string CallId,
     string ToolName,
     JsonElement Arguments
-) : IParentRunIdPayload
+) : IHookPayload, IParentRunIdPayload
 {
     /// <summary>
     /// The resolved tool's declared annotations as lowercase kebab wire names in declaration order
@@ -116,14 +133,14 @@ public sealed record ToolResultReadyPayload(
     JsonElement Arguments,
     string Output,
     bool IsError
-) : IParentRunIdPayload
+) : IHookPayload, IParentRunIdPayload
 {
     /// <summary>The parent run id when this run is a child (subagent) run; null otherwise.</summary>
     public string? ParentRunId { get; init; }
 }
 
 /// <summary>An actionable turn boundary.</summary>
-public sealed record TurnEndedPayload(string RunId) : IParentRunIdPayload
+public sealed record TurnEndedPayload(string RunId) : IHookPayload, IParentRunIdPayload
 {
     /// <summary>The parent run id when this run is a child (subagent) run; null otherwise.</summary>
     public string? ParentRunId { get; init; }
@@ -137,7 +154,7 @@ public sealed record TurnEndedEntry(string Type, JsonElement Payload)
 }
 
 /// <summary>The end of a run; observation only.</summary>
-public sealed record RunSettledPayload(string RunId) : IParentRunIdPayload
+public sealed record RunSettledPayload(string RunId) : IHookPayload, IParentRunIdPayload
 {
     /// <summary>The parent run id when this run is a child (subagent) run; null otherwise.</summary>
     public string? ParentRunId { get; init; }
@@ -147,17 +164,18 @@ public sealed record RunSettledPayload(string RunId) : IParentRunIdPayload
 /// The conversation before compaction; produced by the compaction layer before compaction.
 /// </summary>
 public sealed record CompactingPayload(string RunId, IReadOnlyList<ContextMessage> Messages)
-    : IParentRunIdPayload
+    : IHookPayload,
+        IParentRunIdPayload
 {
     /// <summary>The parent run id when this run is a child (subagent) run; null otherwise.</summary>
     public string? ParentRunId { get; init; }
 }
 
 /// <summary>The active model after a change; observation only.</summary>
-public sealed record ModelChangedPayload(string RunId, string Model);
+public sealed record ModelChangedPayload(string RunId, string Model) : IHookPayload;
 
 /// <summary>The active tool set after a change; observation only.</summary>
-public sealed record ToolsChangedPayload(string RunId, IReadOnlyList<string> Tools);
+public sealed record ToolsChangedPayload(string RunId, IReadOnlyList<string> Tools) : IHookPayload;
 
 /// <summary>
 /// A successful file mutation; <see cref="Path"/> is canonical and absolute. <see cref="Kind"/> is
@@ -171,4 +189,4 @@ public sealed record FileChangedPayload(
     string? RunId,
     string Kind,
     string Source = "tool"
-);
+) : IHookPayload;
