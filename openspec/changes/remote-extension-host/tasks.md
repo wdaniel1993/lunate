@@ -18,9 +18,9 @@
 
 ## 3 Composition
 
-- [ ] 3.1 Loader/composition accepts both runtime kinds; failed remote extensions contained like in-process ones; `--no-extensions` unaffected; trust digest = manifest + extension directory contents; trust prompt text states user privileges; tests.
-- [ ] 3.2 Node reference extension (manifest + script) as a fitness-suite member (`samples/extensions/`, tests in CI); production composition test through the real host (hook delivered, service call answered).
-- [ ] 3.3 `Lunate.Extensibility.Testing`: the conformance runner pointed at an arbitrary executable.
+- [x] 3.1 Loader/composition accepts both runtime kinds; failed remote extensions contained like in-process ones; `--no-extensions` unaffected; trust digest = manifest + extension directory contents; trust prompt text states user privileges; tests.
+- [x] 3.2 Node reference extension (manifest + script) as a fitness-suite member (`samples/extensions/`, tests in CI); production composition test through the real host (hook delivered, service call answered).
+- [x] 3.3 `Lunate.Extensibility.Testing`: the conformance runner pointed at an arbitrary executable.
 
 ## 4 Close-out
 

@@ -124,6 +124,11 @@ internal static class LayeringChecker
             ("CodeModeExtension.Tests", "CodeModeExtension"),
             ("CodeModeExtension.Tests", "Lunate.Coding"),
             ("CodeModeExtension.Tests", "Lunate.Extensibility.Testing"),
+            // The node-remote sample is a real Node child; its tests drive the conformance
+            // runner and the real host.
+            ("NodeRemoteExtension.Tests", "Lunate.Extensibility"),
+            ("NodeRemoteExtension.Tests", "Lunate.Extensibility.Abstractions"),
+            ("NodeRemoteExtension.Tests", "Lunate.Extensibility.Testing"),
             // The ui-showcase sample is Abstractions-only; its tests use the kit and reference
             // the extension project itself (the sibling pattern).
             ("UiShowcaseExtension", "Lunate.Extensibility.Abstractions"),

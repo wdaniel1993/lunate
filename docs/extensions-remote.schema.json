@@ -1,0 +1,1084 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lunate.dev/schemas/remote-extension-wire.json",
+  "title": "Lunate remote extension wire (protocol version 1)",
+  "description": "JSON-RPC 2.0 over newline-delimited UTF-8 JSON on stdio. Stdout is protocol-only; a non-JSON line or a line over 16 MB is a protocol error. Interceptor hooks are requests, observer hooks are notifications, service-call is a request, and $/cancelRequest carries { id }.",
+  "type": "object",
+  "properties": {
+    "initialize.request": {
+      "$ref": "#/$defs/InitializeRequest"
+    },
+    "initialize.result": {
+      "$ref": "#/$defs/InitializeResult"
+    },
+    "hook.request": {
+      "$ref": "#/$defs/HookCallEnvelope"
+    },
+    "hook.results": {
+      "type": "object",
+      "properties": {
+        "ProjectTrust": {
+          "$ref": "#/$defs/ProjectTrustResult"
+        },
+        "InputReceived": {
+          "$ref": "#/$defs/InputReceivedResult"
+        },
+        "RunStarting": {
+          "$ref": "#/$defs/RunStartingResult"
+        },
+        "ContextBuilding": {
+          "$ref": "#/$defs/ContextBuildingResult"
+        },
+        "MessageCompleted": {
+          "$ref": "#/$defs/MessageCompletedResult"
+        },
+        "ToolCalling": {
+          "$ref": "#/$defs/ToolCallingResult"
+        },
+        "ToolResultReady": {
+          "$ref": "#/$defs/ToolResultReadyResult"
+        },
+        "TurnEnded": {
+          "$ref": "#/$defs/TurnEndedResult"
+        },
+        "Compacting": {
+          "$ref": "#/$defs/CompactingResult"
+        }
+      }
+    },
+    "service-call": {
+      "$ref": "#/$defs/ServiceCallEnvelope"
+    },
+    "cancel": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "the request id being cancelled (string or number)",
+          "type": [
+            "string",
+            "number"
+          ]
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  "$defs": {
+    "ProjectTrustPayload": {
+      "type": "object",
+      "properties": {
+        "extensionId": {
+          "type": "string"
+        },
+        "extensionDirectory": {
+          "type": "string"
+        },
+        "repositoryIdentity": {
+          "type": "string"
+        },
+        "worktreePath": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "extensionId",
+        "extensionDirectory",
+        "repositoryIdentity",
+        "worktreePath"
+      ]
+    },
+    "SessionStartedPayload": {
+      "type": "object",
+      "properties": {
+        "workingDirectory": {
+          "type": "string"
+        },
+        "repositoryIdentity": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "workingDirectory",
+        "repositoryIdentity"
+      ]
+    },
+    "SessionEndingPayload": {
+      "type": "object",
+      "properties": {
+        "workingDirectory": {
+          "type": "string"
+        },
+        "repositoryIdentity": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "workingDirectory",
+        "repositoryIdentity"
+      ]
+    },
+    "InputReceivedPayload": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "text"
+      ]
+    },
+    "RunStartingPayload": {
+      "type": "object",
+      "properties": {
+        "runId": {
+          "type": "string"
+        },
+        "sections": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "text": {
+                "type": "string"
+              },
+              "source": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "name",
+              "text"
+            ]
+          }
+        },
+        "tools": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "parentRunId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "runId",
+        "sections",
+        "tools"
+      ]
+    },
+    "ContextBuildingPayload": {
+      "type": "object",
+      "properties": {
+        "runId": {
+          "type": "string"
+        },
+        "messages": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "role": {
+                "type": "string"
+              },
+              "text": {
+                "type": "string"
+              },
+              "source": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "role",
+              "text"
+            ]
+          }
+        },
+        "parentRunId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "runId",
+        "messages"
+      ]
+    },
+    "ProviderStreamEventPayload": {
+      "type": "object",
+      "properties": {
+        "runId": {
+          "type": "string"
+        },
+        "modelId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "text": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "finishReason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "parentRunId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "runId"
+      ]
+    },
+    "MessageCompletedPayload": {
+      "type": "object",
+      "properties": {
+        "runId": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        },
+        "parentRunId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "runId",
+        "role",
+        "text"
+      ]
+    },
+    "ToolCallingPayload": {
+      "type": "object",
+      "properties": {
+        "runId": {
+          "type": "string"
+        },
+        "callId": {
+          "type": "string"
+        },
+        "toolName": {
+          "type": "string"
+        },
+        "arguments": {
+          "description": "any JSON value"
+        },
+        "annotations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "parentRunId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "runId",
+        "callId",
+        "toolName",
+        "arguments",
+        "annotations"
+      ]
+    },
+    "ToolResultReadyPayload": {
+      "type": "object",
+      "properties": {
+        "runId": {
+          "type": "string"
+        },
+        "callId": {
+          "type": "string"
+        },
+        "toolName": {
+          "type": "string"
+        },
+        "arguments": {
+          "description": "any JSON value"
+        },
+        "output": {
+          "type": "string"
+        },
+        "isError": {
+          "type": "boolean"
+        },
+        "parentRunId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "runId",
+        "callId",
+        "toolName",
+        "arguments",
+        "output",
+        "isError"
+      ]
+    },
+    "TurnEndedPayload": {
+      "type": "object",
+      "properties": {
+        "runId": {
+          "type": "string"
+        },
+        "parentRunId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "runId"
+      ]
+    },
+    "RunSettledPayload": {
+      "type": "object",
+      "properties": {
+        "runId": {
+          "type": "string"
+        },
+        "parentRunId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "runId"
+      ]
+    },
+    "CompactingPayload": {
+      "type": "object",
+      "properties": {
+        "runId": {
+          "type": "string"
+        },
+        "messages": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "role": {
+                "type": "string"
+              },
+              "text": {
+                "type": "string"
+              },
+              "source": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "role",
+              "text"
+            ]
+          }
+        },
+        "parentRunId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "runId",
+        "messages"
+      ]
+    },
+    "ModelChangedPayload": {
+      "type": "object",
+      "properties": {
+        "runId": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "runId",
+        "model"
+      ]
+    },
+    "ToolsChangedPayload": {
+      "type": "object",
+      "properties": {
+        "runId": {
+          "type": "string"
+        },
+        "tools": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "runId",
+        "tools"
+      ]
+    },
+    "FileChangedPayload": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "relativePath": {
+          "type": "string"
+        },
+        "workspaceId": {
+          "type": "string"
+        },
+        "runId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "kind": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "relativePath",
+        "workspaceId",
+        "kind",
+        "source"
+      ]
+    },
+    "ProjectTrustResult": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "outcome": {
+              "const": "allow",
+              "description": "the result variant discriminator"
+            }
+          },
+          "required": [
+            "outcome"
+          ],
+          "title": "Allow"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "reason": {
+              "type": "string"
+            },
+            "outcome": {
+              "const": "deny",
+              "description": "the result variant discriminator"
+            }
+          },
+          "required": [
+            "reason",
+            "outcome"
+          ],
+          "title": "Deny"
+        }
+      ]
+    },
+    "InputReceivedResult": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "outcome": {
+              "const": "passThrough",
+              "description": "the result variant discriminator"
+            }
+          },
+          "required": [
+            "outcome"
+          ],
+          "title": "PassThrough"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string"
+            },
+            "outcome": {
+              "const": "transform",
+              "description": "the result variant discriminator"
+            }
+          },
+          "required": [
+            "text",
+            "outcome"
+          ],
+          "title": "Transform"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "outcome": {
+              "const": "consume",
+              "description": "the result variant discriminator"
+            }
+          },
+          "required": [
+            "outcome"
+          ],
+          "title": "Consume"
+        }
+      ]
+    },
+    "RunStartingResult": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "outcome": {
+              "const": "none",
+              "description": "the result variant discriminator"
+            }
+          },
+          "required": [
+            "outcome"
+          ],
+          "title": "None"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "sectionEdits": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "text": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "source": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "name"
+                ]
+              }
+            },
+            "activeTools": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "type": "string"
+              }
+            },
+            "outcome": {
+              "const": "apply",
+              "description": "the result variant discriminator"
+            }
+          },
+          "required": [
+            "sectionEdits",
+            "outcome"
+          ],
+          "title": "Apply"
+        }
+      ]
+    },
+    "ContextBuildingResult": {
+      "type": "object",
+      "properties": {
+        "addedMessages": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "role": {
+                "type": "string"
+              },
+              "text": {
+                "type": "string"
+              },
+              "source": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "role",
+              "text"
+            ]
+          }
+        }
+      },
+      "required": [
+        "addedMessages"
+      ]
+    },
+    "MessageCompletedResult": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "outcome": {
+              "const": "keep",
+              "description": "the result variant discriminator"
+            }
+          },
+          "required": [
+            "outcome"
+          ],
+          "title": "Keep"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string"
+            },
+            "outcome": {
+              "const": "replace",
+              "description": "the result variant discriminator"
+            }
+          },
+          "required": [
+            "text",
+            "outcome"
+          ],
+          "title": "Replace"
+        }
+      ]
+    },
+    "ToolCallingResult": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "arguments": {
+              "description": "any JSON value"
+            },
+            "outcome": {
+              "const": "proceed",
+              "description": "the result variant discriminator"
+            }
+          },
+          "required": [
+            "outcome"
+          ],
+          "title": "Proceed"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "reason": {
+              "type": "string"
+            },
+            "outcome": {
+              "const": "block",
+              "description": "the result variant discriminator"
+            }
+          },
+          "required": [
+            "reason",
+            "outcome"
+          ],
+          "title": "Block"
+        }
+      ]
+    },
+    "ToolResultReadyResult": {
+      "type": "object",
+      "properties": {
+        "output": {
+          "type": "string"
+        },
+        "data": {
+          "description": "any JSON value"
+        },
+        "structuredContent": {
+          "description": "any JSON value"
+        }
+      },
+      "required": [
+        "output"
+      ]
+    },
+    "TurnEndedResult": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "outcome": {
+              "const": "none",
+              "description": "the result variant discriminator"
+            }
+          },
+          "required": [
+            "outcome"
+          ],
+          "title": "None"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "entries": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string"
+                  },
+                  "payload": {
+                    "description": "any JSON value"
+                  },
+                  "extensionId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "type",
+                  "payload"
+                ]
+              }
+            },
+            "requestContinuation": {
+              "type": "boolean"
+            },
+            "outcome": {
+              "const": "turnEnded",
+              "description": "the result variant discriminator"
+            }
+          },
+          "required": [
+            "entries",
+            "requestContinuation",
+            "outcome"
+          ],
+          "title": "TurnEnded"
+        }
+      ]
+    },
+    "CompactingResult": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "outcome": {
+              "const": "useDefault",
+              "description": "the result variant discriminator"
+            }
+          },
+          "required": [
+            "outcome"
+          ],
+          "title": "UseDefault"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "outcome": {
+              "const": "provide",
+              "description": "the result variant discriminator"
+            }
+          },
+          "required": [
+            "summary",
+            "outcome"
+          ],
+          "title": "Provide"
+        }
+      ]
+    },
+    "HookCallEnvelope": {
+      "type": "object",
+      "properties": {
+        "call": {
+          "type": "object",
+          "properties": {
+            "runId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "parentRunId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "workspace": {
+              "type": "object",
+              "properties": {
+                "worktreeRoot": {
+                  "type": "string"
+                },
+                "repoRoot": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "gitCommonDir": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "worktreeRoot"
+              ]
+            }
+          },
+          "required": [
+            "workspace"
+          ]
+        },
+        "payload": {
+          "description": "any JSON value"
+        }
+      },
+      "required": [
+        "call",
+        "payload"
+      ]
+    },
+    "RemoteCallContext": {
+      "type": "object",
+      "properties": {
+        "runId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "parentRunId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "workspace": {
+          "type": "object",
+          "properties": {
+            "worktreeRoot": {
+              "type": "string"
+            },
+            "repoRoot": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "gitCommonDir": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "worktreeRoot"
+          ]
+        }
+      },
+      "required": [
+        "workspace"
+      ]
+    },
+    "ServiceCallEnvelope": {
+      "type": "object",
+      "properties": {
+        "service": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "arguments": {
+          "description": "any JSON value"
+        }
+      },
+      "required": [
+        "service",
+        "method"
+      ]
+    },
+    "WorkspaceInfo": {
+      "type": "object",
+      "properties": {
+        "worktreeRoot": {
+          "type": "string"
+        },
+        "repoRoot": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "gitCommonDir": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "worktreeRoot"
+      ]
+    },
+    "InitializeRequest": {
+      "type": "object",
+      "properties": {
+        "protocolVersion": {
+          "type": "integer"
+        },
+        "capabilities": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "manifest": {
+          "description": "any JSON value"
+        },
+        "workspace": {
+          "type": "object",
+          "properties": {
+            "worktreeRoot": {
+              "type": "string"
+            },
+            "repoRoot": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "gitCommonDir": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "worktreeRoot"
+          ]
+        },
+        "hooks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "services": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "protocolVersion",
+        "capabilities",
+        "manifest",
+        "workspace",
+        "hooks",
+        "services"
+      ]
+    },
+    "InitializeResult": {
+      "type": "object",
+      "properties": {
+        "protocolVersion": {
+          "type": "integer"
+        },
+        "hooks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "services": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "protocolVersion",
+        "hooks",
+        "services"
+      ]
+    }
+  }
+}

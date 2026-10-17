@@ -1,0 +1,11 @@
+{
+    "id": "node-remote",
+    "version": "0.1.0",
+    "apiVersion": "^1.0.0",
+    "runtime": {
+        "command": "node",
+        "args": ["index.js"]
+    },
+    "hooks": ["tool-calling"],
+    "services": ["echo"]
+}

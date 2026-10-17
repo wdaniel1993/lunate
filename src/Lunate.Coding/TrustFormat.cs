@@ -37,8 +37,8 @@ internal static class TrustFormat
     /// <summary>The interactive extension question; a re-prompt says the files changed.</summary>
     internal static string ExtensionQuestion(ExtensionDescriptor descriptor, bool filesChanged) =>
         filesChanged
-            ? $"Load project extension '{descriptor.Id}' {descriptor.Version} from {descriptor.Directory} — its files changed since this repository trusted it. Load the new version"
-            : $"Load project extension '{descriptor.Id}' {descriptor.Version} from {descriptor.Directory}";
+            ? $"Load project extension '{descriptor.Id}' {descriptor.Version} from {descriptor.Directory} — its files changed since this repository trusted it; it runs with your user privileges. Load the new version"
+            : $"Load project extension '{descriptor.Id}' {descriptor.Version} from {descriptor.Directory} — it runs with your user privileges";
 
     internal static string McpQuestionTitle(string configPath, int serverCount) =>
         FormattableString.Invariant(
