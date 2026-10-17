@@ -341,6 +341,20 @@ internal sealed class ExtensionSession : IAsyncDisposable
         );
 
     /// <summary>
+    /// The per-hook timing snapshot of one extension — the view's data: empty when the extension
+    /// dispatched nothing.
+    /// </summary>
+    internal IReadOnlyList<HookTimings> HookTimings(string extensionId) =>
+        _loader.Hooks.Snapshot(extensionId);
+
+    /// <summary>
+    /// The most recent start + handshake duration of one loaded remote extension; null when it is
+    /// not remote or never started.
+    /// </summary>
+    internal TimeSpan? RemoteStartDuration(string extensionId) =>
+        _loader.RemoteStartDuration(extensionId);
+
+    /// <summary>
     /// Starts the loaded remote extensions whose manifest declares the <c>background</c> startup
     /// mode; the interactive session calls this only after the UI is ready.
     /// </summary>

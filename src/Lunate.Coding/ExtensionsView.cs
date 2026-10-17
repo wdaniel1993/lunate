@@ -9,12 +9,15 @@ namespace Lunate.Coding;
 /// The <c>/extensions</c> view's formatting (design D2/D5): one segment per discovered extension
 /// ordered failed → trust-denied → loaded, then by id — problems first. Loaded segments carry the
 /// registered contribution counts (a field differing from the manifest's declared list reads
-/// <c>(N declared)</c>) and the load time, marked <c>(slow)</c> above the threshold; trust-denied
-/// and failed segments carry the manifest's declared counts, and a failed message is truncated to
-/// its first sentence with a <c> — see the log</c> pointer. The interactive command wraps the
-/// segments in the notice prefix; the CLI prints one line per segment and the same data as JSON.
-/// Everything formats culture-invariantly; the view never prints settings values, secrets or
-/// environment values.
+/// <c>(N declared)</c>) and the load time, marked <c>(slow)</c> above the threshold, plus — when
+/// something crossed the hook slow threshold — the slowest such hook as
+/// <c>hook &lt;Hook&gt; max &lt;ms&gt; ms, &lt;slow&gt;/&lt;calls&gt; slow</c> and, for a remote
+/// extension, its most recent start as <c>start &lt;ms&gt; ms</c>; trust-denied and failed
+/// segments carry the manifest's declared counts, and a failed message is truncated to its first
+/// sentence with a <c> — see the log</c> pointer. The interactive command wraps the segments in
+/// the notice prefix; the CLI prints one line per segment and the same data as JSON. Everything
+/// formats culture-invariantly; the view never prints settings values, secrets or environment
+/// values.
 /// </summary>
 internal static class ExtensionsView
 {
@@ -36,13 +39,18 @@ internal static class ExtensionsView
     /// <summary>
     /// The ordered segments, one per descriptor; <paramref name="registeredCounts"/> supplies the
     /// registered counts per extension id, and <paramref name="cliMeasured"/> labels the load time
-    /// <c>(CLI-measured)</c> (this run's measurement, not a session's).
+    /// <c>(CLI-measured)</c> (this run's measurement, not a session's). The optional
+    /// <paramref name="hookTimings"/> and <paramref name="remoteStart"/> supply the session's
+    /// per-hook aggregates and a remote extension's most recent start (the register-only CLI path
+    /// passes neither).
     /// </summary>
     internal static IReadOnlyList<string> Segments(
         IReadOnlyList<ExtensionDescriptor> descriptors,
         IReadOnlyList<ExtensionLoadResult> results,
         Func<string, ExtensionCounts> registeredCounts,
-        bool cliMeasured = false
+        bool cliMeasured = false,
+        Func<string, IReadOnlyList<HookTimings>>? hookTimings = null,
+        Func<string, TimeSpan?>? remoteStart = null
     )
     {
         ArgumentNullException.ThrowIfNull(registeredCounts);
@@ -50,20 +58,32 @@ internal static class ExtensionsView
         [
             .. Ordered(descriptors, results)
                 .Select(entry =>
-                    Segment(entry.Descriptor, entry.Result, registeredCounts, cliMeasured)
+                    Segment(
+                        entry.Descriptor,
+                        entry.Result,
+                        registeredCounts,
+                        cliMeasured,
+                        hookTimings,
+                        remoteStart
+                    )
                 ),
         ];
     }
 
     /// <summary>
     /// The <c>--json</c> contract: the same data, in the same order, as an array of
-    /// <c>{id, version, scope, state, loadMs?, slow?, tools, commands, hooks, services}</c>
-    /// objects (load time and slow marker only on loaded extensions).
+    /// <c>{id, version, scope, state, loadMs?, slow?, tools, commands, hooks, services,
+    /// hookTimings?, startMs?}</c> objects (load time and slow marker only on loaded extensions;
+    /// <c>hookTimings</c> — one <c>{hook, calls, totalMs, lastMs, maxMs, slowCount, completed,
+    /// timedOut, cancelled}</c> per timed hook — only on loaded extensions that dispatched, and
+    /// <c>startMs</c> only when a remote extension's most recent start is known).
     /// </summary>
     internal static string Json(
         IReadOnlyList<ExtensionDescriptor> descriptors,
         IReadOnlyList<ExtensionLoadResult> results,
-        Func<string, ExtensionCounts> registeredCounts
+        Func<string, ExtensionCounts> registeredCounts,
+        Func<string, IReadOnlyList<HookTimings>>? hookTimings = null,
+        Func<string, TimeSpan?>? remoteStart = null
     )
     {
         ArgumentNullException.ThrowIfNull(registeredCounts);
@@ -89,6 +109,35 @@ internal static class ExtensionsView
                 {
                     node["slow"] = true;
                 }
+
+                if (hookTimings?.Invoke(descriptor.Id) is { Count: > 0 } timed)
+                {
+                    var timings = new JsonArray();
+                    foreach (HookTimings entry in timed)
+                    {
+                        timings.Add(
+                            new JsonObject
+                            {
+                                ["hook"] = entry.Hook,
+                                ["calls"] = entry.Calls,
+                                ["totalMs"] = Milliseconds(entry.TotalMs),
+                                ["lastMs"] = Milliseconds(entry.LastMs),
+                                ["maxMs"] = Milliseconds(entry.MaxMs),
+                                ["slowCount"] = entry.SlowCount,
+                                ["completed"] = entry.Completed,
+                                ["timedOut"] = entry.TimedOut,
+                                ["cancelled"] = entry.Cancelled,
+                            }
+                        );
+                    }
+
+                    node["hookTimings"] = timings;
+                }
+            }
+
+            if (remoteStart?.Invoke(descriptor.Id) is { } start)
+            {
+                node["startMs"] = Milliseconds(start);
             }
 
             ExtensionCounts counts =
@@ -140,7 +189,9 @@ internal static class ExtensionsView
         ExtensionDescriptor descriptor,
         ExtensionLoadResult result,
         Func<string, ExtensionCounts> registeredCounts,
-        bool cliMeasured
+        bool cliMeasured,
+        Func<string, IReadOnlyList<HookTimings>>? hookTimings,
+        Func<string, TimeSpan?>? remoteStart
     )
     {
         string head = FormattableString.Invariant(
@@ -152,11 +203,38 @@ internal static class ExtensionsView
                 + FormattableString.Invariant(
                     $" loaded in {Milliseconds(result.Elapsed)} ms{LoadMarkers(result.Elapsed, cliMeasured)}"
                 )
-                + RegisteredCounts(descriptor, registeredCounts(descriptor.Id)),
+                + RegisteredCounts(descriptor, registeredCounts(descriptor.Id))
+                + SlowestHook(hookTimings?.Invoke(descriptor.Id))
+                + StartMarker(remoteStart?.Invoke(descriptor.Id)),
             ExtensionLoadState.TrustDenied => head + " trust-denied" + DeclaredCounts(descriptor),
             _ => head + " failed: " + FailedMessage(result.Message) + DeclaredCounts(descriptor),
         };
     }
+
+    /// <summary>
+    /// The slowest hook that crossed the slow threshold, as
+    /// <c>, hook &lt;Hook&gt; max &lt;ms&gt; ms, &lt;slowCount&gt;/&lt;calls&gt; slow</c>; empty
+    /// when no hook crossed, so a quiet extension stays one line.
+    /// </summary>
+    private static string SlowestHook(IReadOnlyList<HookTimings>? timings)
+    {
+        HookTimings? slowest = timings
+            ?.Where(entry => entry.SlowCount > 0)
+            .OrderByDescending(entry => entry.MaxMs)
+            .ThenBy(entry => entry.Hook, StringComparer.Ordinal)
+            .FirstOrDefault();
+        return slowest is null
+            ? string.Empty
+            : FormattableString.Invariant(
+                $", hook {slowest.Hook} max {Milliseconds(slowest.MaxMs)} ms, {slowest.SlowCount}/{slowest.Calls} slow"
+            );
+    }
+
+    /// <summary>A remote extension's most recent start as <c>, start &lt;ms&gt; ms</c>; empty when none.</summary>
+    private static string StartMarker(TimeSpan? start) =>
+        start is { } duration
+            ? FormattableString.Invariant($", start {Milliseconds(duration)} ms")
+            : string.Empty;
 
     /// <summary>The registered counts; a field differing from the manifest's list reads <c>(N declared)</c>.</summary>
     private static string RegisteredCounts(
@@ -211,8 +289,14 @@ internal static class ExtensionsView
     /// A whole-millisecond representation, rounded half away from zero and shared by the text and
     /// JSON renderings (design D2).
     /// </summary>
-    private static long Milliseconds(TimeSpan elapsed) =>
-        (long)Math.Round(elapsed.TotalMilliseconds, MidpointRounding.AwayFromZero);
+    private static long Milliseconds(TimeSpan elapsed) => Milliseconds(elapsed.TotalMilliseconds);
+
+    /// <summary>
+    /// A whole-millisecond representation of an already-millisecond value (the hook timing
+    /// aggregates and start durations), rounded half away from zero.
+    /// </summary>
+    private static long Milliseconds(double milliseconds) =>
+        (long)Math.Round(milliseconds, MidpointRounding.AwayFromZero);
 
     /// <summary>
     /// The failure line: the message's first sentence (up to and including the first

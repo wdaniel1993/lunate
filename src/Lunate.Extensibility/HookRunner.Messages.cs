@@ -19,6 +19,8 @@ public sealed partial class HookRunner
         {
             var handler = (IInputReceivedHandler)registration.Handler;
             HandlerOutcome<InputReceivedResult> outcome = await CallAsync(
+                    "InputReceived",
+                    registration,
                     token => handler.HandleAsync(payload with { Text = text }, token),
                     _options.HandlerTimeout,
                     cancellationToken
@@ -59,6 +61,8 @@ public sealed partial class HookRunner
         {
             var handler = (IMessageCompletedHandler)registration.Handler;
             HandlerOutcome<MessageCompletedResult> outcome = await CallAsync(
+                    "MessageCompleted",
+                    registration,
                     token => handler.HandleAsync(payload with { Text = text }, token),
                     _options.HandlerTimeout,
                     cancellationToken
@@ -102,6 +106,8 @@ public sealed partial class HookRunner
         {
             var handler = (IToolResultReadyHandler)registration.Handler;
             HandlerOutcome<ToolResultReadyResult> outcome = await CallAsync(
+                    "ToolResultReady",
+                    registration,
                     token => handler.HandleAsync(payload with { Output = output }, token),
                     _options.HandlerTimeout,
                     cancellationToken

@@ -22,6 +22,8 @@ public sealed partial class HookRunner
             count++;
             var handler = (IProjectTrustHandler)registration.Handler;
             HandlerOutcome<ProjectTrustResult> outcome = await CallAsync(
+                    "ProjectTrust",
+                    registration,
                     token => handler.HandleAsync(payload, token),
                     _options.HandlerTimeout,
                     cancellationToken
@@ -61,6 +63,8 @@ public sealed partial class HookRunner
         {
             var handler = (IToolCallingHandler)registration.Handler;
             HandlerOutcome<ToolCallingResult> outcome = await CallAsync(
+                    "ToolCalling",
+                    registration,
                     token => handler.HandleAsync(payload with { Arguments = arguments }, token),
                     _options.HandlerTimeout,
                     cancellationToken
@@ -102,6 +106,8 @@ public sealed partial class HookRunner
         {
             var handler = (ITurnEndedHandler)registration.Handler;
             HandlerOutcome<TurnEndedResult> outcome = await CallAsync(
+                    "TurnEnded",
+                    registration,
                     token => handler.HandleAsync(payload, token),
                     _options.HandlerTimeout,
                     cancellationToken
@@ -160,6 +166,8 @@ public sealed partial class HookRunner
         {
             var handler = (ICompactingHandler)registration.Handler;
             HandlerOutcome<CompactingResult> outcome = await CallAsync(
+                    "Compacting",
+                    registration,
                     token => handler.HandleAsync(payload, token),
                     _options.HandlerTimeout,
                     cancellationToken

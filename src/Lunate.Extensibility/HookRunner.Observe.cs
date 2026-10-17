@@ -91,6 +91,8 @@ public sealed partial class HookRunner
         {
             var handler = (THandler)registration.Handler;
             HandlerOutcome<bool> outcome = await CallVoidAsync(
+                    hook,
+                    registration,
                     token => call(handler, token),
                     timeout,
                     ct

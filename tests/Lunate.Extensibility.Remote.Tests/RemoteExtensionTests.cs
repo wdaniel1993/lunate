@@ -78,6 +78,47 @@ public sealed class RemoteExtensionTests
     }
 
     [Fact]
+    public async Task A_cold_start_and_handshake_are_excluded_from_the_first_hook_time()
+    {
+        Harness harness = Harness.Create(hooks: ["tool-calling"]);
+        harness.Child.Handshake = request =>
+        {
+            Thread.Sleep(150);
+            return new InitializeResult(request.ProtocolVersion, request.Hooks, request.Services);
+        };
+        var runner = new Lunate.Extensibility.HookRunner(
+            new Lunate.Extensibility.HookRunnerOptions
+            {
+                SlowHookThreshold = TimeSpan.FromMilliseconds(50),
+            },
+            harness.Context.Log
+        );
+        var handler = (IToolCallingHandler)Assert.Single(harness.Context.Handlers);
+        runner.Register(harness.Context.Id, handler);
+
+        await runner.RunToolCallingAsync(new ToolCallingPayload("r1", "c1", "read", EmptyArgs), Ct);
+
+        TimeSpan? start = harness.Extension.LastStartDuration;
+        Assert.NotNull(start);
+        Assert.True(
+            start!.Value.TotalMilliseconds >= 100,
+            $"the start duration read {start.Value.TotalMilliseconds} ms"
+        );
+        Lunate.Extensibility.HookTimings timings = Assert.Single(
+            runner.Snapshot(harness.Context.Id)
+        );
+        Assert.Equal(1, timings.Calls);
+        Assert.Equal(0, timings.SlowCount);
+        Assert.True(timings.MaxMs < 50, $"the hook time read {timings.MaxMs} ms");
+        Assert.DoesNotContain(
+            harness.Context.Log.Warnings,
+            warning => warning.Contains("slow-hook threshold", StringComparison.Ordinal)
+        );
+        // The preparation is consumed by the dispatch: a second read reports nothing.
+        Assert.Equal(TimeSpan.Zero, ((IPreparationTimeReporter)handler).ConsumePreparationTime());
+    }
+
+    [Fact]
     public async Task The_handshake_carries_version_capabilities_echo_workspace_and_surface()
     {
         Harness harness = Harness.Create(hooks: ["tool-calling"]);
@@ -306,6 +347,9 @@ public sealed class RemoteExtensionTests
         await Assert.ThrowsAsync<RemoteExtensionException>(() =>
             call.WaitAsync(TimeSpan.FromSeconds(15), Ct)
         );
+        // The notice is posted by the supervisor's continuation, which races the in-flight
+        // failure this test just observed: wait for the recorded state, not the proxy event.
+        await WaitAsync(() => harness.Notices.Count == 1, "the crash notice");
         Assert.Single(harness.Notices);
         await WaitAsync(() => harness.Child.StartCount == 2, "the one automatic restart");
         await WaitAsync(

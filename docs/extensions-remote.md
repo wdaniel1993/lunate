@@ -100,6 +100,11 @@ Observer hooks (`SessionStarted`, `SessionEnding`, `ProviderStreamEvent`, `RunSe
 `ModelChanged`, `ToolsChanged`, `FileChanged`) are notifications — no answer is awaited.
 `ProviderStreamEvent` is only forwarded when explicitly declared.
 
+A hook's recorded time follows its call shape: an interceptor's includes the child-process round
+trip; an observer's is the host-side send time, with no round trip implied. The lazy start and
+`initialize` handshake are excluded from the first dispatch's hook time and reported separately as
+the extension's start duration (`start <ms> ms` in `/extensions`, `startMs` in `--json`).
+
 A timeout or failure follows the hook catalogue's failure policy: observers drop with a warning,
 interceptors keep the original (no opinion) with a warning, except the gating hooks —
 `ToolCalling` blocks fail-safe and `ProjectTrust` denies.

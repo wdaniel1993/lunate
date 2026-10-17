@@ -118,6 +118,15 @@ public sealed partial class HookRunner
                 "ContextBudgetPerExtension must be zero or greater."
             );
         }
+
+        if (options.SlowHookThreshold <= TimeSpan.Zero)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(options),
+                options.SlowHookThreshold,
+                "SlowHookThreshold must be positive."
+            );
+        }
     }
 
     private void LogFailure(string hook, Registration registration, TimeSpan timeout, string? error)

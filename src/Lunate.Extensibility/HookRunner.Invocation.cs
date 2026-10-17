@@ -1,3 +1,5 @@
+using System.Diagnostics;
+
 namespace Lunate.Extensibility;
 
 public sealed partial class HookRunner
@@ -24,11 +26,15 @@ public sealed partial class HookRunner
     }
 
     private async ValueTask<HandlerOutcome<bool>> CallVoidAsync(
+        string hook,
+        Registration registration,
         Func<CancellationToken, ValueTask> call,
         TimeSpan timeout,
         CancellationToken ct
     ) =>
         await CallAsync(
+                hook,
+                registration,
                 async token =>
                 {
                     await call(token).ConfigureAwait(false);
@@ -40,6 +46,29 @@ public sealed partial class HookRunner
             .ConfigureAwait(false);
 
     private async ValueTask<HandlerOutcome<T>> CallAsync<T>(
+        string hook,
+        Registration registration,
+        Func<CancellationToken, ValueTask<T>> call,
+        TimeSpan timeout,
+        CancellationToken ct
+    )
+    {
+        long start = Stopwatch.GetTimestamp();
+        try
+        {
+            HandlerOutcome<T> outcome = await CallCoreAsync(call, timeout, ct)
+                .ConfigureAwait(false);
+            RecordTiming(hook, registration, Stopwatch.GetElapsedTime(start), outcome.Status);
+            return outcome;
+        }
+        catch (OperationCanceledException)
+        {
+            RecordCancelled(hook, registration, Stopwatch.GetElapsedTime(start));
+            throw;
+        }
+    }
+
+    private async ValueTask<HandlerOutcome<T>> CallCoreAsync<T>(
         Func<CancellationToken, ValueTask<T>> call,
         TimeSpan timeout,
         CancellationToken ct

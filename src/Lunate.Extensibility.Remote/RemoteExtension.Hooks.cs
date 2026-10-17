@@ -260,13 +260,16 @@ public sealed partial class RemoteExtension
 
     /// <summary>The shared base for the declaration-driven hook proxies.</summary>
     internal abstract class RemoteHookHandler(RemoteExtension extension, HookContract contract)
-        : IHookHandler
+        : IHookHandler,
+            IPreparationTimeReporter
     {
         protected RemoteExtension Extension { get; } = extension;
 
         protected HookContract Contract { get; } = contract;
 
         public int Priority => 0;
+
+        public TimeSpan ConsumePreparationTime() => Extension.ConsumePreparationTime();
 
         protected ValueTask ObserveAsync(object payload, CancellationToken cancellationToken) =>
             Extension.ObserveAsync(Contract, payload, cancellationToken);

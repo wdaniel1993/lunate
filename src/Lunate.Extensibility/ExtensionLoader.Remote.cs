@@ -126,6 +126,18 @@ public sealed partial class ExtensionLoader
             : null;
     }
 
+    /// <summary>
+    /// The most recent start + handshake duration of one loaded remote extension, or null when it
+    /// is not remote or never started.
+    /// </summary>
+    public TimeSpan? RemoteStartDuration(string id)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(id);
+        return _remoteExtensions.TryGetValue(id, out RemoteExtension? extension)
+            ? extension.LastStartDuration
+            : null;
+    }
+
     private async ValueTask ShutdownRemotesAsync(CancellationToken cancellationToken)
     {
         foreach (RemoteExtension extension in _remoteExtensions.Values)

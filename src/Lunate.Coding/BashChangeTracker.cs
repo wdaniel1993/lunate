@@ -13,9 +13,15 @@ namespace Lunate.Coding;
 /// call and would miss clean-to-clean changes. Failures (no git, no repository, timeout, parse
 /// trouble) yield no events; the content-stamp scan stays the backstop.
 /// </summary>
-internal sealed class BashChangeTracker(IExtensionLog? log = null)
+internal sealed class BashChangeTracker(IExtensionLog? log = null, TimeSpan? scanTimeout = null)
 {
-    private static readonly TimeSpan ScanTimeout = TimeSpan.FromSeconds(2);
+    private static readonly TimeSpan DefaultScanTimeout = TimeSpan.FromSeconds(2);
+
+    /// <summary>
+    /// The window for each git invocation: the default keeps a bash call's epilogue short on a
+    /// warm machine; tests widen it, because a cold git start on a loaded CI runner can exceed it.
+    /// </summary>
+    private readonly TimeSpan _scanTimeout = scanTimeout ?? DefaultScanTimeout;
     private static readonly ProcessRunner Runner = new();
 
     /// <summary>The snapshot cap: past this, the least recently used run's snapshot is evicted.</summary>
@@ -382,7 +388,7 @@ internal sealed class BashChangeTracker(IExtensionLog? log = null)
         return entries;
     }
 
-    private static async Task<ProcessRunResult?> RunGitAsync(
+    private async Task<ProcessRunResult?> RunGitAsync(
         string root,
         IReadOnlyList<string> arguments,
         CancellationToken cancellationToken
@@ -396,7 +402,7 @@ internal sealed class BashChangeTracker(IExtensionLog? log = null)
                         "git",
                         ["--no-optional-locks", .. arguments],
                         root,
-                        Timeout: ScanTimeout,
+                        Timeout: _scanTimeout,
                         OutputCapBytes: 1_000_000
                     ),
                     cancellationToken
