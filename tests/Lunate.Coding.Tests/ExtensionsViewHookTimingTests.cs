@@ -19,9 +19,9 @@ public sealed class ExtensionsViewHookTimingTests
         IReadOnlyList<ExtensionLoadResult> results = [Loaded("ext-one", milliseconds: 12)];
         IReadOnlyList<HookTimings> timings =
         [
-            new HookTimings("ContextBuilding", 5, 1900, 40, 1900, 0, 0, 0),
-            new HookTimings("ToolCalling", 120, 6000, 812.4, 812.4, 3, 1, 2),
-            new HookTimings("RunStarting", 8, 900, 900, 900, 1, 0, 0),
+            new HookTimings("ContextBuilding", 5, 1900, 40, 1900, 0, 5, 0, 0),
+            new HookTimings("ToolCalling", 120, 6000, 812.4, 812.4, 3, 117, 1, 2),
+            new HookTimings("RunStarting", 8, 900, 900, 900, 1, 8, 0, 0),
         ];
 
         string segment = Assert.Single(
@@ -46,7 +46,7 @@ public sealed class ExtensionsViewHookTimingTests
         IReadOnlyList<ExtensionLoadResult> results = [Loaded("ext-one")];
         IReadOnlyList<HookTimings> timings =
         [
-            new HookTimings("ToolCalling", 120, 600, 40, 60, 0, 0, 24),
+            new HookTimings("ToolCalling", 120, 600, 40, 60, 0, 96, 0, 24),
         ];
 
         string segment = Assert.Single(
@@ -82,7 +82,7 @@ public sealed class ExtensionsViewHookTimingTests
         IReadOnlyList<ExtensionLoadResult> results = [Loaded("ext-remote", milliseconds: 4)];
         IReadOnlyList<HookTimings> timings =
         [
-            new HookTimings("ToolCalling", 120, 6000.5, 40.4, 812.6, 3, 1, 2),
+            new HookTimings("ToolCalling", 120, 6000.5, 40.4, 812.6, 3, 117, 1, 2),
         ];
 
         using JsonDocument document = JsonDocument.Parse(
@@ -104,6 +104,7 @@ public sealed class ExtensionsViewHookTimingTests
         Assert.Equal(40, entry.GetProperty("lastMs").GetInt64());
         Assert.Equal(813, entry.GetProperty("maxMs").GetInt64());
         Assert.Equal(3, entry.GetProperty("slowCount").GetInt64());
+        Assert.Equal(117, entry.GetProperty("completed").GetInt64());
         Assert.Equal(1, entry.GetProperty("timedOut").GetInt64());
         Assert.Equal(2, entry.GetProperty("cancelled").GetInt64());
     }
@@ -134,7 +135,7 @@ public sealed class ExtensionsViewHookTimingTests
             IReadOnlyList<ExtensionLoadResult> results = [Loaded("ext-remote")];
             IReadOnlyList<HookTimings> timings =
             [
-                new HookTimings("ToolCalling", 120, 6000.5, 40.4, 812.4, 3, 0, 0),
+                new HookTimings("ToolCalling", 120, 6000.5, 40.4, 812.4, 3, 120, 0, 0),
             ];
 
             string segment = Assert.Single(

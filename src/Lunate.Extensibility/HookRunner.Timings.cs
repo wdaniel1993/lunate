@@ -54,7 +54,11 @@ public sealed partial class HookRunner
         Interlocked.Add(ref entry.TotalTicks, elapsed.Ticks);
         Interlocked.Exchange(ref entry.LastTicks, elapsed.Ticks);
         DurationHistogram.Record(milliseconds, entry.Tags);
-        if (status is HandlerStatus.TimedOut)
+        if (status is HandlerStatus.Completed)
+        {
+            Interlocked.Increment(ref entry.Completed);
+        }
+        else if (status is HandlerStatus.TimedOut)
         {
             Interlocked.Increment(ref entry.TimedOut);
         }
@@ -165,6 +169,8 @@ public sealed partial class HookRunner
 
         public long SlowCount;
 
+        public long Completed;
+
         public long TimedOut;
 
         public long Cancelled;
@@ -179,6 +185,7 @@ public sealed partial class HookRunner
                 ToMilliseconds(Interlocked.Read(ref LastTicks)),
                 ToMilliseconds(Interlocked.Read(ref MaxTicks)),
                 Interlocked.Read(ref SlowCount),
+                Interlocked.Read(ref Completed),
                 Interlocked.Read(ref TimedOut),
                 Interlocked.Read(ref Cancelled)
             );

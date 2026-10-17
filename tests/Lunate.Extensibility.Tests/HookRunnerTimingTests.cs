@@ -109,6 +109,7 @@ public sealed class HookRunnerTimingTests
         Assert.Equal(1, timings.Calls);
         Assert.Equal(1, timings.Cancelled);
         Assert.Equal(0, timings.TimedOut);
+        Assert.Equal(0, timings.Completed);
         Assert.Equal(0, timings.MaxMs);
         Assert.Equal(0, timings.SlowCount);
         Assert.True(timings.TotalMs >= 40, $"total was {timings.TotalMs}");
@@ -152,6 +153,7 @@ public sealed class HookRunnerTimingTests
         Assert.Equal(1, timings.Calls);
         Assert.Equal(1, timings.TimedOut);
         Assert.Equal(0, timings.Cancelled);
+        Assert.Equal(0, timings.Completed);
         Assert.Equal(1, timings.SlowCount);
         Assert.True(timings.MaxMs >= 50, $"max was {timings.MaxMs}");
         Assert.Single(events);
@@ -177,6 +179,28 @@ public sealed class HookRunnerTimingTests
 
         HookTimings timings = Assert.Single(runner.Snapshot("ext-parent"));
         Assert.Equal(2, timings.Calls);
+        Assert.Equal(2, timings.Completed);
+    }
+
+    [Fact]
+    public async Task A_failed_handler_counts_in_calls_alone()
+    {
+        var runner = new HookRunner(Options());
+        runner.Register(
+            "ext-boom",
+            new TestToolCallingHandler((_, _) => throw new InvalidOperationException("boom"))
+        );
+
+        var result = Assert.IsType<ToolCallingResult.Block>(
+            await runner.RunToolCallingAsync(Payload("path"), Ct)
+        );
+        Assert.Contains("ext-boom", result.Reason, StringComparison.Ordinal);
+
+        HookTimings timings = Assert.Single(runner.Snapshot("ext-boom"));
+        Assert.Equal(1, timings.Calls);
+        Assert.Equal(0, timings.Completed);
+        Assert.Equal(0, timings.TimedOut);
+        Assert.Equal(0, timings.Cancelled);
     }
 
     [Fact]

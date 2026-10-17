@@ -124,6 +124,7 @@ internal static class ExtensionsView
                                 ["lastMs"] = Milliseconds(entry.LastMs),
                                 ["maxMs"] = Milliseconds(entry.MaxMs),
                                 ["slowCount"] = entry.SlowCount,
+                                ["completed"] = entry.Completed,
                                 ["timedOut"] = entry.TimedOut,
                                 ["cancelled"] = entry.Cancelled,
                             }
