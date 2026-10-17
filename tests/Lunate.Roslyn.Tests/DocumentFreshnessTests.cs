@@ -77,4 +77,26 @@ public sealed class DocumentFreshnessTests
 
         Assert.Equal([second], freshness.TakeChanged([first, second]));
     }
+
+    [Fact]
+    public void A_verified_stamp_is_recorded_exactly_and_a_later_write_re_flags()
+    {
+        using var temp = new TempDirectory();
+        var file = temp.File("a.cs");
+        System.IO.File.WriteAllText(file, "class A { }");
+        var freshness = new DocumentFreshness();
+        freshness.Track(file);
+
+        // A stamp verified against the content: recording it directly keeps the file clean...
+        var verified = DocumentFreshness.StampOf(file);
+        Assert.NotNull(verified);
+        freshness.Track(file, verified.Value);
+        Assert.Empty(freshness.TakeChanged([file]));
+
+        // ...but a write landing after the verification stamps differently from the recorded
+        // baseline, so it re-flags instead of being swallowed by a fresh stat.
+        System.IO.File.WriteAllText(file, "class A { int x; }");
+        freshness.Track(file, verified.Value);
+        Assert.Single(freshness.TakeChanged([file]));
+    }
 }

@@ -34,3 +34,4 @@ Measured: the write-back changes the mtime of every refreshed file. A read-time 
 - `A_refresh_does_not_reflag_the_file_on_the_next_check` — the reproduction: check → check with no edits → `no files changed`.
 - `An_edit_racing_the_refresh_re_flags_via_the_stamp_scan_and_is_not_clobbered` — the racing write (bash-style, no bus) survives on disk, re-flags on the next check, converges after.
 - `An_edit_racing_the_refresh_re_flags_via_the_bus_and_is_not_clobbered` — same via `NotifyFileChanged`.
+- `DocumentFreshnessTests.A_verified_stamp_is_recorded_exactly_and_a_later_write_re_flags` — pins the verified-stamp contract: a recorded verified stamp keeps the file clean, and a write after the verification re-flags (never swallowed by a fresh stat).
