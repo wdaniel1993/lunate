@@ -116,6 +116,157 @@ public sealed class RoslynBackendSyncTests
     }
 
     [Fact]
+    public async Task A_refresh_does_not_reflag_the_file_on_the_next_check()
+    {
+        using var fixture = Fixtures.CopySolution("console-app");
+        Fixtures.Restore(fixture, "ConsoleApp.slnx");
+        using var backend = new RoslynBackend(fixture.Root);
+        await backend.LoadAsync(CancellationToken.None);
+
+        var calculator = Path.Combine(fixture.Root, "src", "ConsoleApp", "Calculator.cs");
+        File.WriteAllText(
+            calculator,
+            File.ReadAllText(calculator) + "\nclass Broken { int X => Missing5; }\n"
+        );
+
+        var first = await backend.GetDiagnosticsAsync(
+            DiagnosticsScope.ChangedFiles,
+            CancellationToken.None
+        );
+        Assert.Contains(
+            "1 file(s) changed since the last check",
+            first.ScopeDescription,
+            StringComparison.Ordinal
+        );
+
+        // The refresh must not re-flag the refreshed file: no further edits happened, so the next
+        // check has nothing to report.
+        var second = await backend.GetDiagnosticsAsync(
+            DiagnosticsScope.ChangedFiles,
+            CancellationToken.None
+        );
+        Assert.Equal("no files changed since the last check", second.ScopeDescription);
+    }
+
+    [Fact]
+    public async Task An_edit_racing_the_refresh_re_flags_via_the_stamp_scan_and_is_not_clobbered()
+    {
+        using var fixture = Fixtures.CopySolution("console-app");
+        Fixtures.Restore(fixture, "ConsoleApp.slnx");
+        var calculator = Path.Combine(fixture.Root, "src", "ConsoleApp", "Calculator.cs");
+        var target = PathIdentity.Canonicalize(calculator);
+        var injected = false;
+        using var backend = new RoslynBackend(
+            fixture.Root,
+            MsBuildBootstrap.EnsureInitialized,
+            path =>
+            {
+                if (path == target && !injected)
+                {
+                    injected = true;
+                    File.AppendAllText(calculator, "\nclass Raced { int Y => Missing6; }\n");
+                }
+            }
+        );
+        await backend.LoadAsync(CancellationToken.None);
+
+        File.AppendAllText(calculator, "\nclass Broken { int X => Missing5; }\n");
+
+        var first = await backend.GetDiagnosticsAsync(
+            DiagnosticsScope.ChangedFiles,
+            CancellationToken.None
+        );
+        Assert.Contains(
+            "1 file(s) changed since the last check",
+            first.ScopeDescription,
+            StringComparison.Ordinal
+        );
+
+        // The write that raced the refresh must still be on disk: the apply must not clobber it.
+        Assert.Contains("Raced", File.ReadAllText(calculator), StringComparison.Ordinal);
+
+        // And the next check must still report the file instead of swallowing the edit.
+        var second = await backend.GetDiagnosticsAsync(
+            DiagnosticsScope.ChangedFiles,
+            CancellationToken.None
+        );
+        Assert.Contains(
+            "1 file(s) changed since the last check",
+            second.ScopeDescription,
+            StringComparison.Ordinal
+        );
+
+        // The raced content converges once refreshed: nothing left to report afterwards.
+        var third = await backend.GetDiagnosticsAsync(
+            DiagnosticsScope.ChangedFiles,
+            CancellationToken.None
+        );
+        Assert.Equal("no files changed since the last check", third.ScopeDescription);
+    }
+
+    [Fact]
+    public async Task An_edit_racing_the_refresh_re_flags_via_the_bus_and_is_not_clobbered()
+    {
+        using var fixture = Fixtures.CopySolution("console-app");
+        Fixtures.Restore(fixture, "ConsoleApp.slnx");
+        var calculator = Path.Combine(fixture.Root, "src", "ConsoleApp", "Calculator.cs");
+        var target = PathIdentity.Canonicalize(calculator);
+        var injected = false;
+        RoslynBackend backend = null!;
+        try
+        {
+            backend = new RoslynBackend(
+                fixture.Root,
+                MsBuildBootstrap.EnsureInitialized,
+                path =>
+                {
+                    if (path == target && !injected)
+                    {
+                        injected = true;
+                        File.AppendAllText(calculator, "\nclass Raced { int Y => Missing6; }\n");
+                        backend.NotifyFileChanged(calculator);
+                    }
+                }
+            );
+            await backend.LoadAsync(CancellationToken.None);
+
+            File.AppendAllText(calculator, "\nclass Broken { int X => Missing5; }\n");
+
+            var first = await backend.GetDiagnosticsAsync(
+                DiagnosticsScope.ChangedFiles,
+                CancellationToken.None
+            );
+            Assert.Contains(
+                "1 file(s) changed since the last check",
+                first.ScopeDescription,
+                StringComparison.Ordinal
+            );
+
+            Assert.Contains("Raced", File.ReadAllText(calculator), StringComparison.Ordinal);
+
+            var second = await backend.GetDiagnosticsAsync(
+                DiagnosticsScope.ChangedFiles,
+                CancellationToken.None
+            );
+            Assert.Contains(
+                "1 file(s) changed since the last check",
+                second.ScopeDescription,
+                StringComparison.Ordinal
+            );
+
+            var third = await backend.GetDiagnosticsAsync(
+                DiagnosticsScope.ChangedFiles,
+                CancellationToken.None
+            );
+            Assert.Equal("no files changed since the last check", third.ScopeDescription);
+        }
+        finally
+        {
+            backend.Dispose();
+        }
+    }
+
+    [Fact]
     public async Task A_mark_for_a_non_document_path_lingers_without_being_reported()
     {
         using var fixture = Fixtures.CopySolution("console-app");

@@ -23,6 +23,16 @@ internal sealed class DocumentFreshness
     }
 
     /// <summary>
+    /// Records a stamp that was verified against the file's content (stamped before and after the
+    /// read): the baseline becomes exactly that verified state, so a write landing after the
+    /// verification still differs from it and re-flags instead of being swallowed.
+    /// </summary>
+    public void Track(string path, FileStamp verified)
+    {
+        _stamps[path] = verified;
+    }
+
+    /// <summary>
     /// The subset of <paramref name="paths"/> that changed (content stamp or deletion) since the
     /// previous scan; updates the snapshot to the current state.
     /// </summary>
@@ -66,5 +76,8 @@ internal sealed class DocumentFreshness
         }
     }
 
-    private readonly record struct FileStamp(DateTime LastWriteUtc, long Length);
+    /// <summary>The current stamp of <paramref name="path"/> (null when missing or unreadable).</summary>
+    public static FileStamp? StampOf(string path) => ReadStamp(path);
+
+    public readonly record struct FileStamp(DateTime LastWriteUtc, long Length);
 }

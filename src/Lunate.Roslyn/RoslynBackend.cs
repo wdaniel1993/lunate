@@ -25,6 +25,12 @@ public sealed class RoslynBackend : ICSharpBackend, IDisposable
     private readonly LruCache<WorkspaceEntry> _workspaces = new(MaxWorkspaces);
     private readonly ConcurrentDictionary<string, byte> _dirty = new(PathIdentity.Comparer);
 
+    /// <summary>
+    /// Test seam: invoked with each path the refresh just read and stamped, before the apply -
+    /// lets tests inject a deterministic write that races the refresh.
+    /// </summary>
+    private readonly Action<string>? _onRefreshRead;
+
     private string? _loadedSolution;
     private WorkspaceLoadResult? _loadedResult;
     private WorkspaceLoadResult? _lastLoad;
@@ -35,11 +41,16 @@ public sealed class RoslynBackend : ICSharpBackend, IDisposable
     public RoslynBackend(string worktreeRoot)
         : this(worktreeRoot, MsBuildBootstrap.EnsureInitialized) { }
 
-    internal RoslynBackend(string worktreeRoot, Func<BootstrapResult> bootstrap)
+    internal RoslynBackend(
+        string worktreeRoot,
+        Func<BootstrapResult> bootstrap,
+        Action<string>? onRefreshRead = null
+    )
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(worktreeRoot);
         _root = PathIdentity.Canonicalize(worktreeRoot);
         _bootstrap = bootstrap;
+        _onRefreshRead = onRefreshRead;
     }
 
     public async ValueTask<WorkspaceLoadResult> LoadAsync(CancellationToken ct)
@@ -999,7 +1010,10 @@ public sealed class RoslynBackend : ICSharpBackend, IDisposable
     /// <summary>
     /// Re-reads changed files into the solution snapshot and applies them via
     /// <c>TryApplyChanges</c>; when the apply fails the forked snapshot is still compiled, so
-    /// diagnostics see the new text either way (design fallback).
+    /// diagnostics see the new text either way (design fallback). A write that races the refresh
+    /// is neither applied nor overwritten: a path whose stamp moves across the read (or between
+    /// the read and the apply) is left for the next scan, and the freshness baseline advances
+    /// only when the disk still holds exactly the applied text.
     /// </summary>
     private Solution RefreshDocuments(
         WorkspaceEntry entry,
@@ -1008,6 +1022,9 @@ public sealed class RoslynBackend : ICSharpBackend, IDisposable
         CappedList<WorkspaceFailure> failures
     )
     {
+        // Phase 1: read each changed file, stamping both sides of the read so a write landing
+        // mid-read is detectable instead of being applied and re-baselined blindly.
+        List<RefreshRead> reads = [];
         foreach (var path in changed)
         {
             var display = PathIdentity.RelativeOrAbsolute(_root, path);
@@ -1033,12 +1050,17 @@ public sealed class RoslynBackend : ICSharpBackend, IDisposable
 
             try
             {
-                var text = SourceText.From(File.ReadAllText(path));
-                solution = solution.WithDocumentText(
-                    document.Id,
-                    text,
-                    PreservationMode.PreserveIdentity
-                );
+                var stamp = DocumentFreshness.StampOf(path);
+                var text = File.ReadAllText(path);
+                if (stamp is null || stamp != DocumentFreshness.StampOf(path))
+                {
+                    // A write raced the read; the stamp scan still sees the disk differ from its
+                    // baseline, so the path re-flags on the next check without further handling.
+                    continue;
+                }
+
+                _onRefreshRead?.Invoke(path);
+                reads.Add(new RefreshRead(path, document.Id, stamp.Value, text));
             }
             catch (Exception exception)
                 when (exception is IOException or UnauthorizedAccessException)
@@ -1047,6 +1069,29 @@ public sealed class RoslynBackend : ICSharpBackend, IDisposable
                     new WorkspaceFailure(null, $"could not re-read {display}: {exception.Message}")
                 );
             }
+        }
+
+        // Phase 2: apply only reads whose stamp still matches the disk, so the write-back cannot
+        // overwrite a write that landed after the read.
+        List<RefreshRead> applied = [];
+        foreach (var read in reads)
+        {
+            if (DocumentFreshness.StampOf(read.Path) != read.Stamp)
+            {
+                continue;
+            }
+
+            solution = solution.WithDocumentText(
+                read.DocumentId,
+                SourceText.From(read.Text),
+                PreservationMode.PreserveIdentity
+            );
+            applied.Add(read);
+        }
+
+        if (applied.Count == 0)
+        {
+            return solution;
         }
 
         try
@@ -1060,8 +1105,39 @@ public sealed class RoslynBackend : ICSharpBackend, IDisposable
             );
         }
 
+        // Phase 3: the apply can write the refreshed text back with a fresh mtime, so re-take the
+        // baseline - but only when the disk still holds exactly the applied text, stamped on both
+        // sides of that verification read. The verified stamp is recorded directly (never a fresh
+        // stat), so a write landing after the verification still differs from the baseline and
+        // re-flags on the next scan instead of being swallowed.
+        foreach (var read in applied)
+        {
+            try
+            {
+                var before = DocumentFreshness.StampOf(read.Path);
+                var disk = File.ReadAllText(read.Path);
+                var after = DocumentFreshness.StampOf(read.Path);
+                if (disk == read.Text && before is { } verified && verified == after)
+                {
+                    entry.Freshness.Track(read.Path, verified);
+                }
+            }
+            catch (Exception exception)
+                when (exception is IOException or UnauthorizedAccessException)
+            {
+                // The file moved under us again; keeping the old baseline re-flags it next check.
+            }
+        }
+
         return solution;
     }
+
+    private sealed record RefreshRead(
+        string Path,
+        DocumentId DocumentId,
+        DocumentFreshness.FileStamp Stamp,
+        string Text
+    );
 
     private static IEnumerable<Project> ProjectsForFiles(
         Solution solution,
