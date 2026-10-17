@@ -13,6 +13,7 @@ internal static class LayeringChecker
             ("Lunate.Extensibility.Remote", "Lunate.Extensibility.Abstractions"),
             ("Lunate.Extensibility.Remote.Tests", "Lunate.Extensibility.Abstractions"),
             ("Lunate.Extensibility.Remote.Tests", "Lunate.Extensibility.Remote"),
+            ("Lunate.Extensibility.Remote.Tests", "Lunate.Extensibility"),
             ("Lunate.Extensibility.Remote.Tests", "Lunate.Extensibility.Testing"),
             ("Lunate.Extensibility.Abstractions", "Lunate.Agent"),
             ("Lunate.Extensibility.Testing", "Lunate.Agent"),

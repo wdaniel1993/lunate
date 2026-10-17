@@ -9,6 +9,11 @@ public sealed class ExtensionHostOptions
 
     public IExtensionLog? Log { get; init; }
 
+    /// <summary>
+    /// The one-line user notice sink (a remote extension crash); null logs only.
+    /// </summary>
+    public Action<string>? Notify { get; init; }
+
     /// <summary>The session catalog the model registry falls back to; null disables the fallback.</summary>
     public ModelCatalog? ModelCatalog { get; init; }
 

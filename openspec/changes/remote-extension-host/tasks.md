@@ -12,9 +12,9 @@
 
 - [x] 2.1 Manifest `runtime` parsing + validation (`entryAssembly` optional; exactly one of the two; `env` / `envPassthrough`; field-named errors); `PublicAPI` updates; tests.
 - [x] 2.2 Environment scrubber: promote the code-mode sample's implementation into the contract assembly (minimal base set + passthrough + env); the sample switches to it; tests.
-- [ ] 2.3 `RemoteExtension` adapter: declaration-driven proxies (no start), lazy start on first use + `background` mode (after the UI is ready, never on the startup path), `initialize` (protocolVersion + capabilities, manifest echo, workspace; mismatch = refusal; result must match the manifest — undeclared refused, missing warned), hook bridging (subscribed-only; observers as notifications, interceptors as requests; per-class timeout mapping; gating hooks fail closed; RunId/ParentRunId/workspace on every call); tests including the reentrant case.
-- [ ] 2.4 Service bridging: consumption (`service/<name>/<method>` child → host) and registration (host → child; async-only); tests.
-- [ ] 2.5 Lifecycle: crash → in-flight calls fail immediately + one notice + at most one automatic restart + manual restart from `/extensions`; session end → shutdown, bounded grace, tree kill (Job Object on Windows, POSIX walk on Unix); tests on all three CI legs.
+- [x] 2.3 `RemoteExtension` adapter: declaration-driven proxies (no start), lazy start on first use + `background` mode (after the UI is ready, never on the startup path), `initialize` (protocolVersion + capabilities, manifest echo, workspace; mismatch = refusal; result must match the manifest — undeclared refused, missing warned), hook bridging (subscribed-only; observers as notifications, interceptors as requests; per-class timeout mapping; gating hooks fail closed; RunId/ParentRunId/workspace on every call); tests including the reentrant case.
+- [x] 2.4 Service bridging: consumption (`service/<name>/<method>` child → host) and registration (host → child; async-only); tests.
+- [x] 2.5 Lifecycle: crash → in-flight calls fail immediately + one notice + at most one automatic restart + manual restart from `/extensions`; session end → shutdown, bounded grace, tree kill (Job Object on Windows, POSIX walk on Unix); tests on all three CI legs.
 
 ## 3 Composition
 

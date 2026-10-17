@@ -51,11 +51,19 @@ public sealed partial class ExtensionLoader
                 .ConfigureAwait(false);
         }
 
-        string entryAssembly =
-            descriptor.Manifest.EntryAssembly
-            ?? throw new ExtensionLoadException(
-                $"extension '{id}': the manifest declares a runtime; remote loading is wired below."
-            );
+        if (descriptor.Manifest.Runtime is not null)
+        {
+            return await LoadRemoteAsync(
+                    descriptor,
+                    workingDirectory,
+                    repositoryIdentity,
+                    cancellationToken,
+                    startSession
+                )
+                .ConfigureAwait(false);
+        }
+
+        string entryAssembly = descriptor.Manifest.EntryAssembly!;
         string entryPath = Path.Combine(descriptor.Directory, entryAssembly);
         if (!File.Exists(entryPath))
         {
@@ -73,25 +81,7 @@ public sealed partial class ExtensionLoader
             Assembly assembly = context.LoadFromAssemblyPath(entryPath);
             IExtensionFactory factory = FindFactory(assembly, descriptor);
             IExtensionSecrets secrets = ExtensionSecretsStore.Load(_options, descriptor.Id);
-            var extensionContext = new ExtensionContext(
-                descriptor.Id,
-                ExtensionSettingsStore.Load(_options, descriptor),
-                secrets,
-                _options.Log ?? NullExtensionLog.Instance,
-                _hooks.Register,
-                _backgroundServices.Register,
-                SubscribeFileChanged,
-                FindService,
-                FindCoreService,
-                _toolResultRenderers.Register,
-                _statusWidgets.Register,
-                _mcpServers.Register,
-                _tools.Register,
-                _modelRegistry.RegisterProvider,
-                _modelRegistry.RegisterModelMiddleware,
-                _modelRegistry.RegisterVirtualModel,
-                _skillSources.Register
-            );
+            var extensionContext = CreateExtensionContext(descriptor, secrets);
             IExtension extension = factory.Create(extensionContext);
             CrossCheckManifestTools(descriptor);
             _modelRegistry.RegisterDeclared(
@@ -151,6 +141,31 @@ public sealed partial class ExtensionLoader
             throw WrapLoadFailure(descriptor, exception);
         }
     }
+
+    /// <summary>The per-extension context both runtime kinds register through.</summary>
+    private ExtensionContext CreateExtensionContext(
+        ExtensionDescriptor descriptor,
+        IExtensionSecrets secrets
+    ) =>
+        new(
+            descriptor.Id,
+            ExtensionSettingsStore.Load(_options, descriptor),
+            secrets,
+            _options.Log ?? NullExtensionLog.Instance,
+            _hooks.Register,
+            _backgroundServices.Register,
+            SubscribeFileChanged,
+            FindService,
+            FindCoreService,
+            _toolResultRenderers.Register,
+            _statusWidgets.Register,
+            _mcpServers.Register,
+            _tools.Register,
+            _modelRegistry.RegisterProvider,
+            _modelRegistry.RegisterModelMiddleware,
+            _modelRegistry.RegisterVirtualModel,
+            _skillSources.Register
+        );
 
     private IBackgroundService? FindService(string name) =>
         _backgroundServices.Services.TryGet(name, out IBackgroundService? service) ? service : null;

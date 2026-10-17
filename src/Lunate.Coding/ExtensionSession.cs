@@ -3,6 +3,7 @@ using Lunate.Agent;
 using Lunate.Ai;
 using Lunate.Extensibility;
 using Lunate.Extensibility.Abstractions;
+using Lunate.Extensibility.Remote;
 
 namespace Lunate.Coding;
 
@@ -21,6 +22,9 @@ internal sealed record ExtensionSeams
 
     /// <summary>Where extension diagnostics are reported; null writes to the mode's stderr.</summary>
     public IExtensionLog? Log { get; init; }
+
+    /// <summary>The one-line user notice sink (a remote extension crash); null logs only.</summary>
+    public Action<string>? Notice { get; init; }
 
     /// <summary>The session catalog the model registry falls back to; null disables the fallback.</summary>
     public ModelCatalog? ModelCatalog { get; init; }
@@ -120,6 +124,7 @@ internal sealed class ExtensionSession : IAsyncDisposable
             {
                 StorePath = seams.StorePath ?? ExtensionHostOptions.Default.StorePath,
                 Log = log,
+                Notify = seams.Notice,
                 ModelCatalog = seams.ModelCatalog,
                 ClientFactory = seams.ClientFactory,
             }
@@ -335,6 +340,33 @@ internal sealed class ExtensionSession : IAsyncDisposable
             _loader.Hooks.Count(extensionId),
             _loader.Services.Count(extensionId)
         );
+
+    /// <summary>
+    /// Starts the loaded remote extensions whose manifest declares the <c>background</c> startup
+    /// mode; the interactive session calls this only after the UI is ready.
+    /// </summary>
+    internal ValueTask StartBackgroundAsync(CancellationToken cancellationToken = default) =>
+        _loader.StartBackgroundExtensionsAsync(cancellationToken);
+
+    /// <summary>
+    /// Restarts one loaded remote extension (the <c>/extensions restart &lt;id&gt;</c> path);
+    /// false when the id is not a loaded remote extension.
+    /// </summary>
+    internal ValueTask<bool> RestartExtensionAsync(
+        string id,
+        CancellationToken cancellationToken = default
+    ) => _loader.RestartRemoteAsync(id, cancellationToken);
+
+    /// <summary>The failed remote extensions and their status, in descriptor order.</summary>
+    internal IReadOnlyList<(string Id, RemoteExtensionStatus Status)> FailedRemoteStatuses() =>
+        [
+            .. _loader
+                .Descriptors.Select(descriptor =>
+                    (descriptor.Id, Status: _loader.RemoteStatus(descriptor.Id))
+                )
+                .Where(entry => entry.Status is { IsFailed: true })
+                .Select(entry => (entry.Id, entry.Status!)),
+        ];
 
     /// <summary>
     /// Releases one loaded extension and its collectible context (the register-only

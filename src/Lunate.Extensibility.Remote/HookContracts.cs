@@ -28,6 +28,36 @@ public sealed record HookContract(
 {
     /// <summary>The JSON-RPC method this hook is forwarded under.</summary>
     public string Method => "hook/" + Name;
+
+    /// <summary>
+    /// The manifest declaration name (kebab-case, e.g. <c>tool-calling</c>) — the names
+    /// <c>extension.json</c> uses in its <c>hooks</c> array.
+    /// </summary>
+    public string Declaration
+    {
+        get
+        {
+            var builder = new System.Text.StringBuilder();
+            foreach (char character in Name)
+            {
+                if (char.IsUpper(character))
+                {
+                    if (builder.Length > 0)
+                    {
+                        builder.Append('-');
+                    }
+
+                    builder.Append(char.ToLowerInvariant(character));
+                }
+                else
+                {
+                    builder.Append(character);
+                }
+            }
+
+            return builder.ToString();
+        }
+    }
 }
 
 /// <summary>
@@ -109,6 +139,12 @@ public static class HookContracts
     public static HookContract? Find(string name) =>
         All.FirstOrDefault(contract =>
             string.Equals(contract.Name, name, StringComparison.Ordinal)
+        );
+
+    /// <summary>The catalogue row for a manifest declaration name (kebab-case), or null.</summary>
+    public static HookContract? FindByDeclaration(string declaration) =>
+        All.FirstOrDefault(contract =>
+            string.Equals(contract.Declaration, declaration, StringComparison.Ordinal)
         );
 
     private static HookContract Observer<TPayload>(string name)
