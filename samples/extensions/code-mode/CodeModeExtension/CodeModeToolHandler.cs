@@ -18,21 +18,6 @@ internal sealed record CodeModeRunDetails(string Output, string Stderr);
 internal sealed class CodeModeToolHandler(CodeModeSettings settings, IProcessRunner? runner)
     : IExtensionToolHandler
 {
-    /// <summary>
-    /// The child's whole environment: an explicit allow-list, never Lunate's own. Provider keys
-    /// and other host variables cannot leak into model-written code.
-    /// </summary>
-    private static readonly string[] EnvironmentAllowList =
-    [
-        "PATH",
-        "HOME",
-        "TMPDIR",
-        "TEMP",
-        "TMP",
-        "SystemRoot",
-        "USERPROFILE",
-    ];
-
     public async Task<ToolResult> InvokeAsync(
         JsonElement arguments,
         ToolContext context,
@@ -108,7 +93,7 @@ internal sealed class CodeModeToolHandler(CodeModeSettings settings, IProcessRun
                         settings.Runtime,
                         [scriptPath],
                         context.WorkingDirectory,
-                        Environment: ScrubbedEnvironment(),
+                        Environment: EnvironmentScrubber.Build(),
                         Timeout: TimeSpan.FromSeconds(timeoutSeconds)
                     )
                     {
@@ -224,20 +209,6 @@ internal sealed class CodeModeToolHandler(CodeModeSettings settings, IProcessRun
 
         timeoutSeconds = settings.ClampTimeout(requested);
         return true;
-    }
-
-    private static IReadOnlyDictionary<string, string> ScrubbedEnvironment()
-    {
-        var environment = new Dictionary<string, string>(StringComparer.Ordinal);
-        foreach (string name in EnvironmentAllowList)
-        {
-            if (Environment.GetEnvironmentVariable(name) is { Length: > 0 } value)
-            {
-                environment[name] = value;
-            }
-        }
-
-        return environment;
     }
 
     private static string StderrSuffix(string stderr) =>

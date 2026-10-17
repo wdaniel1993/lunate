@@ -11,7 +11,7 @@ namespace Lunate.Coding;
 /// tree kill and an optional stdin line pump. Absorbs the former <c>PosixProcessTree</c> and the
 /// bash tool's kill/cap/drain logic.
 /// </summary>
-internal sealed class ProcessRunner : IProcessRunner
+internal sealed partial class ProcessRunner : IProcessRunner
 {
     /// <summary>The default per-stream output cap when the request does not set one.</summary>
     internal const int DefaultOutputCapBytes = 1_048_576;

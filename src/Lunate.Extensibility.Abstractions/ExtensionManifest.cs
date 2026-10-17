@@ -10,7 +10,17 @@ public sealed partial record ExtensionManifest
 
     public required string ApiVersion { get; init; }
 
-    public required string EntryAssembly { get; init; }
+    /// <summary>
+    /// The in-process entry assembly file name; null for a remote extension (exactly one of
+    /// <see cref="EntryAssembly"/> and <see cref="Runtime"/> is set).
+    /// </summary>
+    public string? EntryAssembly { get; init; }
+
+    /// <summary>
+    /// The out-of-process runtime; null for an in-process extension (exactly one of
+    /// <see cref="EntryAssembly"/> and <see cref="Runtime"/> is set).
+    /// </summary>
+    public ExtensionRuntime? Runtime { get; init; }
 
     public IReadOnlyList<string> Tools { get; init; } = [];
 
@@ -73,15 +83,14 @@ public sealed partial record ExtensionManifest
                 );
             }
 
-            string entryAssembly = RequiredString(root, fileName, "entryAssembly");
-            if (
-                Path.IsPathRooted(entryAssembly)
-                || entryAssembly.Contains('/')
-                || entryAssembly.Contains('\\')
-            )
+            string? entryAssembly = OptionalName(root, fileName, "entryAssembly");
+            ExtensionRuntime? runtime = ExtensionRuntime.Parse(root, fileName);
+            if ((entryAssembly is null) == (runtime is null))
             {
                 throw new InvalidDataException(
-                    $"{fileName}: field 'entryAssembly' must be a file name inside the extension directory."
+                    entryAssembly is null
+                        ? $"{fileName}: the manifest declares neither 'entryAssembly' nor 'runtime'; declare exactly one runtime kind."
+                        : $"{fileName}: the manifest declares both 'entryAssembly' and 'runtime'; declare exactly one runtime kind."
                 );
             }
 
@@ -91,6 +100,7 @@ public sealed partial record ExtensionManifest
                 Version = RequiredString(root, fileName, "version"),
                 ApiVersion = apiVersion,
                 EntryAssembly = entryAssembly,
+                Runtime = runtime,
                 Tools = DeclarationArray(root, fileName, "tools"),
                 Commands = DeclarationArray(root, fileName, "commands"),
                 Hooks = DeclarationArray(root, fileName, "hooks"),
@@ -105,6 +115,31 @@ public sealed partial record ExtensionManifest
     private static bool IsValidId(string id) =>
         id.Length > 0
         && id.All(character => character is >= 'a' and <= 'z' or >= '0' and <= '9' or '-');
+
+    private static string? OptionalName(JsonElement root, string fileName, string name)
+    {
+        if (!root.TryGetProperty(name, out JsonElement element))
+        {
+            return null;
+        }
+
+        if (element.ValueKind != JsonValueKind.String || string.IsNullOrEmpty(element.GetString()))
+        {
+            throw new InvalidDataException(
+                $"{fileName}: field '{name}' must be a non-empty string."
+            );
+        }
+
+        string value = element.GetString()!;
+        if (Path.IsPathRooted(value) || value.Contains('/') || value.Contains('\\'))
+        {
+            throw new InvalidDataException(
+                $"{fileName}: field '{name}' must be a file name inside the extension directory."
+            );
+        }
+
+        return value;
+    }
 
     private static string RequiredString(JsonElement root, string fileName, string name)
     {

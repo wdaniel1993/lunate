@@ -3,7 +3,7 @@ using System.Text.Json;
 namespace Lunate.Extensibility.Abstractions;
 
 /// <summary>The outcome of the project-trust hook.</summary>
-public abstract record ProjectTrustResult
+public abstract record ProjectTrustResult : IHookResult
 {
     private ProjectTrustResult() { }
 
@@ -15,7 +15,7 @@ public abstract record ProjectTrustResult
 }
 
 /// <summary>The outcome of the raw-input hook.</summary>
-public abstract record InputReceivedResult
+public abstract record InputReceivedResult : IHookResult
 {
     private InputReceivedResult() { }
 
@@ -30,7 +30,7 @@ public abstract record InputReceivedResult
 }
 
 /// <summary>The outcome of the run-starting hook.</summary>
-public abstract record RunStartingResult
+public abstract record RunStartingResult : IHookResult
 {
     private RunStartingResult() { }
 
@@ -46,13 +46,14 @@ public abstract record RunStartingResult
 
 /// <summary>The request-local context an extension adds; merged with a per-extension budget.</summary>
 public sealed record ContextBuildingResult(IReadOnlyList<ContextMessage> AddedMessages)
+    : IHookResult
 {
     /// <summary>No additions.</summary>
     public static ContextBuildingResult None { get; } = new([]);
 }
 
 /// <summary>The outcome of the message-completed hook.</summary>
-public abstract record MessageCompletedResult
+public abstract record MessageCompletedResult : IHookResult
 {
     private MessageCompletedResult() { }
 
@@ -64,7 +65,7 @@ public abstract record MessageCompletedResult
 }
 
 /// <summary>The outcome of the tool-calling hook.</summary>
-public abstract record ToolCallingResult
+public abstract record ToolCallingResult : IHookResult
 {
     private ToolCallingResult() { }
 
@@ -80,10 +81,10 @@ public sealed record ToolResultReadyResult(
     string Output,
     JsonElement? Data,
     JsonElement? StructuredContent = null
-);
+) : IHookResult;
 
 /// <summary>The outcome of the turn-ended hook.</summary>
-public abstract record TurnEndedResult
+public abstract record TurnEndedResult : IHookResult
 {
     private TurnEndedResult() { }
 
@@ -96,7 +97,7 @@ public abstract record TurnEndedResult
 }
 
 /// <summary>The outcome of the compacting hook.</summary>
-public abstract record CompactingResult
+public abstract record CompactingResult : IHookResult
 {
     private CompactingResult() { }
 

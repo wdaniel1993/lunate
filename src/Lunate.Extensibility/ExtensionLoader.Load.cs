@@ -51,7 +51,11 @@ public sealed partial class ExtensionLoader
                 .ConfigureAwait(false);
         }
 
-        string entryAssembly = descriptor.Manifest.EntryAssembly;
+        string entryAssembly =
+            descriptor.Manifest.EntryAssembly
+            ?? throw new ExtensionLoadException(
+                $"extension '{id}': the manifest declares a runtime; remote loading is wired below."
+            );
         string entryPath = Path.Combine(descriptor.Directory, entryAssembly);
         if (!File.Exists(entryPath))
         {

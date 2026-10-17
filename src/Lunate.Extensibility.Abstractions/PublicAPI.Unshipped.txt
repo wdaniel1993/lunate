@@ -8,7 +8,6 @@ Lunate.Extensibility.Abstractions.ExtensionManifest.Capabilities.get -> System.C
 Lunate.Extensibility.Abstractions.ExtensionManifest.Capabilities.init -> void
 Lunate.Extensibility.Abstractions.ExtensionManifest.Commands.get -> System.Collections.Generic.IReadOnlyList<string!>!
 Lunate.Extensibility.Abstractions.ExtensionManifest.Commands.init -> void
-Lunate.Extensibility.Abstractions.ExtensionManifest.EntryAssembly.get -> string!
 Lunate.Extensibility.Abstractions.ExtensionManifest.EntryAssembly.init -> void
 Lunate.Extensibility.Abstractions.ExtensionManifest.Equals(Lunate.Extensibility.Abstractions.ExtensionManifest? other) -> bool
 Lunate.Extensibility.Abstractions.ExtensionManifest.ExtensionManifest() -> void
@@ -1010,3 +1009,68 @@ Lunate.Extensibility.Abstractions.IExtensionContext.RegisterSkillSource(Lunate.E
 Lunate.Extensibility.Abstractions.ISkillSource
 Lunate.Extensibility.Abstractions.ISkillSource.Id.get -> string!
 Lunate.Extensibility.Abstractions.ISkillSource.SkillDirectories.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Lunate.Extensibility.Abstractions.IProcessRunner.StartSessionAsync(Lunate.Extensibility.Abstractions.ProcessSessionRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Lunate.Extensibility.Abstractions.IProcessSession!>!
+Lunate.Extensibility.Abstractions.IProcessSession
+Lunate.Extensibility.Abstractions.IProcessSession.ExitCode.get -> int?
+Lunate.Extensibility.Abstractions.IProcessSession.HasExited.get -> bool
+Lunate.Extensibility.Abstractions.IProcessSession.KillAsync() -> System.Threading.Tasks.ValueTask
+Lunate.Extensibility.Abstractions.IProcessSession.ReadErrorLineAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<string?>
+Lunate.Extensibility.Abstractions.IProcessSession.ReadOutputLineAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<string?>
+Lunate.Extensibility.Abstractions.IProcessSession.WaitForExitAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<int>!
+Lunate.Extensibility.Abstractions.IProcessSession.WriteInputLineAsync(string! line, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask
+Lunate.Extensibility.Abstractions.ProcessSessionRequest
+Lunate.Extensibility.Abstractions.ProcessSessionRequest.<Clone>$() -> Lunate.Extensibility.Abstractions.ProcessSessionRequest!
+Lunate.Extensibility.Abstractions.ProcessSessionRequest.Arguments.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Lunate.Extensibility.Abstractions.ProcessSessionRequest.Arguments.init -> void
+Lunate.Extensibility.Abstractions.ProcessSessionRequest.Deconstruct(out string! FileName, out System.Collections.Generic.IReadOnlyList<string!>! Arguments, out string! WorkingDirectory, out System.Collections.Generic.IReadOnlyDictionary<string!, string!>! Environment, out int? MaxLineBytes) -> void
+Lunate.Extensibility.Abstractions.ProcessSessionRequest.Environment.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>!
+Lunate.Extensibility.Abstractions.ProcessSessionRequest.Environment.init -> void
+Lunate.Extensibility.Abstractions.ProcessSessionRequest.Equals(Lunate.Extensibility.Abstractions.ProcessSessionRequest? other) -> bool
+Lunate.Extensibility.Abstractions.ProcessSessionRequest.FileName.get -> string!
+Lunate.Extensibility.Abstractions.ProcessSessionRequest.FileName.init -> void
+Lunate.Extensibility.Abstractions.ProcessSessionRequest.MaxLineBytes.get -> int?
+Lunate.Extensibility.Abstractions.ProcessSessionRequest.MaxLineBytes.init -> void
+Lunate.Extensibility.Abstractions.ProcessSessionRequest.ProcessSessionRequest(string! FileName, System.Collections.Generic.IReadOnlyList<string!>! Arguments, string! WorkingDirectory, System.Collections.Generic.IReadOnlyDictionary<string!, string!>! Environment, int? MaxLineBytes = null) -> void
+Lunate.Extensibility.Abstractions.ProcessSessionRequest.WorkingDirectory.get -> string!
+Lunate.Extensibility.Abstractions.ProcessSessionRequest.WorkingDirectory.init -> void
+override Lunate.Extensibility.Abstractions.ProcessSessionRequest.Equals(object? obj) -> bool
+override Lunate.Extensibility.Abstractions.ProcessSessionRequest.GetHashCode() -> int
+override Lunate.Extensibility.Abstractions.ProcessSessionRequest.ToString() -> string!
+static Lunate.Extensibility.Abstractions.ProcessSessionRequest.operator !=(Lunate.Extensibility.Abstractions.ProcessSessionRequest? left, Lunate.Extensibility.Abstractions.ProcessSessionRequest? right) -> bool
+static Lunate.Extensibility.Abstractions.ProcessSessionRequest.operator ==(Lunate.Extensibility.Abstractions.ProcessSessionRequest? left, Lunate.Extensibility.Abstractions.ProcessSessionRequest? right) -> bool
+Lunate.Extensibility.Abstractions.IHookPayload
+Lunate.Extensibility.Abstractions.IHookResult
+Lunate.Extensibility.Abstractions.IJsonService
+Lunate.Extensibility.Abstractions.IJsonService.InvokeAsync(string! method, System.Text.Json.JsonElement? arguments, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<System.Text.Json.JsonElement?>
+const Lunate.Extensibility.Abstractions.ExtensionRuntime.BackgroundStartup = "background" -> string!
+Lunate.Extensibility.Abstractions.ExtensionManifest.EntryAssembly.get -> string?
+Lunate.Extensibility.Abstractions.ExtensionManifest.Runtime.get -> Lunate.Extensibility.Abstractions.ExtensionRuntime?
+Lunate.Extensibility.Abstractions.ExtensionManifest.Runtime.init -> void
+Lunate.Extensibility.Abstractions.ExtensionRuntime
+Lunate.Extensibility.Abstractions.ExtensionRuntime.<Clone>$() -> Lunate.Extensibility.Abstractions.ExtensionRuntime!
+Lunate.Extensibility.Abstractions.ExtensionRuntime.Arguments.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Lunate.Extensibility.Abstractions.ExtensionRuntime.Arguments.init -> void
+Lunate.Extensibility.Abstractions.ExtensionRuntime.CallTimeout.get -> System.TimeSpan?
+Lunate.Extensibility.Abstractions.ExtensionRuntime.CallTimeout.init -> void
+Lunate.Extensibility.Abstractions.ExtensionRuntime.Command.get -> string!
+Lunate.Extensibility.Abstractions.ExtensionRuntime.Command.init -> void
+Lunate.Extensibility.Abstractions.ExtensionRuntime.Deconstruct(out string! Command, out System.Collections.Generic.IReadOnlyList<string!>! Arguments, out string? WorkingDirectory, out System.Collections.Generic.IReadOnlyDictionary<string!, string!>? Environment, out System.Collections.Generic.IReadOnlyList<string!>? EnvironmentPassthrough, out System.TimeSpan? CallTimeout, out string? Startup) -> void
+Lunate.Extensibility.Abstractions.ExtensionRuntime.Environment.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>?
+Lunate.Extensibility.Abstractions.ExtensionRuntime.Environment.init -> void
+Lunate.Extensibility.Abstractions.ExtensionRuntime.EnvironmentPassthrough.get -> System.Collections.Generic.IReadOnlyList<string!>?
+Lunate.Extensibility.Abstractions.ExtensionRuntime.EnvironmentPassthrough.init -> void
+Lunate.Extensibility.Abstractions.ExtensionRuntime.Equals(Lunate.Extensibility.Abstractions.ExtensionRuntime? other) -> bool
+Lunate.Extensibility.Abstractions.ExtensionRuntime.ExtensionRuntime(string! Command, System.Collections.Generic.IReadOnlyList<string!>! Arguments, string? WorkingDirectory = null, System.Collections.Generic.IReadOnlyDictionary<string!, string!>? Environment = null, System.Collections.Generic.IReadOnlyList<string!>? EnvironmentPassthrough = null, System.TimeSpan? CallTimeout = null, string? Startup = null) -> void
+Lunate.Extensibility.Abstractions.ExtensionRuntime.StartsInBackground.get -> bool
+Lunate.Extensibility.Abstractions.ExtensionRuntime.Startup.get -> string?
+Lunate.Extensibility.Abstractions.ExtensionRuntime.Startup.init -> void
+Lunate.Extensibility.Abstractions.ExtensionRuntime.WorkingDirectory.get -> string?
+Lunate.Extensibility.Abstractions.ExtensionRuntime.WorkingDirectory.init -> void
+override Lunate.Extensibility.Abstractions.ExtensionRuntime.Equals(object? obj) -> bool
+override Lunate.Extensibility.Abstractions.ExtensionRuntime.GetHashCode() -> int
+override Lunate.Extensibility.Abstractions.ExtensionRuntime.ToString() -> string!
+static Lunate.Extensibility.Abstractions.ExtensionRuntime.operator !=(Lunate.Extensibility.Abstractions.ExtensionRuntime? left, Lunate.Extensibility.Abstractions.ExtensionRuntime? right) -> bool
+static Lunate.Extensibility.Abstractions.ExtensionRuntime.operator ==(Lunate.Extensibility.Abstractions.ExtensionRuntime? left, Lunate.Extensibility.Abstractions.ExtensionRuntime? right) -> bool
+Lunate.Extensibility.Abstractions.EnvironmentScrubber
+static Lunate.Extensibility.Abstractions.EnvironmentScrubber.BaseNames.get -> System.Collections.Generic.IReadOnlyList<string!>!
+static Lunate.Extensibility.Abstractions.EnvironmentScrubber.Build(System.Func<string!, string?>? read = null, System.Collections.Generic.IReadOnlyDictionary<string!, string!>? set = null, System.Collections.Generic.IReadOnlyList<string!>? passthrough = null) -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>!

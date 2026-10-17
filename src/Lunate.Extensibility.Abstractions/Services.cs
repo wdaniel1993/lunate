@@ -25,6 +25,16 @@ public interface IProcessRunner
 {
     /// <summary>Runs the request to completion. The result carries exit code, output and flags.</summary>
     Task<ProcessRunResult> RunAsync(ProcessRunRequest request, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Starts one interactive child whose stdin, stdout and stderr stay open for line exchange
+    /// until the caller stops it; see <see cref="IProcessSession"/>. Start failures throw the
+    /// platform's start exception, like <see cref="RunAsync"/>.
+    /// </summary>
+    Task<IProcessSession> StartSessionAsync(
+        ProcessSessionRequest request,
+        CancellationToken cancellationToken
+    );
 }
 
 /// <summary>
