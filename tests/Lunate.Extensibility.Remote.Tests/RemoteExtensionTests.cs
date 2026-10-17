@@ -347,6 +347,9 @@ public sealed class RemoteExtensionTests
         await Assert.ThrowsAsync<RemoteExtensionException>(() =>
             call.WaitAsync(TimeSpan.FromSeconds(15), Ct)
         );
+        // The notice is posted by the supervisor's continuation, which races the in-flight
+        // failure this test just observed: wait for the recorded state, not the proxy event.
+        await WaitAsync(() => harness.Notices.Count == 1, "the crash notice");
         Assert.Single(harness.Notices);
         await WaitAsync(() => harness.Child.StartCount == 2, "the one automatic restart");
         await WaitAsync(
