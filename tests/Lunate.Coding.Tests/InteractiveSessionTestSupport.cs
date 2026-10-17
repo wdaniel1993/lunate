@@ -310,6 +310,7 @@ internal sealed class InteractiveSessionHost : IDisposable
                 SessionDirectory = Temp.File("sessions"),
                 WorkingDirectory = workingDirectory ?? Temp.Root,
                 HistoryPath = Temp.File("history"),
+                HomeDirectory = Temp.File("home"),
                 Environment = environment ?? PrintModeTestSupport.Environment(),
                 Console = Console,
                 Scheduler = Scheduler,

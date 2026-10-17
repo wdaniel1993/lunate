@@ -32,7 +32,16 @@ public sealed record SessionMessageEntry(
     /// the same bytes (content the core cannot round-trip); null serializes the live message.
     /// </summary>
     public string? RawMessageJson { get; init; }
+
+    /// <summary>
+    /// The skill invocation this user turn carries (name and base directory), so session files stay
+    /// self-describing; null for ordinary turns.
+    /// </summary>
+    public SessionSkillMetadata? Skill { get; init; }
 }
+
+/// <summary>The skill metadata recorded on an invoked skill's user turn.</summary>
+public sealed record SessionSkillMetadata(string Name, string Dir);
 
 /// <summary>A summary that replaces the listed earlier entries in future requests.</summary>
 public sealed record SessionCompactionEntry(

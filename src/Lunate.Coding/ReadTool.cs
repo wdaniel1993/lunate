@@ -5,14 +5,29 @@ using Lunate.Agent;
 
 namespace Lunate.Coding;
 
-/// <summary>Reads text files inside the workspace with numbered lines and a continuation footer.</summary>
-public sealed class ReadTool(Workspace workspace, ITextFileAccess? files = null) : ITool
+/// <summary>Reads text files inside the workspace with numbered lines and a continuation footer.
+/// A per-run skill allowance (the discovered skill directories) grants read-only access to skill
+/// files outside the workspace boundary, bundled files included (ADR-0016).</summary>
+public sealed class ReadTool : ITool
 {
     private const int DefaultLimit = 2000;
     private const int MaxLimit = 2000;
     private const int ProbeBytes = 8192;
 
-    private readonly ITextFileAccess _files = files ?? LocalTextFileAccess.Instance;
+    private readonly Workspace _workspace;
+    private readonly ITextFileAccess _files;
+    private readonly SkillReadAllowance? _allowance;
+
+    public ReadTool(Workspace workspace, ITextFileAccess? files = null)
+        : this(workspace, files, allowance: null) { }
+
+    internal ReadTool(Workspace workspace, ITextFileAccess? files, SkillReadAllowance? allowance)
+    {
+        ArgumentNullException.ThrowIfNull(workspace);
+        _workspace = workspace;
+        _files = files ?? LocalTextFileAccess.Instance;
+        _allowance = allowance;
+    }
 
     private static readonly JsonElement Schema = JsonDocument
         .Parse(
@@ -75,9 +90,12 @@ public sealed class ReadTool(Workspace workspace, ITextFileAccess? files = null)
             }
         }
 
-        if (!workspace.TryResolve(pathElement.GetString()!, out var resolved, out var error))
+        if (!_workspace.TryResolve(pathElement.GetString()!, out var resolved, out var error))
         {
-            return Task.FromResult(Error(error));
+            if (!TryResolveAllowed(pathElement.GetString()!, out resolved))
+            {
+                return Task.FromResult(Error(error));
+            }
         }
 
         if (Directory.Exists(resolved.AbsolutePath))
@@ -193,6 +211,48 @@ public sealed class ReadTool(Workspace workspace, ITextFileAccess? files = null)
     {
         value = 0;
         return element.ValueKind == JsonValueKind.Number && element.TryGetInt32(out value);
+    }
+
+    /// <summary>
+    /// Resolves a path outside the workspace against the run's skill allowance: the canonical
+    /// target must equal an allowed skill directory or lie under one.
+    /// </summary>
+    private bool TryResolveAllowed(string path, out ResolvedPath resolved)
+    {
+        resolved = null!;
+        if (_allowance is null || _allowance.Roots.Count == 0)
+        {
+            return false;
+        }
+
+        string canonical;
+        try
+        {
+            canonical = Workspace.Canonicalize(
+                Path.IsPathRooted(path) ? path : Path.Combine(_workspace.WorktreeRoot, path)
+            );
+        }
+        catch (Exception exception)
+            when (exception
+                    is IOException
+                        or UnauthorizedAccessException
+                        or ArgumentException
+                        or NotSupportedException
+            )
+        {
+            return false;
+        }
+
+        if (!_allowance.Contains(canonical))
+        {
+            return false;
+        }
+
+        resolved = new ResolvedPath(
+            canonical,
+            SkillPaths.Display(canonical, _workspace.WorktreeRoot)
+        );
+        return true;
     }
 
     private static ToolResult Result(string output) => new(output, IsError: false);

@@ -22,6 +22,12 @@ internal sealed partial class InteractiveSession
     private async Task DispatchCommandAsync(string text, CancellationToken ct)
     {
         (string name, string argument) = Commands.Parse(text);
+        if (name.StartsWith("/skill:", StringComparison.Ordinal))
+        {
+            await InvokeSkillAsync(name["/skill:".Length..], argument, ct).ConfigureAwait(false);
+            return;
+        }
+
         switch (name)
         {
             case "/quit":
@@ -38,6 +44,9 @@ internal sealed partial class InteractiveSession
                 return;
             case "/context":
                 Notify(ContextText());
+                return;
+            case "/skills":
+                Notify(SkillsText());
                 return;
             case "/mcp":
                 Notify(await McpStatusTextAsync(ct));
@@ -105,7 +114,7 @@ internal sealed partial class InteractiveSession
         string context = Lunate.Tui.StatusFooterRenderer.PlainText(usage, int.MaxValue);
         string treeTokens = Lunate.Tui.StatusFooterRenderer.FormatTokens(tree.TokensUsed);
         return FormattableString.Invariant(
-            $"context: {context}; subagents: concurrency {Limit(limits.Concurrency)}, {Limit(limits.TokenBudget)} tokens per child, {Limit(limits.TreeTokenBudget)} tokens per tree, depth 1 (fixed); tree usage: {treeTokens} tokens, {tree.LiveChildren} running"
+            $"context: {context}; subagents: concurrency {Limit(limits.Concurrency)}, {Limit(limits.TokenBudget)} tokens per child, {Limit(limits.TreeTokenBudget)} tokens per tree, depth 1 (fixed); tree usage: {treeTokens} tokens, {tree.LiveChildren} running; {SkillsContextSegment()}"
         );
     }
 
@@ -391,27 +400,74 @@ internal sealed partial class InteractiveSession
 
         _session = resumed;
         ResetAlwaysApproved();
-        _harness = BuildHarness(_model);
-        Notify("resumed " + resumed.SessionId);
-        foreach (
-            SessionChildSessionEntry link in resumed.Entries.OfType<SessionChildSessionEntry>()
-        )
+        _turnActive = true;
+        _run = ResumeCompositionAsync(resumed);
+    }
+
+    /// <summary>
+    /// The resume half that composes outside the key pump (a changed-skills trust question must
+    /// stay answerable); the conversation continues on the current model.
+    /// </summary>
+    private async Task ResumeCompositionAsync(Session resumed)
+    {
+        try
         {
-            Notify(
-                FormattableString.Invariant(
-                    $"child session: {link.ChildSessionId} (run {link.RunId})"
-                )
-            );
+            await ComposeSkillsAsync(_lifetime.Token).ConfigureAwait(false);
+            _harness = BuildHarness(_model);
+            Notify("resumed " + resumed.SessionId);
+            foreach (
+                SessionChildSessionEntry link in resumed.Entries.OfType<SessionChildSessionEntry>()
+            )
+            {
+                Notify(
+                    FormattableString.Invariant(
+                        $"child session: {link.ChildSessionId} (run {link.RunId})"
+                    )
+                );
+            }
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception exception)
+        {
+            Notify("could not resume: " + exception.Message, NoticeLevel.Error);
+        }
+        finally
+        {
+            _turnActive = false;
+            _run = null;
         }
     }
 
-    /// <summary>Starts a fresh session and rebuilds the harness against it.</summary>
+    /// <summary>
+    /// Schedules a fresh session and re-discovers skills on its own task: the reload composes off
+    /// the key pump so a trust question stays answerable.
+    /// </summary>
     private void StartNewSession()
     {
         _session = HarnessFactory.CreateSession(_sessionDirectory, _workspace);
         ResetAlwaysApproved();
-        _harness = BuildHarness(_model);
-        Notify("new session");
+        _turnActive = true;
+        _run = RestartCompositionAsync();
+    }
+
+    private async Task RestartCompositionAsync()
+    {
+        try
+        {
+            await ComposeSkillsAsync(_lifetime.Token).ConfigureAwait(false);
+            _harness = BuildHarness(_model);
+            Notify("new session");
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception exception)
+        {
+            Notify("could not start the new session: " + exception.Message, NoticeLevel.Error);
+        }
+        finally
+        {
+            _turnActive = false;
+            _run = null;
+        }
     }
 
     /// <summary>

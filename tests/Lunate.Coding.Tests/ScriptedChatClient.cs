@@ -9,6 +9,9 @@ internal sealed class ScriptedChatClient : IChatClient
 {
     private readonly Queue<ChatResponseUpdate[]> _scripts = new();
 
+    /// <summary>Every streaming request in call order (the composition assertions read it).</summary>
+    public List<IReadOnlyList<ChatMessage>> Requests { get; } = [];
+
     public ScriptedChatClient Enqueue(params ChatResponseUpdate[] updates)
     {
         _scripts.Enqueue(updates);
@@ -27,6 +30,7 @@ internal sealed class ScriptedChatClient : IChatClient
         [EnumeratorCancellation] CancellationToken cancellationToken = default
     )
     {
+        Requests.Add([.. messages]);
         ChatResponseUpdate[] updates = Dequeue();
         foreach (ChatResponseUpdate update in updates)
         {

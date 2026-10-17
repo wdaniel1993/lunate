@@ -1,0 +1,25 @@
+# 0017 (addendum) — Agent skills: discovery, index, invocation, extension sources
+
+- Status: accepted — 2026-10-16 (addendum to ADR 0017; agent-skills sign-off)
+- Date: 2026-10-16
+- Relates to: ADR 0017 (extensibility architecture), ADR 0016 (workspace boundary — read-only allowance), ADR 0003 (the loop owns tool calls), ADR 0015/0018 (session format — additive skill metadata, same schema)
+
+## Context
+
+Portable agent skills (a `SKILL.md` with name, description and instructions, per the agentskills.io convention) became a de-facto project-knowledge channel that other harnesses read. Lunate's only project knowledge channel was `AGENTS.md`: unconditional prose, everything or nothing per turn. The `agent-skills` change added the on-demand layer. The sign-off (Daniel, 2026-10-16) fixed several decisions worth recording here: the index mechanics and budget order, invocation as a user turn, trust handling, and the v1 boundary of extension-provided skill sources.
+
+## Decision
+
+1. **Discovery and index (core).** Project skills live under `.lunate/skills`, `.agents/skills` and `.claude/skills` from the worktree root upward to the repository root (never above it); the user scope is `~/.lunate/skills` then `~/.agents/skills`. A skill is a directory with a `SKILL.md` whose frontmatter name equals the directory name (`[a-z0-9-]+`). The session-start index is an appended prompt section named `skills` — not a `system-prompt.md` token — built once per session (never rebuilt mid-run; rebuilt on a wholesale reload), recorded as a session prompt-section entry for deterministic replay. Order is project, then user, then extension, each group by name; descriptions truncate at 200 characters; the index is capped at 1,000 estimated tokens (four characters per token, rounded up) and overflow appends one names-only footer the model can act on. The core-prompt under-1,000-token rule keeps applying to the base composed prompt, with the index excluded and asserted separately.
+2. **One new read path, no new tool.** The index names the read tool as the body loader; no `skill` tool and no new permission surface exist. The body reaches the model only through the existing read tool with its approval and size rules. The read tool gains a per-run read-only allowance for every discovered skill directory (bundled files included), computed from the run's own discovery — the ADR-0016 boundary gains exactly this read-only door for user and extension roots, never a write path.
+3. **Invocation is a user turn.** `/skill:<name> [args]` submits the body wrapped in `<skill name="…" dir="…">` through the normal prompt submission path (busy behaves like typed input), recorded as a user session entry carrying the skill metadata (name, dir). A re-invocation is simply a newer turn: no prompt-section stacking, no replace semantics, cache-stable system prefix. `$ARGUMENTS` substitutes when present; otherwise arguments append as a final `ARGUMENTS:` line. Command-only skills (`disable-model-invocation: true`) stay out of the index and stay invokable.
+4. **Trust gates repository content.** Project skills are one more item in the trust inventory: one question per repository identity, keyed by the combined content hash of the discovered skill directories, re-prompted when content changes; the question lists the discovered names. Untrusted skills are excluded from the index and listed `(untrusted)`. `/trust` lists and clears the record; `lunate trust` records it non-interactively. `allowed-tools` stays inert in every scope: the approval system remains the only grant path.
+5. **Extension sources are disk-only.** Extensions contribute skills through `ISkillSource` (id plus skill directories on disk inside the extension's own folder; registered at load time like other contributions). Contributed skills are tagged `extension '<id>'`, inherit the extension's trust and disable state, and are enforced first against the contributing extension's context budget (over-budget lines drop and log), then the global index cap. Shadowing is project > user > extension; the loser's copy is not listed separately and the one-time warning names it.
+6. **No packages, additive session format.** The change adds no NuGet packages and no new message model: skill metadata rides the existing message entry as an optional `skill` object, so schema 2 and the golden session fixtures are unchanged.
+
+## Consequences
+
+- The model gets skills on demand: cheap tokens at session start, the full body only when read or invoked.
+- Prompt caching holds: the system prefix is byte-stable within a session; skill changes surface on reload, `/new` re-scans.
+- A repository's skills are repository content: hidden until the skills trust decision exists, and invisible to a non-interactive run that cannot approve them.
+- `ISkillSource` keeps the out-of-process extension path open (an id and on-disk directories cross the boundary as data); in-memory or networked skill providers can arrive later without a core redesign.

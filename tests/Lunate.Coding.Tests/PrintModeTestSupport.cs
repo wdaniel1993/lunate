@@ -16,6 +16,7 @@ internal static class PrintModeTestSupport
             SettingsPath = temp.File("settings.json"),
             SessionDirectory = temp.File("sessions"),
             WorkingDirectory = temp.Root,
+            HomeDirectory = temp.File("home"),
             Environment = Environment(),
             Extensions = TestExtensionSeams.Empty(temp),
             McpConfigPath = temp.File("global-mcp.json"),

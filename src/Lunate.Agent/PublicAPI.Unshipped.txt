@@ -1351,3 +1351,24 @@ override Lunate.Agent.ModelRouted.ToString() -> string!
 override sealed Lunate.Agent.ModelRouted.Equals(Lunate.Agent.ExtensionEvent? other) -> bool
 static Lunate.Agent.ModelRouted.operator !=(Lunate.Agent.ModelRouted? left, Lunate.Agent.ModelRouted? right) -> bool
 static Lunate.Agent.ModelRouted.operator ==(Lunate.Agent.ModelRouted? left, Lunate.Agent.ModelRouted? right) -> bool
+Lunate.Agent.AgentHarnessOptions.PromptSections.get -> System.Collections.Generic.IReadOnlyList<Lunate.Agent.AgentPromptSection!>?
+Lunate.Agent.AgentHarnessOptions.PromptSections.init -> void
+Lunate.Agent.Session.AppendSkillMessage(Microsoft.Extensions.AI.ChatMessage! message, Lunate.Agent.SessionSkillMetadata! skill, string? model = null, Lunate.Agent.SessionUsage? usage = null) -> void
+Lunate.Agent.SessionMessageEntry.Skill.get -> Lunate.Agent.SessionSkillMetadata?
+Lunate.Agent.SessionMessageEntry.Skill.init -> void
+Lunate.Agent.SessionSkillMetadata
+Lunate.Agent.SessionSkillMetadata.<Clone>$() -> Lunate.Agent.SessionSkillMetadata!
+Lunate.Agent.SessionSkillMetadata.Deconstruct(out string! Name, out string! Dir) -> void
+Lunate.Agent.SessionSkillMetadata.Dir.get -> string!
+Lunate.Agent.SessionSkillMetadata.Dir.init -> void
+Lunate.Agent.SessionSkillMetadata.Equals(Lunate.Agent.SessionSkillMetadata? other) -> bool
+Lunate.Agent.SessionSkillMetadata.Name.get -> string!
+Lunate.Agent.SessionSkillMetadata.Name.init -> void
+Lunate.Agent.SessionSkillMetadata.SessionSkillMetadata(string! Name, string! Dir) -> void
+Lunate.Agent.SteeringQueue.Enqueue(string! message, Lunate.Agent.SessionSkillMetadata? skill) -> void
+override Lunate.Agent.SessionSkillMetadata.Equals(object? obj) -> bool
+override Lunate.Agent.SessionSkillMetadata.GetHashCode() -> int
+override Lunate.Agent.SessionSkillMetadata.ToString() -> string!
+static Lunate.Agent.SessionSkillMetadata.operator !=(Lunate.Agent.SessionSkillMetadata? left, Lunate.Agent.SessionSkillMetadata? right) -> bool
+static Lunate.Agent.SessionSkillMetadata.operator ==(Lunate.Agent.SessionSkillMetadata? left, Lunate.Agent.SessionSkillMetadata? right) -> bool
+Lunate.Agent.AgentHarness.RunSkillAsync(string! userInput, Lunate.Agent.SessionSkillMetadata! skill, System.Threading.CancellationToken ct) -> System.Collections.Generic.IAsyncEnumerable<Lunate.Agent.AgentEvent!>!

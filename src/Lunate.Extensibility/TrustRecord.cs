@@ -14,6 +14,9 @@ public enum TrustSection
     /// raw definition; the record's worktree is where it was approved.
     /// </summary>
     McpServer,
+
+    /// <summary>Project-skill trust, keyed per repository and worktree like extension trust.</summary>
+    Skills,
 }
 
 /// <summary>

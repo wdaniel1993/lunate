@@ -18,6 +18,7 @@ internal static class Commands
         "/new",
         "/quit",
         "/resume",
+        "/skills",
         "/trust",
     ];
 

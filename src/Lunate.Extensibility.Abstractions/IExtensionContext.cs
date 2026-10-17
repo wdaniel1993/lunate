@@ -71,6 +71,14 @@ public interface IExtensionContext
     /// </summary>
     void RegisterVirtualModel(VirtualModelRegistration model);
 
+    /// <summary>
+    /// Registers a skill source. Registration is registration only: it must not start processes,
+    /// sockets or timers. The contributed skill directories must be on disk inside the extension's
+    /// own folder; directories outside it are refused with a warning. A duplicate source id is
+    /// replaced, with the conflict logged.
+    /// </summary>
+    void RegisterSkillSource(ISkillSource source);
+
     /// <summary>Looks up a service another extension registered by its name.</summary>
     bool TryGetService(string name, out IBackgroundService? service);
 

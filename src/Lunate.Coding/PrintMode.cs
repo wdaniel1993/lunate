@@ -1,5 +1,6 @@
 using Lunate.Agent;
 using Lunate.Ai;
+using Lunate.Extensibility;
 using Lunate.Extensibility.Abstractions;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -50,6 +51,9 @@ internal sealed record PrintModeOptions
 
     /// <summary>The standard user-scope mcp.json path; null uses <c>~/.agents/mcp.json</c>.</summary>
     public string? McpAgentsConfigPath { get; init; }
+
+    /// <summary>The user-profile root the skill user scope resolves under; null uses the profile.</summary>
+    public string? HomeDirectory { get; init; }
 }
 
 /// <summary>
@@ -102,6 +106,7 @@ internal static class PrintMode
             IReadOnlyList<ITool> mcpTools = [];
             IReadOnlyList<ITool> inheritedTools = [];
             Workspace workspace;
+            SkillCatalog skills;
             try
             {
                 workspace = new Workspace(options.WorkingDirectory ?? Environment.CurrentDirectory);
@@ -117,6 +122,30 @@ internal static class PrintMode
                             ct
                         )
                         .ConfigureAwait(false);
+                }
+
+                // Same discovery + index path as the interactive session; the terminal-less run
+                // never approves repository skills, so a prompt decision stays untrusted.
+                skills = SkillCatalog.Discover(
+                    new SkillScanRequest(
+                        workspace.WorktreeRoot,
+                        workspace.RepoRoot,
+                        options.HomeDirectory ?? DefaultHomeDirectory(),
+                        extensions?.SkillContributions() ?? []
+                    )
+                );
+                skills.SetProjectTrusted(
+                    EnsureSkillsTrusted(skills, workspace, options.Extensions, interaction)
+                );
+                skills.BuildIndex(
+                    workspace.WorktreeRoot,
+                    extensions?.HookRunner.Options.ContextBudgetPerExtension
+                        ?? new HookRunnerOptions().ContextBudgetPerExtension,
+                    message => extensions?.Log.Warn(message)
+                );
+                foreach (string warning in skills.Warnings)
+                {
+                    interaction.Notify(new UserNotice(NoticeLevel.Warning, warning));
                 }
 
                 mcp = await McpComposition
@@ -212,7 +241,8 @@ internal static class PrintMode
                     extensions,
                     mcpTools,
                     workspaceServices,
-                    inheritedTools
+                    inheritedTools,
+                    skills
                 );
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -385,6 +415,64 @@ internal static class PrintMode
             .ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// The non-interactive skills trust gate: trusted and new-worktree decisions pass (the latter
+    /// records silently like extension trust); a prompt decision is refused — a terminal-less run
+    /// never approves repository content — with one warning naming the fix.
+    /// </summary>
+    private static bool EnsureSkillsTrusted(
+        SkillCatalog skills,
+        Workspace workspace,
+        ExtensionSeams? seams,
+        PrintUserInteraction interaction
+    )
+    {
+        IReadOnlyList<SkillDescriptor> project =
+        [
+            .. skills.Skills.Where(skill => skill is { Valid: true, Scope: SkillScope.Project }),
+        ];
+        if (project.Count == 0)
+        {
+            return true;
+        }
+
+        string identity = workspace.GitCommonDir ?? workspace.WorktreeRoot;
+        var store = new ExtensionTrustStore(
+            new ExtensionHostOptions
+            {
+                StorePath = seams?.StorePath ?? ExtensionHostOptions.Default.StorePath,
+            }
+        );
+        string hash = SkillTrust.ComputeContentHash(
+            project,
+            workspace.RepoRoot ?? workspace.WorktreeRoot
+        );
+        switch (store.EvaluateSkills(identity, workspace.WorktreeRoot, hash))
+        {
+            case ExtensionTrustDecision.Trusted:
+                return true;
+            case ExtensionTrustDecision.NewWorktree:
+                store.RecordSkillsTrusted(
+                    identity,
+                    workspace.WorktreeRoot,
+                    hash,
+                    DateTimeOffset.UtcNow
+                );
+                return true;
+            default:
+                interaction.Notify(
+                    new UserNotice(
+                        NoticeLevel.Warning,
+                        "project skills were not trusted and stay out of the model index; run an interactive session or 'lunate trust' to approve them"
+                    )
+                );
+                return false;
+        }
+    }
+
+    private static string DefaultHomeDirectory() =>
+        Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+
     private static AgentHarness CreateHarness(
         PrintModeOptions options,
         Workspace workspace,
@@ -395,10 +483,15 @@ internal static class PrintMode
         ExtensionSession? extensions,
         IReadOnlyList<ITool> mcpTools,
         WorkspaceServices workspaceServices,
-        IReadOnlyList<ITool> inheritedTools
+        IReadOnlyList<ITool> inheritedTools,
+        SkillCatalog skills
     )
     {
-        ToolRegistry tools = HarnessFactory.CreateTools(workspace, services: workspaceServices);
+        ToolRegistry tools = HarnessFactory.CreateTools(
+            workspace,
+            services: workspaceServices,
+            skillReadAllowance: new SkillReadAllowance(skills.ReadRoots)
+        );
         foreach (ITool tool in mcpTools)
         {
             tools.Add(tool);
@@ -407,12 +500,21 @@ internal static class PrintMode
         string directory =
             options.SessionDirectory ?? HarnessFactory.DefaultSessionDirectory(workspace);
         Session session = HarnessFactory.CreateSession(directory, workspace);
+        if (skills.Index.Text.Length > 0)
+        {
+            session.AppendPromptSection("skills", skills.Index.Text);
+        }
+
         var harnessOptions = new AgentHarnessOptions
         {
             SystemPrompt = SystemPrompt.Compose(
                 workspace,
                 [.. tools.Tools.Select(tool => tool.Name)]
             ),
+            PromptSections =
+                skills.Index.Text.Length > 0
+                    ? [new AgentPromptSection("skills", skills.Index.Text)]
+                    : null,
             WorkingDirectory = workspace.WorktreeRoot,
             ToolOutputLimit = settings.ToolOutputLimit,
             SubagentLimits = settings.Subagents,
@@ -423,7 +525,11 @@ internal static class PrintMode
             ModelCatalog = catalog,
             ModelId = model.Id,
             ModelRegistry = extensions?.ModelRegistry,
-            WorkspaceTools = HarnessFactory.CreateWorkspaceTools(workspaceServices, inheritedTools),
+            WorkspaceTools = HarnessFactory.CreateWorkspaceTools(
+                workspaceServices,
+                inheritedTools,
+                root => skills.ReadRootsFor(root)
+            ),
         };
 
         return new AgentHarness(factory.Create(model), tools, harnessOptions);

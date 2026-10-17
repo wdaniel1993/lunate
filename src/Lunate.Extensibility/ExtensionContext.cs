@@ -14,6 +14,7 @@ internal sealed class ExtensionContext : IExtensionContext
     private readonly Action<string, ExtensionModelProvider>? _registerModelProvider;
     private readonly Action<string, ExtensionModelMiddleware>? _registerModelMiddleware;
     private readonly Action<string, VirtualModelRegistration>? _registerVirtualModel;
+    private readonly Action<string, ISkillSource>? _registerSkillSource;
     private readonly Func<string, IBackgroundService?>? _findService;
     private readonly Func<string, object?>? _findCoreService;
 
@@ -33,7 +34,8 @@ internal sealed class ExtensionContext : IExtensionContext
         Action<string, ExtensionToolRegistration>? registerTool = null,
         Action<string, ExtensionModelProvider>? registerModelProvider = null,
         Action<string, ExtensionModelMiddleware>? registerModelMiddleware = null,
-        Action<string, VirtualModelRegistration>? registerVirtualModel = null
+        Action<string, VirtualModelRegistration>? registerVirtualModel = null,
+        Action<string, ISkillSource>? registerSkillSource = null
     )
     {
         Id = id;
@@ -50,6 +52,7 @@ internal sealed class ExtensionContext : IExtensionContext
         _registerModelProvider = registerModelProvider;
         _registerModelMiddleware = registerModelMiddleware;
         _registerVirtualModel = registerVirtualModel;
+        _registerSkillSource = registerSkillSource;
         _findService = findService;
         _findCoreService = findCoreService;
     }
@@ -121,6 +124,12 @@ internal sealed class ExtensionContext : IExtensionContext
     {
         ArgumentNullException.ThrowIfNull(model);
         _registerVirtualModel?.Invoke(Id, model);
+    }
+
+    public void RegisterSkillSource(ISkillSource source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        _registerSkillSource?.Invoke(Id, source);
     }
 
     public bool TryGetService(string name, out IBackgroundService? service)

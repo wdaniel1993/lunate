@@ -85,7 +85,8 @@ public sealed partial class ExtensionLoader
                 _tools.Register,
                 _modelRegistry.RegisterProvider,
                 _modelRegistry.RegisterModelMiddleware,
-                _modelRegistry.RegisterVirtualModel
+                _modelRegistry.RegisterVirtualModel,
+                _skillSources.Register
             );
             IExtension extension = factory.Create(extensionContext);
             CrossCheckManifestTools(descriptor);
@@ -122,6 +123,7 @@ public sealed partial class ExtensionLoader
             _toolResultRenderers.Unregister(descriptor.Id);
             _statusWidgets.Unregister(descriptor.Id);
             _mcpServers.Unregister(descriptor.Id);
+            _skillSources.Unregister(descriptor.Id);
             DropSubscriptions(descriptor.Id);
             context.Unload();
             throw;
@@ -139,6 +141,7 @@ public sealed partial class ExtensionLoader
             _toolResultRenderers.Unregister(descriptor.Id);
             _statusWidgets.Unregister(descriptor.Id);
             _mcpServers.Unregister(descriptor.Id);
+            _skillSources.Unregister(descriptor.Id);
             DropSubscriptions(descriptor.Id);
             context.Unload();
             throw WrapLoadFailure(descriptor, exception);

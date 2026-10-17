@@ -150,10 +150,24 @@ internal static class TrustCommand
             );
         }
 
+        if (inventory.ProjectSkills is { } skills)
+        {
+            store.RecordSkillsTrusted(
+                inventory.RepositoryIdentity,
+                inventory.WorktreePath,
+                skills.ContentHash,
+                now
+            );
+            output.WriteLine(
+                $"trust: recorded {RecordedLine(TrustSection.Skills, inventory, skills.ContentHash)}"
+            );
+        }
+
         if (
             inventory.Extensions.Count == 0
             && inventory.ProjectMcpConfigs.Count == 0
             && inventory.McpServers.Count == 0
+            && inventory.ProjectSkills is null
         )
         {
             output.WriteLine("trust: nothing to record");
@@ -193,6 +207,7 @@ internal static class TrustCommand
                     {
                         TrustSection.McpConfig => "mcp.json",
                         TrustSection.McpServer => "mcpServer",
+                        TrustSection.Skills => "skills",
                         _ => "extensions",
                     },
                     ["worktree"] = record.WorktreePath,
@@ -253,6 +268,17 @@ internal static class TrustCommand
             output.WriteLine(TrustFormat.McpServerQuestion(server.Definition));
             output.WriteLine($"  {TrustFormat.Command(server.Definition)}");
             output.WriteLine($"hash: {server.Hash}");
+        }
+
+        if (inventory.ProjectSkills is { Decision: ExtensionTrustDecision.Prompt } skills)
+        {
+            output.WriteLine(SkillTrust.QuestionTitle);
+            foreach (string detail in SkillTrust.QuestionDetails(skills.Names))
+            {
+                output.WriteLine($"  {detail}");
+            }
+
+            output.WriteLine($"hash: {skills.ContentHash}");
         }
     }
 

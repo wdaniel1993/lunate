@@ -161,6 +161,34 @@ public sealed partial class Session
         );
     }
 
+    /// <summary>
+    /// Appends a user message carrying its skill invocation metadata (name, base directory); the
+    /// model and usage are recorded when known.
+    /// </summary>
+    public void AppendSkillMessage(
+        ChatMessage message,
+        SessionSkillMetadata skill,
+        string? model = null,
+        SessionUsage? usage = null
+    )
+    {
+        ArgumentNullException.ThrowIfNull(message);
+        ArgumentNullException.ThrowIfNull(skill);
+        AddEntry(
+            new SessionMessageEntry(
+                NextEntryId(),
+                LastEntryId,
+                _timeProvider.GetUtcNow(),
+                message,
+                model,
+                usage
+            )
+            {
+                Skill = skill,
+            }
+        );
+    }
+
     /// <summary>Appends a compaction entry that replaces the listed earlier entries.</summary>
     public void AppendCompaction(string summary, IReadOnlyList<string> replaces)
     {

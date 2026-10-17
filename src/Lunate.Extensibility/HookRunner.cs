@@ -24,6 +24,9 @@ public sealed partial class HookRunner
         Validate(_options);
     }
 
+    /// <summary>The resolved options (the per-extension context budget included).</summary>
+    public HookRunnerOptions Options => _options;
+
     /// <summary>Registers a handler owned by the extension; the handler is never null.</summary>
     public void Register(string extensionId, IHookHandler handler)
     {

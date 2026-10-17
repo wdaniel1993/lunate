@@ -17,6 +17,13 @@ public sealed record AgentHarnessOptions
     /// <summary>The system prompt sent before the history; null sends no system message.</summary>
     public string? SystemPrompt { get; init; }
 
+    /// <summary>
+    /// Extra prompt sections appended after <see cref="SystemPrompt"/>, in order (for example the
+    /// session-start skills index). Appending keeps the system prefix cache-stable; the sections
+    /// count toward compaction like the base prompt.
+    /// </summary>
+    public IReadOnlyList<AgentPromptSection>? PromptSections { get; init; }
+
     /// <summary>The directory tools run in.</summary>
     public string WorkingDirectory { get; init; } = Environment.CurrentDirectory;
 
