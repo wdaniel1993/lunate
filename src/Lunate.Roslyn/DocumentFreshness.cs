@@ -66,5 +66,8 @@ internal sealed class DocumentFreshness
         }
     }
 
-    private readonly record struct FileStamp(DateTime LastWriteUtc, long Length);
+    /// <summary>The current stamp of <paramref name="path"/> (null when missing or unreadable).</summary>
+    public static FileStamp? StampOf(string path) => ReadStamp(path);
+
+    public readonly record struct FileStamp(DateTime LastWriteUtc, long Length);
 }
