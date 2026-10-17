@@ -23,6 +23,8 @@ public sealed partial class HookRunner
         {
             var handler = (IRunStartingHandler)registration.Handler;
             HandlerOutcome<RunStartingResult> outcome = await CallAsync(
+                    "RunStarting",
+                    registration,
                     token => handler.HandleAsync(payload with { Sections = [.. sections] }, token),
                     _options.HandlerTimeout,
                     cancellationToken
@@ -88,6 +90,8 @@ public sealed partial class HookRunner
         {
             var handler = (IContextBuildingHandler)registration.Handler;
             HandlerOutcome<ContextBuildingResult> outcome = await CallAsync(
+                    "ContextBuilding",
+                    registration,
                     token => handler.HandleAsync(payload with { Messages = [.. working] }, token),
                     _options.HandlerTimeout,
                     cancellationToken

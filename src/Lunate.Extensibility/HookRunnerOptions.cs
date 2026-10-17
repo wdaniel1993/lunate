@@ -17,4 +17,11 @@ public sealed record HookRunnerOptions
     /// characters of text, rounded up.
     /// </summary>
     public int ContextBudgetPerExtension { get; init; } = 2000;
+
+    /// <summary>
+    /// The per-dispatch slow-hook threshold: the first dispatch above it logs one warning per
+    /// (extension, hook) and raises <see cref="HookRunner.SlowHook"/>; later crossings only
+    /// increment the hook's slow count.
+    /// </summary>
+    public TimeSpan SlowHookThreshold { get; init; } = TimeSpan.FromMilliseconds(500);
 }

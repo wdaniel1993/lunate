@@ -224,7 +224,13 @@ internal sealed partial class InteractiveSession
 
         List<string> segments =
         [
-            .. ExtensionsView.Segments(host.Descriptors, host.LoadResults, host.RegisteredCounts),
+            .. ExtensionsView.Segments(
+                host.Descriptors,
+                host.LoadResults,
+                host.RegisteredCounts,
+                hookTimings: host.HookTimings,
+                remoteStart: host.RemoteStartDuration
+            ),
         ];
         foreach ((string id, RemoteExtensionStatus status) in host.FailedRemoteStatuses())
         {

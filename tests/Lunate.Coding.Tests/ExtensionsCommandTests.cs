@@ -181,6 +181,8 @@ public sealed class ExtensionsCommandTests
         Assert.Equal(0, node.GetProperty("commands").GetInt32());
         Assert.Equal(3, node.GetProperty("hooks").GetInt32());
         Assert.Equal(1, node.GetProperty("services").GetInt32());
+        // Register-only inspect mode dispatches nothing, so no hook timings exist.
+        Assert.False(node.TryGetProperty("hookTimings", out _));
     }
 
     [Fact]

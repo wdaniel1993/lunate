@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Globalization;
 using System.Text.Json;
 using Lunate.Extensibility.Abstractions;
@@ -23,6 +24,8 @@ public sealed partial class RemoteExtension : IExtension, IAsyncDisposable
     private RemoteWire? _wire;
     private RemoteProcessChannel? _channel;
     private RemoteExtensionStatus _status = new(RemoteExtensionState.NotStarted, null);
+    private long _pendingPreparationTicks;
+    private long _lastStartTicks;
     private int _automaticRestarts;
     private bool _shuttingDown;
     private bool _disposed;
@@ -56,6 +59,19 @@ public sealed partial class RemoteExtension : IExtension, IAsyncDisposable
             {
                 return _status;
             }
+        }
+    }
+
+    /// <summary>
+    /// The most recent lazy start plus <c>initialize</c> handshake duration (the view's
+    /// <c>start &lt;ms&gt; ms</c>); null before the first start.
+    /// </summary>
+    public TimeSpan? LastStartDuration
+    {
+        get
+        {
+            long ticks = Interlocked.Read(ref _lastStartTicks);
+            return ticks == 0 ? null : TimeSpan.FromTicks(ticks);
         }
     }
 
@@ -111,7 +127,14 @@ public sealed partial class RemoteExtension : IExtension, IAsyncDisposable
                 _status = new RemoteExtensionStatus(RemoteExtensionState.Starting, null);
             }
 
+            long startTimestamp = Stopwatch.GetTimestamp();
             RemoteWire wire = await StartCoreAsync(cancellationToken).ConfigureAwait(false);
+            long startTicks = Stopwatch.GetElapsedTime(startTimestamp).Ticks;
+            // The start + handshake are preparation, not hook cost: the triggering dispatch's
+            // handler reports them through IPreparationTimeReporter, and the view reads the
+            // most recent duration.
+            Interlocked.Exchange(ref _pendingPreparationTicks, startTicks);
+            Interlocked.Exchange(ref _lastStartTicks, startTicks);
 
             // A session-started held from the load-time dispatch is delivered on the first
             // successful start, so a programmatic load that never reaches the ready point does
@@ -125,6 +148,13 @@ public sealed partial class RemoteExtension : IExtension, IAsyncDisposable
             _startGate.Release();
         }
     }
+
+    /// <summary>
+    /// Consumes and returns the most recent start + handshake duration, once, for the hook runner
+    /// to exclude from the triggering dispatch's measured elapsed time.
+    /// </summary>
+    internal TimeSpan ConsumePreparationTime() =>
+        TimeSpan.FromTicks(Interlocked.Exchange(ref _pendingPreparationTicks, 0));
 
     /// <summary>
     /// Starts a <c>background</c>-mode extension after the UI is ready. Failures are contained:

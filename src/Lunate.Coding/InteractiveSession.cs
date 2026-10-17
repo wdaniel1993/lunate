@@ -289,6 +289,17 @@ internal sealed partial class InteractiveSession : IDisposable
         _trustTotal = CountPendingTrustQuestions();
         _approver = new SessionApprover(this, _settings.Approval);
         await ComposeExtensionsAsync(ct);
+        // One dim notice per first slow-hook crossing; the log keeps the warning, and modes
+        // without a subscriber here (print, ACP, the CLI) stay log-only, never stdout.
+        foreach (
+            HookRunner runner in new[] { _options.Hooks, _extensions?.HookRunner }
+                .OfType<HookRunner>()
+                .Distinct()
+        )
+        {
+            runner.SlowHook += OnSlowHook;
+        }
+
         // The bus exists only when the extension host composed; scan-only without extensions.
         if (_extensions is { } extensionHost)
         {
@@ -418,6 +429,20 @@ internal sealed partial class InteractiveSession : IDisposable
 
         _toolResultRenderers = _options.ToolResultRenderers ?? _extensions?.ToolResultRenderers;
         _statusWidgets = _options.StatusWidgets ?? _extensions?.StatusWidgets;
+    }
+
+    /// <summary>
+    /// The slow-hook notice: one per first crossing, naming the extension, the hook, the elapsed
+    /// time and the threshold and pointing at <c>/extensions</c>. Dim (info level); later slow
+    /// dispatches are counted in the view, not shown again.
+    /// </summary>
+    private void OnSlowHook(SlowHookEvent slow)
+    {
+        Notify(
+            FormattableString.Invariant(
+                $"hook {slow.Hook} from extension '{slow.ExtensionId}' took {slow.Elapsed.TotalMilliseconds.ToString("0.###", CultureInfo.InvariantCulture)} ms, above the slow threshold of {slow.Threshold.TotalMilliseconds.ToString("0.###", CultureInfo.InvariantCulture)} ms — see /extensions; later slow dispatches are counted, not shown."
+            )
+        );
     }
 
     /// <summary>
@@ -771,6 +796,10 @@ internal sealed partial class InteractiveSession : IDisposable
         CancellationToken ct
     )
     {
+        // The previous notice clears as the submission arrives, before the hook chain runs: a
+        // slow-hook event posted while the input dispatches must survive (it would otherwise be
+        // cleared in the same tick and never render).
+        _live.SetNotice(null);
         InputPipelineResult processed = await _pipeline.ProcessAsync(text, ct);
         if (processed.Consumed)
         {
@@ -779,7 +808,6 @@ internal sealed partial class InteractiveSession : IDisposable
         }
 
         _history.Add(processed.Text);
-        _live.SetNotice(null);
         if (_turnActive)
         {
             EnqueueSteering(processed.Text, skill);

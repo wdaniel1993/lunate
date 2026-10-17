@@ -1096,3 +1096,5 @@ override Lunate.Extensibility.Abstractions.RemoteExtensionStatus.GetHashCode() -
 override Lunate.Extensibility.Abstractions.RemoteExtensionStatus.ToString() -> string!
 static Lunate.Extensibility.Abstractions.RemoteExtensionStatus.operator !=(Lunate.Extensibility.Abstractions.RemoteExtensionStatus? left, Lunate.Extensibility.Abstractions.RemoteExtensionStatus? right) -> bool
 static Lunate.Extensibility.Abstractions.RemoteExtensionStatus.operator ==(Lunate.Extensibility.Abstractions.RemoteExtensionStatus? left, Lunate.Extensibility.Abstractions.RemoteExtensionStatus? right) -> bool
+Lunate.Extensibility.Abstractions.IPreparationTimeReporter
+Lunate.Extensibility.Abstractions.IPreparationTimeReporter.ConsumePreparationTime() -> System.TimeSpan
