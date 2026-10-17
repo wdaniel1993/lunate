@@ -96,7 +96,12 @@ public sealed class LoaderRemoteTests
         );
 
         await WaitAsync(() => child.StartCount == 1, "the child started on first use");
-        Assert.Contains(child.Notifications, n => n.Method == "hook/SessionStarted");
+        // The notification is written before the triggering hook proceeds, but the child records
+        // it on its own read loop — wait for it instead of racing that loop.
+        await WaitAsync(
+            () => child.Notifications.Any(n => n.Method == "hook/SessionStarted"),
+            "the deferred session-started arrived"
+        );
     }
 
     [Fact]
