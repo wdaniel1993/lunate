@@ -335,7 +335,7 @@ The interactive session SHALL consume the harness's event stream: streaming text
 
 ### Requirement: Slash commands
 
-A submitted line whose first non-space character is `/` SHALL dispatch as a client command and never reach the model: `/model` opens the model picker (`/model <id>` switches directly when the id is in the catalog), and when the current model is an extension-registered or virtual model the picker's current-model line and `/model` SHALL show its last routed resolution (`auto → deep`); `/new` starts a fresh session, `/resume` opens the session picker, `/compact` requests an explicit out-of-run compaction, `/mcp` lists the configured and extension-registered MCP servers with their status and source (the config file path it came from, or `extension '{id}'`), with a name collision shown as the configured server winning and the registration marked shadowed, a server whose definition references an unset environment variable without a default shown with that missing-variable warning next to it, and never printing environment values or headers, `/extensions` lists every discovered extension — failed first, then trust-denied, then loaded, each group by id — as one segment per extension: `id version (scope) state`, with loaded ones carrying their load time and registered tool, command, hook and service counts (a field differing from the manifest reads `(N declared)`, a load above 500 ms reads `(slow)`), trust-denied ones reading `trust-denied` with the manifest's declared counts, failed ones reading `failed` followed by the message's first sentence and ` — see the log` — reading `extensions: none configured` when there are none and `extensions disabled (--no-extensions)` when extensions are disabled, `/trust` lists this repository's trust records (`/trust clear` clears them, so the next load asks again), `/skills` lists the discovered skills with their scope and state, `/skill:<name> [args]` invokes the named skill by submitting its wrapped body as a user turn through the normal submission path — an unknown name warns instead — `/quit` quits. Commands SHALL append to the input history and skip the input pipeline; an unknown command SHALL produce a dim notice naming it. While a turn is running, `/new`, `/resume`, `/model` and `/compact` SHALL be refused with a notice; `/quit` SHALL quit at any time (cancelling a running turn). While an approval prompt or a picker is open, no input is submitted, so no command can dispatch.
+A submitted line whose first non-space character is `/` SHALL dispatch as a client command and never reach the model: `/model` opens the model picker (`/model <id>` switches directly when the id is in the catalog), and when the current model is an extension-registered or virtual model the picker's current-model line and `/model` SHALL show its last routed resolution (`auto → deep`); `/new` starts a fresh session, `/resume` opens the session picker, `/compact` requests an explicit out-of-run compaction, `/mcp` lists the configured and extension-registered MCP servers with their status and source (the config file path it came from, or `extension '{id}'`), with a name collision shown as the configured server winning and the registration marked shadowed, a server whose definition references an unset environment variable without a default shown with that missing-variable warning next to it, and never printing environment values or headers, `/extensions` lists every discovered extension — failed first, then trust-denied, then loaded, each group by id — as one segment per extension: `id version (scope) state`, with loaded ones carrying their load time and registered tool, command, hook and service counts (a field differing from the manifest reads `(N declared)`, a load above 500 ms reads `(slow)`), trust-denied ones reading `trust-denied` with the manifest's declared counts, failed ones reading `failed` followed by the message's first sentence and ` — see the log` — reading `extensions: none configured` when there are none and `extensions disabled (--no-extensions)` when extensions are disabled, `/trust` lists this repository's trust records (`/trust clear` clears them, so the next load asks again), `/skills` lists the discovered skills with their scope and state, `/skill:<name> [args]` invokes the named skill by submitting its wrapped body as a user turn through the normal submission path — an unknown name warns instead — `/help` lists the commands grouped (session / model / extensions / files / quit) with one-line descriptions taken from the command registry — no hand-maintained list: a command dispatchable without a description SHALL fail a test — `/quit` quits. Commands SHALL append to the input history and skip the input pipeline; an unknown command SHALL produce a dim notice naming it. While a turn is running, `/new`, `/resume`, `/model` and `/compact` SHALL be refused with a notice; `/quit` SHALL quit at any time (cancelling a running turn). While an approval prompt or a picker is open, no input is submitted, so no command can dispatch.
 
 #### Scenario: Every built-in command dispatches without a model call
 
@@ -450,6 +450,12 @@ A submitted line whose first non-space character is `/` SHALL dispatch as a clie
 - **GIVEN** an idle session without a skill named `ghost`
 - **WHEN** `/skill:ghost` is submitted
 - **THEN** a dim notice reads `unknown skill: ghost (see /skills)` and no run starts
+
+#### Scenario: /help lists every command with a description
+
+- **GIVEN** an idle session
+- **WHEN** `/help` is submitted
+- **THEN** the listing shows every built-in command grouped (session / model / extensions / files / quit), each with a one-line description, and no command appears without one
 
 ### Requirement: SelectList pickers
 
@@ -664,3 +670,53 @@ A pending trust decision (a project extension, a project `mcp.json` file, or a p
 - **GIVEN** a pending per-server approval whose command is longer than the config-file prompt's truncation
 - **WHEN** the prompt appears
 - **THEN** it names the server, its source file and the full untruncated command, and `y` approves it
+
+### Requirement: Welcome header
+
+An interactive session SHALL print a welcome header once per session start, on the first frame, as finished Spectre output into scrollback — never as a splash: no animation, no blocking, no alternate screen, and the composition (extensions, MCP, skills) SHALL keep running underneath while the `loading project…` live line continues. The header render SHALL be part of the startup budget gate. Content, top to bottom: the crescent wordmark (variant V2, the small crescent lockup, as chosen in the design sign-off) with the version; the model id with its context window; the workspace path with the home directory shortened to `~`; `C# workspace · Roslyn` when a C# workspace is detected; the extension/MCP/skill counts (an `…` placeholder until composition finishes, then exactly one in-place update line — never a redraw of the header block); and a hint line naming `/help`. When composition finds zero of a kind, the counts stay honest (`extensions 0 · MCP 0 · skills 0`).
+
+The header SHALL be capability-aware: the full block only at width ≥ 80 with Unicode support; otherwise a single-line ASCII form (`lunate v0.1.0 (C# · Roslyn) — /help for commands`). `NO_COLOR` SHALL leave the structure unchanged with colors off; a terminal without ANSI support (legacy console, `TERM=dumb`) SHALL get the ASCII form without colors. The header SHALL never appear in print mode, ACP or `--json`. The `startupHeader` setting (default on) and the `LUNATE_STARTUP_HEADER` environment override SHALL suppress it; `/new` SHALL show it again (a session start re-evaluates nothing else).
+
+When no model is configured, or no provider or key resolves, the header SHALL print exactly one actionable fix — no `model` setting and no `LUNATE_MODEL`: `set 'model' in ~/.lunate/settings.json`; no key file: `add the '<provider>' key to ~/.lunate/auth.json`; an environment variable present but not resolving: `set <VARIABLE> to a valid key` — and SHALL print no counts or hint block in that state. The workspace line stays in every state.
+
+#### Scenario: Header prints once on the first frame
+
+- **GIVEN** an interactive session at width ≥ 80 with Unicode and a resolved provider
+- **WHEN** the session starts
+- **THEN** the header block (wordmark V2, version, model id and context window, `~`-shortened workspace, hint line with `/help`) is printed once into scrollback before composition output, and the `loading project…` line continues
+
+#### Scenario: Counts fill in with a single update line
+
+- **GIVEN** a session whose header printed with the `…` placeholder
+- **WHEN** composition completes
+- **THEN** exactly one counts line (`extensions N · MCP N · skills N`) is printed below — the header block is not redrawn
+
+#### Scenario: ASCII fallback on narrow or non-Unicode terminals
+
+- **GIVEN** a terminal at width < 80, or without Unicode support
+- **WHEN** the session starts
+- **THEN** the single-line ASCII form is printed and no block art appears
+
+#### Scenario: First run without a provider
+
+- **GIVEN** no key file and no environment key that resolves
+- **WHEN** the session starts
+- **THEN** the header names exactly one fix (`add the 'openai' key to ~/.lunate/auth.json`) and prints no counts or hint block
+
+#### Scenario: First run without a model
+
+- **GIVEN** no `model` setting and no `LUNATE_MODEL`
+- **WHEN** the session starts
+- **THEN** the header names exactly one fix (`set 'model' in ~/.lunate/settings.json`), keeps the workspace line, and prints no counts or hint block
+
+#### Scenario: Machine modes never show it
+
+- **GIVEN** print mode, ACP or `--json`
+- **WHEN** a run starts
+- **THEN** no welcome header is rendered
+
+#### Scenario: Setting and environment suppress the header
+
+- **GIVEN** `startupHeader` set to `false` (or `LUNATE_STARTUP_HEADER=0`)
+- **WHEN** an interactive session starts, and again after `/new`
+- **THEN** no header is printed in either case
