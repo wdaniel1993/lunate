@@ -4,11 +4,11 @@
 
 ### Requirement: Welcome header
 
-An interactive session SHALL print a welcome header once per session start, on the first frame, as finished Spectre output into scrollback — never as a splash: no animation, no blocking, no alternate screen, and the composition (extensions, MCP, skills) SHALL keep running underneath while the `loading project…` live line continues. The header render SHALL be part of the startup budget gate. Content, top to bottom: the crescent wordmark (variant V2, the small crescent lockup, as chosen in the design sign-off) with the version; the model id with its context window; the workspace path with the home directory shortened to `~`; `C# workspace · Roslyn` when a C# workspace is detected; the extension/MCP/skill counts (an `…` placeholder until composition finishes, then exactly one in-place update line — never a redraw of the header block); and one hint line ending in `/help`. When composition finds zero of a kind, the counts stay honest (`extensions 0 · MCP 0 · skills 0`).
+An interactive session SHALL print a welcome header once per session start, on the first frame, as finished Spectre output into scrollback — never as a splash: no animation, no blocking, no alternate screen, and the composition (extensions, MCP, skills) SHALL keep running underneath while the `loading project…` live line continues. The header render SHALL be part of the startup budget gate. Content, top to bottom: the crescent wordmark (variant V2, the small crescent lockup, as chosen in the design sign-off) with the version; the model id with its context window; the workspace path with the home directory shortened to `~`; `C# workspace · Roslyn` when a C# workspace is detected; the extension/MCP/skill counts (an `…` placeholder until composition finishes, then exactly one in-place update line — never a redraw of the header block); and a hint line naming `/help`. When composition finds zero of a kind, the counts stay honest (`extensions 0 · MCP 0 · skills 0`).
 
 The header SHALL be capability-aware: the full block only at width ≥ 80 with Unicode support; otherwise a single-line ASCII form (`lunate v0.1.0 (C# · Roslyn) — /help for commands`). `NO_COLOR` SHALL leave the structure unchanged with colors off; a terminal without ANSI support (legacy console, `TERM=dumb`) SHALL get the ASCII form without colors. The header SHALL never appear in print mode, ACP or `--json`. The `startupHeader` setting (default on) and the `LUNATE_STARTUP_HEADER` environment override SHALL suppress it; `/new` SHALL show it again (a session start re-evaluates nothing else).
 
-When no provider or key resolves, the header SHALL print exactly one actionable fix per detected case — no key file: `lunate auth login <provider>`; an environment variable present but not resolving: the variable is named — and SHALL print no counts or hint block in that state.
+When no model is configured, or no provider or key resolves, the header SHALL print exactly one actionable fix — no `model` setting and no `LUNATE_MODEL`: `set 'model' in ~/.lunate/settings.json`; no key file: `add the '<provider>' key to ~/.lunate/auth.json`; an environment variable present but not resolving: `set <VARIABLE> to a valid key` — and SHALL print no counts or hint block in that state. The workspace line stays in every state.
 
 #### Scenario: Header prints once on the first frame
 
@@ -32,7 +32,13 @@ When no provider or key resolves, the header SHALL print exactly one actionable 
 
 - **GIVEN** no key file and no environment key that resolves
 - **WHEN** the session starts
-- **THEN** the header names exactly one fix (`lunate auth login <provider>`) and prints no counts or hint block
+- **THEN** the header names exactly one fix (`add the 'openai' key to ~/.lunate/auth.json`) and prints no counts or hint block
+
+#### Scenario: First run without a model
+
+- **GIVEN** no `model` setting and no `LUNATE_MODEL`
+- **WHEN** the session starts
+- **THEN** the header names exactly one fix (`set 'model' in ~/.lunate/settings.json`), keeps the workspace line, and prints no counts or hint block
 
 #### Scenario: Machine modes never show it
 

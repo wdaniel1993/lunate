@@ -4,7 +4,7 @@
 
 - [x] 1. Header renderer (pure function of capabilities/width/state → lines) with the full block (V2 wordmark, version, model + context window, `~`-shortened workspace, C# line when detected, counts placeholder, hint line) and the single-line ASCII fallback.
 - [x] 2. Wire into `InteractiveSession.RunAsync`: print once on the first frame via the live area's scrollback path; composition keeps running; counts update line on completion.
-- [x] 3. First-run path: detect the three provider/key states; render the actionable fix form; no counts/hints block in that state.
+- [x] 3. First-run path: detect the states (no model configured, no key, the key variable present but not resolving); render the actionable fix form; no counts/hints block in that state.
 - [x] 4. Capability matrix: width ≥ 80 + Unicode gate, `NO_COLOR`, no-ANSI/mintty/dumb terminal; never in print/ACP/`--json`.
 - [x] 5. `startupHeader` setting + `LUNATE_STARTUP_HEADER` env override (settings precedence + validation); `/new` reprints.
 - [x] 6. `/help`: command registry (name, group, description), grouped listing (session / model / extensions / files / quit), hint line gains `/help`.
@@ -12,7 +12,7 @@
 
 ## Tests
 
-- [x] 8. Snapshot matrix: widths {80, 120, 40} × Unicode/ASCII × color/NO_COLOR (12 cells) + first-run variant + `startupHeader: false` + `/new` reprint + print/ACP/`--json` absence.
+- [x] 8. Snapshot matrix: widths {80, 120, 40} × Unicode/ASCII × color/NO_COLOR (12 cells) + first-run variants (no model, no key, unresolved variable) + `startupHeader: false` + `/new` reprint + print/ACP/`--json` absence.
 - [x] 9. Registry test: every dispatchable built-in command has a description (and no orphan descriptors); `/help` output groups and descriptions asserted.
 - [x] 10. Production composition test: real composition, header present, budget green.
 
