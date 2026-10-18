@@ -50,6 +50,46 @@ public sealed class InteractiveSessionCommandTests
     }
 
     [Fact]
+    public async Task Help_lists_every_command_grouped_with_its_description()
+    {
+        using var host = new InteractiveSessionHost();
+        Task run = host.RunAsync();
+
+        host.Console.SendText("/help");
+        host.Console.SendEnter();
+        await WaitForScrollbackAsync(host, "extensions");
+
+        Assert.Contains(
+            """
+            session
+              /compact — compact the conversation now
+              /context — show the context window and subagent budgets
+              /help    — list the commands
+              /new     — start a fresh session
+              /resume  — open the session picker
+            model
+              /model — pick a model or switch to one by id
+            extensions
+              /extensions   — list the discovered extensions with their state
+              /mcp          — list the MCP servers with their status and source
+              /skill:<name> — invoke a discovered skill by name
+              /skills       — list the discovered skills with their scope and state
+              /trust        — show or clear this repository's trust records
+            quit
+              /quit — quit
+            """,
+            host.ScrollbackText,
+            StringComparison.Ordinal
+        );
+        Assert.Empty(host.Client.Requests);
+        Assert.False(host.Session.IsRunning);
+
+        host.Console.SendText("/quit");
+        host.Console.SendEnter();
+        await run;
+    }
+
+    [Fact]
     public async Task An_unknown_command_is_a_notice_and_never_reaches_the_model()
     {
         using var host = new InteractiveSessionHost();

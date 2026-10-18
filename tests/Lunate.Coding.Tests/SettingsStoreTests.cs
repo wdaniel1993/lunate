@@ -10,6 +10,7 @@ public sealed class SettingsStoreTests
     private const string SubagentConcurrencyVariable = "LUNATE_SUBAGENTS_CONCURRENCY";
     private const string SubagentTokenBudgetVariable = "LUNATE_SUBAGENTS_TOKEN_BUDGET";
     private const string SubagentTreeTokenBudgetVariable = "LUNATE_SUBAGENTS_TREE_TOKEN_BUDGET";
+    private const string StartupHeaderVariable = "LUNATE_STARTUP_HEADER";
 
     [Fact]
     public void Missing_file_yields_defaults()
@@ -22,6 +23,99 @@ public sealed class SettingsStoreTests
         Assert.Equal(ApprovalPolicy.Ask, settings.Approval);
         Assert.Equal(30_000, settings.ToolOutputLimit);
         Assert.Equal(new SubagentLimits(), settings.Subagents);
+        Assert.True(settings.StartupHeader);
+    }
+
+    [Fact]
+    public void A_file_can_disable_the_startup_header()
+    {
+        using var temp = new TempDirectory();
+        File.WriteAllText(
+            temp.File("settings.json"),
+            """
+            {
+              "schemaVersion": 1,
+              "startupHeader": false
+            }
+            """
+        );
+
+        AgentSettings settings = SettingsStore.Resolve(temp.File("settings.json"), _ => null);
+
+        Assert.False(settings.StartupHeader);
+    }
+
+    [Fact]
+    public void The_startup_header_environment_override_enables_it_again()
+    {
+        using var temp = new TempDirectory();
+        File.WriteAllText(
+            temp.File("settings.json"),
+            """
+            {
+              "schemaVersion": 1,
+              "startupHeader": false
+            }
+            """
+        );
+
+        AgentSettings settings = SettingsStore.Resolve(
+            temp.File("settings.json"),
+            name => name == StartupHeaderVariable ? "1" : null
+        );
+
+        Assert.True(settings.StartupHeader);
+    }
+
+    [Fact]
+    public void The_startup_header_environment_override_disables_it()
+    {
+        using var temp = new TempDirectory();
+
+        AgentSettings settings = SettingsStore.Resolve(
+            temp.File("missing.json"),
+            name => name == StartupHeaderVariable ? "0" : null
+        );
+
+        Assert.False(settings.StartupHeader);
+    }
+
+    [Fact]
+    public void A_non_boolean_startup_header_in_the_file_is_reported()
+    {
+        using var temp = new TempDirectory();
+        File.WriteAllText(
+            temp.File("settings.json"),
+            """
+            {
+              "schemaVersion": 1,
+              "startupHeader": "yes"
+            }
+            """
+        );
+
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+            SettingsStore.Resolve(temp.File("settings.json"), _ => null)
+        );
+
+        Assert.Contains("'startupHeader'", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("No settings were applied", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void An_invalid_startup_header_environment_value_names_its_variable()
+    {
+        using var temp = new TempDirectory();
+
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+            SettingsStore.Resolve(
+                temp.File("missing.json"),
+                name => name == StartupHeaderVariable ? "maybe" : null
+            )
+        );
+
+        Assert.Contains(StartupHeaderVariable, exception.Message, StringComparison.Ordinal);
+        Assert.Contains("maybe", exception.Message, StringComparison.Ordinal);
     }
 
     [Fact]

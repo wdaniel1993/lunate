@@ -159,9 +159,15 @@ internal static class HarnessFactory
     internal static IChatClientFactory CreateFactory(
         string? authPath,
         Func<string, string?>? environment
-    )
+    ) => CreateFactory(AuthStore.Load(authPath, environment));
+
+    /// <summary>
+    /// The factory over an already loaded auth store: the interactive session resolves the store
+    /// once, for the client and for the welcome header's first-run check.
+    /// </summary>
+    internal static IChatClientFactory CreateFactory(AuthStore auth)
     {
-        AuthStore auth = AuthStore.Load(authPath, environment);
+        ArgumentNullException.ThrowIfNull(auth);
         return new ChatClientFactory(NullLoggerFactory.Instance, namedKeySource: auth.TryGet);
     }
 }

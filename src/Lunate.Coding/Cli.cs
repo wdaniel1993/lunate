@@ -1,5 +1,4 @@
 using System.Reactive.Concurrency;
-using System.Reflection;
 using Lunate.Ai;
 using Lunate.Tui;
 
@@ -350,14 +349,5 @@ internal static class Cli
         output.WriteLine("                                 removes this repository's records");
     }
 
-    private static string GetProductVersion()
-    {
-        var assembly = typeof(Cli).Assembly;
-
-        return assembly
-                .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
-                ?.InformationalVersion
-            ?? assembly.GetName().Version?.ToString()
-            ?? "unknown";
-    }
+    private static string GetProductVersion() => ProductVersion.Informational;
 }

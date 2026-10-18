@@ -112,6 +112,8 @@ internal sealed partial class InteractiveSession : IDisposable
     private readonly HashSet<string> _alwaysApproved = new(StringComparer.Ordinal);
     private AgentSettings _settings = new();
     private ModelCatalog _catalog = null!;
+    private AuthStore _auth = null!;
+    private Func<string, string?> _environment = Environment.GetEnvironmentVariable;
     private IChatClientFactory _factory = null!;
     private Workspace _workspace = null!;
     private ToolRegistry _tools = null!;
@@ -157,6 +159,7 @@ internal sealed partial class InteractiveSession : IDisposable
     private McpToolSet? _mcp;
     private readonly List<UserNotice> _pendingNotices = [];
     private bool _composed;
+    private bool _headerCountsPending;
     private ToolResultRendererRegistry? _toolResultRenderers;
     private StatusWidgetRegistry? _statusWidgets;
     private bool _disposed;
@@ -276,9 +279,9 @@ internal sealed partial class InteractiveSession : IDisposable
     {
         _settings = SettingsStore.Resolve(_options.SettingsPath, _options.Environment);
         _catalog = ModelCatalog.Load(_options.ModelsPath);
-        _factory =
-            _options.Factory
-            ?? HarnessFactory.CreateFactory(_options.AuthPath, _options.Environment);
+        _environment = _options.Environment ?? Environment.GetEnvironmentVariable;
+        _auth = AuthStore.Load(_options.AuthPath, _options.Environment);
+        _factory = _options.Factory ?? HarnessFactory.CreateFactory(_auth);
         _workspace = new Workspace(_options.WorkingDirectory ?? Environment.CurrentDirectory);
         _workspaceServices = new WorkspaceServices(_settings.Roslyn.MaxLoadedWorkspaces);
         _sessionDirectory =
@@ -286,6 +289,9 @@ internal sealed partial class InteractiveSession : IDisposable
         _session = HarnessFactory.CreateSession(_sessionDirectory, _workspace);
         _workingDirectory = DisplayDirectory(_workspace.WorktreeRoot);
         _branch = GitBranchReader.Read(_workspace.WorktreeRoot);
+        // The welcome header prints here, on the first frame and before any composition output:
+        // the loading line keeps running underneath and nothing blocks on it (design D1).
+        PrintWelcomeHeader(counts: null);
         _trustTotal = CountPendingTrustQuestions();
         _approver = new SessionApprover(this, _settings.Approval);
         await ComposeExtensionsAsync(ct);
@@ -327,6 +333,9 @@ internal sealed partial class InteractiveSession : IDisposable
         // extension-registered model, which only the registry knows.
         ResolveSessionModel();
         _harness = BuildHarness(_model);
+        // Composition is done: the placeholder counts fill in with exactly one update line, never a
+        // redraw of the block (design D1).
+        PrintHeaderCounts();
         _pipeline = new InputPipeline(_options.Hooks ?? _extensions?.HookRunner);
     }
 

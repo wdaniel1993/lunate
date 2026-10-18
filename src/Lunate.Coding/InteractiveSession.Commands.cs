@@ -3,6 +3,7 @@ using Lunate.Agent;
 using Lunate.Ai;
 using Lunate.Extensibility.Abstractions;
 using Lunate.Tui;
+using Spectre.Console;
 
 namespace Lunate.Coding;
 
@@ -22,9 +23,10 @@ internal sealed partial class InteractiveSession
     private async Task DispatchCommandAsync(string text, CancellationToken ct)
     {
         (string name, string argument) = Commands.Parse(text);
-        if (name.StartsWith("/skill:", StringComparison.Ordinal))
+        if (name.StartsWith(Commands.SkillPrefix, StringComparison.Ordinal))
         {
-            await InvokeSkillAsync(name["/skill:".Length..], argument, ct).ConfigureAwait(false);
+            await InvokeSkillAsync(name[Commands.SkillPrefix.Length..], argument, ct)
+                .ConfigureAwait(false);
             return;
         }
 
@@ -32,6 +34,9 @@ internal sealed partial class InteractiveSession
         {
             case "/quit":
                 Quit();
+                return;
+            case "/help":
+                ShowHelp();
                 return;
             case "/compact":
                 if (RefusedWhileBusy())
@@ -106,6 +111,14 @@ internal sealed partial class InteractiveSession
                 return;
         }
     }
+
+    /// <summary>
+    /// The <c>/help</c> listing: the registry's grouped commands printed as finished lines into
+    /// scrollback (a live-area notice is one clipped line and cannot hold a listing). The lines are
+    /// plain text, so they are markup-escaped on the way in. Read-only, so it is allowed while a
+    /// turn runs.
+    /// </summary>
+    private void ShowHelp() => WriteScrollbackLines([.. HelpView.Lines().Select(Markup.Escape)]);
 
     /// <summary>
     /// The <c>/context</c> notice: the context usage (the footer's own format), the resolved
@@ -515,6 +528,8 @@ internal sealed partial class InteractiveSession
         {
             await ComposeSkillsAsync(_lifetime.Token).ConfigureAwait(false);
             _harness = BuildHarness(_model);
+            // /new is a session start: the header prints again, with the counts already known.
+            PrintWelcomeHeader(HeaderCounts());
             Notify("new session");
         }
         catch (OperationCanceledException) { }

@@ -1,0 +1,4 @@
+Ϲ
+lunate  v0.1.0
+add the 'openai' key to ~/.lunate/auth.json
+~/dev/lunate
