@@ -31,6 +31,9 @@ public sealed record AgentSettings
 
     /// <summary>The resolved Roslyn settings (the <c>roslyn</c> section).</summary>
     public RoslynSettings Roslyn { get; init; } = new();
+
+    /// <summary>Whether the interactive session prints the welcome header; defaults to on.</summary>
+    public bool StartupHeader { get; init; } = true;
 }
 
 /// <summary>The per-workspace Roslyn limits (the <c>roslyn</c> settings section).</summary>
@@ -51,9 +54,9 @@ public sealed record RoslynSettings
 /// Reads <c>~/.lunate/settings.json</c> (schema 1). A missing file yields defaults; a present file
 /// is validated with every problem collected into one error, and no partial settings are applied.
 /// The environment (<c>LUNATE_MODEL</c>, <c>LUNATE_APPROVAL</c>, <c>LUNATE_TOOL_OUTPUT_LIMIT</c>,
-/// <c>LUNATE_SUBAGENTS_CONCURRENCY</c>, <c>LUNATE_SUBAGENTS_TOKEN_BUDGET</c>,
-/// <c>LUNATE_SUBAGENTS_TREE_TOKEN_BUDGET</c>) overrides file values. Both the path and the
-/// environment lookup are injectable.
+/// <c>LUNATE_STARTUP_HEADER</c>, <c>LUNATE_SUBAGENTS_CONCURRENCY</c>,
+/// <c>LUNATE_SUBAGENTS_TOKEN_BUDGET</c>, <c>LUNATE_SUBAGENTS_TREE_TOKEN_BUDGET</c>) overrides file
+/// values. Both the path and the environment lookup are injectable.
 /// </summary>
 public static class SettingsStore
 {
@@ -63,12 +66,16 @@ public static class SettingsStore
     private const string ModelVariable = "LUNATE_MODEL";
     private const string ApprovalVariable = "LUNATE_APPROVAL";
     private const string ToolOutputLimitVariable = "LUNATE_TOOL_OUTPUT_LIMIT";
+    private const string StartupHeaderVariable = "LUNATE_STARTUP_HEADER";
     private const string SubagentConcurrencyVariable = "LUNATE_SUBAGENTS_CONCURRENCY";
     private const string SubagentTokenBudgetVariable = "LUNATE_SUBAGENTS_TOKEN_BUDGET";
     private const string SubagentTreeTokenBudgetVariable = "LUNATE_SUBAGENTS_TREE_TOKEN_BUDGET";
 
     /// <summary>The one explicit literal that disables a subagent limit.</summary>
     private const string Unlimited = "unlimited";
+
+    /// <summary>The literals a boolean switch setting accepts, as the error message lists them.</summary>
+    private const string SwitchLiterals = "true, false, 1 or 0";
 
     /// <summary>Resolves the effective settings; throws one <see cref="InvalidDataException"/> naming every problem.</summary>
     public static AgentSettings Resolve(
@@ -162,6 +169,12 @@ public static class SettingsStore
                         break;
                     case "roslyn":
                         settings = settings with { Roslyn = ReadRoslyn(property.Value, problems) };
+                        break;
+                    case "startupHeader":
+                        settings = settings with
+                        {
+                            StartupHeader = ReadStartupHeader(property.Value, problems),
+                        };
                         break;
                     default:
                         problems.Add($"unknown key '{property.Name}'");
@@ -332,6 +345,21 @@ public static class SettingsStore
         return settings;
     }
 
+    /// <summary>
+    /// Reads <c>startupHeader</c>: a JSON boolean; a missing key keeps the documented default
+    /// (on).
+    /// </summary>
+    private static bool ReadStartupHeader(JsonElement value, List<string> problems)
+    {
+        if (value.ValueKind is JsonValueKind.True or JsonValueKind.False)
+        {
+            return value.GetBoolean();
+        }
+
+        problems.Add("'startupHeader' must be true or false");
+        return true;
+    }
+
     private static int? ReadConcurrency(JsonElement value, List<string> problems)
     {
         if (IsUnlimited(value))
@@ -428,6 +456,21 @@ public static class SettingsStore
             }
         }
 
+        string? startupHeader = environment(StartupHeaderVariable);
+        if (!string.IsNullOrEmpty(startupHeader))
+        {
+            if (TryParseSwitch(startupHeader, out bool parsedHeader))
+            {
+                settings = settings with { StartupHeader = parsedHeader };
+            }
+            else
+            {
+                problems.Add(
+                    $"{StartupHeaderVariable} must be {SwitchLiterals}, but was '{startupHeader}'"
+                );
+            }
+        }
+
         string? concurrency = environment(SubagentConcurrencyVariable);
         if (!string.IsNullOrEmpty(concurrency))
         {
@@ -512,6 +555,23 @@ public static class SettingsStore
 
         problems.Add($"{variable} must be a positive integer or 'unlimited', but was '{value}'");
         return null;
+    }
+
+    /// <summary>The switch literals a setting accepts: <c>true</c>/<c>1</c> and <c>false</c>/<c>0</c>.</summary>
+    private static bool TryParseSwitch(string value, out bool parsed)
+    {
+        switch (value.ToLowerInvariant())
+        {
+            case "true" or "1":
+                parsed = true;
+                return true;
+            case "false" or "0":
+                parsed = false;
+                return true;
+            default:
+                parsed = true;
+                return false;
+        }
     }
 
     private static bool TryParseApproval(string? value, out ApprovalPolicy parsed)
