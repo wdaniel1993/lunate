@@ -644,7 +644,11 @@ public static class SettingsStore
         }
     }
 
-    private static bool TryParseThinking(string? value, out ThinkingLevel parsed)
+    /// <summary>
+    /// Parses the exact lowercase level literal (shared with the <c>/thinking</c> command, so the
+    /// settings vocabulary stays one table).
+    /// </summary>
+    internal static bool TryParseThinking(string? value, out ThinkingLevel parsed)
     {
         switch (value)
         {

@@ -31,6 +31,11 @@ public sealed class StatusFooterRenderer
     )
     {
         var segments = new List<string> { footer.Model, Usage(footer) };
+        if (!string.IsNullOrEmpty(footer.ThinkLevel))
+        {
+            segments.Add("think:" + footer.ThinkLevel);
+        }
+
         if (!string.IsNullOrEmpty(footer.WorkingDirectory))
         {
             segments.Add(footer.WorkingDirectory);

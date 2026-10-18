@@ -127,6 +127,7 @@ internal sealed partial class InteractiveSession : IDisposable
     private readonly SkillReadAllowance _skillAllowance = new();
     private string _sessionDirectory = string.Empty;
     private ModelInfo _model = null!;
+    private ThinkingLevel _thinkingLevel;
     private AgentHarness? _harness;
     private SessionApprover? _approver;
     private InputLineState _input = InputLine.Empty;
@@ -300,6 +301,7 @@ internal sealed partial class InteractiveSession : IDisposable
     private async Task ComposeAsync(CancellationToken ct)
     {
         _settings = SettingsStore.Resolve(_options.SettingsPath, _options.Environment);
+        _thinkingLevel = _settings.Thinking;
         _catalog = ModelCatalog.Load(_options.ModelsPath);
         _environment = _options.Environment ?? Environment.GetEnvironmentVariable;
         _auth = AuthStore.Load(_options.AuthPath, _options.Environment);
@@ -641,6 +643,7 @@ internal sealed partial class InteractiveSession : IDisposable
             FileChanges = (IFileChangeSink?)_extensions?.FileChanges ?? NullFileChangeSink.Instance,
             ModelCatalog = _catalog,
             ModelId = model.Id,
+            ThinkingLevel = _thinkingLevel,
             ModelRegistry = _extensions?.ModelRegistry,
             WorkspaceTools = _workspaceTools,
         };
@@ -1147,6 +1150,7 @@ internal sealed partial class InteractiveSession : IDisposable
                 view.ContextWindow,
                 view.WorkingDirectory,
                 view.GitBranch,
+                _thinkingLevel == ThinkingLevel.Off ? null : ThinkingLiteral(_thinkingLevel),
                 widgets
             )
         );

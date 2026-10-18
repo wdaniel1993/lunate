@@ -21,6 +21,10 @@ public sealed class InteractiveSessionCommandTests
         host.Console.SendEnter();
         await WaitForFrameAsync(host, "nothing to compact");
 
+        host.Console.SendText("/thinking");
+        host.Console.SendEnter();
+        await WaitForFrameAsync(host, "thinking: off");
+
         host.Console.SendText("/model");
         host.Console.SendEnter();
         await WaitForFrameAsync(host, "Select model");
@@ -62,11 +66,12 @@ public sealed class InteractiveSessionCommandTests
         Assert.Contains(
             """
             session
-              /compact — compact the conversation now
-              /context — show the context window and subagent budgets
-              /help    — list the commands
-              /new     — start a fresh session
-              /resume  — open the session picker
+              /compact  — compact the conversation now
+              /context  — show the context window and subagent budgets
+              /help     — list the commands
+              /new      — start a fresh session
+              /resume   — open the session picker
+              /thinking — set the reasoning level (off|low|medium|high)
             model
               /model — pick a model or switch to one by id
             extensions

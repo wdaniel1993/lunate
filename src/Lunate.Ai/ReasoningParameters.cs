@@ -1,3 +1,4 @@
+using System.Globalization;
 using Anthropic.Models.Messages;
 using Microsoft.Extensions.AI;
 
@@ -15,6 +16,8 @@ public static class ReasoningParameters
 {
     private const string EffortStyle = "effort";
     private const string BudgetStyle = "budget";
+    private const string InlineStyle = "inline";
+    private const string OffDescription = "no reasoning parameters";
 
     /// <summary>
     /// The output headroom kept above a thinking budget: <c>max_tokens</c> must be present and
@@ -51,6 +54,36 @@ public static class ReasoningParameters
             _ => ReasoningEffort.High,
         };
 
+    private static long BudgetFor(ThinkingLevel level) =>
+        level switch
+        {
+            ThinkingLevel.Low => 2_048,
+            ThinkingLevel.Medium => 8_192,
+            _ => 32_768,
+        };
+
+    /// <summary>
+    /// The active model's mapping for the bare <c>/thinking</c> notice: the effort an effort model
+    /// would send, the token budget a budget model would send, the inline convention, or that the
+    /// model has no reasoning support. <see cref="ThinkingLevel.Off"/> and a model without a
+    /// declared style read as sending nothing. Numbers are formatted culture-invariantly.
+    /// </summary>
+    public static string Describe(ModelInfo model, ThinkingLevel level)
+    {
+        ArgumentNullException.ThrowIfNull(model);
+        return model.Reasoning switch
+        {
+            EffortStyle when level != ThinkingLevel.Off => "reasoning effort "
+                + EffortFor(level).ToString().ToLowerInvariant(),
+            BudgetStyle when level != ThinkingLevel.Off => "thinking budget "
+                + BudgetFor(level).ToString(CultureInfo.InvariantCulture)
+                + " tokens",
+            EffortStyle or BudgetStyle => OffDescription,
+            InlineStyle => "inline thinking (no provider parameter)",
+            _ => "no reasoning support",
+        };
+    }
+
     /// <summary>
     /// Enables Anthropic extended thinking with the level's token budget. The request carries an
     /// explicit <c>max_tokens</c> (an API requirement when thinking is on) clamped above the
@@ -58,12 +91,7 @@ public static class ReasoningParameters
     /// </summary>
     private static void ApplyBudget(ChatOptions options, string modelId, ThinkingLevel level)
     {
-        long budget = level switch
-        {
-            ThinkingLevel.Low => 2_048,
-            ThinkingLevel.Medium => 8_192,
-            _ => 32_768,
-        };
+        long budget = BudgetFor(level);
         long maxTokens = Math.Max(options.MaxOutputTokens ?? 0, budget + OutputHeadroom);
         options.MaxOutputTokens = (int)maxTokens;
         options.RawRepresentationFactory = _ => CreateRequest(modelId, maxTokens, budget);

@@ -1,3 +1,4 @@
+using System.Globalization;
 using Anthropic.Models.Messages;
 using Microsoft.Extensions.AI;
 
@@ -111,5 +112,65 @@ public sealed class ReasoningParametersTests
         Assert.Null(options.Reasoning);
         Assert.Null(options.RawRepresentationFactory);
         Assert.Null(options.MaxOutputTokens);
+    }
+
+    [Theory]
+    [InlineData(ThinkingLevel.Low, "reasoning effort low")]
+    [InlineData(ThinkingLevel.Medium, "reasoning effort medium")]
+    [InlineData(ThinkingLevel.High, "reasoning effort high")]
+    public void Describe_names_the_effort_an_effort_model_would_send(
+        ThinkingLevel level,
+        string expected
+    ) => Assert.Equal(expected, ReasoningParameters.Describe(Model("effort"), level));
+
+    [Theory]
+    [InlineData(ThinkingLevel.Low, "thinking budget 2048 tokens")]
+    [InlineData(ThinkingLevel.Medium, "thinking budget 8192 tokens")]
+    [InlineData(ThinkingLevel.High, "thinking budget 32768 tokens")]
+    public void Describe_names_the_budget_a_budget_model_would_send(
+        ThinkingLevel level,
+        string expected
+    ) => Assert.Equal(expected, ReasoningParameters.Describe(Model("budget"), level));
+
+    [Theory]
+    [InlineData("effort")]
+    [InlineData("budget")]
+    public void Describe_reads_off_as_sending_nothing(string style) =>
+        Assert.Equal(
+            "no reasoning parameters",
+            ReasoningParameters.Describe(Model(style), ThinkingLevel.Off)
+        );
+
+    [Fact]
+    public void Describe_reads_a_model_without_a_style_as_having_no_reasoning_support() =>
+        Assert.Equal(
+            "no reasoning support",
+            ReasoningParameters.Describe(Model(null), ThinkingLevel.High)
+        );
+
+    [Fact]
+    public void Describe_reads_inline_as_the_models_own_stream() =>
+        Assert.Equal(
+            "inline thinking (no provider parameter)",
+            ReasoningParameters.Describe(Model("inline"), ThinkingLevel.High)
+        );
+
+    [Fact]
+    public void Describe_formats_the_budget_invariantly_under_a_machine_culture()
+    {
+        var original = CultureInfo.CurrentCulture;
+        try
+        {
+            CultureInfo.CurrentCulture = new CultureInfo("de-AT");
+
+            Assert.Equal(
+                "thinking budget 8192 tokens",
+                ReasoningParameters.Describe(Model("budget"), ThinkingLevel.Medium)
+            );
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = original;
+        }
     }
 }

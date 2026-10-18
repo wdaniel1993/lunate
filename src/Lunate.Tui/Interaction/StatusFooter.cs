@@ -3,6 +3,8 @@ namespace Lunate.Tui;
 /// <summary>
 /// The session status shown as the footer line: model id, tokens used against the context window,
 /// working directory (pre-shortened by the wiring layer) and the current git branch when known.
+/// <see cref="ThinkLevel"/> carries the session's thinking level literal (<c>low</c>,
+/// <c>medium</c>, <c>high</c>); null — the default and the <c>off</c> level — omits the segment.
 /// </summary>
 public sealed record StatusFooterModel(
     string Model,
@@ -10,4 +12,8 @@ public sealed record StatusFooterModel(
     long ContextWindow,
     string WorkingDirectory,
     string? GitBranch
-);
+)
+{
+    /// <summary>The thinking level segment's literal, or null when thinking is off.</summary>
+    public string? ThinkLevel { get; init; }
+}

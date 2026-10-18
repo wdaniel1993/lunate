@@ -41,6 +41,7 @@ internal static class Commands
         new("/help", CommandGroup.Session, "list the commands"),
         new("/new", CommandGroup.Session, "start a fresh session"),
         new("/resume", CommandGroup.Session, "open the session picker"),
+        new("/thinking", CommandGroup.Session, "set the reasoning level (off|low|medium|high)"),
         new("/model", CommandGroup.Model, "pick a model or switch to one by id"),
         new(
             "/extensions",

@@ -18,7 +18,15 @@ public sealed class AcpInteractionTests
         Assert.Equal(["retrying (attempt 1)"], lines);
 
         interaction.UpdateStatus(
-            new UserStatus("model", 1, 2, "/repo", "main", [new TextSegment("w", TextStyle.Dim)])
+            new UserStatus(
+                "model",
+                1,
+                2,
+                "/repo",
+                "main",
+                ThinkLevel: null,
+                [new TextSegment("w", TextStyle.Dim)]
+            )
         );
         Assert.Single(lines);
 

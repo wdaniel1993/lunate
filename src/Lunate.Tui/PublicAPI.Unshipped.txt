@@ -229,6 +229,8 @@ Lunate.Tui.StatusFooterModel.GitBranch.init -> void
 Lunate.Tui.StatusFooterModel.Model.get -> string!
 Lunate.Tui.StatusFooterModel.Model.init -> void
 Lunate.Tui.StatusFooterModel.StatusFooterModel(string! Model, long TokensUsed, long ContextWindow, string! WorkingDirectory, string? GitBranch) -> void
+Lunate.Tui.StatusFooterModel.ThinkLevel.get -> string?
+Lunate.Tui.StatusFooterModel.ThinkLevel.init -> void
 Lunate.Tui.StatusFooterModel.TokensUsed.get -> long
 Lunate.Tui.StatusFooterModel.TokensUsed.init -> void
 Lunate.Tui.StatusFooterModel.WorkingDirectory.get -> string!

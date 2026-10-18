@@ -20,6 +20,7 @@ internal sealed record UserStatus(
     long ContextWindow,
     string WorkingDirectory,
     string? GitBranch,
+    string? ThinkLevel,
     IReadOnlyList<TextSegment> Widgets
 );
 

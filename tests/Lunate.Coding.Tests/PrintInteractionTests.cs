@@ -38,7 +38,15 @@ public sealed class PrintInteractionTests
         var interaction = new PrintUserInteraction(errors);
 
         interaction.UpdateStatus(
-            new UserStatus("model", 1, 2, "/repo", "main", [new TextSegment("w", TextStyle.Dim)])
+            new UserStatus(
+                "model",
+                1,
+                2,
+                "/repo",
+                "main",
+                ThinkLevel: null,
+                [new TextSegment("w", TextStyle.Dim)]
+            )
         );
         interaction.RenderExtension(
             new ExtensionBlock("read", [new TextSegment("block", TextStyle.Accent)])

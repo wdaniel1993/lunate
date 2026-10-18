@@ -98,6 +98,21 @@ internal sealed partial class InteractiveSession
 
                 StartNewSession();
                 return;
+            case "/thinking":
+                if (argument.Length == 0)
+                {
+                    // Read-only: the bare form reports the level and the mapping even mid-turn.
+                    Notify(ThinkingText());
+                    return;
+                }
+
+                if (RefusedWhileBusy())
+                {
+                    return;
+                }
+
+                SetThinkingLevel(argument);
+                return;
             case "/resume":
                 if (RefusedWhileBusy())
                 {
@@ -148,6 +163,45 @@ internal sealed partial class InteractiveSession
 
     private static string Limit(long? value) =>
         value?.ToString(CultureInfo.InvariantCulture) ?? "unlimited";
+
+    /// <summary>
+    /// The bare <c>/thinking</c> notice: the session's current level plus the active model's
+    /// mapping (design D7/D3). Read-only, so it is allowed while a turn runs.
+    /// </summary>
+    private string ThinkingText() =>
+        "thinking: "
+        + ThinkingLiteral(_thinkingLevel)
+        + " — "
+        + ReasoningParameters.Describe(_model, _thinkingLevel);
+
+    /// <summary>
+    /// The <c>/thinking &lt;level&gt;</c> set form: sets the level, rebuilds the harness so the
+    /// next request carries the mapping, updates the footer and notices the level. An unknown
+    /// literal notices the allowed values and changes nothing.
+    /// </summary>
+    private void SetThinkingLevel(string argument)
+    {
+        if (!SettingsStore.TryParseThinking(argument, out ThinkingLevel level))
+        {
+            Notify("thinking must be 'off', 'low', 'medium' or 'high'", NoticeLevel.Warning);
+            return;
+        }
+
+        _thinkingLevel = level;
+        _harness = BuildHarness(_model);
+        UpdateStatus();
+        Notify("thinking: " + ThinkingLiteral(level));
+    }
+
+    /// <summary>The level's user-facing lowercase literal; <c>off</c> is the plain form.</summary>
+    private static string ThinkingLiteral(ThinkingLevel level) =>
+        level switch
+        {
+            ThinkingLevel.Low => "low",
+            ThinkingLevel.Medium => "medium",
+            ThinkingLevel.High => "high",
+            _ => "off",
+        };
 
     private bool RefusedWhileBusy()
     {

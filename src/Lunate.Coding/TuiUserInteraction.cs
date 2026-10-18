@@ -24,7 +24,10 @@ internal sealed class TuiUserInteraction(LiveArea live) : IUserInteraction
                 status.ContextWindow,
                 status.WorkingDirectory,
                 status.GitBranch
-            ),
+            )
+            {
+                ThinkLevel = status.ThinkLevel,
+            },
             [.. status.Widgets.Select(segment => segment.Text)]
         );
 

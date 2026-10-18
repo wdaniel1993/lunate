@@ -34,6 +34,7 @@ static Lunate.Ai.ModelInfo.operator !=(Lunate.Ai.ModelInfo? left, Lunate.Ai.Mode
 static Lunate.Ai.ModelInfo.operator ==(Lunate.Ai.ModelInfo? left, Lunate.Ai.ModelInfo? right) -> bool
 Lunate.Ai.ReasoningParameters
 static Lunate.Ai.ReasoningParameters.Apply(Microsoft.Extensions.AI.ChatOptions! options, Lunate.Ai.ModelInfo! model, Lunate.Ai.ThinkingLevel level) -> void
+static Lunate.Ai.ReasoningParameters.Describe(Lunate.Ai.ModelInfo! model, Lunate.Ai.ThinkingLevel level) -> string!
 Lunate.Ai.ThinkingLevel
 Lunate.Ai.ThinkingLevel.High = 3 -> Lunate.Ai.ThinkingLevel
 Lunate.Ai.ThinkingLevel.Low = 1 -> Lunate.Ai.ThinkingLevel

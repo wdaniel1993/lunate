@@ -43,7 +43,15 @@ public sealed class JsonInteractionTests
         var interaction = new PrintUserInteraction(errors);
 
         interaction.UpdateStatus(
-            new UserStatus("model", 1, 2, "/repo", "main", [new TextSegment("w", TextStyle.Dim)])
+            new UserStatus(
+                "model",
+                1,
+                2,
+                "/repo",
+                "main",
+                ThinkLevel: null,
+                [new TextSegment("w", TextStyle.Dim)]
+            )
         );
         interaction.RenderExtension(
             new ExtensionBlock("bash", [new TextSegment("block", TextStyle.Error)])

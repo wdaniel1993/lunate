@@ -64,8 +64,10 @@ order; commit per group; record any design/code divergence in this file under th
   (Divergence: the collapsed line commits flush left — D8 spells it without the visual-spec
   snapshot's leading indent; the snapshot pass can settle it. An empty full text commits
   nothing.)
-- [ ] 4.3 `/thinking [off|low|medium|high]` (bare = print level + mapping); footer segment
+- [x] 4.3 `/thinking [off|low|medium|high]` (bare = print level + mapping); footer segment
   `think:<level>` when not `off`.
+  (Divergence: the level is session-scoped — set in memory, no settings.json write-back; the
+  bare form is read-only and allowed while a turn runs, the set form refuses like `/model`.)
 - [ ] 4.4 Tests: unit (renderers) + the production composition test (scripted reasoning
   fixture through the real host: live frame → collapsed commit).
 - [ ] 4.5 Snapshot tests for the thinking states at 120/80/50 × dark/light/NO_COLOR.
