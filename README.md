@@ -1,115 +1,299 @@
 # Lunate
 
-A native C# coding agent for the terminal — a reliable core loop, four core tools (`read`, `write`, `edit`, `bash`), a Spectre-based TUI, and first-class C# support through Roslyn.
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/media/brand/lunate-logo-dark.png">
+  <img src="docs/media/brand/lunate-logo-light.png" alt="Lunate" width="340">
+</picture>
 
-Named for the **lunate sigma (Ϲ)**: the ancient crescent-shaped sigma that reads like a Latin "C" — a Greek-letter sibling of π and τ that points directly at C#.
+**Small, native, yours: a coding agent you can customise in C#.**
 
-Status: **bootstrap** — the core is built change by change; the model pipeline, the event contract, the tools and the agent loop have landed, there is no release yet. The plan and roadmap live in [`docs/guide.md`](docs/guide.md).
+[![CI](https://github.com/wdaniel1993/lunate/actions/workflows/ci.yml/badge.svg)](https://github.com/wdaniel1993/lunate/actions/workflows/ci.yml)
+[![Release](https://github.com/wdaniel1993/lunate/actions/workflows/release.yml/badge.svg)](https://github.com/wdaniel1993/lunate/actions/workflows/release.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-## Prerequisites
+![A Lunate session: a prompt, an approved edit with its diff, and the answer](docs/media/demo.gif)
 
-- [.NET 10 SDK](https://dotnet.microsoft.com/download) (the version is pinned in `global.json`)
-- [Node.js](https://nodejs.org/) — runs the documentation lint in the verify gate (pinned `npx`)
-- [hyperfine](https://github.com/sharkdp/hyperfine) — measures the startup budget
-- `jq` — only for `scripts/memory.sh`
+## Why Lunate
+
+- **Lightweight.** A release is one self-contained binary — no Node, no Python, no .NET runtime to
+  install — and `lunate --version` starts in tens of milliseconds. CI holds the startup median to
+  250 ms on Ubuntu, 300 ms on macOS and 350 ms on Windows ([ADR-0005](adr/0005-budget-calibration.md)).
+- **Made for C#.** Roslyn semantic tools with no plugin and no language server to install:
+  `cs_diagnostics`, `cs_find_symbol`, `cs_find_references`, `cs_outline` and `cs_rename`, offered
+  only in a C# workspace and loaded on first use. On the published head-to-head C# suite Lunate
+  finished 6/6 at **~5× fewer tokens** than the heavy harnesses on the same tasks — 78k against
+  378k and 451k — and the write-up is candid about what that suite does and does not show
+  ([`docs/eval/t35-head-to-head.md`](docs/eval/t35-head-to-head.md)).
+- **Yours, in the language it is written in.** Extensions load at runtime and add tools
+  (`context.RegisterTool(...)`), hook handlers, terminal UI renderers and widgets, MCP servers,
+  model providers and skills. Start from [`templates/extension/`](templates/extension/README.md);
+  the contract is [`docs/spec/extensibility.md`](docs/spec/extensibility.md).
+- **Open protocols.** An MCP client for servers you already run, an ACP server so an editor such as
+  Zed or JetBrains drives it, Agent Skills (`SKILL.md`) and `AGENTS.md` for project rules.
+- **A daily driver.** Every write and command asks first — edits show you their diff — repository
+  code asks once per repository before it runs, sessions resume, and print mode (`lunate -p`,
+  `--json`) scripts the whole thing for CI.
 
 ## Install
 
-The channels below go live with the first tagged release; until then, build from source with the quick start below.
+No release is tagged yet, so build from source. The package-manager channels — Homebrew, Scoop,
+winget, the `curl | sh` and `irm | iex` installers and the `dotnet tool` package — land with the
+first release.
 
-**macOS (Apple Silicon) and Linux (x86_64)** — verifies SHA-256, installs into `~/.local/bin`, no `sudo`:
+Prerequisite: the [.NET 10 SDK](https://dotnet.microsoft.com/download), pinned in
+[`global.json`](global.json) at 10.0.401.
 
-```sh
-curl -fsSL https://raw.githubusercontent.com/wdaniel1993/lunate/main/install.sh | sh
+```bash
+git clone https://github.com/wdaniel1993/lunate
+cd lunate
+dotnet tool restore                      # CSharpier, pinned as a local tool
+dotnet build lunate.sln -c Release
+src/Lunate.Coding/bin/Release/net10.0/lunate --version   # lunate.exe on Windows
 ```
 
-**Windows (x86_64)** — verifies SHA-256, installs into `%LOCALAPPDATA%\Programs\lunate`, no admin:
+The release archives are self-contained single files; publish one the same way (Windows: `win-x64`,
+and the binary is `lunate.exe`):
 
-```powershell
-irm https://raw.githubusercontent.com/wdaniel1993/lunate/main/install.ps1 | iex
+```bash
+dotnet publish src/Lunate.Coding/Lunate.Coding.csproj -c Release -r osx-arm64 \
+  --self-contained true -p:PublishSingleFile=true -p:PublishReadyToRun=true \
+  -o artifacts/publish/osx-arm64
+artifacts/publish/osx-arm64/lunate
 ```
 
-**Homebrew** (macOS arm64, Linux x64):
-
-```sh
-brew install wdaniel1993/tap/lunate
-```
-
-**Scoop** (Windows):
-
-```powershell
-scoop bucket add lunate https://github.com/wdaniel1993/scoop-bucket
-scoop install lunate
-```
-
-**winget** (Windows):
-
-```powershell
-winget install wdaniel1993.lunate
-```
-
-**`dotnet tool`** (needs the .NET 10 SDK):
-
-```sh
-dotnet tool install --global lunate
-```
-
-Archives, `SHA256SUMS` and the tool package live on the [releases page](https://github.com/wdaniel1993/lunate/releases); each installer refuses unsupported platforms with a clear message. The release runbook is in [`docs/distribution.md`](docs/distribution.md).
+Contributor setup — the gate, the repository map and the OpenSpec workflow — is in
+[`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ## Quick start
 
-```bash
-dotnet tool restore                     # CSharpier, pinned as a local tool
-dotnet build lunate.sln -c Release
-dotnet test --solution lunate.sln -c Release
-bash scripts/verify.sh                  # the full gate (Windows: scripts/verify.ps1)
+**1. Pick a model and a credential.** The built-in catalog carries `gpt-4o-mini`, `gpt-4o`,
+`claude-sonnet-5-5` and `claude-opus-5-5`. Put the default in `~/.lunate/settings.json`:
+
+```json
+{ "schemaVersion": 1, "model": "claude-sonnet-5-5" }
 ```
 
-`scripts/verify.sh` runs the build, all tests (including a `de-AT` culture pass), a single-file publish, the startup budget, formatting (CSharpier), the documentation lint and the public-API check.
-
-### Trust in scripted runs
-
-A repository's project extensions and its project `.lunate/mcp.json` run repository-provided code, so each needs a one-time trust decision. Records live in `~/.lunate/trust.json` — per user and machine — so an ephemeral CI runner starts untrusted and runs the trust step in every job:
+Then give that provider a key — exported, or stored under the provider's name (`openai`,
+`anthropic`) in `~/.lunate/auth.json`:
 
 ```bash
-lunate trust            # inspect: the records, the pending decisions and one digest
-lunate trust --yes      # record the pending decisions
-lunate trust --json     # the inspection as one JSON document, for scripts
-lunate trust --clear    # remove this repository's records
+export ANTHROPIC_API_KEY=sk-ant-...
 ```
 
-`lunate trust` exits 3 when decisions are pending, so it doubles as a CI check. `--yes` records exactly what it prints: use it only for checkouts you control, never on untrusted pull requests or forks. To review before trusting in CI, inspect `lunate trust --json` on the reviewed revision, pin the digest it prints, and let the job run `lunate trust --yes --digest <sha>`: it records only when the recomputed digest matches, and a stale digest records nothing and exits 4.
+```json
+{ "schemaVersion": 1, "keys": { "anthropic": "sk-ant-..." } }
+```
 
-## Repository map
+An environment variable wins over the file. A model with a declared `endpoint` — a local server or
+any OpenAI-compatible API — needs no key at all; `lunate --discover <name-or-url>` drafts a catalog
+entry for one.
 
-| Path | What lives there |
-| --- | --- |
-| `src/Lunate.Ai/` | `IChatClient` setup, model catalog, record and replay clients |
-| `src/Lunate.Agent/` | the loop on `IChatClient`, events, tools, sessions, compaction |
-| `src/Lunate.Protocols/` | MCP client and ACP server |
-| `src/Lunate.Tui/` | Spectre output, input line and live area |
-| `src/Lunate.Roslyn/` | built-in semantic C# extension, loaded on first use |
-| `src/Lunate.Coding/` | the `lunate` executable: TUI, print and ACP modes |
-| `tests/` | one test project per src project, plus fixtures |
-| `openspec/specs/` | current behaviour, the source of truth |
-| `openspec/changes/` | in-flight proposals and tasks |
-| `adr/` | durable architectural decisions |
-| `docs/` | guide, spikes, eval write-ups and the documentation map |
+**2. Run it in a repository.**
 
-## Documentation
+```bash
+cd ~/my-project
+lunate                                            # the interactive session, on a terminal
+lunate -p "summarise what changed on this branch" # print mode: the final answer on stdout
+lunate -p --json "..."                            # every event as one JSON line
+```
 
-Start at [`docs/README.md`](docs/README.md) — the map of every document kind and the writing guideline. Key entry points:
+Without a terminal the interactive session exits with a hint to print mode instead of starting
+half-broken.
 
-- [Guide](docs/guide.md) — what Lunate is, the plan and the roadmap
-- [Architecture](docs/architecture.md) — the component map and the runtime flows
-- [Specs](openspec/specs/) — the behaviour source of truth
-- [ADRs](adr/) — decisions with their context
-- [Releases](https://github.com/wdaniel1993/lunate/releases)
+**3. Learn three keys.** `/help` lists the commands, `/model` picks a model or switches to one by
+id, and `/quit` leaves. The rest of the built-ins: `/new`, `/resume`, `/compact`, `/context`,
+`/mcp`, `/extensions`, `/skills`, `/skill:<name>` and `/trust`.
+
+If nothing resolves a model or a key, the first run prints exactly one fix, for example
+`set 'model' in ~/.lunate/settings.json` or `add the 'anthropic' key to ~/.lunate/auth.json`.
+
+## Features
+
+### Edits you approve, with the diff
+
+Writes and edits stop at one line — `Allow edit src/Order.cs?  [y]es  [n]o  [a]lways this session` —
+and the change is printed as a diff before it lands. The result names the match tier it used
+(`exact`, `normalized` or `indent`), and an ambiguous edit is refused instead of guessed.
+
+![Approving an edit and reading the diff in the live area](docs/media/features/diff.gif)
+
+### C# the compiler agrees with
+
+In a C# workspace the model can ask `cs_diagnostics` for compiler errors and warnings — a compile
+check after an edit without a full `dotnet build` — and navigate by symbol with `cs_find_symbol`,
+`cs_find_references` and `cs_outline`. Roslyn loads on the first C# tool call, and restore, SDK and
+partial-load problems come back as messages the model can act on.
+
+![Running cs_diagnostics after an edit](docs/media/features/diagnostics.gif)
+
+### Repository code asks once
+
+A project extension, a project `mcp.json` server and a project skill are code from the repository,
+so each asks once per repository — and again when its files change:
+`Load project extension 'acme-tools' 0.3.0 from /repo/.lunate/extensions/acme-tools?  [y]es  [n]o`.
+Answers are recorded in `~/.lunate/trust.json`; `lunate trust` inspects and records them for
+scripted runs.
+
+![The trust prompt for a project extension](docs/media/features/trust.gif)
+
+### You can see what is loaded
+
+`/extensions` lists every discovered extension with its scope, state, load time and what it
+registered; `/mcp` lists the MCP servers with their status and source. `lunate extensions --json`
+prints the same data for scripts.
+
+![The /extensions listing in a session](docs/media/features/extensions.gif)
+
+## Configuration
+
+Everything of yours lives under `~/.lunate/`, and nothing there is required: without a settings file
+you get the defaults below.
+
+### Models and providers
+
+- `~/.lunate/settings.json` — `model` names the default model id.
+- `~/.lunate/models.json` — your own catalog entries: `id`, `provider` (`openai` for any
+  OpenAI-compatible endpoint, `anthropic`), optional `endpoint`, `contextWindow`, `supportsTools`
+  and an `auth` reference naming a key in `auth.json`. An entry overrides a built-in one with the
+  same id; `lunate --discover <name-or-url>` drafts one from a live endpoint.
+- `~/.lunate/auth.json` — named API keys under `keys`; `OPENAI_API_KEY` and `ANTHROPIC_API_KEY`
+  override the `openai` and `anthropic` entries.
+
+### Settings
+
+`~/.lunate/settings.json` carries `schemaVersion: 1`. An unknown key or a bad value is one error
+naming every problem, and nothing partial is applied.
+
+| Key | Default | What it does |
+| --- | --- | --- |
+| `schemaVersion` | — | must be `1` |
+| `model` | unset | the default model id |
+| `approval` | `ask` | `ask`: writes, edits and commands need approval; `auto-edit`: writes and edits run, commands still need approval |
+| `output.toolResultLimit` | `30000` | characters of one tool result before it is truncated |
+| `subagents.concurrency` | `4` | concurrent child runs in one tree, or `unlimited` |
+| `subagents.tokenBudget` | `100000` | tokens per child run, or `unlimited` |
+| `subagents.treeTokenBudget` | `500000` | tokens per top-level run tree, or `unlimited` |
+| `roslyn.maxLoadedWorkspaces` | `2` | C# workspaces kept loaded across roots |
+| `startupHeader` | `true` | print the welcome header when a session starts |
+
+Environment variables override the file: `LUNATE_MODEL`, `LUNATE_APPROVAL`,
+`LUNATE_TOOL_OUTPUT_LIMIT`, `LUNATE_STARTUP_HEADER` (`true`, `false`, `1` or `0`),
+`LUNATE_SUBAGENTS_CONCURRENCY`, `LUNATE_SUBAGENTS_TOKEN_BUDGET` and
+`LUNATE_SUBAGENTS_TREE_TOKEN_BUDGET`. `yolo` is not a setting: it exists only as the per-run flag
+`lunate -p --yolo`.
+
+**Recording and replay.** `LUNATE_RECORD=1` records a run's model stream to a session recording
+(`LUNATE_RECORD_PATH` names the file), `LUNATE_REPLAY=<file>` runs a session from that recording
+instead of calling a provider, and `LUNATE_DATE=yyyy-MM-dd` pins the date the system prompt is built
+with so a replayed request stays byte-stable. Recording wins when both are set.
+
+### Project instructions
+
+Every `AGENTS.md` from the repository root down to the directory you started Lunate in is appended
+to the system prompt under its relative path — the nearest file adds to the chain rather than
+replacing it. There is no Lunate-specific instructions file.
+
+### MCP servers
+
+`mcpServers` maps in the user files `~/.lunate/mcp.json` and `~/.agents/mcp.json`, and in the
+project files `.lunate/mcp.json`, `.agents/mcp.json` and `.mcp.json`. An entry carries `command`,
+`args`, `env`, optional `cwd` and optional `callTimeoutSeconds`; `${VAR}` and `${VAR:-default}`
+expand when the file loads. Within a scope `.lunate/` wins over `.agents/` wins over `.mcp.json`,
+and a project file wins over a user file. Servers start on first use, their tools arrive as
+`server__tool`, and a project file and each of its servers needs its own trust decision.
+
+### Extensions
+
+A directory with an `extension.json` manifest in `~/.lunate/extensions/` (global) or
+`.lunate/extensions/` (project) is discovered at session start and loaded on first use. Per-extension
+settings go in `~/.lunate/extensions-settings/<id>.json` and secrets in
+`~/.lunate/extensions-secrets/`. `lunate --no-extensions` starts any mode without loading them.
+
+### Skills
+
+A skill is a directory with a `SKILL.md`. Project scope: `.lunate/skills`, `.agents/skills`,
+`.claude/skills`; user scope: `~/.lunate/skills`, `~/.agents/skills`. The nearest scope wins.
+`/skills` lists them, `/skill:<name>` loads one, and the model gets a capped index of the rest.
+Project skills need a trust decision like any other repository code.
+
+## Modes
+
+- **Interactive** — `lunate`: the TUI session with approvals, the live area and command history
+  ([`openspec/specs/tui/spec.md`](openspec/specs/tui/spec.md)).
+- **Print** — `lunate -p [--json] [--yolo] "<prompt>"`: one prompt to completion, the final answer as
+  the only thing on stdout, diagnostics on stderr, exit codes that scripts can branch on
+  ([`openspec/specs/print-mode/spec.md`](openspec/specs/print-mode/spec.md)).
+- **ACP** — `lunate --acp`: serves the Agent Client Protocol over stdio for an editor, with nothing
+  but protocol on stdout ([`openspec/specs/protocols/spec.md`](openspec/specs/protocols/spec.md)).
+
+## Extending
+
+An extension is an assembly plus a manifest. The factory is the whole entry point:
+
+```csharp
+public sealed class HelloFactory : IExtensionFactory
+{
+    public IExtension Create(IExtensionContext context)
+    {
+        context.RegisterTool(new ExtensionToolRegistration
+        {
+            Name = "hello", Description = "Greets a name.",
+            ParametersSchema = Schema, Handler = new HelloHandler(),
+        });
+        return new HelloExtension();
+    }
+}
+```
+
+The model calls that tool as `<extension-id>__hello`, it goes through the same approval policy as
+the core tools, and hook handlers, UI renderers and widgets, MCP servers, model providers and skill
+sources register the same way.
+
+- Get started: [`templates/extension/README.md`](templates/extension/README.md) — manifest, wiring
+  and the test kit
+- Contract and hook catalogue: [`docs/spec/extensibility.md`](docs/spec/extensibility.md)
+- Reference extensions that run in CI: [`samples/extensions/`](samples/extensions/)
+
+## Security model
+
+Lunate is a single-user tool, not a sandbox. The file tools (`read`, `write`, `edit`) resolve paths
+canonically — symlinks included — and refuse anything outside the working directory; `bash` is not
+boundary-checked, so the approval policy is its guard, and every write, edit and command asks before
+it runs unless you chose `auto-edit` or `--yolo`. Repository-provided code asks once per repository
+and re-asks when its content changes. In-process extensions are fully trusted, and an out-of-process
+extension runs with your user privileges: the process boundary isolates dependencies and crashes,
+not permissions. Secrets are stored owner-only on POSIX and never printed. Report a vulnerability
+through GitHub's private vulnerability reporting on this repository — never a public issue — and see
+[`SECURITY.md`](SECURITY.md) for the full posture.
+
+## Platform support
+
+Three targets, each built and verified in CI on every commit, plus a performance budget per runner
+([ADR-0005](adr/0005-budget-calibration.md)):
+
+| Platform | Release target | CI runner |
+| --- | --- | --- |
+| macOS (Apple Silicon) | `osx-arm64` | `macos-latest` |
+| Linux (x86_64) | `linux-x64` | `ubuntu-latest` |
+| Windows (x86_64) | `win-x64` | `windows-latest` |
+
+Terminals: Windows Terminal, conhost, VS Code's integrated terminal, Git Bash, macOS Terminal.app,
+iTerm2, Ghostty, WezTerm, Kitty, Alacritty, the common Linux terminals, and tmux/screen over SSH are
+documented in the [guide's terminal matrix](docs/guide.md); pipes, CI and `TERM=dumb` are print mode.
+
+## Acknowledgements
+
+Lunate stands on two lightweight agents that came first — **Pi** and **Tau** — for the shape of the
+loop, the tool set and the idea that an agent's harness should be small enough to read. The
+head-to-head suite that calibrates the claims above runs Pi and Tau beside Lunate
+([`docs/eval/t35-head-to-head.md`](docs/eval/t35-head-to-head.md)).
 
 ## Contributing
 
-- `scripts/verify.sh` (Windows: `scripts/verify.ps1`) must pass before a change is done.
-- Work happens through OpenSpec changes; [`AGENTS.md`](AGENTS.md) has the rules.
-- Pull requests and issues use the templates in `.github/`.
+Building, the verification gate, the repository map and the OpenSpec workflow are in
+[`CONTRIBUTING.md`](CONTRIBUTING.md); [`AGENTS.md`](AGENTS.md) holds the rules coding agents follow
+in this repository.
 
-License: MIT — see [`LICENSE`](LICENSE).
+## License
+
+MIT — see [`LICENSE`](LICENSE).

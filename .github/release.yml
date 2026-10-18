@@ -1,0 +1,24 @@
+# GitHub auto-generated release notes (used by `gh release create --generate-notes` in
+# .github/workflows/release.yml). Pull-request labels pick the category; anything unlabelled
+# lands under "Other".
+changelog:
+  exclude:
+    labels:
+      # Escape hatch for changes that should not appear in the notes.
+      - skip-changelog
+  categories:
+    - title: Features
+      labels:
+        - enhancement
+        - feature
+    - title: Fixes
+      labels:
+        - bug
+        - fix
+    - title: Docs
+      labels:
+        - documentation
+        - docs
+    - title: Other
+      labels:
+        - "*"
