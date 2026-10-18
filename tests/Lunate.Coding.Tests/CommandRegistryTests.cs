@@ -50,7 +50,10 @@ public sealed class CommandRegistryTests
     /// The names the dispatch switch acts on, read from the source: the case labels of
     /// <c>DispatchCommandAsync</c> plus the skill-invocation prefix branch (which is not a case
     /// label). The dispatcher's control flow stays where it is; this is the only way a table entry
-    /// and a branch can be proven to be one set.
+    /// and a branch can be proven to be one set. The scan is deliberately narrow: it reads plain
+    /// lowercase <c>case "/name":</c> labels of that method only, so a future <c>case "/sub:cmd"</c>
+    /// or a command dispatched by another shape needs the pattern extended — with a descriptor it
+    /// fails this test, without one it would pass unnoticed.
     /// </summary>
     private static IReadOnlyList<string> DispatchedNames()
     {
