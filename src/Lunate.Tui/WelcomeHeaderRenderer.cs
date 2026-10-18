@@ -1,4 +1,3 @@
-using System.Globalization;
 using Spectre.Console;
 
 namespace Lunate.Tui;
@@ -152,9 +151,7 @@ internal static class WelcomeHeaderRenderer
 
     private static string ModelLine(WelcomeHeaderState state) =>
         state.ContextWindow > 0
-            ? FormattableString.Invariant(
-                $"{state.ModelId} · {state.ContextWindow.ToString("N0", CultureInfo.InvariantCulture)} ctx"
-            )
+            ? FormattableString.Invariant($"{state.ModelId} · {state.ContextWindow:N0} ctx")
             : state.ModelId;
 
     private static string CountsText(WelcomeHeaderCounts? counts) =>
