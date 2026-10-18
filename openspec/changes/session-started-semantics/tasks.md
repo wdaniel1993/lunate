@@ -4,7 +4,10 @@
 - [x] **Composition.** Call it once after the load loop in `ExtensionSession.ComposeAsync`.
 - [x] **Regression tests.** Two-extension both-observe (later handler sees the full set); late-load does not observe; existing suites green.
 - [x] **Spec delta.** MODIFIED `Hook wiring` — the `SessionStarted` clause + two scenarios; originals preserved.
-- [ ] **Gate + review + PR.**
+- [ ] **Gate + review + PR.** (Gate `scripts/verify.sh` passed on 2026-10-18: build + 2703
+      solution tests + de-AT pass, path-index/startup budgets, publish, install script, tool
+      roundtrip, packaging, format, docs lint, public API — `verify: OK`. PR not opened: the
+      session's instruction was to commit without pushing.)
 
 ## Implementation notes (2026-10-18, branch change/session-started-semantics)
 
