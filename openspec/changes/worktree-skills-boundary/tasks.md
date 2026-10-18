@@ -9,5 +9,7 @@
 - [x] **Spec delta.** MODIFIED "Skill discovery" — linked-worktree bound + scenarios; originals preserved.
 
   Landed with the proposal commit `bb35108`; all four original scenarios kept, three added (`openspec validate worktree-skills-boundary --strict` → valid).
-- [ ] **Docs check.** The boundary is spec-only (no docs surface describes it); confirm, then no docs change.
+- [x] **Docs check.** The boundary is spec-only (no docs surface describes it); confirm, then no docs change.
+
+  Confirmed: `docs/guide.md`, `docs/architecture.md`, `docs/README.md` and `docs/spec/extensibility.md` carry no project-discovery-boundary statement (the extensibility spec defers to the `skills` capability spec). The one prose mention outside the specs is `adr/0017-addendum-skills.md` point 1 — "from the worktree root upward to the repository root (never above it)" — which the linked-worktree rule does not contradict (the main checkout is not above the worktree root) and which is immutable once accepted (`docs/README.md`); this change's impact names no ADR. No docs change.
 - [ ] **Gate + review + PR.**
