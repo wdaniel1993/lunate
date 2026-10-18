@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640">
+  <!-- Lunate social preview 1280x640 — dark -->
+  <rect width="1280" height="640" fill="#0D1117"/>
+  <text x="640" y="270" font-family="Menlo, SF Mono, monospace" font-size="120" fill="#56D4DD" text-anchor="middle">Ϲ</text>
+  <text x="640" y="400" font-family="Menlo, SF Mono, monospace" font-size="96" font-weight="bold" fill="#E6EDF3" text-anchor="middle">lunate</text>
+  <text x="640" y="470" font-family="Menlo, SF Mono, monospace" font-size="30" fill="#8B949E" text-anchor="middle">A lightweight coding agent for C# developers</text>
+</svg>
