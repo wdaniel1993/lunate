@@ -27,6 +27,7 @@ public sealed partial class AgentHarness
     private SubagentTreeState? _treeState;
     private SubagentRunner? _subagentRunner;
     private long _tokenBudgetUsed;
+    private string? _lastModelId;
 
     public AgentHarness(IChatClient client, ToolRegistry tools, AgentHarnessOptions? options = null)
     {
@@ -43,6 +44,7 @@ public sealed partial class AgentHarness
             {
                 _history.Add(item.Message);
                 _historyEntryIds.Add(item.EntryId);
+                _historyModels.Add(item.Model);
             }
 
             if (session.Entries.OfType<SessionCompactionEntry>().LastOrDefault() is not null)
@@ -343,6 +345,7 @@ public sealed partial class AgentHarness
                     activeTools,
                     ct
                 );
+                _lastModelId = stream.ModelId;
                 foreach (ChatMessage message in stream.Updates.ToChatResponse().Messages)
                 {
                     ChatMessage persisted = message;
@@ -698,6 +701,7 @@ public sealed partial class AgentHarness
         }
 
         _historyEntryIds.Add(entryId);
+        _historyModels.Add(model);
         return entryId;
     }
 
@@ -807,8 +811,53 @@ public sealed partial class AgentHarness
             );
         }
 
-        request.AddRange(_history);
+        string? currentModelId = CurrentModelId();
+        for (int index = 0; index < _history.Count; index++)
+        {
+            ChatMessage message = _history[index];
+            request.Add(
+                ReasoningCrossesModels(_historyModels[index], currentModelId)
+                    ? WithoutReasoning(message)
+                    : message
+            );
+        }
+
         return request;
+    }
+
+    /// <summary>
+    /// The model id of the next request: the id the last model call reported (the resolved model
+    /// after routing), else the configured model. A blank id counts as unknown.
+    /// </summary>
+    private string? CurrentModelId() =>
+        KnownModelId(_lastModelId) ?? KnownModelId(_options.ModelId);
+
+    /// <summary>
+    /// Whether the recorded model id makes reasoning content foreign to the current request: the
+    /// safety rule of design D6. Unknown ids on either side keep the content.
+    /// </summary>
+    private static bool ReasoningCrossesModels(string? recordedModelId, string? currentModelId) =>
+        KnownModelId(recordedModelId) is { } recorded
+        && KnownModelId(currentModelId) is { } current
+        && !string.Equals(recorded, current, StringComparison.Ordinal);
+
+    private static string? KnownModelId(string? modelId) =>
+        string.IsNullOrWhiteSpace(modelId) ? null : modelId;
+
+    /// <summary>
+    /// The request copy of a history message with its reasoning content removed; the stored message
+    /// is left untouched. Messages without reasoning are returned as they are.
+    /// </summary>
+    private static ChatMessage WithoutReasoning(ChatMessage message)
+    {
+        if (!message.Contents.OfType<TextReasoningContent>().Any())
+        {
+            return message;
+        }
+
+        ChatMessage copy = message.Clone();
+        copy.Contents = [.. copy.Contents.Where(content => content is not TextReasoningContent)];
+        return copy;
     }
 
     private ChatOptions BuildOptions(IReadOnlyList<string>? activeTools)
