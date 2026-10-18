@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using Lunate.Agent;
+using Lunate.Ai;
 
 namespace Lunate.Coding;
 
@@ -34,6 +35,12 @@ public sealed record AgentSettings
 
     /// <summary>Whether the interactive session prints the welcome header; defaults to on.</summary>
     public bool StartupHeader { get; init; } = true;
+
+    /// <summary>The session thinking level; defaults to <see cref="ThinkingLevel.Off"/>.</summary>
+    public ThinkingLevel Thinking { get; init; } = ThinkingLevel.Off;
+
+    /// <summary>Whether the committed reasoning prints in full instead of collapsed; defaults to off.</summary>
+    public bool ThinkingFull { get; init; }
 }
 
 /// <summary>The per-workspace Roslyn limits (the <c>roslyn</c> settings section).</summary>
@@ -174,6 +181,18 @@ public static class SettingsStore
                         settings = settings with
                         {
                             StartupHeader = ReadStartupHeader(property.Value, problems),
+                        };
+                        break;
+                    case "thinking":
+                        settings = settings with
+                        {
+                            Thinking = ReadThinking(property.Value, problems),
+                        };
+                        break;
+                    case "thinkingFull":
+                        settings = settings with
+                        {
+                            ThinkingFull = ReadThinkingFull(property.Value, problems),
                         };
                         break;
                     default:
@@ -358,6 +377,41 @@ public static class SettingsStore
 
         problems.Add("'startupHeader' must be true or false");
         return true;
+    }
+
+    /// <summary>
+    /// Reads <c>thinking</c>: the level literal (exact lowercase); a missing key keeps the
+    /// documented default (off).
+    /// </summary>
+    private static ThinkingLevel ReadThinking(JsonElement value, List<string> problems)
+    {
+        if (
+            value.ValueKind == JsonValueKind.String
+            && TryParseThinking(value.GetString(), out var parsed)
+        )
+        {
+            return parsed;
+        }
+
+        problems.Add(
+            ThinkingError(value.ValueKind == JsonValueKind.String ? value.GetString() : null)
+        );
+        return ThinkingLevel.Off;
+    }
+
+    /// <summary>
+    /// Reads <c>thinkingFull</c>: a JSON boolean; a missing key keeps the documented default
+    /// (collapsed).
+    /// </summary>
+    private static bool ReadThinkingFull(JsonElement value, List<string> problems)
+    {
+        if (value.ValueKind is JsonValueKind.True or JsonValueKind.False)
+        {
+            return value.GetBoolean();
+        }
+
+        problems.Add("'thinkingFull' must be true or false");
+        return false;
     }
 
     private static int? ReadConcurrency(JsonElement value, List<string> problems)
@@ -589,6 +643,33 @@ public static class SettingsStore
                 return false;
         }
     }
+
+    private static bool TryParseThinking(string? value, out ThinkingLevel parsed)
+    {
+        switch (value)
+        {
+            case "off":
+                parsed = ThinkingLevel.Off;
+                return true;
+            case "low":
+                parsed = ThinkingLevel.Low;
+                return true;
+            case "medium":
+                parsed = ThinkingLevel.Medium;
+                return true;
+            case "high":
+                parsed = ThinkingLevel.High;
+                return true;
+            default:
+                parsed = ThinkingLevel.Off;
+                return false;
+        }
+    }
+
+    private static string ThinkingError(string? value) =>
+        value is null
+            ? "'thinking' must be 'off', 'low', 'medium' or 'high'"
+            : $"'thinking' must be 'off', 'low', 'medium' or 'high', but was '{value}'";
 
     private static string ApprovalError(string subject, string? value) =>
         value == "yolo"
