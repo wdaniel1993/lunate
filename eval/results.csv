@@ -3,3 +3,5 @@ date,phase,tool,model,tasks,passed,pass_rate,steps,total_tokens,seconds,edit_tie
 2026-10-10,5,lunate,deepseek/deepseek-v4.1-flash,6,6,1.000,41,78439,74.407,exact;indent,
 2026-10-10,5,claude,claude-opus-5-5,6,6,1.000,24,451025,74.180,n/a,
 2026-10-10,5,opencode,opencode-go/deepseek-v4.1-flash,6,6,1.000,32,377966,76.291,n/a,
+2026-10-18,5,pi,deepseek/deepseek-v4.1-flash,6,6,1.000,33,84839,62.530,n/a,
+2026-10-18,5,tau,deepseek/deepseek-v4.1-flash,6,6,1.000,38,101724,80.812,n/a,

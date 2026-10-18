@@ -22,12 +22,12 @@ KEEP=0
 
 usage() {
   cat <<'EOF'
-Usage: scripts/eval.sh --model <id> [--tool <lunate|claude|opencode>] [--filter <task>] [--phase <n>] [--lunate-bin <path>] [--keep]
+Usage: scripts/eval.sh --model <id> [--tool <lunate|claude|opencode|pi|tau>] [--filter <task>] [--phase <n>] [--lunate-bin <path>] [--keep]
 
   --model <id>        the model id for the run: exported as LUNATE_MODEL (lunate)
                       or passed as -m (opencode). For claude the model comes from
                       the run's own JSON output, so --model is not required.
-  --tool <name>       which tool to run: lunate (default), claude or opencode.
+  --tool <name>       which tool to run: lunate (default), claude, opencode, pi or tau.
   --filter <task>     run one task by directory name
   --phase <n>         the phase column value (default: 3)
   --lunate-bin <path> the lunate build to run; a .dll is invoked via dotnet
@@ -75,9 +75,9 @@ while [ $# -gt 0 ]; do
 done
 
 case "$TOOL" in
-  lunate|claude|opencode) ;;
+  lunate|claude|opencode|pi|tau) ;;
   *)
-    echo "eval: --tool must be one of lunate, claude, opencode, but was '${TOOL}'" >&2
+    echo "eval: --tool must be one of lunate, claude, opencode, pi, tau, but was '${TOOL}'" >&2
     exit 2
     ;;
 esac
@@ -172,7 +172,7 @@ for name in "${TASKS[@]}"; do
   cp -R "${task_dir}/repo/." "$work/"
 
   echo "==> ${name}"
-  start_ns="$(python3 -c 'import time; print(time.monotonic_ns())')"
+  start_ns="$(python3 -c 'import time; print(time.time_ns())')"
   set +e
   case "$TOOL" in
     lunate)
@@ -196,10 +196,24 @@ for name in "${TASKS[@]}"; do
             >"${WORK_ROOT}/${name}.events.jsonl" 2>"${WORK_ROOT}/${name}.run.log"
       )
       ;;
+    pi)
+      (
+        cd "$work" &&
+          pi -p --mode json --no-session --provider openrouter --model "$MODEL" "$(cat "${task_dir}/task.md")" \
+            >"${WORK_ROOT}/${name}.events.jsonl" 2>"${WORK_ROOT}/${name}.run.log"
+      )
+      ;;
+    tau)
+      (
+        cd "$work" &&
+          tau -p --mode json --provider openrouter --model "$MODEL" "$(cat "${task_dir}/task.md")" \
+            >"${WORK_ROOT}/${name}.events.jsonl" 2>"${WORK_ROOT}/${name}.run.log"
+      )
+      ;;
   esac
   run_exit=$?
   set -e
-  end_ns="$(python3 -c 'import time; print(time.monotonic_ns())')"
+  end_ns="$(python3 -c 'import time; print(time.time_ns())')"
   seconds="$(python3 -c "print(f'{(${end_ns} - ${start_ns}) / 1e9:.3f}')")"
 
   set +e
@@ -270,6 +284,23 @@ elif tool == "opencode":
             steps += 1
             part = line.get("part") or {}
             tokens += (part.get("tokens") or {}).get("total") or 0
+    tiers.add("n/a")
+elif tool in ("pi", "tau"):
+    # Both emit the same event family (tau is the Python port): one turn_end per
+    # assistant turn, carrying the usage of that turn.
+    for line in read_lines():
+        if line.get("type") == "turn_end":
+            steps += 1
+            usage = (line.get("message") or {}).get("usage") or {}
+            total = usage.get("totalTokens")
+            if total is None:
+                total = (
+                    (usage.get("input") or 0)
+                    + (usage.get("output") or 0)
+                    + (usage.get("cacheRead") or 0)
+                    + (usage.get("cacheWrite") or 0)
+                )
+            tokens += total
     tiers.add("n/a")
 
 print(f"{steps}\t{tokens}\t{';'.join(sorted(tiers)) if tiers else 'none'}\t{model}")
