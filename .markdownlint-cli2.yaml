@@ -1,8 +1,12 @@
 # markdownlint-cli2 configuration (see docs/README.md).
-# Scope: README.md, AGENTS.md, docs/**/*.md, adr/**/*.md. openspec/ is
-# tool-managed and intentionally out of scope.
+# Scope: README.md, CONTRIBUTING.md, SECURITY.md, CHANGELOG.md, AGENTS.md,
+# docs/**/*.md, adr/**/*.md. openspec/ is tool-managed and intentionally out of
+# scope.
 globs:
   - "README.md"
+  - "CONTRIBUTING.md"
+  - "SECURITY.md"
+  - "CHANGELOG.md"
   - "AGENTS.md"
   - "docs/**/*.md"
   - "adr/**/*.md"
@@ -13,3 +17,13 @@ config:
   # subsection markers; converting them to headings would restructure the
   # maintainer's documents, so MD036 stays off here.
   MD036: false
+  # The README's logo is a light/dark <picture> block — the only inline HTML.
+  MD033:
+    allowed_elements:
+      - picture
+      - source
+      - img
+  # Keep-a-Changelog repeats "Added" / "Fixed" under each released version;
+  # only true siblings (same text, same parent) are a duplicate heading.
+  MD024:
+    siblings_only: true
