@@ -214,13 +214,15 @@ public sealed class InteractiveSessionEndToEndTests
     }
 
     /// <summary>The welcome header prints the workspace path; it is machine-specific, so the golden
-    /// carries <c>&lt;workspace&gt;</c> instead.</summary>
-    private static string NormalizeWorkspace(InteractiveSessionHost host, string text) =>
-        text.Replace(
-            Workspace.Canonicalize(host.Temp.Root),
-            "<workspace>",
-            StringComparison.Ordinal
-        );
+    /// carries <c>&lt;workspace&gt;</c> instead. The session prints the display form, which is
+    /// <c>~</c>-shortened when the workspace is under the user's home (Windows CI temp
+    /// directories are), so the full path and its display form are both normalized.</summary>
+    private static string NormalizeWorkspace(InteractiveSessionHost host, string text)
+    {
+        string workspace = Workspace.Canonicalize(host.Temp.Root);
+        return text.Replace(workspace, "<workspace>", StringComparison.Ordinal)
+            .Replace(DisplayPath.For(workspace), "<workspace>", StringComparison.Ordinal);
+    }
 
     private static void EnqueueScript(InteractiveSessionHost host)
     {

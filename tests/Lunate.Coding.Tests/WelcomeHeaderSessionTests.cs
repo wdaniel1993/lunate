@@ -26,10 +26,12 @@ public sealed class WelcomeHeaderSessionTests
         Assert.Equal(1, Occurrences(scrollback, Mark));
         Assert.Contains("lunate  v0.1.0", scrollback, StringComparison.Ordinal);
         Assert.Contains("gpt-4o-mini · 128,000 ctx", scrollback, StringComparison.Ordinal);
-        // The header's lines are finished text; the test console wraps one longer than its own
-        // width, so the workspace path is asserted on the unwrapped text.
+        // The header prints the workspace in the product's display form: a path under the user's
+        // home is `~`-shortened (on Windows CI the test temp directory lives under the home). The
+        // header's lines are finished text; the test console wraps one longer than its own width,
+        // so the workspace path is asserted on the unwrapped text.
         Assert.Contains(
-            Workspace.Canonicalize(host.Temp.Root),
+            DisplayPath.For(Workspace.Canonicalize(host.Temp.Root)),
             scrollback.Replace("\n", string.Empty, StringComparison.Ordinal),
             StringComparison.Ordinal
         );
