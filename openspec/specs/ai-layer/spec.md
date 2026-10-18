@@ -45,7 +45,7 @@ Model access for Lunate: the factory that builds the correctly ordered `IChatCli
 - **THEN** the exception surfaces unchanged (no retry inside `Lunate.Ai`)
 
 ### Requirement: Recording and replay of provider streams
-`Lunate.Ai` SHALL record provider exchanges as JSONL when `LUNATE_RECORD=1` for both call styles: a streamed exchange (`GetStreamingResponseAsync`) records its update sequence, and an aggregated exchange (`GetResponseAsync`) records the response as its update sequence so replay serves both call styles from one exchange. `Lunate.Ai` SHALL replay fixtures deterministically: `ReplayChatClient` answers requests from the recorded exchanges in order, verifying each request digest, with actionable errors on mismatch or exhaustion. Fixtures SHALL serialize Microsoft.Extensions.AI types with `AIJsonUtilities` options and replay SHALL NOT require API keys or network access. When `LUNATE_RECORD=1` is set without an explicit path, recordings SHALL default under the user's home directory (`~/.lunate/recordings/`), never inside the current working directory. The request digest SHALL cover the messages, the model id and the tool names; tool descriptions and schemas are deliberately outside the digest, so presentation changes do not invalidate a fixture (revisit if it bites). Scripted fixtures SHALL be marked with the model id `synthetic`; live recordings carry the real model id.
+`Lunate.Ai` SHALL record provider exchanges as JSONL when `LUNATE_RECORD=1` for both call styles: a streamed exchange (`GetStreamingResponseAsync`) records its update sequence, and an aggregated exchange (`GetResponseAsync`) records the response as its update sequence so replay serves both call styles from one exchange. `Lunate.Ai` SHALL replay fixtures deterministically: `ReplayChatClient` answers requests from the recorded exchanges in order, verifying each request digest, with actionable errors on mismatch or exhaustion. Fixtures SHALL serialize Microsoft.Extensions.AI types with `AIJsonUtilities` options and replay SHALL NOT require API keys or network access. When `LUNATE_REPLAY` names a fixture path, the factory's standard resolution path SHALL wire `ReplayChatClient` for it without resolving a credential or constructing a provider client, so a session replays with no key and no network; the explicit-credential overload (`Create(model, apiKey)`) SHALL NOT replay, and an explicit recording request takes precedence when both are set. When `LUNATE_RECORD=1` is set without an explicit path, recordings SHALL default under the user's home directory (`~/.lunate/recordings/`), never inside the current working directory. The request digest SHALL cover the messages, the model id and the tool names; tool descriptions and schemas are deliberately outside the digest, so presentation changes do not invalidate a fixture (revisit if it bites). Scripted fixtures SHALL be marked with the model id `synthetic`; live recordings carry the real model id.
 
 #### Scenario: Record then replay is identical
 - **GIVEN** a provider stream recorded to a fixture
@@ -76,6 +76,18 @@ Model access for Lunate: the factory that builds the correctly ordered `IChatCli
 - **GIVEN** `LUNATE_RECORD=1` without `LUNATE_RECORD_PATH`
 - **WHEN** the factory wires the recorder
 - **THEN** the recording path is under `~/.lunate/recordings/`, not inside the current working directory
+
+#### Scenario: Factory wires the replay client
+
+- **GIVEN** `LUNATE_REPLAY` set to a committed fixture path
+- **WHEN** the factory builds a pipeline
+- **THEN** the pipeline serves the fixture deterministically without resolving a credential or constructing a provider client
+
+#### Scenario: Recording wins over replay
+
+- **GIVEN** `LUNATE_RECORD=1` and `LUNATE_REPLAY` both set
+- **WHEN** the factory builds a pipeline
+- **THEN** the recorder is wired, never the replay client
 
 ### Requirement: Anthropic provider adapter
 `Lunate.Ai` SHALL provide Anthropic support through the official Anthropic .NET package and its first-party Microsoft.Extensions.AI adapter, selected by `ModelInfo.Provider == "anthropic"` and authenticated from `ANTHROPIC_API_KEY`. The factory SHALL construct it with transport retries disabled so retries remain exclusively the loop's.
