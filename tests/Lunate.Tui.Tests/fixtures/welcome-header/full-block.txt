@@ -1,0 +1,7 @@
+Ϲ
+lunate  v0.1.0
+deepseek-v4.1-flash · 1,000,000 ctx
+~/dev/lunate
+C# workspace · Roslyn
+extensions … · MCP … · skills …
+/help · /model · /skills · /extensions · Esc cancels · /quit
