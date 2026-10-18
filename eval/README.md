@@ -28,14 +28,16 @@ The same runner drives the T-35 head-to-head with `--tool`:
 ```bash
 scripts/eval.sh --tool claude --phase 5
 scripts/eval.sh --tool opencode --model opencode-go/deepseek-v4.1-flash --phase 5
+scripts/eval.sh --tool pi --model deepseek/deepseek-v4.1-flash --phase 5
+scripts/eval.sh --tool tau --model deepseek/deepseek-v4.1-flash --phase 5
 ```
 
-Head-to-head setup: `claude` needs the **C# LSP plugin** (`claude plugin install csharp-lsp`, official directory) plus the `csharp-ls` language server on `PATH` (`dotnet tool install --global csharp-ls`); `opencode` uses its built-in C# LSP (csharp-ls) as shipped. Both are invoked headlessly (`claude -p … --output-format json --dangerously-skip-permissions`, `opencode run --format json --auto`). The claude model is whatever the CLI is configured with — it is read from the run's own JSON, not from `--model`.
+Head-to-head setup: `claude` needs the **C# LSP plugin** (`claude plugin install csharp-lsp`, official directory) plus the `csharp-ls` language server on `PATH` (`dotnet tool install --global csharp-ls`); `opencode` uses its built-in C# LSP (csharp-ls) as shipped. Both are invoked headlessly (`claude -p … --output-format json --dangerously-skip-permissions`, `opencode run --format json --auto`). `pi` (npm `@earendil-works/pi-coding-agent` — *not* the unrelated `@badlogic/pi` vLLM deploy tool) and `tau` (the Python port of pi, `uv tool install tau-ai` — *not* the unrelated `dpc/tau` Unix-process agent) both run via OpenRouter with `OPENROUTER_API_KEY`: `pi -p --mode json --no-session --provider openrouter --model <id>` and `tau -p --mode json --provider openrouter --model <id>`. tau ships a model catalog that may lack newer ids — a minimal user overlay (`~/.tau/catalog.toml`) adds them (models lists union on merge). The claude model is whatever the CLI is configured with — it is read from the run's own JSON, not from `--model`.
 
 | Option | Meaning |
 | --- | --- |
-| `--model <id>` | Required for `lunate` (exported as `LUNATE_MODEL`) and `opencode` (passed as `-m`); ignored for `claude` (the row records the model the CLI reported). |
-| `--tool <name>` | Which tool to run: `lunate` (default), `claude` or `opencode`. |
+| `--model <id>` | Required for `lunate` (exported as `LUNATE_MODEL`), `opencode` (passed as `-m`), `pi` and `tau` (passed as `--model`); ignored for `claude` (the row records the model the CLI reported). |
+| `--tool <name>` | Which tool to run: `lunate` (default), `claude`, `opencode`, `pi` or `tau`. |
 | `--filter <task>` | Run one task by directory name. |
 | `--phase <n>` | The `phase` column value (default `3`). |
 | `--lunate-bin <path>` | The build to run; a `.dll` is invoked via `dotnet` (default `src/Lunate.Coding/bin/Release/net10.0/lunate.dll`). |
@@ -43,7 +45,7 @@ Head-to-head setup: `claude` needs the **C# LSP plugin** (`claude plugin install
 
 Per task the runner makes a fresh `mktemp -d`, copies `repo/`, runs the selected tool there with stdout in `events.jsonl` and stderr in `run.log`, then runs `check.sh` in the same copy. Working copies are kept on failure (the path is printed) and removed on pass. `LUNATE_EVAL_RESULTS=<path>` overrides the results file (used by the offline stub proof).
 
-Metrics come from the tool's own output: `steps` = model calls (`usage_updated` events for lunate, `num_turns` for claude, `step_finish` events for opencode), `total_tokens` = the summed token traffic (claude: input + cache creation + cache read + output), `seconds` = wall clock of the agent run, `edit_tiers` = the distinct `matchTier` values of `edit` tool results (lunate only; `n/a` for the other tools, which have no tier concept).
+Metrics come from the tool's own output: `steps` = model calls (`usage_updated` events for lunate, `num_turns` for claude, `step_finish` events for opencode, `turn_end` events for pi/tau), `total_tokens` = the summed token traffic (claude: input + cache creation + cache read + output; pi/tau: the per-turn `totalTokens`, falling back to input + output + cache read + cache write), `seconds` = wall clock of the agent run, `edit_tiers` = the distinct `matchTier` values of `edit` tool results (lunate only; `n/a` for the other tools, which have no tier concept).
 
 ## Row schema
 
