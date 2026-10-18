@@ -4,7 +4,10 @@ Lunate keeps each kind of document in exactly one home. Start here, then jump to
 
 | Document kind | Home | What it owns |
 | --- | --- | --- |
-| Project entry point | [`../README.md`](../README.md) | What Lunate is, prerequisites, quick start, repository map |
+| Project entry point | [`../README.md`](../README.md) | What Lunate is, install, quick start, features, configuration and modes |
+| Contributor guide | [`../CONTRIBUTING.md`](../CONTRIBUTING.md) | Prerequisites, build, the verify gate, the repository map, the OpenSpec workflow |
+| Security policy | [`../SECURITY.md`](../SECURITY.md) | How to report a vulnerability, the trust model, secrets |
+| Changelog | [`../CHANGELOG.md`](../CHANGELOG.md) | Notable changes, one section per release |
 | Plan and status | [`guide.md`](guide.md) | The implementation plan, phases and roadmap |
 | Architecture overview | [`architecture.md`](architecture.md) | Component map, model pipeline, one run and the event path, as diagrams |
 | Extensibility spec | [`spec/extensibility.md`](spec/extensibility.md) | Contract and hooks, tool model, services, UI by mode, fitness suite (under ADR-0017) |
@@ -18,7 +21,10 @@ Lunate keeps each kind of document in exactly one home. Start here, then jump to
 ## Writing guideline
 
 - **English-first.** User- and model-facing text is English; technical output is culture-invariant.
-- **Linted.** `README.md`, `AGENTS.md`, `docs/**/*.md` and `adr/**/*.md` are checked by markdownlint (`npx --yes markdownlint-cli2@0.23.3`, configured in `.markdownlint-cli2.yaml`). `openspec/` is tool-managed and excluded.
+- **Linted.** `README.md`, `CONTRIBUTING.md`, `SECURITY.md`, `CHANGELOG.md`, `AGENTS.md`,
+  `docs/**/*.md` and `adr/**/*.md` are checked by markdownlint
+  (`npx --yes markdownlint-cli2@0.23.3`, configured in `.markdownlint-cli2.yaml`). `openspec/` is
+  tool-managed and excluded.
 - **One home per fact.** Link to the owning document instead of copying it; a fact that exists twice drifts.
 - **Behaviour changes update the specs first.** `openspec/specs/` is the source of truth; when prose and spec disagree, the spec wins.
 - **Keep it current.** A change updates the documents it invalidates; stale documentation is a bug.
