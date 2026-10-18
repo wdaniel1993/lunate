@@ -33,7 +33,7 @@ order; commit per group; record any design/code divergence in this file under th
   (The budget rides `ReasoningParameters`' raw-field request; a deterministic transport test
   pins the wire request (`thinking.type=enabled`, `budget_tokens`, `max_tokens` above it) and
   the reasoning/signature assembly; the live test drives the tool loop.)
-- [ ] 2.4 The inline ` thinking` splitter (D4): streaming state machine over text fragments,
+- [x] 2.4 The inline ` thinking` splitter (D4): streaming state machine over text fragments,
   tag splits tolerated (buffer ≤ the tag length), unclosed tag closes at stream end; unit
   tests split at every boundary.
 - [ ] 2.5 Built-in `models.json`: declare styles for the models known to support reasoning

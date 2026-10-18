@@ -151,4 +151,111 @@ public sealed class AgentReasoningTests
         Assert.Single(events.OfType<ReasoningStart>());
         Assert.Single(events.OfType<ReasoningEnd>());
     }
+
+    [Fact]
+    public async Task An_inline_model_splits_tagged_text_into_reasoning_and_text_brackets()
+    {
+        var client = new ScriptedChatClient().Enqueue(
+            LoopScripts.Text("before"),
+            LoopScripts.Text("\u003Cthink>mid\u003C/think>after"),
+            LoopScripts.Stop()
+        );
+        var harness = new AgentHarness(client, new ToolRegistry(), InlineOptions());
+
+        List<AgentEvent> events = await harness
+            .RunAsync("Hi", TestContext.Current.CancellationToken)
+            .ToListAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(
+            [
+                typeof(RunStarted),
+                typeof(TextMessageStart),
+                typeof(TextMessageContent),
+                typeof(TextMessageEnd),
+                typeof(ReasoningStart),
+                typeof(ReasoningMessageContent),
+                typeof(ReasoningEnd),
+                typeof(TextMessageStart),
+                typeof(TextMessageContent),
+                typeof(TextMessageEnd),
+                typeof(RunFinished),
+            ],
+            events.Select(agentEvent => agentEvent.GetType())
+        );
+        Assert.Equal(
+            ["before", "after"],
+            events.OfType<TextMessageContent>().Select(content => content.Text)
+        );
+        Assert.Equal("mid", Assert.Single(events.OfType<ReasoningMessageContent>()).Text);
+        Assert.Empty(EventSequenceValidator.Validate(events));
+    }
+
+    [Fact]
+    public async Task Tag_fragments_split_across_updates_still_bracket_reasoning()
+    {
+        var client = new ScriptedChatClient().Enqueue(
+            LoopScripts.Text("a\u003Cthi"),
+            LoopScripts.Text("nk>b\u003C/th"),
+            LoopScripts.Text("ink>c"),
+            LoopScripts.Stop()
+        );
+        var harness = new AgentHarness(client, new ToolRegistry(), InlineOptions());
+
+        List<AgentEvent> events = await harness
+            .RunAsync("Hi", TestContext.Current.CancellationToken)
+            .ToListAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(
+            ["a", "c"],
+            events.OfType<TextMessageContent>().Select(content => content.Text)
+        );
+        Assert.Equal("b", Assert.Single(events.OfType<ReasoningMessageContent>()).Text);
+        Assert.Single(events.OfType<ReasoningStart>());
+        Assert.Single(events.OfType<ReasoningEnd>());
+        Assert.Empty(EventSequenceValidator.Validate(events));
+    }
+
+    [Fact]
+    public async Task An_unclosed_inline_tag_closes_as_reasoning_at_stream_end()
+    {
+        var client = new ScriptedChatClient().Enqueue(
+            LoopScripts.Text("q\u003Cthink>unclosed"),
+            LoopScripts.Stop()
+        );
+        var harness = new AgentHarness(client, new ToolRegistry(), InlineOptions());
+
+        List<AgentEvent> events = await harness
+            .RunAsync("Hi", TestContext.Current.CancellationToken)
+            .ToListAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal("q", Assert.Single(events.OfType<TextMessageContent>()).Text);
+        Assert.Equal("unclosed", Assert.Single(events.OfType<ReasoningMessageContent>()).Text);
+        Assert.Single(events.OfType<ReasoningStart>());
+        Assert.Single(events.OfType<ReasoningEnd>());
+        Assert.Empty(EventSequenceValidator.Validate(events));
+    }
+
+    [Fact]
+    public async Task A_model_without_the_inline_style_keeps_tagged_text_verbatim()
+    {
+        var client = new ScriptedChatClient().Enqueue(
+            LoopScripts.Text("\u003Cthink>raw\u003C/think>"),
+            LoopScripts.Stop()
+        );
+        var harness = new AgentHarness(client, new ToolRegistry());
+
+        List<AgentEvent> events = await harness
+            .RunAsync("Hi", TestContext.Current.CancellationToken)
+            .ToListAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(
+            "\u003Cthink>raw\u003C/think>",
+            Assert.Single(events.OfType<TextMessageContent>()).Text
+        );
+        Assert.Empty(events.OfType<ReasoningStart>());
+        Assert.Empty(EventSequenceValidator.Validate(events));
+    }
+
+    private static AgentHarnessOptions InlineOptions() =>
+        new() { ModelCatalog = TestCatalog.WithReasoning("inline"), ModelId = TestCatalog.ModelId };
 }

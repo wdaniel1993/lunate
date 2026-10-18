@@ -462,6 +462,50 @@ public sealed partial class AgentHarness
             }
         }
 
+        void EmitText(string text)
+        {
+            CloseReasoning();
+            if (!textOpen)
+            {
+                textOpen = true;
+                messageId = RunIds.NextMessage();
+                channel.Emit(new TextMessageStart(runId, messageId));
+            }
+
+            channel.Emit(new TextMessageContent(runId, messageId!, text));
+        }
+
+        void EmitReasoning(string text)
+        {
+            CloseText();
+            if (!reasoningOpen)
+            {
+                reasoningOpen = true;
+                reasoningMessageId = RunIds.NextMessage();
+                channel.Emit(new ReasoningStart(runId, reasoningMessageId));
+            }
+
+            channel.Emit(new ReasoningMessageContent(runId, reasoningMessageId!, text));
+        }
+
+        void EmitSegment(InlineThinkingSplitter.Segment segment)
+        {
+            if (segment.IsReasoning)
+            {
+                EmitReasoning(segment.Text);
+            }
+            else
+            {
+                EmitText(segment.Text);
+            }
+        }
+
+        // Style `inline` models embed their reasoning in the text stream (design D4); every other
+        // model's text flows straight through.
+        InlineThinkingSplitter? inlineSplitter = DeclaredModel() is { Reasoning: "inline" }
+            ? new InlineThinkingSplitter()
+            : null;
+
         try
         {
             List<ChatMessage> request = BuildRequest(sections);
@@ -516,31 +560,27 @@ public sealed partial class AgentHarness
                     {
                         if (content is TextReasoningContent { Text: { Length: > 0 } reasoning })
                         {
-                            CloseText();
-                            if (!reasoningOpen)
-                            {
-                                reasoningOpen = true;
-                                reasoningMessageId = RunIds.NextMessage();
-                                channel.Emit(new ReasoningStart(runId, reasoningMessageId));
-                            }
-
                             attempt.Emitted = true;
-                            channel.Emit(
-                                new ReasoningMessageContent(runId, reasoningMessageId!, reasoning)
-                            );
+                            EmitReasoning(reasoning);
                         }
                         else if (content is TextContent { Text: { Length: > 0 } text })
                         {
-                            CloseReasoning();
-                            if (!textOpen)
-                            {
-                                textOpen = true;
-                                messageId = RunIds.NextMessage();
-                                channel.Emit(new TextMessageStart(runId, messageId));
-                            }
-
                             attempt.Emitted = true;
-                            channel.Emit(new TextMessageContent(runId, messageId!, text));
+                            if (inlineSplitter is null)
+                            {
+                                EmitText(text);
+                            }
+                            else
+                            {
+                                foreach (
+                                    InlineThinkingSplitter.Segment segment in inlineSplitter.Feed(
+                                        text
+                                    )
+                                )
+                                {
+                                    EmitSegment(segment);
+                                }
+                            }
                         }
                         else if (content is UsageContent usageContent)
                         {
@@ -564,6 +604,14 @@ public sealed partial class AgentHarness
         }
         finally
         {
+            if (inlineSplitter is { } splitter)
+            {
+                foreach (InlineThinkingSplitter.Segment segment in splitter.Flush())
+                {
+                    EmitSegment(segment);
+                }
+            }
+
             CloseReasoning();
             CloseText();
         }
@@ -777,7 +825,9 @@ public sealed partial class AgentHarness
             {
                 Tools =
                 [
-                    .. _tools.Declarations.Where(declaration => selected.Contains(declaration.Name)),
+                    .. _tools.Declarations.Where(declaration =>
+                        selected.Contains(declaration.Name)
+                    ),
                 ],
             };
         }
