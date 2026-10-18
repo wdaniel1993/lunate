@@ -5,17 +5,17 @@ order; commit per group; record any design/code divergence in this file under th
 
 ## 1. Events + mapping
 
-- [ ] 1.1 Add `ReasoningStart`, `ReasoningMessageContent`, `ReasoningEnd` to
+- [x] 1.1 Add `ReasoningStart`, `ReasoningMessageContent`, `ReasoningEnd` to
   `src/Lunate.Agent/AgentEvent.cs` (sealed records, D1 shapes; same `RunIds.NextMessage()`
   id sequence).
-- [ ] 1.2 Map `TextReasoningContent` in `AgentHarness.StreamModelAsync`: bracketed events,
+- [x] 1.2 Map `TextReasoningContent` in `AgentHarness.StreamModelAsync`: bracketed events,
   `attempt.Emitted` on first fragment, `ReasoningEnd` in the `finally` when the stream ends
   mid-reasoning (mirror the text bracket exactly).
-- [ ] 1.3 Extend `EventSequenceValidator`: open reasoning at the terminal event is a
+- [x] 1.3 Extend `EventSequenceValidator`: open reasoning at the terminal event is a
   violation; content outside a bracket is a violation.
-- [ ] 1.4 Tests: bracketing (start/content/end order), reasoning-then-text sequencing,
+- [x] 1.4 Tests: bracketing (start/content/end order), reasoning-then-text sequencing,
   mid-stream provider failure closes the bracket, validator red-checks.
-- [ ] 1.5 Public API: add the new types to `PublicAPI.Unshipped.txt` (RS0016 lines).
+- [x] 1.5 Public API: add the new types to `PublicAPI.Unshipped.txt` (RS0016 lines).
 
 ## 2. Provider support
 

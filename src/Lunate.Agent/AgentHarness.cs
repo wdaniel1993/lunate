@@ -436,10 +436,30 @@ public sealed partial class AgentHarness
         List<ChatResponseUpdate> updates = [];
         string? messageId = null;
         bool textOpen = false;
+        string? reasoningMessageId = null;
+        bool reasoningOpen = false;
         ChatFinishReason? finishReason = null;
         string? modelId = null;
         string? routedModelId = null;
         SessionUsage? usage = null;
+
+        void CloseText()
+        {
+            if (textOpen)
+            {
+                textOpen = false;
+                channel.Emit(new TextMessageEnd(runId, messageId!));
+            }
+        }
+
+        void CloseReasoning()
+        {
+            if (reasoningOpen)
+            {
+                reasoningOpen = false;
+                channel.Emit(new ReasoningEnd(runId, reasoningMessageId!));
+            }
+        }
 
         try
         {
@@ -493,8 +513,24 @@ public sealed partial class AgentHarness
 
                     foreach (AIContent content in update.Contents)
                     {
-                        if (content is TextContent { Text: { Length: > 0 } text })
+                        if (content is TextReasoningContent { Text: { Length: > 0 } reasoning })
                         {
+                            CloseText();
+                            if (!reasoningOpen)
+                            {
+                                reasoningOpen = true;
+                                reasoningMessageId = RunIds.NextMessage();
+                                channel.Emit(new ReasoningStart(runId, reasoningMessageId));
+                            }
+
+                            attempt.Emitted = true;
+                            channel.Emit(
+                                new ReasoningMessageContent(runId, reasoningMessageId!, reasoning)
+                            );
+                        }
+                        else if (content is TextContent { Text: { Length: > 0 } text })
+                        {
+                            CloseReasoning();
                             if (!textOpen)
                             {
                                 textOpen = true;
@@ -527,10 +563,8 @@ public sealed partial class AgentHarness
         }
         finally
         {
-            if (textOpen)
-            {
-                channel.Emit(new TextMessageEnd(runId, messageId!));
-            }
+            CloseReasoning();
+            CloseText();
         }
 
         return new ModelStreamResult(

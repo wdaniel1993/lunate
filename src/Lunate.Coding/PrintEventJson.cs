@@ -28,6 +28,9 @@ internal static class PrintEventJson
             typeof(TextMessageStart),
             typeof(TextMessageContent),
             typeof(TextMessageEnd),
+            typeof(ReasoningStart),
+            typeof(ReasoningMessageContent),
+            typeof(ReasoningEnd),
             typeof(ToolCallStart),
             typeof(ToolCallArgs),
             typeof(ToolCallEnd),
@@ -83,6 +86,12 @@ internal static class PrintEventJson
                 new JsonObject { ["messageId"] = e.MessageId, ["text"] = e.Text }
             ),
             TextMessageEnd e => ("text_message_end", MessageBody(e.MessageId)),
+            ReasoningStart e => ("reasoning_start", MessageBody(e.MessageId)),
+            ReasoningMessageContent e => (
+                "reasoning_message_content",
+                new JsonObject { ["messageId"] = e.MessageId, ["text"] = e.Text }
+            ),
+            ReasoningEnd e => ("reasoning_end", MessageBody(e.MessageId)),
             ToolCallStart e => (
                 "tool_call_start",
                 ToolCallBody(e.CallId, e.ParentToolCallId, toolName: e.ToolName)

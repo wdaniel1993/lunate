@@ -15,6 +15,9 @@ public sealed class AgentEventTests
             new TextMessageStart(RunId, "msg_1"),
             new TextMessageContent(RunId, "msg_1", "hello"),
             new TextMessageEnd(RunId, "msg_1"),
+            new ReasoningStart(RunId, "msg_2"),
+            new ReasoningMessageContent(RunId, "msg_2", "thinking"),
+            new ReasoningEnd(RunId, "msg_2"),
             new ToolCallStart(RunId, "call_1", "read"),
             new ToolCallArgs(RunId, "call_1", """{"path":"a.txt"}"""),
             new ToolCallEnd(RunId, "call_1"),
@@ -72,7 +75,7 @@ public sealed class AgentEventTests
                 .Where(type => typeof(AgentEvent).IsAssignableFrom(type) && !type.IsAbstract),
         ];
 
-        Assert.Equal(18, concreteTypes.Length);
+        Assert.Equal(21, concreteTypes.Length);
         Assert.All(
             concreteTypes,
             type => Assert.True(type.IsSealed, $"{type.Name} must be sealed")
@@ -116,6 +119,18 @@ public sealed class AgentEventTests
 
         Assert.Equal("msg_1", start.MessageId);
         Assert.Equal(("msg_1", "hello"), (content.MessageId, content.Text));
+        Assert.Equal("msg_1", end.MessageId);
+    }
+
+    [Fact]
+    public void Reasoning_events_expose_message_ids_and_text()
+    {
+        var start = new ReasoningStart(RunId, "msg_1");
+        var content = new ReasoningMessageContent(RunId, "msg_1", "thinking");
+        var end = new ReasoningEnd(RunId, "msg_1");
+
+        Assert.Equal("msg_1", start.MessageId);
+        Assert.Equal(("msg_1", "thinking"), (content.MessageId, content.Text));
         Assert.Equal("msg_1", end.MessageId);
     }
 
