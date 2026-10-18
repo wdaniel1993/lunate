@@ -104,6 +104,7 @@ internal sealed partial class InteractiveSession : IDisposable
     private readonly List<(string Text, SessionSkillMetadata? Skill)> _pendingSteering = [];
     private readonly CancellationTokenSource _lifetime = new();
     private readonly ToolBlockRenderer _toolBlocks = new();
+    private readonly ThinkingCommitRenderer _thinkingCommit = new();
     private readonly MarkdownRenderer _markdown;
     private readonly Dictionary<(string RunId, string CallId), string> _toolNames = [];
     private readonly Dictionary<(string RunId, string CallId), string> _toolArgs = [];
@@ -147,6 +148,9 @@ internal sealed partial class InteractiveSession : IDisposable
     private FileIndex? _fileIndex;
     private string _tail = string.Empty;
     private string _thinking = string.Empty;
+
+    /// <summary>When the open reasoning span began, on the injected scheduler's clock.</summary>
+    private DateTimeOffset _thinkingStartedAt;
     private RunOutcome _outcome;
     private long _inputTokens;
     private long _outputTokens;

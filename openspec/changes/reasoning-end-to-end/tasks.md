@@ -59,8 +59,11 @@ order; commit per group; record any design/code divergence in this file under th
   (`#af87d7`; truecolor / 16-colour magenta / none per capability) — the theme card moves it
   behind the resolver. The live block keeps its own 12-line window, so a thinking frame may
   exceed the 8-line `MaxLines` bound the rest of the live area keeps.)
-- [ ] 4.2 Collapsed commit on `ReasoningEnd`: `✦ thought for <n>s` (whole seconds); with
+- [x] 4.2 Collapsed commit on `ReasoningEnd`: `✦ thought for <n>s` (whole seconds); with
   `thinkingFull`, commit the full wrapped text (2-space indent).
+  (Divergence: the collapsed line commits flush left — D8 spells it without the visual-spec
+  snapshot's leading indent; the snapshot pass can settle it. An empty full text commits
+  nothing.)
 - [ ] 4.3 `/thinking [off|low|medium|high]` (bare = print level + mapping); footer segment
   `think:<level>` when not `off`.
 - [ ] 4.4 Tests: unit (renderers) + the production composition test (scripted reasoning

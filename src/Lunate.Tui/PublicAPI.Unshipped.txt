@@ -285,3 +285,22 @@ Lunate.Tui.ApprovalPromptModel.ApprovalPromptModel(string! ToolName, string! Arg
 Lunate.Tui.ApprovalPromptModel.Asker.get -> string?
 Lunate.Tui.ApprovalPromptModel.Asker.init -> void
 Lunate.Tui.ApprovalPromptModel.Deconstruct(out string! ToolName, out string! ArgsSummary, out string? Asker) -> void
+Lunate.Tui.ThinkingCommitModel
+Lunate.Tui.ThinkingCommitModel.<Clone>$() -> Lunate.Tui.ThinkingCommitModel!
+Lunate.Tui.ThinkingCommitModel.Deconstruct(out string! Text, out int ElapsedSeconds, out bool Full) -> void
+Lunate.Tui.ThinkingCommitModel.ElapsedSeconds.get -> int
+Lunate.Tui.ThinkingCommitModel.ElapsedSeconds.init -> void
+Lunate.Tui.ThinkingCommitModel.Equals(Lunate.Tui.ThinkingCommitModel? other) -> bool
+Lunate.Tui.ThinkingCommitModel.Full.get -> bool
+Lunate.Tui.ThinkingCommitModel.Full.init -> void
+Lunate.Tui.ThinkingCommitModel.Text.get -> string!
+Lunate.Tui.ThinkingCommitModel.Text.init -> void
+Lunate.Tui.ThinkingCommitModel.ThinkingCommitModel(string! Text, int ElapsedSeconds, bool Full) -> void
+Lunate.Tui.ThinkingCommitRenderer
+Lunate.Tui.ThinkingCommitRenderer.Render(Lunate.Tui.ThinkingCommitModel! commit, int width) -> Spectre.Console.Rendering.IRenderable!
+Lunate.Tui.ThinkingCommitRenderer.ThinkingCommitRenderer() -> void
+override Lunate.Tui.ThinkingCommitModel.Equals(object? obj) -> bool
+override Lunate.Tui.ThinkingCommitModel.GetHashCode() -> int
+override Lunate.Tui.ThinkingCommitModel.ToString() -> string!
+static Lunate.Tui.ThinkingCommitModel.operator !=(Lunate.Tui.ThinkingCommitModel? left, Lunate.Tui.ThinkingCommitModel? right) -> bool
+static Lunate.Tui.ThinkingCommitModel.operator ==(Lunate.Tui.ThinkingCommitModel? left, Lunate.Tui.ThinkingCommitModel? right) -> bool
