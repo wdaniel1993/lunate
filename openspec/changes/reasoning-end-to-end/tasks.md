@@ -41,14 +41,14 @@ order; commit per group; record any design/code divergence in this file under th
 
 ## 3. Persistence + safety
 
-- [ ] 3.1 Golden session round-trip with reasoning content incl. `ProtectedData`
+- [x] 3.1 Golden session round-trip with reasoning content incl. `ProtectedData`
   (byte-identity guard).
-- [ ] 3.2 Request filter (D6): strip `TextReasoningContent` from history messages whose
+- [x] 3.2 Request filter (D6): strip `TextReasoningContent` from history messages whose
   recorded model id differs from the current call's model; same-model keeps. Tests both ways
   + the session file keeps the content.
-- [ ] 3.3 Compaction path: replaced entries' reasoning is dropped with them; surviving
+- [x] 3.3 Compaction path: replaced entries' reasoning is dropped with them; surviving
   assistant entries keep theirs; the rebuilt history is valid (test).
-- [ ] 3.4 Settings: `thinking` (level, default `off`, validated) and `thinkingFull`
+- [x] 3.4 Settings: `thinking` (level, default `off`, validated) and `thinkingFull`
   (default false) in `settings.json`; validation tests mirroring `approval`.
 
 ## 4. TUI
