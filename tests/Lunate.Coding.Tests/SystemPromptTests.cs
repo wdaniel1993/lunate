@@ -109,3 +109,74 @@ public sealed class SystemPromptTests
         Assert.Contains("### AGENTS.md (AGENTS.md)", prompt, StringComparison.Ordinal);
     }
 }
+
+/// <summary>
+/// The <c>LUNATE_DATE</c> pin: deterministic prompt dates keep a replay fixture's request digest
+/// stable across days. Serialized because it sets a process environment variable.
+/// </summary>
+[CollectionDefinition(Name, DisableParallelization = true)]
+public sealed class SystemPromptDateCollection
+{
+    public const string Name = "system-prompt-date";
+}
+
+[Collection(SystemPromptDateCollection.Name)]
+public sealed class SystemPromptDateTests
+{
+    [Fact]
+    public void Pinned_date_replaces_the_current_utc_date()
+    {
+        using var temp = new TempDirectory();
+        var workspace = new Workspace(temp.Root);
+        using var pin = new DatePin("2026-01-15");
+
+        string prompt = SystemPrompt.Compose(workspace, ["read"], new ShellResolver("/bin/sh"));
+
+        Assert.Contains("date (UTC): 2026-01-15", prompt, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Explicit_now_wins_over_the_pin()
+    {
+        using var temp = new TempDirectory();
+        var workspace = new Workspace(temp.Root);
+        using var pin = new DatePin("2026-01-15");
+
+        string prompt = SystemPrompt.Compose(
+            workspace,
+            ["read"],
+            new ShellResolver("/bin/sh"),
+            new DateTimeOffset(2026, 10, 9, 12, 0, 0, TimeSpan.Zero)
+        );
+
+        Assert.Contains("date (UTC): 2026-10-09", prompt, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Invalid_pinned_date_fails_actionably()
+    {
+        using var temp = new TempDirectory();
+        var workspace = new Workspace(temp.Root);
+        using var pin = new DatePin("not-a-date");
+
+        InvalidOperationException error = Assert.Throws<InvalidOperationException>(() =>
+            SystemPrompt.Compose(workspace, ["read"], new ShellResolver("/bin/sh"))
+        );
+
+        Assert.Contains("LUNATE_DATE", error.Message, StringComparison.Ordinal);
+        Assert.Contains("yyyy-MM-dd", error.Message, StringComparison.Ordinal);
+    }
+
+    private sealed class DatePin : IDisposable
+    {
+        private readonly string? _previous;
+
+        public DatePin(string value)
+        {
+            _previous = Environment.GetEnvironmentVariable("LUNATE_DATE");
+            Environment.SetEnvironmentVariable("LUNATE_DATE", value);
+        }
+
+        public void Dispose() => Environment.SetEnvironmentVariable("LUNATE_DATE", _previous);
+    }
+}

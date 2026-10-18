@@ -20,6 +20,7 @@ public sealed class ChatClientFactory : IChatClientFactory
     private const string OtlpEndpointVariable = "OTEL_EXPORTER_OTLP_ENDPOINT";
     private const string RecordVariable = "LUNATE_RECORD";
     private const string RecordPathVariable = "LUNATE_RECORD_PATH";
+    private const string ReplayVariable = "LUNATE_REPLAY";
 
     private readonly ILoggerFactory _loggerFactory;
     private readonly bool _enableOpenTelemetry;
@@ -43,20 +44,28 @@ public sealed class ChatClientFactory : IChatClientFactory
         _namedKeySource = namedKeySource;
     }
 
-    public IChatClient Create(ModelInfo model) => Create(model, apiKey: null);
+    /// <summary>
+    /// Creates the client for the standard resolution path. When <c>LUNATE_REPLAY</c> names a
+    /// fixture and no recording is requested, the pipeline replays it instead of resolving a
+    /// credential or constructing a provider client.
+    /// </summary>
+    public IChatClient Create(ModelInfo model) => Create(model, apiKey: null, replayAllowed: true);
 
     /// <summary>
     /// Creates the client with an explicit credential, bypassing the environment/auth-store
     /// resolution: declared extension providers hand the host-read secret in here, so the value
-    /// only ever reaches the client's request headers.
+    /// only ever reaches the client's request headers. Replay is out of scope for this path.
     /// </summary>
-    public IChatClient Create(ModelInfo model, string? apiKey)
+    public IChatClient Create(ModelInfo model, string? apiKey) =>
+        Create(model, apiKey, replayAllowed: false);
+
+    /// <param name="replayAllowed">
+    /// Whether <c>LUNATE_REPLAY</c> may replace the provider client. Only the standard resolution
+    /// path allows it; a caller that already holds a credential gets the provider client.
+    /// </param>
+    private IChatClient Create(ModelInfo model, string? apiKey, bool replayAllowed)
     {
         ArgumentNullException.ThrowIfNull(model);
-
-        IChatClient inner = _providerClientFactory is not null
-            ? _providerClientFactory(model, apiKey)
-            : CreateProviderClient(model, apiKey);
 
         Func<IChatClient, IChatClient>? decorator = _recorderDecorator;
         if (decorator is null && RecordingRequestedFromEnvironment())
@@ -65,9 +74,20 @@ public sealed class ChatClientFactory : IChatClientFactory
             decorator = client => new RecordingChatClient(client, path, model.Id);
         }
 
+        IChatClient inner;
         if (decorator is not null)
         {
-            inner = decorator(inner);
+            // Recording wins over replay: with both requested the run records, nothing is replayed.
+            inner = decorator(CreateInnerClient(model, apiKey));
+        }
+        else if (replayAllowed && ReplayPathFromEnvironment() is { } replayPath)
+        {
+            // Before credential resolution and provider construction: replay needs neither.
+            inner = new ReplayChatClient(replayPath);
+        }
+        else
+        {
+            inner = CreateInnerClient(model, apiKey);
         }
 
         if (string.Equals(model.Provider, AnthropicProvider, StringComparison.OrdinalIgnoreCase))
@@ -86,6 +106,12 @@ public sealed class ChatClientFactory : IChatClientFactory
 
         return builder.UseLogging(_loggerFactory).Build();
     }
+
+    /// <summary>The provider client: the test seam when installed, the real adapter otherwise.</summary>
+    private IChatClient CreateInnerClient(ModelInfo model, string? apiKey) =>
+        _providerClientFactory is not null
+            ? _providerClientFactory(model, apiKey)
+            : CreateProviderClient(model, apiKey);
 
     private IChatClient CreateProviderClient(ModelInfo model, string? apiKey)
     {
@@ -226,6 +252,12 @@ public sealed class ChatClientFactory : IChatClientFactory
     private static string? RecordingPathFromEnvironment()
     {
         string? path = Environment.GetEnvironmentVariable(RecordPathVariable);
+        return string.IsNullOrWhiteSpace(path) ? null : path;
+    }
+
+    private static string? ReplayPathFromEnvironment()
+    {
+        string? path = Environment.GetEnvironmentVariable(ReplayVariable);
         return string.IsNullOrWhiteSpace(path) ? null : path;
     }
 

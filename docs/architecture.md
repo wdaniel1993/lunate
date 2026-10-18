@@ -27,10 +27,10 @@ flowchart LR
     Loop["AgentHarness (the loop)"] --> OTel["OpenTelemetry"] --> Log["logging"] --> Acc["accumulator"] --> Rec["recorder"] --> Prov["provider adapter"]
     Prov --> Api(["provider API"])
     Rec -. "LUNATE_RECORD=1" .-> Jsonl["recordings (JSONL)"]
-    Replay(["ReplayChatClient (tests)"]) -. "replaces recorder and provider" .-> Acc
+    Replay(["ReplayChatClient"]) -. "replaces recorder and provider" .-> Acc
 ```
 
-Order matters: telemetry is outermost (model spans see everything below it), then logging, the accumulator (consumers only ever see complete function calls), the recorder and the provider. Recording is opt-in via `LUNATE_RECORD=1`; replay replaces the recorder and the provider, so tests still run through telemetry, logging and the accumulator. Homes: [ai-layer spec](../openspec/specs/ai-layer/spec.md), [ADR-0002](../adr/0002-layering-and-meai-model-types.md), [ADR-0010](../adr/0010-anthropic-adapter.md).
+Order matters: telemetry is outermost (model spans see everything below it), then logging, the accumulator (consumers only ever see complete function calls), the recorder and the provider. Recording is opt-in via `LUNATE_RECORD=1`. Replay is opt-in via `LUNATE_REPLAY=<fixture path>`: the fixture becomes the client with no credential resolved and no provider client constructed (a recording request wins when both are set), so a replayed run still goes through telemetry, logging and the accumulator, like the tests' recorder decorator seam. Homes: [ai-layer spec](../openspec/specs/ai-layer/spec.md), [ADR-0002](../adr/0002-layering-and-meai-model-types.md), [ADR-0010](../adr/0010-anthropic-adapter.md).
 
 ## One run
 

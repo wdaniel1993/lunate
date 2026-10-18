@@ -4,6 +4,7 @@ using Microsoft.Extensions.AI;
 
 namespace Lunate.Ai.Tests;
 
+[Collection(ChatClientFactoryEnvCollection.Name)]
 public sealed class ChatClientFactoryRecordingTests
 {
     private const string RecordVariable = "LUNATE_RECORD";

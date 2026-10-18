@@ -278,7 +278,9 @@ internal sealed class GatedChatClient : IChatClient
     private sealed record Script(IReadOnlyList<ChatResponseUpdate> Updates, Exception? Failure);
 }
 
-/// <summary>Composes an interactive session over temp paths, a scripted console and a scripted provider.</summary>
+/// <summary>Composes an interactive session over temp paths, a scripted console and a scripted
+/// provider. Callers that need the real client factory (the runtime replay seam) pass
+/// <c>factory</c> instead of a scripted client.</summary>
 internal sealed class InteractiveSessionHost : IDisposable
 {
     private readonly StringWriter _diagnostics = new();
@@ -287,6 +289,7 @@ internal sealed class InteractiveSessionHost : IDisposable
         HookRunner? hooks = null,
         Func<AgentHarnessOptions, AgentHarnessOptions>? configureHarness = null,
         IChatClient? chat = null,
+        IChatClientFactory? factory = null,
         Func<string, string?>? environment = null,
         IWorkspaceFiles? workspaceFiles = null,
         ToolResultRendererRegistry? toolResultRenderers = null,
@@ -303,7 +306,7 @@ internal sealed class InteractiveSessionHost : IDisposable
         Session = new InteractiveSession(
             new InteractiveSessionOptions
             {
-                Factory = new FakeChatClientFactory(chat ?? Client),
+                Factory = factory ?? new FakeChatClientFactory(chat ?? Client),
                 SettingsPath = Temp.File("settings.json"),
                 ModelsPath = Temp.File("models.json"),
                 AuthPath = Temp.File("auth.json"),

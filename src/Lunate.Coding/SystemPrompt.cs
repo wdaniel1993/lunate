@@ -30,7 +30,7 @@ public static class SystemPrompt
         string instructions = AgentsInstructions.Compose(repositoryRoot, workspace.WorktreeRoot);
         string shell = (shellResolver ?? new ShellResolver()).Resolve()?.DisplayName ?? "unknown";
         string tools = toolNames.Count == 0 ? "none" : string.Join(", ", toolNames);
-        string date = (now ?? DateTimeOffset.UtcNow).UtcDateTime.ToString(
+        string date = (now ?? DateFromEnvironment() ?? DateTimeOffset.UtcNow).UtcDateTime.ToString(
             "yyyy-MM-dd",
             CultureInfo.InvariantCulture
         );
@@ -60,5 +60,37 @@ public static class SystemPrompt
 
         using var reader = new StreamReader(stream);
         return reader.ReadToEnd();
+    }
+
+    /// <summary>
+    /// The date pin for deterministic sessions: <c>LUNATE_DATE</c> (an ISO <c>yyyy-MM-dd</c> date)
+    /// replaces the current UTC date in the composed prompt, so a replay fixture's request digest
+    /// stays stable across days. An invalid value fails loudly — a silent fallback would make the
+    /// resulting fixture mismatch look like a different bug.
+    /// </summary>
+    private static DateTimeOffset? DateFromEnvironment()
+    {
+        string? value = Environment.GetEnvironmentVariable("LUNATE_DATE");
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        if (
+            !DateTimeOffset.TryParseExact(
+                value,
+                "yyyy-MM-dd",
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
+                out DateTimeOffset parsed
+            )
+        )
+        {
+            throw new InvalidOperationException(
+                $"The LUNATE_DATE environment variable ('{value}') is not a valid date; use yyyy-MM-dd."
+            );
+        }
+
+        return parsed;
     }
 }

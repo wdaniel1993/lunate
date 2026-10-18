@@ -2,6 +2,7 @@ using Microsoft.Extensions.AI;
 
 namespace Lunate.Ai.Tests;
 
+[Collection(ChatClientFactoryEnvCollection.Name)]
 public sealed class AnthropicTurnMergeTests
 {
     private static string FixturesDirectory =>
