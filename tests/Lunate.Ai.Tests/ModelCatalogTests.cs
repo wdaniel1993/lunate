@@ -24,6 +24,7 @@ public sealed class ModelCatalogTests
             Assert.Null(full.Endpoint);
             Assert.Equal(128_000, full.ContextWindow);
             Assert.True(full.SupportsTools);
+            Assert.Null(full.Reasoning);
 
             ModelInfo sonnet = catalog.Find("claude-sonnet-5-5")!;
             Assert.NotNull(sonnet);
@@ -31,6 +32,7 @@ public sealed class ModelCatalogTests
             Assert.Null(sonnet.Endpoint);
             Assert.Equal(1_000_000, sonnet.ContextWindow);
             Assert.True(sonnet.SupportsTools);
+            Assert.Equal("budget", sonnet.Reasoning);
 
             ModelInfo opus = catalog.Find("claude-opus-5-5")!;
             Assert.NotNull(opus);
@@ -38,6 +40,7 @@ public sealed class ModelCatalogTests
             Assert.Null(opus.Endpoint);
             Assert.Equal(1_000_000, opus.ContextWindow);
             Assert.True(opus.SupportsTools);
+            Assert.Equal("budget", opus.Reasoning);
         }
         finally
         {

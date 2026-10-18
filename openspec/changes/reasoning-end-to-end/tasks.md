@@ -36,7 +36,7 @@ order; commit per group; record any design/code divergence in this file under th
 - [x] 2.4 The inline ` thinking` splitter (D4): streaming state machine over text fragments,
   tag splits tolerated (buffer ≤ the tag length), unclosed tag closes at stream end; unit
   tests split at every boundary.
-- [ ] 2.5 Built-in `models.json`: declare styles for the models known to support reasoning
+- [x] 2.5 Built-in `models.json`: declare styles for the models known to support reasoning
   (keep conservative; absent is always safe).
 
 ## 3. Persistence + safety
