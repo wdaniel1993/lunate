@@ -180,7 +180,7 @@ public sealed class LiveAreaTests
         Advance(scheduler, 1);
 
         Assert.Equal(before + 1, console.Writes.Count);
-        Assert.Contains("\u001b[1A", console.Writes[^1], StringComparison.Ordinal);
+        Assert.Contains("\u001b[2K", console.Writes[^1], StringComparison.Ordinal);
 
         int afterClear = console.Writes.Count;
         Advance(scheduler, 1000);
@@ -209,7 +209,7 @@ public sealed class LiveAreaTests
         Advance(scheduler, 1000);
 
         Assert.Equal(before + 1, console.Writes.Count);
-        Assert.Contains("\u001b[1A", console.Writes[^1], StringComparison.Ordinal);
+        Assert.Contains("\u001b[2K", console.Writes[^1], StringComparison.Ordinal);
     }
 
     [Fact]
