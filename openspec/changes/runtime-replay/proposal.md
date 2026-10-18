@@ -9,6 +9,7 @@
 - `ChatClientFactory` gains `LUNATE_REPLAY=<fixture path>`: when set, the pipeline serves the fixture through `ReplayChatClient` — no credential resolution, no provider client construction, no network.
 - Precedence: an explicit recording request wins when both are set (deterministic, documented; no new error path).
 - The explicit-credential overload (`Create(model, apiKey)`, used by extension-declared providers) is unchanged.
+- `SystemPrompt.Compose` honors `LUNATE_DATE` (ISO `yyyy-MM-dd`) for the prompt's UTC date, so a committed replay fixture keeps matching on later days.
 
 ## Impact
 

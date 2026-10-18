@@ -23,3 +23,7 @@ The request digest covers messages, model id and tool names — a replay fixture
 ## D6 — Scope
 
 Only the standard resolution path (`Create(model)`) gains the seam. The explicit-credential overload stays untouched: extension-declared providers hand host-read secrets to the host, and replaying those is out of scope.
+
+## D7 — The date pin (`LUNATE_DATE`)
+
+The composed prompt embeds the UTC date, so a replay fixture's request digest would change daily — the demo media would break the day after recording. `LUNATE_DATE` (ISO `yyyy-MM-dd`) replaces the prompt's date when set; precedence: the `now` parameter (tests), then the variable, then the clock. An invalid value fails with an error naming the variable and the format — a silent fallback would surface as a fixture-digest mismatch, pointing the reader at the wrong subsystem. Scope: the prompt's `{date}` token only; logs, recordings and trust timestamps keep the real clock.

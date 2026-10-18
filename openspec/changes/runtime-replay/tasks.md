@@ -13,5 +13,11 @@
 
 ## Gate
 
-- [x] 6. `scripts/verify.sh` green on the final tree.
-- [x] 7. Spec updated (`ai-layer`); `openspec validate --all --strict` green.
+- [ ] 6. `scripts/verify.sh` green on the final tree.
+- [ ] 7. Spec updated (`ai-layer`); `openspec validate --all --strict` green.
+
+## Date pin (added after the first gate — the demo breaks daily without it)
+
+- [ ] 8. `SystemPrompt`: `LUNATE_DATE` (ISO date) replaces the prompt's UTC date; precedence parameter > variable > clock; invalid value fails actionably.
+- [ ] 9. Tests: pinned date applied; explicit `now` wins; invalid value errors.
+- [ ] 10. Spec: `agent-loop` delta; re-gate on the final tree.
