@@ -27,9 +27,12 @@ order; commit per group; record any design/code divergence in this file under th
   budgets (1,024/8,192/16,384), not the D3 table, so the exact budget rides the provider's raw
   field per D3: `RawRepresentationFactory` builds `ThinkingConfigEnabled` with the table's
   budget, `max_tokens` clamped above it.)
-- [ ] 2.3 Anthropic: when style `budget` and level on, enable extended thinking with the
+- [x] 2.3 Anthropic: when style `budget` and level on, enable extended thinking with the
   budget and ensure `max_tokens` is present and clamped above the budget. Live contract test
   (`LUNATE_LIVE=1` + key): signed thinking blocks round-trip through a tool loop unchanged.
+  (The budget rides `ReasoningParameters`' raw-field request; a deterministic transport test
+  pins the wire request (`thinking.type=enabled`, `budget_tokens`, `max_tokens` above it) and
+  the reasoning/signature assembly; the live test drives the tool loop.)
 - [ ] 2.4 The inline ` thinking` splitter (D4): streaming state machine over text fragments,
   tag splits tolerated (buffer ≤ the tag length), unclosed tag closes at stream end; unit
   tests split at every boundary.
