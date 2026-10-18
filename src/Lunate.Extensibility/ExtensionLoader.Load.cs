@@ -7,9 +7,11 @@ public sealed partial class ExtensionLoader
 {
     /// <summary>
     /// Loads one extension into its collectible context. <paramref name="startSession"/> false
-    /// composes in register-only inspect mode: the factory runs and registrations stand, but no
-    /// session-start hooks run, no background service starts and no <c>ToolsChanged</c> is
-    /// dispatched (the <c>lunate extensions</c> path, design D3).
+    /// composes in register-only inspect mode: the factory runs and registrations stand, but this
+    /// extension's background services do not start and no <c>ToolsChanged</c> is dispatched (the
+    /// <c>lunate extensions</c> path, design D3). The session-started event is not fired by a load
+    /// at all: the composition fires it once, after every extension loaded at session start has
+    /// loaded (design D1).
     /// </summary>
     public async Task<LoadedExtension> Load(
         string id,
@@ -56,7 +58,6 @@ public sealed partial class ExtensionLoader
             return await LoadRemoteAsync(
                     descriptor,
                     workingDirectory,
-                    repositoryIdentity,
                     cancellationToken,
                     startSession
                 )
@@ -94,10 +95,9 @@ public sealed partial class ExtensionLoader
             _contexts[descriptor.Id] = context;
             if (startSession)
             {
-                await StartSessionAsync(workingDirectory, repositoryIdentity, cancellationToken)
-                    .ConfigureAwait(false);
                 if (!_sessionEnded)
                 {
+                    _sessionBegan = true;
                     await _backgroundServices.StartAsync(cancellationToken).ConfigureAwait(false);
                 }
 

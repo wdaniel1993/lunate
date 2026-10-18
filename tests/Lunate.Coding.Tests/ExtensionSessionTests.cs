@@ -250,6 +250,94 @@ public sealed class ExtensionSessionTests
     }
 
     [Fact]
+    public async Task Every_SessionStarted_handler_observes_the_session_with_the_full_extension_set()
+    {
+        using var temp = new TempDirectory();
+        string worktree = temp.File("worktree");
+        Directory.CreateDirectory(worktree);
+        string store = temp.File("store");
+        HelloFixture.Install(Path.Combine(store, "extensions", "hello"));
+        ServiceConsumerFixture.Install(Path.Combine(store, "extensions", "consumer"));
+        var log = new RecordingExtensionLog();
+
+        await using var host = await ExtensionSession.StartAsync(
+            Identity(worktree),
+            new ExtensionSeams { StorePath = store, Log = log },
+            Ct
+        );
+
+        // The consumer sorts before hello: its handler can only resolve the provider's service
+        // when the event fires after every extension has loaded, and hello's handler (registered
+        // by the later load) can only run at all under the same rule.
+        Assert.True(
+            log.Contains("consumer session-started lookups: provider=True, absent=False"),
+            "the consumer's SessionStarted handler did not observe the full extension set; log:\n"
+                + string.Join("\n", log.Messages)
+        );
+        Assert.True(
+            log.Contains("hello session started"),
+            "the later-loaded extension's SessionStarted handler did not run; log:\n"
+                + string.Join("\n", log.Messages)
+        );
+    }
+
+    [Fact]
+    public async Task A_session_start_cancelled_during_the_dispatch_stops_what_already_started()
+    {
+        using var temp = new TempDirectory();
+        string worktree = temp.File("worktree");
+        Directory.CreateDirectory(worktree);
+        string store = temp.File("store");
+        HelloFixture.Install(Path.Combine(store, "extensions", "hello"));
+        ServiceConsumerFixture.Install(
+            Path.Combine(store, "extensions", "consumer"),
+            slowSessionStartedMs: 30_000
+        );
+        var log = new RecordingExtensionLog();
+        using var cancellation = new CancellationTokenSource();
+
+        Task<ExtensionSession> compose = ExtensionSession.StartAsync(
+            Identity(worktree),
+            new ExtensionSeams { StorePath = store, Log = log },
+            cancellation.Token
+        );
+
+        // The consumer's SessionStarted handler parks on a 30 s cancellable delay and runs first in
+        // the dispatch (discovery sorts by directory name, both handlers Priority 0, so registration
+        // order = load order — the sibling test's mechanism); cancel while it is in flight — the
+        // compose must stop what already started (hello's background service, started at its load)
+        // and release the bus before surfacing, exactly as a cancelled load does. The bus's dispose
+        // is not separately asserted: no change is enqueued here, so the pump never starts and a
+        // missing Dispose() would be invisible; the observable leak is the background service.
+        await WaitUntilAsync(() => log.Contains("consumer slow session-started entered"));
+        await cancellation.CancelAsync();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => compose);
+        Assert.True(
+            log.Contains("hello service stopped"),
+            "the started background service was not stopped after a cancelled session-start dispatch; log:\n"
+                + string.Join("\n", log.Messages)
+        );
+        Assert.False(
+            log.Contains("consumer slow session-started completed"),
+            "the cancelled handler resumed; log:\n" + string.Join("\n", log.Messages)
+        );
+        Assert.False(
+            log.Contains("hello session started"),
+            "handlers kept dispatching after cancellation; log:\n" + string.Join("\n", log.Messages)
+        );
+        // The cancelled dispatch still counts as fired (the flag is set before it), so the
+        // cleanup's session-ending pass runs — hello's ending handler fires even though its
+        // started handler never got its turn. Pre-existing rule (ending follows a begun session);
+        // only the roster grew, since every extension now loads before the dispatch.
+        Assert.True(
+            log.Contains("hello session ended"),
+            "the session-ending pass did not run after a cancelled dispatch; log:\n"
+                + string.Join("\n", log.Messages)
+        );
+    }
+
+    [Fact]
     public async Task One_broken_extension_is_reported_and_the_session_continues()
     {
         using var temp = new TempDirectory();
@@ -497,6 +585,22 @@ public sealed class ExtensionSessionTests
 
     private static WorkspaceInfo Identity(string worktree) =>
         new(Workspace.Canonicalize(worktree), null, null);
+
+    private static async Task WaitUntilAsync(Func<bool> condition)
+    {
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(30);
+        while (DateTime.UtcNow < deadline)
+        {
+            if (condition())
+            {
+                return;
+            }
+
+            await Task.Delay(50, Ct);
+        }
+
+        Assert.Fail("condition not reached within 30s");
+    }
 
     private static JsonElement Args(string json) => JsonDocument.Parse(json).RootElement.Clone();
 

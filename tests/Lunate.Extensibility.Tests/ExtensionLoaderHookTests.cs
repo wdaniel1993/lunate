@@ -22,6 +22,7 @@ public sealed class ExtensionLoaderHookTests
         );
 
         await loader.Load("hello", temp.Root, "repo", new FakeExtensionTrustPrompt(true), Ct);
+        await loader.StartSessionAsync(temp.Root, "repo", Ct);
 
         Assert.Single(
             log.Messages,
@@ -47,8 +48,29 @@ public sealed class ExtensionLoaderHookTests
         loader.Discover(temp.Root, "repo");
 
         await loader.Load("hello", temp.Root, "repo", new FakeExtensionTrustPrompt(true), Ct);
+        await loader.StartSessionAsync(temp.Root, "repo", Ct);
         await loader.Unload("hello");
         await loader.Load("hello", temp.Root, "repo", new FakeExtensionTrustPrompt(true), Ct);
+
+        Assert.Single(
+            log.Messages,
+            message => message.Contains("hello session started", StringComparison.Ordinal)
+        );
+    }
+
+    [Fact]
+    public async Task An_extension_loaded_after_the_session_started_does_not_observe_it()
+    {
+        using var temp = new TempDirectory();
+        TestExtensions.InstallHelloExtension(temp, "hello");
+        TestExtensions.InstallHelloExtension(temp, "late");
+        var log = new RecordingExtensionLog();
+        var loader = new ExtensionLoader(TestExtensions.Options(temp.Subdirectory("store"), log));
+        loader.Discover(temp.Root, "repo");
+
+        await loader.Load("hello", temp.Root, "repo", new FakeExtensionTrustPrompt(true), Ct);
+        await loader.StartSessionAsync(temp.Root, "repo", Ct);
+        await loader.Load("late", temp.Root, "repo", new FakeExtensionTrustPrompt(true), Ct);
 
         Assert.Single(
             log.Messages,
@@ -65,13 +87,13 @@ public sealed class ExtensionLoaderHookTests
         var loader = new ExtensionLoader(TestExtensions.Options(temp.Subdirectory("store"), log));
         loader.Discover(temp.Root, "repo");
         await loader.Load("hello", temp.Root, "repo", new FakeExtensionTrustPrompt(true), Ct);
+        await loader.StartSessionAsync(temp.Root, "repo", Ct);
 
-        await loader.Hooks.RunSessionStartedAsync(new SessionStartedPayload(temp.Root, "repo"), Ct);
-        Assert.Equal(2, Started(log));
+        Assert.Equal(1, Started(log));
 
         await loader.Unload("hello");
         await loader.Hooks.RunSessionStartedAsync(new SessionStartedPayload(temp.Root, "repo"), Ct);
-        Assert.Equal(2, Started(log));
+        Assert.Equal(1, Started(log));
 
         static int Started(RecordingExtensionLog log) =>
             log.Messages.Count(message =>
