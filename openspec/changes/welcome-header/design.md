@@ -16,7 +16,7 @@ Introduce one small descriptor table (`name`, `group`, `description`) as the sin
 
 ## D4 — First-run detection
 
-The header asks the existing auth/model resolution path whether any provider/key resolves. Three states: resolved (normal header), no key file (one fix: `lunate auth login <provider>`), env var present but not resolving (name the variable). Exactly one actionable path per detected case — never a list of alternatives. The first-run form prints no counts/hints block.
+The header asks the existing auth/model resolution path whether any provider/key resolves. Three states: resolved (normal header), no key file (one fix: `lunate auth login <provider>` — see D8 #1 for the shipped copy), env var present but not resolving (name the variable). Exactly one actionable path per detected case — never a list of alternatives. The first-run form prints no counts/hints block.
 
 ## D5 — Setting and environment
 
