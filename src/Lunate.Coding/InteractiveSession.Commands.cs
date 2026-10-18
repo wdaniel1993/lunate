@@ -3,6 +3,7 @@ using Lunate.Agent;
 using Lunate.Ai;
 using Lunate.Extensibility.Abstractions;
 using Lunate.Tui;
+using Spectre.Console;
 
 namespace Lunate.Coding;
 
@@ -113,10 +114,11 @@ internal sealed partial class InteractiveSession
 
     /// <summary>
     /// The <c>/help</c> listing: the registry's grouped commands printed as finished lines into
-    /// scrollback (a live-area notice is one clipped line and cannot hold a listing). Read-only, so
-    /// it is allowed while a turn runs.
+    /// scrollback (a live-area notice is one clipped line and cannot hold a listing). The lines are
+    /// plain text, so they are markup-escaped on the way in. Read-only, so it is allowed while a
+    /// turn runs.
     /// </summary>
-    private void ShowHelp() => WriteScrollbackLines([.. HelpView.Lines()]);
+    private void ShowHelp() => WriteScrollbackLines([.. HelpView.Lines().Select(Markup.Escape)]);
 
     /// <summary>
     /// The <c>/context</c> notice: the context usage (the footer's own format), the resolved

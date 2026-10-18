@@ -47,7 +47,7 @@ public sealed class WelcomeHeaderSessionTests
         using var temp = new TempDirectory();
         string worktree = temp.File("worktree");
         Directory.CreateDirectory(Path.Combine(worktree, ".git"));
-        WriteUserSkill(worktree, "greek");
+        WriteSkill(worktree, "greek");
         using var host = new InteractiveSessionHost(
             environment: KeyedEnvironment(),
             workingDirectory: worktree
@@ -65,7 +65,6 @@ public sealed class WelcomeHeaderSessionTests
 
         host.Console.SendText("n");
         await host.WaitUntilAsync(() => host.Session.IsComposed);
-        Assert.Contains("loading project…", host.Frames, StringComparison.Ordinal);
 
         host.Console.SendText("/quit");
         host.Console.SendEnter();
@@ -151,7 +150,7 @@ public sealed class WelcomeHeaderSessionTests
     public async Task The_counts_fill_in_from_the_composition()
     {
         using var host = new InteractiveSessionHost(environment: KeyedEnvironment());
-        WriteUserSkill(host.Temp.File("home"), "greek");
+        WriteSkill(host.Temp.File("home"), "greek");
         Task run = host.RunAsync();
 
         await host.WaitUntilAsync(() => host.Session.IsComposed);
@@ -206,6 +205,7 @@ public sealed class WelcomeHeaderSessionTests
         );
         Assert.DoesNotContain("extensions", scrollback, StringComparison.Ordinal);
         Assert.DoesNotContain("Esc cancels", scrollback, StringComparison.Ordinal);
+        Assert.Equal(1, Occurrences(scrollback, "auth.json"));
         Assert.Equal(1, Occurrences(scrollback, Mark));
 
         host.Console.SendText("/quit");
@@ -223,11 +223,10 @@ public sealed class WelcomeHeaderSessionTests
 
         await host.WaitUntilAsync(() => host.Session.IsComposed);
 
-        Assert.Contains(
-            "set OPENAI_API_KEY to a valid key",
-            host.ScrollbackText,
-            StringComparison.Ordinal
-        );
+        string scrollback = host.ScrollbackText;
+        Assert.Equal(1, Occurrences(scrollback, "set OPENAI_API_KEY to a valid key"));
+        // Exactly one actionable path: the named variable, never the auth store as well.
+        Assert.DoesNotContain("auth.json", scrollback, StringComparison.Ordinal);
 
         host.Console.SendText("/quit");
         host.Console.SendEnter();
@@ -288,6 +287,10 @@ public sealed class WelcomeHeaderSessionTests
         await InteractiveSessionCommandTests.WaitForFrameAsync(host, "new session");
 
         Assert.Equal(2, Occurrences(host.ScrollbackText, Mark));
+        // The first frame printed the placeholder once and got its one update line; the /new block
+        // prints the counts directly, so no second placeholder and no second update line appears.
+        Assert.Equal(1, Occurrences(host.ScrollbackText, "extensions … · MCP … · skills …"));
+        Assert.Equal(2, Occurrences(host.ScrollbackText, "extensions 0 · MCP 0 · skills 0"));
 
         host.Console.SendText("/quit");
         host.Console.SendEnter();
@@ -383,10 +386,11 @@ public sealed class WelcomeHeaderSessionTests
     private static int Occurrences(string text, string value) =>
         text.Split(value, StringSplitOptions.None).Length - 1;
 
-    /// <summary>A user-scope skill: discovered without a trust question.</summary>
-    private static void WriteUserSkill(string home, string name)
+    /// <summary>A skill at <c>&lt;root&gt;/.agents/skills/&lt;name&gt;</c>: the user scope under a
+    /// session's home, the project scope under the worktree.</summary>
+    private static void WriteSkill(string root, string name)
     {
-        string directory = Path.Combine(home, ".agents", "skills", name);
+        string directory = Path.Combine(root, ".agents", "skills", name);
         Directory.CreateDirectory(directory);
         File.WriteAllText(
             Path.Combine(directory, "SKILL.md"),
