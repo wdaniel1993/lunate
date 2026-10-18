@@ -302,10 +302,13 @@ public sealed class ExtensionSessionTests
             cancellation.Token
         );
 
-        // The consumer's SessionStarted handler (first in the dispatch) parks on a 30 s
-        // cancellable delay; cancel while it is in flight — the compose must stop what already
-        // started (hello's background service, started at its load) and release the bus before
-        // surfacing, exactly as a cancelled load does.
+        // The consumer's SessionStarted handler parks on a 30 s cancellable delay and runs first in
+        // the dispatch (discovery sorts by directory name, both handlers Priority 0, so registration
+        // order = load order — the sibling test's mechanism); cancel while it is in flight — the
+        // compose must stop what already started (hello's background service, started at its load)
+        // and release the bus before surfacing, exactly as a cancelled load does. The bus's dispose
+        // is not separately asserted: no change is enqueued here, so the pump never starts and a
+        // missing Dispose() would be invisible; the observable leak is the background service.
         await WaitUntilAsync(() => log.Contains("consumer slow session-started entered"));
         await cancellation.CancelAsync();
 
@@ -322,6 +325,15 @@ public sealed class ExtensionSessionTests
         Assert.False(
             log.Contains("hello session started"),
             "handlers kept dispatching after cancellation; log:\n" + string.Join("\n", log.Messages)
+        );
+        // The cancelled dispatch still counts as fired (the flag is set before it), so the
+        // cleanup's session-ending pass runs — hello's ending handler fires even though its
+        // started handler never got its turn. Pre-existing rule (ending follows a begun session);
+        // only the roster grew, since every extension now loads before the dispatch.
+        Assert.True(
+            log.Contains("hello session ended"),
+            "the session-ending pass did not run after a cancelled dispatch; log:\n"
+                + string.Join("\n", log.Messages)
         );
     }
 

@@ -4,10 +4,14 @@
 - [x] **Composition.** Call it once after the load loop in `ExtensionSession.ComposeAsync`.
 - [x] **Regression tests.** Two-extension both-observe (later handler sees the full set); late-load does not observe; existing suites green.
 - [x] **Spec delta.** MODIFIED `Hook wiring` — the `SessionStarted` clause + two scenarios; originals preserved.
-- [ ] **Gate + review + PR.** (Gate `scripts/verify.sh` passed on 2026-10-18: build + 2703
-      solution tests + de-AT pass, path-index/startup budgets, publish, install script, tool
-      roundtrip, packaging, format, docs lint, public API — `verify: OK`. PR not opened: the
-      session's instruction was to commit without pushing.)
+- [x] **Gate + review + PR.** Full gate `scripts/verify.sh` green twice on the fix head (2702
+      solution tests + de-AT pass, budgets, publish, packaging, format, docs lint, public API —
+      `verify: OK`). Review round 1: 1 required change — cancellation during the post-loop
+      dispatch escaped the loop's cleanup (OCE from a handler leaked started services + the bus
+      pump); fixed in `f641a67` with a shared `CleanUpAfterCancellationAsync` and a
+      cancellable-slow-handler regression test (red-checked). Focused re-review: 0 blocking, 0
+      required; its three suggestions applied (ending-hook assertion on the cancelled dispatch,
+      bus-dispose comment, ordering-mechanism comment). PR opened.
 
 ## Implementation notes (2026-10-18, branch change/session-started-semantics)
 
