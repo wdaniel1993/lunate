@@ -71,7 +71,7 @@ public static class SystemPrompt
     private static DateTimeOffset? DateFromEnvironment()
     {
         string? value = Environment.GetEnvironmentVariable("LUNATE_DATE");
-        if (string.IsNullOrEmpty(value))
+        if (string.IsNullOrWhiteSpace(value))
         {
             return null;
         }

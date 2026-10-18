@@ -6,6 +6,7 @@ namespace Lunate.Ai.Tests;
 /// The <c>LUNATE_REPLAY</c> seam: a fixture-only pipeline that resolves no credential and
 /// constructs no provider client, with a recording request taking precedence when both are set.
 /// </summary>
+[Collection(ChatClientFactoryEnvCollection.Name)]
 public sealed class ChatClientFactoryReplayTests
 {
     private const string ReplayVariable = "LUNATE_REPLAY";
@@ -192,7 +193,10 @@ public sealed class ChatClientFactoryReplayTests
         WriteFixture(path, messages, options, Update("from the fixture"));
         var endpoint = new Uri("https://explicit.example.test/v1");
         var model = new ModelInfo("gpt-4o-mini", "openai", endpoint, 128_000, true);
-        var factory = new ChatClientFactory(new MarkingLoggerFactory(static () => { }));
+        var factory = new ChatClientFactory(
+            new MarkingLoggerFactory(static () => { }),
+            enableOpenTelemetry: false
+        );
 
         IChatClient client = factory.Create(model, "explicit-key");
 

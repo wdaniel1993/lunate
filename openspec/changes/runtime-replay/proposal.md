@@ -14,6 +14,8 @@
 ## Impact
 
 - `src/Lunate.Ai/ChatClientFactory.cs` (the seam), tests for the factory and one session-level keyless replay.
+- `src/Lunate.Coding/SystemPrompt.cs` (the date pin) and its tests.
 - `openspec/specs/ai-layer/spec.md` (the recording/replay requirement gains the factory seam + two scenarios).
+- `openspec/specs/agent-loop/spec.md` (the system-prompt requirement gains the date pin + two scenarios).
 - `docs/architecture.md`: one line next to the recording note.
 - No new packages. Enables card B's media (and future demos) without a live key.

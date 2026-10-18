@@ -7,6 +7,7 @@ using OpenAI;
 
 namespace Lunate.Ai.Tests;
 
+[Collection(ChatClientFactoryEnvCollection.Name)]
 public sealed class ChatClientFactoryTests
 {
     private const string OpenAiApiKeyVariable = "OPENAI_API_KEY";
