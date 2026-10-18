@@ -153,6 +153,16 @@ internal sealed class ExtensionSession : IAsyncDisposable
         }
 
         List<ExtensionLoadResult> loadResults = [];
+
+        // Cancellation mid-compose (during a load or the session-started dispatch): stop whatever
+        // already started (earlier extensions' background services) and release the bus before
+        // surfacing; the host is never returned.
+        async Task CleanUpAfterCancellationAsync()
+        {
+            fileChanges.Dispose();
+            await loader.EndSessionAsync(CancellationToken.None).ConfigureAwait(false);
+        }
+
         foreach (ExtensionDescriptor descriptor in loader.Descriptors)
         {
             var stopwatch = Stopwatch.StartNew();
@@ -179,11 +189,7 @@ internal sealed class ExtensionSession : IAsyncDisposable
             }
             catch (OperationCanceledException)
             {
-                // Cancellation mid-compose: stop whatever already started (earlier extensions'
-                // background services) and release the bus before surfacing; the host is never
-                // returned.
-                fileChanges.Dispose();
-                await loader.EndSessionAsync(CancellationToken.None).ConfigureAwait(false);
+                await CleanUpAfterCancellationAsync().ConfigureAwait(false);
                 throw;
             }
             catch (ExtensionTrustDeniedException exception)
@@ -219,9 +225,20 @@ internal sealed class ExtensionSession : IAsyncDisposable
         // mode loads nothing into a session and fires nothing (design D2).
         if (!seams.Inspect)
         {
-            await loader
-                .StartSessionAsync(workingDirectory, repositoryIdentity, ct)
-                .ConfigureAwait(false);
+            try
+            {
+                await loader
+                    .StartSessionAsync(workingDirectory, repositoryIdentity, ct)
+                    .ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                // Cancellation during the session-started dispatch: same cleanup as a cancelled
+                // load — the dispatch runs after the loop, so its cancellation must stop what
+                // already started and release the bus before surfacing.
+                await CleanUpAfterCancellationAsync().ConfigureAwait(false);
+                throw;
+            }
         }
 
         return new ExtensionSession(loader, log, fileChanges, errors, loadResults);

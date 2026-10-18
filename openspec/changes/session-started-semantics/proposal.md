@@ -18,5 +18,5 @@
 
 ## Impact
 
-- `src/Lunate.Extensibility/ExtensionLoader{,.Load,.Remote}.cs` (firing point; `StartSessionAsync` becomes callable from the composition), `src/Lunate.Coding/ExtensionSession.cs` (one call after the load loop); tests.
+- `src/Lunate.Extensibility/ExtensionLoader{,.Load,.Remote}.cs` (firing point; `StartSessionAsync` becomes callable from the composition), `src/Lunate.Coding/ExtensionSession.cs` (one call after the load loop; its cancellation cleanup covers the dispatch), `src/Lunate.Extensibility.Testing/ExtensionTestHost.cs` (the kit mirrors the composition's explicit call); tests.
 - `openspec/specs/extensions/spec.md` — the `Hook wiring` requirement's `SessionStarted` clause gains the firing rule (MODIFIED) plus two scenarios.

@@ -231,6 +231,9 @@ public sealed partial class ExtensionLoader
             return;
         }
 
+        // The flag is set before the dispatch: a cancelled or failed dispatch still counts as
+        // fired, so no retry can double-fire the handlers (the composition cleans up and never
+        // retries; a later-loaded extension is documented as not observing the event).
         _sessionStarted = true;
         _session = new SessionStartedPayload(workingDirectory, repositoryIdentity);
         await _hooks.RunSessionStartedAsync(_session, cancellationToken).ConfigureAwait(false);

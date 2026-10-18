@@ -89,7 +89,11 @@ internal static class ServiceConsumerFixture
     internal static string SourceDirectory =>
         Path.Combine(AppContext.BaseDirectory, "TestExtensions", "ServiceConsumerExtension");
 
-    internal static string Install(string targetDirectory, string id = "consumer")
+    internal static string Install(
+        string targetDirectory,
+        string id = "consumer",
+        int? slowSessionStartedMs = null
+    )
     {
         Directory.CreateDirectory(targetDirectory);
         File.Copy(
@@ -101,6 +105,17 @@ internal static class ServiceConsumerFixture
             Path.Combine(targetDirectory, "extension.json"),
             $$"""{"id":"{{id}}","version":"0.1.0","apiVersion":"^1.5.0","entryAssembly":"ServiceConsumerExtension.dll"}"""
         );
+        if (slowSessionStartedMs is int slow)
+        {
+            string store = Path.GetDirectoryName(Path.GetDirectoryName(targetDirectory))!;
+            string settingsDirectory = Path.Combine(store, "extensions-settings");
+            Directory.CreateDirectory(settingsDirectory);
+            File.WriteAllText(
+                Path.Combine(settingsDirectory, id + ".json"),
+                System.Text.Json.JsonSerializer.Serialize(new { slowSessionStartedMs = slow })
+            );
+        }
+
         return targetDirectory;
     }
 }

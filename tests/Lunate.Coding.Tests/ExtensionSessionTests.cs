@@ -282,6 +282,50 @@ public sealed class ExtensionSessionTests
     }
 
     [Fact]
+    public async Task A_session_start_cancelled_during_the_dispatch_stops_what_already_started()
+    {
+        using var temp = new TempDirectory();
+        string worktree = temp.File("worktree");
+        Directory.CreateDirectory(worktree);
+        string store = temp.File("store");
+        HelloFixture.Install(Path.Combine(store, "extensions", "hello"));
+        ServiceConsumerFixture.Install(
+            Path.Combine(store, "extensions", "consumer"),
+            slowSessionStartedMs: 30_000
+        );
+        var log = new RecordingExtensionLog();
+        using var cancellation = new CancellationTokenSource();
+
+        Task<ExtensionSession> compose = ExtensionSession.StartAsync(
+            Identity(worktree),
+            new ExtensionSeams { StorePath = store, Log = log },
+            cancellation.Token
+        );
+
+        // The consumer's SessionStarted handler (first in the dispatch) parks on a 30 s
+        // cancellable delay; cancel while it is in flight — the compose must stop what already
+        // started (hello's background service, started at its load) and release the bus before
+        // surfacing, exactly as a cancelled load does.
+        await WaitUntilAsync(() => log.Contains("consumer slow session-started entered"));
+        await cancellation.CancelAsync();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => compose);
+        Assert.True(
+            log.Contains("hello service stopped"),
+            "the started background service was not stopped after a cancelled session-start dispatch; log:\n"
+                + string.Join("\n", log.Messages)
+        );
+        Assert.False(
+            log.Contains("consumer slow session-started completed"),
+            "the cancelled handler resumed; log:\n" + string.Join("\n", log.Messages)
+        );
+        Assert.False(
+            log.Contains("hello session started"),
+            "handlers kept dispatching after cancellation; log:\n" + string.Join("\n", log.Messages)
+        );
+    }
+
+    [Fact]
     public async Task One_broken_extension_is_reported_and_the_session_continues()
     {
         using var temp = new TempDirectory();
@@ -529,6 +573,22 @@ public sealed class ExtensionSessionTests
 
     private static WorkspaceInfo Identity(string worktree) =>
         new(Workspace.Canonicalize(worktree), null, null);
+
+    private static async Task WaitUntilAsync(Func<bool> condition)
+    {
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(30);
+        while (DateTime.UtcNow < deadline)
+        {
+            if (condition())
+            {
+                return;
+            }
+
+            await Task.Delay(50, Ct);
+        }
+
+        Assert.Fail("condition not reached within 30s");
+    }
 
     private static JsonElement Args(string json) => JsonDocument.Parse(json).RootElement.Clone();
 
