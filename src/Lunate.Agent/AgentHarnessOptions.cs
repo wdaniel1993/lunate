@@ -71,6 +71,13 @@ public sealed record AgentHarnessOptions
     /// <summary>The model id the compaction context-window lookup uses; null skips the lookup.</summary>
     public string? ModelId { get; init; }
 
+    /// <summary>
+    /// The session thinking level: how much reasoning the model should do. <see cref="ThinkingLevel.Off"/>
+    /// (the default) sends nothing; an on level is translated per the model's declared reasoning style
+    /// where the request options are composed.
+    /// </summary>
+    public ThinkingLevel ThinkingLevel { get; init; } = ThinkingLevel.Off;
+
     /// <summary>The number of most recent turns compaction keeps verbatim.</summary>
     public int CompactionKeepTurns { get; init; } = CompactionReducer.DefaultKeepTurns;
 

@@ -21,8 +21,12 @@ order; commit per group; record any design/code divergence in this file under th
 
 - [x] 2.1 `ModelInfo` gains `Reasoning` (style string: `effort` | `budget` | `inline`,
   absent = none); catalog parse + merge + tests (user override of the field included).
-- [ ] 2.2 Level→provider-options mapping per style (D3 table), built where `BuildOptions`
+- [x] 2.2 Level→provider-options mapping per style (D3 table), built where `BuildOptions`
   composes `ChatOptions`; `off`/absent send nothing. Tests per style.
+  (Apply decision: for `budget` the pinned Anthropic adapter's Extended mode derives its own
+  budgets (1,024/8,192/16,384), not the D3 table, so the exact budget rides the provider's raw
+  field per D3: `RawRepresentationFactory` builds `ThinkingConfigEnabled` with the table's
+  budget, `max_tokens` clamped above it.)
 - [ ] 2.3 Anthropic: when style `budget` and level on, enable extended thinking with the
   budget and ensure `max_tokens` is present and clamped above the budget. Live contract test
   (`LUNATE_LIVE=1` + key): signed thinking blocks round-trip through a tool loop unchanged.

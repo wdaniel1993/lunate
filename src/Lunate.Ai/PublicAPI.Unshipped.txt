@@ -32,6 +32,13 @@ override Lunate.Ai.ModelInfo.GetHashCode() -> int
 override Lunate.Ai.ModelInfo.ToString() -> string!
 static Lunate.Ai.ModelInfo.operator !=(Lunate.Ai.ModelInfo? left, Lunate.Ai.ModelInfo? right) -> bool
 static Lunate.Ai.ModelInfo.operator ==(Lunate.Ai.ModelInfo? left, Lunate.Ai.ModelInfo? right) -> bool
+Lunate.Ai.ReasoningParameters
+static Lunate.Ai.ReasoningParameters.Apply(Microsoft.Extensions.AI.ChatOptions! options, Lunate.Ai.ModelInfo! model, Lunate.Ai.ThinkingLevel level) -> void
+Lunate.Ai.ThinkingLevel
+Lunate.Ai.ThinkingLevel.High = 3 -> Lunate.Ai.ThinkingLevel
+Lunate.Ai.ThinkingLevel.Low = 1 -> Lunate.Ai.ThinkingLevel
+Lunate.Ai.ThinkingLevel.Medium = 2 -> Lunate.Ai.ThinkingLevel
+Lunate.Ai.ThinkingLevel.Off = 0 -> Lunate.Ai.ThinkingLevel
 Lunate.Ai.ProviderErrors
 static Lunate.Ai.ProviderErrors.IsRetryable(System.Exception! exception) -> bool
 Lunate.Ai.RecordingChatClient

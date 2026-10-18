@@ -29,6 +29,27 @@ internal static class TestCatalog
             File.Delete(path);
         }
     }
+
+    /// <summary>A one-model catalog declaring the given reasoning style (null declares none).</summary>
+    internal static ModelCatalog WithReasoning(string? style, string modelId = ModelId)
+    {
+        string reasoning = style is null ? "" : string.Concat(",\"reasoning\":\"", style, "\"");
+        string path = Path.Combine(Path.GetTempPath(), $"lunate-models-{Guid.NewGuid():N}.json");
+        File.WriteAllText(
+            path,
+            $$"""
+            {"schemaVersion":1,"models":[{"id":"{{modelId}}","provider":"openai","contextWindow":1000,"supportsTools":true{{reasoning}}}]}
+            """
+        );
+        try
+        {
+            return ModelCatalog.Load(path);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
 }
 
 internal sealed class TraceCapture : IDisposable

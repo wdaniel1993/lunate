@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using Lunate.Ai;
 using Microsoft.Extensions.AI;
 
 namespace Lunate.Agent;
@@ -764,18 +765,32 @@ public sealed partial class AgentHarness
 
     private ChatOptions BuildOptions(IReadOnlyList<string>? activeTools)
     {
+        ChatOptions options;
         if (activeTools is null)
         {
-            return new() { Tools = [.. _tools.Declarations] };
+            options = new() { Tools = [.. _tools.Declarations] };
+        }
+        else
+        {
+            HashSet<string> selected = new(activeTools, StringComparer.Ordinal);
+            options = new()
+            {
+                Tools =
+                [
+                    .. _tools.Declarations.Where(declaration => selected.Contains(declaration.Name)),
+                ],
+            };
         }
 
-        HashSet<string> selected = new(activeTools, StringComparer.Ordinal);
-        return new()
+        if (DeclaredModel() is { } model)
         {
-            Tools =
-            [
-                .. _tools.Declarations.Where(declaration => selected.Contains(declaration.Name)),
-            ],
-        };
+            ReasoningParameters.Apply(options, model, _options.ThinkingLevel);
+        }
+
+        return options;
     }
+
+    /// <summary>The catalog entry of the harness's model; null when no catalog declares it.</summary>
+    private ModelInfo? DeclaredModel() =>
+        _options.ModelId is { } id ? _options.ModelCatalog?.Find(id) : null;
 }
