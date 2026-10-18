@@ -191,55 +191,72 @@ internal sealed partial class InteractiveSession : IDisposable
     /// <summary>Runs the input loop until the terminal's key stream ends or the quit window quits.</summary>
     public async Task RunAsync(CancellationToken ct = default)
     {
-        using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct, _lifetime.Token);
-        _live.Start();
-        _live.SetLoading(_capabilities.Unicode ? "loading project…" : "loading project...");
-        Task pump = PumpKeysAsync(linked.Token);
+        // The tui capability requires raw mode through the platform APIs: in a canonical
+        // terminal Enter arrives as LF and can never submit. A terminal that cannot switch
+        // modes fails soft with the platform's actionable message instead of an exception.
+        IDisposable rawMode;
         try
         {
-            await ComposeAsync(linked.Token);
-            _composed = true;
-            _live.SetLoading(null);
-            FlushPendingNotices();
-            UpdateStatus();
-            // Background remote extensions start only now, after the UI is ready; the startup
-            // path and its budget never touch them.
-            if (_extensions is { } backgroundHost)
-            {
-                _ = StartBackgroundExtensionsAsync(backgroundHost, linked.Token);
-            }
+            rawMode = _console.EnterRawMode();
         }
-        catch (OperationCanceledException) when (linked.IsCancellationRequested)
+        catch (InvalidOperationException exception)
         {
-            // A quit (or the caller's token) during composition: never surface it as an error.
-        }
-        catch (Exception exception)
-        {
-            _lifetime.Cancel();
-            (_options.Diagnostics ?? Console.Error).WriteLine($"lunate: {exception.Message}");
+            _console.Write(exception.Message + Environment.NewLine);
+            return;
         }
 
-        try
+        using (rawMode)
         {
-            await pump;
-        }
-        catch (OperationCanceledException) { }
-        finally
-        {
-            _lifetime.Cancel();
-            if (_run is { } run)
+            using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct, _lifetime.Token);
+            _live.Start();
+            _live.SetLoading(_capabilities.Unicode ? "loading project…" : "loading project...");
+            Task pump = PumpKeysAsync(linked.Token);
+            try
             {
-                try
+                await ComposeAsync(linked.Token);
+                _composed = true;
+                _live.SetLoading(null);
+                FlushPendingNotices();
+                UpdateStatus();
+                // Background remote extensions start only now, after the UI is ready; the startup
+                // path and its budget never touch them.
+                if (_extensions is { } backgroundHost)
                 {
-                    await run;
+                    _ = StartBackgroundExtensionsAsync(backgroundHost, linked.Token);
                 }
-                catch (OperationCanceledException) { }
+            }
+            catch (OperationCanceledException) when (linked.IsCancellationRequested)
+            {
+                // A quit (or the caller's token) during composition: never surface it as an error.
+            }
+            catch (Exception exception)
+            {
+                _lifetime.Cancel();
+                (_options.Diagnostics ?? Console.Error).WriteLine($"lunate: {exception.Message}");
             }
 
-            await DisposeExtensionsAsync();
-            _workspaceServices?.Dispose();
-            _workspaceServices = null;
-            _live.Dispose();
+            try
+            {
+                await pump;
+            }
+            catch (OperationCanceledException) { }
+            finally
+            {
+                _lifetime.Cancel();
+                if (_run is { } run)
+                {
+                    try
+                    {
+                        await run;
+                    }
+                    catch (OperationCanceledException) { }
+                }
+
+                await DisposeExtensionsAsync();
+                _workspaceServices?.Dispose();
+                _workspaceServices = null;
+                _live.Dispose();
+            }
         }
     }
 

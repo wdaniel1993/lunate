@@ -72,13 +72,32 @@ internal sealed class ScriptedConsoleIO : IConsoleIO
         }
     }
 
-    public IDisposable EnterRawMode() => NoopDisposable.Instance;
-
-    private sealed class NoopDisposable : IDisposable
+    public IDisposable EnterRawMode()
     {
-        public static NoopDisposable Instance { get; } = new();
+        if (FailRawMode)
+        {
+            throw new InvalidOperationException(
+                "the terminal attributes of stdin could not be changed; interactive input is unavailable."
+            );
+        }
 
-        public void Dispose() { }
+        RawModeEntries++;
+        InRawMode = true;
+        return new RawModeScope(this);
+    }
+
+    /// <summary>When set, <see cref="EnterRawMode"/> throws the platform's actionable failure.</summary>
+    public bool FailRawMode { get; set; }
+
+    /// <summary>How many times the session entered raw mode (the fix that restored the spec'd call).</summary>
+    public int RawModeEntries { get; private set; }
+
+    /// <summary>True between <see cref="EnterRawMode"/> and its disposal.</summary>
+    public bool InRawMode { get; private set; }
+
+    private sealed class RawModeScope(ScriptedConsoleIO console) : IDisposable
+    {
+        public void Dispose() => console.InRawMode = false;
     }
 }
 
