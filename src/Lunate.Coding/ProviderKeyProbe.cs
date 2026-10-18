@@ -9,10 +9,17 @@ namespace Lunate.Coding;
 /// placeholder credential and needs no key; without one the provider's environment variable, then
 /// the auth store's key under the provider name, resolves it. When nothing resolves the probe
 /// answers with exactly one actionable fix, never a list of alternatives: the name the auth store
-/// wants, or the environment variable that is set but does not resolve.
+/// wants, or the environment variable that is set but does not resolve. A session with no model
+/// configured at all has nothing to probe and uses <see cref="MissingModelFix"/>.
 /// </summary>
 internal static class ProviderKeyProbe
 {
+    /// <summary>
+    /// The one fix when nothing is configured at all: the first action of the shipped resolution
+    /// error (<c>HarnessFactory.ResolveModel</c>), kept to one line and one action (design D4/D8 #9).
+    /// </summary>
+    internal const string MissingModelFix = "set 'model' in ~/.lunate/settings.json";
+
     private const string OpenAiProvider = "openai";
     private const string AnthropicProvider = "anthropic";
     private const string OpenAiApiKeyVariable = "OPENAI_API_KEY";

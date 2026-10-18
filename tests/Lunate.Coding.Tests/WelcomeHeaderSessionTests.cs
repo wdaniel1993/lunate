@@ -5,8 +5,9 @@ namespace Lunate.Coding.Tests;
 
 /// <summary>
 /// The welcome header at the session seam (design D1/D4/D5): one print on the first frame before
-/// composition output, the single counts update line, the first-run form, the setting and the
-/// environment override, <c>/new</c> and the machine modes that never construct it.
+/// composition output, the single counts update line, the first-run form (no model configured, no
+/// key, an unresolved variable), the setting and the environment override, <c>/new</c> and the
+/// machine modes that never construct it.
 /// </summary>
 public sealed class WelcomeHeaderSessionTests
 {
@@ -231,6 +232,30 @@ public sealed class WelcomeHeaderSessionTests
         host.Console.SendText("/quit");
         host.Console.SendEnter();
         await run;
+    }
+
+    [Fact]
+    public async Task A_first_run_without_a_model_names_the_model_setting_and_no_counts_or_hint()
+    {
+        using var host = new InteractiveSessionHost(
+            environment: PrintModeTestSupport.Environment(model: null)
+        );
+        Task run = host.RunAsync();
+
+        // Nothing resolves without a model, so composition fails right after the header printed:
+        // the run ends on its own and the header is the whole first frame.
+        await run;
+
+        string scrollback = host.ScrollbackText;
+        Assert.Contains(
+            "set 'model' in ~/.lunate/settings.json",
+            scrollback,
+            StringComparison.Ordinal
+        );
+        Assert.Equal(1, Occurrences(scrollback, "settings.json"));
+        Assert.DoesNotContain("extensions", scrollback, StringComparison.Ordinal);
+        Assert.DoesNotContain("Esc cancels", scrollback, StringComparison.Ordinal);
+        Assert.Equal(1, Occurrences(scrollback, Mark));
     }
 
     [Fact]

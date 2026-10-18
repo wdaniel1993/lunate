@@ -59,8 +59,24 @@ internal sealed partial class InteractiveSession
             Workspace = _workingDirectory,
             CSharpWorkspace = HarnessFactory.LooksLikeCSharpWorkspace(_workspace.WorktreeRoot),
             Counts = counts,
-            Fix = model is null ? null : ProviderKeyProbe.FixFor(model, _auth, _environment),
+            Fix = FirstRunFix(model, configured),
         };
+    }
+
+    /// <summary>
+    /// The one actionable fix of the first-run state, or null when the session is configured (design
+    /// D4). Nothing configured has no model to probe, so the header names the setting that fills the
+    /// gap and still prints no counts or hint block (D8 #9); a configured id the catalog does not
+    /// know yet — an extension-registered model on the first frame — keeps the normal block (D8 #6).
+    /// </summary>
+    private string? FirstRunFix(ModelInfo? model, string configured)
+    {
+        if (model is not null)
+        {
+            return ProviderKeyProbe.FixFor(model, _auth, _environment);
+        }
+
+        return configured.Length == 0 ? ProviderKeyProbe.MissingModelFix : null;
     }
 
     private ModelInfo? HeaderModel() =>

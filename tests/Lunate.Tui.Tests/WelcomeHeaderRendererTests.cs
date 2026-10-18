@@ -23,6 +23,14 @@ public sealed class WelcomeHeaderRendererTests
         Fix = "add the 'openai' key to ~/.lunate/auth.json",
     };
 
+    /// <summary>The first-run form of a session with no model configured at all (design D8 #9).</summary>
+    private static readonly WelcomeHeaderState FirstRunNoModel = Full with
+    {
+        ModelId = string.Empty,
+        ContextWindow = 0,
+        Fix = "set 'model' in ~/.lunate/settings.json",
+    };
+
     private static readonly string[] BlockMarkup =
     [
         "[cyan]\u03f9[/]",
@@ -182,6 +190,22 @@ public sealed class WelcomeHeaderRendererTests
         Assert.Equal(
             ["lunate v0.1.0 (C# · Roslyn) — add the 'openai' key to ~/.lunate/auth.json"],
             Text(FirstRun, width: 40, Capabilities(unicode: true, colored: true))
+        );
+
+    /// <summary>
+    /// The no-model first-run state (design D4/D8 #9): no catalog entry is named, so the fix alone
+    /// carries the block and no model, counts or hint line appears.
+    /// </summary>
+    [Fact]
+    public void A_state_without_a_model_renders_the_fix_and_no_counts_or_hint() =>
+        Assert.Equal(
+            [
+                "[cyan]\u03f9[/]",
+                "[bold]lunate[/][dim]  v0.1.0[/]",
+                "set 'model' in ~/.lunate/settings.json",
+                "[dim]~/dev/lunate[/]",
+            ],
+            Markup(FirstRunNoModel, width: 120, Capabilities(unicode: true, colored: true))
         );
 
     [Fact]
