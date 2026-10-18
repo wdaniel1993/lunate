@@ -4,11 +4,13 @@ namespace Lunate.Coding;
 
 /// <summary>
 /// Discovery and validation of portable skills: project directories from the worktree root upward
-/// to the repository root (never above it), the user scope and extension-contributed directories,
-/// each directory holding a <c>SKILL.md</c>. Resolved collisions warn once and keep one winner
-/// (project &gt; user &gt; extension; within the project scope nearest level first, then
-/// <c>.lunate</c> &gt; <c>.agents</c> &gt; <c>.claude</c>); malformed skills warn and never load;
-/// discovery is bounded at 256 scanned skills per scope and unreadable directories warn, never fail.
+/// to the repository root (never above it; a linked worktree's repository root is the main
+/// checkout, so there discovery is bounded to the worktree root itself), the user scope and
+/// extension-contributed directories, each directory holding a <c>SKILL.md</c>. Resolved collisions
+/// warn once and keep one winner (project &gt; user &gt; extension; within the project scope
+/// nearest level first, then <c>.lunate</c> &gt; <c>.agents</c> &gt; <c>.claude</c>); malformed
+/// skills warn and never load; discovery is bounded at 256 scanned skills per scope and unreadable
+/// directories warn, never fail.
 /// </summary>
 internal static partial class SkillScanner
 {
@@ -35,7 +37,7 @@ internal static partial class SkillScanner
             ProjectRoots(request.WorktreeRoot, request.RepoRoot),
             SkillScope.Project,
             extensionId: null,
-            projectBoundary: request.RepoRoot ?? request.WorktreeRoot
+            projectBoundary: ProjectBoundary(request.WorktreeRoot, request.RepoRoot)
         );
 
         scan.Roots(
@@ -73,7 +75,7 @@ internal static partial class SkillScanner
             ProjectRoots(request.WorktreeRoot, request.RepoRoot),
             SkillScope.Project,
             extensionId: null,
-            projectBoundary: request.RepoRoot ?? request.WorktreeRoot
+            projectBoundary: ProjectBoundary(request.WorktreeRoot, request.RepoRoot)
         );
         List<SkillDescriptor> skills = Resolve(candidates, warnings);
         skills.AddRange(invalid);
@@ -82,14 +84,17 @@ internal static partial class SkillScanner
 
     /// <summary>
     /// The project skill roots in ranking order: the worktree root first, then each ancestor up to
-    /// (and including) the repository root — never above it. Within one level the earlier kind wins.
+    /// (and including) the repository root — never above it. The repository root bounds the walk
+    /// only while it is an ancestor of the worktree root; a linked worktree's repository root is the
+    /// main checkout, which is not this tree's ancestor, so there the walk stops at the worktree
+    /// root itself and the main checkout is not scanned. Within one level the earlier kind wins.
     /// </summary>
     private static List<(string Root, int Depth, int Rank)> ProjectRoots(
         string worktreeRoot,
         string? repoRoot
     )
     {
-        string stop = Workspace.Canonicalize(repoRoot ?? worktreeRoot);
+        string stop = ProjectBoundary(worktreeRoot, repoRoot);
         string current = Workspace.Canonicalize(worktreeRoot);
         List<(string Root, int Depth, int Rank)> roots = [];
         var depth = 0;
@@ -116,6 +121,25 @@ internal static partial class SkillScanner
         }
 
         return roots;
+    }
+
+    /// <summary>
+    /// The project scope's boundary, which is also the walk's stop: the repository root while it is
+    /// an ancestor of the worktree root (the main checkout, a session in one of its subdirectories),
+    /// the worktree root itself otherwise — in a linked worktree the repository root names the main
+    /// checkout, which is not this tree's ancestor. A skill directory resolving outside the boundary
+    /// is skipped, so the main checkout is never read from a linked worktree.
+    /// </summary>
+    private static string ProjectBoundary(string worktreeRoot, string? repoRoot)
+    {
+        string worktree = Workspace.Canonicalize(worktreeRoot);
+        if (repoRoot is null)
+        {
+            return worktree;
+        }
+
+        string repository = Workspace.Canonicalize(repoRoot);
+        return IsInside(worktree, repository) ? repository : worktree;
     }
 
     /// <summary>

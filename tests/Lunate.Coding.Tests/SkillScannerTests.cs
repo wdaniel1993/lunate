@@ -51,6 +51,78 @@ public sealed class SkillScannerTests
     }
 
     [Fact]
+    public void A_linked_worktrees_own_skill_is_discovered()
+    {
+        using var temp = new TempDirectory();
+        (string repository, string worktree) = LinkedWorktree(temp);
+        WriteSkill(Path.Combine(worktree, ".agents", "skills", "greek"), "greek");
+
+        SkillScanResult result = SkillScanner.Scan(
+            Request(temp, worktree: worktree, repoRoot: repository)
+        );
+
+        SkillDescriptor skill = Assert.Single(result.Skills);
+        Assert.Equal("greek", skill.Name);
+        Assert.Equal(SkillScope.Project, skill.Scope);
+        Assert.Empty(result.Warnings);
+    }
+
+    [Fact]
+    public void The_main_checkouts_skills_are_not_discovered_from_a_linked_worktree()
+    {
+        using var temp = new TempDirectory();
+        (string repository, string worktree) = LinkedWorktree(temp);
+        WriteSkill(Path.Combine(repository, ".agents", "skills", "main-only"), "main-only");
+
+        SkillScanResult result = SkillScanner.Scan(
+            Request(temp, worktree: worktree, repoRoot: repository)
+        );
+
+        Assert.Empty(result.Skills);
+    }
+
+    [Fact]
+    public void Nothing_above_a_linked_worktrees_root_is_read()
+    {
+        using var temp = new TempDirectory();
+        (string repository, string worktree) = LinkedWorktree(temp);
+        string above = Path.Combine(temp.Root, ".agents", "skills", "above");
+        WriteSkill(above, "above");
+
+        SkillScanResult result = SkillScanner.Scan(
+            Request(temp, worktree: worktree, repoRoot: repository)
+        );
+
+        // A walk escaping the worktree root would reach 'above', fail the boundary check and warn
+        // about skipping it; the stop at the worktree root never looks there.
+        Assert.Empty(result.Skills);
+        Assert.DoesNotContain(
+            result.Warnings,
+            warning => warning.Contains(above, StringComparison.Ordinal)
+        );
+    }
+
+    [Fact]
+    public void A_repository_root_that_is_not_an_ancestor_does_not_extend_the_walk()
+    {
+        using var temp = new TempDirectory();
+        string worktree = temp.File("worktree");
+        Directory.CreateDirectory(worktree);
+        string above = Path.Combine(temp.Root, ".agents", "skills", "above");
+        WriteSkill(above, "above");
+
+        SkillScanResult result = SkillScanner.Scan(
+            Request(temp, worktree: worktree, repoRoot: temp.File("elsewhere"))
+        );
+
+        Assert.Empty(result.Skills);
+        Assert.DoesNotContain(
+            result.Warnings,
+            warning => warning.Contains(above, StringComparison.Ordinal)
+        );
+    }
+
+    [Fact]
     public void A_project_skill_shadows_a_same_name_user_skill_with_one_warning()
     {
         using var temp = new TempDirectory();
@@ -329,6 +401,18 @@ public sealed class SkillScannerTests
         SkillDescriptor skill = Assert.Single(result.Skills);
         Assert.Equal(SkillScope.User, skill.Scope);
         Assert.Equal("extension 'hello'", skill.Shadows);
+    }
+
+    /// <summary>A repository with a real linked worktree (<c>git worktree add</c>).</summary>
+    private static (string Repository, string Worktree) LinkedWorktree(TempDirectory temp)
+    {
+        string repository = temp.File("repo");
+        Directory.CreateDirectory(repository);
+        GitTestRepo.Init(repository);
+        GitTestRepo.Git(repository, "commit", "-q", "--allow-empty", "-m", "root");
+        string worktree = temp.File("worktree");
+        GitTestRepo.Git(repository, "worktree", "add", "-q", "-b", "linked", worktree);
+        return (repository, worktree);
     }
 
     private static bool TryCreateDirectoryLink(string linkPath, string targetPath)
