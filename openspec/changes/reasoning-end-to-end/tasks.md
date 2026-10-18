@@ -19,7 +19,7 @@ order; commit per group; record any design/code divergence in this file under th
 
 ## 2. Provider support
 
-- [ ] 2.1 `ModelInfo` gains `Reasoning` (style string: `effort` | `budget` | `inline`,
+- [x] 2.1 `ModelInfo` gains `Reasoning` (style string: `effort` | `budget` | `inline`,
   absent = none); catalog parse + merge + tests (user override of the field included).
 - [ ] 2.2 Level→provider-options mapping per style (D3 table), built where `BuildOptions`
   composes `ChatOptions`; `off`/absent send nothing. Tests per style.

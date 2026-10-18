@@ -14,13 +14,15 @@ Lunate.Ai.ModelInfo.AuthRef.get -> string?
 Lunate.Ai.ModelInfo.AuthRef.init -> void
 Lunate.Ai.ModelInfo.ContextWindow.get -> int
 Lunate.Ai.ModelInfo.ContextWindow.init -> void
-Lunate.Ai.ModelInfo.Deconstruct(out string! Id, out string! Provider, out System.Uri? Endpoint, out int ContextWindow, out bool SupportsTools, out string? AuthRef) -> void
+Lunate.Ai.ModelInfo.Deconstruct(out string! Id, out string! Provider, out System.Uri? Endpoint, out int ContextWindow, out bool SupportsTools, out string? AuthRef, out string? Reasoning) -> void
 Lunate.Ai.ModelInfo.Endpoint.get -> System.Uri?
 Lunate.Ai.ModelInfo.Endpoint.init -> void
 Lunate.Ai.ModelInfo.Equals(Lunate.Ai.ModelInfo? other) -> bool
 Lunate.Ai.ModelInfo.Id.get -> string!
 Lunate.Ai.ModelInfo.Id.init -> void
-Lunate.Ai.ModelInfo.ModelInfo(string! Id, string! Provider, System.Uri? Endpoint, int ContextWindow, bool SupportsTools, string? AuthRef = null) -> void
+Lunate.Ai.ModelInfo.ModelInfo(string! Id, string! Provider, System.Uri? Endpoint, int ContextWindow, bool SupportsTools, string? AuthRef = null, string? Reasoning = null) -> void
+Lunate.Ai.ModelInfo.Reasoning.get -> string?
+Lunate.Ai.ModelInfo.Reasoning.init -> void
 Lunate.Ai.ModelInfo.Provider.get -> string!
 Lunate.Ai.ModelInfo.Provider.init -> void
 Lunate.Ai.ModelInfo.SupportsTools.get -> bool
