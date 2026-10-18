@@ -1,6 +1,7 @@
 using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Threading.Channels;
 using Lunate.Tui.Platform;
 
@@ -86,21 +87,82 @@ internal sealed class SystemConsoleIO : IConsoleIO
         IScheduler scheduler
     ) => Observable.Interval(interval, scheduler).Select(_ => read()).DistinctUntilChanged();
 
+    private const short PollIn = 0x0001;
+    private const int PollIntervalMs = 200;
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct PollFd
+    {
+        public int Fd;
+
+        public short Events;
+
+        public short Revents;
+    }
+
+    [DllImport("libc", SetLastError = true)]
+    private static extern int poll([In, Out] PollFd[] fds, uint nfds, int timeoutMs);
+
+    [DllImport("libc", EntryPoint = "read", SetLastError = true)]
+    private static extern nint PosixRead(int fd, byte[] buffer, nuint count);
+
     private async Task PumpBytesAsync(KeyReader reader, CancellationToken cancellationToken)
     {
-        var input = Console.OpenStandardInput();
         var buffer = new byte[4096];
         try
         {
-            while (!cancellationToken.IsCancellationRequested)
+            if (OperatingSystem.IsWindows())
             {
-                int read = await input.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
-                if (read == 0)
+                var input = Console.OpenStandardInput();
+                while (!cancellationToken.IsCancellationRequested)
                 {
-                    break;
-                }
+                    int read = await input
+                        .ReadAsync(buffer, cancellationToken)
+                        .ConfigureAwait(false);
+                    if (read == 0)
+                    {
+                        break;
+                    }
 
-                reader.Feed(buffer.AsSpan(0, read));
+                    reader.Feed(buffer.AsSpan(0, read));
+                }
+            }
+            else
+            {
+                // Raw descriptor reads, never the runtime's console stream: on Unix the console
+                // stack re-applies its own terminal mode around console operations, which
+                // silently overwrites the session's raw mode after it is entered (Enter then
+                // arrives as LF and can never submit). poll() bounds the cancellation latency
+                // to one interval.
+                await Task.Run(
+                        () =>
+                        {
+                            PollFd[] fds = [new() { Fd = 0, Events = PollIn }];
+                            while (!cancellationToken.IsCancellationRequested)
+                            {
+                                int ready = poll(fds, 1, PollIntervalMs);
+                                if (ready < 0)
+                                {
+                                    break;
+                                }
+
+                                if (ready == 0)
+                                {
+                                    continue;
+                                }
+
+                                nint read = PosixRead(0, buffer, (nuint)buffer.Length);
+                                if (read <= 0)
+                                {
+                                    break;
+                                }
+
+                                reader.Feed(buffer.AsSpan(0, (int)read));
+                            }
+                        },
+                        CancellationToken.None
+                    )
+                    .ConfigureAwait(false);
             }
         }
         catch (OperationCanceledException) { }
