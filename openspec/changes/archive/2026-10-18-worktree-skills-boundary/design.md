@@ -2,7 +2,7 @@
 
 ## D1. Boundary := the worktree root
 
-The boundary guard exists so a skill directory is followed only inside the session's own tree (ADR-0016). `RepoRoot` is repository **identity** (trust keying; ADR-0021) — for a linked worktree it names the main checkout, which is not the session's tree. The boundary therefore becomes `request.WorktreeRoot` at both scan sites (`Scan` and `ScanProject`). On main checkouts `WorktreeRoot == RepoRoot`, so behavior there is unchanged.
+The boundary guard exists so a skill directory is followed only inside the session's own tree (ADR-0016). `RepoRoot` is repository **identity** (trust keying; ADR-0021) — for a linked worktree it names the main checkout, which is not the session's tree. The boundary is derived per request (one `ProjectBoundary` helper, shared with the walk's stop — see the divergence note in `tasks.md`): the repository root while it is an ancestor of the worktree root, the worktree root itself otherwise. On a main checkout whose session cwd is the repository root this is unchanged; when the cwd is a subdirectory the boundary stays the repository root (the ancestor rule keeps the preserved subdirectory scenario); in a linked worktree whose workspace root is the worktree root, the boundary is the worktree root itself — which is what this design is after.
 
 ## D2. The walk stops at the session's tree
 

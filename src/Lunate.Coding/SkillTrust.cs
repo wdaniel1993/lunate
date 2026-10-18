@@ -16,9 +16,11 @@ internal static class SkillTrust
     internal const string QuestionTitle = "Load project skills from this repository";
 
     /// <summary>
-    /// The content hash over the discovered project skills: the repo-relative directory of each
-    /// skill (ordinal-sorted) plus the SHA-256 content hash of that directory, so both a rename and
-    /// any file change re-prompt.
+    /// The content hash over the discovered project skills: the directory of each skill relative
+    /// to the repository root (ordinal-sorted) plus the SHA-256 content hash of that directory, so
+    /// both a rename and any file change re-prompt. For skills discovered in a linked worktree the
+    /// path is relative to the main checkout and may begin with `..` segments — the hash stays
+    /// deterministic per worktree.
     /// </summary>
     internal static string ComputeContentHash(
         IReadOnlyList<SkillDescriptor> projectSkills,
