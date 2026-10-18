@@ -154,11 +154,13 @@ public sealed class LiveContractTests
 
     private sealed class EchoTool : AIFunction
     {
-        private static readonly JsonElement Schema = JsonDocument.Parse(
-            """
-            {"type":"object","properties":{"text":{"type":"string"}},"required":["text"],"additionalProperties":false}
-            """
-        ).RootElement.Clone();
+        private static readonly JsonElement Schema = JsonDocument
+            .Parse(
+                """
+                {"type":"object","properties":{"text":{"type":"string"}},"required":["text"],"additionalProperties":false}
+                """
+            )
+            .RootElement.Clone();
 
         public override string Name => "echo";
 
