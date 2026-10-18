@@ -9,10 +9,11 @@ namespace Lunate.Coding;
 internal sealed partial class InteractiveSession
 {
     /// <summary>
-    /// The event pump: streamed text into the live tail and scrollback, tool results into blocks,
-    /// usage into the footer, control events into notices. Child-run (subagent) events are scoped
-    /// by run id and suppressed from the transcript — the live area shows a <c>subagent running</c>
-    /// status while a child is live, and the child's usage still feeds the footer.
+    /// The event pump: streamed text into the live tail and scrollback, streamed reasoning into
+    /// the live thinking block, tool results into blocks, usage into the footer, control events
+    /// into notices. Child-run (subagent) events are scoped by run id and suppressed from the
+    /// transcript — the live area shows a <c>subagent running</c> status while a child is live,
+    /// and the child's usage still feeds the footer.
     /// </summary>
     internal void HandleEvent(AgentEvent agentEvent)
     {
@@ -25,6 +26,18 @@ internal sealed partial class InteractiveSession
                 break;
             case RunStarted:
                 _live.SetNotice(null);
+                break;
+            case ReasoningStart when !child:
+                _thinking = string.Empty;
+                _live.SetThinking(_thinking);
+                break;
+            case ReasoningMessageContent reasoning when !child:
+                _thinking += reasoning.Text;
+                _live.SetThinking(_thinking);
+                break;
+            case ReasoningEnd when !child:
+                _thinking = string.Empty;
+                _live.SetThinking(null);
                 break;
             case TextMessageContent content when !child:
                 AppendTail(content.Text);

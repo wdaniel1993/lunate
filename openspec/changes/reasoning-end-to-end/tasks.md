@@ -53,8 +53,12 @@ order; commit per group; record any design/code divergence in this file under th
 
 ## 4. TUI
 
-- [ ] 4.1 Thinking live block: streams in the `thinking` color, `⠹ thinking… <elapsed>s`
+- [x] 4.1 Thinking live block: streams in the `thinking` color, `⠹ thinking… <elapsed>s`
   prefix, 12-line cap, participates in the working indicator phase `thinking`.
+  (Divergence: no theme resolver exists yet, so the colour is the one `ThinkingColor` helper
+  (`#af87d7`; truecolor / 16-colour magenta / none per capability) — the theme card moves it
+  behind the resolver. The live block keeps its own 12-line window, so a thinking frame may
+  exceed the 8-line `MaxLines` bound the rest of the live area keeps.)
 - [ ] 4.2 Collapsed commit on `ReasoningEnd`: `✦ thought for <n>s` (whole seconds); with
   `thinkingFull`, commit the full wrapped text (2-space indent).
 - [ ] 4.3 `/thinking [off|low|medium|high]` (bare = print level + mapping); footer segment

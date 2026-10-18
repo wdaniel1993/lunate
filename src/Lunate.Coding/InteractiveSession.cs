@@ -146,6 +146,7 @@ internal sealed partial class InteractiveSession : IDisposable
     private List<string> _pickerValues = [];
     private FileIndex? _fileIndex;
     private string _tail = string.Empty;
+    private string _thinking = string.Empty;
     private RunOutcome _outcome;
     private long _inputTokens;
     private long _outputTokens;

@@ -50,7 +50,7 @@ internal sealed class LiveArea : IDisposable
         }
 
         _started = true;
-        var initial = new LiveAreaState { Size = _console.Size };
+        var initial = new LiveAreaState { Size = _console.Size, Color = _capabilities.Color };
         _writer.Paint(LiveAreaRenderer.Render(initial));
 
         var states = _stimuli
@@ -71,7 +71,9 @@ internal sealed class LiveArea : IDisposable
         );
         _subscriptions.Add(_console.Resized.Subscribe(size => Post(new ResizeInput(size))));
         _subscriptions.Add(
-            Observable.Interval(SpinnerInterval, _scheduler).Subscribe(_ => Post(new SpinnerTick()))
+            Observable
+                .Interval(SpinnerInterval, _scheduler)
+                .Subscribe(_ => Post(new SpinnerTick(_scheduler.Now)))
         );
         if (_readKeys)
         {
@@ -84,6 +86,9 @@ internal sealed class LiveArea : IDisposable
     public void AppendTail(string text) => Post(new TailInput(text));
 
     public void SetTail(string text) => Post(new TailSetInput(text));
+
+    /// <summary>Sets the live thinking block's text; null clears the block.</summary>
+    public void SetThinking(string? text) => Post(new ThinkingInput(text, _scheduler.Now));
 
     public void SetInput(InputLineState state) => Post(new InputStateInput(state));
 
@@ -197,14 +202,25 @@ internal sealed class LiveArea : IDisposable
             KeyInput key => state with { Input = InputLine.Apply(state.Input, key.Key) },
             InputStateInput inputState => state with { Input = inputState.State },
             ResizeInput resize => state with { Size = resize.Size },
-            SpinnerTick => state.ToolName is null
-                ? state
-                : state with
-                {
-                    FrameNumber = state.FrameNumber + 1,
-                },
+            SpinnerTick tick => state with
+            {
+                FrameNumber = state.ToolName is null ? state.FrameNumber : state.FrameNumber + 1,
+                Thinking = WithElapsedSeconds(state.Thinking, tick.At),
+            },
             TailInput tail => state with { TailText = state.TailText + tail.Text },
             TailSetInput tail => state with { TailText = tail.Text },
+            ThinkingInput { Text: null } => state with { Thinking = null },
+            ThinkingInput { Text: { } text, At: var at } => state with
+            {
+                // The start sticks to the first fragment of the block; later fragments only grow
+                // the text, so the elapsed counts from when the reasoning began.
+                Thinking = state.Thinking is { } current
+                    ? current with
+                    {
+                        Text = text,
+                    }
+                    : new ThinkingState { Text = text, StartedAt = at },
+            },
             NoticeInput notice => state with { Notice = notice.Notice },
             ApprovalInput approval => state with { Approval = approval.Prompt },
             TrustPromptInput trust => state with { Trust = trust.Prompt },
@@ -220,6 +236,15 @@ internal sealed class LiveArea : IDisposable
             _ => state,
         };
 
+    /// <summary>Elapsed seconds come from the tick's clock, never a wall clock in the renderer.</summary>
+    private static ThinkingState? WithElapsedSeconds(ThinkingState? thinking, DateTimeOffset at) =>
+        thinking is not { } current
+            ? null
+            : current with
+            {
+                ElapsedSeconds = (int)Math.Max(0, (at - current.StartedAt).TotalSeconds),
+            };
+
     private abstract record LiveAreaInput;
 
     private sealed record KeyInput(KeyEvent Key) : LiveAreaInput;
@@ -228,11 +253,13 @@ internal sealed class LiveArea : IDisposable
 
     private sealed record ResizeInput(ConsoleSize Size) : LiveAreaInput;
 
-    private sealed record SpinnerTick : LiveAreaInput;
+    private sealed record SpinnerTick(DateTimeOffset At) : LiveAreaInput;
 
     private sealed record TailInput(string Text) : LiveAreaInput;
 
     private sealed record TailSetInput(string Text) : LiveAreaInput;
+
+    private sealed record ThinkingInput(string? Text, DateTimeOffset At) : LiveAreaInput;
 
     private sealed record NoticeInput(string? Notice) : LiveAreaInput;
 
