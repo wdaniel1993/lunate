@@ -112,6 +112,8 @@ internal sealed partial class InteractiveSession : IDisposable
     private readonly HashSet<string> _alwaysApproved = new(StringComparer.Ordinal);
     private AgentSettings _settings = new();
     private ModelCatalog _catalog = null!;
+    private AuthStore _auth = null!;
+    private Func<string, string?> _environment = Environment.GetEnvironmentVariable;
     private IChatClientFactory _factory = null!;
     private Workspace _workspace = null!;
     private ToolRegistry _tools = null!;
@@ -157,6 +159,7 @@ internal sealed partial class InteractiveSession : IDisposable
     private McpToolSet? _mcp;
     private readonly List<UserNotice> _pendingNotices = [];
     private bool _composed;
+    private bool _headerCountsPending;
     private ToolResultRendererRegistry? _toolResultRenderers;
     private StatusWidgetRegistry? _statusWidgets;
     private bool _disposed;
@@ -276,9 +279,9 @@ internal sealed partial class InteractiveSession : IDisposable
     {
         _settings = SettingsStore.Resolve(_options.SettingsPath, _options.Environment);
         _catalog = ModelCatalog.Load(_options.ModelsPath);
-        _factory =
-            _options.Factory
-            ?? HarnessFactory.CreateFactory(_options.AuthPath, _options.Environment);
+        _environment = _options.Environment ?? Environment.GetEnvironmentVariable;
+        _auth = AuthStore.Load(_options.AuthPath, _options.Environment);
+        _factory = _options.Factory ?? HarnessFactory.CreateFactory(_auth);
         _workspace = new Workspace(_options.WorkingDirectory ?? Environment.CurrentDirectory);
         _workspaceServices = new WorkspaceServices(_settings.Roslyn.MaxLoadedWorkspaces);
         _sessionDirectory =
@@ -286,6 +289,9 @@ internal sealed partial class InteractiveSession : IDisposable
         _session = HarnessFactory.CreateSession(_sessionDirectory, _workspace);
         _workingDirectory = DisplayDirectory(_workspace.WorktreeRoot);
         _branch = GitBranchReader.Read(_workspace.WorktreeRoot);
+        // The welcome header prints here, on the first frame and before any composition output:
+        // the loading line keeps running underneath and nothing blocks on it (design D1).
+        PrintWelcomeHeader(counts: null);
         _trustTotal = CountPendingTrustQuestions();
         _approver = new SessionApprover(this, _settings.Approval);
         await ComposeExtensionsAsync(ct);
@@ -327,6 +333,9 @@ internal sealed partial class InteractiveSession : IDisposable
         // extension-registered model, which only the registry knows.
         ResolveSessionModel();
         _harness = BuildHarness(_model);
+        // Composition is done: the placeholder counts fill in with exactly one update line, never a
+        // redraw of the block (design D1).
+        PrintHeaderCounts();
         _pipeline = new InputPipeline(_options.Hooks ?? _extensions?.HookRunner);
     }
 
@@ -1133,6 +1142,81 @@ internal sealed partial class InteractiveSession : IDisposable
                 console.Write(new Markup(line + "\n"));
             }
         });
+
+    /// <summary>
+    /// Prints the welcome header block into scrollback: once on the first frame and again on
+    /// <c>/new</c> (design D1/D5). A null count record renders the placeholder and arms the one
+    /// counts update line that follows composition; the first-run form prints one actionable fix
+    /// and no counts line at all (design D4). The <c>startupHeader</c> setting suppresses it.
+    /// </summary>
+    private void PrintWelcomeHeader(WelcomeHeaderCounts? counts)
+    {
+        _headerCountsPending = false;
+        if (!_settings.StartupHeader)
+        {
+            return;
+        }
+
+        WelcomeHeaderState state = HeaderState(counts);
+        int width = _console.Size.Columns;
+        WriteScrollbackLines(WelcomeHeaderRenderer.Render(state, _capabilities, width));
+        _headerCountsPending =
+            counts is null
+            && state.Fix is null
+            && WelcomeHeaderRenderer.ShowsBlock(_capabilities, width);
+    }
+
+    /// <summary>The one counts update line after composition finished; never a redraw of the block.</summary>
+    private void PrintHeaderCounts()
+    {
+        if (!_headerCountsPending)
+        {
+            return;
+        }
+
+        _headerCountsPending = false;
+        WriteScrollbackLines([WelcomeHeaderRenderer.CountsLine(HeaderCounts(), _capabilities)]);
+    }
+
+    /// <summary>
+    /// The header's render state. The model is the session's own once the harness exists (a
+    /// <c>/model</c> switch is reflected by the <c>/new</c> reprint); the first frame prints before
+    /// resolution, so it names the configured catalog entry — an extension-registered id keeps the
+    /// configured name without a context window until then.
+    /// </summary>
+    private WelcomeHeaderState HeaderState(WelcomeHeaderCounts? counts)
+    {
+        ModelInfo? model = HeaderModel();
+        string configured = _settings.Model?.Trim() ?? string.Empty;
+        return new WelcomeHeaderState
+        {
+            Version = ProductVersion.Display,
+            ModelId = model?.Id ?? configured,
+            ContextWindow = model?.ContextWindow ?? 0,
+            Workspace = _workingDirectory,
+            CSharpWorkspace = HarnessFactory.LooksLikeCSharpWorkspace(_workspace.WorktreeRoot),
+            Counts = counts,
+            Fix = model is null ? null : ProviderKeyProbe.FixFor(model, _auth, _environment),
+        };
+    }
+
+    private ModelInfo? HeaderModel() =>
+        _harness is not null ? _model
+        : string.IsNullOrWhiteSpace(_settings.Model) ? null
+        : _catalog.Find(_settings.Model);
+
+    /// <summary>
+    /// The counts the header shows: discovered extensions, the configured and extension-registered
+    /// MCP servers (a shadowed registration is not a server the session runs) and the valid
+    /// discovered skills. A kind that found nothing stays an honest zero.
+    /// </summary>
+    private WelcomeHeaderCounts HeaderCounts() =>
+        new(
+            Extensions: _extensions?.Descriptors.Count ?? 0,
+            McpServers: (_mcp?.Statuses.Count ?? 0)
+                + (_extensions?.McpServers?.Statuses.Count ?? 0),
+            Skills: _skills?.Skills.Count(skill => skill.Valid) ?? 0
+        );
 
     private void Notify(string message, NoticeLevel level = NoticeLevel.Info)
     {

@@ -55,6 +55,16 @@ public sealed class WelcomeHeaderRendererTests
         "lunate v0.1.0 (C# · Roslyn) — /help for commands",
     ];
 
+    private static readonly string[] AsciiMarkup =
+    [
+        "[bold]lunate[/][dim] v0.1.0 (C# - Roslyn) - /help for commands[/]",
+    ];
+
+    private static readonly string[] AsciiPlain =
+    [
+        "lunate v0.1.0 (C# - Roslyn) - /help for commands",
+    ];
+
     /// <summary>The snapshot matrix: widths {80, 120, 40} × Unicode/ASCII × color/NO_COLOR.</summary>
     public static TheoryData<int, bool, bool> Matrix =>
         new()
@@ -138,8 +148,21 @@ public sealed class WelcomeHeaderRendererTests
     [Fact]
     public void The_counts_line_renders_zeros_honestly() =>
         Assert.Equal(
-            ["extensions 0 · MCP 0 · skills 0"],
-            Text([WelcomeHeaderRenderer.CountsLine(new WelcomeHeaderCounts(0, 0, 0))])
+            "[dim]extensions 0 · MCP 0 · skills 0[/]",
+            WelcomeHeaderRenderer.CountsLine(
+                new WelcomeHeaderCounts(0, 0, 0),
+                Capabilities(unicode: true, colored: true)
+            )
+        );
+
+    [Fact]
+    public void The_counts_line_is_plain_without_color() =>
+        Assert.Equal(
+            "extensions 0 · MCP 0 · skills 0",
+            WelcomeHeaderRenderer.CountsLine(
+                new WelcomeHeaderCounts(0, 0, 0),
+                Capabilities(unicode: true, colored: false)
+            )
         );
 
     [Fact]
@@ -172,6 +195,10 @@ public sealed class WelcomeHeaderRendererTests
         );
         Assert.Equal(
             ["lunate v0.1.0 — /help for commands"],
+            Text(plainHost, width: 40, Capabilities(unicode: true, colored: true))
+        );
+        Assert.Equal(
+            ["lunate v0.1.0 - /help for commands"],
             Text(plainHost, width: 40, Capabilities(unicode: false, colored: true))
         );
     }
@@ -207,14 +234,17 @@ public sealed class WelcomeHeaderRendererTests
             WelcomeHeaderRenderer.ShowsBlock(Capabilities(unicode, colored: true), width)
         );
 
-    /// <summary>The block needs width ≥ 80 and Unicode; styling needs color.</summary>
+    /// <summary>The block needs width ≥ 80 and Unicode; styling needs color; a non-Unicode
+    /// terminal gets the ASCII punctuation.</summary>
     private static string[] Expected(int width, bool unicode, bool colored) =>
         (width >= 80, unicode, colored) switch
         {
             (true, true, true) => BlockMarkup,
             (true, true, false) => BlockPlain,
-            (_, _, false) => SingleLinePlain,
-            _ => SingleLineMarkup,
+            (_, true, true) => SingleLineMarkup,
+            (_, true, false) => SingleLinePlain,
+            (_, false, true) => AsciiMarkup,
+            _ => AsciiPlain,
         };
 
     private static TerminalCapabilities Capabilities(bool unicode, bool colored) =>

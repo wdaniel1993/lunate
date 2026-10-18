@@ -51,6 +51,9 @@ internal static class WelcomeHeaderRenderer
     private const string HelpHint = "/help for commands";
     private const string CSharp = "C# workspace · Roslyn";
     private const string CSharpSegment = "(C# · Roslyn)";
+    private const string AsciiCSharpSegment = "(C# - Roslyn)";
+    private const string Separator = " — ";
+    private const string AsciiSeparator = " - ";
 
     private static readonly SpanStyle MarkStyle = new(Color: "cyan");
 
@@ -70,22 +73,27 @@ internal static class WelcomeHeaderRenderer
     {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(capabilities);
-        bool colored = capabilities.Color != ColorSystemSupport.NoColors;
         return ShowsBlock(capabilities, width)
-            ? Block(state, colored)
-            : [SingleLine(state, colored)];
+            ? Block(state, capabilities)
+            : [SingleLine(state, capabilities)];
     }
 
     /// <summary>The counts line; a null record renders the placeholder of a running composition.</summary>
-    internal static string CountsLine(WelcomeHeaderCounts? counts) =>
-        counts is { } known
-            ? FormattableString.Invariant(
-                $"extensions {known.Extensions} · MCP {known.McpServers} · skills {known.Skills}"
-            )
-            : CountsPlaceholder;
-
-    private static IReadOnlyList<string> Block(WelcomeHeaderState state, bool colored)
+    internal static string CountsLine(
+        WelcomeHeaderCounts? counts,
+        TerminalCapabilities capabilities
+    )
     {
+        ArgumentNullException.ThrowIfNull(capabilities);
+        return Line(Colored(capabilities), (CountsText(counts), SpanStyle.Dim));
+    }
+
+    private static IReadOnlyList<string> Block(
+        WelcomeHeaderState state,
+        TerminalCapabilities capabilities
+    )
+    {
+        bool colored = Colored(capabilities);
         List<string> lines =
         [
             Line(colored, (Mark, MarkStyle)),
@@ -115,24 +123,31 @@ internal static class WelcomeHeaderRenderer
             lines.Add(Line(colored, (CSharp, SpanStyle.Dim)));
         }
 
-        lines.Add(Line(colored, (CountsLine(state.Counts), SpanStyle.Dim)));
+        lines.Add(CountsLine(state.Counts, capabilities));
         lines.Add(Line(colored, (Hint, SpanStyle.Dim)));
         return lines;
     }
 
-    private static string SingleLine(WelcomeHeaderState state, bool colored)
+    private static string SingleLine(WelcomeHeaderState state, TerminalCapabilities capabilities)
     {
+        // A terminal without Unicode gets the same line in ASCII punctuation: LUNATE_ASCII and
+        // TERM=dumb mean the session's output stays printable on a legacy console.
+        bool unicode = capabilities.Unicode;
         var tail = new System.Text.StringBuilder();
         tail.Append(' ').Append('v').Append(state.Version);
         if (state.CSharpWorkspace)
         {
-            tail.Append(' ').Append(CSharpSegment);
+            tail.Append(' ').Append(unicode ? CSharpSegment : AsciiCSharpSegment);
         }
 
-        tail.Append(" — ");
+        tail.Append(unicode ? Separator : AsciiSeparator);
         tail.Append(state.Fix is { Length: > 0 } fix ? fix : HelpHint);
 
-        return Line(colored, ("lunate", SpanStyle.Bold), (tail.ToString(), SpanStyle.Dim));
+        return Line(
+            Colored(capabilities),
+            ("lunate", SpanStyle.Bold),
+            (tail.ToString(), SpanStyle.Dim)
+        );
     }
 
     private static string ModelLine(WelcomeHeaderState state) =>
@@ -141,6 +156,17 @@ internal static class WelcomeHeaderRenderer
                 $"{state.ModelId} · {state.ContextWindow.ToString("N0", CultureInfo.InvariantCulture)} ctx"
             )
             : state.ModelId;
+
+    private static string CountsText(WelcomeHeaderCounts? counts) =>
+        counts is { } known
+            ? FormattableString.Invariant(
+                $"extensions {known.Extensions} · MCP {known.McpServers} · skills {known.Skills}"
+            )
+            : CountsPlaceholder;
+
+    /// <summary>Whether the capabilities carry color (<c>NO_COLOR</c> and a non-interactive console do not).</summary>
+    private static bool Colored(TerminalCapabilities capabilities) =>
+        capabilities.Color != ColorSystemSupport.NoColors;
 
     /// <summary>One line of markup; colourless capabilities keep the text, never the styling.</summary>
     private static string Line(bool colored, params (string Text, SpanStyle Style)[] spans)

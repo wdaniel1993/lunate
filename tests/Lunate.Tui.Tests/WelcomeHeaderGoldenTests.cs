@@ -46,6 +46,17 @@ public sealed class WelcomeHeaderGoldenTests
             Render(
                 Composing,
                 width: 40,
+                new TerminalCapabilities(ColorSystemSupport.TrueColor, Unicode: true)
+            )
+        );
+
+    [Fact]
+    public void The_single_line_ascii_form_matches_the_committed_golden() =>
+        GoldenFiles.AssertMatchesText(
+            Path.Combine(GoldensDirectory, "single-line-ascii.txt"),
+            Render(
+                Composing,
+                width: 40,
                 new TerminalCapabilities(ColorSystemSupport.TrueColor, Unicode: false)
             )
         );

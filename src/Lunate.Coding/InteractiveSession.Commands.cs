@@ -526,6 +526,8 @@ internal sealed partial class InteractiveSession
         {
             await ComposeSkillsAsync(_lifetime.Token).ConfigureAwait(false);
             _harness = BuildHarness(_model);
+            // /new is a session start: the header prints again, with the counts already known.
+            PrintWelcomeHeader(HeaderCounts());
             Notify("new session");
         }
         catch (OperationCanceledException) { }

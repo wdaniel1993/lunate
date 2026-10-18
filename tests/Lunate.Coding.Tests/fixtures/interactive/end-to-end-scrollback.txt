@@ -1,3 +1,10 @@
+Ϲ
+lunate  v0.1.0
+gpt-4o-mini · 128,000 ctx
+<workspace>
+extensions … · MCP … · skills …
+/help · /model · /skills · /extensions · Esc cancels · /quit
+extensions 0 · MCP 0 · skills 0
 para one
 para two
 tool read a.txt ok
@@ -25,3 +32,9 @@ match: created
 @@ -0,0 +1,1 @@
 +three
 all done
+Ϲ
+lunate  v0.1.0
+gpt-4o · 128,000 ctx
+<workspace>
+extensions 0 · MCP 0 · skills 0
+/help · /model · /skills · /extensions · Esc cancels · /quit

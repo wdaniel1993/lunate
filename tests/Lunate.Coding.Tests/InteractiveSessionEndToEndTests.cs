@@ -50,8 +50,18 @@ public sealed class InteractiveSessionEndToEndTests
     {
         Func<string, string?> baseEnvironment = PrintModeTestSupport.Environment();
         using var host = new InteractiveSessionHost(environment: name =>
-            name == "LUNATE_UNICODE" ? "1" : baseEnvironment(name)
+            name switch
+            {
+                "LUNATE_UNICODE" => "1",
+                // The welcome header's normal form needs a resolving provider; the scripted
+                // provider never uses the key.
+                "OPENAI_API_KEY" => "test-key",
+                _ => baseEnvironment(name),
+            }
         );
+        // The header prints the workspace path; a console narrower than that path would wrap it,
+        // so the scrollback console is widened and the path is normalized out of the golden.
+        host.Scrollback.Profile.Width = 200;
         File.WriteAllText(host.Temp.File("a.txt"), "alpha beta");
         EnqueueScript(host);
         host.Client.Gate(1);
@@ -182,7 +192,10 @@ public sealed class InteractiveSessionEndToEndTests
         host.Console.SendEnter();
         await run;
 
-        InteractiveGoldens.AssertMatchesText("end-to-end-scrollback.txt", host.ScrollbackText);
+        InteractiveGoldens.AssertMatchesText(
+            "end-to-end-scrollback.txt",
+            NormalizeWorkspace(host, host.ScrollbackText)
+        );
         InteractiveGoldens.AssertMatchesText("end-to-end-final-frame.txt", finalFrame);
         InteractiveGoldens.AssertMatchesText("end-to-end-model-picker-frame.txt", modelPickerFrame);
         InteractiveGoldens.AssertMatchesText(
@@ -199,6 +212,15 @@ public sealed class InteractiveSessionEndToEndTests
         text = text.Replace(oldId, "<old-session>", StringComparison.Ordinal);
         return text.Replace(newId, "<new-session>", StringComparison.Ordinal);
     }
+
+    /// <summary>The welcome header prints the workspace path; it is machine-specific, so the golden
+    /// carries <c>&lt;workspace&gt;</c> instead.</summary>
+    private static string NormalizeWorkspace(InteractiveSessionHost host, string text) =>
+        text.Replace(
+            Workspace.Canonicalize(host.Temp.Root),
+            "<workspace>",
+            StringComparison.Ordinal
+        );
 
     private static void EnqueueScript(InteractiveSessionHost host)
     {
