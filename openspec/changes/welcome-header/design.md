@@ -29,3 +29,17 @@ The header render is measured by the existing startup budget gate (`scripts/perf
 ## D7 — What this is not
 
 Not a splash screen, not interactive, not persisted: the header writes finished lines and never repaints them (except the single counts update line). Machine modes (print, ACP, `--json`) never construct it.
+
+## D8 — deviations
+
+Recorded while implementing the signed-off design (2026-10-18) where the code reality differs.
+
+1. **No `lunate auth login <provider>` exists.** `Cli` has no `auth` verb (an unknown verb exits 2 without a message), so printing that line would send the first-run user into a silent failure. The first-run form names the fix the shipped code can honour: no key → `add the 'openai' key to ~/.lunate/auth.json`; an environment variable present but not resolving → `set OPENAI_API_KEY to a valid key`. Shape and rule (exactly one actionable fix, no list of alternatives) are unchanged. An `auth login` command can replace the string later without touching the header.
+2. **ASCII punctuation in the single-line form.** The signed-off literal (`lunate v0.1.0 (C# · Roslyn) — /help for commands`) is what a *narrow but Unicode* terminal shows. A non-Unicode terminal (`TERM=dumb`, `LUNATE_ASCII`) gets `lunate v0.1.0 (C# - Roslyn) - /help for commands`: the session's output there must stay pure ASCII (the existing ASCII discipline, enforced over the session scrollback).
+3. **The `/help` group `files` has no commands today.** The group vocabulary is implemented in that order (session, model, extensions, files, quit) and a group with no commands is not printed, so no empty heading appears until a file command lands.
+4. **V2 renders as one mark line.** The signed-off block's first line is the single crescent `Ϲ` (U+03F9) above the name; D2's "block characters" prose is read as that lockup, not as multi-glyph art, because the sign-off pins the block line by line.
+5. **D6's gate.** `scripts/perf.sh` measures the published binary's `--version`, which never reaches the interactive render. The header's budget is guarded instead by a `Category=Perf` test in the gate's perf step (first frame within 1 s, ~20× the observed cost), so a render that starts doing I/O fails the gate.
+6. **The first frame names the configured model id.** The header prints before the extension registry resolves an extension-registered (or virtual) model, so that id carries no context window on the first frame; a catalog model shows the full `id · N ctx`. `/new` reprints the block after resolution, with the session's current model and exact counts (so `/new` shows no placeholder and needs no update line).
+7. **`/help` prints into scrollback.** A live-area notice is one clipped line, so the grouped listing (a line per group and command) is written into scrollback through the same path as the header.
+8. **Regenerated interaction goldens.** `end-to-end-scrollback.txt` gains both header blocks by design; `end-to-end-session-picker-frame.txt` changes because the header write clears the live frame before the picker opens (the visible picker lines are unchanged).
+

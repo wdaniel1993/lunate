@@ -42,6 +42,37 @@ public sealed class WelcomeHeaderSessionTests
     }
 
     [Fact]
+    public async Task The_loading_line_continues_under_the_header()
+    {
+        using var temp = new TempDirectory();
+        string worktree = temp.File("worktree");
+        Directory.CreateDirectory(Path.Combine(worktree, ".git"));
+        WriteUserSkill(worktree, "greek");
+        using var host = new InteractiveSessionHost(
+            environment: KeyedEnvironment(),
+            workingDirectory: worktree
+        );
+        Task run = host.RunAsync();
+
+        // The project-skill trust question holds composition open, so the live frame below the
+        // header is still the loading line rather than the footer.
+        await InteractiveSessionCommandTests.WaitForFrameAsync(
+            host,
+            "Load project skills from this repository"
+        );
+        Assert.Contains(Mark, host.ScrollbackText, StringComparison.Ordinal);
+        Assert.Contains("loading project…", host.LastFrame, StringComparison.Ordinal);
+
+        host.Console.SendText("n");
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+        Assert.Contains("loading project…", host.Frames, StringComparison.Ordinal);
+
+        host.Console.SendText("/quit");
+        host.Console.SendEnter();
+        await run;
+    }
+
+    [Fact]
     public async Task A_csharp_workspace_is_named_in_the_header()
     {
         using var host = new InteractiveSessionHost(environment: KeyedEnvironment());
@@ -130,6 +161,29 @@ public sealed class WelcomeHeaderSessionTests
             host.ScrollbackText,
             StringComparison.Ordinal
         );
+
+        host.Console.SendText("/quit");
+        host.Console.SendEnter();
+        await run;
+    }
+
+    [Fact]
+    public async Task The_counts_name_the_extensions_of_a_real_composition()
+    {
+        using var temp = new TempDirectory();
+        string store = temp.File("store");
+        HelloFixture.Install(Path.Combine(store, "extensions", "hello"));
+        using var host = new InteractiveSessionHost(
+            environment: KeyedEnvironment(),
+            extensions: new ExtensionSeams { StorePath = store, Log = new RecordingExtensionLog() }
+        );
+        Task run = host.RunAsync();
+
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+
+        string scrollback = host.ScrollbackText;
+        Assert.Contains("extensions 1 · MCP 0 · skills 0", scrollback, StringComparison.Ordinal);
+        Assert.Equal(1, Occurrences(scrollback, Mark));
 
         host.Console.SendText("/quit");
         host.Console.SendEnter();
