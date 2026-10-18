@@ -4,15 +4,15 @@ Implementation guide · v3 · Oct 4, 2026 · @Daniel
 
 ## Purpose, goals and non-goals
 
-Lunate is a fast, native terminal coding agent in C#, built as a daily driver: a reliable core loop, four core tools, a Spectre-based TUI and first-class C# support through Roslyn. It is a personal, MIT-licensed project, and it is built change by change with OpenCode and OpenSpec from this guide.
+Lunate is a lightweight terminal coding agent for C# developers — a daily driver you can customise in the language it is written in: a reliable core loop, four core tools, a Spectre-based TUI, zero-setup C# tooling through Roslyn, and runtime extensions for tools, slash commands and event handlers. It is a personal, MIT-licensed project, and it is built change by change with OpenCode and OpenSpec from this guide.
 
 **Why it should exist next to Pi and OpenCode**
 
-- **Agent-shaped C# tools with zero setup:** name-based lookup (find symbol, find references), compile checks after every edit, and refactors returned as diffs through the approval policy — no plugin or language server to install, and clear messages for restore, SDK and partial-load problems. C# language servers run Roslyn underneath too; the bet is that tools designed for agents beat editor-style file/line/column requests — T-35 tests that head to head.
+- **Agent-shaped C# tools with zero setup:** name-based lookup (find symbol, find references), compile checks after every edit, and refactors returned as diffs through the approval policy — no plugin or language server to install, and clear messages for restore, SDK and partial-load problems. The head-to-head suite shows outcome parity between lightweight agents on small tasks — what differs is cost and how each one extends: Lunate ran the suite at roughly a fifth of the tokens, and its harness is C# you can read and change.
 - **One file, no runtime to install:** self-contained single file, fast start, no Node or Python runtime, and extensions loaded at runtime like Pi's.
 - **Editor and local-model friendly:** runs inside Zed or JetBrains via ACP and works with any OpenAI-compatible endpoint, including the home lab.
 
-These claims age quickly, so the Phase 5 gate tests them head to head: the same C# task suite with Lunate, Claude Code with its C# LSP plugin, and OpenCode with its C# tooling. If Lunate does not clearly win on C# tasks, the positioning moves to .NET-native extensibility and the daily-driver experience instead of C# intelligence — it stays a personal tool and a learning project, which is fine.
+These claims age quickly, so the Phase 5 gate tests them head to head: the same C# task suite with Lunate, Claude Code with its C# LSP plugin, and OpenCode with its C# tooling. The suite tied (6/6 for Lunate, Claude Code, OpenCode, pi and tau — T-35, extended with pi and tau in T-35b), so the positioning moves to .NET-native extensibility and the daily-driver experience, with the C# tooling as a zero-setup feature rather than the central claim — it stays a personal tool and a learning project, which is fine.
 
 **Goals**
 
