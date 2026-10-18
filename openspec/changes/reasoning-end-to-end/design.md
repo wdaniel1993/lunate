@@ -58,7 +58,8 @@ A model whose style is absent sends no reasoning parameters regardless of `/thin
 ## D4. The inline ` thinking` splitter
 
 A small streaming state machine over text fragments (style `inline` only), tolerant of tags
-split across fragments (buffers at most `len("")` tail characters until a decision):
+split across fragments (buffers at most the longest tag's length minus one tail characters
+until a decision — the code spells the tag literals as `\u003C`-style escapes):
 
 - Text inside ` thinking…</think>` → reasoning events; outside → text events.
 - The tags themselves are never emitted (neither as text nor reasoning).
