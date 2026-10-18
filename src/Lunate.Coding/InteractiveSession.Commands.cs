@@ -22,9 +22,10 @@ internal sealed partial class InteractiveSession
     private async Task DispatchCommandAsync(string text, CancellationToken ct)
     {
         (string name, string argument) = Commands.Parse(text);
-        if (name.StartsWith("/skill:", StringComparison.Ordinal))
+        if (name.StartsWith(Commands.SkillPrefix, StringComparison.Ordinal))
         {
-            await InvokeSkillAsync(name["/skill:".Length..], argument, ct).ConfigureAwait(false);
+            await InvokeSkillAsync(name[Commands.SkillPrefix.Length..], argument, ct)
+                .ConfigureAwait(false);
             return;
         }
 
@@ -32,6 +33,9 @@ internal sealed partial class InteractiveSession
         {
             case "/quit":
                 Quit();
+                return;
+            case "/help":
+                ShowHelp();
                 return;
             case "/compact":
                 if (RefusedWhileBusy())
@@ -106,6 +110,13 @@ internal sealed partial class InteractiveSession
                 return;
         }
     }
+
+    /// <summary>
+    /// The <c>/help</c> listing: the registry's grouped commands printed as finished lines into
+    /// scrollback (a live-area notice is one clipped line and cannot hold a listing). Read-only, so
+    /// it is allowed while a turn runs.
+    /// </summary>
+    private void ShowHelp() => WriteScrollbackLines([.. HelpView.Lines()]);
 
     /// <summary>
     /// The <c>/context</c> notice: the context usage (the footer's own format), the resolved

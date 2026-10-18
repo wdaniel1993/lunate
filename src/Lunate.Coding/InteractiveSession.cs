@@ -1121,6 +1121,19 @@ internal sealed partial class InteractiveSession : IDisposable
         );
     }
 
+    /// <summary>
+    /// Writes finished lines into scrollback through the live area's one writer: the header, its
+    /// counts update line and the <c>/help</c> listing all land above the live region, never in it.
+    /// </summary>
+    private void WriteScrollbackLines(IReadOnlyList<string> lines) =>
+        _live.WriteScrollback(console =>
+        {
+            foreach (string line in lines)
+            {
+                console.Write(new Markup(line + "\n"));
+            }
+        });
+
     private void Notify(string message, NoticeLevel level = NoticeLevel.Info)
     {
         if (!_composed)
