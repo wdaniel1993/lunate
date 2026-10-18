@@ -256,6 +256,7 @@ Events are our own type, named and sequenced like AG-UI's so that the TUI, ACP a
 | --- | --- | --- | --- |
 | `RunStarted`, `RunFinished(stopReason)`, `RunError` | Run started, finished, error | Prompt response with stop reason | Spinner, footer |
 | `TextMessageStart`, `TextMessageContent`, `TextMessageEnd` | Text message start, content, end | Agent message chunks | Streaming text |
+| `ReasoningStart`, `ReasoningMessageContent`, `ReasoningEnd` | Thinking start, content, end | Agent thought chunks | Live thinking, collapsed commit |
 | `ToolCallStart`, `ToolCallArgs`, `ToolCallEnd` | Tool call start, args, end | Tool call | Tool block header |
 | `ToolCallResult` (with `Details`) | Tool call result | Tool call update | Tool block body, diff |
 | Extension: `ApprovalRequested` | Custom | Permission request | Approval prompt |
