@@ -103,7 +103,11 @@ internal sealed class ExtensionSession : IAsyncDisposable
         LoadResults = loadResults;
     }
 
-    /// <summary>Loads and composes the host; per-extension failures are isolated, not thrown.</summary>
+    /// <summary>
+    /// Loads and composes the host; per-extension failures are isolated, not thrown. After the
+    /// per-descriptor load loop the session-started event fires once, so every registered handler
+    /// observes the full extension set; inspect mode fires nothing.
+    /// </summary>
     internal static async Task<ExtensionSession> StartAsync(
         WorkspaceInfo workspace,
         ExtensionSeams seams,
@@ -208,6 +212,16 @@ internal sealed class ExtensionSession : IAsyncDisposable
                     )
                 );
             }
+        }
+
+        // The session-started event fires once, here — after every discovered extension has
+        // loaded — so every registered handler observes it with the full extension set. Inspect
+        // mode loads nothing into a session and fires nothing (design D2).
+        if (!seams.Inspect)
+        {
+            await loader
+                .StartSessionAsync(workingDirectory, repositoryIdentity, ct)
+                .ConfigureAwait(false);
         }
 
         return new ExtensionSession(loader, log, fileChanges, errors, loadResults);

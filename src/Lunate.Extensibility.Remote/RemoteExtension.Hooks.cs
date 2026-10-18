@@ -109,8 +109,9 @@ public sealed partial class RemoteExtension
         CancellationToken cancellationToken
     )
     {
-        // The session-started dispatch happens during load — before the session is live. A remote
-        // child must never start on the startup path: the payload is held and delivered by
+        // The session-started dispatch fires at session start (after every extension loaded at
+        // session start has loaded) and still before the session is live. A remote child must
+        // never start on the startup path: the payload is held and delivered by
         // MarkSessionLiveAsync (the post-ready point), which starts the child then.
         if (string.Equals(contract.Name, SessionStartedContract.Name, StringComparison.Ordinal))
         {

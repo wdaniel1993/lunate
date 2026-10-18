@@ -12,12 +12,13 @@ public sealed partial class ExtensionLoader
     /// <summary>
     /// Loads one remote extension: trust (the same per-repository content hash over the manifest
     /// and the extension directory), a <see cref="RemoteExtension"/> that builds declaration-driven
-    /// proxies and starts nothing, and — when the session starts — the session-start hooks.
+    /// proxies and starts nothing, and — when the session starts — this extension's background
+    /// services. The session-started event is not fired by a load: the composition fires it once,
+    /// after every extension loaded at session start has loaded (design D1).
     /// </summary>
     private async Task<LoadedExtension> LoadRemoteAsync(
         ExtensionDescriptor descriptor,
         string workingDirectory,
-        string repositoryIdentity,
         CancellationToken cancellationToken,
         bool startSession
     )
@@ -60,10 +61,9 @@ public sealed partial class ExtensionLoader
         _loaded[descriptor.Id] = loaded;
         if (startSession)
         {
-            await StartSessionAsync(workingDirectory, repositoryIdentity, cancellationToken)
-                .ConfigureAwait(false);
             if (!_sessionEnded)
             {
+                _sessionBegan = true;
                 await _backgroundServices.StartAsync(cancellationToken).ConfigureAwait(false);
             }
         }

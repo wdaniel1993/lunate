@@ -250,6 +250,38 @@ public sealed class ExtensionSessionTests
     }
 
     [Fact]
+    public async Task Every_SessionStarted_handler_observes_the_session_with_the_full_extension_set()
+    {
+        using var temp = new TempDirectory();
+        string worktree = temp.File("worktree");
+        Directory.CreateDirectory(worktree);
+        string store = temp.File("store");
+        HelloFixture.Install(Path.Combine(store, "extensions", "hello"));
+        ServiceConsumerFixture.Install(Path.Combine(store, "extensions", "consumer"));
+        var log = new RecordingExtensionLog();
+
+        await using var host = await ExtensionSession.StartAsync(
+            Identity(worktree),
+            new ExtensionSeams { StorePath = store, Log = log },
+            Ct
+        );
+
+        // The consumer sorts before hello: its handler can only resolve the provider's service
+        // when the event fires after every extension has loaded, and hello's handler (registered
+        // by the later load) can only run at all under the same rule.
+        Assert.True(
+            log.Contains("consumer session-started lookups: provider=True, absent=False"),
+            "the consumer's SessionStarted handler did not observe the full extension set; log:\n"
+                + string.Join("\n", log.Messages)
+        );
+        Assert.True(
+            log.Contains("hello session started"),
+            "the later-loaded extension's SessionStarted handler did not run; log:\n"
+                + string.Join("\n", log.Messages)
+        );
+    }
+
+    [Fact]
     public async Task One_broken_extension_is_reported_and_the_session_continues()
     {
         using var temp = new TempDirectory();

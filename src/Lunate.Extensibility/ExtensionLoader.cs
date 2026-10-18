@@ -26,6 +26,7 @@ public sealed partial class ExtensionLoader
     private readonly Dictionary<string, List<IDisposable>> _subscriptions = new(
         StringComparer.Ordinal
     );
+    private bool _sessionBegan;
     private bool _sessionStarted;
     private bool _sessionEnded;
     private SessionStartedPayload? _session;
@@ -185,29 +186,44 @@ public sealed partial class ExtensionLoader
         }
     }
 
-    /// <summary>Runs the session-ending hooks once; later calls and calls before a start do nothing.</summary>
+    /// <summary>
+    /// Ends the session once, when one began: the session-ending hooks run only when the
+    /// session-started event fired, while the extensions' background services and the remote
+    /// extensions stop whenever a load started them (a compose cancelled before the event still
+    /// stops the earlier extensions' services). Calls before anything started and later calls do
+    /// nothing.
+    /// </summary>
     public async ValueTask EndSessionAsync(CancellationToken cancellationToken = default)
     {
-        if (_sessionEnded || !_sessionStarted || _session is not { } session)
+        if (_sessionEnded || (!_sessionStarted && !_sessionBegan))
         {
             return;
         }
 
         _sessionEnded = true;
-        await _hooks
-            .RunSessionEndingAsync(
-                new SessionEndingPayload(session.WorkingDirectory, session.RepositoryIdentity),
-                cancellationToken
-            )
-            .ConfigureAwait(false);
+        if (_sessionStarted && _session is { } session)
+        {
+            await _hooks
+                .RunSessionEndingAsync(
+                    new SessionEndingPayload(session.WorkingDirectory, session.RepositoryIdentity),
+                    cancellationToken
+                )
+                .ConfigureAwait(false);
+        }
+
         await _backgroundServices.StopAsync(cancellationToken).ConfigureAwait(false);
         await ShutdownRemotesAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    private async ValueTask StartSessionAsync(
+    /// <summary>
+    /// Fires <c>SessionStarted</c> once per session, after every extension discovered at session
+    /// start has loaded, so every registered handler observes it with the full extension set. A
+    /// later-loaded extension does not observe it; later calls do nothing.
+    /// </summary>
+    public async ValueTask StartSessionAsync(
         string workingDirectory,
         string repositoryIdentity,
-        CancellationToken cancellationToken
+        CancellationToken cancellationToken = default
     )
     {
         if (_sessionStarted)

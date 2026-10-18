@@ -55,11 +55,15 @@ public sealed class LoaderRemoteTests
         ScriptedChild child = workspace.Child;
         ExtensionLoader loader = workspace.CreateLoader();
 
-        // The load carries the session-start dispatch: the child must not start (never on the
+        // The session-start dispatch fires after the load: the child must not start (never on the
         // startup path) and the payload is held.
         LoadedExtension loaded = await workspace.LoadAsync(loader);
 
         Assert.Equal("remote-sample", loaded.Id);
+        Assert.Equal(0, child.StartCount);
+
+        await loader.StartSessionAsync(workspace.Worktree, "repo", Ct);
+
         Assert.Equal(0, child.StartCount);
 
         // The post-ready point delivers the deferred session-started and starts the child then.
@@ -82,6 +86,8 @@ public sealed class LoaderRemoteTests
         LoadedExtension loaded = await workspace.LoadAsync(loader);
 
         Assert.Equal(0, child.StartCount);
+
+        await loader.StartSessionAsync(workspace.Worktree, "repo", Ct);
 
         // No ready point in this flow: the first use starts the child and the held
         // session-started is delivered before the triggering hook.

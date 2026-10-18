@@ -119,7 +119,11 @@ public sealed class ExtensionTestHost : IAsyncDisposable
             "The extension is not loaded yet; call StartAsync or RunAsync first."
         );
 
-    /// <summary>Discovers and loads the extension and starts the session; later calls do nothing.</summary>
+    /// <summary>
+    /// Discovers and loads the extension and starts the session: the load starts the extension's
+    /// background services, then the session-started event fires once over the loaded extensions
+    /// (the production composition point). Later calls do nothing.
+    /// </summary>
     public async ValueTask StartAsync(CancellationToken cancellationToken = default)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
@@ -137,6 +141,9 @@ public sealed class ExtensionTestHost : IAsyncDisposable
                 Trust,
                 cancellationToken
             )
+            .ConfigureAwait(false);
+        await Runner
+            .StartSessionAsync(WorkingDirectory, _options.RepositoryIdentity, cancellationToken)
             .ConfigureAwait(false);
     }
 
