@@ -7,15 +7,20 @@ internal sealed class FrameWriter
 {
     private readonly IConsoleIO _console;
     private int _height;
+    private int _cursorRow;
 
     public FrameWriter(IConsoleIO console) => _console = console;
 
     public void Paint(RenderedFrame frame)
     {
         var builder = new StringBuilder();
-        if (_height > 0)
+
+        // The cursor rests on the frame's cursor row (the input line), not below the frame:
+        // moving up by the frame height would overshoot by (height - cursorRow) rows, drifting
+        // the area upward and leaving unerased ghost rows behind on every repaint.
+        if (_cursorRow > 0)
         {
-            builder.Append(Escape(_height)).Append('A');
+            builder.Append(Escape(_cursorRow)).Append('A');
         }
 
         int rows = Math.Max(_height, frame.Lines.Count);
@@ -45,6 +50,7 @@ internal sealed class FrameWriter
             builder.Append(Escape(frame.CursorColumn)).Append('C');
         }
 
+        _cursorRow = cursorRow;
         _console.Write(builder.ToString());
     }
 
@@ -56,7 +62,11 @@ internal sealed class FrameWriter
         }
 
         var builder = new StringBuilder();
-        builder.Append(Escape(_height)).Append('A');
+        if (_cursorRow > 0)
+        {
+            builder.Append(Escape(_cursorRow)).Append('A');
+        }
+
         for (var i = 0; i < _height; i++)
         {
             builder.Append('\r').Append("\u001b[2K");
@@ -71,8 +81,9 @@ internal sealed class FrameWriter
             builder.Append(Escape(_height - 1)).Append('A');
         }
 
-        _console.Write(builder.ToString());
+        _cursorRow = 0;
         _height = 0;
+        _console.Write(builder.ToString());
     }
 
     private static string Escape(int value) =>
