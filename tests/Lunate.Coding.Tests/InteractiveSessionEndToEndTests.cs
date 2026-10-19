@@ -1,3 +1,6 @@
+using System.Globalization;
+using System.Text;
+using System.Text.RegularExpressions;
 using Lunate.Tui;
 
 namespace Lunate.Coding.Tests;
@@ -109,7 +112,7 @@ public sealed class InteractiveSessionEndToEndTests
             return host.LastFrame.Contains("unsent steering", StringComparison.Ordinal);
         });
 
-        string finalFrame = Escape(host.LastFrame);
+        string finalFrame = await CaptureFrameAsync(host);
 
         // Clear the returned leftover, then complete and dispatch a command: /mod + Tab
         // completes to /model, Enter opens the picker, Down + Enter switches to gpt-4o.
@@ -132,7 +135,7 @@ public sealed class InteractiveSessionEndToEndTests
             host.Advance(33);
             return host.LastFrame.Contains("Select model", StringComparison.Ordinal);
         });
-        string modelPickerFrame = Escape(host.LastFrame);
+        string modelPickerFrame = await CaptureFrameAsync(host);
 
         host.Console.Send(new KeyEvent(KeyKind.Down, null, false, false, false));
         await host.WaitUntilAsync(() =>
@@ -178,7 +181,11 @@ public sealed class InteractiveSessionEndToEndTests
             host.Advance(33);
             return host.LastFrame.Contains("Select session", StringComparison.Ordinal);
         });
-        string sessionPickerFrame = Escape(NormalizeSessionIds(host.LastFrame, oldId, newId));
+        string sessionPickerFrame = NormalizeSessionIds(
+            await CaptureFrameAsync(host),
+            oldId,
+            newId
+        );
 
         host.Console.SendEnter();
         await host.WaitUntilAsync(() =>
@@ -202,6 +209,100 @@ public sealed class InteractiveSessionEndToEndTests
             "end-to-end-session-picker-frame.txt",
             sessionPickerFrame
         );
+    }
+
+    /// <summary>
+    /// Waits for the live frame to stop changing and returns it in a history-free canonical
+    /// form. The raw write also moves over the previous frame's height, which depends on how
+    /// many frames the session managed to paint before the test observed this one; pinning
+    /// those bytes makes the golden timing-dependent. The canonical form pins what the frame
+    /// draws (its lines and cursor), not the overpaint artifacts.
+    /// </summary>
+    private static async Task<string> CaptureFrameAsync(InteractiveSessionHost host)
+    {
+        string previous = string.Empty;
+        for (var attempt = 0; attempt < 100; attempt++)
+        {
+            host.Advance(33);
+            await Task.Delay(1, TestContext.Current.CancellationToken);
+            string current = Escape(CanonicalFrame(host.LastFrame));
+            if (attempt > 0 && string.Equals(current, previous, StringComparison.Ordinal))
+            {
+                return current;
+            }
+
+            previous = current;
+        }
+
+        return previous;
+    }
+
+    /// <summary>
+    /// A FrameWriter paint in canonical form: the written lines and the cursor, with the
+    /// leading carry-over move and the trailing clears of a taller previous frame removed.
+    /// </summary>
+    private static string CanonicalFrame(string write)
+    {
+        string[] rows = write.Split("\r\u001b[2K");
+        if (rows.Length == 1)
+        {
+            return write;
+        }
+
+        string last = rows[^1];
+        var column = 0;
+        Match right = Regex.Match(last, "\\r(?:\\x1b\\[(\\d+)C)?$");
+        if (right.Success)
+        {
+            if (right.Groups[1].Success)
+            {
+                column = int.Parse(right.Groups[1].Value, CultureInfo.InvariantCulture);
+            }
+
+            last = last[..right.Index];
+        }
+
+        var up = 0;
+        Match upper = Regex.Match(last, "\\x1b\\[(\\d+)A$");
+        if (upper.Success)
+        {
+            up = int.Parse(upper.Groups[1].Value, CultureInfo.InvariantCulture);
+            last = last[..upper.Index];
+        }
+
+        var lines = new List<string>(rows.Length - 1);
+        for (var index = 1; index < rows.Length; index++)
+        {
+            string text = index == rows.Length - 1 ? last : rows[index];
+            lines.Add(text.EndsWith('\n') ? text[..^1] : text);
+        }
+
+        int rowCount = lines.Count;
+        var cursorRow = rowCount - up;
+        while (lines.Count > 0 && lines[^1].Length == 0)
+        {
+            lines.RemoveAt(lines.Count - 1);
+        }
+
+        var builder = new StringBuilder();
+        foreach (string line in lines)
+        {
+            builder.Append("\r\u001b[2K").Append(line).Append('\n');
+        }
+
+        int trail = lines.Count - cursorRow;
+        if (trail > 0)
+        {
+            builder.Append("\u001b[").Append(trail).Append('A');
+        }
+
+        builder.Append('\r');
+        if (column > 0)
+        {
+            builder.Append("\u001b[").Append(column).Append('C');
+        }
+
+        return builder.ToString();
     }
 
     /// <summary>Maps the original session's full id to <c>&lt;old-session&gt;</c> and the

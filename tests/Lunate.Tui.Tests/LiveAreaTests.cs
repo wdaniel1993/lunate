@@ -19,6 +19,23 @@ public sealed class LiveAreaTests
     }
 
     [Fact]
+    public void Start_initialises_unicode_from_the_capabilities()
+    {
+        var scheduler = new TestScheduler();
+        using var console = new FakeConsoleIO(scheduler, new ConsoleSize(80, 10));
+        using var area = new LiveArea(
+            console,
+            scheduler,
+            capabilities: new TerminalCapabilities(ColorSystemSupport.NoColors, Unicode: false)
+        );
+
+        area.Start();
+
+        Assert.Contains(new string('-', 80), console.Writes[0], StringComparison.Ordinal);
+        Assert.DoesNotContain("─", console.Writes[0], StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void A_burst_within_one_frame_window_paints_once()
     {
         var scheduler = new TestScheduler();

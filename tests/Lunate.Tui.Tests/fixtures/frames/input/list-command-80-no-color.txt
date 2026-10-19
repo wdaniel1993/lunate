@@ -1,0 +1,9 @@
+> /compact  compact the conversation now
+  /context  show the context window and subagent budgets
+  /help  list the commands
+  /new  start a fresh session
+  /resume  open the session picker
+────────────────────────────────────────────────────────────────────────────────
+> /
+────────────────────────────────────────────────────────────────────────────────
+deepseek-v4.1-flash · 2.1k/1.0M (0%) · ~/dev/lunate · main

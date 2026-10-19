@@ -23,6 +23,9 @@ internal sealed record LiveAreaState
 
     public SelectListModel? Picker { get; init; }
 
+    /// <summary>The open autocomplete list; null while closed (design D4).</summary>
+    public AutocompleteState? Autocomplete { get; init; }
+
     public string? Loading { get; init; }
 
     /// <summary>The live thinking block; null while no reasoning streams.</summary>
@@ -30,6 +33,9 @@ internal sealed record LiveAreaState
 
     /// <summary>The colour system the raw live frame is painted for (NO_COLOR drops SGR).</summary>
     public ColorSystemSupport Color { get; init; } = ColorSystemSupport.NoColors;
+
+    /// <summary>Whether the terminal can show box characters; false falls back to ASCII.</summary>
+    public bool Unicode { get; init; } = true;
 
     public StatusFooterModel? Footer { get; init; }
 

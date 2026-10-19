@@ -808,20 +808,45 @@ internal sealed partial class InteractiveSession : IDisposable
                 _input = InputLine.Apply(_input, key);
                 _historyDraft = null;
                 _live.SetInput(_input);
+                RefreshAutocomplete(IsTextEdit(key));
                 break;
             case RoutedKey.Submit:
+                if (_autocomplete is not null && !IsExactAutocompleteMatch())
+                {
+                    AcceptAutocomplete();
+                    break;
+                }
+
                 await SubmitAsync(ct);
                 break;
             case RoutedKey.Cancel:
+                if (_autocomplete is not null)
+                {
+                    DismissAutocomplete();
+                    break;
+                }
+
                 _runCancellation?.Cancel();
                 break;
             case RoutedKey.ClearOrQuit:
                 HandleCtrlC();
                 break;
             case RoutedKey.HistoryPrevious:
+                if (_autocomplete is not null)
+                {
+                    MoveAutocomplete(-1);
+                    break;
+                }
+
                 NavigatePrevious();
                 break;
             case RoutedKey.HistoryNext:
+                if (_autocomplete is not null)
+                {
+                    MoveAutocomplete(1);
+                    break;
+                }
+
                 NavigateNext();
                 break;
             case RoutedKey.ModelPicker:
@@ -831,7 +856,11 @@ internal sealed partial class InteractiveSession : IDisposable
                 OpenViewer();
                 break;
             case RoutedKey.Complete:
-                ApplyCompletion();
+                if (_autocomplete is not null)
+                {
+                    AcceptAutocomplete();
+                }
+
                 break;
         }
     }
@@ -1091,12 +1120,14 @@ internal sealed partial class InteractiveSession : IDisposable
     /// <summary>Shows a history entry without disturbing the navigation draft.</summary>
     private void SetHistoryInput(string text)
     {
+        CloseAutocomplete();
         _input = new InputLineState(text, text.Length);
         _live.SetInput(_input);
     }
 
     private void SetInput(string text)
     {
+        CloseAutocomplete();
         _input = new InputLineState(text, text.Length);
         _historyDraft = null;
         _live.SetInput(_input);

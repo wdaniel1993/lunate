@@ -1,4 +1,5 @@
 using System.Text;
+using Spectre.Console;
 
 namespace Lunate.Tui;
 
@@ -14,6 +15,14 @@ internal static class LiveAreaRenderer
 
     /// <summary>The thinking block's window: the prefix line plus the newest text lines.</summary>
     internal const int MaxThinkingLines = 12;
+
+    internal const string Placeholder = "Ask anything, / for commands";
+
+    /// <summary>The narrowest terminal that gets the input box's rules (design D9).</summary>
+    internal const int RuleMinWidth = 80;
+
+    private const char UnicodeRule = '─';
+    private const char AsciiRule = '-';
 
     // ASCII by design: the spinner is the guide's no-Unicode fallback. A Unicode spinner
     // variant must consult TerminalCapabilities (T-33) before it lands.
@@ -37,12 +46,14 @@ internal static class LiveAreaRenderer
         IReadOnlyList<string> pickerLines = state.Picker is null
             ? []
             : SelectListRenderer.PlainLines(state.Picker);
+        IReadOnlyList<string> autocompleteLines = AutocompleteRenderer.Lines(state, width);
         IReadOnlyList<string> thinkingLines = ThinkingLines(state, width);
         var footerLine =
             state.Loading is { Length: > 0 } loading ? loading
             : state.Footer is null ? null
             : StatusFooterRenderer.PlainText(state.Footer, width, state.FooterWidgets);
-        int fixedLines =
+        int ruleLines = HasRules(width) ? 1 : 0;
+        int preInputLines =
             thinkingLines.Count
             + (toolLine is null ? 0 : 1)
             + (subagentLine is null ? 0 : 1)
@@ -50,14 +61,20 @@ internal static class LiveAreaRenderer
             + (approvalLine is null ? 0 : 1)
             + trustLines.Count
             + pickerLines.Count
-            + (footerLine is null ? 0 : 1);
-        var input = InputLine.Layout(state.Input, width, Math.Max(1, MaxLines - fixedLines));
+            + autocompleteLines.Count
+            + ruleLines;
+        // The budget carries both rules and the footer, so the tail shares what is left of the
+        // eight-line live area; the input box itself always gets its full eight lines.
+        int fixedLines = preInputLines + ruleLines + (footerLine is null ? 0 : 1);
+        var input = InputLine.Layout(state.Input, width, MaxLines);
+        IReadOnlyList<string> inputLines =
+            state.Input.Text.Length == 0 ? [PlaceholderLine(width, state.Color)] : input.Lines;
         var tail = TailLines(
             state.TailText,
             // The picker is modal: while it is open it owns the area above the input.
             state.Picker
                 is null
-                ? Math.Max(0, MaxLines - fixedLines - input.Lines.Count)
+                ? Math.Max(0, MaxLines - fixedLines - inputLines.Count)
                 : 0,
             width
         );
@@ -95,18 +112,55 @@ internal static class LiveAreaRenderer
             lines.Add(CellText.Clip(pickerLine, width));
         }
 
+        // The autocomplete list sits between the transient state and the upper rule (design D1).
+        lines.AddRange(autocompleteLines);
+
+        if (ruleLines == 1)
+        {
+            lines.Add(RuleLine(width, state.Unicode));
+        }
+
+        lines.AddRange(inputLines);
+
+        if (ruleLines == 1)
+        {
+            lines.Add(RuleLine(width, state.Unicode));
+        }
+
         if (footerLine is not null)
         {
             lines.Add(CellText.Clip(footerLine, width));
         }
 
-        lines.AddRange(input.Lines);
+        int cursorRow = tail.Count + preInputLines + input.CursorRow;
+        // A short terminal caps the frame: trim the transient prefix (tail first, then thinking
+        // and the other state), never the box rules, input or footer. The cursor follows the
+        // lines that remain above the input.
+        int boxLines = inputLines.Count + (ruleLines * 2) + (footerLine is null ? 0 : 1);
+        int transientLines = lines.Count - boxLines;
+        if (state.Size.Rows > 0 && lines.Count > state.Size.Rows)
+        {
+            int trim = Math.Min(lines.Count - state.Size.Rows, transientLines);
+            if (trim > 0)
+            {
+                lines.RemoveRange(0, trim);
+                cursorRow -= trim;
+            }
+        }
 
-        return new RenderedFrame(
-            lines,
-            tail.Count + fixedLines + input.CursorRow,
-            input.CursorColumn
-        );
+        return new RenderedFrame(lines, cursorRow, input.CursorColumn);
+    }
+
+    private static bool HasRules(int width) => width >= RuleMinWidth;
+
+    private static string RuleLine(int width, bool unicode) =>
+        new(unicode ? UnicodeRule : AsciiRule, width);
+
+    private static string PlaceholderLine(int width, ColorSystemSupport color)
+    {
+        string prompt = CellText.Clip("> ", width);
+        string text = CellText.Clip(Placeholder, Math.Max(0, width - CellText.Width(prompt)));
+        return prompt + LivePalette.Muted(text, color);
     }
 
     private static string? ToolLine(LiveAreaState state) =>

@@ -1,0 +1,7 @@
+  \x1b[38;2;95;215;215m/compact\x1b[0m
+  /context
+  /help
+  /new
+  /resume
+> /
+deepseek-v4.1-flash · 2.1k/1.0M (0%)

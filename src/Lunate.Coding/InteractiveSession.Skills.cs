@@ -40,6 +40,8 @@ internal sealed partial class InteractiveSession
         {
             RecordSkillsSection(text);
         }
+
+        ComposeCompletionRegistry();
     }
 
     /// <summary>
