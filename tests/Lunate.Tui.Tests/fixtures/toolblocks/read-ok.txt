@@ -1,1 +1,0 @@
-✓ read  src/Lunate.Tui/FrameWriter.cs (6 lines)

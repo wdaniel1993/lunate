@@ -1,0 +1,2 @@
+\x1b[91m✗\x1b[0m \x1b[96mread\x1b[0m\x1b[2m  src/missing.cs\x1b[0m
+file not found: src/missing.cs

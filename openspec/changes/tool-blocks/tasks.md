@@ -48,7 +48,7 @@
 
 ## 6. Tests and media
 
-- [ ] 6.1 Snapshot goldens for the block forms (read/bash/edit+diff/cs_*/fallback; running is the
+- [x] 6.1 Snapshot goldens for the block forms (read/bash/edit+diff/cs_*/fallback; running is the
   live area, unchanged) at 120/80/50 × truecolor/256/16/none.
 - [ ] 6.2 Snapshot goldens for the viewer at the same breakpoints × colour modes.
 - [ ] 6.3 The production composition test: the real host renders a scripted session with tool

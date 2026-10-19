@@ -1,7 +1,0 @@
-✓ bash  dotnet build
-step 26 finished
-step 27 finished
-step 28 finished
-step 29 finished
-step 30 finished
-… +25 lines · ctrl+o

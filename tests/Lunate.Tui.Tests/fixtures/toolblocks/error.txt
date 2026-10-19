@@ -1,2 +1,0 @@
-✗ read  src/missing.cs
-file not found: src/missing.cs
