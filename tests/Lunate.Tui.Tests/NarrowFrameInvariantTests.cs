@@ -117,6 +117,15 @@ public sealed class NarrowFrameInvariantTests
                 Duration: TimeSpan.FromSeconds(62)
             ),
             new ToolBlockModel(
+                "bash",
+                """{"command":"wc -m report.txt"}""",
+                ToolBlockStatus.Ok,
+                new string('\u6f22', 60),
+                null,
+                ExitCode: 0,
+                Duration: TimeSpan.FromSeconds(1)
+            ),
+            new ToolBlockModel(
                 "edit",
                 """{"path":"src/Lunate.Tui/ToolBlocks/ToolBlockRenderer.cs"}""",
                 ToolBlockStatus.Ok,
