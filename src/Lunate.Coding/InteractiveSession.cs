@@ -119,6 +119,9 @@ internal sealed partial class InteractiveSession : IDisposable
     /// <summary>The active calls that spawned a live child run; their carried result indents.</summary>
     private readonly HashSet<(string RunId, string CallId)> _spawningCalls = [];
     private int _liveChildren;
+
+    /// <summary>The viewer's store: every committed item, in commit order.</summary>
+    private readonly List<TranscriptEntry> _transcript = [];
     private readonly HashSet<string> _alwaysApproved = new(StringComparer.Ordinal);
     private AgentSettings _settings = new();
     private ModelCatalog _catalog = null!;
@@ -709,6 +712,13 @@ internal sealed partial class InteractiveSession : IDisposable
     /// <summary>The queued steering messages not yet drained; the leftovers Esc returns.</summary>
     internal int QueuedSteeringCount => _steering.Count;
 
+    /// <summary>
+    /// The in-memory transcript the viewer renders: user and assistant text, thinking spans and
+    /// full tool blocks (output and diff included), in commit order. A view over data the session
+    /// already holds; nothing here is persisted, and the session file stays exactly as it is.
+    /// </summary>
+    internal IReadOnlyList<TranscriptEntry> Transcript => _transcript;
+
     private async Task PumpKeysAsync(CancellationToken ct)
     {
         await foreach (KeyEvent key in _console.ReadKeysAsync(ct))
@@ -858,6 +868,7 @@ internal sealed partial class InteractiveSession : IDisposable
             return;
         }
 
+        _transcript.Add(new TranscriptUserEntry(processed.Text));
         _turnActive = true;
         _run = RunTurnsAsync(processed.Text, skill, ct);
     }
@@ -971,6 +982,7 @@ internal sealed partial class InteractiveSession : IDisposable
             return;
         }
 
+        _transcript.Add(new TranscriptUserEntry(text));
         _live.WriteScrollback(console =>
             console.Write(
                 new Markup($"[dim]{(_capabilities.Unicode ? "»" : ">")} {Markup.Escape(text)}[/]\n")

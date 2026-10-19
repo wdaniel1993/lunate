@@ -30,7 +30,7 @@
 
 ## 4. Transcript store and viewer
 
-- [ ] 4.1 The session's in-memory transcript store (user/assistant text, thinking, blocks with
+- [x] 4.1 The session's in-memory transcript store (user/assistant text, thinking, blocks with
   full output and diff; commit order; nothing new persisted).
 - [ ] 4.2 The viewer renderer: full-screen layout, newest at the bottom, opens at the latest,
   full outputs/diffs, mid-shortened paths, a footer line with keys and position.
