@@ -346,6 +346,9 @@ Lunate.Tui.TranscriptUserEntry.Equals(Lunate.Tui.TranscriptUserEntry? other) -> 
 Lunate.Tui.TranscriptUserEntry.Text.get -> string!
 Lunate.Tui.TranscriptUserEntry.Text.init -> void
 Lunate.Tui.TranscriptUserEntry.TranscriptUserEntry(string! Text) -> void
+Lunate.Tui.TranscriptViewerRenderer
+Lunate.Tui.TranscriptViewerRenderer.Render(Lunate.Tui.TranscriptModel! transcript, Lunate.Tui.ConsoleSize size, int scrolledLines = 0) -> Spectre.Console.Rendering.IRenderable!
+Lunate.Tui.TranscriptViewerRenderer.TranscriptViewerRenderer() -> void
 abstract Lunate.Tui.TranscriptEntry.<Clone>$() -> Lunate.Tui.TranscriptEntry!
 override Lunate.Tui.TranscriptAssistantEntry.<Clone>$() -> Lunate.Tui.TranscriptAssistantEntry!
 override Lunate.Tui.TranscriptAssistantEntry.Equals(object? obj) -> bool

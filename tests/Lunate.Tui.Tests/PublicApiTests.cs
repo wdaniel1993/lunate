@@ -36,6 +36,7 @@ public sealed class PublicApiTests
         "Lunate.Tui.TranscriptThinkingEntry",
         "Lunate.Tui.TranscriptToolEntry",
         "Lunate.Tui.TranscriptUserEntry",
+        "Lunate.Tui.TranscriptViewerRenderer",
         "Lunate.Tui.ToolBlockModel",
         "Lunate.Tui.ToolBlockRenderer",
         "Lunate.Tui.ToolBlockStatus",

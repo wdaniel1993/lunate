@@ -10,17 +10,7 @@ internal static partial class MarkdownAstMapper
 {
     public static string Map(MarkdownDocument document, TerminalCapabilities capabilities)
     {
-        var lines = RenderBlocks(document, capabilities);
-        while (lines.Count > 0 && lines[0].IsBlank)
-        {
-            lines.RemoveAt(0);
-        }
-
-        while (lines.Count > 0 && lines[^1].IsBlank)
-        {
-            lines.RemoveAt(lines.Count - 1);
-        }
-
+        var lines = MapLines(document, capabilities);
         var builder = new StringBuilder();
         foreach (var line in lines)
         {
@@ -28,6 +18,21 @@ internal static partial class MarkdownAstMapper
         }
 
         return builder.ToString();
+    }
+
+    /// <summary>
+    /// The document's styled lines with the leading and trailing blanks trimmed and blank runs
+    /// collapsed; the transcript viewer wraps these instead of re-rendering the markup.
+    /// </summary>
+    public static List<StyledLine> MapLines(
+        MarkdownDocument document,
+        TerminalCapabilities capabilities
+    )
+    {
+        var lines = RenderBlocks(document, capabilities);
+        int start = lines.FindIndex(static line => !line.IsBlank);
+        int end = lines.FindLastIndex(static line => !line.IsBlank);
+        return start < 0 ? [] : lines.GetRange(start, end - start + 1);
     }
 
     private static List<StyledLine> RenderBlocks(

@@ -34,19 +34,7 @@ public sealed class ToolBlockRenderer
 
     public IRenderable Render(ToolBlockModel block)
     {
-        ArgumentNullException.ThrowIfNull(block);
-
-        var lines = new List<StyledLine> { Header(block) };
-        if (ShowsOutput(block))
-        {
-            AppendOutput(lines, block.Output, block.ToolName == "bash", block.ChildResult);
-        }
-
-        if (block.Diff is not null)
-        {
-            DiffRenderer.Append(lines, block.Diff);
-        }
-
+        var lines = Lines(block, fullOutput: false);
         var builder = new StringBuilder();
         foreach (var line in lines)
         {
@@ -54,6 +42,38 @@ public sealed class ToolBlockRenderer
         }
 
         return new Markup(builder.ToString());
+    }
+
+    /// <summary>
+    /// The block's styled lines: the header, then the output and the diff panel. The scrollback
+    /// excerpts the output (<paramref name="fullOutput"/> is <c>false</c>); the transcript viewer
+    /// shows every line — a <c>read</c> block's output included, which the scrollback hides.
+    /// </summary>
+    internal IReadOnlyList<StyledLine> Lines(ToolBlockModel block, bool fullOutput)
+    {
+        ArgumentNullException.ThrowIfNull(block);
+
+        var lines = new List<StyledLine> { Header(block) };
+        if (fullOutput)
+        {
+            AppendOutput(lines, block.Output, ExcerptMode.Full, block.ChildResult);
+        }
+        else if (ShowsOutput(block))
+        {
+            AppendOutput(
+                lines,
+                block.Output,
+                block.ToolName == "bash" ? ExcerptMode.TailOnly : ExcerptMode.HeadAndTail,
+                block.ChildResult
+            );
+        }
+
+        if (block.Diff is not null)
+        {
+            DiffRenderer.Append(lines, block.Diff);
+        }
+
+        return lines;
     }
 
     private StyledLine Header(ToolBlockModel block)
@@ -87,9 +107,8 @@ public sealed class ToolBlockRenderer
     private static bool ShowsOutput(ToolBlockModel block) =>
         block.ToolName != "read" || block.Status == ToolBlockStatus.Error;
 
-    private void AppendOutput(List<StyledLine> lines, string? output, bool tailOnly, bool indent)
+    private void AppendOutput(List<StyledLine> lines, string? output, ExcerptMode mode, bool indent)
     {
-        var mode = tailOnly ? ExcerptMode.TailOnly : ExcerptMode.HeadAndTail;
         foreach (var excerpt in OutputExcerpt.Build(output, mode, _unicode))
         {
             var line = new StyledLine();

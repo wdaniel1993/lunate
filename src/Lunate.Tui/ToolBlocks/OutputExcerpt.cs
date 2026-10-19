@@ -5,11 +5,15 @@ namespace Lunate.Tui;
 /// <summary>One rendered output line; <see cref="IsMarker"/> marks the hidden-lines elision.</summary>
 internal readonly record struct OutputExcerptLine(string Text, bool IsMarker);
 
-/// <summary>How a tool output is bounded: first-and-last lines (default) or tail-only (bash).</summary>
+/// <summary>
+/// How a tool output is bounded: first-and-last lines (default), tail-only (bash) or unfetched
+/// (<see cref="ExcerptMode.Full"/>, the transcript viewer's whole output).
+/// </summary>
 internal enum ExcerptMode
 {
     HeadAndTail,
     TailOnly,
+    Full,
 }
 
 /// <summary>
@@ -54,6 +58,7 @@ internal static class OutputExcerpt
 
         return mode switch
         {
+            ExcerptMode.Full => Whole(lines),
             ExcerptMode.TailOnly => Tail(lines, unicode),
             _ => lines.Length <= WholeLineLimit ? Whole(lines) : Elided(lines, unicode),
         };

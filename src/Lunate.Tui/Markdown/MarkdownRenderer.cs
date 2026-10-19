@@ -25,4 +25,11 @@ public sealed class MarkdownRenderer
         ArgumentNullException.ThrowIfNull(markdown);
         return new Markup(MarkdownAstMapper.Map(Markdown.Parse(markdown, Pipeline), _capabilities));
     }
+
+    /// <summary>The rendered lines, for the transcript viewer, which wraps them to its width.</summary>
+    internal IReadOnlyList<StyledLine> Lines(string markdown)
+    {
+        ArgumentNullException.ThrowIfNull(markdown);
+        return MarkdownAstMapper.MapLines(Markdown.Parse(markdown, Pipeline), _capabilities);
+    }
 }
