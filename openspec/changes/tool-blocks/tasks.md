@@ -53,8 +53,11 @@
 - [x] 6.2 Snapshot goldens for the viewer at the same breakpoints × colour modes.
 - [x] 6.3 The production composition test: the real host renders a scripted session with tool
   calls → compact blocks; `Ctrl+O` opens the viewer with full content; close restores.
-- [ ] 6.4 The VHS tape (`features-tools`) driven by the replay client + the GIF and the README
+- [x] 6.4 The VHS tape (`features-tools`) driven by the replay client + the GIF and the README
   gallery entry.
+  (Divergence: the demo fixture's digest already matches this tape's environment, so the tape
+  reuses the standard replay wrapper; `scripts/render-media.sh` gained an optional tape-name
+  filter so one tape can render alone.)
 - [ ] 6.5 Startup budget unchanged (the viewer is lazy); verify via the change gate.
 
 ## 7. Docs

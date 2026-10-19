@@ -19,7 +19,11 @@
 # results stay byte-identical, and the scratch home is pre-warmed below.
 #
 # Requirements: vhs (brew install vhs), ffmpeg, and a prior Release build of the repo.
+# Pass a tape-name fragment to render one tape only (for example "features-tools");
+# without an argument every committed tape renders.
 set -euo pipefail
+
+FILTER="${1:-}"
 
 # One coherent SDK install for the app's C# tools, the bash builds and the recording alike;
 # a UTF-8 locale because ls collation is locale-sensitive and lands in the digests.
@@ -174,7 +178,7 @@ chmod +x "$SCRATCH/bin/ls"
 # --- render every tape from docs/media (relative paths resolve there); each demo tape gets
 # the pristine workspace back, each trust tape an untrusted home ---
 cd "$MEDIA"
-for tape in tapes/*.tape; do
+for tape in tapes/${FILTER}*.tape; do
   echo "==> $tape"
   case "$tape" in
     *features-trust.tape|*features-extensions.tape)
