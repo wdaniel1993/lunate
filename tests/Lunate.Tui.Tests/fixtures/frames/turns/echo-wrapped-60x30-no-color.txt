@@ -1,0 +1,5 @@
+> Add validation to TodoList.Add: reject null, empty and
+  whitespace-only titles with ArgumentException, and keep
+  the guard at the top so the list never mutates on bad
+  input.
+
