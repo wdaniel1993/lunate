@@ -59,6 +59,7 @@
   reuses the standard replay wrapper; `scripts/render-media.sh` gained an optional tape-name
   filter so one tape can render alone.)
 - [ ] 6.5 Startup budget unchanged (the viewer is lazy); verify via the change gate.
+  (Verified by the change gate; task 6.5 closes after the coordinator's `verify.sh` run.)
 
 ## 7. Docs
 
