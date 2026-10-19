@@ -120,7 +120,7 @@ public sealed class TranscriptViewerRenderer
             TranscriptUserEntry user => [Echo(user.Text)],
             TranscriptAssistantEntry assistant => _markdown.Lines(assistant.Markdown),
             TranscriptThinkingEntry thinking => ThinkingLines(thinking.Commit, columns),
-            TranscriptToolEntry tool => _blocks.Lines(tool.Block, fullOutput: true),
+            TranscriptToolEntry tool => _blocks.Lines(tool.Block, fullOutput: true, width: columns),
             _ => [],
         };
 
