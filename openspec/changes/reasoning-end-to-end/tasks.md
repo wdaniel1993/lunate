@@ -71,9 +71,9 @@ order; commit per group; record any design/code divergence in this file under th
 - [x] 4.4 Tests: unit (renderers) + the production composition test (scripted reasoning
   fixture through the real host: live frame → collapsed commit).
 - [x] 4.5 Snapshot tests for the thinking states (live block, collapsed commit, full commit) at
-  120/80/50 × truecolor/16-colour/NO_COLOR.
+  120/80/50 × truecolor/256-colour/16-colour/NO_COLOR.
   (No light/dark dimension exists yet: `ThinkingColor` (4.1) is the interim capability seam, so
-  the goldens cover its three modes and the light value lands with the theme card. The snapshot
+  the goldens cover its four modes and the light value lands with the theme card. The snapshot
   pass settled 4.2's indent question: the collapsed line stays flush left per D8; the
   visual-spec snapshot's leading indent is deferred to the theme card. It also settled the
   commit colour: Spectre's hex-to-16-colour conversion picked white, so
@@ -105,5 +105,5 @@ order; commit per group; record any design/code divergence in this file under th
 
 ## 7. Docs
 
-- [ ] 7.1 `docs/guide.md` event table row (done in draft) + the loop step note.
+- [x] 7.1 `docs/guide.md` event table row (done in draft) + the loop step note.
 - [x] 7.2 Document `reasoning` in the models.json docs (README or the catalog section).

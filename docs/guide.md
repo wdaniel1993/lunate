@@ -268,7 +268,10 @@ The harness exposes them as `IAsyncEnumerable<AgentEvent>` from `AgentHarness.Ru
 
 1. Append the user `ChatMessage` to the session; emit `RunStarted`.
 2. Build the request: system prompt + session messages after compaction, and `ChatOptions` with the declarations of all enabled tools.
-3. Call `GetStreamingResponseAsync`; emit text events as updates arrive; collect complete function calls through the `StreamAccumulator`.
+3. Call `GetStreamingResponseAsync`; emit text and reasoning events as updates arrive — reasoning
+   fragments stream in their own `ReasoningStart`/`ReasoningEnd` bracket, closed before text or
+   repaired when the stream ends mid-reasoning; collect complete function calls through the
+   `StreamAccumulator`.
 4. No function calls: append the assistant message, emit `RunFinished`.
 5. For each call: check the approval policy, execute the `ITool`, append a tool-role `ChatMessage` with `FunctionResultContent`, emit the tool events. Unknown tools and bad JSON become error results, never exceptions — and any exception thrown by a tool (bugs, MCP wrappers) is caught and turned into an error result that tells the model what to do next (ADR-0003).
 6. Back to step 2. After `MaxSteps` (default 50) emit `StepLimitReached`, then `RunFinished`.
