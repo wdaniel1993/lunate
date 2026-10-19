@@ -89,8 +89,12 @@ public sealed class InteractiveSessionSteeringTests
         await host.Client.WaitForCallAsync(2);
 
         await host.WaitUntilAsync(() =>
-            host.ScrollbackText.Contains("> steer", StringComparison.Ordinal)
+            host.ScrollbackText.Contains(">> steer", StringComparison.Ordinal)
         );
+        string[] lines = host.ScrollbackText.Split('\n');
+        Assert.Contains(">> steer", lines);
+        Assert.Contains("> hi", lines);
+        Assert.DoesNotContain("> steer", lines);
         Assert.DoesNotContain("» steer", host.ScrollbackText, StringComparison.Ordinal);
 
         host.Client.Release(2);

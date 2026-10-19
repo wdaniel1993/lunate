@@ -1097,7 +1097,9 @@ internal sealed partial class InteractiveSession : IDisposable
         _turnWroteOutput = true;
         _live.WriteScrollback(console =>
             console.Write(
-                new Markup($"[dim]{(_capabilities.Unicode ? "»" : ">")} {Markup.Escape(text)}[/]\n")
+                new Markup(
+                    $"[dim]{(_capabilities.Unicode ? "»" : ">>")} {Markup.Escape(text)}[/]\n"
+                )
             )
         );
     }
