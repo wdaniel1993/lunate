@@ -1,0 +1,8 @@
+⠹ thinking… 6s
+We need to add validation to TodoList.Add. Null, empty and whitespace-only title
+s must throw ArgumentException. The check belongs at the top of the method, befo
+re the list mutates.
+────────────────────────────────────────────────────────────────────────────────
+> Ask anything, / for commands
+────────────────────────────────────────────────────────────────────────────────
+deepseek-v4.1-flash · 2.1k/1.0M (0%) · ~/dev/lunate · main

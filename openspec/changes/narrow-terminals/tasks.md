@@ -14,8 +14,8 @@
 
 ## 3. The snapshot matrix
 
-- [ ] 3.1 New goldens at 40×20, 60×30, 80×24, 120×40 for: idle + committed turn (blocks with a long summary), input box empty/filled, autocomplete command list with a selection, thinking, working indicator — × truecolor/256/16/no-colour where colour applies.
-- [ ] 3.2 Deterministic (fixed durations/clock as in the existing golden tests); existing 120/80/50 matrices stay green.
+- [x] 3.1 New goldens at 40×20, 60×30, 80×24, 120×40 for: idle + committed turn (blocks with a long summary), input box empty/filled, autocomplete command list with a selection, thinking, working indicator — × truecolor/256/16/no-colour where colour applies.
+- [x] 3.2 Deterministic (fixed durations/clock as in the existing golden tests); existing 120/80/50 matrices stay green.
 
 ## 4. Media and docs
 
