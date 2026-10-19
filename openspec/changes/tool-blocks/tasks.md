@@ -58,8 +58,9 @@
   (Divergence: the demo fixture's digest already matches this tape's environment, so the tape
   reuses the standard replay wrapper; `scripts/render-media.sh` gained an optional tape-name
   filter so one tape can render alone.)
-- [ ] 6.5 Startup budget unchanged (the viewer is lazy); verify via the change gate.
+- [x] 6.5 Startup budget unchanged (the viewer is lazy); verify via the change gate.
   (Verified by the change gate; task 6.5 closes after the coordinator's `verify.sh` run.)
+  (Gate evidence: `verify: OK`, startup median 58 ms (budget 150 ms), coordinator run 2026-10-20.)
 
 ## 7. Docs
 
