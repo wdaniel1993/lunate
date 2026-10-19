@@ -115,8 +115,16 @@ The input is a box: rules above and below it at 80 columns or wider, a muted `As
 commands` placeholder while it is empty, and a box that grows with the draft to eight lines before
 it scrolls. Typing `/` opens the autocomplete list — the built-in commands, `/skill:<name>` and
 each loaded extension's commands, with descriptions — and `@` lists matching workspace files from
-the lazy file index. Both lists cap at eight rows above the input; ↑/↓ move the selection (history
-when the list is closed), `Tab` or `Enter` accepts, and `Esc` closes the list first.
+the lazy file index. Both lists cap at eight rows above the input.
+
+| Key | At the prompt |
+| --- | --- |
+| `/` | list commands, skills and extension commands |
+| `@` | list workspace files |
+| `↑` / `↓` | move the autocomplete selection; history when the list is closed |
+| `Tab` / `Enter` | accept the selected item; Enter sends when the token is already exact |
+| `Esc` | close the list first, otherwise cancel the running turn |
+| `Alt+Enter` / `Ctrl+J` | insert a newline |
 
 ![The input box, the slash-command list and the file list](docs/media/features/input.gif)
 

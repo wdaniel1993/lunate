@@ -28,4 +28,4 @@
 ## 5. Docs
 
 - [x] 5.1 `docs/guide.md`: the input box, the autocomplete (registry, keys, breakpoints) and the placeholder.
-- [ ] 5.2 README: the keybindings/features mention (the gallery entry from 4.3).
+- [x] 5.2 README: the keybindings/features mention (the gallery entry from 4.3).
