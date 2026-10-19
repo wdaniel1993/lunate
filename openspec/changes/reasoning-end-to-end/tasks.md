@@ -88,9 +88,15 @@ order; commit per group; record any design/code divergence in this file under th
 ## 6. Media + verification
 
 - [x] 6.1 A scripted reasoning fixture (model id `synthetic`) for replay-driven rendering.
-- [ ] 6.2 A VHS tape (`docs/media/tapes/features-thinking.tape`) via the replay client;
+- [x] 6.2 A VHS tape (`docs/media/tapes/features-thinking.tape`) via the replay client;
   extend `scripts/render-media.sh`; GIF committed under `docs/media/features/`.
+  (Divergence: a replay checks the digest of the whole request, and the 6.1 fixture carries the
+  composition test's request shape — its short system prompt and four tools. The render script
+  therefore derives its scratch fixture from the committed one, replacing only the digest with the
+  tape request's (`THINKING_DIGEST`, pinned like the demo fixture's environment); the updates stay
+  single-sourced.)
 - [ ] 6.3 Startup budget unchanged (hyperfine check in the gate).
+  (Covered by the change gate; left open here because the gate's startup check is not captured in this file.)
 
 ## 7. Docs
 
