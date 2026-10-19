@@ -19,6 +19,6 @@
 
 ## 4. Media and docs
 
-- [ ] 4.1 `docs/media/tapes/features-narrow.tape` at 40 columns driven by the replay client (compact header, input box, `/` list without descriptions); GIF + README gallery entry.
-- [ ] 4.2 `docs/guide.md`: a "Narrow terminals" section with the three bands and their rules (short headers, compact footer, the existing ≥80/≥60 boundaries), plus the constraint note for the future diff gutter/tables.
-- [ ] 4.3 Startup budget unchanged — verified by the change gate.
+- [x] 4.1 `docs/media/tapes/features-narrow.tape` at 40 columns driven by the replay client (compact header, input box, `/` list without descriptions); GIF + README gallery entry.
+- [x] 4.2 `docs/guide.md`: a "Narrow terminals" section with the three bands and their rules (short headers, compact footer, the existing ≥80/≥60 boundaries), plus the constraint note for the future diff gutter/tables.
+- [x] 4.3 Startup budget unchanged — verified by the change gate (`scripts/verify.sh` measures the startup budget on every run).
