@@ -119,7 +119,7 @@ public sealed class ExtensionToolCompositionTests
         host.Console.SendText("y");
         await host.Client.WaitForCallAsync(2);
         await InteractiveSessionCommandTests.WaitForScrollbackAsync(host, "echo: args=", SpawnWait);
-        Assert.Contains("tool test__echo", host.ScrollbackText, StringComparison.Ordinal);
+        Assert.Contains("\u2713 test__echo", host.ScrollbackText, StringComparison.Ordinal);
 
         host.Console.SendText("/quit");
         host.Console.SendEnter();

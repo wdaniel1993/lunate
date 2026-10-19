@@ -99,7 +99,7 @@ public sealed class ExtensionToolResumeTests
         host.Console.SendText("go");
         host.Console.SendEnter();
         await host.Client.WaitForCallAsync(2);
-        await InteractiveSessionCommandTests.WaitForScrollbackAsync(host, "tool tools__echo");
+        await InteractiveSessionCommandTests.WaitForScrollbackAsync(host, "\u2713 tools__echo");
 
         host.Console.SendText("/quit");
         host.Console.SendEnter();

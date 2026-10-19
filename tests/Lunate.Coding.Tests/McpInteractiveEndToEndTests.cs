@@ -42,7 +42,7 @@ public sealed class McpInteractiveEndToEndTests
         await InteractiveSessionCommandTests.WaitForScrollbackAsync(host, "hello mcp", SpawnWait);
 
         Assert.Contains("test__echo", host.Client.Requests[0][0].Text!, StringComparison.Ordinal);
-        Assert.Contains("tool test__echo", host.ScrollbackText, StringComparison.Ordinal);
+        Assert.Contains("\u2713 test__echo", host.ScrollbackText, StringComparison.Ordinal);
 
         host.Console.SendText("/mcp");
         host.Console.SendEnter();
