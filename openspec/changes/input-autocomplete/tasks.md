@@ -24,6 +24,7 @@
 - [x] 4.2 Production composition test: the real host renders the box, types `/`, shows the filtered list, arrows, accepts with Tab, submits; and the `@` flow with the index. Deterministic (replay client + the hook gate pattern).
 - [x] 4.3 VHS tape (`features-input`) driven by the replay client: the box, `/` list, accept, `@` list; GIF + README gallery entry.
 - [x] 4.4 Startup budget unchanged (registry cheap; index lazy) — verified by the change gate (`PathIndexBudgetTests`; no code change).
+  (Gate evidence: `verify: OK`, startup median 56 ms (budget 150 ms), coordinator run 2026-10-19.)
 
 ## 5. Docs
 
