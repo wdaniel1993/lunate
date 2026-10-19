@@ -319,6 +319,32 @@ public sealed class ToolBlockRendererTests
         );
 
     [Fact]
+    public void A_long_bash_header_is_clipped_at_the_width()
+    {
+        var block = new ToolBlockModel(
+            "bash",
+            """{"command":"dotnet test --project tests/Lunate.Coding.Tests --filter ToolBlock"}""",
+            ToolBlockStatus.Ok,
+            null,
+            null,
+            ExitCode: 0,
+            Duration: TimeSpan.FromSeconds(62)
+        );
+
+        IReadOnlyList<StyledLine> lines = new ToolBlockRenderer().Lines(
+            block,
+            fullOutput: false,
+            width: 60
+        );
+
+        Assert.Single(lines);
+        Assert.True(
+            CellText.Width(Text(lines[0])) <= 60,
+            $"the header is {CellText.Width(Text(lines[0]))} cells, not clipped to 60"
+        );
+    }
+
+    [Fact]
     public void The_compact_band_shortens_an_edit_header_to_the_change_counts() =>
         Assert.Equal("\u2713 edit \u00b7 +1 \u22121", HeaderAt(DiffModel("exact"), width: 59));
 
@@ -608,6 +634,9 @@ public sealed class ToolBlockRendererTests
         console.Write(new ToolBlockRenderer().Render(block));
         return console.Output;
     }
+
+    private static string Text(StyledLine line) =>
+        string.Concat(line.Spans.Select(span => span.Text));
 
     private static string HeaderAt(ToolBlockModel block, int width) =>
         RenderAt(block, width).Split('\n')[0];

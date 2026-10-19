@@ -1,6 +1,5 @@
 \x1b[32m✓\x1b[0m \x1b[96mread\x1b[0m\x1b[2m  ~/dev/lunate/src/L…/ToolBlockRenderer.cs (30 lines)\x1b[0m
-\x1b[32m✓\x1b[0m \x1b[96mbash\x1b[0m\x1b[2m  dotnet test --project tests/Lunate.Coding.Tests \x1b[0m
-\x1b[2m--filter To… · exit 0 · 1m 02s\x1b[0m
+\x1b[32m✓\x1b[0m \x1b[96mbash\x1b[0m\x1b[2m  dotnet test --project tests/Lunate.Coding.Tests --fi\x1b[0m
 Test run summary: Passed!
 \x1b[32m✓\x1b[0m \x1b[96medit\x1b[0m\x1b[2m  src/Lunate.Tui/Too…/ToolBlockRenderer.cs · +1 −1\x1b[0m
 edited src/Lunate.Tui/ToolBlocks/ToolBlockRenderer.cs lines 

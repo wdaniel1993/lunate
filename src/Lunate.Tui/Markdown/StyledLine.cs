@@ -79,6 +79,47 @@ internal sealed class StyledLine
 
     public void Append(StyledLine other) => _spans.AddRange(other._spans);
 
+    /// <summary>
+    /// The line clipped to a cell width: whole runes only, measured in terminal cells so wide runes
+    /// take two and zero-width runes take none, with each kept span retaining its style. A width of
+    /// <see cref="int.MaxValue"/> is a no-op.
+    /// </summary>
+    public StyledLine Clip(int width)
+    {
+        if (width == int.MaxValue)
+        {
+            return this;
+        }
+
+        var clipped = new StyledLine();
+        if (width <= 0)
+        {
+            return clipped;
+        }
+
+        var used = 0;
+        foreach (var (text, style) in _spans)
+        {
+            var kept = new StringBuilder(text.Length);
+            foreach (var rune in text.EnumerateRunes())
+            {
+                int runeWidth = CellText.Width(rune);
+                if (used + runeWidth > width)
+                {
+                    clipped.Add(kept.ToString(), style);
+                    return clipped;
+                }
+
+                kept.Append(rune);
+                used += runeWidth;
+            }
+
+            clipped.Add(kept.ToString(), style);
+        }
+
+        return clipped;
+    }
+
     public string ToMarkup()
     {
         var builder = new StringBuilder();

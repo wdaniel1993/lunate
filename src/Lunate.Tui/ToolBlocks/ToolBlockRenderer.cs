@@ -115,7 +115,7 @@ public sealed class ToolBlockRenderer
             line.Add((_unicode ? " \u00b7 " : " - ") + meta, Muted);
         }
 
-        return line;
+        return line.Clip(width);
     }
 
     /// <summary>A read block identifies what was read; a failed call keeps its message visible.</summary>

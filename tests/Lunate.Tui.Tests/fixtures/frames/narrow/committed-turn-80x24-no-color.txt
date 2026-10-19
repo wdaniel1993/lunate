@@ -1,6 +1,5 @@
 ✓ read\x1b[2m  ~/dev/lunate/src/L…/ToolBlockRenderer.cs (30 lines)\x1b[0m
-✓ bash\x1b[2m  dotnet test --project tests/Lunate.Coding.Tests --filter To… · exit 0 · \x1b[0m
-\x1b[2m1m 02s\x1b[0m
+✓ bash\x1b[2m  dotnet test --project tests/Lunate.Coding.Tests --filter To… · exit 0 ·\x1b[0m
 Test run summary: Passed!
 ✓ edit\x1b[2m  src/Lunate.Tui/Too…/ToolBlockRenderer.cs · +1 −1\x1b[0m
 edited src/Lunate.Tui/ToolBlocks/ToolBlockRenderer.cs lines 4–5 (match: exact)
