@@ -13,7 +13,12 @@ internal static class CsToolMeta
     private const int ItemLimit = 80;
     private const string CleanPrefix = "No compiler errors or warnings";
 
-    public static void Append(string? output, List<string> parts, bool unicode = true)
+    public static void Append(
+        string? output,
+        List<string> parts,
+        bool unicode = true,
+        bool compact = false
+    )
     {
         if (string.IsNullOrEmpty(output))
         {
@@ -33,7 +38,12 @@ internal static class CsToolMeta
                 parts.Add(CountsText(counts));
             }
 
-            AppendItems(lines, index + 1, parts, unicode);
+            // The compact header has no room for the top items: the counts are the whole meta.
+            if (!compact)
+            {
+                AppendItems(lines, index + 1, parts, unicode);
+            }
+
             return;
         }
     }

@@ -17,10 +17,10 @@ The breakpoints are constants in the TUI (`NarrowWidth = 60`, `FullWidth = 100`)
 - `read` — meta becomes the line count (`13 lines`; the summary carries path + range normally, so the count comes from the same result math the summary uses today).
 - `bash` — meta is already `exit N · <duration>` (the command drops with the summary).
 - `edit`/`write` — `+N −M` (already the meta).
-- `cs_*` — the severity counts (already the meta).
+- `cs_*` — the severity counts only; the top diagnostic items drop with the summary.
 - extension/MCP fallback — name only (the argument summary drops).
 
-`ToolBlockMeta` gains the compact-band short meta for `read`; everything else reuses the existing meta. The header never wraps; it clips at the width as today.
+`ToolBlockMeta` gains the compact-band short meta for `read`, and the `cs_*` meta takes the compact flag so only the severity counts line is appended; `bash`, `edit`/`write` and the extension fallback reuse the existing meta. The header never wraps; it clips at the width as today.
 
 ## D3. The compact footer (compact band)
 

@@ -392,13 +392,19 @@ public sealed class ToolBlockRendererTests
     {
         string header = HeaderAt(CsBlock(), width: 59);
 
-        Assert.StartsWith("\u2717 cs_diagnostics \u00b7 1 error 0 warnings", header);
+        Assert.Equal("\u2717 cs_diagnostics \u00b7 1 error 0 warnings", header);
         Assert.DoesNotContain("  changed", header, StringComparison.Ordinal);
+        Assert.DoesNotContain("CS0103", header, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void The_standard_band_keeps_a_cs_argument_summary() =>
-        Assert.Contains("  changed", HeaderAt(CsBlock(), width: 60), StringComparison.Ordinal);
+    public void The_standard_band_keeps_a_cs_argument_summary()
+    {
+        string header = HeaderAt(CsBlock(), width: 60);
+
+        Assert.Contains("  changed", header, StringComparison.Ordinal);
+        Assert.Contains("src/a.cs(1", header, StringComparison.Ordinal);
+    }
 
     [Fact]
     public void The_compact_band_shortens_an_extension_header_to_the_name() =>

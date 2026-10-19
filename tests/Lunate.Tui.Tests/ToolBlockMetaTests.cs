@@ -159,6 +159,13 @@ public sealed class ToolBlockMetaTests
     }
 
     [Fact]
+    public void Cs_diagnostics_compact_meta_is_the_severity_counts_only() =>
+        Assert.Equal(
+            "2 errors 1 warning",
+            ToolBlockMeta.Build(CsBlock(DiagnosticsOutput), compact: true)
+        );
+
+    [Fact]
     public void Cs_diagnostics_meta_truncates_a_long_item()
     {
         string message = new('q', 200);
@@ -217,6 +224,15 @@ public sealed class ToolBlockMetaTests
     public void Cs_diagnostics_with_no_findings_has_no_meta() =>
         Assert.Null(
             ToolBlockMeta.Build(CsBlock("No compiler errors or warnings in the solution."))
+        );
+
+    [Fact]
+    public void Cs_diagnostics_with_no_findings_has_no_compact_meta() =>
+        Assert.Null(
+            ToolBlockMeta.Build(
+                CsBlock("No compiler errors or warnings in the solution."),
+                compact: true
+            )
         );
 
     [Fact]

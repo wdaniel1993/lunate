@@ -54,7 +54,7 @@ internal static class ToolBlockMeta
         }
         else if (block.ToolName.StartsWith("cs_", StringComparison.Ordinal))
         {
-            CsToolMeta.Append(block.Output, parts, unicode);
+            CsToolMeta.Append(block.Output, parts, unicode, compact);
         }
 
         return parts.Count == 0 ? null : string.Join(unicode ? " \u00b7 " : " - ", parts);
