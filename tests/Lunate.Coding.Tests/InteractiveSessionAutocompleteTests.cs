@@ -142,6 +142,55 @@ public sealed class InteractiveSessionAutocompleteTests
     }
 
     [Fact]
+    public async Task Re_filtering_keeps_the_selected_item()
+    {
+        using InteractiveSessionHost host = await StartAsync();
+
+        await SendAsync(host, "/");
+        await host.WaitUntilAsync(() => host.Session.Autocomplete is not null);
+        host.Console.Send(Down);
+        await host.WaitUntilAsync(() => host.Session.Autocomplete?.Selected?.Text == "/new");
+
+        host.Console.SendText("e");
+        await host.WaitUntilAsync(() => host.Session.Input.Text == "/e");
+        await host.WaitUntilAsync(() =>
+            host.Session.Autocomplete?.Items.All(item => item.Text != "/compact") == true
+        );
+
+        Assert.Equal("/new", host.Session.Autocomplete?.Selected?.Text);
+        Assert.Equal(1, host.Session.Autocomplete?.SelectedIndex);
+
+        host.Console.Complete();
+    }
+
+    [Fact]
+    public async Task Re_filtering_without_the_selected_item_resets_the_selection()
+    {
+        using InteractiveSessionHost host = await StartAsync();
+
+        await SendAsync(host, "/");
+        await host.WaitUntilAsync(() => host.Session.Autocomplete is not null);
+        for (var index = 1; index <= 3; index++)
+        {
+            host.Console.Send(Down);
+            await host.WaitUntilAsync(() => host.Session.Autocomplete?.SelectedIndex == index);
+        }
+
+        Assert.Equal("/quit", host.Session.Autocomplete?.Selected?.Text);
+
+        host.Console.SendText("e");
+        await host.WaitUntilAsync(() => host.Session.Input.Text == "/e");
+        await host.WaitUntilAsync(() =>
+            host.Session.Autocomplete?.Items.All(item => item.Text != "/compact") == true
+        );
+
+        Assert.Equal(0, host.Session.Autocomplete?.SelectedIndex);
+        Assert.DoesNotContain(host.Session.Autocomplete?.Items ?? [], item => item.Text == "/quit");
+
+        host.Console.Complete();
+    }
+
+    [Fact]
     public async Task The_selection_clamps_at_both_ends()
     {
         using InteractiveSessionHost host = await StartAsync();

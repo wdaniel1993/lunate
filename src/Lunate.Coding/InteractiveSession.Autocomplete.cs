@@ -168,7 +168,20 @@ internal sealed partial class InteractiveSession
             items.Count <= AutocompleteState.MaxRows
                 ? items
                 : [.. items.Take(AutocompleteState.MaxRows)];
-        var state = new AutocompleteState(rows, 0, mode, tokenStart);
+        int selected = 0;
+        if (_autocomplete?.Selected is { } previous)
+        {
+            for (var index = 0; index < rows.Count; index++)
+            {
+                if (rows[index].Text == previous.Text && rows[index].Kind == previous.Kind)
+                {
+                    selected = index;
+                    break;
+                }
+            }
+        }
+
+        var state = new AutocompleteState(rows, selected, mode, tokenStart);
         _autocomplete = state;
         _live.SetAutocomplete(state);
     }
