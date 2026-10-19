@@ -30,6 +30,15 @@ public sealed class StatusFooterRenderer
         IReadOnlyList<string>? widgets = null
     )
     {
+        // The compact band keeps the model and the context percent; every other segment —
+        // tokens, window, thinking, directory, branch and widgets — drops regardless of width.
+        if (WidthBands.IsCompact(width))
+        {
+            return footer.ContextWindow <= 0
+                ? footer.Model
+                : footer.Model + Separator + Percent(footer);
+        }
+
         var segments = new List<string> { footer.Model, Usage(footer) };
         if (!string.IsNullOrEmpty(footer.ThinkLevel))
         {

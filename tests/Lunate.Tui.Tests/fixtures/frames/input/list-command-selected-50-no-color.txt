@@ -4,4 +4,4 @@
   /new
   /resume
 > /
-deepseek-v4.1-flash · 2.1k/1.0M (0%)
+deepseek-v4.1-flash · 0%

@@ -50,7 +50,7 @@ public sealed class LiveAreaBoxRendererTests
 
         var frame = LiveAreaRenderer.Render(state);
 
-        Assert.Equal(["> go", "m · 10/0 · /w"], frame.Lines);
+        Assert.Equal(["> go", "m"], frame.Lines);
         Assert.Equal(0, frame.CursorRow);
     }
 
@@ -123,7 +123,7 @@ public sealed class LiveAreaBoxRendererTests
 
         var frame = LiveAreaRenderer.Render(state);
 
-        Assert.Equal(["> go", "m · 10/0 · /w"], frame.Lines);
+        Assert.Equal(["> go", "m"], frame.Lines);
         Assert.All(frame.Lines, line => Assert.DoesNotContain("─", line, StringComparison.Ordinal));
     }
 

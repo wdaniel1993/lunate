@@ -40,7 +40,7 @@ public sealed class LiveAreaThinkingRendererTests
         var frame = LiveAreaRenderer.Render(state);
 
         Assert.Equal(
-            ["⠹ thinking… 1s", "reasoning text", "> Ask anything, / for commands", "m · 10/0 · /w"],
+            ["⠹ thinking… 1s", "reasoning text", "> Ask anything, / for commands", "m"],
             frame.Lines
         );
         Assert.Equal(2, frame.CursorRow);

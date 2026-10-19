@@ -1,5 +1,6 @@
 using System.Reactive.Concurrency;
 using System.Reactive.Linq;
+using System.Reactive.Subjects;
 using System.Runtime.CompilerServices;
 using System.Threading.Channels;
 using Lunate.Agent;
@@ -16,13 +17,20 @@ namespace Lunate.Coding.Tests;
 internal sealed class ScriptedConsoleIO : IConsoleIO
 {
     private readonly Channel<KeyEvent> _keys = Channel.CreateUnbounded<KeyEvent>();
+    private readonly Subject<ConsoleSize> _resized = new();
     private readonly List<string> _writes = [];
 
     public bool IsInteractive { get; set; }
 
     public ConsoleSize Size { get; set; } = new(80, 24);
 
-    public IObservable<ConsoleSize> Resized => Observable.Empty<ConsoleSize>();
+    public IObservable<ConsoleSize> Resized => _resized;
+
+    public void PushResize(ConsoleSize size)
+    {
+        Size = size;
+        _resized.OnNext(size);
+    }
 
     public IReadOnlyList<string> Writes
     {

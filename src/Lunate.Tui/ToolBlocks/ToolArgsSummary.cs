@@ -169,7 +169,7 @@ internal static class ToolArgsSummary
         count == 1 ? "(1 line)" : string.Create(CultureInfo.InvariantCulture, $"({count} lines)");
 
     /// <summary>The result's content lines: the continue hint after a paged read does not count.</summary>
-    private static int ResultLineCount(string? output)
+    internal static int ResultLineCount(string? output)
     {
         if (string.IsNullOrEmpty(output))
         {

@@ -66,19 +66,63 @@ public sealed class StatusFooterRendererTests
     }
 
     [Fact]
-    public void Narrower_width_then_drops_the_directory()
+    public void The_standard_band_then_drops_the_directory()
     {
-        string output = Render(Full, width: 50);
+        StatusFooterModel footer = Full with { Model = "deepseek-v4.1-flash-extended" };
 
-        Assert.Equal("deepseek-v4.1-flash · 12.4k/128.0k (10%)\n", output);
+        Assert.Equal(
+            "deepseek-v4.1-flash-extended · 12.4k/128.0k (10%)\n",
+            Render(footer, width: 60)
+        );
     }
 
+    [Theory]
+    [InlineData(40)]
+    [InlineData(59)]
+    public void The_compact_footer_shows_only_the_model_and_percent(int width) =>
+        Assert.Equal("deepseek-v4.1-flash \u00b7 10%\n", Render(Full, width));
+
     [Fact]
-    public void Model_and_usage_survive_even_extreme_widths()
+    public void The_compact_footer_drops_every_optional_segment() =>
+        Assert.Equal(
+            "deepseek-v4.1-flash \u00b7 10%",
+            StatusFooterRenderer.PlainText(
+                Full with
+                {
+                    ThinkLevel = "medium",
+                },
+                width: 40,
+                ["widget-a", "widget-b"]
+            )
+        );
+
+    [Fact]
+    public void The_compact_footer_omits_the_percent_without_a_window() =>
+        Assert.Equal(
+            "report-model\n",
+            Render(new StatusFooterModel("report-model", 5, 0, "/repo", null), width: 40)
+        );
+
+    [Fact]
+    public void The_standard_band_keeps_the_token_counts_at_sixty() =>
+        Assert.Equal(
+            "deepseek-v4.1-flash \u00b7 12.4k/128.0k (10%) \u00b7 ~/dev/lunate\n",
+            Render(Full, width: 60)
+        );
+
+    [Fact]
+    public void The_full_band_keeps_every_segment_at_eighty() =>
+        Assert.Equal(
+            "deepseek-v4.1-flash \u00b7 12.4k/128.0k (10%) \u00b7 ~/dev/lunate \u00b7 main\n",
+            Render(Full, width: 80)
+        );
+
+    [Fact]
+    public void Model_and_percent_survive_even_extreme_widths()
     {
         string output = Render(Full, width: 5);
 
-        Assert.Equal("deepseek-v4.1-flash · 12.4k/128.0k (10%)\n", output);
+        Assert.Equal("deepseek-v4.1-flash · 10%\n", output);
     }
 
     [Fact]
@@ -153,10 +197,13 @@ public sealed class StatusFooterRendererTests
         StatusFooterModel footer = Full with { ThinkLevel = "medium" };
 
         Assert.Equal(
-            "deepseek-v4.1-flash · 12.4k/128.0k (10%) · think:medium\n",
-            Render(footer, width: 55)
+            "deepseek-v4.1-flash · 12.4k/128.0k (10%) · think:medium · ~/dev/lunate\n",
+            Render(footer, width: 70)
         );
-        Assert.Equal("deepseek-v4.1-flash · 12.4k/128.0k (10%)\n", Render(footer, width: 50));
+        Assert.Equal(
+            "deepseek-v4.1-flash · 12.4k/128.0k (10%) · think:medium\n",
+            Render(footer, width: 60)
+        );
     }
 
     private static string Render(StatusFooterModel footer, int width)

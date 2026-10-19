@@ -73,6 +73,22 @@ public sealed class LiveAreaRendererTests
     }
 
     [Fact]
+    public void A_compact_footer_model_wider_than_the_terminal_is_clipped_deterministically()
+    {
+        const string model = "a-model-name-that-is-much-wider-than-forty-columns";
+        var state = new LiveAreaState
+        {
+            Footer = new StatusFooterModel(model, 10, 100, "/w", null),
+            Size = new ConsoleSize(40, 8),
+        };
+
+        var frame = LiveAreaRenderer.Render(state);
+
+        Assert.Equal(CellText.Clip(model + " \u00b7 10%", 40), frame.Lines[^1]);
+        Assert.True(CellText.Width(frame.Lines[^1]) <= 40);
+    }
+
+    [Fact]
     public void Footer_joins_only_populated_fields()
     {
         var state = new LiveAreaState

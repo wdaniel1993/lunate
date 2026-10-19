@@ -110,6 +110,34 @@ public sealed class ToolBlockMetaTests
         );
 
     [Fact]
+    public void Read_compact_meta_carries_the_result_line_count()
+    {
+        var block = new ToolBlockModel(
+            "read",
+            """{"path":"src/x.cs"}""",
+            ToolBlockStatus.Ok,
+            string.Join('\n', Enumerable.Range(1, 13).Select(n => $"line {n}")),
+            null
+        );
+
+        Assert.Equal("13 lines", ToolBlockMeta.Build(block, compact: true));
+    }
+
+    [Fact]
+    public void A_failed_read_has_no_compact_meta()
+    {
+        var block = new ToolBlockModel(
+            "read",
+            """{"path":"src/missing.cs"}""",
+            ToolBlockStatus.Error,
+            "file not found: src/missing.cs",
+            null
+        );
+
+        Assert.Null(ToolBlockMeta.Build(block, compact: true));
+    }
+
+    [Fact]
     public void Cs_diagnostics_meta_carries_the_counts_and_the_top_items()
     {
         var block = CsBlock(DiagnosticsOutput);
@@ -129,6 +157,13 @@ public sealed class ToolBlockMetaTests
 
         Assert.DoesNotContain("CS1002", meta, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void Cs_diagnostics_compact_meta_is_the_severity_counts_only() =>
+        Assert.Equal(
+            "2 errors 1 warning",
+            ToolBlockMeta.Build(CsBlock(DiagnosticsOutput), compact: true)
+        );
 
     [Fact]
     public void Cs_diagnostics_meta_truncates_a_long_item()
@@ -189,6 +224,15 @@ public sealed class ToolBlockMetaTests
     public void Cs_diagnostics_with_no_findings_has_no_meta() =>
         Assert.Null(
             ToolBlockMeta.Build(CsBlock("No compiler errors or warnings in the solution."))
+        );
+
+    [Fact]
+    public void Cs_diagnostics_with_no_findings_has_no_compact_meta() =>
+        Assert.Null(
+            ToolBlockMeta.Build(
+                CsBlock("No compiler errors or warnings in the solution."),
+                compact: true
+            )
         );
 
     [Fact]

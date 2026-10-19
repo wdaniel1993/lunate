@@ -63,8 +63,24 @@ public sealed class TranscriptViewerRendererTests
     {
         var frame = Viewer().Lines(LongTranscript(), Size, scrolledLines: 1000);
 
-        Assert.Equal("\u2713 bash  dotnet build \u00b7 exit 0 \u00b7 0.4s", Text(frame[0]));
+        Assert.Equal("\u2713 bash \u00b7 exit 0 \u00b7 0.4s", Text(frame[0]));
         Assert.EndsWith("0%", Text(frame[^1]), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_tool_header_at_40_columns_drops_the_command_summary()
+    {
+        var frame = Viewer().Lines(LongTranscript(), new ConsoleSize(40, 10), scrolledLines: 1000);
+
+        Assert.Equal("\u2713 bash \u00b7 exit 0 \u00b7 0.4s", Text(frame[0]));
+    }
+
+    [Fact]
+    public void A_tool_header_at_60_columns_keeps_the_command_summary()
+    {
+        var frame = Viewer().Lines(LongTranscript(), new ConsoleSize(60, 10), scrolledLines: 1000);
+
+        Assert.Equal("\u2713 bash  dotnet build \u00b7 exit 0 \u00b7 0.4s", Text(frame[0]));
     }
 
     [Fact]
@@ -208,14 +224,14 @@ public sealed class TranscriptViewerRendererTests
             "/Users/daniel"
         );
 
-        var frame = viewer.Lines(model, new ConsoleSize(40, 12), 0);
+        var frame = viewer.Lines(model, new ConsoleSize(60, 12), 0);
 
         Assert.Contains(
             frame,
             line =>
                 Text(line).Contains("\u2026/TranscriptViewerRenderer.cs", StringComparison.Ordinal)
         );
-        Assert.All(frame, line => Assert.True(CellText.Width(Text(line)) <= 40));
+        Assert.All(frame, line => Assert.True(CellText.Width(Text(line)) <= 60));
     }
 
     [Fact]

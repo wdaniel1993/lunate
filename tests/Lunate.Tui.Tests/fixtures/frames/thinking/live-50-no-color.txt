@@ -4,4 +4,4 @@ mpty and whitespace-only titles must throw Argumen
 tException. The check belongs at the top of the me
 thod, before the list mutates.
 > Ask anything, / for commands
-deepseek-v4.1-flash · 2.1k/1.0M (0%) · think:high
+deepseek-v4.1-flash · 0%

@@ -296,6 +296,25 @@ public sealed class LiveAreaTests
         Assert.DoesNotContain("Select model", console.Writes[^1], StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void A_resize_rebinds_the_scrollback_width_for_the_next_commit()
+    {
+        var scheduler = new TestScheduler();
+        using var console = new FakeConsoleIO(scheduler, new ConsoleSize(40, 10))
+        {
+            IsInteractive = false,
+        };
+        using var area = new LiveArea(console, scheduler);
+
+        area.WriteScrollback(scrollback => scrollback.WriteLine(new string('x', 100)));
+        console.PushResize(new ConsoleSize(120, 40));
+        int before = console.Writes.Count;
+        area.WriteScrollback(scrollback => scrollback.WriteLine(new string('x', 100)));
+
+        string committed = string.Concat(console.Writes.Skip(before));
+        Assert.Contains(new string('x', 100), committed, StringComparison.Ordinal);
+    }
+
     /// <summary>
     /// A full-screen surface (the transcript viewer) owns the terminal while it is open: the
     /// live area stops painting and scrollback commits queue, flushing in order on resume.
