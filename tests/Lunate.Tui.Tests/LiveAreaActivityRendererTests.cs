@@ -141,10 +141,23 @@ public sealed class LiveAreaActivityRendererTests
     }
 
     [Theory]
-    [InlineData(ColorSystemSupport.TrueColor)]
-    [InlineData(ColorSystemSupport.Detect)]
-    [InlineData(ColorSystemSupport.NoColors)]
-    public void The_activity_line_carries_no_sgr(ColorSystemSupport color)
+    [InlineData(
+        ColorSystemSupport.TrueColor,
+        "\u001b[38;2;175;135;215m⠹ thinking… 3s\u001b[0m · ↑1.2k ↓180 · esc to interrupt"
+    )]
+    [InlineData(
+        ColorSystemSupport.EightBit,
+        "\u001b[38;5;140m⠹ thinking… 3s\u001b[0m · ↑1.2k ↓180 · esc to interrupt"
+    )]
+    [InlineData(
+        ColorSystemSupport.Detect,
+        "\u001b[35m⠹ thinking… 3s\u001b[0m · ↑1.2k ↓180 · esc to interrupt"
+    )]
+    [InlineData(ColorSystemSupport.NoColors, "⠹ thinking… 3s · ↑1.2k ↓180 · esc to interrupt")]
+    public void The_thinking_label_carries_the_thinking_colour(
+        ColorSystemSupport color,
+        string expected
+    )
     {
         var state = new LiveAreaState
         {
@@ -158,8 +171,7 @@ public sealed class LiveAreaActivityRendererTests
 
         var frame = LiveAreaRenderer.Render(state);
 
-        Assert.Equal("⠹ thinking… 3s · ↑1.2k ↓180 · esc to interrupt", frame.Lines[0]);
-        Assert.DoesNotContain("\u001b[", frame.Lines[0], StringComparison.Ordinal);
+        Assert.Equal(expected, frame.Lines[0]);
     }
 
     [Fact]

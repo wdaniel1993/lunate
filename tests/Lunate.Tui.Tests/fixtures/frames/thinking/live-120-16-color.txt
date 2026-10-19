@@ -1,4 +1,4 @@
-⠹ thinking… 6s
+\x1b[35m⠹ thinking… 6s\x1b[0m
 \x1b[35mWe need to add validation to TodoList.Add. Null, empty and whitespace-only titles must throw ArgumentException. The chec\x1b[0m
 \x1b[35mk belongs at the top of the method, before the list mutates.\x1b[0m
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────

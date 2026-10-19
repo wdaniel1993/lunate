@@ -83,7 +83,7 @@ internal static class LiveAreaRenderer
         lines.AddRange(tail);
         if (activityLine is not null)
         {
-            lines.Add(CellText.Clip(activityLine, width));
+            lines.Add(activityLine);
         }
 
         lines.AddRange(thinkingLines);
@@ -166,18 +166,27 @@ internal static class LiveAreaRenderer
     private static string ThinkingLabel(int elapsedSeconds) =>
         FormattableString.Invariant($"⠹ thinking… {elapsedSeconds}s");
 
-    private static string ToolLabel(LiveAreaState state, string name)
+    private static string ToolLabel(LiveAreaState state, string name, int width)
     {
         string text = FormattableString.Invariant(
             $"{SpinnerFrames[state.FrameNumber % SpinnerFrames.Length]} {CellText.SingleLine(name)}"
         );
+        string tail = FormattableString.Invariant($" · {state.ToolElapsedSeconds}s");
+        string metrics = MetricsSuffix(state, width);
         string summary = CellText.SingleLine(state.ToolSummary ?? string.Empty);
         if (summary.Length > 0)
         {
-            text += " " + summary;
+            // Budget the summary, never the tail: a long argument blob must not clip the
+            // elapsed seconds, the deltas or the interrupt hint off the line.
+            int budget =
+                width - CellText.Width(text) - CellText.Width(tail) - CellText.Width(metrics) - 1;
+            if (budget > 0)
+            {
+                text += " " + CellText.Clip(summary, budget);
+            }
         }
 
-        return FormattableString.Invariant($"{text} · {state.ToolElapsedSeconds}s");
+        return text + tail + metrics;
     }
 
     private static string WorkingLabel(LiveAreaState state) =>
@@ -188,32 +197,53 @@ internal static class LiveAreaRenderer
     /// <summary>
     /// The one activity line: the thinking label, the active tool with its summary, or the generic
     /// working label, followed by the run's deltas and the interrupt hint while cancellable. The
-    /// line is plain text in every colour mode.
+    /// thinking label carries the thinking colour; every other part stays plain.
     /// </summary>
     private static string? ActivityLine(LiveAreaState state, int width)
     {
         string? text =
-            state.Thinking is { } thinking ? ThinkingLabel(thinking.ElapsedSeconds)
-            : state.ToolName is { Length: > 0 } name ? ToolLabel(state, name)
-            : state.Running ? WorkingLabel(state)
+            state.Thinking is { } thinking
+                ? ThinkingLabel(thinking.ElapsedSeconds) + MetricsSuffix(state, width)
+            : state.ToolName is { Length: > 0 } name ? ToolLabel(state, name, width)
+            : state.Running ? WorkingLabel(state) + MetricsSuffix(state, width)
             : null;
-        return text is null ? null : WithRunMetrics(text, state, width);
+        if (text is null)
+        {
+            return null;
+        }
+
+        string line = CellText.Clip(text, width);
+        if (
+            state.Thinking is { } current
+            && state.Color != ColorSystemSupport.NoColors
+            && line.StartsWith(
+                CellText.Clip(ThinkingLabel(current.ElapsedSeconds), width),
+                StringComparison.Ordinal
+            )
+        )
+        {
+            string label = CellText.Clip(ThinkingLabel(current.ElapsedSeconds), width);
+            return ThinkingColor.Wrap(label, state.Color) + line[label.Length..];
+        }
+
+        return line;
     }
 
     /// <summary>
     /// The run's token deltas and interrupt hint: only on the wide bands and only while the turn
     /// is cancellable. The deltas are omitted until both usage counts are known.
     /// </summary>
-    private static string WithRunMetrics(string text, LiveAreaState state, int width)
+    private static string MetricsSuffix(LiveAreaState state, int width)
     {
         if (!state.Cancellable || WidthBands.IsCompact(width))
         {
-            return text;
+            return string.Empty;
         }
 
+        string text = string.Empty;
         if (state.RunInputTokens is { } input && state.RunOutputTokens is { } output)
         {
-            text +=
+            text =
                 " · ↑"
                 + StatusFooterRenderer.FormatTokens(input)
                 + " ↓"

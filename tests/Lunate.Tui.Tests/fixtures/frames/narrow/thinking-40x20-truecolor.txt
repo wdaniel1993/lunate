@@ -1,4 +1,4 @@
-⠹ thinking… 6s
+\x1b[38;2;175;135;215m⠹ thinking… 6s\x1b[0m
 \x1b[38;2;175;135;215mWe need to add validation to TodoList.Ad\x1b[0m
 \x1b[38;2;175;135;215md. Null, empty and whitespace-only title\x1b[0m
 \x1b[38;2;175;135;215ms must throw ArgumentException. The chec\x1b[0m

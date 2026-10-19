@@ -1,4 +1,4 @@
-⠹ thinking… 6s
+\x1b[35m⠹ thinking… 6s\x1b[0m
 \x1b[35mWe need to add validation to TodoList.Add. Null, e\x1b[0m
 \x1b[35mmpty and whitespace-only titles must throw Argumen\x1b[0m
 \x1b[35mtException. The check belongs at the top of the me\x1b[0m
