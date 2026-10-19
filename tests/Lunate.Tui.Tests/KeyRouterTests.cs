@@ -10,6 +10,7 @@ public sealed class KeyRouterTests
         (Key(KeyKind.Escape), RoutedKey.Cancel),
         (Key(KeyKind.Character, "c", ctrl: true), RoutedKey.ClearOrQuit),
         (Key(KeyKind.Character, "l", ctrl: true), RoutedKey.ModelPicker),
+        (Key(KeyKind.Character, "o", ctrl: true), RoutedKey.TranscriptViewer),
         (Key(KeyKind.Tab), RoutedKey.Complete),
         (Key(KeyKind.Up), RoutedKey.HistoryPrevious),
         (Key(KeyKind.Down), RoutedKey.HistoryNext),
@@ -43,6 +44,7 @@ public sealed class KeyRouterTests
         Assert.Single(intents, intent => intent == RoutedKey.Cancel);
         Assert.Single(intents, intent => intent == RoutedKey.ClearOrQuit);
         Assert.Single(intents, intent => intent == RoutedKey.ModelPicker);
+        Assert.Single(intents, intent => intent == RoutedKey.TranscriptViewer);
         Assert.Single(intents, intent => intent == RoutedKey.Complete);
         Assert.Single(intents, intent => intent == RoutedKey.HistoryPrevious);
         Assert.Single(intents, intent => intent == RoutedKey.HistoryNext);

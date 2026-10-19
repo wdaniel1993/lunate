@@ -11,6 +11,7 @@ public enum RoutedKey
     HistoryPrevious,
     HistoryNext,
     Complete,
+    TranscriptViewer,
 }
 
 /// <summary>
@@ -30,6 +31,8 @@ public static class KeyRouter
             { Kind: KeyKind.Escape } => RoutedKey.Cancel,
             { Kind: KeyKind.Character, Ctrl: true, Alt: false, Text: "c" } => RoutedKey.ClearOrQuit,
             { Kind: KeyKind.Character, Ctrl: true, Alt: false, Text: "l" } => RoutedKey.ModelPicker,
+            { Kind: KeyKind.Character, Ctrl: true, Alt: false, Text: "o" } =>
+                RoutedKey.TranscriptViewer,
             { Kind: KeyKind.Tab, Ctrl: false, Alt: false, Shift: false } => RoutedKey.Complete,
             { Kind: KeyKind.Up } => RoutedKey.HistoryPrevious,
             { Kind: KeyKind.Down } => RoutedKey.HistoryNext,

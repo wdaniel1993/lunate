@@ -12,7 +12,8 @@ namespace Lunate.Coding.Tests;
 public sealed class WelcomeHeaderSessionTests
 {
     private const string Mark = "\u03f9";
-    private const string Hint = "/help · /model · /skills · /extensions · Esc cancels · /quit";
+    private const string Hint =
+        "/help · /model · /skills · /extensions · ctrl+o transcript · Esc cancels · /quit";
 
     [Fact]
     public async Task The_header_prints_once_on_the_first_frame()

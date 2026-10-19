@@ -4,4 +4,4 @@ deepseek-v4.1-flash · 1,000,000 ctx
 ~/dev/lunate
 C# workspace · Roslyn
 extensions … · MCP … · skills …
-/help · /model · /skills · /extensions · Esc cancels · /quit
+/help · /model · /skills · /extensions · ctrl+o transcript · Esc cancels · /quit

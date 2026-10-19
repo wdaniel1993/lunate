@@ -46,7 +46,8 @@ internal static class WelcomeHeaderRenderer
 
     private const string VersionPrefix = "  v";
     private const string CountsPlaceholder = "extensions … · MCP … · skills …";
-    private const string Hint = "/help · /model · /skills · /extensions · Esc cancels · /quit";
+    private const string Hint =
+        "/help · /model · /skills · /extensions · ctrl+o transcript · Esc cancels · /quit";
     private const string HelpHint = "/help for commands";
     private const string CSharp = "C# workspace · Roslyn";
     private const string CSharpSegment = "(C# · Roslyn)";

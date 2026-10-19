@@ -36,7 +36,7 @@
   full outputs/diffs, mid-shortened paths, a footer line with keys and position.
 - [x] 4.3 The alternate-screen lifecycle through `IConsoleIO` (enter/leave; restored on every
   exit path including exceptions).
-- [ ] 4.4 The `Ctrl+O` binding through the key pump (refused while an approval or picker is open;
+- [x] 4.4 The `Ctrl+O` binding through the key pump (refused while an approval or picker is open;
   no input reaches the model while open); the scrollback stays unchanged on close; the footer
   keybinding line names it.
 - [ ] 4.5 Navigation: Up/Down, PageUp/PageDown, Home/End, `g`/`G`; `q`/`Esc` closes.

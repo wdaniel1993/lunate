@@ -205,6 +205,7 @@ Lunate.Tui.RoutedKey.HistoryNext = 6 -> Lunate.Tui.RoutedKey
 Lunate.Tui.RoutedKey.HistoryPrevious = 5 -> Lunate.Tui.RoutedKey
 Lunate.Tui.RoutedKey.ModelPicker = 4 -> Lunate.Tui.RoutedKey
 Lunate.Tui.RoutedKey.Submit = 1 -> Lunate.Tui.RoutedKey
+Lunate.Tui.RoutedKey.TranscriptViewer = 8 -> Lunate.Tui.RoutedKey
 Lunate.Tui.SelectListModel
 Lunate.Tui.SelectListModel.<Clone>$() -> Lunate.Tui.SelectListModel!
 Lunate.Tui.SelectListModel.Deconstruct(out string! Title, out System.Collections.Generic.IReadOnlyList<string!>! Items, out int Selected) -> void

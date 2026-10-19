@@ -52,6 +52,9 @@ internal sealed class ScriptedConsoleIO : IConsoleIO
     public void SendCtrlC() =>
         Send(new KeyEvent(KeyKind.Character, "c", Ctrl: true, Shift: false, Alt: false));
 
+    public void SendCtrlO() =>
+        Send(new KeyEvent(KeyKind.Character, "o", Ctrl: true, Shift: false, Alt: false));
+
     public void Complete() => _keys.Writer.TryComplete();
 
     public async IAsyncEnumerable<KeyEvent> ReadKeysAsync(

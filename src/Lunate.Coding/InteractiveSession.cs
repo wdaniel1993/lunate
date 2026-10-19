@@ -122,6 +122,9 @@ internal sealed partial class InteractiveSession : IDisposable
 
     /// <summary>The viewer's store: every committed item, in commit order.</summary>
     private readonly List<TranscriptEntry> _transcript = [];
+
+    /// <summary>The full-screen transcript viewer; lazy until ctrl+o opens it.</summary>
+    private readonly TranscriptViewer _viewer;
     private readonly HashSet<string> _alwaysApproved = new(StringComparer.Ordinal);
     private AgentSettings _settings = new();
     private ModelCatalog _catalog = null!;
@@ -201,6 +204,7 @@ internal sealed partial class InteractiveSession : IDisposable
         );
         _markdown = new MarkdownRenderer(_capabilities);
         _toolBlocks = new ToolBlockRenderer(_capabilities);
+        _viewer = new TranscriptViewer(_console, _capabilities, options.HomeDirectory);
         _pipeline = new InputPipeline(options.Hooks);
         _history = new InputHistory(options.HistoryPath ?? InputHistory.DefaultPath);
         _quitWindow = new CtrlCQuitWindow(options.Scheduler);
@@ -274,6 +278,8 @@ internal sealed partial class InteractiveSession : IDisposable
                 await DisposeExtensionsAsync();
                 _workspaceServices?.Dispose();
                 _workspaceServices = null;
+                // Every exit path leaves the viewer's alternate screen, exceptions included.
+                _viewer.Close();
                 _live.Dispose();
             }
         }
@@ -736,6 +742,14 @@ internal sealed partial class InteractiveSession : IDisposable
 
     internal async Task HandleKeyAsync(KeyEvent key, long sequence, CancellationToken ct)
     {
+        // The viewer is modal: while it owns the terminal every key navigates or closes it, so
+        // nothing else — the input line, a run's cancel, the model — sees them.
+        if (_viewer.IsOpen)
+        {
+            HandleViewerKey(key);
+            return;
+        }
+
         if (_trustDecision is { } trustPending)
         {
             if (KeyRouter.Route(key) == RoutedKey.ClearOrQuit)
@@ -813,10 +827,35 @@ internal sealed partial class InteractiveSession : IDisposable
             case RoutedKey.ModelPicker:
                 OpenModelPicker();
                 break;
+            case RoutedKey.TranscriptViewer:
+                OpenViewer();
+                break;
             case RoutedKey.Complete:
                 ApplyCompletion();
                 break;
         }
+    }
+
+    /// <summary>
+    /// The ctrl+o binding: suspends the live area (so no frame paints over the alternate screen)
+    /// and opens the viewer at the latest content. Refused while a prompt or picker owns input —
+    /// those keys return before the binding routes.
+    /// </summary>
+    private void OpenViewer()
+    {
+        _live.SetSuspended(true);
+        _viewer.Open(new TranscriptModel(_transcript));
+    }
+
+    /// <summary>One key while the viewer is open; closing it resumes the live area.</summary>
+    private void HandleViewerKey(KeyEvent key)
+    {
+        if (_viewer.HandleKey(key, new TranscriptModel(_transcript)))
+        {
+            return;
+        }
+
+        _live.SetSuspended(false);
     }
 
     private async Task SubmitAsync(CancellationToken ct)
