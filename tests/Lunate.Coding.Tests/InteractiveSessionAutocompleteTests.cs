@@ -38,6 +38,7 @@ public sealed class InteractiveSessionAutocompleteTests
         using InteractiveSessionHost host = await StartAsync();
 
         await SendAsync(host, "/");
+        await host.WaitUntilAsync(() => host.Session.Autocomplete is not null);
 
         AutocompleteState state = Assert.IsType<AutocompleteState>(host.Session.Autocomplete);
         Assert.Equal(CompletionMode.Command, state.Mode);
@@ -54,6 +55,7 @@ public sealed class InteractiveSessionAutocompleteTests
         using InteractiveSessionHost host = await StartAsync();
 
         await SendAsync(host, "/thk");
+        await host.WaitUntilAsync(() => host.Session.Autocomplete is not null);
 
         AutocompleteState state = Assert.IsType<AutocompleteState>(host.Session.Autocomplete);
         Assert.Equal(["/thinking"], state.Items.Select(item => item.Text));
@@ -98,6 +100,7 @@ public sealed class InteractiveSessionAutocompleteTests
         await host.WaitUntilAsync(() => host.Session.Input.CursorPosition == 0);
         host.Console.Send(new KeyEvent(KeyKind.Right, null, false, false, false));
         await host.WaitUntilAsync(() => host.Session.Input.CursorPosition == 1);
+        await host.WaitUntilAsync(() => host.Session.Autocomplete is not null);
 
         AutocompleteState state = Assert.IsType<AutocompleteState>(host.Session.Autocomplete);
         Assert.Equal(CompletionMode.Command, state.Mode);
@@ -111,7 +114,7 @@ public sealed class InteractiveSessionAutocompleteTests
         using InteractiveSessionHost host = await StartAsync();
 
         await SendAsync(host, "/help");
-        Assert.NotNull(host.Session.Autocomplete);
+        await host.WaitUntilAsync(() => host.Session.Autocomplete is not null);
 
         host.Console.Send(AltEnter);
         await host.WaitUntilAsync(() => host.Session.Input.Text == "/help\n");
@@ -244,8 +247,7 @@ public sealed class InteractiveSessionAutocompleteTests
 
         host.Console.SendText("a");
         await host.WaitUntilAsync(() => host.Session.Input.Text == "/compa");
-
-        Assert.NotNull(host.Session.Autocomplete);
+        await host.WaitUntilAsync(() => host.Session.Autocomplete is not null);
 
         host.Console.Complete();
     }
@@ -271,7 +273,7 @@ public sealed class InteractiveSessionAutocompleteTests
         await SendAsync(host, "/compact");
         host.Console.Send(Left);
         await host.WaitUntilAsync(() => host.Session.Input.CursorPosition == 7);
-        Assert.NotNull(host.Session.Autocomplete);
+        await host.WaitUntilAsync(() => host.Session.Autocomplete is not null);
 
         host.Console.Send(Tab);
         await host.WaitUntilAsync(() => host.Session.Input.Text == "/compact t");
@@ -309,7 +311,7 @@ public sealed class InteractiveSessionAutocompleteTests
         using InteractiveSessionHost host = await StartAsync();
 
         await SendAsync(host, "/comp");
-        Assert.NotNull(host.Session.Autocomplete);
+        await host.WaitUntilAsync(() => host.Session.Autocomplete is not null);
 
         host.Console.SendCtrlC();
         await host.WaitUntilAsync(() => host.Session.Input.Text.Length == 0);
