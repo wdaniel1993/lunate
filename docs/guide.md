@@ -439,6 +439,18 @@ Typing `/` at the start of the first line opens the autocomplete list from the s
 
 ↑/↓ move the selection while the list is open and navigate history while it is closed. Tab and Enter accept the selected item — the token is replaced, file rows keep the `@`, command rows get a trailing space — and Esc closes the list. Enter submits instead when the typed token already equals the selected item, so a fully typed command never costs a second Enter. Newline keys insert and then re-run the trigger rules; Ctrl+C, Ctrl+L and Ctrl+O keep their bindings and win over the list.
 
+**Narrow terminals**
+
+The layout has three width bands, evaluated at render time from the terminal's columns:
+
+| Band | Width | Rules |
+| --- | --- | --- |
+| Full | ≥100 | today's layout: every footer segment, full tool summaries, box rules, autocomplete descriptions |
+| Standard | 60–99 | the same structure; the footer drops the branch, then the directory, while the line is too wide; box rules stay at ≥80 |
+| Compact | <60 | short tool headers (the argument summary drops: `✓ read · 13 lines`), the footer shrinks to `model · <pct>%`, no box rules, autocomplete names without descriptions |
+
+The finer boundaries inside the standard band stay as they were: box rules at 80 columns and autocomplete descriptions at 60. When a construct gains a compact form it follows the same band: diffs will drop the line-number gutter below 60 and markdown tables will render as lists below 60 (and as tables at 60 and wider). Neither construct is in the current renderers; the rules bind when they land.
+
 **Components**
 
 - `MarkdownRenderer`: a subset (headings, bold, italic, inline code, lists, quotes, fenced code with a language label) mapped to Spectre renderables. Keyword highlighting for C#, JSON and shell only in v1.
