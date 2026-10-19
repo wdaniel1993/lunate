@@ -155,7 +155,10 @@ you get the defaults below.
 - `~/.lunate/models.json` — your own catalog entries: `id`, `provider` (`openai` for any
   OpenAI-compatible endpoint, `anthropic`), optional `endpoint`, `contextWindow`, `supportsTools`
   and an `auth` reference naming a key in `auth.json`. An entry overrides a built-in one with the
-  same id; `lunate --discover <name-or-url>` drafts one from a live endpoint.
+  same id; `lunate --discover <name-or-url>` drafts one from a live endpoint. An optional
+  `reasoning` declares the model's reasoning style — `effort` (OpenAI-compatible reasoning
+  effort), `budget` (Anthropic extended thinking) or `inline` (the model embeds thinking
+  markers in its text stream); absent means no reasoning support.
 - `~/.lunate/auth.json` — named API keys under `keys`; `OPENAI_API_KEY` and `ANTHROPIC_API_KEY`
   override the `openai` and `anthropic` entries.
 
@@ -175,6 +178,8 @@ naming every problem, and nothing partial is applied.
 | `subagents.treeTokenBudget` | `500000` | tokens per top-level run tree, or `unlimited` |
 | `roslyn.maxLoadedWorkspaces` | `2` | C# workspaces kept loaded across roots |
 | `startupHeader` | `true` | print the welcome header when a session starts |
+| `thinking` | `off` | reasoning level: `off`, `low`, `medium` or `high` (`/thinking` sets it per session) |
+| `thinkingFull` | `false` | commit the full reasoning text instead of the collapsed thought line |
 
 Environment variables override the file: `LUNATE_MODEL`, `LUNATE_APPROVAL`,
 `LUNATE_TOOL_OUTPUT_LIMIT`, `LUNATE_STARTUP_HEADER` (`true`, `false`, `1` or `0`),

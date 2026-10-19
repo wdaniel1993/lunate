@@ -95,4 +95,4 @@ order; commit per group; record any design/code divergence in this file under th
 ## 7. Docs
 
 - [ ] 7.1 `docs/guide.md` event table row (done in draft) + the loop step note.
-- [ ] 7.2 Document `reasoning` in the models.json docs (README or the catalog section).
+- [x] 7.2 Document `reasoning` in the models.json docs (README or the catalog section).
