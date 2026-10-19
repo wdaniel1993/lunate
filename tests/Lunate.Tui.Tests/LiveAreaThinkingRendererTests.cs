@@ -74,9 +74,9 @@ public sealed class LiveAreaThinkingRendererTests
             WithThinking("reasoning text", color: ColorSystemSupport.Detect)
         );
 
-        Assert.Equal("\u001b[38;2;175;135;215m⠹ thinking… 0s\u001b[39m", truecolor.Lines[0]);
-        Assert.Equal("\u001b[38;2;175;135;215mreasoning text\u001b[39m", truecolor.Lines[1]);
-        Assert.Equal("\u001b[35mreasoning text\u001b[39m", sixteen.Lines[1]);
+        Assert.Equal("\u001b[38;2;175;135;215m⠹ thinking… 0s\u001b[0m", truecolor.Lines[0]);
+        Assert.Equal("\u001b[38;2;175;135;215mreasoning text\u001b[0m", truecolor.Lines[1]);
+        Assert.Equal("\u001b[35mreasoning text\u001b[0m", sixteen.Lines[1]);
     }
 
     [Fact]

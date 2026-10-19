@@ -33,7 +33,12 @@ internal static class ThinkingColor
     private const string TrueColorSgr = "\u001b[38;2;175;135;215m";
     private const string EightBitSgr = "\u001b[38;5;140m";
     private const string SixteenColorSgr = "\u001b[35m";
-    private const string ResetSgr = "\u001b[39m";
+
+    /// <summary>
+    /// The full reset, matching what Spectre's markup emits for the committed block, so the live
+    /// frame and the commit end the colour the same way.
+    /// </summary>
+    private const string ResetSgr = "\u001b[0m";
 
     /// <summary>Wraps one live-frame line in the thinking colour; plain text under NO_COLOR.</summary>
     internal static string Wrap(string line, ColorSystemSupport color) =>
