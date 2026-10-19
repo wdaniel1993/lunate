@@ -286,6 +286,38 @@ public sealed class ToolBlockRendererTests
     }
 
     [Fact]
+    public void The_compact_band_renders_an_empty_read_header_without_meta() =>
+        Assert.Equal(
+            "\u2713 read",
+            HeaderAt(
+                new ToolBlockModel(
+                    "read",
+                    """{"path":"src/empty.cs"}""",
+                    ToolBlockStatus.Ok,
+                    string.Empty,
+                    null
+                ),
+                width: 59
+            )
+        );
+
+    [Fact]
+    public void The_compact_band_counts_a_paged_reads_returned_lines() =>
+        Assert.Equal(
+            "\u2713 read \u00b7 5 lines",
+            HeaderAt(
+                new ToolBlockModel(
+                    "read",
+                    """{"path":"src/a.cs","offset":100,"limit":5}""",
+                    ToolBlockStatus.Ok,
+                    string.Join('\n', Enumerable.Range(101, 5).Select(n => $"line {n}")),
+                    null
+                ),
+                width: 59
+            )
+        );
+
+    [Fact]
     public void The_standard_band_keeps_a_read_header_summary()
     {
         string output = string.Join('\n', Enumerable.Range(1, 13).Select(n => $"line {n}"));
