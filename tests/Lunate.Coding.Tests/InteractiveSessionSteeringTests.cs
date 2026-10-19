@@ -51,6 +51,8 @@ public sealed class InteractiveSessionSteeringTests
             host.ScrollbackText.Contains("» steer one", StringComparison.Ordinal)
             && host.ScrollbackText.Contains("» steer two", StringComparison.Ordinal)
         );
+        Assert.Contains("> hi\n\n", host.ScrollbackText, StringComparison.Ordinal);
+        Assert.DoesNotContain("» hi", host.ScrollbackText, StringComparison.Ordinal);
         Assert.True(
             host.ScrollbackText.IndexOf("» steer one", StringComparison.Ordinal)
                 < host.ScrollbackText.IndexOf("» steer two", StringComparison.Ordinal)
