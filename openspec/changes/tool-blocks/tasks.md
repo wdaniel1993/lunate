@@ -43,7 +43,7 @@
 
 ## 5. Subagent grouping
 
-- [ ] 5.1 The spawning block's carried child result renders as one indented group (child stays
+- [x] 5.1 The spawning block's carried child result renders as one indented group (child stays
   quiet in scrollback, per the existing scenario).
 
 ## 6. Tests and media

@@ -373,6 +373,42 @@ public sealed class ToolBlockRendererTests
             )
         );
 
+    [Fact]
+    public void A_spawning_block_indents_its_carried_child_result_as_one_group() =>
+        Assert.Equal(
+            "\u2713 subagents__spawn  find the bug\n  child line one\n  child line two\n",
+            Render(
+                new ToolBlockModel(
+                    "subagents__spawn",
+                    """{"prompt":"find the bug"}""",
+                    ToolBlockStatus.Ok,
+                    "child line one\nchild line two\n",
+                    null,
+                    ChildResult: true
+                )
+            )
+        );
+
+    [Fact]
+    public void An_indented_group_keeps_its_elision_marker_inside_the_indent()
+    {
+        string output = string.Join('\n', Enumerable.Range(1, 18).Select(n => $"line {n}"));
+
+        string rendered = Render(
+            new ToolBlockModel(
+                "subagents__spawn",
+                """{"prompt":"q"}""",
+                ToolBlockStatus.Ok,
+                output,
+                null,
+                ChildResult: true
+            )
+        );
+
+        Assert.Contains("\n  line 11\n", rendered, StringComparison.Ordinal);
+        Assert.Contains("\n  \u2026 +2 lines \u00b7 ctrl+o\n", rendered, StringComparison.Ordinal);
+    }
+
     private const string DiffText =
         "--- a/src/x.cs\n"
         + "+++ b/src/x.cs\n"

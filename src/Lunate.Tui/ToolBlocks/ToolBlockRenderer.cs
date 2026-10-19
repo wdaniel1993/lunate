@@ -39,7 +39,7 @@ public sealed class ToolBlockRenderer
         var lines = new List<StyledLine> { Header(block) };
         if (ShowsOutput(block))
         {
-            AppendOutput(lines, block.Output, block.ToolName == "bash");
+            AppendOutput(lines, block.Output, block.ToolName == "bash", block.ChildResult);
         }
 
         if (block.Diff is not null)
@@ -87,13 +87,16 @@ public sealed class ToolBlockRenderer
     private static bool ShowsOutput(ToolBlockModel block) =>
         block.ToolName != "read" || block.Status == ToolBlockStatus.Error;
 
-    private void AppendOutput(List<StyledLine> lines, string? output, bool tailOnly)
+    private void AppendOutput(List<StyledLine> lines, string? output, bool tailOnly, bool indent)
     {
         var mode = tailOnly ? ExcerptMode.TailOnly : ExcerptMode.HeadAndTail;
         foreach (var excerpt in OutputExcerpt.Build(output, mode, _unicode))
         {
             var line = new StyledLine();
-            line.Add(excerpt.Text, excerpt.IsMarker ? Warning : SpanStyle.Plain);
+            line.Add(
+                indent ? "  " + excerpt.Text : excerpt.Text,
+                excerpt.IsMarker ? Warning : SpanStyle.Plain
+            );
             lines.Add(line);
         }
     }

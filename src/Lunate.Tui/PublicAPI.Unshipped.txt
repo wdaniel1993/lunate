@@ -112,7 +112,9 @@ Lunate.Tui.ToolBlockRenderer.Render(Lunate.Tui.ToolBlockModel! block) -> Spectre
 Lunate.Tui.ToolBlockRenderer.ToolBlockRenderer() -> void
 Lunate.Tui.ToolBlockModel.ArgsSummary.get -> string!
 Lunate.Tui.ToolBlockModel.ArgsSummary.init -> void
-Lunate.Tui.ToolBlockModel.Deconstruct(out string! ToolName, out string! ArgsSummary, out Lunate.Tui.ToolBlockStatus Status, out string? Output, out Lunate.Tui.ToolDiffInfo? Diff, out int? ExitCode, out System.TimeSpan? Duration) -> void
+Lunate.Tui.ToolBlockModel.ChildResult.get -> bool
+Lunate.Tui.ToolBlockModel.ChildResult.init -> void
+Lunate.Tui.ToolBlockModel.Deconstruct(out string! ToolName, out string! ArgsSummary, out Lunate.Tui.ToolBlockStatus Status, out string? Output, out Lunate.Tui.ToolDiffInfo? Diff, out int? ExitCode, out System.TimeSpan? Duration, out bool ChildResult) -> void
 Lunate.Tui.ToolBlockModel.Diff.get -> Lunate.Tui.ToolDiffInfo?
 Lunate.Tui.ToolBlockModel.Diff.init -> void
 Lunate.Tui.ToolBlockModel.Duration.get -> System.TimeSpan?
@@ -124,7 +126,7 @@ Lunate.Tui.ToolBlockModel.Output.get -> string?
 Lunate.Tui.ToolBlockModel.Output.init -> void
 Lunate.Tui.ToolBlockModel.Status.get -> Lunate.Tui.ToolBlockStatus
 Lunate.Tui.ToolBlockModel.Status.init -> void
-Lunate.Tui.ToolBlockModel.ToolBlockModel(string! ToolName, string! ArgsSummary, Lunate.Tui.ToolBlockStatus Status, string? Output, Lunate.Tui.ToolDiffInfo? Diff, int? ExitCode = null, System.TimeSpan? Duration = null) -> void
+Lunate.Tui.ToolBlockModel.ToolBlockModel(string! ToolName, string! ArgsSummary, Lunate.Tui.ToolBlockStatus Status, string? Output, Lunate.Tui.ToolDiffInfo? Diff, int? ExitCode = null, System.TimeSpan? Duration = null, bool ChildResult = false) -> void
 Lunate.Tui.ToolBlockModel.ToolName.get -> string!
 Lunate.Tui.ToolBlockModel.ToolName.init -> void
 Lunate.Tui.ToolBlockStatus

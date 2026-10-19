@@ -23,6 +23,13 @@ internal sealed partial class InteractiveSession
             case RunStarted when child:
                 _liveChildren++;
                 _live.SetSubagentRunning(true);
+                // The child runs inside the spawner's call: the active call is the spawner, and
+                // its carried result later renders as one indented group.
+                if (_activeCalls.Count > 0)
+                {
+                    _spawningCalls.Add(_activeCalls[^1]);
+                }
+
                 break;
             case RunStarted:
                 _live.SetNotice(null);
@@ -212,7 +219,8 @@ internal sealed partial class InteractiveSession
             result.Output,
             DiffFor(result.Details),
             result.Details is BashDetails bash ? bash.ExitCode : null,
-            duration
+            duration,
+            ChildResult: _spawningCalls.Remove(key)
         );
         _live.WriteScrollback(console => console.Write(_toolBlocks.Render(block)));
         RenderExtensionBlock(name, result);

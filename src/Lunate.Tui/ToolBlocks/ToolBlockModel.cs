@@ -18,7 +18,8 @@ public sealed record ToolDiffInfo(string Path, string MatchTier, string UnifiedD
 /// A tool call rendered as a transcript block: tool name, argument summary, status, an optionally
 /// bounded output excerpt and an optional unified diff. <see cref="ExitCode"/> and
 /// <see cref="Duration"/> come from the wiring (the duration measured between the call's start and
-/// result events on the session's scheduler).
+/// result events on the session's scheduler). <see cref="ChildResult"/> marks a spawning call whose
+/// carried subagent result renders as one indented group.
 /// </summary>
 public sealed record ToolBlockModel(
     string ToolName,
@@ -27,5 +28,6 @@ public sealed record ToolBlockModel(
     string? Output,
     ToolDiffInfo? Diff,
     int? ExitCode = null,
-    TimeSpan? Duration = null
+    TimeSpan? Duration = null,
+    bool ChildResult = false
 );

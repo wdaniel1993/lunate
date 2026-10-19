@@ -115,6 +115,9 @@ internal sealed partial class InteractiveSession : IDisposable
     /// <summary>When each in-flight call started, on the injected scheduler's clock.</summary>
     private readonly Dictionary<(string RunId, string CallId), DateTimeOffset> _toolStartedAt = [];
     private readonly List<(string RunId, string CallId)> _activeCalls = [];
+
+    /// <summary>The active calls that spawned a live child run; their carried result indents.</summary>
+    private readonly HashSet<(string RunId, string CallId)> _spawningCalls = [];
     private int _liveChildren;
     private readonly HashSet<string> _alwaysApproved = new(StringComparer.Ordinal);
     private AgentSettings _settings = new();
