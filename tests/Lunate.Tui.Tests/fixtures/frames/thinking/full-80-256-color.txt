@@ -1,0 +1,3 @@
+\x1b[38;5;140m  We need to add validation to TodoList.Add. Null, empty and whitespace-only\x1b[0m
+\x1b[38;5;140m  titles must throw ArgumentException. The check belongs at the top of the\x1b[0m
+\x1b[38;5;140m  method, before the list mutates.\x1b[0m

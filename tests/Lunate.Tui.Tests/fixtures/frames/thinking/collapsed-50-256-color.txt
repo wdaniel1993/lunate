@@ -1,0 +1,1 @@
+\x1b[38;5;140m✦ thought for 12s\x1b[0m

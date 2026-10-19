@@ -41,12 +41,15 @@ public sealed class ThinkingFrameGoldenTests
         new()
         {
             { 120, "truecolor" },
+            { 120, "256-color" },
             { 120, "16-color" },
             { 120, "no-color" },
             { 80, "truecolor" },
+            { 80, "256-color" },
             { 80, "16-color" },
             { 80, "no-color" },
             { 50, "truecolor" },
+            { 50, "256-color" },
             { 50, "16-color" },
             { 50, "no-color" },
         };
@@ -98,6 +101,7 @@ public sealed class ThinkingFrameGoldenTests
         mode switch
         {
             "truecolor" => ColorSystemSupport.TrueColor,
+            "256-color" => ColorSystemSupport.EightBit,
             "16-color" => ColorSystemSupport.Detect,
             _ => ColorSystemSupport.NoColors,
         };
@@ -107,6 +111,7 @@ public sealed class ThinkingFrameGoldenTests
         mode switch
         {
             "truecolor" => ColorSystem.TrueColor,
+            "256-color" => ColorSystem.EightBit,
             "16-color" => ColorSystem.Standard,
             _ => ColorSystem.NoColors,
         };
