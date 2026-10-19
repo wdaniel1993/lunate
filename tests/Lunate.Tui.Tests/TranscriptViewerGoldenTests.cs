@@ -70,14 +70,14 @@ public sealed class TranscriptViewerGoldenTests
         );
     }
 
-    /// <summary>The capability from the detection seam: Detect is the 16-colour bucket.</summary>
+    /// <summary>The capability from the detection seam; Standard is the 16-colour bucket.</summary>
     private static TerminalCapabilities Capability(string mode) =>
         new(
             mode switch
             {
                 "truecolor" => ColorSystemSupport.TrueColor,
                 "256-color" => ColorSystemSupport.EightBit,
-                "16-color" => ColorSystemSupport.Detect,
+                "16-color" => ColorSystemSupport.Standard,
                 _ => ColorSystemSupport.NoColors,
             },
             Unicode: true
@@ -85,13 +85,7 @@ public sealed class TranscriptViewerGoldenTests
 
     /// <summary>The console a session that detected that capability would have.</summary>
     private static ColorSystem ConsoleColor(string mode) =>
-        mode switch
-        {
-            "truecolor" => ColorSystem.TrueColor,
-            "256-color" => ColorSystem.EightBit,
-            "16-color" => ColorSystem.Standard,
-            _ => ColorSystem.NoColors,
-        };
+        ConsoleColorSystem.Resolve(Capability(mode).Color);
 
     private static string Escape(string text) =>
         text.Replace("\\", "\\\\")

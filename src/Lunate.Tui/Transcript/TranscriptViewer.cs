@@ -30,15 +30,7 @@ internal sealed class TranscriptViewer : IDisposable
         _renderer = new TranscriptViewerRenderer(capabilities, homeDirectory);
         // The frame's styled lines are markup; this console turns them into the ANSI the
         // alternate screen gets. The colour system adapts, so a colourless terminal emits none.
-        _ansi = AnsiConsole.Create(
-            new AnsiConsoleSettings
-            {
-                Ansi = AnsiSupport.Yes,
-                ColorSystem = capabilities.Color,
-                Interactive = InteractionSupport.No,
-                Out = new AnsiConsoleOutput(_buffer),
-            }
-        );
+        _ansi = ConsoleColorSystem.Create(capabilities.Color, _buffer);
     }
 
     /// <summary>Whether the viewer owns the terminal right now.</summary>

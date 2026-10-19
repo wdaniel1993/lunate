@@ -200,16 +200,10 @@ internal sealed class LiveArea : IDisposable
     }
 
     private IAnsiConsole Scrollback() =>
-        _scrollback ??= AnsiConsole.Create(
-            new AnsiConsoleSettings
-            {
-                Ansi = _console.IsInteractive ? AnsiSupport.Yes : AnsiSupport.No,
-                ColorSystem = _console.IsInteractive
-                    ? _capabilities.Color
-                    : ColorSystemSupport.NoColors,
-                Interactive = InteractionSupport.No,
-                Out = new AnsiConsoleOutput(new ConsoleTextWriter(_console)),
-            }
+        _scrollback ??= ConsoleColorSystem.Create(
+            _console.IsInteractive ? _capabilities.Color : ColorSystemSupport.NoColors,
+            new ConsoleTextWriter(_console),
+            ansi: _console.IsInteractive
         );
 
     private void Post(LiveAreaInput input)
