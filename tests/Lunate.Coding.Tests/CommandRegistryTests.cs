@@ -32,20 +32,6 @@ public sealed class CommandRegistryTests
                 .Select(descriptor => descriptor.Name)
         );
 
-    [Fact]
-    public void Every_plain_descriptor_completes() =>
-        Assert.Equal(
-            [
-                .. Commands
-                    .Descriptors.Where(descriptor =>
-                        !descriptor.Name.StartsWith(Commands.SkillPrefix, StringComparison.Ordinal)
-                    )
-                    .Select(descriptor => descriptor.Name)
-                    .Order(StringComparer.Ordinal),
-            ],
-            Commands.BuiltIn
-        );
-
     /// <summary>
     /// The names the dispatch switch acts on, read from the source: the case labels of
     /// <c>DispatchCommandAsync</c> plus the skill-invocation prefix branch (which is not a case

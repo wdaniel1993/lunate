@@ -59,19 +59,6 @@ internal static class Commands
         new("/quit", CommandGroup.Quit, "quit"),
     ];
 
-    /// <summary>
-    /// The plain command names in ordinal order: what Tab completes and what
-    /// <c>DispatchCommandAsync</c> switches on. The argument-bearing skill invocation completes
-    /// nothing itself.
-    /// </summary>
-    public static readonly IReadOnlyList<string> BuiltIn =
-    [
-        .. Descriptors
-            .Where(descriptor => !descriptor.Name.StartsWith(SkillPrefix, StringComparison.Ordinal))
-            .Select(descriptor => descriptor.Name)
-            .Order(StringComparer.Ordinal),
-    ];
-
     /// <summary>Whether the first non-space character of the submitted line is <c>/</c>.</summary>
     public static bool IsCommand(string text)
     {
