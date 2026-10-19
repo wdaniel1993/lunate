@@ -92,11 +92,19 @@ internal sealed class ScriptedConsoleIO : IConsoleIO
     /// <summary>Entering the alternate screen (the transcript viewer's surface); recorded like the frames.</summary>
     public IDisposable EnterAlternateScreen()
     {
+        if (FailAlternateScreen)
+        {
+            throw new InvalidOperationException("the terminal is gone");
+        }
+
         AlternateScreenEntries++;
         InAlternateScreen = true;
         Write("\u001b[?1049h");
         return new AlternateScreenScope(this);
     }
+
+    /// <summary>When set, entering the alternate screen throws the way a failing console write does.</summary>
+    public bool FailAlternateScreen { get; set; }
 
     /// <summary>Whether the alternate screen is entered right now.</summary>
     public bool InAlternateScreen { get; private set; }

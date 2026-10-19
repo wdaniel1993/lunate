@@ -200,6 +200,40 @@ public sealed class InteractiveSessionViewerTests
     }
 
     [Fact]
+    public async Task A_failing_screen_entry_resumes_the_live_area()
+    {
+        using var host = new InteractiveSessionHost();
+        host.Console.FailAlternateScreen = true;
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            host.Session.HandleKeyAsync(
+                new KeyEvent(KeyKind.Character, "o", true, false, false),
+                sequence: 1,
+                TestContext.Current.CancellationToken
+            )
+        );
+
+        Assert.False(host.Console.InAlternateScreen);
+
+        // The live area was not left suspended: the typed key paints a frame again.
+        int painted = host.Console.Writes.Count;
+        await host.Session.HandleKeyAsync(
+            new KeyEvent(KeyKind.Character, "x", false, false, false),
+            sequence: 2,
+            TestContext.Current.CancellationToken
+        );
+        host.Advance(100);
+
+        Assert.True(host.Console.Writes.Count > painted);
+        Assert.Contains("> x", host.LastFrame, StringComparison.Ordinal);
+
+        host.Console.Complete();
+        await run;
+    }
+
+    [Fact]
     public async Task The_welcome_footer_names_the_viewer_binding()
     {
         using var host = new InteractiveSessionHost(environment: KeyedEnvironment());

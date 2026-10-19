@@ -844,7 +844,17 @@ internal sealed partial class InteractiveSession : IDisposable
     private void OpenViewer()
     {
         _live.SetSuspended(true);
-        _viewer.Open(new TranscriptModel(_transcript));
+        try
+        {
+            _viewer.Open(new TranscriptModel(_transcript));
+        }
+        catch
+        {
+            // The screen never became the viewer's: resume the live area before the failure
+            // surfaces, so a broken console write does not leave the session suspended.
+            _live.SetSuspended(false);
+            throw;
+        }
     }
 
     /// <summary>One key while the viewer is open; closing it resumes the live area.</summary>

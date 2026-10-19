@@ -217,6 +217,18 @@ public sealed class TranscriptViewerTests
     }
 
     [Fact]
+    public void A_throwing_screen_entry_leaves_the_viewer_closed()
+    {
+        var console = new ThrowingConsoleIO(failEnter: true);
+        using var viewer = Viewer(console);
+
+        Assert.Throws<InvalidOperationException>(() => viewer.Open(LongTranscript()));
+
+        Assert.False(viewer.IsOpen);
+        Assert.False(console.InAlternateScreen);
+    }
+
+    [Fact]
     public void The_frame_paints_at_the_console_size()
     {
         using var console = new FakeConsoleIO(new ConsoleSize(20, 4));
@@ -248,7 +260,7 @@ public sealed class TranscriptViewerTests
         ]);
 
     /// <summary>A console whose frame writes fail: the terminal is gone mid-viewer.</summary>
-    private sealed class ThrowingConsoleIO : IConsoleIO
+    private sealed class ThrowingConsoleIO(bool failEnter = false) : IConsoleIO
     {
         public bool IsInteractive => false;
 
@@ -270,6 +282,11 @@ public sealed class TranscriptViewerTests
         {
             if (text.Contains("\u001b[?1049h", StringComparison.Ordinal))
             {
+                if (failEnter)
+                {
+                    throw new InvalidOperationException("the terminal is gone");
+                }
+
                 InAlternateScreen = true;
                 return;
             }

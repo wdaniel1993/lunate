@@ -57,9 +57,9 @@ internal sealed class TranscriptViewer : IDisposable
         }
 
         _scrolledLines = 0;
-        _screen = _console.EnterAlternateScreen();
         try
         {
+            _screen = _console.EnterAlternateScreen();
             Paint(transcript);
         }
         catch
