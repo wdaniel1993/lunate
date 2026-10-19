@@ -51,7 +51,7 @@
 - [x] 6.1 Snapshot goldens for the block forms (read/bash/edit+diff/cs_*/fallback; running is the
   live area, unchanged) at 120/80/50 × truecolor/256/16/none.
 - [x] 6.2 Snapshot goldens for the viewer at the same breakpoints × colour modes.
-- [ ] 6.3 The production composition test: the real host renders a scripted session with tool
+- [x] 6.3 The production composition test: the real host renders a scripted session with tool
   calls → compact blocks; `Ctrl+O` opens the viewer with full content; close restores.
 - [ ] 6.4 The VHS tape (`features-tools`) driven by the replay client + the GIF and the README
   gallery entry.
