@@ -111,6 +111,9 @@ internal sealed partial class InteractiveSession : IDisposable
     private readonly MarkdownRenderer _markdown;
     private readonly Dictionary<(string RunId, string CallId), string> _toolNames = [];
     private readonly Dictionary<(string RunId, string CallId), string> _toolArgs = [];
+
+    /// <summary>When each in-flight call started, on the injected scheduler's clock.</summary>
+    private readonly Dictionary<(string RunId, string CallId), DateTimeOffset> _toolStartedAt = [];
     private readonly List<(string RunId, string CallId)> _activeCalls = [];
     private int _liveChildren;
     private readonly HashSet<string> _alwaysApproved = new(StringComparer.Ordinal);
