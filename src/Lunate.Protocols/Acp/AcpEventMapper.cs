@@ -22,6 +22,10 @@ internal static class AcpEventMapper
             {
                 Content = new TextContent { Text = content.Text },
             },
+            ReasoningMessageContent content => new AgentThoughtChunk
+            {
+                Content = new TextContent { Text = content.Text },
+            },
             ToolCallStart start => new ToolCallStartUpdate
             {
                 ToolCallId = new ToolCallId(start.CallId),

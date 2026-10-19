@@ -83,7 +83,7 @@ order; commit per group; record any design/code divergence in this file under th
 ## 5. Surfaces
 
 - [x] 5.1 `--json`: the reasoning events serialize with stamped fields (scenario test).
-- [ ] 5.2 ACP: reasoning events → `agent_thought_chunk` updates (mapper test).
+- [x] 5.2 ACP: reasoning events → `agent_thought_chunk` updates (mapper test).
 
 ## 6. Media + verification
 
