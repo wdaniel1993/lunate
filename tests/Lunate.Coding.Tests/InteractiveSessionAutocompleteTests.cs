@@ -303,6 +303,52 @@ public sealed class InteractiveSessionAutocompleteTests
         host.Console.Complete();
     }
 
+    [Fact]
+    public async Task CtrlC_while_the_list_is_open_clears_the_input_and_closes_it()
+    {
+        using InteractiveSessionHost host = await StartAsync();
+
+        await SendAsync(host, "/comp");
+        Assert.NotNull(host.Session.Autocomplete);
+
+        host.Console.SendCtrlC();
+        await host.WaitUntilAsync(() => host.Session.Input.Text.Length == 0);
+
+        Assert.Null(host.Session.Autocomplete);
+
+        host.Console.Complete();
+    }
+
+    [Fact]
+    public async Task CtrlL_while_the_list_is_open_still_opens_the_model_picker()
+    {
+        using InteractiveSessionHost host = await StartAsync();
+
+        await SendAsync(host, "/comp");
+        host.Console.Send(new KeyEvent(KeyKind.Character, "l", true, false, false));
+        await InteractiveSessionCommandTests.WaitForFrameAsync(host, "Select model");
+
+        host.Console.SendEscape();
+        await InteractiveSessionCommandTests.WaitForFrameGoneAsync(host, "Select model");
+
+        host.Console.Complete();
+    }
+
+    [Fact]
+    public async Task CtrlO_while_the_list_is_open_still_opens_the_viewer()
+    {
+        using InteractiveSessionHost host = await StartAsync();
+
+        await SendAsync(host, "/comp");
+        host.Console.SendCtrlO();
+        await host.WaitUntilAsync(() => host.Console.InAlternateScreen);
+
+        host.Console.SendEscape();
+        await host.WaitUntilAsync(() => !host.Console.InAlternateScreen);
+
+        host.Console.Complete();
+    }
+
     private static FakeWorkspaceFiles SrcTree() =>
         new FakeWorkspaceFiles()
             .AddDirectory("src")
