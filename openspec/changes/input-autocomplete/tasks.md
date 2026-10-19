@@ -23,7 +23,7 @@
 - [x] 4.1 Snapshot goldens: box states (empty/filled/multi-line) and list states (command mode, file mode, selected rows, no-match) at 120/80/50 × truecolor/256/16/none.
 - [x] 4.2 Production composition test: the real host renders the box, types `/`, shows the filtered list, arrows, accepts with Tab, submits; and the `@` flow with the index. Deterministic (replay client + the hook gate pattern).
 - [ ] 4.3 VHS tape (`features-input`) driven by the replay client: the box, `/` list, accept, `@` list; GIF + README gallery entry.
-- [ ] 4.4 Startup budget unchanged (registry cheap; index lazy) — verified by the change gate.
+- [x] 4.4 Startup budget unchanged (registry cheap; index lazy) — verified by the change gate (`PathIndexBudgetTests`; no code change).
 
 ## 5. Docs
 
