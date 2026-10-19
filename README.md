@@ -117,6 +117,16 @@ and the change is printed as a diff before it lands. The result names the match 
 
 ![Approving an edit and reading the diff in the live area](docs/media/features/diff.gif)
 
+### Tool calls commit as one line
+
+A finished call collapses to one header line — `✓ read  src/Foo.cs (1-13)`,
+`✗ bash  dotnet test · exit 1 · 12s`, `✓ edit  src/Foo.cs · +3 −0` (ASCII `+`/`x` without Unicode) —
+with a per-tool excerpt and the diff for `edit`/`write` under it. What the excerpt elides is one
+`ctrl+o` away: the full-screen transcript viewer shows every block with its complete output and
+diff, scrolls with the arrows and PageUp/PageDown, and closes on `q` or `Esc`.
+
+![Compact tool blocks and the Ctrl+O transcript viewer](docs/media/features/tools.gif)
+
 ### C# the compiler agrees with
 
 In a C# workspace the model can ask `cs_diagnostics` for compiler errors and warnings — a compile

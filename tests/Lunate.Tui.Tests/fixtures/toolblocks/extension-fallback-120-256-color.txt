@@ -1,0 +1,1 @@
+\x1b[38;5;2m✓\x1b[0m \x1b[38;5;14mhello-tool\x1b[0m\x1b[2m  ~/dev/lunate/src/L…/ToolBlockRenderer.cs\x1b[0m

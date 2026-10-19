@@ -32,7 +32,7 @@ public sealed class OutputExcerptTests
 
         Assert.Equal(17, lines.Count);
         Assert.Equal("line 1", lines[0].Text);
-        Assert.Equal(new OutputExcerptLine("\u2026 2 lines hidden \u2026", true), lines[8]);
+        Assert.Equal(new OutputExcerptLine("\u2026 +2 lines \u00b7 ctrl+o", true), lines[8]);
         Assert.Equal("line 18", lines[^1].Text);
     }
 
@@ -44,8 +44,43 @@ public sealed class OutputExcerptTests
         var lines = OutputExcerpt.Build(output);
 
         Assert.Equal(17, lines.Count);
-        Assert.Equal("\u2026 84 lines hidden \u2026", lines[8].Text);
+        Assert.Equal("\u2026 +84 lines \u00b7 ctrl+o", lines[8].Text);
         Assert.Equal("line 93", lines[9].Text);
+    }
+
+    [Fact]
+    public void The_ascii_marker_uses_ascii_punctuation()
+    {
+        string output = string.Join('\n', Numbers(18));
+
+        var lines = OutputExcerpt.Build(output, ExcerptMode.HeadAndTail, unicode: false);
+
+        Assert.Equal(new OutputExcerptLine("... +2 lines - ctrl+o", true), lines[8]);
+    }
+
+    [Fact]
+    public void Tail_mode_keeps_the_last_five_lines_then_the_marker()
+    {
+        string output = string.Join('\n', Numbers(8));
+
+        var lines = OutputExcerpt.Build(output, ExcerptMode.TailOnly);
+
+        Assert.Equal(6, lines.Count);
+        Assert.Equal("line 4", lines[0].Text);
+        Assert.Equal("line 8", lines[4].Text);
+        Assert.Equal(new OutputExcerptLine("\u2026 +3 lines \u00b7 ctrl+o", true), lines[5]);
+    }
+
+    [Fact]
+    public void Tail_mode_shows_output_within_the_budget_whole()
+    {
+        string output = string.Join('\n', Numbers(5));
+
+        var lines = OutputExcerpt.Build(output, ExcerptMode.TailOnly);
+
+        Assert.Equal(5, lines.Count);
+        Assert.Equal("line 1", lines[0].Text);
+        Assert.DoesNotContain(lines, line => line.IsMarker);
     }
 
     [Fact]
@@ -73,7 +108,7 @@ public sealed class OutputExcerptTests
         var lines = OutputExcerpt.Build(output);
 
         Assert.Equal(17, lines.Count);
-        Assert.Equal("\u2026 3 lines hidden \u2026", lines[8].Text);
+        Assert.Equal("\u2026 +3 lines \u00b7 ctrl+o", lines[8].Text);
     }
 
     private static IEnumerable<string> Numbers(int count) =>

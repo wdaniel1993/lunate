@@ -279,6 +279,42 @@ public sealed class LiveAreaTests
         Assert.DoesNotContain("Select model", console.Writes[^1], StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// A full-screen surface (the transcript viewer) owns the terminal while it is open: the
+    /// live area stops painting and scrollback commits queue, flushing in order on resume.
+    /// </summary>
+    [Fact]
+    public void Suspending_defers_painting_and_scrollback_until_resume()
+    {
+        var scheduler = new TestScheduler();
+        using var console = new FakeConsoleIO(scheduler, new ConsoleSize(40, 10));
+        using var area = new LiveArea(console, scheduler);
+        area.Start();
+
+        area.SetSuspended(true);
+        int painted = console.Writes.Count;
+
+        area.PostKey(Char("x"));
+        area.WriteScrollback(scrollback => scrollback.WriteLine("first commit"));
+        area.WriteScrollback(scrollback => scrollback.WriteLine("second commit"));
+        Advance(scheduler, 100);
+
+        Assert.Equal(painted, console.Writes.Count);
+
+        area.SetSuspended(false);
+
+        string text = Text(console);
+        int first = text.IndexOf("first commit", StringComparison.Ordinal);
+        int second = text.IndexOf("second commit", StringComparison.Ordinal);
+        Assert.True(first >= 0, "the first queued commit must flush on resume");
+        Assert.True(second > first, "the queue must flush in commit order");
+
+        area.PostKey(Char("y"));
+        Advance(scheduler, 33);
+
+        Assert.Contains("> xy", console.Writes[^1], StringComparison.Ordinal);
+    }
+
     private static string Text(FakeConsoleIO console) => string.Concat(console.Writes);
 
     private static KeyEvent Char(string text) => new(KeyKind.Character, text, false, false, false);
@@ -321,5 +357,7 @@ public sealed class LiveAreaTests
         }
 
         public IDisposable EnterRawMode() => _inner.EnterRawMode();
+
+        public IDisposable EnterAlternateScreen() => _inner.EnterAlternateScreen();
     }
 }

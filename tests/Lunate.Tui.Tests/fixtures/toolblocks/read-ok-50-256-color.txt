@@ -1,0 +1,2 @@
+\x1b[38;5;2m✓\x1b[0m \x1b[38;5;14mread\x1b[0m\x1b[2m  src/Lunate.Tui/Too…/ToolBlockRenderer.cs \x1b[0m
+\x1b[2m(6 lines)\x1b[0m

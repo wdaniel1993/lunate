@@ -1,0 +1,1 @@
+\x1b[38;5;2m✓\x1b[0m \x1b[38;5;14mread\x1b[0m\x1b[2m  README.md\x1b[0m

@@ -65,6 +65,10 @@ internal sealed class StyledLine
 
     public bool IsBlank => _spans.All(static span => string.IsNullOrWhiteSpace(span.Text));
 
+    /// <summary>The spans in order; the wrapper re-emits them across line breaks.</summary>
+    internal IEnumerable<(string Text, SpanStyle Style)> Spans =>
+        _spans.Select(static span => (span.Text, span.Style));
+
     public void Add(string text, SpanStyle style)
     {
         if (text.Length > 0)

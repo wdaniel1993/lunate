@@ -1,0 +1,7 @@
+\x1b[38;5;2m✓\x1b[0m \x1b[38;5;14mbash\x1b[0m\x1b[2m  dotnet build · exit 0 · 1m 02s\x1b[0m
+step 26 finished
+step 27 finished
+step 28 finished
+step 29 finished
+step 30 finished
+\x1b[38;5;11m… +25 lines · ctrl+o\x1b[0m

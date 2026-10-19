@@ -39,7 +39,7 @@ public sealed class WelcomeHeaderRendererTests
         "[dim]~/dev/lunate[/]",
         "[dim]C# workspace · Roslyn[/]",
         "[dim]extensions … · MCP … · skills …[/]",
-        "[dim]/help · /model · /skills · /extensions · Esc cancels · /quit[/]",
+        "[dim]/help · /model · /skills · /extensions · ctrl+o transcript · Esc cancels · /quit[/]",
     ];
 
     private static readonly string[] BlockPlain =
@@ -50,7 +50,7 @@ public sealed class WelcomeHeaderRendererTests
         "~/dev/lunate",
         "C# workspace · Roslyn",
         "extensions … · MCP … · skills …",
-        "/help · /model · /skills · /extensions · Esc cancels · /quit",
+        "/help · /model · /skills · /extensions · ctrl+o transcript · Esc cancels · /quit",
     ];
 
     private static readonly string[] SingleLineMarkup =

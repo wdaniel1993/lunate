@@ -1,0 +1,11 @@
++ edit\x1b[2m  src/Counter.cs - +1 -1\x1b[0m
+edited src/Counter.cs lines 4–5 (match: exact)
+\x1b[2mmatch: exact\x1b[0m
+\x1b[2m--- a/src/Counter.cs\x1b[0m
+\x1b[2m+++ b/src/Counter.cs\x1b[0m
+\x1b[2m@@ -2,4 +2,4 @@\x1b[0m
+\x1b[2m public void Increment()\x1b[0m
+\x1b[2m {\x1b[0m
+-    _count = _count + 1;
++    _count++;
+\x1b[2m }\x1b[0m

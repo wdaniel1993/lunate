@@ -1,0 +1,1 @@
++ read\x1b[2m  src/Lunate.Tui/T.../ToolBlockRenderer.cs (6 lines)\x1b[0m

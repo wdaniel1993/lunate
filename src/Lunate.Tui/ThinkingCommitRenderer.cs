@@ -23,12 +23,8 @@ public sealed class ThinkingCommitRenderer
         ColorSystemSupport color = ColorSystemSupport.TrueColor
     )
     {
-        ArgumentNullException.ThrowIfNull(commit);
-        IReadOnlyList<StyledLine> lines = commit.Full
-            ? FullLines(commit.Text, width, color)
-            : [Summary(commit.ElapsedSeconds, color)];
         var builder = new StringBuilder();
-        foreach (StyledLine line in lines)
+        foreach (StyledLine line in Lines(commit, width, color))
         {
             // Blank lines (an empty full text, leading or trailing hard breaks) commit nothing.
             if (!line.IsBlank)
@@ -38,6 +34,22 @@ public sealed class ThinkingCommitRenderer
         }
 
         return new Markup(builder.ToString());
+    }
+
+    /// <summary>
+    /// The commit's styled lines: the collapsed summary, or the full reasoning text wrapped to the
+    /// width with its indent. The transcript viewer renders from here with the commit forced full.
+    /// </summary>
+    internal IReadOnlyList<StyledLine> Lines(
+        ThinkingCommitModel commit,
+        int width,
+        ColorSystemSupport color = ColorSystemSupport.TrueColor
+    )
+    {
+        ArgumentNullException.ThrowIfNull(commit);
+        return commit.Full
+            ? FullLines(commit.Text, width, color)
+            : [Summary(commit.ElapsedSeconds, color)];
     }
 
     private static StyledLine Summary(int elapsedSeconds, ColorSystemSupport color)

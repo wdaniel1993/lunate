@@ -5,27 +5,36 @@ using Spectre.Console.Rendering;
 namespace Lunate.Tui;
 
 /// <summary>
-/// Renders a tool call as a borderless scrollback block: a header with tool name, argument summary
-/// and status, followed by a bounded output excerpt and, when present, a diff panel. Every
-/// user-derived string goes through markup escaping before assembly.
+/// Renders a tool call as a borderless scrollback block: a header with a status glyph, the tool
+/// name, its compact summary and meta, followed by a bounded output excerpt and, when present, a
+/// diff panel. Every user-derived string goes through markup escaping before assembly.
 /// </summary>
 public sealed class ToolBlockRenderer
 {
     internal static readonly SpanStyle StatusOk = new(Color: "green");
     internal static readonly SpanStyle StatusError = new(Color: "red");
     internal static readonly SpanStyle StatusRunning = SpanStyle.Dim;
+    internal static readonly SpanStyle Accent = new(Color: "cyan");
+    internal static readonly SpanStyle Muted = SpanStyle.Dim;
+    internal static readonly SpanStyle Warning = new(Color: "yellow");
+
+    private readonly bool _unicode;
+    private readonly string _home;
+
+    /// <summary>The Unicode defaults; the interactive session passes its detected capabilities.</summary>
+    public ToolBlockRenderer()
+        : this(new TerminalCapabilities(ColorSystemSupport.Detect, Unicode: true)) { }
+
+    internal ToolBlockRenderer(TerminalCapabilities capabilities, string? homeDirectory = null)
+    {
+        ArgumentNullException.ThrowIfNull(capabilities);
+        _unicode = capabilities.Unicode;
+        _home = homeDirectory ?? PathText.Home();
+    }
 
     public IRenderable Render(ToolBlockModel block)
     {
-        ArgumentNullException.ThrowIfNull(block);
-
-        var lines = new List<StyledLine> { Header(block) };
-        AppendOutput(lines, block.Output);
-        if (block.Diff is not null)
-        {
-            DiffRenderer.Append(lines, block.Diff);
-        }
-
+        var lines = Lines(block, fullOutput: false);
         var builder = new StringBuilder();
         foreach (var line in lines)
         {
@@ -35,41 +44,89 @@ public sealed class ToolBlockRenderer
         return new Markup(builder.ToString());
     }
 
-    private static StyledLine Header(ToolBlockModel block)
+    /// <summary>
+    /// The block's styled lines: the header, then the output and the diff panel. The scrollback
+    /// excerpts the output (<paramref name="fullOutput"/> is <c>false</c>); the transcript viewer
+    /// shows every line — a <c>read</c> block's output included, which the scrollback hides.
+    /// </summary>
+    internal IReadOnlyList<StyledLine> Lines(ToolBlockModel block, bool fullOutput)
     {
-        var line = new StyledLine();
-        line.Add("tool", SpanStyle.Plain);
-        line.Add(" ", SpanStyle.Plain);
-        line.Add(block.ToolName, SpanStyle.Plain);
-        string summary = ToolArgsSummary.Summarize(block.ToolName, block.ArgsSummary);
-        if (summary.Length > 0)
+        ArgumentNullException.ThrowIfNull(block);
+
+        var lines = new List<StyledLine> { Header(block) };
+        if (fullOutput)
         {
-            line.Add(" ", SpanStyle.Plain);
-            line.Add(summary, SpanStyle.Plain);
+            AppendOutput(lines, block.Output, ExcerptMode.Full, block.ChildResult);
+        }
+        else if (ShowsOutput(block))
+        {
+            AppendOutput(
+                lines,
+                block.Output,
+                block.ToolName == "bash" ? ExcerptMode.TailOnly : ExcerptMode.HeadAndTail,
+                block.ChildResult
+            );
         }
 
+        if (block.Diff is not null)
+        {
+            DiffRenderer.Append(lines, block.Diff);
+        }
+
+        return lines;
+    }
+
+    private StyledLine Header(ToolBlockModel block)
+    {
+        var line = new StyledLine();
+        line.Add(Glyph(block.Status), StatusStyle(block.Status));
         line.Add(" ", SpanStyle.Plain);
-        line.Add(StatusText(block.Status), StatusStyle(block.Status));
+        line.Add(block.ToolName, Accent);
+        // A failed call's output is an error message, not file content: no line count from it.
+        string? resultOutput = block.Status == ToolBlockStatus.Error ? null : block.Output;
+        string summary = ToolArgsSummary.Summarize(
+            block.ToolName,
+            block.ArgsSummary,
+            resultOutput,
+            _home,
+            unicode: _unicode
+        );
+        if (summary.Length > 0)
+        {
+            line.Add("  " + summary, Muted);
+        }
+
+        if (ToolBlockMeta.Build(block, _unicode) is { Length: > 0 } meta)
+        {
+            line.Add((_unicode ? " \u00b7 " : " - ") + meta, Muted);
+        }
+
         return line;
     }
 
-    private static void AppendOutput(List<StyledLine> lines, string? output)
+    /// <summary>A read block identifies what was read; a failed call keeps its message visible.</summary>
+    private static bool ShowsOutput(ToolBlockModel block) =>
+        block.ToolName != "read" || block.Status == ToolBlockStatus.Error;
+
+    private void AppendOutput(List<StyledLine> lines, string? output, ExcerptMode mode, bool indent)
     {
-        foreach (var excerpt in OutputExcerpt.Build(output))
+        foreach (var excerpt in OutputExcerpt.Build(output, mode, _unicode))
         {
             var line = new StyledLine();
-            line.Add(excerpt.Text, excerpt.IsMarker ? SpanStyle.Dim : SpanStyle.Plain);
+            line.Add(
+                indent ? "  " + excerpt.Text : excerpt.Text,
+                excerpt.IsMarker ? Warning : SpanStyle.Plain
+            );
             lines.Add(line);
         }
     }
 
-    private static string StatusText(ToolBlockStatus status) =>
+    private string Glyph(ToolBlockStatus status) =>
         status switch
         {
-            ToolBlockStatus.Running => "running\u2026",
-            ToolBlockStatus.Ok => "ok",
-            ToolBlockStatus.Error => "failed",
-            _ => "unknown",
+            ToolBlockStatus.Ok => _unicode ? "\u2713" : "+",
+            ToolBlockStatus.Error => _unicode ? "\u2717" : "x",
+            _ => _unicode ? "\u2026" : "...",
         };
 
     private static SpanStyle StatusStyle(ToolBlockStatus status) =>

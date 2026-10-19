@@ -81,6 +81,26 @@ internal static class DiffRenderer
         }
     }
 
+    /// <summary>The unified diff's changed-line counts; file headers and hunk headers do not count.</summary>
+    public static (int Added, int Removed) ChangeCounts(ToolDiffInfo diff)
+    {
+        var added = 0;
+        var removed = 0;
+        foreach (var line in Parse(diff))
+        {
+            if (line.Kind == DiffLineKind.Insertion)
+            {
+                added++;
+            }
+            else if (line.Kind == DiffLineKind.Deletion)
+            {
+                removed++;
+            }
+        }
+
+        return (added, removed);
+    }
+
     private static SpanStyle StyleFor(DiffLineKind kind, string tier) =>
         kind switch
         {

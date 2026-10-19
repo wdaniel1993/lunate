@@ -23,6 +23,13 @@ internal sealed partial class InteractiveSession
             case RunStarted when child:
                 _liveChildren++;
                 _live.SetSubagentRunning(true);
+                // The child runs inside the spawner's call: the active call is the spawner, and
+                // its carried result later renders as one indented group.
+                if (_activeCalls.Count > 0)
+                {
+                    _spawningCalls.Add(_activeCalls[^1]);
+                }
+
                 break;
             case RunStarted:
                 _live.SetNotice(null);
@@ -51,6 +58,7 @@ internal sealed partial class InteractiveSession
                 var startKey = (start.RunId, start.CallId);
                 _toolNames[startKey] = start.ToolName;
                 _toolArgs[startKey] = string.Empty;
+                _toolStartedAt[startKey] = _options.Scheduler.Now;
                 if (!child && start.ParentToolCallId is null)
                 {
                     _activeCalls.Add(startKey);
@@ -64,13 +72,17 @@ internal sealed partial class InteractiveSession
             case ToolCallResult result when child:
                 _toolNames.Remove((result.RunId, result.CallId));
                 _toolArgs.Remove((result.RunId, result.CallId));
+                _toolStartedAt.Remove((result.RunId, result.CallId));
                 break;
             case ToolCallResult result:
                 var resultKey = (result.RunId, result.CallId);
+                TimeSpan? duration = _toolStartedAt.Remove(resultKey, out DateTimeOffset startedAt)
+                    ? _options.Scheduler.Now - startedAt
+                    : null;
                 string? failedTool = result.IsError
                     ? _toolNames.GetValueOrDefault(resultKey)
                     : null;
-                CommitToolBlock(result);
+                CommitToolBlock(result, duration);
                 if (result.ParentToolCallId is null && _activeCalls.Remove(resultKey))
                 {
                     _live.SetTool(
@@ -173,6 +185,7 @@ internal sealed partial class InteractiveSession
         int elapsedSeconds = (int)
             Math.Floor(Math.Max(0, (_options.Scheduler.Now - _thinkingStartedAt).TotalSeconds));
         var commit = new ThinkingCommitModel(_thinking, elapsedSeconds, _settings.ThinkingFull);
+        _transcript.Add(new TranscriptThinkingEntry(commit));
         _live.WriteScrollback(console =>
             console.Write(
                 _thinkingCommit.Render(commit, _console.Size.Columns, _capabilities.Color)
@@ -187,10 +200,11 @@ internal sealed partial class InteractiveSession
             return;
         }
 
+        _transcript.Add(new TranscriptAssistantEntry(markdown));
         _live.WriteScrollback(console => console.Write(_markdown.Render(markdown)));
     }
 
-    private void CommitToolBlock(ToolCallResult result)
+    private void CommitToolBlock(ToolCallResult result, TimeSpan? duration)
     {
         if (result.ParentToolCallId is not null)
         {
@@ -205,8 +219,12 @@ internal sealed partial class InteractiveSession
             args,
             result.IsError ? ToolBlockStatus.Error : ToolBlockStatus.Ok,
             result.Output,
-            DiffFor(result.Details)
+            DiffFor(result.Details),
+            result.Details is BashDetails bash ? bash.ExitCode : null,
+            duration,
+            ChildResult: _spawningCalls.Remove(key)
         );
+        _transcript.Add(new TranscriptToolEntry(block));
         _live.WriteScrollback(console => console.Write(_toolBlocks.Render(block)));
         RenderExtensionBlock(name, result);
     }

@@ -10,6 +10,7 @@ Lunate.Tui.ConsoleSize.Rows.get -> int
 Lunate.Tui.ConsoleSize.Rows.init -> void
 Lunate.Tui.ConsoleSupport
 Lunate.Tui.IConsoleIO
+Lunate.Tui.IConsoleIO.EnterAlternateScreen() -> System.IDisposable!
 Lunate.Tui.IConsoleIO.EnterRawMode() -> System.IDisposable!
 Lunate.Tui.IConsoleIO.IsInteractive.get -> bool
 Lunate.Tui.IConsoleIO.ReadKeysAsync(System.Threading.CancellationToken cancellationToken) -> System.Collections.Generic.IAsyncEnumerable<Lunate.Tui.KeyEvent!>!
@@ -112,15 +113,21 @@ Lunate.Tui.ToolBlockRenderer.Render(Lunate.Tui.ToolBlockModel! block) -> Spectre
 Lunate.Tui.ToolBlockRenderer.ToolBlockRenderer() -> void
 Lunate.Tui.ToolBlockModel.ArgsSummary.get -> string!
 Lunate.Tui.ToolBlockModel.ArgsSummary.init -> void
-Lunate.Tui.ToolBlockModel.Deconstruct(out string! ToolName, out string! ArgsSummary, out Lunate.Tui.ToolBlockStatus Status, out string? Output, out Lunate.Tui.ToolDiffInfo? Diff) -> void
+Lunate.Tui.ToolBlockModel.ChildResult.get -> bool
+Lunate.Tui.ToolBlockModel.ChildResult.init -> void
+Lunate.Tui.ToolBlockModel.Deconstruct(out string! ToolName, out string! ArgsSummary, out Lunate.Tui.ToolBlockStatus Status, out string? Output, out Lunate.Tui.ToolDiffInfo? Diff, out int? ExitCode, out System.TimeSpan? Duration, out bool ChildResult) -> void
 Lunate.Tui.ToolBlockModel.Diff.get -> Lunate.Tui.ToolDiffInfo?
 Lunate.Tui.ToolBlockModel.Diff.init -> void
+Lunate.Tui.ToolBlockModel.Duration.get -> System.TimeSpan?
+Lunate.Tui.ToolBlockModel.Duration.init -> void
+Lunate.Tui.ToolBlockModel.ExitCode.get -> int?
+Lunate.Tui.ToolBlockModel.ExitCode.init -> void
 Lunate.Tui.ToolBlockModel.Equals(Lunate.Tui.ToolBlockModel? other) -> bool
 Lunate.Tui.ToolBlockModel.Output.get -> string?
 Lunate.Tui.ToolBlockModel.Output.init -> void
 Lunate.Tui.ToolBlockModel.Status.get -> Lunate.Tui.ToolBlockStatus
 Lunate.Tui.ToolBlockModel.Status.init -> void
-Lunate.Tui.ToolBlockModel.ToolBlockModel(string! ToolName, string! ArgsSummary, Lunate.Tui.ToolBlockStatus Status, string? Output, Lunate.Tui.ToolDiffInfo? Diff) -> void
+Lunate.Tui.ToolBlockModel.ToolBlockModel(string! ToolName, string! ArgsSummary, Lunate.Tui.ToolBlockStatus Status, string? Output, Lunate.Tui.ToolDiffInfo? Diff, int? ExitCode = null, System.TimeSpan? Duration = null, bool ChildResult = false) -> void
 Lunate.Tui.ToolBlockModel.ToolName.get -> string!
 Lunate.Tui.ToolBlockModel.ToolName.init -> void
 Lunate.Tui.ToolBlockStatus
@@ -198,6 +205,7 @@ Lunate.Tui.RoutedKey.HistoryNext = 6 -> Lunate.Tui.RoutedKey
 Lunate.Tui.RoutedKey.HistoryPrevious = 5 -> Lunate.Tui.RoutedKey
 Lunate.Tui.RoutedKey.ModelPicker = 4 -> Lunate.Tui.RoutedKey
 Lunate.Tui.RoutedKey.Submit = 1 -> Lunate.Tui.RoutedKey
+Lunate.Tui.RoutedKey.TranscriptViewer = 8 -> Lunate.Tui.RoutedKey
 Lunate.Tui.SelectListModel
 Lunate.Tui.SelectListModel.<Clone>$() -> Lunate.Tui.SelectListModel!
 Lunate.Tui.SelectListModel.Deconstruct(out string! Title, out System.Collections.Generic.IReadOnlyList<string!>! Items, out int Selected) -> void
@@ -306,3 +314,82 @@ override Lunate.Tui.ThinkingCommitModel.GetHashCode() -> int
 override Lunate.Tui.ThinkingCommitModel.ToString() -> string!
 static Lunate.Tui.ThinkingCommitModel.operator !=(Lunate.Tui.ThinkingCommitModel? left, Lunate.Tui.ThinkingCommitModel? right) -> bool
 static Lunate.Tui.ThinkingCommitModel.operator ==(Lunate.Tui.ThinkingCommitModel? left, Lunate.Tui.ThinkingCommitModel? right) -> bool
+Lunate.Tui.TranscriptAssistantEntry
+Lunate.Tui.TranscriptAssistantEntry.Deconstruct(out string! Markdown) -> void
+Lunate.Tui.TranscriptAssistantEntry.Equals(Lunate.Tui.TranscriptAssistantEntry? other) -> bool
+Lunate.Tui.TranscriptAssistantEntry.Markdown.get -> string!
+Lunate.Tui.TranscriptAssistantEntry.Markdown.init -> void
+Lunate.Tui.TranscriptAssistantEntry.TranscriptAssistantEntry(string! Markdown) -> void
+Lunate.Tui.TranscriptEntry
+Lunate.Tui.TranscriptEntry.TranscriptEntry() -> void
+Lunate.Tui.TranscriptEntry.TranscriptEntry(Lunate.Tui.TranscriptEntry! original) -> void
+Lunate.Tui.TranscriptModel
+Lunate.Tui.TranscriptModel.<Clone>$() -> Lunate.Tui.TranscriptModel!
+Lunate.Tui.TranscriptModel.Deconstruct(out System.Collections.Generic.IReadOnlyList<Lunate.Tui.TranscriptEntry!>! Entries) -> void
+Lunate.Tui.TranscriptModel.Entries.get -> System.Collections.Generic.IReadOnlyList<Lunate.Tui.TranscriptEntry!>!
+Lunate.Tui.TranscriptModel.Entries.init -> void
+Lunate.Tui.TranscriptModel.Equals(Lunate.Tui.TranscriptModel? other) -> bool
+Lunate.Tui.TranscriptModel.TranscriptModel(System.Collections.Generic.IReadOnlyList<Lunate.Tui.TranscriptEntry!>! Entries) -> void
+Lunate.Tui.TranscriptThinkingEntry
+Lunate.Tui.TranscriptThinkingEntry.Commit.get -> Lunate.Tui.ThinkingCommitModel!
+Lunate.Tui.TranscriptThinkingEntry.Commit.init -> void
+Lunate.Tui.TranscriptThinkingEntry.Deconstruct(out Lunate.Tui.ThinkingCommitModel! Commit) -> void
+Lunate.Tui.TranscriptThinkingEntry.Equals(Lunate.Tui.TranscriptThinkingEntry? other) -> bool
+Lunate.Tui.TranscriptThinkingEntry.TranscriptThinkingEntry(Lunate.Tui.ThinkingCommitModel! Commit) -> void
+Lunate.Tui.TranscriptToolEntry
+Lunate.Tui.TranscriptToolEntry.Block.get -> Lunate.Tui.ToolBlockModel!
+Lunate.Tui.TranscriptToolEntry.Block.init -> void
+Lunate.Tui.TranscriptToolEntry.Deconstruct(out Lunate.Tui.ToolBlockModel! Block) -> void
+Lunate.Tui.TranscriptToolEntry.Equals(Lunate.Tui.TranscriptToolEntry? other) -> bool
+Lunate.Tui.TranscriptToolEntry.TranscriptToolEntry(Lunate.Tui.ToolBlockModel! Block) -> void
+Lunate.Tui.TranscriptUserEntry
+Lunate.Tui.TranscriptUserEntry.Deconstruct(out string! Text) -> void
+Lunate.Tui.TranscriptUserEntry.Equals(Lunate.Tui.TranscriptUserEntry? other) -> bool
+Lunate.Tui.TranscriptUserEntry.Text.get -> string!
+Lunate.Tui.TranscriptUserEntry.Text.init -> void
+Lunate.Tui.TranscriptUserEntry.TranscriptUserEntry(string! Text) -> void
+Lunate.Tui.TranscriptViewerRenderer
+Lunate.Tui.TranscriptViewerRenderer.Render(Lunate.Tui.TranscriptModel! transcript, Lunate.Tui.ConsoleSize size, int scrolledLines = 0) -> Spectre.Console.Rendering.IRenderable!
+Lunate.Tui.TranscriptViewerRenderer.TranscriptViewerRenderer() -> void
+abstract Lunate.Tui.TranscriptEntry.<Clone>$() -> Lunate.Tui.TranscriptEntry!
+override Lunate.Tui.TranscriptAssistantEntry.<Clone>$() -> Lunate.Tui.TranscriptAssistantEntry!
+override Lunate.Tui.TranscriptAssistantEntry.Equals(object? obj) -> bool
+override Lunate.Tui.TranscriptAssistantEntry.GetHashCode() -> int
+override Lunate.Tui.TranscriptAssistantEntry.ToString() -> string!
+override Lunate.Tui.TranscriptEntry.Equals(object? obj) -> bool
+override Lunate.Tui.TranscriptEntry.GetHashCode() -> int
+override Lunate.Tui.TranscriptEntry.ToString() -> string!
+override Lunate.Tui.TranscriptModel.Equals(object? obj) -> bool
+override Lunate.Tui.TranscriptModel.GetHashCode() -> int
+override Lunate.Tui.TranscriptModel.ToString() -> string!
+override Lunate.Tui.TranscriptThinkingEntry.<Clone>$() -> Lunate.Tui.TranscriptThinkingEntry!
+override Lunate.Tui.TranscriptThinkingEntry.Equals(object? obj) -> bool
+override Lunate.Tui.TranscriptThinkingEntry.GetHashCode() -> int
+override Lunate.Tui.TranscriptThinkingEntry.ToString() -> string!
+override Lunate.Tui.TranscriptToolEntry.<Clone>$() -> Lunate.Tui.TranscriptToolEntry!
+override Lunate.Tui.TranscriptToolEntry.Equals(object? obj) -> bool
+override Lunate.Tui.TranscriptToolEntry.GetHashCode() -> int
+override Lunate.Tui.TranscriptToolEntry.ToString() -> string!
+override Lunate.Tui.TranscriptUserEntry.<Clone>$() -> Lunate.Tui.TranscriptUserEntry!
+override Lunate.Tui.TranscriptUserEntry.Equals(object? obj) -> bool
+override Lunate.Tui.TranscriptUserEntry.GetHashCode() -> int
+override Lunate.Tui.TranscriptUserEntry.ToString() -> string!
+override sealed Lunate.Tui.TranscriptAssistantEntry.Equals(Lunate.Tui.TranscriptEntry? other) -> bool
+override sealed Lunate.Tui.TranscriptThinkingEntry.Equals(Lunate.Tui.TranscriptEntry? other) -> bool
+override sealed Lunate.Tui.TranscriptToolEntry.Equals(Lunate.Tui.TranscriptEntry? other) -> bool
+override sealed Lunate.Tui.TranscriptUserEntry.Equals(Lunate.Tui.TranscriptEntry? other) -> bool
+static Lunate.Tui.TranscriptAssistantEntry.operator !=(Lunate.Tui.TranscriptAssistantEntry? left, Lunate.Tui.TranscriptAssistantEntry? right) -> bool
+static Lunate.Tui.TranscriptAssistantEntry.operator ==(Lunate.Tui.TranscriptAssistantEntry? left, Lunate.Tui.TranscriptAssistantEntry? right) -> bool
+static Lunate.Tui.TranscriptEntry.operator !=(Lunate.Tui.TranscriptEntry? left, Lunate.Tui.TranscriptEntry? right) -> bool
+static Lunate.Tui.TranscriptEntry.operator ==(Lunate.Tui.TranscriptEntry? left, Lunate.Tui.TranscriptEntry? right) -> bool
+static Lunate.Tui.TranscriptModel.operator !=(Lunate.Tui.TranscriptModel? left, Lunate.Tui.TranscriptModel? right) -> bool
+static Lunate.Tui.TranscriptModel.operator ==(Lunate.Tui.TranscriptModel? left, Lunate.Tui.TranscriptModel? right) -> bool
+static Lunate.Tui.TranscriptThinkingEntry.operator !=(Lunate.Tui.TranscriptThinkingEntry? left, Lunate.Tui.TranscriptThinkingEntry? right) -> bool
+static Lunate.Tui.TranscriptThinkingEntry.operator ==(Lunate.Tui.TranscriptThinkingEntry? left, Lunate.Tui.TranscriptThinkingEntry? right) -> bool
+static Lunate.Tui.TranscriptToolEntry.operator !=(Lunate.Tui.TranscriptToolEntry? left, Lunate.Tui.TranscriptToolEntry? right) -> bool
+static Lunate.Tui.TranscriptToolEntry.operator ==(Lunate.Tui.TranscriptToolEntry? left, Lunate.Tui.TranscriptToolEntry? right) -> bool
+static Lunate.Tui.TranscriptUserEntry.operator !=(Lunate.Tui.TranscriptUserEntry? left, Lunate.Tui.TranscriptUserEntry? right) -> bool
+static Lunate.Tui.TranscriptUserEntry.operator ==(Lunate.Tui.TranscriptUserEntry? left, Lunate.Tui.TranscriptUserEntry? right) -> bool
+virtual Lunate.Tui.TranscriptEntry.EqualityContract.get -> System.Type!
+virtual Lunate.Tui.TranscriptEntry.Equals(Lunate.Tui.TranscriptEntry? other) -> bool
+virtual Lunate.Tui.TranscriptEntry.PrintMembers(System.Text.StringBuilder! builder) -> bool

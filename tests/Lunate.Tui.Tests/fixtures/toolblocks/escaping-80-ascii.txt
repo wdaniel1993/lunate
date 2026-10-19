@@ -1,0 +1,10 @@
++ edit\x1b[2m  [red]src[/].cs - +1 -1\x1b[0m
+[dim]not markup[/]
+[bold]neither[/]
+[[nested]]
+match: [bold]exact[/]
+\x1b[2m--- a/[red]src[/].cs\x1b[0m
+\x1b[2m+++ b/[red]src[/].cs\x1b[0m
+\x1b[2m@@ -1 +1 @@\x1b[0m
+-keep [dim]this[/]
++keep [bold]that[/]

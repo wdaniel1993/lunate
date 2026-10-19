@@ -3,28 +3,27 @@ lunate  v0.1.0
 gpt-4o-mini · 128,000 ctx
 <workspace>
 extensions … · MCP … · skills …
-/help · /model · /skills · /extensions · Esc cancels · /quit
+/help · /model · /skills · /extensions · ctrl+o transcript · Esc cancels · /quit
 extensions 0 · MCP 0 · skills 0
 para one
 para two
-tool read a.txt ok
-     1|alpha beta
+✓ read  a.txt (1 line)
 » steer mid-run
-tool write note.txt ok
+✓ write  note.txt · +1 −0
 wrote 1 lines to note.txt (created)
 match: created
 --- a/note.txt
 +++ b/note.txt
 @@ -0,0 +1,1 @@
 +one
-tool write b.txt ok
+✓ write  b.txt · +1 −0
 wrote 1 lines to b.txt (created)
 match: created
 --- a/b.txt
 +++ b/b.txt
 @@ -0,0 +1,1 @@
 +two
-tool write c.txt ok
+✓ write  c.txt · +1 −0
 wrote 1 lines to c.txt (created)
 match: created
 --- a/c.txt
@@ -37,4 +36,4 @@ lunate  v0.1.0
 gpt-4o · 128,000 ctx
 <workspace>
 extensions 0 · MCP 0 · skills 0
-/help · /model · /skills · /extensions · Esc cancels · /quit
+/help · /model · /skills · /extensions · ctrl+o transcript · Esc cancels · /quit

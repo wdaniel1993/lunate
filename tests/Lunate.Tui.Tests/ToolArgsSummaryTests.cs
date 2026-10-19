@@ -80,14 +80,55 @@ public sealed class ToolArgsSummaryTests
     }
 
     [Fact]
-    public void Huge_strings_do_not_throw()
+    public void Huge_paths_shorten_to_the_budget()
     {
         string huge = new('p', 100_000);
 
         string summary = ToolArgsSummary.Summarize("read", "{\"path\":\"" + huge + "\"}");
 
-        Assert.Equal(huge, summary);
+        Assert.Equal(PathText.HeaderBudget, summary.Length);
+        Assert.StartsWith("\u2026", summary, StringComparison.Ordinal);
+        Assert.EndsWith(
+            new string('p', PathText.HeaderBudget - 1),
+            summary,
+            StringComparison.Ordinal
+        );
     }
+
+    [Fact]
+    public void Read_paths_under_home_show_a_tilde() =>
+        Assert.Equal(
+            "~/dev/notes/a.cs",
+            ToolArgsSummary.Summarize(
+                "read",
+                """{"path":"/Users/daniel/dev/notes/a.cs"}""",
+                home: "/Users/daniel"
+            )
+        );
+
+    [Fact]
+    public void Long_read_paths_elide_in_the_middle_keeping_the_basename_and_the_range() =>
+        Assert.Equal(
+            "~/dev/l\u2026/Session.cs (1-13)",
+            ToolArgsSummary.Summarize(
+                "read",
+                """{"path":"/Users/daniel/dev/lunate/src/Lunate.Tui/Session.cs","offset":1,"limit":13}""",
+                home: "/Users/daniel",
+                pathBudget: 19
+            )
+        );
+
+    [Fact]
+    public void Fallback_values_that_look_like_paths_shorten_in_the_summary() =>
+        Assert.Equal(
+            "~/dev/lunate/s\u2026/Thing.cs",
+            ToolArgsSummary.Summarize(
+                "myserver__read_file",
+                """{"path":"/Users/daniel/dev/lunate/src/very/deep/nested/Thing.cs"}""",
+                home: "/Users/daniel",
+                pathBudget: 24
+            )
+        );
 
     [Fact]
     public void Missing_known_field_falls_through_to_the_generic_summary()
@@ -97,4 +138,77 @@ public sealed class ToolArgsSummaryTests
             ToolArgsSummary.Summarize("read", """{"other":"fallback.cs"}""")
         );
     }
+
+    [Theory]
+    [InlineData(1, 13, "src/a.cs (1-13)")]
+    [InlineData(2, 3, "src/a.cs (2-4)")]
+    public void Read_offset_and_limit_become_the_line_range(int offset, int limit, string expected)
+    {
+        string args = $$"""{"path":"src/a.cs","offset":{{offset}},"limit":{{limit}}}""";
+
+        Assert.Equal(expected, ToolArgsSummary.Summarize("read", args));
+    }
+
+    [Fact]
+    public void Read_offset_alone_ends_the_range_at_the_result_line_count()
+    {
+        string output = string.Join('\n', Numbers(4));
+
+        Assert.Equal(
+            "src/a.cs (2-5)",
+            ToolArgsSummary.Summarize("read", """{"path":"src/a.cs","offset":2}""", output)
+        );
+    }
+
+    [Fact]
+    public void Read_without_a_range_reports_the_result_line_count()
+    {
+        string output = string.Join('\n', Numbers(13));
+
+        Assert.Equal(
+            "src/a.cs (13 lines)",
+            ToolArgsSummary.Summarize("read", """{"path":"src/a.cs"}""", output)
+        );
+    }
+
+    [Fact]
+    public void Read_single_line_result_counts_as_one_line()
+    {
+        Assert.Equal(
+            "src/a.cs (1 line)",
+            ToolArgsSummary.Summarize("read", """{"path":"src/a.cs"}""", "one")
+        );
+    }
+
+    [Fact]
+    public void Read_line_count_ignores_the_continue_hint()
+    {
+        string output = "     1|a\n     2|b\n[lines 1\u20132 of 10, use offset to continue]\n";
+
+        Assert.Equal(
+            "src/a.cs (2 lines)",
+            ToolArgsSummary.Summarize("read", """{"path":"src/a.cs"}""", output)
+        );
+    }
+
+    [Fact]
+    public void Read_without_a_range_or_output_keeps_the_path()
+    {
+        Assert.Equal(
+            "src/a.cs",
+            ToolArgsSummary.Summarize("read", """{"path":"src/a.cs"}""", output: null)
+        );
+    }
+
+    [Theory]
+    [InlineData("myserver__search", """{"query":"find the bug","limit":3}""", "find the bug")]
+    [InlineData("linear__create_issue", """{"title":"Fix the flaky test"}""", "Fix the flaky test")]
+    public void Extension_and_mcp_tools_fall_back_to_the_first_string_value(
+        string tool,
+        string args,
+        string expected
+    ) => Assert.Equal(expected, ToolArgsSummary.Summarize(tool, args));
+
+    private static IEnumerable<string> Numbers(int count) =>
+        Enumerable.Range(1, count).Select(number => $"line {number}");
 }

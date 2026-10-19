@@ -22,6 +22,8 @@ internal sealed class LiveArea : IDisposable
     private readonly object _paintGate = new();
     private readonly bool _readKeys;
     private IAnsiConsole? _scrollback;
+    private readonly Queue<Action<IAnsiConsole>> _deferredScrollback = new();
+    private bool _suspended;
     private bool _started;
     private bool _disposed;
 
@@ -65,6 +67,11 @@ internal sealed class LiveArea : IDisposable
                 {
                     lock (_paintGate)
                     {
+                        if (_suspended)
+                        {
+                            return;
+                        }
+
                         _writer.Paint(LiveAreaRenderer.Render(state));
                     }
                 })
@@ -112,15 +119,49 @@ internal sealed class LiveArea : IDisposable
     /// <summary>
     /// Writes finished scrollback through the one writer: the live frame is cleared first and the
     /// next sample tick repaints it from the current state, so cursor math never desynchronizes.
+    /// While suspended the commit queues; <see cref="SetSuspended"/> flushes the queue on resume.
     /// </summary>
     public void WriteScrollback(Action<IAnsiConsole> write)
     {
         ArgumentNullException.ThrowIfNull(write);
         lock (_paintGate)
         {
-            _writer.Clear();
-            write(Scrollback());
+            if (_suspended)
+            {
+                _deferredScrollback.Enqueue(write);
+                return;
+            }
+
+            WriteScrollbackNow(write);
         }
+    }
+
+    /// <summary>
+    /// Suspends painting while a full-screen surface (the transcript viewer) owns the terminal;
+    /// resuming flushes the scrollback queued meanwhile, in order, and painting continues on the
+    /// next sample tick.
+    /// </summary>
+    public void SetSuspended(bool suspended)
+    {
+        lock (_paintGate)
+        {
+            if (_suspended == suspended)
+            {
+                return;
+            }
+
+            _suspended = suspended;
+            while (!suspended && _deferredScrollback.Count > 0)
+            {
+                WriteScrollbackNow(_deferredScrollback.Dequeue());
+            }
+        }
+    }
+
+    private void WriteScrollbackNow(Action<IAnsiConsole> write)
+    {
+        _writer.Clear();
+        write(Scrollback());
     }
 
     public void Dispose()
@@ -159,16 +200,10 @@ internal sealed class LiveArea : IDisposable
     }
 
     private IAnsiConsole Scrollback() =>
-        _scrollback ??= AnsiConsole.Create(
-            new AnsiConsoleSettings
-            {
-                Ansi = _console.IsInteractive ? AnsiSupport.Yes : AnsiSupport.No,
-                ColorSystem = _console.IsInteractive
-                    ? _capabilities.Color
-                    : ColorSystemSupport.NoColors,
-                Interactive = InteractionSupport.No,
-                Out = new AnsiConsoleOutput(new ConsoleTextWriter(_console)),
-            }
+        _scrollback ??= ConsoleColorSystem.Create(
+            _console.IsInteractive ? _capabilities.Color : ColorSystemSupport.NoColors,
+            new ConsoleTextWriter(_console),
+            ansi: _console.IsInteractive
         );
 
     private void Post(LiveAreaInput input)
