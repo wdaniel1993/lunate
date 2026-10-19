@@ -55,10 +55,20 @@ public sealed class CompletionRegistryTests
         CompletionRegistry registry = CompletionRegistry.Compose([], []);
 
         Assert.Equal(
-            Commands.Descriptors.Select(descriptor => descriptor.Name),
+            Commands
+                .Descriptors.Where(descriptor => descriptor.Name != Commands.SkillName)
+                .Select(descriptor => descriptor.Name),
             registry.Items.Select(item => item.Text)
         );
         Assert.All(registry.Items, item => Assert.Equal(CompletionKind.Command, item.Kind));
+    }
+
+    [Fact]
+    public void The_skill_invocation_placeholder_is_not_offered()
+    {
+        CompletionRegistry registry = CompletionRegistry.Compose([], []);
+
+        Assert.DoesNotContain(registry.Items, item => item.Text == Commands.SkillName);
     }
 
     [Fact]
@@ -66,7 +76,11 @@ public sealed class CompletionRegistryTests
     {
         CompletionRegistry registry = CompletionRegistry.Compose([], []);
 
-        foreach (CommandDescriptor descriptor in Commands.Descriptors)
+        foreach (
+            CommandDescriptor descriptor in Commands.Descriptors.Where(descriptor =>
+                descriptor.Name != Commands.SkillName
+            )
+        )
         {
             CompletionItem item = registry.Items.Single(entry => entry.Text == descriptor.Name);
             Assert.Equal(descriptor.Description, item.Description);

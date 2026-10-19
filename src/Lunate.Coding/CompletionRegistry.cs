@@ -41,6 +41,13 @@ internal sealed class CompletionRegistry
 
         foreach (CommandDescriptor descriptor in Commands.Descriptors)
         {
+            // The argument-bearing skill placeholder is a help-table entry, not a completion row:
+            // the real /skill:<name> entries come from the skill catalog below.
+            if (descriptor.Name == Commands.SkillName)
+            {
+                continue;
+            }
+
             Add(
                 new CompletionItem(
                     descriptor.Name,
