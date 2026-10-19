@@ -201,11 +201,11 @@ public sealed class InteractiveSessionAutocompleteTests
 
         await SendAsync(host, "/thk");
         host.Console.Send(Down);
-        await Task.Delay(30, TestContext.Current.CancellationToken);
+        await host.WaitUntilAsync(() => host.Session.Autocomplete?.SelectedIndex == 0);
         Assert.Equal(0, host.Session.Autocomplete?.SelectedIndex);
 
         host.Console.Send(Up);
-        await Task.Delay(30, TestContext.Current.CancellationToken);
+        await host.WaitUntilAsync(() => host.Session.Autocomplete?.SelectedIndex == 0);
         Assert.Equal(0, host.Session.Autocomplete?.SelectedIndex);
 
         host.Console.Complete();
