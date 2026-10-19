@@ -123,6 +123,59 @@ public sealed class PrintModeTests
     }
 
     [Fact]
+    public async Task Json_mode_streams_reasoning_events_with_the_stamped_fields()
+    {
+        using var temp = new TempDirectory();
+        var client = new ScriptedChatClient().Enqueue(
+            Scripts.Reasoning("Think "),
+            Scripts.Reasoning("one"),
+            Scripts.Text("Answer"),
+            Scripts.Stop()
+        );
+        PrintModeOptions options = PrintModeTestSupport.BaseOptions(
+            temp,
+            new FakeChatClientFactory(client)
+        ) with
+        {
+            Prompt = "Hi",
+            Json = true,
+        };
+
+        (int exitCode, string output, string errors) = await PrintModeTestSupport.RunAsync(options);
+
+        Assert.Equal(0, exitCode);
+        Assert.Empty(errors);
+        List<JsonElement> lines = PrintModeTestSupport.ParseLines(output);
+        Assert.Equal(
+            [
+                "run_started",
+                "reasoning_start",
+                "reasoning_message_content",
+                "reasoning_message_content",
+                "reasoning_end",
+                "text_message_start",
+                "text_message_content",
+                "text_message_end",
+                "run_finished",
+            ],
+            lines.Select(PrintModeTestSupport.TypeOf)
+        );
+        string sessionId = PrintModeTestSupport.SingleSessionId(temp);
+        Assert.All(
+            lines,
+            line => Assert.Equal(sessionId, line.GetProperty("sessionId").GetString())
+        );
+        JsonElement start = lines[1];
+        string messageId = start.GetProperty("messageId").GetString()!;
+        Assert.False(string.IsNullOrEmpty(start.GetProperty("runId").GetString()));
+        Assert.Equal("Think ", lines[2].GetProperty("text").GetString());
+        Assert.Equal("one", lines[3].GetProperty("text").GetString());
+        Assert.Equal(messageId, lines[2].GetProperty("messageId").GetString());
+        Assert.Equal(messageId, lines[3].GetProperty("messageId").GetString());
+        Assert.Equal(messageId, lines[4].GetProperty("messageId").GetString());
+    }
+
+    [Fact]
     public async Task Ask_denies_a_write_with_an_error_result_and_a_stderr_line()
     {
         using var temp = new TempDirectory();

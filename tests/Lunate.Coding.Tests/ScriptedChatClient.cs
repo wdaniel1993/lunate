@@ -149,6 +149,9 @@ internal static class Scripts
     internal static ChatResponseUpdate Text(string text) =>
         new(ChatRole.Assistant, [new TextContent(text)]);
 
+    internal static ChatResponseUpdate Reasoning(string text) =>
+        new(ChatRole.Assistant, [new TextReasoningContent(text)]);
+
     internal static ChatResponseUpdate Call(
         string callId,
         string name,
