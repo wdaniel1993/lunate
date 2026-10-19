@@ -186,7 +186,7 @@ public sealed class LiveAreaBoxRendererTests
             Input = new InputLineState("a\nb\nc", 5),
             Thinking = new ThinkingState { Text = thinking },
             Footer = new StatusFooterModel("m", 10, 0, "/w", null),
-            Size = new ConsoleSize(120, 12),
+            Size = new ConsoleSize(120, 24),
         };
 
         var frame = LiveAreaRenderer.Render(state);
@@ -199,6 +199,32 @@ public sealed class LiveAreaBoxRendererTests
         Assert.Equal(rule, frame.Lines[16]);
         Assert.Equal("m · 10/0 · /w", frame.Lines[17]);
         Assert.Equal(15, frame.CursorRow);
+    }
+
+    [Fact]
+    public void The_frame_is_capped_at_the_terminal_rows()
+    {
+        string tail = string.Join('\n', Enumerable.Range(1, 4).Select(i => $"tail {i}"));
+        string thinking = string.Join('\n', Enumerable.Range(1, 20).Select(i => $"thought {i}"));
+        var state = new LiveAreaState
+        {
+            TailText = tail,
+            Thinking = new ThinkingState { Text = thinking },
+            Footer = new StatusFooterModel("m", 10, 0, "/w", null),
+            Size = new ConsoleSize(120, 10),
+        };
+
+        var frame = LiveAreaRenderer.Render(state);
+
+        string rule = new('─', 120);
+        Assert.Equal(10, frame.Lines.Count);
+        Assert.Equal("thought 15", frame.Lines[0]);
+        Assert.Equal("thought 20", frame.Lines[5]);
+        Assert.Equal(rule, frame.Lines[6]);
+        Assert.Equal("> " + Placeholder, frame.Lines[7]);
+        Assert.Equal(rule, frame.Lines[8]);
+        Assert.Equal("m · 10/0 · /w", frame.Lines[9]);
+        Assert.Equal(7, frame.CursorRow);
     }
 
     [Fact]

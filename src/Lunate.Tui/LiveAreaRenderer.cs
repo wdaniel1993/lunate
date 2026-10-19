@@ -132,11 +132,23 @@ internal static class LiveAreaRenderer
             lines.Add(CellText.Clip(footerLine, width));
         }
 
-        return new RenderedFrame(
-            lines,
-            tail.Count + preInputLines + input.CursorRow,
-            input.CursorColumn
-        );
+        int cursorRow = tail.Count + preInputLines + input.CursorRow;
+        // A short terminal caps the frame: trim the transient prefix (tail first, then thinking
+        // and the other state), never the box rules, input or footer. The cursor follows the
+        // lines that remain above the input.
+        int boxLines = inputLines.Count + (ruleLines * 2) + (footerLine is null ? 0 : 1);
+        int transientLines = lines.Count - boxLines;
+        if (state.Size.Rows > 0 && lines.Count > state.Size.Rows)
+        {
+            int trim = Math.Min(lines.Count - state.Size.Rows, transientLines);
+            if (trim > 0)
+            {
+                lines.RemoveRange(0, trim);
+                cursorRow -= trim;
+            }
+        }
+
+        return new RenderedFrame(lines, cursorRow, input.CursorColumn);
     }
 
     private static bool HasRules(int width) => width >= RuleMinWidth;
