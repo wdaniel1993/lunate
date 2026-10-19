@@ -188,6 +188,7 @@ internal sealed partial class InteractiveSession
             Math.Floor(Math.Max(0, (_options.Scheduler.Now - _thinkingStartedAt).TotalSeconds));
         var commit = new ThinkingCommitModel(_thinking, elapsedSeconds, _settings.ThinkingFull);
         _transcript.Add(new TranscriptThinkingEntry(commit));
+        _turnWroteOutput = true;
         _live.WriteScrollback(console =>
             console.Write(
                 _thinkingCommit.Render(commit, _console.Size.Columns, _capabilities.Color)
@@ -203,6 +204,7 @@ internal sealed partial class InteractiveSession
         }
 
         _transcript.Add(new TranscriptAssistantEntry(markdown));
+        _turnWroteOutput = true;
         _live.WriteScrollback(console => console.Write(_markdown.Render(markdown)));
     }
 
@@ -227,6 +229,7 @@ internal sealed partial class InteractiveSession
             ChildResult: _spawningCalls.Remove(key)
         );
         _transcript.Add(new TranscriptToolEntry(block));
+        _turnWroteOutput = true;
         _live.WriteScrollback(console =>
             console.Write(_toolBlocks.Render(block, _console.Size.Columns))
         );

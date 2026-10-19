@@ -41,6 +41,40 @@ public sealed class InteractiveSessionEchoTests
     }
 
     [Fact]
+    public async Task One_blank_line_opens_every_turn_after_the_first()
+    {
+        using var host = new InteractiveSessionHost();
+        host.Client.Enqueue(Scripts.Text("first answer"), Scripts.Stop());
+        host.Client.Enqueue(Scripts.Text("second answer"), Scripts.Stop());
+        host.Client.Gate(1);
+        host.Client.Gate(2);
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+
+        host.Console.SendText("first question");
+        host.Console.SendEnter();
+        await host.Client.WaitForCallAsync(1);
+        host.Client.Release(1);
+        await host.WaitUntilAsync(() =>
+            host.ScrollbackText.Contains("first answer", StringComparison.Ordinal)
+            && !host.Session.IsRunning
+        );
+
+        host.Console.SendText("second question");
+        host.Console.SendEnter();
+        await host.Client.WaitForCallAsync(2);
+
+        string text = host.ScrollbackText;
+        Assert.Contains("\n> first question", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("\n\n> first question", text, StringComparison.Ordinal);
+        Assert.Contains("first answer\n\n> second question", text, StringComparison.Ordinal);
+
+        host.Client.Release(2);
+        host.Console.Complete();
+        await run;
+    }
+
+    [Fact]
     public async Task The_prompt_block_and_the_transcript_carry_the_processed_text()
     {
         var runner = new HookRunner();

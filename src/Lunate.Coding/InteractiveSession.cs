@@ -185,6 +185,8 @@ internal sealed partial class InteractiveSession : IDisposable
     private McpToolSet? _mcp;
     private readonly List<UserNotice> _pendingNotices = [];
     private bool _composed;
+    private bool _promptEchoed;
+    private bool _turnWroteOutput;
     private bool _headerCountsPending;
     private ToolResultRendererRegistry? _toolResultRenderers;
     private StatusWidgetRegistry? _statusWidgets;
@@ -953,12 +955,23 @@ internal sealed partial class InteractiveSession : IDisposable
 
         _transcript.Add(new TranscriptUserEntry(processed.Text));
         // The prompt opens the turn in scrollback before the run starts; the same processed text
-        // feeds the transcript entry, so the viewer and scrollback never disagree.
+        // feeds the transcript entry, so the viewer and scrollback never disagree. Later turns
+        // open with one blank line so the prompt never runs against the previous turn's output.
         _live.WriteScrollback(console =>
+        {
+            // The echo's own trailing blank already separates a turn that wrote nothing (for
+            // example one cancelled before its first event); never add a second blank for it.
+            if (_promptEchoed && _turnWroteOutput)
+            {
+                console.WriteLine();
+            }
+
             console.Write(
                 _userEcho.Render(processed.Text, _console.Size.Columns, _capabilities.Color)
-            )
-        );
+            );
+        });
+        _promptEchoed = true;
+        _turnWroteOutput = false;
         _turnActive = true;
         _run = RunTurnsAsync(processed.Text, skill, ct);
     }
@@ -1081,6 +1094,7 @@ internal sealed partial class InteractiveSession : IDisposable
         }
 
         _transcript.Add(new TranscriptUserEntry(text));
+        _turnWroteOutput = true;
         _live.WriteScrollback(console =>
             console.Write(
                 new Markup($"[dim]{(_capabilities.Unicode ? "»" : ">")} {Markup.Escape(text)}[/]\n")

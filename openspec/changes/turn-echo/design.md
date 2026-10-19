@@ -33,7 +33,7 @@ A verification pass against the theme and the width bands, using the snapshot ma
 
 ## D5. Turn spacing
 
-One blank line between blocks inside a turn (user echo, assistant text, tool blocks) and between turns — the existing commits already separate assistant text and tool blocks; the echo adds the opening block only, so no other spacing changes.
+One blank line between blocks inside a turn (user echo, assistant text, tool blocks) and between turns — the existing commits already separate assistant text and tool blocks; the echo adds the opening block only, so no other spacing changes. Later turns open with one blank line before the echo when the previous turn wrote output; a turn that wrote nothing already ends in the echo's blank, so no second blank is added.
 
 ## D6. The left rail — open design question
 
