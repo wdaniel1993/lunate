@@ -2,7 +2,7 @@
 
 ## 1. The user echo
 
-- [ ] 1.1 `UserEchoRenderer` (Tui, pure): `> ` user-coloured prefix, plain text, two-space hanging indent, width wrapping/clipping, blank line after; unit tests (short, wrapped, long word, NO_COLOR, 16-color, empty).
+- [x] 1.1 `UserEchoRenderer` (Tui, pure): `> ` user-coloured prefix, plain text, two-space hanging indent, width wrapping/clipping, blank line after; unit tests (short, wrapped, long word, NO_COLOR, 16-color, empty).
 - [ ] 1.2 Commit the echo in `SubmitPromptAsync` on the processed text; the scrollback and the `TranscriptUserEntry` carry identical text; composition test (the real host shows the prompt before the answer).
 - [ ] 1.3 Refresh the end-to-end and scripted-session goldens (one echo block per prompt); steering's `» ` echo unchanged and re-asserted.
 
