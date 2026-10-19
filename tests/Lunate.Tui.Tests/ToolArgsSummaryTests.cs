@@ -97,4 +97,69 @@ public sealed class ToolArgsSummaryTests
             ToolArgsSummary.Summarize("read", """{"other":"fallback.cs"}""")
         );
     }
+
+    [Theory]
+    [InlineData(1, 13, "src/a.cs (1-13)")]
+    [InlineData(2, 3, "src/a.cs (2-4)")]
+    public void Read_offset_and_limit_become_the_line_range(int offset, int limit, string expected)
+    {
+        string args = $$"""{"path":"src/a.cs","offset":{{offset}},"limit":{{limit}}}""";
+
+        Assert.Equal(expected, ToolArgsSummary.Summarize("read", args));
+    }
+
+    [Fact]
+    public void Read_offset_alone_ends_the_range_at_the_result_line_count()
+    {
+        string output = string.Join('\n', Numbers(4));
+
+        Assert.Equal(
+            "src/a.cs (2-5)",
+            ToolArgsSummary.Summarize("read", """{"path":"src/a.cs","offset":2}""", output)
+        );
+    }
+
+    [Fact]
+    public void Read_without_a_range_reports_the_result_line_count()
+    {
+        string output = string.Join('\n', Numbers(13));
+
+        Assert.Equal(
+            "src/a.cs (13 lines)",
+            ToolArgsSummary.Summarize("read", """{"path":"src/a.cs"}""", output)
+        );
+    }
+
+    [Fact]
+    public void Read_single_line_result_counts_as_one_line()
+    {
+        Assert.Equal(
+            "src/a.cs (1 line)",
+            ToolArgsSummary.Summarize("read", """{"path":"src/a.cs"}""", "one")
+        );
+    }
+
+    [Fact]
+    public void Read_line_count_ignores_the_continue_hint()
+    {
+        string output =
+            "     1|a\n     2|b\n[lines 1\u20132 of 10, use offset to continue]\n";
+
+        Assert.Equal(
+            "src/a.cs (2 lines)",
+            ToolArgsSummary.Summarize("read", """{"path":"src/a.cs"}""", output)
+        );
+    }
+
+    [Fact]
+    public void Read_without_a_range_or_output_keeps_the_path()
+    {
+        Assert.Equal(
+            "src/a.cs",
+            ToolArgsSummary.Summarize("read", """{"path":"src/a.cs"}""", output: null)
+        );
+    }
+
+    private static IEnumerable<string> Numbers(int count) =>
+        Enumerable.Range(1, count).Select(number => $"line {number}");
 }

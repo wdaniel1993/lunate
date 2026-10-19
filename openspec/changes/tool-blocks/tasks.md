@@ -2,7 +2,7 @@
 
 ## 1. Summaries and meta
 
-- [ ] 1.1 `read` summary: the path with its line range (`path (start-end)` from the call's
+- [x] 1.1 `read` summary: the path with its line range (`path (start-end)` from the call's
   `offset`/`limit`; `path (N lines)` from the result's line count when the call gave none).
 - [ ] 1.2 `bash`: `ToolResult` gains the `BashDetails(ExitCode)` payload; the header meta carries
   `exit N · <duration>`.

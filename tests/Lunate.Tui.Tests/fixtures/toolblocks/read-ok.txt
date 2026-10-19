@@ -1,4 +1,4 @@
-tool read src/Lunate.Tui/FrameWriter.cs ok
+tool read src/Lunate.Tui/FrameWriter.cs (6 lines) ok
 namespace Lunate.Tui;
 
 internal sealed class FrameWriter

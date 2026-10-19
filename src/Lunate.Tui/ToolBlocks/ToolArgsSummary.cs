@@ -1,17 +1,21 @@
+using System.Globalization;
 using System.Text.Json;
 
 namespace Lunate.Tui;
 
 /// <summary>
 /// Pure per-tool summarizer for a tool call's argument JSON: one short, human-readable line for the
-/// block header. Unknown shapes fall back to the first string value, then to the raw text.
+/// block header. Unknown shapes fall back to the first string value, then to the raw text. A
+/// <c>read</c> call carries its line range — from the call's <c>offset</c>/<c>limit</c> when given,
+/// else from the result's line count.
 /// </summary>
 internal static class ToolArgsSummary
 {
     private const int BashCommandLimit = 60;
     private const string Elision = "\u2026";
+    private const string EmptyFileText = "[empty file]";
 
-    public static string Summarize(string? toolName, string? args)
+    public static string Summarize(string? toolName, string? args, string? output = null)
     {
         if (string.IsNullOrWhiteSpace(args))
         {
@@ -33,6 +37,11 @@ internal static class ToolArgsSummary
         if (line.Length == 0)
         {
             return args.Trim();
+        }
+
+        if (toolName == "read" && ReadRange(root, output) is { Length: > 0 } range)
+        {
+            return line + " " + range;
         }
 
         if (toolName == "bash" && line.Length > BashCommandLimit)
@@ -104,6 +113,93 @@ internal static class ToolArgsSummary
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// The parenthesised line range for a <c>read</c> block: <c>(start-end)</c> when the call or
+    /// (via the result's line count) the range is known, else <c>(N lines)</c>, else empty.
+    /// </summary>
+    private static string ReadRange(JsonElement root, string? output)
+    {
+        int? offset = IntegerField(root, "offset");
+        int? limit = IntegerField(root, "limit");
+        if (offset is null && limit is null)
+        {
+            int total = ResultLineCount(output);
+            return total > 0 ? LineCountText(total) : string.Empty;
+        }
+
+        int start = offset ?? 1;
+        int? span = limit;
+        if (span is null && ResultLineCount(output) is var counted && counted > 0)
+        {
+            span = counted;
+        }
+
+        if (span is not { } lines || lines < 1)
+        {
+            return string.Empty;
+        }
+
+        return string.Create(CultureInfo.InvariantCulture, $"({start}-{start + lines - 1})");
+    }
+
+    private static string LineCountText(int count) =>
+        count == 1 ? "(1 line)" : string.Create(CultureInfo.InvariantCulture, $"({count} lines)");
+
+    /// <summary>The result's content lines: the continue hint after a paged read does not count.</summary>
+    private static int ResultLineCount(string? output)
+    {
+        if (string.IsNullOrEmpty(output))
+        {
+            return 0;
+        }
+
+        string text = TrimSingleTrailingNewline(output);
+        if (text.Length == 0 || text == EmptyFileText)
+        {
+            return 0;
+        }
+
+        string[] lines = text.Split('\n');
+        int count = lines.Length;
+        if (count > 0)
+        {
+            string last = lines[count - 1].TrimEnd('\r');
+            if (
+                last.StartsWith("[lines ", StringComparison.Ordinal)
+                && last.EndsWith("]", StringComparison.Ordinal)
+            )
+            {
+                count--;
+            }
+        }
+
+        return count;
+    }
+
+    private static int? IntegerField(JsonElement root, string name)
+    {
+        if (
+            root.TryGetProperty(name, out var property)
+            && property.ValueKind == JsonValueKind.Number
+            && property.TryGetInt32(out int value)
+        )
+        {
+            return value;
+        }
+
+        return null;
+    }
+
+    private static string TrimSingleTrailingNewline(string text)
+    {
+        if (text.EndsWith("\r\n", StringComparison.Ordinal))
+        {
+            return text[..^2];
+        }
+
+        return text.EndsWith('\n') ? text[..^1] : text;
     }
 
     private static string FirstLine(string text)

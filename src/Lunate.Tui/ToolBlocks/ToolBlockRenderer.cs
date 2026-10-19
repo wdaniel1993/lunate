@@ -41,7 +41,9 @@ public sealed class ToolBlockRenderer
         line.Add("tool", SpanStyle.Plain);
         line.Add(" ", SpanStyle.Plain);
         line.Add(block.ToolName, SpanStyle.Plain);
-        string summary = ToolArgsSummary.Summarize(block.ToolName, block.ArgsSummary);
+        // A failed call's output is an error message, not file content: no line count from it.
+        string? resultOutput = block.Status == ToolBlockStatus.Error ? null : block.Output;
+        string summary = ToolArgsSummary.Summarize(block.ToolName, block.ArgsSummary, resultOutput);
         if (summary.Length > 0)
         {
             line.Add(" ", SpanStyle.Plain);
