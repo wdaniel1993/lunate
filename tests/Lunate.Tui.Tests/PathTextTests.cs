@@ -53,6 +53,37 @@ public sealed class PathTextTests
         Assert.InRange(shortened.Length, 1, budget);
     }
 
+    [Theory]
+    [InlineData(8)]
+    [InlineData(12)]
+    [InlineData(19)]
+    [InlineData(24)]
+    [InlineData(40)]
+    public void The_ascii_result_never_exceeds_its_budget(int budget)
+    {
+        string shortened = PathText.Shorten(
+            "/Users/daniel/dev/lunate/src/Lunate.Tui/Session.cs",
+            budget,
+            "/Users/daniel",
+            unicode: false
+        );
+
+        Assert.InRange(shortened.Length, 1, budget);
+        Assert.DoesNotContain("\u2026", shortened, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void An_ascii_budget_elides_with_three_dots() =>
+        Assert.Equal(
+            "~/dev/l.../Session.cs",
+            PathText.Shorten(
+                "/Users/daniel/dev/lunate/src/Lunate.Tui/Session.cs",
+                21,
+                "/Users/daniel",
+                unicode: false
+            )
+        );
+
     [Fact]
     public void A_budget_below_the_basename_keeps_the_tail() =>
         Assert.Equal("\u2026cc.cc", PathText.Shorten("/a/bb/cc.cc", 6));

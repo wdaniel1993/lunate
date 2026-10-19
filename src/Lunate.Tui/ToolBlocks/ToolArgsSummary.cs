@@ -13,6 +13,7 @@ internal static class ToolArgsSummary
 {
     private const int BashCommandLimit = 60;
     private const string Elision = "\u2026";
+    private const string AsciiElision = "...";
     private const string EmptyFileText = "[empty file]";
 
     public static string Summarize(
@@ -20,7 +21,8 @@ internal static class ToolArgsSummary
         string? args,
         string? output = null,
         string? home = null,
-        int pathBudget = PathText.HeaderBudget
+        int pathBudget = PathText.HeaderBudget,
+        bool unicode = true
     )
     {
         if (string.IsNullOrWhiteSpace(args))
@@ -49,7 +51,7 @@ internal static class ToolArgsSummary
         // summary — and always a read/edit/write one — shortens to the header budget.
         if (pathBudget > 0 && toolName != "bash" && (IsPathTool(toolName) || LooksLikePath(line)))
         {
-            line = PathText.Shorten(line, pathBudget, home);
+            line = PathText.Shorten(line, pathBudget, home, unicode);
         }
 
         if (toolName == "read" && ReadRange(root, output) is { Length: > 0 } range)
@@ -59,7 +61,8 @@ internal static class ToolArgsSummary
 
         if (toolName == "bash" && line.Length > BashCommandLimit)
         {
-            return string.Concat(line.AsSpan(0, BashCommandLimit - 1), Elision);
+            string elision = unicode ? Elision : AsciiElision;
+            return string.Concat(line.AsSpan(0, BashCommandLimit - elision.Length), elision);
         }
 
         return line;

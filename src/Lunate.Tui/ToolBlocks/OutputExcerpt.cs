@@ -110,6 +110,7 @@ internal static class OutputExcerpt
         return result;
     }
 
+    /// <summary>The hidden-line count and the <c>ctrl+o</c> affordance; ASCII when Unicode is off.</summary>
     private static string Marker(int hiddenLines, bool unicode) =>
         unicode
             ? string.Create(

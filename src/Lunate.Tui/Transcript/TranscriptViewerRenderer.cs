@@ -16,8 +16,7 @@ public sealed class TranscriptViewerRenderer
     internal const string UnicodeKeys =
         "\u2191\u2193 scroll \u00b7 PgUp/PgDn \u00b7 Home/End \u00b7 g/G \u00b7 q close";
 
-    internal const string AsciiKeys =
-        "up/down scroll \u00b7 PgUp/PgDn \u00b7 Home/End \u00b7 g/G \u00b7 q close";
+    internal const string AsciiKeys = "up/down scroll - PgUp/PgDn - Home/End - g/G - q close";
 
     /// <summary>The footer is one line; the content gets the rows above it.</summary>
     private const int FooterLines = 1;

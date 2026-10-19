@@ -88,6 +88,57 @@ public sealed class ToolBlockRendererTests
     }
 
     [Fact]
+    public void Ascii_capabilities_use_ascii_separators_in_the_header()
+    {
+        string header = RenderAscii(
+            new ToolBlockModel(
+                "bash",
+                """{"command":"dotnet build"}""",
+                ToolBlockStatus.Ok,
+                null,
+                null,
+                ExitCode: 0,
+                Duration: TimeSpan.FromMilliseconds(400)
+            )
+        );
+
+        Assert.Equal("+ bash  dotnet build - exit 0 - 0.4s\n", header);
+        Assert.DoesNotContain("\u00b7", header, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Ascii_capabilities_elide_long_paths_with_three_dots()
+    {
+        string header = RenderAscii(
+            new ToolBlockModel(
+                "read",
+                """{"path":"/Users/daniel/dev/lunate/src/Lunate.Tui/ToolBlocks/ToolBlockRenderer.cs"}""",
+                ToolBlockStatus.Ok,
+                "one line",
+                null
+            )
+        );
+
+        Assert.Contains("...", header, StringComparison.Ordinal);
+        Assert.DoesNotContain("\u2026", header, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Ascii_capabilities_elide_a_long_bash_command_with_three_dots() =>
+        Assert.Equal(
+            "+ bash  dotnet test --project tests/Lunate.Coding.Tests --filter ...\n",
+            RenderAscii(
+                new ToolBlockModel(
+                    "bash",
+                    """{"command":"dotnet test --project tests/Lunate.Coding.Tests --filter ToolBlock"}""",
+                    ToolBlockStatus.Ok,
+                    null,
+                    null
+                )
+            )
+        );
+
+    [Fact]
     public void Pre_summarized_args_stay_as_they_are() =>
         Assert.Equal(
             "\u2713 read  src/a.cs\n",

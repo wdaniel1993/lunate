@@ -88,16 +88,17 @@ public sealed class ToolBlockRenderer
             block.ToolName,
             block.ArgsSummary,
             resultOutput,
-            _home
+            _home,
+            unicode: _unicode
         );
         if (summary.Length > 0)
         {
             line.Add("  " + summary, Muted);
         }
 
-        if (ToolBlockMeta.Build(block) is { Length: > 0 } meta)
+        if (ToolBlockMeta.Build(block, _unicode) is { Length: > 0 } meta)
         {
-            line.Add(" \u00b7 " + meta, Muted);
+            line.Add((_unicode ? " \u00b7 " : " - ") + meta, Muted);
         }
 
         return line;

@@ -3,13 +3,13 @@ using System.Globalization;
 namespace Lunate.Tui;
 
 /// <summary>
-/// Pure builder for a block header's meta: the tool-specific facts joined with <c>·</c>. Bash
-/// carries its exit code and scheduler-measured duration; edit and write the unified diff's
-/// change counts.
+/// Pure builder for a block header's meta: the tool-specific facts joined with <c>·</c> (ASCII
+/// <c>-</c> without Unicode). Bash carries its exit code and scheduler-measured duration; edit and
+/// write the unified diff's change counts.
 /// </summary>
 internal static class ToolBlockMeta
 {
-    public static string? Build(ToolBlockModel block)
+    public static string? Build(ToolBlockModel block, bool unicode = true)
     {
         ArgumentNullException.ThrowIfNull(block);
 
@@ -33,13 +33,14 @@ internal static class ToolBlockMeta
         )
         {
             var (added, removed) = DiffRenderer.ChangeCounts(diff);
-            parts.Add(string.Create(CultureInfo.InvariantCulture, $"+{added} \u2212{removed}"));
+            string minus = unicode ? "\u2212" : "-";
+            parts.Add(string.Create(CultureInfo.InvariantCulture, $"+{added} {minus}{removed}"));
         }
         else if (block.ToolName.StartsWith("cs_", StringComparison.Ordinal))
         {
-            CsToolMeta.Append(block.Output, parts);
+            CsToolMeta.Append(block.Output, parts, unicode);
         }
 
-        return parts.Count == 0 ? null : string.Join(" \u00b7 ", parts);
+        return parts.Count == 0 ? null : string.Join(unicode ? " \u00b7 " : " - ", parts);
     }
 }

@@ -146,6 +146,46 @@ public sealed class ToolBlockMetaTests
     }
 
     [Fact]
+    public void Ascii_meta_joins_with_ascii_punctuation()
+    {
+        var bash = new ToolBlockModel(
+            "bash",
+            """{"command":"dotnet build"}""",
+            ToolBlockStatus.Ok,
+            "Build succeeded.",
+            null,
+            ExitCode: 0,
+            Duration: TimeSpan.FromMilliseconds(400)
+        );
+        var edit = new ToolBlockModel(
+            "edit",
+            """{"path":"src/x.cs"}""",
+            ToolBlockStatus.Ok,
+            null,
+            new ToolDiffInfo("src/x.cs", "exact", DiffText)
+        );
+
+        Assert.Equal("exit 0 - 0.4s", ToolBlockMeta.Build(bash, unicode: false));
+        Assert.Equal("+1 -1", ToolBlockMeta.Build(edit, unicode: false));
+    }
+
+    [Fact]
+    public void Ascii_cs_items_truncate_with_three_dots()
+    {
+        string message = new('q', 200);
+        string? meta = ToolBlockMeta.Build(
+            CsBlock(
+                "1 error, 0 warnings in the solution.\nsrc/a.cs(1,1): error CS9999: " + message
+            ),
+            unicode: false
+        );
+
+        Assert.NotNull(meta);
+        Assert.EndsWith("...", meta);
+        Assert.DoesNotContain("\u2026", meta, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Cs_diagnostics_with_no_findings_has_no_meta() =>
         Assert.Null(
             ToolBlockMeta.Build(CsBlock("No compiler errors or warnings in the solution."))

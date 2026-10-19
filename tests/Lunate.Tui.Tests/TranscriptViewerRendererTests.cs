@@ -172,6 +172,24 @@ public sealed class TranscriptViewerRendererTests
     }
 
     [Fact]
+    public void Ascii_capabilities_use_ascii_separators_in_the_footer()
+    {
+        var viewer = new TranscriptViewerRenderer(
+            new TerminalCapabilities(ColorSystemSupport.NoColors, Unicode: false)
+        );
+        var model = new TranscriptModel([new TranscriptUserEntry("hey")]);
+
+        string footer = Text(viewer.Lines(model, new ConsoleSize(80, 10), 0)[^1]);
+
+        Assert.StartsWith(
+            "up/down scroll - PgUp/PgDn - Home/End - g/G - q close",
+            footer,
+            StringComparison.Ordinal
+        );
+        Assert.DoesNotContain("\u00b7", footer, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void A_long_path_is_mid_shortened_and_kept_within_the_columns()
     {
         var model = new TranscriptModel([

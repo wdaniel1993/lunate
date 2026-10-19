@@ -68,6 +68,47 @@ public sealed class ToolBlocksFrameGoldenTests
         );
     }
 
+    /// <summary>Every form once more without Unicode, pinning the ASCII separators and elisions.</summary>
+    public static TheoryData<string> AsciiCases
+    {
+        get
+        {
+            var cases = new TheoryData<string>();
+            foreach (string name in Blocks.Keys)
+            {
+                cases.Add(name);
+            }
+
+            return cases;
+        }
+    }
+
+    [Theory]
+    [MemberData(nameof(AsciiCases))]
+    public void The_ascii_block_frame_matches_the_committed_golden(string name)
+    {
+        var console = new TestConsole();
+        console.Profile.Width = 80;
+        console.EmitAnsiSequences = true;
+        console.Profile.Capabilities.ColorSystem = ColorSystem.NoColors;
+        console.Write(
+            new ToolBlockRenderer(
+                new TerminalCapabilities(ColorSystemSupport.NoColors, Unicode: false),
+                homeDirectory: "/home/dev"
+            ).Render(Blocks[name])
+        );
+
+        GoldenFiles.AssertMatchesLines(
+            Path.Combine(GoldensDirectory, $"{name}-80-ascii.txt"),
+            console
+                .Output.ReplaceLineEndings("\n")
+                .TrimEnd('\n')
+                .Split('\n')
+                .Select(Escape)
+                .ToArray()
+        );
+    }
+
     /// <summary>The capability from the detection seam; Standard is the 16-colour bucket.</summary>
     private static TerminalCapabilities Capability(string mode) =>
         new(

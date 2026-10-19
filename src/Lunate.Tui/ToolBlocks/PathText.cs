@@ -5,7 +5,8 @@ namespace Lunate.Tui;
 /// <summary>
 /// Pure path shortening for compact display: the home directory becomes <c>~</c>, then the middle
 /// of the path elides so the basename survives and the result never exceeds the budget
-/// (<c>~/dev/l…/Session.cs</c>). Short paths are returned unchanged; both separator styles elide.
+/// (<c>~/dev/l…/Session.cs</c>; ASCII <c>~/dev/l.../Session.cs</c>). Short paths are returned
+/// unchanged; both separator styles elide.
 /// </summary>
 internal static class PathText
 {
@@ -13,11 +14,12 @@ internal static class PathText
     public const int HeaderBudget = 40;
 
     private const string Ellipsis = "\u2026";
+    private const string AsciiEllipsis = "...";
 
     /// <summary>The user profile, the default home for display shortening.</summary>
     public static string Home() => Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
 
-    public static string Shorten(string? path, int budget, string? home = null)
+    public static string Shorten(string? path, int budget, string? home = null, bool unicode = true)
     {
         if (string.IsNullOrEmpty(path) || budget < 1)
         {
@@ -25,7 +27,9 @@ internal static class PathText
         }
 
         string text = Tilde(path, home);
-        return text.Length <= budget ? text : Elide(text, budget);
+        return text.Length <= budget
+            ? text
+            : Elide(text, budget, unicode ? Ellipsis : AsciiEllipsis);
     }
 
     private static string Tilde(string path, string? home)
@@ -45,13 +49,13 @@ internal static class PathText
             : path;
     }
 
-    private static string Elide(string text, int budget)
+    private static string Elide(string text, int budget, string ellipsis)
     {
         int separator = text.LastIndexOfAny(['/', '\\']);
-        int head = separator < 0 ? -1 : budget - 1 - (text.Length - separator);
+        int head = separator < 0 ? -1 : budget - ellipsis.Length - (text.Length - separator);
         return head > 0
-            ? string.Concat(text.AsSpan(0, head), Ellipsis, text.AsSpan(separator))
-            : Ellipsis + Tail(text, budget - 1);
+            ? string.Concat(text.AsSpan(0, head), ellipsis, text.AsSpan(separator))
+            : ellipsis + Tail(text, budget - ellipsis.Length);
     }
 
     private static string Tail(string text, int length) =>

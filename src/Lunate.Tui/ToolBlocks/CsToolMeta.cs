@@ -13,7 +13,7 @@ internal static class CsToolMeta
     private const int ItemLimit = 80;
     private const string CleanPrefix = "No compiler errors or warnings";
 
-    public static void Append(string? output, List<string> parts)
+    public static void Append(string? output, List<string> parts, bool unicode = true)
     {
         if (string.IsNullOrEmpty(output))
         {
@@ -33,12 +33,12 @@ internal static class CsToolMeta
                 parts.Add(CountsText(counts));
             }
 
-            AppendItems(lines, index + 1, parts);
+            AppendItems(lines, index + 1, parts, unicode);
             return;
         }
     }
 
-    private static void AppendItems(string[] lines, int start, List<string> parts)
+    private static void AppendItems(string[] lines, int start, List<string> parts, bool unicode)
     {
         var items = 0;
         for (var index = start; index < lines.Length && items < TopItems; index++)
@@ -49,7 +49,7 @@ internal static class CsToolMeta
                 continue;
             }
 
-            parts.Add(Truncate(text));
+            parts.Add(Truncate(text, unicode));
             items++;
         }
     }
@@ -117,6 +117,11 @@ internal static class CsToolMeta
         line.Contains("): error ", StringComparison.Ordinal)
         || line.Contains("): warning ", StringComparison.Ordinal);
 
-    private static string Truncate(string item) =>
-        item.Length <= ItemLimit ? item : string.Concat(item.AsSpan(0, ItemLimit - 1), "\u2026");
+    private static string Truncate(string item, bool unicode) =>
+        item.Length <= ItemLimit
+            ? item
+            : string.Concat(
+                item.AsSpan(0, ItemLimit - (unicode ? 1 : 3)),
+                unicode ? "\u2026" : "..."
+            );
 }

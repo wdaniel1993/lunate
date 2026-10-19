@@ -70,6 +70,31 @@ public sealed class TranscriptViewerGoldenTests
         );
     }
 
+    [Fact]
+    public void The_ascii_viewer_frame_matches_the_committed_golden()
+    {
+        var console = new TestConsole();
+        console.Profile.Width = 80;
+        console.EmitAnsiSequences = true;
+        console.Profile.Capabilities.ColorSystem = ColorSystem.NoColors;
+        console.Write(
+            new TranscriptViewerRenderer(
+                new TerminalCapabilities(ColorSystemSupport.NoColors, Unicode: false),
+                homeDirectory: "/home/dev"
+            ).Render(FixtureTranscript(), new ConsoleSize(80, 24))
+        );
+
+        GoldenFiles.AssertMatchesLines(
+            Path.Combine(GoldensDirectory, "viewer-80-ascii.txt"),
+            console
+                .Output.ReplaceLineEndings("\n")
+                .TrimEnd('\n')
+                .Split('\n')
+                .Select(Escape)
+                .ToArray()
+        );
+    }
+
     /// <summary>The capability from the detection seam; Standard is the 16-colour bucket.</summary>
     private static TerminalCapabilities Capability(string mode) =>
         new(
