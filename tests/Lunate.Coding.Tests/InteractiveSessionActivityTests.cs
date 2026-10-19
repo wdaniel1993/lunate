@@ -139,6 +139,74 @@ public sealed class InteractiveSessionActivityTests
         await run;
     }
 
+    [Fact]
+    public async Task A_scripted_run_shows_the_thinking_line_then_the_tool_activity_line()
+    {
+        var gate = new ActivityGate();
+        using var host = new InteractiveSessionHost(configureHarness: options =>
+            options with
+            {
+                Hooks = gate,
+            }
+        );
+        File.WriteAllText(host.Temp.File("notes.txt"), "line one\nline two");
+        host.Client.Enqueue(
+            Usage(1200, 180),
+            Scripts.Reasoning("Let me "),
+            Scripts.Reasoning("weigh the options."),
+            Scripts.Call("call-1", "read", Scripts.Args(("path", "notes.txt"))),
+            Scripts.ToolCalls()
+        );
+        host.Client.Enqueue(Scripts.Text("done"), Scripts.Stop());
+
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+        host.Console.SendText("Read notes.txt");
+        host.Console.SendEnter();
+
+        await gate.ReasoningReached.Task.WaitAsync(
+            TimeSpan.FromSeconds(10),
+            TestContext.Current.CancellationToken
+        );
+        await host.WaitUntilAsync(() =>
+        {
+            host.Advance(33);
+            return host.LastFrame.Contains("⠹ thinking…", StringComparison.Ordinal);
+        });
+
+        string thinking = host.LastFrame;
+        Assert.Contains("↑1.2k ↓180", thinking, StringComparison.Ordinal);
+        Assert.Contains("esc to interrupt", thinking, StringComparison.Ordinal);
+
+        gate.ReleaseReasoning();
+        await gate.ToolReached.Task.WaitAsync(
+            TimeSpan.FromSeconds(10),
+            TestContext.Current.CancellationToken
+        );
+        await host.WaitUntilAsync(() =>
+        {
+            host.Advance(33);
+            return host.LastFrame.Contains("read notes.txt", StringComparison.Ordinal);
+        });
+
+        string tool = host.LastFrame;
+        Assert.Contains("↑1.2k ↓180", tool, StringComparison.Ordinal);
+        Assert.Contains("esc to interrupt", tool, StringComparison.Ordinal);
+        Assert.DoesNotContain("thinking…", tool, StringComparison.Ordinal);
+
+        gate.ReleaseTool();
+        await host.WaitUntilAsync(() =>
+            !host.Session.IsRunning
+            && host.ScrollbackText.Contains("done", StringComparison.Ordinal)
+        );
+
+        Assert.Empty(EventSequenceValidator.Validate(host.Events));
+
+        host.Console.SendText("/quit");
+        host.Console.SendEnter();
+        await run;
+    }
+
     private static ChatResponseUpdate Usage(long input, long output) =>
         new(
             ChatRole.Assistant,
@@ -148,6 +216,63 @@ public sealed class InteractiveSessionActivityTests
                 ),
             ]
         );
+
+    /// <summary>
+    /// Pauses the provider stream on the second reasoning fragment and the harness on the read
+    /// call: the live thinking line and then the live tool line can each be sampled before the
+    /// run moves on.
+    /// </summary>
+    private sealed class ActivityGate : IAgentHookPoints
+    {
+        private readonly TaskCompletionSource _releaseReasoning = new(
+            TaskCreationOptions.RunContinuationsAsynchronously
+        );
+        private readonly TaskCompletionSource _releaseTool = new(
+            TaskCreationOptions.RunContinuationsAsynchronously
+        );
+
+        public TaskCompletionSource ReasoningReached { get; } =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public TaskCompletionSource ToolReached { get; } =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public async ValueTask ProviderStreamEventAsync(
+            string runId,
+            string? parentRunId,
+            ChatResponseUpdate update,
+            CancellationToken cancellationToken
+        )
+        {
+            if (
+                update
+                    .Contents.OfType<TextReasoningContent>()
+                    .Any(content => content.Text == "weigh the options.")
+            )
+            {
+                ReasoningReached.TrySetResult();
+                await _releaseReasoning.Task.WaitAsync(cancellationToken);
+            }
+        }
+
+        public async ValueTask<AgentToolCallingResult> ToolCallingAsync(
+            AgentToolCallingContext context,
+            CancellationToken cancellationToken
+        )
+        {
+            if (context.ToolName == "read")
+            {
+                ToolReached.TrySetResult();
+                await _releaseTool.Task.WaitAsync(cancellationToken);
+            }
+
+            return new AgentToolCallingResult.Proceed(context.Arguments);
+        }
+
+        public void ReleaseReasoning() => _releaseReasoning.TrySetResult();
+
+        public void ReleaseTool() => _releaseTool.TrySetResult();
+    }
 
     /// <summary>
     /// Pauses the provider stream on a named text update, after the preceding usage update has
