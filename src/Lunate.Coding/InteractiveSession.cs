@@ -106,7 +106,7 @@ internal sealed partial class InteractiveSession : IDisposable
     private readonly object _steeringGate = new();
     private readonly List<(string Text, SessionSkillMetadata? Skill)> _pendingSteering = [];
     private readonly CancellationTokenSource _lifetime = new();
-    private readonly ToolBlockRenderer _toolBlocks = new();
+    private readonly ToolBlockRenderer _toolBlocks;
     private readonly ThinkingCommitRenderer _thinkingCommit = new();
     private readonly MarkdownRenderer _markdown;
     private readonly Dictionary<(string RunId, string CallId), string> _toolNames = [];
@@ -191,6 +191,7 @@ internal sealed partial class InteractiveSession : IDisposable
             capabilities: _capabilities
         );
         _markdown = new MarkdownRenderer(_capabilities);
+        _toolBlocks = new ToolBlockRenderer(_capabilities);
         _pipeline = new InputPipeline(options.Hooks);
         _history = new InputHistory(options.HistoryPath ?? InputHistory.DefaultPath);
         _quitWindow = new CtrlCQuitWindow(options.Scheduler);

@@ -47,7 +47,7 @@ public sealed class InteractiveSessionStreamingTests
         host.Console.SendText("go");
         host.Console.SendEnter();
         await host.WaitUntilAsync(() =>
-            host.ScrollbackText.Contains("tool read", StringComparison.Ordinal)
+            host.ScrollbackText.Contains("\u2713 read", StringComparison.Ordinal)
         );
 
         string scrollback = host.ScrollbackText;

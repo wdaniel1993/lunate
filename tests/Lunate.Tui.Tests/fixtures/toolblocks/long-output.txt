@@ -1,4 +1,4 @@
-tool bash dotnet build ok
+✓ bash  dotnet build
 step 01 finished
 step 02 finished
 step 03 finished

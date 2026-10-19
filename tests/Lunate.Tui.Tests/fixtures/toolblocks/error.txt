@@ -1,2 +1,2 @@
-tool read src/missing.cs failed
+✗ read  src/missing.cs
 file not found: src/missing.cs

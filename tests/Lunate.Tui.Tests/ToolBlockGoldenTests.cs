@@ -45,7 +45,9 @@ public sealed class ToolBlockGoldenTests
                       failed: 0
                       succeeded: 286
                     """,
-                    null
+                    null,
+                    ExitCode: 0,
+                    Duration: TimeSpan.FromMilliseconds(400)
                 )
             },
             {

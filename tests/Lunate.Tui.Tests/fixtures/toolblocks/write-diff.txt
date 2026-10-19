@@ -1,4 +1,4 @@
-tool write src/NewFile.cs ok
+✓ write  src/NewFile.cs · +3 −0
 wrote 3 lines to src/NewFile.cs (created)
 match: exact
 --- a/src/NewFile.cs

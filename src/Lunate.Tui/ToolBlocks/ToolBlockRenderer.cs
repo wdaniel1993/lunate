@@ -5,15 +5,29 @@ using Spectre.Console.Rendering;
 namespace Lunate.Tui;
 
 /// <summary>
-/// Renders a tool call as a borderless scrollback block: a header with tool name, argument summary
-/// and status, followed by a bounded output excerpt and, when present, a diff panel. Every
-/// user-derived string goes through markup escaping before assembly.
+/// Renders a tool call as a borderless scrollback block: a header with a status glyph, the tool
+/// name, its compact summary and meta, followed by a bounded output excerpt and, when present, a
+/// diff panel. Every user-derived string goes through markup escaping before assembly.
 /// </summary>
 public sealed class ToolBlockRenderer
 {
     internal static readonly SpanStyle StatusOk = new(Color: "green");
     internal static readonly SpanStyle StatusError = new(Color: "red");
     internal static readonly SpanStyle StatusRunning = SpanStyle.Dim;
+    internal static readonly SpanStyle Accent = new(Color: "cyan");
+    internal static readonly SpanStyle Muted = SpanStyle.Dim;
+
+    private readonly bool _unicode;
+
+    /// <summary>The Unicode defaults; the interactive session passes its detected capabilities.</summary>
+    public ToolBlockRenderer()
+        : this(new TerminalCapabilities(ColorSystemSupport.Detect, Unicode: true)) { }
+
+    internal ToolBlockRenderer(TerminalCapabilities capabilities)
+    {
+        ArgumentNullException.ThrowIfNull(capabilities);
+        _unicode = capabilities.Unicode;
+    }
 
     public IRenderable Render(ToolBlockModel block)
     {
@@ -35,23 +49,25 @@ public sealed class ToolBlockRenderer
         return new Markup(builder.ToString());
     }
 
-    private static StyledLine Header(ToolBlockModel block)
+    private StyledLine Header(ToolBlockModel block)
     {
         var line = new StyledLine();
-        line.Add("tool", SpanStyle.Plain);
+        line.Add(Glyph(block.Status), StatusStyle(block.Status));
         line.Add(" ", SpanStyle.Plain);
-        line.Add(block.ToolName, SpanStyle.Plain);
+        line.Add(block.ToolName, Accent);
         // A failed call's output is an error message, not file content: no line count from it.
         string? resultOutput = block.Status == ToolBlockStatus.Error ? null : block.Output;
         string summary = ToolArgsSummary.Summarize(block.ToolName, block.ArgsSummary, resultOutput);
         if (summary.Length > 0)
         {
-            line.Add(" ", SpanStyle.Plain);
-            line.Add(summary, SpanStyle.Plain);
+            line.Add("  " + summary, Muted);
         }
 
-        line.Add(" ", SpanStyle.Plain);
-        line.Add(StatusText(block.Status), StatusStyle(block.Status));
+        if (ToolBlockMeta.Build(block) is { Length: > 0 } meta)
+        {
+            line.Add(" \u00b7 " + meta, Muted);
+        }
+
         return line;
     }
 
@@ -65,13 +81,12 @@ public sealed class ToolBlockRenderer
         }
     }
 
-    private static string StatusText(ToolBlockStatus status) =>
+    private string Glyph(ToolBlockStatus status) =>
         status switch
         {
-            ToolBlockStatus.Running => "running\u2026",
-            ToolBlockStatus.Ok => "ok",
-            ToolBlockStatus.Error => "failed",
-            _ => "unknown",
+            ToolBlockStatus.Ok => _unicode ? "\u2713" : "+",
+            ToolBlockStatus.Error => _unicode ? "\u2717" : "x",
+            _ => _unicode ? "\u2026" : "...",
         };
 
     private static SpanStyle StatusStyle(ToolBlockStatus status) =>

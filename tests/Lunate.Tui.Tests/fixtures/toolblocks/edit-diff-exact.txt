@@ -1,4 +1,4 @@
-tool edit src/Counter.cs ok
+✓ edit  src/Counter.cs · +1 −1
 edited src/Counter.cs lines 4–5 (match: exact)
 match: exact
 --- a/src/Counter.cs

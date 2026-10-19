@@ -14,7 +14,7 @@
 
 ## 2. Header, glyphs, excerpts
 
-- [ ] 2.1 The header becomes `glyph name  summary · meta`: `✓`/`✗` (ASCII `+`/`x` per the
+- [x] 2.1 The header becomes `glyph name  summary · meta`: `✓`/`✗` (ASCII `+`/`x` per the
   Unicode capability), the name in accent, summary and meta muted; the status words go.
 - [ ] 2.2 Duration measured on the injected scheduler from `ToolCallStart` to `ToolCallResult`
   (culture-invariant `0.4s` / `12s` / `1m 02s`; one decimal below 10 s).
