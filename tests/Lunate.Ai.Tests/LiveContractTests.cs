@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.Extensions.AI;
 
 namespace Lunate.Ai.Tests;
@@ -40,6 +41,84 @@ public sealed class LiveContractTests
         );
     }
 
+    /// <summary>
+    /// The extended-thinking contract: a streaming round-trip with style <c>budget</c> returns
+    /// signed thinking blocks, and the tool loop that follows sends them back unchanged (a broken
+    /// or missing signature is rejected by the API).
+    /// </summary>
+    [Fact]
+    public async Task Anthropic_signed_thinking_blocks_round_trip_through_a_tool_loop()
+    {
+        Assert.SkipUnless(LiveRequested(), $"Live contracts require {LiveVariable}=1.");
+        Assert.SkipWhen(
+            string.IsNullOrEmpty(Environment.GetEnvironmentVariable(AnthropicApiKeyVariable)),
+            $"{AnthropicApiKeyVariable} is not set."
+        );
+
+        var model = new ModelInfo(
+            "claude-sonnet-5-5",
+            "anthropic",
+            null,
+            1_000_000,
+            true,
+            AuthRef: null,
+            Reasoning: "budget"
+        );
+        var factory = new ChatClientFactory(
+            new MarkingLoggerFactory(static () => { }),
+            enableOpenTelemetry: false
+        );
+        IChatClient client = factory.Create(model);
+        ChatOptions options = new() { Tools = [new EchoTool()] };
+        ReasoningParameters.Apply(options, model, ThinkingLevel.Medium);
+        ChatMessage prompt = new(ChatRole.User, "Use the echo tool to echo the word ping.");
+
+        List<ChatResponseUpdate> first = [];
+        await foreach (
+            ChatResponseUpdate update in client.GetStreamingResponseAsync(
+                [prompt],
+                options,
+                TestContext.Current.CancellationToken
+            )
+        )
+        {
+            first.Add(update);
+        }
+
+        ChatMessage assistant = first.ToChatResponse().Messages[0];
+        Assert.Contains(
+            assistant.Contents.OfType<TextReasoningContent>(),
+            reasoning => !string.IsNullOrEmpty(reasoning.Text)
+        );
+        Assert.Contains(
+            assistant.Contents.OfType<TextReasoningContent>(),
+            reasoning => !string.IsNullOrEmpty(reasoning.ProtectedData)
+        );
+        FunctionCallContent call = Assert.Single(assistant.Contents.OfType<FunctionCallContent>());
+
+        var second = new List<ChatResponseUpdate>();
+        await foreach (
+            ChatResponseUpdate update in client.GetStreamingResponseAsync(
+                [
+                    prompt,
+                    assistant,
+                    new ChatMessage(
+                        ChatRole.Tool,
+                        [new FunctionResultContent(call.CallId!, "pong")]
+                    ),
+                ],
+                options,
+                TestContext.Current.CancellationToken
+            )
+        )
+        {
+            second.Add(update);
+        }
+
+        Assert.NotEmpty(second);
+        Assert.NotNull(second[^1].FinishReason);
+    }
+
     private static async Task RunStreamedRoundTrip(ModelInfo model)
     {
         var factory = new ChatClientFactory(
@@ -72,4 +151,26 @@ public sealed class LiveContractTests
             "1",
             StringComparison.OrdinalIgnoreCase
         );
+
+    private sealed class EchoTool : AIFunction
+    {
+        private static readonly JsonElement Schema = JsonDocument
+            .Parse(
+                """
+                {"type":"object","properties":{"text":{"type":"string"}},"required":["text"],"additionalProperties":false}
+                """
+            )
+            .RootElement.Clone();
+
+        public override string Name => "echo";
+
+        public override string Description => "Echoes the given text back.";
+
+        public override JsonElement JsonSchema => Schema;
+
+        protected override ValueTask<object?> InvokeCoreAsync(
+            AIFunctionArguments arguments,
+            CancellationToken cancellationToken
+        ) => new("pong");
+    }
 }

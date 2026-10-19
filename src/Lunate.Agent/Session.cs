@@ -7,8 +7,11 @@ using Microsoft.Extensions.AI;
 
 namespace Lunate.Agent;
 
-/// <summary>One history item: a message and the session entry id it came from (null for a summary).</summary>
-internal sealed record SessionHistoryItem(ChatMessage Message, string? EntryId);
+/// <summary>
+/// One history item: a message, the session entry id it came from (null for a summary) and the
+/// model id recorded on that entry (null when unknown).
+/// </summary>
+internal sealed record SessionHistoryItem(ChatMessage Message, string? EntryId, string? Model);
 
 /// <summary>
 /// An append-only JSONL session. Create one, append messages, compaction and model changes; load it
@@ -370,6 +373,7 @@ public sealed partial class Session
             items.Add(
                 new SessionHistoryItem(
                     new ChatMessage(ChatRole.Assistant, compaction.Summary),
+                    null,
                     null
                 )
             );
@@ -379,7 +383,7 @@ public sealed partial class Session
         {
             if (replaced is null || !replaced.Contains(entry.Id))
             {
-                items.Add(new SessionHistoryItem(entry.Message, entry.Id));
+                items.Add(new SessionHistoryItem(entry.Message, entry.Id, entry.Model));
             }
         }
 

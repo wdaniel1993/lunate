@@ -17,6 +17,15 @@ public sealed class AcpEventMapperTests
     }
 
     [Fact]
+    public void Reasoning_content_maps_to_an_agent_thought_chunk()
+    {
+        Assert.Equal(
+            """{"sessionUpdate":"agent_thought_chunk","content":{"type":"text","text":"Thinking"}}""",
+            Wire(new ReasoningMessageContent("run_1", "msg_1", "Thinking"))
+        );
+    }
+
+    [Fact]
     public void Tool_call_start_maps_to_a_tool_call_with_the_tool_title()
     {
         Assert.Equal(
@@ -80,6 +89,8 @@ public sealed class AcpEventMapperTests
             new RunError("run_1", "boom"),
             new TextMessageStart("run_1", "msg_1"),
             new TextMessageEnd("run_1", "msg_1"),
+            new ReasoningStart("run_1", "msg_1"),
+            new ReasoningEnd("run_1", "msg_1"),
             new UsageUpdated("run_1", new Microsoft.Extensions.AI.UsageDetails()),
             new Retrying("run_1", 1, "boom"),
             new StepLimitReached("run_1", 5),

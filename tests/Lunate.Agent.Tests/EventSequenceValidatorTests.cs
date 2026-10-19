@@ -333,6 +333,93 @@ public sealed class EventSequenceValidatorTests
         Assert.Same(sequence[1], violation.Event);
     }
 
+    [Fact]
+    public void A_well_formed_reasoning_bracket_reports_no_violations()
+    {
+        IReadOnlyList<AgentEvent> sequence = Sequence(
+            new RunStarted(RunId),
+            new ReasoningStart(RunId, "msg_1"),
+            new ReasoningMessageContent(RunId, "msg_1", "thinking "),
+            new ReasoningMessageContent(RunId, "msg_1", "continues"),
+            new ReasoningEnd(RunId, "msg_1"),
+            new TextMessageStart(RunId, "msg_2"),
+            new TextMessageContent(RunId, "msg_2", "answer"),
+            new TextMessageEnd(RunId, "msg_2"),
+            new RunFinished(RunId, StopReasons.Stop)
+        );
+
+        Assert.Empty(EventSequenceValidator.Validate(sequence));
+    }
+
+    [Fact]
+    public void Reasoning_content_outside_start_and_end_reports_an_unbracketed_message()
+    {
+        IReadOnlyList<AgentEvent> sequence = Sequence(
+            new RunStarted(RunId),
+            new ReasoningMessageContent(RunId, "msg_1", "unbracketed"),
+            new RunFinished(RunId, StopReasons.Stop)
+        );
+
+        EventSequenceViolation violation = Assert.Single(EventSequenceValidator.Validate(sequence));
+
+        Assert.Equal(EventSequenceViolationKind.UnbracketedReasoningMessage, violation.Kind);
+        Assert.Same(sequence[1], violation.Event);
+    }
+
+    [Fact]
+    public void An_open_reasoning_message_at_the_terminal_event_reports_an_unclosed_message()
+    {
+        IReadOnlyList<AgentEvent> sequence = Sequence(
+            new RunStarted(RunId),
+            new ReasoningStart(RunId, "msg_1"),
+            new ReasoningMessageContent(RunId, "msg_1", "cut off"),
+            new RunFinished(RunId, StopReasons.Length)
+        );
+
+        EventSequenceViolation violation = Assert.Single(EventSequenceValidator.Validate(sequence));
+
+        Assert.Equal(EventSequenceViolationKind.UnclosedReasoningMessage, violation.Kind);
+        Assert.Same(sequence[^1], violation.Event);
+    }
+
+    [Fact]
+    public void A_reasoning_bracket_opening_inside_a_text_bracket_reports_interleaving()
+    {
+        IReadOnlyList<AgentEvent> sequence = Sequence(
+            new RunStarted(RunId),
+            new TextMessageStart(RunId, "msg_1"),
+            new ReasoningStart(RunId, "msg_2"),
+            new ReasoningMessageContent(RunId, "msg_2", "nested"),
+            new ReasoningEnd(RunId, "msg_2"),
+            new TextMessageEnd(RunId, "msg_1"),
+            new RunFinished(RunId, StopReasons.Stop)
+        );
+
+        EventSequenceViolation violation = Assert.Single(EventSequenceValidator.Validate(sequence));
+
+        Assert.Equal(EventSequenceViolationKind.InterleavedMessage, violation.Kind);
+        Assert.Same(sequence[2], violation.Event);
+    }
+
+    [Fact]
+    public void A_text_bracket_opening_inside_a_reasoning_bracket_reports_interleaving()
+    {
+        IReadOnlyList<AgentEvent> sequence = Sequence(
+            new RunStarted(RunId),
+            new ReasoningStart(RunId, "msg_1"),
+            new TextMessageStart(RunId, "msg_2"),
+            new TextMessageContent(RunId, "msg_2", "nested"),
+            new TextMessageEnd(RunId, "msg_2"),
+            new ReasoningEnd(RunId, "msg_1"),
+            new RunFinished(RunId, StopReasons.Stop)
+        );
+
+        EventSequenceViolation violation = Assert.Single(EventSequenceValidator.Validate(sequence));
+
+        Assert.Equal(EventSequenceViolationKind.InterleavedMessage, violation.Kind);
+        Assert.Same(sequence[2], violation.Event);
+    }
+
     private static IReadOnlyList<AgentEvent> Sequence(params AgentEvent[] events)
     {
         var recording = new RecordingAgentEvents();

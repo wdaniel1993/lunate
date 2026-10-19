@@ -346,6 +346,7 @@ internal sealed class InteractiveSessionHost : IDisposable
                 Diagnostics = _diagnostics,
                 ConfigureHarness = configureHarness,
                 WorkspaceFiles = workspaceFiles,
+                EventObserver = Events.Add,
             }
         );
     }
@@ -364,6 +365,9 @@ internal sealed class InteractiveSessionHost : IDisposable
     public string ScrollbackText => Scrollback.Output;
 
     public InteractiveSession Session { get; }
+
+    /// <summary>Every event of the session's runs in arrival order (the sequence validator's subject).</summary>
+    public List<AgentEvent> Events { get; } = [];
 
     public string Diagnostics => _diagnostics.ToString();
 

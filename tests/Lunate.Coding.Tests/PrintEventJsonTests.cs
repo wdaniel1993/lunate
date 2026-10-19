@@ -30,6 +30,18 @@ public sealed class PrintEventJsonTests
                 """{"type":"text_message_end","runId":"run_1","messageId":"msg_1"}"""
             },
             {
+                new ReasoningStart("run_1", "msg_1"),
+                """{"type":"reasoning_start","runId":"run_1","messageId":"msg_1"}"""
+            },
+            {
+                new ReasoningMessageContent("run_1", "msg_1", "why"),
+                """{"type":"reasoning_message_content","runId":"run_1","messageId":"msg_1","text":"why"}"""
+            },
+            {
+                new ReasoningEnd("run_1", "msg_1"),
+                """{"type":"reasoning_end","runId":"run_1","messageId":"msg_1"}"""
+            },
+            {
                 new ToolCallStart("run_1", "call_1", "read"),
                 """{"type":"tool_call_start","runId":"run_1","callId":"call_1","toolName":"read"}"""
             },

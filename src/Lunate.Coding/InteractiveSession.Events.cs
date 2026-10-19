@@ -9,10 +9,11 @@ namespace Lunate.Coding;
 internal sealed partial class InteractiveSession
 {
     /// <summary>
-    /// The event pump: streamed text into the live tail and scrollback, tool results into blocks,
-    /// usage into the footer, control events into notices. Child-run (subagent) events are scoped
-    /// by run id and suppressed from the transcript — the live area shows a <c>subagent running</c>
-    /// status while a child is live, and the child's usage still feeds the footer.
+    /// The event pump: streamed text into the live tail and scrollback, streamed reasoning into
+    /// the live thinking block and its commit on the end, tool results into blocks, usage into
+    /// the footer, control events into notices. Child-run (subagent) events are scoped by run id
+    /// and suppressed from the transcript — the live area shows a <c>subagent running</c> status
+    /// while a child is live, and the child's usage still feeds the footer.
     /// </summary>
     internal void HandleEvent(AgentEvent agentEvent)
     {
@@ -25,6 +26,20 @@ internal sealed partial class InteractiveSession
                 break;
             case RunStarted:
                 _live.SetNotice(null);
+                break;
+            case ReasoningStart when !child:
+                _thinking = string.Empty;
+                _thinkingStartedAt = _options.Scheduler.Now;
+                _live.SetThinking(_thinking);
+                break;
+            case ReasoningMessageContent reasoning when !child:
+                _thinking += reasoning.Text;
+                _live.SetThinking(_thinking);
+                break;
+            case ReasoningEnd when !child:
+                CommitThinking();
+                _thinking = string.Empty;
+                _live.SetThinking(null);
                 break;
             case TextMessageContent content when !child:
                 AppendTail(content.Text);
@@ -145,6 +160,24 @@ internal sealed partial class InteractiveSession
         _tail = string.Empty;
         CommitParagraph(tail);
         _live.SetTail(string.Empty);
+    }
+
+    /// <summary>
+    /// The finished reasoning span commits through the one scrollback path: the collapsed
+    /// <c>✦ thought for &lt;n&gt;s</c> line, with whole seconds on the injected scheduler's clock,
+    /// or the full text when the <c>thinkingFull</c> setting is on. The renderer escapes the text
+    /// and paints the thinking colour; the console drops it under NO_COLOR.
+    /// </summary>
+    private void CommitThinking()
+    {
+        int elapsedSeconds = (int)
+            Math.Floor(Math.Max(0, (_options.Scheduler.Now - _thinkingStartedAt).TotalSeconds));
+        var commit = new ThinkingCommitModel(_thinking, elapsedSeconds, _settings.ThinkingFull);
+        _live.WriteScrollback(console =>
+            console.Write(
+                _thinkingCommit.Render(commit, _console.Size.Columns, _capabilities.Color)
+            )
+        );
     }
 
     private void CommitParagraph(string markdown)

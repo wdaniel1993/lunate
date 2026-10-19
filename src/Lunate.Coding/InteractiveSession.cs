@@ -78,6 +78,9 @@ internal sealed record InteractiveSessionOptions
     /// <summary>Where composition errors are reported; null uses stderr.</summary>
     public TextWriter? Diagnostics { get; init; }
 
+    /// <summary>Observes each event of a run before the session renders it; null observes nothing.</summary>
+    public Action<AgentEvent>? EventObserver { get; init; }
+
     /// <summary>Adjusts the composed harness options; tests pin budgets and retry delays here.</summary>
     public Func<AgentHarnessOptions, AgentHarnessOptions>? ConfigureHarness { get; init; }
 }
@@ -104,6 +107,7 @@ internal sealed partial class InteractiveSession : IDisposable
     private readonly List<(string Text, SessionSkillMetadata? Skill)> _pendingSteering = [];
     private readonly CancellationTokenSource _lifetime = new();
     private readonly ToolBlockRenderer _toolBlocks = new();
+    private readonly ThinkingCommitRenderer _thinkingCommit = new();
     private readonly MarkdownRenderer _markdown;
     private readonly Dictionary<(string RunId, string CallId), string> _toolNames = [];
     private readonly Dictionary<(string RunId, string CallId), string> _toolArgs = [];
@@ -126,6 +130,7 @@ internal sealed partial class InteractiveSession : IDisposable
     private readonly SkillReadAllowance _skillAllowance = new();
     private string _sessionDirectory = string.Empty;
     private ModelInfo _model = null!;
+    private ThinkingLevel _thinkingLevel;
     private AgentHarness? _harness;
     private SessionApprover? _approver;
     private InputLineState _input = InputLine.Empty;
@@ -146,6 +151,10 @@ internal sealed partial class InteractiveSession : IDisposable
     private List<string> _pickerValues = [];
     private FileIndex? _fileIndex;
     private string _tail = string.Empty;
+    private string _thinking = string.Empty;
+
+    /// <summary>When the open reasoning span began, on the injected scheduler's clock.</summary>
+    private DateTimeOffset _thinkingStartedAt;
     private RunOutcome _outcome;
     private long _inputTokens;
     private long _outputTokens;
@@ -295,6 +304,7 @@ internal sealed partial class InteractiveSession : IDisposable
     private async Task ComposeAsync(CancellationToken ct)
     {
         _settings = SettingsStore.Resolve(_options.SettingsPath, _options.Environment);
+        _thinkingLevel = _settings.Thinking;
         _catalog = ModelCatalog.Load(_options.ModelsPath);
         _environment = _options.Environment ?? Environment.GetEnvironmentVariable;
         _auth = AuthStore.Load(_options.AuthPath, _options.Environment);
@@ -636,6 +646,7 @@ internal sealed partial class InteractiveSession : IDisposable
             FileChanges = (IFileChangeSink?)_extensions?.FileChanges ?? NullFileChangeSink.Instance,
             ModelCatalog = _catalog,
             ModelId = model.Id,
+            ThinkingLevel = _thinkingLevel,
             ModelRegistry = _extensions?.ModelRegistry,
             WorkspaceTools = _workspaceTools,
         };
@@ -887,6 +898,7 @@ internal sealed partial class InteractiveSession : IDisposable
                 : _harness!.RunAsync(text, runCts.Token);
             await foreach (AgentEvent agentEvent in events)
             {
+                _options.EventObserver?.Invoke(agentEvent);
                 HandleEvent(agentEvent);
             }
         }
@@ -1142,6 +1154,7 @@ internal sealed partial class InteractiveSession : IDisposable
                 view.ContextWindow,
                 view.WorkingDirectory,
                 view.GitBranch,
+                _thinkingLevel == ThinkingLevel.Off ? null : ThinkingLiteral(_thinkingLevel),
                 widgets
             )
         );

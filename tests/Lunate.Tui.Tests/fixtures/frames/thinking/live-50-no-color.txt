@@ -1,0 +1,7 @@
+⠹ thinking… 6s
+We need to add validation to TodoList.Add. Null, e
+mpty and whitespace-only titles must throw Argumen
+tException. The check belongs at the top of the me
+thod, before the list mutates.
+deepseek-v4.1-flash · 2.1k/1.0M (0%) · think:high
+> 

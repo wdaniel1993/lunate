@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
-# Regenerate the README media (the demo GIF and the four feature GIFs) from the committed
-# VHS tapes. Keyless and deterministic: every tape replays docs/media/fixtures/demo-session.jsonl
-# through LUNATE_REPLAY with a pinned LUNATE_DATE, so no provider is called and no run varies.
+# Regenerate the README media (the demo GIF and the feature GIFs) from the committed
+# VHS tapes. Keyless and deterministic: every tape replays a committed fixture through
+# LUNATE_REPLAY with a pinned LUNATE_DATE, so no provider is called and no run varies.
+# The demo tapes replay docs/media/fixtures/demo-session.jsonl; the thinking tape (see its
+# fixture block below) replays tests/fixtures/streams/scripted-reasoning.jsonl.
 #
 # The fixture embeds the demo workspace path, the tool set and the model id in its request
 # digests — it is only valid for exactly this setup. When the demo workspace, the prompt, the
@@ -34,6 +36,9 @@ TRUST=/tmp/lunate-demo-trust
 DEMO_HOME=/tmp/lunate-demo-home
 BIN="$REPO/src/Lunate.Coding/bin/Release/net10.0/lunate"
 PINNED_DATE=2026-10-18
+# The request digest of the thinking tape (see the fixture block below): the digest of that
+# tape's own request in this pinned environment, not the digest committed in the 6.1 fixture.
+THINKING_DIGEST=25b80a3855b5ab46969063548319b68b9dd1c6ebcccf9d13ab245fa80a488597
 GATE_EXT="$REPO/samples/extensions/permission-gate/PermissionGateExtension"
 VHS=/opt/homebrew/bin/vhs
 # The tapes normalize their own PATH to this value before launching lunate (recording parity).
@@ -121,16 +126,32 @@ DOTNET_ROOT="$HOME/.dotnet" "$HOME/.dotnet/dotnet" build "$GATE_EXT/PermissionGa
 cp "$GATE_EXT"/bin/Release/net10.0/*.dll "$TRUST/.lunate/extensions/permission-gate/"
 cp "$GATE_EXT/extension.json" "$TRUST/.lunate/extensions/permission-gate/"
 
-# --- the wrapper the tapes invoke: replay + pinned date + the scratch home ---
-cp "$MEDIA/fixtures/demo-session.jsonl" "$SCRATCH/demo-session.jsonl"
-cat > "$SCRATCH/bin/lunate" <<EOF
+# --- the thinking tape's fixture: the committed 6.1 scripted reasoning fixture with the digest of
+# the tape's own request. A replay checks the digest of the whole request, and the committed
+# fixture carries the composition test's request shape (its short system prompt and four tools);
+# a real session composes the system prompt from the workspace and offers the workspace's tools.
+# Only the digest is replaced, so the tape stays driven by tests/fixtures/streams/scripted-reasoning.jsonl.
+# When the workspace, the tool list, the prompt template, the date or the OS changes, the tape
+# fails with a request mismatch: re-record the exchange with LUNATE_RECORD=1 (needs a provider key)
+# in this environment and update THINKING_DIGEST from the recorded fixture. ---
+sed -E "s/\"requestDigest\":\"[0-9a-f]{64}\"/\"requestDigest\":\"$THINKING_DIGEST\"/" \
+  "$REPO/tests/fixtures/streams/scripted-reasoning.jsonl" > "$SCRATCH/thinking-session.jsonl"
+
+# --- the wrappers the tapes invoke: replay + pinned date + the scratch home ---
+write_replay_wrapper() { # directory, replay fixture
+  mkdir -p "$1"
+  cat > "$1/lunate" <<EOF
 #!/bin/bash
 export HOME="$DEMO_HOME"
-export LUNATE_REPLAY="$SCRATCH/demo-session.jsonl"
+export LUNATE_REPLAY="$2"
 export LUNATE_DATE="$PINNED_DATE"
 exec "$BIN" "\$@"
 EOF
-chmod +x "$SCRATCH/bin/lunate"
+  chmod +x "$1/lunate"
+}
+cp "$MEDIA/fixtures/demo-session.jsonl" "$SCRATCH/demo-session.jsonl"
+write_replay_wrapper "$SCRATCH/bin" "$SCRATCH/demo-session.jsonl"
+write_replay_wrapper "$SCRATCH/bin-thinking" "$SCRATCH/thinking-session.jsonl"
 
 # --- deterministic-output shims (see the header): mask build timings and listing dates ---
 cat > "$SCRATCH/bin/dotnet" <<'SHIM'

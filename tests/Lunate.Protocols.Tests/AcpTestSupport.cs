@@ -556,6 +556,9 @@ internal static class AcpScripts
     public static ChatResponseUpdate Text(string text) =>
         new(ChatRole.Assistant, [new Microsoft.Extensions.AI.TextContent(text)]);
 
+    public static ChatResponseUpdate Reasoning(string text) =>
+        new(ChatRole.Assistant, [new Microsoft.Extensions.AI.TextReasoningContent(text)]);
+
     public static ChatResponseUpdate Call(
         string callId,
         string name,

@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using Lunate.Ai;
 using Microsoft.Extensions.AI;
 
 namespace Lunate.Agent;
@@ -26,6 +27,7 @@ public sealed partial class AgentHarness
     private SubagentTreeState? _treeState;
     private SubagentRunner? _subagentRunner;
     private long _tokenBudgetUsed;
+    private string? _lastModelId;
 
     public AgentHarness(IChatClient client, ToolRegistry tools, AgentHarnessOptions? options = null)
     {
@@ -42,6 +44,7 @@ public sealed partial class AgentHarness
             {
                 _history.Add(item.Message);
                 _historyEntryIds.Add(item.EntryId);
+                _historyModels.Add(item.Model);
             }
 
             if (session.Entries.OfType<SessionCompactionEntry>().LastOrDefault() is not null)
@@ -54,6 +57,7 @@ public sealed partial class AgentHarness
             }
 
             _historyUtf8 = CompactionReducer.Utf8Length(_history);
+            _lastModelId = ResumeResolvedModelId(session, _options, _historyModels);
         }
     }
 
@@ -342,6 +346,7 @@ public sealed partial class AgentHarness
                     activeTools,
                     ct
                 );
+                _lastModelId = stream.ModelId;
                 foreach (ChatMessage message in stream.Updates.ToChatResponse().Messages)
                 {
                     ChatMessage persisted = message;
@@ -436,10 +441,74 @@ public sealed partial class AgentHarness
         List<ChatResponseUpdate> updates = [];
         string? messageId = null;
         bool textOpen = false;
+        string? reasoningMessageId = null;
+        bool reasoningOpen = false;
         ChatFinishReason? finishReason = null;
         string? modelId = null;
         string? routedModelId = null;
         SessionUsage? usage = null;
+
+        void CloseText()
+        {
+            if (textOpen)
+            {
+                textOpen = false;
+                channel.Emit(new TextMessageEnd(runId, messageId!));
+            }
+        }
+
+        void CloseReasoning()
+        {
+            if (reasoningOpen)
+            {
+                reasoningOpen = false;
+                channel.Emit(new ReasoningEnd(runId, reasoningMessageId!));
+            }
+        }
+
+        void EmitText(string text)
+        {
+            CloseReasoning();
+            if (!textOpen)
+            {
+                textOpen = true;
+                messageId = RunIds.NextMessage();
+                channel.Emit(new TextMessageStart(runId, messageId));
+            }
+
+            channel.Emit(new TextMessageContent(runId, messageId!, text));
+        }
+
+        void EmitReasoning(string text)
+        {
+            CloseText();
+            if (!reasoningOpen)
+            {
+                reasoningOpen = true;
+                reasoningMessageId = RunIds.NextMessage();
+                channel.Emit(new ReasoningStart(runId, reasoningMessageId));
+            }
+
+            channel.Emit(new ReasoningMessageContent(runId, reasoningMessageId!, text));
+        }
+
+        void EmitSegment(InlineThinkingSplitter.Segment segment)
+        {
+            if (segment.IsReasoning)
+            {
+                EmitReasoning(segment.Text);
+            }
+            else
+            {
+                EmitText(segment.Text);
+            }
+        }
+
+        // Style `inline` models embed their reasoning in the text stream (design D4); every other
+        // model's text flows straight through.
+        InlineThinkingSplitter? inlineSplitter = DeclaredModel() is { Reasoning: "inline" }
+            ? new InlineThinkingSplitter()
+            : null;
 
         try
         {
@@ -493,17 +562,29 @@ public sealed partial class AgentHarness
 
                     foreach (AIContent content in update.Contents)
                     {
-                        if (content is TextContent { Text: { Length: > 0 } text })
+                        if (content is TextReasoningContent { Text: { Length: > 0 } reasoning })
                         {
-                            if (!textOpen)
-                            {
-                                textOpen = true;
-                                messageId = RunIds.NextMessage();
-                                channel.Emit(new TextMessageStart(runId, messageId));
-                            }
-
                             attempt.Emitted = true;
-                            channel.Emit(new TextMessageContent(runId, messageId!, text));
+                            EmitReasoning(reasoning);
+                        }
+                        else if (content is TextContent { Text: { Length: > 0 } text })
+                        {
+                            attempt.Emitted = true;
+                            if (inlineSplitter is null)
+                            {
+                                EmitText(text);
+                            }
+                            else
+                            {
+                                foreach (
+                                    InlineThinkingSplitter.Segment segment in inlineSplitter.Feed(
+                                        text
+                                    )
+                                )
+                                {
+                                    EmitSegment(segment);
+                                }
+                            }
                         }
                         else if (content is UsageContent usageContent)
                         {
@@ -527,10 +608,16 @@ public sealed partial class AgentHarness
         }
         finally
         {
-            if (textOpen)
+            if (inlineSplitter is { } splitter)
             {
-                channel.Emit(new TextMessageEnd(runId, messageId!));
+                foreach (InlineThinkingSplitter.Segment segment in splitter.Flush())
+                {
+                    EmitSegment(segment);
+                }
             }
+
+            CloseReasoning();
+            CloseText();
         }
 
         return new ModelStreamResult(
@@ -615,6 +702,7 @@ public sealed partial class AgentHarness
         }
 
         _historyEntryIds.Add(entryId);
+        _historyModels.Add(model);
         return entryId;
     }
 
@@ -724,24 +812,122 @@ public sealed partial class AgentHarness
             );
         }
 
-        request.AddRange(_history);
+        string? currentModelId = CurrentModelId();
+        for (int index = 0; index < _history.Count; index++)
+        {
+            ChatMessage message = _history[index];
+            request.Add(
+                ReasoningCrossesModels(_historyModels[index], currentModelId)
+                    ? WithoutReasoning(message)
+                    : message
+            );
+        }
+
         return request;
+    }
+
+    /// <summary>
+    /// The model id of the next request: the id the last model call reported (the resolved model
+    /// after routing) — seeded from the session at resume — else the configured model. A blank id
+    /// counts as unknown.
+    /// </summary>
+    private string? CurrentModelId() =>
+        KnownModelId(_lastModelId) ?? KnownModelId(_options.ModelId);
+
+    /// <summary>
+    /// The resolved model id a resumed session's history is compared against (design D6): the
+    /// most recent recorded id, or null when the configured id is the resolved id itself. A
+    /// configured id the catalog declares is what every call records, so nothing needs seeding;
+    /// any other configured id is a request id (a virtual or extension model) whose resolution
+    /// only the session records, so the last recorded id seeds the filter until the first call
+    /// reports the real resolution. A session with model changes is mixed — the recorded ids'
+    /// provenance is ambiguous — and contributes no seed.
+    /// </summary>
+    private static string? ResumeResolvedModelId(
+        Session session,
+        AgentHarnessOptions options,
+        IReadOnlyList<string?> recordedModelIds
+    )
+    {
+        if (
+            KnownModelId(options.ModelId) is not { } configured
+            || options.ModelCatalog is not { } catalog
+            || catalog.Find(configured) is not null
+            || session.Entries.OfType<SessionModelChangeEntry>().Any()
+        )
+        {
+            return null;
+        }
+
+        for (int index = recordedModelIds.Count - 1; index >= 0; index--)
+        {
+            if (KnownModelId(recordedModelIds[index]) is { } resolved)
+            {
+                return resolved;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Whether the recorded model id makes reasoning content foreign to the current request: the
+    /// safety rule of design D6. Unknown ids on either side keep the content.
+    /// </summary>
+    private static bool ReasoningCrossesModels(string? recordedModelId, string? currentModelId) =>
+        KnownModelId(recordedModelId) is { } recorded
+        && KnownModelId(currentModelId) is { } current
+        && !string.Equals(recorded, current, StringComparison.Ordinal);
+
+    private static string? KnownModelId(string? modelId) =>
+        string.IsNullOrWhiteSpace(modelId) ? null : modelId;
+
+    /// <summary>
+    /// The request copy of a history message with its reasoning content removed; the stored message
+    /// is left untouched. Messages without reasoning are returned as they are.
+    /// </summary>
+    private static ChatMessage WithoutReasoning(ChatMessage message)
+    {
+        if (!message.Contents.OfType<TextReasoningContent>().Any())
+        {
+            return message;
+        }
+
+        ChatMessage copy = message.Clone();
+        copy.Contents = [.. copy.Contents.Where(content => content is not TextReasoningContent)];
+        return copy;
     }
 
     private ChatOptions BuildOptions(IReadOnlyList<string>? activeTools)
     {
+        ChatOptions options;
         if (activeTools is null)
         {
-            return new() { Tools = [.. _tools.Declarations] };
+            options = new() { Tools = [.. _tools.Declarations] };
+        }
+        else
+        {
+            HashSet<string> selected = new(activeTools, StringComparer.Ordinal);
+            options = new()
+            {
+                Tools =
+                [
+                    .. _tools.Declarations.Where(declaration =>
+                        selected.Contains(declaration.Name)
+                    ),
+                ],
+            };
         }
 
-        HashSet<string> selected = new(activeTools, StringComparer.Ordinal);
-        return new()
+        if (DeclaredModel() is { } model)
         {
-            Tools =
-            [
-                .. _tools.Declarations.Where(declaration => selected.Contains(declaration.Name)),
-            ],
-        };
+            ReasoningParameters.Apply(options, model, _options.ThinkingLevel);
+        }
+
+        return options;
     }
+
+    /// <summary>The catalog entry of the harness's model; null when no catalog declares it.</summary>
+    private ModelInfo? DeclaredModel() =>
+        _options.ModelId is { } id ? _options.ModelCatalog?.Find(id) : null;
 }

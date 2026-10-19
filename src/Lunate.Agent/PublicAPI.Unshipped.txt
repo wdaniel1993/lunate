@@ -378,6 +378,8 @@ Lunate.Agent.AgentHarnessOptions.RetryBaseDelay.get -> System.TimeSpan
 Lunate.Agent.AgentHarnessOptions.RetryBaseDelay.init -> void
 Lunate.Agent.AgentHarnessOptions.SystemPrompt.get -> string?
 Lunate.Agent.AgentHarnessOptions.SystemPrompt.init -> void
+Lunate.Agent.AgentHarnessOptions.ThinkingLevel.get -> Lunate.Ai.ThinkingLevel
+Lunate.Agent.AgentHarnessOptions.ThinkingLevel.init -> void
 Lunate.Agent.AgentHarnessOptions.ToolOutputLimit.get -> int
 Lunate.Agent.AgentHarnessOptions.ToolOutputLimit.init -> void
 Lunate.Agent.AgentHarnessOptions.WorkingDirectory.get -> string!
@@ -1374,3 +1376,44 @@ override Lunate.Agent.SessionSkillMetadata.ToString() -> string!
 static Lunate.Agent.SessionSkillMetadata.operator !=(Lunate.Agent.SessionSkillMetadata? left, Lunate.Agent.SessionSkillMetadata? right) -> bool
 static Lunate.Agent.SessionSkillMetadata.operator ==(Lunate.Agent.SessionSkillMetadata? left, Lunate.Agent.SessionSkillMetadata? right) -> bool
 Lunate.Agent.AgentHarness.RunSkillAsync(string! userInput, Lunate.Agent.SessionSkillMetadata! skill, System.Threading.CancellationToken ct) -> System.Collections.Generic.IAsyncEnumerable<Lunate.Agent.AgentEvent!>!
+Lunate.Agent.ReasoningStart
+Lunate.Agent.ReasoningStart.Deconstruct(out string! RunId, out string! MessageId) -> void
+Lunate.Agent.ReasoningStart.Equals(Lunate.Agent.ReasoningStart? other) -> bool
+Lunate.Agent.ReasoningStart.MessageId.get -> string!
+Lunate.Agent.ReasoningStart.MessageId.init -> void
+Lunate.Agent.ReasoningStart.ReasoningStart(string! RunId, string! MessageId) -> void
+Lunate.Agent.ReasoningMessageContent
+Lunate.Agent.ReasoningMessageContent.Deconstruct(out string! RunId, out string! MessageId, out string! Text) -> void
+Lunate.Agent.ReasoningMessageContent.Equals(Lunate.Agent.ReasoningMessageContent? other) -> bool
+Lunate.Agent.ReasoningMessageContent.MessageId.get -> string!
+Lunate.Agent.ReasoningMessageContent.MessageId.init -> void
+Lunate.Agent.ReasoningMessageContent.ReasoningMessageContent(string! RunId, string! MessageId, string! Text) -> void
+Lunate.Agent.ReasoningMessageContent.Text.get -> string!
+Lunate.Agent.ReasoningMessageContent.Text.init -> void
+Lunate.Agent.ReasoningEnd
+Lunate.Agent.ReasoningEnd.Deconstruct(out string! RunId, out string! MessageId) -> void
+Lunate.Agent.ReasoningEnd.Equals(Lunate.Agent.ReasoningEnd? other) -> bool
+Lunate.Agent.ReasoningEnd.MessageId.get -> string!
+Lunate.Agent.ReasoningEnd.MessageId.init -> void
+Lunate.Agent.ReasoningEnd.ReasoningEnd(string! RunId, string! MessageId) -> void
+override Lunate.Agent.ReasoningStart.<Clone>$() -> Lunate.Agent.ReasoningStart!
+override Lunate.Agent.ReasoningStart.Equals(object? obj) -> bool
+override Lunate.Agent.ReasoningStart.GetHashCode() -> int
+override Lunate.Agent.ReasoningStart.ToString() -> string!
+override Lunate.Agent.ReasoningMessageContent.<Clone>$() -> Lunate.Agent.ReasoningMessageContent!
+override Lunate.Agent.ReasoningMessageContent.Equals(object? obj) -> bool
+override Lunate.Agent.ReasoningMessageContent.GetHashCode() -> int
+override Lunate.Agent.ReasoningMessageContent.ToString() -> string!
+override Lunate.Agent.ReasoningEnd.<Clone>$() -> Lunate.Agent.ReasoningEnd!
+override Lunate.Agent.ReasoningEnd.Equals(object? obj) -> bool
+override Lunate.Agent.ReasoningEnd.GetHashCode() -> int
+override Lunate.Agent.ReasoningEnd.ToString() -> string!
+override sealed Lunate.Agent.ReasoningStart.Equals(Lunate.Agent.AgentEvent? other) -> bool
+override sealed Lunate.Agent.ReasoningMessageContent.Equals(Lunate.Agent.AgentEvent? other) -> bool
+override sealed Lunate.Agent.ReasoningEnd.Equals(Lunate.Agent.AgentEvent? other) -> bool
+static Lunate.Agent.ReasoningStart.operator !=(Lunate.Agent.ReasoningStart? left, Lunate.Agent.ReasoningStart? right) -> bool
+static Lunate.Agent.ReasoningStart.operator ==(Lunate.Agent.ReasoningStart? left, Lunate.Agent.ReasoningStart? right) -> bool
+static Lunate.Agent.ReasoningMessageContent.operator !=(Lunate.Agent.ReasoningMessageContent? left, Lunate.Agent.ReasoningMessageContent? right) -> bool
+static Lunate.Agent.ReasoningMessageContent.operator ==(Lunate.Agent.ReasoningMessageContent? left, Lunate.Agent.ReasoningMessageContent? right) -> bool
+static Lunate.Agent.ReasoningEnd.operator !=(Lunate.Agent.ReasoningEnd? left, Lunate.Agent.ReasoningEnd? right) -> bool
+static Lunate.Agent.ReasoningEnd.operator ==(Lunate.Agent.ReasoningEnd? left, Lunate.Agent.ReasoningEnd? right) -> bool

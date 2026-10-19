@@ -133,6 +133,32 @@ public sealed class StatusFooterRendererTests
             StatusFooterRenderer.PlainText(Full, width: 200, ["", "widget-a"])
         );
 
+    [Fact]
+    public void Think_level_appears_after_the_usage_segment() =>
+        Assert.Equal(
+            "deepseek-v4.1-flash · 12.4k/128.0k (10%) · think:medium · ~/dev/lunate · main\n",
+            Render(Full with { ThinkLevel = "medium" }, width: 80)
+        );
+
+    [Fact]
+    public void Absent_think_level_omits_the_segment() =>
+        Assert.Equal(
+            "deepseek-v4.1-flash · 12.4k/128.0k (10%) · ~/dev/lunate · main\n",
+            Render(Full with { ThinkLevel = null }, width: 80)
+        );
+
+    [Fact]
+    public void Think_level_drops_after_the_directory_and_before_the_usage()
+    {
+        StatusFooterModel footer = Full with { ThinkLevel = "medium" };
+
+        Assert.Equal(
+            "deepseek-v4.1-flash · 12.4k/128.0k (10%) · think:medium\n",
+            Render(footer, width: 55)
+        );
+        Assert.Equal("deepseek-v4.1-flash · 12.4k/128.0k (10%)\n", Render(footer, width: 50));
+    }
+
     private static string Render(StatusFooterModel footer, int width)
     {
         var console = new TestConsole();

@@ -229,6 +229,8 @@ Lunate.Tui.StatusFooterModel.GitBranch.init -> void
 Lunate.Tui.StatusFooterModel.Model.get -> string!
 Lunate.Tui.StatusFooterModel.Model.init -> void
 Lunate.Tui.StatusFooterModel.StatusFooterModel(string! Model, long TokensUsed, long ContextWindow, string! WorkingDirectory, string? GitBranch) -> void
+Lunate.Tui.StatusFooterModel.ThinkLevel.get -> string?
+Lunate.Tui.StatusFooterModel.ThinkLevel.init -> void
 Lunate.Tui.StatusFooterModel.TokensUsed.get -> long
 Lunate.Tui.StatusFooterModel.TokensUsed.init -> void
 Lunate.Tui.StatusFooterModel.WorkingDirectory.get -> string!
@@ -285,3 +287,22 @@ Lunate.Tui.ApprovalPromptModel.ApprovalPromptModel(string! ToolName, string! Arg
 Lunate.Tui.ApprovalPromptModel.Asker.get -> string?
 Lunate.Tui.ApprovalPromptModel.Asker.init -> void
 Lunate.Tui.ApprovalPromptModel.Deconstruct(out string! ToolName, out string! ArgsSummary, out string? Asker) -> void
+Lunate.Tui.ThinkingCommitModel
+Lunate.Tui.ThinkingCommitModel.<Clone>$() -> Lunate.Tui.ThinkingCommitModel!
+Lunate.Tui.ThinkingCommitModel.Deconstruct(out string! Text, out int ElapsedSeconds, out bool Full) -> void
+Lunate.Tui.ThinkingCommitModel.ElapsedSeconds.get -> int
+Lunate.Tui.ThinkingCommitModel.ElapsedSeconds.init -> void
+Lunate.Tui.ThinkingCommitModel.Equals(Lunate.Tui.ThinkingCommitModel? other) -> bool
+Lunate.Tui.ThinkingCommitModel.Full.get -> bool
+Lunate.Tui.ThinkingCommitModel.Full.init -> void
+Lunate.Tui.ThinkingCommitModel.Text.get -> string!
+Lunate.Tui.ThinkingCommitModel.Text.init -> void
+Lunate.Tui.ThinkingCommitModel.ThinkingCommitModel(string! Text, int ElapsedSeconds, bool Full) -> void
+Lunate.Tui.ThinkingCommitRenderer
+Lunate.Tui.ThinkingCommitRenderer.Render(Lunate.Tui.ThinkingCommitModel! commit, int width, Spectre.Console.ColorSystemSupport color = Spectre.Console.ColorSystemSupport.TrueColor) -> Spectre.Console.Rendering.IRenderable!
+Lunate.Tui.ThinkingCommitRenderer.ThinkingCommitRenderer() -> void
+override Lunate.Tui.ThinkingCommitModel.Equals(object? obj) -> bool
+override Lunate.Tui.ThinkingCommitModel.GetHashCode() -> int
+override Lunate.Tui.ThinkingCommitModel.ToString() -> string!
+static Lunate.Tui.ThinkingCommitModel.operator !=(Lunate.Tui.ThinkingCommitModel? left, Lunate.Tui.ThinkingCommitModel? right) -> bool
+static Lunate.Tui.ThinkingCommitModel.operator ==(Lunate.Tui.ThinkingCommitModel? left, Lunate.Tui.ThinkingCommitModel? right) -> bool

@@ -8,6 +8,7 @@ namespace Lunate.Agent;
 public sealed partial class AgentHarness
 {
     private readonly List<string?> _historyEntryIds = [];
+    private readonly List<string?> _historyModels = [];
     private readonly CompactionReducer _compactor;
     private List<string> _replacedEntryIds = [];
     private ChatMessage? _summaryMessage;
@@ -132,21 +133,27 @@ public sealed partial class AgentHarness
 
         List<ChatMessage> rebuilt = CompactionReducer.Rebuild(_history, tailStart, summaryMessage);
         List<string?> rebuiltIds = [];
+        List<string?> rebuiltModels = [];
         for (int index = 0; index < tailStart; index++)
         {
             if (_history[index].Role == ChatRole.System)
             {
                 rebuiltIds.Add(_historyEntryIds[index]);
+                rebuiltModels.Add(_historyModels[index]);
             }
         }
 
         rebuiltIds.Add(null);
         rebuiltIds.AddRange(_historyEntryIds.Skip(tailStart));
+        rebuiltModels.Add(null);
+        rebuiltModels.AddRange(_historyModels.Skip(tailStart));
 
         _history.Clear();
         _history.AddRange(rebuilt);
         _historyEntryIds.Clear();
         _historyEntryIds.AddRange(rebuiltIds);
+        _historyModels.Clear();
+        _historyModels.AddRange(rebuiltModels);
         _historyUtf8 = CompactionReducer.Utf8Length(_history);
         _summaryMessage = summaryMessage;
         _replacedEntryIds = replaces;

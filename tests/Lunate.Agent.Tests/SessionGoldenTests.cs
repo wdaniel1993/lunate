@@ -1,4 +1,5 @@
 using System.Text;
+using Microsoft.Extensions.AI;
 
 namespace Lunate.Agent.Tests;
 
@@ -15,6 +16,7 @@ public sealed class SessionGoldenTests
     [InlineData("golden-v2-entries.jsonl")]
     [InlineData("golden-v2-extension.jsonl")]
     [InlineData("golden-v2-unknown-content.jsonl")]
+    [InlineData("golden-reasoning.jsonl")]
     public void Golden_sessions_round_trip_byte_for_byte(string name)
     {
         string path = Path.Combine(SessionsDirectory, name);
@@ -51,6 +53,29 @@ public sealed class SessionGoldenTests
             loaded.Entries.OfType<SessionMessageEntry>(),
             entry => Assert.Null(entry.RawMessageJson)
         );
+    }
+
+    [Fact]
+    public void The_reasoning_golden_keeps_protected_data()
+    {
+        string path = Path.Combine(SessionsDirectory, "golden-reasoning.jsonl");
+
+        Session loaded = Session.Load(path);
+
+        SessionMessageEntry assistant = Assert.Single(
+            loaded.Entries.OfType<SessionMessageEntry>(),
+            entry => entry.Message.Role == ChatRole.Assistant
+        );
+        TextReasoningContent reasoning = Assert.IsType<TextReasoningContent>(
+            assistant.Message.Contents[0]
+        );
+        Assert.Equal("Rayleigh scattering makes shorter wavelengths scatter more.", reasoning.Text);
+        Assert.Equal(
+            "EqQBCgIYAhIM1gbcDa9GJwZA2b3hGgxBdjrkzLoky3dl1pkiMOYdsM7vWc5jJ0r8uKfXyQ2n4hT1bV6mR9sP0aL3zC8eD5gF7iH2jK4lN6oQ",
+            reasoning.ProtectedData
+        );
+        Assert.Equal("claude-sonnet-4-5", assistant.Model);
+        Assert.Null(assistant.RawMessageJson);
     }
 
     [Fact]

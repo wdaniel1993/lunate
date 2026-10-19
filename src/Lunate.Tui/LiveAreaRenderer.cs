@@ -1,3 +1,5 @@
+using System.Text;
+
 namespace Lunate.Tui;
 
 internal readonly record struct RenderedFrame(
@@ -9,6 +11,9 @@ internal readonly record struct RenderedFrame(
 internal static class LiveAreaRenderer
 {
     internal const int MaxLines = 8;
+
+    /// <summary>The thinking block's window: the prefix line plus the newest text lines.</summary>
+    internal const int MaxThinkingLines = 12;
 
     // ASCII by design: the spinner is the guide's no-Unicode fallback. A Unicode spinner
     // variant must consult TerminalCapabilities (T-33) before it lands.
@@ -32,12 +37,14 @@ internal static class LiveAreaRenderer
         IReadOnlyList<string> pickerLines = state.Picker is null
             ? []
             : SelectListRenderer.PlainLines(state.Picker);
+        IReadOnlyList<string> thinkingLines = ThinkingLines(state, width);
         var footerLine =
             state.Loading is { Length: > 0 } loading ? loading
             : state.Footer is null ? null
             : StatusFooterRenderer.PlainText(state.Footer, width, state.FooterWidgets);
         int fixedLines =
-            (toolLine is null ? 0 : 1)
+            thinkingLines.Count
+            + (toolLine is null ? 0 : 1)
             + (subagentLine is null ? 0 : 1)
             + (noticeLine is null ? 0 : 1)
             + (approvalLine is null ? 0 : 1)
@@ -57,6 +64,7 @@ internal static class LiveAreaRenderer
 
         var lines = new List<string>();
         lines.AddRange(tail);
+        lines.AddRange(thinkingLines);
         if (toolLine is not null)
         {
             lines.Add(CellText.Clip(toolLine, width));
@@ -105,6 +113,67 @@ internal static class LiveAreaRenderer
         state.ToolName is { Length: > 0 } name
             ? $"{SpinnerFrames[state.FrameNumber % SpinnerFrames.Length]} {name}"
             : null;
+
+    private static string ThinkingPrefix(int elapsedSeconds) =>
+        FormattableString.Invariant($"⠹ thinking… {elapsedSeconds}s");
+
+    /// <summary>
+    /// The live thinking block: the working indicator's prefix on its own first line, with the
+    /// newest wrapped reasoning text below it. The block is a window of at most
+    /// <see cref="MaxThinkingLines"/> lines, so older text scrolls away; the colour is applied
+    /// after wrapping and clipping, so SGR bytes never count as width.
+    /// </summary>
+    private static IReadOnlyList<string> ThinkingLines(LiveAreaState state, int width)
+    {
+        if (state.Thinking is not { } thinking)
+        {
+            return [];
+        }
+
+        var lines = new List<string>
+        {
+            CellText.Clip(ThinkingPrefix(thinking.ElapsedSeconds), width),
+        };
+        if (thinking.Text.Length > 0)
+        {
+            IReadOnlyList<string> text = WrappedLines(thinking.Text, width);
+            int start = Math.Max(0, text.Count - (MaxThinkingLines - 1));
+            for (var i = start; i < text.Count; i++)
+            {
+                lines.Add(CellText.Clip(text[i], width));
+            }
+        }
+
+        return [.. lines.Select(line => ThinkingColor.Wrap(line, state.Color))];
+    }
+
+    /// <summary>Wraps every hard line at the width, breaking a run longer than the width.</summary>
+    private static IReadOnlyList<string> WrappedLines(string text, int width)
+    {
+        var lines = new List<string>();
+        foreach (string logical in text.Split('\n'))
+        {
+            var builder = new StringBuilder();
+            var used = 0;
+            foreach (var rune in logical.EnumerateRunes())
+            {
+                int runeWidth = CellText.Width(rune);
+                if (used > 0 && used + runeWidth > width)
+                {
+                    lines.Add(builder.ToString());
+                    builder.Clear();
+                    used = 0;
+                }
+
+                builder.Append(rune);
+                used += runeWidth;
+            }
+
+            lines.Add(builder.ToString());
+        }
+
+        return lines;
+    }
 
     private static IReadOnlyList<string> TailLines(string tailText, int budget, int width)
     {

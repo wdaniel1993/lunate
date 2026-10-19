@@ -34,6 +34,14 @@ public sealed record TextMessageContent(string RunId, string MessageId, string T
 
 public sealed record TextMessageEnd(string RunId, string MessageId) : AgentEvent(RunId);
 
+/// <summary>Opens one streamed reasoning span; content events follow until <see cref="ReasoningEnd"/>.</summary>
+public sealed record ReasoningStart(string RunId, string MessageId) : AgentEvent(RunId);
+
+public sealed record ReasoningMessageContent(string RunId, string MessageId, string Text)
+    : AgentEvent(RunId);
+
+public sealed record ReasoningEnd(string RunId, string MessageId) : AgentEvent(RunId);
+
 public sealed record ToolCallStart(string RunId, string CallId, string ToolName) : AgentEvent(RunId)
 {
     /// <summary>The parent call id for nested calls; null for top-level calls.</summary>

@@ -116,7 +116,8 @@ public sealed class ModelCatalog
             entry.Endpoint,
             entry.ContextWindow,
             entry.SupportsTools,
-            entry.AuthRef
+            entry.AuthRef,
+            entry.Reasoning
         );
     }
 
@@ -158,5 +159,7 @@ public sealed class ModelCatalog
 
         [JsonPropertyName("auth")]
         public string? AuthRef { get; set; }
+
+        public string? Reasoning { get; set; }
     }
 }

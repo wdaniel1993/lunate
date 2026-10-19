@@ -8,6 +8,9 @@ internal enum EventSequenceViolationKind
     EventAfterTerminal,
     UnbracketedTextMessage,
     UnclosedTextMessage,
+    UnbracketedReasoningMessage,
+    UnclosedReasoningMessage,
+    InterleavedMessage,
     ToolCallOutOfOrder,
     IncompleteToolCall,
     ForeignRunId,
@@ -56,6 +59,7 @@ internal static class EventSequenceValidator
         bool terminalSeen = false;
         string? runId = null;
         HashSet<string> openTextMessages = [];
+        HashSet<string> openReasoningMessages = [];
         Dictionary<string, ToolCallState> toolCalls = [];
 
         foreach (AgentEvent agentEvent in sequence)
@@ -104,6 +108,16 @@ internal static class EventSequenceValidator
                 case RunFinished or RunError:
                     terminalSeen = true;
                     break;
+                case TextMessageStart start when openReasoningMessages.Count > 0:
+                    violations.Add(
+                        new(
+                            EventSequenceViolationKind.InterleavedMessage,
+                            start,
+                            $"TextMessageStart for message '{start.MessageId}' opened while a reasoning message is open."
+                        )
+                    );
+                    openTextMessages.Add(start.MessageId);
+                    break;
                 case TextMessageStart start when !openTextMessages.Add(start.MessageId):
                     violations.Add(
                         new(
@@ -128,6 +142,44 @@ internal static class EventSequenceValidator
                             EventSequenceViolationKind.UnbracketedTextMessage,
                             end,
                             $"TextMessageEnd for message '{end.MessageId}' has no matching TextMessageStart."
+                        )
+                    );
+                    break;
+                case ReasoningStart start when openTextMessages.Count > 0:
+                    violations.Add(
+                        new(
+                            EventSequenceViolationKind.InterleavedMessage,
+                            start,
+                            $"ReasoningStart for message '{start.MessageId}' opened while a text message is open."
+                        )
+                    );
+                    openReasoningMessages.Add(start.MessageId);
+                    break;
+                case ReasoningStart start when !openReasoningMessages.Add(start.MessageId):
+                    violations.Add(
+                        new(
+                            EventSequenceViolationKind.UnbracketedReasoningMessage,
+                            start,
+                            $"ReasoningStart for message '{start.MessageId}' opened an already open message."
+                        )
+                    );
+                    break;
+                case ReasoningMessageContent content
+                    when !openReasoningMessages.Contains(content.MessageId):
+                    violations.Add(
+                        new(
+                            EventSequenceViolationKind.UnbracketedReasoningMessage,
+                            content,
+                            $"ReasoningMessageContent for message '{content.MessageId}' is not bracketed by ReasoningStart/ReasoningEnd."
+                        )
+                    );
+                    break;
+                case ReasoningEnd end when !openReasoningMessages.Remove(end.MessageId):
+                    violations.Add(
+                        new(
+                            EventSequenceViolationKind.UnbracketedReasoningMessage,
+                            end,
+                            $"ReasoningEnd for message '{end.MessageId}' has no matching ReasoningStart."
                         )
                     );
                     break;
@@ -173,6 +225,17 @@ internal static class EventSequenceValidator
                     EventSequenceViolationKind.UnclosedTextMessage,
                     last,
                     $"Text message '{messageId}' is still open when the run ended."
+                )
+            );
+        }
+
+        foreach (string messageId in openReasoningMessages)
+        {
+            violations.Add(
+                new(
+                    EventSequenceViolationKind.UnclosedReasoningMessage,
+                    last,
+                    $"Reasoning message '{messageId}' is still open when the run ended."
                 )
             );
         }

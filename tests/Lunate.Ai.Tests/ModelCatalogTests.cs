@@ -16,6 +16,7 @@ public sealed class ModelCatalogTests
             Assert.Null(mini.Endpoint);
             Assert.Equal(128_000, mini.ContextWindow);
             Assert.True(mini.SupportsTools);
+            Assert.Null(mini.Reasoning);
 
             ModelInfo full = catalog.Find("gpt-4o")!;
             Assert.NotNull(full);
@@ -23,6 +24,7 @@ public sealed class ModelCatalogTests
             Assert.Null(full.Endpoint);
             Assert.Equal(128_000, full.ContextWindow);
             Assert.True(full.SupportsTools);
+            Assert.Null(full.Reasoning);
 
             ModelInfo sonnet = catalog.Find("claude-sonnet-5-5")!;
             Assert.NotNull(sonnet);
@@ -30,6 +32,7 @@ public sealed class ModelCatalogTests
             Assert.Null(sonnet.Endpoint);
             Assert.Equal(1_000_000, sonnet.ContextWindow);
             Assert.True(sonnet.SupportsTools);
+            Assert.Equal("budget", sonnet.Reasoning);
 
             ModelInfo opus = catalog.Find("claude-opus-5-5")!;
             Assert.NotNull(opus);
@@ -37,6 +40,7 @@ public sealed class ModelCatalogTests
             Assert.Null(opus.Endpoint);
             Assert.Equal(1_000_000, opus.ContextWindow);
             Assert.True(opus.SupportsTools);
+            Assert.Equal("budget", opus.Reasoning);
         }
         finally
         {
@@ -138,6 +142,64 @@ public sealed class ModelCatalogTests
             Assert.Equal("work", catalog.Find("work-endpoint")!.AuthRef);
             Assert.Null(catalog.Find("plain-endpoint")!.AuthRef);
             Assert.Null(catalog.Find("gpt-4o-mini")!.AuthRef);
+        }
+        finally
+        {
+            DeleteTempDirectory(directory);
+        }
+    }
+
+    [Fact]
+    public void Load_reads_the_optional_reasoning_style_and_defaults_it_to_null()
+    {
+        string directory = CreateTempDirectory();
+        try
+        {
+            string userFile = WriteUserFile(
+                directory,
+                """
+                {
+                  "schemaVersion": 1,
+                  "models": [
+                    { "id": "reasoning-model", "provider": "openai", "endpoint": null, "contextWindow": 1, "supportsTools": true, "reasoning": "effort" },
+                    { "id": "plain-model", "provider": "openai", "endpoint": null, "contextWindow": 1, "supportsTools": true }
+                  ]
+                }
+                """
+            );
+
+            ModelCatalog catalog = ModelCatalog.Load(userFile);
+
+            Assert.Equal("effort", catalog.Find("reasoning-model")!.Reasoning);
+            Assert.Null(catalog.Find("plain-model")!.Reasoning);
+        }
+        finally
+        {
+            DeleteTempDirectory(directory);
+        }
+    }
+
+    [Fact]
+    public void A_user_override_replaces_the_built_in_reasoning_style()
+    {
+        string directory = CreateTempDirectory();
+        try
+        {
+            string userFile = WriteUserFile(
+                directory,
+                """
+                {
+                  "schemaVersion": 1,
+                  "models": [
+                    { "id": "claude-sonnet-5-5", "provider": "anthropic", "endpoint": null, "contextWindow": 1000000, "supportsTools": true, "reasoning": "inline" }
+                  ]
+                }
+                """
+            );
+
+            ModelCatalog catalog = ModelCatalog.Load(userFile);
+
+            Assert.Equal("inline", catalog.Find("claude-sonnet-5-5")!.Reasoning);
         }
         finally
         {
