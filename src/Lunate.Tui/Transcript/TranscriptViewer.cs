@@ -15,7 +15,10 @@ internal sealed class TranscriptViewer : IDisposable
     private readonly TranscriptViewerRenderer _renderer;
     private readonly StringWriter _buffer = new();
     private readonly IAnsiConsole _ansi;
+    private readonly object _gate = new();
     private IDisposable? _screen;
+    private IDisposable? _resized;
+    private TranscriptModel? _transcript;
     private int _scrolledLines;
 
     public TranscriptViewer(
@@ -37,27 +40,43 @@ internal sealed class TranscriptViewer : IDisposable
     public bool IsOpen => _screen is not null;
 
     /// <summary>The offset from the latest content the frame is drawn at; 0 is the bottom.</summary>
-    internal int ScrolledLines => _scrolledLines;
+    internal int ScrolledLines
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _scrolledLines;
+            }
+        }
+    }
 
     /// <summary>Enters the alternate screen and paints the latest content.</summary>
     public void Open(TranscriptModel transcript)
     {
         ArgumentNullException.ThrowIfNull(transcript);
-        if (IsOpen)
+        lock (_gate)
         {
-            return;
-        }
+            if (IsOpen)
+            {
+                return;
+            }
 
-        _scrolledLines = 0;
-        try
-        {
-            _screen = _console.EnterAlternateScreen();
-            Paint(transcript);
-        }
-        catch
-        {
-            Close();
-            throw;
+            _scrolledLines = 0;
+            _transcript = transcript;
+            try
+            {
+                _screen = _console.EnterAlternateScreen();
+                Paint(transcript);
+                // A resize while the viewer owns the terminal repaints the frame at the new
+                // size; the subscription lives exactly as long as the alternate screen does.
+                _resized = _console.Resized.Subscribe(_ => Repaint());
+            }
+            catch
+            {
+                Close();
+                throw;
+            }
         }
     }
 
@@ -70,36 +89,63 @@ internal sealed class TranscriptViewer : IDisposable
     {
         ArgumentNullException.ThrowIfNull(key);
         ArgumentNullException.ThrowIfNull(transcript);
-        if (!IsOpen)
+        lock (_gate)
         {
-            return false;
-        }
+            if (!IsOpen)
+            {
+                return false;
+            }
 
-        if (IsClose(key))
-        {
-            Close();
-            return false;
-        }
+            _transcript = transcript;
+            if (IsClose(key))
+            {
+                Close();
+                return false;
+            }
 
-        if (Scroll(key, transcript) is { } scrolledLines)
-        {
-            _scrolledLines = scrolledLines;
-            Paint(transcript);
-        }
+            if (Scroll(key, transcript) is { } scrolledLines)
+            {
+                _scrolledLines = scrolledLines;
+                Paint(transcript);
+            }
 
-        return true;
+            return true;
+        }
     }
 
     /// <summary>Leaves the alternate screen; idempotent, so every exit path can call it.</summary>
     public void Close()
     {
-        IDisposable? screen = _screen;
-        _screen = null;
-        _scrolledLines = 0;
-        screen?.Dispose();
+        lock (_gate)
+        {
+            IDisposable? resized = _resized;
+            _resized = null;
+            IDisposable? screen = _screen;
+            _screen = null;
+            _transcript = null;
+            _scrolledLines = 0;
+            resized?.Dispose();
+            screen?.Dispose();
+        }
     }
 
     public void Dispose() => Close();
+
+    /// <summary>
+    /// Repaints the frame the viewer last showed when the terminal resized underneath it. Also
+    /// used as the render-time anchor: the scrolled offset clamps to the current document, so a
+    /// transcript that grew or shrank under the viewer cannot drift the window.
+    /// </summary>
+    private void Repaint()
+    {
+        lock (_gate)
+        {
+            if (_transcript is { } transcript && IsOpen)
+            {
+                Paint(transcript);
+            }
+        }
+    }
 
     private static bool IsClose(KeyEvent key) =>
         key.Kind == KeyKind.Escape
@@ -138,6 +184,8 @@ internal sealed class TranscriptViewer : IDisposable
     private void Paint(TranscriptModel transcript)
     {
         ConsoleSize size = _console.Size;
+        // Anchor at render time: the offset clamps to the document for the size being painted.
+        _scrolledLines = Math.Min(_scrolledLines, _renderer.MaxScrolledLines(transcript, size));
         IReadOnlyList<StyledLine> lines = _renderer.Lines(transcript, size, _scrolledLines);
         _ansi.Profile.Width = Math.Max(1, size.Columns);
 

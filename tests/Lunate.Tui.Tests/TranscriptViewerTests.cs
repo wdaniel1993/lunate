@@ -229,6 +229,50 @@ public sealed class TranscriptViewerTests
     }
 
     [Fact]
+    public void A_resize_while_open_repaints_the_frame_at_the_new_size()
+    {
+        using var console = new FakeConsoleIO(new ConsoleSize(80, 10));
+        using var viewer = Viewer(console);
+        viewer.Open(LongTranscript());
+        int painted = console.Writes.Count;
+
+        console.PushResize(new ConsoleSize(30, 10));
+
+        Assert.True(console.Writes.Count > painted);
+        Assert.Contains("step 30 finished", console.Writes[^1], StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_resize_that_shrinks_the_document_clamps_the_scroll_at_render_time()
+    {
+        using var console = new FakeConsoleIO(new ConsoleSize(80, 10));
+        using var viewer = Viewer(console);
+        viewer.Open(LongTranscript());
+        viewer.HandleKey(Key(KeyKind.Home), LongTranscript());
+        Assert.Equal(22, viewer.ScrolledLines);
+
+        // The console grows past the document: the anchored offset clamps to the latest content.
+        console.PushResize(new ConsoleSize(80, 40));
+
+        Assert.Equal(0, viewer.ScrolledLines);
+        Assert.Contains("step 30 finished", console.Writes[^1], StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_resize_after_close_repaints_nothing()
+    {
+        using var console = new FakeConsoleIO(new ConsoleSize(80, 10));
+        using var viewer = Viewer(console);
+        viewer.Open(LongTranscript());
+        viewer.Close();
+        int painted = console.Writes.Count;
+
+        console.PushResize(new ConsoleSize(30, 10));
+
+        Assert.Equal(painted, console.Writes.Count);
+    }
+
+    [Fact]
     public void The_frame_paints_at_the_console_size()
     {
         using var console = new FakeConsoleIO(new ConsoleSize(20, 4));
