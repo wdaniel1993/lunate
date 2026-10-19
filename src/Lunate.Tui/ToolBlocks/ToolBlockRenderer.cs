@@ -19,15 +19,17 @@ public sealed class ToolBlockRenderer
     internal static readonly SpanStyle Warning = new(Color: "yellow");
 
     private readonly bool _unicode;
+    private readonly string _home;
 
     /// <summary>The Unicode defaults; the interactive session passes its detected capabilities.</summary>
     public ToolBlockRenderer()
         : this(new TerminalCapabilities(ColorSystemSupport.Detect, Unicode: true)) { }
 
-    internal ToolBlockRenderer(TerminalCapabilities capabilities)
+    internal ToolBlockRenderer(TerminalCapabilities capabilities, string? homeDirectory = null)
     {
         ArgumentNullException.ThrowIfNull(capabilities);
         _unicode = capabilities.Unicode;
+        _home = homeDirectory ?? PathText.Home();
     }
 
     public IRenderable Render(ToolBlockModel block)
@@ -62,7 +64,12 @@ public sealed class ToolBlockRenderer
         line.Add(block.ToolName, Accent);
         // A failed call's output is an error message, not file content: no line count from it.
         string? resultOutput = block.Status == ToolBlockStatus.Error ? null : block.Output;
-        string summary = ToolArgsSummary.Summarize(block.ToolName, block.ArgsSummary, resultOutput);
+        string summary = ToolArgsSummary.Summarize(
+            block.ToolName,
+            block.ArgsSummary,
+            resultOutput,
+            _home
+        );
         if (summary.Length > 0)
         {
             line.Add("  " + summary, Muted);

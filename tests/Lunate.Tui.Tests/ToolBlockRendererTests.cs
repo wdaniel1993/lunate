@@ -357,6 +357,22 @@ public sealed class ToolBlockRendererTests
             )
         );
 
+    [Fact]
+    public void Header_paths_under_home_show_a_tilde() =>
+        Assert.Equal(
+            "\u2713 read  ~/dev/notes/a.cs\n",
+            RenderWithHome(
+                new ToolBlockModel(
+                    "read",
+                    """{"path":"/Users/daniel/dev/notes/a.cs"}""",
+                    ToolBlockStatus.Ok,
+                    null,
+                    null
+                ),
+                "/Users/daniel"
+            )
+        );
+
     private const string DiffText =
         "--- a/src/x.cs\n"
         + "+++ b/src/x.cs\n"
@@ -399,6 +415,19 @@ public sealed class ToolBlockRendererTests
         console.Write(
             new ToolBlockRenderer(
                 new TerminalCapabilities(Spectre.Console.ColorSystemSupport.Detect, Unicode: false)
+            ).Render(block)
+        );
+        return console.Output;
+    }
+
+    private static string RenderWithHome(ToolBlockModel block, string home)
+    {
+        var console = new TestConsole();
+        console.Profile.Width = 80;
+        console.Write(
+            new ToolBlockRenderer(
+                new TerminalCapabilities(Spectre.Console.ColorSystemSupport.Detect, Unicode: true),
+                home
             ).Render(block)
         );
         return console.Output;

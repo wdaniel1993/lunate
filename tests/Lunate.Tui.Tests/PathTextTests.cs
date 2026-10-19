@@ -16,7 +16,10 @@ public sealed class PathTextTests
 
     [Fact]
     public void A_sibling_sharing_the_home_prefix_is_not_tildified() =>
-        Assert.Equal("/Users/daniel/a.cs", PathText.Shorten("/Users/daniel/a.cs", 40, "/Users/dan"));
+        Assert.Equal(
+            "/Users/daniel/a.cs",
+            PathText.Shorten("/Users/daniel/a.cs", 40, "/Users/dan")
+        );
 
     [Fact]
     public void A_path_outside_home_keeps_its_full_form() =>
@@ -56,7 +59,7 @@ public sealed class PathTextTests
 
     [Fact]
     public void A_separatorless_value_keeps_its_tail() =>
-        Assert.Equal("\u2026fgh.cs", PathText.Shorten("abcdefgh.cs", 6));
+        Assert.Equal("\u2026gh.cs", PathText.Shorten("abcdefgh.cs", 6));
 
     [Fact]
     public void Backslash_separators_elide_too() =>

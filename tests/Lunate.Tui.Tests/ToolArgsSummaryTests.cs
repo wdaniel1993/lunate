@@ -80,14 +80,55 @@ public sealed class ToolArgsSummaryTests
     }
 
     [Fact]
-    public void Huge_strings_do_not_throw()
+    public void Huge_paths_shorten_to_the_budget()
     {
         string huge = new('p', 100_000);
 
         string summary = ToolArgsSummary.Summarize("read", "{\"path\":\"" + huge + "\"}");
 
-        Assert.Equal(huge, summary);
+        Assert.Equal(PathText.HeaderBudget, summary.Length);
+        Assert.StartsWith("\u2026", summary, StringComparison.Ordinal);
+        Assert.EndsWith(
+            new string('p', PathText.HeaderBudget - 1),
+            summary,
+            StringComparison.Ordinal
+        );
     }
+
+    [Fact]
+    public void Read_paths_under_home_show_a_tilde() =>
+        Assert.Equal(
+            "~/dev/notes/a.cs",
+            ToolArgsSummary.Summarize(
+                "read",
+                """{"path":"/Users/daniel/dev/notes/a.cs"}""",
+                home: "/Users/daniel"
+            )
+        );
+
+    [Fact]
+    public void Long_read_paths_elide_in_the_middle_keeping_the_basename_and_the_range() =>
+        Assert.Equal(
+            "~/dev/l\u2026/Session.cs (1-13)",
+            ToolArgsSummary.Summarize(
+                "read",
+                """{"path":"/Users/daniel/dev/lunate/src/Lunate.Tui/Session.cs","offset":1,"limit":13}""",
+                home: "/Users/daniel",
+                pathBudget: 19
+            )
+        );
+
+    [Fact]
+    public void Fallback_values_that_look_like_paths_shorten_in_the_summary() =>
+        Assert.Equal(
+            "~/dev/lunate/s\u2026/Thing.cs",
+            ToolArgsSummary.Summarize(
+                "myserver__read_file",
+                """{"path":"/Users/daniel/dev/lunate/src/very/deep/nested/Thing.cs"}""",
+                home: "/Users/daniel",
+                pathBudget: 24
+            )
+        );
 
     [Fact]
     public void Missing_known_field_falls_through_to_the_generic_summary()

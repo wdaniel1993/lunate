@@ -25,7 +25,7 @@
 
 ## 3. Path shortening
 
-- [ ] 3.1 The pure shortening helper (`~` for home; middle elision keeping the basename; never
+- [x] 3.1 The pure shortening helper (`~` for home; middle elision keeping the basename; never
   wraps) and its unit tests; applied in summaries and the viewer.
 
 ## 4. Transcript store and viewer

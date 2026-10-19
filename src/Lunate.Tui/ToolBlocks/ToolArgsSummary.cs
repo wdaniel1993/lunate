@@ -15,7 +15,13 @@ internal static class ToolArgsSummary
     private const string Elision = "\u2026";
     private const string EmptyFileText = "[empty file]";
 
-    public static string Summarize(string? toolName, string? args, string? output = null)
+    public static string Summarize(
+        string? toolName,
+        string? args,
+        string? output = null,
+        string? home = null,
+        int pathBudget = PathText.HeaderBudget
+    )
     {
         if (string.IsNullOrWhiteSpace(args))
         {
@@ -39,6 +45,13 @@ internal static class ToolArgsSummary
             return args.Trim();
         }
 
+        // Bash commands are not paths, however many separators they contain; a path-shaped
+        // summary — and always a read/edit/write one — shortens to the header budget.
+        if (pathBudget > 0 && toolName != "bash" && (IsPathTool(toolName) || LooksLikePath(line)))
+        {
+            line = PathText.Shorten(line, pathBudget, home);
+        }
+
         if (toolName == "read" && ReadRange(root, output) is { Length: > 0 } range)
         {
             return line + " " + range;
@@ -51,6 +64,11 @@ internal static class ToolArgsSummary
 
         return line;
     }
+
+    private static bool IsPathTool(string? toolName) => toolName is "read" or "write" or "edit";
+
+    private static bool LooksLikePath(string value) =>
+        value.Contains('/') || value.Contains('\\') || value.StartsWith('~');
 
     private static bool TryParseObject(string args, out JsonElement root)
     {
