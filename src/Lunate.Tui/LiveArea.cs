@@ -21,6 +21,7 @@ internal sealed class LiveArea : IDisposable
     private readonly object _postGate = new();
     private readonly object _paintGate = new();
     private readonly bool _readKeys;
+    private readonly bool _ownsScrollback;
     private IAnsiConsole? _scrollback;
     private readonly Queue<Action<IAnsiConsole>> _deferredScrollback = new();
     private bool _suspended;
@@ -39,6 +40,7 @@ internal sealed class LiveArea : IDisposable
         _scheduler = scheduler;
         _readKeys = readKeys;
         _scrollback = scrollback;
+        _ownsScrollback = scrollback is null;
         _capabilities =
             capabilities ?? new TerminalCapabilities(ColorSystemSupport.Detect, Unicode: true);
         _writer = new FrameWriter(console);
@@ -208,12 +210,23 @@ internal sealed class LiveArea : IDisposable
         _cts.Dispose();
     }
 
-    private IAnsiConsole Scrollback() =>
+    private IAnsiConsole Scrollback()
+    {
         _scrollback ??= ConsoleColorSystem.Create(
             _console.IsInteractive ? _capabilities.Color : ColorSystemSupport.NoColors,
             new ConsoleTextWriter(_console),
             ansi: _console.IsInteractive
         );
+
+        // Spectre folds at the profile width; binding it per commit keeps later commits laid
+        // out at the terminal width in effect at the time. An injected console keeps its width.
+        if (_ownsScrollback)
+        {
+            _scrollback.Profile.Width = Math.Max(1, _console.Size.Columns);
+        }
+
+        return _scrollback;
+    }
 
     private void Post(LiveAreaInput input)
     {

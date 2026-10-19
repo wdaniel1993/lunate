@@ -1,5 +1,6 @@
+using Microsoft.Reactive.Testing;
 using Spectre.Console;
-using Spectre.Console.Testing;
+using Spectre.Console.Rendering;
 
 namespace Lunate.Tui.Tests;
 
@@ -64,9 +65,12 @@ public sealed class NarrowFrameInvariantTests
     [MemberData(nameof(Sizes))]
     public void Every_committed_scrollback_line_fits_the_terminal(int width, int height)
     {
-        var console = new TestConsole();
-        console.Profile.Width = width;
-        console.Profile.Height = height;
+        var scheduler = new TestScheduler();
+        using var console = new FakeConsoleIO(scheduler, new ConsoleSize(width, height))
+        {
+            IsInteractive = false,
+        };
+        using var area = new LiveArea(console, scheduler);
         var renderer = new ToolBlockRenderer(
             new TerminalCapabilities(ColorSystemSupport.NoColors, Unicode: true),
             homeDirectory: "/home/dev"
@@ -74,10 +78,14 @@ public sealed class NarrowFrameInvariantTests
 
         foreach (ToolBlockModel block in CommittedTurn())
         {
-            console.Write(renderer.Render(block, width));
+            IRenderable rendered = renderer.Render(block, width);
+            area.WriteScrollback(scrollback => scrollback.Write(rendered));
         }
 
-        string[] lines = console.Output.ReplaceLineEndings("\n").TrimEnd('\n').Split('\n');
+        string[] lines = string.Concat(console.Writes)
+            .ReplaceLineEndings("\n")
+            .TrimEnd('\n')
+            .Split('\n');
         Assert.All(
             lines,
             line =>
