@@ -15,7 +15,7 @@
 
 ## 3. Rendering
 
-- [ ] 3.1 Box chrome (D1): rules ≥80, placeholder when empty, footer below the box, frame-order change; unit tests at 120/80/50.
+- [x] 3.1 Box chrome (D1): rules ≥80, placeholder when empty, footer below the box, frame-order change; unit tests at 120/80/50.
 - [ ] 3.2 The list rows (D4/D9): ≤8 rows above the input, selection styling, descriptions ≥60, muted file directories, ASCII fallbacks; unit tests per breakpoint × colour mode.
 
 ## 4. Tests and media

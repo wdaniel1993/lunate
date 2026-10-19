@@ -52,7 +52,12 @@ internal sealed class LiveArea : IDisposable
         }
 
         _started = true;
-        var initial = new LiveAreaState { Size = _console.Size, Color = _capabilities.Color };
+        var initial = new LiveAreaState
+        {
+            Size = _console.Size,
+            Color = _capabilities.Color,
+            Unicode = _capabilities.Unicode,
+        };
         _writer.Paint(LiveAreaRenderer.Render(initial));
 
         var states = _stimuli
