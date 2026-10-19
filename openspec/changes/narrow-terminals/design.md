@@ -28,7 +28,7 @@ The breakpoints are constants in the TUI (`NarrowWidth = 60`, `FullWidth = 100`)
 
 ## D4. The width invariant and resize
 
-Every rendered line is clipped by `CellText.Clip` in the live area and the block renderers, so "nothing wider than the terminal" already holds by construction; this card pins it with a property-style test over the frame at each matrix size and with the composition test resizing the host (40 → 120 → 60) and asserting the frames re-render at each width. No new resize machinery: `LiveArea` already observes `IConsoleIO.Resized` and re-renders from the state; the test proves it end to end.
+Every live-area line is clipped by `CellText.Clip`, and tool-block headers by `StyledLine.Clip` (cell-aware, styles preserved). Output and diff lines may fold, but the scrollback console is bound to the terminal width, so no emitted line exceeds it. This card pins the invariant with a property-style test over the live area and a committed turn at each matrix size — the scrollback test drives the production `LiveArea` path, not a test-set width — and with the composition test resizing the host (40 → 120 → 60) and asserting the frames use each width. No new resize machinery: `LiveArea` already observes `IConsoleIO.Resized` and re-renders the live area from the state, and each subsequent scrollback commit re-binds the console width. Already-committed scrollback is immutable and owned by the terminal, so a resize neither can nor does re-render it; the composition test asserts that the next frames use the new width.
 
 ## D5. The snapshot matrix
 
