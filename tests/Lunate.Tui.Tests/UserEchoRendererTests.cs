@@ -43,9 +43,33 @@ public sealed class UserEchoRendererTests
     }
 
     [Fact]
+    public void Leading_and_trailing_spaces_survive_the_echo()
+    {
+        Assert.Equal(">   hi  \n\n", Render("  hi  ", width: 40));
+    }
+
+    [Fact]
+    public void Consecutive_spaces_survive_the_echo()
+    {
+        Assert.Equal("> a  b\n\n", Render("a  b", width: 40));
+    }
+
+    [Fact]
+    public void A_blank_hard_line_renders_as_an_indent_only_line()
+    {
+        Assert.Equal("> a\n  \n  b\n\n", Render("a\n\nb", width: 40));
+    }
+
+    [Fact]
+    public void A_tab_survives_the_echo()
+    {
+        Assert.Equal("> a\tb\n\n", Render("a\tb", width: 40));
+    }
+
+    [Fact]
     public void An_empty_message_renders_the_bare_prefix_line()
     {
-        Assert.Equal(">\n\n", Render(string.Empty, width: 40));
+        Assert.Equal("> \n\n", Render(string.Empty, width: 40));
     }
 
     [Fact]

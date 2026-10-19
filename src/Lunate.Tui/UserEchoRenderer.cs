@@ -30,7 +30,7 @@ internal sealed class UserEchoRenderer
         var builder = new StringBuilder();
         foreach (StyledLine line in Lines(text, width, color))
         {
-            builder.Append(line.ToMarkup()).Append('\n');
+            builder.Append(line.ToMarkup(trimTrailingWhitespace: false)).Append('\n');
         }
 
         return new Markup(builder.Append('\n').ToString());
@@ -66,8 +66,10 @@ internal sealed class UserEchoRenderer
         };
 
     /// <summary>
-    /// Greedy word wrap at <paramref name="width"/> cells. A run wider than the width stays on one
-    /// line and is clipped by the caller (the tool-block rule), never broken across lines.
+    /// Greedy word wrap at <paramref name="width"/> cells, keeping the text verbatim: space runs,
+    /// leading and trailing spaces and blank hard lines all survive. One space is consumed at a
+    /// soft break (it becomes the line break); a run wider than the width stays on one line and is
+    /// clipped by the caller (the tool-block rule), never broken across lines.
     /// </summary>
     private static IReadOnlyList<(string Text, bool First)> Wrap(string text, int width)
     {
@@ -76,23 +78,39 @@ internal sealed class UserEchoRenderer
         {
             var current = new StringBuilder();
             var used = 0;
-            foreach (string word in hard.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+            int index = 0;
+            while (index < hard.Length)
             {
-                int wordWidth = CellText.Width(word);
-                if (used > 0 && used + 1 + wordWidth > width)
+                int start = index;
+                bool spaces = hard[index] == ' ';
+                while (index < hard.Length && (hard[index] == ' ') == spaces)
                 {
-                    lines.Add((current.ToString(), lines.Count == 0));
+                    index++;
+                }
+
+                string token = hard[start..index];
+                if (spaces)
+                {
+                    current.Append(token);
+                    used += token.Length;
+                    continue;
+                }
+
+                int wordWidth = CellText.Width(token);
+                if (used > 0 && used + wordWidth > width)
+                {
+                    string line = current.ToString();
+                    if (line.EndsWith(' '))
+                    {
+                        line = line[..^1];
+                    }
+
+                    lines.Add((line, lines.Count == 0));
                     current.Clear();
                     used = 0;
                 }
 
-                if (used > 0)
-                {
-                    current.Append(' ');
-                    used++;
-                }
-
-                current.Append(word);
+                current.Append(token);
                 used += wordWidth;
             }
 
