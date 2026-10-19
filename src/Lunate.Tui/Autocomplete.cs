@@ -26,7 +26,8 @@ internal sealed record CompletionItem(
     internal static CompletionItem File(string path)
     {
         ArgumentNullException.ThrowIfNull(path);
-        int slash = path.LastIndexOf('/');
+        string trimmed = path.Length > 1 && path.EndsWith('/') ? path[..^1] : path;
+        int slash = trimmed.LastIndexOf('/');
         return new CompletionItem(
             path,
             null,

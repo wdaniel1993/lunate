@@ -23,6 +23,9 @@ internal sealed record LiveAreaState
 
     public SelectListModel? Picker { get; init; }
 
+    /// <summary>The open autocomplete list; null while closed (design D4).</summary>
+    public AutocompleteState? Autocomplete { get; init; }
+
     public string? Loading { get; init; }
 
     /// <summary>The live thinking block; null while no reasoning streams.</summary>

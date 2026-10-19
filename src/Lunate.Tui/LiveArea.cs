@@ -109,6 +109,10 @@ internal sealed class LiveArea : IDisposable
 
     public void SetPicker(SelectListModel? picker) => Post(new PickerInput(picker));
 
+    /// <summary>Sets the open autocomplete list; null closes it (design D4).</summary>
+    public void SetAutocomplete(AutocompleteState? autocomplete) =>
+        Post(new AutocompleteInput(autocomplete));
+
     public void SetTool(string? toolName) => Post(new ToolInput(toolName));
 
     public void SetSubagentRunning(bool running) => Post(new SubagentInput(running));
@@ -261,6 +265,7 @@ internal sealed class LiveArea : IDisposable
             TrustPromptInput trust => state with { Trust = trust.Prompt },
             LoadingInput loading => state with { Loading = loading.Text },
             PickerInput picker => state with { Picker = picker.Picker },
+            AutocompleteInput autocomplete => state with { Autocomplete = autocomplete.State },
             ToolInput tool => state with { ToolName = tool.Name, FrameNumber = 0 },
             SubagentInput subagent => state with { SubagentRunning = subagent.Running },
             FooterInput footer => state with
@@ -305,6 +310,8 @@ internal sealed class LiveArea : IDisposable
     private sealed record LoadingInput(string? Text) : LiveAreaInput;
 
     private sealed record PickerInput(SelectListModel? Picker) : LiveAreaInput;
+
+    private sealed record AutocompleteInput(AutocompleteState? State) : LiveAreaInput;
 
     private sealed record ToolInput(string? Name) : LiveAreaInput;
 

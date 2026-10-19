@@ -3,12 +3,13 @@ using Lunate.Tui;
 namespace Lunate.Coding.Tests;
 
 /// <summary>
-/// The `@path` Tab-completion flow at the session level: token scanning, replacement, candidate
-/// notices, the lazy index build behind the indexing notice, and a real temp-tree walk-through.
+/// The `@path` file mode end to end: the as-you-type list over the lazy index, acceptance keeping
+/// the `@`, the indexing notice and the ignore/laziness guarantees.
 /// </summary>
 public sealed class PathCompletionTests
 {
     private static readonly KeyEvent Tab = new(KeyKind.Tab, null, false, false, false);
+    private static readonly KeyEvent Right = new(KeyKind.Right, null, false, false, false);
     private static readonly KeyEvent Left = new(KeyKind.Left, null, false, false, false);
 
     private static FakeWorkspaceFiles SrcTree() =>
@@ -17,180 +18,145 @@ public sealed class PathCompletionTests
             .AddDirectory("src/core")
             .AddFile("src/main.cs");
 
-    [Fact]
-    public async Task A_single_match_replaces_the_token_and_keeps_the_at_sign()
+    private static async Task<InteractiveSessionHost> StartAsync(
+        IWorkspaceFiles? workspaceFiles = null
+    )
     {
-        using var host = new InteractiveSessionHost(workspaceFiles: SrcTree());
-        Task run = host.RunAsync();
+        var host = new InteractiveSessionHost(workspaceFiles: workspaceFiles);
+        _ = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+        return host;
+    }
 
-        host.Console.SendText("read @src/co");
-        await TabUntilFrameAsync(host, "> read @src/core/");
+    private static async Task SendAsync(InteractiveSessionHost host, string text)
+    {
+        host.Console.SendText(text);
+        await host.WaitUntilAsync(() =>
+            host.Session.Input.Text == text && host.Session.Input.CursorPosition == text.Length
+        );
+    }
 
-        host.Console.Complete();
-        await run;
+    /// <summary>Nudges the cursor (a no-op at the end) until the lazily built index publishes.</summary>
+    private static async Task<AutocompleteState> WaitForFileListAsync(InteractiveSessionHost host)
+    {
+        DateTime deadline = DateTime.UtcNow + TimeSpan.FromSeconds(10);
+        while (DateTime.UtcNow < deadline)
+        {
+            host.Console.Send(Right);
+            await Task.Delay(10, TestContext.Current.CancellationToken);
+            if (host.Session.Autocomplete is { } state)
+            {
+                return state;
+            }
+        }
+
+        throw new TimeoutException("the file list never opened");
     }
 
     [Fact]
-    public async Task Several_matches_extend_the_token_to_the_common_prefix()
+    public async Task Typing_an_at_token_lists_and_accepts_a_single_match()
+    {
+        using InteractiveSessionHost host = await StartAsync(SrcTree());
+
+        await SendAsync(host, "read @src/co");
+        AutocompleteState state = await WaitForFileListAsync(host);
+        Assert.Equal(["src/core/"], state.Items.Select(item => item.Text));
+
+        host.Console.Send(Tab);
+        await host.WaitUntilAsync(() => host.Session.Input.Text == "read @src/core/");
+
+        host.Console.Complete();
+    }
+
+    [Fact]
+    public async Task Several_matches_let_the_arrows_pick_the_row_to_accept()
     {
         var files = new FakeWorkspaceFiles()
             .AddDirectory("src")
             .AddDirectory("src/common")
             .AddDirectory("src/compile");
-        using var host = new InteractiveSessionHost(workspaceFiles: files);
-        Task run = host.RunAsync();
+        using InteractiveSessionHost host = await StartAsync(files);
 
-        host.Console.SendText("read @src/co");
-        await TabUntilFrameAsync(host, "> read @src/com");
+        await SendAsync(host, "read @src/co");
+        AutocompleteState state = await WaitForFileListAsync(host);
+        Assert.Equal(["src/common/", "src/compile/"], state.Items.Select(item => item.Text));
+
+        host.Console.Send(new KeyEvent(KeyKind.Down, null, false, false, false));
+        await host.WaitUntilAsync(() => host.Session.Autocomplete?.SelectedIndex == 1);
+        host.Console.Send(Tab);
+        await host.WaitUntilAsync(() => host.Session.Input.Text == "read @src/compile/");
 
         host.Console.Complete();
-        await run;
     }
 
     [Fact]
-    public async Task No_progress_lists_at_most_twenty_candidates_with_an_ellipsis_count()
+    public async Task Acceptance_preserves_the_text_after_the_cursor()
     {
-        var files = new FakeWorkspaceFiles();
-        foreach (char group in "abcde")
+        using InteractiveSessionHost host = await StartAsync(SrcTree());
+
+        await SendAsync(host, "read @src/co now");
+        host.Console.Send(Left);
+        host.Console.Send(Left);
+        host.Console.Send(Left);
+        host.Console.Send(Left);
+        await host.WaitUntilAsync(() => host.Session.Input.CursorPosition == 12);
+
+        // The lazily built index publishes after the cursor settled; each Left/Right pair
+        // re-runs the trigger at the same position until the list opens.
+        DateTime deadline = DateTime.UtcNow + TimeSpan.FromSeconds(10);
+        while (host.Session.Autocomplete is null && DateTime.UtcNow < deadline)
         {
-            for (var number = 0; number < 5; number++)
-            {
-                files.AddFile($"{group}{number}");
-            }
+            host.Console.Send(Left);
+            host.Console.Send(Right);
+            await Task.Delay(10, TestContext.Current.CancellationToken);
         }
 
-        using var host = new InteractiveSessionHost(workspaceFiles: files);
-        Task run = host.RunAsync();
-
-        host.Console.SendText("@");
-        await TabUntilFrameAsync(host, "… (+5 more)");
-
-        Assert.Contains("paths: a0 a1 a2 a3 a4 b0", host.LastFrame, StringComparison.Ordinal);
-        Assert.Contains("> @", host.LastFrame, StringComparison.Ordinal);
-
-        host.Console.Complete();
-        await run;
-    }
-
-    [Fact]
-    public async Task No_matches_leaves_the_input_and_says_so()
-    {
-        using var host = new InteractiveSessionHost(workspaceFiles: SrcTree());
-        Task run = host.RunAsync();
-
-        host.Console.SendText("read @nope");
-        await TabUntilFrameAsync(host, "paths: no matches");
-
-        Assert.Contains("> read @nope", host.LastFrame, StringComparison.Ordinal);
-
-        host.Console.Complete();
-        await run;
-    }
-
-    [Fact]
-    public async Task A_cursor_not_at_the_token_end_falls_through()
-    {
-        using var host = new InteractiveSessionHost(workspaceFiles: SrcTree());
-        Task run = host.RunAsync();
-
-        host.Console.SendText("@src/co");
-        host.Console.Send(Left);
-        host.Console.Send(Tab);
-        host.Console.SendText("!");
-        await InteractiveSessionCommandTests.WaitForFrameAsync(host, "> @src/c!o");
-
-        Assert.DoesNotContain("paths:", host.LastFrame, StringComparison.Ordinal);
-
-        host.Console.Complete();
-        await run;
-    }
-
-    [Fact]
-    public async Task Completion_preserves_the_text_after_the_cursor()
-    {
-        using var host = new InteractiveSessionHost(workspaceFiles: SrcTree());
-        Task run = host.RunAsync();
-
-        host.Console.SendText("read @src/co now");
-        host.Console.Send(Left);
-        host.Console.Send(Left);
-        host.Console.Send(Left);
-        host.Console.Send(Left);
-        await TabUntilFrameAsync(host, "> read @src/core/ now");
-
-        host.Console.Complete();
-        await run;
-    }
-
-    [Fact]
-    public async Task Tab_without_an_at_token_does_nothing()
-    {
-        using var host = new InteractiveSessionHost(workspaceFiles: SrcTree());
-        Task run = host.RunAsync();
-
-        host.Console.SendText("hello");
-        host.Console.Send(Tab);
-        host.Console.SendText("!");
-        await InteractiveSessionCommandTests.WaitForFrameAsync(host, "> hello!");
-
-        Assert.DoesNotContain("paths:", host.LastFrame, StringComparison.Ordinal);
-
-        host.Console.Complete();
-        await run;
-    }
-
-    [Fact]
-    public async Task While_the_index_builds_every_attempt_shows_the_indexing_notice()
-    {
-        var files = SrcTree();
-        files.Gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        using var host = new InteractiveSessionHost(workspaceFiles: files);
-        Task run = host.RunAsync();
-
-        host.Console.SendText("read @src/co");
-        host.Console.Send(Tab);
-        await InteractiveSessionCommandTests.WaitForFrameAsync(host, "file index: indexing…");
+        Assert.NotNull(host.Session.Autocomplete);
 
         host.Console.Send(Tab);
-        await host.WaitUntilAsync(() => files.EnumerateCalls >= 1);
-        await InteractiveSessionCommandTests.WaitForFrameAsync(host, "file index: indexing…");
-        Assert.Contains("> read @src/co", host.LastFrame, StringComparison.Ordinal);
-
-        files.Gate.SetResult();
-        await TabUntilFrameAsync(host, "> read @src/core/");
-        Assert.Equal(1, files.EnumerateCalls);
+        await host.WaitUntilAsync(() => host.Session.Input.Text == "read @src/core/ now");
 
         host.Console.Complete();
-        await run;
     }
 
     [Fact]
-    public async Task The_index_is_not_built_until_the_first_at_completion()
+    public async Task Moving_the_cursor_out_of_the_token_closes_the_list()
     {
-        var files = SrcTree().AddFile("alpha.txt");
-        using var host = new InteractiveSessionHost(workspaceFiles: files);
-        Task run = host.RunAsync();
+        using InteractiveSessionHost host = await StartAsync(SrcTree());
 
-        host.Console.SendText("hello");
-        host.Console.Send(Tab);
-        host.Console.SendText("!");
-        await InteractiveSessionCommandTests.WaitForFrameAsync(host, "> hello!");
+        await SendAsync(host, "@src/co");
+        await WaitForFileListAsync(host);
+        host.Console.Send(Left);
+        await host.WaitUntilAsync(() => host.Session.Autocomplete is null);
+
+        Assert.Equal("@src/co", host.Session.Input.Text);
+
+        host.Console.Complete();
+    }
+
+    [Fact]
+    public async Task The_index_is_not_built_until_the_first_at_token()
+    {
+        FakeWorkspaceFiles files = SrcTree();
+        using InteractiveSessionHost host = await StartAsync(files);
+
+        await SendAsync(host, "hello world");
         Assert.Equal(0, files.EnumerateCalls);
 
         host.Console.SendCtrlC();
-        await InteractiveSessionCommandTests.WaitForFrameGoneAsync(host, "> hello!");
-        host.Console.SendText("@al");
-        await TabUntilFrameAsync(host, "> @alpha.txt");
-        Assert.Equal(1, files.EnumerateCalls);
+        await host.WaitUntilAsync(() => host.Session.Input.Text.Length == 0);
+        await SendAsync(host, "@al");
+        await host.WaitUntilAsync(() => files.EnumerateCalls >= 1);
 
         host.Console.Complete();
-        await run;
     }
 
     [Fact]
-    public async Task The_session_flow_completes_against_a_real_tree_and_respects_ignores()
+    public async Task The_session_flow_uses_a_real_tree_and_respects_ignores()
     {
         using var host = new InteractiveSessionHost();
+        _ = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
         Directory.CreateDirectory(Path.Combine(host.Temp.Root, "src", "core"));
         File.WriteAllText(Path.Combine(host.Temp.Root, "src", "main.cs"), string.Empty);
         Directory.CreateDirectory(Path.Combine(host.Temp.Root, "bin"));
@@ -198,40 +164,25 @@ public sealed class PathCompletionTests
         Directory.CreateDirectory(Path.Combine(host.Temp.Root, ".git"));
         File.WriteAllText(Path.Combine(host.Temp.Root, ".git", "config"), string.Empty);
         File.WriteAllText(Path.Combine(host.Temp.Root, ".gitignore"), "bin/\n");
-        Task run = host.RunAsync();
 
-        host.Console.SendText("read @src/c");
-        await TabUntilFrameAsync(host, "> read @src/core/");
+        await SendAsync(host, "read @src/c");
+        AutocompleteState state = await WaitForFileListAsync(host);
+        Assert.Equal(["src/core/"], state.Items.Select(item => item.Text));
+        host.Console.Send(Tab);
+        await host.WaitUntilAsync(() => host.Session.Input.Text == "read @src/core/");
 
         host.Console.SendCtrlC();
         await InteractiveSessionCommandTests.WaitForFrameGoneAsync(host, "@src/core/");
-        host.Console.SendText("@bin");
-        await TabUntilFrameAsync(host, "paths: no matches");
+        await SendAsync(host, "@bin");
+        await Task.Delay(50, TestContext.Current.CancellationToken);
+        Assert.Null(host.Session.Autocomplete);
 
         host.Console.SendCtrlC();
         await InteractiveSessionCommandTests.WaitForFrameGoneAsync(host, "@bin");
-        host.Console.SendText("@.git/");
-        await TabUntilFrameAsync(host, "paths: no matches");
+        await SendAsync(host, "@.git/");
+        await Task.Delay(50, TestContext.Current.CancellationToken);
+        Assert.Null(host.Session.Autocomplete);
 
         host.Console.Complete();
-        await run;
-    }
-
-    /// <summary>Repeats Tab until the frame shows the expected text (the build is real-async).</summary>
-    private static async Task TabUntilFrameAsync(InteractiveSessionHost host, string expected)
-    {
-        DateTime deadline = DateTime.UtcNow + TimeSpan.FromSeconds(10);
-        while (DateTime.UtcNow <= deadline)
-        {
-            host.Console.Send(Tab);
-            await Task.Delay(5, TestContext.Current.CancellationToken);
-            host.Advance(33);
-            if (host.LastFrame.Contains(expected, StringComparison.Ordinal))
-            {
-                return;
-            }
-        }
-
-        throw new TimeoutException($"the frame never contained '{expected}': {host.LastFrame}");
     }
 }

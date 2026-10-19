@@ -8,10 +8,10 @@
 
 ## 2. State and session wiring
 
-- [ ] 2.1 `AutocompleteState` in the live-area state (items, selected index, mode, token start); the session recomputes on edit/cursor move (D6 triggers; command mode first, file mode second).
-- [ ] 2.2 Key precedence (D5): ↑/↓ move vs history; Tab/Enter accept vs complete-nothing/submit; Esc closes vs cancel; newline keys keep inserting; Ctrl+C/L/O unchanged. Session tests for each precedence pair.
-- [ ] 2.3 File mode through the lazy index (D7): query via `FileIndex.Match`, indexing notice while building, rows capped at 8.
-- [ ] 2.4 Replace `ApplyCompletion`/`TryCompleteSlashWord`/`CompletePathToken` with the state machine; keep the routing (`RoutedKey.Complete`) intact.
+- [x] 2.1 `AutocompleteState` in the live-area state (items, selected index, mode, token start); the session recomputes on edit/cursor move (D6 triggers; command mode first, file mode second).
+- [x] 2.2 Key precedence (D5): ↑/↓ move vs history; Tab/Enter accept vs complete-nothing/submit; Esc closes vs cancel; newline keys keep inserting; Ctrl+C/L/O unchanged. Session tests for each precedence pair.
+- [x] 2.3 File mode through the lazy index (D7): query via `FileIndex.Match`, indexing notice while building, rows capped at 8.
+- [x] 2.4 Replace `ApplyCompletion`/`TryCompleteSlashWord`/`CompletePathToken` with the state machine; keep the routing (`RoutedKey.Complete`) intact.
 
 ## 3. Rendering
 
