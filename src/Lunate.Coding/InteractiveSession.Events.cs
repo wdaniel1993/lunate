@@ -101,7 +101,7 @@ internal sealed partial class InteractiveSession
 
                 break;
             case UsageUpdated usage:
-                AddUsage(usage.Usage);
+                AddUsage(usage.Usage, root: !child);
                 break;
             case ModelRouted routed when !child:
                 // Only the session's own extension-registered/virtual model shows routing; a
@@ -309,11 +309,19 @@ internal sealed partial class InteractiveSession
         }
     }
 
-    private void AddUsage(UsageDetails usage)
+    /// <summary>
+    /// Rolls usage into the footer. Only the root run feeds the activity line's deltas: a child
+    /// (subagent) run is part of the turn's cumulative usage but not of the root run's own delta.
+    /// </summary>
+    private void AddUsage(UsageDetails usage, bool root)
     {
         _inputTokens += usage.InputTokenCount ?? 0;
         _outputTokens += usage.OutputTokenCount ?? 0;
-        _live.SetRunUsage(_inputTokens - _runInputBaseline, _outputTokens - _runOutputBaseline);
+        if (root)
+        {
+            _live.SetRunUsage(_inputTokens - _runInputBaseline, _outputTokens - _runOutputBaseline);
+        }
+
         UpdateStatus();
     }
 

@@ -136,7 +136,7 @@ The TUI SHALL detect terminal capabilities once per session and degrade every ca
 
 ### Requirement: Working indicator
 
-The live area SHALL carry one activity line while work is in flight: a spinner frame, a label, the elapsed seconds and — while the turn is cancellable — the run's token deltas and `esc to interrupt`. The label SHALL be `thinking…` while reasoning streams, `<tool name> <summary>` while a tool runs, and `working…` otherwise. The narrow band (below 60 columns) SHALL keep the spinner, the label and the elapsed seconds and drop the token deltas and the interrupt hint. The thinking label SHALL carry the thinking colour where the terminal supports colour — the theme value in truecolor and 256-color modes, the 16-color fallback in 16-color mode — and SHALL be colour-neutral under NO_COLOR (the spinner carries the motion).
+The live area SHALL carry one activity line while work is in flight: a spinner frame, a label, the elapsed seconds and — while the turn is cancellable — the root run's token deltas and `esc to interrupt`. The label SHALL be `thinking…` while reasoning streams, `<tool name> <summary>` while a tool runs, and `working…` otherwise. The narrow band (below 60 columns) SHALL keep the spinner, the label and the elapsed seconds and drop the token deltas and the interrupt hint. The thinking label SHALL carry the thinking colour where the terminal supports colour — the theme value in truecolor and 256-color modes, the 16-color fallback in 16-color mode — and SHALL be colour-neutral under NO_COLOR (the spinner carries the motion).
 
 #### Scenario: Thinking work shows the affordances
 
@@ -155,3 +155,9 @@ The live area SHALL carry one activity line while work is in flight: a spinner f
 - **GIVEN** a terminal 40 columns wide with a running tool
 - **WHEN** the activity line renders
 - **THEN** it fits the width with the spinner, the label and the elapsed seconds, and no token deltas or interrupt hint
+
+#### Scenario: Subagent usage stays out of the deltas
+
+- **GIVEN** a root run with a child (subagent) run
+- **WHEN** the child reports its usage
+- **THEN** the activity line keeps the root run's deltas while the footer's cumulative total includes the child's tokens

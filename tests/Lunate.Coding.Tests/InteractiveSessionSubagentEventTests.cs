@@ -90,6 +90,45 @@ public sealed class InteractiveSessionSubagentEventTests
     }
 
     [Fact]
+    public async Task Child_usage_feeds_the_footer_but_not_the_activity_line_deltas()
+    {
+        using var host = new InteractiveSessionHost();
+        host.Client.Enqueue(Scripts.Text("answer"), Scripts.Stop());
+        host.Client.Gate(1);
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+
+        host.Console.SendText("hi");
+        host.Console.SendEnter();
+        await host.Client.WaitForCallAsync(1);
+        host.Session.HandleEvent(
+            new UsageUpdated(
+                "run_parent",
+                new UsageDetails { InputTokenCount = 100, OutputTokenCount = 20 }
+            )
+        );
+        host.Session.HandleEvent(
+            new UsageUpdated(
+                "run_child",
+                new UsageDetails { InputTokenCount = 7, OutputTokenCount = 3 }
+            )
+            {
+                ParentRunId = "run_parent",
+            }
+        );
+        host.Advance(40);
+
+        string frame = host.LastFrame;
+        Assert.Contains("↑100 ↓20", frame, StringComparison.Ordinal);
+        Assert.DoesNotContain("↑107", frame, StringComparison.Ordinal);
+        Assert.Contains("130/", frame, StringComparison.Ordinal);
+
+        host.Client.Release(1);
+        host.Console.Complete();
+        await run;
+    }
+
+    [Fact]
     public async Task The_spawning_block_carries_the_child_result_as_one_indented_group()
     {
         using var host = new InteractiveSessionHost();
