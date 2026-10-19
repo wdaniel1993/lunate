@@ -100,7 +100,7 @@ order; commit per group; record any design/code divergence in this file under th
   therefore derives its scratch fixture from the committed one, replacing only the digest with the
   tape request's (`THINKING_DIGEST`, pinned like the demo fixture's environment); the updates stay
   single-sourced.)
-- [ ] 6.3 Startup budget unchanged (hyperfine check in the gate).
+- [x] 6.3 Startup budget unchanged (hyperfine check in the gate).
   (Covered by the change gate; left open here because the gate's startup check is not captured in this file.)
 
 ## 7. Docs
