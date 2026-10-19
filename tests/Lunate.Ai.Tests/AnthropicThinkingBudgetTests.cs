@@ -85,8 +85,83 @@ public sealed class AnthropicThinkingBudgetTests
         Assert.Equal("sig-1", reasoning.ProtectedData);
     }
 
+    [Fact]
+    public async Task The_request_carries_the_conversation_including_signed_reasoning_and_tools()
+    {
+        List<ChatMessage> conversation =
+        [
+            new(ChatRole.User, "Hi"),
+            new(
+                ChatRole.Assistant,
+                [
+                    new TextReasoningContent("weighing") { ProtectedData = "sig-1" },
+                    new TextContent("visible answer"),
+                    new FunctionCallContent("call-1", "echo", new Dictionary<string, object?>()),
+                ]
+            ),
+            new(
+                ChatRole.Tool,
+                [
+                    new FunctionResultContent(
+                        "call-1",
+                        new Dictionary<string, object?> { ["text"] = "pong" }
+                    ),
+                ]
+            ),
+        ];
+        (string requestBody, _) = await SendAsync(
+            ThinkingLevel.High,
+            conversation,
+            [new EchoTool()]
+        );
+
+        using JsonDocument document = JsonDocument.Parse(requestBody);
+        JsonElement root = document.RootElement;
+        JsonElement[] messages = [.. root.GetProperty("messages").EnumerateArray()];
+        Assert.Equal(3, messages.Length);
+
+        Assert.Equal("Hi", TextOf(messages[0]));
+
+        JsonElement[] assistant = [.. messages[1].GetProperty("content").EnumerateArray()];
+        JsonElement thinking = Assert.Single(
+            assistant,
+            block => block.GetProperty("type").GetString() == "thinking"
+        );
+        Assert.Equal("weighing", thinking.GetProperty("thinking").GetString());
+        Assert.Equal("sig-1", thinking.GetProperty("signature").GetString());
+        JsonElement text = Assert.Single(
+            assistant,
+            block => block.GetProperty("type").GetString() == "text"
+        );
+        Assert.Equal("visible answer", text.GetProperty("text").GetString());
+        JsonElement call = Assert.Single(
+            assistant,
+            block => block.GetProperty("type").GetString() == "tool_use"
+        );
+        Assert.Equal("call-1", call.GetProperty("id").GetString());
+        Assert.Equal("echo", call.GetProperty("name").GetString());
+
+        JsonElement result = Assert.Single(messages[2].GetProperty("content").EnumerateArray());
+        Assert.Equal("tool_result", result.GetProperty("type").GetString());
+        Assert.Equal("call-1", result.GetProperty("tool_use_id").GetString());
+
+        JsonElement tool = Assert.Single(root.GetProperty("tools").EnumerateArray());
+        Assert.Equal("echo", tool.GetProperty("name").GetString());
+        Assert.True(tool.TryGetProperty("input_schema", out _));
+    }
+
+    private static string TextOf(JsonElement message) =>
+        string.Concat(
+            message
+                .GetProperty("content")
+                .EnumerateArray()
+                .Select(block => block.GetProperty("text").GetString())
+        );
+
     private static async Task<(string RequestBody, List<ChatResponseUpdate> Updates)> SendAsync(
-        ThinkingLevel level
+        ThinkingLevel level,
+        IList<ChatMessage>? messages = null,
+        IList<AITool>? tools = null
     )
     {
         var handler = new CapturingHandler(ThinkingStream);
@@ -114,13 +189,18 @@ public sealed class AnthropicThinkingBudgetTests
             Reasoning: "budget"
         );
         ChatOptions options = new();
+        if (tools is not null)
+        {
+            options.Tools = [.. tools];
+        }
+
         ReasoningParameters.Apply(options, model, level);
         IChatClient client = factory.Create(model);
 
         var updates = new List<ChatResponseUpdate>();
         await foreach (
             ChatResponseUpdate update in client.GetStreamingResponseAsync(
-                [new ChatMessage(ChatRole.User, "Hi")],
+                messages ?? [new ChatMessage(ChatRole.User, "Hi")],
                 options,
                 TestContext.Current.CancellationToken
             )
@@ -131,6 +211,28 @@ public sealed class AnthropicThinkingBudgetTests
 
         Assert.NotNull(handler.RequestBody);
         return (handler.RequestBody, updates);
+    }
+
+    private sealed class EchoTool : AIFunction
+    {
+        private static readonly JsonElement Schema = JsonDocument
+            .Parse(
+                """
+                {"type":"object","properties":{"text":{"type":"string"}},"required":["text"],"additionalProperties":false}
+                """
+            )
+            .RootElement.Clone();
+
+        public override string Name => "echo";
+
+        public override string Description => "Echoes the given text back.";
+
+        public override JsonElement JsonSchema => Schema;
+
+        protected override ValueTask<object?> InvokeCoreAsync(
+            AIFunctionArguments arguments,
+            CancellationToken cancellationToken
+        ) => new("pong");
     }
 
     private sealed class CapturingHandler(string responseBody) : HttpMessageHandler
