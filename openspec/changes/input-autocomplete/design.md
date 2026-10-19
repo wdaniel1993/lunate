@@ -26,9 +26,9 @@ A `FuzzyMatch.Score(query, candidate)` subsequence scorer: every query character
 ## D5. Key precedence while the list is open
 
 - ↑/↓ — move the selection (clamped; wraps off). Otherwise history navigation.
-- Tab / Enter — accept the selected item: replace `TokenStart..cursor` with the item text (files keep the `@`; commands get a trailing space), close the list. Otherwise Tab completes nothing and Enter submits.
+- Tab / Enter — accept the selected item: replace `TokenStart..cursor` with the item text (files keep the `@`; commands get a trailing space), close the list. Otherwise Tab completes nothing and Enter submits. When the typed token already equals the selected row exactly, Enter submits (accepting would be a no-op and would cost a second Enter for every fully typed command); Tab still accepts. Newline keys insert and then re-run the trigger rules, so the list normally closes after a newline.
 - Esc — close the list. Otherwise cancel the turn / clear the input as today.
-- Shift+Enter / Alt+Enter / Ctrl+J — insert a newline, list stays open (re-filtered).
+- Shift+Enter / Alt+Enter / Ctrl+J — insert a newline, then the trigger rules re-run (a continuation line leaves command mode, so the list normally closes; file mode can stay open mid-line).
 - Typing/backspace — re-filter; the trigger rules (D6) decide open/close.
 - Ctrl+C, Ctrl+L, Ctrl+O — unchanged (they win over the list).
 
