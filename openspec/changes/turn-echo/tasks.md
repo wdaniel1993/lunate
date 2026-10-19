@@ -8,7 +8,7 @@
 
 ## 2. The working indicator
 
-- [ ] 2.1 `LiveAreaState` carries the run's token deltas and the tool summary; the session posts them (run start baseline, usage events).
+- [x] 2.1 `LiveAreaState` carries the run's token deltas and the tool summary; the session posts them (run start baseline, usage events).
 - [x] 2.2 The activity line: spinner + label (thinking / tool + summary / working) + elapsed + `↑in ↓out` + `esc to interrupt` (only while cancellable); narrow band drops the tokens and the hint; culture-invariant formatting; unit tests per state and band.
 - [ ] 2.3 Composition test: a scripted run shows the thinking line with the hint, then the tool line with the tool summary.
 

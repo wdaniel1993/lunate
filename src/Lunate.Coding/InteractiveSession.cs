@@ -171,6 +171,10 @@ internal sealed partial class InteractiveSession : IDisposable
     private RunOutcome _outcome;
     private long _inputTokens;
     private long _outputTokens;
+
+    /// <summary>The cumulative token counts when the current run started (its deltas' baseline).</summary>
+    private long _runInputBaseline;
+    private long _runOutputBaseline;
     private string _modelId = "unknown";
     private string? _extensionModelId;
     private string? _modelRoute;
@@ -995,6 +999,11 @@ internal sealed partial class InteractiveSession : IDisposable
     {
         using var runCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         _runCancellation = runCts;
+        _runInputBaseline = _inputTokens;
+        _runOutputBaseline = _outputTokens;
+        _live.SetRunUsage(null, null);
+        _live.SetRunning(true);
+        _live.SetCancellable(true);
         try
         {
             IAsyncEnumerable<AgentEvent> events = skill is { } metadata
@@ -1013,6 +1022,9 @@ internal sealed partial class InteractiveSession : IDisposable
         finally
         {
             _runCancellation = null;
+            _live.SetRunning(false);
+            _live.SetCancellable(false);
+            _live.SetRunUsage(null, null);
             _live.SetTool(null);
         }
     }

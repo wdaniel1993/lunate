@@ -62,12 +62,18 @@ internal sealed partial class InteractiveSession
                 if (!child && start.ParentToolCallId is null)
                 {
                     _activeCalls.Add(startKey);
-                    _live.SetTool(start.ToolName);
+                    ShowActiveTool();
                 }
 
                 break;
             case ToolCallArgs args:
-                _toolArgs[(args.RunId, args.CallId)] = args.Args;
+                var argsKey = (args.RunId, args.CallId);
+                _toolArgs[argsKey] = args.Args;
+                if (_activeCalls.Count > 0 && _activeCalls[^1] == argsKey)
+                {
+                    ShowActiveTool();
+                }
+
                 break;
             case ToolCallResult result when child:
                 _toolNames.Remove((result.RunId, result.CallId));
@@ -85,11 +91,7 @@ internal sealed partial class InteractiveSession
                 CommitToolBlock(result, duration);
                 if (result.ParentToolCallId is null && _activeCalls.Remove(resultKey))
                 {
-                    _live.SetTool(
-                        _activeCalls.Count == 0
-                            ? null
-                            : _toolNames.GetValueOrDefault(_activeCalls[^1])
-                    );
+                    ShowActiveTool();
                 }
 
                 if (failedTool is not null)
@@ -308,6 +310,31 @@ internal sealed partial class InteractiveSession
     {
         _inputTokens += usage.InputTokenCount ?? 0;
         _outputTokens += usage.OutputTokenCount ?? 0;
+        _live.SetRunUsage(_inputTokens - _runInputBaseline, _outputTokens - _runOutputBaseline);
         UpdateStatus();
+    }
+
+    /// <summary>
+    /// Shows the top active call in the activity line: its name and its argument summary, both
+    /// read from the session's own call dictionaries. No active call clears the line.
+    /// </summary>
+    private void ShowActiveTool()
+    {
+        if (_activeCalls.Count == 0)
+        {
+            _live.SetTool(null);
+            return;
+        }
+
+        (string RunId, string CallId) key = _activeCalls[^1];
+        string name = _toolNames.GetValueOrDefault(key, "tool");
+        _live.SetTool(name);
+        _live.SetToolSummary(
+            ToolArgsSummary.Summarize(
+                name,
+                _toolArgs.GetValueOrDefault(key),
+                unicode: _capabilities.Unicode
+            )
+        );
     }
 }
