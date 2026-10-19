@@ -63,5 +63,5 @@
 
 ## 7. Docs
 
-- [ ] 7.1 `docs/guide.md`: the tool-block forms and the `Ctrl+O` viewer in the TUI section.
+- [x] 7.1 `docs/guide.md`: the tool-block forms and the `Ctrl+O` viewer in the TUI section.
 - [ ] 7.2 The footer keybinding line change noted where keybindings are documented.

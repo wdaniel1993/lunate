@@ -257,8 +257,8 @@ Events are our own type, named and sequenced like AG-UI's so that the TUI, ACP a
 | `RunStarted`, `RunFinished(stopReason)`, `RunError` | Run started, finished, error | Prompt response with stop reason | Spinner, footer |
 | `TextMessageStart`, `TextMessageContent`, `TextMessageEnd` | Text message start, content, end | Agent message chunks | Streaming text |
 | `ReasoningStart`, `ReasoningMessageContent`, `ReasoningEnd` | Thinking start, content, end | Agent thought chunks | Live thinking, collapsed commit |
-| `ToolCallStart`, `ToolCallArgs`, `ToolCallEnd` | Tool call start, args, end | Tool call | Tool block header |
-| `ToolCallResult` (with `Details`) | Tool call result | Tool call update | Tool block body, diff |
+| `ToolCallStart`, `ToolCallArgs`, `ToolCallEnd` | Tool call start, args, end | Tool call | Tool block: one-line `✓`/`✗` header with summary and meta (running stays in the live area) |
+| `ToolCallResult` (with `Details`) | Tool call result | Tool call update | Tool block: output excerpt, diff |
 | Extension: `ApprovalRequested` | Custom | Permission request | Approval prompt |
 | Extension: `UsageUpdated`, `Retrying`, `CompactionApplied`, `StepLimitReached` | Custom | Not sent, logged | Footer, notices |
 
@@ -429,11 +429,13 @@ Finished output is rendered with Spectre.Console; the input line and a small liv
 - **Scrollback:** finished blocks (user message, assistant message, tool block) are written once through `IAnsiConsole.Write` and never redrawn. Native scrollback, copy and search keep working.
 - **Live area:** at most about 8 lines at the bottom: the streaming tail of the current assistant text, the running tool with a spinner, the status footer and the input line. `LiveArea` redraws it with cursor-up and clear-line VT sequences.
 - **Streaming:** when the streaming text outgrows the live area, completed paragraphs are rendered as Markdown and committed to scrollback; the unfinished tail stays live.
+- **Transcript viewer:** `Ctrl+O` paints the session transcript on the alternate screen (entered and left through `IConsoleIO`, restored on every exit path) — a rendering mode of the same seam and key pump, not a second architecture. While it is open, no input reaches the model.
 
 **Components**
 
 - `MarkdownRenderer`: a subset (headings, bold, italic, inline code, lists, quotes, fenced code with a language label) mapped to Spectre renderables. Keyword highlighting for C#, JSON and shell only in v1.
-- `ToolBlock`: tool name and argument summary, status, first and last lines of output, and a red/green diff panel for `edit` and `write` with the match tier.
+- `ToolBlock`: one compact header line — `✓ read  src/X.cs (1-13)`, `✗ bash  dotnet build · exit 1 · 12s`, `✓ edit  src/X.cs · +3 −0` — then the per-tool output excerpt (`bash` keeps the output's last lines, `read` none, the rest first and last) and a red/green diff panel for `edit` and `write` with the match tier; the excerpt's `… +N lines · ctrl+o` marker points at the transcript viewer. Durations run on the injected scheduler.
+- `TranscriptViewer`: the `Ctrl+O` full-screen transcript — user, assistant, thinking and tool blocks with full outputs and diffs, newest at the bottom; Up/Down, PageUp/PageDown, Home/End and `g`/`G` scroll, the footer shows the keys and the position, and `q`/`Esc` closes. Paths are mid-shortened so the basename survives.
 - `ApprovalPrompt`: yes, no, always for this session; shown in the live area.
 - `StatusFooter`: model, tokens, context used in percent, working directory, git branch.
 - `InputLine`: multi-line editing, history in `~/.lunate/history`, bracketed paste, `Tab` completion for `/commands` and `@paths`.
