@@ -180,6 +180,57 @@ public sealed class AgentReasoningRequestFilterTests
         Assert.Equal("read", call.Name);
     }
 
+    [Fact]
+    public async Task A_resumed_virtual_model_keeps_the_recorded_backends_reasoning_on_the_first_request()
+    {
+        using var temp = new TempDirectory();
+        Session session = Session.Create(temp.File("s.jsonl"), "/work");
+        session.AppendMessage(ReasoningMessage(), model: "back-end");
+        ScriptedChatClient client = new ScriptedChatClient().Enqueue(LoopScripts.Stop());
+        var harness = new AgentHarness(
+            client,
+            new ToolRegistry(),
+            new AgentHarnessOptions
+            {
+                Session = session,
+                ModelId = "auto",
+                ModelCatalog = TestCatalog.WithReasoning(null, "back-end"),
+            }
+        );
+
+        await harness
+            .RunAsync("go", TestContext.Current.CancellationToken)
+            .ToListAsync(TestContext.Current.CancellationToken);
+
+        Assert.Single(RequestAssistantMessage(client).Contents.OfType<TextReasoningContent>());
+    }
+
+    [Fact]
+    public async Task A_recorded_model_switch_disables_the_resume_seed()
+    {
+        using var temp = new TempDirectory();
+        Session session = Session.Create(temp.File("s.jsonl"), "/work");
+        session.AppendMessage(ReasoningMessage(), model: "back-end");
+        session.AppendModelChange("other-model");
+        ScriptedChatClient client = new ScriptedChatClient().Enqueue(LoopScripts.Stop());
+        var harness = new AgentHarness(
+            client,
+            new ToolRegistry(),
+            new AgentHarnessOptions
+            {
+                Session = session,
+                ModelId = "auto",
+                ModelCatalog = TestCatalog.WithReasoning(null, "back-end", "other-model"),
+            }
+        );
+
+        await harness
+            .RunAsync("go", TestContext.Current.CancellationToken)
+            .ToListAsync(TestContext.Current.CancellationToken);
+
+        Assert.Empty(RequestAssistantMessage(client).Contents.OfType<TextReasoningContent>());
+    }
+
     private static ChatMessage ReasoningMessage() =>
         new(
             ChatRole.Assistant,

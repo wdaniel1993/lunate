@@ -57,6 +57,7 @@ public sealed partial class AgentHarness
             }
 
             _historyUtf8 = CompactionReducer.Utf8Length(_history);
+            _lastModelId = ResumeResolvedModelId(session, _options, _historyModels);
         }
     }
 
@@ -827,10 +828,47 @@ public sealed partial class AgentHarness
 
     /// <summary>
     /// The model id of the next request: the id the last model call reported (the resolved model
-    /// after routing), else the configured model. A blank id counts as unknown.
+    /// after routing) — seeded from the session at resume — else the configured model. A blank id
+    /// counts as unknown.
     /// </summary>
     private string? CurrentModelId() =>
         KnownModelId(_lastModelId) ?? KnownModelId(_options.ModelId);
+
+    /// <summary>
+    /// The resolved model id a resumed session's history is compared against (design D6): the
+    /// most recent recorded id, or null when the configured id is the resolved id itself. A
+    /// configured id the catalog declares is what every call records, so nothing needs seeding;
+    /// any other configured id is a request id (a virtual or extension model) whose resolution
+    /// only the session records, so the last recorded id seeds the filter until the first call
+    /// reports the real resolution. A session with model changes is mixed — the recorded ids'
+    /// provenance is ambiguous — and contributes no seed.
+    /// </summary>
+    private static string? ResumeResolvedModelId(
+        Session session,
+        AgentHarnessOptions options,
+        IReadOnlyList<string?> recordedModelIds
+    )
+    {
+        if (
+            KnownModelId(options.ModelId) is not { } configured
+            || options.ModelCatalog is not { } catalog
+            || catalog.Find(configured) is not null
+            || session.Entries.OfType<SessionModelChangeEntry>().Any()
+        )
+        {
+            return null;
+        }
+
+        for (int index = recordedModelIds.Count - 1; index >= 0; index--)
+        {
+            if (KnownModelId(recordedModelIds[index]) is { } resolved)
+            {
+                return resolved;
+            }
+        }
+
+        return null;
+    }
 
     /// <summary>
     /// Whether the recorded model id makes reasoning content foreign to the current request: the
