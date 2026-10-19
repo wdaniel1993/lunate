@@ -148,12 +148,7 @@ public sealed class TurnFrameGoldenTests
         return Lines(console.Output);
     }
 
-    private static string[] Activity(
-        LiveAreaState state,
-        int width,
-        int height,
-        string mode
-    )
+    private static string[] Activity(LiveAreaState state, int width, int height, string mode)
     {
         state = state with
         {
