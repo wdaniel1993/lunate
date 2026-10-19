@@ -160,6 +160,15 @@ public sealed class ToolArgsSummaryTests
         );
     }
 
+    [Theory]
+    [InlineData("myserver__search", """{"query":"find the bug","limit":3}""", "find the bug")]
+    [InlineData("linear__create_issue", """{"title":"Fix the flaky test"}""", "Fix the flaky test")]
+    public void Extension_and_mcp_tools_fall_back_to_the_first_string_value(
+        string tool,
+        string args,
+        string expected
+    ) => Assert.Equal(expected, ToolArgsSummary.Summarize(tool, args));
+
     private static IEnumerable<string> Numbers(int count) =>
         Enumerable.Range(1, count).Select(number => $"line {number}");
 }
