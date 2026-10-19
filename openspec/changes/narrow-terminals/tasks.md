@@ -10,7 +10,7 @@
 ## 2. The width invariant and resize
 
 - [x] 2.1 A frame invariant test: at 40×20, 60×30, 80×24, 120×40 every rendered line's cell width ≤ the terminal width (live area + a committed-turn scrollback frame with long summaries/diffs).
-- [ ] 2.2 The composition test resizes the real host mid-session (40 → 120 → 60) and asserts the frames re-render at each width with the band-appropriate rules (short headers and the compact footer at 40, full headers at 120).
+- [x] 2.2 The composition test resizes the real host mid-session (40 → 120 → 60) and asserts the frames re-render at each width with the band-appropriate rules (short headers and the compact footer at 40, full headers at 120).
 
 ## 3. The snapshot matrix
 
