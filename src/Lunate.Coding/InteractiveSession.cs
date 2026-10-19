@@ -108,6 +108,7 @@ internal sealed partial class InteractiveSession : IDisposable
     private readonly CancellationTokenSource _lifetime = new();
     private readonly ToolBlockRenderer _toolBlocks;
     private readonly ThinkingCommitRenderer _thinkingCommit = new();
+    private readonly UserEchoRenderer _userEcho = new();
     private readonly MarkdownRenderer _markdown;
     private readonly Dictionary<(string RunId, string CallId), string> _toolNames = [];
     private readonly Dictionary<(string RunId, string CallId), string> _toolArgs = [];
@@ -947,6 +948,13 @@ internal sealed partial class InteractiveSession : IDisposable
         }
 
         _transcript.Add(new TranscriptUserEntry(processed.Text));
+        // The prompt opens the turn in scrollback before the run starts; the same processed text
+        // feeds the transcript entry, so the viewer and scrollback never disagree.
+        _live.WriteScrollback(console =>
+            console.Write(
+                _userEcho.Render(processed.Text, _console.Size.Columns, _capabilities.Color)
+            )
+        );
         _turnActive = true;
         _run = RunTurnsAsync(processed.Text, skill, ct);
     }
