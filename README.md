@@ -128,6 +128,16 @@ the lazy file index. Both lists cap at eight rows above the input.
 
 ![The input box, the slash-command list and the file list](docs/media/features/input.gif)
 
+### It fits a narrow terminal
+
+Below 60 columns the layout switches to its compact band: tool headers drop the argument summary
+(`✓ read · 13 lines`), the footer shrinks to the model and the context percent, the input box loses
+its rules, and the autocomplete list keeps only the names. The full layout returns from 100
+columns; the guide's [Narrow terminals](docs/guide.md#terminal-ui-lunatetui) section has the
+per-band rules.
+
+![A committed turn, the input box and the slash-command list at 40 columns](docs/media/features/narrow.gif)
+
 ### Edits you approve, with the diff
 
 Writes and edits stop at one line — `Allow edit src/Order.cs?  [y]es  [n]o  [a]lways this session` —
