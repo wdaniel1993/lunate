@@ -34,7 +34,7 @@
   full output and diff; commit order; nothing new persisted).
 - [x] 4.2 The viewer renderer: full-screen layout, newest at the bottom, opens at the latest,
   full outputs/diffs, mid-shortened paths, a footer line with keys and position.
-- [ ] 4.3 The alternate-screen lifecycle through `IConsoleIO` (enter/leave; restored on every
+- [x] 4.3 The alternate-screen lifecycle through `IConsoleIO` (enter/leave; restored on every
   exit path including exceptions).
 - [ ] 4.4 The `Ctrl+O` binding through the key pump (refused while an approval or picker is open;
   no input reaches the model while open); the scrollback stays unchanged on close; the footer

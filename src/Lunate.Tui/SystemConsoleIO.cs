@@ -69,6 +69,9 @@ internal sealed class SystemConsoleIO : IConsoleIO
         return OperatingSystem.IsWindows() ? WindowsConsoleMode.Enter() : UnixRawMode.Enter();
     }
 
+    /// <summary>Enters the alternate screen; disposing the scope restores the primary screen.</summary>
+    public IDisposable EnterAlternateScreen() => AlternateScreen.Enter(Write);
+
     internal static bool ComputeIsInteractive(
         bool inputRedirected,
         bool outputRedirected,

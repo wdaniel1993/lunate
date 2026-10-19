@@ -79,6 +79,19 @@ internal sealed class FakeConsoleIO : IConsoleIO, IDisposable
         return new RawMode(this);
     }
 
+    public IDisposable EnterAlternateScreen()
+    {
+        AlternateScreenEntries++;
+        InAlternateScreen = true;
+        return new AlternateScreenScope(this, AlternateScreen.Enter(Write));
+    }
+
+    /// <summary>Whether the alternate screen is entered right now.</summary>
+    public bool InAlternateScreen { get; private set; }
+
+    /// <summary>How many times the alternate screen was entered.</summary>
+    public int AlternateScreenEntries { get; private set; }
+
     public async IAsyncEnumerable<KeyEvent> ReadKeysAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken
     )
@@ -101,5 +114,15 @@ internal sealed class FakeConsoleIO : IConsoleIO, IDisposable
     private sealed class RawMode(FakeConsoleIO console) : IDisposable
     {
         public void Dispose() => console._rawMode = false;
+    }
+
+    private sealed class AlternateScreenScope(FakeConsoleIO console, IDisposable screen)
+        : IDisposable
+    {
+        public void Dispose()
+        {
+            screen.Dispose();
+            console.InAlternateScreen = false;
+        }
     }
 }

@@ -10,6 +10,7 @@ Lunate.Tui.ConsoleSize.Rows.get -> int
 Lunate.Tui.ConsoleSize.Rows.init -> void
 Lunate.Tui.ConsoleSupport
 Lunate.Tui.IConsoleIO
+Lunate.Tui.IConsoleIO.EnterAlternateScreen() -> System.IDisposable!
 Lunate.Tui.IConsoleIO.EnterRawMode() -> System.IDisposable!
 Lunate.Tui.IConsoleIO.IsInteractive.get -> bool
 Lunate.Tui.IConsoleIO.ReadKeysAsync(System.Threading.CancellationToken cancellationToken) -> System.Collections.Generic.IAsyncEnumerable<Lunate.Tui.KeyEvent!>!

@@ -86,6 +86,21 @@ internal sealed class ScriptedConsoleIO : IConsoleIO
         return new RawModeScope(this);
     }
 
+    /// <summary>Entering the alternate screen (the transcript viewer's surface); recorded like the frames.</summary>
+    public IDisposable EnterAlternateScreen()
+    {
+        AlternateScreenEntries++;
+        InAlternateScreen = true;
+        Write("\u001b[?1049h");
+        return new AlternateScreenScope(this);
+    }
+
+    /// <summary>Whether the alternate screen is entered right now.</summary>
+    public bool InAlternateScreen { get; private set; }
+
+    /// <summary>How many times the alternate screen was entered.</summary>
+    public int AlternateScreenEntries { get; private set; }
+
     /// <summary>When set, <see cref="EnterRawMode"/> throws the platform's actionable failure.</summary>
     public bool FailRawMode { get; set; }
 
@@ -98,6 +113,23 @@ internal sealed class ScriptedConsoleIO : IConsoleIO
     private sealed class RawModeScope(ScriptedConsoleIO console) : IDisposable
     {
         public void Dispose() => console.InRawMode = false;
+    }
+
+    private sealed class AlternateScreenScope(ScriptedConsoleIO console) : IDisposable
+    {
+        private bool _left;
+
+        public void Dispose()
+        {
+            if (_left)
+            {
+                return;
+            }
+
+            _left = true;
+            console.InAlternateScreen = false;
+            console.Write("\u001b[?1049l");
+        }
     }
 }
 
