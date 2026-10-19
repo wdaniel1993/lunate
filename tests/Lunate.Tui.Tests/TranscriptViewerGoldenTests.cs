@@ -1,13 +1,15 @@
+using Spectre.Console;
 using Spectre.Console.Testing;
 
 namespace Lunate.Tui.Tests;
 
 /// <summary>
-/// The viewer's plain-text frames at the 120/80/50 breakpoints (24 rows). The full breakpoint x
-/// colour-mode matrix — and the ANSI forms — is task 6.2; these goldens pin the layout: the frame
-/// opens at the latest content, so a 24-row window shows the transcript's tail (the entry forms
-/// above it are pinned by <see cref="TranscriptViewerRendererTests"/>). Regenerate deliberately
-/// with <c>LUNATE_TUI_UPDATE_GOLDENS=1 dotnet test --project tests/Lunate.Tui.Tests</c>.
+/// The viewer's committed snapshots (change <c>tool-blocks</c>, task 6.2): the 24-row frame that
+/// opens at the latest content — the transcript's tail — at 120/80/50 columns and in every colour
+/// mode the capability helper selects (truecolor / 256-colour / 16-colour / NO_COLOR). The entry
+/// forms above the visible tail are pinned by <see cref="TranscriptViewerRendererTests"/>.
+/// Regenerate deliberately with
+/// <c>LUNATE_TUI_UPDATE_GOLDENS=1 dotnet test --project tests/Lunate.Tui.Tests</c>.
 /// </summary>
 public sealed class TranscriptViewerGoldenTests
 {
@@ -21,23 +23,81 @@ public sealed class TranscriptViewerGoldenTests
             "viewer"
         );
 
-    public static TheoryData<int> Widths => new() { 120, 80, 50 };
+    private static readonly int[] Widths = [120, 80, 50];
+
+    private static readonly string[] Modes = ["truecolor", "256-color", "16-color", "no-color"];
+
+    public static TheoryData<int, string> Cases
+    {
+        get
+        {
+            var cases = new TheoryData<int, string>();
+            foreach (int width in Widths)
+            {
+                foreach (string mode in Modes)
+                {
+                    cases.Add(width, mode);
+                }
+            }
+
+            return cases;
+        }
+    }
 
     [Theory]
-    [MemberData(nameof(Widths))]
-    public void The_viewer_frame_matches_the_committed_golden(int width)
+    [MemberData(nameof(Cases))]
+    public void The_viewer_frame_matches_the_committed_golden(int width, string mode)
     {
         var console = new TestConsole();
         console.Profile.Width = width;
+        console.EmitAnsiSequences = true;
+        console.Profile.Capabilities.ColorSystem = ConsoleColor(mode);
         console.Write(
-            new TranscriptViewerRenderer().Render(FixtureTranscript(), new ConsoleSize(width, 24))
+            new TranscriptViewerRenderer(Capability(mode), homeDirectory: "/home/dev").Render(
+                FixtureTranscript(),
+                new ConsoleSize(width, 24)
+            )
         );
 
         GoldenFiles.AssertMatchesLines(
-            Path.Combine(GoldensDirectory, $"viewer-{width}.txt"),
-            console.Output.ReplaceLineEndings("\n").TrimEnd('\n').Split('\n')
+            Path.Combine(GoldensDirectory, $"viewer-{width}-{mode}.txt"),
+            console
+                .Output.ReplaceLineEndings("\n")
+                .TrimEnd('\n')
+                .Split('\n')
+                .Select(Escape)
+                .ToArray()
         );
     }
+
+    /// <summary>The capability from the detection seam: Detect is the 16-colour bucket.</summary>
+    private static TerminalCapabilities Capability(string mode) =>
+        new(
+            mode switch
+            {
+                "truecolor" => ColorSystemSupport.TrueColor,
+                "256-color" => ColorSystemSupport.EightBit,
+                "16-color" => ColorSystemSupport.Detect,
+                _ => ColorSystemSupport.NoColors,
+            },
+            Unicode: true
+        );
+
+    /// <summary>The console a session that detected that capability would have.</summary>
+    private static ColorSystem ConsoleColor(string mode) =>
+        mode switch
+        {
+            "truecolor" => ColorSystem.TrueColor,
+            "256-color" => ColorSystem.EightBit,
+            "16-color" => ColorSystem.Standard,
+            _ => ColorSystem.NoColors,
+        };
+
+    private static string Escape(string text) =>
+        text.Replace("\\", "\\\\")
+            .Replace("\u001b", "\\x1b")
+            .Replace("\r", "\\r")
+            .Replace("\t", "\\t");
 
     /// <summary>One transcript carrying every entry form the viewer renders.</summary>
     private static TranscriptModel FixtureTranscript() =>
@@ -58,11 +118,11 @@ public sealed class TranscriptViewerGoldenTests
             new TranscriptToolEntry(
                 new ToolBlockModel(
                     "read",
-                    """{"path":"src/Lunate.Tui/Transcript/TranscriptViewerRenderer.cs"}""",
+                    """{"path":"/home/dev/dev/lunate/src/Lunate.Tui/Transcript/TranscriptViewerRenderer.cs"}""",
                     ToolBlockStatus.Ok,
                     string.Join(
                         '\n',
-                        Enumerable.Range(1, 30).Select(n => $"line {n:00} of the file")
+                        Enumerable.Range(1, 2).Select(n => $"line {n:00} of the file")
                     ),
                     null
                 )

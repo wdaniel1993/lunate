@@ -1,0 +1,24 @@
+✓ read\x1b[2m  ~/dev/lunat…/TranscriptViewerRenderer.cs\x1b[0m
+\x1b[2m(2 lines)\x1b[0m
+line 01 of the file
+line 02 of the file
+
+✓ edit\x1b[2m  src/TodoList.cs · +1 −1\x1b[0m
+edited src/TodoList.cs lines 4–5 (match: exact)
+\x1b[2mmatch: exact\x1b[0m
+\x1b[2m--- a/src/TodoList.cs\x1b[0m
+\x1b[2m+++ b/src/TodoList.cs\x1b[0m
+\x1b[2m@@ -2,4 +2,4 @@\x1b[0m
+\x1b[2m public void Add(string title)\x1b[0m
+\x1b[2m {\x1b[0m
+-    _items.Add(title);
++    throw new ArgumentException(nameof(title));
+\x1b[2m }\x1b[0m
+
+✓ bash\x1b[2m  dotnet test --project\x1b[0m
+\x1b[2mtests/Lunate.Coding.Tests · exit 0 · 0.4s\x1b[0m
+Test run summary: Passed!
+  total: 286
+  failed: 0
+  succeeded: 286
+\x1b[2m↑↓ scroll · PgUp/PgDn · Home/End · g/G · q cl\x1b[0m \x1b[2m100%\x1b[0m
