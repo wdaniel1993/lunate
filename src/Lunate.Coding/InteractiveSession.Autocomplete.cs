@@ -212,8 +212,9 @@ internal sealed partial class InteractiveSession
 
     /// <summary>
     /// Tab / Enter acceptance (design D5): replaces <see cref="AutocompleteState.TokenStart"/> to
-    /// the cursor with the item text — files keep the <c>@</c>, commands get a trailing space —
-    /// and closes the list. An exact match is left alone; Enter then submits as usual.
+    /// the end of the cursor's word with the item text — files keep the <c>@</c>, commands get a
+    /// trailing space — and closes the list. Accepting mid-word replaces the whole word, so no
+    /// tail is stranded. An exact match is left alone; Enter then submits as usual.
     /// </summary>
     private void AcceptAutocomplete()
     {
@@ -226,8 +227,14 @@ internal sealed partial class InteractiveSession
         string text = _input.Text;
         int cursor = Math.Clamp(_input.CursorPosition, 0, text.Length);
         int start = Math.Clamp(state.TokenStart, 0, cursor);
+        int end = cursor;
+        while (end < text.Length && !char.IsWhiteSpace(text[end]))
+        {
+            end++;
+        }
+
         string replacement = state.Mode is CompletionMode.File ? "@" + item.Text : item.Text + " ";
-        string updated = text[..start] + replacement + text[cursor..];
+        string updated = text[..start] + replacement + text[end..];
 
         CloseAutocomplete();
         _autocompleteDismissed = false;

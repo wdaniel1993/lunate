@@ -266,7 +266,7 @@ public sealed class InteractiveSessionAutocompleteTests
     }
 
     [Fact]
-    public async Task Tab_mid_word_accepts_up_to_the_cursor()
+    public async Task Tab_mid_word_accepts_the_whole_first_word()
     {
         using InteractiveSessionHost host = await StartAsync();
 
@@ -276,8 +276,9 @@ public sealed class InteractiveSessionAutocompleteTests
         await host.WaitUntilAsync(() => host.Session.Autocomplete is not null);
 
         host.Console.Send(Tab);
-        await host.WaitUntilAsync(() => host.Session.Input.Text == "/compact t");
+        await host.WaitUntilAsync(() => host.Session.Input.Text == "/compact ");
 
+        Assert.Null(host.Session.Autocomplete);
         host.Console.Complete();
     }
 
