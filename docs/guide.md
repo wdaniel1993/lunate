@@ -427,9 +427,17 @@ Finished output is rendered with Spectre.Console; the input line and a small liv
 **Screen model**
 
 - **Scrollback:** finished blocks (user message, assistant message, tool block) are written once through `IAnsiConsole.Write` and never redrawn. Native scrollback, copy and search keep working.
-- **Live area:** at most about 8 lines at the bottom: the streaming tail of the current assistant text, the running tool with a spinner, the status footer and the input line. `LiveArea` redraws it with cursor-up and clear-line VT sequences.
+- **Live area:** the bottom of the screen: the streaming tail of the current assistant text, the running tool with a spinner, notices and prompts, the input box and the status footer. The input box draws a full-width rule above and below at 80 columns or wider, grows with the draft to eight lines and scrolls beyond that; the footer stays below it. `LiveArea` redraws the area with cursor-up and clear-line VT sequences.
 - **Streaming:** when the streaming text outgrows the live area, completed paragraphs are rendered as Markdown and committed to scrollback; the unfinished tail stays live.
 - **Transcript viewer:** `Ctrl+O` paints the session transcript on the alternate screen (entered and left through `IConsoleIO`, restored on every exit path) — a rendering mode of the same seam and key pump, not a second architecture. While it is open, no input reaches the model.
+
+**Input box and autocomplete**
+
+The input renders as a box: a full-width `─` rule above and below at 80 columns or wider (ASCII `-` without Unicode, no rule below 80), the `>` prompt followed by a space on the first line and a two-space indent on continuation lines, with the status footer below the lower rule. An empty input shows the muted placeholder `Ask anything, / for commands`; the box grows with the draft to eight lines and scrolls beyond that, keeping the cursor's line visible.
+
+Typing `/` at the start of the first line opens the autocomplete list from the session's one registry: the built-in commands, the discovered skills as `/skill:<name>`, and every loaded extension's manifest commands described by the extension's id. The registry is fixed-size and filtered fuzzily — a case-insensitive subsequence, with prefix and word-start matches ranked ahead of later positions. Typing `@` at the end of a token lists workspace files from the lazy file index through its ordinal prefix query; the index is never fuzzed client-side and never built at startup. The list shows at most eight rows directly above the box. Names carry descriptions until the width drops below 60 columns; file rows mute the directory part. No matches closes the list, and the list never wraps.
+
+↑/↓ move the selection while the list is open and navigate history while it is closed. Tab and Enter accept the selected item — the token is replaced, file rows keep the `@`, command rows get a trailing space — and Esc closes the list. Enter submits instead when the typed token already equals the selected item, so a fully typed command never costs a second Enter. Newline keys insert and then re-run the trigger rules; Ctrl+C, Ctrl+L and Ctrl+O keep their bindings and win over the list.
 
 **Components**
 
@@ -438,21 +446,22 @@ Finished output is rendered with Spectre.Console; the input line and a small liv
 - `TranscriptViewer`: the `Ctrl+O` full-screen transcript — user, assistant, thinking and tool blocks with full outputs and diffs, newest at the bottom; Up/Down, PageUp/PageDown, Home/End and `g`/`G` scroll, the footer shows the keys and the position, and `q`/`Esc` closes. Paths are mid-shortened so the basename survives.
 - `ApprovalPrompt`: yes, no, always for this session; shown in the live area.
 - `StatusFooter`: model, tokens, context used in percent, working directory, git branch.
-- `InputLine`: multi-line editing, history in `~/.lunate/history`, bracketed paste, `Tab` completion for `/commands` and `@paths`.
+- `InputLine`: multi-line editing, history in `~/.lunate/history`, bracketed paste, cursor movement and the input box's chrome and placeholder.
+- `Autocomplete`: the filtered rows above the box with the selected row marked, descriptions below the width breakpoint and muted file directories; the registry and keys are described above.
 - `SelectList`: model and session pickers inside the live area.
 
 **Key bindings (one meaning each)**
 
 | Key | Action |
 | --- | --- |
-| `Enter` | Send; while a turn runs, queue as a steering message |
-| `Alt+Enter` | New line, also Ctrl+J (terminals cannot reliably detect `Shift+Enter`) |
-| `Esc` | Cancel the running turn; nothing when idle |
+| `Enter` | Send; with the autocomplete list open, accept the selected item first (an exact token sends instead); while a turn runs, queue as a steering message |
+| `Alt+Enter` | New line, also Ctrl+J (terminals cannot reliably detect `Shift+Enter`); the autocomplete triggers re-run afterwards |
+| `Esc` | Close the autocomplete list first; otherwise cancel the running turn, nothing when idle |
 | `Ctrl+C` | Clear the input; on an empty input, press twice within 2 s to quit. Never cancels a turn |
 | `Ctrl+L` | Model picker |
 | `Ctrl+O` | Transcript viewer: the session transcript with full tool output and diffs; `q`, `Esc` or `Ctrl+O` closes. Refused while an approval or picker is open |
-| `Tab` | Complete a leading `/command` |
-| `Up` / `Down` | History |
+| `Tab` | Accept the selected autocomplete item; otherwise nothing |
+| `Up` / `Down` | Move the autocomplete selection; with the list closed, history |
 
 **Platform rules**
 
