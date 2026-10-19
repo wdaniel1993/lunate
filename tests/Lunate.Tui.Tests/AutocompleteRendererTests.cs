@@ -83,6 +83,17 @@ public sealed class AutocompleteRendererTests
     }
 
     [Fact]
+    public void Descriptions_drop_at_fifty_nine_columns()
+    {
+        var state = State(
+            [Command("/model", "Switch model"), Command("/help", "Show commands")],
+            width: 59
+        );
+
+        Assert.Equal(["> /model", "  /help"], Rows(state, 59));
+    }
+
+    [Fact]
     public void Descriptions_drop_below_sixty_columns()
     {
         var state = State(

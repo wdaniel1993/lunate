@@ -70,6 +70,19 @@ public sealed class InputFrameGoldenTests
         );
     }
 
+    [Theory]
+    [InlineData("box-filled")]
+    [InlineData("list-command-selected")]
+    public void The_ascii_input_frame_matches_the_committed_golden(string name)
+    {
+        LiveAreaState state = State(name, 80, "no-color") with { Unicode = false };
+
+        GoldenFiles.AssertMatchesLines(
+            Path.Combine(GoldensDirectory, $"{name}-80-no-color-ascii.txt"),
+            LiveAreaRenderer.Render(state).Lines.Select(Escape).ToArray()
+        );
+    }
+
     private static LiveAreaState State(string name, int width, string mode)
     {
         LiveAreaState state = new()

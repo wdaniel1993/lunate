@@ -98,6 +98,20 @@ public sealed class LiveAreaBoxRendererTests
     }
 
     [Fact]
+    public void No_rules_render_at_seventy_nine_columns()
+    {
+        var state = new LiveAreaState
+        {
+            Input = new InputLineState("go", 2),
+            Size = new ConsoleSize(79, 12),
+        };
+
+        var frame = LiveAreaRenderer.Render(state);
+
+        Assert.Equal(["> go"], frame.Lines);
+    }
+
+    [Fact]
     public void No_rules_render_below_eighty_columns()
     {
         var state = new LiveAreaState
