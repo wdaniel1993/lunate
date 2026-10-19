@@ -202,15 +202,82 @@ public sealed class ToolBlockRendererTests
         );
 
     [Fact]
-    public void Elision_marker_uses_dim_ansi()
+    public void The_elision_marker_uses_warning_ansi()
     {
         string output = string.Join('\n', Enumerable.Range(1, 18).Select(n => $"line {n}"));
 
         string ansi = RenderAnsi(
-            new ToolBlockModel("bash", """{"command":"ls"}""", ToolBlockStatus.Ok, output, null)
+            new ToolBlockModel("edit", """{"path":"src/x.cs"}""", ToolBlockStatus.Ok, output, null)
         );
 
-        Assert.Contains("\u001b[2m\u2026 2 lines hidden \u2026", ansi);
+        Assert.Contains("\u001b[38;5;11m\u2026 +2 lines \u00b7 ctrl+o", ansi);
+    }
+
+    [Fact]
+    public void Bash_output_shows_its_last_lines_then_the_marker()
+    {
+        string output = string.Join('\n', Enumerable.Range(1, 8).Select(n => $"line {n}"));
+
+        Assert.Equal(
+            "\u2713 bash  ls\n"
+                + "line 4\n"
+                + "line 5\n"
+                + "line 6\n"
+                + "line 7\n"
+                + "line 8\n"
+                + "\u2026 +3 lines \u00b7 ctrl+o\n",
+            Render(
+                new ToolBlockModel(
+                    "bash",
+                    """{"command":"ls"}""",
+                    ToolBlockStatus.Ok,
+                    output,
+                    null
+                )
+            )
+        );
+    }
+
+    [Fact]
+    public void Read_output_is_not_rendered() =>
+        Assert.Equal(
+            "\u2713 read  src/a.cs (2 lines)\n",
+            Render(
+                new ToolBlockModel(
+                    "read",
+                    """{"path":"src/a.cs"}""",
+                    ToolBlockStatus.Ok,
+                    "alpha beta\ngamma",
+                    null
+                )
+            )
+        );
+
+    [Fact]
+    public void A_failed_read_keeps_its_message() =>
+        Assert.Equal(
+            "\u2717 read  src/missing.cs\nfile not found: src/missing.cs\n",
+            Render(
+                new ToolBlockModel(
+                    "read",
+                    """{"path":"src/missing.cs"}""",
+                    ToolBlockStatus.Error,
+                    "file not found: src/missing.cs",
+                    null
+                )
+            )
+        );
+
+    [Fact]
+    public void The_ascii_marker_uses_ascii_punctuation()
+    {
+        string output = string.Join('\n', Enumerable.Range(1, 18).Select(n => $"line {n}"));
+
+        string ascii = RenderAscii(
+            new ToolBlockModel("edit", """{"path":"src/x.cs"}""", ToolBlockStatus.Ok, output, null)
+        );
+
+        Assert.Contains("... +2 lines - ctrl+o", ascii);
     }
 
     [Fact]

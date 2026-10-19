@@ -8,7 +8,6 @@ extensions 0 · MCP 0 · skills 0
 para one
 para two
 ✓ read  a.txt (1 line)
-     1|alpha beta
 » steer mid-run
 ✓ write  note.txt · +1 −0
 wrote 1 lines to note.txt (created)

@@ -52,7 +52,8 @@ public sealed class InteractiveSessionStreamingTests
 
         string scrollback = host.ScrollbackText;
         Assert.Contains("a.txt", scrollback, StringComparison.Ordinal);
-        Assert.Contains("contents", scrollback, StringComparison.Ordinal);
+        // The read block identifies the file; the content itself is not echoed into scrollback.
+        Assert.DoesNotContain("contents", scrollback, StringComparison.Ordinal);
 
         host.Console.Complete();
         await run;

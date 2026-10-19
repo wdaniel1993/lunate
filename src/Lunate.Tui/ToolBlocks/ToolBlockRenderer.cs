@@ -16,6 +16,7 @@ public sealed class ToolBlockRenderer
     internal static readonly SpanStyle StatusRunning = SpanStyle.Dim;
     internal static readonly SpanStyle Accent = new(Color: "cyan");
     internal static readonly SpanStyle Muted = SpanStyle.Dim;
+    internal static readonly SpanStyle Warning = new(Color: "yellow");
 
     private readonly bool _unicode;
 
@@ -34,7 +35,11 @@ public sealed class ToolBlockRenderer
         ArgumentNullException.ThrowIfNull(block);
 
         var lines = new List<StyledLine> { Header(block) };
-        AppendOutput(lines, block.Output);
+        if (ShowsOutput(block))
+        {
+            AppendOutput(lines, block.Output, block.ToolName == "bash");
+        }
+
         if (block.Diff is not null)
         {
             DiffRenderer.Append(lines, block.Diff);
@@ -71,12 +76,17 @@ public sealed class ToolBlockRenderer
         return line;
     }
 
-    private static void AppendOutput(List<StyledLine> lines, string? output)
+    /// <summary>A read block identifies what was read; a failed call keeps its message visible.</summary>
+    private static bool ShowsOutput(ToolBlockModel block) =>
+        block.ToolName != "read" || block.Status == ToolBlockStatus.Error;
+
+    private void AppendOutput(List<StyledLine> lines, string? output, bool tailOnly)
     {
-        foreach (var excerpt in OutputExcerpt.Build(output))
+        var mode = tailOnly ? ExcerptMode.TailOnly : ExcerptMode.HeadAndTail;
+        foreach (var excerpt in OutputExcerpt.Build(output, mode, _unicode))
         {
             var line = new StyledLine();
-            line.Add(excerpt.Text, excerpt.IsMarker ? SpanStyle.Dim : SpanStyle.Plain);
+            line.Add(excerpt.Text, excerpt.IsMarker ? Warning : SpanStyle.Plain);
             lines.Add(line);
         }
     }

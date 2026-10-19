@@ -18,9 +18,9 @@
   Unicode capability), the name in accent, summary and meta muted; the status words go.
 - [x] 2.2 Duration measured on the injected scheduler from `ToolCallStart` to `ToolCallResult`
   (culture-invariant `0.4s` / `12s` / `1m 02s`; one decimal below 10 s).
-- [ ] 2.3 `OutputExcerpt` gains the tail-only mode for `bash` (5 lines + marker); `read` gets no
+- [x] 2.3 `OutputExcerpt` gains the tail-only mode for `bash` (5 lines + marker); `read` gets no
   excerpt; everything else keeps first-and-last.
-- [ ] 2.4 The marker becomes `… +N lines · ctrl+o` (warning colour; ASCII `... +N lines -
+- [x] 2.4 The marker becomes `… +N lines · ctrl+o` (warning colour; ASCII `... +N lines -
   ctrl+o`).
 
 ## 3. Path shortening
