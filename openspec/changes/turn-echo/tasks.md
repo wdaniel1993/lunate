@@ -14,7 +14,7 @@
 
 ## 3. The welcome header check
 
-- [ ] 3.1 Verify the welcome block against the theme and the breakpoints (snapshot matrix); fix only disagreements, with refreshed goldens.
+- [x] 3.1 Verify the welcome block against the theme and the breakpoints (snapshot matrix); fix only disagreements, with refreshed goldens. Verdict: one theme disagreement fixed (wordmark used ANSI cyan; now the `#5fd7d7` accent); 60/80/100 pinned in the matrix; block, first-run and single-line text goldens unchanged.
 
 ## 4. Snapshots, media, docs
 

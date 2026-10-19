@@ -55,7 +55,7 @@ internal static class WelcomeHeaderRenderer
     private const string Separator = " — ";
     private const string AsciiSeparator = " - ";
 
-    private static readonly SpanStyle MarkStyle = new(Color: "cyan");
+    private static readonly SpanStyle MarkStyle = new(Color: LivePalette.AccentHex);
 
     /// <summary>Whether the terminal shows the full block: Unicode support and width ≥ 80.</summary>
     internal static bool ShowsBlock(TerminalCapabilities capabilities, int width)
