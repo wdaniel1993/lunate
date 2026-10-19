@@ -84,6 +84,11 @@ order; commit per group; record any design/code divergence in this file under th
 
 - [x] 5.1 `--json`: the reasoning events serialize with stamped fields (scenario test).
 - [x] 5.2 ACP: reasoning events → `agent_thought_chunk` updates (mapper test).
+  (Divergence: D9 names Start/Content/End, but the pinned ACP schema has only the chunk-style
+  updates — `agent_message_chunk`, `agent_thought_chunk`, `user_message_chunk` — and no thought
+  start/end counterpart, so the mapping is content-only: `ReasoningMessageContent` →
+  `agent_thought_chunk`; `ReasoningStart`/`ReasoningEnd` map to nothing rather than a forced
+  variant.)
 
 ## 6. Media + verification
 
