@@ -123,7 +123,12 @@ public sealed class ThinkingFrameGoldenTests
         console.EmitAnsiSequences = true;
         console.Profile.Capabilities.ColorSystem = ConsoleColor(mode);
         console.Write(new ThinkingCommitRenderer().Render(commit, width, Capability(mode)));
-        return console.Output.TrimEnd('\n').Split('\n').Select(Escape).ToArray();
+        return console
+            .Output.ReplaceLineEndings("\n")
+            .TrimEnd('\n')
+            .Split('\n')
+            .Select(Escape)
+            .ToArray();
     }
 
     private static string Escape(string text) =>

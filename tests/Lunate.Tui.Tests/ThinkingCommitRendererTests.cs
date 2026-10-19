@@ -94,7 +94,10 @@ public sealed class ThinkingCommitRendererTests
             new ThinkingCommitRenderer().Render(commit, width: 40, ColorSystemSupport.Detect)
         );
 
-        Assert.Equal("\u001b[35m✦ thought for 12s\u001b[0m\n", console.Output);
+        Assert.Equal(
+            "\u001b[35m✦ thought for 12s\u001b[0m\n",
+            console.Output.ReplaceLineEndings("\n")
+        );
     }
 
     [Fact]
@@ -110,7 +113,7 @@ public sealed class ThinkingCommitRendererTests
             new ThinkingCommitRenderer().Render(commit, width: 40, ColorSystemSupport.NoColors)
         );
 
-        Assert.Equal("✦ thought for 12s\n", console.Output);
+        Assert.Equal("✦ thought for 12s\n", console.Output.ReplaceLineEndings("\n"));
     }
 
     private static string Render(ThinkingCommitModel commit, int width)
@@ -118,7 +121,7 @@ public sealed class ThinkingCommitRendererTests
         var console = new TestConsole();
         console.Profile.Width = 200;
         console.Write(new ThinkingCommitRenderer().Render(commit, width));
-        return console.Output;
+        return console.Output.ReplaceLineEndings("\n");
     }
 
     private static string RenderAnsi(
@@ -132,6 +135,6 @@ public sealed class ThinkingCommitRendererTests
         console.EmitAnsiSequences = true;
         console.Profile.Capabilities.ColorSystem = colors;
         console.Write(new ThinkingCommitRenderer().Render(commit, width));
-        return console.Output;
+        return console.Output.ReplaceLineEndings("\n");
     }
 }
