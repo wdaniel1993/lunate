@@ -69,6 +69,129 @@ public sealed class TranscriptViewerTests
     }
 
     [Fact]
+    public void Up_and_down_move_one_line_and_paint_it()
+    {
+        using var console = new FakeConsoleIO(Size);
+        using var viewer = Viewer(console);
+        viewer.Open(LongTranscript());
+
+        viewer.HandleKey(Key(KeyKind.Up), LongTranscript());
+        Assert.Equal(1, viewer.ScrolledLines);
+        Assert.Contains("step 29 finished", console.Writes[^1], StringComparison.Ordinal);
+
+        viewer.HandleKey(Key(KeyKind.Up), LongTranscript());
+        Assert.Equal(2, viewer.ScrolledLines);
+
+        viewer.HandleKey(Key(KeyKind.Down), LongTranscript());
+        Assert.Equal(1, viewer.ScrolledLines);
+
+        viewer.HandleKey(Key(KeyKind.Down), LongTranscript());
+        viewer.HandleKey(Key(KeyKind.Down), LongTranscript());
+        Assert.Equal(0, viewer.ScrolledLines);
+        Assert.Contains("step 30 finished", console.Writes[^1], StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Page_up_and_page_down_move_a_screen_and_clamp()
+    {
+        using var console = new FakeConsoleIO(Size);
+        using var viewer = Viewer(console);
+        viewer.Open(LongTranscript());
+
+        // Content height is rows - 1 (the footer): a page is 9 lines; the document is 31 lines
+        // (header + 30 output), so the top is 22.
+        viewer.HandleKey(Key(KeyKind.PageUp), LongTranscript());
+        Assert.Equal(9, viewer.ScrolledLines);
+
+        viewer.HandleKey(Key(KeyKind.PageUp), LongTranscript());
+        Assert.Equal(18, viewer.ScrolledLines);
+
+        viewer.HandleKey(Key(KeyKind.PageUp), LongTranscript());
+        Assert.Equal(22, viewer.ScrolledLines);
+
+        viewer.HandleKey(Key(KeyKind.PageDown), LongTranscript());
+        Assert.Equal(13, viewer.ScrolledLines);
+
+        viewer.HandleKey(Key(KeyKind.PageDown), LongTranscript());
+        Assert.Equal(4, viewer.ScrolledLines);
+
+        viewer.HandleKey(Key(KeyKind.PageDown), LongTranscript());
+        viewer.HandleKey(Key(KeyKind.PageDown), LongTranscript());
+        Assert.Equal(0, viewer.ScrolledLines);
+    }
+
+    [Fact]
+    public void Home_and_g_jump_to_the_top_while_end_and_G_go_to_the_latest()
+    {
+        using var console = new FakeConsoleIO(Size);
+        using var viewer = Viewer(console);
+        viewer.Open(LongTranscript());
+        viewer.HandleKey(Key(KeyKind.Up), LongTranscript());
+
+        viewer.HandleKey(Key(KeyKind.Home), LongTranscript());
+        Assert.Equal(22, viewer.ScrolledLines);
+
+        viewer.HandleKey(Key(KeyKind.End), LongTranscript());
+        Assert.Equal(0, viewer.ScrolledLines);
+
+        viewer.HandleKey(Key(KeyKind.Up), LongTranscript());
+        viewer.HandleKey(Key(KeyKind.Character, "g"), LongTranscript());
+        Assert.Equal(22, viewer.ScrolledLines);
+
+        viewer.HandleKey(Key(KeyKind.Character, "G"), LongTranscript());
+        Assert.Equal(0, viewer.ScrolledLines);
+    }
+
+    [Fact]
+    public void A_short_transcript_clamps_every_move_to_the_latest_content()
+    {
+        using var console = new FakeConsoleIO(Size);
+        using var viewer = Viewer(console);
+        var shortTranscript = new TranscriptModel([new TranscriptUserEntry("hey")]);
+        viewer.Open(shortTranscript);
+
+        foreach (
+            var key in new[]
+            {
+                Key(KeyKind.Up),
+                Key(KeyKind.PageUp),
+                Key(KeyKind.Home),
+                Key(KeyKind.Character, "g"),
+            }
+        )
+        {
+            viewer.HandleKey(key, shortTranscript);
+            Assert.Equal(0, viewer.ScrolledLines);
+        }
+    }
+
+    [Fact]
+    public void An_unbound_key_leaves_the_scroll_position_alone()
+    {
+        using var console = new FakeConsoleIO(Size);
+        using var viewer = Viewer(console);
+        viewer.Open(LongTranscript());
+        viewer.HandleKey(Key(KeyKind.Up), LongTranscript());
+
+        viewer.HandleKey(Key(KeyKind.Character, "x"), LongTranscript());
+
+        Assert.Equal(1, viewer.ScrolledLines);
+    }
+
+    [Fact]
+    public void The_latest_content_shows_the_tail_and_the_top_shows_the_header()
+    {
+        using var console = new FakeConsoleIO(Size);
+        using var viewer = Viewer(console);
+        viewer.Open(LongTranscript());
+
+        viewer.HandleKey(Key(KeyKind.Home), LongTranscript());
+
+        string frame = console.Writes[^1];
+        Assert.Contains("step 01 finished", frame, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Disposing_an_open_viewer_leaves_the_alternate_screen()
     {
         var console = new FakeConsoleIO(Size);

@@ -39,7 +39,7 @@
 - [x] 4.4 The `Ctrl+O` binding through the key pump (refused while an approval or picker is open;
   no input reaches the model while open); the scrollback stays unchanged on close; the footer
   keybinding line names it.
-- [ ] 4.5 Navigation: Up/Down, PageUp/PageDown, Home/End, `g`/`G`; `q`/`Esc` closes.
+- [x] 4.5 Navigation: Up/Down, PageUp/PageDown, Home/End, `g`/`G`; `q`/`Esc` closes.
 
 ## 5. Subagent grouping
 

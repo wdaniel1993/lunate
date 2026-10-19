@@ -84,6 +84,18 @@ public sealed class TranscriptViewerRenderer
         return frame;
     }
 
+    /// <summary>
+    /// The furthest the window can move up from the latest content for this transcript and size;
+    /// 0 when the document fits the frame. The navigation bindings clamp against it.
+    /// </summary>
+    internal int MaxScrolledLines(TranscriptModel transcript, ConsoleSize size)
+    {
+        ArgumentNullException.ThrowIfNull(transcript);
+        int columns = Math.Max(1, size.Columns);
+        int contentHeight = Math.Max(0, Math.Max(1, size.Rows) - FooterLines);
+        return Math.Max(0, Document(transcript, columns).Count - contentHeight);
+    }
+
     /// <summary>The whole transcript as one document: each entry's lines, a blank between entries.</summary>
     private List<StyledLine> Document(TranscriptModel transcript, int columns)
     {

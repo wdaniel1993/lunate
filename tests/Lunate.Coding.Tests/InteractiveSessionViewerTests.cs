@@ -233,6 +233,38 @@ public sealed class InteractiveSessionViewerTests
         };
     }
 
+    [Fact]
+    public async Task Navigation_keys_scroll_the_viewer_through_the_key_pump()
+    {
+        using var host = new InteractiveSessionHost();
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+        await CommitBuildBlockAsync(host);
+
+        host.Console.SendCtrlO();
+        await host.WaitUntilAsync(() => host.Console.InAlternateScreen);
+
+        host.Console.Send(new KeyEvent(KeyKind.Up, null, false, false, false));
+        await host.WaitUntilAsync(() =>
+            host.Console.Writes[^1].Contains("step 29 finished", StringComparison.Ordinal)
+        );
+
+        // A page at 80x24 is 23 lines and the document (header + 30 lines) is 31, so PageUp
+        // clamps at the top: the header and the first output line are on screen.
+        host.Console.Send(new KeyEvent(KeyKind.PageUp, null, false, false, false));
+        await host.WaitUntilAsync(() =>
+            host.Console.Writes[^1].Contains("step 01 finished", StringComparison.Ordinal)
+        );
+
+        host.Console.Send(new KeyEvent(KeyKind.Character, "G", false, false, false));
+        await host.WaitUntilAsync(() =>
+            host.Console.Writes[^1].Contains("step 30 finished", StringComparison.Ordinal)
+        );
+
+        host.Console.Complete();
+        await run;
+    }
+
     /// <summary>A finished bash block whose output is taller than the viewer's frame.</summary>
     private static async Task CommitBuildBlockAsync(InteractiveSessionHost host)
     {

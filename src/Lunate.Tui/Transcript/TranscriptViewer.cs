@@ -89,6 +89,12 @@ internal sealed class TranscriptViewer : IDisposable
             return false;
         }
 
+        if (Scroll(key, transcript) is { } scrolledLines)
+        {
+            _scrolledLines = scrolledLines;
+            Paint(transcript);
+        }
+
         return true;
     }
 
@@ -107,6 +113,31 @@ internal sealed class TranscriptViewer : IDisposable
         key.Kind == KeyKind.Escape
         || key is { Kind: KeyKind.Character, Ctrl: false, Alt: false, Text: "q" }
         || key is { Kind: KeyKind.Character, Ctrl: true, Alt: false, Text: "o" };
+
+    /// <summary>
+    /// The new scroll offset for a navigation key, clamped to the document; null for keys that do
+    /// not move. Up (and PageUp) walk towards the oldest content, <c>g</c> and Home jump to the
+    /// top, Down, <c>G</c> and End go back to the latest.
+    /// </summary>
+    private int? Scroll(KeyEvent key, TranscriptModel transcript)
+    {
+        int max = _renderer.MaxScrolledLines(transcript, _console.Size);
+        return key switch
+        {
+            { Kind: KeyKind.Up } => Math.Min(_scrolledLines + 1, max),
+            { Kind: KeyKind.Down } => Math.Max(_scrolledLines - 1, 0),
+            { Kind: KeyKind.PageUp } => Math.Min(_scrolledLines + PageLines(), max),
+            { Kind: KeyKind.PageDown } => Math.Max(_scrolledLines - PageLines(), 0),
+            { Kind: KeyKind.Home } => max,
+            { Kind: KeyKind.End } => 0,
+            { Kind: KeyKind.Character, Ctrl: false, Alt: false, Text: "g" } => max,
+            { Kind: KeyKind.Character, Ctrl: false, Alt: false, Text: "G" } => 0,
+            _ => null,
+        };
+    }
+
+    /// <summary>A page is the frame's content height: the rows above the footer.</summary>
+    private int PageLines() => Math.Max(1, Math.Max(1, _console.Size.Rows) - 1);
 
     /// <summary>
     /// Paints one frame: home, then every line of the frame cleared and overwritten in place —
