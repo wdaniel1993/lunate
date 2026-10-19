@@ -109,6 +109,17 @@ If nothing resolves a model or a key, the first run prints exactly one fix, for 
 
 ## Features
 
+### Type, complete, send
+
+The input is a box: rules above and below it at 80 columns or wider, a muted `Ask anything, / for
+commands` placeholder while it is empty, and a box that grows with the draft to eight lines before
+it scrolls. Typing `/` opens the autocomplete list — the built-in commands, `/skill:<name>` and
+each loaded extension's commands, with descriptions — and `@` lists matching workspace files from
+the lazy file index. Both lists cap at eight rows above the input; ↑/↓ move the selection (history
+when the list is closed), `Tab` or `Enter` accepts, and `Esc` closes the list first.
+
+![The input box, the slash-command list and the file list](docs/media/features/input.gif)
+
 ### Edits you approve, with the diff
 
 Writes and edits stop at one line — `Allow edit src/Order.cs?  [y]es  [n]o  [a]lways this session` —
