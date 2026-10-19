@@ -266,6 +266,99 @@ public sealed class ToolBlockRendererTests
     }
 
     [Fact]
+    public void The_compact_band_shortens_a_read_header_to_its_line_count()
+    {
+        string output = string.Join('\n', Enumerable.Range(1, 13).Select(n => $"line {n}"));
+
+        Assert.Equal(
+            "\u2713 read \u00b7 13 lines",
+            HeaderAt(
+                new ToolBlockModel(
+                    "read",
+                    """{"path":"src/a.cs"}""",
+                    ToolBlockStatus.Ok,
+                    output,
+                    null
+                ),
+                width: 59
+            )
+        );
+    }
+
+    [Fact]
+    public void The_standard_band_keeps_a_read_header_summary()
+    {
+        string output = string.Join('\n', Enumerable.Range(1, 13).Select(n => $"line {n}"));
+
+        Assert.Equal(
+            "\u2713 read  src/a.cs (13 lines)",
+            HeaderAt(
+                new ToolBlockModel(
+                    "read",
+                    """{"path":"src/a.cs"}""",
+                    ToolBlockStatus.Ok,
+                    output,
+                    null
+                ),
+                width: 60
+            )
+        );
+    }
+
+    [Fact]
+    public void The_compact_band_shortens_a_bash_header_to_the_exit_code_and_duration()
+    {
+        Assert.Equal("\u2713 bash \u00b7 exit 0 \u00b7 0.4s", HeaderAt(BashBlock(), width: 59));
+    }
+
+    [Fact]
+    public void The_standard_band_keeps_a_bash_command() =>
+        Assert.Equal(
+            "\u2713 bash  dotnet build \u00b7 exit 0 \u00b7 0.4s",
+            HeaderAt(BashBlock(), width: 60)
+        );
+
+    [Fact]
+    public void The_compact_band_shortens_an_edit_header_to_the_change_counts() =>
+        Assert.Equal("\u2713 edit \u00b7 +1 \u22121", HeaderAt(DiffModel("exact"), width: 59));
+
+    [Fact]
+    public void The_standard_band_keeps_an_edit_path() =>
+        Assert.Equal(
+            "\u2713 edit  src/x.cs \u00b7 +1 \u22121",
+            HeaderAt(DiffModel("exact"), width: 60)
+        );
+
+    [Fact]
+    public void The_compact_band_drops_a_cs_argument_summary()
+    {
+        string header = HeaderAt(CsBlock(), width: 59);
+
+        Assert.StartsWith("\u2717 cs_diagnostics \u00b7 1 error 0 warnings", header);
+        Assert.DoesNotContain("  changed", header, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void The_standard_band_keeps_a_cs_argument_summary() =>
+        Assert.Contains("  changed", HeaderAt(CsBlock(), width: 60), StringComparison.Ordinal);
+
+    [Fact]
+    public void The_compact_band_shortens_an_extension_header_to_the_name() =>
+        Assert.Equal("\u2713 hello-tool", HeaderAt(ExtensionBlock(), width: 59));
+
+    [Fact]
+    public void The_standard_band_keeps_an_extension_argument_summary() =>
+        Assert.Contains(
+            "  /srv/projects/lunate/src",
+            HeaderAt(ExtensionBlock(), width: 60),
+            StringComparison.Ordinal
+        );
+
+    [Fact]
+    public void Ascii_compact_headers_keep_the_ascii_glyph_and_separators() =>
+        Assert.Equal("+ bash - exit 0 - 0.4s", HeaderAsciiAt(BashBlock(), width: 59));
+
+    [Fact]
     public void Read_output_is_not_rendered() =>
         Assert.Equal(
             "\u2713 read  src/a.cs (2 lines)\n",
@@ -478,11 +571,67 @@ public sealed class ToolBlockRendererTests
             new ToolDiffInfo("src/x.cs", tier, DiffText)
         );
 
+    private static ToolBlockModel BashBlock() =>
+        new(
+            "bash",
+            """{"command":"dotnet build"}""",
+            ToolBlockStatus.Ok,
+            null,
+            null,
+            ExitCode: 0,
+            Duration: TimeSpan.FromMilliseconds(400)
+        );
+
+    private static ToolBlockModel CsBlock() =>
+        new(
+            "cs_diagnostics",
+            """{"scope":"changed"}""",
+            ToolBlockStatus.Error,
+            "1 error, 0 warnings in the solution.\n"
+                + "src/a.cs(1,1): error CS0103: The name 'Foo' does not exist",
+            null
+        );
+
+    private static ToolBlockModel ExtensionBlock() =>
+        new(
+            "hello-tool",
+            """{"directory":"/srv/projects/lunate/src"}""",
+            ToolBlockStatus.Ok,
+            null,
+            null
+        );
+
     private static string Render(ToolBlockModel block)
     {
         var console = new TestConsole();
         console.Profile.Width = 80;
         console.Write(new ToolBlockRenderer().Render(block));
+        return console.Output;
+    }
+
+    private static string HeaderAt(ToolBlockModel block, int width) =>
+        RenderAt(block, width).Split('\n')[0];
+
+    private static string HeaderAsciiAt(ToolBlockModel block, int width) =>
+        RenderAsciiAt(block, width).Split('\n')[0];
+
+    private static string RenderAsciiAt(ToolBlockModel block, int width)
+    {
+        var console = new TestConsole();
+        console.Profile.Width = 80;
+        console.Write(
+            new ToolBlockRenderer(
+                new TerminalCapabilities(Spectre.Console.ColorSystemSupport.Detect, Unicode: false)
+            ).Render(block, width)
+        );
+        return console.Output;
+    }
+
+    private static string RenderAt(ToolBlockModel block, int width)
+    {
+        var console = new TestConsole();
+        console.Profile.Width = 80;
+        console.Write(new ToolBlockRenderer().Render(block, width));
         return console.Output;
     }
 

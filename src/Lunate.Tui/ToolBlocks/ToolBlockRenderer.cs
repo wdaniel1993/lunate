@@ -32,9 +32,15 @@ public sealed class ToolBlockRenderer
         _home = homeDirectory ?? PathText.Home();
     }
 
-    public IRenderable Render(ToolBlockModel block)
+    public IRenderable Render(ToolBlockModel block) => Render(block, int.MaxValue);
+
+    /// <summary>
+    /// The scrollback block narrowed for the terminal: below 60 columns the header drops its
+    /// argument summary and carries glyph, name and meta only.
+    /// </summary>
+    public IRenderable Render(ToolBlockModel block, int width)
     {
-        var lines = Lines(block, fullOutput: false);
+        var lines = Lines(block, fullOutput: false, width);
         var builder = new StringBuilder();
         foreach (var line in lines)
         {
@@ -49,11 +55,15 @@ public sealed class ToolBlockRenderer
     /// excerpts the output (<paramref name="fullOutput"/> is <c>false</c>); the transcript viewer
     /// shows every line — a <c>read</c> block's output included, which the scrollback hides.
     /// </summary>
-    internal IReadOnlyList<StyledLine> Lines(ToolBlockModel block, bool fullOutput)
+    internal IReadOnlyList<StyledLine> Lines(
+        ToolBlockModel block,
+        bool fullOutput,
+        int width = int.MaxValue
+    )
     {
         ArgumentNullException.ThrowIfNull(block);
 
-        var lines = new List<StyledLine> { Header(block) };
+        var lines = new List<StyledLine> { Header(block, width) };
         if (fullOutput)
         {
             AppendOutput(lines, block.Output, ExcerptMode.Full, block.ChildResult);
@@ -76,27 +86,31 @@ public sealed class ToolBlockRenderer
         return lines;
     }
 
-    private StyledLine Header(ToolBlockModel block)
+    private StyledLine Header(ToolBlockModel block, int width)
     {
         var line = new StyledLine();
         line.Add(Glyph(block.Status), StatusStyle(block.Status));
         line.Add(" ", SpanStyle.Plain);
         line.Add(block.ToolName, Accent);
+        bool compact = WidthBands.IsCompact(width);
         // A failed call's output is an error message, not file content: no line count from it.
         string? resultOutput = block.Status == ToolBlockStatus.Error ? null : block.Output;
-        string summary = ToolArgsSummary.Summarize(
-            block.ToolName,
-            block.ArgsSummary,
-            resultOutput,
-            _home,
-            unicode: _unicode
-        );
-        if (summary.Length > 0)
+        if (!compact)
         {
-            line.Add("  " + summary, Muted);
+            string summary = ToolArgsSummary.Summarize(
+                block.ToolName,
+                block.ArgsSummary,
+                resultOutput,
+                _home,
+                unicode: _unicode
+            );
+            if (summary.Length > 0)
+            {
+                line.Add("  " + summary, Muted);
+            }
         }
 
-        if (ToolBlockMeta.Build(block, _unicode) is { Length: > 0 } meta)
+        if (ToolBlockMeta.Build(block, _unicode, compact) is { Length: > 0 } meta)
         {
             line.Add((_unicode ? " \u00b7 " : " - ") + meta, Muted);
         }

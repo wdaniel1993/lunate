@@ -3,9 +3,9 @@
 ## 1. The compact band (<60)
 
 - [x] 1.1 Breakpoint constants (`NarrowWidth = 60`, `FullWidth = 100`) in the TUI with a shared helper; unit tests pin the bands.
-- [ ] 1.2 Short tool headers: `ToolBlockRenderer.Header` takes the width and renders glyph + name + meta at <60; `ToolBlockMeta` gains the read line-count short meta; unit tests per tool (read/bash/edit/cs/fallback) at 59 and 60.
+- [x] 1.2 Short tool headers: `ToolBlockRenderer.Header` takes the width and renders glyph + name + meta at <60; `ToolBlockMeta` gains the read line-count short meta; unit tests per tool (read/bash/edit/cs/fallback) at 59 and 60.
 - [ ] 1.3 The compact footer: `StatusFooterRenderer.PlainText` returns `model · <pct>%` at <60 (tokens/window/think/dir/branch/widgets dropped; percent omitted when the window is unknown); unit tests at 40/59/60/80.
-- [ ] 1.4 ASCII/Unicode: the short headers keep the existing glyph and separator fallbacks; a no-Unicode compact header test.
+- [x] 1.4 ASCII/Unicode: the short headers keep the existing glyph and separator fallbacks; a no-Unicode compact header test.
 
 ## 2. The width invariant and resize
 

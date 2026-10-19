@@ -225,7 +225,9 @@ internal sealed partial class InteractiveSession
             ChildResult: _spawningCalls.Remove(key)
         );
         _transcript.Add(new TranscriptToolEntry(block));
-        _live.WriteScrollback(console => console.Write(_toolBlocks.Render(block)));
+        _live.WriteScrollback(console =>
+            console.Write(_toolBlocks.Render(block, _console.Size.Columns))
+        );
         RenderExtensionBlock(name, result);
     }
 
