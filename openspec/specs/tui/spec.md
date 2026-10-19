@@ -231,7 +231,7 @@ A pending approval SHALL render as a live-area prompt naming the tool and its ar
 
 ### Requirement: Status footer
 
-The footer SHALL show model, tokens used against the context window with percent, working directory and git branch as one dim line, formatted culture-invariantly. When the session's model is a virtual or extension-registered model, the model segment SHALL show the last routed resolution (`auto → deep`), updating as `ModelRouted` events arrive. Extension status widgets, when registered, SHALL append their segments after the core fields in registration order. It SHALL degrade deterministically at narrow widths (branch dropped first, then directory; model and usage survive; widget segments drop before the branch) and omit percent when the window is unknown. The interactive session SHALL provide a `/context` command showing the context usage plus the resolved subagent limits (concurrency, per-child and per-tree token budgets, the fixed depth) with the current tree usage.
+The footer SHALL show model, tokens used against the context window with percent, working directory and git branch as one dim line, formatted culture-invariantly. When the thinking level is not `off`, a `think:<level>` segment SHALL appear after the usage segment. When the session's model is a virtual or extension-registered model, the model segment SHALL show the last routed resolution (`auto → deep`), updating as `ModelRouted` events arrive. Extension status widgets, when registered, SHALL append their segments after the core fields in registration order. It SHALL degrade deterministically at narrow widths (branch dropped first, then directory; model and usage survive; widget segments drop before the branch) and omit percent when the window is unknown. The interactive session SHALL provide a `/context` command showing the context usage plus the resolved subagent limits (concurrency, per-child and per-tree token budgets, the fixed depth) with the current tree usage.
 
 #### Scenario: Narrow width degrades in order
 
@@ -262,6 +262,12 @@ The footer SHALL show model, tokens used against the context window with percent
 - **GIVEN** a session on a virtual model
 - **WHEN** a call routes to the `deep` backend
 - **THEN** the footer's model segment shows `auto → deep`
+
+#### Scenario: The footer shows the thinking level
+
+- **GIVEN** a session with thinking level `medium`
+- **WHEN** the footer renders
+- **THEN** the segment `think:medium` appears after the usage segment, and at level `off` it is absent
 
 ### Requirement: Git branch discovery without processes
 
@@ -335,7 +341,7 @@ The interactive session SHALL consume the harness's event stream: streaming text
 
 ### Requirement: Slash commands
 
-A submitted line whose first non-space character is `/` SHALL dispatch as a client command and never reach the model: `/model` opens the model picker (`/model <id>` switches directly when the id is in the catalog), and when the current model is an extension-registered or virtual model the picker's current-model line and `/model` SHALL show its last routed resolution (`auto → deep`); `/new` starts a fresh session, `/resume` opens the session picker, `/compact` requests an explicit out-of-run compaction, `/mcp` lists the configured and extension-registered MCP servers with their status and source (the config file path it came from, or `extension '{id}'`), with a name collision shown as the configured server winning and the registration marked shadowed, a server whose definition references an unset environment variable without a default shown with that missing-variable warning next to it, and never printing environment values or headers, `/extensions` lists every discovered extension — failed first, then trust-denied, then loaded, each group by id — as one segment per extension: `id version (scope) state`, with loaded ones carrying their load time and registered tool, command, hook and service counts (a field differing from the manifest reads `(N declared)`, a load above 500 ms reads `(slow)`), trust-denied ones reading `trust-denied` with the manifest's declared counts, failed ones reading `failed` followed by the message's first sentence and ` — see the log` — reading `extensions: none configured` when there are none and `extensions disabled (--no-extensions)` when extensions are disabled, `/trust` lists this repository's trust records (`/trust clear` clears them, so the next load asks again), `/skills` lists the discovered skills with their scope and state, `/skill:<name> [args]` invokes the named skill by submitting its wrapped body as a user turn through the normal submission path — an unknown name warns instead — `/help` lists the commands grouped (session / model / extensions / files / quit) with one-line descriptions taken from the command registry — no hand-maintained list: a command dispatchable without a description SHALL fail a test — `/quit` quits. Commands SHALL append to the input history and skip the input pipeline; an unknown command SHALL produce a dim notice naming it. While a turn is running, `/new`, `/resume`, `/model` and `/compact` SHALL be refused with a notice; `/quit` SHALL quit at any time (cancelling a running turn). While an approval prompt or a picker is open, no input is submitted, so no command can dispatch.
+A submitted line whose first non-space character is `/` SHALL dispatch as a client command and never reach the model: `/model` opens the model picker (`/model <id>` switches directly when the id is in the catalog), and when the current model is an extension-registered or virtual model the picker's current-model line and `/model` SHALL show its last routed resolution (`auto → deep`); `/new` starts a fresh session, `/resume` opens the session picker, `/compact` requests an explicit out-of-run compaction, `/thinking <level>` sets the session's reasoning level (one of `off`/`low`/`medium`/`high`; `/thinking` alone prints the current level and the active model's mapping), `/mcp` lists the configured and extension-registered MCP servers with their status and source (the config file path it came from, or `extension '{id}'`), with a name collision shown as the configured server winning and the registration marked shadowed, a server whose definition references an unset environment variable without a default shown with that missing-variable warning next to it, and never printing environment values or headers, `/extensions` lists every discovered extension — failed first, then trust-denied, then loaded, each group by id — as one segment per extension: `id version (scope) state`, with loaded ones carrying their load time and registered tool, command, hook and service counts (a field differing from the manifest reads `(N declared)`, a load above 500 ms reads `(slow)`), trust-denied ones reading `trust-denied` with the manifest's declared counts, failed ones reading `failed` followed by the message's first sentence and ` — see the log` — reading `extensions: none configured` when there are none and `extensions disabled (--no-extensions)` when extensions are disabled, `/trust` lists this repository's trust records (`/trust clear` clears them, so the next load asks again), `/skills` lists the discovered skills with their scope and state, `/skill:<name> [args]` invokes the named skill by submitting its wrapped body as a user turn through the normal submission path — an unknown name warns instead — `/help` lists the commands grouped (session / model / extensions / files / quit) with one-line descriptions taken from the command registry — no hand-maintained list: a command dispatchable without a description SHALL fail a test — `/quit` quits. Commands SHALL append to the input history and skip the input pipeline; an unknown command SHALL produce a dim notice naming it. While a turn is running, `/new`, `/resume`, `/model` and `/compact` SHALL be refused with a notice; `/quit` SHALL quit at any time (cancelling a running turn). While an approval prompt or a picker is open, no input is submitted, so no command can dispatch.
 
 #### Scenario: Every built-in command dispatches without a model call
 
@@ -456,6 +462,12 @@ A submitted line whose first non-space character is `/` SHALL dispatch as a clie
 - **GIVEN** an idle session
 - **WHEN** `/help` is submitted
 - **THEN** the listing shows every built-in command grouped (session / model / extensions / files / quit), each with a one-line description, and no command appears without one
+
+#### Scenario: /thinking sets and reports the level
+
+- **GIVEN** an idle session
+- **WHEN** `/thinking high` then `/thinking` are submitted
+- **THEN** the level is set to `high`, the footer shows `think:high`, and the bare command prints the current level with the active model's mapping — without a model call
 
 ### Requirement: SelectList pickers
 
@@ -720,3 +732,25 @@ When no model is configured, or no provider or key resolves, the header SHALL pr
 - **GIVEN** `startupHeader` set to `false` (or `LUNATE_STARTUP_HEADER=0`)
 - **WHEN** an interactive session starts, and again after `/new`
 - **THEN** no header is printed in either case
+
+### Requirement: Thinking display
+
+Reasoning events SHALL render in the live area in the theme's `thinking` color while they stream — prefixed `⠹ thinking… <elapsed>s`, capped at 12 visible lines (older lines scroll away) — and SHALL commit to the scrollback when the reasoning ends: as one collapsed line `✦ thought for <n>s` (whole seconds from the first to the last reasoning event) by default, or as the full wrapped text (indented two spaces) when the `thinkingFull` setting is enabled. Committed thinking SHALL be driven by the event stream alone, so recorded fixtures render identically. Color SHALL never carry meaning alone: the `✦` glyph and the words `thought for` carry it in NO_COLOR and 16-color modes.
+
+#### Scenario: Live then collapsed
+
+- **GIVEN** a run whose model streams reasoning and then text
+- **WHEN** the reasoning ends
+- **THEN** the live thinking block disappears and a single `✦ thought for <n>s` line commits to the scrollback
+
+#### Scenario: Full text setting
+
+- **GIVEN** the `thinkingFull` setting enabled
+- **WHEN** the reasoning ends
+- **THEN** the full reasoning text commits wrapped in the thinking color
+
+#### Scenario: Fixtures replay identically
+
+- **GIVEN** a recorded fixture carrying reasoning events
+- **WHEN** it is replayed
+- **THEN** the thinking live and commit frames are identical to the recording

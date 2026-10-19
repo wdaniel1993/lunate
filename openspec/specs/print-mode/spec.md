@@ -7,7 +7,7 @@ Print mode is the non-interactive frontend: it runs one prompt to completion and
 
 ### Requirement: Print mode contract
 
-`lunate -p "<prompt>"` SHALL run one prompt to completion without any interactive prompt. In default mode exactly the final answer — the text of the last assistant message with content — SHALL be written to stdout, written once at the end; all diagnostics SHALL go to stderr, so redirecting stdout captures a clean answer. With `--json` every event of the run SHALL be written to stdout as one JSON object per line in arrival order, with the same stamped fields as the event records (`type`, `runId`, `sessionId`, `parentRunId`, `source` when non-default) plus type-specific fields; `tool_call_result` SHALL carry the tool's detail record as a JSON element. Exit codes SHALL be: 0 for a run that finished with the `stop` reason, 1 for a run error or a failure before a clean finish, 2 for `length` and `step_limit` finishes, 130 when cancelled. Usage errors (missing prompt, unknown flags) SHALL exit 2 with a message on stderr and nothing on stdout.
+`lunate -p "<prompt>"` SHALL run one prompt to completion without any interactive prompt. In default mode exactly the final answer — the text of the last assistant message with content — SHALL be written to stdout, written once at the end; all diagnostics SHALL go to stderr, so redirecting stdout captures a clean answer. With `--json` every event of the run SHALL be written to stdout as one JSON object per line in arrival order, reasoning events included (`reasoning_start`, `reasoning_message_content`, `reasoning_end`), with the same stamped fields as the event records (`type`, `runId`, `sessionId`, `parentRunId`, `source` when non-default) plus type-specific fields; `tool_call_result` SHALL carry the tool's detail record as a JSON element. Exit codes SHALL be: 0 for a run that finished with the `stop` reason, 1 for a run error or a failure before a clean finish, 2 for `length` and `step_limit` finishes, 130 when cancelled. Usage errors (missing prompt, unknown flags) SHALL exit 2 with a message on stderr and nothing on stdout.
 
 #### Scenario: The final answer is the only thing on stdout
 
@@ -32,6 +32,12 @@ Print mode is the non-interactive frontend: it runs one prompt to completion and
 - **GIVEN** no prompt argument
 - **WHEN** `-p` is passed alone
 - **THEN** exit code 2, usage text on stderr, nothing on stdout
+
+#### Scenario: Reasoning events appear in the JSON stream
+
+- **GIVEN** a scripted run whose model streams reasoning
+- **WHEN** print mode runs with `--json`
+- **THEN** `reasoning_start`, `reasoning_message_content` and `reasoning_end` objects appear in arrival order like every other event
 
 ### Requirement: Non-interactive tool approval
 
