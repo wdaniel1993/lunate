@@ -8,20 +8,25 @@ namespace Lunate.Tui;
 /// The committed thinking block: one collapsed <c>✦ thought for &lt;n&gt;s</c> line by default, or
 /// the full reasoning text wrapped to the terminal width with a two-space indent when the
 /// <c>thinkingFull</c> setting is on. The text is escaped for markup and painted in
-/// <see cref="ThinkingColor"/>; the scrollback console drops the attribute under NO_COLOR, where
-/// the glyph and the words carry the meaning.
+/// <see cref="ThinkingColor"/> for the caller's capability — 16-colour mode selects magenta
+/// explicitly — and the scrollback console drops the attribute under NO_COLOR, where the glyph
+/// and the words carry the meaning.
 /// </summary>
 public sealed class ThinkingCommitRenderer
 {
     /// <summary>The two-space indent every full-text line carries (design D8).</summary>
     private const string Indent = "  ";
 
-    public IRenderable Render(ThinkingCommitModel commit, int width)
+    public IRenderable Render(
+        ThinkingCommitModel commit,
+        int width,
+        ColorSystemSupport color = ColorSystemSupport.TrueColor
+    )
     {
         ArgumentNullException.ThrowIfNull(commit);
         IReadOnlyList<StyledLine> lines = commit.Full
-            ? FullLines(commit.Text, width)
-            : [Summary(commit.ElapsedSeconds)];
+            ? FullLines(commit.Text, width, color)
+            : [Summary(commit.ElapsedSeconds, color)];
         var builder = new StringBuilder();
         foreach (StyledLine line in lines)
         {
@@ -35,23 +40,28 @@ public sealed class ThinkingCommitRenderer
         return new Markup(builder.ToString());
     }
 
-    private static StyledLine Summary(int elapsedSeconds)
+    private static StyledLine Summary(int elapsedSeconds, ColorSystemSupport color)
     {
         var line = new StyledLine();
         line.Add(
             FormattableString.Invariant($"✦ thought for {elapsedSeconds}s"),
-            ThinkingColor.Span
+            ThinkingColor.SpanFor(color)
         );
         return line;
     }
 
-    private static IReadOnlyList<StyledLine> FullLines(string text, int width)
+    private static IReadOnlyList<StyledLine> FullLines(
+        string text,
+        int width,
+        ColorSystemSupport color
+    )
     {
+        SpanStyle span = ThinkingColor.SpanFor(color);
         var lines = new List<StyledLine>();
         foreach (string wrapped in Wrap(text, Math.Max(1, width - Indent.Length)))
         {
             var line = new StyledLine();
-            line.Add(Indent + wrapped, ThinkingColor.Span);
+            line.Add(Indent + wrapped, span);
             lines.Add(line);
         }
 

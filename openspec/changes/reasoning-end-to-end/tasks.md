@@ -70,7 +70,15 @@ order; commit per group; record any design/code divergence in this file under th
   bare form is read-only and allowed while a turn runs, the set form refuses like `/model`.)
 - [x] 4.4 Tests: unit (renderers) + the production composition test (scripted reasoning
   fixture through the real host: live frame → collapsed commit).
-- [ ] 4.5 Snapshot tests for the thinking states at 120/80/50 × dark/light/NO_COLOR.
+- [x] 4.5 Snapshot tests for the thinking states (live block, collapsed commit, full commit) at
+  120/80/50 × truecolor/16-colour/NO_COLOR.
+  (No light/dark dimension exists yet: `ThinkingColor` (4.1) is the interim capability seam, so
+  the goldens cover its three modes and the light value lands with the theme card. The snapshot
+  pass settled 4.2's indent question: the collapsed line stays flush left per D8; the
+  visual-spec snapshot's leading indent is deferred to the theme card. It also settled the
+  commit colour: Spectre's hex-to-16-colour conversion picked white, so
+  `ThinkingCommitRenderer` now takes the capability and selects magenta explicitly — the
+  committed form matches the live block's `\x1b[35m`.)
 
 ## 5. Surfaces
 

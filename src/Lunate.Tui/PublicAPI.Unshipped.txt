@@ -299,7 +299,7 @@ Lunate.Tui.ThinkingCommitModel.Text.get -> string!
 Lunate.Tui.ThinkingCommitModel.Text.init -> void
 Lunate.Tui.ThinkingCommitModel.ThinkingCommitModel(string! Text, int ElapsedSeconds, bool Full) -> void
 Lunate.Tui.ThinkingCommitRenderer
-Lunate.Tui.ThinkingCommitRenderer.Render(Lunate.Tui.ThinkingCommitModel! commit, int width) -> Spectre.Console.Rendering.IRenderable!
+Lunate.Tui.ThinkingCommitRenderer.Render(Lunate.Tui.ThinkingCommitModel! commit, int width, Spectre.Console.ColorSystemSupport color = Spectre.Console.ColorSystemSupport.TrueColor) -> Spectre.Console.Rendering.IRenderable!
 Lunate.Tui.ThinkingCommitRenderer.ThinkingCommitRenderer() -> void
 override Lunate.Tui.ThinkingCommitModel.Equals(object? obj) -> bool
 override Lunate.Tui.ThinkingCommitModel.GetHashCode() -> int

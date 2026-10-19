@@ -81,6 +81,38 @@ public sealed class ThinkingCommitRendererTests
         Assert.DoesNotContain("\u001b", plainFull + plainCollapsed, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Sixteen_colour_mode_paints_ansi_magenta_instead_of_the_console_conversion()
+    {
+        var commit = new ThinkingCommitModel("weighing the options", 12, Full: false);
+
+        var console = new TestConsole();
+        console.Profile.Width = 200;
+        console.EmitAnsiSequences = true;
+        console.Profile.Capabilities.ColorSystem = ColorSystem.Standard;
+        console.Write(
+            new ThinkingCommitRenderer().Render(commit, width: 40, ColorSystemSupport.Detect)
+        );
+
+        Assert.Equal("\u001b[35m✦ thought for 12s\u001b[0m\n", console.Output);
+    }
+
+    [Fact]
+    public void The_no_colour_capability_stays_plain_even_on_a_colour_console()
+    {
+        var commit = new ThinkingCommitModel("weighing the options", 12, Full: false);
+
+        var console = new TestConsole();
+        console.Profile.Width = 200;
+        console.EmitAnsiSequences = true;
+        console.Profile.Capabilities.ColorSystem = ColorSystem.TrueColor;
+        console.Write(
+            new ThinkingCommitRenderer().Render(commit, width: 40, ColorSystemSupport.NoColors)
+        );
+
+        Assert.Equal("✦ thought for 12s\n", console.Output);
+    }
+
     private static string Render(ThinkingCommitModel commit, int width)
     {
         var console = new TestConsole();

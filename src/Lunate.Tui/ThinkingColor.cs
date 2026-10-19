@@ -16,6 +16,20 @@ internal static class ThinkingColor
     /// <summary>The colour as a scrollback span; the console drops the attribute under NO_COLOR.</summary>
     internal static readonly SpanStyle Span = new(Color: DarkHex);
 
+    /// <summary>
+    /// The scrollback span for one capability: the dark hex where the terminal can show it,
+    /// ANSI magenta ("purple" in Spectre's palette) in 16-colour mode and a plain span under
+    /// NO_COLOR. Spectre's own hex down-conversion picks white for the 16-colour system, so the
+    /// fallback is chosen here, matching <see cref="Wrap"/>.
+    /// </summary>
+    internal static SpanStyle SpanFor(ColorSystemSupport color) =>
+        color switch
+        {
+            ColorSystemSupport.NoColors => SpanStyle.Plain,
+            ColorSystemSupport.TrueColor or ColorSystemSupport.EightBit => Span,
+            _ => new SpanStyle(Color: "purple"),
+        };
+
     private const string TrueColorSgr = "\u001b[38;2;175;135;215m";
     private const string EightBitSgr = "\u001b[38;5;140m";
     private const string SixteenColorSgr = "\u001b[35m";

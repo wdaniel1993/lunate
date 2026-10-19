@@ -174,7 +174,9 @@ internal sealed partial class InteractiveSession
             Math.Floor(Math.Max(0, (_options.Scheduler.Now - _thinkingStartedAt).TotalSeconds));
         var commit = new ThinkingCommitModel(_thinking, elapsedSeconds, _settings.ThinkingFull);
         _live.WriteScrollback(console =>
-            console.Write(_thinkingCommit.Render(commit, _console.Size.Columns))
+            console.Write(
+                _thinkingCommit.Render(commit, _console.Size.Columns, _capabilities.Color)
+            )
         );
     }
 
