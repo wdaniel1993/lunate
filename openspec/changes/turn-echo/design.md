@@ -23,7 +23,7 @@ One activity line in the live area, above the input:
 - **Running a tool**: `<spinner> <tool name> <summary> · <elapsed>s · ↑<in> ↓<out> · esc to interrupt`.
 - **Generic work** (a run with neither): `<spinner> working… <elapsed>s · ↑<in> ↓<out> · esc to interrupt`.
 
-The token deltas are the current run's usage — the session records the usage at the run's start and the indicator shows the difference; they are culture-invariant (`1.2k`, `180`) and omitted before the first usage event. `esc to interrupt` shows only while a turn is cancellable. Narrow band (<60) keeps `spinner label elapsed` and drops the tokens and the hint. The thinking label carries `ThinkingColor` (truecolor/256 theme value, 16-color fallback, plain under NO_COLOR); the rest of the line stays plain.
+The token deltas are the current run's usage — the session records the usage at the run's start and the indicator shows the difference; they are culture-invariant (`1.2k`, `180`) and omitted before the first usage event. `esc to interrupt` shows only while a turn is cancellable. Narrow band (<60) keeps `spinner label elapsed` and drops the tokens and the hint. The thinking label carries `ThinkingColor` (truecolor/256 theme value, 16-color fallback, plain under NO_COLOR); the rest of the line stays plain. A tool summary is budgeted against the line width so the elapsed seconds, the deltas and the hint always survive; only the summary clips.
 
 Sources: `LiveAreaState` gains the run's deltas and the tool summary; the session posts them with the existing status updates.
 

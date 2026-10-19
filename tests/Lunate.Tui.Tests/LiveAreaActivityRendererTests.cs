@@ -192,6 +192,30 @@ public sealed class LiveAreaActivityRendererTests
         Assert.Equal("| read bad name first second · 2s", frame.Lines[0]);
     }
 
+    [Theory]
+    [InlineData(40, " · 2s")]
+    [InlineData(80, " · 2s · ↑1.2k ↓180 · esc to interrupt")]
+    public void A_long_tool_summary_is_budgeted_so_the_tail_survives(int width, string tail)
+    {
+        var state = new LiveAreaState
+        {
+            ToolName = "tool",
+            ToolSummary = new string('x', 200),
+            ToolElapsedSeconds = 2,
+            FrameNumber = 0,
+            Cancellable = true,
+            RunInputTokens = 1200,
+            RunOutputTokens = 180,
+            Size = new ConsoleSize(width, 24),
+        };
+
+        var frame = LiveAreaRenderer.Render(state);
+
+        Assert.True(frame.Lines[0].Length <= width);
+        Assert.StartsWith("| tool ", frame.Lines[0], StringComparison.Ordinal);
+        Assert.EndsWith(tail, frame.Lines[0], StringComparison.Ordinal);
+    }
+
     [Fact]
     public void An_empty_tool_summary_renders_only_the_name()
     {
