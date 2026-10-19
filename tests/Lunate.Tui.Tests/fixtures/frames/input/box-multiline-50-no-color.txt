@@ -1,4 +1,4 @@
 > Fix the autocomplete list
   so the selected row
   stays inside the box.
-deepseek-v4.1-flash · 2.1k/1.0M (0%)
+deepseek-v4.1-flash · 0%
