@@ -21,4 +21,4 @@
 - [x] 4.1 Golden snapshots for the echo and the activity line per breakpoint (40×20 / 60×30 / 80×24 / 120×40) and colour mode.
 - [x] 4.2 `docs/media/tapes/features-turns.tape` (two turns; replay client) + GIF + README gallery entry.
 - [x] 4.3 `docs/guide.md`: a "Turns" paragraph (the echo, the activity line, the interrupt hint).
-- [ ] 4.4 Startup budget unchanged — verified by the change gate.
+- [x] 4.4 Startup budget unchanged — verified by the change gate: `scripts/verify.sh` measured a 58 ms startup median against the 150 ms budget.
