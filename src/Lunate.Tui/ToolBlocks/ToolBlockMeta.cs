@@ -35,6 +35,10 @@ internal static class ToolBlockMeta
             var (added, removed) = DiffRenderer.ChangeCounts(diff);
             parts.Add(string.Create(CultureInfo.InvariantCulture, $"+{added} \u2212{removed}"));
         }
+        else if (block.ToolName.StartsWith("cs_", StringComparison.Ordinal))
+        {
+            CsToolMeta.Append(block.Output, parts);
+        }
 
         return parts.Count == 0 ? null : string.Join(" \u00b7 ", parts);
     }

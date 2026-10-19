@@ -109,6 +109,84 @@ public sealed class ToolBlockMetaTests
             )
         );
 
+    [Fact]
+    public void Cs_diagnostics_meta_carries_the_counts_and_the_top_items()
+    {
+        var block = CsBlock(DiagnosticsOutput);
+
+        Assert.Equal(
+            "2 errors 1 warning"
+                + " \u00b7 src/a.cs(4,5): error CS0103: The name 'Foo' does not exist"
+                + " \u00b7 src/b.cs(9,1): warning CS8600: Converting null literal",
+            ToolBlockMeta.Build(block)
+        );
+    }
+
+    [Fact]
+    public void Cs_diagnostics_meta_caps_the_item_list()
+    {
+        string? meta = ToolBlockMeta.Build(CsBlock(DiagnosticsOutput));
+
+        Assert.DoesNotContain("CS1002", meta, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Cs_diagnostics_meta_truncates_a_long_item()
+    {
+        string message = new('q', 200);
+        var block = CsBlock(
+            "1 error, 0 warnings in the solution.\nsrc/a.cs(1,1): error CS9999: " + message
+        );
+
+        string? meta = ToolBlockMeta.Build(block);
+
+        Assert.NotNull(meta);
+        Assert.EndsWith("\u2026", meta);
+        Assert.DoesNotContain(new string('q', 100), meta, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Cs_diagnostics_with_no_findings_has_no_meta() =>
+        Assert.Null(
+            ToolBlockMeta.Build(
+                CsBlock("No compiler errors or warnings in the solution.")
+            )
+        );
+
+    [Fact]
+    public void A_cs_result_without_a_summary_line_has_no_meta() =>
+        Assert.Null(ToolBlockMeta.Build(CsBlock("Symbols:\nWidget.Method — src/a.cs")));
+
+    [Fact]
+    public void Cs_diagnostics_reads_the_counts_past_a_partial_load_notice() =>
+        Assert.StartsWith(
+            "1 error 0 warnings",
+            ToolBlockMeta.Build(
+                CsBlock(
+                    "Partial load: one project failed.\n"
+                        + "1 error, 0 warnings in changed files.\n"
+                        + "src/a.cs(4,5): error CS0103: The name 'Foo' does not exist"
+                )
+            ),
+            StringComparison.Ordinal
+        );
+
+    private static ToolBlockModel CsBlock(string output) =>
+        new(
+            "cs_diagnostics",
+            """{"scope":"changed"}""",
+            ToolBlockStatus.Error,
+            output,
+            null
+        );
+
+    private const string DiagnosticsOutput =
+        "Partial load: one project failed to load.\n"
+        + "2 errors, 1 warning in changed files.\n"
+        + "src/a.cs(4,5): error CS0103: The name 'Foo' does not exist\n"
+        + "src/b.cs(9,1): warning CS8600: Converting null literal\n"
+        + "src/c.cs(1,1): error CS1002: ; expected";
+
     private const string DiffText =
         "--- a/src/x.cs\n"
         + "+++ b/src/x.cs\n"

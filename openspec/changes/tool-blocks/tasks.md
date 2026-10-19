@@ -6,8 +6,8 @@
   `offset`/`limit`; `path (N lines)` from the result's line count when the call gave none).
 - [x] 1.2 `bash`: `ToolResult` gains the `BashDetails(ExitCode)` payload; the header meta carries
   `exit N · <duration>`.
-- [ ] 1.3 `edit`/`write`: meta carries `+N −M` from the existing diff info, before the diff panel.
-- [ ] 1.4 `cs_*`: meta carries the severity counts and the top items (from the result's summary
+- [x] 1.3 `edit`/`write`: meta carries `+N −M` from the existing diff info, before the diff panel.
+- [x] 1.4 `cs_*`: meta carries the severity counts and the top items (from the result's summary
   line, capped).
 - [ ] 1.5 Extension/MCP tools: the generic fallback stays, with the path-shortening applied where
   the value looks like a path.
