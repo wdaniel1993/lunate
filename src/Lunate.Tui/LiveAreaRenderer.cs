@@ -46,6 +46,7 @@ internal static class LiveAreaRenderer
         IReadOnlyList<string> pickerLines = state.Picker is null
             ? []
             : SelectListRenderer.PlainLines(state.Picker);
+        IReadOnlyList<string> autocompleteLines = AutocompleteRenderer.Lines(state, width);
         IReadOnlyList<string> thinkingLines = ThinkingLines(state, width);
         var footerLine =
             state.Loading is { Length: > 0 } loading ? loading
@@ -60,6 +61,7 @@ internal static class LiveAreaRenderer
             + (approvalLine is null ? 0 : 1)
             + trustLines.Count
             + pickerLines.Count
+            + autocompleteLines.Count
             + ruleLines;
         // The budget carries both rules and the footer, so the tail shares what is left of the
         // eight-line live area; the input box itself always gets its full eight lines.
@@ -110,7 +112,9 @@ internal static class LiveAreaRenderer
             lines.Add(CellText.Clip(pickerLine, width));
         }
 
-        // The autocomplete list renders between the transient state and the upper rule (task 3.2).
+        // The autocomplete list sits between the transient state and the upper rule (design D1).
+        lines.AddRange(autocompleteLines);
+
         if (ruleLines == 1)
         {
             lines.Add(RuleLine(width, state.Unicode));
