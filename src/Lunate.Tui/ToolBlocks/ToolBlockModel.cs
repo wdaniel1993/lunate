@@ -16,12 +16,16 @@ public sealed record ToolDiffInfo(string Path, string MatchTier, string UnifiedD
 
 /// <summary>
 /// A tool call rendered as a transcript block: tool name, argument summary, status, an optionally
-/// bounded output excerpt and an optional unified diff.
+/// bounded output excerpt and an optional unified diff. <see cref="ExitCode"/> and
+/// <see cref="Duration"/> come from the wiring (the duration measured between the call's start and
+/// result events on the session's scheduler).
 /// </summary>
 public sealed record ToolBlockModel(
     string ToolName,
     string ArgsSummary,
     ToolBlockStatus Status,
     string? Output,
-    ToolDiffInfo? Diff
+    ToolDiffInfo? Diff,
+    int? ExitCode = null,
+    TimeSpan? Duration = null
 );

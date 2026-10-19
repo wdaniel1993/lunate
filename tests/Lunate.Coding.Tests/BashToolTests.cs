@@ -62,6 +62,26 @@ public sealed class BashToolTests
     }
 
     [Fact]
+    public async Task Exit_code_zero_travels_in_the_details_payload()
+    {
+        using var temp = new TempDirectory();
+
+        var result = await RunAsync(temp, "echo hello");
+
+        Assert.Equal(new BashDetails(0), result.Details);
+    }
+
+    [Fact]
+    public async Task A_non_zero_exit_code_travels_in_the_details_payload()
+    {
+        using var temp = new TempDirectory();
+
+        var result = await RunAsync(temp, "exit 7");
+
+        Assert.Equal(new BashDetails(7), result.Details);
+    }
+
+    [Fact]
     public async Task Stdout_and_stderr_are_separated()
     {
         using var temp = new TempDirectory();
@@ -176,6 +196,7 @@ public sealed class BashToolTests
         var result = await RunAsync(temp, TreeCommand(), timeout);
 
         Assert.True(result.IsError);
+        Assert.Null(result.Details);
         Assert.Contains(
             $"timed out after {timeout.TotalSeconds.ToString("0.###", CultureInfo.InvariantCulture)}s; process tree killed",
             result.Output

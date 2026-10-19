@@ -148,7 +148,11 @@ public sealed class BashTool : ITool
         }
 
         var exitCode = run.ExitCode!.Value;
-        return new ToolResult(ComposeText(stdout, stderr, ExitFooter(exitCode)), exitCode != 0);
+        return new ToolResult(
+            ComposeText(stdout, stderr, ExitFooter(exitCode)),
+            exitCode != 0,
+            new BashDetails(exitCode)
+        );
     }
 
     /// <summary>
