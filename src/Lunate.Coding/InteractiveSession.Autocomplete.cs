@@ -110,7 +110,7 @@ internal sealed partial class InteractiveSession
             if (!_indexingNoticeShown)
             {
                 _indexingNoticeShown = true;
-                Notify("file index: indexing…");
+                Notify(_capabilities.Unicode ? "file index: indexing…" : "file index: indexing...");
             }
 
             CloseAutocomplete();

@@ -15,10 +15,14 @@ public sealed class InteractiveSessionAutocompleteTests
     private static readonly KeyEvent AltEnter = new(KeyKind.Enter, null, false, false, true);
 
     private static async Task<InteractiveSessionHost> StartAsync(
-        IWorkspaceFiles? workspaceFiles = null
+        IWorkspaceFiles? workspaceFiles = null,
+        Func<string, string?>? environment = null
     )
     {
-        var host = new InteractiveSessionHost(workspaceFiles: workspaceFiles);
+        var host = new InteractiveSessionHost(
+            workspaceFiles: workspaceFiles,
+            environment: environment
+        );
         _ = host.RunAsync();
         await host.WaitUntilAsync(() => host.Session.IsComposed);
         return host;
@@ -493,18 +497,27 @@ public sealed class InteractiveSessionAutocompleteTests
         host.Console.Complete();
     }
 
-    [Fact]
-    public async Task While_the_index_builds_the_list_stays_closed_and_the_notice_shows()
+    [Theory]
+    [InlineData(false, "file index: indexing…")]
+    [InlineData(true, "file index: indexing...")]
+    public async Task While_the_index_builds_the_list_stays_closed_and_the_notice_shows(
+        bool ascii,
+        string notice
+    )
     {
         FakeWorkspaceFiles files = SrcTree();
         files.Gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        using InteractiveSessionHost host = await StartAsync(files);
+        Func<string, string?> baseEnvironment = PrintModeTestSupport.Environment();
+        using InteractiveSessionHost host = await StartAsync(
+            files,
+            ascii ? name => name == "LUNATE_ASCII" ? "1" : baseEnvironment(name) : null
+        );
 
         await SendAsync(host, "read @src/co");
         await host.WaitUntilAsync(() =>
         {
             host.Advance(33);
-            return host.LastFrame.Contains("file index: indexing…", StringComparison.Ordinal);
+            return host.LastFrame.Contains(notice, StringComparison.Ordinal);
         });
         Assert.Null(host.Session.Autocomplete);
         Assert.Equal(1, files.EnumerateCalls);
@@ -514,7 +527,7 @@ public sealed class InteractiveSessionAutocompleteTests
         await host.WaitUntilAsync(() =>
         {
             host.Advance(33);
-            return !host.LastFrame.Contains("file index: indexing…", StringComparison.Ordinal);
+            return !host.LastFrame.Contains(notice, StringComparison.Ordinal);
         });
 
         host.Console.Complete();
