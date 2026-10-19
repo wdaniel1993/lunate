@@ -2,7 +2,7 @@
 
 ## 1. Registry and matcher
 
-- [ ] 1.1 `CompletionItem` + `CompletionRegistry` (Coding): composed from `Commands.Descriptors`, the skill catalog (`/skill:<name>` + descriptions), the extension manifests' commands (described by extension id); unit tests for composition order, dedupe and the absence of any second list.
+- [x] 1.1 `CompletionItem` + `CompletionRegistry` (Coding): composed from `Commands.Descriptors`, the skill catalog (`/skill:<name>` + descriptions), the extension manifests' commands (described by extension id); unit tests for composition order, dedupe and the absence of any second list.
 - [ ] 1.2 `FuzzyMatch` (Tui, pure): subsequence scoring (prefix > word-start > position; shorter-then-ordinal tie-breaks), `Filter` over items; unit tests incl. empty query (natural order), no-match, case-insensitivity, unicode.
 - [ ] 1.3 Delete the old `Completion` helper (LCP/Tab-only) and its call sites; update its tests to the new engine.
 

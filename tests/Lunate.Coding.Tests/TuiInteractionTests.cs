@@ -2,6 +2,7 @@ using Lunate.Extensibility;
 using Lunate.Extensibility.Abstractions;
 using Lunate.Tui;
 using Microsoft.Extensions.AI;
+using TextStyle = Lunate.Extensibility.Abstractions.TextStyle;
 
 namespace Lunate.Coding.Tests;
 
