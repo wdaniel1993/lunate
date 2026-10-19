@@ -1,0 +1,9 @@
+  \x1b[38;5;80m/compact\x1b[0m  \x1b[38;5;245mcompact the conversation now\x1b[0m
+  /context  \x1b[38;5;245mshow the context window and subagent budgets\x1b[0m
+  /help  \x1b[38;5;245mlist the commands\x1b[0m
+  /new  \x1b[38;5;245mstart a fresh session\x1b[0m
+  /resume  \x1b[38;5;245mopen the session picker\x1b[0m
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+> /
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+deepseek-v4.1-flash · 2.1k/1.0M (0%) · ~/dev/lunate · main

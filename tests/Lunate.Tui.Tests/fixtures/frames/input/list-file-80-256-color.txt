@@ -1,0 +1,9 @@
+  \x1b[38;5;245msrc/core/\x1b[0m\x1b[38;5;80mFile.cs\x1b[0m
+  \x1b[38;5;245msrc/core/\x1b[0mOther.cs
+  \x1b[38;5;245msrc/\x1b[0mmain.cs
+  \x1b[38;5;245mdocs/\x1b[0mguide.md
+  \x1b[38;5;245msrc/very/long/directory/name/\x1b[0mDeep.cs
+────────────────────────────────────────────────────────────────────────────────
+> read @src/
+────────────────────────────────────────────────────────────────────────────────
+deepseek-v4.1-flash · 2.1k/1.0M (0%) · ~/dev/lunate · main
