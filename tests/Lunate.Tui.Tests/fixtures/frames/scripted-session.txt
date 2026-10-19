@@ -1,8 +1,8 @@
 \r\x1b[2K> \x1b[90mAsk anything, / for commands\x1b[0m\n\x1b[1A\r\x1b[2C
-\r\x1b[2K| read src/foo.cs\n\r\x1b[2K> hey\n\r\x1b[2Ktest-model · 13%\n\x1b[2A\r\x1b[5C
-\x1b[1A\r\x1b[2K| read src/foo.cs\n\r\x1b[2K> heya\n\r\x1b[2K  b\n\r\x1b[2K  c\n\r\x1b[2Ktest-model · 13%\n\x1b[2A\r\x1b[3C
-\x1b[3A\r\x1b[2Ktail one\n\r\x1b[2Ktail two\n\r\x1b[2K| read src/foo.cs\n\r\x1b[2K> heya\n\r\x1b[2K  b\n\r\x1b[2K  \n\r\x1b[2Ktest-model · 13%\n\x1b[2A\r\x1b[2C
-\x1b[5A\r\x1b[2Ktail one\n\r\x1b[2Ktail two\n\r\x1b[2K/ read src/foo.cs\n\r\x1b[2K> heya\n\r\x1b[2K  b\n\r\x1b[2K  \n\r\x1b[2Ktest-model · 13%\n\x1b[2A\r\x1b[2C
+\r\x1b[2K| read src/foo.cs · 0s\n\r\x1b[2K> hey\n\r\x1b[2Ktest-model · 13%\n\x1b[2A\r\x1b[5C
+\x1b[1A\r\x1b[2K| read src/foo.cs · 0s\n\r\x1b[2K> heya\n\r\x1b[2K  b\n\r\x1b[2K  c\n\r\x1b[2Ktest-model · 13%\n\x1b[2A\r\x1b[3C
+\x1b[3A\r\x1b[2Ktail one\n\r\x1b[2Ktail two\n\r\x1b[2K| read src/foo.cs · 0s\n\r\x1b[2K> heya\n\r\x1b[2K  b\n\r\x1b[2K  \n\r\x1b[2Ktest-model · 13%\n\x1b[2A\r\x1b[2C
+\x1b[5A\r\x1b[2Ktail one\n\r\x1b[2Ktail two\n\r\x1b[2K/ read src/foo.cs · 0s\n\r\x1b[2K> heya\n\r\x1b[2K  b\n\r\x1b[2K  \n\r\x1b[2Ktest-model · 13%\n\x1b[2A\r\x1b[2C
 \x1b[5A\r\x1b[2Ktail one\n\r\x1b[2Ktail two\n\r\x1b[2K/ read src/f\n\r\x1b[2K> heya\n\r\x1b[2K  b\n\r\x1b[2K  \n\r\x1b[2Ktest-model ·\n\x1b[2A\r\x1b[2C
 \x1b[5A\r\x1b[2Ktail one\n\r\x1b[2Ktail two\n\r\x1b[2K> heya\n\r\x1b[2K  b\n\r\x1b[2K  \n\r\x1b[2Ktest-model ·\n\r\x1b[2K\n\x1b[3A\r\x1b[2C
 \x1b[4A\r\x1b[2K\n\r\x1b[2K\n\r\x1b[2K\n\r\x1b[2K\n\r\x1b[2K\n\r\x1b[2K\n\r\x1b[2K\x1b[6A

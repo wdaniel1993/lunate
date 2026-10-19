@@ -13,7 +13,7 @@ internal static class LiveAreaRenderer
 {
     internal const int MaxLines = 8;
 
-    /// <summary>The thinking block's window: the prefix line plus the newest text lines.</summary>
+    /// <summary>The thinking window: the activity line plus the newest reasoning text lines.</summary>
     internal const int MaxThinkingLines = 12;
 
     internal const string Placeholder = "Ask anything, / for commands";
@@ -31,7 +31,7 @@ internal static class LiveAreaRenderer
     public static RenderedFrame Render(LiveAreaState state)
     {
         int width = Math.Max(1, state.Size.Columns);
-        var toolLine = ToolLine(state);
+        var activityLine = ActivityLine(state, width);
         var subagentLine = state.SubagentRunning ? "subagent running" : null;
         // A notice is always one physical line: embedded newlines or controls would split the
         // frame, so sanitize before clipping; a notice that sanitizes to empty renders as none.
@@ -55,7 +55,7 @@ internal static class LiveAreaRenderer
         int ruleLines = HasRules(width) ? 1 : 0;
         int preInputLines =
             thinkingLines.Count
-            + (toolLine is null ? 0 : 1)
+            + (activityLine is null ? 0 : 1)
             + (subagentLine is null ? 0 : 1)
             + (noticeLine is null ? 0 : 1)
             + (approvalLine is null ? 0 : 1)
@@ -81,12 +81,12 @@ internal static class LiveAreaRenderer
 
         var lines = new List<string>();
         lines.AddRange(tail);
-        lines.AddRange(thinkingLines);
-        if (toolLine is not null)
+        if (activityLine is not null)
         {
-            lines.Add(CellText.Clip(toolLine, width));
+            lines.Add(CellText.Clip(activityLine, width));
         }
 
+        lines.AddRange(thinkingLines);
         if (subagentLine is not null)
         {
             lines.Add(CellText.Clip(subagentLine, width));
@@ -163,42 +163,86 @@ internal static class LiveAreaRenderer
         return prompt + LivePalette.Muted(text, color);
     }
 
-    private static string? ToolLine(LiveAreaState state) =>
-        state.ToolName is { Length: > 0 } name
-            ? $"{SpinnerFrames[state.FrameNumber % SpinnerFrames.Length]} {name}"
-            : null;
-
-    private static string ThinkingPrefix(int elapsedSeconds) =>
+    private static string ThinkingLabel(int elapsedSeconds) =>
         FormattableString.Invariant($"⠹ thinking… {elapsedSeconds}s");
 
+    private static string ToolLabel(LiveAreaState state, string name)
+    {
+        string text = FormattableString.Invariant(
+            $"{SpinnerFrames[state.FrameNumber % SpinnerFrames.Length]} {CellText.SingleLine(name)}"
+        );
+        string summary = CellText.SingleLine(state.ToolSummary ?? string.Empty);
+        if (summary.Length > 0)
+        {
+            text += " " + summary;
+        }
+
+        return FormattableString.Invariant($"{text} · {state.ToolElapsedSeconds}s");
+    }
+
+    private static string WorkingLabel(LiveAreaState state) =>
+        FormattableString.Invariant(
+            $"{SpinnerFrames[state.FrameNumber % SpinnerFrames.Length]} working… {state.RunElapsedSeconds}s"
+        );
+
     /// <summary>
-    /// The live thinking block: the working indicator's prefix on its own first line, with the
-    /// newest wrapped reasoning text below it. The block is a window of at most
-    /// <see cref="MaxThinkingLines"/> lines, so older text scrolls away; the colour is applied
-    /// after wrapping and clipping, so SGR bytes never count as width.
+    /// The one activity line: the thinking label, the active tool with its summary, or the generic
+    /// working label, followed by the run's deltas and the interrupt hint while cancellable. The
+    /// line is plain text in every colour mode.
+    /// </summary>
+    private static string? ActivityLine(LiveAreaState state, int width)
+    {
+        string? text =
+            state.Thinking is { } thinking ? ThinkingLabel(thinking.ElapsedSeconds)
+            : state.ToolName is { Length: > 0 } name ? ToolLabel(state, name)
+            : state.Running ? WorkingLabel(state)
+            : null;
+        return text is null ? null : WithRunMetrics(text, state, width);
+    }
+
+    /// <summary>
+    /// The run's token deltas and interrupt hint: only on the wide bands and only while the turn
+    /// is cancellable. The deltas are omitted until both usage counts are known.
+    /// </summary>
+    private static string WithRunMetrics(string text, LiveAreaState state, int width)
+    {
+        if (!state.Cancellable || WidthBands.IsCompact(width))
+        {
+            return text;
+        }
+
+        if (state.RunInputTokens is { } input && state.RunOutputTokens is { } output)
+        {
+            text +=
+                " · ↑"
+                + StatusFooterRenderer.FormatTokens(input)
+                + " ↓"
+                + StatusFooterRenderer.FormatTokens(output);
+        }
+
+        return text + " · esc to interrupt";
+    }
+
+    /// <summary>
+    /// The live thinking body: the newest wrapped reasoning text, in the thinking colour. The
+    /// window is at most <see cref="MaxThinkingLines"/> lines counting the activity line above it,
+    /// so older text scrolls away; the colour is applied after wrapping and clipping, so SGR bytes
+    /// never count as width.
     /// </summary>
     private static IReadOnlyList<string> ThinkingLines(LiveAreaState state, int width)
     {
-        if (state.Thinking is not { } thinking)
+        if (state.Thinking is not { Text.Length: > 0 } thinking)
         {
             return [];
         }
 
-        var lines = new List<string>
-        {
-            CellText.Clip(ThinkingPrefix(thinking.ElapsedSeconds), width),
-        };
-        if (thinking.Text.Length > 0)
-        {
-            IReadOnlyList<string> text = WrappedLines(thinking.Text, width);
-            int start = Math.Max(0, text.Count - (MaxThinkingLines - 1));
-            for (var i = start; i < text.Count; i++)
-            {
-                lines.Add(CellText.Clip(text[i], width));
-            }
-        }
-
-        return [.. lines.Select(line => ThinkingColor.Wrap(line, state.Color))];
+        IReadOnlyList<string> text = WrappedLines(thinking.Text, width);
+        int start = Math.Max(0, text.Count - (MaxThinkingLines - 1));
+        return
+        [
+            .. text.Skip(start)
+                .Select(line => ThinkingColor.Wrap(CellText.Clip(line, width), state.Color)),
+        ];
     }
 
     /// <summary>Wraps every hard line at the width, breaking a run longer than the width.</summary>
