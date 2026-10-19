@@ -62,22 +62,10 @@ public sealed class ToolBlockRendererTests
             new ToolBlockModel("read", """{"path":"src/a.cs"}""", ToolBlockStatus.Ok, null, null)
         );
         string failed = Render(
-            new ToolBlockModel(
-                "read",
-                """{"path":"src/a.cs"}""",
-                ToolBlockStatus.Error,
-                null,
-                null
-            )
+            new ToolBlockModel("read", """{"path":"src/a.cs"}""", ToolBlockStatus.Error, null, null)
         );
         string running = Render(
-            new ToolBlockModel(
-                "bash",
-                """{"command":"ls"}""",
-                ToolBlockStatus.Running,
-                null,
-                null
-            )
+            new ToolBlockModel("bash", """{"command":"ls"}""", ToolBlockStatus.Running, null, null)
         );
 
         Assert.DoesNotContain("ok", ok, StringComparison.Ordinal);
@@ -92,13 +80,7 @@ public sealed class ToolBlockRendererTests
             new ToolBlockModel("read", """{"path":"src/a.cs"}""", ToolBlockStatus.Ok, null, null)
         );
         string failed = RenderAscii(
-            new ToolBlockModel(
-                "read",
-                """{"path":"src/a.cs"}""",
-                ToolBlockStatus.Error,
-                null,
-                null
-            )
+            new ToolBlockModel("read", """{"path":"src/a.cs"}""", ToolBlockStatus.Error, null, null)
         );
 
         Assert.Equal("+ read  src/a.cs\n", ok);
@@ -227,13 +209,7 @@ public sealed class ToolBlockRendererTests
                 + "line 8\n"
                 + "\u2026 +3 lines \u00b7 ctrl+o\n",
             Render(
-                new ToolBlockModel(
-                    "bash",
-                    """{"command":"ls"}""",
-                    ToolBlockStatus.Ok,
-                    output,
-                    null
-                )
+                new ToolBlockModel("bash", """{"command":"ls"}""", ToolBlockStatus.Ok, output, null)
             )
         );
     }

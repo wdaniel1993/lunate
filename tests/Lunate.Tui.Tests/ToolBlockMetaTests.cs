@@ -148,9 +148,7 @@ public sealed class ToolBlockMetaTests
     [Fact]
     public void Cs_diagnostics_with_no_findings_has_no_meta() =>
         Assert.Null(
-            ToolBlockMeta.Build(
-                CsBlock("No compiler errors or warnings in the solution.")
-            )
+            ToolBlockMeta.Build(CsBlock("No compiler errors or warnings in the solution."))
         );
 
     [Fact]
@@ -172,13 +170,7 @@ public sealed class ToolBlockMetaTests
         );
 
     private static ToolBlockModel CsBlock(string output) =>
-        new(
-            "cs_diagnostics",
-            """{"scope":"changed"}""",
-            ToolBlockStatus.Error,
-            output,
-            null
-        );
+        new("cs_diagnostics", """{"scope":"changed"}""", ToolBlockStatus.Error, output, null);
 
     private const string DiagnosticsOutput =
         "Partial load: one project failed to load.\n"

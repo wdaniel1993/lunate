@@ -107,7 +107,10 @@ internal static class OutputExcerpt
 
     private static string Marker(int hiddenLines, bool unicode) =>
         unicode
-            ? string.Create(CultureInfo.InvariantCulture, $"\u2026 +{hiddenLines} lines \u00b7 ctrl+o")
+            ? string.Create(
+                CultureInfo.InvariantCulture,
+                $"\u2026 +{hiddenLines} lines \u00b7 ctrl+o"
+            )
             : string.Create(CultureInfo.InvariantCulture, $"... +{hiddenLines} lines - ctrl+o");
 
     private static string TrimSingleTrailingNewline(string output)

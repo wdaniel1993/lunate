@@ -142,8 +142,7 @@ public sealed class ToolArgsSummaryTests
     [Fact]
     public void Read_line_count_ignores_the_continue_hint()
     {
-        string output =
-            "     1|a\n     2|b\n[lines 1\u20132 of 10, use offset to continue]\n";
+        string output = "     1|a\n     2|b\n[lines 1\u20132 of 10, use offset to continue]\n";
 
         Assert.Equal(
             "src/a.cs (2 lines)",
