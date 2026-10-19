@@ -450,6 +450,7 @@ Finished output is rendered with Spectre.Console; the input line and a small liv
 | `Esc` | Cancel the running turn; nothing when idle |
 | `Ctrl+C` | Clear the input; on an empty input, press twice within 2 s to quit. Never cancels a turn |
 | `Ctrl+L` | Model picker |
+| `Ctrl+O` | Transcript viewer: the session transcript with full tool output and diffs; `q`, `Esc` or `Ctrl+O` closes. Refused while an approval or picker is open |
 | `Tab` | Complete a leading `/command` |
 | `Up` / `Down` | History |
 

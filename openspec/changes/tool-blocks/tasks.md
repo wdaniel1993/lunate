@@ -64,4 +64,6 @@
 ## 7. Docs
 
 - [x] 7.1 `docs/guide.md`: the tool-block forms and the `Ctrl+O` viewer in the TUI section.
-- [ ] 7.2 The footer keybinding line change noted where keybindings are documented.
+- [x] 7.2 The footer keybinding line change noted where keybindings are documented.
+  (The welcome header carries `ctrl+o transcript`; the guide's key bindings table gained the
+  `Ctrl+O` row — the README documents slash commands, not keys.)
