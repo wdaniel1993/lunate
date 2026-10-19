@@ -78,6 +78,9 @@ internal sealed record InteractiveSessionOptions
     /// <summary>Where composition errors are reported; null uses stderr.</summary>
     public TextWriter? Diagnostics { get; init; }
 
+    /// <summary>Observes each event of a run before the session renders it; null observes nothing.</summary>
+    public Action<AgentEvent>? EventObserver { get; init; }
+
     /// <summary>Adjusts the composed harness options; tests pin budgets and retry delays here.</summary>
     public Func<AgentHarnessOptions, AgentHarnessOptions>? ConfigureHarness { get; init; }
 }
@@ -895,6 +898,7 @@ internal sealed partial class InteractiveSession : IDisposable
                 : _harness!.RunAsync(text, runCts.Token);
             await foreach (AgentEvent agentEvent in events)
             {
+                _options.EventObserver?.Invoke(agentEvent);
                 HandleEvent(agentEvent);
             }
         }

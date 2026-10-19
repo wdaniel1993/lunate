@@ -68,7 +68,7 @@ order; commit per group; record any design/code divergence in this file under th
   `think:<level>` when not `off`.
   (Divergence: the level is session-scoped — set in memory, no settings.json write-back; the
   bare form is read-only and allowed while a turn runs, the set form refuses like `/model`.)
-- [ ] 4.4 Tests: unit (renderers) + the production composition test (scripted reasoning
+- [x] 4.4 Tests: unit (renderers) + the production composition test (scripted reasoning
   fixture through the real host: live frame → collapsed commit).
 - [ ] 4.5 Snapshot tests for the thinking states at 120/80/50 × dark/light/NO_COLOR.
 
@@ -79,7 +79,7 @@ order; commit per group; record any design/code divergence in this file under th
 
 ## 6. Media + verification
 
-- [ ] 6.1 A scripted reasoning fixture (model id `synthetic`) for replay-driven rendering.
+- [x] 6.1 A scripted reasoning fixture (model id `synthetic`) for replay-driven rendering.
 - [ ] 6.2 A VHS tape (`docs/media/tapes/features-thinking.tape`) via the replay client;
   extend `scripts/render-media.sh`; GIF committed under `docs/media/features/`.
 - [ ] 6.3 Startup budget unchanged (hyperfine check in the gate).
