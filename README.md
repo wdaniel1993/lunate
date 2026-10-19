@@ -144,6 +144,14 @@ prints the same data for scripts.
 
 ![The /extensions listing in a session](docs/media/features/extensions.gif)
 
+### You can watch it think
+
+With a reasoning model, `/thinking low|medium|high` (or `thinking` in `settings.json`) turns
+reasoning on: it streams live in the live area in its own colour and collapses to a single
+`✦ thought for Ns` line when the model is done. `thinkingFull` commits the full text instead.
+
+![Reasoning streaming and collapsing to a thought line](docs/media/features/thinking.gif)
+
 ## Configuration
 
 Everything of yours lives under `~/.lunate/`, and nothing there is required: without a settings file
