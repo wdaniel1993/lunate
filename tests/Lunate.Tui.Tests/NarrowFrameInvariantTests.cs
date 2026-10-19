@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Microsoft.Reactive.Testing;
 using Spectre.Console;
 using Spectre.Console.Rendering;
@@ -85,7 +86,10 @@ public sealed class NarrowFrameInvariantTests
         string[] lines = string.Concat(console.Writes)
             .ReplaceLineEndings("\n")
             .TrimEnd('\n')
-            .Split('\n');
+            .Split('\n')
+            // The console may emit SGR styling (ANSI on some runners): measure the visible text.
+            .Select(line => Regex.Replace(line, "\u001b\\[[0-9;]*m", ""))
+            .ToArray();
         Assert.All(
             lines,
             line =>
