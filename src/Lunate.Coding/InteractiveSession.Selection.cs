@@ -91,6 +91,17 @@ internal sealed partial class InteractiveSession
     private Session FreshSession()
     {
         _fileless = false;
-        return HarnessFactory.CreateSession(_sessionDirectory, _workspace);
+        return CreateFreshSession();
+    }
+
+    /// <summary>
+    /// Creates a fresh session and records the launch prompt directives on it, so a later resume
+    /// replays the caller's contract without the flags.
+    /// </summary>
+    private Session CreateFreshSession()
+    {
+        Session created = HarnessFactory.CreateSession(_sessionDirectory, _workspace);
+        SystemPrompt.Record(created, _options.Launch);
+        return created;
     }
 }

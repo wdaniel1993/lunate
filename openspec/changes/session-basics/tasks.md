@@ -29,7 +29,7 @@ Implementation runs through the `senior-dev` subagent (test-first). One commit p
 ## 5. System-prompt directives
 
 - [x] 5.1 `SystemPrompt.Compose(workspace, toolNames, directives)` implements replace (`--system-prompt`, no template, no tool conventions) and append (`--append-system-prompt`, after the composed prompt); no flags leaves the bytes identical to today.
-- [ ] 5.2 Record `system` / `system-append` as prompt sections at session creation; on resume read the latest recorded entries and apply them unless a CLI directive is present; skills keep their section and order.
+- [x] 5.2 Record `system` / `system-append` as prompt sections at session creation; on resume read the latest recorded entries and apply them unless a CLI directive is present; skills keep their section and order.
 - [ ] 5.3 Tests: composition bytes with both flags, no-flag regression, recorded entries after a run, replay on resume, CLI-over-recorded precedence, ACP/print/interactive parity. Commit: `feat(coding): compose and record system-prompt directives`.
 
 ## 6. `/name` and `/session`

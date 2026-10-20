@@ -574,7 +574,7 @@ internal sealed partial class InteractiveSession
     /// </summary>
     private void StartNewSession()
     {
-        _session = _fileless ? null : HarnessFactory.CreateSession(_sessionDirectory, _workspace);
+        _session = _fileless ? null : CreateFreshSession();
         ResetAlwaysApproved();
         _turnActive = true;
         _run = RestartCompositionAsync();

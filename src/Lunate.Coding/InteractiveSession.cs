@@ -699,7 +699,8 @@ internal sealed partial class InteractiveSession : IDisposable
         {
             SystemPrompt = SystemPrompt.Compose(
                 _workspace,
-                [.. _tools.Tools.Select(tool => tool.Name)]
+                [.. _tools.Tools.Select(tool => tool.Name)],
+                SystemPrompt.Directives(_options.Launch, _session)
             ),
             PromptSections = _skillSection is { } skills
                 ? [new AgentPromptSection("skills", skills)]

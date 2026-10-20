@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Runtime.InteropServices;
+using Lunate.Agent;
 
 namespace Lunate.Coding;
 
@@ -72,6 +73,48 @@ public static class SystemPrompt
             ? composed + "\n\n" + appended
             : composed;
     }
+
+    /// <summary>
+    /// Records the launch directives on a freshly created session: the replacement as
+    /// <c>system</c> and the appendix as <c>system-append</c>, each only when given. Reusing the
+    /// existing prompt-section entry keeps the session format and schema unchanged.
+    /// </summary>
+    internal static void Record(Session session, LaunchOptions directives)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+        ArgumentNullException.ThrowIfNull(directives);
+
+        if (directives.SystemPrompt is { } replacement)
+        {
+            session.AppendPromptSection("system", replacement);
+        }
+
+        if (directives.AppendSystemPrompt is { } appended)
+        {
+            session.AppendPromptSection("system-append", appended);
+        }
+    }
+
+    /// <summary>
+    /// The effective directives for a run: an explicit CLI directive wins over the latest recorded
+    /// section, which wins over the composed prompt (design D5).
+    /// </summary>
+    internal static LaunchOptions Directives(LaunchOptions launch, Session? session)
+    {
+        ArgumentNullException.ThrowIfNull(launch);
+        return launch with
+        {
+            SystemPrompt = launch.SystemPrompt ?? RecordedText(session, "system"),
+            AppendSystemPrompt =
+                launch.AppendSystemPrompt ?? RecordedText(session, "system-append"),
+        };
+    }
+
+    private static string? RecordedText(Session? session, string section) =>
+        session
+            ?.Entries.OfType<SessionPromptSectionEntry>()
+            .LastOrDefault(entry => string.Equals(entry.Section, section, StringComparison.Ordinal))
+            ?.Text;
 
     internal static string ReadTemplate()
     {

@@ -264,11 +264,14 @@ internal static class AcpMode
             HarnessFactory.DefaultSessionDirectory(workspace),
             workspace
         );
+        LaunchOptions directives = launch ?? new LaunchOptions();
+        SystemPrompt.Record(session, directives);
         var options = new AgentHarnessOptions
         {
             SystemPrompt = SystemPrompt.Compose(
                 workspace,
-                [.. tools.Tools.Select(tool => tool.Name)]
+                [.. tools.Tools.Select(tool => tool.Name)],
+                SystemPrompt.Directives(directives, session)
             ),
             WorkingDirectory = workspace.WorktreeRoot,
             ToolOutputLimit = settings.ToolOutputLimit,

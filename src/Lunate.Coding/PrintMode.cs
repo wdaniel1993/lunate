@@ -520,7 +520,9 @@ internal static class PrintMode
         {
             string directory =
                 options.SessionDirectory ?? HarnessFactory.DefaultSessionDirectory(workspace);
-            return (HarnessFactory.CreateSession(directory, workspace), null);
+            Session created = HarnessFactory.CreateSession(directory, workspace);
+            SystemPrompt.Record(created, launch);
+            return (created, null);
         }
 
         string sessionsRoot = options.SessionsRoot ?? SessionSelection.DefaultRoot;
@@ -585,7 +587,8 @@ internal static class PrintMode
         {
             SystemPrompt = SystemPrompt.Compose(
                 workspace,
-                [.. tools.Tools.Select(tool => tool.Name)]
+                [.. tools.Tools.Select(tool => tool.Name)],
+                SystemPrompt.Directives(options.Launch, session)
             ),
             PromptSections =
                 skills.Index.Text.Length > 0
