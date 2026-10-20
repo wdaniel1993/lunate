@@ -263,6 +263,23 @@ public sealed class ChatClientFactoryTests
     }
 
     [Fact]
+    public void Create_sends_a_qualified_preset_id_without_its_provider_prefix()
+    {
+        using var environment = new EnvironmentScope(
+            (ProviderPresets.Find("groq")!.KeyVariable, "test-key")
+        );
+        var model = new ModelInfo("groq/llama-custom", "groq", null, 128_000, true);
+
+        var factory = new ChatClientFactory(new MarkingLoggerFactory(static () => { }));
+
+        IChatClient client = factory.Create(model);
+        var metadata = (ChatClientMetadata?)client.GetService(typeof(ChatClientMetadata));
+
+        Assert.NotNull(metadata);
+        Assert.Equal("llama-custom", metadata.DefaultModelId);
+    }
+
+    [Fact]
     public void Create_keeps_the_openai_preset_on_the_sdk_default_endpoint_and_bare_id()
     {
         using var environment = new EnvironmentScope((OpenAiApiKeyVariable, "test-key"));

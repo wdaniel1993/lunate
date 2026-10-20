@@ -116,7 +116,7 @@ public sealed class ChatClientFactory : IChatClientFactory
     {
         ProviderPreset preset =
             ProviderPresets.Find(model.Provider) ?? throw UnsupportedProvider(model.Provider);
-        string wireId = model.WireId ?? model.Id;
+        string wireId = WireModelId(model, preset);
 
         if (preset.Adapter == ProviderAdapter.Anthropic)
         {
@@ -129,6 +129,25 @@ public sealed class ChatClientFactory : IChatClientFactory
         return CreateOpenAiClient(model, preset, _namedKeySource, apiKey)
             .GetChatClient(wireId)
             .AsIChatClient();
+    }
+
+    /// <summary>
+    /// The id the provider receives. A declared wire id always wins; a qualified id on a
+    /// compatible preset without one sends the part after the preset prefix, never the prefix.
+    /// </summary>
+    private static string WireModelId(ModelInfo model, ProviderPreset preset)
+    {
+        if (!string.IsNullOrEmpty(model.WireId))
+        {
+            return model.WireId;
+        }
+
+        string prefix = preset.Id + "/";
+        return
+            preset.Adapter == ProviderAdapter.OpenAiCompatible
+            && model.Id.StartsWith(prefix, StringComparison.Ordinal)
+            ? model.Id[prefix.Length..]
+            : model.Id;
     }
 
     private static NotSupportedException UnsupportedProvider(string provider) =>
