@@ -62,12 +62,18 @@ internal sealed partial class InteractiveSession
                 if (!child && start.ParentToolCallId is null)
                 {
                     _activeCalls.Add(startKey);
-                    _live.SetTool(start.ToolName);
+                    ShowActiveTool();
                 }
 
                 break;
             case ToolCallArgs args:
-                _toolArgs[(args.RunId, args.CallId)] = args.Args;
+                var argsKey = (args.RunId, args.CallId);
+                _toolArgs[argsKey] = args.Args;
+                if (_activeCalls.Count > 0 && _activeCalls[^1] == argsKey)
+                {
+                    ShowActiveTool();
+                }
+
                 break;
             case ToolCallResult result when child:
                 _toolNames.Remove((result.RunId, result.CallId));
@@ -85,11 +91,7 @@ internal sealed partial class InteractiveSession
                 CommitToolBlock(result, duration);
                 if (result.ParentToolCallId is null && _activeCalls.Remove(resultKey))
                 {
-                    _live.SetTool(
-                        _activeCalls.Count == 0
-                            ? null
-                            : _toolNames.GetValueOrDefault(_activeCalls[^1])
-                    );
+                    ShowActiveTool();
                 }
 
                 if (failedTool is not null)
@@ -99,7 +101,7 @@ internal sealed partial class InteractiveSession
 
                 break;
             case UsageUpdated usage:
-                AddUsage(usage.Usage);
+                AddUsage(usage.Usage, root: !child);
                 break;
             case ModelRouted routed when !child:
                 // Only the session's own extension-registered/virtual model shows routing; a
@@ -186,6 +188,7 @@ internal sealed partial class InteractiveSession
             Math.Floor(Math.Max(0, (_options.Scheduler.Now - _thinkingStartedAt).TotalSeconds));
         var commit = new ThinkingCommitModel(_thinking, elapsedSeconds, _settings.ThinkingFull);
         _transcript.Add(new TranscriptThinkingEntry(commit));
+        _turnWroteOutput = true;
         _live.WriteScrollback(console =>
             console.Write(
                 _thinkingCommit.Render(commit, _console.Size.Columns, _capabilities.Color)
@@ -201,6 +204,7 @@ internal sealed partial class InteractiveSession
         }
 
         _transcript.Add(new TranscriptAssistantEntry(markdown));
+        _turnWroteOutput = true;
         _live.WriteScrollback(console => console.Write(_markdown.Render(markdown)));
     }
 
@@ -225,6 +229,7 @@ internal sealed partial class InteractiveSession
             ChildResult: _spawningCalls.Remove(key)
         );
         _transcript.Add(new TranscriptToolEntry(block));
+        _turnWroteOutput = true;
         _live.WriteScrollback(console =>
             console.Write(_toolBlocks.Render(block, _console.Size.Columns))
         );
@@ -304,10 +309,43 @@ internal sealed partial class InteractiveSession
         }
     }
 
-    private void AddUsage(UsageDetails usage)
+    /// <summary>
+    /// Rolls usage into the footer. Only the root run feeds the activity line's deltas: a child
+    /// (subagent) run is part of the turn's cumulative usage but not of the root run's own delta.
+    /// </summary>
+    private void AddUsage(UsageDetails usage, bool root)
     {
         _inputTokens += usage.InputTokenCount ?? 0;
         _outputTokens += usage.OutputTokenCount ?? 0;
+        if (root)
+        {
+            _live.SetRunUsage(_inputTokens - _runInputBaseline, _outputTokens - _runOutputBaseline);
+        }
+
         UpdateStatus();
+    }
+
+    /// <summary>
+    /// Shows the top active call in the activity line: its name and its argument summary, both
+    /// read from the session's own call dictionaries. No active call clears the line.
+    /// </summary>
+    private void ShowActiveTool()
+    {
+        if (_activeCalls.Count == 0)
+        {
+            _live.SetTool(null);
+            return;
+        }
+
+        (string RunId, string CallId) key = _activeCalls[^1];
+        string name = _toolNames.GetValueOrDefault(key, "tool");
+        _live.SetTool(name);
+        _live.SetToolSummary(
+            ToolArgsSummary.Summarize(
+                name,
+                _toolArgs.GetValueOrDefault(key),
+                unicode: _capabilities.Unicode
+            )
+        );
     }
 }

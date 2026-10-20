@@ -120,10 +120,17 @@ internal sealed class StyledLine
         return clipped;
     }
 
-    public string ToMarkup()
+    /// <summary>
+    /// The line as Spectre markup. Trailing whitespace is trimmed by default (block layout); the
+    /// user echo passes <c>false</c> so its text keeps the user's spaces verbatim.
+    /// </summary>
+    public string ToMarkup(bool trimTrailingWhitespace = true)
     {
         var builder = new StringBuilder();
-        foreach (var (text, style) in TrimmedTrailingWhitespace())
+        IEnumerable<StyledSpan> spans = trimTrailingWhitespace
+            ? TrimmedTrailingWhitespace()
+            : _spans;
+        foreach (var (text, style) in spans)
         {
             string escaped = Markup.Escape(text);
             string attributes = SpanStyle.Attributes(style);

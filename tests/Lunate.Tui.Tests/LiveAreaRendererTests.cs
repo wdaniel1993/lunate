@@ -20,7 +20,7 @@ public sealed class LiveAreaRendererTests
             [
                 "line one",
                 "line two",
-                "| read src/foo.cs",
+                "| read src/foo.cs · 0s",
                 "> go",
                 "test-model · 1.5k/12.3k (13%) · /repo · main",
             ],
@@ -43,7 +43,7 @@ public sealed class LiveAreaRendererTests
         var frame = LiveAreaRenderer.Render(state);
 
         Assert.Equal(
-            ["| subagents__spawn", "subagent running", "> Ask anything, / for commands"],
+            ["| subagents__spawn · 0s", "subagent running", "> Ask anything, / for commands"],
             frame.Lines
         );
     }
@@ -262,6 +262,6 @@ public sealed class LiveAreaRendererTests
 
         var frame = LiveAreaRenderer.Render(state);
 
-        Assert.Contains("/ bash", frame.Lines);
+        Assert.Contains("/ bash · 0s", frame.Lines);
     }
 }

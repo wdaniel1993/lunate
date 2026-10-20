@@ -128,6 +128,17 @@ the lazy file index. Both lists cap at eight rows above the input.
 
 ![The input box, the slash-command list and the file list](docs/media/features/input.gif)
 
+### Every turn opens with your message
+
+The submitted prompt commits to the scrollback as the first block of its turn — the `>` prompt in
+the theme's user colour, wrapped continuation lines indented two spaces, one blank line after — so the
+question stays visible above the answer. While the turn runs, the activity line names the work
+(`⠹ thinking… 3s`, `⠸ read src/Foo.cs · 4s`, `| working… 7s`), with the run's `↑in ↓out` deltas and
+`esc to interrupt` on the wide bands; below 60 columns it keeps the spinner, the label and the
+elapsed seconds.
+
+![Two turns with the user echo, the tool block and the activity line](docs/media/features/turns.gif)
+
 ### It fits a narrow terminal
 
 Below 60 columns the layout switches to its compact band: tool headers drop the argument summary

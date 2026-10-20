@@ -10,6 +10,31 @@ internal sealed record LiveAreaState
 
     public string? ToolName { get; init; }
 
+    /// <summary>The active tool call's one-line argument summary; empty when the args are unknown.</summary>
+    public string? ToolSummary { get; init; }
+
+    /// <summary>When the active tool started, on the scheduler's clock.</summary>
+    public DateTimeOffset ToolStartedAt { get; init; }
+
+    public int ToolElapsedSeconds { get; init; }
+
+    /// <summary>True while a run is in flight, even before its first event.</summary>
+    public bool Running { get; init; }
+
+    /// <summary>When the current run started, on the scheduler's clock.</summary>
+    public DateTimeOffset RunStartedAt { get; init; }
+
+    public int RunElapsedSeconds { get; init; }
+
+    /// <summary>Whether the run can be interrupted (the interrupt hint shows only then).</summary>
+    public bool Cancellable { get; init; }
+
+    /// <summary>The current run's input-token delta; null before its first usage event.</summary>
+    public long? RunInputTokens { get; init; }
+
+    /// <summary>The current run's output-token delta; null before its first usage event.</summary>
+    public long? RunOutputTokens { get; init; }
+
     /// <summary>True while a child (subagent) run of the current run is live.</summary>
     public bool SubagentRunning { get; init; }
 

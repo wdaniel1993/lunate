@@ -120,7 +120,16 @@ internal sealed class LiveArea : IDisposable
     public void SetAutocomplete(AutocompleteState? autocomplete) =>
         Post(new AutocompleteInput(autocomplete));
 
-    public void SetTool(string? toolName) => Post(new ToolInput(toolName));
+    public void SetTool(string? toolName) => Post(new ToolInput(toolName, _scheduler.Now));
+
+    public void SetToolSummary(string? summary) => Post(new ToolSummaryInput(summary));
+
+    public void SetRunning(bool running) => Post(new RunningInput(running, _scheduler.Now));
+
+    public void SetCancellable(bool cancellable) => Post(new CancellableInput(cancellable));
+
+    public void SetRunUsage(long? inputTokens, long? outputTokens) =>
+        Post(new RunUsageInput(inputTokens, outputTokens));
 
     public void SetSubagentRunning(bool running) => Post(new SubagentInput(running));
 
@@ -261,8 +270,17 @@ internal sealed class LiveArea : IDisposable
             ResizeInput resize => state with { Size = resize.Size },
             SpinnerTick tick => state with
             {
-                FrameNumber = state.ToolName is null ? state.FrameNumber : state.FrameNumber + 1,
+                FrameNumber =
+                    state.ToolName is not null || state.Running
+                        ? state.FrameNumber + 1
+                        : state.FrameNumber,
                 Thinking = WithElapsedSeconds(state.Thinking, tick.At),
+                ToolElapsedSeconds = state.ToolName is null
+                    ? state.ToolElapsedSeconds
+                    : SecondsSince(state.ToolStartedAt, tick.At),
+                RunElapsedSeconds = state.Running
+                    ? SecondsSince(state.RunStartedAt, tick.At)
+                    : state.RunElapsedSeconds,
             },
             TailInput tail => state with { TailText = state.TailText + tail.Text },
             TailSetInput tail => state with { TailText = tail.Text },
@@ -284,7 +302,42 @@ internal sealed class LiveArea : IDisposable
             LoadingInput loading => state with { Loading = loading.Text },
             PickerInput picker => state with { Picker = picker.Picker },
             AutocompleteInput autocomplete => state with { Autocomplete = autocomplete.State },
-            ToolInput tool => state with { ToolName = tool.Name, FrameNumber = 0 },
+            ToolInput { Name: null } => state with
+            {
+                ToolName = null,
+                ToolSummary = null,
+                ToolStartedAt = default,
+                ToolElapsedSeconds = 0,
+                FrameNumber = 0,
+            },
+            ToolInput { Name: { } name } when state.ToolName == name => state,
+            ToolInput { Name: { } name, At: var at } => state with
+            {
+                ToolName = name,
+                ToolSummary = null,
+                ToolStartedAt = at,
+                ToolElapsedSeconds = 0,
+                FrameNumber = 0,
+            },
+            ToolSummaryInput summary => state with { ToolSummary = summary.Summary },
+            RunningInput { Running: false } => state with
+            {
+                Running = false,
+                RunElapsedSeconds = 0,
+            },
+            RunningInput { Running: true } when state.Running => state,
+            RunningInput { Running: true, At: var at } => state with
+            {
+                Running = true,
+                RunStartedAt = at,
+                RunElapsedSeconds = 0,
+            },
+            CancellableInput cancellable => state with { Cancellable = cancellable.Cancellable },
+            RunUsageInput usage => state with
+            {
+                RunInputTokens = usage.InputTokens,
+                RunOutputTokens = usage.OutputTokens,
+            },
             SubagentInput subagent => state with { SubagentRunning = subagent.Running },
             FooterInput footer => state with
             {
@@ -300,8 +353,12 @@ internal sealed class LiveArea : IDisposable
             ? null
             : current with
             {
-                ElapsedSeconds = (int)Math.Max(0, (at - current.StartedAt).TotalSeconds),
+                ElapsedSeconds = SecondsSince(current.StartedAt, at),
             };
+
+    /// <summary>Whole seconds from the injected clock, clamped at zero.</summary>
+    private static int SecondsSince(DateTimeOffset startedAt, DateTimeOffset at) =>
+        (int)Math.Max(0, (at - startedAt).TotalSeconds);
 
     private abstract record LiveAreaInput;
 
@@ -331,7 +388,15 @@ internal sealed class LiveArea : IDisposable
 
     private sealed record AutocompleteInput(AutocompleteState? State) : LiveAreaInput;
 
-    private sealed record ToolInput(string? Name) : LiveAreaInput;
+    private sealed record ToolInput(string? Name, DateTimeOffset At) : LiveAreaInput;
+
+    private sealed record ToolSummaryInput(string? Summary) : LiveAreaInput;
+
+    private sealed record RunningInput(bool Running, DateTimeOffset At) : LiveAreaInput;
+
+    private sealed record CancellableInput(bool Cancellable) : LiveAreaInput;
+
+    private sealed record RunUsageInput(long? InputTokens, long? OutputTokens) : LiveAreaInput;
 
     private sealed record SubagentInput(bool Running) : LiveAreaInput;
 

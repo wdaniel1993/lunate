@@ -33,7 +33,7 @@ public sealed class WelcomeHeaderRendererTests
 
     private static readonly string[] BlockMarkup =
     [
-        "[cyan]\u03f9[/]",
+        "[#5fd7d7]\u03f9[/]",
         "[bold]lunate[/][dim]  v0.1.0[/]",
         "[dim]deepseek-v4.1-flash · 1,000,000 ctx[/]",
         "[dim]~/dev/lunate[/]",
@@ -73,7 +73,7 @@ public sealed class WelcomeHeaderRendererTests
         "lunate v0.1.0 (C# - Roslyn) - /help for commands",
     ];
 
-    /// <summary>The snapshot matrix: widths {80, 120, 40} × Unicode/ASCII × color/NO_COLOR.</summary>
+    /// <summary>The snapshot matrix: widths {60, 80, 100, 120, 40} × Unicode/ASCII × color/NO_COLOR.</summary>
     public static TheoryData<int, bool, bool> Matrix =>
         new()
         {
@@ -81,10 +81,18 @@ public sealed class WelcomeHeaderRendererTests
             { 80, true, false },
             { 80, false, true },
             { 80, false, false },
+            { 100, true, true },
+            { 100, true, false },
+            { 100, false, true },
+            { 100, false, false },
             { 120, true, true },
             { 120, true, false },
             { 120, false, true },
             { 120, false, false },
+            { 60, true, true },
+            { 60, true, false },
+            { 60, false, true },
+            { 60, false, false },
             { 40, true, true },
             { 40, true, false },
             { 40, false, true },
@@ -97,8 +105,12 @@ public sealed class WelcomeHeaderRendererTests
         {
             { 80, true },
             { 80, false },
+            { 100, true },
+            { 100, false },
             { 120, true },
             { 120, false },
+            { 60, true },
+            { 60, false },
             { 40, true },
             { 40, false },
         };
@@ -134,7 +146,7 @@ public sealed class WelcomeHeaderRendererTests
     [Fact]
     public void A_colored_terminal_emits_the_mark_crescent_and_the_bold_name() =>
         Assert.Contains(
-            "\u001b[38;5;14m\u03f9",
+            "\u001b[38;2;95;215;215m\u03f9",
             ConsoleOutput(Full, 80, Capabilities(unicode: true, colored: true)),
             StringComparison.Ordinal
         );
@@ -177,7 +189,7 @@ public sealed class WelcomeHeaderRendererTests
     public void The_first_run_form_prints_one_fix_and_no_counts_or_hint() =>
         Assert.Equal(
             [
-                "[cyan]\u03f9[/]",
+                "[#5fd7d7]\u03f9[/]",
                 "[bold]lunate[/][dim]  v0.1.0[/]",
                 "add the 'openai' key to ~/.lunate/auth.json",
                 "[dim]~/dev/lunate[/]",
@@ -200,7 +212,7 @@ public sealed class WelcomeHeaderRendererTests
     public void A_state_without_a_model_renders_the_fix_and_no_counts_or_hint() =>
         Assert.Equal(
             [
-                "[cyan]\u03f9[/]",
+                "[#5fd7d7]\u03f9[/]",
                 "[bold]lunate[/][dim]  v0.1.0[/]",
                 "set 'model' in ~/.lunate/settings.json",
                 "[dim]~/dev/lunate[/]",

@@ -431,6 +431,10 @@ Finished output is rendered with Spectre.Console; the input line and a small liv
 - **Streaming:** when the streaming text outgrows the live area, completed paragraphs are rendered as Markdown and committed to scrollback; the unfinished tail stays live.
 - **Transcript viewer:** `Ctrl+O` paints the session transcript on the alternate screen (entered and left through `IConsoleIO`, restored on every exit path) — a rendering mode of the same seam and key pump, not a second architecture. While it is open, no input reaches the model.
 
+**Turns**
+
+Every submitted prompt commits to the scrollback as the first block of its turn: the `>` prompt in the theme's user colour, wrapped continuation lines indented two spaces, and one blank line after. While the turn runs, the live area carries one activity line — `⠹ thinking… 3s · ↑1.2k ↓180 · esc to interrupt` while reasoning streams, the spinner with the tool name and its argument summary while a tool runs, and `working…` when neither is known. The run's token deltas and `esc to interrupt` appear only while the turn is cancellable; below 60 columns the line keeps the spinner, the label and the elapsed seconds only.
+
 **Input box and autocomplete**
 
 The input renders as a box: a full-width `─` rule above and below at 80 columns or wider (ASCII `-` without Unicode, no rule below 80), the `>` prompt followed by a space on the first line and a two-space indent on continuation lines, with the status footer below the lower rule. An empty input shows the muted placeholder `Ask anything, / for commands`; the box grows with the draft to eight lines and scrolls beyond that, keeping the cursor's line visible.

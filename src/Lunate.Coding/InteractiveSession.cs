@@ -108,6 +108,7 @@ internal sealed partial class InteractiveSession : IDisposable
     private readonly CancellationTokenSource _lifetime = new();
     private readonly ToolBlockRenderer _toolBlocks;
     private readonly ThinkingCommitRenderer _thinkingCommit = new();
+    private readonly UserEchoRenderer _userEcho = new();
     private readonly MarkdownRenderer _markdown;
     private readonly Dictionary<(string RunId, string CallId), string> _toolNames = [];
     private readonly Dictionary<(string RunId, string CallId), string> _toolArgs = [];
@@ -170,6 +171,10 @@ internal sealed partial class InteractiveSession : IDisposable
     private RunOutcome _outcome;
     private long _inputTokens;
     private long _outputTokens;
+
+    /// <summary>The cumulative token counts when the current run started (its deltas' baseline).</summary>
+    private long _runInputBaseline;
+    private long _runOutputBaseline;
     private string _modelId = "unknown";
     private string? _extensionModelId;
     private string? _modelRoute;
@@ -180,6 +185,8 @@ internal sealed partial class InteractiveSession : IDisposable
     private McpToolSet? _mcp;
     private readonly List<UserNotice> _pendingNotices = [];
     private bool _composed;
+    private bool _promptEchoed;
+    private bool _turnWroteOutput;
     private bool _headerCountsPending;
     private ToolResultRendererRegistry? _toolResultRenderers;
     private StatusWidgetRegistry? _statusWidgets;
@@ -947,6 +954,24 @@ internal sealed partial class InteractiveSession : IDisposable
         }
 
         _transcript.Add(new TranscriptUserEntry(processed.Text));
+        // The prompt opens the turn in scrollback before the run starts; the same processed text
+        // feeds the transcript entry, so the viewer and scrollback never disagree. Later turns
+        // open with one blank line so the prompt never runs against the previous turn's output.
+        _live.WriteScrollback(console =>
+        {
+            // The echo's own trailing blank already separates a turn that wrote nothing (for
+            // example one cancelled before its first event); never add a second blank for it.
+            if (_promptEchoed && _turnWroteOutput)
+            {
+                console.WriteLine();
+            }
+
+            console.Write(
+                _userEcho.Render(processed.Text, _console.Size.Columns, _capabilities.Color)
+            );
+        });
+        _promptEchoed = true;
+        _turnWroteOutput = false;
         _turnActive = true;
         _run = RunTurnsAsync(processed.Text, skill, ct);
     }
@@ -987,6 +1012,11 @@ internal sealed partial class InteractiveSession : IDisposable
     {
         using var runCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         _runCancellation = runCts;
+        _runInputBaseline = _inputTokens;
+        _runOutputBaseline = _outputTokens;
+        _live.SetRunUsage(null, null);
+        _live.SetRunning(true);
+        _live.SetCancellable(true);
         try
         {
             IAsyncEnumerable<AgentEvent> events = skill is { } metadata
@@ -1005,6 +1035,9 @@ internal sealed partial class InteractiveSession : IDisposable
         finally
         {
             _runCancellation = null;
+            _live.SetRunning(false);
+            _live.SetCancellable(false);
+            _live.SetRunUsage(null, null);
             _live.SetTool(null);
         }
     }
@@ -1061,9 +1094,12 @@ internal sealed partial class InteractiveSession : IDisposable
         }
 
         _transcript.Add(new TranscriptUserEntry(text));
+        _turnWroteOutput = true;
         _live.WriteScrollback(console =>
             console.Write(
-                new Markup($"[dim]{(_capabilities.Unicode ? "»" : ">")} {Markup.Escape(text)}[/]\n")
+                new Markup(
+                    $"[dim]{(_capabilities.Unicode ? "»" : ">>")} {Markup.Escape(text)}[/]\n"
+                )
             )
         );
     }

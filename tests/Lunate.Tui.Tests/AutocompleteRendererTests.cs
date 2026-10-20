@@ -24,7 +24,7 @@ public sealed class AutocompleteRendererTests
 
         string rule = new('─', 120);
         Assert.Equal(
-            ["| read", "  /help", "> /model", rule, "> " + Placeholder, rule],
+            ["| read · 0s", "  /help", "> /model", rule, "> " + Placeholder, rule],
             frame.Lines
         );
         Assert.Equal(4, frame.CursorRow);

@@ -5,6 +5,8 @@ gpt-4o-mini · 128,000 ctx
 extensions … · MCP … · skills …
 /help · /model · /skills · /extensions · ctrl+o transcript · Esc cancels · /quit
 extensions 0 · MCP 0 · skills 0
+> first question
+
 para one
 para two
 ✓ read  a.txt (1 line)
@@ -31,6 +33,9 @@ match: created
 @@ -0,0 +1,1 @@
 +three
 all done
+
+> second question
+
 Ϲ
 lunate  v0.1.0
 gpt-4o · 128,000 ctx
