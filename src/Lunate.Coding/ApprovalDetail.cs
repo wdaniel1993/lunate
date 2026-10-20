@@ -24,7 +24,8 @@ internal static class ApprovalDetail
         JsonElement args,
         string? workspaceRoot,
         bool unicode,
-        int width
+        int width,
+        string? home = null
     )
     {
         int contentWidth = Math.Max(1, width - 2);
@@ -32,6 +33,8 @@ internal static class ApprovalDetail
         {
             return [];
         }
+
+        home ??= PathText.Home();
 
         if (args.ValueKind == JsonValueKind.Object)
         {
@@ -47,7 +50,7 @@ internal static class ApprovalDetail
                 && Text(args, "new_text") is { } newText
             )
             {
-                return Diff(editPath, oldText, newText, unicode);
+                return Diff(editPath, oldText, newText, home, unicode);
             }
 
             if (
@@ -56,12 +59,23 @@ internal static class ApprovalDetail
                 && Text(args, "content") is { } content
             )
             {
-                return Diff(writePath, ExistingText(writePath, workspaceRoot), content, unicode);
+                return Diff(
+                    writePath,
+                    ExistingText(writePath, workspaceRoot),
+                    content,
+                    home,
+                    unicode
+                );
             }
         }
 
         string raw = args.GetRawText().Trim();
-        string summary = ToolArgsSummary.Summarize(toolName, args.GetRawText(), unicode: unicode);
+        string summary = ToolArgsSummary.Summarize(
+            toolName,
+            args.GetRawText(),
+            home: home,
+            unicode: unicode
+        );
         if (toolName == "read")
         {
             return summary.Length > 0 ? [summary] : [];
@@ -103,12 +117,13 @@ internal static class ApprovalDetail
         string path,
         string oldText,
         string newText,
+        string? home,
         bool unicode
     )
     {
         var info = new ToolDiffInfo(path, "", LineDiff.Unified(oldText, newText, path));
         var (added, removed) = DiffRenderer.ChangeCounts(info);
-        string shown = PathText.Shorten(path, PathText.HeaderBudget, PathText.Home(), unicode);
+        string shown = PathText.Shorten(path, PathText.HeaderBudget, home, unicode);
         string minus = unicode ? Minus : "-";
         var lines = new List<string>
         {

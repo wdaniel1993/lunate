@@ -12,6 +12,7 @@ public sealed class ApprovalDetailTests
 {
     private const string Marker = "\u2026 +";
     private const string Minus = "\u2212";
+    private const string SyntheticHome = "/home/lunate";
 
     [Fact]
     public void Bash_command_wraps_at_the_cell_budget()
@@ -148,6 +149,30 @@ public sealed class ApprovalDetailTests
     }
 
     [Fact]
+    public void Read_tilde_shortens_a_path_under_the_supplied_home()
+    {
+        var detail = Build(
+            "read",
+            Args(("path", SyntheticHome + "/dev/lunate/src/a.cs"), ("offset", 10), ("limit", 5)),
+            home: SyntheticHome
+        );
+
+        Assert.Equal(["~/dev/lunate/src/a.cs (10-14)"], detail);
+    }
+
+    [Fact]
+    public void Another_path_shaped_tool_tilde_shortens_a_path_under_the_supplied_home()
+    {
+        var detail = Build(
+            "cs_open",
+            Args(("file", SyntheticHome + "/dev/lunate/src/a.cs")),
+            home: SyntheticHome
+        );
+
+        Assert.Equal(["~/dev/lunate/src/a.cs"], detail);
+    }
+
+    [Fact]
     public void Another_tool_shows_its_argument_summary()
     {
         var detail = Build("cs_find_symbol", Args(("symbol", "Widget")));
@@ -192,8 +217,9 @@ public sealed class ApprovalDetailTests
         JsonElement args,
         string? workspaceRoot = null,
         bool unicode = true,
-        int width = 74
-    ) => ApprovalDetail.Build(toolName, args, workspaceRoot, unicode, width);
+        int width = 74,
+        string? home = null
+    ) => ApprovalDetail.Build(toolName, args, workspaceRoot, unicode, width, home);
 
     private static JsonElement Args(params (string Key, object Value)[] fields) =>
         JsonSerializer.SerializeToElement(
