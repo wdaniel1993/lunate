@@ -186,7 +186,7 @@ public sealed class RecordingChatClient(IChatClient inner, string fixturePath) :
 public sealed class ReplayChatClient(string fixturePath) : IChatClient { }
 ```
 
-- `ModelCatalog`: a built-in `models.json` (id, provider, endpoint, context window, tool support) merged with `~/.lunate/models.json`. Adding a model never needs a code change.
+- `ModelCatalog`: the embedded `models.json` (schema 2: id, provider, qualified wire id, context and max-output windows, tool and vision support, reasoning style and per-million-token pricing), merged in order with the managed cache `~/.lunate/models.catalog.json` and the user file `~/.lunate/models.json`; the user file wins by id. Adding a model never needs a code change.
 - `RecordingChatClient` and `ReplayChatClient`: record and replay `ChatResponseUpdate` streams as JSONL, serialized with `AIJsonUtilities` options.
 - `StreamAccumulator` (internal): one `DelegatingChatClient` between logging and the recorder that assembles streamed function-call argument fragments per call id, so consumers only ever see complete calls; recordings stay raw and replay still passes through the accumulator.
 - `ProviderErrors`: classifies exceptions as retryable or not.
@@ -202,7 +202,7 @@ Cache usage is read from `UsageDetails`, not re-counted: reads from `CachedInput
 - Pi: bundled catalog with an overlay refreshed from pi.dev (cached offline, `pi update --models`); `models.json` for compatible endpoints (static id list; `$ENV`/`!command` interpolation); real discovery is a provider-extension concern; llama.cpp gets a curated router integration.
 - Tau: `catalog.toml` generated from Pi's provider metadata, plus a `~/.tau/catalog.toml` overlay with the same schema; background catalog refresh with a cache; scoped live discovery for the Codex account inventory and dynamic local backends.
 - Neither sweeps `/v1/models` into the catalog: endpoint lists give ids, metadata stays curated — the same split as here. Both merge a user file over the built-in, like `~/.lunate/models.json`.
-- Not planned yet: a remote catalog refresh (needs a hosted catalog). On-demand discovery (list an endpoint's models, draft user-catalog entries) is folded into T-16.
+- Lunate refreshes explicitly: `lunate --update-catalog` fetches <https://models.dev/api.json>, maps it through the one `ModelsDevCatalog` mapper and atomically writes the managed cache; `--output <path>` writes elsewhere and `--source <path-or-url>` reads a local snapshot. Nothing refreshes at startup or in the background, and an offline or malformed fetch leaves the old cache untouched. `scripts/update-models.sh` (version 1.0.0) is the repo wrapper that regenerates the embedded snapshot and supports `--check`. On-demand discovery (list an endpoint's models, draft user-catalog entries) remains `lunate --discover`.
 
 **Rules for this layer**
 
