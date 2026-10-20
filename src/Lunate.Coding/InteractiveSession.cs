@@ -1186,10 +1186,23 @@ internal sealed partial class InteractiveSession : IDisposable
         var decision = new TaskCompletionSource<ApprovalChoice>(
             TaskCreationOptions.RunContinuationsAsynchronously
         );
+        string? workspaceRoot =
+            request.WorkspaceRoot is { Length: > 0 } root
+            && !SameRoot(root, _workspace.WorktreeRoot)
+                ? DisplayDirectory(root)
+                : null;
+        var detail = ApprovalDetail.Build(
+            toolName,
+            request.Args,
+            request.WorkspaceRoot ?? _workspace.WorktreeRoot,
+            _capabilities.Unicode
+        );
         _approvalPrompt = new ApprovalPromptModel(
             toolName,
             request.Args.GetRawText(),
-            AskerLabel(request)
+            Asker: AskerLabel(request),
+            Detail: detail,
+            WorkspaceRoot: workspaceRoot
         );
         _approvalDecision = decision;
         _live.SetApproval(_approvalPrompt);

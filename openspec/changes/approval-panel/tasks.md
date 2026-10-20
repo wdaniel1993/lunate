@@ -2,7 +2,7 @@
 
 ## 1. The model and the detail
 
-- [ ] 1.1 `ApprovalPromptModel` gains `Detail` (prepared lines) and `WorkspaceRoot`; the session builds them from the `ApprovalRequest`: bash command (wrapped, ≤6 lines + marker), edit/write path + `DiffRenderer` diff, read path/range, other tools via `ToolArgsSummary`, unknown tools' raw args; unit tests per tool.
+- [x] 1.1 `ApprovalPromptModel` gains `Detail` (prepared lines) and `WorkspaceRoot`; the session builds them from the `ApprovalRequest`: bash command (wrapped, ≤6 lines + marker), edit/write path + `DiffRenderer` diff, read path/range, other tools via `ToolArgsSummary`, unknown tools' raw args; unit tests per tool.
 - [ ] 1.2 The workspace root line appears only when it differs from the session's working directory; test.
 
 ## 2. The panel renderer
