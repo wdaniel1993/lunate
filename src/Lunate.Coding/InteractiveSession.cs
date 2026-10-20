@@ -1189,7 +1189,7 @@ internal sealed partial class InteractiveSession : IDisposable
         string? workspaceRoot =
             request.WorkspaceRoot is { Length: > 0 } root
             && !SameRoot(root, _workspace.WorktreeRoot)
-                ? DisplayDirectory(root)
+                ? root
                 : null;
         var detail = ApprovalDetail.Build(
             toolName,

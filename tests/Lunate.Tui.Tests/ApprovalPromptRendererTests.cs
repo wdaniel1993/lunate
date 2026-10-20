@@ -341,6 +341,38 @@ public sealed class ApprovalPromptRendererTests
         Assert.Contains("[y]es  [n]o  [a]lways this session", lines);
     }
 
+    [Fact]
+    public void A_workspace_root_under_home_renders_with_a_tilde()
+    {
+        string root = Path.Combine(PathText.Home(), "projects", "other-root");
+
+        string output = Render(
+            new ApprovalPromptModel("bash", "{}", Detail: ["echo hi"], WorkspaceRoot: root)
+        );
+
+        Assert.Contains(
+            "~/projects/other-root",
+            output.Replace('\\', '/'),
+            StringComparison.Ordinal
+        );
+    }
+
+    [Fact]
+    public void A_workspace_root_outside_home_renders_verbatim()
+    {
+        string root = OperatingSystem.IsWindows() ? @"D:\elsewhere\root" : "/elsewhere/root";
+
+        string output = Render(
+            new ApprovalPromptModel("bash", "{}", Detail: ["echo hi"], WorkspaceRoot: root)
+        );
+
+        Assert.Contains(
+            root.Replace('\\', '/'),
+            output.Replace('\\', '/'),
+            StringComparison.Ordinal
+        );
+    }
+
     private static string Render(ApprovalPromptModel prompt)
     {
         var console = new TestConsole();

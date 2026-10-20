@@ -121,7 +121,9 @@ internal static class ApprovalPanelLayout
     }
 
     private static string WorkspaceRoot(ApprovalPromptModel prompt) =>
-        prompt.WorkspaceRoot is { Length: > 0 } root ? CellText.SingleLine(root) : string.Empty;
+        prompt.WorkspaceRoot is { Length: > 0 } root
+            ? CellText.SingleLine(PathText.Shorten(root, int.MaxValue, PathText.Home()))
+            : string.Empty;
 
     private static void AppendQuestion(
         List<ApprovalPanelLine> lines,
