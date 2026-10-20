@@ -4,15 +4,15 @@ Implementation runs through the `senior-dev` subagent (test-first). One commit p
 
 ## 1. Launch options and parsing
 
-- [ ] 1.1 Add `src/Lunate.Coding/LaunchOptions.cs`: the record (`Continue`, `Resume`, `Session`, `NoSession`, `Model`, `Thinking`, `Tools`, `NoTools`, `SystemPrompt`, `AppendSystemPrompt`) plus the parser, with the conflict rules from design D1 (`-c`/`--continue`, `-r`/`--resume`, `--session`, `--no-session` mutually exclusive; `--tools` vs `--no-tools`; `--thinking` via `SettingsStore.TryParseThinking`).
-- [ ] 1.2 `Cli.Run` parses once before mode dispatch and threads the options into `PrintModeOptions` / `InteractiveSessionOptions`; unknown flags become a usage error in every mode (update `CliTests.Run_with_unknown_arg_is_a_no_op` deliberately). `--help` lists every new flag; `--acp` rejects the selection flags (design D3).
-- [ ] 1.3 Tests: `CliTests` covers each flag, each conflict (exit 2, both names in the message), `--help` and `--acp` rejection. Commit: `feat(cli): parse session and prompt launch flags`.
+- [x] 1.1 Add `src/Lunate.Coding/LaunchOptions.cs`: the record (`Continue`, `Resume`, `Session`, `NoSession`, `Model`, `Thinking`, `Tools`, `NoTools`, `SystemPrompt`, `AppendSystemPrompt`) plus the parser, with the conflict rules from design D1 (`-c`/`--continue`, `-r`/`--resume`, `--session`, `--no-session` mutually exclusive; `--tools` vs `--no-tools`; `--thinking` via `SettingsStore.TryParseThinking`).
+- [x] 1.2 `Cli.Run` parses once before mode dispatch and threads the options into `PrintModeOptions` / `InteractiveSessionOptions`; unknown flags become a usage error in every mode (update `CliTests.Run_with_unknown_arg_is_a_no_op` deliberately). `--help` lists every new flag; `--acp` rejects the selection flags (design D3).
+- [x] 1.3 Tests: `CliTests` covers each flag, each conflict (exit 2, both names in the message), `--help` and `--acp` rejection. Commit: `feat(cli): parse session and prompt launch flags`.
 
 ## 2. Store selection
 
-- [ ] 2.1 `src/Lunate.Agent/Session.Selection.cs`: `FindNewest(sessionsRoot, cwd, comparison)` walking the store, header-only reads, ordering by last-modified then created then id; `FindById(sessionsRoot, id)` returning the matches; share the summary read with `Session.List`.
-- [ ] 2.2 `PublicAPI.Unshipped.txt` entries; no header/format change (assert a golden still round-trips byte for byte).
-- [ ] 2.3 Tests `tests/Lunate.Agent.Tests/SessionSelectionTests.cs`: newest wins, another cwd ignored, tie-breaks deterministic, missing directory returns null, ambiguous id names the matches. Commit: `feat(agent): select sessions by recorded working directory`.
+- [x] 2.1 `src/Lunate.Agent/Session.Selection.cs`: `FindNewest(sessionsRoot, cwd, comparison)` walking the store, header-only reads, ordering by last-modified then created then id; `FindById(sessionsRoot, id)` returning the matches; share the summary read with `Session.List`.
+- [x] 2.2 `PublicAPI.Unshipped.txt` entries; no header/format change (assert a golden still round-trips byte for byte).
+- [x] 2.3 Tests `tests/Lunate.Agent.Tests/SessionSelectionTests.cs`: newest wins, another cwd ignored, tie-breaks deterministic, missing directory returns null, ambiguous id names the matches. Commit: `feat(agent): select sessions by recorded working directory`.
 
 ## 3. Session selection in the frontends
 
