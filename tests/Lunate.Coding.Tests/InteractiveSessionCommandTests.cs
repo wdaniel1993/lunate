@@ -297,7 +297,6 @@ public sealed class InteractiveSessionCommandTests
     [InlineData(1200L, 300L, "cache: read 1.2k, write 300")]
     [InlineData(1200L, null, "cache: read 1.2k")]
     [InlineData(null, 300L, "cache: write 300")]
-    [InlineData(0L, 0L, "cache: read 0, write 0")]
     public async Task Context_shows_each_cache_count_the_provider_reported(
         long? cacheRead,
         long? cacheWrite,
@@ -325,12 +324,21 @@ public sealed class InteractiveSessionCommandTests
         await run;
     }
 
-    [Fact]
-    public async Task Context_omits_the_cache_segment_when_the_provider_reported_no_cache_counts()
+    [Theory]
+    [InlineData(null, null)]
+    [InlineData(0L, 0L)]
+    public async Task Context_omits_the_cache_segment_when_the_provider_reported_no_cache_counts(
+        long? cacheRead,
+        long? cacheWrite
+    )
     {
         using var host = new InteractiveSessionHost();
         host.Console.Size = new Lunate.Tui.ConsoleSize(400, 24);
-        host.Client.Enqueue(CacheUsage(null, null), Scripts.Text("done"), Scripts.Stop());
+        host.Client.Enqueue(
+            CacheUsage(cacheRead, cacheWrite),
+            Scripts.Text("done"),
+            Scripts.Stop()
+        );
         Task run = host.RunAsync();
 
         await RunOneTurnAsync(host);

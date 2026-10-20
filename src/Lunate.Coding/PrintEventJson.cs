@@ -158,7 +158,7 @@ internal static class PrintEventJson
         var body = new JsonObject { ["usage"] = JsonSerializer.SerializeToNode(e.Usage, Options) };
         // Cache counts are additive metadata next to the provider's raw usage object; unknown
         // counts stay absent rather than becoming zero.
-        if (e.Usage.CachedInputTokenCount is { } cacheReadTokens)
+        if (e.Usage.CachedInputTokenCount is { } cacheReadTokens && cacheReadTokens > 0)
         {
             body["cacheReadTokens"] = cacheReadTokens;
         }
@@ -166,6 +166,7 @@ internal static class PrintEventJson
         if (
             e.Usage.AdditionalCounts is { } counts
             && counts.TryGetValue(CacheCreationInputTokensKey, out long cacheWriteTokens)
+            && cacheWriteTokens > 0
         )
         {
             body["cacheWriteTokens"] = cacheWriteTokens;

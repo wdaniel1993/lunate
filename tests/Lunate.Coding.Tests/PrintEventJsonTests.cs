@@ -140,6 +140,9 @@ public sealed class PrintEventJsonTests
     [Theory]
     [InlineData(1200L, null)]
     [InlineData(null, 300L)]
+    [InlineData(0L, null)]
+    [InlineData(null, 0L)]
+    [InlineData(0L, 0L)]
     public void Usage_omits_a_cache_count_the_provider_did_not_report(
         long? cacheRead,
         long? cacheWrite
@@ -165,16 +168,24 @@ public sealed class PrintEventJsonTests
         );
         JsonElement root = line.RootElement;
 
-        Assert.Equal(cacheRead is not null, root.TryGetProperty("cacheReadTokens", out _));
-        Assert.Equal(cacheWrite is not null, root.TryGetProperty("cacheWriteTokens", out _));
-        if (cacheRead is { } read)
+        Assert.Equal(cacheRead is > 0, root.TryGetProperty("cacheReadTokens", out _));
+        Assert.Equal(cacheWrite is > 0, root.TryGetProperty("cacheWriteTokens", out _));
+        if (cacheRead is > 0)
         {
-            Assert.Equal(read, root.GetProperty("cacheReadTokens").GetInt64());
+            Assert.Equal(cacheRead.Value, root.GetProperty("cacheReadTokens").GetInt64());
         }
 
-        if (cacheWrite is { } written)
+        if (cacheWrite is > 0)
         {
-            Assert.Equal(written, root.GetProperty("cacheWriteTokens").GetInt64());
+            Assert.Equal(cacheWrite.Value, root.GetProperty("cacheWriteTokens").GetInt64());
+        }
+
+        if (cacheRead is 0)
+        {
+            Assert.Equal(
+                0,
+                root.GetProperty("usage").GetProperty("cachedInputTokenCount").GetInt64()
+            );
         }
     }
 

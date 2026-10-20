@@ -319,7 +319,7 @@ internal sealed partial class InteractiveSession
         _outputTokens += usage.OutputTokenCount ?? 0;
         // Cache counts are read-only metadata for /context: InputTokenCount already includes the
         // cached and cache-creation tokens, so they never join the budget totals or the footer.
-        if (usage.CachedInputTokenCount is { } cacheRead)
+        if (usage.CachedInputTokenCount is { } cacheRead && cacheRead > 0)
         {
             _cacheReadTokens = (_cacheReadTokens ?? 0) + cacheRead;
         }
@@ -327,6 +327,7 @@ internal sealed partial class InteractiveSession
         if (
             usage.AdditionalCounts is { } counts
             && counts.TryGetValue(CacheCreationInputTokensKey, out long cacheWrite)
+            && cacheWrite > 0
         )
         {
             _cacheWriteTokens = (_cacheWriteTokens ?? 0) + cacheWrite;
