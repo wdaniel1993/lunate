@@ -46,6 +46,33 @@ public static class SystemPrompt
             .TrimEnd();
     }
 
+    /// <summary>
+    /// Composes the prompt with the launch directives (design D5): a replacement <c>system</c>
+    /// directive is the whole prompt, an <c>append</c> directive is one section after the composed
+    /// prompt joined the way the harness joins sections, and neither leaves the bytes unchanged.
+    /// </summary>
+    internal static string Compose(
+        Workspace workspace,
+        IReadOnlyList<string> toolNames,
+        LaunchOptions directives,
+        ShellResolver? shellResolver = null,
+        DateTimeOffset? now = null
+    )
+    {
+        ArgumentNullException.ThrowIfNull(directives);
+
+        // The replacement is the caller's whole contract: no template and no tool conventions.
+        if (directives.SystemPrompt is { } replacement)
+        {
+            return replacement;
+        }
+
+        string composed = Compose(workspace, toolNames, shellResolver, now);
+        return directives.AppendSystemPrompt is { } appended
+            ? composed + "\n\n" + appended
+            : composed;
+    }
+
     internal static string ReadTemplate()
     {
         using Stream? stream = typeof(SystemPrompt).Assembly.GetManifestResourceStream(
