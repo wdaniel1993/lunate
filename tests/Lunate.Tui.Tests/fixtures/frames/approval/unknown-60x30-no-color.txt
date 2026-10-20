@@ -1,0 +1,10 @@
+⚠ unknown  {
+  "alpha": 1,
+  "beta": 2,
+  "gamma": 3,
+  "delta": 4,
+  "epsilon": 5,
+  ... +3 lines
+Allow unknown?  [y]es  [n]o  [a]lways this session
+> Ask anything, / for commands
+deepseek-v4.1-flash · 2.1k/1.0M (0%) · ~/dev/lunate · main

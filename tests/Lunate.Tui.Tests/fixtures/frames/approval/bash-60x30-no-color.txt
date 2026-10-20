@@ -1,0 +1,9 @@
+⚠ bash  dotnet test --project tests/Lunate.Coding.Tests --fi
+  Test run summary: Passed!
+  total: 42
+  failed: 0
+  succeeded: 42
+  skipped: 0
+Allow bash?  [y]es  [n]o  [a]lways this session
+> Ask anything, / for commands
+deepseek-v4.1-flash · 2.1k/1.0M (0%) · ~/dev/lunate · main

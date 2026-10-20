@@ -1,0 +1,6 @@
+⚠ bash  dotnet format --verify-no-change
+  Formatting check passed.
+subagent (depth 1) asks: Allow bash?
+[y]es  [n]o  [a]lways this session
+> Ask anything, / for commands
+deepseek-v4.1-flash · 0%

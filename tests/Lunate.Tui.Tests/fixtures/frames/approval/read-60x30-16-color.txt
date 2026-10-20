@@ -1,0 +1,4 @@
+\x1b[93m⚠ read  src/Lunate.Tui/Interaction/ApprovalPanelLayout.cs (1\x1b[0m
+Allow read\x1b[93m?\x1b[0m  [\x1b[36my\x1b[0m]es  [\x1b[36mn\x1b[0m]o  [\x1b[36ma\x1b[0m]lways this session
+> \x1b[90mAsk anything, / for commands\x1b[0m
+deepseek-v4.1-flash · 2.1k/1.0M (0%) · ~/dev/lunate · main

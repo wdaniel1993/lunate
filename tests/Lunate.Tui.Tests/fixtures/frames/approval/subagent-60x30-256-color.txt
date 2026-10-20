@@ -1,0 +1,6 @@
+\x1b[38;5;11m⚠ bash  dotnet format --verify-no-changes\x1b[0m
+\x1b[38;5;245m  Formatting check passed.\x1b[0m
+subagent (depth 1) asks: Allow bash\x1b[38;5;11m?\x1b[0m
+[\x1b[38;5;80my\x1b[0m]es  [\x1b[38;5;80mn\x1b[0m]o  [\x1b[38;5;80ma\x1b[0m]lways this session
+> \x1b[38;5;245mAsk anything, / for commands\x1b[0m
+deepseek-v4.1-flash · 2.1k/1.0M (0%) · ~/dev/lunate · main
