@@ -46,7 +46,7 @@ public sealed class ApprovalPromptRendererTests
         );
 
     [Fact]
-    public void Detail_body_is_bounded_to_five_lines_with_a_marker() =>
+    public void Prepared_detail_body_lines_pass_through_without_rebounding() =>
         Assert.Equal(
             "\u26a0 bash  dotnet format\n"
                 + "  one\n"
@@ -54,24 +54,14 @@ public sealed class ApprovalPromptRendererTests
                 + "  three\n"
                 + "  four\n"
                 + "  five\n"
-                + "  \u2026 +3 lines\n"
+                + "  six\n"
+                + "  seven\n"
                 + "Allow bash?  [y]es  [n]o  [a]lways this session\n",
             Render(
                 new ApprovalPromptModel(
                     "bash",
                     string.Empty,
-                    Detail:
-                    [
-                        "dotnet format",
-                        "one",
-                        "two",
-                        "three",
-                        "four",
-                        "five",
-                        "six",
-                        "seven",
-                        "eight",
-                    ]
+                    Detail: ["dotnet format", "one", "two", "three", "four", "five", "six", "seven"]
                 )
             )
         );

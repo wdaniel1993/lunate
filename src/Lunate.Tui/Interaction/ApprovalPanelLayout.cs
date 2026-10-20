@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Text;
 
 namespace Lunate.Tui;
@@ -27,8 +26,8 @@ internal sealed record ApprovalPanelLine(IReadOnlyList<ApprovalSpan> Spans, Appr
 
 /// <summary>
 /// The approval panel's pure layout: a warning headline naming the tool and its action, a muted
-/// detail block bounded to <see cref="ApprovalPromptModel.MaxDetailLines"/> (only its first line
-/// in the compact band) and clipped to the width, and the question with its choices. Spans carry
+/// detail block prepared and bounded by the Coding builder, which the layout only indents and
+/// clips (only its first line in the compact band), and the question with its choices. Spans carry
 /// tones only; the markup renderer and the live frame map them to their own colour forms. Widths
 /// are terminal cells; clipping keeps whole runes, like <see cref="StyledLine.Clip"/>.
 /// </summary>
@@ -36,8 +35,6 @@ internal static class ApprovalPanelLayout
 {
     private const string UnicodeGlyph = "\u26a0";
     private const string AsciiGlyph = "!";
-    private const string UnicodeElision = "\u2026";
-    private const string AsciiElision = "...";
 
     public static IReadOnlyList<ApprovalPanelLine> Build(
         ApprovalPromptModel prompt,
@@ -55,7 +52,7 @@ internal static class ApprovalPanelLayout
                 width
             ),
         };
-        AppendDetail(lines, prompt, width, unicode, compact: WidthBands.IsCompact(width));
+        AppendDetail(lines, prompt, width, compact: WidthBands.IsCompact(width));
         AppendQuestion(lines, prompt, width);
         return lines;
     }
@@ -79,11 +76,10 @@ internal static class ApprovalPanelLayout
         List<ApprovalPanelLine> lines,
         ApprovalPromptModel prompt,
         int width,
-        bool unicode,
         bool compact
     )
     {
-        foreach (string line in DetailBody(prompt, compact, unicode))
+        foreach (string line in DetailBody(prompt, compact))
         {
             lines.Add(
                 Clip(
@@ -107,43 +103,21 @@ internal static class ApprovalPanelLayout
     }
 
     /// <summary>
-    /// The block below the headline: at most <see cref="ApprovalPromptModel.MaxDetailLines"/>
-    /// lines. When it is longer, the first five lines stay and a muted marker names how many did
-    /// not fit, so a prepared block (already bounded) passes through unchanged. In the compact
-    /// band the block drops to its first line without a marker; the workspace root stays.
+    /// The block below the headline, prepared and bounded by the Coding builder, whose marker is
+    /// part of it. The layout does not bound it again; it only normalizes each line to one
+    /// physical line and indents it. In the compact band the block drops to its first line; the
+    /// workspace root stays.
     /// </summary>
-    private static IReadOnlyList<string> DetailBody(
-        ApprovalPromptModel prompt,
-        bool compact,
-        bool unicode
-    )
+    private static IReadOnlyList<string> DetailBody(ApprovalPromptModel prompt, bool compact)
     {
         if (prompt.Detail is not { Count: > 1 } detail)
         {
             return [];
         }
 
-        if (compact)
-        {
-            return [CellText.SingleLine(detail[1])];
-        }
-
-        int count = detail.Count - 1;
-        if (count <= ApprovalPromptModel.MaxDetailLines)
-        {
-            return [.. detail.Skip(1).Select(CellText.SingleLine)];
-        }
-
-        int keep = ApprovalPromptModel.MaxDetailLines - 1;
-        var body = new List<string>(keep + 1);
-        for (int index = 0; index < keep; index++)
-        {
-            body.Add(CellText.SingleLine(detail[index + 1]));
-        }
-
-        string marker = unicode ? UnicodeElision : AsciiElision;
-        body.Add(string.Create(CultureInfo.InvariantCulture, $"{marker} +{count - keep} lines"));
-        return body;
+        return compact
+            ? [CellText.SingleLine(detail[1])]
+            : [.. detail.Skip(1).Select(CellText.SingleLine)];
     }
 
     private static string WorkspaceRoot(ApprovalPromptModel prompt) =>
