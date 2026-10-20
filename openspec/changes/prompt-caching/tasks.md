@@ -11,9 +11,9 @@ Design-first change: each task is one commit and lands on `change/prompt-caching
 
 ## 2. Prefix stability
 
-- [ ] 2.1 `tests/Lunate.Agent.Tests/AgentPrefixStabilityTests.cs`: a scripted client records two consecutive runs of one harness; assert byte-identical system message and tool declarations, and that a harness built with a fixed `LUNATE_DATE` keeps that date on turn two.
-- [ ] 2.2 Document the extension exception in the test: a `RunStarting` section edit is a deliberate new prefix; core sections are the guarantee.
-- [ ] 2.3 Commit `test(agent): pin the cache-stable system prefix`.
+- [x] 2.1 `tests/Lunate.Agent.Tests/AgentPrefixStabilityTests.cs`: a scripted client records two consecutive runs of one harness; assert byte-identical system message and tool declarations, and that a harness built with a fixed `LUNATE_DATE` keeps that date on turn two.
+- [x] 2.2 Document the extension exception in the test: a `RunStarting` section edit is a deliberate new prefix; core sections are the guarantee.
+- [x] 2.3 Commit `test(agent): pin the cache-stable system prefix`.
 
 ## 3. Cache usage accounting and `/context`
 
