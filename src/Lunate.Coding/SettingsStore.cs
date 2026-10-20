@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Lunate.Agent;
 using Lunate.Ai;
 using Lunate.Tui;
@@ -99,6 +100,8 @@ public static class SettingsStore
     /// <summary>The literals a boolean switch setting accepts, as the error message lists them.</summary>
     private const string SwitchLiterals = "true, false, 1 or 0";
 
+    private static readonly JsonSerializerOptions WriteOptions = new() { WriteIndented = true };
+
     /// <summary>Resolves the effective settings; throws one <see cref="InvalidDataException"/> naming every problem.</summary>
     public static AgentSettings Resolve(
         string? filePath = null,
@@ -123,18 +126,115 @@ public static class SettingsStore
         return settings;
     }
 
-    private static AgentSettings ParseFile(string path, List<string> problems)
+    /// <summary>
+    /// Writes the favourites through read-modify-write: every other value in the existing JSON is
+    /// preserved, the result is validated by the same parser, and the file is replaced atomically
+    /// with <c>schemaVersion: 2</c>. On any failure the old file is left untouched.
+    /// </summary>
+    public static void WriteFavorites(IReadOnlyList<string> favorites, string? filePath = null)
     {
-        var settings = new AgentSettings();
-        if (!File.Exists(path))
+        ArgumentNullException.ThrowIfNull(favorites);
+        string path = filePath ?? DefaultFilePath();
+        JsonObject root = ReadRoot(path);
+        root["schemaVersion"] = SupportedSchemaVersion;
+        var list = new JsonArray();
+        foreach (string id in favorites)
         {
-            return settings;
+            list.Add(id);
         }
 
+        root["favorites"] = list;
+
+        string json = root.ToJsonString(WriteOptions) + "\n";
+        var problems = new List<string>();
+        _ = ParseJson(json, problems);
+        if (problems.Count > 0)
+        {
+            throw new InvalidDataException(
+                $"Invalid settings in '{path}': {string.Join("; ", problems)}. No settings were written."
+            );
+        }
+
+        WriteAtomically(path, json);
+    }
+
+    private static JsonObject ReadRoot(string path)
+    {
+        if (!File.Exists(path))
+        {
+            return new JsonObject();
+        }
+
+        JsonNode? node;
+        try
+        {
+            node = JsonNode.Parse(File.ReadAllText(path));
+        }
+        catch (JsonException exception)
+        {
+            throw new InvalidDataException(
+                $"Invalid settings in '{path}': the file is not valid JSON ({exception.Message}). No settings were written.",
+                exception
+            );
+        }
+
+        return node as JsonObject
+            ?? throw new InvalidDataException(
+                $"Invalid settings in '{path}': the root must be a JSON object. No settings were written."
+            );
+    }
+
+    private static void WriteAtomically(string path, string content)
+    {
+        string? directory = Path.GetDirectoryName(path);
+        if (!string.IsNullOrEmpty(directory))
+        {
+            Directory.CreateDirectory(directory);
+        }
+
+        string targetDirectory = string.IsNullOrEmpty(directory) ? "." : directory;
+        string temp = Path.Combine(targetDirectory, Path.GetRandomFileName() + ".tmp");
+        try
+        {
+            File.WriteAllText(temp, content);
+            if (!OperatingSystem.IsWindows() && File.Exists(path))
+            {
+                File.SetUnixFileMode(temp, File.GetUnixFileMode(path));
+            }
+
+            File.Move(temp, path, overwrite: true);
+        }
+        finally
+        {
+            if (File.Exists(temp))
+            {
+                try
+                {
+                    File.Delete(temp);
+                }
+                catch (IOException) { }
+                catch (UnauthorizedAccessException) { }
+            }
+        }
+    }
+
+    private static AgentSettings ParseFile(string path, List<string> problems)
+    {
+        if (!File.Exists(path))
+        {
+            return new AgentSettings();
+        }
+
+        return ParseJson(File.ReadAllText(path), problems);
+    }
+
+    private static AgentSettings ParseJson(string json, List<string> problems)
+    {
+        var settings = new AgentSettings();
         JsonDocument document;
         try
         {
-            document = JsonDocument.Parse(File.ReadAllText(path));
+            document = JsonDocument.Parse(json);
         }
         catch (JsonException exception)
         {

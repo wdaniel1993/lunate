@@ -45,7 +45,7 @@ pass.
 - [x] 3.1 Add `favorites` to `AgentSettings` and `SettingsStore` (schema 2, schema 1 read-side,
       ordered, max eight, unique); update `SettingsStoreTests` and
       `SettingsStoreThinkingTests`.
-- [ ] 3.2 Add an atomic read-modify-write settings writer that preserves unrelated keys and emits
+- [x] 3.2 Add an atomic read-modify-write settings writer that preserves unrelated keys and emits
       schema 2; tests for preservation, validation failure leaving the old file, and POSIX-safe
       replacement.
 - [ ] 3.3 Add `AuthStore.Remove`, map every preset to its environment variable, and add the
