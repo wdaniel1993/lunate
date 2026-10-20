@@ -43,8 +43,9 @@ public sealed partial class Session
     /// Lists a session directory for the picker: one entry per <c>.jsonl</c> file whose header
     /// reads, newest last-modified first with creation time and then the id as descending
     /// tie-breaks (so same-second sessions still order deterministically), bounded to
-    /// <see cref="ListLimit"/>. Files are read as little as possible (the header line only) and
-    /// never modified; a missing directory lists nothing.
+    /// <see cref="ListLimit"/>. Files are read as little as possible (the header line, and the
+    /// title sidecar only for the rows the listing returns) and never modified; a missing
+    /// directory lists nothing.
     /// </summary>
     public static IReadOnlyList<SessionSummary> List(string directory)
     {
@@ -64,7 +65,13 @@ public sealed partial class Session
         }
 
         summaries.Sort(CompareNewestFirst);
-        return summaries.Count <= ListLimit ? summaries : summaries.GetRange(0, ListLimit);
+        int count = Math.Min(summaries.Count, ListLimit);
+        for (var index = 0; index < count; index++)
+        {
+            summaries[index] = WithTitle(summaries[index]);
+        }
+
+        return summaries.GetRange(0, count);
     }
 
     /// <summary>The picker order and the launch-selection order: newest first, then id descending.</summary>
@@ -112,14 +119,18 @@ public sealed partial class Session
                 path,
                 header.Created,
                 new DateTimeOffset(File.GetLastWriteTimeUtc(path), TimeSpan.Zero)
-            )
-            {
-                Title = SessionTitle.Read(path),
-            };
+            );
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
             return null;
         }
     }
+
+    /// <summary>Adds the title sidecar of a row the caller returns (never one past the list cap).</summary>
+    private static SessionSummary WithTitle(SessionSummary summary) =>
+        summary with
+        {
+            Title = SessionTitle.Read(summary.Path),
+        };
 }

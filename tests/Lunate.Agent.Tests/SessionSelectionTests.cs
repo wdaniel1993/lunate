@@ -152,6 +152,20 @@ public sealed class SessionSelectionTests
     }
 
     [Fact]
+    public void Selection_summaries_carry_the_session_title()
+    {
+        using var temp = new TempDirectory();
+        Session session = Create(temp.File("s.jsonl"), Cwd, Start);
+        SessionTitle.Write(session.Path, "Refactor the parser");
+
+        SessionSummary? newest = Session.FindNewest(temp.Root, Cwd, StringComparison.Ordinal);
+        SessionSummary byId = Assert.Single(Session.FindById(temp.Root, session.SessionId));
+
+        Assert.Equal("Refactor the parser", newest?.Title);
+        Assert.Equal("Refactor the parser", byId.Title);
+    }
+
+    [Fact]
     public void FindById_returns_the_matching_session()
     {
         using var temp = new TempDirectory();

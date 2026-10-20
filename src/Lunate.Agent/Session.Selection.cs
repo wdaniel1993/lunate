@@ -25,11 +25,12 @@ public sealed partial class Session
                 continue;
             }
 
-            if (SummaryOf(path, header) is not { } candidate)
+            if (SummaryOf(path, header) is not { } summary)
             {
                 continue;
             }
 
+            SessionSummary candidate = WithTitle(summary);
             if (newest is null || CompareNewestFirst(candidate, newest) < 0)
             {
                 newest = candidate;
@@ -57,7 +58,7 @@ public sealed partial class Session
                 && SummaryOf(path, header) is { } summary
             )
             {
-                matches.Add(summary);
+                matches.Add(WithTitle(summary));
             }
         }
 

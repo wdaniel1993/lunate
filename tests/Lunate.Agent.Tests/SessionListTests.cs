@@ -147,6 +147,35 @@ public sealed class SessionListTests
     }
 
     [Fact]
+    public void The_listing_reads_titles_for_the_rows_it_returns()
+    {
+        using var temp = new TempDirectory();
+        List<string> ids = [];
+        List<string> titles = [];
+        for (var index = 0; index < 25; index++)
+        {
+            Session session = Session.Create(
+                temp.File($"s{index:D2}.jsonl"),
+                "/work",
+                new FixedTimeProvider(Start.AddSeconds(index))
+            );
+            ids.Add(session.SessionId);
+            titles.Add($"Session {index:D2}");
+            SessionTitle.Write(session.Path, titles[^1]);
+            File.SetLastWriteTimeUtc(
+                temp.File($"s{index:D2}.jsonl"),
+                Start.UtcDateTime.AddMinutes(index)
+            );
+        }
+
+        IReadOnlyList<SessionSummary> summaries = Session.List(temp.Root);
+
+        Assert.Equal(20, summaries.Count);
+        Assert.Equal(ids.Skip(5).Reverse(), summaries.Select(summary => summary.Id));
+        Assert.Equal(titles.Skip(5).Reverse(), summaries.Select(summary => summary.Title));
+    }
+
+    [Fact]
     public void A_corrupt_header_is_skipped_and_the_rest_still_list()
     {
         using var temp = new TempDirectory();
