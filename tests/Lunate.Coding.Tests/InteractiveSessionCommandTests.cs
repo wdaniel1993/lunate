@@ -13,6 +13,7 @@ public sealed class InteractiveSessionCommandTests
     {
         using var host = new InteractiveSessionHost();
         Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
 
         host.Console.SendText("/new");
         host.Console.SendEnter();
@@ -59,6 +60,7 @@ public sealed class InteractiveSessionCommandTests
     {
         using var host = new InteractiveSessionHost();
         Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
 
         host.Console.SendText("/help");
         host.Console.SendEnter();
@@ -102,6 +104,7 @@ public sealed class InteractiveSessionCommandTests
     {
         using var host = new InteractiveSessionHost();
         Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
 
         host.Console.SendText("/nope");
         host.Console.SendEnter();
@@ -122,6 +125,7 @@ public sealed class InteractiveSessionCommandTests
         runner.Register("ext.test", consumer);
         using var host = new InteractiveSessionHost(hooks: runner);
         Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
 
         host.Console.SendText("/new");
         host.Console.SendEnter();
@@ -145,6 +149,7 @@ public sealed class InteractiveSessionCommandTests
         host.Client.Enqueue(Scripts.Text("never"), Scripts.Stop());
         host.Client.Gate(1);
         Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
 
         host.Console.SendText("hi");
         host.Console.SendEnter();
@@ -189,6 +194,7 @@ public sealed class InteractiveSessionCommandTests
     {
         using var host = new InteractiveSessionHost();
         Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
 
         host.Console.SendText("/compact");
         host.Console.SendEnter();
@@ -213,6 +219,7 @@ public sealed class InteractiveSessionCommandTests
         host.Client.Enqueue(Scripts.Text("a2"), Scripts.Stop());
         host.Client.Enqueue(Scripts.Text("a3"), Scripts.Stop());
         Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
 
         host.Console.SendText("one");
         host.Console.SendEnter();
@@ -259,6 +266,7 @@ public sealed class InteractiveSessionCommandTests
     {
         using var host = new InteractiveSessionHost();
         Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
 
         host.Console.SendText("/new");
         host.Console.SendEnter();
@@ -277,6 +285,7 @@ public sealed class InteractiveSessionCommandTests
         using var host = new InteractiveSessionHost();
         host.Console.Size = new Lunate.Tui.ConsoleSize(400, 24);
         Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
 
         host.Console.SendText("/context");
         host.Console.SendEnter();
@@ -313,6 +322,7 @@ public sealed class InteractiveSessionCommandTests
             Scripts.Stop()
         );
         Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
 
         await RunOneTurnAsync(host);
         host.Console.SendText("/context");
@@ -362,6 +372,7 @@ public sealed class InteractiveSessionCommandTests
             Scripts.Stop()
         );
         Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
 
         await RunOneTurnAsync(host);
         host.Console.SendText("/context");
