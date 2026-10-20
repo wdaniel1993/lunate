@@ -15,7 +15,6 @@ namespace Lunate.Coding;
 /// </summary>
 internal static class ApprovalDetail
 {
-    private const int WrapWidth = 72;
     private const string Elision = "\u2026";
     private const string AsciiElision = "...";
     private const string Minus = "\u2212";
@@ -24,9 +23,11 @@ internal static class ApprovalDetail
         string toolName,
         JsonElement args,
         string? workspaceRoot,
-        bool unicode
+        bool unicode,
+        int width
     )
     {
+        int contentWidth = Math.Max(1, width - 2);
         if (args.ValueKind is JsonValueKind.Undefined or JsonValueKind.Null)
         {
             return [];
@@ -36,7 +37,7 @@ internal static class ApprovalDetail
         {
             if (toolName == "bash" && Text(args, "command") is { } command)
             {
-                return Wrapped(command, unicode);
+                return Wrapped(command, unicode, contentWidth);
             }
 
             if (
@@ -71,7 +72,7 @@ internal static class ApprovalDetail
             return [summary];
         }
 
-        return Wrapped(raw, unicode);
+        return Wrapped(raw, unicode, contentWidth);
     }
 
     private static string? Text(JsonElement args, string name) =>
@@ -80,7 +81,7 @@ internal static class ApprovalDetail
             : null;
 
     /// <summary>A command or raw-argument block: hard lines wrapped, headline first, bounded.</summary>
-    private static IReadOnlyList<string> Wrapped(string text, bool unicode)
+    private static IReadOnlyList<string> Wrapped(string text, bool unicode, int width)
     {
         string trimmed = text.Trim();
         if (trimmed.Length == 0)
@@ -92,7 +93,7 @@ internal static class ApprovalDetail
         foreach (string raw in trimmed.Split('\n'))
         {
             string line = raw.EndsWith('\r') ? raw[..^1] : raw;
-            lines.AddRange(Wrap(line));
+            lines.AddRange(Wrap(line, width));
         }
 
         return Bound(lines, unicode);
@@ -174,24 +175,24 @@ internal static class ApprovalDetail
     }
 
     /// <summary>One hard line cut at the cell budget, words kept whole when a space allows.</summary>
-    private static IEnumerable<string> Wrap(string text)
+    private static IEnumerable<string> Wrap(string text, int width)
     {
         string remaining = text.TrimEnd();
         while (remaining.Length > 0)
         {
-            if (CellText.Width(remaining) <= WrapWidth)
+            if (CellText.Width(remaining) <= width)
             {
                 yield return remaining;
                 yield break;
             }
 
-            int index = BreakIndex(remaining);
+            int index = BreakIndex(remaining, width);
             yield return remaining[..index].TrimEnd();
             remaining = remaining[index..].TrimStart(' ');
         }
     }
 
-    private static int BreakIndex(string text)
+    private static int BreakIndex(string text, int width)
     {
         int used = 0;
         int index = 0;
@@ -206,8 +207,8 @@ internal static class ApprovalDetail
                 break;
             }
 
-            int width = CellText.Width(rune);
-            if (used + width > WrapWidth)
+            int runeWidth = CellText.Width(rune);
+            if (used + runeWidth > width)
             {
                 break;
             }
@@ -217,7 +218,7 @@ internal static class ApprovalDetail
                 space = index;
             }
 
-            used += width;
+            used += runeWidth;
             index += consumed;
         }
 

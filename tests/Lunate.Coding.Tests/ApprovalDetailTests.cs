@@ -16,9 +16,17 @@ public sealed class ApprovalDetailTests
     [Fact]
     public void Bash_command_wraps_at_the_cell_budget()
     {
-        var detail = Build("bash", Args(("command", new string('x', 80))));
+        var detail = Build("bash", Args(("command", new string('x', 80))), width: 74);
 
         Assert.Equal([new string('x', 72), new string('x', 8)], detail);
+    }
+
+    [Fact]
+    public void Bash_command_keeps_its_tail_at_a_narrow_terminal_width()
+    {
+        var detail = Build("bash", Args(("command", new string('x', 80))), width: 60);
+
+        Assert.Equal([new string('x', 58), new string('x', 22)], detail);
     }
 
     [Fact]
@@ -26,7 +34,7 @@ public sealed class ApprovalDetailTests
     {
         string command = new('漢', 40);
 
-        var detail = Build("bash", Args(("command", command)));
+        var detail = Build("bash", Args(("command", command)), width: 74);
 
         Assert.Equal([new string('漢', 36), new string('漢', 4)], detail);
     }
@@ -177,14 +185,15 @@ public sealed class ApprovalDetailTests
 
     [Fact]
     public void Undefined_args_have_no_detail() =>
-        Assert.Empty(ApprovalDetail.Build("bash", default, null, unicode: true));
+        Assert.Empty(ApprovalDetail.Build("bash", default, null, unicode: true, width: 74));
 
     private static IReadOnlyList<string> Build(
         string toolName,
         JsonElement args,
         string? workspaceRoot = null,
-        bool unicode = true
-    ) => ApprovalDetail.Build(toolName, args, workspaceRoot, unicode);
+        bool unicode = true,
+        int width = 74
+    ) => ApprovalDetail.Build(toolName, args, workspaceRoot, unicode, width);
 
     private static JsonElement Args(params (string Key, object Value)[] fields) =>
         JsonSerializer.SerializeToElement(

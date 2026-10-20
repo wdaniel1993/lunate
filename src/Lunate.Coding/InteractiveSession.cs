@@ -1195,7 +1195,8 @@ internal sealed partial class InteractiveSession : IDisposable
             toolName,
             request.Args,
             request.WorkspaceRoot ?? _workspace.WorktreeRoot,
-            _capabilities.Unicode
+            _capabilities.Unicode,
+            _console.Size.Columns
         );
         _approvalPrompt = new ApprovalPromptModel(
             toolName,
