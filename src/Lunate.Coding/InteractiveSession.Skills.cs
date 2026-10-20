@@ -104,14 +104,19 @@ internal sealed partial class InteractiveSession
     /// <summary>Records the <c>skills</c> section on its first build and on every actual change.</summary>
     private void RecordSkillsSection(string text)
     {
-        SessionPromptSectionEntry? last = _session
+        if (_session is not { } session)
+        {
+            return;
+        }
+
+        SessionPromptSectionEntry? last = session
             .Entries.OfType<SessionPromptSectionEntry>()
             .LastOrDefault(entry =>
                 string.Equals(entry.Section, "skills", StringComparison.Ordinal)
             );
         if (last is null || !string.Equals(last.Text, text, StringComparison.Ordinal))
         {
-            _session.AppendPromptSection("skills", text);
+            session.AppendPromptSection("skills", text);
         }
     }
 

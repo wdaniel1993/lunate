@@ -366,7 +366,7 @@ internal sealed partial class InteractiveSession
     /// </summary>
     private async ValueTask SwitchToModel(ModelInfo model, CancellationToken ct)
     {
-        _session.AppendModelChange(model.Id);
+        _session?.AppendModelChange(model.Id);
         _model = model;
         _modelId = model.Id;
         _contextWindow = model.ContextWindow;
@@ -427,7 +427,10 @@ internal sealed partial class InteractiveSession
         {
             labels.Add(summary.Id);
             values.Add(summary.Path);
-            if (string.Equals(summary.Id, _session.SessionId, StringComparison.Ordinal))
+            if (
+                _session is { } currentSession
+                && string.Equals(summary.Id, currentSession.SessionId, StringComparison.Ordinal)
+            )
             {
                 current = labels.Count - 1;
             }
@@ -525,6 +528,7 @@ internal sealed partial class InteractiveSession
         }
 
         _session = resumed;
+        _fileless = false;
         ResetAlwaysApproved();
         _turnActive = true;
         _run = ResumeCompositionAsync(resumed);
@@ -570,7 +574,7 @@ internal sealed partial class InteractiveSession
     /// </summary>
     private void StartNewSession()
     {
-        _session = HarnessFactory.CreateSession(_sessionDirectory, _workspace);
+        _session = _fileless ? null : HarnessFactory.CreateSession(_sessionDirectory, _workspace);
         ResetAlwaysApproved();
         _turnActive = true;
         _run = RestartCompositionAsync();

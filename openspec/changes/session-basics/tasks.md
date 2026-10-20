@@ -16,7 +16,7 @@ Implementation runs through the `senior-dev` subagent (test-first). One commit p
 
 ## 3. Session selection in the frontends
 
-- [ ] 3.1 Interactive: `--continue` resolves and loads, `--session` loads by id/path, `--no-session` runs without a file, `--resume` opens the existing picker after composition; selection failures print a notice naming the input and keep the TUI usable.
+- [x] 3.1 Interactive: `--continue` resolves and loads, `--session` loads by id/path, `--no-session` runs without a file, `--resume` opens the existing picker after composition; selection failures print a notice naming the input and keep the TUI usable.
 - [ ] 3.2 Print: `--continue`/`--session`/`--no-session` use the resolved session; `--resume` exits 2 with the D3 message before any model call.
 - [ ] 3.3 Tests: `InteractiveSessionPickerTests` (startup resume, picker), `CliTests` (print resume refusal, missing session), composition tests for `--continue` and `--no-session`. Commit: `feat(coding): honour --continue, --resume, --session and --no-session`.
 

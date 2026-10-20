@@ -367,7 +367,9 @@ internal sealed class InteractiveSessionHost : IDisposable
         ExtensionSeams? extensions = null,
         string? mcpConfigPath = null,
         string? mcpAgentsConfigPath = null,
-        string? workingDirectory = null
+        string? workingDirectory = null,
+        LaunchOptions? launch = null,
+        string? sessionsRoot = null
     )
     {
         Scrollback = new TestConsole();
@@ -398,6 +400,10 @@ internal sealed class InteractiveSessionHost : IDisposable
                 ConfigureHarness = configureHarness,
                 WorkspaceFiles = workspaceFiles,
                 EventObserver = Events.Add,
+                Launch = launch ?? new LaunchOptions(),
+                StartSession = null,
+                StartWithPicker = false,
+                SessionsRoot = sessionsRoot ?? Temp.File("sessions"),
             }
         );
     }

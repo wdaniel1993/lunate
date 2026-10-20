@@ -86,6 +86,15 @@ internal sealed record InteractiveSessionOptions
 
     /// <summary>The launch flags parsed once by the CLI; defaults stand in for direct calls.</summary>
     public LaunchOptions Launch { get; init; } = new();
+
+    /// <summary>The session file to start from; null creates a fresh session.</summary>
+    public string? StartSession { get; init; }
+
+    /// <summary>Open the session picker once composition finished; the CLI's <c>--resume</c>.</summary>
+    public bool StartWithPicker { get; init; }
+
+    /// <summary>The session store root for id and <c>--continue</c> lookup; null uses the profile.</summary>
+    public string? SessionsRoot { get; init; }
 }
 
 /// <summary>
@@ -140,7 +149,8 @@ internal sealed partial class InteractiveSession : IDisposable
     private WorkspaceServices? _workspaceServices;
     private Func<string, ToolRegistry>? _workspaceTools;
     private readonly List<ITool> _inheritedTools = [];
-    private Session _session = null!;
+    private Session? _session;
+    private bool _fileless;
     private SkillCatalog? _skills;
     private string? _skillSection;
     private readonly SkillReadAllowance _skillAllowance = new();
@@ -251,6 +261,12 @@ internal sealed partial class InteractiveSession : IDisposable
                 _live.SetLoading(null);
                 FlushPendingNotices();
                 UpdateStatus();
+                // --resume (or the injected seam) opens the existing picker once composition
+                // finished: the listing needs the session directory and the live area is ready.
+                if (_options.StartWithPicker || _options.Launch.Resume)
+                {
+                    OpenSessionPicker();
+                }
                 // Background remote extensions start only now, after the UI is ready; the startup
                 // path and its budget never touch them.
                 if (_extensions is { } backgroundHost)
@@ -339,7 +355,7 @@ internal sealed partial class InteractiveSession : IDisposable
         _workspaceServices = new WorkspaceServices(_settings.Roslyn.MaxLoadedWorkspaces);
         _sessionDirectory =
             _options.SessionDirectory ?? HarnessFactory.DefaultSessionDirectory(_workspace);
-        _session = HarnessFactory.CreateSession(_sessionDirectory, _workspace);
+        StartInitialSession();
         _workingDirectory = DisplayDirectory(_workspace.WorktreeRoot);
         _branch = GitBranchReader.Read(_workspace.WorktreeRoot);
         // The welcome header prints here, on the first frame and before any composition output:
