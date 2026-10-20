@@ -16,6 +16,10 @@
 # lane is kept for isolation of process/env-sensitive tests, not for timing.
 # The default culture and de-AT variants of a serial assembly still run beside
 # each other: they are separate processes with separate environments.
+#
+# The same run, 4045 tests per pass: the two passes took 3m53s and 3m47s back
+# to back (7m40s total) before this runner, and 5m55s-5m58s together after it.
+# The full gate (scripts/verify.sh) took 7m46s after the change.
 
 # Test projects as the solution sees them, in a stable order. The built
 # assembly check in verify.sh uses the same list, so a project that was not
