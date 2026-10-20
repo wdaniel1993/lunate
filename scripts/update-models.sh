@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # version: 1.0.0
-# Regenerates the embedded catalog through ModelsDevCatalog; never maps in shell.
+# Regenerates the embedded catalog through the CLI's --update-catalog; never maps in shell.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+PROJECT="${ROOT}/src/Lunate.Coding/Lunate.Coding.csproj"
 
 SNAPSHOT=""
 OUTPUT="${ROOT}/src/Lunate.Ai/models.json"
@@ -14,8 +15,10 @@ usage() {
     cat <<'EOF'
 usage: scripts/update-models.sh [--snapshot <path>] [--output <path>] [--check]
 
-Regenerates the embedded model catalog through the C# ModelsDevCatalog mapper.
-Without --snapshot, downloads ${MODELS_DEV_URL:-https://models.dev/api.json}.
+Regenerates the embedded model catalog through `lunate --update-catalog`, the one
+ModelsDevCatalog entry point. Without --snapshot, the CLI fetches
+${MODELS_DEV_URL:-https://models.dev/api.json}. With --check, generates to a temporary
+file and compares it byte for byte with the embedded catalog (or --output).
 EOF
 }
 
@@ -68,21 +71,29 @@ cleanup() {
 }
 trap cleanup EXIT
 
-if [ -z "${SNAPSHOT}" ]; then
-    if ! command -v curl >/dev/null 2>&1; then
-        echo "update-models: curl is required to fetch the models.dev snapshot" >&2
-        exit 2
+update_catalog() {
+    local target="$1"
+    if [ -n "${SNAPSHOT}" ]; then
+        dotnet run --project "${PROJECT}" -- --update-catalog --output "${target}" --source "${SNAPSHOT}"
+    elif [ -n "${MODELS_DEV_URL:-}" ]; then
+        dotnet run --project "${PROJECT}" -- --update-catalog --output "${target}" --source "${MODELS_DEV_URL}"
+    else
+        dotnet run --project "${PROJECT}" -- --update-catalog --output "${target}"
     fi
-    TEMP="$(mktemp "${TMPDIR:-/tmp}/lunate-models-dev.XXXXXX")"
-    URL="${MODELS_DEV_URL:-https://models.dev/api.json}"
-    echo "fetching ${URL}"
-    curl --fail --silent --show-error --location "${URL}" --output "${TEMP}"
-    SNAPSHOT="${TEMP}"
-fi
+}
 
-cd "${ROOT}"
-ARGS=(run "${ROOT}/scripts/update-models.cs" -- --snapshot "${SNAPSHOT}" --output "${OUTPUT}")
 if [ "${CHECK}" -eq 1 ]; then
-    ARGS+=(--check)
+    TEMP="$(mktemp "${TMPDIR:-/tmp}/lunate-models-check.XXXXXX")"
+    if ! update_catalog "${TEMP}" >/dev/null; then
+        echo "update-models: catalog generation failed; ${OUTPUT} was not changed" >&2
+        exit 1
+    fi
+    if cmp -s "${TEMP}" "${OUTPUT}"; then
+        echo "${OUTPUT} is up to date."
+    else
+        echo "error: ${OUTPUT} is out of date; run scripts/update-models.sh to regenerate it." >&2
+        exit 1
+    fi
+else
+    update_catalog "${OUTPUT}"
 fi
-dotnet "${ARGS[@]}"
