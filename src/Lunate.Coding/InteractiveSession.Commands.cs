@@ -251,10 +251,13 @@ internal sealed partial class InteractiveSession
     }
 
     /// <summary>
-    /// The <c>/session</c> block: the file path and id, the recorded message count and the input and
-    /// output tokens summed from every recorded usage (so they survive a resume). Read-only and no
-    /// model call. ModelInfo has no pricing today, so there is no cost line — tokens only, never a
-    /// zero cost. The block goes into scrollback, one escaped line at a time.
+    /// The <c>/session</c> block: the file path and id, the recorded message count, the input and
+    /// output tokens summed from every recorded usage (so they survive a resume), and the cache
+    /// counts when the session recorded any. When every recorded model is known and fully priced
+    /// (design D6), a total and one line per model with its four lanes follow; an unpriced, unknown
+    /// or zero-total session stays token-only, never a zero cost. A schema 1/2 session with a cache
+    /// rate is token-only because its input total hides the unknown cache split. Read-only and no
+    /// model call. The block goes into scrollback, one escaped line at a time.
     /// </summary>
     private void ShowSessionReport()
     {
@@ -263,6 +266,9 @@ internal sealed partial class InteractiveSession
         var messages = 0;
         var input = 0;
         var output = 0;
+        long cacheRead = 0;
+        long cacheWrite = 0;
+        CostReport? cost = null;
         if (_session is { } session)
         {
             path = session.Path;
@@ -274,8 +280,12 @@ internal sealed partial class InteractiveSession
                 {
                     input += usage.Input;
                     output += usage.Output;
+                    cacheRead += usage.CacheRead ?? 0;
+                    cacheWrite += usage.CacheWrite ?? 0;
                 }
             }
+
+            cost = UsageCost.SummarizeSession(_catalog, session, _model.Id);
         }
 
         List<string> lines =
@@ -285,6 +295,24 @@ internal sealed partial class InteractiveSession
             FormattableString.Invariant($"messages: {messages}"),
             FormattableString.Invariant($"tokens: {input} in / {output} out"),
         ];
+        if (cacheRead + cacheWrite > 0)
+        {
+            lines.Add(FormattableString.Invariant($"cache: {cacheRead} read / {cacheWrite} write"));
+        }
+
+        if (cost is { Total: > 0m })
+        {
+            lines.Add(FormattableString.Invariant($"cost: {CostCalculator.Format(cost.Total)}"));
+            foreach (ModelCostLine model in cost.Models)
+            {
+                lines.Add(
+                    FormattableString.Invariant(
+                        $"  {model.ModelId}: {model.Lanes.Input} in / {model.Lanes.Output} out / {model.Lanes.CacheRead} cache read / {model.Lanes.CacheWrite} cache write = {CostCalculator.Format(model.Cost)}"
+                    )
+                );
+            }
+        }
+
         WriteScrollbackLines([.. lines.Select(Markup.Escape)]);
     }
 

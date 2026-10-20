@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using Lunate.Agent;
+using Lunate.Ai;
 
 namespace Lunate.Coding;
 
@@ -48,11 +49,19 @@ internal static class PrintEventJson
             typeof(ToolProgressUpdate),
         ];
 
-    /// <summary>Returns the one-line JSON object for an event, including the stamped fields.</summary>
-    internal static string Serialize(AgentEvent agentEvent)
+    /// <summary>
+    /// Returns the one-line JSON object for an event, including the stamped fields. A catalog and
+    /// fallback model id price a <c>usage_updated</c> line: a fully priced record adds a numeric
+    /// <c>costUsd</c>, an unpriced one keeps the line unchanged.
+    /// </summary>
+    internal static string Serialize(
+        AgentEvent agentEvent,
+        ModelCatalog? catalog = null,
+        string? fallbackModelId = null
+    )
     {
         ArgumentNullException.ThrowIfNull(agentEvent);
-        (string type, JsonObject body) = Describe(agentEvent);
+        (string type, JsonObject body) = Describe(agentEvent, catalog, fallbackModelId);
         var line = new JsonObject { ["type"] = type, ["runId"] = agentEvent.RunId };
         if (agentEvent.SessionId is not null)
         {
@@ -77,7 +86,11 @@ internal static class PrintEventJson
         return line.ToJsonString(Options);
     }
 
-    private static (string Type, JsonObject Body) Describe(AgentEvent agentEvent) =>
+    private static (string Type, JsonObject Body) Describe(
+        AgentEvent agentEvent,
+        ModelCatalog? catalog,
+        string? fallbackModelId
+    ) =>
         agentEvent switch
         {
             RunStarted => ("run_started", new JsonObject()),
@@ -106,7 +119,7 @@ internal static class PrintEventJson
             ToolCallEnd e => ("tool_call_end", ToolCallBody(e.CallId, e.ParentToolCallId)),
             ToolCallResult e => ("tool_call_result", ToolResultBody(e)),
             ApprovalRequested e => ("approval_requested", ApprovalBody(e)),
-            UsageUpdated e => ("usage_updated", UsageBody(e)),
+            UsageUpdated e => ("usage_updated", UsageBody(e, catalog, fallbackModelId)),
             ModelRouted e => (
                 "model_routed",
                 new JsonObject
@@ -153,7 +166,11 @@ internal static class PrintEventJson
         return body;
     }
 
-    private static JsonObject UsageBody(UsageUpdated e)
+    private static JsonObject UsageBody(
+        UsageUpdated e,
+        ModelCatalog? catalog,
+        string? fallbackModelId
+    )
     {
         var body = new JsonObject { ["usage"] = JsonSerializer.SerializeToNode(e.Usage, Options) };
         // Cache counts are additive metadata next to the provider's raw usage object; unknown
@@ -175,6 +192,15 @@ internal static class PrintEventJson
         if (e.ModelId is { Length: > 0 } modelId)
         {
             body["modelId"] = modelId;
+        }
+
+        if (
+            catalog is not null
+            && UsageCost.ForRecord(catalog, e.ModelId ?? fallbackModelId, UsageLanes.From(e.Usage))
+                is decimal cost
+        )
+        {
+            body["costUsd"] = JsonValue.Create(cost);
         }
 
         return body;

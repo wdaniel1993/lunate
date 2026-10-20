@@ -372,7 +372,8 @@ internal sealed class InteractiveSessionHost : IDisposable
         string? sessionsRoot = null,
         string? startSession = null,
         bool startWithPicker = false,
-        ISecretPrompt? secretPrompt = null
+        ISecretPrompt? secretPrompt = null,
+        string? modelsPath = null
     )
     {
         Scrollback = new TestConsole();
@@ -383,7 +384,7 @@ internal sealed class InteractiveSessionHost : IDisposable
             {
                 Factory = factory ?? new FakeChatClientFactory(chat ?? Client),
                 SettingsPath = Temp.File("settings.json"),
-                ModelsPath = Temp.File("models.json"),
+                ModelsPath = modelsPath ?? Temp.File("models.json"),
                 AuthPath = Temp.File("auth.json"),
                 SessionDirectory = Temp.File("sessions"),
                 WorkingDirectory = workingDirectory ?? Temp.Root,
