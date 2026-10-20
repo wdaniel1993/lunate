@@ -51,9 +51,9 @@ pass.
 - [x] 3.3 Add `AuthStore.Remove`, map every preset to its environment variable, and add the
       `/login <provider>`/`/logout <provider>` backend seam (masked value in, store out; no secret
       in notices); update `AuthStoreTests`.
-- [ ] 3.4 Extend `Commands`/`CompletionRegistry` metadata for `/login`, `/logout`, `/favorite` and
+- [x] 3.4 Extend `Commands`/`CompletionRegistry` metadata for `/login`, `/logout`, `/favorite` and
       `/unfavorite`; add a secret-input seam the TUI prompt can drive.
-- [ ] 3.5 `dotnet csharpier format .`; commit `feat(coding): add favourites and provider login`.
+- [x] 3.5 `dotnet csharpier format .`; commit `feat(coding): add favourites and provider login`.
 
 ## 4. Explicit catalog refresh
 

@@ -84,7 +84,11 @@ public sealed class InteractiveSessionCommandTests
               /session  — show the session file, messages and tokens
               /thinking — set the reasoning level (off|low|medium|high)
             model
-              /model — pick a model or switch to one by id
+              /favorite   — add the active or named model to favorites
+              /login      — store an API key for a provider preset
+              /logout     — remove the stored API key for a provider preset
+              /model      — pick a model or switch to one by id
+              /unfavorite — remove the active or named model from favorites
             extensions
               /extensions   — list the discovered extensions with their state
               /mcp          — list the MCP servers with their status and source

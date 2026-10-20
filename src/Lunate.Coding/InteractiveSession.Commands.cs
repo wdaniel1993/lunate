@@ -96,6 +96,18 @@ internal sealed partial class InteractiveSession
                 }
 
                 return;
+            case "/favorite":
+                Favorite(argument);
+                return;
+            case "/unfavorite":
+                Unfavorite(argument);
+                return;
+            case "/login":
+                await LoginAsync(argument, ct);
+                return;
+            case "/logout":
+                Logout(argument);
+                return;
             case "/new":
                 if (RefusedWhileBusy())
                 {

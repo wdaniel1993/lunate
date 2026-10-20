@@ -44,7 +44,11 @@ internal static class Commands
         new("/resume", CommandGroup.Session, "open the session picker"),
         new("/session", CommandGroup.Session, "show the session file, messages and tokens"),
         new("/thinking", CommandGroup.Session, "set the reasoning level (off|low|medium|high)"),
+        new("/favorite", CommandGroup.Model, "add the active or named model to favorites"),
+        new("/login", CommandGroup.Model, "store an API key for a provider preset"),
+        new("/logout", CommandGroup.Model, "remove the stored API key for a provider preset"),
         new("/model", CommandGroup.Model, "pick a model or switch to one by id"),
+        new("/unfavorite", CommandGroup.Model, "remove the active or named model from favorites"),
         new(
             "/extensions",
             CommandGroup.Extensions,
