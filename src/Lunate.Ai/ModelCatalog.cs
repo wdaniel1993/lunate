@@ -8,7 +8,9 @@ namespace Lunate.Ai;
 public sealed class ModelCatalog
 {
     private const string EmbeddedResourceName = "Lunate.Ai.models.json";
-    private const int SupportedSchemaVersion = 1;
+    private const int OldestSupportedSchemaVersion = 1;
+    private const int SupportedSchemaVersion = 2;
+    private const string SupportedSchemaVersions = "1 or 2";
 
     private readonly IReadOnlyList<ModelInfo> _models;
     private readonly Dictionary<string, ModelInfo> _modelsById;
@@ -23,15 +25,17 @@ public sealed class ModelCatalog
 
     public static ModelCatalog Load(string? userFilePath = null)
     {
-        List<ModelInfo> embedded = ParseEmbedded();
-        string path = userFilePath ?? DefaultUserFilePath();
-        if (!File.Exists(path))
-        {
-            return new ModelCatalog(embedded);
-        }
+        return userFilePath is null
+            ? LoadLayered(DefaultManagedFilePath(), DefaultUserFilePath())
+            : LoadLayered(managedFilePath: null, userFilePath: userFilePath);
+    }
 
-        List<ModelInfo> user = Parse(File.ReadAllText(path), path);
-        return new ModelCatalog(Merge(embedded, user));
+    internal static ModelCatalog LoadLayered(string? managedFilePath, string? userFilePath)
+    {
+        List<ModelInfo> models = ParseEmbedded();
+        models = Merge(models, ParseOptional(managedFilePath));
+        models = Merge(models, ParseOptional(userFilePath));
+        return new ModelCatalog(models);
     }
 
     public ModelInfo? Find(string id)
@@ -56,6 +60,13 @@ public sealed class ModelCatalog
         return Parse(reader.ReadToEnd(), "built-in models.json");
     }
 
+    private static string DefaultManagedFilePath() =>
+        Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+            ".lunate",
+            "models.catalog.json"
+        );
+
     private static string DefaultUserFilePath() =>
         Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
@@ -63,19 +74,33 @@ public sealed class ModelCatalog
             "models.json"
         );
 
+    private static List<ModelInfo> ParseOptional(string? path)
+    {
+        if (path is null || !File.Exists(path))
+        {
+            return [];
+        }
+
+        return Parse(File.ReadAllText(path), path);
+    }
+
     private static List<ModelInfo> Parse(string json, string source)
     {
         CatalogFile? file = JsonSerializer.Deserialize<CatalogFile>(
             json,
             AIJsonUtilities.DefaultOptions
         );
-        if (file?.SchemaVersion != SupportedSchemaVersion)
+        if (
+            file?.SchemaVersion is not int schemaVersion
+            || schemaVersion < OldestSupportedSchemaVersion
+            || schemaVersion > SupportedSchemaVersion
+        )
         {
             string version = file?.SchemaVersion is int value
                 ? value.ToString(CultureInfo.InvariantCulture)
                 : "missing";
             throw new InvalidDataException(
-                $"Unsupported schemaVersion '{version}' in {source}; expected {SupportedSchemaVersion}."
+                $"Unsupported schemaVersion '{version}' in {source}; expected {SupportedSchemaVersions}."
             );
         }
 
@@ -118,7 +143,13 @@ public sealed class ModelCatalog
             entry.SupportsTools,
             entry.AuthRef,
             entry.Reasoning
-        );
+        )
+        {
+            Pricing = entry.Pricing,
+            MaxOutput = entry.MaxOutput,
+            SupportsVision = entry.SupportsVision,
+            WireId = string.IsNullOrEmpty(entry.WireId) ? null : entry.WireId,
+        };
     }
 
     private static List<ModelInfo> Merge(List<ModelInfo> embedded, List<ModelInfo> user)
@@ -161,5 +192,13 @@ public sealed class ModelCatalog
         public string? AuthRef { get; set; }
 
         public string? Reasoning { get; set; }
+
+        public ModelPricing? Pricing { get; set; }
+
+        public int? MaxOutput { get; set; }
+
+        public bool SupportsVision { get; set; }
+
+        public string? WireId { get; set; }
     }
 }

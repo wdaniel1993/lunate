@@ -277,7 +277,7 @@ public sealed class ModelCatalogTests
     }
 
     [Theory]
-    [InlineData("""{ "schemaVersion": 2, "models": [] }""", "2")]
+    [InlineData("""{ "schemaVersion": 3, "models": [] }""", "3")]
     [InlineData("""{ "models": [] }""", "missing")]
     public void Load_with_unsupported_schema_version_throws_naming_the_version(
         string json,
@@ -294,6 +294,8 @@ public sealed class ModelCatalogTests
             );
 
             Assert.Contains(expectedVersion, exception.Message, StringComparison.Ordinal);
+            Assert.Contains(userFile, exception.Message, StringComparison.Ordinal);
+            Assert.Contains("expected 1 or 2", exception.Message, StringComparison.Ordinal);
         }
         finally
         {

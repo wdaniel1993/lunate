@@ -9,7 +9,7 @@ pass.
 - [x] 1.1 Add `src/Lunate.Ai/providers.json` (schema 1: preset id, display name, adapter kind, base
       URL, key variable, Google alias) and embed it; add `ProviderPreset`/`ProviderPresets` with
       parsing and lookup, and tests for the twelve rows and an unknown id.
-- [ ] 1.2 Extend `ModelInfo` with init-only `Pricing`, `MaxOutput`, `SupportsVision` and `WireId`;
+- [x] 1.2 Extend `ModelInfo` with init-only `Pricing`, `MaxOutput`, `SupportsVision` and `WireId`;
       add `ModelPricing` and a culture-invariant cost helper; update `ModelCatalog` to schema 2 with
       read-side schema 1 acceptance and the optional managed cache
       (`~/.lunate/models.catalog.json`); update `PublicAPI.Unshipped.txt`.
