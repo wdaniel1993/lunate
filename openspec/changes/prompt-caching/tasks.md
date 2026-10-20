@@ -24,9 +24,9 @@ Design-first change: each task is one commit and lands on `change/prompt-caching
 
 ## 4. Cache usage in `--json`
 
-- [ ] 4.1 `PrintEventJson.UsageBody`: add `cacheReadTokens` and `cacheWriteTokens` only when the provider reported them; keep the nested `usage` object unchanged.
-- [ ] 4.2 `tests/Lunate.Coding.Tests/PrintEventJsonTests.cs`: both fields present, each absent when unknown, default (non-JSON) stdout unchanged.
-- [ ] 4.3 Commit `feat(coding): include prompt-cache usage in json output`.
+- [x] 4.1 `PrintEventJson.UsageBody`: add `cacheReadTokens` and `cacheWriteTokens` only when the provider reported them; keep the nested `usage` object unchanged.
+- [x] 4.2 `tests/Lunate.Coding.Tests/PrintEventJsonTests.cs`: both fields present, each absent when unknown, default (non-JSON) stdout unchanged.
+- [x] 4.3 Commit `feat(coding): include prompt-cache usage in json output`.
 
 ## 5. Opt-in live smoke
 

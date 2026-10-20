@@ -13,6 +13,9 @@ namespace Lunate.Coding;
 /// </summary>
 internal static class PrintEventJson
 {
+    /// <summary>The adapter's additional-usage key for cache-creation tokens.</summary>
+    private const string CacheCreationInputTokensKey = "CacheCreationInputTokens";
+
     private static readonly JsonSerializerOptions Options = new(JsonSerializerDefaults.Web)
     {
         WriteIndented = false,
@@ -153,6 +156,21 @@ internal static class PrintEventJson
     private static JsonObject UsageBody(UsageUpdated e)
     {
         var body = new JsonObject { ["usage"] = JsonSerializer.SerializeToNode(e.Usage, Options) };
+        // Cache counts are additive metadata next to the provider's raw usage object; unknown
+        // counts stay absent rather than becoming zero.
+        if (e.Usage.CachedInputTokenCount is { } cacheReadTokens)
+        {
+            body["cacheReadTokens"] = cacheReadTokens;
+        }
+
+        if (
+            e.Usage.AdditionalCounts is { } counts
+            && counts.TryGetValue(CacheCreationInputTokensKey, out long cacheWriteTokens)
+        )
+        {
+            body["cacheWriteTokens"] = cacheWriteTokens;
+        }
+
         if (e.ModelId is { Length: > 0 } modelId)
         {
             body["modelId"] = modelId;
