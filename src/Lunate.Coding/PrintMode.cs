@@ -54,6 +54,9 @@ internal sealed record PrintModeOptions
 
     /// <summary>The user-profile root the skill user scope resolves under; null uses the profile.</summary>
     public string? HomeDirectory { get; init; }
+
+    /// <summary>The launch flags parsed once by the CLI; defaults stand in for direct calls.</summary>
+    public LaunchOptions Launch { get; init; } = new();
 }
 
 /// <summary>

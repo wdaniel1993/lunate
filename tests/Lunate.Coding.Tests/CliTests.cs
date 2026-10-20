@@ -1,9 +1,22 @@
+using Lunate.Ai;
 using Spectre.Console.Testing;
 
 namespace Lunate.Coding.Tests;
 
 public sealed class CliTests
 {
+    public static TheoryData<string[], string, string> ConflictingLaunchFlags =>
+        new()
+        {
+            { ["--continue", "--resume"], "--continue", "--resume" },
+            { ["-c", "-r"], "--continue", "--resume" },
+            { ["--continue", "--session", "s_1"], "--continue", "--session" },
+            { ["--resume", "--session", "s_1"], "--resume", "--session" },
+            { ["--session", "s_1", "--no-session"], "--session", "--no-session" },
+            { ["--continue", "--no-session"], "--continue", "--no-session" },
+            { ["--tools", "bash", "--no-tools"], "--tools", "--no-tools" },
+        };
+
     [Fact]
     public void Run_with_empty_args_and_no_terminal_hints_at_print_mode()
     {
@@ -90,19 +103,17 @@ public sealed class CliTests
     }
 
     [Fact]
-    public void Run_with_unknown_arg_is_a_no_op()
+    public void Run_with_unknown_arg_is_a_usage_error()
     {
-        using var writer = new StringWriter();
+        using var output = new StringWriter();
+        using var error = new StringWriter();
 
-        var exitCode = Cli.Run(
-            ["--unknown"],
-            writer,
-            TextWriter.Null,
-            TestContext.Current.CancellationToken
-        );
+        var exitCode = Cli.Run(["--unknown"], output, error, TestContext.Current.CancellationToken);
 
-        Assert.Equal(0, exitCode);
-        Assert.Empty(writer.ToString());
+        Assert.Equal(2, exitCode);
+        Assert.Contains("--unknown", error.ToString(), StringComparison.Ordinal);
+        Assert.Contains("Usage", error.ToString(), StringComparison.Ordinal);
+        Assert.Empty(output.ToString());
     }
 
     [Fact]
@@ -333,5 +344,270 @@ public sealed class CliTests
         Assert.NotEqual(0, exitCode);
         Assert.Contains("--discover", error.ToString(), StringComparison.Ordinal);
         Assert.Empty(output.ToString());
+    }
+
+    [Fact]
+    public void Launch_options_parse_continue()
+    {
+        LaunchOptions options = Parse("--continue");
+
+        Assert.True(options.Continue);
+        Assert.True(Parse("-c").Continue);
+    }
+
+    [Fact]
+    public void Launch_options_parse_resume()
+    {
+        LaunchOptions options = Parse("--resume");
+
+        Assert.True(options.Resume);
+        Assert.True(Parse("-r").Resume);
+    }
+
+    [Fact]
+    public void Launch_options_parse_a_session_id()
+    {
+        LaunchOptions options = Parse("--session", "s_20261020-120000-abcd");
+
+        Assert.Equal("s_20261020-120000-abcd", options.Session);
+    }
+
+    [Fact]
+    public void Launch_options_parse_no_session()
+    {
+        Assert.True(Parse("--no-session").NoSession);
+    }
+
+    [Fact]
+    public void Launch_options_parse_a_model()
+    {
+        Assert.Equal("gpt-4o", Parse("--model", "gpt-4o").Model);
+    }
+
+    [Fact]
+    public void Launch_options_parse_a_thinking_level()
+    {
+        Assert.Equal(ThinkingLevel.High, Parse("--thinking", "high").Thinking);
+    }
+
+    [Fact]
+    public void Launch_options_parse_a_tool_list()
+    {
+        Assert.Equal(["bash", "read"], Parse("--tools", "bash, read").Tools);
+    }
+
+    [Fact]
+    public void Launch_options_parse_no_tools()
+    {
+        LaunchOptions options = Parse("--no-tools");
+
+        Assert.True(options.NoTools);
+        Assert.Null(options.Tools);
+    }
+
+    [Fact]
+    public void Launch_options_parse_the_prompt_directives()
+    {
+        LaunchOptions options = Parse(
+            "--system-prompt",
+            "system",
+            "--append-system-prompt",
+            "append"
+        );
+
+        Assert.Equal("system", options.SystemPrompt);
+        Assert.Equal("append", options.AppendSystemPrompt);
+    }
+
+    [Fact]
+    public void Launch_options_parse_the_print_flags()
+    {
+        LaunchOptions options = Parse("-p", "--json", "--yolo", "Hi");
+
+        Assert.True(options.Print);
+        Assert.True(options.Json);
+        Assert.True(options.Yolo);
+        Assert.Equal("Hi", options.Prompt);
+    }
+
+    [Theory]
+    [MemberData(nameof(ConflictingLaunchFlags))]
+    public void Run_with_conflicting_launch_flags_is_a_usage_error(
+        string[] args,
+        string first,
+        string second
+    )
+    {
+        using var output = new StringWriter();
+        using var error = new StringWriter();
+
+        var exitCode = Cli.Run(args, output, error, TestContext.Current.CancellationToken);
+
+        Assert.Equal(2, exitCode);
+        Assert.Contains(first, error.ToString(), StringComparison.Ordinal);
+        Assert.Contains(second, error.ToString(), StringComparison.Ordinal);
+        Assert.Contains("mutually exclusive", error.ToString(), StringComparison.Ordinal);
+        Assert.Empty(output.ToString());
+    }
+
+    [Theory]
+    [InlineData("--continue", "--continue")]
+    [InlineData("-c", "--continue")]
+    [InlineData("--resume", "--resume")]
+    [InlineData("-r", "--resume")]
+    [InlineData("--no-session", "--no-session")]
+    public void Run_with_acp_and_a_selection_flag_is_a_usage_error(string flag, string named)
+    {
+        using var output = new StringWriter();
+        using var error = new StringWriter();
+
+        var exitCode = Cli.Run(
+            ["--acp", flag],
+            output,
+            error,
+            TestContext.Current.CancellationToken
+        );
+
+        Assert.Equal(2, exitCode);
+        Assert.Contains("--acp", error.ToString(), StringComparison.Ordinal);
+        Assert.Contains(named, error.ToString(), StringComparison.Ordinal);
+        Assert.Empty(output.ToString());
+    }
+
+    [Fact]
+    public void Run_with_acp_and_a_session_flag_is_a_usage_error()
+    {
+        using var output = new StringWriter();
+        using var error = new StringWriter();
+
+        var exitCode = Cli.Run(
+            ["--acp", "--session", "s_1"],
+            output,
+            error,
+            TestContext.Current.CancellationToken
+        );
+
+        Assert.Equal(2, exitCode);
+        Assert.Contains("--acp", error.ToString(), StringComparison.Ordinal);
+        Assert.Contains("--session", error.ToString(), StringComparison.Ordinal);
+        Assert.Empty(output.ToString());
+    }
+
+    [Theory]
+    [InlineData("--session")]
+    [InlineData("--model")]
+    [InlineData("--thinking")]
+    [InlineData("--tools")]
+    [InlineData("--system-prompt")]
+    [InlineData("--append-system-prompt")]
+    public void Run_with_a_launch_flag_missing_its_value_is_a_usage_error(string flag)
+    {
+        using var output = new StringWriter();
+        using var error = new StringWriter();
+
+        var exitCode = Cli.Run([flag], output, error, TestContext.Current.CancellationToken);
+
+        Assert.Equal(2, exitCode);
+        Assert.Contains(flag, error.ToString(), StringComparison.Ordinal);
+        Assert.Contains("expects a value", error.ToString(), StringComparison.Ordinal);
+        Assert.Empty(output.ToString());
+    }
+
+    [Fact]
+    public void Run_with_an_unknown_thinking_level_is_a_usage_error()
+    {
+        using var output = new StringWriter();
+        using var error = new StringWriter();
+
+        var exitCode = Cli.Run(
+            ["--thinking", "max"],
+            output,
+            error,
+            TestContext.Current.CancellationToken
+        );
+
+        Assert.Equal(2, exitCode);
+        Assert.Contains("'--thinking'", error.ToString(), StringComparison.Ordinal);
+        Assert.Contains("max", error.ToString(), StringComparison.Ordinal);
+        Assert.Empty(output.ToString());
+    }
+
+    [Fact]
+    public void Run_with_help_lists_every_launch_flag()
+    {
+        using var writer = new StringWriter();
+
+        var exitCode = Cli.Run(
+            ["--help"],
+            writer,
+            TextWriter.Null,
+            TestContext.Current.CancellationToken
+        );
+
+        Assert.Equal(0, exitCode);
+        string help = writer.ToString();
+        Assert.Contains("-c, --continue", help, StringComparison.Ordinal);
+        Assert.Contains("-r, --resume", help, StringComparison.Ordinal);
+        Assert.Contains("--session <id|path>", help, StringComparison.Ordinal);
+        Assert.Contains("--no-session", help, StringComparison.Ordinal);
+        Assert.Contains("--model <id>", help, StringComparison.Ordinal);
+        Assert.Contains("--thinking <level>", help, StringComparison.Ordinal);
+        Assert.Contains("--tools <list>", help, StringComparison.Ordinal);
+        Assert.Contains("--no-tools", help, StringComparison.Ordinal);
+        Assert.Contains("--system-prompt <text>", help, StringComparison.Ordinal);
+        Assert.Contains("--append-system-prompt <text>", help, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Run_with_an_interactive_prompt_argument_is_a_usage_error()
+    {
+        using var output = new StringWriter();
+        using var error = new StringWriter();
+
+        var exitCode = Cli.Run(["hello"], output, error, TestContext.Current.CancellationToken);
+
+        Assert.Equal(2, exitCode);
+        Assert.Contains("hello", error.ToString(), StringComparison.Ordinal);
+        Assert.Empty(output.ToString());
+    }
+
+    [Fact]
+    public void Run_with_an_empty_print_prompt_is_a_usage_error()
+    {
+        using var output = new StringWriter();
+        using var error = new StringWriter();
+
+        var exitCode = Cli.Run(["-p", " "], output, error, TestContext.Current.CancellationToken);
+
+        Assert.Equal(2, exitCode);
+        Assert.Contains("cannot be empty", error.ToString(), StringComparison.Ordinal);
+        Assert.Empty(output.ToString());
+    }
+
+    [Fact]
+    public void Run_with_print_and_two_prompts_is_a_usage_error()
+    {
+        using var output = new StringWriter();
+        using var error = new StringWriter();
+
+        var exitCode = Cli.Run(
+            ["-p", "one", "two"],
+            output,
+            error,
+            TestContext.Current.CancellationToken
+        );
+
+        Assert.Equal(2, exitCode);
+        Assert.Contains("Usage", error.ToString(), StringComparison.Ordinal);
+        Assert.Empty(output.ToString());
+    }
+
+    private static LaunchOptions Parse(params string[] args)
+    {
+        Assert.True(
+            LaunchOptions.TryParse(args, out LaunchOptions options, out string? error),
+            error
+        );
+        return options;
     }
 }

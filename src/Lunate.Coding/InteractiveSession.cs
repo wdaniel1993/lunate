@@ -83,6 +83,9 @@ internal sealed record InteractiveSessionOptions
 
     /// <summary>Adjusts the composed harness options; tests pin budgets and retry delays here.</summary>
     public Func<AgentHarnessOptions, AgentHarnessOptions>? ConfigureHarness { get; init; }
+
+    /// <summary>The launch flags parsed once by the CLI; defaults stand in for direct calls.</summary>
+    public LaunchOptions Launch { get; init; } = new();
 }
 
 /// <summary>
