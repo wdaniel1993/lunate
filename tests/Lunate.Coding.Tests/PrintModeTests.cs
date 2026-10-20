@@ -602,9 +602,14 @@ public sealed class PrintModeTests
     }
 
     [Fact]
-    public async Task A_launch_model_wins_over_the_environment()
+    public async Task A_launch_model_wins_over_the_resolved_settings()
     {
+        // The settings file names one model and LUNATE_MODEL another; the launch flag wins over both.
         using var temp = new TempDirectory();
+        File.WriteAllText(
+            temp.File("settings.json"),
+            """{ "schemaVersion": 1, "model": "claude-sonnet-5-5" }"""
+        );
         var factory = new FakeChatClientFactory(
             new ScriptedChatClient().Enqueue(Scripts.Text("ok"), Scripts.Stop())
         );
@@ -620,6 +625,40 @@ public sealed class PrintModeTests
         Assert.Equal("ok", output);
         Assert.Empty(errors);
         Assert.Equal("gpt-4o", factory.CreatedModel!.Id);
+    }
+
+    [Fact]
+    public async Task A_launch_thinking_level_turns_thinking_on_over_the_default()
+    {
+        using var temp = new TempDirectory();
+        File.WriteAllText(
+            temp.File("models.json"),
+            """
+            {
+              "schemaVersion": 1,
+              "models": [
+                { "id": "effort-model", "provider": "openai", "endpoint": null, "contextWindow": 128000, "supportsTools": true, "reasoning": "effort" }
+              ]
+            }
+            """
+        );
+        var client = new ScriptedChatClient().Enqueue(Scripts.Text("ok"), Scripts.Stop());
+        PrintModeOptions options = PrintModeTestSupport.BaseOptions(
+            temp,
+            new FakeChatClientFactory(client)
+        ) with
+        {
+            Prompt = "Hi",
+            Environment = PrintModeTestSupport.Environment(model: "effort-model"),
+            Launch = new LaunchOptions { Thinking = ThinkingLevel.High },
+        };
+
+        (int exitCode, string output, string errors) = await PrintModeTestSupport.RunAsync(options);
+
+        Assert.Equal(0, exitCode);
+        Assert.Equal("ok", output);
+        Assert.Empty(errors);
+        Assert.Equal(ReasoningEffort.High, Assert.Single(client.RequestOptions)?.Reasoning?.Effort);
     }
 
     [Fact]

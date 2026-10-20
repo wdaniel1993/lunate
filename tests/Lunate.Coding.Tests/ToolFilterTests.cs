@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Lunate.Agent;
+using Lunate.Extensibility;
 using Microsoft.Extensions.AI;
 
 namespace Lunate.Coding.Tests;
@@ -183,6 +184,35 @@ public sealed class ToolFilterTests
         await host.Client.WaitForCallAsync(1);
 
         Assert.Equal(["read"], Names(host.Client.RequestOptions[0]));
+        Assert.DoesNotContain("write", Names(host.Client.RequestOptions[0]));
+        Assert.DoesNotContain("bash", Names(host.Client.RequestOptions[0]));
+
+        await host.WaitUntilAsync(() => !host.Session.IsRunning);
+        host.Console.SendText("/quit");
+        host.Console.SendEnter();
+        await run;
+    }
+
+    [Fact]
+    public async Task Interactive_launch_tools_can_select_an_extension_tool_by_name()
+    {
+        using var temp = new TempDirectory();
+        string store = temp.File("store");
+        ToolFixture.Install(store);
+        using var host = new InteractiveSessionHost(
+            extensions: new ExtensionSeams { StorePath = store, Log = new RecordingExtensionLog() },
+            launch: new LaunchOptions { Tools = ["tools__echo"] }
+        );
+        host.Client.Enqueue(Scripts.Text("ok"), Scripts.Stop());
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+
+        host.Console.SendText("hi");
+        host.Console.SendEnter();
+        await host.Client.WaitForCallAsync(1);
+
+        Assert.Equal(["tools__echo"], Names(host.Client.RequestOptions[0]));
+        Assert.DoesNotContain("read", Names(host.Client.RequestOptions[0]));
 
         await host.WaitUntilAsync(() => !host.Session.IsRunning);
         host.Console.SendText("/quit");

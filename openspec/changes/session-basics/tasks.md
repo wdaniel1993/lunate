@@ -24,7 +24,7 @@ Implementation runs through the `senior-dev` subagent (test-first). One commit p
 
 - [x] 4.1 Resolve `--model` and `--thinking` over `SettingsStore.Resolve` (CLI > resolved settings > default) in interactive, print and ACP composition; an unknown model fails with the existing catalog message.
 - [x] 4.2 `--tools <list>` / `--no-tools`: filter the composed registry by exact model-facing names after extension/MCP composition; an unknown name is a usage error listing the available names; `--no-tools` offers none.
-- [ ] 4.3 Tests: precedence over settings and environment, unknown model, tool filter (kept/removed names, unknown name error) in print and interactive. Commit: `feat(coding): apply model, thinking and tool flags per run`.
+- [x] 4.3 Tests: precedence over settings and environment, unknown model, tool filter (kept/removed names, unknown name error) in print and interactive. Commit: `feat(coding): apply model, thinking and tool flags per run`.
 
 ## 5. System-prompt directives
 

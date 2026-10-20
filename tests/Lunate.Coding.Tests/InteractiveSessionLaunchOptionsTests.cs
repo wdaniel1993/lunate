@@ -11,13 +11,18 @@ namespace Lunate.Coding.Tests;
 public sealed class InteractiveSessionLaunchOptionsTests
 {
     [Fact]
-    public async Task A_launch_model_wins_over_the_environment()
+    public async Task A_launch_model_wins_over_the_resolved_settings()
     {
+        // The settings file names one model and LUNATE_MODEL another; the launch flag wins over both.
         var factory = new FakeChatClientFactory(new ScriptedChatClient());
         using var host = new InteractiveSessionHost(
             factory: factory,
             environment: Environment(("OPENAI_API_KEY", "test-key")),
             launch: new LaunchOptions { Model = "gpt-4o" }
+        );
+        File.WriteAllText(
+            host.Temp.File("settings.json"),
+            """{ "schemaVersion": 1, "model": "claude-sonnet-5-5" }"""
         );
         Task run = host.RunAsync();
 
@@ -28,6 +33,40 @@ public sealed class InteractiveSessionLaunchOptionsTests
         Assert.Contains("gpt-4o · 128,000 ctx", host.ScrollbackText, StringComparison.Ordinal);
         Assert.Contains("gpt-4o · 0/128.0k", host.LastFrame, StringComparison.Ordinal);
 
+        host.Console.SendText("/quit");
+        host.Console.SendEnter();
+        await run;
+    }
+
+    [Fact]
+    public async Task A_launch_thinking_level_turns_thinking_on_over_the_default()
+    {
+        using var host = new InteractiveSessionHost(
+            environment: PrintModeTestSupport.Environment(model: "effort-model"),
+            launch: new LaunchOptions { Thinking = ThinkingLevel.High }
+        );
+        File.WriteAllText(
+            host.Temp.File("models.json"),
+            """
+            {
+              "schemaVersion": 1,
+              "models": [
+                { "id": "effort-model", "provider": "openai", "endpoint": null, "contextWindow": 128000, "supportsTools": true, "reasoning": "effort" }
+              ]
+            }
+            """
+        );
+        host.Client.Enqueue(Scripts.Text("ok"), Scripts.Stop());
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+
+        host.Console.SendText("hi");
+        host.Console.SendEnter();
+        await host.Client.WaitForCallAsync(1);
+
+        Assert.Equal(ReasoningEffort.High, host.Client.RequestOptions[0]!.Reasoning?.Effort);
+
+        await host.WaitUntilAsync(() => !host.Session.IsRunning);
         host.Console.SendText("/quit");
         host.Console.SendEnter();
         await run;

@@ -30,6 +30,8 @@ public sealed class ToolFilterPrintModeTests
         Assert.Equal("ok", output);
         Assert.Empty(errors);
         Assert.Equal(["read"], Names(client.RequestOptions[0]));
+        Assert.DoesNotContain("write", Names(client.RequestOptions[0]));
+        Assert.DoesNotContain("bash", Names(client.RequestOptions[0]));
     }
 
     [Fact]
