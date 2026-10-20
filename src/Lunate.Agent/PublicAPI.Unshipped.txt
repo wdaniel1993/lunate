@@ -1419,3 +1419,11 @@ static Lunate.Agent.ReasoningMessageContent.operator !=(Lunate.Agent.ReasoningMe
 static Lunate.Agent.ReasoningMessageContent.operator ==(Lunate.Agent.ReasoningMessageContent? left, Lunate.Agent.ReasoningMessageContent? right) -> bool
 static Lunate.Agent.ReasoningEnd.operator !=(Lunate.Agent.ReasoningEnd? left, Lunate.Agent.ReasoningEnd? right) -> bool
 static Lunate.Agent.ReasoningEnd.operator ==(Lunate.Agent.ReasoningEnd? left, Lunate.Agent.ReasoningEnd? right) -> bool
+const Lunate.Agent.SessionTitle.MaxLength = 120 -> int
+Lunate.Agent.SessionTitle
+Lunate.Agent.SessionSummary.Title.get -> string?
+Lunate.Agent.SessionSummary.Title.init -> void
+static Lunate.Agent.SessionTitle.Normalize(string? title) -> string?
+static Lunate.Agent.SessionTitle.PathFor(string! sessionPath) -> string!
+static Lunate.Agent.SessionTitle.Read(string! sessionPath) -> string?
+static Lunate.Agent.SessionTitle.Write(string! sessionPath, string! title) -> void

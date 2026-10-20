@@ -6,7 +6,11 @@ public sealed record SessionSummary(
     string Path,
     DateTimeOffset Created,
     DateTimeOffset Modified
-);
+)
+{
+    /// <summary>The title from the sidecar beside the session file; null when it has none.</summary>
+    public string? Title { get; init; }
+};
 
 public sealed partial class Session
 {
@@ -86,7 +90,10 @@ public sealed partial class Session
                 path,
                 header.Created,
                 new DateTimeOffset(File.GetLastWriteTimeUtc(path), TimeSpan.Zero)
-            );
+            )
+            {
+                Title = SessionTitle.Read(path),
+            };
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {

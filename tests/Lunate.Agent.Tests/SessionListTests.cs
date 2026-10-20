@@ -180,4 +180,54 @@ public sealed class SessionListTests
         Assert.Equal(before, File.ReadAllBytes(path));
         Assert.Equal(beforeWrite, File.GetLastWriteTimeUtc(path));
     }
+
+    [Fact]
+    public void A_titled_session_lists_with_its_title()
+    {
+        using var temp = new TempDirectory();
+        Session session = Session.Create(
+            temp.File("s.jsonl"),
+            "/work",
+            new FixedTimeProvider(Start)
+        );
+        SessionTitle.Write(session.Path, "Refactor the parser");
+
+        SessionSummary summary = Assert.Single(Session.List(temp.Root));
+
+        Assert.Equal("Refactor the parser", summary.Title);
+    }
+
+    [Fact]
+    public void A_missing_sidecar_lists_no_title()
+    {
+        using var temp = new TempDirectory();
+        Session.Create(temp.File("s.jsonl"), "/work", new FixedTimeProvider(Start));
+
+        SessionSummary summary = Assert.Single(Session.List(temp.Root));
+
+        Assert.Null(summary.Title);
+    }
+
+    [Fact]
+    public void An_unusable_sidecar_lists_no_title()
+    {
+        using var temp = new TempDirectory();
+        Session blank = Session.Create(
+            temp.File("blank.jsonl"),
+            "/work",
+            new FixedTimeProvider(Start)
+        );
+        Session broken = Session.Create(
+            temp.File("broken.jsonl"),
+            "/work",
+            new FixedTimeProvider(Start)
+        );
+        File.WriteAllText(SessionTitle.PathFor(blank.Path), "\n");
+        File.WriteAllBytes(SessionTitle.PathFor(broken.Path), [0xC3, 0x28]);
+
+        IReadOnlyList<SessionSummary> summaries = Session.List(temp.Root);
+
+        Assert.Equal(2, summaries.Count);
+        Assert.All(summaries, summary => Assert.Null(summary.Title));
+    }
 }
