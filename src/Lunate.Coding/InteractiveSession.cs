@@ -280,6 +280,13 @@ internal sealed partial class InteractiveSession : IDisposable
             }
             catch (Exception exception)
             {
+                // An unknown --tools name is a usage error (design D1), exactly as in print mode;
+                // every other composition failure keeps the session's normal exit code.
+                if (exception is ToolFilterException)
+                {
+                    ExitCode = 2;
+                }
+
                 _lifetime.Cancel();
                 (_options.Diagnostics ?? Console.Error).WriteLine($"lunate: {exception.Message}");
             }
@@ -756,6 +763,9 @@ internal sealed partial class InteractiveSession : IDisposable
 
     /// <summary>Whether composition finished; false while the session composes.</summary>
     internal bool IsComposed => _composed;
+
+    /// <summary>The exit code composition's failure implies; 0 when the session ran normally.</summary>
+    internal int ExitCode { get; private set; }
 
     /// <summary>Whether a turn (or its auto-run chain) is currently active.</summary>
     internal bool IsRunning => _turnActive;

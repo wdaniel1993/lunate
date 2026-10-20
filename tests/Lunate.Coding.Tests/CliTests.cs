@@ -81,6 +81,54 @@ public sealed class CliTests
     }
 
     [Fact]
+    public void Run_with_an_unknown_tool_in_interactive_mode_is_a_usage_error()
+    {
+        using var temp = new TempDirectory();
+        var client = new ScriptedChatClient();
+        var factory = new FakeChatClientFactory(client);
+        var console = new ScriptedConsoleIO { IsInteractive = true };
+        using var diagnostics = new StringWriter();
+        var options = new InteractiveSessionOptions
+        {
+            Factory = factory,
+            SettingsPath = temp.File("settings.json"),
+            ModelsPath = temp.File("models.json"),
+            AuthPath = temp.File("auth.json"),
+            SessionDirectory = temp.File("sessions"),
+            WorkingDirectory = temp.Root,
+            HistoryPath = temp.File("history"),
+            Environment = PrintModeTestSupport.Environment(),
+            Console = console,
+            Scheduler = new ManualScheduler(),
+            Scrollback = new TestConsole(),
+            Diagnostics = diagnostics,
+            Extensions = TestExtensionSeams.Empty(temp),
+            McpConfigPath = temp.File("global-mcp.json"),
+            McpAgentsConfigPath = temp.File("agents-mcp.json"),
+        };
+        using var output = new StringWriter();
+        using var error = new StringWriter();
+
+        var exitCode = Cli.Run(
+            ["--tools", "nope"],
+            output,
+            error,
+            TestContext.Current.CancellationToken,
+            interactiveOptions: options
+        );
+
+        Assert.Equal(2, exitCode);
+        Assert.Contains(
+            "--tools names unknown tools: 'nope'",
+            diagnostics.ToString(),
+            StringComparison.Ordinal
+        );
+        Assert.Contains("available: read, write", diagnostics.ToString(), StringComparison.Ordinal);
+        Assert.Null(factory.CreatedModel);
+        Assert.Empty(client.Requests);
+    }
+
+    [Fact]
     public void Run_with_help_documents_the_interactive_entry_and_commands()
     {
         using var writer = new StringWriter();

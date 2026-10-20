@@ -259,7 +259,7 @@ internal static class Cli
 
         using var session = new InteractiveSession(resolved);
         session.RunAsync(ct).GetAwaiter().GetResult();
-        return 0;
+        return session.ExitCode;
     }
 
     private static int Discover(string target, TextWriter output, TextWriter errors)
