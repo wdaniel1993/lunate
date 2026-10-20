@@ -7,6 +7,37 @@ public sealed class SessionListTests
     private static readonly DateTimeOffset Start = new(2026, 10, 6, 12, 0, 0, TimeSpan.Zero);
 
     [Fact]
+    public void Summaries_with_the_same_core_fields_are_equal_regardless_of_title()
+    {
+        var first = new SessionSummary("s_1", "/work/s_1.jsonl", Start, Start.AddMinutes(1))
+        {
+            Title = "Refactor the parser",
+        };
+        var second = new SessionSummary("s_1", "/work/s_1.jsonl", Start, Start.AddMinutes(1))
+        {
+            Title = "Fix the session picker",
+        };
+
+        Assert.Equal(first, second);
+        Assert.True(first == second);
+        Assert.Equal(first.GetHashCode(), second.GetHashCode());
+    }
+
+    [Fact]
+    public void Changing_a_core_field_makes_summaries_unequal()
+    {
+        var summary = new SessionSummary("s_1", "/work/s_1.jsonl", Start, Start.AddMinutes(1))
+        {
+            Title = "same title",
+        };
+
+        Assert.NotEqual(summary, summary with { Id = "s_2" });
+        Assert.NotEqual(summary, summary with { Path = "/work/other.jsonl" });
+        Assert.NotEqual(summary, summary with { Created = Start.AddMinutes(1) });
+        Assert.NotEqual(summary, summary with { Modified = Start.AddMinutes(2) });
+    }
+
+    [Fact]
     public void An_empty_or_missing_directory_lists_nothing()
     {
         using var temp = new TempDirectory();

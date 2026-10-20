@@ -10,6 +10,28 @@ public sealed record SessionSummary(
 {
     /// <summary>The title from the sidecar beside the session file; null when it has none.</summary>
     public string? Title { get; init; }
+
+    /// <summary>
+    /// Equality ignores <see cref="Title"/>: it is presentation data read from a sidecar, not part
+    /// of the session's identity (id, path and the file's timestamps).
+    /// </summary>
+    public bool Equals(SessionSummary? other) =>
+        other is not null
+        && string.Equals(Id, other.Id, StringComparison.Ordinal)
+        && string.Equals(Path, other.Path, StringComparison.Ordinal)
+        && Created.Equals(other.Created)
+        && Modified.Equals(other.Modified);
+
+    /// <inheritdoc />
+    public override int GetHashCode()
+    {
+        var hash = new HashCode();
+        hash.Add(Id, StringComparer.Ordinal);
+        hash.Add(Path, StringComparer.Ordinal);
+        hash.Add(Created);
+        hash.Add(Modified);
+        return hash.ToHashCode();
+    }
 };
 
 public sealed partial class Session
