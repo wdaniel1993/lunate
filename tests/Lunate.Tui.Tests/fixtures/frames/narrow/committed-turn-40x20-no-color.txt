@@ -14,5 +14,6 @@ rer.cs lines 4–5 (match: exact)
 -    _builder.Append(text);
 +    _builder.AppendLine(text);
 \x1b[2m }\x1b[0m
+────────────────────────────────────────
 > Ask anything, / for commands
 deepseek-v4.1-flash · 0%

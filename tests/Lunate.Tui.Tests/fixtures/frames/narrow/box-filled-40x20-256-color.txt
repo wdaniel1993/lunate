@@ -1,3 +1,4 @@
-> Refactor the autocomplete list rendere
+────────────────────────────────────────
+\x1b[38;5;110m>\x1b[0m Refactor the autocomplete list rendere
   r.
 deepseek-v4.1-flash · 0%

@@ -1,0 +1,8 @@
+  \x1b[38;5;80m/compact\x1b[0m
+  /context
+  /help
+  /new
+  /resume
+────────────────────────────────────────
+\x1b[38;5;110m>\x1b[0m /
+deepseek-v4.1-flash · 0%

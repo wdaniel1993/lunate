@@ -6,7 +6,7 @@ namespace Lunate.Tui.Tests;
 /// The input box and autocomplete list's committed snapshots (change <c>input-autocomplete</c>,
 /// tasks 3.1/3.2/4.1): the empty placeholder, a filled line, a grown box that scrolls past eight
 /// lines, command and file rows with their selection, and the closed no-match state — at
-/// 120/80/50 columns in every colour mode the capability helper selects. Regenerate deliberately
+/// 120/80/60/50/40 columns in every colour mode the capability helper selects. Regenerate deliberately
 /// with <c>LUNATE_TUI_UPDATE_GOLDENS=1 dotnet test --project tests/Lunate.Tui.Tests</c>.
 /// </summary>
 public sealed class InputFrameGoldenTests
@@ -21,7 +21,7 @@ public sealed class InputFrameGoldenTests
             "input"
         );
 
-    private static readonly int[] Widths = [120, 80, 50];
+    private static readonly int[] Widths = [120, 80, 60, 50, 40];
 
     private static readonly string[] Modes = ["truecolor", "256-color", "16-color", "no-color"];
 

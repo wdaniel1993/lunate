@@ -17,6 +17,12 @@ internal static class LivePalette
     /// <summary>The visual spec's dark accent value.</summary>
     internal const string AccentHex = "#5fd7d7";
 
+    /// <summary>
+    /// The visual spec's dark user value. The input's prompt marker and placeholder reuse it,
+    /// so the live input reads in the same tone as the committed user echo.
+    /// </summary>
+    internal const string PromptHex = "#87afd7";
+
     /// <summary>The warning tone used by the approval headline.</summary>
     internal const string WarningHex = "#ffff00";
 
@@ -26,6 +32,9 @@ internal static class LivePalette
     private const string AccentTrueColor = "\u001b[38;2;95;215;215m";
     private const string AccentEightBit = "\u001b[38;5;80m";
     private const string AccentSixteenColor = "\u001b[36m";
+    private const string PromptTrueColor = "\u001b[38;2;135;175;215m";
+    private const string PromptEightBit = "\u001b[38;5;110m";
+    private const string PromptSixteenColor = "\u001b[34m";
     private const string WarningTrueColor = "\u001b[38;2;255;255;0m";
     private const string WarningEightBit = "\u001b[38;5;11m";
     private const string WarningSixteenColor = "\u001b[93m";
@@ -43,6 +52,10 @@ internal static class LivePalette
     /// <summary>Wraps one span in the accent tone; plain text under NO_COLOR.</summary>
     internal static string Accent(string text, ColorSystemSupport color) =>
         Wrap(text, color, AccentTrueColor, AccentEightBit, AccentSixteenColor);
+
+    /// <summary>Wraps one span in the prompt (user) tone; plain text under NO_COLOR.</summary>
+    internal static string Prompt(string text, ColorSystemSupport color) =>
+        Wrap(text, color, PromptTrueColor, PromptEightBit, PromptSixteenColor);
 
     /// <summary>Wraps one span in the warning tone; plain text under NO_COLOR.</summary>
     internal static string Warning(string text, ColorSystemSupport color) =>

@@ -16,7 +16,12 @@ public sealed class LiveAreaThinkingRendererTests
         var frame = LiveAreaRenderer.Render(WithThinking("reasoning text", elapsed: 3));
 
         Assert.Equal(
-            ["⠹ thinking… 3s", "reasoning text", "> Ask anything, / for commands"],
+            [
+                "⠹ thinking… 3s",
+                "reasoning text",
+                new string('─', 40),
+                "> Ask anything, / for commands",
+            ],
             frame.Lines
         );
     }
@@ -26,7 +31,10 @@ public sealed class LiveAreaThinkingRendererTests
     {
         var frame = LiveAreaRenderer.Render(WithThinking(string.Empty, elapsed: 1));
 
-        Assert.Equal(["⠹ thinking… 1s", "> Ask anything, / for commands"], frame.Lines);
+        Assert.Equal(
+            ["⠹ thinking… 1s", new string('─', 40), "> Ask anything, / for commands"],
+            frame.Lines
+        );
     }
 
     [Fact]
@@ -40,10 +48,16 @@ public sealed class LiveAreaThinkingRendererTests
         var frame = LiveAreaRenderer.Render(state);
 
         Assert.Equal(
-            ["⠹ thinking… 1s", "reasoning text", "> Ask anything, / for commands", "m"],
+            [
+                "⠹ thinking… 1s",
+                "reasoning text",
+                new string('─', 40),
+                "> Ask anything, / for commands",
+                "m",
+            ],
             frame.Lines
         );
-        Assert.Equal(2, frame.CursorRow);
+        Assert.Equal(3, frame.CursorRow);
     }
 
     [Fact]
@@ -53,10 +67,11 @@ public sealed class LiveAreaThinkingRendererTests
 
         var frame = LiveAreaRenderer.Render(WithThinking(text, elapsed: 2));
 
-        Assert.Equal(13, frame.Lines.Count);
+        Assert.Equal(14, frame.Lines.Count);
         Assert.Equal("⠹ thinking… 2s", frame.Lines[0]);
         Assert.Equal("thought 10", frame.Lines[1]);
-        Assert.Equal("thought 20", frame.Lines[^2]);
+        Assert.Equal("thought 20", frame.Lines[^3]);
+        Assert.Equal(new string('─', 40), frame.Lines[^2]);
         Assert.Equal("> Ask anything, / for commands", frame.Lines[^1]);
     }
 
@@ -68,7 +83,13 @@ public sealed class LiveAreaThinkingRendererTests
         );
 
         Assert.Equal(
-            ["⠹ thinking… 0s", "01234567890123456789", "0123456789", "> Ask anything, / fo"],
+            [
+                "⠹ thinking… 0s",
+                "01234567890123456789",
+                "0123456789",
+                new string('─', 20),
+                "> Ask anything, / fo",
+            ],
             frame.Lines
         );
     }
@@ -98,7 +119,12 @@ public sealed class LiveAreaThinkingRendererTests
         );
 
         Assert.Equal(
-            ["⠹ thinking… 0s", "reasoning text", "> Ask anything, / for commands"],
+            [
+                "⠹ thinking… 0s",
+                "reasoning text",
+                new string('─', 40),
+                "> Ask anything, / for commands",
+            ],
             frame.Lines
         );
         Assert.Equal(frame.Lines, colored.Lines.Select(StripSgr));

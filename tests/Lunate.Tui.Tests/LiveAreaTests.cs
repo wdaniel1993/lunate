@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Microsoft.Reactive.Testing;
 using Spectre.Console;
 
@@ -73,7 +74,7 @@ public sealed class LiveAreaTests
         Advance(scheduler, 33);
 
         Assert.Equal(2, console.Writes.Count);
-        Assert.Contains("> z", console.Writes[1], StringComparison.Ordinal);
+        Assert.Contains("> z", Visible(console.Writes[1]), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -88,7 +89,7 @@ public sealed class LiveAreaTests
         area.PostKey(new KeyEvent(KeyKind.Backspace, null, false, false, false));
         Advance(scheduler, 33);
 
-        Assert.Contains("> ab", console.Writes[^1], StringComparison.Ordinal);
+        Assert.Contains("> ab", Visible(console.Writes[^1]), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -348,10 +349,13 @@ public sealed class LiveAreaTests
         area.PostKey(Char("y"));
         Advance(scheduler, 33);
 
-        Assert.Contains("> xy", console.Writes[^1], StringComparison.Ordinal);
+        Assert.Contains("> xy", Visible(console.Writes[^1]), StringComparison.Ordinal);
     }
 
     private static string Text(FakeConsoleIO console) => string.Concat(console.Writes);
+
+    private static string Visible(string text) =>
+        Regex.Replace(text, "\u001b\\[[0-9;]*m", string.Empty);
 
     private static KeyEvent Char(string text) => new(KeyKind.Character, text, false, false, false);
 

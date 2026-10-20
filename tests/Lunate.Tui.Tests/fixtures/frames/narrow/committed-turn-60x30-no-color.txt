@@ -13,5 +13,7 @@ edited src/Lunate.Tui/ToolBlocks/ToolBlockRenderer.cs lines
 -    _builder.Append(text);
 +    _builder.AppendLine(text);
 \x1b[2m }\x1b[0m
+────────────────────────────────────────────────────────────
 > Ask anything, / for commands
+────────────────────────────────────────────────────────────
 deepseek-v4.1-flash · 2.1k/1.0M (0%) · ~/dev/lunate · main

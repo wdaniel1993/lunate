@@ -3,5 +3,6 @@
 \x1b[38;5;140mmpty and whitespace-only titles must throw Argumen\x1b[0m
 \x1b[38;5;140mtException. The check belongs at the top of the me\x1b[0m
 \x1b[38;5;140mthod, before the list mutates.\x1b[0m
-> \x1b[38;5;245mAsk anything, / for commands\x1b[0m
+──────────────────────────────────────────────────
+\x1b[38;5;110m> Ask anything, / for commands\x1b[0m
 deepseek-v4.1-flash · 0%

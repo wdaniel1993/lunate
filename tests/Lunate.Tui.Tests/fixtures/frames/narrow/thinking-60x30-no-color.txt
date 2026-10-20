@@ -2,5 +2,7 @@
 We need to add validation to TodoList.Add. Null, empty and w
 hitespace-only titles must throw ArgumentException. The chec
 k belongs at the top of the method, before the list mutates.
+────────────────────────────────────────────────────────────
 > Ask anything, / for commands
+────────────────────────────────────────────────────────────
 deepseek-v4.1-flash · 2.1k/1.0M (0%) · ~/dev/lunate · main

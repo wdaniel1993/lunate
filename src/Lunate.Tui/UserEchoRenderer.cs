@@ -13,7 +13,7 @@ namespace Lunate.Tui;
 internal sealed class UserEchoRenderer
 {
     /// <summary>The visual spec's dark user value; the theme card moves this behind its resolver.</summary>
-    internal const string DarkHex = "#87afd7";
+    internal const string DarkHex = LivePalette.PromptHex;
 
     private const string Prefix = "> ";
     private const string Indent = "  ";

@@ -18,8 +18,11 @@ internal static class LiveAreaRenderer
 
     internal const string Placeholder = "Ask anything, / for commands";
 
-    /// <summary>The narrowest terminal that gets the input box's rules (design D9).</summary>
-    internal const int RuleMinWidth = 80;
+    /// <summary>
+    /// The narrowest terminal that keeps the rule below the input: the upper rule is always
+    /// drawn, so the input never loses its box; only the compact band drops the lower rule.
+    /// </summary>
+    internal const int LowerRuleMinWidth = WidthBands.NarrowWidth;
 
     private const char UnicodeRule = '─';
     private const char AsciiRule = '-';
@@ -52,7 +55,7 @@ internal static class LiveAreaRenderer
             state.Loading is { Length: > 0 } loading ? loading
             : state.Footer is null ? null
             : StatusFooterRenderer.PlainText(state.Footer, width, state.FooterWidgets);
-        int ruleLines = HasRules(width) ? 1 : 0;
+        int lowerRuleLines = HasLowerRule(width) ? 1 : 0;
         int preInputLines =
             thinkingLines.Count
             + (activityLine is null ? 0 : 1)
@@ -62,13 +65,16 @@ internal static class LiveAreaRenderer
             + trustLines.Count
             + pickerLines.Count
             + autocompleteLines.Count
-            + ruleLines;
-        // The budget carries both rules and the footer, so the tail shares what is left of the
+            // The upper rule is always drawn, so it belongs to the fixed prefix.
+            + 1;
+        // The budget carries the rules and the footer, so the tail shares what is left of the
         // eight-line live area; the input box itself always gets its full eight lines.
-        int fixedLines = preInputLines + ruleLines + (footerLine is null ? 0 : 1);
+        int fixedLines = preInputLines + lowerRuleLines + (footerLine is null ? 0 : 1);
         var input = InputLine.Layout(state.Input, width, MaxLines);
         IReadOnlyList<string> inputLines =
-            state.Input.Text.Length == 0 ? [PlaceholderLine(width, state.Color)] : input.Lines;
+            state.Input.Text.Length == 0
+                ? [PlaceholderLine(width, state.Color)]
+                : PromptLines(input.Lines, state.Color);
         var tail = TailLines(
             state.TailText,
             // The picker is modal: while it is open it owns the area above the input.
@@ -116,14 +122,10 @@ internal static class LiveAreaRenderer
         // The autocomplete list sits between the transient state and the upper rule (design D1).
         lines.AddRange(autocompleteLines);
 
-        if (ruleLines == 1)
-        {
-            lines.Add(RuleLine(width, state.Unicode));
-        }
-
+        lines.Add(RuleLine(width, state.Unicode));
         lines.AddRange(inputLines);
 
-        if (ruleLines == 1)
+        if (lowerRuleLines == 1)
         {
             lines.Add(RuleLine(width, state.Unicode));
         }
@@ -137,7 +139,7 @@ internal static class LiveAreaRenderer
         // A short terminal caps the frame: trim the transient prefix (tail first, then thinking
         // and the other state), then an approval panel's detail before its headline, never the
         // box rules, input, footer or question. The cursor follows the lines above the input.
-        int boxLines = inputLines.Count + (ruleLines * 2) + (footerLine is null ? 0 : 1);
+        int boxLines = inputLines.Count + 1 + lowerRuleLines + (footerLine is null ? 0 : 1);
         int transientLines = lines.Count - boxLines;
         LiveAreaTrim.Apply(
             lines,
@@ -151,7 +153,7 @@ internal static class LiveAreaRenderer
         return new RenderedFrame(lines, cursorRow, input.CursorColumn);
     }
 
-    private static bool HasRules(int width) => width >= RuleMinWidth;
+    private static bool HasLowerRule(int width) => width >= LowerRuleMinWidth;
 
     private static string RuleLine(int width, bool unicode) =>
         new(unicode ? UnicodeRule : AsciiRule, width);
@@ -160,7 +162,34 @@ internal static class LiveAreaRenderer
     {
         string prompt = CellText.Clip("> ", width);
         string text = CellText.Clip(Placeholder, Math.Max(0, width - CellText.Width(prompt)));
-        return prompt + LivePalette.Muted(text, color);
+        // The whole line carries the prompt tone, so an empty input still reads as something
+        // to type into rather than as a line of output.
+        return LivePalette.Prompt(prompt + text, color);
+    }
+
+    /// <summary>
+    /// Paints the <c>&gt;</c> marker of the first visible input line in the prompt tone; the
+    /// typed text and the continuation indent stay plain, matching the committed user echo.
+    /// </summary>
+    private static IReadOnlyList<string> PromptLines(
+        IReadOnlyList<string> lines,
+        ColorSystemSupport color
+    )
+    {
+        if (color == ColorSystemSupport.NoColors)
+        {
+            return lines;
+        }
+
+        var styled = new List<string>(lines.Count);
+        foreach (string line in lines)
+        {
+            styled.Add(
+                line.StartsWith('>') ? LivePalette.Prompt(line[..1], color) + line[1..] : line
+            );
+        }
+
+        return styled;
     }
 
     private static string ThinkingLabel(int elapsedSeconds) =>
