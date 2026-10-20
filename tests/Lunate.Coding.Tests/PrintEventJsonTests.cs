@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Lunate.Agent;
 using Microsoft.Extensions.AI;
 
@@ -113,6 +114,79 @@ public sealed class PrintEventJsonTests
     )
     {
         Assert.Equal(expected, PrintEventJson.Serialize(agentEvent));
+    }
+
+    [Fact]
+    public void Usage_with_provider_cache_counts_adds_read_and_write_fields_next_to_the_unchanged_usage_object()
+    {
+        var usage = new UsageDetails
+        {
+            InputTokenCount = 1500,
+            OutputTokenCount = 50,
+            TotalTokenCount = 1550,
+            CachedInputTokenCount = 1200,
+            AdditionalCounts = new AdditionalPropertiesDictionary<long>
+            {
+                ["CacheCreationInputTokens"] = 300,
+            },
+        };
+
+        Assert.Equal(
+            """{"type":"usage_updated","runId":"run_1","usage":{"inputTokenCount":1500,"outputTokenCount":50,"totalTokenCount":1550,"cachedInputTokenCount":1200,"additionalCounts":{"CacheCreationInputTokens":300}},"cacheReadTokens":1200,"cacheWriteTokens":300}""",
+            PrintEventJson.Serialize(new UsageUpdated("run_1", usage))
+        );
+    }
+
+    [Theory]
+    [InlineData(1200L, null)]
+    [InlineData(null, 300L)]
+    [InlineData(0L, null)]
+    [InlineData(null, 0L)]
+    [InlineData(0L, 0L)]
+    public void Usage_omits_a_cache_count_the_provider_did_not_report(
+        long? cacheRead,
+        long? cacheWrite
+    )
+    {
+        var usage = new UsageDetails
+        {
+            InputTokenCount = 1500,
+            OutputTokenCount = 50,
+            TotalTokenCount = 1550,
+            CachedInputTokenCount = cacheRead,
+        };
+        if (cacheWrite is { } write)
+        {
+            usage.AdditionalCounts = new AdditionalPropertiesDictionary<long>
+            {
+                ["CacheCreationInputTokens"] = write,
+            };
+        }
+
+        using JsonDocument line = JsonDocument.Parse(
+            PrintEventJson.Serialize(new UsageUpdated("run_1", usage))
+        );
+        JsonElement root = line.RootElement;
+
+        Assert.Equal(cacheRead is > 0, root.TryGetProperty("cacheReadTokens", out _));
+        Assert.Equal(cacheWrite is > 0, root.TryGetProperty("cacheWriteTokens", out _));
+        if (cacheRead is > 0)
+        {
+            Assert.Equal(cacheRead.Value, root.GetProperty("cacheReadTokens").GetInt64());
+        }
+
+        if (cacheWrite is > 0)
+        {
+            Assert.Equal(cacheWrite.Value, root.GetProperty("cacheWriteTokens").GetInt64());
+        }
+
+        if (cacheRead is 0)
+        {
+            Assert.Equal(
+                0,
+                root.GetProperty("usage").GetProperty("cachedInputTokenCount").GetInt64()
+            );
+        }
     }
 
     [Fact]

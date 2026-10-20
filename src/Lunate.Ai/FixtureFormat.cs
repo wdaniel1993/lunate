@@ -12,6 +12,7 @@ internal static class FixtureFormat
 
     private const string HeaderType = "header";
     private const string ExchangeType = "exchange";
+    private const string ContentCacheControlKey = "anthropic:cache_control";
 
     internal static JsonSerializerOptions JsonOptions { get; } =
         new(AIJsonUtilities.DefaultOptions)
@@ -43,7 +44,8 @@ internal static class FixtureFormat
     /// <summary>
     /// Computes the digest that identifies a request: the messages, the model id and the tool names.
     /// Tool descriptions and schemas are deliberately outside the digest, so presentation changes do
-    /// not invalidate a fixture (revisit if it bites).
+    /// not invalidate a fixture (revisit if it bites). Cache breakpoints are request-local metadata,
+    /// so they are stripped before hashing: recording and replay stay unaffected by them.
     /// </summary>
     internal static string ComputeRequestDigest(
         IEnumerable<ChatMessage> messages,
@@ -51,13 +53,52 @@ internal static class FixtureFormat
     )
     {
         var input = new DigestInput(
-            [.. messages],
+            DigestMessages(messages),
             options?.ModelId,
             options?.Tools is { } tools ? [.. tools.Select(static tool => tool.Name)] : []
         );
         byte[] json = JsonSerializer.SerializeToUtf8Bytes(input, JsonOptions);
         return Convert.ToHexStringLower(SHA256.HashData(json));
     }
+
+    private static List<ChatMessage> DigestMessages(IEnumerable<ChatMessage> messages) =>
+        [.. messages.Select(WithoutCacheControl)];
+
+    private static ChatMessage WithoutCacheControl(ChatMessage message)
+    {
+        if (message.Contents.All(content => !HasCacheControl(content)))
+        {
+            return message;
+        }
+
+        ChatMessage copy = message.Clone();
+        copy.Contents = [.. message.Contents.Select(WithoutCacheControl)];
+        return copy;
+    }
+
+    private static AIContent WithoutCacheControl(AIContent content)
+    {
+        if (content.AdditionalProperties is not { } properties || !HasCacheControl(content))
+        {
+            return content;
+        }
+
+        if (AnthropicPromptCache.CopyContent(content) is not { } copy)
+        {
+            return content;
+        }
+
+        List<KeyValuePair<string, object?>> kept =
+        [
+            .. properties.Where(entry => entry.Key != ContentCacheControlKey),
+        ];
+        copy.AdditionalProperties =
+            kept.Count == 0 ? null : new AdditionalPropertiesDictionary(kept);
+        return copy;
+    }
+
+    private static bool HasCacheControl(AIContent content) =>
+        content.AdditionalProperties?.ContainsKey(ContentCacheControlKey) == true;
 
     internal static FixtureDocument ReadFile(string path)
     {

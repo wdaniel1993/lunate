@@ -184,8 +184,11 @@ public sealed class InteractiveSessionAutocompleteTests
 
         host.Console.SendText("e");
         await host.WaitUntilAsync(() => host.Session.Input.Text == "/e");
+        // Wait on the assert's own condition: the list re-filters and the selection resets in
+        // separate steps, so waiting only for the items reads a stale index on a slow runner.
         await host.WaitUntilAsync(() =>
             host.Session.Autocomplete?.Items.All(item => item.Text != "/compact") == true
+            && host.Session.Autocomplete.SelectedIndex == 0
         );
 
         Assert.Equal(0, host.Session.Autocomplete?.SelectedIndex);

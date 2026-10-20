@@ -34,6 +34,9 @@ internal static class LayeringChecker
             ("Lunate.Coding", "Lunate.Roslyn"),
             ("Lunate.Coding", "Lunate.Tui"),
             ("Lunate.Agent.Tests", "Lunate.Agent"),
+            // The prefix-stability test composes the real Coding system prompt to pin the
+            // cacheable prefix; the loop under test is still Agent.
+            ("Lunate.Agent.Tests", "Lunate.Coding"),
             ("Lunate.Ai.Tests", "Lunate.Ai"),
             ("Lunate.Coding.Tests", "Lunate.Coding"),
             ("Lunate.Coding.Tests", "HelloExtension"),

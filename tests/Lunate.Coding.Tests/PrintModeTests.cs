@@ -66,6 +66,47 @@ public sealed class PrintModeTests
     }
 
     [Fact]
+    public async Task A_run_that_reports_cache_usage_writes_only_the_answer_to_stdout()
+    {
+        using var temp = new TempDirectory();
+        var client = new ScriptedChatClient().Enqueue(
+            new ChatResponseUpdate(
+                ChatRole.Assistant,
+                [
+                    new UsageContent(
+                        new UsageDetails
+                        {
+                            InputTokenCount = 1500,
+                            OutputTokenCount = 50,
+                            TotalTokenCount = 1550,
+                            CachedInputTokenCount = 1200,
+                            AdditionalCounts = new AdditionalPropertiesDictionary<long>
+                            {
+                                ["CacheCreationInputTokens"] = 300,
+                            },
+                        }
+                    ),
+                ]
+            ),
+            Scripts.Text("Hello"),
+            Scripts.Stop()
+        );
+        PrintModeOptions options = PrintModeTestSupport.BaseOptions(
+            temp,
+            new FakeChatClientFactory(client)
+        ) with
+        {
+            Prompt = "Hi",
+        };
+
+        (int exitCode, string output, string errors) = await PrintModeTestSupport.RunAsync(options);
+
+        Assert.Equal(0, exitCode);
+        Assert.Equal("Hello", output);
+        Assert.Empty(errors);
+    }
+
+    [Fact]
     public async Task Json_mode_streams_every_event_in_arrival_order_with_the_session_id()
     {
         using var temp = new TempDirectory();

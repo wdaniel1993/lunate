@@ -13,6 +13,7 @@ public sealed class InteractiveSessionCommandTests
     {
         using var host = new InteractiveSessionHost();
         Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
 
         host.Console.SendText("/new");
         host.Console.SendEnter();
@@ -57,12 +58,19 @@ public sealed class InteractiveSessionCommandTests
     [Fact]
     public async Task Help_lists_every_command_grouped_with_its_description()
     {
-        using var host = new InteractiveSessionHost();
+        // A catalog model plus a scripted client keeps composition independent of the
+        // developer's settings and of any provider key.
+        using var host = new InteractiveSessionHost(
+            launch: new LaunchOptions { Model = "gpt-4o-mini" },
+            chat: new ScriptedChatClient()
+        );
         Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
 
         host.Console.SendText("/help");
         host.Console.SendEnter();
-        await WaitForScrollbackAsync(host, "extensions");
+        // "extensions" also appears in the welcome footer; wait on text only /help prints.
+        await WaitForScrollbackAsync(host, "/compact  — compact the conversation now");
 
         Assert.Contains(
             """
@@ -102,6 +110,7 @@ public sealed class InteractiveSessionCommandTests
     {
         using var host = new InteractiveSessionHost();
         Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
 
         host.Console.SendText("/nope");
         host.Console.SendEnter();
@@ -122,6 +131,7 @@ public sealed class InteractiveSessionCommandTests
         runner.Register("ext.test", consumer);
         using var host = new InteractiveSessionHost(hooks: runner);
         Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
 
         host.Console.SendText("/new");
         host.Console.SendEnter();
@@ -145,6 +155,7 @@ public sealed class InteractiveSessionCommandTests
         host.Client.Enqueue(Scripts.Text("never"), Scripts.Stop());
         host.Client.Gate(1);
         Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
 
         host.Console.SendText("hi");
         host.Console.SendEnter();
@@ -189,6 +200,7 @@ public sealed class InteractiveSessionCommandTests
     {
         using var host = new InteractiveSessionHost();
         Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
 
         host.Console.SendText("/compact");
         host.Console.SendEnter();
@@ -213,6 +225,7 @@ public sealed class InteractiveSessionCommandTests
         host.Client.Enqueue(Scripts.Text("a2"), Scripts.Stop());
         host.Client.Enqueue(Scripts.Text("a3"), Scripts.Stop());
         Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
 
         host.Console.SendText("one");
         host.Console.SendEnter();
@@ -259,6 +272,7 @@ public sealed class InteractiveSessionCommandTests
     {
         using var host = new InteractiveSessionHost();
         Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
 
         host.Console.SendText("/new");
         host.Console.SendEnter();
@@ -277,6 +291,7 @@ public sealed class InteractiveSessionCommandTests
         using var host = new InteractiveSessionHost();
         host.Console.Size = new Lunate.Tui.ConsoleSize(400, 24);
         Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
 
         host.Console.SendText("/context");
         host.Console.SendEnter();
@@ -290,6 +305,37 @@ public sealed class InteractiveSessionCommandTests
         );
         Assert.Empty(host.Client.Requests);
 
+        host.Console.SendText("/quit");
+        host.Console.SendEnter();
+        await run;
+    }
+
+    [Theory]
+    [InlineData(1200L, 300L, "cache: read 1.2k, write 300")]
+    [InlineData(1200L, null, "cache: read 1.2k")]
+    [InlineData(null, 300L, "cache: write 300")]
+    public async Task Context_shows_each_cache_count_the_provider_reported(
+        long? cacheRead,
+        long? cacheWrite,
+        string expected
+    )
+    {
+        using var host = new InteractiveSessionHost();
+        host.Console.Size = new Lunate.Tui.ConsoleSize(400, 24);
+        host.Client.Enqueue(
+            CacheUsage(cacheRead, cacheWrite),
+            Scripts.Text("done"),
+            Scripts.Stop()
+        );
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+
+        await RunOneTurnAsync(host);
+        host.Console.SendText("/context");
+        host.Console.SendEnter();
+        await WaitForFrameAsync(host, expected);
+
+        Assert.Contains("15/128.0k", host.LastFrame, StringComparison.Ordinal);
         host.Console.SendText("/quit");
         host.Console.SendEnter();
         await run;
@@ -311,7 +357,36 @@ public sealed class InteractiveSessionCommandTests
         Assert.Equal("Refactor the parser", SessionTitle.Read(path));
         Assert.Equal(before, File.ReadAllBytes(path));
         Assert.Empty(host.Client.Requests);
+        host.Console.SendText("/quit");
+        host.Console.SendEnter();
+        await run;
+    }
 
+    [Theory]
+    [InlineData(null, null)]
+    [InlineData(0L, 0L)]
+    public async Task Context_omits_the_cache_segment_when_the_provider_reported_no_cache_counts(
+        long? cacheRead,
+        long? cacheWrite
+    )
+    {
+        using var host = new InteractiveSessionHost();
+        host.Console.Size = new Lunate.Tui.ConsoleSize(400, 24);
+        host.Client.Enqueue(
+            CacheUsage(cacheRead, cacheWrite),
+            Scripts.Text("done"),
+            Scripts.Stop()
+        );
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+
+        await RunOneTurnAsync(host);
+        host.Console.SendText("/context");
+        host.Console.SendEnter();
+        await WaitForFrameAsync(host, "subagent");
+
+        Assert.Contains("15/128.0k", host.LastFrame, StringComparison.Ordinal);
+        Assert.DoesNotContain("cache:", host.LastFrame, StringComparison.Ordinal);
         host.Console.SendText("/quit");
         host.Console.SendEnter();
         await run;
@@ -336,6 +411,33 @@ public sealed class InteractiveSessionCommandTests
         host.Console.SendText("/quit");
         host.Console.SendEnter();
         await run;
+    }
+
+    private static async Task RunOneTurnAsync(InteractiveSessionHost host)
+    {
+        host.Console.SendText("hi");
+        host.Console.SendEnter();
+        await host.Client.WaitForCallAsync(1);
+        await host.WaitUntilAsync(() => !host.Session.IsRunning);
+    }
+
+    private static ChatResponseUpdate CacheUsage(long? cacheRead, long? cacheWrite)
+    {
+        var usage = new UsageDetails
+        {
+            InputTokenCount = 10,
+            OutputTokenCount = 5,
+            CachedInputTokenCount = cacheRead,
+        };
+        if (cacheWrite is { } write)
+        {
+            usage.AdditionalCounts = new AdditionalPropertiesDictionary<long>
+            {
+                ["CacheCreationInputTokens"] = write,
+            };
+        }
+
+        return new ChatResponseUpdate(ChatRole.Assistant, [new UsageContent(usage)]);
     }
 
     [Fact]

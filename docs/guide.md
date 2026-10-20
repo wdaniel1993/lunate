@@ -191,6 +191,12 @@ public sealed class ReplayChatClient(string fixturePath) : IChatClient { }
 - `StreamAccumulator` (internal): one `DelegatingChatClient` between logging and the recorder that assembles streamed function-call argument fragments per call id, so consumers only ever see complete calls; recordings stay raw and replay still passes through the accumulator.
 - `ProviderErrors`: classifies exceptions as retryable or not.
 
+**Prompt caching (Anthropic)**
+
+The Anthropic pipeline adds `AnthropicPromptCache`, an internal `DelegatingChatClient` below `AnthropicTurnMerge` and above the recorder/provider. It marks three breakpoints per request: the last system block, the last tool declaration, and the last content block of the latest message (the rolling breakpoint). Markers are request-local, so history and the registered tools are never mutated and the system/tool prefix stays byte-identical across turns; the client counts every marker on the outgoing request, including pre-existing ones, and rejects a request over the API's four-breakpoint limit. OpenAI caching is automatic, so that path carries no markers. See the ADR-0010 addendum.
+
+Cache usage is read from `UsageDetails`, not re-counted: reads from `CachedInputTokenCount`, writes from `AdditionalCounts["CacheCreationInputTokens"]`. `InputTokenCount` already includes both, so the token budget and the footer are unchanged. `/context` appends a `cache: read <n>, write <m>` segment for the positive counts the provider reported (a reported zero counts as unknown and is omitted), and `lunate -p --json` adds `cacheReadTokens`/`cacheWriteTokens` to `usage_updated` under the same rule.
+
 **How the references handle model catalogs (checked 2026-10)**
 
 - Pi: bundled catalog with an overlay refreshed from pi.dev (cached offline, `pi update --models`); `models.json` for compatible endpoints (static id list; `$ENV`/`!command` interpolation); real discovery is a provider-extension concern; llama.cpp gets a curated router integration.
