@@ -136,4 +136,4 @@ Additive. Existing invocations (`lunate`, `lunate -p ...`, `lunate --acp`, `trus
 - Should `--continue` also consider sessions whose header `cwd` is a parent of the current directory (running from a subdirectory)? Current answer: no, exact equality.
 - Pricing: add optional input/output pricing to `ModelInfo` (AI layer, catalog schema, public API) in a follow-up so `/session` can print cost? This change prints tokens only.
 - ACP: should a future `session/load` mapping reuse the store selection, or stay entirely editor-driven?
-- Spec placement: the single modified requirement is `agent-sessions`; `/name` and `/session` are TUI commands but their state is session state. Follow-up `tui` delta needed if the slash-command requirement should mention them.
+- Spec placement: the modified requirements are `agent-sessions` and the `tui` slash-command requirement; `/name` and `/session` are TUI commands whose state is session state, so the `tui` delta only lists them in the command set and leaves the behaviour to `agent-sessions`.
