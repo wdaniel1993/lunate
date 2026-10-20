@@ -17,6 +17,10 @@ public sealed class ModelCatalogTests
             Assert.Equal(128_000, mini.ContextWindow);
             Assert.True(mini.SupportsTools);
             Assert.Null(mini.Reasoning);
+            Assert.Null(mini.WireId);
+            Assert.Equal(16_384, mini.MaxOutput);
+            Assert.True(mini.SupportsVision);
+            Assert.Equal(new ModelPricing(0.15m, 0.6m, 0.075m), mini.Pricing);
 
             ModelInfo full = catalog.Find("gpt-4o")!;
             Assert.NotNull(full);
@@ -25,6 +29,10 @@ public sealed class ModelCatalogTests
             Assert.Equal(128_000, full.ContextWindow);
             Assert.True(full.SupportsTools);
             Assert.Null(full.Reasoning);
+            Assert.Null(full.WireId);
+            Assert.Equal(16_384, full.MaxOutput);
+            Assert.True(full.SupportsVision);
+            Assert.Equal(new ModelPricing(2.5m, 10m, 1.25m), full.Pricing);
 
             ModelInfo sonnet = catalog.Find("claude-sonnet-5-5")!;
             Assert.NotNull(sonnet);
@@ -33,6 +41,10 @@ public sealed class ModelCatalogTests
             Assert.Equal(1_000_000, sonnet.ContextWindow);
             Assert.True(sonnet.SupportsTools);
             Assert.Equal("budget", sonnet.Reasoning);
+            Assert.Null(sonnet.WireId);
+            Assert.Equal(128_000, sonnet.MaxOutput);
+            Assert.True(sonnet.SupportsVision);
+            Assert.Equal(new ModelPricing(2m, 10m, 0.1m, 2.5m), sonnet.Pricing);
 
             ModelInfo opus = catalog.Find("claude-opus-5-5")!;
             Assert.NotNull(opus);
@@ -41,6 +53,31 @@ public sealed class ModelCatalogTests
             Assert.Equal(1_000_000, opus.ContextWindow);
             Assert.True(opus.SupportsTools);
             Assert.Equal("budget", opus.Reasoning);
+            Assert.Null(opus.WireId);
+            Assert.Equal(128_000, opus.MaxOutput);
+            Assert.True(opus.SupportsVision);
+            Assert.Equal(new ModelPricing(4m, 20m, 0.2m, 5m), opus.Pricing);
+        }
+        finally
+        {
+            DeleteTempDirectory(directory);
+        }
+    }
+
+    [Fact]
+    public void Load_without_user_file_keeps_a_non_native_model_id_qualified()
+    {
+        string directory = CreateTempDirectory();
+        try
+        {
+            ModelCatalog catalog = ModelCatalog.Load(Path.Combine(directory, "missing.json"));
+
+            ModelInfo model = catalog.Find("openrouter/anthropic/claude-sonnet-5.5")!;
+            Assert.NotNull(model);
+            Assert.Equal("openrouter/anthropic/claude-sonnet-5.5", model.Id);
+            Assert.Equal("openrouter", model.Provider);
+            Assert.Equal("anthropic/claude-sonnet-5.5", model.WireId);
+            Assert.Null(catalog.Find("anthropic/claude-sonnet-5.5"));
         }
         finally
         {

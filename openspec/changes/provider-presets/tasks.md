@@ -18,7 +18,7 @@ pass.
       `--update-catalog --output`, supports a `--check` diff); regenerate
       `src/Lunate.Ai/models.json` (schema 2, source SHA-256, deterministic order, roughly 750
       entries).
-- [ ] 1.4 Update `tests/Lunate.Ai.Tests/ModelCatalogTests.cs` for the new fields and the schema 1/2
+- [x] 1.4 Update `tests/Lunate.Ai.Tests/ModelCatalogTests.cs` for the new fields and the schema 1/2
       rules, and add tests for provider config parsing, generated mapping, deterministic output,
       duplicate wire ids, fully/unpriced cost math and the four unchanged bare ids.
 - [ ] 1.5 `dotnet csharpier format .`; commit `feat(ai): generate a schema-2 model catalog`.
