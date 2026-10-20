@@ -75,7 +75,13 @@ public sealed class ModelCatalogTests
             Assert.Equal(42, model.ContextWindow);
             Assert.False(model.SupportsTools);
             Assert.Equal(1, catalog.Models.Count(candidate => candidate.Id == "gpt-4o-mini"));
-            Assert.Equal("gpt-4o-mini", catalog.Models[0].Id);
+            IReadOnlyList<ModelInfo> embedded = ModelCatalog
+                .Load(Path.Combine(directory, "missing.json"))
+                .Models;
+            int builtInPosition = embedded
+                .ToList()
+                .FindIndex(candidate => candidate.Id == "gpt-4o-mini");
+            Assert.Equal("gpt-4o-mini", catalog.Models[builtInPosition].Id);
         }
         finally
         {
@@ -248,7 +254,7 @@ public sealed class ModelCatalogTests
                 Path.Combine(directory, "does-not-exist.json")
             );
 
-            Assert.Equal(4, catalog.Models.Count);
+            Assert.Equal(746, catalog.Models.Count);
             Assert.Contains(catalog.Models, model => model.Id == "gpt-4o-mini");
             Assert.Contains(catalog.Models, model => model.Id == "gpt-4o");
             Assert.Contains(catalog.Models, model => model.Id == "claude-sonnet-5-5");

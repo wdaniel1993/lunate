@@ -13,7 +13,7 @@ pass.
       add `ModelPricing` and a culture-invariant cost helper; update `ModelCatalog` to schema 2 with
       read-side schema 1 acceptance and the optional managed cache
       (`~/.lunate/models.catalog.json`); update `PublicAPI.Unshipped.txt`.
-- [ ] 1.3 Add `ModelsDevCatalog` (the one models.dev → catalog mapper) and
+- [x] 1.3 Add `ModelsDevCatalog` (the one models.dev → catalog mapper) and
       `scripts/update-models.sh` (script version 1.0.0, reads the embedded config, calls
       `--update-catalog --output`, supports a `--check` diff); regenerate
       `src/Lunate.Ai/models.json` (schema 2, source SHA-256, deterministic order, roughly 750

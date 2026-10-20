@@ -121,13 +121,15 @@ public sealed class ModelCatalogSchemaTests
 
         ModelCatalog catalog = ModelCatalog.LoadLayered(managedFile, userFile);
 
+        IReadOnlyList<ModelInfo> embedded = ModelCatalog.LoadLayered(null, null).Models;
+        int builtInPosition = embedded.ToList().FindIndex(model => model.Id == "gpt-4o-mini");
         Assert.Equal(333, catalog.Find("gpt-4o-mini")!.ContextWindow);
         Assert.Equal(222, catalog.Find("managed-only")!.ContextWindow);
         Assert.Equal(444, catalog.Find("user-only")!.ContextWindow);
-        Assert.Equal(6, catalog.Models.Count);
-        Assert.Equal("gpt-4o-mini", catalog.Models[0].Id);
-        Assert.Equal("managed-only", catalog.Models[4].Id);
-        Assert.Equal("user-only", catalog.Models[5].Id);
+        Assert.Equal(embedded.Count + 2, catalog.Models.Count);
+        Assert.Equal("gpt-4o-mini", catalog.Models[builtInPosition].Id);
+        Assert.Equal("managed-only", catalog.Models[embedded.Count].Id);
+        Assert.Equal("user-only", catalog.Models[embedded.Count + 1].Id);
     }
 
     private static string WriteJson(string path, string json)
