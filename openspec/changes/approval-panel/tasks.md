@@ -13,7 +13,7 @@
 
 ## 3. Composition, goldens, media, docs
 
-- [ ] 3.1 Composition test on the real host at 40 columns: an edit approval shows the diff and all three choices; `a` decides and the always-memory applies.
+- [x] 3.1 Composition test on the real host at 40 columns: an edit approval shows the diff and all three choices; `a` decides and the always-memory applies.
 - [ ] 3.2 Goldens per band (40/60/80/120) × colour mode for bash/edit/read/unknown/subagent.
 - [ ] 3.3 `docs/media/tapes/features-approval.tape` (a turn triggering an edit approval; the panel with the diff; `a`); GIF + README gallery.
 - [ ] 3.4 `docs/guide.md`: the approvals paragraph describes the panel (headline, detail, choices, narrow band).
