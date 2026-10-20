@@ -41,6 +41,29 @@ public sealed class SettingsStoreThinkingTests
     }
 
     [Fact]
+    public void A_schema_2_file_keeps_the_thinking_settings()
+    {
+        using var temp = new TempDirectory();
+        File.WriteAllText(
+            temp.File("settings.json"),
+            """
+            {
+              "schemaVersion": 2,
+              "thinking": "high",
+              "thinkingFull": true,
+              "favorites": ["gpt-4o-mini"]
+            }
+            """
+        );
+
+        AgentSettings settings = SettingsStore.Resolve(temp.File("settings.json"), _ => null);
+
+        Assert.Equal(ThinkingLevel.High, settings.Thinking);
+        Assert.True(settings.ThinkingFull);
+        Assert.Equal(["gpt-4o-mini"], settings.Favorites);
+    }
+
+    [Fact]
     public void A_file_without_the_thinking_keys_keeps_the_defaults()
     {
         using var temp = new TempDirectory();

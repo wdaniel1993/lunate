@@ -42,7 +42,7 @@ pass.
 
 ## 3. Settings schema 2, favourites storage and auth writes
 
-- [ ] 3.1 Add `favorites` to `AgentSettings` and `SettingsStore` (schema 2, schema 1 read-side,
+- [x] 3.1 Add `favorites` to `AgentSettings` and `SettingsStore` (schema 2, schema 1 read-side,
       ordered, max eight, unique); update `SettingsStoreTests` and
       `SettingsStoreThinkingTests`.
 - [ ] 3.2 Add an atomic read-modify-write settings writer that preserves unrelated keys and emits

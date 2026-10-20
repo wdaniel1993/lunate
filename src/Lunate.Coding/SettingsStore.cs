@@ -45,6 +45,9 @@ public sealed record AgentSettings
 
     /// <summary>Whether the committed reasoning prints in full instead of collapsed; defaults to off.</summary>
     public bool ThinkingFull { get; init; }
+
+    /// <summary>The ordered favourite model ids (at most eight, unique); schema 2 and later.</summary>
+    public IReadOnlyList<string> Favorites { get; init; } = [];
 }
 
 /// <summary>The per-workspace Roslyn limits (the <c>roslyn</c> settings section).</summary>
@@ -62,9 +65,10 @@ public sealed record RoslynSettings
 }
 
 /// <summary>
-/// Reads <c>~/.lunate/settings.json</c> (schema 1). A missing file yields defaults; a present file
-/// is validated with every problem collected into one error, and no partial settings are applied.
-/// The environment (<c>LUNATE_MODEL</c>, <c>LUNATE_APPROVAL</c>, <c>LUNATE_TOOL_DETAILS</c>,
+/// Reads <c>~/.lunate/settings.json</c> (schema 2; schema 1 reads as the same settings without
+/// favourites). A missing file yields defaults; a present file is validated with every problem
+/// collected into one error, and no partial settings are applied. The environment
+/// (<c>LUNATE_MODEL</c>, <c>LUNATE_APPROVAL</c>, <c>LUNATE_TOOL_DETAILS</c>,
 /// <c>LUNATE_TOOL_OUTPUT_LIMIT</c>, <c>LUNATE_STARTUP_HEADER</c>,
 /// <c>LUNATE_SUBAGENTS_CONCURRENCY</c>, <c>LUNATE_SUBAGENTS_TOKEN_BUDGET</c>,
 /// <c>LUNATE_SUBAGENTS_TREE_TOKEN_BUDGET</c>) overrides file values. Both the path and the
@@ -72,8 +76,13 @@ public sealed record RoslynSettings
 /// </summary>
 public static class SettingsStore
 {
-    /// <summary>The only supported schema version.</summary>
-    public const int SupportedSchemaVersion = 1;
+    /// <summary>The schema this build writes.</summary>
+    public const int SupportedSchemaVersion = 2;
+
+    /// <summary>The oldest schema this build still reads.</summary>
+    public const int OldestSupportedSchemaVersion = 1;
+
+    private const string SupportedSchemaVersions = "1 or 2";
 
     private const string ModelVariable = "LUNATE_MODEL";
     private const string ApprovalVariable = "LUNATE_APPROVAL";
@@ -152,10 +161,11 @@ public static class SettingsStore
                         if (
                             property.Value.ValueKind != JsonValueKind.Number
                             || !property.Value.TryGetInt32(out int version)
-                            || version != SupportedSchemaVersion
+                            || version < OldestSupportedSchemaVersion
+                            || version > SupportedSchemaVersion
                         )
                         {
-                            problems.Add($"schemaVersion must be {SupportedSchemaVersion}");
+                            problems.Add($"schemaVersion must be {SupportedSchemaVersions}");
                         }
 
                         break;
@@ -211,6 +221,12 @@ public static class SettingsStore
                             ThinkingFull = ReadThinkingFull(property.Value, problems),
                         };
                         break;
+                    case "favorites":
+                        settings = settings with
+                        {
+                            Favorites = ReadFavorites(property.Value, problems),
+                        };
+                        break;
                     default:
                         problems.Add($"unknown key '{property.Name}'");
                         break;
@@ -219,7 +235,7 @@ public static class SettingsStore
 
             if (!schemaVersionSeen)
             {
-                problems.Add($"schemaVersion is missing; expected {SupportedSchemaVersion}");
+                problems.Add($"schemaVersion is missing; expected {SupportedSchemaVersions}");
             }
         }
 
@@ -455,6 +471,49 @@ public static class SettingsStore
 
         problems.Add("'thinkingFull' must be true or false");
         return false;
+    }
+
+    /// <summary>
+    /// Reads <c>favorites</c>: an ordered array of at most eight unique non-empty model ids. Every
+    /// problem is collected; a refused list applies nothing.
+    /// </summary>
+    private static IReadOnlyList<string> ReadFavorites(JsonElement value, List<string> problems)
+    {
+        if (value.ValueKind != JsonValueKind.Array)
+        {
+            problems.Add("'favorites' must be an array of model ids");
+            return [];
+        }
+
+        var favorites = new List<string>();
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        foreach (JsonElement item in value.EnumerateArray())
+        {
+            if (
+                item.ValueKind != JsonValueKind.String
+                || string.IsNullOrWhiteSpace(item.GetString())
+            )
+            {
+                problems.Add("'favorites' must contain only non-empty model ids");
+                continue;
+            }
+
+            string id = item.GetString()!;
+            if (!seen.Add(id))
+            {
+                problems.Add($"'favorites' must be unique; '{id}' appears more than once");
+                continue;
+            }
+
+            favorites.Add(id);
+        }
+
+        if (favorites.Count > 8)
+        {
+            problems.Add("'favorites' is limited to 8 entries");
+        }
+
+        return favorites;
     }
 
     private static int? ReadConcurrency(JsonElement value, List<string> problems)
