@@ -480,13 +480,17 @@ static Lunate.Agent.SessionSummary.operator !=(Lunate.Agent.SessionSummary? left
 static Lunate.Agent.SessionSummary.operator ==(Lunate.Agent.SessionSummary? left, Lunate.Agent.SessionSummary? right) -> bool
 Lunate.Agent.SessionUsage
 Lunate.Agent.SessionUsage.<Clone>$() -> Lunate.Agent.SessionUsage!
-Lunate.Agent.SessionUsage.Deconstruct(out int Input, out int Output) -> void
+Lunate.Agent.SessionUsage.CacheRead.get -> int?
+Lunate.Agent.SessionUsage.CacheRead.init -> void
+Lunate.Agent.SessionUsage.CacheWrite.get -> int?
+Lunate.Agent.SessionUsage.CacheWrite.init -> void
+Lunate.Agent.SessionUsage.Deconstruct(out int Input, out int Output, out int? CacheRead, out int? CacheWrite) -> void
 Lunate.Agent.SessionUsage.Equals(Lunate.Agent.SessionUsage? other) -> bool
 Lunate.Agent.SessionUsage.Input.get -> int
 Lunate.Agent.SessionUsage.Input.init -> void
 Lunate.Agent.SessionUsage.Output.get -> int
 Lunate.Agent.SessionUsage.Output.init -> void
-Lunate.Agent.SessionUsage.SessionUsage(int Input, int Output) -> void
+Lunate.Agent.SessionUsage.SessionUsage(int Input, int Output, int? CacheRead = null, int? CacheWrite = null) -> void
 override Lunate.Agent.SessionCompactionEntry.<Clone>$() -> Lunate.Agent.SessionCompactionEntry!
 override Lunate.Agent.SessionCompactionEntry.Equals(object? obj) -> bool
 override Lunate.Agent.SessionCompactionEntry.GetHashCode() -> int
@@ -1427,3 +1431,4 @@ static Lunate.Agent.SessionTitle.Normalize(string? title) -> string?
 static Lunate.Agent.SessionTitle.PathFor(string! sessionPath) -> string!
 static Lunate.Agent.SessionTitle.Read(string! sessionPath) -> string?
 static Lunate.Agent.SessionTitle.Write(string! sessionPath, string! title) -> void
+Lunate.Agent.Session.Schema.get -> int

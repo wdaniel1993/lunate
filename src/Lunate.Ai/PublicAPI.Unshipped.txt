@@ -136,3 +136,6 @@ Lunate.Ai.ModelsDevCatalog
 const Lunate.Ai.ModelsDevCatalog.SourceName = "models.dev" -> string!
 const Lunate.Ai.ModelsDevCatalog.SourceUrl = "https://models.dev/api.json" -> string!
 static Lunate.Ai.ModelsDevCatalog.Generate(string! json, System.Collections.Generic.IReadOnlyList<Lunate.Ai.ProviderPreset!>! presets) -> Lunate.Ai.CatalogSnapshot!
+Lunate.Ai.CostCalculator
+static Lunate.Ai.CostCalculator.Compute(Lunate.Ai.ModelInfo? model, long inputTokens, long outputTokens, long cacheReadTokens = 0, long cacheWriteTokens = 0) -> decimal?
+static Lunate.Ai.CostCalculator.Format(decimal cost) -> string!

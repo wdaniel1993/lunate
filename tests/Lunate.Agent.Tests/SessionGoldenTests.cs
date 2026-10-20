@@ -17,6 +17,7 @@ public sealed class SessionGoldenTests
     [InlineData("golden-v2-extension.jsonl")]
     [InlineData("golden-v2-unknown-content.jsonl")]
     [InlineData("golden-reasoning.jsonl")]
+    [InlineData("golden-v3-usage.jsonl")]
     public void Golden_sessions_round_trip_byte_for_byte(string name)
     {
         string path = Path.Combine(SessionsDirectory, name);
@@ -53,6 +54,21 @@ public sealed class SessionGoldenTests
             loaded.Entries.OfType<SessionMessageEntry>(),
             entry => Assert.Null(entry.RawMessageJson)
         );
+    }
+
+    [Fact]
+    public void The_usage_golden_records_all_four_token_lanes()
+    {
+        string path = Path.Combine(SessionsDirectory, "golden-v3-usage.jsonl");
+
+        Session loaded = Session.Load(path);
+
+        Assert.Equal(3, loaded.Schema);
+        SessionMessageEntry assistant = Assert.Single(
+            loaded.Entries.OfType<SessionMessageEntry>(),
+            entry => entry.Message.Role == ChatRole.Assistant
+        );
+        Assert.Equal(new SessionUsage(1500, 50, 1200, 300), assistant.Usage);
     }
 
     [Fact]

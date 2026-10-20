@@ -14,7 +14,7 @@ namespace Lunate.Agent;
 /// </summary>
 internal static partial class SessionFormat
 {
-    internal const int SchemaVersion = 2;
+    internal const int SchemaVersion = 3;
 
     private const string HeaderType = "header";
     private const string MessageType = "message";

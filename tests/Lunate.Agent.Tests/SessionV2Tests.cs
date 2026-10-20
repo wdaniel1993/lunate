@@ -2,13 +2,13 @@ using Microsoft.Extensions.AI;
 
 namespace Lunate.Agent.Tests;
 
-/// <summary>Schema 2 store behavior: creation, append methods, bounds and v1 load compatibility.</summary>
+/// <summary>Schema 2/3 store behavior: creation, append methods, bounds and v1 load compatibility.</summary>
 public sealed class SessionV2Tests
 {
     private static readonly DateTimeOffset Start = new(2026, 10, 6, 12, 0, 0, TimeSpan.Zero);
 
     [Fact]
-    public void Create_writes_schema_2_with_repo_and_worktree()
+    public void Create_writes_schema_3_with_repo_and_worktree()
     {
         using var temp = new TempDirectory();
         string path = temp.File("s.jsonl");
@@ -22,15 +22,15 @@ public sealed class SessionV2Tests
         );
 
         SessionHeaderEntry header = HeaderOf(path);
-        Assert.Equal(2, SessionFormat.SchemaVersion);
-        Assert.Equal(2, header.Schema);
+        Assert.Equal(3, SessionFormat.SchemaVersion);
+        Assert.Equal(3, header.Schema);
         Assert.Equal(session.SessionId, header.Id);
         Assert.Equal("github.com/acme/widgets", header.Repo);
         Assert.Equal("/work/trees/a", header.Worktree);
     }
 
     [Fact]
-    public void Create_without_repo_writes_a_schema_2_header_without_them()
+    public void Create_without_repo_writes_a_schema_3_header_without_them()
     {
         using var temp = new TempDirectory();
         string path = temp.File("s.jsonl");
@@ -38,7 +38,7 @@ public sealed class SessionV2Tests
         Session.Create(path, "/work", new FixedTimeProvider(Start));
 
         SessionHeaderEntry header = HeaderOf(path);
-        Assert.Equal(2, header.Schema);
+        Assert.Equal(3, header.Schema);
         Assert.Null(header.Repo);
         Assert.Null(header.Worktree);
     }

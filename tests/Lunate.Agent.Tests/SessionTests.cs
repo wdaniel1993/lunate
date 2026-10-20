@@ -22,7 +22,7 @@ public sealed class SessionTests
             SessionFormat.Parse(Assert.Single(ReadLines(path)))
         );
         Assert.Equal(session.SessionId, header.Id);
-        Assert.Equal(2, header.Schema);
+        Assert.Equal(3, header.Schema);
         Assert.Equal("/work", header.Cwd);
         Assert.Equal(Start, header.Created);
         Assert.False(string.IsNullOrWhiteSpace(header.Meai));
@@ -109,6 +109,77 @@ public sealed class SessionTests
         SessionMessageEntry appended = Assert.IsType<SessionMessageEntry>(loaded.Entries[^1]);
         Assert.Equal("e_05", appended.ParentId);
         Assert.Equal("four", appended.Message.Text);
+    }
+
+    [Fact]
+    public void Load_reports_the_header_schema()
+    {
+        using var temp = new TempDirectory();
+        string path = temp.File("s.jsonl");
+        Session created = Session.Create(path, "/work", new FixedTimeProvider(Start));
+
+        Session loaded = Session.Load(path, new FixedTimeProvider(Start));
+
+        Assert.Equal(3, created.Schema);
+        Assert.Equal(3, loaded.Schema);
+    }
+
+    [Fact]
+    public void Load_accepts_a_schema_2_session()
+    {
+        using var temp = new TempDirectory();
+        string path = temp.File("s.jsonl");
+        File.WriteAllText(
+            path,
+            """{"type":"header","schema":2,"id":"s_x","cwd":"/work","created":"2026-10-06T12:00:00.0000000+00:00","meai":"10.10.1"}"""
+                + "\n"
+        );
+
+        Session loaded = Session.Load(path);
+
+        Assert.Equal(2, loaded.Schema);
+    }
+
+    [Fact]
+    public void Load_fails_actionably_for_a_newer_schema()
+    {
+        using var temp = new TempDirectory();
+        string path = temp.File("s.jsonl");
+        File.WriteAllText(
+            path,
+            """{"type":"header","schema":4,"id":"s_x","cwd":"/work","created":"2026-10-06T12:00:00.0000000+00:00","meai":"10.10.1"}"""
+                + "\n"
+        );
+
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+            Session.Load(path)
+        );
+
+        Assert.Contains("'4'", exception.Message);
+        Assert.Contains("schema 1, 2 and 3", exception.Message);
+        Assert.Contains(path, exception.Message);
+    }
+
+    [Fact]
+    public void Append_and_load_round_trip_the_usage_cache_lanes()
+    {
+        using var temp = new TempDirectory();
+        string path = temp.File("s.jsonl");
+        Session created = Session.Create(path, "/work", new FixedTimeProvider(Start));
+        created.AppendMessage(
+            new ChatMessage(ChatRole.Assistant, "priced"),
+            "claude-sonnet-5-5",
+            new SessionUsage(1500, 50, 1200, 300)
+        );
+
+        Session loaded = Session.Load(path, new FixedTimeProvider(Start));
+
+        SessionMessageEntry entry = Assert.IsType<SessionMessageEntry>(loaded.Entries[0]);
+        Assert.Equal(new SessionUsage(1500, 50, 1200, 300), entry.Usage);
+        Assert.Equal(
+            created.Entries.Select(SessionFormat.Serialize),
+            loaded.Entries.Select(SessionFormat.Serialize)
+        );
     }
 
     [Fact]

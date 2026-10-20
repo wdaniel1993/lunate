@@ -46,6 +46,68 @@ public sealed class SessionFormatTests
     }
 
     [Fact]
+    public void Usage_serializes_all_four_lanes_in_order()
+    {
+        var entry = new SessionMessageEntry(
+            "e_02",
+            "e_01",
+            Recorded,
+            new ChatMessage(ChatRole.Assistant, "Hello"),
+            "gpt-4o-mini",
+            new SessionUsage(1500, 50, 1200, 300)
+        );
+
+        string line = SessionFormat.Serialize(entry);
+
+        Assert.Contains(
+            "\"usage\":{\"input\":1500,\"output\":50,\"cacheRead\":1200,\"cacheWrite\":300}",
+            line
+        );
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData(0)]
+    public void Usage_omits_a_cache_lane_that_is_unknown_or_zero(int? cacheCount)
+    {
+        var entry = new SessionMessageEntry(
+            "e_02",
+            "e_01",
+            Recorded,
+            new ChatMessage(ChatRole.Assistant, "Hello"),
+            null,
+            new SessionUsage(7, 3, cacheCount, cacheCount)
+        );
+
+        string line = SessionFormat.Serialize(entry);
+
+        Assert.Contains("\"usage\":{\"input\":7,\"output\":3}", line);
+        Assert.DoesNotContain("cacheRead", line);
+        Assert.DoesNotContain("cacheWrite", line);
+        SessionMessageEntry parsed = Assert.IsType<SessionMessageEntry>(SessionFormat.Parse(line));
+        Assert.Equal(new SessionUsage(7, 3), parsed.Usage);
+    }
+
+    [Fact]
+    public void Usage_round_trips_all_four_lanes()
+    {
+        var entry = new SessionMessageEntry(
+            "e_02",
+            "e_01",
+            Recorded,
+            new ChatMessage(ChatRole.Assistant, "Hello"),
+            "claude-sonnet-5-5",
+            new SessionUsage(1500, 50, 1200, 300)
+        );
+
+        SessionMessageEntry parsed = Assert.IsType<SessionMessageEntry>(
+            SessionFormat.Parse(SessionFormat.Serialize(entry))
+        );
+
+        Assert.Equal(new SessionUsage(1500, 50, 1200, 300), parsed.Usage);
+    }
+
+    [Fact]
     public void Message_entry_keeps_parentId_null_and_omits_unknown_model_and_usage()
     {
         var entry = new SessionMessageEntry(
