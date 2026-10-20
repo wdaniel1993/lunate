@@ -275,7 +275,7 @@ public sealed class PrintModeTests
 
         (int exitCode, string output, string errors) = await PrintModeTestSupport.RunAsync(options);
 
-        Assert.Equal(1, exitCode);
+        Assert.Equal(2, exitCode);
         Assert.Empty(output);
         Assert.Contains(
             "lunate: no session with id 'missing-id'; run a prompt to start one",
@@ -301,7 +301,7 @@ public sealed class PrintModeTests
 
         (int exitCode, string output, string errors) = await PrintModeTestSupport.RunAsync(options);
 
-        Assert.Equal(1, exitCode);
+        Assert.Equal(2, exitCode);
         Assert.Empty(output);
         Assert.Contains($"could not load session '{missing}'", errors, StringComparison.Ordinal);
         Assert.Null(factory.CreatedModel);
@@ -334,7 +334,7 @@ public sealed class PrintModeTests
 
         (int exitCode, string output, string errors) = await PrintModeTestSupport.RunAsync(options);
 
-        Assert.Equal(1, exitCode);
+        Assert.Equal(2, exitCode);
         Assert.Empty(output);
         Assert.Contains(
             $"session id '{seeded.SessionId}' is ambiguous:",
@@ -406,7 +406,7 @@ public sealed class PrintModeTests
 
         (int exitCode, string output, string errors) = await PrintModeTestSupport.RunAsync(options);
 
-        Assert.Equal(1, exitCode);
+        Assert.Equal(2, exitCode);
         Assert.Empty(output);
         Assert.Contains(
             $"lunate: no session for '{cwd}'; run a prompt to start one",
@@ -713,7 +713,7 @@ public sealed class PrintModeTests
 
         (int exitCode, string output, string errors) = await PrintModeTestSupport.RunAsync(options);
 
-        Assert.Equal(1, exitCode);
+        Assert.Equal(2, exitCode);
         Assert.Empty(output);
         Assert.Contains(
             "Model 'nope-9000' is not in the catalog",

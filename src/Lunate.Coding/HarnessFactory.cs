@@ -222,7 +222,7 @@ internal static class HarnessFactory
         }
 
         return catalog.Find(modelId)
-            ?? throw new InvalidOperationException(
+            ?? throw new UnknownModelException(
                 $"Model '{modelId}' is not in the catalog. Run lunate --discover <name-or-url> "
                     + $"to draft a models.json entry or add '{modelId}' to ~/.lunate/models.json."
             );

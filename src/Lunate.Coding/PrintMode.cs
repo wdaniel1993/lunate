@@ -69,7 +69,7 @@ internal sealed record PrintModeOptions
 /// </summary>
 internal static class PrintMode
 {
-    /// <summary>Runs one prompt; returns the process exit code (0 stop, 1 error, 2 length/step limit, 130 cancelled).</summary>
+    /// <summary>Runs one prompt; returns the process exit code (0 stop, 1 error, 2 launch usage error or length/step limit, 130 cancelled).</summary>
     internal static async Task<int> RunAsync(
         PrintModeOptions options,
         TextWriter output,
@@ -104,6 +104,13 @@ internal static class PrintMode
         {
             return 130;
         }
+        catch (UnknownModelException exception)
+        {
+            // An unknown --model is a launch usage error (design D1); an unknown configured
+            // model stays a run error.
+            interaction.Notify(new UserNotice(NoticeLevel.Error, exception.Message));
+            return options.Launch.Model is null ? 1 : 2;
+        }
         catch (Exception exception)
         {
             interaction.Notify(new UserNotice(NoticeLevel.Error, exception.Message));
@@ -126,7 +133,7 @@ internal static class PrintMode
                 if (selectionError is { } message)
                 {
                     interaction.Notify(new UserNotice(NoticeLevel.Error, message));
-                    return 1;
+                    return 2;
                 }
 
                 session = selected;

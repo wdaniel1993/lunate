@@ -305,7 +305,7 @@ public sealed class CliTests
             options
         );
 
-        Assert.Equal(1, exitCode);
+        Assert.Equal(2, exitCode);
         Assert.Contains(
             "lunate: no session with id 'missing-id'; run a prompt to start one",
             error.ToString(),
@@ -335,7 +335,7 @@ public sealed class CliTests
             options
         );
 
-        Assert.Equal(1, exitCode);
+        Assert.Equal(2, exitCode);
         Assert.Contains(
             $"lunate: no session for '{cwd}'; run a prompt to start one",
             error.ToString(),

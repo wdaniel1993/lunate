@@ -280,13 +280,14 @@ internal sealed partial class InteractiveSession : IDisposable
             }
             catch (Exception exception)
             {
-                // An unknown --tools name is a usage error (design D1), exactly as in print mode;
-                // every other composition failure keeps the session's normal exit code.
-                if (exception is ToolFilterException)
+                // An unknown --tools name or an unknown --model is a usage error (design D1),
+                // exactly as in print mode; every other composition failure is a run error.
+                ExitCode = exception switch
                 {
-                    ExitCode = 2;
-                }
-
+                    ToolFilterException => 2,
+                    UnknownModelException when _options.Launch.Model is not null => 2,
+                    _ => 1,
+                };
                 _lifetime.Cancel();
                 (_options.Diagnostics ?? Console.Error).WriteLine($"lunate: {exception.Message}");
             }

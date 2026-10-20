@@ -114,7 +114,7 @@ public sealed class InteractiveSessionLaunchOptionsTests
     }
 
     [Fact]
-    public async Task A_launch_model_not_in_the_catalog_fails_with_the_catalog_message()
+    public async Task A_launch_model_not_in_the_catalog_is_a_usage_error()
     {
         using var host = new InteractiveSessionHost(
             launch: new LaunchOptions { Model = "nope-9000" }
@@ -123,6 +123,25 @@ public sealed class InteractiveSessionLaunchOptionsTests
 
         await host.RunAsync();
 
+        Assert.Equal(2, host.Session.ExitCode);
+        Assert.Contains(
+            "Model 'nope-9000' is not in the catalog",
+            host.Diagnostics,
+            StringComparison.Ordinal
+        );
+    }
+
+    [Fact]
+    public async Task A_settings_model_not_in_the_catalog_keeps_the_run_error_exit()
+    {
+        using var host = new InteractiveSessionHost(
+            environment: PrintModeTestSupport.Environment(model: "nope-9000")
+        );
+        host.Console.Complete();
+
+        await host.RunAsync();
+
+        Assert.Equal(1, host.Session.ExitCode);
         Assert.Contains(
             "Model 'nope-9000' is not in the catalog",
             host.Diagnostics,
