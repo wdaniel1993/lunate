@@ -87,6 +87,9 @@ internal sealed record InteractiveSessionOptions
     /// <summary>The launch flags parsed once by the CLI; defaults stand in for direct calls.</summary>
     public LaunchOptions Launch { get; init; } = new();
 
+    /// <summary>The masked secret prompt behind <c>/login</c>; null reports that none is available.</summary>
+    public ISecretPrompt? SecretPrompt { get; init; }
+
     /// <summary>The session file to start from; null creates a fresh session.</summary>
     public string? StartSession { get; init; }
 

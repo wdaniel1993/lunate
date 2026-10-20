@@ -1,3 +1,5 @@
+using Lunate.Ai;
+
 namespace Lunate.Coding.Tests;
 
 public sealed class AuthStoreTests
@@ -62,6 +64,64 @@ public sealed class AuthStoreTests
         Assert.Equal("env-anthropic", store.TryGet("anthropic"));
     }
 
+    [Theory]
+    [InlineData("openai", "OPENAI_API_KEY")]
+    [InlineData("anthropic", "ANTHROPIC_API_KEY")]
+    [InlineData("openrouter", "OPENROUTER_API_KEY")]
+    [InlineData("deepseek", "DEEPSEEK_API_KEY")]
+    [InlineData("moonshotai", "MOONSHOT_API_KEY")]
+    [InlineData("zai", "ZHIPU_API_KEY")]
+    [InlineData("opencode", "OPENCODE_API_KEY")]
+    [InlineData("opencode-go", "OPENCODE_API_KEY")]
+    [InlineData("groq", "GROQ_API_KEY")]
+    [InlineData("togetherai", "TOGETHER_API_KEY")]
+    [InlineData("xai", "XAI_API_KEY")]
+    [InlineData("google", "GOOGLE_API_KEY")]
+    public void Every_preset_environment_variable_overrides_its_entry(
+        string provider,
+        string variable
+    )
+    {
+        using var temp = new TempDirectory();
+        File.WriteAllText(
+            temp.File("auth.json"),
+            $$"""
+            { "schemaVersion": 1, "keys": { "{{provider}}": "file-value" } }
+            """
+        );
+
+        AuthStore store = AuthStore.Load(
+            temp.File("auth.json"),
+            name => name == variable ? "env-value" : null
+        );
+
+        Assert.Equal("env-value", store.TryGet(provider));
+    }
+
+    [Fact]
+    public void The_google_alias_overrides_the_file_entry()
+    {
+        using var temp = new TempDirectory();
+        File.WriteAllText(
+            temp.File("auth.json"),
+            """{ "schemaVersion": 1, "keys": { "google": "file-value" } }"""
+        );
+
+        AuthStore store = AuthStore.Load(
+            temp.File("auth.json"),
+            name => name == "GEMINI_API_KEY" ? "alias-value" : null
+        );
+
+        Assert.Equal("alias-value", store.TryGet("google"));
+    }
+
+    [Fact]
+    public void The_key_variable_comes_from_the_preset_table()
+    {
+        Assert.Equal("GROQ_API_KEY", ProviderPresets.Find("groq")?.KeyVariable);
+        Assert.Equal("GEMINI_API_KEY", ProviderPresets.Find("google")?.KeyVariableAlias);
+    }
+
     [Fact]
     public void Custom_named_keys_have_no_environment_override()
     {
@@ -89,6 +149,40 @@ public sealed class AuthStoreTests
 
         Assert.Equal("work-secret", reloaded.TryGet("work"));
         Assert.Equal("openai-secret", reloaded.TryGet("openai"));
+    }
+
+    [Fact]
+    public void Remove_deletes_a_stored_key_and_saves_the_remaining_ones()
+    {
+        using var temp = new TempDirectory();
+        AuthStore store = AuthStore.Load(temp.File("auth.json"), _ => null);
+        store.Set("groq", "groq-secret");
+        store.Set("work", "work-secret");
+
+        Assert.True(store.Remove("groq"));
+        Assert.False(store.Remove("groq"));
+        store.Save();
+
+        AuthStore reloaded = AuthStore.Load(temp.File("auth.json"), _ => null);
+        Assert.Null(reloaded.TryGet("groq"));
+        Assert.Equal("work-secret", reloaded.TryGet("work"));
+    }
+
+    [Fact]
+    public void Save_replaces_the_file_without_leaving_a_temp_file()
+    {
+        using var temp = new TempDirectory();
+        AuthStore store = AuthStore.Load(temp.File("auth.json"), _ => null);
+        store.Set("groq", "groq-secret");
+
+        store.Save();
+        store.Set("work", "work-secret");
+        store.Save();
+
+        Assert.Empty(Directory.GetFiles(temp.Root, "*.tmp"));
+        AuthStore reloaded = AuthStore.Load(temp.File("auth.json"), _ => null);
+        Assert.Equal("groq-secret", reloaded.TryGet("groq"));
+        Assert.Equal("work-secret", reloaded.TryGet("work"));
     }
 
     [Fact]

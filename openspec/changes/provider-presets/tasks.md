@@ -48,7 +48,7 @@ pass.
 - [x] 3.2 Add an atomic read-modify-write settings writer that preserves unrelated keys and emits
       schema 2; tests for preservation, validation failure leaving the old file, and POSIX-safe
       replacement.
-- [ ] 3.3 Add `AuthStore.Remove`, map every preset to its environment variable, and add the
+- [x] 3.3 Add `AuthStore.Remove`, map every preset to its environment variable, and add the
       `/login <provider>`/`/logout <provider>` backend seam (masked value in, store out; no secret
       in notices); update `AuthStoreTests`.
 - [ ] 3.4 Extend `Commands`/`CompletionRegistry` metadata for `/login`, `/logout`, `/favorite` and

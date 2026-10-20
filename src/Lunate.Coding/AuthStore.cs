@@ -1,23 +1,20 @@
+using System.Text;
 using System.Text.Json;
+using Lunate.Ai;
 
 namespace Lunate.Coding;
 
 /// <summary>
 /// Reads and writes <c>~/.lunate/auth.json</c> (schema 1): named API keys for per-model
-/// credential references. <see cref="Save"/> restricts the file to owner-only permissions on
-/// POSIX. The provider environment variables (<c>OPENAI_API_KEY</c>, <c>ANTHROPIC_API_KEY</c>)
-/// override the corresponding provider entries; custom named keys have no environment override.
+/// credential references. <see cref="Save"/> replaces the file atomically and restricts it to
+/// owner-only permissions on POSIX. The provider preset's environment variable (and its alias)
+/// overrides the corresponding provider entry; custom named keys have no environment override.
 /// Errors name keys, never values. The path and the environment lookup are injectable.
 /// </summary>
 public sealed class AuthStore
 {
     /// <summary>The only supported schema version.</summary>
     public const int SupportedSchemaVersion = 1;
-
-    private const string OpenAiProvider = "openai";
-    private const string AnthropicProvider = "anthropic";
-    private const string OpenAiApiKeyVariable = "OPENAI_API_KEY";
-    private const string AnthropicApiKeyVariable = "ANTHROPIC_API_KEY";
 
     private static readonly JsonSerializerOptions SerializerOptions = new()
     {
@@ -91,7 +88,17 @@ public sealed class AuthStore
         _keys[name] = secret;
     }
 
-    /// <summary>Writes the store, restricting the file to owner-only permissions on POSIX.</summary>
+    /// <summary>Removes a named key in memory; returns whether it was present. Call <see cref="Save"/> to persist it.</summary>
+    public bool Remove(string name)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        return _keys.Remove(name);
+    }
+
+    /// <summary>
+    /// Writes the store atomically, creating the replacement owner-only on POSIX before the move so
+    /// a secret is never briefly world-readable. A failed write leaves the old file intact.
+    /// </summary>
     public void Save()
     {
         string? directory = Path.GetDirectoryName(_filePath);
@@ -100,19 +107,52 @@ public sealed class AuthStore
             Directory.CreateDirectory(directory);
         }
 
+        string targetDirectory = string.IsNullOrEmpty(directory) ? "." : directory;
+        string temp = Path.Combine(targetDirectory, Path.GetRandomFileName() + ".tmp");
         var sorted = new SortedDictionary<string, string>(_keys, StringComparer.Ordinal);
-        File.WriteAllText(
-            _filePath,
-            JsonSerializer.Serialize(
-                new AuthFile(SupportedSchemaVersion, sorted),
-                SerializerOptions
-            )
+        string json = JsonSerializer.Serialize(
+            new AuthFile(SupportedSchemaVersion, sorted),
+            SerializerOptions
         );
 
-        // Best-effort on Windows: the ACL model has no direct rw------- equivalent here.
-        if (!OperatingSystem.IsWindows())
+        try
         {
-            File.SetUnixFileMode(_filePath, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+            var options = new FileStreamOptions
+            {
+                Mode = FileMode.CreateNew,
+                Access = FileAccess.Write,
+                Share = FileShare.None,
+            };
+            if (!OperatingSystem.IsWindows())
+            {
+                options.UnixCreateMode = UnixFileMode.UserRead | UnixFileMode.UserWrite;
+            }
+
+            using (var stream = new FileStream(temp, options))
+            using (var writer = new StreamWriter(stream, new UTF8Encoding(false)))
+            {
+                writer.Write(json);
+            }
+
+            File.Move(temp, _filePath, overwrite: true);
+
+            // Best-effort on Windows: the ACL model has no direct rw------- equivalent here.
+            if (!OperatingSystem.IsWindows())
+            {
+                File.SetUnixFileMode(_filePath, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+            }
+        }
+        finally
+        {
+            if (File.Exists(temp))
+            {
+                try
+                {
+                    File.Delete(temp);
+                }
+                catch (IOException) { }
+                catch (UnauthorizedAccessException) { }
+            }
         }
     }
 
@@ -198,13 +238,21 @@ public sealed class AuthStore
         }
     }
 
-    private string? EnvironmentOverride(string name) =>
-        name switch
+    private string? EnvironmentOverride(string name)
+    {
+        if (ProviderPresets.Find(name) is not { } preset)
         {
-            OpenAiProvider => _environment(OpenAiApiKeyVariable),
-            AnthropicProvider => _environment(AnthropicApiKeyVariable),
-            _ => null,
-        };
+            return null;
+        }
+
+        string? value = _environment(preset.KeyVariable);
+        if (!string.IsNullOrEmpty(value))
+        {
+            return value;
+        }
+
+        return preset.KeyVariableAlias is { } alias ? _environment(alias) : null;
+    }
 
     private static string DefaultFilePath() =>
         Path.Combine(
