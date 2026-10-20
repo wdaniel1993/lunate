@@ -17,10 +17,10 @@ Design-first change: each task is one commit and lands on `change/prompt-caching
 
 ## 3. Cache usage accounting and `/context`
 
-- [ ] 3.1 `InteractiveSession.Events.AddUsage`: accumulate cache reads from `UsageDetails.CachedInputTokenCount` and writes from `AdditionalCounts["CacheCreationInputTokens"]`; do not add them to `_inputTokens`/`_outputTokens`.
-- [ ] 3.2 `InteractiveSession.Commands.ContextText`: append `cache: read <n>, write <m>` via `StatusFooterRenderer.FormatTokens`, omitting unknown counts and the whole segment when neither is known.
-- [ ] 3.3 `tests/Lunate.Coding.Tests/InteractiveSessionCommandTests.cs`: read-only, write-only, both and neither; assert the budget total is unchanged.
-- [ ] 3.4 Commit `feat(coding): show prompt-cache usage in /context`.
+- [x] 3.1 `InteractiveSession.Events.AddUsage`: accumulate cache reads from `UsageDetails.CachedInputTokenCount` and writes from `AdditionalCounts["CacheCreationInputTokens"]`; do not add them to `_inputTokens`/`_outputTokens`.
+- [x] 3.2 `InteractiveSession.Commands.ContextText`: append `cache: read <n>, write <m>` via `StatusFooterRenderer.FormatTokens`, omitting unknown counts and the whole segment when neither is known.
+- [x] 3.3 `tests/Lunate.Coding.Tests/InteractiveSessionCommandTests.cs`: read-only, write-only, both and neither; assert the budget total is unchanged.
+- [x] 3.4 Commit `feat(coding): show prompt-cache usage in /context`.
 
 ## 4. Cache usage in `--json`
 

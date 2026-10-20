@@ -153,9 +153,37 @@ internal sealed partial class InteractiveSession
         SubagentUsage tree = _harness?.SubagentUsage ?? default;
         string context = Lunate.Tui.StatusFooterRenderer.PlainText(usage, int.MaxValue);
         string treeTokens = Lunate.Tui.StatusFooterRenderer.FormatTokens(tree.TokensUsed);
+        List<string> tail = [];
+        if (CacheContextSegment() is { } cache)
+        {
+            tail.Add(cache);
+        }
+
+        tail.Add(SkillsContextSegment());
         return FormattableString.Invariant(
-            $"context: {context}; subagents: concurrency {Limit(limits.Concurrency)}, {Limit(limits.TokenBudget)} tokens per child, {Limit(limits.TreeTokenBudget)} tokens per tree, depth 1 (fixed); tree usage: {treeTokens} tokens, {tree.LiveChildren} running; {SkillsContextSegment()}"
+            $"context: {context}; subagents: concurrency {Limit(limits.Concurrency)}, {Limit(limits.TokenBudget)} tokens per child, {Limit(limits.TreeTokenBudget)} tokens per tree, depth 1 (fixed); tree usage: {treeTokens} tokens, {tree.LiveChildren} running; {string.Join("; ", tail)}"
         );
+    }
+
+    /// <summary>
+    /// The <c>/context</c> prompt-cache segment: only the counts a provider reported, formatted like
+    /// the footer; null when it reported neither.
+    /// </summary>
+    private string? CacheContextSegment()
+    {
+        string? read = _cacheReadTokens is { } cacheRead
+            ? "read " + Lunate.Tui.StatusFooterRenderer.FormatTokens(cacheRead)
+            : null;
+        string? write = _cacheWriteTokens is { } cacheWrite
+            ? "write " + Lunate.Tui.StatusFooterRenderer.FormatTokens(cacheWrite)
+            : null;
+        return (read, write) switch
+        {
+            (not null, not null) => $"cache: {read}, {write}",
+            (not null, null) => "cache: " + read,
+            (null, not null) => "cache: " + write,
+            _ => null,
+        };
     }
 
     private static string Limit(int? value) =>

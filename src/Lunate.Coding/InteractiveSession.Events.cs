@@ -317,6 +317,21 @@ internal sealed partial class InteractiveSession
     {
         _inputTokens += usage.InputTokenCount ?? 0;
         _outputTokens += usage.OutputTokenCount ?? 0;
+        // Cache counts are read-only metadata for /context: InputTokenCount already includes the
+        // cached and cache-creation tokens, so they never join the budget totals or the footer.
+        if (usage.CachedInputTokenCount is { } cacheRead)
+        {
+            _cacheReadTokens = (_cacheReadTokens ?? 0) + cacheRead;
+        }
+
+        if (
+            usage.AdditionalCounts is { } counts
+            && counts.TryGetValue(CacheCreationInputTokensKey, out long cacheWrite)
+        )
+        {
+            _cacheWriteTokens = (_cacheWriteTokens ?? 0) + cacheWrite;
+        }
+
         if (root)
         {
             _live.SetRunUsage(_inputTokens - _runInputBaseline, _outputTokens - _runOutputBaseline);

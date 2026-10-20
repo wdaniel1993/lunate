@@ -172,6 +172,15 @@ internal sealed partial class InteractiveSession : IDisposable
     private long _inputTokens;
     private long _outputTokens;
 
+    /// <summary>Accumulated prompt-cache reads; null until a provider reports one (display-only).</summary>
+    private long? _cacheReadTokens;
+
+    /// <summary>Accumulated prompt-cache writes; null until a provider reports one (display-only).</summary>
+    private long? _cacheWriteTokens;
+
+    /// <summary>The provider's additional-count key for cache-creation tokens.</summary>
+    private const string CacheCreationInputTokensKey = "CacheCreationInputTokens";
+
     /// <summary>The cumulative token counts when the current run started (its deltas' baseline).</summary>
     private long _runInputBaseline;
     private long _runOutputBaseline;

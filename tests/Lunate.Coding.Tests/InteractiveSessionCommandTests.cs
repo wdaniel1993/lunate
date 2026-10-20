@@ -2,6 +2,7 @@ using Lunate.Agent;
 using Lunate.Extensibility;
 using Lunate.Extensibility.Abstractions;
 using Lunate.Tui;
+using Microsoft.Extensions.AI;
 
 namespace Lunate.Coding.Tests;
 
@@ -290,6 +291,87 @@ public sealed class InteractiveSessionCommandTests
         host.Console.SendText("/quit");
         host.Console.SendEnter();
         await run;
+    }
+
+    [Theory]
+    [InlineData(1200L, 300L, "cache: read 1.2k, write 300")]
+    [InlineData(1200L, null, "cache: read 1.2k")]
+    [InlineData(null, 300L, "cache: write 300")]
+    [InlineData(0L, 0L, "cache: read 0, write 0")]
+    public async Task Context_shows_each_cache_count_the_provider_reported(
+        long? cacheRead,
+        long? cacheWrite,
+        string expected
+    )
+    {
+        using var host = new InteractiveSessionHost();
+        host.Console.Size = new Lunate.Tui.ConsoleSize(400, 24);
+        host.Client.Enqueue(
+            CacheUsage(cacheRead, cacheWrite),
+            Scripts.Text("done"),
+            Scripts.Stop()
+        );
+        Task run = host.RunAsync();
+
+        await RunOneTurnAsync(host);
+        host.Console.SendText("/context");
+        host.Console.SendEnter();
+        await WaitForFrameAsync(host, expected);
+
+        Assert.Contains("15/128.0k", host.LastFrame, StringComparison.Ordinal);
+
+        host.Console.SendText("/quit");
+        host.Console.SendEnter();
+        await run;
+    }
+
+    [Fact]
+    public async Task Context_omits_the_cache_segment_when_the_provider_reported_no_cache_counts()
+    {
+        using var host = new InteractiveSessionHost();
+        host.Console.Size = new Lunate.Tui.ConsoleSize(400, 24);
+        host.Client.Enqueue(CacheUsage(null, null), Scripts.Text("done"), Scripts.Stop());
+        Task run = host.RunAsync();
+
+        await RunOneTurnAsync(host);
+        host.Console.SendText("/context");
+        host.Console.SendEnter();
+        await WaitForFrameAsync(host, "subagent");
+
+        Assert.Contains("15/128.0k", host.LastFrame, StringComparison.Ordinal);
+        Assert.DoesNotContain("cache:", host.LastFrame, StringComparison.Ordinal);
+
+        host.Console.SendText("/quit");
+        host.Console.SendEnter();
+        await run;
+    }
+
+    /// <summary>Runs one scripted turn whose usage carries 10 input and 5 output tokens.</summary>
+    private static async Task RunOneTurnAsync(InteractiveSessionHost host)
+    {
+        host.Console.SendText("hi");
+        host.Console.SendEnter();
+        await host.Client.WaitForCallAsync(1);
+        await host.WaitUntilAsync(() => !host.Session.IsRunning);
+    }
+
+    private static ChatResponseUpdate CacheUsage(long? cacheRead, long? cacheWrite)
+    {
+        var usage = new UsageDetails
+        {
+            InputTokenCount = 10,
+            OutputTokenCount = 5,
+            CachedInputTokenCount = cacheRead,
+        };
+        if (cacheWrite is { } write)
+        {
+            usage.AdditionalCounts = new AdditionalPropertiesDictionary<long>
+            {
+                ["CacheCreationInputTokens"] = write,
+            };
+        }
+
+        return new ChatResponseUpdate(ChatRole.Assistant, [new UsageContent(usage)]);
     }
 
     internal static async Task WaitForFrameAsync(
