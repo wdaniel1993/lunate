@@ -92,7 +92,9 @@ public sealed class ChatClientFactory : IChatClientFactory
 
         if (string.Equals(model.Provider, AnthropicProvider, StringComparison.OrdinalIgnoreCase))
         {
-            // Above the recorder so recordings (and replays) see the wire request.
+            // Below the turn merge (the rolling marker lands on the merged last block) and above the
+            // recorder/provider (recordings see the wire request).
+            inner = new AnthropicPromptCache(inner);
             inner = new AnthropicTurnMerge(inner);
         }
 

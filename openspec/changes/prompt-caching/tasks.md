@@ -4,10 +4,10 @@ Design-first change: each task is one commit and lands on `change/prompt-caching
 
 ## 1. Anthropic marker client and wire tests
 
-- [ ] 1.1 Add `src/Lunate.Ai/AnthropicPromptCache.cs`: an internal `DelegatingChatClient` that clones the request, marks the last system block, the last tool declaration and the last content block of the latest message with `CacheControlEphemeral`, asserts the marker count is ≤ 4, and leaves history/tool declarations untouched.
-- [ ] 1.2 Wire it in `ChatClientFactory` for `provider == "anthropic"` only, below `AnthropicTurnMerge` and above the recorder/provider; leave the OpenAI pipeline unchanged.
-- [ ] 1.3 `tests/Lunate.Ai.Tests/AnthropicPromptCacheTests.cs`: real adapter + capturing handler — three markers on the wire, rolling marker across two turns with identical system/tool bytes, max-four bound with several blocks/tools, no markers on OpenAI.
-- [ ] 1.4 `dotnet csharpier format .`; commit `feat(ai): mark anthropic prompt-cache breakpoints`.
+- [x] 1.1 Add `src/Lunate.Ai/AnthropicPromptCache.cs`: an internal `DelegatingChatClient` that clones the request, marks the last system block, the last tool declaration and the last content block of the latest message with `CacheControlEphemeral`, asserts the marker count is ≤ 4, and leaves history/tool declarations untouched.
+- [x] 1.2 Wire it in `ChatClientFactory` for `provider == "anthropic"` only, below `AnthropicTurnMerge` and above the recorder/provider; leave the OpenAI pipeline unchanged.
+- [x] 1.3 `tests/Lunate.Ai.Tests/AnthropicPromptCacheTests.cs`: real adapter + capturing handler — three markers on the wire, rolling marker across two turns with identical system/tool bytes, max-four bound with several blocks/tools, no markers on OpenAI.
+- [x] 1.4 `dotnet csharpier format .`; commit `feat(ai): mark anthropic prompt-cache breakpoints`.
 
 ## 2. Prefix stability
 
