@@ -521,15 +521,39 @@ public sealed class CliTests
     }
 
     [Fact]
+    public void Launch_options_parse_an_inline_model()
+    {
+        Assert.Equal("gpt-4o", Parse("--model=gpt-4o").Model);
+    }
+
+    [Fact]
     public void Launch_options_parse_a_thinking_level()
     {
         Assert.Equal(ThinkingLevel.High, Parse("--thinking", "high").Thinking);
     }
 
     [Fact]
+    public void Launch_options_parse_an_inline_thinking_level()
+    {
+        Assert.Equal(ThinkingLevel.High, Parse("--thinking=high").Thinking);
+    }
+
+    [Fact]
+    public void Launch_options_parse_an_inline_session_id()
+    {
+        Assert.Equal("s_1", Parse("--session=s_1").Session);
+    }
+
+    [Fact]
     public void Launch_options_parse_a_tool_list()
     {
         Assert.Equal(["bash", "read"], Parse("--tools", "bash, read").Tools);
+    }
+
+    [Fact]
+    public void Launch_options_parse_an_inline_tool_list()
+    {
+        Assert.Equal(["read", "write"], Parse("--tools=read,write").Tools);
     }
 
     [Fact]
@@ -553,6 +577,18 @@ public sealed class CliTests
 
         Assert.Equal("system", options.SystemPrompt);
         Assert.Equal("append", options.AppendSystemPrompt);
+    }
+
+    [Fact]
+    public void Launch_options_parse_an_inline_system_prompt_with_a_leading_dash()
+    {
+        Assert.Equal("-be concise", Parse("--system-prompt=-be concise").SystemPrompt);
+    }
+
+    [Fact]
+    public void Launch_options_parse_an_inline_appended_system_prompt()
+    {
+        Assert.Equal("extra", Parse("--append-system-prompt=extra").AppendSystemPrompt);
     }
 
     [Fact]
@@ -668,6 +704,82 @@ public sealed class CliTests
         Assert.Empty(output.ToString());
     }
 
+    [Theory]
+    [InlineData("--print=x", "--print")]
+    [InlineData("--json=x", "--json")]
+    [InlineData("--yolo=x", "--yolo")]
+    [InlineData("--continue=x", "--continue")]
+    [InlineData("--resume=x", "--resume")]
+    [InlineData("--no-session=x", "--no-session")]
+    [InlineData("--no-tools=x", "--no-tools")]
+    public void Run_with_an_inline_value_on_a_boolean_flag_is_a_usage_error(string arg, string flag)
+    {
+        using var output = new StringWriter();
+        using var error = new StringWriter();
+
+        var exitCode = Cli.Run([arg], output, error, TestContext.Current.CancellationToken);
+
+        Assert.Equal(2, exitCode);
+        Assert.Contains(
+            $"option '{flag}' does not take a value",
+            error.ToString(),
+            StringComparison.Ordinal
+        );
+        Assert.Empty(output.ToString());
+    }
+
+    [Theory]
+    [InlineData("--model=")]
+    [InlineData("--model= ")]
+    [InlineData("--system-prompt=")]
+    [InlineData("--system-prompt=  ")]
+    public void Run_with_an_empty_inline_value_is_a_usage_error(string arg)
+    {
+        using var output = new StringWriter();
+        using var error = new StringWriter();
+
+        var exitCode = Cli.Run([arg], output, error, TestContext.Current.CancellationToken);
+
+        Assert.Equal(2, exitCode);
+        Assert.Contains("expects a value", error.ToString(), StringComparison.Ordinal);
+        Assert.Empty(output.ToString());
+    }
+
+    [Fact]
+    public void Run_with_an_unknown_inline_option_is_a_usage_error()
+    {
+        using var output = new StringWriter();
+        using var error = new StringWriter();
+
+        var exitCode = Cli.Run(["--nope=x"], output, error, TestContext.Current.CancellationToken);
+
+        Assert.Equal(2, exitCode);
+        Assert.Contains("unknown option '--nope=x'", error.ToString(), StringComparison.Ordinal);
+        Assert.Empty(output.ToString());
+    }
+
+    [Fact]
+    public void Run_with_a_space_separated_dash_value_is_a_usage_error()
+    {
+        using var output = new StringWriter();
+        using var error = new StringWriter();
+
+        var exitCode = Cli.Run(
+            ["--system-prompt", "-be concise"],
+            output,
+            error,
+            TestContext.Current.CancellationToken
+        );
+
+        Assert.Equal(2, exitCode);
+        Assert.Contains(
+            "option '--system-prompt' expects a value",
+            error.ToString(),
+            StringComparison.Ordinal
+        );
+        Assert.Empty(output.ToString());
+    }
+
     [Fact]
     public void Run_with_help_lists_every_launch_flag()
     {
@@ -692,6 +804,7 @@ public sealed class CliTests
         Assert.Contains("--no-tools", help, StringComparison.Ordinal);
         Assert.Contains("--system-prompt <text>", help, StringComparison.Ordinal);
         Assert.Contains("--append-system-prompt <text>", help, StringComparison.Ordinal);
+        Assert.Contains("--flag=value", help, StringComparison.Ordinal);
     }
 
     [Fact]

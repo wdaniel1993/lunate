@@ -105,6 +105,9 @@ internal static class CliHelp
         output.WriteLine(
             "  --append-system-prompt <text>  append a section after the composed system prompt"
         );
+        output.WriteLine(
+            "A value may also be given as --flag=value; this is how to pass a value that begins with '-'."
+        );
         output.WriteLine();
         output.WriteLine(
             "Selection flags are mutually exclusive with each other and --no-session."

@@ -82,8 +82,21 @@ internal sealed record LaunchOptions
         error = null;
         for (var index = 0; index < args.Count; index++)
         {
-            string arg = args[index];
-            switch (arg)
+            string token = args[index];
+            string? inline = null;
+            int equals = token.IndexOf('=');
+            if (token.StartsWith("--", StringComparison.Ordinal) && equals >= 0)
+            {
+                inline = token[(equals + 1)..];
+                token = token[..equals];
+                if (IsBooleanFlag(token))
+                {
+                    error = $"option '{token}' does not take a value";
+                    return false;
+                }
+            }
+
+            switch (token)
             {
                 case "-p" or "--print":
                     print = true;
@@ -107,34 +120,49 @@ internal sealed record LaunchOptions
                     noTools = true;
                     break;
                 case "--session":
-                    if (!TryValue(args, ref index, "--session", out session, out error))
+                    if (!TryValue(args, ref index, "--session", inline, out session, out error))
                     {
                         return false;
                     }
                     break;
                 case "--model":
-                    if (!TryValue(args, ref index, "--model", out model, out error))
+                    if (!TryValue(args, ref index, "--model", inline, out model, out error))
                     {
                         return false;
                     }
                     break;
                 case "--thinking":
                     if (
-                        !TryValue(args, ref index, "--thinking", out string level, out error)
-                        || !TryThinking(level, out thinking, out error)
+                        !TryValue(
+                            args,
+                            ref index,
+                            "--thinking",
+                            inline,
+                            out string level,
+                            out error
+                        ) || !TryThinking(level, out thinking, out error)
                     )
                     {
                         return false;
                     }
                     break;
                 case "--tools":
-                    if (!TryValue(args, ref index, "--tools", out tools, out error))
+                    if (!TryValue(args, ref index, "--tools", inline, out tools, out error))
                     {
                         return false;
                     }
                     break;
                 case "--system-prompt":
-                    if (!TryValue(args, ref index, "--system-prompt", out systemPrompt, out error))
+                    if (
+                        !TryValue(
+                            args,
+                            ref index,
+                            "--system-prompt",
+                            inline,
+                            out systemPrompt,
+                            out error
+                        )
+                    )
                     {
                         return false;
                     }
@@ -145,6 +173,7 @@ internal sealed record LaunchOptions
                             args,
                             ref index,
                             "--append-system-prompt",
+                            inline,
                             out appendSystemPrompt,
                             out error
                         )
@@ -154,17 +183,17 @@ internal sealed record LaunchOptions
                     }
                     break;
                 default:
-                    if (arg.StartsWith('-'))
+                    if (args[index].StartsWith('-'))
                     {
-                        error = $"unknown option '{arg}'";
+                        error = $"unknown option '{args[index]}'";
                         return false;
                     }
-                    if (string.IsNullOrWhiteSpace(arg))
+                    if (string.IsNullOrWhiteSpace(args[index]))
                     {
                         error = "the prompt cannot be empty";
                         return false;
                     }
-                    positional.Add(arg);
+                    positional.Add(args[index]);
                     break;
             }
         }
@@ -241,16 +270,34 @@ internal sealed record LaunchOptions
         return true;
     }
 
+    /// <summary>
+    /// Accepts a value inline (<c>--flag=value</c>) or as the next token. Space-separated values
+    /// starting with <c>-</c> are rejected; the inline form is the escape for such values.
+    /// </summary>
     private static bool TryValue(
         IReadOnlyList<string> args,
         ref int index,
         string flag,
+        string? inline,
         out string value,
         out string? error
     )
     {
-        value = string.Empty;
         error = null;
+        if (inline is not null)
+        {
+            if (string.IsNullOrWhiteSpace(inline))
+            {
+                value = string.Empty;
+                error = $"option '{flag}' expects a value";
+                return false;
+            }
+
+            value = inline;
+            return true;
+        }
+
+        value = string.Empty;
         if (
             index + 1 >= args.Count
             || string.IsNullOrWhiteSpace(args[index + 1])
@@ -264,6 +311,20 @@ internal sealed record LaunchOptions
         value = args[++index];
         return true;
     }
+
+    /// <summary>A flag without a value rejects the inline assignment form.</summary>
+    private static bool IsBooleanFlag(string token) =>
+        token
+            is "-p"
+                or "--print"
+                or "--json"
+                or "--yolo"
+                or "-c"
+                or "--continue"
+                or "-r"
+                or "--resume"
+                or "--no-session"
+                or "--no-tools";
 
     private static bool TryThinking(string value, out ThinkingLevel? thinking, out string? error)
     {
