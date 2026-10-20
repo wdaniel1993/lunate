@@ -160,16 +160,16 @@ public sealed class ApprovalPromptRendererTests
         );
 
     [Fact]
-    public void Key_letters_are_accent_cyan_in_ansi()
+    public void Key_letters_are_palette_accent_in_ansi()
     {
         string output = RenderAnsi(
             new ApprovalPromptModel("bash", string.Empty, Detail: ["dotnet format"])
         );
 
         Assert.Contains(
-            "\u001b[38;5;14my\u001b[0m]es  ["
-                + "\u001b[38;5;14mn\u001b[0m]o  ["
-                + "\u001b[38;5;14ma\u001b[0m]lways this session",
+            "\u001b[38;2;95;215;215my\u001b[0m]es  ["
+                + "\u001b[38;2;95;215;215mn\u001b[0m]o  ["
+                + "\u001b[38;2;95;215;215ma\u001b[0m]lways this session",
             output
         );
     }

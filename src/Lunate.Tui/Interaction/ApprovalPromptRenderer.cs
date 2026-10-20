@@ -14,7 +14,7 @@ namespace Lunate.Tui;
 public sealed class ApprovalPromptRenderer
 {
     internal static readonly SpanStyle Question = new(Color: "yellow");
-    internal static readonly SpanStyle Accent = new(Color: "cyan");
+    internal static readonly SpanStyle Accent = new(Color: LivePalette.AccentHex);
 
     private readonly bool _unicode;
 
