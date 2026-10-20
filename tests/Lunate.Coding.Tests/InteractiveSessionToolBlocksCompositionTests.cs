@@ -89,6 +89,42 @@ public sealed class InteractiveSessionToolBlocksCompositionTests
         await run;
     }
 
+    [Fact]
+    public async Task A_bash_call_commits_the_header_and_the_ctrl_o_hint_without_its_output()
+    {
+        using var host = new InteractiveSessionHost();
+        File.WriteAllText(host.Temp.File("bash-notes.txt"), "hidden tool output");
+        host.Client.Enqueue(
+            Scripts.Call("call-1", "bash", Scripts.Args(("command", "cat bash-notes.txt"))),
+            Scripts.ToolCalls()
+        );
+        host.Client.Enqueue(Scripts.Text("done"), Scripts.Stop());
+
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+        host.Console.SendText("go");
+        host.Console.SendEnter();
+        await host.WaitUntilAsync(() => host.Session.PendingApproval is not null);
+        Assert.Equal("bash", host.Session.PendingApproval!.ToolName);
+        host.Console.SendText("y");
+        await host.WaitUntilAsync(() =>
+            !host.Session.IsRunning
+            && host.ScrollbackText.Contains("done", StringComparison.Ordinal)
+        );
+
+        string[] lines = host.ScrollbackText.Split('\n');
+        string header = Assert.Single(
+            lines,
+            line => line.StartsWith("✓ bash  cat bash-notes.txt", StringComparison.Ordinal)
+        );
+        Assert.Contains("ctrl+o", header, StringComparison.Ordinal);
+        Assert.DoesNotContain("hidden tool output", host.ScrollbackText, StringComparison.Ordinal);
+
+        host.Console.SendText("/quit");
+        host.Console.SendEnter();
+        await run;
+    }
+
     /// <summary>
     /// Pauses the provider stream on the second script's final text: the harness awaits the hook
     /// for every update, so the turn stays mid-flight until the test releases it.
