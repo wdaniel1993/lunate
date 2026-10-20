@@ -30,6 +30,18 @@ Lunate keeps each kind of document in exactly one home. Start here, then jump to
 - **Keep it current.** A change updates the documents it invalidates; stale documentation is a bug.
 - **New documents land in a home above.** If none fits, propose a new home in an OpenSpec change first.
 
+## Verification gate
+
+`scripts/verify.sh` is the done-gate; [`../CONTRIBUTING.md`](../CONTRIBUTING.md) owns its step
+list. By default its test phase runs the solution-wide `dotnet test` the gate has always used,
+once per culture. Setting `LUNATE_VERIFY_JOBS=2` (or more) opts into a faster local mode: the
+default-culture and `de-AT` passes run at the same time, each with a bounded pool of test
+assemblies, while process- and environment-sensitive assemblies keep a serial lane inside a
+pass. That shaves about two minutes off the test phase locally; CI keeps the default path
+because timing-sensitive suites flaked on the shared Windows runner under the pooled load. The
+passes are independent processes, so overlapping them changes the wall time, not what the gate
+checks.
+
 ## Blame and the one-time reformat
 
 `.git-blame-ignore-revs` lists the one-time CSharpier reformat (and future bulk formatting commits). GitHub honors it automatically; configure git once to use it locally:

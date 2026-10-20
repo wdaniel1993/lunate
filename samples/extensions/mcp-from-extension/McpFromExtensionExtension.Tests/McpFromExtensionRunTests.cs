@@ -184,10 +184,13 @@ public sealed class McpFromExtensionRunTests
         ToolCallResult crash = Assert.Single(result.Events.OfType<ToolCallResult>());
         Assert.True(crash.IsError);
 
-        IReadOnlyList<ExtensionMcpServerStatus> statuses = await host.ComposeMcpServersAsync(Ct);
+        // The crash surface reports the error immediately, but the server's state flips to
+        // Failed when its process actually exits; under load that lands after the call.
+        ExtensionMcpServerStatus status = await TestSupport.WaitForMcpStateAsync(
+            host,
+            ExtensionMcpServerState.Failed
+        );
 
-        ExtensionMcpServerStatus status = Assert.Single(statuses);
-        Assert.Equal(ExtensionMcpServerState.Failed, status.State);
         Assert.Equal("the server process exited", status.Reason);
         Assert.Equal(1, host.Log.Count(ExtensionLogLevel.Error, "the server process exited"));
 

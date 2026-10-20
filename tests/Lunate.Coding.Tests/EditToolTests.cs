@@ -398,10 +398,11 @@ public sealed class EditToolTests
 
         Assert.False(result.IsError);
         // CI tripwire: the corpus target is 200 ms on a development machine (design.md);
-        // shared CI runners are several times slower, so this gate only catches pathological
-        // regressions (for example a quadratic match or diff over 300k lines).
+        // shared CI runners are several times slower — and the gate now runs bounded test
+        // pools in parallel — so this gate only catches pathological regressions (for
+        // example a quadratic match or diff over 300k lines).
         Assert.True(
-            stopwatch.Elapsed < TimeSpan.FromMilliseconds(1500),
+            stopwatch.Elapsed < TimeSpan.FromMilliseconds(3000),
             $"edit took {stopwatch.ElapsedMilliseconds} ms"
         );
         Assert.Contains(

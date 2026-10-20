@@ -80,6 +80,33 @@ internal static class TestSupport
         }
     }
 
+    /// <summary>
+    /// Polls the host's composed MCP status until it reports <paramref name="state"/>; the crash
+    /// path reports the error immediately but flips state when the server process actually exits.
+    /// </summary>
+    public static async Task<ExtensionMcpServerStatus> WaitForMcpStateAsync(
+        ExtensionTestHost host,
+        ExtensionMcpServerState state,
+        TimeSpan? timeout = null
+    )
+    {
+        var deadline = DateTime.UtcNow + (timeout ?? TimeSpan.FromSeconds(15));
+        ExtensionMcpServerStatus current;
+        while (true)
+        {
+            IReadOnlyList<ExtensionMcpServerStatus> statuses = await host.ComposeMcpServersAsync(
+                CancellationToken.None
+            );
+            current = statuses.Single();
+            if (current.State == state || DateTime.UtcNow >= deadline)
+            {
+                return current;
+            }
+
+            await Task.Delay(25);
+        }
+    }
+
     public static async Task WaitForProcessExitAsync(int pid, TimeSpan timeout)
     {
         var deadline = DateTime.UtcNow + timeout;
