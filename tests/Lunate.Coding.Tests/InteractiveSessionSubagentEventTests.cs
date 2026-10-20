@@ -77,7 +77,11 @@ public sealed class InteractiveSessionSubagentEventTests
 
         string transcript = host.ScrollbackText;
         Assert.Contains("parent answer", transcript, StringComparison.Ordinal);
-        Assert.Contains("parent tool output", transcript, StringComparison.Ordinal);
+        Assert.Contains(
+            "\u2713 bash  parent command \u00b7 0.0s \u00b7 ctrl+o",
+            transcript,
+            StringComparison.Ordinal
+        );
         Assert.Contains("parent command", transcript, StringComparison.Ordinal);
         Assert.DoesNotContain("streamed secret", transcript, StringComparison.Ordinal);
         Assert.DoesNotContain("secret child output", transcript, StringComparison.Ordinal);
@@ -132,6 +136,15 @@ public sealed class InteractiveSessionSubagentEventTests
     public async Task The_spawning_block_carries_the_child_result_as_one_indented_group()
     {
         using var host = new InteractiveSessionHost();
+        File.WriteAllText(
+            host.Temp.File("settings.json"),
+            """
+            {
+              "schemaVersion": 1,
+              "toolDetails": "expanded"
+            }
+            """
+        );
         Task run = host.RunAsync();
         await host.WaitUntilAsync(() => host.Session.IsComposed);
 

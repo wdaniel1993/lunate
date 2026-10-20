@@ -71,6 +71,15 @@ public sealed class ExtensionToolCompositionTests
             mcpConfigPath: config,
             extensions: new ExtensionSeams { StorePath = store, Log = new RecordingExtensionLog() }
         );
+        File.WriteAllText(
+            host.Temp.File("settings.json"),
+            """
+            {
+              "schemaVersion": 1,
+              "toolDetails": "expanded"
+            }
+            """
+        );
         host.Console.Size = new ConsoleSize(400, 24);
         host.Client.Enqueue(
             Scripts.Call("call-1", "test__echo", Scripts.Args(("text", "hello mcp"))),

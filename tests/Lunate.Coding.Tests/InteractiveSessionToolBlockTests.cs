@@ -39,6 +39,87 @@ public sealed class InteractiveSessionToolBlockTests
     }
 
     [Fact]
+    public async Task A_bash_result_commits_only_the_header_with_the_ctrl_o_hint_by_default()
+    {
+        using var host = new InteractiveSessionHost();
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+
+        host.Session.HandleEvent(new RunStarted("run"));
+        host.Session.HandleEvent(new ToolCallStart("run", "call_1", "bash"));
+        host.Session.HandleEvent(
+            new ToolCallArgs("run", "call_1", """{"command":"dotnet build"}""")
+        );
+        host.Session.HandleEvent(new ToolCallEnd("run", "call_1"));
+        host.Advance(400);
+        host.Session.HandleEvent(
+            new ToolCallResult(
+                "run",
+                "call_1",
+                "Build succeeded.\nsecond line",
+                false,
+                new BashDetails(0)
+            )
+        );
+        host.Advance(40);
+
+        Assert.Contains(
+            "\u2713 bash  dotnet build \u00b7 exit 0 \u00b7 0.4s \u00b7 ctrl+o",
+            host.ScrollbackText,
+            StringComparison.Ordinal
+        );
+        Assert.DoesNotContain("Build succeeded.", host.ScrollbackText, StringComparison.Ordinal);
+
+        host.Console.Complete();
+        await run;
+    }
+
+    [Fact]
+    public async Task The_expanded_tool_details_setting_commits_the_output_excerpt()
+    {
+        using var host = new InteractiveSessionHost();
+        File.WriteAllText(
+            host.Temp.File("settings.json"),
+            """
+            {
+              "schemaVersion": 1,
+              "toolDetails": "expanded"
+            }
+            """
+        );
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+
+        host.Session.HandleEvent(new RunStarted("run"));
+        host.Session.HandleEvent(new ToolCallStart("run", "call_1", "bash"));
+        host.Session.HandleEvent(
+            new ToolCallArgs("run", "call_1", """{"command":"dotnet build"}""")
+        );
+        host.Session.HandleEvent(new ToolCallEnd("run", "call_1"));
+        host.Advance(400);
+        host.Session.HandleEvent(
+            new ToolCallResult(
+                "run",
+                "call_1",
+                "Build succeeded.\nsecond line",
+                false,
+                new BashDetails(0)
+            )
+        );
+        host.Advance(40);
+
+        Assert.Contains(
+            "\u2713 bash  dotnet build \u00b7 exit 0 \u00b7 0.4s\nBuild succeeded.\n",
+            host.ScrollbackText,
+            StringComparison.Ordinal
+        );
+        Assert.DoesNotContain("0.4s \u00b7 ctrl+o", host.ScrollbackText, StringComparison.Ordinal);
+
+        host.Console.Complete();
+        await run;
+    }
+
+    [Fact]
     public async Task A_failed_bash_block_keeps_its_non_zero_exit_code()
     {
         using var host = new InteractiveSessionHost();

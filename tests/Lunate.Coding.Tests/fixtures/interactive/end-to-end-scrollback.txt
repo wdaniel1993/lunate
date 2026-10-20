@@ -11,27 +11,9 @@ para one
 para two
 ✓ read  a.txt (1 line)
 » steer mid-run
-✓ write  note.txt · +1 −0
-wrote 1 lines to note.txt (created)
-match: created
---- a/note.txt
-+++ b/note.txt
-@@ -0,0 +1,1 @@
-+one
-✓ write  b.txt · +1 −0
-wrote 1 lines to b.txt (created)
-match: created
---- a/b.txt
-+++ b/b.txt
-@@ -0,0 +1,1 @@
-+two
-✓ write  c.txt · +1 −0
-wrote 1 lines to c.txt (created)
-match: created
---- a/c.txt
-+++ b/c.txt
-@@ -0,0 +1,1 @@
-+three
+✓ write  note.txt · +1 −0 · ctrl+o
+✓ write  b.txt · +1 −0 · ctrl+o
+✓ write  c.txt · +1 −0 · ctrl+o
 all done
 
 > second question

@@ -231,7 +231,7 @@ internal sealed partial class InteractiveSession
         _transcript.Add(new TranscriptToolEntry(block));
         _turnWroteOutput = true;
         _live.WriteScrollback(console =>
-            console.Write(_toolBlocks.Render(block, _console.Size.Columns))
+            console.Write(_toolBlocks.Render(block, _console.Size.Columns, _settings.ToolDetails))
         );
         RenderExtensionBlock(name, result);
     }
