@@ -40,5 +40,5 @@ Implementation runs through the `senior-dev` subagent (test-first). One commit p
 
 ## 7. Documentation and gate
 
-- [ ] 7.1 `docs/guide.md`: the flags paragraph (`--continue`, `--resume`, `--session`, `--no-session`, `--model`, `--thinking`, `--tools`, `--no-tools`, the two prompt directives), the `/name` and `/session` commands, and the replace-warning for `--system-prompt`.
+- [x] 7.1 `docs/guide.md`: the flags paragraph (`--continue`, `--resume`, `--session`, `--no-session`, `--model`, `--thinking`, `--tools`, `--no-tools`, the two prompt directives), the `/name` and `/session` commands, and the replace-warning for `--system-prompt`.
 - [ ] 7.2 Run `scripts/verify.sh` (build, tests, publish, budgets, public API, CSharpier, docs lint) and record the result in the change; fix only what the gate reports. Commit: `docs(coding): document session flags and commands`.
