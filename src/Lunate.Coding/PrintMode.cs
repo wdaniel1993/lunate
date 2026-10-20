@@ -89,6 +89,11 @@ internal static class PrintMode
         try
         {
             settings = SettingsStore.Resolve(options.SettingsPath, options.Environment);
+            settings = settings with
+            {
+                Model = options.Launch.Model ?? settings.Model,
+                Thinking = options.Launch.Thinking ?? settings.Thinking,
+            };
             catalog = ModelCatalog.Load(options.ModelsPath);
             model = HarnessFactory.ResolveModel(settings.Model, catalog);
             factory =
@@ -577,6 +582,7 @@ internal static class PrintMode
             WorkingDirectory = workspace.WorktreeRoot,
             ToolOutputLimit = settings.ToolOutputLimit,
             SubagentLimits = settings.Subagents,
+            ThinkingLevel = settings.Thinking,
             Approver = new NonInteractiveApprover(settings.Approval, options.Yolo),
             Hooks = extensions?.Hooks,
             Session = session,

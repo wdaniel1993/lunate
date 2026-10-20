@@ -77,7 +77,11 @@ internal static class Cli
 
         if (args.Contains("--acp"))
         {
-            if (args is not ["--acp"])
+            string[] acpArgs =
+            [
+                .. args.Where(arg => !string.Equals(arg, "--acp", StringComparison.Ordinal)),
+            ];
+            if (!TryParseAcpOptions(acpArgs, out LaunchOptions acpLaunch, out _))
             {
                 WriteAcpUsage(errors, args);
                 return 2;
@@ -88,7 +92,8 @@ internal static class Cli
                 Console.OpenStandardInput(),
                 Console.OpenStandardOutput(),
                 ct,
-                extensions: noExtensions ? Suppress(extensions) : extensions
+                extensions: noExtensions ? Suppress(extensions) : extensions,
+                launch: acpLaunch
             );
         }
 
@@ -144,6 +149,51 @@ internal static class Cli
     {
         errors.WriteLine("Usage: lunate [options] [-p [--json] [--yolo] <prompt>]");
         errors.WriteLine("Run 'lunate --help' for the full list of options.");
+    }
+
+    /// <summary>
+    /// Parses the flags ACP may carry (<paramref name="args"/> excludes <c>--acp</c>): the
+    /// composition flags parse through the one launch parser, while print and selection flags are
+    /// usage errors because the editor owns the session lifecycle (design D3).
+    /// </summary>
+    internal static bool TryParseAcpOptions(
+        IReadOnlyList<string> args,
+        out LaunchOptions launch,
+        out string? error
+    )
+    {
+        launch = new LaunchOptions();
+        if (!LaunchOptions.TryParse(args, out LaunchOptions parsed, out error))
+        {
+            return false;
+        }
+
+        if (parsed.Print)
+        {
+            error = "-p/--print is a usage error with --acp";
+            return false;
+        }
+
+        if (parsed.Json)
+        {
+            error = "--json is a usage error with --acp";
+            return false;
+        }
+
+        if (parsed.Yolo)
+        {
+            error = "--yolo is a usage error with --acp";
+            return false;
+        }
+
+        if (parsed.HasSelection)
+        {
+            error = "session selection is a usage error with --acp";
+            return false;
+        }
+
+        launch = parsed;
+        return true;
     }
 
     private static void WriteAcpUsage(TextWriter errors, string[] args)

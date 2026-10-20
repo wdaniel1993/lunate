@@ -21,7 +21,8 @@ internal static class AcpMode
         CancellationToken ct,
         ExtensionSeams? extensions = null,
         string? mcpConfigPath = null,
-        string? mcpAgentsConfigPath = null
+        string? mcpAgentsConfigPath = null,
+        LaunchOptions? launch = null
     )
     {
         var interaction = new AcpUserInteraction(line => errors.WriteLine($"lunate: {line}"));
@@ -127,7 +128,14 @@ internal static class AcpMode
                     input,
                     output,
                     context =>
-                        CreateHarness(context, host, mcpTools, inheritedTools, workspaceServices),
+                        CreateHarness(
+                            context,
+                            host,
+                            mcpTools,
+                            inheritedTools,
+                            workspaceServices,
+                            launch
+                        ),
                     ct
                 )
                 .GetAwaiter()
@@ -214,10 +222,16 @@ internal static class AcpMode
         ExtensionSession? host,
         IReadOnlyList<ITool> mcpTools,
         IReadOnlyList<ITool> inheritedTools,
-        WorkspaceServices workspaceServices
+        WorkspaceServices workspaceServices,
+        LaunchOptions? launch
     )
     {
         AgentSettings settings = SettingsStore.Resolve(null, null);
+        settings = settings with
+        {
+            Model = launch?.Model ?? settings.Model,
+            Thinking = launch?.Thinking ?? settings.Thinking,
+        };
         ModelCatalog catalog = ModelCatalog.Load(null);
         ModelInfo model = HarnessFactory.ResolveModel(settings.Model, catalog);
         IChatClientFactory factory = HarnessFactory.CreateFactory(null, null);
@@ -247,6 +261,7 @@ internal static class AcpMode
             WorkingDirectory = workspace.WorktreeRoot,
             ToolOutputLimit = settings.ToolOutputLimit,
             SubagentLimits = settings.Subagents,
+            ThinkingLevel = settings.Thinking,
             Approver = context.ClientApprover is { } clientApprover
                 ? new AcpApprover(settings.Approval, clientApprover)
                 : new NonInteractiveApprover(settings.Approval, yolo: false),

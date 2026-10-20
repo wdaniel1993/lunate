@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Lunate.Agent;
+using Lunate.Ai;
 using Microsoft.Extensions.AI;
 
 namespace Lunate.Coding.Tests;
@@ -598,6 +599,90 @@ public sealed class PrintModeTests
 
         Assert.Equal(0, exitCode);
         Assert.Equal(PrintModeTestSupport.ModelId, factory.CreatedModel!.Id);
+    }
+
+    [Fact]
+    public async Task A_launch_model_wins_over_the_environment()
+    {
+        using var temp = new TempDirectory();
+        var factory = new FakeChatClientFactory(
+            new ScriptedChatClient().Enqueue(Scripts.Text("ok"), Scripts.Stop())
+        );
+        PrintModeOptions options = PrintModeTestSupport.BaseOptions(temp, factory) with
+        {
+            Prompt = "Hi",
+            Launch = new LaunchOptions { Model = "gpt-4o" },
+        };
+
+        (int exitCode, string output, string errors) = await PrintModeTestSupport.RunAsync(options);
+
+        Assert.Equal(0, exitCode);
+        Assert.Equal("ok", output);
+        Assert.Empty(errors);
+        Assert.Equal("gpt-4o", factory.CreatedModel!.Id);
+    }
+
+    [Fact]
+    public async Task A_launch_thinking_level_wins_over_the_settings_file()
+    {
+        using var temp = new TempDirectory();
+        File.WriteAllText(
+            temp.File("settings.json"),
+            """{ "schemaVersion": 1, "thinking": "low" }"""
+        );
+        File.WriteAllText(
+            temp.File("models.json"),
+            """
+            {
+              "schemaVersion": 1,
+              "models": [
+                { "id": "effort-model", "provider": "openai", "endpoint": null, "contextWindow": 128000, "supportsTools": true, "reasoning": "effort" }
+              ]
+            }
+            """
+        );
+        var client = new ScriptedChatClient().Enqueue(Scripts.Text("ok"), Scripts.Stop());
+        PrintModeOptions options = PrintModeTestSupport.BaseOptions(
+            temp,
+            new FakeChatClientFactory(client)
+        ) with
+        {
+            Prompt = "Hi",
+            Environment = PrintModeTestSupport.Environment(model: "effort-model"),
+            Launch = new LaunchOptions { Thinking = ThinkingLevel.High },
+        };
+
+        (int exitCode, string output, string errors) = await PrintModeTestSupport.RunAsync(options);
+
+        Assert.Equal(0, exitCode);
+        Assert.Equal("ok", output);
+        Assert.Empty(errors);
+        Assert.Equal(ReasoningEffort.High, Assert.Single(client.RequestOptions)?.Reasoning?.Effort);
+    }
+
+    [Fact]
+    public async Task A_launch_model_not_in_the_catalog_fails_naming_it()
+    {
+        using var temp = new TempDirectory();
+        var client = new ScriptedChatClient().Enqueue(Scripts.Text("ok"), Scripts.Stop());
+        var factory = new FakeChatClientFactory(client);
+        PrintModeOptions options = PrintModeTestSupport.BaseOptions(temp, factory) with
+        {
+            Prompt = "Hi",
+            Launch = new LaunchOptions { Model = "nope-9000" },
+        };
+
+        (int exitCode, string output, string errors) = await PrintModeTestSupport.RunAsync(options);
+
+        Assert.Equal(1, exitCode);
+        Assert.Empty(output);
+        Assert.Contains(
+            "Model 'nope-9000' is not in the catalog",
+            errors,
+            StringComparison.Ordinal
+        );
+        Assert.Null(factory.CreatedModel);
+        Assert.Empty(client.Requests);
     }
 
     [Fact]
