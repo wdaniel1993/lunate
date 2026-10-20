@@ -319,6 +319,27 @@ public sealed class ModelCatalogTests
         }
     }
 
+    [Fact]
+    public void Load_with_malformed_user_file_throws_naming_the_path()
+    {
+        string directory = CreateTempDirectory();
+        try
+        {
+            string userFile = WriteUserFile(directory, "{");
+
+            InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+                ModelCatalog.Load(userFile)
+            );
+
+            Assert.Contains(userFile, exception.Message, StringComparison.Ordinal);
+            Assert.Contains("malformed", exception.Message, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            DeleteTempDirectory(directory);
+        }
+    }
+
     [Theory]
     [InlineData("""{ "schemaVersion": 3, "models": [] }""", "3")]
     [InlineData("""{ "models": [] }""", "missing")]

@@ -195,6 +195,7 @@ public sealed class ModelsDevCatalogTests
 
         Assert.DoesNotContain("wireId", line, StringComparison.Ordinal);
         Assert.DoesNotContain("reasoning", line, StringComparison.Ordinal);
+        Assert.DoesNotContain("endpoint", line, StringComparison.Ordinal);
     }
 
     [Fact]

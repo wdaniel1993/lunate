@@ -86,10 +86,19 @@ public sealed class ModelCatalog
 
     private static List<ModelInfo> Parse(string json, string source)
     {
-        CatalogFile? file = JsonSerializer.Deserialize<CatalogFile>(
-            json,
-            AIJsonUtilities.DefaultOptions
-        );
+        CatalogFile? file;
+        try
+        {
+            file = JsonSerializer.Deserialize<CatalogFile>(json, AIJsonUtilities.DefaultOptions);
+        }
+        catch (JsonException exception)
+        {
+            throw new InvalidDataException(
+                $"The model catalog in {source} is malformed: {exception.Message}",
+                exception
+            );
+        }
+
         if (
             file?.SchemaVersion is not int schemaVersion
             || schemaVersion < OldestSupportedSchemaVersion
