@@ -19,7 +19,6 @@ public static class DiscoverCommand
     private const string OpenAiProvider = "openai";
     private const string AnthropicProvider = "anthropic";
     private const string OpenAiApiKeyVariable = "OPENAI_API_KEY";
-    private const string AnthropicApiKeyVariable = "ANTHROPIC_API_KEY";
     private static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(30);
 
     private static readonly JsonSerializerOptions DraftJson = new()
@@ -45,6 +44,7 @@ public static class DiscoverCommand
         string? provider = null;
         string? authRef = null;
         bool customEndpoint = false;
+        bool qualified = false;
         string baseUrl;
 
         if (IsHttpUrl(target, out string url))
@@ -52,13 +52,20 @@ public static class DiscoverCommand
             baseUrl = TrimTrailingSlash(url);
             customEndpoint = true;
         }
+        else if (ProviderPresets.Find(target) is { } presetTarget)
+        {
+            // A preset name is a provider target even when no catalog entry carries that id.
+            provider = presetTarget.Id;
+            qualified = presetTarget.Adapter == ProviderAdapter.OpenAiCompatible;
+            baseUrl = TrimTrailingSlash(presetTarget.BaseUrl.AbsoluteUri);
+        }
         else
         {
             ModelInfo? model = catalog.Find(target);
             if (model is null)
             {
                 return Failure(
-                    $"Unknown model '{target}'. Add it to ~/.lunate/models.json or pass an http(s) URL."
+                    $"Unknown model or preset '{target}'. Add it to ~/.lunate/models.json, name a preset, or pass an http(s) URL."
                 );
             }
 
@@ -69,17 +76,17 @@ public static class DiscoverCommand
                 baseUrl = TrimTrailingSlash(model.Endpoint.AbsoluteUri);
                 customEndpoint = true;
             }
+            else if (ProviderPresets.Find(model.Provider) is { } modelPreset)
+            {
+                // Native presets keep bare ids; the OpenAI-compatible ones emit qualified ids.
+                qualified = modelPreset.Adapter == ProviderAdapter.OpenAiCompatible;
+                baseUrl = TrimTrailingSlash(modelPreset.BaseUrl.AbsoluteUri);
+            }
             else
             {
-                string? defaultEndpoint = DefaultEndpointFor(model.Provider);
-                if (defaultEndpoint is null)
-                {
-                    return Failure(
-                        $"Model '{target}' has no endpoint and provider '{model.Provider}' has no known default endpoint."
-                    );
-                }
-
-                baseUrl = defaultEndpoint;
+                return Failure(
+                    $"Model '{target}' has no endpoint and provider '{model.Provider}' has no known default endpoint."
+                );
             }
         }
 
@@ -97,16 +104,7 @@ public static class DiscoverCommand
         }
         else
         {
-            string providerName = provider ?? OpenAiProvider;
-            string variable =
-                providerName == AnthropicProvider ? AnthropicApiKeyVariable : OpenAiApiKeyVariable;
-            key = environment is null
-                ? Environment.GetEnvironmentVariable(variable)
-                : environment(variable);
-            if (string.IsNullOrEmpty(key))
-            {
-                key = namedKeySource?.Invoke(providerName);
-            }
+            key = PresetKey(provider, environment, namedKeySource);
         }
 
         string requestUrl = $"{baseUrl}/models";
@@ -153,7 +151,9 @@ public static class DiscoverCommand
                 body,
                 requestUrl,
                 provider,
-                customEndpoint ? baseUrl : null,
+                customEndpoint,
+                baseUrl,
+                qualified,
                 authRef
             );
         }
@@ -163,7 +163,9 @@ public static class DiscoverCommand
         string body,
         string requestUrl,
         string? provider,
-        string? endpoint,
+        bool customEndpoint,
+        string baseUrl,
+        bool qualified,
         string? authRef
     )
     {
@@ -208,11 +210,28 @@ public static class DiscoverCommand
                     );
                 }
 
-                models.Add(new DraftModel(id.GetString()!, provider, endpoint, authRef));
+                string listed = id.GetString()!;
+                models.Add(
+                    qualified
+                        ? new DraftModel(
+                            $"{provider}/{listed}",
+                            provider,
+                            Endpoint: null,
+                            authRef,
+                            WireId: listed
+                        )
+                        : new DraftModel(
+                            listed,
+                            provider,
+                            customEndpoint ? baseUrl : null,
+                            authRef,
+                            WireId: null
+                        )
+                );
             }
 
             string draft = JsonSerializer.Serialize(
-                new DraftFile(SettingsStore.SupportedSchemaVersion, models),
+                new DraftFile(ModelCatalog.SupportedSchemaVersion, models),
                 DraftJson
             );
             return new DiscoverResult(true, draft, null);
@@ -257,24 +276,44 @@ public static class DiscoverCommand
 
     private static string TrimTrailingSlash(string url) => url.TrimEnd('/');
 
-    private static string? DefaultEndpointFor(string provider)
+    /// <summary>
+    /// The key slot discovery reads: the preset's variable (its alias second), then the auth store
+    /// under the preset id. A user-declared provider without a preset keeps the OpenAI key slot it
+    /// has always used.
+    /// </summary>
+    private static string? PresetKey(
+        string? provider,
+        Func<string, string?>? environment,
+        Func<string, string?>? namedKeySource
+    )
     {
-        if (string.Equals(provider, OpenAiProvider, StringComparison.OrdinalIgnoreCase))
+        if (ProviderPresets.Find(provider ?? OpenAiProvider) is { } preset)
         {
-            return "https://api.openai.com/v1";
+            string? key = EnvironmentValue(preset.KeyVariable, environment);
+            if (string.IsNullOrEmpty(key) && preset.KeyVariableAlias is { } alias)
+            {
+                key = EnvironmentValue(alias, environment);
+            }
+
+            return string.IsNullOrEmpty(key) ? namedKeySource?.Invoke(preset.Id) : key;
         }
 
-        if (string.Equals(provider, AnthropicProvider, StringComparison.OrdinalIgnoreCase))
-        {
-            return "https://api.anthropic.com/v1";
-        }
-
-        return null;
+        return EnvironmentValue(OpenAiApiKeyVariable, environment)
+            ?? namedKeySource?.Invoke(provider ?? OpenAiProvider);
     }
+
+    private static string? EnvironmentValue(string variable, Func<string, string?>? environment) =>
+        environment is null ? Environment.GetEnvironmentVariable(variable) : environment(variable);
 
     private static DiscoverResult Failure(string message) => new(false, string.Empty, message);
 
     private sealed record DraftFile(int SchemaVersion, IReadOnlyList<DraftModel> Models);
 
-    private sealed record DraftModel(string Id, string? Provider, string? Endpoint, string? Auth);
+    private sealed record DraftModel(
+        string Id,
+        string? Provider,
+        string? Endpoint,
+        string? Auth,
+        string? WireId
+    );
 }

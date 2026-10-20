@@ -34,7 +34,7 @@ public sealed class DiscoverCommandTests
         Assert.Empty(Directory.GetFileSystemEntries(temp.Root));
 
         using JsonDocument draft = JsonDocument.Parse(result.Draft);
-        Assert.Equal(1, draft.RootElement.GetProperty("schemaVersion").GetInt32());
+        Assert.Equal(2, draft.RootElement.GetProperty("schemaVersion").GetInt32());
         JsonElement models = draft.RootElement.GetProperty("models");
         Assert.Equal(["alpha", "beta"], Ids(models));
         Assert.Equal(UrlTarget, models[0].GetProperty("endpoint").GetString());
@@ -122,6 +122,157 @@ public sealed class DiscoverCommandTests
         JsonElement model = draft.RootElement.GetProperty("models")[0];
         Assert.Equal("openai", model.GetProperty("provider").GetString());
         Assert.False(model.TryGetProperty("endpoint", out _));
+    }
+
+    [Fact]
+    public async Task Preset_target_uses_its_base_url_and_key_and_drafts_qualified_ids()
+    {
+        using var temp = new TempDirectory();
+        using var handler = new FakeHandler(_ =>
+            Json(
+                HttpStatusCode.OK,
+                """{ "data": [ { "id": "llama-3.3-70b" }, { "id": "groq/compound" } ] }"""
+            )
+        );
+
+        DiscoverResult result = await DiscoverCommand.RunAsync(
+            "groq",
+            Catalog(temp),
+            handler,
+            environment: name => name == "GROQ_API_KEY" ? "gsk-test" : null,
+            ct: TestContext.Current.CancellationToken
+        );
+
+        Assert.True(result.Succeeded, result.Error);
+        Assert.Equal(
+            "https://api.groq.com/openai/v1/models",
+            handler.Requests[0].RequestUri!.AbsoluteUri
+        );
+        Assert.Equal(
+            "Bearer gsk-test",
+            handler.Requests[0].Headers.GetValues("Authorization").Single()
+        );
+
+        using JsonDocument draft = JsonDocument.Parse(result.Draft);
+        Assert.Equal(2, draft.RootElement.GetProperty("schemaVersion").GetInt32());
+        JsonElement models = draft.RootElement.GetProperty("models");
+        Assert.Equal(["groq/llama-3.3-70b", "groq/groq/compound"], Ids(models));
+        Assert.Equal("groq", models[0].GetProperty("provider").GetString());
+        Assert.Equal("llama-3.3-70b", models[0].GetProperty("wireId").GetString());
+        Assert.False(models[0].TryGetProperty("endpoint", out _));
+        Assert.False(models[0].TryGetProperty("auth", out _));
+    }
+
+    [Fact]
+    public async Task Preset_target_falls_back_to_the_stored_provider_key()
+    {
+        using var temp = new TempDirectory();
+        using var handler = new FakeHandler(_ =>
+            Json(HttpStatusCode.OK, """{ "data": [ { "id": "llama-3.3-70b" } ] }""")
+        );
+        string? requested = null;
+
+        DiscoverResult result = await DiscoverCommand.RunAsync(
+            "groq",
+            Catalog(temp),
+            handler,
+            namedKeySource: name =>
+            {
+                requested = name;
+                return "stored-groq-key";
+            },
+            environment: _ => null,
+            ct: TestContext.Current.CancellationToken
+        );
+
+        Assert.True(result.Succeeded, result.Error);
+        Assert.Equal("groq", requested);
+        Assert.Equal(
+            "Bearer stored-groq-key",
+            handler.Requests[0].Headers.GetValues("Authorization").Single()
+        );
+    }
+
+    [Fact]
+    public async Task Preset_target_accepts_the_google_key_alias()
+    {
+        using var temp = new TempDirectory();
+        using var handler = new FakeHandler(_ =>
+            Json(HttpStatusCode.OK, """{ "data": [ { "id": "gemini-3-pro" } ] }""")
+        );
+
+        DiscoverResult result = await DiscoverCommand.RunAsync(
+            "google",
+            Catalog(temp),
+            handler,
+            environment: name => name == "GEMINI_API_KEY" ? "gemini-key" : null,
+            ct: TestContext.Current.CancellationToken
+        );
+
+        Assert.True(result.Succeeded, result.Error);
+        Assert.Equal(
+            "https://generativelanguage.googleapis.com/v1beta/openai/models",
+            handler.Requests[0].RequestUri!.AbsoluteUri
+        );
+        Assert.Equal(
+            "Bearer gemini-key",
+            handler.Requests[0].Headers.GetValues("Authorization").Single()
+        );
+    }
+
+    [Fact]
+    public async Task Native_preset_target_keeps_bare_ids()
+    {
+        using var temp = new TempDirectory();
+        using var handler = new FakeHandler(_ =>
+            Json(HttpStatusCode.OK, """{ "data": [ { "id": "gpt-4o" } ] }""")
+        );
+
+        DiscoverResult result = await DiscoverCommand.RunAsync(
+            "openai",
+            Catalog(temp),
+            handler,
+            environment: name => name == "OPENAI_API_KEY" ? "sk-test" : null,
+            ct: TestContext.Current.CancellationToken
+        );
+
+        Assert.True(result.Succeeded, result.Error);
+        Assert.Equal(
+            "https://api.openai.com/v1/models",
+            handler.Requests[0].RequestUri!.AbsoluteUri
+        );
+        using JsonDocument draft = JsonDocument.Parse(result.Draft);
+        JsonElement model = draft.RootElement.GetProperty("models")[0];
+        Assert.Equal("gpt-4o", model.GetProperty("id").GetString());
+        Assert.False(model.TryGetProperty("wireId", out _));
+    }
+
+    [Fact]
+    public async Task A_preset_catalog_model_uses_the_preset_and_drafts_qualified_ids()
+    {
+        using var temp = new TempDirectory();
+        using var handler = new FakeHandler(_ =>
+            Json(HttpStatusCode.OK, """{ "data": [ { "id": "allam-2-7b" } ] }""")
+        );
+
+        DiscoverResult result = await DiscoverCommand.RunAsync(
+            "groq/allam-2-7b",
+            Catalog(temp),
+            handler,
+            environment: name => name == "GROQ_API_KEY" ? "gsk-test" : null,
+            ct: TestContext.Current.CancellationToken
+        );
+
+        Assert.True(result.Succeeded, result.Error);
+        Assert.Equal(
+            "https://api.groq.com/openai/v1/models",
+            handler.Requests[0].RequestUri!.AbsoluteUri
+        );
+        using JsonDocument draft = JsonDocument.Parse(result.Draft);
+        JsonElement model = draft.RootElement.GetProperty("models")[0];
+        Assert.Equal("groq/allam-2-7b", model.GetProperty("id").GetString());
+        Assert.Equal("groq", model.GetProperty("provider").GetString());
+        Assert.Equal("allam-2-7b", model.GetProperty("wireId").GetString());
     }
 
     [Fact]
