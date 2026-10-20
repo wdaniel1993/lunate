@@ -165,7 +165,7 @@ public sealed class AcpLaunchOptionsTests
             TestExtensionSeams.Empty(temp),
             mcpConfigPath: temp.File("global-mcp.json"),
             mcpAgentsConfigPath: temp.File("agents-mcp.json"),
-            launch: new LaunchOptions { Tools = ["nope"] }
+            launch: new LaunchOptions { Tools = ["nope"], Model = "gpt-4o-mini" }
         );
 
         Assert.Equal(0, exitCode);
