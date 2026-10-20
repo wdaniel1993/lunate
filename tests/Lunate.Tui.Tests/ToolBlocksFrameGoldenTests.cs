@@ -109,6 +109,47 @@ public sealed class ToolBlocksFrameGoldenTests
         );
     }
 
+    /// <summary>The expanded rendering once at the standard width without colour.</summary>
+    public static TheoryData<string> ExpandedCases
+    {
+        get
+        {
+            var cases = new TheoryData<string>();
+            foreach (string name in Blocks.Keys)
+            {
+                cases.Add(name);
+            }
+
+            return cases;
+        }
+    }
+
+    [Theory]
+    [MemberData(nameof(ExpandedCases))]
+    public void The_expanded_block_frame_matches_the_committed_golden(string name)
+    {
+        var console = new TestConsole();
+        console.Profile.Width = 80;
+        console.EmitAnsiSequences = true;
+        console.Profile.Capabilities.ColorSystem = ColorSystem.NoColors;
+        console.Write(
+            new ToolBlockRenderer(
+                new TerminalCapabilities(ColorSystemSupport.NoColors, Unicode: true),
+                homeDirectory: "/home/dev"
+            ).Render(Blocks[name], 80, ToolDetails.Expanded)
+        );
+
+        GoldenFiles.AssertMatchesLines(
+            Path.Combine(GoldensDirectory, $"{name}-80-no-color-expanded.txt"),
+            console
+                .Output.ReplaceLineEndings("\n")
+                .TrimEnd('\n')
+                .Split('\n')
+                .Select(Escape)
+                .ToArray()
+        );
+    }
+
     /// <summary>The capability from the detection seam; Standard is the 16-colour bucket.</summary>
     private static TerminalCapabilities Capability(string mode) =>
         new(

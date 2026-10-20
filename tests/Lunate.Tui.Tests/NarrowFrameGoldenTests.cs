@@ -150,7 +150,9 @@ public sealed class NarrowFrameGoldenTests
 
         foreach (ToolBlockModel block in CommittedTurn())
         {
-            console.Write(renderer.Render(block, width));
+            // This matrix pins the detailed layout, so it asks for the expanded form; the
+            // scrollback's default collapsed form has its own tool-block matrix.
+            console.Write(renderer.Render(block, width, ToolDetails.Expanded));
         }
 
         return console.Output.ReplaceLineEndings("\n").TrimEnd('\n').Split('\n');
