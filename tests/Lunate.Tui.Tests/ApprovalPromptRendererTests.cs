@@ -224,6 +224,90 @@ public sealed class ApprovalPromptRendererTests
     }
 
     [Fact]
+    public void Plain_lines_at_forty_columns_drop_detail_to_its_first_line()
+    {
+        var lines = ApprovalPromptRenderer.PlainLines(
+            new ApprovalPromptModel(
+                "bash",
+                string.Empty,
+                Detail: ["dotnet format", "line one", "line two", "line three"]
+            ),
+            width: 40,
+            ColorSystemSupport.NoColors,
+            unicode: true
+        );
+
+        var detail = Assert.Single(lines.Where(line => line.Part == ApprovalPart.Detail));
+        Assert.Equal("  line one", detail.Text);
+        Assert.DoesNotContain(lines, line => line.Text == "  line two");
+        Assert.DoesNotContain(lines, line => line.Text == "  line three");
+        Assert.Equal("Allow bash?", lines[2].Text);
+        Assert.Equal("[y]es  [n]o  [a]lways this session", lines[3].Text);
+        Assert.Equal(34, CellText.Width(lines[3].Text));
+    }
+
+    [Fact]
+    public void Plain_lines_at_forty_columns_keep_the_workspace_root_line()
+    {
+        var lines = ApprovalPromptRenderer.PlainLines(
+            new ApprovalPromptModel(
+                "bash",
+                string.Empty,
+                Detail: ["dotnet format", "line one", "line two"],
+                WorkspaceRoot: "~/worktree-b"
+            ),
+            width: 40,
+            ColorSystemSupport.NoColors,
+            unicode: true
+        );
+
+        Assert.Equal("  line one", lines[1].Text);
+        Assert.Equal("  in ~/worktree-b", lines[2].Text);
+        Assert.Equal("Allow bash?", lines[3].Text);
+        Assert.Equal("[y]es  [n]o  [a]lways this session", lines[4].Text);
+        Assert.Equal(34, CellText.Width(lines[4].Text));
+    }
+
+    [Fact]
+    public void Plain_lines_at_sixty_columns_keep_the_full_detail()
+    {
+        var lines = ApprovalPromptRenderer.PlainLines(
+            new ApprovalPromptModel(
+                "bash",
+                string.Empty,
+                Detail: ["dotnet format", "line one", "line two", "line three"]
+            ),
+            width: 60,
+            ColorSystemSupport.NoColors,
+            unicode: true
+        );
+
+        Assert.Equal("  line one", lines[1].Text);
+        Assert.Equal("  line two", lines[2].Text);
+        Assert.Equal("  line three", lines[3].Text);
+    }
+
+    [Fact]
+    public void Plain_lines_at_forty_columns_clip_the_headline_not_the_choices()
+    {
+        var lines = ApprovalPromptRenderer.PlainLines(
+            new ApprovalPromptModel(
+                "bash",
+                string.Empty,
+                Detail: ["dotnet format --verify-no-changes --include src/Lunate/Tui/Approval.cs"]
+            ),
+            width: 40,
+            ColorSystemSupport.NoColors,
+            unicode: true
+        );
+
+        Assert.StartsWith("\u26a0 bash  dotnet format", lines[0].Text, StringComparison.Ordinal);
+        Assert.Equal(40, CellText.Width(lines[0].Text));
+        Assert.Equal("[y]es  [n]o  [a]lways this session", lines[^1].Text);
+        Assert.Equal(34, CellText.Width(lines[^1].Text));
+    }
+
+    [Fact]
     public void Plain_lines_carry_the_warning_muted_and_accent_tones()
     {
         var lines = ApprovalPromptRenderer.PlainLines(

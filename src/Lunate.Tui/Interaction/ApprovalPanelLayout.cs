@@ -27,10 +27,10 @@ internal sealed record ApprovalPanelLine(IReadOnlyList<ApprovalSpan> Spans, Appr
 
 /// <summary>
 /// The approval panel's pure layout: a warning headline naming the tool and its action, a muted
-/// detail block bounded to <see cref="ApprovalPromptModel.MaxDetailLines"/> and clipped to the
-/// width, and the question with its choices. Spans carry tones only; the markup renderer and the
-/// live frame map them to their own colour forms. Widths are terminal cells; clipping keeps whole
-/// runes, like <see cref="StyledLine.Clip"/>.
+/// detail block bounded to <see cref="ApprovalPromptModel.MaxDetailLines"/> (only its first line
+/// in the compact band) and clipped to the width, and the question with its choices. Spans carry
+/// tones only; the markup renderer and the live frame map them to their own colour forms. Widths
+/// are terminal cells; clipping keeps whole runes, like <see cref="StyledLine.Clip"/>.
 /// </summary>
 internal static class ApprovalPanelLayout
 {
@@ -55,7 +55,7 @@ internal static class ApprovalPanelLayout
                 width
             ),
         };
-        AppendDetail(lines, prompt, width, unicode);
+        AppendDetail(lines, prompt, width, unicode, compact: WidthBands.IsCompact(width));
         AppendQuestion(lines, prompt, width);
         return lines;
     }
@@ -79,10 +79,11 @@ internal static class ApprovalPanelLayout
         List<ApprovalPanelLine> lines,
         ApprovalPromptModel prompt,
         int width,
-        bool unicode
+        bool unicode,
+        bool compact
     )
     {
-        foreach (string line in DetailBody(prompt, unicode))
+        foreach (string line in DetailBody(prompt, compact, unicode))
         {
             lines.Add(
                 Clip(
@@ -108,13 +109,23 @@ internal static class ApprovalPanelLayout
     /// <summary>
     /// The block below the headline: at most <see cref="ApprovalPromptModel.MaxDetailLines"/>
     /// lines. When it is longer, the first five lines stay and a muted marker names how many did
-    /// not fit, so a prepared block (already bounded) passes through unchanged.
+    /// not fit, so a prepared block (already bounded) passes through unchanged. In the compact
+    /// band the block drops to its first line without a marker; the workspace root stays.
     /// </summary>
-    private static IReadOnlyList<string> DetailBody(ApprovalPromptModel prompt, bool unicode)
+    private static IReadOnlyList<string> DetailBody(
+        ApprovalPromptModel prompt,
+        bool compact,
+        bool unicode
+    )
     {
         if (prompt.Detail is not { Count: > 1 } detail)
         {
             return [];
+        }
+
+        if (compact)
+        {
+            return [CellText.SingleLine(detail[1])];
         }
 
         int count = detail.Count - 1;
