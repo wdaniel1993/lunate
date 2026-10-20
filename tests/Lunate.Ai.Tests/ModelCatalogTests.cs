@@ -86,6 +86,132 @@ public sealed class ModelCatalogTests
     }
 
     [Fact]
+    public void Find_resolves_a_native_id_qualified_with_its_provider()
+    {
+        ModelCatalog catalog = ModelCatalog.Load(MissingUserFile());
+
+        ModelInfo openAi = catalog.Find("openai/gpt-4o")!;
+        Assert.Equal("gpt-4o", openAi.Id);
+        Assert.Equal("openai", openAi.Provider);
+
+        ModelInfo anthropic = catalog.Find("anthropic/claude-sonnet-5-5")!;
+        Assert.Equal("claude-sonnet-5-5", anthropic.Id);
+        Assert.Equal("anthropic", anthropic.Provider);
+    }
+
+    [Fact]
+    public void Find_resolves_a_bare_id_to_the_single_preset_whose_wire_id_matches()
+    {
+        ModelCatalog catalog = ModelCatalog.Load(MissingUserFile());
+
+        ModelInfo model = catalog.Find("deepseek-flash")!;
+
+        Assert.Equal("deepseek/deepseek-flash", model.Id);
+        Assert.Equal("deepseek-flash", model.WireId);
+    }
+
+    [Fact]
+    public void Find_splits_a_qualified_id_on_the_first_slash()
+    {
+        string directory = CreateTempDirectory();
+        try
+        {
+            string userFile = WriteUserFile(
+                directory,
+                """
+                {
+                  "schemaVersion": 2,
+                  "models": [
+                    { "id": "groq/model-alias", "provider": "groq", "wireId": "vendor/model", "contextWindow": 1, "supportsTools": true }
+                  ]
+                }
+                """
+            );
+
+            ModelInfo model = ModelCatalog.Load(userFile).Find("groq/vendor/model")!;
+
+            Assert.Equal("groq/model-alias", model.Id);
+            Assert.Equal("vendor/model", model.WireId);
+        }
+        finally
+        {
+            DeleteTempDirectory(directory);
+        }
+    }
+
+    [Fact]
+    public void Find_prefers_an_exact_catalog_id_over_a_preset_wire_id()
+    {
+        string directory = CreateTempDirectory();
+        try
+        {
+            string userFile = WriteUserFile(
+                directory,
+                """
+                {
+                  "schemaVersion": 2,
+                  "models": [
+                    { "id": "groq/gpt-4o", "provider": "groq", "wireId": "gpt-4o", "contextWindow": 1, "supportsTools": true }
+                  ]
+                }
+                """
+            );
+
+            ModelInfo model = ModelCatalog.Load(userFile).Find("gpt-4o")!;
+
+            Assert.Equal("gpt-4o", model.Id);
+            Assert.Equal("openai", model.Provider);
+        }
+        finally
+        {
+            DeleteTempDirectory(directory);
+        }
+    }
+
+    [Fact]
+    public void Find_names_both_candidates_when_a_bare_wire_id_is_ambiguous()
+    {
+        string directory = CreateTempDirectory();
+        try
+        {
+            string userFile = WriteUserFile(
+                directory,
+                """
+                {
+                  "schemaVersion": 2,
+                  "models": [
+                    { "id": "groq/shared", "provider": "groq", "wireId": "shared-model", "contextWindow": 1, "supportsTools": true },
+                    { "id": "openrouter/shared", "provider": "openrouter", "wireId": "shared-model", "contextWindow": 1, "supportsTools": true }
+                  ]
+                }
+                """
+            );
+
+            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+                ModelCatalog.Load(userFile).Find("shared-model")
+            );
+
+            Assert.Contains("shared-model", exception.Message, StringComparison.Ordinal);
+            Assert.Contains("groq/shared", exception.Message, StringComparison.Ordinal);
+            Assert.Contains("openrouter/shared", exception.Message, StringComparison.Ordinal);
+            Assert.Contains("qualified", exception.Message, StringComparison.Ordinal);
+        }
+        finally
+        {
+            DeleteTempDirectory(directory);
+        }
+    }
+
+    [Fact]
+    public void Find_returns_null_for_an_unknown_qualified_id()
+    {
+        ModelCatalog catalog = ModelCatalog.Load(MissingUserFile());
+
+        Assert.Null(catalog.Find("groq/does-not-exist"));
+        Assert.Null(catalog.Find("nope-9000"));
+    }
+
+    [Fact]
     public void Load_with_user_override_uses_user_definition_at_embedded_position()
     {
         string directory = CreateTempDirectory();
@@ -271,6 +397,9 @@ public sealed class ModelCatalogTests
             DeleteTempDirectory(directory);
         }
     }
+
+    private static string MissingUserFile() =>
+        Path.Combine(Path.GetTempPath(), $"lunate-model-catalog-missing-{Guid.NewGuid():N}.json");
 
     private static string CreateTempDirectory()
     {

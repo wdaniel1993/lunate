@@ -9,7 +9,10 @@ public sealed class ModelCatalog
 {
     private const string EmbeddedResourceName = "Lunate.Ai.models.json";
     private const int OldestSupportedSchemaVersion = 1;
-    private const int SupportedSchemaVersion = 2;
+
+    /// <summary>The schema this build writes (the generator's snapshot and discovery drafts).</summary>
+    public const int SupportedSchemaVersion = 2;
+
     private const string SupportedSchemaVersions = "1 or 2";
 
     private readonly IReadOnlyList<ModelInfo> _models;
@@ -38,11 +41,62 @@ public sealed class ModelCatalog
         return new ModelCatalog(models);
     }
 
+    /// <summary>
+    /// Finds a catalog entry. An exact catalog id wins, so a native id stays the shortest form. The
+    /// fallbacks keep typed ids usable: a qualified <c>&lt;provider&gt;/&lt;model&gt;</c> splits on
+    /// the first slash and matches the provider plus either the entry's id or its wire id, and a
+    /// bare id matches a single entry's wire id. A bare id that more than one preset serves throws,
+    /// naming every candidate: the wire call must never guess which provider a person meant. The
+    /// first-slash split matters because upstream wire ids contain slashes.
+    /// </summary>
     public ModelInfo? Find(string id)
     {
         ArgumentNullException.ThrowIfNull(id);
-        return _modelsById.GetValueOrDefault(id);
+        if (_modelsById.TryGetValue(id, out ModelInfo? exact))
+        {
+            return exact;
+        }
+
+        int slash = id.IndexOf('/', StringComparison.Ordinal);
+        if (slash > 0 && slash < id.Length - 1)
+        {
+            string provider = id[..slash];
+            string model = id[(slash + 1)..];
+            return Single(
+                id,
+                [
+                    .. _models.Where(candidate =>
+                        string.Equals(candidate.Provider, provider, StringComparison.Ordinal)
+                        && (
+                            string.Equals(candidate.Id, model, StringComparison.Ordinal)
+                            || string.Equals(candidate.WireId, model, StringComparison.Ordinal)
+                        )
+                    ),
+                ]
+            );
+        }
+
+        return Single(
+            id,
+            [
+                .. _models.Where(candidate =>
+                    candidate.WireId is not null
+                    && string.Equals(candidate.WireId, id, StringComparison.Ordinal)
+                ),
+            ]
+        );
     }
+
+    private static ModelInfo? Single(string id, ModelInfo[] matches) =>
+        matches switch
+        {
+            [] => null,
+            [ModelInfo model] => model,
+            _ => throw new InvalidOperationException(
+                $"Model id '{id}' is ambiguous: {string.Join(", ", matches.Select(model => model.Id))}. "
+                    + "Use the qualified id."
+            ),
+        };
 
     private static List<ModelInfo> ParseEmbedded()
     {

@@ -206,8 +206,10 @@ public sealed class ChatClientFactoryTests
         );
 
         Assert.Contains(provider, exception.Message, StringComparison.Ordinal);
-        Assert.Contains("openai", exception.Message, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("anthropic", exception.Message, StringComparison.OrdinalIgnoreCase);
+        foreach (ProviderPreset preset in ProviderPresets.All)
+        {
+            Assert.Contains(preset.Id, exception.Message, StringComparison.Ordinal);
+        }
     }
 
     [Fact]
@@ -229,13 +231,77 @@ public sealed class ChatClientFactoryTests
         Assert.Equal(endpoint, metadata.ProviderUri);
     }
 
+    [Theory]
+    [InlineData("openrouter", "openrouter/aion-labs/aion-2.0")]
+    [InlineData("deepseek", "deepseek/deepseek-v4-flash")]
+    [InlineData("moonshotai", "moonshotai/kimi-k2.6")]
+    [InlineData("zai", "zai/glm-4.5")]
+    [InlineData("opencode", "opencode/beam-free")]
+    [InlineData("opencode-go", "opencode-go/beam-free")]
+    [InlineData("groq", "groq/allam-2-7b")]
+    [InlineData("togetherai", "togetherai/LiquidAI/LFM2-24B-A2B")]
+    [InlineData("xai", "xai/grok-4.20-0309-non-reasoning")]
+    [InlineData("google", "google/deep-research-max-preview-04-2026")]
+    public void Create_routes_each_compatible_preset_to_its_base_url_and_wire_id(
+        string presetId,
+        string modelId
+    )
+    {
+        ProviderPreset preset = ProviderPresets.Find(presetId)!;
+        using var environment = new EnvironmentScope((preset.KeyVariable, "preset-test-key"));
+        ModelInfo model = LoadCatalog().Find(modelId)!;
+        Assert.NotNull(model.WireId);
+
+        var factory = new ChatClientFactory(new MarkingLoggerFactory(static () => { }));
+
+        IChatClient client = factory.Create(model);
+        var metadata = (ChatClientMetadata?)client.GetService(typeof(ChatClientMetadata));
+
+        Assert.NotNull(metadata);
+        Assert.Equal(preset.BaseUrl, metadata.ProviderUri);
+        Assert.Equal(model.WireId, metadata.DefaultModelId);
+    }
+
+    [Fact]
+    public void Create_keeps_the_openai_preset_on_the_sdk_default_endpoint_and_bare_id()
+    {
+        using var environment = new EnvironmentScope((OpenAiApiKeyVariable, "test-key"));
+        ModelInfo model = LoadCatalog().Find("gpt-4o-mini")!;
+
+        var factory = new ChatClientFactory(new MarkingLoggerFactory(static () => { }));
+
+        IChatClient client = factory.Create(model);
+        var metadata = (ChatClientMetadata?)client.GetService(typeof(ChatClientMetadata));
+
+        Assert.NotNull(metadata);
+        Assert.Equal("openai", metadata.ProviderName);
+        Assert.Equal(model.Id, metadata.DefaultModelId);
+        Assert.Null(model.WireId);
+    }
+
+    [Fact]
+    public void Create_prefers_the_model_endpoint_over_the_preset_base_url()
+    {
+        using var environment = new EnvironmentScope((OpenAiApiKeyVariable, null));
+        var endpoint = new Uri("http://localhost:4321/v1");
+        ModelInfo model = LoadCatalog().Find("groq/allam-2-7b")! with { Endpoint = endpoint };
+
+        var factory = new ChatClientFactory(new MarkingLoggerFactory(static () => { }));
+
+        IChatClient client = factory.Create(model);
+        var metadata = (ChatClientMetadata?)client.GetService(typeof(ChatClientMetadata));
+
+        Assert.NotNull(metadata);
+        Assert.Equal(endpoint, metadata.ProviderUri);
+    }
+
     [Fact]
     public void Create_throws_InvalidOperationException_when_openai_api_key_is_not_set()
     {
         using var environment = new EnvironmentScope((OpenAiApiKeyVariable, null));
 
         var factory = new ChatClientFactory(new MarkingLoggerFactory(static () => { }));
-        var model = new ModelInfo("gpt-4o-mini", "OpenAI", null, 128_000, true);
+        var model = new ModelInfo("gpt-4o-mini", "openai", null, 128_000, true);
 
         InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
             factory.Create(model)
@@ -281,7 +347,7 @@ public sealed class ChatClientFactoryTests
             (AnthropicApiKeyVariable, "anthropic-test-key")
         );
         var factory = new ChatClientFactory(new MarkingLoggerFactory(static () => { }));
-        var model = new ModelInfo("claude-sonnet-5-5", "Anthropic", null, 1_000_000, true);
+        var model = new ModelInfo("claude-sonnet-5-5", "anthropic", null, 1_000_000, true);
 
         IChatClient client = factory.Create(model);
         var metadata = (ChatClientMetadata?)client.GetService(typeof(ChatClientMetadata));
@@ -371,7 +437,7 @@ public sealed class ChatClientFactoryTests
             true
         );
 
-        string credential = ChatClientFactory.ResolveApiKey(model, OpenAiApiKeyVariable);
+        string credential = ChatClientFactory.ResolveApiKey(model, ProviderPresets.Find("openai")!);
 
         Assert.Equal(ChatClientFactory.PlaceholderCredential, credential);
     }
@@ -382,7 +448,7 @@ public sealed class ChatClientFactoryTests
         using var environment = new EnvironmentScope((OpenAiApiKeyVariable, "test-key"));
         var model = new ModelInfo("gpt-4o-mini", "openai", null, 128_000, true);
 
-        string credential = ChatClientFactory.ResolveApiKey(model, OpenAiApiKeyVariable);
+        string credential = ChatClientFactory.ResolveApiKey(model, ProviderPresets.Find("openai")!);
 
         Assert.Equal("test-key", credential);
     }
@@ -395,7 +461,7 @@ public sealed class ChatClientFactoryTests
 
         string credential = ChatClientFactory.ResolveApiKey(
             model,
-            OpenAiApiKeyVariable,
+            ProviderPresets.Find("openai")!,
             name => name == "work" ? "work-key" : null
         );
 
@@ -417,7 +483,7 @@ public sealed class ChatClientFactoryTests
 
         string credential = ChatClientFactory.ResolveApiKey(
             model,
-            OpenAiApiKeyVariable,
+            ProviderPresets.Find("openai")!,
             name => name == "work" ? "work-key" : null
         );
 
@@ -437,7 +503,7 @@ public sealed class ChatClientFactoryTests
         );
 
         InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
-            ChatClientFactory.ResolveApiKey(model, OpenAiApiKeyVariable, _ => null)
+            ChatClientFactory.ResolveApiKey(model, ProviderPresets.Find("openai")!, _ => null)
         );
 
         Assert.Contains("missing", exception.Message, StringComparison.Ordinal);
@@ -452,7 +518,7 @@ public sealed class ChatClientFactoryTests
 
         string credential = ChatClientFactory.ResolveApiKey(
             model,
-            OpenAiApiKeyVariable,
+            ProviderPresets.Find("openai")!,
             name => name == "openai" ? "stored-key" : null
         );
 
@@ -466,11 +532,150 @@ public sealed class ChatClientFactoryTests
         var model = new ModelInfo("gpt-4o-mini", "openai", null, 128_000, true);
 
         InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
-            ChatClientFactory.ResolveApiKey(model, OpenAiApiKeyVariable, _ => null)
+            ChatClientFactory.ResolveApiKey(model, ProviderPresets.Find("openai")!, _ => null)
         );
 
         Assert.Contains(OpenAiApiKeyVariable, exception.Message, StringComparison.Ordinal);
         Assert.Contains("auth.json", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ResolveApiKey_prefers_the_preset_environment_key_over_the_store()
+    {
+        ProviderPreset groq = ProviderPresets.Find("groq")!;
+        using var environment = new EnvironmentScope((groq.KeyVariable, "env-key"));
+        ModelInfo model = LoadCatalog().Find("groq/allam-2-7b")!;
+        bool storeRead = false;
+
+        string credential = ChatClientFactory.ResolveApiKey(
+            model,
+            groq,
+            _ =>
+            {
+                storeRead = true;
+                return "stored-key";
+            }
+        );
+
+        Assert.Equal("env-key", credential);
+        Assert.False(storeRead);
+    }
+
+    [Fact]
+    public void ResolveApiKey_without_a_preset_key_uses_the_store_under_the_preset_id()
+    {
+        ProviderPreset groq = ProviderPresets.Find("groq")!;
+        using var environment = new EnvironmentScope((groq.KeyVariable, null));
+        ModelInfo model = LoadCatalog().Find("groq/allam-2-7b")!;
+        string? requested = null;
+
+        string credential = ChatClientFactory.ResolveApiKey(
+            model,
+            groq,
+            name =>
+            {
+                requested = name;
+                return "stored-key";
+            }
+        );
+
+        Assert.Equal("stored-key", credential);
+        Assert.Equal("groq", requested);
+    }
+
+    [Fact]
+    public void ResolveApiKey_with_an_auth_reference_wins_over_the_preset_key()
+    {
+        ProviderPreset groq = ProviderPresets.Find("groq")!;
+        using var environment = new EnvironmentScope((groq.KeyVariable, "env-key"));
+        ModelInfo model = LoadCatalog().Find("groq/allam-2-7b")! with { AuthRef = "work" };
+
+        string credential = ChatClientFactory.ResolveApiKey(
+            model,
+            groq,
+            name => name == "work" ? "work-key" : null
+        );
+
+        Assert.Equal("work-key", credential);
+    }
+
+    [Fact]
+    public void ResolveApiKey_uses_the_placeholder_for_a_preset_endpoint_even_with_its_key_set()
+    {
+        ProviderPreset groq = ProviderPresets.Find("groq")!;
+        using var environment = new EnvironmentScope((groq.KeyVariable, "env-key"));
+        ModelInfo model = LoadCatalog().Find("groq/allam-2-7b")! with
+        {
+            Endpoint = new Uri("http://localhost:4321/v1"),
+        };
+
+        string credential = ChatClientFactory.ResolveApiKey(model, groq, _ => "stored-key");
+
+        Assert.Equal(ChatClientFactory.PlaceholderCredential, credential);
+    }
+
+    [Fact]
+    public void ResolveApiKey_accepts_the_google_alias_when_its_variable_is_unset()
+    {
+        ProviderPreset google = ProviderPresets.Find("google")!;
+        using var environment = new EnvironmentScope(
+            (google.KeyVariable, null),
+            (google.KeyVariableAlias!, "gemini-key")
+        );
+        ModelInfo model = LoadCatalog().Find("google/deep-research-max-preview-04-2026")!;
+
+        string credential = ChatClientFactory.ResolveApiKey(model, google, _ => "stored-key");
+
+        Assert.Equal("gemini-key", credential);
+    }
+
+    [Fact]
+    public void ResolveApiKey_prefers_the_google_variable_over_its_alias()
+    {
+        ProviderPreset google = ProviderPresets.Find("google")!;
+        using var environment = new EnvironmentScope(
+            (google.KeyVariable, "google-key"),
+            (google.KeyVariableAlias!, "gemini-key")
+        );
+        ModelInfo model = LoadCatalog().Find("google/deep-research-max-preview-04-2026")!;
+
+        string credential = ChatClientFactory.ResolveApiKey(model, google, _ => "stored-key");
+
+        Assert.Equal("google-key", credential);
+    }
+
+    [Fact]
+    public void ResolveApiKey_without_a_preset_key_names_its_variable_and_store_name()
+    {
+        ProviderPreset groq = ProviderPresets.Find("groq")!;
+        using var environment = new EnvironmentScope((groq.KeyVariable, null));
+        ModelInfo model = LoadCatalog().Find("groq/allam-2-7b")!;
+
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+            ChatClientFactory.ResolveApiKey(model, groq, _ => null)
+        );
+
+        Assert.Contains("GROQ_API_KEY", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("'groq'", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("auth.json", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ResolveApiKey_names_both_google_variables_when_neither_is_set()
+    {
+        ProviderPreset google = ProviderPresets.Find("google")!;
+        using var environment = new EnvironmentScope(
+            (google.KeyVariable, null),
+            (google.KeyVariableAlias!, null)
+        );
+        ModelInfo model = LoadCatalog().Find("google/deep-research-max-preview-04-2026")!;
+
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+            ChatClientFactory.ResolveApiKey(model, google, _ => null)
+        );
+
+        Assert.Contains("GOOGLE_API_KEY", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("GEMINI_API_KEY", exception.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -548,6 +753,9 @@ public sealed class ChatClientFactoryTests
         );
 
     private static ModelInfo TestModel() => new("gpt-4o-mini", "openai", null, 128_000, true);
+
+    private static ModelCatalog LoadCatalog() =>
+        ModelCatalog.Load(Path.Combine(Path.GetTempPath(), "lunate-ai-tests-missing-catalog.json"));
 
     private static IEnumerable<IChatClient> WalkChain(IChatClient client)
     {

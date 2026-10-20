@@ -1,4 +1,5 @@
 #nullable enable
+const Lunate.Ai.ModelCatalog.SupportedSchemaVersion = 2 -> int
 Lunate.Ai.ChatClientFactory
 Lunate.Ai.ChatClientFactory.ChatClientFactory(Microsoft.Extensions.Logging.ILoggerFactory! loggerFactory, bool? enableOpenTelemetry = null, System.Func<Lunate.Ai.ModelInfo!, string?, Microsoft.Extensions.AI.IChatClient!>? providerClientFactory = null, System.Func<Microsoft.Extensions.AI.IChatClient!, Microsoft.Extensions.AI.IChatClient!>? recorderDecorator = null, System.Func<string!, string?>? namedKeySource = null) -> void
 Lunate.Ai.ChatClientFactory.Create(Lunate.Ai.ModelInfo! model) -> Microsoft.Extensions.AI.IChatClient!

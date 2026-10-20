@@ -11,10 +11,7 @@ namespace Lunate.Ai;
 
 public sealed class ChatClientFactory : IChatClientFactory
 {
-    private const string AnthropicApiKeyVariable = "ANTHROPIC_API_KEY";
     private const string AnthropicProvider = "anthropic";
-    private const string OpenAiApiKeyVariable = "OPENAI_API_KEY";
-    private const string OpenAiProvider = "openai";
     internal const string PlaceholderCredential = "unused-local-endpoint";
     private const string OpenTelemetryOptInVariable = "LUNATE_OTEL";
     private const string OtlpEndpointVariable = "OTEL_EXPORTER_OTLP_ENDPOINT";
@@ -117,41 +114,70 @@ public sealed class ChatClientFactory : IChatClientFactory
 
     private IChatClient CreateProviderClient(ModelInfo model, string? apiKey)
     {
-        if (string.Equals(model.Provider, OpenAiProvider, StringComparison.OrdinalIgnoreCase))
+        ProviderPreset preset =
+            ProviderPresets.Find(model.Provider) ?? throw UnsupportedProvider(model.Provider);
+        string wireId = model.WireId ?? model.Id;
+
+        if (preset.Adapter == ProviderAdapter.Anthropic)
         {
-            return CreateOpenAiClient(model, _namedKeySource, apiKey)
-                .GetChatClient(model.Id)
-                .AsIChatClient();
+            return CreateAnthropicClient(model, preset, _namedKeySource, apiKey)
+                .AsIChatClient(wireId);
         }
 
-        if (string.Equals(model.Provider, AnthropicProvider, StringComparison.OrdinalIgnoreCase))
-        {
-            return CreateAnthropicClient(model, _namedKeySource, apiKey).AsIChatClient(model.Id);
-        }
-
-        throw new NotSupportedException(
-            $"Provider '{model.Provider}' is not supported. Supported providers: {OpenAiProvider}, {AnthropicProvider}."
-        );
+        // The native OpenAI preset keeps the SDK default endpoint; every compatible preset routes
+        // to its own base URL unless the entry declares one.
+        return CreateOpenAiClient(model, preset, _namedKeySource, apiKey)
+            .GetChatClient(wireId)
+            .AsIChatClient();
     }
+
+    private static NotSupportedException UnsupportedProvider(string provider) =>
+        new(
+            $"Provider '{provider}' is not supported. Supported providers: "
+                + string.Join(", ", ProviderPresets.All.Select(static preset => preset.Id))
+                + "."
+        );
 
     internal static OpenAIClient CreateOpenAiClient(
         ModelInfo model,
         Func<string, string?>? namedKeySource = null,
         string? apiKey = null
+    ) => CreateOpenAiClient(model, PresetFor(model), namedKeySource, apiKey);
+
+    private static OpenAIClient CreateOpenAiClient(
+        ModelInfo model,
+        ProviderPreset? preset,
+        Func<string, string?>? namedKeySource,
+        string? apiKey
     )
     {
-        string credential = apiKey ?? ResolveApiKey(model, OpenAiApiKeyVariable, namedKeySource);
+        string credential =
+            apiKey
+            ?? ResolveApiKey(
+                model,
+                preset ?? throw UnsupportedProvider(model.Provider),
+                namedKeySource
+            );
 
-        return new OpenAIClient(new ApiKeyCredential(credential), CreateOpenAiClientOptions(model));
+        return new OpenAIClient(
+            new ApiKeyCredential(credential),
+            CreateOpenAiClientOptions(model, preset)
+        );
     }
 
-    internal static OpenAIClientOptions CreateOpenAiClientOptions(ModelInfo model)
+    internal static OpenAIClientOptions CreateOpenAiClientOptions(
+        ModelInfo model,
+        ProviderPreset? preset = null
+    )
     {
         OpenAIClientOptions options = new() { RetryPolicy = new ClientRetryPolicy(maxRetries: 0) };
 
-        if (model.Endpoint is not null)
+        Uri? endpoint =
+            model.Endpoint
+            ?? (preset?.Adapter == ProviderAdapter.OpenAiCompatible ? preset.BaseUrl : null);
+        if (endpoint is not null)
         {
-            options.Endpoint = model.Endpoint;
+            options.Endpoint = endpoint;
         }
 
         return options;
@@ -161,9 +187,22 @@ public sealed class ChatClientFactory : IChatClientFactory
         ModelInfo model,
         Func<string, string?>? namedKeySource = null,
         string? apiKey = null
+    ) => CreateAnthropicClient(model, PresetFor(model), namedKeySource, apiKey);
+
+    private static AnthropicClient CreateAnthropicClient(
+        ModelInfo model,
+        ProviderPreset? preset,
+        Func<string, string?>? namedKeySource,
+        string? apiKey
     )
     {
-        string credential = apiKey ?? ResolveApiKey(model, AnthropicApiKeyVariable, namedKeySource);
+        string credential =
+            apiKey
+            ?? ResolveApiKey(
+                model,
+                preset ?? throw UnsupportedProvider(model.Provider),
+                namedKeySource
+            );
 
         if (model.Endpoint is null)
         {
@@ -178,19 +217,25 @@ public sealed class ChatClientFactory : IChatClientFactory
         };
     }
 
+    private static ProviderPreset PresetFor(ModelInfo model) =>
+        ProviderPresets.Find(model.Provider) ?? throw UnsupportedProvider(model.Provider);
+
     /// <summary>
     /// Resolves the credential for a model. A declared <see cref="ModelInfo.AuthRef"/> resolves the
     /// named key from the user's auth store and sends it to the declared endpoint - the explicit
-    /// opt-in. Without a reference, the environment key is used only for the provider's default
-    /// endpoint (the auth store is the fallback); a model with a declared endpoint gets the
-    /// placeholder credential, so real keys never reach third-party endpoints.
+    /// opt-in. Without a reference, the preset's environment variable (its alias second) is used
+    /// only for the provider's own endpoint, with the auth store under the preset id as the
+    /// fallback; a model with a declared endpoint gets the placeholder credential, so real keys
+    /// never reach third-party endpoints.
     /// </summary>
     internal static string ResolveApiKey(
         ModelInfo model,
-        string apiKeyVariable,
+        ProviderPreset preset,
         Func<string, string?>? namedKeySource = null
     )
     {
+        ArgumentNullException.ThrowIfNull(preset);
+
         if (!string.IsNullOrEmpty(model.AuthRef))
         {
             string? named = namedKeySource?.Invoke(model.AuthRef);
@@ -210,26 +255,30 @@ public sealed class ChatClientFactory : IChatClientFactory
             return PlaceholderCredential;
         }
 
-        string providerName = ProviderNameFor(apiKeyVariable);
-        string? apiKey = Environment.GetEnvironmentVariable(apiKeyVariable);
+        string? apiKey = Environment.GetEnvironmentVariable(preset.KeyVariable);
+        if (string.IsNullOrEmpty(apiKey) && preset.KeyVariableAlias is { } alias)
+        {
+            apiKey = Environment.GetEnvironmentVariable(alias);
+        }
+
         if (string.IsNullOrEmpty(apiKey) && namedKeySource is not null)
         {
-            apiKey = namedKeySource(providerName);
+            apiKey = namedKeySource(preset.Id);
         }
 
         if (string.IsNullOrEmpty(apiKey))
         {
+            string aliases = preset.KeyVariableAlias is { } aliasVariable
+                ? $" (or {aliasVariable})"
+                : string.Empty;
             throw new InvalidOperationException(
-                $"The {apiKeyVariable} environment variable is not set and no '{providerName}' key is stored. "
-                    + $"Set {apiKeyVariable} or add the key to auth.json."
+                $"The {preset.KeyVariable} environment variable is not set and no '{preset.Id}' key is stored. "
+                    + $"Set {preset.KeyVariable}{aliases} or add the key to auth.json."
             );
         }
 
         return apiKey;
     }
-
-    private static string ProviderNameFor(string apiKeyVariable) =>
-        apiKeyVariable == AnthropicApiKeyVariable ? AnthropicProvider : OpenAiProvider;
 
     internal static string DefaultRecordingPath() =>
         Path.Combine(
