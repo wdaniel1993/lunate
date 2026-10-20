@@ -1003,6 +1003,9 @@ internal sealed partial class InteractiveSession : IDisposable
             return;
         }
 
+        // A picker launch has no session yet: the turn that starts now creates it, so quitting
+        // after the picker leaves the store untouched.
+        MaterializeDeferredSession();
         _transcript.Add(new TranscriptUserEntry(processed.Text));
         // The prompt opens the turn in scrollback before the run starts; the same processed text
         // feeds the transcript entry, so the viewer and scrollback never disagree. Later turns

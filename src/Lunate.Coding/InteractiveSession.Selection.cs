@@ -8,6 +8,12 @@ internal sealed partial class InteractiveSession
     private string SessionsRoot => _options.SessionsRoot ?? SessionSelection.DefaultRoot;
 
     /// <summary>
+    /// Whether the launch deferred a fresh session until a turn starts: the picker opens first, so
+    /// choosing an existing session (or abandoning the picker) must not leave an empty file behind.
+    /// </summary>
+    private bool _deferFreshSession;
+
+    /// <summary>
     /// Resolves the session the session starts with, after the workspace and the session directory
     /// exist: an injected start file wins over the CLI's selection flag; without one a fresh session
     /// is created. A selection that cannot resolve reports a notice and still starts fresh, so the
@@ -38,6 +44,16 @@ internal sealed partial class InteractiveSession
         {
             _fileless = true;
             _session = null;
+            return;
+        }
+
+        // --resume (and the injected picker seam) opens the picker after composition: no session
+        // exists until the user chooses one or starts a turn, so an abandoned picker leaves no file.
+        if (_options.StartWithPicker || launch.Resume)
+        {
+            _session = null;
+            _fileless = false;
+            _deferFreshSession = true;
             return;
         }
 
@@ -91,7 +107,30 @@ internal sealed partial class InteractiveSession
     private Session FreshSession()
     {
         _fileless = false;
+        _deferFreshSession = false;
         return CreateFreshSession();
+    }
+
+    /// <summary>
+    /// Creates the session a picker launch deferred, once a turn is about to start: the skills
+    /// section composed without a session is recorded on it, and the harness is rebuilt against
+    /// it so the run writes to the new file.
+    /// </summary>
+    private void MaterializeDeferredSession()
+    {
+        if (!_deferFreshSession || _session is not null)
+        {
+            return;
+        }
+
+        _session = CreateFreshSession();
+        _deferFreshSession = false;
+        if (_skillSection is { } skills)
+        {
+            RecordSkillsSection(skills);
+        }
+
+        _harness = BuildHarness(_model);
     }
 
     /// <summary>

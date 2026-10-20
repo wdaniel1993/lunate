@@ -613,6 +613,7 @@ internal sealed partial class InteractiveSession
 
         _session = resumed;
         _fileless = false;
+        _deferFreshSession = false;
         ResetAlwaysApproved();
         _turnActive = true;
         _run = ResumeCompositionAsync(resumed);
@@ -659,6 +660,7 @@ internal sealed partial class InteractiveSession
     private void StartNewSession()
     {
         _session = _fileless ? null : CreateFreshSession();
+        _deferFreshSession = false;
         ResetAlwaysApproved();
         _turnActive = true;
         _run = RestartCompositionAsync();

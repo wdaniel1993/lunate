@@ -287,6 +287,31 @@ public sealed class InteractiveSessionPickerTests
         await run;
     }
 
+    [Fact]
+    public async Task Startup_resume_does_not_create_a_session_until_a_turn_starts()
+    {
+        using var host = new InteractiveSessionHost(launch: new LaunchOptions { Resume = true });
+        Task run = host.RunAsync();
+
+        await InteractiveSessionCommandTests.WaitForFrameAsync(host, "Select session");
+        Assert.Empty(SessionFiles(host));
+
+        host.Console.SendEscape();
+        await InteractiveSessionCommandTests.WaitForFrameGoneAsync(host, "Select session");
+        Assert.Empty(SessionFiles(host));
+
+        host.Client.Enqueue(Scripts.Text("answer"), Scripts.Stop());
+        host.Console.SendText("hi");
+        host.Console.SendEnter();
+        await host.Client.WaitForCallAsync(1);
+        await InteractiveSessionCommandTests.WaitForScrollbackAsync(host, "answer");
+
+        Assert.Single(SessionFiles(host));
+
+        host.Console.Complete();
+        await run;
+    }
+
     [Theory]
     [MemberData(nameof(StartupSelections))]
     public async Task Startup_selection_seeds_the_first_request(string flag)
@@ -445,6 +470,12 @@ public sealed class InteractiveSessionPickerTests
 
     private static Session LoadOnlySession(InteractiveSessionHost host) =>
         Session.Load(Assert.Single(Directory.GetFiles(host.Temp.File("sessions"), "*.jsonl")));
+
+    private static string[] SessionFiles(InteractiveSessionHost host)
+    {
+        string directory = host.Temp.File("sessions");
+        return Directory.Exists(directory) ? Directory.GetFiles(directory, "*.jsonl") : [];
+    }
 
     private static string[] RequestTexts(InteractiveSessionHost host, int request) =>
         [
