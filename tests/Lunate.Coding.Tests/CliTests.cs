@@ -144,7 +144,7 @@ public sealed class CliTests
         string help = writer.ToString();
         Assert.Contains("start the interactive session", help, StringComparison.Ordinal);
         Assert.Contains(
-            "commands: /model /new /resume /compact /mcp /extensions /trust /quit",
+            "commands: /model /new /resume /name /session /compact /mcp /extensions /trust /quit",
             help,
             StringComparison.Ordinal
         );

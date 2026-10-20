@@ -50,6 +50,12 @@ internal sealed partial class InteractiveSession
             case "/context":
                 Notify(ContextText());
                 return;
+            case "/name":
+                SetSessionName(argument);
+                return;
+            case "/session":
+                ShowSessionReport();
+                return;
             case "/skills":
                 Notify(SkillsText());
                 return;
@@ -163,6 +169,84 @@ internal sealed partial class InteractiveSession
 
     private static string Limit(long? value) =>
         value?.ToString(CultureInfo.InvariantCulture) ?? "unlimited";
+
+    /// <summary>
+    /// <c>/name &lt;title&gt;</c> writes the title sidecar beside the session file (design D4); the
+    /// bare form reports the stored title or <c>(none)</c>. A blank or over-long title is a dim
+    /// notice and changes nothing, and a fileless session has no file to name.
+    /// </summary>
+    private void SetSessionName(string argument)
+    {
+        if (_session is not { } session)
+        {
+            Notify("no session file to name");
+            return;
+        }
+
+        if (argument.Length == 0)
+        {
+            Notify("session name: " + (SessionTitle.Read(session.Path) ?? "(none)"));
+            return;
+        }
+
+        if (SessionTitle.Normalize(argument) is not { } title)
+        {
+            Notify(
+                FormattableString.Invariant(
+                    $"session name must be 1-{SessionTitle.MaxLength} characters"
+                )
+            );
+            return;
+        }
+
+        try
+        {
+            SessionTitle.Write(session.Path, title);
+            Notify("session name: " + title);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            Notify("could not name the session: " + exception.Message, NoticeLevel.Error);
+        }
+    }
+
+    /// <summary>
+    /// The <c>/session</c> block: the file path and id, the recorded message count and the input and
+    /// output tokens summed from every recorded usage (so they survive a resume). Read-only and no
+    /// model call. ModelInfo has no pricing today, so there is no cost line — tokens only, never a
+    /// zero cost. The block goes into scrollback, one escaped line at a time.
+    /// </summary>
+    private void ShowSessionReport()
+    {
+        string path = "(none)";
+        string id = "(none)";
+        var messages = 0;
+        var input = 0;
+        var output = 0;
+        if (_session is { } session)
+        {
+            path = session.Path;
+            id = session.SessionId;
+            foreach (SessionMessageEntry entry in session.Entries.OfType<SessionMessageEntry>())
+            {
+                messages++;
+                if (entry.Usage is { } usage)
+                {
+                    input += usage.Input;
+                    output += usage.Output;
+                }
+            }
+        }
+
+        List<string> lines =
+        [
+            "session: " + path,
+            "id: " + id,
+            FormattableString.Invariant($"messages: {messages}"),
+            FormattableString.Invariant($"tokens: {input} in / {output} out"),
+        ];
+        WriteScrollbackLines([.. lines.Select(Markup.Escape)]);
+    }
 
     /// <summary>
     /// The bare <c>/thinking</c> notice: the session's current level plus the active model's
@@ -425,7 +509,7 @@ internal sealed partial class InteractiveSession
         var current = 0;
         foreach (SessionSummary summary in Session.List(_sessionDirectory))
         {
-            labels.Add(summary.Id);
+            labels.Add(summary.Title is { } title ? $"{title} — {summary.Id}" : summary.Id);
             values.Add(summary.Path);
             if (
                 _session is { } currentSession

@@ -371,6 +371,29 @@ public sealed class InteractiveSessionPickerTests
     }
 
     [Fact]
+    public async Task The_picker_labels_a_titled_session_with_its_title_and_id()
+    {
+        using var host = new InteractiveSessionHost(startWithPicker: true);
+        Session seeded = SeedSession(
+            host.Temp.File("sessions"),
+            new Workspace(host.Temp.Root).WorktreeRoot,
+            "remembered question"
+        );
+        SessionTitle.Write(seeded.Path, "Refactor the parser");
+        Task run = host.RunAsync();
+
+        await InteractiveSessionCommandTests.WaitForFrameAsync(
+            host,
+            "Refactor the parser — " + seeded.SessionId
+        );
+
+        host.Console.SendEscape();
+        await InteractiveSessionCommandTests.WaitForFrameGoneAsync(host, "Select session");
+        host.Console.Complete();
+        await run;
+    }
+
+    [Fact]
     public async Task Opening_the_picker_while_busy_is_refused()
     {
         using var host = new InteractiveSessionHost();
