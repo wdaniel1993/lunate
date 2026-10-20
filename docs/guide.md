@@ -437,7 +437,7 @@ Finished output is rendered with Spectre.Console; the input line and a small liv
 **Screen model**
 
 - **Scrollback:** finished blocks (user message, assistant message, tool block) are written once through `IAnsiConsole.Write` and never redrawn. Native scrollback, copy and search keep working.
-- **Live area:** the bottom of the screen: the streaming tail of the current assistant text, the running tool with a spinner, notices and prompts, the input box and the status footer. The input box draws a full-width rule above and below at 80 columns or wider, grows with the draft to eight lines and scrolls beyond that; the footer stays below it. `LiveArea` redraws the area with cursor-up and clear-line VT sequences.
+- **Live area:** the bottom of the screen: the streaming tail of the current assistant text, the running tool with a spinner, notices and prompts, the input box and the status footer. The input box always draws a full-width rule above the input and a second rule below it from 60 columns, grows with the draft to eight lines and scrolls beyond that; the footer stays below it. `LiveArea` redraws the area with cursor-up and clear-line VT sequences.
 - **Streaming:** when the streaming text outgrows the live area, completed paragraphs are rendered as Markdown and committed to scrollback; the unfinished tail stays live.
 - **Transcript viewer:** `Ctrl+O` paints the session transcript on the alternate screen (entered and left through `IConsoleIO`, restored on every exit path) — a rendering mode of the same seam and key pump, not a second architecture. While it is open, no input reaches the model.
 
@@ -451,7 +451,7 @@ A pending approval renders as a panel in the live area. The warning headline nam
 
 **Input box and autocomplete**
 
-The input renders as a box: a full-width `─` rule above and below at 80 columns or wider (ASCII `-` without Unicode, no rule below 80), the `>` prompt followed by a space on the first line and a two-space indent on continuation lines, with the status footer below the lower rule. An empty input shows the muted placeholder `Ask anything, / for commands`; the box grows with the draft to eight lines and scrolls beyond that, keeping the cursor's line visible.
+The input renders as a box: a full-width `─` rule above it at every width and a second rule below it from 60 columns (ASCII `-` without Unicode), so the compact band keeps only the upper rule. The `>` prompt marker and, while the input is empty, the placeholder `Ask anything, / for commands` render in the theme's user colour, so the input never reads as output. The prompt is followed by a space on the first line and continuation lines keep a two-space indent, with the status footer below the input (below the lower rule when it is drawn). The box grows with the draft to eight lines and scrolls beyond that, keeping the cursor's line visible.
 
 Typing `/` at the start of the first line opens the autocomplete list from the session's one registry: the built-in commands, the discovered skills as `/skill:<name>`, and every loaded extension's manifest commands described by the extension's id. The registry is fixed-size and filtered fuzzily — a case-insensitive subsequence, with prefix and word-start matches ranked ahead of later positions. Typing `@` at the end of a token lists workspace files from the lazy file index through its ordinal prefix query; the index is never fuzzed client-side and never built at startup. The list shows at most eight rows directly above the box. Names carry descriptions until the width drops below 60 columns; file rows mute the directory part. No matches closes the list, and the list never wraps.
 
@@ -463,11 +463,11 @@ The layout has three width bands, evaluated at render time from the terminal's c
 
 | Band | Width | Rules |
 | --- | --- | --- |
-| Full | ≥100 | today's layout: every footer segment, full tool summaries, box rules, autocomplete descriptions |
-| Standard | 60–99 | the same structure; the footer drops the branch, then the directory, while the line is too wide; box rules stay at ≥80 |
-| Compact | <60 | short tool headers (the argument summary drops: `✓ read · 13 lines`), the footer shrinks to `model · <pct>%`, no box rules, autocomplete names without descriptions |
+| Full | ≥100 | today's layout: every footer segment, full tool summaries, both box rules, autocomplete descriptions |
+| Standard | 60–99 | the same structure; the footer drops the branch, then the directory, while the line is too wide; both box rules stay |
+| Compact | <60 | short tool headers (the argument summary drops: `✓ read · 13 lines`), the footer shrinks to `model · <pct>%`, the upper box rule stays and the lower one drops, autocomplete names without descriptions |
 
-The finer boundaries inside the standard band stay as they were: box rules at 80 columns and autocomplete descriptions at 60. When a construct gains a compact form it follows the same band: diffs will drop the line-number gutter below 60 and markdown tables will render as lists below 60 (and as tables at 60 and wider). Neither construct is in the current renderers; the rules bind when they land.
+The lower box rule shares the 60-column boundary with autocomplete descriptions; the upper rule is always drawn. When a construct gains a compact form it follows the same band: diffs will drop the line-number gutter below 60 and markdown tables will render as lists below 60 (and as tables at 60 and wider). Neither construct is in the current renderers; the rules bind when they land.
 
 **Components**
 

@@ -4,9 +4,9 @@ namespace Lunate.Coding.Tests;
 
 /// <summary>
 /// The production-composition guard for narrow terminals: the real host starts at 40 columns,
-/// commits a short tool header and the compact footer, widens to 120 for the full layout and a
-/// full header, then resizes to the standard 60-column band, which keeps the full header but
-/// drops the box rules and the compact footer form.
+/// commits a short tool header, the upper box rule and the compact footer, widens to 120 for the
+/// full layout and a full header, then resizes to the standard 60-column band, which keeps the
+/// full header, both box rules and the fuller footer form.
 /// </summary>
 public sealed class InteractiveSessionResizeCompositionTests
 {
@@ -25,7 +25,7 @@ public sealed class InteractiveSessionResizeCompositionTests
         await InteractiveSessionCommandTests.WaitForFrameAsync(host, "gpt-4o-mini · 0%");
         Assert.Contains("✓ read · 13 lines", host.ScrollbackText, StringComparison.Ordinal);
         Assert.DoesNotContain("notes-a.txt", host.ScrollbackText, StringComparison.Ordinal);
-        Assert.DoesNotContain("─", host.LastFrame, StringComparison.Ordinal);
+        Assert.Contains(new string('─', 40), host.LastFrame, StringComparison.Ordinal);
 
         host.Console.PushResize(new ConsoleSize(120, 40));
         await host.WaitUntilAsync(() =>
@@ -46,7 +46,7 @@ public sealed class InteractiveSessionResizeCompositionTests
         {
             host.Advance(33);
             return host.LastFrame.Contains("0/128.0k", StringComparison.Ordinal)
-                && !host.LastFrame.Contains("─", StringComparison.Ordinal);
+                && host.LastFrame.Contains(new string('─', 60), StringComparison.Ordinal);
         });
         await RunReadAsync(host, "call-3", "notes-c.txt", "third");
         Assert.Contains(

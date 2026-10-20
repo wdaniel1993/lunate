@@ -5,5 +5,7 @@
   succeeded: 42
   skipped: 0
 Allow bash?  [y]es  [n]o  [a]lways this session
+────────────────────────────────────────────────────────────
 > Ask anything, / for commands
+────────────────────────────────────────────────────────────
 deepseek-v4.1-flash · 2.1k/1.0M (0%) · ~/dev/lunate · main

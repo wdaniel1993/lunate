@@ -4,5 +4,6 @@
 \x1b[38;5;140ms must throw ArgumentException. The chec\x1b[0m
 \x1b[38;5;140mk belongs at the top of the method, befo\x1b[0m
 \x1b[38;5;140mre the list mutates.\x1b[0m
-> \x1b[38;5;245mAsk anything, / for commands\x1b[0m
+────────────────────────────────────────
+\x1b[38;5;110m> Ask anything, / for commands\x1b[0m
 deepseek-v4.1-flash · 0%

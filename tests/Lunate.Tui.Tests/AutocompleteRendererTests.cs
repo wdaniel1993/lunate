@@ -74,7 +74,7 @@ public sealed class AutocompleteRendererTests
                 "  \u001b[38;2;95;215;215m/help\u001b[0m  "
                     + "\u001b[38;2;138;138;138mShow commands\u001b[0m",
                 rule,
-                "> \u001b[38;2;138;138;138m" + Placeholder + "\u001b[0m",
+                "\u001b[38;2;135;175;215m> " + Placeholder + "\u001b[0m",
                 rule,
             ],
             frame.Lines

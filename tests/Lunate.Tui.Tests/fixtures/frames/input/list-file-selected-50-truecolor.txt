@@ -3,5 +3,6 @@
   \x1b[38;2;138;138;138msrc/\x1b[0mmain.cs
   \x1b[38;2;138;138;138mdocs/\x1b[0mguide.md
   \x1b[38;2;138;138;138msrc/very/long/directory/name/\x1b[0mDeep.cs
-> read @src/
+──────────────────────────────────────────────────
+\x1b[38;2;135;175;215m>\x1b[0m read @src/
 deepseek-v4.1-flash · 0%

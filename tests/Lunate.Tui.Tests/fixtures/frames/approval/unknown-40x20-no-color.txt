@@ -2,5 +2,6 @@
   "alpha": 1,
 Allow unknown?
 [y]es  [n]o  [a]lways this session
+────────────────────────────────────────
 > Ask anything, / for commands
 deepseek-v4.1-flash · 0%

@@ -16,17 +16,20 @@ public sealed class LiveAreaRendererTests
 
         var frame = LiveAreaRenderer.Render(state);
 
+        string rule = new('─', 60);
         Assert.Equal(
             [
                 "line one",
                 "line two",
                 "| read src/foo.cs · 0s",
+                rule,
                 "> go",
+                rule,
                 "test-model · 1.5k/12.3k (13%) · /repo · main",
             ],
             frame.Lines
         );
-        Assert.Equal(3, frame.CursorRow);
+        Assert.Equal(4, frame.CursorRow);
         Assert.Equal(4, frame.CursorColumn);
     }
 
@@ -42,8 +45,15 @@ public sealed class LiveAreaRendererTests
 
         var frame = LiveAreaRenderer.Render(state);
 
+        string rule = new('─', 60);
         Assert.Equal(
-            ["| subagents__spawn · 0s", "subagent running", "> Ask anything, / for commands"],
+            [
+                "| subagents__spawn · 0s",
+                "subagent running",
+                rule,
+                "> Ask anything, / for commands",
+                rule,
+            ],
             frame.Lines
         );
     }
@@ -57,7 +67,8 @@ public sealed class LiveAreaRendererTests
         var frame = LiveAreaRenderer.Render(state);
 
         Assert.Equal(8, frame.Lines.Count);
-        Assert.Equal("line 14", frame.Lines[0]);
+        Assert.Equal("line 15", frame.Lines[0]);
+        Assert.Equal(new string('─', 20), frame.Lines[^2]);
         Assert.Equal("> Ask anything, / fo", frame.Lines[^1]);
         Assert.Equal(7, frame.CursorRow);
     }
@@ -67,8 +78,8 @@ public sealed class LiveAreaRendererTests
     {
         var frame = LiveAreaRenderer.Render(new LiveAreaState { Size = new ConsoleSize(20, 8) });
 
-        Assert.Equal(["> Ask anything, / fo"], frame.Lines);
-        Assert.Equal(0, frame.CursorRow);
+        Assert.Equal([new string('─', 20), "> Ask anything, / fo"], frame.Lines);
+        Assert.Equal(1, frame.CursorRow);
         Assert.Equal(2, frame.CursorColumn);
     }
 
@@ -99,7 +110,8 @@ public sealed class LiveAreaRendererTests
 
         var frame = LiveAreaRenderer.Render(state);
 
-        Assert.Equal(["> Ask anything, / for commands", "m · 10/0 · /w"], frame.Lines);
+        string rule = new('─', 60);
+        Assert.Equal([rule, "> Ask anything, / for commands", rule, "m · 10/0 · /w"], frame.Lines);
     }
 
     [Fact]
@@ -114,12 +126,15 @@ public sealed class LiveAreaRendererTests
 
         var frame = LiveAreaRenderer.Render(state);
 
+        string rule = new('─', 60);
         Assert.Equal(
             [
                 "retrying (attempt 2)",
                 "\u26a0 bash  ls",
                 "Allow bash?  [y]es  [n]o  [a]lways this session",
+                rule,
                 "> Ask anything, / for commands",
+                rule,
             ],
             frame.Lines
         );
@@ -137,16 +152,19 @@ public sealed class LiveAreaRendererTests
 
         var frame = LiveAreaRenderer.Render(state);
 
+        string rule = new('─', 60);
         Assert.Equal(
             [
                 "\u26a0 bash  ls",
                 "  line one",
                 "Allow bash?  [y]es  [n]o  [a]lways this session",
+                rule,
                 "> go",
+                rule,
             ],
             frame.Lines
         );
-        Assert.Equal(3, frame.CursorRow);
+        Assert.Equal(4, frame.CursorRow);
     }
 
     [Theory]
@@ -226,7 +244,10 @@ public sealed class LiveAreaRendererTests
 
         var frame = LiveAreaRenderer.Render(state);
 
-        Assert.Equal(["\u26a0 bash  ls", "Allow bash?", choices, "> go"], frame.Lines);
+        Assert.Equal(
+            ["\u26a0 bash  ls", "Allow bash?", choices, new string('─', 40), "> go"],
+            frame.Lines
+        );
         Assert.Equal(34, CellText.Width(frame.Lines[2]));
     }
 
@@ -293,7 +314,11 @@ public sealed class LiveAreaRendererTests
 
         var frame = LiveAreaRenderer.Render(state);
 
-        Assert.Equal(["> Ask anything, / for commands", "loading project…"], frame.Lines);
+        string rule = new('─', 60);
+        Assert.Equal(
+            [rule, "> Ask anything, / for commands", rule, "loading project…"],
+            frame.Lines
+        );
     }
 
     [Fact]
@@ -308,8 +333,17 @@ public sealed class LiveAreaRendererTests
 
         var frame = LiveAreaRenderer.Render(state);
 
+        string rule = new('─', 60);
         Assert.Equal(
-            ["Select model", "> a", "  b", "> Ask anything, / for commands", "m · 10/0 · /w"],
+            [
+                "Select model",
+                "> a",
+                "  b",
+                rule,
+                "> Ask anything, / for commands",
+                rule,
+                "m · 10/0 · /w",
+            ],
             frame.Lines
         );
     }
@@ -326,7 +360,11 @@ public sealed class LiveAreaRendererTests
 
         var frame = LiveAreaRenderer.Render(state);
 
-        Assert.Equal(["Select model", "> a", "> Ask anything, / for commands"], frame.Lines);
+        string rule = new('─', 60);
+        Assert.Equal(
+            ["Select model", "> a", rule, "> Ask anything, / for commands", rule],
+            frame.Lines
+        );
     }
 
     [Fact]
@@ -353,7 +391,7 @@ public sealed class LiveAreaRendererTests
 
         var frame = LiveAreaRenderer.Render(state);
 
-        Assert.Equal(["abcd", "> As"], frame.Lines);
+        Assert.Equal(["abcd", "────", "> As"], frame.Lines);
     }
 
     [Fact]

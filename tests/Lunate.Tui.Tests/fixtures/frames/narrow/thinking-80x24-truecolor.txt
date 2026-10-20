@@ -3,6 +3,6 @@
 \x1b[38;2;175;135;215ms must throw ArgumentException. The check belongs at the top of the method, befo\x1b[0m
 \x1b[38;2;175;135;215mre the list mutates.\x1b[0m
 ────────────────────────────────────────────────────────────────────────────────
-> \x1b[38;2;138;138;138mAsk anything, / for commands\x1b[0m
+\x1b[38;2;135;175;215m> Ask anything, / for commands\x1b[0m
 ────────────────────────────────────────────────────────────────────────────────
 deepseek-v4.1-flash · 2.1k/1.0M (0%) · ~/dev/lunate · main

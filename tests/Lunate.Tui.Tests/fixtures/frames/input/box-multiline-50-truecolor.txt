@@ -1,4 +1,5 @@
-> Fix the autocomplete list
+──────────────────────────────────────────────────
+\x1b[38;2;135;175;215m>\x1b[0m Fix the autocomplete list
   so the selected row
   stays inside the box.
 deepseek-v4.1-flash · 0%

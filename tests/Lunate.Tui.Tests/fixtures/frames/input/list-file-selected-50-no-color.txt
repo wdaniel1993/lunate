@@ -3,5 +3,6 @@
   src/main.cs
   docs/guide.md
   src/very/long/directory/name/Deep.cs
+──────────────────────────────────────────────────
 > read @src/
 deepseek-v4.1-flash · 0%

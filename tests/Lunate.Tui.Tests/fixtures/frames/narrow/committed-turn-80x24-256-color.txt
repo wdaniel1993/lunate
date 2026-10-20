@@ -13,6 +13,6 @@ edited src/Lunate.Tui/ToolBlocks/ToolBlockRenderer.cs lines 4–5 (match: exact)
 \x1b[38;5;2m+    _builder.AppendLine(text);\x1b[0m
 \x1b[2m }\x1b[0m
 ────────────────────────────────────────────────────────────────────────────────
-> \x1b[38;5;245mAsk anything, / for commands\x1b[0m
+\x1b[38;5;110m> Ask anything, / for commands\x1b[0m
 ────────────────────────────────────────────────────────────────────────────────
 deepseek-v4.1-flash · 2.1k/1.0M (0%) · ~/dev/lunate · main

@@ -1,0 +1,6 @@
+────────────────────────────────────────────────────────────
+\x1b[38;5;110m>\x1b[0m Fix the autocomplete list
+  so the selected row
+  stays inside the box.
+────────────────────────────────────────────────────────────
+deepseek-v4.1-flash · 2.1k/1.0M (0%) · ~/dev/lunate · main

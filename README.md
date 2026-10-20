@@ -111,11 +111,12 @@ If nothing resolves a model or a key, the first run prints exactly one fix, for 
 
 ### Type, complete, send
 
-The input is a box: rules above and below it at 80 columns or wider, a muted `Ask anything, / for
-commands` placeholder while it is empty, and a box that grows with the draft to eight lines before
-it scrolls. Typing `/` opens the autocomplete list — the built-in commands, `/skill:<name>` and
-each loaded extension's commands, with descriptions — and `@` lists matching workspace files from
-the lazy file index. Both lists cap at eight rows above the input.
+The input is a box: a rule above it at every width, a second rule below from 60 columns, the `>`
+marker and the `Ask anything, / for commands` placeholder in the theme's user colour while it is
+empty, and a box that grows with the draft to eight lines before it scrolls. Typing `/` opens the
+autocomplete list — the built-in commands, `/skill:<name>` and each loaded extension's commands,
+with descriptions — and `@` lists matching workspace files from the lazy file index. Both lists
+cap at eight rows above the input.
 
 | Key | At the prompt |
 | --- | --- |
@@ -142,10 +143,10 @@ elapsed seconds.
 ### It fits a narrow terminal
 
 Below 60 columns the layout switches to its compact band: tool headers drop the argument summary
-(`✓ read · 13 lines`), the footer shrinks to the model and the context percent, the input box loses
-its rules, and the autocomplete list keeps only the names. The full layout returns from 100
-columns; the guide's [Narrow terminals](docs/guide.md#terminal-ui-lunatetui) section has the
-per-band rules.
+(`✓ read · 13 lines`), the footer shrinks to the model and the context percent, the input box keeps
+its upper rule but drops the lower one, and the autocomplete list keeps only the names. The full
+layout returns from 100 columns; the guide's
+[Narrow terminals](docs/guide.md#terminal-ui-lunatetui) section has the per-band rules.
 
 ![A committed turn, the input box and the slash-command list at 40 columns](docs/media/features/narrow.gif)
 

@@ -2,6 +2,6 @@
 \x1b[38;5;140mWe need to add validation to TodoList.Add. Null, empty and whitespace-only titles must throw ArgumentException. The chec\x1b[0m
 \x1b[38;5;140mk belongs at the top of the method, before the list mutates.\x1b[0m
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-> \x1b[38;5;245mAsk anything, / for commands\x1b[0m
+\x1b[38;5;110m> Ask anything, / for commands\x1b[0m
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 deepseek-v4.1-flash · 2.1k/1.0M (0%) · think:high · ~/dev/lunate · main
