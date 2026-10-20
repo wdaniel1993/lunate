@@ -21,7 +21,7 @@ The cache seam is an Anthropic-only `AnthropicPromptCache : DelegatingChatClient
 
 - It clones the request messages, marks the last system `TextContent` and the last content block of the last message with `WithCacheControl(new CacheControlEphemeral())`, and wraps the last tool so `AdditionalProperties["CacheControl"]` carries the same marker. History, prompt sections and registered tool declarations are never mutated.
 - It sits **below** `AnthropicTurnMerge` and **above** the recorder/provider, so the rolling marker lands on the final merged last block (a steering message appended to a tool result must not leave the marker in the middle).
-- It counts the markers it adds (at most three: system, tool, latest message) and asserts the count is ≤ 4 before calling the inner client.
+- It counts every breakpoint present on the outgoing request — its own three plus any pre-existing `cache_control` markers on content blocks or tool declarations — and throws `InvalidOperationException` in all builds before calling the inner client when the total exceeds four.
 - `ChatClientFactory` inserts it only for `provider == "anthropic"`. The OpenAI path is untouched.
 
 Files: `src/Lunate.Ai/AnthropicPromptCache.cs` (new), `src/Lunate.Ai/ChatClientFactory.cs`, `tests/Lunate.Ai.Tests/AnthropicPromptCacheTests.cs`.
@@ -45,24 +45,26 @@ The adapter already does the extraction. Decision: **no change to `UsageUpdated`
 - cache read: `UsageDetails.CachedInputTokenCount` (nullable);
 - cache write: `UsageDetails.AdditionalCounts?["CacheCreationInputTokens"]` (nullable, absent when zero).
 
+A reported zero means the adapter saw no cache access on that turn, not a known zero count: the display layer treats `0` as unknown and omits it, so a first turn never prints `cache: read 0`.
+
 Budget accounting is unchanged: `InputTokenCount` already includes cached and cache-creation tokens, so `AccumulateUsage` must not add cache counts again. The display layer treats the counts as read-only metadata.
 
 Files: no `Lunate.Agent` surface change. `InteractiveSession.Events.AddUsage` and `PrintEventJson.UsageBody` read the two fields; a private helper or constant in each keeps the key spelling in one place. No ADR-0017 addendum is required because the extension event shape does not change; the seam decision is recorded as an ADR-0010 addendum (`adr.md`).
 
 ### D4 — Display
 
-- `/context`: accumulate `_cacheReadTokens` and `_cacheWriteTokens` from each `UsageUpdated` alongside the existing input/output totals. Append `cache: read <n>, write <m>` using `StatusFooterRenderer.FormatTokens` (invariant). Emit only the counts that are known: `cache: read <n>`, `cache: write <m>`, both, or no segment at all. The footer is unchanged.
-- `--json`: `PrintEventJson.UsageBody` adds `cacheReadTokens` and/or `cacheWriteTokens` next to the existing `usage` object, only when the provider sent them. The `usage` object keeps its shape; raw `cachedInputTokenCount` / `additionalCounts` remain as the adapter produced them.
+- `/context`: accumulate `_cacheReadTokens` and `_cacheWriteTokens` from each `UsageUpdated` alongside the existing input/output totals. Append `cache: read <n>, write <m>` using `StatusFooterRenderer.FormatTokens` (invariant). Emit only the counts that are known: `cache: read <n>`, `cache: write <m>`, both, or no segment at all; a provider-reported `0` counts as unknown and is omitted like a null. The footer is unchanged.
+- `--json`: `PrintEventJson.UsageBody` adds `cacheReadTokens` and/or `cacheWriteTokens` next to the existing `usage` object, only when the provider sent a positive count; a reported zero is omitted like an absent count. The `usage` object keeps its shape; raw `cachedInputTokenCount` / `additionalCounts` remain as the adapter produced them.
 
 Files: `src/Lunate.Coding/InteractiveSession.Events.cs` (accumulate), `src/Lunate.Coding/InteractiveSession.Commands.cs` (`ContextText`), `src/Lunate.Coding/PrintEventJson.cs`, matching tests in `tests/Lunate.Coding.Tests`.
 
 ### D5 — Tests
 
-1. **Wire body** (`tests/Lunate.Ai.Tests/AnthropicPromptCacheTests.cs`): real `AnthropicClient` + capturing `HttpMessageHandler`; assert `cache_control` on the last system block, last tool, latest last block; count ≤ 4.
-2. **Rolling + prefix** (same file): two sequential requests through the factory; assert identical system/tool bytes, turn one's latest-message marker not repeated, turn two marker on its own last block.
+1. **Wire body** (`tests/Lunate.Ai.Tests/AnthropicPromptCacheTests.cs`): real `AnthropicClient` + capturing `HttpMessageHandler`; assert `cache_control` on the last system block, last tool, latest last block; count ≤ 4. A request whose history already carries markers plus the three added ones fails loudly with `InvalidOperationException`; exactly four is sent.
+2. **Rolling + prefix** (same file): two sequential requests through the factory; assert identical system/tool bytes, turn one's latest-message marker not repeated, turn two marker on its own last block. The latest block is also exercised as a tool result and as a tool call.
 3. **Max four** (same file): several system blocks/tools; assert the marker count stays ≤ 4 (the client adds at most three).
 4. **Prefix stability** (`tests/Lunate.Agent.Tests/AgentPrefixStabilityTests.cs`): scripted client records two runs; assert byte-identical system message and tool declarations.
-5. **Display** (`tests/Lunate.Coding.Tests/InteractiveSessionCommandTests.cs`, `PrintEventJsonTests.cs`): `/context` segments with read-only, write-only, both and neither; JSON fields present/absent and default stdout unchanged.
+5. **Display** (`tests/Lunate.Coding.Tests/InteractiveSessionCommandTests.cs`, `PrintEventJsonTests.cs`): `/context` segments with read-only, write-only, both and neither; JSON fields present/absent and default stdout unchanged. A provider-reported zero is absent from both displays while the raw `usage` object keeps it.
 6. **Live smoke** (`tests/Lunate.Ai.Tests/LiveContractTests.cs`): `LUNATE_LIVE=1` + `ANTHROPIC_API_KEY`; a two-turn request with a system prompt large enough to cache; assert turn two's usage has `CachedInputTokenCount > 0`; skipped without the flag.
 
 ## Recon contradictions (recorded, not silently resolved)

@@ -4,7 +4,7 @@
 
 ### Requirement: Anthropic prompt-cache breakpoints
 
-For a model whose provider is `anthropic`, `Lunate.Ai` SHALL place prompt-cache breakpoints (`cache_control: {"type":"ephemeral"}`) on the last system block, the last tool declaration, and the last content block of the latest message. The latest-message breakpoint SHALL roll forward on every turn; the system and tool breakpoints SHALL stay on the same blocks. No request SHALL carry more than four breakpoints, and the marker client SHALL assert that bound. For a model whose provider is not `anthropic` (OpenAI included) `Lunate.Ai` SHALL add no cache markers — those providers cache automatically.
+For a model whose provider is `anthropic`, `Lunate.Ai` SHALL place prompt-cache breakpoints (`cache_control: {"type":"ephemeral"}`) on the last system block, the last tool declaration, and the last content block of the latest message. The latest-message breakpoint SHALL roll forward on every turn; the system and tool breakpoints SHALL stay on the same blocks. No request SHALL carry more than four breakpoints. The marker client SHALL count every `cache_control` marker present on the outgoing request — its own three plus any pre-existing markers on content blocks or tool declarations — and SHALL throw `InvalidOperationException` in all builds, before the request is sent, when the total exceeds four. For a model whose provider is not `anthropic` (OpenAI included) `Lunate.Ai` SHALL add no cache markers — those providers cache automatically.
 
 Markers SHALL be request-local: the client SHALL NOT mutate the session history, the prompt sections or the registered tool declarations. The system prompt, tool declarations and unchanged prompt sections SHALL therefore lead consecutive requests byte-identically. The existing thinking parameters (`RawRepresentationFactory` for `budget` models) SHALL compose unchanged, and the adapter SHALL continue to build the wire messages from the `ChatMessage`s so signed thinking blocks and tool results round-trip exactly as before.
 
@@ -25,6 +25,12 @@ Markers SHALL be request-local: the client SHALL NOT mutate the session history,
 - **GIVEN** a request with several system blocks and several tools
 - **WHEN** the marker client prepares it
 - **THEN** the body contains at most four `cache_control` markers
+
+#### Scenario: An over-limit request fails loudly
+
+- **GIVEN** a request whose history already carries markers and whose system, tool and latest-message markers bring the total above four
+- **WHEN** the marker client prepares it
+- **THEN** it throws `InvalidOperationException` in every build and nothing reaches the provider
 
 #### Scenario: OpenAI gets no markers
 

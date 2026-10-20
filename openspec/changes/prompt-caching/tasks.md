@@ -39,3 +39,11 @@ Design-first change: each task is one commit and lands on `change/prompt-caching
 - [x] 6.2 Update the provider section of `docs/guide.md` with the three breakpoints and the cache usage fields; no new docs page.
 - [x] 6.3 `scripts/verify.sh` green (build, tests, publish, budgets, PublicAPI, CSharpier, docs lint); `openspec validate prompt-caching --strict` green.
 - [x] 6.4 Commit `docs(adr): record prompt caching on the anthropic adapter`.
+
+## 7. Review fixes
+
+- [x] 7.1 Replace the vacuous Debug-only bound with a runtime guard that counts every marker on the outgoing request (own and pre-existing) and throws `InvalidOperationException` above four; add the over-limit and exact-four tests.
+- [x] 7.2 Add wire tests for a latest tool result and a latest tool call, asserting the rolling marker lands on that block and the request stays valid.
+- [x] 7.3 Treat a provider-reported zero cache read/write as unknown in `/context` and `--json`, pin it with tests, and record the choice in the design and ADR-0010 addendum.
+- [x] 7.4 Comment the deliberate `Lunate.Agent.Tests` → `Lunate.Coding` reference (composed-prompt prefix test; src edges unchanged).
+- [x] 7.5 `dotnet csharpier format .`; the Ai/Agent/Coding suites and `openspec validate prompt-caching --strict` green.
