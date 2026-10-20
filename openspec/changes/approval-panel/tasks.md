@@ -17,4 +17,4 @@
 - [x] 3.2 Goldens per band (40/60/80/120) × colour mode for bash/edit/read/unknown/subagent.
 - [x] 3.3 `docs/media/tapes/features-approval.tape` (a turn triggering an edit approval; the panel with the diff; `a`); GIF + README gallery.
 - [x] 3.4 `docs/guide.md`: the approvals paragraph describes the panel (headline, detail, choices, narrow band).
-- [ ] 3.5 Startup budget unchanged — verified by the change gate.
+- [x] 3.5 Startup budget unchanged — gate evidence: the end-of-change `scripts/verify.sh` runs `scripts/perf.sh` against the published binary and holds the median under its budget.
