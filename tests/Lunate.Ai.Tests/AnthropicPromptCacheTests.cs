@@ -130,6 +130,47 @@ public sealed class AnthropicPromptCacheTests
     }
 
     [Fact]
+    public async Task History_markers_above_the_four_breakpoint_limit_reject_the_request()
+    {
+        var handler = new CapturingHandler();
+        IChatClient client = CreateAnthropicClient(handler);
+        ChatMessage earlier = UserMessage("one", "two");
+        earlier.Contents[0].WithCacheControl(new CacheControlEphemeral());
+        earlier.Contents[1].WithCacheControl(new CacheControlEphemeral());
+
+        InvalidOperationException error = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            client.GetResponseAsync(
+                [SystemMessage("rules"), earlier, UserMessage("three")],
+                new ChatOptions { Tools = [new EchoTool("echo")] },
+                TestContext.Current.CancellationToken
+            )
+        );
+
+        Assert.Contains("4", error.Message, StringComparison.Ordinal);
+        Assert.Contains("5", error.Message, StringComparison.Ordinal);
+        Assert.Contains("cache_control", error.Message, StringComparison.Ordinal);
+        Assert.Empty(handler.RequestBodies);
+    }
+
+    [Fact]
+    public async Task Exactly_four_breakpoints_including_history_are_sent()
+    {
+        var handler = new CapturingHandler();
+        IChatClient client = CreateAnthropicClient(handler);
+        ChatMessage earlier = UserMessage("one");
+        earlier.Contents[0].WithCacheControl(new CacheControlEphemeral());
+
+        await client.GetResponseAsync(
+            [SystemMessage("rules"), earlier, UserMessage("two")],
+            new ChatOptions { Tools = [new EchoTool("echo")] },
+            TestContext.Current.CancellationToken
+        );
+
+        using JsonDocument document = JsonDocument.Parse(Assert.Single(handler.RequestBodies));
+        Assert.Equal(4, CountCacheControls(document.RootElement));
+    }
+
+    [Fact]
     public async Task OpenAI_requests_carry_no_prompt_cache_markers()
     {
         ScriptedChatClient scripted = new ScriptedChatClient().Enqueue(

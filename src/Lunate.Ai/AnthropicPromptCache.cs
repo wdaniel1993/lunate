@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using Anthropic.Models.Messages;
 using Microsoft.Extensions.AI;
@@ -17,6 +16,7 @@ namespace Lunate.Ai;
 internal sealed class AnthropicPromptCache(IChatClient innerClient)
     : DelegatingChatClient(innerClient)
 {
+    private const string ContentCacheControlProperty = "anthropic:cache_control";
     private const string ToolCacheControlProperty = "CacheControl";
     private const int MaxBreakpoints = 4;
 
@@ -51,24 +51,38 @@ internal sealed class AnthropicPromptCache(IChatClient innerClient)
         }
     }
 
-    private static void AssertWithinLimit(MarkedRequest marked) =>
-        Debug.Assert(
-            marked.MarkerCount <= MaxBreakpoints,
-            $"Anthropic prompt caching allows at most {MaxBreakpoints} breakpoints; "
-                + $"{marked.MarkerCount} were added."
-        );
+    private static void AssertWithinLimit(MarkedRequest marked)
+    {
+        int markerCount =
+            marked.Messages.Sum(message => message.Contents.Count(IsContentMarked))
+            + (marked.Options?.Tools?.Count(IsToolMarked) ?? 0);
+        if (markerCount > MaxBreakpoints)
+        {
+            throw new InvalidOperationException(
+                $"Anthropic prompt caching allows at most {MaxBreakpoints} cache_control "
+                    + $"breakpoints per request; found {markerCount}. Remove cache_control markers "
+                    + "from history or tool declarations before sending."
+            );
+        }
+    }
+
+    private static bool IsContentMarked(AIContent content) =>
+        content.AdditionalProperties?.ContainsKey(ContentCacheControlProperty) ?? false;
+
+    private static bool IsToolMarked(AITool tool) =>
+        tool.AdditionalProperties.ContainsKey(ToolCacheControlProperty);
 
     private static MarkedRequest Mark(IEnumerable<ChatMessage> messages, ChatOptions? options)
     {
         ArgumentNullException.ThrowIfNull(messages);
         List<ChatMessage> source = [.. messages];
         List<ChatMessage> marked = [.. source.Select(static message => message.Clone())];
-        int markerCount = MarkSystem(source, marked) + MarkLatest(source, marked);
-        (ChatOptions? markedOptions, int toolMarkerCount) = MarkLastTool(options);
-        return new MarkedRequest(marked, markedOptions, markerCount + toolMarkerCount);
+        MarkSystem(source, marked);
+        MarkLatest(source, marked);
+        return new MarkedRequest(marked, MarkLastTool(options));
     }
 
-    private static int MarkSystem(IReadOnlyList<ChatMessage> source, List<ChatMessage> marked)
+    private static void MarkSystem(IReadOnlyList<ChatMessage> source, List<ChatMessage> marked)
     {
         for (int messageIndex = source.Count - 1; messageIndex >= 0; messageIndex--)
         {
@@ -87,48 +101,45 @@ internal sealed class AnthropicPromptCache(IChatClient innerClient)
 
                 if (CopyWithMarker(contents[contentIndex]) is not { } copy)
                 {
-                    return 0;
+                    return;
                 }
 
                 marked[messageIndex].Contents = Replace(contents, contentIndex, copy);
-                return 1;
+                return;
             }
 
-            return 0;
+            return;
         }
-
-        return 0;
     }
 
-    private static int MarkLatest(IReadOnlyList<ChatMessage> source, List<ChatMessage> marked)
+    private static void MarkLatest(IReadOnlyList<ChatMessage> source, List<ChatMessage> marked)
     {
         if (source.Count == 0 || source[^1].Role == ChatRole.System)
         {
-            return 0;
+            return;
         }
 
         IList<AIContent> contents = source[^1].Contents;
         if (contents.Count == 0 || CopyWithMarker(contents[^1]) is not { } copy)
         {
-            return 0;
+            return;
         }
 
         marked[^1].Contents = Replace(contents, contents.Count - 1, copy);
-        return 1;
     }
 
-    private static (ChatOptions? Options, int MarkerCount) MarkLastTool(ChatOptions? options)
+    private static ChatOptions? MarkLastTool(ChatOptions? options)
     {
         if (options?.Tools is not { Count: > 0 } tools || tools[^1] is not AIFunction function)
         {
-            return (options, 0);
+            return options;
         }
 
         ChatOptions clone = options.Clone();
         List<AITool> clonedTools = [.. tools];
         clonedTools[^1] = new CacheControlledFunction(function);
         clone.Tools = clonedTools;
-        return (clone, 1);
+        return clone;
     }
 
     private static List<AIContent> Replace(
@@ -197,8 +208,7 @@ internal sealed class AnthropicPromptCache(IChatClient innerClient)
 
     private readonly record struct MarkedRequest(
         IReadOnlyList<ChatMessage> Messages,
-        ChatOptions? Options,
-        int MarkerCount
+        ChatOptions? Options
     );
 
     /// <summary>
