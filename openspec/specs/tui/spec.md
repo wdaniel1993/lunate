@@ -414,7 +414,7 @@ The interactive session SHALL consume the harness's event stream: streaming text
 
 ### Requirement: Slash commands
 
-A submitted line whose first non-space character is `/` SHALL dispatch as a client command and never reach the model: `/model` opens the model picker (`/model <id>` switches directly when the id is in the catalog), and when the current model is an extension-registered or virtual model the picker's current-model line and `/model` SHALL show its last routed resolution (`auto → deep`); `/new` starts a fresh session, `/resume` opens the session picker, `/compact` requests an explicit out-of-run compaction, `/thinking <level>` sets the session's reasoning level (one of `off`/`low`/`medium`/`high`; `/thinking` alone prints the current level and the active model's mapping), `/mcp` lists the configured and extension-registered MCP servers with their status and source (the config file path it came from, or `extension '{id}'`), with a name collision shown as the configured server winning and the registration marked shadowed, a server whose definition references an unset environment variable without a default shown with that missing-variable warning next to it, and never printing environment values or headers, `/extensions` lists every discovered extension — failed first, then trust-denied, then loaded, each group by id — as one segment per extension: `id version (scope) state`, with loaded ones carrying their load time and registered tool, command, hook and service counts (a field differing from the manifest reads `(N declared)`, a load above 500 ms reads `(slow)`), trust-denied ones reading `trust-denied` with the manifest's declared counts, failed ones reading `failed` followed by the message's first sentence and ` — see the log` — reading `extensions: none configured` when there are none and `extensions disabled (--no-extensions)` when extensions are disabled, `/trust` lists this repository's trust records (`/trust clear` clears them, so the next load asks again), `/skills` lists the discovered skills with their scope and state, `/skill:<name> [args]` invokes the named skill by submitting its wrapped body as a user turn through the normal submission path — an unknown name warns instead — `/help` lists the commands grouped (session / model / extensions / files / quit) with one-line descriptions taken from the command registry — no hand-maintained list: a command dispatchable without a description SHALL fail a test — `/quit` quits. Commands SHALL append to the input history and skip the input pipeline; an unknown command SHALL produce a dim notice naming it. While a turn is running, `/new`, `/resume`, `/model` and `/compact` SHALL be refused with a notice; `/quit` SHALL quit at any time (cancelling a running turn). While an approval prompt or a picker is open, no input is submitted, so no command can dispatch.
+A submitted line whose first non-space character is `/` SHALL dispatch as a client command and never reach the model: `/model` opens the model picker (`/model <id>` switches directly when the id is in the catalog), and when the current model is an extension-registered or virtual model the picker's current-model line and `/model` SHALL show its last routed resolution (`auto → deep`); `/new` starts a fresh session, `/name <title>` names the current session and bare `/name` reports the stored name, `/session` reports the current session's path, id, message count and token totals, `/resume` opens the session picker, `/compact` requests an explicit out-of-run compaction, `/thinking <level>` sets the session's reasoning level (one of `off`/`low`/`medium`/`high`; `/thinking` alone prints the current level and the active model's mapping), `/mcp` lists the configured and extension-registered MCP servers with their status and source (the config file path it came from, or `extension '{id}'`), with a name collision shown as the configured server winning and the registration marked shadowed, a server whose definition references an unset environment variable without a default shown with that missing-variable warning next to it, and never printing environment values or headers, `/extensions` lists every discovered extension — failed first, then trust-denied, then loaded, each group by id — as one segment per extension: `id version (scope) state`, with loaded ones carrying their load time and registered tool, command, hook and service counts (a field differing from the manifest reads `(N declared)`, a load above 500 ms reads `(slow)`), trust-denied ones reading `trust-denied` with the manifest's declared counts, failed ones reading `failed` followed by the message's first sentence and ` — see the log` — reading `extensions: none configured` when there are none and `extensions disabled (--no-extensions)` when extensions are disabled, `/trust` lists this repository's trust records (`/trust clear` clears them, so the next load asks again), `/skills` lists the discovered skills with their scope and state, `/skill:<name> [args]` invokes the named skill by submitting its wrapped body as a user turn through the normal submission path — an unknown name warns instead — `/help` lists the commands grouped (session / model / extensions / files / quit) with one-line descriptions taken from the command registry — no hand-maintained list: a command dispatchable without a description SHALL fail a test — `/quit` quits. Commands SHALL append to the input history and skip the input pipeline; an unknown command SHALL produce a dim notice naming it. While a turn is running, `/new`, `/resume`, `/model` and `/compact` SHALL be refused with a notice; `/quit` SHALL quit at any time (cancelling a running turn). While an approval prompt or a picker is open, no input is submitted, so no command can dispatch.
 
 #### Scenario: Every built-in command dispatches without a model call
 
@@ -969,3 +969,31 @@ The live area SHALL carry one activity line while work is in flight: a spinner f
 - **GIVEN** a root run with a child (subagent) run
 - **WHEN** the child reports its usage
 - **THEN** the activity line keeps the root run's deltas while the footer's cumulative total includes the child's tokens
+
+### Requirement: Cache usage in `/context`
+
+The `/context` notice SHALL show the session's accumulated prompt-cache tokens when the provider has reported them: cache reads and cache writes as separate counts, formatted culture-invariantly, in a `cache: read <n>, write <m>` segment. A count the provider never reported, or reported as zero, SHALL be treated as unknown and omitted from the segment; the command SHALL NOT display a zero for an unknown count. The footer line itself SHALL remain unchanged — cache counts belong to the explicit `/context` readout, not to the always-visible status.
+
+#### Scenario: Cache read and write are shown
+
+- **GIVEN** usage events carrying `CachedInputTokenCount = 1200` and `AdditionalCounts["CacheCreationInputTokens"] = 300`
+- **WHEN** `/context` runs
+- **THEN** the notice contains `cache: read 1.2k, write 300`
+
+#### Scenario: An unknown count is omitted
+
+- **GIVEN** a provider that reports input and output tokens but no cache counts
+- **WHEN** `/context` runs
+- **THEN** the notice has no cache segment and no invented zeros
+
+#### Scenario: A reported zero is treated as unknown
+
+- **GIVEN** usage events carrying `CachedInputTokenCount = 0` and `AdditionalCounts["CacheCreationInputTokens"] = 0`
+- **WHEN** `/context` runs
+- **THEN** the notice has no cache segment and no zero counts
+
+#### Scenario: The cache segment is separate from the budget total
+
+- **GIVEN** usage whose `InputTokenCount` already includes the cached tokens
+- **WHEN** the session accumulates cache reads and writes
+- **THEN** the token total is unchanged and the cache counts are display-only
