@@ -1,4 +1,7 @@
 using System.Text.Json;
+using Lunate.Agent;
+using Lunate.Ai;
+using Microsoft.Extensions.AI;
 
 namespace Lunate.Coding.Tests;
 
@@ -173,6 +176,245 @@ public sealed class PrintModeTests
         Assert.Equal(messageId, lines[2].GetProperty("messageId").GetString());
         Assert.Equal(messageId, lines[3].GetProperty("messageId").GetString());
         Assert.Equal(messageId, lines[4].GetProperty("messageId").GetString());
+    }
+
+    [Fact]
+    public async Task No_session_writes_no_session_file()
+    {
+        using var temp = new TempDirectory();
+        var client = new ScriptedChatClient().Enqueue(Scripts.Text("ok"), Scripts.Stop());
+        PrintModeOptions options = PrintModeTestSupport.BaseOptions(
+            temp,
+            new FakeChatClientFactory(client)
+        ) with
+        {
+            Prompt = "Hi",
+            Launch = new LaunchOptions { NoSession = true },
+        };
+
+        (int exitCode, string output, string errors) = await PrintModeTestSupport.RunAsync(options);
+
+        Assert.Equal(0, exitCode);
+        Assert.Equal("ok", output);
+        Assert.Empty(errors);
+        string sessions = temp.File("sessions");
+        Assert.Empty(Directory.Exists(sessions) ? Directory.GetFiles(sessions, "*.jsonl") : []);
+    }
+
+    [Fact]
+    public async Task Session_flag_loads_a_session_by_id()
+    {
+        using var temp = new TempDirectory();
+        string sessions = temp.File("sessions");
+        Session seeded = SeedSession(
+            sessions,
+            new Workspace(temp.Root).WorktreeRoot,
+            "remembered question",
+            DateTime.UtcNow
+        );
+        var client = new ScriptedChatClient().Enqueue(Scripts.Text("ok"), Scripts.Stop());
+        PrintModeOptions options = PrintModeTestSupport.BaseOptions(
+            temp,
+            new FakeChatClientFactory(client)
+        ) with
+        {
+            Prompt = "Hi",
+            Launch = new LaunchOptions { Session = seeded.SessionId },
+        };
+
+        (int exitCode, string output, string errors) = await PrintModeTestSupport.RunAsync(options);
+
+        Assert.Equal(0, exitCode);
+        Assert.Equal("ok", output);
+        Assert.Empty(errors);
+        Assert.Contains(client.Requests[0], message => message.Text == "remembered question");
+        Assert.Equal(seeded.Path, Assert.Single(Directory.GetFiles(sessions, "*.jsonl")));
+    }
+
+    [Fact]
+    public async Task Session_flag_loads_a_session_by_path()
+    {
+        using var temp = new TempDirectory();
+        string sessions = temp.File("sessions");
+        Session seeded = SeedSession(
+            sessions,
+            new Workspace(temp.Root).WorktreeRoot,
+            "path question",
+            DateTime.UtcNow
+        );
+        var client = new ScriptedChatClient().Enqueue(Scripts.Text("ok"), Scripts.Stop());
+        PrintModeOptions options = PrintModeTestSupport.BaseOptions(
+            temp,
+            new FakeChatClientFactory(client)
+        ) with
+        {
+            Prompt = "Hi",
+            Launch = new LaunchOptions { Session = seeded.Path },
+        };
+
+        (int exitCode, string output, string errors) = await PrintModeTestSupport.RunAsync(options);
+
+        Assert.Equal(0, exitCode);
+        Assert.Equal("ok", output);
+        Assert.Empty(errors);
+        Assert.Contains(client.Requests[0], message => message.Text == "path question");
+        Assert.Equal(seeded.Path, Assert.Single(Directory.GetFiles(sessions, "*.jsonl")));
+    }
+
+    [Fact]
+    public async Task Session_flag_with_an_unknown_id_fails_naming_it()
+    {
+        using var temp = new TempDirectory();
+        var client = new ScriptedChatClient().Enqueue(Scripts.Text("ok"), Scripts.Stop());
+        var factory = new FakeChatClientFactory(client);
+        PrintModeOptions options = PrintModeTestSupport.BaseOptions(temp, factory) with
+        {
+            Prompt = "Hi",
+            Launch = new LaunchOptions { Session = "missing-id" },
+        };
+
+        (int exitCode, string output, string errors) = await PrintModeTestSupport.RunAsync(options);
+
+        Assert.Equal(2, exitCode);
+        Assert.Empty(output);
+        Assert.Contains(
+            "lunate: no session with id 'missing-id'; run a prompt to start one",
+            errors,
+            StringComparison.Ordinal
+        );
+        Assert.Null(factory.CreatedModel);
+        Assert.Empty(client.Requests);
+    }
+
+    [Fact]
+    public async Task Session_flag_with_a_missing_path_fails_naming_it()
+    {
+        using var temp = new TempDirectory();
+        string missing = temp.File("missing-" + Guid.NewGuid().ToString("N") + ".jsonl");
+        var client = new ScriptedChatClient().Enqueue(Scripts.Text("ok"), Scripts.Stop());
+        var factory = new FakeChatClientFactory(client);
+        PrintModeOptions options = PrintModeTestSupport.BaseOptions(temp, factory) with
+        {
+            Prompt = "Hi",
+            Launch = new LaunchOptions { Session = missing },
+        };
+
+        (int exitCode, string output, string errors) = await PrintModeTestSupport.RunAsync(options);
+
+        Assert.Equal(2, exitCode);
+        Assert.Empty(output);
+        Assert.Contains($"could not load session '{missing}'", errors, StringComparison.Ordinal);
+        Assert.Null(factory.CreatedModel);
+        Assert.Empty(client.Requests);
+    }
+
+    [Fact]
+    public async Task Ambiguous_session_id_names_the_matching_paths()
+    {
+        using var temp = new TempDirectory();
+        string sessions = temp.File("sessions");
+        Session seeded = SeedSession(
+            sessions,
+            new Workspace(temp.Root).WorktreeRoot,
+            "remembered question",
+            DateTime.UtcNow
+        );
+        string duplicate = Path.Combine(
+            sessions,
+            "duplicate-" + Guid.NewGuid().ToString("N") + ".jsonl"
+        );
+        File.Copy(seeded.Path, duplicate);
+        var client = new ScriptedChatClient().Enqueue(Scripts.Text("ok"), Scripts.Stop());
+        var factory = new FakeChatClientFactory(client);
+        PrintModeOptions options = PrintModeTestSupport.BaseOptions(temp, factory) with
+        {
+            Prompt = "Hi",
+            Launch = new LaunchOptions { Session = seeded.SessionId },
+        };
+
+        (int exitCode, string output, string errors) = await PrintModeTestSupport.RunAsync(options);
+
+        Assert.Equal(2, exitCode);
+        Assert.Empty(output);
+        Assert.Contains(
+            $"session id '{seeded.SessionId}' is ambiguous:",
+            errors,
+            StringComparison.Ordinal
+        );
+        Assert.Contains(seeded.Path, errors, StringComparison.Ordinal);
+        Assert.Contains(duplicate, errors, StringComparison.Ordinal);
+        Assert.Null(factory.CreatedModel);
+        Assert.Empty(client.Requests);
+    }
+
+    [Fact]
+    public async Task Continue_loads_the_newest_session_recorded_for_the_working_directory()
+    {
+        using var temp = new TempDirectory();
+        string cwd = new Workspace(temp.Root).WorktreeRoot;
+        string sessions = temp.File("sessions");
+        SeedSession(
+            sessions,
+            cwd,
+            "older question",
+            new DateTime(2026, 10, 18, 12, 0, 0, DateTimeKind.Utc)
+        );
+        SeedSession(
+            sessions,
+            cwd,
+            "newest question",
+            new DateTime(2026, 10, 19, 12, 0, 0, DateTimeKind.Utc)
+        );
+        SeedSession(
+            sessions,
+            temp.File("elsewhere"),
+            "other directory",
+            new DateTime(2026, 10, 20, 12, 0, 0, DateTimeKind.Utc)
+        );
+        var client = new ScriptedChatClient().Enqueue(Scripts.Text("ok"), Scripts.Stop());
+        PrintModeOptions options = PrintModeTestSupport.BaseOptions(
+            temp,
+            new FakeChatClientFactory(client)
+        ) with
+        {
+            Prompt = "Hi",
+            Launch = new LaunchOptions { Continue = true },
+        };
+
+        (int exitCode, string output, string errors) = await PrintModeTestSupport.RunAsync(options);
+
+        Assert.Equal(0, exitCode);
+        Assert.Equal("ok", output);
+        Assert.Empty(errors);
+        Assert.Contains(client.Requests[0], message => message.Text == "newest question");
+        Assert.DoesNotContain(client.Requests[0], message => message.Text == "older question");
+        Assert.DoesNotContain(client.Requests[0], message => message.Text == "other directory");
+    }
+
+    [Fact]
+    public async Task Continue_without_a_matching_session_names_the_working_directory()
+    {
+        using var temp = new TempDirectory();
+        string cwd = new Workspace(temp.Root).WorktreeRoot;
+        var client = new ScriptedChatClient().Enqueue(Scripts.Text("ok"), Scripts.Stop());
+        var factory = new FakeChatClientFactory(client);
+        PrintModeOptions options = PrintModeTestSupport.BaseOptions(temp, factory) with
+        {
+            Prompt = "Hi",
+            Launch = new LaunchOptions { Continue = true },
+        };
+
+        (int exitCode, string output, string errors) = await PrintModeTestSupport.RunAsync(options);
+
+        Assert.Equal(2, exitCode);
+        Assert.Empty(output);
+        Assert.Contains(
+            $"lunate: no session for '{cwd}'; run a prompt to start one",
+            errors,
+            StringComparison.Ordinal
+        );
+        Assert.Null(factory.CreatedModel);
+        Assert.Empty(client.Requests);
     }
 
     [Fact]
@@ -360,6 +602,129 @@ public sealed class PrintModeTests
     }
 
     [Fact]
+    public async Task A_launch_model_wins_over_the_resolved_settings()
+    {
+        // The settings file names one model and LUNATE_MODEL another; the launch flag wins over both.
+        using var temp = new TempDirectory();
+        File.WriteAllText(
+            temp.File("settings.json"),
+            """{ "schemaVersion": 1, "model": "claude-sonnet-5-5" }"""
+        );
+        var factory = new FakeChatClientFactory(
+            new ScriptedChatClient().Enqueue(Scripts.Text("ok"), Scripts.Stop())
+        );
+        PrintModeOptions options = PrintModeTestSupport.BaseOptions(temp, factory) with
+        {
+            Prompt = "Hi",
+            Launch = new LaunchOptions { Model = "gpt-4o" },
+        };
+
+        (int exitCode, string output, string errors) = await PrintModeTestSupport.RunAsync(options);
+
+        Assert.Equal(0, exitCode);
+        Assert.Equal("ok", output);
+        Assert.Empty(errors);
+        Assert.Equal("gpt-4o", factory.CreatedModel!.Id);
+    }
+
+    [Fact]
+    public async Task A_launch_thinking_level_turns_thinking_on_over_the_default()
+    {
+        using var temp = new TempDirectory();
+        File.WriteAllText(
+            temp.File("models.json"),
+            """
+            {
+              "schemaVersion": 1,
+              "models": [
+                { "id": "effort-model", "provider": "openai", "endpoint": null, "contextWindow": 128000, "supportsTools": true, "reasoning": "effort" }
+              ]
+            }
+            """
+        );
+        var client = new ScriptedChatClient().Enqueue(Scripts.Text("ok"), Scripts.Stop());
+        PrintModeOptions options = PrintModeTestSupport.BaseOptions(
+            temp,
+            new FakeChatClientFactory(client)
+        ) with
+        {
+            Prompt = "Hi",
+            Environment = PrintModeTestSupport.Environment(model: "effort-model"),
+            Launch = new LaunchOptions { Thinking = ThinkingLevel.High },
+        };
+
+        (int exitCode, string output, string errors) = await PrintModeTestSupport.RunAsync(options);
+
+        Assert.Equal(0, exitCode);
+        Assert.Equal("ok", output);
+        Assert.Empty(errors);
+        Assert.Equal(ReasoningEffort.High, Assert.Single(client.RequestOptions)?.Reasoning?.Effort);
+    }
+
+    [Fact]
+    public async Task A_launch_thinking_level_wins_over_the_settings_file()
+    {
+        using var temp = new TempDirectory();
+        File.WriteAllText(
+            temp.File("settings.json"),
+            """{ "schemaVersion": 1, "thinking": "low" }"""
+        );
+        File.WriteAllText(
+            temp.File("models.json"),
+            """
+            {
+              "schemaVersion": 1,
+              "models": [
+                { "id": "effort-model", "provider": "openai", "endpoint": null, "contextWindow": 128000, "supportsTools": true, "reasoning": "effort" }
+              ]
+            }
+            """
+        );
+        var client = new ScriptedChatClient().Enqueue(Scripts.Text("ok"), Scripts.Stop());
+        PrintModeOptions options = PrintModeTestSupport.BaseOptions(
+            temp,
+            new FakeChatClientFactory(client)
+        ) with
+        {
+            Prompt = "Hi",
+            Environment = PrintModeTestSupport.Environment(model: "effort-model"),
+            Launch = new LaunchOptions { Thinking = ThinkingLevel.High },
+        };
+
+        (int exitCode, string output, string errors) = await PrintModeTestSupport.RunAsync(options);
+
+        Assert.Equal(0, exitCode);
+        Assert.Equal("ok", output);
+        Assert.Empty(errors);
+        Assert.Equal(ReasoningEffort.High, Assert.Single(client.RequestOptions)?.Reasoning?.Effort);
+    }
+
+    [Fact]
+    public async Task A_launch_model_not_in_the_catalog_fails_naming_it()
+    {
+        using var temp = new TempDirectory();
+        var client = new ScriptedChatClient().Enqueue(Scripts.Text("ok"), Scripts.Stop());
+        var factory = new FakeChatClientFactory(client);
+        PrintModeOptions options = PrintModeTestSupport.BaseOptions(temp, factory) with
+        {
+            Prompt = "Hi",
+            Launch = new LaunchOptions { Model = "nope-9000" },
+        };
+
+        (int exitCode, string output, string errors) = await PrintModeTestSupport.RunAsync(options);
+
+        Assert.Equal(2, exitCode);
+        Assert.Empty(output);
+        Assert.Contains(
+            "Model 'nope-9000' is not in the catalog",
+            errors,
+            StringComparison.Ordinal
+        );
+        Assert.Null(factory.CreatedModel);
+        Assert.Empty(client.Requests);
+    }
+
+    [Fact]
     public async Task A_missing_model_is_an_actionable_error()
     {
         using var temp = new TempDirectory();
@@ -404,5 +769,17 @@ public sealed class PrintModeTests
         Assert.Empty(output);
         Assert.Contains("nope-9000", errors, StringComparison.Ordinal);
         Assert.Contains("--discover", errors, StringComparison.Ordinal);
+    }
+
+    private static Session SeedSession(string root, string cwd, string text, DateTime modified)
+    {
+        Directory.CreateDirectory(root);
+        string provisional = Path.Combine(root, Path.GetRandomFileName());
+        Session created = Session.Create(provisional, cwd, null, cwd);
+        created.AppendMessage(new ChatMessage(ChatRole.User, text));
+        string path = Path.Combine(root, SessionPaths.SessionFileName(created.SessionId));
+        File.Move(provisional, path);
+        File.SetLastWriteTimeUtc(path, modified);
+        return Session.Load(path);
     }
 }

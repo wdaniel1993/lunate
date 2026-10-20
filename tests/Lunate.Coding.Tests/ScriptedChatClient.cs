@@ -12,6 +12,9 @@ internal sealed class ScriptedChatClient : IChatClient
     /// <summary>Every streaming request in call order (the composition assertions read it).</summary>
     public List<IReadOnlyList<ChatMessage>> Requests { get; } = [];
 
+    /// <summary>The options each streaming call arrived with, indexed like <see cref="Requests"/>.</summary>
+    public List<ChatOptions?> RequestOptions { get; } = [];
+
     public ScriptedChatClient Enqueue(params ChatResponseUpdate[] updates)
     {
         _scripts.Enqueue(updates);
@@ -31,6 +34,7 @@ internal sealed class ScriptedChatClient : IChatClient
     )
     {
         Requests.Add([.. messages]);
+        RequestOptions.Add(options);
         ChatResponseUpdate[] updates = Dequeue();
         foreach (ChatResponseUpdate update in updates)
         {

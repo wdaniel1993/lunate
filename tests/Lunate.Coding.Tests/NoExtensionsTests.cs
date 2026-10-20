@@ -48,8 +48,9 @@ public sealed class NoExtensionsTests
             extensions: new ExtensionSeams { StorePath = store, Log = new RecordingExtensionLog() }
         );
 
-        Assert.Equal(0, exitCode);
-        // Without the host there is no registry: the extension-only id fails as a catalog lookup.
+        Assert.Equal(1, exitCode);
+        // Without the host there is no registry: the extension-only id fails as a catalog lookup
+        // and a configured model failure is a run error, not a launch usage error.
         Assert.Contains(
             "'ext/model-fixture/auto' is not in the catalog",
             diagnostics.ToString(),

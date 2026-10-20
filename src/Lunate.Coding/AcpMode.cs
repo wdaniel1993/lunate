@@ -21,7 +21,8 @@ internal static class AcpMode
         CancellationToken ct,
         ExtensionSeams? extensions = null,
         string? mcpConfigPath = null,
-        string? mcpAgentsConfigPath = null
+        string? mcpAgentsConfigPath = null,
+        LaunchOptions? launch = null
     )
     {
         var interaction = new AcpUserInteraction(line => errors.WriteLine($"lunate: {line}"));
@@ -127,7 +128,14 @@ internal static class AcpMode
                     input,
                     output,
                     context =>
-                        CreateHarness(context, host, mcpTools, inheritedTools, workspaceServices),
+                        CreateHarness(
+                            context,
+                            host,
+                            mcpTools,
+                            inheritedTools,
+                            workspaceServices,
+                            launch
+                        ),
                     ct
                 )
                 .GetAwaiter()
@@ -209,18 +217,30 @@ internal static class AcpMode
         }
     }
 
-    private static AgentHarness CreateHarness(
+    /// <summary>
+    /// The ACP session/new harness: a fresh session per editor session, with the launch prompt
+    /// directives recorded on it. Tests inject the client factory and the session directory.
+    /// </summary>
+    internal static AgentHarness CreateHarness(
         AcpSessionContext context,
         ExtensionSession? host,
         IReadOnlyList<ITool> mcpTools,
-        IReadOnlyList<ITool> inheritedTools,
-        WorkspaceServices workspaceServices
+        List<ITool> inheritedTools,
+        WorkspaceServices workspaceServices,
+        LaunchOptions? launch,
+        IChatClientFactory? factory = null,
+        string? sessionDirectory = null
     )
     {
         AgentSettings settings = SettingsStore.Resolve(null, null);
+        settings = settings with
+        {
+            Model = launch?.Model ?? settings.Model,
+            Thinking = launch?.Thinking ?? settings.Thinking,
+        };
         ModelCatalog catalog = ModelCatalog.Load(null);
         ModelInfo model = HarnessFactory.ResolveModel(settings.Model, catalog);
-        IChatClientFactory factory = HarnessFactory.CreateFactory(null, null);
+        IChatClientFactory clientFactory = factory ?? HarnessFactory.CreateFactory(null, null);
 
         var workspace = new Workspace(context.Cwd);
         ToolRegistry tools = HarnessFactory.CreateTools(
@@ -234,19 +254,35 @@ internal static class AcpMode
             tools.Add(tool);
         }
 
+        if (
+            !HarnessFactory.TryFilterTools(
+                tools,
+                inheritedTools,
+                launch ?? new LaunchOptions(),
+                out string? toolError
+            )
+        )
+        {
+            throw new ToolFilterException(toolError!);
+        }
+
         Session session = HarnessFactory.CreateSession(
-            HarnessFactory.DefaultSessionDirectory(workspace),
+            sessionDirectory ?? HarnessFactory.DefaultSessionDirectory(workspace),
             workspace
         );
+        LaunchOptions directives = launch ?? new LaunchOptions();
+        SystemPrompt.Record(session, directives);
         var options = new AgentHarnessOptions
         {
             SystemPrompt = SystemPrompt.Compose(
                 workspace,
-                [.. tools.Tools.Select(tool => tool.Name)]
+                [.. tools.Tools.Select(tool => tool.Name)],
+                SystemPrompt.Directives(directives, session)
             ),
             WorkingDirectory = workspace.WorktreeRoot,
             ToolOutputLimit = settings.ToolOutputLimit,
             SubagentLimits = settings.Subagents,
+            ThinkingLevel = settings.Thinking,
             Approver = context.ClientApprover is { } clientApprover
                 ? new AcpApprover(settings.Approval, clientApprover)
                 : new NonInteractiveApprover(settings.Approval, yolo: false),
@@ -262,6 +298,6 @@ internal static class AcpMode
             ),
         };
 
-        return new AgentHarness(factory.Create(model), tools, options);
+        return new AgentHarness(clientFactory.Create(model), tools, options);
     }
 }

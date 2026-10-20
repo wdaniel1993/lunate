@@ -32,6 +32,20 @@ public sealed class CommandRegistryTests
                 .Select(descriptor => descriptor.Name)
         );
 
+    [Fact]
+    public void Name_and_session_are_registered_session_commands()
+    {
+        foreach (string name in new[] { "/name", "/session" })
+        {
+            CommandDescriptor descriptor = Assert.Single(
+                Commands.Descriptors,
+                candidate => candidate.Name == name
+            );
+            Assert.Equal(CommandGroup.Session, descriptor.Group);
+            Assert.Contains(name, DispatchedNames());
+        }
+    }
+
     /// <summary>
     /// The names the dispatch switch acts on, read from the source: the case labels of
     /// <c>DispatchCommandAsync</c> plus the skill-invocation prefix branch (which is not a case

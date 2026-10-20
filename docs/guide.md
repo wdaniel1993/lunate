@@ -393,11 +393,15 @@ Tools: read, write, edit, bash{extra_tools}.
 
 **Sessions on disk**
 
-One JSONL file per session under `~/.lunate/sessions/<project-hash>/`. Flags: `--continue` (latest session), `--resume` (pick from a list).
+One JSONL file per session under `~/.lunate/sessions/<project-hash>/`. Session and per-run flags: `--continue`/`-c` (the newest session recorded for the working directory), `--resume`/`-r` (pick from the list; interactive only, print refuses it), `--session <id|path>` (load one session), `--no-session` (run without a file), `--model <id>`, `--thinking <off|low|medium|high>`, `--tools <comma-separated names>`, `--no-tools`, `--system-prompt <text>` and `--append-system-prompt <text>`. A value may also be written inline as `--flag=value`, which is how a value beginning with `-` is passed. The selection flags are mutually exclusive with each other and with `--no-session`; in ACP the editor owns session creation, so they are usage errors there. A launch that cannot start (unknown flags, an unknown `--model`, an unknown tool name, or a print-mode session selection that does not resolve) exits 2.
+
+System-prompt directives are recorded as prompt sections on a new session and replayed on resume; an explicit CLI directive wins over the recorded one. Warning: `--system-prompt` replaces the composed prompt wholesale, including the tool-call conventions, so the caller owns them and a model may call tools incorrectly. Prefer `--append-system-prompt` when the conventions should stay.
+
+`/name <title>` stores a title in `<sessionId>.title` beside the session file (the picker labels the row `<title> — <id>`; bare `/name` reports it), and `/session` prints the session path, id, message count and input/output tokens reconstructed from the recorded usages — never a model call. A cost line appears only when the active model's catalog entry carries pricing.
 
 **Frontends**
 
-- **Interactive mode** (`lunate`): the Lunate.Tui frontend (see Terminal UI) with streaming view, multi-line editor, `Esc` to cancel, slash commands `/model`, `/new`, `/resume`, `/compact`, `/quit`.
+- **Interactive mode** (`lunate`): the Lunate.Tui frontend (see Terminal UI) with streaming view, multi-line editor, `Esc` to cancel, slash commands `/model`, `/new`, `/resume`, `/name`, `/session`, `/compact`, `/quit`.
 - **Print mode** (`lunate -p "prompt"`): writes the final answer to stdout and exits; `--json` writes every event as JSON lines for scripts and CI.
 - **ACP mode** (`lunate --acp`): speaks the Agent Client Protocol over stdio, so editors like Zed or JetBrains start Lunate as their agent. Editor file reads, writes and permission prompts map onto Lunate's tools and approval policy. Nothing may write to stdout except the protocol.
 

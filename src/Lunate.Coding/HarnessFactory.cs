@@ -4,6 +4,7 @@ using Lunate.Ai;
 using Lunate.Extensibility.Abstractions;
 using Lunate.Roslyn;
 using Microsoft.Extensions.Logging.Abstractions;
+using AgentToolExposure = Lunate.Agent.ToolExposure;
 
 namespace Lunate.Coding;
 
@@ -115,6 +116,77 @@ internal static class HarnessFactory
         tools.Add(new CsRenameTool(backend));
     }
 
+    /// <summary>
+    /// Narrows the composed registry to the exact model-facing names the launch selected. A null
+    /// list keeps the registry as composed; <c>--no-tools</c> is the empty list. An unknown name is
+    /// reported with the available names in registration order and leaves the registry untouched.
+    /// </summary>
+    internal static bool TryFilterTools(
+        ToolRegistry tools,
+        IList<ITool>? inherited,
+        LaunchOptions launch,
+        out string? error
+    )
+    {
+        ArgumentNullException.ThrowIfNull(tools);
+        ArgumentNullException.ThrowIfNull(launch);
+
+        error = null;
+        IReadOnlyList<string>? requested = launch.NoTools ? [] : launch.Tools;
+        if (requested is null)
+        {
+            return true;
+        }
+
+        List<string> available = [];
+        foreach (ITool tool in tools.Tools)
+        {
+            if (tool.Exposure is AgentToolExposure.Direct or AgentToolExposure.ModelOnly)
+            {
+                available.Add(tool.Name);
+            }
+        }
+
+        List<string> unknown = [];
+        foreach (string name in requested)
+        {
+            if (!available.Contains(name, StringComparer.Ordinal))
+            {
+                unknown.Add(name);
+            }
+        }
+
+        if (unknown.Count > 0)
+        {
+            string names = string.Join(", ", unknown.Select(name => $"'{name}'"));
+            error =
+                $"--tools names unknown tools: {names}; available: {string.Join(", ", available)}";
+            return false;
+        }
+
+        HashSet<string> requestedNames = new(requested, StringComparer.Ordinal);
+        foreach (ITool tool in tools.Tools.ToList())
+        {
+            if (!requestedNames.Contains(tool.Name))
+            {
+                tools.Remove(tool.Name);
+            }
+        }
+
+        if (inherited is not null)
+        {
+            for (int index = inherited.Count - 1; index >= 0; index--)
+            {
+                if (!requestedNames.Contains(inherited[index].Name))
+                {
+                    inherited.RemoveAt(index);
+                }
+            }
+        }
+
+        return true;
+    }
+
     internal static string DefaultSessionDirectory(Workspace workspace) =>
         workspace.GitCommonDir is { } identity
             ? SessionPaths.ForRepository(identity, workspace.WorktreeRoot)
@@ -150,7 +222,7 @@ internal static class HarnessFactory
         }
 
         return catalog.Find(modelId)
-            ?? throw new InvalidOperationException(
+            ?? throw new UnknownModelException(
                 $"Model '{modelId}' is not in the catalog. Run lunate --discover <name-or-url> "
                     + $"to draft a models.json entry or add '{modelId}' to ~/.lunate/models.json."
             );

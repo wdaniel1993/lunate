@@ -80,6 +80,63 @@ public sealed class SkillsPrintModeTests
     }
 
     [Fact]
+    public async Task An_appended_directive_stays_before_the_skills_section()
+    {
+        using var temp = new TempDirectory();
+        string worktree = Path.Combine(temp.Root, "worktree");
+        Directory.CreateDirectory(Path.Combine(worktree, ".git"));
+        WriteSkill(Path.Combine(worktree, ".agents", "skills", "greek"), "greek");
+        string store = temp.File("store");
+        var workspace = new Workspace(worktree);
+        var scan = SkillScanner.ScanProject(
+            new SkillScanRequest(worktree, workspace.RepoRoot, "", [])
+        );
+        string hash = SkillTrust.ComputeContentHash(
+            [.. scan.Skills.Where(skill => skill is { Valid: true, Scope: SkillScope.Project })],
+            workspace.RepoRoot ?? worktree
+        );
+        new ExtensionTrustStore(new ExtensionHostOptions { StorePath = store }).RecordSkillsTrusted(
+            workspace.GitCommonDir ?? worktree,
+            workspace.WorktreeRoot,
+            hash,
+            DateTimeOffset.UtcNow
+        );
+        var client = new ScriptedChatClient().Enqueue(Scripts.Text("ok"), Scripts.Stop());
+        PrintModeOptions options = PrintModeTestSupport.BaseOptions(
+            temp,
+            new FakeChatClientFactory(client)
+        ) with
+        {
+            Prompt = "Hi",
+            WorkingDirectory = worktree,
+            Extensions = new ExtensionSeams
+            {
+                StorePath = store,
+                Log = new RecordingExtensionLog(),
+            },
+            Launch = new LaunchOptions { AppendSystemPrompt = "the appendix" },
+        };
+
+        (int exitCode, _, _) = await PrintModeTestSupport.RunAsync(options);
+
+        Assert.Equal(0, exitCode);
+        string system = Assert
+            .Single(client.Requests[0], message => message.Role == ChatRole.System)
+            .Text;
+        Assert.Contains("the appendix", system, StringComparison.Ordinal);
+        Assert.True(
+            system.IndexOf("the appendix", StringComparison.Ordinal)
+                < system.IndexOf("- greek:", StringComparison.Ordinal)
+        );
+        string path = Assert.Single(Directory.GetFiles(temp.File("sessions"), "*.jsonl"));
+        SessionPromptSectionEntry[] sections =
+        [
+            .. Session.Load(path).Entries.OfType<SessionPromptSectionEntry>(),
+        ];
+        Assert.Equal(["system-append", "skills"], sections.Select(entry => entry.Section));
+    }
+
+    [Fact]
     public async Task A_print_run_without_trust_keeps_project_skills_out_and_warns()
     {
         using var temp = new TempDirectory();
