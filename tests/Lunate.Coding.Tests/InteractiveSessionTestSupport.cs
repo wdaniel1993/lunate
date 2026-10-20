@@ -369,7 +369,9 @@ internal sealed class InteractiveSessionHost : IDisposable
         string? mcpAgentsConfigPath = null,
         string? workingDirectory = null,
         LaunchOptions? launch = null,
-        string? sessionsRoot = null
+        string? sessionsRoot = null,
+        string? startSession = null,
+        bool startWithPicker = false
     )
     {
         Scrollback = new TestConsole();
@@ -401,8 +403,8 @@ internal sealed class InteractiveSessionHost : IDisposable
                 WorkspaceFiles = workspaceFiles,
                 EventObserver = Events.Add,
                 Launch = launch ?? new LaunchOptions(),
-                StartSession = null,
-                StartWithPicker = false,
+                StartSession = startSession,
+                StartWithPicker = startWithPicker,
                 SessionsRoot = sessionsRoot ?? Temp.File("sessions"),
             }
         );

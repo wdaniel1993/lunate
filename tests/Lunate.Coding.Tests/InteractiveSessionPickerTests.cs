@@ -1,10 +1,13 @@
 using Lunate.Agent;
 using Lunate.Tui;
+using Microsoft.Extensions.AI;
 
 namespace Lunate.Coding.Tests;
 
 public sealed class InteractiveSessionPickerTests
 {
+    public static TheoryData<string> StartupSelections => new() { "--continue", "--session" };
+
     [Fact]
     public async Task Ctrl_L_opens_the_model_picker_and_Esc_dismisses_without_changing()
     {
@@ -258,6 +261,116 @@ public sealed class InteractiveSessionPickerTests
     }
 
     [Fact]
+    public async Task Startup_resume_opens_the_picker_after_composition()
+    {
+        using var host = new InteractiveSessionHost(launch: new LaunchOptions { Resume = true });
+        Session seeded = SeedSession(
+            host.Temp.File("sessions"),
+            new Workspace(host.Temp.Root).WorktreeRoot,
+            "remembered question"
+        );
+        host.Client.Enqueue(Scripts.Text("answer"), Scripts.Stop());
+        Task run = host.RunAsync();
+
+        await InteractiveSessionCommandTests.WaitForFrameAsync(host, "Select session");
+        Assert.Contains(seeded.SessionId, host.LastFrame, StringComparison.Ordinal);
+
+        host.Console.SendEscape();
+        await InteractiveSessionCommandTests.WaitForFrameGoneAsync(host, "Select session");
+
+        host.Console.SendText("hi");
+        host.Console.SendEnter();
+        await host.Client.WaitForCallAsync(1);
+        Assert.Contains("hi", RequestTexts(host, 0));
+
+        host.Console.Complete();
+        await run;
+    }
+
+    [Theory]
+    [MemberData(nameof(StartupSelections))]
+    public async Task Startup_selection_seeds_the_first_request(string flag)
+    {
+        using var store = new TempDirectory();
+        string sessions = store.File("sessions");
+        Session seeded = SeedSession(
+            sessions,
+            new Workspace(store.Root).WorktreeRoot,
+            "remembered question"
+        );
+        using var host = new InteractiveSessionHost(
+            workingDirectory: store.Root,
+            sessionsRoot: sessions,
+            launch: flag == "--continue"
+                ? new LaunchOptions { Continue = true }
+                : new LaunchOptions { Session = seeded.SessionId }
+        );
+        host.Client.Enqueue(Scripts.Text("answer"), Scripts.Stop());
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+
+        host.Console.SendText("next question");
+        host.Console.SendEnter();
+        await host.Client.WaitForCallAsync(1);
+
+        Assert.Contains("remembered question", RequestTexts(host, 0));
+
+        host.Console.Complete();
+        await run;
+    }
+
+    [Fact]
+    public async Task Start_session_seam_loads_the_given_file_instead_of_creating_one()
+    {
+        using var store = new TempDirectory();
+        Session seeded = SeedSession(
+            store.File("sessions"),
+            new Workspace(store.Root).WorktreeRoot,
+            "remembered question"
+        );
+        using var host = new InteractiveSessionHost(
+            workingDirectory: store.Root,
+            startSession: seeded.Path
+        );
+        host.Client.Enqueue(Scripts.Text("answer"), Scripts.Stop());
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+
+        host.Console.SendText("next question");
+        host.Console.SendEnter();
+        await host.Client.WaitForCallAsync(1);
+
+        Assert.Contains("remembered question", RequestTexts(host, 0));
+        Assert.Equal(
+            seeded.Path,
+            Assert.Single(Directory.GetFiles(store.File("sessions"), "*.jsonl"))
+        );
+        Assert.Empty(
+            Directory.Exists(host.Temp.File("sessions"))
+                ? Directory.GetFiles(host.Temp.File("sessions"), "*.jsonl")
+                : []
+        );
+
+        host.Console.Complete();
+        await run;
+    }
+
+    [Fact]
+    public async Task Start_with_picker_seam_opens_the_picker_after_composition()
+    {
+        using var host = new InteractiveSessionHost(startWithPicker: true);
+        Task run = host.RunAsync();
+
+        await InteractiveSessionCommandTests.WaitForFrameAsync(host, "Select session");
+        host.Console.SendEscape();
+        await InteractiveSessionCommandTests.WaitForFrameGoneAsync(host, "Select session");
+        Assert.Empty(host.Client.Requests);
+
+        host.Console.Complete();
+        await run;
+    }
+
+    [Fact]
     public async Task Opening_the_picker_while_busy_is_refused()
     {
         using var host = new InteractiveSessionHost();
@@ -309,4 +422,25 @@ public sealed class InteractiveSessionPickerTests
 
     private static Session LoadOnlySession(InteractiveSessionHost host) =>
         Session.Load(Assert.Single(Directory.GetFiles(host.Temp.File("sessions"), "*.jsonl")));
+
+    private static string[] RequestTexts(InteractiveSessionHost host, int request) =>
+        [
+            .. host
+                .Client.Requests[request]
+                .Where(message =>
+                    message.Role != ChatRole.System && !string.IsNullOrEmpty(message.Text)
+                )
+                .Select(message => message.Text),
+        ];
+
+    private static Session SeedSession(string root, string cwd, string text)
+    {
+        Directory.CreateDirectory(root);
+        string provisional = Path.Combine(root, Path.GetRandomFileName());
+        Session created = Session.Create(provisional, cwd, null, cwd);
+        created.AppendMessage(new ChatMessage(ChatRole.User, text));
+        string path = Path.Combine(root, SessionPaths.SessionFileName(created.SessionId));
+        File.Move(provisional, path);
+        return Session.Load(path);
+    }
 }

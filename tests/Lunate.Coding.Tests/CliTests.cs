@@ -240,6 +240,65 @@ public sealed class CliTests
     }
 
     [Fact]
+    public void Run_with_print_and_a_missing_session_id_fails_naming_it()
+    {
+        using var temp = new TempDirectory();
+        var client = new ScriptedChatClient().Enqueue(Scripts.Text("ok"), Scripts.Stop());
+        var factory = new FakeChatClientFactory(client);
+        PrintModeOptions options = PrintModeTestSupport.BaseOptions(temp, factory);
+        using var output = new StringWriter();
+        using var error = new StringWriter();
+
+        var exitCode = Cli.Run(
+            ["-p", "--session", "missing-id", "Hi"],
+            output,
+            error,
+            TestContext.Current.CancellationToken,
+            options
+        );
+
+        Assert.Equal(1, exitCode);
+        Assert.Contains(
+            "lunate: no session with id 'missing-id'; run a prompt to start one",
+            error.ToString(),
+            StringComparison.Ordinal
+        );
+        Assert.Empty(output.ToString());
+        Assert.Null(factory.CreatedModel);
+        Assert.Empty(client.Requests);
+    }
+
+    [Fact]
+    public void Run_with_print_and_continue_without_a_session_names_the_working_directory()
+    {
+        using var temp = new TempDirectory();
+        string cwd = new Workspace(temp.Root).WorktreeRoot;
+        var client = new ScriptedChatClient().Enqueue(Scripts.Text("ok"), Scripts.Stop());
+        var factory = new FakeChatClientFactory(client);
+        PrintModeOptions options = PrintModeTestSupport.BaseOptions(temp, factory);
+        using var output = new StringWriter();
+        using var error = new StringWriter();
+
+        var exitCode = Cli.Run(
+            ["-p", "--continue", "Hi"],
+            output,
+            error,
+            TestContext.Current.CancellationToken,
+            options
+        );
+
+        Assert.Equal(1, exitCode);
+        Assert.Contains(
+            $"lunate: no session for '{cwd}'; run a prompt to start one",
+            error.ToString(),
+            StringComparison.Ordinal
+        );
+        Assert.Empty(output.ToString());
+        Assert.Null(factory.CreatedModel);
+        Assert.Empty(client.Requests);
+    }
+
+    [Fact]
     public void Run_with_print_accepts_flags_before_the_prompt()
     {
         using var temp = new TempDirectory();
