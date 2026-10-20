@@ -114,7 +114,7 @@ public sealed class ModelCatalog
         return Parse(reader.ReadToEnd(), "built-in models.json");
     }
 
-    private static string DefaultManagedFilePath() =>
+    internal static string DefaultManagedFilePath() =>
         Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
             ".lunate",

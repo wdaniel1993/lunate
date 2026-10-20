@@ -44,6 +44,20 @@ internal static class CliHelp
         output.WriteLine(
             "                                 print a models.json draft to stdout (nothing is written)"
         );
+        output.WriteLine("  lunate --update-catalog [--output <path>] [--source <path-or-url>]");
+        output.WriteLine(
+            "                                 fetch models.dev, map it through the one catalog"
+        );
+        output.WriteLine("                                 mapper and write the managed cache");
+        output.WriteLine(
+            "                                 (~/.lunate/models.catalog.json); --output writes the"
+        );
+        output.WriteLine(
+            "                                 snapshot elsewhere (scripts/update-models.sh);"
+        );
+        output.WriteLine(
+            "                                 --source reads a local snapshot for offline use"
+        );
         output.WriteLine("  lunate extensions [--json]");
         output.WriteLine(
             "                                 list discovered extensions with scope, state,"
