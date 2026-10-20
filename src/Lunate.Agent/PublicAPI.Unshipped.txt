@@ -401,6 +401,8 @@ Lunate.Agent.Session.Entries.get -> System.Collections.Generic.IReadOnlyList<Lun
 Lunate.Agent.Session.Path.get -> string!
 Lunate.Agent.Session.SessionId.get -> string!
 Lunate.Agent.Session.ToHistory() -> System.Collections.Generic.List<Microsoft.Extensions.AI.ChatMessage!>!
+static Lunate.Agent.Session.FindById(string! sessionsRoot, string! id) -> System.Collections.Generic.IReadOnlyList<Lunate.Agent.SessionSummary!>!
+static Lunate.Agent.Session.FindNewest(string! sessionsRoot, string! cwd, System.StringComparison comparison) -> Lunate.Agent.SessionSummary?
 static Lunate.Agent.Session.List(string! directory) -> System.Collections.Generic.IReadOnlyList<Lunate.Agent.SessionSummary!>!
 Lunate.Agent.SessionCompactionEntry
 Lunate.Agent.SessionCompactionEntry.Deconstruct(out string! Id, out string? ParentId, out System.DateTimeOffset Timestamp, out string! Summary, out System.Collections.Generic.IReadOnlyList<string!>! Replaces) -> void

@@ -37,23 +37,28 @@ public sealed partial class Session
             }
         }
 
-        summaries.Sort(
-            static (left, right) =>
-            {
-                int byModified = right.Modified.CompareTo(left.Modified);
-                if (byModified != 0)
-                {
-                    return byModified;
-                }
-
-                int byCreated = right.Created.CompareTo(left.Created);
-                return byCreated != 0 ? byCreated : string.CompareOrdinal(right.Id, left.Id);
-            }
-        );
+        summaries.Sort(CompareNewestFirst);
         return summaries.Count <= ListLimit ? summaries : summaries.GetRange(0, ListLimit);
     }
 
-    private static SessionSummary? ReadSummary(string path)
+    /// <summary>The picker order and the launch-selection order: newest first, then id descending.</summary>
+    private static int CompareNewestFirst(SessionSummary left, SessionSummary right)
+    {
+        int byModified = right.Modified.CompareTo(left.Modified);
+        if (byModified != 0)
+        {
+            return byModified;
+        }
+
+        int byCreated = right.Created.CompareTo(left.Created);
+        return byCreated != 0 ? byCreated : string.CompareOrdinal(right.Id, left.Id);
+    }
+
+    private static SessionSummary? ReadSummary(string path) =>
+        ReadHeader(path) is { } header ? SummaryOf(path, header) : null;
+
+    /// <summary>Reads the first line only; a missing, unreadable or corrupt header reads as null.</summary>
+    private static SessionHeaderEntry? ReadHeader(string path)
     {
         try
         {
@@ -63,20 +68,27 @@ public sealed partial class Session
                 return null;
             }
 
-            if (SessionFormat.Parse(line) is not SessionHeaderEntry header)
-            {
-                return null;
-            }
+            return SessionFormat.Parse(line) as SessionHeaderEntry;
+        }
+        catch (Exception exception)
+            when (exception is IOException or InvalidDataException or UnauthorizedAccessException)
+        {
+            return null;
+        }
+    }
 
-            return new SessionSummary(
+    private static SessionSummary? SummaryOf(string path, SessionHeaderEntry header)
+    {
+        try
+        {
+            return new(
                 header.Id,
                 path,
                 header.Created,
                 new DateTimeOffset(File.GetLastWriteTimeUtc(path), TimeSpan.Zero)
             );
         }
-        catch (Exception exception)
-            when (exception is IOException or InvalidDataException or UnauthorizedAccessException)
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
             return null;
         }
