@@ -91,26 +91,21 @@ public sealed class InteractiveSessionApprovalPanelCompositionTests
     }
 
     /// <summary>
-    /// Advances the live-area clock until two consecutive paints agree, then returns the frame
-    /// with ANSI SGR styling removed so the accent-toned key letters do not split the choices.
+    /// Advances the live-area clock until the painted frame carries the whole approval panel,
+    /// then returns it with ANSI SGR styling removed so the accent-toned key letters do not split
+    /// the choices.
     /// </summary>
     private static async Task<string> CaptureFrameAsync(InteractiveSessionHost host)
     {
-        string previous = string.Empty;
-        for (var attempt = 0; attempt < 100; attempt++)
+        string frame = string.Empty;
+        await host.WaitUntilAsync(() =>
         {
             host.Advance(33);
-            await Task.Delay(1, TestContext.Current.CancellationToken);
-            string current = Sgr.Replace(host.LastFrame, string.Empty);
-            if (attempt > 0 && string.Equals(current, previous, StringComparison.Ordinal))
-            {
-                return current;
-            }
-
-            previous = current;
-        }
-
-        return previous;
+            frame = Sgr.Replace(host.LastFrame, string.Empty);
+            return frame.Contains("@@ -1,1 +1,1 @@", StringComparison.Ordinal)
+                && frame.Contains("[y]es  [n]o  [a]lways this session", StringComparison.Ordinal);
+        });
+        return frame;
     }
 
     /// <summary>
