@@ -58,9 +58,11 @@ public sealed class InteractiveSessionCommandTests
     [Fact]
     public async Task Help_lists_every_command_grouped_with_its_description()
     {
-        // A catalog model keeps composition independent of the developer's settings.
+        // A catalog model plus a scripted client keeps composition independent of the
+        // developer's settings and of any provider key.
         using var host = new InteractiveSessionHost(
-            launch: new LaunchOptions { Model = "gpt-4o-mini" }
+            launch: new LaunchOptions { Model = "gpt-4o-mini" },
+            chat: new ScriptedChatClient()
         );
         Task run = host.RunAsync();
         await host.WaitUntilAsync(() => host.Session.IsComposed);
