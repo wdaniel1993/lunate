@@ -16,7 +16,7 @@ Three parts, top to bottom, in the live area above the input:
 
 1. **Headline** — `⚠ <tool>  <what>` in the warning colour: the tool name and the shortest concrete identifier (the command's first line, `path  +N −M`). ASCII fallback `!`.
 2. **Detail** — the prepared lines, muted, indented two spaces, bounded to `MaxDetailLines` (6) with the `… +N lines` marker; clipped, never wrapped past the width.
-3. **Question** — `Allow <tool>?  [y]es  [n]o  [a]lways this session` with the key letters in the accent colour; a subagent asker prefixes `<label> asks: `.
+3. **Question** — `Allow <tool>?  [y]es  [n]o  [a]lways this session` with the key letters in the accent colour and the trailing `?` in the warning tone, tying it to the headline; a subagent asker prefixes `<label> asks: `.
 
 Height: the panel is part of the live frame and counts against the terminal height like the autocomplete list — the frame cap trims the detail first, then the headline, never the question.
 
