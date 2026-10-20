@@ -401,6 +401,8 @@ Lunate.Agent.Session.Entries.get -> System.Collections.Generic.IReadOnlyList<Lun
 Lunate.Agent.Session.Path.get -> string!
 Lunate.Agent.Session.SessionId.get -> string!
 Lunate.Agent.Session.ToHistory() -> System.Collections.Generic.List<Microsoft.Extensions.AI.ChatMessage!>!
+static Lunate.Agent.Session.FindById(string! sessionsRoot, string! id) -> System.Collections.Generic.IReadOnlyList<Lunate.Agent.SessionSummary!>!
+static Lunate.Agent.Session.FindNewest(string! sessionsRoot, string! cwd, System.StringComparison comparison) -> Lunate.Agent.SessionSummary?
 static Lunate.Agent.Session.List(string! directory) -> System.Collections.Generic.IReadOnlyList<Lunate.Agent.SessionSummary!>!
 Lunate.Agent.SessionCompactionEntry
 Lunate.Agent.SessionCompactionEntry.Deconstruct(out string! Id, out string? ParentId, out System.DateTimeOffset Timestamp, out string! Summary, out System.Collections.Generic.IReadOnlyList<string!>! Replaces) -> void
@@ -1417,3 +1419,11 @@ static Lunate.Agent.ReasoningMessageContent.operator !=(Lunate.Agent.ReasoningMe
 static Lunate.Agent.ReasoningMessageContent.operator ==(Lunate.Agent.ReasoningMessageContent? left, Lunate.Agent.ReasoningMessageContent? right) -> bool
 static Lunate.Agent.ReasoningEnd.operator !=(Lunate.Agent.ReasoningEnd? left, Lunate.Agent.ReasoningEnd? right) -> bool
 static Lunate.Agent.ReasoningEnd.operator ==(Lunate.Agent.ReasoningEnd? left, Lunate.Agent.ReasoningEnd? right) -> bool
+const Lunate.Agent.SessionTitle.MaxLength = 120 -> int
+Lunate.Agent.SessionTitle
+Lunate.Agent.SessionSummary.Title.get -> string?
+Lunate.Agent.SessionSummary.Title.init -> void
+static Lunate.Agent.SessionTitle.Normalize(string? title) -> string?
+static Lunate.Agent.SessionTitle.PathFor(string! sessionPath) -> string!
+static Lunate.Agent.SessionTitle.Read(string! sessionPath) -> string?
+static Lunate.Agent.SessionTitle.Write(string! sessionPath, string! title) -> void

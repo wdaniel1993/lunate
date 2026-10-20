@@ -83,6 +83,18 @@ internal sealed record InteractiveSessionOptions
 
     /// <summary>Adjusts the composed harness options; tests pin budgets and retry delays here.</summary>
     public Func<AgentHarnessOptions, AgentHarnessOptions>? ConfigureHarness { get; init; }
+
+    /// <summary>The launch flags parsed once by the CLI; defaults stand in for direct calls.</summary>
+    public LaunchOptions Launch { get; init; } = new();
+
+    /// <summary>The session file to start from; null creates a fresh session.</summary>
+    public string? StartSession { get; init; }
+
+    /// <summary>Open the session picker once composition finished; the CLI's <c>--resume</c>.</summary>
+    public bool StartWithPicker { get; init; }
+
+    /// <summary>The session store root for id and <c>--continue</c> lookup; null uses the profile.</summary>
+    public string? SessionsRoot { get; init; }
 }
 
 /// <summary>
@@ -137,7 +149,8 @@ internal sealed partial class InteractiveSession : IDisposable
     private WorkspaceServices? _workspaceServices;
     private Func<string, ToolRegistry>? _workspaceTools;
     private readonly List<ITool> _inheritedTools = [];
-    private Session _session = null!;
+    private Session? _session;
+    private bool _fileless;
     private SkillCatalog? _skills;
     private string? _skillSection;
     private readonly SkillReadAllowance _skillAllowance = new();
@@ -257,6 +270,12 @@ internal sealed partial class InteractiveSession : IDisposable
                 _live.SetLoading(null);
                 FlushPendingNotices();
                 UpdateStatus();
+                // --resume (or the injected seam) opens the existing picker once composition
+                // finished: the listing needs the session directory and the live area is ready.
+                if (_options.StartWithPicker || _options.Launch.Resume)
+                {
+                    OpenSessionPicker();
+                }
                 // Background remote extensions start only now, after the UI is ready; the startup
                 // path and its budget never touch them.
                 if (_extensions is { } backgroundHost)
@@ -270,6 +289,14 @@ internal sealed partial class InteractiveSession : IDisposable
             }
             catch (Exception exception)
             {
+                // An unknown --tools name or an unknown --model is a usage error (design D1),
+                // exactly as in print mode; every other composition failure is a run error.
+                ExitCode = exception switch
+                {
+                    ToolFilterException => 2,
+                    UnknownModelException when _options.Launch.Model is not null => 2,
+                    _ => 1,
+                };
                 _lifetime.Cancel();
                 (_options.Diagnostics ?? Console.Error).WriteLine($"lunate: {exception.Message}");
             }
@@ -336,6 +363,11 @@ internal sealed partial class InteractiveSession : IDisposable
     private async Task ComposeAsync(CancellationToken ct)
     {
         _settings = SettingsStore.Resolve(_options.SettingsPath, _options.Environment);
+        _settings = _settings with
+        {
+            Model = _options.Launch.Model ?? _settings.Model,
+            Thinking = _options.Launch.Thinking ?? _settings.Thinking,
+        };
         _thinkingLevel = _settings.Thinking;
         _catalog = ModelCatalog.Load(_options.ModelsPath);
         _environment = _options.Environment ?? Environment.GetEnvironmentVariable;
@@ -345,7 +377,7 @@ internal sealed partial class InteractiveSession : IDisposable
         _workspaceServices = new WorkspaceServices(_settings.Roslyn.MaxLoadedWorkspaces);
         _sessionDirectory =
             _options.SessionDirectory ?? HarnessFactory.DefaultSessionDirectory(_workspace);
-        _session = HarnessFactory.CreateSession(_sessionDirectory, _workspace);
+        StartInitialSession();
         _workingDirectory = DisplayDirectory(_workspace.WorktreeRoot);
         _branch = GitBranchReader.Read(_workspace.WorktreeRoot);
         // The welcome header prints here, on the first frame and before any composition output:
@@ -382,6 +414,20 @@ internal sealed partial class InteractiveSession : IDisposable
         );
         await ComposeMcpConfigAsync(ct);
         await ComposeMcpToolsAsync(ct);
+        // The launch tool selection narrows the fully composed registry (base, extension and MCP
+        // tools) and the inherited list the child workspace factory offers.
+        if (
+            !HarnessFactory.TryFilterTools(
+                _tools,
+                _inheritedTools,
+                _options.Launch,
+                out string? toolError
+            )
+        )
+        {
+            throw new ToolFilterException(toolError!);
+        }
+
         _workspaceTools = HarnessFactory.CreateWorkspaceTools(
             _workspaceServices,
             _inheritedTools,
@@ -663,7 +709,8 @@ internal sealed partial class InteractiveSession : IDisposable
         {
             SystemPrompt = SystemPrompt.Compose(
                 _workspace,
-                [.. _tools.Tools.Select(tool => tool.Name)]
+                [.. _tools.Tools.Select(tool => tool.Name)],
+                SystemPrompt.Directives(_options.Launch, _session)
             ),
             PromptSections = _skillSection is { } skills
                 ? [new AgentPromptSection("skills", skills)]
@@ -727,6 +774,9 @@ internal sealed partial class InteractiveSession : IDisposable
 
     /// <summary>Whether composition finished; false while the session composes.</summary>
     internal bool IsComposed => _composed;
+
+    /// <summary>The exit code composition's failure implies; 0 when the session ran normally.</summary>
+    internal int ExitCode { get; private set; }
 
     /// <summary>Whether a turn (or its auto-run chain) is currently active.</summary>
     internal bool IsRunning => _turnActive;
@@ -962,6 +1012,9 @@ internal sealed partial class InteractiveSession : IDisposable
             return;
         }
 
+        // A picker launch has no session yet: the turn that starts now creates it, so quitting
+        // after the picker leaves the store untouched.
+        MaterializeDeferredSession();
         _transcript.Add(new TranscriptUserEntry(processed.Text));
         // The prompt opens the turn in scrollback before the run starts; the same processed text
         // feeds the transcript entry, so the viewer and scrollback never disagree. Later turns

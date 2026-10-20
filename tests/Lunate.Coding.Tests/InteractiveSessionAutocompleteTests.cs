@@ -174,7 +174,7 @@ public sealed class InteractiveSessionAutocompleteTests
 
         await SendAsync(host, "/");
         await host.WaitUntilAsync(() => host.Session.Autocomplete is not null);
-        for (var index = 1; index <= 3; index++)
+        for (var index = 1; index <= 4; index++)
         {
             host.Console.Send(Down);
             await host.WaitUntilAsync(() => host.Session.Autocomplete?.SelectedIndex == index);

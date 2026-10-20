@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Runtime.InteropServices;
+using Lunate.Agent;
 
 namespace Lunate.Coding;
 
@@ -45,6 +46,73 @@ public static class SystemPrompt
             .Replace("{agents}", instructions, StringComparison.Ordinal)
             .TrimEnd();
     }
+
+    /// <summary>
+    /// Composes the prompt with the launch directives (design D5): a replacement <c>system</c>
+    /// directive is the whole prompt, an <c>append</c> directive is one section after the composed
+    /// prompt joined the way the harness joins sections, and neither leaves the bytes unchanged.
+    /// </summary>
+    internal static string Compose(
+        Workspace workspace,
+        IReadOnlyList<string> toolNames,
+        LaunchOptions directives,
+        ShellResolver? shellResolver = null,
+        DateTimeOffset? now = null
+    )
+    {
+        ArgumentNullException.ThrowIfNull(directives);
+
+        // The replacement is the caller's whole contract: no template and no tool conventions.
+        // An append still follows it, so both explicit flags are honoured.
+        string composed = directives.SystemPrompt is { } replacement
+            ? replacement
+            : Compose(workspace, toolNames, shellResolver, now);
+        return directives.AppendSystemPrompt is { } appended
+            ? composed + "\n\n" + appended
+            : composed;
+    }
+
+    /// <summary>
+    /// Records the launch directives on a freshly created session: the replacement as
+    /// <c>system</c> and the appendix as <c>system-append</c>, each only when given. Reusing the
+    /// existing prompt-section entry keeps the session format and schema unchanged.
+    /// </summary>
+    internal static void Record(Session session, LaunchOptions directives)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+        ArgumentNullException.ThrowIfNull(directives);
+
+        if (directives.SystemPrompt is { } replacement)
+        {
+            session.AppendPromptSection("system", replacement);
+        }
+
+        if (directives.AppendSystemPrompt is { } appended)
+        {
+            session.AppendPromptSection("system-append", appended);
+        }
+    }
+
+    /// <summary>
+    /// The effective directives for a run: an explicit CLI directive wins over the latest recorded
+    /// section, which wins over the composed prompt (design D5).
+    /// </summary>
+    internal static LaunchOptions Directives(LaunchOptions launch, Session? session)
+    {
+        ArgumentNullException.ThrowIfNull(launch);
+        return launch with
+        {
+            SystemPrompt = launch.SystemPrompt ?? RecordedText(session, "system"),
+            AppendSystemPrompt =
+                launch.AppendSystemPrompt ?? RecordedText(session, "system-append"),
+        };
+    }
+
+    private static string? RecordedText(Session? session, string section) =>
+        session
+            ?.Entries.OfType<SessionPromptSectionEntry>()
+            .LastOrDefault(entry => string.Equals(entry.Section, section, StringComparison.Ordinal))
+            ?.Text;
 
     internal static string ReadTemplate()
     {

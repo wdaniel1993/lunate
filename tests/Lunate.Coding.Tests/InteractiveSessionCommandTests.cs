@@ -70,8 +70,10 @@ public sealed class InteractiveSessionCommandTests
               /compact  — compact the conversation now
               /context  — show the context window and subagent budgets
               /help     — list the commands
+              /name     — set or show the session title
               /new      — start a fresh session
               /resume   — open the session picker
+              /session  — show the session file, messages and tokens
               /thinking — set the reasoning level (off|low|medium|high)
             model
               /model — pick a model or switch to one by id
@@ -318,7 +320,27 @@ public sealed class InteractiveSessionCommandTests
         await WaitForFrameAsync(host, expected);
 
         Assert.Contains("15/128.0k", host.LastFrame, StringComparison.Ordinal);
+        host.Console.SendText("/quit");
+        host.Console.SendEnter();
+        await run;
+    }
 
+    [Fact]
+    public async Task Name_sets_the_title_sidecar()
+    {
+        using var host = new InteractiveSessionHost();
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+        string path = Assert.Single(Directory.GetFiles(host.Temp.File("sessions"), "*.jsonl"));
+        byte[] before = File.ReadAllBytes(path);
+
+        host.Console.SendText("/name   Refactor   the parser  ");
+        host.Console.SendEnter();
+        await WaitForFrameAsync(host, "session name: Refactor the parser");
+
+        Assert.Equal("Refactor the parser", SessionTitle.Read(path));
+        Assert.Equal(before, File.ReadAllBytes(path));
+        Assert.Empty(host.Client.Requests);
         host.Console.SendText("/quit");
         host.Console.SendEnter();
         await run;
@@ -348,13 +370,32 @@ public sealed class InteractiveSessionCommandTests
 
         Assert.Contains("15/128.0k", host.LastFrame, StringComparison.Ordinal);
         Assert.DoesNotContain("cache:", host.LastFrame, StringComparison.Ordinal);
-
         host.Console.SendText("/quit");
         host.Console.SendEnter();
         await run;
     }
 
-    /// <summary>Runs one scripted turn whose usage carries 10 input and 5 output tokens.</summary>
+    [Fact]
+    public async Task Bare_name_reports_the_stored_title()
+    {
+        using var host = new InteractiveSessionHost();
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+        SessionTitle.Write(
+            Assert.Single(Directory.GetFiles(host.Temp.File("sessions"), "*.jsonl")),
+            "Refactor the parser"
+        );
+
+        host.Console.SendText("/name");
+        host.Console.SendEnter();
+        await WaitForFrameAsync(host, "session name: Refactor the parser");
+
+        Assert.Empty(host.Client.Requests);
+        host.Console.SendText("/quit");
+        host.Console.SendEnter();
+        await run;
+    }
+
     private static async Task RunOneTurnAsync(InteractiveSessionHost host)
     {
         host.Console.SendText("hi");
@@ -381,6 +422,120 @@ public sealed class InteractiveSessionCommandTests
 
         return new ChatResponseUpdate(ChatRole.Assistant, [new UsageContent(usage)]);
     }
+
+    [Fact]
+    public async Task Bare_name_reports_none_without_a_title()
+    {
+        using var host = new InteractiveSessionHost();
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+
+        host.Console.SendText("/name");
+        host.Console.SendEnter();
+        await WaitForFrameAsync(host, "session name: (none)");
+
+        Assert.Empty(host.Client.Requests);
+        host.Console.SendText("/quit");
+        host.Console.SendEnter();
+        await run;
+    }
+
+    [Fact]
+    public async Task An_over_long_name_is_a_notice_without_writing()
+    {
+        using var host = new InteractiveSessionHost();
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+        string path = Assert.Single(Directory.GetFiles(host.Temp.File("sessions"), "*.jsonl"));
+
+        host.Console.SendText("/name " + new string('x', SessionTitle.MaxLength + 1));
+        host.Console.SendEnter();
+        await WaitForFrameAsync(host, "session name must be 1-120 characters");
+
+        Assert.False(File.Exists(SessionTitle.PathFor(path)));
+        Assert.Empty(host.Client.Requests);
+        host.Console.SendText("/quit");
+        host.Console.SendEnter();
+        await run;
+    }
+
+    [Fact]
+    public async Task Name_without_a_session_file_is_a_notice()
+    {
+        using var host = new InteractiveSessionHost(launch: new LaunchOptions { NoSession = true });
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+
+        host.Console.SendText("/name Ghost");
+        host.Console.SendEnter();
+        await WaitForFrameAsync(host, "no session file to name");
+
+        Assert.Empty(host.Client.Requests);
+        host.Console.SendText("/quit");
+        host.Console.SendEnter();
+        await run;
+    }
+
+    [Fact]
+    public async Task Session_reports_the_path_id_message_count_and_tokens()
+    {
+        using var host = new InteractiveSessionHost();
+        host.Scrollback.Profile.Width = 400;
+        host.Client.Enqueue(Usage(1000, 500), Scripts.Text("done"), Scripts.Stop());
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+
+        host.Console.SendText("go");
+        host.Console.SendEnter();
+        await host.Client.WaitForCallAsync(1);
+        await WaitForScrollbackAsync(host, "done");
+        string path = Assert.Single(Directory.GetFiles(host.Temp.File("sessions"), "*.jsonl"));
+        Session session = Session.Load(path);
+
+        host.Console.SendText("/session");
+        host.Console.SendEnter();
+        await WaitForScrollbackAsync(host, "tokens: 1000 in / 500 out");
+
+        Assert.Contains($"session: {path}", host.ScrollbackText, StringComparison.Ordinal);
+        Assert.Contains($"id: {session.SessionId}", host.ScrollbackText, StringComparison.Ordinal);
+        Assert.Contains("messages: 2", host.ScrollbackText, StringComparison.Ordinal);
+        Assert.DoesNotContain("cost:", host.ScrollbackText, StringComparison.Ordinal);
+        Assert.Single(host.Client.Requests);
+
+        host.Console.Complete();
+        await run;
+    }
+
+    [Fact]
+    public async Task Session_without_a_file_reports_nones_and_zeros()
+    {
+        using var host = new InteractiveSessionHost(launch: new LaunchOptions { NoSession = true });
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+
+        host.Console.SendText("/session");
+        host.Console.SendEnter();
+        await WaitForScrollbackAsync(host, "tokens: 0 in / 0 out");
+
+        Assert.Contains("session: (none)", host.ScrollbackText, StringComparison.Ordinal);
+        Assert.Contains("id: (none)", host.ScrollbackText, StringComparison.Ordinal);
+        Assert.Contains("messages: 0", host.ScrollbackText, StringComparison.Ordinal);
+        Assert.DoesNotContain("cost:", host.ScrollbackText, StringComparison.Ordinal);
+        Assert.Empty(host.Client.Requests);
+
+        host.Console.Complete();
+        await run;
+    }
+
+    private static ChatResponseUpdate Usage(long input, long output) =>
+        new(
+            ChatRole.Assistant,
+            [
+                new UsageContent(
+                    new UsageDetails { InputTokenCount = input, OutputTokenCount = output }
+                ),
+            ]
+        );
 
     internal static async Task WaitForFrameAsync(
         InteractiveSessionHost host,

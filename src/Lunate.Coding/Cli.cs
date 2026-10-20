@@ -38,18 +38,8 @@ internal static class Cli
 
         if (args is ["--help"] or ["-h"])
         {
-            WriteHelp(output);
+            CliHelp.Write(output);
             return 0;
-        }
-
-        if (args.Length == 0)
-        {
-            return RunInteractive(
-                errors,
-                ct,
-                interactiveOptions,
-                noExtensions ? Suppress(extensions ?? interactiveOptions?.Extensions) : extensions
-            );
         }
 
         if (args.Length > 0 && args[0] == "trust")
@@ -87,9 +77,13 @@ internal static class Cli
 
         if (args.Contains("--acp"))
         {
-            if (args is not ["--acp"])
+            string[] acpArgs =
+            [
+                .. args.Where(arg => !string.Equals(arg, "--acp", StringComparison.Ordinal)),
+            ];
+            if (!TryParseAcpOptions(acpArgs, out LaunchOptions acpLaunch, out _))
             {
-                WriteAcpUsage(errors);
+                WriteAcpUsage(errors, args);
                 return 2;
             }
 
@@ -98,32 +92,48 @@ internal static class Cli
                 Console.OpenStandardInput(),
                 Console.OpenStandardOutput(),
                 ct,
-                extensions: noExtensions ? Suppress(extensions) : extensions
+                extensions: noExtensions ? Suppress(extensions) : extensions,
+                launch: acpLaunch
             );
         }
 
-        if (!TryParsePrint(args, errors, out PrintModeOptions? parsed))
+        if (!LaunchOptions.TryParse(args, out LaunchOptions launch, out string? error))
         {
-            return 0;
-        }
-
-        if (parsed is null)
-        {
+            errors.WriteLine($"lunate: {error}");
+            WriteLaunchUsage(errors);
             return 2;
         }
 
-        ExtensionSeams? seams = extensions ?? printOptions?.Extensions;
+        // The picker needs the terminal UI; print mode refuses the flag before any composition
+        // (design D3), so no client, extension host or MCP server starts.
+        if (launch.Print && launch.Resume)
+        {
+            errors.WriteLine(
+                "lunate: --resume needs the interactive picker; use --session <id|path> or --continue"
+            );
+            return 2;
+        }
+
+        ExtensionSeams? seams = launch.Print
+            ? extensions ?? printOptions?.Extensions
+            : extensions ?? interactiveOptions?.Extensions;
         if (noExtensions)
         {
             seams = Suppress(seams);
         }
 
+        if (!launch.Print)
+        {
+            return RunInteractive(errors, ct, interactiveOptions, seams, launch);
+        }
+
         PrintModeOptions options = (printOptions ?? new PrintModeOptions()) with
         {
-            Prompt = parsed.Prompt,
-            Json = parsed.Json,
-            Yolo = parsed.Yolo,
+            Prompt = launch.Prompt ?? string.Empty,
+            Json = launch.Json,
+            Yolo = launch.Yolo,
             Extensions = seams,
+            Launch = launch,
         };
         return PrintMode.RunAsync(options, output, errors, ct).GetAwaiter().GetResult();
     }
@@ -135,76 +145,73 @@ internal static class Cli
             NoExtensions = true,
         };
 
+    private static void WriteLaunchUsage(TextWriter errors)
+    {
+        errors.WriteLine("Usage: lunate [options] [-p [--json] [--yolo] <prompt>]");
+        errors.WriteLine("Run 'lunate --help' for the full list of options.");
+    }
+
     /// <summary>
-    /// Parses the print-mode flags; returns false when no print flag is present. A null
-    /// <paramref name="options"/> means a usage error was written to stderr.
+    /// Parses the flags ACP may carry (<paramref name="args"/> excludes <c>--acp</c>): the
+    /// composition flags parse through the one launch parser, while print and selection flags are
+    /// usage errors because the editor owns the session lifecycle (design D3).
     /// </summary>
-    private static bool TryParsePrint(
-        string[] args,
-        TextWriter errors,
-        out PrintModeOptions? options
+    internal static bool TryParseAcpOptions(
+        IReadOnlyList<string> args,
+        out LaunchOptions launch,
+        out string? error
     )
     {
-        options = null;
-        if (!args.Contains("-p") && !args.Contains("--print"))
+        launch = new LaunchOptions();
+        if (!LaunchOptions.TryParse(args, out LaunchOptions parsed, out error))
         {
             return false;
         }
 
-        var json = false;
-        var yolo = false;
-        string? prompt = null;
-        foreach (string arg in args)
+        if (parsed.Print)
         {
-            switch (arg)
-            {
-                case "-p" or "--print":
-                    break;
-                case "--json":
-                    json = true;
-                    break;
-                case "--yolo":
-                    yolo = true;
-                    break;
-                default:
-                    // The prompt is the first (and only) non-flag argument; --json and
-                    // --yolo may come before or after it, so `lunate -p --json "hi"`
-                    // reads naturally. Flag-shaped unknown tokens stay usage errors.
-                    if (prompt is not null || arg.StartsWith('-') || string.IsNullOrWhiteSpace(arg))
-                    {
-                        WritePrintUsage(errors);
-                        return true;
-                    }
-
-                    prompt = arg;
-                    break;
-            }
+            error = "-p/--print is a usage error with --acp";
+            return false;
         }
 
-        if (prompt is null)
+        if (parsed.Json)
         {
-            WritePrintUsage(errors);
-            return true;
+            error = "--json is a usage error with --acp";
+            return false;
         }
 
-        options = new PrintModeOptions
+        if (parsed.Yolo)
         {
-            Prompt = prompt,
-            Json = json,
-            Yolo = yolo,
-        };
+            error = "--yolo is a usage error with --acp";
+            return false;
+        }
+
+        if (parsed.HasSelection)
+        {
+            error = "session selection is a usage error with --acp";
+            return false;
+        }
+
+        launch = parsed;
         return true;
     }
 
-    private static void WritePrintUsage(TextWriter errors) =>
-        errors.WriteLine("Usage: lunate -p [--json] [--yolo] <prompt>");
-
-    private static void WriteAcpUsage(TextWriter errors)
+    private static void WriteAcpUsage(TextWriter errors, string[] args)
     {
         errors.WriteLine("Usage: lunate --acp");
         errors.WriteLine(
             "lunate: --acp speaks the Agent Client Protocol over stdio and cannot be combined with -p, --json or a prompt"
         );
+        if (
+            args.Any(arg =>
+                arg is "-c" or "--continue" or "-r" or "--resume" or "--session" or "--no-session"
+            )
+        )
+        {
+            errors.WriteLine(
+                "lunate: --acp cannot select a session; --continue, --resume, --session and --no-session are usage errors with --acp"
+            );
+        }
     }
 
     /// <summary>
@@ -215,7 +222,8 @@ internal static class Cli
         TextWriter errors,
         CancellationToken ct,
         InteractiveSessionOptions? options,
-        ExtensionSeams? extensions
+        ExtensionSeams? extensions,
+        LaunchOptions launch
     )
     {
         IConsoleIO console;
@@ -235,7 +243,11 @@ internal static class Cli
             resolved = options;
         }
 
-        resolved = resolved with { Extensions = extensions ?? options?.Extensions };
+        resolved = resolved with
+        {
+            Extensions = extensions ?? options?.Extensions,
+            Launch = launch,
+        };
 
         if (ConsoleSupport.Check(console) is not null)
         {
@@ -247,7 +259,7 @@ internal static class Cli
 
         using var session = new InteractiveSession(resolved);
         session.RunAsync(ct).GetAwaiter().GetResult();
-        return 0;
+        return session.ExitCode;
     }
 
     private static int Discover(string target, TextWriter output, TextWriter errors)
@@ -276,77 +288,6 @@ internal static class Cli
 
         output.WriteLine(result.Draft);
         return 0;
-    }
-
-    private static void WriteHelp(TextWriter output)
-    {
-        output.WriteLine("Lunate - a coding agent for the terminal.");
-        output.WriteLine();
-        output.WriteLine("Usage:");
-        output.WriteLine("  lunate -p [--json] [--yolo] <prompt>");
-        output.WriteLine(
-            "                                 run one prompt and print the final answer to stdout;"
-        );
-        output.WriteLine(
-            "                                 --json streams every event as one JSON line, --yolo"
-        );
-        output.WriteLine("                                 approves every tool call for this run");
-        output.WriteLine(
-            "  lunate                         start the interactive session on a terminal"
-        );
-        output.WriteLine(
-            "                                 commands: /model /new /resume /compact /mcp /extensions /trust /quit"
-        );
-        output.WriteLine(
-            "  lunate --no-extensions         start any mode without loading extensions (their"
-        );
-        output.WriteLine(
-            "                                 hooks, widgets and MCP servers are absent; configured"
-        );
-        output.WriteLine("                                 mcp.json servers still run)");
-        output.WriteLine(
-            "  lunate --acp                   serve the Agent Client Protocol over stdio for"
-        );
-        output.WriteLine(
-            "                                 editors (nothing but protocol on stdout)"
-        );
-        output.WriteLine("  lunate --version               print the version");
-        output.WriteLine("  lunate --help                  show this help");
-        output.WriteLine("  lunate --discover <name-or-url>");
-        output.WriteLine(
-            "                                 list an OpenAI-compatible endpoint's models and"
-        );
-        output.WriteLine(
-            "                                 print a models.json draft to stdout (nothing is written)"
-        );
-        output.WriteLine("  lunate extensions [--json]");
-        output.WriteLine(
-            "                                 list discovered extensions with scope, state,"
-        );
-        output.WriteLine(
-            "                                 load time and contributions; --json prints a"
-        );
-        output.WriteLine(
-            "                                 machine-readable array (exit 1 when an extension"
-        );
-        output.WriteLine("                                 fails to load)");
-        output.WriteLine("  lunate trust [--yes [--digest <sha>]] [--json] [--clear]");
-        output.WriteLine(
-            "                                 show this repository's trust records and pending"
-        );
-        output.WriteLine(
-            "                                 project-extension/mcp.json/server decisions (exit 3"
-        );
-        output.WriteLine(
-            "                                 when pending); --yes records exactly what it prints —"
-        );
-        output.WriteLine(
-            "                                 for checkouts you control, never untrusted PRs; gate"
-        );
-        output.WriteLine(
-            "                                 CI with --digest <sha>; --json for scripts; --clear"
-        );
-        output.WriteLine("                                 removes this repository's records");
     }
 
     private static string GetProductVersion() => ProductVersion.Informational;

@@ -39,8 +39,10 @@ internal static class Commands
         new("/compact", CommandGroup.Session, "compact the conversation now"),
         new("/context", CommandGroup.Session, "show the context window and subagent budgets"),
         new("/help", CommandGroup.Session, "list the commands"),
+        new("/name", CommandGroup.Session, "set or show the session title"),
         new("/new", CommandGroup.Session, "start a fresh session"),
         new("/resume", CommandGroup.Session, "open the session picker"),
+        new("/session", CommandGroup.Session, "show the session file, messages and tokens"),
         new("/thinking", CommandGroup.Session, "set the reasoning level (off|low|medium|high)"),
         new("/model", CommandGroup.Model, "pick a model or switch to one by id"),
         new(
