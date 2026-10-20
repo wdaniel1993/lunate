@@ -59,3 +59,32 @@ static Lunate.Ai.StreamAccumulator.IsUnassembled(Microsoft.Extensions.AI.Functio
 override Lunate.Ai.StreamAccumulator.GetStreamingResponseAsync(System.Collections.Generic.IEnumerable<Microsoft.Extensions.AI.ChatMessage!>! messages, Microsoft.Extensions.AI.ChatOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<Microsoft.Extensions.AI.ChatResponseUpdate!>!
 Lunate.Ai.ChatClientFactory.Create(Lunate.Ai.ModelInfo! model, string? apiKey) -> Microsoft.Extensions.AI.IChatClient!
 Lunate.Ai.IChatClientFactory.Create(Lunate.Ai.ModelInfo! model, string? apiKey) -> Microsoft.Extensions.AI.IChatClient!
+Lunate.Ai.ProviderAdapter
+Lunate.Ai.ProviderAdapter.Anthropic = 1 -> Lunate.Ai.ProviderAdapter
+Lunate.Ai.ProviderAdapter.OpenAi = 0 -> Lunate.Ai.ProviderAdapter
+Lunate.Ai.ProviderAdapter.OpenAiCompatible = 2 -> Lunate.Ai.ProviderAdapter
+Lunate.Ai.ProviderPreset
+Lunate.Ai.ProviderPreset.<Clone>$() -> Lunate.Ai.ProviderPreset!
+Lunate.Ai.ProviderPreset.Adapter.get -> Lunate.Ai.ProviderAdapter
+Lunate.Ai.ProviderPreset.Adapter.init -> void
+Lunate.Ai.ProviderPreset.BaseUrl.get -> System.Uri!
+Lunate.Ai.ProviderPreset.BaseUrl.init -> void
+Lunate.Ai.ProviderPreset.Deconstruct(out string! Id, out string! Name, out Lunate.Ai.ProviderAdapter Adapter, out System.Uri! BaseUrl, out string! KeyVariable, out string? KeyVariableAlias) -> void
+Lunate.Ai.ProviderPreset.Equals(Lunate.Ai.ProviderPreset? other) -> bool
+Lunate.Ai.ProviderPreset.Id.get -> string!
+Lunate.Ai.ProviderPreset.Id.init -> void
+Lunate.Ai.ProviderPreset.KeyVariable.get -> string!
+Lunate.Ai.ProviderPreset.KeyVariable.init -> void
+Lunate.Ai.ProviderPreset.KeyVariableAlias.get -> string?
+Lunate.Ai.ProviderPreset.KeyVariableAlias.init -> void
+Lunate.Ai.ProviderPreset.Name.get -> string!
+Lunate.Ai.ProviderPreset.Name.init -> void
+Lunate.Ai.ProviderPreset.ProviderPreset(string! Id, string! Name, Lunate.Ai.ProviderAdapter Adapter, System.Uri! BaseUrl, string! KeyVariable, string? KeyVariableAlias = null) -> void
+override Lunate.Ai.ProviderPreset.Equals(object? obj) -> bool
+override Lunate.Ai.ProviderPreset.GetHashCode() -> int
+override Lunate.Ai.ProviderPreset.ToString() -> string!
+static Lunate.Ai.ProviderPreset.operator !=(Lunate.Ai.ProviderPreset? left, Lunate.Ai.ProviderPreset? right) -> bool
+static Lunate.Ai.ProviderPreset.operator ==(Lunate.Ai.ProviderPreset? left, Lunate.Ai.ProviderPreset? right) -> bool
+Lunate.Ai.ProviderPresets
+static Lunate.Ai.ProviderPresets.All.get -> System.Collections.Generic.IReadOnlyList<Lunate.Ai.ProviderPreset!>!
+static Lunate.Ai.ProviderPresets.Find(string! id) -> Lunate.Ai.ProviderPreset?

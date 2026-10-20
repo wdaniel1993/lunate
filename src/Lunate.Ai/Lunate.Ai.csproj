@@ -30,6 +30,7 @@
 
     <ItemGroup>
         <EmbeddedResource Include="models.json" LogicalName="Lunate.Ai.models.json" />
+        <EmbeddedResource Include="providers.json" LogicalName="Lunate.Ai.providers.json" />
     </ItemGroup>
 
     <ItemGroup>

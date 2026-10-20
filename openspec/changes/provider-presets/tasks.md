@@ -6,7 +6,7 @@ pass.
 
 ## 1. Catalog schema, generator and pricing types
 
-- [ ] 1.1 Add `src/Lunate.Ai/providers.json` (schema 1: preset id, display name, adapter kind, base
+- [x] 1.1 Add `src/Lunate.Ai/providers.json` (schema 1: preset id, display name, adapter kind, base
       URL, key variable, Google alias) and embed it; add `ProviderPreset`/`ProviderPresets` with
       parsing and lookup, and tests for the twelve rows and an unknown id.
 - [ ] 1.2 Extend `ModelInfo` with init-only `Pricing`, `MaxOutput`, `SupportsVision` and `WireId`;

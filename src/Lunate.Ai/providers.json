@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "providers": [
+    { "id": "openai", "name": "OpenAI", "adapter": "openai", "baseUrl": "https://api.openai.com/v1", "keyVariable": "OPENAI_API_KEY" },
+    { "id": "anthropic", "name": "Anthropic", "adapter": "anthropic", "baseUrl": "https://api.anthropic.com/v1", "keyVariable": "ANTHROPIC_API_KEY" },
+    { "id": "openrouter", "name": "OpenRouter", "adapter": "openai-compatible", "baseUrl": "https://openrouter.ai/api/v1", "keyVariable": "OPENROUTER_API_KEY" },
+    { "id": "deepseek", "name": "DeepSeek", "adapter": "openai-compatible", "baseUrl": "https://api.deepseek.com", "keyVariable": "DEEPSEEK_API_KEY" },
+    { "id": "moonshotai", "name": "Moonshot AI", "adapter": "openai-compatible", "baseUrl": "https://api.moonshot.ai/v1", "keyVariable": "MOONSHOT_API_KEY" },
+    { "id": "zai", "name": "Z.AI", "adapter": "openai-compatible", "baseUrl": "https://api.z.ai/api/paas/v4", "keyVariable": "ZHIPU_API_KEY" },
+    { "id": "opencode", "name": "OpenCode", "adapter": "openai-compatible", "baseUrl": "https://opencode.ai/inference/openai/v1", "keyVariable": "OPENCODE_API_KEY" },
+    { "id": "opencode-go", "name": "OpenCode Go", "adapter": "openai-compatible", "baseUrl": "https://opencode.ai/inference/go/openai/v1", "keyVariable": "OPENCODE_API_KEY" },
+    { "id": "groq", "name": "Groq", "adapter": "openai-compatible", "baseUrl": "https://api.groq.com/openai/v1", "keyVariable": "GROQ_API_KEY" },
+    { "id": "togetherai", "name": "Together AI", "adapter": "openai-compatible", "baseUrl": "https://api.together.xyz/v1", "keyVariable": "TOGETHER_API_KEY" },
+    { "id": "xai", "name": "xAI", "adapter": "openai-compatible", "baseUrl": "https://api.x.ai/v1", "keyVariable": "XAI_API_KEY" },
+    { "id": "google", "name": "Google", "adapter": "openai-compatible", "baseUrl": "https://generativelanguage.googleapis.com/v1beta/openai", "keyVariable": "GOOGLE_API_KEY", "keyVariableAlias": "GEMINI_API_KEY" }
+  ]
+}
