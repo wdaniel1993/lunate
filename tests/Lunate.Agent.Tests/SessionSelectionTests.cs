@@ -128,6 +128,30 @@ public sealed class SessionSelectionTests
     }
 
     [Fact]
+    public async Task The_session_walk_ignores_a_directory_symlink_loop()
+    {
+        using var temp = new TempDirectory();
+        Session session = Create(temp.File("s.jsonl"), Cwd, Start);
+        if (!TryCreateDirectoryLoop(temp))
+        {
+            return;
+        }
+
+        SessionSummary? found = await Task.Run(() =>
+                Session.FindNewest(temp.Root, Cwd, StringComparison.Ordinal)
+            )
+            .WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        IReadOnlyList<SessionSummary> matches = await Task.Run(() =>
+                Session.FindById(temp.Root, session.SessionId)
+            )
+            .WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+
+        Assert.NotNull(found);
+        Assert.Equal(session.SessionId, found.Id);
+        Assert.Single(matches);
+    }
+
+    [Fact]
     public void FindById_returns_the_matching_session()
     {
         using var temp = new TempDirectory();
@@ -187,6 +211,26 @@ public sealed class SessionSelectionTests
 
     private static Session Create(string path, string cwd, DateTimeOffset created) =>
         Session.Create(path, cwd, new FixedTimeProvider(created));
+
+    private static bool TryCreateDirectoryLoop(TempDirectory temp)
+    {
+        // Windows may refuse symlink creation without Developer Mode or elevation; the walk's
+        // reparse-point rule is platform-neutral, so the test stays applicable elsewhere.
+        if (OperatingSystem.IsWindows())
+        {
+            return false;
+        }
+
+        try
+        {
+            Directory.CreateSymbolicLink(temp.File("loop"), temp.Root);
+            return true;
+        }
+        catch (Exception exception) when (exception is UnauthorizedAccessException or IOException)
+        {
+            return false;
+        }
+    }
 
     private static void Touch(string path, DateTimeOffset modified) =>
         File.SetLastWriteTimeUtc(path, modified.UtcDateTime);

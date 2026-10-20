@@ -81,7 +81,9 @@ public sealed partial class Session
                 {
                     RecurseSubdirectories = true,
                     IgnoreInaccessible = true,
-                    AttributesToSkip = 0,
+                    // Hidden and system entries still list; a symlinked directory is not recursed
+                    // into, so a self-referential store cannot walk forever.
+                    AttributesToSkip = FileAttributes.ReparsePoint,
                 }
             )
         )
