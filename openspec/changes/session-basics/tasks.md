@@ -36,7 +36,7 @@ Implementation runs through the `senior-dev` subagent (test-first). One commit p
 
 - [x] 6.1 Title sidecar `<sessionId>.title`: atomic write, trim/collapse, 120-character cap, read by id; `Session.List` labels titled rows `<title> — <id>` without changing order/bound/corrupt handling.
 - [x] 6.2 `/name <title>` sets and bare `/name` reports; `/session` prints path, id, message count and input/output tokens from recorded usages, with a cost line only when pricing exists (absent today).
-- [ ] 6.3 Register both in `Commands.cs` (help and Tab completion follow), update the exact command string in `CliTests`, add `InteractiveSessionCommandTests`, `CommandRegistryTests`, `SessionTitleTests` and a picker label test. Commit: `feat(coding): name sessions and report their state`.
+- [x] 6.3 Register both in `Commands.cs` (help and Tab completion follow), update the exact command string in `CliTests`, add `InteractiveSessionCommandTests`, `CommandRegistryTests`, `SessionTitleTests` and a picker label test. Commit: `feat(coding): name sessions and report their state`.
 
 ## 7. Documentation and gate
 
