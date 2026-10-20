@@ -171,6 +171,65 @@ public sealed class AnthropicPromptCacheTests
     }
 
     [Fact]
+    public async Task The_latest_tool_result_block_carries_the_rolling_marker()
+    {
+        var handler = new CapturingHandler();
+        IChatClient client = CreateAnthropicClient(handler);
+        ChatMessage assistant = new(
+            ChatRole.Assistant,
+            [new FunctionCallContent("call_1", "echo", new Dictionary<string, object?>())]
+        );
+        ChatMessage result = new(ChatRole.Tool, [new FunctionResultContent("call_1", "pong")]);
+
+        await client.GetResponseAsync(
+            [SystemMessage("rules"), UserMessage("ping"), assistant, result],
+            new ChatOptions { Tools = [new EchoTool("echo")] },
+            TestContext.Current.CancellationToken
+        );
+
+        using JsonDocument document = JsonDocument.Parse(Assert.Single(handler.RequestBodies));
+        JsonElement root = document.RootElement;
+        JsonElement block = LastWireBlock(root);
+        Assert.Equal("tool_result", block.GetProperty("type").GetString());
+        Assert.Equal("call_1", block.GetProperty("tool_use_id").GetString());
+        Assert.True(HasCacheControl(block));
+        Assert.True(HasCacheControl(root.GetProperty("system").EnumerateArray().Last()));
+        Assert.True(HasCacheControl(root.GetProperty("tools").EnumerateArray().Last()));
+        Assert.Equal(3, CountCacheControls(root));
+    }
+
+    [Fact]
+    public async Task The_latest_assistant_tool_call_block_carries_the_rolling_marker()
+    {
+        var handler = new CapturingHandler();
+        IChatClient client = CreateAnthropicClient(handler);
+        ChatMessage assistant = new(
+            ChatRole.Assistant,
+            [
+                new TextContent("calling"),
+                new FunctionCallContent("call_1", "echo", new Dictionary<string, object?>()),
+            ]
+        );
+
+        await client.GetResponseAsync(
+            [SystemMessage("rules"), UserMessage("ping"), assistant],
+            new ChatOptions { Tools = [new EchoTool("echo")] },
+            TestContext.Current.CancellationToken
+        );
+
+        using JsonDocument document = JsonDocument.Parse(Assert.Single(handler.RequestBodies));
+        JsonElement root = document.RootElement;
+        JsonElement block = LastWireBlock(root);
+        Assert.Equal("tool_use", block.GetProperty("type").GetString());
+        Assert.Equal("call_1", block.GetProperty("id").GetString());
+        Assert.Equal("echo", block.GetProperty("name").GetString());
+        Assert.True(HasCacheControl(block));
+        Assert.True(HasCacheControl(root.GetProperty("system").EnumerateArray().Last()));
+        Assert.True(HasCacheControl(root.GetProperty("tools").EnumerateArray().Last()));
+        Assert.Equal(3, CountCacheControls(root));
+    }
+
+    [Fact]
     public async Task OpenAI_requests_carry_no_prompt_cache_markers()
     {
         ScriptedChatClient scripted = new ScriptedChatClient().Enqueue(
@@ -229,6 +288,14 @@ public sealed class AnthropicPromptCacheTests
 
     private static ChatMessage UserMessage(params string[] blocks) =>
         new(ChatRole.User, blocks.Select(block => new TextContent(block)).ToList<AIContent>());
+
+    private static JsonElement LastWireBlock(JsonElement root) =>
+        root.GetProperty("messages")
+            .EnumerateArray()
+            .Last()
+            .GetProperty("content")
+            .EnumerateArray()
+            .Last();
 
     private static bool HasCacheControl(JsonElement block) =>
         block.TryGetProperty("cache_control", out JsonElement marker)
