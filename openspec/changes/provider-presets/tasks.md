@@ -21,7 +21,7 @@ pass.
 - [x] 1.4 Update `tests/Lunate.Ai.Tests/ModelCatalogTests.cs` for the new fields and the schema 1/2
       rules, and add tests for provider config parsing, generated mapping, deterministic output,
       duplicate wire ids, fully/unpriced cost math and the four unchanged bare ids.
-- [ ] 1.5 `dotnet csharpier format .`; commit `feat(ai): generate a schema-2 model catalog`.
+- [x] 1.5 `dotnet csharpier format .`; commit `feat(ai): generate a schema-2 model catalog`.
 
 ## 2. Preset routing and credentials
 
