@@ -1,0 +1,12 @@
+\x1b[38;5;11m⚠ edit  src/Lunate.Coding/ApprovalDetail.cs +2 −1\x1b[0m
+\x1b[38;5;245m  @@ -10,4 +10,5 @@\x1b[0m
+\x1b[38;5;245m  public static IReadOnlyList<string> Build(\x1b[0m
+\x1b[38;5;245m  string toolName,\x1b[0m
+\x1b[38;5;245m  - JsonElement args\x1b[0m
+\x1b[38;5;245m  + JsonElement args,\x1b[0m
+\x1b[38;5;245m  + bool unicode\x1b[0m
+Allow edit\x1b[38;5;11m?\x1b[0m  [\x1b[38;5;80my\x1b[0m]es  [\x1b[38;5;80mn\x1b[0m]o  [\x1b[38;5;80ma\x1b[0m]lways this session
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+> \x1b[38;5;245mAsk anything, / for commands\x1b[0m
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+deepseek-v4.1-flash · 2.1k/1.0M (0%) · ~/dev/lunate · main

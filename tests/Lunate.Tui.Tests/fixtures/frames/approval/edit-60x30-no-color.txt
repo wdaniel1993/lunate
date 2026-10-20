@@ -1,0 +1,10 @@
+⚠ edit  src/Lunate.Coding/ApprovalDetail.cs +2 −1
+  @@ -10,4 +10,5 @@
+  public static IReadOnlyList<string> Build(
+  string toolName,
+  - JsonElement args
+  + JsonElement args,
+  + bool unicode
+Allow edit?  [y]es  [n]o  [a]lways this session
+> Ask anything, / for commands
+deepseek-v4.1-flash · 2.1k/1.0M (0%) · ~/dev/lunate · main

@@ -1,4 +1,4 @@
-Output features/diff.gif
+Output features/approval.gif
 Set FontSize 16
 Set Width 1400
 Set Height 700

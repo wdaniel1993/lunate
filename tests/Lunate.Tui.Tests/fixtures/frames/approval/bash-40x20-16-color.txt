@@ -1,0 +1,6 @@
+\x1b[93m⚠ bash  dotnet test --project tests/Luna\x1b[0m
+\x1b[90m  Test run summary: Passed!\x1b[0m
+Allow bash\x1b[93m?\x1b[0m
+[\x1b[36my\x1b[0m]es  [\x1b[36mn\x1b[0m]o  [\x1b[36ma\x1b[0m]lways this session
+> \x1b[90mAsk anything, / for commands\x1b[0m
+deepseek-v4.1-flash · 0%

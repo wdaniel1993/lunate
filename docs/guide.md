@@ -435,6 +435,10 @@ Finished output is rendered with Spectre.Console; the input line and a small liv
 
 Every submitted prompt commits to the scrollback as the first block of its turn: the `>` prompt in the theme's user colour, wrapped continuation lines indented two spaces, and one blank line after. While the turn runs, the live area carries one activity line — `⠹ thinking… 3s · ↑1.2k ↓180 · esc to interrupt` while reasoning streams, the spinner with the tool name and its argument summary while a tool runs, and `working…` when neither is known. The run's token deltas and `esc to interrupt` appear only while the turn is cancellable; below 60 columns the line keeps the spinner, the label and the elapsed seconds only.
 
+**Approvals**
+
+A pending approval renders as a panel in the live area. The warning headline names the tool and the concrete action — the command for `bash`, the path with its `+N −M` change counts for `edit` and `write` — and the muted detail block below it shows the command's lines, the edit's diff, or the tool's key arguments, clipped rather than wrapped and bounded to six lines with a `… +N lines` marker. The question is `Allow <tool>?  [y]es  [n]o  [a]lways this session` with the key letters accented; a subagent's ask is prefixed with its depth. Below 60 columns the detail drops to its first line, the headline clips its action, and the choices move to their own line — every choice stays fully visible. The frame cap trims the detail first, then the headline, never the question. Bare `y`, `n` and `a` decide, Enter denies, and `a` covers that tool for the whole run tree for the rest of the session.
+
 **Input box and autocomplete**
 
 The input renders as a box: a full-width `─` rule above and below at 80 columns or wider (ASCII `-` without Unicode, no rule below 80), the `>` prompt followed by a space on the first line and a two-space indent on continuation lines, with the status footer below the lower rule. An empty input shows the muted placeholder `Ask anything, / for commands`; the box grows with the draft to eight lines and scrolls beyond that, keeping the cursor's line visible.
@@ -460,7 +464,7 @@ The finer boundaries inside the standard band stay as they were: box rules at 80
 - `MarkdownRenderer`: a subset (headings, bold, italic, inline code, lists, quotes, fenced code with a language label) mapped to Spectre renderables. Keyword highlighting for C#, JSON and shell only in v1.
 - `ToolBlock`: one compact header line — `✓ read  src/X.cs (1-13)`, `✗ bash  dotnet build · exit 1 · 12s`, `✓ edit  src/X.cs · +3 −0` — then the per-tool output excerpt (`bash` keeps the output's last lines, `read` none, the rest first and last) and a red/green diff panel for `edit` and `write` with the match tier; the excerpt's `… +N lines · ctrl+o` marker points at the transcript viewer. Durations run on the injected scheduler.
 - `TranscriptViewer`: the `Ctrl+O` full-screen transcript — user, assistant, thinking and tool blocks with full outputs and diffs, newest at the bottom; Up/Down, PageUp/PageDown, Home/End and `g`/`G` scroll, the footer shows the keys and the position, and `q`/`Esc` closes. Paths are mid-shortened so the basename survives.
-- `ApprovalPrompt`: yes, no, always for this session; shown in the live area.
+- `ApprovalPrompt`: the panel described above — warning headline, bounded detail, and the yes/no/always choices — shown in the live area.
 - `StatusFooter`: model, tokens, context used in percent, working directory, git branch.
 - `InputLine`: multi-line editing, history in `~/.lunate/history`, bracketed paste, cursor movement and the input box's chrome and placeholder.
 - `Autocomplete`: the filtered rows above the box with the selected row marked, descriptions below the width breakpoint and muted file directories; the registry and keys are described above.

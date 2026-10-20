@@ -171,6 +171,7 @@ Lunate.Tui.ApprovalPromptModel.ToolName.init -> void
 Lunate.Tui.ApprovalPromptRenderer
 Lunate.Tui.ApprovalPromptRenderer.ApprovalPromptRenderer() -> void
 Lunate.Tui.ApprovalPromptRenderer.Render(Lunate.Tui.ApprovalPromptModel! prompt) -> Spectre.Console.Rendering.IRenderable!
+Lunate.Tui.ApprovalPromptRenderer.Render(Lunate.Tui.ApprovalPromptModel! prompt, int width) -> Spectre.Console.Rendering.IRenderable!
 override Lunate.Tui.ApprovalPromptModel.Equals(object? obj) -> bool
 override Lunate.Tui.ApprovalPromptModel.GetHashCode() -> int
 override Lunate.Tui.ApprovalPromptModel.ToString() -> string!
@@ -275,10 +276,14 @@ override Lunate.Tui.TrustPromptModel.GetHashCode() -> int
 override Lunate.Tui.TrustPromptModel.ToString() -> string!
 static Lunate.Tui.TrustPromptModel.operator !=(Lunate.Tui.TrustPromptModel? left, Lunate.Tui.TrustPromptModel? right) -> bool
 static Lunate.Tui.TrustPromptModel.operator ==(Lunate.Tui.TrustPromptModel? left, Lunate.Tui.TrustPromptModel? right) -> bool
-Lunate.Tui.ApprovalPromptModel.ApprovalPromptModel(string! ToolName, string! ArgsSummary, string? Asker = null) -> void
+Lunate.Tui.ApprovalPromptModel.ApprovalPromptModel(string! ToolName, string! ArgsSummary, string? Asker = null, System.Collections.Generic.IReadOnlyList<string!>? Detail = null, string? WorkspaceRoot = null) -> void
 Lunate.Tui.ApprovalPromptModel.Asker.get -> string?
 Lunate.Tui.ApprovalPromptModel.Asker.init -> void
-Lunate.Tui.ApprovalPromptModel.Deconstruct(out string! ToolName, out string! ArgsSummary, out string? Asker) -> void
+Lunate.Tui.ApprovalPromptModel.Deconstruct(out string! ToolName, out string! ArgsSummary, out string? Asker, out System.Collections.Generic.IReadOnlyList<string!>? Detail, out string? WorkspaceRoot) -> void
+Lunate.Tui.ApprovalPromptModel.Detail.get -> System.Collections.Generic.IReadOnlyList<string!>?
+Lunate.Tui.ApprovalPromptModel.Detail.init -> void
+Lunate.Tui.ApprovalPromptModel.WorkspaceRoot.get -> string?
+Lunate.Tui.ApprovalPromptModel.WorkspaceRoot.init -> void
 Lunate.Tui.ThinkingCommitModel
 Lunate.Tui.ThinkingCommitModel.<Clone>$() -> Lunate.Tui.ThinkingCommitModel!
 Lunate.Tui.ThinkingCommitModel.Deconstruct(out string! Text, out int ElapsedSeconds, out bool Full) -> void

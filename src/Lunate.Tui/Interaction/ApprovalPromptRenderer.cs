@@ -1,56 +1,102 @@
+using System.Text;
 using Spectre.Console;
 using Spectre.Console.Rendering;
 
 namespace Lunate.Tui;
 
 /// <summary>
-/// Renders a pending approval as one borderless line:
-/// <c>Allow &lt;tool&gt; &lt;summary&gt;?  [y]es  [n]o  [a]lways this session</c>; a subagent asker
-/// precedes it as <c>&lt;asker&gt; asks: ...</c>. All user-derived text is markup-escaped; the
-/// question marker is yellow.
+/// Renders a pending approval as a panel: a warning headline naming the tool and its concrete
+/// action, a muted bounded detail block and the question with accented key letters. A subagent
+/// asker prefixes the question as <c>&lt;asker&gt; asks: ...</c>. Every user-derived string is
+/// markup-escaped through <see cref="StyledLine"/>; the panel's widths and tones come from
+/// <see cref="ApprovalPanelLayout"/>.
 /// </summary>
 public sealed class ApprovalPromptRenderer
 {
     internal static readonly SpanStyle Question = new(Color: "yellow");
+    internal static readonly SpanStyle Accent = new(Color: LivePalette.AccentHex);
 
-    public IRenderable Render(ApprovalPromptModel prompt)
+    private readonly bool _unicode;
+
+    /// <summary>The Unicode defaults; the interactive session passes its detected capabilities.</summary>
+    public ApprovalPromptRenderer()
+        : this(new TerminalCapabilities(ColorSystemSupport.Detect, Unicode: true)) { }
+
+    internal ApprovalPromptRenderer(TerminalCapabilities capabilities)
+    {
+        ArgumentNullException.ThrowIfNull(capabilities);
+        _unicode = capabilities.Unicode;
+    }
+
+    /// <summary>
+    /// The panel at the standard 80-column frame. A narrow caller passes its own width to
+    /// <see cref="Render(ApprovalPromptModel, int)"/>.
+    /// </summary>
+    public IRenderable Render(ApprovalPromptModel prompt) => Render(prompt, 80);
+
+    /// <summary>
+    /// The panel at <paramref name="width"/> cells: a question too wide for the frame splits above
+    /// the choices, which are never clipped.
+    /// </summary>
+    public IRenderable Render(ApprovalPromptModel prompt, int width)
     {
         ArgumentNullException.ThrowIfNull(prompt);
 
-        var line = new StyledLine();
-        AddAsker(line, prompt);
-        line.Add("Allow ", SpanStyle.Plain);
-        line.Add(prompt.ToolName, SpanStyle.Plain);
-        string summary = ToolArgsSummary.Summarize(prompt.ToolName, prompt.ArgsSummary);
-        if (summary.Length > 0)
+        var builder = new StringBuilder();
+        foreach (var line in ApprovalPanelLayout.Build(prompt, Math.Max(1, width), _unicode))
         {
-            line.Add(" ", SpanStyle.Plain);
-            line.Add(summary, SpanStyle.Plain);
+            var styled = new StyledLine();
+            foreach (var span in line.Spans)
+            {
+                styled.Add(span.Text, Style(span.Tone));
+            }
+
+            builder.Append(styled.ToMarkup()).Append('\n');
         }
 
-        line.Add("?", Question);
-        line.Add("  [y]es  [n]o  [a]lways this session", SpanStyle.Plain);
-        return new Markup(line.ToMarkup() + "\n");
+        return new Markup(builder.ToString());
     }
 
-    /// <summary>The prompt's plain (unstyled) line as shown in the live area.</summary>
-    internal static string PlainText(ApprovalPromptModel prompt)
+    /// <summary>
+    /// The panel's plain lines for the live frame: the same layout at <paramref name="width"/>
+    /// cells with raw SGR tones. A question too wide for the frame splits above the choices, which
+    /// are never clipped.
+    /// </summary>
+    internal static IReadOnlyList<ApprovalPanelLine> PlainLines(
+        ApprovalPromptModel prompt,
+        int width,
+        ColorSystemSupport color,
+        bool unicode
+    )
     {
-        string summary = ToolArgsSummary.Summarize(prompt.ToolName, prompt.ArgsSummary);
-        string question =
-            summary.Length > 0
-                ? $"Allow {prompt.ToolName} {summary}?"
-                : $"Allow {prompt.ToolName}?";
-        string asker = prompt.Asker is { Length: > 0 } label ? $"{label} asks: " : string.Empty;
-        return asker + question + "  [y]es  [n]o  [a]lways this session";
+        ArgumentNullException.ThrowIfNull(prompt);
+
+        return
+        [
+            .. ApprovalPanelLayout
+                .Build(prompt, width, unicode)
+                .Select(line => new ApprovalPanelLine(
+                    [.. line.Spans.Select(span => span with { Text = Styled(span, color) })],
+                    line.Part
+                )),
+        ];
     }
 
-    private static void AddAsker(StyledLine line, ApprovalPromptModel prompt)
-    {
-        if (prompt.Asker is { Length: > 0 } label)
+    private static SpanStyle Style(ApprovalTone tone) =>
+        tone switch
         {
-            line.Add(label, SpanStyle.Plain);
-            line.Add(" asks: ", SpanStyle.Plain);
-        }
-    }
+            ApprovalTone.Warning => Question,
+            ApprovalTone.Muted => SpanStyle.Dim,
+            ApprovalTone.Accent => Accent,
+            _ => SpanStyle.Plain,
+        };
+
+    private static string Styled(ApprovalSpan span, ColorSystemSupport color) =>
+        span.Tone switch
+        {
+            ApprovalTone.Warning => LivePalette.Warning(span.Text, color),
+            ApprovalTone.Muted => LivePalette.Muted(span.Text, color),
+            ApprovalTone.Accent => LivePalette.Accent(span.Text, color),
+            _ => span.Text,
+        };
 }

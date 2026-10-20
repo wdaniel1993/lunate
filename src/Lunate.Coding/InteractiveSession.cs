@@ -1186,10 +1186,24 @@ internal sealed partial class InteractiveSession : IDisposable
         var decision = new TaskCompletionSource<ApprovalChoice>(
             TaskCreationOptions.RunContinuationsAsynchronously
         );
+        string? workspaceRoot =
+            request.WorkspaceRoot is { Length: > 0 } root
+            && !SameRoot(root, _workspace.WorktreeRoot)
+                ? root
+                : null;
+        var detail = ApprovalDetail.Build(
+            toolName,
+            request.Args,
+            request.WorkspaceRoot ?? _workspace.WorktreeRoot,
+            _capabilities.Unicode,
+            _console.Size.Columns
+        );
         _approvalPrompt = new ApprovalPromptModel(
             toolName,
             request.Args.GetRawText(),
-            AskerLabel(request)
+            Asker: AskerLabel(request),
+            Detail: detail,
+            WorkspaceRoot: workspaceRoot
         );
         _approvalDecision = decision;
         _live.SetApproval(_approvalPrompt);
@@ -1220,28 +1234,13 @@ internal sealed partial class InteractiveSession : IDisposable
     }
 
     /// <summary>
-    /// The asking-run label of an approval prompt: a subagent ask names its depth, and a child in
-    /// another worktree also names the root the call will act in (a child in the session's own
-    /// root needs no root label). Top-level asks carry no label.
+    /// The asking-run label of an approval prompt: a subagent ask names its depth; the workspace
+    /// root is a separate prompt line. Top-level asks carry no label.
     /// </summary>
-    private string? AskerLabel(ApprovalRequest request)
-    {
-        if (request.Depth <= 0)
-        {
-            return null;
-        }
-
-        string label = FormattableString.Invariant($"subagent (depth {request.Depth})");
-        if (
-            request.WorkspaceRoot is { Length: > 0 } root
-            && !SameRoot(root, _workspace.WorktreeRoot)
-        )
-        {
-            return FormattableString.Invariant($"{label} in {DisplayDirectory(root)}");
-        }
-
-        return label;
-    }
+    private string? AskerLabel(ApprovalRequest request) =>
+        request.Depth <= 0
+            ? null
+            : FormattableString.Invariant($"subagent (depth {request.Depth})");
 
     private static bool SameRoot(string left, string right) =>
         string.Equals(

@@ -37,9 +37,9 @@ internal static class LiveAreaRenderer
         // frame, so sanitize before clipping; a notice that sanitizes to empty renders as none.
         string? notice = state.Notice is null ? null : CellText.SingleLine(state.Notice);
         var noticeLine = string.IsNullOrEmpty(notice) ? null : notice;
-        var approvalLine = state.Approval is null
-            ? null
-            : ApprovalPromptRenderer.PlainText(state.Approval);
+        IReadOnlyList<ApprovalPanelLine> approvalLines = state.Approval is null
+            ? []
+            : ApprovalPromptRenderer.PlainLines(state.Approval, width, state.Color, state.Unicode);
         IReadOnlyList<string> trustLines = state.Trust is null
             ? []
             : TrustPromptRenderer.PlainLines(state.Trust);
@@ -58,7 +58,7 @@ internal static class LiveAreaRenderer
             + (activityLine is null ? 0 : 1)
             + (subagentLine is null ? 0 : 1)
             + (noticeLine is null ? 0 : 1)
-            + (approvalLine is null ? 0 : 1)
+            + approvalLines.Count
             + trustLines.Count
             + pickerLines.Count
             + autocompleteLines.Count
@@ -97,9 +97,10 @@ internal static class LiveAreaRenderer
             lines.Add(CellText.Clip(noticeLine, width));
         }
 
-        if (approvalLine is not null)
+        int approvalStart = lines.Count;
+        foreach (var approvalLine in approvalLines)
         {
-            lines.Add(CellText.Clip(approvalLine, width));
+            lines.Add(approvalLine.Text);
         }
 
         foreach (string trustLine in trustLines)
@@ -134,19 +135,18 @@ internal static class LiveAreaRenderer
 
         int cursorRow = tail.Count + preInputLines + input.CursorRow;
         // A short terminal caps the frame: trim the transient prefix (tail first, then thinking
-        // and the other state), never the box rules, input or footer. The cursor follows the
-        // lines that remain above the input.
+        // and the other state), then an approval panel's detail before its headline, never the
+        // box rules, input, footer or question. The cursor follows the lines above the input.
         int boxLines = inputLines.Count + (ruleLines * 2) + (footerLine is null ? 0 : 1);
         int transientLines = lines.Count - boxLines;
-        if (state.Size.Rows > 0 && lines.Count > state.Size.Rows)
-        {
-            int trim = Math.Min(lines.Count - state.Size.Rows, transientLines);
-            if (trim > 0)
-            {
-                lines.RemoveRange(0, trim);
-                cursorRow -= trim;
-            }
-        }
+        LiveAreaTrim.Apply(
+            lines,
+            state.Size.Rows,
+            transientLines,
+            approvalStart,
+            approvalLines,
+            ref cursorRow
+        );
 
         return new RenderedFrame(lines, cursorRow, input.CursorColumn);
     }

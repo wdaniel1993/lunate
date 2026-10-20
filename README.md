@@ -151,11 +151,13 @@ per-band rules.
 
 ### Edits you approve, with the diff
 
-Writes and edits stop at one line — `Allow edit src/Order.cs?  [y]es  [n]o  [a]lways this session` —
-and the change is printed as a diff before it lands. The result names the match tier it used
-(`exact`, `normalized` or `indent`), and an ambiguous edit is refused instead of guessed.
+Writes and commands stop at a panel: a warning headline naming the tool and what it will do, a
+bounded detail block with the command or the edit's diff, and
+`Allow edit?  [y]es  [n]o  [a]lways this session`. Below 60 columns the detail shortens first and
+every choice stays on screen. The result names the match tier it used (`exact`, `normalized` or
+`indent`), and an ambiguous edit is refused instead of guessed.
 
-![Approving an edit and reading the diff in the live area](docs/media/features/diff.gif)
+![The approval panel showing an edit's diff and its choices](docs/media/features/approval.gif)
 
 ### Tool calls commit as one line
 
