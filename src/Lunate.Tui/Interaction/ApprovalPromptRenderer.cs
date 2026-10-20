@@ -72,21 +72,6 @@ public sealed class ApprovalPromptRenderer
         ];
     }
 
-    /// <summary>
-    /// Temporary one-line form for the live area; task 2.2 switches the live frame to
-    /// <see cref="PlainLines"/> and removes this.
-    /// </summary>
-    internal static string PlainText(ApprovalPromptModel prompt)
-    {
-        string summary = ToolArgsSummary.Summarize(prompt.ToolName, prompt.ArgsSummary);
-        string question =
-            summary.Length > 0
-                ? $"Allow {prompt.ToolName} {summary}?"
-                : $"Allow {prompt.ToolName}?";
-        string asker = prompt.Asker is { Length: > 0 } label ? $"{label} asks: " : string.Empty;
-        return asker + question + "  [y]es  [n]o  [a]lways this session";
-    }
-
     private static SpanStyle Style(ApprovalTone tone) =>
         tone switch
         {

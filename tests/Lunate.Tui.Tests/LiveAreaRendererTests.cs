@@ -117,11 +117,117 @@ public sealed class LiveAreaRendererTests
         Assert.Equal(
             [
                 "retrying (attempt 2)",
-                "Allow bash ls?  [y]es  [n]o  [a]lways this session",
+                "\u26a0 bash  ls",
+                "Allow bash?  [y]es  [n]o  [a]lways this session",
                 "> Ask anything, / for commands",
             ],
             frame.Lines
         );
+    }
+
+    [Fact]
+    public void A_multi_line_approval_panel_renders_above_the_input()
+    {
+        var state = new LiveAreaState
+        {
+            Input = new InputLineState("go", 2),
+            Approval = new ApprovalPromptModel("bash", "{}", Detail: ["ls", "line one"]),
+            Size = new ConsoleSize(60, 8),
+        };
+
+        var frame = LiveAreaRenderer.Render(state);
+
+        Assert.Equal(
+            [
+                "\u26a0 bash  ls",
+                "  line one",
+                "Allow bash?  [y]es  [n]o  [a]lways this session",
+                "> go",
+            ],
+            frame.Lines
+        );
+        Assert.Equal(3, frame.CursorRow);
+    }
+
+    [Theory]
+    [InlineData(20)]
+    [InlineData(24)]
+    public void A_full_approval_panel_fits_the_frame_at_twenty_and_twenty_four_rows(int rows)
+    {
+        var state = new LiveAreaState
+        {
+            ToolName = "bash",
+            Notice = "retrying (attempt 2)",
+            Approval = new ApprovalPromptModel(
+                "bash",
+                "{}",
+                Detail: ["ls", "a", "b", "c", "d", "e", "f"]
+            ),
+            Footer = new StatusFooterModel("test-model", 1540, 12320, "/repo", "main"),
+            Size = new ConsoleSize(80, rows),
+        };
+
+        var frame = LiveAreaRenderer.Render(state);
+
+        Assert.True(frame.Lines.Count <= rows);
+        Assert.Contains("\u26a0 bash  ls", frame.Lines);
+        Assert.Contains("  f", frame.Lines);
+        Assert.Contains("Allow bash?  [y]es  [n]o  [a]lways this session", frame.Lines);
+    }
+
+    private const string Headline = "\u26a0 bash  echo hi";
+    private const string Question = "Allow bash?  [y]es  [n]o  [a]lways this session";
+    private const string Prompt = "> Ask anything, / for commands";
+    private static readonly string Rule = new('\u2500', 80);
+
+    public static TheoryData<int, string[], int> PanelTrimCases =>
+        new()
+        {
+            { 6, [Headline, "  first", Question, Rule, Prompt, Rule], 4 },
+            { 5, [Headline, Question, Rule, Prompt, Rule], 3 },
+            { 4, [Question, Rule, Prompt, Rule], 2 },
+        };
+
+    [Theory]
+    [MemberData(nameof(PanelTrimCases))]
+    public void A_panel_above_the_input_trims_detail_before_the_headline(
+        int rows,
+        string[] expectedLines,
+        int expectedCursorRow
+    )
+    {
+        var state = new LiveAreaState
+        {
+            Approval = new ApprovalPromptModel(
+                "bash",
+                "{}",
+                Detail: ["echo hi", "first", "second", "third", "fourth"]
+            ),
+            Size = new ConsoleSize(80, rows),
+        };
+
+        var frame = LiveAreaRenderer.Render(state);
+
+        Assert.Contains(Question, frame.Lines);
+        Assert.Equal(expectedLines, frame.Lines);
+        Assert.Equal(expectedCursorRow, frame.CursorRow);
+    }
+
+    [Fact]
+    public void A_narrow_frame_keeps_the_choices_line_whole()
+    {
+        const string choices = "[y]es  [n]o  [a]lways this session";
+        var state = new LiveAreaState
+        {
+            Input = new InputLineState("go", 2),
+            Approval = new ApprovalPromptModel("bash", """{"command":"ls"}"""),
+            Size = new ConsoleSize(40, 8),
+        };
+
+        var frame = LiveAreaRenderer.Render(state);
+
+        Assert.Equal(["\u26a0 bash  ls", "Allow bash?", choices, "> go"], frame.Lines);
+        Assert.Equal(34, CellText.Width(frame.Lines[2]));
     }
 
     [Fact]
