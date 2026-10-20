@@ -3,12 +3,33 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "${SCRIPT_DIR}/lib.sh"
+. "${SCRIPT_DIR}/test-parallel.sh"
 
 cd "${SCRIPT_DIR}/.."
 
 BUDGET_MS="${BUDGET_MS:-150}"
 CONFIGURATION="${CONFIGURATION:-Release}"
 PUBLISH_DIR="artifacts/publish"
+
+# Slots per test pass. The two culture passes run beside each other, so the
+# machine sees at most 2 x JOBS test processes (4 by default) instead of the
+# unbounded fan-out of a solution-wide test run.
+JOBS="${LUNATE_VERIFY_JOBS:-2}"
+case "$JOBS" in
+  '' | *[!0-9]*)
+    echo "verify: LUNATE_VERIFY_JOBS must be a positive integer" >&2
+    exit 1
+    ;;
+esac
+if [ "$JOBS" -lt 1 ]; then
+  echo "verify: LUNATE_VERIFY_JOBS must be a positive integer" >&2
+  exit 1
+fi
+
+# Assemblies that spawn processes or manipulate process-wide state keep a
+# serial lane inside a pass; see scripts/test-parallel.sh for the measurement
+# that backs the choice.
+SERIAL_TEST_PROJECTS="Lunate.Coding.Tests Lunate.Agent.Tests"
 
 # English-first gate output: pin the dotnet CLI / test-runner UI language so
 # localized toolchain text never leaks into logs on non-English machines. Only
@@ -137,12 +158,67 @@ step "test"
 # The Category=Perf budget check is excluded here (and from the culture pass) and
 # runs as its own step below, so the main passes stay fast and the budget is
 # still enforced by the gate.
-run_tests "test" dotnet test --solution lunate.sln -c "$CONFIGURATION" --filter-not-trait Category=Perf
+#
+# The two culture passes are independent processes with independent
+# environments, so they run at the same time instead of back to back. Each has
+# its own bounded pool (LUNATE_VERIFY_JOBS, default 2); a serial assembly owns
+# every slot of its pass. Output is still printed per assembly and in solution
+# order by verify_check_test_pass. `--no-build` is safe because the build step
+# above built every test project, and the missing-assembly check proves it.
+test_missing=""
+while IFS= read -r project; do
+  assembly="${project%/*}/bin/${CONFIGURATION}/net10.0/$(basename "$project" .csproj).dll"
+  if [ ! -f "$assembly" ]; then
+    test_missing="${test_missing} ${assembly}"
+  fi
+done < <(verify_test_projects)
+if [ -n "$test_missing" ]; then
+  echo "verify: test assemblies missing from the ${CONFIGURATION} build:${test_missing}" >&2
+  echo "verify: run the build step first (dotnet build lunate.sln -c ${CONFIGURATION})" >&2
+  exit 1
+fi
+
+test_queue=()
+while IFS= read -r item; do
+  test_queue+=("$item")
+done < <(verify_test_queue serial-first)
+culture_queue=()
+while IFS= read -r item; do
+  culture_queue+=("$item")
+done < <(verify_test_queue serial-last)
+if [ "${#test_queue[@]}" -eq 0 ]; then
+  echo "verify: no test projects found in lunate.sln — test discovery regression?" >&2
+  exit 1
+fi
+
+test_root="${VERIFY_TMP_ROOT}/test-phase"
+default_dir="${test_root}/default"
+culture_dir="${test_root}/de-AT"
+VERIFY_TEST_FAILURES=0
+(verify_run_test_pass "$default_dir" "${test_queue[@]}") &
+default_pid=$!
+(LANG=de_AT.UTF-8 LC_ALL=de_AT.UTF-8 verify_run_test_pass "$culture_dir" "${culture_queue[@]}") &
+culture_pid=$!
+
+default_rc=0
+culture_rc=0
+wait "$default_pid" || default_rc=$?
+wait "$culture_pid" || culture_rc=$?
+
+verify_check_test_pass "$default_dir" "test"
 
 step "test (de-AT culture)"
 # Non-English culture pass (S-5 finding). Effective on macOS/Linux; Windows
 # runners keep the OS culture (LANG is not honored there).
-LANG=de_AT.UTF-8 LC_ALL=de_AT.UTF-8 run_tests "test (de-AT culture)" dotnet test --solution lunate.sln -c "$CONFIGURATION" --no-build --filter-not-trait Category=Perf
+verify_check_test_pass "$culture_dir" "test (de-AT culture)"
+
+if [ "$default_rc" -ne 0 ] || [ "$culture_rc" -ne 0 ]; then
+  echo "verify: the test phase runner failed (default ${default_rc}, de-AT ${culture_rc})" >&2
+  exit 1
+fi
+if [ "$VERIFY_TEST_FAILURES" -ne 0 ]; then
+  exit 1
+fi
 
 step "path index budget"
 run_tests "path index budget" dotnet test --project tests/Lunate.Coding.Tests/Lunate.Coding.Tests.csproj -c "$CONFIGURATION" --no-build --filter-trait Category=Perf

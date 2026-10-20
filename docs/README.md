@@ -30,6 +30,15 @@ Lunate keeps each kind of document in exactly one home. Start here, then jump to
 - **Keep it current.** A change updates the documents it invalidates; stale documentation is a bug.
 - **New documents land in a home above.** If none fits, propose a new home in an OpenSpec change first.
 
+## Verification gate
+
+`scripts/verify.sh` is the done-gate; [`../CONTRIBUTING.md`](../CONTRIBUTING.md) owns its step
+list. Its test phase runs the default-culture and `de-AT` passes at the same time instead of back
+to back, each with a bounded pool of test assemblies (`LUNATE_VERIFY_JOBS`, default 2 slots per
+pass). Process- and environment-sensitive assemblies keep a serial lane inside a pass. The two
+passes are independent processes, so overlapping them removes the second pass's duplicate wall
+time without changing what the gate checks.
+
 ## Blame and the one-time reformat
 
 `.git-blame-ignore-revs` lists the one-time CSharpier reformat (and future bulk formatting commits). GitHub honors it automatically; configure git once to use it locally:
