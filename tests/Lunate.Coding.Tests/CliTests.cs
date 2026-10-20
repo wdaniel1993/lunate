@@ -211,6 +211,35 @@ public sealed class CliTests
     }
 
     [Fact]
+    public void Run_with_print_and_resume_refuses_before_composing()
+    {
+        using var temp = new TempDirectory();
+        var client = new ScriptedChatClient().Enqueue(Scripts.Text("ok"), Scripts.Stop());
+        var factory = new FakeChatClientFactory(client);
+        PrintModeOptions options = PrintModeTestSupport.BaseOptions(temp, factory);
+        using var output = new StringWriter();
+        using var error = new StringWriter();
+
+        var exitCode = Cli.Run(
+            ["-p", "--resume", "Hi"],
+            output,
+            error,
+            TestContext.Current.CancellationToken,
+            options
+        );
+
+        Assert.Equal(2, exitCode);
+        Assert.Equal(
+            "lunate: --resume needs the interactive picker; use --session <id|path> or --continue"
+                + Environment.NewLine,
+            error.ToString()
+        );
+        Assert.Empty(output.ToString());
+        Assert.Null(factory.CreatedModel);
+        Assert.Empty(client.Requests);
+    }
+
+    [Fact]
     public void Run_with_print_accepts_flags_before_the_prompt()
     {
         using var temp = new TempDirectory();

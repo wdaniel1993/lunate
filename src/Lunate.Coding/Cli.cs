@@ -99,6 +99,16 @@ internal static class Cli
             return 2;
         }
 
+        // The picker needs the terminal UI; print mode refuses the flag before any composition
+        // (design D3), so no client, extension host or MCP server starts.
+        if (launch.Print && launch.Resume)
+        {
+            errors.WriteLine(
+                "lunate: --resume needs the interactive picker; use --session <id|path> or --continue"
+            );
+            return 2;
+        }
+
         ExtensionSeams? seams = launch.Print
             ? extensions ?? printOptions?.Extensions
             : extensions ?? interactiveOptions?.Extensions;

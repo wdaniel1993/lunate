@@ -5,13 +5,7 @@ namespace Lunate.Coding;
 internal sealed partial class InteractiveSession
 {
     /// <summary>The session store root the launch selection reads; defaults to the profile's store.</summary>
-    private string SessionsRoot =>
-        _options.SessionsRoot
-        ?? Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-            ".lunate",
-            "sessions"
-        );
+    private string SessionsRoot => _options.SessionsRoot ?? SessionSelection.DefaultRoot;
 
     /// <summary>
     /// Resolves the session the session starts with, after the workspace and the session directory
@@ -57,50 +51,26 @@ internal sealed partial class InteractiveSession
     /// </summary>
     private Session SessionFromValue(string value)
     {
-        if (IsSessionPath(value))
+        SessionChoice choice = SessionSelection.FromValue(SessionsRoot, value);
+        if (choice.Error is { } error)
         {
-            return LoadStartupSession(value, value);
-        }
-
-        IReadOnlyList<SessionSummary> matches = Session.FindById(SessionsRoot, value);
-        if (matches.Count == 0)
-        {
-            Notify($"no session with id '{value}'; run a prompt to start one", NoticeLevel.Error);
+            Notify(error, NoticeLevel.Error);
             return FreshSession();
         }
 
-        if (matches.Count > 1)
-        {
-            Notify(
-                $"session id '{value}' is ambiguous: {string.Join(", ", matches.Select(match => match.Path))}",
-                NoticeLevel.Error
-            );
-            return FreshSession();
-        }
-
-        return LoadStartupSession(matches[0].Path, value);
+        return LoadStartupSession(choice.Path!, choice.Label);
     }
 
     private Session ContinueSession()
     {
-        StringComparison comparison = OperatingSystem.IsLinux()
-            ? StringComparison.Ordinal
-            : StringComparison.OrdinalIgnoreCase;
-        SessionSummary? newest = Session.FindNewest(
-            SessionsRoot,
-            _workspace.WorktreeRoot,
-            comparison
-        );
-        if (newest is null)
+        SessionChoice choice = SessionSelection.Continue(SessionsRoot, _workspace.WorktreeRoot);
+        if (choice.Error is { } error)
         {
-            Notify(
-                $"no session for '{_workspace.WorktreeRoot}'; run a prompt to start one",
-                NoticeLevel.Error
-            );
+            Notify(error, NoticeLevel.Error);
             return FreshSession();
         }
 
-        return LoadStartupSession(newest.Path, newest.Id);
+        return LoadStartupSession(choice.Path!, choice.Label);
     }
 
     /// <summary>Loads a selected file; a failure names the input and starts fresh.</summary>
@@ -123,9 +93,4 @@ internal sealed partial class InteractiveSession
         _fileless = false;
         return HarnessFactory.CreateSession(_sessionDirectory, _workspace);
     }
-
-    private static bool IsSessionPath(string value) =>
-        value.Contains('/')
-        || value.Contains('\\')
-        || value.EndsWith(".jsonl", StringComparison.OrdinalIgnoreCase);
 }

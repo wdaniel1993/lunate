@@ -37,6 +37,9 @@ internal sealed record PrintModeOptions
     /// <summary>The session directory; null derives it from the workspace and repository identity.</summary>
     public string? SessionDirectory { get; init; }
 
+    /// <summary>The session store root the launch selection reads; null uses the profile's store.</summary>
+    public string? SessionsRoot { get; init; }
+
     /// <summary>The working directory; null uses the process working directory.</summary>
     public string? WorkingDirectory { get; init; }
 
@@ -110,9 +113,18 @@ internal static class PrintMode
             IReadOnlyList<ITool> inheritedTools = [];
             Workspace workspace;
             SkillCatalog skills;
+            Session? session;
             try
             {
                 workspace = new Workspace(options.WorkingDirectory ?? Environment.CurrentDirectory);
+                (Session? selected, string? selectionError) = ResolveSession(options, workspace);
+                if (selectionError is { } message)
+                {
+                    interaction.Notify(new UserNotice(NoticeLevel.Error, message));
+                    return 1;
+                }
+
+                session = selected;
                 IExtensionLog log = options.Extensions?.Log ?? new StderrExtensionLog(errors);
                 if (options.Extensions?.NoExtensions is not true)
                 {
@@ -237,6 +249,7 @@ internal static class PrintMode
                 harness = CreateHarness(
                     options,
                     workspace,
+                    session,
                     settings,
                     model,
                     catalog,
@@ -476,9 +489,54 @@ internal static class PrintMode
     private static string DefaultHomeDirectory() =>
         Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
 
+    /// <summary>
+    /// The launch selection: <c>--no-session</c> runs fileless, <c>--session</c> loads by id or
+    /// path, <c>--continue</c> loads the newest session recorded for the workspace, and no flag
+    /// creates a fresh session file as before. A selection that cannot resolve returns the error
+    /// to report instead of starting a harness.
+    /// </summary>
+    private static (Session? Session, string? Error) ResolveSession(
+        PrintModeOptions options,
+        Workspace workspace
+    )
+    {
+        LaunchOptions launch = options.Launch;
+        if (launch.NoSession)
+        {
+            return (null, null);
+        }
+
+        if (launch.Session is null && !launch.Continue)
+        {
+            string directory =
+                options.SessionDirectory ?? HarnessFactory.DefaultSessionDirectory(workspace);
+            return (HarnessFactory.CreateSession(directory, workspace), null);
+        }
+
+        string sessionsRoot = options.SessionsRoot ?? SessionSelection.DefaultRoot;
+        SessionChoice choice = launch.Session is { } value
+            ? SessionSelection.FromValue(sessionsRoot, value)
+            : SessionSelection.Continue(sessionsRoot, workspace.WorktreeRoot);
+        if (choice.Error is { } error)
+        {
+            return (null, error);
+        }
+
+        try
+        {
+            return (Session.Load(choice.Path!), null);
+        }
+        catch (Exception exception)
+            when (exception is IOException or InvalidDataException or UnauthorizedAccessException)
+        {
+            return (null, $"could not load session '{choice.Label}': {exception.Message}");
+        }
+    }
+
     private static AgentHarness CreateHarness(
         PrintModeOptions options,
         Workspace workspace,
+        Session? session,
         AgentSettings settings,
         ModelInfo model,
         ModelCatalog catalog,
@@ -501,12 +559,9 @@ internal static class PrintMode
             tools.Add(tool);
         }
 
-        string directory =
-            options.SessionDirectory ?? HarnessFactory.DefaultSessionDirectory(workspace);
-        Session session = HarnessFactory.CreateSession(directory, workspace);
-        if (skills.Index.Text.Length > 0)
+        if (session is { } active && skills.Index.Text.Length > 0)
         {
-            session.AppendPromptSection("skills", skills.Index.Text);
+            RecordSkillsSection(active, skills.Index.Text);
         }
 
         var harnessOptions = new AgentHarnessOptions
@@ -538,5 +593,22 @@ internal static class PrintMode
         };
 
         return new AgentHarness(factory.Create(model), tools, harnessOptions);
+    }
+
+    /// <summary>
+    /// Records the skills index on the session, once per index: a resumed session keeps its last
+    /// recorded section instead of gaining a duplicate (the interactive session's rule).
+    /// </summary>
+    private static void RecordSkillsSection(Session session, string text)
+    {
+        SessionPromptSectionEntry? last = session
+            .Entries.OfType<SessionPromptSectionEntry>()
+            .LastOrDefault(entry =>
+                string.Equals(entry.Section, "skills", StringComparison.Ordinal)
+            );
+        if (last is null || !string.Equals(last.Text, text, StringComparison.Ordinal))
+        {
+            session.AppendPromptSection("skills", text);
+        }
     }
 }
