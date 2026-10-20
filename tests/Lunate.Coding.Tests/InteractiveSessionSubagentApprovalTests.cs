@@ -43,7 +43,7 @@ public sealed class InteractiveSessionSubagentApprovalTests
     }
 
     [Fact]
-    public async Task A_workspace_childs_ask_names_the_root_it_will_act_in()
+    public async Task A_child_in_another_root_has_a_workspace_root_line()
     {
         using var host = new InteractiveSessionHost();
         Task run = host.RunAsync();
@@ -67,7 +67,70 @@ public sealed class InteractiveSessionSubagentApprovalTests
         string displayed = childRoot.StartsWith(home, StringComparison.Ordinal)
             ? "~" + childRoot[home.Length..]
             : childRoot;
-        Assert.Equal($"subagent (depth 1) in {displayed}", host.Session.PendingApproval!.Asker);
+        Assert.Equal(displayed, host.Session.PendingApproval!.WorkspaceRoot);
+        Assert.Equal("subagent (depth 1)", host.Session.PendingApproval.Asker);
+        host.Console.SendText("n");
+
+        Assert.False(await decision);
+        Assert.Null(host.Session.PendingApproval);
+
+        host.Console.Complete();
+        await run;
+    }
+
+    [Fact]
+    public async Task A_child_in_the_sessions_own_root_has_no_workspace_root_line()
+    {
+        using var host = new InteractiveSessionHost();
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+        IToolApprover approver = host.Session.Approver!;
+        // The session canonicalizes its working directory ("/var" vs "/private/var" on macOS),
+        // so the request must carry the canonical root to look like a child's own worktree.
+        string ownRoot = new Workspace(host.Temp.Root).WorktreeRoot;
+        ApprovalRequest child = new(
+            new WriteRiskTool(),
+            JsonDocument.Parse("{}").RootElement.Clone(),
+            RunId: "run_child",
+            ParentRunId: "run_parent",
+            Depth: 1,
+            WorkspaceRoot: ownRoot
+        );
+
+        ValueTask<bool> decision = approver.ApproveAsync(child, Ct);
+        await host.WaitUntilAsync(() => host.Session.PendingApproval is not null);
+        Assert.Null(host.Session.PendingApproval!.WorkspaceRoot);
+        host.Console.SendText("n");
+
+        Assert.False(await decision);
+        Assert.Null(host.Session.PendingApproval);
+
+        host.Console.Complete();
+        await run;
+    }
+
+    [Fact]
+    public async Task A_top_level_ask_in_another_root_has_a_workspace_root_line()
+    {
+        using var host = new InteractiveSessionHost();
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+        IToolApprover approver = host.Session.Approver!;
+        string childRoot = Path.Combine(host.Temp.Root, "worktree-b");
+        Directory.CreateDirectory(childRoot);
+        ApprovalRequest topLevel = new(
+            new WriteRiskTool(),
+            JsonDocument.Parse("{}").RootElement.Clone(),
+            RunId: "run_top",
+            ParentRunId: null,
+            Depth: 0,
+            WorkspaceRoot: childRoot
+        );
+
+        ValueTask<bool> decision = approver.ApproveAsync(topLevel, Ct);
+        await host.WaitUntilAsync(() => host.Session.PendingApproval is not null);
+        Assert.Equal(childRoot, host.Session.PendingApproval!.WorkspaceRoot);
+        Assert.Null(host.Session.PendingApproval.Asker);
         host.Console.SendText("n");
 
         Assert.False(await decision);
