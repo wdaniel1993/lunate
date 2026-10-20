@@ -8,6 +8,12 @@
 # This runner starts both at once, each with its own bounded pool of JOBS
 # slots, and reports each assembly's output in a deterministic order.
 #
+# OPT-IN: verify.sh uses this runner only when LUNATE_VERIFY_JOBS is 1 or more
+# (2 is the sweet spot locally). The default is 0 — the solution-wide run the
+# gate has always used — because three timing-sensitive suites (a 5 MB edit
+# tripwire, a crashed-MCP state read, a remote wire timeout) flaked on the
+# Windows CI runner under the pooled load.
+#
 # Assemblies that spawn child processes or manipulate process-wide state keep a
 # serial lane: a serial job owns every slot of its pass, so no other assembly of
 # the same pass runs beside it. Measurement on the reference Mac (Release,

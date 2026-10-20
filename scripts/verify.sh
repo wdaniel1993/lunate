@@ -14,15 +14,15 @@ PUBLISH_DIR="artifacts/publish"
 # Slots per test pass. The two culture passes run beside each other, so the
 # machine sees at most 2 x JOBS test processes (4 by default) instead of the
 # unbounded fan-out of a solution-wide test run.
-JOBS="${LUNATE_VERIFY_JOBS:-2}"
+JOBS="${LUNATE_VERIFY_JOBS:-0}"
 case "$JOBS" in
   '' | *[!0-9]*)
     echo "verify: LUNATE_VERIFY_JOBS must be a positive integer" >&2
     exit 1
     ;;
 esac
-if [ "$JOBS" -lt 1 ]; then
-  echo "verify: LUNATE_VERIFY_JOBS must be a positive integer" >&2
+if [ "$JOBS" -lt 0 ]; then
+  echo "verify: LUNATE_VERIFY_JOBS must be zero or a positive integer" >&2
   exit 1
 fi
 
@@ -165,6 +165,16 @@ step "test"
 # every slot of its pass. Output is still printed per assembly and in solution
 # order by verify_check_test_pass. `--no-build` is safe because the build step
 # above built every test project, and the missing-assembly check proves it.
+# The pooled path is opt-in (LUNATE_VERIFY_JOBS=2 or more): it overlaps the two culture
+# passes and bounds each pass's pool, which is ~2 minutes faster locally but leans on the
+# runner harder. CI keeps the solution-wide run below, which is what the gate has always
+# used; three timing-sensitive suites proved flaky under the pooled load on the Windows
+# runner (see the PR), so the default stays the proven path.
+if [ "$JOBS" -eq 0 ]; then
+  run_tests "test" dotnet test --solution lunate.sln -c "$CONFIGURATION" --filter-not-trait Category=Perf
+  step "test (de-AT culture)"
+  LANG=de_AT.UTF-8 LC_ALL=de_AT.UTF-8 run_tests "test (de-AT culture)" dotnet test --solution lunate.sln -c "$CONFIGURATION" --no-build --filter-not-trait Category=Perf
+else
 test_missing=""
 while IFS= read -r project; do
   assembly="${project%/*}/bin/${CONFIGURATION}/net10.0/$(basename "$project" .csproj).dll"
@@ -218,6 +228,7 @@ if [ "$default_rc" -ne 0 ] || [ "$culture_rc" -ne 0 ]; then
 fi
 if [ "$VERIFY_TEST_FAILURES" -ne 0 ]; then
   exit 1
+fi
 fi
 
 step "path index budget"
