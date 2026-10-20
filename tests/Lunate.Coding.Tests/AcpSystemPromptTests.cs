@@ -22,7 +22,7 @@ public sealed class AcpSystemPromptTests
             [],
             [],
             services,
-            new LaunchOptions { SystemPrompt = "the acp contract" },
+            new LaunchOptions { SystemPrompt = "the acp contract", Model = "gpt-4o-mini" },
             new FakeChatClientFactory(client),
             temp.File("sessions")
         );
@@ -51,6 +51,7 @@ public sealed class AcpSystemPromptTests
             {
                 SystemPrompt = "the acp contract",
                 AppendSystemPrompt = "the acp appendix",
+                Model = "gpt-4o-mini",
             },
             new FakeChatClientFactory(client),
             temp.File("sessions")

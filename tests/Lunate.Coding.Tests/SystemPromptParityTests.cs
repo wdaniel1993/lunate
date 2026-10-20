@@ -16,7 +16,12 @@ public sealed class SystemPromptParityTests
         using var temp = new TempDirectory();
         using var pin = new DatePin("2026-01-15");
         string root = new Workspace(temp.Root).WorktreeRoot;
-        var launch = new LaunchOptions { AppendSystemPrompt = "shared appendix" };
+        // A catalog model keeps the harness creation independent of the developer's settings.
+        var launch = new LaunchOptions
+        {
+            AppendSystemPrompt = "shared appendix",
+            Model = "gpt-4o-mini",
+        };
         string expected = SystemPrompt.Compose(
             new Workspace(root),
             ["read", "write", "edit", "bash"],
