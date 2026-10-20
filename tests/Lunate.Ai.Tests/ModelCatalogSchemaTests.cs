@@ -132,6 +132,27 @@ public sealed class ModelCatalogSchemaTests
         Assert.Equal("user-only", catalog.Models[embedded.Count + 1].Id);
     }
 
+    [Fact]
+    public void LoadLayered_lets_the_managed_cache_override_the_embedded_catalog()
+    {
+        using var temp = new TempDirectory();
+        string managedFile = WriteJson(
+            temp.File("models.catalog.json"),
+            """
+            {
+              "schemaVersion": 2,
+              "models": [
+                { "id": "gpt-4o-mini", "provider": "openai", "contextWindow": 111, "supportsTools": true }
+              ]
+            }
+            """
+        );
+
+        ModelCatalog catalog = ModelCatalog.LoadLayered(managedFile, userFilePath: null);
+
+        Assert.Equal(111, catalog.Find("gpt-4o-mini")!.ContextWindow);
+    }
+
     private static string WriteJson(string path, string json)
     {
         File.WriteAllText(path, json);
