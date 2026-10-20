@@ -30,8 +30,8 @@ Design-first change: each task is one commit and lands on `change/prompt-caching
 
 ## 5. Opt-in live smoke
 
-- [ ] 5.1 `tests/Lunate.Ai.Tests/LiveContractTests.cs`: `LUNATE_LIVE=1` + `ANTHROPIC_API_KEY`; a two-turn request with a cacheable system prompt, asserting turn two's `CachedInputTokenCount > 0`; skipped without the flag/key.
-- [ ] 5.2 Commit `test(ai): add opt-in prompt-cache live smoke`.
+- [x] 5.1 `tests/Lunate.Ai.Tests/LiveContractTests.cs`: `LUNATE_LIVE=1` + `ANTHROPIC_API_KEY`; a two-turn request with a cacheable system prompt, asserting turn two's `CachedInputTokenCount > 0`; skipped without the flag/key.
+- [x] 5.2 Commit `test(ai): add opt-in prompt-cache live smoke`.
 
 ## 6. ADR, docs and the gate
 

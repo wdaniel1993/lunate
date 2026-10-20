@@ -119,6 +119,53 @@ public sealed class LiveContractTests
         Assert.NotNull(second[^1].FinishReason);
     }
 
+    /// <summary>
+    /// The prompt-cache contract: a system prompt above Anthropic's minimum cacheable prefix is
+    /// written on the first turn and read back on the second.
+    /// </summary>
+    [Fact]
+    public async Task Anthropic_prompt_cache_is_read_on_the_second_turn()
+    {
+        Assert.SkipUnless(LiveRequested(), $"Live contracts require {LiveVariable}=1.");
+        Assert.SkipWhen(
+            string.IsNullOrEmpty(Environment.GetEnvironmentVariable(AnthropicApiKeyVariable)),
+            $"{AnthropicApiKeyVariable} is not set."
+        );
+
+        var factory = new ChatClientFactory(
+            new MarkingLoggerFactory(static () => { }),
+            enableOpenTelemetry: false
+        );
+        IChatClient client = factory.Create(
+            new ModelInfo("claude-sonnet-5-5", "anthropic", null, 1_000_000, true)
+        );
+        string prefix = string.Join(
+            ' ',
+            Enumerable.Repeat(
+                "This cacheable system prompt repeats a sentence so the prefix exceeds the minimum cacheable length for the model.",
+                220
+            )
+        );
+        ChatMessage system = new(ChatRole.System, prefix);
+        ChatMessage firstUser = new(ChatRole.User, "Reply with the single word: alpha");
+        ChatMessage secondUser = new(ChatRole.User, "Reply with the single word: beta");
+
+        ChatResponse turnOne = await client.GetResponseAsync(
+            [system, firstUser],
+            cancellationToken: TestContext.Current.CancellationToken
+        );
+        ChatResponse turnTwo = await client.GetResponseAsync(
+            [system, firstUser, turnOne.Messages[0], secondUser],
+            cancellationToken: TestContext.Current.CancellationToken
+        );
+
+        long? cached = turnTwo.Usage?.CachedInputTokenCount;
+        Assert.True(
+            cached > 0,
+            $"Expected a prompt-cache read on the second turn. Usage: {turnTwo.Usage}; cached input tokens: {cached}."
+        );
+    }
+
     private static async Task RunStreamedRoundTrip(ModelInfo model)
     {
         var factory = new ChatClientFactory(
