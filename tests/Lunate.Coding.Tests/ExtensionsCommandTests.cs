@@ -176,7 +176,10 @@ public sealed class ExtensionsCommandTests
         Assert.Equal("global", node.GetProperty("scope").GetString());
         Assert.Equal("loaded", node.GetProperty("state").GetString());
         Assert.True(node.GetProperty("loadMs").GetInt64() >= 0);
-        Assert.False(node.TryGetProperty("slow", out _));
+        // "slow" marks a load above the 500 ms threshold; a hot CI runner can cross it for
+        // the tiny fixture, so the contract is the marker matching the measured load.
+        bool slow = node.TryGetProperty("slow", out _);
+        Assert.Equal(node.GetProperty("loadMs").GetInt64() >= 500, slow);
         Assert.Equal(0, node.GetProperty("tools").GetInt32());
         Assert.Equal(0, node.GetProperty("commands").GetInt32());
         Assert.Equal(3, node.GetProperty("hooks").GetInt32());

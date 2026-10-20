@@ -64,7 +64,8 @@ public sealed class InteractiveSessionCommandTests
 
         host.Console.SendText("/help");
         host.Console.SendEnter();
-        await WaitForScrollbackAsync(host, "extensions");
+        // "extensions" also appears in the welcome footer; wait on text only /help prints.
+        await WaitForScrollbackAsync(host, "/compact  — compact the conversation now");
 
         Assert.Contains(
             """
