@@ -7,7 +7,7 @@
 
 ## 2. The panel renderer
 
-- [ ] 2.1 Headline (`⚠ <tool>  <action>`, ASCII `!`), detail block (muted, indented, bounded, clipped), question (`Allow <tool>?  [y]es  [n]o  [a]lways this session`, key letters accented); markup escaped; unit tests per part.
+- [x] 2.1 Headline (`⚠ <tool>  <action>`, ASCII `!`), detail block (muted, indented, bounded, clipped), question (`Allow <tool>?  [y]es  [n]o  [a]lways this session`, key letters accented); markup escaped; unit tests per part.
 - [ ] 2.2 The live-area integration: the panel renders above the input in the live frame; the frame-cap trims the detail first, then the headline, never the question (height tests at 20/24 rows).
 - [ ] 2.3 The narrow band (<60): the question on its own line; every choice visible at 40 columns (goldens).
 
