@@ -28,12 +28,22 @@ public sealed class ApprovalPromptRenderer
         _unicode = capabilities.Unicode;
     }
 
-    public IRenderable Render(ApprovalPromptModel prompt)
+    /// <summary>
+    /// The panel at the standard 80-column frame. A narrow caller passes its own width to
+    /// <see cref="Render(ApprovalPromptModel, int)"/>.
+    /// </summary>
+    public IRenderable Render(ApprovalPromptModel prompt) => Render(prompt, 80);
+
+    /// <summary>
+    /// The panel at <paramref name="width"/> cells: a question too wide for the frame splits above
+    /// the choices, which are never clipped.
+    /// </summary>
+    public IRenderable Render(ApprovalPromptModel prompt, int width)
     {
         ArgumentNullException.ThrowIfNull(prompt);
 
         var builder = new StringBuilder();
-        foreach (var line in ApprovalPanelLayout.Build(prompt, int.MaxValue, _unicode))
+        foreach (var line in ApprovalPanelLayout.Build(prompt, Math.Max(1, width), _unicode))
         {
             var styled = new StyledLine();
             foreach (var span in line.Spans)

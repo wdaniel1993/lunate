@@ -171,6 +171,7 @@ Lunate.Tui.ApprovalPromptModel.ToolName.init -> void
 Lunate.Tui.ApprovalPromptRenderer
 Lunate.Tui.ApprovalPromptRenderer.ApprovalPromptRenderer() -> void
 Lunate.Tui.ApprovalPromptRenderer.Render(Lunate.Tui.ApprovalPromptModel! prompt) -> Spectre.Console.Rendering.IRenderable!
+Lunate.Tui.ApprovalPromptRenderer.Render(Lunate.Tui.ApprovalPromptModel! prompt, int width) -> Spectre.Console.Rendering.IRenderable!
 override Lunate.Tui.ApprovalPromptModel.Equals(object? obj) -> bool
 override Lunate.Tui.ApprovalPromptModel.GetHashCode() -> int
 override Lunate.Tui.ApprovalPromptModel.ToString() -> string!

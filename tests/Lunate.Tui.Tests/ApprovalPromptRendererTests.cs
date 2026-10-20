@@ -326,6 +326,31 @@ public sealed class ApprovalPromptRendererTests
         );
     }
 
+    [Fact]
+    public void Render_at_forty_columns_puts_the_question_above_the_choices()
+    {
+        var console = new TestConsole();
+        console.Profile.Width = 40;
+        console.Write(
+            new ApprovalPromptRenderer().Render(
+                new ApprovalPromptModel(
+                    "bash",
+                    string.Empty,
+                    Detail:
+                    [
+                        "dotnet format --verify-no-changes --include src/Lunate/Tui/Approval.cs",
+                        "a detail line that is much longer than forty columns of output",
+                    ]
+                ),
+                width: 40
+            )
+        );
+
+        string[] lines = console.Output.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        Assert.Contains("Allow bash?", lines);
+        Assert.Contains("[y]es  [n]o  [a]lways this session", lines);
+    }
+
     private static string Render(ApprovalPromptModel prompt)
     {
         var console = new TestConsole();
