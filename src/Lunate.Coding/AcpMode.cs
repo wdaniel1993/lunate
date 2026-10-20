@@ -221,7 +221,7 @@ internal static class AcpMode
         AcpSessionContext context,
         ExtensionSession? host,
         IReadOnlyList<ITool> mcpTools,
-        IReadOnlyList<ITool> inheritedTools,
+        List<ITool> inheritedTools,
         WorkspaceServices workspaceServices,
         LaunchOptions? launch
     )
@@ -246,6 +246,18 @@ internal static class AcpMode
         foreach (ITool tool in mcpTools)
         {
             tools.Add(tool);
+        }
+
+        if (
+            !HarnessFactory.TryFilterTools(
+                tools,
+                inheritedTools,
+                launch ?? new LaunchOptions(),
+                out string? toolError
+            )
+        )
+        {
+            throw new ToolFilterException(toolError!);
         }
 
         Session session = HarnessFactory.CreateSession(

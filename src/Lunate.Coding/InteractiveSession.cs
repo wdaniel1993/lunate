@@ -397,6 +397,20 @@ internal sealed partial class InteractiveSession : IDisposable
         );
         await ComposeMcpConfigAsync(ct);
         await ComposeMcpToolsAsync(ct);
+        // The launch tool selection narrows the fully composed registry (base, extension and MCP
+        // tools) and the inherited list the child workspace factory offers.
+        if (
+            !HarnessFactory.TryFilterTools(
+                _tools,
+                _inheritedTools,
+                _options.Launch,
+                out string? toolError
+            )
+        )
+        {
+            throw new ToolFilterException(toolError!);
+        }
+
         _workspaceTools = HarnessFactory.CreateWorkspaceTools(
             _workspaceServices,
             _inheritedTools,

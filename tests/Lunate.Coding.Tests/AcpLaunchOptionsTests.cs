@@ -132,6 +132,49 @@ public sealed class AcpLaunchOptionsTests
         Assert.Contains("is not in the catalog", stdout, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void An_acp_unknown_tool_name_fails_the_session_creation()
+    {
+        using var temp = new TempDirectory();
+        using var input = new MemoryStream();
+        using var output = new MemoryStream();
+        using var errors = new StringWriter();
+        Write(
+            input,
+            """{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":1,"clientInfo":{"name":"test","version":"0.0.1"},"clientCapabilities":{}}}"""
+        );
+        Write(
+            input,
+            JsonSerializer.Serialize(
+                new
+                {
+                    jsonrpc = "2.0",
+                    id = 2,
+                    method = "session/new",
+                    @params = new { cwd = temp.Root, mcpServers = Array.Empty<string>() },
+                }
+            )
+        );
+        input.Position = 0;
+
+        int exitCode = AcpMode.Run(
+            errors,
+            input,
+            output,
+            TestContext.Current.CancellationToken,
+            TestExtensionSeams.Empty(temp),
+            mcpConfigPath: temp.File("global-mcp.json"),
+            mcpAgentsConfigPath: temp.File("agents-mcp.json"),
+            launch: new LaunchOptions { Tools = ["nope"] }
+        );
+
+        Assert.Equal(0, exitCode);
+        string stdout = Encoding.UTF8.GetString(output.ToArray());
+        Assert.Contains("unknown tools", stdout, StringComparison.Ordinal);
+        Assert.Contains("nope", stdout, StringComparison.Ordinal);
+        Assert.Contains("read", stdout, StringComparison.Ordinal);
+    }
+
     private static void Write(Stream stream, string line) =>
         stream.Write(Encoding.UTF8.GetBytes(line + "\n"));
 }

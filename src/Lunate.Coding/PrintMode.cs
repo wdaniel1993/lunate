@@ -115,7 +115,7 @@ internal static class PrintMode
         try
         {
             IReadOnlyList<ITool> mcpTools = [];
-            IReadOnlyList<ITool> inheritedTools = [];
+            List<ITool> inheritedTools = [];
             Workspace workspace;
             SkillCatalog skills;
             Session? session;
@@ -269,6 +269,11 @@ internal static class PrintMode
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
                 return 130;
+            }
+            catch (ToolFilterException exception)
+            {
+                interaction.Notify(new UserNotice(NoticeLevel.Error, exception.Message));
+                return 2;
             }
             catch (Exception exception)
             {
@@ -549,7 +554,7 @@ internal static class PrintMode
         ExtensionSession? extensions,
         IReadOnlyList<ITool> mcpTools,
         WorkspaceServices workspaceServices,
-        IReadOnlyList<ITool> inheritedTools,
+        List<ITool> inheritedTools,
         SkillCatalog skills
     )
     {
@@ -562,6 +567,13 @@ internal static class PrintMode
         foreach (ITool tool in mcpTools)
         {
             tools.Add(tool);
+        }
+
+        if (
+            !HarnessFactory.TryFilterTools(tools, inheritedTools, options.Launch, out string? error)
+        )
+        {
+            throw new ToolFilterException(error!);
         }
 
         if (session is { } active && skills.Index.Text.Length > 0)
