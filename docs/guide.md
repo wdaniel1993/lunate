@@ -395,7 +395,7 @@ Tools: read, write, edit, bash{extra_tools}.
 
 **Config**
 
-`~/.lunate/settings.json` (default model, approval policy, output limits) and `~/.lunate/auth.json` (API keys, file permissions restricted). Environment variables override both.
+`~/.lunate/settings.json` (default model, approval policy, output limits) and `~/.lunate/auth.json` (API keys, file permissions restricted). Environment variables override both. `toolDetails` chooses how much of a tool call the scrollback commits: `"collapsed"` (the default) writes the header line only, `"expanded"` adds the bounded output excerpt and the diff panel; `LUNATE_TOOL_DETAILS` overrides it.
 
 **Sessions on disk**
 
@@ -472,7 +472,7 @@ The lower box rule shares the 60-column boundary with autocomplete descriptions;
 **Components**
 
 - `MarkdownRenderer`: a subset (headings, bold, italic, inline code, lists, quotes, fenced code with a language label) mapped to Spectre renderables. Keyword highlighting for C#, JSON and shell only in v1.
-- `ToolBlock`: one compact header line — `✓ read  src/X.cs (1-13)`, `✗ bash  dotnet build · exit 1 · 12s`, `✓ edit  src/X.cs · +3 −0` — then the per-tool output excerpt (`bash` keeps the output's last lines, `read` none, the rest first and last) and a red/green diff panel for `edit` and `write` with the match tier; the excerpt's `… +N lines · ctrl+o` marker points at the transcript viewer. Durations run on the injected scheduler.
+- `ToolBlock`: one compact header line — `✓ read  src/X.cs (1-13)`, `✗ bash  dotnet build · exit 1 · 12s`, `✓ edit  src/X.cs · +3 −0`. With the default `toolDetails: "collapsed"` that header is the whole block; when the result had output or a diff to show, it ends with a muted `· ctrl+o` affordance for the transcript viewer. `toolDetails: "expanded"` restores the per-tool output excerpt (`bash` keeps the output's last lines, `read` none, the rest first and last), the red/green diff panel for `edit` and `write` with the match tier, and the excerpt's `… +N lines · ctrl+o` marker. Durations run on the injected scheduler.
 - `TranscriptViewer`: the `Ctrl+O` full-screen transcript — user, assistant, thinking and tool blocks with full outputs and diffs, newest at the bottom; Up/Down, PageUp/PageDown, Home/End and `g`/`G` scroll, the footer shows the keys and the position, and `q`/`Esc` closes. Paths are mid-shortened so the basename survives.
 - `ApprovalPrompt`: the panel described above — warning headline, bounded detail, and the yes/no/always choices — shown in the live area.
 - `StatusFooter`: model, tokens, context used in percent, working directory, git branch.
