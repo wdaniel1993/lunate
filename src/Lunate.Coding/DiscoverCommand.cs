@@ -61,7 +61,17 @@ public static class DiscoverCommand
         }
         else
         {
-            ModelInfo? model = catalog.Find(target);
+            ModelInfo? model;
+            try
+            {
+                model = catalog.Find(target);
+            }
+            catch (InvalidOperationException exception)
+            {
+                // An ambiguous bare id names its candidates; discovery reports, never guesses.
+                return Failure(exception.Message);
+            }
+
             if (model is null)
             {
                 return Failure(

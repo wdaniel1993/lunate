@@ -397,6 +397,27 @@ public sealed class DiscoverCommandTests
     }
 
     [Fact]
+    public async Task An_ambiguous_bare_model_names_its_candidates_and_makes_no_request()
+    {
+        using var temp = new TempDirectory();
+        using var handler = new FakeHandler(_ => Json(HttpStatusCode.OK, """{ "data": [] }"""));
+
+        DiscoverResult result = await DiscoverCommand.RunAsync(
+            "deepseek-v4-flash",
+            Catalog(temp),
+            handler,
+            environment: _ => null,
+            ct: TestContext.Current.CancellationToken
+        );
+
+        Assert.False(result.Succeeded);
+        Assert.Contains("deepseek-v4-flash", result.Error, StringComparison.Ordinal);
+        Assert.Contains("deepseek/deepseek-v4-flash", result.Error, StringComparison.Ordinal);
+        Assert.Contains("opencode/deepseek-v4-flash", result.Error, StringComparison.Ordinal);
+        Assert.Empty(handler.Requests);
+    }
+
+    [Fact]
     public async Task An_unknown_name_names_the_target_and_points_at_the_catalog()
     {
         using var temp = new TempDirectory();

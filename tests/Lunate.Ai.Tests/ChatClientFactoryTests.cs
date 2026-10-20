@@ -282,7 +282,9 @@ public sealed class ChatClientFactoryTests
     [Fact]
     public void Create_prefers_the_model_endpoint_over_the_preset_base_url()
     {
-        using var environment = new EnvironmentScope((OpenAiApiKeyVariable, null));
+        using var environment = new EnvironmentScope(
+            (ProviderPresets.Find("groq")!.KeyVariable, null)
+        );
         var endpoint = new Uri("http://localhost:4321/v1");
         ModelInfo model = LoadCatalog().Find("groq/allam-2-7b")! with { Endpoint = endpoint };
 

@@ -461,7 +461,19 @@ internal sealed partial class InteractiveSession
     /// <summary>Switches to a catalog model by id; an unknown id produces a notice.</summary>
     private async ValueTask SwitchModel(string id, CancellationToken ct)
     {
-        if (_catalog.Find(id) is not { } model)
+        ModelInfo? model;
+        try
+        {
+            model = _catalog.Find(id);
+        }
+        catch (InvalidOperationException exception)
+        {
+            // An ambiguous bare id names its candidates; the switch reports, never guesses.
+            Notify(exception.Message, NoticeLevel.Warning);
+            return;
+        }
+
+        if (model is null)
         {
             Notify("unknown model: " + id, NoticeLevel.Warning);
             return;
