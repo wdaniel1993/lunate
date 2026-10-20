@@ -35,7 +35,7 @@ Design-first change: each task is one commit and lands on `change/prompt-caching
 
 ## 6. ADR, docs and the gate
 
-- [ ] 6.1 Land `adr/0010-addendum-prompt-caching.md` (from `adr.md`); note that ADR-0017 is unchanged because the event shape stays the same.
-- [ ] 6.2 Update the provider section of `docs/guide.md` with the three breakpoints and the cache usage fields; no new docs page.
-- [ ] 6.3 `scripts/verify.sh` green (build, tests, publish, budgets, PublicAPI, CSharpier, docs lint); `openspec validate prompt-caching --strict` green.
-- [ ] 6.4 Commit `docs(adr): record prompt caching on the anthropic adapter`.
+- [x] 6.1 Land `adr/0010-addendum-prompt-caching.md` (from `adr.md`); note that ADR-0017 is unchanged because the event shape stays the same.
+- [x] 6.2 Update the provider section of `docs/guide.md` with the three breakpoints and the cache usage fields; no new docs page.
+- [x] 6.3 `scripts/verify.sh` green (build, tests, publish, budgets, PublicAPI, CSharpier, docs lint); `openspec validate prompt-caching --strict` green.
+- [x] 6.4 Commit `docs(adr): record prompt caching on the anthropic adapter`.
