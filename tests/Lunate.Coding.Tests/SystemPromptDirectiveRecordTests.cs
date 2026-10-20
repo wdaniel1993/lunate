@@ -147,6 +147,31 @@ public sealed class SystemPromptDirectiveRecordTests
         Assert.DoesNotContain("the recorded appendix", system, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task No_session_still_applies_a_cli_replacement()
+    {
+        using var temp = new TempDirectory();
+        var client = new ScriptedChatClient().Enqueue(Scripts.Text("ok"), Scripts.Stop());
+        PrintModeOptions options = PrintModeTestSupport.BaseOptions(
+            temp,
+            new FakeChatClientFactory(client)
+        ) with
+        {
+            Prompt = "Hi",
+            Launch = new LaunchOptions { NoSession = true, SystemPrompt = "the fileless contract" },
+        };
+
+        (int exitCode, _, _) = await PrintModeTestSupport.RunAsync(options);
+
+        Assert.Equal(0, exitCode);
+        Assert.Equal("the fileless contract", client.Requests[0][0].Text);
+        Assert.Empty(
+            Directory.Exists(temp.File("sessions"))
+                ? Directory.GetFiles(temp.File("sessions"), "*.jsonl")
+                : []
+        );
+    }
+
     private static Session SeedSession(TempDirectory temp, string text)
     {
         string directory = temp.File("sessions");

@@ -63,12 +63,10 @@ public static class SystemPrompt
         ArgumentNullException.ThrowIfNull(directives);
 
         // The replacement is the caller's whole contract: no template and no tool conventions.
-        if (directives.SystemPrompt is { } replacement)
-        {
-            return replacement;
-        }
-
-        string composed = Compose(workspace, toolNames, shellResolver, now);
+        // An append still follows it, so both explicit flags are honoured.
+        string composed = directives.SystemPrompt is { } replacement
+            ? replacement
+            : Compose(workspace, toolNames, shellResolver, now);
         return directives.AppendSystemPrompt is { } appended
             ? composed + "\n\n" + appended
             : composed;

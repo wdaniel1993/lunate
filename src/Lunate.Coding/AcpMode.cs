@@ -217,13 +217,19 @@ internal static class AcpMode
         }
     }
 
-    private static AgentHarness CreateHarness(
+    /// <summary>
+    /// The ACP session/new harness: a fresh session per editor session, with the launch prompt
+    /// directives recorded on it. Tests inject the client factory and the session directory.
+    /// </summary>
+    internal static AgentHarness CreateHarness(
         AcpSessionContext context,
         ExtensionSession? host,
         IReadOnlyList<ITool> mcpTools,
         List<ITool> inheritedTools,
         WorkspaceServices workspaceServices,
-        LaunchOptions? launch
+        LaunchOptions? launch,
+        IChatClientFactory? factory = null,
+        string? sessionDirectory = null
     )
     {
         AgentSettings settings = SettingsStore.Resolve(null, null);
@@ -234,7 +240,7 @@ internal static class AcpMode
         };
         ModelCatalog catalog = ModelCatalog.Load(null);
         ModelInfo model = HarnessFactory.ResolveModel(settings.Model, catalog);
-        IChatClientFactory factory = HarnessFactory.CreateFactory(null, null);
+        IChatClientFactory clientFactory = factory ?? HarnessFactory.CreateFactory(null, null);
 
         var workspace = new Workspace(context.Cwd);
         ToolRegistry tools = HarnessFactory.CreateTools(
@@ -261,7 +267,7 @@ internal static class AcpMode
         }
 
         Session session = HarnessFactory.CreateSession(
-            HarnessFactory.DefaultSessionDirectory(workspace),
+            sessionDirectory ?? HarnessFactory.DefaultSessionDirectory(workspace),
             workspace
         );
         LaunchOptions directives = launch ?? new LaunchOptions();
@@ -292,6 +298,6 @@ internal static class AcpMode
             ),
         };
 
-        return new AgentHarness(factory.Create(model), tools, options);
+        return new AgentHarness(clientFactory.Create(model), tools, options);
     }
 }

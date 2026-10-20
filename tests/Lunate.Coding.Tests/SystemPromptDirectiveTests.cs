@@ -53,18 +53,18 @@ public sealed class SystemPromptDirectiveTests
     }
 
     [Fact]
-    public void A_replacement_wins_when_both_directives_are_given()
+    public void An_append_follows_a_replacement_when_both_directives_are_given()
     {
         using var temp = new TempDirectory();
         var workspace = new Workspace(temp.Root);
         var directives = new LaunchOptions
         {
             SystemPrompt = "Replace everything.",
-            AppendSystemPrompt = "This is not used.",
+            AppendSystemPrompt = "Append after the replacement.",
         };
 
         string prompt = SystemPrompt.Compose(workspace, Tools, directives);
 
-        Assert.Equal("Replace everything.", prompt);
+        Assert.Equal("Replace everything.\n\nAppend after the replacement.", prompt);
     }
 }
