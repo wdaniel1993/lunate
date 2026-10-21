@@ -102,6 +102,76 @@ public sealed class InteractiveSessionFavoritesTests
     }
 
     [Fact]
+    public async Task Ctrl_P_skips_an_unresolvable_favourite_and_reports_it_once()
+    {
+        using var host = Host("fixture-c");
+        SettingsStore.WriteFavorites(
+            ["dead", "fixture-a", "fixture-b"],
+            host.Temp.File("settings.json")
+        );
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+
+        host.Console.Send(CtrlP);
+        await WaitForModelChangesAsync(host, 1);
+        await InteractiveSessionCommandTests.WaitForFrameAsync(host, "not in the catalog");
+        Assert.Contains("dead", host.LastFrame, StringComparison.Ordinal);
+
+        host.Console.Send(CtrlP);
+        await InteractiveSessionCommandTests.WaitForFrameAsync(host, "model: fixture-b");
+        Assert.DoesNotContain("not in the catalog", host.LastFrame, StringComparison.Ordinal);
+
+        host.Console.Send(CtrlP);
+        await InteractiveSessionCommandTests.WaitForFrameAsync(host, "model: fixture-a");
+        Assert.DoesNotContain("not in the catalog", host.LastFrame, StringComparison.Ordinal);
+
+        Assert.Equal(
+            ["fixture-a", "fixture-b", "fixture-a"],
+            LoadedSession(host)
+                .Entries.OfType<SessionModelChangeEntry>()
+                .Select(change => change.Model)
+        );
+        Assert.Empty(host.Client.Requests);
+
+        host.Console.SendText("/quit");
+        host.Console.SendEnter();
+        await run;
+    }
+
+    [Fact]
+    public async Task Ctrl_P_skips_a_dead_favourite_between_the_active_model_and_the_next()
+    {
+        using var host = Host("fixture-a");
+        SettingsStore.WriteFavorites(
+            ["fixture-a", "dead", "fixture-b"],
+            host.Temp.File("settings.json")
+        );
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+
+        host.Console.Send(CtrlP);
+        await WaitForModelChangesAsync(host, 1);
+        await InteractiveSessionCommandTests.WaitForFrameAsync(host, "not in the catalog");
+        Assert.Contains("dead", host.LastFrame, StringComparison.Ordinal);
+
+        host.Console.Send(CtrlP);
+        await InteractiveSessionCommandTests.WaitForFrameAsync(host, "model: fixture-a");
+        Assert.DoesNotContain("not in the catalog", host.LastFrame, StringComparison.Ordinal);
+
+        Assert.Equal(
+            ["fixture-b", "fixture-a"],
+            LoadedSession(host)
+                .Entries.OfType<SessionModelChangeEntry>()
+                .Select(change => change.Model)
+        );
+        Assert.Empty(host.Client.Requests);
+
+        host.Console.SendText("/quit");
+        host.Console.SendEnter();
+        await run;
+    }
+
+    [Fact]
     public async Task Ctrl_P_waits_for_idle_and_never_switches_mid_turn()
     {
         using var host = new InteractiveSessionHost(
@@ -202,6 +272,48 @@ public sealed class InteractiveSessionFavoritesTests
         host.Console.SendText("/quit");
         host.Console.SendEnter();
         await run;
+    }
+
+    private const string Models = """
+        {
+          "schemaVersion": 2,
+          "models": [
+            {
+              "id": "fixture-a",
+              "provider": "fixture",
+              "contextWindow": 128000,
+              "supportsTools": true
+            },
+            {
+              "id": "fixture-b",
+              "provider": "fixture",
+              "contextWindow": 128000,
+              "supportsTools": true
+            },
+            {
+              "id": "fixture-c",
+              "provider": "fixture",
+              "contextWindow": 128000,
+              "supportsTools": true
+            }
+          ]
+        }
+        """;
+
+    private static InteractiveSessionHost Host(string model)
+    {
+        var host = new InteractiveSessionHost(launch: new LaunchOptions { Model = model });
+        File.WriteAllText(host.Temp.File("models.json"), Models);
+        return host;
+    }
+
+    private static async Task WaitForModelChangesAsync(InteractiveSessionHost host, int count)
+    {
+        await host.WaitUntilAsync(() =>
+        {
+            host.Advance(33);
+            return LoadedSession(host).Entries.OfType<SessionModelChangeEntry>().Count() == count;
+        });
     }
 
     private static Session LoadedSession(InteractiveSessionHost host) =>

@@ -8,6 +8,12 @@ internal sealed partial class InteractiveSession
     private const int MaxFavorites = 8;
 
     /// <summary>
+    /// Favourite ids already reported as unresolvable in this session, so a stale entry produces
+    /// one notice rather than one per Ctrl+P.
+    /// </summary>
+    private readonly HashSet<string> _reportedMissingFavorites = new(StringComparer.Ordinal);
+
+    /// <summary>
     /// <c>/favorite [id]</c>: appends the active or named catalog model at the end and saves. A
     /// duplicate and a full list are no-op notices; a failed write keeps the previous list in
     /// memory and on disk.
@@ -80,10 +86,11 @@ internal sealed partial class InteractiveSession
     }
 
     /// <summary>
-    /// Ctrl+P: switches to the next favourite in settings order, wrapping after the last; when
-    /// the active model is not in the list, the first favourite is next. An empty list is a
-    /// notice, never a run. The switch is the <c>/model</c> path, so the session records it and
-    /// the footer follows.
+    /// Ctrl+P: switches to the next resolvable favourite in settings order, wrapping after the
+    /// last; when the active model is not in the list, the first resolvable favourite is next. An
+    /// id the catalog cannot resolve (missing or ambiguous) is skipped and reported once per
+    /// session, so a stale entry never traps the cycle. An empty list is a notice, never a run.
+    /// The switch is the <c>/model</c> path, so the session records it and the footer follows.
     /// </summary>
     private async ValueTask CycleFavoriteAsync(CancellationToken ct)
     {
@@ -99,18 +106,57 @@ internal sealed partial class InteractiveSession
             return;
         }
 
-        int current = -1;
-        for (int index = 0; index < favorites.Count; index++)
+        List<ModelInfo> resolvable = [];
+        List<string> missing = [];
+        foreach (string favorite in favorites)
         {
-            if (string.Equals(favorites[index], _model.Id, StringComparison.Ordinal))
+            try
             {
-                current = index;
-                break;
+                if (_catalog.Find(favorite) is { } model)
+                {
+                    resolvable.Add(model);
+                }
+                else
+                {
+                    missing.Add(favorite);
+                }
+            }
+            catch (InvalidOperationException)
+            {
+                // An ambiguous bare id names no single model, so it cannot be cycled.
+                missing.Add(favorite);
             }
         }
 
-        string next = favorites[(current + 1) % favorites.Count];
-        await SwitchModel(next, ct).ConfigureAwait(false);
+        List<string> firstReports = [.. missing.Where(_reportedMissingFavorites.Add)];
+        if (resolvable.Count == 0)
+        {
+            ReportMissingFavorites(firstReports);
+            return;
+        }
+
+        int current = resolvable.FindIndex(model =>
+            string.Equals(model.Id, _model.Id, StringComparison.Ordinal)
+        );
+        ModelInfo next = resolvable[current < 0 ? 0 : (current + 1) % resolvable.Count];
+        await SwitchToModel(next, ct).ConfigureAwait(false);
+        // After the switch, so the warning is what the person sees rather than being replaced by
+        // the model notice; the footer already confirms the new model.
+        ReportMissingFavorites(firstReports);
+    }
+
+    private void ReportMissingFavorites(IReadOnlyList<string> ids)
+    {
+        if (ids.Count == 0)
+        {
+            return;
+        }
+
+        string subject =
+            ids.Count == 1
+                ? "favorite not in the catalog, skipped: "
+                : "favorites not in the catalog, skipped: ";
+        Notify(subject + string.Join(", ", ids), NoticeLevel.Warning);
     }
 
     private bool TryResolveFavoriteId(string argument, out string id)
