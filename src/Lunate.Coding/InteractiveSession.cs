@@ -432,7 +432,8 @@ internal sealed partial class InteractiveSession : IDisposable
             _workspace,
             services: _workspaceServices,
             skillReadAllowance: _skillAllowance,
-            log: _extensions?.Log
+            log: _extensions?.Log,
+            extraTools: _settings.Tools.Extra
         );
         await ComposeMcpConfigAsync(ct);
         await ComposeMcpToolsAsync(ct);
@@ -454,7 +455,8 @@ internal sealed partial class InteractiveSession : IDisposable
             _workspaceServices,
             _inheritedTools,
             root => _skills?.ReadRootsFor(root) ?? [],
-            log: _extensions?.Log
+            log: _extensions?.Log,
+            extraTools: _settings.Tools.Extra
         );
         // The model resolves after the extension host: the configured id may name a virtual or
         // extension-registered model, which only the registry knows.

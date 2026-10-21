@@ -243,7 +243,8 @@ internal static class AcpMode
             workspace,
             context.FileAccess,
             workspaceServices,
-            log: host?.Log
+            log: host?.Log,
+            extraTools: settings.Tools.Extra
         );
         foreach (ITool tool in mcpTools)
         {
@@ -291,7 +292,8 @@ internal static class AcpMode
             WorkspaceTools = HarnessFactory.CreateWorkspaceTools(
                 workspaceServices,
                 inheritedTools,
-                log: host?.Log
+                log: host?.Log,
+                extraTools: settings.Tools.Extra
             ),
         };
 

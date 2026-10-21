@@ -15,8 +15,8 @@
 
 ## 3. Registration and wiring
 
-- [ ] 3.1 Add red tests: nothing registered by default; each name registers exactly its tool; registration is additive and cannot shadow a core tool.
-- [ ] 3.2 Register conditionally in `HarnessFactory`; thread the resolved list from the CLI/session.
+- [x] 3.1 Add red tests: nothing registered by default; each name registers exactly its tool; registration is additive and cannot shadow a core tool.
+- [x] 3.2 Register conditionally in `HarnessFactory`; thread the resolved list from the CLI/session.
 - [ ] 3.3 Commit: `feat(coding): register the optional search tools when enabled`.
 
 ## 4. Verification

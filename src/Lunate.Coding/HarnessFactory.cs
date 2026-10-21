@@ -22,7 +22,8 @@ internal static class HarnessFactory
         ITextFileAccess? files = null,
         WorkspaceServices? services = null,
         SkillReadAllowance? skillReadAllowance = null,
-        IExtensionLog? log = null
+        IExtensionLog? log = null,
+        IReadOnlyList<string>? extraTools = null
     )
     {
         var tools = new ToolRegistry();
@@ -30,12 +31,51 @@ internal static class HarnessFactory
         tools.Add(new WriteTool(workspace, files: files));
         tools.Add(new EditTool(workspace, files: files));
         tools.Add(new BashTool(workspace, log: log));
+        AddOptionalTools(tools, workspace, extraTools);
         if (services is not null && LooksLikeCSharpWorkspace(workspace.WorktreeRoot))
         {
             AddCSharpTools(tools, services, workspace.WorktreeRoot);
         }
 
         return tools;
+    }
+
+    /// <summary>
+    /// Adds the configured optional search tools. Registration is additive and skips any name the
+    /// registry already provides, so a core tool can never be shadowed; the settings validator
+    /// rejects core names before this point, and this guard keeps the factory safe on its own.
+    /// </summary>
+    private static void AddOptionalTools(
+        ToolRegistry tools,
+        Workspace workspace,
+        IReadOnlyList<string>? names
+    )
+    {
+        if (names is not { Count: > 0 })
+        {
+            return;
+        }
+
+        foreach (string name in names)
+        {
+            if (!OptionalTools.IsName(name) || tools.Find(name) is not null)
+            {
+                continue;
+            }
+
+            switch (name)
+            {
+                case "grep":
+                    tools.Add(new GrepTool(workspace));
+                    break;
+                case "find":
+                    tools.Add(new FindTool(workspace));
+                    break;
+                case "ls":
+                    tools.Add(new LsTool(workspace));
+                    break;
+            }
+        }
     }
 
     /// <summary>
@@ -49,7 +89,8 @@ internal static class HarnessFactory
         WorkspaceServices services,
         IReadOnlyList<ITool> inheritedTools,
         Func<string, IReadOnlyList<string>>? skillReadRoots = null,
-        IExtensionLog? log = null
+        IExtensionLog? log = null,
+        IReadOnlyList<string>? extraTools = null
     )
     {
         ArgumentNullException.ThrowIfNull(services);
@@ -62,7 +103,8 @@ internal static class HarnessFactory
                 skillReadAllowance: skillReadRoots is null
                     ? null
                     : new SkillReadAllowance(skillReadRoots(root)),
-                log: log
+                log: log,
+                extraTools: extraTools
             );
             foreach (ITool tool in inheritedTools)
             {
