@@ -243,9 +243,9 @@ public sealed class ChatClientFactory : IChatClientFactory
     /// Resolves the credential for a model. A declared <see cref="ModelInfo.AuthRef"/> resolves the
     /// named key from the user's auth store and sends it to the declared endpoint - the explicit
     /// opt-in. Without a reference, the preset's environment variable (its alias second) is used
-    /// only for the provider's own endpoint, with the auth store under the preset id as the
-    /// fallback; a model with a declared endpoint gets the placeholder credential, so real keys
-    /// never reach third-party endpoints.
+    /// for the provider's own endpoint - no endpoint, or one equal to or under the preset base URL -
+    /// with the auth store under the preset id as the fallback. A model with a foreign declared
+    /// endpoint gets the placeholder credential, so real keys never reach third-party endpoints.
     /// </summary>
     internal static string ResolveApiKey(
         ModelInfo model,
@@ -269,7 +269,7 @@ public sealed class ChatClientFactory : IChatClientFactory
             return named;
         }
 
-        if (model.Endpoint is not null)
+        if (model.Endpoint is not null && !ProviderEndpoint.IsOwn(model.Endpoint, preset.BaseUrl))
         {
             return PlaceholderCredential;
         }

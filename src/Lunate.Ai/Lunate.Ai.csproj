@@ -35,6 +35,8 @@
 
     <ItemGroup>
         <InternalsVisibleTo Include="Lunate.Ai.Tests" />
+        <!-- The credential probe applies the same own-endpoint rule as the client factory. -->
+        <InternalsVisibleTo Include="Lunate.Coding" />
         <!-- The CLI refresh reuses the one default managed-catalog path instead of duplicating it. -->
         <InternalsVisibleTo Include="lunate" />
     </ItemGroup>

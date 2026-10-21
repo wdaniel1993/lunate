@@ -62,6 +62,35 @@ public sealed class ProviderKeyProbeTests
         );
 
     [Fact]
+    public void An_endpoint_equal_to_the_presets_base_url_probes_the_preset_key() =>
+        Assert.Equal(
+            "add the 'groq' key to ~/.lunate/auth.json",
+            ProviderKeyProbe.FixFor(
+                GroqModel() with
+                {
+                    Endpoint = ProviderPresets.Find("groq")!.BaseUrl,
+                },
+                EmptyStore(),
+                _ => null
+            )
+        );
+
+    [Fact]
+    public void A_missing_named_reference_on_a_declared_endpoint_names_that_key() =>
+        Assert.Equal(
+            "add the 'work' key to ~/.lunate/auth.json",
+            ProviderKeyProbe.FixFor(
+                OpenAiModel with
+                {
+                    Endpoint = new Uri("http://localhost:11434/v1"),
+                    AuthRef = "work",
+                },
+                EmptyStore(),
+                _ => null
+            )
+        );
+
+    [Fact]
     public void A_missing_named_reference_names_that_key() =>
         Assert.Equal(
             "add the 'work' key to ~/.lunate/auth.json",

@@ -660,6 +660,63 @@ public sealed class ChatClientFactoryTests
     }
 
     [Fact]
+    public void ResolveApiKey_uses_the_environment_key_for_an_endpoint_equal_to_the_presets_base_url()
+    {
+        ProviderPreset groq = ProviderPresets.Find("groq")!;
+        using var environment = new EnvironmentScope((groq.KeyVariable, "env-key"));
+        ModelInfo model = LoadCatalog().Find("groq/allam-2-7b")! with { Endpoint = groq.BaseUrl };
+
+        string credential = ChatClientFactory.ResolveApiKey(model, groq, _ => null);
+
+        Assert.Equal("env-key", credential);
+    }
+
+    [Fact]
+    public void ResolveApiKey_uses_the_environment_key_for_an_endpoint_under_the_presets_base_url()
+    {
+        ProviderPreset groq = ProviderPresets.Find("groq")!;
+        using var environment = new EnvironmentScope((groq.KeyVariable, "env-key"));
+        ModelInfo model = LoadCatalog().Find("groq/allam-2-7b")! with
+        {
+            Endpoint = new Uri("https://api.groq.com/openai/v1/chat/completions"),
+        };
+
+        string credential = ChatClientFactory.ResolveApiKey(model, groq, _ => null);
+
+        Assert.Equal("env-key", credential);
+    }
+
+    [Fact]
+    public void ResolveApiKey_normalises_a_trailing_slash_when_matching_the_presets_base_url()
+    {
+        ProviderPreset groq = ProviderPresets.Find("groq")!;
+        using var environment = new EnvironmentScope((groq.KeyVariable, "env-key"));
+        ModelInfo model = LoadCatalog().Find("groq/allam-2-7b")! with
+        {
+            Endpoint = new Uri("HTTPS://API.GROQ.COM/openai/v1/"),
+        };
+
+        string credential = ChatClientFactory.ResolveApiKey(model, groq, _ => null);
+
+        Assert.Equal("env-key", credential);
+    }
+
+    [Fact]
+    public void ResolveApiKey_keeps_the_placeholder_for_a_host_that_merely_starts_with_the_presets()
+    {
+        ProviderPreset groq = ProviderPresets.Find("groq")!;
+        using var environment = new EnvironmentScope((groq.KeyVariable, "env-key"));
+        ModelInfo model = LoadCatalog().Find("groq/allam-2-7b")! with
+        {
+            Endpoint = new Uri("https://api.groq.com.example.test/openai/v1"),
+        };
+
+        string credential = ChatClientFactory.ResolveApiKey(model, groq, _ => null);
+
+        Assert.Equal(ChatClientFactory.PlaceholderCredential, credential);
+    }
+
+    [Fact]
     public void ResolveApiKey_accepts_the_google_alias_when_its_variable_is_unset()
     {
         ProviderPreset google = ProviderPresets.Find("google")!;

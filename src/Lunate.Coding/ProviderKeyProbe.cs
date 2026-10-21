@@ -4,12 +4,13 @@ namespace Lunate.Coding;
 
 /// <summary>
 /// The welcome header's first-run check (design D4): whether a credential resolves for the model
-/// the session runs, following the client factory's precedence — a declared endpoint uses the
-/// placeholder credential and needs no key; without one the preset's environment variable (or its
-/// alias), then the auth store's key under the preset id, resolves it. When nothing resolves the
-/// probe answers with exactly one actionable fix, never a list of alternatives: the name the auth
-/// store wants, or the environment variable that is set but does not resolve. A session with no
-/// model configured at all has nothing to probe and uses <see cref="MissingModelFix"/>.
+/// the session runs, following the client factory's precedence — an explicit auth reference wins;
+/// a foreign declared endpoint uses the placeholder credential and needs no key; otherwise the
+/// preset's environment variable (or its alias), then the auth store's key under the preset id,
+/// resolves it. When nothing resolves the probe answers with exactly one actionable fix, never a
+/// list of alternatives: the name the auth store wants, or the environment variable that is set
+/// but does not resolve. A session with no model configured at all has nothing to probe and uses
+/// <see cref="MissingModelFix"/>.
 /// </summary>
 internal static class ProviderKeyProbe
 {
@@ -32,12 +33,6 @@ internal static class ProviderKeyProbe
         ArgumentNullException.ThrowIfNull(auth);
         ArgumentNullException.ThrowIfNull(environment);
 
-        if (model.Endpoint is not null)
-        {
-            // A declared endpoint gets the placeholder credential: local servers need no key.
-            return null;
-        }
-
         if (!string.IsNullOrEmpty(model.AuthRef))
         {
             // The named reference's stored key is the fix; the environment cannot carry it.
@@ -49,6 +44,12 @@ internal static class ProviderKeyProbe
         if (ProviderPresets.Find(model.Provider) is not { } preset)
         {
             // An unknown provider has no credential advice; the client creation fails instead.
+            return null;
+        }
+
+        if (model.Endpoint is not null && !ProviderEndpoint.IsOwn(model.Endpoint, preset.BaseUrl))
+        {
+            // A foreign endpoint gets the placeholder credential: local servers need no key.
             return null;
         }
 
