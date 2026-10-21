@@ -215,6 +215,10 @@ internal sealed partial class InteractiveSession : IDisposable
     /// <summary>The provider's additional-count key for cache-creation tokens.</summary>
     private const string CacheCreationInputTokensKey = "CacheCreationInputTokens";
 
+    /// <summary>The one running-turn refusal for an image, shown before and after resolution.</summary>
+    private const string SteeringImageNotice =
+        "images cannot be attached to a steering message; wait for the current turn to finish, then submit the image again.";
+
     /// <summary>The cumulative token counts when the current run started (its deltas' baseline).</summary>
     private long _runInputBaseline;
     private long _runOutputBaseline;
@@ -1068,6 +1072,15 @@ internal sealed partial class InteractiveSession : IDisposable
             return;
         }
 
+        // A running turn refuses an image syntactically, before the resolver reads any file or the
+        // clipboard. The post-resolution guard below still catches a dropped image that only its
+        // magic bytes identify (an extensionless path).
+        if (skill is null && _turnActive && ImageInputResolver.MayCarryImage(processed.Text))
+        {
+            Notify(SteeringImageNotice, NoticeLevel.Warning);
+            return;
+        }
+
         ImageInputResult input = skill is null
             ? await _imageResolver.ResolveAsync(processed.Text, ct)
             : ImageInputResult.Ready(processed.Text, images: null);
@@ -1084,10 +1097,7 @@ internal sealed partial class InteractiveSession : IDisposable
 
         if (input.Images is { Count: > 0 } && _turnActive)
         {
-            Notify(
-                "images cannot be attached to a steering message; wait for the current turn to finish, then submit the image again.",
-                NoticeLevel.Warning
-            );
+            Notify(SteeringImageNotice, NoticeLevel.Warning);
             return;
         }
 

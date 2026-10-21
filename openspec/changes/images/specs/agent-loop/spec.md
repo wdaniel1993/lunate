@@ -2,7 +2,7 @@
 
 ### Requirement: Image parts in model requests
 
-The harness SHALL store every image attachment through the session's image store and SHALL append a session message whose image parts are `ImageContentReference` values (digest, mime, width, height), never image bytes. Before each model request it SHALL hydrate those references into Microsoft.Extensions.AI `DataContent` parts for the provider, reading the blob from the session store or the in-memory store of a no-session run. A tool result carrying `Images` SHALL append its tool-role message with the placeholder text and then one user-role message carrying the image contents with the text `Image from <tool>: [image <w>x<h>].`; the follow-up user message is the portable carrier because the OpenAI chat-completions adapter maps image content only in user-role messages, not in tool-role results. A resumed session SHALL hydrate the same way. A missing referenced blob SHALL fail the run before the first request, naming the digest and the path; the request SHALL NOT silently drop the image.
+The harness SHALL store every image attachment through the session's image store and SHALL append a session message whose image parts are `ImageContentReference` values (digest, mime, width, height), never image bytes. Before each model request it SHALL hydrate those references into Microsoft.Extensions.AI `DataContent` parts for the provider, reading the blob from the session store or the in-memory store of a no-session run. A tool result carrying `Images` SHALL append its tool-role message with the placeholder text and then one user-role message carrying the image contents with the text `Image from <tool>: [image <w>x<h>].`; the follow-up user message is the portable carrier because the OpenAI chat-completions adapter maps image content only in user-role messages, not in tool-role results. A resumed session SHALL hydrate the same way. Hydration SHALL require the active model to declare `supportsVision`; when it does not, the harness SHALL fail the run before the request, naming the model id and the number of images in the request, and SHALL NOT drop them. A missing referenced blob SHALL fail the run before the first request, naming the digest and the path; the request SHALL NOT silently drop the image.
 
 #### Scenario: A read image becomes a tool message and a user image message
 
@@ -15,6 +15,12 @@ The harness SHALL store every image attachment through the session's image store
 - **GIVEN** a schema 3 session referencing a stored blob
 - **WHEN** the session is resumed and a request is built
 - **THEN** the request carries the image bytes as `DataContent` and the session file still carries only the reference
+
+#### Scenario: Resume on a text-only model fails
+
+- **GIVEN** a schema 3 session referencing a stored blob and a model without vision support
+- **WHEN** the session is resumed and a request is built
+- **THEN** the run fails naming the model id and the image count before any request, and no request carries the image
 
 #### Scenario: A missing blob stops the run
 

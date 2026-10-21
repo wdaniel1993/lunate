@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using System.Runtime.CompilerServices;
 using Lunate.Ai;
 using Microsoft.Extensions.AI;
@@ -876,8 +877,40 @@ public sealed partial class AgentHarness
         return merged;
     }
 
+    /// <summary>
+    /// Refuses a request whose history carries image references when the active model cannot take
+    /// images. The gate runs before hydration, so a text-only model never reads image bytes (and a
+    /// resumed session fails the same way a live turn does, instead of sending references it cannot
+    /// encode). A resumed image also fails before the provider is called at all.
+    /// </summary>
+    private void EnsureImagesSupported()
+    {
+        int count = ImageReferences(_history).Count();
+        if (count == 0)
+        {
+            return;
+        }
+
+        ModelInfo? model = _options.Model ?? DeclaredModel();
+        if (model is { SupportsVision: true })
+        {
+            return;
+        }
+
+        string id = KnownModelId(model?.Id) ?? KnownModelId(_options.ModelId) ?? "unknown";
+        string images = string.Create(
+            CultureInfo.InvariantCulture,
+            $"{count} {(count == 1 ? "image" : "images")}"
+        );
+        throw new InvalidDataException(
+            $"model {id} does not support images; {images} in the request cannot be sent. Use a vision model to continue this session."
+        );
+    }
+
     private List<ChatMessage> BuildRequest(IReadOnlyList<AgentPromptSection> sections)
     {
+        EnsureImagesSupported();
+
         List<ChatMessage> request = [];
         if (sections.Count > 0)
         {

@@ -11,6 +11,10 @@ namespace Lunate.Agent.Tests;
 public sealed class AgentImageRecordingTests
 {
     private static readonly CancellationToken Ct = TestContext.Current.CancellationToken;
+    private static readonly ModelInfo VisionModel = new("vision-test", "openai", null, 100000, true)
+    {
+        SupportsVision = true,
+    };
 
     [Fact]
     public async Task A_replayed_session_with_an_image_returns_the_recorded_response()
@@ -91,7 +95,7 @@ public sealed class AgentImageRecordingTests
         var harness = new AgentHarness(
             client,
             new ToolRegistry(),
-            new AgentHarnessOptions { Session = session }
+            new AgentHarnessOptions { Session = session, Model = VisionModel }
         );
 
         await harness
@@ -119,7 +123,7 @@ public sealed class AgentImageRecordingTests
         var harness = new AgentHarness(
             client,
             new ToolRegistry(),
-            new AgentHarnessOptions { Session = session }
+            new AgentHarnessOptions { Session = session, Model = VisionModel }
         );
         return await harness.RunAsync(text, Ct).ToListAsync(Ct);
     }

@@ -129,6 +129,38 @@ public sealed class ImageInputInteractiveTests
         await run;
     }
 
+    [Fact]
+    public async Task A_steering_clipboard_image_is_refused_before_the_clipboard_is_read()
+    {
+        var clipboard = new CountingClipboard(ImageSamples.Png(2, 3));
+        using var host = new InteractiveSessionHost(clipboard: clipboard);
+        host.Client.Enqueue(Scripts.Text("first"), Scripts.Stop());
+        host.Client.Gate(1);
+        Task run = host.RunAsync();
+
+        host.Console.SendText("hi");
+        host.Console.SendEnter();
+        await host.Client.WaitForCallAsync(1);
+        host.Console.SendText("@clipboard");
+        host.Console.SendEnter();
+        await host.WaitUntilAsync(() =>
+        {
+            host.Advance(33);
+            return host.Frames.Contains("images cannot be attached", StringComparison.Ordinal);
+        });
+
+        Assert.Equal(0, clipboard.Reads);
+        Assert.Equal(0, host.Session.QueuedSteeringCount);
+        Assert.Single(host.Client.Requests);
+
+        host.Client.Release(1);
+        await host.WaitUntilAsync(() => !host.Session.IsRunning);
+        Assert.Single(host.Client.Requests);
+
+        host.Console.Complete();
+        await run;
+    }
+
     private sealed class UnavailableClipboard : IClipboardImageSource
     {
         public static UnavailableClipboard Instance { get; } = new();
@@ -141,5 +173,16 @@ public sealed class ImageInputInteractiveTests
     {
         public Task<ClipboardImageResult> ReadAsync(CancellationToken cancellationToken) =>
             Task.FromResult(ClipboardImageResult.Image(bytes, "pngpaste"));
+    }
+
+    private sealed class CountingClipboard(byte[] bytes) : IClipboardImageSource
+    {
+        public int Reads { get; private set; }
+
+        public Task<ClipboardImageResult> ReadAsync(CancellationToken cancellationToken)
+        {
+            Reads++;
+            return Task.FromResult(ClipboardImageResult.Image(bytes, "pngpaste"));
+        }
     }
 }

@@ -1,3 +1,4 @@
+using Lunate.Ai;
 using Microsoft.Extensions.AI;
 
 namespace Lunate.Agent.Tests;
@@ -17,7 +18,7 @@ public sealed class AgentImageRequestTests
         var harness = new AgentHarness(
             client,
             new ToolRegistry(),
-            new AgentHarnessOptions { Session = session }
+            new AgentHarnessOptions { Session = session, Model = VisionModel() }
         );
 
         await harness.RunAsync(new UserInput("look", [Image(2, 3)]), Ct).ToListAsync(Ct);
@@ -59,7 +60,7 @@ public sealed class AgentImageRequestTests
         var harness = new AgentHarness(
             client,
             AgentTestSupport.Registry(tool),
-            new AgentHarnessOptions { Session = session }
+            new AgentHarnessOptions { Session = session, Model = VisionModel() }
         );
 
         List<AgentEvent> events = await AgentTestSupport.Run(harness);
@@ -117,7 +118,7 @@ public sealed class AgentImageRequestTests
         var harness = new AgentHarness(
             client,
             new ToolRegistry(),
-            new AgentHarnessOptions { Session = loaded }
+            new AgentHarnessOptions { Session = loaded, Model = VisionModel() }
         );
 
         await harness.RunAsync("go", Ct).ToListAsync(Ct);
@@ -147,7 +148,7 @@ public sealed class AgentImageRequestTests
             new AgentHarness(
                 client,
                 new ToolRegistry(),
-                new AgentHarnessOptions { Session = loaded }
+                new AgentHarnessOptions { Session = loaded, Model = VisionModel() }
             )
         );
 
@@ -164,7 +165,7 @@ public sealed class AgentImageRequestTests
         var harness = new AgentHarness(
             client,
             new ToolRegistry(),
-            new AgentHarnessOptions { WorkingDirectory = temp.Root }
+            new AgentHarnessOptions { WorkingDirectory = temp.Root, Model = VisionModel() }
         );
 
         await harness.RunAsync(new UserInput("look", [Image(2, 3)]), Ct).ToListAsync(Ct);
@@ -175,6 +176,80 @@ public sealed class AgentImageRequestTests
         Assert.Equal(PngBytes, data.Data.ToArray());
         Assert.Empty(Directory.EnumerateFileSystemEntries(temp.Root));
     }
+
+    [Fact]
+    public async Task A_resumed_image_on_a_text_only_model_fails_before_any_provider_request()
+    {
+        using var temp = new TempDirectory();
+        Session created = SessionImageTestData.CreateSession(temp);
+        ImageContentReference reference = created.Images.Store(PngBytes, "image/png", 2, 3);
+        created.AppendMessage(new ChatMessage(ChatRole.User, [reference]));
+        Session loaded = Session.Load(created.Path);
+        var client = new ScriptedChatClient().Enqueue(LoopScripts.Text("ok"), LoopScripts.Stop());
+        var harness = new AgentHarness(
+            client,
+            new ToolRegistry(),
+            new AgentHarnessOptions { Session = loaded, Model = TextOnlyModel() }
+        );
+
+        List<AgentEvent> events = await harness.RunAsync("go", Ct).ToListAsync(Ct);
+
+        RunError error = Assert.Single(events.OfType<RunError>());
+        Assert.Contains(
+            "model text-only-test does not support images",
+            error.Message,
+            StringComparison.Ordinal
+        );
+        Assert.Contains(
+            "1 image in the request cannot be sent",
+            error.Message,
+            StringComparison.Ordinal
+        );
+        Assert.Contains(
+            "Use a vision model to continue this session.",
+            error.Message,
+            StringComparison.Ordinal
+        );
+        Assert.Empty(client.Requests);
+    }
+
+    [Fact]
+    public async Task A_live_image_on_a_text_only_model_fails_before_any_provider_request()
+    {
+        var client = new ScriptedChatClient().Enqueue(LoopScripts.Text("ok"), LoopScripts.Stop());
+        var harness = new AgentHarness(
+            client,
+            new ToolRegistry(),
+            new AgentHarnessOptions { Model = TextOnlyModel() }
+        );
+
+        List<AgentEvent> events = await harness
+            .RunAsync(new UserInput("look", [Image(2, 3)]), Ct)
+            .ToListAsync(Ct);
+
+        RunError error = Assert.Single(events.OfType<RunError>());
+        Assert.Contains(
+            "model text-only-test does not support images",
+            error.Message,
+            StringComparison.Ordinal
+        );
+        Assert.Contains(
+            "1 image in the request cannot be sent",
+            error.Message,
+            StringComparison.Ordinal
+        );
+        Assert.Contains(
+            "Use a vision model to continue this session.",
+            error.Message,
+            StringComparison.Ordinal
+        );
+        Assert.Empty(client.Requests);
+    }
+
+    private static ModelInfo VisionModel() =>
+        new("vision-test", "openai", null, 100000, true) { SupportsVision = true };
+
+    private static ModelInfo TextOnlyModel() => new("text-only-test", "openai", null, 100000, true);
 
     private static ImageAttachment Image(int width, int height) =>
         new("image/png", width, height, PngBytes);

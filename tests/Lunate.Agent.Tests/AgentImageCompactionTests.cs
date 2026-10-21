@@ -1,3 +1,4 @@
+using Lunate.Ai;
 using Microsoft.Extensions.AI;
 
 namespace Lunate.Agent.Tests;
@@ -89,6 +90,10 @@ public sealed class AgentImageCompactionTests
                 Session = session,
                 ModelId = TestCatalog.ModelId,
                 ModelCatalog = TestCatalog.WithWindow(Window),
+                Model = new ModelInfo(TestCatalog.ModelId, "openai", null, Window, true)
+                {
+                    SupportsVision = true,
+                },
             }
         );
 

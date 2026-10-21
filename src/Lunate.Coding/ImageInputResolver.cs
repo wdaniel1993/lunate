@@ -120,6 +120,83 @@ internal sealed class ImageInputResolver
         }
     }
 
+    /// <summary>
+    /// Whether a submission may carry an image by its syntax alone: an <c>@clipboard</c> token, an
+    /// <c>@path</c> or <c>@"path"</c> token whose path has a supported image extension, or a whole
+    /// trimmed submission that is one whitespace-free dropped path with a supported image
+    /// extension. No filesystem or clipboard I/O runs, so a running turn can refuse an image
+    /// steering message before anything is read.
+    /// </summary>
+    internal static bool MayCarryImage(string text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+
+        int index = 0;
+        while (index < text.Length)
+        {
+            if (!TryReadToken(text, index, out string path, out int end))
+            {
+                index++;
+                continue;
+            }
+
+            if (
+                string.Equals(path, "clipboard", StringComparison.OrdinalIgnoreCase)
+                || HasImageExtension(path)
+            )
+            {
+                return true;
+            }
+
+            index = end;
+        }
+
+        string trimmed = text.Trim();
+        return trimmed.Length > 0
+            && !trimmed.StartsWith('@')
+            && !trimmed.Any(char.IsWhiteSpace)
+            && HasImageExtension(trimmed);
+    }
+
+    /// <summary>
+    /// Reads one resolver token starting at <paramref name="index"/>: <c>@path</c> or
+    /// <c>@"path"</c>, starting on a word boundary. Fails for text that is not a token start and
+    /// for a token without a path; both stay literal text.
+    /// </summary>
+    private static bool TryReadToken(string text, int index, out string path, out int end)
+    {
+        path = string.Empty;
+        end = index;
+        if (text[index] != '@' || (index > 0 && !char.IsWhiteSpace(text[index - 1])))
+        {
+            return false;
+        }
+
+        if (index + 1 < text.Length && text[index + 1] == '"')
+        {
+            int close = text.IndexOf('"', index + 2);
+            if (close < 0)
+            {
+                return false;
+            }
+
+            path = text[(index + 2)..close];
+            end = close + 1;
+        }
+        else
+        {
+            end = index + 1;
+            while (end < text.Length && !char.IsWhiteSpace(text[end]))
+            {
+                end++;
+            }
+
+            path = text[(index + 1)..end];
+        }
+
+        return path.Length > 0;
+    }
+
     public async ValueTask<ImageInputResult> ResolveAsync(
         string text,
         CancellationToken cancellationToken = default
@@ -133,44 +210,9 @@ internal sealed class ImageInputResolver
         var index = 0;
         while (index < text.Length)
         {
-            char current = text[index];
-            bool tokenStart = current == '@' && (index == 0 || char.IsWhiteSpace(text[index - 1]));
-            if (!tokenStart)
+            if (!TryReadToken(text, index, out string path, out int end))
             {
-                builder.Append(current);
-                index++;
-                continue;
-            }
-
-            int end;
-            string path;
-            if (index + 1 < text.Length && text[index + 1] == '"')
-            {
-                int close = text.IndexOf('"', index + 2);
-                if (close < 0)
-                {
-                    builder.Append(current);
-                    index++;
-                    continue;
-                }
-
-                path = text[(index + 2)..close];
-                end = close + 1;
-            }
-            else
-            {
-                end = index + 1;
-                while (end < text.Length && !char.IsWhiteSpace(text[end]))
-                {
-                    end++;
-                }
-
-                path = text[(index + 1)..end];
-            }
-
-            if (path.Length == 0)
-            {
-                builder.Append(current);
+                builder.Append(text[index]);
                 index++;
                 continue;
             }
