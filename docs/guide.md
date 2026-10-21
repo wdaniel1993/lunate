@@ -455,7 +455,7 @@ The input renders as a box: a full-width `─` rule above it at every width and 
 
 Typing `/` at the start of the first line opens the autocomplete list from the session's one registry: the built-in commands, the discovered skills as `/skill:<name>`, and every loaded extension's manifest commands described by the extension's id. The registry is fixed-size and filtered fuzzily — a case-insensitive subsequence, with prefix and word-start matches ranked ahead of later positions. Typing `@` at the end of a token lists workspace files from the lazy file index through its ordinal prefix query; the index is never fuzzed client-side and never built at startup. The list shows at most eight rows directly above the box. Names carry descriptions until the width drops below 60 columns; file rows mute the directory part. No matches closes the list, and the list never wraps.
 
-↑/↓ move the selection while the list is open and navigate history while it is closed. Tab and Enter accept the selected item — the token is replaced, file rows keep the `@`, command rows get a trailing space — and Esc closes the list. Enter submits instead when the typed token already equals the selected item, so a fully typed command never costs a second Enter. Newline keys insert and then re-run the trigger rules; Ctrl+C, Ctrl+L and Ctrl+O keep their bindings and win over the list.
+↑/↓ move the selection while the list is open and navigate history while it is closed. Tab and Enter accept the selected item — the token is replaced, file rows keep the `@`, command rows get a trailing space — and Esc closes the list. Enter submits instead when the typed token already equals the selected item, so a fully typed command never costs a second Enter. Newline keys insert and then re-run the trigger rules; Ctrl+C, Ctrl+L, Ctrl+O and Ctrl+P keep their bindings and win over the list.
 
 **Narrow terminals**
 
@@ -464,8 +464,10 @@ The layout has three width bands, evaluated at render time from the terminal's c
 | Band | Width | Rules |
 | --- | --- | --- |
 | Full | ≥100 | today's layout: every footer segment, full tool summaries, both box rules, autocomplete descriptions |
-| Standard | 60–99 | the same structure; the footer drops the branch, then the directory, while the line is too wide; both box rules stay |
+| Standard | 60–99 | the same structure; the footer drops segments while the line is too wide, in priority order: widgets, branch, directory, thinking, favourites, then turn cost; both box rules stay |
 | Compact | <60 | short tool headers (the argument summary drops: `✓ read · 13 lines`), the footer shrinks to `model · <pct>%`, the upper box rule stays and the lower one drops, autocomplete names without descriptions |
+
+The status footer orders the core segments as model, tokens and percent, `fav:<position>/<count>` while the active model is a favourite, the current turn's cost, thinking, directory and branch. The cost appears only when every usage record of the turn tree resolves to a catalog model whose rate covers each positive token lane; it is display-only and never changes token totals, budgets or approvals. Its invariant format is `$` plus four decimals below `$1`, two decimals at or above `$1`, and `<$0.0001` for a positive cost that would round to zero; an unpriced turn omits the segment rather than showing zero.
 
 The lower box rule shares the 60-column boundary with autocomplete descriptions; the upper rule is always drawn. When a construct gains a compact form it follows the same band: diffs will drop the line-number gutter below 60 and markdown tables will render as lists below 60 (and as tables at 60 and wider). Neither construct is in the current renderers; the rules bind when they land.
 
@@ -475,7 +477,7 @@ The lower box rule shares the 60-column boundary with autocomplete descriptions;
 - `ToolBlock`: one compact header line — `✓ read  src/X.cs (1-13)`, `✗ bash  dotnet build · exit 1 · 12s`, `✓ edit  src/X.cs · +3 −0`. With the default `toolDetails: "collapsed"` that header is the whole block; when the result had output or a diff to show, it ends with a muted `· ctrl+o` affordance for the transcript viewer. `toolDetails: "expanded"` restores the per-tool output excerpt (`bash` keeps the output's last lines, `read` none, the rest first and last), the red/green diff panel for `edit` and `write` with the match tier, and the excerpt's `… +N lines · ctrl+o` marker. Durations run on the injected scheduler.
 - `TranscriptViewer`: the `Ctrl+O` full-screen transcript — user, assistant, thinking and tool blocks with full outputs and diffs, newest at the bottom; Up/Down, PageUp/PageDown, Home/End and `g`/`G` scroll, the footer shows the keys and the position, and `q`/`Esc` closes. Paths are mid-shortened so the basename survives.
 - `ApprovalPrompt`: the panel described above — warning headline, bounded detail, and the yes/no/always choices — shown in the live area.
-- `StatusFooter`: model, tokens, context used in percent, working directory, git branch.
+- `StatusFooter`: model, tokens, context used in percent, favourites position, current turn cost, working directory, git branch.
 - `InputLine`: multi-line editing, history in `~/.lunate/history`, bracketed paste, cursor movement and the input box's chrome and placeholder.
 - `Autocomplete`: the filtered rows above the box with the selected row marked, descriptions below the width breakpoint and muted file directories; the registry and keys are described above.
 - `SelectList`: model and session pickers inside the live area.
@@ -488,7 +490,8 @@ The lower box rule shares the 60-column boundary with autocomplete descriptions;
 | `Alt+Enter` | New line, also Ctrl+J (terminals cannot reliably detect `Shift+Enter`); the autocomplete triggers re-run afterwards |
 | `Esc` | Close the autocomplete list first; otherwise cancel the running turn, nothing when idle |
 | `Ctrl+C` | Clear the input; on an empty input, press twice within 2 s to quit. Never cancels a turn |
-| `Ctrl+L` | Model picker |
+| `Ctrl+L` | Model picker and search; typing filters the catalog, Backspace edits the filter, Esc clears it before closing |
+| `Ctrl+P` | Cycle the settings favourites in order, wrapping after the last; a non-favourite starts at the first. Refused while a turn, approval, picker or secret prompt is open |
 | `Ctrl+O` | Transcript viewer: the session transcript with full tool output and diffs; `q`, `Esc` or `Ctrl+O` closes. Refused while an approval or picker is open |
 | `Tab` | Accept the selected autocomplete item; otherwise nothing |
 | `Up` / `Down` | Move the autocomplete selection; with the list closed, history |

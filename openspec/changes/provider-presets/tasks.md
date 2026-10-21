@@ -83,20 +83,20 @@ pass.
 
 ## 6. TUI: cost, favourites and the masked login prompt (final implementation group)
 
-- [ ] 6.1 Extend `StatusFooterModel` with the favourite position and turn cost; render
+- [x] 6.1 Extend `StatusFooterModel` with the favourite position and turn cost; render
       `fav:<n>/<m>` after the model and the invariant `$` segment after usage; update
       `StatusFooterRendererTests`, `PromptFooterGoldenTests`, `FrameGoldenTests` and the narrow-frame
       invariants.
-- [ ] 6.2 Add `RoutedKey.FavoritesCycle` for Ctrl+P in `KeyRouter`, update `KeyRouterTests`, and
+- [x] 6.2 Add `RoutedKey.FavoritesCycle` for Ctrl+P in `KeyRouter`, update `KeyRouterTests`, and
       wire the Coding session to cycle through settings favourites via `SwitchToModel`, refusing
       while busy/picker/approval/secret prompt.
-- [ ] 6.3 Add the masked `LoginPrompt` to the live area (echo off, no history/scrollback/session
+- [x] 6.3 Add the masked `LoginPrompt` to the live area (echo off, no history/scrollback/session
       writes, Esc/empty cancels, ordinary input inert) and its scripted key/frame tests.
-- [ ] 6.4 Update the `/help` golden, the `Every_built_in_command_dispatches_without_a_model_call`
+- [x] 6.4 Update the `/help` golden, the `Every_built_in_command_dispatches_without_a_model_call`
       matrix, the picker/footer goldens and the command autocomplete rows for `/login`, `/logout`,
       `/favorite`, `/unfavorite`; update `InteractiveSessionPickerTests`, `CommandRegistryTests`,
       `CompletionRegistryTests` and the Ctrl+L/Ctrl+O/Ctrl+P precedence tests.
-- [ ] 6.5 `dotnet csharpier format .`; commit `feat(tui): show cost and favourites, add masked login`.
+- [x] 6.5 `dotnet csharpier format .`; commit `feat(tui): show cost and favourites, add masked login`.
 
 ## 7. Documentation, ADR and the gate
 
