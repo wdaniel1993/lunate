@@ -51,10 +51,10 @@ public sealed class ModelCatalog
     /// <summary>
     /// Finds a catalog entry. An exact catalog id wins, so a native id stays the shortest form. The
     /// fallbacks keep typed ids usable: a qualified <c>&lt;provider&gt;/&lt;model&gt;</c> splits on
-    /// the first slash and matches the provider plus either the entry's id or its wire id, and a
-    /// bare id matches a single entry's wire id. A bare id that more than one preset serves throws,
-    /// naming every candidate: the wire call must never guess which provider a person meant. The
-    /// first-slash split matters because upstream wire ids contain slashes.
+    /// the first slash and matches the provider plus the entry's wire id (or its id when it has no
+    /// wire id), and a bare id matches a single entry's wire id. A bare id that more than one preset
+    /// serves throws, naming every candidate: the wire call must never guess which provider a
+    /// person meant. The first-slash split matters because upstream wire ids contain slashes.
     /// </summary>
     public ModelInfo? Find(string id)
     {
@@ -75,8 +75,12 @@ public sealed class ModelCatalog
                     .. _models.Where(candidate =>
                         string.Equals(candidate.Provider, provider, StringComparison.Ordinal)
                         && (
-                            string.Equals(candidate.Id, model, StringComparison.Ordinal)
-                            || string.Equals(candidate.WireId, model, StringComparison.Ordinal)
+                            string.Equals(candidate.WireId, model, StringComparison.Ordinal)
+                            // A native or hand-written entry has no wire id: its id is what goes on the wire.
+                            || (
+                                candidate.WireId is null
+                                && string.Equals(candidate.Id, model, StringComparison.Ordinal)
+                            )
                         )
                     ),
                 ]
