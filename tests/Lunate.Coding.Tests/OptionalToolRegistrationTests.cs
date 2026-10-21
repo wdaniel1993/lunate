@@ -79,6 +79,28 @@ public sealed class OptionalToolRegistrationTests
     }
 
     [Fact]
+    public void The_launch_filter_keeps_optional_tools_named_beside_core_tools()
+    {
+        using var temp = new TempDirectory();
+        ToolRegistry tools = HarnessFactory.CreateTools(
+            new Workspace(temp.Root),
+            extraTools: ["grep"]
+        );
+
+        Assert.True(
+            HarnessFactory.TryFilterTools(
+                tools,
+                null,
+                new LaunchOptions { Tools = ["read"], ExtraTools = ["grep"] },
+                out string? error
+            ),
+            error
+        );
+
+        Assert.Equal(["read", "grep"], Names(tools));
+    }
+
+    [Fact]
     public void The_workspace_factory_offers_the_extras_to_child_roots()
     {
         using var temp = new TempDirectory();

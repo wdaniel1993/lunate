@@ -175,6 +175,13 @@ internal static class HarnessFactory
 
         error = null;
         IReadOnlyList<string>? requested = launch.NoTools ? [] : launch.Tools;
+        if (requested is not null && launch.ExtraTools is { Count: > 0 } extra)
+        {
+            // The optional names in --tools were extracted from the filter list; they are part
+            // of the selection, so a mixed list such as "read,grep" keeps both.
+            requested = [.. requested, .. extra];
+        }
+
         if (requested is null)
         {
             return true;
