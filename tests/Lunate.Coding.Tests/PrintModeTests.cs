@@ -766,6 +766,61 @@ public sealed class PrintModeTests
     }
 
     [Fact]
+    public async Task An_ambiguous_launch_model_is_a_usage_error_naming_both_candidates()
+    {
+        using var temp = new TempDirectory();
+        WriteAmbiguousCatalog(temp);
+        var factory = new FakeChatClientFactory(
+            new ScriptedChatClient().Enqueue(Scripts.Text("ok"), Scripts.Stop())
+        );
+        PrintModeOptions options = PrintModeTestSupport.BaseOptions(temp, factory) with
+        {
+            Prompt = "Hi",
+            Environment = PrintModeTestSupport.Environment(model: null),
+            Launch = new LaunchOptions { Model = "shared-wire-id" },
+        };
+
+        (int exitCode, string output, string errors) = await PrintModeTestSupport.RunAsync(options);
+
+        Assert.Equal(2, exitCode);
+        Assert.Empty(output);
+        Assert.Contains("ambiguous", errors, StringComparison.Ordinal);
+        Assert.Contains("openai/shared-model", errors, StringComparison.Ordinal);
+        Assert.Contains("groq/shared-model", errors, StringComparison.Ordinal);
+        Assert.Null(factory.CreatedModel);
+    }
+
+    [Fact]
+    public async Task An_ambiguous_configured_model_names_both_candidates_and_exits_one()
+    {
+        using var temp = new TempDirectory();
+        WriteAmbiguousCatalog(temp);
+        File.WriteAllText(
+            temp.File("settings.json"),
+            """{ "schemaVersion": 2, "model": "shared-wire-id" }"""
+        );
+        var factory = new FakeChatClientFactory(
+            new ScriptedChatClient().Enqueue(Scripts.Text("ok"), Scripts.Stop())
+        );
+        PrintModeOptions options = PrintModeTestSupport.BaseOptions(temp, factory) with
+        {
+            Prompt = "Hi",
+            Environment = PrintModeTestSupport.Environment(model: null),
+        };
+
+        (int exitCode, string output, string errors) = await PrintModeTestSupport.RunAsync(options);
+
+        Assert.Equal(1, exitCode);
+        Assert.Empty(output);
+        Assert.Contains("ambiguous", errors, StringComparison.Ordinal);
+        Assert.Contains("openai/shared-model", errors, StringComparison.Ordinal);
+        Assert.Contains("groq/shared-model", errors, StringComparison.Ordinal);
+        Assert.DoesNotContain("Unhandled exception", errors, StringComparison.Ordinal);
+        Assert.DoesNotContain("   at ", errors, StringComparison.Ordinal);
+        Assert.Null(factory.CreatedModel);
+    }
+
+    [Fact]
     public async Task A_missing_model_is_an_actionable_error()
     {
         using var temp = new TempDirectory();
@@ -811,6 +866,20 @@ public sealed class PrintModeTests
         Assert.Contains("nope-9000", errors, StringComparison.Ordinal);
         Assert.Contains("--discover", errors, StringComparison.Ordinal);
     }
+
+    private static void WriteAmbiguousCatalog(TempDirectory temp) =>
+        File.WriteAllText(
+            temp.File("models.json"),
+            """
+            {
+              "schemaVersion": 2,
+              "models": [
+                { "id": "openai/shared-model", "provider": "openai", "wireId": "shared-wire-id" },
+                { "id": "groq/shared-model", "provider": "groq", "wireId": "shared-wire-id" }
+              ]
+            }
+            """
+        );
 
     private static Session SeedSession(string root, string cwd, string text, DateTime modified)
     {

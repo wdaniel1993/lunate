@@ -108,6 +108,9 @@ internal sealed class LiveArea : IDisposable
 
     public void SetNotice(string? notice) => Post(new NoticeInput(notice));
 
+    /// <summary>Sets the open masked secret prompt; null closes it.</summary>
+    public void SetSecretPrompt(SecretPromptState? prompt) => Post(new SecretPromptInput(prompt));
+
     public void SetApproval(ApprovalPromptModel? prompt) => Post(new ApprovalInput(prompt));
 
     public void SetTrustPrompt(TrustPromptModel? prompt) => Post(new TrustPromptInput(prompt));
@@ -297,6 +300,7 @@ internal sealed class LiveArea : IDisposable
                     : new ThinkingState { Text = text, StartedAt = at },
             },
             NoticeInput notice => state with { Notice = notice.Notice },
+            SecretPromptInput secret => state with { SecretPrompt = secret.Prompt },
             ApprovalInput approval => state with { Approval = approval.Prompt },
             TrustPromptInput trust => state with { Trust = trust.Prompt },
             LoadingInput loading => state with { Loading = loading.Text },
@@ -377,6 +381,8 @@ internal sealed class LiveArea : IDisposable
     private sealed record ThinkingInput(string? Text, DateTimeOffset At) : LiveAreaInput;
 
     private sealed record NoticeInput(string? Notice) : LiveAreaInput;
+
+    private sealed record SecretPromptInput(SecretPromptState? Prompt) : LiveAreaInput;
 
     private sealed record ApprovalInput(ApprovalPromptModel? Prompt) : LiveAreaInput;
 

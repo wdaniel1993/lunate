@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Net;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Lunate.Ai;
@@ -16,10 +17,6 @@ public sealed record DiscoverResult(bool Succeeded, string Draft, string? Error)
 /// </summary>
 public static class DiscoverCommand
 {
-    private const string OpenAiProvider = "openai";
-    private const string AnthropicProvider = "anthropic";
-    private const string OpenAiApiKeyVariable = "OPENAI_API_KEY";
-    private const string AnthropicApiKeyVariable = "ANTHROPIC_API_KEY";
     private static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(30);
 
     private static readonly JsonSerializerOptions DraftJson = new()
@@ -45,20 +42,44 @@ public static class DiscoverCommand
         string? provider = null;
         string? authRef = null;
         bool customEndpoint = false;
+        bool qualified = false;
+        ProviderPreset? credentialPreset = null;
         string baseUrl;
 
         if (IsHttpUrl(target, out string url))
         {
             baseUrl = TrimTrailingSlash(url);
             customEndpoint = true;
+            // A direct URL is the provider's own endpoint only when it is exactly a preset base URL;
+            // anything else is foreign and gets no credential.
+            credentialPreset = PresetAtUrl(baseUrl);
+            provider = credentialPreset?.Id;
+        }
+        else if (ProviderPresets.Find(target) is { } presetTarget)
+        {
+            // A preset name is a provider target even when no catalog entry carries that id.
+            provider = presetTarget.Id;
+            credentialPreset = presetTarget;
+            qualified = presetTarget.Adapter == ProviderAdapter.OpenAiCompatible;
+            baseUrl = TrimTrailingSlash(presetTarget.BaseUrl.AbsoluteUri);
         }
         else
         {
-            ModelInfo? model = catalog.Find(target);
+            ModelInfo? model;
+            try
+            {
+                model = catalog.Find(target);
+            }
+            catch (InvalidOperationException exception)
+            {
+                // An ambiguous bare id names its candidates; discovery reports, never guesses.
+                return Failure(exception.Message);
+            }
+
             if (model is null)
             {
                 return Failure(
-                    $"Unknown model '{target}'. Add it to ~/.lunate/models.json or pass an http(s) URL."
+                    $"Unknown model or preset '{target}'. Add it to ~/.lunate/models.json, name a preset, or pass an http(s) URL."
                 );
             }
 
@@ -68,18 +89,28 @@ public static class DiscoverCommand
             {
                 baseUrl = TrimTrailingSlash(model.Endpoint.AbsoluteUri);
                 customEndpoint = true;
+                if (
+                    ProviderPresets.Find(model.Provider) is { } endpointPreset
+                    && EndpointBelongsToPreset(model.Endpoint, endpointPreset)
+                )
+                {
+                    // The provider's own endpoint keeps the preset's credential precedence; a
+                    // declared endpoint anywhere else only gets a key through an explicit auth ref.
+                    credentialPreset = endpointPreset;
+                }
+            }
+            else if (ProviderPresets.Find(model.Provider) is { } modelPreset)
+            {
+                // Native presets keep bare ids; the OpenAI-compatible ones emit qualified ids.
+                credentialPreset = modelPreset;
+                qualified = modelPreset.Adapter == ProviderAdapter.OpenAiCompatible;
+                baseUrl = TrimTrailingSlash(modelPreset.BaseUrl.AbsoluteUri);
             }
             else
             {
-                string? defaultEndpoint = DefaultEndpointFor(model.Provider);
-                if (defaultEndpoint is null)
-                {
-                    return Failure(
-                        $"Model '{target}' has no endpoint and provider '{model.Provider}' has no known default endpoint."
-                    );
-                }
-
-                baseUrl = defaultEndpoint;
+                return Failure(
+                    $"Model '{target}' has no endpoint and provider '{model.Provider}' has no known default endpoint."
+                );
             }
         }
 
@@ -97,16 +128,7 @@ public static class DiscoverCommand
         }
         else
         {
-            string providerName = provider ?? OpenAiProvider;
-            string variable =
-                providerName == AnthropicProvider ? AnthropicApiKeyVariable : OpenAiApiKeyVariable;
-            key = environment is null
-                ? Environment.GetEnvironmentVariable(variable)
-                : environment(variable);
-            if (string.IsNullOrEmpty(key))
-            {
-                key = namedKeySource?.Invoke(providerName);
-            }
+            key = PresetKey(credentialPreset, environment, namedKeySource);
         }
 
         string requestUrl = $"{baseUrl}/models";
@@ -121,7 +143,7 @@ public static class DiscoverCommand
         HttpResponseMessage response;
         try
         {
-            using var request = CreateRequest(requestUrl, provider, key);
+            using var request = CreateRequest(requestUrl, credentialPreset, key);
             response = await client.SendAsync(request, ct);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -142,10 +164,24 @@ public static class DiscoverCommand
         {
             if (!response.IsSuccessStatusCode)
             {
-                return Failure(
+                string message =
                     $"Discovering models from {requestUrl} failed: "
-                        + $"HTTP {((int)response.StatusCode).ToString(CultureInfo.InvariantCulture)} ({response.ReasonPhrase})."
-                );
+                    + $"HTTP {((int)response.StatusCode).ToString(CultureInfo.InvariantCulture)} ({response.ReasonPhrase}).";
+                if (
+                    customEndpoint
+                    && credentialPreset is null
+                    && string.IsNullOrEmpty(key)
+                    && response.StatusCode
+                        is HttpStatusCode.Unauthorized
+                            or HttpStatusCode.Forbidden
+                )
+                {
+                    message +=
+                        " No key was sent because the endpoint is not the provider's own; "
+                        + "a catalog entry with an 'auth' reference opts in to a named key.";
+                }
+
+                return Failure(message);
             }
 
             string body = await response.Content.ReadAsStringAsync(ct);
@@ -153,7 +189,9 @@ public static class DiscoverCommand
                 body,
                 requestUrl,
                 provider,
-                customEndpoint ? baseUrl : null,
+                customEndpoint,
+                baseUrl,
+                qualified,
                 authRef
             );
         }
@@ -163,7 +201,9 @@ public static class DiscoverCommand
         string body,
         string requestUrl,
         string? provider,
-        string? endpoint,
+        bool customEndpoint,
+        string baseUrl,
+        bool qualified,
         string? authRef
     )
     {
@@ -208,18 +248,35 @@ public static class DiscoverCommand
                     );
                 }
 
-                models.Add(new DraftModel(id.GetString()!, provider, endpoint, authRef));
+                string listed = id.GetString()!;
+                models.Add(
+                    qualified
+                        ? new DraftModel(
+                            $"{provider}/{listed}",
+                            provider,
+                            Endpoint: null,
+                            authRef,
+                            WireId: listed
+                        )
+                        : new DraftModel(
+                            listed,
+                            provider,
+                            customEndpoint ? baseUrl : null,
+                            authRef,
+                            WireId: null
+                        )
+                );
             }
 
             string draft = JsonSerializer.Serialize(
-                new DraftFile(SettingsStore.SupportedSchemaVersion, models),
+                new DraftFile(ModelCatalog.SupportedSchemaVersion, models),
                 DraftJson
             );
             return new DiscoverResult(true, draft, null);
         }
     }
 
-    private static HttpRequestMessage CreateRequest(string url, string? provider, string? key)
+    private static HttpRequestMessage CreateRequest(string url, ProviderPreset? preset, string? key)
     {
         var request = new HttpRequestMessage(HttpMethod.Get, url);
         if (string.IsNullOrEmpty(key))
@@ -227,7 +284,7 @@ public static class DiscoverCommand
             return request;
         }
 
-        if (provider == AnthropicProvider)
+        if (preset?.Adapter == ProviderAdapter.Anthropic)
         {
             request.Headers.TryAddWithoutValidation("x-api-key", key);
             request.Headers.TryAddWithoutValidation("anthropic-version", "2023-06-01");
@@ -257,24 +314,67 @@ public static class DiscoverCommand
 
     private static string TrimTrailingSlash(string url) => url.TrimEnd('/');
 
-    private static string? DefaultEndpointFor(string provider)
+    /// <summary>The preset whose base URL is exactly this URL, if any.</summary>
+    private static ProviderPreset? PresetAtUrl(string url)
     {
-        if (string.Equals(provider, OpenAiProvider, StringComparison.OrdinalIgnoreCase))
+        if (!Uri.TryCreate(url, UriKind.Absolute, out Uri? target))
         {
-            return "https://api.openai.com/v1";
+            return null;
         }
 
-        if (string.Equals(provider, AnthropicProvider, StringComparison.OrdinalIgnoreCase))
-        {
-            return "https://api.anthropic.com/v1";
-        }
-
-        return null;
+        return ProviderPresets.All.FirstOrDefault(preset =>
+            ProviderEndpoint.IsOwn(target, preset.BaseUrl)
+            && string.Equals(
+                target.AbsolutePath.TrimEnd('/'),
+                preset.BaseUrl.AbsolutePath.TrimEnd('/'),
+                StringComparison.Ordinal
+            )
+        );
     }
+
+    /// <summary>
+    /// Whether a declared endpoint is the preset's own: the base URL itself or a path under it.
+    /// </summary>
+    private static bool EndpointBelongsToPreset(Uri endpoint, ProviderPreset preset) =>
+        ProviderEndpoint.IsOwn(endpoint, preset.BaseUrl);
+
+    /// <summary>
+    /// The preset's key precedence: the preset's environment variable, its alias second, then the
+    /// auth store under the preset id. A target without a preset gets no credential, so a
+    /// self-declared provider never receives another provider's key.
+    /// </summary>
+    private static string? PresetKey(
+        ProviderPreset? preset,
+        Func<string, string?>? environment,
+        Func<string, string?>? namedKeySource
+    )
+    {
+        if (preset is null)
+        {
+            return null;
+        }
+
+        string? key = EnvironmentValue(preset.KeyVariable, environment);
+        if (string.IsNullOrEmpty(key) && preset.KeyVariableAlias is { } alias)
+        {
+            key = EnvironmentValue(alias, environment);
+        }
+
+        return string.IsNullOrEmpty(key) ? namedKeySource?.Invoke(preset.Id) : key;
+    }
+
+    private static string? EnvironmentValue(string variable, Func<string, string?>? environment) =>
+        environment is null ? Environment.GetEnvironmentVariable(variable) : environment(variable);
 
     private static DiscoverResult Failure(string message) => new(false, string.Empty, message);
 
     private sealed record DraftFile(int SchemaVersion, IReadOnlyList<DraftModel> Models);
 
-    private sealed record DraftModel(string Id, string? Provider, string? Endpoint, string? Auth);
+    private sealed record DraftModel(
+        string Id,
+        string? Provider,
+        string? Endpoint,
+        string? Auth,
+        string? WireId
+    );
 }

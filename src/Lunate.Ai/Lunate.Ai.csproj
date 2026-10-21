@@ -30,9 +30,14 @@
 
     <ItemGroup>
         <EmbeddedResource Include="models.json" LogicalName="Lunate.Ai.models.json" />
+        <EmbeddedResource Include="providers.json" LogicalName="Lunate.Ai.providers.json" />
     </ItemGroup>
 
     <ItemGroup>
         <InternalsVisibleTo Include="Lunate.Ai.Tests" />
+        <!-- The credential probe applies the same own-endpoint rule as the client factory. -->
+        <InternalsVisibleTo Include="Lunate.Coding" />
+        <!-- The CLI refresh reuses the one default managed-catalog path instead of duplicating it. -->
+        <InternalsVisibleTo Include="lunate" />
     </ItemGroup>
 </Project>

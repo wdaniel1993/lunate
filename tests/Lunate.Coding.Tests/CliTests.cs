@@ -181,6 +181,101 @@ public sealed class CliTests
     }
 
     [Fact]
+    public void Run_with_help_lists_update_catalog()
+    {
+        using var writer = new StringWriter();
+
+        var exitCode = Cli.Run(
+            ["--help"],
+            writer,
+            TextWriter.Null,
+            TestContext.Current.CancellationToken
+        );
+
+        Assert.Equal(0, exitCode);
+        string help = writer.ToString();
+        Assert.Contains("--update-catalog", help, StringComparison.Ordinal);
+        Assert.Contains("--source", help, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Run_with_update_catalog_and_an_unknown_argument_is_a_usage_error()
+    {
+        using var output = new StringWriter();
+        using var error = new StringWriter();
+
+        var exitCode = Cli.Run(
+            ["--update-catalog", "--bogus"],
+            output,
+            error,
+            TestContext.Current.CancellationToken
+        );
+
+        Assert.Equal(2, exitCode);
+        Assert.Contains(
+            "lunate: unexpected argument '--bogus' for --update-catalog",
+            error.ToString(),
+            StringComparison.Ordinal
+        );
+        Assert.Contains(
+            "Usage: lunate --update-catalog [--output <path>] [--source <path-or-url>]",
+            error.ToString(),
+            StringComparison.Ordinal
+        );
+        Assert.Empty(output.ToString());
+    }
+
+    [Theory]
+    [InlineData("--output", "--output needs a path")]
+    [InlineData("--source", "--source needs a path or URL")]
+    public void Run_with_update_catalog_and_a_flag_missing_its_value_is_a_usage_error(
+        string flag,
+        string message
+    )
+    {
+        using var output = new StringWriter();
+        using var error = new StringWriter();
+
+        var exitCode = Cli.Run(
+            ["--update-catalog", flag],
+            output,
+            error,
+            TestContext.Current.CancellationToken
+        );
+
+        Assert.Equal(2, exitCode);
+        Assert.Contains(message, error.ToString(), StringComparison.Ordinal);
+        Assert.Contains(
+            "Usage: lunate --update-catalog [--output <path>] [--source <path-or-url>]",
+            error.ToString(),
+            StringComparison.Ordinal
+        );
+        Assert.Empty(output.ToString());
+    }
+
+    [Fact]
+    public void Run_with_update_catalog_and_help_prints_the_usage()
+    {
+        using var output = new StringWriter();
+        using var error = new StringWriter();
+
+        var exitCode = Cli.Run(
+            ["--update-catalog", "--help"],
+            output,
+            error,
+            TestContext.Current.CancellationToken
+        );
+
+        Assert.Equal(0, exitCode);
+        Assert.Contains(
+            "Usage: lunate --update-catalog [--output <path>] [--source <path-or-url>]",
+            output.ToString(),
+            StringComparison.Ordinal
+        );
+        Assert.Empty(error.ToString());
+    }
+
+    [Fact]
     public void Run_with_help_lists_print_mode()
     {
         using var writer = new StringWriter();

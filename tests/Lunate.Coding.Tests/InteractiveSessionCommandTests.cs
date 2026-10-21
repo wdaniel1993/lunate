@@ -1,3 +1,4 @@
+using System.Globalization;
 using Lunate.Agent;
 using Lunate.Extensibility;
 using Lunate.Extensibility.Abstractions;
@@ -11,7 +12,7 @@ public sealed class InteractiveSessionCommandTests
     [Fact]
     public async Task Every_built_in_command_dispatches_without_a_model_call()
     {
-        using var host = new InteractiveSessionHost();
+        using var host = new InteractiveSessionHost(secretPrompt: new CancelledSecretPrompt());
         Task run = host.RunAsync();
         await host.WaitUntilAsync(() => host.Session.IsComposed);
 
@@ -34,6 +35,22 @@ public sealed class InteractiveSessionCommandTests
         Assert.Contains("  gpt-4o (openai)", host.LastFrame, StringComparison.Ordinal);
         host.Console.SendEscape();
         await WaitForFrameGoneAsync(host, "Select model");
+
+        host.Console.SendText("/login groq");
+        host.Console.SendEnter();
+        await WaitForFrameAsync(host, "login cancelled");
+
+        host.Console.SendText("/logout groq");
+        host.Console.SendEnter();
+        await WaitForFrameAsync(host, "no stored key for 'groq'");
+
+        host.Console.SendText("/favorite gpt-4o");
+        host.Console.SendEnter();
+        await WaitForFrameAsync(host, "added favorite: gpt-4o");
+
+        host.Console.SendText("/unfavorite gpt-4o");
+        host.Console.SendEnter();
+        await WaitForFrameAsync(host, "removed favorite: gpt-4o");
 
         host.Console.SendText("/resume");
         host.Console.SendEnter();
@@ -84,7 +101,11 @@ public sealed class InteractiveSessionCommandTests
               /session  — show the session file, messages and tokens
               /thinking — set the reasoning level (off|low|medium|high)
             model
-              /model — pick a model or switch to one by id
+              /favorite   — add the active or named model to favorites
+              /login      — store an API key for a provider preset
+              /logout     — remove the stored API key for a provider preset
+              /model      — pick a model or switch to one by id
+              /unfavorite — remove the active or named model from favorites
             extensions
               /extensions   — list the discovered extensions with their state
               /mcp          — list the MCP servers with their status and source
@@ -516,11 +537,240 @@ public sealed class InteractiveSessionCommandTests
         Assert.Contains($"session: {path}", host.ScrollbackText, StringComparison.Ordinal);
         Assert.Contains($"id: {session.SessionId}", host.ScrollbackText, StringComparison.Ordinal);
         Assert.Contains("messages: 2", host.ScrollbackText, StringComparison.Ordinal);
-        Assert.DoesNotContain("cost:", host.ScrollbackText, StringComparison.Ordinal);
+        Assert.Contains("cost: $0.0005", host.ScrollbackText, StringComparison.Ordinal);
+        Assert.Contains(
+            "gpt-4o-mini: 1000 in / 500 out / 0 cache read / 0 cache write = $0.0005",
+            host.ScrollbackText,
+            StringComparison.Ordinal
+        );
         Assert.Single(host.Client.Requests);
 
         host.Console.Complete();
         await run;
+    }
+
+    [Fact]
+    public async Task Session_reports_the_cache_lanes_and_cost_of_a_schema_3_turn()
+    {
+        using var host = new InteractiveSessionHost(
+            launch: new LaunchOptions { Model = "claude-sonnet-5-5" }
+        );
+        host.Scrollback.Profile.Width = 400;
+        host.Client.Enqueue(
+            CacheUsage(input: 1500, output: 50, cacheRead: 1200, cacheWrite: 300),
+            Scripts.Text("done"),
+            Scripts.Stop()
+        );
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+
+        await RunOneTurnAsync(host);
+        host.Console.SendText("/session");
+        host.Console.SendEnter();
+        await WaitForScrollbackAsync(host, "tokens: 1500 in / 50 out");
+
+        Assert.Contains(
+            "cache: 1200 read / 300 write",
+            host.ScrollbackText,
+            StringComparison.Ordinal
+        );
+        Assert.Contains("cost: $0.0014", host.ScrollbackText, StringComparison.Ordinal);
+        Assert.Contains(
+            "claude-sonnet-5-5: 1500 in / 50 out / 1200 cache read / 300 cache write = $0.0014",
+            host.ScrollbackText,
+            StringComparison.Ordinal
+        );
+
+        host.Console.Complete();
+        await run;
+    }
+
+    [Fact]
+    public async Task Session_with_one_unpriced_model_prints_tokens_without_any_cost()
+    {
+        using var temp = new TempDirectory();
+        File.WriteAllText(
+            temp.File("models.json"),
+            $$"""
+            { "schemaVersion": 2, "models": [ {{PricedModel}}, {{UnpricedModel}} ] }
+            """
+        );
+        string path = temp.File("prewritten.jsonl");
+        Session session = Session.Create(path, temp.Root);
+        session.AppendMessage(new ChatMessage(ChatRole.User, "hi"));
+        session.AppendMessage(
+            new ChatMessage(ChatRole.Assistant, "one"),
+            "fixture-priced",
+            new SessionUsage(1000, 100, 50, 25)
+        );
+        session.AppendMessage(
+            new ChatMessage(ChatRole.Assistant, "two"),
+            "fixture-unpriced",
+            new SessionUsage(200, 20)
+        );
+        using var started = new InteractiveSessionHost(
+            launch: new LaunchOptions { Model = "fixture-priced" },
+            startSession: path,
+            modelsPath: temp.File("models.json")
+        );
+        started.Scrollback.Profile.Width = 400;
+        Task run = started.RunAsync();
+        await started.WaitUntilAsync(() => started.Session.IsComposed);
+
+        started.Console.SendText("/session");
+        started.Console.SendEnter();
+        await WaitForScrollbackAsync(started, "tokens: 1200 in / 120 out");
+
+        Assert.Contains(
+            "cache: 50 read / 25 write",
+            started.ScrollbackText,
+            StringComparison.Ordinal
+        );
+        Assert.DoesNotContain("cost:", started.ScrollbackText, StringComparison.Ordinal);
+        Assert.DoesNotContain(" = $", started.ScrollbackText, StringComparison.Ordinal);
+
+        started.Console.Complete();
+        await run;
+    }
+
+    [Fact]
+    public async Task Session_prints_tokens_without_a_cost_for_a_negative_usage_lane()
+    {
+        using var temp = new TempDirectory();
+        File.WriteAllText(
+            temp.File("models.json"),
+            $$"""
+            { "schemaVersion": 2, "models": [ {{PricedModel}} ] }
+            """
+        );
+        string path = temp.File("negative-cache.jsonl");
+        File.WriteAllText(
+            path,
+            """
+            {"type":"header","schema":3,"id":"s_20261007-090000-b1c2","cwd":"/repo","created":"2026-10-07T09:00:00.0000000+00:00","meai":"10.10.1"}
+            {"type":"message","id":"e_01","parentId":null,"timestamp":"2026-10-07T09:00:01.0000000+00:00","message":{"role":"user","contents":[{"$type":"text","text":"hi"}]}}
+            {"type":"message","id":"e_02","parentId":"e_01","timestamp":"2026-10-07T09:00:02.0000000+00:00","message":{"role":"assistant","contents":[{"$type":"text","text":"priced."}]},"model":"fixture-priced","usage":{"input":1000,"output":100,"cacheRead":-1}}
+            """
+        );
+        using var started = new InteractiveSessionHost(
+            launch: new LaunchOptions { Model = "fixture-priced" },
+            startSession: path,
+            modelsPath: temp.File("models.json")
+        );
+        started.Scrollback.Profile.Width = 400;
+        Task run = started.RunAsync();
+        await started.WaitUntilAsync(() => started.Session.IsComposed);
+
+        started.Console.SendText("/session");
+        started.Console.SendEnter();
+        await WaitForScrollbackAsync(started, "tokens: 1000 in / 100 out");
+
+        Assert.DoesNotContain("cost:", started.ScrollbackText, StringComparison.Ordinal);
+        Assert.DoesNotContain(" = $", started.ScrollbackText, StringComparison.Ordinal);
+
+        started.Console.Complete();
+        await run;
+    }
+
+    [Fact]
+    public async Task Session_stays_token_only_for_a_schema_2_file_whose_model_has_a_cache_rate()
+    {
+        using var temp = new TempDirectory();
+        string path = temp.File("schema-2.jsonl");
+        File.WriteAllText(
+            path,
+            Schema2Session(model: "claude-sonnet-5-5", input: 1500, output: 50)
+        );
+        using var started = new InteractiveSessionHost(startSession: path);
+        started.Scrollback.Profile.Width = 400;
+        Task run = started.RunAsync();
+        await started.WaitUntilAsync(() => started.Session.IsComposed);
+
+        started.Console.SendText("/session");
+        started.Console.SendEnter();
+        await WaitForScrollbackAsync(started, "tokens: 1500 in / 50 out");
+
+        Assert.DoesNotContain("cost:", started.ScrollbackText, StringComparison.Ordinal);
+        Assert.DoesNotContain("cache:", started.ScrollbackText, StringComparison.Ordinal);
+
+        started.Console.Complete();
+        await run;
+    }
+
+    [Fact]
+    public async Task Session_costs_a_schema_2_file_whose_model_has_no_cache_rate()
+    {
+        using var temp = new TempDirectory();
+        File.WriteAllText(
+            temp.File("models.json"),
+            $$"""
+            { "schemaVersion": 2, "models": [ {{OtherPricedModel}} ] }
+            """
+        );
+        string path = temp.File("schema-2.jsonl");
+        File.WriteAllText(
+            path,
+            Schema2Session(model: "fixture-other", input: 1_000_000, output: 0)
+        );
+        using var started = new InteractiveSessionHost(
+            startSession: path,
+            modelsPath: temp.File("models.json")
+        );
+        started.Scrollback.Profile.Width = 400;
+        Task run = started.RunAsync();
+        await started.WaitUntilAsync(() => started.Session.IsComposed);
+
+        started.Console.SendText("/session");
+        started.Console.SendEnter();
+        await WaitForScrollbackAsync(started, "tokens: 1000000 in / 0 out");
+
+        Assert.Contains("cost: $1.00", started.ScrollbackText, StringComparison.Ordinal);
+        Assert.Contains(
+            "fixture-other: 1000000 in / 0 out / 0 cache read / 0 cache write = $1.00",
+            started.ScrollbackText,
+            StringComparison.Ordinal
+        );
+
+        started.Console.Complete();
+        await run;
+    }
+
+    [Fact]
+    public async Task Session_formats_the_priced_report_invariantly_under_de_AT()
+    {
+        CultureInfo original = CultureInfo.CurrentCulture;
+        try
+        {
+            CultureInfo.CurrentCulture = new CultureInfo("de-AT");
+            using var host = new InteractiveSessionHost();
+            host.Scrollback.Profile.Width = 400;
+            host.Client.Enqueue(Usage(1000, 500), Scripts.Text("done"), Scripts.Stop());
+            Task run = host.RunAsync();
+            await host.WaitUntilAsync(() => host.Session.IsComposed);
+
+            host.Console.SendText("go");
+            host.Console.SendEnter();
+            await host.Client.WaitForCallAsync(1);
+            await WaitForScrollbackAsync(host, "done");
+            host.Console.SendText("/session");
+            host.Console.SendEnter();
+            await WaitForScrollbackAsync(host, "tokens: 1000 in / 500 out");
+
+            Assert.Contains("cost: $0.0005", host.ScrollbackText, StringComparison.Ordinal);
+            Assert.Contains(
+                "gpt-4o-mini: 1000 in / 500 out / 0 cache read / 0 cache write = $0.0005",
+                host.ScrollbackText,
+                StringComparison.Ordinal
+            );
+            Assert.DoesNotContain("0,0005", host.ScrollbackText, StringComparison.Ordinal);
+
+            host.Console.Complete();
+            await run;
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = original;
+        }
     }
 
     [Fact]
@@ -553,6 +803,54 @@ public sealed class InteractiveSessionCommandTests
                 ),
             ]
         );
+
+    private static ChatResponseUpdate CacheUsage(
+        long input,
+        long output,
+        long? cacheRead,
+        long? cacheWrite
+    )
+    {
+        var usage = new UsageDetails
+        {
+            InputTokenCount = input,
+            OutputTokenCount = output,
+            CachedInputTokenCount = cacheRead,
+        };
+        if (cacheWrite is { } write)
+        {
+            usage.AdditionalCounts = new AdditionalPropertiesDictionary<long>
+            {
+                ["CacheCreationInputTokens"] = write,
+            };
+        }
+
+        return new ChatResponseUpdate(ChatRole.Assistant, [new UsageContent(usage)]);
+    }
+
+    private const string PricedModel = """
+        { "id": "fixture-priced", "provider": "fixture", "contextWindow": 1000, "supportsTools": true, "pricing": { "input": 1, "output": 2 } }
+        """;
+
+    private const string OtherPricedModel = """
+        { "id": "fixture-other", "provider": "fixture", "contextWindow": 1000, "supportsTools": true, "pricing": { "input": 1, "output": 2 } }
+        """;
+
+    private const string UnpricedModel = """
+        { "id": "fixture-unpriced", "provider": "fixture", "contextWindow": 1000, "supportsTools": true }
+        """;
+
+    /// <summary>
+    /// A schema-2 session file with one assistant usage carrying input/output only: the shape an
+    /// older build wrote before the cache lanes existed.
+    /// </summary>
+    private static string Schema2Session(string model, long input, long output) =>
+        $$$"""
+            {"type":"header","schema":2,"id":"s_20261007-090000-b1c2","cwd":"/repo","created":"2026-10-07T09:00:00.0000000+00:00","meai":"10.10.1"}
+            {"type":"message","id":"e_01","parentId":null,"timestamp":"2026-10-07T09:00:01.0000000+00:00","message":{"role":"user","contents":[{"$type":"text","text":"hi"}]}}
+            {"type":"message","id":"e_02","parentId":"e_01","timestamp":"2026-10-07T09:00:02.0000000+00:00","message":{"role":"assistant","contents":[{"$type":"text","text":"priced."}]},"model":"{{{model}}}","usage":{"input":{{{input}}},"output":{{{output}}}}}
+
+            """;
 
     internal static async Task WaitForFrameAsync(
         InteractiveSessionHost host,
@@ -610,5 +908,12 @@ public sealed class InteractiveSessionCommandTests
             Seen.Add(payload.Text);
             return ValueTask.FromResult<InputReceivedResult>(new InputReceivedResult.Consume());
         }
+    }
+
+    /// <summary>A prompt that reports a cancelled read (Enter on an empty line).</summary>
+    private sealed class CancelledSecretPrompt : ISecretPrompt
+    {
+        public Task<string?> ReadAsync(string prompt, CancellationToken cancellationToken) =>
+            Task.FromResult<string?>(null);
     }
 }

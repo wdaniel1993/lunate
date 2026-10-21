@@ -10,6 +10,7 @@ public sealed class KeyRouterTests
         (Key(KeyKind.Escape), RoutedKey.Cancel),
         (Key(KeyKind.Character, "c", ctrl: true), RoutedKey.ClearOrQuit),
         (Key(KeyKind.Character, "l", ctrl: true), RoutedKey.ModelPicker),
+        (Key(KeyKind.Character, "p", ctrl: true), RoutedKey.FavoritesCycle),
         (Key(KeyKind.Character, "o", ctrl: true), RoutedKey.TranscriptViewer),
         (Key(KeyKind.Tab), RoutedKey.Complete),
         (Key(KeyKind.Up), RoutedKey.HistoryPrevious),
@@ -44,6 +45,7 @@ public sealed class KeyRouterTests
         Assert.Single(intents, intent => intent == RoutedKey.Cancel);
         Assert.Single(intents, intent => intent == RoutedKey.ClearOrQuit);
         Assert.Single(intents, intent => intent == RoutedKey.ModelPicker);
+        Assert.Single(intents, intent => intent == RoutedKey.FavoritesCycle);
         Assert.Single(intents, intent => intent == RoutedKey.TranscriptViewer);
         Assert.Single(intents, intent => intent == RoutedKey.Complete);
         Assert.Single(intents, intent => intent == RoutedKey.HistoryPrevious);
@@ -67,6 +69,29 @@ public sealed class KeyRouterTests
     [Fact]
     public void Ctrl_j_edits_before_any_generic_ctrl_handling() =>
         Assert.Equal(RoutedKey.Edit, KeyRouter.Route(Key(KeyKind.Character, "j", ctrl: true)));
+
+    [Fact]
+    public void Ctrl_P_is_its_own_intent()
+    {
+        Assert.Equal(
+            RoutedKey.FavoritesCycle,
+            KeyRouter.Route(Key(KeyKind.Character, "p", ctrl: true))
+        );
+        Assert.NotEqual(
+            RoutedKey.ModelPicker,
+            KeyRouter.Route(Key(KeyKind.Character, "p", ctrl: true))
+        );
+        Assert.NotEqual(RoutedKey.Edit, KeyRouter.Route(Key(KeyKind.Character, "p", ctrl: true)));
+
+        Assert.Equal(
+            RoutedKey.Edit,
+            KeyRouter.Route(Key(KeyKind.Character, "p", ctrl: true, alt: true))
+        );
+        Assert.Equal(
+            RoutedKey.Edit,
+            KeyRouter.Route(Key(KeyKind.Character, "p", ctrl: true, shift: true))
+        );
+    }
 
     [Fact]
     public void Ctrl_c_never_routes_to_cancel() =>

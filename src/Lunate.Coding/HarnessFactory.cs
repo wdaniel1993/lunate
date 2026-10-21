@@ -221,11 +221,20 @@ internal static class HarnessFactory
             );
         }
 
-        return catalog.Find(modelId)
-            ?? throw new UnknownModelException(
-                $"Model '{modelId}' is not in the catalog. Run lunate --discover <name-or-url> "
-                    + $"to draft a models.json entry or add '{modelId}' to ~/.lunate/models.json."
-            );
+        try
+        {
+            return catalog.Find(modelId)
+                ?? throw new UnknownModelException(
+                    $"Model '{modelId}' is not in the catalog. Run lunate --discover <name-or-url> "
+                        + $"to draft a models.json entry or add '{modelId}' to ~/.lunate/models.json."
+                );
+        }
+        catch (InvalidOperationException exception)
+        {
+            // An ambiguous bare id already names every candidate and the qualified-id fix; the
+            // configuration-error path owns the message and the exit code.
+            throw new UnknownModelException(exception.Message);
+        }
     }
 
     internal static IChatClientFactory CreateFactory(

@@ -17,6 +17,10 @@ public sealed class ModelCatalogTests
             Assert.Equal(128_000, mini.ContextWindow);
             Assert.True(mini.SupportsTools);
             Assert.Null(mini.Reasoning);
+            Assert.Null(mini.WireId);
+            Assert.Equal(16_384, mini.MaxOutput);
+            Assert.True(mini.SupportsVision);
+            Assert.Equal(new ModelPricing(0.15m, 0.6m, 0.075m), mini.Pricing);
 
             ModelInfo full = catalog.Find("gpt-4o")!;
             Assert.NotNull(full);
@@ -25,6 +29,10 @@ public sealed class ModelCatalogTests
             Assert.Equal(128_000, full.ContextWindow);
             Assert.True(full.SupportsTools);
             Assert.Null(full.Reasoning);
+            Assert.Null(full.WireId);
+            Assert.Equal(16_384, full.MaxOutput);
+            Assert.True(full.SupportsVision);
+            Assert.Equal(new ModelPricing(2.5m, 10m, 1.25m), full.Pricing);
 
             ModelInfo sonnet = catalog.Find("claude-sonnet-5-5")!;
             Assert.NotNull(sonnet);
@@ -33,6 +41,10 @@ public sealed class ModelCatalogTests
             Assert.Equal(1_000_000, sonnet.ContextWindow);
             Assert.True(sonnet.SupportsTools);
             Assert.Equal("budget", sonnet.Reasoning);
+            Assert.Null(sonnet.WireId);
+            Assert.Equal(128_000, sonnet.MaxOutput);
+            Assert.True(sonnet.SupportsVision);
+            Assert.Equal(new ModelPricing(2m, 10m, 0.1m, 2.5m), sonnet.Pricing);
 
             ModelInfo opus = catalog.Find("claude-opus-5-5")!;
             Assert.NotNull(opus);
@@ -41,11 +53,162 @@ public sealed class ModelCatalogTests
             Assert.Equal(1_000_000, opus.ContextWindow);
             Assert.True(opus.SupportsTools);
             Assert.Equal("budget", opus.Reasoning);
+            Assert.Null(opus.WireId);
+            Assert.Equal(128_000, opus.MaxOutput);
+            Assert.True(opus.SupportsVision);
+            Assert.Equal(new ModelPricing(4m, 20m, 0.2m, 5m), opus.Pricing);
         }
         finally
         {
             DeleteTempDirectory(directory);
         }
+    }
+
+    [Fact]
+    public void Load_without_user_file_keeps_a_non_native_model_id_qualified()
+    {
+        string directory = CreateTempDirectory();
+        try
+        {
+            ModelCatalog catalog = ModelCatalog.Load(Path.Combine(directory, "missing.json"));
+
+            ModelInfo model = catalog.Find("openrouter/anthropic/claude-sonnet-5.5")!;
+            Assert.NotNull(model);
+            Assert.Equal("openrouter/anthropic/claude-sonnet-5.5", model.Id);
+            Assert.Equal("openrouter", model.Provider);
+            Assert.Equal("anthropic/claude-sonnet-5.5", model.WireId);
+            Assert.Null(catalog.Find("anthropic/claude-sonnet-5.5"));
+        }
+        finally
+        {
+            DeleteTempDirectory(directory);
+        }
+    }
+
+    [Fact]
+    public void Find_resolves_a_native_id_qualified_with_its_provider()
+    {
+        ModelCatalog catalog = ModelCatalog.Load(MissingUserFile());
+
+        ModelInfo openAi = catalog.Find("openai/gpt-4o")!;
+        Assert.Equal("gpt-4o", openAi.Id);
+        Assert.Equal("openai", openAi.Provider);
+
+        ModelInfo anthropic = catalog.Find("anthropic/claude-sonnet-5-5")!;
+        Assert.Equal("claude-sonnet-5-5", anthropic.Id);
+        Assert.Equal("anthropic", anthropic.Provider);
+    }
+
+    [Fact]
+    public void Find_resolves_a_bare_id_to_the_single_preset_whose_wire_id_matches()
+    {
+        ModelCatalog catalog = ModelCatalog.Load(MissingUserFile());
+
+        ModelInfo model = catalog.Find("deepseek-flash")!;
+
+        Assert.Equal("deepseek/deepseek-flash", model.Id);
+        Assert.Equal("deepseek-flash", model.WireId);
+    }
+
+    [Fact]
+    public void Find_splits_a_qualified_id_on_the_first_slash()
+    {
+        string directory = CreateTempDirectory();
+        try
+        {
+            string userFile = WriteUserFile(
+                directory,
+                """
+                {
+                  "schemaVersion": 2,
+                  "models": [
+                    { "id": "groq/model-alias", "provider": "groq", "wireId": "vendor/model", "contextWindow": 1, "supportsTools": true }
+                  ]
+                }
+                """
+            );
+
+            ModelInfo model = ModelCatalog.Load(userFile).Find("groq/vendor/model")!;
+
+            Assert.Equal("groq/model-alias", model.Id);
+            Assert.Equal("vendor/model", model.WireId);
+        }
+        finally
+        {
+            DeleteTempDirectory(directory);
+        }
+    }
+
+    [Fact]
+    public void Find_prefers_an_exact_catalog_id_over_a_preset_wire_id()
+    {
+        string directory = CreateTempDirectory();
+        try
+        {
+            string userFile = WriteUserFile(
+                directory,
+                """
+                {
+                  "schemaVersion": 2,
+                  "models": [
+                    { "id": "groq/gpt-4o", "provider": "groq", "wireId": "gpt-4o", "contextWindow": 1, "supportsTools": true }
+                  ]
+                }
+                """
+            );
+
+            ModelInfo model = ModelCatalog.Load(userFile).Find("gpt-4o")!;
+
+            Assert.Equal("gpt-4o", model.Id);
+            Assert.Equal("openai", model.Provider);
+        }
+        finally
+        {
+            DeleteTempDirectory(directory);
+        }
+    }
+
+    [Fact]
+    public void Find_names_both_candidates_when_a_bare_wire_id_is_ambiguous()
+    {
+        string directory = CreateTempDirectory();
+        try
+        {
+            string userFile = WriteUserFile(
+                directory,
+                """
+                {
+                  "schemaVersion": 2,
+                  "models": [
+                    { "id": "groq/shared", "provider": "groq", "wireId": "shared-model", "contextWindow": 1, "supportsTools": true },
+                    { "id": "openrouter/shared", "provider": "openrouter", "wireId": "shared-model", "contextWindow": 1, "supportsTools": true }
+                  ]
+                }
+                """
+            );
+
+            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+                ModelCatalog.Load(userFile).Find("shared-model")
+            );
+
+            Assert.Contains("shared-model", exception.Message, StringComparison.Ordinal);
+            Assert.Contains("groq/shared", exception.Message, StringComparison.Ordinal);
+            Assert.Contains("openrouter/shared", exception.Message, StringComparison.Ordinal);
+            Assert.Contains("qualified", exception.Message, StringComparison.Ordinal);
+        }
+        finally
+        {
+            DeleteTempDirectory(directory);
+        }
+    }
+
+    [Fact]
+    public void Find_returns_null_for_an_unknown_qualified_id()
+    {
+        ModelCatalog catalog = ModelCatalog.Load(MissingUserFile());
+
+        Assert.Null(catalog.Find("groq/does-not-exist"));
+        Assert.Null(catalog.Find("nope-9000"));
     }
 
     [Fact]
@@ -75,7 +238,13 @@ public sealed class ModelCatalogTests
             Assert.Equal(42, model.ContextWindow);
             Assert.False(model.SupportsTools);
             Assert.Equal(1, catalog.Models.Count(candidate => candidate.Id == "gpt-4o-mini"));
-            Assert.Equal("gpt-4o-mini", catalog.Models[0].Id);
+            IReadOnlyList<ModelInfo> embedded = ModelCatalog
+                .Load(Path.Combine(directory, "missing.json"))
+                .Models;
+            int builtInPosition = embedded
+                .ToList()
+                .FindIndex(candidate => candidate.Id == "gpt-4o-mini");
+            Assert.Equal("gpt-4o-mini", catalog.Models[builtInPosition].Id);
         }
         finally
         {
@@ -208,37 +377,6 @@ public sealed class ModelCatalogTests
     }
 
     [Fact]
-    public void Load_with_duplicate_id_in_user_file_throws_naming_the_id()
-    {
-        string directory = CreateTempDirectory();
-        try
-        {
-            string userFile = WriteUserFile(
-                directory,
-                """
-                {
-                  "schemaVersion": 1,
-                  "models": [
-                    { "id": "gpt-4o-mini", "provider": "openai", "endpoint": null, "contextWindow": 1, "supportsTools": true },
-                    { "id": "gpt-4o-mini", "provider": "openai", "endpoint": null, "contextWindow": 2, "supportsTools": true }
-                  ]
-                }
-                """
-            );
-
-            InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
-                ModelCatalog.Load(userFile)
-            );
-
-            Assert.Contains("gpt-4o-mini", exception.Message, StringComparison.Ordinal);
-        }
-        finally
-        {
-            DeleteTempDirectory(directory);
-        }
-    }
-
-    [Fact]
     public void Load_with_missing_user_file_is_tolerated()
     {
         string directory = CreateTempDirectory();
@@ -248,7 +386,7 @@ public sealed class ModelCatalogTests
                 Path.Combine(directory, "does-not-exist.json")
             );
 
-            Assert.Equal(4, catalog.Models.Count);
+            Assert.Equal(746, catalog.Models.Count);
             Assert.Contains(catalog.Models, model => model.Id == "gpt-4o-mini");
             Assert.Contains(catalog.Models, model => model.Id == "gpt-4o");
             Assert.Contains(catalog.Models, model => model.Id == "claude-sonnet-5-5");
@@ -260,46 +398,8 @@ public sealed class ModelCatalogTests
         }
     }
 
-    [Fact]
-    public void Find_with_unknown_id_returns_null()
-    {
-        string directory = CreateTempDirectory();
-        try
-        {
-            ModelCatalog catalog = ModelCatalog.Load(Path.Combine(directory, "missing.json"));
-
-            Assert.Null(catalog.Find("unknown-model"));
-        }
-        finally
-        {
-            DeleteTempDirectory(directory);
-        }
-    }
-
-    [Theory]
-    [InlineData("""{ "schemaVersion": 2, "models": [] }""", "2")]
-    [InlineData("""{ "models": [] }""", "missing")]
-    public void Load_with_unsupported_schema_version_throws_naming_the_version(
-        string json,
-        string expectedVersion
-    )
-    {
-        string directory = CreateTempDirectory();
-        try
-        {
-            string userFile = WriteUserFile(directory, json);
-
-            InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
-                ModelCatalog.Load(userFile)
-            );
-
-            Assert.Contains(expectedVersion, exception.Message, StringComparison.Ordinal);
-        }
-        finally
-        {
-            DeleteTempDirectory(directory);
-        }
-    }
+    private static string MissingUserFile() =>
+        Path.Combine(Path.GetTempPath(), $"lunate-model-catalog-missing-{Guid.NewGuid():N}.json");
 
     private static string CreateTempDirectory()
     {

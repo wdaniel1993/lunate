@@ -177,6 +177,90 @@ public sealed class AgentSessionMirrorTests
         Assert.Contains("cancelled by the user", result.Result!.ToString());
     }
 
+    [Fact]
+    public async Task A_sessioned_run_records_the_provider_cache_lanes()
+    {
+        using var temp = new TempDirectory();
+        Session session = Session.Create(
+            temp.File("s.jsonl"),
+            "/work",
+            new FixedTimeProvider(Start)
+        );
+        var details = new UsageDetails
+        {
+            InputTokenCount = 1500,
+            OutputTokenCount = 50,
+            CachedInputTokenCount = 1200,
+            AdditionalCounts = new AdditionalPropertiesDictionary<long>
+            {
+                ["CacheCreationInputTokens"] = 300,
+            },
+        };
+        var client = new ScriptedChatClient().Enqueue(
+            new ChatResponseUpdate(ChatRole.Assistant, [new TextContent("Priced")])
+            {
+                ModelId = "claude-sonnet-5-5",
+            },
+            new ChatResponseUpdate(ChatRole.Assistant, [new UsageContent(details)]),
+            new ChatResponseUpdate(ChatRole.Assistant, [])
+            {
+                FinishReason = ChatFinishReason.Stop,
+                ModelId = "claude-sonnet-5-5",
+            }
+        );
+        var harness = new AgentHarness(
+            client,
+            new ToolRegistry(),
+            new AgentHarnessOptions { Session = session }
+        );
+
+        List<AgentEvent> events = await harness
+            .RunAsync("go", TestContext.Current.CancellationToken)
+            .ToListAsync(TestContext.Current.CancellationToken);
+
+        SessionMessageEntry assistant = Entry(session, 1);
+        Assert.Equal(new SessionUsage(1500, 50, 1200, 300), assistant.Usage);
+        UsageUpdated updated = Assert.Single(events.OfType<UsageUpdated>());
+        Assert.Equal(1500, updated.Usage.InputTokenCount);
+        Assert.Equal(50, updated.Usage.OutputTokenCount);
+        Assert.Equal(1200, updated.Usage.CachedInputTokenCount);
+        Assert.Equal(300, updated.Usage.AdditionalCounts!["CacheCreationInputTokens"]);
+    }
+
+    [Fact]
+    public async Task A_sessioned_run_leaves_the_cache_lanes_unknown_without_provider_counts()
+    {
+        using var temp = new TempDirectory();
+        Session session = Session.Create(
+            temp.File("s.jsonl"),
+            "/work",
+            new FixedTimeProvider(Start)
+        );
+        var client = new ScriptedChatClient().Enqueue(
+            new ChatResponseUpdate(ChatRole.Assistant, [new TextContent("Done")]),
+            new ChatResponseUpdate(
+                ChatRole.Assistant,
+                [new UsageContent(new UsageDetails { InputTokenCount = 11, OutputTokenCount = 5 })]
+            ),
+            new ChatResponseUpdate(ChatRole.Assistant, []) { FinishReason = ChatFinishReason.Stop }
+        );
+        var harness = new AgentHarness(
+            client,
+            new ToolRegistry(),
+            new AgentHarnessOptions { Session = session }
+        );
+
+        await harness
+            .RunAsync("go", TestContext.Current.CancellationToken)
+            .ToListAsync(TestContext.Current.CancellationToken);
+
+        SessionUsage usage = Assert.IsType<SessionUsage>(Entry(session, 1).Usage);
+        Assert.Equal(11, usage.Input);
+        Assert.Equal(5, usage.Output);
+        Assert.Null(usage.CacheRead);
+        Assert.Null(usage.CacheWrite);
+    }
+
     private static SessionMessageEntry Entry(Session session, int index) =>
         Assert.IsType<SessionMessageEntry>(session.Entries[index]);
 

@@ -42,6 +42,9 @@ internal sealed record LiveAreaState
 
     public string? Notice { get; init; }
 
+    /// <summary>The open masked secret prompt; null while none is open.</summary>
+    public SecretPromptState? SecretPrompt { get; init; }
+
     public ApprovalPromptModel? Approval { get; init; }
 
     public TrustPromptModel? Trust { get; init; }
@@ -68,6 +71,12 @@ internal sealed record LiveAreaState
 
     public ConsoleSize Size { get; init; } = new(80, 24);
 }
+
+/// <summary>
+/// The open masked secret prompt: the label and the mask (one asterisk per typed character). The
+/// plaintext never reaches the live state or a rendered frame.
+/// </summary>
+internal sealed record SecretPromptState(string Label, string Mask);
 
 /// <summary>
 /// The live thinking block: the accumulating reasoning text and how long it has streamed. The

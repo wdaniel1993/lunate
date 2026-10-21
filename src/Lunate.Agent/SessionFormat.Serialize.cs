@@ -8,7 +8,7 @@ using Microsoft.Extensions.AI;
 namespace Lunate.Agent;
 
 /// <summary>
-/// The write path of <see cref="SessionFormat"/>: schema 1 and 2 lines on a single
+/// The write path of <see cref="SessionFormat"/>: schema 1, 2 and 3 lines on a single
 /// <see cref="Utf8JsonWriter"/> so raw-preserved parts embed with <c>WriteRawValue</c>.
 /// </summary>
 internal static partial class SessionFormat
@@ -116,6 +116,16 @@ internal static partial class SessionFormat
             writer.WriteStartObject();
             writer.WriteNumber("input", usage.Input);
             writer.WriteNumber("output", usage.Output);
+            if (usage.CacheRead is > 0 and int cacheRead)
+            {
+                writer.WriteNumber("cacheRead", cacheRead);
+            }
+
+            if (usage.CacheWrite is > 0 and int cacheWrite)
+            {
+                writer.WriteNumber("cacheWrite", cacheWrite);
+            }
+
             writer.WriteEndObject();
         }
 

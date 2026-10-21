@@ -46,6 +46,20 @@ public sealed class CommandRegistryTests
         }
     }
 
+    [Fact]
+    public void Provider_and_favourite_commands_are_registered_model_commands()
+    {
+        foreach (string name in new[] { "/login", "/logout", "/favorite", "/unfavorite" })
+        {
+            CommandDescriptor descriptor = Assert.Single(
+                Commands.Descriptors,
+                candidate => candidate.Name == name
+            );
+            Assert.Equal(CommandGroup.Model, descriptor.Group);
+            Assert.Contains(name, DispatchedNames());
+        }
+    }
+
     /// <summary>
     /// The names the dispatch switch acts on, read from the source: the case labels of
     /// <c>DispatchCommandAsync</c> plus the skill-invocation prefix branch (which is not a case

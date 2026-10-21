@@ -87,6 +87,12 @@ internal sealed record InteractiveSessionOptions
     /// <summary>The launch flags parsed once by the CLI; defaults stand in for direct calls.</summary>
     public LaunchOptions Launch { get; init; } = new();
 
+    /// <summary>
+    /// The masked secret prompt behind <c>/login</c>; null uses the live-area prompt. Print and ACP
+    /// modes never construct an interactive session.
+    /// </summary>
+    public ISecretPrompt? SecretPrompt { get; init; }
+
     /// <summary>The session file to start from; null creates a fresh session.</summary>
     public string? StartSession { get; init; }
 
@@ -114,6 +120,7 @@ internal sealed partial class InteractiveSession : IDisposable
     private readonly InputHistory _history;
     private readonly CtrlCQuitWindow _quitWindow;
     private readonly IUserInteraction _interaction;
+    private readonly ISecretPrompt _secretPrompt;
     private readonly SteeringQueue _steering = new();
     private readonly object _steeringGate = new();
     private readonly List<(string Text, SessionSkillMetadata? Skill)> _pendingSteering = [];
@@ -174,7 +181,11 @@ internal sealed partial class InteractiveSession : IDisposable
     private int _trustTotal;
     private SelectListModel? _picker;
     private PickerKind _pickerKind;
+    private List<string> _pickerLabels = [];
     private List<string> _pickerValues = [];
+    private List<string> _pickerVisibleValues = [];
+    private string _pickerTitlePrefix = string.Empty;
+    private string _pickerFilter = string.Empty;
     private FileIndex? _fileIndex;
     private string _tail = string.Empty;
     private string _thinking = string.Empty;
@@ -184,6 +195,12 @@ internal sealed partial class InteractiveSession : IDisposable
     private RunOutcome _outcome;
     private long _inputTokens;
     private long _outputTokens;
+
+    /// <summary>The current turn's usage records: the cost aggregator's per-record input.</summary>
+    private readonly List<(string? ModelId, UsageLanes Lanes)> _turnUsage = [];
+
+    /// <summary>The current turn's fully priced cost; null while unpriced or before its usage.</summary>
+    private decimal? _turnCost;
 
     /// <summary>Accumulated prompt-cache reads; null until a provider reports one (display-only).</summary>
     private long? _cacheReadTokens;
@@ -238,6 +255,7 @@ internal sealed partial class InteractiveSession : IDisposable
         _history = new InputHistory(options.HistoryPath ?? InputHistory.DefaultPath);
         _quitWindow = new CtrlCQuitWindow(options.Scheduler);
         _interaction = new TuiUserInteraction(_live);
+        _secretPrompt = options.SecretPrompt ?? new TuiSecretPrompt(_live);
     }
 
     /// <summary>Runs the input loop until the terminal's key stream ends or the quit window quits.</summary>
@@ -816,6 +834,22 @@ internal sealed partial class InteractiveSession : IDisposable
             return;
         }
 
+        // The secret prompt is modal like the viewer: only Ctrl+C quits, every other key edits
+        // the mask or completes it. Nothing reaches the input line, history or autocomplete.
+        if (_secretPrompt.IsOpen)
+        {
+            if (KeyRouter.Route(key) == RoutedKey.ClearOrQuit)
+            {
+                HandleCtrlC();
+            }
+            else
+            {
+                _secretPrompt.HandleKey(key);
+            }
+
+            return;
+        }
+
         if (_trustDecision is { } trustPending)
         {
             if (KeyRouter.Route(key) == RoutedKey.ClearOrQuit)
@@ -918,6 +952,9 @@ internal sealed partial class InteractiveSession : IDisposable
             case RoutedKey.ModelPicker:
                 OpenModelPicker();
                 break;
+            case RoutedKey.FavoritesCycle:
+                await CycleFavoriteAsync(ct);
+                break;
             case RoutedKey.TranscriptViewer:
                 OpenViewer();
                 break;
@@ -974,7 +1011,13 @@ internal sealed partial class InteractiveSession : IDisposable
         SetInput(string.Empty);
         if (Commands.IsCommand(submitted))
         {
-            _history.Add(submitted);
+            // A login line may carry a typed key; it never reaches the history file. Every other
+            // command keeps its current history behaviour.
+            if (Commands.Parse(submitted).Name != "/login")
+            {
+                _history.Add(submitted);
+            }
+
             await DispatchCommandAsync(submitted, ct);
             return;
         }
@@ -1034,7 +1077,18 @@ internal sealed partial class InteractiveSession : IDisposable
         });
         _promptEchoed = true;
         _turnWroteOutput = false;
+        // A new user turn starts a fresh cost: the previous turn's records and total never leak.
+        // Only a visible cost needs the immediate re-render; the turn's first usage record
+        // re-renders the footer with its own total anyway.
+        bool hadCost = _turnCost is not null;
+        _turnUsage.Clear();
+        _turnCost = null;
         _turnActive = true;
+        if (hadCost)
+        {
+            UpdateStatus();
+        }
+
         _run = RunTurnsAsync(processed.Text, skill, ct);
     }
 
@@ -1343,6 +1397,16 @@ internal sealed partial class InteractiveSession : IDisposable
             _branch
         );
         IReadOnlyList<TextSegment> widgets = _statusWidgets?.Segments(view) ?? [];
+        var favoritePosition = -1;
+        for (var index = 0; index < _settings.Favorites.Count; index++)
+        {
+            if (string.Equals(_settings.Favorites[index], _model.Id, StringComparison.Ordinal))
+            {
+                favoritePosition = index;
+                break;
+            }
+        }
+
         _interaction.UpdateStatus(
             new UserStatus(
                 view.Model,
@@ -1353,6 +1417,11 @@ internal sealed partial class InteractiveSession : IDisposable
                 _thinkingLevel == ThinkingLevel.Off ? null : ThinkingLiteral(_thinkingLevel),
                 widgets
             )
+            {
+                FavoritePosition = favoritePosition < 0 ? null : favoritePosition + 1,
+                FavoriteCount = _settings.Favorites.Count,
+                TurnCost = _turnCost is decimal cost ? CostCalculator.Format(cost) : null,
+            }
         );
     }
 

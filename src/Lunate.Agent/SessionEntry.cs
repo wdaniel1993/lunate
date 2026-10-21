@@ -111,5 +111,14 @@ public sealed record SessionExtensionEntry(
     public JsonNode? Payload => JsonNode.Parse(PayloadJson);
 }
 
-/// <summary>Token usage recorded on an assistant entry.</summary>
-public sealed record SessionUsage(int Input, int Output);
+/// <summary>
+/// Token usage recorded on an assistant entry. <see cref="CacheRead"/> and
+/// <see cref="CacheWrite"/> are the provider's cache lanes; null means unknown (a schema 1 or 2
+/// entry, or a provider that reports no cache counts). Only positive cache counts are persisted.
+/// </summary>
+public sealed record SessionUsage(
+    int Input,
+    int Output,
+    int? CacheRead = null,
+    int? CacheWrite = null
+);

@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Lunate.Agent;
 using Lunate.Ai;
 using Lunate.Tui;
@@ -45,6 +46,9 @@ public sealed record AgentSettings
 
     /// <summary>Whether the committed reasoning prints in full instead of collapsed; defaults to off.</summary>
     public bool ThinkingFull { get; init; }
+
+    /// <summary>The ordered favourite model ids (at most eight, unique); schema 2 and later.</summary>
+    public IReadOnlyList<string> Favorites { get; init; } = [];
 }
 
 /// <summary>The per-workspace Roslyn limits (the <c>roslyn</c> settings section).</summary>
@@ -62,9 +66,10 @@ public sealed record RoslynSettings
 }
 
 /// <summary>
-/// Reads <c>~/.lunate/settings.json</c> (schema 1). A missing file yields defaults; a present file
-/// is validated with every problem collected into one error, and no partial settings are applied.
-/// The environment (<c>LUNATE_MODEL</c>, <c>LUNATE_APPROVAL</c>, <c>LUNATE_TOOL_DETAILS</c>,
+/// Reads <c>~/.lunate/settings.json</c> (schema 2; schema 1 reads as the same settings without
+/// favourites). A missing file yields defaults; a present file is validated with every problem
+/// collected into one error, and no partial settings are applied. The environment
+/// (<c>LUNATE_MODEL</c>, <c>LUNATE_APPROVAL</c>, <c>LUNATE_TOOL_DETAILS</c>,
 /// <c>LUNATE_TOOL_OUTPUT_LIMIT</c>, <c>LUNATE_STARTUP_HEADER</c>,
 /// <c>LUNATE_SUBAGENTS_CONCURRENCY</c>, <c>LUNATE_SUBAGENTS_TOKEN_BUDGET</c>,
 /// <c>LUNATE_SUBAGENTS_TREE_TOKEN_BUDGET</c>) overrides file values. Both the path and the
@@ -72,8 +77,13 @@ public sealed record RoslynSettings
 /// </summary>
 public static class SettingsStore
 {
-    /// <summary>The only supported schema version.</summary>
-    public const int SupportedSchemaVersion = 1;
+    /// <summary>The schema this build writes.</summary>
+    public const int SupportedSchemaVersion = 2;
+
+    /// <summary>The oldest schema this build still reads.</summary>
+    public const int OldestSupportedSchemaVersion = 1;
+
+    private const string SupportedSchemaVersions = "1 or 2";
 
     private const string ModelVariable = "LUNATE_MODEL";
     private const string ApprovalVariable = "LUNATE_APPROVAL";
@@ -89,6 +99,8 @@ public static class SettingsStore
 
     /// <summary>The literals a boolean switch setting accepts, as the error message lists them.</summary>
     private const string SwitchLiterals = "true, false, 1 or 0";
+
+    private static readonly JsonSerializerOptions WriteOptions = new() { WriteIndented = true };
 
     /// <summary>Resolves the effective settings; throws one <see cref="InvalidDataException"/> naming every problem.</summary>
     public static AgentSettings Resolve(
@@ -114,18 +126,122 @@ public static class SettingsStore
         return settings;
     }
 
-    private static AgentSettings ParseFile(string path, List<string> problems)
+    /// <summary>
+    /// Writes the favourites through read-modify-write: every other value in the existing JSON is
+    /// preserved, the result is validated by the same parser, and the file is replaced atomically
+    /// with <c>schemaVersion: 2</c>. On any failure the old file is left untouched.
+    /// </summary>
+    public static void WriteFavorites(IReadOnlyList<string> favorites, string? filePath = null)
     {
-        var settings = new AgentSettings();
-        if (!File.Exists(path))
+        ArgumentNullException.ThrowIfNull(favorites);
+        string path = filePath ?? DefaultFilePath();
+        JsonObject root = ReadRoot(path);
+        root["schemaVersion"] = SupportedSchemaVersion;
+        var list = new JsonArray();
+        foreach (string id in favorites)
         {
-            return settings;
+            list.Add(id.Trim());
         }
 
+        root["favorites"] = list;
+
+        string json = root.ToJsonString(WriteOptions) + "\n";
+        var problems = new List<string>();
+        _ = ParseJson(json, problems);
+        if (problems.Count > 0)
+        {
+            throw new InvalidDataException(
+                $"Invalid settings in '{path}': {string.Join("; ", problems)}. No settings were written."
+            );
+        }
+
+        WriteAtomically(path, json);
+    }
+
+    private static JsonObject ReadRoot(string path)
+    {
+        if (!File.Exists(path))
+        {
+            return new JsonObject();
+        }
+
+        JsonNode? node;
+        try
+        {
+            node = JsonNode.Parse(File.ReadAllText(path));
+            if (node is JsonObject root)
+            {
+                // JsonNode.Parse is lazy: a duplicate property surfaces only when the object is
+                // materialised (here, not as a JsonException), so force that check while the
+                // parse is still inside this handler.
+                _ = root.Count;
+            }
+        }
+        catch (Exception exception) when (exception is JsonException or ArgumentException)
+        {
+            throw new InvalidDataException(
+                $"Invalid settings in '{path}': the file is not valid JSON ({exception.Message}). No settings were written.",
+                exception
+            );
+        }
+
+        return node as JsonObject
+            ?? throw new InvalidDataException(
+                $"Invalid settings in '{path}': the root must be a JSON object. No settings were written."
+            );
+    }
+
+    private static void WriteAtomically(string path, string content)
+    {
+        string? directory = Path.GetDirectoryName(path);
+        if (!string.IsNullOrEmpty(directory))
+        {
+            Directory.CreateDirectory(directory);
+        }
+
+        string targetDirectory = string.IsNullOrEmpty(directory) ? "." : directory;
+        string temp = Path.Combine(targetDirectory, Path.GetRandomFileName() + ".tmp");
+        try
+        {
+            File.WriteAllText(temp, content);
+            if (!OperatingSystem.IsWindows() && File.Exists(path))
+            {
+                File.SetUnixFileMode(temp, File.GetUnixFileMode(path));
+            }
+
+            File.Move(temp, path, overwrite: true);
+        }
+        finally
+        {
+            if (File.Exists(temp))
+            {
+                try
+                {
+                    File.Delete(temp);
+                }
+                catch (IOException) { }
+                catch (UnauthorizedAccessException) { }
+            }
+        }
+    }
+
+    private static AgentSettings ParseFile(string path, List<string> problems)
+    {
+        if (!File.Exists(path))
+        {
+            return new AgentSettings();
+        }
+
+        return ParseJson(File.ReadAllText(path), problems);
+    }
+
+    private static AgentSettings ParseJson(string json, List<string> problems)
+    {
+        var settings = new AgentSettings();
         JsonDocument document;
         try
         {
-            document = JsonDocument.Parse(File.ReadAllText(path));
+            document = JsonDocument.Parse(json);
         }
         catch (JsonException exception)
         {
@@ -152,10 +268,11 @@ public static class SettingsStore
                         if (
                             property.Value.ValueKind != JsonValueKind.Number
                             || !property.Value.TryGetInt32(out int version)
-                            || version != SupportedSchemaVersion
+                            || version < OldestSupportedSchemaVersion
+                            || version > SupportedSchemaVersion
                         )
                         {
-                            problems.Add($"schemaVersion must be {SupportedSchemaVersion}");
+                            problems.Add($"schemaVersion must be {SupportedSchemaVersions}");
                         }
 
                         break;
@@ -211,6 +328,12 @@ public static class SettingsStore
                             ThinkingFull = ReadThinkingFull(property.Value, problems),
                         };
                         break;
+                    case "favorites":
+                        settings = settings with
+                        {
+                            Favorites = ReadFavorites(property.Value, problems),
+                        };
+                        break;
                     default:
                         problems.Add($"unknown key '{property.Name}'");
                         break;
@@ -219,7 +342,7 @@ public static class SettingsStore
 
             if (!schemaVersionSeen)
             {
-                problems.Add($"schemaVersion is missing; expected {SupportedSchemaVersion}");
+                problems.Add($"schemaVersion is missing; expected {SupportedSchemaVersions}");
             }
         }
 
@@ -455,6 +578,52 @@ public static class SettingsStore
 
         problems.Add("'thinkingFull' must be true or false");
         return false;
+    }
+
+    /// <summary>
+    /// Reads <c>favorites</c>: an ordered array of at most eight unique non-empty model ids. Every
+    /// problem is collected; a refused list applies nothing.
+    /// </summary>
+    private static IReadOnlyList<string> ReadFavorites(JsonElement value, List<string> problems)
+    {
+        if (value.ValueKind != JsonValueKind.Array)
+        {
+            problems.Add("'favorites' must be an array of model ids");
+            return [];
+        }
+
+        var favorites = new List<string>();
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        foreach (JsonElement item in value.EnumerateArray())
+        {
+            if (item.ValueKind != JsonValueKind.String)
+            {
+                problems.Add("'favorites' must contain only non-empty model ids");
+                continue;
+            }
+
+            string id = item.GetString()!.Trim();
+            if (id.Length == 0)
+            {
+                problems.Add("'favorites' must contain only non-empty model ids");
+                continue;
+            }
+
+            if (!seen.Add(id))
+            {
+                problems.Add($"'favorites' must be unique; '{id}' appears more than once");
+                continue;
+            }
+
+            favorites.Add(id);
+        }
+
+        if (favorites.Count > 8)
+        {
+            problems.Add("'favorites' is limited to 8 entries");
+        }
+
+        return favorites;
     }
 
     private static int? ReadConcurrency(JsonElement value, List<string> problems)

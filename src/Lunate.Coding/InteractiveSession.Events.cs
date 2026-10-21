@@ -101,7 +101,7 @@ internal sealed partial class InteractiveSession
 
                 break;
             case UsageUpdated usage:
-                AddUsage(usage.Usage, root: !child);
+                AddUsage(usage, root: !child);
                 break;
             case ModelRouted routed when !child:
                 // Only the session's own extension-registered/virtual model shows routing; a
@@ -312,26 +312,30 @@ internal sealed partial class InteractiveSession
     /// <summary>
     /// Rolls usage into the footer. Only the root run feeds the activity line's deltas: a child
     /// (subagent) run is part of the turn's cumulative usage but not of the root run's own delta.
+    /// Every record also feeds the turn's cost, keyed by its resolved model or the session model.
     /// </summary>
-    private void AddUsage(UsageDetails usage, bool root)
+    private void AddUsage(UsageUpdated usage, bool root)
     {
-        _inputTokens += usage.InputTokenCount ?? 0;
-        _outputTokens += usage.OutputTokenCount ?? 0;
+        _inputTokens += usage.Usage.InputTokenCount ?? 0;
+        _outputTokens += usage.Usage.OutputTokenCount ?? 0;
         // Cache counts are read-only metadata for /context: InputTokenCount already includes the
         // cached and cache-creation tokens, so they never join the budget totals or the footer.
-        if (usage.CachedInputTokenCount is { } cacheRead && cacheRead > 0)
+        if (usage.Usage.CachedInputTokenCount is { } cacheRead && cacheRead > 0)
         {
             _cacheReadTokens = (_cacheReadTokens ?? 0) + cacheRead;
         }
 
         if (
-            usage.AdditionalCounts is { } counts
+            usage.Usage.AdditionalCounts is { } counts
             && counts.TryGetValue(CacheCreationInputTokensKey, out long cacheWrite)
             && cacheWrite > 0
         )
         {
             _cacheWriteTokens = (_cacheWriteTokens ?? 0) + cacheWrite;
         }
+
+        _turnUsage.Add((usage.ModelId ?? _modelId, UsageLanes.From(usage.Usage)));
+        _turnCost = UsageCost.Summarize(_catalog, _turnUsage)?.Total;
 
         if (root)
         {

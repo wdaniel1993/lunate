@@ -17,6 +17,8 @@ namespace Lunate.Agent;
 /// </remarks>
 public sealed partial class AgentHarness
 {
+    private const string CacheCreationInputTokensKey = "CacheCreationInputTokens";
+
     private readonly IChatClient _client;
     private readonly ToolRegistry _tools;
     private readonly AgentHarnessOptions _options;
@@ -595,10 +597,7 @@ public sealed partial class AgentHarness
                                 usageContent.Details,
                                 routedModelId ?? modelId ?? _options.ModelId
                             );
-                            usage = new SessionUsage(
-                                (int)(usageContent.Details.InputTokenCount ?? 0),
-                                (int)(usageContent.Details.OutputTokenCount ?? 0)
-                            );
+                            usage = RecordedUsage(usageContent.Details);
                             _lastInputTokens = usage.Input;
                             _lastRequestUtf8 = requestUtf8;
                         }
@@ -647,6 +646,34 @@ public sealed partial class AgentHarness
         long used = (details.InputTokenCount ?? 0) + (details.OutputTokenCount ?? 0);
         _tokenBudgetUsed += used;
         InheritedTreeState?.AddTokens(used);
+    }
+
+    /// <summary>
+    /// Maps one provider usage record onto the session's token lanes. The input/output totals stay
+    /// the provider's counts; a cache lane is recorded only when the provider reports a positive
+    /// count, so an unreported lane stays unknown rather than zero.
+    /// </summary>
+    private static SessionUsage RecordedUsage(UsageDetails details)
+    {
+        int? cacheRead = details.CachedInputTokenCount is > 0 and long reportedRead
+            ? (int)reportedRead
+            : null;
+        int? cacheWrite = null;
+        if (
+            details.AdditionalCounts is { } counts
+            && counts.TryGetValue(CacheCreationInputTokensKey, out long reportedWrite)
+            && reportedWrite > 0
+        )
+        {
+            cacheWrite = (int)reportedWrite;
+        }
+
+        return new SessionUsage(
+            (int)(details.InputTokenCount ?? 0),
+            (int)(details.OutputTokenCount ?? 0),
+            cacheRead,
+            cacheWrite
+        );
     }
 
     /// <summary>

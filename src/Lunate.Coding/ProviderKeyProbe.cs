@@ -1,16 +1,16 @@
-using System.Globalization;
 using Lunate.Ai;
 
 namespace Lunate.Coding;
 
 /// <summary>
 /// The welcome header's first-run check (design D4): whether a credential resolves for the model
-/// the session runs, following the client factory's precedence — a declared endpoint uses the
-/// placeholder credential and needs no key; without one the provider's environment variable, then
-/// the auth store's key under the provider name, resolves it. When nothing resolves the probe
-/// answers with exactly one actionable fix, never a list of alternatives: the name the auth store
-/// wants, or the environment variable that is set but does not resolve. A session with no model
-/// configured at all has nothing to probe and uses <see cref="MissingModelFix"/>.
+/// the session runs, following the client factory's precedence — an explicit auth reference wins;
+/// a foreign declared endpoint uses the placeholder credential and needs no key; otherwise the
+/// preset's environment variable (or its alias), then the auth store's key under the preset id,
+/// resolves it. When nothing resolves the probe answers with exactly one actionable fix, never a
+/// list of alternatives: the name the auth store wants, or the environment variable that is set
+/// but does not resolve. A session with no model configured at all has nothing to probe and uses
+/// <see cref="MissingModelFix"/>.
 /// </summary>
 internal static class ProviderKeyProbe
 {
@@ -20,10 +20,6 @@ internal static class ProviderKeyProbe
     /// </summary>
     internal const string MissingModelFix = "set 'model' in ~/.lunate/settings.json";
 
-    private const string OpenAiProvider = "openai";
-    private const string AnthropicProvider = "anthropic";
-    private const string OpenAiApiKeyVariable = "OPENAI_API_KEY";
-    private const string AnthropicApiKeyVariable = "ANTHROPIC_API_KEY";
     private const string AuthFileName = "~/.lunate/auth.json";
 
     /// <summary>The one fix for an unresolved credential, or null when nothing needs resolving.</summary>
@@ -37,46 +33,43 @@ internal static class ProviderKeyProbe
         ArgumentNullException.ThrowIfNull(auth);
         ArgumentNullException.ThrowIfNull(environment);
 
-        if (model.Endpoint is not null)
-        {
-            // A declared endpoint gets the placeholder credential: local servers need no key.
-            return null;
-        }
-
-        if (!string.IsNullOrEmpty(model.AuthRef))
+        if (!string.IsNullOrWhiteSpace(model.AuthRef))
         {
             // The named reference's stored key is the fix; the environment cannot carry it.
-            return string.IsNullOrEmpty(auth.TryGet(model.AuthRef))
+            return string.IsNullOrWhiteSpace(auth.TryGet(model.AuthRef))
                 ? MissingKeyFix(model.AuthRef)
                 : null;
         }
 
-        if (VariableFor(model.Provider) is not { } variable)
+        if (ProviderPresets.Find(model.Provider) is not { } preset)
         {
             // An unknown provider has no credential advice; the client creation fails instead.
             return null;
         }
 
-        string? value = environment(variable);
-        if (!string.IsNullOrEmpty(value))
+        if (model.Endpoint is not null && !ProviderEndpoint.IsOwn(model.Endpoint, preset.BaseUrl))
         {
-            return string.IsNullOrWhiteSpace(value)
-                ? FormattableString.Invariant($"set {variable} to a valid key")
-                : null;
+            // A foreign endpoint gets the placeholder credential: local servers need no key.
+            return null;
         }
 
-        return string.IsNullOrEmpty(auth.TryGet(model.Provider))
-            ? MissingKeyFix(model.Provider)
-            : null;
+        string? value = environment(preset.KeyVariable);
+        string? aliasValue = preset.KeyVariableAlias is { } alias ? environment(alias) : null;
+        bool blankValueWasSet = !string.IsNullOrEmpty(value) || !string.IsNullOrEmpty(aliasValue);
+        if (!string.IsNullOrWhiteSpace(value) || !string.IsNullOrWhiteSpace(aliasValue))
+        {
+            return null;
+        }
+
+        if (!string.IsNullOrWhiteSpace(auth.TryGet(preset.Id)))
+        {
+            return null;
+        }
+
+        return blankValueWasSet
+            ? FormattableString.Invariant($"set {preset.KeyVariable} to a valid key")
+            : MissingKeyFix(preset.Id);
     }
 
     private static string MissingKeyFix(string name) => $"add the '{name}' key to {AuthFileName}";
-
-    private static string? VariableFor(string provider) =>
-        provider.ToLower(CultureInfo.InvariantCulture) switch
-        {
-            OpenAiProvider => OpenAiApiKeyVariable,
-            AnthropicProvider => AnthropicApiKeyVariable,
-            _ => null,
-        };
 }

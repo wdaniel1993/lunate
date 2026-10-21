@@ -298,7 +298,7 @@ internal static class PrintMode
                     {
                         // One JSON object per line, canonically '\n'-terminated: the --json
                         // stream is a scripting contract and must not depend on the platform.
-                        output.Write(PrintEventJson.Serialize(agentEvent));
+                        output.Write(PrintEventJson.Serialize(agentEvent, catalog, model.Id));
                         output.Write('\n');
                     }
 

@@ -15,7 +15,8 @@ internal static class Cli
         InteractiveSessionOptions? interactiveOptions = null,
         ExtensionSeams? extensions = null,
         // The trust command's repository root; null uses the process working directory.
-        string? workingDirectory = null
+        string? workingDirectory = null,
+        CatalogUpdateSeams? catalogUpdate = null
     )
     {
         var noExtensions = false;
@@ -73,6 +74,11 @@ internal static class Cli
             }
 
             return Discover(args[1], output, errors);
+        }
+
+        if (args.Length > 0 && args[0] == "--update-catalog")
+        {
+            return CatalogUpdateCommand.Run(args[1..], output, errors, ct, catalogUpdate);
         }
 
         if (args.Contains("--acp"))

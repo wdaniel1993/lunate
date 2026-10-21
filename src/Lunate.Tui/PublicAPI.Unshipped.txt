@@ -190,6 +190,7 @@ Lunate.Tui.RoutedKey.Cancel = 2 -> Lunate.Tui.RoutedKey
 Lunate.Tui.RoutedKey.ClearOrQuit = 3 -> Lunate.Tui.RoutedKey
 Lunate.Tui.RoutedKey.Complete = 7 -> Lunate.Tui.RoutedKey
 Lunate.Tui.RoutedKey.Edit = 0 -> Lunate.Tui.RoutedKey
+Lunate.Tui.RoutedKey.FavoritesCycle = 9 -> Lunate.Tui.RoutedKey
 Lunate.Tui.RoutedKey.HistoryNext = 6 -> Lunate.Tui.RoutedKey
 Lunate.Tui.RoutedKey.HistoryPrevious = 5 -> Lunate.Tui.RoutedKey
 Lunate.Tui.RoutedKey.ModelPicker = 4 -> Lunate.Tui.RoutedKey
@@ -221,6 +222,10 @@ Lunate.Tui.StatusFooterModel.ContextWindow.get -> long
 Lunate.Tui.StatusFooterModel.ContextWindow.init -> void
 Lunate.Tui.StatusFooterModel.Deconstruct(out string! Model, out long TokensUsed, out long ContextWindow, out string! WorkingDirectory, out string? GitBranch) -> void
 Lunate.Tui.StatusFooterModel.Equals(Lunate.Tui.StatusFooterModel? other) -> bool
+Lunate.Tui.StatusFooterModel.FavoriteCount.get -> int
+Lunate.Tui.StatusFooterModel.FavoriteCount.init -> void
+Lunate.Tui.StatusFooterModel.FavoritePosition.get -> int?
+Lunate.Tui.StatusFooterModel.FavoritePosition.init -> void
 Lunate.Tui.StatusFooterModel.GitBranch.get -> string?
 Lunate.Tui.StatusFooterModel.GitBranch.init -> void
 Lunate.Tui.StatusFooterModel.Model.get -> string!
@@ -230,6 +235,8 @@ Lunate.Tui.StatusFooterModel.ThinkLevel.get -> string?
 Lunate.Tui.StatusFooterModel.ThinkLevel.init -> void
 Lunate.Tui.StatusFooterModel.TokensUsed.get -> long
 Lunate.Tui.StatusFooterModel.TokensUsed.init -> void
+Lunate.Tui.StatusFooterModel.TurnCost.get -> string?
+Lunate.Tui.StatusFooterModel.TurnCost.init -> void
 Lunate.Tui.StatusFooterModel.WorkingDirectory.get -> string!
 Lunate.Tui.StatusFooterModel.WorkingDirectory.init -> void
 Lunate.Tui.StatusFooterRenderer

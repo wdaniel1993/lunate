@@ -1,4 +1,5 @@
 using Lunate.Agent;
+using Lunate.Ai;
 using Lunate.Tui;
 using Microsoft.Extensions.AI;
 
@@ -6,12 +7,21 @@ namespace Lunate.Coding.Tests;
 
 public sealed class InteractiveSessionPickerTests
 {
+    private static readonly string[] Favourites =
+    [
+        "gpt-4o-mini",
+        "gpt-4o",
+        "claude-sonnet-5-5",
+        "claude-opus-5-5",
+    ];
+
     public static TheoryData<string> StartupSelections => new() { "--continue", "--session" };
 
     [Fact]
     public async Task Ctrl_L_opens_the_model_picker_and_Esc_dismisses_without_changing()
     {
         using var host = new InteractiveSessionHost();
+        SeedFavourites(host, Favourites);
         Task run = host.RunAsync();
 
         host.Console.Send(
@@ -41,6 +51,7 @@ public sealed class InteractiveSessionPickerTests
     public async Task Choosing_a_model_switches_and_keeps_the_conversation()
     {
         using var host = new InteractiveSessionHost();
+        SeedFavourites(host, Favourites);
         host.Client.Enqueue(Scripts.Text("ok"), Scripts.Stop());
         host.Client.Enqueue(Scripts.Text("ok2"), Scripts.Stop());
         Task run = host.RunAsync();
@@ -89,6 +100,7 @@ public sealed class InteractiveSessionPickerTests
     public async Task Picker_navigation_clamps_and_ignores_every_other_key()
     {
         using var host = new InteractiveSessionHost();
+        SeedFavourites(host, Favourites);
         Task run = host.RunAsync();
 
         host.Console.Send(
@@ -96,22 +108,24 @@ public sealed class InteractiveSessionPickerTests
         );
         await InteractiveSessionCommandTests.WaitForFrameAsync(host, "Select model");
 
-        for (var index = 0; index < 10; index++)
+        // The favourites are followed by every remaining catalog model, so reaching either end
+        // takes as many presses as the catalog has entries; the extra presses prove the clamp.
+        ModelInfo[] models = [.. ModelCatalog.Load(host.Temp.File("models.json")).Models];
+        for (var index = 0; index <= models.Length; index++)
         {
             host.Console.Send(new KeyEvent(KeyKind.Down, null, false, false, false));
         }
 
-        // The grace period keeps the overdue ticks flowing while the last key is processed.
         await host.WaitUntilAsync(() =>
         {
             host.Advance(33);
             return host.LastFrame.Contains(
-                "> claude-opus-5-5 (anthropic)",
+                $"> {models[^1].Id} ({models[^1].Provider})",
                 StringComparison.Ordinal
             );
         });
 
-        for (var index = 0; index < 10; index++)
+        for (var index = 0; index <= models.Length; index++)
         {
             host.Console.Send(new KeyEvent(KeyKind.Up, null, false, false, false));
         }
@@ -122,12 +136,114 @@ public sealed class InteractiveSessionPickerTests
             return host.LastFrame.Contains("> * gpt-4o-mini (openai)", StringComparison.Ordinal);
         });
 
-        // Characters do not reach the input line, and Enter confirms the selection.
-        host.Console.SendText("abc");
+        // Typed filter text goes to the picker, never the input line, and Enter confirms the
+        // favourite the filter selects.
+        host.Console.SendText("mini");
+        await InteractiveSessionCommandTests.WaitForFrameAsync(host, "filter: mini");
         host.Console.SendEnter();
         await InteractiveSessionCommandTests.WaitForFrameAsync(host, "model: gpt-4o-mini");
-        Assert.DoesNotContain("> abc", host.LastFrame, StringComparison.Ordinal);
+
+        Assert.Equal(string.Empty, host.Session.Input.Text);
+        Assert.DoesNotContain("> mini", host.Frames, StringComparison.Ordinal);
         Assert.Empty(host.Client.Requests);
+
+        host.Console.Complete();
+        await run;
+    }
+
+    [Fact]
+    public async Task Favourites_come_first_in_settings_order()
+    {
+        using var host = new InteractiveSessionHost();
+        SeedFavourites(host, "claude-opus-5-5", "gpt-4o-mini");
+        Task run = host.RunAsync();
+
+        host.Console.Send(
+            new KeyEvent(KeyKind.Character, "l", Ctrl: true, Shift: false, Alt: false)
+        );
+        await InteractiveSessionCommandTests.WaitForFrameAsync(host, "Select model");
+
+        string frame = host.LastFrame;
+        // The title precedes the favourites; the active model is the second row (its `* ` marker).
+        Assert.Contains(
+            "  claude-opus-5-5 (anthropic)\n\r\u001b[2K> * gpt-4o-mini (openai)",
+            frame,
+            StringComparison.Ordinal
+        );
+
+        ModelInfo last = ModelCatalog.Load(host.Temp.File("models.json")).Models[^1];
+        Assert.DoesNotContain($"{last.Id} ({last.Provider})", frame, StringComparison.Ordinal);
+
+        host.Console.SendEscape();
+        await InteractiveSessionCommandTests.WaitForFrameGoneAsync(host, "Select model");
+
+        host.Console.Complete();
+        await run;
+    }
+
+    [Fact]
+    public async Task Filter_narrows_the_catalog_and_escape_clears_it()
+    {
+        using var host = new InteractiveSessionHost();
+        SeedFavourites(host, Favourites);
+        Task run = host.RunAsync();
+
+        host.Console.Send(
+            new KeyEvent(KeyKind.Character, "l", Ctrl: true, Shift: false, Alt: false)
+        );
+        await InteractiveSessionCommandTests.WaitForFrameAsync(host, "Select model");
+
+        host.Console.SendText("sonnet-5");
+        await InteractiveSessionCommandTests.WaitForFrameAsync(host, "filter: sonnet-5");
+        Assert.Contains(
+            "> claude-sonnet-5-5 (anthropic)",
+            host.LastFrame,
+            StringComparison.Ordinal
+        );
+        Assert.DoesNotContain("gpt-4o (", host.LastFrame, StringComparison.Ordinal);
+
+        host.Console.SendEscape();
+        await InteractiveSessionCommandTests.WaitForFrameAsync(host, "  gpt-4o (openai)");
+        Assert.Contains("Select model", host.LastFrame, StringComparison.Ordinal);
+        Assert.DoesNotContain("filter:", host.LastFrame, StringComparison.Ordinal);
+
+        host.Console.SendEscape();
+        await InteractiveSessionCommandTests.WaitForFrameGoneAsync(host, "Select model");
+
+        host.Console.Complete();
+        await run;
+    }
+
+    [Fact]
+    public async Task A_filter_with_no_matches_keeps_the_picker_open()
+    {
+        using var host = new InteractiveSessionHost();
+        Task run = host.RunAsync();
+
+        host.Console.Send(
+            new KeyEvent(KeyKind.Character, "l", Ctrl: true, Shift: false, Alt: false)
+        );
+        await InteractiveSessionCommandTests.WaitForFrameAsync(host, "Select model");
+
+        host.Console.SendText("zzzz");
+        await InteractiveSessionCommandTests.WaitForFrameAsync(host, "filter: zzzz");
+        Assert.Contains("Select model", host.LastFrame, StringComparison.Ordinal);
+        Assert.Contains("0 of 0", host.LastFrame, StringComparison.Ordinal);
+
+        // Enter has no value to confirm. The next key lands in the filter, which proves the
+        // picker still owns input.
+        host.Console.SendEnter();
+        host.Console.SendText("z");
+        await InteractiveSessionCommandTests.WaitForFrameAsync(host, "filter: zzzzz");
+        Assert.Equal(string.Empty, host.Session.Input.Text);
+        Assert.Empty(LoadOnlySession(host).Entries.OfType<SessionModelChangeEntry>());
+
+        host.Console.SendEscape();
+        await InteractiveSessionCommandTests.WaitForFrameAsync(host, "Select model — 1 of ");
+        Assert.DoesNotContain("filter:", host.LastFrame, StringComparison.Ordinal);
+
+        host.Console.SendEscape();
+        await InteractiveSessionCommandTests.WaitForFrameGoneAsync(host, "Select model");
 
         host.Console.Complete();
         await run;
@@ -467,6 +583,9 @@ public sealed class InteractiveSessionPickerTests
         host.Console.Complete();
         await run;
     }
+
+    private static void SeedFavourites(InteractiveSessionHost host, params string[] favourites) =>
+        SettingsStore.WriteFavorites(favourites, host.Temp.File("settings.json"));
 
     private static Session LoadOnlySession(InteractiveSessionHost host) =>
         Session.Load(Assert.Single(Directory.GetFiles(host.Temp.File("sessions"), "*.jsonl")));

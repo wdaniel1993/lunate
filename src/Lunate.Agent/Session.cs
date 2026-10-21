@@ -54,6 +54,12 @@ public sealed partial class Session
     /// <summary>The session file path.</summary>
     public string Path { get; }
 
+    /// <summary>
+    /// The header's format schema (1, 2 or 3), so consumers can tell replay formats apart: schema 3
+    /// may carry cache token lanes, older schemas never do.
+    /// </summary>
+    public int Schema => Header.Schema;
+
     /// <summary>The conversation entries in append order; the header entry is not included.</summary>
     public IReadOnlyList<SessionEntry> Entries => _entries;
 
@@ -124,10 +130,10 @@ public sealed partial class Session
                 $"Session file '{path}' line 1 is not a header; expected a 'header' entry with schema {SessionFormat.SchemaVersion}."
             );
 
-        if (header.Schema is not (1 or SessionFormat.SchemaVersion))
+        if (header.Schema is not (1 or 2 or SessionFormat.SchemaVersion))
         {
             throw new InvalidDataException(
-                $"Session file '{path}' declares schema '{header.Schema}' but this build supports schema {SessionFormat.SchemaVersion} (and schema 1)."
+                $"Session file '{path}' declares schema '{header.Schema}' but this build supports schema 1, 2 and {SessionFormat.SchemaVersion}."
             );
         }
 

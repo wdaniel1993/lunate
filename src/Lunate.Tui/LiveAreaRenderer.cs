@@ -40,6 +40,10 @@ internal static class LiveAreaRenderer
         // frame, so sanitize before clipping; a notice that sanitizes to empty renders as none.
         string? notice = state.Notice is null ? null : CellText.SingleLine(state.Notice);
         var noticeLine = string.IsNullOrEmpty(notice) ? null : notice;
+        // The live state carries only the mask: the typed characters never reach a frame.
+        string? secretPromptLine = state.SecretPrompt is { } secretPrompt
+            ? CellText.Clip(secretPrompt.Label + ": " + secretPrompt.Mask, width)
+            : null;
         IReadOnlyList<ApprovalPanelLine> approvalLines = state.Approval is null
             ? []
             : ApprovalPromptRenderer.PlainLines(state.Approval, width, state.Color, state.Unicode);
@@ -61,6 +65,7 @@ internal static class LiveAreaRenderer
             + (activityLine is null ? 0 : 1)
             + (subagentLine is null ? 0 : 1)
             + (noticeLine is null ? 0 : 1)
+            + (secretPromptLine is null ? 0 : 1)
             + approvalLines.Count
             + trustLines.Count
             + pickerLines.Count
@@ -101,6 +106,11 @@ internal static class LiveAreaRenderer
         if (noticeLine is not null)
         {
             lines.Add(CellText.Clip(noticeLine, width));
+        }
+
+        if (secretPromptLine is not null)
+        {
+            lines.Add(secretPromptLine);
         }
 
         int approvalStart = lines.Count;

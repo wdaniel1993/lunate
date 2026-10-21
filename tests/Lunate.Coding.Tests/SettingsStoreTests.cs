@@ -26,6 +26,124 @@ public sealed class SettingsStoreTests
         Assert.Equal(30_000, settings.ToolOutputLimit);
         Assert.Equal(new SubagentLimits(), settings.Subagents);
         Assert.True(settings.StartupHeader);
+        Assert.Empty(settings.Favorites);
+    }
+
+    [Fact]
+    public void A_schema_2_file_can_set_ordered_favorites()
+    {
+        using var temp = new TempDirectory();
+        File.WriteAllText(
+            temp.File("settings.json"),
+            """
+            {
+              "schemaVersion": 2,
+              "favorites": ["openrouter/anthropic/claude-sonnet-5-5", "gpt-4o-mini"]
+            }
+            """
+        );
+
+        AgentSettings settings = SettingsStore.Resolve(temp.File("settings.json"), _ => null);
+
+        Assert.Equal(["openrouter/anthropic/claude-sonnet-5-5", "gpt-4o-mini"], settings.Favorites);
+    }
+
+    [Fact]
+    public void Favorites_are_trimmed_when_read()
+    {
+        using var temp = new TempDirectory();
+        File.WriteAllText(
+            temp.File("settings.json"),
+            """
+            {
+              "schemaVersion": 2,
+              "favorites": [" gpt-4o ", "\tclaude-sonnet-5-5\n"]
+            }
+            """
+        );
+
+        AgentSettings settings = SettingsStore.Resolve(temp.File("settings.json"), _ => null);
+
+        Assert.Equal(["gpt-4o", "claude-sonnet-5-5"], settings.Favorites);
+    }
+
+    [Fact]
+    public void A_schema_1_file_loads_with_empty_favorites()
+    {
+        using var temp = new TempDirectory();
+        File.WriteAllText(
+            temp.File("settings.json"),
+            """
+            {
+              "schemaVersion": 1,
+              "model": "gpt-4o-mini"
+            }
+            """
+        );
+
+        AgentSettings settings = SettingsStore.Resolve(temp.File("settings.json"), _ => null);
+
+        Assert.Equal("gpt-4o-mini", settings.Model);
+        Assert.Empty(settings.Favorites);
+    }
+
+    [Theory]
+    [InlineData("""["a", "a"]""", "unique")]
+    [InlineData("""["a", ""]""", "non-empty")]
+    [InlineData("""["a", " "]""", "non-empty")]
+    [InlineData("""["a", 2]""", "non-empty")]
+    [InlineData("""["a", "b", "c", "d", "e", "f", "g", "h", "i"]""", "8 entries")]
+    public void Invalid_favorites_are_refused(string favorites, string expected)
+    {
+        using var temp = new TempDirectory();
+        File.WriteAllText(
+            temp.File("settings.json"),
+            $$"""
+            {
+              "schemaVersion": 2,
+              "favorites": {{favorites}}
+            }
+            """
+        );
+
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+            SettingsStore.Resolve(temp.File("settings.json"), _ => null)
+        );
+
+        Assert.Contains("'favorites'", exception.Message, StringComparison.Ordinal);
+        Assert.Contains(expected, exception.Message, StringComparison.Ordinal);
+        Assert.Contains("No settings were applied", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_non_array_favorites_value_is_refused()
+    {
+        using var temp = new TempDirectory();
+        File.WriteAllText(
+            temp.File("settings.json"),
+            """{ "schemaVersion": 2, "favorites": "gpt-4o-mini" }"""
+        );
+
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+            SettingsStore.Resolve(temp.File("settings.json"), _ => null)
+        );
+
+        Assert.Contains("'favorites'", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("array", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void An_unsupported_schema_version_is_refused()
+    {
+        using var temp = new TempDirectory();
+        File.WriteAllText(temp.File("settings.json"), """{ "schemaVersion": 3 }""");
+
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+            SettingsStore.Resolve(temp.File("settings.json"), _ => null)
+        );
+
+        Assert.Contains("schemaVersion", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("1 or 2", exception.Message, StringComparison.Ordinal);
     }
 
     [Fact]

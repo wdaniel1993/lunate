@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Lunate.Agent;
+using Lunate.Ai;
 using Microsoft.Extensions.AI;
 
 namespace Lunate.Coding.Tests;
@@ -187,6 +188,132 @@ public sealed class PrintEventJsonTests
                 root.GetProperty("usage").GetProperty("cachedInputTokenCount").GetInt64()
             );
         }
+    }
+
+    [Fact]
+    public void Usage_adds_the_priced_cost_when_the_fallback_model_is_priced()
+    {
+        using var temp = new TempDirectory();
+        ModelCatalog catalog = ModelCatalog.Load(temp.File("models.json"));
+
+        using JsonDocument line = JsonDocument.Parse(
+            PrintEventJson.Serialize(
+                new UsageUpdated("run_1", Details(1000, 500)),
+                catalog,
+                "gpt-4o-mini"
+            )
+        );
+
+        Assert.Equal(0.00045m, line.RootElement.GetProperty("costUsd").GetDecimal());
+    }
+
+    [Fact]
+    public void Usage_prefers_the_event_model_over_the_fallback()
+    {
+        using var temp = new TempDirectory();
+        ModelCatalog catalog = ModelCatalog.Load(temp.File("models.json"));
+        var usage = new UsageUpdated("run_1", Details(1000, 500)) { ModelId = "claude-sonnet-5-5" };
+
+        using JsonDocument line = JsonDocument.Parse(
+            PrintEventJson.Serialize(usage, catalog, "gpt-4o-mini")
+        );
+
+        Assert.Equal(0.007m, line.RootElement.GetProperty("costUsd").GetDecimal());
+    }
+
+    [Fact]
+    public void Usage_prices_the_cache_lanes_at_their_own_rates()
+    {
+        using var temp = new TempDirectory();
+        ModelCatalog catalog = ModelCatalog.Load(temp.File("models.json"));
+        var usage = new UsageUpdated(
+            "run_1",
+            new UsageDetails
+            {
+                InputTokenCount = 1500,
+                OutputTokenCount = 50,
+                CachedInputTokenCount = 1200,
+                AdditionalCounts = new AdditionalPropertiesDictionary<long>
+                {
+                    ["CacheCreationInputTokens"] = 300,
+                },
+            }
+        );
+
+        using JsonDocument line = JsonDocument.Parse(
+            PrintEventJson.Serialize(usage, catalog, "claude-sonnet-5-5")
+        );
+
+        Assert.Equal(0.00137m, line.RootElement.GetProperty("costUsd").GetDecimal());
+    }
+
+    [Fact]
+    public void Usage_omits_the_cost_for_an_unpriced_model()
+    {
+        using var temp = new TempDirectory();
+        ModelCatalog catalog = Catalog(
+            temp,
+            """
+            { "id": "fixture-unpriced", "provider": "fixture", "contextWindow": 1000, "supportsTools": true }
+            """
+        );
+
+        using JsonDocument line = JsonDocument.Parse(
+            PrintEventJson.Serialize(
+                new UsageUpdated("run_1", Details(1000, 500)),
+                catalog,
+                "fixture-unpriced"
+            )
+        );
+
+        Assert.False(line.RootElement.TryGetProperty("costUsd", out _));
+    }
+
+    [Fact]
+    public void Usage_omits_the_cost_when_a_used_cache_lane_has_no_rate()
+    {
+        using var temp = new TempDirectory();
+        ModelCatalog catalog = Catalog(
+            temp,
+            """
+            { "id": "fixture-partial", "provider": "fixture", "contextWindow": 1000, "supportsTools": true, "pricing": { "input": 1, "output": 2 } }
+            """
+        );
+        var usage = new UsageUpdated(
+            "run_1",
+            new UsageDetails
+            {
+                InputTokenCount = 1500,
+                OutputTokenCount = 50,
+                CachedInputTokenCount = 1200,
+            }
+        );
+
+        using JsonDocument line = JsonDocument.Parse(
+            PrintEventJson.Serialize(usage, catalog, "fixture-partial")
+        );
+
+        Assert.False(line.RootElement.TryGetProperty("costUsd", out _));
+    }
+
+    [Fact]
+    public void Usage_omits_the_cost_when_no_catalog_is_supplied()
+    {
+        using JsonDocument line = JsonDocument.Parse(
+            PrintEventJson.Serialize(new UsageUpdated("run_1", Details(1000, 500)))
+        );
+
+        Assert.False(line.RootElement.TryGetProperty("costUsd", out _));
+    }
+
+    private static UsageDetails Details(long input, long output) =>
+        new() { InputTokenCount = input, OutputTokenCount = output };
+
+    private static ModelCatalog Catalog(TempDirectory temp, string model)
+    {
+        string path = temp.File("models.json");
+        File.WriteAllText(path, $$"""{ "schemaVersion": 2, "models": [ {{model}} ] }""");
+        return ModelCatalog.Load(path);
     }
 
     [Fact]

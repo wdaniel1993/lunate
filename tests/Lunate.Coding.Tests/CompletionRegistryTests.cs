@@ -88,6 +88,19 @@ public sealed class CompletionRegistryTests
     }
 
     [Fact]
+    public void The_provider_and_favourite_rows_carry_the_table_descriptions()
+    {
+        CompletionRegistry registry = CompletionRegistry.Compose([], []);
+
+        foreach (string name in new[] { "/login", "/logout", "/favorite", "/unfavorite" })
+        {
+            CommandDescriptor descriptor = Commands.Descriptors.Single(entry => entry.Name == name);
+            CompletionItem item = registry.Items.Single(entry => entry.Text == name);
+            Assert.Equal(descriptor.Description, item.Description);
+        }
+    }
+
+    [Fact]
     public void Skills_follow_the_commands_as_skill_prefix_entries()
     {
         CompletionRegistry registry = CompletionRegistry.Compose(
