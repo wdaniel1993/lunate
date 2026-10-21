@@ -4,8 +4,16 @@ namespace Lunate.Coding;
 internal static class SearchScope
 {
     /// <summary>Whether <paramref name="path"/> lies at or under the resolved search root.</summary>
-    internal static bool Contains(string relativeRoot, string path) =>
-        relativeRoot is "." or ""
-        || string.Equals(path, relativeRoot, StringComparison.Ordinal)
-        || path.StartsWith(relativeRoot + "/", StringComparison.Ordinal);
+    internal static bool Contains(string relativeRoot, string path)
+    {
+        // The file index yields platform separators and callers may pass either, so the
+        // rule compares slash-normalized forms and never assumes the host's separator.
+        string root = Normalize(relativeRoot);
+        string candidate = Normalize(path);
+        return root is "." or ""
+            || string.Equals(candidate, root, StringComparison.Ordinal)
+            || candidate.StartsWith(root + "/", StringComparison.Ordinal);
+    }
+
+    private static string Normalize(string path) => path.Replace('\\', '/');
 }
