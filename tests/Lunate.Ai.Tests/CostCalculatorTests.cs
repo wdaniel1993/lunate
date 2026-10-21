@@ -52,6 +52,18 @@ public sealed class CostCalculatorTests
     }
 
     [Fact]
+    public void Format_zero_is_two_decimals()
+    {
+        Assert.Equal("$0.00", CostCalculator.Format(0m));
+    }
+
+    [Fact]
+    public void Format_rounds_up_across_the_dollar_boundary_on_one_scale()
+    {
+        Assert.Equal("$1.00", CostCalculator.Format(0.99996m));
+    }
+
+    [Fact]
     public void Format_rejects_a_negative_cost()
     {
         Assert.Throws<ArgumentOutOfRangeException>(() => CostCalculator.Format(-0.01m));

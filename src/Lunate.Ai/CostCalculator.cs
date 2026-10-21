@@ -23,21 +23,24 @@ public static class CostCalculator
 
     /// <summary>
     /// Formats a cost for display with the invariant culture: <c>&lt;$0.0001</c> for a positive cost
-    /// that rounds to zero at four decimals, four decimals below one dollar and two decimals from
-    /// one dollar. Display-only: never parse the result back for arithmetic.
+    /// that rounds to zero at four decimals, four decimals for a positive cost below one dollar and
+    /// two decimals for zero or one dollar and above. The cost is rounded once, to four decimals,
+    /// before the scale is chosen, so a value below one dollar never prints as <c>$1.0000</c>.
+    /// Display-only: never parse the result back for arithmetic.
     /// </summary>
     public static string Format(decimal cost)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(cost);
-        if (cost > 0m && decimal.Round(cost, 4, MidpointRounding.AwayFromZero) == 0m)
+        decimal rounded = decimal.Round(cost, 4, MidpointRounding.AwayFromZero);
+        if (cost > 0m && rounded == 0m)
         {
             return "<$0.0001";
         }
 
         string number =
-            cost < 1m
-                ? cost.ToString("F4", CultureInfo.InvariantCulture)
-                : cost.ToString("F2", CultureInfo.InvariantCulture);
+            rounded == 0m || rounded >= 1m
+                ? rounded.ToString("F2", CultureInfo.InvariantCulture)
+                : rounded.ToString("F4", CultureInfo.InvariantCulture);
         return "$" + number;
     }
 }
