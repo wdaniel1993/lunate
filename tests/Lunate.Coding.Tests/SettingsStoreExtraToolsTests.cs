@@ -123,11 +123,11 @@ public sealed class SettingsStoreExtraToolsTests
     }
 
     [Fact]
-    public void The_tools_flag_extracts_the_optional_names()
+    public void The_extra_tools_flag_extracts_the_optional_names()
     {
         Assert.True(
             LaunchOptions.TryParse(
-                ["--tools", "grep,find"],
+                ["--extra-tools", "grep,find"],
                 out LaunchOptions options,
                 out string? error
             ),
@@ -139,23 +139,17 @@ public sealed class SettingsStoreExtraToolsTests
     }
 
     [Fact]
-    public void The_tools_flag_keeps_core_names_as_the_filter()
+    public void The_tools_filter_refuses_an_optional_name()
     {
-        Assert.True(
-            LaunchOptions.TryParse(
-                ["--tools", "read,grep"],
-                out LaunchOptions options,
-                out string? error
-            ),
-            error
+        Assert.False(
+            LaunchOptions.TryParse(["--tools", "read,grep"], out _, out string? error)
         );
 
-        Assert.Equal(["read"], options.Tools);
-        Assert.Equal(["grep"], options.ExtraTools);
+        Assert.Contains("--extra-tools", error, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void A_tools_flag_without_optional_names_clears_the_extras()
+    public void A_tools_filter_leaves_the_extras_to_the_file_and_environment()
     {
         Assert.True(
             LaunchOptions.TryParse(
@@ -166,19 +160,8 @@ public sealed class SettingsStoreExtraToolsTests
             error
         );
 
-        Assert.NotNull(options.ExtraTools);
-        Assert.Empty(options.ExtraTools);
+        Assert.Null(options.ExtraTools);
         Assert.Equal(["read"], options.Tools);
-    }
-
-    [Fact]
-    public void The_tools_flag_with_only_extras_conflicts_with_no_tools()
-    {
-        Assert.False(
-            LaunchOptions.TryParse(["--tools", "grep", "--no-tools"], out _, out string? error)
-        );
-
-        Assert.Contains("--tools and --no-tools", error, StringComparison.Ordinal);
     }
 
     [Fact]
