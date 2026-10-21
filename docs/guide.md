@@ -337,6 +337,8 @@ Tool results are written for the model: short, factual, and every error says wha
 | `edit` | `path`, `old_text`, `new_text`, optional `start_line` | `edited src/X.cs lines 40–48 (match: indent)`; diff in `Details` | Not found + closest region; ambiguous + line numbers of all matches; tier refused for whitespace-significant file; `old_text` equals `new_text` |
 | `bash` | `command`, `timeout_s` (default 120, max 600) | Exit code + combined stdout/stderr, cut in the middle when too long | Timeout (process tree killed); shell could not start. A non-zero exit code is reported, not treated as a tool error |
 
+`read` also accepts PNG, JPEG, GIF and WebP images when the active model declares vision support. It returns the placeholder `[image <width>x<height>]` and carries the bytes to the model; a text-only model gets an error naming itself. Images are capped at 5 MB and 4,096 pixels per side, and downscaling is not available yet.
+
 **The forgiving `edit` tool**
 
 Matching runs in tiers and stops at the first tier with exactly one match. A tier that finds several matches uses `start_line` to pick the one starting within 3 lines of it; still ambiguous means an error, never a guess.
@@ -457,6 +459,14 @@ Typing `/` at the start of the first line opens the autocomplete list from the s
 
 ↑/↓ move the selection while the list is open and navigate history while it is closed. Tab and Enter accept the selected item — the token is replaced, file rows keep the `@`, command rows get a trailing space — and Esc closes the list. Enter submits instead when the typed token already equals the selected item, so a fully typed command never costs a second Enter. Newline keys insert and then re-run the trigger rules; Ctrl+C, Ctrl+L, Ctrl+O and Ctrl+P keep their bindings and win over the list.
 
+**Images**
+
+`@<path>` attaches an image to the prompt after the input hooks run: `explain @screens/diagram.png`, `@"screens/login page.png"` for a path with spaces, or a path dropped or pasted as the whole submission. `@clipboard` reads one image from the clipboard instead of a file. A relative path resolves against the working directory; an absolute path is allowed. Only existing PNG, JPEG, GIF or WebP files attach — magic bytes decide the format, not the extension — and the token becomes the placeholder `[image <width>x<height>]` in the user block and the transcript. Any other `@file` stays text for the model to `read`.
+
+Limits are shared with the `read` tool: 5 MB per image, 4,096 pixels per side, four images per message. Every refusal names the actual value, the limit and the next step; oversize images say `downscaling is not available yet`. The active model must declare `supportsVision`; otherwise the submission is refused before any request and names the model id. Repeated references to one file attach it once.
+
+The clipboard chain is `pngpaste` on macOS, `wl-paste --type image/png` on Wayland and PowerShell `Get-Clipboard -Format Image` on Windows. A missing helper shows one notice per interactive session and is an error in print mode; an empty clipboard shows a notice and starts no run. Print mode resolves the same syntax and exits 2 on a refusal, with the error on stderr.
+
 **Narrow terminals**
 
 The layout has three width bands, evaluated at render time from the terminal's columns:
@@ -474,7 +484,7 @@ The lower box rule shares the 60-column boundary with autocomplete descriptions;
 **Components**
 
 - `MarkdownRenderer`: a subset (headings, bold, italic, inline code, lists, quotes, fenced code with a language label) mapped to Spectre renderables. Keyword highlighting for C#, JSON and shell only in v1.
-- `ToolBlock`: one compact header line — `✓ read  src/X.cs (1-13)`, `✗ bash  dotnet build · exit 1 · 12s`, `✓ edit  src/X.cs · +3 −0`. With the default `toolDetails: "collapsed"` that header is the whole block; when the result had output or a diff to show, it ends with a muted `· ctrl+o` affordance for the transcript viewer. `toolDetails: "expanded"` restores the per-tool output excerpt (`bash` keeps the output's last lines, `read` none, the rest first and last), the red/green diff panel for `edit` and `write` with the match tier, and the excerpt's `… +N lines · ctrl+o` marker. Durations run on the injected scheduler.
+- `ToolBlock`: one compact header line — `✓ read  src/X.cs (1-13)`, `✗ bash  dotnet build · exit 1 · 12s`, `✓ edit  src/X.cs · +3 −0`. With the default `toolDetails: "collapsed"` that header is the whole block; when the result had output or a diff to show, it ends with a muted `· ctrl+o` affordance for the transcript viewer. `toolDetails: "expanded"` restores the per-tool output excerpt (`bash` keeps the output's last lines, `read` none — except a successful image read, which shows its muted `[image WxH]` placeholder, the rest first and last), the red/green diff panel for `edit` and `write` with the match tier, and the excerpt's `… +N lines · ctrl+o` marker. Durations run on the injected scheduler.
 - `TranscriptViewer`: the `Ctrl+O` full-screen transcript — user, assistant, thinking and tool blocks with full outputs and diffs, newest at the bottom; Up/Down, PageUp/PageDown, Home/End and `g`/`G` scroll, the footer shows the keys and the position, and `q`/`Esc` closes. Paths are mid-shortened so the basename survives.
 - `ApprovalPrompt`: the panel described above — warning headline, bounded detail, and the yes/no/always choices — shown in the live area.
 - `StatusFooter`: model, tokens, context used in percent, favourites position, current turn cost, working directory, git branch.

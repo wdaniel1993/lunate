@@ -48,17 +48,17 @@ Each group is one conventional commit. Work test-first through `senior-dev`; do 
 
 ## 7. Image input resolver and clipboard
 
-- [ ] 7.1 Add red tests: `@diagram.png`, `@"path with spaces"`, a lone pasted path, repeated references dedupe, a non-image `@file` stays text, a missing image path refuses, print mode exits 2; four-image and 5 MB/4096 px refusals; vision refusal names the model.
-- [ ] 7.2 Add `ImageInputResolver` (token scan after `InputPipeline`, working-directory/absolute resolution, magic-byte validation, placeholder substitution) shared by interactive and print mode.
-- [ ] 7.3 Add `IClipboardImageSource` and the platform helper chain (`pngpaste`, `wl-paste`, PowerShell) writing to a temp file and cleaned up; `@clipboard` with a one-time-per-session missing-helper notice.
-- [ ] 7.4 Thread `UserInput` through `SubmitPromptAsync`/`RunOnceAsync` and `PrintMode`; keep the user block/transcript on the processed text and leave steering text-only.
-- [ ] 7.5 Commit: `feat(coding): image input references`.
+- [x] 7.1 Add red tests: `@diagram.png`, `@"path with spaces"`, a lone pasted path, repeated references dedupe, a non-image `@file` stays text, a missing image path refuses, print mode exits 2; four-image and 5 MB/4096 px refusals; vision refusal names the model.
+- [x] 7.2 Add `ImageInputResolver` (token scan after `InputPipeline`, working-directory/absolute resolution, magic-byte validation, placeholder substitution) shared by interactive and print mode.
+- [x] 7.3 Add `IClipboardImageSource` and the platform helper chain (`pngpaste`, `wl-paste`, PowerShell) writing to a temp file and cleaned up; `@clipboard` with a one-time-per-session missing-helper notice.
+- [x] 7.4 Thread `UserInput` through `SubmitPromptAsync`/`RunOnceAsync` and `PrintMode`; keep the user block/transcript on the processed text and leave steering text-only.
+- [x] 7.5 Commit: `feat(coding): image input references`.
 
 ## 8. TUI placeholders
 
-- [ ] 8.1 Add red tests: a successful image `read` shows `[image 1024x768]` while a text `read` still hides output; the header reports no line count for the placeholder; the block contains no image escape; the user block and transcript show the same placeholder.
-- [ ] 8.2 Update `ToolBlockRenderer.ShowsOutput` and `ToolArgsSummary.ReadRange`; style the placeholder muted; add read-image goldens at 120, 80 and 50 columns.
-- [ ] 8.3 Commit: `feat(tui): image placeholders`.
+- [x] 8.1 Add red tests: a successful image `read` shows `[image 1024x768]` while a text `read` still hides output; the header reports no line count for the placeholder; the block contains no image escape; the user block and transcript show the same placeholder.
+- [x] 8.2 Update `ToolBlockRenderer.ShowsOutput` and `ToolArgsSummary.ReadRange`; style the placeholder muted; add read-image goldens at 120, 80 and 50 columns.
+- [x] 8.3 Commit: `feat(tui): image placeholders`.
 
 ## 9. Verification
 
