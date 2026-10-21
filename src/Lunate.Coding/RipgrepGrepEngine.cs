@@ -50,6 +50,12 @@ internal sealed class RipgrepGrepEngine : IGrepEngine
             "!.git/**",
             request.CaseSensitive ? "--case-sensitive" : "--ignore-case",
         ];
+        if (!OperatingSystem.IsLinux())
+        {
+            // The glob rule follows the workspace: insensitive on Windows and macOS.
+            arguments.Add("--glob-case-insensitive");
+        }
+
         if (request.Glob is { } glob)
         {
             arguments.Add("--glob");

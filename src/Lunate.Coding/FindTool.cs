@@ -136,12 +136,14 @@ public sealed class FindTool : ITool
         }
 
         bool wantDirectories = kind == "dir";
+        string scope = resolved.RelativePath is "." or "" ? string.Empty : resolved.RelativePath;
         List<string> matches = [];
         try
         {
             if (isFile)
             {
-                if (!wantDirectories && glob.IsMatch(resolved.RelativePath))
+                string name = Path.GetFileName(resolved.RelativePath);
+                if (!wantDirectories && glob.IsMatch(name))
                 {
                     matches.Add(resolved.RelativePath);
                 }
@@ -156,9 +158,15 @@ public sealed class FindTool : ITool
                     ct.ThrowIfCancellationRequested();
                     if (
                         entry.IsDirectory != wantDirectories
-                        || !SearchScope.Contains(resolved.RelativePath, entry.Path)
-                        || !glob.IsMatch(entry.Path)
+                        || !SearchScope.Contains(scope, entry.Path)
                     )
+                    {
+                        continue;
+                    }
+
+                    string candidate =
+                        scope.Length == 0 ? entry.Path : entry.Path[(scope.Length + 1)..];
+                    if (!glob.IsMatch(candidate))
                     {
                         continue;
                     }

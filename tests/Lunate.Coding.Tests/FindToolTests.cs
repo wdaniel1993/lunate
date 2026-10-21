@@ -121,6 +121,11 @@ public sealed class FindToolTests
 
         Assert.False(result.IsError);
         Assert.Equal("src/a.cs", result.Output);
+
+        ToolResult anchored = await FindAsync(temp, """{"pattern":"src/*.cs","path":"src"}""");
+
+        Assert.False(anchored.IsError);
+        Assert.Equal("No files matching 'src/*.cs' in src", anchored.Output);
     }
 
     [Fact]

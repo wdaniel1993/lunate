@@ -291,6 +291,17 @@ public sealed class GrepToolTests
         Assert.Null(actual.Error);
         Assert.Equal(expected.Matches, actual.Matches);
         Assert.Equal(expected.More, actual.More);
+
+        var globRequest = request with { Glob = "*.TXT" };
+        GrepSearch expectedGlob = await new FallbackGrepEngine().SearchAsync(
+            globRequest,
+            CancellationToken.None
+        );
+        GrepSearch actualGlob = await ripgrep.SearchAsync(globRequest, CancellationToken.None);
+
+        Assert.Null(actualGlob.Error);
+        Assert.Equal(expectedGlob.Matches, actualGlob.Matches);
+        Assert.Equal(expectedGlob.More, actualGlob.More);
     }
 
     [Theory]
