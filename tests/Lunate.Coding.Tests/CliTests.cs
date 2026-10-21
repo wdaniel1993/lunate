@@ -652,6 +652,26 @@ public sealed class CliTests
     }
 
     [Fact]
+    public void Launch_options_refuse_an_optional_tool_name_in_the_filter()
+    {
+        Assert.False(LaunchOptions.TryParse(["--tools", "grep"], out _, out string? error));
+        Assert.Contains("--extra-tools", error, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Launch_options_parse_an_extra_tool_list()
+    {
+        Assert.Equal(["grep", "find"], Parse("--extra-tools=grep,find").ExtraTools);
+    }
+
+    [Fact]
+    public void Launch_options_refuse_an_unknown_extra_tool()
+    {
+        Assert.False(LaunchOptions.TryParse(["--extra-tools", "wat"], out _, out string? error));
+        Assert.Contains("'grep', 'find' or 'ls'", error, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Launch_options_parse_no_tools()
     {
         LaunchOptions options = Parse("--no-tools");

@@ -80,6 +80,7 @@ internal sealed record LaunchOptions
         string? session = null;
         string? model = null;
         string? tools = null;
+        string? extraToolsFlag = null;
         string? systemPrompt = null;
         string? appendSystemPrompt = null;
         ThinkingLevel? thinking = null;
@@ -160,6 +161,21 @@ internal sealed record LaunchOptions
                     }
                     toolsGiven = true;
                     break;
+                case "--extra-tools":
+                    if (
+                        !TryValue(
+                            args,
+                            ref index,
+                            "--extra-tools",
+                            inline,
+                            out extraToolsFlag,
+                            out error
+                        )
+                    )
+                    {
+                        return false;
+                    }
+                    break;
                 case "--system-prompt":
                     if (
                         !TryValue(
@@ -207,12 +223,8 @@ internal sealed record LaunchOptions
         }
 
         if (
-            !TryTools(
-                tools,
-                out IReadOnlyList<string>? toolNames,
-                out IReadOnlyList<string>? extraTools,
-                out error
-            )
+            !TryTools(tools, out IReadOnlyList<string>? toolNames, out error)
+            || !TryExtraTools(extraToolsFlag, out IReadOnlyList<string>? extraTools, out error)
         )
         {
             return false;
@@ -357,29 +369,23 @@ internal sealed record LaunchOptions
     }
 
     /// <summary>
-    /// Splits <c>--tools</c> into the registry filter and the optional tools to enable. Optional
-    /// tool names never filter the registry: naming only those (the documented
-    /// <c>--tools grep,find,ls</c>) enables them beside the whole core set. A present flag always
-    /// sets <paramref name="extraTools"/> (empty when it named none), which is how the CLI
-    /// overrides the file/environment list.
+    /// Parses <c>--tools</c> into the registry filter. An optional search tool name is refused
+    /// here — it belongs to <c>--extra-tools</c> — so the flag keeps exactly one meaning.
     /// </summary>
     private static bool TryTools(
         string? value,
         out IReadOnlyList<string>? tools,
-        out IReadOnlyList<string>? extraTools,
         out string? error
     )
     {
         error = null;
         tools = null;
-        extraTools = null;
         if (value is null)
         {
             return true;
         }
 
         List<string> names = [];
-        List<string> extra = [];
         foreach (string part in value.Split(','))
         {
             string name = part.Trim();
@@ -391,16 +397,54 @@ internal sealed record LaunchOptions
 
             if (OptionalTools.IsName(name))
             {
-                extra.Add(name);
+                error = $"'{name}' is an optional search tool; name it with --extra-tools";
+                return false;
             }
-            else
+
+            names.Add(name);
+        }
+
+        tools = names.Count == 0 ? null : names;
+        return true;
+    }
+
+    /// <summary>Parses <c>--extra-tools</c> into the search tools to enable beside the core set.</summary>
+    private static bool TryExtraTools(
+        string? value,
+        out IReadOnlyList<string>? extraTools,
+        out string? error
+    )
+    {
+        error = null;
+        extraTools = null;
+        if (value is null)
+        {
+            return true;
+        }
+
+        List<string> names = [];
+        foreach (string part in value.Split(','))
+        {
+            string name = part.Trim();
+            if (name.Length == 0)
+            {
+                error = "'--extra-tools' expects a comma-separated list of search tool names";
+                return false;
+            }
+
+            if (!OptionalTools.IsName(name))
+            {
+                error = $"'{name}' is not an optional search tool; --extra-tools accepts {OptionalTools.Accepted}";
+                return false;
+            }
+
+            if (!names.Contains(name, StringComparer.Ordinal))
             {
                 names.Add(name);
             }
         }
 
-        tools = names.Count == 0 ? null : names;
-        extraTools = extra;
+        extraTools = names;
         return true;
     }
 }
