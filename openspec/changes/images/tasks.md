@@ -27,11 +27,11 @@ Each group is one conventional commit. Work test-first through `senior-dev`; do 
 
 ## 4. Harness images and request hydration
 
-- [ ] 4.1 Add red tests: a user input with an image stores a reference and the request carries `DataContent`; a `read` result appends the tool message then one user image message; resume rehydrates; a missing blob fails before the first request; a no-session run uses memory.
-- [ ] 4.2 Add `ImageAttachment`, `ImageLimits` and `UserInput`; add `ToolResult.Images` (init-only) without changing existing construction sites.
-- [ ] 4.3 Wire `RunAsync(UserInput)` (the string overload delegates), store attachments before appending, and hydrate `ImageContentReference` to `DataContent` in `BuildRequest`; keep steering and skill runs text-only.
-- [ ] 4.4 Teach `CompactionReducer` the `[image <w>x<h>]` rendering and the `max(256, w*h/750)` estimate; prove the summarizer receives no bytes and blobs survive.
-- [ ] 4.5 Update `PublicAPI.Unshipped.txt`; commit: `feat(agent): image parts in requests`.
+- [x] 4.1 Add red tests: a user input with an image stores a reference and the request carries `DataContent`; a `read` result appends the tool message then one user image message; resume rehydrates; a missing blob fails before the first request; a no-session run uses memory.
+- [x] 4.2 Add `ImageAttachment`, `ImageLimits` and `UserInput`; add `ToolResult.Images` (init-only) without changing existing construction sites.
+- [x] 4.3 Wire `RunAsync(UserInput)` (the string overload delegates), store attachments before appending, and hydrate `ImageContentReference` to `DataContent` in `BuildRequest`; keep steering and skill runs text-only.
+- [x] 4.4 Teach `CompactionReducer` the `[image <w>x<h>]` rendering and the `max(256, w*h/750)` estimate; prove the summarizer receives no bytes and blobs survive.
+- [x] 4.5 Update `PublicAPI.Unshipped.txt`; commit: `feat(agent): image parts in requests`.
 
 ## 5. Image-aware request digest
 
