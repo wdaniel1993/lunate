@@ -17,7 +17,6 @@ public sealed record DiscoverResult(bool Succeeded, string Draft, string? Error)
 /// </summary>
 public static class DiscoverCommand
 {
-    private const string AnthropicProvider = "anthropic";
     private static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(30);
 
     private static readonly JsonSerializerOptions DraftJson = new()
@@ -144,7 +143,7 @@ public static class DiscoverCommand
         HttpResponseMessage response;
         try
         {
-            using var request = CreateRequest(requestUrl, provider, key);
+            using var request = CreateRequest(requestUrl, credentialPreset, key);
             response = await client.SendAsync(request, ct);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -277,7 +276,7 @@ public static class DiscoverCommand
         }
     }
 
-    private static HttpRequestMessage CreateRequest(string url, string? provider, string? key)
+    private static HttpRequestMessage CreateRequest(string url, ProviderPreset? preset, string? key)
     {
         var request = new HttpRequestMessage(HttpMethod.Get, url);
         if (string.IsNullOrEmpty(key))
@@ -285,7 +284,7 @@ public static class DiscoverCommand
             return request;
         }
 
-        if (provider == AnthropicProvider)
+        if (preset?.Adapter == ProviderAdapter.Anthropic)
         {
             request.Headers.TryAddWithoutValidation("x-api-key", key);
             request.Headers.TryAddWithoutValidation("anthropic-version", "2023-06-01");
@@ -318,11 +317,16 @@ public static class DiscoverCommand
     /// <summary>The preset whose base URL is exactly this URL, if any.</summary>
     private static ProviderPreset? PresetAtUrl(string url)
     {
-        string trimmed = TrimTrailingSlash(url);
+        if (!Uri.TryCreate(url, UriKind.Absolute, out Uri? target))
+        {
+            return null;
+        }
+
         return ProviderPresets.All.FirstOrDefault(preset =>
-            string.Equals(
-                TrimTrailingSlash(preset.BaseUrl.AbsoluteUri),
-                trimmed,
+            ProviderEndpoint.IsOwn(target, preset.BaseUrl)
+            && string.Equals(
+                target.AbsolutePath.TrimEnd('/'),
+                preset.BaseUrl.AbsolutePath.TrimEnd('/'),
                 StringComparison.Ordinal
             )
         );
@@ -331,13 +335,8 @@ public static class DiscoverCommand
     /// <summary>
     /// Whether a declared endpoint is the preset's own: the base URL itself or a path under it.
     /// </summary>
-    private static bool EndpointBelongsToPreset(Uri endpoint, ProviderPreset preset)
-    {
-        string endpointUrl = TrimTrailingSlash(endpoint.AbsoluteUri);
-        string presetUrl = TrimTrailingSlash(preset.BaseUrl.AbsoluteUri);
-        return string.Equals(endpointUrl, presetUrl, StringComparison.Ordinal)
-            || endpointUrl.StartsWith(presetUrl + "/", StringComparison.Ordinal);
-    }
+    private static bool EndpointBelongsToPreset(Uri endpoint, ProviderPreset preset) =>
+        ProviderEndpoint.IsOwn(endpoint, preset.BaseUrl);
 
     /// <summary>
     /// The preset's key precedence: the preset's environment variable, its alias second, then the
