@@ -152,6 +152,67 @@ public sealed class InteractiveSessionSecretPromptTests
         await QuitAsync(host, run);
     }
 
+    [Fact]
+    public async Task A_pasted_key_is_masked_and_saved()
+    {
+        using var host = new InteractiveSessionHost(
+            launch: new LaunchOptions { Model = "gpt-4o-mini" },
+            chat: new ScriptedChatClient()
+        );
+        string authPath = host.Temp.File("auth.json");
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+        await OpenLoginAsync(host);
+
+        // The paste carries a trailing newline: it is stripped, not treated as Enter.
+        host.Console.Send(new KeyEvent(KeyKind.Paste, Secret + "\r\n ", false, false, false));
+        await WaitForFrameAsync(host, "API key for groq: " + new string('*', Secret.Length));
+        Assert.False(File.Exists(authPath));
+
+        host.Console.SendEnter();
+        await WaitForFrameAsync(host, "logged in: groq");
+
+        AuthStore store = AuthStore.Load(authPath, _ => null);
+        Assert.Equal(Secret, store.TryGet("groq"));
+        Assert.DoesNotContain(Secret, host.Frames, StringComparison.Ordinal);
+        Assert.DoesNotContain(Secret, host.ScrollbackText, StringComparison.Ordinal);
+        AssertSecretOnlyInAuth(host, authPath);
+
+        await QuitAsync(host, run);
+    }
+
+    [Fact]
+    public async Task Cancelling_a_pending_prompt_closes_it_without_repainting_it()
+    {
+        var console = new ScriptedConsoleIO();
+        var scheduler = new ManualScheduler();
+        using var live = new LiveArea(console, scheduler, readKeys: false);
+        live.Start();
+        var prompt = new TuiSecretPrompt(live);
+
+        // Cancel races the key pump: whichever wins, no typed text may survive a detach.
+        for (int i = 0; i < 50; i++)
+        {
+            using var cancellation = new CancellationTokenSource();
+            Task<string?> read = prompt.ReadAsync("API key for groq", cancellation.Token);
+            Assert.True(prompt.IsOpen);
+            await Task.WhenAll(
+                Task.Run(
+                    () =>
+                        prompt.HandleKey(new KeyEvent(KeyKind.Character, "x", false, false, false)),
+                    TestContext.Current.CancellationToken
+                ),
+                Task.Run(cancellation.Cancel, TestContext.Current.CancellationToken)
+            );
+
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => read);
+            Assert.False(prompt.IsOpen);
+        }
+
+        scheduler.Advance(TimeSpan.FromMilliseconds(33));
+        Assert.DoesNotContain("API key for groq", console.Writes[^1], StringComparison.Ordinal);
+    }
+
     private static async Task OpenLoginAsync(InteractiveSessionHost host)
     {
         host.Console.SendText("/login groq");
@@ -164,6 +225,23 @@ public sealed class InteractiveSessionSecretPromptTests
         host.Console.SendText("/quit");
         host.Console.SendEnter();
         await run;
+    }
+
+    private static void AssertSecretOnlyInAuth(InteractiveSessionHost host, string authPath)
+    {
+        foreach (
+            string file in Directory.EnumerateFiles(
+                host.Temp.Root,
+                "*",
+                SearchOption.AllDirectories
+            )
+        )
+        {
+            if (!string.Equals(file, authPath, StringComparison.Ordinal))
+            {
+                Assert.DoesNotContain(Secret, File.ReadAllText(file), StringComparison.Ordinal);
+            }
+        }
     }
 
     private static string HistoryText(InteractiveSessionHost host)
