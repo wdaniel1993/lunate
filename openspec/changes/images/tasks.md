@@ -4,26 +4,26 @@ Each group is one conventional commit. Work test-first through `senior-dev`; do 
 
 ## 1. Vision capability seam
 
-- [ ] 1.1 Add red tests: `ModelCatalog` reads `supportsVision` (default false, user override wins), and `ModelInfo` exposes it; `ToolContext.Model` is null outside a run and names the active model inside one.
-- [ ] 1.2 Add `ModelInfo.SupportsVision` as the last optional parameter (`src/Lunate.Ai/ModelInfo.cs`), `ModelCatalog.ModelEntry.SupportsVision` and the built-in `models.json` values; update `ModelRegistry.Compose` and the interactive-session extension-model construction.
-- [ ] 1.3 Add `ModelInfo? Model` to `AgentHarnessOptions` and `ToolContext`; set it in `BuildHarness`/`InvokeToolAsync` and after `ResolveSessionModel`; set the workspace-tool factory through the same options.
-- [ ] 1.4 Update `PublicAPI.Unshipped.txt` in `Lunate.Ai` and `Lunate.Agent`; run the API analyzer test.
-- [ ] 1.5 Commit: `feat(ai): model vision capability`.
+- [x] 1.1 Add red tests: `ModelCatalog` reads `supportsVision` (default false, user override wins), and `ModelInfo` exposes it; `ToolContext.Model` is null outside a run and names the active model inside one.
+- [x] 1.2 Add `ModelInfo.SupportsVision` as the last optional parameter (`src/Lunate.Ai/ModelInfo.cs`), `ModelCatalog.ModelEntry.SupportsVision` and the built-in `models.json` values; update `ModelRegistry.Compose` and the interactive-session extension-model construction. (Shipped init-only by provider-presets; extension/virtual models keep the default false.)
+- [x] 1.3 Add `ModelInfo? Model` to `AgentHarnessOptions` and `ToolContext`; set it in `BuildHarness`/`InvokeToolAsync` and after `ResolveSessionModel`; set the workspace-tool factory through the same options.
+- [x] 1.4 Update `PublicAPI.Unshipped.txt` in `Lunate.Ai` and `Lunate.Agent`; run the API analyzer test.
+- [x] 1.5 Commit: `feat(ai): model vision capability`.
 
 ## 2. Session schema 3 image part
 
-- [ ] 2.1 Add red tests: an `ImageContentReference` part round-trips with `$type`, digest, mime, width and height; schema 1 and 2 goldens still round-trip byte-for-byte; an unknown `$type` still fails with file and line; a schema 2 header test is unchanged.
-- [ ] 2.2 Add `ImageContentReference` (digest, mime, width, height) and `SessionJson` (a copy of `AIJsonUtilities.DefaultOptions` with `AddAIContentType<ImageContentReference>(..., "image")`).
-- [ ] 2.3 Switch `SessionFormat` parse/write and `Session.Load` message handling to `SessionJson.Options`; bump `SchemaVersion` to 3 and accept 1, 2, 3 with an updated actionable error.
-- [ ] 2.4 Add `tests/fixtures/sessions/golden-v3-image.jsonl` and register it in `SessionGoldenTests`; prove every existing golden is untouched.
-- [ ] 2.5 Update `PublicAPI.Unshipped.txt`; commit: `feat(session): schema 3 image references`.
+- [x] 2.1 Add red tests: an `ImageContentReference` part round-trips with `$type`, digest, mime, width and height; schema 1 and 2 goldens still round-trip byte-for-byte; an unknown `$type` still fails with file and line; a schema 2 header test is unchanged.
+- [x] 2.2 Add `ImageContentReference` (digest, mime, width, height) and `SessionJson` (a copy of `AIJsonUtilities.DefaultOptions` with `AddAIContentType<ImageContentReference>(..., "image")`).
+- [x] 2.3 Switch `SessionFormat` parse/write and `Session.Load` message handling to `SessionJson.Options`; bump `SchemaVersion` to 3 and accept 1, 2, 3 with an updated actionable error. (The version bump and 1/2/3 acceptance shipped with provider-presets.)
+- [x] 2.4 Add `tests/fixtures/sessions/golden-v3-image.jsonl` and register it in `SessionGoldenTests`; prove every existing golden is untouched.
+- [x] 2.5 Update `PublicAPI.Unshipped.txt`; commit: `feat(session): schema 3 image references`.
 
 ## 3. Image blob store and sweep
 
-- [ ] 3.1 Add red tests: two identical attachments produce one blob; a temp write is atomic; an unreferenced blob is removed on open; a referenced blob survives; a raw-preserved message's digest is honored; `Session.List` touches no blob; compaction leaves the blob; `--no-session` writes nothing.
-- [ ] 3.2 Add `SessionImages` (path resolution `<sessions-dir>/<id>/images/<sha256>.<ext>`, SHA-256, content-addressed atomic write, dedupe, strict blob-name validation, bounded decode cache) and an in-memory variant.
-- [ ] 3.3 Add the sweep on successful `Session.Load` (typed and raw-JSON digests, stale temp cleanup) and the missing-blob validation used by the harness; keep `Session.List` on the header path.
-- [ ] 3.4 Update `PublicAPI.Unshipped.txt`; commit: `feat(session): image blob store`.
+- [x] 3.1 Add red tests: two identical attachments produce one blob; a temp write is atomic; an unreferenced blob is removed on open; a referenced blob survives; a raw-preserved message's digest is honored; `Session.List` touches no blob; compaction leaves the blob; `--no-session` writes nothing. (The in-memory store proves nothing is written; the `--no-session` run wiring is verified in 4.1.)
+- [x] 3.2 Add `SessionImages` (path resolution `<sessions-dir>/<id>/images/<sha256>.<ext>`, SHA-256, content-addressed atomic write, dedupe, strict blob-name validation, bounded decode cache) and an in-memory variant.
+- [x] 3.3 Add the sweep on successful `Session.Load` (typed and raw-JSON digests, stale temp cleanup) and the missing-blob validation used by the harness; keep `Session.List` on the header path.
+- [x] 3.4 Update `PublicAPI.Unshipped.txt`; commit: `feat(session): image blob store`. (No public surface changed: the store and `Session.Images` are internal.)
 
 ## 4. Harness images and request hydration
 
