@@ -135,14 +135,15 @@ public sealed class InteractiveSessionEndToEndTests
             host.Advance(33);
             return host.LastFrame.Contains("Select model", StringComparison.Ordinal);
         });
-        string modelPickerFrame = await CaptureFrameAsync(host);
-
-        host.Console.Send(new KeyEvent(KeyKind.Down, null, false, false, false));
+        // The catalog is large, so the scripted filter selects gpt-4o before it confirms.
+        host.Console.SendText("gpt-4o (");
         await host.WaitUntilAsync(() =>
         {
             host.Advance(33);
             return host.LastFrame.Contains("> gpt-4o (openai)", StringComparison.Ordinal);
         });
+        string modelPickerFrame = await CaptureFrameAsync(host);
+
         host.Console.SendEnter();
         await host.WaitUntilAsync(() =>
         {

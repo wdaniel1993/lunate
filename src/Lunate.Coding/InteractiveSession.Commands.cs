@@ -548,8 +548,11 @@ internal sealed partial class InteractiveSession
     }
 
     /// <summary>
-    /// Opens the model picker: catalog order, the current model marked with `* `. When the current
-    /// model is an extension-registered or virtual model — not in the catalog — the title's
+    /// Opens the model picker: the settings favourites first in their list order (only ids the
+    /// catalog has, deduplicated), then every remaining catalog model in catalog order. The
+    /// active model is selected when it is present, otherwise the first row. A catalog with
+    /// hundreds of entries is why the picker filters as the person types. When the current model
+    /// is an extension-registered or virtual model — not in the catalog — the title's
     /// current-model line shows its last routed resolution (<c>auto → deep</c>).
     /// </summary>
     private void OpenModelPicker()
@@ -559,27 +562,47 @@ internal sealed partial class InteractiveSession
             return;
         }
 
+        Dictionary<string, ModelInfo> byId = _catalog.Models.ToDictionary(
+            model => model.Id,
+            StringComparer.Ordinal
+        );
         List<string> labels = [];
         List<string> values = [];
-        var current = 0;
-        foreach (ModelInfo model in _catalog.Models)
+        var added = new HashSet<string>(StringComparer.Ordinal);
+        foreach (string favorite in _settings.Favorites)
         {
-            string label = $"{model.Id} ({model.Provider})";
-            if (string.Equals(model.Id, _modelId, StringComparison.Ordinal))
+            if (
+                added.Contains(favorite)
+                || !byId.TryGetValue(favorite, out ModelInfo? favoriteModel)
+            )
             {
-                label = "* " + label;
-                current = labels.Count;
+                continue;
             }
 
-            labels.Add(label);
+            added.Add(favorite);
+            labels.Add(Label(favoriteModel));
+            values.Add(favoriteModel.Id);
+        }
+
+        foreach (ModelInfo model in _catalog.Models)
+        {
+            if (!added.Add(model.Id))
+            {
+                continue;
+            }
+
+            labels.Add(Label(model));
             values.Add(model.Id);
         }
 
         string title = _extensionModelId is not null
             ? "Select model — current " + DisplayModel()
             : "Select model";
-        OpenPicker(PickerKind.Model, title, labels, values, current);
+        int current = values.IndexOf(_modelId);
+        OpenPicker(PickerKind.Model, title, labels, values, current < 0 ? 0 : current);
     }
+
+    private static string Label(ModelInfo model) => $"{model.Id} ({model.Provider})";
 
     /// <summary>Opens the session picker: the directory listing, newest first, the current one selected.</summary>
     private void OpenSessionPicker()
@@ -605,39 +628,154 @@ internal sealed partial class InteractiveSession
 
     private void OpenPicker(
         PickerKind kind,
-        string title,
+        string titlePrefix,
         List<string> labels,
         List<string> values,
         int selected
     )
     {
         _pickerKind = kind;
+        _pickerTitlePrefix = titlePrefix;
+        _pickerLabels = labels;
         _pickerValues = values;
-        _picker = new SelectListModel(title, labels, selected);
-        _live.SetPicker(_picker);
+        _pickerFilter = string.Empty;
+        ShowPicker(keepValue: null, fallback: selected);
     }
 
-    /// <summary>Picker keys are intercepted first: Up/Down move clamped, Enter confirms, Esc
-    /// dismisses; every other key is ignored.</summary>
+    /// <summary>
+    /// Rebuilds the visible rows from the full list and the filter, keeping
+    /// <paramref name="keepValue"/> selected when it still matches and falling back to
+    /// <paramref name="fallback"/> otherwise; the session picker never filters.
+    /// </summary>
+    private void ShowPicker(string? keepValue, int fallback)
+    {
+        List<string> labels = [];
+        List<string> values = [];
+        for (var index = 0; index < _pickerLabels.Count; index++)
+        {
+            if (!PickerMatches(_pickerLabels[index]))
+            {
+                continue;
+            }
+
+            labels.Add(PickerLabel(index));
+            values.Add(_pickerValues[index]);
+        }
+
+        _pickerVisibleValues = values;
+        int selected = keepValue is null ? fallback : values.IndexOf(keepValue);
+        if (selected < 0)
+        {
+            selected = fallback;
+        }
+
+        selected = Math.Clamp(selected, 0, Math.Max(labels.Count - 1, 0));
+        SetPicker(new SelectListModel(PickerTitle(selected, labels.Count), labels, selected));
+    }
+
+    private bool PickerMatches(string label) =>
+        _pickerKind is not PickerKind.Model
+        || _pickerFilter.Length == 0
+        || label.Contains(_pickerFilter, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>The row label; the active model keeps its <c>* </c> marker.</summary>
+    private string PickerLabel(int index) =>
+        _pickerKind is PickerKind.Model
+        && string.Equals(_pickerValues[index], _modelId, StringComparison.Ordinal)
+            ? "* " + _pickerLabels[index]
+            : _pickerLabels[index];
+
+    /// <summary>
+    /// The title. The session picker keeps its plain title; the model picker appends the
+    /// invariant position and visible count and, while filtering, the filter text.
+    /// </summary>
+    private string PickerTitle(int selected, int count)
+    {
+        if (_pickerKind is not PickerKind.Model)
+        {
+            return _pickerTitlePrefix;
+        }
+
+        string position =
+            count == 0 ? "0 of 0" : FormattableString.Invariant($"{selected + 1} of {count}");
+        string title = _pickerTitlePrefix + " — " + position;
+        return _pickerFilter.Length == 0 ? title : title + " — filter: " + _pickerFilter;
+    }
+
+    /// <summary>
+    /// Picker keys are intercepted first: Up/Down move clamped, Enter confirms a selected value,
+    /// Esc dismisses. In the model picker an unmodified printable Character or Space appends to
+    /// the filter, Backspace removes the last character and Esc clears a non-empty filter first.
+    /// Every other key (Ctrl+L, Ctrl+P, ...) is inert while the picker is open.
+    /// </summary>
     private async ValueTask HandlePickerKey(KeyEvent key, CancellationToken ct)
     {
-        SelectListModel picker = _picker!;
+        bool plain = !key.Ctrl && !key.Alt;
         switch (key.Kind)
         {
-            case KeyKind.Up when !key.Ctrl && !key.Shift && !key.Alt:
-                SetPicker(picker.Move(-1));
+            case KeyKind.Up when plain:
+                MovePicker(-1);
                 break;
-            case KeyKind.Down when !key.Ctrl && !key.Shift && !key.Alt:
-                SetPicker(picker.Move(1));
+            case KeyKind.Down when plain:
+                MovePicker(1);
                 break;
-            case KeyKind.Enter when !key.Ctrl && !key.Shift && !key.Alt:
+            case KeyKind.Enter when plain:
                 await ConfirmPicker(ct).ConfigureAwait(false);
                 break;
             case KeyKind.Escape:
+                if (_pickerKind is PickerKind.Model && _pickerFilter.Length > 0)
+                {
+                    _pickerFilter = string.Empty;
+                    ShowPicker(SelectedPickerValue(), fallback: 0);
+                    break;
+                }
+
                 DismissPicker();
+                break;
+            case KeyKind.Character when plain && key.Text is { Length: > 0 } text:
+                AppendPickerFilter(text);
+                break;
+            case KeyKind.Space when plain:
+                AppendPickerFilter(key.Text ?? " ");
+                break;
+            case KeyKind.Backspace when plain:
+                BackspacePickerFilter();
                 break;
         }
     }
+
+    private void AppendPickerFilter(string text)
+    {
+        if (_pickerKind is not PickerKind.Model)
+        {
+            return;
+        }
+
+        _pickerFilter += text;
+        ShowPicker(SelectedPickerValue(), fallback: 0);
+    }
+
+    private void BackspacePickerFilter()
+    {
+        if (_pickerKind is not PickerKind.Model || _pickerFilter.Length == 0)
+        {
+            return;
+        }
+
+        _pickerFilter = _pickerFilter[..^1];
+        ShowPicker(SelectedPickerValue(), fallback: 0);
+    }
+
+    private void MovePicker(int delta)
+    {
+        SelectListModel moved = _picker!.Move(delta);
+        SetPicker(moved with { Title = PickerTitle(moved.Selected, moved.Items.Count) });
+    }
+
+    private string? SelectedPickerValue() =>
+        _picker is { Selected: >= 0 } picker && picker.Selected < _pickerVisibleValues.Count
+            ? _pickerVisibleValues[picker.Selected]
+            : null;
 
     private void SetPicker(SelectListModel picker)
     {
@@ -648,7 +786,11 @@ internal sealed partial class InteractiveSession
     private void DismissPicker()
     {
         _picker = null;
+        _pickerTitlePrefix = string.Empty;
+        _pickerLabels = [];
         _pickerValues = [];
+        _pickerVisibleValues = [];
+        _pickerFilter = string.Empty;
         _live.SetPicker(null);
     }
 
@@ -657,15 +799,16 @@ internal sealed partial class InteractiveSession
         SelectListModel picker = _picker!;
         PickerKind kind = _pickerKind;
         string? value =
-            picker.Selected >= 0 && picker.Selected < _pickerValues.Count
-                ? _pickerValues[picker.Selected]
+            picker.Selected >= 0 && picker.Selected < _pickerVisibleValues.Count
+                ? _pickerVisibleValues[picker.Selected]
                 : null;
-        DismissPicker();
         if (value is null)
         {
+            // An empty match has nothing to confirm: Enter is a no-op and the picker stays open.
             return;
         }
 
+        DismissPicker();
         if (kind is PickerKind.Model)
         {
             await SwitchModel(value, ct).ConfigureAwait(false);

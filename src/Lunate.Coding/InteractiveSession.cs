@@ -181,7 +181,11 @@ internal sealed partial class InteractiveSession : IDisposable
     private int _trustTotal;
     private SelectListModel? _picker;
     private PickerKind _pickerKind;
+    private List<string> _pickerLabels = [];
     private List<string> _pickerValues = [];
+    private List<string> _pickerVisibleValues = [];
+    private string _pickerTitlePrefix = string.Empty;
+    private string _pickerFilter = string.Empty;
     private FileIndex? _fileIndex;
     private string _tail = string.Empty;
     private string _thinking = string.Empty;

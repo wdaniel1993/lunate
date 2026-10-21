@@ -41,6 +41,7 @@ public sealed class InteractiveSessionModelChangedTests
         var handler = new RecordingHandler();
         runner.Register("ext.test", handler);
         using var host = new InteractiveSessionHost(hooks: runner);
+        SettingsStore.WriteFavorites(["gpt-4o-mini", "gpt-4o"], host.Temp.File("settings.json"));
         Task run = host.RunAsync();
 
         host.Console.Send(

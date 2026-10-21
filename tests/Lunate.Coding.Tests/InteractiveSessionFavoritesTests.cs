@@ -177,6 +177,33 @@ public sealed class InteractiveSessionFavoritesTests
         await run;
     }
 
+    [Fact]
+    public async Task Ctrl_P_wins_over_an_open_autocomplete_list()
+    {
+        using var host = new InteractiveSessionHost(
+            launch: new LaunchOptions { Model = "gpt-4o-mini" }
+        );
+        string settingsPath = host.Temp.File("settings.json");
+        SettingsStore.WriteFavorites(["gpt-4o"], settingsPath);
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+
+        host.Console.SendText("/comp");
+        await host.WaitUntilAsync(() => host.Session.Autocomplete is not null);
+
+        host.Console.Send(CtrlP);
+        await InteractiveSessionCommandTests.WaitForFrameAsync(host, "model: gpt-4o");
+
+        Assert.Equal("/comp", host.Session.Input.Text);
+        Assert.Empty(host.Client.Requests);
+
+        host.Console.SendCtrlC();
+        await host.WaitUntilAsync(() => host.Session.Input.Text.Length == 0);
+        host.Console.SendText("/quit");
+        host.Console.SendEnter();
+        await run;
+    }
+
     private static Session LoadedSession(InteractiveSessionHost host) =>
         Session.Load(Assert.Single(Directory.GetFiles(host.Temp.File("sessions"), "*.jsonl")));
 }

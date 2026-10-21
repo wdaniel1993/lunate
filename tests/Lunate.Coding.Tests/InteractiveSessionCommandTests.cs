@@ -12,7 +12,7 @@ public sealed class InteractiveSessionCommandTests
     [Fact]
     public async Task Every_built_in_command_dispatches_without_a_model_call()
     {
-        using var host = new InteractiveSessionHost();
+        using var host = new InteractiveSessionHost(secretPrompt: new CancelledSecretPrompt());
         Task run = host.RunAsync();
         await host.WaitUntilAsync(() => host.Session.IsComposed);
 
@@ -35,6 +35,22 @@ public sealed class InteractiveSessionCommandTests
         Assert.Contains("  gpt-4o (openai)", host.LastFrame, StringComparison.Ordinal);
         host.Console.SendEscape();
         await WaitForFrameGoneAsync(host, "Select model");
+
+        host.Console.SendText("/login groq");
+        host.Console.SendEnter();
+        await WaitForFrameAsync(host, "login cancelled");
+
+        host.Console.SendText("/logout groq");
+        host.Console.SendEnter();
+        await WaitForFrameAsync(host, "no stored key for 'groq'");
+
+        host.Console.SendText("/favorite gpt-4o");
+        host.Console.SendEnter();
+        await WaitForFrameAsync(host, "added favorite: gpt-4o");
+
+        host.Console.SendText("/unfavorite gpt-4o");
+        host.Console.SendEnter();
+        await WaitForFrameAsync(host, "removed favorite: gpt-4o");
 
         host.Console.SendText("/resume");
         host.Console.SendEnter();
@@ -853,5 +869,12 @@ public sealed class InteractiveSessionCommandTests
             Seen.Add(payload.Text);
             return ValueTask.FromResult<InputReceivedResult>(new InputReceivedResult.Consume());
         }
+    }
+
+    /// <summary>A prompt that reports a cancelled read (Enter on an empty line).</summary>
+    private sealed class CancelledSecretPrompt : ISecretPrompt
+    {
+        public Task<string?> ReadAsync(string prompt, CancellationToken cancellationToken) =>
+            Task.FromResult<string?>(null);
     }
 }
