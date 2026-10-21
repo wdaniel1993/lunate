@@ -41,8 +41,46 @@ public sealed class DiscoverCommandTests
         Assert.False(models[0].TryGetProperty("provider", out _));
     }
 
-    [Fact]
-    public async Task Url_target_uses_the_environment_key_when_set()
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Url_target_sends_no_credential_even_when_a_key_is_configured(
+        bool fromEnvironment
+    )
+    {
+        using var temp = new TempDirectory();
+        using var handler = new FakeHandler(_ =>
+            Json(HttpStatusCode.OK, """{ "data": [ { "id": "alpha" } ] }""")
+        );
+        bool storeRead = false;
+
+        DiscoverResult result = await DiscoverCommand.RunAsync(
+            UrlTarget,
+            Catalog(temp),
+            handler,
+            namedKeySource: _ =>
+            {
+                storeRead = true;
+                return "stored-key";
+            },
+            environment: name => fromEnvironment && name == "OPENAI_API_KEY" ? "env-key" : null,
+            ct: TestContext.Current.CancellationToken
+        );
+
+        Assert.True(result.Succeeded, result.Error);
+        AssertNoCredential(handler.Requests[0]);
+        Assert.False(storeRead);
+    }
+
+    [Theory]
+    [InlineData("https://api.openai.com/v1", "OPENAI_API_KEY", "openai-key", "Authorization")]
+    [InlineData("https://api.anthropic.com/v1", "ANTHROPIC_API_KEY", "anthropic-key", "x-api-key")]
+    public async Task A_direct_preset_url_uses_that_presets_key_and_header(
+        string url,
+        string variable,
+        string key,
+        string header
+    )
     {
         using var temp = new TempDirectory();
         using var handler = new FakeHandler(_ =>
@@ -50,17 +88,23 @@ public sealed class DiscoverCommandTests
         );
 
         DiscoverResult result = await DiscoverCommand.RunAsync(
-            UrlTarget,
+            url,
             Catalog(temp),
             handler,
-            environment: name => name == "OPENAI_API_KEY" ? "env-key" : null,
+            environment: name => name == variable ? key : null,
             ct: TestContext.Current.CancellationToken
         );
 
         Assert.True(result.Succeeded, result.Error);
+        Assert.Equal($"{url}/models", handler.Requests[0].RequestUri!.AbsoluteUri);
         Assert.Equal(
-            "Bearer env-key",
-            handler.Requests[0].Headers.GetValues("Authorization").Single()
+            header == "Authorization" ? $"Bearer {key}" : key,
+            handler.Requests[0].Headers.GetValues(header).Single()
+        );
+        Assert.False(
+            handler
+                .Requests[0]
+                .Headers.Contains(header == "Authorization" ? "x-api-key" : "Authorization")
         );
     }
 
@@ -82,7 +126,7 @@ public sealed class DiscoverCommandTests
             "local",
             ModelCatalog.Load(userFile),
             handler,
-            environment: _ => null,
+            environment: name => name == "OPENAI_API_KEY" ? "env-key" : null,
             ct: TestContext.Current.CancellationToken
         );
 
@@ -91,10 +135,110 @@ public sealed class DiscoverCommandTests
             "http://localhost:4321/v1/models",
             handler.Requests[0].RequestUri!.AbsoluteUri
         );
+        AssertNoCredential(handler.Requests[0]);
         using JsonDocument draft = JsonDocument.Parse(result.Draft);
         JsonElement model = draft.RootElement.GetProperty("models")[0];
         Assert.Equal("openai", model.GetProperty("provider").GetString());
         Assert.Equal("http://localhost:4321/v1", model.GetProperty("endpoint").GetString());
+    }
+
+    [Fact]
+    public async Task A_declared_gateway_endpoint_gets_no_credential()
+    {
+        using var temp = new TempDirectory();
+        string userFile = WriteCatalog(
+            temp,
+            """
+            { "id": "gateway", "provider": "openai", "endpoint": "http://gateway.test/v1", "contextWindow": 8192, "supportsTools": true }
+            """
+        );
+        using var handler = new FakeHandler(_ =>
+            Json(HttpStatusCode.OK, """{ "data": [ { "id": "small" } ] }""")
+        );
+        bool storeRead = false;
+
+        DiscoverResult result = await DiscoverCommand.RunAsync(
+            "gateway",
+            ModelCatalog.Load(userFile),
+            handler,
+            namedKeySource: _ =>
+            {
+                storeRead = true;
+                return "stored-openai-key";
+            },
+            environment: name => name == "OPENAI_API_KEY" ? "env-key" : null,
+            ct: TestContext.Current.CancellationToken
+        );
+
+        Assert.True(result.Succeeded, result.Error);
+        Assert.Equal("http://gateway.test/v1/models", handler.Requests[0].RequestUri!.AbsoluteUri);
+        AssertNoCredential(handler.Requests[0]);
+        Assert.False(storeRead);
+    }
+
+    [Fact]
+    public async Task An_unknown_provider_endpoint_gets_no_credential()
+    {
+        using var temp = new TempDirectory();
+        string userFile = WriteCatalog(
+            temp,
+            """
+            { "id": "custom", "provider": "custom", "endpoint": "http://localhost:5000/v1", "contextWindow": 8192, "supportsTools": true }
+            """
+        );
+        using var handler = new FakeHandler(_ =>
+            Json(HttpStatusCode.OK, """{ "data": [ { "id": "small" } ] }""")
+        );
+        bool storeRead = false;
+
+        DiscoverResult result = await DiscoverCommand.RunAsync(
+            "custom",
+            ModelCatalog.Load(userFile),
+            handler,
+            namedKeySource: _ =>
+            {
+                storeRead = true;
+                return "stored-openai-key";
+            },
+            environment: name => name == "OPENAI_API_KEY" ? "env-key" : null,
+            ct: TestContext.Current.CancellationToken
+        );
+
+        Assert.True(result.Succeeded, result.Error);
+        AssertNoCredential(handler.Requests[0]);
+        Assert.False(storeRead);
+    }
+
+    [Theory]
+    [InlineData("https://api.openai.com/v1")]
+    [InlineData("https://api.openai.com/v1/proxy")]
+    public async Task A_declared_preset_endpoint_uses_the_preset_key(string endpoint)
+    {
+        using var temp = new TempDirectory();
+        string userFile = WriteCatalog(
+            temp,
+            $$"""
+            { "id": "own", "provider": "openai", "endpoint": "{{endpoint}}", "contextWindow": 8192, "supportsTools": true }
+            """
+        );
+        using var handler = new FakeHandler(_ =>
+            Json(HttpStatusCode.OK, """{ "data": [ { "id": "small" } ] }""")
+        );
+
+        DiscoverResult result = await DiscoverCommand.RunAsync(
+            "own",
+            ModelCatalog.Load(userFile),
+            handler,
+            environment: name => name == "OPENAI_API_KEY" ? "sk-own" : null,
+            ct: TestContext.Current.CancellationToken
+        );
+
+        Assert.True(result.Succeeded, result.Error);
+        Assert.Equal($"{endpoint}/models", handler.Requests[0].RequestUri!.AbsoluteUri);
+        Assert.Equal(
+            "Bearer sk-own",
+            handler.Requests[0].Headers.GetValues("Authorization").Single()
+        );
     }
 
     [Fact]
@@ -294,7 +438,7 @@ public sealed class DiscoverCommandTests
             ModelCatalog.Load(userFile),
             handler,
             namedKeySource: name => name == "work" ? "work-key" : null,
-            environment: _ => null,
+            environment: name => name == "OPENAI_API_KEY" ? "preset-key" : null,
             ct: TestContext.Current.CancellationToken
         );
 
@@ -377,6 +521,35 @@ public sealed class DiscoverCommandTests
         Assert.Contains("503", result.Error, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData(HttpStatusCode.Unauthorized, "401")]
+    [InlineData(HttpStatusCode.Forbidden, "403")]
+    public async Task A_rejection_without_a_credential_explains_the_opt_in(
+        HttpStatusCode status,
+        string code
+    )
+    {
+        using var temp = new TempDirectory();
+        using var handler = new FakeHandler(_ => Json(status, """{ "error": "no key" }"""));
+
+        DiscoverResult result = await DiscoverCommand.RunAsync(
+            UrlTarget,
+            Catalog(temp),
+            handler,
+            environment: name => name == "OPENAI_API_KEY" ? "sk-env-secret" : null,
+            ct: TestContext.Current.CancellationToken
+        );
+
+        Assert.False(result.Succeeded);
+        Assert.Contains($"{UrlTarget}/models", result.Error, StringComparison.Ordinal);
+        Assert.Contains(code, result.Error, StringComparison.Ordinal);
+        Assert.Contains("No key was sent", result.Error, StringComparison.Ordinal);
+        Assert.Contains("not the provider's own", result.Error, StringComparison.Ordinal);
+        Assert.Contains("'auth' reference", result.Error, StringComparison.Ordinal);
+        Assert.Equal(2, result.Error!.Split("No key was sent").Length);
+        Assert.DoesNotContain("sk-env-secret", result.Error, StringComparison.Ordinal);
+    }
+
     [Fact]
     public async Task Invalid_json_is_a_clear_error()
     {
@@ -449,6 +622,12 @@ public sealed class DiscoverCommandTests
 
     private static string[] Ids(JsonElement models) =>
         [.. models.EnumerateArray().Select(model => model.GetProperty("id").GetString()!)];
+
+    private static void AssertNoCredential(HttpRequestMessage request)
+    {
+        Assert.False(request.Headers.Contains("Authorization"));
+        Assert.False(request.Headers.Contains("x-api-key"));
+    }
 
     private static HttpResponseMessage Json(HttpStatusCode status, string body) =>
         new(status) { Content = new StringContent(body, Encoding.UTF8, "application/json") };

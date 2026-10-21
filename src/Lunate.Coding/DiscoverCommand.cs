@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Net;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Lunate.Ai;
@@ -16,9 +17,7 @@ public sealed record DiscoverResult(bool Succeeded, string Draft, string? Error)
 /// </summary>
 public static class DiscoverCommand
 {
-    private const string OpenAiProvider = "openai";
     private const string AnthropicProvider = "anthropic";
-    private const string OpenAiApiKeyVariable = "OPENAI_API_KEY";
     private static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(30);
 
     private static readonly JsonSerializerOptions DraftJson = new()
@@ -45,17 +44,23 @@ public static class DiscoverCommand
         string? authRef = null;
         bool customEndpoint = false;
         bool qualified = false;
+        ProviderPreset? credentialPreset = null;
         string baseUrl;
 
         if (IsHttpUrl(target, out string url))
         {
             baseUrl = TrimTrailingSlash(url);
             customEndpoint = true;
+            // A direct URL is the provider's own endpoint only when it is exactly a preset base URL;
+            // anything else is foreign and gets no credential.
+            credentialPreset = PresetAtUrl(baseUrl);
+            provider = credentialPreset?.Id;
         }
         else if (ProviderPresets.Find(target) is { } presetTarget)
         {
             // A preset name is a provider target even when no catalog entry carries that id.
             provider = presetTarget.Id;
+            credentialPreset = presetTarget;
             qualified = presetTarget.Adapter == ProviderAdapter.OpenAiCompatible;
             baseUrl = TrimTrailingSlash(presetTarget.BaseUrl.AbsoluteUri);
         }
@@ -85,10 +90,20 @@ public static class DiscoverCommand
             {
                 baseUrl = TrimTrailingSlash(model.Endpoint.AbsoluteUri);
                 customEndpoint = true;
+                if (
+                    ProviderPresets.Find(model.Provider) is { } endpointPreset
+                    && EndpointBelongsToPreset(model.Endpoint, endpointPreset)
+                )
+                {
+                    // The provider's own endpoint keeps the preset's credential precedence; a
+                    // declared endpoint anywhere else only gets a key through an explicit auth ref.
+                    credentialPreset = endpointPreset;
+                }
             }
             else if (ProviderPresets.Find(model.Provider) is { } modelPreset)
             {
                 // Native presets keep bare ids; the OpenAI-compatible ones emit qualified ids.
+                credentialPreset = modelPreset;
                 qualified = modelPreset.Adapter == ProviderAdapter.OpenAiCompatible;
                 baseUrl = TrimTrailingSlash(modelPreset.BaseUrl.AbsoluteUri);
             }
@@ -114,7 +129,7 @@ public static class DiscoverCommand
         }
         else
         {
-            key = PresetKey(provider, environment, namedKeySource);
+            key = PresetKey(credentialPreset, environment, namedKeySource);
         }
 
         string requestUrl = $"{baseUrl}/models";
@@ -150,10 +165,24 @@ public static class DiscoverCommand
         {
             if (!response.IsSuccessStatusCode)
             {
-                return Failure(
+                string message =
                     $"Discovering models from {requestUrl} failed: "
-                        + $"HTTP {((int)response.StatusCode).ToString(CultureInfo.InvariantCulture)} ({response.ReasonPhrase})."
-                );
+                    + $"HTTP {((int)response.StatusCode).ToString(CultureInfo.InvariantCulture)} ({response.ReasonPhrase}).";
+                if (
+                    customEndpoint
+                    && credentialPreset is null
+                    && string.IsNullOrEmpty(key)
+                    && response.StatusCode
+                        is HttpStatusCode.Unauthorized
+                            or HttpStatusCode.Forbidden
+                )
+                {
+                    message +=
+                        " No key was sent because the endpoint is not the provider's own; "
+                        + "a catalog entry with an 'auth' reference opts in to a named key.";
+                }
+
+                return Failure(message);
             }
 
             string body = await response.Content.ReadAsStringAsync(ct);
@@ -286,30 +315,53 @@ public static class DiscoverCommand
 
     private static string TrimTrailingSlash(string url) => url.TrimEnd('/');
 
+    /// <summary>The preset whose base URL is exactly this URL, if any.</summary>
+    private static ProviderPreset? PresetAtUrl(string url)
+    {
+        string trimmed = TrimTrailingSlash(url);
+        return ProviderPresets.All.FirstOrDefault(preset =>
+            string.Equals(
+                TrimTrailingSlash(preset.BaseUrl.AbsoluteUri),
+                trimmed,
+                StringComparison.Ordinal
+            )
+        );
+    }
+
     /// <summary>
-    /// The key slot discovery reads: the preset's variable (its alias second), then the auth store
-    /// under the preset id. A user-declared provider without a preset keeps the OpenAI key slot it
-    /// has always used.
+    /// Whether a declared endpoint is the preset's own: the base URL itself or a path under it.
+    /// </summary>
+    private static bool EndpointBelongsToPreset(Uri endpoint, ProviderPreset preset)
+    {
+        string endpointUrl = TrimTrailingSlash(endpoint.AbsoluteUri);
+        string presetUrl = TrimTrailingSlash(preset.BaseUrl.AbsoluteUri);
+        return string.Equals(endpointUrl, presetUrl, StringComparison.Ordinal)
+            || endpointUrl.StartsWith(presetUrl + "/", StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The preset's key precedence: the preset's environment variable, its alias second, then the
+    /// auth store under the preset id. A target without a preset gets no credential, so a
+    /// self-declared provider never receives another provider's key.
     /// </summary>
     private static string? PresetKey(
-        string? provider,
+        ProviderPreset? preset,
         Func<string, string?>? environment,
         Func<string, string?>? namedKeySource
     )
     {
-        if (ProviderPresets.Find(provider ?? OpenAiProvider) is { } preset)
+        if (preset is null)
         {
-            string? key = EnvironmentValue(preset.KeyVariable, environment);
-            if (string.IsNullOrEmpty(key) && preset.KeyVariableAlias is { } alias)
-            {
-                key = EnvironmentValue(alias, environment);
-            }
-
-            return string.IsNullOrEmpty(key) ? namedKeySource?.Invoke(preset.Id) : key;
+            return null;
         }
 
-        return EnvironmentValue(OpenAiApiKeyVariable, environment)
-            ?? namedKeySource?.Invoke(provider ?? OpenAiProvider);
+        string? key = EnvironmentValue(preset.KeyVariable, environment);
+        if (string.IsNullOrEmpty(key) && preset.KeyVariableAlias is { } alias)
+        {
+            key = EnvironmentValue(alias, environment);
+        }
+
+        return string.IsNullOrEmpty(key) ? namedKeySource?.Invoke(preset.Id) : key;
     }
 
     private static string? EnvironmentValue(string variable, Func<string, string?>? environment) =>
