@@ -26,6 +26,13 @@ public sealed class ModelCatalog
 
     public IReadOnlyList<ModelInfo> Models => _models;
 
+    /// <summary>
+    /// Loads the embedded catalog and layers the managed cache and the user file over it.
+    /// A schema-2 layer replaces an entry completely; a schema-1 layer can only express routing and
+    /// token limits, so an override keeps the lower entry's <see cref="ModelInfo.Pricing"/>,
+    /// <see cref="ModelInfo.MaxOutput"/>, <see cref="ModelInfo.SupportsVision"/> and
+    /// <see cref="ModelInfo.WireId"/>. A schema-1 entry without a lower entry has no such metadata.
+    /// </summary>
     public static ModelCatalog Load(string? userFilePath = null)
     {
         return userFilePath is null
@@ -35,7 +42,7 @@ public sealed class ModelCatalog
 
     internal static ModelCatalog LoadLayered(string? managedFilePath, string? userFilePath)
     {
-        List<ModelInfo> models = ParseEmbedded();
+        List<ModelInfo> models = ParseEmbedded().Models;
         models = Merge(models, ParseOptional(managedFilePath));
         models = Merge(models, ParseOptional(userFilePath));
         return new ModelCatalog(models);
@@ -98,7 +105,7 @@ public sealed class ModelCatalog
             ),
         };
 
-    private static List<ModelInfo> ParseEmbedded()
+    private static CatalogLayer ParseEmbedded()
     {
         using Stream? stream = typeof(ModelCatalog).Assembly.GetManifestResourceStream(
             EmbeddedResourceName
@@ -128,17 +135,17 @@ public sealed class ModelCatalog
             "models.json"
         );
 
-    private static List<ModelInfo> ParseOptional(string? path)
+    private static CatalogLayer? ParseOptional(string? path)
     {
         if (path is null || !File.Exists(path))
         {
-            return [];
+            return null;
         }
 
         return Parse(File.ReadAllText(path), path);
     }
 
-    private static List<ModelInfo> Parse(string json, string source)
+    private static CatalogLayer Parse(string json, string source)
     {
         CatalogFile? file;
         try
@@ -181,7 +188,7 @@ public sealed class ModelCatalog
             models.Add(model);
         }
 
-        return models;
+        return new CatalogLayer(schemaVersion, models);
     }
 
     private static ModelInfo ToModelInfo(ModelEntry entry, string source)
@@ -215,22 +222,54 @@ public sealed class ModelCatalog
         };
     }
 
-    private static List<ModelInfo> Merge(List<ModelInfo> embedded, List<ModelInfo> user)
+    /// <summary>
+    /// Layers <paramref name="upper"/> over <paramref name="lower"/>. A schema-2 upper entry replaces
+    /// the lower entry completely (pricing and capabilities included); a schema-1 upper entry cannot
+    /// express <see cref="ModelInfo.Pricing"/>, <see cref="ModelInfo.MaxOutput"/>,
+    /// <see cref="ModelInfo.SupportsVision"/> or <see cref="ModelInfo.WireId"/>, so overriding an
+    /// existing id keeps those values from the lower entry while taking the upper entry's routing
+    /// fields.
+    /// </summary>
+    private static List<ModelInfo> Merge(List<ModelInfo> lower, CatalogLayer? upper)
     {
-        var userById = user.ToDictionary(static model => model.Id, StringComparer.Ordinal);
-        var embeddedIds = new HashSet<string>(StringComparer.Ordinal);
-        var merged = new List<ModelInfo>(embedded.Count + user.Count);
-        foreach (ModelInfo model in embedded)
+        if (upper is null)
         {
-            embeddedIds.Add(model.Id);
-            merged.Add(
-                userById.TryGetValue(model.Id, out ModelInfo? userModel) ? userModel : model
-            );
+            return [.. lower];
         }
 
-        merged.AddRange(user.Where(model => !embeddedIds.Contains(model.Id)));
+        var upperById = upper.Models.ToDictionary(static model => model.Id, StringComparer.Ordinal);
+        var lowerIds = new HashSet<string>(StringComparer.Ordinal);
+        var merged = new List<ModelInfo>(lower.Count + upper.Models.Count);
+        foreach (ModelInfo model in lower)
+        {
+            lowerIds.Add(model.Id);
+            if (!upperById.TryGetValue(model.Id, out ModelInfo? overrideModel))
+            {
+                merged.Add(model);
+            }
+            else if (upper.SchemaVersion == 1)
+            {
+                merged.Add(
+                    overrideModel with
+                    {
+                        Pricing = model.Pricing,
+                        MaxOutput = model.MaxOutput,
+                        SupportsVision = model.SupportsVision,
+                        WireId = model.WireId,
+                    }
+                );
+            }
+            else
+            {
+                merged.Add(overrideModel);
+            }
+        }
+
+        merged.AddRange(upper.Models.Where(model => !lowerIds.Contains(model.Id)));
         return merged;
     }
+
+    private sealed record CatalogLayer(int SchemaVersion, List<ModelInfo> Models);
 
     private sealed class CatalogFile
     {

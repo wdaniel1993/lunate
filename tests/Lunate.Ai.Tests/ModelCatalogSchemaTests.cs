@@ -33,6 +33,79 @@ public sealed class ModelCatalogSchemaTests
     }
 
     [Fact]
+    public void Load_a_schema_1_override_keeps_the_embedded_price_and_metadata()
+    {
+        using var temp = new TempDirectory();
+        string userFile = WriteJson(
+            temp.File("models.json"),
+            """
+            {
+              "schemaVersion": 1,
+              "models": [
+                {
+                  "id": "gpt-4o-mini",
+                  "provider": "openai",
+                  "endpoint": "https://example.test/v1",
+                  "contextWindow": 2000,
+                  "supportsTools": false,
+                  "auth": "custom-key",
+                  "reasoning": "effort"
+                },
+                {
+                  "id": "openrouter/openai/gpt-4o-mini",
+                  "provider": "openrouter",
+                  "contextWindow": 3000,
+                  "supportsTools": true
+                }
+              ]
+            }
+            """
+        );
+
+        ModelCatalog catalog = ModelCatalog.Load(userFile);
+
+        ModelInfo native = catalog.Find("gpt-4o-mini")!;
+        Assert.Equal(new Uri("https://example.test/v1"), native.Endpoint);
+        Assert.Equal(2000, native.ContextWindow);
+        Assert.False(native.SupportsTools);
+        Assert.Equal("custom-key", native.AuthRef);
+        Assert.Equal("effort", native.Reasoning);
+        Assert.NotNull(native.Pricing);
+        Assert.Equal(16384, native.MaxOutput);
+        Assert.True(native.SupportsVision);
+
+        ModelInfo qualified = catalog.Find("openrouter/openai/gpt-4o-mini")!;
+        Assert.Equal("openai/gpt-4o-mini", qualified.WireId);
+        Assert.Equal(3000, qualified.ContextWindow);
+    }
+
+    [Fact]
+    public void Load_a_schema_2_override_replaces_the_embedded_entry_completely()
+    {
+        using var temp = new TempDirectory();
+        string userFile = WriteJson(
+            temp.File("models.json"),
+            """
+            {
+              "schemaVersion": 2,
+              "models": [
+                { "id": "gpt-4o-mini", "provider": "openai", "contextWindow": 2000, "supportsTools": true }
+              ]
+            }
+            """
+        );
+
+        ModelCatalog catalog = ModelCatalog.Load(userFile);
+
+        ModelInfo model = catalog.Find("gpt-4o-mini")!;
+        Assert.Equal(2000, model.ContextWindow);
+        Assert.Null(model.Pricing);
+        Assert.Null(model.MaxOutput);
+        Assert.False(model.SupportsVision);
+        Assert.Null(model.WireId);
+    }
+
+    [Fact]
     public void Load_schema_2_entry_reads_pricing_and_capabilities()
     {
         using var temp = new TempDirectory();
