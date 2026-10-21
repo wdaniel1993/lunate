@@ -96,7 +96,7 @@ internal static class FixtureFormat
     }
 
     private static bool NeedsDigestCopy(AIContent content) =>
-        HasCacheControl(content) || IsImageData(content);
+        content is DataContent || HasCacheControl(content);
 
     private static AIContent DigestContent(AIContent content)
     {
@@ -116,21 +116,19 @@ internal static class FixtureFormat
             result = copy;
         }
 
-        if (result is DataContent data && IsImageData(data))
+        if (result is DataContent data)
         {
-            // Only the pixels and the media type identify the image: DataContent's data URI,
-            // base64 encoding, name and other metadata stay out of the digest.
-            return new ImageDigestContent(
-                data.MediaType,
-                Convert.ToHexStringLower(SHA256.HashData(data.Data.Span))
-            );
+            // Only the bytes and the media type identify the content: DataContent's data URI,
+            // base64 encoding, name and other metadata stay out of the digest. A content without
+            // a media type still gets digested; its bytes never enter the digest input.
+            string identity = data.Uri.StartsWith("data:", StringComparison.OrdinalIgnoreCase)
+                ? Convert.ToHexStringLower(SHA256.HashData(data.Data.Span))
+                : Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(data.Uri)));
+            return new ImageDigestContent(data.MediaType ?? "application/octet-stream", identity);
         }
 
         return result;
     }
-
-    private static bool IsImageData(AIContent content) =>
-        content is DataContent data && data.HasTopLevelMediaType("image");
 
     private static bool HasCacheControl(AIContent content) =>
         content.AdditionalProperties?.ContainsKey(ContentCacheControlKey) == true;

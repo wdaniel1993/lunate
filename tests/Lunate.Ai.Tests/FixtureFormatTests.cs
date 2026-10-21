@@ -295,6 +295,30 @@ public sealed class FixtureFormatTests
     }
 
     [Fact]
+    public void A_data_content_with_a_non_image_media_type_is_digested_with_bytes_never_base64()
+    {
+        byte[] bytes = ImageBytes();
+        var content = new DataContent(bytes, "application/octet-stream");
+
+        string input = FixtureFormat.ComputeDigestInput(
+            [new ChatMessage(ChatRole.User, [content])],
+            Options()
+        );
+
+        Assert.Contains(
+            "\"mediaType\":\"application/octet-stream\"",
+            input,
+            StringComparison.Ordinal
+        );
+        Assert.Contains(
+            $"\"digest\":\"{Convert.ToHexStringLower(SHA256.HashData(bytes))}\"",
+            input,
+            StringComparison.Ordinal
+        );
+        Assert.DoesNotContain(Convert.ToBase64String(bytes), input, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Image_digest_ignores_the_encoding_and_name_of_identical_bytes()
     {
         byte[] bytes = ImageBytes();

@@ -175,7 +175,9 @@ internal sealed class AnthropicPromptCache(IChatClient innerClient)
         AIContent? copy = content switch
         {
             TextContent text => new TextContent(text.Text),
-            DataContent data => new DataContent(data.Data, data.MediaType) { Name = data.Name },
+            DataContent data
+                when data.Uri.StartsWith("data:", StringComparison.OrdinalIgnoreCase) =>
+                new DataContent(data.Data, data.MediaType) { Name = data.Name },
             TextReasoningContent reasoning => new TextReasoningContent(reasoning.Text)
             {
                 ProtectedData = reasoning.ProtectedData,
