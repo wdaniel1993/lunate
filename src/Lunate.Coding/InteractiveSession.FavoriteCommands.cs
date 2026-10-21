@@ -79,6 +79,40 @@ internal sealed partial class InteractiveSession
         );
     }
 
+    /// <summary>
+    /// Ctrl+P: switches to the next favourite in settings order, wrapping after the last; when
+    /// the active model is not in the list, the first favourite is next. An empty list is a
+    /// notice, never a run. The switch is the <c>/model</c> path, so the session records it and
+    /// the footer follows.
+    /// </summary>
+    private async ValueTask CycleFavoriteAsync(CancellationToken ct)
+    {
+        if (RefusedWhileBusy())
+        {
+            return;
+        }
+
+        IReadOnlyList<string> favorites = _settings.Favorites;
+        if (favorites.Count == 0)
+        {
+            Notify("no favorites to cycle — add one with /favorite");
+            return;
+        }
+
+        int current = -1;
+        for (int index = 0; index < favorites.Count; index++)
+        {
+            if (string.Equals(favorites[index], _model.Id, StringComparison.Ordinal))
+            {
+                current = index;
+                break;
+            }
+        }
+
+        string next = favorites[(current + 1) % favorites.Count];
+        await SwitchModel(next, ct).ConfigureAwait(false);
+    }
+
     private bool TryResolveFavoriteId(string argument, out string id)
     {
         string requested = argument.Length > 0 ? argument : _model.Id;

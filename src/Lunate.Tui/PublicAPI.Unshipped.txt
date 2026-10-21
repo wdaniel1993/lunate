@@ -190,6 +190,7 @@ Lunate.Tui.RoutedKey.Cancel = 2 -> Lunate.Tui.RoutedKey
 Lunate.Tui.RoutedKey.ClearOrQuit = 3 -> Lunate.Tui.RoutedKey
 Lunate.Tui.RoutedKey.Complete = 7 -> Lunate.Tui.RoutedKey
 Lunate.Tui.RoutedKey.Edit = 0 -> Lunate.Tui.RoutedKey
+Lunate.Tui.RoutedKey.FavoritesCycle = 9 -> Lunate.Tui.RoutedKey
 Lunate.Tui.RoutedKey.HistoryNext = 6 -> Lunate.Tui.RoutedKey
 Lunate.Tui.RoutedKey.HistoryPrevious = 5 -> Lunate.Tui.RoutedKey
 Lunate.Tui.RoutedKey.ModelPicker = 4 -> Lunate.Tui.RoutedKey

@@ -927,6 +927,9 @@ internal sealed partial class InteractiveSession : IDisposable
             case RoutedKey.ModelPicker:
                 OpenModelPicker();
                 break;
+            case RoutedKey.FavoritesCycle:
+                await CycleFavoriteAsync(ct);
+                break;
             case RoutedKey.TranscriptViewer:
                 OpenViewer();
                 break;
