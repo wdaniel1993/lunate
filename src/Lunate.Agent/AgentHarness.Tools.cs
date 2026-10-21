@@ -67,7 +67,36 @@ public sealed partial class AgentHarness
         AppendHistoryMessage(
             new ChatMessage(ChatRole.Tool, [new FunctionResultContent(callId, output)])
         );
+        if (result.Images is { Count: > 0 } images)
+        {
+            AppendHistoryMessage(BuildToolImageMessage(toolName, images));
+        }
+
         _danglingCalls.Remove(call);
+    }
+
+    /// <summary>
+    /// The one user-role message that carries a tool result's images. The tool-role message holds
+    /// only the placeholder text: the OpenAI adapter drops image content there, while both adapters
+    /// accept images on a user turn.
+    /// </summary>
+    private ChatMessage BuildToolImageMessage(
+        string toolName,
+        IReadOnlyList<ImageAttachment> images
+    )
+    {
+        List<AIContent> contents = [];
+        List<string> placeholders = [];
+        foreach (ImageAttachment image in images)
+        {
+            contents.Add(_images.Store(image.Data, image.MimeType, image.Width, image.Height));
+            placeholders.Add(
+                string.Create(CultureInfo.InvariantCulture, $"[image {image.Width}x{image.Height}]")
+            );
+        }
+
+        string text = $"Image from {toolName}: {string.Join(", ", placeholders)}.";
+        return new ChatMessage(ChatRole.User, [new TextContent(text), .. contents]);
     }
 
     private void AppendSyntheticResult(

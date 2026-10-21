@@ -25,4 +25,11 @@ public sealed record ToolResult(
     /// one the event stream reported) and for refusals that never ran.
     /// </summary>
     public string? CallId { get; init; }
+
+    /// <summary>
+    /// Images the tool produced; the loop stores their bytes and appends one user-role image
+    /// message after the tool result. <see cref="Output"/> carries the placeholder text and remains
+    /// the only model-facing text of the result.
+    /// </summary>
+    public IReadOnlyList<ImageAttachment>? Images { get; init; }
 }

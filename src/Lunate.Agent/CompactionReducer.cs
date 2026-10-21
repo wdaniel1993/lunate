@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.AI;
@@ -228,10 +229,26 @@ internal sealed class CompactionReducer : IChatReducer
         return bytes;
     }
 
-    internal static long Utf8Length(ChatMessage message) =>
-        Encoding.UTF8.GetByteCount(message.Role.Value)
-        + Encoding.UTF8.GetByteCount(RenderContents(message))
-        + 3;
+    internal static long Utf8Length(ChatMessage message)
+    {
+        long bytes =
+            Encoding.UTF8.GetByteCount(message.Role.Value)
+            + Encoding.UTF8.GetByteCount(RenderContents(message))
+            + 3;
+
+        // Image bytes never travel to the model, but their token cost does: count each image as
+        // max(256, width * height / 750) estimated tokens, stored here in 4-bytes-per-token form
+        // so Utf8Length / 4 carries the estimate.
+        foreach (AIContent content in message.Contents)
+        {
+            if (content is ImageContentReference image)
+            {
+                bytes += 4 * Math.Max(256L, (long)image.Width * image.Height / 750);
+            }
+        }
+
+        return bytes;
+    }
 
     private static bool IsToolRelated(ChatMessage message) =>
         message.Contents.Any(content => content is FunctionCallContent or FunctionResultContent);
@@ -285,6 +302,14 @@ internal sealed class CompactionReducer : IChatReducer
                         .Append(result.CallId)
                         .Append(": ")
                         .Append(result.Result as string ?? TrySerialize(result.Result))
+                        .Append(']');
+                    break;
+                case ImageContentReference image:
+                    builder
+                        .Append("[image ")
+                        .Append(image.Width.ToString(CultureInfo.InvariantCulture))
+                        .Append('x')
+                        .Append(image.Height.ToString(CultureInfo.InvariantCulture))
                         .Append(']');
                     break;
             }

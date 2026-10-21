@@ -1442,3 +1442,44 @@ Lunate.Agent.ImageContentReference.Height.get -> int
 Lunate.Agent.ImageContentReference.ImageContentReference(string! Digest, string! MimeType, int Width, int Height) -> void
 Lunate.Agent.ImageContentReference.MimeType.get -> string!
 Lunate.Agent.ImageContentReference.Width.get -> int
+Lunate.Agent.ImageAttachment
+Lunate.Agent.ImageAttachment.<Clone>$() -> Lunate.Agent.ImageAttachment!
+Lunate.Agent.ImageAttachment.Data.get -> System.ReadOnlyMemory<byte>
+Lunate.Agent.ImageAttachment.Data.init -> void
+Lunate.Agent.ImageAttachment.Deconstruct(out string! MimeType, out int Width, out int Height, out System.ReadOnlyMemory<byte> Data) -> void
+Lunate.Agent.ImageAttachment.Equals(Lunate.Agent.ImageAttachment? other) -> bool
+Lunate.Agent.ImageAttachment.Height.get -> int
+Lunate.Agent.ImageAttachment.Height.init -> void
+Lunate.Agent.ImageAttachment.ImageAttachment(string! MimeType, int Width, int Height, System.ReadOnlyMemory<byte> Data) -> void
+Lunate.Agent.ImageAttachment.MimeType.get -> string!
+Lunate.Agent.ImageAttachment.MimeType.init -> void
+Lunate.Agent.ImageAttachment.Width.get -> int
+Lunate.Agent.ImageAttachment.Width.init -> void
+Lunate.Agent.ImageLimits
+Lunate.Agent.UserInput
+Lunate.Agent.UserInput.<Clone>$() -> Lunate.Agent.UserInput!
+Lunate.Agent.UserInput.Deconstruct(out string! Text, out System.Collections.Generic.IReadOnlyList<Lunate.Agent.ImageAttachment!>? Images) -> void
+Lunate.Agent.UserInput.Equals(Lunate.Agent.UserInput? other) -> bool
+Lunate.Agent.UserInput.Images.get -> System.Collections.Generic.IReadOnlyList<Lunate.Agent.ImageAttachment!>?
+Lunate.Agent.UserInput.Images.init -> void
+Lunate.Agent.UserInput.Text.get -> string!
+Lunate.Agent.UserInput.Text.init -> void
+Lunate.Agent.UserInput.UserInput(string! Text, System.Collections.Generic.IReadOnlyList<Lunate.Agent.ImageAttachment!>? Images = null) -> void
+Lunate.Agent.ToolResult.Images.get -> System.Collections.Generic.IReadOnlyList<Lunate.Agent.ImageAttachment!>?
+Lunate.Agent.ToolResult.Images.init -> void
+Lunate.Agent.AgentHarness.RunAsync(Lunate.Agent.UserInput! userInput, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<Lunate.Agent.AgentEvent!>!
+const Lunate.Agent.ImageLimits.DownscalingUnavailable = "downscaling is not available yet" -> string!
+const Lunate.Agent.ImageLimits.Formats = "PNG, JPEG, GIF or WebP" -> string!
+const Lunate.Agent.ImageLimits.MaxBytes = 5242880 -> int
+const Lunate.Agent.ImageLimits.MaxPerMessage = 4 -> int
+const Lunate.Agent.ImageLimits.MaxSide = 4096 -> int
+override Lunate.Agent.ImageAttachment.Equals(object? obj) -> bool
+override Lunate.Agent.ImageAttachment.GetHashCode() -> int
+override Lunate.Agent.ImageAttachment.ToString() -> string!
+override Lunate.Agent.UserInput.Equals(object? obj) -> bool
+override Lunate.Agent.UserInput.GetHashCode() -> int
+override Lunate.Agent.UserInput.ToString() -> string!
+static Lunate.Agent.ImageAttachment.operator !=(Lunate.Agent.ImageAttachment? left, Lunate.Agent.ImageAttachment? right) -> bool
+static Lunate.Agent.ImageAttachment.operator ==(Lunate.Agent.ImageAttachment? left, Lunate.Agent.ImageAttachment? right) -> bool
+static Lunate.Agent.UserInput.operator !=(Lunate.Agent.UserInput? left, Lunate.Agent.UserInput? right) -> bool
+static Lunate.Agent.UserInput.operator ==(Lunate.Agent.UserInput? left, Lunate.Agent.UserInput? right) -> bool
