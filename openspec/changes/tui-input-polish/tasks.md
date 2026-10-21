@@ -21,5 +21,5 @@
 
 ## 4. Verification
 
-- [ ] 4.1 `dotnet build`, `dotnet csharpier check .`, the Tui and Coding suites, and `openspec validate tui-input-polish --strict`.
-- [ ] 4.2 Update `docs/guide.md` where it states the lower rule's 60-column boundary.
+- [x] 4.1 `dotnet build`, `dotnet csharpier check .`, the Tui and Coding suites, and `openspec validate tui-input-polish --strict`.
+- [x] 4.2 Update `docs/guide.md` where it states the lower rule's 60-column boundary.
