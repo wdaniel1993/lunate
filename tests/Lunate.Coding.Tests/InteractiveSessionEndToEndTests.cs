@@ -140,7 +140,8 @@ public sealed class InteractiveSessionEndToEndTests
         await host.WaitUntilAsync(() =>
         {
             host.Advance(33);
-            return host.LastFrame.Contains("> gpt-4o (openai)", StringComparison.Ordinal);
+            return host.LastFrame.Contains("filter: gpt-4o (", StringComparison.Ordinal)
+                && host.LastFrame.Contains("> gpt-4o (openai)", StringComparison.Ordinal);
         });
         string modelPickerFrame = await CaptureFrameAsync(host);
 

@@ -194,11 +194,12 @@ public sealed class InteractiveSessionPickerTests
         await InteractiveSessionCommandTests.WaitForFrameAsync(host, "Select model");
 
         host.Console.SendText("sonnet-5");
-        await InteractiveSessionCommandTests.WaitForFrameAsync(
-            host,
-            "> claude-sonnet-5-5 (anthropic)"
+        await InteractiveSessionCommandTests.WaitForFrameAsync(host, "filter: sonnet-5");
+        Assert.Contains(
+            "> claude-sonnet-5-5 (anthropic)",
+            host.LastFrame,
+            StringComparison.Ordinal
         );
-        Assert.Contains("filter: sonnet-5", host.LastFrame, StringComparison.Ordinal);
         Assert.DoesNotContain("gpt-4o (", host.LastFrame, StringComparison.Ordinal);
 
         host.Console.SendEscape();
