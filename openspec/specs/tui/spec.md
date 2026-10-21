@@ -121,11 +121,11 @@ Technical readouts SHALL format through one set of helpers — byte sizes, token
 
 ### Requirement: Tool block rendering
 
-Finished tool calls SHALL render as scrollback blocks carrying the tool name, an argument summary, a status (running, ok, error) and a bounded excerpt of the output — first and last lines with an elision marker for the middle — in a borderless style. Each header SHALL lead with a status glyph — `✓` ok, `✗` failed (ASCII `+` and `x`) — and SHALL carry a per-tool compact summary with meta: `read` shows its path with the line range and no output, `bash` its command with the exit code and duration and an excerpt of the output's last lines, `edit` and `write` their path with `+N −M` change counts followed by the diff, `cs_*` tools their severity counts with the top items, and extension and MCP tools their name with a short argument summary. Below 60 columns the header SHALL shorten to glyph, name and meta only — `read` carries its line count as the meta, `bash` its exit code and duration, `edit` and `write` their change counts, `cs_*` its severity counts, and the extension/MCP fallback its name alone. Paths in headers and excerpts SHALL be shortened in the middle, never wrapped. The elision marker SHALL carry the hidden-line count and the `ctrl+o` affordance in the warning colour. Every user-derived string SHALL be escaped before markup assembly, and argument summaries SHALL come from a pure, per-tool summarizer with a generic fallback for unknown tools. Child-run (subagent) events SHALL NOT render as scrollback text or blocks of their own; while a child run is live the live area SHALL show a `subagent running` status, the spawning tool's own block carries the child's final result, and child usage still feeds the footer — the child's transcript is inspectable through its child session. The spawning block's carried child result SHALL render as one indented group.
+In expanded mode (`toolDetails: expanded`): Finished tool calls SHALL render as scrollback blocks carrying the tool name, an argument summary, a status (running, ok, error) and a bounded excerpt of the output — first and last lines with an elision marker for the middle — in a borderless style. By default (`toolDetails: collapsed`), a finished tool call SHALL render as its header line only — the same header described here — and SHALL omit the bounded excerpt and the diff panel. A collapsed header SHALL carry a muted `ctrl+o` hint only when expanded details would show at least one line: a non-empty output excerpt, or a diff that parses into a panel. The hint SHALL follow the header's meta with the header's separator and SHALL be absent when there is nothing more to show — blank output, an empty or malformed diff, or a successful `read`, whose output the scrollback never shows; a failed `read` shows its message and carries the hint. Expanded blocks SHALL NOT carry the hint, and the `ctrl+o` viewer SHALL show the full output, the diffs and the carried child result in both modes. Each header SHALL lead with a status glyph — `✓` ok, `✗` failed (ASCII `+` and `x`) — and SHALL carry a per-tool compact summary with meta: `read` shows its path with the line range and no output, `bash` its command with the exit code and duration and an excerpt of the output's last lines, `edit` and `write` their path with `+N −M` change counts followed by the diff, `cs_*` tools their severity counts with the top items, and extension and MCP tools their name with a short argument summary. Below 60 columns the header SHALL shorten to glyph, name and meta only — `read` carries its line count as the meta, `bash` its exit code and duration, `edit` and `write` their change counts, `cs_*` its severity counts, and the extension/MCP fallback its name alone. Paths in headers and excerpts SHALL be shortened in the middle, never wrapped. The elision marker SHALL carry the hidden-line count and the `ctrl+o` affordance in the warning colour. Every user-derived string SHALL be escaped before markup assembly, and argument summaries SHALL come from a pure, per-tool summarizer with a generic fallback for unknown tools. Child-run (subagent) events SHALL NOT render as scrollback text or blocks of their own; while a child run is live the live area SHALL show a `subagent running` status, the spawning tool's own block carries the child's final result, and child usage still feeds the footer — the child's transcript is inspectable through its child session. The spawning block's carried child result SHALL render as one indented group.
 
 #### Scenario: Long output is elided visibly
 
-- **GIVEN** a tool result whose output exceeds the excerpt budget
+- **GIVEN** a tool result whose output exceeds the excerpt budget, with `toolDetails: expanded`
 - **WHEN** its block renders
 - **THEN** the first and last lines are shown and the middle is replaced by an explicit hidden-lines marker
 
@@ -146,9 +146,10 @@ Finished tool calls SHALL render as scrollback blocks carrying the tool name, an
 - **GIVEN** a tool call running a subagent that streams text and tool calls
 - **WHEN** its child events arrive on the parent stream
 - **THEN** no child text or child tool block appears in scrollback, the live area shows `subagent running` while it is live, and the spawning block carries the child's final result
+
 #### Scenario: Per-tool compact forms
 
-- **GIVEN** `read`, `bash`, `edit` and `cs_*` results
+- **GIVEN** `read`, `bash`, `edit` and `cs_*` results, with `toolDetails: expanded`
 - **WHEN** their blocks render
 - **THEN** each header carries its compact summary and meta — `read` the path with its line range
   and no content, `bash` the command with its exit code and duration and the output's last lines,
@@ -156,7 +157,7 @@ Finished tool calls SHALL render as scrollback blocks carrying the tool name, an
 
 #### Scenario: The cut is an affordance
 
-- **GIVEN** a tool result whose output exceeds the excerpt budget
+- **GIVEN** a tool result whose output exceeds the excerpt budget, with `toolDetails: expanded`
 - **WHEN** its block renders
 - **THEN** the elision marker names the hidden-line count and the `ctrl+o` affordance
 
@@ -172,27 +173,63 @@ Finished tool calls SHALL render as scrollback blocks carrying the tool name, an
 - **WHEN** their blocks render
 - **THEN** each header is glyph, name and meta only (`✓ read · 13 lines`, `✓ bash · exit 0 · 0.4s`, `✓ edit · +5 −1`) with no summary
 
+#### Scenario: Collapsed is the default and shows only the header
+
+- **GIVEN** a finished `bash` result with output and an `edit` result with a diff
+- **WHEN** their blocks commit with the default `toolDetails`
+- **THEN** each block is exactly its header line, with no excerpt and no diff, and each header ends with `ctrl+o`
+
+#### Scenario: The hint appears only when more exists
+
+- **GIVEN** a successful `read` with output, a `bash` with output, a `bash` with blank output and an `edit` with an empty diff
+- **WHEN** their blocks commit collapsed
+- **THEN** only the `bash` with output and the `edit` with a diff carry `ctrl+o`; the successful `read`, the blank `bash` and the empty diff do not
+
+#### Scenario: Expanded mode restores the details
+
+- **GIVEN** `toolDetails: expanded`, a `bash` result with output and an `edit` result with a diff
+- **WHEN** their blocks commit
+- **THEN** the header is followed by the bounded excerpt and the diff panel, and no header carries `ctrl+o`
+
 ### Requirement: Diff rendering with match tier
 
-Edit and write blocks SHALL render their unified diff as a red/green borderless panel — deletions red, insertions green, headers and context dimmed — with the match tier shown as a label, and a fallback match (`normalized` or `indent`) visibly flagged so no fallback is silent.
+In expanded mode (`toolDetails: expanded`): Edit and write blocks SHALL render their unified diff as a red/green borderless panel — deletions red, insertions green, headers and context dimmed — with the match tier shown as a label, and a fallback match (`normalized` or `indent`) visibly flagged so no fallback is silent. By default (`toolDetails: collapsed`), an edit or write block SHALL commit its header line only and SHALL NOT render the diff panel; when the diff parses into a panel, the header SHALL carry the `ctrl+o` hint, and an empty or malformed diff SHALL add no hint and SHALL not throw. The transcript viewer SHALL keep showing the full diff in both modes.
 
 #### Scenario: Both tiers render distinctly
 
-- **GIVEN** an edit that matched exactly and one that matched via normalization
+- **GIVEN** an edit that matched exactly and one that matched via normalization, with `toolDetails: expanded`
 - **WHEN** their blocks render
 - **THEN** the diff is red/green in both and the tier label distinguishes exact from normalized (the latter flagged)
 
 #### Scenario: Malformed or empty diffs never break rendering
 
-- **GIVEN** a diff string that is empty or malformed
+- **GIVEN** a diff string that is empty or malformed, with `toolDetails: expanded`
 - **WHEN** the block renders
 - **THEN** it renders without the panel (or with the panel omitted) and never throws
 
 #### Scenario: An indent fallback renders flagged
 
-- **GIVEN** an edit that matched via the indent tier
+- **GIVEN** an edit that matched via the indent tier, with `toolDetails: expanded`
 - **WHEN** its block renders
 - **THEN** the tier label says indent and the fallback is flagged like normalized
+
+#### Scenario: Collapsed hides the diff behind the hint
+
+- **GIVEN** an `edit` result with a non-empty diff
+- **WHEN** its block commits with the default `toolDetails`
+- **THEN** only the header line appears, the diff and tier label are absent, and the header ends with `ctrl+o`
+
+#### Scenario: Collapsed malformed diff adds no hint
+
+- **GIVEN** an `edit` result with a malformed diff
+- **WHEN** its block commits collapsed
+- **THEN** only the header appears and it carries no `ctrl+o` hint
+
+#### Scenario: Expanded renders the diff panel
+
+- **GIVEN** `toolDetails: expanded` and an `edit` result with a diff
+- **WHEN** its block commits
+- **THEN** the red/green panel and the tier label follow the header and the header carries no `ctrl+o`
 
 ### Requirement: One meaning per key
 
@@ -808,7 +845,7 @@ renders until it is opened.
 
 ### Requirement: Input box
 
-The live area SHALL render the input as a box: a full-width rule above and below the input at widths of 80 columns or more (none below), the input's first line carrying the `> ` prompt prefix and continuation lines a two-space indent, and the status footer below the box. When the input is empty, the first line SHALL show the placeholder `Ask anything, / for commands` in the muted style. The box SHALL grow with its content to eight lines and scroll beyond that, keeping the cursor's line visible; the rules and placeholder SHALL use ASCII fallbacks (`-`) when Unicode is unavailable, and the rules SHALL be omitted below 80 columns while the input and footer stay.
+The live area SHALL render the input as a box: a full-width rule above the input at every width, a second full-width rule below it from 60 columns (none below), the input's first line carrying the `> ` prompt prefix and continuation lines a two-space indent, and the status footer below the box — below the lower rule when it is drawn, directly below the input when it is not. When the input is empty, the first line SHALL show the placeholder `Ask anything, / for commands` in the theme's `user` colour; the `> ` prompt marker SHALL carry that colour whenever the input renders (plain under `NO_COLOR`), while typed text and continuation lines stay plain. The box SHALL grow with its content to eight lines and scroll beyond that, keeping the cursor's line visible; the rules and placeholder SHALL use ASCII fallbacks (`-`) when Unicode is unavailable, and the lower rule SHALL be omitted below 60 columns while the upper rule, the input and footer stay.
 
 #### Scenario: The box draws rules at 80 or more columns
 
@@ -820,13 +857,13 @@ The live area SHALL render the input as a box: a full-width rule above and below
 
 - **GIVEN** a terminal 50 columns wide
 - **WHEN** the input renders
-- **THEN** no rules are drawn, the `> ` input line and the compact footer render
+- **THEN** the upper rule spans the width, the lower rule is absent, and the `> ` input line and the compact footer render
 
 #### Scenario: The placeholder shows when empty
 
 - **GIVEN** an empty input
 - **WHEN** the box renders
-- **THEN** the first line shows `Ask anything, / for commands` in the muted style
+- **THEN** the first line shows the prompt marker and `Ask anything, / for commands` in the theme's `user` colour (plain under `NO_COLOR`)
 
 #### Scenario: Growth to eight lines then scroll
 
@@ -916,7 +953,7 @@ The workspace file index SHALL be built lazily (never at startup), asynchronousl
 
 ### Requirement: Narrow-terminal breakpoints
 
-The TUI SHALL evaluate three width bands at render time: `≥100` full, `60–99` standard and `<60` compact. In the compact band the tool headers shorten per the tool-block requirement, the footer takes its compact form per the status-footer requirement, the input box rules are absent (their ≥80 boundary already covers this), and autocomplete descriptions are absent (their ≥60 boundary already covers this). Every rendered line SHALL be no wider than the terminal. A resize SHALL re-render the live area at the new width before any further output, and scrollback committed after the resize SHALL use the new width; already-committed scrollback is immutable and owned by the terminal. When the diff gutter and markdown tables enter the renderers, the compact band SHALL render diffs without the gutter and tables as lists; until then those constructs keep their plain-text forms.
+The TUI SHALL evaluate three width bands at render time: `≥100` full, `60–99` standard and `<60` compact. In the compact band the tool headers shorten per the tool-block requirement, the footer takes its compact form per the status-footer requirement, the input box keeps its upper rule and loses the lower one (its ≥60 boundary already covers this), and autocomplete descriptions are absent (their ≥60 boundary already covers this). Every rendered line SHALL be no wider than the terminal. A resize SHALL re-render the live area at the new width before any further output, and scrollback committed after the resize SHALL use the new width; already-committed scrollback is immutable and owned by the terminal. When the diff gutter and markdown tables enter the renderers, the compact band SHALL render diffs without the gutter and tables as lists; until then those constructs keep their plain-text forms.
 
 #### Scenario: The full band keeps the full layout
 
@@ -928,7 +965,7 @@ The TUI SHALL evaluate three width bands at render time: `≥100` full, `60–99
 
 - **GIVEN** a 40-column terminal
 - **WHEN** a frame with a committed tool block and the input renders
-- **THEN** the header is short, the footer reads `model · <pct>%`, no rules are drawn and every line fits the width
+- **THEN** the header is short, the footer reads `model · <pct>%`, the upper rule is drawn, the lower rule is absent and every line fits the width
 
 #### Scenario: Nothing renders wider than the terminal
 
