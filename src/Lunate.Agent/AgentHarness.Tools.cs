@@ -62,10 +62,7 @@ public sealed partial class AgentHarness
         }
 
         toolActivity?.SetTag(AgentTelemetry.ToolIsErrorAttribute, result.IsError);
-        string output = ToolOutput.Truncate(
-            result.Output ?? string.Empty,
-            _options.ToolOutputLimit
-        );
+        string output = TruncateToolOutput(runId, callId, result.Output ?? string.Empty);
         channel.Emit(
             new ToolCallResult(runId, callId, output, result.IsError, result.Details)
             {
@@ -81,6 +78,37 @@ public sealed partial class AgentHarness
         }
 
         _danglingCalls.Remove(call);
+    }
+
+    /// <summary>
+    /// Bounds one tool result for the model and, when it is over the budget and the run has a
+    /// session, spills the full output beside that session before naming the file in the marker.
+    /// The spill is best-effort: a failed write keeps the count-only marker.
+    /// </summary>
+    private string TruncateToolOutput(string runId, string callId, string output)
+    {
+        int limit = _options.ToolOutputLimit;
+        if (output.Length <= limit)
+        {
+            return output;
+        }
+
+        if (_options.Session is not { } session)
+        {
+            return ToolOutput.Truncate(output, limit);
+        }
+
+        int sequence = _spillSequenceByCallId.GetOrAdd(
+            callId,
+            _ => Interlocked.Increment(ref _spillSequence)
+        );
+        ToolOutputSpillResult spill = ToolOutputSpill.TryWrite(session, runId, sequence, output);
+        return spill switch
+        {
+            { Path: { } path } => ToolOutput.Truncate(output, limit, path),
+            { TooLarge: true } => ToolOutput.Truncate(output, limit, tooLarge: true),
+            _ => ToolOutput.Truncate(output, limit),
+        };
     }
 
     /// <summary>
@@ -268,7 +296,7 @@ public sealed partial class AgentHarness
             new ToolCallResult(
                 runId,
                 nestedCallId,
-                ToolOutput.Truncate(result.Output ?? string.Empty, _options.ToolOutputLimit),
+                TruncateToolOutput(runId, nestedCallId, result.Output ?? string.Empty),
                 result.IsError,
                 result.Details
             )
