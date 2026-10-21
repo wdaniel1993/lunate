@@ -373,7 +373,8 @@ internal sealed class InteractiveSessionHost : IDisposable
         string? startSession = null,
         bool startWithPicker = false,
         ISecretPrompt? secretPrompt = null,
-        string? modelsPath = null
+        string? modelsPath = null,
+        IClipboardImageSource? clipboard = null
     )
     {
         Scrollback = new TestConsole();
@@ -409,6 +410,7 @@ internal sealed class InteractiveSessionHost : IDisposable
                 StartWithPicker = startWithPicker,
                 SessionsRoot = sessionsRoot ?? Temp.File("sessions"),
                 SecretPrompt = secretPrompt,
+                Clipboard = clipboard,
             }
         );
     }
