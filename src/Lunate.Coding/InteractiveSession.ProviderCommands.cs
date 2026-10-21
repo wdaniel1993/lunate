@@ -4,6 +4,9 @@ namespace Lunate.Coding;
 
 internal sealed partial class InteractiveSession
 {
+    /// <summary>The in-flight (or last) login save; tests await it to observe the completion.</summary>
+    internal Task? LoginTask { get; private set; }
+
     /// <summary>
     /// <c>/login &lt;provider&gt;</c>: validates the preset id, reads the key through the masked
     /// secret prompt and saves it under the preset id. Empty input cancels; no network call
@@ -35,15 +38,16 @@ internal sealed partial class InteractiveSession
         }
 
         Task<string?> pending = _secretPrompt.ReadAsync($"API key for {preset.Id}", ct);
+        LoginTask = FinishLoginAsync(preset, pending, ct);
         if (pending.IsCompleted)
         {
-            await FinishLoginAsync(preset, pending, ct).ConfigureAwait(false);
+            await LoginTask.ConfigureAwait(false);
             return;
         }
 
         // The TUI prompt is driven by the key pump this command already runs on: awaiting the
-        // pending read here would deadlock. The continuation saves and notifies on the thread pool.
-        _ = FinishLoginAsync(preset, pending, ct);
+        // pending read here would deadlock. The continuation saves and notifies on the thread pool;
+        // the field keeps it observable.
     }
 
     /// <summary>
@@ -57,48 +61,57 @@ internal sealed partial class InteractiveSession
         CancellationToken ct
     )
     {
-        string? secret;
         try
         {
-            secret = await pending.ConfigureAwait(false);
+            string? secret = await pending.ConfigureAwait(false);
             ct.ThrowIfCancellationRequested();
+
+            if (string.IsNullOrWhiteSpace(secret))
+            {
+                Notify("login cancelled");
+                return;
+            }
+
+            string? previous = _auth.Keys.GetValueOrDefault(preset.Id);
+            _auth.Set(preset.Id, secret);
+            try
+            {
+                _auth.Save();
+            }
+            catch (Exception exception)
+                when (exception is IOException or UnauthorizedAccessException)
+            {
+                if (previous is null)
+                {
+                    _auth.Remove(preset.Id);
+                }
+                else
+                {
+                    _auth.Set(preset.Id, previous);
+                }
+
+                Notify(
+                    $"could not save the key for '{preset.Id}': {exception.Message}",
+                    NoticeLevel.Error
+                );
+                return;
+            }
+
+            Notify("logged in: " + preset.Id);
         }
         catch (OperationCanceledException)
         {
-            return;
+            // A cancelled read or a shutdown notify: the session is quitting, so stay quiet.
         }
-
-        if (string.IsNullOrWhiteSpace(secret))
+        catch (Exception exception)
         {
-            Notify("login cancelled");
-            return;
-        }
-
-        string? previous = _auth.Keys.GetValueOrDefault(preset.Id);
-        _auth.Set(preset.Id, secret);
-        try
-        {
-            _auth.Save();
-        }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
-        {
-            if (previous is null)
-            {
-                _auth.Remove(preset.Id);
-            }
-            else
-            {
-                _auth.Set(preset.Id, previous);
-            }
-
+            // A faulted prompt or any other unexpected failure: report the failure without the
+            // typed value, and never let the task fault unobserved.
             Notify(
-                $"could not save the key for '{preset.Id}': {exception.Message}",
+                $"login failed: {exception.GetType().Name}: {exception.Message}",
                 NoticeLevel.Error
             );
-            return;
         }
-
-        Notify("logged in: " + preset.Id);
     }
 
     /// <summary>

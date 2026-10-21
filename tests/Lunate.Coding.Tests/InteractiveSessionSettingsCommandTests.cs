@@ -185,6 +185,136 @@ public sealed class InteractiveSessionSettingsCommandTests
         await run;
     }
 
+    [Fact]
+    public async Task Login_reports_a_faulted_secret_prompt_without_crashing()
+    {
+        const string existing =
+            """{ "schemaVersion": 1, "keys": { "openrouter": "existing-key" } }""";
+        using var host = new InteractiveSessionHost(
+            launch: new LaunchOptions { Model = "gpt-4o-mini" },
+            chat: new ScriptedChatClient(),
+            secretPrompt: new FaultedSecretPrompt("the prompt broke")
+        );
+        string authPath = host.Temp.File("auth.json");
+        File.WriteAllText(authPath, existing);
+        byte[] before = File.ReadAllBytes(authPath);
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+
+        host.Console.SendText("/login groq");
+        host.Console.SendEnter();
+        await WaitForFrameAsync(host, "login failed: InvalidOperationException: the prompt broke");
+
+        Assert.True(host.Session.LoginTask?.IsCompletedSuccessfully);
+        Assert.Equal(before, File.ReadAllBytes(authPath));
+        Assert.DoesNotContain("login failed", host.ScrollbackText, StringComparison.Ordinal);
+
+        host.Console.SendText("/quit");
+        host.Console.SendEnter();
+        await run;
+    }
+
+    [Fact]
+    public async Task Login_reports_a_failed_save_and_rolls_back_the_key()
+    {
+        const string secret = "groq-secret-value";
+        var prompt = new ScriptedSecretPrompt(secret);
+        using var host = new InteractiveSessionHost(
+            launch: new LaunchOptions { Model = "gpt-4o-mini" },
+            chat: new ScriptedChatClient(),
+            secretPrompt: prompt
+        );
+        string authPath = host.Temp.File("auth.json");
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+
+        // A directory where the file should be makes the atomic replacement fail.
+        Directory.CreateDirectory(authPath);
+        try
+        {
+            host.Console.SendText("/login groq");
+            host.Console.SendEnter();
+            await WaitForFrameAsync(host, "could not save the key for 'groq'");
+
+            Assert.True(Directory.Exists(authPath));
+            Assert.DoesNotContain(secret, host.Frames, StringComparison.Ordinal);
+            Assert.DoesNotContain(secret, host.ScrollbackText, StringComparison.Ordinal);
+            AssertNoFileContains(host, secret);
+
+            // The in-memory key rolled back: logout has nothing to remove.
+            host.Console.SendText("/logout groq");
+            host.Console.SendEnter();
+            await WaitForFrameAsync(host, "no stored key for 'groq'");
+
+            host.Console.SendText("/quit");
+            host.Console.SendEnter();
+            await run;
+
+            Assert.DoesNotContain(
+                "could not save the auth file",
+                host.Frames,
+                StringComparison.Ordinal
+            );
+        }
+        finally
+        {
+            Directory.Delete(authPath);
+        }
+    }
+
+    [Fact]
+    public async Task Logout_reports_a_failed_save_and_keeps_the_key_in_memory()
+    {
+        const string stored = "stored-secret";
+        using var host = new InteractiveSessionHost(
+            launch: new LaunchOptions { Model = "gpt-4o-mini" },
+            chat: new ScriptedChatClient()
+        );
+        string authPath = host.Temp.File("auth.json");
+        File.WriteAllText(
+            authPath,
+            $$"""{ "schemaVersion": 1, "keys": { "groq": "{{stored}}" } }"""
+        );
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+
+        // A directory where the file should be makes the atomic replacement fail.
+        File.Delete(authPath);
+        Directory.CreateDirectory(authPath);
+        try
+        {
+            host.Console.SendText("/logout groq");
+            host.Console.SendEnter();
+            await WaitForFrameAsync(host, "could not save the auth file:");
+
+            // The rollback kept the key, so the next logout still tries to remove it and fails
+            // again instead of reporting that nothing is stored.
+            host.Console.SendText("/logout groq");
+            host.Console.SendEnter();
+            host.Console.SendText("/context");
+            host.Console.SendEnter();
+            await WaitForFrameAsync(host, "context: ");
+
+            host.Console.SendText("/quit");
+            host.Console.SendEnter();
+            await run;
+
+            Assert.DoesNotContain(
+                "no stored key for 'groq'",
+                host.Frames,
+                StringComparison.Ordinal
+            );
+            Assert.DoesNotContain(stored, host.Frames, StringComparison.Ordinal);
+            Assert.DoesNotContain(stored, host.ScrollbackText, StringComparison.Ordinal);
+            AssertNoFileContains(host, stored);
+            Assert.True(Directory.Exists(authPath));
+        }
+        finally
+        {
+            Directory.Delete(authPath);
+        }
+    }
+
     [Theory]
     [InlineData("/login")]
     [InlineData("/logout")]
@@ -557,5 +687,11 @@ public sealed class InteractiveSessionSettingsCommandTests
             Prompts.Add(prompt);
             return Task.FromResult(_values.Count > 0 ? _values.Dequeue() : null);
         }
+    }
+
+    private sealed class FaultedSecretPrompt(string message) : ISecretPrompt
+    {
+        public Task<string?> ReadAsync(string prompt, CancellationToken cancellationToken) =>
+            Task.FromException<string?>(new InvalidOperationException(message));
     }
 }
