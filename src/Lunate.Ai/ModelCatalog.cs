@@ -33,6 +33,11 @@ public sealed class ModelCatalog
     /// <see cref="ModelInfo.MaxOutput"/>, <see cref="ModelInfo.SupportsVision"/> and
     /// <see cref="ModelInfo.WireId"/>. A schema-1 entry without a lower entry has no such metadata.
     /// </summary>
+    /// <param name="userFilePath">
+    /// An explicit catalog file, or <c>null</c> for the default layers. An explicit path replaces the
+    /// user layer and skips the managed cache: the managed catalog is read only when no explicit
+    /// path is injected.
+    /// </param>
     public static ModelCatalog Load(string? userFilePath = null)
     {
         return userFilePath is null
