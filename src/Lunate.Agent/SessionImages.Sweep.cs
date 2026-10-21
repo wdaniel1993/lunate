@@ -61,7 +61,7 @@ internal sealed partial class SessionImages
     /// a day. Only exact blob names and the temp prefix are touched; other files stay. A missing
     /// directory or an in-memory store is a no-op.
     /// </summary>
-    internal void Sweep(IReadOnlySet<string> referencedDigests)
+    internal void Sweep(IReadOnlySet<string> referencedDigests, DateTimeOffset now)
     {
         ArgumentNullException.ThrowIfNull(referencedDigests);
         if (DirectoryPath is not { } directory || !Directory.Exists(directory))
@@ -69,7 +69,7 @@ internal sealed partial class SessionImages
             return;
         }
 
-        DateTime staleTemp = DateTime.UtcNow.AddDays(-1);
+        DateTime staleTemp = now.UtcDateTime.AddDays(-1);
         foreach (string path in Directory.EnumerateFiles(directory))
         {
             string name = Path.GetFileName(path);

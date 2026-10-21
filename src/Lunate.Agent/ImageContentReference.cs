@@ -10,9 +10,31 @@ namespace Lunate.Agent;
 /// </summary>
 public sealed class ImageContentReference : AIContent
 {
-    /// <summary>Creates an image reference from its digest, media type and pixel dimensions.</summary>
+    /// <summary>
+    /// Creates an image reference from its digest, media type and pixel dimensions. The digest and
+    /// media type are validated here because a reference is also read from a session file: a
+    /// crafted digest must never reach the blob store's path join.
+    /// </summary>
     public ImageContentReference(string Digest, string MimeType, int Width, int Height)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(Digest);
+        ArgumentException.ThrowIfNullOrWhiteSpace(MimeType);
+        if (!SessionImages.IsValidDigest(Digest))
+        {
+            throw new ArgumentException(
+                $"Image digest '{Digest}' is not a lowercase 64-character SHA-256 hex string.",
+                nameof(Digest)
+            );
+        }
+
+        if (MimeType is not ("image/png" or "image/jpeg" or "image/gif" or "image/webp"))
+        {
+            throw new ArgumentException(
+                $"Unsupported image media type '{MimeType}'; expected image/png, image/jpeg, image/gif or image/webp.",
+                nameof(MimeType)
+            );
+        }
+
         this.Digest = Digest;
         this.MimeType = MimeType;
         this.Width = Width;

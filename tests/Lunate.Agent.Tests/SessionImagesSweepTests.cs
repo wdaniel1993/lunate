@@ -92,9 +92,13 @@ public sealed class SessionImagesSweepTests
         File.WriteAllText(fresh, "fresh");
         File.WriteAllText(stale, "stale");
         File.WriteAllText(uppercase, "keep");
-        File.SetLastWriteTimeUtc(stale, DateTime.UtcNow.AddDays(-2));
+        File.SetLastWriteTimeUtc(stale, SessionImageTestData.Start.UtcDateTime.AddDays(-2));
+        File.SetLastWriteTimeUtc(fresh, SessionImageTestData.Start.UtcDateTime);
 
-        session.Images.Sweep(new HashSet<string>(StringComparer.Ordinal));
+        session.Images.Sweep(
+            new HashSet<string>(StringComparer.Ordinal),
+            SessionImageTestData.Start
+        );
 
         Assert.True(File.Exists(notes));
         Assert.True(File.Exists(fresh));

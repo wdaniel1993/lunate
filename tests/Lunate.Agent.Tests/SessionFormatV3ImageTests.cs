@@ -93,6 +93,43 @@ public sealed class SessionFormatV3ImageTests
     }
 
     [Fact]
+    public void An_absolute_digest_is_refused_at_load_and_never_reaches_a_path()
+    {
+        InvalidDataException exception = LoadWithDigest("/Users/me/Pictures/shot");
+
+        Assert.Contains("line 2", exception.Message);
+        Assert.Contains("not a lowercase 64-character SHA-256 hex string", exception.Message);
+    }
+
+    [Fact]
+    public void A_parent_directory_digest_is_refused_at_load()
+    {
+        string digest = ".." + new string('a', 62);
+
+        InvalidDataException exception = LoadWithDigest(digest);
+
+        Assert.Contains("line 2", exception.Message);
+        Assert.Contains(digest, exception.Message);
+    }
+
+    [Fact]
+    public void A_reference_refuses_an_unsupported_media_type()
+    {
+        ArgumentException exception = Assert.Throws<ArgumentException>(() =>
+            new ImageContentReference(Digest, "text/plain", 2, 3)
+        );
+
+        Assert.Contains("text/plain", exception.Message);
+        Assert.Contains("image/png", exception.Message);
+    }
+
+    [Fact]
+    public void The_session_json_options_are_frozen()
+    {
+        Assert.True(SessionJson.Options.IsReadOnly);
+    }
+
+    [Fact]
     public void Every_pre_existing_golden_stays_byte_identical()
     {
         string[] paths = Directory.GetFiles(SessionsDirectory, "golden-*.jsonl");
@@ -128,5 +165,24 @@ public sealed class SessionFormatV3ImageTests
         Session loaded = Session.Load(Path.Combine(SessionsDirectory, "golden-v2-header.jsonl"));
 
         Assert.Equal(2, loaded.Schema);
+    }
+
+    private static InvalidDataException LoadWithDigest(string digest)
+    {
+        using var temp = new TempDirectory();
+        string path = temp.File("s.jsonl");
+        File.WriteAllText(
+            path,
+            """{"type":"header","schema":3,"id":"s_x","cwd":"/work","created":"2026-10-06T12:00:00.0000000+00:00","meai":"10.10.1"}"""
+                + "\n"
+                + """{"type":"message","id":"e_01","parentId":null,"timestamp":"2026-10-06T12:00:01.0000000+00:00","message":{"role":"user","contents":[{"$type":"image","digest":"__DIGEST__","mime":"image/png","width":2,"height":3}]}}""".Replace(
+                    "__DIGEST__",
+                    digest,
+                    StringComparison.Ordinal
+                )
+                + "\n"
+        );
+
+        return Assert.Throws<InvalidDataException>(() => Session.Load(path));
     }
 }

@@ -106,10 +106,14 @@ internal sealed partial class SessionImages
         string directory = DirectoryPath!;
         Directory.CreateDirectory(directory);
         string target = Path.Combine(directory, BlobName(digest, extension));
-        if (File.Exists(target))
+        if (IsUsableBlob(target, data.Length))
         {
             return reference;
         }
+
+        // A target that exists but is a link, short or otherwise unusable is corrupt: remove it and
+        // write the real blob. A directory is left alone so the move below fails with its own error.
+        RemoveUnusableBlob(target);
 
         string temp = Path.Combine(
             directory,
@@ -123,7 +127,16 @@ internal sealed partial class SessionImages
                 stream.Flush(flushToDisk: true);
             }
 
-            File.Move(temp, target);
+            try
+            {
+                File.Move(temp, target);
+            }
+            catch (IOException) when (IsUsableBlob(target, data.Length))
+            {
+                // A concurrent write of the same bytes won the rename race. Content addressing
+                // makes the winner's blob the same blob, so the reference is still valid.
+                TryDelete(temp);
+            }
         }
         catch
         {
@@ -175,9 +188,31 @@ internal sealed partial class SessionImages
         byte[] bytes;
         try
         {
-            bytes = File.ReadAllBytes(path);
+            if (new FileInfo(path).LinkTarget is not null)
+            {
+                throw new InvalidDataException(
+                    $"Session image blob '{path}' is a link, not a stored blob; delete it and re-attach the image."
+                );
+            }
+
+            using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+            long length = stream.Length;
+            if (length > ImageLimits.MaxBytes)
+            {
+                throw new InvalidDataException(
+                    $"Session image blob '{path}' is {length} bytes, over the {ImageLimits.MaxBytes}-byte image limit; the blob is corrupt. Delete it and re-attach the image."
+                );
+            }
+
+            bytes = new byte[length];
+            stream.ReadExactly(bytes);
         }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        catch (InvalidDataException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+            when (exception is IOException or UnauthorizedAccessException or NotSupportedException)
         {
             data = default;
             return false;
@@ -201,6 +236,12 @@ internal sealed partial class SessionImages
 
     private bool TryBlobPath(ImageContentReference reference, out string path)
     {
+        if (!IsValidDigest(reference.Digest))
+        {
+            path = string.Empty;
+            return false;
+        }
+
         string? extension = ExtensionOrNull(reference.MimeType);
         if (extension is null)
         {
@@ -210,6 +251,41 @@ internal sealed partial class SessionImages
 
         path = Path.Combine(DirectoryPath!, BlobName(reference.Digest, extension));
         return true;
+    }
+
+    /// <summary>
+    /// A blob already at the target is reusable only when it is a regular file of the expected
+    /// length; a link, a truncated partial write or a directory is not.
+    /// </summary>
+    private static bool IsUsableBlob(string path, long expectedLength)
+    {
+        try
+        {
+            FileInfo info = new(path);
+            return info.Exists && info.LinkTarget is null && info.Length == expectedLength;
+        }
+        catch (Exception exception)
+            when (exception is IOException or UnauthorizedAccessException or NotSupportedException)
+        {
+            return false;
+        }
+    }
+
+    private static void RemoveUnusableBlob(string path)
+    {
+        try
+        {
+            FileInfo info = new(path);
+            if (info.LinkTarget is null && !info.Exists)
+            {
+                return;
+            }
+
+            info.Delete();
+        }
+        catch (Exception exception)
+            when (exception is IOException or UnauthorizedAccessException or NotSupportedException)
+        { }
     }
 
     private static string BlobName(string digest, string extension) => digest + "." + extension;
@@ -239,6 +315,14 @@ internal sealed partial class SessionImages
         {
             throw new InvalidOperationException(
                 "An in-memory image store has no blob path; it never writes images to disk."
+            );
+        }
+
+        if (!IsValidDigest(reference.Digest))
+        {
+            throw new ArgumentException(
+                $"Image digest '{reference.Digest}' is not a lowercase 64-character SHA-256 hex string.",
+                nameof(reference)
             );
         }
 

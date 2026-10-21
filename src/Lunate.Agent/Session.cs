@@ -192,8 +192,22 @@ public sealed partial class Session
             session._entries.Add(entry);
         }
 
-        session._images = SessionImages.ForSession(session);
-        session._images.Sweep(SessionImages.ReferencedDigests(session._entries));
+        try
+        {
+            session._images = SessionImages.ForSession(session);
+        }
+        catch (ArgumentException exception)
+        {
+            throw new InvalidDataException(
+                $"Session file '{path}' has an invalid session id '{header.Id}': {exception.Message}",
+                exception
+            );
+        }
+
+        session._images.Sweep(
+            SessionImages.ReferencedDigests(session._entries),
+            timeProvider.GetUtcNow()
+        );
         return session;
     }
 
@@ -447,7 +461,7 @@ public sealed partial class Session
         "s_"
         + now.UtcDateTime.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture)
         + "-"
-        + Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(2));
+        + Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(4));
 
     private void WriteHeader(SessionHeaderEntry header)
     {
@@ -481,6 +495,15 @@ public sealed partial class Session
         }
         catch (JsonException exception)
         {
+            throw new InvalidDataException(
+                $"Session file '{path}' line {lineNumber} is invalid: {exception.Message}",
+                exception
+            );
+        }
+        catch (ArgumentException exception)
+        {
+            // A content part's constructor rejects hostile values (for example an image digest);
+            // report it like every other invalid line, naming the file and line.
             throw new InvalidDataException(
                 $"Session file '{path}' line {lineNumber} is invalid: {exception.Message}",
                 exception

@@ -17,6 +17,9 @@ internal static class SessionJson
     {
         var options = new JsonSerializerOptions(AIJsonUtilities.DefaultOptions);
         options.AddAIContentType<ImageContentReference>("image");
+        // Freeze the instance: a late registration would otherwise fail mid-request with
+        // "cannot modify after first use" instead of at the call site.
+        options.MakeReadOnly();
         return options;
     }
 }
