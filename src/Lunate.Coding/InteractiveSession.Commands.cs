@@ -536,6 +536,7 @@ internal sealed partial class InteractiveSession
         _contextWindow = model.ContextWindow;
         _extensionModelId = null;
         _modelRoute = null;
+        _imageResolver = CreateImageResolver(model);
         _harness = BuildHarness(model);
         UpdateStatus();
         Notify("model: " + model.Id);

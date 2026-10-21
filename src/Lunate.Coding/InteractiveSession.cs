@@ -459,17 +459,24 @@ internal sealed partial class InteractiveSession : IDisposable
         // The model resolves after the extension host: the configured id may name a virtual or
         // extension-registered model, which only the registry knows.
         ResolveSessionModel();
-        _imageResolver = new ImageInputResolver(
-            _workspace.WorktreeRoot,
-            _model,
-            _options.Clipboard ?? new PlatformClipboardImageSource()
-        );
+        _imageResolver = CreateImageResolver(_model);
         _harness = BuildHarness(_model);
         // Composition is done: the placeholder counts fill in with exactly one update line, never a
         // redraw of the block (design D1).
         PrintHeaderCounts();
         _pipeline = new InputPipeline(_options.Hooks ?? _extensions?.HookRunner);
     }
+
+    /// <summary>
+    /// The image resolver for a model. It is rebuilt on every model switch so its vision gate and
+    /// refusal text always name the model that will actually receive the next request.
+    /// </summary>
+    private ImageInputResolver CreateImageResolver(ModelInfo? model) =>
+        new(
+            _workspace.WorktreeRoot,
+            model,
+            _options.Clipboard ?? new PlatformClipboardImageSource()
+        );
 
     /// <summary>
     /// Resolves the configured model: an extension-registered id (virtual models included) comes

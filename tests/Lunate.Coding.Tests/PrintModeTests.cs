@@ -30,7 +30,7 @@ public sealed class PrintModeTests
         Assert.Equal("Hello world", output);
         Assert.Empty(errors);
         string sessionId = PrintModeTestSupport.SingleSessionId(temp);
-        Assert.Matches("^s_[0-9]{8}-[0-9]{6}-[0-9a-f]{4}$", sessionId);
+        Assert.Matches("^s_[0-9]{8}-[0-9]{6}-[0-9a-f]{8}$", sessionId);
         string header = File.ReadLines(Path.Combine(temp.File("sessions"), sessionId + ".jsonl"))
             .First();
         Assert.Contains($"\"id\":\"{sessionId}\"", header, StringComparison.Ordinal);

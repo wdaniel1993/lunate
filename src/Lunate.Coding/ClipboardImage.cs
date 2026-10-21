@@ -1,5 +1,5 @@
 using System.ComponentModel;
-using System.Globalization;
+using Lunate.Agent;
 using Lunate.Extensibility.Abstractions;
 
 namespace Lunate.Coding;
@@ -10,23 +10,35 @@ internal enum ClipboardImageStatus
     Image,
     Empty,
     Unavailable,
+    TooLarge,
+    TimedOut,
 }
 
-/// <summary>The clipboard probe result; <see cref="Helper"/> names the platform helper.</summary>
+/// <summary>
+/// The clipboard probe result; <see cref="Helper"/> names the platform helper and
+/// <see cref="Length"/> is the helper's output size when it was refused as too large.
+/// </summary>
 internal sealed record ClipboardImageResult(
     ClipboardImageStatus Status,
     ReadOnlyMemory<byte> Data,
-    string Helper
+    string Helper,
+    long Length = 0
 )
 {
     public static ClipboardImageResult Image(ReadOnlyMemory<byte> data, string helper) =>
-        new(ClipboardImageStatus.Image, data, helper);
+        new(ClipboardImageStatus.Image, data, helper, data.Length);
 
     public static ClipboardImageResult Empty(string helper) =>
         new(ClipboardImageStatus.Empty, ReadOnlyMemory<byte>.Empty, helper);
 
     public static ClipboardImageResult Unavailable(string helper) =>
         new(ClipboardImageStatus.Unavailable, ReadOnlyMemory<byte>.Empty, helper);
+
+    public static ClipboardImageResult TooLarge(long length, string helper) =>
+        new(ClipboardImageStatus.TooLarge, ReadOnlyMemory<byte>.Empty, helper, length);
+
+    public static ClipboardImageResult TimedOut(string helper) =>
+        new(ClipboardImageStatus.TimedOut, ReadOnlyMemory<byte>.Empty, helper);
 }
 
 /// <summary>The seam behind <c>@clipboard</c>; tests substitute a fake instead of a real clipboard.</summary>
@@ -37,8 +49,9 @@ internal interface IClipboardImageSource
 
 /// <summary>
 /// The platform helper chain: <c>pngpaste</c> on macOS, <c>wl-paste</c> on Linux and PowerShell's
-/// <c>Get-Clipboard -Format Image</c> on Windows. Helpers write to a temporary file because the
-/// process seam decodes text; the file is removed after the bytes are read.
+/// <c>Get-Clipboard -Format Image</c> on Windows. Helpers write to a private temporary directory
+/// because the process seam decodes text; the output is size-capped before it is read, and the
+/// directory is removed after the bytes are read.
 /// </summary>
 internal sealed class PlatformClipboardImageSource(IProcessRunner? runner = null)
     : IClipboardImageSource
@@ -48,18 +61,19 @@ internal sealed class PlatformClipboardImageSource(IProcessRunner? runner = null
     public async Task<ClipboardImageResult> ReadAsync(CancellationToken cancellationToken)
     {
         string helper = Helper();
-        string path = Path.Combine(
-            Path.GetTempPath(),
-            string.Create(CultureInfo.InvariantCulture, $"lunate-clipboard-{Guid.NewGuid():N}.png")
-        );
+        string? directory = null;
         try
         {
+            // CreateTempSubdirectory is 0700 on Unix, so the image is not readable by other
+            // local users while the helper writes it.
+            directory = Directory.CreateTempSubdirectory("lunate-clipboard-").FullName;
+            string path = Path.Combine(directory, "clipboard.png");
             ProcessRunResult result;
             try
             {
                 result = await _runner
                     .RunAsync(
-                        new ProcessRunRequest(Executable(), Arguments(path), Path.GetTempPath())
+                        new ProcessRunRequest(Executable(), Arguments(path), directory)
                         {
                             Timeout = TimeSpan.FromSeconds(10),
                         },
@@ -73,17 +87,31 @@ internal sealed class PlatformClipboardImageSource(IProcessRunner? runner = null
                 return ClipboardImageResult.Unavailable(helper);
             }
 
-            if (result.ExitCode != 0)
+            if (result.TimedOut)
+            {
+                return ClipboardImageResult.TimedOut(helper);
+            }
+
+            if (result.ExitCode != 0 || !File.Exists(path))
             {
                 return ClipboardImageResult.Empty(helper);
             }
 
-            byte[] data = File.Exists(path)
-                ? await File.ReadAllBytesAsync(path, cancellationToken)
-                : [];
-            return data.Length == 0
-                ? ClipboardImageResult.Empty(helper)
-                : ClipboardImageResult.Image(data, helper);
+            using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+            long length = stream.Length;
+            if (length > ImageLimits.MaxBytes)
+            {
+                return ClipboardImageResult.TooLarge(length, helper);
+            }
+
+            if (length == 0)
+            {
+                return ClipboardImageResult.Empty(helper);
+            }
+
+            byte[] data = new byte[length];
+            stream.ReadExactly(data);
+            return ClipboardImageResult.Image(data, helper);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
@@ -91,12 +119,15 @@ internal sealed class PlatformClipboardImageSource(IProcessRunner? runner = null
         }
         finally
         {
-            try
+            if (directory is not null)
             {
-                File.Delete(path);
+                try
+                {
+                    Directory.Delete(directory, recursive: true);
+                }
+                catch (Exception exception)
+                    when (exception is IOException or UnauthorizedAccessException) { }
             }
-            catch (Exception exception)
-                when (exception is IOException or UnauthorizedAccessException) { }
         }
     }
 

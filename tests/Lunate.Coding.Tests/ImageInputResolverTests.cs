@@ -178,7 +178,11 @@ public sealed class ImageInputResolverTests
         );
 
         Assert.Equal(ImageInputOutcome.Refused, result.Outcome);
-        Assert.Contains("4", result.Error, StringComparison.Ordinal);
+        Assert.Contains(
+            "a message can carry at most 4 images",
+            result.Error,
+            StringComparison.Ordinal
+        );
     }
 
     [Fact]
@@ -245,6 +249,66 @@ public sealed class ImageInputResolverTests
         Assert.Contains("does not contain an image", result.Error, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task An_oversize_clipboard_image_is_refused_with_the_limit()
+    {
+        using var temp = new TempDirectory();
+        var resolver = new ImageInputResolver(
+            temp.Root,
+            VisionModel,
+            new FakeClipboard(ImageSamples.PaddedPng(10, 10, 6 * 1024 * 1024))
+        );
+
+        ImageInputResult result = await ResolveAsync(resolver, "@clipboard");
+
+        Assert.Equal(ImageInputOutcome.Refused, result.Outcome);
+        Assert.Contains("the clipboard image", result.Error, StringComparison.Ordinal);
+        Assert.Contains("5.0 MB", result.Error, StringComparison.Ordinal);
+        Assert.Contains(ImageLimits.DownscalingUnavailable, result.Error, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task The_fifth_clipboard_image_is_refused_with_the_limit()
+    {
+        using var temp = new TempDirectory();
+        for (int index = 1; index <= 4; index++)
+        {
+            File.WriteAllBytes(temp.File($"shot{index}.png"), ImageSamples.Png(index, index));
+        }
+
+        var resolver = new ImageInputResolver(
+            temp.Root,
+            VisionModel,
+            new FakeClipboard(ImageSamples.Png(640, 480))
+        );
+
+        ImageInputResult result = await ResolveAsync(
+            resolver,
+            "@shot1.png @shot2.png @shot3.png @shot4.png @clipboard"
+        );
+
+        Assert.Equal(ImageInputOutcome.Refused, result.Outcome);
+        Assert.Contains(
+            "a message can carry at most 4 images",
+            result.Error,
+            StringComparison.Ordinal
+        );
+    }
+
+    [Fact]
+    public async Task A_second_clipboard_token_reuses_the_one_read()
+    {
+        using var temp = new TempDirectory();
+        var clipboard = new FakeClipboard(ImageSamples.Png(640, 480));
+        var resolver = new ImageInputResolver(temp.Root, VisionModel, clipboard);
+
+        ImageInputResult result = await ResolveAsync(resolver, "@clipboard and @clipboard");
+
+        Assert.Equal("[image 640x480] and [image 640x480]", result.Text);
+        Assert.Single(result.Images!);
+        Assert.Equal(1, clipboard.ReadCount);
+    }
+
     private static ValueTask<ImageInputResult> ResolveAsync(
         ImageInputResolver resolver,
         string text
@@ -269,8 +333,12 @@ public sealed class ImageInputResolverTests
             _helper = helper;
         }
 
-        public Task<ClipboardImageResult> ReadAsync(CancellationToken cancellationToken) =>
-            Task.FromResult(
+        public int ReadCount { get; private set; }
+
+        public Task<ClipboardImageResult> ReadAsync(CancellationToken cancellationToken)
+        {
+            ReadCount++;
+            return Task.FromResult(
                 _status switch
                 {
                     ClipboardImageStatus.Image => ClipboardImageResult.Image(_bytes!, _helper),
@@ -278,6 +346,7 @@ public sealed class ImageInputResolverTests
                     _ => ClipboardImageResult.Unavailable(_helper),
                 }
             );
+        }
 
         public static FakeClipboard Empty(string helper) => new(ClipboardImageStatus.Empty, helper);
 

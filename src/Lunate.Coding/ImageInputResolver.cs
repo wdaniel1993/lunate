@@ -97,8 +97,16 @@ internal sealed class ImageInputResolver
                 return false;
             }
 
-            byte[] data = File.ReadAllBytes(fullPath);
-            return ImageFile.TryReadDimensions(data, out _, out _, out _);
+            // Sniff a bounded prefix first: a prompt full of @tokens must not read every file
+            // whole just to discover it is text. Only a magic-byte match may read the rest.
+            byte[] prefix = ReadPrefix(fullPath, 64);
+            if (!ImageFile.TryDetectMime(prefix, out _))
+            {
+                return false;
+            }
+
+            return ImageFile.TryReadDimensions(prefix, out _, out _, out _)
+                || ImageFile.TryReadDimensions(File.ReadAllBytes(fullPath), out _, out _, out _);
         }
         catch (Exception exception)
             when (exception
@@ -259,6 +267,12 @@ internal sealed class ImageInputResolver
                 return ImageInputResult.Refused(
                     "the clipboard does not contain an image; copy an image and submit @clipboard again."
                 );
+            case ClipboardImageStatus.TooLarge:
+                return ImageInputResult.Refused(TooLarge("the clipboard image", result.Length));
+            case ClipboardImageStatus.TimedOut:
+                return ImageInputResult.Refused(
+                    $"the clipboard image helper {result.Helper} timed out; try @clipboard again."
+                );
         }
 
         if (result.Data.Length > ImageLimits.MaxBytes)
@@ -368,7 +382,7 @@ internal sealed class ImageInputResolver
         }
 
         long length;
-        byte[] data;
+        byte[] prefix;
         try
         {
             length = new FileInfo(fullPath).Length;
@@ -377,6 +391,25 @@ internal sealed class ImageInputResolver
                 return ImageResolution.Failure(TooLarge(path, length));
             }
 
+            prefix = ReadPrefix(fullPath, ImageFile.ProbeBytes);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            return ImageResolution.Failure($"cannot read image {path}: {exception.Message}");
+        }
+
+        if (!ImageFile.TryDetectMime(prefix, out _))
+        {
+            return HasImageExtension(path)
+                ? ImageResolution.Failure(
+                    $"{path} is not a supported image; supported formats are {ImageLimits.Formats}."
+                )
+                : ImageResolution.Text;
+        }
+
+        byte[] data;
+        try
+        {
             data = File.ReadAllBytes(fullPath);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
@@ -420,6 +453,15 @@ internal sealed class ImageInputResolver
 
     private static bool HasImageExtension(string path) =>
         ImageExtensions.Contains(Path.GetExtension(path), StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Reads at most <paramref name="count"/> leading bytes; short files yield a short buffer.</summary>
+    private static byte[] ReadPrefix(string path, int count)
+    {
+        using FileStream stream = File.OpenRead(path);
+        byte[] buffer = new byte[count];
+        int read = stream.ReadAtLeast(buffer, count, throwOnEndOfStream: false);
+        return read == count ? buffer : buffer[..read];
+    }
 
     private static string Placeholder(ImageAttachment attachment) =>
         string.Create(
