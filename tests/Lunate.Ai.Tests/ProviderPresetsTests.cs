@@ -116,9 +116,12 @@ public sealed class ProviderPresetsTests
     }
 
     [Fact]
-    public void Find_with_different_case_returns_null()
+    public void Find_matches_a_different_case_and_keeps_the_canonical_id()
     {
-        Assert.Null(ProviderPresets.Find("OpenAI"));
+        ProviderPreset preset = ProviderPresets.Find("OpenAI")!;
+
+        Assert.NotNull(preset);
+        Assert.Equal("openai", preset.Id);
     }
 
     [Fact]

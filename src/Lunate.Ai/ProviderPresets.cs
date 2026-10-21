@@ -16,6 +16,10 @@ public static class ProviderPresets
 
     public static IReadOnlyList<ProviderPreset> All => Table.Value.All;
 
+    /// <summary>
+    /// Finds a preset by id, ignoring case: a hand-written entry may say <c>OpenAI</c> while the
+    /// preset table keeps the canonical <c>openai</c> id for routing and error messages.
+    /// </summary>
     public static ProviderPreset? Find(string id)
     {
         ArgumentNullException.ThrowIfNull(id);
@@ -134,7 +138,7 @@ public static class ProviderPresets
         public PresetTable(IReadOnlyList<ProviderPreset> all)
         {
             All = all;
-            ById = all.ToDictionary(static preset => preset.Id, StringComparer.Ordinal);
+            ById = all.ToDictionary(static preset => preset.Id, StringComparer.OrdinalIgnoreCase);
         }
 
         public IReadOnlyList<ProviderPreset> All { get; }

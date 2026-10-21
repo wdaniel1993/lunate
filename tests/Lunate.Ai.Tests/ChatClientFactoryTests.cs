@@ -297,6 +297,32 @@ public sealed class ChatClientFactoryTests
     }
 
     [Fact]
+    public void Create_resolves_a_preset_for_a_catalog_entry_whose_provider_differs_in_case()
+    {
+        using var temp = new TempDirectory();
+        File.WriteAllText(
+            temp.File("models.json"),
+            """
+            {
+              "schemaVersion": 1,
+              "models": [
+                { "id": "gpt-4o-mini", "provider": "OpenAI", "contextWindow": 128000, "supportsTools": true }
+              ]
+            }
+            """
+        );
+        using var environment = new EnvironmentScope((OpenAiApiKeyVariable, "test-key"));
+        ModelInfo model = ModelCatalog.Load(temp.File("models.json")).Find("gpt-4o-mini")!;
+        var factory = new ChatClientFactory(new MarkingLoggerFactory(static () => { }));
+
+        IChatClient client = factory.Create(model);
+        var metadata = (ChatClientMetadata?)client.GetService(typeof(ChatClientMetadata));
+
+        Assert.NotNull(metadata);
+        Assert.Equal("gpt-4o-mini", metadata.DefaultModelId);
+    }
+
+    [Fact]
     public void Create_prefers_the_model_endpoint_over_the_preset_base_url()
     {
         using var environment = new EnvironmentScope(
