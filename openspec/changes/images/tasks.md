@@ -41,10 +41,10 @@ Each group is one conventional commit. Work test-first through `senior-dev`; do 
 
 ## 6. `read` image path
 
-- [ ] 6.1 Add red tests: PNG/JPEG/GIF/WebP magic bytes are recognized (extension ignored); the placeholder is exact; a no-vision model gets an error naming it; 5 MB/4096 px refusals say downscaling is unavailable; `offset`/`limit` are refused; non-image binary behavior is unchanged.
-- [ ] 6.2 Add the hand-written header dimension parser and magic-byte sniffer (PNG IHDR, JPEG SOF, GIF logical screen, WebP VP8/VP8L/VP8X) under `Lunate.Coding`; prove it handles malformed/truncated headers without throwing.
-- [ ] 6.3 Wire `ReadTool`: image path before the binary check, `ctx.Model.SupportsVision` gate, limits, `Images` carrier, `[image <w>x<h>]` output, schema description update.
-- [ ] 6.4 Commit: `feat(coding): read image files`.
+- [x] 6.1 Add red tests: PNG/JPEG/GIF/WebP magic bytes are recognized (extension ignored); the placeholder is exact; a no-vision model gets an error naming it; 5 MB/4096 px refusals say downscaling is unavailable; `offset`/`limit` are refused; non-image binary behavior is unchanged.
+- [x] 6.2 Add the hand-written header dimension parser and magic-byte sniffer (PNG IHDR, JPEG SOF, GIF logical screen, WebP VP8/VP8L/VP8X) under `Lunate.Coding`; prove it handles malformed/truncated headers without throwing.
+- [x] 6.3 Wire `ReadTool`: image path before the binary check, `ctx.Model.SupportsVision` gate, limits, `Images` carrier, `[image <w>x<h>]` output, schema description update.
+- [x] 6.4 Commit: `feat(coding): read image files`.
 
 ## 7. Image input resolver and clipboard
 
