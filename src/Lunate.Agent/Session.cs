@@ -56,7 +56,7 @@ public sealed partial class Session
 
     /// <summary>
     /// The header's format schema (1, 2 or 3), so consumers can tell replay formats apart: schema 3
-    /// may carry cache token lanes, older schemas never do.
+    /// may carry both cache token lanes and image reference parts, older schemas never do.
     /// </summary>
     public int Schema => Header.Schema;
 
