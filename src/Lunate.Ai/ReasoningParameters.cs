@@ -41,7 +41,7 @@ public static class ReasoningParameters
                 options.Reasoning = new() { Effort = EffortFor(level) };
                 break;
             case BudgetStyle:
-                ApplyBudget(options, model.Id, level);
+                ApplyBudget(options, model.WireId ?? model.Id, level);
                 break;
         }
     }
@@ -85,22 +85,24 @@ public static class ReasoningParameters
     }
 
     /// <summary>
-    /// Enables Anthropic extended thinking with the level's token budget. The request carries an
-    /// explicit <c>max_tokens</c> (an API requirement when thinking is on) clamped above the
-    /// budget: an existing limit is raised when it leaves no room, otherwise it is kept.
+    /// Enables Anthropic extended thinking with the level's token budget. The request names the
+    /// wire id, so a catalog id with a differing <see cref="ModelInfo.WireId"/> still reaches the
+    /// provider. It carries an explicit <c>max_tokens</c> (an API requirement when thinking is on)
+    /// clamped above the budget: an existing limit is raised when it leaves no room, otherwise it
+    /// is kept.
     /// </summary>
-    private static void ApplyBudget(ChatOptions options, string modelId, ThinkingLevel level)
+    private static void ApplyBudget(ChatOptions options, string wireId, ThinkingLevel level)
     {
         long budget = BudgetFor(level);
         long maxTokens = Math.Max(options.MaxOutputTokens ?? 0, budget + OutputHeadroom);
         options.MaxOutputTokens = (int)maxTokens;
-        options.RawRepresentationFactory = _ => CreateRequest(modelId, maxTokens, budget);
+        options.RawRepresentationFactory = _ => CreateRequest(wireId, maxTokens, budget);
     }
 
-    private static MessageCreateParams CreateRequest(string modelId, long maxTokens, long budget) =>
+    private static MessageCreateParams CreateRequest(string wireId, long maxTokens, long budget) =>
         new()
         {
-            Model = modelId,
+            Model = wireId,
             MaxTokens = maxTokens,
             Messages = [],
             Thinking = new ThinkingConfigParam(new ThinkingConfigEnabled(budget)),

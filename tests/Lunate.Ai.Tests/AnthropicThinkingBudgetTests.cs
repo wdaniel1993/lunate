@@ -57,6 +57,28 @@ public sealed class AnthropicThinkingBudgetTests
     }
 
     [Fact]
+    public async Task Budget_style_sends_the_wire_id_when_it_differs_from_the_catalog_id()
+    {
+        var model = new ModelInfo(
+            "claude-test",
+            "anthropic",
+            null,
+            1_000,
+            true,
+            AuthRef: null,
+            Reasoning: "budget"
+        )
+        {
+            WireId = "claude-test-wire",
+        };
+
+        (string requestBody, _) = await SendAsync(ThinkingLevel.High, model: model);
+
+        using JsonDocument document = JsonDocument.Parse(requestBody);
+        Assert.Equal("claude-test-wire", document.RootElement.GetProperty("model").GetString());
+    }
+
+    [Fact]
     public async Task The_thinking_stream_carries_the_text_and_its_signature()
     {
         (_, List<ChatResponseUpdate> updates) = await SendAsync(ThinkingLevel.Medium);
@@ -161,14 +183,15 @@ public sealed class AnthropicThinkingBudgetTests
     private static async Task<(string RequestBody, List<ChatResponseUpdate> Updates)> SendAsync(
         ThinkingLevel level,
         IList<ChatMessage>? messages = null,
-        IList<AITool>? tools = null
+        IList<AITool>? tools = null,
+        ModelInfo? model = null
     )
     {
         var handler = new CapturingHandler(ThinkingStream);
         var factory = new ChatClientFactory(
             new MarkingLoggerFactory(static () => { }),
             enableOpenTelemetry: false,
-            providerClientFactory: (model, _) =>
+            providerClientFactory: (resolved, _) =>
                 new AnthropicClient
                 {
                     ApiKey = "test-key",
@@ -177,9 +200,9 @@ public sealed class AnthropicThinkingBudgetTests
                     {
                         BaseAddress = new Uri("http://localhost"),
                     },
-                }.AsIChatClient(model.Id)
+                }.AsIChatClient(resolved.Id)
         );
-        var model = new ModelInfo(
+        model ??= new ModelInfo(
             "claude-test",
             "anthropic",
             null,
