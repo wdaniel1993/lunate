@@ -186,7 +186,7 @@ public sealed class RecordingChatClient(IChatClient inner, string fixturePath) :
 public sealed class ReplayChatClient(string fixturePath) : IChatClient { }
 ```
 
-- `ModelCatalog`: the embedded `models.json` (schema 2: id, provider, qualified wire id, context and max-output windows, tool and vision support, reasoning style and per-million-token pricing), merged in order with the managed cache `~/.lunate/models.catalog.json` and the user file `~/.lunate/models.json`; the user file wins by id. Adding a model never needs a code change.
+- `ModelCatalog`: the embedded `models.json` (schema 2: id, provider, qualified wire id, context and max-output windows, tool and vision support, reasoning style and per-million-token pricing), merged in order with the managed cache `~/.lunate/models.catalog.json` and the user file `~/.lunate/models.json`; the user file wins by id. A schema-1 override keeps the embedded entry's pricing, maximum output, vision support and wire id, because schema 1 cannot express them; a schema-2 override replaces the entry completely. Adding a model never needs a code change.
 - `RecordingChatClient` and `ReplayChatClient`: record and replay `ChatResponseUpdate` streams as JSONL, serialized with `AIJsonUtilities` options.
 - `StreamAccumulator` (internal): one `DelegatingChatClient` between logging and the recorder that assembles streamed function-call argument fragments per call id, so consumers only ever see complete calls; recordings stay raw and replay still passes through the accumulator.
 - `ProviderErrors`: classifies exceptions as retryable or not.
