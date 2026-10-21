@@ -14,5 +14,5 @@
 
 ## 3. Verification
 
-- [ ] 3.1 Build, csharpier, the Agent and Coding suites, `openspec validate tool-output-spill --strict`.
-- [ ] 3.2 Update `docs/guide.md` where it describes tool-output truncation.
+- [x] 3.1 Build, csharpier, the Agent and Coding suites, `openspec validate tool-output-spill --strict`.
+- [x] 3.2 Update `docs/guide.md` where it describes tool-output truncation.
