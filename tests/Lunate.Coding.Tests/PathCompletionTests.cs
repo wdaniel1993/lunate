@@ -69,6 +69,27 @@ public sealed class PathCompletionTests
     }
 
     [Fact]
+    public async Task File_completion_matches_names_without_regard_to_case()
+    {
+        var files = new FakeWorkspaceFiles()
+            .AddDirectory("TemplateExtension")
+            .AddFile("TempDirectory.cs");
+        using InteractiveSessionHost host = await StartAsync(files);
+
+        await SendAsync(host, "read @te");
+        AutocompleteState state = await WaitForFileListAsync(host);
+        Assert.Equal(
+            ["TempDirectory.cs", "TemplateExtension/"],
+            state.Items.Select(item => item.Text)
+        );
+
+        host.Console.Send(Tab);
+        await host.WaitUntilAsync(() => host.Session.Input.Text == "read @TempDirectory.cs");
+
+        host.Console.Complete();
+    }
+
+    [Fact]
     public async Task Several_matches_let_the_arrows_pick_the_row_to_accept()
     {
         var files = new FakeWorkspaceFiles()

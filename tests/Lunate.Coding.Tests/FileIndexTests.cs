@@ -81,6 +81,52 @@ public sealed class FileIndexTests
         Assert.Empty(index.Match("nope", 10));
     }
 
+    [Theory]
+    [InlineData("te")]
+    [InlineData("TE")]
+    [InlineData("Te")]
+    public void Complete_matches_file_names_without_regard_to_case(string query)
+    {
+        var files = new FakeWorkspaceFiles()
+            .AddDirectory("TemplateExtension")
+            .AddFile("TempDirectory.cs")
+            .AddFile("temporary.txt")
+            .AddFile("other.cs");
+        FileIndex index = Ready(files);
+
+        Assert.Equal(
+            ["TempDirectory.cs", "TemplateExtension/", "temporary.txt"],
+            index.Complete(query, 10)
+        );
+    }
+
+    [Fact]
+    public void Complete_keeps_the_index_ordinal_order()
+    {
+        var files = new FakeWorkspaceFiles()
+            .AddFile("beta.txt")
+            .AddFile("Alpha.txt")
+            .AddFile("gamma.txt");
+        FileIndex index = Ready(files);
+
+        Assert.Equal(index.Match("", 100), index.Complete("", 100));
+        Assert.Equal(["Alpha.txt", "beta.txt", "gamma.txt"], index.Complete("", 100));
+    }
+
+    [Fact]
+    public void Match_stays_ordinal_and_keeps_exact_prefix_semantics()
+    {
+        var files = new FakeWorkspaceFiles()
+            .AddDirectory("TemplateExtension")
+            .AddFile("TempDirectory.cs")
+            .AddFile("temporary.txt");
+        FileIndex index = Ready(files);
+
+        Assert.Equal(["temporary.txt"], index.Match("te", 10));
+        Assert.Equal(["TempDirectory.cs", "TemplateExtension/"], index.Match("Te", 10));
+        Assert.Empty(index.Match("TE", 10));
+    }
+
     [Fact]
     public void Over_cap_entries_are_sorted_first_then_capped_and_flag_truncation()
     {

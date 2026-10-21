@@ -27,11 +27,11 @@ public sealed class PathIndexBudgetTests
         build.Stop();
 
         Assert.False(index.IsTruncated);
-        Assert.Empty(index.Match("vendor", 10));
-        index.Match("pkg00", 100);
+        Assert.Empty(index.Complete("vendor", 10));
+        index.Complete("pkg00", 100);
 
         var query = Stopwatch.StartNew();
-        IReadOnlyList<string> matches = index.Match("pkg10/sub3/file01", 100);
+        IReadOnlyList<string> matches = index.Complete("pkg10/sub3/file01", 100);
         query.Stop();
 
         double buildMs = build.Elapsed.TotalMilliseconds;

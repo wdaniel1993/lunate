@@ -9,9 +9,9 @@
 
 ## 2. Case-insensitive file completion
 
-- [ ] 2.1 Add red tests: a mixed-case fixture (`TemplateExtension/`, `TempDirectory.cs`) completes from `te`, `TE`, `Te`; ordering stays ordinal; the ordinal query keeps its exact-prefix semantics.
-- [ ] 2.2 Match completion with `StringComparison.OrdinalIgnoreCase` while keeping the index sorted ordinally.
-- [ ] 2.3 Commit: `fix(coding): complete file names without regard to case`.
+- [x] 2.1 Add red tests: a mixed-case fixture (`TemplateExtension/`, `TempDirectory.cs`) completes from `te`, `TE`, `Te`; ordering stays ordinal; the ordinal query keeps its exact-prefix semantics.
+- [x] 2.2 Match completion with `StringComparison.OrdinalIgnoreCase` while keeping the index sorted ordinally.
+- [x] 2.3 Commit: `fix(coding): complete file names without regard to case`.
 
 ## 3. Wrapped notices
 
