@@ -32,6 +32,7 @@ public sealed class AgentEventTests
             new CompactionApplied(RunId, ["e_01", "e_02"], 1234),
             new StepLimitReached(RunId, 50),
             new ToolProgressUpdate(RunId, "call_1", "half way"),
+            new ToolOutputSpillFailed(RunId, "could not spill"),
         };
 
     public static TheoryData<AgentEvent> ExtensionEvents() =>
@@ -43,6 +44,7 @@ public sealed class AgentEventTests
             new Retrying(RunId, 1, "boom"),
             new CompactionApplied(RunId, ["e_01"], 1234),
             new StepLimitReached(RunId, 50),
+            new ToolOutputSpillFailed(RunId, "could not spill"),
         };
 
     [Theory]
@@ -75,7 +77,7 @@ public sealed class AgentEventTests
                 .Where(type => typeof(AgentEvent).IsAssignableFrom(type) && !type.IsAbstract),
         ];
 
-        Assert.Equal(21, concreteTypes.Length);
+        Assert.Equal(22, concreteTypes.Length);
         Assert.All(
             concreteTypes,
             type => Assert.True(type.IsSealed, $"{type.Name} must be sealed")

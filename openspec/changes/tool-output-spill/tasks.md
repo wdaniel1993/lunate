@@ -8,9 +8,9 @@
 
 ## 2. Marker and failure path
 
-- [ ] 2.1 Add red tests: the marker names the absolute path and the omitted count culture-invariantly; a failed write keeps today's marker and reports the failure; `--no-session` writes nothing and keeps today's marker; over the ceiling the marker says so.
-- [ ] 2.2 Extend `ToolOutput.Truncate` (or its caller) with the optional path; never fail the tool call on a spill failure.
-- [ ] 2.3 Commit: `feat(agent): name the spilled output in the truncation marker`.
+- [x] 2.1 Add red tests: the marker names the absolute path and the omitted count culture-invariantly; a failed write keeps today's marker and reports the failure; `--no-session` writes nothing and keeps today's marker; over the ceiling the marker says so.
+- [x] 2.2 Extend `ToolOutput.Truncate` (or its caller) with the optional path; never fail the tool call on a spill failure.
+- [x] 2.3 Commit: `feat(agent): name the spilled output in the truncation marker`.
 
 ## 3. Verification
 

@@ -87,6 +87,19 @@ Lunate.Agent.ToolProgressUpdate.Equals(Lunate.Agent.ToolProgressUpdate? other) -
 Lunate.Agent.ToolProgressUpdate.Message.get -> string!
 Lunate.Agent.ToolProgressUpdate.Message.init -> void
 Lunate.Agent.ToolProgressUpdate.ToolProgressUpdate(string! RunId, string! CallId, string! Message) -> void
+Lunate.Agent.ToolOutputSpillFailed
+Lunate.Agent.ToolOutputSpillFailed.Deconstruct(out string! RunId, out string! Message) -> void
+Lunate.Agent.ToolOutputSpillFailed.Equals(Lunate.Agent.ToolOutputSpillFailed? other) -> bool
+Lunate.Agent.ToolOutputSpillFailed.Message.get -> string!
+Lunate.Agent.ToolOutputSpillFailed.Message.init -> void
+Lunate.Agent.ToolOutputSpillFailed.ToolOutputSpillFailed(string! RunId, string! Message) -> void
+override Lunate.Agent.ToolOutputSpillFailed.<Clone>$() -> Lunate.Agent.ToolOutputSpillFailed!
+override Lunate.Agent.ToolOutputSpillFailed.Equals(object? obj) -> bool
+override Lunate.Agent.ToolOutputSpillFailed.GetHashCode() -> int
+override Lunate.Agent.ToolOutputSpillFailed.ToString() -> string!
+override sealed Lunate.Agent.ToolOutputSpillFailed.Equals(Lunate.Agent.ExtensionEvent? other) -> bool
+static Lunate.Agent.ToolOutputSpillFailed.operator !=(Lunate.Agent.ToolOutputSpillFailed? left, Lunate.Agent.ToolOutputSpillFailed? right) -> bool
+static Lunate.Agent.ToolOutputSpillFailed.operator ==(Lunate.Agent.ToolOutputSpillFailed? left, Lunate.Agent.ToolOutputSpillFailed? right) -> bool
 Lunate.Agent.StopReasons
 const Lunate.Agent.StopReasons.Cancelled = "cancelled" -> string!
 const Lunate.Agent.StopReasons.Length = "length" -> string!

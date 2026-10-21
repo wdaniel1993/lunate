@@ -111,6 +111,70 @@ public sealed class ToolOutputSpillTests
         Assert.False(Directory.Exists(Path.Combine(temp.Root, session.SessionId, "tool-output")));
     }
 
+    [Fact]
+    public async Task A_failed_spill_keeps_the_count_only_marker_and_reports_a_notice()
+    {
+        using var temp = new TempDirectory();
+        Session session = Session.Create(
+            temp.File("s.jsonl"),
+            "/work",
+            new FixedTimeProvider(Start)
+        );
+        string sessionDirectory = Path.Combine(temp.Root, session.SessionId);
+        Directory.CreateDirectory(sessionDirectory);
+        File.WriteAllText(Path.Combine(sessionDirectory, "tool-output"), "not a directory");
+        string full = FullOutput();
+
+        (List<AgentEvent> events, string output) = await RunReadAsync(session, full);
+
+        Assert.Equal(ToolOutput.Truncate(full, 100), output);
+        ToolOutputSpillFailed failed = Assert.Single(events.OfType<ToolOutputSpillFailed>());
+        Assert.Contains("could not spill", failed.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task A_no_session_run_writes_nothing_and_keeps_the_count_only_marker()
+    {
+        using var temp = new TempDirectory();
+        string full = FullOutput();
+        var client = new ScriptedChatClient()
+            .Enqueue(
+                LoopScripts.Call("call_1", "read", LoopScripts.Args(("path", "a.txt"))),
+                LoopScripts.ToolCalls()
+            )
+            .Enqueue(LoopScripts.Text("Done"), LoopScripts.Stop());
+        var harness = new AgentHarness(
+            client,
+            Registry(ReadTool(full)),
+            new AgentHarnessOptions { ToolOutputLimit = 100, WorkingDirectory = temp.Root }
+        );
+
+        List<AgentEvent> events = await Run(harness);
+
+        ToolCallResult result = Assert.Single(events.OfType<ToolCallResult>());
+        Assert.Equal(ToolOutput.Truncate(full, 100), result.Output);
+        Assert.Empty(
+            Directory.GetDirectories(temp.Root, "tool-output", SearchOption.AllDirectories)
+        );
+    }
+
+    [Fact]
+    public async Task An_output_over_the_ceiling_says_so_in_the_marker()
+    {
+        using var temp = new TempDirectory();
+        Session session = Session.Create(
+            temp.File("s.jsonl"),
+            "/work",
+            new FixedTimeProvider(Start)
+        );
+        string full = new('\u0800', (int)(ToolOutputSpill.MaxBytes / 3) + 1);
+
+        (_, string output) = await RunReadAsync(session, full);
+
+        Assert.Contains("output too large to spill", output, StringComparison.Ordinal);
+        Assert.False(Directory.Exists(Path.Combine(temp.Root, session.SessionId, "tool-output")));
+    }
+
     private static async Task<(List<AgentEvent> Events, string Output)> RunReadAsync(
         Session session,
         string full

@@ -62,7 +62,7 @@ public sealed partial class AgentHarness
         }
 
         toolActivity?.SetTag(AgentTelemetry.ToolIsErrorAttribute, result.IsError);
-        string output = TruncateToolOutput(runId, callId, result.Output ?? string.Empty);
+        string output = TruncateToolOutput(runId, callId, result.Output ?? string.Empty, channel);
         channel.Emit(
             new ToolCallResult(runId, callId, output, result.IsError, result.Details)
             {
@@ -85,7 +85,12 @@ public sealed partial class AgentHarness
     /// session, spills the full output beside that session before naming the file in the marker.
     /// The spill is best-effort: a failed write keeps the count-only marker.
     /// </summary>
-    private string TruncateToolOutput(string runId, string callId, string output)
+    private string TruncateToolOutput(
+        string runId,
+        string callId,
+        string output,
+        AgentEventChannel channel
+    )
     {
         int limit = _options.ToolOutputLimit;
         if (output.Length <= limit)
@@ -103,6 +108,11 @@ public sealed partial class AgentHarness
             _ => Interlocked.Increment(ref _spillSequence)
         );
         ToolOutputSpillResult spill = ToolOutputSpill.TryWrite(session, runId, sequence, output);
+        if (spill.Error is { } error)
+        {
+            channel.Emit(new ToolOutputSpillFailed(runId, error));
+        }
+
         return spill switch
         {
             { Path: { } path } => ToolOutput.Truncate(output, limit, path),
@@ -296,7 +306,7 @@ public sealed partial class AgentHarness
             new ToolCallResult(
                 runId,
                 nestedCallId,
-                TruncateToolOutput(runId, nestedCallId, result.Output ?? string.Empty),
+                TruncateToolOutput(runId, nestedCallId, result.Output ?? string.Empty, channel),
                 result.IsError,
                 result.Details
             )

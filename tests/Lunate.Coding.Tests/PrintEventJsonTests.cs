@@ -105,6 +105,10 @@ public sealed class PrintEventJsonTests
                 new ToolProgressUpdate("run_1", "call_1", "working"),
                 """{"type":"tool_progress_update","runId":"run_1","callId":"call_1","message":"working"}"""
             },
+            {
+                new ToolOutputSpillFailed("run_1", "could not spill"),
+                """{"type":"tool_output_spill_failed","runId":"run_1","message":"could not spill"}"""
+            },
         };
 
     [Theory]

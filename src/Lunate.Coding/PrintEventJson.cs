@@ -47,6 +47,7 @@ internal static class PrintEventJson
             typeof(StepLimitReached),
             typeof(SteeringInjected),
             typeof(ToolProgressUpdate),
+            typeof(ToolOutputSpillFailed),
         ];
 
     /// <summary>
@@ -141,6 +142,10 @@ internal static class PrintEventJson
             ToolProgressUpdate e => (
                 "tool_progress_update",
                 new JsonObject { ["callId"] = e.CallId, ["message"] = e.Message }
+            ),
+            ToolOutputSpillFailed e => (
+                "tool_output_spill_failed",
+                new JsonObject { ["message"] = e.Message }
             ),
             _ => throw new ArgumentException(
                 $"Event type '{agentEvent.GetType().Name}' has no JSON mapping.",

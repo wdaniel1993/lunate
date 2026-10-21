@@ -147,6 +147,9 @@ internal sealed partial class InteractiveSession
                     NoticeLevel.Warning
                 );
                 break;
+            case ToolOutputSpillFailed failed:
+                Notify(failed.Message, NoticeLevel.Warning);
+                break;
         }
     }
 

@@ -72,6 +72,46 @@ public sealed class ToolOutputTests
     }
 
     [Fact]
+    public void The_spill_marker_names_the_absolute_path_and_count_culture_invariantly()
+    {
+        CultureInfo original = CultureInfo.CurrentCulture;
+        try
+        {
+            CultureInfo.CurrentCulture = new CultureInfo("de-AT");
+            string output = new('x', 1_140);
+
+            string truncated = ToolOutput.Truncate(output, 100, "/tmp/spill/run_1-1.txt");
+
+            Assert.StartsWith(new string('x', 50), truncated, StringComparison.Ordinal);
+            Assert.EndsWith(new string('x', 50), truncated, StringComparison.Ordinal);
+            Assert.Contains(
+                "[1040 characters omitted; full output at /tmp/spill/run_1-1.txt]",
+                truncated,
+                StringComparison.Ordinal
+            );
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = original;
+        }
+    }
+
+    [Fact]
+    public void The_marker_says_when_the_output_was_too_large_to_spill()
+    {
+        string output = new('x', 140);
+
+        string truncated = ToolOutput.Truncate(output, 100, tooLarge: true);
+
+        Assert.Equal(
+            new string('x', 50)
+                + "\n\n... [40 characters omitted; output too large to spill] ...\n\n"
+                + new string('x', 50),
+            truncated
+        );
+    }
+
+    [Fact]
     public void Cut_points_do_not_split_surrogate_pairs()
     {
         string output = "abcd" + "😀" + new string('x', 40) + "😀" + "wxyz";
