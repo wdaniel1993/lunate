@@ -143,6 +143,47 @@ public sealed class ProviderKeyProbeTests
         );
 
     [Fact]
+    public void A_whitespace_preset_environment_key_falls_back_to_the_stored_key() =>
+        Assert.Null(
+            ProviderKeyProbe.FixFor(
+                GroqModel(),
+                StoreWith("groq"),
+                name => name == "GROQ_API_KEY" ? " " : null
+            )
+        );
+
+    [Fact]
+    public void A_whitespace_stored_preset_key_names_the_store_entry() =>
+        Assert.Equal(
+            "add the 'groq' key to ~/.lunate/auth.json",
+            ProviderKeyProbe.FixFor(GroqModel(), StoreWithValue("groq", "   "), _ => null)
+        );
+
+    [Fact]
+    public void A_whitespace_google_alias_falls_back_to_the_stored_key() =>
+        Assert.Null(
+            ProviderKeyProbe.FixFor(
+                GoogleModel(),
+                StoreWith("google"),
+                name => name == "GEMINI_API_KEY" ? " " : null
+            )
+        );
+
+    [Fact]
+    public void A_whitespace_named_reference_names_that_key() =>
+        Assert.Equal(
+            "add the 'work' key to ~/.lunate/auth.json",
+            ProviderKeyProbe.FixFor(
+                OpenAiModel with
+                {
+                    AuthRef = "work",
+                },
+                StoreWithValue("work", "   "),
+                _ => null
+            )
+        );
+
+    [Fact]
     public void The_google_alias_resolves_the_preset_key() =>
         Assert.Null(
             ProviderKeyProbe.FixFor(
@@ -183,6 +224,17 @@ public sealed class ProviderKeyProbeTests
         AuthStore store = AuthStore.Load(path, _ => null);
         store.Set(name, "sk-test");
         store.Save();
+        return AuthStore.Load(path, _ => null);
+    }
+
+    private static AuthStore StoreWithValue(string name, string value)
+    {
+        using var temp = new TempDirectory();
+        string path = temp.File("auth.json");
+        File.WriteAllText(
+            path,
+            $$"""{ "schemaVersion": 1, "keys": { "{{name}}": "{{value}}" } }"""
+        );
         return AuthStore.Load(path, _ => null);
     }
 }

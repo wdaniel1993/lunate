@@ -8,8 +8,9 @@ namespace Lunate.Coding;
 /// Reads and writes <c>~/.lunate/auth.json</c> (schema 1): named API keys for per-model
 /// credential references. <see cref="Save"/> replaces the file atomically and restricts it to
 /// owner-only permissions on POSIX. The provider preset's environment variable (and its alias)
-/// overrides the corresponding provider entry; custom named keys have no environment override.
-/// Errors name keys, never values. The path and the environment lookup are injectable.
+/// overrides the corresponding provider entry when it is non-blank; custom named keys have no
+/// environment override. Errors name keys, never values. The path and the environment lookup are
+/// injectable.
 /// </summary>
 public sealed class AuthStore
 {
@@ -63,14 +64,15 @@ public sealed class AuthStore
         return new AuthStore(path, env, keys);
     }
 
-    /// <summary>Returns the named key with provider environment overrides applied, or null when it is missing.</summary>
+    /// <summary>Returns the named key with provider environment overrides applied, or null when it is missing or blank.</summary>
     public string? TryGet(string name)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         string? fromEnvironment = EnvironmentOverride(name);
-        return string.IsNullOrEmpty(fromEnvironment)
+        string? value = string.IsNullOrWhiteSpace(fromEnvironment)
             ? _keys.GetValueOrDefault(name)
             : fromEnvironment;
+        return string.IsNullOrWhiteSpace(value) ? null : value;
     }
 
     /// <summary>Returns the named key or throws an error that names the key but never a secret value.</summary>
@@ -246,7 +248,7 @@ public sealed class AuthStore
         }
 
         string? value = _environment(preset.KeyVariable);
-        if (!string.IsNullOrEmpty(value))
+        if (!string.IsNullOrWhiteSpace(value))
         {
             return value;
         }

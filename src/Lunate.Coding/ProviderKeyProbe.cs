@@ -33,10 +33,10 @@ internal static class ProviderKeyProbe
         ArgumentNullException.ThrowIfNull(auth);
         ArgumentNullException.ThrowIfNull(environment);
 
-        if (!string.IsNullOrEmpty(model.AuthRef))
+        if (!string.IsNullOrWhiteSpace(model.AuthRef))
         {
             // The named reference's stored key is the fix; the environment cannot carry it.
-            return string.IsNullOrEmpty(auth.TryGet(model.AuthRef))
+            return string.IsNullOrWhiteSpace(auth.TryGet(model.AuthRef))
                 ? MissingKeyFix(model.AuthRef)
                 : null;
         }
@@ -54,19 +54,21 @@ internal static class ProviderKeyProbe
         }
 
         string? value = environment(preset.KeyVariable);
-        if (string.IsNullOrEmpty(value) && preset.KeyVariableAlias is { } alias)
+        string? aliasValue = preset.KeyVariableAlias is { } alias ? environment(alias) : null;
+        bool blankValueWasSet = !string.IsNullOrEmpty(value) || !string.IsNullOrEmpty(aliasValue);
+        if (!string.IsNullOrWhiteSpace(value) || !string.IsNullOrWhiteSpace(aliasValue))
         {
-            value = environment(alias);
+            return null;
         }
 
-        if (!string.IsNullOrEmpty(value))
+        if (!string.IsNullOrWhiteSpace(auth.TryGet(preset.Id)))
         {
-            return string.IsNullOrWhiteSpace(value)
-                ? FormattableString.Invariant($"set {preset.KeyVariable} to a valid key")
-                : null;
+            return null;
         }
 
-        return string.IsNullOrEmpty(auth.TryGet(preset.Id)) ? MissingKeyFix(preset.Id) : null;
+        return blankValueWasSet
+            ? FormattableString.Invariant($"set {preset.KeyVariable} to a valid key")
+            : MissingKeyFix(preset.Id);
     }
 
     private static string MissingKeyFix(string name) => $"add the '{name}' key to {AuthFileName}";

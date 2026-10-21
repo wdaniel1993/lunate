@@ -123,6 +123,54 @@ public sealed class AuthStoreTests
     }
 
     [Fact]
+    public void A_whitespace_environment_override_falls_back_to_the_stored_key()
+    {
+        using var temp = new TempDirectory();
+        File.WriteAllText(
+            temp.File("auth.json"),
+            """{ "schemaVersion": 1, "keys": { "openai": "file-key" } }"""
+        );
+
+        AuthStore store = AuthStore.Load(
+            temp.File("auth.json"),
+            name => name == OpenAiVariable ? "   " : null
+        );
+
+        Assert.Equal("file-key", store.TryGet("openai"));
+    }
+
+    [Fact]
+    public void A_whitespace_alias_override_falls_back_to_the_stored_key()
+    {
+        using var temp = new TempDirectory();
+        File.WriteAllText(
+            temp.File("auth.json"),
+            """{ "schemaVersion": 1, "keys": { "google": "file-key" } }"""
+        );
+
+        AuthStore store = AuthStore.Load(
+            temp.File("auth.json"),
+            name => name == "GEMINI_API_KEY" ? "   " : null
+        );
+
+        Assert.Equal("file-key", store.TryGet("google"));
+    }
+
+    [Fact]
+    public void A_whitespace_stored_key_reads_as_missing()
+    {
+        using var temp = new TempDirectory();
+        File.WriteAllText(
+            temp.File("auth.json"),
+            """{ "schemaVersion": 1, "keys": { "work": "   " } }"""
+        );
+
+        AuthStore store = AuthStore.Load(temp.File("auth.json"), _ => null);
+
+        Assert.Null(store.TryGet("work"));
+    }
+
+    [Fact]
     public void Custom_named_keys_have_no_environment_override()
     {
         using var temp = new TempDirectory();

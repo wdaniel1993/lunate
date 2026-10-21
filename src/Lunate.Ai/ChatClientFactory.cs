@@ -255,10 +255,10 @@ public sealed class ChatClientFactory : IChatClientFactory
     {
         ArgumentNullException.ThrowIfNull(preset);
 
-        if (!string.IsNullOrEmpty(model.AuthRef))
+        if (!string.IsNullOrWhiteSpace(model.AuthRef))
         {
             string? named = namedKeySource?.Invoke(model.AuthRef);
-            if (string.IsNullOrEmpty(named))
+            if (string.IsNullOrWhiteSpace(named))
             {
                 throw new InvalidOperationException(
                     $"The auth reference '{model.AuthRef}' for model '{model.Id}' cannot be resolved. "
@@ -275,17 +275,17 @@ public sealed class ChatClientFactory : IChatClientFactory
         }
 
         string? apiKey = Environment.GetEnvironmentVariable(preset.KeyVariable);
-        if (string.IsNullOrEmpty(apiKey) && preset.KeyVariableAlias is { } alias)
+        if (string.IsNullOrWhiteSpace(apiKey) && preset.KeyVariableAlias is { } alias)
         {
             apiKey = Environment.GetEnvironmentVariable(alias);
         }
 
-        if (string.IsNullOrEmpty(apiKey) && namedKeySource is not null)
+        if (string.IsNullOrWhiteSpace(apiKey) && namedKeySource is not null)
         {
             apiKey = namedKeySource(preset.Id);
         }
 
-        if (string.IsNullOrEmpty(apiKey))
+        if (string.IsNullOrWhiteSpace(apiKey))
         {
             string aliases = preset.KeyVariableAlias is { } aliasVariable
                 ? $" (or {aliasVariable})"
