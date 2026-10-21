@@ -94,6 +94,97 @@ public sealed class InteractiveSessionSettingsCommandTests
         await run;
     }
 
+    [Fact]
+    public async Task Login_with_an_inline_key_is_refused_without_echoing_or_recording_it()
+    {
+        const string secret = "sk-inline-secret";
+        var prompt = new ScriptedSecretPrompt("never-read");
+        using var host = new InteractiveSessionHost(
+            launch: new LaunchOptions { Model = "gpt-4o-mini" },
+            chat: new ScriptedChatClient(),
+            secretPrompt: prompt
+        );
+        string authPath = host.Temp.File("auth.json");
+        string historyPath = host.Temp.File("history");
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+
+        host.Console.SendText("/login groq " + secret);
+        host.Console.SendEnter();
+        await WaitForFrameAsync(host, "takes no key argument");
+
+        Assert.Contains("masked prompt", host.LastFrame, StringComparison.Ordinal);
+        Assert.DoesNotContain(secret, host.Frames, StringComparison.Ordinal);
+        Assert.DoesNotContain(secret, host.ScrollbackText, StringComparison.Ordinal);
+        Assert.Empty(prompt.Prompts);
+        Assert.False(File.Exists(authPath));
+        Assert.False(File.Exists(historyPath));
+        AssertNoFileContains(host, secret);
+
+        host.Console.SendText("/quit");
+        host.Console.SendEnter();
+        await run;
+    }
+
+    [Fact]
+    public async Task Login_with_an_unknown_provider_and_an_inline_key_echoes_only_the_provider()
+    {
+        const string secret = "sk-inline-secret";
+        var prompt = new ScriptedSecretPrompt("never-read");
+        using var host = new InteractiveSessionHost(
+            launch: new LaunchOptions { Model = "gpt-4o-mini" },
+            chat: new ScriptedChatClient(),
+            secretPrompt: prompt
+        );
+        string historyPath = host.Temp.File("history");
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+
+        host.Console.SendText("/login not-a-provider " + secret);
+        host.Console.SendEnter();
+        await WaitForFrameAsync(host, "unknown provider 'not-a-provider'");
+
+        Assert.DoesNotContain(secret, host.Frames, StringComparison.Ordinal);
+        Assert.DoesNotContain(secret, host.ScrollbackText, StringComparison.Ordinal);
+        Assert.Empty(prompt.Prompts);
+        Assert.False(File.Exists(host.Temp.File("auth.json")));
+        Assert.False(File.Exists(historyPath));
+        AssertNoFileContains(host, secret);
+
+        host.Console.SendText("/quit");
+        host.Console.SendEnter();
+        await run;
+    }
+
+    [Fact]
+    public async Task Login_lines_stay_out_of_history_while_other_commands_are_still_recorded()
+    {
+        var prompt = new ScriptedSecretPrompt("groq-secret-value");
+        using var host = new InteractiveSessionHost(
+            launch: new LaunchOptions { Model = "gpt-4o-mini" },
+            chat: new ScriptedChatClient(),
+            secretPrompt: prompt
+        );
+        string historyPath = host.Temp.File("history");
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+
+        host.Console.SendText("/help");
+        host.Console.SendEnter();
+        await host.WaitUntilAsync(() => File.Exists(historyPath));
+
+        host.Console.SendText("/login groq");
+        host.Console.SendEnter();
+        await WaitForFrameAsync(host, "logged in: groq");
+
+        Assert.Equal(["/help"], new InputHistory(historyPath).Entries);
+        Assert.DoesNotContain("/login", File.ReadAllText(historyPath), StringComparison.Ordinal);
+
+        host.Console.SendText("/quit");
+        host.Console.SendEnter();
+        await run;
+    }
+
     [Theory]
     [InlineData("/login")]
     [InlineData("/logout")]
@@ -421,6 +512,20 @@ public sealed class InteractiveSessionSettingsCommandTests
         host.Console.SendText("/quit");
         host.Console.SendEnter();
         await run;
+    }
+
+    private static void AssertNoFileContains(InteractiveSessionHost host, string secret)
+    {
+        foreach (
+            string file in Directory.EnumerateFiles(
+                host.Temp.Root,
+                "*",
+                SearchOption.AllDirectories
+            )
+        )
+        {
+            Assert.DoesNotContain(secret, File.ReadAllText(file), StringComparison.Ordinal);
+        }
     }
 
     private static Task WaitForFavoritesAsync(

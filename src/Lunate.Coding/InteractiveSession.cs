@@ -1011,7 +1011,13 @@ internal sealed partial class InteractiveSession : IDisposable
         SetInput(string.Empty);
         if (Commands.IsCommand(submitted))
         {
-            _history.Add(submitted);
+            // A login line may carry a typed key; it never reaches the history file. Every other
+            // command keeps its current history behaviour.
+            if (Commands.Parse(submitted).Name != "/login")
+            {
+                _history.Add(submitted);
+            }
+
             await DispatchCommandAsync(submitted, ct);
             return;
         }

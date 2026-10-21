@@ -16,8 +16,21 @@ internal sealed partial class InteractiveSession
             return;
         }
 
-        if (ResolvePreset("/login", argument) is not { } preset)
+        // Only the provider token is ever interpreted, reported or resolved: a typed key after it
+        // must never reach a notice, the history file or an error message.
+        int separator = argument.IndexOfAny([' ', '\t', '\r', '\n']);
+        string provider = separator < 0 ? argument : argument[..separator];
+        if (ResolvePreset("/login", provider) is not { } preset)
         {
+            return;
+        }
+
+        if (separator >= 0)
+        {
+            Notify(
+                "/login takes no key argument; the key is read from the masked prompt",
+                NoticeLevel.Warning
+            );
             return;
         }
 

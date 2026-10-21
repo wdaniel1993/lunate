@@ -43,11 +43,7 @@ public sealed class InteractiveSessionSecretPromptTests
         Assert.Equal(Secret, store.TryGet("groq"));
         Assert.DoesNotContain(Secret, host.Frames, StringComparison.Ordinal);
         Assert.DoesNotContain(Secret, host.ScrollbackText, StringComparison.Ordinal);
-        Assert.DoesNotContain(
-            Secret,
-            File.ReadAllText(host.Temp.File("history")),
-            StringComparison.Ordinal
-        );
+        Assert.DoesNotContain(Secret, HistoryText(host), StringComparison.Ordinal);
         string[] sessionFiles = SessionFiles(host);
         Assert.NotEmpty(sessionFiles);
         foreach (string file in sessionFiles)
@@ -107,11 +103,7 @@ public sealed class InteractiveSessionSecretPromptTests
         Assert.Equal("not a command", store.TryGet("groq"));
         Assert.DoesNotContain("not a command", host.Frames, StringComparison.Ordinal);
         Assert.DoesNotContain("not a command", host.ScrollbackText, StringComparison.Ordinal);
-        Assert.DoesNotContain(
-            "not a command",
-            File.ReadAllText(host.Temp.File("history")),
-            StringComparison.Ordinal
-        );
+        Assert.DoesNotContain("not a command", HistoryText(host), StringComparison.Ordinal);
         string[] sessionFiles = SessionFiles(host);
         Assert.NotEmpty(sessionFiles);
         foreach (string file in sessionFiles)
@@ -172,6 +164,12 @@ public sealed class InteractiveSessionSecretPromptTests
         host.Console.SendText("/quit");
         host.Console.SendEnter();
         await run;
+    }
+
+    private static string HistoryText(InteractiveSessionHost host)
+    {
+        string path = host.Temp.File("history");
+        return File.Exists(path) ? File.ReadAllText(path) : string.Empty;
     }
 
     private static string[] SessionFiles(InteractiveSessionHost host)
