@@ -2,10 +2,10 @@
 
 ## 1. Lower rule at every width
 
-- [ ] 1.1 Add red tests: at 40, 59, 60 and 80 columns the rendered frame has a full-width lower rule directly below the input when the input is one line, and below the last input line when it wraps.
-- [ ] 1.2 Make `LiveAreaRenderer.HasLowerRule` always true; keep the budget arithmetic exact so the input still gets its eight lines and the tail loses only what the rule needs.
-- [ ] 1.3 Regenerate only the narrow fixtures (40 columns and any compact-band golden); prove every wider golden is byte-identical.
-- [ ] 1.4 Commit: `fix(tui): draw the input box's lower rule at every width`.
+- [x] 1.1 Add red tests: at 40, 59, 60 and 80 columns the rendered frame has a full-width lower rule directly below the input when the input is one line, and below the last input line when it wraps.
+- [x] 1.2 Make `LiveAreaRenderer.HasLowerRule` always true; keep the budget arithmetic exact so the input still gets its eight lines and the tail loses only what the rule needs.
+- [x] 1.3 Regenerate only the narrow fixtures (40 columns and any compact-band golden); prove every wider golden is byte-identical.
+- [x] 1.4 Commit: `fix(tui): draw the input box's lower rule at every width`.
 
 ## 2. Case-insensitive file completion
 

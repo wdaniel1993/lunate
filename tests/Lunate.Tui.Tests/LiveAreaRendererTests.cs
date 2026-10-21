@@ -67,10 +67,12 @@ public sealed class LiveAreaRendererTests
         var frame = LiveAreaRenderer.Render(state);
 
         Assert.Equal(8, frame.Lines.Count);
-        Assert.Equal("line 15", frame.Lines[0]);
-        Assert.Equal(new string('─', 20), frame.Lines[^2]);
-        Assert.Equal("> Ask anything, / fo", frame.Lines[^1]);
-        Assert.Equal(7, frame.CursorRow);
+        Assert.Equal("line 16", frame.Lines[0]);
+        Assert.Equal("line 20", frame.Lines[4]);
+        Assert.Equal(new string('─', 20), frame.Lines[5]);
+        Assert.Equal("> Ask anything, / fo", frame.Lines[6]);
+        Assert.Equal(new string('─', 20), frame.Lines[7]);
+        Assert.Equal(6, frame.CursorRow);
     }
 
     [Fact]
@@ -78,7 +80,10 @@ public sealed class LiveAreaRendererTests
     {
         var frame = LiveAreaRenderer.Render(new LiveAreaState { Size = new ConsoleSize(20, 8) });
 
-        Assert.Equal([new string('─', 20), "> Ask anything, / fo"], frame.Lines);
+        Assert.Equal(
+            [new string('─', 20), "> Ask anything, / fo", new string('─', 20)],
+            frame.Lines
+        );
         Assert.Equal(1, frame.CursorRow);
         Assert.Equal(2, frame.CursorColumn);
     }
@@ -245,7 +250,14 @@ public sealed class LiveAreaRendererTests
         var frame = LiveAreaRenderer.Render(state);
 
         Assert.Equal(
-            ["\u26a0 bash  ls", "Allow bash?", choices, new string('─', 40), "> go"],
+            [
+                "\u26a0 bash  ls",
+                "Allow bash?",
+                choices,
+                new string('─', 40),
+                "> go",
+                new string('─', 40),
+            ],
             frame.Lines
         );
         Assert.Equal(34, CellText.Width(frame.Lines[2]));
@@ -391,7 +403,7 @@ public sealed class LiveAreaRendererTests
 
         var frame = LiveAreaRenderer.Render(state);
 
-        Assert.Equal(["abcd", "────", "> As"], frame.Lines);
+        Assert.Equal(["abcd", "────", "> As", "────"], frame.Lines);
     }
 
     [Fact]

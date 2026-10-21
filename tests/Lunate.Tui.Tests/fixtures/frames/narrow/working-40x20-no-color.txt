@@ -1,4 +1,5 @@
 / bash dotnet test --project tests/Lunat
 ────────────────────────────────────────
 > Ask anything, / for commands
+────────────────────────────────────────
 deepseek-v4.1-flash · 0%

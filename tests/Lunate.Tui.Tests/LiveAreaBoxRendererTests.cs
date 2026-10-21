@@ -3,30 +3,72 @@ using Spectre.Console;
 namespace Lunate.Tui.Tests;
 
 /// <summary>
-/// The input box's chrome: the upper rule at every width, the lower rule outside the compact
-/// band, the empty-input placeholder in the prompt tone, the footer below the box and the cursor
-/// math that follows.
+/// The input box's chrome: both rules at every width, the empty-input placeholder in the prompt
+/// tone, the footer below the box and the cursor math that follows.
 /// </summary>
 public sealed class LiveAreaBoxRendererTests
 {
     private const string Placeholder = "Ask anything, / for commands";
 
     [Theory]
-    [InlineData(40, 1)]
-    [InlineData(50, 1)]
-    [InlineData(60, 2)]
-    [InlineData(80, 2)]
-    [InlineData(120, 2)]
-    public void Every_width_band_shows_the_rule_above_the_input(int width, int ruleCount)
+    [InlineData(40)]
+    [InlineData(50)]
+    [InlineData(60)]
+    [InlineData(80)]
+    [InlineData(120)]
+    public void Every_width_band_shows_both_rules_around_the_input(int width)
     {
         var frame = LiveAreaRenderer.Render(
             new LiveAreaState { Size = new ConsoleSize(width, 24) }
         );
 
         string rule = new('─', width);
+        Assert.Equal([rule, "> " + Placeholder, rule], frame.Lines);
+        Assert.Equal(1, frame.CursorRow);
+    }
+
+    [Theory]
+    [InlineData(40)]
+    [InlineData(59)]
+    [InlineData(60)]
+    [InlineData(80)]
+    public void The_lower_rule_sits_directly_below_a_one_line_input(int width)
+    {
+        var state = new LiveAreaState
+        {
+            Input = new InputLineState("go", 2),
+            Size = new ConsoleSize(width, 12),
+        };
+
+        var frame = LiveAreaRenderer.Render(state);
+
+        string rule = new('─', width);
+        Assert.Equal([rule, "> go", rule], frame.Lines);
+        Assert.Equal(1, frame.CursorRow);
+    }
+
+    [Theory]
+    [InlineData(40)]
+    [InlineData(59)]
+    [InlineData(60)]
+    [InlineData(80)]
+    public void The_lower_rule_sits_directly_below_the_last_wrapped_input_line(int width)
+    {
+        string text = new('x', width);
+        var state = new LiveAreaState
+        {
+            Input = new InputLineState(text, text.Length),
+            Size = new ConsoleSize(width, 12),
+        };
+
+        var frame = LiveAreaRenderer.Render(state);
+
+        string rule = new('─', width);
         Assert.Equal(rule, frame.Lines[0]);
-        Assert.Equal(ruleCount, frame.Lines.Count(line => line == rule));
-        Assert.StartsWith("> ", frame.Lines[1], StringComparison.Ordinal);
+        Assert.Equal("> " + new string('x', width - 2), frame.Lines[1]);
+        Assert.Equal("  xx", frame.Lines[2]);
+        Assert.Equal(rule, frame.Lines[3]);
+        Assert.Equal(2, frame.CursorRow);
     }
 
     [Fact]
@@ -35,7 +77,7 @@ public sealed class LiveAreaBoxRendererTests
         var frame = LiveAreaRenderer.Render(new LiveAreaState { Size = new ConsoleSize(50, 24) });
 
         string rule = new('─', 50);
-        Assert.Equal([rule, "> " + Placeholder], frame.Lines);
+        Assert.Equal([rule, "> " + Placeholder, rule], frame.Lines);
         Assert.Equal(1, frame.CursorRow);
         Assert.Equal(2, frame.CursorColumn);
     }
@@ -57,7 +99,7 @@ public sealed class LiveAreaBoxRendererTests
         string line = "> " + Placeholder;
         string styled = sgr.Length == 0 ? line : sgr + line + "\u001b[0m";
         string rule = new('─', 50);
-        Assert.Equal([rule, styled], frame.Lines);
+        Assert.Equal([rule, styled, rule], frame.Lines);
     }
 
     [Fact]
@@ -73,7 +115,7 @@ public sealed class LiveAreaBoxRendererTests
         var frame = LiveAreaRenderer.Render(state);
 
         string rule = new('─', 50);
-        Assert.Equal([rule, "\u001b[38;2;135;175;215m>\u001b[0m go"], frame.Lines);
+        Assert.Equal([rule, "\u001b[38;2;135;175;215m>\u001b[0m go", rule], frame.Lines);
     }
 
     [Fact]
@@ -89,7 +131,7 @@ public sealed class LiveAreaBoxRendererTests
         var frame = LiveAreaRenderer.Render(state);
 
         string rule = new('─', 50);
-        Assert.Equal([rule, "> go", "m"], frame.Lines);
+        Assert.Equal([rule, "> go", rule, "m"], frame.Lines);
         Assert.Equal(1, frame.CursorRow);
     }
 
@@ -152,7 +194,7 @@ public sealed class LiveAreaBoxRendererTests
     }
 
     [Fact]
-    public void Only_the_upper_rule_renders_below_sixty_columns()
+    public void The_lower_rule_renders_below_sixty_columns()
     {
         var state = new LiveAreaState
         {
@@ -164,7 +206,7 @@ public sealed class LiveAreaBoxRendererTests
         var frame = LiveAreaRenderer.Render(state);
 
         string rule = new('─', 50);
-        Assert.Equal([rule, "> go", "m"], frame.Lines);
+        Assert.Equal([rule, "> go", rule, "m"], frame.Lines);
     }
 
     [Fact]

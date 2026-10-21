@@ -18,12 +18,6 @@ internal static class LiveAreaRenderer
 
     internal const string Placeholder = "Ask anything, / for commands";
 
-    /// <summary>
-    /// The narrowest terminal that keeps the rule below the input: the upper rule is always
-    /// drawn, so the input never loses its box; only the compact band drops the lower rule.
-    /// </summary>
-    internal const int LowerRuleMinWidth = WidthBands.NarrowWidth;
-
     private const char UnicodeRule = '─';
     private const char AsciiRule = '-';
 
@@ -59,7 +53,8 @@ internal static class LiveAreaRenderer
             state.Loading is { Length: > 0 } loading ? loading
             : state.Footer is null ? null
             : StatusFooterRenderer.PlainText(state.Footer, width, state.FooterWidgets);
-        int lowerRuleLines = HasLowerRule(width) ? 1 : 0;
+        // The box always closes: the lower rule is part of the fixed chrome at every width.
+        const int lowerRuleLines = 1;
         int preInputLines =
             thinkingLines.Count
             + (activityLine is null ? 0 : 1)
@@ -162,8 +157,6 @@ internal static class LiveAreaRenderer
 
         return new RenderedFrame(lines, cursorRow, input.CursorColumn);
     }
-
-    private static bool HasLowerRule(int width) => width >= LowerRuleMinWidth;
 
     private static string RuleLine(int width, bool unicode) =>
         new(unicode ? UnicodeRule : AsciiRule, width);

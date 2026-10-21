@@ -1,4 +1,5 @@
 - read src/Foo.cs · 4s
 ────────────────────────────────────────
 > Ask anything, / for commands
+────────────────────────────────────────
 deepseek-v4.1-flash · 0%
