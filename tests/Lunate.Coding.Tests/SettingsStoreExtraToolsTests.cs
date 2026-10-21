@@ -141,9 +141,7 @@ public sealed class SettingsStoreExtraToolsTests
     [Fact]
     public void The_tools_filter_refuses_an_optional_name()
     {
-        Assert.False(
-            LaunchOptions.TryParse(["--tools", "read,grep"], out _, out string? error)
-        );
+        Assert.False(LaunchOptions.TryParse(["--tools", "read,grep"], out _, out string? error));
 
         Assert.Contains("--extra-tools", error, StringComparison.Ordinal);
     }

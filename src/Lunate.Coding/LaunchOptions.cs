@@ -372,11 +372,7 @@ internal sealed record LaunchOptions
     /// Parses <c>--tools</c> into the registry filter. An optional search tool name is refused
     /// here — it belongs to <c>--extra-tools</c> — so the flag keeps exactly one meaning.
     /// </summary>
-    private static bool TryTools(
-        string? value,
-        out IReadOnlyList<string>? tools,
-        out string? error
-    )
+    private static bool TryTools(string? value, out IReadOnlyList<string>? tools, out string? error)
     {
         error = null;
         tools = null;
@@ -434,7 +430,8 @@ internal sealed record LaunchOptions
 
             if (!OptionalTools.IsName(name))
             {
-                error = $"'{name}' is not an optional search tool; --extra-tools accepts {OptionalTools.Accepted}";
+                error =
+                    $"'{name}' is not an optional search tool; --extra-tools accepts {OptionalTools.Accepted}";
                 return false;
             }
 
