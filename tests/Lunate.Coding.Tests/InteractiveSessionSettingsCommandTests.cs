@@ -127,7 +127,7 @@ public sealed class InteractiveSessionSettingsCommandTests
     }
 
     [Fact]
-    public async Task Login_with_an_unknown_provider_and_an_inline_key_echoes_only_the_provider()
+    public async Task Login_with_an_unknown_provider_and_an_inline_key_echoes_nothing()
     {
         const string secret = "sk-inline-secret";
         var prompt = new ScriptedSecretPrompt("never-read");
@@ -142,8 +142,9 @@ public sealed class InteractiveSessionSettingsCommandTests
 
         host.Console.SendText("/login not-a-provider " + secret);
         host.Console.SendEnter();
-        await WaitForFrameAsync(host, "unknown provider 'not-a-provider'");
+        await WaitForFrameAsync(host, "unknown provider for /login");
 
+        Assert.DoesNotContain("not-a-provider", host.Frames, StringComparison.Ordinal);
         Assert.DoesNotContain(secret, host.Frames, StringComparison.Ordinal);
         Assert.DoesNotContain(secret, host.ScrollbackText, StringComparison.Ordinal);
         Assert.Empty(prompt.Prompts);
@@ -332,7 +333,12 @@ public sealed class InteractiveSessionSettingsCommandTests
 
         host.Console.SendText(command + " not-a-provider");
         host.Console.SendEnter();
-        await WaitForFrameAsync(host, "unknown provider 'not-a-provider'");
+        await WaitForFrameAsync(
+            host,
+            command == "/login"
+                ? "unknown provider for /login"
+                : "unknown provider 'not-a-provider'"
+        );
 
         Assert.Contains("providers:", host.LastFrame, StringComparison.Ordinal);
         Assert.Contains("openrouter", host.LastFrame, StringComparison.Ordinal);

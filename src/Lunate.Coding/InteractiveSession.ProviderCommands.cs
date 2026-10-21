@@ -23,7 +23,9 @@ internal sealed partial class InteractiveSession
         // must never reach a notice, the history file or an error message.
         int separator = argument.IndexOfAny([' ', '\t', '\r', '\n']);
         string provider = separator < 0 ? argument : argument[..separator];
-        if (ResolvePreset("/login", provider) is not { } preset)
+        // A single token that is not a preset may itself be a pasted key, so the login error
+        // never echoes it; /logout keeps naming the provider it could not find.
+        if (ResolvePreset("/login", provider, echoArgument: false) is not { } preset)
         {
             return;
         }
@@ -152,7 +154,7 @@ internal sealed partial class InteractiveSession
         Notify($"removed the stored key for '{preset.Id}'{EnvironmentSuffix(preset)}");
     }
 
-    private ProviderPreset? ResolvePreset(string command, string argument)
+    private ProviderPreset? ResolvePreset(string command, string argument, bool echoArgument = true)
     {
         if (ProviderPresets.Find(argument) is { } preset)
         {
@@ -162,9 +164,9 @@ internal sealed partial class InteractiveSession
         string supported = string.Join(", ", ProviderPresets.All.Select(preset => preset.Id));
         string usage = FormattableString.Invariant($"{command} <provider>; providers: {supported}");
         Notify(
-            argument.Length == 0
-                ? "usage: " + usage
-                : $"unknown provider '{argument}'; usage: {usage}",
+            argument.Length == 0 ? "usage: " + usage
+                : echoArgument ? $"unknown provider '{argument}'; usage: {usage}"
+                : $"unknown provider for {command}; usage: {usage}",
             NoticeLevel.Warning
         );
         return null;
