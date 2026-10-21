@@ -609,6 +609,7 @@ internal static class PrintMode
             Hooks = extensions?.Hooks,
             Session = session,
             FileChanges = (IFileChangeSink?)extensions?.FileChanges ?? NullFileChangeSink.Instance,
+            Model = model,
             ModelCatalog = catalog,
             ModelId = model.Id,
             ModelRegistry = extensions?.ModelRegistry,

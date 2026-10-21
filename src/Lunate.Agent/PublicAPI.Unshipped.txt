@@ -1432,3 +1432,7 @@ static Lunate.Agent.SessionTitle.PathFor(string! sessionPath) -> string!
 static Lunate.Agent.SessionTitle.Read(string! sessionPath) -> string?
 static Lunate.Agent.SessionTitle.Write(string! sessionPath, string! title) -> void
 Lunate.Agent.Session.Schema.get -> int
+Lunate.Agent.AgentHarnessOptions.Model.get -> Lunate.Ai.ModelInfo?
+Lunate.Agent.AgentHarnessOptions.Model.init -> void
+Lunate.Agent.ToolContext.Model.get -> Lunate.Ai.ModelInfo?
+Lunate.Agent.ToolContext.Model.init -> void
