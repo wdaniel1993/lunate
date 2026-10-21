@@ -443,7 +443,7 @@ internal sealed class InteractiveSessionHost : IDisposable
     public TestConsole Scrollback { get; }
 
     /// <summary>The plain scrollback text as the goldens pin it (TestConsole renders without ANSI).</summary>
-    public string ScrollbackText => Scrollback.Output;
+    public string ScrollbackText => Session.ReadCommittedScrollback(() => Scrollback.Output);
 
     public InteractiveSession Session { get; }
 
