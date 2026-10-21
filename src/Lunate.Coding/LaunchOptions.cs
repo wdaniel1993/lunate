@@ -30,6 +30,12 @@ internal sealed record LaunchOptions
     /// <summary>The exact model-facing tool names to expose; null keeps the composed registry.</summary>
     public IReadOnlyList<string>? Tools { get; init; }
 
+    /// <summary>
+    /// The optional search tools to enable for this run. Null means the flag was absent (keep the
+    /// file/environment list); an empty list means <c>--tools</c> named none.
+    /// </summary>
+    public IReadOnlyList<string>? ExtraTools { get; init; }
+
     /// <summary>Expose no tools; conflicts with <see cref="Tools"/>.</summary>
     public bool NoTools { get; init; }
 
@@ -70,6 +76,7 @@ internal sealed record LaunchOptions
         var resume = false;
         var noSession = false;
         var noTools = false;
+        var toolsGiven = false;
         string? session = null;
         string? model = null;
         string? tools = null;
@@ -151,6 +158,7 @@ internal sealed record LaunchOptions
                     {
                         return false;
                     }
+                    toolsGiven = true;
                     break;
                 case "--system-prompt":
                     if (
@@ -198,7 +206,14 @@ internal sealed record LaunchOptions
             }
         }
 
-        if (!TryTools(tools, out IReadOnlyList<string>? toolNames, out error))
+        if (
+            !TryTools(
+                tools,
+                out IReadOnlyList<string>? toolNames,
+                out IReadOnlyList<string>? extraTools,
+                out error
+            )
+        )
         {
             return false;
         }
@@ -227,7 +242,7 @@ internal sealed record LaunchOptions
             return false;
         }
 
-        if (toolNames is not null && noTools)
+        if (toolsGiven && noTools)
         {
             error = "--tools and --no-tools are mutually exclusive; use only one of them";
             return false;
@@ -259,6 +274,7 @@ internal sealed record LaunchOptions
             Model = model,
             Thinking = thinking,
             Tools = toolNames,
+            ExtraTools = extraTools,
             NoTools = noTools,
             SystemPrompt = systemPrompt,
             AppendSystemPrompt = appendSystemPrompt,
@@ -340,16 +356,30 @@ internal sealed record LaunchOptions
         return true;
     }
 
-    private static bool TryTools(string? value, out IReadOnlyList<string>? tools, out string? error)
+    /// <summary>
+    /// Splits <c>--tools</c> into the registry filter and the optional tools to enable. Optional
+    /// tool names never filter the registry: naming only those (the documented
+    /// <c>--tools grep,find,ls</c>) enables them beside the whole core set. A present flag always
+    /// sets <paramref name="extraTools"/> (empty when it named none), which is how the CLI
+    /// overrides the file/environment list.
+    /// </summary>
+    private static bool TryTools(
+        string? value,
+        out IReadOnlyList<string>? tools,
+        out IReadOnlyList<string>? extraTools,
+        out string? error
+    )
     {
         error = null;
         tools = null;
+        extraTools = null;
         if (value is null)
         {
             return true;
         }
 
         List<string> names = [];
+        List<string> extra = [];
         foreach (string part in value.Split(','))
         {
             string name = part.Trim();
@@ -359,10 +389,18 @@ internal sealed record LaunchOptions
                 return false;
             }
 
-            names.Add(name);
+            if (OptionalTools.IsName(name))
+            {
+                extra.Add(name);
+            }
+            else
+            {
+                names.Add(name);
+            }
         }
 
-        tools = names;
+        tools = names.Count == 0 ? null : names;
+        extraTools = extra;
         return true;
     }
 }

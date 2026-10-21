@@ -2,8 +2,8 @@
 
 ## 1. Settings and resolution
 
-- [ ] 1.1 Add red tests: `tools.extra` defaults to empty; a valid list resolves; an unknown name errors naming the accepted values; a core-tool name is rejected; `LUNATE_EXTRA_TOOLS` overrides the file; `--tools` overrides the env.
-- [ ] 1.2 Add the `tools.extra` setting (schema 2, additive, default empty), the env var and the `--tools` flag through the existing precedence chain.
+- [x] 1.1 Add red tests: `tools.extra` defaults to empty; a valid list resolves; an unknown name errors naming the accepted values; a core-tool name is rejected; `LUNATE_EXTRA_TOOLS` overrides the file; `--tools` overrides the env.
+- [x] 1.2 Add the `tools.extra` setting (schema 2, additive, default empty), the env var and the `--tools` flag through the existing precedence chain.
 - [ ] 1.3 Commit: `feat(coding): resolve the optional search tools from settings, environment and flags`.
 
 ## 2. The tools

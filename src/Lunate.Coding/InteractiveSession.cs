@@ -389,11 +389,7 @@ internal sealed partial class InteractiveSession : IDisposable
     private async Task ComposeAsync(CancellationToken ct)
     {
         _settings = SettingsStore.Resolve(_options.SettingsPath, _options.Environment);
-        _settings = _settings with
-        {
-            Model = _options.Launch.Model ?? _settings.Model,
-            Thinking = _options.Launch.Thinking ?? _settings.Thinking,
-        };
+        _settings = SettingsStore.ApplyLaunch(_settings, _options.Launch);
         _thinkingLevel = _settings.Thinking;
         _catalog = ModelCatalog.Load(_options.ModelsPath);
         _environment = _options.Environment ?? Environment.GetEnvironmentVariable;
