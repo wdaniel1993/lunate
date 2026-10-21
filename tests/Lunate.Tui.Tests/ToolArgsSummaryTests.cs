@@ -172,6 +172,17 @@ public sealed class ToolArgsSummaryTests
     }
 
     [Fact]
+    public void An_image_placeholder_is_not_a_line_count() =>
+        Assert.Equal(
+            "screens/diagram.png",
+            ToolArgsSummary.Summarize(
+                "read",
+                """{"path":"screens/diagram.png"}""",
+                "[image 1024x768]"
+            )
+        );
+
+    [Fact]
     public void Read_single_line_result_counts_as_one_line()
     {
         Assert.Equal(

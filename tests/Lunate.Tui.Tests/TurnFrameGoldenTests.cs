@@ -15,6 +15,8 @@ public sealed class TurnFrameGoldenTests
 {
     private const string ShortMessage = "Add validation to TodoList.Add.";
 
+    private const string ImageMessage = "explain [image 1024x768]";
+
     private const string WrappedMessage =
         "Add validation to TodoList.Add: reject null, empty and whitespace-only titles with "
         + "ArgumentException, and keep the guard at the top so the list never mutates on bad input.";
@@ -42,6 +44,7 @@ public sealed class TurnFrameGoldenTests
     private static readonly string[] States =
     [
         "echo-short",
+        "echo-image",
         "echo-wrapped",
         "activity-thinking",
         "activity-tool",
@@ -93,6 +96,7 @@ public sealed class TurnFrameGoldenTests
         state switch
         {
             "echo-short" => Echo(ShortMessage, width, mode),
+            "echo-image" => Echo(ImageMessage, width, mode),
             "echo-wrapped" => Echo(WrappedMessage, width, mode),
             "activity-thinking" => Activity(
                 new LiveAreaState

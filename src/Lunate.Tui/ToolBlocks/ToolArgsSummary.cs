@@ -177,7 +177,7 @@ internal static class ToolArgsSummary
         }
 
         string text = TrimSingleTrailingNewline(output);
-        if (text.Length == 0 || text == EmptyFileText)
+        if (text.Length == 0 || text == EmptyFileText || ImagePlaceholder.IsOnly(text))
         {
             return 0;
         }

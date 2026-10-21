@@ -140,9 +140,14 @@ public sealed class ToolBlockRenderer
         return line.Clip(width);
     }
 
-    /// <summary>A read block identifies what was read; a failed call keeps its message visible.</summary>
+    /// <summary>
+    /// A read block identifies what was read; a failed call keeps its message visible, and a
+    /// successful image read shows its placeholder instead of hiding it with the text output.
+    /// </summary>
     private static bool ShowsOutput(ToolBlockModel block) =>
-        block.ToolName != "read" || block.Status == ToolBlockStatus.Error;
+        block.ToolName != "read"
+        || block.Status == ToolBlockStatus.Error
+        || ImagePlaceholder.IsOnly(block.Output);
 
     private static ExcerptMode ExcerptModeFor(ToolBlockModel block) =>
         block.ToolName == "bash" ? ExcerptMode.TailOnly : ExcerptMode.HeadAndTail;
@@ -161,7 +166,9 @@ public sealed class ToolBlockRenderer
             var line = new StyledLine();
             line.Add(
                 indent ? "  " + excerpt.Text : excerpt.Text,
-                excerpt.IsMarker ? Warning : SpanStyle.Plain
+                excerpt.IsMarker ? Warning
+                    : ImagePlaceholder.IsOnly(excerpt.Text) ? Muted
+                    : SpanStyle.Plain
             );
             lines.Add(line);
         }
