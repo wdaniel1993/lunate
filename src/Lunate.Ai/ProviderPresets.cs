@@ -24,7 +24,19 @@ public static class ProviderPresets
 
     internal static IReadOnlyList<ProviderPreset> Parse(string json, string source)
     {
-        ProvidersFile? file = JsonSerializer.Deserialize<ProvidersFile>(json, JsonOptions);
+        ProvidersFile? file;
+        try
+        {
+            file = JsonSerializer.Deserialize<ProvidersFile>(json, JsonOptions);
+        }
+        catch (JsonException exception)
+        {
+            throw new InvalidDataException(
+                $"The provider presets in {source} are malformed: {exception.Message}",
+                exception
+            );
+        }
+
         if (file?.SchemaVersion != SupportedSchemaVersion)
         {
             string version = file?.SchemaVersion is int value

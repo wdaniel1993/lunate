@@ -122,6 +122,23 @@ public sealed class ProviderPresetsTests
     }
 
     [Fact]
+    public void Parse_with_malformed_json_throws_naming_the_source()
+    {
+        InvalidDataException exception = AssertParseFails("{ not json");
+
+        Assert.Contains("malformed", exception.Message, StringComparison.Ordinal);
+        Assert.Contains(Source, exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Parse_with_a_non_object_root_throws_naming_the_source()
+    {
+        InvalidDataException exception = AssertParseFails("[]");
+
+        Assert.Contains(Source, exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Parse_with_duplicate_id_throws_naming_the_id()
     {
         string json = JsonWithProviders(
