@@ -49,6 +49,24 @@ public sealed class AgentImageCompactionTests
     }
 
     [Fact]
+    public void The_pixel_term_dominates_the_estimate_above_the_256_token_floor()
+    {
+        ImageContentReference reference = new(
+            SessionImageTestData.PngDigest,
+            "image/png",
+            4000,
+            4000
+        );
+        ChatMessage without = new(ChatRole.User, [new TextContent("see")]);
+        ChatMessage with = new(ChatRole.User, [new TextContent("see"), reference]);
+
+        long difference =
+            CompactionReducer.Utf8Length(with) - CompactionReducer.Utf8Length(without);
+
+        Assert.Equal(4 * (4000L * 4000 / 750) + "[image 4000x4000]".Length, difference);
+    }
+
+    [Fact]
     public async Task Compaction_sends_the_placeholder_and_keeps_the_session_blob()
     {
         using var temp = new TempDirectory();
