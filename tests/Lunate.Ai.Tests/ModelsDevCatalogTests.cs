@@ -205,6 +205,27 @@ public sealed class ModelsDevCatalogTests
     }
 
     [Fact]
+    public void Generate_treats_a_negative_cost_rate_as_absent()
+    {
+        string json = """
+            {
+              "openai": {
+                "models": {
+                  "negative-rate": { "cost": { "input": -1, "output": 2, "cache_read": -0.5 } }
+                }
+              }
+            }
+            """;
+
+        CatalogSnapshot snapshot = ModelsDevCatalog.Generate(
+            json,
+            [ProviderPresets.Find("openai")!]
+        );
+
+        Assert.Equal(new ModelPricing(null, 2m, null), snapshot.Models.Single().Pricing);
+    }
+
+    [Fact]
     public void Generate_with_missing_preset_provider_skips_it_with_a_warning()
     {
         string json = """{ "openai": { "models": { "gpt-4o": {} } } }""";

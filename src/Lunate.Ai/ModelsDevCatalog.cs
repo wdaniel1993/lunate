@@ -239,6 +239,7 @@ public static class ModelsDevCatalog
         cost.TryGetProperty(name, out JsonElement value)
         && value.ValueKind == JsonValueKind.Number
         && value.TryGetDecimal(out decimal rate)
+        && rate >= 0m
             ? rate
             : null;
 

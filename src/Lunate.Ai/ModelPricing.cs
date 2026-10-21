@@ -13,7 +13,9 @@ public sealed record ModelPricing(
 {
     /// <summary>
     /// Computes the cost of one usage record in US dollars. Cached input is removed from the
-    /// uncached input lane; a missing rate for a used lane returns null (unpriced) rather than zero.
+    /// uncached input lane; a missing or negative rate for a used lane returns null (unpriced)
+    /// rather than zero. Lanes that disagree (cache read plus cache write exceeds the input total)
+    /// are also unpriced: the caller cannot say which tokens were uncached.
     /// </summary>
     public decimal? ComputeCost(
         long inputTokens,
@@ -27,11 +29,16 @@ public sealed record ModelPricing(
         ArgumentOutOfRangeException.ThrowIfNegative(cacheReadTokens);
         ArgumentOutOfRangeException.ThrowIfNegative(cacheWriteTokens);
 
-        long uncachedTokens = Math.Max(0, inputTokens - cacheReadTokens - cacheWriteTokens);
+        if (cacheReadTokens > inputTokens - cacheWriteTokens)
+        {
+            return null;
+        }
+
+        long uncachedTokens = inputTokens - cacheReadTokens - cacheWriteTokens;
         decimal cost = 0m;
         if (uncachedTokens > 0)
         {
-            if (Input is not decimal inputRate)
+            if (Rate(Input) is not decimal inputRate)
             {
                 return null;
             }
@@ -41,7 +48,7 @@ public sealed record ModelPricing(
 
         if (cacheReadTokens > 0)
         {
-            if (CacheRead is not decimal cacheReadRate)
+            if (Rate(CacheRead) is not decimal cacheReadRate)
             {
                 return null;
             }
@@ -51,7 +58,7 @@ public sealed record ModelPricing(
 
         if (cacheWriteTokens > 0)
         {
-            if (CacheWrite is not decimal cacheWriteRate)
+            if (Rate(CacheWrite) is not decimal cacheWriteRate)
             {
                 return null;
             }
@@ -61,7 +68,7 @@ public sealed record ModelPricing(
 
         if (outputTokens > 0)
         {
-            if (Output is not decimal outputRate)
+            if (Rate(Output) is not decimal outputRate)
             {
                 return null;
             }
@@ -71,4 +78,7 @@ public sealed record ModelPricing(
 
         return cost / 1_000_000m;
     }
+
+    private static decimal? Rate(decimal? rate) =>
+        rate is decimal value && value >= 0m ? value : null;
 }

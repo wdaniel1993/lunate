@@ -55,6 +55,45 @@ public sealed class ModelPricingTests
     }
 
     [Fact]
+    public void ComputeCost_prices_only_the_cache_lanes_when_they_equal_the_input()
+    {
+        var pricing = new ModelPricing(2.5m, 10m, 1.25m, 3.75m);
+
+        decimal? cost = pricing.ComputeCost(1_000, 0, 600, 400);
+
+        Assert.Equal(0.00225m, cost);
+    }
+
+    [Fact]
+    public void ComputeCost_is_unpriced_when_the_cache_lanes_exceed_the_input()
+    {
+        var pricing = new ModelPricing(2.5m, 10m, 1.25m, 3.75m);
+
+        decimal? cost = pricing.ComputeCost(1_000, 0, 600, 401);
+
+        Assert.Null(cost);
+    }
+
+    [Theory]
+    [InlineData(-1, 2, 3, 4)]
+    [InlineData(1, -2, 3, 4)]
+    [InlineData(1, 2, -3, 4)]
+    [InlineData(1, 2, 3, -4)]
+    public void ComputeCost_is_unpriced_when_a_used_rate_is_negative(
+        decimal input,
+        decimal output,
+        decimal cacheRead,
+        decimal cacheWrite
+    )
+    {
+        var pricing = new ModelPricing(input, output, cacheRead, cacheWrite);
+
+        decimal? cost = pricing.ComputeCost(3_000, 1_000, 1_000, 1_000);
+
+        Assert.Null(cost);
+    }
+
+    [Fact]
     public void ComputeCost_is_culture_invariant()
     {
         CultureInfo original = CultureInfo.CurrentCulture;
