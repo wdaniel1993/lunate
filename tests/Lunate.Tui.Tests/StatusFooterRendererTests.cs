@@ -13,6 +13,20 @@ public sealed class StatusFooterRendererTests
         "main"
     );
 
+    private static readonly StatusFooterModel Everything = new(
+        "deepseek-v4.1-flash-extended-for-tests",
+        12400,
+        128000,
+        "~/dev/lunate",
+        "main"
+    )
+    {
+        ThinkLevel = "medium",
+        FavoritePosition = 2,
+        FavoriteCount = 5,
+        TurnCost = "$0.0123",
+    };
+
     [Fact]
     public void Null_model_is_rejected() =>
         Assert.Throws<ArgumentNullException>(() => new StatusFooterRenderer().Render(null!, 80));
@@ -175,6 +189,85 @@ public sealed class StatusFooterRendererTests
         Assert.Equal(
             "deepseek-v4.1-flash · 12.4k/128.0k (10%) · ~/dev/lunate · main · widget-a",
             StatusFooterRenderer.PlainText(Full, width: 200, ["", "widget-a"])
+        );
+
+    [Fact]
+    public void Favourites_render_after_the_usage_segment() =>
+        Assert.Equal(
+            "deepseek-v4.1-flash · 12.4k/128.0k (10%) · fav:2/5 · ~/dev/lunate · main\n",
+            Render(Full with { FavoritePosition = 2, FavoriteCount = 5 }, width: 80)
+        );
+
+    [Fact]
+    public void Turn_cost_renders_after_the_favourites_segment() =>
+        Assert.Equal(
+            "deepseek-v4.1-flash · 12.4k/128.0k (10%) · fav:2/5 · $0.0123 · ~/dev/lunate · main\n",
+            Render(
+                Full with
+                {
+                    FavoritePosition = 2,
+                    FavoriteCount = 5,
+                    TurnCost = "$0.0123",
+                },
+                width: 100
+            )
+        );
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    public void Absent_turn_cost_omits_the_cost_segment(string? turnCost) =>
+        Assert.Equal(
+            "deepseek-v4.1-flash · 12.4k/128.0k (10%) · fav:2/5 · ~/dev/lunate · main\n",
+            Render(
+                Full with
+                {
+                    FavoritePosition = 2,
+                    FavoriteCount = 5,
+                    TurnCost = turnCost,
+                },
+                width: 100
+            )
+        );
+
+    [Theory]
+    [InlineData(null, 5)]
+    [InlineData(0, 5)]
+    [InlineData(6, 5)]
+    [InlineData(2, 0)]
+    public void Out_of_range_favourites_omit_the_segment(int? position, int count) =>
+        Assert.Equal(
+            "deepseek-v4.1-flash · 12.4k/128.0k (10%) · ~/dev/lunate · main\n",
+            Render(Full with { FavoritePosition = position, FavoriteCount = count }, width: 100)
+        );
+
+    [Theory]
+    [InlineData(
+        120,
+        "deepseek-v4.1-flash-extended-for-tests · 12.4k/128.0k (10%) · fav:2/5 · $0.0123 · think:medium · ~/dev/lunate · main"
+    )]
+    [InlineData(
+        110,
+        "deepseek-v4.1-flash-extended-for-tests · 12.4k/128.0k (10%) · fav:2/5 · $0.0123 · think:medium · ~/dev/lunate"
+    )]
+    [InlineData(
+        95,
+        "deepseek-v4.1-flash-extended-for-tests · 12.4k/128.0k (10%) · fav:2/5 · $0.0123 · think:medium"
+    )]
+    [InlineData(
+        80,
+        "deepseek-v4.1-flash-extended-for-tests · 12.4k/128.0k (10%) · fav:2/5 · $0.0123"
+    )]
+    [InlineData(70, "deepseek-v4.1-flash-extended-for-tests · 12.4k/128.0k (10%) · $0.0123")]
+    [InlineData(60, "deepseek-v4.1-flash-extended-for-tests · 12.4k/128.0k (10%)")]
+    public void Narrow_width_drops_in_priority_order(int width, string expected) =>
+        Assert.Equal(expected, StatusFooterRenderer.PlainText(Everything, width, ["widget-a"]));
+
+    [Fact]
+    public void The_compact_footer_drops_favourites_and_cost() =>
+        Assert.Equal(
+            "deepseek-v4.1-flash \u00b7 10%\n",
+            Render(Full with { FavoritePosition = 2, FavoriteCount = 5, TurnCost = "$0.0123" }, 40)
         );
 
     [Fact]

@@ -117,6 +117,8 @@ internal sealed partial class InteractiveSession
         }
 
         _settings = _settings with { Favorites = favorites };
+        // The footer's fav:<position>/<count> segment follows the list immediately.
+        UpdateStatus();
         Notify(success);
     }
 }

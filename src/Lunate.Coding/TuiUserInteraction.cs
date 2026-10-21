@@ -27,6 +27,9 @@ internal sealed class TuiUserInteraction(LiveArea live) : IUserInteraction
             )
             {
                 ThinkLevel = status.ThinkLevel,
+                FavoritePosition = status.FavoritePosition,
+                FavoriteCount = status.FavoriteCount,
+                TurnCost = status.TurnCost,
             },
             [.. status.Widgets.Select(segment => segment.Text)]
         );

@@ -188,6 +188,12 @@ internal sealed partial class InteractiveSession : IDisposable
     private long _inputTokens;
     private long _outputTokens;
 
+    /// <summary>The current turn's usage records: the cost aggregator's per-record input.</summary>
+    private readonly List<(string? ModelId, UsageLanes Lanes)> _turnUsage = [];
+
+    /// <summary>The current turn's fully priced cost; null while unpriced or before its usage.</summary>
+    private decimal? _turnCost;
+
     /// <summary>Accumulated prompt-cache reads; null until a provider reports one (display-only).</summary>
     private long? _cacheReadTokens;
 
@@ -1037,7 +1043,18 @@ internal sealed partial class InteractiveSession : IDisposable
         });
         _promptEchoed = true;
         _turnWroteOutput = false;
+        // A new user turn starts a fresh cost: the previous turn's records and total never leak.
+        // Only a visible cost needs the immediate re-render; the turn's first usage record
+        // re-renders the footer with its own total anyway.
+        bool hadCost = _turnCost is not null;
+        _turnUsage.Clear();
+        _turnCost = null;
         _turnActive = true;
+        if (hadCost)
+        {
+            UpdateStatus();
+        }
+
         _run = RunTurnsAsync(processed.Text, skill, ct);
     }
 
@@ -1346,6 +1363,16 @@ internal sealed partial class InteractiveSession : IDisposable
             _branch
         );
         IReadOnlyList<TextSegment> widgets = _statusWidgets?.Segments(view) ?? [];
+        var favoritePosition = -1;
+        for (var index = 0; index < _settings.Favorites.Count; index++)
+        {
+            if (string.Equals(_settings.Favorites[index], _model.Id, StringComparison.Ordinal))
+            {
+                favoritePosition = index;
+                break;
+            }
+        }
+
         _interaction.UpdateStatus(
             new UserStatus(
                 view.Model,
@@ -1356,6 +1383,11 @@ internal sealed partial class InteractiveSession : IDisposable
                 _thinkingLevel == ThinkingLevel.Off ? null : ThinkingLiteral(_thinkingLevel),
                 widgets
             )
+            {
+                FavoritePosition = favoritePosition < 0 ? null : favoritePosition + 1,
+                FavoriteCount = _settings.Favorites.Count,
+                TurnCost = _turnCost is > 0m ? CostCalculator.Format(_turnCost.Value) : null,
+            }
         );
     }
 

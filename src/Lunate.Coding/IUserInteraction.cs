@@ -22,7 +22,17 @@ internal sealed record UserStatus(
     string? GitBranch,
     string? ThinkLevel,
     IReadOnlyList<TextSegment> Widgets
-);
+)
+{
+    /// <summary>The active model's 1-based favourites position, or null when it is not one.</summary>
+    public int? FavoritePosition { get; init; }
+
+    /// <summary>The configured favourites count; zero hides the footer segment.</summary>
+    public int FavoriteCount { get; init; }
+
+    /// <summary>The current turn's formatted cost, or null when the turn is unpriced.</summary>
+    public string? TurnCost { get; init; }
+}
 
 /// <summary>One tool result's extension-contributed block: styled segments for that tool.</summary>
 internal sealed record ExtensionBlock(string ToolName, IReadOnlyList<TextSegment> Segments);

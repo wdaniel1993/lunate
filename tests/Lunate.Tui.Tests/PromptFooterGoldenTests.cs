@@ -19,7 +19,12 @@ public sealed class PromptFooterGoldenTests
         128000,
         "~/dev/lunate",
         "main"
-    );
+    )
+    {
+        FavoritePosition = 2,
+        FavoriteCount = 5,
+        TurnCost = "$0.0123",
+    };
 
     public static TheoryData<string, int> FooterGoldens =>
         new()
