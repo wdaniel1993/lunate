@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using System.Runtime.CompilerServices;
 using Lunate.Ai;
 using Microsoft.Extensions.AI;
@@ -22,6 +24,7 @@ public sealed partial class AgentHarness
     private readonly IChatClient _client;
     private readonly ToolRegistry _tools;
     private readonly AgentHarnessOptions _options;
+    private readonly SessionImages _images;
     private readonly List<ChatMessage> _history = [];
     private readonly List<FunctionCallContent> _danglingCalls = [];
     private int _runActive;
@@ -39,6 +42,7 @@ public sealed partial class AgentHarness
         _tools = tools;
         _options = options ?? new AgentHarnessOptions();
         ValidateOptions(_options);
+        _images = _options.Session?.Images ?? SessionImages.InMemory();
         _compactor = new CompactionReducer(_client, _options.CompactionKeepTurns);
         if (_options.Session is { } session)
         {
@@ -48,6 +52,8 @@ public sealed partial class AgentHarness
                 _historyEntryIds.Add(item.EntryId);
                 _historyModels.Add(item.Model);
             }
+
+            _images.ValidateReferences(ImageReferences(_history));
 
             if (session.Entries.OfType<SessionCompactionEntry>().LastOrDefault() is not null)
             {
@@ -87,37 +93,57 @@ public sealed partial class AgentHarness
     /// </summary>
     public SubagentUsage SubagentUsage => _treeState?.Snapshot ?? default;
 
-    /// <summary>Runs the loop for one user input and streams its events; the stream completes when the run ends.</summary>
+    /// <summary>Runs the loop for one text turn and streams its events; the stream completes when the run ends.</summary>
+    [SuppressMessage(
+        "ApiDesign",
+        "RS0026:Do not add multiple overloads with optional parameters",
+        Justification = "The first parameter type distinguishes the overloads; the token keeps its default like the text overload."
+    )]
     public IAsyncEnumerable<AgentEvent> RunAsync(
         string userInput,
+        CancellationToken ct = default
+    ) => RunAsync(new UserInput(userInput), skill: null, RunIds.Next(), ct);
+
+    /// <summary>
+    /// Runs the loop for one user turn, including its images, and streams its events; the stream
+    /// completes when the run ends.
+    /// </summary>
+    [SuppressMessage(
+        "ApiDesign",
+        "RS0026:Do not add multiple overloads with optional parameters",
+        Justification = "The first parameter type distinguishes the overloads; the token keeps its default like the text overload."
+    )]
+    public IAsyncEnumerable<AgentEvent> RunAsync(
+        UserInput userInput,
         CancellationToken ct = default
     ) => RunAsync(userInput, skill: null, RunIds.Next(), ct);
 
     /// <summary>
     /// Runs the loop for one skill invocation: the user turn carries the skill metadata into the
-    /// session entry (the <c>/skill:&lt;name&gt;</c> path).
+    /// session entry (the <c>/skill:&lt;name&gt;</c> path). Skill turns stay text-only.
     /// </summary>
     public IAsyncEnumerable<AgentEvent> RunSkillAsync(
         string userInput,
         SessionSkillMetadata skill,
         CancellationToken ct
-    ) => RunAsync(userInput, skill, RunIds.Next(), ct);
+    ) => RunAsync(new UserInput(userInput), skill, RunIds.Next(), ct);
 
     /// <summary>Runs the loop under a caller-provided run id (the subagent runner links sessions by it).</summary>
     internal IAsyncEnumerable<AgentEvent> RunAsync(
         string userInput,
         string runId,
         CancellationToken ct = default
-    ) => RunAsync(userInput, skill: null, runId, ct);
+    ) => RunAsync(new UserInput(userInput), skill: null, runId, ct);
 
     internal async IAsyncEnumerable<AgentEvent> RunAsync(
-        string userInput,
+        UserInput userInput,
         SessionSkillMetadata? skill,
         string runId,
         [EnumeratorCancellation] CancellationToken ct = default
     )
     {
         ArgumentNullException.ThrowIfNull(userInput);
+        ArgumentNullException.ThrowIfNull(userInput.Text);
         if (Interlocked.CompareExchange(ref _runActive, 1, 0) != 0)
         {
             throw new InvalidOperationException(
@@ -235,7 +261,7 @@ public sealed partial class AgentHarness
 
     private async Task RunLoopAsync(
         string runId,
-        string userInput,
+        UserInput userInput,
         SessionSkillMetadata? skill,
         AgentEventChannel channel,
         CancellationToken ct
@@ -266,7 +292,7 @@ public sealed partial class AgentHarness
 
     private async Task ExecuteRunAsync(
         string runId,
-        string userInput,
+        UserInput userInput,
         SessionSkillMetadata? skill,
         AgentEventChannel channel,
         CancellationToken ct
@@ -286,7 +312,7 @@ public sealed partial class AgentHarness
         bool terminalEmitted = false;
         try
         {
-            AppendHistoryMessage(new ChatMessage(ChatRole.User, userInput), skill: skill);
+            AppendHistoryMessage(BuildUserMessage(userInput), skill: skill);
             channel.Emit(new RunStarted(runId));
             runStarted = true;
 
@@ -703,6 +729,31 @@ public sealed partial class AgentHarness
         }
     }
 
+    /// <summary>
+    /// The user turn as the history records it: text only without images, else the text plus one
+    /// image reference per attachment, stored before the message is appended.
+    /// </summary>
+    private ChatMessage BuildUserMessage(UserInput userInput)
+    {
+        if (userInput.Images is not { Count: > 0 } images)
+        {
+            return new ChatMessage(ChatRole.User, userInput.Text);
+        }
+
+        List<AIContent> contents = [new TextContent(userInput.Text)];
+        foreach (ImageAttachment image in images)
+        {
+            contents.Add(_images.Store(image.Data, image.MimeType, image.Width, image.Height));
+        }
+
+        return new ChatMessage(ChatRole.User, contents);
+    }
+
+    /// <summary>Every image reference a message carries.</summary>
+    private static IEnumerable<ImageContentReference> ImageReferences(
+        IEnumerable<ChatMessage> messages
+    ) => messages.SelectMany(message => message.Contents).OfType<ImageContentReference>();
+
     /// <summary>Appends a history message and mirrors it into the session when one is attached.</summary>
     private string? AppendHistoryMessage(
         ChatMessage message,
@@ -826,8 +877,40 @@ public sealed partial class AgentHarness
         return merged;
     }
 
+    /// <summary>
+    /// Refuses a request whose history carries image references when the active model cannot take
+    /// images. The gate runs before hydration, so a text-only model never reads image bytes (and a
+    /// resumed session fails the same way a live turn does, instead of sending references it cannot
+    /// encode). A resumed image also fails before the provider is called at all.
+    /// </summary>
+    private void EnsureImagesSupported()
+    {
+        int count = ImageReferences(_history).Count();
+        if (count == 0)
+        {
+            return;
+        }
+
+        ModelInfo? model = _options.Model ?? DeclaredModel();
+        if (model is { SupportsVision: true })
+        {
+            return;
+        }
+
+        string id = KnownModelId(model?.Id) ?? KnownModelId(_options.ModelId) ?? "unknown";
+        string images = string.Create(
+            CultureInfo.InvariantCulture,
+            $"{count} {(count == 1 ? "image" : "images")}"
+        );
+        throw new InvalidDataException(
+            $"model {id} does not support images; {images} in the request cannot be sent. Use a vision model to continue this session."
+        );
+    }
+
     private List<ChatMessage> BuildRequest(IReadOnlyList<AgentPromptSection> sections)
     {
+        EnsureImagesSupported();
+
         List<ChatMessage> request = [];
         if (sections.Count > 0)
         {
@@ -843,14 +926,56 @@ public sealed partial class AgentHarness
         for (int index = 0; index < _history.Count; index++)
         {
             ChatMessage message = _history[index];
-            request.Add(
-                ReasoningCrossesModels(_historyModels[index], currentModelId)
-                    ? WithoutReasoning(message)
-                    : message
-            );
+            if (ReasoningCrossesModels(_historyModels[index], currentModelId))
+            {
+                message = WithoutReasoning(message);
+            }
+
+            request.Add(HydrateImages(message));
         }
 
         return request;
+    }
+
+    /// <summary>
+    /// The request copy of a message with every image reference replaced by its bytes; the stored
+    /// message (and the session entry) keeps the reference. Messages without images are returned
+    /// as they are.
+    /// </summary>
+    private ChatMessage HydrateImages(ChatMessage message)
+    {
+        if (!message.Contents.OfType<ImageContentReference>().Any())
+        {
+            return message;
+        }
+
+        ChatMessage copy = message.Clone();
+        copy.Contents =
+        [
+            .. copy.Contents.Select(content =>
+                content is ImageContentReference reference ? ReadImage(reference) : content
+            ),
+        ];
+        return copy;
+    }
+
+    /// <summary>
+    /// One reference's bytes as provider content. A reference without bytes fails the request
+    /// rather than silently dropping the image.
+    /// </summary>
+    private DataContent ReadImage(ImageContentReference reference)
+    {
+        if (_images.TryRead(reference, out ReadOnlyMemory<byte> data))
+        {
+            return new DataContent(data, reference.MimeType);
+        }
+
+        string location = _images.IsInMemory
+            ? "the run's in-memory image store"
+            : $"the session blob at '{_images.BlobPath(reference)}'";
+        throw new InvalidDataException(
+            $"Session image '{reference.Digest}' is missing from {location}. Re-attach the image or start a new session."
+        );
     }
 
     /// <summary>

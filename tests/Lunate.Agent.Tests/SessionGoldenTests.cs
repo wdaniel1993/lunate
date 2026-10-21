@@ -18,6 +18,7 @@ public sealed class SessionGoldenTests
     [InlineData("golden-v2-unknown-content.jsonl")]
     [InlineData("golden-reasoning.jsonl")]
     [InlineData("golden-v3-usage.jsonl")]
+    [InlineData("golden-v3-image.jsonl")]
     public void Golden_sessions_round_trip_byte_for_byte(string name)
     {
         string path = Path.Combine(SessionsDirectory, name);
@@ -69,6 +70,26 @@ public sealed class SessionGoldenTests
             entry => entry.Message.Role == ChatRole.Assistant
         );
         Assert.Equal(new SessionUsage(1500, 50, 1200, 300), assistant.Usage);
+    }
+
+    [Fact]
+    public void The_image_golden_loads_as_schema_3_with_a_typed_reference()
+    {
+        string path = Path.Combine(SessionsDirectory, "golden-v3-image.jsonl");
+
+        Session loaded = Session.Load(path);
+
+        Assert.Equal(3, loaded.Schema);
+        SessionMessageEntry user = Assert.Single(
+            loaded.Entries.OfType<SessionMessageEntry>(),
+            entry => entry.Message.Role == ChatRole.User
+        );
+        ImageContentReference image = Assert.IsType<ImageContentReference>(
+            user.Message.Contents[1]
+        );
+        Assert.Equal("image/png", image.MimeType);
+        Assert.Equal(1024, image.Width);
+        Assert.Equal(768, image.Height);
     }
 
     [Fact]

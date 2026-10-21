@@ -43,6 +43,12 @@ public sealed class UserEchoRendererTests
     }
 
     [Fact]
+    public void An_image_placeholder_renders_as_plain_text()
+    {
+        Assert.Equal("> explain [image 1024x768]\n\n", Render("explain [image 1024x768]", 40));
+    }
+
+    [Fact]
     public void Leading_and_trailing_spaces_survive_the_echo()
     {
         Assert.Equal(">   hi  \n\n", Render("  hi  ", width: 40));

@@ -1,0 +1,2 @@
+✓ read\x1b[2m  screens/diagram.png\x1b[0m
+\x1b[2m[image 1024x768]\x1b[0m

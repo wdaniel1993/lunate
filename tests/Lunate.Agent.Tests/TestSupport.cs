@@ -182,3 +182,29 @@ internal sealed class TempDirectory : IDisposable
         catch (UnauthorizedAccessException) { }
     }
 }
+
+internal static class SessionImageTestData
+{
+    internal const string PngDigest =
+        "7f47b756761a46e6d4a4d96f0d8a4448f8449235009d1f3ad1493f5c773c19e8";
+
+    internal static readonly DateTimeOffset Start = new(2026, 10, 6, 12, 0, 0, TimeSpan.Zero);
+
+    internal static readonly byte[] PngBytes =
+    [
+        0x89,
+        0x50,
+        0x4E,
+        0x47,
+        0x0D,
+        0x0A,
+        0x1A,
+        0x0A,
+        1,
+        2,
+        3,
+    ];
+
+    internal static Session CreateSession(TempDirectory temp) =>
+        Session.Create(temp.File("s.jsonl"), "/work", new FixedTimeProvider(Start));
+}

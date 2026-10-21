@@ -59,6 +59,13 @@ public sealed record AgentHarnessOptions
     /// <summary>The file change sink the host injects into file-mutating tools; no-op by default.</summary>
     public IFileChangeSink FileChanges { get; init; } = NullFileChangeSink.Instance;
 
+    /// <summary>
+    /// The active model of the run, stamped into <see cref="ToolContext.Model"/> for tools; null
+    /// when unknown. Tools must treat an unknown model as having no capabilities (the conservative
+    /// default), never as having every capability.
+    /// </summary>
+    public ModelInfo? Model { get; init; }
+
     /// <summary>The model catalog the compaction context-window lookup uses; null skips the lookup.</summary>
     public ModelCatalog? ModelCatalog { get; init; }
 

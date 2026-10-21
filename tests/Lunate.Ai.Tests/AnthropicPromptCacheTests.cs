@@ -61,6 +61,43 @@ public sealed class AnthropicPromptCacheTests
     }
 
     [Fact]
+    public async Task An_image_in_the_latest_message_keeps_its_bytes_and_carries_the_marker()
+    {
+        var handler = new CapturingHandler();
+        IChatClient client = CreateAnthropicClient(handler);
+        byte[] bytes = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
+        var image = new DataContent(bytes, "image/png");
+        ChatMessage user = new(ChatRole.User, [new TextContent("look"), image]);
+
+        await client.GetResponseAsync(
+            [SystemMessage("rules"), user],
+            cancellationToken: TestContext.Current.CancellationToken
+        );
+
+        using JsonDocument document = JsonDocument.Parse(Assert.Single(handler.RequestBodies));
+        JsonElement root = document.RootElement;
+        JsonElement[] blocks = [.. LastWireBlocks(root)];
+        Assert.Equal(2, blocks.Length);
+        Assert.Equal("text", blocks[0].GetProperty("type").GetString());
+        JsonElement imageBlock = blocks[1];
+        Assert.Equal("image", imageBlock.GetProperty("type").GetString());
+        Assert.Equal(
+            Convert.ToBase64String(bytes),
+            imageBlock.GetProperty("source").GetProperty("data").GetString()
+        );
+        Assert.Equal(
+            "image/png",
+            imageBlock.GetProperty("source").GetProperty("media_type").GetString()
+        );
+        Assert.True(HasCacheControl(imageBlock));
+        Assert.Equal(2, CountCacheControls(root));
+
+        // The caller's message is never mutated by the request-local copy.
+        Assert.Same(image, user.Contents[1]);
+        Assert.False(image.AdditionalProperties?.ContainsKey(ContentMarkerKey) ?? false);
+    }
+
+    [Fact]
     public async Task The_rolling_marker_moves_to_the_latest_block_on_the_next_turn()
     {
         var handler = new CapturingHandler();
@@ -296,6 +333,15 @@ public sealed class AnthropicPromptCacheTests
             .GetProperty("content")
             .EnumerateArray()
             .Last();
+
+    private static JsonElement[] LastWireBlocks(JsonElement root) =>
+        [
+            .. root.GetProperty("messages")
+                .EnumerateArray()
+                .Last()
+                .GetProperty("content")
+                .EnumerateArray(),
+        ];
 
     private static bool HasCacheControl(JsonElement block) =>
         block.TryGetProperty("cache_control", out JsonElement marker)

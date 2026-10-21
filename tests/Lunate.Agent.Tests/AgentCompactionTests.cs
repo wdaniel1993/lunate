@@ -297,6 +297,32 @@ public sealed class AgentCompactionTests
     }
 
     [Fact]
+    public void A_synthetic_tool_image_message_does_not_consume_a_kept_turn()
+    {
+        static ChatMessage Image() =>
+            new(ChatRole.User, [new TextContent("Image from read: [image 2x3].")])
+            {
+                AdditionalProperties = new AdditionalPropertiesDictionary
+                {
+                    [AgentHarness.ToolImageMarker] = true,
+                },
+            };
+
+        List<ChatMessage> history =
+        [
+            new(ChatRole.User, "one"),
+            Image(),
+            new(ChatRole.User, "two"),
+            Image(),
+            new(ChatRole.User, "three"),
+            Image(),
+        ];
+
+        Assert.Equal(2, CompactionReducer.FindTailStart(history, keepTurns: 2));
+        Assert.Equal(0, CompactionReducer.FindTailStart(history, keepTurns: 3));
+    }
+
+    [Fact]
     public void The_summarizable_part_drops_system_messages_and_a_lone_previous_summary()
     {
         ChatMessage summary = new(ChatRole.Assistant, "old summary");

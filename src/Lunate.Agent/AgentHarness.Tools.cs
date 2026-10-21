@@ -9,6 +9,9 @@ namespace Lunate.Agent;
 
 public sealed partial class AgentHarness
 {
+    /// <summary>Marks the synthetic user message that carries a tool result's images.</summary>
+    internal const string ToolImageMarker = "lunate:tool-image";
+
     private static readonly JsonSerializerOptions ArgumentsJson = new(
         AIJsonUtilities.DefaultOptions
     )
@@ -63,11 +66,49 @@ public sealed partial class AgentHarness
             result.Output ?? string.Empty,
             _options.ToolOutputLimit
         );
-        channel.Emit(new ToolCallResult(runId, callId, output, result.IsError, result.Details));
+        channel.Emit(
+            new ToolCallResult(runId, callId, output, result.IsError, result.Details)
+            {
+                HasImages = result.Images is { Count: > 0 },
+            }
+        );
         AppendHistoryMessage(
             new ChatMessage(ChatRole.Tool, [new FunctionResultContent(callId, output)])
         );
+        if (result.Images is { Count: > 0 } images)
+        {
+            AppendHistoryMessage(BuildToolImageMessage(toolName, images));
+        }
+
         _danglingCalls.Remove(call);
+    }
+
+    /// <summary>
+    /// The one user-role message that carries a tool result's images. The tool-role message holds
+    /// only the placeholder text: the OpenAI adapter drops image content there, while both adapters
+    /// accept images on a user turn.
+    /// </summary>
+    private ChatMessage BuildToolImageMessage(
+        string toolName,
+        IReadOnlyList<ImageAttachment> images
+    )
+    {
+        List<AIContent> contents = [];
+        List<string> placeholders = [];
+        foreach (ImageAttachment image in images)
+        {
+            contents.Add(_images.Store(image.Data, image.MimeType, image.Width, image.Height));
+            placeholders.Add(
+                string.Create(CultureInfo.InvariantCulture, $"[image {image.Width}x{image.Height}]")
+            );
+        }
+
+        string text = $"Image from {toolName}: {string.Join(", ", placeholders)}.";
+        return new ChatMessage(ChatRole.User, [new TextContent(text), .. contents])
+        {
+            // Compaction counts user turns: this synthetic turn must not consume a kept slot.
+            AdditionalProperties = new AdditionalPropertiesDictionary { [ToolImageMarker] = true },
+        };
     }
 
     private void AppendSyntheticResult(
@@ -233,6 +274,7 @@ public sealed partial class AgentHarness
             )
             {
                 ParentToolCallId = parentCallId,
+                HasImages = result.Images is { Count: > 0 },
             }
         );
         if (nestedCalls is { } records)
@@ -437,6 +479,7 @@ public sealed partial class AgentHarness
             },
             Progress = message => channel.Emit(new ToolProgressUpdate(runId, callId, message)),
             FileMutations = _options.FileMutations,
+            Model = _options.Model,
             FileChanges = new RunFileChangeSink(
                 _options.FileChanges,
                 _options.WorkingDirectory,

@@ -3,7 +3,6 @@ using System.Globalization;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
-using Microsoft.Extensions.AI;
 
 namespace Lunate.Agent;
 
@@ -101,8 +100,8 @@ internal static partial class SessionFormat
         else
         {
             JsonSerializer
-                .SerializeToNode(message.Message, AIJsonUtilities.DefaultOptions)!
-                .WriteTo(writer, AIJsonUtilities.DefaultOptions);
+                .SerializeToNode(message.Message, SessionJson.Options)!
+                .WriteTo(writer, SessionJson.Options);
         }
 
         if (message.Model is { } model)

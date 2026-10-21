@@ -544,6 +544,94 @@ public sealed class ToolBlockRendererTests
         );
 
     [Fact]
+    public void An_image_read_shows_the_placeholder_line() =>
+        Assert.Equal(
+            "\u2713 read  screens/diagram.png\n[image 1024x768]\n",
+            Render(
+                new ToolBlockModel(
+                    "read",
+                    """{"path":"screens/diagram.png"}""",
+                    ToolBlockStatus.Ok,
+                    "[image 1024x768]",
+                    null
+                )
+                {
+                    IsImage = true,
+                }
+            )
+        );
+
+    [Fact]
+    public void A_collapsed_image_read_keeps_the_placeholder_behind_the_hint() =>
+        Assert.Equal(
+            "\u2713 read  screens/diagram.png \u00b7 ctrl+o\n",
+            RenderCollapsed(
+                new ToolBlockModel(
+                    "read",
+                    """{"path":"screens/diagram.png"}""",
+                    ToolBlockStatus.Ok,
+                    "[image 1024x768]",
+                    null
+                )
+                {
+                    IsImage = true,
+                }
+            )
+        );
+
+    [Fact]
+    public void The_image_placeholder_is_muted() =>
+        Assert.Contains(
+            "\u001b[2m[image 1024x768]",
+            RenderAnsi(
+                new ToolBlockModel(
+                    "read",
+                    """{"path":"screens/diagram.png"}""",
+                    ToolBlockStatus.Ok,
+                    "[image 1024x768]",
+                    null
+                )
+                {
+                    IsImage = true,
+                }
+            )
+        );
+
+    [Fact]
+    public void An_image_read_emits_no_terminal_image_escape() =>
+        Assert.DoesNotContain(
+            "\u001b]",
+            Render(
+                new ToolBlockModel(
+                    "read",
+                    """{"path":"screens/diagram.png"}""",
+                    ToolBlockStatus.Ok,
+                    "[image 1024x768]",
+                    null
+                )
+                {
+                    IsImage = true,
+                }
+            ),
+            StringComparison.Ordinal
+        );
+
+    [Fact]
+    public void A_text_read_of_the_placeholder_text_is_still_text() =>
+        Assert.Equal(
+            "\u2713 read  notes.txt (1 line)\n",
+            Render(
+                new ToolBlockModel(
+                    "read",
+                    """{"path":"notes.txt"}""",
+                    ToolBlockStatus.Ok,
+                    "[image 2x3]",
+                    null
+                )
+            )
+        );
+
+    [Fact]
     public void A_failed_read_keeps_its_message() =>
         Assert.Equal(
             "\u2717 read  src/missing.cs\nfile not found: src/missing.cs\n",

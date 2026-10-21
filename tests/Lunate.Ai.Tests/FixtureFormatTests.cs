@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.AI;
 
@@ -7,6 +9,10 @@ public sealed class FixtureFormatTests
 {
     private const string FrozenDigest =
         "3cfe520ebfa3ea2a6abaed12037f5cca15301f6b5ba4b9e36e46b82b10b1c9b3";
+
+    // frozen by the image-digest rule
+    private const string FrozenImageDigest =
+        "c28e50f6f272f23738c43d97f0d33b00bd432d58a2e2e3553617e1faaf7ff1b5";
 
     [Fact]
     public void Header_line_carries_type_schema_model_and_timestamp()
@@ -261,6 +267,134 @@ public sealed class FixtureFormatTests
         Assert.NotEqual(baseline, renamed);
         Assert.NotEqual(baseline, reordered);
     }
+
+    [Fact]
+    public void Image_digest_input_names_media_type_and_sha256_instead_of_base64()
+    {
+        byte[] bytes = ImageBytes();
+
+        string input = FixtureFormat.ComputeDigestInput(
+            [
+                new ChatMessage(
+                    ChatRole.User,
+                    [new TextContent("look"), new DataContent(bytes, "image/png")]
+                ),
+            ],
+            Options()
+        );
+
+        Assert.Contains("\"$type\":\"imageDigest\"", input, StringComparison.Ordinal);
+        Assert.Contains(
+            $"\"digest\":\"{Convert.ToHexStringLower(SHA256.HashData(bytes))}\"",
+            input,
+            StringComparison.Ordinal
+        );
+        Assert.Contains("\"mediaType\":\"image/png\"", input, StringComparison.Ordinal);
+        Assert.DoesNotContain(Convert.ToBase64String(bytes), input, StringComparison.Ordinal);
+        Assert.DoesNotContain("data:image/png;base64", input, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_data_content_with_a_non_image_media_type_is_digested_with_bytes_never_base64()
+    {
+        byte[] bytes = ImageBytes();
+        var content = new DataContent(bytes, "application/octet-stream");
+
+        string input = FixtureFormat.ComputeDigestInput(
+            [new ChatMessage(ChatRole.User, [content])],
+            Options()
+        );
+
+        Assert.Contains(
+            "\"mediaType\":\"application/octet-stream\"",
+            input,
+            StringComparison.Ordinal
+        );
+        Assert.Contains(
+            $"\"digest\":\"{Convert.ToHexStringLower(SHA256.HashData(bytes))}\"",
+            input,
+            StringComparison.Ordinal
+        );
+        Assert.DoesNotContain(Convert.ToBase64String(bytes), input, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Image_digest_ignores_the_encoding_and_name_of_identical_bytes()
+    {
+        byte[] bytes = ImageBytes();
+        var fromBytes = new DataContent(bytes, "image/png") { Name = "first.png" };
+        var fromDataUri = new DataContent(
+            $"data:image/png;base64,{Convert.ToBase64String(bytes)}",
+            "image/png"
+        )
+        {
+            Name = "second.png",
+        };
+
+        string first = FixtureFormat.ComputeRequestDigest(
+            [new ChatMessage(ChatRole.User, [fromBytes])],
+            Options()
+        );
+        string second = FixtureFormat.ComputeRequestDigest(
+            [new ChatMessage(ChatRole.User, [fromDataUri])],
+            Options()
+        );
+
+        Assert.Equal(first, second);
+    }
+
+    [Fact]
+    public void Image_digest_changes_when_one_byte_changes()
+    {
+        byte[] original = ImageBytes();
+        byte[] changed = [.. original];
+        changed[^1] ^= 0xFF;
+
+        string baseline = FixtureFormat.ComputeRequestDigest(
+            [new ChatMessage(ChatRole.User, [new DataContent(original, "image/png")])],
+            Options()
+        );
+        string flipped = FixtureFormat.ComputeRequestDigest(
+            [new ChatMessage(ChatRole.User, [new DataContent(changed, "image/png")])],
+            Options()
+        );
+
+        Assert.NotEqual(baseline, flipped);
+    }
+
+    [Fact]
+    public void Image_request_digest_matches_the_frozen_schema_value()
+    {
+        string digest = FixtureFormat.ComputeRequestDigest(
+            [
+                new ChatMessage(
+                    ChatRole.User,
+                    [new TextContent("look"), new DataContent(ImageBytes(), "image/png")]
+                ),
+            ],
+            Options()
+        );
+
+        Assert.Equal(FrozenImageDigest, digest);
+    }
+
+    [Fact]
+    public void Request_digest_is_the_sha256_of_the_digest_input()
+    {
+        List<ChatMessage> messages =
+        [
+            new ChatMessage(ChatRole.User, [new DataContent(ImageBytes(), "image/png")]),
+        ];
+
+        string input = FixtureFormat.ComputeDigestInput(messages, Options());
+
+        Assert.Equal(
+            Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(input))),
+            FixtureFormat.ComputeRequestDigest(messages, Options())
+        );
+    }
+
+    private static byte[] ImageBytes() => [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 1, 2, 3];
 
     private static ChatOptions Options() =>
         new() { ModelId = "gpt-4o-mini", Tools = [new NamedTool("read")] };

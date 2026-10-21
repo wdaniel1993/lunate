@@ -18,7 +18,7 @@ internal static class ToolBlockMeta
         if (compact && block.ToolName == "read")
         {
             int lines =
-                block.Status == ToolBlockStatus.Error
+                block.Status == ToolBlockStatus.Error || block.IsImage
                     ? 0
                     : ToolArgsSummary.ResultLineCount(block.Output);
             if (lines > 0)

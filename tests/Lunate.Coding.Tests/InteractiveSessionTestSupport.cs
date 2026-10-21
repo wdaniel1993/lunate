@@ -250,11 +250,28 @@ internal sealed class GatedChatClient : IChatClient
         return this;
     }
 
-    public Task WaitForCallAsync(int call)
+    public async Task WaitForCallAsync(int call)
     {
+        Task started;
+        int observed;
         lock (_started)
         {
-            return Started(call).Task;
+            started = Started(call).Task;
+            observed = Requests.Count;
+        }
+
+        try
+        {
+            await started.WaitAsync(
+                TimeSpan.FromSeconds(10),
+                TestContext.Current.CancellationToken
+            );
+        }
+        catch (TimeoutException)
+        {
+            throw new TimeoutException(
+                $"chat call {call} never started within 10 seconds (started={observed})."
+            );
         }
     }
 
@@ -373,7 +390,8 @@ internal sealed class InteractiveSessionHost : IDisposable
         string? startSession = null,
         bool startWithPicker = false,
         ISecretPrompt? secretPrompt = null,
-        string? modelsPath = null
+        string? modelsPath = null,
+        IClipboardImageSource? clipboard = null
     )
     {
         Scrollback = new TestConsole();
@@ -409,6 +427,7 @@ internal sealed class InteractiveSessionHost : IDisposable
                 StartWithPicker = startWithPicker,
                 SessionsRoot = sessionsRoot ?? Temp.File("sessions"),
                 SecretPrompt = secretPrompt,
+                Clipboard = clipboard,
             }
         );
     }

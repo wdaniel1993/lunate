@@ -4,7 +4,7 @@ using Lunate.Agent;
 namespace Lunate.Coding;
 
 /// <summary>The default <see cref="ITextFileAccess"/>: the local disk behind <see cref="TextFile"/>.</summary>
-internal sealed class LocalTextFileAccess : ITextFileAccess
+internal sealed class LocalTextFileAccess : ITextFileAccess, IBinaryFileAccess
 {
     private static readonly UTF8Encoding Utf8NoBom = new(encoderShouldEmitUTF8Identifier: false);
 
@@ -32,6 +32,21 @@ internal sealed class LocalTextFileAccess : ITextFileAccess
     }
 
     public string ReadAllText(string path) => TextFile.ReadAllText(path);
+
+    public long Length(string path) => new FileInfo(path).Length;
+
+    public byte[] ReadPrefixBytes(string path, int maxBytes)
+    {
+        using var stream = new FileStream(
+            path,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.ReadWrite
+        );
+        var buffer = new byte[maxBytes];
+        var read = stream.ReadAtLeast(buffer, maxBytes, throwOnEndOfStream: false);
+        return buffer[..read];
+    }
 
     public (string Text, bool HasBom) ReadRaw(string path) => TextFile.ReadRaw(path);
 

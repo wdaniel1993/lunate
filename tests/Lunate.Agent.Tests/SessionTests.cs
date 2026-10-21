@@ -14,7 +14,7 @@ public sealed class SessionTests
 
         Session session = Session.Create(path, "/work", new FixedTimeProvider(Start));
 
-        Assert.Matches("^s_20261006-120000-[0-9a-f]{4}$", session.SessionId);
+        Assert.Matches("^s_20261006-120000-[0-9a-f]{8}$", session.SessionId);
         Assert.Equal(path, session.Path);
         Assert.Empty(session.Entries);
 
@@ -158,6 +158,26 @@ public sealed class SessionTests
         Assert.Contains("'4'", exception.Message);
         Assert.Contains("schema 1, 2 and 3", exception.Message);
         Assert.Contains(path, exception.Message);
+    }
+
+    [Fact]
+    public void Load_reports_a_header_id_that_cannot_name_a_session_directory()
+    {
+        using var temp = new TempDirectory();
+        string path = temp.File("s.jsonl");
+        File.WriteAllText(
+            path,
+            """{"type":"header","schema":3,"id":"../evil","cwd":"/work","created":"2026-10-06T12:00:00.0000000+00:00","meai":"10.10.1"}"""
+                + "\n"
+        );
+
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+            Session.Load(path)
+        );
+
+        Assert.Contains(path, exception.Message);
+        Assert.Contains("invalid session id", exception.Message);
+        Assert.Contains("../evil", exception.Message);
     }
 
     [Fact]

@@ -289,6 +289,7 @@ internal static class AcpMode
             Hooks = host?.Hooks,
             Session = session,
             FileChanges = (IFileChangeSink?)host?.FileChanges ?? NullFileChangeSink.Instance,
+            Model = model,
             ModelCatalog = catalog,
             ModelId = model.Id,
             WorkspaceTools = HarnessFactory.CreateWorkspaceTools(

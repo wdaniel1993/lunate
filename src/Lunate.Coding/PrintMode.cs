@@ -58,6 +58,9 @@ internal sealed record PrintModeOptions
     /// <summary>The user-profile root the skill user scope resolves under; null uses the profile.</summary>
     public string? HomeDirectory { get; init; }
 
+    /// <summary>The clipboard source behind <c>@clipboard</c>; null uses the platform helper chain.</summary>
+    public IClipboardImageSource? Clipboard { get; init; }
+
     /// <summary>The launch flags parsed once by the CLI; defaults stand in for direct calls.</summary>
     public LaunchOptions Launch { get; init; } = new();
 }
@@ -292,7 +295,28 @@ internal static class PrintMode
             bool cancelled = false;
             try
             {
-                await foreach (AgentEvent agentEvent in harness.RunAsync(options.Prompt, ct))
+                var imageInputs = new ImageInputResolver(
+                    workspace.WorktreeRoot,
+                    model,
+                    options.Clipboard ?? new PlatformClipboardImageSource()
+                );
+                ImageInputResult input = await imageInputs.ResolveAsync(options.Prompt, ct);
+                if (input.Outcome != ImageInputOutcome.Ready)
+                {
+                    if (input.Error is { } refusal)
+                    {
+                        interaction.Notify(new UserNotice(NoticeLevel.Error, refusal));
+                    }
+
+                    return 2;
+                }
+
+                await foreach (
+                    AgentEvent agentEvent in harness.RunAsync(
+                        new UserInput(input.Text, input.Images),
+                        ct
+                    )
+                )
                 {
                     if (options.Json)
                     {
@@ -609,6 +633,7 @@ internal static class PrintMode
             Hooks = extensions?.Hooks,
             Session = session,
             FileChanges = (IFileChangeSink?)extensions?.FileChanges ?? NullFileChangeSink.Instance,
+            Model = model,
             ModelCatalog = catalog,
             ModelId = model.Id,
             ModelRegistry = extensions?.ModelRegistry,

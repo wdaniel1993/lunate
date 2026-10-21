@@ -172,6 +172,13 @@ public sealed class ToolArgsSummaryTests
     }
 
     [Fact]
+    public void Text_that_looks_like_an_image_placeholder_is_still_one_line() =>
+        Assert.Equal(
+            "notes.txt (1 line)",
+            ToolArgsSummary.Summarize("read", """{"path":"notes.txt"}""", "[image 1024x768]")
+        );
+
+    [Fact]
     public void Read_single_line_result_counts_as_one_line()
     {
         Assert.Equal(

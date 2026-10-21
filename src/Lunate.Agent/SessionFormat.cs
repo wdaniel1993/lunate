@@ -9,11 +9,15 @@ namespace Lunate.Agent;
 /// <summary>
 /// Serializes and parses one session line. The byte shape is frozen by the golden tests in
 /// tests/fixtures/sessions: envelope field order, the UTC "O" timestamps, the embedded
-/// <see cref="ChatMessage"/> node produced by <see cref="AIJsonUtilities.DefaultOptions"/> and
+/// <see cref="ChatMessage"/> node produced by <see cref="SessionJson.Options"/> and
 /// extension payloads written back verbatim.
 /// </summary>
 internal static partial class SessionFormat
 {
+    /// <summary>
+    /// The schema this build writes: 3 adds cache token lanes and image reference parts on top of
+    /// the schema 2 entries; older schemas never carry either.
+    /// </summary>
     internal const int SchemaVersion = 3;
 
     private const string HeaderType = "header";
@@ -129,14 +133,14 @@ internal static partial class SessionFormat
         }
 
         ChatMessage message =
-            messageElement.Deserialize<ChatMessage>(AIJsonUtilities.DefaultOptions)
+            messageElement.Deserialize<ChatMessage>(SessionJson.Options)
             ?? throw new InvalidDataException("Session message line has a null 'message'.");
 
         string rawMessageJson = messageElement.GetRawText();
         SessionUsage? usage =
             root.TryGetProperty("usage", out JsonElement usageElement)
             && usageElement.ValueKind == JsonValueKind.Object
-                ? usageElement.Deserialize<SessionUsage>(AIJsonUtilities.DefaultOptions)
+                ? usageElement.Deserialize<SessionUsage>(SessionJson.Options)
                 : null;
         SessionSkillMetadata? skill = null;
         if (root.TryGetProperty("skill", out JsonElement skillElement))
@@ -168,7 +172,7 @@ internal static partial class SessionFormat
 
         return JsonNode.DeepEquals(
             JsonNode.Parse(rawMessageJson),
-            JsonSerializer.SerializeToNode(message, AIJsonUtilities.DefaultOptions)
+            JsonSerializer.SerializeToNode(message, SessionJson.Options)
         )
             ? entry
             : entry with

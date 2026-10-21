@@ -75,6 +75,9 @@ internal sealed record InteractiveSessionOptions
     /// <summary>The user-profile root the skill user scope resolves under; null uses the profile.</summary>
     public string? HomeDirectory { get; init; }
 
+    /// <summary>The clipboard source behind <c>@clipboard</c>; null uses the platform helper chain.</summary>
+    public IClipboardImageSource? Clipboard { get; init; }
+
     /// <summary>Where composition errors are reported; null uses stderr.</summary>
     public TextWriter? Diagnostics { get; init; }
 
@@ -117,6 +120,7 @@ internal sealed partial class InteractiveSession : IDisposable
     private readonly TerminalCapabilities _capabilities;
     private readonly LiveArea _live;
     private InputPipeline _pipeline;
+    private ImageInputResolver _imageResolver = null!;
     private readonly InputHistory _history;
     private readonly CtrlCQuitWindow _quitWindow;
     private readonly IUserInteraction _interaction;
@@ -210,6 +214,10 @@ internal sealed partial class InteractiveSession : IDisposable
 
     /// <summary>The provider's additional-count key for cache-creation tokens.</summary>
     private const string CacheCreationInputTokensKey = "CacheCreationInputTokens";
+
+    /// <summary>The one running-turn refusal for an image, shown before and after resolution.</summary>
+    private const string SteeringImageNotice =
+        "images cannot be attached to a steering message; wait for the current turn to finish, then submit the image again.";
 
     /// <summary>The cumulative token counts when the current run started (its deltas' baseline).</summary>
     private long _runInputBaseline;
@@ -455,12 +463,24 @@ internal sealed partial class InteractiveSession : IDisposable
         // The model resolves after the extension host: the configured id may name a virtual or
         // extension-registered model, which only the registry knows.
         ResolveSessionModel();
+        _imageResolver = CreateImageResolver(_model);
         _harness = BuildHarness(_model);
         // Composition is done: the placeholder counts fill in with exactly one update line, never a
         // redraw of the block (design D1).
         PrintHeaderCounts();
         _pipeline = new InputPipeline(_options.Hooks ?? _extensions?.HookRunner);
     }
+
+    /// <summary>
+    /// The image resolver for a model. It is rebuilt on every model switch so its vision gate and
+    /// refusal text always name the model that will actually receive the next request.
+    /// </summary>
+    private ImageInputResolver CreateImageResolver(ModelInfo? model) =>
+        new(
+            _workspace.WorktreeRoot,
+            model,
+            _options.Clipboard ?? new PlatformClipboardImageSource()
+        );
 
     /// <summary>
     /// Resolves the configured model: an extension-registered id (virtual models included) comes
@@ -741,6 +761,7 @@ internal sealed partial class InteractiveSession : IDisposable
             Session = _session,
             Steering = _steering,
             FileChanges = (IFileChangeSink?)_extensions?.FileChanges ?? NullFileChangeSink.Instance,
+            Model = model,
             ModelCatalog = _catalog,
             ModelId = model.Id,
             ThinkingLevel = _thinkingLevel,
@@ -1009,7 +1030,10 @@ internal sealed partial class InteractiveSession : IDisposable
         }
 
         SetInput(string.Empty);
-        if (Commands.IsCommand(submitted))
+        if (
+            Commands.IsCommand(submitted)
+            && !ImageInputResolver.IsDroppedImagePath(_workspace.WorktreeRoot, submitted)
+        )
         {
             // A login line may carry a typed key; it never reaches the history file. Every other
             // command keeps its current history behaviour.
@@ -1048,17 +1072,46 @@ internal sealed partial class InteractiveSession : IDisposable
             return;
         }
 
-        _history.Add(processed.Text);
+        // A running turn refuses an image syntactically, before the resolver reads any file or the
+        // clipboard. The post-resolution guard below still catches a dropped image that only its
+        // magic bytes identify (an extensionless path).
+        if (skill is null && _turnActive && ImageInputResolver.MayCarryImage(processed.Text))
+        {
+            Notify(SteeringImageNotice, NoticeLevel.Warning);
+            return;
+        }
+
+        ImageInputResult input = skill is null
+            ? await _imageResolver.ResolveAsync(processed.Text, ct)
+            : ImageInputResult.Ready(processed.Text, images: null);
+        if (input.Outcome == ImageInputOutcome.Refused)
+        {
+            Notify(input.Error!, NoticeLevel.Error);
+            return;
+        }
+
+        if (input.Outcome == ImageInputOutcome.Quiet)
+        {
+            return;
+        }
+
+        if (input.Images is { Count: > 0 } && _turnActive)
+        {
+            Notify(SteeringImageNotice, NoticeLevel.Warning);
+            return;
+        }
+
+        _history.Add(input.Text);
         if (_turnActive)
         {
-            EnqueueSteering(processed.Text, skill);
+            EnqueueSteering(input.Text, skill);
             return;
         }
 
         // A picker launch has no session yet: the turn that starts now creates it, so quitting
         // after the picker leaves the store untouched.
         MaterializeDeferredSession();
-        _transcript.Add(new TranscriptUserEntry(processed.Text));
+        _transcript.Add(new TranscriptUserEntry(input.Text));
         // The prompt opens the turn in scrollback before the run starts; the same processed text
         // feeds the transcript entry, so the viewer and scrollback never disagree. Later turns
         // open with one blank line so the prompt never runs against the previous turn's output.
@@ -1071,9 +1124,7 @@ internal sealed partial class InteractiveSession : IDisposable
                 console.WriteLine();
             }
 
-            console.Write(
-                _userEcho.Render(processed.Text, _console.Size.Columns, _capabilities.Color)
-            );
+            console.Write(_userEcho.Render(input.Text, _console.Size.Columns, _capabilities.Color));
         });
         _promptEchoed = true;
         _turnWroteOutput = false;
@@ -1089,21 +1140,25 @@ internal sealed partial class InteractiveSession : IDisposable
             UpdateStatus();
         }
 
-        _run = RunTurnsAsync(processed.Text, skill, ct);
+        _run = RunTurnsAsync(new UserInput(input.Text, input.Images), skill, ct);
     }
 
-    private async Task RunTurnsAsync(string text, SessionSkillMetadata? skill, CancellationToken ct)
+    private async Task RunTurnsAsync(
+        UserInput input,
+        SessionSkillMetadata? skill,
+        CancellationToken ct
+    )
     {
         try
         {
             while (true)
             {
                 _outcome = RunOutcome.Unknown;
-                await RunOnceAsync(text, skill, ct);
+                await RunOnceAsync(input, skill, ct);
                 List<(string Text, SessionSkillMetadata? Skill)> leftover = DrainSteering();
                 if (_outcome == RunOutcome.Completed && leftover.Count > 0)
                 {
-                    text = string.Join("\n", leftover.Select(entry => entry.Text));
+                    input = new UserInput(string.Join("\n", leftover.Select(entry => entry.Text)));
                     skill = leftover.Count == 1 ? leftover[0].Skill : null;
                     continue;
                 }
@@ -1124,7 +1179,11 @@ internal sealed partial class InteractiveSession : IDisposable
         }
     }
 
-    private async Task RunOnceAsync(string text, SessionSkillMetadata? skill, CancellationToken ct)
+    private async Task RunOnceAsync(
+        UserInput input,
+        SessionSkillMetadata? skill,
+        CancellationToken ct
+    )
     {
         using var runCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         _runCancellation = runCts;
@@ -1136,8 +1195,8 @@ internal sealed partial class InteractiveSession : IDisposable
         try
         {
             IAsyncEnumerable<AgentEvent> events = skill is { } metadata
-                ? _harness!.RunSkillAsync(text, metadata, runCts.Token)
-                : _harness!.RunAsync(text, runCts.Token);
+                ? _harness!.RunSkillAsync(input.Text, metadata, runCts.Token)
+                : _harness!.RunAsync(input, runCts.Token);
             await foreach (AgentEvent agentEvent in events)
             {
                 _options.EventObserver?.Invoke(agentEvent);

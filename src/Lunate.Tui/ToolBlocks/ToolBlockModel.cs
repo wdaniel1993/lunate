@@ -30,4 +30,12 @@ public sealed record ToolBlockModel(
     int? ExitCode = null,
     TimeSpan? Duration = null,
     bool ChildResult = false
-);
+)
+{
+    /// <summary>
+    /// Whether a successful <c>read</c> carried an image: only then is a <c>[image WxH]</c> output
+    /// rendered as the muted placeholder. A text file whose content happens to look like one is
+    /// still plain text.
+    /// </summary>
+    public bool IsImage { get; init; }
+}

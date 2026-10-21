@@ -1,0 +1,3 @@
+{"type":"header","schema":3,"id":"s_20261009-090000-f7a8","cwd":"/repo","created":"2026-10-09T09:00:00.0000000+00:00","meai":"10.10.1"}
+{"type":"message","id":"e_01","parentId":null,"timestamp":"2026-10-09T09:00:01.0000000+00:00","message":{"role":"user","contents":[{"$type":"text","text":"What is wrong? [image 1024x768]"},{"$type":"image","digest":"3c6873f6791287511b4fc539436471e02378c90150f8e6c818746023520e6a49","mime":"image/png","width":1024,"height":768}]}}
+{"type":"message","id":"e_02","parentId":"e_01","timestamp":"2026-10-09T09:00:02.0000000+00:00","message":{"role":"assistant","contents":[{"$type":"text","text":"It is a broken build."}]}}

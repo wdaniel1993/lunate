@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Lunate.Ai;
 
 namespace Lunate.Agent;
 
@@ -39,6 +40,13 @@ public sealed record ToolContext(string WorkingDirectory, IAgentEvents Events)
     /// outside the loop.
     /// </summary>
     public ISubagentRunner? Subagents { get; init; }
+
+    /// <summary>
+    /// The active model of the run; null when the tool runs outside a run or the model is unknown.
+    /// It is stamped in by the harness and never resolved from a catalog here: null stays null, and
+    /// tools must treat an unknown model as having no capabilities (the conservative default).
+    /// </summary>
+    public ModelInfo? Model { get; init; }
 
     /// <summary>
     /// The stubs of the run's programmatically callable tools (<see cref="ToolExposure.Direct"/>,

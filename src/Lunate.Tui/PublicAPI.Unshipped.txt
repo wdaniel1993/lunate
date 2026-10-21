@@ -124,6 +124,8 @@ Lunate.Tui.ToolBlockModel.Duration.get -> System.TimeSpan?
 Lunate.Tui.ToolBlockModel.Duration.init -> void
 Lunate.Tui.ToolBlockModel.ExitCode.get -> int?
 Lunate.Tui.ToolBlockModel.ExitCode.init -> void
+Lunate.Tui.ToolBlockModel.IsImage.get -> bool
+Lunate.Tui.ToolBlockModel.IsImage.init -> void
 Lunate.Tui.ToolBlockModel.Equals(Lunate.Tui.ToolBlockModel? other) -> bool
 Lunate.Tui.ToolBlockModel.Output.get -> string?
 Lunate.Tui.ToolBlockModel.Output.init -> void

@@ -1,0 +1,1 @@
++ read\x1b[2m  screens/diagram.png - ctrl+o\x1b[0m

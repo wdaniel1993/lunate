@@ -70,6 +70,9 @@ public sealed record ToolCallResult(
 {
     /// <summary>The parent call id for nested calls; null for top-level calls.</summary>
     public string? ParentToolCallId { get; init; }
+
+    /// <summary>Whether the tool produced image parts for this result.</summary>
+    public bool HasImages { get; init; }
 }
 
 /// <summary>Base for Lunate-specific events; mappers forward or filter them generically.</summary>

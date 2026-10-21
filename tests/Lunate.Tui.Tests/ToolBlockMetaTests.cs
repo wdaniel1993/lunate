@@ -124,6 +124,23 @@ public sealed class ToolBlockMetaTests
     }
 
     [Fact]
+    public void An_image_read_has_no_compact_line_meta()
+    {
+        var block = new ToolBlockModel(
+            "read",
+            """{"path":"screens/diagram.png"}""",
+            ToolBlockStatus.Ok,
+            "[image 1024x768]",
+            null
+        )
+        {
+            IsImage = true,
+        };
+
+        Assert.Null(ToolBlockMeta.Build(block, compact: true));
+    }
+
+    [Fact]
     public void A_failed_read_has_no_compact_meta()
     {
         var block = new ToolBlockModel(

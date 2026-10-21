@@ -30,6 +30,7 @@ public sealed partial class Session
     private readonly TimeProvider _timeProvider;
     private readonly List<SessionEntry> _entries = [];
     private SessionHeaderEntry? _header;
+    private SessionImages? _images;
 
     internal Session(string path, string sessionId, TimeProvider timeProvider)
     {
@@ -56,12 +57,15 @@ public sealed partial class Session
 
     /// <summary>
     /// The header's format schema (1, 2 or 3), so consumers can tell replay formats apart: schema 3
-    /// may carry cache token lanes, older schemas never do.
+    /// may carry both cache token lanes and image reference parts, older schemas never do.
     /// </summary>
     public int Schema => Header.Schema;
 
     /// <summary>The conversation entries in append order; the header entry is not included.</summary>
     public IReadOnlyList<SessionEntry> Entries => _entries;
+
+    /// <summary>The content-addressed image store beside this session file.</summary>
+    internal SessionImages Images => _images ??= SessionImages.ForSession(this);
 
     /// <summary>Creates a session file and writes its header with the optional repository identity.</summary>
     public static Session Create(
@@ -82,12 +86,47 @@ public sealed partial class Session
         TimeProvider timeProvider
     )
     {
+        ArgumentNullException.ThrowIfNull(timeProvider);
+        DateTimeOffset now = timeProvider.GetUtcNow();
+        return CreateCore(path, cwd, repo, worktree, NewSessionId(now), now, timeProvider);
+    }
+
+    /// <summary>Creates a session with an explicit id (tests and imports), keeping the id path-safe.</summary>
+    internal static Session Create(
+        string path,
+        string cwd,
+        string sessionId,
+        TimeProvider timeProvider
+    )
+    {
+        ArgumentNullException.ThrowIfNull(timeProvider);
+        return CreateCore(
+            path,
+            cwd,
+            repo: null,
+            worktree: null,
+            sessionId,
+            timeProvider.GetUtcNow(),
+            timeProvider
+        );
+    }
+
+    private static Session CreateCore(
+        string path,
+        string cwd,
+        string? repo,
+        string? worktree,
+        string sessionId,
+        DateTimeOffset now,
+        TimeProvider timeProvider
+    )
+    {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
         ArgumentException.ThrowIfNullOrWhiteSpace(cwd);
         ArgumentNullException.ThrowIfNull(timeProvider);
+        _ = SessionPaths.SessionFileName(sessionId);
 
-        DateTimeOffset now = timeProvider.GetUtcNow();
-        var session = new Session(path, NewSessionId(now), timeProvider);
+        var session = new Session(path, sessionId, timeProvider);
         var header = new SessionHeaderEntry(
             session.SessionId,
             SessionFormat.SchemaVersion,
@@ -99,6 +138,8 @@ public sealed partial class Session
         );
         session.WriteHeader(header);
         session._header = header;
+        session._images = SessionImages.ForSession(session);
+        session._images.ResetForNewSession();
         return session;
     }
 
@@ -151,6 +192,22 @@ public sealed partial class Session
             session._entries.Add(entry);
         }
 
+        try
+        {
+            session._images = SessionImages.ForSession(session);
+        }
+        catch (ArgumentException exception)
+        {
+            throw new InvalidDataException(
+                $"Session file '{path}' has an invalid session id '{header.Id}': {exception.Message}",
+                exception
+            );
+        }
+
+        session._images.Sweep(
+            SessionImages.ReferencedDigests(session._entries),
+            timeProvider.GetUtcNow()
+        );
         return session;
     }
 
@@ -404,7 +461,7 @@ public sealed partial class Session
         "s_"
         + now.UtcDateTime.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture)
         + "-"
-        + Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(2));
+        + Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(4));
 
     private void WriteHeader(SessionHeaderEntry header)
     {
@@ -438,6 +495,15 @@ public sealed partial class Session
         }
         catch (JsonException exception)
         {
+            throw new InvalidDataException(
+                $"Session file '{path}' line {lineNumber} is invalid: {exception.Message}",
+                exception
+            );
+        }
+        catch (ArgumentException exception)
+        {
+            // A content part's constructor rejects hostile values (for example an image digest);
+            // report it like every other invalid line, naming the file and line.
             throw new InvalidDataException(
                 $"Session file '{path}' line {lineNumber} is invalid: {exception.Message}",
                 exception
