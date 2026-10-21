@@ -205,15 +205,29 @@ public sealed class ModelsDevCatalogTests
     }
 
     [Fact]
-    public void Generate_with_missing_preset_provider_throws_naming_it()
+    public void Generate_with_missing_preset_provider_skips_it_with_a_warning()
     {
-        string json = """{ "openai": { "models": {} } }""";
+        string json = """{ "openai": { "models": { "gpt-4o": {} } } }""";
 
+        CatalogSnapshot snapshot = ModelsDevCatalog.Generate(json, TwoPresets());
+
+        Assert.Equal(["gpt-4o"], snapshot.Models.Select(model => model.Id));
+        Assert.Equal(
+            ["provider 'anthropic' is not in the models.dev snapshot; skipped"],
+            snapshot.Warnings
+        );
+    }
+
+    [Fact]
+    public void Generate_with_no_preset_provider_present_throws_naming_every_missing_preset()
+    {
         InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
-            ModelsDevCatalog.Generate(json, TwoPresets())
+            ModelsDevCatalog.Generate("{}", TwoPresets())
         );
 
-        Assert.Contains("anthropic", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("'openai'", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("'anthropic'", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("empty", exception.Message, StringComparison.Ordinal);
     }
 
     [Fact]

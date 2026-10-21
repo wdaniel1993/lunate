@@ -56,6 +56,31 @@ public sealed class CatalogUpdateTests
     }
 
     [Fact]
+    public void A_missing_preset_provider_prints_a_warning_and_still_writes()
+    {
+        using var temp = new TempDirectory();
+        string snapshot = WriteSnapshot(temp, FakeSnapshotWithout("groq"));
+        string managed = temp.File("home/.lunate/models.catalog.json");
+        using var output = new StringWriter();
+        using var error = new StringWriter();
+
+        int exitCode = Run(
+            ["--update-catalog", "--source", snapshot],
+            output,
+            error,
+            new CatalogUpdateSeams(ManagedPath: managed)
+        );
+
+        Assert.Equal(0, exitCode);
+        Assert.Contains(
+            "warning: provider 'groq' is not in the models.dev snapshot; skipped",
+            Lines(error.ToString())
+        );
+        Assert.Contains("models: 2", Lines(output.ToString()));
+        Assert.True(File.Exists(managed));
+    }
+
+    [Fact]
     public void Output_writes_the_snapshot_where_named_and_leaves_the_managed_path_alone()
     {
         using var temp = new TempDirectory();
@@ -407,6 +432,13 @@ public sealed class CatalogUpdateTests
         var providerNode = (JsonObject)root[provider]!;
         var models = (JsonObject)providerNode["models"]!;
         models[id] = entry;
+    }
+
+    private static string FakeSnapshotWithout(string provider)
+    {
+        var root = (JsonObject)JsonNode.Parse(FakeSnapshot())!;
+        root.Remove(provider);
+        return root.ToJsonString();
     }
 
     private sealed class FakeHandler(Func<HttpRequestMessage, HttpResponseMessage> responder)

@@ -148,6 +148,11 @@ internal static class CatalogUpdateCommand
             return 1;
         }
 
+        foreach (string warning in snapshot.Warnings)
+        {
+            errors.WriteLine($"warning: {warning}");
+        }
+
         try
         {
             WriteAtomically(target, snapshot.Json);

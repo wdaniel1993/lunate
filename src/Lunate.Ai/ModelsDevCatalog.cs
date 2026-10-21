@@ -5,13 +5,20 @@ using System.Text.Json;
 namespace Lunate.Ai;
 
 /// <summary>
-/// A generated catalog: the mapped models, the deterministic schema-2 JSON and the source hash.
+/// A generated catalog: the mapped models, the deterministic schema-2 JSON, the source hash and the
+/// warnings for presets the snapshot did not cover.
 /// </summary>
 public sealed record CatalogSnapshot(
     IReadOnlyList<ModelInfo> Models,
     string Json,
     string SourceSha256
-);
+)
+{
+    /// <summary>
+    /// Non-fatal findings, one per preset skipped because the snapshot has no provider for it.
+    /// </summary>
+    public IReadOnlyList<string> Warnings { get; init; } = [];
+}
 
 /// <summary>
 /// The one models.dev to catalog mapper; the repo generator and explicit refresh both call it.
@@ -45,13 +52,22 @@ public static class ModelsDevCatalog
 
         var models = new List<ModelInfo>();
         var ids = new HashSet<string>(StringComparer.Ordinal);
+        var skippedPresetIds = new List<string>();
+        var warnings = new List<string>();
         foreach (ProviderPreset preset in presets)
         {
-            JsonElement provider = RequireObject(
-                root,
-                preset.Id,
-                $"The {SourceName} snapshot has no provider '{preset.Id}'."
-            );
+            if (
+                !root.TryGetProperty(preset.Id, out JsonElement provider)
+                || provider.ValueKind != JsonValueKind.Object
+            )
+            {
+                skippedPresetIds.Add(preset.Id);
+                warnings.Add(
+                    $"provider '{preset.Id}' is not in the {SourceName} snapshot; skipped"
+                );
+                continue;
+            }
+
             JsonElement providerModels = RequireObject(
                 provider,
                 "models",
@@ -79,9 +95,24 @@ public static class ModelsDevCatalog
             }
         }
 
+        if (models.Count == 0)
+        {
+            throw new InvalidDataException(
+                skippedPresetIds.Count == 0
+                    ? $"The {SourceName} snapshot generated no models for any provider preset; refusing to write an empty catalog."
+                    : $"The {SourceName} snapshot has no provider for {NameList(skippedPresetIds)}; refusing to write an empty catalog."
+            );
+        }
+
         ValidateUniqueWireIds(models);
-        return new CatalogSnapshot(models, Serialize(models, sourceSha256), sourceSha256);
+        return new CatalogSnapshot(models, Serialize(models, sourceSha256), sourceSha256)
+        {
+            Warnings = warnings,
+        };
     }
+
+    private static string NameList(IReadOnlyList<string> ids) =>
+        string.Join(", ", ids.Select(static id => $"'{id}'"));
 
     internal static void ValidateUniqueWireIds(IEnumerable<ModelInfo> models)
     {

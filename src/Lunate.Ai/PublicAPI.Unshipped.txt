@@ -127,6 +127,8 @@ Lunate.Ai.CatalogSnapshot.Models.get -> System.Collections.Generic.IReadOnlyList
 Lunate.Ai.CatalogSnapshot.Models.init -> void
 Lunate.Ai.CatalogSnapshot.SourceSha256.get -> string!
 Lunate.Ai.CatalogSnapshot.SourceSha256.init -> void
+Lunate.Ai.CatalogSnapshot.Warnings.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Lunate.Ai.CatalogSnapshot.Warnings.init -> void
 override Lunate.Ai.CatalogSnapshot.Equals(object? obj) -> bool
 override Lunate.Ai.CatalogSnapshot.GetHashCode() -> int
 override Lunate.Ai.CatalogSnapshot.ToString() -> string!
