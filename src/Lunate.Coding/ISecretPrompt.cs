@@ -1,3 +1,5 @@
+using Lunate.Tui;
+
 namespace Lunate.Coding;
 
 /// <summary>
@@ -8,4 +10,10 @@ namespace Lunate.Coding;
 internal interface ISecretPrompt
 {
     Task<string?> ReadAsync(string prompt, CancellationToken cancellationToken);
+
+    /// <summary>Whether the prompt currently owns the keys; false for a scripted prompt.</summary>
+    bool IsOpen => false;
+
+    /// <summary>Consumes one key while the prompt is open; false when the key is inert.</summary>
+    bool HandleKey(KeyEvent key) => false;
 }

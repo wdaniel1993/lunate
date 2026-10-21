@@ -87,7 +87,10 @@ internal sealed record InteractiveSessionOptions
     /// <summary>The launch flags parsed once by the CLI; defaults stand in for direct calls.</summary>
     public LaunchOptions Launch { get; init; } = new();
 
-    /// <summary>The masked secret prompt behind <c>/login</c>; null reports that none is available.</summary>
+    /// <summary>
+    /// The masked secret prompt behind <c>/login</c>; null uses the live-area prompt. Print and ACP
+    /// modes never construct an interactive session.
+    /// </summary>
     public ISecretPrompt? SecretPrompt { get; init; }
 
     /// <summary>The session file to start from; null creates a fresh session.</summary>
@@ -117,6 +120,7 @@ internal sealed partial class InteractiveSession : IDisposable
     private readonly InputHistory _history;
     private readonly CtrlCQuitWindow _quitWindow;
     private readonly IUserInteraction _interaction;
+    private readonly ISecretPrompt _secretPrompt;
     private readonly SteeringQueue _steering = new();
     private readonly object _steeringGate = new();
     private readonly List<(string Text, SessionSkillMetadata? Skill)> _pendingSteering = [];
@@ -247,6 +251,7 @@ internal sealed partial class InteractiveSession : IDisposable
         _history = new InputHistory(options.HistoryPath ?? InputHistory.DefaultPath);
         _quitWindow = new CtrlCQuitWindow(options.Scheduler);
         _interaction = new TuiUserInteraction(_live);
+        _secretPrompt = options.SecretPrompt ?? new TuiSecretPrompt(_live);
     }
 
     /// <summary>Runs the input loop until the terminal's key stream ends or the quit window quits.</summary>
@@ -822,6 +827,22 @@ internal sealed partial class InteractiveSession : IDisposable
         if (_viewer.IsOpen)
         {
             HandleViewerKey(key);
+            return;
+        }
+
+        // The secret prompt is modal like the viewer: only Ctrl+C quits, every other key edits
+        // the mask or completes it. Nothing reaches the input line, history or autocomplete.
+        if (_secretPrompt.IsOpen)
+        {
+            if (KeyRouter.Route(key) == RoutedKey.ClearOrQuit)
+            {
+                HandleCtrlC();
+            }
+            else
+            {
+                _secretPrompt.HandleKey(key);
+            }
+
             return;
         }
 

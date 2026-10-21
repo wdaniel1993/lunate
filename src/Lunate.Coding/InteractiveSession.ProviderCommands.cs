@@ -21,15 +21,40 @@ internal sealed partial class InteractiveSession
             return;
         }
 
-        if (_options.SecretPrompt is not { } prompt)
+        Task<string?> pending = _secretPrompt.ReadAsync($"API key for {preset.Id}", ct);
+        if (pending.IsCompleted)
         {
-            Notify("login needs an interactive secret prompt", NoticeLevel.Warning);
+            await FinishLoginAsync(preset, pending, ct).ConfigureAwait(false);
             return;
         }
 
-        string? secret = await prompt
-            .ReadAsync($"API key for {preset.Id}", ct)
-            .ConfigureAwait(false);
+        // The TUI prompt is driven by the key pump this command already runs on: awaiting the
+        // pending read here would deadlock. The continuation saves and notifies on the thread pool.
+        _ = FinishLoginAsync(preset, pending, ct);
+    }
+
+    /// <summary>
+    /// Saves the read key once the prompt completes: Enter stores it under the preset id, a null
+    /// or blank value is a cancelled login, and a failed save rolls back and reports without the
+    /// value. A cancelled read ends quietly because the session is quitting.
+    /// </summary>
+    private async Task FinishLoginAsync(
+        ProviderPreset preset,
+        Task<string?> pending,
+        CancellationToken ct
+    )
+    {
+        string? secret;
+        try
+        {
+            secret = await pending.ConfigureAwait(false);
+            ct.ThrowIfCancellationRequested();
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+
         if (string.IsNullOrWhiteSpace(secret))
         {
             Notify("login cancelled");
