@@ -15,9 +15,9 @@
 
 ## 3. Wrapped notices
 
-- [ ] 3.1 Add red tests: a notice longer than the width wraps at 40 and 80 columns, no word is lost, every physical line is at most the width, and a notice that overflows `MaxNoticeLines` ends with the ellipsis marker.
-- [ ] 3.2 Add `MaxNoticeLines = 4`; wrap the notice in the renderer, sanitize each physical line, and feed the real count into the pre-input budget.
-- [ ] 3.3 Commit: `fix(tui): wrap a long notice instead of clipping it`.
+- [x] 3.1 Add red tests: a notice longer than the width wraps at 40 and 80 columns, no word is lost, every physical line is at most the width, and a notice that overflows `MaxNoticeLines` ends with the ellipsis marker.
+- [x] 3.2 Add `MaxNoticeLines = 4`; wrap the notice in the renderer, sanitize each physical line, and feed the real count into the pre-input budget.
+- [x] 3.3 Commit: `fix(tui): wrap a long notice instead of clipping it`.
 
 ## 4. Verification
 

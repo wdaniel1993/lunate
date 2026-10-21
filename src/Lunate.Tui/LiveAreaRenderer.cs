@@ -13,6 +13,9 @@ internal static class LiveAreaRenderer
 {
     internal const int MaxLines = 8;
 
+    /// <summary>The most rows a wrapped notice may occupy before it is elided.</summary>
+    internal const int MaxNoticeLines = 4;
+
     /// <summary>The thinking window: the activity line plus the newest reasoning text lines.</summary>
     internal const int MaxThinkingLines = 12;
 
@@ -30,10 +33,13 @@ internal static class LiveAreaRenderer
         int width = Math.Max(1, state.Size.Columns);
         var activityLine = ActivityLine(state, width);
         var subagentLine = state.SubagentRunning ? "subagent running" : null;
-        // A notice is always one physical line: embedded newlines or controls would split the
-        // frame, so sanitize before clipping; a notice that sanitizes to empty renders as none.
+        // Embedded newlines or controls would split the frame, so sanitize before wrapping; a
+        // notice that sanitizes to empty renders as none, and a long one wraps instead of losing
+        // its tail (the part that says what to do).
         string? notice = state.Notice is null ? null : CellText.SingleLine(state.Notice);
-        var noticeLine = string.IsNullOrEmpty(notice) ? null : notice;
+        IReadOnlyList<string> noticeLines = string.IsNullOrEmpty(notice)
+            ? []
+            : NoticeLines(notice, width, state.Unicode);
         // The live state carries only the mask: the typed characters never reach a frame.
         string? secretPromptLine = state.SecretPrompt is { } secretPrompt
             ? CellText.Clip(secretPrompt.Label + ": " + secretPrompt.Mask, width)
@@ -59,7 +65,7 @@ internal static class LiveAreaRenderer
             thinkingLines.Count
             + (activityLine is null ? 0 : 1)
             + (subagentLine is null ? 0 : 1)
-            + (noticeLine is null ? 0 : 1)
+            + noticeLines.Count
             + (secretPromptLine is null ? 0 : 1)
             + approvalLines.Count
             + trustLines.Count
@@ -98,9 +104,9 @@ internal static class LiveAreaRenderer
             lines.Add(CellText.Clip(subagentLine, width));
         }
 
-        if (noticeLine is not null)
+        foreach (string noticeLine in noticeLines)
         {
-            lines.Add(CellText.Clip(noticeLine, width));
+            lines.Add(noticeLine);
         }
 
         if (secretPromptLine is not null)
@@ -305,6 +311,81 @@ internal static class LiveAreaRenderer
             .. text.Skip(start)
                 .Select(line => ThinkingColor.Wrap(CellText.Clip(line, width), state.Color)),
         ];
+    }
+
+    /// <summary>
+    /// Wraps a sanitized notice to the width and caps it at <see cref="MaxNoticeLines"/>: an
+    /// overflowing notice ends its last line with an ellipsis, so the input is never pushed out.
+    /// </summary>
+    private static IReadOnlyList<string> NoticeLines(string notice, int width, bool unicode)
+    {
+        List<string> lines =
+        [
+            .. WrapWords(notice, width).Select(line => CellText.Clip(line, width)),
+        ];
+        if (lines.Count <= MaxNoticeLines)
+        {
+            return lines;
+        }
+
+        List<string> capped = lines.Take(MaxNoticeLines).ToList();
+        string marker = CellText.Clip(unicode ? "\u2026" : "...", width);
+        string last = CellText.Clip(capped[^1], width - CellText.Width(marker)).TrimEnd();
+        capped[^1] = last + marker;
+        return capped;
+    }
+
+    /// <summary>Greedy word wrap at the width, breaking a single word wider than the width.</summary>
+    private static List<string> WrapWords(string text, int width)
+    {
+        var lines = new List<string>();
+        var current = new StringBuilder();
+        var used = 0;
+        foreach (string word in text.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+        {
+            int wordWidth = CellText.Width(word);
+            if (current.Length > 0)
+            {
+                if (used + 1 + wordWidth <= width)
+                {
+                    current.Append(' ').Append(word);
+                    used += 1 + wordWidth;
+                    continue;
+                }
+
+                lines.Add(current.ToString());
+                current.Clear();
+                used = 0;
+            }
+
+            if (wordWidth <= width)
+            {
+                current.Append(word);
+                used = wordWidth;
+                continue;
+            }
+
+            foreach (var rune in word.EnumerateRunes())
+            {
+                int runeWidth = CellText.Width(rune);
+                if (used > 0 && used + runeWidth > width)
+                {
+                    lines.Add(current.ToString());
+                    current.Clear();
+                    used = 0;
+                }
+
+                current.Append(rune);
+                used += runeWidth;
+            }
+        }
+
+        if (current.Length > 0)
+        {
+            lines.Add(current.ToString());
+        }
+
+        return lines;
     }
 
     /// <summary>Wraps every hard line at the width, breaking a run longer than the width.</summary>
