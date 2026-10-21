@@ -56,7 +56,17 @@ public sealed partial class ReadTool
             );
         }
 
-        var data = files.ReadAllBytes(resolved.AbsolutePath);
+        // One bounded read: a file that grew after the length check cannot bypass the cap.
+        var data = files.ReadPrefixBytes(resolved.AbsolutePath, ImageLimits.MaxBytes + 1);
+        if (data.Length > ImageLimits.MaxBytes)
+        {
+            return Error(
+                string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"{resolved.RelativePath} is at least {data.Length / 1048576d:F1} MB, over the {ImageLimits.MaxBytes / 1048576d:F1} MB image limit; {ImageLimits.DownscalingUnavailable}; use a smaller {ImageLimits.Formats} image."
+                )
+            );
+        }
         if (!ImageFile.TryReadDimensions(data, out var mime, out var width, out var height))
         {
             return Error(

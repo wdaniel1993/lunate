@@ -12,7 +12,4 @@ internal interface IBinaryFileAccess
 
     /// <summary>Reads at most <paramref name="maxBytes"/> bytes from the start of the file.</summary>
     byte[] ReadPrefixBytes(string path, int maxBytes);
-
-    /// <summary>Reads the whole file as bytes.</summary>
-    byte[] ReadAllBytes(string path);
 }

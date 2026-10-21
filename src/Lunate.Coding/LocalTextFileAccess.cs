@@ -48,8 +48,6 @@ internal sealed class LocalTextFileAccess : ITextFileAccess, IBinaryFileAccess
         return buffer[..read];
     }
 
-    public byte[] ReadAllBytes(string path) => File.ReadAllBytes(path);
-
     public (string Text, bool HasBom) ReadRaw(string path) => TextFile.ReadRaw(path);
 
     public void WriteAllText(string path, string content)
