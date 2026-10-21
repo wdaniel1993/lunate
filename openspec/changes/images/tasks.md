@@ -35,9 +35,9 @@ Each group is one conventional commit. Work test-first through `senior-dev`; do 
 
 ## 5. Image-aware request digest
 
-- [ ] 5.1 Add red tests: identical image bytes in differently encoded messages produce one digest; a one-pixel change changes it; the digest input and fixture contain no base64; every existing fixture digest is unchanged.
-- [ ] 5.2 In `FixtureFormat.ComputeRequestDigest`, replace image `DataContent` with `{mediaType, digest}` (SHA-256 hex) before serializing the digest input.
-- [ ] 5.3 Commit: `feat(ai): image digest for recorded requests`.
+- [x] 5.1 Add red tests: identical image bytes in differently encoded messages produce one digest; a one-pixel change changes it; the digest input and fixture contain no base64; every existing fixture digest is unchanged.
+- [x] 5.2 In `FixtureFormat.ComputeRequestDigest`, replace image `DataContent` with `{mediaType, digest}` (SHA-256 hex) before serializing the digest input.
+- [x] 5.3 Commit: `feat(ai): image digest for recorded requests`.
 
 ## 6. `read` image path
 
