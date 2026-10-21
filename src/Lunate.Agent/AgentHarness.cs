@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
@@ -27,8 +28,12 @@ public sealed partial class AgentHarness
     private readonly SessionImages _images;
     private readonly List<ChatMessage> _history = [];
     private readonly List<FunctionCallContent> _danglingCalls = [];
+    private readonly ConcurrentDictionary<string, int> _spillSequenceByCallId = new(
+        StringComparer.Ordinal
+    );
     private int _runActive;
     private int _nestedCallCounter;
+    private int _spillSequence;
     private SubagentTreeState? _treeState;
     private SubagentRunner? _subagentRunner;
     private long _tokenBudgetUsed;
@@ -159,6 +164,8 @@ public sealed partial class AgentHarness
             _compactionInputTokens = 0;
             _compactionOutputTokens = 0;
             Interlocked.Exchange(ref _nestedCallCounter, 0);
+            _spillSequenceByCallId.Clear();
+            Interlocked.Exchange(ref _spillSequence, 0);
             var channel = new AgentEventChannel(_options.Session?.SessionId);
             _subagentRunner = new SubagentRunner(this, channel, runId, _treeState!, SpawnDepth);
             using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct);

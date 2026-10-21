@@ -125,3 +125,9 @@ public sealed record SteeringInjected(string RunId, string? EntryId) : Extension
 /// <summary>Streamed progress a tool reports through its context while it runs.</summary>
 public sealed record ToolProgressUpdate(string RunId, string CallId, string Message)
     : ExtensionEvent(RunId);
+
+/// <summary>
+/// A best-effort spill write failed; the tool result keeps its count-only marker. Surfaces as a
+/// user notice, never as a tool error.
+/// </summary>
+public sealed record ToolOutputSpillFailed(string RunId, string Message) : ExtensionEvent(RunId);

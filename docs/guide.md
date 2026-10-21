@@ -250,7 +250,7 @@ public sealed record ToolContext(string WorkingDirectory, IAgentEvents Events);
 internal sealed class ToolDeclaration(ITool tool) : AIFunction { /* Name, Description, JsonSchema */ }
 ```
 
-`Details` is for the UI (for example a diff) and is never sent to the model. Tool output sent to the model is truncated by the loop (default 30,000 characters, cut in the middle with a marker). MCP tools arrive from the SDK as functions and are wrapped as `ITool`s, so they go through the same approval policy. Do not use `AIFunctionFactory`: it builds tools by reflection and hides the schema.
+`Details` is for the UI (for example a diff) and is never sent to the model. Tool output sent to the model is truncated by the loop (default 30,000 characters, cut in the middle with a marker). When the run has a session, the full output is also spilled to `<sessions-dir>/<session-id>/tool-output/<run>-<seq>.txt` and the marker names the absolute path, so the model can read the file; `--no-session` runs keep the count-only marker, and a failed spill never fails the tool (the marker stays count-only and the run reports a notice). MCP tools arrive from the SDK as functions and are wrapped as `ITool`s, so they go through the same approval policy. Do not use `AIFunctionFactory`: it builds tools by reflection and hides the schema.
 
 **Events (the only output of the core)**
 

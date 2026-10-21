@@ -17,7 +17,18 @@ public static class ToolOutput
     /// Returns <paramref name="output"/> unchanged when it fits the budget; otherwise returns head,
     /// marker and tail. The result is the content budget plus the marker.
     /// </summary>
-    public static string Truncate(string output, int limit = DefaultLimit)
+    public static string Truncate(string output, int limit = DefaultLimit) =>
+        TruncateCore(output, limit, spillPath: null, tooLarge: false);
+
+    /// <summary>The same truncation with the absolute path of the written spill file in its marker.</summary>
+    internal static string Truncate(string output, int limit, string spillPath) =>
+        TruncateCore(output, limit, spillPath, tooLarge: false);
+
+    /// <summary>The same truncation, saying the output was over the spill ceiling.</summary>
+    internal static string Truncate(string output, int limit, bool tooLarge) =>
+        TruncateCore(output, limit, spillPath: null, tooLarge);
+
+    private static string TruncateCore(string output, int limit, string? spillPath, bool tooLarge)
     {
         ArgumentNullException.ThrowIfNull(output);
         if (output.Length <= limit)
@@ -43,10 +54,13 @@ public static class ToolOutput
         string head = output[..headLength];
         string tail = output[tailStart..];
         int omitted = output.Length - head.Length - tail.Length;
-        return head
-            + "\n\n... ["
-            + omitted.ToString(CultureInfo.InvariantCulture)
-            + " characters truncated] ...\n\n"
-            + tail;
+        string count = omitted.ToString(CultureInfo.InvariantCulture);
+        string marker = (spillPath, tooLarge) switch
+        {
+            ({ } path, _) => $"characters omitted; full output at {path}",
+            (_, true) => "characters omitted; output too large to spill",
+            _ => "characters truncated",
+        };
+        return head + "\n\n... [" + count + " " + marker + "] ...\n\n" + tail;
     }
 }

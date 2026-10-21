@@ -293,6 +293,7 @@ internal static class PrintMode
 
             var summary = new PrintRunSummary(settings.Approval);
             bool cancelled = false;
+            bool spillFailureNoticed = false;
             try
             {
                 var imageInputs = new ImageInputResolver(
@@ -333,6 +334,18 @@ internal static class PrintMode
 
                     if (agentEvent.ParentRunId is null && NoticeFor(agentEvent) is { } notice)
                     {
+                        // A spill is best-effort per call, but the run reports one stderr notice:
+                        // repeated failures would drown the answer for the same broken directory.
+                        if (agentEvent is ToolOutputSpillFailed)
+                        {
+                            if (spillFailureNoticed)
+                            {
+                                continue;
+                            }
+
+                            spillFailureNoticed = true;
+                        }
+
                         interaction.Notify(notice);
                     }
                 }
@@ -401,6 +414,7 @@ internal static class PrintMode
                 NoticeLevel.Warning,
                 FormattableString.Invariant($"step limit reached ({limit.MaxSteps} steps)")
             ),
+            ToolOutputSpillFailed failed => new UserNotice(NoticeLevel.Warning, failed.Message),
             _ => null,
         };
 
