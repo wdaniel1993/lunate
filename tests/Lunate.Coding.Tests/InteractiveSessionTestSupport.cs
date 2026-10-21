@@ -457,6 +457,20 @@ internal sealed class InteractiveSessionHost : IDisposable
     public void Advance(int milliseconds) =>
         Scheduler.Advance(TimeSpan.FromMilliseconds(milliseconds));
 
+    /// <summary>
+    /// Types a line and submits it, waiting after each step until the session consumed it. A
+    /// frame is a paint of the live state, so advancing the scheduler between the typed text and
+    /// the submit would paint the text on the input line — for a line that carries a secret the
+    /// tests must observe only the frames the product emits after the submit.
+    /// </summary>
+    public async Task SendLineAsync(string text)
+    {
+        Console.SendText(text);
+        await WaitUntilAsync(() => Session.Input.Text == text);
+        Console.SendEnter();
+        await WaitUntilAsync(() => Session.Input.Text.Length == 0);
+    }
+
     public string LastFrame => Console.Writes.Count == 0 ? string.Empty : Console.Writes[^1];
 
     public string Frames => string.Concat(Console.Writes);
