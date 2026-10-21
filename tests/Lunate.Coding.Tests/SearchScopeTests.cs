@@ -1,5 +1,5 @@
-using Xunit;
 using Lunate.Coding;
+using Xunit;
 
 namespace Lunate.Coding.Tests;
 
