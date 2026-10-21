@@ -71,6 +71,64 @@ Finished tool calls SHALL render as scrollback blocks carrying the tool name, an
 - **WHEN** their blocks render
 - **THEN** each header is glyph, name and meta only (`✓ read · 13 lines`, `✓ bash · exit 0 · 0.4s`, `✓ edit · +5 −1`) with no summary
 
+#### Scenario: Collapsed is the default and shows only the header
+
+- **GIVEN** a finished `bash` result with output and an `edit` result with a diff
+- **WHEN** their blocks commit with the default `toolDetails`
+- **THEN** each block is exactly its header line, with no excerpt and no diff, and each header ends with `ctrl+o`
+
+#### Scenario: The hint appears only when more exists
+
+- **GIVEN** a successful `read` with output, a `bash` with output, a `bash` with blank output and an `edit` with an empty diff
+- **WHEN** their blocks commit collapsed
+- **THEN** only the `bash` with output and the `edit` with a diff carry `ctrl+o`; the successful `read`, the blank `bash` and the empty diff do not
+
+#### Scenario: Expanded mode restores the details
+
+- **GIVEN** `toolDetails: expanded`, a `bash` result with output and an `edit` result with a diff
+- **WHEN** their blocks commit
+- **THEN** the header is followed by the bounded excerpt and the diff panel, and no header carries `ctrl+o`
+
+### Requirement: Diff rendering with match tier
+
+In expanded mode (`toolDetails: expanded`): Edit and write blocks SHALL render their unified diff as a red/green borderless panel — deletions red, insertions green, headers and context dimmed — with the match tier shown as a label, and a fallback match (`normalized` or `indent`) visibly flagged so no fallback is silent. By default (`toolDetails: collapsed`), an edit or write block SHALL commit its header line only and SHALL NOT render the diff panel; when the diff parses into a panel, the header SHALL carry the `ctrl+o` hint, and an empty or malformed diff SHALL add no hint and SHALL not throw. The transcript viewer SHALL keep showing the full diff in both modes.
+
+#### Scenario: Both tiers render distinctly
+
+- **GIVEN** an edit that matched exactly and one that matched via normalization, with `toolDetails: expanded`
+- **WHEN** their blocks render
+- **THEN** the diff is red/green in both and the tier label distinguishes exact from normalized (the latter flagged)
+
+#### Scenario: Malformed or empty diffs never break rendering
+
+- **GIVEN** a diff string that is empty or malformed, with `toolDetails: expanded`
+- **WHEN** the block renders
+- **THEN** it renders without the panel (or with the panel omitted) and never throws
+
+#### Scenario: An indent fallback renders flagged
+
+- **GIVEN** an edit that matched via the indent tier, with `toolDetails: expanded`
+- **WHEN** its block renders
+- **THEN** the tier label says indent and the fallback is flagged like normalized
+
+#### Scenario: Collapsed hides the diff behind the hint
+
+- **GIVEN** an `edit` result with a non-empty diff
+- **WHEN** its block commits with the default `toolDetails`
+- **THEN** only the header line appears, the diff and tier label are absent, and the header ends with `ctrl+o`
+
+#### Scenario: Collapsed malformed diff adds no hint
+
+- **GIVEN** an `edit` result with a malformed diff
+- **WHEN** its block commits collapsed
+- **THEN** only the header appears and it carries no `ctrl+o` hint
+
+#### Scenario: Expanded renders the diff panel
+
+- **GIVEN** `toolDetails: expanded` and an `edit` result with a diff
+- **WHEN** its block commits
+- **THEN** the red/green panel and the tier label follow the header and the header carries no `ctrl+o`
+
 #### Scenario: A read image shows the placeholder
 
 - **GIVEN** a successful `read` of a 1024×768 PNG
