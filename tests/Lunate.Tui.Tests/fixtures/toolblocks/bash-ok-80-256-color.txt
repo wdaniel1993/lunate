@@ -1,5 +1,1 @@
-\x1b[38;5;2m✓\x1b[0m \x1b[38;5;14mbash\x1b[0m\x1b[2m  dotnet test --project tests/Lunate.Tui.Tests · exit 0 · 0.4s\x1b[0m
-Test run summary: Passed!
-  total: 286
-  failed: 0
-  succeeded: 286
+\x1b[38;5;2m✓\x1b[0m \x1b[38;5;14mbash\x1b[0m\x1b[2m  dotnet test --project tests/Lunate.Tui.Tests · exit 0 · 0.4s · ctrl+o\x1b[0m

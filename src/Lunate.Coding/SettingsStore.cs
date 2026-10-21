@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text.Json;
 using Lunate.Agent;
 using Lunate.Ai;
+using Lunate.Tui;
 
 namespace Lunate.Coding;
 
@@ -23,6 +24,9 @@ public sealed record AgentSettings
 
     /// <summary>The approval policy; defaults to <see cref="ApprovalPolicy.Ask"/>.</summary>
     public ApprovalPolicy Approval { get; init; } = ApprovalPolicy.Ask;
+
+    /// <summary>How much of a tool call the scrollback shows; defaults to collapsed.</summary>
+    public ToolDetails ToolDetails { get; init; } = ToolDetails.Collapsed;
 
     /// <summary>The character budget for one tool result before truncation.</summary>
     public int ToolOutputLimit { get; init; } = ToolOutput.DefaultLimit;
@@ -60,10 +64,11 @@ public sealed record RoslynSettings
 /// <summary>
 /// Reads <c>~/.lunate/settings.json</c> (schema 1). A missing file yields defaults; a present file
 /// is validated with every problem collected into one error, and no partial settings are applied.
-/// The environment (<c>LUNATE_MODEL</c>, <c>LUNATE_APPROVAL</c>, <c>LUNATE_TOOL_OUTPUT_LIMIT</c>,
-/// <c>LUNATE_STARTUP_HEADER</c>, <c>LUNATE_SUBAGENTS_CONCURRENCY</c>,
-/// <c>LUNATE_SUBAGENTS_TOKEN_BUDGET</c>, <c>LUNATE_SUBAGENTS_TREE_TOKEN_BUDGET</c>) overrides file
-/// values. Both the path and the environment lookup are injectable.
+/// The environment (<c>LUNATE_MODEL</c>, <c>LUNATE_APPROVAL</c>, <c>LUNATE_TOOL_DETAILS</c>,
+/// <c>LUNATE_TOOL_OUTPUT_LIMIT</c>, <c>LUNATE_STARTUP_HEADER</c>,
+/// <c>LUNATE_SUBAGENTS_CONCURRENCY</c>, <c>LUNATE_SUBAGENTS_TOKEN_BUDGET</c>,
+/// <c>LUNATE_SUBAGENTS_TREE_TOKEN_BUDGET</c>) overrides file values. Both the path and the
+/// environment lookup are injectable.
 /// </summary>
 public static class SettingsStore
 {
@@ -72,6 +77,7 @@ public static class SettingsStore
 
     private const string ModelVariable = "LUNATE_MODEL";
     private const string ApprovalVariable = "LUNATE_APPROVAL";
+    private const string ToolDetailsVariable = "LUNATE_TOOL_DETAILS";
     private const string ToolOutputLimitVariable = "LUNATE_TOOL_OUTPUT_LIMIT";
     private const string StartupHeaderVariable = "LUNATE_STARTUP_HEADER";
     private const string SubagentConcurrencyVariable = "LUNATE_SUBAGENTS_CONCURRENCY";
@@ -162,6 +168,16 @@ public static class SettingsStore
                             Approval = ReadApproval(property.Value, "approval", problems),
                         };
                         break;
+                    case "toolDetails":
+                        settings = settings with
+                        {
+                            ToolDetails = ReadToolDetails(
+                                property.Value,
+                                "'toolDetails'",
+                                problems
+                            ),
+                        };
+                        break;
                     case "output":
                         settings = settings with
                         {
@@ -238,6 +254,33 @@ public static class SettingsStore
             )
         );
         return ApprovalPolicy.Ask;
+    }
+
+    /// <summary>
+    /// Reads <c>toolDetails</c>: the exact lowercase literal; a missing key keeps the documented
+    /// default (collapsed).
+    /// </summary>
+    private static ToolDetails ReadToolDetails(
+        JsonElement value,
+        string subject,
+        List<string> problems
+    )
+    {
+        if (
+            value.ValueKind == JsonValueKind.String
+            && TryParseToolDetails(value.GetString(), out var parsed)
+        )
+        {
+            return parsed;
+        }
+
+        problems.Add(
+            ToolDetailsError(
+                subject,
+                value.ValueKind == JsonValueKind.String ? value.GetString() : null
+            )
+        );
+        return ToolDetails.Collapsed;
     }
 
     private static int ReadOutput(JsonElement value, List<string> problems)
@@ -487,6 +530,19 @@ public static class SettingsStore
             }
         }
 
+        string? toolDetails = environment(ToolDetailsVariable);
+        if (!string.IsNullOrEmpty(toolDetails))
+        {
+            if (TryParseToolDetails(toolDetails, out var parsedDetails))
+            {
+                settings = settings with { ToolDetails = parsedDetails };
+            }
+            else
+            {
+                problems.Add(ToolDetailsError(ToolDetailsVariable, toolDetails));
+            }
+        }
+
         string? limit = environment(ToolOutputLimitVariable);
         if (!string.IsNullOrEmpty(limit))
         {
@@ -628,6 +684,22 @@ public static class SettingsStore
         }
     }
 
+    private static bool TryParseToolDetails(string? value, out ToolDetails parsed)
+    {
+        switch (value)
+        {
+            case "collapsed":
+                parsed = ToolDetails.Collapsed;
+                return true;
+            case "expanded":
+                parsed = ToolDetails.Expanded;
+                return true;
+            default:
+                parsed = ToolDetails.Collapsed;
+                return false;
+        }
+    }
+
     private static bool TryParseApproval(string? value, out ApprovalPolicy parsed)
     {
         switch (value)
@@ -674,6 +746,11 @@ public static class SettingsStore
         value is null
             ? "'thinking' must be 'off', 'low', 'medium' or 'high'"
             : $"'thinking' must be 'off', 'low', 'medium' or 'high', but was '{value}'";
+
+    private static string ToolDetailsError(string subject, string? value) =>
+        value is null
+            ? $"{subject} must be 'collapsed' or 'expanded'"
+            : $"{subject} must be 'collapsed' or 'expanded', but was '{value}'";
 
     private static string ApprovalError(string subject, string? value) =>
         value == "yolo"

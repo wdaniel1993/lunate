@@ -1,7 +1,2 @@
 ✗ cs_diagnostics\x1b[2m  changed · 2 errors 1 warning · src/a.cs(4,5): error CS0103: The name 'Foo' does not exist · \x1b[0m
-\x1b[2msrc/b.cs(9,1): warning CS8600: Converting null literal\x1b[0m
-Partial load: one project failed to load.
-2 errors, 1 warning in changed files.
-src/a.cs(4,5): error CS0103: The name 'Foo' does not exist
-src/b.cs(9,1): warning CS8600: Converting null literal
-src/c.cs(1,1): error CS1002: ; expected
+\x1b[2msrc/b.cs(9,1): warning CS8600: Converting null literal · ctrl+o\x1b[0m

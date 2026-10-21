@@ -1,10 +1,1 @@
-\x1b[32m✓\x1b[0m \x1b[96medit\x1b[0m\x1b[2m  src/Counter.cs · +1 −1\x1b[0m
-edited src/Counter.cs lines 4–4 (match: normalized)
-\x1b[93mmatch: normalized\x1b[0m
-\x1b[2m--- a/src/Counter.cs\x1b[0m
-\x1b[2m+++ b/src/Counter.cs\x1b[0m
-\x1b[2;96m@@ -3,3 +3,3 @@\x1b[0m
-\x1b[2m {\x1b[0m
-\x1b[91m-    _count = _count + 1;\x1b[0m
-\x1b[32m+    _count++;\x1b[0m
-\x1b[2m }\x1b[0m
+\x1b[32m✓\x1b[0m \x1b[96medit\x1b[0m\x1b[2m  src/Counter.cs · +1 −1 · ctrl+o\x1b[0m

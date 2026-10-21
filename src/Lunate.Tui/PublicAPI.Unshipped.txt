@@ -111,6 +111,7 @@ Lunate.Tui.ToolBlockModel.<Clone>$() -> Lunate.Tui.ToolBlockModel!
 Lunate.Tui.ToolBlockRenderer
 Lunate.Tui.ToolBlockRenderer.Render(Lunate.Tui.ToolBlockModel! block) -> Spectre.Console.Rendering.IRenderable!
 Lunate.Tui.ToolBlockRenderer.Render(Lunate.Tui.ToolBlockModel! block, int width) -> Spectre.Console.Rendering.IRenderable!
+Lunate.Tui.ToolBlockRenderer.Render(Lunate.Tui.ToolBlockModel! block, int width, Lunate.Tui.ToolDetails details) -> Spectre.Console.Rendering.IRenderable!
 Lunate.Tui.ToolBlockRenderer.ToolBlockRenderer() -> void
 Lunate.Tui.ToolBlockModel.ArgsSummary.get -> string!
 Lunate.Tui.ToolBlockModel.ArgsSummary.init -> void
@@ -135,6 +136,9 @@ Lunate.Tui.ToolBlockStatus
 Lunate.Tui.ToolBlockStatus.Error = 2 -> Lunate.Tui.ToolBlockStatus
 Lunate.Tui.ToolBlockStatus.Ok = 1 -> Lunate.Tui.ToolBlockStatus
 Lunate.Tui.ToolBlockStatus.Running = 0 -> Lunate.Tui.ToolBlockStatus
+Lunate.Tui.ToolDetails
+Lunate.Tui.ToolDetails.Collapsed = 0 -> Lunate.Tui.ToolDetails
+Lunate.Tui.ToolDetails.Expanded = 1 -> Lunate.Tui.ToolDetails
 Lunate.Tui.ToolDiffInfo
 Lunate.Tui.ToolDiffInfo.<Clone>$() -> Lunate.Tui.ToolDiffInfo!
 Lunate.Tui.ToolDiffInfo.Deconstruct(out string! Path, out string! MatchTier, out string! UnifiedDiff) -> void

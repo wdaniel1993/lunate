@@ -1,4 +1,5 @@
 using Lunate.Agent;
+using Lunate.Tui;
 
 namespace Lunate.Coding.Tests;
 
@@ -11,6 +12,7 @@ public sealed class SettingsStoreTests
     private const string SubagentTokenBudgetVariable = "LUNATE_SUBAGENTS_TOKEN_BUDGET";
     private const string SubagentTreeTokenBudgetVariable = "LUNATE_SUBAGENTS_TREE_TOKEN_BUDGET";
     private const string StartupHeaderVariable = "LUNATE_STARTUP_HEADER";
+    private const string ToolDetailsVariable = "LUNATE_TOOL_DETAILS";
 
     [Fact]
     public void Missing_file_yields_defaults()
@@ -412,6 +414,116 @@ public sealed class SettingsStoreTests
         Assert.Null(settings.Model);
         Assert.Equal(ApprovalPolicy.Ask, settings.Approval);
         Assert.Equal(30_000, settings.ToolOutputLimit);
+        Assert.Equal(ToolDetails.Collapsed, settings.ToolDetails);
+    }
+
+    [Fact]
+    public void The_default_tool_details_are_collapsed()
+    {
+        using var temp = new TempDirectory();
+
+        AgentSettings settings = SettingsStore.Resolve(temp.File("missing.json"), _ => null);
+
+        Assert.Equal(ToolDetails.Collapsed, settings.ToolDetails);
+    }
+
+    [Fact]
+    public void A_file_can_expand_the_tool_details()
+    {
+        using var temp = new TempDirectory();
+        File.WriteAllText(
+            temp.File("settings.json"),
+            """
+            {
+              "schemaVersion": 1,
+              "toolDetails": "expanded"
+            }
+            """
+        );
+
+        AgentSettings settings = SettingsStore.Resolve(temp.File("settings.json"), _ => null);
+
+        Assert.Equal(ToolDetails.Expanded, settings.ToolDetails);
+    }
+
+    [Fact]
+    public void An_invalid_tool_details_in_the_file_is_reported()
+    {
+        using var temp = new TempDirectory();
+        File.WriteAllText(
+            temp.File("settings.json"),
+            """
+            {
+              "schemaVersion": 1,
+              "toolDetails": "Expanded"
+            }
+            """
+        );
+
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+            SettingsStore.Resolve(temp.File("settings.json"), _ => null)
+        );
+
+        Assert.Contains(
+            "'toolDetails' must be 'collapsed' or 'expanded', but was 'Expanded'",
+            exception.Message,
+            StringComparison.Ordinal
+        );
+        Assert.Contains("No settings were applied", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void The_tool_details_environment_override_collapses_the_file_value()
+    {
+        using var temp = new TempDirectory();
+        File.WriteAllText(
+            temp.File("settings.json"),
+            """
+            {
+              "schemaVersion": 1,
+              "toolDetails": "expanded"
+            }
+            """
+        );
+
+        AgentSettings settings = SettingsStore.Resolve(
+            temp.File("settings.json"),
+            name => name == ToolDetailsVariable ? "collapsed" : null
+        );
+
+        Assert.Equal(ToolDetails.Collapsed, settings.ToolDetails);
+    }
+
+    [Fact]
+    public void The_tool_details_environment_override_expands_the_default()
+    {
+        using var temp = new TempDirectory();
+
+        AgentSettings settings = SettingsStore.Resolve(
+            temp.File("missing.json"),
+            name => name == ToolDetailsVariable ? "expanded" : null
+        );
+
+        Assert.Equal(ToolDetails.Expanded, settings.ToolDetails);
+    }
+
+    [Fact]
+    public void An_invalid_tool_details_environment_value_names_its_variable()
+    {
+        using var temp = new TempDirectory();
+
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+            SettingsStore.Resolve(
+                temp.File("missing.json"),
+                name => name == ToolDetailsVariable ? "full" : null
+            )
+        );
+
+        Assert.Contains(
+            $"{ToolDetailsVariable} must be 'collapsed' or 'expanded', but was 'full'",
+            exception.Message,
+            StringComparison.Ordinal
+        );
     }
 
     [Fact]

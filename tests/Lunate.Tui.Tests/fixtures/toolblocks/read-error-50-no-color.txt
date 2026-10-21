@@ -1,2 +1,1 @@
-✗ read\x1b[2m  src/missing.cs\x1b[0m
-file not found: src/missing.cs
+✗ read\x1b[2m  src/missing.cs · ctrl+o\x1b[0m

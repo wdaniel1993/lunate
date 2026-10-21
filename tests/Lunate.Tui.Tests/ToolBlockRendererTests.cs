@@ -172,6 +172,112 @@ public sealed class ToolBlockRendererTests
         );
 
     [Fact]
+    public void Collapsed_details_show_the_bash_header_and_the_ctrl_o_hint() =>
+        Assert.Equal(
+            "\u2713 bash  ls \u00b7 ctrl+o\n",
+            RenderCollapsed(
+                new ToolBlockModel(
+                    "bash",
+                    """{"command":"ls"}""",
+                    ToolBlockStatus.Ok,
+                    "one\ntwo\n",
+                    null
+                )
+            )
+        );
+
+    [Fact]
+    public void Collapsed_details_hide_a_successful_reads_output_without_a_hint()
+    {
+        string output = string.Join('\n', Enumerable.Range(1, 13).Select(n => $"line {n}"));
+
+        Assert.Equal(
+            "\u2713 read  src/a.cs (13 lines)\n",
+            RenderCollapsed(
+                new ToolBlockModel(
+                    "read",
+                    """{"path":"src/a.cs"}""",
+                    ToolBlockStatus.Ok,
+                    output,
+                    null
+                )
+            )
+        );
+    }
+
+    [Fact]
+    public void Collapsed_details_keep_a_failed_reads_header_and_the_ctrl_o_hint() =>
+        Assert.Equal(
+            "\u2717 read  src/missing.cs \u00b7 ctrl+o\n",
+            RenderCollapsed(
+                new ToolBlockModel(
+                    "read",
+                    """{"path":"src/missing.cs"}""",
+                    ToolBlockStatus.Error,
+                    "file not found: src/missing.cs",
+                    null
+                )
+            )
+        );
+
+    [Fact]
+    public void Collapsed_details_render_only_the_edit_header_with_the_ctrl_o_hint()
+    {
+        string rendered = RenderCollapsed(DiffModel("exact"));
+
+        Assert.Equal("\u2713 edit  src/x.cs \u00b7 +1 \u22121 \u00b7 ctrl+o\n", rendered);
+        Assert.DoesNotContain("match: exact", rendered, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Collapsed_ascii_details_use_the_ascii_hint() =>
+        Assert.Equal(
+            "+ bash  ls - ctrl+o\n",
+            RenderCollapsedAscii(
+                new ToolBlockModel(
+                    "bash",
+                    """{"command":"ls"}""",
+                    ToolBlockStatus.Ok,
+                    "one\n",
+                    null
+                )
+            )
+        );
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    public void Collapsed_blank_output_has_no_hint(string? output) =>
+        Assert.Equal(
+            "\u2713 bash  ls\n",
+            RenderCollapsed(
+                new ToolBlockModel("bash", """{"command":"ls"}""", ToolBlockStatus.Ok, output, null)
+            )
+        );
+
+    [Fact]
+    public void The_ctrl_o_hint_is_muted() =>
+        Assert.Contains(
+            "\u001b[2m \u00b7 ctrl+o",
+            RenderCollapsedAnsi(new ToolBlockModel("custom", "", ToolBlockStatus.Ok, "one", null))
+        );
+
+    [Fact]
+    public void Expanded_details_show_the_output_that_collapsed_hides()
+    {
+        var block = new ToolBlockModel(
+            "bash",
+            """{"command":"ls"}""",
+            ToolBlockStatus.Ok,
+            "alpha\nbeta",
+            null
+        );
+
+        Assert.DoesNotContain("alpha", RenderCollapsed(block), StringComparison.Ordinal);
+        Assert.Equal("\u2713 bash  ls\nalpha\nbeta\n", Render(block));
+    }
+
+    [Fact]
     public void The_ok_glyph_uses_green_ansi() =>
         Assert.Contains(
             "\u001b[38;5;2m\u2713",
@@ -665,11 +771,17 @@ public sealed class ToolBlockRendererTests
             null
         );
 
-    private static string Render(ToolBlockModel block)
+    private static string Render(ToolBlockModel block) =>
+        RenderDetails(block, ToolDetails.Expanded);
+
+    private static string RenderCollapsed(ToolBlockModel block) =>
+        RenderDetails(block, ToolDetails.Collapsed);
+
+    private static string RenderDetails(ToolBlockModel block, ToolDetails details)
     {
         var console = new TestConsole();
         console.Profile.Width = 80;
-        console.Write(new ToolBlockRenderer().Render(block));
+        console.Write(new ToolBlockRenderer().Render(block, int.MaxValue, details));
         return console.Output;
     }
 
@@ -689,7 +801,7 @@ public sealed class ToolBlockRendererTests
         console.Write(
             new ToolBlockRenderer(
                 new TerminalCapabilities(Spectre.Console.ColorSystemSupport.Detect, Unicode: false)
-            ).Render(block, width)
+            ).Render(block, width, ToolDetails.Expanded)
         );
         return console.Output;
     }
@@ -698,7 +810,7 @@ public sealed class ToolBlockRendererTests
     {
         var console = new TestConsole();
         console.Profile.Width = 80;
-        console.Write(new ToolBlockRenderer().Render(block, width));
+        console.Write(new ToolBlockRenderer().Render(block, width, ToolDetails.Expanded));
         return console.Output;
     }
 
@@ -707,7 +819,16 @@ public sealed class ToolBlockRendererTests
         var console = new TestConsole();
         console.Profile.Width = 80;
         console.EmitAnsiSequences = true;
-        console.Write(new ToolBlockRenderer().Render(block));
+        console.Write(new ToolBlockRenderer().Render(block, int.MaxValue, ToolDetails.Expanded));
+        return console.Output;
+    }
+
+    private static string RenderCollapsedAnsi(ToolBlockModel block)
+    {
+        var console = new TestConsole();
+        console.Profile.Width = 80;
+        console.EmitAnsiSequences = true;
+        console.Write(new ToolBlockRenderer().Render(block, int.MaxValue, ToolDetails.Collapsed));
         return console.Output;
     }
 
@@ -718,7 +839,19 @@ public sealed class ToolBlockRendererTests
         console.Write(
             new ToolBlockRenderer(
                 new TerminalCapabilities(Spectre.Console.ColorSystemSupport.Detect, Unicode: false)
-            ).Render(block)
+            ).Render(block, int.MaxValue, ToolDetails.Expanded)
+        );
+        return console.Output;
+    }
+
+    private static string RenderCollapsedAscii(ToolBlockModel block)
+    {
+        var console = new TestConsole();
+        console.Profile.Width = 80;
+        console.Write(
+            new ToolBlockRenderer(
+                new TerminalCapabilities(Spectre.Console.ColorSystemSupport.Detect, Unicode: false)
+            ).Render(block, int.MaxValue, ToolDetails.Collapsed)
         );
         return console.Output;
     }
@@ -731,7 +864,7 @@ public sealed class ToolBlockRendererTests
             new ToolBlockRenderer(
                 new TerminalCapabilities(Spectre.Console.ColorSystemSupport.Detect, Unicode: true),
                 home
-            ).Render(block)
+            ).Render(block, int.MaxValue, ToolDetails.Expanded)
         );
         return console.Output;
     }
