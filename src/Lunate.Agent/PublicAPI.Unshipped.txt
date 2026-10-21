@@ -138,6 +138,8 @@ Lunate.Agent.ToolCallResult.Deconstruct(out string! RunId, out string! CallId, o
 Lunate.Agent.ToolCallResult.Details.get -> object?
 Lunate.Agent.ToolCallResult.Details.init -> void
 Lunate.Agent.ToolCallResult.Equals(Lunate.Agent.ToolCallResult? other) -> bool
+Lunate.Agent.ToolCallResult.HasImages.get -> bool
+Lunate.Agent.ToolCallResult.HasImages.init -> void
 Lunate.Agent.ToolCallResult.IsError.get -> bool
 Lunate.Agent.ToolCallResult.IsError.init -> void
 Lunate.Agent.ToolCallResult.Output.get -> string!

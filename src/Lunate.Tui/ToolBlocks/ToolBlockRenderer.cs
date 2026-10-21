@@ -111,7 +111,9 @@ public sealed class ToolBlockRenderer
         line.Add(block.ToolName, Accent);
         bool compact = WidthBands.IsCompact(width);
         // A failed call's output is an error message, not file content: no line count from it.
-        string? resultOutput = block.Status == ToolBlockStatus.Error ? null : block.Output;
+        // An image read's placeholder is not a line either.
+        string? resultOutput =
+            block.Status == ToolBlockStatus.Error || block.IsImage ? null : block.Output;
         if (!compact)
         {
             string summary = ToolArgsSummary.Summarize(
@@ -142,12 +144,13 @@ public sealed class ToolBlockRenderer
 
     /// <summary>
     /// A read block identifies what was read; a failed call keeps its message visible, and a
-    /// successful image read shows its placeholder instead of hiding it with the text output.
+    /// successful image read shows its placeholder instead of hiding it with the text output. Only
+    /// the block's image flag makes a placeholder an image: a text file can contain that text.
     /// </summary>
     private static bool ShowsOutput(ToolBlockModel block) =>
         block.ToolName != "read"
         || block.Status == ToolBlockStatus.Error
-        || ImagePlaceholder.IsOnly(block.Output);
+        || (block.IsImage && ImagePlaceholder.IsOnly(block.Output));
 
     private static ExcerptMode ExcerptModeFor(ToolBlockModel block) =>
         block.ToolName == "bash" ? ExcerptMode.TailOnly : ExcerptMode.HeadAndTail;

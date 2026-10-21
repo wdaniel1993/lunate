@@ -227,7 +227,10 @@ internal sealed partial class InteractiveSession
             result.Details is BashDetails bash ? bash.ExitCode : null,
             duration,
             ChildResult: _spawningCalls.Remove(key)
-        );
+        )
+        {
+            IsImage = result.HasImages,
+        };
         _transcript.Add(new TranscriptToolEntry(block));
         _turnWroteOutput = true;
         _live.WriteScrollback(console =>

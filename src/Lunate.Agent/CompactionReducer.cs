@@ -136,7 +136,7 @@ internal sealed class CompactionReducer : IChatReducer
         int start = 0;
         for (int index = history.Count - 1; index >= 0; index--)
         {
-            if (history[index].Role != ChatRole.User)
+            if (history[index].Role != ChatRole.User || IsToolImageMessage(history[index]))
             {
                 continue;
             }
@@ -161,6 +161,9 @@ internal sealed class CompactionReducer : IChatReducer
 
         return start;
     }
+
+    private static bool IsToolImageMessage(ChatMessage message) =>
+        message.AdditionalProperties?.ContainsKey(AgentHarness.ToolImageMarker) == true;
 
     /// <summary>The non-system messages before the tail that the summary covers.</summary>
     internal static List<ChatMessage> SummarizablePart(

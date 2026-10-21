@@ -172,14 +172,10 @@ public sealed class ToolArgsSummaryTests
     }
 
     [Fact]
-    public void An_image_placeholder_is_not_a_line_count() =>
+    public void Text_that_looks_like_an_image_placeholder_is_still_one_line() =>
         Assert.Equal(
-            "screens/diagram.png",
-            ToolArgsSummary.Summarize(
-                "read",
-                """{"path":"screens/diagram.png"}""",
-                "[image 1024x768]"
-            )
+            "notes.txt (1 line)",
+            ToolArgsSummary.Summarize("read", """{"path":"notes.txt"}""", "[image 1024x768]")
         );
 
     [Fact]

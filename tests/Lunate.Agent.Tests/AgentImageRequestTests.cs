@@ -62,8 +62,9 @@ public sealed class AgentImageRequestTests
             new AgentHarnessOptions { Session = session }
         );
 
-        await AgentTestSupport.Run(harness);
+        List<AgentEvent> events = await AgentTestSupport.Run(harness);
 
+        Assert.True(Assert.Single(events.OfType<ToolCallResult>()).HasImages);
         SessionMessageEntry toolEntry = Assert.IsType<SessionMessageEntry>(session.Entries[2]);
         Assert.Equal(ChatRole.Tool, toolEntry.Message.Role);
         Assert.IsType<FunctionResultContent>(Assert.Single(toolEntry.Message.Contents));
@@ -71,6 +72,10 @@ public sealed class AgentImageRequestTests
         SessionMessageEntry imageEntry = Assert.IsType<SessionMessageEntry>(session.Entries[3]);
         Assert.Equal(ChatRole.User, imageEntry.Message.Role);
         Assert.Equal("Image from read: [image 2x3].", imageEntry.Message.Text);
+        Assert.True(
+            imageEntry.Message.AdditionalProperties?.ContainsKey(AgentHarness.ToolImageMarker)
+                == true
+        );
         ImageContentReference reference = Assert.IsType<ImageContentReference>(
             imageEntry.Message.Contents[1]
         );
@@ -91,6 +96,13 @@ public sealed class AgentImageRequestTests
         DataContent data = Assert.Single(imageMessage.Contents.OfType<DataContent>());
         Assert.Equal(PngBytes, data.Data.ToArray());
         Assert.Equal("image/png", data.MediaType);
+
+        Session reloaded = Session.Load(session.Path);
+        SessionMessageEntry reloadedImage = Assert.IsType<SessionMessageEntry>(reloaded.Entries[3]);
+        Assert.True(
+            reloadedImage.Message.AdditionalProperties?.ContainsKey(AgentHarness.ToolImageMarker)
+                == true
+        );
     }
 
     [Fact]

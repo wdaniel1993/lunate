@@ -211,7 +211,10 @@ public sealed class ToolBlocksFrameGoldenTests
                 ToolBlockStatus.Ok,
                 "[image 1024x768]",
                 null
-            ),
+            )
+            {
+                IsImage = true,
+            },
             ["read-no-output"] = new ToolBlockModel(
                 "read",
                 """{"path":"README.md"}""",

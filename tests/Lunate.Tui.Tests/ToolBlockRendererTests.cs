@@ -555,6 +555,9 @@ public sealed class ToolBlockRendererTests
                     "[image 1024x768]",
                     null
                 )
+                {
+                    IsImage = true,
+                }
             )
         );
 
@@ -570,6 +573,9 @@ public sealed class ToolBlockRendererTests
                     "[image 1024x768]",
                     null
                 )
+                {
+                    IsImage = true,
+                }
             )
         );
 
@@ -585,6 +591,9 @@ public sealed class ToolBlockRendererTests
                     "[image 1024x768]",
                     null
                 )
+                {
+                    IsImage = true,
+                }
             )
         );
 
@@ -600,8 +609,26 @@ public sealed class ToolBlockRendererTests
                     "[image 1024x768]",
                     null
                 )
+                {
+                    IsImage = true,
+                }
             ),
             StringComparison.Ordinal
+        );
+
+    [Fact]
+    public void A_text_read_of_the_placeholder_text_is_still_text() =>
+        Assert.Equal(
+            "\u2713 read  notes.txt (1 line)\n",
+            Render(
+                new ToolBlockModel(
+                    "read",
+                    """{"path":"notes.txt"}""",
+                    ToolBlockStatus.Ok,
+                    "[image 2x3]",
+                    null
+                )
+            )
         );
 
     [Fact]

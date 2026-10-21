@@ -9,6 +9,9 @@ namespace Lunate.Agent;
 
 public sealed partial class AgentHarness
 {
+    /// <summary>Marks the synthetic user message that carries a tool result's images.</summary>
+    internal const string ToolImageMarker = "lunate:tool-image";
+
     private static readonly JsonSerializerOptions ArgumentsJson = new(
         AIJsonUtilities.DefaultOptions
     )
@@ -63,7 +66,12 @@ public sealed partial class AgentHarness
             result.Output ?? string.Empty,
             _options.ToolOutputLimit
         );
-        channel.Emit(new ToolCallResult(runId, callId, output, result.IsError, result.Details));
+        channel.Emit(
+            new ToolCallResult(runId, callId, output, result.IsError, result.Details)
+            {
+                HasImages = result.Images is { Count: > 0 },
+            }
+        );
         AppendHistoryMessage(
             new ChatMessage(ChatRole.Tool, [new FunctionResultContent(callId, output)])
         );
@@ -96,7 +104,11 @@ public sealed partial class AgentHarness
         }
 
         string text = $"Image from {toolName}: {string.Join(", ", placeholders)}.";
-        return new ChatMessage(ChatRole.User, [new TextContent(text), .. contents]);
+        return new ChatMessage(ChatRole.User, [new TextContent(text), .. contents])
+        {
+            // Compaction counts user turns: this synthetic turn must not consume a kept slot.
+            AdditionalProperties = new AdditionalPropertiesDictionary { [ToolImageMarker] = true },
+        };
     }
 
     private void AppendSyntheticResult(
@@ -262,6 +274,7 @@ public sealed partial class AgentHarness
             )
             {
                 ParentToolCallId = parentCallId,
+                HasImages = result.Images is { Count: > 0 },
             }
         );
         if (nestedCalls is { } records)
