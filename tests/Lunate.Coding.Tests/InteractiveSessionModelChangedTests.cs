@@ -82,6 +82,33 @@ public sealed class InteractiveSessionModelChangedTests
     }
 
     [Fact]
+    public async Task Ctrl_P_switch_emits_ModelChanged_with_the_chosen_id()
+    {
+        var runner = new HookRunner();
+        var handler = new RecordingHandler();
+        runner.Register("ext.test", handler);
+        using var host = new InteractiveSessionHost(
+            hooks: runner,
+            launch: new LaunchOptions { Model = "gpt-4o-mini" }
+        );
+        SettingsStore.WriteFavorites(["gpt-4o"], host.Temp.File("settings.json"));
+        Task run = host.RunAsync();
+
+        host.Console.Send(
+            new KeyEvent(KeyKind.Character, "p", Ctrl: true, Shift: false, Alt: false)
+        );
+        await InteractiveSessionCommandTests.WaitForFrameAsync(host, "model: gpt-4o");
+        await host.WaitUntilAsync(() => handler.Seen.Count == 1);
+
+        ModelChangedPayload payload = Assert.Single(handler.Seen);
+        Assert.Equal("gpt-4o", payload.Model);
+        Assert.Equal(string.Empty, payload.RunId);
+
+        host.Console.Complete();
+        await run;
+    }
+
+    [Fact]
     public async Task Without_a_hook_runner_the_switch_still_works()
     {
         using var host = new InteractiveSessionHost(
