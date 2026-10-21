@@ -87,7 +87,7 @@ internal sealed class GitIgnore
         return ignored;
     }
 
-    private static Regex Translate(string pattern, bool anchored)
+    internal static Regex Translate(string pattern, bool anchored, bool ignoreCase = false)
     {
         var builder = new StringBuilder("^");
         if (!anchored)
@@ -143,7 +143,9 @@ internal sealed class GitIgnore
         builder.Append('$');
         return new Regex(
             builder.ToString(),
-            RegexOptions.CultureInvariant | RegexOptions.NonBacktracking
+            RegexOptions.CultureInvariant
+                | RegexOptions.NonBacktracking
+                | (ignoreCase ? RegexOptions.IgnoreCase : RegexOptions.None)
         );
     }
 

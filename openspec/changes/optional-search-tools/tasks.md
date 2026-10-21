@@ -8,9 +8,9 @@
 
 ## 2. The tools
 
-- [ ] 2.1 Add red tests: `grep` happy path, cap + `[N more matches]`, invalid regex teaching error, path outside the workspace refused, `.gitignore` honoured, binary skipped; the fallback engine produces the same shape as ripgrep.
-- [ ] 2.2 Add red tests: `find` glob matching, `type: "dir"`, cap, case rules per platform; `ls` depth 1 and 3, directories-first ordering, entry cap and truncation line, `.git` always skipped.
-- [ ] 2.3 Implement `grep` (ripgrep when present, internal walker fallback), `find` and `ls` as read-only tools sharing the workspace's path rules.
+- [x] 2.1 Add red tests: `grep` happy path, cap + `[N more matches]`, invalid regex teaching error, path outside the workspace refused, `.gitignore` honoured, binary skipped; the fallback engine produces the same shape as ripgrep.
+- [x] 2.2 Add red tests: `find` glob matching, `type: "dir"`, cap, case rules per platform; `ls` depth 1 and 3, directories-first ordering, entry cap and truncation line, `.git` always skipped.
+- [x] 2.3 Implement `grep` (ripgrep when present, internal walker fallback), `find` and `ls` as read-only tools sharing the workspace's path rules.
 - [ ] 2.4 Commit: `feat(coding): add optional grep, find and ls tools`.
 
 ## 3. Registration and wiring

@@ -145,10 +145,36 @@ internal sealed class FileIndex
 
     private (IReadOnlyList<string> Entries, bool Truncated) Collect()
     {
-        IReadOnlyList<WorkspaceEntry> all = _files.Enumerate();
-        Dictionary<string, GitIgnore> scopes = LoadScopes(all);
-        HashSet<string> excludedDirectories = new(StringComparer.Ordinal);
+        IReadOnlyList<WorkspaceEntry> visible = VisibleEntries(_files);
         List<string> entries = [];
+        foreach (WorkspaceEntry entry in visible)
+        {
+            entries.Add(entry.IsDirectory ? entry.Path + "/" : entry.Path);
+        }
+
+        entries.Sort(StringComparer.Ordinal);
+        var truncated = entries.Count > EntryCap;
+        if (truncated)
+        {
+            entries.RemoveRange(EntryCap, entries.Count - EntryCap);
+        }
+
+        return (entries, truncated);
+    }
+
+    /// <summary>
+    /// The entries the search tools may see: the walk with `.git` removed and the `.gitignore`
+    /// chain applied (deeper files win; an excluded directory prunes its subtree), directories
+    /// first and then files, each ordered by path. The file index formats and caps this list; the
+    /// optional grep, find and ls tools consume it directly.
+    /// </summary>
+    internal static IReadOnlyList<WorkspaceEntry> VisibleEntries(IWorkspaceFiles files)
+    {
+        ArgumentNullException.ThrowIfNull(files);
+        IReadOnlyList<WorkspaceEntry> all = files.Enumerate();
+        Dictionary<string, GitIgnore> scopes = LoadScopes(all, files);
+        HashSet<string> excludedDirectories = new(StringComparer.Ordinal);
+        List<WorkspaceEntry> entries = [];
         foreach (
             WorkspaceEntry entry in all.Where(entry => entry.IsDirectory)
                 .OrderBy(entry => entry.Path, StringComparer.Ordinal)
@@ -165,7 +191,7 @@ internal sealed class FileIndex
                 continue;
             }
 
-            entries.Add(entry.Path + "/");
+            entries.Add(entry);
         }
 
         foreach (WorkspaceEntry entry in all)
@@ -177,21 +203,18 @@ internal sealed class FileIndex
 
             if (!IsExcluded(entry.Path, isDirectory: false, scopes, excludedDirectories))
             {
-                entries.Add(entry.Path);
+                entries.Add(entry);
             }
         }
 
-        entries.Sort(StringComparer.Ordinal);
-        var truncated = entries.Count > EntryCap;
-        if (truncated)
-        {
-            entries.RemoveRange(EntryCap, entries.Count - EntryCap);
-        }
-
-        return (entries, truncated);
+        entries.Sort((left, right) => string.CompareOrdinal(left.Path, right.Path));
+        return entries;
     }
 
-    private Dictionary<string, GitIgnore> LoadScopes(IReadOnlyList<WorkspaceEntry> all)
+    private static Dictionary<string, GitIgnore> LoadScopes(
+        IReadOnlyList<WorkspaceEntry> all,
+        IWorkspaceFiles files
+    )
     {
         Dictionary<string, GitIgnore> scopes = new(StringComparer.Ordinal);
         foreach (WorkspaceEntry entry in all)
@@ -201,7 +224,7 @@ internal sealed class FileIndex
                 continue;
             }
 
-            if (_files.ReadAllText(entry.Path) is not { } content)
+            if (files.ReadAllText(entry.Path) is not { } content)
             {
                 continue;
             }
