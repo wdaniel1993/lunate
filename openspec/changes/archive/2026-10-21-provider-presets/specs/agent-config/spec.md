@@ -42,6 +42,36 @@ A settings write SHALL be read-modify-write over the existing JSON: unrelated ke
 - **WHEN** settings are resolved with no environment override
 - **THEN** the resolved startup header is disabled; and with `LUNATE_STARTUP_HEADER=1` set instead, it is enabled again
 
+#### Scenario: Missing file defaults the tool details to collapsed
+
+- **GIVEN** no settings file and no environment override
+- **WHEN** settings are resolved
+- **THEN** the tool details are `collapsed`
+
+#### Scenario: The file expands the tool details
+
+- **GIVEN** a settings file setting `toolDetails` to `expanded`
+- **WHEN** settings are resolved with no environment override
+- **THEN** the resolved tool details are `expanded`
+
+#### Scenario: The environment overrides the tool details
+
+- **GIVEN** a settings file setting `toolDetails` to `expanded`
+- **WHEN** `LUNATE_TOOL_DETAILS=collapsed` is set and settings are resolved
+- **THEN** the resolved tool details are `collapsed`; and with no settings file but `LUNATE_TOOL_DETAILS=expanded`, they are `expanded`
+
+#### Scenario: An invalid tool details value is collected with the other problems
+
+- **GIVEN** a settings file setting `toolDetails` to `Expanded` and an unknown key
+- **WHEN** settings are resolved
+- **THEN** one error names both problems and the accepted `collapsed`/`expanded` literals, and no partial settings are applied
+
+#### Scenario: An invalid tool details environment value names its variable
+
+- **GIVEN** `LUNATE_TOOL_DETAILS=full` and no settings file
+- **WHEN** settings are resolved
+- **THEN** one error names `LUNATE_TOOL_DETAILS` with the accepted `collapsed`/`expanded` literals and no partial settings are applied
+
 #### Scenario: A schema 1 settings file still loads
 
 - **GIVEN** a settings file with `schemaVersion: 1` and no favourites
