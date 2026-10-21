@@ -21,5 +21,5 @@
 
 ## 4. Verification
 
-- [ ] 4.1 Build, csharpier, the Coding and Agent suites, `openspec validate optional-search-tools --strict`.
-- [ ] 4.2 Update `docs/guide.md` (tool list + settings) and `README.md` if it enumerates tools.
+- [x] 4.1 Build, csharpier, the Coding and Agent suites, `openspec validate optional-search-tools --strict`.
+- [x] 4.2 Update `docs/guide.md` (tool list + settings) and `README.md` if it enumerates tools.
