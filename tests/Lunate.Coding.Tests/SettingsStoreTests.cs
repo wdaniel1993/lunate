@@ -49,6 +49,25 @@ public sealed class SettingsStoreTests
     }
 
     [Fact]
+    public void Favorites_are_trimmed_when_read()
+    {
+        using var temp = new TempDirectory();
+        File.WriteAllText(
+            temp.File("settings.json"),
+            """
+            {
+              "schemaVersion": 2,
+              "favorites": [" gpt-4o ", "\tclaude-sonnet-5-5\n"]
+            }
+            """
+        );
+
+        AgentSettings settings = SettingsStore.Resolve(temp.File("settings.json"), _ => null);
+
+        Assert.Equal(["gpt-4o", "claude-sonnet-5-5"], settings.Favorites);
+    }
+
+    [Fact]
     public void A_schema_1_file_loads_with_empty_favorites()
     {
         using var temp = new TempDirectory();

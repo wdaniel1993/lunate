@@ -644,6 +644,44 @@ public sealed class InteractiveSessionSettingsCommandTests
         await run;
     }
 
+    [Fact]
+    public async Task Favorite_on_a_duplicate_key_settings_file_reports_and_keeps_the_pump_alive()
+    {
+        using var host = new InteractiveSessionHost(
+            launch: new LaunchOptions { Model = "gpt-4o-mini" },
+            chat: new ScriptedChatClient()
+        );
+        string settingsPath = host.Temp.File("settings.json");
+        string original = """
+            {
+              "schemaVersion": 1,
+              "schemaVersion": 1
+            }
+            """;
+        File.WriteAllText(settingsPath, original);
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+
+        host.Console.SendText("/favorite");
+        host.Console.SendEnter();
+        await WaitForFrameAsync(host, "could not save favorites:");
+
+        Assert.Contains("Invalid settings", host.LastFrame, StringComparison.Ordinal);
+        Assert.Equal(original, File.ReadAllText(settingsPath));
+
+        // The key pump survived the refused write: the next command still runs.
+        host.Console.SendText("/help");
+        host.Console.SendEnter();
+        await host.WaitUntilAsync(() =>
+            host.ScrollbackText.Contains("/session", StringComparison.Ordinal)
+        );
+
+        Assert.Empty(host.Client.Requests);
+        host.Console.SendText("/quit");
+        host.Console.SendEnter();
+        await run;
+    }
+
     private static void AssertNoFileContains(InteractiveSessionHost host, string secret)
     {
         foreach (

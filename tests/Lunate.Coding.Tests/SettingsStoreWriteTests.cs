@@ -75,6 +75,69 @@ public sealed class SettingsStoreWriteTests
     }
 
     [Fact]
+    public void A_write_trims_every_favourite()
+    {
+        using var temp = new TempDirectory();
+        string path = temp.File("settings.json");
+
+        SettingsStore.WriteFavorites([" gpt-4o ", "\tclaude-sonnet-5-5\n"], path);
+
+        using JsonDocument document = JsonDocument.Parse(File.ReadAllText(path));
+        Assert.Equal(
+            ["gpt-4o", "claude-sonnet-5-5"],
+            document
+                .RootElement.GetProperty("favorites")
+                .EnumerateArray()
+                .Select(item => item.GetString()!)
+        );
+        Assert.Equal(
+            ["gpt-4o", "claude-sonnet-5-5"],
+            SettingsStore.Resolve(path, _ => null).Favorites
+        );
+    }
+
+    [Fact]
+    public void A_write_rejects_a_whitespace_only_id_and_keeps_the_old_file()
+    {
+        using var temp = new TempDirectory();
+        string path = temp.File("settings.json");
+        string original = """{ "schemaVersion": 1, "model": "gpt-4o" }""";
+        File.WriteAllText(path, original);
+
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+            SettingsStore.WriteFavorites(["gpt-4o-mini", "  "], path)
+        );
+
+        Assert.Contains("non-empty model ids", exception.Message, StringComparison.Ordinal);
+        Assert.Equal(original, File.ReadAllText(path));
+    }
+
+    [Fact]
+    public void A_duplicate_key_settings_file_is_reported_and_left_byte_identical()
+    {
+        using var temp = new TempDirectory();
+        string path = temp.File("settings.json");
+        string original = """
+            {
+              "schemaVersion": 2,
+              "schemaVersion": 2,
+              "model": "gpt-4o"
+            }
+            """;
+        File.WriteAllText(path, original);
+        byte[] before = File.ReadAllBytes(path);
+
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+            SettingsStore.WriteFavorites(["gpt-4o-mini"], path)
+        );
+
+        Assert.Contains("not valid JSON", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("No settings were written", exception.Message, StringComparison.Ordinal);
+        Assert.IsType<ArgumentException>(exception.InnerException);
+        Assert.Equal(before, File.ReadAllBytes(path));
+    }
+
+    [Fact]
     public void A_write_rejects_more_than_eight_favourites_and_keeps_the_old_file()
     {
         using var temp = new TempDirectory();

@@ -140,7 +140,7 @@ public static class SettingsStore
         var list = new JsonArray();
         foreach (string id in favorites)
         {
-            list.Add(id);
+            list.Add(id.Trim());
         }
 
         root["favorites"] = list;
@@ -169,8 +169,15 @@ public static class SettingsStore
         try
         {
             node = JsonNode.Parse(File.ReadAllText(path));
+            if (node is JsonObject root)
+            {
+                // JsonNode.Parse is lazy: a duplicate property surfaces only when the object is
+                // materialised (here, not as a JsonException), so force that check while the
+                // parse is still inside this handler.
+                _ = root.Count;
+            }
         }
-        catch (JsonException exception)
+        catch (Exception exception) when (exception is JsonException or ArgumentException)
         {
             throw new InvalidDataException(
                 $"Invalid settings in '{path}': the file is not valid JSON ({exception.Message}). No settings were written.",
@@ -589,16 +596,19 @@ public static class SettingsStore
         var seen = new HashSet<string>(StringComparer.Ordinal);
         foreach (JsonElement item in value.EnumerateArray())
         {
-            if (
-                item.ValueKind != JsonValueKind.String
-                || string.IsNullOrWhiteSpace(item.GetString())
-            )
+            if (item.ValueKind != JsonValueKind.String)
             {
                 problems.Add("'favorites' must contain only non-empty model ids");
                 continue;
             }
 
-            string id = item.GetString()!;
+            string id = item.GetString()!.Trim();
+            if (id.Length == 0)
+            {
+                problems.Add("'favorites' must contain only non-empty model ids");
+                continue;
+            }
+
             if (!seen.Add(id))
             {
                 problems.Add($"'favorites' must be unique; '{id}' appears more than once");
