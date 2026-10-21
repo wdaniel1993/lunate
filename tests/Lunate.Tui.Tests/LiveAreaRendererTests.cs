@@ -67,10 +67,12 @@ public sealed class LiveAreaRendererTests
         var frame = LiveAreaRenderer.Render(state);
 
         Assert.Equal(8, frame.Lines.Count);
-        Assert.Equal("line 15", frame.Lines[0]);
-        Assert.Equal(new string('─', 20), frame.Lines[^2]);
-        Assert.Equal("> Ask anything, / fo", frame.Lines[^1]);
-        Assert.Equal(7, frame.CursorRow);
+        Assert.Equal("line 16", frame.Lines[0]);
+        Assert.Equal("line 20", frame.Lines[4]);
+        Assert.Equal(new string('─', 20), frame.Lines[5]);
+        Assert.Equal("> Ask anything, / fo", frame.Lines[6]);
+        Assert.Equal(new string('─', 20), frame.Lines[7]);
+        Assert.Equal(6, frame.CursorRow);
     }
 
     [Fact]
@@ -78,7 +80,10 @@ public sealed class LiveAreaRendererTests
     {
         var frame = LiveAreaRenderer.Render(new LiveAreaState { Size = new ConsoleSize(20, 8) });
 
-        Assert.Equal([new string('─', 20), "> Ask anything, / fo"], frame.Lines);
+        Assert.Equal(
+            [new string('─', 20), "> Ask anything, / fo", new string('─', 20)],
+            frame.Lines
+        );
         Assert.Equal(1, frame.CursorRow);
         Assert.Equal(2, frame.CursorColumn);
     }
@@ -245,10 +250,74 @@ public sealed class LiveAreaRendererTests
         var frame = LiveAreaRenderer.Render(state);
 
         Assert.Equal(
-            ["\u26a0 bash  ls", "Allow bash?", choices, new string('─', 40), "> go"],
+            [
+                "\u26a0 bash  ls",
+                "Allow bash?",
+                choices,
+                new string('─', 40),
+                "> go",
+                new string('─', 40),
+            ],
             frame.Lines
         );
         Assert.Equal(34, CellText.Width(frame.Lines[2]));
+    }
+
+    [Theory]
+    [InlineData(40)]
+    [InlineData(80)]
+    public void A_long_notice_wraps_to_the_width_without_losing_words(int width)
+    {
+        const string notice =
+            "clipboard helper missing: install wl-clipboard to paste images from the clipboard";
+        var state = new LiveAreaState { Notice = notice, Size = new ConsoleSize(width, 12) };
+
+        var frame = LiveAreaRenderer.Render(state);
+
+        string rule = new('─', width);
+        int ruleIndex = frame.Lines.ToList().IndexOf(rule);
+        Assert.True(ruleIndex > 1, "the notice should occupy more than one line");
+        string[] noticeLines = [.. frame.Lines.Take(ruleIndex)];
+        Assert.All(
+            noticeLines,
+            line =>
+                Assert.True(
+                    CellText.Width(line) <= width,
+                    $"'{line}' is wider than {width} columns"
+                )
+        );
+        Assert.Equal(notice, string.Join(' ', noticeLines));
+    }
+
+    [Fact]
+    public void An_overflowing_notice_is_capped_at_four_lines_with_an_ellipsis()
+    {
+        string notice = string.Join(' ', Enumerable.Repeat("word", 200));
+        string input = string.Join('\n', Enumerable.Range(1, 8).Select(n => $"line {n}"));
+        var state = new LiveAreaState
+        {
+            Notice = notice,
+            Input = new InputLineState(input, input.Length),
+            Size = new ConsoleSize(80, 24),
+        };
+
+        var frame = LiveAreaRenderer.Render(state);
+
+        string rule = new('─', 80);
+        int ruleIndex = frame.Lines.ToList().IndexOf(rule);
+        Assert.Equal(4, ruleIndex);
+        Assert.EndsWith("…", frame.Lines[3], StringComparison.Ordinal);
+        Assert.All(
+            frame.Lines.Take(4),
+            line => Assert.True(CellText.Width(line) <= 80, $"'{line}' is wider than 80 columns")
+        );
+        Assert.Contains("> line 1", frame.Lines);
+        for (var number = 2; number <= 8; number++)
+        {
+            Assert.Contains($"  line {number}", frame.Lines);
+        }
+
+        Assert.Equal(rule, frame.Lines[^1]);
     }
 
     [Fact]
@@ -391,7 +460,7 @@ public sealed class LiveAreaRendererTests
 
         var frame = LiveAreaRenderer.Render(state);
 
-        Assert.Equal(["abcd", "────", "> As"], frame.Lines);
+        Assert.Equal(["abcd", "────", "> As", "────"], frame.Lines);
     }
 
     [Fact]

@@ -21,6 +21,7 @@ public sealed class LiveAreaThinkingRendererTests
                 "reasoning text",
                 new string('─', 40),
                 "> Ask anything, / for commands",
+                new string('─', 40),
             ],
             frame.Lines
         );
@@ -32,7 +33,12 @@ public sealed class LiveAreaThinkingRendererTests
         var frame = LiveAreaRenderer.Render(WithThinking(string.Empty, elapsed: 1));
 
         Assert.Equal(
-            ["⠹ thinking… 1s", new string('─', 40), "> Ask anything, / for commands"],
+            [
+                "⠹ thinking… 1s",
+                new string('─', 40),
+                "> Ask anything, / for commands",
+                new string('─', 40),
+            ],
             frame.Lines
         );
     }
@@ -53,6 +59,7 @@ public sealed class LiveAreaThinkingRendererTests
                 "reasoning text",
                 new string('─', 40),
                 "> Ask anything, / for commands",
+                new string('─', 40),
                 "m",
             ],
             frame.Lines
@@ -67,12 +74,13 @@ public sealed class LiveAreaThinkingRendererTests
 
         var frame = LiveAreaRenderer.Render(WithThinking(text, elapsed: 2));
 
-        Assert.Equal(14, frame.Lines.Count);
+        Assert.Equal(15, frame.Lines.Count);
         Assert.Equal("⠹ thinking… 2s", frame.Lines[0]);
         Assert.Equal("thought 10", frame.Lines[1]);
-        Assert.Equal("thought 20", frame.Lines[^3]);
-        Assert.Equal(new string('─', 40), frame.Lines[^2]);
-        Assert.Equal("> Ask anything, / for commands", frame.Lines[^1]);
+        Assert.Equal("thought 20", frame.Lines[^4]);
+        Assert.Equal(new string('─', 40), frame.Lines[^3]);
+        Assert.Equal("> Ask anything, / for commands", frame.Lines[^2]);
+        Assert.Equal(new string('─', 40), frame.Lines[^1]);
     }
 
     [Fact]
@@ -89,6 +97,7 @@ public sealed class LiveAreaThinkingRendererTests
                 "0123456789",
                 new string('─', 20),
                 "> Ask anything, / fo",
+                new string('─', 20),
             ],
             frame.Lines
         );
@@ -124,6 +133,7 @@ public sealed class LiveAreaThinkingRendererTests
                 "reasoning text",
                 new string('─', 40),
                 "> Ask anything, / for commands",
+                new string('─', 40),
             ],
             frame.Lines
         );

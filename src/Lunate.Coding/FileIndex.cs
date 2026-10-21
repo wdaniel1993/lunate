@@ -2,7 +2,8 @@ namespace Lunate.Coding;
 
 /// <summary>
 /// The workspace file index for `@path` completion: built lazily on a background task (never at
-/// startup), bounded to <see cref="EntryCap"/> sorted entries, and queried by ordinal prefix.
+/// startup), bounded to <see cref="EntryCap"/> entries sorted ordinally, and queried by ordinal
+/// prefix (<see cref="Match"/>) or by case-insensitive completion (<see cref="Complete"/>).
 /// Entries are pushed through the <see cref="IWorkspaceFiles"/> seam, filtered root-down by the
 /// `.gitignore` chain (deeper files win; an excluded directory prunes its subtree), always
 /// without `.git`, then sorted and capped — sorting before capping makes the retained set
@@ -67,6 +68,39 @@ internal sealed class FileIndex
             }
 
             matches.Add(entries[index]);
+        }
+
+        return matches;
+    }
+
+    /// <summary>
+    /// The entries whose names start with <paramref name="prefix"/> without regard to case, at
+    /// most <paramref name="max"/> of them; <paramref name="max"/> of zero or less means no cap.
+    /// The scan preserves the index's ordinal order, so a match never reorders the list. Before
+    /// the build publishes, the result is empty.
+    /// </summary>
+    public IReadOnlyList<string> Complete(string prefix, int max)
+    {
+        ArgumentNullException.ThrowIfNull(prefix);
+        if (_entries is not { } entries)
+        {
+            return [];
+        }
+
+        List<string> matches = [];
+        foreach (string entry in entries)
+        {
+            if (!entry.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            if (max > 0 && matches.Count >= max)
+            {
+                break;
+            }
+
+            matches.Add(entry);
         }
 
         return matches;

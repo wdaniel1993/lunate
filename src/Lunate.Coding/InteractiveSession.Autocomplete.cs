@@ -98,8 +98,9 @@ internal sealed partial class InteractiveSession
     }
 
     /// <summary>
-    /// The file trigger (design D7): the lazy index's ordinal query, capped at eight rows; while
-    /// the index builds the session shows the indexing notice and starts the build.
+    /// The file trigger (design D7): the lazy index's case-insensitive completion query, capped
+    /// at eight rows; while the index builds the session shows the indexing notice and starts
+    /// the build.
     /// </summary>
     private void RefreshFileAutocomplete(string prefix, int tokenStart)
     {
@@ -123,7 +124,7 @@ internal sealed partial class InteractiveSession
             _live.SetNotice(null);
         }
 
-        IReadOnlyList<string> matches = index.Match(prefix, AutocompleteState.MaxRows);
+        IReadOnlyList<string> matches = index.Complete(prefix, AutocompleteState.MaxRows);
         SetAutocomplete(CompletionMode.File, tokenStart, [.. matches.Select(CompletionItem.File)]);
     }
 

@@ -5,4 +5,5 @@
 \x1b[35mthod, before the list mutates.\x1b[0m
 ──────────────────────────────────────────────────
 \x1b[34m> Ask anything, / for commands\x1b[0m
+──────────────────────────────────────────────────
 deepseek-v4.1-flash · 0%

@@ -5,4 +5,5 @@ tException. The check belongs at the top of the me
 thod, before the list mutates.
 ──────────────────────────────────────────────────
 > Ask anything, / for commands
+──────────────────────────────────────────────────
 deepseek-v4.1-flash · 0%

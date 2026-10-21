@@ -6,4 +6,5 @@
 \x1b[38;5;140mre the list mutates.\x1b[0m
 ────────────────────────────────────────
 \x1b[38;5;110m> Ask anything, / for commands\x1b[0m
+────────────────────────────────────────
 deepseek-v4.1-flash · 0%

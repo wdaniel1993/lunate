@@ -1,4 +1,5 @@
 / bash dotnet test --project tests/Lunat
 ────────────────────────────────────────
 \x1b[34m> Ask anything, / for commands\x1b[0m
+────────────────────────────────────────
 deepseek-v4.1-flash · 0%
