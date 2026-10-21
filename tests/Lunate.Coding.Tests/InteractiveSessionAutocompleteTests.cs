@@ -121,7 +121,9 @@ public sealed class InteractiveSessionAutocompleteTests
         await host.WaitUntilAsync(() => host.Session.Autocomplete is not null);
 
         host.Console.Send(AltEnter);
-        await host.WaitUntilAsync(() => host.Session.Input.Text == "/help\n");
+        await host.WaitUntilAsync(() =>
+            host.Session.Input.Text == "/help\n" && host.Session.Autocomplete is null
+        );
 
         Assert.Null(host.Session.Autocomplete);
         Assert.False(host.Session.IsRunning);
@@ -520,7 +522,8 @@ public sealed class InteractiveSessionAutocompleteTests
         await host.WaitUntilAsync(() =>
         {
             host.Advance(33);
-            return host.LastFrame.Contains(notice, StringComparison.Ordinal);
+            return files.EnumerateCalls == 1
+                && host.LastFrame.Contains(notice, StringComparison.Ordinal);
         });
         Assert.Null(host.Session.Autocomplete);
         Assert.Equal(1, files.EnumerateCalls);

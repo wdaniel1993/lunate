@@ -814,6 +814,12 @@ internal sealed partial class InteractiveSession : IDisposable
     /// <summary>Whether composition finished; false while the session composes.</summary>
     internal bool IsComposed => _composed;
 
+    /// <summary>
+    /// Reads the scrollback as one consistent snapshot: a commit is several line writes under
+    /// the live area's paint gate, so an unguarded read can see a listing half-written.
+    /// </summary>
+    internal T ReadCommittedScrollback<T>(Func<T> read) => _live.ReadScrollback(read);
+
     /// <summary>The exit code composition's failure implies; 0 when the session ran normally.</summary>
     internal int ExitCode { get; private set; }
 

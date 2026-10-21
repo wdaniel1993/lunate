@@ -181,6 +181,21 @@ internal sealed class LiveArea : IDisposable
         }
     }
 
+    /// <summary>
+    /// Reads the committed scrollback while no commit is in flight: a multi-line commit (the
+    /// welcome header, <c>/help</c>, <c>/context</c>) writes one line at a time under the paint
+    /// gate, so a caller could otherwise observe it half-written. The seam's snapshot is the
+    /// output the commit completed, never a prefix of it.
+    /// </summary>
+    internal T ReadScrollback<T>(Func<T> read)
+    {
+        ArgumentNullException.ThrowIfNull(read);
+        lock (_paintGate)
+        {
+            return read();
+        }
+    }
+
     private void WriteScrollbackNow(Action<IAnsiConsole> write)
     {
         _writer.Clear();

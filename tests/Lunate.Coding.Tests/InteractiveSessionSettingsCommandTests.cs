@@ -109,8 +109,7 @@ public sealed class InteractiveSessionSettingsCommandTests
         Task run = host.RunAsync();
         await host.WaitUntilAsync(() => host.Session.IsComposed);
 
-        host.Console.SendText("/login groq " + secret);
-        host.Console.SendEnter();
+        await host.SendLineAsync("/login groq " + secret);
         await WaitForFrameAsync(host, "takes no key argument");
 
         Assert.Contains("masked prompt", host.LastFrame, StringComparison.Ordinal);
@@ -140,8 +139,7 @@ public sealed class InteractiveSessionSettingsCommandTests
         Task run = host.RunAsync();
         await host.WaitUntilAsync(() => host.Session.IsComposed);
 
-        host.Console.SendText("/login not-a-provider " + secret);
-        host.Console.SendEnter();
+        await host.SendLineAsync("/login not-a-provider " + secret);
         await WaitForFrameAsync(host, "unknown provider for /login");
 
         Assert.DoesNotContain("not-a-provider", host.Frames, StringComparison.Ordinal);
