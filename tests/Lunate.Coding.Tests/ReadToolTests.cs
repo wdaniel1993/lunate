@@ -29,6 +29,9 @@ public sealed class ReadToolTests
         Assert.True(properties.TryGetProperty("path", out _));
         Assert.True(properties.TryGetProperty("offset", out _));
         Assert.True(properties.TryGetProperty("limit", out _));
+        Assert.Contains("PNG, JPEG, GIF or WebP", tool.Description, StringComparison.Ordinal);
+        Assert.Contains("Supported images", tool.Description, StringComparison.Ordinal);
+        Assert.Contains("vision model", tool.Description, StringComparison.Ordinal);
     }
 
     [Fact]

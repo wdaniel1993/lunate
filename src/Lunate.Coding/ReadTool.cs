@@ -8,7 +8,7 @@ namespace Lunate.Coding;
 /// <summary>Reads text files inside the workspace with numbered lines and a continuation footer.
 /// A per-run skill allowance (the discovered skill directories) grants read-only access to skill
 /// files outside the workspace boundary, bundled files included (ADR-0016).</summary>
-public sealed class ReadTool : ITool
+public sealed partial class ReadTool : ITool
 {
     private const int DefaultLimit = 2000;
     private const int MaxLimit = 2000;
@@ -37,7 +37,7 @@ public sealed class ReadTool : ITool
               "properties": {
                 "path": {
                   "type": "string",
-                  "description": "Path of the file to read, relative to the workspace or absolute inside it"
+                  "description": "Path of the file to read, relative to the workspace or absolute inside it; supported images (PNG, JPEG, GIF or WebP) are returned for a vision model"
                 },
                 "offset": { "type": "integer", "description": "1-based first line (default 1)" },
                 "limit": { "type": "integer", "description": "maximum lines (default 2000, max 2000)" }
@@ -51,7 +51,8 @@ public sealed class ReadTool : ITool
     public string Name => "read";
 
     public string Description =>
-        "Read a text file from the workspace as numbered lines; use offset and limit to page.";
+        "Read a text file from the workspace as numbered lines; use offset and limit to page. "
+        + "Supported images (PNG, JPEG, GIF or WebP) are returned for a vision model.";
 
     public JsonElement ParametersSchema => Schema;
 
@@ -73,8 +74,10 @@ public sealed class ReadTool : ITool
         }
 
         var offset = 1;
+        var hasOffset = false;
         if (args.TryGetProperty("offset", out var offsetElement))
         {
+            hasOffset = true;
             if (!TryReadInteger(offsetElement, out offset))
             {
                 return Task.FromResult(Error("offset must be an integer"));
@@ -82,8 +85,10 @@ public sealed class ReadTool : ITool
         }
 
         var limit = DefaultLimit;
+        var hasLimit = false;
         if (args.TryGetProperty("limit", out var limitElement))
         {
+            hasLimit = true;
             if (!TryReadInteger(limitElement, out limit))
             {
                 return Task.FromResult(Error("limit must be an integer"));
@@ -111,6 +116,15 @@ public sealed class ReadTool : ITool
             if (!_files.Exists(resolved.AbsolutePath))
             {
                 return Task.FromResult(Error($"file not found: {resolved.RelativePath}"));
+            }
+
+            if (_files is IBinaryFileAccess binary)
+            {
+                var prefix = binary.ReadPrefixBytes(resolved.AbsolutePath, ImageFile.ProbeBytes);
+                if (ImageFile.TryDetectMime(prefix, out _))
+                {
+                    return Task.FromResult(ReadImage(resolved, binary, ctx, hasOffset, hasLimit));
+                }
             }
 
             probe = _files.ReadPrefix(resolved.AbsolutePath, ProbeBytes);
