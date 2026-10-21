@@ -115,6 +115,28 @@ public sealed class InteractiveSessionFooterCostTests
     }
 
     [Fact]
+    public async Task A_priced_zero_token_turn_shows_zero_cost()
+    {
+        using var host = Host("fixture-priced");
+        host.Client.Enqueue(Usage(0, 0), Scripts.Text("done"), Scripts.Stop());
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+
+        host.Console.SendText("go");
+        host.Console.SendEnter();
+        await host.WaitUntilAsync(() =>
+        {
+            host.Advance(33);
+            return !host.Session.IsRunning
+                && host.LastFrame.Contains("$0.00", StringComparison.Ordinal);
+        });
+
+        Assert.DoesNotContain("$0.0000", host.LastFrame, StringComparison.Ordinal);
+        host.Console.Complete();
+        await run;
+    }
+
+    [Fact]
     public async Task An_unpriced_turn_omits_the_cost_segment()
     {
         using var host = Host("fixture-unpriced");

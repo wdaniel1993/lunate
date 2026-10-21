@@ -71,12 +71,17 @@ internal static class UsageCost
 {
     /// <summary>
     /// One record's cost, or null when the model id is absent, the model is unknown or unpriced, a
-    /// used lane has no rate, or the id is ambiguous. Ambiguity is swallowed because the cost is
-    /// display-only and must never break the report.
+    /// lane count is negative, a used lane has no rate, or the id is ambiguous. Ambiguity and
+    /// corruption are swallowed because the cost is display-only and must never break the report.
     /// </summary>
     public static decimal? ForRecord(ModelCatalog catalog, string? modelId, UsageLanes lanes)
     {
         ArgumentNullException.ThrowIfNull(catalog);
+        if (HasNegativeLane(lanes))
+        {
+            return null;
+        }
+
         if (string.IsNullOrEmpty(modelId) || Find(catalog, modelId) is not { } model)
         {
             return null;
@@ -93,8 +98,9 @@ internal static class UsageCost
 
     /// <summary>
     /// Aggregates records by model id in first-seen order and prices each model's summed lanes.
-    /// Null when there is nothing to report, a record has no model id, or any model cannot be
-    /// fully priced. The total is the sum of the model costs.
+    /// Null when there is nothing to report, a record has no model id or a negative lane, or any
+    /// model cannot be fully priced. Each record is validated before aggregating so a corrupted
+    /// lane cannot hide behind a positive one. The total is the sum of the model costs.
     /// </summary>
     public static CostReport? Summarize(
         ModelCatalog catalog,
@@ -108,6 +114,13 @@ internal static class UsageCost
         Dictionary<string, UsageLanes> lanesByModel = new(StringComparer.Ordinal);
         foreach ((string? modelId, UsageLanes lanes) in records)
         {
+            // Before aggregating: a negative lane from a corrupted session file is unpriced, and a
+            // positive record for the same model must not hide it in the sum.
+            if (HasNegativeLane(lanes))
+            {
+                return null;
+            }
+
             if (string.IsNullOrEmpty(modelId))
             {
                 return null;
@@ -206,6 +219,10 @@ internal static class UsageCost
 
         return Summarize(catalog, records);
     }
+
+    /// <summary>A negative lane is corrupted input, never a price: the record is unpriced.</summary>
+    private static bool HasNegativeLane(UsageLanes lanes) =>
+        lanes.Input < 0 || lanes.Output < 0 || lanes.CacheRead < 0 || lanes.CacheWrite < 0;
 
     private static ModelInfo? Find(ModelCatalog catalog, string modelId)
     {

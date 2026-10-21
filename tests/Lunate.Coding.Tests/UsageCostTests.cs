@@ -93,6 +93,32 @@ public sealed class UsageCostTests
     }
 
     [Fact]
+    public void ForRecord_returns_null_when_any_lane_is_negative()
+    {
+        using var temp = new TempDirectory();
+        ModelCatalog catalog = Catalog(temp, PricedModel);
+
+        Assert.Null(UsageCost.ForRecord(catalog, "fixture-priced", new UsageLanes(1000, 0, -1, 0)));
+    }
+
+    [Fact]
+    public void Summarize_returns_null_when_a_negative_record_cancels_a_positive_one()
+    {
+        using var temp = new TempDirectory();
+        ModelCatalog catalog = Catalog(temp, PricedModel);
+
+        Assert.Null(
+            UsageCost.Summarize(
+                catalog,
+                [
+                    ("fixture-priced", new UsageLanes(1_000_000, 0, 1_000_000, 0)),
+                    ("fixture-priced", new UsageLanes(0, 0, -1_000_000, 0)),
+                ]
+            )
+        );
+    }
+
+    [Fact]
     public void Summarize_returns_null_for_an_empty_record_list()
     {
         using var temp = new TempDirectory();

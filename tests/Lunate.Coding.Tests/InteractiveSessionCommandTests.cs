@@ -634,6 +634,45 @@ public sealed class InteractiveSessionCommandTests
     }
 
     [Fact]
+    public async Task Session_prints_tokens_without_a_cost_for_a_negative_usage_lane()
+    {
+        using var temp = new TempDirectory();
+        File.WriteAllText(
+            temp.File("models.json"),
+            $$"""
+            { "schemaVersion": 2, "models": [ {{PricedModel}} ] }
+            """
+        );
+        string path = temp.File("negative-cache.jsonl");
+        File.WriteAllText(
+            path,
+            """
+            {"type":"header","schema":3,"id":"s_20261007-090000-b1c2","cwd":"/repo","created":"2026-10-07T09:00:00.0000000+00:00","meai":"10.10.1"}
+            {"type":"message","id":"e_01","parentId":null,"timestamp":"2026-10-07T09:00:01.0000000+00:00","message":{"role":"user","contents":[{"$type":"text","text":"hi"}]}}
+            {"type":"message","id":"e_02","parentId":"e_01","timestamp":"2026-10-07T09:00:02.0000000+00:00","message":{"role":"assistant","contents":[{"$type":"text","text":"priced."}]},"model":"fixture-priced","usage":{"input":1000,"output":100,"cacheRead":-1}}
+            """
+        );
+        using var started = new InteractiveSessionHost(
+            launch: new LaunchOptions { Model = "fixture-priced" },
+            startSession: path,
+            modelsPath: temp.File("models.json")
+        );
+        started.Scrollback.Profile.Width = 400;
+        Task run = started.RunAsync();
+        await started.WaitUntilAsync(() => started.Session.IsComposed);
+
+        started.Console.SendText("/session");
+        started.Console.SendEnter();
+        await WaitForScrollbackAsync(started, "tokens: 1000 in / 100 out");
+
+        Assert.DoesNotContain("cost:", started.ScrollbackText, StringComparison.Ordinal);
+        Assert.DoesNotContain(" = $", started.ScrollbackText, StringComparison.Ordinal);
+
+        started.Console.Complete();
+        await run;
+    }
+
+    [Fact]
     public async Task Session_stays_token_only_for_a_schema_2_file_whose_model_has_a_cache_rate()
     {
         using var temp = new TempDirectory();

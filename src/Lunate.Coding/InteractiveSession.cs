@@ -1420,7 +1420,7 @@ internal sealed partial class InteractiveSession : IDisposable
             {
                 FavoritePosition = favoritePosition < 0 ? null : favoritePosition + 1,
                 FavoriteCount = _settings.Favorites.Count,
-                TurnCost = _turnCost is > 0m ? CostCalculator.Format(_turnCost.Value) : null,
+                TurnCost = _turnCost is decimal cost ? CostCalculator.Format(cost) : null,
             }
         );
     }
