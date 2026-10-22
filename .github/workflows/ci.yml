@@ -12,6 +12,9 @@ on:
       - 'openspec/**'
       - '*.md'
   pull_request:
+    # ready_for_review is not in GitHub's default set: without it, a draft that
+    # is marked ready would keep the statuses of the run it had as a draft.
+    types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch:
 
 # Supersede in-flight runs for the same ref instead of queueing duplicates.
@@ -25,6 +28,7 @@ permissions:
 jobs:
   verify:
     name: verify (${{ matrix.os }})
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -182,6 +186,7 @@ jobs:
   # pipeline lands around ~10m while both gates still run on every PR.
   verify-powershell:
     name: verify-powershell (windows)
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: windows-latest
     env:
       RID: win-x64
@@ -253,7 +258,7 @@ jobs:
   ci-ok:
     name: ci-ok
     needs: [verify, verify-powershell]
-    if: always()
+    if: always() && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
     runs-on: ubuntu-latest
     steps:
       - name: Every required job succeeded
