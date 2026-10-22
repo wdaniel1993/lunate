@@ -183,13 +183,10 @@ override Lunate.Tui.ApprovalPromptModel.GetHashCode() -> int
 override Lunate.Tui.ApprovalPromptModel.ToString() -> string!
 static Lunate.Tui.ApprovalPromptModel.operator !=(Lunate.Tui.ApprovalPromptModel? left, Lunate.Tui.ApprovalPromptModel? right) -> bool
 static Lunate.Tui.ApprovalPromptModel.operator ==(Lunate.Tui.ApprovalPromptModel? left, Lunate.Tui.ApprovalPromptModel? right) -> bool
-Lunate.Tui.BusyEnterMode
-Lunate.Tui.BusyEnterMode.Queue = 0 -> Lunate.Tui.BusyEnterMode
-Lunate.Tui.BusyEnterMode.Steer = 1 -> Lunate.Tui.BusyEnterMode
 Lunate.Tui.GitBranchReader
 Lunate.Tui.KeyRouter
 static Lunate.Tui.GitBranchReader.Read(string! workingDirectory) -> string?
-static Lunate.Tui.KeyRouter.Route(Lunate.Tui.KeyEvent! key, bool turnRunning = false, Lunate.Tui.BusyEnterMode busyEnter = Lunate.Tui.BusyEnterMode.Queue) -> Lunate.Tui.RoutedKey
+static Lunate.Tui.KeyRouter.Route(Lunate.Tui.KeyEvent! key, bool turnRunning = false, bool hasQueuedFollowUps = false) -> Lunate.Tui.RoutedKey
 Lunate.Tui.RoutedKey
 Lunate.Tui.RoutedKey.Cancel = 2 -> Lunate.Tui.RoutedKey
 Lunate.Tui.RoutedKey.ClearOrQuit = 3 -> Lunate.Tui.RoutedKey
@@ -197,7 +194,7 @@ Lunate.Tui.RoutedKey.Complete = 7 -> Lunate.Tui.RoutedKey
 Lunate.Tui.RoutedKey.Edit = 0 -> Lunate.Tui.RoutedKey
 Lunate.Tui.RoutedKey.FavoritesCycle = 9 -> Lunate.Tui.RoutedKey
 Lunate.Tui.RoutedKey.FollowUp = 10 -> Lunate.Tui.RoutedKey
-Lunate.Tui.RoutedKey.FollowUpPrevious = 11 -> Lunate.Tui.RoutedKey
+Lunate.Tui.RoutedKey.FollowUpTakeBack = 11 -> Lunate.Tui.RoutedKey
 Lunate.Tui.RoutedKey.HistoryNext = 6 -> Lunate.Tui.RoutedKey
 Lunate.Tui.RoutedKey.HistoryPrevious = 5 -> Lunate.Tui.RoutedKey
 Lunate.Tui.RoutedKey.ModelPicker = 4 -> Lunate.Tui.RoutedKey

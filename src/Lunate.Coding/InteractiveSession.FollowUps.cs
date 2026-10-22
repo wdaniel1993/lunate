@@ -8,31 +8,24 @@ internal sealed partial class InteractiveSession
 {
     private readonly FollowUpQueue _followUps = new();
 
-    /// <summary>Set when Esc cancels a turn; the drain checks it before launching the next message.</summary>
-    private volatile bool _turnCancelled;
-
-    /// <summary>
-    /// The line most recently pulled out with Alt+Up, so pressing it again walks backwards through
-    /// the queue instead of refusing the entry it just placed in the editor. Any edit clears it.
-    /// </summary>
-    private string? _pulledFollowUpText;
-
     /// <summary>How many follow-ups wait behind the running turn (the tests' view).</summary>
     internal int QueuedFollowUpCount => _followUps.Count;
+
+    /// <summary>The queue itself (the tests' view); production reaches it only through the keys.</summary>
+    internal FollowUpQueue FollowUps => _followUps;
 
     /// <summary>The queued follow-ups in submission order (the tests' view).</summary>
     internal IReadOnlyList<QueuedFollowUp> QueuedFollowUps => _followUps.Entries;
 
     private static string QueueFullNotice =>
         FormattableString.Invariant(
-            $"the follow-up queue holds at most {FollowUpQueue.Capacity} messages; take one back with Alt+Up or wait for the turn to finish"
+            $"the follow-up queue holds at most {FollowUpQueue.Capacity} messages; take them back with Up or wait for the turn to finish"
         );
 
     /// <summary>
-    /// The busy send key under <c>prompt.busyEnter = queue</c>: prepares the line exactly as a
-    /// submission would (hooks and image resolution) and queues the result without starting or
-    /// steering a run. A refusal leaves the line untouched so the user can fix it or submit it
-    /// normally.
+    /// The send key while a turn runs: prepares the line exactly as a submission would (hooks and
+    /// image resolution) and queues the result without starting a run. A refusal leaves the line
+    /// untouched so the user can fix it or submit it normally.
     /// </summary>
     private async Task QueueFollowUpAsync(CancellationToken ct)
     {
@@ -95,55 +88,21 @@ internal sealed partial class InteractiveSession
     }
 
     /// <summary>
-    /// Alt+Up: the newest entry returns to an empty editor. A pulled entry may be replaced by the
-    /// next one on a repeated press; any other non-empty line refuses so typed text is never merged.
-    /// Under <c>prompt.busyEnter = steer</c> nothing can be queued, so the key does nothing.
+    /// Up with a non-empty queue: every entry returns to the editor in order, newline-separated,
+    /// ahead of whatever was already typed, and the queue empties. Taking the whole queue back is
+    /// the point — the entries read as one block the user meant to edit together.
     /// </summary>
-    private void TakeFollowUpBack()
-    {
-        if (_settings.Prompt.BusyEnter == BusyEnterMode.Steer)
-        {
-            return;
-        }
-
-        if (
-            _input.Text.Length > 0
-            && !string.Equals(_input.Text, _pulledFollowUpText, StringComparison.Ordinal)
-        )
-        {
-            Notify(
-                "Alt+Up needs an empty line; clear the input before taking a follow-up back",
-                NoticeLevel.Warning
-            );
-            return;
-        }
-
-        if (!_followUps.TryTakeNewest(out QueuedFollowUp? entry) || entry is null)
-        {
-            return;
-        }
-
-        SetInput(entry.EditorText);
-        _pulledFollowUpText = entry.EditorText;
-        UpdateFollowUpIndicator();
-    }
-
-    /// <summary>
-    /// Esc with nothing running: every queued entry returns to the editor in order, separated by
-    /// newlines, and the queue empties. Text already in the editor is kept above the restored lines.
-    /// </summary>
-    private bool RestoreFollowUps()
+    private void TakeFollowUpsBack()
     {
         IReadOnlyList<string> texts = _followUps.DrainEditorTexts();
         if (texts.Count == 0)
         {
-            return false;
+            return;
         }
 
         string restored = string.Join("\n", texts);
-        SetInput(_input.Text.Length == 0 ? restored : _input.Text + "\n" + restored);
+        SetInput(_input.Text.Length == 0 ? restored : restored + "\n" + _input.Text);
         UpdateFollowUpIndicator();
-        return true;
     }
 
     private void UpdateFollowUpIndicator() => _live.SetQueuedCount(_followUps.Count);

@@ -10,7 +10,7 @@ internal sealed record QueuedFollowUp(string EditorText, UserInput Input);
 
 /// <summary>
 /// The bounded in-memory follow-up queue: messages run from the head in submission order, while
-/// taking one back pulls the newest first. Nothing here is persisted.
+/// taking back drains the whole queue in that same order. Nothing here is persisted.
 /// </summary>
 internal sealed class FollowUpQueue
 {
@@ -67,22 +67,6 @@ internal sealed class FollowUpQueue
 
             entry = _entries[0];
             _entries.RemoveAt(0);
-            return true;
-        }
-    }
-
-    internal bool TryTakeNewest(out QueuedFollowUp? entry)
-    {
-        lock (_gate)
-        {
-            if (_entries.Count == 0)
-            {
-                entry = null;
-                return false;
-            }
-
-            entry = _entries[^1];
-            _entries.RemoveAt(_entries.Count - 1);
             return true;
         }
     }
