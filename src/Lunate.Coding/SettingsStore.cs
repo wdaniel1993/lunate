@@ -52,6 +52,16 @@ public sealed record AgentSettings
 
     /// <summary>The resolved optional-tool settings (the <c>tools</c> section).</summary>
     public ToolsSettings Tools { get; init; } = new();
+
+    /// <summary>The resolved prompt-key settings (the <c>prompt</c> section).</summary>
+    public PromptSettings Prompt { get; init; } = new();
+}
+
+/// <summary>The prompt-key settings (the <c>prompt</c> settings section).</summary>
+public sealed record PromptSettings
+{
+    /// <summary>What Enter does while a turn runs; defaults to queueing the line.</summary>
+    public BusyEnterMode BusyEnter { get; init; } = BusyEnterMode.Queue;
 }
 
 /// <summary>The optional tools enabled beside the core set (the <c>tools</c> settings section).</summary>
@@ -82,8 +92,8 @@ public sealed record RoslynSettings
 /// (<c>LUNATE_MODEL</c>, <c>LUNATE_APPROVAL</c>, <c>LUNATE_TOOL_DETAILS</c>,
 /// <c>LUNATE_TOOL_OUTPUT_LIMIT</c>, <c>LUNATE_STARTUP_HEADER</c>,
 /// <c>LUNATE_SUBAGENTS_CONCURRENCY</c>, <c>LUNATE_SUBAGENTS_TOKEN_BUDGET</c>,
-/// <c>LUNATE_SUBAGENTS_TREE_TOKEN_BUDGET</c>) overrides file values. Both the path and the
-/// environment lookup are injectable.
+/// <c>LUNATE_SUBAGENTS_TREE_TOKEN_BUDGET</c>, <c>LUNATE_BUSY_ENTER</c>) overrides file values. Both
+/// the path and the environment lookup are injectable.
 /// </summary>
 public static class SettingsStore
 {
@@ -104,6 +114,7 @@ public static class SettingsStore
     private const string SubagentTokenBudgetVariable = "LUNATE_SUBAGENTS_TOKEN_BUDGET";
     private const string SubagentTreeTokenBudgetVariable = "LUNATE_SUBAGENTS_TREE_TOKEN_BUDGET";
     private const string ExtraToolsVariable = "LUNATE_EXTRA_TOOLS";
+    private const string BusyEnterVariable = "LUNATE_BUSY_ENTER";
 
     /// <summary>The one explicit literal that disables a subagent limit.</summary>
     private const string Unlimited = "unlimited";
@@ -347,6 +358,9 @@ public static class SettingsStore
                         break;
                     case "tools":
                         settings = settings with { Tools = ReadTools(property.Value, problems) };
+                        break;
+                    case "prompt":
+                        settings = settings with { Prompt = ReadPrompt(property.Value, problems) };
                         break;
                     default:
                         problems.Add($"unknown key '{property.Name}'");
@@ -698,6 +712,49 @@ public static class SettingsStore
         return settings;
     }
 
+    /// <summary>
+    /// Reads the <c>prompt</c> section: only <c>busyEnter</c> is known, the exact literal
+    /// <c>queue</c> or <c>steer</c>. A missing key keeps the documented default (queue).
+    /// </summary>
+    private static PromptSettings ReadPrompt(JsonElement value, List<string> problems)
+    {
+        var settings = new PromptSettings();
+        if (value.ValueKind != JsonValueKind.Object)
+        {
+            problems.Add("'prompt' must be an object");
+            return settings;
+        }
+
+        foreach (JsonProperty property in value.EnumerateObject())
+        {
+            if (property.Name != "busyEnter")
+            {
+                problems.Add($"unknown key 'prompt.{property.Name}'");
+                continue;
+            }
+
+            if (
+                property.Value.ValueKind == JsonValueKind.String
+                && TryParseBusyEnter(property.Value.GetString(), out var parsed)
+            )
+            {
+                settings = settings with { BusyEnter = parsed };
+                continue;
+            }
+
+            problems.Add(
+                BusyEnterError(
+                    "'prompt.busyEnter'",
+                    property.Value.ValueKind == JsonValueKind.String
+                        ? property.Value.GetString()
+                        : null
+                )
+            );
+        }
+
+        return settings;
+    }
+
     private static int? ReadConcurrency(JsonElement value, List<string> problems)
     {
         if (IsUnlimited(value))
@@ -893,6 +950,22 @@ public static class SettingsStore
             };
         }
 
+        string? busyEnter = environment(BusyEnterVariable);
+        if (!string.IsNullOrEmpty(busyEnter))
+        {
+            if (TryParseBusyEnter(busyEnter, out var parsedBusyEnter))
+            {
+                settings = settings with
+                {
+                    Prompt = settings.Prompt with { BusyEnter = parsedBusyEnter },
+                };
+            }
+            else
+            {
+                problems.Add(BusyEnterError(BusyEnterVariable, busyEnter));
+            }
+        }
+
         return settings;
     }
 
@@ -1007,6 +1080,22 @@ public static class SettingsStore
         }
     }
 
+    private static bool TryParseBusyEnter(string? value, out BusyEnterMode parsed)
+    {
+        switch (value)
+        {
+            case "queue":
+                parsed = BusyEnterMode.Queue;
+                return true;
+            case "steer":
+                parsed = BusyEnterMode.Steer;
+                return true;
+            default:
+                parsed = BusyEnterMode.Queue;
+                return false;
+        }
+    }
+
     private static bool TryParseApproval(string? value, out ApprovalPolicy parsed)
     {
         switch (value)
@@ -1058,6 +1147,11 @@ public static class SettingsStore
         value is null
             ? $"{subject} must be 'collapsed' or 'expanded'"
             : $"{subject} must be 'collapsed' or 'expanded', but was '{value}'";
+
+    private static string BusyEnterError(string subject, string? value) =>
+        value is null
+            ? $"{subject} must be 'queue' or 'steer'"
+            : $"{subject} must be 'queue' or 'steer', but was '{value}'";
 
     private static string ApprovalError(string subject, string? value) =>
         value == "yolo"

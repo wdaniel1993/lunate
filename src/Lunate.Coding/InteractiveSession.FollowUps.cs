@@ -29,9 +29,10 @@ internal sealed partial class InteractiveSession
         );
 
     /// <summary>
-    /// Alt+Enter during a turn: prepares the line exactly as a submission would (hooks and image
-    /// resolution) and queues the result without starting or steering a run. A refusal leaves the
-    /// line untouched so the user can fix it or submit it normally.
+    /// The busy send key under <c>prompt.busyEnter = queue</c>: prepares the line exactly as a
+    /// submission would (hooks and image resolution) and queues the result without starting or
+    /// steering a run. A refusal leaves the line untouched so the user can fix it or submit it
+    /// normally.
     /// </summary>
     private async Task QueueFollowUpAsync(CancellationToken ct)
     {
@@ -96,9 +97,15 @@ internal sealed partial class InteractiveSession
     /// <summary>
     /// Alt+Up: the newest entry returns to an empty editor. A pulled entry may be replaced by the
     /// next one on a repeated press; any other non-empty line refuses so typed text is never merged.
+    /// Under <c>prompt.busyEnter = steer</c> nothing can be queued, so the key does nothing.
     /// </summary>
     private void TakeFollowUpBack()
     {
+        if (_settings.Prompt.BusyEnter == BusyEnterMode.Steer)
+        {
+            return;
+        }
+
         if (
             _input.Text.Length > 0
             && !string.Equals(_input.Text, _pulledFollowUpText, StringComparison.Ordinal)

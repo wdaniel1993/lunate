@@ -936,7 +936,7 @@ internal sealed partial class InteractiveSession : IDisposable
             return;
         }
 
-        switch (KeyRouter.Route(key, _turnActive))
+        switch (KeyRouter.Route(key, _turnActive, _settings.Prompt.BusyEnter))
         {
             case RoutedKey.Edit:
                 EditInput(key);
@@ -955,13 +955,6 @@ internal sealed partial class InteractiveSession : IDisposable
                 TakeFollowUpBack();
                 break;
             case RoutedKey.Submit:
-                if (_bashMode && key.Alt)
-                {
-                    // Alt+Enter is the newline key in bash mode; a bash line cannot steer.
-                    EditInput(key);
-                    break;
-                }
-
                 if (_autocomplete is not null && !IsExactAutocompleteMatch())
                 {
                     AcceptAutocomplete();
@@ -1071,7 +1064,7 @@ internal sealed partial class InteractiveSession : IDisposable
         _live.SetSuspended(false);
     }
 
-    /// <summary>The one edit path, shared by the Edit route and Alt+Enter while bash mode is on.</summary>
+    /// <summary>The one edit path; every newline key and every other edit routes here.</summary>
     private void EditInput(KeyEvent key)
     {
         bool wasEmpty = _input.Text.Length == 0;

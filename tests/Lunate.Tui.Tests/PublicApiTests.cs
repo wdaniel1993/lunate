@@ -9,6 +9,7 @@ public sealed class PublicApiTests
         "Lunate.Tui.ApprovalChoice",
         "Lunate.Tui.ApprovalPromptModel",
         "Lunate.Tui.ApprovalPromptRenderer",
+        "Lunate.Tui.BusyEnterMode",
         "Lunate.Tui.ConsoleSize",
         "Lunate.Tui.ConsoleSupport",
         "Lunate.Tui.GitBranchReader",

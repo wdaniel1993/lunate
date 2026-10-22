@@ -214,7 +214,7 @@ public sealed class InteractiveSessionCommandTests
 
         // Quit works while the turn runs: the run is cancelled and the session ends.
         host.Console.SendText("/quit");
-        host.Console.SendEnter();
+        host.Console.SendAltEnter();
         await run;
         Assert.False(host.Session.IsRunning);
     }

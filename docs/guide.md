@@ -287,7 +287,7 @@ The harness exposes them as `IAsyncEnumerable<AgentEvent>` from `AgentHarness.Ru
 - Cancellation: `Esc` in the UI cancels the `CancellationToken`; the loop records a cancelled tool result so the history stays valid.
 - Retries: transient provider errors retry 3 times with backoff, each attempt raising `Retrying`.
 - Compaction: our strategy implements `IChatReducer` and runs when estimated tokens pass 80% of the model's context window. The first version summarizes old turns with the same model and keeps the last N turns verbatim.
-- Steering: the user may type while a turn runs and press `Alt+Enter`; the message is queued and injected before the next model call. A follow-up queued with `Enter` is separate: it waits for the turn to finish and then runs as the next turn.
+- Steering: by default `Enter` while a turn runs queues a follow-up for after the turn; with `prompt.busyEnter = steer` (or `LUNATE_BUSY_ENTER=steer`) it injects the line before the next model call instead. The two paths are separate: a queued follow-up waits for the turn to finish and then runs as the next turn.
 
 **Telemetry in the loop**
 
@@ -461,7 +461,7 @@ Every submitted prompt commits to the scrollback as the first block of its turn:
 
 **Follow-up queue**
 
-While a turn runs, `Enter` queues the current line — text and any attached images — instead of steering it. The line clears and the status footer shows `N queued` beside the model and context hint, so a waiting message is never invisible. The send key therefore never interrupts a running turn; `Alt+Enter` steers instead, injecting the line into the running turn before the next model call, and inserts a newline while the prompt is idle. The queue holds at most five entries; a sixth is refused with a notice that names the limit and leaves the first five in place. Slash commands are refused by the queue because they are frontend control, not model input.
+While a turn runs, `Enter` queues the current line — text and any attached images — instead of steering it. The line clears and the status footer shows `N queued` beside the model and context hint, so a waiting message is never invisible. The send key therefore never interrupts a running turn by default. Steering is an explicit choice: `prompt.busyEnter = steer` in `~/.lunate/settings.json`, or `LUNATE_BUSY_ENTER=steer`, makes `Enter` inject the line into the running turn before the next model call instead, and nothing is queued (the indicator stays hidden and `Alt+Up` does nothing). `Alt+Enter` and `Ctrl+J` insert a newline in every state, so a multi-line follow-up can be composed mid-turn. The queue holds at most five entries; a sixth is refused with a notice that names the limit and leaves the first five in place. Slash commands are refused by the queue because they are frontend control, not model input.
 
 Queued messages run after the current turn finishes, in submission order, one at a time through the normal submission path, so the user echo, approvals and image handling are identical to a typed turn. A failed turn keeps the rest of the queue; a cancelled turn leaves the queue intact and never starts the next message by itself. `Alt+Up` takes the newest entry back into an empty line; a repeated press walks backwards, while typed text refuses with a notice so nothing is silently merged. With nothing running, `Esc` returns the whole queue to the editor in order, separated by newlines, and empties it. The queue is in-memory only: it is never written to the session, never replayed on resume, and print mode has no queue.
 
@@ -520,8 +520,8 @@ Both box rules are drawn at every width; autocomplete descriptions keep their 60
 
 | Key | Action |
 | --- | --- |
-| `Enter` | Send; with the autocomplete list open, accept the selected item first (an exact token sends instead); in bash mode, run the line through the `bash` tool; while a turn runs, queue the line as a follow-up (the footer shows `N queued`); never interrupts a turn |
-| `Alt+Enter` | New line, also Ctrl+J (terminals cannot reliably detect `Shift+Enter`); the autocomplete triggers re-run afterwards. While a turn runs, steer the running turn with the line |
+| `Enter` | Send; with the autocomplete list open, accept the selected item first (an exact token sends instead); in bash mode, run the line through the `bash` tool; while a turn runs, queue the line as a follow-up (the footer shows `N queued`), or steer the running turn when `prompt.busyEnter = steer`; never interrupts a turn under the default |
+| `Alt+Enter` | New line in every state, also Ctrl+J (terminals cannot reliably detect `Shift+Enter`); the autocomplete triggers re-run afterwards. Never submits, queues or steers |
 | `Esc` | Close the autocomplete list first; in bash mode, leave without running and restore the line with its prefix; otherwise cancel the running turn; with nothing running, return every queued follow-up to the line; nothing when idle with no queue |
 | `Ctrl+C` | Clear the input; on an empty input, press twice within 2 s to quit. Never cancels a turn |
 | `Ctrl+L` | Model picker and search; typing filters the catalog, Backspace edits the filter, Esc clears it before closing |
@@ -529,7 +529,7 @@ Both box rules are drawn at every width; autocomplete descriptions keep their 60
 | `Ctrl+O` | Transcript viewer: the session transcript with full tool output and diffs; `q`, `Esc` or `Ctrl+O` closes. Refused while an approval or picker is open |
 | `Tab` | Accept the selected autocomplete item; otherwise nothing |
 | `Up` / `Down` | Move the autocomplete selection; with the list closed, history (bash mode recalls its own command stream) |
-| `Alt+Up` | Take the newest queued follow-up back into an empty line; a repeated press walks backwards, typed text refuses with a notice |
+| `Alt+Up` | Take the newest queued follow-up back into an empty line; a repeated press walks backwards, typed text refuses with a notice, and under `steer` the queue is always empty |
 
 **Platform rules**
 

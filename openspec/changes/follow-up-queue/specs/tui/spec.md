@@ -2,7 +2,7 @@
 
 ### Requirement: One meaning per key
 
-Key events SHALL route to exactly one intent per the guide's table: Enter submits; while a turn runs it queues a follow-up, or steers the turn when the `prompt.busyEnter` setting is `steer`; Alt+Enter and Ctrl+J always edit (newline), in every state; Esc cancels a turn or returns queued follow-ups when nothing is running; Ctrl+C clears or quits, Ctrl+L opens the model picker, Ctrl+P cycles favourites, Tab completes a leading slash command, Up/Down navigate history, Alt+Up takes a queued follow-up back, everything else edits. Routing SHALL be pure, and every binding SHALL have a scripted key test.
+Key events SHALL route to exactly one intent per the guide's table: Enter submits, or queues a follow-up when a turn is running; Alt+Enter, Shift+Enter (where the terminal reports it) and Ctrl+J always edit (newline), in every state; Esc interrupts a running turn or returns queued follow-ups when nothing is running; Ctrl+C clears or quits, Ctrl+L opens the model picker, Ctrl+P cycles favourites, Tab completes a leading slash command, Up/Down navigate history, Alt+Up takes a queued follow-up back, everything else edits. Routing SHALL be pure, and every binding SHALL have a scripted key test.
 
 #### Scenario: Every binding routes distinctly
 
@@ -30,33 +30,27 @@ Key events SHALL route to exactly one intent per the guide's table: Enter submit
 
 #### Scenario: The send key sends in both states
 
-- **GIVEN** an idle prompt, then a running turn under the default `prompt.busyEnter = queue`
+- **GIVEN** an idle prompt, then a running turn
 - **WHEN** Enter is routed in each state
 - **THEN** the idle route submits and the busy route queues the follow-up, and neither produces the edit or cancel intent
 
-#### Scenario: The modifier always edits
+#### Scenario: Every newline key edits in both states
 
 - **GIVEN** an idle prompt, then a running turn
-- **WHEN** Alt+Enter is routed in each state
-- **THEN** both routes insert a newline, and neither submits, queues nor steers
+- **WHEN** Alt+Enter, Shift+Enter or Ctrl+J is routed in each state
+- **THEN** all six routes insert a newline, and none submits, queues or cancels
 
 ## ADDED Requirements
 
 ### Requirement: Follow-up queue
 
-Enter SHALL queue the current input — text and attachments — while a turn runs under the default `prompt.busyEnter = queue`, clear the line, and show the queue size beside the mode hint; under that default the send key never interrupts a running turn. With `prompt.busyEnter = steer`, Enter SHALL steer the running turn instead and SHALL NOT queue, and the queue stays empty because nothing can reach it. Queued messages SHALL run after the running turn completes, in order, one at a time, through the same submission path as a typed message; a failed turn SHALL NOT discard the remaining entries and a cancelled turn SHALL leave the queue intact without draining it. The queue SHALL hold at most five entries and SHALL refuse a sixth with a notice that keeps the existing five. Alt+Up SHALL move the newest queued entry into the editor when the line is empty and SHALL refuse with a notice when it is not. Esc with nothing running and a non-empty queue SHALL restore every entry to the editor in order, newline-separated, and empty the queue. A slash command SHALL be refused by the queue with a notice. The queue SHALL NOT be stored in the session, replayed on resume, or reachable from print mode.
+Enter SHALL queue the current input — text and attachments — while a turn runs, clear the line, and show the queue size beside the mode hint; the send key SHALL never interrupt a running turn. Queued messages SHALL run in order, one at a time, through the same submission path as a typed message: when the turn completes, when it fails, and when the user interrupts it with Esc, because the queued messages are what the user wants next. The queue SHALL hold at most five entries and SHALL refuse a sixth with a notice that keeps the existing five. Alt+Up SHALL move the newest queued entry into the editor when the line is empty and SHALL refuse with a notice when it is not. Esc with nothing running and a non-empty queue SHALL restore every entry to the editor in order, newline-separated, and empty the queue. A slash command SHALL be refused by the queue with a notice. The queue SHALL NOT be stored in the session, replayed on resume, or reachable from print mode.
 
 #### Scenario: A queued message runs after the turn
 
-- **GIVEN** a running turn and the default setting
+- **GIVEN** a running turn
 - **WHEN** the user presses Enter on `run the tests`
 - **THEN** the line clears, the indicator shows one queued, and when the turn completes `run the tests` is submitted through the normal path
-
-#### Scenario: Steering is an explicit choice
-
-- **GIVEN** `prompt.busyEnter = steer` and a running turn
-- **WHEN** Enter is pressed on `use the other approach`
-- **THEN** the text is injected into the running turn, nothing is queued, and the indicator does not appear
 
 #### Scenario: Queued messages keep their order and never overlap
 
@@ -70,6 +64,12 @@ Enter SHALL queue the current input — text and attachments — while a turn ru
 - **WHEN** the failure is reported
 - **THEN** the queued message still runs
 
+#### Scenario: An interrupt hands over to the queue
+
+- **GIVEN** a running turn with one message queued
+- **WHEN** Esc interrupts the turn
+- **THEN** the queued message runs next, in the same order it would have run had the turn completed
+
 #### Scenario: Alt+Up pulls the newest entry back
 
 - **GIVEN** two queued messages and an empty line
@@ -78,8 +78,8 @@ Enter SHALL queue the current input — text and attachments — while a turn ru
 
 #### Scenario: Escape returns the whole queue
 
-- **GIVEN** a cancelled turn and two queued messages
-- **WHEN** Esc is pressed with nothing running
+- **GIVEN** nothing running and two queued messages
+- **WHEN** Esc is pressed
 - **THEN** both messages are restored to the editor in order, newline-separated, and the queue is empty
 
 #### Scenario: A command cannot be queued

@@ -375,6 +375,22 @@ internal sealed class GatedChatClient : IChatClient
     private sealed record Script(IReadOnlyList<ChatResponseUpdate> Updates, Exception? Failure);
 }
 
+/// <summary>Environment lookups for the interactive session tests.</summary>
+internal static class InteractiveSessionEnvironment
+{
+    private const string BusyEnterVariable = "LUNATE_BUSY_ENTER";
+
+    /// <summary>
+    /// The default test environment with the busy send key set to <c>steer</c>, so Enter injects
+    /// into the running turn instead of queueing a follow-up.
+    /// </summary>
+    internal static Func<string, string?> SteerBusyEnter(Func<string, string?>? baseline = null)
+    {
+        Func<string, string?> environment = baseline ?? PrintModeTestSupport.Environment();
+        return name => name == BusyEnterVariable ? "steer" : environment(name);
+    }
+}
+
 /// <summary>Composes an interactive session over temp paths, a scripted console and a scripted
 /// provider. Callers that need the real client factory (the runtime replay seam) pass
 /// <c>factory</c> instead of a scripted client.</summary>
