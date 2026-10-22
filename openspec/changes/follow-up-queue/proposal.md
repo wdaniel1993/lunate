@@ -9,8 +9,7 @@ A follow-up queue separates the two: Enter still steers, Alt+Enter lines the mes
 - **Enter while a turn runs** queues the current input — text and attachments — and clears the line. The send key never interrupts; the queue runs in order, one message at a time, when the turn completes, fails, or is interrupted. This is Claude Code's documented behaviour, and the one most desktop users arrive with.
 - **Steering leaves the prompt.** Its harness API stays, but the interactive surface no longer has a key for it: the ambiguity of "Enter does one thing when idle and another while busy" is what this change removes.
 - **Alt+Enter, Shift+Enter (where the terminal reports it) and Ctrl+J are newlines in every state**, so a multi-line follow-up can still be composed while a turn runs.
-- **Alt+Up** pulls the newest queued message back into the editor when the line is empty, so a queued mistake can be fixed before it runs.
-- **Esc with nothing running and a non-empty queue** returns every queued message to the editor in order, separated by newlines.
+- **Up** takes the whole queue back into the editor, newline-separated and ahead of any draft, so a queued mistake can be fixed before it runs; with an empty queue it navigates history as before.
 - The prompt shows a **queue indicator** (`2 queued`) beside the mode hint, so a queue is never invisible.
 - **Slash commands are refused** by the queue with a notice: they are frontend control and a queued `/quit` has no defined ordering against the running turn.
 - The queue is **in-memory**: not in the session file, not replayed on resume, dropped on quit.

@@ -2,7 +2,7 @@
 
 ### Requirement: One meaning per key
 
-Key events SHALL route to exactly one intent per the guide's table: Enter submits, or queues a follow-up when a turn is running; Alt+Enter, Shift+Enter (where the terminal reports it) and Ctrl+J always edit (newline), in every state; Esc interrupts a running turn or returns queued follow-ups when nothing is running; Ctrl+C clears or quits, Ctrl+L opens the model picker, Ctrl+P cycles favourites, Tab completes a leading slash command, Up/Down navigate history, Alt+Up takes a queued follow-up back, everything else edits. Routing SHALL be pure, and every binding SHALL have a scripted key test.
+Key events SHALL route to exactly one intent per the guide's table: Enter submits, or queues a follow-up when a turn is running; Alt+Enter, Shift+Enter (where the terminal reports it) and Ctrl+J always edit (newline), in every state; Esc interrupts a running turn; Up with a non-empty queue takes the whole queue back into the editor, and otherwise Up/Down navigate history; Ctrl+C clears or quits, Ctrl+L opens the model picker, Ctrl+P cycles favourites, Tab completes a leading slash command, everything else edits. Routing SHALL be pure, and every binding SHALL have a scripted key test.
 
 #### Scenario: Every binding routes distinctly
 
@@ -44,7 +44,7 @@ Key events SHALL route to exactly one intent per the guide's table: Enter submit
 
 ### Requirement: Follow-up queue
 
-Enter SHALL queue the current input — text and attachments — while a turn runs, clear the line, and show the queue size beside the mode hint; the send key SHALL never interrupt a running turn. Queued messages SHALL run in order, one at a time, through the same submission path as a typed message: when the turn completes, when it fails, and when the user interrupts it with Esc, because the queued messages are what the user wants next. The queue SHALL hold at most five entries and SHALL refuse a sixth with a notice that keeps the existing five. Alt+Up SHALL move the newest queued entry into the editor when the line is empty and SHALL refuse with a notice when it is not. Esc with nothing running and a non-empty queue SHALL restore every entry to the editor in order, newline-separated, and empty the queue. A slash command SHALL be refused by the queue with a notice. The queue SHALL NOT be stored in the session, replayed on resume, or reachable from print mode.
+Enter SHALL queue the current input — text and attachments — while a turn runs, clear the line, and show the queue size beside the mode hint; the send key SHALL never interrupt a running turn. Queued messages SHALL run in order, one at a time, through the same submission path as a typed message: when the turn completes, when it fails, and when the user interrupts it with Esc, because the queued messages are what the user wants next. The queue SHALL hold at most five entries and SHALL refuse a sixth with a notice that keeps the existing five. Up with a non-empty queue SHALL take the whole queue back — every entry moved into the editor in order, newline-separated, ahead of any text already typed — and empty the queue; with an empty queue Up navigates history as before. A slash command SHALL be refused by the queue with a notice. The queue SHALL NOT be stored in the session, replayed on resume, or reachable from print mode.
 
 #### Scenario: A queued message runs after the turn
 
@@ -70,17 +70,17 @@ Enter SHALL queue the current input — text and attachments — while a turn ru
 - **WHEN** Esc interrupts the turn
 - **THEN** the queued message runs next, in the same order it would have run had the turn completed
 
-#### Scenario: Alt+Up pulls the newest entry back
+#### Scenario: Up takes the queue back
 
-- **GIVEN** two queued messages and an empty line
-- **WHEN** Alt+Up is pressed
-- **THEN** the second message is in the editor, the queue holds one, and pressing again pulls the first
+- **GIVEN** two queued messages and `half` typed in the line
+- **WHEN** Up is pressed
+- **THEN** both messages are in the editor in order, newline-separated, ahead of `half`, and the queue is empty
 
-#### Scenario: Escape returns the whole queue
+#### Scenario: Up still recalls history with nothing queued
 
-- **GIVEN** nothing running and two queued messages
-- **WHEN** Esc is pressed
-- **THEN** both messages are restored to the editor in order, newline-separated, and the queue is empty
+- **GIVEN** an empty queue and two earlier prompts
+- **WHEN** Up is pressed twice
+- **THEN** the history entries are recalled in order, not a queue take-back
 
 #### Scenario: A command cannot be queued
 
