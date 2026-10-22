@@ -25,9 +25,9 @@
 
 ## 4. Verification and documentation
 
-- [ ] 4.1 Composition test through the real host: start a slow turn, queue two messages, and prove both run in order afterwards with no overlap.
-- [ ] 4.2 Update the key table and the follow-up section in `docs/guide.md`; add the VHS tape.
-- [ ] 4.3 Amend the tui spec's key-table requirement in the same PR (the MODIFIED block travels with this change, not a later one).
-- [ ] 4.4 Fast gate: `dotnet tool restore`, `dotnet csharpier check .`, `openspec validate follow-up-queue --strict`, build, focused Tui/Coding suites.
-- [ ] 4.5 Full `scripts/verify.sh` on the final head.
-- [ ] 4.6 Commit: `docs(openspec): record the follow-up queue verification`.
+- [x] 4.1 Composition test through the real host: start a slow turn, queue two messages, and prove both run in order afterwards with no overlap.
+- [x] 4.2 Update the key table and the follow-up section in `docs/guide.md`; add the VHS tape.
+- [x] 4.3 Amend the tui spec's key-table requirement in the same PR (the MODIFIED block travels with this change, not a later one).
+- [x] 4.4 Fast gate: `dotnet tool restore`, `dotnet csharpier check .`, `openspec validate follow-up-queue --strict`, build, focused Tui/Coding suites.
+- [x] 4.5 Full `scripts/verify.sh` on the final head.
+- [x] 4.6 Commit: `docs(openspec): record the follow-up queue verification`.

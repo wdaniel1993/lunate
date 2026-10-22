@@ -1470,6 +1470,7 @@ internal sealed partial class InteractiveSession : IDisposable
     private void SetHistoryInput(string text)
     {
         CloseAutocomplete();
+        _pulledFollowUpText = null;
         _input = new InputLineState(text, text.Length);
         _live.SetInput(_input, _bashMode);
     }

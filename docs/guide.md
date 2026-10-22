@@ -287,7 +287,7 @@ The harness exposes them as `IAsyncEnumerable<AgentEvent>` from `AgentHarness.Ru
 - Cancellation: `Esc` in the UI cancels the `CancellationToken`; the loop records a cancelled tool result so the history stays valid.
 - Retries: transient provider errors retry 3 times with backoff, each attempt raising `Retrying`.
 - Compaction: our strategy implements `IChatReducer` and runs when estimated tokens pass 80% of the model's context window. The first version summarizes old turns with the same model and keeps the last N turns verbatim.
-- Steering: the user may type while a turn runs; the message is queued and injected before the next model call.
+- Steering: the user may type while a turn runs; the message is queued and injected before the next model call. A follow-up queued with `Alt+Enter` is separate: it waits for the turn to finish and then runs as the next turn.
 
 **Telemetry in the loop**
 
@@ -459,6 +459,12 @@ Finished output is rendered with Spectre.Console; the input line and a small liv
 
 Every submitted prompt commits to the scrollback as the first block of its turn: the `>` prompt in the theme's user colour, wrapped continuation lines indented two spaces, and one blank line after. While the turn runs, the live area carries one activity line — `⠹ thinking… 3s · ↑1.2k ↓180 · esc to interrupt` while reasoning streams, the spinner with the tool name and its argument summary while a tool runs, and `working…` when neither is known. The run's token deltas and `esc to interrupt` appear only while the turn is cancellable; below 60 columns the line keeps the spinner, the label and the elapsed seconds only.
 
+**Follow-up queue**
+
+While a turn runs, `Alt+Enter` queues the current line — text and any attached images — instead of steering it. The line clears and the status footer shows `N queued` beside the model and context hint, so a waiting message is never invisible. The queue holds at most five entries; a sixth is refused with a notice that names the limit and leaves the first five in place. Slash commands are refused by the queue because they are frontend control, not model input.
+
+Queued messages run after the current turn finishes, in submission order, one at a time through the normal submission path, so the user echo, approvals and image handling are identical to a typed turn. A failed turn keeps the rest of the queue; a cancelled turn leaves the queue intact and never starts the next message by itself. `Alt+Up` takes the newest entry back into an empty line; a repeated press walks backwards, while typed text refuses with a notice so nothing is silently merged. With nothing running, `Esc` returns the whole queue to the editor in order, separated by newlines, and empties it. The queue is in-memory only: it is never written to the session, never replayed on resume, and print mode has no queue.
+
 **Approvals**
 
 A pending approval renders as a panel in the live area. The warning headline names the tool and the concrete action — the command for `bash`, the path with its `+N −M` change counts for `edit` and `write` — and the muted detail block below it shows the command's lines, the edit's diff, or the tool's key arguments, clipped rather than wrapped and bounded to six lines with a `… +N lines` marker. The question is `Allow <tool>?  [y]es  [n]o  [a]lways this session` with the key letters accented; a subagent's ask is prefixed with its depth. Below 60 columns the detail drops to its first line, the headline clips its action, and the choices move to their own line — every choice stays fully visible. The frame cap trims the detail first, then the headline, never the question. Bare `y`, `n` and `a` decide, Enter denies, and `a` covers that tool for the whole run tree for the rest of the session.
@@ -515,14 +521,15 @@ Both box rules are drawn at every width; autocomplete descriptions keep their 60
 | Key | Action |
 | --- | --- |
 | `Enter` | Send; with the autocomplete list open, accept the selected item first (an exact token sends instead); in bash mode, run the line through the `bash` tool; while a turn runs, queue as a steering message |
-| `Alt+Enter` | New line, also Ctrl+J (terminals cannot reliably detect `Shift+Enter`); the autocomplete triggers re-run afterwards |
-| `Esc` | Close the autocomplete list first; in bash mode, leave without running and restore the line with its prefix; otherwise cancel the running turn, nothing when idle |
+| `Alt+Enter` | New line, also Ctrl+J (terminals cannot reliably detect `Shift+Enter`); the autocomplete triggers re-run afterwards. While a turn runs, queue the line as a follow-up (the footer shows `N queued`) |
+| `Esc` | Close the autocomplete list first; in bash mode, leave without running and restore the line with its prefix; otherwise cancel the running turn; with nothing running, return every queued follow-up to the line; nothing when idle with no queue |
 | `Ctrl+C` | Clear the input; on an empty input, press twice within 2 s to quit. Never cancels a turn |
 | `Ctrl+L` | Model picker and search; typing filters the catalog, Backspace edits the filter, Esc clears it before closing |
 | `Ctrl+P` | Cycle the settings favourites in order, wrapping after the last; a non-favourite starts at the first. Refused while a turn, approval, picker or secret prompt is open |
 | `Ctrl+O` | Transcript viewer: the session transcript with full tool output and diffs; `q`, `Esc` or `Ctrl+O` closes. Refused while an approval or picker is open |
 | `Tab` | Accept the selected autocomplete item; otherwise nothing |
 | `Up` / `Down` | Move the autocomplete selection; with the list closed, history (bash mode recalls its own command stream) |
+| `Alt+Up` | Take the newest queued follow-up back into an empty line; a repeated press walks backwards, typed text refuses with a notice |
 
 **Platform rules**
 
