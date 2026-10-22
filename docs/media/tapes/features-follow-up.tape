@@ -18,6 +18,10 @@ Sleep 4s
 Type "Then run the tests."
 Enter
 Sleep 1s
+Up
+Sleep 1s
+Enter
+Sleep 1s
 Type "And summarize the change."
 Enter
 Sleep 1s

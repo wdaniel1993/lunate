@@ -1,8 +1,8 @@
 ## Why
 
-While a turn runs, the only thing the user can do with the input line is steer: Enter interrupts the model with new text. That is right when the new thought changes the current work, and wrong when it is simply the next thing to do — "run the tests after this", "then update the changelog". Today that means watching the turn finish before typing, or steering and hoping the model handles the interruption.
+While a turn runs, the input line cannot line up the next message without intervening: the prompt has no queue, so the next thought — "run the tests after this", "then update the changelog" — has to wait for the turn to finish or interrupt it.
 
-A follow-up queue separates the two: Enter still steers, Alt+Enter lines the message up for after the turn.
+A follow-up queue separates the two: Enter submits when idle and queues the message for after the turn while it runs. The prompt exposes no steering key.
 
 ## What Changes
 
@@ -16,6 +16,6 @@ A follow-up queue separates the two: Enter still steers, Alt+Enter lines the mes
 
 ## What Does Not Change
 
-- Enter still submits or steers exactly as today.
-- A turn's failure or cancellation does not discard the queue; the next message runs, and a cancelled turn leaves the remaining messages for Alt+Up or the next run.
+- Enter still submits when idle; while a turn runs it queues instead of steering.
+- A turn's failure or interruption does not discard the queue; the next message runs. With nothing running, Esc leaves the queue alone and Up takes it back for editing.
 - The session format, the event stream and the extension surface are untouched.

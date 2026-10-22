@@ -287,7 +287,7 @@ The harness exposes them as `IAsyncEnumerable<AgentEvent>` from `AgentHarness.Ru
 - Cancellation: `Esc` in the UI cancels the `CancellationToken`; the loop records a cancelled tool result so the history stays valid.
 - Retries: transient provider errors retry 3 times with backoff, each attempt raising `Retrying`.
 - Compaction: our strategy implements `IChatReducer` and runs when estimated tokens pass 80% of the model's context window. The first version summarizes old turns with the same model and keeps the last N turns verbatim.
-- Steering: by default `Enter` while a turn runs queues a follow-up for after the turn; with `prompt.busyEnter = steer` (or `LUNATE_BUSY_ENTER=steer`) it injects the line before the next model call instead. The two paths are separate: a queued follow-up waits for the turn to finish and then runs as the next turn.
+- Steering: the harness accepts steering messages through its queue and injects them before the next model call; the interactive prompt has no steering key. `Enter` while a turn runs queues a follow-up for after the turn instead, and the two paths are separate.
 
 **Telemetry in the loop**
 
@@ -439,7 +439,7 @@ An extension is an assembly implementing the `Lunate.Extensibility.Abstractions`
 
 ## Terminal UI (Lunate.Tui)
 
-Finished output is rendered with Spectre.Console; the input line and a small live area at the bottom are our own code. Spectre's live display does not combine well with typing, so this split keeps steering (typing while the agent streams) without writing a full renderer.
+Finished output is rendered with Spectre.Console; the input line and a small live area at the bottom are our own code. Spectre's live display does not combine well with typing, so this split keeps typing responsive while the agent streams without writing a full renderer.
 
 **Threading contract (ADR-0007, S-5)**
 
@@ -461,9 +461,9 @@ Every submitted prompt commits to the scrollback as the first block of its turn:
 
 **Follow-up queue**
 
-While a turn runs, `Enter` queues the current line — text and any attached images — instead of steering it. The line clears and the status footer shows `N queued` beside the model and context hint, so a waiting message is never invisible. The send key therefore never interrupts a running turn by default. Steering is an explicit choice: `prompt.busyEnter = steer` in `~/.lunate/settings.json`, or `LUNATE_BUSY_ENTER=steer`, makes `Enter` inject the line into the running turn before the next model call instead, and nothing is queued (the indicator stays hidden and `Alt+Up` does nothing). `Alt+Enter` and `Ctrl+J` insert a newline in every state, so a multi-line follow-up can be composed mid-turn. The queue holds at most five entries; a sixth is refused with a notice that names the limit and leaves the first five in place. Slash commands are refused by the queue because they are frontend control, not model input.
+While a turn runs, `Enter` queues the current line — text and any attached images — instead of interrupting the turn. The line clears and the status footer shows `N queued` beside the model and context hint, so a waiting message is never invisible. `Enter` never steers: the interactive prompt has no steering key, and the harness steering API remains available to code that drives the agent directly. `Alt+Enter`, `Shift+Enter` (where the terminal reports extended keys) and `Ctrl+J` insert a newline in every state, so a multi-line follow-up can be composed mid-turn. The queue holds at most five entries; a sixth is refused with a notice that names the limit and leaves the first five in place. Slash commands are refused by the queue because they are frontend control, not model input.
 
-Queued messages run after the current turn finishes, in submission order, one at a time through the normal submission path, so the user echo, approvals and image handling are identical to a typed turn. A failed turn keeps the rest of the queue; a cancelled turn leaves the queue intact and never starts the next message by itself. `Alt+Up` takes the newest entry back into an empty line; a repeated press walks backwards, while typed text refuses with a notice so nothing is silently merged. With nothing running, `Esc` returns the whole queue to the editor in order, separated by newlines, and empties it. The queue is in-memory only: it is never written to the session, never replayed on resume, and print mode has no queue.
+Queued messages run after the current turn finishes, in submission order, one at a time through the normal submission path, so the user echo, approvals and image handling are identical to a typed turn. A failed turn keeps the rest of the queue, and an interrupted turn hands over to it: `Esc` stops the run and the queued messages follow in the same order. `Up` takes the whole queue back: every entry lands in the editor in order, newline-separated, ahead of whatever was already typed, and the queue empties — the entries read as one block the user meant to edit together. With an empty queue `Up` navigates history as before. With nothing running, `Esc` leaves the queue alone. The queue is in-memory only: it is never written to the session, never replayed on resume, and print mode has no queue.
 
 **Approvals**
 
@@ -477,7 +477,7 @@ The input renders as a box: a full-width `─` rule above it at every width and 
 
 Typing `!` at the start of an empty input switches the box into bash mode: the prompt becomes an accent-toned `!` followed by a space. Enter runs the remaining line in the session's working directory through the `bash` tool's executor — same shell resolution, environment, timeout, output bounds, process-tree rules and approval policy as a model-issued call — and commits one tool block whose header carries the exit code and the duration. Esc leaves the mode without running and restores the line with its prefix; Enter on a bare `!` leaves without running. A `!` anywhere but the start of the input stays literal.
 
-`!!` is the silent form: the command runs and the same block commits to the scrollback, but neither the command nor its output enters the conversation, so the next request does not carry it. A normal `!` adds the command and its result to the conversation as context for the next turn. The approval policy decides before anything runs: an `ask` policy prompts, and a denial leaves the workspace untouched. A `!` submission while a turn runs is refused with a notice naming the turn; it is neither queued nor steered. Bash lines have their own in-memory history: Up recalls commands only in bash mode, prompt history stays in `~/.lunate/history`, and neither stream pollutes the other. Print mode has no input line and therefore no bash mode.
+`!!` is the silent form: the command runs and the same block commits to the scrollback, but neither the command nor its output enters the conversation, so the next request does not carry it. A normal `!` adds the command and its result to the conversation as context for the next turn. The approval policy decides before anything runs: an `ask` policy prompts, and a denial leaves the workspace untouched. A `!` submission while a turn runs is refused with a notice naming the turn; it is not queued. Bash lines have their own in-memory history: Up recalls commands only in bash mode, prompt history stays in `~/.lunate/history`, and neither stream pollutes the other. Print mode has no input line and therefore no bash mode.
 
 Typing `/` at the start of the first line opens the autocomplete list from the session's one registry: the built-in commands, the discovered skills as `/skill:<name>`, and every loaded extension's manifest commands described by the extension's id. The registry is fixed-size and filtered fuzzily — a case-insensitive subsequence, with prefix and word-start matches ranked ahead of later positions. Typing `@` at the end of a token lists workspace files from the lazy file index through its case-insensitive completion query, while the index stays ordinally sorted; the index is never fuzzed client-side and never built at startup. The list shows at most eight rows directly above the box. Names carry descriptions until the width drops below 60 columns; file rows mute the directory part. No matches closes the list, and the list never wraps.
 
@@ -520,16 +520,15 @@ Both box rules are drawn at every width; autocomplete descriptions keep their 60
 
 | Key | Action |
 | --- | --- |
-| `Enter` | Send; with the autocomplete list open, accept the selected item first (an exact token sends instead); in bash mode, run the line through the `bash` tool; while a turn runs, queue the line as a follow-up (the footer shows `N queued`), or steer the running turn when `prompt.busyEnter = steer`; never interrupts a turn under the default |
-| `Alt+Enter` | New line in every state, also Ctrl+J (terminals cannot reliably detect `Shift+Enter`); the autocomplete triggers re-run afterwards. Never submits, queues or steers |
-| `Esc` | Close the autocomplete list first; in bash mode, leave without running and restore the line with its prefix; otherwise cancel the running turn; with nothing running, return every queued follow-up to the line; nothing when idle with no queue |
+| `Enter` | Send; with the autocomplete list open, accept the selected item first (an exact token sends instead); in bash mode, run the line through the `bash` tool; while a turn runs, queue the line as a follow-up (the footer shows `N queued`). Never steers or interrupts a turn |
+| `Alt+Enter` | New line in every state, also `Shift+Enter` (where the terminal reports extended keys) and `Ctrl+J`; the autocomplete triggers re-run afterwards. Never submits or queues |
+| `Esc` | Close the autocomplete list first; in bash mode, leave without running and restore the line with its prefix; otherwise interrupt the running turn, whose queued follow-ups then run next; with nothing running, leave the queue alone |
 | `Ctrl+C` | Clear the input; on an empty input, press twice within 2 s to quit. Never cancels a turn |
 | `Ctrl+L` | Model picker and search; typing filters the catalog, Backspace edits the filter, Esc clears it before closing |
 | `Ctrl+P` | Cycle the settings favourites in order, wrapping after the last; a non-favourite starts at the first. Refused while a turn, approval, picker or secret prompt is open |
 | `Ctrl+O` | Transcript viewer: the session transcript with full tool output and diffs; `q`, `Esc` or `Ctrl+O` closes. Refused while an approval or picker is open |
 | `Tab` | Accept the selected autocomplete item; otherwise nothing |
-| `Up` / `Down` | Move the autocomplete selection; with the list closed, history (bash mode recalls its own command stream) |
-| `Alt+Up` | Take the newest queued follow-up back into an empty line; a repeated press walks backwards, typed text refuses with a notice, and under `steer` the queue is always empty |
+| `Up` / `Down` | Move the autocomplete selection; with the list closed, history (bash mode recalls its own command stream). With queued follow-ups, `Up` takes the whole queue back into the editor instead |
 
 **Platform rules**
 
@@ -569,7 +568,7 @@ Self-contained single-file builds with ReadyToRun — no single-file compression
 - Colour depth from Spectre's detection and `COLORTERM`; `NO_COLOR` disables colour everywhere.
 - No Unicode support detected: ASCII spinner and box characters.
 - Character widths (emoji, CJK) via a `wcwidth` table, so the input line never misplaces the cursor.
-- Newline: `Alt+Enter` and `Ctrl+J`, because `Alt` needs "Option as Meta" on macOS Terminal.
+- Newline: `Alt+Enter`, `Shift+Enter` (where the terminal reports extended keys) and `Ctrl+J`, because `Alt` needs "Option as Meta" on macOS Terminal.
 
 **Shell resolution for the `bash` tool**
 
@@ -889,7 +888,7 @@ These decisions are settled; the foundational ones are recorded as durable ADRs 
 | Language and culture | English-first output; technical formatting culture-invariant; identical behaviour under any machine culture (tests prove it) | Target group is programmers; other cultures are supported |
 | License and home | Personal open source, MIT | Free to use anywhere |
 | Hosting and embedding | No AG-UI endpoint, A2A or web UI | Smaller scope, focus on the terminal and editors |
-| TUI | Spectre for finished output; own input line and live area | Robust rendering and steering |
+| TUI | Spectre for finished output; own input line and live area | Robust rendering and responsive input |
 | Edit tool | Three match tiers, uniqueness required at every tier | Fewer retries without silent wrong edits |
 | MCP and ACP | Official MCP C# SDK; community ACP SDK behind IAcpServer | No hand-maintained protocol |
 | Keys | `Esc` cancels a turn; `Ctrl+C` clears input or quits | One meaning per key |

@@ -9,18 +9,18 @@
 
 ## 2. Queueing and draining
 
-- [x] 2.1 Red tests: Alt+Enter while a turn runs queues and clears the line; Alt+Enter while idle still inserts a newline; Enter still steers and queues nothing.
+- [x] 2.1 Red tests: Enter while a turn runs queues and clears the line; Enter while idle submits; Alt+Enter, Shift+Enter and Ctrl+J insert a newline in both states.
 - [x] 2.2 Red tests: when a run completes, the head of the queue runs through the normal submission path, one at a time and in order; a failed run does not discard the rest.
-- [x] 2.3 Red test: a cancelled turn leaves the queue intact and does not auto-drain.
+- [x] 2.3 Red test: an interrupted turn hands over to the queue once it has fully unwound.
 - [x] 2.4 Red test: a slash command is refused by the queue with a notice and does not enter it.
-- [x] 2.5 Implement the drain on run completion (await the run task; never start a run while one is unwinding).
+- [x] 2.5 Implement the drain after every run outcome (completed, failed or interrupted; await the run task; never start a run while one is unwinding).
 - [x] 2.6 Commit: `feat(tui): drain queued follow-ups after the turn`.
 
 ## 3. Taking a follow-up back
 
-- [x] 3.1 Red tests: Alt+Up pulls the newest entry into an empty line and removes it from the queue; Alt+Up with a non-empty line refuses with a notice and changes nothing.
-- [x] 3.2 Red test: Esc with nothing running and a non-empty queue restores every entry to the editor in order, newline-separated, and empties the queue.
-- [x] 3.3 Red test: Esc during a turn still cancels the turn and leaves the queue unchanged.
+- [x] 3.1 Red tests: Up takes the whole queue back into the editor in order, newline-separated and ahead of the draft, and empties the queue; with an empty queue it navigates history.
+- [x] 3.2 Red test: Esc with nothing running leaves the queue alone.
+- [x] 3.3 Red test: Esc during a turn cancels the run and the queued messages then run in order.
 - [x] 3.4 Commit: `feat(tui): take queued follow-ups back into the editor`.
 
 ## 4. Verification and documentation
@@ -31,4 +31,6 @@
 - [x] 4.4 Fast gate: `dotnet tool restore`, `dotnet csharpier check .`, `openspec validate follow-up-queue --strict`, build, focused Tui/Coding suites.
 - [x] 4.5 Full `scripts/verify.sh` on the final head.
 - [x] 4.6 Commit: `docs(openspec): record the follow-up queue verification`.
-- [x] 4.7 Rekey: Enter queues while a turn runs and Alt+Enter steers; routing matrix, session tests, guide and tape updated.
+- [x] 4.7 Rekey to Claude Code's mapping: Enter queues while a turn runs, Alt+Enter/Shift+Enter/Ctrl+J always insert a newline, Esc interrupts and hands over to the queue, and the prompt exposes no steering key.
+- [x] 4.8 Replace Alt+Up with Claude Code's take-back: Up moves the whole queue into the editor ahead of the draft when entries wait, and stays history otherwise.
+- [x] 4.9 Refuse a `/skill:` invocation while a turn runs (it starts a turn, so it cannot ride the queue).
