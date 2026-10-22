@@ -32,5 +32,5 @@
 - [x] 5.1 Composition test: the real host types `!echo hi`, submits, and commits the block with exit 0 and a duration, and the model receives no request.
 - [x] 5.2 Snapshot goldens for the `!` prompt at the width bands and colour modes; assert that untouched fixtures are byte-identical.
 - [x] 5.3 Update `docs/guide.md` (the mode, the two forms, approval parity, history) and add the VHS tape for the user-visible flow.
-- [ ] 5.4 Fast gate: `dotnet tool restore` then `dotnet csharpier check .`, `openspec validate bash-mode --strict`, build, and the Tui/Coding suites; then the full `scripts/verify.sh` on the final head.
-- [ ] 5.5 Commit: `docs(tui): document bash mode`.
+- [x] 5.4 Fast gate: `dotnet tool restore` then `dotnet csharpier check .`, `openspec validate bash-mode --strict`, build, and the Tui/Coding suites; then the full `scripts/verify.sh` on the final head.
+- [x] 5.5 Commit: `docs(tui): document bash mode`.
