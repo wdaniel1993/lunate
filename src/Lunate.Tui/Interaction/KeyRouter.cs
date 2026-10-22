@@ -13,20 +13,28 @@ public enum RoutedKey
     Complete,
     TranscriptViewer,
     FavoritesCycle,
+    FollowUp,
+    FollowUpTakeBack,
 }
 
 /// <summary>
-/// Pure classification of decoded <see cref="KeyEvent"/>s into prompt intents. Newlines
-/// (Alt+Enter, Ctrl+J, and best-effort Shift+Enter) stay <see cref="RoutedKey.Edit"/> so
-/// <see cref="InputLine"/> handles them; Ctrl+C routes to <see cref="RoutedKey.ClearOrQuit"/>
-/// and never to cancel.
+/// Pure classification of decoded <see cref="KeyEvent"/>s into prompt intents. Enter is the send
+/// key in both states: it submits an idle prompt and, while a turn runs, queues a follow-up.
+/// Alt+Enter, Shift+Enter and Ctrl+J insert a newline in every state. Ctrl+C routes to
+/// <see cref="RoutedKey.ClearOrQuit"/> and never to cancel.
 /// </summary>
 public static class KeyRouter
 {
-    public static RoutedKey Route(KeyEvent key) =>
+    public static RoutedKey Route(
+        KeyEvent key,
+        bool turnRunning = false,
+        bool hasQueuedFollowUps = false
+    ) =>
         key switch
         {
             { Kind: KeyKind.Character, Ctrl: true, Alt: false, Text: "j" } => RoutedKey.Edit,
+            { Kind: KeyKind.Enter, Ctrl: false, Alt: false, Shift: false } when turnRunning =>
+                RoutedKey.FollowUp,
             { Kind: KeyKind.Enter, Ctrl: false, Alt: false, Shift: false } => RoutedKey.Submit,
             { Kind: KeyKind.Enter } => RoutedKey.Edit,
             { Kind: KeyKind.Escape } => RoutedKey.Cancel,
@@ -37,6 +45,8 @@ public static class KeyRouter
             { Kind: KeyKind.Character, Ctrl: true, Alt: false, Text: "o" } =>
                 RoutedKey.TranscriptViewer,
             { Kind: KeyKind.Tab, Ctrl: false, Alt: false, Shift: false } => RoutedKey.Complete,
+            { Kind: KeyKind.Up, Alt: false, Ctrl: false } when hasQueuedFollowUps =>
+                RoutedKey.FollowUpTakeBack,
             { Kind: KeyKind.Up } => RoutedKey.HistoryPrevious,
             { Kind: KeyKind.Down } => RoutedKey.HistoryNext,
             _ => RoutedKey.Edit,

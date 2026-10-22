@@ -21,6 +21,7 @@ public sealed class SlowHookNoticeTests
         using var host = new InteractiveSessionHost(hooks: runner);
         host.Console.Size = new ConsoleSize(600, 24);
         host.Client.Enqueue(Scripts.Text("ok"), Scripts.Stop());
+        host.Client.Enqueue(Scripts.Text("queued"), Scripts.Stop());
         host.Client.Gate(1);
         Task run = host.RunAsync();
         await host.WaitUntilAsync(() => host.Session.IsComposed);
@@ -30,17 +31,24 @@ public sealed class SlowHookNoticeTests
         await host.Client.WaitForCallAsync(1);
         host.Console.SendText("steer");
         host.Console.SendEnter();
-        await host.WaitUntilAsync(() =>
-        {
-            host.Advance(33);
-            return host.Frames.Contains("above the slow threshold", StringComparison.Ordinal);
-        });
+        // The de-AT pass runs the whole solution's process-spawning suites in parallel; on a loaded
+        // runner the 80 ms hook plus the frame pump can starve well past the in-process default, so
+        // this wait uses the spawn-window idiom rather than the 10 s in-process one.
+        await host.WaitUntilAsync(
+            () =>
+            {
+                host.Advance(33);
+                return host.Frames.Contains("above the slow threshold", StringComparison.Ordinal);
+            },
+            TimeSpan.FromSeconds(30)
+        );
 
         Assert.Contains("hook InputReceived", host.Frames, StringComparison.Ordinal);
         Assert.Contains("ext-slow", host.Frames, StringComparison.Ordinal);
         Assert.Contains("/extensions", host.Frames, StringComparison.Ordinal);
 
-        host.Console.SendEscape();
+        host.Client.Release(1);
+        await host.Client.WaitForCallAsync(2);
         host.Console.Complete();
         await run;
     }

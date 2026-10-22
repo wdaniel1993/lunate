@@ -158,7 +158,6 @@ public sealed class TrustPromptEndToEndTests
         Assert.NotNull(session.Host.Session.PendingTrustPrompt);
         session.Host.Advance(33);
         Assert.DoesNotContain("> abc", session.Host.LastFrame, StringComparison.Ordinal);
-        Assert.Equal(0, session.Host.Session.QueuedSteeringCount);
 
         session.Host.Console.SendText("y");
         await session.Host.WaitUntilAsync(() => session.Log.Contains("created hello"));

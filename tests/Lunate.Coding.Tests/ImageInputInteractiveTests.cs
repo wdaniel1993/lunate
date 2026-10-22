@@ -130,11 +130,12 @@ public sealed class ImageInputInteractiveTests
     }
 
     [Fact]
-    public async Task A_steering_clipboard_image_is_refused_before_the_clipboard_is_read()
+    public async Task An_image_submitted_while_a_turn_runs_joins_the_queue_with_its_attachment()
     {
         var clipboard = new CountingClipboard(ImageSamples.Png(2, 3));
         using var host = new InteractiveSessionHost(clipboard: clipboard);
         host.Client.Enqueue(Scripts.Text("first"), Scripts.Stop());
+        host.Client.Enqueue(Scripts.Text("second"), Scripts.Stop());
         host.Client.Gate(1);
         Task run = host.RunAsync();
 
@@ -142,20 +143,17 @@ public sealed class ImageInputInteractiveTests
         host.Console.SendEnter();
         await host.Client.WaitForCallAsync(1);
         host.Console.SendText("@clipboard");
+        await host.WaitUntilAsync(() => host.Session.Input.Text == "@clipboard");
         host.Console.SendEnter();
-        await host.WaitUntilAsync(() =>
-        {
-            host.Advance(33);
-            return host.Frames.Contains("images cannot be attached", StringComparison.Ordinal);
-        });
+        await host.WaitUntilAsync(() => host.Session.QueuedFollowUpCount == 1);
 
-        Assert.Equal(0, clipboard.Reads);
-        Assert.Equal(0, host.Session.QueuedSteeringCount);
-        Assert.Single(host.Client.Requests);
+        QueuedFollowUp queued = Assert.Single(host.Session.QueuedFollowUps);
+        Assert.Equal(1, clipboard.Reads);
+        Assert.Single(queued.Input.Images!);
 
         host.Client.Release(1);
-        await host.WaitUntilAsync(() => !host.Session.IsRunning);
-        Assert.Single(host.Client.Requests);
+        await host.Client.WaitForCallAsync(2);
+        Assert.Contains(host.Client.Requests[1][^1].Contents, content => content is DataContent);
 
         host.Console.Complete();
         await run;

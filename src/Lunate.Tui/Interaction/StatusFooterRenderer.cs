@@ -36,17 +36,22 @@ public sealed class StatusFooterRenderer
     internal static string PlainText(
         StatusFooterModel footer,
         int width,
-        IReadOnlyList<string>? widgets = null
+        IReadOnlyList<string>? widgets = null,
+        int queuedCount = 0
     )
     {
-        // The compact band keeps the model and the context percent; every other segment —
-        // tokens, window, thinking, favourites, cost, directory, branch and widgets — drops
-        // regardless of width.
+        // The compact band keeps the model, the queue indicator and the context percent; every
+        // other segment — tokens, window, thinking, favourites, cost, directory, branch and
+        // widgets — drops regardless of width.
         if (WidthBands.IsCompact(width))
         {
-            return footer.ContextWindow <= 0
-                ? footer.Model
-                : footer.Model + Separator + Percent(footer);
+            var compact = footer.Model;
+            if (queuedCount > 0)
+            {
+                compact += Separator + Queued(queuedCount);
+            }
+
+            return footer.ContextWindow <= 0 ? compact : compact + Separator + Percent(footer);
         }
 
         var segments = new List<Segment>
@@ -54,6 +59,11 @@ public sealed class StatusFooterRenderer
             new(footer.Model, KeepRank),
             new(Usage(footer), KeepRank),
         };
+        if (queuedCount > 0)
+        {
+            segments.Add(new Segment(Queued(queuedCount), KeepRank));
+        }
+
         if (Favourites(footer) is { } favourites)
         {
             segments.Add(new Segment(favourites, FavouriteRank));
@@ -140,6 +150,9 @@ public sealed class StatusFooterRenderer
 
     private static int Width(List<Segment> segments) =>
         CellText.Width(string.Join(Separator, segments.Select(segment => segment.Text)));
+
+    private static string Queued(int count) =>
+        count.ToString(CultureInfo.InvariantCulture) + " queued";
 
     private static string? Favourites(StatusFooterModel footer) =>
         footer.FavoriteCount > 0

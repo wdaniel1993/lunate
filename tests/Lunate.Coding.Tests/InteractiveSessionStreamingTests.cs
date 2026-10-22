@@ -228,7 +228,7 @@ public sealed class InteractiveSessionStreamingTests
             );
         });
 
-        Assert.Equal(0, host.Session.QueuedSteeringCount);
+        Assert.Equal(0, host.Session.QueuedFollowUpCount);
         host.Console.SendEscape();
         host.Console.Complete();
         await run;

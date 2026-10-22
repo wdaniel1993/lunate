@@ -2,10 +2,11 @@ namespace Lunate.Tui.Tests;
 
 public sealed class KeyRouterTests
 {
-    private static readonly (KeyEvent Key, RoutedKey Expected)[] Table =
+    private static readonly (KeyEvent Key, RoutedKey Expected)[] IdleTable =
     [
         (Key(KeyKind.Enter), RoutedKey.Submit),
         (Key(KeyKind.Enter, alt: true), RoutedKey.Edit),
+        (Key(KeyKind.Enter, shift: true), RoutedKey.Edit),
         (Key(KeyKind.Character, "j", ctrl: true), RoutedKey.Edit),
         (Key(KeyKind.Escape), RoutedKey.Cancel),
         (Key(KeyKind.Character, "c", ctrl: true), RoutedKey.ClearOrQuit),
@@ -17,40 +18,87 @@ public sealed class KeyRouterTests
         (Key(KeyKind.Down), RoutedKey.HistoryNext),
     ];
 
-    public static TheoryData<KeyEvent, RoutedKey> Bindings
-    {
-        get
-        {
-            var data = new TheoryData<KeyEvent, RoutedKey>();
-            foreach (var (key, expected) in Table)
-            {
-                data.Add(key, expected);
-            }
+    private static readonly (KeyEvent Key, RoutedKey Expected)[] BusyTable =
+    [
+        (Key(KeyKind.Enter), RoutedKey.FollowUp),
+        (Key(KeyKind.Enter, alt: true), RoutedKey.Edit),
+        (Key(KeyKind.Enter, shift: true), RoutedKey.Edit),
+        (Key(KeyKind.Character, "j", ctrl: true), RoutedKey.Edit),
+        (Key(KeyKind.Escape), RoutedKey.Cancel),
+        (Key(KeyKind.Character, "c", ctrl: true), RoutedKey.ClearOrQuit),
+        (Key(KeyKind.Character, "l", ctrl: true), RoutedKey.ModelPicker),
+        (Key(KeyKind.Character, "p", ctrl: true), RoutedKey.FavoritesCycle),
+        (Key(KeyKind.Character, "o", ctrl: true), RoutedKey.TranscriptViewer),
+        (Key(KeyKind.Tab), RoutedKey.Complete),
+        (Key(KeyKind.Up), RoutedKey.HistoryPrevious),
+        (Key(KeyKind.Down), RoutedKey.HistoryNext),
+    ];
 
-            return data;
-        }
-    }
+    public static TheoryData<KeyEvent, RoutedKey> IdleBindings => Data(IdleTable);
+
+    public static TheoryData<KeyEvent, RoutedKey> BusyBindings => Data(BusyTable);
 
     [Theory]
-    [MemberData(nameof(Bindings))]
-    public void Every_guide_binding_routes_to_its_own_intent(KeyEvent key, RoutedKey expected) =>
+    [MemberData(nameof(IdleBindings))]
+    public void Every_idle_binding_routes_to_its_own_intent(KeyEvent key, RoutedKey expected) =>
         Assert.Equal(expected, KeyRouter.Route(key));
+
+    [Theory]
+    [MemberData(nameof(BusyBindings))]
+    public void Every_busy_binding_routes_to_its_own_intent(KeyEvent key, RoutedKey expected) =>
+        Assert.Equal(expected, KeyRouter.Route(key, turnRunning: true));
 
     [Fact]
     public void Every_binding_has_a_distinct_intent()
     {
-        var intents = Table.Select(row => row.Expected).ToArray();
+        AssertDistinct(IdleTable, submits: 1, followUps: 0);
+    }
 
-        Assert.Single(intents, intent => intent == RoutedKey.Submit);
-        Assert.Single(intents, intent => intent == RoutedKey.Cancel);
-        Assert.Single(intents, intent => intent == RoutedKey.ClearOrQuit);
-        Assert.Single(intents, intent => intent == RoutedKey.ModelPicker);
-        Assert.Single(intents, intent => intent == RoutedKey.FavoritesCycle);
-        Assert.Single(intents, intent => intent == RoutedKey.TranscriptViewer);
-        Assert.Single(intents, intent => intent == RoutedKey.Complete);
-        Assert.Single(intents, intent => intent == RoutedKey.HistoryPrevious);
-        Assert.Single(intents, intent => intent == RoutedKey.HistoryNext);
-        Assert.Equal(2, intents.Count(intent => intent == RoutedKey.Edit));
+    [Fact]
+    public void The_busy_matrix_has_one_follow_up_key()
+    {
+        RoutedKey[] intents = AssertDistinct(BusyTable, submits: 0, followUps: 1);
+
+        Assert.Single(intents, intent => intent == RoutedKey.FollowUp);
+    }
+
+    [Fact]
+    public void Enter_submits_idle_and_queues_while_running()
+    {
+        KeyEvent key = Key(KeyKind.Enter);
+
+        Assert.Equal(RoutedKey.Submit, KeyRouter.Route(key));
+        Assert.Equal(RoutedKey.FollowUp, KeyRouter.Route(key, turnRunning: true));
+    }
+
+    [Theory]
+    [MemberData(nameof(NewlineKeys))]
+    public void Newline_keys_edit_in_both_states(KeyEvent key)
+    {
+        Assert.Equal(RoutedKey.Edit, KeyRouter.Route(key));
+        Assert.Equal(RoutedKey.Edit, KeyRouter.Route(key, turnRunning: true));
+    }
+
+    public static TheoryData<KeyEvent> NewlineKeys =>
+        new()
+        {
+            Key(KeyKind.Enter, alt: true),
+            Key(KeyKind.Enter, shift: true),
+            Key(KeyKind.Character, "j", ctrl: true),
+        };
+
+    [Fact]
+    public void Up_takes_the_queue_back_only_while_entries_wait()
+    {
+        KeyEvent key = Key(KeyKind.Up);
+
+        Assert.Equal(RoutedKey.HistoryPrevious, KeyRouter.Route(key));
+        Assert.Equal(RoutedKey.FollowUpTakeBack, KeyRouter.Route(key, hasQueuedFollowUps: true));
+        Assert.Equal(
+            RoutedKey.FollowUpTakeBack,
+            KeyRouter.Route(key, turnRunning: true, hasQueuedFollowUps: true)
+        );
+        Assert.Equal(RoutedKey.HistoryPrevious, KeyRouter.Route(key, turnRunning: true));
     }
 
     [Fact]
@@ -107,6 +155,39 @@ public sealed class KeyRouterTests
     [Fact]
     public void Modified_ctrl_keys_other_than_the_table_edit() =>
         Assert.Equal(RoutedKey.Edit, KeyRouter.Route(Key(KeyKind.Character, "y", ctrl: true)));
+
+    private static TheoryData<KeyEvent, RoutedKey> Data((KeyEvent Key, RoutedKey Expected)[] table)
+    {
+        var data = new TheoryData<KeyEvent, RoutedKey>();
+        foreach (var (key, expected) in table)
+        {
+            data.Add(key, expected);
+        }
+
+        return data;
+    }
+
+    private static RoutedKey[] AssertDistinct(
+        (KeyEvent Key, RoutedKey Expected)[] table,
+        int submits,
+        int followUps
+    )
+    {
+        RoutedKey[] intents = [.. table.Select(row => row.Expected)];
+
+        Assert.Equal(submits, intents.Count(intent => intent == RoutedKey.Submit));
+        Assert.Equal(followUps, intents.Count(intent => intent == RoutedKey.FollowUp));
+        Assert.Single(intents, intent => intent == RoutedKey.Cancel);
+        Assert.Single(intents, intent => intent == RoutedKey.ClearOrQuit);
+        Assert.Single(intents, intent => intent == RoutedKey.ModelPicker);
+        Assert.Single(intents, intent => intent == RoutedKey.FavoritesCycle);
+        Assert.Single(intents, intent => intent == RoutedKey.TranscriptViewer);
+        Assert.Single(intents, intent => intent == RoutedKey.Complete);
+        Assert.Single(intents, intent => intent == RoutedKey.HistoryPrevious);
+        Assert.Single(intents, intent => intent == RoutedKey.HistoryNext);
+        Assert.Equal(3, intents.Count(intent => intent == RoutedKey.Edit));
+        return intents;
+    }
 
     private static KeyEvent Key(
         KeyKind kind,

@@ -82,8 +82,8 @@ public sealed record RoslynSettings
 /// (<c>LUNATE_MODEL</c>, <c>LUNATE_APPROVAL</c>, <c>LUNATE_TOOL_DETAILS</c>,
 /// <c>LUNATE_TOOL_OUTPUT_LIMIT</c>, <c>LUNATE_STARTUP_HEADER</c>,
 /// <c>LUNATE_SUBAGENTS_CONCURRENCY</c>, <c>LUNATE_SUBAGENTS_TOKEN_BUDGET</c>,
-/// <c>LUNATE_SUBAGENTS_TREE_TOKEN_BUDGET</c>) overrides file values. Both the path and the
-/// environment lookup are injectable.
+/// <c>LUNATE_SUBAGENTS_TREE_TOKEN_BUDGET</c>) overrides file values. Both
+/// the path and the environment lookup are injectable.
 /// </summary>
 public static class SettingsStore
 {

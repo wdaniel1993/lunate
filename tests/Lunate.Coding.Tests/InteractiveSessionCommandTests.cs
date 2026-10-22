@@ -185,24 +185,20 @@ public sealed class InteractiveSessionCommandTests
         host.Console.SendEnter();
         await host.Client.WaitForCallAsync(1);
 
-        var probes = 0;
         foreach (string command in new[] { "/new", "/resume", "/model", "/compact" })
         {
             host.Console.SendText(command);
+            await host.WaitUntilAsync(() => host.Session.Input.Text == command);
             host.Console.SendEnter();
-            host.Console.SendText("probe");
-            host.Console.SendEnter();
-            probes++;
-            int expected = probes;
-            await host.WaitUntilAsync(() => host.Session.QueuedSteeringCount == expected);
+            await WaitForFrameAsync(host, "slash command cannot be queued");
+
+            Assert.Equal(0, host.Session.QueuedFollowUpCount);
+            Assert.Equal(command, host.Session.Input.Text);
+            host.Console.SendCtrlC();
+            await host.WaitUntilAsync(() => host.Session.Input.Text.Length == 0);
         }
 
-        // The probes clear the notice on their way into steering, so refresh it once more.
-        host.Console.SendText("/compact");
-        host.Console.SendEnter();
-        await WaitForFrameAsync(host, "a turn is running");
-
-        Assert.Contains("a turn is running", host.LastFrame, StringComparison.Ordinal);
+        Assert.Contains("slash command cannot be queued", host.LastFrame, StringComparison.Ordinal);
         Assert.DoesNotContain("Select model", host.LastFrame, StringComparison.Ordinal);
         Assert.DoesNotContain("Select session", host.LastFrame, StringComparison.Ordinal);
         Assert.True(host.Session.IsRunning);
@@ -212,7 +208,10 @@ public sealed class InteractiveSessionCommandTests
         Session session = Session.Load(Directory.GetFiles(sessions, "*.jsonl")[0]);
         Assert.Empty(session.Entries.OfType<SessionModelChangeEntry>());
 
-        // Quit works while the turn runs: the run is cancelled and the session ends.
+        host.Client.Release(1);
+        await host.WaitUntilAsync(() => !host.Session.IsRunning);
+
+        // Quit is idle-only now; Ctrl+C is the running turn's quit path.
         host.Console.SendText("/quit");
         host.Console.SendEnter();
         await run;

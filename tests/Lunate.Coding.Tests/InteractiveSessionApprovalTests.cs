@@ -87,7 +87,6 @@ public sealed class InteractiveSessionApprovalTests
         await host.Client.WaitForCallAsync(2);
 
         Assert.Equal(2, host.Client.Requests.Count);
-        Assert.Equal(0, host.Session.QueuedSteeringCount);
         host.Console.Complete();
         await run;
         host.Advance(33);

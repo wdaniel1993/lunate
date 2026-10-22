@@ -391,14 +391,13 @@ public sealed class SkillsInteractiveTests
     }
 
     [Fact]
-    public async Task Invocation_while_busy_queues_like_typed_input_and_keeps_the_metadata()
+    public async Task A_skill_command_is_refused_by_the_follow_up_queue()
     {
         using var fixture = new SkillsHost();
         fixture.ProjectSkill("greek");
         fixture.TrustProjectSkills();
         InteractiveSessionHost host = fixture.Host;
         host.Client.Enqueue(Scripts.Text("first"), Scripts.Stop());
-        host.Client.Enqueue(Scripts.Text("second"), Scripts.Stop());
         host.Client.Gate(1);
         Task run = host.RunAsync();
         await host.WaitUntilAsync(() => host.Session.IsComposed);
@@ -408,25 +407,25 @@ public sealed class SkillsInteractiveTests
         await host.Client.WaitForCallAsync(1);
 
         host.Console.SendText("/skill:greek");
+        await host.WaitUntilAsync(() => host.Session.Input.Text == "/skill:greek");
         host.Console.SendEnter();
-        await host.WaitUntilAsync(() => host.Session.QueuedSteeringCount == 1);
+        await host.WaitUntilAsync(() =>
+        {
+            host.Advance(33);
+            return host.LastFrame.Contains(
+                "slash command cannot be queued",
+                StringComparison.Ordinal
+            );
+        });
+
+        Assert.Equal(0, host.Session.QueuedFollowUpCount);
+        Assert.Equal("/skill:greek", host.Session.Input.Text);
+        Assert.Single(host.Client.Requests);
 
         host.Client.Release(1);
-        // The queued skill auto-runs after the first turn; its wrapped body reaches the model.
-        await host.Client.WaitForCallAsync(2);
-        await InteractiveSessionCommandTests.WaitForScrollbackAsync(host, "second");
-
-        Assert.Contains(
-            "<skill name=\"greek\"",
-            host.Client.Requests[1].Last(m => m.Role == ChatRole.User).Text,
-            StringComparison.Ordinal
-        );
-        SessionMessageEntry entry = Assert.Single(
-            Messages(host),
-            message => message.Skill is not null
-        );
-        Assert.Equal("greek", entry.Skill!.Name);
-
+        await host.WaitUntilAsync(() => !host.Session.IsRunning);
+        host.Console.SendCtrlC();
+        await host.WaitUntilAsync(() => host.Session.Input.Text.Length == 0);
         host.Console.SendText("/quit");
         host.Console.SendEnter();
         await run;

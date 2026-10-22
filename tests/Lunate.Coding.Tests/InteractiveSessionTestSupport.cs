@@ -55,6 +55,10 @@ internal sealed class ScriptedConsoleIO : IConsoleIO
 
     public void SendEnter() => Send(new KeyEvent(KeyKind.Enter, null, false, false, false));
 
+    public void SendAltEnter() => Send(new KeyEvent(KeyKind.Enter, null, false, false, true));
+
+    public void SendUp() => Send(new KeyEvent(KeyKind.Up, null, false, false, false));
+
     public void SendEscape() => Send(new KeyEvent(KeyKind.Escape, null, false, false, false));
 
     public void SendCtrlC() =>
@@ -495,8 +499,7 @@ internal sealed class InteractiveSessionHost : IDisposable
             {
                 throw new TimeoutException(
                     "The condition never became true "
-                        + $"(queued={Session.QueuedSteeringCount} running={Session.IsRunning} "
-                        + $"writes={Console.Writes.Count})."
+                        + $"(running={Session.IsRunning} writes={Console.Writes.Count})."
                 );
             }
 
