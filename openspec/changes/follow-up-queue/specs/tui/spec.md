@@ -2,7 +2,7 @@
 
 ### Requirement: One meaning per key
 
-Key events SHALL route to exactly one intent per the guide's table: Enter submits or steers, Alt+Enter adds the input as a follow-up (a newline while the prompt is idle, a queued message while a turn runs), Ctrl+J edits (newline), Esc cancels a turn or returns queued follow-ups when nothing is running, Ctrl+C clears or quits, Ctrl+L opens the model picker, Ctrl+P cycles favourites, Tab completes a leading slash command, Up/Down navigate history, Alt+Up takes a queued follow-up back, everything else edits. Routing SHALL be pure, and every binding SHALL have a scripted key test.
+Key events SHALL route to exactly one intent per the guide's table: Enter submits, or queues a follow-up when a turn is running; Alt+Enter and Ctrl+J edit (newline) while the prompt is idle, and Alt+Enter steers a running turn; Esc cancels a turn or returns queued follow-ups when nothing is running; Ctrl+C clears or quits, Ctrl+L opens the model picker, Ctrl+P cycles favourites, Tab completes a leading slash command, Up/Down navigate history, Alt+Up takes a queued follow-up back, everything else edits. Routing SHALL be pure, and every binding SHALL have a scripted key test.
 
 #### Scenario: Every binding routes distinctly
 
@@ -28,22 +28,28 @@ Key events SHALL route to exactly one intent per the guide's table: Enter submit
 - **WHEN** Ctrl+P is routed
 - **THEN** it produces the favourites-cycle intent and not the model-picker or edit intent
 
-#### Scenario: Alt+Enter follows up in both states
+#### Scenario: The send key sends in both states
+
+- **GIVEN** an idle prompt, then a running turn
+- **WHEN** Enter is routed in each state
+- **THEN** the idle route submits and the busy route queues the follow-up, and neither produces the edit or cancel intent
+
+#### Scenario: Edit and steer share the modifier
 
 - **GIVEN** an idle prompt, then a running turn
 - **WHEN** Alt+Enter is routed in each state
-- **THEN** the idle route edits (newline) and the busy route queues, and neither produces the submit or steer intent
+- **THEN** the idle route inserts a newline and the busy route steers the running turn, and neither submits nor queues
 
 ## ADDED Requirements
 
 ### Requirement: Follow-up queue
 
-Alt+Enter SHALL queue the current input — text and attachments — while a turn runs, clear the line, and show the queue size beside the mode hint. Queued messages SHALL run after the running turn completes, in order, one at a time, through the same submission path as a typed message; a failed turn SHALL NOT discard the remaining entries and a cancelled turn SHALL leave the queue intact without draining it. The queue SHALL hold at most five entries and SHALL refuse a sixth with a notice that keeps the existing five. Alt+Up SHALL move the newest queued entry into the editor when the line is empty and SHALL refuse with a notice when it is not. Esc with nothing running and a non-empty queue SHALL restore every entry to the editor in order, newline-separated, and empty the queue. A slash command SHALL be refused by the queue with a notice. The queue SHALL NOT be stored in the session, replayed on resume, or reachable from print mode.
+Enter SHALL queue the current input — text and attachments — while a turn runs, clear the line, and show the queue size beside the mode hint; the send key therefore never interrupts a running turn. Queued messages SHALL run after the running turn completes, in order, one at a time, through the same submission path as a typed message; a failed turn SHALL NOT discard the remaining entries and a cancelled turn SHALL leave the queue intact without draining it. The queue SHALL hold at most five entries and SHALL refuse a sixth with a notice that keeps the existing five. Alt+Up SHALL move the newest queued entry into the editor when the line is empty and SHALL refuse with a notice when it is not. Esc with nothing running and a non-empty queue SHALL restore every entry to the editor in order, newline-separated, and empty the queue. A slash command SHALL be refused by the queue with a notice. The queue SHALL NOT be stored in the session, replayed on resume, or reachable from print mode.
 
 #### Scenario: A queued message runs after the turn
 
 - **GIVEN** a running turn
-- **WHEN** the user presses Alt+Enter on `run the tests`
+- **WHEN** the user presses Enter on `run the tests`
 - **THEN** the line clears, the indicator shows one queued, and when the turn completes `run the tests` is submitted through the normal path
 
 #### Scenario: Queued messages keep their order and never overlap
@@ -73,11 +79,11 @@ Alt+Enter SHALL queue the current input — text and attachments — while a tur
 #### Scenario: A command cannot be queued
 
 - **GIVEN** a running turn and `/quit` in the line
-- **WHEN** Alt+Enter is pressed
+- **WHEN** Enter is pressed
 - **THEN** a notice refuses the queue, the line keeps its text, and nothing is queued
 
 #### Scenario: The sixth message is refused
 
 - **GIVEN** five queued messages
-- **WHEN** a sixth is queued
+- **WHEN** a sixth is sent
 - **THEN** a notice names the five-message limit and the first five remain

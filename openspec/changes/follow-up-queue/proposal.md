@@ -6,8 +6,8 @@ A follow-up queue separates the two: Enter still steers, Alt+Enter lines the mes
 
 ## What Changes
 
-- **Alt+Enter while a turn runs** queues the current input — text and attachments — and clears the line. The queue runs in order once the turn finishes, one message at a time.
-- **Alt+Enter while idle** keeps its current meaning: a newline in the editor.
+- **Enter while a turn runs** queues the current input — text and attachments — and clears the line. The send key never interrupts; the queue runs in order once the turn finishes, one message at a time.
+- **Alt+Enter** stays the modifier: a newline while idle, a steering injection while a turn runs.
 - **Alt+Up** pulls the newest queued message back into the editor when the line is empty, so a queued mistake can be fixed before it runs.
 - **Esc with nothing running and a non-empty queue** returns every queued message to the editor in order, separated by newlines.
 - The prompt shows a **queue indicator** (`2 queued`) beside the mode hint, so a queue is never invisible.
