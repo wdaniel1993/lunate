@@ -122,15 +122,11 @@ internal sealed partial class InteractiveSession
                 }
 
                 break;
-            case RunFinished finished:
-                MapOutcome(finished.StopReason);
-                break;
             case RunError error:
-                _outcome = RunOutcome.Failed;
                 Notify("run failed: " + error.Message, NoticeLevel.Error);
                 break;
-            case SteeringInjected:
-                EchoSteering();
+            case SteeringInjected injected:
+                EchoSteering(injected);
                 break;
             case Retrying retrying:
                 Notify(

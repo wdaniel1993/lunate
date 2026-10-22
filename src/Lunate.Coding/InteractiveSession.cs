@@ -12,17 +12,6 @@ using Spectre.Console;
 
 namespace Lunate.Coding;
 
-/// <summary>How a finished run ended; decides the leftover-steering rule.</summary>
-internal enum RunOutcome
-{
-    Unknown,
-    Completed,
-    Cancelled,
-    Failed,
-    StepLimit,
-    Length,
-}
-
 /// <summary>The injectable seams of an interactive session; production leaves paths null.</summary>
 internal sealed record InteractiveSessionOptions
 {
@@ -108,10 +97,9 @@ internal sealed record InteractiveSessionOptions
 
 /// <summary>
 /// The interactive frontend: it consumes the harness's event stream into scrollback and the live
-/// area, wires keys through the router, history and quit window, turns approvals into the live-area
-/// prompt and steers a running turn through the queue. The pinned interaction rules - Esc returns
-/// queued steering unsent; a normal finish auto-runs leftovers; an error or step limit returns them
-/// to the input line - live here.
+/// area, wires keys through the router, history and quit window, and drains the follow-up queue
+/// after every turn. The pinned interaction rules - Enter queues while a turn runs, Esc interrupts
+/// and the queue then runs next, and Up takes the whole queue back - live here.
 /// </summary>
 internal sealed partial class InteractiveSession : IDisposable
 {
@@ -126,8 +114,6 @@ internal sealed partial class InteractiveSession : IDisposable
     private readonly IUserInteraction _interaction;
     private readonly ISecretPrompt _secretPrompt;
     private readonly SteeringQueue _steering = new();
-    private readonly object _steeringGate = new();
-    private readonly List<(string Text, SessionSkillMetadata? Skill)> _pendingSteering = [];
     private readonly CancellationTokenSource _lifetime = new();
     private readonly ToolBlockRenderer _toolBlocks;
     private readonly ThinkingCommitRenderer _thinkingCommit = new();
@@ -196,7 +182,6 @@ internal sealed partial class InteractiveSession : IDisposable
 
     /// <summary>When the open reasoning span began, on the injected scheduler's clock.</summary>
     private DateTimeOffset _thinkingStartedAt;
-    private RunOutcome _outcome;
     private long _inputTokens;
     private long _outputTokens;
 
@@ -214,10 +199,6 @@ internal sealed partial class InteractiveSession : IDisposable
 
     /// <summary>The provider's additional-count key for cache-creation tokens.</summary>
     private const string CacheCreationInputTokensKey = "CacheCreationInputTokens";
-
-    /// <summary>The one running-turn refusal for an image, shown before and after resolution.</summary>
-    private const string SteeringImageNotice =
-        "images cannot be attached to a steering message; wait for the current turn to finish, then submit the image again.";
 
     /// <summary>The cumulative token counts when the current run started (its deltas' baseline).</summary>
     private long _runInputBaseline;
@@ -833,8 +814,8 @@ internal sealed partial class InteractiveSession : IDisposable
     /// <summary>Whether a turn (or its auto-run chain) is currently active.</summary>
     internal bool IsRunning => _turnActive;
 
-    /// <summary>The queued steering messages not yet drained; the leftovers Esc returns.</summary>
-    internal int QueuedSteeringCount => _steering.Count;
+    /// <summary>The harness steering queue; nothing in the prompt writes to it (tests drive it directly).</summary>
+    internal SteeringQueue Steering => _steering;
 
     /// <summary>
     /// The in-memory transcript the viewer renders: user and assistant text, thinking spans and
@@ -936,7 +917,7 @@ internal sealed partial class InteractiveSession : IDisposable
             return;
         }
 
-        switch (KeyRouter.Route(key, _turnActive, _settings.Prompt.BusyEnter))
+        switch (KeyRouter.Route(key, _turnActive, _followUps.Count > 0))
         {
             case RoutedKey.Edit:
                 EditInput(key);
@@ -951,8 +932,14 @@ internal sealed partial class InteractiveSession : IDisposable
 
                 await QueueFollowUpAsync(ct);
                 break;
-            case RoutedKey.FollowUpPrevious:
-                TakeFollowUpBack();
+            case RoutedKey.FollowUpTakeBack:
+                if (_autocomplete is not null)
+                {
+                    MoveAutocomplete(-1);
+                    break;
+                }
+
+                TakeFollowUpsBack();
                 break;
             case RoutedKey.Submit:
                 if (_autocomplete is not null && !IsExactAutocompleteMatch())
@@ -978,7 +965,6 @@ internal sealed partial class InteractiveSession : IDisposable
 
                 if (_turnActive)
                 {
-                    _turnCancelled = true;
                     _runCancellation?.Cancel();
                     _bashCancellation?.Cancel();
                     break;
@@ -990,7 +976,6 @@ internal sealed partial class InteractiveSession : IDisposable
                     break;
                 }
 
-                RestoreFollowUps();
                 break;
             case RoutedKey.ClearOrQuit:
                 HandleCtrlC();
@@ -1068,7 +1053,6 @@ internal sealed partial class InteractiveSession : IDisposable
     private void EditInput(KeyEvent key)
     {
         bool wasEmpty = _input.Text.Length == 0;
-        _pulledFollowUpText = null;
         _input = InputLine.Apply(_input, key);
         _historyDraft = null;
         if (TryEnterBashMode(wasEmpty, key))
@@ -1123,9 +1107,8 @@ internal sealed partial class InteractiveSession : IDisposable
 
     /// <summary>
     /// The one prompt submission path shared by typed text and <c>/skill:&lt;name&gt;</c>: the
-    /// input pipeline runs, history records the text and a busy session queues it (identical
-    /// queue/steer behaviour); an idle session starts the run, carrying the skill metadata when
-    /// the submission was a skill invocation.
+    /// input pipeline runs, history records the text and an idle session starts the run, carrying
+    /// the skill metadata when the submission was a skill invocation.
     /// </summary>
     private async Task SubmitPromptAsync(
         string text,
@@ -1150,15 +1133,6 @@ internal sealed partial class InteractiveSession : IDisposable
             return;
         }
 
-        // A running turn refuses an image syntactically, before the resolver reads any file or the
-        // clipboard. The post-resolution guard below still catches a dropped image that only its
-        // magic bytes identify (an extensionless path).
-        if (skill is null && _turnActive && ImageInputResolver.MayCarryImage(processed.Text))
-        {
-            Notify(SteeringImageNotice, NoticeLevel.Warning);
-            return;
-        }
-
         ImageInputResult input = skill is null
             ? await _imageResolver.ResolveAsync(processed.Text, ct)
             : ImageInputResult.Ready(processed.Text, images: null);
@@ -1173,22 +1147,10 @@ internal sealed partial class InteractiveSession : IDisposable
             return;
         }
 
-        if (input.Images is { Count: > 0 } && _turnActive)
-        {
-            Notify(SteeringImageNotice, NoticeLevel.Warning);
-            return;
-        }
-
         _history.Add(input.Text);
-        if (_turnActive)
-        {
-            EnqueueSteering(input.Text, skill);
-            return;
-        }
 
         var userInput = new UserInput(input.Text, input.Images);
         PrepareTurn(userInput);
-        _turnCancelled = false;
         _run = RunTurnsAsync(userInput, skill, ct);
     }
 
@@ -1241,31 +1203,9 @@ internal sealed partial class InteractiveSession : IDisposable
         {
             while (true)
             {
-                _outcome = RunOutcome.Unknown;
                 await RunOnceAsync(input, skill, ct);
-                List<(string Text, SessionSkillMetadata? Skill)> leftover = DrainSteering();
-                if (_outcome == RunOutcome.Completed && leftover.Count > 0)
-                {
-                    input = new UserInput(string.Join("\n", leftover.Select(entry => entry.Text)));
-                    skill = leftover.Count == 1 ? leftover[0].Skill : null;
-                    continue;
-                }
-
-                if (leftover.Count > 0)
-                {
-                    SetInput(string.Join("\n", leftover.Select(entry => entry.Text)));
-                }
-
-                // Esc during the just-finished turn wins: the queue stays for Alt+Up or the next
-                // run. The check is explicit because the drain is the one place Esc could otherwise
-                // launch the next message.
-                if (_turnCancelled)
-                {
-                    _turnCancelled = false;
-                    return;
-                }
-
-                if (_outcome == RunOutcome.Cancelled)
+                // A quit cancels the lifetime token: the queue is dropped, never drained.
+                if (ct.IsCancellationRequested)
                 {
                     return;
                 }
@@ -1316,7 +1256,7 @@ internal sealed partial class InteractiveSession : IDisposable
         }
         catch (OperationCanceledException) when (runCts.IsCancellationRequested)
         {
-            _outcome = RunOutcome.Cancelled;
+            // The interrupted turn still hands over to the queue below.
         }
         finally
         {
@@ -1328,53 +1268,16 @@ internal sealed partial class InteractiveSession : IDisposable
         }
     }
 
-    /// <summary>
-    /// Drains the steering messages the harness did not inject, popping their pending-FIFO mirrors
-    /// in the same order so the echo list stays consistent; each entry keeps its skill metadata for
-    /// the auto-run of a single leftover (a joined multi-leftover run is a plain turn).
-    /// </summary>
-    private List<(string Text, SessionSkillMetadata? Skill)> DrainSteering()
+    /// <summary>Commits the dim echo of one message the harness injected from its steering queue.</summary>
+    private void EchoSteering(SteeringInjected injected)
     {
-        List<(string Text, SessionSkillMetadata? Skill)> leftover = [];
-        while (_steering.TryDequeue(out _))
-        {
-            lock (_steeringGate)
-            {
-                if (_pendingSteering.Count > 0)
-                {
-                    leftover.Add(_pendingSteering[0]);
-                    _pendingSteering.RemoveAt(0);
-                }
-            }
-        }
-
-        return leftover;
-    }
-
-    /// <summary>Enqueues steering and mirrors it into the pending FIFO the echo reads.</summary>
-    private void EnqueueSteering(string text, SessionSkillMetadata? skill)
-    {
-        lock (_steeringGate)
-        {
-            _steering.Enqueue(text, skill);
-            _pendingSteering.Add((text, skill));
-        }
-    }
-
-    /// <summary>Pops one pending text for a <c>SteeringInjected</c> event and commits its echo.</summary>
-    private void EchoSteering()
-    {
-        string? text;
-        lock (_steeringGate)
-        {
-            text = _pendingSteering.Count > 0 ? _pendingSteering[0].Text : null;
-            if (text is not null)
-            {
-                _pendingSteering.RemoveAt(0);
-            }
-        }
-
-        if (text is null)
+        string? text = injected.EntryId is { } entryId
+            ? _session
+                ?.Entries.OfType<SessionMessageEntry>()
+                .FirstOrDefault(entry => entry.Id == entryId)
+                ?.Message.Text
+            : null;
+        if (string.IsNullOrEmpty(text))
         {
             return;
         }
@@ -1471,7 +1374,6 @@ internal sealed partial class InteractiveSession : IDisposable
     private void SetHistoryInput(string text)
     {
         CloseAutocomplete();
-        _pulledFollowUpText = null;
         _input = new InputLineState(text, text.Length);
         _live.SetInput(_input, _bashMode);
     }
@@ -1482,7 +1384,6 @@ internal sealed partial class InteractiveSession : IDisposable
         _bashMode = false;
         _bashSilent = false;
         _bashHistoryDraft = null;
-        _pulledFollowUpText = null;
         _input = new InputLineState(text, text.Length);
         _historyDraft = null;
         _live.SetInput(_input);
@@ -1662,16 +1563,6 @@ internal sealed partial class InteractiveSession : IDisposable
         _pendingNotices.Clear();
         _interaction.Notify(new UserNotice(level, message));
     }
-
-    private void MapOutcome(string stopReason) =>
-        _outcome = stopReason switch
-        {
-            StopReasons.Stop => RunOutcome.Completed,
-            StopReasons.Cancelled => RunOutcome.Cancelled,
-            StopReasons.StepLimit => RunOutcome.StepLimit,
-            StopReasons.Length => RunOutcome.Length,
-            _ => RunOutcome.Unknown,
-        };
 
     private static string DisplayDirectory(string path)
     {

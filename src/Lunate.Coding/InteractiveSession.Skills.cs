@@ -135,8 +135,8 @@ internal sealed partial class InteractiveSession
 
     /// <summary>
     /// <c>/skill:&lt;name&gt; [args]</c>: the wrapped body is submitted through the normal prompt
-    /// path (queue/steer behaviour included) and recorded with the skill metadata. Unknown names
-    /// and untrusted project skills produce notices instead.
+    /// path and recorded with the skill metadata. Unknown names and untrusted project skills
+    /// produce notices instead.
     /// </summary>
     private async Task InvokeSkillAsync(string name, string arguments, CancellationToken ct)
     {
@@ -149,6 +149,17 @@ internal sealed partial class InteractiveSession
         if (skill.Untrusted)
         {
             Notify(SkillTrust.UntrustedNotice(name));
+            return;
+        }
+
+        if (_turnActive)
+        {
+            // A skill invocation starts a turn, so it cannot ride the follow-up queue; refusing is
+            // the same rule a typed slash command gets while a turn runs.
+            Notify(
+                "a slash command cannot be queued; wait for the turn to finish and submit it",
+                NoticeLevel.Warning
+            );
             return;
         }
 
