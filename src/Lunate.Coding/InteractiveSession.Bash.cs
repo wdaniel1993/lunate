@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text.Json;
 using Lunate.Agent;
 using Lunate.Tui;
+using Microsoft.Extensions.AI;
 
 namespace Lunate.Coding;
 
@@ -85,13 +86,29 @@ internal sealed partial class InteractiveSession
     private Task SubmitBashAsync(CancellationToken ct)
     {
         string command = _input.Text;
+        bool silent = _bashSilent;
         LeaveBashMode(restore: false);
         if (string.IsNullOrWhiteSpace(command))
         {
             return Task.CompletedTask;
         }
 
-        _bashRun = RunBashAsync(command, ct);
+        if (_turnActive)
+        {
+            Notify(
+                "a turn is running — the bash command was not run; Esc to cancel first",
+                NoticeLevel.Warning
+            );
+            return Task.CompletedTask;
+        }
+
+        if (_bashRunning)
+        {
+            Notify("a bash command is already running; wait for it to finish", NoticeLevel.Warning);
+            return Task.CompletedTask;
+        }
+
+        _bashRun = RunBashAsync(command, silent, ct);
         return Task.CompletedTask;
     }
 
@@ -99,7 +116,7 @@ internal sealed partial class InteractiveSession
     /// Runs one typed line through the registered bash tool with the same tool context the
     /// harness builds, and commits its result through the session's one tool-block path.
     /// </summary>
-    private async Task RunBashAsync(string command, CancellationToken ct)
+    private async Task RunBashAsync(string command, bool silent, CancellationToken ct)
     {
         if (_tools.Find("bash") is not { } tool)
         {
@@ -130,6 +147,11 @@ internal sealed partial class InteractiveSession
                     cancellation.Token
                 )
                 .ConfigureAwait(false);
+            if (!silent)
+            {
+                RecordBashExchange(command, result);
+            }
+
             HandleBashEvent(
                 new ToolCallResult(runId, callId, result.Output, result.IsError, result.Details)
             );
@@ -219,6 +241,24 @@ internal sealed partial class InteractiveSession
             "the bash command was cancelled; its output was discarded",
             IsError: true
         );
+    }
+
+    /// <summary>
+    /// The normal form's conversation entry: one user message carrying the typed command and the
+    /// tool's bounded result, so the next request knows what ran. The silent form never calls it.
+    /// </summary>
+    private void RecordBashExchange(string command, ToolResult result)
+    {
+        if (_harness is not { } harness)
+        {
+            return;
+        }
+
+        string output = result.Output.Length == 0 ? "(no output)" : result.Output;
+        string text = FormattableString.Invariant(
+            $"Ran the shell command `{command}`:\n\n{output}"
+        );
+        harness.AppendConversationMessage(new ChatMessage(ChatRole.User, text), _modelId);
     }
 
     /// <summary>The synthetic call events reach the observer seam exactly like a run's events.</summary>

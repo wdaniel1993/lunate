@@ -1101,6 +1101,12 @@ internal sealed partial class InteractiveSession : IDisposable
         CancellationToken ct
     )
     {
+        if (_bashRunning)
+        {
+            Notify("a bash command is running — wait for it to finish", NoticeLevel.Warning);
+            return;
+        }
+
         // The previous notice clears as the submission arrives, before the hook chain runs: a
         // slow-hook event posted while the input dispatches must survive (it would otherwise be
         // cleared in the same tick and never render).

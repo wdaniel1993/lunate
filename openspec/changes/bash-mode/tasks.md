@@ -16,10 +16,10 @@
 
 ## 3. The silent form and the conversation boundary
 
-- [ ] 3.1 Red tests: `!` adds the command and its result to the conversation the next request carries; `!!` adds nothing and leaves the message list byte-identical.
-- [ ] 3.2 Split the two forms at the conversation boundary only — the scrollback block, header and notice are identical.
-- [ ] 3.3 Refuse a bash submission while a turn is running with a notice naming the run; no queueing, no steering.
-- [ ] 3.4 Commit: `feat(tui): keep the silent bash form out of the conversation`.
+- [x] 3.1 Red tests: `!` adds the command and its result to the conversation the next request carries; `!!` adds nothing and leaves the message list byte-identical.
+- [x] 3.2 Split the two forms at the conversation boundary only — the scrollback block, header and notice are identical.
+- [x] 3.3 Refuse a bash submission while a turn is running with a notice naming the run; no queueing, no steering.
+- [x] 3.4 Commit: `feat(tui): keep the silent bash form out of the conversation`.
 
 ## 4. History
 

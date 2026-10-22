@@ -761,6 +761,13 @@ public sealed partial class AgentHarness
         IEnumerable<ChatMessage> messages
     ) => messages.SelectMany(message => message.Contents).OfType<ImageContentReference>();
 
+    /// <summary>
+    /// Appends a conversation message outside a run: the typed bash-mode exchange becomes context
+    /// for the next request exactly like a message the loop appended.
+    /// </summary>
+    internal void AppendConversationMessage(ChatMessage message, string? model = null) =>
+        AppendHistoryMessage(message, model);
+
     /// <summary>Appends a history message and mirrors it into the session when one is attached.</summary>
     private string? AppendHistoryMessage(
         ChatMessage message,

@@ -19,6 +19,8 @@
 
     <ItemGroup>
         <InternalsVisibleTo Include="Lunate.Agent.Tests" />
+        <!-- The interactive session appends a typed bash-mode exchange to the conversation. -->
+        <InternalsVisibleTo Include="lunate" />
         <!-- The Coding production-composition proofs validate a session run's event stream. -->
         <InternalsVisibleTo Include="Lunate.Coding.Tests" />
     </ItemGroup>
