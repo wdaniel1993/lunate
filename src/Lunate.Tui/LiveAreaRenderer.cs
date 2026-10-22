@@ -58,7 +58,12 @@ internal static class LiveAreaRenderer
         var footerLine =
             state.Loading is { Length: > 0 } loading ? loading
             : state.Footer is null ? null
-            : StatusFooterRenderer.PlainText(state.Footer, width, state.FooterWidgets);
+            : StatusFooterRenderer.PlainText(
+                state.Footer,
+                width,
+                state.FooterWidgets,
+                state.QueuedCount
+            );
         // The box always closes: the lower rule is part of the fixed chrome at every width.
         const int lowerRuleLines = 1;
         int preInputLines =

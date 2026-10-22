@@ -142,6 +142,9 @@ internal sealed class LiveArea : IDisposable
     public void SetFooter(StatusFooterModel? footer, IReadOnlyList<string>? widgets = null) =>
         Post(new FooterInput(footer, widgets ?? []));
 
+    /// <summary>Sets how many follow-ups wait behind the running turn; zero hides the indicator.</summary>
+    public void SetQueuedCount(int count) => Post(new QueuedInput(Math.Max(0, count)));
+
     /// <summary>
     /// Writes finished scrollback through the one writer: the live frame is cleared first and the
     /// next sample tick repaints it from the current state, so cursor math never desynchronizes.
@@ -370,6 +373,7 @@ internal sealed class LiveArea : IDisposable
                 Footer = footer.Footer,
                 FooterWidgets = footer.Widgets,
             },
+            QueuedInput queued => state with { QueuedCount = queued.Count },
             _ => state,
         };
 
@@ -430,6 +434,8 @@ internal sealed class LiveArea : IDisposable
 
     private sealed record FooterInput(StatusFooterModel? Footer, IReadOnlyList<string> Widgets)
         : LiveAreaInput;
+
+    private sealed record QueuedInput(int Count) : LiveAreaInput;
 
     private sealed class ConsoleTextWriter(IConsoleIO console) : TextWriter
     {

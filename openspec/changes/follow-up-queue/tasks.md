@@ -2,10 +2,10 @@
 
 ## 1. Queue and indicator
 
-- [ ] 1.1 Red tests: a queued entry keeps text and attachments; the cap refuses the sixth entry with a notice and keeps the first five; the indicator shows the count and disappears at zero.
-- [ ] 1.2 Add the bounded queue to the interactive session and render `N queued` beside the mode hint, truncating at narrow widths.
-- [ ] 1.3 Golden fixtures at 40, 80 and 120 columns for 0, 1 and 5 queued; untouched fixtures stay byte-identical.
-- [ ] 1.4 Commit: `feat(tui): show and bound the follow-up queue`.
+- [x] 1.1 Red tests: a queued entry keeps text and attachments; the cap refuses the sixth entry with a notice and keeps the first five; the indicator shows the count and disappears at zero.
+- [x] 1.2 Add the bounded queue to the interactive session and render `N queued` beside the mode hint, truncating at narrow widths.
+- [x] 1.3 Golden fixtures at 40, 80 and 120 columns for 0, 1 and 5 queued; untouched fixtures stay byte-identical.
+- [x] 1.4 Commit: `feat(tui): show and bound the follow-up queue`.
 
 ## 2. Queueing and draining
 

@@ -1559,6 +1559,7 @@ internal sealed partial class InteractiveSession : IDisposable
                 TurnCost = _turnCost is decimal cost ? CostCalculator.Format(cost) : null,
             }
         );
+        UpdateFollowUpIndicator();
     }
 
     private void Notify(string message, NoticeLevel level = NoticeLevel.Info)

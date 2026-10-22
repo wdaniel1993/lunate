@@ -72,6 +72,9 @@ internal sealed record LiveAreaState
 
     public IReadOnlyList<string> FooterWidgets { get; init; } = [];
 
+    /// <summary>How many follow-ups wait behind the running turn; zero hides the indicator.</summary>
+    public int QueuedCount { get; init; }
+
     public ConsoleSize Size { get; init; } = new(80, 24);
 }
 
