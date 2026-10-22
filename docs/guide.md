@@ -467,6 +467,12 @@ A pending approval renders as a panel in the live area. The warning headline nam
 
 The input renders as a box: a full-width `─` rule above it at every width and a second rule below it at every width (ASCII `-` without Unicode). The `>` prompt marker and, while the input is empty, the placeholder `Ask anything, / for commands` render in the theme's user colour, so the input never reads as output. The prompt is followed by a space on the first line and continuation lines keep a two-space indent, with the status footer below the lower rule. The box grows with the draft to eight lines and scrolls beyond that, keeping the cursor's line visible.
 
+**Bash mode**
+
+Typing `!` at the start of an empty input switches the box into bash mode: the prompt becomes an accent-toned `!` followed by a space. Enter runs the remaining line in the session's working directory through the `bash` tool's executor — same shell resolution, environment, timeout, output bounds, process-tree rules and approval policy as a model-issued call — and commits one tool block whose header carries the exit code and the duration. Esc leaves the mode without running and restores the line with its prefix; Enter on a bare `!` leaves without running. A `!` anywhere but the start of the input stays literal.
+
+`!!` is the silent form: the command runs and the same block commits to the scrollback, but neither the command nor its output enters the conversation, so the next request does not carry it. A normal `!` adds the command and its result to the conversation as context for the next turn. The approval policy decides before anything runs: an `ask` policy prompts, and a denial leaves the workspace untouched. A `!` submission while a turn runs is refused with a notice naming the turn; it is neither queued nor steered. Bash lines have their own in-memory history: Up recalls commands only in bash mode, prompt history stays in `~/.lunate/history`, and neither stream pollutes the other. Print mode has no input line and therefore no bash mode.
+
 Typing `/` at the start of the first line opens the autocomplete list from the session's one registry: the built-in commands, the discovered skills as `/skill:<name>`, and every loaded extension's manifest commands described by the extension's id. The registry is fixed-size and filtered fuzzily — a case-insensitive subsequence, with prefix and word-start matches ranked ahead of later positions. Typing `@` at the end of a token lists workspace files from the lazy file index through its case-insensitive completion query, while the index stays ordinally sorted; the index is never fuzzed client-side and never built at startup. The list shows at most eight rows directly above the box. Names carry descriptions until the width drops below 60 columns; file rows mute the directory part. No matches closes the list, and the list never wraps.
 
 ↑/↓ move the selection while the list is open and navigate history while it is closed. Tab and Enter accept the selected item — the token is replaced, file rows keep the `@`, command rows get a trailing space — and Esc closes the list. Enter submits instead when the typed token already equals the selected item, so a fully typed command never costs a second Enter. Newline keys insert and then re-run the trigger rules; Ctrl+C, Ctrl+L, Ctrl+O and Ctrl+P keep their bindings and win over the list.
@@ -500,7 +506,7 @@ Both box rules are drawn at every width; autocomplete descriptions keep their 60
 - `TranscriptViewer`: the `Ctrl+O` full-screen transcript — user, assistant, thinking and tool blocks with full outputs and diffs, newest at the bottom; Up/Down, PageUp/PageDown, Home/End and `g`/`G` scroll, the footer shows the keys and the position, and `q`/`Esc` closes. Paths are mid-shortened so the basename survives.
 - `ApprovalPrompt`: the panel described above — warning headline, bounded detail, and the yes/no/always choices — shown in the live area.
 - `StatusFooter`: model, tokens, context used in percent, favourites position, current turn cost, working directory, git branch.
-- `InputLine`: multi-line editing, history in `~/.lunate/history`, bracketed paste, cursor movement and the input box's chrome and placeholder.
+- `InputLine`: multi-line editing, prompt history in `~/.lunate/history`, a separate in-memory bash-mode history, bracketed paste, cursor movement and the input box's chrome and placeholder.
 - `Autocomplete`: the filtered rows above the box with the selected row marked, descriptions below the width breakpoint and muted file directories; the registry and keys are described above.
 - `SelectList`: model and session pickers inside the live area.
 
@@ -508,15 +514,15 @@ Both box rules are drawn at every width; autocomplete descriptions keep their 60
 
 | Key | Action |
 | --- | --- |
-| `Enter` | Send; with the autocomplete list open, accept the selected item first (an exact token sends instead); while a turn runs, queue as a steering message |
+| `Enter` | Send; with the autocomplete list open, accept the selected item first (an exact token sends instead); in bash mode, run the line through the `bash` tool; while a turn runs, queue as a steering message |
 | `Alt+Enter` | New line, also Ctrl+J (terminals cannot reliably detect `Shift+Enter`); the autocomplete triggers re-run afterwards |
-| `Esc` | Close the autocomplete list first; otherwise cancel the running turn, nothing when idle |
+| `Esc` | Close the autocomplete list first; in bash mode, leave without running and restore the line with its prefix; otherwise cancel the running turn, nothing when idle |
 | `Ctrl+C` | Clear the input; on an empty input, press twice within 2 s to quit. Never cancels a turn |
 | `Ctrl+L` | Model picker and search; typing filters the catalog, Backspace edits the filter, Esc clears it before closing |
 | `Ctrl+P` | Cycle the settings favourites in order, wrapping after the last; a non-favourite starts at the first. Refused while a turn, approval, picker or secret prompt is open |
 | `Ctrl+O` | Transcript viewer: the session transcript with full tool output and diffs; `q`, `Esc` or `Ctrl+O` closes. Refused while an approval or picker is open |
 | `Tab` | Accept the selected autocomplete item; otherwise nothing |
-| `Up` / `Down` | Move the autocomplete selection; with the list closed, history |
+| `Up` / `Down` | Move the autocomplete selection; with the list closed, history (bash mode recalls its own command stream) |
 
 **Platform rules**
 

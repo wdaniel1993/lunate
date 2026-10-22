@@ -197,6 +197,21 @@ public sealed class InputLineTests
     }
 
     [Fact]
+    public void Bash_layout_uses_the_bang_prompt()
+    {
+        var layout = InputLine.Layout(
+            new InputLineState("git status", 10),
+            width: 20,
+            maxLines: 8,
+            bashMode: true
+        );
+
+        Assert.Equal(["! git status"], layout.Lines);
+        Assert.Equal(0, layout.CursorRow);
+        Assert.Equal(12, layout.CursorColumn);
+    }
+
+    [Fact]
     public void Cursor_column_uses_cell_widths()
     {
         var layout = InputLine.Layout(new InputLineState("中a", 2), width: 10, maxLines: 8);

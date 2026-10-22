@@ -76,11 +76,16 @@ internal static class LiveAreaRenderer
         // The budget carries the rules and the footer, so the tail shares what is left of the
         // eight-line live area; the input box itself always gets its full eight lines.
         int fixedLines = preInputLines + lowerRuleLines + (footerLine is null ? 0 : 1);
-        var input = InputLine.Layout(state.Input, width, MaxLines);
+        var input = InputLine.Layout(state.Input, width, MaxLines, state.BashMode);
         IReadOnlyList<string> inputLines =
             state.Input.Text.Length == 0
-                ? [PlaceholderLine(width, state.Color)]
-                : PromptLines(input.Lines, state.Color);
+                ?
+                [
+                    state.BashMode
+                        ? BashPromptLine(width, state.Color)
+                        : PlaceholderLine(width, state.Color),
+                ]
+                : PromptLines(input.Lines, state.Color, state.BashMode);
         var tail = TailLines(
             state.TailText,
             // The picker is modal: while it is open it owns the area above the input.
@@ -177,12 +182,14 @@ internal static class LiveAreaRenderer
     }
 
     /// <summary>
-    /// Paints the <c>&gt;</c> marker of the first visible input line in the prompt tone; the
-    /// typed text and the continuation indent stay plain, matching the committed user echo.
+    /// Paints the prompt marker of the first visible input line in its tone; the typed text and
+    /// the continuation indent stay plain, matching the committed user echo. Bash mode paints
+    /// the whole <c>! </c> marker in the accent tone.
     /// </summary>
     private static IReadOnlyList<string> PromptLines(
         IReadOnlyList<string> lines,
-        ColorSystemSupport color
+        ColorSystemSupport color,
+        bool bashMode
     )
     {
         if (color == ColorSystemSupport.NoColors)
@@ -190,16 +197,29 @@ internal static class LiveAreaRenderer
             return lines;
         }
 
+        int markerWidth = bashMode ? 2 : 1;
         var styled = new List<string>(lines.Count);
         foreach (string line in lines)
         {
-            styled.Add(
-                line.StartsWith('>') ? LivePalette.Prompt(line[..1], color) + line[1..] : line
-            );
+            if (line.Length < markerWidth || !line.StartsWith('>') && !line.StartsWith('!'))
+            {
+                styled.Add(line);
+                continue;
+            }
+
+            string marker = line[..markerWidth];
+            string tone = bashMode
+                ? LivePalette.Accent(marker, color)
+                : LivePalette.Prompt(marker, color);
+            styled.Add(tone + line[markerWidth..]);
         }
 
         return styled;
     }
+
+    /// <summary>The empty bash-mode prompt: the accent-toned <c>! </c> marker and nothing else.</summary>
+    private static string BashPromptLine(int width, ColorSystemSupport color) =>
+        LivePalette.Accent(CellText.Clip("! ", width), color);
 
     private static string ThinkingLabel(int elapsedSeconds) =>
         FormattableString.Invariant($"⠹ thinking… {elapsedSeconds}s");

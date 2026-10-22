@@ -344,6 +344,15 @@ internal sealed partial class InteractiveSession : IDisposable
                     catch (OperationCanceledException) { }
                 }
 
+                if (_bashRun is { } bashRun)
+                {
+                    try
+                    {
+                        await bashRun;
+                    }
+                    catch (OperationCanceledException) { }
+                }
+
                 await DisposeExtensionsAsync();
                 _workspaceServices?.Dispose();
                 _workspaceServices = null;
@@ -930,10 +939,24 @@ internal sealed partial class InteractiveSession : IDisposable
         switch (KeyRouter.Route(key))
         {
             case RoutedKey.Edit:
+                bool wasEmpty = _input.Text.Length == 0;
                 _input = InputLine.Apply(_input, key);
                 _historyDraft = null;
-                _live.SetInput(_input);
-                RefreshAutocomplete(IsTextEdit(key));
+                if (TryEnterBashMode(wasEmpty, key))
+                {
+                    break;
+                }
+
+                _live.SetInput(_input, _bashMode);
+                if (_bashMode)
+                {
+                    CloseAutocomplete();
+                }
+                else
+                {
+                    RefreshAutocomplete(IsTextEdit(key));
+                }
+
                 break;
             case RoutedKey.Submit:
                 if (_autocomplete is not null && !IsExactAutocompleteMatch())
@@ -951,7 +974,14 @@ internal sealed partial class InteractiveSession : IDisposable
                     break;
                 }
 
+                if (_bashMode)
+                {
+                    LeaveBashMode(restore: true);
+                    break;
+                }
+
                 _runCancellation?.Cancel();
+                _bashCancellation?.Cancel();
                 break;
             case RoutedKey.ClearOrQuit:
                 HandleCtrlC();
@@ -1027,6 +1057,12 @@ internal sealed partial class InteractiveSession : IDisposable
 
     private async Task SubmitAsync(CancellationToken ct)
     {
+        if (_bashMode)
+        {
+            await SubmitBashAsync(ct);
+            return;
+        }
+
         string submitted = _input.Text;
         if (string.IsNullOrWhiteSpace(submitted))
         {
@@ -1065,6 +1101,12 @@ internal sealed partial class InteractiveSession : IDisposable
         CancellationToken ct
     )
     {
+        if (_bashRunning)
+        {
+            Notify("a bash command is running — wait for it to finish", NoticeLevel.Warning);
+            return;
+        }
+
         // The previous notice clears as the submission arrives, before the hook chain runs: a
         // slow-hook event posted while the input dispatches must survive (it would otherwise be
         // cleared in the same tick and never render).
@@ -1310,6 +1352,17 @@ internal sealed partial class InteractiveSession : IDisposable
 
     private void NavigatePrevious()
     {
+        if (_bashMode)
+        {
+            _bashHistoryDraft ??= _input.Text;
+            if (_bashHistory.TryPrevious(out string command))
+            {
+                SetHistoryInput(command);
+            }
+
+            return;
+        }
+
         _historyDraft ??= _input.Text;
         if (_history.TryPrevious(out string text))
         {
@@ -1319,6 +1372,23 @@ internal sealed partial class InteractiveSession : IDisposable
 
     private void NavigateNext()
     {
+        if (_bashMode)
+        {
+            if (_bashHistory.TryNext(out string command))
+            {
+                SetHistoryInput(command);
+                return;
+            }
+
+            if (_bashHistoryDraft is { } bashDraft)
+            {
+                _bashHistoryDraft = null;
+                SetHistoryInput(bashDraft);
+            }
+
+            return;
+        }
+
         if (_history.TryNext(out string text))
         {
             SetHistoryInput(text);
@@ -1337,12 +1407,15 @@ internal sealed partial class InteractiveSession : IDisposable
     {
         CloseAutocomplete();
         _input = new InputLineState(text, text.Length);
-        _live.SetInput(_input);
+        _live.SetInput(_input, _bashMode);
     }
 
     private void SetInput(string text)
     {
         CloseAutocomplete();
+        _bashMode = false;
+        _bashSilent = false;
+        _bashHistoryDraft = null;
         _input = new InputLineState(text, text.Length);
         _historyDraft = null;
         _live.SetInput(_input);

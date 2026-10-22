@@ -104,7 +104,10 @@ internal sealed class LiveArea : IDisposable
     /// <summary>Sets the live thinking block's text; null clears the block.</summary>
     public void SetThinking(string? text) => Post(new ThinkingInput(text, _scheduler.Now));
 
-    public void SetInput(InputLineState state) => Post(new InputStateInput(state));
+    public void SetInput(InputLineState state) => SetInput(state, bashMode: false);
+
+    public void SetInput(InputLineState state, bool bashMode) =>
+        Post(new InputStateInput(state, bashMode));
 
     public void SetNotice(string? notice) => Post(new NoticeInput(notice));
 
@@ -284,7 +287,11 @@ internal sealed class LiveArea : IDisposable
         input switch
         {
             KeyInput key => state with { Input = InputLine.Apply(state.Input, key.Key) },
-            InputStateInput inputState => state with { Input = inputState.State },
+            InputStateInput inputState => state with
+            {
+                Input = inputState.State,
+                BashMode = inputState.BashMode,
+            },
             ResizeInput resize => state with { Size = resize.Size },
             SpinnerTick tick => state with
             {
@@ -383,7 +390,7 @@ internal sealed class LiveArea : IDisposable
 
     private sealed record KeyInput(KeyEvent Key) : LiveAreaInput;
 
-    private sealed record InputStateInput(InputLineState State) : LiveAreaInput;
+    private sealed record InputStateInput(InputLineState State, bool BashMode) : LiveAreaInput;
 
     private sealed record ResizeInput(ConsoleSize Size) : LiveAreaInput;
 

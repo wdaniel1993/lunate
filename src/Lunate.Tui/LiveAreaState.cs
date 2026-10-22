@@ -54,6 +54,9 @@ internal sealed record LiveAreaState
     /// <summary>The open autocomplete list; null while closed (design D4).</summary>
     public AutocompleteState? Autocomplete { get; init; }
 
+    /// <summary>Whether the input is in bash mode and renders the <c>! </c> prompt.</summary>
+    public bool BashMode { get; init; }
+
     public string? Loading { get; init; }
 
     /// <summary>The live thinking block; null while no reasoning streams.</summary>

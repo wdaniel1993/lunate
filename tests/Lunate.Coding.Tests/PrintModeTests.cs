@@ -37,6 +37,28 @@ public sealed class PrintModeTests
     }
 
     [Fact]
+    public async Task A_bang_prefixed_prompt_stays_a_prompt()
+    {
+        using var temp = new TempDirectory();
+        var client = new ScriptedChatClient().Enqueue(Scripts.Text("answer"), Scripts.Stop());
+        PrintModeOptions options = PrintModeTestSupport.BaseOptions(
+            temp,
+            new FakeChatClientFactory(client)
+        ) with
+        {
+            Prompt = "!echo hi",
+        };
+
+        (int exitCode, string output, string errors) = await PrintModeTestSupport.RunAsync(options);
+
+        Assert.Equal(0, exitCode);
+        Assert.Equal("answer", output);
+        Assert.Empty(errors);
+        ChatMessage prompt = client.Requests[0][^1];
+        Assert.Equal("!echo hi", Assert.Single(prompt.Contents.OfType<TextContent>()).Text);
+    }
+
+    [Fact]
     public async Task Only_the_last_assistant_message_reaches_stdout()
     {
         using var temp = new TempDirectory();
