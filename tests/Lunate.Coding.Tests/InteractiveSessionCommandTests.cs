@@ -87,12 +87,15 @@ public sealed class InteractiveSessionCommandTests
         host.Console.SendText("/help");
         host.Console.SendEnter();
         // "extensions" also appears in the welcome footer; wait on text only /help prints.
-        await WaitForScrollbackAsync(host, "/compact  — compact the conversation now");
+        await WaitForScrollbackAsync(
+            host,
+            "/compact  — compact the conversation now, optionally focusing on <text>"
+        );
 
         Assert.Contains(
             """
             session
-              /compact  — compact the conversation now
+              /compact  — compact the conversation now, optionally focusing on <text>
               /context  — show the context window and subagent budgets
               /help     — list the commands
               /name     — set or show the session title
@@ -286,6 +289,110 @@ public sealed class InteractiveSessionCommandTests
 
         host.Console.Complete();
         await run;
+    }
+
+    [Fact]
+    public async Task Compact_with_focus_passes_the_text_beside_the_fixed_sections()
+    {
+        using var host = new InteractiveSessionHost(configureHarness: options =>
+            options with
+            {
+                CompactionKeepTurns = 1,
+            }
+        );
+        host.Client.Enqueue(Scripts.Text("a1"), Scripts.Stop());
+        host.Client.Enqueue(Scripts.Text("a2"), Scripts.Stop());
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+        await RunTwoTurnsAsync(host);
+
+        host.Console.SendText("/compact focus on the flaky test");
+        host.Console.SendEnter();
+        await WaitForFrameAsync(host, "context compacted");
+
+        IReadOnlyList<ChatMessage> summarization = Assert.Single(host.Client.SummaryRequests);
+        string prompt = summarization[0].Text;
+        Assert.StartsWith(CompactionReducer.SummarizationPrompt, prompt, StringComparison.Ordinal);
+        Assert.Contains("focus on the flaky test", prompt, StringComparison.Ordinal);
+        foreach (string section in new[] { "Goal:", "Decisions:", "Files:", "Open problems:" })
+        {
+            Assert.Contains(section, prompt, StringComparison.Ordinal);
+        }
+
+        host.Console.Complete();
+        await run;
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task Compact_without_instructions_uses_only_the_fixed_prompt(string argument)
+    {
+        using var host = new InteractiveSessionHost(configureHarness: options =>
+            options with
+            {
+                CompactionKeepTurns = 1,
+            }
+        );
+        host.Client.Enqueue(Scripts.Text("a1"), Scripts.Stop());
+        host.Client.Enqueue(Scripts.Text("a2"), Scripts.Stop());
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+        await RunTwoTurnsAsync(host);
+
+        host.Console.SendText("/compact" + argument);
+        host.Console.SendEnter();
+        await WaitForFrameAsync(host, "context compacted");
+
+        IReadOnlyList<ChatMessage> summarization = Assert.Single(host.Client.SummaryRequests);
+        Assert.Equal(CompactionReducer.SummarizationPrompt, summarization[0].Text);
+
+        host.Console.Complete();
+        await run;
+    }
+
+    [Fact]
+    public async Task Compact_refuses_more_than_a_thousand_characters_without_summarizing()
+    {
+        using var host = new InteractiveSessionHost(configureHarness: options =>
+            options with
+            {
+                CompactionKeepTurns = 1,
+            }
+        );
+        host.Console.Size = new Lunate.Tui.ConsoleSize(120, 24);
+        host.Client.Enqueue(Scripts.Text("a1"), Scripts.Stop());
+        host.Client.Enqueue(Scripts.Text("a2"), Scripts.Stop());
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+        await RunTwoTurnsAsync(host);
+
+        host.Console.SendText("/compact " + new string('x', 1001));
+        host.Console.SendEnter();
+        await WaitForFrameAsync(host, "compact instructions are limited to 1,000 characters");
+
+        Assert.Empty(host.Client.SummaryRequests);
+        Session session = Session.Load(
+            Assert.Single(Directory.GetFiles(host.Temp.File("sessions"), "*.jsonl"))
+        );
+        Assert.Empty(session.Entries.OfType<SessionCompactionEntry>());
+        Assert.Equal(4, session.Entries.OfType<SessionMessageEntry>().Count());
+        Assert.False(host.Session.IsRunning);
+
+        host.Console.Complete();
+        await run;
+    }
+
+    private static async Task RunTwoTurnsAsync(InteractiveSessionHost host)
+    {
+        host.Console.SendText("one");
+        host.Console.SendEnter();
+        await host.Client.WaitForCallAsync(1);
+        await WaitForScrollbackAsync(host, "a1");
+        host.Console.SendText("two");
+        host.Console.SendEnter();
+        await host.Client.WaitForCallAsync(2);
+        await WaitForScrollbackAsync(host, "a2");
     }
 
     [Fact]

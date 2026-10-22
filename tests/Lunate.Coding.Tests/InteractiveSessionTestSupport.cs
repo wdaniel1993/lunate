@@ -238,6 +238,9 @@ internal sealed class GatedChatClient : IChatClient
     /// <summary>The options each streaming call arrived with, indexed like <see cref="Requests"/>.</summary>
     public List<ChatOptions?> RequestOptions { get; } = [];
 
+    /// <summary>The non-streaming requests (compaction summarization), in call order.</summary>
+    public List<IReadOnlyList<ChatMessage>> SummaryRequests { get; } = [];
+
     public GatedChatClient Enqueue(params ChatResponseUpdate[] updates)
     {
         _scripts.Enqueue(new Script(updates, null));
@@ -302,10 +305,13 @@ internal sealed class GatedChatClient : IChatClient
         IEnumerable<ChatMessage> messages,
         ChatOptions? options = null,
         CancellationToken cancellationToken = default
-    ) =>
-        Task.FromResult(
+    )
+    {
+        SummaryRequests.Add([.. messages]);
+        return Task.FromResult(
             new ChatResponse(new ChatMessage(ChatRole.Assistant, "summary of older turns"))
         );
+    }
 
     public async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
         IEnumerable<ChatMessage> messages,
