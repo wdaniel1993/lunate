@@ -31,6 +31,8 @@ public sealed class InputFrameGoldenTests
         "box-filled",
         "box-multiline",
         "box-multiline-scroll",
+        "box-bash-empty",
+        "box-bash",
         "list-command",
         "list-command-selected",
         "list-file",
@@ -72,6 +74,7 @@ public sealed class InputFrameGoldenTests
 
     [Theory]
     [InlineData("box-filled")]
+    [InlineData("box-bash")]
     [InlineData("list-command-selected")]
     public void The_ascii_input_frame_matches_the_committed_golden(string name)
     {
@@ -122,6 +125,12 @@ public sealed class InputFrameGoldenTests
                     ),
                     12 * "step 00 of the box".Length + 11
                 ),
+            },
+            "box-bash-empty" => state with { BashMode = true },
+            "box-bash" => state with
+            {
+                Input = new InputLineState("git status", 10),
+                BashMode = true,
             },
             "list-command" => state with
             {
