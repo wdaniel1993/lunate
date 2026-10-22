@@ -31,3 +31,4 @@
 - [x] 4.4 Fast gate: `dotnet tool restore`, `dotnet csharpier check .`, `openspec validate follow-up-queue --strict`, build, focused Tui/Coding suites.
 - [x] 4.5 Full `scripts/verify.sh` on the final head.
 - [x] 4.6 Commit: `docs(openspec): record the follow-up queue verification`.
+- [x] 4.7 Rekey: Enter queues while a turn runs and Alt+Enter steers; routing matrix, session tests, guide and tape updated.

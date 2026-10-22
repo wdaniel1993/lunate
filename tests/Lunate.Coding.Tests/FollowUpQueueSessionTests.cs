@@ -5,7 +5,7 @@ namespace Lunate.Coding.Tests;
 public sealed class FollowUpQueueSessionTests
 {
     [Fact]
-    public async Task Alt_enter_while_a_turn_runs_queues_and_clears_the_line()
+    public async Task Enter_while_a_turn_runs_queues_and_clears_the_line()
     {
         using var host = new InteractiveSessionHost();
         host.Client.Enqueue(Scripts.Text("first"), Scripts.Stop());
@@ -56,7 +56,7 @@ public sealed class FollowUpQueueSessionTests
     }
 
     [Fact]
-    public async Task Enter_while_a_turn_runs_steers_and_queues_nothing()
+    public async Task Alt_enter_while_a_turn_runs_steers_and_queues_nothing()
     {
         using var host = new InteractiveSessionHost();
         host.Client.Enqueue(Scripts.Text("first"), Scripts.Stop());
@@ -70,13 +70,15 @@ public sealed class FollowUpQueueSessionTests
         await host.Client.WaitForCallAsync(1);
         host.Console.SendText("steer");
         await host.WaitUntilAsync(() => host.Session.Input.Text == "steer");
-        host.Console.SendEnter();
+        host.Console.SendAltEnter();
         await host.WaitUntilAsync(() => host.Session.QueuedSteeringCount == 1);
 
         Assert.Equal(0, host.Session.QueuedFollowUpCount);
+        Assert.Equal(string.Empty, host.Session.Input.Text);
 
         host.Client.Release(1);
         await host.Client.WaitForCallAsync(2);
+        Assert.Equal("steer", host.Client.Requests[1][^1].Text);
         host.Console.Complete();
         await run;
     }
@@ -207,7 +209,7 @@ public sealed class FollowUpQueueSessionTests
         await host.Client.WaitForCallAsync(1);
         host.Console.SendText("/quit");
         await host.WaitUntilAsync(() => host.Session.Input.Text == "/quit");
-        host.Console.SendAltEnter();
+        host.Console.SendEnter();
         await host.WaitUntilAsync(() =>
         {
             host.Advance(33);
@@ -245,7 +247,7 @@ public sealed class FollowUpQueueSessionTests
 
         host.Console.SendText("sixth");
         await host.WaitUntilAsync(() => host.Session.Input.Text == "sixth");
-        host.Console.SendAltEnter();
+        host.Console.SendEnter();
         await host.WaitUntilAsync(() =>
         {
             host.Advance(33);
@@ -262,7 +264,7 @@ public sealed class FollowUpQueueSessionTests
     }
 
     [Fact]
-    public async Task Alt_enter_queues_an_attachment_with_the_text()
+    public async Task Enter_queues_an_attachment_with_the_text()
     {
         using var host = new InteractiveSessionHost();
         string image = host.Temp.File("shot.png");
@@ -431,7 +433,7 @@ public sealed class FollowUpQueueSessionTests
     {
         host.Console.SendText(text);
         await host.WaitUntilAsync(() => host.Session.Input.Text == text);
-        host.Console.SendAltEnter();
+        host.Console.SendEnter();
         await host.WaitUntilAsync(() => host.Session.QueuedFollowUpCount == expected);
     }
 }

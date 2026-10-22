@@ -189,9 +189,9 @@ public sealed class InteractiveSessionCommandTests
         foreach (string command in new[] { "/new", "/resume", "/model", "/compact" })
         {
             host.Console.SendText(command);
-            host.Console.SendEnter();
+            host.Console.SendAltEnter();
             host.Console.SendText("probe");
-            host.Console.SendEnter();
+            host.Console.SendAltEnter();
             probes++;
             int expected = probes;
             await host.WaitUntilAsync(() => host.Session.QueuedSteeringCount == expected);
@@ -199,7 +199,7 @@ public sealed class InteractiveSessionCommandTests
 
         // The probes clear the notice on their way into steering, so refresh it once more.
         host.Console.SendText("/compact");
-        host.Console.SendEnter();
+        host.Console.SendAltEnter();
         await WaitForFrameAsync(host, "a turn is running");
 
         Assert.Contains("a turn is running", host.LastFrame, StringComparison.Ordinal);

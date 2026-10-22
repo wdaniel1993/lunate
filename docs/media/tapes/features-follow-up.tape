@@ -16,10 +16,10 @@ Type "Add validation to TodoList.Add: reject null, empty and whitespace-only tit
 Enter
 Sleep 4s
 Type "Then run the tests."
-Alt+Enter
+Enter
 Sleep 1s
 Type "And summarize the change."
-Alt+Enter
+Enter
 Sleep 1s
 Type "a"
 Enter

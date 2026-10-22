@@ -944,7 +944,8 @@ internal sealed partial class InteractiveSession : IDisposable
             case RoutedKey.FollowUp:
                 if (_bashMode)
                 {
-                    EditInput(key);
+                    // Enter stays bash mode's run key; a bash line is never queued.
+                    await SubmitAsync(ct);
                     break;
                 }
 
@@ -954,6 +955,13 @@ internal sealed partial class InteractiveSession : IDisposable
                 TakeFollowUpBack();
                 break;
             case RoutedKey.Submit:
+                if (_bashMode && key.Alt)
+                {
+                    // Alt+Enter is the newline key in bash mode; a bash line cannot steer.
+                    EditInput(key);
+                    break;
+                }
+
                 if (_autocomplete is not null && !IsExactAutocompleteMatch())
                 {
                     AcceptAutocomplete();

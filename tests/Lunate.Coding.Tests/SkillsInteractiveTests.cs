@@ -408,7 +408,7 @@ public sealed class SkillsInteractiveTests
         await host.Client.WaitForCallAsync(1);
 
         host.Console.SendText("/skill:greek");
-        host.Console.SendEnter();
+        host.Console.SendAltEnter();
         await host.WaitUntilAsync(() => host.Session.QueuedSteeringCount == 1);
 
         host.Client.Release(1);

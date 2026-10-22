@@ -218,7 +218,7 @@ public sealed class InteractiveSessionStreamingTests
         host.Console.SendEnter();
         await host.Client.WaitForCallAsync(1);
         host.Console.SendText("steer");
-        host.Console.SendEnter();
+        host.Console.SendAltEnter();
         await host.WaitUntilAsync(() =>
         {
             host.Advance(33);

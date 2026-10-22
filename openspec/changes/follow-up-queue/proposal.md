@@ -6,8 +6,9 @@ A follow-up queue separates the two: Enter still steers, Alt+Enter lines the mes
 
 ## What Changes
 
-- **Enter while a turn runs** queues the current input — text and attachments — and clears the line. The send key never interrupts; the queue runs in order once the turn finishes, one message at a time.
-- **Alt+Enter** stays the modifier: a newline while idle, a steering injection while a turn runs.
+- **Enter while a turn runs** queues the current input — text and attachments — and clears the line. By default the send key never interrupts; the queue runs in order once the turn finishes, one message at a time.
+- **Steering becomes a setting**: `prompt.busyEnter = steer` makes Enter inject into the running turn instead of queueing. The default is `queue`.
+- **Alt+Enter and Ctrl+J are newlines in every state**, so a multi-line follow-up can still be composed while a turn runs.
 - **Alt+Up** pulls the newest queued message back into the editor when the line is empty, so a queued mistake can be fixed before it runs.
 - **Esc with nothing running and a non-empty queue** returns every queued message to the editor in order, separated by newlines.
 - The prompt shows a **queue indicator** (`2 queued`) beside the mode hint, so a queue is never invisible.

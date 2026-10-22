@@ -76,7 +76,7 @@ public sealed class InteractiveSessionEndToEndTests
         host.Console.SendEnter();
         await host.Client.WaitForCallAsync(1);
         host.Console.SendText("steer mid-run");
-        host.Console.SendEnter();
+        host.Console.SendAltEnter();
         await host.WaitUntilAsync(() => host.Session.QueuedSteeringCount == 1);
         host.Client.Release(1);
         await host.Client.WaitForCallAsync(2);
@@ -102,7 +102,7 @@ public sealed class InteractiveSessionEndToEndTests
         host.Console.SendEnter();
         await host.Client.WaitForCallAsync(6);
         host.Console.SendText("unsent steering");
-        host.Console.SendEnter();
+        host.Console.SendAltEnter();
         await host.WaitUntilAsync(() => host.Session.QueuedSteeringCount == 1);
         host.Console.SendEscape();
         await host.WaitUntilAsync(() => !host.Session.IsRunning);

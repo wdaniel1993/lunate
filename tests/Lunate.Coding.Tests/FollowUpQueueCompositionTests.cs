@@ -26,12 +26,12 @@ public sealed class FollowUpQueueCompositionTests
 
         host.Console.SendText("first follow-up");
         await host.WaitUntilAsync(() => host.Session.Input.Text == "first follow-up");
-        host.Console.SendAltEnter();
+        host.Console.SendEnter();
         await host.WaitUntilAsync(() => host.Session.QueuedFollowUpCount == 1);
 
         host.Console.SendText("second follow-up");
         await host.WaitUntilAsync(() => host.Session.Input.Text == "second follow-up");
-        host.Console.SendAltEnter();
+        host.Console.SendEnter();
         await host.WaitUntilAsync(() => host.Session.QueuedFollowUpCount == 2);
         Assert.Equal(string.Empty, host.Session.Input.Text);
 

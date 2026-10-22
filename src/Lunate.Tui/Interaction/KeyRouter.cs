@@ -18,10 +18,11 @@ public enum RoutedKey
 }
 
 /// <summary>
-/// Pure classification of decoded <see cref="KeyEvent"/>s into prompt intents. Newlines
-/// (Alt+Enter, Ctrl+J, and best-effort Shift+Enter) stay <see cref="RoutedKey.Edit"/> while the
-/// prompt is idle so <see cref="InputLine"/> handles them; Alt+Enter during a turn is the
-/// follow-up intent. Ctrl+C routes to <see cref="RoutedKey.ClearOrQuit"/> and never to cancel.
+/// Pure classification of decoded <see cref="KeyEvent"/>s into prompt intents. Enter is the send
+/// key in both states: it submits an idle prompt and queues a follow-up while a turn runs, so it
+/// never interrupts. Alt+Enter (and Ctrl+J) inserts a newline while the prompt is idle; while a
+/// turn runs Alt+Enter steers it through the normal submission path. Ctrl+C routes to
+/// <see cref="RoutedKey.ClearOrQuit"/> and never to cancel.
 /// </summary>
 public static class KeyRouter
 {
@@ -29,7 +30,9 @@ public static class KeyRouter
         key switch
         {
             { Kind: KeyKind.Character, Ctrl: true, Alt: false, Text: "j" } => RoutedKey.Edit,
-            { Kind: KeyKind.Enter, Ctrl: false, Alt: true } when turnRunning => RoutedKey.FollowUp,
+            { Kind: KeyKind.Enter, Ctrl: false, Alt: false, Shift: false } when turnRunning =>
+                RoutedKey.FollowUp,
+            { Kind: KeyKind.Enter, Ctrl: false, Alt: true } when turnRunning => RoutedKey.Submit,
             { Kind: KeyKind.Enter, Ctrl: false, Alt: false, Shift: false } => RoutedKey.Submit,
             { Kind: KeyKind.Enter } => RoutedKey.Edit,
             { Kind: KeyKind.Escape } => RoutedKey.Cancel,

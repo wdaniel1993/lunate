@@ -40,9 +40,9 @@ public sealed class InteractiveSessionSteeringTests
         host.Console.SendEnter();
         await host.Client.WaitForCallAsync(1);
         host.Console.SendText("steer one");
-        host.Console.SendEnter();
+        host.Console.SendAltEnter();
         host.Console.SendText("steer two");
-        host.Console.SendEnter();
+        host.Console.SendAltEnter();
         await host.WaitUntilAsync(() => host.Session.QueuedSteeringCount == 2);
         host.Client.Release(1);
         await host.Client.WaitForCallAsync(2);
@@ -83,7 +83,7 @@ public sealed class InteractiveSessionSteeringTests
         host.Console.SendEnter();
         await host.Client.WaitForCallAsync(1);
         host.Console.SendText("steer");
-        host.Console.SendEnter();
+        host.Console.SendAltEnter();
         await host.WaitUntilAsync(() => host.Session.QueuedSteeringCount == 1);
         host.Client.Release(1);
         await host.Client.WaitForCallAsync(2);
@@ -117,7 +117,7 @@ public sealed class InteractiveSessionSteeringTests
         host.Console.SendEnter();
         await host.Client.WaitForCallAsync(1);
         host.Console.SendText("unsent");
-        host.Console.SendEnter();
+        host.Console.SendAltEnter();
         await host.WaitUntilAsync(() => host.Session.QueuedSteeringCount == 1);
         host.Console.SendEscape();
         await host.WaitUntilAsync(() => !host.Session.IsRunning);
@@ -148,7 +148,7 @@ public sealed class InteractiveSessionSteeringTests
         host.Console.SendEnter();
         await host.Client.WaitForCallAsync(1);
         host.Console.SendText("again");
-        host.Console.SendEnter();
+        host.Console.SendAltEnter();
         await host.WaitUntilAsync(() => host.Session.QueuedSteeringCount == 1);
         host.Client.Release(1);
         await host.Client.WaitForCallAsync(2);
@@ -160,7 +160,7 @@ public sealed class InteractiveSessionSteeringTests
     }
 
     [Fact]
-    public async Task Enter_while_running_is_injected_before_the_next_model_call()
+    public async Task Alt_enter_while_running_is_injected_before_the_next_model_call()
     {
         using var host = new InteractiveSessionHost();
         File.WriteAllText(host.Temp.File("a.txt"), "contents");
@@ -176,7 +176,7 @@ public sealed class InteractiveSessionSteeringTests
         host.Console.SendEnter();
         await host.Client.WaitForCallAsync(1);
         host.Console.SendText("steer");
-        host.Console.SendEnter();
+        host.Console.SendAltEnter();
         await host.WaitUntilAsync(() => host.Session.QueuedSteeringCount == 1);
         host.Client.Release(1);
         await host.Client.WaitForCallAsync(2);
@@ -203,7 +203,7 @@ public sealed class InteractiveSessionSteeringTests
         host.Console.SendEnter();
         await host.Client.WaitForCallAsync(1);
         host.Console.SendText("unsent");
-        host.Console.SendEnter();
+        host.Console.SendAltEnter();
         await host.WaitUntilAsync(() => host.Session.QueuedSteeringCount == 1);
         host.Console.SendEscape();
         await host.WaitUntilAsync(() => !host.Session.IsRunning);
@@ -228,9 +228,9 @@ public sealed class InteractiveSessionSteeringTests
         host.Console.SendEnter();
         await host.Client.WaitForCallAsync(1);
         host.Console.SendText("first");
-        host.Console.SendEnter();
+        host.Console.SendAltEnter();
         host.Console.SendText("second");
-        host.Console.SendEnter();
+        host.Console.SendAltEnter();
         await host.WaitUntilAsync(() => host.Session.QueuedSteeringCount == 2);
         host.Console.SendEscape();
         await host.WaitUntilAsync(() => !host.Session.IsRunning);
@@ -258,7 +258,7 @@ public sealed class InteractiveSessionSteeringTests
         host.Console.SendEnter();
         await host.Client.WaitForCallAsync(1);
         host.Console.SendText("again");
-        host.Console.SendEnter();
+        host.Console.SendAltEnter();
         await host.WaitUntilAsync(() => host.Session.QueuedSteeringCount == 1);
         host.Client.Release(1);
         await host.Client.WaitForCallAsync(2);
@@ -288,7 +288,7 @@ public sealed class InteractiveSessionSteeringTests
         host.Console.SendEnter();
         await host.Client.WaitForCallAsync(2);
         host.Console.SendText("unsent");
-        host.Console.SendEnter();
+        host.Console.SendAltEnter();
         await host.WaitUntilAsync(() => host.Session.QueuedSteeringCount == 1);
         host.Client.Release(2);
         await host.WaitUntilAsync(() => !host.Session.IsRunning);
@@ -322,7 +322,7 @@ public sealed class InteractiveSessionSteeringTests
         host.Console.SendEnter();
         await host.Client.WaitForCallAsync(1);
         host.Console.SendText("unsent");
-        host.Console.SendEnter();
+        host.Console.SendAltEnter();
         await host.WaitUntilAsync(() => host.Session.QueuedSteeringCount == 1);
         host.Client.Release(1);
         await host.WaitUntilAsync(() => !host.Session.IsRunning);

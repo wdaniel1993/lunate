@@ -20,7 +20,8 @@ public sealed class KeyRouterTests
 
     private static readonly (KeyEvent Key, RoutedKey Expected)[] BusyTable =
     [
-        (Key(KeyKind.Enter, alt: true), RoutedKey.FollowUp),
+        (Key(KeyKind.Enter), RoutedKey.FollowUp),
+        (Key(KeyKind.Enter, alt: true), RoutedKey.Submit),
     ];
 
     public static TheoryData<KeyEvent, RoutedKey> Bindings
@@ -37,10 +38,29 @@ public sealed class KeyRouterTests
         }
     }
 
+    public static TheoryData<KeyEvent, RoutedKey> BusyBindings
+    {
+        get
+        {
+            var data = new TheoryData<KeyEvent, RoutedKey>();
+            foreach (var (key, expected) in BusyTable)
+            {
+                data.Add(key, expected);
+            }
+
+            return data;
+        }
+    }
+
     [Theory]
     [MemberData(nameof(Bindings))]
     public void Every_guide_binding_routes_to_its_own_intent(KeyEvent key, RoutedKey expected) =>
         Assert.Equal(expected, KeyRouter.Route(key));
+
+    [Theory]
+    [MemberData(nameof(BusyBindings))]
+    public void Every_busy_binding_routes_to_its_own_intent(KeyEvent key, RoutedKey expected) =>
+        Assert.Equal(expected, KeyRouter.Route(key, turnRunning: true));
 
     [Fact]
     public void Every_binding_has_a_distinct_intent()
@@ -65,13 +85,25 @@ public sealed class KeyRouterTests
     }
 
     [Fact]
-    public void Alt_enter_follows_up_only_while_a_turn_runs()
+    public void Enter_queues_only_while_a_turn_runs()
+    {
+        KeyEvent key = Key(KeyKind.Enter);
+
+        Assert.Equal(RoutedKey.Submit, KeyRouter.Route(key));
+        Assert.Equal(RoutedKey.FollowUp, KeyRouter.Route(key, turnRunning: true));
+        Assert.NotEqual(RoutedKey.Cancel, KeyRouter.Route(key, turnRunning: true));
+        Assert.NotEqual(RoutedKey.Edit, KeyRouter.Route(key, turnRunning: true));
+    }
+
+    [Fact]
+    public void Alt_enter_steers_only_while_a_turn_runs()
     {
         KeyEvent key = Key(KeyKind.Enter, alt: true);
 
         Assert.Equal(RoutedKey.Edit, KeyRouter.Route(key));
-        Assert.Equal(RoutedKey.FollowUp, KeyRouter.Route(key, turnRunning: true));
-        Assert.NotEqual(RoutedKey.Submit, KeyRouter.Route(key, turnRunning: true));
+        Assert.Equal(RoutedKey.Submit, KeyRouter.Route(key, turnRunning: true));
+        Assert.NotEqual(RoutedKey.FollowUp, KeyRouter.Route(key, turnRunning: true));
+        Assert.NotEqual(RoutedKey.Cancel, KeyRouter.Route(key, turnRunning: true));
     }
 
     [Fact]
