@@ -23,9 +23,9 @@
 
 ## 4. History
 
-- [ ] 4.1 Red tests: a bash line is recalled by Up in bash mode and not in prompt mode; a prompt is not recalled in bash mode; the existing prompt history file format is unchanged.
-- [ ] 4.2 Add the separate in-memory bash history ring and route Up per mode.
-- [ ] 4.3 Commit: `feat(tui): give bash mode its own history`.
+- [x] 4.1 Red tests: a bash line is recalled by Up in bash mode and not in prompt mode; a prompt is not recalled in bash mode; the existing prompt history file format is unchanged.
+- [x] 4.2 Add the separate in-memory bash history ring and route Up per mode.
+- [x] 4.3 Commit: `feat(tui): give bash mode its own history`.
 
 ## 5. Verification and documentation
 

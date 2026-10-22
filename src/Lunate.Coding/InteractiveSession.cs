@@ -1352,6 +1352,17 @@ internal sealed partial class InteractiveSession : IDisposable
 
     private void NavigatePrevious()
     {
+        if (_bashMode)
+        {
+            _bashHistoryDraft ??= _input.Text;
+            if (_bashHistory.TryPrevious(out string command))
+            {
+                SetHistoryInput(command);
+            }
+
+            return;
+        }
+
         _historyDraft ??= _input.Text;
         if (_history.TryPrevious(out string text))
         {
@@ -1361,6 +1372,23 @@ internal sealed partial class InteractiveSession : IDisposable
 
     private void NavigateNext()
     {
+        if (_bashMode)
+        {
+            if (_bashHistory.TryNext(out string command))
+            {
+                SetHistoryInput(command);
+                return;
+            }
+
+            if (_bashHistoryDraft is { } bashDraft)
+            {
+                _bashHistoryDraft = null;
+                SetHistoryInput(bashDraft);
+            }
+
+            return;
+        }
+
         if (_history.TryNext(out string text))
         {
             SetHistoryInput(text);
@@ -1387,6 +1415,7 @@ internal sealed partial class InteractiveSession : IDisposable
         CloseAutocomplete();
         _bashMode = false;
         _bashSilent = false;
+        _bashHistoryDraft = null;
         _input = new InputLineState(text, text.Length);
         _historyDraft = null;
         _live.SetInput(_input);

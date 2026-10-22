@@ -14,6 +14,8 @@ internal sealed partial class InteractiveSession
     private long _bashCallSequence;
     private Task? _bashRun;
     private CancellationTokenSource? _bashCancellation;
+    private readonly BashHistory _bashHistory = new();
+    private string? _bashHistoryDraft;
 
     /// <summary>Whether the input line is in bash mode (the tests' view).</summary>
     internal bool IsBashMode => _bashMode;
@@ -48,6 +50,9 @@ internal sealed partial class InteractiveSession
             _bashMode = true;
             _bashSilent = silent;
             _input = new InputLineState(command, command.Length);
+            _historyDraft = null;
+            _bashHistoryDraft = null;
+            _bashHistory.Begin();
             CloseAutocomplete();
             _live.SetInput(_input, bashMode: true);
             return true;
@@ -75,6 +80,7 @@ internal sealed partial class InteractiveSession
         string text = restore ? prefix + _input.Text : string.Empty;
         _bashMode = false;
         _bashSilent = false;
+        _bashHistoryDraft = null;
         _input = new InputLineState(text, text.Length);
         _live.SetInput(_input);
     }
@@ -109,6 +115,7 @@ internal sealed partial class InteractiveSession
         }
 
         _bashRun = RunBashAsync(command, silent, ct);
+        _bashHistory.Add(command);
         return Task.CompletedTask;
     }
 
