@@ -173,6 +173,55 @@ public sealed class AgentCompactionTests
     }
 
     [Fact]
+    public async Task Forced_compaction_with_instructions_appends_the_focus_after_the_fixed_sections()
+    {
+        using var temp = new TempDirectory();
+        Session session = Session.Create(temp.File("s.jsonl"), "/work");
+        AppendTurn(session, "one", "noted one");
+        AppendTurn(session, "two", "noted two");
+        AppendTurn(session, "three", "noted three");
+        AppendTurn(session, "four", "noted four");
+        AppendTurn(session, "five", "noted five");
+        var client = new ScriptedChatClient().Enqueue(Summary("focused summary"));
+        AgentHarness harness = Harness(client, session);
+
+        Assert.True(await harness.CompactNowAsync("focus on the flaky test", Ct));
+
+        ScriptedRequest summarization = Assert.Single(client.Requests);
+        string prompt = summarization.Messages[0].Text;
+        Assert.StartsWith(CompactionReducer.SummarizationPrompt, prompt, StringComparison.Ordinal);
+        Assert.Contains("focus on the flaky test", prompt, StringComparison.Ordinal);
+        foreach (string section in new[] { "Goal:", "Decisions:", "Files:", "Open problems:" })
+        {
+            Assert.Contains(section, prompt, StringComparison.Ordinal);
+        }
+
+        SessionCompactionEntry entry = Assert.Single(
+            session.Entries.OfType<SessionCompactionEntry>()
+        );
+        Assert.Equal("focused summary", entry.Summary);
+    }
+
+    [Fact]
+    public async Task Forced_compaction_without_instructions_sends_only_the_fixed_prompt()
+    {
+        using var temp = new TempDirectory();
+        Session session = Session.Create(temp.File("s.jsonl"), "/work");
+        AppendTurn(session, "one", "noted one");
+        AppendTurn(session, "two", "noted two");
+        AppendTurn(session, "three", "noted three");
+        AppendTurn(session, "four", "noted four");
+        AppendTurn(session, "five", "noted five");
+        var client = new ScriptedChatClient().Enqueue(Summary("summary"));
+        AgentHarness harness = Harness(client, session);
+
+        Assert.True(await harness.CompactNowAsync(Ct));
+
+        ScriptedRequest summarization = Assert.Single(client.Requests);
+        Assert.Equal(CompactionReducer.SummarizationPrompt, summarization.Messages[0].Text);
+    }
+
+    [Fact]
     public async Task An_unknown_window_falls_back_to_the_documented_default_of_128k()
     {
         using var temp = new TempDirectory();

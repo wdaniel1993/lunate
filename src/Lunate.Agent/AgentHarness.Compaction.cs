@@ -26,9 +26,14 @@ public sealed partial class AgentHarness
 
     /// <summary>
     /// Compacts the history now, regardless of the size threshold; the surface <c>/compact</c>
-    /// binds to. Returns false when there is nothing older than the kept tail to summarize.
+    /// binds to. <paramref name="instructions"/> is optional focus for this call only: it is
+    /// appended after the fixed summarization sections and never stored. Returns false when there
+    /// is nothing older than the kept tail to summarize.
     /// </summary>
-    public async Task<bool> CompactNowAsync(CancellationToken ct = default)
+    public async Task<bool> CompactNowAsync(
+        string? instructions = null,
+        CancellationToken ct = default
+    )
     {
         if (Interlocked.CompareExchange(ref _runActive, 1, 0) != 0)
         {
@@ -39,7 +44,13 @@ public sealed partial class AgentHarness
 
         try
         {
-            return await ApplyCompactionAsync(RunIds.Next(), channel: null, InitialSections(), ct)
+            return await ApplyCompactionAsync(
+                    RunIds.Next(),
+                    channel: null,
+                    InitialSections(),
+                    instructions,
+                    ct
+                )
                 .ConfigureAwait(false);
         }
         finally
@@ -47,6 +58,10 @@ public sealed partial class AgentHarness
             Interlocked.Exchange(ref _runActive, 0);
         }
     }
+
+    /// <summary>Compacts the history now with the fixed prompt and no focus instructions.</summary>
+    public Task<bool> CompactNowAsync(CancellationToken ct) =>
+        CompactNowAsync(instructions: null, ct);
 
     /// <summary>
     /// Evaluates the trigger before a model request. The estimate is UTF-8 bytes / 4 of the composed
@@ -71,7 +86,8 @@ public sealed partial class AgentHarness
             return;
         }
 
-        await ApplyCompactionAsync(runId, channel, sections, ct).ConfigureAwait(false);
+        await ApplyCompactionAsync(runId, channel, sections, instructions: null, ct)
+            .ConfigureAwait(false);
     }
 
     /// <summary>
@@ -83,6 +99,7 @@ public sealed partial class AgentHarness
         string runId,
         AgentEventChannel? channel,
         IReadOnlyList<AgentPromptSection> sections,
+        string? instructions,
         CancellationToken ct
     )
     {
@@ -99,7 +116,7 @@ public sealed partial class AgentHarness
 
         string? provided = await ProvidedSummaryAsync(runId, part, ct).ConfigureAwait(false);
         CompactionReduction reduction = await _compactor
-            .ReduceWithDetailsAsync(_history, _summaryMessage, provided, ct)
+            .ReduceWithDetailsAsync(_history, _summaryMessage, provided, instructions, ct)
             .ConfigureAwait(false);
         if (reduction.SummaryMessage is not { } summaryMessage)
         {
