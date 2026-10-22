@@ -35,7 +35,7 @@ These claims age quickly, so the Phase 5 gate tests them head to head: the same 
 
 Every feature request and every OpenCode plan is checked against these seven rules; when in doubt, leave it out or make it an extension.
 
-1. **Primitives, not features.** The core ships four tools: `read`, `write`, `edit`, `bash`. Everything else (Roslyn, MCP) is opt-in.
+1. **Primitives, not features.** The core ships four tools: `read`, `write`, `edit`, `bash`. Everything else (Roslyn, MCP, the optional `grep`/`find`/`ls` search tools) is opt-in.
 2. **Robust, never silently wrong.** Tools tolerate harmless differences (line endings, indentation) but refuse anything ambiguous. Every fallback is visible: the result says which match tier was used and the TUI shows the diff.
 3. **Performance budgets are a gate.** Startup time and idle memory are measured in CI on every commit. Heavy components (Roslyn, MCP servers, extensions) load on first use, never at startup.
 4. **Small system prompt.** Under 1,000 tokens, asserted in a test — the base prompt; the session skills index is a separate section with its own cap. Project rules come from `AGENTS.md`, not from the harness.
@@ -339,6 +339,18 @@ Tool results are written for the model: short, factual, and every error says wha
 
 `read` also accepts PNG, JPEG, GIF and WebP images when the active model declares vision support. It returns the placeholder `[image <width>x<height>]` and carries the bytes to the model; a text-only model gets an error naming itself. Images are capped at 5 MB and 4,096 pixels per side, and downscaling is not available yet.
 
+**Optional search tools**
+
+`grep`, `find` and `ls` are off by default. Enable them with `tools.extra` in `~/.lunate/settings.json` (`{"tools": {"extra": ["grep", "find", "ls"]}}`), with `LUNATE_EXTRA_TOOLS=grep,find,ls`, or with `--extra-tools grep,find,ls` for one run. The launch flag wins over the environment, which wins over the file; the default is empty. An unknown name or a core-tool name is rejected with the accepted `grep`/`find`/`ls` values.
+
+| Tool | Input | Success output |
+| --- | --- | --- |
+| `grep` | `pattern` (.NET regex), optional `path`, `glob`, `case_sensitive` (default `true`), `max_results` (100 default, 500 max) | `path:line: text`, sorted by path then line; `[N more matches]` at the cap. Uses ripgrep when installed, else the built-in walker |
+| `find` | `pattern` (glob), optional `path`, `type` (`file` default, or `dir`), `max_results` (100/500) | One workspace-relative path per line, directories ending with `/`; `[N more files]` at the cap |
+| `ls` | optional `path`, `depth` (1 default, 3 max), `max_entries` (500 default, 2,000 max) | Directories first then files, files with their byte size; `[N more entries]` at the cap |
+
+All three are read-only and need no approval. They refuse a path outside the workspace exactly as `read` does, follow no directory symlink, honour `.gitignore`, skip binary content, and route their output through the normal tool-result truncation.
+
 **The forgiving `edit` tool**
 
 Matching runs in tiers and stops at the first tier with exactly one match. A tier that finds several matches uses `start_line` to pick the one starting within 3 lines of it; still ambiguous means an error, never a guess.
@@ -401,7 +413,7 @@ Tools: read, write, edit, bash{extra_tools}.
 
 **Sessions on disk**
 
-One JSONL file per session under `~/.lunate/sessions/<project-hash>/`. Session and per-run flags: `--continue`/`-c` (the newest session recorded for the working directory), `--resume`/`-r` (pick from the list; interactive only, print refuses it), `--session <id|path>` (load one session), `--no-session` (run without a file), `--model <id>`, `--thinking <off|low|medium|high>`, `--tools <comma-separated names>`, `--no-tools`, `--system-prompt <text>` and `--append-system-prompt <text>`. A value may also be written inline as `--flag=value`, which is how a value beginning with `-` is passed. The selection flags are mutually exclusive with each other and with `--no-session`; in ACP the editor owns session creation, so they are usage errors there. A launch that cannot start (unknown flags, an unknown `--model`, an unknown tool name, or a print-mode session selection that does not resolve) exits 2.
+One JSONL file per session under `~/.lunate/sessions/<project-hash>/`. Session and per-run flags: `--continue`/`-c` (the newest session recorded for the working directory), `--resume`/`-r` (pick from the list; interactive only, print refuses it), `--session <id|path>` (load one session), `--no-session` (run without a file), `--model <id>`, `--thinking <off|low|medium|high>`, `--tools <comma-separated names>` (an exact model-facing tool selection; an optional `grep`/`find`/`ls` name here is refused with a pointer at `--extra-tools`), `--extra-tools <comma-separated names>` (the optional search tools to enable beside the core set), `--no-tools`, `--system-prompt <text>` and `--append-system-prompt <text>`. A value may also be written inline as `--flag=value`, which is how a value beginning with `-` is passed. The selection flags are mutually exclusive with each other and with `--no-session`; in ACP the editor owns session creation, so they are usage errors there. A launch that cannot start (unknown flags, an unknown `--model`, an unknown tool name, or a print-mode session selection that does not resolve) exits 2.
 
 System-prompt directives are recorded as prompt sections on a new session and replayed on resume; an explicit CLI directive wins over the recorded one. Warning: `--system-prompt` replaces the composed prompt wholesale, including the tool-call conventions, so the caller owns them and a model may call tools incorrectly. Prefer `--append-system-prompt` when the conventions should stay.
 

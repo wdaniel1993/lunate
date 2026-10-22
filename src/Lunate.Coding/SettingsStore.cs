@@ -49,6 +49,16 @@ public sealed record AgentSettings
 
     /// <summary>The ordered favourite model ids (at most eight, unique); schema 2 and later.</summary>
     public IReadOnlyList<string> Favorites { get; init; } = [];
+
+    /// <summary>The resolved optional-tool settings (the <c>tools</c> section).</summary>
+    public ToolsSettings Tools { get; init; } = new();
+}
+
+/// <summary>The optional tools enabled beside the core set (the <c>tools</c> settings section).</summary>
+public sealed record ToolsSettings
+{
+    /// <summary>The optional search tool names to register; empty (the default) means none.</summary>
+    public IReadOnlyList<string> Extra { get; init; } = [];
 }
 
 /// <summary>The per-workspace Roslyn limits (the <c>roslyn</c> settings section).</summary>
@@ -93,6 +103,7 @@ public static class SettingsStore
     private const string SubagentConcurrencyVariable = "LUNATE_SUBAGENTS_CONCURRENCY";
     private const string SubagentTokenBudgetVariable = "LUNATE_SUBAGENTS_TOKEN_BUDGET";
     private const string SubagentTreeTokenBudgetVariable = "LUNATE_SUBAGENTS_TREE_TOKEN_BUDGET";
+    private const string ExtraToolsVariable = "LUNATE_EXTRA_TOOLS";
 
     /// <summary>The one explicit literal that disables a subagent limit.</summary>
     private const string Unlimited = "unlimited";
@@ -333,6 +344,9 @@ public static class SettingsStore
                         {
                             Favorites = ReadFavorites(property.Value, problems),
                         };
+                        break;
+                    case "tools":
+                        settings = settings with { Tools = ReadTools(property.Value, problems) };
                         break;
                     default:
                         problems.Add($"unknown key '{property.Name}'");
@@ -626,6 +640,64 @@ public static class SettingsStore
         return favorites;
     }
 
+    /// <summary>
+    /// Reads the <c>tools</c> section: only <c>extra</c> is known, an array of optional search tool
+    /// names. A missing key keeps the documented default (empty); every bad entry is collected.
+    /// </summary>
+    private static ToolsSettings ReadTools(JsonElement value, List<string> problems)
+    {
+        var settings = new ToolsSettings();
+        if (value.ValueKind != JsonValueKind.Object)
+        {
+            problems.Add("'tools' must be an object");
+            return settings;
+        }
+
+        foreach (JsonProperty property in value.EnumerateObject())
+        {
+            if (property.Name != "extra")
+            {
+                problems.Add($"unknown key 'tools.{property.Name}'");
+                continue;
+            }
+
+            if (property.Value.ValueKind != JsonValueKind.Array)
+            {
+                problems.Add("'tools.extra' must be an array of tool names");
+                continue;
+            }
+
+            List<string> extra = [];
+            foreach (JsonElement item in property.Value.EnumerateArray())
+            {
+                if (item.ValueKind != JsonValueKind.String)
+                {
+                    problems.Add("'tools.extra' must contain only non-empty tool names");
+                    continue;
+                }
+
+                string name = item.GetString()!.Trim();
+                if (name.Length == 0)
+                {
+                    problems.Add("'tools.extra' must contain only non-empty tool names");
+                    continue;
+                }
+
+                if (!OptionalTools.IsName(name))
+                {
+                    problems.Add(OptionalTools.Error("'tools.extra'", name));
+                    continue;
+                }
+
+                extra.Add(name);
+            }
+
+            settings = settings with { Extra = extra };
+        }
+
+        return settings;
+    }
+
     private static int? ReadConcurrency(JsonElement value, List<string> problems)
     {
         if (IsUnlimited(value))
@@ -807,6 +879,72 @@ public static class SettingsStore
                     Subagents = settings.Subagents with { TreeTokenBudget = parsed },
                 };
             }
+        }
+
+        string? extraTools = environment(ExtraToolsVariable);
+        if (!string.IsNullOrEmpty(extraTools))
+        {
+            settings = settings with
+            {
+                Tools = settings.Tools with
+                {
+                    Extra = ParseExtraTools(extraTools, ExtraToolsVariable, problems),
+                },
+            };
+        }
+
+        return settings;
+    }
+
+    /// <summary>
+    /// Parses one comma-separated optional-tool list (the environment form); every bad entry is
+    /// collected and a refused list applies nothing.
+    /// </summary>
+    private static IReadOnlyList<string> ParseExtraTools(
+        string value,
+        string subject,
+        List<string> problems
+    )
+    {
+        List<string> extra = [];
+        foreach (string part in value.Split(','))
+        {
+            string name = part.Trim();
+            if (name.Length == 0)
+            {
+                problems.Add($"{subject} expects a comma-separated list of tool names");
+                continue;
+            }
+
+            if (!OptionalTools.IsName(name))
+            {
+                problems.Add(OptionalTools.Error(subject, name));
+                continue;
+            }
+
+            extra.Add(name);
+        }
+
+        return extra;
+    }
+
+    /// <summary>
+    /// Applies the per-run launch values over the resolved settings. The launch's
+    /// <c>--tools</c> list, when given, replaces the file/environment optional-tool list wholesale.
+    /// </summary>
+    internal static AgentSettings ApplyLaunch(AgentSettings settings, LaunchOptions launch)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+        ArgumentNullException.ThrowIfNull(launch);
+
+        settings = settings with
+        {
+            Model = launch.Model ?? settings.Model,
+            Thinking = launch.Thinking ?? settings.Thinking,
+        };
+        if (launch.ExtraTools is { } extra)
+        {
+            settings = settings with { Tools = settings.Tools with { Extra = extra } };
         }
 
         return settings;

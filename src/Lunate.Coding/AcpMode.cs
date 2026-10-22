@@ -233,11 +233,7 @@ internal static class AcpMode
     )
     {
         AgentSettings settings = SettingsStore.Resolve(null, null);
-        settings = settings with
-        {
-            Model = launch?.Model ?? settings.Model,
-            Thinking = launch?.Thinking ?? settings.Thinking,
-        };
+        settings = SettingsStore.ApplyLaunch(settings, launch ?? new LaunchOptions());
         ModelCatalog catalog = ModelCatalog.Load(null);
         ModelInfo model = HarnessFactory.ResolveModel(settings.Model, catalog);
         IChatClientFactory clientFactory = factory ?? HarnessFactory.CreateFactory(null, null);
@@ -247,7 +243,8 @@ internal static class AcpMode
             workspace,
             context.FileAccess,
             workspaceServices,
-            log: host?.Log
+            log: host?.Log,
+            extraTools: settings.Tools.Extra
         );
         foreach (ITool tool in mcpTools)
         {
@@ -295,7 +292,8 @@ internal static class AcpMode
             WorkspaceTools = HarnessFactory.CreateWorkspaceTools(
                 workspaceServices,
                 inheritedTools,
-                log: host?.Log
+                log: host?.Log,
+                extraTools: settings.Tools.Extra
             ),
         };
 

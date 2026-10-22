@@ -108,6 +108,9 @@ internal static class CliHelp
         output.WriteLine(
             "  --tools <list>                 expose only these comma-separated tool names"
         );
+        output.WriteLine(
+            "  --extra-tools <list>           enable optional search tools (grep, find, ls)"
+        );
         output.WriteLine("  --no-tools                     expose no tools for the run");
         output.WriteLine(
             "  --system-prompt <text>         replace the composed system prompt wholesale,"

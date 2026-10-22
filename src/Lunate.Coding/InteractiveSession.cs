@@ -389,11 +389,7 @@ internal sealed partial class InteractiveSession : IDisposable
     private async Task ComposeAsync(CancellationToken ct)
     {
         _settings = SettingsStore.Resolve(_options.SettingsPath, _options.Environment);
-        _settings = _settings with
-        {
-            Model = _options.Launch.Model ?? _settings.Model,
-            Thinking = _options.Launch.Thinking ?? _settings.Thinking,
-        };
+        _settings = SettingsStore.ApplyLaunch(_settings, _options.Launch);
         _thinkingLevel = _settings.Thinking;
         _catalog = ModelCatalog.Load(_options.ModelsPath);
         _environment = _options.Environment ?? Environment.GetEnvironmentVariable;
@@ -436,7 +432,8 @@ internal sealed partial class InteractiveSession : IDisposable
             _workspace,
             services: _workspaceServices,
             skillReadAllowance: _skillAllowance,
-            log: _extensions?.Log
+            log: _extensions?.Log,
+            extraTools: _settings.Tools.Extra
         );
         await ComposeMcpConfigAsync(ct);
         await ComposeMcpToolsAsync(ct);
@@ -458,7 +455,8 @@ internal sealed partial class InteractiveSession : IDisposable
             _workspaceServices,
             _inheritedTools,
             root => _skills?.ReadRootsFor(root) ?? [],
-            log: _extensions?.Log
+            log: _extensions?.Log,
+            extraTools: _settings.Tools.Extra
         );
         // The model resolves after the extension host: the configured id may name a virtual or
         // extension-registered model, which only the registry knows.

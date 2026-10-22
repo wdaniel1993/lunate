@@ -92,11 +92,7 @@ internal static class PrintMode
         try
         {
             settings = SettingsStore.Resolve(options.SettingsPath, options.Environment);
-            settings = settings with
-            {
-                Model = options.Launch.Model ?? settings.Model,
-                Thinking = options.Launch.Thinking ?? settings.Thinking,
-            };
+            settings = SettingsStore.ApplyLaunch(settings, options.Launch);
             catalog = ModelCatalog.Load(options.ModelsPath);
             model = HarnessFactory.ResolveModel(settings.Model, catalog);
             factory =
@@ -609,7 +605,8 @@ internal static class PrintMode
             workspace,
             services: workspaceServices,
             skillReadAllowance: new SkillReadAllowance(skills.ReadRoots),
-            log: extensions?.Log
+            log: extensions?.Log,
+            extraTools: settings.Tools.Extra
         );
         foreach (ITool tool in mcpTools)
         {
@@ -655,7 +652,8 @@ internal static class PrintMode
                 workspaceServices,
                 inheritedTools,
                 root => skills.ReadRootsFor(root),
-                log: extensions?.Log
+                log: extensions?.Log,
+                extraTools: settings.Tools.Extra
             ),
         };
 

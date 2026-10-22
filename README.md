@@ -230,7 +230,7 @@ naming every problem, and nothing partial is applied.
 
 | Key | Default | What it does |
 | --- | --- | --- |
-| `schemaVersion` | — | must be `1` |
+| `schemaVersion` | — | must be `1` or `2` (`2` is written) |
 | `model` | unset | the default model id |
 | `approval` | `ask` | `ask`: writes, edits and commands need approval; `auto-edit`: writes and edits run, commands still need approval |
 | `output.toolResultLimit` | `30000` | characters of one tool result before it is truncated |
@@ -241,11 +241,12 @@ naming every problem, and nothing partial is applied.
 | `startupHeader` | `true` | print the welcome header when a session starts |
 | `thinking` | `off` | reasoning level: `off`, `low`, `medium` or `high` (`/thinking` sets it per session) |
 | `thinkingFull` | `false` | commit the full reasoning text instead of the collapsed thought line |
+| `tools.extra` | `[]` | optional search tools to register beside the core set: `grep`, `find`, `ls` |
 
 Environment variables override the file: `LUNATE_MODEL`, `LUNATE_APPROVAL`,
 `LUNATE_TOOL_OUTPUT_LIMIT`, `LUNATE_STARTUP_HEADER` (`true`, `false`, `1` or `0`),
-`LUNATE_SUBAGENTS_CONCURRENCY`, `LUNATE_SUBAGENTS_TOKEN_BUDGET` and
-`LUNATE_SUBAGENTS_TREE_TOKEN_BUDGET`. `yolo` is not a setting: it exists only as the per-run flag
+`LUNATE_SUBAGENTS_CONCURRENCY`, `LUNATE_SUBAGENTS_TOKEN_BUDGET`,
+`LUNATE_SUBAGENTS_TREE_TOKEN_BUDGET` and `LUNATE_EXTRA_TOOLS` (`grep,find,ls`). `yolo` is not a setting: it exists only as the per-run flag
 `lunate -p --yolo`.
 
 **Recording and replay.** `LUNATE_RECORD=1` records a run's model stream to a session recording

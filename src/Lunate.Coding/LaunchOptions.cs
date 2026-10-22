@@ -30,6 +30,12 @@ internal sealed record LaunchOptions
     /// <summary>The exact model-facing tool names to expose; null keeps the composed registry.</summary>
     public IReadOnlyList<string>? Tools { get; init; }
 
+    /// <summary>
+    /// The optional search tools to enable for this run. Null means the flag was absent (keep the
+    /// file/environment list); an empty list means <c>--tools</c> named none.
+    /// </summary>
+    public IReadOnlyList<string>? ExtraTools { get; init; }
+
     /// <summary>Expose no tools; conflicts with <see cref="Tools"/>.</summary>
     public bool NoTools { get; init; }
 
@@ -70,9 +76,11 @@ internal sealed record LaunchOptions
         var resume = false;
         var noSession = false;
         var noTools = false;
+        var toolsGiven = false;
         string? session = null;
         string? model = null;
         string? tools = null;
+        string? extraToolsFlag = null;
         string? systemPrompt = null;
         string? appendSystemPrompt = null;
         ThinkingLevel? thinking = null;
@@ -151,6 +159,22 @@ internal sealed record LaunchOptions
                     {
                         return false;
                     }
+                    toolsGiven = true;
+                    break;
+                case "--extra-tools":
+                    if (
+                        !TryValue(
+                            args,
+                            ref index,
+                            "--extra-tools",
+                            inline,
+                            out extraToolsFlag,
+                            out error
+                        )
+                    )
+                    {
+                        return false;
+                    }
                     break;
                 case "--system-prompt":
                     if (
@@ -198,7 +222,10 @@ internal sealed record LaunchOptions
             }
         }
 
-        if (!TryTools(tools, out IReadOnlyList<string>? toolNames, out error))
+        if (
+            !TryTools(tools, out IReadOnlyList<string>? toolNames, out error)
+            || !TryExtraTools(extraToolsFlag, out IReadOnlyList<string>? extraTools, out error)
+        )
         {
             return false;
         }
@@ -227,7 +254,7 @@ internal sealed record LaunchOptions
             return false;
         }
 
-        if (toolNames is not null && noTools)
+        if (toolsGiven && noTools)
         {
             error = "--tools and --no-tools are mutually exclusive; use only one of them";
             return false;
@@ -259,6 +286,7 @@ internal sealed record LaunchOptions
             Model = model,
             Thinking = thinking,
             Tools = toolNames,
+            ExtraTools = extraTools,
             NoTools = noTools,
             SystemPrompt = systemPrompt,
             AppendSystemPrompt = appendSystemPrompt,
@@ -340,6 +368,10 @@ internal sealed record LaunchOptions
         return true;
     }
 
+    /// <summary>
+    /// Parses <c>--tools</c> into the registry filter. An optional search tool name is refused
+    /// here — it belongs to <c>--extra-tools</c> — so the flag keeps exactly one meaning.
+    /// </summary>
     private static bool TryTools(string? value, out IReadOnlyList<string>? tools, out string? error)
     {
         error = null;
@@ -359,10 +391,57 @@ internal sealed record LaunchOptions
                 return false;
             }
 
+            if (OptionalTools.IsName(name))
+            {
+                error = $"'{name}' is an optional search tool; name it with --extra-tools";
+                return false;
+            }
+
             names.Add(name);
         }
 
-        tools = names;
+        tools = names.Count == 0 ? null : names;
+        return true;
+    }
+
+    /// <summary>Parses <c>--extra-tools</c> into the search tools to enable beside the core set.</summary>
+    private static bool TryExtraTools(
+        string? value,
+        out IReadOnlyList<string>? extraTools,
+        out string? error
+    )
+    {
+        error = null;
+        extraTools = null;
+        if (value is null)
+        {
+            return true;
+        }
+
+        List<string> names = [];
+        foreach (string part in value.Split(','))
+        {
+            string name = part.Trim();
+            if (name.Length == 0)
+            {
+                error = "'--extra-tools' expects a comma-separated list of search tool names";
+                return false;
+            }
+
+            if (!OptionalTools.IsName(name))
+            {
+                error =
+                    $"'{name}' is not an optional search tool; --extra-tools accepts {OptionalTools.Accepted}";
+                return false;
+            }
+
+            if (!names.Contains(name, StringComparer.Ordinal))
+            {
+                names.Add(name);
+            }
+        }
+
+        extraTools = names;
         return true;
     }
 }
