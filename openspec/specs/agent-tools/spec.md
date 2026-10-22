@@ -7,7 +7,7 @@ The tool surface of the agent: what a tool is (our own contract with risk levels
 
 ### Requirement: Tool contract
 
-`Lunate.Agent` SHALL define tools as its own type: `ITool` with a name, a description, a hand-written JSON `ParametersSchema`, a `ToolRisk` (`ReadOnly`, `Write`, `Execute`) and `ExecuteAsync(JsonElement args, ToolContext ctx, CancellationToken ct)`; results as `ToolResult` (output, error flag, UI-only `Details`); and `ToolContext` carrying the working directory, an event sink that accepts only extension events, and the per-run subagent seam (`Subagents`, see the agent-loop specification — it starts child runs with an optional allow-list of the run's own tools and only-tightening limits) stamped by the harness alongside the run id and file-change sink. Schemas SHALL be authored by hand, never built by reflection. Error results SHALL reach the model through their instructing output text; a provider-level error flag is not sent (revisit when real tools and a live fixture exist).
+`Lunate.Agent` SHALL define tools as its own type: `ITool` with a name, a description, a hand-written JSON `ParametersSchema`, a `ToolRisk` (`ReadOnly`, `Write`, `Execute`) and `ExecuteAsync(JsonElement args, ToolContext ctx, CancellationToken ct)`; results as `ToolResult` (output, error flag, UI-only `Details`); and `ToolContext` carrying the working directory, an event sink that accepts only extension events, and the per-run subagent seam (`Subagents`, see the agent-loop specification — it starts child runs with an optional allow-list of the run's own tools and only-tightening limits) stamped by the harness alongside the run id and file-change sink. Schemas SHALL be authored by hand, never built by reflection. Error results SHALL reach the model through their instructing output text; a provider-level error flag is not sent (revisit when real tools and a live fixture exist). `ToolContext` SHALL also carry the active `ModelInfo` when the run has one, so a tool can decide whether the model supports a capability; it SHALL be null outside a run. `ToolResult` SHALL optionally carry `Images`, a list of `ImageAttachment` values (media type, width, height and bytes); `Output` SHALL remain the only model-facing text and SHALL contain the `[image <w>x<h>]` placeholder for an image result, never image bytes.
 
 #### Scenario: Contract is implementable without reflection
 - **GIVEN** a tool implemented in a test with a hand-written schema
@@ -23,6 +23,18 @@ The tool surface of the agent: what a tool is (our own contract with risk levels
 - **GIVEN** a tool executed by the loop
 - **WHEN** it reads its context
 - **THEN** `Subagents` exposes the run's runner (its `Depth` being the run's spawn depth, shared by the run's parallel calls), and a tool executed outside the loop sees `Subagents` as null
+
+#### Scenario: The active model is visible to a tool
+
+- **GIVEN** a run on a catalog model with vision
+- **WHEN** a tool reads its context
+- **THEN** `Model` names that model and reports `SupportsVision` as true; outside a run it is null
+
+#### Scenario: An image result carries bytes beside the placeholder
+
+- **GIVEN** a tool returning an image attachment
+- **WHEN** its result is inspected
+- **THEN** `Output` is `[image <w>x<h>]`, `Images` holds the bytes and media type, and `Details` is unchanged
 
 ### Requirement: Declaration-only model adapter
 A `ToolDeclaration` SHALL present an `ITool` to Microsoft.Extensions.AI as an `AIFunction` whose name, description and JSON schema are exactly the tool's own, and SHALL refuse execution through Microsoft.Extensions.AI on every invocation path, naming ADR-0003.
@@ -51,7 +63,7 @@ A `ToolRegistry` SHALL hold tools by name in registration order, SHALL reject du
 - **THEN** the registration fails immediately
 
 ### Requirement: Tool output truncation
-`ToolOutput.Truncate` SHALL bound tool output to a default of 30,000 characters: output at or under the limit SHALL pass through unchanged; longer output SHALL keep the first half and last half of the budget with a marker stating the omitted character count (culture-invariant); cut points SHALL never split a UTF-16 surrogate pair; limits smaller than the marker SHALL degrade gracefully without throwing.
+`ToolOutput.Truncate` SHALL bound tool output to a default of 30,000 characters: output at or under the limit SHALL pass through unchanged; longer output SHALL keep the first half and last half of the budget with a marker stating the omitted character count (culture-invariant) and, when a spill file was written, its absolute path; cut points SHALL never split a UTF-16 surrogate pair; limits smaller than the marker SHALL degrade gracefully without throwing.
 
 #### Scenario: Short output passes through
 - **GIVEN** output within the limit
@@ -67,6 +79,24 @@ A `ToolRegistry` SHALL hold tools by name in registration order, SHALL reject du
 - **GIVEN** output whose cut points fall inside an emoji
 - **WHEN** it is truncated
 - **THEN** the result contains no lone surrogate halves
+
+#### Scenario: The full output survives in a spill file
+
+- **GIVEN** a session run and a tool result larger than the configured limit
+- **WHEN** the result is truncated
+- **THEN** the full output is written to a file in the session's own directory, the marker names that absolute path, and `read` on it returns the full content
+
+#### Scenario: No spill without a session
+
+- **GIVEN** a `--no-session` run and a tool result larger than the limit
+- **WHEN** the result is truncated
+- **THEN** no file is written and the marker keeps the count-only form
+
+#### Scenario: A failed spill never fails the tool
+
+- **GIVEN** a session directory that cannot be written
+- **WHEN** a result over the limit is truncated
+- **THEN** the tool result is still delivered with the count-only marker and the failure is reported as a notice, not a tool error
 
 ### Requirement: Tool exposure and registry declarations
 
@@ -346,3 +376,37 @@ The `bash` tool SHALL run a single non-interactive command through the platform'
 - **GIVEN** a `ToolContext` built outside a run
 - **WHEN** `ToolStubs` is read
 - **THEN** it is null
+
+### Requirement: Optional search tools
+
+When configured, three read-only tools SHALL be registered beside the core set: `grep` (regex search with `path`, `glob`, `case_sensitive` and `max_results` of 100 default / 500 cap, using the ripgrep binary when present and an internal walker otherwise, both honouring `.gitignore` and skipping binary files), `find` (glob matching with `path`, `type` of `file` or `dir`, 100/500 bounds, case-insensitive on Windows and macOS, case-sensitive on Linux) and `ls` (one directory listing with `path` and `depth` of 1 default / 3 max, directories first then files, `.git` always skipped). All three SHALL refuse a path outside the workspace exactly as `read` does, SHALL require no approval, SHALL follow no directory symlink and SHALL route their output through the existing truncation path. Their results SHALL name what was searched and SHALL end with a `[N more …]` line when a cap cut the result. When the configured list is empty — the default — none SHALL be registered, and the tool set SHALL be exactly the core set.
+
+#### Scenario: Nothing extra by default
+
+- **GIVEN** a settings file without `tools.extra`
+- **WHEN** the harness is built
+- **THEN** only the core tools are registered and no `grep`, `find` or `ls` exists
+
+#### Scenario: A configured list registers exactly its tools
+
+- **GIVEN** `tools.extra` set to `["grep", "ls"]`
+- **WHEN** the harness is built
+- **THEN** `grep` and `ls` are registered, `find` is not, and a `bash` name in the list is rejected with the accepted values
+
+#### Scenario: grep honours gitignore and the cap
+
+- **GIVEN** a workspace whose `.gitignore` excludes `bin/` and one file with 600 matching lines
+- **WHEN** `grep` runs with a 100 default
+- **THEN** nothing from `bin/` appears, exactly 100 matches are returned and the result ends with `[500 more matches]`
+
+#### Scenario: A path outside the workspace is refused
+
+- **GIVEN** a `grep` call with `path: "../.."`
+- **WHEN** the workspace checks it
+- **THEN** the call is refused naming the path, the resolved target and the allowed roots, and no file is read
+
+#### Scenario: ls skips .git at every depth
+
+- **GIVEN** a repository root and `depth: 3`
+- **WHEN** `ls` renders the tree
+- **THEN** no `.git` entry appears and directories precede files at each level

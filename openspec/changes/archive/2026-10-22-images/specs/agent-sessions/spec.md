@@ -80,6 +80,16 @@ A session file SHALL be append-only JSONL: a header line (schema, session `id`, 
 - **WHEN** it is loaded and re-serialized
 - **THEN** its bytes are unchanged
 
+#### Scenario: A schema 3 file round-trips cache lanes
+- **GIVEN** a schema 3 session whose usage carries positive cache-read and cache-write counts
+- **WHEN** it is loaded and re-serialized
+- **THEN** `input`, `output`, `cacheRead` and `cacheWrite` are byte-identical
+
+#### Scenario: A zero cache count is omitted
+- **GIVEN** a usage record whose provider reported no cache tokens
+- **WHEN** the message entry is written
+- **THEN** the usage object has no `cacheRead` or `cacheWrite` field
+
 #### Scenario: A schema 3 image part round-trips
 - **GIVEN** a schema 3 message carrying an image reference
 - **WHEN** it is loaded and re-serialized
