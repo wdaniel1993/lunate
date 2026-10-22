@@ -344,6 +344,15 @@ internal sealed partial class InteractiveSession : IDisposable
                     catch (OperationCanceledException) { }
                 }
 
+                if (_bashRun is { } bashRun)
+                {
+                    try
+                    {
+                        await bashRun;
+                    }
+                    catch (OperationCanceledException) { }
+                }
+
                 await DisposeExtensionsAsync();
                 _workspaceServices?.Dispose();
                 _workspaceServices = null;
@@ -972,6 +981,7 @@ internal sealed partial class InteractiveSession : IDisposable
                 }
 
                 _runCancellation?.Cancel();
+                _bashCancellation?.Cancel();
                 break;
             case RoutedKey.ClearOrQuit:
                 HandleCtrlC();

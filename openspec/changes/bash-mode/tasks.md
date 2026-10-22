@@ -9,10 +9,10 @@
 
 ## 2. Execution
 
-- [ ] 2.1 Red tests: a `!` line runs through `BashTool` with a `ToolContext` carrying the session's workspace and cancellation token; non-zero exit and duration reach the block header; a cancelled command reports cancellation, not a partial run.
-- [ ] 2.2 Invoke the tool from the submission path with a synthetic call id; commit one tool block through the existing event/renderer path.
-- [ ] 2.3 Keep the approval policy authoritative: an ask policy prompts before the command runs, a deny policy refuses it, and no path executes before the policy answers.
-- [ ] 2.4 Commit: `feat(tui): run bash-mode lines through the bash tool`.
+- [x] 2.1 Red tests: a `!` line runs through `BashTool` with a `ToolContext` carrying the session's workspace and cancellation token; non-zero exit and duration reach the block header; a cancelled command reports cancellation, not a partial run.
+- [x] 2.2 Invoke the tool from the submission path with a synthetic call id; commit one tool block through the existing event/renderer path.
+- [x] 2.3 Keep the approval policy authoritative: an ask policy prompts before the command runs, a deny policy refuses it, and no path executes before the policy answers.
+- [x] 2.4 Commit: `feat(tui): run bash-mode lines through the bash tool`.
 
 ## 3. The silent form and the conversation boundary
 
