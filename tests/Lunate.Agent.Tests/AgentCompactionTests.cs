@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Json;
 using Lunate.Ai;
 using Microsoft.Extensions.AI;
 
@@ -219,6 +220,74 @@ public sealed class AgentCompactionTests
 
         ScriptedRequest summarization = Assert.Single(client.Requests);
         Assert.Equal(CompactionReducer.SummarizationPrompt, summarization.Messages[0].Text);
+    }
+
+    [Fact]
+    public async Task An_automatic_compaction_after_a_focused_one_carries_no_focus_text()
+    {
+        using var temp = new TempDirectory();
+        Session session = Session.Create(temp.File("s.jsonl"), "/work");
+        AppendTurn(session, "one", "noted one");
+        AppendTurn(session, "two", "noted two");
+        AppendTurn(session, "three", "noted three");
+        AppendTurn(session, "four", "noted four");
+        AppendTurn(session, "five", "noted five");
+        const string focus = "focus on the flaky parser test";
+        var client = new ScriptedChatClient()
+            .Enqueue(Summary("focused summary"))
+            .Enqueue(Summary("automatic summary"))
+            .Enqueue(LoopScripts.Text("done"), LoopScripts.Stop());
+        AgentHarness harness = Harness(client, session);
+
+        Assert.True(await harness.CompactNowAsync(focus, Ct));
+        await Run(harness, "go " + new string('x', 5000));
+
+        Assert.Equal(3, client.Requests.Count);
+        ScriptedRequest manual = client.Requests[0];
+        ScriptedRequest automatic = client.Requests[1];
+        Assert.Contains(focus, manual.Messages[0].Text, StringComparison.Ordinal);
+        Assert.Equal(CompactionReducer.SummarizationPrompt, automatic.Messages[0].Text);
+        Assert.DoesNotContain(
+            focus,
+            string.Concat(automatic.Messages.Select(message => message.Text)),
+            StringComparison.Ordinal
+        );
+        Assert.Equal(2, session.Entries.OfType<SessionCompactionEntry>().Count());
+    }
+
+    [Fact]
+    public async Task A_focused_compaction_writes_no_focus_text_to_the_session_file()
+    {
+        using var temp = new TempDirectory();
+        string path = temp.File("s.jsonl");
+        Session session = Session.Create(path, "/work");
+        AppendTurn(session, "one", "noted one");
+        AppendTurn(session, "two", "noted two");
+        AppendTurn(session, "three", "noted three");
+        AppendTurn(session, "four", "noted four");
+        AppendTurn(session, "five", "noted five");
+        const string focus = "focus on the flaky parser test";
+        var client = new ScriptedChatClient().Enqueue(Summary("focused summary"));
+        AgentHarness harness = Harness(client, session);
+
+        Assert.True(await harness.CompactNowAsync(focus, Ct));
+
+        string file = File.ReadAllText(path);
+        Assert.DoesNotContain(focus, file, StringComparison.Ordinal);
+        string compactionLine = Assert.Single(
+            File.ReadAllLines(path),
+            line => line.Contains("\"type\":\"compaction\"", StringComparison.Ordinal)
+        );
+        using JsonDocument document = JsonDocument.Parse(compactionLine);
+        Assert.Equal(
+            ["type", "id", "parentId", "timestamp", "summary", "replaces"],
+            document.RootElement.EnumerateObject().Select(property => property.Name)
+        );
+        SessionCompactionEntry entry = Assert.Single(
+            session.Entries.OfType<SessionCompactionEntry>()
+        );
+        Assert.Equal("focused summary", entry.Summary);
+        Assert.Equal(["e_01", "e_02"], entry.Replaces);
     }
 
     [Fact]
