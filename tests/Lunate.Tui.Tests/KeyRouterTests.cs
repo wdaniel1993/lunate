@@ -14,6 +14,7 @@ public sealed class KeyRouterTests
         (Key(KeyKind.Character, "o", ctrl: true), RoutedKey.TranscriptViewer),
         (Key(KeyKind.Tab), RoutedKey.Complete),
         (Key(KeyKind.Up), RoutedKey.HistoryPrevious),
+        (Key(KeyKind.Up, alt: true), RoutedKey.FollowUpPrevious),
         (Key(KeyKind.Down), RoutedKey.HistoryNext),
     ];
 
@@ -55,6 +56,7 @@ public sealed class KeyRouterTests
         Assert.Single(intents, intent => intent == RoutedKey.Complete);
         Assert.Single(intents, intent => intent == RoutedKey.HistoryPrevious);
         Assert.Single(intents, intent => intent == RoutedKey.HistoryNext);
+        Assert.Single(intents, intent => intent == RoutedKey.FollowUpPrevious);
         Assert.Single(
             BusyTable.Select(row => row.Expected),
             intent => intent == RoutedKey.FollowUp
@@ -70,6 +72,15 @@ public sealed class KeyRouterTests
         Assert.Equal(RoutedKey.Edit, KeyRouter.Route(key));
         Assert.Equal(RoutedKey.FollowUp, KeyRouter.Route(key, turnRunning: true));
         Assert.NotEqual(RoutedKey.Submit, KeyRouter.Route(key, turnRunning: true));
+    }
+
+    [Fact]
+    public void Alt_up_takes_a_follow_up_back_instead_of_navigating_history()
+    {
+        KeyEvent key = Key(KeyKind.Up, alt: true);
+
+        Assert.Equal(RoutedKey.FollowUpPrevious, KeyRouter.Route(key));
+        Assert.NotEqual(RoutedKey.HistoryPrevious, KeyRouter.Route(key));
     }
 
     [Fact]

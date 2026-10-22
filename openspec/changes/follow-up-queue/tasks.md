@@ -18,10 +18,10 @@
 
 ## 3. Taking a follow-up back
 
-- [ ] 3.1 Red tests: Alt+Up pulls the newest entry into an empty line and removes it from the queue; Alt+Up with a non-empty line refuses with a notice and changes nothing.
-- [ ] 3.2 Red test: Esc with nothing running and a non-empty queue restores every entry to the editor in order, newline-separated, and empties the queue.
-- [ ] 3.3 Red test: Esc during a turn still cancels the turn and leaves the queue unchanged.
-- [ ] 3.4 Commit: `feat(tui): take queued follow-ups back into the editor`.
+- [x] 3.1 Red tests: Alt+Up pulls the newest entry into an empty line and removes it from the queue; Alt+Up with a non-empty line refuses with a notice and changes nothing.
+- [x] 3.2 Red test: Esc with nothing running and a non-empty queue restores every entry to the editor in order, newline-separated, and empties the queue.
+- [x] 3.3 Red test: Esc during a turn still cancels the turn and leaves the queue unchanged.
+- [x] 3.4 Commit: `feat(tui): take queued follow-ups back into the editor`.
 
 ## 4. Verification and documentation
 

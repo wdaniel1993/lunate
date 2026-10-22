@@ -950,6 +950,9 @@ internal sealed partial class InteractiveSession : IDisposable
 
                 await QueueFollowUpAsync(ct);
                 break;
+            case RoutedKey.FollowUpPrevious:
+                TakeFollowUpBack();
+                break;
             case RoutedKey.Submit:
                 if (_autocomplete is not null && !IsExactAutocompleteMatch())
                 {
@@ -986,6 +989,7 @@ internal sealed partial class InteractiveSession : IDisposable
                     break;
                 }
 
+                RestoreFollowUps();
                 break;
             case RoutedKey.ClearOrQuit:
                 HandleCtrlC();
@@ -1063,6 +1067,7 @@ internal sealed partial class InteractiveSession : IDisposable
     private void EditInput(KeyEvent key)
     {
         bool wasEmpty = _input.Text.Length == 0;
+        _pulledFollowUpText = null;
         _input = InputLine.Apply(_input, key);
         _historyDraft = null;
         if (TryEnterBashMode(wasEmpty, key))
@@ -1475,6 +1480,7 @@ internal sealed partial class InteractiveSession : IDisposable
         _bashMode = false;
         _bashSilent = false;
         _bashHistoryDraft = null;
+        _pulledFollowUpText = null;
         _input = new InputLineState(text, text.Length);
         _historyDraft = null;
         _live.SetInput(_input);

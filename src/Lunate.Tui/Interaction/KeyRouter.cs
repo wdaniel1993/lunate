@@ -14,6 +14,7 @@ public enum RoutedKey
     TranscriptViewer,
     FavoritesCycle,
     FollowUp,
+    FollowUpPrevious,
 }
 
 /// <summary>
@@ -39,6 +40,7 @@ public static class KeyRouter
             { Kind: KeyKind.Character, Ctrl: true, Alt: false, Text: "o" } =>
                 RoutedKey.TranscriptViewer,
             { Kind: KeyKind.Tab, Ctrl: false, Alt: false, Shift: false } => RoutedKey.Complete,
+            { Kind: KeyKind.Up, Alt: true } => RoutedKey.FollowUpPrevious,
             { Kind: KeyKind.Up } => RoutedKey.HistoryPrevious,
             { Kind: KeyKind.Down } => RoutedKey.HistoryNext,
             _ => RoutedKey.Edit,
