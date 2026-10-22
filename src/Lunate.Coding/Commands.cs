@@ -36,7 +36,11 @@ internal static class Commands
     /// </summary>
     public static readonly IReadOnlyList<CommandDescriptor> Descriptors =
     [
-        new("/compact", CommandGroup.Session, "compact the conversation now"),
+        new(
+            "/compact",
+            CommandGroup.Session,
+            "compact the conversation now, optionally focusing on <text>"
+        ),
         new("/context", CommandGroup.Session, "show the context window and subagent budgets"),
         new("/help", CommandGroup.Session, "list the commands"),
         new("/name", CommandGroup.Session, "set or show the session title"),

@@ -40,8 +40,18 @@ internal sealed class CompactionReducer : IChatReducer
         _keepTurns = keepTurns;
     }
 
-    public async Task<IEnumerable<ChatMessage>> ReduceAsync(
+    public Task<IEnumerable<ChatMessage>> ReduceAsync(
         IEnumerable<ChatMessage> messages,
+        CancellationToken cancellationToken
+    ) => ReduceAsync(messages, instructions: null, cancellationToken);
+
+    /// <summary>
+    /// Reduces <paramref name="messages"/> with optional focus <paramref name="instructions"/> for
+    /// this call only; the interface entry point passes null and keeps the fixed prompt.
+    /// </summary>
+    internal async Task<IEnumerable<ChatMessage>> ReduceAsync(
+        IEnumerable<ChatMessage> messages,
+        string? instructions,
         CancellationToken cancellationToken
     )
     {
@@ -51,6 +61,7 @@ internal sealed class CompactionReducer : IChatReducer
                 history,
                 currentSummary: null,
                 providedSummary: null,
+                instructions,
                 cancellationToken
             )
             .ConfigureAwait(false);
@@ -67,6 +78,7 @@ internal sealed class CompactionReducer : IChatReducer
         IReadOnlyList<ChatMessage> history,
         ChatMessage? currentSummary,
         string? providedSummary,
+        string? instructions,
         CancellationToken cancellationToken
     )
     {
@@ -91,7 +103,7 @@ internal sealed class CompactionReducer : IChatReducer
         {
             ChatResponse response = await _client
                 .GetResponseAsync(
-                    BuildSummarizationRequest(part),
+                    BuildSummarizationRequest(part, instructions),
                     new ChatOptions(),
                     cancellationToken
                 )
@@ -214,12 +226,29 @@ internal sealed class CompactionReducer : IChatReducer
         return rebuilt;
     }
 
-    /// <summary>The one summarization request: the fixed prompt plus the rendered transcript.</summary>
-    internal static List<ChatMessage> BuildSummarizationRequest(IReadOnlyList<ChatMessage> part) =>
+    /// <summary>
+    /// The one summarization request: the fixed prompt (with the optional focus block appended) plus
+    /// the rendered transcript.
+    /// </summary>
+    internal static List<ChatMessage> BuildSummarizationRequest(
+        IReadOnlyList<ChatMessage> part,
+        string? instructions = null
+    ) =>
         [
-            new ChatMessage(ChatRole.System, SummarizationPrompt),
+            new ChatMessage(ChatRole.System, SummarizationPromptWithFocus(instructions)),
             new ChatMessage(ChatRole.User, RenderTranscript(part)),
         ];
+
+    /// <summary>
+    /// The fixed prompt, followed by the user's focus for this compaction as a separate labelled
+    /// block. Empty or whitespace-only focus leaves the fixed prompt exactly as it was.
+    /// </summary>
+    internal static string SummarizationPromptWithFocus(string? instructions) =>
+        string.IsNullOrWhiteSpace(instructions)
+            ? SummarizationPrompt
+            : SummarizationPrompt
+                + "\n\nFocus for this summary (requested by the user for this compaction only; keep the sections above):\n"
+                + instructions.Trim();
 
     internal static long Utf8Length(IReadOnlyList<ChatMessage> messages)
     {

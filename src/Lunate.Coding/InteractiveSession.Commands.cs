@@ -15,6 +15,9 @@ internal sealed partial class InteractiveSession
         Session,
     }
 
+    /// <summary>The cap on <c>/compact</c> focus instructions; a longer argument is refused.</summary>
+    private const int CompactInstructionsLimit = 1000;
+
     /// <summary>
     /// Dispatches a submitted slash command. Commands are frontend control: they never reach the
     /// model and skip the input pipeline. While a turn runs, the state-changing commands refuse;
@@ -44,7 +47,21 @@ internal sealed partial class InteractiveSession
                     return;
                 }
 
-                bool compacted = await _harness!.CompactNowAsync(ct);
+                if (argument.Length > CompactInstructionsLimit)
+                {
+                    Notify(
+                        FormattableString.Invariant(
+                            $"compact instructions are limited to {CompactInstructionsLimit:N0} characters"
+                        ),
+                        NoticeLevel.Warning
+                    );
+                    return;
+                }
+
+                bool compacted = await _harness!.CompactNowAsync(
+                    argument.Length == 0 ? null : argument,
+                    ct
+                );
                 Notify(compacted ? "context compacted" : "nothing to compact");
                 return;
             case "/context":

@@ -368,7 +368,8 @@ virtual Lunate.Agent.ExtensionEvent.Equals(Lunate.Agent.ExtensionEvent? other) -
 Lunate.Agent.AgentHarness
 Lunate.Agent.AgentHarness.AgentHarness(Microsoft.Extensions.AI.IChatClient! client, Lunate.Agent.ToolRegistry! tools, Lunate.Agent.AgentHarnessOptions? options = null) -> void
 Lunate.Agent.AgentHarness.AppendConversationMessage(Microsoft.Extensions.AI.ChatMessage! message, string? model = null) -> void
-Lunate.Agent.AgentHarness.CompactNowAsync(System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+Lunate.Agent.AgentHarness.CompactNowAsync(string? instructions = null, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+Lunate.Agent.AgentHarness.CompactNowAsync(System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<bool>!
 Lunate.Agent.AgentHarness.RunAsync(string! userInput, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<Lunate.Agent.AgentEvent!>!
 Lunate.Agent.AgentHarnessOptions
 Lunate.Agent.AgentHarnessOptions.<Clone>$() -> Lunate.Agent.AgentHarnessOptions!

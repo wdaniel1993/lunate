@@ -316,7 +316,7 @@ Append-only JSONL, one entry per line, each with `id`, `parentId`, `type` and a 
 **Compaction**
 
 - **Shape:** our strategy implements `IChatReducer` (not `[Experimental]` in the pinned Microsoft.Extensions.AI 10.10.x) and the loop calls it before each model request, so it can emit `CompactionApplied` and write the compaction entry. Do not use `ReducingChatClient` — the loop decides when to compact. MEAI also ships `SummarizingChatReducer` and `MessageCountingChatReducer` (both `[Experimental]` in 10.10.x); evaluate them as the base before writing custom reduction logic. A base reducer is only acceptable if it meets our compaction rules: never split a tool call from its result, always keep the system prompt, AGENTS.md and the last turns verbatim, and record a compaction entry. If it does not, wrap it; do not weaken the rules.
-- **Trigger:** estimated context tokens pass 80% of the model's window. Estimate is characters / 4, corrected by the last `UsageReported`. Also on `/compact`.
+- **Trigger:** estimated context tokens pass 80% of the model's window. Estimate is characters / 4, corrected by the last `UsageReported`. Also on `/compact <instructions>`; the optional trailing text is focus for that one summarization only — appended after the fixed sections, capped at 1,000 characters (refused, not truncated), and never stored in the session or reused by a later compaction.
 - **What stays verbatim:** system prompt, `AGENTS.md`, the last N turns (default 4, configurable), and any turn whose tool call or result would otherwise be split.
 - **What is summarized:** everything older, by the same model with a fixed summarization prompt (goal, decisions, files touched, open problems), stored as a `compaction` entry. The session file keeps the full history; only the request sent to the model is shortened.
 - **Never:** split a tool call from its result, or summarize the current turn.
@@ -421,7 +421,7 @@ System-prompt directives are recorded as prompt sections on a new session and re
 
 **Frontends**
 
-- **Interactive mode** (`lunate`): the Lunate.Tui frontend (see Terminal UI) with streaming view, multi-line editor, `Esc` to cancel, slash commands `/model`, `/new`, `/resume`, `/name`, `/session`, `/compact`, `/quit`.
+- **Interactive mode** (`lunate`): the Lunate.Tui frontend (see Terminal UI) with streaming view, multi-line editor, `Esc` to cancel, slash commands `/model`, `/new`, `/resume`, `/name`, `/session`, `/compact [instructions]`, `/quit`.
 - **Print mode** (`lunate -p "prompt"`): writes the final answer to stdout and exits; `--json` writes every event as JSON lines for scripts and CI.
 - **ACP mode** (`lunate --acp`): speaks the Agent Client Protocol over stdio, so editors like Zed or JetBrains start Lunate as their agent. Editor file reads, writes and permission prompts map onto Lunate's tools and approval policy. Nothing may write to stdout except the protocol.
 
