@@ -55,6 +55,10 @@ internal sealed class ScriptedConsoleIO : IConsoleIO
 
     public void SendEnter() => Send(new KeyEvent(KeyKind.Enter, null, false, false, false));
 
+    public void SendAltEnter() => Send(new KeyEvent(KeyKind.Enter, null, false, false, true));
+
+    public void SendAltUp() => Send(new KeyEvent(KeyKind.Up, null, false, false, true));
+
     public void SendEscape() => Send(new KeyEvent(KeyKind.Escape, null, false, false, false));
 
     public void SendCtrlC() =>

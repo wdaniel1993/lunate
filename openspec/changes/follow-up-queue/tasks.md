@@ -9,12 +9,12 @@
 
 ## 2. Queueing and draining
 
-- [ ] 2.1 Red tests: Alt+Enter while a turn runs queues and clears the line; Alt+Enter while idle still inserts a newline; Enter still steers and queues nothing.
-- [ ] 2.2 Red tests: when a run completes, the head of the queue runs through the normal submission path, one at a time and in order; a failed run does not discard the rest.
-- [ ] 2.3 Red test: a cancelled turn leaves the queue intact and does not auto-drain.
-- [ ] 2.4 Red test: a slash command is refused by the queue with a notice and does not enter it.
-- [ ] 2.5 Implement the drain on run completion (await the run task; never start a run while one is unwinding).
-- [ ] 2.6 Commit: `feat(tui): drain queued follow-ups after the turn`.
+- [x] 2.1 Red tests: Alt+Enter while a turn runs queues and clears the line; Alt+Enter while idle still inserts a newline; Enter still steers and queues nothing.
+- [x] 2.2 Red tests: when a run completes, the head of the queue runs through the normal submission path, one at a time and in order; a failed run does not discard the rest.
+- [x] 2.3 Red test: a cancelled turn leaves the queue intact and does not auto-drain.
+- [x] 2.4 Red test: a slash command is refused by the queue with a notice and does not enter it.
+- [x] 2.5 Implement the drain on run completion (await the run task; never start a run while one is unwinding).
+- [x] 2.6 Commit: `feat(tui): drain queued follow-ups after the turn`.
 
 ## 3. Taking a follow-up back
 

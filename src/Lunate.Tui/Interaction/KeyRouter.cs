@@ -13,20 +13,22 @@ public enum RoutedKey
     Complete,
     TranscriptViewer,
     FavoritesCycle,
+    FollowUp,
 }
 
 /// <summary>
 /// Pure classification of decoded <see cref="KeyEvent"/>s into prompt intents. Newlines
-/// (Alt+Enter, Ctrl+J, and best-effort Shift+Enter) stay <see cref="RoutedKey.Edit"/> so
-/// <see cref="InputLine"/> handles them; Ctrl+C routes to <see cref="RoutedKey.ClearOrQuit"/>
-/// and never to cancel.
+/// (Alt+Enter, Ctrl+J, and best-effort Shift+Enter) stay <see cref="RoutedKey.Edit"/> while the
+/// prompt is idle so <see cref="InputLine"/> handles them; Alt+Enter during a turn is the
+/// follow-up intent. Ctrl+C routes to <see cref="RoutedKey.ClearOrQuit"/> and never to cancel.
 /// </summary>
 public static class KeyRouter
 {
-    public static RoutedKey Route(KeyEvent key) =>
+    public static RoutedKey Route(KeyEvent key, bool turnRunning = false) =>
         key switch
         {
             { Kind: KeyKind.Character, Ctrl: true, Alt: false, Text: "j" } => RoutedKey.Edit,
+            { Kind: KeyKind.Enter, Ctrl: false, Alt: true } when turnRunning => RoutedKey.FollowUp,
             { Kind: KeyKind.Enter, Ctrl: false, Alt: false, Shift: false } => RoutedKey.Submit,
             { Kind: KeyKind.Enter } => RoutedKey.Edit,
             { Kind: KeyKind.Escape } => RoutedKey.Cancel,

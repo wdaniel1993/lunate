@@ -17,6 +17,11 @@ public sealed class KeyRouterTests
         (Key(KeyKind.Down), RoutedKey.HistoryNext),
     ];
 
+    private static readonly (KeyEvent Key, RoutedKey Expected)[] BusyTable =
+    [
+        (Key(KeyKind.Enter, alt: true), RoutedKey.FollowUp),
+    ];
+
     public static TheoryData<KeyEvent, RoutedKey> Bindings
     {
         get
@@ -50,8 +55,29 @@ public sealed class KeyRouterTests
         Assert.Single(intents, intent => intent == RoutedKey.Complete);
         Assert.Single(intents, intent => intent == RoutedKey.HistoryPrevious);
         Assert.Single(intents, intent => intent == RoutedKey.HistoryNext);
+        Assert.Single(
+            BusyTable.Select(row => row.Expected),
+            intent => intent == RoutedKey.FollowUp
+        );
         Assert.Equal(2, intents.Count(intent => intent == RoutedKey.Edit));
     }
+
+    [Fact]
+    public void Alt_enter_follows_up_only_while_a_turn_runs()
+    {
+        KeyEvent key = Key(KeyKind.Enter, alt: true);
+
+        Assert.Equal(RoutedKey.Edit, KeyRouter.Route(key));
+        Assert.Equal(RoutedKey.FollowUp, KeyRouter.Route(key, turnRunning: true));
+        Assert.NotEqual(RoutedKey.Submit, KeyRouter.Route(key, turnRunning: true));
+    }
+
+    [Fact]
+    public void Ctrl_j_still_edits_while_a_turn_runs() =>
+        Assert.Equal(
+            RoutedKey.Edit,
+            KeyRouter.Route(Key(KeyKind.Character, "j", ctrl: true), turnRunning: true)
+        );
 
     [Fact]
     public void Tab_completes_and_modified_tab_edits()

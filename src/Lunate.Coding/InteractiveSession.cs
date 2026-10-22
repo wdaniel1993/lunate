@@ -936,27 +936,19 @@ internal sealed partial class InteractiveSession : IDisposable
             return;
         }
 
-        switch (KeyRouter.Route(key))
+        switch (KeyRouter.Route(key, _turnActive))
         {
             case RoutedKey.Edit:
-                bool wasEmpty = _input.Text.Length == 0;
-                _input = InputLine.Apply(_input, key);
-                _historyDraft = null;
-                if (TryEnterBashMode(wasEmpty, key))
+                EditInput(key);
+                break;
+            case RoutedKey.FollowUp:
+                if (_bashMode)
                 {
+                    EditInput(key);
                     break;
                 }
 
-                _live.SetInput(_input, _bashMode);
-                if (_bashMode)
-                {
-                    CloseAutocomplete();
-                }
-                else
-                {
-                    RefreshAutocomplete(IsTextEdit(key));
-                }
-
+                await QueueFollowUpAsync(ct);
                 break;
             case RoutedKey.Submit:
                 if (_autocomplete is not null && !IsExactAutocompleteMatch())
@@ -980,8 +972,20 @@ internal sealed partial class InteractiveSession : IDisposable
                     break;
                 }
 
-                _runCancellation?.Cancel();
-                _bashCancellation?.Cancel();
+                if (_turnActive)
+                {
+                    _turnCancelled = true;
+                    _runCancellation?.Cancel();
+                    _bashCancellation?.Cancel();
+                    break;
+                }
+
+                if (_bashRunning)
+                {
+                    _bashCancellation?.Cancel();
+                    break;
+                }
+
                 break;
             case RoutedKey.ClearOrQuit:
                 HandleCtrlC();
@@ -1053,6 +1057,28 @@ internal sealed partial class InteractiveSession : IDisposable
         }
 
         _live.SetSuspended(false);
+    }
+
+    /// <summary>The one edit path, shared by the Edit route and Alt+Enter while bash mode is on.</summary>
+    private void EditInput(KeyEvent key)
+    {
+        bool wasEmpty = _input.Text.Length == 0;
+        _input = InputLine.Apply(_input, key);
+        _historyDraft = null;
+        if (TryEnterBashMode(wasEmpty, key))
+        {
+            return;
+        }
+
+        _live.SetInput(_input, _bashMode);
+        if (_bashMode)
+        {
+            CloseAutocomplete();
+        }
+        else
+        {
+            RefreshAutocomplete(IsTextEdit(key));
+        }
     }
 
     private async Task SubmitAsync(CancellationToken ct)
@@ -1154,6 +1180,18 @@ internal sealed partial class InteractiveSession : IDisposable
             return;
         }
 
+        var userInput = new UserInput(input.Text, input.Images);
+        PrepareTurn(userInput);
+        _turnCancelled = false;
+        _run = RunTurnsAsync(userInput, skill, ct);
+    }
+
+    /// <summary>
+    /// Opens a turn in the transcript and scrollback before its run starts. Shared by a typed
+    /// submission and a drained follow-up, so both produce the identical user echo and cost reset.
+    /// </summary>
+    private void PrepareTurn(UserInput input)
+    {
         // A picker launch has no session yet: the turn that starts now creates it, so quitting
         // after the picker leaves the store untouched.
         MaterializeDeferredSession();
@@ -1185,8 +1223,6 @@ internal sealed partial class InteractiveSession : IDisposable
         {
             UpdateStatus();
         }
-
-        _run = RunTurnsAsync(new UserInput(input.Text, input.Images), skill, ct);
     }
 
     private async Task RunTurnsAsync(
@@ -1214,7 +1250,30 @@ internal sealed partial class InteractiveSession : IDisposable
                     SetInput(string.Join("\n", leftover.Select(entry => entry.Text)));
                 }
 
-                return;
+                // Esc during the just-finished turn wins: the queue stays for Alt+Up or the next
+                // run. The check is explicit because the drain is the one place Esc could otherwise
+                // launch the next message.
+                if (_turnCancelled)
+                {
+                    _turnCancelled = false;
+                    return;
+                }
+
+                if (_outcome == RunOutcome.Cancelled)
+                {
+                    return;
+                }
+
+                if (!_followUps.TryDequeue(out QueuedFollowUp? followUp) || followUp is null)
+                {
+                    return;
+                }
+
+                _history.Add(followUp.Input.Text);
+                PrepareTurn(followUp.Input);
+                input = followUp.Input;
+                skill = null;
+                UpdateFollowUpIndicator();
             }
         }
         finally
