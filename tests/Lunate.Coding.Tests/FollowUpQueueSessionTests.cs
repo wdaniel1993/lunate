@@ -1,3 +1,4 @@
+using Lunate.Agent;
 using Microsoft.Extensions.AI;
 
 namespace Lunate.Coding.Tests;
@@ -56,11 +57,10 @@ public sealed class FollowUpQueueSessionTests
     }
 
     [Fact]
-    public async Task Alt_enter_while_a_turn_runs_steers_and_queues_nothing()
+    public async Task Alt_enter_while_a_turn_runs_inserts_a_newline_and_queues_nothing()
     {
         using var host = new InteractiveSessionHost();
         host.Client.Enqueue(Scripts.Text("first"), Scripts.Stop());
-        host.Client.Enqueue(Scripts.Text("steered"), Scripts.Stop());
         host.Client.Gate(1);
         Task run = host.RunAsync();
         await host.WaitUntilAsync(() => host.Session.IsComposed);
@@ -68,17 +68,17 @@ public sealed class FollowUpQueueSessionTests
         host.Console.SendText("hi");
         host.Console.SendEnter();
         await host.Client.WaitForCallAsync(1);
-        host.Console.SendText("steer");
-        await host.WaitUntilAsync(() => host.Session.Input.Text == "steer");
+        host.Console.SendText("one");
+        await host.WaitUntilAsync(() => host.Session.Input.Text == "one");
         host.Console.SendAltEnter();
-        await host.WaitUntilAsync(() => host.Session.QueuedSteeringCount == 1);
+        host.Console.SendText("two");
+        await host.WaitUntilAsync(() => host.Session.Input.Text == "one\ntwo");
 
         Assert.Equal(0, host.Session.QueuedFollowUpCount);
-        Assert.Equal(string.Empty, host.Session.Input.Text);
+        Assert.Single(host.Client.Requests);
 
         host.Client.Release(1);
-        await host.Client.WaitForCallAsync(2);
-        Assert.Equal("steer", host.Client.Requests[1][^1].Text);
+        await host.WaitUntilAsync(() => !host.Session.IsRunning);
         host.Console.Complete();
         await run;
     }
@@ -167,11 +167,45 @@ public sealed class FollowUpQueueSessionTests
     }
 
     [Fact]
-    public async Task A_cancelled_turn_keeps_the_queue_and_does_not_drain()
+    public async Task Escape_interrupts_the_turn_and_hands_over_to_the_queue_in_order()
     {
         using var host = new InteractiveSessionHost();
         host.Client.Enqueue(Scripts.Text("first"), Scripts.Stop());
-        host.Client.Enqueue(Scripts.Text("never"), Scripts.Stop());
+        host.Client.Enqueue(Scripts.Text("first queued"), Scripts.Stop());
+        host.Client.Enqueue(Scripts.Text("second queued"), Scripts.Stop());
+        host.Client.Gate(1);
+        host.Client.Gate(2);
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+
+        host.Console.SendText("hi");
+        host.Console.SendEnter();
+        await host.Client.WaitForCallAsync(1);
+        await QueueAsync(host, "first queued", expected: 1);
+        await QueueAsync(host, "second queued", expected: 2);
+        host.Console.SendEscape();
+
+        await host.Client.WaitForCallAsync(2);
+        Assert.Equal("first queued", host.Client.Requests[1][^1].Text);
+        Assert.Equal(2, host.Client.Requests.Count);
+        Assert.True(host.Session.IsRunning);
+
+        host.Client.Release(2);
+        await host.Client.WaitForCallAsync(3);
+        Assert.Equal("second queued", host.Client.Requests[2][^1].Text);
+        await host.WaitUntilAsync(() => !host.Session.IsRunning);
+        Assert.Equal(0, host.Session.QueuedFollowUpCount);
+
+        host.Console.Complete();
+        await run;
+    }
+
+    [Fact]
+    public async Task The_queue_is_not_written_to_the_session_file()
+    {
+        using var host = new InteractiveSessionHost();
+        host.Client.Enqueue(Scripts.Text("first"), Scripts.Stop());
+        host.Client.Enqueue(Scripts.Text("second"), Scripts.Stop());
         host.Client.Gate(1);
         Task run = host.RunAsync();
         await host.WaitUntilAsync(() => host.Session.IsComposed);
@@ -179,17 +213,18 @@ public sealed class FollowUpQueueSessionTests
         host.Console.SendText("hi");
         host.Console.SendEnter();
         await host.Client.WaitForCallAsync(1);
-        await QueueAsync(host, "after the cancel", expected: 1);
-        host.Console.SendEscape();
-        await host.WaitUntilAsync(() => !host.Session.IsRunning);
+        await QueueAsync(host, "secret follow-up", expected: 1);
 
-        Assert.Equal(1, host.Session.QueuedFollowUpCount);
-        Assert.Single(host.Client.Requests);
+        string path = Assert.Single(Directory.GetFiles(host.Temp.File("sessions"), "*.jsonl"));
         await host.WaitUntilAsync(() =>
-        {
-            host.Advance(33);
-            return host.LastFrame.Contains("1 queued", StringComparison.Ordinal);
-        });
+            File.Exists(path) && File.ReadAllText(path).Contains("\"hi\"", StringComparison.Ordinal)
+        );
+        Assert.DoesNotContain("secret follow-up", File.ReadAllText(path), StringComparison.Ordinal);
+
+        host.Client.Release(1);
+        await host.Client.WaitForCallAsync(2);
+        Assert.Equal("secret follow-up", host.Client.Requests[1][^1].Text);
+        await host.WaitUntilAsync(() => !host.Session.IsRunning);
 
         host.Console.Complete();
         await run;
@@ -257,6 +292,11 @@ public sealed class FollowUpQueueSessionTests
         Assert.Equal(FollowUpQueue.Capacity, host.Session.QueuedFollowUpCount);
         Assert.Equal("sixth", host.Session.Input.Text);
 
+        // Take the five entries back so the cancel has no queue to hand over to.
+        host.Console.SendUp();
+        await host.WaitUntilAsync(() => host.Session.QueuedFollowUpCount == 0);
+        host.Console.SendCtrlC();
+        await host.WaitUntilAsync(() => host.Session.Input.Text.Length == 0);
         host.Console.SendEscape();
         await host.WaitUntilAsync(() => !host.Session.IsRunning);
         host.Console.Complete();
@@ -295,7 +335,7 @@ public sealed class FollowUpQueueSessionTests
     }
 
     [Fact]
-    public async Task Alt_up_pulls_the_newest_entry_back_into_an_empty_line()
+    public async Task Up_takes_the_whole_queue_back_ahead_of_the_draft()
     {
         using var host = new InteractiveSessionHost();
         host.Client.Enqueue(Scripts.Text("first"), Scripts.Stop());
@@ -309,95 +349,11 @@ public sealed class FollowUpQueueSessionTests
         await QueueAsync(host, "one", expected: 1);
         await QueueAsync(host, "two", expected: 2);
 
-        host.Console.SendAltUp();
-        await host.WaitUntilAsync(() => host.Session.Input.Text == "two");
-
-        Assert.Equal(1, host.Session.QueuedFollowUpCount);
-
-        host.Console.Complete();
-        await run;
-    }
-
-    [Fact]
-    public async Task Alt_up_walks_backwards_through_the_queue()
-    {
-        using var host = new InteractiveSessionHost();
-        host.Client.Enqueue(Scripts.Text("first"), Scripts.Stop());
-        host.Client.Gate(1);
-        Task run = host.RunAsync();
-        await host.WaitUntilAsync(() => host.Session.IsComposed);
-
-        host.Console.SendText("hi");
-        host.Console.SendEnter();
-        await host.Client.WaitForCallAsync(1);
-        await QueueAsync(host, "one", expected: 1);
-        await QueueAsync(host, "two", expected: 2);
-
-        host.Console.SendAltUp();
-        await host.WaitUntilAsync(() => host.Session.Input.Text == "two");
-        host.Console.SendAltUp();
-        await host.WaitUntilAsync(() => host.Session.Input.Text == "one");
-
-        Assert.Equal(0, host.Session.QueuedFollowUpCount);
-
-        host.Console.Complete();
-        await run;
-    }
-
-    [Fact]
-    public async Task Alt_up_with_a_non_empty_line_refuses_and_changes_nothing()
-    {
-        using var host = new InteractiveSessionHost();
-        host.Client.Enqueue(Scripts.Text("first"), Scripts.Stop());
-        host.Client.Gate(1);
-        Task run = host.RunAsync();
-        await host.WaitUntilAsync(() => host.Session.IsComposed);
-
-        host.Console.SendText("hi");
-        host.Console.SendEnter();
-        await host.Client.WaitForCallAsync(1);
-        await QueueAsync(host, "queued", expected: 1);
         host.Console.SendText("draft");
         await host.WaitUntilAsync(() => host.Session.Input.Text == "draft");
 
-        host.Console.SendAltUp();
-        await host.WaitUntilAsync(() =>
-        {
-            host.Advance(33);
-            return host.LastFrame.Contains("needs an empty line", StringComparison.Ordinal);
-        });
-
-        Assert.Equal("draft", host.Session.Input.Text);
-        Assert.Equal(1, host.Session.QueuedFollowUpCount);
-
-        host.Console.Complete();
-        await run;
-    }
-
-    [Fact]
-    public async Task Escape_restores_the_whole_queue_in_order()
-    {
-        using var host = new InteractiveSessionHost();
-        string image = host.Temp.File("shot.png");
-        File.WriteAllBytes(image, ImageSamples.Png(2, 3));
-        host.Client.Enqueue(Scripts.Text("first"), Scripts.Stop());
-        host.Client.Gate(1);
-        Task run = host.RunAsync();
-        await host.WaitUntilAsync(() => host.Session.IsComposed);
-
-        host.Console.SendText("hi");
-        host.Console.SendEnter();
-        await host.Client.WaitForCallAsync(1);
-        await QueueAsync(host, $"look @{image}", expected: 1);
-        await QueueAsync(host, "second", expected: 2);
-        host.Console.SendEscape();
-        await host.WaitUntilAsync(() => !host.Session.IsRunning);
-
-        host.Console.SendEscape();
-        await host.WaitUntilAsync(
-            () => host.Session.Input.Text == $"look @{image}\nsecond",
-            TimeSpan.FromSeconds(2)
-        );
+        host.Console.SendUp();
+        await host.WaitUntilAsync(() => host.Session.Input.Text == "one\ntwo\ndraft");
 
         Assert.Equal(0, host.Session.QueuedFollowUpCount);
 
@@ -406,7 +362,27 @@ public sealed class FollowUpQueueSessionTests
     }
 
     [Fact]
-    public async Task Escape_during_a_turn_cancels_and_leaves_the_queue_unchanged()
+    public async Task Escape_with_nothing_running_leaves_the_queue_alone()
+    {
+        using var host = new InteractiveSessionHost();
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+
+        host.Session.FollowUps.TryEnqueue(new QueuedFollowUp("one", new UserInput("one")));
+        host.Session.FollowUps.TryEnqueue(new QueuedFollowUp("two", new UserInput("two")));
+
+        host.Console.SendEscape();
+        host.Advance(66);
+
+        Assert.Equal(2, host.Session.QueuedFollowUpCount);
+        Assert.Equal(string.Empty, host.Session.Input.Text);
+
+        host.Console.Complete();
+        await run;
+    }
+
+    [Fact]
+    public async Task Escape_without_a_queue_cancels_the_turn()
     {
         using var host = new InteractiveSessionHost();
         host.Client.Enqueue(Scripts.Text("first"), Scripts.Stop());
@@ -417,13 +393,12 @@ public sealed class FollowUpQueueSessionTests
         host.Console.SendText("hi");
         host.Console.SendEnter();
         await host.Client.WaitForCallAsync(1);
-        await QueueAsync(host, "after", expected: 1);
-
         host.Console.SendEscape();
         await host.WaitUntilAsync(() => !host.Session.IsRunning);
 
-        Assert.Equal(1, host.Session.QueuedFollowUpCount);
+        Assert.Empty(host.Client.Requests.Skip(1));
         Assert.Equal(string.Empty, host.Session.Input.Text);
+        Assert.Equal(0, host.Session.QueuedFollowUpCount);
 
         host.Console.Complete();
         await run;

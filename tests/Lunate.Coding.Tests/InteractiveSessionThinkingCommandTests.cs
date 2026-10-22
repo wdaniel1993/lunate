@@ -100,7 +100,7 @@ public sealed class InteractiveSessionThinkingCommandTests
     }
 
     [Fact]
-    public async Task A_busy_session_refuses_the_set_form_but_allows_the_bare_form()
+    public async Task A_busy_session_refuses_both_thinking_forms_into_the_queue()
     {
         using var host = new InteractiveSessionHost();
         host.Client.Enqueue(Scripts.Text("never"), Scripts.Stop());
@@ -111,13 +111,20 @@ public sealed class InteractiveSessionThinkingCommandTests
         host.Console.SendEnter();
         await host.Client.WaitForCallAsync(1);
 
-        host.Console.SendText("/thinking high");
-        host.Console.SendEnter();
-        await InteractiveSessionCommandTests.WaitForFrameAsync(host, "a turn is running");
+        foreach (string command in new[] { "/thinking high", "/thinking" })
+        {
+            host.Console.SendText(command);
+            await host.WaitUntilAsync(() => host.Session.Input.Text == command);
+            host.Console.SendEnter();
+            await InteractiveSessionCommandTests.WaitForFrameAsync(
+                host,
+                "slash command cannot be queued"
+            );
 
-        host.Console.SendText("/thinking");
-        host.Console.SendEnter();
-        await InteractiveSessionCommandTests.WaitForFrameAsync(host, "thinking: off");
+            Assert.Equal(command, host.Session.Input.Text);
+            host.Console.SendCtrlC();
+            await host.WaitUntilAsync(() => host.Session.Input.Text.Length == 0);
+        }
 
         Assert.DoesNotContain("think:", host.LastFrame, StringComparison.Ordinal);
         Assert.True(host.Session.IsRunning);

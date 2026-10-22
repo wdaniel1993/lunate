@@ -38,7 +38,7 @@ public sealed class FollowUpQueueTests
     }
 
     [Fact]
-    public void Entries_run_from_the_head_and_the_newest_is_taken_back_first()
+    public void Entries_run_from_the_head_and_keep_their_order()
     {
         var queue = new FollowUpQueue();
         queue.TryEnqueue(Entry("first"));
@@ -46,9 +46,7 @@ public sealed class FollowUpQueueTests
 
         Assert.True(queue.TryDequeue(out QueuedFollowUp? head));
         Assert.Equal("first", head!.Input.Text);
-
-        Assert.True(queue.TryTakeNewest(out QueuedFollowUp? newest));
-        Assert.Equal("second", newest!.Input.Text);
+        Assert.Equal(["second"], queue.DrainEditorTexts());
         Assert.Equal(0, queue.Count);
     }
 

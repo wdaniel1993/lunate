@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
+using Lunate.Agent;
 using Lunate.Tui;
 
 namespace Lunate.Coding.Tests;
@@ -52,15 +53,18 @@ public sealed class InteractiveSessionEndToEndTests
     public async Task A_scripted_session_matches_the_committed_scrollback_and_final_frame()
     {
         Func<string, string?> baseEnvironment = PrintModeTestSupport.Environment();
-        using var host = new InteractiveSessionHost(environment: name =>
-            name switch
-            {
-                "LUNATE_UNICODE" => "1",
-                // The welcome header's normal form needs a resolving provider; the scripted
-                // provider never uses the key.
-                "OPENAI_API_KEY" => "test-key",
-                _ => baseEnvironment(name),
-            }
+        var steering = new SteeringQueue();
+        using var host = new InteractiveSessionHost(
+            environment: name =>
+                name switch
+                {
+                    "LUNATE_UNICODE" => "1",
+                    // The welcome header's normal form needs a resolving provider; the scripted
+                    // provider never uses the key.
+                    "OPENAI_API_KEY" => "test-key",
+                    _ => baseEnvironment(name),
+                },
+            configureHarness: options => options with { Steering = steering }
         );
         // The header prints the workspace path; a console narrower than that path would wrap it,
         // so the scrollback console is widened and the path is normalized out of the golden.
@@ -71,13 +75,12 @@ public sealed class InteractiveSessionEndToEndTests
         host.Client.Gate(6);
         Task run = host.RunAsync();
 
-        // Streaming paragraphs, a tool block, and mid-run steering injected before call 2.
+        // Streaming paragraphs, a tool block, and mid-run steering injected through the harness
+        // API before call 2.
         host.Console.SendText("first question");
         host.Console.SendEnter();
         await host.Client.WaitForCallAsync(1);
-        host.Console.SendText("steer mid-run");
-        host.Console.SendAltEnter();
-        await host.WaitUntilAsync(() => host.Session.QueuedSteeringCount == 1);
+        steering.Enqueue("steer mid-run");
         host.Client.Release(1);
         await host.Client.WaitForCallAsync(2);
         Assert.Equal("steer mid-run", host.Client.Requests[1][^1].Text);
@@ -96,16 +99,14 @@ public sealed class InteractiveSessionEndToEndTests
         Assert.Equal("two", File.ReadAllText(host.Temp.File("b.txt")));
         Assert.Equal("three", File.ReadAllText(host.Temp.File("c.txt")));
 
-        // Esc cancel returns the queued steering to the input line, unsent.
+        // Esc cancels the second turn; the text left in the editor stays unsubmitted.
         await host.WaitUntilAsync(() => !host.Session.IsRunning);
         host.Console.SendText("second question");
         host.Console.SendEnter();
         await host.Client.WaitForCallAsync(6);
-        host.Console.SendText("unsent steering");
-        host.Console.SendAltEnter();
-        await host.WaitUntilAsync(() => host.Session.QueuedSteeringCount == 1);
         host.Console.SendEscape();
         await host.WaitUntilAsync(() => !host.Session.IsRunning);
+        host.Console.SendText("unsent steering");
         await host.WaitUntilAsync(() =>
         {
             host.Advance(33);

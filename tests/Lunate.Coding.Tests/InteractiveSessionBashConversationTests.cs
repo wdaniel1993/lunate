@@ -113,7 +113,6 @@ public sealed class InteractiveSessionBashConversationTests
 
         Assert.Null(host.Session.PendingApproval);
         Assert.False(host.Session.IsBashRunning);
-        Assert.Equal(0, host.Session.QueuedSteeringCount);
         Assert.Single(host.Client.Requests);
         Assert.DoesNotContain(host.Events, agentEvent => agentEvent is ToolCallStart);
 

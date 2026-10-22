@@ -416,7 +416,7 @@ public sealed class InteractiveSessionSettingsCommandTests
     }
 
     [Fact]
-    public async Task Login_and_logout_refuse_while_a_turn_runs()
+    public async Task Login_logout_and_favorite_commands_cannot_be_queued_while_a_turn_runs()
     {
         var prompt = new ScriptedSecretPrompt("never-read");
         using var host = new InteractiveSessionHost(
@@ -432,25 +432,35 @@ public sealed class InteractiveSessionSettingsCommandTests
         host.Console.SendEnter();
         await host.Client.WaitForCallAsync(1);
 
-        host.Console.SendText("/login groq");
-        host.Console.SendEnter();
-        host.Console.SendText("/logout groq");
-        host.Console.SendEnter();
-        host.Console.SendText("/favorite");
-        host.Console.SendEnter();
-        host.Console.SendText("/unfavorite");
-        host.Console.SendEnter();
-        host.Console.SendText("/help");
-        host.Console.SendEnter();
-        await host.WaitUntilAsync(() =>
-            host.ScrollbackText.Contains("/unfavorite", StringComparison.Ordinal)
-        );
+        foreach (
+            string command in new[]
+            {
+                "/login groq",
+                "/logout groq",
+                "/favorite",
+                "/unfavorite",
+                "/help",
+            }
+        )
+        {
+            host.Console.SendText(command);
+            await host.WaitUntilAsync(() => host.Session.Input.Text == command);
+            host.Console.SendEnter();
+            await WaitForFrameAsync(host, "slash command cannot be queued");
+
+            Assert.Equal(command, host.Session.Input.Text);
+            host.Console.SendCtrlC();
+            await host.WaitUntilAsync(() => host.Session.Input.Text.Length == 0);
+        }
 
         Assert.Empty(prompt.Prompts);
         Assert.False(File.Exists(host.Temp.File("auth.json")));
         Assert.False(File.Exists(host.Temp.File("settings.json")));
         Assert.True(host.Session.IsRunning);
+        Assert.Single(host.Client.Requests);
 
+        host.Client.Release(1);
+        await host.WaitUntilAsync(() => !host.Session.IsRunning);
         host.Console.SendText("/quit");
         host.Console.SendEnter();
         await run;

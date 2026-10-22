@@ -21,6 +21,7 @@ public sealed class SlowHookNoticeTests
         using var host = new InteractiveSessionHost(hooks: runner);
         host.Console.Size = new ConsoleSize(600, 24);
         host.Client.Enqueue(Scripts.Text("ok"), Scripts.Stop());
+        host.Client.Enqueue(Scripts.Text("queued"), Scripts.Stop());
         host.Client.Gate(1);
         Task run = host.RunAsync();
         await host.WaitUntilAsync(() => host.Session.IsComposed);
@@ -29,7 +30,7 @@ public sealed class SlowHookNoticeTests
         host.Console.SendEnter();
         await host.Client.WaitForCallAsync(1);
         host.Console.SendText("steer");
-        host.Console.SendAltEnter();
+        host.Console.SendEnter();
         await host.WaitUntilAsync(() =>
         {
             host.Advance(33);
@@ -40,7 +41,8 @@ public sealed class SlowHookNoticeTests
         Assert.Contains("ext-slow", host.Frames, StringComparison.Ordinal);
         Assert.Contains("/extensions", host.Frames, StringComparison.Ordinal);
 
-        host.Console.SendEscape();
+        host.Client.Release(1);
+        await host.Client.WaitForCallAsync(2);
         host.Console.Complete();
         await run;
     }

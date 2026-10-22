@@ -57,7 +57,7 @@ internal sealed class ScriptedConsoleIO : IConsoleIO
 
     public void SendAltEnter() => Send(new KeyEvent(KeyKind.Enter, null, false, false, true));
 
-    public void SendAltUp() => Send(new KeyEvent(KeyKind.Up, null, false, false, true));
+    public void SendUp() => Send(new KeyEvent(KeyKind.Up, null, false, false, false));
 
     public void SendEscape() => Send(new KeyEvent(KeyKind.Escape, null, false, false, false));
 
@@ -375,22 +375,6 @@ internal sealed class GatedChatClient : IChatClient
     private sealed record Script(IReadOnlyList<ChatResponseUpdate> Updates, Exception? Failure);
 }
 
-/// <summary>Environment lookups for the interactive session tests.</summary>
-internal static class InteractiveSessionEnvironment
-{
-    private const string BusyEnterVariable = "LUNATE_BUSY_ENTER";
-
-    /// <summary>
-    /// The default test environment with the busy send key set to <c>steer</c>, so Enter injects
-    /// into the running turn instead of queueing a follow-up.
-    /// </summary>
-    internal static Func<string, string?> SteerBusyEnter(Func<string, string?>? baseline = null)
-    {
-        Func<string, string?> environment = baseline ?? PrintModeTestSupport.Environment();
-        return name => name == BusyEnterVariable ? "steer" : environment(name);
-    }
-}
-
 /// <summary>Composes an interactive session over temp paths, a scripted console and a scripted
 /// provider. Callers that need the real client factory (the runtime replay seam) pass
 /// <c>factory</c> instead of a scripted client.</summary>
@@ -515,8 +499,7 @@ internal sealed class InteractiveSessionHost : IDisposable
             {
                 throw new TimeoutException(
                     "The condition never became true "
-                        + $"(queued={Session.QueuedSteeringCount} running={Session.IsRunning} "
-                        + $"writes={Console.Writes.Count})."
+                        + $"(running={Session.IsRunning} writes={Console.Writes.Count})."
                 );
             }
 

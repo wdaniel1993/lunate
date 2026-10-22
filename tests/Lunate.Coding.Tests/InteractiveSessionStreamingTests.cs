@@ -218,7 +218,7 @@ public sealed class InteractiveSessionStreamingTests
         host.Console.SendEnter();
         await host.Client.WaitForCallAsync(1);
         host.Console.SendText("steer");
-        host.Console.SendAltEnter();
+        host.Console.SendEnter();
         await host.WaitUntilAsync(() =>
         {
             host.Advance(33);
@@ -228,7 +228,7 @@ public sealed class InteractiveSessionStreamingTests
             );
         });
 
-        Assert.Equal(0, host.Session.QueuedSteeringCount);
+        Assert.Equal(0, host.Session.QueuedFollowUpCount);
         host.Console.SendEscape();
         host.Console.Complete();
         await run;
