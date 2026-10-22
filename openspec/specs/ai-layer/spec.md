@@ -19,9 +19,7 @@ Model access for Lunate: the factory that builds the correctly ordered `IChatCli
 - **THEN** no `FunctionInvokingChatClient` or `AIFunctionFactory` appears anywhere in it
 
 ### Requirement: Model catalog merge
-`ModelCatalog` SHALL merge the embedded `models.json` with `~/.lunate/models.json`; user entries SHALL override built-ins by id; adding a model SHALL never require a code change. A model MAY declare its reasoning style with `reasoning`: `"effort"` (OpenAI-compatible reasoning effort), `"budget"` (Anthropic extended thinking) or `"inline"` (the model embeds ` thinking…</think>` in its text stream); a model without the field declares no reasoning support and behaves exactly as before.
-
-Schema 2 SHALL add optional catalog metadata: `pricing` with `input`, `output`, `cacheRead` and `cacheWrite` rates per million tokens, `maxOutput`, `supportsVision` and `wireId`. Schema 1 files SHALL remain readable: a schema 1 entry has no pricing, `maxOutput` or vision support and uses its own id as the wire id; a schema 1 entry that overrides an existing id SHALL keep the existing entry's `pricing`, `maxOutput`, `supportsVision` and `wireId`, because schema 1 cannot express them. The loader SHALL merge, in increasing precedence, the embedded snapshot, the optional managed cache at `~/.lunate/models.catalog.json` and the user file at `~/.lunate/models.json`; the managed cache SHALL be read only when no explicit user path is injected. A duplicate id within one file SHALL fail and name the id; a duplicate generated wire id SHALL fail generation.
+`ModelCatalog` SHALL merge the embedded `models.json` with `~/.lunate/models.json`; user entries SHALL override built-ins by id; adding a model SHALL never require a code change. A model MAY declare its reasoning style with `reasoning`: `"effort"` (OpenAI-compatible reasoning effort), `"budget"` (Anthropic extended thinking) or `"inline"` (the model embeds ` thinking…</think>` in its text stream); a model without the field declares no reasoning support and behaves exactly as before. A model MAY declare `supportsVision` (boolean, default `false`); `ModelInfo.SupportsVision` SHALL expose it and a model without the field SHALL report no vision support. A user entry SHALL be able to turn the flag on or off for an overridden built-in.
 
 #### Scenario: User override wins
 - **GIVEN** a built-in model and a user file redefining the same id
@@ -56,6 +54,18 @@ Schema 2 SHALL add optional catalog metadata: `pricing` with `input`, `output`, 
 - **WHEN** the catalog is loaded
 - **THEN** the user entry wins, and an id present only in the managed cache is available
 
+#### Scenario: Vision is declared per model
+
+- **GIVEN** a `models.json` entry with `"supportsVision": true` and one without the field
+- **WHEN** the catalog is loaded
+- **THEN** the first reports vision support and the second reports none
+
+#### Scenario: A user override changes the vision flag
+
+- **GIVEN** a built-in model with `supportsVision` and a user entry redefining it with the opposite value
+- **WHEN** the catalog is loaded
+- **THEN** the user value is reported
+
 ### Requirement: Layer reuse and retry boundary
 `Lunate.Ai` SHALL reuse `UseLogging` and `UseOpenTelemetry` (opt-in) instead of bespoke middleware, SHALL use `AIJsonUtilities` options for serializing Microsoft.Extensions.AI types where serialization exists, and SHALL NOT implement retries — the loop owns them and surfaces them as events.
 
@@ -65,7 +75,7 @@ Schema 2 SHALL add optional catalog metadata: `pricing` with `input`, `output`, 
 - **THEN** the exception surfaces unchanged (no retry inside `Lunate.Ai`)
 
 ### Requirement: Recording and replay of provider streams
-`Lunate.Ai` SHALL record provider exchanges as JSONL when `LUNATE_RECORD=1` for both call styles: a streamed exchange (`GetStreamingResponseAsync`) records its update sequence, and an aggregated exchange (`GetResponseAsync`) records the response as its update sequence so replay serves both call styles from one exchange. `Lunate.Ai` SHALL replay fixtures deterministically: `ReplayChatClient` answers requests from the recorded exchanges in order, verifying each request digest, with actionable errors on mismatch or exhaustion. Fixtures SHALL serialize Microsoft.Extensions.AI types with `AIJsonUtilities` options and replay SHALL NOT require API keys or network access. When `LUNATE_REPLAY` names a fixture path, the factory's standard resolution path SHALL wire `ReplayChatClient` for it without resolving a credential or constructing a provider client, so a session replays with no key and no network; the explicit-credential overload (`Create(model, apiKey)`) SHALL NOT replay, and an explicit recording request takes precedence when both are set. When `LUNATE_RECORD=1` is set without an explicit path, recordings SHALL default under the user's home directory (`~/.lunate/recordings/`), never inside the current working directory. The request digest SHALL cover the messages, the model id and the tool names; tool descriptions and schemas are deliberately outside the digest, so presentation changes do not invalidate a fixture (revisit if it bites). Scripted fixtures SHALL be marked with the model id `synthetic`; live recordings carry the real model id.
+`Lunate.Ai` SHALL record provider exchanges as JSONL when `LUNATE_RECORD=1` for both call styles: a streamed exchange (`GetStreamingResponseAsync`) records its update sequence, and an aggregated exchange (`GetResponseAsync`) records the response as its update sequence so replay serves both call styles from one exchange. `Lunate.Ai` SHALL replay fixtures deterministically: `ReplayChatClient` answers requests from the recorded exchanges in order, verifying each request digest, with actionable errors on mismatch or exhaustion. Fixtures SHALL serialize Microsoft.Extensions.AI types with `AIJsonUtilities` options and replay SHALL NOT require API keys or network access. When `LUNATE_REPLAY` names a fixture path, the factory's standard resolution path SHALL wire `ReplayChatClient` for it without resolving a credential or constructing a provider client, so a session replays with no key and no network; the explicit-credential overload (`Create(model, apiKey)`) SHALL NOT replay, and an explicit recording request takes precedence when both are set. When `LUNATE_RECORD=1` is set without an explicit path, recordings SHALL default under the user's home directory (`~/.lunate/recordings/`), never inside the current working directory. The request digest SHALL cover the messages, the model id and the tool names; tool descriptions and schemas are deliberately outside the digest, so presentation changes do not invalidate a fixture (revisit if it bites). Scripted fixtures SHALL be marked with the model id `synthetic`; live recordings carry the real model id. For the digest, every image `DataContent` in a message SHALL be replaced by its media type and lowercase SHA-256 hex digest, so the image identity is covered deliberately while base64 bytes never enter the digest input or a fixture.
 
 #### Scenario: Record then replay is identical
 - **GIVEN** a provider stream recorded to a fixture
@@ -108,6 +118,18 @@ Schema 2 SHALL add optional catalog metadata: `pricing` with `input`, `output`, 
 - **GIVEN** `LUNATE_RECORD=1` and `LUNATE_REPLAY` both set
 - **WHEN** the factory builds a pipeline
 - **THEN** the recorder is wired, never the replay client
+
+#### Scenario: The same image has the same digest
+
+- **GIVEN** two requests whose messages carry identical image bytes in different encodings
+- **WHEN** their request digests are computed
+- **THEN** the digests match and neither input contains base64 image bytes
+
+#### Scenario: Different pixels change the digest
+
+- **GIVEN** two requests whose image bytes differ by one pixel
+- **WHEN** their request digests are computed
+- **THEN** the digests differ
 
 ### Requirement: Anthropic provider adapter
 `Lunate.Ai` SHALL provide Anthropic support through the official Anthropic .NET package and its first-party Microsoft.Extensions.AI adapter, selected by `ModelInfo.Provider == "anthropic"` and authenticated from `ANTHROPIC_API_KEY`. The factory SHALL construct it with transport retries disabled so retries remain exclusively the loop's. When the model's reasoning style is `budget` and the session's thinking level is on, the factory SHALL enable extended thinking with the level's token budget and ensure the request carries `max_tokens` (clamped above the budget); signed thinking blocks returned by the model SHALL be round-tripped unchanged within the model's own tool-use loops, and this round-trip SHALL be covered by the live contract test.

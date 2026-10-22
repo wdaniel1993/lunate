@@ -24,6 +24,18 @@
 - **WHEN** the catalog is loaded
 - **THEN** the model's reasoning style is available to the factory, and a model without the field reports none
 
+#### Scenario: A schema 1 catalog still loads
+
+- **GIVEN** a user `models.json` with `schemaVersion: 1` and a model entry without pricing
+- **WHEN** the catalog is loaded
+- **THEN** the model is available with no pricing, no maximum output, vision off, and its own id as the wire id
+
+#### Scenario: The managed cache merges below the user file
+
+- **GIVEN** an embedded entry, a managed cache entry with the same id, and a user entry with that id
+- **WHEN** the catalog is loaded
+- **THEN** the user entry wins, and an id present only in the managed cache is available
+
 #### Scenario: Vision is declared per model
 
 - **GIVEN** a `models.json` entry with `"supportsVision": true` and one without the field

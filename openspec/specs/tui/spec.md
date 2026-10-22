@@ -121,11 +121,11 @@ Technical readouts SHALL format through one set of helpers — byte sizes, token
 
 ### Requirement: Tool block rendering
 
-In expanded mode (`toolDetails: expanded`): Finished tool calls SHALL render as scrollback blocks carrying the tool name, an argument summary, a status (running, ok, error) and a bounded excerpt of the output — first and last lines with an elision marker for the middle — in a borderless style. By default (`toolDetails: collapsed`), a finished tool call SHALL render as its header line only — the same header described here — and SHALL omit the bounded excerpt and the diff panel. A collapsed header SHALL carry a muted `ctrl+o` hint only when expanded details would show at least one line: a non-empty output excerpt, or a diff that parses into a panel. The hint SHALL follow the header's meta with the header's separator and SHALL be absent when there is nothing more to show — blank output, an empty or malformed diff, or a successful `read`, whose output the scrollback never shows; a failed `read` shows its message and carries the hint. Expanded blocks SHALL NOT carry the hint, and the `ctrl+o` viewer SHALL show the full output, the diffs and the carried child result in both modes. Each header SHALL lead with a status glyph — `✓` ok, `✗` failed (ASCII `+` and `x`) — and SHALL carry a per-tool compact summary with meta: `read` shows its path with the line range and no output, `bash` its command with the exit code and duration and an excerpt of the output's last lines, `edit` and `write` their path with `+N −M` change counts followed by the diff, `cs_*` tools their severity counts with the top items, and extension and MCP tools their name with a short argument summary. Below 60 columns the header SHALL shorten to glyph, name and meta only — `read` carries its line count as the meta, `bash` its exit code and duration, `edit` and `write` their change counts, `cs_*` its severity counts, and the extension/MCP fallback its name alone. Paths in headers and excerpts SHALL be shortened in the middle, never wrapped. The elision marker SHALL carry the hidden-line count and the `ctrl+o` affordance in the warning colour. Every user-derived string SHALL be escaped before markup assembly, and argument summaries SHALL come from a pure, per-tool summarizer with a generic fallback for unknown tools. Child-run (subagent) events SHALL NOT render as scrollback text or blocks of their own; while a child run is live the live area SHALL show a `subagent running` status, the spawning tool's own block carries the child's final result, and child usage still feeds the footer — the child's transcript is inspectable through its child session. The spawning block's carried child result SHALL render as one indented group.
+Finished tool calls SHALL render as scrollback blocks carrying the tool name, an argument summary, a status (running, ok, error) and a bounded excerpt of the output — first and last lines with an elision marker for the middle — in a borderless style. Each header SHALL lead with a status glyph — `✓` ok, `✗` failed (ASCII `+` and `x`) — and SHALL carry a per-tool compact summary with meta: `read` shows its path with the line range and no output, `bash` its command with the exit code and duration and an excerpt of the output's last lines, `edit` and `write` their path with `+N −M` change counts followed by the diff, `cs_*` tools their severity counts with the top items, and extension and MCP tools their name with a short argument summary. Below 60 columns the header SHALL shorten to glyph, name and meta only — `read` carries its line count as the meta, `bash` its exit code and duration, `edit` and `write` their change counts, `cs_*` its severity counts, and the extension/MCP fallback its name alone. Paths in headers and excerpts SHALL be shortened in the middle, never wrapped. The elision marker SHALL carry the hidden-line count and the `ctrl+o` affordance in the warning colour. Every user-derived string SHALL be escaped before markup assembly, and argument summaries SHALL come from a pure, per-tool summarizer with a generic fallback for unknown tools. Child-run (subagent) events SHALL NOT render as scrollback text or blocks of their own; while a child run is live the live area SHALL show a `subagent running` status, the spawning tool's own block carries the child's final result, and child usage still feeds the footer — the child's transcript is inspectable through its child session. The spawning block's carried child result SHALL render as one indented group. A successful image `read` SHALL render its `[image <width>x<height>]` output line even though a text `read` hides output; the placeholder SHALL NOT count as a content line in the header, and no block SHALL emit a terminal image escape sequence.
 
 #### Scenario: Long output is elided visibly
 
-- **GIVEN** a tool result whose output exceeds the excerpt budget, with `toolDetails: expanded`
+- **GIVEN** a tool result whose output exceeds the excerpt budget
 - **WHEN** its block renders
 - **THEN** the first and last lines are shown and the middle is replaced by an explicit hidden-lines marker
 
@@ -146,10 +146,9 @@ In expanded mode (`toolDetails: expanded`): Finished tool calls SHALL render as 
 - **GIVEN** a tool call running a subagent that streams text and tool calls
 - **WHEN** its child events arrive on the parent stream
 - **THEN** no child text or child tool block appears in scrollback, the live area shows `subagent running` while it is live, and the spawning block carries the child's final result
-
 #### Scenario: Per-tool compact forms
 
-- **GIVEN** `read`, `bash`, `edit` and `cs_*` results, with `toolDetails: expanded`
+- **GIVEN** `read`, `bash`, `edit` and `cs_*` results
 - **WHEN** their blocks render
 - **THEN** each header carries its compact summary and meta — `read` the path with its line range
   and no content, `bash` the command with its exit code and duration and the output's last lines,
@@ -157,7 +156,7 @@ In expanded mode (`toolDetails: expanded`): Finished tool calls SHALL render as 
 
 #### Scenario: The cut is an affordance
 
-- **GIVEN** a tool result whose output exceeds the excerpt budget, with `toolDetails: expanded`
+- **GIVEN** a tool result whose output exceeds the excerpt budget
 - **WHEN** its block renders
 - **THEN** the elision marker names the hidden-line count and the `ctrl+o` affordance
 
@@ -230,6 +229,18 @@ In expanded mode (`toolDetails: expanded`): Edit and write blocks SHALL render t
 - **GIVEN** `toolDetails: expanded` and an `edit` result with a diff
 - **WHEN** its block commits
 - **THEN** the red/green panel and the tier label follow the header and the header carries no `ctrl+o`
+
+#### Scenario: A read image shows the placeholder
+
+- **GIVEN** a successful `read` of a 1024×768 PNG
+- **WHEN** its block renders
+- **THEN** the output line reads `[image 1024x768]`, the header does not claim a line count, and the block contains no terminal image escape
+
+#### Scenario: The image block golden
+
+- **GIVEN** the image read block at 120, 80 and 50 columns
+- **WHEN** it renders through the test console
+- **THEN** each matches its committed golden byte for byte
 
 ### Requirement: One meaning per key
 
@@ -863,7 +874,7 @@ renders until it is opened.
 
 ### Requirement: Input box
 
-The live area SHALL render the input as a box: a full-width rule above the input at every width, a second full-width rule below it from 60 columns (none below), the input's first line carrying the `> ` prompt prefix and continuation lines a two-space indent, and the status footer below the box — below the lower rule when it is drawn, directly below the input when it is not. When the input is empty, the first line SHALL show the placeholder `Ask anything, / for commands` in the theme's `user` colour; the `> ` prompt marker SHALL carry that colour whenever the input renders (plain under `NO_COLOR`), while typed text and continuation lines stay plain. The box SHALL grow with its content to eight lines and scroll beyond that, keeping the cursor's line visible; the rules and placeholder SHALL use ASCII fallbacks (`-`) when Unicode is unavailable, and the lower rule SHALL be omitted below 60 columns while the upper rule, the input and footer stay.
+The live area SHALL render the input as a box: a full-width rule above the input at every width, a second full-width rule below it at every width, the input's first line carrying the `> ` prompt prefix and continuation lines a two-space indent, and the status footer below the box — below the lower rule when it is drawn, directly below the input when it is not. When the input is empty, the first line SHALL show the placeholder `Ask anything, / for commands` in the theme's `user` colour; the `> ` prompt marker SHALL carry that colour whenever the input renders (plain under `NO_COLOR`), while typed text and continuation lines stay plain. The box SHALL grow with its content to eight lines and scroll beyond that, keeping the cursor's line visible; the rules and placeholder SHALL use ASCII fallbacks (`-`) when Unicode is unavailable, and the lower rule SHALL be drawn at every width so the box always closes — the compact band keeps its other reductions, not this one — while the upper rule, the input and footer stay.
 
 #### Scenario: The box draws rules at 80 or more columns
 
@@ -897,7 +908,7 @@ The live area SHALL render the input as a box: a full-width rule above the input
 
 ### Requirement: Autocomplete
 
-Typing SHALL open an as-you-type autocomplete list above the input: when the input's first word starts with `/`, the list SHALL show the built-in commands, the `/skill:<name>` entries and the extension commands, each with a short description where one exists; when the cursor sits at the end of an `@` token, the list SHALL show the workspace files matching that token from the file index. The list SHALL be one registry composed from the command table, the skill catalog and the extension manifests — no separate hard-coded lists — filtered fuzzily as a subsequence of the typed query for the fixed registry, while file rows come from the index's ordinal query. At most eight rows SHALL render, directly above the input; ↑/↓ SHALL move the selection, Tab and Enter SHALL accept it (replacing the token, keeping the `@` for file rows and closing the list), Esc SHALL close the list, and typing SHALL re-filter. Descriptions SHALL be dropped below 60 columns; file rows SHALL render the directory part muted; with no matches the list SHALL stay closed.
+Typing SHALL open an as-you-type autocomplete list above the input: when the input's first word starts with `/`, the list SHALL show the built-in commands, the `/skill:<name>` entries and the extension commands, each with a short description where one exists; when the cursor sits at the end of an `@` token, the list SHALL show the workspace files matching that token from the file index. The list SHALL be one registry composed from the command table, the skill catalog and the extension manifests — no separate hard-coded lists — filtered fuzzily as a subsequence of the typed query for the fixed registry, while file rows come from the index's case-insensitive completion query. At most eight rows SHALL render, directly above the input; ↑/↓ SHALL move the selection, Tab and Enter SHALL accept it (replacing the token, keeping the `@` for file rows and closing the list), Esc SHALL close the list, and typing SHALL re-filter. Descriptions SHALL be dropped below 60 columns; file rows SHALL render the directory part muted; with no matches the list SHALL stay closed.
 
 #### Scenario: The list opens on slash
 
@@ -949,7 +960,7 @@ Typing SHALL open an as-you-type autocomplete list above the input: when the inp
 
 ### Requirement: File index
 
-The workspace file index SHALL be built lazily (never at startup), asynchronously, honouring `.gitignore` files (root and nested; negation, directory-only and anchoring rules) while always skipping `.git`; directory symlinks SHALL not be followed. It SHALL be bounded to 200,000 entries (sorted ordinals; a truncation flag is exposed) and a completion query SHALL be ordinal. When the index is not ready yet, the session SHALL show an indexing notice and start the build. On a generated 20,000-file repository the build SHALL stay within 5 seconds and a warm query within 50 milliseconds, proven by a budget check in the gate.
+The workspace file index SHALL be built lazily (never at startup), asynchronously, honouring `.gitignore` files (root and nested; negation, directory-only and anchoring rules) while always skipping `.git`; directory symlinks SHALL not be followed. It SHALL be bounded to 200,000 entries (sorted ordinals; a truncation flag is exposed) and a completion query SHALL be case-insensitive while the index stays sorted ordinally. When the index is not ready yet, the session SHALL show an indexing notice and start the build. On a generated 20,000-file repository the build SHALL stay within 5 seconds and a warm query within 50 milliseconds, proven by a budget check in the gate.
 
 #### Scenario: Ignores are honoured
 
@@ -971,7 +982,7 @@ The workspace file index SHALL be built lazily (never at startup), asynchronousl
 
 ### Requirement: Narrow-terminal breakpoints
 
-The TUI SHALL evaluate three width bands at render time: `≥100` full, `60–99` standard and `<60` compact. In the compact band the tool headers shorten per the tool-block requirement, the footer takes its compact form per the status-footer requirement, the input box keeps its upper rule and loses the lower one (its ≥60 boundary already covers this), and autocomplete descriptions are absent (their ≥60 boundary already covers this). Every rendered line SHALL be no wider than the terminal. A resize SHALL re-render the live area at the new width before any further output, and scrollback committed after the resize SHALL use the new width; already-committed scrollback is immutable and owned by the terminal. When the diff gutter and markdown tables enter the renderers, the compact band SHALL render diffs without the gutter and tables as lists; until then those constructs keep their plain-text forms.
+The TUI SHALL evaluate three width bands at render time: `≥100` full, `60–99` standard and `<60` compact. In the compact band the tool headers shorten per the tool-block requirement, the footer takes its compact form per the status-footer requirement, the input box keeps its upper and lower rules, and autocomplete descriptions are absent (their ≥60 boundary already covers this). Every rendered line SHALL be no wider than the terminal. A resize SHALL re-render the live area at the new width before any further output, and scrollback committed after the resize SHALL use the new width; already-committed scrollback is immutable and owned by the terminal. When the diff gutter and markdown tables enter the renderers, the compact band SHALL render diffs without the gutter and tables as lists; until then those constructs keep their plain-text forms.
 
 #### Scenario: The full band keeps the full layout
 
@@ -1136,3 +1147,35 @@ When every `UsageUpdated` record of the current turn tree (root and subagents) r
 - **GIVEN** an idle session
 - **WHEN** `/login not-a-provider` is submitted
 - **THEN** a notice lists the supported presets and no prompt opens
+
+### Requirement: Image placeholders in the user block
+
+The committed user block SHALL render the processed text exactly as submitted, including the `[image <width>x<height>]` placeholders produced by image references. The transcript entry SHALL carry the same text, so the scrollback and the `Ctrl+O` viewer never disagree. The block SHALL NOT contain base64 data or a terminal image escape sequence.
+
+#### Scenario: The user block shows the placeholder
+
+- **GIVEN** a submitted message `explain @diagram.png`
+- **WHEN** the user block commits
+- **THEN** it reads `> explain [image 1024x768]` and contains no image bytes or escape sequence
+
+#### Scenario: The viewer shows the same text
+
+- **GIVEN** the same message in the transcript
+- **WHEN** `Ctrl+O` opens the viewer
+- **THEN** the user entry reads the same processed text with the placeholder
+
+### Requirement: Notice rendering
+
+A live-area notice SHALL wrap to the terminal width instead of being clipped, so a long message loses no content. Each physical line SHALL be sanitized and SHALL be no wider than the terminal; the whole notice SHALL be capped at four lines and SHALL end its last line with an ellipsis marker when it overflows. The wrapped notice's real line count SHALL feed the live area's budget, so the input box keeps its eight lines and the tail loses the rows instead. A notice that sanitizes to nothing SHALL render as none, and a capped notice SHALL never hide the input.
+
+#### Scenario: A long notice wraps
+
+- **GIVEN** a 40-column terminal
+- **WHEN** a notice longer than the width is rendered
+- **THEN** it wraps at the width, no word is lost, and every physical line is at most 40 columns
+
+#### Scenario: A pathological notice is capped
+
+- **GIVEN** an 80-column terminal
+- **WHEN** a notice longer than four lines is rendered
+- **THEN** it occupies four lines, the last ends with the ellipsis marker, and the input box is still fully rendered
