@@ -102,8 +102,17 @@ public static class InputLine
                 CursorPosition = state.Text.Length,
             };
 
-    internal static InputLineLayout Layout(InputLineState state, int width, int maxLines)
+    internal static InputLineLayout Layout(InputLineState state, int width, int maxLines) =>
+        Layout(state, width, maxLines, bashMode: false);
+
+    internal static InputLineLayout Layout(
+        InputLineState state,
+        int width,
+        int maxLines,
+        bool bashMode
+    )
     {
+        string prompt = bashMode ? "! " : "> ";
         int contentWidth = Math.Max(1, width - PromptWidth);
         var lines = new List<string>();
         var builder = new StringBuilder();
@@ -170,7 +179,7 @@ public static class InputLine
         var display = new List<string>(lines.Count);
         for (var i = 0; i < lines.Count; i++)
         {
-            string prefix = start + i == 0 ? "> " : "  ";
+            string prefix = start + i == 0 ? prompt : "  ";
             display.Add(CellText.Clip(prefix + lines[i], width));
         }
 

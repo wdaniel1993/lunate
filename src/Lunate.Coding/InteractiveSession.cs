@@ -930,10 +930,24 @@ internal sealed partial class InteractiveSession : IDisposable
         switch (KeyRouter.Route(key))
         {
             case RoutedKey.Edit:
+                bool wasEmpty = _input.Text.Length == 0;
                 _input = InputLine.Apply(_input, key);
                 _historyDraft = null;
-                _live.SetInput(_input);
-                RefreshAutocomplete(IsTextEdit(key));
+                if (TryEnterBashMode(wasEmpty, key))
+                {
+                    break;
+                }
+
+                _live.SetInput(_input, _bashMode);
+                if (_bashMode)
+                {
+                    CloseAutocomplete();
+                }
+                else
+                {
+                    RefreshAutocomplete(IsTextEdit(key));
+                }
+
                 break;
             case RoutedKey.Submit:
                 if (_autocomplete is not null && !IsExactAutocompleteMatch())
@@ -948,6 +962,12 @@ internal sealed partial class InteractiveSession : IDisposable
                 if (_autocomplete is not null)
                 {
                     DismissAutocomplete();
+                    break;
+                }
+
+                if (_bashMode)
+                {
+                    LeaveBashMode(restore: true);
                     break;
                 }
 
@@ -1027,6 +1047,12 @@ internal sealed partial class InteractiveSession : IDisposable
 
     private async Task SubmitAsync(CancellationToken ct)
     {
+        if (_bashMode)
+        {
+            await SubmitBashAsync(ct);
+            return;
+        }
+
         string submitted = _input.Text;
         if (string.IsNullOrWhiteSpace(submitted))
         {
@@ -1337,12 +1363,14 @@ internal sealed partial class InteractiveSession : IDisposable
     {
         CloseAutocomplete();
         _input = new InputLineState(text, text.Length);
-        _live.SetInput(_input);
+        _live.SetInput(_input, _bashMode);
     }
 
     private void SetInput(string text)
     {
         CloseAutocomplete();
+        _bashMode = false;
+        _bashSilent = false;
         _input = new InputLineState(text, text.Length);
         _historyDraft = null;
         _live.SetInput(_input);

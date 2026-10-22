@@ -2,10 +2,10 @@
 
 ## 1. Mode and prompt
 
-- [ ] 1.1 Red tests: `!` as the first character of an empty input enters the mode; `!` anywhere else stays literal; `!!` enters it with the silent flag; Esc leaves the mode and restores the text; Enter on `!` alone leaves without running.
-- [ ] 1.2 Render the prompt as `! ` in the accent colour while the mode is active, at every width band, without changing any fixture that does not use it.
-- [ ] 1.3 Route the mode through the existing submission path so Enter has one meaning per state; add the scripted key test for the mode's Enter and Esc.
-- [ ] 1.4 Commit: `feat(tui): enter bash mode from an exclamation prefix`.
+- [x] 1.1 Red tests: `!` as the first character of an empty input enters the mode; `!` anywhere else stays literal; `!!` enters it with the silent flag; Esc leaves the mode and restores the text; Enter on `!` alone leaves without running.
+- [x] 1.2 Render the prompt as `! ` in the accent colour while the mode is active, at every width band, without changing any fixture that does not use it.
+- [x] 1.3 Route the mode through the existing submission path so Enter has one meaning per state; add the scripted key test for the mode's Enter and Esc.
+- [x] 1.4 Commit: `feat(tui): enter bash mode from an exclamation prefix`.
 
 ## 2. Execution
 
