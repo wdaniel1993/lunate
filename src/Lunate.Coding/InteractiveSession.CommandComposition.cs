@@ -6,9 +6,9 @@ internal sealed partial class InteractiveSession
 {
     /// <summary>
     /// Composes the command registry for this session: built-ins first, then the discovered skills,
-    /// then the loaded extensions' sources. The template slot follows extensions when a template
-    /// source lands. Runs after skill discovery, at session start and on every reload, so the
-    /// registry, autocomplete, dispatch and <c>/help</c> always describe the same command set.
+    /// then the loaded extensions' sources, then the template slot when a template source lands.
+    /// Runs after skill discovery, at session start and on every reload, so the registry,
+    /// autocomplete, dispatch and <c>/help</c> always describe the same command set.
     /// </summary>
     private async Task ComposeCommandsAsync(CancellationToken ct)
     {

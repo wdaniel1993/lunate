@@ -46,9 +46,11 @@ internal sealed partial class InteractiveSession
 
     /// <summary>
     /// The <c>/help</c> listing: the registry's built-in entries grouped (session, model,
-    /// extensions, files, quit, design D3), printed as finished lines into scrollback (a live-area
-    /// notice is one clipped line and cannot hold a listing). The lines are plain text, so they are
-    /// markup-escaped on the way in. Read-only, so it is allowed while a turn runs.
+    /// extensions, files, quit, design D3) followed by one section per non-built-in kind present
+    /// (<c>skills</c>, <c>extensions</c>, <c>templates</c>), printed as finished lines into
+    /// scrollback (a live-area notice is one clipped line and cannot hold a listing). The lines are
+    /// plain text, so they are markup-escaped on the way in. Read-only, so it is allowed while a
+    /// turn runs.
     /// </summary>
     private void ShowHelp() =>
         WriteScrollbackLines([.. HelpView.Lines(_commands.Descriptors).Select(Markup.Escape)]);
