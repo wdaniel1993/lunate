@@ -85,66 +85,6 @@ internal sealed partial class InteractiveSession
         );
     }
 
-    /// <summary>
-    /// Ctrl+P: switches to the next resolvable favourite in settings order, wrapping after the
-    /// last; when the active model is not in the list, the first resolvable favourite is next. An
-    /// id the catalog cannot resolve (missing or ambiguous) is skipped and reported once per
-    /// session, so a stale entry never traps the cycle. An empty list is a notice, never a run.
-    /// The switch is the <c>/model</c> path, so the session records it and the footer follows.
-    /// </summary>
-    private async ValueTask CycleFavoriteAsync(CancellationToken ct)
-    {
-        if (RefusedWhileBusy())
-        {
-            return;
-        }
-
-        IReadOnlyList<string> favorites = _settings.Favorites;
-        if (favorites.Count == 0)
-        {
-            Notify("no favorites to cycle — add one with /favorite");
-            return;
-        }
-
-        List<ModelInfo> resolvable = [];
-        List<string> missing = [];
-        foreach (string favorite in favorites)
-        {
-            try
-            {
-                if (_catalog.Find(favorite) is { } model)
-                {
-                    resolvable.Add(model);
-                }
-                else
-                {
-                    missing.Add(favorite);
-                }
-            }
-            catch (InvalidOperationException)
-            {
-                // An ambiguous bare id names no single model, so it cannot be cycled.
-                missing.Add(favorite);
-            }
-        }
-
-        List<string> firstReports = [.. missing.Where(_reportedMissingFavorites.Add)];
-        if (resolvable.Count == 0)
-        {
-            ReportMissingFavorites(firstReports);
-            return;
-        }
-
-        int current = resolvable.FindIndex(model =>
-            string.Equals(model.Id, _model.Id, StringComparison.Ordinal)
-        );
-        ModelInfo next = resolvable[current < 0 ? 0 : (current + 1) % resolvable.Count];
-        await SwitchToModel(next, ct).ConfigureAwait(false);
-        // After the switch, so the warning is what the person sees rather than being replaced by
-        // the model notice; the footer already confirms the new model.
-        ReportMissingFavorites(firstReports);
-    }
-
     private void ReportMissingFavorites(IReadOnlyList<string> ids)
     {
         if (ids.Count == 0)

@@ -45,7 +45,7 @@ public sealed class InteractiveSessionModelChangedTests
         Task run = host.RunAsync();
 
         host.Console.Send(
-            new KeyEvent(KeyKind.Character, "l", Ctrl: true, Shift: false, Alt: false)
+            new KeyEvent(KeyKind.Character, "p", Ctrl: false, Shift: false, Alt: true)
         );
         await InteractiveSessionCommandTests.WaitForFrameAsync(host, "Select model");
         host.Console.Send(new KeyEvent(KeyKind.Down, null, false, false, false));
@@ -82,7 +82,7 @@ public sealed class InteractiveSessionModelChangedTests
     }
 
     [Fact]
-    public async Task Ctrl_P_switch_emits_ModelChanged_with_the_chosen_id()
+    public async Task A_model_command_emits_ModelChanged_with_the_chosen_id()
     {
         var runner = new HookRunner();
         var handler = new RecordingHandler();
@@ -94,9 +94,8 @@ public sealed class InteractiveSessionModelChangedTests
         SettingsStore.WriteFavorites(["gpt-4o"], host.Temp.File("settings.json"));
         Task run = host.RunAsync();
 
-        host.Console.Send(
-            new KeyEvent(KeyKind.Character, "p", Ctrl: true, Shift: false, Alt: false)
-        );
+        host.Console.SendText("/model gpt-4o");
+        host.Console.SendEnter();
         await InteractiveSessionCommandTests.WaitForFrameAsync(host, "model: gpt-4o");
         await host.WaitUntilAsync(() => handler.Seen.Count == 1);
 

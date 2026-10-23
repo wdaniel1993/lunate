@@ -381,12 +381,12 @@ public sealed class InteractiveSessionAutocompleteTests
     }
 
     [Fact]
-    public async Task CtrlL_while_the_list_is_open_still_opens_the_model_picker()
+    public async Task AltP_while_the_list_is_open_still_opens_the_model_picker()
     {
         using InteractiveSessionHost host = await StartAsync();
 
         await SendAsync(host, "/comp");
-        host.Console.Send(new KeyEvent(KeyKind.Character, "l", true, false, false));
+        host.Console.Send(new KeyEvent(KeyKind.Character, "p", false, false, true));
         await InteractiveSessionCommandTests.WaitForFrameAsync(host, "Select model");
 
         host.Console.SendEscape();

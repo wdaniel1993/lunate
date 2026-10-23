@@ -17,6 +17,7 @@ internal enum KeyContext
     Composing = 64,
     Secret = 128,
     Trust = 256,
+    Idle = 512,
 }
 
 /// <summary>
@@ -40,7 +41,12 @@ internal readonly record struct KeyPattern(
 }
 
 /// <summary>One row of the keymap: what a key means, where it means it, and how to describe it.</summary>
-internal sealed record KeyBinding(KeyPattern Key, RoutedKey Intent, KeyContext Contexts, string Description)
+internal sealed record KeyBinding(
+    KeyPattern Key,
+    RoutedKey Intent,
+    KeyContext Contexts,
+    string Description
+)
 {
     public bool AppliesTo(KeyContext context) =>
         Contexts == KeyContext.None || (context & Contexts) == Contexts;
@@ -71,28 +77,68 @@ internal static class KeyBindingCatalog
         new(
             new KeyPattern(KeyKind.Enter, Ctrl: false, Alt: false, Shift: false),
             RoutedKey.Submit,
-            KeyContext.None,
+            KeyContext.Idle,
             "Send the message"
         ),
-        new(new KeyPattern(KeyKind.Enter), RoutedKey.Edit, KeyContext.None, "Insert a newline"),
-        new(new KeyPattern(KeyKind.Escape), RoutedKey.Cancel, KeyContext.None, "Interrupt the turn"),
+        new(
+            new KeyPattern(KeyKind.Enter, Alt: true),
+            RoutedKey.Edit,
+            KeyContext.None,
+            "Insert a newline"
+        ),
+        new(
+            new KeyPattern(KeyKind.Enter, Shift: true),
+            RoutedKey.Edit,
+            KeyContext.None,
+            "Insert a newline"
+        ),
+        new(
+            new KeyPattern(KeyKind.Enter, Ctrl: true),
+            RoutedKey.Edit,
+            KeyContext.None,
+            "Insert a newline"
+        ),
+        new(
+            new KeyPattern(KeyKind.Escape),
+            RoutedKey.Cancel,
+            KeyContext.None,
+            "Interrupt the turn"
+        ),
+        new(
+            new KeyPattern(KeyKind.Character, Ctrl: true, Alt: false, Text: "c"),
+            RoutedKey.Interrupt,
+            KeyContext.Running,
+            "Interrupt the turn"
+        ),
+        new(
+            new KeyPattern(KeyKind.Character, Ctrl: true, Alt: false, Text: "c"),
+            RoutedKey.Interrupt,
+            KeyContext.Bash,
+            "Interrupt the command"
+        ),
         new(
             new KeyPattern(KeyKind.Character, Ctrl: true, Alt: false, Text: "c"),
             RoutedKey.ClearOrQuit,
             KeyContext.None,
-            "Interrupt, clear the input, or quit (twice)"
+            "Clear the input, or quit on a second press"
+        ),
+        new(
+            new KeyPattern(KeyKind.Character, Ctrl: true, Alt: false, Text: "d"),
+            RoutedKey.Exit,
+            KeyContext.None,
+            "Quit on a second press within 800 ms"
         ),
         new(
             new KeyPattern(KeyKind.Character, Ctrl: true, Alt: false, Text: "l"),
+            RoutedKey.Redraw,
+            KeyContext.None,
+            "Redraw the prompt"
+        ),
+        new(
+            new KeyPattern(KeyKind.Character, Alt: true, Ctrl: false, Text: "p"),
             RoutedKey.ModelPicker,
             KeyContext.None,
             "Choose a model"
-        ),
-        new(
-            new KeyPattern(KeyKind.Character, Ctrl: true, Alt: false, Shift: false, Text: "p"),
-            RoutedKey.FavoritesCycle,
-            KeyContext.None,
-            "Cycle favourite models"
         ),
         new(
             new KeyPattern(KeyKind.Character, Ctrl: true, Alt: false, Text: "o"),
@@ -112,7 +158,12 @@ internal static class KeyBindingCatalog
             KeyContext.HasQueue,
             "Take the queued messages back"
         ),
-        new(new KeyPattern(KeyKind.Up), RoutedKey.HistoryPrevious, KeyContext.None, "Previous entry"),
+        new(
+            new KeyPattern(KeyKind.Up),
+            RoutedKey.HistoryPrevious,
+            KeyContext.None,
+            "Previous entry"
+        ),
         new(new KeyPattern(KeyKind.Down), RoutedKey.HistoryNext, KeyContext.None, "Next entry"),
     ];
 }

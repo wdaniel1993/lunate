@@ -112,4 +112,92 @@ public sealed class InteractiveSessionKeyTests
         host.Console.Complete();
         await run;
     }
+
+    [Fact]
+    public async Task CtrlC_interrupts_a_running_turn_without_touching_the_draft()
+    {
+        using var host = new InteractiveSessionHost();
+        host.Client.Enqueue(Scripts.Text("first"), Scripts.Stop());
+        host.Client.Gate(1);
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+
+        host.Console.SendText("hi");
+        host.Console.SendEnter();
+        await host.Client.WaitForCallAsync(1);
+
+        host.Console.SendCtrlC();
+        await host.WaitUntilAsync(() => !host.Session.IsRunning);
+
+        Assert.Single(host.Client.Requests);
+        host.Console.Complete();
+        await run;
+    }
+
+    [Fact]
+    public async Task CtrlD_quits_on_a_second_press_from_an_empty_prompt()
+    {
+        using var host = new InteractiveSessionHost();
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+
+        host.Console.SendCtrlD();
+        await host.WaitUntilAsync(() =>
+        {
+            host.Advance(33);
+            return host.LastFrame.Contains("press Ctrl+D again to quit", StringComparison.Ordinal);
+        });
+
+        host.Console.SendCtrlD();
+        await run;
+    }
+
+    [Fact]
+    public async Task CtrlD_does_not_quit_while_the_prompt_holds_text()
+    {
+        using var host = new InteractiveSessionHost();
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+
+        host.Console.SendText("draft");
+        await host.WaitUntilAsync(() =>
+        {
+            host.Advance(33);
+            return host.LastFrame.Contains("> draft", StringComparison.Ordinal);
+        });
+
+        host.Console.SendCtrlD();
+        host.Console.SendCtrlD();
+        host.Advance(33);
+
+        Assert.False(run.IsCompleted);
+        Assert.Contains("> draft", host.LastFrame, StringComparison.Ordinal);
+
+        host.Console.Complete();
+        await run;
+    }
+
+    [Fact]
+    public async Task CtrlL_redraws_the_prompt_without_losing_the_input()
+    {
+        using var host = new InteractiveSessionHost();
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+
+        host.Console.SendText("draft");
+        await host.WaitUntilAsync(() =>
+        {
+            host.Advance(33);
+            return host.LastFrame.Contains("> draft", StringComparison.Ordinal);
+        });
+
+        host.Console.SendCtrlL();
+        host.Advance(33);
+
+        Assert.Contains("> draft", host.LastFrame, StringComparison.Ordinal);
+        Assert.DoesNotContain("Select model", host.LastFrame, StringComparison.Ordinal);
+
+        host.Console.Complete();
+        await run;
+    }
 }

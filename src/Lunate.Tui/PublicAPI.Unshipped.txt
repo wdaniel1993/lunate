@@ -186,20 +186,22 @@ static Lunate.Tui.ApprovalPromptModel.operator ==(Lunate.Tui.ApprovalPromptModel
 Lunate.Tui.GitBranchReader
 Lunate.Tui.KeyRouter
 static Lunate.Tui.GitBranchReader.Read(string! workingDirectory) -> string?
-static Lunate.Tui.KeyRouter.Route(Lunate.Tui.KeyEvent! key, bool turnRunning = false, bool hasQueuedFollowUps = false) -> Lunate.Tui.RoutedKey
+static Lunate.Tui.KeyRouter.Route(Lunate.Tui.KeyEvent! key, bool turnRunning = false, bool hasQueuedFollowUps = false, bool bashActive = false) -> Lunate.Tui.RoutedKey
 Lunate.Tui.RoutedKey
 Lunate.Tui.RoutedKey.Cancel = 2 -> Lunate.Tui.RoutedKey
 Lunate.Tui.RoutedKey.ClearOrQuit = 3 -> Lunate.Tui.RoutedKey
-Lunate.Tui.RoutedKey.Complete = 7 -> Lunate.Tui.RoutedKey
+Lunate.Tui.RoutedKey.Complete = 10 -> Lunate.Tui.RoutedKey
 Lunate.Tui.RoutedKey.Edit = 0 -> Lunate.Tui.RoutedKey
-Lunate.Tui.RoutedKey.FavoritesCycle = 9 -> Lunate.Tui.RoutedKey
-Lunate.Tui.RoutedKey.FollowUp = 10 -> Lunate.Tui.RoutedKey
-Lunate.Tui.RoutedKey.FollowUpTakeBack = 11 -> Lunate.Tui.RoutedKey
-Lunate.Tui.RoutedKey.HistoryNext = 6 -> Lunate.Tui.RoutedKey
-Lunate.Tui.RoutedKey.HistoryPrevious = 5 -> Lunate.Tui.RoutedKey
-Lunate.Tui.RoutedKey.ModelPicker = 4 -> Lunate.Tui.RoutedKey
+Lunate.Tui.RoutedKey.Exit = 5 -> Lunate.Tui.RoutedKey
+Lunate.Tui.RoutedKey.FollowUp = 12 -> Lunate.Tui.RoutedKey
+Lunate.Tui.RoutedKey.FollowUpTakeBack = 13 -> Lunate.Tui.RoutedKey
+Lunate.Tui.RoutedKey.HistoryNext = 9 -> Lunate.Tui.RoutedKey
+Lunate.Tui.RoutedKey.HistoryPrevious = 8 -> Lunate.Tui.RoutedKey
+Lunate.Tui.RoutedKey.Interrupt = 4 -> Lunate.Tui.RoutedKey
+Lunate.Tui.RoutedKey.ModelPicker = 7 -> Lunate.Tui.RoutedKey
+Lunate.Tui.RoutedKey.Redraw = 6 -> Lunate.Tui.RoutedKey
 Lunate.Tui.RoutedKey.Submit = 1 -> Lunate.Tui.RoutedKey
-Lunate.Tui.RoutedKey.TranscriptViewer = 8 -> Lunate.Tui.RoutedKey
+Lunate.Tui.RoutedKey.TranscriptViewer = 11 -> Lunate.Tui.RoutedKey
 Lunate.Tui.SelectListModel
 Lunate.Tui.SelectListModel.<Clone>$() -> Lunate.Tui.SelectListModel!
 Lunate.Tui.SelectListModel.Deconstruct(out string! Title, out System.Collections.Generic.IReadOnlyList<string!>! Items, out int Selected) -> void

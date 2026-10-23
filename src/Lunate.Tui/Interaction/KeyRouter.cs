@@ -7,12 +7,14 @@ public enum RoutedKey
     Submit,
     Cancel,
     ClearOrQuit,
+    Interrupt,
+    Exit,
+    Redraw,
     ModelPicker,
     HistoryPrevious,
     HistoryNext,
     Complete,
     TranscriptViewer,
-    FavoritesCycle,
     FollowUp,
     FollowUpTakeBack,
 }
@@ -29,11 +31,17 @@ public static class KeyRouter
     public static RoutedKey Route(
         KeyEvent key,
         bool turnRunning = false,
-        bool hasQueuedFollowUps = false
+        bool hasQueuedFollowUps = false,
+        bool bashActive = false
     ) =>
         Route(
             key,
-            (turnRunning ? KeyContext.Running : KeyContext.None)
+            (
+                turnRunning ? KeyContext.Running
+                : bashActive ? KeyContext.None
+                : KeyContext.Idle
+            )
+                | (bashActive ? KeyContext.Bash : KeyContext.None)
                 | (hasQueuedFollowUps ? KeyContext.HasQueue : KeyContext.None)
         );
 

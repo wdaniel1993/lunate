@@ -110,7 +110,8 @@ internal sealed partial class InteractiveSession : IDisposable
     private InputPipeline _pipeline;
     private ImageInputResolver _imageResolver = null!;
     private readonly InputHistory _history;
-    private readonly CtrlCQuitWindow _quitWindow;
+    private readonly QuitWindow _quitWindow;
+    private readonly QuitWindow _exitWindow;
     private readonly IUserInteraction _interaction;
     private readonly ISecretPrompt _secretPrompt;
     private readonly SteeringQueue _steering = new();
@@ -243,7 +244,8 @@ internal sealed partial class InteractiveSession : IDisposable
         _viewer = new TranscriptViewer(_console, _capabilities, options.HomeDirectory);
         _pipeline = new InputPipeline(options.Hooks);
         _history = new InputHistory(options.HistoryPath ?? InputHistory.DefaultPath);
-        _quitWindow = new CtrlCQuitWindow(options.Scheduler);
+        _quitWindow = QuitWindow.ForCtrlC(options.Scheduler);
+        _exitWindow = QuitWindow.ForExit(options.Scheduler);
         _interaction = new TuiUserInteraction(_live);
         _secretPrompt = options.SecretPrompt ?? new TuiSecretPrompt(_live);
     }
@@ -918,7 +920,7 @@ internal sealed partial class InteractiveSession : IDisposable
             return;
         }
 
-        switch (KeyRouter.Route(key, _turnActive, _followUps.Count > 0))
+        switch (KeyRouter.Route(key, _turnActive, _followUps.Count > 0, _bashMode || _bashRunning))
         {
             case RoutedKey.Edit:
                 EditInput(key);
@@ -981,6 +983,16 @@ internal sealed partial class InteractiveSession : IDisposable
             case RoutedKey.ClearOrQuit:
                 HandleCtrlC();
                 break;
+            case RoutedKey.Interrupt:
+                _runCancellation?.Cancel();
+                _bashCancellation?.Cancel();
+                break;
+            case RoutedKey.Exit:
+                HandleCtrlD();
+                break;
+            case RoutedKey.Redraw:
+                _live.Redraw();
+                break;
             case RoutedKey.HistoryPrevious:
                 if (_autocomplete is not null)
                 {
@@ -1001,9 +1013,6 @@ internal sealed partial class InteractiveSession : IDisposable
                 break;
             case RoutedKey.ModelPicker:
                 OpenModelPicker();
-                break;
-            case RoutedKey.FavoritesCycle:
-                await CycleFavoriteAsync(ct);
                 break;
             case RoutedKey.TranscriptViewer:
                 OpenViewer();
@@ -1298,21 +1307,45 @@ internal sealed partial class InteractiveSession : IDisposable
     {
         switch (_quitWindow.Press(_input.Text.Length == 0))
         {
-            case CtrlCAction.ClearInput:
+            case QuitAction.ClearInput:
                 SetInput(string.Empty);
                 _live.SetNotice(null);
                 break;
-            case CtrlCAction.Arm:
-            case CtrlCAction.ReArm:
-                Notify(CtrlCQuitWindow.Hint, NoticeLevel.Warning);
+            case QuitAction.Arm:
+            case QuitAction.ReArm:
+                Notify(QuitWindow.Hint, NoticeLevel.Warning);
                 break;
-            case CtrlCAction.Quit:
+            case QuitAction.Quit:
                 Quit();
+                break;
+            case QuitAction.Ignore:
                 break;
         }
     }
 
-    /// <summary>The one quit path: double Ctrl+C and <c>/quit</c> both end the session loop.</summary>
+    /// <summary>
+    /// Ctrl+D: quits on a second press within the window, but only from an empty prompt with nothing
+    /// running — quitting mid-turn would discard work with no recovery path.
+    /// </summary>
+    private void HandleCtrlD()
+    {
+        bool eligible = _input.Text.Length == 0 && !_turnActive && !_bashRunning && _composed;
+        switch (_exitWindow.PressWhen(eligible))
+        {
+            case QuitAction.Arm:
+            case QuitAction.ReArm:
+                Notify(QuitWindow.ExitHint, NoticeLevel.Warning);
+                break;
+            case QuitAction.Quit:
+                Quit();
+                break;
+            case QuitAction.Ignore:
+            case QuitAction.ClearInput:
+                break;
+        }
+    }
+
+    /// <summary>The one quit path: double Ctrl+C, double Ctrl+D and <c>/quit</c> all end the session loop.</summary>
     private void Quit()
     {
         _live.SetNotice(null);
