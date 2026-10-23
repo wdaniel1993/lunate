@@ -154,6 +154,22 @@ for assembly in Anthropic OpenAI Microsoft.Extensions.AI; do
   fi
 done
 
+# Publish and measure the startup budget BEFORE the test suite: the same gate, taken on a
+# quiet machine. Measured after fifteen minutes of tests, the 300 ms median is reading the
+# runner's thermal and scheduler state, not the product (ADR-0005 keeps the budget itself).
+step "publish (${RID})"
+dotnet publish src/Lunate.Coding/Lunate.Coding.csproj \
+  -c "$CONFIGURATION" \
+  -r "$RID" \
+  --self-contained true \
+  -p:PublishSingleFile=true \
+  -p:PublishReadyToRun=true \
+  -o "${PUBLISH_DIR}/${RID}" \
+  --nologo
+
+step "startup budget"
+BUDGET_MS="$BUDGET_MS" "${SCRIPT_DIR}/perf.sh" "$BINARY"
+
 step "test"
 # The Category=Perf budget check is excluded here (and from the culture pass) and
 # runs as its own step below, so the main passes stay fast and the budget is
@@ -233,19 +249,6 @@ fi
 
 step "path index budget"
 run_tests "path index budget" dotnet test --project tests/Lunate.Coding.Tests/Lunate.Coding.Tests.csproj -c "$CONFIGURATION" --no-build --filter-trait Category=Perf
-
-step "publish (${RID})"
-dotnet publish src/Lunate.Coding/Lunate.Coding.csproj \
-  -c "$CONFIGURATION" \
-  -r "$RID" \
-  --self-contained true \
-  -p:PublishSingleFile=true \
-  -p:PublishReadyToRun=true \
-  -o "${PUBLISH_DIR}/${RID}" \
-  --nologo
-
-step "startup budget"
-BUDGET_MS="$BUDGET_MS" "${SCRIPT_DIR}/perf.sh" "$BINARY"
 
 step "install script (fixture release)"
 version="$(product_version)"
