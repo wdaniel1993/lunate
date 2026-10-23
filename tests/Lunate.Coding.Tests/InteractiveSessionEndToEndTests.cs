@@ -223,10 +223,27 @@ public sealed class InteractiveSessionEndToEndTests
         host.Console.SendEnter();
         await run;
 
-        InteractiveGoldens.AssertMatchesText(
-            "end-to-end-scrollback.txt",
-            NormalizeWorkspace(host, host.ScrollbackText)
-        );
+        // The scrollback golden is the other half of this test's flake: when the steer echo is
+        // missing the diff cannot say whether the message never reached the model or reached it and
+        // was never echoed. This block answers that in the failure message.
+        string scrollback = NormalizeWorkspace(host, host.ScrollbackText);
+        try
+        {
+            InteractiveGoldens.AssertMatchesText("end-to-end-scrollback.txt", scrollback);
+        }
+        catch (Exception ex)
+        {
+            Assert.Fail(
+                $"""
+                {ex.Message}
+                --- steering state ---
+                steeringQueued={steering.Count}
+                steeringInjectedEvents={host.Events.OfType<SteeringInjected>().Count()}
+                steerEchoIndex={scrollback.IndexOf("» steer mid-run", StringComparison.Ordinal)}
+                requestLastTexts={string.Join(" | ", host.Client.Requests.Select(r => r[^1].Text))}
+                """
+            );
+        }
         InteractiveGoldens.AssertMatchesText("end-to-end-final-frame.txt", finalFrame);
         InteractiveGoldens.AssertMatchesText("end-to-end-model-picker-frame.txt", modelPickerFrame);
         InteractiveGoldens.AssertMatchesText(
