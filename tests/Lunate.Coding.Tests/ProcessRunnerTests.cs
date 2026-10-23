@@ -174,11 +174,15 @@ public sealed class ProcessRunnerTests
     {
         using var temp = new TempDirectory();
         var seen = new List<string>();
+        // The answer is written with fs.writeSync: process.exit(0) drops a pipe write that is
+        // still pending, which would look like "the child never answered" and cannot be told
+        // apart from a pump bug after the fact.
         var request = NodeRequest(
             temp,
-            "process.stdout.write('ping\\n');"
+            "const fs = require('fs');"
+                + "process.stdout.write('ping\\n');"
                 + "process.stdin.once('data', chunk => {"
-                + "process.stdout.write('got:' + chunk.toString().trim() + '\\n');"
+                + "fs.writeSync(1, 'got:' + chunk.toString().trim() + '\\n');"
                 + "process.exit(0); });"
         ) with
         {
@@ -192,7 +196,12 @@ public sealed class ProcessRunnerTests
         ProcessRunResult result = await RunAsync(temp, request);
 
         Assert.Equal(0, result.ExitCode);
-        Assert.Equal(["ping", "got:pong"], seen);
+        Assert.True(
+            seen.SequenceEqual(["ping", "got:pong"]),
+            $"the handler saw [{string.Join(", ", seen)}] (expected ping, got:pong); "
+                + $"stdout=[{result.Stdout.ReplaceLineEndings("|")}] "
+                + $"stderr=[{result.Stderr.ReplaceLineEndings("|")}]"
+        );
         Assert.Contains("got:pong", result.Stdout);
     }
 

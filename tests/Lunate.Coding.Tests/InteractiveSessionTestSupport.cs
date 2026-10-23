@@ -170,16 +170,35 @@ internal sealed class ScriptedConsoleIO : IConsoleIO
     }
 }
 
-/// <summary>A virtual-time scheduler the test advances by hand; no wall clock is ever read.</summary>
+/// <summary>
+/// A virtual-time scheduler the test advances by hand; no wall clock is ever read.
+/// </summary>
+/// <remarks>
+/// Thread-safe by contract: the session posts stimuli (and the live area's sample/spinner timers
+/// re-arm) on its own thread while the test thread advances the clock. The queue and the clock
+/// share one lock — an unsynchronised <see cref="PriorityQueue{TElement,TPriority}"/> silently
+/// drops scheduled work and throws from <see cref="Advance"/>, which surfaces as a live-area
+/// state that never paints (a notice or a committed command that never shows up).
+/// </remarks>
 internal sealed class ManualScheduler : IScheduler
 {
     private static readonly DateTimeOffset Base = new(2026, 10, 9, 12, 0, 0, TimeSpan.Zero);
 
+    private readonly object _gate = new();
     private readonly PriorityQueue<ScheduledWork, (long Due, long Sequence)> _queue = new();
     private long _sequence;
     private DateTimeOffset _now = Base;
 
-    public DateTimeOffset Now => _now;
+    public DateTimeOffset Now
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _now;
+            }
+        }
+    }
 
     public IDisposable Schedule<TState>(
         TState state,
@@ -190,7 +209,7 @@ internal sealed class ManualScheduler : IScheduler
         TState state,
         TimeSpan dueTime,
         Func<IScheduler, TState, IDisposable> action
-    ) => Enqueue(state, _now + dueTime, action);
+    ) => Enqueue(state, Now + dueTime, action);
 
     public IDisposable Schedule<TState>(
         TState state,
@@ -200,18 +219,35 @@ internal sealed class ManualScheduler : IScheduler
 
     public void Advance(TimeSpan by)
     {
-        DateTimeOffset target = _now + by;
-        while (
-            _queue.TryPeek(out ScheduledWork? work, out (long Due, long Sequence) priority)
-            && priority.Due <= (target - Base).Ticks
-        )
+        DateTimeOffset target = Now + by;
+        while (true)
         {
-            _queue.Dequeue();
-            _now = Base + TimeSpan.FromTicks(priority.Due);
+            ScheduledWork work;
+            lock (_gate)
+            {
+                if (
+                    !_queue.TryPeek(
+                        out ScheduledWork? candidate,
+                        out (long Due, long Sequence) priority
+                    )
+                    || priority.Due > (target - Base).Ticks
+                    || candidate is null
+                )
+                {
+                    _now = target;
+                    return;
+                }
+
+                _queue.Dequeue();
+                _now = Base + TimeSpan.FromTicks(priority.Due);
+                work = candidate;
+            }
+
+            // Run outside the lock: a work item may schedule (re-entering Enqueue) and a paint
+            // may take the writer's lock; holding _gate across it would serialise the session
+            // thread against every advance.
             work.Run(this);
         }
-
-        _now = target;
     }
 
     private IDisposable Enqueue<TState>(
@@ -221,7 +257,11 @@ internal sealed class ManualScheduler : IScheduler
     )
     {
         var work = new ScheduledWork(scheduler => action(scheduler, state));
-        _queue.Enqueue(work, ((due - Base).Ticks, _sequence++));
+        lock (_gate)
+        {
+            _queue.Enqueue(work, ((due - Base).Ticks, _sequence++));
+        }
+
         return work;
     }
 
@@ -250,14 +290,49 @@ internal sealed class GatedChatClient : IChatClient
     private readonly Queue<Script> _scripts = new();
     private readonly Dictionary<int, TaskCompletionSource> _started = new();
     private readonly Dictionary<int, TaskCompletionSource> _release = new();
+    private readonly List<IReadOnlyList<ChatMessage>> _requests = [];
+    private readonly List<ChatOptions?> _requestOptions = [];
+    private readonly List<IReadOnlyList<ChatMessage>> _summaryRequests = [];
 
-    public List<IReadOnlyList<ChatMessage>> Requests { get; } = [];
+    /// <summary>
+    /// The streaming requests, in call order. A snapshot: the session thread appends while the
+    /// test thread reads, and a shared <see cref="List{T}"/> enumerated across threads throws
+    /// "Collection was modified".
+    /// </summary>
+    public IReadOnlyList<IReadOnlyList<ChatMessage>> Requests
+    {
+        get
+        {
+            lock (_started)
+            {
+                return [.. _requests];
+            }
+        }
+    }
 
     /// <summary>The options each streaming call arrived with, indexed like <see cref="Requests"/>.</summary>
-    public List<ChatOptions?> RequestOptions { get; } = [];
+    public IReadOnlyList<ChatOptions?> RequestOptions
+    {
+        get
+        {
+            lock (_started)
+            {
+                return [.. _requestOptions];
+            }
+        }
+    }
 
     /// <summary>The non-streaming requests (compaction summarization), in call order.</summary>
-    public List<IReadOnlyList<ChatMessage>> SummaryRequests { get; } = [];
+    public IReadOnlyList<IReadOnlyList<ChatMessage>> SummaryRequests
+    {
+        get
+        {
+            lock (_started)
+            {
+                return [.. _summaryRequests];
+            }
+        }
+    }
 
     public GatedChatClient Enqueue(params ChatResponseUpdate[] updates)
     {
@@ -271,27 +346,25 @@ internal sealed class GatedChatClient : IChatClient
         return this;
     }
 
-    public async Task WaitForCallAsync(int call)
+    public async Task WaitForCallAsync(int call, TimeSpan? timeout = null)
     {
+        TimeSpan budget = timeout ?? TimeSpan.FromSeconds(10);
         Task started;
         int observed;
         lock (_started)
         {
             started = Started(call).Task;
-            observed = Requests.Count;
+            observed = _requests.Count;
         }
 
         try
         {
-            await started.WaitAsync(
-                TimeSpan.FromSeconds(10),
-                TestContext.Current.CancellationToken
-            );
+            await started.WaitAsync(budget, TestContext.Current.CancellationToken);
         }
         catch (TimeoutException)
         {
             throw new TimeoutException(
-                $"chat call {call} never started within 10 seconds (started={observed})."
+                $"chat call {call} never started within {budget.TotalSeconds:0} seconds (started={observed})."
             );
         }
     }
@@ -325,7 +398,11 @@ internal sealed class GatedChatClient : IChatClient
         CancellationToken cancellationToken = default
     )
     {
-        SummaryRequests.Add([.. messages]);
+        lock (_started)
+        {
+            _summaryRequests.Add([.. messages]);
+        }
+
         return Task.FromResult(
             new ChatResponse(new ChatMessage(ChatRole.Assistant, "summary of older turns"))
         );
@@ -341,9 +418,9 @@ internal sealed class GatedChatClient : IChatClient
         int call;
         lock (_started)
         {
-            Requests.Add([.. messages]);
-            RequestOptions.Add(options);
-            call = Requests.Count;
+            _requests.Add([.. messages]);
+            _requestOptions.Add(options);
+            call = _requests.Count;
             Started(call).TrySetResult();
         }
 
@@ -395,6 +472,8 @@ internal sealed class GatedChatClient : IChatClient
 internal sealed class InteractiveSessionHost : IDisposable
 {
     private readonly StringWriter _diagnostics = new();
+    private readonly List<AgentEvent> _events = [];
+    private readonly object _eventsGate = new();
 
     public InteractiveSessionHost(
         HookRunner? hooks = null,
@@ -445,7 +524,7 @@ internal sealed class InteractiveSessionHost : IDisposable
                 Diagnostics = _diagnostics,
                 ConfigureHarness = configureHarness,
                 WorkspaceFiles = workspaceFiles,
-                EventObserver = Events.Add,
+                EventObserver = Observe,
                 Launch = launch ?? new LaunchOptions(),
                 StartSession = startSession,
                 StartWithPicker = startWithPicker,
@@ -471,10 +550,31 @@ internal sealed class InteractiveSessionHost : IDisposable
 
     public InteractiveSession Session { get; }
 
-    /// <summary>Every event of the session's runs in arrival order (the sequence validator's subject).</summary>
-    public List<AgentEvent> Events { get; } = [];
+    /// <summary>
+    /// Every event of the session's runs in arrival order (the sequence validator's subject).
+    /// A snapshot: the session's event pump appends on its own thread, and enumerating the live
+    /// <see cref="List{T}"/> from the test thread throws "Collection was modified".
+    /// </summary>
+    public IReadOnlyList<AgentEvent> Events
+    {
+        get
+        {
+            lock (_eventsGate)
+            {
+                return [.. _events];
+            }
+        }
+    }
 
     public string Diagnostics => _diagnostics.ToString();
+
+    private void Observe(AgentEvent agentEvent)
+    {
+        lock (_eventsGate)
+        {
+            _events.Add(agentEvent);
+        }
+    }
 
     public Task RunAsync() => Session.RunAsync(TestContext.Current.CancellationToken);
 
