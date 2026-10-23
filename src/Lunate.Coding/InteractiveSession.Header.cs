@@ -53,7 +53,7 @@ internal sealed partial class InteractiveSession
         string configured = _settings.Model?.Trim() ?? string.Empty;
         return new WelcomeHeaderState
         {
-            Version = ProductVersion.Display,
+            Version = ProductVersion.Build,
             ModelId = model?.Id ?? configured,
             ContextWindow = model?.ContextWindow ?? 0,
             Workspace = _workingDirectory,

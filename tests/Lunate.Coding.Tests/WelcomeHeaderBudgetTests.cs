@@ -27,7 +27,10 @@ public sealed class WelcomeHeaderBudgetTests
         var stopwatch = Stopwatch.StartNew();
         Task run = host.RunAsync();
         await host.WaitUntilAsync(() =>
-            host.ScrollbackText.Contains("lunate  v0.1.0", StringComparison.Ordinal)
+            host.ScrollbackText.Contains(
+                $"lunate  v{ProductVersion.Build}",
+                StringComparison.Ordinal
+            )
         );
         stopwatch.Stop();
 

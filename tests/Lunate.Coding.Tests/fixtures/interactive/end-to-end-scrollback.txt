@@ -1,5 +1,5 @@
 Ϲ
-lunate  v0.1.0
+lunate  v<version>+<build>
 gpt-4o-mini · 128,000 ctx
 <workspace>
 extensions … · MCP … · skills …
@@ -19,7 +19,7 @@ all done
 > second question
 
 Ϲ
-lunate  v0.1.0
+lunate  v<version>+<build>
 gpt-4o · 128,000 ctx
 <workspace>
 extensions 0 · MCP 0 · skills 0

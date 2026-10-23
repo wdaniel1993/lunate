@@ -25,7 +25,7 @@ public sealed class WelcomeHeaderSessionTests
 
         string scrollback = host.ScrollbackText;
         Assert.Equal(1, Occurrences(scrollback, Mark));
-        Assert.Contains("lunate  v0.1.0", scrollback, StringComparison.Ordinal);
+        Assert.Contains($"lunate  v{ProductVersion.Build}", scrollback, StringComparison.Ordinal);
         Assert.Contains("gpt-4o-mini · 128,000 ctx", scrollback, StringComparison.Ordinal);
         // The header prints the workspace in the product's display form: a path under the user's
         // home is `~`-shortened (on Windows CI the test temp directory lives under the home). The
@@ -119,7 +119,11 @@ public sealed class WelcomeHeaderSessionTests
         await host.WaitUntilAsync(() => host.Session.IsComposed);
 
         string scrollback = host.ScrollbackText;
-        Assert.Contains("lunate v0.1.0 — /help for commands", scrollback, StringComparison.Ordinal);
+        Assert.Contains(
+            $"lunate v{ProductVersion.Build} — /help for commands",
+            scrollback,
+            StringComparison.Ordinal
+        );
         Assert.DoesNotContain(Mark, scrollback, StringComparison.Ordinal);
         Assert.DoesNotContain("extensions …", scrollback, StringComparison.Ordinal);
 
@@ -139,7 +143,11 @@ public sealed class WelcomeHeaderSessionTests
         await host.WaitUntilAsync(() => host.Session.IsComposed);
 
         string scrollback = host.ScrollbackText;
-        Assert.Contains("lunate v0.1.0 - /help for commands", scrollback, StringComparison.Ordinal);
+        Assert.Contains(
+            $"lunate v{ProductVersion.Build} - /help for commands",
+            scrollback,
+            StringComparison.Ordinal
+        );
         Assert.True(
             scrollback.All(character => character <= 0x7F),
             "the ASCII form must be printable on a legacy console: " + scrollback
