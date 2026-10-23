@@ -87,13 +87,26 @@ public sealed class InteractiveSessionEndToEndTests
 
         // Approval round trip: y for the first write, a (always) for the second; the third
         // write of the same tool runs without a prompt, provable by reaching call 5.
-        await host.WaitUntilAsync(() => host.Session.PendingApproval is not null);
-        Assert.Equal("write", host.Session.PendingApproval!.ToolName);
-        host.Console.SendText("y");
-        await host.Client.WaitForCallAsync(3);
-        await host.WaitUntilAsync(() => host.Session.PendingApproval is not null);
-        host.Console.SendText("a");
-        await host.Client.WaitForCallAsync(5);
+        //
+        // This block is the one that fails on a loaded leg: a timeout here says nothing about WHY
+        // the session stopped, so the failure carries the session's own state. Without it the next
+        // red leg costs another fifteen-minute CI cycle to guess at.
+        try
+        {
+            await host.WaitUntilAsync(() => host.Session.PendingApproval is not null);
+            Assert.Equal("write", host.Session.PendingApproval!.ToolName);
+            host.Console.SendText("y");
+            await host.Client.WaitForCallAsync(3);
+            await host.WaitUntilAsync(() => host.Session.PendingApproval is not null);
+            host.Console.SendText("a");
+            await host.Client.WaitForCallAsync(5);
+        }
+        catch (TimeoutException ex)
+        {
+            Assert.Fail(
+                $"{ex.Message}{Environment.NewLine}--- session state ---{Environment.NewLine}{host.Diagnostics}"
+            );
+        }
 
         Assert.Equal("one", File.ReadAllText(host.Temp.File("note.txt")));
         Assert.Equal("two", File.ReadAllText(host.Temp.File("b.txt")));
