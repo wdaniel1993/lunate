@@ -48,27 +48,7 @@ public sealed class SlowHookNoticeTests
         Assert.Contains("/extensions", host.Frames, StringComparison.Ordinal);
 
         host.Client.Release(1);
-        // TEMPORARY DIAGNOSTIC (CI-only hang): dump the state if the follow-up never starts.
-        try
-        {
-            await host.WaitUntilAsync(
-                () =>
-                {
-                    host.Advance(33);
-                    return host.Client.Requests.Count >= 2;
-                },
-                TimeSpan.FromSeconds(20)
-            );
-        }
-        catch (TimeoutException)
-        {
-            Assert.Fail(
-                $"DIAG queued={host.Session.QueuedFollowUpCount} running={host.Session.IsRunning} "
-                    + $"inputLen={host.Session.Input.Text.Length} requests={host.Client.Requests.Count} "
-                    + $"bash={host.Session.Input.Text}"
-            );
-        }
-
+        await host.Client.WaitForCallAsync(2);
         host.Console.Complete();
         await run;
     }

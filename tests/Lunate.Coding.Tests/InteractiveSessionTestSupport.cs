@@ -257,9 +257,8 @@ internal sealed class GatedChatClient : IChatClient
         return this;
     }
 
-    public async Task WaitForCallAsync(int call, TimeSpan? timeout = null)
+    public async Task WaitForCallAsync(int call)
     {
-        TimeSpan budget = timeout ?? TimeSpan.FromSeconds(10);
         Task started;
         int observed;
         lock (_started)
@@ -270,12 +269,15 @@ internal sealed class GatedChatClient : IChatClient
 
         try
         {
-            await started.WaitAsync(budget, TestContext.Current.CancellationToken);
+            await started.WaitAsync(
+                TimeSpan.FromSeconds(10),
+                TestContext.Current.CancellationToken
+            );
         }
         catch (TimeoutException)
         {
             throw new TimeoutException(
-                $"chat call {call} never started within {budget.TotalSeconds:0} seconds (started={observed})."
+                $"chat call {call} never started within 10 seconds (started={observed})."
             );
         }
     }
