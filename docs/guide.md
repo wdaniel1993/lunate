@@ -482,7 +482,7 @@ Typing `!` at the start of an empty input switches the box into bash mode: the p
 
 Typing `/` at the start of the first line opens the autocomplete list from the session's one command registry, composed from ordered sources: the built-in commands, the discovered skills as `/skill:<name>`, and the loaded extensions' provided commands (prompt templates keep a reserved slot and no template source ships yet). The first source in that order owns a duplicate name. The registry is fixed-size and filtered fuzzily — a case-insensitive subsequence, with prefix and word-start matches ranked ahead of later positions. Typing `@` at the end of a token lists workspace files from the lazy file index through its case-insensitive completion query, while the index stays ordinally sorted; the index is never fuzzed client-side and never built at startup. The list shows at most eight rows directly above the box. Names carry descriptions until the width drops below 60 columns; file rows mute the directory part. No matches closes the list, and the list never wraps.
 
-↑/↓ move the selection while the list is open and navigate history while it is closed. Tab and Enter accept the selected item — the token is replaced, file rows keep the `@`, command rows get a trailing space — and Esc closes the list. Enter submits instead when the typed token already equals the selected item, so a fully typed command never costs a second Enter. Newline keys insert and then re-run the trigger rules; Ctrl+C, Ctrl+L, Ctrl+O and Ctrl+P keep their bindings and win over the list.
+↑/↓ move the selection while the list is open and navigate history while it is closed. Tab and Enter accept the selected item — the token is replaced, file rows keep the `@`, command rows get a trailing space — and Esc closes the list. Enter submits instead when the typed token already equals the selected item, so a fully typed command never costs a second Enter. Newline keys insert and then re-run the trigger rules; Ctrl+C, Ctrl+L, Ctrl+O and Alt+P keep their bindings and win over the list.
 
 **Images**
 
@@ -524,12 +524,22 @@ Both box rules are drawn at every width; autocomplete descriptions keep their 60
 | `Enter` | Send; with the autocomplete list open, accept the selected item first (an exact token sends instead); in bash mode, run the line through the `bash` tool; while a turn runs, queue the line as a follow-up (the footer shows `N queued`). Never steers or interrupts a turn |
 | `Alt+Enter` | New line in every state, also `Shift+Enter` (where the terminal reports extended keys) and `Ctrl+J`; the autocomplete triggers re-run afterwards. Never submits or queues |
 | `Esc` | Close the autocomplete list first; in bash mode, leave without running and restore the line with its prefix; otherwise interrupt the running turn, whose queued follow-ups then run next; with nothing running, leave the queue alone |
-| `Ctrl+C` | Clear the input; on an empty input, press twice within 2 s to quit. Never cancels a turn |
-| `Ctrl+L` | Model picker and search; typing filters the catalog, Backspace edits the filter, Esc clears it before closing |
-| `Ctrl+P` | Cycle the settings favourites in order, wrapping after the last; a non-favourite starts at the first. Refused while a turn, approval, picker or secret prompt is open |
+| `Ctrl+C` | Interrupt the running turn (a queued follow-up then runs next); with the prompt idle it clears the input, and on an empty idle prompt a second press within 2 s quits |
+| `Ctrl+D` | Quit on a second press within 800 ms, only from an empty idle prompt — never mid-turn |
+| `Ctrl+L` | Force a full redraw of the prompt area, keeping the input and the conversation |
+| `Alt+P` | Model picker and search; typing filters the catalog, Backspace edits the filter, Esc clears it before closing |
+| `Ctrl+R` | History search: typing narrows, `Ctrl+R`/`Down` moves to the next match, `Enter` places it in the input, `Esc` cancels |
+| `Ctrl+G` | Open the draft in `$VISUAL`/`$EDITOR` (falling back to `vi`) and read it back |
+| `Ctrl+S` | Stash the draft, or restore it when the prompt is empty |
+| `Ctrl+_` | Undo the last input edit |
 | `Ctrl+O` | Transcript viewer: the session transcript with full tool output and diffs; `q`, `Esc` or `Ctrl+O` closes. Refused while an approval or picker is open |
 | `Tab` | Accept the selected autocomplete item; otherwise nothing |
 | `Up` / `Down` | Move the autocomplete selection; with the list closed, history (bash mode recalls its own command stream). With queued follow-ups, `Up` takes the whole queue back into the editor instead |
+| `Ctrl+A` / `Ctrl+E` | Move to the start / end of the line |
+| `Ctrl+K` / `Ctrl+U` | Kill from the cursor to the end / to the start of the line |
+| `Ctrl+W` / `Alt+D` | Kill the word before / after the cursor |
+| `Ctrl+Y` | Yank the most recent kill |
+| `Alt+B` / `Alt+F` | Move back / forward by word |
 
 **Platform rules**
 
@@ -892,7 +902,7 @@ These decisions are settled; the foundational ones are recorded as durable ADRs 
 | TUI | Spectre for finished output; own input line and live area | Robust rendering and responsive input |
 | Edit tool | Three match tiers, uniqueness required at every tier | Fewer retries without silent wrong edits |
 | MCP and ACP | Official MCP C# SDK; community ACP SDK behind IAcpServer | No hand-maintained protocol |
-| Keys | `Esc` cancels a turn; `Ctrl+C` clears input or quits | One meaning per key |
+| Keys | `Esc` or `Ctrl+C` interrupts a turn; `Ctrl+C` on an empty idle prompt clears or quits | One meaning per key |
 | Diffs | Own Myers diff | No extra dependency |
 | Native AOT | No; self-contained single file with ReadyToRun, held to performance budgets | Models and network dominate latency; JIT keeps runtime extensions, in-process Roslyn and all SDKs |
 | Model types | IChatClient and Microsoft.Extensions.AI types everywhere; own types only for tools and events | Microsoft-maintained .NET standard; MCP SDK fits directly |
