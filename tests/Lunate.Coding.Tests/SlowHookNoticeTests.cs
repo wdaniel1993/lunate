@@ -48,7 +48,9 @@ public sealed class SlowHookNoticeTests
         Assert.Contains("/extensions", host.Frames, StringComparison.Ordinal);
 
         host.Client.Release(1);
-        await host.Client.WaitForCallAsync(2);
+        // Same spawn-window idiom as the notice wait above: the queued follow-up starts after the
+        // turn unwinds, and a loaded Linux runner has starved that handover past 10 s before.
+        await host.Client.WaitForCallAsync(2, TimeSpan.FromSeconds(30));
         host.Console.Complete();
         await run;
     }
