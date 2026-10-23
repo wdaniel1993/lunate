@@ -210,7 +210,14 @@ internal static class KeyBindingCatalog
             new KeyPattern(KeyKind.Character, Alt: true, Ctrl: false, Text: "d"),
             RoutedKey.KillWordForward,
             KeyContext.None,
-            "Kill the word after the cursor"
+            "Kill the word after the cursor (Alt-free: Ctrl+Delete)"
+        ),
+        new(
+            // Termux and terminals that drop Alt: the same intent without a chord.
+            new KeyPattern(KeyKind.Delete, Ctrl: true, Alt: false),
+            RoutedKey.KillWordForward,
+            KeyContext.None,
+            "Kill the word after the cursor without Alt (mirrors Alt+D)"
         ),
         new(
             new KeyPattern(KeyKind.Character, Ctrl: true, Alt: false, Text: "y"),
@@ -228,13 +235,26 @@ internal static class KeyBindingCatalog
             new KeyPattern(KeyKind.Character, Alt: true, Ctrl: false, Text: "b"),
             RoutedKey.WordLeft,
             KeyContext.None,
-            "Move back by word"
+            "Move back by word (Alt-free: Ctrl+Left)"
         ),
         new(
             new KeyPattern(KeyKind.Character, Alt: true, Ctrl: false, Text: "f"),
             RoutedKey.WordRight,
             KeyContext.None,
-            "Move forward by word"
+            "Move forward by word (Alt-free: Ctrl+Right)"
+        ),
+        new(
+            // Termux and terminals that drop Alt: the same intent without a chord.
+            new KeyPattern(KeyKind.Left, Ctrl: true, Alt: false),
+            RoutedKey.WordLeft,
+            KeyContext.None,
+            "Move back by word without Alt (mirrors Alt+B)"
+        ),
+        new(
+            new KeyPattern(KeyKind.Right, Ctrl: true, Alt: false),
+            RoutedKey.WordRight,
+            KeyContext.None,
+            "Move forward by word without Alt (mirrors Alt+F)"
         ),
         new(
             new KeyPattern(KeyKind.Up),
