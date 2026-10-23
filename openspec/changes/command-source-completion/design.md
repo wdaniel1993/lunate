@@ -142,7 +142,40 @@ The command surface is a public extension API, and every extension surface of co
 
 No data or session migration. Built-in and skill output is unchanged; `/help` gains sections only when non-built-in commands exist; ids appear only in diagnostics and failure notices. No extension source changes shape, so an extension built against 1.11.0 keeps loading and dispatching.
 
-## Open Questions
+## Sign-off (2026-10-23)
+
+The maintainer approved D1–D5 and D6's addendum with these additions. They are binding on the
+implementation, not optional polish.
+
+**Q1 — handler boundary.** In-proc `ICommandSource` with JSON DTOs approved; the addendum names the
+ADR-0017 principle-3 exception explicitly. The remote host has shipped (T-52), so a **follow-on card**
+now covers a `command/invoke` request over the existing JSON-RPC wire, reusing `CommandInvocation` /
+`CommandResult`; remote manifest commands then stop reading "declared, not provided". Not part of this
+change, and no wire type is introduced here.
+
+**Q2 — unload mid-command.** Cancel, notice, bounded drain (5 s, inherited from `HookRunnerOptions`),
+then unload — plus three rules:
+
+- After cancellation the handler's late result is **discarded**; it is never rendered.
+- When the drain ends or times out, the extension's context is marked **disposed**. A later host call
+  from that handler throws `ObjectDisposedException`, which is contained and logged **with the command
+  id** — never surfaced as a crash or a bare stack trace.
+- On session quit the cancellation is **silent**: no notice after the TUI is torn down.
+
+**Q3 — help covers every source by default**, with one cap: the **skills** section shows at most **20**
+rows, then `+N more — see /skills` (the skills index already carries this pattern). No cap for
+extensions or templates. Help lists **live** entries only: a shadowed command appears in `/extensions`
+as `shadowed by <id>`, never in help.
+
+**Q4 — one flat typed namespace**, no typed escape hatch — plus two notes:
+
+- Extension ids must not contain `:`, otherwise `ext:<id>:<name>` is ambiguous. Manifest validation
+  refuses a colon, with a test.
+- Addendum **decision 5**: the rank of templates relative to extension commands is **provisional**
+  until parity item 8 (prompt templates) designs it — a user-authored template probably should beat a
+  packaged extension command of the same name. Templates never beat built-ins, now or then.
+
+## Decisions at sign-off (previously open)
 
 Four decisions for the maintainer; the recommendations below are proposed, not settled. They are repeated as `SIGN-OFF` items to be folded into this file when answered.
 

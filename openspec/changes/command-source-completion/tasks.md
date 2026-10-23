@@ -35,5 +35,16 @@
 - [ ] 6.1 `docs/spec/extensibility.md`: extend the Commands section with help coverage, ids, teaching errors, the invocation lease and the template slot; keep it a description of shipped behaviour, not a promise.
 - [ ] 6.2 `docs/guide.md`: `/help` now lists skills and extension commands; one sentence on what happens to a running command when its extension is unloaded.
 - [ ] 6.3 Focused suites: `dotnet test tests/Lunate.Coding.Tests --filter "FullyQualifiedName~Command|FullyQualifiedName~Help"`, `dotnet test tests/Lunate.Extensibility.Tests --filter "FullyQualifiedName~Command|FullyQualifiedName~Unload"`, plus the layering test.
-- [ ] 6.4 Fast gate: `dotnet tool restore`, `dotnet csharpier check .`, `openspec validate command-source --strict`, `dotnet build lunate.sln -c Release`.
+- [ ] 6.4 Fast gate: `dotnet tool restore`, `dotnet csharpier check .`, `openspec validate command-source-completion --strict`, `dotnet build lunate.sln -c Release`.
 - [ ] 6.5 Layering proof: `tests/Lunate.Coding.Tests/LayeringChecker.cs` is unchanged — no `(Lunate.Coding, Lunate.Extensibility.Abstractions)` pair is added, because no project reference is added. Assert the layering suite is green with the file untouched.
+
+## 7. Sign-off additions
+
+- [ ] 7.1 Cancel path: discard a late handler result; never render it.
+- [ ] 7.2 Mark the extension context disposed when the drain ends or times out; a later host call throws `ObjectDisposedException`, contained and logged with the command id.
+- [ ] 7.3 Session quit cancels silently — no notice after the TUI is torn down.
+- [ ] 7.4 Help: cap the skills section at 20 rows with `+N more — see /skills`; no cap for extensions or templates.
+- [ ] 7.5 Help lists live entries only; a shadowed command appears in `/extensions` as `shadowed by <id>`.
+- [ ] 7.6 Manifest validation refuses `:` in an extension id (ambiguous `ext:<id>:<name>`), with a test.
+- [ ] 7.7 Addendum decision 5: template rank relative to extension commands is provisional until parity item 8; templates never beat built-ins.
+- [ ] 7.8 Follow-on card linked: `command/invoke` over the remote JSON-RPC wire (not this change).

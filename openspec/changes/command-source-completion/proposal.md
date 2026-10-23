@@ -30,7 +30,7 @@ A fifth gap is documentary: the shipped command surface is a public extension AP
 
 `2026-10-23-command-source` is archived and its delta is already folded into `openspec/specs/extensions/spec.md` (requirements *Command registry* and *Extension commands*). This change is a follow-on delta on the same capability: it reproduces both requirements verbatim and appends the new sentences and scenarios, so the two changes read as one seam and the archive history stays linear.
 
-The change directory name `command-source` therefore collides with `openspec/changes/archive/2026-10-23-command-source/`. Validation resolves the active directory, so this is cosmetic; if the maintainer prefers distinct names, rename this directory to `command-source-completion` before implementation (the directory name is the only thing that changes).
+The directory is named `command-source-completion`, distinct from the archived `2026-10-23-command-source/` it follows on from.
 
 ## Capabilities
 
