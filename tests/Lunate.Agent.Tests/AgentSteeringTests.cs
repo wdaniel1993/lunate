@@ -207,7 +207,11 @@ public sealed class AgentSteeringTests
 
         List<AgentEvent> events = await Run(harness);
 
-        Assert.Null(Assert.Single(events.OfType<SteeringInjected>()).EntryId);
+        SteeringInjected injected = Assert.Single(events.OfType<SteeringInjected>());
+        Assert.Null(injected.EntryId);
+        // The text rides on the event: a frontend cannot look it up in the session when the entry
+        // has not been committed yet, and that lookup used to drop the echo silently.
+        Assert.Equal("steer", injected.Text);
     }
 
     [Fact]
