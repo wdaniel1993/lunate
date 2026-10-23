@@ -83,7 +83,7 @@ public sealed class CompletionRegistryTests
     }
 
     [Fact]
-    public void Skills_follow_the_commands_as_skill_prefix_entries()
+    public void Custom_entries_come_before_the_built_ins()
     {
         IReadOnlyList<CompletionItem> items = CompletionRegistry.Compose([
             .. Commands.PublicDescriptors,
@@ -94,6 +94,10 @@ public sealed class CompletionRegistryTests
         CompletionItem[] skills = [.. items.Where(item => item.Kind == CompletionKind.Skill)];
         Assert.Equal(["/skill:greek", "/skill:tail"], skills.Select(item => item.Text));
         Assert.Equal(["Use for Greek", "Read the tail"], skills.Select(item => item.Description));
+        // A bare "/" shows the custom rows before the eight-row cap can cut them.
+        Assert.Equal(CompletionKind.Skill, items[0].Kind);
+        Assert.Equal(CompletionKind.Skill, items[1].Kind);
+        Assert.Equal(CompletionKind.Command, items[2].Kind);
     }
 
     [Fact]

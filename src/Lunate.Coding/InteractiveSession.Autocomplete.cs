@@ -138,10 +138,7 @@ internal sealed partial class InteractiveSession
             return;
         }
 
-        IReadOnlyList<CompletionItem> rows =
-            items.Count <= AutocompleteState.MaxRows
-                ? items
-                : [.. items.Take(AutocompleteState.MaxRows)];
+        (IReadOnlyList<CompletionItem> rows, int hidden) = AutocompleteState.Cap(items);
         int selected = 0;
         if (_autocomplete?.Selected is { } previous)
         {
@@ -155,7 +152,7 @@ internal sealed partial class InteractiveSession
             }
         }
 
-        var state = new AutocompleteState(rows, selected, mode, tokenStart);
+        var state = new AutocompleteState(rows, selected, mode, tokenStart, hidden);
         _autocomplete = state;
         _live.SetAutocomplete(state);
     }

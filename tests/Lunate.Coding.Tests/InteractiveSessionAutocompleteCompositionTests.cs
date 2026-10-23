@@ -27,15 +27,31 @@ public sealed class InteractiveSessionAutocompleteCompositionTests
         await host.WaitUntilAsync(() => host.Session.IsComposed);
 
         host.Console.SendText("/");
-        await host.WaitUntilAsync(() => host.Session.Autocomplete is { Items.Count: 8 });
+        await host.WaitUntilAsync(() => host.Session.Autocomplete is { Items.Count: > 0 });
         await InteractiveSessionCommandTests.WaitForFrameAsync(host, "  /new");
 
         string open = await CaptureFrameAsync(host);
-        Assert.Contains("> /mcp", open, StringComparison.Ordinal);
         Assert.Contains("  /new  start a fresh session", open, StringComparison.Ordinal);
 
-        host.Console.Send(Down);
-        await host.WaitUntilAsync(() => host.Session.Autocomplete?.SelectedIndex == 1);
+        // Custom entries sort first, so the built-in's position depends on what the host loaded:
+        // walk to it instead of assuming row one.
+        AutocompleteState list = Assert.IsType<AutocompleteState>(host.Session.Autocomplete);
+        int target = 0;
+        for (var index = 0; index < list.Items.Count; index++)
+        {
+            if (list.Items[index].Text == "/new")
+            {
+                target = index;
+                break;
+            }
+        }
+
+        for (var step = 0; step < target; step++)
+        {
+            host.Console.Send(Down);
+        }
+
+        await host.WaitUntilAsync(() => host.Session.Autocomplete?.SelectedIndex == target);
         await host.WaitUntilAsync(() => host.Session.Autocomplete?.Selected?.Text == "/new");
         await InteractiveSessionCommandTests.WaitForFrameAsync(host, "> /new");
         string selected = await CaptureFrameAsync(host);

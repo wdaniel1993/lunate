@@ -26,13 +26,31 @@ internal static class AutocompleteRenderer
 
         int selected = Math.Clamp(autocomplete.SelectedIndex, 0, autocomplete.Items.Count - 1);
         int count = Math.Min(autocomplete.Items.Count, AutocompleteState.MaxRows);
-        var lines = new List<string>(count);
+        var lines = new List<string>(count + 1);
         for (var index = 0; index < count; index++)
         {
             lines.Add(Row(autocomplete.Items[index], index == selected, state, width));
         }
 
+        if (autocomplete.HiddenCount > 0)
+        {
+            lines.Add(MoreRow(autocomplete.HiddenCount, state, width));
+        }
+
         return lines;
+    }
+
+    /// <summary>
+    /// The trailing "more" row: an empty gutter and the muted count, so a capped list never hides
+    /// entries without saying so.
+    /// </summary>
+    private static string MoreRow(int hidden, LiveAreaState state, int width)
+    {
+        string text =
+            (state.Unicode ? "…" : "...")
+            + $" +{hidden} more "
+            + (state.Unicode ? "— keep typing to filter" : "- keep typing to filter");
+        return CellText.Clip(Gutter + text, width);
     }
 
     private static string Row(CompletionItem item, bool selected, LiveAreaState state, int width)
