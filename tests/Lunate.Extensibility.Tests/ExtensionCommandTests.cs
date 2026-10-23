@@ -132,4 +132,41 @@ public sealed class ExtensionCommandTests
 
         Assert.Empty(loader.CommandSources.List());
     }
+
+    [Fact]
+    public async Task Two_sources_of_one_extension_providing_one_command_log_the_command_id()
+    {
+        using var temp = new TempDirectory();
+        TestExtensions.InstallCommandExtension(
+            temp,
+            "cmd",
+            """["ping"]""",
+            """{"commands":[{"name":"ping","description":"Ping it"}],"sources":2}"""
+        );
+        var log = new RecordingExtensionLog();
+        var loader = new ExtensionLoader(TestExtensions.Options(temp.Subdirectory("store"), log));
+        loader.Discover(temp.Root, "repo");
+
+        await loader.Load("cmd", temp.Root, "repo", new FakeExtensionTrustPrompt(true), Ct);
+
+        Assert.Contains(
+            log.Messages,
+            message =>
+                message.Contains("'ext:cmd:ping'", StringComparison.Ordinal)
+                && message.Contains("more than one source", StringComparison.Ordinal)
+        );
+        // The load-time stamping still yields the extension kind and the extension id as source,
+        // on both registrations.
+        IReadOnlyList<RegisteredCommandSource> registered = loader.CommandSources.List();
+        Assert.Equal(2, registered.Count);
+        Assert.All(
+            registered,
+            source =>
+            {
+                CommandDescriptor descriptor = Assert.Single(source.Descriptors);
+                Assert.Equal(CommandKind.Extension, descriptor.Kind);
+                Assert.Equal("cmd", descriptor.SourceId);
+            }
+        );
+    }
 }
