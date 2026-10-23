@@ -42,3 +42,5 @@
 ## 7. Verification
 
 - [ ] 7.1 Full `scripts/verify.sh` green on both culture passes; CI green on four platforms.
+
+Moved to the key-parity follow-ups card (external editor, approval selection, guide-table drift test, tape): 1.4, 3.2, 5.1, 5.2, 6.2. They need their own review round; this change ships the catalog, the chat keys and the readline editing set.
