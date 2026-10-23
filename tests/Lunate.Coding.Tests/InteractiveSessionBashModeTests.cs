@@ -18,8 +18,7 @@ public sealed class InteractiveSessionBashModeTests
 
         Assert.Equal(string.Empty, host.Session.Input.Text);
         Assert.False(host.Session.IsBashSilent);
-        host.Advance(33);
-        Assert.Contains("! ", host.LastFrame, StringComparison.Ordinal);
+        await host.WaitForFrameAsync("! ");
 
         host.Console.Complete();
         await run;
@@ -61,8 +60,7 @@ public sealed class InteractiveSessionBashModeTests
         await host.WaitUntilAsync(() => host.Session.IsBashMode && host.Session.IsBashSilent);
 
         Assert.Equal(string.Empty, host.Session.Input.Text);
-        host.Advance(33);
-        Assert.Contains("! ", host.LastFrame, StringComparison.Ordinal);
+        await host.WaitForFrameAsync("! ");
 
         host.Console.Complete();
         await run;

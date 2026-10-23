@@ -499,6 +499,21 @@ internal sealed class InteractiveSessionHost : IDisposable
 
     public string Frames => string.Concat(Console.Writes);
 
+    /// <summary>
+    /// Waits for a frame that contains <paramref name="expected"/> while pumping the scheduler.
+    /// A single <see cref="Advance"/> is not enough: the paint lands on a later pump tick, so a
+    /// one-tick assert races the renderer (the one-generation-early read).
+    /// </summary>
+    public Task WaitForFrameAsync(string expected, TimeSpan? timeout = null) =>
+        WaitUntilAsync(
+            () =>
+            {
+                Advance(33);
+                return LastFrame.Contains(expected, StringComparison.Ordinal);
+            },
+            timeout ?? TimeSpan.FromSeconds(5)
+        );
+
     public async Task WaitUntilAsync(Func<bool> condition, TimeSpan? timeout = null)
     {
         // Real-async waits: yield the thread (never a busy spin) so the session's run task and
