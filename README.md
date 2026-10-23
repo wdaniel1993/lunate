@@ -318,6 +318,8 @@ sources register the same way.
 
 - Get started: [`templates/extension/README.md`](templates/extension/README.md) — manifest, wiring
   and the test kit
+- Authoring guide: [`docs/extensions/`](docs/extensions/README.md) — quickstart, manifest reference,
+  one page per contribution, lifecycle and trust, testing and troubleshooting
 - Contract and hook catalogue: [`docs/spec/extensibility.md`](docs/spec/extensibility.md)
 - Reference extensions that run in CI: [`samples/extensions/`](samples/extensions/)
 

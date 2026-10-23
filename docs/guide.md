@@ -438,6 +438,8 @@ An extension is an assembly implementing the `Lunate.Extensibility.Abstractions`
 - External tools can also come through MCP (`~/.lunate/mcp.json`, see Protocols).
 - The architecture is proven by a fitness suite of reference extensions (permission gates, memory, LSP, MCP, subagents, code mode, model routing, UI, worktree tasks) running in CI — a sample that needs a workaround means the core is missing a primitive.
 
+The authoring guide — quickstart, manifest reference, one page per contribution surface, lifecycle and trust, testing and troubleshooting — is [`docs/extensions/`](extensions/README.md).
+
 ## Terminal UI (Lunate.Tui)
 
 Finished output is rendered with Spectre.Console; the input line and a small live area at the bottom are our own code. Spectre's live display does not combine well with typing, so this split keeps typing responsive while the agent streams without writing a full renderer.

@@ -11,6 +11,7 @@ Lunate keeps each kind of document in exactly one home. Start here, then jump to
 | Plan and status | [`guide.md`](guide.md) | The implementation plan, phases and roadmap |
 | Architecture overview | [`architecture.md`](architecture.md) | Component map, model pipeline, one run and the event path, as diagrams |
 | Extensibility spec | [`spec/extensibility.md`](spec/extensibility.md) | Contract and hooks, tool model, services, UI by mode, fitness suite (under ADR-0017) |
+| Extension authoring | [`extensions/`](extensions/README.md) | Quickstart, manifest reference, per-surface API and constraints, lifecycle and trust, testing, troubleshooting |
 | Remote extensions | [`extensions-remote.md`](extensions-remote.md) | The out-of-process manifest and wire reference for extension authors (schema: `extensions-remote.schema.json`) |
 | Distribution runbook | [`distribution.md`](distribution.md) | Install scripts, release assets, channel ops and the first-release checklist |
 | Behaviour source of truth | [`../openspec/specs/`](../openspec/specs/) | Current behaviour, one folder per capability |
