@@ -118,9 +118,12 @@ public sealed record StepLimitReached(string RunId, int MaxSteps) : ExtensionEve
 
 /// <summary>
 /// A steering message the loop injected into the running history, carrying the appended session
-/// entry id (null when no session is attached).
+/// entry id (null when no session is attached) and the message text itself. The text rides on the
+/// event because a frontend that echoes the message cannot rely on the session entry being visible
+/// yet: the echo used to look the entry up, miss it, and drop the line silently.
 /// </summary>
-public sealed record SteeringInjected(string RunId, string? EntryId) : ExtensionEvent(RunId);
+public sealed record SteeringInjected(string RunId, string? EntryId, string? Text = null)
+    : ExtensionEvent(RunId);
 
 /// <summary>Streamed progress a tool reports through its context while it runs.</summary>
 public sealed record ToolProgressUpdate(string RunId, string CallId, string Message)

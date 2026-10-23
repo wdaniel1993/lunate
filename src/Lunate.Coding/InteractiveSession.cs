@@ -1347,12 +1347,16 @@ internal sealed partial class InteractiveSession : IDisposable
     /// <summary>Commits the dim echo of one message the harness injected from its steering queue.</summary>
     private void EchoSteering(SteeringInjected injected)
     {
-        string? text = injected.EntryId is { } entryId
-            ? _session
+        // The event carries the text: the session entry can lag the event, and a lookup that misses
+        // used to drop the echo without a trace.
+        string? text = injected.Text;
+        if (string.IsNullOrEmpty(text) && injected.EntryId is { } entryId)
+        {
+            text = _session
                 ?.Entries.OfType<SessionMessageEntry>()
                 .FirstOrDefault(entry => entry.Id == entryId)
-                ?.Message.Text
-            : null;
+                ?.Message.Text;
+        }
         if (string.IsNullOrEmpty(text))
         {
             return;

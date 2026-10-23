@@ -732,7 +732,7 @@ public sealed partial class AgentHarness
                 new ChatMessage(ChatRole.User, message.Text),
                 skill: message.Skill
             );
-            channel.Emit(new SteeringInjected(runId, entryId));
+            channel.Emit(new SteeringInjected(runId, entryId, message.Text));
         }
     }
 
