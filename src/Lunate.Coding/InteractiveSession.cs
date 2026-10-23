@@ -165,6 +165,8 @@ internal sealed partial class InteractiveSession : IDisposable
     private InputLineState _input = InputLine.Empty;
     private string? _historyDraft;
     private Task? _run;
+    private KeyHelpModel? _keyHelp;
+    private bool _keyHelpFiltering;
     private volatile bool _turnActive;
     private CancellationTokenSource? _runCancellation;
     private ApprovalPromptModel? _approvalPrompt;
@@ -924,6 +926,11 @@ internal sealed partial class InteractiveSession : IDisposable
             return;
         }
 
+        if (HandleKeyHelpKey(key))
+        {
+            return;
+        }
+
         if (HandleHistorySearchKey(key))
         {
             return;
@@ -1607,6 +1614,104 @@ internal sealed partial class InteractiveSession : IDisposable
         }
 
         _live.SetNotice("no stashed draft");
+    }
+
+    /// <summary>
+    /// The key-help overlay. While it is open it owns the keyboard: the only keys that do anything
+    /// are its own, and a stray Enter can never submit a turn from a read-only screen.
+    /// </summary>
+    private bool HandleKeyHelpKey(KeyEvent key)
+    {
+        if (_keyHelp is not { } help)
+        {
+            if (
+                key is { Kind: KeyKind.Character, Ctrl: false, Alt: false, Text: "?" }
+                && _input.Text.Length == 0
+                && !_turnActive
+                && !_bashMode
+            )
+            {
+                _keyHelp = KeyHelpModel.For(KeyHelpContext());
+                _keyHelpFiltering = false;
+                _live.SetKeyHelp(_keyHelp);
+                return true;
+            }
+
+            return false;
+        }
+
+        switch (key)
+        {
+            case { Kind: KeyKind.Escape } when _keyHelpFiltering:
+                _keyHelpFiltering = false;
+                _keyHelp = help.Filter(string.Empty);
+                _live.SetKeyHelp(_keyHelp);
+                return true;
+            case { Kind: KeyKind.Escape } or { Kind: KeyKind.Character, Text: "?" }:
+                CloseKeyHelp();
+                return true;
+            case { Kind: KeyKind.Tab }:
+                _keyHelp = help.WithScope(
+                    help.Scope == KeyHelpScope.Here ? KeyHelpScope.All : KeyHelpScope.Here
+                );
+                _live.SetKeyHelp(_keyHelp);
+                return true;
+            case { Kind: KeyKind.Character, Ctrl: false, Alt: false, Text: "/" }
+                when !_keyHelpFiltering:
+                _keyHelpFiltering = true;
+                _keyHelp = help.Filter(string.Empty);
+                _live.SetKeyHelp(_keyHelp);
+                return true;
+            case { Kind: KeyKind.Down }
+            or { Kind: KeyKind.Character, Text: "j" } when !_keyHelpFiltering:
+                _keyHelp = help.Move(1);
+                _live.SetKeyHelp(_keyHelp);
+                return true;
+            case { Kind: KeyKind.Up }
+            or { Kind: KeyKind.Character, Text: "k" } when !_keyHelpFiltering:
+                _keyHelp = help.Move(-1);
+                _live.SetKeyHelp(_keyHelp);
+                return true;
+            case { Kind: KeyKind.Backspace } when _keyHelpFiltering:
+                _keyHelp = help.Filter(help.Query.Length == 0 ? string.Empty : help.Query[..^1]);
+                _live.SetKeyHelp(_keyHelp);
+                return true;
+            case { Kind: KeyKind.Space } when _keyHelpFiltering:
+                _keyHelp = help.Filter(help.Query + " ");
+                _live.SetKeyHelp(_keyHelp);
+                return true;
+            case { Kind: KeyKind.Character, Ctrl: false, Alt: false, Text: not null }
+                when _keyHelpFiltering:
+                _keyHelp = help.Filter(help.Query + key.Text);
+                _live.SetKeyHelp(_keyHelp);
+                return true;
+            default:
+                // Read-only: every other key is swallowed on purpose.
+                return true;
+        }
+    }
+
+    private KeyContext KeyHelpContext()
+    {
+        KeyContext context = _bashMode ? KeyContext.Bash : KeyContext.Idle;
+        if (_turnActive)
+        {
+            context |= KeyContext.Running;
+        }
+
+        if (_followUps.Count > 0)
+        {
+            context |= KeyContext.HasQueue;
+        }
+
+        return context;
+    }
+
+    private void CloseKeyHelp()
+    {
+        _keyHelp = null;
+        _keyHelpFiltering = false;
+        _live.SetKeyHelp(null);
     }
 
     private void HandleCtrlC()

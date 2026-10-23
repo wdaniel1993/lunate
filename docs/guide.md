@@ -531,9 +531,9 @@ Both box rules are drawn at every width; autocomplete descriptions keep their 60
 | `Ctrl+L` | Force a full redraw of the prompt area, keeping the input and the conversation |
 | `Alt+P` | Model picker and search; typing filters the catalog, Backspace edits the filter, Esc clears it before closing |
 | `Ctrl+R` | History search: typing narrows, `Ctrl+R`/`Down` moves to the next match, `Enter` places it in the input, `Esc` cancels |
-| `Ctrl+G` | Open the draft in `$VISUAL`/`$EDITOR` (falling back to `vi`) and read it back |
 | `Ctrl+S` | Stash the draft, or restore it when the prompt is empty |
 | `Ctrl+_` | Undo the last input edit |
+| `?` | On an empty idle prompt, open the key-help overlay: the bindings that apply here, grouped by state; `j`/`k` move, `/` filters, `Tab` shows every binding, `Esc` or `?` closes without touching the draft. With text in the prompt it is a literal character |
 | `Ctrl+O` | Transcript viewer: the session transcript with full tool output and diffs; `q`, `Esc` or `Ctrl+O` closes. Refused while an approval or picker is open |
 | `Tab` | Accept the selected autocomplete item; otherwise nothing |
 | `Up` / `Down` | Move the autocomplete selection; with the list closed, history (bash mode recalls its own command stream). With queued follow-ups, `Up` takes the whole queue back into the editor instead |
