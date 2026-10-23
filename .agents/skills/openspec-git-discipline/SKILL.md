@@ -13,7 +13,7 @@ Every OpenSpec state change must cross `main` before the next lifecycle phase de
 
 - Propose/continue artifacts may be drafted on a branch, but must be committed and merged to `main` before apply starts.
 - Apply may run on `main`, a branch, or a worktree only if that exact proposal change is already available on `main`.
-- Archive may run only from `main` after implementation is merged back.
+- Archive is the **final commit of the implementation PR**: run it on the change branch once review is done and the fast gate is green, then merge. Main receives code and specs in the same merge.
 
 Never create commits, branches, or merges unless the user explicitly asks.
 
@@ -25,8 +25,8 @@ Never create commits, branches, or merges unless the user explicitly asks.
 | During continue | Before creating the next artifact, ask the user to commit completed artifact changes or explicitly continue without that checkpoint. |
 | After propose | Ask the user to commit proposal artifacts; offer to create a PR branch for review. |
 | Before apply | Confirm the proposal change is committed on `main`; then apply may run from `main`, a branch, or a worktree. |
-| Before archive | Stop unless implementation is merged back to `main` and archive is running from `main`. |
-| After archive | Ask the user to commit archive/spec sync changes. |
+| Before archive | Review is done and the fast gate is green on the change branch. Run `openspec archive <change> --yes` as the final commit of that same PR. |
+| After archive | Push the archive commit and merge once `ci-ok` is green. Never open a separate archive PR, and never leave more than one archive pending. |
 
 ## Required Checks
 

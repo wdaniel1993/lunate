@@ -9,7 +9,9 @@ Two gates exist and are commonly confused:
 
 ## Decision
 
-`AGENTS.md` line 19 is replaced with three rules. The exact text, for approval:
+`AGENTS.md` line 19 is replaced with three rules, and the Workflow line is amended because it still
+says implementation lands on `main` before archive — the ceremony the maintainer retired on
+2026-10-23. The exact text, approved by the maintainer on 2026-10-23:
 
 ```markdown
 - Iterate behind the fast gate: `dotnet csharpier check .`, `openspec validate <change> --strict`, a Release build, and the test classes that cover what you touched.
@@ -17,7 +19,19 @@ Two gates exist and are commonly confused:
 - `ci-ok` must be green before a merge.
 ```
 
-The full gate's content is unchanged; only the moment it is required changes.
+Workflow line 11, before and after:
+
+```markdown
+- For propose/apply/verify/archive workflows, use the local `openspec-git-discipline` skill: proposals land on `main` before apply, implementation lands on `main` before archive.
+```
+
+```markdown
+- For propose/apply/verify/archive workflows, use the local `openspec-git-discipline` skill: proposals land on `main` before apply; the archive is the final commit of the implementation PR, added after review and before merge.
+```
+
+The full gate's content is unchanged; only the moment it is required changes. The skill the workflow
+line names (`.agents/skills/openspec-git-discipline/SKILL.md`) is updated in the same change so the
+rule has one reading, not two.
 
 ## Alternatives considered
 

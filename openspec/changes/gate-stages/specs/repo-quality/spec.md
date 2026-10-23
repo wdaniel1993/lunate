@@ -14,6 +14,11 @@ The repository SHALL define two gates in `AGENTS.md`: a fast gate for iteration 
 - **WHEN** a change is proposed for review
 - **THEN** `scripts/verify.sh` has passed on the head being reviewed
 
+#### Scenario: Archiving
+
+- **WHEN** a change's implementation is reviewed and the fast gate is green
+- **THEN** `openspec archive <change> --yes` is the final commit of that change's pull request, and the pull request merges once `ci-ok` is green
+
 #### Scenario: Merging
 
 - **WHEN** a pull request is merged
