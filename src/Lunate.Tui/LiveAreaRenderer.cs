@@ -53,6 +53,11 @@ internal static class LiveAreaRenderer
         IReadOnlyList<string> pickerLines = state.Picker is null
             ? []
             : SelectListRenderer.PlainLines(state.Picker);
+        // The input box, the two rules and the footer take roughly six lines; the overlay gets the
+        // rest, and its renderer keeps the title and the hint inside that budget.
+        IReadOnlyList<string> keyHelpLines = state.KeyHelp is null
+            ? []
+            : KeyHelpRenderer.PlainLines(state.KeyHelp, Math.Max(6, state.Size.Rows - 8));
         IReadOnlyList<string> autocompleteLines = AutocompleteRenderer.Lines(state, width);
         IReadOnlyList<string> thinkingLines = ThinkingLines(state, width);
         var footerLine =
@@ -75,6 +80,7 @@ internal static class LiveAreaRenderer
             + approvalLines.Count
             + trustLines.Count
             + pickerLines.Count
+            + keyHelpLines.Count
             + autocompleteLines.Count
             // The upper rule is always drawn, so it belongs to the fixed prefix.
             + 1;
@@ -96,6 +102,7 @@ internal static class LiveAreaRenderer
             // The picker is modal: while it is open it owns the area above the input.
             state.Picker
                 is null
+            && state.KeyHelp is null
                 ? Math.Max(0, MaxLines - fixedLines - inputLines.Count)
                 : 0,
             width
@@ -138,6 +145,11 @@ internal static class LiveAreaRenderer
         foreach (string pickerLine in pickerLines)
         {
             lines.Add(CellText.Clip(pickerLine, width));
+        }
+
+        foreach (string keyHelpLine in keyHelpLines)
+        {
+            lines.Add(CellText.Clip(keyHelpLine, width));
         }
 
         // The autocomplete list sits between the transient state and the upper rule (design D1).

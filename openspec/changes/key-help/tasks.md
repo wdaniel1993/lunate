@@ -17,8 +17,16 @@
 ## 3. Hint
 
 - [ ] 3.1 `StatusFooterRenderer` renders a dim `? keys` beside the mode hint when idle and the
-      prompt is empty.
+      prompt is empty. Deferred: putting it in the placeholder would rewrite 250 frame fixtures;
+      the hint belongs in the footer segment, with its own golden pass.
 - [ ] 3.2 The hint disappears while a turn runs, in bash mode and with a non-empty prompt.
+
+## 3b. Layout
+
+- [ ] 3b.1 The overlay must fit the live area's eight transient lines: the current block is trimmed
+      from the top on a short terminal, so the scope title disappears before the rows. Decide
+      between capping the window to the available lines and scrolling inside the block, then make
+      the title survive.
 
 ## 4. Tests
 

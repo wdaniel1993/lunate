@@ -51,6 +51,9 @@ internal sealed record LiveAreaState
 
     public SelectListModel? Picker { get; init; }
 
+    /// <summary>The open key-help overlay; null while none is open.</summary>
+    public KeyHelpModel? KeyHelp { get; init; }
+
     /// <summary>The open autocomplete list; null while closed (design D4).</summary>
     public AutocompleteState? Autocomplete { get; init; }
 

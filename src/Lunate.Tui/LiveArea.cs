@@ -146,6 +146,9 @@ internal sealed class LiveArea : IDisposable
 
     public void SetPicker(SelectListModel? picker) => Post(new PickerInput(picker));
 
+    /// <summary>Sets the open key-help overlay; null closes it.</summary>
+    public void SetKeyHelp(KeyHelpModel? help) => Post(new KeyHelpInput(help));
+
     /// <summary>Sets the open autocomplete list; null closes it (design D4).</summary>
     public void SetAutocomplete(AutocompleteState? autocomplete) =>
         Post(new AutocompleteInput(autocomplete));
@@ -354,6 +357,7 @@ internal sealed class LiveArea : IDisposable
             TrustPromptInput trust => state with { Trust = trust.Prompt },
             LoadingInput loading => state with { Loading = loading.Text },
             PickerInput picker => state with { Picker = picker.Picker },
+            KeyHelpInput help => state with { KeyHelp = help.KeyHelp },
             AutocompleteInput autocomplete => state with { Autocomplete = autocomplete.State },
             ToolInput { Name: null } => state with
             {
@@ -441,6 +445,8 @@ internal sealed class LiveArea : IDisposable
     private sealed record LoadingInput(string? Text) : LiveAreaInput;
 
     private sealed record PickerInput(SelectListModel? Picker) : LiveAreaInput;
+
+    private sealed record KeyHelpInput(KeyHelpModel? KeyHelp) : LiveAreaInput;
 
     private sealed record AutocompleteInput(AutocompleteState? State) : LiveAreaInput;
 

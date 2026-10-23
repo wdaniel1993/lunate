@@ -89,6 +89,18 @@ public sealed class KeyHelpTests
     }
 
     [Fact]
+    public void A_small_budget_keeps_the_title_the_selection_and_the_hint()
+    {
+        KeyHelpModel model = KeyHelpModel.For(KeyContext.Idle).WithScope(KeyHelpScope.All).Move(6);
+        IReadOnlyList<string> lines = KeyHelpRenderer.PlainLines(model, maxLines: 8);
+
+        Assert.Equal("Keys — all", lines[0]);
+        Assert.True(lines.Count <= 8);
+        Assert.Contains(lines, line => line.StartsWith("> ", StringComparison.Ordinal));
+        Assert.Contains("Esc close", lines[^1], StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Every_catalog_row_has_a_description()
     {
         Assert.All(
@@ -102,5 +114,6 @@ public sealed class KeyHelpTests
         );
     }
 
-    private static string Plain(KeyHelpModel model) => KeyHelpRenderer.ComposeMarkup(model);
+    private static string Plain(KeyHelpModel model) =>
+        string.Join("\n", KeyHelpRenderer.PlainLines(model));
 }

@@ -1,6 +1,4 @@
 using System.Text;
-using Spectre.Console;
-using Spectre.Console.Rendering;
 
 namespace Lunate.Tui;
 
@@ -155,84 +153,100 @@ internal sealed record KeyHelpModel(
 }
 
 /// <summary>
-/// Renders a <see cref="KeyHelpModel"/> as a live-area block: the scope title, the filter line when
-/// one is set, then the rows grouped by state, windowed so the selection stays visible.
+/// Renders a <see cref="KeyHelpModel"/> as the lines of a live-area block: the scope title, the
+/// filter line when one is set, then the rows grouped by state, windowed so the selection stays
+/// visible. Plain text; the live area owns colour.
 /// </summary>
-internal sealed class KeyHelpRenderer
+internal static class KeyHelpRenderer
 {
     internal const int Window = 14;
 
-    public IRenderable Render(KeyHelpModel model) => new Markup(ComposeMarkup(model));
-
-    /// <summary>The overlay's markup; the tests read it without a console.</summary>
-    internal static string ComposeMarkup(KeyHelpModel model)
+    internal static IReadOnlyList<string> PlainLines(KeyHelpModel model, int maxLines = 24)
     {
         ArgumentNullException.ThrowIfNull(model);
-        var text = new StringBuilder();
+        maxLines = Math.Max(4, maxLines);
+        List<string> lines = [];
         string title = model.Scope == KeyHelpScope.All ? "Keys — all" : "Keys — here";
-        text.Append("[bold]").Append(Markup.Escape(title)).Append("[/]");
-        if (model.Query.Length > 0)
-        {
-            text.Append("  [dim]filter: ").Append(Markup.Escape(model.Query)).Append("[/]");
-        }
-
-        text.Append('\n');
+        lines.Add(model.Query.Length > 0 ? $"{title}   filter: {model.Query}" : title);
         if (model.Rows.Count == 0)
         {
-            text.Append("[dim]no binding matches[/]");
-            return text.ToString();
+            lines.Add("no binding matches");
+            return lines;
         }
 
-        int first = FirstVisible(model);
+        // The title and the hint always survive: the live area trims from the top, so a block that
+        // overflows loses the very line that says which scope is showing.
+        int body = maxLines - 2;
+        int first = FirstVisible(model, capacity: Math.Max(1, body - 1));
+        (List<string> emitted, bool showsSelection) = Emit(model, first, body);
+        if (!showsSelection)
+        {
+            // A group header can push the selected row out of the window; starting at the
+            // selection is always safe and keeps the affordance visible.
+            (emitted, _) = Emit(model, model.Selected, body);
+        }
+
+        lines.AddRange(emitted);
+        lines.Add(
+            model.Rows.Count > ShowedRows(emitted)
+                ? $"{model.Selected + 1} of {model.Rows.Count}   j/k move · / filter · Tab here/all · Esc close"
+                : "/ filter · Tab here/all · Esc close"
+        );
+        return lines;
+    }
+
+    private static int ShowedRows(List<string> emitted) =>
+        emitted.Count(line =>
+            line.StartsWith("  ", StringComparison.Ordinal)
+            || line.StartsWith("> ", StringComparison.Ordinal)
+        );
+
+    private static (List<string> Lines, bool ShowsSelection) Emit(
+        KeyHelpModel model,
+        int first,
+        int body
+    )
+    {
+        List<string> lines = [];
         string group = string.Empty;
-        for (int index = first; index < Math.Min(first + Window, model.Rows.Count); index++)
+        bool showsSelection = false;
+        for (int index = first; index < model.Rows.Count && lines.Count < body; index++)
         {
             KeyHelpRow row = model.Rows[index];
-            if (!string.Equals(row.Group, group, StringComparison.Ordinal))
+            bool header = !string.Equals(row.Group, group, StringComparison.Ordinal);
+            if (header && lines.Count + 2 > body && index > first)
+            {
+                break;
+            }
+
+            if (header)
             {
                 group = row.Group;
-                if (index > first)
+                lines.Add(group);
+                if (lines.Count >= body)
                 {
-                    text.Append('\n');
+                    break;
                 }
-
-                text.Append("[dim]").Append(Markup.Escape(group)).Append("[/]\n");
             }
 
             string line = $"{row.Key, -14}{row.Action}";
-            text.Append(
-                    index == model.Selected
-                        ? "[bold]> " + Markup.Escape(line) + "[/]"
-                        : "  " + Markup.Escape(line)
-                )
-                .Append('\n');
+            lines.Add(index == model.Selected ? "> " + line : "  " + line);
+            showsSelection |= index == model.Selected;
         }
 
-        if (model.Rows.Count > Window)
-        {
-            text.Append("[dim]")
-                .Append(model.Selected + 1)
-                .Append(" of ")
-                .Append(model.Rows.Count)
-                .Append("   j/k move · / filter · Tab here/all · Esc close[/]");
-        }
-        else
-        {
-            text.Append("[dim]/ filter · Tab here/all · Esc close[/]");
-        }
-
-        return text.ToString();
+        return (lines, showsSelection);
     }
 
     /// <summary>The first row of the window, moved just enough to keep the selection visible.</summary>
-    internal static int FirstVisible(KeyHelpModel model)
+    internal static int FirstVisible(KeyHelpModel model, int capacity = Window)
     {
-        if (model.Rows.Count <= Window)
+        capacity = Math.Max(1, capacity);
+        if (model.Rows.Count <= capacity)
         {
             return 0;
         }
 
-        int first = Math.Max(0, model.Selected - Window + 1);
-        return Math.Min(first, model.Rows.Count - Window);
+        int first = Math.Max(0, model.Selected - capacity + 1);
+        return Math.Min(first, model.Rows.Count - capacity);
     }
 }
