@@ -81,6 +81,12 @@ internal static class KeyBindingCatalog
             "Send the message"
         ),
         new(
+            new KeyPattern(KeyKind.Enter, Ctrl: false, Alt: false, Shift: false),
+            RoutedKey.Submit,
+            KeyContext.Bash,
+            "Run the bash line"
+        ),
+        new(
             new KeyPattern(KeyKind.Enter, Alt: true),
             RoutedKey.Edit,
             KeyContext.None,

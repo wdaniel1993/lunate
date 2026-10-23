@@ -449,7 +449,11 @@ public sealed class InteractiveSessionSettingsCommandTests
             await WaitForFrameAsync(host, "slash command cannot be queued");
 
             Assert.Equal(command, host.Session.Input.Text);
-            host.Console.SendCtrlC();
+            for (var index = 0; index < command.Length; index++)
+            {
+                host.Console.SendBackspace();
+            }
+
             await host.WaitUntilAsync(() => host.Session.Input.Text.Length == 0);
         }
 
