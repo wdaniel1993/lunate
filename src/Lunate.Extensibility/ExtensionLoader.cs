@@ -239,10 +239,6 @@ public sealed partial class ExtensionLoader
                     CancellationToken.None
                 )
                 .ConfigureAwait(false);
-            if (_extensionContexts.Remove(loadedId, out ExtensionContext? extensionContext))
-            {
-                extensionContext.MarkDisposed();
-            }
         }
 
         if (_sessionStarted && _session is { } session)
@@ -257,6 +253,16 @@ public sealed partial class ExtensionLoader
 
         await _backgroundServices.StopAsync(cancellationToken).ConfigureAwait(false);
         await ShutdownRemotesAsync(cancellationToken).ConfigureAwait(false);
+
+        // The contexts are marked disposed only now: a session-ending hook or a background
+        // service's stop still makes host calls, and those must not throw (design D3, sign-off Q2).
+        foreach (string loadedId in _extensionContexts.Keys.ToArray())
+        {
+            if (_extensionContexts.Remove(loadedId, out ExtensionContext? extensionContext))
+            {
+                extensionContext.MarkDisposed();
+            }
+        }
     }
 
     /// <summary>
