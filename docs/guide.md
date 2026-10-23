@@ -735,6 +735,7 @@ One row per card. Each card becomes one OpenSpec change (see Building it with Op
 | T-50 | 6 | Sample: ui-showcase | T-40 | Renderer + status widget; degrades cleanly in print/json/ACP |
 | T-51 | 6 | Sample: worktree-tasks | T-38, T-39, T-47 | Two subagents in separate worktrees edit and build independently (Roslyn per workspace, cap holds); results merge back via git; worktrees cleaned up |
 | T-52 | 7 | Out-of-process host (`Lunate.Extensibility.Remote`, JSON-RPC over stdio) + node reference sample | T-37 to T-42 | Conformance test: all hook DTOs round-trip through the wire; the node sample passes its fitness tests |
+| T-54 | 7 | Extension commands over the remote host: a `command/invoke` request on the existing JSON-RPC wire, reusing `CommandInvocation`/`CommandResult`, so remote manifest commands stop reading `declared, not provided` | T-52, `command-source-completion` | Conformance test: a node remote extension's declared command dispatches end to end, its failure is a teaching notice, and no wire type reaches `Lunate.Extensibility.Abstractions` |
 
 Independent tracks can run in parallel in separate git worktrees, for example T-18/T-19 (TUI) next to T-12 to T-15 (tools).
 
