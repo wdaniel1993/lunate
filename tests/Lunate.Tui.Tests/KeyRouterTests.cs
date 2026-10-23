@@ -18,6 +18,16 @@ public sealed class KeyRouterTests
         (Key(KeyKind.Tab), RoutedKey.Complete),
         (Key(KeyKind.Up), RoutedKey.HistoryPrevious),
         (Key(KeyKind.Down), RoutedKey.HistoryNext),
+        (Key(KeyKind.Character, "a", ctrl: true), RoutedKey.LineStart),
+        (Key(KeyKind.Character, "e", ctrl: true), RoutedKey.LineEnd),
+        (Key(KeyKind.Character, "k", ctrl: true), RoutedKey.KillToEnd),
+        (Key(KeyKind.Character, "u", ctrl: true), RoutedKey.KillToStart),
+        (Key(KeyKind.Character, "w", ctrl: true), RoutedKey.KillWordBack),
+        (Key(KeyKind.Character, "y", ctrl: true), RoutedKey.Yank),
+        (Key(KeyKind.Character, "_", ctrl: true), RoutedKey.Undo),
+        (Key(KeyKind.Character, "b", alt: true), RoutedKey.WordLeft),
+        (Key(KeyKind.Character, "f", alt: true), RoutedKey.WordRight),
+        (Key(KeyKind.Character, "d", alt: true), RoutedKey.KillWordForward),
     ];
 
     private static readonly (KeyEvent Key, RoutedKey Expected)[] BusyTable =
@@ -36,6 +46,16 @@ public sealed class KeyRouterTests
         (Key(KeyKind.Tab), RoutedKey.Complete),
         (Key(KeyKind.Up), RoutedKey.HistoryPrevious),
         (Key(KeyKind.Down), RoutedKey.HistoryNext),
+        (Key(KeyKind.Character, "a", ctrl: true), RoutedKey.LineStart),
+        (Key(KeyKind.Character, "e", ctrl: true), RoutedKey.LineEnd),
+        (Key(KeyKind.Character, "k", ctrl: true), RoutedKey.KillToEnd),
+        (Key(KeyKind.Character, "u", ctrl: true), RoutedKey.KillToStart),
+        (Key(KeyKind.Character, "w", ctrl: true), RoutedKey.KillWordBack),
+        (Key(KeyKind.Character, "y", ctrl: true), RoutedKey.Yank),
+        (Key(KeyKind.Character, "_", ctrl: true), RoutedKey.Undo),
+        (Key(KeyKind.Character, "b", alt: true), RoutedKey.WordLeft),
+        (Key(KeyKind.Character, "f", alt: true), RoutedKey.WordRight),
+        (Key(KeyKind.Character, "d", alt: true), RoutedKey.KillWordForward),
     ];
 
     public static TheoryData<KeyEvent, RoutedKey> IdleBindings => Data(IdleTable);
@@ -165,7 +185,7 @@ public sealed class KeyRouterTests
 
     [Fact]
     public void Modified_ctrl_keys_other_than_the_table_edit() =>
-        Assert.Equal(RoutedKey.Edit, KeyRouter.Route(Key(KeyKind.Character, "y", ctrl: true)));
+        Assert.Equal(RoutedKey.Edit, KeyRouter.Route(Key(KeyKind.Character, "q", ctrl: true)));
 
     private static TheoryData<KeyEvent, RoutedKey> Data((KeyEvent Key, RoutedKey Expected)[] table)
     {

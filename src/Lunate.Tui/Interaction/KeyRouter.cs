@@ -17,6 +17,16 @@ public enum RoutedKey
     TranscriptViewer,
     FollowUp,
     FollowUpTakeBack,
+    LineStart,
+    LineEnd,
+    WordLeft,
+    WordRight,
+    KillToEnd,
+    KillToStart,
+    KillWordBack,
+    KillWordForward,
+    Yank,
+    Undo,
 }
 
 /// <summary>

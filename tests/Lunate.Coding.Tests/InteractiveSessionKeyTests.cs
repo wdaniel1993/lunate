@@ -200,4 +200,62 @@ public sealed class InteractiveSessionKeyTests
         host.Console.Complete();
         await run;
     }
+
+    [Fact]
+    public async Task Kill_and_yank_round_trip_on_the_input_loop()
+    {
+        using var host = new InteractiveSessionHost();
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+
+        host.Console.SendText("hello world");
+        await host.WaitUntilAsync(() => host.Session.Input.Text == "hello world");
+
+        host.Console.SendCtrl("w");
+        await host.WaitUntilAsync(() => host.Session.Input.Text == "hello ");
+
+        host.Console.SendCtrl("y");
+        await host.WaitUntilAsync(() => host.Session.Input.Text == "hello world");
+
+        host.Console.Complete();
+        await run;
+    }
+
+    [Fact]
+    public async Task Undo_restores_the_buffer_after_a_kill()
+    {
+        using var host = new InteractiveSessionHost();
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+
+        host.Console.SendText("alpha");
+        await host.WaitUntilAsync(() => host.Session.Input.Text == "alpha");
+
+        host.Console.SendCtrl("w");
+        await host.WaitUntilAsync(() => host.Session.Input.Text.Length == 0);
+
+        host.Console.SendCtrl("_");
+        await host.WaitUntilAsync(() => host.Session.Input.Text == "alpha");
+
+        host.Console.Complete();
+        await run;
+    }
+
+    [Fact]
+    public async Task Ctrl_A_moves_to_the_line_start_for_the_next_insert()
+    {
+        using var host = new InteractiveSessionHost();
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+
+        host.Console.SendText("bc");
+        await host.WaitUntilAsync(() => host.Session.Input.Text == "bc");
+
+        host.Console.SendCtrl("a");
+        host.Console.SendText("a");
+        await host.WaitUntilAsync(() => host.Session.Input.Text == "abc");
+
+        host.Console.Complete();
+        await run;
+    }
 }

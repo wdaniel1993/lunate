@@ -64,6 +64,12 @@ internal sealed class ScriptedConsoleIO : IConsoleIO
     public void SendCtrlC() =>
         Send(new KeyEvent(KeyKind.Character, "c", Ctrl: true, Shift: false, Alt: false));
 
+    public void SendCtrl(string text) =>
+        Send(new KeyEvent(KeyKind.Character, text, Ctrl: true, Shift: false, Alt: false));
+
+    public void SendAlt(string text) =>
+        Send(new KeyEvent(KeyKind.Character, text, Ctrl: false, Shift: false, Alt: true));
+
     public void SendBackspace() => Send(new KeyEvent(KeyKind.Backspace, null, false, false, false));
 
     public void SendCtrlD() =>

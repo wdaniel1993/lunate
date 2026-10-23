@@ -102,6 +102,111 @@ public static class InputLine
                 CursorPosition = state.Text.Length,
             };
 
+    /// <summary>A kill: the resulting line and the text removed, for the kill ring.</summary>
+    public readonly record struct KillResult(InputLineState State, string Killed);
+
+    /// <summary>Moves the cursor to the previous word start; separators before the word are skipped.</summary>
+    public static InputLineState MoveWordLeft(InputLineState state)
+    {
+        int cursor = ClampCursor(state);
+        int index = cursor;
+        while (index > 0 && !IsWordCharAt(state.Text, PreviousBoundary(state.Text, index)))
+        {
+            index = PreviousBoundary(state.Text, index);
+        }
+
+        while (index > 0 && IsWordCharAt(state.Text, PreviousBoundary(state.Text, index)))
+        {
+            index = PreviousBoundary(state.Text, index);
+        }
+
+        return index == cursor ? state : state with { CursorPosition = index };
+    }
+
+    /// <summary>Moves the cursor past the current word and the separators that follow it.</summary>
+    public static InputLineState MoveWordRight(InputLineState state)
+    {
+        int cursor = ClampCursor(state);
+        int index = cursor;
+        while (index < state.Text.Length && !IsWordCharAt(state.Text, index))
+        {
+            index = NextBoundary(state.Text, index);
+        }
+
+        while (index < state.Text.Length && IsWordCharAt(state.Text, index))
+        {
+            index = NextBoundary(state.Text, index);
+        }
+
+        return index == cursor ? state : state with { CursorPosition = index };
+    }
+
+    /// <summary>Kills from the cursor to the end of the line.</summary>
+    public static KillResult KillToEnd(InputLineState state)
+    {
+        int cursor = ClampCursor(state);
+        string killed = state.Text[cursor..];
+        return new KillResult(state with { Text = state.Text[..cursor] }, killed);
+    }
+
+    /// <summary>Kills from the start of the line to the cursor.</summary>
+    public static KillResult KillToStart(InputLineState state)
+    {
+        int cursor = ClampCursor(state);
+        string killed = state.Text[..cursor];
+        return new KillResult(
+            state with
+            {
+                Text = state.Text[cursor..],
+                CursorPosition = 0,
+            },
+            killed
+        );
+    }
+
+    /// <summary>Kills the word before the cursor, including the separators between them.</summary>
+    public static KillResult KillWordBack(InputLineState state)
+    {
+        int cursor = ClampCursor(state);
+        int start = MoveWordLeft(state).CursorPosition;
+        string killed = state.Text[start..cursor];
+        return new KillResult(
+            state with
+            {
+                Text = state.Text[..start] + state.Text[cursor..],
+                CursorPosition = start,
+            },
+            killed
+        );
+    }
+
+    /// <summary>Kills from the cursor to the end of the next word.</summary>
+    public static KillResult KillWordForward(InputLineState state)
+    {
+        int cursor = ClampCursor(state);
+        int end = MoveWordRight(state).CursorPosition;
+        string killed = state.Text[cursor..end];
+        return new KillResult(
+            state with
+            {
+                Text = state.Text[..cursor] + state.Text[end..],
+            },
+            killed
+        );
+    }
+
+    private static bool IsWordCharAt(string text, int index)
+    {
+        if (index < 0 || index >= text.Length)
+        {
+            return false;
+        }
+
+        char character = text[index];
+        return !char.IsSurrogate(character)
+            && (char.IsLetterOrDigit(character) || character == '_');
+    }
+
     internal static InputLineLayout Layout(InputLineState state, int width, int maxLines) =>
         Layout(state, width, maxLines, bashMode: false);
 

@@ -165,6 +165,66 @@ internal static class KeyBindingCatalog
             "Take the queued messages back"
         ),
         new(
+            new KeyPattern(KeyKind.Character, Ctrl: true, Alt: false, Text: "a"),
+            RoutedKey.LineStart,
+            KeyContext.None,
+            "Move to the start of the line"
+        ),
+        new(
+            new KeyPattern(KeyKind.Character, Ctrl: true, Alt: false, Text: "e"),
+            RoutedKey.LineEnd,
+            KeyContext.None,
+            "Move to the end of the line"
+        ),
+        new(
+            new KeyPattern(KeyKind.Character, Ctrl: true, Alt: false, Text: "k"),
+            RoutedKey.KillToEnd,
+            KeyContext.None,
+            "Kill to the end of the line"
+        ),
+        new(
+            new KeyPattern(KeyKind.Character, Ctrl: true, Alt: false, Text: "u"),
+            RoutedKey.KillToStart,
+            KeyContext.None,
+            "Kill to the start of the line"
+        ),
+        new(
+            new KeyPattern(KeyKind.Character, Ctrl: true, Alt: false, Text: "w"),
+            RoutedKey.KillWordBack,
+            KeyContext.None,
+            "Kill the word before the cursor"
+        ),
+        new(
+            new KeyPattern(KeyKind.Character, Alt: true, Ctrl: false, Text: "d"),
+            RoutedKey.KillWordForward,
+            KeyContext.None,
+            "Kill the word after the cursor"
+        ),
+        new(
+            new KeyPattern(KeyKind.Character, Ctrl: true, Alt: false, Text: "y"),
+            RoutedKey.Yank,
+            KeyContext.None,
+            "Yank the last kill"
+        ),
+        new(
+            new KeyPattern(KeyKind.Character, Ctrl: true, Alt: false, Text: "_"),
+            RoutedKey.Undo,
+            KeyContext.None,
+            "Undo the last edit"
+        ),
+        new(
+            new KeyPattern(KeyKind.Character, Alt: true, Ctrl: false, Text: "b"),
+            RoutedKey.WordLeft,
+            KeyContext.None,
+            "Move back by word"
+        ),
+        new(
+            new KeyPattern(KeyKind.Character, Alt: true, Ctrl: false, Text: "f"),
+            RoutedKey.WordRight,
+            KeyContext.None,
+            "Move forward by word"
+        ),
+        new(
             new KeyPattern(KeyKind.Up),
             RoutedKey.HistoryPrevious,
             KeyContext.None,

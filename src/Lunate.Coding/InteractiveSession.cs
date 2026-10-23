@@ -110,7 +110,9 @@ internal sealed partial class InteractiveSession : IDisposable
     private InputPipeline _pipeline;
     private ImageInputResolver _imageResolver = null!;
     private readonly InputHistory _history;
+    private readonly Stack<InputLineState> _undo = new();
     private readonly QuitWindow _quitWindow;
+    private string _killRing = string.Empty;
     private readonly QuitWindow _exitWindow;
     private readonly IUserInteraction _interaction;
     private readonly ISecretPrompt _secretPrompt;
@@ -1017,6 +1019,36 @@ internal sealed partial class InteractiveSession : IDisposable
             case RoutedKey.TranscriptViewer:
                 OpenViewer();
                 break;
+            case RoutedKey.LineStart:
+                ApplyEdit(InputLine.MoveHome(_input));
+                break;
+            case RoutedKey.LineEnd:
+                ApplyEdit(InputLine.MoveEnd(_input));
+                break;
+            case RoutedKey.WordLeft:
+                ApplyEdit(InputLine.MoveWordLeft(_input));
+                break;
+            case RoutedKey.WordRight:
+                ApplyEdit(InputLine.MoveWordRight(_input));
+                break;
+            case RoutedKey.KillToEnd:
+                ApplyKill(InputLine.KillToEnd(_input));
+                break;
+            case RoutedKey.KillToStart:
+                ApplyKill(InputLine.KillToStart(_input));
+                break;
+            case RoutedKey.KillWordBack:
+                ApplyKill(InputLine.KillWordBack(_input));
+                break;
+            case RoutedKey.KillWordForward:
+                ApplyKill(InputLine.KillWordForward(_input));
+                break;
+            case RoutedKey.Yank:
+                ApplyEdit(InputLine.Insert(_input, _killRing));
+                break;
+            case RoutedKey.Undo:
+                UndoInput();
+                break;
             case RoutedKey.Complete:
                 if (_autocomplete is not null)
                 {
@@ -1063,7 +1095,20 @@ internal sealed partial class InteractiveSession : IDisposable
     private void EditInput(KeyEvent key)
     {
         bool wasEmpty = _input.Text.Length == 0;
-        _input = InputLine.Apply(_input, key);
+        InputLineState edited = InputLine.Apply(_input, key);
+        if (edited != _input)
+        {
+            if (IsNewlineKey(key))
+            {
+                _undo.Clear();
+            }
+            else
+            {
+                PushUndo(_input);
+            }
+        }
+
+        _input = edited;
         _historyDraft = null;
         if (TryEnterBashMode(wasEmpty, key))
         {
@@ -1096,6 +1141,7 @@ internal sealed partial class InteractiveSession : IDisposable
         }
 
         SetInput(string.Empty);
+        _undo.Clear();
         if (
             Commands.IsCommand(submitted)
             && !ImageInputResolver.IsDroppedImagePath(_workspace.WorktreeRoot, submitted)
@@ -1302,6 +1348,79 @@ internal sealed partial class InteractiveSession : IDisposable
             )
         );
     }
+
+    private void ApplyKill(InputLine.KillResult kill)
+    {
+        if (kill.Killed.Length == 0)
+        {
+            return;
+        }
+
+        _killRing = kill.Killed;
+        ApplyEdit(kill.State);
+    }
+
+    private void ApplyEdit(InputLineState next)
+    {
+        if (next == _input)
+        {
+            return;
+        }
+
+        PushUndo(_input);
+        _input = next;
+        _historyDraft = null;
+        _live.SetInput(_input, _bashMode);
+        if (_bashMode)
+        {
+            CloseAutocomplete();
+        }
+        else
+        {
+            RefreshAutocomplete(edited: true);
+        }
+    }
+
+    private void PushUndo(InputLineState state)
+    {
+        if (_undo.Count >= 64)
+        {
+            InputLineState[] kept = [.. _undo.Reverse().Take(63)];
+            _undo.Clear();
+            foreach (InputLineState entry in kept)
+            {
+                _undo.Push(entry);
+            }
+        }
+
+        _undo.Push(state);
+    }
+
+    private void UndoInput()
+    {
+        if (_undo.Count == 0)
+        {
+            return;
+        }
+
+        InputLineState previous = _undo.Pop();
+        _input = previous;
+        _historyDraft = null;
+        _live.SetInput(_input, _bashMode);
+        if (_bashMode)
+        {
+            CloseAutocomplete();
+        }
+        else
+        {
+            RefreshAutocomplete(edited: true);
+        }
+    }
+
+    private static bool IsNewlineKey(KeyEvent key) =>
+        key is { Kind: KeyKind.Enter, Alt: true }
+        || key is { Kind: KeyKind.Enter, Shift: true }
+        || key is { Kind: KeyKind.Character, Ctrl: true, Text: "j" };
 
     private void HandleCtrlC()
     {
