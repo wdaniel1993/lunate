@@ -27,6 +27,7 @@ public enum RoutedKey
     KillWordForward,
     Yank,
     Undo,
+    HistorySearch,
 }
 
 /// <summary>

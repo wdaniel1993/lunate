@@ -429,3 +429,4 @@ static Lunate.Tui.InputLine.MoveWordLeft(Lunate.Tui.InputLineState! state) -> Lu
 static Lunate.Tui.InputLine.MoveWordRight(Lunate.Tui.InputLineState! state) -> Lunate.Tui.InputLineState!
 ~override Lunate.Tui.InputLine.KillResult.Equals(object obj) -> bool
 ~override Lunate.Tui.InputLine.KillResult.ToString() -> string
+Lunate.Tui.RoutedKey.HistorySearch = 24 -> Lunate.Tui.RoutedKey

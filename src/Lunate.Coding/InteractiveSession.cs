@@ -112,6 +112,7 @@ internal sealed partial class InteractiveSession : IDisposable
     private readonly InputHistory _history;
     private readonly Stack<InputLineState> _undo = new();
     private readonly QuitWindow _quitWindow;
+    private HistorySearch? _historySearch;
     private string _killRing = string.Empty;
     private readonly QuitWindow _exitWindow;
     private readonly IUserInteraction _interaction;
@@ -922,6 +923,11 @@ internal sealed partial class InteractiveSession : IDisposable
             return;
         }
 
+        if (HandleHistorySearchKey(key))
+        {
+            return;
+        }
+
         switch (KeyRouter.Route(key, _turnActive, _followUps.Count > 0, _bashMode || _bashRunning))
         {
             case RoutedKey.Edit:
@@ -1018,6 +1024,9 @@ internal sealed partial class InteractiveSession : IDisposable
                 break;
             case RoutedKey.TranscriptViewer:
                 OpenViewer();
+                break;
+            case RoutedKey.HistorySearch:
+                BeginHistorySearch();
                 break;
             case RoutedKey.LineStart:
                 ApplyEdit(InputLine.MoveHome(_input));
@@ -1421,6 +1430,158 @@ internal sealed partial class InteractiveSession : IDisposable
         key is { Kind: KeyKind.Enter, Alt: true }
         || key is { Kind: KeyKind.Enter, Shift: true }
         || key is { Kind: KeyKind.Character, Ctrl: true, Text: "j" };
+
+    private sealed record HistorySearch(
+        string Query,
+        IReadOnlyList<string> Matches,
+        int Index,
+        string Draft
+    );
+
+    private IReadOnlyList<string> HistoryEntries() =>
+        _bashMode ? _bashHistory.Entries : _history.Entries;
+
+    private void BeginHistorySearch()
+    {
+        if (_historySearch is null)
+        {
+            _historySearch = new HistorySearch(
+                string.Empty,
+                HistoryEntries().Reverse().ToArray(),
+                -1,
+                _input.Text
+            );
+        }
+
+        AdvanceHistorySearch();
+    }
+
+    /// <summary>Consumes the keys that belong to an open history search; anything else accepts it.</summary>
+    private bool HandleHistorySearchKey(KeyEvent key)
+    {
+        if (_historySearch is not { } search)
+        {
+            return false;
+        }
+
+        switch (key)
+        {
+            case { Kind: KeyKind.Enter }:
+                CloseHistorySearch(keepInput: true);
+                return true;
+            case { Kind: KeyKind.Escape }:
+                CloseHistorySearch(keepInput: false);
+                return true;
+            case { Kind: KeyKind.Character, Ctrl: true, Text: "r" }:
+                AdvanceHistorySearch();
+                return true;
+            case { Kind: KeyKind.Down }:
+                StepHistorySearch(-1);
+                return true;
+            case { Kind: KeyKind.Backspace }:
+                if (search.Query.Length == 0)
+                {
+                    CloseHistorySearch(keepInput: false);
+                }
+                else
+                {
+                    SearchHistory(search.Query[..^1]);
+                }
+
+                return true;
+            case { Kind: KeyKind.Space, Ctrl: false, Alt: false }:
+                SearchHistory(search.Query + " ");
+                return true;
+            case { Kind: KeyKind.Character, Ctrl: false, Alt: false, Text: not null }:
+                SearchHistory(search.Query + key.Text);
+                return true;
+            default:
+                CloseHistorySearch(keepInput: true);
+                return false;
+        }
+    }
+
+    private void SearchHistory(string query)
+    {
+        if (_historySearch is not { } search)
+        {
+            return;
+        }
+
+        string[] matches = HistoryEntries()
+            .Reverse()
+            .Where(entry => entry.Contains(query, StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+        _historySearch = new HistorySearch(
+            query,
+            matches,
+            matches.Length == 0 ? -1 : 0,
+            search.Draft
+        );
+        ShowHistorySearch();
+    }
+
+    private void AdvanceHistorySearch()
+    {
+        if (_historySearch is not { } search)
+        {
+            return;
+        }
+
+        if (search.Matches.Count == 0)
+        {
+            ShowHistorySearch();
+            return;
+        }
+
+        int next = Math.Min(search.Index + 1, search.Matches.Count - 1);
+        _historySearch = search with { Index = next };
+        ShowHistorySearch();
+    }
+
+    private void StepHistorySearch(int delta)
+    {
+        if (_historySearch is not { } search || search.Matches.Count == 0)
+        {
+            return;
+        }
+
+        int next = Math.Clamp(search.Index + delta, 0, search.Matches.Count - 1);
+        _historySearch = search with { Index = next };
+        ShowHistorySearch();
+    }
+
+    private void ShowHistorySearch()
+    {
+        if (_historySearch is not { } search)
+        {
+            return;
+        }
+
+        string position =
+            search.Matches.Count == 0 ? "no match" : $"{search.Index + 1}/{search.Matches.Count}";
+        string entry = search.Index >= 0 ? search.Matches[search.Index] : search.Draft;
+        CloseAutocomplete();
+        _input = new InputLineState(entry, entry.Length);
+        _live.SetInput(_input, _bashMode);
+        _live.SetNotice($"history: {search.Query} ({position}) — Enter accept, Esc cancel");
+    }
+
+    private void CloseHistorySearch(bool keepInput)
+    {
+        if (_historySearch is not { } search)
+        {
+            return;
+        }
+
+        _historySearch = null;
+        _live.SetNotice(null);
+        if (!keepInput)
+        {
+            _input = new InputLineState(search.Draft, search.Draft.Length);
+            _live.SetInput(_input, _bashMode);
+        }
+    }
 
     private void HandleCtrlC()
     {

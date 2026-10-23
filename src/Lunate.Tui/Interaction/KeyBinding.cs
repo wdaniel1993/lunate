@@ -165,6 +165,12 @@ internal static class KeyBindingCatalog
             "Take the queued messages back"
         ),
         new(
+            new KeyPattern(KeyKind.Character, Ctrl: true, Alt: false, Text: "r"),
+            RoutedKey.HistorySearch,
+            KeyContext.None,
+            "Search the history"
+        ),
+        new(
             new KeyPattern(KeyKind.Character, Ctrl: true, Alt: false, Text: "a"),
             RoutedKey.LineStart,
             KeyContext.None,

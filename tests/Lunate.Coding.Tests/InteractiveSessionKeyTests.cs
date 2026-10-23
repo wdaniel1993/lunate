@@ -258,4 +258,65 @@ public sealed class InteractiveSessionKeyTests
         host.Console.Complete();
         await run;
     }
+
+    [Fact]
+    public async Task History_search_walks_matches_and_Esc_restores_the_draft()
+    {
+        using var host = new InteractiveSessionHost();
+        host.Client.Enqueue(Scripts.Text("one"), Scripts.Stop());
+        host.Client.Enqueue(Scripts.Text("two"), Scripts.Stop());
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+
+        host.Console.SendText("first entry");
+        host.Console.SendEnter();
+        await host.WaitUntilAsync(() => !host.Session.IsRunning && host.Session.IsComposed);
+
+        host.Console.SendText("second entry");
+        host.Console.SendEnter();
+        await host.WaitUntilAsync(() => !host.Session.IsRunning && host.Session.IsComposed);
+
+        host.Console.SendText("draft");
+        await host.WaitUntilAsync(() => host.Session.Input.Text == "draft");
+
+        host.Console.SendCtrl("r");
+        await host.WaitUntilAsync(() => host.Session.Input.Text == "second entry");
+
+        host.Console.SendCtrl("r");
+        await host.WaitUntilAsync(() => host.Session.Input.Text == "first entry");
+
+        host.Console.SendEscape();
+        await host.WaitUntilAsync(() => host.Session.Input.Text == "draft");
+
+        host.Console.Complete();
+        await run;
+    }
+
+    [Fact]
+    public async Task History_search_narrows_on_typed_text()
+    {
+        using var host = new InteractiveSessionHost();
+        host.Client.Enqueue(Scripts.Text("one"), Scripts.Stop());
+        host.Client.Enqueue(Scripts.Text("two"), Scripts.Stop());
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+
+        host.Console.SendText("alpha");
+        host.Console.SendEnter();
+        await host.WaitUntilAsync(() => !host.Session.IsRunning && host.Session.IsComposed);
+
+        host.Console.SendText("beta");
+        host.Console.SendEnter();
+        await host.WaitUntilAsync(() => !host.Session.IsRunning && host.Session.IsComposed);
+
+        host.Console.SendCtrl("r");
+        host.Console.SendText("al");
+        await host.WaitUntilAsync(() => host.Session.Input.Text == "alpha");
+
+        host.Console.SendEnter();
+        await host.WaitUntilAsync(() => host.Session.Input.Text == "alpha");
+
+        host.Console.Complete();
+        await run;
+    }
 }
