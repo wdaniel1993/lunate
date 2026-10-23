@@ -85,6 +85,20 @@ internal sealed partial class InteractiveSession
 
         SetInput(string.Empty);
         UpdateFollowUpIndicator();
+        // The turn may have ended while this line was still running its input hooks: the drain
+        // checked an empty queue and returned, so nothing would ever start this entry. Take it and
+        // open the turn here instead of leaving it parked.
+        if (
+            !_turnActive
+            && _followUps.TryDequeue(out QueuedFollowUp? pending)
+            && pending is not null
+        )
+        {
+            UpdateFollowUpIndicator();
+            _history.Add(pending.Input.Text);
+            PrepareTurn(pending.Input);
+            _run = RunTurnsAsync(pending.Input, skill: null, ct);
+        }
     }
 
     /// <summary>

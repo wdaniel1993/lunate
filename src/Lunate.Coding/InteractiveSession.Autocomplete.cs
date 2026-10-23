@@ -6,7 +6,6 @@ namespace Lunate.Coding;
 
 internal sealed partial class InteractiveSession
 {
-    private CompletionRegistry _completionRegistry = CompletionRegistry.Compose([], []);
     private AutocompleteState? _autocomplete;
     private bool _autocompleteDismissed;
     private bool _indexingNoticeShown;
@@ -16,32 +15,6 @@ internal sealed partial class InteractiveSession
 
     /// <summary>The input line as typed so far (the tests' view).</summary>
     internal InputLineState Input => _input;
-
-    /// <summary>Recomposes the registry after skill discovery or a session reload (design D2).</summary>
-    private void ComposeCompletionRegistry()
-    {
-        _completionRegistry = CompletionRegistry.Compose(
-            _skills?.Skills ?? [],
-            LoadedExtensionDescriptors()
-        );
-    }
-
-    /// <summary>The manifests of the extensions that actually loaded.</summary>
-    private IReadOnlyList<ExtensionDescriptor> LoadedExtensionDescriptors()
-    {
-        if (_extensions is not { } host)
-        {
-            return [];
-        }
-
-        HashSet<string> loaded =
-        [
-            .. host
-                .LoadResults.Where(result => result.State is ExtensionLoadState.Loaded)
-                .Select(result => result.Id),
-        ];
-        return [.. host.Descriptors.Where(descriptor => loaded.Contains(descriptor.Id))];
-    }
 
     /// <summary>
     /// Recomputes the open list after an edit or cursor move (design D6/D8): command mode first,
@@ -76,7 +49,7 @@ internal sealed partial class InteractiveSession
             SetAutocomplete(
                 CompletionMode.Command,
                 tokenStart,
-                FuzzyMatch.Filter(_completionRegistry.Items, query)
+                FuzzyMatch.Filter(_commands.CompletionItems, query)
             );
             return;
         }

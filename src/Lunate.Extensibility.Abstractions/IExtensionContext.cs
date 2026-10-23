@@ -79,6 +79,15 @@ public interface IExtensionContext
     /// </summary>
     void RegisterSkillSource(ISkillSource source);
 
+    /// <summary>
+    /// Registers a command source. Registration is registration only: it must not start processes,
+    /// sockets or timers. Every command the source describes must be declared in the manifest
+    /// <c>commands</c> list; a provided-but-undeclared command or a collision with a built-in
+    /// command refuses the load. A declared command no source provides reads
+    /// <c>declared, not provided</c> in <c>/extensions</c>.
+    /// </summary>
+    void RegisterCommandSource(ICommandSource source);
+
     /// <summary>Looks up a service another extension registered by its name.</summary>
     bool TryGetService(string name, out IBackgroundService? service);
 

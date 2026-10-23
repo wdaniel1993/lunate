@@ -68,6 +68,8 @@ internal sealed class FakeExtensionContext : IExtensionContext
 
     public void RegisterSkillSource(ISkillSource source) => throw new NotSupportedException();
 
+    public void RegisterCommandSource(ICommandSource source) => throw new NotSupportedException();
+
     private sealed class EmptySettings : IExtensionSettings
     {
         public bool TryGet(string path, out JsonElement value)

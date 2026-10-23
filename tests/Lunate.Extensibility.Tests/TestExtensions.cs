@@ -21,7 +21,8 @@ internal static class TestExtensions
         string apiVersion = "^1.0.0",
         string settingsSchema = "",
         string modelProviders = "",
-        string tools = ""
+        string tools = "",
+        string commands = ""
     )
     {
         Directory.CreateDirectory(extensionDirectory);
@@ -30,8 +31,9 @@ internal static class TestExtensions
         string? providers =
             modelProviders.Length == 0 ? null : $",\"modelProviders\":{modelProviders}";
         string? declaredTools = tools.Length == 0 ? null : $",\"tools\":{tools}";
+        string? declaredCommands = commands.Length == 0 ? null : $",\"commands\":{commands}";
         string json =
-            $$"""{"id":"{{id}}","version":"0.1.0","apiVersion":"{{apiVersion}}","entryAssembly":"{{entryAssembly}}"{{schema}}{{providers}}{{declaredTools}}}""";
+            $$"""{"id":"{{id}}","version":"0.1.0","apiVersion":"{{apiVersion}}","entryAssembly":"{{entryAssembly}}"{{schema}}{{providers}}{{declaredTools}}{{declaredCommands}}}""";
         File.WriteAllText(Path.Combine(extensionDirectory, "extension.json"), json);
     }
 
@@ -97,6 +99,29 @@ internal static class TestExtensions
             overwrite: true
         );
         WriteManifest(directory, id, entryAssembly: "ToolExtension.dll", tools: tools);
+        if (settings is not null)
+        {
+            WriteSettings(temp, id, settings);
+        }
+
+        return directory;
+    }
+
+    public static string InstallCommandExtension(
+        TempDirectory temp,
+        string id,
+        string commands,
+        string? settings = null
+    )
+    {
+        string directory = GlobalExtensionDirectory(temp, id);
+        Directory.CreateDirectory(directory);
+        File.Copy(
+            FixtureFile("CommandExtension", "CommandExtension.dll"),
+            Path.Combine(directory, "CommandExtension.dll"),
+            overwrite: true
+        );
+        WriteManifest(directory, id, entryAssembly: "CommandExtension.dll", commands: commands);
         if (settings is not null)
         {
             WriteSettings(temp, id, settings);

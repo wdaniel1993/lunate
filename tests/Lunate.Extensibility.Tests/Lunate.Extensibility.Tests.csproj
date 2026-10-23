@@ -23,6 +23,10 @@
             ReferenceOutputAssembly="false"
         />
         <ProjectReference
+            Include="../TestExtensions/CommandExtension/CommandExtension.csproj"
+            ReferenceOutputAssembly="false"
+        />
+        <ProjectReference
             Include="../TestExtensions/ModelExtension/ModelExtension.csproj"
             ReferenceOutputAssembly="false"
         />
@@ -50,6 +54,11 @@
             Properties="Configuration=$(Configuration)"
         />
         <MSBuild
+            Projects="$(MSBuildThisFileDirectory)../TestExtensions/CommandExtension/CommandExtension.csproj"
+            Targets="Build"
+            Properties="Configuration=$(Configuration)"
+        />
+        <MSBuild
             Projects="$(MSBuildThisFileDirectory)../TestExtensions/ModelExtension/ModelExtension.csproj"
             Targets="Build"
             Properties="Configuration=$(Configuration)"
@@ -58,6 +67,7 @@
             <HelloExtensionFiles Include="$(MSBuildThisFileDirectory)../TestExtensions/HelloExtension/bin/$(Configuration)/$(TargetFramework)/**/*" />
             <McpExtensionFiles Include="$(MSBuildThisFileDirectory)../TestExtensions/McpExtension/bin/$(Configuration)/$(TargetFramework)/**/*" />
             <ToolExtensionFiles Include="$(MSBuildThisFileDirectory)../TestExtensions/ToolExtension/bin/$(Configuration)/$(TargetFramework)/**/*" />
+            <CommandExtensionFiles Include="$(MSBuildThisFileDirectory)../TestExtensions/CommandExtension/bin/$(Configuration)/$(TargetFramework)/**/*" />
             <ModelExtensionFiles Include="$(MSBuildThisFileDirectory)../TestExtensions/ModelExtension/bin/$(Configuration)/$(TargetFramework)/**/*" />
         </ItemGroup>
         <Copy
@@ -73,6 +83,11 @@
         <Copy
             SourceFiles="@(ToolExtensionFiles)"
             DestinationFolder="$(OutDir)TestExtensions/ToolExtension/%(RecursiveDir)"
+            SkipUnchangedFiles="true"
+        />
+        <Copy
+            SourceFiles="@(CommandExtensionFiles)"
+            DestinationFolder="$(OutDir)TestExtensions/CommandExtension/%(RecursiveDir)"
             SkipUnchangedFiles="true"
         />
         <Copy

@@ -146,6 +146,20 @@ internal static class ExtensionsView
                     : Declared(descriptor);
             node["tools"] = counts.Tools;
             node["commands"] = counts.Commands;
+            if (
+                result.State == ExtensionLoadState.Loaded
+                && counts.DeclaredNotProvidedCommands.Count > 0
+            )
+            {
+                var names = new JsonArray();
+                foreach (string name in counts.DeclaredNotProvidedCommands)
+                {
+                    names.Add(name);
+                }
+
+                node["commandsDeclaredNotProvided"] = names;
+            }
+
             node["hooks"] = counts.Hooks;
             node["services"] = counts.Services;
             array.Add(node);
@@ -242,8 +256,24 @@ internal static class ExtensionsView
         ExtensionCounts counts
     ) =>
         FormattableString.Invariant(
-            $", tools {Field(counts.Tools, descriptor.Manifest.Tools.Count)}, commands {Field(counts.Commands, descriptor.Manifest.Commands.Count)}, hooks {Field(counts.Hooks, descriptor.Manifest.Hooks.Count)}, services {Field(counts.Services, descriptor.Manifest.Services.Count)}"
+            $", tools {Field(counts.Tools, descriptor.Manifest.Tools.Count)}, commands {CommandsField(descriptor, counts)}, hooks {Field(counts.Hooks, descriptor.Manifest.Hooks.Count)}, services {Field(counts.Services, descriptor.Manifest.Services.Count)}"
         );
+
+    /// <summary>
+    /// The commands field: the registered count against the declared list, with the declared names
+    /// no source provided called out as <c>declared, not provided</c>.
+    /// </summary>
+    private static string CommandsField(ExtensionDescriptor descriptor, ExtensionCounts counts)
+    {
+        if (counts.DeclaredNotProvidedCommands.Count == 0)
+        {
+            return Field(counts.Commands, descriptor.Manifest.Commands.Count);
+        }
+
+        return FormattableString.Invariant(
+            $"{counts.Commands} ({descriptor.Manifest.Commands.Count} declared, not provided: {string.Join(", ", counts.DeclaredNotProvidedCommands)})"
+        );
+    }
 
     /// <summary>The manifest's declared counts (trust-denied and failed extensions load nothing).</summary>
     private static string DeclaredCounts(ExtensionDescriptor descriptor)

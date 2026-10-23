@@ -23,6 +23,12 @@ public sealed class ExtensionHostOptions
     /// </summary>
     public IChatClientFactory? ClientFactory { get; init; }
 
+    /// <summary>
+    /// The bare command names the core owns. An extension command with one of these names refuses
+    /// the load; the production composition sets this from the built-in command table.
+    /// </summary>
+    public IReadOnlyList<string> ReservedCommands { get; init; } = [];
+
     public static ExtensionHostOptions Default { get; } =
         new()
         {

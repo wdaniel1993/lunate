@@ -1,3 +1,5 @@
+using Lunate.Extensibility.Abstractions;
+
 namespace Lunate.Coding;
 
 /// <summary>The <c>/help</c> group a command belongs to (design D3).</summary>
@@ -12,15 +14,19 @@ internal enum CommandGroup
 
 /// <summary>
 /// One built-in command's metadata: the name as typed, its <c>/help</c> group and its one-line
-/// description (no trailing period). The single source for the <c>/help</c> listing; the dispatch
-/// switch stays control flow.
+/// description (no trailing period). This is the built-in source's table; the registry is what
+/// dispatch, completion and <c>/help</c> consume.
 /// </summary>
-internal sealed record CommandDescriptor(string Name, CommandGroup Group, string Description);
+internal sealed record BuiltinCommandDescriptor(
+    string Name,
+    CommandGroup Group,
+    string Description
+);
 
 /// <summary>
-/// The client-side slash commands: classification, parsing and the built-in table used by the
-/// dispatcher, Tab completion and <c>/help</c>. A submitted line whose first non-space character is
-/// <c>/</c> is a command; it never reaches the model and skips the input pipeline.
+/// The client-side slash commands: classification, parsing and the built-in table. A submitted
+/// line whose first non-space character is <c>/</c> is a command; it never reaches the model and
+/// skips the input pipeline.
 /// </summary>
 internal static class Commands
 {
@@ -30,11 +36,15 @@ internal static class Commands
     /// <summary>The skill invocation's registry name (its argument form, not a completion word).</summary>
     public const string SkillName = SkillPrefix + "<name>";
 
+    /// <summary>The built-in source's registry id.</summary>
+    public const string BuiltinSourceId = "builtin";
+
     /// <summary>
-    /// Every built-in command's metadata in listing order; the <c>/help</c> listing groups it and a
-    /// command that is dispatchable without an entry here fails <c>CommandRegistryTests</c>.
+    /// Every built-in command's metadata in listing order. The built-in source maps it to the
+    /// public descriptors; a command that is dispatchable without an entry here fails
+    /// <c>CommandRegistryTests</c>.
     /// </summary>
-    public static readonly IReadOnlyList<CommandDescriptor> Descriptors =
+    public static readonly IReadOnlyList<BuiltinCommandDescriptor> Descriptors =
     [
         new(
             "/compact",
@@ -68,6 +78,31 @@ internal static class Commands
         new("/trust", CommandGroup.Extensions, "show or clear this repository's trust records"),
         new("/quit", CommandGroup.Quit, "quit"),
     ];
+
+    /// <summary>The built-in source's public descriptors, names without the slash, in table order.</summary>
+    public static IReadOnlyList<CommandDescriptor> PublicDescriptors { get; } =
+    [
+        .. Descriptors.Select(descriptor => new CommandDescriptor(
+            descriptor.Name.TrimStart('/'),
+            descriptor.Description,
+            ArgumentHint: null,
+            SourceId: BuiltinSourceId,
+            Kind: CommandKind.Builtin
+        )),
+    ];
+
+    /// <summary>The bare built-in names the loader reserves against extension collisions.</summary>
+    public static IReadOnlyList<string> BuiltinNames { get; } =
+    [.. PublicDescriptors.Select(descriptor => descriptor.Name)];
+
+    /// <summary>The <c>/help</c> group of a built-in bare name.</summary>
+    public static CommandGroup GroupOf(string bareName) =>
+        Descriptors
+            .FirstOrDefault(descriptor =>
+                string.Equals(descriptor.Name, "/" + bareName, StringComparison.Ordinal)
+            )
+            ?.Group
+        ?? CommandGroup.Extensions;
 
     /// <summary>Whether the first non-space character of the submitted line is <c>/</c>.</summary>
     public static bool IsCommand(string text)

@@ -6,10 +6,11 @@ public sealed class ExtensionApiTests
 {
     [Fact]
     public void Current_is_the_released_contract_version() =>
-        Assert.Equal("1.10.0", ExtensionApi.Current);
+        Assert.Equal("1.11.0", ExtensionApi.Current);
 
     [Theory]
-    [InlineData("1.10.0")]
+    [InlineData("1.11.0")]
+    [InlineData("^1.11.0")]
     [InlineData("^1.10.0")]
     [InlineData("^1.9.0")]
     [InlineData("^1.8.0")]
@@ -38,7 +39,8 @@ public sealed class ExtensionApiTests
     [InlineData("1.7.0")]
     [InlineData("1.8.0")]
     [InlineData("1.9.0")]
-    [InlineData("1.11.0")]
+    [InlineData("1.10.0")]
+    [InlineData("1.12.0")]
     [InlineData("2.0.0")]
     [InlineData("^0.9.9")]
     [InlineData("^2.0.0")]
