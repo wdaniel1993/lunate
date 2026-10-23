@@ -48,9 +48,17 @@ public sealed class SlowHookNoticeTests
         Assert.Contains("/extensions", host.Frames, StringComparison.Ordinal);
 
         host.Client.Release(1);
-        // Same spawn-window idiom as the notice wait above: the queued follow-up starts after the
-        // turn unwinds, and a loaded Linux runner has starved that handover past 10 s before.
-        await host.Client.WaitForCallAsync(2, TimeSpan.FromSeconds(30));
+        // The queued follow-up starts only after the turn unwinds and the drain runs; pump the frame
+        // scheduler on this thread instead of waiting idle on a thread-pool continuation, which a
+        // loaded Linux runner has starved past 30 s.
+        await host.WaitUntilAsync(
+            () =>
+            {
+                host.Advance(33);
+                return host.Client.Requests.Count >= 2;
+            },
+            TimeSpan.FromSeconds(30)
+        );
         host.Console.Complete();
         await run;
     }
