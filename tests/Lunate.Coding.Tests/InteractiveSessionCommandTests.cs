@@ -86,11 +86,9 @@ public sealed class InteractiveSessionCommandTests
 
         host.Console.SendText("/help");
         host.Console.SendEnter();
-        // "extensions" also appears in the welcome footer; wait on text only /help prints.
-        await WaitForScrollbackAsync(
-            host,
-            "/compact  — compact the conversation now, optionally focusing on <text>"
-        );
+        // "extensions" also appears in the welcome footer; wait on text only /help prints, and on
+        // the block's last line so the wait covers the whole listing the assert compares below.
+        await WaitForScrollbackAsync(host, "  /quit — quit");
 
         Assert.Contains(
             """
@@ -993,15 +991,29 @@ public sealed class InteractiveSessionCommandTests
         TimeSpan? timeout = null
     )
     {
-        await host.WaitUntilAsync(
-            () =>
-            {
-                host.Advance(33);
-                return host.ScrollbackText.Contains(text, StringComparison.Ordinal)
-                    && !host.Session.IsRunning;
-            },
-            timeout
-        );
+        try
+        {
+            await host.WaitUntilAsync(
+                () =>
+                {
+                    host.Advance(33);
+                    return host.ScrollbackText.Contains(text, StringComparison.Ordinal)
+                        && !host.Session.IsRunning;
+                },
+                timeout
+            );
+        }
+        catch (TimeoutException exception)
+        {
+            // A scrollback sighting that never shows its text is otherwise unreadable after the
+            // fact: the tail says whether the commit landed at all and what it said instead.
+            string scrollback = host.ScrollbackText;
+            string tail = scrollback.Length <= 800 ? scrollback : scrollback[^800..];
+            throw new TimeoutException(
+                $"{exception.Message} scrollback tail: <<<{tail.ReplaceLineEndings("|")}>>>",
+                exception
+            );
+        }
     }
 
     private sealed class ConsumingHandler : IInputReceivedHandler

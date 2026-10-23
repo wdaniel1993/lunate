@@ -21,8 +21,17 @@ public sealed class InteractiveSessionStreamingTests
         string mid = host.ScrollbackText;
         Assert.Contains("one", mid, StringComparison.Ordinal);
         Assert.DoesNotContain("two", mid, StringComparison.Ordinal);
-        host.Advance(33);
-        Assert.Contains("two", host.LastFrame, StringComparison.Ordinal);
+        // The tail is painted on the sampled tick the test pumps; one advance is not enough when
+        // the tick was enqueued from the session thread between the advance's read and its run.
+        // Wait on any frame that carried the tail, with the suite's wide budget.
+        await host.WaitUntilAsync(
+            () =>
+            {
+                host.Advance(33);
+                return host.LastFrame.Contains("two", StringComparison.Ordinal);
+            },
+            TimeSpan.FromSeconds(30)
+        );
 
         client.Release();
         await host.WaitUntilAsync(() => !host.Session.IsRunning);
