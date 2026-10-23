@@ -48,17 +48,27 @@ public sealed class SlowHookNoticeTests
         Assert.Contains("/extensions", host.Frames, StringComparison.Ordinal);
 
         host.Client.Release(1);
-        // The queued follow-up starts only after the turn unwinds and the drain runs; pump the frame
-        // scheduler on this thread instead of waiting idle on a thread-pool continuation, which a
-        // loaded Linux runner has starved past 30 s.
-        await host.WaitUntilAsync(
-            () =>
-            {
-                host.Advance(33);
-                return host.Client.Requests.Count >= 2;
-            },
-            TimeSpan.FromSeconds(30)
-        );
+        // TEMPORARY DIAGNOSTIC (CI-only hang): dump the state if the follow-up never starts.
+        try
+        {
+            await host.WaitUntilAsync(
+                () =>
+                {
+                    host.Advance(33);
+                    return host.Client.Requests.Count >= 2;
+                },
+                TimeSpan.FromSeconds(20)
+            );
+        }
+        catch (TimeoutException)
+        {
+            Assert.Fail(
+                $"DIAG queued={host.Session.QueuedFollowUpCount} running={host.Session.IsRunning} "
+                    + $"inputLen={host.Session.Input.Text.Length} requests={host.Client.Requests.Count} "
+                    + $"bash={host.Session.Input.Text}"
+            );
+        }
+
         host.Console.Complete();
         await run;
     }
