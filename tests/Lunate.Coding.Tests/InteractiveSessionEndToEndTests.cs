@@ -104,7 +104,15 @@ public sealed class InteractiveSessionEndToEndTests
         catch (TimeoutException ex)
         {
             Assert.Fail(
-                $"{ex.Message}{Environment.NewLine}--- session state ---{Environment.NewLine}{host.Diagnostics}"
+                $"""
+                {ex.Message}
+                --- session state ---
+                running={host.Session.IsRunning}
+                pendingApproval={host.Session.PendingApproval?.ToolName ?? "none"}
+                queued={host.Session.FollowUps.Count}
+                requests={host.Client.Requests.Count}
+                lastFrame={Tail(host.LastFrame, 240)}
+                """
             );
         }
 
@@ -345,6 +353,9 @@ public sealed class InteractiveSessionEndToEndTests
 
     // The header names the running build, and the build hash changes with every commit. The golden
     // pins the shape, not a hash that would be stale the moment it is committed.
+    private static string Tail(string text, int length) =>
+        text.Length <= length ? text : text[^length..];
+
     private static string NormalizeBuild(string text) =>
         BuildToken.Replace(text, "v<version>+<build>");
 
