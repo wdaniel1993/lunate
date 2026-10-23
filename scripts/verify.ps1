@@ -92,14 +92,9 @@ try {
         }
     }
 
-    Write-Host "`n==> test"
-    # The Category=Perf budget check is excluded from the main pass and runs as
-    # its own step below, so the pass stays fast and the budget is still enforced.
-    Invoke-Tests -Label 'test' -TestArgs @('test', '--solution', 'lunate.sln', '-c', $configuration, '--filter-not-trait', 'Category=Perf')
-
-    Write-Host "`n==> path index budget"
-    Invoke-Tests -Label 'path index budget' -TestArgs @('test', '--project', 'tests/Lunate.Coding.Tests/Lunate.Coding.Tests.csproj', '-c', $configuration, '--no-build', '--filter-trait', 'Category=Perf')
-
+    # Publish and measure the startup budget BEFORE the test suite: the same gate, taken
+    # on a quiet machine. Measured after fifteen minutes of tests, the median is reading
+    # the runner's thermal and scheduler state, not the product (ADR-0005 keeps the budget).
     $binary = Join-Path (Join-Path $publishDir $env:RID) 'lunate.exe'
     # ADR-0008: release builds are single file + ReadyToRun WITHOUT compression
     # (compression crashed on macOS and costs startup time; archives are
@@ -138,6 +133,14 @@ try {
         Write-Error "startup budget exceeded: $medianMs ms > $budgetMs ms (two consecutive measurements)" -ErrorAction Continue
         exit 1
     }
+
+    Write-Host "`n==> test"
+    # The Category=Perf budget check is excluded from the main pass and runs as
+    # its own step below, so the pass stays fast and the budget is still enforced.
+    Invoke-Tests -Label 'test' -TestArgs @('test', '--solution', 'lunate.sln', '-c', $configuration, '--filter-not-trait', 'Category=Perf')
+
+    Write-Host "`n==> path index budget"
+    Invoke-Tests -Label 'path index budget' -TestArgs @('test', '--project', 'tests/Lunate.Coding.Tests/Lunate.Coding.Tests.csproj', '-c', $configuration, '--no-build', '--filter-trait', 'Category=Perf')
 
     Write-Host "`n==> install script (fixture release)"
     $version = [regex]::Match((Get-Content Directory.Build.props -Raw), '<Version>(.*?)</Version>').Groups[1].Value
