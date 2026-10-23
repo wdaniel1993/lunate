@@ -87,13 +87,34 @@ public sealed class InteractiveSessionEndToEndTests
 
         // Approval round trip: y for the first write, a (always) for the second; the third
         // write of the same tool runs without a prompt, provable by reaching call 5.
-        await host.WaitUntilAsync(() => host.Session.PendingApproval is not null);
-        Assert.Equal("write", host.Session.PendingApproval!.ToolName);
-        host.Console.SendText("y");
-        await host.Client.WaitForCallAsync(3);
-        await host.WaitUntilAsync(() => host.Session.PendingApproval is not null);
-        host.Console.SendText("a");
-        await host.Client.WaitForCallAsync(5);
+        //
+        // This block is the one that fails on a loaded leg: a timeout here says nothing about WHY
+        // the session stopped, so the failure carries the session's own state. Without it the next
+        // red leg costs another fifteen-minute CI cycle to guess at.
+        try
+        {
+            await host.WaitUntilAsync(() => host.Session.PendingApproval is not null);
+            Assert.Equal("write", host.Session.PendingApproval!.ToolName);
+            host.Console.SendText("y");
+            await host.Client.WaitForCallAsync(3);
+            await host.WaitUntilAsync(() => host.Session.PendingApproval is not null);
+            host.Console.SendText("a");
+            await host.Client.WaitForCallAsync(5);
+        }
+        catch (TimeoutException ex)
+        {
+            Assert.Fail(
+                $"""
+                {ex.Message}
+                --- session state ---
+                running={host.Session.IsRunning}
+                pendingApproval={host.Session.PendingApproval?.ToolName ?? "none"}
+                queued={host.Session.FollowUps.Count}
+                requests={host.Client.Requests.Count}
+                lastFrame={Tail(host.LastFrame, 240)}
+                """
+            );
+        }
 
         Assert.Equal("one", File.ReadAllText(host.Temp.File("note.txt")));
         Assert.Equal("two", File.ReadAllText(host.Temp.File("b.txt")));
@@ -202,10 +223,27 @@ public sealed class InteractiveSessionEndToEndTests
         host.Console.SendEnter();
         await run;
 
-        InteractiveGoldens.AssertMatchesText(
-            "end-to-end-scrollback.txt",
-            NormalizeWorkspace(host, host.ScrollbackText)
-        );
+        // The scrollback golden is the other half of this test's flake: when the steer echo is
+        // missing the diff cannot say whether the message never reached the model or reached it and
+        // was never echoed. This block answers that in the failure message.
+        string scrollback = NormalizeWorkspace(host, host.ScrollbackText);
+        try
+        {
+            InteractiveGoldens.AssertMatchesText("end-to-end-scrollback.txt", scrollback);
+        }
+        catch (Exception ex)
+        {
+            Assert.Fail(
+                $"""
+                {ex.Message}
+                --- steering state ---
+                steeringQueued={steering.Count}
+                steeringInjectedEvents={host.Events.OfType<SteeringInjected>().Count()}
+                steerEchoIndex={scrollback.IndexOf("» steer mid-run", StringComparison.Ordinal)}
+                requestLastTexts={string.Join(" | ", host.Client.Requests.Select(r => r[^1].Text))}
+                """
+            );
+        }
         InteractiveGoldens.AssertMatchesText("end-to-end-final-frame.txt", finalFrame);
         InteractiveGoldens.AssertMatchesText("end-to-end-model-picker-frame.txt", modelPickerFrame);
         InteractiveGoldens.AssertMatchesText(
@@ -332,6 +370,9 @@ public sealed class InteractiveSessionEndToEndTests
 
     // The header names the running build, and the build hash changes with every commit. The golden
     // pins the shape, not a hash that would be stale the moment it is committed.
+    private static string Tail(string text, int length) =>
+        text.Length <= length ? text : text[^length..];
+
     private static string NormalizeBuild(string text) =>
         BuildToken.Replace(text, "v<version>+<build>");
 
