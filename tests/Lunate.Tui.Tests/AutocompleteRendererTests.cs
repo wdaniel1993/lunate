@@ -39,7 +39,41 @@ public sealed class AutocompleteRendererTests
 
         Assert.Equal(8, rows.Count);
         Assert.Equal("> /c1", rows[0]);
-        Assert.Equal("  /c8", rows[7]);
+        Assert.Equal("  /c7", rows[6]);
+    }
+
+    [Theory]
+    [InlineData(40)]
+    [InlineData(120)]
+    public void A_capped_list_says_how_many_rows_it_hides(int width)
+    {
+        CompletionItem[] items = [.. Enumerable.Range(1, 11).Select(i => Command($"/c{i}"))];
+        (IReadOnlyList<CompletionItem> capped, int hidden) = AutocompleteState.Cap(items);
+
+        IReadOnlyList<string> rows = Rows(
+            State(capped) with
+            {
+                Autocomplete = new AutocompleteState(capped, 0, CompletionMode.Command, 0, hidden),
+            },
+            width
+        );
+
+        Assert.Equal(8, rows.Count);
+        Assert.Equal("  /c7", rows[6]);
+        Assert.Contains("+4 more", rows[7], StringComparison.Ordinal);
+        Assert.Contains("keep typing to filter", rows[7], StringComparison.Ordinal);
+        Assert.True(CellText.Width(rows[7]) <= width);
+    }
+
+    [Fact]
+    public void A_list_that_fits_has_no_indicator()
+    {
+        CompletionItem[] items = [.. Enumerable.Range(1, 8).Select(i => Command($"/c{i}"))];
+
+        IReadOnlyList<string> rows = Rows(State(items));
+
+        Assert.Equal(8, rows.Count);
+        Assert.DoesNotContain(rows, row => row.Contains("more", StringComparison.Ordinal));
     }
 
     [Fact]

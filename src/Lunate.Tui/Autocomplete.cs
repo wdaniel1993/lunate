@@ -53,11 +53,30 @@ internal sealed record AutocompleteState(
     IReadOnlyList<CompletionItem> Items,
     int SelectedIndex,
     CompletionMode Mode,
-    int TokenStart
+    int TokenStart,
+    int HiddenCount = 0
 )
 {
-    /// <summary>The most rows the list ever holds (design D4).</summary>
+    /// <summary>The most rows the list ever holds, indicator included (design D4).</summary>
     internal const int MaxRows = 8;
+
+    /// <summary>
+    /// Caps a filtered list to the live-area budget. When entries do not fit, the last row is the
+    /// "more" indicator, so one fewer item is shown — never eight items and a silently hidden tail.
+    /// </summary>
+    internal static (IReadOnlyList<CompletionItem> Rows, int Hidden) Cap(
+        IReadOnlyList<CompletionItem> items
+    )
+    {
+        ArgumentNullException.ThrowIfNull(items);
+        if (items.Count <= MaxRows)
+        {
+            return (items, 0);
+        }
+
+        int shown = MaxRows - 1;
+        return ([.. items.Take(shown)], items.Count - shown);
+    }
 
     /// <summary>The selected item, or null when the list holds none.</summary>
     internal CompletionItem? Selected =>

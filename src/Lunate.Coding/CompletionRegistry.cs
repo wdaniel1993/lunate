@@ -54,6 +54,7 @@ internal static class CompletionRegistry
             items.Add(new CompletionItem(text, description, kind, null));
         }
 
-        return items;
+        // Stable: descriptor order survives inside each group.
+        return [.. items.OrderBy(item => item.Kind is CompletionKind.Command ? 1 : 0)];
     }
 }

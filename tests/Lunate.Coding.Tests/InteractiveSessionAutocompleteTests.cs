@@ -48,7 +48,10 @@ public sealed class InteractiveSessionAutocompleteTests
         Assert.Equal(CompletionMode.Command, state.Mode);
         Assert.Equal(0, state.TokenStart);
         Assert.NotEmpty(state.Items);
-        Assert.Equal(AutocompleteState.MaxRows, state.Items.Count);
+        // The list is capped at eight rows including the "more" indicator: seven items plus the row
+        // that says how many are hidden.
+        Assert.Equal(AutocompleteState.MaxRows - 1, state.Items.Count);
+        Assert.True(state.HiddenCount > 0);
 
         host.Console.Complete();
     }
