@@ -8,7 +8,7 @@ This repo is developed with OpenCode and OpenSpec (schema: `intent-driven`).
 ## Workflow (OpenSpec)
 
 - Work happens through OpenSpec changes. Never hand-write files under `openspec/changes/` or `openspec/specs/`; use the opsx commands/skills and the `openspec` CLI (new → propose → continue → apply → verify → sync → archive).
-- For propose/apply/verify/archive workflows, use the local `openspec-git-discipline` skill: proposals land on `main` before apply, implementation lands on `main` before archive.
+- For propose/apply/verify/archive workflows, use the local `openspec-git-discipline` skill: proposals land on `main` before apply; the archive is the final commit of the implementation PR, added after review and before merge.
 - OpenSpec specs are the source of truth for behaviour. If spec and code disagree, stop and report — fix the spec first.
 - One change per session. Do only what the change's `tasks.md` asks; anything else becomes a follow-up change.
 - src work goes through the `senior-dev` subagent (test-first, `test-driven-development` skill); acceptance-test work through `senior-qa`.
@@ -16,7 +16,9 @@ This repo is developed with OpenCode and OpenSpec (schema: `intent-driven`).
 ## Build
 
 - .NET 10 (pinned in `global.json`), C# 14, nullable, warnings as errors.
-- `scripts/verify.sh` (Windows: `scripts/verify.ps1`) must pass before a change is done: build, tests, single-file publish, performance budgets, public API, formatting (CSharpier) and documentation lint checks.
+- Iterate behind the fast gate: `dotnet csharpier check .`, `openspec validate <change> --strict`, a Release build, and the test classes that cover what you touched.
+- `scripts/verify.sh` (Windows: `scripts/verify.ps1`) must pass before a change is marked ready for review or done: build, tests, single-file publish, performance budgets, public API, formatting (CSharpier) and documentation lint checks.
+- `ci-ok` must be green before a merge.
 - C# code is formatted with CSharpier (`dotnet csharpier format .`); never hand-format. The gate checks it (`dotnet csharpier check .`); analyzer and style rules run via `dotnet format style` / `dotnet format analyzers` (whitespace formatting and IDE0055 are off).
 
 ## Architecture
