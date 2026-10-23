@@ -348,7 +348,7 @@ internal sealed partial class InteractiveSession
             .. ExtensionsView.Segments(
                 host.Descriptors,
                 host.LoadResults,
-                host.RegisteredCounts,
+                id => host.RegisteredCounts(id, _commands.Shadowed),
                 hookTimings: host.HookTimings,
                 remoteStart: host.RemoteStartDuration
             ),

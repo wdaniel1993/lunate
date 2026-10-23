@@ -63,6 +63,15 @@ public sealed partial record ExtensionManifest
             }
 
             string id = RequiredString(root, fileName, "id");
+            if (id.Contains(':'))
+            {
+                // A command's host-side id is ext:<id>:<name>, so a colon in the id would make it
+                // ambiguous and unparseable in every diagnostic (design D2, sign-off Q4).
+                throw new InvalidDataException(
+                    $"{fileName}: field 'id' must not contain ':' because command ids read 'ext:<id>:<name>'; rename the extension."
+                );
+            }
+
             if (!IsValidId(id))
             {
                 throw new InvalidDataException(

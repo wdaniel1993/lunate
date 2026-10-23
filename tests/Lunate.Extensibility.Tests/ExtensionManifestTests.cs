@@ -253,6 +253,21 @@ public sealed class ExtensionManifestTests
         Assert.Contains("'id'", exception.Message, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void A_colon_in_the_id_is_refused_because_command_ids_are_colon_delimited()
+    {
+        const string json =
+            """{"id":"acme:tools","version":"0.1.0","apiVersion":"^1.0.0","entryAssembly":"e.dll"}""";
+
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+            ExtensionManifest.Parse(json, "extension.json")
+        );
+
+        Assert.Contains("'id'", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("must not contain ':'", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("ext:<id>:<name>", exception.Message, StringComparison.Ordinal);
+    }
+
     [Theory]
     [InlineData("1.0")]
     [InlineData(">=1.0.0")]

@@ -70,11 +70,17 @@ internal sealed record ExtensionLoadResult(
 );
 
 /// <summary>The four contribution counts of one extension plus the declared commands no source
-/// provided (the <c>/extensions</c> view's count row).</summary>
+/// provided and the command ids that shadowed its own (the <c>/extensions</c> view's count row).</summary>
 internal readonly record struct ExtensionCounts(int Tools, int Commands, int Hooks, int Services)
 {
     /// <summary>Manifest commands the extension declared but no source provided; not runnable.</summary>
     public IReadOnlyList<string> DeclaredNotProvidedCommands { get; init; } = Array.Empty<string>();
+
+    /// <summary>
+    /// The ids that own a name this extension also offered, so its command is shadowed and not
+    /// live (the registry's first-source-wins rule; the view reads <c>shadowed by &lt;id&gt;</c>).
+    /// </summary>
+    public IReadOnlyList<string> ShadowedCommandOwners { get; init; } = Array.Empty<string>();
 }
 
 /// <summary>
@@ -378,7 +384,10 @@ internal sealed class ExtensionSession : IAsyncDisposable
     /// tool registry, commands from its registered command sources, hooks and services from their
     /// registries, plus the manifest commands no source provided.
     /// </summary>
-    internal ExtensionCounts RegisteredCounts(string extensionId) =>
+    internal ExtensionCounts RegisteredCounts(
+        string extensionId,
+        IReadOnlyList<CommandShadow>? shadowed = null
+    ) =>
         new(
             _loader
                 .Tools.List()
@@ -396,6 +405,16 @@ internal sealed class ExtensionSession : IAsyncDisposable
         )
         {
             DeclaredNotProvidedCommands = _loader.DeclaredNotProvidedCommands(extensionId),
+            ShadowedCommandOwners = shadowed is null
+                ? Array.Empty<string>()
+                :
+                [
+                    .. shadowed
+                        .Where(entry =>
+                            string.Equals(entry.SourceId, extensionId, StringComparison.Ordinal)
+                        )
+                        .Select(entry => entry.OwnerId),
+                ],
         };
 
     /// <summary>

@@ -261,17 +261,29 @@ internal static class ExtensionsView
 
     /// <summary>
     /// The commands field: the registered count against the declared list, with the declared names
-    /// no source provided called out as <c>declared, not provided</c>.
+    /// no source provided called out as <c>declared, not provided</c> and a name another source owns
+    /// as <c>shadowed by &lt;id&gt;</c> (the registry's first-source-wins rule makes it not live).
     /// </summary>
     private static string CommandsField(ExtensionDescriptor descriptor, ExtensionCounts counts)
     {
-        if (counts.DeclaredNotProvidedCommands.Count == 0)
+        List<string> notes = [];
+        if (counts.DeclaredNotProvidedCommands.Count > 0)
+        {
+            notes.Add($"not provided: {string.Join(", ", counts.DeclaredNotProvidedCommands)}");
+        }
+
+        foreach (string owner in counts.ShadowedCommandOwners)
+        {
+            notes.Add($"shadowed by {owner}");
+        }
+
+        if (notes.Count == 0)
         {
             return Field(counts.Commands, descriptor.Manifest.Commands.Count);
         }
 
         return FormattableString.Invariant(
-            $"{counts.Commands} ({descriptor.Manifest.Commands.Count} declared, not provided: {string.Join(", ", counts.DeclaredNotProvidedCommands)})"
+            $"{counts.Commands} ({descriptor.Manifest.Commands.Count} declared, {string.Join(", ", notes)})"
         );
     }
 
