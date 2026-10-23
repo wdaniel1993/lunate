@@ -208,10 +208,7 @@ public sealed class KeyRouterTests
         Assert.Equal(RoutedKey.KillWordForward, KeyRouter.Route(Key(KeyKind.Delete, ctrl: true)));
 
         // The Alt rows still route the same intents; the alternatives are additions, not moves.
-        Assert.Equal(
-            RoutedKey.WordLeft,
-            KeyRouter.Route(Key(KeyKind.Character, "b", alt: true))
-        );
+        Assert.Equal(RoutedKey.WordLeft, KeyRouter.Route(Key(KeyKind.Character, "b", alt: true)));
         Assert.Equal(
             RoutedKey.KillWordForward,
             KeyRouter.Route(Key(KeyKind.Character, "d", alt: true))

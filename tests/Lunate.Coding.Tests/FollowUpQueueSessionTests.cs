@@ -23,7 +23,10 @@ public sealed class FollowUpQueueSessionTests
         await host.WaitUntilAsync(() =>
         {
             host.Advance(33);
-            return host.LastFrame.Contains("recognise me by my first line", StringComparison.Ordinal);
+            return host.LastFrame.Contains(
+                "recognise me by my first line",
+                StringComparison.Ordinal
+            );
         });
 
         host.Client.Release(1);
