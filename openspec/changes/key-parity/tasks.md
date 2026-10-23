@@ -19,7 +19,7 @@
 
 - [x] 3.1 `Ctrl+R` history search: filter over history, next-match key, accept, cancel; the match previews in the prompt and the status renders on the notice line.
 - [ ] 3.2 `Ctrl+G` external editor: temp file, suspend/restore, `$VISUAL`/`$EDITOR`/`vi`, read back, notice on failure.
-- [ ] 3.3 `Ctrl+S` stash/restore with a single slot and a notice when replacing.
+- [x] 3.3 `Ctrl+S` stash/restore with a single slot and a notice when replacing.
 - [x] 3.4 `Ctrl+_` undo with a bounded 64-entry stack; cleared on submit and newline.
 
 ## 4. Line editor

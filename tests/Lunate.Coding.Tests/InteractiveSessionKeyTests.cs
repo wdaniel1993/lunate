@@ -319,4 +319,24 @@ public sealed class InteractiveSessionKeyTests
         host.Console.Complete();
         await run;
     }
+
+    [Fact]
+    public async Task Ctrl_S_stashes_and_restores_the_draft()
+    {
+        using var host = new InteractiveSessionHost();
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+
+        host.Console.SendText("half a thought");
+        await host.WaitUntilAsync(() => host.Session.Input.Text == "half a thought");
+
+        host.Console.SendCtrl("s");
+        await host.WaitUntilAsync(() => host.Session.Input.Text.Length == 0);
+
+        host.Console.SendCtrl("s");
+        await host.WaitUntilAsync(() => host.Session.Input.Text == "half a thought");
+
+        host.Console.Complete();
+        await run;
+    }
 }

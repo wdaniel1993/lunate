@@ -165,6 +165,12 @@ internal static class KeyBindingCatalog
             "Take the queued messages back"
         ),
         new(
+            new KeyPattern(KeyKind.Character, Ctrl: true, Alt: false, Text: "s"),
+            RoutedKey.Stash,
+            KeyContext.None,
+            "Stash or restore the draft"
+        ),
+        new(
             new KeyPattern(KeyKind.Character, Ctrl: true, Alt: false, Text: "r"),
             RoutedKey.HistorySearch,
             KeyContext.None,

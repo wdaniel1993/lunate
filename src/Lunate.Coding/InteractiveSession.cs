@@ -114,6 +114,7 @@ internal sealed partial class InteractiveSession : IDisposable
     private readonly QuitWindow _quitWindow;
     private HistorySearch? _historySearch;
     private string _killRing = string.Empty;
+    private string? _stashedDraft;
     private readonly QuitWindow _exitWindow;
     private readonly IUserInteraction _interaction;
     private readonly ISecretPrompt _secretPrompt;
@@ -1025,6 +1026,9 @@ internal sealed partial class InteractiveSession : IDisposable
             case RoutedKey.TranscriptViewer:
                 OpenViewer();
                 break;
+            case RoutedKey.Stash:
+                ToggleStash();
+                break;
             case RoutedKey.HistorySearch:
                 BeginHistorySearch();
                 break;
@@ -1581,6 +1585,28 @@ internal sealed partial class InteractiveSession : IDisposable
             _input = new InputLineState(search.Draft, search.Draft.Length);
             _live.SetInput(_input, _bashMode);
         }
+    }
+
+    private void ToggleStash()
+    {
+        if (_input.Text.Length > 0)
+        {
+            _stashedDraft = _input.Text;
+            SetInput(string.Empty);
+            _undo.Clear();
+            _live.SetNotice("draft stashed — Ctrl+S restores it");
+            return;
+        }
+
+        if (_stashedDraft is { } stash)
+        {
+            _stashedDraft = null;
+            SetInput(stash);
+            _live.SetNotice("draft restored");
+            return;
+        }
+
+        _live.SetNotice("no stashed draft");
     }
 
     private void HandleCtrlC()

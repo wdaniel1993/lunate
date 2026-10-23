@@ -28,6 +28,7 @@ public enum RoutedKey
     Yank,
     Undo,
     HistorySearch,
+    Stash,
 }
 
 /// <summary>
