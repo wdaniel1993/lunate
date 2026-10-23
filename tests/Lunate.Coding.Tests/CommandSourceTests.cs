@@ -151,14 +151,16 @@ public sealed class CommandSourceTests
         await host.WaitUntilAsync(() => host.Session.IsComposed);
 
         await host.SendLineAsync("/boom");
+        // The live notice is one clipped line, so the frame carries the id and the reason; the
+        // recovery step is asserted on the registry's full message in CommandIdentityTests.
         await InteractiveSessionCommandTests.WaitForFrameAsync(
             host,
-            "command /boom failed: the scripted command exploded"
+            "command ext:commands:boom failed: the scripted command exploded"
         );
         Assert.Contains(
             log.Messages,
             message =>
-                message.Contains("command '/boom'", StringComparison.Ordinal)
+                message.Contains("ext:commands:boom", StringComparison.Ordinal)
                 && message.Contains("source 'commands'", StringComparison.Ordinal)
                 && message.Contains("scripted command exploded", StringComparison.Ordinal)
         );

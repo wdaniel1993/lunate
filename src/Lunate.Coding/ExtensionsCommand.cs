@@ -82,7 +82,9 @@ internal static class ExtensionsCommand
         {
             if (json)
             {
-                output.Write(ExtensionsView.Json(descriptors, results, host.RegisteredCounts));
+                output.Write(
+                    ExtensionsView.Json(descriptors, results, id => host.RegisteredCounts(id))
+                );
                 output.Write('\n');
             }
             else if (descriptors.Count == 0)
@@ -95,7 +97,7 @@ internal static class ExtensionsCommand
                     string segment in ExtensionsView.Segments(
                         descriptors,
                         results,
-                        host.RegisteredCounts,
+                        id => host.RegisteredCounts(id),
                         cliMeasured: true
                     )
                 )

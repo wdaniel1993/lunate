@@ -15,6 +15,9 @@ public sealed partial class ExtensionLoader
     private readonly Dictionary<string, ExtensionLoadContext> _contexts = new(
         StringComparer.Ordinal
     );
+    private readonly Dictionary<string, ExtensionContext> _extensionContexts = new(
+        StringComparer.Ordinal
+    );
     private readonly HookRunner _hooks;
     private readonly BackgroundServiceHost _backgroundServices;
     private readonly ModelRegistry _modelRegistry;
@@ -45,7 +48,7 @@ public sealed partial class ExtensionLoader
         _statusWidgets = new StatusWidgetRegistry(options.Log);
         _mcpServers = new McpServerRegistry(options.Log);
         _skillSources = new SkillSourceRegistry(options.Log);
-        _commandSources = new CommandSourceRegistry(options.Log);
+        _commandSources = new CommandSourceRegistry(options.Log, options.Notify);
         _modelRegistry = new ModelRegistry(options.ModelCatalog, options.ClientFactory);
     }
 
@@ -125,6 +128,13 @@ public sealed partial class ExtensionLoader
         _statusWidgets.Unregister(id);
         _mcpServers.Unregister(id);
         _skillSources.Unregister(id);
+        // Cancel, notify, drain, then unload (design D3): a handler must not keep running against
+        // a host that already reports its extension gone, and one that ignores its token must not
+        // hold teardown open past the hook-handler budget. The drain is bounded, not cancellable:
+        // a half-waited drain would unload the context under a live handler.
+        await _commandSources
+            .CancelInFlightAsync(id, _hooks.Options.HandlerTimeout, CancellationToken.None)
+            .ConfigureAwait(false);
         _commandSources.Unregister(id);
         _declaredNotProvidedCommands.Remove(id);
         DropSubscriptions(id);
@@ -136,6 +146,15 @@ public sealed partial class ExtensionLoader
         if (_remoteExtensions.Remove(id, out RemoteExtension? remote))
         {
             await remote.DisposeAsync().ConfigureAwait(false);
+        }
+
+        // The drain has ended or timed out: a handler that outlived its extension now throws
+        // ObjectDisposedException on its next host call, which the command lease contains and logs
+        // with the command id (sign-off Q2). Marked after the remote teardown so a remote host's
+        // own dispose path can still log.
+        if (_extensionContexts.Remove(id, out ExtensionContext? extensionContext))
+        {
+            extensionContext.MarkDisposed();
         }
 
         if (notifyToolsChanged && removedTools.Count > 0)
@@ -208,6 +227,20 @@ public sealed partial class ExtensionLoader
         }
 
         _sessionEnded = true;
+        // A quit cancels in-flight commands silently: the notice is for a user who is still
+        // looking at the session, and the TUI is already torn down by then (sign-off Q2).
+        foreach (string loadedId in _loaded.Keys.ToArray())
+        {
+            await _commandSources
+                .CancelInFlightAsync(
+                    loadedId,
+                    _hooks.Options.HandlerTimeout,
+                    notify: false,
+                    CancellationToken.None
+                )
+                .ConfigureAwait(false);
+        }
+
         if (_sessionStarted && _session is { } session)
         {
             await _hooks
@@ -220,6 +253,16 @@ public sealed partial class ExtensionLoader
 
         await _backgroundServices.StopAsync(cancellationToken).ConfigureAwait(false);
         await ShutdownRemotesAsync(cancellationToken).ConfigureAwait(false);
+
+        // The contexts are marked disposed only now: a session-ending hook or a background
+        // service's stop still makes host calls, and those must not throw (design D3, sign-off Q2).
+        foreach (string loadedId in _extensionContexts.Keys.ToArray())
+        {
+            if (_extensionContexts.Remove(loadedId, out ExtensionContext? extensionContext))
+            {
+                extensionContext.MarkDisposed();
+            }
+        }
     }
 
     /// <summary>

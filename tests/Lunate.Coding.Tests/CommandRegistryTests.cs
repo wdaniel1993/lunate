@@ -140,7 +140,21 @@ public sealed class CommandRegistryTests
     {
         var log = new RecordingExtensionLog();
         CommandRegistry registry = await CommandRegistry.ComposeAsync(
-            [new FakeSource("boom", Descriptor("explode", CommandKind.Extension)) { Throw = true }],
+            [
+                new FakeSource(
+                    "boom",
+                    new CommandDescriptor(
+                        "explode",
+                        "A command",
+                        null,
+                        "boom",
+                        CommandKind.Extension
+                    )
+                )
+                {
+                    Throw = true,
+                },
+            ],
             log,
             TestContext.Current.CancellationToken
         );
@@ -151,11 +165,14 @@ public sealed class CommandRegistryTests
         );
 
         Assert.True(result.IsError);
-        Assert.Equal("command /explode failed: explosion", result.Message);
+        Assert.Equal(
+            "command ext:boom:explode failed: explosion — see /extensions for the extension's state",
+            result.Message
+        );
         Assert.Contains(
             log.Messages,
             message =>
-                message.Contains("command '/explode'", StringComparison.Ordinal)
+                message.Contains("ext:boom:explode", StringComparison.Ordinal)
                 && message.Contains("source 'boom'", StringComparison.Ordinal)
                 && message.Contains("explosion", StringComparison.Ordinal)
         );

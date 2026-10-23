@@ -76,19 +76,24 @@ public sealed class InteractiveSessionCommandTests
     public async Task Help_lists_every_command_grouped_with_its_description()
     {
         // A catalog model plus a scripted client keeps composition independent of the
-        // developer's settings and of any provider key.
+        // developer's settings and of any provider key. One extension command is present so the
+        // listing covers a non-built-in source too; the built-in block below stays byte-pinned.
+        using var temp = new TempDirectory();
+        string store = temp.File("store");
+        CommandFixture.Install(store, settings: CommandFixture.Echo());
         using var host = new InteractiveSessionHost(
             launch: new LaunchOptions { Model = "gpt-4o-mini" },
-            chat: new ScriptedChatClient()
+            chat: new ScriptedChatClient(),
+            extensions: new ExtensionSeams { StorePath = store, Log = new RecordingExtensionLog() }
         );
         Task run = host.RunAsync();
         await host.WaitUntilAsync(() => host.Session.IsComposed);
 
         host.Console.SendText("/help");
         host.Console.SendEnter();
-        // "extensions" also appears in the welcome footer; wait on text only /help prints, and on
-        // the block's last line so the wait covers the whole listing the assert compares below.
-        await WaitForScrollbackAsync(host, "  /quit — quit");
+        // "extensions" also appears in the welcome footer; wait on the listing's last line so the
+        // wait covers the whole block the asserts compare below.
+        await WaitForScrollbackAsync(host, "  /ping — Ping the extension");
 
         Assert.Contains(
             """
@@ -115,6 +120,17 @@ public sealed class InteractiveSessionCommandTests
               /trust        — show or clear this repository's trust records
             quit
               /quit — quit
+            """,
+            host.ScrollbackText,
+            StringComparison.Ordinal
+        );
+        // The non-built-in section follows the built-in groups (design D1).
+        Assert.Contains(
+            """
+            quit
+              /quit — quit
+            extensions
+              /ping — Ping the extension
             """,
             host.ScrollbackText,
             StringComparison.Ordinal

@@ -103,7 +103,7 @@ public sealed partial class ExtensionLoader
                 if (!provided.Add(command.Name))
                 {
                     (_options.Log ?? NullExtensionLog.Instance).Warn(
-                        $"extension '{descriptor.Id}': command '/{command.Name}' is provided by more than one source; the first source wins."
+                        $"extension '{descriptor.Id}': command 'ext:{descriptor.Id}:{command.Name}' is provided by more than one source; the first source wins."
                     );
                 }
 

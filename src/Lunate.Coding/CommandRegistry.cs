@@ -8,7 +8,8 @@ namespace Lunate.Coding;
 /// The session's one command registry: it asks every source what it offers once per composition,
 /// orders the entries deterministically (built-ins, skills, extensions, templates; then source
 /// order, then descriptor order), keeps the first entry for a duplicate name and is the only input
-/// to <c>/</c> autocomplete, dispatch and <c>/help</c>.
+/// to <c>/</c> autocomplete, dispatch and <c>/help</c>. Every entry carries one source-qualified id
+/// (<see cref="CommandId"/>) that the diagnostics, log lines and failure notices use.
 /// </summary>
 internal sealed class CommandRegistry
 {
@@ -19,18 +20,20 @@ internal sealed class CommandRegistry
     private CommandRegistry(
         IReadOnlyList<CommandEntry> entries,
         Dictionary<string, CommandEntry> byName,
+        IReadOnlyList<CommandShadow> shadowed,
         IExtensionLog? log
     )
     {
         _entries = entries;
         _byName = byName;
+        Shadowed = shadowed;
         _log = log;
         Descriptors = [.. entries.Select(entry => entry.Descriptor)];
         CompletionItems = CompletionRegistry.Compose(Descriptors);
     }
 
     /// <summary>An empty registry; a session replaces it during composition.</summary>
-    public static CommandRegistry Empty { get; } = new([], new(StringComparer.Ordinal), null);
+    public static CommandRegistry Empty { get; } = new([], new(StringComparer.Ordinal), [], null);
 
     /// <summary>The merged descriptors, in their pinned order.</summary>
     public IReadOnlyList<CommandDescriptor> Descriptors { get; }
@@ -38,9 +41,19 @@ internal sealed class CommandRegistry
     /// <summary>The autocomplete rows composed from the merged descriptors.</summary>
     public IReadOnlyList<CompletionItem> CompletionItems { get; }
 
+    /// <summary>The live entries, in their pinned order; each carries its source-qualified id.</summary>
+    internal IReadOnlyList<CommandEntry> Entries => _entries;
+
+    /// <summary>
+    /// The commands a duplicate name dropped, in composition order: the shadowed id and the id
+    /// that owns the name. They are not live — never listed or dispatched — and the extension view
+    /// reports them as <c>shadowed by &lt;id&gt;</c>.
+    /// </summary>
+    internal IReadOnlyList<CommandShadow> Shadowed { get; }
+
     /// <summary>
     /// Composes the registry. A source that throws while describing is logged and skipped; a
-    /// duplicate name keeps the first entry after ordering and is logged once.
+    /// duplicate name keeps the first entry after ordering and is logged once, naming both ids.
     /// </summary>
     public static async ValueTask<CommandRegistry> ComposeAsync(
         IReadOnlyList<ICommandSource> sources,
@@ -107,6 +120,7 @@ internal sealed class CommandRegistry
         );
 
         List<CommandEntry> entries = [];
+        List<CommandShadow> shadowed = [];
         Dictionary<string, CommandEntry> byName = new(StringComparer.Ordinal);
         foreach (Candidate candidate in candidates)
         {
@@ -127,20 +141,24 @@ internal sealed class CommandRegistry
                     ? candidate.Source.SourceId
                     : candidate.Descriptor.SourceId,
             };
-            var entry = new CommandEntry(descriptor, candidate.Source);
+            // The id is computed before the duplicate check, so the losing candidate can name
+            // itself in the diagnostic even though it never becomes an entry.
+            string id = CommandId.For(descriptor);
             if (byName.TryGetValue(name, out CommandEntry? existing))
             {
+                shadowed.Add(new CommandShadow(name, descriptor.SourceId, id, existing.Id));
                 resolvedLog?.Warn(
-                    $"command '/{name}' from source '{descriptor.SourceId}' is skipped: source '{existing.Descriptor.SourceId}' already provides it (first source wins)."
+                    $"command '/{name}' from source '{descriptor.SourceId}' is skipped: '{existing.Id}' (source '{existing.Descriptor.SourceId}') already owns the name; '{id}' is shadowed (first source wins)."
                 );
                 continue;
             }
 
+            var entry = new CommandEntry(id, descriptor, candidate.Source);
             byName[name] = entry;
             entries.Add(entry);
         }
 
-        return new CommandRegistry(entries, byName, resolvedLog);
+        return new CommandRegistry(entries, byName, shadowed, resolvedLog);
     }
 
     /// <summary>Composes the registry with the default log.</summary>
@@ -151,7 +169,8 @@ internal sealed class CommandRegistry
 
     /// <summary>
     /// Invokes the source that owns <paramref name="invocation"/>. An unknown name is a notice; a
-    /// handler exception is logged and returned as an error result; cancellation propagates.
+    /// handler exception is logged and returned as a teaching error notice naming the command's
+    /// id, source, reason and recovery step; caller cancellation propagates.
     /// </summary>
     public async ValueTask<CommandResult> InvokeAsync(
         CommandInvocation invocation,
@@ -191,11 +210,34 @@ internal sealed class CommandRegistry
         catch (Exception exception)
         {
             _log?.Warn(
-                $"command '/{name}' from source '{entry.Source.SourceId}' failed: {exception.Message}"
+                $"command {entry.Id} from source '{entry.Descriptor.SourceId}' failed: {exception.Message}"
             );
-            return CommandResult.Error($"command /{name} failed: {exception.Message}");
+            return CommandResult.Error(FailureNotice(entry, exception));
         }
     }
+
+    /// <summary>
+    /// The teaching error notice (design D4): the command's id, the reason and one recovery step
+    /// chosen by kind. A built-in keeps the shorter form — there is no external source to inspect —
+    /// and a template has no user-facing index to point at. Never a stack trace: the log entry
+    /// carries the detail.
+    /// </summary>
+    private static string FailureNotice(CommandEntry entry, Exception exception) =>
+        entry.Descriptor.Kind switch
+        {
+            CommandKind.Extension => FormattableString.Invariant(
+                $"command {entry.Id} failed: {exception.Message} — see /extensions for the extension's state"
+            ),
+            CommandKind.Skill => FormattableString.Invariant(
+                $"command {entry.Id} failed: {exception.Message} — see /skills for the skill's state"
+            ),
+            CommandKind.Template => FormattableString.Invariant(
+                $"command {entry.Id} failed: {exception.Message}"
+            ),
+            _ => FormattableString.Invariant(
+                $"command /{entry.Descriptor.Name} failed: {exception.Message}"
+            ),
+        };
 
     /// <summary>The merge order: built-ins, skills, extensions, templates.</summary>
     private static int Rank(CommandKind kind) =>
@@ -214,6 +256,18 @@ internal sealed class CommandRegistry
         int SourceIndex,
         int DescriptorIndex
     );
-
-    private sealed record CommandEntry(CommandDescriptor Descriptor, ICommandSource Source);
 }
+
+/// <summary>One live registry entry: its source-qualified id, its descriptor and its source.</summary>
+internal sealed record CommandEntry(string Id, CommandDescriptor Descriptor, ICommandSource Source);
+
+/// <summary>
+/// One command a duplicate name dropped: the name, the losing source, the losing id and the id
+/// that owns the name (design D2; the extension view reports it as <c>shadowed by &lt;id&gt;</c>).
+/// </summary>
+internal sealed record CommandShadow(
+    string Name,
+    string SourceId,
+    string ShadowedId,
+    string OwnerId
+);

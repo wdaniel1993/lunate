@@ -83,6 +83,7 @@ public sealed partial class ExtensionLoader
             IExtensionFactory factory = FindFactory(assembly, descriptor);
             IExtensionSecrets secrets = ExtensionSecretsStore.Load(_options, descriptor.Id);
             var extensionContext = CreateExtensionContext(descriptor, secrets);
+            _extensionContexts[descriptor.Id] = extensionContext;
             IExtension extension = factory.Create(extensionContext);
             CrossCheckManifestTools(descriptor);
             await CrossCheckManifestCommandsAsync(descriptor, cancellationToken)
@@ -113,6 +114,7 @@ public sealed partial class ExtensionLoader
         }
         catch (ExtensionLoadException)
         {
+            _extensionContexts.Remove(descriptor.Id);
             _tools.Unregister(descriptor.Id);
             await _backgroundServices.DropAsync(descriptor.Id).ConfigureAwait(false);
             _modelRegistry.Unregister(descriptor.Id);
@@ -128,6 +130,7 @@ public sealed partial class ExtensionLoader
         }
         catch (OperationCanceledException)
         {
+            _extensionContexts.Remove(descriptor.Id);
             _tools.Unregister(descriptor.Id);
             _commandSources.Unregister(descriptor.Id);
             _declaredNotProvidedCommands.Remove(descriptor.Id);
@@ -135,6 +138,7 @@ public sealed partial class ExtensionLoader
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
+            _extensionContexts.Remove(descriptor.Id);
             _tools.Unregister(descriptor.Id);
             await _backgroundServices.DropAsync(descriptor.Id).ConfigureAwait(false);
             _modelRegistry.Unregister(descriptor.Id);
