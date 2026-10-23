@@ -64,6 +64,20 @@ internal sealed class ScriptedConsoleIO : IConsoleIO
     public void SendCtrlC() =>
         Send(new KeyEvent(KeyKind.Character, "c", Ctrl: true, Shift: false, Alt: false));
 
+    public void SendCtrl(string text) =>
+        Send(new KeyEvent(KeyKind.Character, text, Ctrl: true, Shift: false, Alt: false));
+
+    public void SendAlt(string text) =>
+        Send(new KeyEvent(KeyKind.Character, text, Ctrl: false, Shift: false, Alt: true));
+
+    public void SendBackspace() => Send(new KeyEvent(KeyKind.Backspace, null, false, false, false));
+
+    public void SendCtrlD() =>
+        Send(new KeyEvent(KeyKind.Character, "d", Ctrl: true, Shift: false, Alt: false));
+
+    public void SendCtrlL() =>
+        Send(new KeyEvent(KeyKind.Character, "l", Ctrl: true, Shift: false, Alt: false));
+
     public void SendCtrlO() =>
         Send(new KeyEvent(KeyKind.Character, "o", Ctrl: true, Shift: false, Alt: false));
 
@@ -484,6 +498,21 @@ internal sealed class InteractiveSessionHost : IDisposable
     public string LastFrame => Console.Writes.Count == 0 ? string.Empty : Console.Writes[^1];
 
     public string Frames => string.Concat(Console.Writes);
+
+    /// <summary>
+    /// Waits for a frame that contains <paramref name="expected"/> while pumping the scheduler.
+    /// A single <see cref="Advance"/> is not enough: the paint lands on a later pump tick, so a
+    /// one-tick assert races the renderer (the one-generation-early read).
+    /// </summary>
+    public Task WaitForFrameAsync(string expected, TimeSpan? timeout = null) =>
+        WaitUntilAsync(
+            () =>
+            {
+                Advance(33);
+                return LastFrame.Contains(expected, StringComparison.Ordinal);
+            },
+            timeout ?? TimeSpan.FromSeconds(5)
+        );
 
     public async Task WaitUntilAsync(Func<bool> condition, TimeSpan? timeout = null)
     {

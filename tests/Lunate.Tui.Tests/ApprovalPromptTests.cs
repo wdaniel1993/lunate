@@ -22,7 +22,8 @@ public sealed class ApprovalPromptTests
         Assert.Equal(ApprovalChoice.Deny, Prompt.Decide(Key(KeyKind.Enter)));
 
     [Fact]
-    public void Escape_does_not_decide() => Assert.Null(Prompt.Decide(Key(KeyKind.Escape)));
+    public void Escape_denies_like_Claude_Code() =>
+        Assert.Equal(ApprovalChoice.Deny, Prompt.Decide(Key(KeyKind.Escape)));
 
     [Theory]
     [InlineData(KeyKind.Character, "y", true, false, false)]

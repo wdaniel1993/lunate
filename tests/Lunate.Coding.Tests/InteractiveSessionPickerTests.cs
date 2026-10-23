@@ -18,14 +18,14 @@ public sealed class InteractiveSessionPickerTests
     public static TheoryData<string> StartupSelections => new() { "--continue", "--session" };
 
     [Fact]
-    public async Task Ctrl_L_opens_the_model_picker_and_Esc_dismisses_without_changing()
+    public async Task Alt_P_opens_the_model_picker_and_Esc_dismisses_without_changing()
     {
         using var host = new InteractiveSessionHost();
         SeedFavourites(host, Favourites);
         Task run = host.RunAsync();
 
         host.Console.Send(
-            new KeyEvent(KeyKind.Character, "l", Ctrl: true, Shift: false, Alt: false)
+            new KeyEvent(KeyKind.Character, "p", Ctrl: false, Shift: false, Alt: true)
         );
         await InteractiveSessionCommandTests.WaitForFrameAsync(host, "Select model");
         string frame = host.LastFrame;
@@ -62,7 +62,7 @@ public sealed class InteractiveSessionPickerTests
         await InteractiveSessionCommandTests.WaitForScrollbackAsync(host, "ok");
 
         host.Console.Send(
-            new KeyEvent(KeyKind.Character, "l", Ctrl: true, Shift: false, Alt: false)
+            new KeyEvent(KeyKind.Character, "p", Ctrl: false, Shift: false, Alt: true)
         );
         await InteractiveSessionCommandTests.WaitForFrameAsync(host, "Select model");
         host.Console.Send(new KeyEvent(KeyKind.Down, null, false, false, false));
@@ -104,7 +104,7 @@ public sealed class InteractiveSessionPickerTests
         Task run = host.RunAsync();
 
         host.Console.Send(
-            new KeyEvent(KeyKind.Character, "l", Ctrl: true, Shift: false, Alt: false)
+            new KeyEvent(KeyKind.Character, "p", Ctrl: false, Shift: false, Alt: true)
         );
         await InteractiveSessionCommandTests.WaitForFrameAsync(host, "Select model");
 
@@ -159,7 +159,7 @@ public sealed class InteractiveSessionPickerTests
         Task run = host.RunAsync();
 
         host.Console.Send(
-            new KeyEvent(KeyKind.Character, "l", Ctrl: true, Shift: false, Alt: false)
+            new KeyEvent(KeyKind.Character, "p", Ctrl: false, Shift: false, Alt: true)
         );
         await InteractiveSessionCommandTests.WaitForFrameAsync(host, "Select model");
 
@@ -189,7 +189,7 @@ public sealed class InteractiveSessionPickerTests
         Task run = host.RunAsync();
 
         host.Console.Send(
-            new KeyEvent(KeyKind.Character, "l", Ctrl: true, Shift: false, Alt: false)
+            new KeyEvent(KeyKind.Character, "p", Ctrl: false, Shift: false, Alt: true)
         );
         await InteractiveSessionCommandTests.WaitForFrameAsync(host, "Select model");
 
@@ -221,7 +221,7 @@ public sealed class InteractiveSessionPickerTests
         Task run = host.RunAsync();
 
         host.Console.Send(
-            new KeyEvent(KeyKind.Character, "l", Ctrl: true, Shift: false, Alt: false)
+            new KeyEvent(KeyKind.Character, "p", Ctrl: false, Shift: false, Alt: true)
         );
         await InteractiveSessionCommandTests.WaitForFrameAsync(host, "Select model");
 
@@ -547,7 +547,7 @@ public sealed class InteractiveSessionPickerTests
         await host.Client.WaitForCallAsync(1);
 
         host.Console.Send(
-            new KeyEvent(KeyKind.Character, "l", Ctrl: true, Shift: false, Alt: false)
+            new KeyEvent(KeyKind.Character, "p", Ctrl: false, Shift: false, Alt: true)
         );
         await InteractiveSessionCommandTests.WaitForFrameAsync(host, "a turn is running");
         Assert.DoesNotContain("Select model", host.LastFrame, StringComparison.Ordinal);
@@ -574,7 +574,7 @@ public sealed class InteractiveSessionPickerTests
         await host.WaitUntilAsync(() => host.Session.PendingApproval is not null);
 
         host.Console.Send(
-            new KeyEvent(KeyKind.Character, "l", Ctrl: true, Shift: false, Alt: false)
+            new KeyEvent(KeyKind.Character, "p", Ctrl: false, Shift: false, Alt: true)
         );
         host.Console.SendText("n");
         await host.Client.WaitForCallAsync(2);

@@ -20,6 +20,7 @@ internal sealed class LiveArea : IDisposable
     private readonly CancellationTokenSource _cts = new();
     private readonly object _postGate = new();
     private readonly object _paintGate = new();
+    private RenderedFrame? _lastFrame;
     private readonly bool _readKeys;
     private readonly bool _ownsScrollback;
     private IAnsiConsole? _scrollback;
@@ -60,7 +61,9 @@ internal sealed class LiveArea : IDisposable
             Color = _capabilities.Color,
             Unicode = _capabilities.Unicode,
         };
-        _writer.Paint(LiveAreaRenderer.Render(initial));
+        RenderedFrame initialFrame = LiveAreaRenderer.Render(initial);
+        _lastFrame = initialFrame;
+        _writer.Paint(initialFrame);
 
         var states = _stimuli
             .Scan(initial, Reduce)
@@ -79,7 +82,9 @@ internal sealed class LiveArea : IDisposable
                             return;
                         }
 
-                        _writer.Paint(LiveAreaRenderer.Render(state));
+                        RenderedFrame frame = LiveAreaRenderer.Render(state);
+                        _lastFrame = frame;
+                        _writer.Paint(frame);
                     }
                 })
         );
@@ -92,6 +97,25 @@ internal sealed class LiveArea : IDisposable
         if (_readKeys)
         {
             _ = PumpKeysAsync(_cts.Token);
+        }
+    }
+
+    /// <summary>
+    /// Forces a full repaint of the live area from the frame last rendered: the region is erased and
+    /// redrawn, so a terminal that scrolled or garbled the prompt recovers without touching the
+    /// committed scrollback. A no-op before the first frame and while a full-screen surface is open.
+    /// </summary>
+    public void Redraw()
+    {
+        lock (_paintGate)
+        {
+            if (_suspended || _lastFrame is not { } frame)
+            {
+                return;
+            }
+
+            _writer.Clear();
+            _writer.Paint(frame);
         }
     }
 

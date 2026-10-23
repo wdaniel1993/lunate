@@ -14,6 +14,7 @@ public sealed class PublicApiTests
         "Lunate.Tui.GitBranchReader",
         "Lunate.Tui.IConsoleIO",
         "Lunate.Tui.InputLine",
+        "Lunate.Tui.InputLine+KillResult",
         "Lunate.Tui.InputLineState",
         "Lunate.Tui.KeyEvent",
         "Lunate.Tui.KeyKind",

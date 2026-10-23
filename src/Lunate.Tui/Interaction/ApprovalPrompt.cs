@@ -32,8 +32,9 @@ public sealed record ApprovalPromptModel(
     internal const int MaxDetailLines = 6;
 
     /// <summary>
-    /// Decides from a single key: bare <c>y</c>/<c>n</c>/<c>a</c> only. A bare Enter denies —
-    /// nothing runs by accident; Esc and every other key return <c>null</c> (not a decision).
+    /// Decides from a single key: bare <c>y</c>/<c>n</c>/<c>a</c> only. A bare Enter denies and
+    /// <c>Esc</c> also denies — nothing runs by accident; every other key returns <c>null</c> (not a
+    /// decision).
     /// </summary>
     public ApprovalChoice? Decide(KeyEvent key)
     {
@@ -48,6 +49,7 @@ public sealed record ApprovalPromptModel(
             { Kind: KeyKind.Character, Text: "n" } => ApprovalChoice.Deny,
             { Kind: KeyKind.Character, Text: "a" } => ApprovalChoice.Always,
             { Kind: KeyKind.Enter } => ApprovalChoice.Deny,
+            { Kind: KeyKind.Escape } => ApprovalChoice.Deny,
             _ => null,
         };
     }

@@ -109,7 +109,7 @@ public sealed class InteractiveSessionViewerTests
         using var host = new InteractiveSessionHost();
         Task run = host.RunAsync();
 
-        host.Console.Send(new KeyEvent(KeyKind.Character, "l", true, false, false));
+        host.Console.Send(new KeyEvent(KeyKind.Character, "p", false, false, true));
         await InteractiveSessionCommandTests.WaitForFrameAsync(host, "Select model");
 
         host.Console.SendCtrlO();

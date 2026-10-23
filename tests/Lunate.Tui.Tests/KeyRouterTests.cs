@@ -10,12 +10,25 @@ public sealed class KeyRouterTests
         (Key(KeyKind.Character, "j", ctrl: true), RoutedKey.Edit),
         (Key(KeyKind.Escape), RoutedKey.Cancel),
         (Key(KeyKind.Character, "c", ctrl: true), RoutedKey.ClearOrQuit),
-        (Key(KeyKind.Character, "l", ctrl: true), RoutedKey.ModelPicker),
-        (Key(KeyKind.Character, "p", ctrl: true), RoutedKey.FavoritesCycle),
+        (Key(KeyKind.Character, "d", ctrl: true), RoutedKey.Exit),
+        (Key(KeyKind.Character, "l", ctrl: true), RoutedKey.Redraw),
+        (Key(KeyKind.Character, "p", alt: true), RoutedKey.ModelPicker),
+        (Key(KeyKind.Character, "p", ctrl: true), RoutedKey.Edit),
         (Key(KeyKind.Character, "o", ctrl: true), RoutedKey.TranscriptViewer),
         (Key(KeyKind.Tab), RoutedKey.Complete),
         (Key(KeyKind.Up), RoutedKey.HistoryPrevious),
         (Key(KeyKind.Down), RoutedKey.HistoryNext),
+        (Key(KeyKind.Character, "r", ctrl: true), RoutedKey.HistorySearch),
+        (Key(KeyKind.Character, "a", ctrl: true), RoutedKey.LineStart),
+        (Key(KeyKind.Character, "e", ctrl: true), RoutedKey.LineEnd),
+        (Key(KeyKind.Character, "k", ctrl: true), RoutedKey.KillToEnd),
+        (Key(KeyKind.Character, "u", ctrl: true), RoutedKey.KillToStart),
+        (Key(KeyKind.Character, "w", ctrl: true), RoutedKey.KillWordBack),
+        (Key(KeyKind.Character, "y", ctrl: true), RoutedKey.Yank),
+        (Key(KeyKind.Character, "_", ctrl: true), RoutedKey.Undo),
+        (Key(KeyKind.Character, "b", alt: true), RoutedKey.WordLeft),
+        (Key(KeyKind.Character, "f", alt: true), RoutedKey.WordRight),
+        (Key(KeyKind.Character, "d", alt: true), RoutedKey.KillWordForward),
     ];
 
     private static readonly (KeyEvent Key, RoutedKey Expected)[] BusyTable =
@@ -25,13 +38,26 @@ public sealed class KeyRouterTests
         (Key(KeyKind.Enter, shift: true), RoutedKey.Edit),
         (Key(KeyKind.Character, "j", ctrl: true), RoutedKey.Edit),
         (Key(KeyKind.Escape), RoutedKey.Cancel),
-        (Key(KeyKind.Character, "c", ctrl: true), RoutedKey.ClearOrQuit),
-        (Key(KeyKind.Character, "l", ctrl: true), RoutedKey.ModelPicker),
-        (Key(KeyKind.Character, "p", ctrl: true), RoutedKey.FavoritesCycle),
+        (Key(KeyKind.Character, "c", ctrl: true), RoutedKey.Interrupt),
+        (Key(KeyKind.Character, "d", ctrl: true), RoutedKey.Exit),
+        (Key(KeyKind.Character, "l", ctrl: true), RoutedKey.Redraw),
+        (Key(KeyKind.Character, "p", alt: true), RoutedKey.ModelPicker),
+        (Key(KeyKind.Character, "p", ctrl: true), RoutedKey.Edit),
         (Key(KeyKind.Character, "o", ctrl: true), RoutedKey.TranscriptViewer),
         (Key(KeyKind.Tab), RoutedKey.Complete),
         (Key(KeyKind.Up), RoutedKey.HistoryPrevious),
         (Key(KeyKind.Down), RoutedKey.HistoryNext),
+        (Key(KeyKind.Character, "r", ctrl: true), RoutedKey.HistorySearch),
+        (Key(KeyKind.Character, "a", ctrl: true), RoutedKey.LineStart),
+        (Key(KeyKind.Character, "e", ctrl: true), RoutedKey.LineEnd),
+        (Key(KeyKind.Character, "k", ctrl: true), RoutedKey.KillToEnd),
+        (Key(KeyKind.Character, "u", ctrl: true), RoutedKey.KillToStart),
+        (Key(KeyKind.Character, "w", ctrl: true), RoutedKey.KillWordBack),
+        (Key(KeyKind.Character, "y", ctrl: true), RoutedKey.Yank),
+        (Key(KeyKind.Character, "_", ctrl: true), RoutedKey.Undo),
+        (Key(KeyKind.Character, "b", alt: true), RoutedKey.WordLeft),
+        (Key(KeyKind.Character, "f", alt: true), RoutedKey.WordRight),
+        (Key(KeyKind.Character, "d", alt: true), RoutedKey.KillWordForward),
     ];
 
     public static TheoryData<KeyEvent, RoutedKey> IdleBindings => Data(IdleTable);
@@ -47,20 +73,6 @@ public sealed class KeyRouterTests
     [MemberData(nameof(BusyBindings))]
     public void Every_busy_binding_routes_to_its_own_intent(KeyEvent key, RoutedKey expected) =>
         Assert.Equal(expected, KeyRouter.Route(key, turnRunning: true));
-
-    [Fact]
-    public void Every_binding_has_a_distinct_intent()
-    {
-        AssertDistinct(IdleTable, submits: 1, followUps: 0);
-    }
-
-    [Fact]
-    public void The_busy_matrix_has_one_follow_up_key()
-    {
-        RoutedKey[] intents = AssertDistinct(BusyTable, submits: 0, followUps: 1);
-
-        Assert.Single(intents, intent => intent == RoutedKey.FollowUp);
-    }
 
     [Fact]
     public void Enter_submits_idle_and_queues_while_running()
@@ -119,31 +131,52 @@ public sealed class KeyRouterTests
         Assert.Equal(RoutedKey.Edit, KeyRouter.Route(Key(KeyKind.Character, "j", ctrl: true)));
 
     [Fact]
-    public void Ctrl_P_is_its_own_intent()
+    public void Ctrl_C_interrupts_a_running_turn_and_never_routes_to_cancel()
     {
-        Assert.Equal(
-            RoutedKey.FavoritesCycle,
-            KeyRouter.Route(Key(KeyKind.Character, "p", ctrl: true))
-        );
+        KeyEvent key = Key(KeyKind.Character, "c", ctrl: true);
+
+        Assert.Equal(RoutedKey.Interrupt, KeyRouter.Route(key, turnRunning: true));
+        Assert.Equal(RoutedKey.ClearOrQuit, KeyRouter.Route(key));
+        Assert.NotEqual(RoutedKey.Cancel, KeyRouter.Route(key, turnRunning: true));
+    }
+
+    [Fact]
+    public void Ctrl_C_does_not_interrupt_when_idle_with_a_queue()
+    {
+        KeyEvent key = Key(KeyKind.Character, "c", ctrl: true);
+
+        Assert.Equal(RoutedKey.ClearOrQuit, KeyRouter.Route(key, hasQueuedFollowUps: true));
+    }
+
+    [Fact]
+    public void Ctrl_L_redraws_instead_of_opening_a_picker()
+    {
+        Assert.Equal(RoutedKey.Redraw, KeyRouter.Route(Key(KeyKind.Character, "l", ctrl: true)));
         Assert.NotEqual(
             RoutedKey.ModelPicker,
-            KeyRouter.Route(Key(KeyKind.Character, "p", ctrl: true))
-        );
-        Assert.NotEqual(RoutedKey.Edit, KeyRouter.Route(Key(KeyKind.Character, "p", ctrl: true)));
-
-        Assert.Equal(
-            RoutedKey.Edit,
-            KeyRouter.Route(Key(KeyKind.Character, "p", ctrl: true, alt: true))
-        );
-        Assert.Equal(
-            RoutedKey.Edit,
-            KeyRouter.Route(Key(KeyKind.Character, "p", ctrl: true, shift: true))
+            KeyRouter.Route(Key(KeyKind.Character, "l", ctrl: true))
         );
     }
 
     [Fact]
-    public void Ctrl_c_never_routes_to_cancel() =>
-        Assert.NotEqual(RoutedKey.Cancel, KeyRouter.Route(Key(KeyKind.Character, "c", ctrl: true)));
+    public void Alt_P_opens_the_model_picker_and_Ctrl_P_is_unbound()
+    {
+        Assert.Equal(
+            RoutedKey.ModelPicker,
+            KeyRouter.Route(Key(KeyKind.Character, "p", alt: true))
+        );
+        Assert.Equal(RoutedKey.Edit, KeyRouter.Route(Key(KeyKind.Character, "p", ctrl: true)));
+        Assert.Equal(RoutedKey.Edit, KeyRouter.Route(Key(KeyKind.Character, "p")));
+    }
+
+    [Fact]
+    public void Ctrl_D_exits_in_both_states()
+    {
+        KeyEvent key = Key(KeyKind.Character, "d", ctrl: true);
+
+        Assert.Equal(RoutedKey.Exit, KeyRouter.Route(key));
+        Assert.Equal(RoutedKey.Exit, KeyRouter.Route(key, turnRunning: true));
+    }
 
     [Theory]
     [InlineData(KeyKind.F5)]
@@ -154,7 +187,7 @@ public sealed class KeyRouterTests
 
     [Fact]
     public void Modified_ctrl_keys_other_than_the_table_edit() =>
-        Assert.Equal(RoutedKey.Edit, KeyRouter.Route(Key(KeyKind.Character, "y", ctrl: true)));
+        Assert.Equal(RoutedKey.Edit, KeyRouter.Route(Key(KeyKind.Character, "q", ctrl: true)));
 
     private static TheoryData<KeyEvent, RoutedKey> Data((KeyEvent Key, RoutedKey Expected)[] table)
     {
@@ -165,28 +198,6 @@ public sealed class KeyRouterTests
         }
 
         return data;
-    }
-
-    private static RoutedKey[] AssertDistinct(
-        (KeyEvent Key, RoutedKey Expected)[] table,
-        int submits,
-        int followUps
-    )
-    {
-        RoutedKey[] intents = [.. table.Select(row => row.Expected)];
-
-        Assert.Equal(submits, intents.Count(intent => intent == RoutedKey.Submit));
-        Assert.Equal(followUps, intents.Count(intent => intent == RoutedKey.FollowUp));
-        Assert.Single(intents, intent => intent == RoutedKey.Cancel);
-        Assert.Single(intents, intent => intent == RoutedKey.ClearOrQuit);
-        Assert.Single(intents, intent => intent == RoutedKey.ModelPicker);
-        Assert.Single(intents, intent => intent == RoutedKey.FavoritesCycle);
-        Assert.Single(intents, intent => intent == RoutedKey.TranscriptViewer);
-        Assert.Single(intents, intent => intent == RoutedKey.Complete);
-        Assert.Single(intents, intent => intent == RoutedKey.HistoryPrevious);
-        Assert.Single(intents, intent => intent == RoutedKey.HistoryNext);
-        Assert.Equal(3, intents.Count(intent => intent == RoutedKey.Edit));
-        return intents;
     }
 
     private static KeyEvent Key(

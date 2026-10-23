@@ -186,20 +186,22 @@ static Lunate.Tui.ApprovalPromptModel.operator ==(Lunate.Tui.ApprovalPromptModel
 Lunate.Tui.GitBranchReader
 Lunate.Tui.KeyRouter
 static Lunate.Tui.GitBranchReader.Read(string! workingDirectory) -> string?
-static Lunate.Tui.KeyRouter.Route(Lunate.Tui.KeyEvent! key, bool turnRunning = false, bool hasQueuedFollowUps = false) -> Lunate.Tui.RoutedKey
+static Lunate.Tui.KeyRouter.Route(Lunate.Tui.KeyEvent! key, bool turnRunning = false, bool hasQueuedFollowUps = false, bool bashActive = false) -> Lunate.Tui.RoutedKey
 Lunate.Tui.RoutedKey
 Lunate.Tui.RoutedKey.Cancel = 2 -> Lunate.Tui.RoutedKey
 Lunate.Tui.RoutedKey.ClearOrQuit = 3 -> Lunate.Tui.RoutedKey
-Lunate.Tui.RoutedKey.Complete = 7 -> Lunate.Tui.RoutedKey
+Lunate.Tui.RoutedKey.Complete = 10 -> Lunate.Tui.RoutedKey
 Lunate.Tui.RoutedKey.Edit = 0 -> Lunate.Tui.RoutedKey
-Lunate.Tui.RoutedKey.FavoritesCycle = 9 -> Lunate.Tui.RoutedKey
-Lunate.Tui.RoutedKey.FollowUp = 10 -> Lunate.Tui.RoutedKey
-Lunate.Tui.RoutedKey.FollowUpTakeBack = 11 -> Lunate.Tui.RoutedKey
-Lunate.Tui.RoutedKey.HistoryNext = 6 -> Lunate.Tui.RoutedKey
-Lunate.Tui.RoutedKey.HistoryPrevious = 5 -> Lunate.Tui.RoutedKey
-Lunate.Tui.RoutedKey.ModelPicker = 4 -> Lunate.Tui.RoutedKey
+Lunate.Tui.RoutedKey.Exit = 5 -> Lunate.Tui.RoutedKey
+Lunate.Tui.RoutedKey.FollowUp = 12 -> Lunate.Tui.RoutedKey
+Lunate.Tui.RoutedKey.FollowUpTakeBack = 13 -> Lunate.Tui.RoutedKey
+Lunate.Tui.RoutedKey.HistoryNext = 9 -> Lunate.Tui.RoutedKey
+Lunate.Tui.RoutedKey.HistoryPrevious = 8 -> Lunate.Tui.RoutedKey
+Lunate.Tui.RoutedKey.Interrupt = 4 -> Lunate.Tui.RoutedKey
+Lunate.Tui.RoutedKey.ModelPicker = 7 -> Lunate.Tui.RoutedKey
+Lunate.Tui.RoutedKey.Redraw = 6 -> Lunate.Tui.RoutedKey
 Lunate.Tui.RoutedKey.Submit = 1 -> Lunate.Tui.RoutedKey
-Lunate.Tui.RoutedKey.TranscriptViewer = 8 -> Lunate.Tui.RoutedKey
+Lunate.Tui.RoutedKey.TranscriptViewer = 11 -> Lunate.Tui.RoutedKey
 Lunate.Tui.SelectListModel
 Lunate.Tui.SelectListModel.<Clone>$() -> Lunate.Tui.SelectListModel!
 Lunate.Tui.SelectListModel.Deconstruct(out string! Title, out System.Collections.Generic.IReadOnlyList<string!>! Items, out int Selected) -> void
@@ -397,3 +399,35 @@ static Lunate.Tui.TranscriptUserEntry.operator ==(Lunate.Tui.TranscriptUserEntry
 virtual Lunate.Tui.TranscriptEntry.EqualityContract.get -> System.Type!
 virtual Lunate.Tui.TranscriptEntry.Equals(Lunate.Tui.TranscriptEntry? other) -> bool
 virtual Lunate.Tui.TranscriptEntry.PrintMembers(System.Text.StringBuilder! builder) -> bool
+Lunate.Tui.InputLine.KillResult
+Lunate.Tui.InputLine.KillResult.Deconstruct(out Lunate.Tui.InputLineState! State, out string! Killed) -> void
+Lunate.Tui.InputLine.KillResult.Equals(Lunate.Tui.InputLine.KillResult other) -> bool
+Lunate.Tui.InputLine.KillResult.KillResult() -> void
+Lunate.Tui.InputLine.KillResult.KillResult(Lunate.Tui.InputLineState! State, string! Killed) -> void
+Lunate.Tui.InputLine.KillResult.Killed.get -> string!
+Lunate.Tui.InputLine.KillResult.Killed.init -> void
+Lunate.Tui.InputLine.KillResult.State.get -> Lunate.Tui.InputLineState!
+Lunate.Tui.InputLine.KillResult.State.init -> void
+Lunate.Tui.RoutedKey.KillToEnd = 18 -> Lunate.Tui.RoutedKey
+Lunate.Tui.RoutedKey.KillToStart = 19 -> Lunate.Tui.RoutedKey
+Lunate.Tui.RoutedKey.KillWordBack = 20 -> Lunate.Tui.RoutedKey
+Lunate.Tui.RoutedKey.KillWordForward = 21 -> Lunate.Tui.RoutedKey
+Lunate.Tui.RoutedKey.LineEnd = 15 -> Lunate.Tui.RoutedKey
+Lunate.Tui.RoutedKey.LineStart = 14 -> Lunate.Tui.RoutedKey
+Lunate.Tui.RoutedKey.Undo = 23 -> Lunate.Tui.RoutedKey
+Lunate.Tui.RoutedKey.WordLeft = 16 -> Lunate.Tui.RoutedKey
+Lunate.Tui.RoutedKey.WordRight = 17 -> Lunate.Tui.RoutedKey
+Lunate.Tui.RoutedKey.Yank = 22 -> Lunate.Tui.RoutedKey
+override Lunate.Tui.InputLine.KillResult.GetHashCode() -> int
+static Lunate.Tui.InputLine.KillResult.operator !=(Lunate.Tui.InputLine.KillResult left, Lunate.Tui.InputLine.KillResult right) -> bool
+static Lunate.Tui.InputLine.KillResult.operator ==(Lunate.Tui.InputLine.KillResult left, Lunate.Tui.InputLine.KillResult right) -> bool
+static Lunate.Tui.InputLine.KillToEnd(Lunate.Tui.InputLineState! state) -> Lunate.Tui.InputLine.KillResult
+static Lunate.Tui.InputLine.KillToStart(Lunate.Tui.InputLineState! state) -> Lunate.Tui.InputLine.KillResult
+static Lunate.Tui.InputLine.KillWordBack(Lunate.Tui.InputLineState! state) -> Lunate.Tui.InputLine.KillResult
+static Lunate.Tui.InputLine.KillWordForward(Lunate.Tui.InputLineState! state) -> Lunate.Tui.InputLine.KillResult
+static Lunate.Tui.InputLine.MoveWordLeft(Lunate.Tui.InputLineState! state) -> Lunate.Tui.InputLineState!
+static Lunate.Tui.InputLine.MoveWordRight(Lunate.Tui.InputLineState! state) -> Lunate.Tui.InputLineState!
+~override Lunate.Tui.InputLine.KillResult.Equals(object obj) -> bool
+~override Lunate.Tui.InputLine.KillResult.ToString() -> string
+Lunate.Tui.RoutedKey.HistorySearch = 24 -> Lunate.Tui.RoutedKey
+Lunate.Tui.RoutedKey.Stash = 25 -> Lunate.Tui.RoutedKey

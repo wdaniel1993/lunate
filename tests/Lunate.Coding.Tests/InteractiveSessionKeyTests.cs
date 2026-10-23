@@ -112,4 +112,231 @@ public sealed class InteractiveSessionKeyTests
         host.Console.Complete();
         await run;
     }
+
+    [Fact]
+    public async Task CtrlC_interrupts_a_running_turn_without_touching_the_draft()
+    {
+        using var host = new InteractiveSessionHost();
+        host.Client.Enqueue(Scripts.Text("first"), Scripts.Stop());
+        host.Client.Gate(1);
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+
+        host.Console.SendText("hi");
+        host.Console.SendEnter();
+        await host.Client.WaitForCallAsync(1);
+
+        host.Console.SendCtrlC();
+        await host.WaitUntilAsync(() => !host.Session.IsRunning);
+
+        Assert.Single(host.Client.Requests);
+        host.Console.Complete();
+        await run;
+    }
+
+    [Fact]
+    public async Task CtrlD_quits_on_a_second_press_from_an_empty_prompt()
+    {
+        using var host = new InteractiveSessionHost();
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+
+        host.Console.SendCtrlD();
+        await host.WaitUntilAsync(() =>
+        {
+            host.Advance(33);
+            return host.LastFrame.Contains("press Ctrl+D again to quit", StringComparison.Ordinal);
+        });
+
+        host.Console.SendCtrlD();
+        await run;
+    }
+
+    [Fact]
+    public async Task CtrlD_does_not_quit_while_the_prompt_holds_text()
+    {
+        using var host = new InteractiveSessionHost();
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+
+        host.Console.SendText("draft");
+        await host.WaitUntilAsync(() =>
+        {
+            host.Advance(33);
+            return host.LastFrame.Contains("> draft", StringComparison.Ordinal);
+        });
+
+        host.Console.SendCtrlD();
+        host.Console.SendCtrlD();
+        host.Advance(33);
+
+        Assert.False(run.IsCompleted);
+        Assert.Contains("> draft", host.LastFrame, StringComparison.Ordinal);
+
+        host.Console.Complete();
+        await run;
+    }
+
+    [Fact]
+    public async Task CtrlL_redraws_the_prompt_without_losing_the_input()
+    {
+        using var host = new InteractiveSessionHost();
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+
+        host.Console.SendText("draft");
+        await host.WaitUntilAsync(() =>
+        {
+            host.Advance(33);
+            return host.LastFrame.Contains("> draft", StringComparison.Ordinal);
+        });
+
+        host.Console.SendCtrlL();
+        host.Advance(33);
+
+        Assert.Contains("> draft", host.LastFrame, StringComparison.Ordinal);
+        Assert.DoesNotContain("Select model", host.LastFrame, StringComparison.Ordinal);
+
+        host.Console.Complete();
+        await run;
+    }
+
+    [Fact]
+    public async Task Kill_and_yank_round_trip_on_the_input_loop()
+    {
+        using var host = new InteractiveSessionHost();
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+
+        host.Console.SendText("hello world");
+        await host.WaitUntilAsync(() => host.Session.Input.Text == "hello world");
+
+        host.Console.SendCtrl("w");
+        await host.WaitUntilAsync(() => host.Session.Input.Text == "hello ");
+
+        host.Console.SendCtrl("y");
+        await host.WaitUntilAsync(() => host.Session.Input.Text == "hello world");
+
+        host.Console.Complete();
+        await run;
+    }
+
+    [Fact]
+    public async Task Undo_restores_the_buffer_after_a_kill()
+    {
+        using var host = new InteractiveSessionHost();
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+
+        host.Console.SendText("alpha");
+        await host.WaitUntilAsync(() => host.Session.Input.Text == "alpha");
+
+        host.Console.SendCtrl("w");
+        await host.WaitUntilAsync(() => host.Session.Input.Text.Length == 0);
+
+        host.Console.SendCtrl("_");
+        await host.WaitUntilAsync(() => host.Session.Input.Text == "alpha");
+
+        host.Console.Complete();
+        await run;
+    }
+
+    [Fact]
+    public async Task Ctrl_A_moves_to_the_line_start_for_the_next_insert()
+    {
+        using var host = new InteractiveSessionHost();
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+
+        host.Console.SendText("bc");
+        await host.WaitUntilAsync(() => host.Session.Input.Text == "bc");
+
+        host.Console.SendCtrl("a");
+        host.Console.SendText("a");
+        await host.WaitUntilAsync(() => host.Session.Input.Text == "abc");
+
+        host.Console.Complete();
+        await run;
+    }
+
+    [Fact]
+    public async Task History_search_walks_matches_and_Esc_restores_the_draft()
+    {
+        using var host = new InteractiveSessionHost();
+        host.Client.Enqueue(Scripts.Text("one"), Scripts.Stop());
+        host.Client.Enqueue(Scripts.Text("two"), Scripts.Stop());
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+
+        host.Console.SendText("first entry");
+        host.Console.SendEnter();
+        await host.WaitUntilAsync(() => !host.Session.IsRunning && host.Session.IsComposed);
+
+        host.Console.SendText("second entry");
+        host.Console.SendEnter();
+        await host.WaitUntilAsync(() => !host.Session.IsRunning && host.Session.IsComposed);
+
+        host.Console.SendText("draft");
+        await host.WaitUntilAsync(() => host.Session.Input.Text == "draft");
+
+        host.Console.SendCtrl("r");
+        await host.WaitUntilAsync(() => host.Session.Input.Text == "second entry");
+
+        host.Console.SendCtrl("r");
+        await host.WaitUntilAsync(() => host.Session.Input.Text == "first entry");
+
+        host.Console.SendEscape();
+        await host.WaitUntilAsync(() => host.Session.Input.Text == "draft");
+
+        host.Console.Complete();
+        await run;
+    }
+
+    [Fact]
+    public async Task History_search_narrows_on_typed_text()
+    {
+        using var host = new InteractiveSessionHost();
+        host.Client.Enqueue(Scripts.Text("one"), Scripts.Stop());
+        host.Client.Enqueue(Scripts.Text("two"), Scripts.Stop());
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+
+        host.Console.SendText("alpha");
+        host.Console.SendEnter();
+        await host.WaitUntilAsync(() => !host.Session.IsRunning && host.Session.IsComposed);
+
+        host.Console.SendText("beta");
+        host.Console.SendEnter();
+        await host.WaitUntilAsync(() => !host.Session.IsRunning && host.Session.IsComposed);
+
+        host.Console.SendCtrl("r");
+        host.Console.SendText("al");
+        await host.WaitUntilAsync(() => host.Session.Input.Text == "alpha");
+
+        host.Console.SendEnter();
+        await host.WaitUntilAsync(() => host.Session.Input.Text == "alpha");
+
+        host.Console.Complete();
+        await run;
+    }
+
+    [Fact]
+    public async Task Ctrl_S_stashes_and_restores_the_draft()
+    {
+        using var host = new InteractiveSessionHost();
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+
+        host.Console.SendText("half a thought");
+        await host.WaitUntilAsync(() => host.Session.Input.Text == "half a thought");
+
+        host.Console.SendCtrl("s");
+        await host.WaitUntilAsync(() => host.Session.Input.Text.Length == 0);
+
+        host.Console.SendCtrl("s");
+        await host.WaitUntilAsync(() => host.Session.Input.Text == "half a thought");
+
+        host.Console.Complete();
+        await run;
+    }
 }

@@ -18,8 +18,7 @@ public sealed class InteractiveSessionBashModeTests
 
         Assert.Equal(string.Empty, host.Session.Input.Text);
         Assert.False(host.Session.IsBashSilent);
-        host.Advance(33);
-        Assert.Contains("! ", host.LastFrame, StringComparison.Ordinal);
+        await host.WaitForFrameAsync("! ");
 
         host.Console.Complete();
         await run;
@@ -61,8 +60,7 @@ public sealed class InteractiveSessionBashModeTests
         await host.WaitUntilAsync(() => host.Session.IsBashMode && host.Session.IsBashSilent);
 
         Assert.Equal(string.Empty, host.Session.Input.Text);
-        host.Advance(33);
-        Assert.Contains("! ", host.LastFrame, StringComparison.Ordinal);
+        await host.WaitForFrameAsync("! ");
 
         host.Console.Complete();
         await run;
@@ -84,8 +82,16 @@ public sealed class InteractiveSessionBashModeTests
         await host.WaitUntilAsync(() => !host.Session.IsBashMode);
 
         Assert.Equal("!git status", host.Session.Input.Text);
-        host.Advance(33);
-        Assert.Contains("> !git status", host.LastFrame, StringComparison.Ordinal);
+        // The input state is updated synchronously; the frame that shows it lands on a later pump
+        // tick. Waiting for the frame avoids asserting against a one-generation-early snapshot.
+        await host.WaitUntilAsync(
+            () =>
+            {
+                host.Advance(33);
+                return host.LastFrame.Contains("> !git status", StringComparison.Ordinal);
+            },
+            TimeSpan.FromSeconds(5)
+        );
         Assert.Empty(host.Client.Requests);
         Assert.DoesNotContain(host.Events, agentEvent => agentEvent is ToolCallStart);
 

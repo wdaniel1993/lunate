@@ -110,7 +110,12 @@ internal sealed partial class InteractiveSession : IDisposable
     private InputPipeline _pipeline;
     private ImageInputResolver _imageResolver = null!;
     private readonly InputHistory _history;
-    private readonly CtrlCQuitWindow _quitWindow;
+    private readonly Stack<InputLineState> _undo = new();
+    private readonly QuitWindow _quitWindow;
+    private HistorySearch? _historySearch;
+    private string _killRing = string.Empty;
+    private string? _stashedDraft;
+    private readonly QuitWindow _exitWindow;
     private readonly IUserInteraction _interaction;
     private readonly ISecretPrompt _secretPrompt;
     private readonly SteeringQueue _steering = new();
@@ -243,7 +248,8 @@ internal sealed partial class InteractiveSession : IDisposable
         _viewer = new TranscriptViewer(_console, _capabilities, options.HomeDirectory);
         _pipeline = new InputPipeline(options.Hooks);
         _history = new InputHistory(options.HistoryPath ?? InputHistory.DefaultPath);
-        _quitWindow = new CtrlCQuitWindow(options.Scheduler);
+        _quitWindow = QuitWindow.ForCtrlC(options.Scheduler);
+        _exitWindow = QuitWindow.ForExit(options.Scheduler);
         _interaction = new TuiUserInteraction(_live);
         _secretPrompt = options.SecretPrompt ?? new TuiSecretPrompt(_live);
     }
@@ -918,7 +924,12 @@ internal sealed partial class InteractiveSession : IDisposable
             return;
         }
 
-        switch (KeyRouter.Route(key, _turnActive, _followUps.Count > 0))
+        if (HandleHistorySearchKey(key))
+        {
+            return;
+        }
+
+        switch (KeyRouter.Route(key, _turnActive, _followUps.Count > 0, _bashMode || _bashRunning))
         {
             case RoutedKey.Edit:
                 EditInput(key);
@@ -981,6 +992,16 @@ internal sealed partial class InteractiveSession : IDisposable
             case RoutedKey.ClearOrQuit:
                 HandleCtrlC();
                 break;
+            case RoutedKey.Interrupt:
+                _runCancellation?.Cancel();
+                _bashCancellation?.Cancel();
+                break;
+            case RoutedKey.Exit:
+                HandleCtrlD();
+                break;
+            case RoutedKey.Redraw:
+                _live.Redraw();
+                break;
             case RoutedKey.HistoryPrevious:
                 if (_autocomplete is not null)
                 {
@@ -1002,11 +1023,44 @@ internal sealed partial class InteractiveSession : IDisposable
             case RoutedKey.ModelPicker:
                 OpenModelPicker();
                 break;
-            case RoutedKey.FavoritesCycle:
-                await CycleFavoriteAsync(ct);
-                break;
             case RoutedKey.TranscriptViewer:
                 OpenViewer();
+                break;
+            case RoutedKey.Stash:
+                ToggleStash();
+                break;
+            case RoutedKey.HistorySearch:
+                BeginHistorySearch();
+                break;
+            case RoutedKey.LineStart:
+                ApplyEdit(InputLine.MoveHome(_input));
+                break;
+            case RoutedKey.LineEnd:
+                ApplyEdit(InputLine.MoveEnd(_input));
+                break;
+            case RoutedKey.WordLeft:
+                ApplyEdit(InputLine.MoveWordLeft(_input));
+                break;
+            case RoutedKey.WordRight:
+                ApplyEdit(InputLine.MoveWordRight(_input));
+                break;
+            case RoutedKey.KillToEnd:
+                ApplyKill(InputLine.KillToEnd(_input));
+                break;
+            case RoutedKey.KillToStart:
+                ApplyKill(InputLine.KillToStart(_input));
+                break;
+            case RoutedKey.KillWordBack:
+                ApplyKill(InputLine.KillWordBack(_input));
+                break;
+            case RoutedKey.KillWordForward:
+                ApplyKill(InputLine.KillWordForward(_input));
+                break;
+            case RoutedKey.Yank:
+                ApplyEdit(InputLine.Insert(_input, _killRing));
+                break;
+            case RoutedKey.Undo:
+                UndoInput();
                 break;
             case RoutedKey.Complete:
                 if (_autocomplete is not null)
@@ -1054,7 +1108,20 @@ internal sealed partial class InteractiveSession : IDisposable
     private void EditInput(KeyEvent key)
     {
         bool wasEmpty = _input.Text.Length == 0;
-        _input = InputLine.Apply(_input, key);
+        InputLineState edited = InputLine.Apply(_input, key);
+        if (edited != _input)
+        {
+            if (IsNewlineKey(key))
+            {
+                _undo.Clear();
+            }
+            else
+            {
+                PushUndo(_input);
+            }
+        }
+
+        _input = edited;
         _historyDraft = null;
         if (TryEnterBashMode(wasEmpty, key))
         {
@@ -1087,6 +1154,7 @@ internal sealed partial class InteractiveSession : IDisposable
         }
 
         SetInput(string.Empty);
+        _undo.Clear();
         if (
             Commands.IsCommand(submitted)
             && !ImageInputResolver.IsDroppedImagePath(_workspace.WorktreeRoot, submitted)
@@ -1294,25 +1362,296 @@ internal sealed partial class InteractiveSession : IDisposable
         );
     }
 
+    private void ApplyKill(InputLine.KillResult kill)
+    {
+        if (kill.Killed.Length == 0)
+        {
+            return;
+        }
+
+        _killRing = kill.Killed;
+        ApplyEdit(kill.State);
+    }
+
+    private void ApplyEdit(InputLineState next)
+    {
+        if (next == _input)
+        {
+            return;
+        }
+
+        PushUndo(_input);
+        _input = next;
+        _historyDraft = null;
+        _live.SetInput(_input, _bashMode);
+        if (_bashMode)
+        {
+            CloseAutocomplete();
+        }
+        else
+        {
+            RefreshAutocomplete(edited: true);
+        }
+    }
+
+    private void PushUndo(InputLineState state)
+    {
+        if (_undo.Count >= 64)
+        {
+            InputLineState[] kept = [.. _undo.Reverse().Take(63)];
+            _undo.Clear();
+            foreach (InputLineState entry in kept)
+            {
+                _undo.Push(entry);
+            }
+        }
+
+        _undo.Push(state);
+    }
+
+    private void UndoInput()
+    {
+        if (_undo.Count == 0)
+        {
+            return;
+        }
+
+        InputLineState previous = _undo.Pop();
+        _input = previous;
+        _historyDraft = null;
+        _live.SetInput(_input, _bashMode);
+        if (_bashMode)
+        {
+            CloseAutocomplete();
+        }
+        else
+        {
+            RefreshAutocomplete(edited: true);
+        }
+    }
+
+    private static bool IsNewlineKey(KeyEvent key) =>
+        key is { Kind: KeyKind.Enter, Alt: true }
+        || key is { Kind: KeyKind.Enter, Shift: true }
+        || key is { Kind: KeyKind.Character, Ctrl: true, Text: "j" };
+
+    private sealed record HistorySearch(
+        string Query,
+        IReadOnlyList<string> Matches,
+        int Index,
+        string Draft
+    );
+
+    private IReadOnlyList<string> HistoryEntries() =>
+        _bashMode ? _bashHistory.Entries : _history.Entries;
+
+    private void BeginHistorySearch()
+    {
+        if (_historySearch is null)
+        {
+            _historySearch = new HistorySearch(
+                string.Empty,
+                HistoryEntries().Reverse().ToArray(),
+                -1,
+                _input.Text
+            );
+        }
+
+        AdvanceHistorySearch();
+    }
+
+    /// <summary>Consumes the keys that belong to an open history search; anything else accepts it.</summary>
+    private bool HandleHistorySearchKey(KeyEvent key)
+    {
+        if (_historySearch is not { } search)
+        {
+            return false;
+        }
+
+        switch (key)
+        {
+            case { Kind: KeyKind.Enter }:
+                CloseHistorySearch(keepInput: true);
+                return true;
+            case { Kind: KeyKind.Escape }:
+                CloseHistorySearch(keepInput: false);
+                return true;
+            case { Kind: KeyKind.Character, Ctrl: true, Text: "r" }:
+                AdvanceHistorySearch();
+                return true;
+            case { Kind: KeyKind.Down }:
+                StepHistorySearch(-1);
+                return true;
+            case { Kind: KeyKind.Backspace }:
+                if (search.Query.Length == 0)
+                {
+                    CloseHistorySearch(keepInput: false);
+                }
+                else
+                {
+                    SearchHistory(search.Query[..^1]);
+                }
+
+                return true;
+            case { Kind: KeyKind.Space, Ctrl: false, Alt: false }:
+                SearchHistory(search.Query + " ");
+                return true;
+            case { Kind: KeyKind.Character, Ctrl: false, Alt: false, Text: not null }:
+                SearchHistory(search.Query + key.Text);
+                return true;
+            default:
+                CloseHistorySearch(keepInput: true);
+                return false;
+        }
+    }
+
+    private void SearchHistory(string query)
+    {
+        if (_historySearch is not { } search)
+        {
+            return;
+        }
+
+        string[] matches = HistoryEntries()
+            .Reverse()
+            .Where(entry => entry.Contains(query, StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+        _historySearch = new HistorySearch(
+            query,
+            matches,
+            matches.Length == 0 ? -1 : 0,
+            search.Draft
+        );
+        ShowHistorySearch();
+    }
+
+    private void AdvanceHistorySearch()
+    {
+        if (_historySearch is not { } search)
+        {
+            return;
+        }
+
+        if (search.Matches.Count == 0)
+        {
+            ShowHistorySearch();
+            return;
+        }
+
+        int next = Math.Min(search.Index + 1, search.Matches.Count - 1);
+        _historySearch = search with { Index = next };
+        ShowHistorySearch();
+    }
+
+    private void StepHistorySearch(int delta)
+    {
+        if (_historySearch is not { } search || search.Matches.Count == 0)
+        {
+            return;
+        }
+
+        int next = Math.Clamp(search.Index + delta, 0, search.Matches.Count - 1);
+        _historySearch = search with { Index = next };
+        ShowHistorySearch();
+    }
+
+    private void ShowHistorySearch()
+    {
+        if (_historySearch is not { } search)
+        {
+            return;
+        }
+
+        string position =
+            search.Matches.Count == 0 ? "no match" : $"{search.Index + 1}/{search.Matches.Count}";
+        string entry = search.Index >= 0 ? search.Matches[search.Index] : search.Draft;
+        CloseAutocomplete();
+        _input = new InputLineState(entry, entry.Length);
+        _live.SetInput(_input, _bashMode);
+        _live.SetNotice($"history: {search.Query} ({position}) — Enter accept, Esc cancel");
+    }
+
+    private void CloseHistorySearch(bool keepInput)
+    {
+        if (_historySearch is not { } search)
+        {
+            return;
+        }
+
+        _historySearch = null;
+        _live.SetNotice(null);
+        if (!keepInput)
+        {
+            _input = new InputLineState(search.Draft, search.Draft.Length);
+            _live.SetInput(_input, _bashMode);
+        }
+    }
+
+    private void ToggleStash()
+    {
+        if (_input.Text.Length > 0)
+        {
+            _stashedDraft = _input.Text;
+            SetInput(string.Empty);
+            _undo.Clear();
+            _live.SetNotice("draft stashed — Ctrl+S restores it");
+            return;
+        }
+
+        if (_stashedDraft is { } stash)
+        {
+            _stashedDraft = null;
+            SetInput(stash);
+            _live.SetNotice("draft restored");
+            return;
+        }
+
+        _live.SetNotice("no stashed draft");
+    }
+
     private void HandleCtrlC()
     {
         switch (_quitWindow.Press(_input.Text.Length == 0))
         {
-            case CtrlCAction.ClearInput:
+            case QuitAction.ClearInput:
                 SetInput(string.Empty);
                 _live.SetNotice(null);
                 break;
-            case CtrlCAction.Arm:
-            case CtrlCAction.ReArm:
-                Notify(CtrlCQuitWindow.Hint, NoticeLevel.Warning);
+            case QuitAction.Arm:
+            case QuitAction.ReArm:
+                Notify(QuitWindow.Hint, NoticeLevel.Warning);
                 break;
-            case CtrlCAction.Quit:
+            case QuitAction.Quit:
                 Quit();
+                break;
+            case QuitAction.Ignore:
                 break;
         }
     }
 
-    /// <summary>The one quit path: double Ctrl+C and <c>/quit</c> both end the session loop.</summary>
+    /// <summary>
+    /// Ctrl+D: quits on a second press within the window, but only from an empty prompt with nothing
+    /// running — quitting mid-turn would discard work with no recovery path.
+    /// </summary>
+    private void HandleCtrlD()
+    {
+        bool eligible = _input.Text.Length == 0 && !_turnActive && !_bashRunning && _composed;
+        switch (_exitWindow.PressWhen(eligible))
+        {
+            case QuitAction.Arm:
+            case QuitAction.ReArm:
+                Notify(QuitWindow.ExitHint, NoticeLevel.Warning);
+                break;
+            case QuitAction.Quit:
+                Quit();
+                break;
+            case QuitAction.Ignore:
+            case QuitAction.ClearInput:
+                break;
+        }
+    }
+
+    /// <summary>The one quit path: double Ctrl+C, double Ctrl+D and <c>/quit</c> all end the session loop.</summary>
     private void Quit()
     {
         _live.SetNotice(null);

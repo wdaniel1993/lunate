@@ -295,8 +295,6 @@ public sealed class FollowUpQueueSessionTests
         // Take the five entries back so the cancel has no queue to hand over to.
         host.Console.SendUp();
         await host.WaitUntilAsync(() => host.Session.QueuedFollowUpCount == 0);
-        host.Console.SendCtrlC();
-        await host.WaitUntilAsync(() => host.Session.Input.Text.Length == 0);
         host.Console.SendEscape();
         await host.WaitUntilAsync(() => !host.Session.IsRunning);
         host.Console.Complete();
