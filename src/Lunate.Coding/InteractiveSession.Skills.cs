@@ -41,7 +41,7 @@ internal sealed partial class InteractiveSession
             RecordSkillsSection(text);
         }
 
-        ComposeCompletionRegistry();
+        await ComposeCommandsAsync(ct).ConfigureAwait(false);
     }
 
     /// <summary>

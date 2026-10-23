@@ -935,7 +935,68 @@ static Lunate.Extensibility.Abstractions.ProcessRunRequest.operator !=(Lunate.Ex
 static Lunate.Extensibility.Abstractions.ProcessRunRequest.operator ==(Lunate.Extensibility.Abstractions.ProcessRunRequest? left, Lunate.Extensibility.Abstractions.ProcessRunRequest? right) -> bool
 static Lunate.Extensibility.Abstractions.ProcessRunResult.operator !=(Lunate.Extensibility.Abstractions.ProcessRunResult? left, Lunate.Extensibility.Abstractions.ProcessRunResult? right) -> bool
 static Lunate.Extensibility.Abstractions.ProcessRunResult.operator ==(Lunate.Extensibility.Abstractions.ProcessRunResult? left, Lunate.Extensibility.Abstractions.ProcessRunResult? right) -> bool
-const Lunate.Extensibility.Abstractions.ExtensionApi.Current = "1.10.0" -> string!
+const Lunate.Extensibility.Abstractions.ExtensionApi.Current = "1.11.0" -> string!
+Lunate.Extensibility.Abstractions.CommandKind
+Lunate.Extensibility.Abstractions.CommandKind.Builtin = 0 -> Lunate.Extensibility.Abstractions.CommandKind
+Lunate.Extensibility.Abstractions.CommandKind.Skill = 1 -> Lunate.Extensibility.Abstractions.CommandKind
+Lunate.Extensibility.Abstractions.CommandKind.Template = 2 -> Lunate.Extensibility.Abstractions.CommandKind
+Lunate.Extensibility.Abstractions.CommandKind.Extension = 3 -> Lunate.Extensibility.Abstractions.CommandKind
+Lunate.Extensibility.Abstractions.CommandDescriptor
+Lunate.Extensibility.Abstractions.CommandDescriptor.<Clone>$() -> Lunate.Extensibility.Abstractions.CommandDescriptor!
+Lunate.Extensibility.Abstractions.CommandDescriptor.CommandDescriptor(string! Name, string! Description, string? ArgumentHint, string! SourceId, Lunate.Extensibility.Abstractions.CommandKind Kind) -> void
+Lunate.Extensibility.Abstractions.CommandDescriptor.Deconstruct(out string! Name, out string! Description, out string? ArgumentHint, out string! SourceId, out Lunate.Extensibility.Abstractions.CommandKind Kind) -> void
+Lunate.Extensibility.Abstractions.CommandDescriptor.Description.get -> string!
+Lunate.Extensibility.Abstractions.CommandDescriptor.Description.init -> void
+Lunate.Extensibility.Abstractions.CommandDescriptor.ArgumentHint.get -> string?
+Lunate.Extensibility.Abstractions.CommandDescriptor.ArgumentHint.init -> void
+Lunate.Extensibility.Abstractions.CommandDescriptor.Equals(Lunate.Extensibility.Abstractions.CommandDescriptor? other) -> bool
+Lunate.Extensibility.Abstractions.CommandDescriptor.Kind.get -> Lunate.Extensibility.Abstractions.CommandKind
+Lunate.Extensibility.Abstractions.CommandDescriptor.Kind.init -> void
+Lunate.Extensibility.Abstractions.CommandDescriptor.Name.get -> string!
+Lunate.Extensibility.Abstractions.CommandDescriptor.Name.init -> void
+Lunate.Extensibility.Abstractions.CommandDescriptor.SourceId.get -> string!
+Lunate.Extensibility.Abstractions.CommandDescriptor.SourceId.init -> void
+override Lunate.Extensibility.Abstractions.CommandDescriptor.Equals(object? obj) -> bool
+override Lunate.Extensibility.Abstractions.CommandDescriptor.GetHashCode() -> int
+override Lunate.Extensibility.Abstractions.CommandDescriptor.ToString() -> string!
+static Lunate.Extensibility.Abstractions.CommandDescriptor.operator !=(Lunate.Extensibility.Abstractions.CommandDescriptor? left, Lunate.Extensibility.Abstractions.CommandDescriptor? right) -> bool
+static Lunate.Extensibility.Abstractions.CommandDescriptor.operator ==(Lunate.Extensibility.Abstractions.CommandDescriptor? left, Lunate.Extensibility.Abstractions.CommandDescriptor? right) -> bool
+Lunate.Extensibility.Abstractions.CommandInvocation
+Lunate.Extensibility.Abstractions.CommandInvocation.<Clone>$() -> Lunate.Extensibility.Abstractions.CommandInvocation!
+Lunate.Extensibility.Abstractions.CommandInvocation.Argument.get -> string!
+Lunate.Extensibility.Abstractions.CommandInvocation.Argument.init -> void
+Lunate.Extensibility.Abstractions.CommandInvocation.CommandInvocation(string! Name, string! Argument) -> void
+Lunate.Extensibility.Abstractions.CommandInvocation.Deconstruct(out string! Name, out string! Argument) -> void
+Lunate.Extensibility.Abstractions.CommandInvocation.Equals(Lunate.Extensibility.Abstractions.CommandInvocation? other) -> bool
+Lunate.Extensibility.Abstractions.CommandInvocation.Name.get -> string!
+Lunate.Extensibility.Abstractions.CommandInvocation.Name.init -> void
+override Lunate.Extensibility.Abstractions.CommandInvocation.Equals(object? obj) -> bool
+override Lunate.Extensibility.Abstractions.CommandInvocation.GetHashCode() -> int
+override Lunate.Extensibility.Abstractions.CommandInvocation.ToString() -> string!
+static Lunate.Extensibility.Abstractions.CommandInvocation.operator !=(Lunate.Extensibility.Abstractions.CommandInvocation? left, Lunate.Extensibility.Abstractions.CommandInvocation? right) -> bool
+static Lunate.Extensibility.Abstractions.CommandInvocation.operator ==(Lunate.Extensibility.Abstractions.CommandInvocation? left, Lunate.Extensibility.Abstractions.CommandInvocation? right) -> bool
+Lunate.Extensibility.Abstractions.CommandResult
+Lunate.Extensibility.Abstractions.CommandResult.<Clone>$() -> Lunate.Extensibility.Abstractions.CommandResult!
+Lunate.Extensibility.Abstractions.CommandResult.CommandResult(string? Message, bool IsError) -> void
+Lunate.Extensibility.Abstractions.CommandResult.Deconstruct(out string? Message, out bool IsError) -> void
+Lunate.Extensibility.Abstractions.CommandResult.Equals(Lunate.Extensibility.Abstractions.CommandResult? other) -> bool
+Lunate.Extensibility.Abstractions.CommandResult.IsError.get -> bool
+Lunate.Extensibility.Abstractions.CommandResult.IsError.init -> void
+Lunate.Extensibility.Abstractions.CommandResult.Message.get -> string?
+Lunate.Extensibility.Abstractions.CommandResult.Message.init -> void
+static Lunate.Extensibility.Abstractions.CommandResult.Error(string! message) -> Lunate.Extensibility.Abstractions.CommandResult!
+static Lunate.Extensibility.Abstractions.CommandResult.None.get -> Lunate.Extensibility.Abstractions.CommandResult!
+static Lunate.Extensibility.Abstractions.CommandResult.Notice(string! message) -> Lunate.Extensibility.Abstractions.CommandResult!
+override Lunate.Extensibility.Abstractions.CommandResult.Equals(object? obj) -> bool
+override Lunate.Extensibility.Abstractions.CommandResult.GetHashCode() -> int
+override Lunate.Extensibility.Abstractions.CommandResult.ToString() -> string!
+static Lunate.Extensibility.Abstractions.CommandResult.operator !=(Lunate.Extensibility.Abstractions.CommandResult? left, Lunate.Extensibility.Abstractions.CommandResult? right) -> bool
+static Lunate.Extensibility.Abstractions.CommandResult.operator ==(Lunate.Extensibility.Abstractions.CommandResult? left, Lunate.Extensibility.Abstractions.CommandResult? right) -> bool
+Lunate.Extensibility.Abstractions.ICommandSource
+Lunate.Extensibility.Abstractions.ICommandSource.DescribeAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<System.Collections.Generic.IReadOnlyList<Lunate.Extensibility.Abstractions.CommandDescriptor!>!>
+Lunate.Extensibility.Abstractions.ICommandSource.InvokeAsync(Lunate.Extensibility.Abstractions.CommandInvocation! invocation, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Lunate.Extensibility.Abstractions.CommandResult!>
+Lunate.Extensibility.Abstractions.ICommandSource.SourceId.get -> string!
+Lunate.Extensibility.Abstractions.IExtensionContext.RegisterCommandSource(Lunate.Extensibility.Abstractions.ICommandSource! source) -> void
 Lunate.Extensibility.Abstractions.ExtensionModelMiddleware
 Lunate.Extensibility.Abstractions.ExtensionModelMiddleware.<Clone>$() -> Lunate.Extensibility.Abstractions.ExtensionModelMiddleware!
 Lunate.Extensibility.Abstractions.ExtensionModelMiddleware.Deconstruct(out Lunate.Extensibility.Abstractions.ModelMiddlewareSlot Slot, out int Priority, out System.Func<Microsoft.Extensions.AI.IChatClient!, Microsoft.Extensions.AI.IChatClient!>! Wrap) -> void

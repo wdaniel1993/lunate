@@ -65,6 +65,7 @@ public sealed class ExtensionTestHost : IAsyncDisposable
                     ?? new ChatClientFactory(
                         Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance
                     ),
+                ReservedCommands = Commands.BuiltinNames,
             },
             options.HookRunnerOptions is { } hookOptions ? new HookRunner(hookOptions, Log) : null
         );

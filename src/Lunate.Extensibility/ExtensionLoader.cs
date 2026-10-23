@@ -22,6 +22,7 @@ public sealed partial class ExtensionLoader
     private readonly StatusWidgetRegistry _statusWidgets;
     private readonly McpServerRegistry _mcpServers;
     private readonly SkillSourceRegistry _skillSources;
+    private readonly CommandSourceRegistry _commandSources;
     private readonly ExtensionToolRegistry _tools = new();
     private readonly Dictionary<string, List<IDisposable>> _subscriptions = new(
         StringComparer.Ordinal
@@ -44,6 +45,7 @@ public sealed partial class ExtensionLoader
         _statusWidgets = new StatusWidgetRegistry(options.Log);
         _mcpServers = new McpServerRegistry(options.Log);
         _skillSources = new SkillSourceRegistry(options.Log);
+        _commandSources = new CommandSourceRegistry(options.Log);
         _modelRegistry = new ModelRegistry(options.ModelCatalog, options.ClientFactory);
     }
 
@@ -61,6 +63,9 @@ public sealed partial class ExtensionLoader
 
     /// <summary>The skill sources the loaded extensions registered.</summary>
     public SkillSourceRegistry SkillSources => _skillSources;
+
+    /// <summary>The command sources the loaded extensions registered, in registration order.</summary>
+    public CommandSourceRegistry CommandSources => _commandSources;
 
     /// <summary>The tools the loaded extensions registered, in registration order.</summary>
     public ExtensionToolRegistry Tools => _tools;
@@ -120,6 +125,8 @@ public sealed partial class ExtensionLoader
         _statusWidgets.Unregister(id);
         _mcpServers.Unregister(id);
         _skillSources.Unregister(id);
+        _commandSources.Unregister(id);
+        _declaredNotProvidedCommands.Remove(id);
         DropSubscriptions(id);
         if (_contexts.Remove(id, out ExtensionLoadContext? context))
         {

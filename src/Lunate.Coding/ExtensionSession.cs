@@ -69,8 +69,13 @@ internal sealed record ExtensionLoadResult(
     string? Message
 );
 
-/// <summary>The four contribution counts of one extension (the <c>/extensions</c> view's count row).</summary>
-internal readonly record struct ExtensionCounts(int Tools, int Commands, int Hooks, int Services);
+/// <summary>The four contribution counts of one extension plus the declared commands no source
+/// provided (the <c>/extensions</c> view's count row).</summary>
+internal readonly record struct ExtensionCounts(int Tools, int Commands, int Hooks, int Services)
+{
+    /// <summary>Manifest commands the extension declared but no source provided; not runnable.</summary>
+    public IReadOnlyList<string> DeclaredNotProvidedCommands { get; init; } = Array.Empty<string>();
+}
 
 /// <summary>
 /// The composed extension host of one session: it discovers the store at session start, loads each
@@ -130,6 +135,7 @@ internal sealed class ExtensionSession : IAsyncDisposable
                 Notify = seams.Notice,
                 ModelCatalog = seams.ModelCatalog,
                 ClientFactory = seams.ClientFactory,
+                ReservedCommands = Commands.BuiltinNames,
             }
         );
         // The session owns one bus, created before any extension loads so a subscriber
@@ -290,6 +296,19 @@ internal sealed class ExtensionSession : IAsyncDisposable
                 .OfType<ExtensionSkillSource>(),
         ];
 
+    /// <summary>The loaded extensions' registered command sources with their load-time
+    /// descriptors, in registration order (the session registry's extension slot).</summary>
+    internal IReadOnlyList<ICommandSource> CommandSources() =>
+        [
+            .. _loader
+                .CommandSources.List()
+                .Select(registered => new ExtensionCommandSource(
+                    registered.ExtensionId,
+                    registered.Source,
+                    registered.Descriptors
+                )),
+        ];
+
     /// <summary>The named service registry (core handles included).</summary>
     internal ServiceRegistry Services => _loader.Services;
 
@@ -356,8 +375,8 @@ internal sealed class ExtensionSession : IAsyncDisposable
 
     /// <summary>
     /// The registered contribution counts of one extension — the view's counts: tools from the
-    /// tool registry, hooks and services from their registries; registered commands are always 0
-    /// (no registration API exists, design D5).
+    /// tool registry, commands from its registered command sources, hooks and services from their
+    /// registries, plus the manifest commands no source provided.
     /// </summary>
     internal ExtensionCounts RegisteredCounts(string extensionId) =>
         new(
@@ -366,10 +385,18 @@ internal sealed class ExtensionSession : IAsyncDisposable
                 .Count(tool =>
                     string.Equals(tool.ExtensionId, extensionId, StringComparison.Ordinal)
                 ),
-            0,
+            _loader
+                .CommandSources.List()
+                .Where(registered =>
+                    string.Equals(registered.ExtensionId, extensionId, StringComparison.Ordinal)
+                )
+                .Sum(registered => registered.Descriptors.Count),
             _loader.Hooks.Count(extensionId),
             _loader.Services.Count(extensionId)
-        );
+        )
+        {
+            DeclaredNotProvidedCommands = _loader.DeclaredNotProvidedCommands(extensionId),
+        };
 
     /// <summary>
     /// The per-hook timing snapshot of one extension — the view's data: empty when the extension

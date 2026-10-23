@@ -19,156 +19,39 @@ internal sealed partial class InteractiveSession
     private const int CompactInstructionsLimit = 1000;
 
     /// <summary>
-    /// Dispatches a submitted slash command. Commands are frontend control: they never reach the
-    /// model and skip the input pipeline. While a turn runs, the state-changing commands refuse;
-    /// <c>/quit</c> always works.
+    /// Dispatches a submitted slash command through the composed registry. Commands are frontend
+    /// control: they never reach the model and skip the input pipeline. A source may act through
+    /// its own host callback (built-ins and skills) or return a message (extensions); an error
+    /// result is rendered as an error notice.
     /// </summary>
     private async Task DispatchCommandAsync(string text, CancellationToken ct)
     {
         (string name, string argument) = Commands.Parse(text);
-        if (name.StartsWith(Commands.SkillPrefix, StringComparison.Ordinal))
+        string bare = name.StartsWith('/') ? name[1..] : name;
+        CommandResult result = await _commands
+            .InvokeAsync(new CommandInvocation(bare, argument), ct)
+            .ConfigureAwait(false);
+        if (result.Message is { } message)
         {
-            await InvokeSkillAsync(name[Commands.SkillPrefix.Length..], argument, ct)
-                .ConfigureAwait(false);
-            return;
-        }
-
-        switch (name)
-        {
-            case "/quit":
-                Quit();
-                return;
-            case "/help":
-                ShowHelp();
-                return;
-            case "/compact":
-                if (RefusedWhileBusy())
-                {
-                    return;
-                }
-
-                if (argument.Length > CompactInstructionsLimit)
-                {
-                    Notify(
-                        FormattableString.Invariant(
-                            $"compact instructions are limited to {CompactInstructionsLimit:N0} characters"
-                        ),
-                        NoticeLevel.Warning
-                    );
-                    return;
-                }
-
-                bool compacted = await _harness!.CompactNowAsync(
-                    argument.Length == 0 ? null : argument,
-                    ct
-                );
-                Notify(compacted ? "context compacted" : "nothing to compact");
-                return;
-            case "/context":
-                Notify(ContextText());
-                return;
-            case "/name":
-                SetSessionName(argument);
-                return;
-            case "/session":
-                ShowSessionReport();
-                return;
-            case "/skills":
-                Notify(SkillsText());
-                return;
-            case "/mcp":
-                Notify(await McpStatusTextAsync(ct));
-                return;
-            case "/extensions":
-                if (argument.StartsWith("restart ", StringComparison.Ordinal))
-                {
-                    await RestartExtension(argument["restart ".Length..].Trim(), ct);
-                    return;
-                }
-
-                if (argument.Length > 0)
-                {
-                    Notify("usage: /extensions or /extensions restart <id>");
-                    return;
-                }
-
-                Notify(ExtensionsText());
-                return;
-            case "/trust":
-                HandleTrustCommand(argument);
-                return;
-            case "/model":
-                if (RefusedWhileBusy())
-                {
-                    return;
-                }
-
-                if (argument.Length > 0)
-                {
-                    await SwitchModel(argument, ct);
-                }
-                else
-                {
-                    OpenModelPicker();
-                }
-
-                return;
-            case "/favorite":
-                Favorite(argument);
-                return;
-            case "/unfavorite":
-                Unfavorite(argument);
-                return;
-            case "/login":
-                await LoginAsync(argument, ct);
-                return;
-            case "/logout":
-                Logout(argument);
-                return;
-            case "/new":
-                if (RefusedWhileBusy())
-                {
-                    return;
-                }
-
-                StartNewSession();
-                return;
-            case "/thinking":
-                if (argument.Length == 0)
-                {
-                    // Read-only: the bare form reports the level and the mapping even mid-turn.
-                    Notify(ThinkingText());
-                    return;
-                }
-
-                if (RefusedWhileBusy())
-                {
-                    return;
-                }
-
-                SetThinkingLevel(argument);
-                return;
-            case "/resume":
-                if (RefusedWhileBusy())
-                {
-                    return;
-                }
-
-                OpenSessionPicker();
-                return;
-            default:
-                Notify("unknown command: " + name);
-                return;
+            if (result.IsError)
+            {
+                Notify(message, NoticeLevel.Error);
+            }
+            else
+            {
+                Notify(message);
+            }
         }
     }
 
     /// <summary>
-    /// The <c>/help</c> listing: the registry's grouped commands printed as finished lines into
-    /// scrollback (a live-area notice is one clipped line and cannot hold a listing). The lines are
-    /// plain text, so they are markup-escaped on the way in. Read-only, so it is allowed while a
-    /// turn runs.
+    /// The <c>/help</c> listing: the registry's built-in entries grouped (session, model,
+    /// extensions, files, quit, design D3), printed as finished lines into scrollback (a live-area
+    /// notice is one clipped line and cannot hold a listing). The lines are plain text, so they are
+    /// markup-escaped on the way in. Read-only, so it is allowed while a turn runs.
     /// </summary>
-    private void ShowHelp() => WriteScrollbackLines([.. HelpView.Lines().Select(Markup.Escape)]);
+    private void ShowHelp() =>
+        WriteScrollbackLines([.. HelpView.Lines(_commands.Descriptors).Select(Markup.Escape)]);
 
     /// <summary>
     /// The <c>/context</c> notice: the context usage (the footer's own format), the resolved

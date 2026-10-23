@@ -1,89 +1,59 @@
-using Lunate.Extensibility;
+using Lunate.Extensibility.Abstractions;
 using Lunate.Tui;
 
 namespace Lunate.Coding;
 
 /// <summary>
-/// The session's one autocomplete registry (design D2): the built-in command table, the discovered
-/// skills (<c>/skill:&lt;name&gt;</c>) and the loaded extensions' manifest commands, in that natural
-/// order. Composed once per session from in-memory data — never a second hard-coded list — and
-/// never carrying files: those stay in the lazy <see cref="FileIndex"/> and are queried per
-/// <c>@</c> token.
+/// Maps the command registry's merged descriptors to the autocomplete rows: built-ins and
+/// templates read as command rows, skills keep their kind, extension commands carry their source
+/// id when they have no description, and the argument-bearing skill placeholder is not a row (the
+/// real <c>/skill:&lt;name&gt;</c> entries come from the skill source). The first text wins.
 /// </summary>
-internal sealed class CompletionRegistry
+internal static class CompletionRegistry
 {
-    private CompletionRegistry(IReadOnlyList<CompletionItem> items)
-    {
-        Items = items;
-    }
-
-    /// <summary>The rows in natural order: commands, skills, extensions.</summary>
-    public IReadOnlyList<CompletionItem> Items { get; }
-
-    /// <summary>Composes the registry; the first source to claim a text wins.</summary>
-    public static CompletionRegistry Compose(
-        IReadOnlyList<SkillDescriptor> skills,
-        IReadOnlyList<ExtensionDescriptor> extensions
+    /// <summary>Composes the rows in the registry's descriptor order.</summary>
+    public static IReadOnlyList<CompletionItem> Compose(
+        IReadOnlyList<CommandDescriptor> descriptors
     )
     {
-        ArgumentNullException.ThrowIfNull(skills);
-        ArgumentNullException.ThrowIfNull(extensions);
+        ArgumentNullException.ThrowIfNull(descriptors);
 
         List<CompletionItem> items = [];
         HashSet<string> seen = new(StringComparer.Ordinal);
-        void Add(CompletionItem item)
+        foreach (CommandDescriptor descriptor in descriptors)
         {
-            if (seen.Add(item.Text))
-            {
-                items.Add(item);
-            }
-        }
-
-        foreach (CommandDescriptor descriptor in Commands.Descriptors)
-        {
-            // The argument-bearing skill placeholder is a help-table entry, not a completion row:
-            // the real /skill:<name> entries come from the skill catalog below.
-            if (descriptor.Name == Commands.SkillName)
-            {
-                continue;
-            }
-
-            Add(
-                new CompletionItem(
+            // The placeholder is a /help entry, not a completion row.
+            if (
+                descriptor.Kind is CommandKind.Builtin
+                && string.Equals(
                     descriptor.Name,
-                    descriptor.Description,
-                    CompletionKind.Command,
-                    null
+                    Commands.SkillName.TrimStart('/'),
+                    StringComparison.Ordinal
                 )
-            );
-        }
-
-        foreach (SkillDescriptor skill in skills)
-        {
-            if (!skill.Valid || skill.Untrusted)
+            )
             {
                 continue;
             }
 
-            string? description = skill.Description.Length > 0 ? skill.Description : null;
-            Add(
-                new CompletionItem(
-                    Commands.SkillPrefix + skill.Name,
-                    description,
-                    CompletionKind.Skill,
-                    null
-                )
-            );
-        }
-
-        foreach (ExtensionDescriptor extension in extensions)
-        {
-            foreach (string command in extension.Manifest.Commands)
+            string text = "/" + descriptor.Name;
+            if (!seen.Add(text))
             {
-                Add(new CompletionItem(command, extension.Id, CompletionKind.Extension, null));
+                continue;
             }
+
+            CompletionKind kind = descriptor.Kind switch
+            {
+                CommandKind.Skill => CompletionKind.Skill,
+                CommandKind.Extension => CompletionKind.Extension,
+                _ => CompletionKind.Command,
+            };
+            string? description =
+                descriptor.Description.Length > 0 ? descriptor.Description
+                : descriptor.Kind is CommandKind.Extension ? descriptor.SourceId
+                : null;
+            items.Add(new CompletionItem(text, description, kind, null));
         }
 
-        return new CompletionRegistry(items);
+        return items;
     }
 }

@@ -57,6 +57,7 @@ public sealed partial class ExtensionLoader
             }
         );
         _remoteExtensions[descriptor.Id] = remote;
+        await CrossCheckManifestCommandsAsync(descriptor, cancellationToken).ConfigureAwait(false);
         var loaded = new LoadedExtension(descriptor.Id, remote, descriptor);
         _loaded[descriptor.Id] = loaded;
         if (startSession)

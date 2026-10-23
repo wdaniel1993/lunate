@@ -1,11 +1,12 @@
 using System.Text.RegularExpressions;
+using Lunate.Extensibility.Abstractions;
 
 namespace Lunate.Coding.Tests;
 
 /// <summary>
-/// The command registry's guard (design D3): the <c>/help</c> listing and the dispatch switch stay
-/// one set, so a command can never be dispatchable without a description — and never described
-/// without an action.
+/// The command registry's guards: the built-in table and its switch stay one set, sources merge in
+/// the pinned order, the first source owns a duplicate name, and a handler failure is a contained
+/// notice with a log entry rather than a crash.
 /// </summary>
 public sealed class CommandRegistryTests
 {
@@ -37,7 +38,7 @@ public sealed class CommandRegistryTests
     {
         foreach (string name in new[] { "/name", "/session" })
         {
-            CommandDescriptor descriptor = Assert.Single(
+            BuiltinCommandDescriptor descriptor = Assert.Single(
                 Commands.Descriptors,
                 candidate => candidate.Name == name
             );
@@ -51,7 +52,7 @@ public sealed class CommandRegistryTests
     {
         foreach (string name in new[] { "/login", "/logout", "/favorite", "/unfavorite" })
         {
-            CommandDescriptor descriptor = Assert.Single(
+            BuiltinCommandDescriptor descriptor = Assert.Single(
                 Commands.Descriptors,
                 candidate => candidate.Name == name
             );
@@ -60,14 +61,166 @@ public sealed class CommandRegistryTests
         }
     }
 
+    [Fact]
+    public async Task The_registry_orders_by_kind_then_source_then_descriptor()
+    {
+        CommandRegistry registry = await CommandRegistry.ComposeAsync(
+            [
+                new FakeSource(
+                    "extension",
+                    Descriptor("extension-only", CommandKind.Extension),
+                    Descriptor("same", CommandKind.Extension)
+                ),
+                new FakeSource("template", Descriptor("template-only", CommandKind.Template)),
+                new FakeSource(
+                    "skills",
+                    Descriptor("skill-only", CommandKind.Skill),
+                    Descriptor("same", CommandKind.Skill)
+                ),
+                new FakeSource(
+                    "builtin",
+                    Descriptor("same", CommandKind.Builtin),
+                    Descriptor("builtin-only", CommandKind.Builtin)
+                ),
+            ],
+            TestContext.Current.CancellationToken
+        );
+
+        Assert.Equal(
+            ["same", "builtin-only", "skill-only", "extension-only", "template-only"],
+            registry.Descriptors.Select(descriptor => descriptor.Name)
+        );
+        Assert.Equal(
+            CommandKind.Builtin,
+            registry.Descriptors.Single(descriptor => descriptor.Name == "same").Kind
+        );
+    }
+
+    [Fact]
+    public async Task The_first_source_after_ordering_owns_a_duplicate_name()
+    {
+        var first = new FakeSource("first", Descriptor("ping", CommandKind.Builtin))
+        {
+            Result = CommandResult.Notice("first"),
+        };
+        var second = new FakeSource("second", Descriptor("ping", CommandKind.Extension))
+        {
+            Result = CommandResult.Notice("second"),
+        };
+        CommandRegistry registry = await CommandRegistry.ComposeAsync(
+            [second, first],
+            TestContext.Current.CancellationToken
+        );
+
+        CommandResult result = await registry.InvokeAsync(
+            new CommandInvocation("ping", "hello"),
+            TestContext.Current.CancellationToken
+        );
+
+        Assert.Equal("first", result.Message);
+        Assert.Single(registry.Descriptors);
+    }
+
+    [Fact]
+    public async Task An_unknown_command_is_a_plain_notice()
+    {
+        CommandRegistry registry = CommandRegistry.Empty;
+
+        CommandResult result = await registry.InvokeAsync(
+            new CommandInvocation("nope", string.Empty),
+            TestContext.Current.CancellationToken
+        );
+
+        Assert.False(result.IsError);
+        Assert.Equal("unknown command: /nope", result.Message);
+    }
+
+    [Fact]
+    public async Task A_handler_exception_becomes_an_error_result_and_a_log_entry()
+    {
+        var log = new RecordingExtensionLog();
+        CommandRegistry registry = await CommandRegistry.ComposeAsync(
+            [new FakeSource("boom", Descriptor("explode", CommandKind.Extension)) { Throw = true }],
+            log,
+            TestContext.Current.CancellationToken
+        );
+
+        CommandResult result = await registry.InvokeAsync(
+            new CommandInvocation("explode", string.Empty),
+            TestContext.Current.CancellationToken
+        );
+
+        Assert.True(result.IsError);
+        Assert.Equal("command /explode failed: explosion", result.Message);
+        Assert.Contains(
+            log.Messages,
+            message =>
+                message.Contains("command '/explode'", StringComparison.Ordinal)
+                && message.Contains("source 'boom'", StringComparison.Ordinal)
+                && message.Contains("explosion", StringComparison.Ordinal)
+        );
+    }
+
+    [Fact]
+    public async Task A_source_that_fails_to_describe_is_skipped_and_logged()
+    {
+        var log = new RecordingExtensionLog();
+        CommandRegistry registry = await CommandRegistry.ComposeAsync(
+            [
+                new FakeSource("broken", Descriptor("gone", CommandKind.Extension))
+                {
+                    ThrowOnDescribe = true,
+                },
+                new FakeSource("ok", Descriptor("kept", CommandKind.Extension)),
+            ],
+            log,
+            TestContext.Current.CancellationToken
+        );
+
+        Assert.Equal(["kept"], registry.Descriptors.Select(descriptor => descriptor.Name));
+        Assert.Contains(
+            log.Messages,
+            message =>
+                message.Contains("source 'broken'", StringComparison.Ordinal)
+                && message.Contains("could not describe", StringComparison.Ordinal)
+        );
+    }
+
+    [Fact]
+    public async Task Cancellation_reaches_the_handler_and_propagates()
+    {
+        var source = new FakeSource("wait", Descriptor("wait", CommandKind.Extension))
+        {
+            Block = true,
+        };
+        CommandRegistry registry = await CommandRegistry.ComposeAsync(
+            [source],
+            TestContext.Current.CancellationToken
+        );
+        using var cancellation = new CancellationTokenSource();
+
+        Task<CommandResult> invocation = registry
+            .InvokeAsync(new CommandInvocation("wait", string.Empty), cancellation.Token)
+            .AsTask();
+        await source.Started.Task.WaitAsync(
+            TimeSpan.FromSeconds(10),
+            TestContext.Current.CancellationToken
+        );
+        await cancellation.CancelAsync();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => invocation);
+    }
+
+    private static CommandDescriptor Descriptor(string name, CommandKind kind) =>
+        new(name, "A command", null, kind.ToString().ToLowerInvariant(), kind);
+
     /// <summary>
-    /// The names the dispatch switch acts on, read from the source: the case labels of
-    /// <c>DispatchCommandAsync</c> plus the skill-invocation prefix branch (which is not a case
-    /// label). The dispatcher's control flow stays where it is; this is the only way a table entry
-    /// and a branch can be proven to be one set. The scan is deliberately narrow: it reads plain
-    /// lowercase <c>case "/name":</c> labels of that method only, so a future <c>case "/sub:cmd"</c>
-    /// or a command dispatched by another shape needs the pattern extended — with a descriptor it
-    /// fails this test, without one it would pass unnoticed.
+    /// The names the built-in switch acts on, read from the source: the case labels of
+    /// <c>BuiltinCommandSource.InvokeAsync</c> plus the skill-invocation prefix branch (which is not
+    /// a case label). The switch is the built-in source's implementation, not a second dispatcher;
+    /// this guard keeps its table and its branches one set. The scan reads plain lowercase
+    /// <c>case "/name":</c> labels only, so a future command with another shape needs the pattern
+    /// extended — with a descriptor it fails this test, without one it would pass unnoticed.
     /// </summary>
     private static IReadOnlyList<string> DispatchedNames()
     {
@@ -76,13 +229,13 @@ public sealed class CommandRegistryTests
                 TestPaths.RepositoryRoot,
                 "src",
                 "Lunate.Coding",
-                "InteractiveSession.Commands.cs"
+                "InteractiveSession.BuiltinCommands.cs"
             )
         );
-        int start = source.IndexOf("DispatchCommandAsync", StringComparison.Ordinal);
+        int start = source.IndexOf("BuiltinCommandSource", StringComparison.Ordinal);
         Assert.True(
             start >= 0,
-            "the dispatch entry point was not found in InteractiveSession.Commands.cs"
+            "the built-in source was not found in InteractiveSession.BuiltinCommands.cs"
         );
         string dispatch = source[start..];
 
@@ -98,5 +251,48 @@ public sealed class CommandRegistryTests
         }
 
         return names;
+    }
+
+    private sealed class FakeSource(string id, params CommandDescriptor[] descriptors)
+        : ICommandSource
+    {
+        public TaskCompletionSource Started { get; } =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public CommandResult Result { get; init; } = CommandResult.None;
+
+        public bool Throw { get; init; }
+
+        public bool ThrowOnDescribe { get; init; }
+
+        public bool Block { get; init; }
+
+        public string SourceId => id;
+
+        public ValueTask<IReadOnlyList<CommandDescriptor>> DescribeAsync(
+            CancellationToken cancellationToken
+        ) =>
+            ThrowOnDescribe
+                ? throw new InvalidOperationException("describe exploded")
+                : ValueTask.FromResult<IReadOnlyList<CommandDescriptor>>(descriptors);
+
+        public async ValueTask<CommandResult> InvokeAsync(
+            CommandInvocation invocation,
+            CancellationToken cancellationToken
+        )
+        {
+            Started.TrySetResult();
+            if (Throw)
+            {
+                throw new InvalidOperationException("explosion");
+            }
+
+            if (Block)
+            {
+                await Task.Delay(Timeout.Infinite, cancellationToken);
+            }
+
+            return Result;
+        }
     }
 }

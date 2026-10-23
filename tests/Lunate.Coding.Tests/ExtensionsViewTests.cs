@@ -104,6 +104,30 @@ public sealed class ExtensionsViewTests
     }
 
     [Fact]
+    public void A_declared_command_without_a_provider_reads_declared_not_provided()
+    {
+        IReadOnlyList<ExtensionDescriptor> descriptors =
+        [
+            Descriptor("ext-one", commands: ["ping", "ghost"]),
+        ];
+        IReadOnlyList<ExtensionLoadResult> results = [Loaded("ext-one")];
+
+        string segment = Assert.Single(
+            ExtensionsView.Segments(
+                descriptors,
+                results,
+                _ => new ExtensionCounts(0, 1, 0, 0) { DeclaredNotProvidedCommands = ["ghost"] }
+            )
+        );
+
+        Assert.Contains(
+            "commands 1 (2 declared, not provided: ghost)",
+            segment,
+            StringComparison.Ordinal
+        );
+    }
+
+    [Fact]
     public void A_denied_or_failed_segment_never_carries_a_mismatch_note()
     {
         IReadOnlyList<ExtensionDescriptor> descriptors =

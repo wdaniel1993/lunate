@@ -153,6 +153,47 @@ internal static class ToolFixture
     }
 }
 
+/// <summary>The CommandExtension fixture copied into this test project's output.</summary>
+internal static class CommandFixture
+{
+    internal static string SourceDirectory =>
+        Path.Combine(AppContext.BaseDirectory, "TestExtensions", "CommandExtension");
+
+    internal static string Install(
+        string storePath,
+        string id = "commands",
+        string commands = """["ping"]""",
+        string? settings = null
+    )
+    {
+        string directory = Path.Combine(storePath, "extensions", id);
+        Directory.CreateDirectory(directory);
+        File.Copy(
+            Path.Combine(SourceDirectory, "CommandExtension.dll"),
+            Path.Combine(directory, "CommandExtension.dll"),
+            overwrite: true
+        );
+        File.WriteAllText(
+            Path.Combine(directory, "extension.json"),
+            $$"""{"id":"{{id}}","version":"0.1.0","apiVersion":"^1.10.0","entryAssembly":"CommandExtension.dll","commands":{{commands}}}"""
+        );
+        if (settings is not null)
+        {
+            string settingsDirectory = Path.Combine(storePath, "extensions-settings");
+            Directory.CreateDirectory(settingsDirectory);
+            File.WriteAllText(Path.Combine(settingsDirectory, id + ".json"), settings);
+        }
+
+        return directory;
+    }
+
+    internal static string Echo(string name = "ping", string description = "Ping the extension") =>
+        $$"""{"commands":[{"name":"{{name}}","description":"{{description}}","argumentHint":"<text>"}]}""";
+
+    internal static string Throwing(string name) =>
+        $$"""{"commands":[{"name":"{{name}}","description":"Explode","behavior":"throw"}]}""";
+}
+
 /// <summary>A fixture whose load fails: the manifest points at a missing entry assembly.</summary>
 internal static class BrokenFixture
 {

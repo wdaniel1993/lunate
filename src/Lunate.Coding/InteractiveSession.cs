@@ -149,6 +149,7 @@ internal sealed partial class InteractiveSession : IDisposable
     private Session? _session;
     private bool _fileless;
     private SkillCatalog? _skills;
+    private CommandRegistry _commands = CommandRegistry.Empty;
     private string? _skillSection;
     private readonly SkillReadAllowance _skillAllowance = new();
     private string _sessionDirectory = string.Empty;

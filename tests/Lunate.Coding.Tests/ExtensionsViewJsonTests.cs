@@ -78,4 +78,31 @@ public sealed class ExtensionsViewJsonTests
         Assert.Equal(700, node.GetProperty("loadMs").GetInt64());
         Assert.True(node.GetProperty("slow").GetBoolean());
     }
+
+    [Fact]
+    public void Json_names_the_declared_commands_no_source_provided()
+    {
+        IReadOnlyList<ExtensionDescriptor> descriptors =
+        [
+            Descriptor("ext-one", commands: ["ping", "ghost"]),
+        ];
+        IReadOnlyList<ExtensionLoadResult> results = [Loaded("ext-one")];
+
+        using JsonDocument document = JsonDocument.Parse(
+            ExtensionsView.Json(
+                descriptors,
+                results,
+                _ => new ExtensionCounts(0, 1, 0, 0) { DeclaredNotProvidedCommands = ["ghost"] }
+            )
+        );
+
+        JsonElement node = document.RootElement[0];
+        Assert.Equal(1, node.GetProperty("commands").GetInt32());
+        Assert.Equal(
+            ["ghost"],
+            node.GetProperty("commandsDeclaredNotProvided")
+                .EnumerateArray()
+                .Select(value => value.GetString())
+        );
+    }
 }

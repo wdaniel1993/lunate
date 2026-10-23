@@ -85,6 +85,8 @@ public sealed partial class ExtensionLoader
             var extensionContext = CreateExtensionContext(descriptor, secrets);
             IExtension extension = factory.Create(extensionContext);
             CrossCheckManifestTools(descriptor);
+            await CrossCheckManifestCommandsAsync(descriptor, cancellationToken)
+                .ConfigureAwait(false);
             _modelRegistry.RegisterDeclared(
                 descriptor.Id,
                 descriptor.Manifest.ModelProviders,
@@ -118,6 +120,8 @@ public sealed partial class ExtensionLoader
             _statusWidgets.Unregister(descriptor.Id);
             _mcpServers.Unregister(descriptor.Id);
             _skillSources.Unregister(descriptor.Id);
+            _commandSources.Unregister(descriptor.Id);
+            _declaredNotProvidedCommands.Remove(descriptor.Id);
             DropSubscriptions(descriptor.Id);
             context.Unload();
             throw;
@@ -125,6 +129,8 @@ public sealed partial class ExtensionLoader
         catch (OperationCanceledException)
         {
             _tools.Unregister(descriptor.Id);
+            _commandSources.Unregister(descriptor.Id);
+            _declaredNotProvidedCommands.Remove(descriptor.Id);
             throw;
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
@@ -136,6 +142,8 @@ public sealed partial class ExtensionLoader
             _statusWidgets.Unregister(descriptor.Id);
             _mcpServers.Unregister(descriptor.Id);
             _skillSources.Unregister(descriptor.Id);
+            _commandSources.Unregister(descriptor.Id);
+            _declaredNotProvidedCommands.Remove(descriptor.Id);
             DropSubscriptions(descriptor.Id);
             context.Unload();
             throw WrapLoadFailure(descriptor, exception);
@@ -164,7 +172,8 @@ public sealed partial class ExtensionLoader
             _modelRegistry.RegisterProvider,
             _modelRegistry.RegisterModelMiddleware,
             _modelRegistry.RegisterVirtualModel,
-            _skillSources.Register
+            _skillSources.Register,
+            _commandSources.Register
         );
 
     private IBackgroundService? FindService(string name) =>
