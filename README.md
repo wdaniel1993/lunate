@@ -249,6 +249,10 @@ Environment variables override the file: `LUNATE_MODEL`, `LUNATE_APPROVAL`,
 `LUNATE_SUBAGENTS_TREE_TOKEN_BUDGET` and `LUNATE_EXTRA_TOOLS` (`grep,find,ls`). `yolo` is not a setting: it exists only as the per-run flag
 `lunate -p --yolo`.
 
+The welcome header names the running build: `lunate  v0.1.0+0c96dc6`. The seven characters after `+` are the commit
+it was built from, so two installs can be told apart without running `lunate --version`; a working-tree build
+with no commit metadata shows the plain version.
+
 **Recording and replay.** `LUNATE_RECORD=1` records a run's model stream to a session recording
 (`LUNATE_RECORD_PATH` names the file), `LUNATE_REPLAY=<file>` runs a session from that recording
 instead of calling a provider, and `LUNATE_DATE=yyyy-MM-dd` pins the date the system prompt is built

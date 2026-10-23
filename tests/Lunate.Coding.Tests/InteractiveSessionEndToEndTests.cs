@@ -324,9 +324,21 @@ public sealed class InteractiveSessionEndToEndTests
     private static string NormalizeWorkspace(InteractiveSessionHost host, string text)
     {
         string workspace = Workspace.Canonicalize(host.Temp.Root);
-        return text.Replace(workspace, "<workspace>", StringComparison.Ordinal)
-            .Replace(DisplayPath.For(workspace), "<workspace>", StringComparison.Ordinal);
+        return NormalizeBuild(
+            text.Replace(workspace, "<workspace>", StringComparison.Ordinal)
+                .Replace(DisplayPath.For(workspace), "<workspace>", StringComparison.Ordinal)
+        );
     }
+
+    // The header names the running build, and the build hash changes with every commit. The golden
+    // pins the shape, not a hash that would be stale the moment it is committed.
+    private static string NormalizeBuild(string text) =>
+        BuildToken.Replace(text, "v<version>+<build>");
+
+    private static readonly Regex BuildToken = new(
+        @"\bv\d+\.\d+\.\d+\+[0-9a-fA-F]{7}\b",
+        RegexOptions.Compiled
+    );
 
     private static void EnqueueScript(InteractiveSessionHost host)
     {
