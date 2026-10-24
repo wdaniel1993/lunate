@@ -60,13 +60,10 @@ public sealed partial class AgentHarness
 
             _images.ValidateReferences(ImageReferences(_history));
 
-            if (session.Entries.OfType<SessionCompactionEntry>().LastOrDefault() is not null)
+            if (session.ActiveCompaction is { } compaction)
             {
                 _summaryMessage = _history[0];
-                _replacedEntryIds =
-                [
-                    .. session.Entries.OfType<SessionCompactionEntry>().Last().Replaces,
-                ];
+                _replacedEntryIds = [.. compaction.Replaces];
             }
 
             _historyUtf8 = CompactionReducer.Utf8Length(_history);

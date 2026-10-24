@@ -56,6 +56,12 @@ internal static partial class SessionFormat
             case SessionNestedCallsEntry nestedCalls:
                 WriteNestedCalls(writer, nestedCalls);
                 break;
+            case SessionActiveLeafEntry activeLeaf:
+                WriteActiveLeaf(writer, activeLeaf);
+                break;
+            case SessionBranchSummaryEntry branchSummary:
+                WriteBranchSummary(writer, branchSummary);
+                break;
             case SessionExtensionEntry extension:
                 WriteExtension(writer, extension);
                 break;
@@ -83,6 +89,20 @@ internal static partial class SessionFormat
         if (header.Worktree is { } worktree)
         {
             writer.WriteString("worktree", worktree);
+        }
+
+        if (header.Origin is { } origin)
+        {
+            writer.WritePropertyName("origin");
+            writer.WriteStartObject();
+            writer.WriteString("sessionId", origin.SessionId);
+            writer.WriteString("entryId", origin.EntryId);
+            writer.WriteEndObject();
+        }
+
+        if (header.Branched)
+        {
+            writer.WriteBoolean("branched", true);
         }
 
         writer.WriteEndObject();
@@ -243,6 +263,38 @@ internal static partial class SessionFormat
         }
 
         writer.WriteEndArray();
+        writer.WriteEndObject();
+    }
+
+    private static void WriteActiveLeaf(Utf8JsonWriter writer, SessionActiveLeafEntry activeLeaf)
+    {
+        writer.WriteStartObject();
+        WriteEnvelope(
+            writer,
+            ActiveLeafType,
+            activeLeaf.Id,
+            activeLeaf.ParentId,
+            activeLeaf.Timestamp
+        );
+        writer.WriteString("leafId", activeLeaf.LeafId);
+        writer.WriteEndObject();
+    }
+
+    private static void WriteBranchSummary(
+        Utf8JsonWriter writer,
+        SessionBranchSummaryEntry branchSummary
+    )
+    {
+        writer.WriteStartObject();
+        WriteEnvelope(
+            writer,
+            BranchSummaryType,
+            branchSummary.Id,
+            branchSummary.ParentId,
+            branchSummary.Timestamp
+        );
+        writer.WriteString("fromLeafId", branchSummary.FromLeafId);
+        writer.WriteString("summary", branchSummary.Summary);
         writer.WriteEndObject();
     }
 
