@@ -42,9 +42,29 @@ internal sealed class ScriptedChild : IAsyncDisposable
 
     public bool Killed => Started && Current.Killed;
 
-    /// <summary>Builds the initialize answer; the default echoes the declared surface.</summary>
-    public Func<InitializeRequest, InitializeResult> Handshake { get; set; } =
-        request => new InitializeResult(request.ProtocolVersion, request.Hooks, request.Services);
+    /// <summary>
+    /// True advertises the <c>commands</c> capability in the default initialize answer; false
+    /// models a child that serves hooks and services only (a version-1 child, or a fork).
+    /// </summary>
+    public bool AdvertisesCommands { get; set; } = true;
+
+    /// <summary>
+    /// Builds the initialize answer. Unset, the answer echoes the declared surface and the
+    /// <see cref="AdvertisesCommands"/> flag — what a well-behaved child does.
+    /// </summary>
+    public Func<InitializeRequest, InitializeResult> Handshake
+    {
+        get => _handshake ?? DefaultHandshake;
+        set => _handshake = value;
+    }
+
+    private Func<InitializeRequest, InitializeResult>? _handshake;
+
+    private InitializeResult DefaultHandshake(InitializeRequest request) =>
+        new(request.ProtocolVersion, request.Hooks, request.Services)
+        {
+            Commands = AdvertisesCommands,
+        };
 
     /// <summary>
     /// Answers one hook request; the default returns null (as a child with no opinion may). A
