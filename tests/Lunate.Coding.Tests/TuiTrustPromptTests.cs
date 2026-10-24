@@ -63,6 +63,39 @@ public sealed class TuiTrustPromptTests
     }
 
     [Fact]
+    public async Task The_tui_prompt_asks_the_single_file_question_through_the_same_surface()
+    {
+        (string? title, IReadOnlyList<string>? details) = (null, null);
+        var prompt = new TuiExtensionTrustPrompt(
+            (askedTitle, askedDetails, _) =>
+            {
+                (title, details) = (askedTitle, askedDetails);
+                return ValueTask.FromResult(true);
+            }
+        );
+
+        bool approved = await prompt.ApproveSingleFileAsync(
+            new SingleFileTrustRequest
+            {
+                Path = "/work/.lunate/extensions/acme.cs",
+                Id = "acme-tools",
+                Version = "1.0.0",
+                Packages = ["Octokit@14.0.0"],
+                Generators = true,
+            },
+            TestContext.Current.CancellationToken
+        );
+
+        Assert.True(approved);
+        Assert.Contains("/work/.lunate/extensions/acme.cs", title, StringComparison.Ordinal);
+        Assert.Contains("acme-tools", title, StringComparison.Ordinal);
+        string joined = string.Join("\n", details!);
+        Assert.Contains("Octokit@14.0.0", joined, StringComparison.Ordinal);
+        Assert.Contains("and their dependencies", joined, StringComparison.Ordinal);
+        Assert.Contains("build-time code", joined, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Mcp_question_names_the_path_the_servers_their_commands_and_the_count()
     {
         (string? title, IReadOnlyList<string>? details) = (null, null);

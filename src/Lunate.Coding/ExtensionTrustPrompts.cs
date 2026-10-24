@@ -29,6 +29,26 @@ internal sealed class TuiExtensionTrustPrompt(TrustQuestion ask) : IExtensionTru
         string title = TrustFormat.ExtensionQuestion(request.Descriptor, request.FilesChanged);
         return ask(title, [], cancellationToken);
     }
+
+    /// <summary>
+    /// The single-file question through the same live-area prompt as a packaged extension: one
+    /// surface, one answer path. The wording comes from <see cref="SingleFileTrustQuestion"/>, so
+    /// the interactive prompt and its tests cannot drift apart.
+    /// </summary>
+    public ValueTask<bool> ApproveSingleFileAsync(
+        SingleFileTrustRequest request,
+        CancellationToken cancellationToken
+    )
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        cancellationToken.ThrowIfCancellationRequested();
+
+        return ask(
+            SingleFileTrustQuestion.Title(request),
+            SingleFileTrustQuestion.Details(request),
+            cancellationToken
+        );
+    }
 }
 
 /// <summary>
@@ -54,6 +74,23 @@ internal sealed class NonInteractiveTrustPrompt : IExtensionTrustPrompt
         cancellationToken.ThrowIfCancellationRequested();
         _log.Warn(
             $"project extension '{request.Descriptor.Id}' was not trusted; run an interactive session or 'lunate trust' to approve it."
+        );
+        return ValueTask.FromResult(false);
+    }
+
+    /// <summary>
+    /// A single-file extension is never approved without a terminal either: the message names the
+    /// file and the way to approve it, and the answer is no.
+    /// </summary>
+    public ValueTask<bool> ApproveSingleFileAsync(
+        SingleFileTrustRequest request,
+        CancellationToken cancellationToken
+    )
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        cancellationToken.ThrowIfCancellationRequested();
+        _log.Warn(
+            $"single-file extension '{request.Id}' at '{request.Path}' was not trusted; run an interactive session to approve it."
         );
         return ValueTask.FromResult(false);
     }

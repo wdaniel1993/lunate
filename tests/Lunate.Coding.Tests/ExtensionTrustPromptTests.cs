@@ -48,6 +48,30 @@ public sealed class ExtensionTrustPromptTests
         Assert.DoesNotContain("user privileges", inProcess, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task The_non_interactive_prompt_refuses_a_single_file_and_names_it()
+    {
+        var log = new RecordingExtensionLog();
+        var prompt = new NonInteractiveTrustPrompt(log);
+
+        bool approved = await prompt.ApproveSingleFileAsync(
+            new SingleFileTrustRequest
+            {
+                Path = "/work/.lunate/extensions/acme.cs",
+                Id = "acme-tools",
+                Version = "1.0.0",
+                Packages = ["Octokit@14.0.0"],
+            },
+            TestContext.Current.CancellationToken
+        );
+
+        Assert.False(approved);
+        Assert.Contains(
+            "single-file extension 'acme-tools' at '/work/.lunate/extensions/acme.cs' was not trusted; run an interactive session to approve it.",
+            log.Messages
+        );
+    }
+
     internal static ExtensionDescriptor Descriptor(string id, string directory, bool remote = false)
     {
         string runtime = remote
