@@ -9,24 +9,31 @@ Two things a terminal agent is expected to do and Lunate cannot:
 
 ## What changes
 
-- **`/copy` and `Ctrl+X`** copy the **last assistant answer** — the final answer of the most recent completed turn, not the whole transcript — to the system clipboard. The write goes through **OSC 52** first, which works over ssh and in Termux without any helper process, then falls back to the platform tool (`pbcopy` on macOS, `wl-copy`/`xclip` on Linux, `clip` on Windows) when the terminal does not acknowledge.
+- **`/copy` and `Ctrl+X`** copy the **last assistant answer** — the final answer of the most recent completed turn, not the whole transcript.
+  - **Over ssh** (`SSH_TTY` or `SSH_CONNECTION`): **OSC 52 only** — a local `pbcopy` there would write the wrong clipboard.
+  - **Locally**: the **platform tool first** (its exit code proves the write), OSC 52 as the fallback. Windows uses the **Win32 clipboard API via P/Invoke**, never `clip.exe`, which mangles non-ASCII; WSL uses `clip.exe` through interop or PowerShell `Set-Clipboard`.
+  - OSC 52 cannot confirm the write, so the notice says **"sent to the terminal clipboard (OSC 52)"**, never "copied". Under **tmux** (`TMUX` set) OSC 52 requires `set-clipboard on`, and the notice says so once. Terminals cap OSC 52 payloads; above the cap the notice says the copy **may be truncated**.
 - **`/export html|jsonl`** writes the session:
-  - `jsonl` copies the session file verbatim under a new name — the format is already the artifact.
-  - `html` writes one self-contained file with no external assets: messages, tool calls and their results, diffs, thinking blocks, and the model/turn boundaries. It opens from disk with no network.
+  - `jsonl` copies the session file **byte for byte**, minus the credential redaction below.
+  - `html` writes **one self-contained document** with no external assets, no JavaScript, and a CSP of `default-src 'none'; style-src 'unsafe-inline'; img-src data:` — safe to open even when a tool result contains hostile markup.
+  - Default destination is `~/.lunate/exports/<yyyy-MM-dd>-<session name or id>.<ext>`, **not the current directory**: an export inside a repo ends up committed. A path argument overrides it. The full path is always printed.
+- **Credential values Lunate knows are redacted automatically** in both formats — provider keys from the auth store and environment, extension secrets, MCP environment values — replaced with `[redacted:<name>]`. **Exact-value replacement only, no heuristic scanning.** A one-line notice after export says the file may contain file contents and command output and should be reviewed before sharing.
 
 Neither is a new session-format feature: both read what is already on disk.
 
 ## Devil's advocate
 
-- **OSC 52 is a terminal capability, not a guarantee.** Some terminals ignore it silently; some proxies strip it. That is why the platform tool is a fallback rather than the other way round: the fallback proves the copy happened, and `/copy` reports which path it used, so "nothing happened" never has to be guessed.
+- **OSC 52 is a terminal capability, not a guarantee.** Some terminals ignore it and some proxies strip it. That is why it is the only path over ssh — the alternative writes a clipboard the user cannot see — and why the wording changes from "copied" to "sent", so the user is never told something that was not verified.
 - **`Ctrl+X` collides with nothing in the current catalog, but it is not a universal reflex** either. `/copy` is the discoverable route and appears in help; the key is the shortcut for people who want one. Termux-safe by construction: it is a Ctrl chord, not an Alt one.
+- **Redaction by exact value is narrow by design.** A heuristic scan for "looks like a key" produces false negatives and false positives, and teaches users to trust a filter that cannot be trusted. What Lunate knows, it removes; what it does not know, the review notice covers.
 - **HTML is a second renderer, and every second renderer drifts.** The mitigation is that it renders from the same `SessionEntry` model the transcript does and lives in `Lunate.Coding`, not in `Lunate.Tui` — no terminal concepts, no ANSI, no width arithmetic. If it ever needs the TUI to render a block, that is a signal the block belongs in the model.
-- **Exporting a session exports secrets.** Tool results can contain tokens, and thinking blocks can contain anything the model was shown. `/export` therefore writes with the same permissions as the session file and says in its confirmation how many entries it wrote and where — never a silent file in the current directory.
-- **Rejected: `/share`.** Uploading to a third party is a product decision with a hosting story, not a rendering feature; it is not in this change.
+- **Exporting a session exports secrets.** Tool results can contain tokens, and thinking blocks can contain anything the model was shown. Redaction is automatic rather than opt-in, the file inherits the session's permissions, and the review notice is unconditional.
+- **Rejected: `/share`.** Uploading is a product decision with a hosting story, not a rendering feature.
+- **Rejected: DCS passthrough for tmux.** It is a pile of terminal-specific escaping for one multiplexer; the notice tells the user the one setting that makes OSC 52 work.
 
 ## Impact
 
-- `Lunate.Coding`: `/copy` command, clipboard writer (OSC 52 + platform fallbacks), `/export` command, HTML writer.
+- `Lunate.Coding`: `/copy` command, clipboard writer (OSC 52 + platform tools + Win32 P/Invoke), `/export` command, HTML writer, credential redactor.
 - `Lunate.Tui`: one catalog row for `Ctrl+X`; no renderer changes.
-- Specs: `tui` gains both commands and the binding; no new capability, because both are surface over an existing session.
+- Specs: `tui` gains both commands and the binding; a new `export` capability carries the HTML contract, the redaction rule and the CSP.
 - No package, no public API, no session-format change.
