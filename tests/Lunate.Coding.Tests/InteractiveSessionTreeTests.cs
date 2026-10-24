@@ -20,9 +20,7 @@ public sealed class InteractiveSessionTreeTests
         await host.WaitUntilAsync(() => host.Session.IsComposed);
         await TurnAsync(host, "hello", "hi");
 
-        host.Console.SendText("/tree");
-        host.Console.SendEnter();
-        await host.WaitUntilAsync(() => host.Console.InAlternateScreen);
+        await OpenTreeAsync(host);
 
         Assert.Contains("hello", host.Frames, StringComparison.Ordinal);
         Assert.Contains("j/k move", host.Frames, StringComparison.Ordinal);
@@ -47,9 +45,7 @@ public sealed class InteractiveSessionTreeTests
         await host.WaitUntilAsync(() => host.Session.IsComposed);
         await TurnAsync(host, "hello", "hi");
 
-        host.Console.SendText("/tree");
-        host.Console.SendEnter();
-        await host.WaitUntilAsync(() => host.Console.InAlternateScreen);
+        await OpenTreeAsync(host);
 
         host.Console.SendEscape();
         await host.WaitUntilAsync(() => !host.Console.InAlternateScreen);
@@ -534,7 +530,18 @@ public sealed class InteractiveSessionTreeTests
     {
         host.Console.SendText("/tree");
         host.Console.SendEnter();
-        await host.WaitUntilAsync(() => host.Console.InAlternateScreen);
+        // The alternate screen is entered before the first tree frame is painted: wait for the
+        // footer hint, which only exists once the viewer has rendered, so a slower runner cannot
+        // hand the test the frame that came before the rows.
+        await host.WaitUntilAsync(
+            () =>
+            {
+                host.Advance(33);
+                return host.Console.InAlternateScreen
+                    && host.Frames.Contains("j/k move", StringComparison.Ordinal);
+            },
+            TimeSpan.FromSeconds(10)
+        );
     }
 
     /// <summary>
