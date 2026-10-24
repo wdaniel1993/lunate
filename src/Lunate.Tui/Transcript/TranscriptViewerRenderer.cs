@@ -62,13 +62,36 @@ public sealed class TranscriptViewerRenderer
         TranscriptModel transcript,
         ConsoleSize size,
         int scrolledLines
+    ) => Lines(transcript, size, scrolledLines, options: null);
+
+    /// <summary>
+    /// <see cref="Lines(TranscriptModel,ConsoleSize,int)"/> with the pick mode's surface: the
+    /// selected entry is marked, and the footer shows the caller's hint and position instead of the
+    /// viewer's keys. The same document, wrapping and rendering; only the marking differs.
+    /// </summary>
+    internal IReadOnlyList<StyledLine> Lines(
+        TranscriptModel transcript,
+        ConsoleSize size,
+        int scrolledLines,
+        TranscriptViewOptions? options
     )
     {
         ArgumentNullException.ThrowIfNull(transcript);
         int columns = Math.Max(1, size.Columns);
         int rows = Math.Max(1, size.Rows);
         int contentHeight = Math.Max(0, rows - FooterLines);
-        List<StyledLine> document = Document(transcript, columns);
+        List<int> tops = [];
+        List<StyledLine> document = Document(transcript, columns, tops);
+        if (
+            options?.SelectedEntry is { } selected
+            && selected >= 0
+            && selected < tops.Count
+            && tops[selected] < document.Count
+        )
+        {
+            document[tops[selected]] = Marked(document[tops[selected]], columns);
+        }
+
         int maxTop = Math.Max(0, document.Count - contentHeight);
         int top = maxTop - Math.Clamp(scrolledLines, 0, maxTop);
 
@@ -79,8 +102,20 @@ public sealed class TranscriptViewerRenderer
             frame.Add(at < document.Count ? document[at] : new StyledLine());
         }
 
-        frame.Add(Footer(columns, top, maxTop));
+        frame.Add(Footer(columns, top, maxTop, options));
         return frame;
+    }
+
+    /// <summary>
+    /// The document line each entry starts on, in entry order: the pick mode scrolls the selected
+    /// entry into view with it. Same document as <see cref="Lines(TranscriptModel,ConsoleSize,int)"/>.
+    /// </summary>
+    internal IReadOnlyList<int> EntryTops(TranscriptModel transcript, ConsoleSize size)
+    {
+        ArgumentNullException.ThrowIfNull(transcript);
+        List<int> tops = [];
+        _ = Document(transcript, Math.Max(1, size.Columns), tops);
+        return tops;
     }
 
     /// <summary>
@@ -96,7 +131,11 @@ public sealed class TranscriptViewerRenderer
     }
 
     /// <summary>The whole transcript as one document: each entry's lines, a blank between entries.</summary>
-    private List<StyledLine> Document(TranscriptModel transcript, int columns)
+    private List<StyledLine> Document(
+        TranscriptModel transcript,
+        int columns,
+        List<int>? entryTops = null
+    )
     {
         var document = new List<StyledLine>();
         var first = true;
@@ -108,6 +147,7 @@ public sealed class TranscriptViewerRenderer
             }
 
             first = false;
+            entryTops?.Add(document.Count);
             document.AddRange(StyledText.Wrap(EntryLines(entry, columns), columns));
         }
 
@@ -140,28 +180,55 @@ public sealed class TranscriptViewerRenderer
     }
 
     /// <summary>Keys left, position right, dim; clipped so the line never passes the width.</summary>
-    private StyledLine Footer(int columns, int top, int maxTop)
+    private StyledLine Footer(
+        int columns,
+        int top,
+        int maxTop,
+        TranscriptViewOptions? options = null
+    )
     {
-        string keys = _capabilities.Unicode ? UnicodeKeys : AsciiKeys;
-        string percent = string.Create(CultureInfo.InvariantCulture, $"{Percent(top, maxTop)}%");
-        string visibleKeys = CellText.Clip(keys, columns - CellText.Width(percent) - 1);
+        string keys = options?.Hint ?? (_capabilities.Unicode ? UnicodeKeys : AsciiKeys);
+        string position = options is null
+            ? string.Create(CultureInfo.InvariantCulture, $"{Percent(top, maxTop)}%")
+            : string.Create(CultureInfo.InvariantCulture, $"{options.Position} of {options.Count}");
+        string visibleKeys = CellText.Clip(keys, columns - CellText.Width(position) - 1);
 
         var line = new StyledLine();
         line.Add(visibleKeys, SpanStyle.Dim);
-        int padding = columns - CellText.Width(visibleKeys) - CellText.Width(percent);
+        int padding = columns - CellText.Width(visibleKeys) - CellText.Width(position);
         if (padding > 0)
         {
             line.Add(new string(' ', padding), SpanStyle.Plain);
         }
 
-        string visiblePercent = CellText.Clip(percent, columns - CellText.Width(visibleKeys));
-        if (visiblePercent.Length > 0)
+        string visiblePosition = CellText.Clip(position, columns - CellText.Width(visibleKeys));
+        if (visiblePosition.Length > 0)
         {
-            line.Add(visiblePercent, SpanStyle.Dim);
+            line.Add(visiblePosition, SpanStyle.Dim);
         }
 
         return line;
     }
 
+    /// <summary>The selected entry's first line with its marker: the one visual difference of pick mode.</summary>
+    private StyledLine Marked(StyledLine line, int columns)
+    {
+        var marked = new StyledLine();
+        marked.Add(_capabilities.Unicode ? "\u25b8 " : "> ", SpanStyle.Key);
+        marked.Append(line);
+        return marked.Clip(columns);
+    }
+
     private static int Percent(int top, int maxTop) => maxTop == 0 ? 100 : top * 100 / maxTop;
 }
+
+/// <summary>
+/// The pick mode's view options: which entry carries the selection marker, the one-based position
+/// for the footer and the hint that replaces the viewer's key line.
+/// </summary>
+internal sealed record TranscriptViewOptions(
+    int? SelectedEntry = null,
+    int Position = 0,
+    int Count = 0,
+    string? Hint = null
+);
