@@ -53,6 +53,9 @@ public sealed class NodeRemoteExtensionTests
             }
         );
         await host.StartAsync(Ct);
+        // The child process spawns and initializes here, not inside the first hook's budget: on a
+        // loaded Windows runner that cold start spent the whole handler timeout.
+        Assert.True(await host.WarmUpAsync(cancellationToken: Ct));
 
         // The hook is delivered: the script consumes the host's core/workspace service and blocks
         // the probe call with a reason naming the workspace it read through that service.
