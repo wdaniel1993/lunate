@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://lunate.dev/schemas/remote-extension-wire.json",
-  "title": "Lunate remote extension wire (protocol version 1)",
-  "description": "JSON-RPC 2.0 over newline-delimited UTF-8 JSON on stdio. Stdout is protocol-only; a non-JSON line or a line over 16 MB is a protocol error. Interceptor hooks are requests, observer hooks are notifications, service-call is a request, and $/cancelRequest carries { id }.",
+  "title": "Lunate remote extension wire (protocol version 2)",
+  "description": "JSON-RPC 2.0 over newline-delimited UTF-8 JSON on stdio. Stdout is protocol-only; a non-JSON line or a line over 16 MB is a protocol error. Interceptor hooks are requests, observer hooks are notifications, service-call and command/invoke are requests, and $/cancelRequest carries { id }.",
   "type": "object",
   "properties": {
     "initialize.request": {
@@ -48,6 +48,12 @@
     },
     "service-call": {
       "$ref": "#/$defs/ServiceCallEnvelope"
+    },
+    "command.invoke": {
+      "$ref": "#/$defs/CommandInvokeRequest"
+    },
+    "command.result": {
+      "$ref": "#/$defs/CommandInvokeResult"
     },
     "cancel": {
       "type": "object",
@@ -972,6 +978,61 @@
         "method"
       ]
     },
+    "CommandInvokeRequest": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "argument": {
+          "type": "string"
+        },
+        "requestId": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "name",
+        "argument",
+        "requestId"
+      ]
+    },
+    "CommandInvokeResult": {
+      "type": "object",
+      "properties": {
+        "output": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "error": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "disposition": {
+          "type": "string",
+          "enum": [
+            "completed",
+            "cancelled",
+            "failed"
+          ]
+        }
+      },
+      "required": [
+        "disposition"
+      ]
+    },
+    "CommandInvokeDisposition": {
+      "type": "string",
+      "enum": [
+        "completed",
+        "cancelled",
+        "failed"
+      ]
+    },
     "WorkspaceInfo": {
       "type": "object",
       "properties": {
@@ -1072,12 +1133,16 @@
           "items": {
             "type": "string"
           }
+        },
+        "commands": {
+          "type": "boolean"
         }
       },
       "required": [
         "protocolVersion",
         "hooks",
-        "services"
+        "services",
+        "commands"
       ]
     }
   }

@@ -27,6 +27,7 @@ public sealed partial class RemoteExtension : IExtension, IAsyncDisposable
     private long _pendingPreparationTicks;
     private long _lastStartTicks;
     private int _automaticRestarts;
+    private bool _commandsAvailable;
     private bool _shuttingDown;
     private bool _disposed;
 
@@ -83,6 +84,13 @@ public sealed partial class RemoteExtension : IExtension, IAsyncDisposable
     /// </summary>
     public TimeSpan CallTimeout =>
         _options.Manifest.Runtime!.CallTimeout ?? _options.DefaultCallTimeout;
+
+    /// <summary>
+    /// True when the child's <c>initialize</c> answer advertised the <c>commands</c> capability:
+    /// only then can it serve <c>command/invoke</c>. False before the handshake and for a child
+    /// that serves hooks and services only — its declared commands then stay declarations.
+    /// </summary>
+    public bool CommandsAvailable => _commandsAvailable;
 
     /// <summary>
     /// Starts the child and performs the handshake when not already ready; lazy first use, the
@@ -404,15 +412,22 @@ public sealed partial class RemoteExtension : IExtension, IAsyncDisposable
             throw Refuse($"the initialize result was malformed: {exception.Message}");
         }
 
-        if (answer.ProtocolVersion != RemoteProtocol.Version)
+        if (
+            answer.ProtocolVersion < RemoteProtocol.MinimumVersion
+            || answer.ProtocolVersion > RemoteProtocol.Version
+        )
         {
             throw Refuse(
                 string.Create(
                     CultureInfo.InvariantCulture,
-                    $"it speaks protocol {answer.ProtocolVersion} but this host speaks {RemoteProtocol.Version}"
+                    $"it speaks protocol {answer.ProtocolVersion} but this host reads {RemoteProtocol.MinimumVersion} to {RemoteProtocol.Version}"
                 )
             );
         }
+
+        // The capability, not the version, decides the command listing: a version-2 child may
+        // still serve hooks and services only, and its declared commands then stay declarations.
+        _commandsAvailable = answer.Commands;
 
         HashSet<string> declaredHooks = [.. declared.Select(contract => contract.Name)];
         foreach (string implemented in answer.Hooks)

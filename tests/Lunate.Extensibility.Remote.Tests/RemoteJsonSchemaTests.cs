@@ -43,6 +43,15 @@ public sealed class RemoteJsonSchemaTests
         Assert.NotNull(definitions["ServiceCallEnvelope"]);
         Assert.NotNull(definitions["InitializeRequest"]);
         Assert.NotNull(definitions["InitializeResult"]);
+        // The command-invocation wire (protocol version 2) is published with the same generator.
+        Assert.NotNull(definitions["CommandInvokeRequest"]);
+        Assert.NotNull(definitions["CommandInvokeResult"]);
+        Assert.Equal(
+            ["completed", "cancelled", "failed"],
+            definitions["CommandInvokeDisposition"]!["enum"]!
+                .AsArray()
+                .Select(value => value!.GetValue<string>())
+        );
     }
 
     [Fact]
