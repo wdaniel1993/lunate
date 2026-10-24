@@ -78,16 +78,22 @@ internal static class ExtensionsCommand
             .ConfigureAwait(false);
         IReadOnlyList<ExtensionDescriptor> descriptors = host.Descriptors;
         IReadOnlyList<ExtensionLoadResult> results = host.LoadResults;
+        IReadOnlyList<SingleFileExtension> singleFile = host.SingleFileExtensions;
         try
         {
             if (json)
             {
                 output.Write(
-                    ExtensionsView.Json(descriptors, results, id => host.RegisteredCounts(id))
+                    ExtensionsView.Json(
+                        descriptors,
+                        results,
+                        id => host.RegisteredCounts(id),
+                        singleFile: singleFile
+                    )
                 );
                 output.Write('\n');
             }
-            else if (descriptors.Count == 0)
+            else if (descriptors.Count == 0 && singleFile.Count == 0)
             {
                 output.WriteLine(ExtensionsView.NoneText);
             }
@@ -98,7 +104,8 @@ internal static class ExtensionsCommand
                         descriptors,
                         results,
                         id => host.RegisteredCounts(id),
-                        cliMeasured: true
+                        cliMeasured: true,
+                        singleFile: singleFile
                     )
                 )
                 {

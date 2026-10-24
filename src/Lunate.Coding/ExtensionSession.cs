@@ -370,6 +370,13 @@ internal sealed class ExtensionSession : IAsyncDisposable
     /// <summary>Every discovered descriptor, loaded or not.</summary>
     internal IReadOnlyList<ExtensionDescriptor> Descriptors => _loader.Descriptors;
 
+    /// <summary>
+    /// Every discovered single-file candidate, global before project; a refused file is listed
+    /// with its reason rather than dropped (the <c>/extensions</c> view's data).
+    /// </summary>
+    internal IReadOnlyList<SingleFileExtension> SingleFileExtensions =>
+        _loader.SingleFileExtensions;
+
     /// <summary>The discovery and load failures this session continued past.</summary>
     internal IReadOnlyList<ExtensionSessionError> Errors { get; }
 

@@ -350,7 +350,8 @@ internal sealed partial class InteractiveSession
                 host.LoadResults,
                 id => host.RegisteredCounts(id, _commands.Shadowed),
                 hookTimings: host.HookTimings,
-                remoteStart: host.RemoteStartDuration
+                remoteStart: host.RemoteStartDuration,
+                singleFile: host.SingleFileExtensions
             ),
         ];
         foreach ((string id, RemoteExtensionStatus status) in host.FailedRemoteStatuses())

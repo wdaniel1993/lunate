@@ -6,12 +6,25 @@ using System.Text.Json.Nodes;
 
 namespace Lunate.Extensibility;
 
+/// <summary>
+/// What the store knows about one single-file extension's trust: never decided, decided for exactly
+/// this digest, decided for an earlier digest (stale), or recorded in a shape that cannot be read.
+/// </summary>
+public enum SingleFileExtensionTrust
+{
+    Untrusted,
+    Trusted,
+    Stale,
+    Unreadable,
+}
+
 public sealed class ExtensionTrustStore
 {
     private const string RepositoriesSection = "repositories";
     private const string McpConfigSection = "mcpConfig";
     private const string McpServerSection = "mcpServers";
     private const string SkillsSection = "skills";
+    private const string SingleFileSection = "singleFile";
     private const string WorktreesKey = "worktrees";
     private const string FilesKey = "files";
 
@@ -230,6 +243,51 @@ public sealed class ExtensionTrustStore
         JsonObject definitions = repository["definitions"] as JsonObject ?? new JsonObject();
         repository["definitions"] = definitions;
         definitions[definitionHash] = worktreePath;
+
+        WriteAtomically(document);
+    }
+
+    /// <summary>
+    /// The single-file trust record: one entry per file path, whose value is the first-trust digest
+    /// the user approved (<c>singleFile: { "&lt;path&gt;": "&lt;digest&gt;" }</c>) — the same
+    /// section → key → hash shape as the extension sections, and a distinct section so a file's
+    /// decision is never inherited from another file, another path or a packaged extension. A
+    /// missing entry is a decision nobody has made; a value that is not a string is a record this
+    /// version cannot read, which is reported rather than guessed at.
+    /// </summary>
+    public SingleFileExtensionTrust EvaluateSingleFileTrust(string path, string digest)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        ArgumentException.ThrowIfNullOrWhiteSpace(digest);
+
+        JsonObject document = ReadDocument();
+        if (document[SingleFileSection] is not JsonObject files)
+        {
+            return SingleFileExtensionTrust.Untrusted;
+        }
+
+        if (!files.TryGetPropertyValue(path, out JsonNode? recorded))
+        {
+            return SingleFileExtensionTrust.Untrusted;
+        }
+
+        return recorded is JsonValue value && value.TryGetValue<string>(out string? recordedDigest)
+            ? string.Equals(recordedDigest, digest, StringComparison.Ordinal)
+                ? SingleFileExtensionTrust.Trusted
+                : SingleFileExtensionTrust.Stale
+            : SingleFileExtensionTrust.Unreadable;
+    }
+
+    /// <summary>Records one file's approved first-trust digest, keyed by its full path.</summary>
+    public void RecordSingleFileTrust(string path, string digest)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        ArgumentException.ThrowIfNullOrWhiteSpace(digest);
+
+        JsonObject document = ReadDocument();
+        JsonObject files = document[SingleFileSection] as JsonObject ?? new JsonObject();
+        document[SingleFileSection] = files;
+        files[path] = digest;
 
         WriteAtomically(document);
     }
