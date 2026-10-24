@@ -67,6 +67,12 @@ internal sealed record InteractiveSessionOptions
     /// <summary>The clipboard source behind <c>@clipboard</c>; null uses the platform helper chain.</summary>
     public IClipboardImageSource? Clipboard { get; init; }
 
+    /// <summary>The text clipboard behind <c>/copy</c>; null composes the platform transport.</summary>
+    public ITextClipboard? TextClipboard { get; init; }
+
+    /// <summary>The wall clock the export file name reads; null uses the local time.</summary>
+    public Func<DateTimeOffset>? Clock { get; init; }
+
     /// <summary>Where composition errors are reported; null uses stderr.</summary>
     public TextWriter? Diagnostics { get; init; }
 
@@ -223,6 +229,13 @@ internal sealed partial class InteractiveSession : IDisposable
     private bool _composed;
     private bool _promptEchoed;
     private bool _turnWroteOutput;
+
+    /// <summary>
+    /// Whether the most recent turn ended with an answer (stop or length) rather than an error or
+    /// a cancellation. <c>/copy</c> reads it to skip a failed tail; a turn in flight is not a
+    /// completed answer either.
+    /// </summary>
+    private bool _lastTurnCompleted;
     private bool _headerCountsPending;
     private ToolResultRendererRegistry? _toolResultRenderers;
     private StatusWidgetRegistry? _statusWidgets;
@@ -1044,6 +1057,9 @@ internal sealed partial class InteractiveSession : IDisposable
             case RoutedKey.TranscriptViewer:
                 OpenViewer();
                 break;
+            case RoutedKey.Copy:
+                await CopyLastAnswerAsync(ct);
+                break;
             case RoutedKey.Stash:
                 ToggleStash();
                 break;
@@ -1274,6 +1290,8 @@ internal sealed partial class InteractiveSession : IDisposable
         _turnUsage.Clear();
         _turnCost = null;
         _turnActive = true;
+        // A turn in flight has no answer yet: /copy must not treat its streamed text as one.
+        _lastTurnCompleted = false;
         if (hadCost)
         {
             UpdateStatus();

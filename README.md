@@ -102,7 +102,7 @@ half-broken.
 
 **3. Learn three keys.** `/help` lists the commands, `/model` picks a model or switches to one by
 id, and `/quit` leaves. The rest of the built-ins: `/new`, `/resume`, `/compact`, `/context`,
-`/mcp`, `/extensions`, `/skills`, `/skill:<name>` and `/trust`.
+`/copy`, `/export`, `/mcp`, `/extensions`, `/skills`, `/skill:<name>` and `/trust`.
 
 If nothing resolves a model or a key, the first run prints exactly one fix, for example
 `set 'model' in ~/.lunate/settings.json` or `add the 'anthropic' key to ~/.lunate/auth.json`.
@@ -204,6 +204,24 @@ reasoning on: it streams live in the live area in its own colour and collapses t
 `✦ thought for Ns` line when the model is done. `thinkingFull` commits the full text instead.
 
 ![Reasoning streaming and collapsing to a thought line](docs/media/features/thinking.gif)
+
+### Take the answer with you
+
+`/copy` (or `Ctrl+X`) puts the last answer on the clipboard without selecting a wrapped line by
+hand, and it works where the session runs: over ssh it writes the OSC 52 sequence — a local
+`pbcopy` there would fill a clipboard you cannot see — and locally it runs the platform tool first,
+falling back to the same sequence. The notice says only what happened:
+`copied 1,842 characters via pbcopy` when a tool proved the write,
+`sent 1,842 characters to the terminal clipboard (OSC 52)` when it did not, with tmux's
+`set-clipboard on` requirement and the terminal's 100 KB payload limit named in the same line.
+
+`/export html` writes one self-contained document — inline CSS, no JavaScript, a
+`default-src 'none'` CSP, thinking collapsed in `<details>` — that is safe to open even when a tool
+result carried hostile markup. `/export jsonl` writes the session file byte for byte. Both default
+to `~/.lunate/exports/<date>-<name>.<ext>` (never the current directory, where an export would be
+committed), refuse an existing file without `--force`, redact every credential Lunate knows as
+`[redacted:<name>]`, and print the absolute path plus a reminder that the file may contain file
+contents and command output. [`docs/spec/export.md`](docs/spec/export.md) owns the full contract.
 
 ## Configuration
 

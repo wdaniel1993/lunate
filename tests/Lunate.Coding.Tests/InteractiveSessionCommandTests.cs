@@ -101,6 +101,8 @@ public sealed class InteractiveSessionCommandTests
               /clone    — copy the whole session into a new session file
               /compact  — compact the conversation now, optionally focusing on <text>
               /context  — show the context window and subagent budgets
+              /copy     — copy the last answer to the clipboard
+              /export   — write the session as html or jsonl
               /fork     — start a new session file at a picked entry
               /help     — list the commands
               /name     — set or show the session title
