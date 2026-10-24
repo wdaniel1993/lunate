@@ -62,7 +62,24 @@ public sealed partial class ExtensionLoader
             await StartForDeclaredCommandsAsync(remote, descriptor).ConfigureAwait(false);
         }
 
-        await CrossCheckManifestCommandsAsync(descriptor, cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await CrossCheckManifestCommandsAsync(descriptor, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch
+        {
+            // A refused manifest (an undeclared provided name, a built-in collision) must not
+            // leave a running child or a half-registered source behind a load that failed: the
+            // listing may have started the child to learn its capability. The remote path returns
+            // before the in-process cleanup blocks, so it cleans up after itself.
+            _remoteExtensions.Remove(descriptor.Id);
+            _commandSources.Unregister(descriptor.Id);
+            _declaredNotProvidedCommands.Remove(descriptor.Id);
+            await remote.DisposeAsync().ConfigureAwait(false);
+            throw;
+        }
+
         var loaded = new LoadedExtension(descriptor.Id, remote, descriptor);
         _loaded[descriptor.Id] = loaded;
         if (startSession)

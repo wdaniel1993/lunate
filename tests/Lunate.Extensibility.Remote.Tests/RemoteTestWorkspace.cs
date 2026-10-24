@@ -73,7 +73,7 @@ internal sealed class RemoteTestWorkspace : IDisposable
     /// <summary>Every one-line notice the host raised (an unload cancelling a command).</summary>
     public List<string> Notices { get; } = [];
 
-    public ExtensionLoader CreateLoader()
+    public ExtensionLoader CreateLoader(IReadOnlyList<string>? reservedCommands = null)
     {
         var loader = new ExtensionLoader(
             new ExtensionHostOptions
@@ -81,6 +81,7 @@ internal sealed class RemoteTestWorkspace : IDisposable
                 StorePath = StorePath,
                 Log = Log,
                 Notify = Notices.Add,
+                ReservedCommands = reservedCommands ?? [],
             }
         );
         loader.Services.RegisterCore("core/process", Child.Runner);

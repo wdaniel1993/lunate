@@ -104,6 +104,22 @@ public sealed class RemoteCommandHostTests
     }
 
     [Fact]
+    public async Task A_refused_manifest_stops_the_child_the_listing_started()
+    {
+        using var workspace = new RemoteTestWorkspace(commands: ["help"]);
+        ExtensionLoader loader = workspace.CreateLoader(reservedCommands: ["help"]);
+
+        ExtensionLoadException exception = await Assert.ThrowsAsync<ExtensionLoadException>(() =>
+            workspace.LoadAsync(loader)
+        );
+
+        Assert.Contains("collides with the built-in", exception.Message, StringComparison.Ordinal);
+        Assert.Empty(loader.CommandSources.List());
+        // The child was started to learn the capability; a refused load must not leave it running.
+        Assert.True(workspace.Child.HasExited);
+    }
+
+    [Fact]
     public async Task A_version_2_child_that_does_not_advertise_commands_is_not_offered_them()
     {
         using var workspace = new RemoteTestWorkspace(commands: ["ghost"]);

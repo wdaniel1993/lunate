@@ -52,7 +52,7 @@ public sealed partial class RemoteExtension
             .. _options.Manifest.Commands.Select(name => new CommandDescriptor(
                 name.TrimStart('/'),
                 $"Runs in extension '{Id}' over the wire",
-                ArgumentHint: "[arguments]",
+                ArgumentHint: null,
                 SourceId: Id,
                 Kind: CommandKind.Extension
             )),
@@ -97,10 +97,6 @@ public sealed partial class RemoteExtension
                     cancellationToken
                 )
                 .ConfigureAwait(false);
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
         }
         catch (RemoteChannelClosedException exception)
         {

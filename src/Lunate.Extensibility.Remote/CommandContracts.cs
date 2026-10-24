@@ -83,16 +83,6 @@ public static class RemoteCommandInvoke
         return JsonSerializer.SerializeToElement(reply, WireJson.Options);
     }
 
-    /// <summary>The reply frame for an invocation the child does not know how to serve.</summary>
-    public static JsonElement Failed(string message) =>
-        Encode(
-            new(
-                null,
-                string.IsNullOrWhiteSpace(message) ? FailureWithoutMessage : message,
-                CommandInvokeDisposition.Failed
-            )
-        );
-
     /// <summary>
     /// Runs one invoked command and returns the reply frame — typed nullable so it can answer a
     /// <see cref="RemoteWire"/> request handler directly. The cancellation token is the one the
