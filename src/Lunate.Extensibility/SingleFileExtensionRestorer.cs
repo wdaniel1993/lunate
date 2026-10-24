@@ -104,7 +104,14 @@ public sealed class SingleFileExtensionRestorer
                 return Fail(candidate, SingleFileRestoreStatus.Denied, Denied(candidate));
             }
 
-            _trust.RecordSingleFileTrust(candidate.Path, candidate.Digest);
+            if (!TryRecord(candidate.Path, candidate.Digest))
+            {
+                return Fail(
+                    candidate,
+                    SingleFileRestoreStatus.Failed,
+                    "the trust decision could not be written; the file was not restored"
+                );
+            }
         }
 
         // A lock that answers for these bytes and this toolset is the whole restore: no feed.
@@ -230,7 +237,19 @@ public sealed class SingleFileExtensionRestorer
                 bytes
             );
             ExtensionLockJson.WriteTo(lockPath, resolved);
-            _trust.RecordSingleFileTrust(candidate.Path, binding);
+            if (!TryRecord(candidate.Path, binding))
+            {
+                return Fail(
+                    candidate with
+                    {
+                        Lock = null,
+                        LockHash = null,
+                    },
+                    SingleFileRestoreStatus.Failed,
+                    "the lock was written but its hash could not be bound into the trust record; "
+                        + "the file will ask again"
+                );
+            }
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
@@ -247,6 +266,24 @@ public sealed class SingleFileExtensionRestorer
 
         SingleFileExtension restored = _reader.ReadOne(candidate.Path, candidate.Scope);
         return Restored(restored, resolved, lockPath, lockHash, changes);
+    }
+
+    /// <summary>
+    /// Writes one trust record; false when the store cannot be written. A restore that cannot bind
+    /// its decision must not look like it succeeded, and it must not surface a raw IO exception
+    /// from a path the user asked for.
+    /// </summary>
+    private bool TryRecord(string path, string digest)
+    {
+        try
+        {
+            _trust.RecordSingleFileTrust(path, digest);
+            return true;
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            return false;
+        }
     }
 
     private SingleFileExtensionTrust Evaluate(SingleFileExtension candidate)
