@@ -75,8 +75,9 @@ public sealed class InteractiveSessionSubagentEventTests
         host.Session.HandleEvent(new RunFinished("run_parent", StopReasons.Stop));
         host.Advance(40);
 
-        string transcript = host.ScrollbackText;
-        Assert.Contains("parent answer", transcript, StringComparison.Ordinal);
+        // The parent's answer is the last commit of the turn: waiting for it proves the blocks
+        // below already landed, so one snapshot answers all of them.
+        string transcript = await host.WaitForScrollbackAsync("parent answer");
         Assert.Contains(
             "\u2713 bash  parent command \u00b7 0.0s \u00b7 ctrl+o",
             transcript,
@@ -187,7 +188,7 @@ public sealed class InteractiveSessionSubagentEventTests
         host.Session.HandleEvent(new RunFinished("run_parent", StopReasons.Stop));
         host.Advance(40);
 
-        string transcript = host.ScrollbackText;
+        string transcript = await host.WaitForScrollbackAsync("child answer one");
         Assert.Contains(
             "\n  child answer one\n  child answer two\n",
             transcript,

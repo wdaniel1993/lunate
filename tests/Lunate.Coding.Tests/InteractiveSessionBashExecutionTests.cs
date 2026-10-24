@@ -21,15 +21,18 @@ public sealed class InteractiveSessionBashExecutionTests
         Assert.False(File.Exists(host.Temp.File("bash-mode.txt")));
 
         host.Console.SendText("y");
-        await host.WaitUntilAsync(() =>
-            !host.Session.IsBashRunning
-            && host.ScrollbackText.Contains("exit 0", StringComparison.Ordinal)
+        // The compact block is the marker; the finished shell is the event. One snapshot then
+        // answers all three assertions.
+        string scrollback = await host.WaitForScrollbackAsync(
+            text =>
+                text.Contains("exit 0", StringComparison.Ordinal) && !host.Session.IsBashRunning,
+            "the bash block once the shell exits"
         );
 
         Assert.Equal("hi\n", File.ReadAllText(host.Temp.File("bash-mode.txt")));
-        Assert.Contains("\u2713 bash", host.ScrollbackText, StringComparison.Ordinal);
-        Assert.Contains("exit 0", host.ScrollbackText, StringComparison.Ordinal);
-        Assert.Contains("0.0s", host.ScrollbackText, StringComparison.Ordinal);
+        Assert.Contains("\u2713 bash", scrollback, StringComparison.Ordinal);
+        Assert.Contains("exit 0", scrollback, StringComparison.Ordinal);
+        Assert.Contains("0.0s", scrollback, StringComparison.Ordinal);
         Assert.Empty(host.Client.Requests);
         Assert.Contains(
             host.Events,
@@ -54,14 +57,15 @@ public sealed class InteractiveSessionBashExecutionTests
         host.Console.SendEnter();
         await host.WaitUntilAsync(() => host.Session.PendingApproval is not null);
         host.Console.SendText("y");
-        await host.WaitUntilAsync(() =>
-            !host.Session.IsBashRunning
-            && host.ScrollbackText.Contains("exit 7", StringComparison.Ordinal)
+        string scrollback = await host.WaitForScrollbackAsync(
+            text =>
+                text.Contains("exit 7", StringComparison.Ordinal) && !host.Session.IsBashRunning,
+            "the failed bash block once the shell exits"
         );
 
         Assert.Contains(
             "\u2717 bash  exit 7 \u00b7 exit 7 \u00b7 0.0s",
-            host.ScrollbackText,
+            scrollback,
             StringComparison.Ordinal
         );
 
@@ -82,14 +86,16 @@ public sealed class InteractiveSessionBashExecutionTests
         await host.WaitUntilAsync(() => host.Session.PendingApproval is not null);
         host.Advance(400);
         host.Console.SendText("y");
-        await host.WaitUntilAsync(() =>
-            !host.Session.IsBashRunning
-            && host.ScrollbackText.Contains("echo timed", StringComparison.Ordinal)
+        string scrollback = await host.WaitForScrollbackAsync(
+            text =>
+                text.Contains("echo timed", StringComparison.Ordinal)
+                && !host.Session.IsBashRunning,
+            "the bash block once the shell exits"
         );
 
         Assert.Contains(
             "\u2713 bash  echo timed \u00b7 exit 0 \u00b7 0.4s",
-            host.ScrollbackText,
+            scrollback,
             StringComparison.Ordinal
         );
 
@@ -119,13 +125,14 @@ public sealed class InteractiveSessionBashExecutionTests
         await host.WaitUntilAsync(() => host.Session.PendingApproval is not null);
         host.Console.SendEnter();
 
-        await host.WaitUntilAsync(() =>
-            !host.Session.IsBashRunning
-            && host.ScrollbackText.Contains("Denied", StringComparison.Ordinal)
+        string scrollback = await host.WaitForScrollbackAsync(
+            text =>
+                text.Contains("Denied", StringComparison.Ordinal) && !host.Session.IsBashRunning,
+            "the denied bash block once the shell stops"
         );
 
         Assert.False(File.Exists(host.Temp.File("denied.txt")));
-        Assert.Contains("\u2717 bash", host.ScrollbackText, StringComparison.Ordinal);
+        Assert.Contains("\u2717 bash", scrollback, StringComparison.Ordinal);
         Assert.Empty(host.Client.Requests);
 
         host.Console.Complete();
@@ -156,13 +163,14 @@ public sealed class InteractiveSessionBashExecutionTests
         await host.WaitUntilAsync(() => host.Session.PendingApproval is null);
 
         host.Console.SendEscape();
-        await host.WaitUntilAsync(() =>
-            !host.Session.IsBashRunning
-            && host.ScrollbackText.Contains("cancelled", StringComparison.Ordinal)
+        string scrollback = await host.WaitForScrollbackAsync(
+            text =>
+                text.Contains("cancelled", StringComparison.Ordinal) && !host.Session.IsBashRunning,
+            "the cancelled bash block once the shell stops"
         );
 
-        Assert.Contains("\u2717 bash", host.ScrollbackText, StringComparison.Ordinal);
-        Assert.DoesNotContain("exit code", host.ScrollbackText, StringComparison.Ordinal);
+        Assert.Contains("\u2717 bash", scrollback, StringComparison.Ordinal);
+        Assert.DoesNotContain("exit code", scrollback, StringComparison.Ordinal);
         host.Advance(33);
         Assert.Contains("cancelled", host.LastFrame, StringComparison.Ordinal);
 

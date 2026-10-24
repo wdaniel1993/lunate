@@ -16,9 +16,8 @@ public sealed class InteractiveSessionStreamingTests
 
         host.Console.SendText("go");
         host.Console.SendEnter();
-        await host.WaitUntilAsync(() => host.ScrollbackText.Contains("one"));
-
-        string mid = host.ScrollbackText;
+        // The first paragraph is the marker; the second must not have committed onto that frame.
+        string mid = await host.WaitForScrollbackAsync("one");
         Assert.Contains("one", mid, StringComparison.Ordinal);
         Assert.DoesNotContain("two", mid, StringComparison.Ordinal);
         // The tail is painted on the sampled tick the test pumps; one advance is not enough when
@@ -35,7 +34,8 @@ public sealed class InteractiveSessionStreamingTests
 
         client.Release();
         await host.WaitUntilAsync(() => !host.Session.IsRunning);
-        Assert.Contains("two", host.ScrollbackText, StringComparison.Ordinal);
+        // The wait is the assertion: the last paragraph commits when the turn ends.
+        await host.WaitForScrollbackAsync("two");
 
         host.Console.Complete();
         await run;
@@ -55,11 +55,7 @@ public sealed class InteractiveSessionStreamingTests
 
         host.Console.SendText("go");
         host.Console.SendEnter();
-        await host.WaitUntilAsync(() =>
-            host.ScrollbackText.Contains("\u2713 read", StringComparison.Ordinal)
-        );
-
-        string scrollback = host.ScrollbackText;
+        string scrollback = await host.WaitForScrollbackAsync("\u2713 read");
         Assert.Contains("a.txt", scrollback, StringComparison.Ordinal);
         // The read block identifies the file; the content itself is not echoed into scrollback.
         Assert.DoesNotContain("contents", scrollback, StringComparison.Ordinal);

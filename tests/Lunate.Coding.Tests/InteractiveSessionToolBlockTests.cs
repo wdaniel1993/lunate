@@ -28,11 +28,8 @@ public sealed class InteractiveSessionToolBlockTests
         );
         host.Advance(40);
 
-        Assert.Contains(
-            "\u2713 bash  dotnet build \u00b7 exit 0 \u00b7 0.4s",
-            host.ScrollbackText,
-            StringComparison.Ordinal
-        );
+        // The wait is the assertion: the compact block is only ever read once committed.
+        await host.WaitForScrollbackAsync("\u2713 bash  dotnet build \u00b7 exit 0 \u00b7 0.4s");
 
         host.Console.Complete();
         await run;
@@ -63,12 +60,11 @@ public sealed class InteractiveSessionToolBlockTests
         );
         host.Advance(40);
 
-        Assert.Contains(
-            "\u2713 bash  dotnet build \u00b7 exit 0 \u00b7 0.4s \u00b7 ctrl+o",
-            host.ScrollbackText,
-            StringComparison.Ordinal
+        // One frame: the header with its hint, and the elided body it hides behind ctrl+o.
+        string scrollback = await host.WaitForScrollbackAsync(
+            "\u2713 bash  dotnet build \u00b7 exit 0 \u00b7 0.4s \u00b7 ctrl+o"
         );
-        Assert.DoesNotContain("Build succeeded.", host.ScrollbackText, StringComparison.Ordinal);
+        Assert.DoesNotContain("Build succeeded.", scrollback, StringComparison.Ordinal);
 
         host.Console.Complete();
         await run;
@@ -108,12 +104,13 @@ public sealed class InteractiveSessionToolBlockTests
         );
         host.Advance(40);
 
+        string scrollback = await host.WaitForScrollbackAsync("Build succeeded.");
         Assert.Contains(
             "\u2713 bash  dotnet build \u00b7 exit 0 \u00b7 0.4s\nBuild succeeded.\n",
-            host.ScrollbackText,
+            scrollback,
             StringComparison.Ordinal
         );
-        Assert.DoesNotContain("0.4s \u00b7 ctrl+o", host.ScrollbackText, StringComparison.Ordinal);
+        Assert.DoesNotContain("0.4s \u00b7 ctrl+o", scrollback, StringComparison.Ordinal);
 
         host.Console.Complete();
         await run;
@@ -134,11 +131,8 @@ public sealed class InteractiveSessionToolBlockTests
         );
         host.Advance(40);
 
-        Assert.Contains(
-            "\u2717 bash  false \u00b7 exit 1 \u00b7 0.0s",
-            host.ScrollbackText,
-            StringComparison.Ordinal
-        );
+        // The wait is the assertion: the failed block is only ever read once committed.
+        await host.WaitForScrollbackAsync("\u2717 bash  false \u00b7 exit 1 \u00b7 0.0s");
 
         host.Console.Complete();
         await run;

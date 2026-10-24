@@ -23,8 +23,9 @@ public sealed class InteractiveSessionResizeCompositionTests
 
         await RunReadAsync(host, "call-1", "notes-a.txt", "first");
         await InteractiveSessionCommandTests.WaitForFrameAsync(host, "gpt-4o-mini · 0%");
-        Assert.Contains("✓ read · 13 lines", host.ScrollbackText, StringComparison.Ordinal);
-        Assert.DoesNotContain("notes-a.txt", host.ScrollbackText, StringComparison.Ordinal);
+        // One frame: the compact block and the path it elided.
+        string firstRead = await host.WaitForScrollbackAsync("✓ read · 13 lines");
+        Assert.DoesNotContain("notes-a.txt", firstRead, StringComparison.Ordinal);
         Assert.Contains(new string('─', 40), host.LastFrame, StringComparison.Ordinal);
 
         host.Console.PushResize(new ConsoleSize(120, 40));
@@ -35,11 +36,7 @@ public sealed class InteractiveSessionResizeCompositionTests
                 && host.LastFrame.Contains("0/128.0k", StringComparison.Ordinal);
         });
         await RunReadAsync(host, "call-2", "notes-b.txt", "second");
-        Assert.Contains(
-            "✓ read  notes-b.txt (5 lines)",
-            host.ScrollbackText,
-            StringComparison.Ordinal
-        );
+        await host.WaitForScrollbackAsync("✓ read  notes-b.txt (5 lines)");
 
         host.Console.PushResize(new ConsoleSize(60, 30));
         await host.WaitUntilAsync(() =>
@@ -49,11 +46,7 @@ public sealed class InteractiveSessionResizeCompositionTests
                 && host.LastFrame.Contains(new string('─', 60), StringComparison.Ordinal);
         });
         await RunReadAsync(host, "call-3", "notes-c.txt", "third");
-        Assert.Contains(
-            "✓ read  notes-c.txt (7 lines)",
-            host.ScrollbackText,
-            StringComparison.Ordinal
-        );
+        await host.WaitForScrollbackAsync("✓ read  notes-c.txt (7 lines)");
 
         host.Console.SendText("/quit");
         host.Console.SendEnter();
@@ -74,8 +67,9 @@ public sealed class InteractiveSessionResizeCompositionTests
         host.Client.Enqueue(Scripts.Text(final), Scripts.Stop());
         host.Console.SendText("go");
         host.Console.SendEnter();
-        await host.WaitUntilAsync(() =>
-            !host.Session.IsRunning && host.ScrollbackText.Contains(final, StringComparison.Ordinal)
+        await host.WaitForScrollbackAsync(
+            text => text.Contains(final, StringComparison.Ordinal) && !host.Session.IsRunning,
+            "the answer once the turn finishes"
         );
     }
 

@@ -76,9 +76,9 @@ public sealed class InteractiveSessionApprovalPanelCompositionTests
         await host
             .Client.WaitForCallAsync(3)
             .WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
-        await host.WaitUntilAsync(() =>
-            !host.Session.IsRunning
-            && host.ScrollbackText.Contains("done", StringComparison.Ordinal)
+        await host.WaitForScrollbackAsync(
+            text => text.Contains("done", StringComparison.Ordinal) && !host.Session.IsRunning,
+            "the answer once the turn finishes"
         );
 
         Assert.Null(host.Session.PendingApproval);

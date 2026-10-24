@@ -85,10 +85,7 @@ public sealed class RuntimeReplaySessionTests
             await host.WaitUntilAsync(() => RecordedExchanges(target) > 0, TimeSpan.FromMinutes(5));
         }
 
-        await host.WaitUntilAsync(
-            () => host.ScrollbackText.Contains(RecordedAnswer, StringComparison.Ordinal),
-            TimeSpan.FromMinutes(1)
-        );
+        await host.WaitForScrollbackAsync(RecordedAnswer, TimeSpan.FromMinutes(1));
 
         host.Console.SendText("/quit");
         host.Console.SendEnter();
