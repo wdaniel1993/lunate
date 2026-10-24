@@ -144,6 +144,99 @@ public sealed class InteractiveSessionTreeTests
     }
 
     [Fact]
+    public async Task Three_branches_all_render_and_every_user_message_is_pickable()
+    {
+        using var host = Wide(new InteractiveSessionHost());
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+        await ThreeBranchesAsync(host);
+        int requests = host.Client.Requests.Count;
+
+        await OpenTreeAsync(host);
+        await host.WaitForFrameAsync("1 of 4");
+
+        // Three branches off one root, two of them dead: all of it is in the tree, both dead
+        // branches dim and marked `-`, the live one `*`, each row naming its entry.
+        string tree = host.Frames;
+        Assert.Contains("* e_01 one", tree, StringComparison.Ordinal);
+        Assert.Contains("-   e_02 two", tree, StringComparison.Ordinal);
+        Assert.Contains("-     e_03 three", tree, StringComparison.Ordinal);
+        Assert.Contains("-       e_04 four", tree, StringComparison.Ordinal);
+        Assert.Contains("-   e_06 branch-b", tree, StringComparison.Ordinal);
+        Assert.Contains("-     e_07 reply-b", tree, StringComparison.Ordinal);
+        Assert.Contains("*   e_09 branch-c", tree, StringComparison.Ordinal);
+        Assert.Contains("*     e_10 reply-c", tree, StringComparison.Ordinal);
+
+        // One user message per branch, in file order: every one of them restores into the editor.
+        string[] messages = ["one", "three", "branch-b", "branch-c"];
+        for (var index = 0; index < messages.Length; index++)
+        {
+            if (index > 0)
+            {
+                // The editor holds the previous pick; dispatch the tree the way a binding would.
+                await InvokeAsync(host, "/tree");
+                await host.WaitUntilAsync(() => host.Console.InAlternateScreen);
+                await host.WaitForFrameAsync("1 of 4");
+            }
+
+            for (var move = 0; move < index; move++)
+            {
+                host.Console.SendText("j");
+            }
+
+            host.Console.SendEnter();
+            await host.WaitUntilAsync(() => !host.Console.InAlternateScreen);
+            await host.WaitUntilAsync(() => host.Session.Input.Text == messages[index]);
+
+            Assert.Equal(messages[index], host.Session.Input.Text);
+        }
+
+        Assert.Equal(requests, host.Client.Requests.Count);
+        Assert.False(host.Session.IsRunning);
+
+        host.Console.Complete();
+        await run;
+    }
+
+    [Fact]
+    public async Task Fork_at_a_dead_branch_entry_in_a_three_branch_session_writes_its_chain()
+    {
+        using var host = Wide(new InteractiveSessionHost());
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+        await ThreeBranchesAsync(host);
+        string source = Assert.Single(SessionFiles(host));
+
+        // e_03 is the second message of the dead branch A: the fork takes A's chain, not C's.
+        await SendLineAsync(host, "/fork e_03");
+        await InteractiveSessionCommandTests.WaitForFrameAsync(host, "forked at e_03");
+
+        string fork = Assert.Single(
+            SessionFiles(host),
+            file => !string.Equals(file, source, StringComparison.Ordinal)
+        );
+        Session loaded = Session.Load(fork);
+        Assert.Equal(
+            new SessionOrigin(Session.Load(source).SessionId, "e_03"),
+            loaded.Header.Origin
+        );
+        Assert.True(loaded.Header.Branched);
+        Assert.Equal(["e_01", "e_02", "e_03"], loaded.Entries.Select(entry => entry.Id));
+        Assert.Equal(
+            ["user:one", "assistant:two", "user:three"],
+            loaded.ToHistory().Select(message => message.Role.Value + ":" + message.Text)
+        );
+
+        // The source keeps all three branches; forking A did not touch it.
+        Session after = Session.Load(source);
+        Assert.Equal(["e_01", "e_09", "e_10"], after.ActivePath.Select(entry => entry.Id));
+        Assert.Equal(10, after.Entries.Count);
+
+        host.Console.Complete();
+        await run;
+    }
+
+    [Fact]
     public async Task Fork_writes_a_new_file_with_origin_and_the_prefix()
     {
         using var host = Wide(new InteractiveSessionHost());
@@ -425,6 +518,33 @@ public sealed class InteractiveSessionTreeTests
         host.Console.SendText("/tree");
         host.Console.SendEnter();
         await host.WaitUntilAsync(() => host.Console.InAlternateScreen);
+    }
+
+    /// <summary>
+    /// Three branches off one root: one → two → three → four on A, the leaf moved back to one for
+    /// branch-b → reply-b on B, and back again for branch-c → reply-c on C. A and B are dead, C is
+    /// the active path; entries e_01..e_10, the two moves e_05 and e_08.
+    /// </summary>
+    private static async Task ThreeBranchesAsync(InteractiveSessionHost host)
+    {
+        await TurnAsync(host, "one", "two");
+        string path = Assert.Single(SessionFiles(host));
+        await TurnAsync(host, "three", "four");
+
+        await SendLineAsync(host, "/rewind e_01");
+        await host.WaitUntilAsync(() => Session.Load(path).ActiveLeafId == "e_01");
+        await TurnAsync(host, "branch-b", "reply-b");
+
+        await SendLineAsync(host, "/rewind e_01");
+        await host.WaitUntilAsync(() => Session.Load(path).ActiveLeafId == "e_01");
+        await TurnAsync(host, "branch-c", "reply-c");
+
+        Session session = Session.Load(path);
+        Assert.Equal(
+            ["e_01", "e_02", "e_03", "e_04", "e_05", "e_06", "e_07", "e_08", "e_09", "e_10"],
+            session.Entries.Select(entry => entry.Id)
+        );
+        Assert.Equal(["e_01", "e_09", "e_10"], session.ActivePath.Select(entry => entry.Id));
     }
 
     private static async Task SendLineAsync(InteractiveSessionHost host, string line)
