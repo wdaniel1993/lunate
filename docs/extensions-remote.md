@@ -27,7 +27,8 @@ Exactly one of `entryAssembly` (in-process) or `runtime` (out-of-process) is req
         "startup": "background"
     },
     "hooks": ["tool-calling"],
-    "services": ["echo"]
+    "services": ["echo"],
+    "commands": ["ping"]
 }
 ```
 
@@ -44,6 +45,12 @@ Exactly one of `entryAssembly` (in-process) or `runtime` (out-of-process) is req
   proxies from them without starting anything. The `initialize` result must match: a hook or
   service the child implements but the manifest does not declare refuses the extension;
   a declared one the child does not implement only warns and is dropped.
+- `commands` — slash commands the child serves over `command/invoke` (bare names, no leading
+  slash). Registration starts nothing, but the capability that decides whether the command is
+  offered arrives with the `initialize` handshake, so an extension that declares commands is
+  started when the session composes its command listing. A child that does not advertise the
+  `commands` capability has every declared command reported as `declared, not provided`, and the
+  command is not offered or dispatched — never offered and dead.
 
 The trust prompt states that the extension runs with the user's privileges; the trust digest hashes
 the manifest together with the extension directory contents, so changing `index.js` after trust
@@ -56,19 +63,21 @@ One compact JSON object per line, UTF-8, no BOM, no batches. **Stdout is protoco
 non-JSON line or a line over 16 MB is a protocol error and stops the extension. stderr is captured
 into the extension log, capped at 64 KB.
 
-Protocol version 1. The host sends `initialize` first, with
+Protocol version 2. The host sends `initialize` first, with
 `{ protocolVersion, capabilities, manifest, workspace: { worktreeRoot, repoRoot, gitCommonDir }, hooks, services }`;
-the child answers `{ protocolVersion, hooks, services }`. A version mismatch or an undeclared
-surface refuses the extension; the session continues without it.
+the child answers `{ protocolVersion, hooks, services, commands }`. A version the host does not
+read or an undeclared surface refuses the extension; the session continues without it. Version 1
+stays readable for hooks and services — its answer simply omits `commands`.
 
 Methods:
 
 | Direction | Method | Shape |
 | --- | --- | --- |
-| host → child | `initialize` | request; result `{ protocolVersion, hooks, services }` |
+| host → child | `initialize` | request; result `{ protocolVersion, hooks, services, commands }` |
 | host → child | `hook/<Name>` | request for interceptor hooks, notification for observer hooks |
 | child → host | `service/<name>/<method>` | request; params are the method's JSON arguments |
 | host → child | `service-call` | request; params `{ service, method, arguments }` |
+| host → child | `command/invoke` | request; params `{ name, argument, requestId }`; result `{ output, error, disposition }` |
 | either | `$/cancelRequest` | notification; params `{ id }` — maps to the handler's `CancellationToken` |
 | host → child | `shutdown` | request; sent at session end, then a bounded grace, then the tree is killed |
 
@@ -117,6 +126,39 @@ workspace info. The host calls a service the child registered with `service-call
 that service appears in the registry as an `IBackgroundService` + `IJsonService` named after the
 manifest declaration.
 
+### Commands
+
+A manifest `commands` entry becomes a runnable slash command when the child advertises the
+`commands` capability in its `initialize` answer. The host sends `command/invoke` with the bare
+name (no `ext:` prefix, no leading slash), the argument remainder and the request id the frame
+was written under; the child answers `{ output, error, disposition }`:
+
+| Field | Meaning |
+| --- | --- |
+| `output` | the text the command produced; it reaches the transcript as the notice |
+| `error` | the failure message, when `disposition` is `failed` |
+| `disposition` | `completed`, `cancelled` or `failed` |
+
+The reply mirrors the in-process command result field by field — output text, optional failure
+message, disposition — and nothing else crosses back. A `failed` reply becomes the same error
+notice an in-process handler produces (`command ext:<id>:<name> failed: <message> — see
+/extensions for the extension's state`); a `cancelled` reply renders no notice.
+
+Cancellation reuses `$/cancelRequest`: the host names the invocation's request id and the child
+passes that cancellation to the handler's token, so the `commands` and `service-call` paths share
+one cancel map. A cancelled handler answers `cancelled`, and a cancel for an invocation that
+already finished is a no-op.
+
+The invocation runs under the same lease an in-process command takes: unloading the extension
+cancels it, shows one notice naming the extension and `ext:<id>:<name>`, and waits the bounded
+hook-handler time for the reply before the process is stopped.
+
+```json
+{"jsonrpc":"2.0","id":7,"method":"command/invoke",
+ "params":{"name":"ping","argument":"hello","requestId":7}}
+{"jsonrpc":"2.0","id":7,"result":{"output":"pong hello","error":null,"disposition":"completed"}}
+```
+
 ### Lifecycle
 
 One child serves the whole session (subagent and worktree runs included). A process that exits
@@ -128,8 +170,8 @@ children-first.
 ## Checking an extension
 
 `RemoteConformanceRunner` in `Lunate.Extensibility.Testing` points at any executable that speaks
-the wire and performs start, handshake, a hook round-trip, a service call in each direction and
-shutdown, reporting each step:
+the wire and performs start, handshake, a hook round-trip, a service call in each direction, the
+command steps and shutdown, reporting each step:
 
 ```csharp
 RemoteConformanceReport report = await RemoteConformanceRunner.RunAsync(
@@ -138,11 +180,20 @@ RemoteConformanceReport report = await RemoteConformanceRunner.RunAsync(
         FileName = "node",
         Arguments = ["index.js"],
         WorkingDirectory = extensionDirectory,
+        // Optional: the commands that stay in flight until cancelled, and that fail.
+        CancelCommand = "wait",
+        FailingCommand = "fail",
     },
     cancellationToken
 );
 Assert.True(report.Succeeded, report.Summary);
 ```
+
+The `command listing` step records what the child's answer decides: a child that advertises the
+capability has its declared commands offered; one that does not has them reported as declared, not
+provided, and the invoke, cancel and failure steps are not exercised. `command invoke` sends
+`ProbeCommand` (default `ping`) with `ProbeCommandArguments` and requires the reply to carry them;
+`command cancel` and `command failure` run only when the options name a command for them.
 
 The [node-remote sample](../samples/extensions/node-remote) is the reference implementation; its
 fitness tests run in CI.
