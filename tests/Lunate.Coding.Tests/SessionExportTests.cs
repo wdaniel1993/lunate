@@ -45,26 +45,35 @@ public sealed class SessionExportTests
     [Fact]
     public void The_default_destination_is_the_exports_directory_with_the_date_and_name()
     {
+        // Paths are built, never written as POSIX literals: on Windows the same code resolves to
+        // D:\Users\ada\... and a literal expectation would fail only on that leg.
+        string home = Path.Combine(Path.GetTempPath(), "ada-home");
         string path = ExportTargets.Resolve(
             new ExportRequest(ExportFormat.Html, null, Force: false),
-            homeDirectory: "/Users/ada",
-            workingDirectory: "/repo",
+            homeDirectory: home,
+            workingDirectory: Path.GetTempPath(),
             sessionNameOrId: "parser-refactor",
             Now
         );
 
-        Assert.Equal("/Users/ada/.lunate/exports/2026-10-24-parser-refactor.html", path);
+        Assert.Equal(
+            Path.Combine(home, ".lunate", "exports", "2026-10-24-parser-refactor.html"),
+            path
+        );
+        Assert.True(Path.IsPathFullyQualified(path));
     }
 
     [Fact]
     public void A_jsonl_default_carries_the_jsonl_extension()
     {
+        string home = Path.Combine(Path.GetTempPath(), "ada-home");
+
         Assert.Equal(
-            "/Users/ada/.lunate/exports/2026-10-24-s_20261024-093000-abcd.jsonl",
+            Path.Combine(home, ".lunate", "exports", "2026-10-24-s_20261024-093000-abcd.jsonl"),
             ExportTargets.Resolve(
                 new ExportRequest(ExportFormat.Jsonl, null, Force: false),
-                "/Users/ada",
-                "/repo",
+                home,
+                Path.GetTempPath(),
                 "s_20261024-093000-abcd",
                 Now
             )
@@ -74,22 +83,26 @@ public sealed class SessionExportTests
     [Fact]
     public void A_path_argument_overrides_the_default_and_is_made_absolute()
     {
+        string home = Path.Combine(Path.GetTempPath(), "ada-home");
+        string working = Path.GetTempPath();
+        string absolute = Path.Combine(working, "session.html");
+
         Assert.Equal(
-            "/repo/reports/session.html",
+            Path.Combine(working, "reports", "session.html"),
             ExportTargets.Resolve(
                 new ExportRequest(ExportFormat.Html, "reports/session.html", Force: false),
-                "/Users/ada",
-                "/repo",
+                home,
+                working,
                 "parser-refactor",
                 Now
             )
         );
         Assert.Equal(
-            "/tmp/session.html",
+            absolute,
             ExportTargets.Resolve(
-                new ExportRequest(ExportFormat.Html, "/tmp/session.html", Force: false),
-                "/Users/ada",
-                "/repo",
+                new ExportRequest(ExportFormat.Html, absolute, Force: false),
+                home,
+                working,
                 "parser-refactor",
                 Now
             )
