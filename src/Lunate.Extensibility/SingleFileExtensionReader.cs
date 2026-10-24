@@ -8,9 +8,10 @@ namespace Lunate.Extensibility;
 /// restored or compiled. A file with no <c>#:extension</c> and a file whose header refuses it are
 /// candidates too — <c>/extensions</c> lists them with the reason instead of hiding them.
 /// </summary>
-internal sealed class SingleFileExtensionReader(ExtensionTrustStore trust)
+internal sealed class SingleFileExtensionReader(ExtensionHostOptions options)
 {
-    private readonly ExtensionTrustStore _trust = trust;
+    private readonly ExtensionTrustStore _trust = new(options);
+    private readonly ExtensionHostOptions _options = options;
 
     /// <summary>
     /// The candidates of <paramref name="root"/> in file-name order; empty when the directory does
@@ -55,13 +56,17 @@ internal sealed class SingleFileExtensionReader(ExtensionTrustStore trust)
         List<SingleFileExtension> candidates = [];
         foreach (string path in files)
         {
-            candidates.Add(ReadFile(path, scope));
+            candidates.Add(ReadOne(path, scope));
         }
 
         return candidates;
     }
 
-    private SingleFileExtension ReadFile(string path, ExtensionScope scope)
+    /// <summary>
+    /// One candidate, read fresh from disk: the restorer calls this so a restore never acts on a
+    /// snapshot taken before the user's last edit.
+    /// </summary>
+    internal SingleFileExtension ReadOne(string path, ExtensionScope scope)
     {
         string fullPath = Path.GetFullPath(path);
         byte[] bytes;
@@ -84,29 +89,44 @@ internal sealed class SingleFileExtensionReader(ExtensionTrustStore trust)
         ExtensionHeader header = ExtensionHeaderScanner.Scan(Decode(bytes));
         if (header.Errors.Count > 0)
         {
-            return new SingleFileExtension
-            {
-                Path = fullPath,
-                Scope = scope,
-                Header = header,
-                State = SingleFileExtensionState.Invalid,
-                Reason = Describe(header.Errors),
-            };
+            return Invalid(fullPath, scope, header, Describe(header.Errors));
         }
 
         if (header.Id is null)
+        {
+            return Invalid(fullPath, scope, header, "no #:extension");
+        }
+
+        string sourceDigest = SingleFileExtensionDigest.ComputeSource(
+            header.Id,
+            header.Packages,
+            bytes
+        );
+        (ExtensionLock? bound, string? lockHash, byte[] lockBytes, string? lockProblem) = ReadLock(
+            header.Id,
+            sourceDigest
+        );
+        string digest = SingleFileExtensionDigest.Compute(
+            header.Id,
+            header.Packages,
+            bytes,
+            lockBytes
+        );
+
+        if (lockProblem is not null)
         {
             return new SingleFileExtension
             {
                 Path = fullPath,
                 Scope = scope,
                 Header = header,
-                State = SingleFileExtensionState.Invalid,
-                Reason = "no #:extension",
+                State = SingleFileExtensionState.Stale,
+                Digest = digest,
+                SourceDigest = sourceDigest,
+                Reason = lockProblem,
             };
         }
 
-        string digest = SingleFileExtensionDigest.Compute(header.Id, header.Packages, bytes);
         SingleFileExtensionTrust trust;
         try
         {
@@ -121,6 +141,9 @@ internal sealed class SingleFileExtensionReader(ExtensionTrustStore trust)
                 Header = header,
                 State = SingleFileExtensionState.TrustFailed,
                 Digest = digest,
+                SourceDigest = sourceDigest,
+                Lock = bound,
+                LockHash = lockHash,
                 Reason = $"the trust store could not be read: {exception.Message}",
             };
         }
@@ -134,9 +157,12 @@ internal sealed class SingleFileExtensionReader(ExtensionTrustStore trust)
                 Header = header,
                 State = SingleFileExtensionState.Stale,
                 Digest = digest,
+                SourceDigest = sourceDigest,
+                Lock = bound,
+                LockHash = lockHash,
                 Reason =
-                    "the file or its declared packages changed since it was trusted; it must be "
-                    + "trusted again before it is built",
+                    "the file, its declared packages or its lock changed since it was trusted; "
+                    + "it must be trusted again before it is restored",
             },
             SingleFileExtensionTrust.Unreadable => new SingleFileExtension
             {
@@ -145,6 +171,9 @@ internal sealed class SingleFileExtensionReader(ExtensionTrustStore trust)
                 Header = header,
                 State = SingleFileExtensionState.TrustFailed,
                 Digest = digest,
+                SourceDigest = sourceDigest,
+                Lock = bound,
+                LockHash = lockHash,
                 Reason =
                     "the trust record for this file is unreadable; remove its entry from "
                     + "trust.json and trust the file again",
@@ -156,9 +185,70 @@ internal sealed class SingleFileExtensionReader(ExtensionTrustStore trust)
                 Header = header,
                 State = SingleFileExtensionState.NotBuilt,
                 Digest = digest,
+                SourceDigest = sourceDigest,
+                Lock = bound,
+                LockHash = lockHash,
             },
         };
     }
+
+    /// <summary>
+    /// The lock that answers for <paramref name="sourceDigest"/>, its hash and the bytes the digest
+    /// hashes. A lock resolved from other bytes belongs to an earlier version of the file: it is
+    /// not part of this file's digest and is not reused, and the next restore reports it instead of
+    /// overwriting it. A lock file that cannot be read is a problem, never a silent absence.
+    /// </summary>
+    private (ExtensionLock? Lock, string? Hash, byte[] Bytes, string? Problem) ReadLock(
+        string id,
+        string sourceDigest
+    )
+    {
+        string path = SingleFileExtensionPaths.LockPath(_options.StorePath, id);
+        if (!File.Exists(path))
+        {
+            return (null, null, [], null);
+        }
+
+        byte[] bytes;
+        try
+        {
+            bytes = File.ReadAllBytes(path);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            return (null, null, [], $"extension.lock.json could not be read: {exception.Message}");
+        }
+
+        ExtensionLock? parsed = ExtensionLockJson.TryParse(Decode(bytes), out string? error);
+        if (parsed is null)
+        {
+            return (
+                null,
+                null,
+                [],
+                $"extension.lock.json is unusable ({error}); the next restore asks before replacing it"
+            );
+        }
+
+        return parsed.IsCurrentFor(sourceDigest)
+            ? (parsed, ExtensionLockJson.Hash(bytes), bytes, null)
+            : (null, null, [], null);
+    }
+
+    private static SingleFileExtension Invalid(
+        string path,
+        ExtensionScope scope,
+        ExtensionHeader header,
+        string reason
+    ) =>
+        new()
+        {
+            Path = path,
+            Scope = scope,
+            Header = header,
+            State = SingleFileExtensionState.Invalid,
+            Reason = reason,
+        };
 
     /// <summary>The source text, without a byte-order mark the scanner would read as content.</summary>
     private static string Decode(byte[] bytes)

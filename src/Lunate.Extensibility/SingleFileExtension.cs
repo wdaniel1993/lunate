@@ -1,30 +1,38 @@
 namespace Lunate.Extensibility;
 
 /// <summary>
-/// What <c>/extensions</c> reports for one discovered single-file extension in this phase: a valid
-/// declaration nobody has built yet, one that was trusted and whose bytes have changed since, one
-/// whose trust record cannot be read, or one whose header refuses the file.
+/// What <c>/extensions</c> reports for one discovered single-file extension: a valid declaration
+/// nobody has restored yet, a restore in progress, one whose bytes (source, lock or packages) have
+/// changed since it was trusted, one whose trust record cannot be read, one whose last restore
+/// failed, or one whose header refuses the file.
 /// </summary>
 public enum SingleFileExtensionState
 {
-    /// <summary>Declared and usable; no build exists yet (nothing compiles a file in this phase).</summary>
+    /// <summary>Declared and usable; no lock exists yet, so nothing has been restored or built.</summary>
     NotBuilt,
+
+    /// <summary>A restore is running; <c>/extensions</c> shows progress rather than a stale row.</summary>
+    Restoring,
 
     /// <summary>The file cannot be an extension; <see cref="SingleFileExtension.Reason"/> says why.</summary>
     Invalid,
 
-    /// <summary>Trusted before, and the id, a declared package or the source bytes changed since.</summary>
+    /// <summary>Trusted before, and the source, the lock or a declared package changed since.</summary>
     Stale,
 
     /// <summary>Trust could not be decided or verified; <see cref="SingleFileExtension.Reason"/> says why.</summary>
     TrustFailed,
+
+    /// <summary>A restore failed; <see cref="SingleFileExtension.Reason"/> carries the first reason.</summary>
+    RestoreFailed,
 }
 
 /// <summary>
 /// One discovered single-file extension candidate: the <c>.cs</c> file, its scope, the header it
-/// declares and the state <c>/extensions</c> shows. The digest is the first-trust form —
-/// <c>sha256("lunate-extension-v1" | id | each declared package as written | source bytes)</c> —
-/// computed before anything is restored or compiled and stored with the trust decision.
+/// declares, the lock it is restored to (when one answers for these bytes) and the state
+/// <c>/extensions</c> shows. <see cref="Digest"/> is the trust identity of the bytes on disk:
+/// <c>sha256("lunate-extension-v1" | id | each package as written | source bytes | lock bytes)</c>,
+/// where the lock segment is empty until the first restore writes and binds one.
 /// </summary>
 public sealed record SingleFileExtension
 {
@@ -41,8 +49,23 @@ public sealed record SingleFileExtension
     /// <summary>The same-line explanation for <see cref="State"/>; null when there is nothing to say.</summary>
     public string? Reason { get; init; }
 
-    /// <summary>The first-trust digest; empty when the file could not be read.</summary>
+    /// <summary>The trust digest of the bytes on disk; empty when the file could not be read.</summary>
     public string Digest { get; init; } = string.Empty;
+
+    /// <summary>
+    /// The source-level digest — id, declared packages and source bytes, no lock segment. It is
+    /// what a lock records and what the first trust covers.
+    /// </summary>
+    public string SourceDigest { get; init; } = string.Empty;
+
+    /// <summary>
+    /// The lock that answers for these exact source bytes, or null when there is none yet (or the
+    /// one on disk was resolved from other bytes).
+    /// </summary>
+    public ExtensionLock? Lock { get; init; }
+
+    /// <summary>The SHA-256 of the lock file's bytes when <see cref="Lock"/> is set.</summary>
+    public string? LockHash { get; init; }
 
     /// <summary>Declarations nothing provided (a warning, shown as <c>declared, not provided</c>).</summary>
     public IReadOnlyList<ExtensionDeclaration> DeclaredNotProvided { get; init; } = [];
