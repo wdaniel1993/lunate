@@ -1,6 +1,7 @@
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
 using Lunate.Extensibility.Abstractions;
 using Lunate.Extensibility.Remote;
 
@@ -36,6 +37,9 @@ public static class RemoteJsonSchema
         definitions["HookCallEnvelope"] = SchemaOf(typeof(HookCallEnvelope));
         definitions["RemoteCallContext"] = SchemaOf(typeof(RemoteCallContext));
         definitions["ServiceCallEnvelope"] = SchemaOf(typeof(ServiceCallEnvelope));
+        definitions["CommandInvokeRequest"] = SchemaOf(typeof(CommandInvokeRequest));
+        definitions["CommandInvokeResult"] = SchemaOf(typeof(CommandInvokeResult));
+        definitions["CommandInvokeDisposition"] = SchemaOf(typeof(CommandInvokeDisposition));
         definitions["WorkspaceInfo"] = SchemaOf(typeof(WorkspaceInfo));
         definitions["InitializeRequest"] = SchemaOf(typeof(InitializeRequest));
         definitions["InitializeResult"] = SchemaOf(typeof(InitializeResult));
@@ -52,7 +56,7 @@ public static class RemoteJsonSchema
             ["$id"] = "https://lunate.dev/schemas/remote-extension-wire.json",
             ["title"] = $"Lunate remote extension wire (protocol version {RemoteProtocol.Version})",
             ["description"] =
-                "JSON-RPC 2.0 over newline-delimited UTF-8 JSON on stdio. Stdout is protocol-only; a non-JSON line or a line over 16 MB is a protocol error. Interceptor hooks are requests, observer hooks are notifications, service-call is a request, and $/cancelRequest carries { id }.",
+                "JSON-RPC 2.0 over newline-delimited UTF-8 JSON on stdio. Stdout is protocol-only; a non-JSON line or a line over 16 MB is a protocol error. Interceptor hooks are requests, observer hooks are notifications, service-call and command/invoke are requests, and $/cancelRequest carries { id }.",
             ["type"] = "object",
             ["properties"] = new JsonObject
             {
@@ -65,6 +69,8 @@ public static class RemoteJsonSchema
                     ["properties"] = hookResults,
                 },
                 ["service-call"] = Ref("ServiceCallEnvelope"),
+                ["command.invoke"] = Ref("CommandInvokeRequest"),
+                ["command.result"] = Ref("CommandInvokeResult"),
                 ["cancel"] = new JsonObject
                 {
                     ["type"] = "object",
@@ -156,6 +162,22 @@ public static class RemoteJsonSchema
     private static JsonObject SchemaOf(Type type)
     {
         type = Nullable.GetUnderlyingType(type) ?? type;
+        if (type.IsEnum)
+        {
+            // The wire names come from the same attributes the serializer writes, so the published
+            // vocabulary cannot drift from the frames (command dispositions).
+            var values = new JsonArray();
+            foreach (FieldInfo member in type.GetFields(BindingFlags.Public | BindingFlags.Static))
+            {
+                values.Add(
+                    member.GetCustomAttribute<JsonStringEnumMemberNameAttribute>()?.Name
+                        ?? member.Name
+                );
+            }
+
+            return new JsonObject { ["type"] = "string", ["enum"] = values };
+        }
+
         if (type == typeof(string))
         {
             return new JsonObject { ["type"] = "string" };

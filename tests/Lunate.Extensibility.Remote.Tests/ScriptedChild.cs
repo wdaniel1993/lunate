@@ -42,9 +42,29 @@ internal sealed class ScriptedChild : IAsyncDisposable
 
     public bool Killed => Started && Current.Killed;
 
-    /// <summary>Builds the initialize answer; the default echoes the declared surface.</summary>
-    public Func<InitializeRequest, InitializeResult> Handshake { get; set; } =
-        request => new InitializeResult(request.ProtocolVersion, request.Hooks, request.Services);
+    /// <summary>
+    /// True advertises the <c>commands</c> capability in the default initialize answer; false
+    /// models a child that serves hooks and services only (a version-1 child, or a fork).
+    /// </summary>
+    public bool AdvertisesCommands { get; set; } = true;
+
+    /// <summary>
+    /// Builds the initialize answer. Unset, the answer echoes the declared surface and the
+    /// <see cref="AdvertisesCommands"/> flag — what a well-behaved child does.
+    /// </summary>
+    public Func<InitializeRequest, InitializeResult> Handshake
+    {
+        get => _handshake ?? DefaultHandshake;
+        set => _handshake = value;
+    }
+
+    private Func<InitializeRequest, InitializeResult>? _handshake;
+
+    private InitializeResult DefaultHandshake(InitializeRequest request) =>
+        new(request.ProtocolVersion, request.Hooks, request.Services)
+        {
+            Commands = AdvertisesCommands,
+        };
 
     /// <summary>
     /// Answers one hook request; the default returns null (as a child with no opinion may). A
@@ -82,6 +102,20 @@ internal sealed class ScriptedChild : IAsyncDisposable
 
     /// <summary>Every observer notification the child received, by method.</summary>
     public List<(string Method, JsonElement? Parameters)> Notifications { get; } = [];
+
+    /// <summary>Every <c>command/invoke</c> the child received, in arrival order.</summary>
+    public List<CommandInvokeRequest> CommandRequests { get; } = [];
+
+    /// <summary>
+    /// Answers one invoked command through <see cref="RemoteCommandInvoke.DispatchAsync"/> — the
+    /// real child entry, so cancellation and failure map exactly as a real child's do.
+    /// </summary>
+    public Func<
+        CommandInvokeRequest,
+        CancellationToken,
+        ValueTask<CommandResult>
+    > CommandAnswers { get; set; } =
+        (request, _) => ValueTask.FromResult(CommandResult.Notice("pong " + request.Argument));
 
     /// <summary>Answers one <c>service-call</c>; the default returns null.</summary>
     public Func<ServiceCallEnvelope, JsonElement?> ServiceAnswers { get; set; } = _ => null;
@@ -253,6 +287,27 @@ internal sealed class ScriptedChild : IAsyncDisposable
                         "the service-call envelope did not parse"
                     );
                 return _child.ServiceAnswers(envelope);
+            }
+
+            if (method == RemoteProtocol.CommandInvokeMethod)
+            {
+                CommandInvokeRequest request =
+                    parameters!.Value.Deserialize<CommandInvokeRequest>(Options)
+                    ?? throw new InvalidOperationException(
+                        "the command invoke request did not parse"
+                    );
+                lock (_child.CommandRequests)
+                {
+                    _child.CommandRequests.Add(request);
+                }
+
+                return await RemoteCommandInvoke
+                    .DispatchAsync(
+                        request,
+                        (_, _, _) => _child.CommandAnswers(request, cancellationToken),
+                        cancellationToken
+                    )
+                    .ConfigureAwait(false);
             }
 
             if (method == RemoteProtocol.ShutdownMethod)

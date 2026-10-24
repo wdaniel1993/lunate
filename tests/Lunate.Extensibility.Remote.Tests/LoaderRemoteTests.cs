@@ -17,7 +17,7 @@ public sealed class LoaderRemoteTests
     [Fact]
     public async Task A_remote_extension_loads_lazily_and_answers_through_the_hook_runner()
     {
-        using var workspace = new TempWorkspace();
+        using var workspace = new RemoteTestWorkspace();
         ScriptedChild child = workspace.Child;
         child.HookAnswers = (_, _, _) =>
             ValueTask.FromResult<JsonElement?>(
@@ -51,7 +51,7 @@ public sealed class LoaderRemoteTests
     [Fact]
     public async Task A_session_started_subscriber_starts_only_when_the_session_is_live()
     {
-        using var workspace = new TempWorkspace(hooks: ["session-started"]);
+        using var workspace = new RemoteTestWorkspace(hooks: ["session-started"]);
         ScriptedChild child = workspace.Child;
         ExtensionLoader loader = workspace.CreateLoader();
 
@@ -79,7 +79,7 @@ public sealed class LoaderRemoteTests
     [Fact]
     public async Task A_deferred_session_started_is_delivered_on_the_first_lazy_use()
     {
-        using var workspace = new TempWorkspace(hooks: ["session-started", "tool-calling"]);
+        using var workspace = new RemoteTestWorkspace(hooks: ["session-started", "tool-calling"]);
         ScriptedChild child = workspace.Child;
         ExtensionLoader loader = workspace.CreateLoader();
 
@@ -113,7 +113,7 @@ public sealed class LoaderRemoteTests
     [Fact]
     public async Task Background_mode_starts_after_the_explicit_trigger_only()
     {
-        using var workspace = new TempWorkspace(startup: "background");
+        using var workspace = new RemoteTestWorkspace(startup: "background");
         ExtensionLoader loader = workspace.CreateLoader();
 
         await workspace.LoadAsync(loader);
@@ -128,7 +128,7 @@ public sealed class LoaderRemoteTests
     [Fact]
     public async Task A_refused_remote_extension_is_contained_and_the_session_continues()
     {
-        using var workspace = new TempWorkspace();
+        using var workspace = new RemoteTestWorkspace();
         workspace.Child.Handshake = request => new InitializeResult(99, request.Hooks, []);
         ExtensionLoader loader = workspace.CreateLoader();
         await workspace.LoadAsync(loader);
@@ -155,7 +155,7 @@ public sealed class LoaderRemoteTests
     [Fact]
     public async Task The_trust_digest_covers_the_extension_directory_contents()
     {
-        using var workspace = new TempWorkspace(project: true);
+        using var workspace = new RemoteTestWorkspace(project: true);
         ExtensionLoader first = workspace.CreateLoader();
         var prompt = new ScriptedTrustPrompt(true);
 
@@ -177,7 +177,7 @@ public sealed class LoaderRemoteTests
     [Fact]
     public async Task A_manual_restart_through_the_loader_starts_a_fresh_child()
     {
-        using var workspace = new TempWorkspace();
+        using var workspace = new RemoteTestWorkspace();
         ExtensionLoader loader = workspace.CreateLoader();
         await workspace.LoadAsync(loader);
         await loader.Hooks.RunToolCallingAsync(
@@ -210,89 +210,5 @@ public sealed class LoaderRemoteTests
         }
 
         Assert.Fail($"condition not reached: {what}");
-    }
-
-    private sealed class TempWorkspace : IDisposable
-    {
-        private readonly string _root;
-        private readonly string _extensionDirectory;
-        private readonly string _scriptPath;
-
-        public TempWorkspace(
-            bool project = false,
-            string? startup = null,
-            IReadOnlyList<string>? hooks = null
-        )
-        {
-            _root = Path.Combine(
-                Path.GetTempPath(),
-                "lunate-remote-loader-tests",
-                Guid.NewGuid().ToString("N")
-            );
-            string worktree = Path.Combine(_root, "worktree");
-            System.IO.Directory.CreateDirectory(worktree);
-            string storePath = Path.Combine(_root, "store");
-            System.IO.Directory.CreateDirectory(storePath);
-            _extensionDirectory = project
-                ? Path.Combine(worktree, ".lunate", "extensions", "remote-sample")
-                : Path.Combine(storePath, "extensions", "remote-sample");
-            System.IO.Directory.CreateDirectory(_extensionDirectory);
-            _scriptPath = Path.Combine(_extensionDirectory, "index.js");
-            File.WriteAllText(_scriptPath, "// script");
-            string runtime = startup is null
-                ? "\"runtime\":{\"command\":\"node\",\"args\":[\"index.js\"]}"
-                : $"\"runtime\":{{\"command\":\"node\",\"args\":[\"index.js\"],\"startup\":\"{startup}\"}}";
-            File.WriteAllText(
-                Path.Combine(_extensionDirectory, "extension.json"),
-                $$"""{"id":"remote-sample","version":"0.1.0","apiVersion":"^1.0.0","hooks":[{{string.Join(",", (hooks ?? ["tool-calling"]).Select(hook => $"\"{hook}\""))}}],{{runtime}}}"""
-            );
-            StorePath = storePath;
-            Worktree = worktree;
-            Log = new RecordingLog();
-            Child = new ScriptedChild();
-        }
-
-        public string StorePath { get; }
-
-        public string Worktree { get; }
-
-        public RecordingLog Log { get; }
-
-        public ScriptedChild Child { get; }
-
-        public ExtensionLoader CreateLoader()
-        {
-            var loader = new ExtensionLoader(
-                new ExtensionHostOptions { StorePath = StorePath, Log = Log }
-            );
-            loader.Services.RegisterCore("core/process", Child.Runner);
-            loader.Services.RegisterCore("core/workspace", new WorkspaceInfo(Worktree, null, null));
-            loader.Discover(Worktree, "repo");
-            return loader;
-        }
-
-        public Task<LoadedExtension> LoadAsync(
-            ExtensionLoader loader,
-            ScriptedTrustPrompt? prompt = null
-        ) =>
-            loader.Load(
-                "remote-sample",
-                Worktree,
-                "repo",
-                prompt ?? new ScriptedTrustPrompt(true),
-                Ct
-            );
-
-        public void RewriteBundledScript(string content) => File.WriteAllText(_scriptPath, content);
-
-        public void Dispose()
-        {
-            try
-            {
-                System.IO.Directory.Delete(_root, recursive: true);
-            }
-            catch (IOException) { }
-            catch (UnauthorizedAccessException) { }
-        }
     }
 }

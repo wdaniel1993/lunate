@@ -57,7 +57,29 @@ public sealed partial class ExtensionLoader
             }
         );
         _remoteExtensions[descriptor.Id] = remote;
-        await CrossCheckManifestCommandsAsync(descriptor, cancellationToken).ConfigureAwait(false);
+        if (startSession && descriptor.Manifest.Commands.Count > 0)
+        {
+            await StartForDeclaredCommandsAsync(remote, descriptor).ConfigureAwait(false);
+        }
+
+        try
+        {
+            await CrossCheckManifestCommandsAsync(descriptor, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch
+        {
+            // A refused manifest (an undeclared provided name, a built-in collision) must not
+            // leave a running child or a half-registered source behind a load that failed: the
+            // listing may have started the child to learn its capability. The remote path returns
+            // before the in-process cleanup blocks, so it cleans up after itself.
+            _remoteExtensions.Remove(descriptor.Id);
+            _commandSources.Unregister(descriptor.Id);
+            _declaredNotProvidedCommands.Remove(descriptor.Id);
+            await remote.DisposeAsync().ConfigureAwait(false);
+            throw;
+        }
+
         var loaded = new LoadedExtension(descriptor.Id, remote, descriptor);
         _loaded[descriptor.Id] = loaded;
         if (startSession)
@@ -70,6 +92,31 @@ public sealed partial class ExtensionLoader
         }
 
         return loaded;
+    }
+
+    /// <summary>
+    /// Starts one remote extension before its manifest commands are cross-checked, because the
+    /// capability that decides the command listing (`commands: true` in <c>initialize</c>) only
+    /// exists after the handshake: a declared command is either offered and dispatchable, or
+    /// reported as declared, not provided — never offered and dead. Contained: a child that
+    /// cannot start leaves the extension's commands declarations and the load continues. The
+    /// register-only inspect mode passes <c>startSession: false</c> and starts nothing.
+    /// </summary>
+    private async Task StartForDeclaredCommandsAsync(
+        RemoteExtension remote,
+        ExtensionDescriptor descriptor
+    )
+    {
+        try
+        {
+            await remote.EnsureStartedAsync(CancellationToken.None).ConfigureAwait(false);
+        }
+        catch (Exception exception)
+        {
+            (_options.Log ?? NullExtensionLog.Instance).Warn(
+                $"extension '{descriptor.Id}': the child could not start while its declared commands were being listed: {exception.Message} Its commands are reported as declared, not provided."
+            );
+        }
     }
 
     /// <summary>

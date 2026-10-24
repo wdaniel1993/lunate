@@ -36,6 +36,21 @@ public sealed class RemoteConformanceOptions
 
     public JsonElement? ProbeArguments { get; init; }
 
+    /// <summary>The command the runner invokes; the default is the reference extension's ping.</summary>
+    public string ProbeCommand { get; init; } = "ping";
+
+    /// <summary>The remainder sent with <see cref="ProbeCommand"/>; the reply must carry it.</summary>
+    public string ProbeCommandArguments { get; init; } = "conformance";
+
+    /// <summary>
+    /// A command that stays in flight until it is cancelled; null skips the cancel step (a child
+    /// that serves only the probe command is still conforming).
+    /// </summary>
+    public string? CancelCommand { get; init; }
+
+    /// <summary>A command whose handler fails; null skips the failure step.</summary>
+    public string? FailingCommand { get; init; }
+
     /// <summary>The step timeout (start, handshake, each round trip).</summary>
     public TimeSpan Timeout { get; init; } = TimeSpan.FromSeconds(30);
 
@@ -273,6 +288,36 @@ public static class RemoteConformanceRunner
                         : $"answered {serviceResult.Value.GetRawText()}"
                 )
             );
+
+            // Command invocation (protocol version 2). The listing follows the capability, never
+            // the version: a child that does not advertise it keeps its declared commands as
+            // declarations, and the probe steps are not exercised.
+            steps.Add(RemoteCommandConformance.Listing(answer));
+            if (answer.Commands)
+            {
+                steps.Add(
+                    await RemoteCommandConformance
+                        .InvokeAsync(wire, options, cancellationToken)
+                        .ConfigureAwait(false)
+                );
+                if (options.CancelCommand is { Length: > 0 } cancellable)
+                {
+                    steps.Add(
+                        await RemoteCommandConformance
+                            .CancelAsync(wire, options, cancellable, cancellationToken)
+                            .ConfigureAwait(false)
+                    );
+                }
+
+                if (options.FailingCommand is { Length: > 0 } failing)
+                {
+                    steps.Add(
+                        await RemoteCommandConformance
+                            .FailureAsync(wire, options, failing, cancellationToken)
+                            .ConfigureAwait(false)
+                    );
+                }
+            }
 
             try
             {

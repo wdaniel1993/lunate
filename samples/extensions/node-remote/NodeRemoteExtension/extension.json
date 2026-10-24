@@ -7,5 +7,6 @@
         "args": ["index.js"]
     },
     "hooks": ["tool-calling"],
-    "services": ["echo"]
+    "services": ["echo"],
+    "commands": ["ping", "wait", "fail"]
 }

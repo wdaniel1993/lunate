@@ -167,7 +167,7 @@ public sealed class RemoteExtensionTests
     {
         Harness harness = Harness.Create(hooks: ["tool-calling"]);
         harness.Child.Handshake = request => new InitializeResult(
-            2,
+            3,
             request.Hooks,
             request.Services
         );
@@ -179,12 +179,42 @@ public sealed class RemoteExtensionTests
 
         Assert.Equal(RemoteExtensionState.Refused, harness.Extension.Status.State);
         Assert.Contains("was refused", harness.Context.Log.Errors[^1], StringComparison.Ordinal);
-        Assert.Contains("protocol 2", harness.Extension.Status.Reason!, StringComparison.Ordinal);
+        Assert.Contains("protocol 3", harness.Extension.Status.Reason!, StringComparison.Ordinal);
         // Never driven best-effort: the next call refuses without touching the child again.
         await Assert.ThrowsAsync<RemoteExtensionException>(() =>
             handler.HandleAsync(new ToolCallingPayload("r1", "c1", "read", EmptyArgs), Ct).AsTask()
         );
         Assert.Equal(1, harness.Child.StartCount);
+    }
+
+    [Fact]
+    public async Task A_version_1_child_stays_readable_for_hooks_and_reports_no_commands_capability()
+    {
+        Harness harness = Harness.Create(hooks: ["tool-calling"]);
+        // A version-1 child predates command/invoke: it answers hooks and services, and omits the
+        // commands capability entirely.
+        harness.Child.Handshake = request => new InitializeResult(
+            RemoteProtocol.MinimumVersion,
+            request.Hooks,
+            request.Services
+        );
+        var handler = (IToolCallingHandler)Assert.Single(harness.Context.Handlers);
+        harness.Child.HookAnswers = (_, _, _) =>
+            ValueTask.FromResult<JsonElement?>(
+                HookResultCodec.EncodeResult(
+                    HookContracts.Find("ToolCalling")!,
+                    new ToolCallingResult.Block("held by a version-1 child")
+                )
+            );
+
+        ToolCallingResult result = await handler.HandleAsync(
+            new ToolCallingPayload("r1", "c1", "read", EmptyArgs),
+            Ct
+        );
+
+        Assert.Equal(new ToolCallingResult.Block("held by a version-1 child"), result);
+        Assert.Equal(RemoteExtensionState.Ready, harness.Extension.Status.State);
+        Assert.False(harness.Extension.CommandsAvailable);
     }
 
     [Fact]

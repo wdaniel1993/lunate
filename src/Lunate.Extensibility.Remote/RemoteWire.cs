@@ -47,7 +47,7 @@ public sealed class RemoteWire : IAsyncDisposable
     private const int ErrorInvalidRequest = -32600;
     private const int ErrorMethodNotFound = -32601;
     private const int ErrorInternal = -32603;
-    private const int ErrorCancelled = -32800;
+    private const int ErrorCancelled = RemoteProtocol.CancelledErrorCode;
 
     private readonly IRemoteLineChannel _channel;
     private readonly RemoteWireOptions _options;
@@ -108,14 +108,34 @@ public sealed class RemoteWire : IAsyncDisposable
     /// Sends one request and waits for its response. On cancellation or timeout the wire sends
     /// <c>$/cancelRequest</c> for the id and abandons the call; a late response is ignored.
     /// </summary>
-    public async Task<JsonElement?> CallAsync(
+    public Task<JsonElement?> CallAsync(
         string method,
         JsonElement? parameters = null,
         TimeSpan? timeout = null,
         CancellationToken cancellationToken = default
+    ) => CallCoreAsync(method, _ => parameters, timeout, cancellationToken);
+
+    /// <summary>
+    /// Sends one request whose payload must name the request's own id: the id is allocated first,
+    /// <paramref name="parameters"/> builds the params from it, and the frame is written under it.
+    /// A command invocation uses this so the id it carries is the id <c>$/cancelRequest</c> names.
+    /// </summary>
+    public Task<JsonElement?> CallWithIdAsync(
+        string method,
+        Func<long, JsonElement?> parameters,
+        TimeSpan? timeout = null,
+        CancellationToken cancellationToken = default
+    ) => CallCoreAsync(method, parameters, timeout, cancellationToken);
+
+    private async Task<JsonElement?> CallCoreAsync(
+        string method,
+        Func<long, JsonElement?> parameters,
+        TimeSpan? timeout,
+        CancellationToken cancellationToken
     )
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(method);
+        ArgumentNullException.ThrowIfNull(parameters);
         ObjectDisposedException.ThrowIf(_disposed, this);
         long id = Interlocked.Increment(ref _nextId);
         string key = id.ToString(CultureInfo.InvariantCulture);
@@ -134,7 +154,7 @@ public sealed class RemoteWire : IAsyncDisposable
 
         try
         {
-            await WriteFrameAsync(Frame.Request(id, method, parameters), cancellationToken)
+            await WriteFrameAsync(Frame.Request(id, method, parameters(id)), cancellationToken)
                 .ConfigureAwait(false);
 
             TimeSpan wait = timeout ?? _options.DefaultCallTimeout;

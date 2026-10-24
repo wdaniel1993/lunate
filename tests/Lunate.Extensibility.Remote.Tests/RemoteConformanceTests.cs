@@ -45,6 +45,69 @@ public sealed class RemoteConformanceTests
     }
 
     [Fact]
+    public async Task The_run_invokes_a_command_when_the_child_advertises_the_capability()
+    {
+        var child = new ScriptedChild();
+
+        RemoteConformanceReport report = await RemoteConformanceRunner.RunAsync(
+            new RemoteConformanceOptions
+            {
+                FileName = "node",
+                WorkingDirectory = Path.GetTempPath(),
+                ProcessRunner = child.Runner,
+                Timeout = TimeSpan.FromSeconds(15),
+            },
+            Ct
+        );
+
+        Assert.True(report.Succeeded, report.Summary);
+        RemoteConformanceStep listing = Assert.Single(
+            report.Steps,
+            step => step.Name == "command listing"
+        );
+        Assert.Contains(
+            "advertises the commands capability",
+            listing.Detail,
+            StringComparison.Ordinal
+        );
+        RemoteConformanceStep invoke = Assert.Single(
+            report.Steps,
+            step => step.Name == "command invoke"
+        );
+        Assert.True(invoke.Passed, invoke.Detail);
+        Assert.Contains("pong conformance", invoke.Detail, StringComparison.Ordinal);
+        CommandInvokeRequest request = Assert.Single(child.CommandRequests);
+        Assert.Equal("ping", request.Name);
+        Assert.Equal("conformance", request.Argument);
+    }
+
+    [Fact]
+    public async Task A_child_without_the_capability_is_reported_as_declared_not_provided()
+    {
+        var child = new ScriptedChild { AdvertisesCommands = false };
+
+        RemoteConformanceReport report = await RemoteConformanceRunner.RunAsync(
+            new RemoteConformanceOptions
+            {
+                FileName = "node",
+                WorkingDirectory = Path.GetTempPath(),
+                ProcessRunner = child.Runner,
+                Timeout = TimeSpan.FromSeconds(15),
+            },
+            Ct
+        );
+
+        Assert.True(report.Succeeded, report.Summary);
+        RemoteConformanceStep listing = Assert.Single(
+            report.Steps,
+            step => step.Name == "command listing"
+        );
+        Assert.True(listing.Passed);
+        Assert.Contains("declared, not provided", listing.Detail, StringComparison.Ordinal);
+        Assert.DoesNotContain(report.Steps, step => step.Name == "command invoke");
+    }
+
+    [Fact]
     public void The_inventory_covers_every_hook_payload_and_result_dto()
     {
         Assert.Empty(RemoteConformance.MissingCoverage());
