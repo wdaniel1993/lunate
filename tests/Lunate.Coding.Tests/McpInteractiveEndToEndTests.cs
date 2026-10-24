@@ -42,7 +42,8 @@ public sealed class McpInteractiveEndToEndTests
         await InteractiveSessionCommandTests.WaitForScrollbackAsync(host, "hello mcp", SpawnWait);
 
         Assert.Contains("test__echo", host.Client.Requests[0][0].Text!, StringComparison.Ordinal);
-        Assert.Contains("\u2713 test__echo", host.ScrollbackText, StringComparison.Ordinal);
+        // The wait is the assertion: the ✓ header is only ever seen in a committed frame.
+        await host.WaitForScrollbackAsync("\u2713 test__echo", SpawnWait);
 
         host.Console.SendText("/mcp");
         host.Console.SendEnter();

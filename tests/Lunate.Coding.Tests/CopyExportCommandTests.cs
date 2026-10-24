@@ -176,15 +176,19 @@ public sealed class CopyExportCommandTests
             "exports",
             "2026-10-24-" + sessionId + ".html"
         );
-        await InteractiveSessionCommandTests.WaitForScrollbackAsync(host, "exported ");
+        // One frame: the notice and the warning line it prints under it.
+        string exported = await InteractiveSessionCommandTests.WaitForScrollbackAsync(
+            host,
+            "exported "
+        );
         Assert.True(File.Exists(expected), expected);
         string html = File.ReadAllText(expected);
         Assert.Contains("hi there", html, StringComparison.Ordinal);
         Assert.Contains("Content-Security-Policy", html, StringComparison.Ordinal);
-        Assert.Contains($"exported {Entries(host):N0} entries to {expected}", host.ScrollbackText);
+        Assert.Contains($"exported {Entries(host):N0} entries to {expected}", exported);
         Assert.Contains(
             "may contain file contents and command output; review before sharing",
-            host.ScrollbackText
+            exported
         );
 
         host.Console.Complete();
@@ -201,13 +205,16 @@ public sealed class CopyExportCommandTests
         string destination = host.Temp.File("out.jsonl");
 
         await SendLineAsync(host, "/export jsonl " + destination);
-        await InteractiveSessionCommandTests.WaitForScrollbackAsync(host, "exported ");
+        string exported = await InteractiveSessionCommandTests.WaitForScrollbackAsync(
+            host,
+            "exported "
+        );
 
         Assert.True(File.Exists(destination));
         Assert.Equal(File.ReadAllBytes(SessionFiles(host)[0]), File.ReadAllBytes(destination));
         Assert.Contains(
             $"exported {Entries(host):N0} entries to {Path.GetFullPath(destination)}",
-            host.ScrollbackText,
+            exported,
             StringComparison.Ordinal
         );
 
@@ -232,12 +239,15 @@ public sealed class CopyExportCommandTests
         Assert.Equal("keep me", File.ReadAllText(destination));
 
         await SendLineAsync(host, "/export html " + destination + " --force");
-        await InteractiveSessionCommandTests.WaitForScrollbackAsync(host, "exported ");
+        string exported = await InteractiveSessionCommandTests.WaitForScrollbackAsync(
+            host,
+            "exported "
+        );
 
         Assert.Contains("<!DOCTYPE html>", File.ReadAllText(destination), StringComparison.Ordinal);
         Assert.Contains(
             $"exported {Entries(host):N0} entries to {Path.GetFullPath(destination)}",
-            host.ScrollbackText
+            exported
         );
 
         host.Console.Complete();
@@ -303,8 +313,10 @@ public sealed class CopyExportCommandTests
         await host.WaitUntilAsync(() => host.Session.IsComposed);
 
         await SendLineAsync(host, "/help");
-        await InteractiveSessionCommandTests.WaitForScrollbackAsync(host, "/copy");
-        Assert.Contains("/export", host.ScrollbackText, StringComparison.Ordinal);
+
+        // The listing is one commit: waiting for /copy means /export already landed beside it.
+        string listing = await InteractiveSessionCommandTests.WaitForScrollbackAsync(host, "/copy");
+        Assert.Contains("/export", listing, StringComparison.Ordinal);
 
         host.Console.SendText("?");
         await host.WaitForFrameAsync("Copy the last answer");

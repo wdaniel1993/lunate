@@ -83,9 +83,10 @@ public sealed class InteractiveSessionBashHistoryTests
         host.Console.SendEnter();
         await host.WaitUntilAsync(() => host.Session.PendingApproval is not null);
         host.Console.SendText("y");
-        await host.WaitUntilAsync(() =>
-            !host.Session.IsBashRunning
-            && host.ScrollbackText.Contains("exit 0", StringComparison.Ordinal)
+        await host.WaitForScrollbackAsync(
+            text =>
+                text.Contains("exit 0", StringComparison.Ordinal) && !host.Session.IsBashRunning,
+            "the bash result once the shell exits"
         );
     }
 }

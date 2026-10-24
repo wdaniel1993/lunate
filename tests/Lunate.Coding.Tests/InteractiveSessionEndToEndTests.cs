@@ -236,12 +236,12 @@ public sealed class InteractiveSessionEndToEndTests
 
         host.Console.SendText("/quit");
         host.Console.SendEnter();
-        await run;
 
         // The scrollback golden is the other half of this test's flake: when the steer echo is
         // missing the diff cannot say whether the message never reached the model or reached it and
-        // was never echoed. This block answers that in the failure message.
-        string scrollback = NormalizeWorkspace(host, host.ScrollbackText);
+        // was never echoed. This block answers that in the failure message. The golden is read
+        // after the run completed, so it pins the whole session's commits, not a live prefix.
+        string scrollback = NormalizeWorkspace(host, await host.ScrollbackAfterAsync(() => run));
         try
         {
             InteractiveGoldens.AssertMatchesText("end-to-end-scrollback.txt", scrollback);

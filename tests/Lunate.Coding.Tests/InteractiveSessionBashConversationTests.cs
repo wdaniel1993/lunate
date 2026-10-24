@@ -15,9 +15,10 @@ public sealed class InteractiveSessionBashConversationTests
         await host.WaitUntilAsync(() => host.Session.IsComposed);
 
         await RunBashLineAsync(host, "!echo conversation");
-        await host.WaitUntilAsync(() =>
-            !host.Session.IsBashRunning
-            && host.ScrollbackText.Contains("exit 0", StringComparison.Ordinal)
+        await host.WaitForScrollbackAsync(
+            text =>
+                text.Contains("exit 0", StringComparison.Ordinal) && !host.Session.IsBashRunning,
+            "the bash result once the shell exits"
         );
 
         host.Console.SendText("next");
@@ -59,9 +60,11 @@ public sealed class InteractiveSessionBashConversationTests
         int baselineCount = host.Client.Requests[0].Count;
 
         await RunBashLineAsync(host, "!!echo secret");
-        await host.WaitUntilAsync(() =>
-            !host.Session.IsBashRunning
-            && host.ScrollbackText.Contains("echo secret", StringComparison.Ordinal)
+        await host.WaitForScrollbackAsync(
+            text =>
+                text.Contains("echo secret", StringComparison.Ordinal)
+                && !host.Session.IsBashRunning,
+            "the bash result once the shell exits"
         );
 
         host.Client.Enqueue(Scripts.Text("second answer"), Scripts.Stop());
@@ -79,11 +82,8 @@ public sealed class InteractiveSessionBashConversationTests
             messages,
             message => Text(message).Contains("secret", StringComparison.Ordinal)
         );
-        Assert.Contains(
-            "\u2713 bash  echo secret \u00b7 exit 0",
-            host.ScrollbackText,
-            StringComparison.Ordinal
-        );
+        // The header commits with the result the wait above saw; the wait is the assertion.
+        await host.WaitForScrollbackAsync("\u2713 bash  echo secret \u00b7 exit 0");
 
         host.Console.Complete();
         await run;

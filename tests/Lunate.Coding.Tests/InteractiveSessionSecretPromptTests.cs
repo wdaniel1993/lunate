@@ -26,7 +26,11 @@ public sealed class InteractiveSessionSecretPromptTests
         await OpenLoginAsync(host);
 
         host.Console.SendText(Secret);
-        await WaitForFrameAsync(host, "API key for groq: " + new string('*', 17));
+
+        // The masked frame is the event; the typed secret must not appear on the surface it left.
+        string scrollback = await host.ScrollbackAfterAsync(() =>
+            WaitForFrameAsync(host, "API key for groq: " + new string('*', 17))
+        );
 
         Assert.Contains(
             "API key for groq: " + new string('*', 17),
@@ -34,15 +38,19 @@ public sealed class InteractiveSessionSecretPromptTests
             StringComparison.Ordinal
         );
         Assert.DoesNotContain(Secret, host.Frames, StringComparison.Ordinal);
-        Assert.DoesNotContain(Secret, host.ScrollbackText, StringComparison.Ordinal);
+        Assert.DoesNotContain(Secret, scrollback, StringComparison.Ordinal);
 
         host.Console.SendEnter();
-        await WaitForFrameAsync(host, "logged in: groq");
+
+        // The login's confirmation is the event; the secret must not have been committed.
+        string loggedIn = await host.ScrollbackAfterAsync(() =>
+            WaitForFrameAsync(host, "logged in: groq")
+        );
 
         AuthStore store = AuthStore.Load(authPath, _ => null);
         Assert.Equal(Secret, store.TryGet("groq"));
         Assert.DoesNotContain(Secret, host.Frames, StringComparison.Ordinal);
-        Assert.DoesNotContain(Secret, host.ScrollbackText, StringComparison.Ordinal);
+        Assert.DoesNotContain(Secret, loggedIn, StringComparison.Ordinal);
         Assert.DoesNotContain(Secret, HistoryText(host), StringComparison.Ordinal);
         string[] sessionFiles = SessionFiles(host);
         Assert.NotEmpty(sessionFiles);
@@ -72,11 +80,15 @@ public sealed class InteractiveSessionSecretPromptTests
         host.Console.SendText("groq-part");
         await WaitForFrameAsync(host, "API key for groq: *********");
         host.Console.SendEscape();
-        await WaitForFrameAsync(host, "login cancelled");
+
+        // The cancellation notice is the event; the partial key must not appear on that surface.
+        string scrollback = await host.ScrollbackAfterAsync(() =>
+            WaitForFrameAsync(host, "login cancelled")
+        );
 
         Assert.False(File.Exists(authPath));
         Assert.DoesNotContain("groq-part", host.Frames, StringComparison.Ordinal);
-        Assert.DoesNotContain("groq-part", host.ScrollbackText, StringComparison.Ordinal);
+        Assert.DoesNotContain("groq-part", scrollback, StringComparison.Ordinal);
         Assert.Equal(string.Empty, host.Session.Input.Text);
         Assert.Empty(host.Client.Requests);
 
@@ -97,12 +109,17 @@ public sealed class InteractiveSessionSecretPromptTests
 
         host.Console.SendText("not a command");
         host.Console.SendEnter();
-        await WaitForFrameAsync(host, "logged in: groq");
+
+        // The secret prompt never echoes its input, so the text must be absent from the surface
+        // the login's confirmation settled.
+        string scrollback = await host.ScrollbackAfterAsync(() =>
+            WaitForFrameAsync(host, "logged in: groq")
+        );
 
         AuthStore store = AuthStore.Load(authPath, _ => null);
         Assert.Equal("not a command", store.TryGet("groq"));
         Assert.DoesNotContain("not a command", host.Frames, StringComparison.Ordinal);
-        Assert.DoesNotContain("not a command", host.ScrollbackText, StringComparison.Ordinal);
+        Assert.DoesNotContain("not a command", scrollback, StringComparison.Ordinal);
         Assert.DoesNotContain("not a command", HistoryText(host), StringComparison.Ordinal);
         string[] sessionFiles = SessionFiles(host);
         Assert.NotEmpty(sessionFiles);
@@ -170,12 +187,16 @@ public sealed class InteractiveSessionSecretPromptTests
         Assert.False(File.Exists(authPath));
 
         host.Console.SendEnter();
-        await WaitForFrameAsync(host, "logged in: groq");
+
+        // The login's confirmation is the event; the pasted secret must not have been committed.
+        string scrollback = await host.ScrollbackAfterAsync(() =>
+            WaitForFrameAsync(host, "logged in: groq")
+        );
 
         AuthStore store = AuthStore.Load(authPath, _ => null);
         Assert.Equal(Secret, store.TryGet("groq"));
         Assert.DoesNotContain(Secret, host.Frames, StringComparison.Ordinal);
-        Assert.DoesNotContain(Secret, host.ScrollbackText, StringComparison.Ordinal);
+        Assert.DoesNotContain(Secret, scrollback, StringComparison.Ordinal);
         AssertSecretOnlyInAuth(host, authPath);
 
         await QuitAsync(host, run);

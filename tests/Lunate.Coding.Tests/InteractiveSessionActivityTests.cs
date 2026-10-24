@@ -93,9 +93,7 @@ public sealed class InteractiveSessionActivityTests
 
         host.Console.SendText("one");
         host.Console.SendEnter();
-        await host.WaitUntilAsync(() =>
-            host.ScrollbackText.Contains("first", StringComparison.Ordinal)
-        );
+        await host.WaitForScrollbackAsync("first");
         await host.WaitUntilAsync(() => !host.Session.IsRunning);
 
         host.Console.SendText("two");
@@ -195,9 +193,9 @@ public sealed class InteractiveSessionActivityTests
         Assert.DoesNotContain("thinking…", tool, StringComparison.Ordinal);
 
         gate.ReleaseTool();
-        await host.WaitUntilAsync(() =>
-            !host.Session.IsRunning
-            && host.ScrollbackText.Contains("done", StringComparison.Ordinal)
+        await host.WaitForScrollbackAsync(
+            text => text.Contains("done", StringComparison.Ordinal) && !host.Session.IsRunning,
+            "the answer once the turn finishes"
         );
 
         Assert.Empty(EventSequenceValidator.Validate(host.Events));

@@ -45,15 +45,19 @@ public sealed class InteractiveSessionSteeringTests
         host.Client.Release(1);
         await host.Client.WaitForCallAsync(2);
 
-        await host.WaitUntilAsync(() =>
-            host.ScrollbackText.Contains("» steer one", StringComparison.Ordinal)
-            && host.ScrollbackText.Contains("» steer two", StringComparison.Ordinal)
+        // Both echoes and their order must come from one frame: a snapshot taken between the two
+        // commits would order them wrongly.
+        string scrollback = await host.WaitForScrollbackAsync(
+            text =>
+                text.Contains("» steer one", StringComparison.Ordinal)
+                && text.Contains("» steer two", StringComparison.Ordinal),
+            "both steering echoes"
         );
-        Assert.Contains("> hi\n\n", host.ScrollbackText, StringComparison.Ordinal);
-        Assert.DoesNotContain("» hi", host.ScrollbackText, StringComparison.Ordinal);
+        Assert.Contains("> hi\n\n", scrollback, StringComparison.Ordinal);
+        Assert.DoesNotContain("» hi", scrollback, StringComparison.Ordinal);
         Assert.True(
-            host.ScrollbackText.IndexOf("» steer one", StringComparison.Ordinal)
-                < host.ScrollbackText.IndexOf("» steer two", StringComparison.Ordinal)
+            scrollback.IndexOf("» steer one", StringComparison.Ordinal)
+                < scrollback.IndexOf("» steer two", StringComparison.Ordinal)
         );
 
         host.Client.Release(2);
@@ -84,14 +88,12 @@ public sealed class InteractiveSessionSteeringTests
         host.Client.Release(1);
         await host.Client.WaitForCallAsync(2);
 
-        await host.WaitUntilAsync(() =>
-            host.ScrollbackText.Contains(">> steer", StringComparison.Ordinal)
-        );
-        string[] lines = host.ScrollbackText.Split('\n');
+        string scrollback = await host.WaitForScrollbackAsync(">> steer");
+        string[] lines = scrollback.Split('\n');
         Assert.Contains(">> steer", lines);
         Assert.Contains("> hi", lines);
         Assert.DoesNotContain("> steer", lines);
-        Assert.DoesNotContain("» steer", host.ScrollbackText, StringComparison.Ordinal);
+        Assert.DoesNotContain("» steer", scrollback, StringComparison.Ordinal);
 
         host.Client.Release(2);
         host.Console.Complete();
@@ -144,11 +146,15 @@ public sealed class InteractiveSessionSteeringTests
         await host.Client.WaitForCallAsync(1);
         host.Session.Steering.Enqueue("unsent");
         host.Console.SendEscape();
-        await host.WaitUntilAsync(() => !host.Session.IsRunning);
+        // The cancelled turn is the event; the absence of the unsent steer is asserted on the
+        // scrollback it settled.
+        string scrollback = await host.ScrollbackAfterAsync(() =>
+            host.WaitUntilAsync(() => !host.Session.IsRunning)
+        );
 
         Assert.Equal(1, host.Session.Steering.Count);
         Assert.Equal(string.Empty, host.Session.Input.Text);
-        Assert.DoesNotContain("» unsent", host.ScrollbackText, StringComparison.Ordinal);
+        Assert.DoesNotContain("» unsent", scrollback, StringComparison.Ordinal);
         host.Console.Complete();
         await run;
     }

@@ -23,7 +23,8 @@ public sealed class WelcomeHeaderSessionTests
 
         await host.WaitUntilAsync(() => host.Session.IsComposed);
 
-        string scrollback = host.ScrollbackText;
+        // The header is the marker: waiting for its first line proves the whole print committed.
+        string scrollback = await host.WaitForScrollbackAsync($"lunate  v{ProductVersion.Build}");
         Assert.Equal(1, Occurrences(scrollback, Mark));
         Assert.Contains($"lunate  v{ProductVersion.Build}", scrollback, StringComparison.Ordinal);
         Assert.Contains("gpt-4o-mini · 128,000 ctx", scrollback, StringComparison.Ordinal);
@@ -64,7 +65,8 @@ public sealed class WelcomeHeaderSessionTests
             host,
             "Load project skills from this repository"
         );
-        Assert.Contains(Mark, host.ScrollbackText, StringComparison.Ordinal);
+        // The trust question painted after the header committed, so the mark must already be there.
+        await host.WaitForScrollbackAsync(Mark);
         Assert.Contains("loading project…", host.LastFrame, StringComparison.Ordinal);
 
         host.Console.SendText("n");
@@ -84,7 +86,7 @@ public sealed class WelcomeHeaderSessionTests
 
         await host.WaitUntilAsync(() => host.Session.IsComposed);
 
-        Assert.Contains("C# workspace · Roslyn", host.ScrollbackText, StringComparison.Ordinal);
+        await host.WaitForScrollbackAsync("C# workspace · Roslyn");
 
         host.Console.SendText("/quit");
         host.Console.SendEnter();
@@ -99,7 +101,9 @@ public sealed class WelcomeHeaderSessionTests
 
         await host.WaitUntilAsync(() => host.Session.IsComposed);
 
-        string scrollback = host.ScrollbackText;
+        // The counts line is the last row the composition writes: its snapshot is the frame the
+        // placeholder and mark counts below are about.
+        string scrollback = await host.WaitForScrollbackAsync("extensions 0 · MCP 0 · skills 0");
         Assert.Contains("extensions … · MCP … · skills …", scrollback, StringComparison.Ordinal);
         Assert.Equal(1, Occurrences(scrollback, "extensions 0 · MCP 0 · skills 0"));
         Assert.Equal(1, Occurrences(scrollback, Mark));
@@ -118,7 +122,9 @@ public sealed class WelcomeHeaderSessionTests
 
         await host.WaitUntilAsync(() => host.Session.IsComposed);
 
-        string scrollback = host.ScrollbackText;
+        string scrollback = await host.WaitForScrollbackAsync(
+            $"lunate v{ProductVersion.Build} — /help for commands"
+        );
         Assert.Contains(
             $"lunate v{ProductVersion.Build} — /help for commands",
             scrollback,
@@ -142,7 +148,9 @@ public sealed class WelcomeHeaderSessionTests
 
         await host.WaitUntilAsync(() => host.Session.IsComposed);
 
-        string scrollback = host.ScrollbackText;
+        string scrollback = await host.WaitForScrollbackAsync(
+            $"lunate v{ProductVersion.Build} - /help for commands"
+        );
         Assert.Contains(
             $"lunate v{ProductVersion.Build} - /help for commands",
             scrollback,
@@ -167,11 +175,7 @@ public sealed class WelcomeHeaderSessionTests
 
         await host.WaitUntilAsync(() => host.Session.IsComposed);
 
-        Assert.Contains(
-            "extensions 0 · MCP 0 · skills 1",
-            host.ScrollbackText,
-            StringComparison.Ordinal
-        );
+        await host.WaitForScrollbackAsync("extensions 0 · MCP 0 · skills 1");
 
         host.Console.SendText("/quit");
         host.Console.SendEnter();
@@ -192,8 +196,7 @@ public sealed class WelcomeHeaderSessionTests
 
         await host.WaitUntilAsync(() => host.Session.IsComposed);
 
-        string scrollback = host.ScrollbackText;
-        Assert.Contains("extensions 1 · MCP 0 · skills 0", scrollback, StringComparison.Ordinal);
+        string scrollback = await host.WaitForScrollbackAsync("extensions 1 · MCP 0 · skills 0");
         Assert.Equal(1, Occurrences(scrollback, Mark));
 
         host.Console.SendText("/quit");
@@ -209,7 +212,9 @@ public sealed class WelcomeHeaderSessionTests
 
         await host.WaitUntilAsync(() => host.Session.IsComposed);
 
-        string scrollback = host.ScrollbackText;
+        string scrollback = await host.WaitForScrollbackAsync(
+            "add the 'openai' key to ~/.lunate/auth.json"
+        );
         Assert.Contains(
             "add the 'openai' key to ~/.lunate/auth.json",
             scrollback,
@@ -235,7 +240,7 @@ public sealed class WelcomeHeaderSessionTests
 
         await host.WaitUntilAsync(() => host.Session.IsComposed);
 
-        string scrollback = host.ScrollbackText;
+        string scrollback = await host.WaitForScrollbackAsync("set OPENAI_API_KEY to a valid key");
         Assert.Equal(1, Occurrences(scrollback, "set OPENAI_API_KEY to a valid key"));
         // Exactly one actionable path: the named variable, never the auth store as well.
         Assert.DoesNotContain("auth.json", scrollback, StringComparison.Ordinal);
@@ -255,9 +260,7 @@ public sealed class WelcomeHeaderSessionTests
 
         // Nothing resolves without a model, so composition fails right after the header printed:
         // the run ends on its own and the header is the whole first frame.
-        await run;
-
-        string scrollback = host.ScrollbackText;
+        string scrollback = await host.ScrollbackAfterAsync(() => run);
         Assert.Contains(
             "set 'model' in ~/.lunate/settings.json",
             scrollback,
@@ -282,9 +285,15 @@ public sealed class WelcomeHeaderSessionTests
         await host.WaitUntilAsync(() => host.Session.IsComposed);
         host.Console.SendText("/new");
         host.Console.SendEnter();
-        await InteractiveSessionCommandTests.WaitForFrameAsync(host, "new session");
-
-        Assert.DoesNotContain(Mark, host.ScrollbackText, StringComparison.Ordinal);
+        // Nothing may print, so the /new notice is the event: read once the frame that carries it
+        // completed, and assert the absence on that surface.
+        Assert.DoesNotContain(
+            Mark,
+            await host.ScrollbackAfterAsync(() =>
+                InteractiveSessionCommandTests.WaitForFrameAsync(host, "new session")
+            ),
+            StringComparison.Ordinal
+        );
 
         host.Console.SendText("/quit");
         host.Console.SendEnter();
@@ -302,9 +311,13 @@ public sealed class WelcomeHeaderSessionTests
         await host.WaitUntilAsync(() => host.Session.IsComposed);
         host.Console.SendText("/new");
         host.Console.SendEnter();
-        await InteractiveSessionCommandTests.WaitForFrameAsync(host, "new session");
-
-        Assert.DoesNotContain(Mark, host.ScrollbackText, StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            Mark,
+            await host.ScrollbackAfterAsync(() =>
+                InteractiveSessionCommandTests.WaitForFrameAsync(host, "new session")
+            ),
+            StringComparison.Ordinal
+        );
 
         host.Console.SendText("/quit");
         host.Console.SendEnter();
@@ -322,11 +335,15 @@ public sealed class WelcomeHeaderSessionTests
         host.Console.SendEnter();
         await InteractiveSessionCommandTests.WaitForFrameAsync(host, "new session");
 
-        Assert.Equal(2, Occurrences(host.ScrollbackText, Mark));
+        // Two headers only exist once /new printed its own: wait for that, then count on one frame.
+        string scrollback = await host.WaitForScrollbackAsync(
+            text => Occurrences(text, Mark) == 2,
+            "the second header /new prints"
+        );
         // The first frame printed the placeholder once and got its one update line; the /new block
         // prints the counts directly, so no second placeholder and no second update line appears.
-        Assert.Equal(1, Occurrences(host.ScrollbackText, "extensions … · MCP … · skills …"));
-        Assert.Equal(2, Occurrences(host.ScrollbackText, "extensions 0 · MCP 0 · skills 0"));
+        Assert.Equal(1, Occurrences(scrollback, "extensions … · MCP … · skills …"));
+        Assert.Equal(2, Occurrences(scrollback, "extensions 0 · MCP 0 · skills 0"));
 
         host.Console.SendText("/quit");
         host.Console.SendEnter();

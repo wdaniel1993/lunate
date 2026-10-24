@@ -93,7 +93,7 @@ public sealed class InteractiveSessionCommandTests
         host.Console.SendEnter();
         // "extensions" also appears in the welcome footer; wait on the listing's last line so the
         // wait covers the whole block the asserts compare below.
-        await WaitForScrollbackAsync(host, "  /ping — Ping the extension");
+        string listing = await WaitForScrollbackAsync(host, "  /ping — Ping the extension");
 
         Assert.Contains(
             """
@@ -127,7 +127,7 @@ public sealed class InteractiveSessionCommandTests
             quit
               /quit — quit
             """,
-            host.ScrollbackText,
+            listing,
             StringComparison.Ordinal
         );
         // The non-built-in section follows the built-in groups (design D1).
@@ -138,7 +138,7 @@ public sealed class InteractiveSessionCommandTests
             extensions
               /ping — Ping the extension
             """,
-            host.ScrollbackText,
+            listing,
             StringComparison.Ordinal
         );
         Assert.Empty(host.Client.Requests);
@@ -662,15 +662,16 @@ public sealed class InteractiveSessionCommandTests
 
         host.Console.SendText("/session");
         host.Console.SendEnter();
-        await WaitForScrollbackAsync(host, "tokens: 1000 in / 500 out");
+        // The tokens row closes the report: one committed frame carries every row below.
+        string report = await WaitForScrollbackAsync(host, "tokens: 1000 in / 500 out");
 
-        Assert.Contains($"session: {path}", host.ScrollbackText, StringComparison.Ordinal);
-        Assert.Contains($"id: {session.SessionId}", host.ScrollbackText, StringComparison.Ordinal);
-        Assert.Contains("messages: 2", host.ScrollbackText, StringComparison.Ordinal);
-        Assert.Contains("cost: $0.0005", host.ScrollbackText, StringComparison.Ordinal);
+        Assert.Contains($"session: {path}", report, StringComparison.Ordinal);
+        Assert.Contains($"id: {session.SessionId}", report, StringComparison.Ordinal);
+        Assert.Contains("messages: 2", report, StringComparison.Ordinal);
+        Assert.Contains("cost: $0.0005", report, StringComparison.Ordinal);
         Assert.Contains(
             "gpt-4o-mini: 1000 in / 500 out / 0 cache read / 0 cache write = $0.0005",
-            host.ScrollbackText,
+            report,
             StringComparison.Ordinal
         );
         Assert.Single(host.Client.Requests);
@@ -697,17 +698,13 @@ public sealed class InteractiveSessionCommandTests
         await RunOneTurnAsync(host);
         host.Console.SendText("/session");
         host.Console.SendEnter();
-        await WaitForScrollbackAsync(host, "tokens: 1500 in / 50 out");
+        string report = await WaitForScrollbackAsync(host, "tokens: 1500 in / 50 out");
 
-        Assert.Contains(
-            "cache: 1200 read / 300 write",
-            host.ScrollbackText,
-            StringComparison.Ordinal
-        );
-        Assert.Contains("cost: $0.0014", host.ScrollbackText, StringComparison.Ordinal);
+        Assert.Contains("cache: 1200 read / 300 write", report, StringComparison.Ordinal);
+        Assert.Contains("cost: $0.0014", report, StringComparison.Ordinal);
         Assert.Contains(
             "claude-sonnet-5-5: 1500 in / 50 out / 1200 cache read / 300 cache write = $0.0014",
-            host.ScrollbackText,
+            report,
             StringComparison.Ordinal
         );
 
@@ -749,15 +746,13 @@ public sealed class InteractiveSessionCommandTests
 
         started.Console.SendText("/session");
         started.Console.SendEnter();
-        await WaitForScrollbackAsync(started, "tokens: 1200 in / 120 out");
+        // The unpriced report: the tokens row proves the frame is current, and the absence of the
+        // cost lanes is then asserted on that same frame.
+        string report = await WaitForScrollbackAsync(started, "tokens: 1200 in / 120 out");
 
-        Assert.Contains(
-            "cache: 50 read / 25 write",
-            started.ScrollbackText,
-            StringComparison.Ordinal
-        );
-        Assert.DoesNotContain("cost:", started.ScrollbackText, StringComparison.Ordinal);
-        Assert.DoesNotContain(" = $", started.ScrollbackText, StringComparison.Ordinal);
+        Assert.Contains("cache: 50 read / 25 write", report, StringComparison.Ordinal);
+        Assert.DoesNotContain("cost:", report, StringComparison.Ordinal);
+        Assert.DoesNotContain(" = $", report, StringComparison.Ordinal);
 
         started.Console.Complete();
         await run;
@@ -793,10 +788,12 @@ public sealed class InteractiveSessionCommandTests
 
         started.Console.SendText("/session");
         started.Console.SendEnter();
-        await WaitForScrollbackAsync(started, "tokens: 1000 in / 100 out");
+        // A negative usage lane suppresses the cost rows; the tokens row is the marker that the
+        // report committed, and the absence rides on that snapshot.
+        string report = await WaitForScrollbackAsync(started, "tokens: 1000 in / 100 out");
 
-        Assert.DoesNotContain("cost:", started.ScrollbackText, StringComparison.Ordinal);
-        Assert.DoesNotContain(" = $", started.ScrollbackText, StringComparison.Ordinal);
+        Assert.DoesNotContain("cost:", report, StringComparison.Ordinal);
+        Assert.DoesNotContain(" = $", report, StringComparison.Ordinal);
 
         started.Console.Complete();
         await run;
@@ -818,10 +815,12 @@ public sealed class InteractiveSessionCommandTests
 
         started.Console.SendText("/session");
         started.Console.SendEnter();
-        await WaitForScrollbackAsync(started, "tokens: 1500 in / 50 out");
+        // Schema 2 keeps the report token-only: the tokens row is the marker, the absences ride
+        // on that snapshot.
+        string report = await WaitForScrollbackAsync(started, "tokens: 1500 in / 50 out");
 
-        Assert.DoesNotContain("cost:", started.ScrollbackText, StringComparison.Ordinal);
-        Assert.DoesNotContain("cache:", started.ScrollbackText, StringComparison.Ordinal);
+        Assert.DoesNotContain("cost:", report, StringComparison.Ordinal);
+        Assert.DoesNotContain("cache:", report, StringComparison.Ordinal);
 
         started.Console.Complete();
         await run;
@@ -852,12 +851,12 @@ public sealed class InteractiveSessionCommandTests
 
         started.Console.SendText("/session");
         started.Console.SendEnter();
-        await WaitForScrollbackAsync(started, "tokens: 1000000 in / 0 out");
+        string report = await WaitForScrollbackAsync(started, "tokens: 1000000 in / 0 out");
 
-        Assert.Contains("cost: $1.00", started.ScrollbackText, StringComparison.Ordinal);
+        Assert.Contains("cost: $1.00", report, StringComparison.Ordinal);
         Assert.Contains(
             "fixture-other: 1000000 in / 0 out / 0 cache read / 0 cache write = $1.00",
-            started.ScrollbackText,
+            report,
             StringComparison.Ordinal
         );
 
@@ -884,15 +883,15 @@ public sealed class InteractiveSessionCommandTests
             await WaitForScrollbackAsync(host, "done");
             host.Console.SendText("/session");
             host.Console.SendEnter();
-            await WaitForScrollbackAsync(host, "tokens: 1000 in / 500 out");
+            string report = await WaitForScrollbackAsync(host, "tokens: 1000 in / 500 out");
 
-            Assert.Contains("cost: $0.0005", host.ScrollbackText, StringComparison.Ordinal);
+            Assert.Contains("cost: $0.0005", report, StringComparison.Ordinal);
             Assert.Contains(
                 "gpt-4o-mini: 1000 in / 500 out / 0 cache read / 0 cache write = $0.0005",
-                host.ScrollbackText,
+                report,
                 StringComparison.Ordinal
             );
-            Assert.DoesNotContain("0,0005", host.ScrollbackText, StringComparison.Ordinal);
+            Assert.DoesNotContain("0,0005", report, StringComparison.Ordinal);
 
             host.Console.Complete();
             await run;
@@ -912,12 +911,12 @@ public sealed class InteractiveSessionCommandTests
 
         host.Console.SendText("/session");
         host.Console.SendEnter();
-        await WaitForScrollbackAsync(host, "tokens: 0 in / 0 out");
+        string report = await WaitForScrollbackAsync(host, "tokens: 0 in / 0 out");
 
-        Assert.Contains("session: (none)", host.ScrollbackText, StringComparison.Ordinal);
-        Assert.Contains("id: (none)", host.ScrollbackText, StringComparison.Ordinal);
-        Assert.Contains("messages: 0", host.ScrollbackText, StringComparison.Ordinal);
-        Assert.DoesNotContain("cost:", host.ScrollbackText, StringComparison.Ordinal);
+        Assert.Contains("session: (none)", report, StringComparison.Ordinal);
+        Assert.Contains("id: (none)", report, StringComparison.Ordinal);
+        Assert.Contains("messages: 0", report, StringComparison.Ordinal);
+        Assert.DoesNotContain("cost:", report, StringComparison.Ordinal);
         Assert.Empty(host.Client.Requests);
 
         host.Console.Complete();
@@ -1007,36 +1006,23 @@ public sealed class InteractiveSessionCommandTests
         });
     }
 
-    internal static async Task WaitForScrollbackAsync(
+    /// <summary>
+    /// Waits for <paramref name="text"/> in the committed scrollback <em>and</em> for the turn that
+    /// produced it to finish — the stricter variant of
+    /// <see cref="InteractiveSessionHost.WaitForScrollbackAsync(string, TimeSpan?)"/> most callers
+    /// want, since they assert on state the turn settles. Returns that one snapshot.
+    /// </summary>
+    internal static Task<string> WaitForScrollbackAsync(
         InteractiveSessionHost host,
         string text,
         TimeSpan? timeout = null
-    )
-    {
-        try
-        {
-            await host.WaitUntilAsync(
-                () =>
-                {
-                    host.Advance(33);
-                    return host.ScrollbackText.Contains(text, StringComparison.Ordinal)
-                        && !host.Session.IsRunning;
-                },
-                timeout
-            );
-        }
-        catch (TimeoutException exception)
-        {
-            // A scrollback sighting that never shows its text is otherwise unreadable after the
-            // fact: the tail says whether the commit landed at all and what it said instead.
-            string scrollback = host.ScrollbackText;
-            string tail = scrollback.Length <= 800 ? scrollback : scrollback[^800..];
-            throw new TimeoutException(
-                $"{exception.Message} scrollback tail: <<<{tail.ReplaceLineEndings("|")}>>>",
-                exception
-            );
-        }
-    }
+    ) =>
+        host.WaitForScrollbackAsync(
+            scrollback =>
+                scrollback.Contains(text, StringComparison.Ordinal) && !host.Session.IsRunning,
+            $"\"{text}\" with the turn finished",
+            timeout
+        );
 
     private sealed class ConsumingHandler : IInputReceivedHandler
     {

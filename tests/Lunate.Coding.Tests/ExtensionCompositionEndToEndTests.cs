@@ -81,9 +81,8 @@ public sealed class ExtensionCompositionEndToEndTests
 
         host.Console.SendText("go");
         host.Console.SendEnter();
+        // The wait above is the assertion: it returns only once the rendered block is committed.
         await InteractiveSessionCommandTests.WaitForScrollbackAsync(host, "hello-rendered");
-
-        Assert.Contains("hello-rendered", host.ScrollbackText, StringComparison.Ordinal);
 
         host.Console.Complete();
         await run;

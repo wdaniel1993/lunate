@@ -109,9 +109,9 @@ public sealed class InteractiveSessionAutocompleteCompositionTests
         _ = await CaptureFrameAsync(host);
         gate.Release();
 
-        await host.WaitUntilAsync(() =>
-            !host.Session.IsRunning
-            && host.ScrollbackText.Contains("indexed", StringComparison.Ordinal)
+        await host.WaitForScrollbackAsync(
+            text => text.Contains("indexed", StringComparison.Ordinal) && !host.Session.IsRunning,
+            "the answer once the turn finishes"
         );
         Assert.Empty(EventSequenceValidator.Validate(host.Events));
 

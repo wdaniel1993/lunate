@@ -29,14 +29,16 @@ public sealed class InteractiveSessionBashModeCompositionTests
         );
 
         host.Console.SendText("y");
-        await host.WaitUntilAsync(() =>
-            !host.Session.IsBashRunning
-            && host.ScrollbackText.Contains("echo hi", StringComparison.Ordinal)
+        // The compact line is the marker, and the finished shell is the event: one snapshot then
+        // serves both the wait and the fuller assertion.
+        string scrollback = await host.WaitForScrollbackAsync(
+            text =>
+                text.Contains("echo hi", StringComparison.Ordinal) && !host.Session.IsBashRunning,
+            "the bash block once the shell exits"
         );
-
         Assert.Contains(
             "\u2713 bash  echo hi \u00b7 exit 0 \u00b7 0.0s",
-            host.ScrollbackText,
+            scrollback,
             StringComparison.Ordinal
         );
         Assert.Empty(host.Client.Requests);

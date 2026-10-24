@@ -486,8 +486,9 @@ public sealed class InteractiveSessionTreeTests
 
         await SendLineAsync(host, "/help");
 
-        string scrollback = host.ScrollbackText;
-        Assert.Contains("/tree", scrollback, StringComparison.Ordinal);
+        // The listing is one multi-line commit: waiting for its first row is what proves the
+        // snapshot below is the rendered /help and not the echo that preceded it.
+        string scrollback = await host.WaitForScrollbackAsync("/tree");
         Assert.Contains("/fork", scrollback, StringComparison.Ordinal);
         Assert.Contains("/clone", scrollback, StringComparison.Ordinal);
         Assert.Contains("/rewind", scrollback, StringComparison.Ordinal);

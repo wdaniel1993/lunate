@@ -53,7 +53,8 @@ public sealed class FollowUpQueueCompositionTests
         );
         Assert.Equal(0, host.Session.QueuedFollowUpCount);
 
-        string scrollback = host.ScrollbackText;
+        // Ordering needs one frame: wait until the later echo has committed, then compare.
+        string scrollback = await host.WaitForScrollbackAsync("> second follow-up");
         int firstEcho = scrollback.IndexOf("> first follow-up", StringComparison.Ordinal);
         int secondEcho = scrollback.IndexOf("> second follow-up", StringComparison.Ordinal);
         Assert.True(firstEcho >= 0, "the first follow-up echo is missing");

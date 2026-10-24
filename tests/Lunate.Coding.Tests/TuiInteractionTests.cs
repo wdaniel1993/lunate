@@ -150,8 +150,8 @@ public sealed class TuiInteractionTests
         await InteractiveSessionCommandTests.WaitForScrollbackAsync(host, "extension saw the read");
 
         host.Console.Complete();
-        await run;
-        return host.ScrollbackText;
+        // The run's completion is the event: read once it finished, never mid-render.
+        return await host.ScrollbackAfterAsync(() => run);
     }
 
     private static Func<string, string?> EnvironmentWith(string name, string value)

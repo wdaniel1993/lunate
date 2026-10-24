@@ -24,16 +24,16 @@ public sealed class InteractiveSessionEchoTests
         host.Console.SendEnter();
         await host.Client.WaitForCallAsync(1);
 
-        Assert.Contains("> first question", host.ScrollbackText, StringComparison.Ordinal);
-        Assert.DoesNotContain("answer", host.ScrollbackText, StringComparison.Ordinal);
+        // The echo commits at submit; the answer is still gated, so its absence is asserted on the
+        // frame that carries the echo.
+        string prompt = await host.WaitForScrollbackAsync("> first question");
+        Assert.DoesNotContain("answer", prompt, StringComparison.Ordinal);
 
         host.Client.Release(1);
-        await host.WaitUntilAsync(() =>
-            host.ScrollbackText.Contains("answer", StringComparison.Ordinal)
-        );
+        string answered = await host.WaitForScrollbackAsync("answer");
         Assert.True(
-            host.ScrollbackText.IndexOf("> first question", StringComparison.Ordinal)
-                < host.ScrollbackText.IndexOf("answer", StringComparison.Ordinal)
+            answered.IndexOf("> first question", StringComparison.Ordinal)
+                < answered.IndexOf("answer", StringComparison.Ordinal)
         );
 
         host.Console.Complete();
@@ -55,16 +55,18 @@ public sealed class InteractiveSessionEchoTests
         host.Console.SendEnter();
         await host.Client.WaitForCallAsync(1);
         host.Client.Release(1);
-        await host.WaitUntilAsync(() =>
-            host.ScrollbackText.Contains("first answer", StringComparison.Ordinal)
-            && !host.Session.IsRunning
+        await host.WaitForScrollbackAsync(
+            text =>
+                text.Contains("first answer", StringComparison.Ordinal) && !host.Session.IsRunning,
+            "the first answer once the turn finishes"
         );
 
         host.Console.SendText("second question");
         host.Console.SendEnter();
         await host.Client.WaitForCallAsync(2);
 
-        string text = host.ScrollbackText;
+        // The second echo is the marker: the blank-line structure is only complete once it is in.
+        string text = await host.WaitForScrollbackAsync("> second question");
         Assert.Contains("\n> first question", text, StringComparison.Ordinal);
         Assert.DoesNotContain("\n\n> first question", text, StringComparison.Ordinal);
         Assert.Contains("first answer\n\n> second question", text, StringComparison.Ordinal);
@@ -92,8 +94,9 @@ public sealed class InteractiveSessionEchoTests
         await host.Client.WaitForCallAsync(1);
 
         Assert.Equal("HI", Assert.IsType<TranscriptUserEntry>(host.Session.Transcript[0]).Text);
-        Assert.Contains("> HI", host.ScrollbackText, StringComparison.Ordinal);
-        Assert.DoesNotContain("> hi", host.ScrollbackText, StringComparison.Ordinal);
+        // The transformed echo is the marker; the raw one must not appear on that frame.
+        string scrollback = await host.WaitForScrollbackAsync("> HI");
+        Assert.DoesNotContain("> hi", scrollback, StringComparison.Ordinal);
 
         host.Console.Complete();
         await run;
