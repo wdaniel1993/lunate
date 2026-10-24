@@ -28,6 +28,37 @@ public sealed class StatusFooterRendererTests
     };
 
     [Fact]
+    public void The_queued_segment_names_the_head_entry() =>
+        Assert.Contains(
+            "2 queued · fix the flaky test",
+            StatusFooterRenderer.PlainText(Full, 120, null, 2, "fix the flaky test\nsecond line"),
+            StringComparison.Ordinal
+        );
+
+    [Fact]
+    public void A_narrow_footer_keeps_the_count_and_never_wraps()
+    {
+        string line = StatusFooterRenderer.PlainText(
+            Full,
+            44,
+            null,
+            2,
+            "a message far too long for this width"
+        );
+        Assert.Contains("2 queued", line, StringComparison.Ordinal);
+        Assert.DoesNotContain('\n', line);
+        Assert.True(CellText.Width(line) <= 80, line);
+    }
+
+    [Fact]
+    public void An_empty_queue_renders_no_segment() =>
+        Assert.DoesNotContain(
+            "queued",
+            StatusFooterRenderer.PlainText(Full, 120, null, 0, null),
+            StringComparison.Ordinal
+        );
+
+    [Fact]
     public void Null_model_is_rejected() =>
         Assert.Throws<ArgumentNullException>(() => new StatusFooterRenderer().Render(null!, 80));
 

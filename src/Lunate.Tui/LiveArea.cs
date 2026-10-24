@@ -170,7 +170,8 @@ internal sealed class LiveArea : IDisposable
         Post(new FooterInput(footer, widgets ?? []));
 
     /// <summary>Sets how many follow-ups wait behind the running turn; zero hides the indicator.</summary>
-    public void SetQueuedCount(int count) => Post(new QueuedInput(Math.Max(0, count)));
+    public void SetQueued(int count, string? first = null) =>
+        Post(new QueuedInput(Math.Max(0, count), first));
 
     /// <summary>
     /// Writes finished scrollback through the one writer: the live frame is cleared first and the
@@ -401,7 +402,11 @@ internal sealed class LiveArea : IDisposable
                 Footer = footer.Footer,
                 FooterWidgets = footer.Widgets,
             },
-            QueuedInput queued => state with { QueuedCount = queued.Count },
+            QueuedInput queued => state with
+            {
+                QueuedCount = queued.Count,
+                QueuedFirst = queued.First,
+            },
             _ => state,
         };
 
@@ -465,7 +470,7 @@ internal sealed class LiveArea : IDisposable
     private sealed record FooterInput(StatusFooterModel? Footer, IReadOnlyList<string> Widgets)
         : LiveAreaInput;
 
-    private sealed record QueuedInput(int Count) : LiveAreaInput;
+    private sealed record QueuedInput(int Count, string? First) : LiveAreaInput;
 
     private sealed class ConsoleTextWriter(IConsoleIO console) : TextWriter
     {

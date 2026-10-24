@@ -119,5 +119,9 @@ internal sealed partial class InteractiveSession
         UpdateFollowUpIndicator();
     }
 
-    private void UpdateFollowUpIndicator() => _live.SetQueuedCount(_followUps.Count);
+    private void UpdateFollowUpIndicator()
+    {
+        IReadOnlyList<QueuedFollowUp> queued = _followUps.Entries;
+        _live.SetQueued(queued.Count, queued.Count == 0 ? null : queued[0].EditorText);
+    }
 }

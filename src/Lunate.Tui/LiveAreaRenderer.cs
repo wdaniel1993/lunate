@@ -67,7 +67,8 @@ internal static class LiveAreaRenderer
                 state.Footer,
                 width,
                 state.FooterWidgets,
-                state.QueuedCount
+                state.QueuedCount,
+                state.QueuedFirst
             );
         // The box always closes: the lower rule is part of the fixed chrome at every width.
         const int lowerRuleLines = 1;

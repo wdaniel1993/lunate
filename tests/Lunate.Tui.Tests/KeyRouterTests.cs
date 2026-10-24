@@ -200,6 +200,21 @@ public sealed class KeyRouterTests
         return data;
     }
 
+    [Fact]
+    public void Word_editing_intents_are_reachable_without_Alt()
+    {
+        Assert.Equal(RoutedKey.WordLeft, KeyRouter.Route(Key(KeyKind.Left, ctrl: true)));
+        Assert.Equal(RoutedKey.WordRight, KeyRouter.Route(Key(KeyKind.Right, ctrl: true)));
+        Assert.Equal(RoutedKey.KillWordForward, KeyRouter.Route(Key(KeyKind.Delete, ctrl: true)));
+
+        // The Alt rows still route the same intents; the alternatives are additions, not moves.
+        Assert.Equal(RoutedKey.WordLeft, KeyRouter.Route(Key(KeyKind.Character, "b", alt: true)));
+        Assert.Equal(
+            RoutedKey.KillWordForward,
+            KeyRouter.Route(Key(KeyKind.Character, "d", alt: true))
+        );
+    }
+
     private static KeyEvent Key(
         KeyKind kind,
         string? text = null,

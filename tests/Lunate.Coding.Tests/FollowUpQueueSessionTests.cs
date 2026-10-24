@@ -6,6 +6,36 @@ namespace Lunate.Coding.Tests;
 public sealed class FollowUpQueueSessionTests
 {
     [Fact]
+    public async Task A_queued_follow_up_shows_its_first_line_in_the_footer()
+    {
+        using var host = new InteractiveSessionHost();
+        host.Client.Enqueue(Scripts.Text("first"), Scripts.Stop());
+        host.Client.Enqueue(Scripts.Text("second"), Scripts.Stop());
+        host.Client.Gate(1);
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+
+        host.Console.SendText("hi");
+        host.Console.SendEnter();
+        await host.Client.WaitForCallAsync(1);
+        await QueueAsync(host, "recognise me by my first line", expected: 1);
+
+        await host.WaitUntilAsync(() =>
+        {
+            host.Advance(33);
+            return host.LastFrame.Contains(
+                "recognise me by my first line",
+                StringComparison.Ordinal
+            );
+        });
+
+        host.Client.Release(1);
+        await host.Client.WaitForCallAsync(2);
+        host.Console.Complete();
+        await run;
+    }
+
+    [Fact]
     public async Task Enter_while_a_turn_runs_queues_and_clears_the_line()
     {
         using var host = new InteractiveSessionHost();

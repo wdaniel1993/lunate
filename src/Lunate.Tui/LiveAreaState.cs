@@ -78,6 +78,9 @@ internal sealed record LiveAreaState
     /// <summary>How many follow-ups wait behind the running turn; zero hides the indicator.</summary>
     public int QueuedCount { get; init; }
 
+    /// <summary>The first line of the head queued follow-up; null when nothing is queued.</summary>
+    public string? QueuedFirst { get; init; }
+
     public ConsoleSize Size { get; init; } = new(80, 24);
 }
 

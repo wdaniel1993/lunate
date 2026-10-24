@@ -37,7 +37,8 @@ public sealed class StatusFooterRenderer
         StatusFooterModel footer,
         int width,
         IReadOnlyList<string>? widgets = null,
-        int queuedCount = 0
+        int queuedCount = 0,
+        string? queuedFirst = null
     )
     {
         // The compact band keeps the model, the queue indicator and the context percent; every
@@ -46,12 +47,22 @@ public sealed class StatusFooterRenderer
         if (WidthBands.IsCompact(width))
         {
             var compact = footer.Model;
-            if (queuedCount > 0)
+            string? percent = footer.ContextWindow <= 0 ? null : Percent(footer);
+            if (Queued(queuedCount, queuedFirst) is { } queuedSegment)
             {
-                compact += Separator + Queued(queuedCount);
+                // Only the queued line is clipped: the model and the percent keep their exact
+                // existing shape, so a narrow footer still names the model it always named.
+                int reserved =
+                    CellText.Width(compact)
+                    + (percent is null ? 0 : CellText.Width(Separator + percent));
+                int room = width - reserved - CellText.Width(Separator);
+                if (room > 0)
+                {
+                    compact += Separator + CellText.Clip(queuedSegment, room);
+                }
             }
 
-            return footer.ContextWindow <= 0 ? compact : compact + Separator + Percent(footer);
+            return percent is null ? compact : compact + Separator + percent;
         }
 
         var segments = new List<Segment>
@@ -59,9 +70,9 @@ public sealed class StatusFooterRenderer
             new(footer.Model, KeepRank),
             new(Usage(footer), KeepRank),
         };
-        if (queuedCount > 0)
+        if (Queued(queuedCount, queuedFirst) is { } queued)
         {
-            segments.Add(new Segment(Queued(queuedCount), KeepRank));
+            segments.Add(new Segment(queued, KeepRank));
         }
 
         if (Favourites(footer) is { } favourites)
@@ -151,8 +162,24 @@ public sealed class StatusFooterRenderer
     private static int Width(List<Segment> segments) =>
         CellText.Width(string.Join(Separator, segments.Select(segment => segment.Text)));
 
-    private static string Queued(int count) =>
-        count.ToString(CultureInfo.InvariantCulture) + " queued";
+    /// <summary>The queued segment: the count, then the head entry's first line so a queued message
+    /// is recognisable without taking the queue back. Null when nothing is queued.</summary>
+    private static string? Queued(int count, string? first)
+    {
+        if (count <= 0)
+        {
+            return null;
+        }
+
+        string head = count.ToString(CultureInfo.InvariantCulture) + " queued";
+        if (string.IsNullOrWhiteSpace(first))
+        {
+            return head;
+        }
+
+        string line = first.ReplaceLineEndings(" ").Trim();
+        return line.Length == 0 ? head : head + Separator + line;
+    }
 
     private static string? Favourites(StatusFooterModel footer) =>
         footer.FavoriteCount > 0
