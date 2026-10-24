@@ -329,6 +329,14 @@ Append-only JSONL, one entry per line, each with `id`, `parentId`, `type` and a 
 
 **Format guard:** `tests/fixtures/sessions/` holds golden session files. A test deserializes and re-serializes each one and compares byte for byte. If a Microsoft.Extensions.AI update changes the output, the test fails: bump `schema`, add a migration, and record it in an ADR.
 
+**The session is a tree.** Every content entry carries its `parentId`, so the file is a tree; schema 3 makes that explicit and the readers act on it (ADR-0018 addendum, `branching-sessions`).
+
+- **The leaf rule, one sentence:** the active leaf is the most recently appended entry, unless a later `activeLeaf` entry points elsewhere. `SessionTree.ActiveLeaf` is the only implementation; a file with no `activeLeaf` resolves exactly as it did before the tree kinds existed.
+- **A move is a marker, not content.** Switching or rewinding appends one `{"type":"activeLeaf","id":"e_05","parentId":"e_04","timestamp":"…","leafId":"e_02"}` line — its `parentId` is the tip being left — and the file is never rewritten. Appends hang off the leaf, not off the file's last line.
+- **The model sees the path.** The request is the active leaf's `parentId` chain, root to leaf; entries on branches nothing points at stay in the file and stay out of the request. A compaction applies only when its own entry is on that chain, so per-branch compaction needs no extra machinery — and a single-path session still produces the request (and digest) it always did.
+- **A branch summary is ordinary context.** Leaving branch A for B with the option on makes one model call on the session's active model and writes `branchSummary` (`fromLeafId`, `summary`) with `parentId` = the leaf moved to: the first entry on B's path, invisible from A, with no `replaces` list. The confirmation shows the estimated input tokens and says one model call will be made.
+- **Provenance.** `/fork` and `/clone` write a new file whose header carries `origin` (`{sessionId, entryId}`) and `branched: true`. A fork holds the picked entry's own chain, root to that entry — any branch's, so an abandoned one can be branched from — and a clone holds every entry of the source.
+
 **Compaction**
 
 - **Shape:** our strategy implements `IChatReducer` (not `[Experimental]` in the pinned Microsoft.Extensions.AI 10.10.x) and the loop calls it before each model request, so it can emit `CompactionApplied` and write the compaction entry. Do not use `ReducingChatClient` — the loop decides when to compact. MEAI also ships `SummarizingChatReducer` and `MessageCountingChatReducer` (both `[Experimental]` in 10.10.x); evaluate them as the base before writing custom reduction logic. A base reducer is only acceptable if it meets our compaction rules: never split a tool call from its result, always keep the system prompt, AGENTS.md and the last turns verbatim, and record a compaction entry. If it does not, wrap it; do not weaken the rules.
@@ -435,9 +443,11 @@ System-prompt directives are recorded as prompt sections on a new session and re
 
 `/name <title>` stores a title in `<sessionId>.title` beside the session file (the picker labels the row `<title> — <id>`; bare `/name` reports it), and `/session` prints the session path, id, message count and input/output tokens reconstructed from the recorded usages — never a model call. A cost line appears only when the active model's catalog entry carries pricing.
 
+The session is a tree, and four commands expose it: `/tree` opens the session's whole tree in the transcript viewer — every branch in file order, indented by depth, the active path marked `*` and the rest `-`, `j`/`k` and `/` filter over it — and `Enter` puts the picked user message back in the editor without sending it; `/fork <entry>` writes a new session file holding the picked entry's chain up to that entry (any branch's, not only the active one), its header naming the source (`origin`, `branched`); `/clone` writes a new file holding every entry; `/rewind <entry> [summary] [confirm]` moves the active leaf in place by appending one `activeLeaf` entry, and with `summary` first reports the estimated input tokens and that one model call will be made, then writes the branch summary on the destination path once confirmed. Fork, clone and rewind refuse while a turn is running — a run's pending tool calls belong to a path — while `/tree` only reads and stays available.
+
 **Frontends**
 
-- **Interactive mode** (`lunate`): the Lunate.Tui frontend (see Terminal UI) with streaming view, multi-line editor, `Esc` to cancel, slash commands from the session's one command registry (`/model`, `/new`, `/resume`, `/name`, `/session`, `/compact [instructions]`, `/help`, `/quit`).
+- **Interactive mode** (`lunate`): the Lunate.Tui frontend (see Terminal UI) with streaming view, multi-line editor, `Esc` to cancel, slash commands from the session's one command registry (`/model`, `/new`, `/resume`, `/name`, `/session`, `/compact [instructions]`, `/tree`, `/fork`, `/clone`, `/rewind`, `/help`, `/quit`).
 - **Print mode** (`lunate -p "prompt"`): writes the final answer to stdout and exits; `--json` writes every event as JSON lines for scripts and CI.
 - **ACP mode** (`lunate --acp`): speaks the Agent Client Protocol over stdio, so editors like Zed or JetBrains start Lunate as their agent. Editor file reads, writes and permission prompts map onto Lunate's tools and approval policy. Nothing may write to stdout except the protocol.
 

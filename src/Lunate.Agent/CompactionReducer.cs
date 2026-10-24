@@ -298,7 +298,7 @@ internal sealed class CompactionReducer : IChatReducer
         }
     }
 
-    private static string RenderTranscript(IReadOnlyList<ChatMessage> messages)
+    internal static string RenderTranscript(IReadOnlyList<ChatMessage> messages)
     {
         var builder = new StringBuilder();
         foreach (ChatMessage message in messages)

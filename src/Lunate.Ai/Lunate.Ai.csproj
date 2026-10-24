@@ -39,5 +39,7 @@
         <InternalsVisibleTo Include="Lunate.Coding" />
         <!-- The CLI refresh reuses the one default managed-catalog path instead of duplicating it. -->
         <InternalsVisibleTo Include="lunate" />
+        <!-- The session format tests pin request digests with the replay format's own hash. -->
+        <InternalsVisibleTo Include="Lunate.Agent.Tests" />
     </ItemGroup>
 </Project>

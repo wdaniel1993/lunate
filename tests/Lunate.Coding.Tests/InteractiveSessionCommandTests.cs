@@ -98,14 +98,18 @@ public sealed class InteractiveSessionCommandTests
         Assert.Contains(
             """
             session
+              /clone    — copy the whole session into a new session file
               /compact  — compact the conversation now, optionally focusing on <text>
               /context  — show the context window and subagent budgets
+              /fork     — start a new session file at a picked entry
               /help     — list the commands
               /name     — set or show the session title
               /new      — start a fresh session
               /resume   — open the session picker
+              /rewind   — move the active leaf to a picked entry
               /session  — show the session file, messages and tokens
               /thinking — set the reasoning level (off|low|medium|high)
+              /tree     — browse the session tree and pick a message
             model
               /favorite   — add the active or named model to favorites
               /login      — store an API key for a provider preset
