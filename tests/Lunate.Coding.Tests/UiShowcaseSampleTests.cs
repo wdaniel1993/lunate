@@ -41,12 +41,16 @@ public sealed class UiShowcaseSampleTests
 
         host.Console.SendText("go");
         host.Console.SendEnter();
-        await InteractiveSessionCommandTests.WaitForScrollbackAsync(host, "█████████ 9");
+        // The last widget row is the marker; the three earlier rows are asserted on the same
+        // committed frame, which is what makes their spacing comparable.
+        string scrollback = await InteractiveSessionCommandTests.WaitForScrollbackAsync(
+            host,
+            "█████████ 9"
+        );
 
-        Assert.Contains("███ 3", host.ScrollbackText, StringComparison.Ordinal);
-        Assert.Contains("███████ 7", host.ScrollbackText, StringComparison.Ordinal);
-        Assert.Contains("█ 1", host.ScrollbackText, StringComparison.Ordinal);
-        Assert.Contains("█████████ 9", host.ScrollbackText, StringComparison.Ordinal);
+        Assert.Contains("███ 3", scrollback, StringComparison.Ordinal);
+        Assert.Contains("███████ 7", scrollback, StringComparison.Ordinal);
+        Assert.Contains("█ 1", scrollback, StringComparison.Ordinal);
 
         // The scrollback helper waited for the turn to finish: a slash command sent mid-turn
         // would be refused, so quit only after the session is idle.

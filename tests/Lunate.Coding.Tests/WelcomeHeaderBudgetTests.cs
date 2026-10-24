@@ -26,12 +26,9 @@ public sealed class WelcomeHeaderBudgetTests
         );
         var stopwatch = Stopwatch.StartNew();
         Task run = host.RunAsync();
-        await host.WaitUntilAsync(() =>
-            host.ScrollbackText.Contains(
-                $"lunate  v{ProductVersion.Build}",
-                StringComparison.Ordinal
-            )
-        );
+        // The wait replaces the assertion: it returns only once the header is committed, and the
+        // clock it stops is what the budget is measured against.
+        await host.WaitForScrollbackAsync($"lunate  v{ProductVersion.Build}");
         stopwatch.Stop();
 
         Assert.True(
