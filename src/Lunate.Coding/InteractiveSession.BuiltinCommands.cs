@@ -71,6 +71,20 @@ internal sealed partial class InteractiveSession
                         .ConfigureAwait(false);
                     session.Notify(compacted ? "context compacted" : "nothing to compact");
                     return CommandResult.None;
+                case "/tree":
+                    session.OpenTree();
+                    return CommandResult.None;
+                case "/fork":
+                    session.ForkSession(invocation.Argument);
+                    return CommandResult.None;
+                case "/clone":
+                    session.CloneSession();
+                    return CommandResult.None;
+                case "/rewind":
+                    await session
+                        .RewindAsync(invocation.Argument, cancellationToken)
+                        .ConfigureAwait(false);
+                    return CommandResult.None;
                 case "/context":
                     session.Notify(session.ContextText());
                     return CommandResult.None;

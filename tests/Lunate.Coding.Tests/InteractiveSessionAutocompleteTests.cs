@@ -185,7 +185,13 @@ public sealed class InteractiveSessionAutocompleteTests
             await host.WaitUntilAsync(() => host.Session.Autocomplete?.SelectedIndex == index);
         }
 
-        Assert.Equal("/quit", host.Session.Autocomplete?.Selected?.Text);
+        // The list holds the built-ins in registry order, so the row is whatever sits at index 4:
+        // this asserts the selection moved, not which command happens to be there.
+        Assert.Equal(4, host.Session.Autocomplete?.SelectedIndex);
+        Assert.Equal(
+            host.Session.Autocomplete?.Items[4].Text,
+            host.Session.Autocomplete?.Selected?.Text
+        );
 
         host.Console.SendText("e");
         await host.WaitUntilAsync(() => host.Session.Input.Text == "/e");
