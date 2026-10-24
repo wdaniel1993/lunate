@@ -24,6 +24,8 @@ public sealed class NodeRemoteExtensionTests
                 FileName = "node",
                 Arguments = ["index.js"],
                 WorkingDirectory = SampleExtension.Directory,
+                CancelCommand = "wait",
+                FailingCommand = "fail",
             },
             Ct
         );
@@ -37,6 +39,9 @@ public sealed class NodeRemoteExtensionTests
             report.Steps,
             step => step.Name == "service call host -> child" && step.Passed
         );
+        Assert.Contains(report.Steps, step => step.Name == "command invoke" && step.Passed);
+        Assert.Contains(report.Steps, step => step.Name == "command cancel" && step.Passed);
+        Assert.Contains(report.Steps, step => step.Name == "command failure" && step.Passed);
         Assert.Contains(report.Steps, step => step.Name == "shutdown" && step.Passed);
     }
 
@@ -100,6 +105,27 @@ public sealed class NodeRemoteExtensionTests
         );
 
         Assert.Equal("hello", answer!.Value.GetProperty("repeated").GetString());
+
+        // The manifest command dispatches over the wire through the loader's own source: the child
+        // receives the bare name and the remainder, and its reply becomes the notice naming the
+        // source-qualified id.
+        RegisteredCommandSource commands = Assert.Single(host.Runner.CommandSources.List());
+        Assert.Equal(
+            ["ping", "wait", "fail"],
+            [.. commands.Descriptors.Select(descriptor => descriptor.Name)]
+        );
+        CommandResult ping = await commands.Source.InvokeAsync(
+            new CommandInvocation("ping", "hello from the host"),
+            Ct
+        );
+        Assert.False(ping.IsError);
+        Assert.Equal("ext:node-remote:ping: pong hello from the host", ping.Message);
+
+        // A failing command raises the failure for the registry to shape; the session continues.
+        Exception failure = await Assert.ThrowsAnyAsync<Exception>(() =>
+            commands.Source.InvokeAsync(new CommandInvocation("fail", string.Empty), Ct).AsTask()
+        );
+        Assert.Equal("the node reference extension fails this command on purpose", failure.Message);
 
         // Session end: the shutdown request reaches the script, which exits; nothing is killed.
         await host.StopAsync(Ct);
