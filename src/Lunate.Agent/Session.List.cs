@@ -95,7 +95,7 @@ public sealed partial class Session
     {
         try
         {
-            using var reader = new StreamReader(path);
+            using var reader = SessionFiles.OpenTextReader(path);
             if (reader.ReadLine() is not { } line)
             {
                 return null;

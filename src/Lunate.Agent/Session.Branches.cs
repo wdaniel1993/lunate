@@ -155,7 +155,7 @@ public sealed partial class Session
 
         List<string> lines = [SessionFormat.Serialize(header)];
         lines.AddRange(entries.Select(SessionFormat.Serialize));
-        File.WriteAllText(path, string.Join('\n', lines) + "\n", Utf8NoBom);
+        SessionFiles.WriteText(path, string.Join('\n', lines) + "\n");
         return Load(path, _timeProvider);
     }
 }

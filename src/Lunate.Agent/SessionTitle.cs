@@ -13,7 +13,6 @@ public static class SessionTitle
     /// <summary>The longest title a session may carry.</summary>
     public const int MaxLength = 120;
 
-    private static readonly UTF8Encoding Utf8NoBom = new(encoderShouldEmitUTF8Identifier: false);
     private static readonly UTF8Encoding StrictUtf8 = new(
         encoderShouldEmitUTF8Identifier: false,
         throwOnInvalidBytes: true
@@ -59,7 +58,7 @@ public static class SessionTitle
         ArgumentException.ThrowIfNullOrWhiteSpace(sessionPath);
         try
         {
-            using var reader = new StreamReader(PathFor(sessionPath), StrictUtf8);
+            using var reader = SessionFiles.OpenTextReader(PathFor(sessionPath), StrictUtf8);
             return reader.ReadLine() is { } line ? Normalize(line) : null;
         }
         catch (Exception exception)
@@ -74,9 +73,11 @@ public static class SessionTitle
     }
 
     /// <summary>
-    /// Writes the normalized title as one UTF-8 line without a BOM, atomically (a temp file in the
-    /// same directory is moved over the sidecar), so a reader never sees half a title. The session
-    /// file itself is never touched.
+    /// Writes the normalized title as one UTF-8 line without a BOM, in place, through the session
+    /// file seam. Rewriting by renaming a temp file over the sidecar is refused on Windows while a
+    /// reader holds it, so a title is replaced where it lives; a reader that lands between the
+    /// truncate and the write sees an empty sidecar and reads no title, which is a worse frame but
+    /// never a wrong one, and the next read is correct. The session file itself is never touched.
     /// </summary>
     public static void Write(string sessionPath, string title)
     {
@@ -93,23 +94,6 @@ public static class SessionTitle
             Directory.CreateDirectory(directory);
         }
 
-        string temp = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
-        try
-        {
-            File.WriteAllText(temp, normalized + "\n", Utf8NoBom);
-            File.Move(temp, path, overwrite: true);
-        }
-        finally
-        {
-            try
-            {
-                if (File.Exists(temp))
-                {
-                    File.Delete(temp);
-                }
-            }
-            catch (Exception exception)
-                when (exception is IOException or UnauthorizedAccessException) { }
-        }
+        SessionFiles.WriteText(path, normalized + "\n");
     }
 }

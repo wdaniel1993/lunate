@@ -1,6 +1,5 @@
 using System.Globalization;
 using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.Extensions.AI;
@@ -24,8 +23,6 @@ public sealed partial class Session
 {
     private const int MaxNestedCalls = 32;
     private const int MaxNestedArgsLength = 200;
-
-    private static readonly UTF8Encoding Utf8NoBom = new(encoderShouldEmitUTF8Identifier: false);
 
     private readonly TimeProvider _timeProvider;
     private readonly List<SessionEntry> _entries = [];
@@ -164,7 +161,7 @@ public sealed partial class Session
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
         ArgumentNullException.ThrowIfNull(timeProvider);
 
-        string[] lines = File.ReadAllText(path).Split('\n');
+        string[] lines = SessionFiles.ReadText(path).Split('\n');
         int count = lines.Length;
         if (count > 0 && lines[^1].Length == 0)
         {
@@ -508,13 +505,13 @@ public sealed partial class Session
             Directory.CreateDirectory(directory);
         }
 
-        File.WriteAllText(Path, SessionFormat.Serialize(header) + "\n", Utf8NoBom);
+        SessionFiles.WriteText(Path, SessionFormat.Serialize(header) + "\n");
     }
 
     private void AddEntry(SessionEntry entry)
     {
         _entries.Add(entry);
-        File.AppendAllText(Path, SessionFormat.Serialize(entry) + "\n", Utf8NoBom);
+        SessionFiles.AppendText(Path, SessionFormat.Serialize(entry) + "\n");
     }
 
     /// <summary>
