@@ -153,6 +153,12 @@ internal static class KeyBindingCatalog
             "Open the transcript viewer"
         ),
         new(
+            new KeyPattern(KeyKind.Character, Ctrl: true, Alt: false, Text: "x"),
+            RoutedKey.Copy,
+            KeyContext.None,
+            "Copy the last answer"
+        ),
+        new(
             new KeyPattern(KeyKind.Tab, Ctrl: false, Alt: false, Shift: false),
             RoutedKey.Complete,
             KeyContext.None,

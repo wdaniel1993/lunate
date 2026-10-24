@@ -431,3 +431,4 @@ static Lunate.Tui.InputLine.MoveWordRight(Lunate.Tui.InputLineState! state) -> L
 ~override Lunate.Tui.InputLine.KillResult.ToString() -> string
 Lunate.Tui.RoutedKey.HistorySearch = 24 -> Lunate.Tui.RoutedKey
 Lunate.Tui.RoutedKey.Stash = 25 -> Lunate.Tui.RoutedKey
+Lunate.Tui.RoutedKey.Copy = 26 -> Lunate.Tui.RoutedKey

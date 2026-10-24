@@ -74,6 +74,12 @@ internal sealed partial class InteractiveSession
                 case "/tree":
                     session.OpenTree();
                     return CommandResult.None;
+                case "/copy":
+                    await session.CopyLastAnswerAsync(cancellationToken).ConfigureAwait(false);
+                    return CommandResult.None;
+                case "/export":
+                    session.ExportSession(invocation.Argument);
+                    return CommandResult.None;
                 case "/fork":
                     session.ForkSession(invocation.Argument);
                     return CommandResult.None;

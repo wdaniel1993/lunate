@@ -29,6 +29,7 @@ public enum RoutedKey
     Undo,
     HistorySearch,
     Stash,
+    Copy,
 }
 
 /// <summary>

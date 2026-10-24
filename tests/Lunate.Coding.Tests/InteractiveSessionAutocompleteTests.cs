@@ -167,7 +167,15 @@ public sealed class InteractiveSessionAutocompleteTests
         );
 
         Assert.Equal("/new", host.Session.Autocomplete?.Selected?.Text);
-        Assert.Equal(1, host.Session.Autocomplete?.SelectedIndex);
+        // The index is the row's own position in the filtered list, not a fixed number: the
+        // built-in table grows as commands are added, and this test is about the selection
+        // surviving the filter, not about which row /new happens to land on.
+        Assert.Equal(
+            host.Session.Autocomplete?.Items.Select((item, index) => (item, index))
+                .Single(pair => pair.item.Text == "/new")
+                .index,
+            host.Session.Autocomplete?.SelectedIndex
+        );
 
         host.Console.Complete();
     }
@@ -179,19 +187,21 @@ public sealed class InteractiveSessionAutocompleteTests
 
         await SendAsync(host, "/");
         await host.WaitUntilAsync(() => host.Session.Autocomplete is not null);
-        for (var index = 1; index <= 4; index++)
+        // Move to a row the filter below cannot keep: /fork holds no 'e'. Its position depends on
+        // the built-in table, so it is read from the list instead of pinned.
+        int target = host
+            .Session.Autocomplete!.Items.Select((item, index) => (item, index))
+            .Single(pair => pair.item.Text == "/fork")
+            .index;
+        Assert.True(target > 0);
+        for (var index = 1; index <= target; index++)
         {
             host.Console.Send(Down);
             await host.WaitUntilAsync(() => host.Session.Autocomplete?.SelectedIndex == index);
         }
 
-        // The list holds the built-ins in registry order, so the row is whatever sits at index 4:
-        // this asserts the selection moved, not which command happens to be there.
-        Assert.Equal(4, host.Session.Autocomplete?.SelectedIndex);
-        Assert.Equal(
-            host.Session.Autocomplete?.Items[4].Text,
-            host.Session.Autocomplete?.Selected?.Text
-        );
+        Assert.Equal(target, host.Session.Autocomplete?.SelectedIndex);
+        Assert.Equal("/fork", host.Session.Autocomplete?.Selected?.Text);
 
         host.Console.SendText("e");
         await host.WaitUntilAsync(() => host.Session.Input.Text == "/e");

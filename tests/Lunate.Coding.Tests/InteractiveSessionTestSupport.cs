@@ -500,7 +500,9 @@ internal sealed class InteractiveSessionHost : IDisposable
         bool startWithPicker = false,
         ISecretPrompt? secretPrompt = null,
         string? modelsPath = null,
-        IClipboardImageSource? clipboard = null
+        IClipboardImageSource? clipboard = null,
+        ITextClipboard? textClipboard = null,
+        Func<DateTimeOffset>? clock = null
     )
     {
         Scrollback = new TestConsole();
@@ -537,6 +539,8 @@ internal sealed class InteractiveSessionHost : IDisposable
                 SessionsRoot = sessionsRoot ?? Temp.File("sessions"),
                 SecretPrompt = secretPrompt,
                 Clipboard = clipboard,
+                TextClipboard = textClipboard,
+                Clock = clock,
             }
         );
     }
