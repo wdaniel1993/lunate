@@ -71,6 +71,17 @@ public sealed class InteractiveSessionTreeTests
 
         await OpenTreeAsync(host);
 
+        // The tree paints over the ticks after the alternate screen opens: wait for the first row
+        // instead of reading whatever frame happened to be current on a slower runner.
+        await host.WaitUntilAsync(
+            () =>
+            {
+                host.Advance(33);
+                return host.Frames.Contains("* e_01 one", StringComparison.Ordinal);
+            },
+            TimeSpan.FromSeconds(10)
+        );
+
         // File order, indented by depth: the abandoned branch stays in the tree, unmarked.
         string frames = host.Frames;
         Assert.Contains("* e_01 one", frames, StringComparison.Ordinal);
