@@ -167,15 +167,15 @@ public sealed class TranscriptViewerRenderer
 
     /// <summary>
     /// A tree row: a two-character gutter — <c>*</c> on the active path, <c>-</c> off it — then two
-    /// spaces of indentation per depth and the row's own text. An off-path row is dim: still
-    /// readable, and plainly not on the branch the model sees.
+    /// spaces of indentation per depth, the entry id and the row's own text. An off-path row is dim:
+    /// still readable, and plainly not on the branch the model sees.
     /// </summary>
     private static StyledLine TreeRow(TranscriptTreeRowEntry row)
     {
         var line = new StyledLine();
         string gutter = row.OnActivePath ? "* " : "- ";
         line.Add(
-            gutter + new string(' ', Math.Max(0, row.Depth) * 2) + row.Text,
+            gutter + new string(' ', Math.Max(0, row.Depth) * 2) + row.Id + " " + row.Text,
             row.OnActivePath ? SpanStyle.Plain : SpanStyle.Dim
         );
         return line;

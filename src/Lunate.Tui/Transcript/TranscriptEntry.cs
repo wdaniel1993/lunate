@@ -13,11 +13,13 @@ public sealed record TranscriptUserEntry(string Text) : TranscriptEntry;
 public sealed record TranscriptAssistantEntry(string Markdown) : TranscriptEntry;
 
 /// <summary>
-/// One row of the session tree as <c>/tree</c> paints it: a message or summary on any branch, its
-/// depth from the root and whether it sits on the active path. The row carries its own text, so the
-/// picker's filter and the caller's pick index stay a function of the text.
+/// One row of the session tree as <c>/tree</c> paints it: an entry of any branch, its depth from the
+/// root and whether it sits on the active path. The row carries its own id and text, so the picker's
+/// filter and the caller's pick index stay a function of what the person sees — and the id in the
+/// gutter is the argument <c>/fork</c> takes.
 /// </summary>
 internal sealed record TranscriptTreeRowEntry(
+    string Id,
     string Text,
     int Depth,
     bool OnActivePath,

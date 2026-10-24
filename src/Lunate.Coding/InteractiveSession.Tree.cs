@@ -32,6 +32,7 @@ internal sealed partial class InteractiveSession
                     when Text(message.Message) is { Length: > 0 } text:
                     entries.Add(
                         new TranscriptTreeRowEntry(
+                            row.Entry.Id,
                             text,
                             row.Depth,
                             row.OnActivePath,
@@ -42,6 +43,7 @@ internal sealed partial class InteractiveSession
                 case SessionCompactionEntry compaction:
                     entries.Add(
                         new TranscriptTreeRowEntry(
+                            row.Entry.Id,
                             compaction.Summary,
                             row.Depth,
                             row.OnActivePath,
@@ -52,6 +54,7 @@ internal sealed partial class InteractiveSession
                 case SessionBranchSummaryEntry summary:
                     entries.Add(
                         new TranscriptTreeRowEntry(
+                            row.Entry.Id,
                             summary.Summary,
                             row.Depth,
                             row.OnActivePath,

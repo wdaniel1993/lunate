@@ -73,12 +73,12 @@ public sealed class InteractiveSessionTreeTests
 
         // File order, indented by depth: the abandoned branch stays in the tree, unmarked.
         string frames = host.Frames;
-        Assert.Contains("* one", frames, StringComparison.Ordinal);
-        Assert.Contains("-   two", frames, StringComparison.Ordinal);
-        Assert.Contains("-     three", frames, StringComparison.Ordinal);
-        Assert.Contains("-       four", frames, StringComparison.Ordinal);
-        Assert.Contains("*   branch-b", frames, StringComparison.Ordinal);
-        Assert.Contains("*     reply-b", frames, StringComparison.Ordinal);
+        Assert.Contains("* e_01 one", frames, StringComparison.Ordinal);
+        Assert.Contains("-   e_02 two", frames, StringComparison.Ordinal);
+        Assert.Contains("-     e_03 three", frames, StringComparison.Ordinal);
+        Assert.Contains("-       e_04 four", frames, StringComparison.Ordinal);
+        Assert.Contains("*   e_06 branch-b", frames, StringComparison.Ordinal);
+        Assert.Contains("*     e_07 reply-b", frames, StringComparison.Ordinal);
 
         host.Console.SendEscape();
         await host.WaitUntilAsync(() => !host.Console.InAlternateScreen);

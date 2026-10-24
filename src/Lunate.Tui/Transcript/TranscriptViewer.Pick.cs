@@ -257,7 +257,7 @@ internal sealed partial class TranscriptViewer
             TranscriptTreeRowEntry row => row.Text.Contains(
                 filter,
                 StringComparison.OrdinalIgnoreCase
-            ),
+            ) || row.Id.Contains(filter, StringComparison.OrdinalIgnoreCase),
             _ => false,
         };
 
