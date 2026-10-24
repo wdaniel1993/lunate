@@ -195,7 +195,7 @@ internal sealed partial class SessionImages
                 );
             }
 
-            using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+            using var stream = SessionFiles.OpenRead(path);
             long length = stream.Length;
             if (length > ImageLimits.MaxBytes)
             {

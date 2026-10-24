@@ -13,7 +13,6 @@ public static class SessionTitle
     /// <summary>The longest title a session may carry.</summary>
     public const int MaxLength = 120;
 
-    private static readonly UTF8Encoding Utf8NoBom = new(encoderShouldEmitUTF8Identifier: false);
     private static readonly UTF8Encoding StrictUtf8 = new(
         encoderShouldEmitUTF8Identifier: false,
         throwOnInvalidBytes: true
@@ -59,7 +58,7 @@ public static class SessionTitle
         ArgumentException.ThrowIfNullOrWhiteSpace(sessionPath);
         try
         {
-            using var reader = new StreamReader(PathFor(sessionPath), StrictUtf8);
+            using var reader = SessionFiles.OpenTextReader(PathFor(sessionPath), StrictUtf8);
             return reader.ReadLine() is { } line ? Normalize(line) : null;
         }
         catch (Exception exception)
@@ -96,7 +95,7 @@ public static class SessionTitle
         string temp = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
         try
         {
-            File.WriteAllText(temp, normalized + "\n", Utf8NoBom);
+            SessionFiles.WriteText(temp, normalized + "\n");
             File.Move(temp, path, overwrite: true);
         }
         finally
