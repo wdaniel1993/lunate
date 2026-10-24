@@ -267,13 +267,40 @@ Additional points:
 - Generator case: 6 900 ms total, 5 825 ms compile, 4 149 ms analyzer/generator.
 - Cache-hit process contained **0** `Microsoft.CodeAnalysis.*` and **0** `NuGet.*` assemblies in
   all three cases — "Roslyn loads on first use" survives the cache-hit path by measurement.
-- Cache footprint per extension: (b) 22.4 MiB packages + 2.0 MiB bin; (c) 20.3 MiB packages + 0.7 MiB
-  bin. Most of it is the full extracted `Newtonsoft.Json` package (multi-TFM, docs). A production
-  cache should prune unused TFM assets and apply an LRU bound.
+- Cache footprint per extension as measured: (b) 22.4 MiB packages + 2.0 MiB bin; (c) 20.3 MiB
+  packages + 0.7 MiB bin, most of it the fully extracted `Newtonsoft.Json` package. **Decided
+  (2026-10-24):** the restored packages live in NuGet's content-addressed global packages folder
+  (`NUGET_PACKAGES`, default `~/.nuget/packages`), shared with the SDK cache and not pruned by
+  Lunate; per extension only the compiled assembly and the lock file are kept, the last two builds
+  survive a recompile, and uninstall deletes them. The 22 MiB figure is therefore the *shared*
+  folder's cost, not a per-extension one.
 - Against today's budgets (150 ms local startup, 300 ms macOS CI): a managed cache hit (3 ms) and a
   packaged cache hit (59 ms) fit; even several extensions stay inside one startup-budget's worth.
   Native assets add ~30 ms and ~9 MB each. Restore/compile (1.2–2.9 s, 6.9 s with a generator) is
   an install-time cost, not a startup cost.
+
+## Verification: the startup cost is image size, not eager loading
+
+The +8 ms in the recommendation was measured on the spike's own probe. The maintainer asked for
+confirmation that the libraries load only when a restore runs. Measured separately, same machine,
+self-contained single-file `osx-arm64`, 20 runs each after one warm-up:
+
+| Probe | Packages | Binary | Median startup | NuGet assemblies loaded at startup |
+| --- | --- | --- | --- | --- |
+| A | none | 36.4 MB | **70.1 ms** (61.3–81.8) | 0 |
+| B | NuGet.Protocol, Packaging, Configuration, Frameworks, Versioning | 37.6 MB | **69.0 ms** (58.5–77.8) | **0** |
+
+Both binaries print the same five assemblies in `AppDomain.CurrentDomain.GetAssemblies()`; no
+`NuGet.*` assembly appears without a call into it, so the managed loader defers them as expected.
+The difference between A and B is inside the run-to-run spread, which means the +8 ms was not
+eager initialisation: it is file size plus measurement noise on a machine that was running a full
+gate at the time. The image grows by the uncompressed assemblies (~16 MiB) only in the published
+configuration the spike used; with the default compressed single file the same five packages add
+~1.2 MB.
+
+The ADR therefore records the cost as **image size**, keeps ADR 0005's startup budgets unchanged,
+and adds a guard to the apply card: a startup test that fails if any `NuGet.*` assembly is loaded
+before the first restore.
 
 ## Manifest
 
@@ -288,25 +315,36 @@ Measured parse costs for one small declaration (fresh process, 100 iterations wh
 | Header block (`// lunate: …` line scan) | 4 µs | no |
 | Attribute parsed with Roslyn syntax | 47.3 ms + 2 `Microsoft.CodeAnalysis` assemblies | yes |
 
-**Recommendation: a sidecar JSON file next to the single file** — `hello.cs` + optional
-`hello.json` with the existing manifest fields (`id`, `version`, `apiVersion`, `tools`, `hooks`,
-`services`), parsed by the same `ExtensionManifest` parser. If the sidecar is absent, the id is the
-file stem, the version is `0.0.0-local`, `apiVersion` is the host's current version, and the
-declared surface is "discovered at load" (the registration cross-check is skipped; `/extensions`
-shows registered counts). Packages keep the existing `extension.json` inside the package.
+**Maintainer decision (2026-10-24): header directives in the `.cs` file**, parsed by the same
+small scanner as `#:package`, before any compilation:
+
+```csharp
+#:extension acme.tools@1.0.0
+#:tool fetch_issue
+#:hook ToolCalling
+#:package Octokit@14.0.0
+```
+
+Neither an always-sidecar nor an inferred declaration: the header keeps "one file" true, and the
+declaration rule holds because the header is part of the bytes the user trusted. A registration the
+header does not declare is **refused**; a declaration with no matching registration is **warned** —
+the same rule as every other declaration surface. A sidecar JSON stays optional for single files;
+packaged extensions keep `extension.json`.
 
 Why the declaration can be trusted before compilation:
 
-- It is JSON, parsed by the existing parser; no extension code runs to read it.
-- It is covered by the same digest as the source, so changing it re-prompts.
-- It cannot lie about registrations silently: after load the host still cross-checks declared
-  tools against what the factory registered (the existing rule), and a mismatch fails the load.
+- The header is scanned as text; no extension code runs to read it, and Roslyn is not loaded
+  (4 µs against 47 ms for a syntax-tree attribute).
+- It is inside the source bytes, so the digest covers declaration and code together: editing either
+  re-prompts. A separate sidecar would have to be digested as a second file, and an inferred
+  declaration cannot express tools or hooks at all.
+- It cannot lie about registrations silently: after load the host cross-checks the declared tools,
+  hooks and commands against what the factory registered, and an undeclared registration fails the
+  load.
 
-An attribute would be simpler for the author but forces the Roslyn syntax tree onto the discovery
-and cache-hit path (47 ms and the Roslyn assemblies), which breaks the "no Roslyn on a cache hit"
-rule for a benefit measured in microseconds. A header block is cheap but invents a second grammar
-and a second set of escaping rules; the sidecar reuses the manifest contract, the docs, and the
-tests.
+The scanner is ours, matching the .NET 10 directive grammar for `#:package` exactly (including
+version ranges); `#:sdk`, `#:property` and `#:project` are refused with a message naming the
+directive, because they change how the file is built and that is the host's decision.
 
 ## Compile errors
 
@@ -420,11 +458,13 @@ next to the entry; key the cache by TFM, RID and host API version.
 **Manifest shape.** Sidecar JSON beside the `.cs`, optional (inferred identity when absent),
 same schema and parser as `extension.json`; packages keep the manifest inside the package.
 
-**Cache layout.** `~/.lunate/cache/extensions/<id>/<key>/bin/…` plus a shared
-`…/cache/packages/<id>/<version>/…`, with
+**Cache layout.** Restored packages go to **NuGet's global packages folder** (`NUGET_PACKAGES`
+when set, otherwise `~/.nuget/packages`): content-addressed, immutable, shared across extensions
+and with the user's SDK cache, and not ours to prune by size. Per extension,
+`~/.lunate/cache/extensions/<id>/<key>/` holds the compiled assembly and the lock file, with
 `<key> = sha256(sourceHash | lockBytesHash | apiVersion | TFM | RID)[..16]` and a `current.json`
-pointer per id. Restore output is reused across extensions; an LRU bound and TFM pruning are
-follow-ups, not part of the first card.
+pointer. A successful compile keeps the **last two** builds and deletes older ones; uninstall
+deletes the extension's outputs; `lunate cache prune` removes orphans.
 
 **Phases.** (1) single-file discovery, sidecar, trust digest, `/extensions` states without
 compilation; (2) restore + lock + compile + cache, managed assets only; (3) `/extensions reload`
@@ -450,15 +490,28 @@ scope; that is the packaged format); concurrent installs of the same id; cache e
 pressure; unload reliability for native libraries (a reload of SkiaSharp may not release the
 dylib); long-running handler drain under real command load.
 
-## Open questions for the maintainer
+## Maintainer decisions (2026-10-24)
 
-1. Does the single-file format get a sidecar JSON, or should the first version require it only
-   when the extension declares tools/hooks/services (inferred identity otherwise)?
-2. Is `#:package Name@Version` parsed by us (a small header scanner) or delegated to the .NET 10
-   file-based-app directive syntax? The probe took its package list from a spec file; the directive
-   scanner is unbuilt, and sharing the SDK's parser would pull SDK code into the host.
-3. Should a packaged extension be allowed to ship its own `Lunate.Extensibility.Abstractions`
-   copy (ignored at load, but confusing in the package graph), or should `lunate install` refuse
-   the package when it does?
-4. Is a ~22 MiB per-extension cache footprint (mostly untouched TFM assets) acceptable for the
-   first release, or does pruning belong in the same card?
+1. **Manifest** — header directives in the `.cs` (`#:extension`, `#:tool`, `#:hook`, `#:package`),
+   parsed before compilation by the same scanner, covered by the trusted source digest. Neither an
+   always-sidecar nor an inferred declaration; a sidecar stays optional. An undeclared registration
+   is refused, a declared-but-missing one is warned.
+2. **`#:package` parsing** — our own scanner, matching the .NET 10 directive syntax (including
+   version ranges); `#:sdk`, `#:property` and `#:project` are refused by name. No SDK code in the
+   host; the accepted grammar is pinned by tests.
+3. **A shipped Abstractions copy** — accepted at install, always ignored at load (host wins, same
+   for MEAI). Compatibility is decided by the Abstractions **version the extension references**: a
+   reference above the host's `ExtensionApi` version is refused with *"requires Lunate ≥ x.y"*. The
+   template and docs show `PrivateAssets="all"`, `ExcludeAssets="runtime"`; `/extensions` warns once
+   when a copy was ignored.
+4. **Cache size** — fixed now, not later: restored packages in NuGet's global packages folder
+   (`NUGET_PACKAGES`), per-extension compiled assembly + lock only, keep the last two builds,
+   delete on uninstall, `lunate cache prune` for orphans. No size-based pruning of the shared
+   folder.
+
+Also accepted: the in-process NuGet libraries (+15.8 MiB binary, +19 MB RSS after the UI is ready),
+and trust before restore over source **plus lock bytes**, with the stale-digest-zero-feed-requests
+measurement kept in the suite permanently.
+
+The single-file path is estimated at **8–11 dev days**; the packaged format follows on the same
+restore/lock/trust/cache component.

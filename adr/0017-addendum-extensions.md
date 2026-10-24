@@ -1,12 +1,13 @@
 # 0017 addendum — Extensions: formats, restore and trust
 
-- Status: Draft — pending maintainer sign-off
+- Status: **Accepted — 2026-10-24** (maintainer sign-off recorded in the card `t_ad12ff92`)
 - Date: 2026-10-24
 - Relates to: ADR 0017 (extensibility architecture), ADR 0006 (Roslyn placement),
-  ADR 0009 (memory budgets)
+  ADR 0009 (memory budgets), ADR 0005 (startup budgets)
 - Evidence: [extension formats spike](../docs/spikes/extension-restore.md) (probe and measurements)
-- Requires sign-off on new NuGet packages: `NuGet.Protocol`, `NuGet.Packaging`,
-  `NuGet.Configuration`, `NuGet.Frameworks`, `NuGet.Versioning`, `NuGet.Resolver`
+- Approved new NuGet packages: `NuGet.Protocol`, `NuGet.Packaging`, `NuGet.Configuration`,
+  `NuGet.Frameworks`, `NuGet.Versioning`, `NuGet.Resolver` (+ `NuGet.Credentials` when a
+  credential-provider plugin is wired)
 
 ## Context
 
@@ -15,8 +16,8 @@ in-process extensions, but it assumes an extension arrives as a directory with a
 assembly and an `extension.json`. Two formats are now in scope:
 
 - a **single file** (`.lunate/extensions/*.cs`, `~/.lunate/extensions/*.cs`) authored on the spot,
-  compiled in process with the Roslyn the repository already ships, with NuGet references declared
-  in the source (`#:package Name@Version`);
+  compiled in process with the Roslyn the repository already ships, with its declaration and its
+  NuGet references in the source itself;
 - a **NuGet package** for larger extensions with several files, assets and their own tests,
   installed by id.
 
@@ -29,25 +30,48 @@ spike report; this addendum records the decisions themselves.
 
 **Formats**
 
-- A single-file extension is `<name>.cs` plus an optional sidecar `<name>.json` using the existing
-  manifest schema (`id`, `version`, `apiVersion`, `tools`, `hooks`, `services`). Without a
-  sidecar, the id is the file stem, the version is `0.0.0-local` and the declaration is
-  discovered at load.
+- A single file is `<name>.cs` whose **header carries the declaration**, parsed by the same small
+  scanner as the package directives, before any compilation:
+
+  ```csharp
+  #:extension acme.tools@1.0.0
+  #:tool fetch_issue
+  #:hook ToolCalling
+  #:package Octokit@14.0.0
+  ```
+
+  The header is part of the source bytes, so it is covered by the trust digest: the declaration a
+  user approved is the declaration that runs. Registration the header does not declare is
+  **refused**; a declaration with no matching registration is **warned** — the same rule as every
+  other declaration surface. A sidecar `<name>.json` remains **optional** for a single file (for
+  metadata that is not a declaration); packaged extensions keep `extension.json`.
 - A packaged extension is a `.nupkg` with `extension.json`, an entry assembly and its dependencies;
-  `lunate install <id>` installs it (the install command is a follow-up card). Packages keep the
-  manifest inside the package.
+  `lunate install <id>` installs it (its own card, after the single-file path).
 - Both formats produce the same `ExtensionDescriptor` and load through the same loop. Only the
   artifact source differs.
+
+**Directive scanner**
+
+- `#:package Name@Version` is parsed by **our own scanner**, matching the .NET 10 file-based-app
+  directive syntax exactly, including NuGet version ranges. No SDK code is pulled into the host.
+- `#:sdk`, `#:property` and `#:project` are **refused** with a message that names the directive and
+  says why: they change how the file is built, which is the host's decision, not the extension's.
+- The accepted grammar is pinned by tests against the documented .NET 10 syntax, so a future SDK
+  change is a test failure rather than a silent divergence.
 
 **One restore and cache component**
 
 - Restore uses the NuGet client libraries in process. The dotnet SDK is not required and is never
   on the startup path; a refused package that only delivers through MSBuild points at the packaged
   format instead of silently invoking an SDK that may not exist.
-- Sources come from the standard NuGet configuration chain: machine, user (`~/.nuget/NuGet/NuGet.Config`),
-  project (`nuget.config` beside the extension or above it). Credentials come from
-  `packageSourceCredentials` (including environment-expanded values) and, later, non-interactive
-  credential-provider plugins. There is no interactive credential prompt in the host.
+- **The libraries load only when a restore runs.** Startup cost is image size, not eager
+  initialisation; the startup budgets of ADR 0005 are unchanged and the spike's +8 ms is treated as
+  a size effect until the measurement says otherwise (see the report's verification note).
+- Sources come from the standard NuGet configuration chain: machine, user
+  (`~/.nuget/NuGet/NuGet.Config`), project (`nuget.config` beside the extension or above it).
+  Credentials come from `packageSourceCredentials` (including environment-expanded values) and,
+  later, non-interactive credential-provider plugins. There is no interactive credential prompt in
+  the host.
 - A lock file is written next to the extension at install (`extension.lock.json`, or
   `<name>.lock.json` for a single file). It records the target TFM and RID, the sources, and per
   package the exact version, nupkg SHA-512, compile/runtime/native asset lists and dependency
@@ -57,32 +81,49 @@ spike report; this addendum records the decisions themselves.
   host contract assemblies, package `ref/` or `lib/` assets, and package analyzers and source
   generators from the nearest `analyzers/dotnet/roslyn*/cs` folder. Framework assemblies and the
   shared contract assemblies always win over a package's copy.
-- The cache lives under the user store: `~/.lunate/cache/extensions/<id>/<key>/bin/…` with a shared
-  `~/.lunate/cache/packages/<id>/<version>/…`, keyed by source hash, lock hash, API version, TFM and RID. A
-  cache entry is reused only when the source digest still matches.
+
+**Cache**
+
+- **Restored packages go to NuGet's global packages folder** (`NUGET_PACKAGES` when set, otherwise
+  `~/.nuget/packages`). It is content-addressed and immutable, so it is shared across extensions and
+  with the user's SDK cache, and it is not Lunate's to prune by size.
+- **Per extension Lunate keeps only the compiled assembly and the lock file**, under
+  `~/.lunate/cache/extensions/<id>/<key>/`, keyed by source hash, lock hash, API version, TFM and
+  RID.
+- A successful compile **keeps the last two builds per extension** and deletes older ones, because
+  every edit in the agent loop would otherwise leave a build behind.
+- **Uninstall or removal deletes that extension's compiled outputs.** `lunate cache prune` removes
+  orphaned entries; size-based pruning of the shared folder is out of scope by design.
 
 **Trust before restore**
 
 - Discovery parses the declaration and computes the trust digest before any network request and
   before any compile:
   `sha256("lunate-extension-v1" | id | [package id@version] | source bytes | lock-file bytes)`.
-  For a single file the source bytes include the sidecar manifest.
+  For a single file the source bytes **include the header directives** and any sidecar manifest.
 - The digest covers the dependency set through the lock: a changed lock re-prompts even when the
   source is untouched. It covers bytes as written, never a re-serialization.
 - The prompt names the extension, its scope and that compiling it runs package analyzers and
   source generators. A stale or absent approval stops before restore.
 - A cache hit re-checks the digest before loading the compiled assembly. Content-addressable
   caching does not weaken the trust decision.
+- **The stale-digest-zero-feed-requests measurement stays in the suite permanently**: it is the
+  test that proves trust precedes the network, not merely the load.
 
 **Isolation**
 
 - Every extension keeps its collectible `AssemblyLoadContext`. `Lunate.Extensibility.Abstractions`,
   `Lunate.Agent`, `Lunate.Ai`, `Microsoft.Extensions.AI.Abstractions` and `System.Text.Json` always
   resolve from the host; every other dependency resolves from the extension directory.
-- An extension's copy of a host-shared assembly is never loaded. A package graph that brings a
-  different version of a shared assembly is bound to the host version; the cache key includes the
-  host API version so a host upgrade recompiles rather than silently binding against a different
-  contract.
+- **A package that ships its own copy of `Lunate.Extensibility.Abstractions` is accepted at install
+  and always ignored at load** — the host's copy wins, and the same rule applies to the MEAI
+  abstractions. Compatibility is decided by the **Abstractions version the extension references**,
+  not by whether a DLL is present: a reference above the host's `ExtensionApi` version is refused
+  with *"requires Lunate ≥ x.y"*. The extension template and the authoring docs show the correct
+  reference (`PrivateAssets="all"`, `ExcludeAssets="runtime"`), and `/extensions` shows a one-line
+  warning when a copy was ignored, so the author fixes the package rather than shipping the copy.
+- The cache key includes the host API version so a host upgrade recompiles rather than silently
+  binding against a different contract.
 - RID-specific native assets are selected for the host RID and copied next to the entry assembly.
   The cache is RID-keyed; assets for other RIDs are not installed.
 - A package whose only delivery is MSBuild targets (`build/`, `buildTransitive/` or
@@ -118,12 +159,18 @@ spike report; this addendum records the decisions themselves.
   is within 0.1 s for a package-free file and the in-process path is faster for a small package
   graph. The SDK stays an explicit escape hatch at most, never an automatic fallback.
 - **Parse the declaration from an attribute with Roslyn.** Rejected: it costs ~47 ms and loads
-  Roslyn on discovery and on every cache hit, for a declaration the JSON parser reads in 24 µs.
+  Roslyn on discovery and on every cache hit, for a declaration a header scanner reads in
+  microseconds.
+- **An always-sidecar manifest (or an inferred one).** Rejected: a sidecar splits "one file" into
+  two, and inference cannot express tools or hooks. Header directives keep the file self-describing
+  and let the declaration ride inside the same trusted bytes.
 - **Treat the lock file as advisory and re-resolve on every load.** Rejected: it makes loads
   network-dependent and lets a floating version change the code that runs without a trust
   decision.
 - **Trust after restore, before load.** Rejected: restore downloads code and compile runs package
   analyzers and source generators; approval that arrives after either is too late.
+- **Prune the shared package folder by size.** Rejected: it is NuGet's content-addressed cache,
+  shared with the SDK; deleting from it is surprising and outside Lunate's ownership.
 - **Refuse every package with MSBuild files.** Rejected: it would refuse common dependencies such
   as `Microsoft.Extensions.Logging.Abstractions`, whose targets only filter an analyzer. The
   refusal is about delivery mechanism, not file presence.
@@ -134,10 +181,12 @@ spike report; this addendum records the decisions themselves.
 ## Consequences
 
 - New NuGet packages enter the product, with the size and startup cost recorded in the spike
-  (+15.8 MiB single file, +8 ms startup, +19 MB RSS). The component is lazy; a user who installs
-  no extensions pays only the image size.
+  (+15.8 MiB single file, +19 MB RSS after the UI is ready, +8 ms startup pending the size check).
+  The component is lazy; a user who installs no extensions pays only the image size.
 - Restoration needs writable cache space and a network on first install; the offline story is a
   restored cache plus an explicit update action.
+- Per-extension cache footprint drops to the compiled assembly plus the lock, plus at most two
+  builds per extension — the restored packages are shared with the SDK cache.
 - Credential-provider plugins are not covered by this decision. The first release supports config
   credentials only and fails with an actionable message for feeds that need more.
 - Windows and Linux RID selection, package signature verification and cache eviction are
