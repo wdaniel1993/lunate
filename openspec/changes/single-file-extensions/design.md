@@ -6,9 +6,19 @@ A packaged extension is a directory with a manifest and a prebuilt DLL. A single
 
 **The declaration is in the file, not beside it.** A sidecar JSON would make "one file" false and, worse, put the declaration outside the bytes the user trusted. The header is inside the source digest, so the claim "this file provides these tools and restores these packages" is exactly what was approved. The scanner is ours — ~200 lines — because the SDK's file-based-app parser is internal, versioned with the SDK, and would drag SDK code into the host. `#:package` keeps the documented syntax so a file written for `dotnet run app.cs` reads the same here.
 
-**Trust before restore.** Restore downloads, compile executes analyzers and generators. Asking after either would be asking about work already done on the user's machine. The digest is `sha256("lunate-extension-v1" | id | packages | source | lock)`, so editing the source, adding a package, or hand-editing the lock all invalidate it. The zero-feed-on-stale test is the enforcement, not a comment.
+**Trust before restore, and the lock is bound by the restore.** Restore downloads but executes nothing, so the honest order is: the user approves the file, its declared packages as written and its source; the first successful restore writes the lock and its hash is bound into the trust record without a second question; compile only ever runs against that bound lock. From then on the digest is `sha256("lunate-extension-v1" | id | packages | source | lock)`, so editing the source, adding a package or hand-editing the lock all make the file stale. The zero-feed-on-stale test is the enforcement, not a comment.
+
+**Build-time code is opt-in.** Compiling against a package's compile-time assemblies does not require its analyzers or generators. They execute at build time, and most extensions never need them, so they are off unless the header says `#:generators on` — which is in the digest, and turns on the prompt line that says build-time code from those packages will run. A package that ships generators while the file did not opt in is named in `/extensions` as `generators skipped: <package>`. This also removes the spike's 4.1 s analyzer/generator cost from the common compile.
+
+**The header covers every declaration kind.** The declaration rule refuses what the header does not declare, so a header limited to tools and hooks would make single files second-class: no commands, no services, no model providers. The header therefore mirrors the manifest field for field (`tools`, `commands`, `hooks`, `services`, `capabilities`, `modelProviders`), and a test fails when the manifest grows a field that has no directive. Only the leading block is scanned — directives, comments and blank lines before the first C# token, the same rule the SDK uses — and a `#:` line after code is an error naming its line rather than a silent no-op.
+
+**Reference assemblies come from NuGet.** A published self-contained binary has no SDK and no reference pack on disk, which is the same reason restore runs in process. The matching `Microsoft.NETCore.App.Ref` (runtime version, RID) is restored through the same engine into the global packages folder on first compile and reused. Shipping it inside the binary is the alternative; phase 2 reports its size rather than guessing, and a test compiles with the published binary, an empty `HOME` and no `dotnet` on `PATH`.
+
+**The model never approves trust.** The phase-4 loop has the model write the file; trust stays the user's. No tool, command or protocol path records a decision, suppresses a prompt, or loads a stale digest — a model-initiated reload of a changed file ends at the prompt and waits.
 
 **Cache: the shared folder is NuGet's, the builds are ours.** Restored packages are content-addressed and immutable, so they belong in `~/.nuget/packages` where the user's SDK already caches them — not in a second copy under `~/.lunate`. What we own is the compiled assembly and the lock. Keying by source hash makes a build reproducible and makes a stale build impossible to confuse with a fresh one; keeping two covers the edit-compile-fail-fix loop without unbounded growth.
+
+**The prompt cannot know the transitive set.** Before a restore, nothing has resolved the graph, so the prompt names the declared packages "and their dependencies" rather than pretending to list them; after the restore, `/extensions` shows the resolved graph from the lock.
 
 **Isolation is the existing extension story, unchanged.** One collectible context, host-owned contract assemblies, an API-version gate. What is new is only that a package can now drag in a copy of the Abstractions: accepted at install, ignored at load, warned once, decided by the referenced version rather than by DLL presence.
 
@@ -16,11 +26,13 @@ A packaged extension is a directory with a manifest and a prebuilt DLL. A single
 
 ## Risks
 
-- **Analyzers are code execution at build time.** Named in the prompt; the digest covers the package list, so adding a package always re-asks.
+- **Analyzers and generators are code execution at build time.** Off unless `#:generators on`; the opt-in is in the digest, so toggling it re-asks, and the prompt only mentions build-time code when it applies.
 - **Native assets.** The spike loaded SkiaSharp's `runtimes/osx/native` asset successfully; other RIDs are untested and phase 2 reports what it selected rather than assuming.
 - **Signature verification** is not in scope: a package's author signature is not checked in this change, and the trust prompt says the digest covers the file and the packages, not a signature.
 - **Credential-provider plugins** for private feeds are not wired; a feed needing one fails with a message naming the missing plugin.
 
+**A Lunate update rebuilds on first use.** The cache key includes the API version, TFM and RID, so a new host build always produces a new key. That is deliberate — an assembly compiled against one contract must not be reused by another — and the docs say it plainly so the first `/extensions` after an update is not mistaken for a bug.
+
 ## Deferred
 
-Packaged install (`lunate install <id>`), size-based pruning of the shared packages folder, and unload of native libraries on reload (the ALC unloads managed code; a native library whose handle is still open stays mapped).
+Packaged install (`lunate install <id>`), signature verification, credential-provider plugins for private feeds (Azure Artifacts and friends — filed as its own backlog card), size-based pruning of the shared packages folder, and unload of native libraries on reload (the ALC unloads managed code; a native library whose handle is still open stays mapped).

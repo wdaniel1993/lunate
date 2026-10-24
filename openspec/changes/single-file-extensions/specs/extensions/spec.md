@@ -18,7 +18,7 @@ The host SHALL treat every `*.cs` file directly under `.lunate/extensions/` (pro
 
 ### Requirement: Header directives declare what the file provides
 
-The header of a single-file extension SHALL be its manifest: `#:extension <id>@<version>` (exactly one), `#:tool <name>` and `#:hook <name>` (repeatable) declare the registrations the file may make, and `#:package <id>@<version>` (repeatable) declares the packages the build restores. The directives SHALL be parsed by the same scanner as `#:package`, before any compilation, and their bytes SHALL be part of the trusted source digest. A registration the header does not declare SHALL refuse the load with a message naming the registration and the missing directive. A declared registration the file never makes SHALL be warned and shown by `/extensions` as `declared, not provided`.
+The header SHALL mirror the packaged manifest's declaration fields one to one — `#:tool`, `#:command`, `#:hook`, `#:service`, `#:capability` and `#:provider` for the manifest's `tools`, `commands`, `hooks`, `services`, `capabilities` and `modelProviders` — so a single file can never be unable to register something a package can. The header is the only declaration source for a single file; there is no sidecar manifest in this version. Directives SHALL be parsed before any compilation and their bytes SHALL be part of the trusted source digest. A registration the header does not declare SHALL refuse the load, naming the registration and the missing directive. A declared registration the file never makes SHALL be warned and shown by `/extensions` as `declared, not provided`.
 
 #### Scenario: An undeclared tool registration is refused
 
@@ -26,21 +26,33 @@ The header of a single-file extension SHALL be its manifest: `#:extension <id>@<
 - **WHEN** the file also registers a tool named `close_issue`
 - **THEN** the load is refused, naming `close_issue` and the missing `#:tool close_issue`
 
+#### Scenario: Every manifest declaration kind has a directive
+
+- **GIVEN** the packaged manifest's set of declaration fields
+- **WHEN** the header grammar is inspected
+- **THEN** each field maps to a directive, and a test fails if a manifest field is added without one
+
 #### Scenario: A declared tool that is never registered is a warning
 
 - **GIVEN** a header declaring `#:tool fetch_issue` and a body that registers nothing
 - **WHEN** the extension loads
 - **THEN** the extension is loaded, and `/extensions` shows `fetch_issue` as `declared, not provided`
 
-### Requirement: Directive grammar
+### Requirement: Directive grammar and position
 
-The host SHALL parse directives with its own scanner and SHALL NOT call SDK code to do it. `#:package` SHALL accept exactly the documented .NET 10 file-based-app syntax — `#:package <id>@<version>`, where the version is a NuGet version or version range — and `#:extension` SHALL accept one id and one exact version. `#:sdk`, `#:property` and `#:project` SHALL be refused with a message naming the directive. An unrecognised `#:` line in the header SHALL be ignored with a warning rather than fail the file. The accepted grammar SHALL be pinned by tests taken from the documented .NET 10 syntax, so an upstream divergence fails a test instead of changing behaviour silently.
+The host SHALL parse directives with its own scanner and SHALL NOT call SDK code to do it. `#:package` SHALL accept exactly the documented .NET 10 file-based-app syntax — `#:package <id>@<version>`, where the version is a NuGet version or version range — and `#:extension` SHALL accept one id and one exact version. Only the leading block SHALL be scanned: directives, comments and blank lines before the first C# token. A `#:` line after code begins SHALL be an error naming its line number, never a silently ignored directive. `#:sdk`, `#:property` and `#:project` SHALL be refused with a message naming the directive. An unrecognised `#:` line inside the leading block SHALL be ignored with a warning. The accepted grammar SHALL be pinned by tests taken from the documented .NET 10 syntax.
 
 #### Scenario: A version range is accepted
 
 - **GIVEN** a header line `#:package Octokit@[14.0.0,15.0.0)`
 - **WHEN** the header is parsed
 - **THEN** the package is accepted with that range
+
+#### Scenario: A directive after code is an error, not a silent no-op
+
+- **GIVEN** a file whose line 12 is `#:tool late` and whose line 3 already contains a class declaration
+- **WHEN** the header is parsed
+- **THEN** the extension is refused with a message naming line 12
 
 #### Scenario: A refused directive is named
 
@@ -50,23 +62,55 @@ The host SHALL parse directives with its own scanner and SHALL NOT call SDK code
 
 ### Requirement: Trust before restore
 
-A single-file extension SHALL be trusted before it is restored or compiled, and the trust decision SHALL be bound to a digest over `sha256("lunate-extension-v1" | id | each declared package id@version | source bytes including the header | lock bytes)`. The prompt SHALL name the file, the declared packages, and that analyzers and source generators in those packages run at build time. When the digest differs from the trusted one, the host SHALL stop before any feed request, mark the extension `stale`, and ask again. A trust decision SHALL be per file, stored under `~/.lunate/trust.json`, and SHALL NOT be inherited from another file or another path.
+A single-file extension SHALL be trusted before it is restored or compiled. The **first** trust SHALL cover the id, the declared packages as written (including version ranges) and the source bytes including the header; no lock exists yet. The first successful restore SHALL write the lock file and bind its hash into the trust record automatically — a restore downloads but executes nothing, so this needs no second prompt, provided compilation only ever runs against the bound lock. From then on the digest SHALL include the lock bytes, and any change to the lock SHALL make the extension `stale` and require a new decision. When the digest differs from the trusted one, the host SHALL stop before any feed request and ask again. A trust decision SHALL be per file, stored under `~/.lunate/trust.json`, and SHALL NOT be inherited from another file or path. The prompt SHALL name the file and its declared packages "and their dependencies", because the transitive set is not known before restore; after a restore `/extensions` SHALL show the resolved graph from the lock.
 
-#### Scenario: A stale digest makes no feed request
+#### Scenario: First trust, restore, lock bound, compile
+
+- **GIVEN** a new single-file extension declaring `#:package Octokit@14.0.0`
+- **WHEN** the user trusts it and the first restore succeeds
+- **THEN** the lock is written, its hash is bound into the trust record without a second prompt, and the compile runs against that lock
+
+#### Scenario: A lock edited by hand is stale and makes no feed request
+
+- **GIVEN** a trusted, built extension whose `extension.lock.json` is edited by hand
+- **WHEN** the session composes with no network available
+- **THEN** the extension is `stale`, the user is asked again, and the test observes zero HTTP requests to any feed
+
+#### Scenario: A stale digest from a source edit makes no feed request
 
 - **GIVEN** a trusted, built single-file extension
 - **WHEN** one byte of its source changes and the session composes with no network available
 - **THEN** the extension is `stale`, the user is asked again, and the test observes zero HTTP requests to any feed
 
-#### Scenario: The prompt says what will run
+### Requirement: Build-time code execution is opt-in
 
-- **GIVEN** a file declaring `#:package Octokit@14.0.0`
+Compilation SHALL reference only the packages' compile-time assemblies; their analyzers and source generators SHALL NOT be loaded by default. A `#:generators on` header directive SHALL opt the file in, SHALL be part of the trusted digest, and only then SHALL the trust prompt state that build-time code from the named packages will run. `/extensions` SHALL show, for a package that ships generators while the file did not opt in, `generators skipped: <package>`, so the omission is visible rather than silent.
+
+#### Scenario: Generators are skipped without the directive
+
+- **GIVEN** a file declaring `#:package Refit@8.0.0`, a package that ships a source generator
+- **WHEN** it is compiled without `#:generators on`
+- **THEN** no generator runs, the compile succeeds on the reference assemblies alone, and `/extensions` shows `generators skipped: Refit`
+
+#### Scenario: The opt-in changes the prompt
+
+- **GIVEN** the same file with `#:generators on`
 - **WHEN** the trust prompt is shown
-- **THEN** it names the file, `Octokit@14.0.0`, and that build-time analyzers and generators from the package will run
+- **THEN** it states that build-time code from the declared packages will run, and toggling the directive makes the digest stale
+
+### Requirement: Reference assemblies for compilation
+
+Compilation SHALL use the .NET reference assemblies matching the running runtime, and the host SHALL NOT require an installed SDK to obtain them. The reference pack (`Microsoft.NETCore.App.Ref`, the runtime's version and RID) SHALL be restored through the same in-process NuGet engine into the global packages folder on first compile and reused from there. A published self-contained single-file binary SHALL compile a single-file extension with an empty `HOME` and no `dotnet` on `PATH`; that run SHALL be a test.
+
+#### Scenario: A self-contained binary compiles with no SDK and an empty home
+
+- **GIVEN** the published `osx-arm64` single-file binary, `HOME` pointing at an empty directory, and no `dotnet` on `PATH`
+- **WHEN** a single-file extension declaring one package is trusted and compiled
+- **THEN** the reference pack is restored into the global packages folder, the compile succeeds, and a second run reuses the cache without a feed request
 
 ### Requirement: Restore, lock and compiled cache
 
-A restore SHALL run in process through the NuGet client libraries, which SHALL be loaded only when a restore runs and SHALL NOT be loaded before the first restore in a session. Resolved packages SHALL go to NuGet's global packages folder, respecting `NUGET_PACKAGES`, and SHALL NOT be copied into a Lunate-owned folder. Each extension SHALL keep only its compiled assembly, its `extension.lock.json` (exact versions, SHA-512 per package, resolved asset list) and a pointer to the current build under `~/.lunate/cache/extensions/<id>/`, keyed by `sha256(sourceHash | lockHash | apiVersion | TFM | RID)[..16]`. A successful compile SHALL keep the last two builds and delete older ones; uninstalling or removing the extension SHALL delete its builds; `lunate cache prune` SHALL remove entries no extension points at. The lock file SHALL NOT be updated implicitly — a restore that would change it SHALL report the change and ask.
+A restore SHALL run in process through the NuGet client libraries, which SHALL be loaded only when a restore runs. Resolved packages SHALL go to NuGet's global packages folder, respecting `NUGET_PACKAGES`, and SHALL NOT be copied into a Lunate-owned folder. Each extension SHALL keep only its compiled assembly, its `extension.lock.json` (exact versions, SHA-512 per package, resolved asset list) and a pointer to the current build under `~/.lunate/cache/extensions/<id>/`, keyed by `sha256(sourceHash | lockHash | apiVersion | TFM | RID)[..16]`. A successful compile SHALL keep the last two builds and delete older ones; removing the extension SHALL delete its builds; `lunate cache prune` SHALL remove entries no extension points at. The lock SHALL NOT be updated implicitly — a restore that would change it SHALL report and ask.
 
 #### Scenario: A second compile leaves two builds
 
@@ -111,3 +155,13 @@ A single-file extension SHALL load into its own collectible context, and `Lunate
 - **GIVEN** an extension tool call in flight
 - **WHEN** `/extensions reload <id>` runs
 - **THEN** the call finishes or is cancelled with a notice, the context is disposed within the bounded drain, and only then does the new build load
+
+### Requirement: The model never approves trust
+
+Trust SHALL be a user decision only. The model MAY write or edit a single-file extension and MAY ask for a reload, but no tool, command or protocol path SHALL let it record a trust decision, suppress a prompt, or load a changed file whose digest is stale. A model-initiated reload of a changed file SHALL end at the trust prompt and wait for the user.
+
+#### Scenario: A model-initiated reload stops at the prompt
+
+- **GIVEN** a loaded extension the model has just edited
+- **WHEN** the model requests a reload through its tool
+- **THEN** the reload stops at the trust prompt, the changed file is not compiled, and the old build stays loaded until the user answers

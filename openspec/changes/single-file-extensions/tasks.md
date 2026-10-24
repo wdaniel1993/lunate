@@ -7,9 +7,11 @@
 - [ ] 1.5 Grammar tests copied from the documented .NET 10 file-based-app syntax, including version ranges.
 - [ ] 1.6 Red: `#:sdk`, `#:property`, `#:project` are refused, each naming its directive.
 - [ ] 1.7 Red: an undeclared registration refuses the load; a declared-but-missing one warns and shows `declared, not provided`.
-- [ ] 1.8 Optional sidecar JSON for single files; a header always wins and a conflict is refused by name.
-- [ ] 1.9 `/extensions` shows `not-built`, `invalid`, `stale`, `failed (trust)` with the reason on the same line.
-- [ ] 1.10 Docs: authoring page with the header grammar and the optional sidecar.
+- [ ] 1.8 The header mirrors every manifest declaration field (`#:command`, `#:service`, `#:capability`, `#:provider`); a test fails when the manifest grows a field with no directive.
+- [ ] 1.9 Red: only the leading block is scanned — a `#:` line after the first C# token is an error naming its line.
+- [ ] 1.10 No sidecar manifest for a single file; the header is the only declaration source.
+- [ ] 1.11 `/extensions` shows `not-built`, `invalid`, `stale`, `failed (trust)` with the reason on the same line.
+- [ ] 1.12 Docs: authoring page with the header grammar and the directive-to-manifest table.
 
 ## 2. Trust, restore, compile, cache (PR 2)
 
@@ -21,8 +23,14 @@
 - [ ] 2.6 `extension.lock.json`: exact versions, SHA-512, resolved assets; a restore that would change it reports and asks, never writes silently.
 - [ ] 2.7 Compile the file with the declared references; a failed compile reports the first diagnostic and leaves no build behind.
 - [ ] 2.8 Build cache keyed by source hash; last two builds kept; uninstall deletes the extension's builds; `lunate cache prune` removes orphans.
-- [ ] 2.9 Report the measured per-extension cache size and the startup median after this phase.
-- [ ] 2.10 Docs: what gets restored and where, what the lock is for, how to read a compile failure.
+- [ ] 2.9 Red: first trust → restore writes the lock and binds its hash into the trust record, with no second prompt; a compile afterwards uses that lock.
+- [ ] 2.10 Red: a hand-edited lock makes the extension `stale` and stops before any feed request.
+- [ ] 2.11 Reference pack: restore `Microsoft.NETCore.App.Ref` (runtime version, RID) through the same engine into the global packages folder on first compile; reuse it afterwards.
+- [ ] 2.12 Red: the published self-contained `osx-arm64` binary compiles a single-file extension with `HOME` empty and no `dotnet` on `PATH`; a second run makes no feed request.
+- [ ] 2.13 Generators and analyzers are off by default; `#:generators on` opts in and is part of the digest; `/extensions` shows `generators skipped: <package>` when a package ships them and the file did not opt in.
+- [ ] 2.14 Red: toggling `#:generators on` changes the digest and the prompt gains the build-time-code line.
+- [ ] 2.15 Report the measured per-extension cache size, the ref-pack size, the binary-size alternative if shipped, and the startup median after this phase.
+- [ ] 2.16 Docs: what gets restored and where, what the lock is for, how to read a compile failure, and that a Lunate update rebuilds extensions on first use because the cache key includes the API version.
 
 ## 3. Runtime: isolation, API gate, reload (PR 3)
 
@@ -38,4 +46,5 @@
 - [ ] 4.1 Red: the model writes a single-file extension with one package reference, the user trusts it, `/extensions reload` makes its tool callable in the same session.
 - [ ] 4.2 Red: the trust refusal path — an untrusted file's tool is not callable and `/extensions` says why.
 - [ ] 4.3 A recorded end-to-end run in the suite using `ScriptedChatClient` and a built-in catalog model; verify under `HOME=/tmp/emptyhome`.
-- [ ] 4.4 README and guide: the single-file promise, with the real timing measured in phase 2.
+- [ ] 4.4 Red: a model-initiated reload of a file it just edited ends at the trust prompt — the changed file is not compiled and the old build stays loaded.
+- [ ] 4.5 README and guide: the single-file promise, with the real timing measured in phase 2.
