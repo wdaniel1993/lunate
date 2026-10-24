@@ -158,6 +158,41 @@ public sealed class TranscriptViewerPickTests
         Assert.Contains("0 of 0", Frame(console), StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void A_tree_row_keeps_its_depth_and_path_marker_through_the_filter()
+    {
+        using var console = new FakeConsoleIO(new ConsoleSize(60, 10));
+        TranscriptViewer viewer = Viewer(console, unicode: true);
+
+        viewer.Pick(TreeRows(), [0, 2]);
+
+        // The gutter is the row's own text: * on the active path, - off it, two spaces per depth.
+        string frame = Frame(console);
+        Assert.Contains("\u25b8 * one", frame, StringComparison.Ordinal);
+        Assert.Contains("-   two", frame, StringComparison.Ordinal);
+        Assert.Contains("*   three", frame, StringComparison.Ordinal);
+
+        viewer.HandlePickKey(Key("/"));
+        foreach (char character in "thr")
+        {
+            viewer.HandlePickKey(Key(character.ToString()));
+        }
+
+        // The filter narrows the rows; depth and marker survive because they are part of the row.
+        string filtered = Frame(console);
+        Assert.Contains("\u25b8 *   three", filtered, StringComparison.Ordinal);
+        Assert.DoesNotContain("one", filtered, StringComparison.Ordinal);
+
+        viewer.HandlePickKey(Escape());
+        viewer.HandlePickKey(Key("/"));
+        foreach (char character in "tw")
+        {
+            viewer.HandlePickKey(Key(character.ToString()));
+        }
+
+        Assert.Contains("-   two", Frame(console), StringComparison.Ordinal);
+    }
+
     private static TranscriptViewer Viewer(FakeConsoleIO console, bool unicode) =>
         new(console, new TerminalCapabilities(ColorSystemSupport.NoColors, unicode));
 
@@ -167,6 +202,14 @@ public sealed class TranscriptViewerPickTests
             new TranscriptUserEntry("one"),
             new TranscriptAssistantEntry("two"),
             new TranscriptUserEntry("three"),
+        ]);
+
+    /// <summary>Three tree rows: a root on the path, an off-path reply, a child of the root on it.</summary>
+    private static TranscriptModel TreeRows() =>
+        new([
+            new TranscriptTreeRowEntry("one", Depth: 0, OnActivePath: true, IsUserMessage: true),
+            new TranscriptTreeRowEntry("two", Depth: 1, OnActivePath: false, IsUserMessage: false),
+            new TranscriptTreeRowEntry("three", Depth: 1, OnActivePath: true, IsUserMessage: true),
         ]);
 
     private static KeyEvent Key(string text) =>

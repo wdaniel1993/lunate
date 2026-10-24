@@ -11,3 +11,15 @@ public sealed record TranscriptUserEntry(string Text) : TranscriptEntry;
 
 /// <summary>A committed assistant paragraph: the raw markdown, re-rendered by the viewer.</summary>
 public sealed record TranscriptAssistantEntry(string Markdown) : TranscriptEntry;
+
+/// <summary>
+/// One row of the session tree as <c>/tree</c> paints it: a message or summary on any branch, its
+/// depth from the root and whether it sits on the active path. The row carries its own text, so the
+/// picker's filter and the caller's pick index stay a function of the text.
+/// </summary>
+internal sealed record TranscriptTreeRowEntry(
+    string Text,
+    int Depth,
+    bool OnActivePath,
+    bool IsUserMessage
+) : TranscriptEntry;
