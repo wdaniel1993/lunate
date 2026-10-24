@@ -6,6 +6,22 @@ Implementation guide · v3 · Oct 4, 2026 · @Daniel
 
 Lunate is a lightweight terminal coding agent for C# developers — a daily driver you can customise in the language it is written in: a reliable core loop, four core tools, a Spectre-based TUI, zero-setup C# tooling through Roslyn, and runtime extensions for tools, slash commands and event handlers. It is a personal, MIT-licensed project, and it is built change by change with OpenCode and OpenSpec from this guide.
 
+## Why Lunate
+
+> The coding agent .NET developers can make their own: extend it in C#, from a single file to a
+> full NuGet package. It ships with the deepest C# understanding of any agent and is fully at
+> home in polyglot repos (ASP.NET + TypeScript frontends).
+
+Three consequences follow, and they decide priorities:
+
+- **The core stays language-agnostic.** Nothing in the loop, the tools or the session model may
+  assume C# semantics; TypeScript, Python and Go repositories are first-class citizens.
+- **.NET depth lives in `Lunate.Roslyn` as the flagship extension**, built only on the public
+  extension API — so it proves the extensibility story instead of bypassing it. An internal
+  shortcut in the flagship is a defect in the surface, not a convenience.
+- **Decision models enter through a Jev-compatible API**, so Lunate does not care which model or
+  provider sits behind a decision.
+
 **Why it should exist next to Pi and OpenCode**
 
 - **Agent-shaped C# tools with zero setup:** name-based lookup (find symbol, find references), compile checks after every edit, and refactors returned as diffs through the approval policy — no plugin or language server to install, and clear messages for restore, SDK and partial-load problems. The head-to-head suite shows outcome parity between lightweight agents on small tasks — what differs is cost and how each one extends: Lunate ran the suite at roughly a fifth of the tokens, and its harness is C# you can read and change.
