@@ -129,17 +129,53 @@ public sealed class SessionBranchTests
     }
 
     [Fact]
-    public void A_fork_point_off_the_active_path_is_refused()
+    public void A_fork_at_an_entry_off_the_active_path_copies_that_entrys_chain()
+    {
+        using var temp = new TempDirectory();
+        Session session = Branched(temp);
+        Directory.CreateDirectory(temp.File("forks"));
+
+        // e_02 is the abandoned tip: the fork holds its own chain, not the active path's.
+        Session fork = session.Fork(temp.File("forks"), "e_02");
+
+        Assert.Equal(["e_01", "e_02"], fork.Entries.Select(entry => entry.Id));
+        Assert.Equal(new SessionOrigin(session.SessionId, "e_02"), fork.Header.Origin);
+        Assert.Equal("e_02", fork.ActiveLeafId);
+        Assert.Equal(
+            ["user:one", "assistant:two"],
+            fork.ToHistory().Select(message => message.Role.Value + ":" + message.Text)
+        );
+        Assert.Equal(["e_01", "e_04"], session.ActivePath.Select(entry => entry.Id));
+    }
+
+    [Fact]
+    public void A_fork_of_an_entry_the_file_does_not_contain_is_refused()
     {
         using var temp = new TempDirectory();
         Session session = Branched(temp);
         Directory.CreateDirectory(temp.File("forks"));
 
         ArgumentException exception = Assert.Throws<ArgumentException>(() =>
-            session.Fork(temp.File("forks"), "e_02")
+            session.Fork(temp.File("forks"), "e_99")
         );
 
-        Assert.Contains("e_02", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("e_99", exception.Message, StringComparison.Ordinal);
+        Assert.Empty(Directory.GetFiles(temp.File("forks")));
+    }
+
+    [Fact]
+    public void A_fork_at_the_leaf_move_marker_is_refused()
+    {
+        using var temp = new TempDirectory();
+        Session session = Branched(temp);
+        Directory.CreateDirectory(temp.File("forks"));
+
+        // e_03 moves the leaf: a marker, never a row and never a fork point.
+        ArgumentException exception = Assert.Throws<ArgumentException>(() =>
+            session.Fork(temp.File("forks"), "e_03")
+        );
+
+        Assert.Contains("e_03", exception.Message, StringComparison.Ordinal);
         Assert.Empty(Directory.GetFiles(temp.File("forks")));
     }
 

@@ -77,35 +77,33 @@ public sealed partial class Session
     }
 
     /// <summary>
-    /// Creates a new session file holding the active path's entries up to and including
-    /// <paramref name="entryId"/>, its header carrying <c>origin</c> and <c>branched</c>. Entry ids
-    /// and bytes are copied verbatim, so the fork's prefix is the source's prefix; the follow-up
-    /// queue lives in memory and is never copied.
+    /// Creates a new session file holding the picked entry's own chain, root to that entry, its
+    /// header carrying <c>origin</c> and <c>branched</c>. The entry may sit on any branch: a fork
+    /// from an abandoned one takes that branch's ancestry, never the active path's. Entry ids and
+    /// bytes are copied verbatim, so the fork's prefix is the source's prefix; the follow-up queue
+    /// lives in memory and is never copied.
     /// </summary>
     internal Session Fork(string directory, string entryId)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(directory);
         ArgumentException.ThrowIfNullOrWhiteSpace(entryId);
-        IReadOnlyList<SessionEntry> path = ActivePath;
-        int boundary = -1;
-        for (var index = 0; index < path.Count; index++)
-        {
-            if (string.Equals(path[index].Id, entryId, StringComparison.Ordinal))
-            {
-                boundary = index;
-                break;
-            }
-        }
-
-        if (boundary < 0)
+        SessionEntry target =
+            _entries.FirstOrDefault(entry =>
+                string.Equals(entry.Id, entryId, StringComparison.Ordinal)
+            )
+            ?? throw new ArgumentException(
+                $"Session '{SessionId}' has no entry '{entryId}'; /fork takes an entry the session file contains.",
+                nameof(entryId)
+            );
+        if (target is SessionActiveLeafEntry)
         {
             throw new ArgumentException(
-                $"Entry '{entryId}' is not on session '{SessionId}' active path; /fork takes an entry of the branch the model currently sees.",
+                $"Session '{SessionId}' entry '{entryId}' moves the leaf rather than carrying content; /fork takes the entry to branch at.",
                 nameof(entryId)
             );
         }
 
-        return WriteBranchFile(directory, entryId, path.Take(boundary + 1));
+        return WriteBranchFile(directory, entryId, SessionTree.Path(_entries, entryId));
     }
 
     /// <summary>

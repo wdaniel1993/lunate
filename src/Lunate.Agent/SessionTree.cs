@@ -63,6 +63,66 @@ internal static class SessionTree
     }
 
     /// <summary>
+    /// The session's whole tree as rows, in file order: every content entry with its depth from the
+    /// root and whether it lies on the active path. A move entry is a marker and never a row; a
+    /// missing parent makes an entry a root, and a cycle stops that entry's walk instead of looping.
+    /// </summary>
+    internal static IReadOnlyList<SessionTreeRow> Rows(IReadOnlyList<SessionEntry> entries)
+    {
+        ArgumentNullException.ThrowIfNull(entries);
+        Dictionary<string, SessionEntry> byId = new(entries.Count, StringComparer.Ordinal);
+        foreach (SessionEntry entry in entries)
+        {
+            byId[entry.Id] = entry;
+        }
+
+        HashSet<string> onActivePath = new(
+            Path(entries, ActiveLeaf(entries)).Select(static entry => entry.Id),
+            StringComparer.Ordinal
+        );
+
+        List<SessionTreeRow> rows = [];
+        foreach (SessionEntry entry in entries)
+        {
+            if (entry is SessionActiveLeafEntry)
+            {
+                continue;
+            }
+
+            rows.Add(
+                new SessionTreeRow(entry, Depth(entry, byId), onActivePath.Contains(entry.Id))
+            );
+        }
+
+        return rows;
+    }
+
+    /// <summary>
+    /// How far <paramref name="entry"/> sits below its root, counted along its own parent chain: a
+    /// missing parent ends the walk (the entry is a root) and a cycle, or a marker standing where a
+    /// parent should be, stops it — the same discipline as <see cref="Path"/>, so a corrupted file
+    /// renders instead of throwing.
+    /// </summary>
+    private static int Depth(SessionEntry entry, Dictionary<string, SessionEntry> byId)
+    {
+        int depth = 0;
+        HashSet<string> visited = new(StringComparer.Ordinal) { entry.Id };
+        string? current = ParentOf(entry);
+        while (
+            current is not null
+            && visited.Add(current)
+            && byId.TryGetValue(current, out SessionEntry? parent)
+            && parent is not SessionActiveLeafEntry
+        )
+        {
+            depth++;
+            current = ParentOf(parent);
+        }
+
+        return depth;
+    }
+
+    /// <summary>
     /// The last compaction on <paramref name="path"/>: a compaction applies only when its own entry
     /// is on the chain, so a compaction written on a branch that is no longer active is dead
     /// weight rather than every branch's summary.
@@ -97,3 +157,10 @@ internal static class SessionTree
             _ => null,
         };
 }
+
+/// <summary>
+/// One row of a session's tree: a content entry, its depth from the root (0) and whether it lies on
+/// the active path. The row carries the entry itself so a reader can render it without asking the
+/// file again.
+/// </summary>
+internal readonly record struct SessionTreeRow(SessionEntry Entry, int Depth, bool OnActivePath);
