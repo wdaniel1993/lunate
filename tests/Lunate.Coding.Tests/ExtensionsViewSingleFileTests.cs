@@ -64,6 +64,66 @@ public sealed class ExtensionsViewSingleFileTests
     }
 
     [Fact]
+    public void A_restored_file_shows_the_resolved_graph_from_its_lock()
+    {
+        SingleFileExtension candidate = SingleFile(
+            restored: new ExtensionLock
+            {
+                ExtensionId = "acme-tools",
+                ExtensionVersion = "1.0.0",
+                SourceDigest = "digest",
+                PackagesWritten = ["Octokit@14.0.0"],
+                Toolset = new ExtensionLockToolset
+                {
+                    Tfm = "net10.0",
+                    Rid = "osx-arm64",
+                    Runtime = "10.0.13",
+                    ReferencePack = new ExtensionLockReferencePack
+                    {
+                        Id = "Microsoft.NETCore.App.Ref",
+                        Version = "10.0.13",
+                        Rule = ReferencePackRules.Exact,
+                    },
+                },
+                Sources = ["nuget.org"],
+                Packages =
+                [
+                    FakePackage("Octokit", "14.0.0"),
+                    FakePackage("Octokit.Dependency", "1.2.0"),
+                ],
+            }
+        );
+
+        string segment = Assert.Single(
+            ExtensionsView.Segments([], [], NoCounts, singleFile: [candidate])
+        );
+
+        Assert.EndsWith(
+            ", resolved: Octokit 14.0.0, Octokit.Dependency 1.2.0",
+            segment,
+            StringComparison.Ordinal
+        );
+    }
+
+    [Fact]
+    public void A_restore_failure_reads_failed_restore_with_its_reason()
+    {
+        SingleFileExtension candidate = SingleFile(
+            state: SingleFileExtensionState.RestoreFailed,
+            reason: "restore failed: package 'Octokit' was not found on any configured feed (nuget.org)."
+        );
+
+        string segment = Assert.Single(
+            ExtensionsView.Segments([], [], NoCounts, singleFile: [candidate])
+        );
+
+        Assert.Equal(
+            "acme-tools 1.0.0 (global, single file) failed (restore) — restore failed: package 'Octokit' was not found on any configured feed (nuget.org).",
+            segment
+        );
+    }
+
+    [Fact]
     public void A_failed_trust_file_carries_its_reason_on_the_same_line()
     {
         SingleFileExtension candidate = SingleFile(
@@ -209,6 +269,16 @@ public sealed class ExtensionsViewSingleFileTests
         );
     }
 
+    private static ExtensionLockPackage FakePackage(string id, string version) =>
+        new()
+        {
+            Id = id,
+            Version = version,
+            Sha512 = "ZmFrZQ==",
+            Requested = FormattableString.Invariant($"{id}@{version}"),
+            Direct = true,
+        };
+
     private static JsonElement Node(JsonDocument document, string fileName) =>
         document
             .RootElement.EnumerateArray()
@@ -228,6 +298,7 @@ public sealed class ExtensionsViewSingleFileTests
         string? reason = null,
         IReadOnlyList<string>? tools = null,
         IReadOnlyList<ExtensionDeclaration>? declaredNotProvided = null,
+        ExtensionLock? restored = null,
         string fileName = "acme.cs"
     ) =>
         new()
@@ -242,6 +313,7 @@ public sealed class ExtensionsViewSingleFileTests
             },
             State = state,
             Reason = reason,
+            Lock = restored,
             DeclaredNotProvided = declaredNotProvided ?? [],
         };
 }

@@ -10,6 +10,11 @@ internal static class LayeringChecker
             ("Lunate.Extensibility", "Lunate.Ai"),
             ("Lunate.Extensibility", "Lunate.Extensibility.Abstractions"),
             ("Lunate.Extensibility", "Lunate.Extensibility.Remote"),
+            // The restore engine is the only project that references the NuGet client libraries;
+            // it implements the seam Extensibility declares, so it depends downward on it.
+            ("Lunate.Extensibility.Restore", "Lunate.Extensibility"),
+            ("Lunate.Extensibility.Restore.Tests", "Lunate.Extensibility"),
+            ("Lunate.Extensibility.Restore.Tests", "Lunate.Extensibility.Restore"),
             ("Lunate.Extensibility.Remote", "Lunate.Extensibility.Abstractions"),
             ("Lunate.Extensibility.Remote.Tests", "Lunate.Extensibility.Abstractions"),
             ("Lunate.Extensibility.Remote.Tests", "Lunate.Extensibility.Remote"),
@@ -29,6 +34,9 @@ internal static class LayeringChecker
             ("Lunate.Roslyn.Tests", "Lunate.Agent"),
             ("Lunate.Coding", "Lunate.Agent"),
             ("Lunate.Coding", "Lunate.Extensibility"),
+            // The composition owns the restore engine factory: it constructs the engine only when
+            // a restore runs, so composing a session loads no NuGet assembly.
+            ("Lunate.Coding", "Lunate.Extensibility.Restore"),
             ("Lunate.Coding", "Lunate.Protocols"),
             // The composition owns the per-workspace Roslyn services and composes the cs_* tools.
             ("Lunate.Coding", "Lunate.Roslyn"),
