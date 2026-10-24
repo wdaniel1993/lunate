@@ -81,9 +81,12 @@ public sealed class BashToolChangeTests
             context,
             cts.Token
         );
+        // The shell redirect holds the file open while it sleeps; on Windows a plain
+        // File.ReadAllText does not admit that writer and throws instead of polling. A locked file
+        // simply means "not written yet" for this condition.
         await WaitUntilAsync(() =>
-            File.ReadAllText(Path.Combine(repo.Root, "a.cs"))
-                .Contains("int x", StringComparison.Ordinal)
+            ReadShared(Path.Combine(repo.Root, "a.cs"))?.Contains("int x", StringComparison.Ordinal)
+            == true
         );
         cts.Cancel();
 
@@ -91,6 +94,26 @@ public sealed class BashToolChangeTests
         FileChangeEvent change = Assert.Single(sink.Events);
         Assert.Equal("a.cs", change.RelativePath);
         Assert.Equal("bash", change.Source);
+    }
+
+    /// <summary>Reads a file a live process may be writing, or null while it cannot be read yet.</summary>
+    private static string? ReadShared(string path)
+    {
+        try
+        {
+            using var stream = new FileStream(
+                path,
+                FileMode.Open,
+                FileAccess.Read,
+                FileShare.ReadWrite | FileShare.Delete
+            );
+            using var reader = new StreamReader(stream);
+            return reader.ReadToEnd();
+        }
+        catch (IOException)
+        {
+            return null;
+        }
     }
 
     private static async Task WaitUntilAsync(Func<bool> condition)
