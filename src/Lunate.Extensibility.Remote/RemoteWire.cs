@@ -47,7 +47,7 @@ public sealed class RemoteWire : IAsyncDisposable
     private const int ErrorInvalidRequest = -32600;
     private const int ErrorMethodNotFound = -32601;
     private const int ErrorInternal = -32603;
-    private const int ErrorCancelled = -32800;
+    private const int ErrorCancelled = RemoteProtocol.CancelledErrorCode;
 
     private readonly IRemoteLineChannel _channel;
     private readonly RemoteWireOptions _options;

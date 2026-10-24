@@ -70,6 +70,14 @@ public sealed partial class RemoteExtension
             _serviceProxies[name] = proxy;
             _options.Context.RegisterService(name, proxy);
         }
+
+        // A manifest command is a declaration the child may serve over the wire; the source
+        // describes them only when the handshake advertised the capability (DescribeAsync reads
+        // the state, and registration itself starts nothing).
+        if (manifest.Commands.Count > 0)
+        {
+            _options.Context.RegisterCommandSource(new RemoteCommandSource(this));
+        }
     }
 
     /// <summary>

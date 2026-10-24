@@ -57,6 +57,11 @@ public sealed partial class ExtensionLoader
             }
         );
         _remoteExtensions[descriptor.Id] = remote;
+        if (startSession && descriptor.Manifest.Commands.Count > 0)
+        {
+            await StartForDeclaredCommandsAsync(remote, descriptor).ConfigureAwait(false);
+        }
+
         await CrossCheckManifestCommandsAsync(descriptor, cancellationToken).ConfigureAwait(false);
         var loaded = new LoadedExtension(descriptor.Id, remote, descriptor);
         _loaded[descriptor.Id] = loaded;
@@ -70,6 +75,31 @@ public sealed partial class ExtensionLoader
         }
 
         return loaded;
+    }
+
+    /// <summary>
+    /// Starts one remote extension before its manifest commands are cross-checked, because the
+    /// capability that decides the command listing (`commands: true` in <c>initialize</c>) only
+    /// exists after the handshake: a declared command is either offered and dispatchable, or
+    /// reported as declared, not provided — never offered and dead. Contained: a child that
+    /// cannot start leaves the extension's commands declarations and the load continues. The
+    /// register-only inspect mode passes <c>startSession: false</c> and starts nothing.
+    /// </summary>
+    private async Task StartForDeclaredCommandsAsync(
+        RemoteExtension remote,
+        ExtensionDescriptor descriptor
+    )
+    {
+        try
+        {
+            await remote.EnsureStartedAsync(CancellationToken.None).ConfigureAwait(false);
+        }
+        catch (Exception exception)
+        {
+            (_options.Log ?? NullExtensionLog.Instance).Warn(
+                $"extension '{descriptor.Id}': the child could not start while its declared commands were being listed: {exception.Message} Its commands are reported as declared, not provided."
+            );
+        }
     }
 
     /// <summary>

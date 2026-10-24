@@ -103,6 +103,20 @@ internal sealed class ScriptedChild : IAsyncDisposable
     /// <summary>Every observer notification the child received, by method.</summary>
     public List<(string Method, JsonElement? Parameters)> Notifications { get; } = [];
 
+    /// <summary>Every <c>command/invoke</c> the child received, in arrival order.</summary>
+    public List<CommandInvokeRequest> CommandRequests { get; } = [];
+
+    /// <summary>
+    /// Answers one invoked command through <see cref="RemoteCommandInvoke.DispatchAsync"/> — the
+    /// real child entry, so cancellation and failure map exactly as a real child's do.
+    /// </summary>
+    public Func<
+        CommandInvokeRequest,
+        CancellationToken,
+        ValueTask<CommandResult>
+    > CommandAnswers { get; set; } =
+        (request, _) => ValueTask.FromResult(CommandResult.Notice("pong " + request.Argument));
+
     /// <summary>Answers one <c>service-call</c>; the default returns null.</summary>
     public Func<ServiceCallEnvelope, JsonElement?> ServiceAnswers { get; set; } = _ => null;
 
@@ -273,6 +287,27 @@ internal sealed class ScriptedChild : IAsyncDisposable
                         "the service-call envelope did not parse"
                     );
                 return _child.ServiceAnswers(envelope);
+            }
+
+            if (method == RemoteProtocol.CommandInvokeMethod)
+            {
+                CommandInvokeRequest request =
+                    parameters!.Value.Deserialize<CommandInvokeRequest>(Options)
+                    ?? throw new InvalidOperationException(
+                        "the command invoke request did not parse"
+                    );
+                lock (_child.CommandRequests)
+                {
+                    _child.CommandRequests.Add(request);
+                }
+
+                return await RemoteCommandInvoke
+                    .DispatchAsync(
+                        request,
+                        (_, _, _) => _child.CommandAnswers(request, cancellationToken),
+                        cancellationToken
+                    )
+                    .ConfigureAwait(false);
             }
 
             if (method == RemoteProtocol.ShutdownMethod)

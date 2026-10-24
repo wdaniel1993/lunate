@@ -26,6 +26,12 @@ public static class RemoteProtocol
     public const string CommandInvokeMethod = "command/invoke";
     public const string CancelMethod = "$/cancelRequest";
 
+    /// <summary>
+    /// The JSON-RPC error code a peer answers a cancelled request with. A command invocation
+    /// treats it as the <c>cancelled</c> disposition, never as a failure.
+    /// </summary>
+    public const int CancelledErrorCode = -32800;
+
     /// <summary>The child → host service request method for one service and method.</summary>
     public static string ServiceMethod(string service, string method) =>
         $"service/{service}/{method}";

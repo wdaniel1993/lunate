@@ -68,7 +68,9 @@ internal sealed class FakeExtensionContext : IExtensionContext
 
     public void RegisterSkillSource(ISkillSource source) => throw new NotSupportedException();
 
-    public void RegisterCommandSource(ICommandSource source) => throw new NotSupportedException();
+    public List<ICommandSource> CommandSources { get; } = [];
+
+    public void RegisterCommandSource(ICommandSource source) => CommandSources.Add(source);
 
     private sealed class EmptySettings : IExtensionSettings
     {
