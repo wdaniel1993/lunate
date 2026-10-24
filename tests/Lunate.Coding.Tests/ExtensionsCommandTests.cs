@@ -36,7 +36,9 @@ public sealed class ExtensionsCommandTests
             StringComparison.Ordinal
         );
         Assert.StartsWith("hello 0.1.0 (global) loaded in ", lines[1], StringComparison.Ordinal);
-        Assert.Contains("(CLI-measured)", lines[1], StringComparison.Ordinal);
+        // The marker's group gains ", slow" when the load crossed the threshold, which a slower
+        // runner legitimately does — assert the marker, not the shape of the parentheses.
+        Assert.Contains("CLI-measured", lines[1], StringComparison.Ordinal);
         Assert.Contains(
             "tools 0, commands 0, hooks 3 (0 declared), services 1 (0 declared)",
             lines[1],
@@ -92,7 +94,7 @@ public sealed class ExtensionsCommandTests
             output.ToString(),
             StringComparison.Ordinal
         );
-        Assert.Contains("(CLI-measured)", output.ToString(), StringComparison.Ordinal);
+        Assert.Contains("CLI-measured", output.ToString(), StringComparison.Ordinal);
         string tools = Assert.Single(
             output.ToString().Split('\n', StringSplitOptions.RemoveEmptyEntries),
             line => line.StartsWith("tools ", StringComparison.Ordinal)
