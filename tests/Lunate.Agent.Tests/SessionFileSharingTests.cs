@@ -124,8 +124,8 @@ public sealed class SessionFileSharingTests
         Session session = Session.Create(path, "/work", new FixedTimeProvider(Start));
         SessionTitle.Write(session.Path, "first");
 
-        // The write replaces the sidecar by renaming a temp file over it; Windows refuses that while
-        // a reader holds the sidecar without admitting a delete.
+        // The write replaces the sidecar in place through the seam; Windows refused the old
+        // temp-file rename while this reader held the sidecar.
         using (
             StreamReader reader = SessionFiles.OpenTextReader(SessionTitle.PathFor(session.Path))
         )
