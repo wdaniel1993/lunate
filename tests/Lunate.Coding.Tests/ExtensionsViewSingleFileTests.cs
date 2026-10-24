@@ -22,7 +22,7 @@ public sealed class ExtensionsViewSingleFileTests
         );
 
         Assert.Equal(
-            "acme.tools 1.0.0 (global, single file) not-built, tools 2, commands 0, hooks 0, services 0",
+            "acme-tools 1.0.0 (global, single file) not-built, tools 2, commands 0, hooks 0, services 0",
             segment
         );
     }
@@ -57,7 +57,7 @@ public sealed class ExtensionsViewSingleFileTests
         );
 
         Assert.Equal(
-            "acme.tools 1.0.0 (global, single file) stale — the file or its declared packages changed since it was trusted",
+            "acme-tools 1.0.0 (global, single file) stale — the file or its declared packages changed since it was trusted",
             segment
         );
         Assert.DoesNotContain('\n', segment);
@@ -76,7 +76,7 @@ public sealed class ExtensionsViewSingleFileTests
         );
 
         Assert.Equal(
-            "acme.tools 1.0.0 (global, single file) failed (trust) — the trust record for this file is unreadable",
+            "acme-tools 1.0.0 (global, single file) failed (trust) — the trust record for this file is unreadable",
             segment
         );
     }
@@ -88,9 +88,9 @@ public sealed class ExtensionsViewSingleFileTests
         IReadOnlyList<ExtensionLoadResult> results = [Loaded("packaged")];
         IReadOnlyList<SingleFileExtension> singleFile =
         [
-            SingleFile(id: "z.tools", fileName: "z.cs"),
+            SingleFile(id: "z-tools", fileName: "z.cs"),
             SingleFile(
-                id: "a.tools",
+                id: "a-tools",
                 fileName: "a.cs",
                 state: SingleFileExtensionState.Stale,
                 reason: "changed"
@@ -122,12 +122,12 @@ public sealed class ExtensionsViewSingleFileTests
             StringComparison.Ordinal
         );
         Assert.StartsWith(
-            "a.tools 1.0.0 (global, single file) stale",
+            "a-tools 1.0.0 (global, single file) stale",
             segments[2],
             StringComparison.Ordinal
         );
         Assert.StartsWith(
-            "z.tools 1.0.0 (global, single file) not-built",
+            "z-tools 1.0.0 (global, single file) not-built",
             segments[3],
             StringComparison.Ordinal
         );
@@ -166,7 +166,7 @@ public sealed class ExtensionsViewSingleFileTests
                 fileName: "broken.cs"
             ),
             SingleFile(
-                id: "gone.tools",
+                id: "gone-tools",
                 state: SingleFileExtensionState.TrustFailed,
                 reason: "the trust record for this file is unreadable",
                 fileName: "gone.cs"
@@ -186,7 +186,7 @@ public sealed class ExtensionsViewSingleFileTests
         );
 
         JsonElement notBuilt = Node(document, "acme.cs");
-        Assert.Equal("acme.tools", notBuilt.GetProperty("id").GetString());
+        Assert.Equal("acme-tools", notBuilt.GetProperty("id").GetString());
         Assert.Equal("1.0.0", notBuilt.GetProperty("version").GetString());
         Assert.Equal("global", notBuilt.GetProperty("scope").GetString());
         Assert.Equal("not-built", notBuilt.GetProperty("state").GetString());
@@ -221,7 +221,7 @@ public sealed class ExtensionsViewSingleFileTests
             );
 
     private static SingleFileExtension SingleFile(
-        string? id = "acme.tools",
+        string? id = "acme-tools",
         string version = "1.0.0",
         ExtensionScope scope = ExtensionScope.Global,
         SingleFileExtensionState state = SingleFileExtensionState.NotBuilt,

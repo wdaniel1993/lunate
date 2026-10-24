@@ -12,7 +12,7 @@ public sealed class ExtensionDeclarationCheckTests
     public void A_registered_tool_the_header_does_not_declare_is_refused_naming_both()
     {
         ExtensionHeader header = ExtensionHeaderScanner.Scan(
-            "#:extension acme.tools@1.0.0\n#:tool fetch_issue\n"
+            "#:extension acme-tools@1.0.0\n#:tool fetch_issue\n"
         );
 
         ExtensionDeclarationCheckResult result = ExtensionDeclarationCheck.Check(
@@ -33,7 +33,7 @@ public sealed class ExtensionDeclarationCheckTests
     public void A_declared_name_nothing_registered_is_a_warning_not_a_refusal()
     {
         ExtensionHeader header = ExtensionHeaderScanner.Scan(
-            "#:extension acme.tools@1.0.0\n#:tool fetch_issue\n"
+            "#:extension acme-tools@1.0.0\n#:tool fetch_issue\n"
         );
 
         ExtensionDeclarationCheckResult result = ExtensionDeclarationCheck.Check(header, []);
@@ -54,13 +54,13 @@ public sealed class ExtensionDeclarationCheckTests
     public void Every_declaration_kind_is_cross_checked(ExtensionDeclarationKind kind, string name)
     {
         ExtensionHeader declared = ExtensionHeaderScanner.Scan(
-            "#:extension acme.tools@1.0.0\n"
+            "#:extension acme-tools@1.0.0\n"
                 + ExtensionDeclarationCheck.DirectiveFor(kind)
                 + " "
                 + name
                 + "\n"
         );
-        ExtensionHeader empty = ExtensionHeaderScanner.Scan("#:extension acme.tools@1.0.0\n");
+        ExtensionHeader empty = ExtensionHeaderScanner.Scan("#:extension acme-tools@1.0.0\n");
 
         Assert.Empty(ExtensionDeclarationCheck.Check(declared, [new(kind, name)]).Refusals);
         string refusal = Assert.Single(
@@ -74,7 +74,7 @@ public sealed class ExtensionDeclarationCheckTests
     {
         ExtensionHeader header = ExtensionHeaderScanner.Scan(
             """
-            #:extension acme.tools@1.0.0
+            #:extension acme-tools@1.0.0
             #:tool fetch_issue
             #:command ping
             #:hook tool-calling

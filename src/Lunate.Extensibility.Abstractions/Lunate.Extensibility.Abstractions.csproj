@@ -5,6 +5,11 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <InternalsVisibleTo Include="Lunate.Extensibility" />
+        <InternalsVisibleTo Include="Lunate.Extensibility.Tests" />
+    </ItemGroup>
+
+    <ItemGroup>
         <ProjectReference Include="../Lunate.Agent/Lunate.Agent.csproj" />
     </ItemGroup>
 

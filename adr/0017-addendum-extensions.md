@@ -34,7 +34,7 @@ spike report; this addendum records the decisions themselves.
   scanner as the package directives, before any compilation:
 
   ```csharp
-  #:extension acme.tools@1.0.0
+  #:extension acme-tools@1.0.0
   #:tool fetch_issue
   #:command issues
   #:hook ToolCalling

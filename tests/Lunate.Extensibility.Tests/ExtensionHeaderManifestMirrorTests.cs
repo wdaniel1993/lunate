@@ -35,7 +35,7 @@ public sealed class ExtensionHeaderManifestMirrorTests
             }
 
             string source =
-                $"#:extension mirror.test@1.0.0\n#:{directive.Name} mirror-value\n\npublic sealed class M;\n";
+                $"#:extension mirror-test@1.0.0\n#:{directive.Name} mirror-value\n\npublic sealed class M;\n";
             ExtensionHeader header = ExtensionHeaderScanner.Scan(source);
 
             Assert.Empty(header.Errors);
@@ -69,7 +69,7 @@ public sealed class ExtensionHeaderManifestMirrorTests
     {
         ExtensionHeader header = ExtensionHeaderScanner.Scan(
             """
-            #:extension mirror.test@1.0.0
+            #:extension mirror-test@1.0.0
             #:tool a-tool
             #:command a-command
             #:hook a-hook

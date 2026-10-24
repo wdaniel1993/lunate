@@ -35,10 +35,10 @@ public sealed partial record ExtensionManifest
 
             string path = $"modelProviders[{index.ToString(CultureInfo.InvariantCulture)}]";
             string id = RequiredProviderString(item, fileName, "id", $"{path}.id");
-            if (!IsValidId(id))
+            if (!ExtensionIds.IsValid(id))
             {
                 throw new InvalidDataException(
-                    $"{fileName}: field '{path}.id' must match [a-z0-9-]+ but is '{id}'."
+                    $"{fileName}: field '{path}.id' must match {ExtensionIds.Pattern} but is '{id}'."
                 );
             }
 

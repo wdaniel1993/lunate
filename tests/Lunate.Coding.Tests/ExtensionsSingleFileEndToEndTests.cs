@@ -14,7 +14,7 @@ namespace Lunate.Coding.Tests;
 public sealed class ExtensionsSingleFileEndToEndTests
 {
     private const string Header = """
-        #:extension acme.tools@1.0.0
+        #:extension acme-tools@1.0.0
         #:tool fetch_issue
 
         public static class Acme
@@ -46,7 +46,7 @@ public sealed class ExtensionsSingleFileEndToEndTests
         await InteractiveSessionCommandTests.WaitForFrameAsync(host, "not-built");
 
         Assert.Contains(
-            "acme.tools 1.0.0 (project, single file) not-built, tools 1, commands 0, hooks 0, services 0",
+            "acme-tools 1.0.0 (project, single file) not-built, tools 1, commands 0, hooks 0, services 0",
             host.LastFrame,
             StringComparison.Ordinal
         );
@@ -123,7 +123,7 @@ public sealed class ExtensionsSingleFileEndToEndTests
         Assert.Equal(ExtensionsCommand.ExitOk, exitCode);
         Assert.Equal(string.Empty, errors.ToString());
         Assert.Equal(
-            "acme.tools 1.0.0 (project, single file) not-built, tools 1, commands 0, hooks 0, services 0",
+            "acme-tools 1.0.0 (project, single file) not-built, tools 1, commands 0, hooks 0, services 0",
             output.ToString().Trim()
         );
     }

@@ -12,7 +12,7 @@ namespace Lunate.Extensibility;
 public sealed class ExtensionToolRegistry
 {
     private const int MaxToolsPerExtension = 32;
-    private const int MaxNameLength = 64;
+    private const int MaxNameLength = Abstractions.ExtensionToolNaming.MaxModelFacingNameLength;
 
     private readonly object _gate = new();
     private readonly List<ExtensionToolAdapter> _tools = [];
@@ -122,7 +122,7 @@ public sealed class ExtensionToolRegistry
     private static void Validate(string extensionId, ExtensionToolRegistration registration)
     {
         string name = registration.Name ?? string.Empty;
-        if (name.Length == 0 || !name.All(IsValidNameCharacter))
+        if (!Abstractions.ExtensionToolNaming.IsValidLocalName(name))
         {
             throw Refused(
                 extensionId,
@@ -131,7 +131,7 @@ public sealed class ExtensionToolRegistry
             );
         }
 
-        string modelFacing = ExtensionToolNaming.ModelFacing(extensionId, name);
+        string modelFacing = Abstractions.ExtensionToolNaming.ModelFacing(extensionId, name);
         if (modelFacing.Length > MaxNameLength)
         {
             throw Refused(
@@ -174,9 +174,6 @@ public sealed class ExtensionToolRegistry
         }
     }
 
-    private static bool IsValidNameCharacter(char character) =>
-        character is >= 'a' and <= 'z' or >= 'A' and <= 'Z' or >= '0' and <= '9' or '_' or '-';
-
     private static InvalidOperationException Refused(
         string extensionId,
         string name,
@@ -187,11 +184,4 @@ public sealed class ExtensionToolRegistry
                 ? $"extension '{extensionId}': tool registration was refused: {reason}"
                 : $"extension '{extensionId}': tool '{name}' was refused: {reason}"
         );
-}
-
-/// <summary>The naming grammar of extension tools: the literal MCP-style double underscore prefix.</summary>
-internal static class ExtensionToolNaming
-{
-    internal static string ModelFacing(string extensionId, string localName) =>
-        $"{extensionId}__{localName}";
 }

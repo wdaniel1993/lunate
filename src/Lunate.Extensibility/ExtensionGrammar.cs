@@ -8,20 +8,13 @@ namespace Lunate.Extensibility;
 internal static class ExtensionGrammar
 {
     /// <summary>
-    /// The single-file extension id's shape: lowercase letters, digits, dots and hyphens, starting
-    /// and ending with a letter or digit. Dots are accepted because the approved change's own
-    /// example declares <c>#:extension acme.tools@1.0.0</c>; the packaged manifest's narrower
-    /// <c>[a-z0-9-]+</c> rule stays as it is for <c>extension.json</c>, and a colon stays refused
-    /// everywhere because it would make a command id (<c>ext:&lt;id&gt;:&lt;name&gt;</c>)
-    /// ambiguous.
+    /// The extension id's shape, which is the packaged manifest's rule exactly: the header may not
+    /// accept an id a package would refuse, because a single file is meant to be promotable to a
+    /// package without renaming itself. The rule lives in <c>ExtensionIds</c> and is shared with
+    /// <c>extension.json</c>.
     /// </summary>
     internal static bool IsValidExtensionId(string value) =>
-        value.Length > 0
-        && char.IsAsciiLetterOrDigit(value[0])
-        && char.IsAsciiLetterOrDigit(value[^1])
-        && value.All(character =>
-            character is >= 'a' and <= 'z' or >= '0' and <= '9' or '-' or '.'
-        );
+        Abstractions.ExtensionIds.IsValid(value);
 
     /// <summary>
     /// The manifest's provider-id rule (<c>[a-z0-9-]+</c>), which <c>#:provider</c> mirrors: the

@@ -319,7 +319,7 @@ Measured parse costs for one small declaration (fresh process, 100 iterations wh
 small scanner as `#:package`, before any compilation:
 
 ```csharp
-#:extension acme.tools@1.0.0
+#:extension acme-tools@1.0.0
 #:tool fetch_issue
 #:hook ToolCalling
 #:package Octokit@14.0.0

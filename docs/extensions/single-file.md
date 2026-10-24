@@ -36,7 +36,7 @@ the first C# token. Everything from the first other line on is code.
 
 ```csharp
 // acme-tools — a single-file extension
-#:extension acme.tools@1.0.0
+#:extension acme-tools@1.0.0
 #:tool fetch_issue
 #:package Octokit@14.0.0
 
@@ -77,9 +77,15 @@ anything a package can. The mirror is enforced by a test that reflects over the 
 declaration lists: a manifest field added without a directive fails the build rather than shipping
 as a silent gap.
 
-`#:extension`'s id is lowercase letters, digits, dots and hyphens, starting and ending with a letter
-or digit (for example `acme.tools`). A colon is refused because it would make a command id
-(`ext:<id>:<name>`) ambiguous.
+`#:extension`'s id follows the packaged manifest's rule exactly — lowercase letters, digits and
+hyphens (`[a-z0-9-]+`, for example `acme-tools`) — so a single file stays promotable to a package
+without renaming itself. A dot is refused because the id prefixes every tool name
+(`<id>__<tool>`) and provider APIs accept only `[A-Za-z0-9_-]` there; a colon is refused because it
+would make a command id (`ext:<id>:<name>`) ambiguous.
+
+A `#:tool` name must match `[A-Za-z0-9_-]`, and the composed `<id>__<tool>` must fit the provider's
+64-character limit. A pair that cannot fit is refused at discovery, naming the composed name and
+both halves, so the author knows whether to shorten the tool or the id.
 
 ### `#:package`
 

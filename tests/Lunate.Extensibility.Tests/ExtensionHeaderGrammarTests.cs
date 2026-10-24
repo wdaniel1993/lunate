@@ -26,7 +26,7 @@ public sealed class ExtensionHeaderGrammarTests
     )
     {
         ExtensionHeader header = ExtensionHeaderScanner.Scan(
-            $"#:extension acme.tools@1.0.0\n#:package {argument}\n\npublic sealed class Acme;\n"
+            $"#:extension acme-tools@1.0.0\n#:package {argument}\n\npublic sealed class Acme;\n"
         );
 
         Assert.Empty(header.Errors);
@@ -47,7 +47,7 @@ public sealed class ExtensionHeaderGrammarTests
     public void A_package_without_a_well_formed_version_is_refused(string argument)
     {
         ExtensionHeader header = ExtensionHeaderScanner.Scan(
-            $"#:extension acme.tools@1.0.0\n#:package {argument}\n\npublic sealed class Acme;\n"
+            $"#:extension acme-tools@1.0.0\n#:package {argument}\n\npublic sealed class Acme;\n"
         );
 
         ExtensionHeaderIssue error = Assert.Single(header.Errors);
@@ -56,7 +56,7 @@ public sealed class ExtensionHeaderGrammarTests
     }
 
     [Theory]
-    [InlineData("acme.tools@1.0.0")]
+    [InlineData("acme-tools@1.0.0")]
     [InlineData("acme@1.0")]
     [InlineData("acme@1.0.0-beta.1+build.5")]
     [InlineData("acme-2@10.20.30.40")]
@@ -71,13 +71,14 @@ public sealed class ExtensionHeaderGrammarTests
     }
 
     [Theory]
-    [InlineData("acme.tools")]
-    [InlineData("acme.tools@")]
+    [InlineData("acme-tools")]
+    [InlineData("acme-tools@")]
     [InlineData("@1.0.0")]
-    [InlineData("acme.tools@[1.0.0,2.0.0)")]
-    [InlineData("acme.tools@1.*")]
-    [InlineData("acme.tools@1")]
+    [InlineData("acme-tools@[1.0.0,2.0.0)")]
+    [InlineData("acme-tools@1.*")]
+    [InlineData("acme-tools@1")]
     [InlineData("Acme.Tools@1.0.0")]
+    [InlineData("acme.tools@1.0.0")]
     [InlineData("acme:tools@1.0.0")]
     public void The_extension_directive_refuses_another_shape(string argument)
     {
@@ -95,7 +96,7 @@ public sealed class ExtensionHeaderGrammarTests
     public void A_provider_id_must_match_the_manifest_id_rule()
     {
         ExtensionHeader header = ExtensionHeaderScanner.Scan(
-            "#:extension acme.tools@1.0.0\n#:provider Acme-Models\n\npublic sealed class Acme;\n"
+            "#:extension acme-tools@1.0.0\n#:provider Acme-Models\n\npublic sealed class Acme;\n"
         );
 
         ExtensionHeaderIssue error = Assert.Single(header.Errors);

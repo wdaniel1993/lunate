@@ -25,7 +25,7 @@ public sealed class SingleFileExtensionDiscoveryTests
         Assert.Empty(loader.Descriptors);
         Assert.Empty(loader.DiscoveryErrors);
         SingleFileExtension candidate = Assert.Single(loader.SingleFileExtensions);
-        Assert.Equal("acme.tools", candidate.Id);
+        Assert.Equal("acme-tools", candidate.Id);
         Assert.Equal("1.0.0", candidate.Version);
         Assert.Equal(ExtensionScope.Global, candidate.Scope);
         Assert.Equal(path, candidate.Path);
@@ -66,13 +66,13 @@ public sealed class SingleFileExtensionDiscoveryTests
         var fixture = new SingleFileFixture(temp);
         fixture.WriteGlobal(
             "sdk.cs",
-            "#:extension acme.tools@1.0.0\n#:sdk Microsoft.NET.Sdk\n\npublic sealed class Acme;\n"
+            "#:extension acme-tools@1.0.0\n#:sdk Microsoft.NET.Sdk\n\npublic sealed class Acme;\n"
         );
 
         SingleFileExtension candidate = Assert.Single(fixture.Discover());
 
         Assert.Equal(SingleFileExtensionState.Invalid, candidate.State);
-        Assert.Equal("acme.tools", candidate.Id);
+        Assert.Equal("acme-tools", candidate.Id);
         Assert.StartsWith("line 2:", candidate.Reason, StringComparison.Ordinal);
         Assert.Contains("#:sdk", candidate.Reason, StringComparison.Ordinal);
     }
@@ -82,8 +82,8 @@ public sealed class SingleFileExtensionDiscoveryTests
     {
         using var temp = new TempDirectory();
         var fixture = new SingleFileFixture(temp);
-        string global = fixture.WriteGlobal("first.cs", SingleFileFixture.Header("acme.tools"));
-        string project = fixture.WriteProject("second.cs", SingleFileFixture.Header("acme.tools"));
+        string global = fixture.WriteGlobal("first.cs", SingleFileFixture.Header("acme-tools"));
+        string project = fixture.WriteProject("second.cs", SingleFileFixture.Header("acme-tools"));
         ExtensionLoader loader = fixture.Loader();
 
         IReadOnlyList<SingleFileExtension> candidates = fixture.Discover(loader);
@@ -93,7 +93,7 @@ public sealed class SingleFileExtensionDiscoveryTests
         foreach (SingleFileExtension candidate in candidates)
         {
             Assert.Equal(SingleFileExtensionState.Invalid, candidate.State);
-            Assert.Equal("acme.tools", candidate.Id);
+            Assert.Equal("acme-tools", candidate.Id);
             Assert.Contains(global, candidate.Reason, StringComparison.Ordinal);
             Assert.Contains(project, candidate.Reason, StringComparison.Ordinal);
         }
@@ -101,7 +101,7 @@ public sealed class SingleFileExtensionDiscoveryTests
         Assert.Equal(2, loader.DiscoveryErrors.Count);
         foreach (ExtensionDiscoveryError error in loader.DiscoveryErrors)
         {
-            Assert.Contains("acme.tools", error.Message, StringComparison.Ordinal);
+            Assert.Contains("acme-tools", error.Message, StringComparison.Ordinal);
             Assert.Contains(global, error.Message, StringComparison.Ordinal);
             Assert.Contains(project, error.Message, StringComparison.Ordinal);
         }
@@ -150,13 +150,13 @@ public sealed class SingleFileExtensionDiscoveryTests
     {
         using var temp = new TempDirectory();
         var fixture = new SingleFileFixture(temp);
-        fixture.WriteGlobal("z-global.cs", SingleFileFixture.Header("z.tools"));
-        fixture.WriteGlobal("a-global.cs", SingleFileFixture.Header("a.tools"));
-        fixture.WriteProject("p-project.cs", SingleFileFixture.Header("p.tools"));
+        fixture.WriteGlobal("z-global.cs", SingleFileFixture.Header("z-tools"));
+        fixture.WriteGlobal("a-global.cs", SingleFileFixture.Header("a-tools"));
+        fixture.WriteProject("p-project.cs", SingleFileFixture.Header("p-tools"));
 
         IReadOnlyList<SingleFileExtension> candidates = fixture.Discover();
 
-        Assert.Equal(["a.tools", "z.tools", "p.tools"], candidates.Select(entry => entry.Id));
+        Assert.Equal(["a-tools", "z-tools", "p-tools"], candidates.Select(entry => entry.Id));
         Assert.Equal(
             [ExtensionScope.Global, ExtensionScope.Global, ExtensionScope.Project],
             candidates.Select(entry => entry.Scope)
@@ -187,7 +187,7 @@ public sealed class SingleFileExtensionDiscoveryTests
 
         Assert.Empty(loader.Descriptors);
         SingleFileExtension candidate = Assert.Single(candidates);
-        Assert.Equal("acme.tools", candidate.Id);
+        Assert.Equal("acme-tools", candidate.Id);
         Assert.Equal(["fetch_issue"], candidate.Header.Tools);
     }
 
@@ -243,7 +243,7 @@ public sealed class SingleFileExtensionDiscoveryTests
         var fixture = new SingleFileFixture(temp);
         fixture.WriteGlobal(
             "acme.cs",
-            "#:extension acme.tools@1.0.0\n#:whatever acme\n\npublic sealed class Acme;\n"
+            "#:extension acme-tools@1.0.0\n#:whatever acme\n\npublic sealed class Acme;\n"
         );
         var log = new RecordingExtensionLog();
 
@@ -266,16 +266,16 @@ public sealed class SingleFileExtensionDiscoveryTests
         Assert.Single(fixture.Discover(loader));
 
         File.Delete(Path.Combine(fixture.GlobalRoot, "first.cs"));
-        fixture.WriteGlobal("second.cs", SingleFileFixture.Header("second.tools"));
+        fixture.WriteGlobal("second.cs", SingleFileFixture.Header("second-tools"));
 
-        Assert.Equal(["second.tools"], fixture.Discover(loader).Select(entry => entry.Id));
+        Assert.Equal(["second-tools"], fixture.Discover(loader).Select(entry => entry.Id));
     }
 
     [Fact]
     public void The_digest_covers_the_id_the_packages_as_written_and_the_source_bytes()
     {
         byte[] source = Encoding.UTF8.GetBytes(
-            "#:extension acme.tools@1.0.0\n#:package Octokit@14.0.0\n"
+            "#:extension acme-tools@1.0.0\n#:package Octokit@14.0.0\n"
         );
         ExtensionPackageReference octokit = new("Octokit", "14.0.0", "Octokit@14.0.0");
         ExtensionPackageReference ranged = new(
@@ -284,26 +284,26 @@ public sealed class SingleFileExtensionDiscoveryTests
             "Octokit@[14.0.0,15.0.0)"
         );
         byte[] edited = Encoding.UTF8.GetBytes(
-            "#:extension acme.tools@1.0.0\n#:package Octokit@14.0.0\n// edited\n"
+            "#:extension acme-tools@1.0.0\n#:package Octokit@14.0.0\n// edited\n"
         );
 
-        string baseline = SingleFileExtensionDigest.Compute("acme.tools", [octokit], source);
+        string baseline = SingleFileExtensionDigest.Compute("acme-tools", [octokit], source);
 
         // Pinned: the format is a contract, so a silent change to it must fail here.
-        Assert.Equal("608b47627f1f3091d39cb21ea41f747a0fe61154b511c9d1f38509aa475f4b25", baseline);
-        Assert.Equal(baseline, SingleFileExtensionDigest.Compute("acme.tools", [octokit], source));
+        Assert.Equal("8948713b04319850831da7187667bdff46b6fa2bab41d781712bdbb35185e47c", baseline);
+        Assert.Equal(baseline, SingleFileExtensionDigest.Compute("acme-tools", [octokit], source));
         Assert.NotEqual(
             baseline,
-            SingleFileExtensionDigest.Compute("other.tools", [octokit], source)
+            SingleFileExtensionDigest.Compute("other-tools", [octokit], source)
         );
         Assert.NotEqual(
             baseline,
-            SingleFileExtensionDigest.Compute("acme.tools", [ranged], source)
+            SingleFileExtensionDigest.Compute("acme-tools", [ranged], source)
         );
         Assert.NotEqual(
             baseline,
-            SingleFileExtensionDigest.Compute("acme.tools", [octokit], edited)
+            SingleFileExtensionDigest.Compute("acme-tools", [octokit], edited)
         );
-        Assert.NotEqual(baseline, SingleFileExtensionDigest.Compute("acme.tools", [], source));
+        Assert.NotEqual(baseline, SingleFileExtensionDigest.Compute("acme-tools", [], source));
     }
 }

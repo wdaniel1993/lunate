@@ -10,7 +10,7 @@ namespace Lunate.Extensibility.Tests;
 internal sealed class SingleFileFixture(TempDirectory temp)
 {
     internal const string Valid = """
-        #:extension acme.tools@1.0.0
+        #:extension acme-tools@1.0.0
         #:tool fetch_issue
 
         public static class Acme

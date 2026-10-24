@@ -12,7 +12,7 @@ public sealed class ExtensionHeaderScannerTests
     {
         ExtensionHeader header = ExtensionHeaderScanner.Scan(
             """
-            #:extension acme.tools@1.2.3
+            #:extension acme-tools@1.2.3
             #:tool fetch_issue
             #:tool close_issue
             #:command ping
@@ -29,7 +29,7 @@ public sealed class ExtensionHeaderScannerTests
 
         Assert.Empty(header.Errors);
         Assert.Empty(header.Warnings);
-        Assert.Equal("acme.tools", header.Id);
+        Assert.Equal("acme-tools", header.Id);
         Assert.Equal("1.2.3", header.Version);
         Assert.Equal(["fetch_issue", "close_issue"], header.Tools);
         Assert.Equal(["ping"], header.Commands);
@@ -67,7 +67,7 @@ public sealed class ExtensionHeaderScannerTests
             // acme tools
             /* a licence header
                that spans lines */
-            #:extension acme.tools@1.0.0
+            #:extension acme-tools@1.0.0
 
             #:tool fetch_issue // trailing note
 
@@ -76,7 +76,7 @@ public sealed class ExtensionHeaderScannerTests
         );
 
         Assert.Empty(header.Errors);
-        Assert.Equal("acme.tools", header.Id);
+        Assert.Equal("acme-tools", header.Id);
         Assert.Equal(["fetch_issue"], header.Tools);
     }
 
@@ -89,14 +89,14 @@ public sealed class ExtensionHeaderScannerTests
             #:sdk Microsoft.NET.Sdk
             #:project ../other/other.csproj
             */
-            #:extension acme.tools@1.0.0
+            #:extension acme-tools@1.0.0
 
             public sealed class Acme;
             """
         );
 
         Assert.Empty(header.Errors);
-        Assert.Equal("acme.tools", header.Id);
+        Assert.Equal("acme-tools", header.Id);
     }
 
     [Fact]
@@ -104,7 +104,7 @@ public sealed class ExtensionHeaderScannerTests
     {
         string[] lines =
         [
-            "#:extension late.tool@1.0.0",
+            "#:extension late-tool@1.0.0",
             string.Empty,
             "public static class Late",
             "{",
@@ -131,7 +131,7 @@ public sealed class ExtensionHeaderScannerTests
     {
         ExtensionHeader header = ExtensionHeaderScanner.Scan(
             """
-            #:extension acme.tools@1.0.0
+            #:extension acme-tools@1.0.0
             public sealed class Acme;
             /*
             #:tool late
@@ -152,7 +152,7 @@ public sealed class ExtensionHeaderScannerTests
     )
     {
         ExtensionHeader header = ExtensionHeaderScanner.Scan(
-            $"#:extension acme.tools@1.0.0\n#:{line}\n\npublic sealed class Acme;\n"
+            $"#:extension acme-tools@1.0.0\n#:{line}\n\npublic sealed class Acme;\n"
         );
 
         ExtensionHeaderIssue error = Assert.Single(header.Errors);
@@ -165,7 +165,7 @@ public sealed class ExtensionHeaderScannerTests
     {
         ExtensionHeader header = ExtensionHeaderScanner.Scan(
             """
-            #:extension acme.tools@1.0.0
+            #:extension acme-tools@1.0.0
             #:whatever acme
             #:tool fetch_issue
 
@@ -174,7 +174,7 @@ public sealed class ExtensionHeaderScannerTests
         );
 
         Assert.Empty(header.Errors);
-        Assert.Equal("acme.tools", header.Id);
+        Assert.Equal("acme-tools", header.Id);
         Assert.Equal(["fetch_issue"], header.Tools);
         ExtensionHeaderIssue warning = Assert.Single(header.Warnings);
         Assert.Equal(2, warning.Line);
@@ -186,8 +186,8 @@ public sealed class ExtensionHeaderScannerTests
     {
         ExtensionHeader header = ExtensionHeaderScanner.Scan(
             """
-            #:extension acme.tools@1.0.0
-            #:extension other.tools@2.0.0
+            #:extension acme-tools@1.0.0
+            #:extension other-tools@2.0.0
 
             public sealed class Acme;
             """
@@ -195,7 +195,7 @@ public sealed class ExtensionHeaderScannerTests
 
         ExtensionHeaderIssue error = Assert.Single(header.Errors);
         Assert.Contains("#:extension", error.Message, StringComparison.Ordinal);
-        Assert.Equal("acme.tools", header.Id);
+        Assert.Equal("acme-tools", header.Id);
     }
 
     [Fact]
@@ -203,7 +203,7 @@ public sealed class ExtensionHeaderScannerTests
     {
         ExtensionHeader header = ExtensionHeaderScanner.Scan(
             """
-            #:extension acme.tools@1.0.0
+            #:extension acme-tools@1.0.0
             #:tool fetch_issue
             #:tool fetch_issue
 
@@ -221,7 +221,7 @@ public sealed class ExtensionHeaderScannerTests
     {
         ExtensionHeader header = ExtensionHeaderScanner.Scan(
             """
-            #:extension acme.tools@1.0.0
+            #:extension acme-tools@1.0.0
             #:tool fetch issue
 
             public sealed class Acme;
@@ -252,7 +252,7 @@ public sealed class ExtensionHeaderScannerTests
     {
         string[] lines =
         [
-            "#:extension acme.tools@1.0.0",
+            "#:extension acme-tools@1.0.0",
             "#:tool fetch_issue",
             string.Empty,
             "public sealed class Acme;",
@@ -261,10 +261,47 @@ public sealed class ExtensionHeaderScannerTests
 
         ExtensionHeader header = ExtensionHeaderScanner.Scan(string.Join("\r\n", lines));
 
-        Assert.Equal("acme.tools", header.Id);
+        Assert.Equal("acme-tools", header.Id);
         Assert.Equal(["fetch_issue"], header.Tools);
         ExtensionHeaderIssue error = Assert.Single(header.Errors);
         Assert.Equal(5, error.Line);
+    }
+
+    [Fact]
+    public void A_tool_name_outside_the_provider_grammar_is_refused()
+    {
+        ExtensionHeader header = ExtensionHeaderScanner.Scan(
+            "#:extension acme-tools@1.0.0\n#:tool fetch.issue\n\npublic sealed class Acme;\n"
+        );
+
+        ExtensionHeaderIssue error = Assert.Single(header.Errors);
+        Assert.Equal(2, error.Line);
+        Assert.Contains("fetch.issue", error.Message, StringComparison.Ordinal);
+        Assert.Contains("[A-Za-z0-9_-]", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void The_longest_fitting_tool_name_is_accepted_and_the_next_character_is_refused()
+    {
+        // "<id>__<tool>" must fit 64 characters: a 40-character id leaves 22 for the tool name.
+        string id = new('a', 40);
+        string fits = new('b', 22);
+        string overflows = new('b', 23);
+
+        ExtensionHeader accepted = ExtensionHeaderScanner.Scan(
+            $"#:extension {id}@1.0.0\n#:tool {fits}\n\npublic sealed class Acme;\n"
+        );
+        Assert.Empty(accepted.Errors);
+        Assert.Equal([fits], accepted.Tools);
+
+        ExtensionHeader refused = ExtensionHeaderScanner.Scan(
+            $"#:extension {id}@1.0.0\n#:tool {overflows}\n\npublic sealed class Acme;\n"
+        );
+        ExtensionHeaderIssue error = Assert.Single(refused.Errors);
+        Assert.Equal(2, error.Line);
+        Assert.Contains($"{id}__{overflows}", error.Message, StringComparison.Ordinal);
+        Assert.Contains("64", error.Message, StringComparison.Ordinal);
+        Assert.Contains(id, error.Message, StringComparison.Ordinal);
     }
 
     [Fact]

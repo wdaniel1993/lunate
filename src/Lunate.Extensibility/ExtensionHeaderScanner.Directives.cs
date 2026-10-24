@@ -10,6 +10,7 @@ public static partial class ExtensionHeaderScanner
     private sealed class Builder
     {
         private readonly List<string> _tools = [];
+        private readonly Dictionary<string, int> _toolLines = new(StringComparer.Ordinal);
         private readonly List<string> _commands = [];
         private readonly List<string> _hooks = [];
         private readonly List<string> _services = [];
@@ -25,8 +26,10 @@ public static partial class ExtensionHeaderScanner
 
         internal List<ExtensionHeaderIssue> Warnings { get; } = [];
 
-        internal ExtensionHeader Build() =>
-            new()
+        internal ExtensionHeader Build()
+        {
+            ValidateToolNames();
+            return new ExtensionHeader
             {
                 Id = _id,
                 Version = _version,
@@ -41,6 +44,7 @@ public static partial class ExtensionHeaderScanner
                 Errors = Errors,
                 Warnings = Warnings,
             };
+        }
 
         /// <summary>Applies one leading-block directive; <paramref name="body"/> has no <c>#:</c>.</summary>
         internal void Apply(string body, int line)
@@ -63,7 +67,13 @@ public static partial class ExtensionHeaderScanner
                     Extension(value, line);
                     return;
                 case ExtensionDirectives.Tool:
+                    int before = _tools.Count;
                     Declaration(_tools, "#:tool", value, line);
+                    if (_tools.Count > before)
+                    {
+                        _toolLines[value] = line;
+                    }
+
                     return;
                 case ExtensionDirectives.Command:
                     Declaration(_commands, "#:command", value, line);
@@ -132,9 +142,10 @@ public static partial class ExtensionHeaderScanner
             {
                 Error(
                     line,
-                    $"'#:extension' id '{id}' must match [a-z0-9.-]+ (lowercase letters, digits, "
-                        + "dots and hyphens, starting and ending with a letter or digit), because it "
-                        + "names the extension's tools and settings."
+                    $"'#:extension' id '{id}' must match "
+                        + Abstractions.ExtensionIds.Pattern
+                        + " (lowercase letters, digits and hyphens), because it names the "
+                        + "extension's tools and settings and a package would refuse the same id."
                 );
                 return;
             }
@@ -286,7 +297,7 @@ public static partial class ExtensionHeaderScanner
             int at = value.IndexOf('@', StringComparison.Ordinal);
             if (at <= 0 || at == value.Length - 1)
             {
-                string example = directive == "#:package" ? "Octokit@14.0.0" : "acme.tools@1.0.0";
+                string example = directive == "#:package" ? "Octokit@14.0.0" : "acme-tools@1.0.0";
                 Error(
                     line,
                     $"'{directive}' needs '<id>@<version>', for example '{directive} {example}'."
@@ -303,6 +314,44 @@ public static partial class ExtensionHeaderScanner
             id = value[..at].Trim();
             version = value[(at + 1)..].Trim();
             return true;
+        }
+
+        /// <summary>
+        /// Refuses a declared tool the provider could not accept: a local name outside
+        /// <c>[A-Za-z0-9_-]</c>, or a composed <c>&lt;id&gt;__&lt;tool&gt;</c> longer than 64
+        /// characters. Both name the tool and, for the length, the exact name that is too long, so
+        /// the author sees whether the id or the name has to shrink.
+        /// </summary>
+        private void ValidateToolNames()
+        {
+            if (_id is null)
+            {
+                return;
+            }
+
+            foreach (string tool in _tools)
+            {
+                if (!Abstractions.ExtensionToolNaming.IsValidLocalName(tool))
+                {
+                    Error(
+                        _toolLines[tool],
+                        $"tool name '{tool}' must match [A-Za-z0-9_-]; provider APIs refuse other "
+                            + "characters."
+                    );
+                    continue;
+                }
+
+                string modelFacing = Abstractions.ExtensionToolNaming.ModelFacing(_id, tool);
+                if (modelFacing.Length > Abstractions.ExtensionToolNaming.MaxModelFacingNameLength)
+                {
+                    Error(
+                        _toolLines[tool],
+                        FormattableString.Invariant(
+                            $"tool '{tool}' in extension '{_id}' makes the model-facing name '{modelFacing}' ({modelFacing.Length} characters), over the provider limit of {Abstractions.ExtensionToolNaming.MaxModelFacingNameLength}; shorten the tool name or the extension id."
+                        )
+                    );
+                }
+            }
         }
 
         private void Error(int line, string message) =>
