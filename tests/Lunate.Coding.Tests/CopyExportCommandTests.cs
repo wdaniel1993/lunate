@@ -303,7 +303,7 @@ public sealed class CopyExportCommandTests
         await host.WaitUntilAsync(() => host.Session.IsComposed);
 
         await SendLineAsync(host, "/help");
-        Assert.Contains("/copy", host.ScrollbackText, StringComparison.Ordinal);
+        await InteractiveSessionCommandTests.WaitForScrollbackAsync(host, "/copy");
         Assert.Contains("/export", host.ScrollbackText, StringComparison.Ordinal);
 
         host.Console.SendText("?");
