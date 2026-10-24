@@ -322,6 +322,9 @@ internal sealed class GatedChatClient : IChatClient
         }
     }
 
+    /// <summary>Usage the canned non-streaming response reports; null reports none.</summary>
+    public UsageDetails? SummaryUsage { get; set; }
+
     /// <summary>The non-streaming requests (compaction summarization), in call order.</summary>
     public IReadOnlyList<IReadOnlyList<ChatMessage>> SummaryRequests
     {
@@ -405,6 +408,9 @@ internal sealed class GatedChatClient : IChatClient
 
         return Task.FromResult(
             new ChatResponse(new ChatMessage(ChatRole.Assistant, "summary of older turns"))
+            {
+                Usage = SummaryUsage,
+            }
         );
     }
 

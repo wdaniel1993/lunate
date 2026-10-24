@@ -61,6 +61,19 @@ public sealed partial class Session
     /// <summary>The conversation entries in append order; the header entry is not included.</summary>
     public IReadOnlyList<SessionEntry> Entries => _entries;
 
+    /// <summary>
+    /// The active leaf: the most recently appended entry, unless a later active-leaf entry points
+    /// elsewhere. Null for a session with no entries.
+    /// </summary>
+    internal string? ActiveLeafId => SessionTree.ActiveLeaf(_entries);
+
+    /// <summary>
+    /// The last compaction on the active path; null when the active path has none, even if another
+    /// branch does.
+    /// </summary>
+    internal SessionCompactionEntry? ActiveCompaction =>
+        SessionTree.CompactionOn(SessionTree.Path(_entries, ActiveLeafId));
+
     /// <summary>The content-addressed image store beside this session file.</summary>
     internal SessionImages Images => _images ??= SessionImages.ForSession(this);
 
@@ -188,6 +201,8 @@ public sealed partial class Session
 
             session._entries.Add(entry);
         }
+
+        ValidateLeaves(session._entries, path);
 
         try
         {
@@ -416,14 +431,22 @@ public sealed partial class Session
 
     /// <summary>
     /// The history items for seeding a harness: the last compaction's summary message (when the
-    /// session was compacted) followed by every message entry the summary does not replace, in
-    /// append order. Each item carries the entry id it came from; the summary has none.
+    /// active path was compacted) followed by the active path's message entries the summary does not
+    /// replace, root to leaf. A branch summary on the path is ordinary context and keeps its entry
+    /// id, so a later compaction may list it among what it replaces. Each item carries the entry id
+    /// it came from; the compaction summary has none.
     /// </summary>
-    internal List<SessionHistoryItem> HistoryItems()
+    internal List<SessionHistoryItem> HistoryItems() => HistoryItems(ActiveLeafId);
+
+    /// <summary>
+    /// The history items for <paramref name="leaf"/>'s path. The model sees exactly the entries on
+    /// that leaf's chain: a compaction applies only when its own entry is on the chain, and ids in
+    /// its <c>replaces</c> list that are off the chain are ignored rather than treated as missing.
+    /// </summary>
+    internal List<SessionHistoryItem> HistoryItems(string? leaf)
     {
-        SessionCompactionEntry? compaction = _entries
-            .OfType<SessionCompactionEntry>()
-            .LastOrDefault();
+        IReadOnlyList<SessionEntry> path = SessionTree.Path(_entries, leaf);
+        SessionCompactionEntry? compaction = SessionTree.CompactionOn(path);
         HashSet<string>? replaced = compaction is null
             ? null
             : new HashSet<string>(compaction.Replaces, StringComparer.Ordinal);
@@ -439,18 +462,32 @@ public sealed partial class Session
             );
         }
 
-        foreach (SessionMessageEntry entry in _entries.OfType<SessionMessageEntry>())
+        foreach (SessionEntry entry in path)
         {
-            if (replaced is null || !replaced.Contains(entry.Id))
+            switch (entry)
             {
-                items.Add(new SessionHistoryItem(entry.Message, entry.Id, entry.Model));
+                case SessionMessageEntry message when IsLive(message.Id):
+                    items.Add(new SessionHistoryItem(message.Message, message.Id, message.Model));
+                    break;
+                case SessionBranchSummaryEntry summary when IsLive(summary.Id):
+                    items.Add(
+                        new SessionHistoryItem(
+                            new ChatMessage(ChatRole.Assistant, summary.Summary),
+                            summary.Id,
+                            null
+                        )
+                    );
+                    break;
             }
         }
 
         return items;
+
+        bool IsLive(string id) => replaced is null || !replaced.Contains(id);
     }
 
-    private string? LastEntryId => _entries.Count == 0 ? null : _entries[^1].Id;
+    /// <summary>The entry the next append hangs off: the active leaf, not the file's last line.</summary>
+    private string? LastEntryId => ActiveLeafId;
 
     private string NextEntryId() => $"e_{_entries.Count + 1:D2}";
 
@@ -475,6 +512,29 @@ public sealed partial class Session
     {
         _entries.Add(entry);
         SessionFiles.AppendText(Path, SessionFormat.Serialize(entry) + "\n");
+    }
+
+    /// <summary>
+    /// Refuses a leaf that points at an id the file does not contain, naming the file and the id:
+    /// a dangling leaf would silently send the wrong path (or none) to the model.
+    /// </summary>
+    private static void ValidateLeaves(IReadOnlyList<SessionEntry> entries, string path)
+    {
+        HashSet<string> ids = new(entries.Count, StringComparer.Ordinal);
+        foreach (SessionEntry entry in entries)
+        {
+            ids.Add(entry.Id);
+        }
+
+        for (var index = 0; index < entries.Count; index++)
+        {
+            if (entries[index] is SessionActiveLeafEntry move && !ids.Contains(move.LeafId))
+            {
+                throw new InvalidDataException(
+                    $"Session file '{path}' line {index + 2} points the active leaf at unknown entry '{move.LeafId}'; the leaf must name an entry the file contains."
+                );
+            }
+        }
     }
 
     private static SessionEntry ParseLine(string line, string path, int lineNumber)

@@ -36,6 +36,7 @@ This repo is developed with OpenCode and OpenSpec (schema: `intent-driven`).
 - No new NuGet packages. Ask first.
 - Public API changes appear in `PublicAPI.Unshipped.txt`. Change public types only if the change says so; otherwise propose the change and stop.
 - A failing golden session test means the session format changed. Stop and report; never update golden files to make a test pass.
+  - Exception: a change whose approved proposal states that it changes the session format updates the golden files under `tests/fixtures/sessions/` in the same PR and shows the golden diff in the PR description. Any other golden failure: stop and report.
 - In ACP mode nothing writes to stdout except the protocol.
 - Tool error messages are read by a model: say what failed and what to do next.
 - Format all technical output (numbers, percentages, dates, sizes) with `CultureInfo.InvariantCulture`. The product is English-first (user- and model-facing strings in English) and must behave identically under any machine culture. Tests must not depend on the machine locale.

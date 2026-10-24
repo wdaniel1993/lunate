@@ -92,7 +92,7 @@ Switching the leaf SHALL append a `SessionActiveLeafEntry` naming the new leaf; 
 
 ### Requirement: Branch summary on leave
 
-When a branch switch is requested with the summary option enabled, the summariser SHALL make exactly one model call on the session's active model and SHALL write a `SessionBranchSummaryEntry` as the **first entry after the leaf being moved to**, with `parentId` equal to that leaf, `fromLeafId` naming the abandoned tip and `summary` the produced text. The entry SHALL NOT be a compaction and SHALL carry no `replaces` list. The prompt before confirming SHALL show the estimated input tokens and state that one model call will be made; the call's usage SHALL be recorded in the session's normal accounting. Without the option the switch SHALL write only the `activeLeaf` entry.
+When a branch switch is requested with the summary option enabled, the summariser SHALL make exactly one model call on the session's active model and SHALL write a `SessionBranchSummaryEntry` as the **first entry after the leaf being moved to**, with `parentId` equal to that leaf, `fromLeafId` naming the abandoned tip and `summary` the produced text. The entry SHALL NOT be a compaction and SHALL carry no `replaces` list. The prompt before confirming SHALL show the estimated input tokens and state that one model call will be made; the call's usage SHALL be recorded in the session's normal accounting. Without the option the switch SHALL write only the `activeLeaf` entry and SHALL NOT ask for confirmation: the abandoned branch stays reachable through `/tree`, and the notice after the move SHALL say so. The summary option's prompt SHALL name the model that will make the call and give an estimate of the call's cost.
 
 #### Scenario: The summary sits on the path the model sees
 
@@ -114,7 +114,7 @@ When a branch switch is requested with the summary option enabled, the summarise
 
 ### Requirement: Fork and clone provenance
 
-`/fork` SHALL write a new session file containing the entries of the active path up to and including the picked entry, with `schema: 3` and an `origin` header naming the source session and entry. `/clone` SHALL write a new session file containing every entry of the source session, with the same `origin`. Neither SHALL copy the follow-up queue, and a fork whose picked point is not a message boundary while a run is active SHALL be refused before any file is written.
+`/fork` SHALL write a new session file containing the picked entry's own chain — root to that entry, whether or not it lies on the active path — with `schema: 3` and an `origin` header naming the source session and that entry. `/clone` SHALL write a new session file containing every entry of the source session, with the same `origin`, whose `entryId` SHALL be the source session's active leaf at the moment of cloning. Neither SHALL copy the follow-up queue, and a fork whose picked point is not a message boundary while a run is active SHALL be refused before any file is written.
 
 #### Scenario: A fork starts at the picked entry
 

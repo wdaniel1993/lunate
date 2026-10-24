@@ -19,6 +19,7 @@ public sealed class SessionGoldenTests
     [InlineData("golden-reasoning.jsonl")]
     [InlineData("golden-v3-usage.jsonl")]
     [InlineData("golden-v3-image.jsonl")]
+    [InlineData("golden-branch-tree.jsonl")]
     public void Golden_sessions_round_trip_byte_for_byte(string name)
     {
         string path = Path.Combine(SessionsDirectory, name);

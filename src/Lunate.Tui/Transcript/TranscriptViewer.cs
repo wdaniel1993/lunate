@@ -9,9 +9,10 @@ namespace Lunate.Tui;
 /// — nothing is entered or painted before <see cref="Open"/> — and every exit path (a closing
 /// key, session end, a throwing paint) leaves the alternate screen.
 /// </summary>
-internal sealed class TranscriptViewer : IDisposable
+internal sealed partial class TranscriptViewer : IDisposable
 {
     private readonly IConsoleIO _console;
+    private readonly TerminalCapabilities _capabilities;
     private readonly TranscriptViewerRenderer _renderer;
     private readonly StringWriter _buffer = new();
     private readonly IAnsiConsole _ansi;
@@ -30,6 +31,7 @@ internal sealed class TranscriptViewer : IDisposable
         ArgumentNullException.ThrowIfNull(console);
         ArgumentNullException.ThrowIfNull(capabilities);
         _console = console;
+        _capabilities = capabilities;
         _renderer = new TranscriptViewerRenderer(capabilities, homeDirectory);
         // The frame's styled lines are markup; this console turns them into the ANSI the
         // alternate screen gets. The colour system adapts, so a colourless terminal emits none.
@@ -62,7 +64,11 @@ internal sealed class TranscriptViewer : IDisposable
                 return;
             }
 
-            _scrolledLines = 0;
+            if (_pick is null)
+            {
+                _scrolledLines = 0;
+            }
+
             _transcript = transcript;
             try
             {
@@ -123,6 +129,7 @@ internal sealed class TranscriptViewer : IDisposable
             IDisposable? screen = _screen;
             _screen = null;
             _transcript = null;
+            _pick = null;
             _scrolledLines = 0;
             resized?.Dispose();
             screen?.Dispose();
@@ -186,7 +193,12 @@ internal sealed class TranscriptViewer : IDisposable
         ConsoleSize size = _console.Size;
         // Anchor at render time: the offset clamps to the document for the size being painted.
         _scrolledLines = Math.Min(_scrolledLines, _renderer.MaxScrolledLines(transcript, size));
-        IReadOnlyList<StyledLine> lines = _renderer.Lines(transcript, size, _scrolledLines);
+        IReadOnlyList<StyledLine> lines = _renderer.Lines(
+            transcript,
+            size,
+            _scrolledLines,
+            ViewOptions()
+        );
         _ansi.Profile.Width = Math.Max(1, size.Columns);
 
         var frame = new StringBuilder("\u001b[H");

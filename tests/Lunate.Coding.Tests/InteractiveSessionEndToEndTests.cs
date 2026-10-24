@@ -187,8 +187,23 @@ public sealed class InteractiveSessionEndToEndTests
             host.Advance(33);
             return host.LastFrame.Contains("new session", StringComparison.Ordinal);
         });
+        // The notice is printed after the file is created, but the directory read is only
+        // eventually consistent on NTFS under a scanning agent: wait for the second file rather
+        // than assume the move is visible in the same frame. A missing file still fails, with the
+        // directory contents in the message.
+        await host.WaitUntilAsync(
+            () =>
+            {
+                host.Advance(33);
+                return Directory.GetFiles(host.Temp.File("sessions"), "*.jsonl").Length == 2;
+            },
+            TimeSpan.FromSeconds(10)
+        );
         string[] sessionFiles = Directory.GetFiles(host.Temp.File("sessions"), "*.jsonl");
-        Assert.Equal(2, sessionFiles.Length);
+        Assert.True(
+            sessionFiles.Length == 2,
+            "sessions: " + string.Join(", ", sessionFiles.Select(Path.GetFileName))
+        );
         string newId = Path.GetFileNameWithoutExtension(
             sessionFiles.Single(path =>
                 !string.Equals(

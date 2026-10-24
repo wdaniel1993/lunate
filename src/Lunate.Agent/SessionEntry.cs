@@ -15,7 +15,21 @@ public sealed record SessionHeaderEntry(
     string Meai,
     string? Repo = null,
     string? Worktree = null
-) : SessionEntry(Id);
+) : SessionEntry(Id)
+{
+    /// <summary>
+    /// The session and entry a <c>/fork</c> or <c>/clone</c> came from (schema 3); null for a
+    /// session that started on its own. Internal: provenance is written and re-read by the store,
+    /// and this change adds no public surface.
+    /// </summary>
+    internal SessionOrigin? Origin { get; init; }
+
+    /// <summary>Whether this file is a fork or clone of another session (schema 3).</summary>
+    internal bool Branched { get; init; }
+}
+
+/// <summary>Where a session file came from: the source session id and the entry it was taken at.</summary>
+internal sealed record SessionOrigin(string SessionId, string EntryId);
 
 /// <summary>A conversation message with the model that produced it and its usage when known.</summary>
 public sealed record SessionMessageEntry(
@@ -93,6 +107,31 @@ public sealed record SessionNestedCallsEntry(
     DateTimeOffset Timestamp,
     string CallId,
     IReadOnlyList<SessionNestedCall> Calls
+) : SessionEntry(Id);
+
+/// <summary>
+/// A move of the session's active leaf (schema 3). Written only when the leaf moves backwards; the
+/// most recently appended one wins, and the leaf is otherwise the most recently appended entry.
+/// The entry itself is on no path: it is a marker, so it never reaches a request.
+/// </summary>
+internal sealed record SessionActiveLeafEntry(
+    string Id,
+    string? ParentId,
+    DateTimeOffset Timestamp,
+    string LeafId
+) : SessionEntry(Id);
+
+/// <summary>
+/// A summary of the branch that was left, written as the first entry after the leaf moved to
+/// (schema 3). Ordinary context on the destination path, never a compaction: it carries no
+/// <c>replaces</c> list and replaces nothing.
+/// </summary>
+internal sealed record SessionBranchSummaryEntry(
+    string Id,
+    string? ParentId,
+    DateTimeOffset Timestamp,
+    string FromLeafId,
+    string Summary
 ) : SessionEntry(Id);
 
 /// <summary>One nested tool call: name, capped arguments, status and duration; never its result.</summary>
