@@ -149,6 +149,26 @@ public sealed class ExtensionTestHost : IAsyncDisposable
     }
 
     /// <summary>
+    /// Starts the extension's child process now, before the first hook is dispatched. A remote
+    /// extension otherwise spawns and initializes inside its first handler, which spends the
+    /// handler's budget on process start — on a loaded runner that can exceed it. Returns false
+    /// when the extension is in-process (nothing to warm).
+    /// </summary>
+    public async ValueTask<bool> WarmUpAsync(
+        string extensionId = "",
+        CancellationToken cancellationToken = default
+    )
+    {
+        await StartAsync(cancellationToken).ConfigureAwait(false);
+        return await Runner
+            .StartRemoteAsync(
+                string.IsNullOrWhiteSpace(extensionId) ? _options.ExtensionId : extensionId,
+                cancellationToken
+            )
+            .ConfigureAwait(false);
+    }
+
+    /// <summary>
     /// Starts the session, runs one prompt through the real harness and flushes file changes.
     /// Runs may repeat on one host — each call is one prompt in the same session; the flush makes
     /// this run's deliveries observable without ending them, and the one-way drain happens at

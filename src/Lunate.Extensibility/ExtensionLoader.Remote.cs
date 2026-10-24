@@ -100,6 +100,30 @@ public sealed partial class ExtensionLoader
     }
 
     /// <summary>
+    /// Starts one loaded remote extension now, instead of on its first hook: the child process
+    /// spawn and <c>initialize</c> happen here, outside any handler budget. Returns false when the
+    /// id is not a loaded remote extension. Idempotent, like every other start path.
+    /// </summary>
+    public async ValueTask<bool> StartRemoteAsync(
+        string id,
+        CancellationToken cancellationToken = default
+    )
+    {
+        if (string.IsNullOrWhiteSpace(id))
+        {
+            return false;
+        }
+
+        if (!_remoteExtensions.TryGetValue(id, out RemoteExtension? extension) || extension is null)
+        {
+            return false;
+        }
+
+        await extension.EnsureStartedAsync(cancellationToken).ConfigureAwait(false);
+        return true;
+    }
+
+    /// <summary>
     /// Restarts one loaded remote extension by id (the <c>/extensions</c> manual-restart path);
     /// returns false when the id is not a loaded remote extension.
     /// </summary>
