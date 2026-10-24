@@ -106,6 +106,18 @@ public sealed class ExtensionsViewSingleFileTests
     }
 
     [Fact]
+    public void A_restore_in_flight_reads_restoring_rather_than_a_stale_row()
+    {
+        SingleFileExtension candidate = SingleFile(state: SingleFileExtensionState.Restoring);
+
+        string segment = Assert.Single(
+            ExtensionsView.Segments([], [], NoCounts, singleFile: [candidate])
+        );
+
+        Assert.Equal("acme-tools 1.0.0 (global, single file) restoring", segment);
+    }
+
+    [Fact]
     public void A_restore_failure_reads_failed_restore_with_its_reason()
     {
         SingleFileExtension candidate = SingleFile(
