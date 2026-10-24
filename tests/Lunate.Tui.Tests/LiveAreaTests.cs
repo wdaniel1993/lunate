@@ -352,6 +352,56 @@ public sealed class LiveAreaTests
         Assert.Contains("> xy", Visible(console.Writes[^1]), StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// A notice is state, not an event: one set while a full-screen surface owned the terminal is
+    /// still there when painting resumes, with no further input to re-trigger it.
+    /// </summary>
+    [Fact]
+    public void A_notice_set_while_suspended_paints_after_resume()
+    {
+        var scheduler = new TestScheduler();
+        using var console = new FakeConsoleIO(scheduler, new ConsoleSize(60, 10));
+        using var area = new LiveArea(console, scheduler);
+        area.Start();
+
+        area.SetSuspended(true);
+        area.SetNotice("hook InputReceived was slow");
+        Advance(scheduler, 200);
+
+        area.SetSuspended(false);
+        Advance(scheduler, 33);
+
+        Assert.Contains(
+            "hook InputReceived was slow",
+            Visible(console.Writes[^1]),
+            StringComparison.Ordinal
+        );
+    }
+
+    /// <summary>
+    /// Between two ticks any number of inputs collapse into the state the next tick paints, and a
+    /// notice that is set and then only counted (not re-set) still reaches the frame.
+    /// </summary>
+    [Fact]
+    public void State_changes_between_ticks_paint_on_the_next_tick()
+    {
+        var scheduler = new TestScheduler();
+        using var console = new FakeConsoleIO(scheduler, new ConsoleSize(60, 10));
+        using var area = new LiveArea(console, scheduler);
+        area.Start();
+
+        area.SetNotice("first notice");
+        area.SetNotice("second notice");
+        Advance(scheduler, 33);
+
+        Assert.Contains("second notice", Visible(console.Writes[^1]), StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "first notice",
+            Visible(console.Writes[^1]),
+            StringComparison.Ordinal
+        );
+    }
+
     private static string Text(FakeConsoleIO console) => string.Concat(console.Writes);
 
     private static string Visible(string text) =>

@@ -14,7 +14,6 @@ internal sealed class LiveArea : IDisposable
     private readonly IConsoleIO _console;
     private readonly IScheduler _scheduler;
     private readonly TerminalCapabilities _capabilities;
-    private readonly Subject<LiveAreaInput> _stimuli = new();
     private readonly List<IDisposable> _subscriptions = [];
     private readonly FrameWriter _writer;
     private readonly CancellationTokenSource _cts = new();
@@ -28,6 +27,8 @@ internal sealed class LiveArea : IDisposable
     private bool _suspended;
     private bool _started;
     private bool _disposed;
+    private LiveAreaState _state = new();
+    private bool _dirty;
 
     public LiveArea(
         IConsoleIO console,
@@ -55,38 +56,25 @@ internal sealed class LiveArea : IDisposable
         }
 
         _started = true;
-        var initial = new LiveAreaState
+        LiveAreaState initial;
+        lock (_postGate)
         {
-            Size = _console.Size,
-            Color = _capabilities.Color,
-            Unicode = _capabilities.Unicode,
-        };
+            _state = _state with
+            {
+                Size = _console.Size,
+                Color = _capabilities.Color,
+                Unicode = _capabilities.Unicode,
+            };
+            initial = _state;
+            _dirty = false;
+        }
+
         RenderedFrame initialFrame = LiveAreaRenderer.Render(initial);
         _lastFrame = initialFrame;
         _writer.Paint(initialFrame);
 
-        var states = _stimuli
-            .Scan(initial, Reduce)
-            .StartWith(initial)
-            .DistinctUntilChanged()
-            .Skip(1);
         _subscriptions.Add(
-            states
-                .Sample(FrameInterval, _scheduler)
-                .Subscribe(state =>
-                {
-                    lock (_paintGate)
-                    {
-                        if (_suspended)
-                        {
-                            return;
-                        }
-
-                        RenderedFrame frame = LiveAreaRenderer.Render(state);
-                        _lastFrame = frame;
-                        _writer.Paint(frame);
-                    }
-                })
+            Observable.Interval(FrameInterval, _scheduler).Subscribe(_ => PaintPending())
         );
         _subscriptions.Add(_console.Resized.Subscribe(size => Post(new ResizeInput(size))));
         _subscriptions.Add(
@@ -208,6 +196,15 @@ internal sealed class LiveArea : IDisposable
             }
 
             _suspended = suspended;
+            if (!suspended)
+            {
+                // Whatever changed while the surface was open paints on the next tick, even when
+                // no new input arrives.
+                lock (_postGate)
+                {
+                    _dirty = true;
+                }
+            }
             while (!suspended && _deferredScrollback.Count > 0)
             {
                 WriteScrollbackNow(_deferredScrollback.Dequeue());
@@ -255,7 +252,6 @@ internal sealed class LiveArea : IDisposable
         }
 
         _subscriptions.Clear();
-        _stimuli.Dispose();
 
         // The render subscription is gone, so queue the final clear on the same
         // scheduler that paints frames; the terminating thread never touches
@@ -289,6 +285,11 @@ internal sealed class LiveArea : IDisposable
         return _scrollback;
     }
 
+    /// <summary>
+    /// Applies the input to the state synchronously. The state, not the input, is what the frame
+    /// paints: an input posted between two frame ticks — or while a full-screen surface has the
+    /// terminal — is still in the state when painting resumes, so nothing is lost by timing.
+    /// </summary>
     private void Post(LiveAreaInput input)
     {
         lock (_postGate)
@@ -298,7 +299,47 @@ internal sealed class LiveArea : IDisposable
                 return;
             }
 
-            _stimuli.OnNext(input);
+            LiveAreaState next = Reduce(_state, input);
+            if (next == _state)
+            {
+                return;
+            }
+
+            _state = next;
+            _dirty = true;
+        }
+    }
+
+    private void PaintPending()
+    {
+        LiveAreaState state;
+        lock (_postGate)
+        {
+            if (!_dirty)
+            {
+                return;
+            }
+
+            state = _state;
+            _dirty = false;
+        }
+
+        lock (_paintGate)
+        {
+            if (_suspended)
+            {
+                // Keep the change pending: resuming must paint it without a further input.
+                lock (_postGate)
+                {
+                    _dirty = true;
+                }
+
+                return;
+            }
+
+            RenderedFrame frame = LiveAreaRenderer.Render(state);
+            _lastFrame = frame;
+            _writer.Paint(frame);
         }
     }
 
