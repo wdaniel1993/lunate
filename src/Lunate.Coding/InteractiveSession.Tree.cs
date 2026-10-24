@@ -10,9 +10,10 @@ internal sealed partial class InteractiveSession
     private TranscriptModel? _treeModel;
 
     /// <summary>
-    /// <c>/tree</c>: the session's active path rendered through the transcript viewer in pick mode —
-    /// the tree the model sees, not the whole file. Read-only, so it stays available while a run is
-    /// active; Enter puts the picked user message back in the editor and sends nothing.
+    /// <c>/tree</c>: the session's whole tree rendered through the transcript viewer in pick mode —
+    /// every branch, indented by depth, the active path marked — rather than only the chain the
+    /// model sees. Read-only, so it stays available while a run is active; Enter puts the picked
+    /// user message back in the editor and sends nothing.
     /// </summary>
     private void OpenTree()
     {
@@ -23,23 +24,40 @@ internal sealed partial class InteractiveSession
         }
 
         List<TranscriptEntry> entries = [];
-        foreach (SessionEntry entry in session.ActivePath)
+        foreach (SessionTreeRow row in SessionTree.Rows(session.Entries))
         {
-            switch (entry)
+            switch (row.Entry)
             {
                 case SessionMessageEntry { Message.Role: var role } message
                     when Text(message.Message) is { Length: > 0 } text:
                     entries.Add(
-                        role == ChatRole.User
-                            ? new TranscriptUserEntry(text)
-                            : new TranscriptAssistantEntry(text)
+                        new TranscriptTreeRowEntry(
+                            text,
+                            row.Depth,
+                            row.OnActivePath,
+                            IsUserMessage: role == ChatRole.User
+                        )
                     );
                     break;
                 case SessionCompactionEntry compaction:
-                    entries.Add(new TranscriptAssistantEntry(compaction.Summary));
+                    entries.Add(
+                        new TranscriptTreeRowEntry(
+                            compaction.Summary,
+                            row.Depth,
+                            row.OnActivePath,
+                            IsUserMessage: false
+                        )
+                    );
                     break;
                 case SessionBranchSummaryEntry summary:
-                    entries.Add(new TranscriptAssistantEntry(summary.Summary));
+                    entries.Add(
+                        new TranscriptTreeRowEntry(
+                            summary.Summary,
+                            row.Depth,
+                            row.OnActivePath,
+                            IsUserMessage: false
+                        )
+                    );
                     break;
             }
         }
@@ -55,7 +73,7 @@ internal sealed partial class InteractiveSession
         [
             .. entries
                 .Select((entry, index) => (entry, index))
-                .Where(pair => pair.entry is TranscriptUserEntry)
+                .Where(pair => pair.entry is TranscriptTreeRowEntry { IsUserMessage: true })
                 .Select(pair => pair.index),
         ];
         _live.SetSuspended(true);
@@ -91,18 +109,18 @@ internal sealed partial class InteractiveSession
             && _treeModel is { } model
             && picked >= 0
             && picked < model.Entries.Count
-            && model.Entries[picked] is TranscriptUserEntry user
+            && model.Entries[picked] is TranscriptTreeRowEntry { IsUserMessage: true } row
         )
         {
             // Restored, never resent: the message waits in the editor for the person to edit or send.
-            SetInput(user.Text);
+            SetInput(row.Text);
         }
     }
 
     /// <summary>
-    /// <c>/fork &lt;entry&gt;</c>: writes a new session file holding the active path up to and
-    /// including the picked entry, its header naming the source session and entry. The current
-    /// session is untouched and keeps running on its own file.
+    /// <c>/fork &lt;entry&gt;</c>: writes a new session file holding the picked entry's own chain up
+    /// to and including it, its header naming the source session and entry. The current session is
+    /// untouched and keeps running on its own file.
     /// </summary>
     private void ForkSession(string argument)
     {

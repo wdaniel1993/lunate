@@ -5,9 +5,10 @@ using Microsoft.Extensions.AI;
 namespace Lunate.Coding.Tests;
 
 /// <summary>
-/// The session-tree surface at the interactive seam: <c>/tree</c> browses the active path and
-/// restores a message without sending it, <c>/fork</c> and <c>/clone</c> write their own files with
-/// provenance, and every command that writes is refused while a turn is running.
+/// The session-tree surface at the interactive seam: <c>/tree</c> browses the whole tree — both
+/// branches, depth-indented, the active path marked — and restores a message without sending it;
+/// <c>/fork</c> and <c>/clone</c> write their own files with provenance; and every command that
+/// writes is refused while a turn is running.
 /// </summary>
 public sealed class InteractiveSessionTreeTests
 {
@@ -55,6 +56,88 @@ public sealed class InteractiveSessionTreeTests
 
         Assert.Equal(string.Empty, host.Session.Input.Text);
         Assert.Single(host.Client.Requests);
+
+        host.Console.Complete();
+        await run;
+    }
+
+    [Fact]
+    public async Task Tree_renders_both_branches_with_depth_and_the_active_marker()
+    {
+        using var host = Wide(new InteractiveSessionHost());
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+        await TwoBranchesAsync(host);
+
+        await OpenTreeAsync(host);
+
+        // File order, indented by depth: the abandoned branch stays in the tree, unmarked.
+        string frames = host.Frames;
+        Assert.Contains("* one", frames, StringComparison.Ordinal);
+        Assert.Contains("-   two", frames, StringComparison.Ordinal);
+        Assert.Contains("-     three", frames, StringComparison.Ordinal);
+        Assert.Contains("-       four", frames, StringComparison.Ordinal);
+        Assert.Contains("*   branch-b", frames, StringComparison.Ordinal);
+        Assert.Contains("*     reply-b", frames, StringComparison.Ordinal);
+
+        host.Console.SendEscape();
+        await host.WaitUntilAsync(() => !host.Console.InAlternateScreen);
+
+        host.Console.Complete();
+        await run;
+    }
+
+    [Fact]
+    public async Task An_off_path_user_message_is_pickable_and_lands_in_the_editor()
+    {
+        using var host = Wide(new InteractiveSessionHost());
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+        await TwoBranchesAsync(host);
+        int requests = host.Client.Requests.Count;
+
+        await OpenTreeAsync(host);
+
+        // The pickable rows are one (on the path), three (off it) and branch-b: j reaches "three".
+        host.Console.SendText("j");
+        host.Console.SendEnter();
+        await host.WaitUntilAsync(() => !host.Console.InAlternateScreen);
+        await host.WaitUntilAsync(() => host.Session.Input.Text == "three");
+
+        Assert.Equal("three", host.Session.Input.Text);
+        Assert.Equal(requests, host.Client.Requests.Count);
+        Assert.False(host.Session.IsRunning);
+
+        host.Console.Complete();
+        await run;
+    }
+
+    [Fact]
+    public async Task Fork_at_an_off_path_entry_writes_that_branchs_chain()
+    {
+        using var host = Wide(new InteractiveSessionHost());
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+        await TwoBranchesAsync(host);
+        string source = Assert.Single(SessionFiles(host));
+
+        await SendLineAsync(host, "/fork e_03");
+        await InteractiveSessionCommandTests.WaitForFrameAsync(host, "forked at e_03");
+
+        string[] files = SessionFiles(host);
+        Assert.Equal(2, files.Length);
+        string fork = Assert.Single(
+            files,
+            file => !string.Equals(file, source, StringComparison.Ordinal)
+        );
+        Session loaded = Session.Load(fork);
+        Assert.Equal(
+            new SessionOrigin(Session.Load(source).SessionId, "e_03"),
+            loaded.Header.Origin
+        );
+        Assert.True(loaded.Header.Branched);
+        Assert.Equal(["e_01", "e_02", "e_03"], loaded.Entries.Select(entry => entry.Id));
+        Assert.Contains("forked at e_03", host.Frames, StringComparison.Ordinal);
 
         host.Console.Complete();
         await run;
@@ -309,12 +392,39 @@ public sealed class InteractiveSessionTreeTests
 
     private static async Task TurnAsync(InteractiveSessionHost host, string input, string answer)
     {
+        int before = host.Session.Transcript.Count;
         host.Client.Enqueue(Scripts.Text(answer), Scripts.Stop());
         host.Console.SendText(input);
         host.Console.SendEnter();
         await host.WaitUntilAsync(() =>
-            !host.Session.IsRunning && host.Session.Transcript.Count >= 2
+            !host.Session.IsRunning && host.Session.Transcript.Count >= before + 2
         );
+    }
+
+    /// <summary>
+    /// one → two, three → four on branch A; then the leaf moves back to one and branch-b → reply-b
+    /// grows a second branch. Six content entries: e_01..e_04 on A, e_05 the move, e_06/e_07 on B.
+    /// </summary>
+    private static async Task TwoBranchesAsync(InteractiveSessionHost host)
+    {
+        await TurnAsync(host, "one", "two");
+        await TurnAsync(host, "three", "four");
+
+        await SendLineAsync(host, "/rewind e_01");
+        await InteractiveSessionCommandTests.WaitForFrameAsync(host, "active leaf moved to e_01");
+
+        await TurnAsync(host, "branch-b", "reply-b");
+        Assert.Equal(
+            ["e_01", "e_02", "e_03", "e_04", "e_05", "e_06", "e_07"],
+            Session.Load(Assert.Single(SessionFiles(host))).Entries.Select(entry => entry.Id)
+        );
+    }
+
+    private static async Task OpenTreeAsync(InteractiveSessionHost host)
+    {
+        host.Console.SendText("/tree");
+        host.Console.SendEnter();
+        await host.WaitUntilAsync(() => host.Console.InAlternateScreen);
     }
 
     private static async Task SendLineAsync(InteractiveSessionHost host, string line)
