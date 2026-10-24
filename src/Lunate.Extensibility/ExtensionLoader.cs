@@ -97,12 +97,16 @@ public sealed partial class ExtensionLoader
         _descriptors.Clear();
         _descriptorsById.Clear();
         _discoveryErrors.Clear();
+        _singleFile.Clear();
 
         ScanDirectory(_options.ExtensionsPath, ExtensionScope.Global);
-        ScanDirectory(
-            Path.Combine(Path.GetFullPath(workingDirectory), ".lunate", "extensions"),
-            ExtensionScope.Project
+        string projectExtensions = Path.Combine(
+            Path.GetFullPath(workingDirectory),
+            ".lunate",
+            "extensions"
         );
+        ScanDirectory(projectExtensions, ExtensionScope.Project);
+        DiscoverSingleFileExtensions(_options.ExtensionsPath, projectExtensions);
 
         return Descriptors;
     }

@@ -6,9 +6,9 @@ The host SHALL treat every `*.cs` file directly under `.lunate/extensions/` (pro
 
 #### Scenario: A file with a header appears in the extension list
 
-- **GIVEN** `~/.lunate/extensions/acme.cs` whose first lines declare `#:extension acme.tools@1.0.0`
+- **GIVEN** `~/.lunate/extensions/acme.cs` whose first lines declare `#:extension acme-tools@1.0.0`
 - **WHEN** the session composes
-- **THEN** `/extensions` lists `acme.tools` as `not-built`, and no compiler runs
+- **THEN** `/extensions` lists `acme-tools` as `not-built`, and no compiler runs
 
 #### Scenario: A file without a header is not compiled
 
@@ -40,7 +40,7 @@ The header SHALL mirror the packaged manifest's declaration fields one to one �
 
 ### Requirement: Directive grammar and position
 
-The host SHALL parse directives with its own scanner and SHALL NOT call SDK code to do it. `#:package` SHALL accept exactly the documented .NET 10 file-based-app syntax — `#:package <id>@<version>`, where the version is a NuGet version or version range — and `#:extension` SHALL accept one id and one exact version. Only the leading block SHALL be scanned: directives, comments and blank lines before the first C# token. A `#:` line after code begins SHALL be an error naming its line number, never a silently ignored directive. `#:sdk`, `#:property` and `#:project` SHALL be refused with a message naming the directive. An unrecognised `#:` line inside the leading block SHALL be ignored with a warning. The accepted grammar SHALL be pinned by tests taken from the documented .NET 10 syntax.
+The host SHALL parse directives with its own scanner and SHALL NOT call SDK code to do it. The extension id SHALL follow the packaged manifest's rule exactly (`[a-z0-9-]+`), so a single file can be promoted to a package without renaming itself. A `#:tool` name SHALL match `[A-Za-z0-9_-]`, and the model-facing name `<id>__<tool>` SHALL fit the provider's 64-character limit; a pair that cannot fit SHALL be refused at discovery, naming the composed name and both halves. `#:package` SHALL accept exactly the documented .NET 10 file-based-app syntax — `#:package <id>@<version>`, where the version is a NuGet version or version range — and `#:extension` SHALL accept one id and one exact version. Only the leading block SHALL be scanned: directives, comments and blank lines before the first C# token. A `#:` line after code begins SHALL be an error naming its line number, never a silently ignored directive. `#:sdk`, `#:property` and `#:project` SHALL be refused with a message naming the directive. An unrecognised `#:` line inside the leading block SHALL be ignored with a warning. The accepted grammar SHALL be pinned by tests taken from the documented .NET 10 syntax.
 
 #### Scenario: A version range is accepted
 
@@ -53,6 +53,18 @@ The host SHALL parse directives with its own scanner and SHALL NOT call SDK code
 - **GIVEN** a file whose line 12 is `#:tool late` and whose line 3 already contains a class declaration
 - **WHEN** the header is parsed
 - **THEN** the extension is refused with a message naming line 12
+
+#### Scenario: A dotted id is refused like a package's would be
+
+- **GIVEN** a header line `#:extension acme.tools@1.0.0`
+- **WHEN** the header is parsed
+- **THEN** the extension is refused, because a package would refuse the same id and a tool name may not contain a dot
+
+#### Scenario: A tool name that cannot fit the provider limit is refused with both halves
+
+- **GIVEN** a 40-character extension id and a 23-character tool name, whose composed name is 65 characters
+- **WHEN** the header is parsed
+- **THEN** the extension is refused, naming the composed name, the id and the tool name
 
 #### Scenario: A refused directive is named
 

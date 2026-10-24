@@ -18,6 +18,10 @@ shows a summary.
 | `<id> <version> (<scope>) failed: <first sentence> — see the log, tools …` | A load failed. The log has the rest. The `— see the log` pointer appears when the message was truncated. |
 | `<id> — remote failed: <reason>` | A remote process crashed or exited. |
 | `<id> — remote refused: <reason>` | The remote handshake refused the extension (version mismatch or an undeclared surface). |
+| `<id> <version> (<scope>, single file) not-built, tools …` | A single `.cs` file with a usable header; nothing has built it. |
+| `<file name> (<scope>, single file) invalid (no #:extension)` | A `.cs` file with no header; it is never compiled. |
+| `<id> <version> (<scope>, single file) stale — …` | The file changed since it was trusted; see [single-file.md](single-file.md#trust). |
+| `<id> <version> (<scope>, single file) failed (trust) — …` | The trust decision could not be read or verified. |
 
 The view orders failed entries first, then trust-denied, then loaded. `lunate extensions` exits `1`
 when any extension failed to load, `0` otherwise; a denied extension is expected without trust and

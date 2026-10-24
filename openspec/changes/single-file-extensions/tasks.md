@@ -1,17 +1,17 @@
 ## 1. Discovery and the declaration (PR 1)
 
-- [ ] 1.1 Red: a `.cs` file under `.lunate/extensions/` with a valid header appears in `/extensions` as `not-built`, and nothing compiles.
-- [ ] 1.2 Red: a file with no `#:extension` is listed `invalid (no #:extension)`.
-- [ ] 1.3 Red: two files declaring the same id are both refused, naming both paths.
-- [ ] 1.4 The directive scanner: `#:extension`, `#:tool`, `#:hook`, `#:package`; unknown `#:` lines warn and are ignored.
-- [ ] 1.5 Grammar tests copied from the documented .NET 10 file-based-app syntax, including version ranges.
-- [ ] 1.6 Red: `#:sdk`, `#:property`, `#:project` are refused, each naming its directive.
-- [ ] 1.7 Red: an undeclared registration refuses the load; a declared-but-missing one warns and shows `declared, not provided`.
-- [ ] 1.8 The header mirrors every manifest declaration field (`#:command`, `#:service`, `#:capability`, `#:provider`); a test fails when the manifest grows a field with no directive.
-- [ ] 1.9 Red: only the leading block is scanned — a `#:` line after the first C# token is an error naming its line.
-- [ ] 1.10 No sidecar manifest for a single file; the header is the only declaration source.
-- [ ] 1.11 `/extensions` shows `not-built`, `invalid`, `stale`, `failed (trust)` with the reason on the same line.
-- [ ] 1.12 Docs: authoring page with the header grammar and the directive-to-manifest table.
+- [x] 1.1 Red: a `.cs` file under `.lunate/extensions/` with a valid header appears in `/extensions` as `not-built`, and nothing compiles.
+- [x] 1.2 Red: a file with no `#:extension` is listed `invalid (no #:extension)`.
+- [x] 1.3 Red: two files declaring the same id are both refused, naming both paths.
+- [x] 1.4 The directive scanner: `#:extension`, `#:tool`, `#:hook`, `#:package`; unknown `#:` lines warn and are ignored.
+- [x] 1.5 Grammar tests copied from the documented .NET 10 file-based-app syntax, including version ranges.
+- [x] 1.6 Red: `#:sdk`, `#:property`, `#:project` are refused, each naming its directive.
+- [x] 1.7 Red: an undeclared registration refuses the load; a declared-but-missing one warns and shows `declared, not provided`.
+- [x] 1.8 The header mirrors every manifest declaration field (`#:command`, `#:service`, `#:capability`, `#:provider`); a test fails when the manifest grows a field with no directive.
+- [x] 1.9 Red: only the leading block is scanned — a `#:` line after the first C# token is an error naming its line.
+- [x] 1.10 No sidecar manifest for a single file; the header is the only declaration source.
+- [x] 1.11 `/extensions` shows `not-built`, `invalid`, `stale`, `failed (trust)` with the reason on the same line.
+- [x] 1.12 Docs: authoring page with the header grammar and the directive-to-manifest table.
 
 ## 2. Trust, restore, compile, cache (PR 2)
 

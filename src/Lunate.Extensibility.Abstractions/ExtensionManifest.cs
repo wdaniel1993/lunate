@@ -72,10 +72,10 @@ public sealed partial record ExtensionManifest
                 );
             }
 
-            if (!IsValidId(id))
+            if (!ExtensionIds.IsValid(id))
             {
                 throw new InvalidDataException(
-                    $"{fileName}: field 'id' must match [a-z0-9-]+ but is '{id}'."
+                    $"{fileName}: field 'id' must match {ExtensionIds.Pattern} but is '{id}'."
                 );
             }
 
@@ -120,10 +120,6 @@ public sealed partial record ExtensionManifest
             };
         }
     }
-
-    private static bool IsValidId(string id) =>
-        id.Length > 0
-        && id.All(character => character is >= 'a' and <= 'z' or >= '0' and <= '9' or '-');
 
     private static string? OptionalName(JsonElement root, string fileName, string name)
     {

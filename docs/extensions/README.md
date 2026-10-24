@@ -1,6 +1,7 @@
 # Extension authoring
 
-An in-process extension is a .NET assembly plus an `extension.json` manifest. It registers
+An in-process extension is a .NET assembly plus an `extension.json` manifest, or a single `.cs` file
+whose header declares what it provides ([single-file.md](single-file.md)). It registers
 contributions through `IExtensionContext` — tools, hook handlers, services, file-change
 subscriptions, MCP servers, model providers, middleware, virtual models, skill sources and terminal
 UI pieces — and compiles against `Lunate.Extensibility.Abstractions` and the core tool types it
@@ -14,6 +15,7 @@ the spec wins.
 | Page | Contents |
 | --- | --- |
 | [manifest.md](manifest.md) | Every `extension.json` field, what is enforced, and the refusal messages |
+| [single-file.md](single-file.md) | One `.cs` file as an extension: the header grammar, the directive table, trust and the `/extensions` states |
 | [lifecycle-and-trust.md](lifecycle-and-trust.md) | Global and project scope, loading, content-hash trust, unload, `apiVersion` |
 | [contributions/](contributions/README.md) | One page per surface: API, constraints, a real example |
 | [testing.md](testing.md) | The test kit, fixtures, and the missing-primitive rule |

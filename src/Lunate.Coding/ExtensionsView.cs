@@ -14,12 +14,14 @@ namespace Lunate.Coding;
 /// <c>hook &lt;Hook&gt; max &lt;ms&gt; ms, &lt;slow&gt;/&lt;calls&gt; slow</c> and, for a remote
 /// extension, its most recent start as <c>start &lt;ms&gt; ms</c>; trust-denied and failed
 /// segments carry the manifest's declared counts, and a failed message is truncated to its first
-/// sentence with a <c> — see the log</c> pointer. The interactive command wraps the segments in
-/// the notice prefix; the CLI prints one line per segment and the same data as JSON. Everything
-/// formats culture-invariantly; the view never prints settings values, secrets or environment
-/// values.
+/// sentence with a <c> — see the log</c> pointer. Single-file candidates are appended after the
+/// packaged ones with their own state words (<c>not-built</c>, <c>invalid (…)</c>, <c>stale</c>,
+/// <c>failed (trust)</c>), problems first and each reason on the same line. The interactive
+/// command wraps the segments in the notice prefix; the CLI prints one line per segment and the
+/// same data as JSON. Everything formats culture-invariantly; the view never prints settings
+/// values, secrets or environment values.
 /// </summary>
-internal static class ExtensionsView
+internal static partial class ExtensionsView
 {
     /// <summary>The slow-load threshold in milliseconds (design D2, pinned).</summary>
     private const double SlowThresholdMs = 500;
@@ -42,7 +44,7 @@ internal static class ExtensionsView
     /// <c>(CLI-measured)</c> (this run's measurement, not a session's). The optional
     /// <paramref name="hookTimings"/> and <paramref name="remoteStart"/> supply the session's
     /// per-hook aggregates and a remote extension's most recent start (the register-only CLI path
-    /// passes neither).
+    /// passes neither); <paramref name="singleFile"/> appends the single-file candidates.
     /// </summary>
     internal static IReadOnlyList<string> Segments(
         IReadOnlyList<ExtensionDescriptor> descriptors,
@@ -50,11 +52,12 @@ internal static class ExtensionsView
         Func<string, ExtensionCounts> registeredCounts,
         bool cliMeasured = false,
         Func<string, IReadOnlyList<HookTimings>>? hookTimings = null,
-        Func<string, TimeSpan?>? remoteStart = null
+        Func<string, TimeSpan?>? remoteStart = null,
+        IReadOnlyList<SingleFileExtension>? singleFile = null
     )
     {
         ArgumentNullException.ThrowIfNull(registeredCounts);
-        return
+        List<string> segments =
         [
             .. Ordered(descriptors, results)
                 .Select(entry =>
@@ -68,104 +71,8 @@ internal static class ExtensionsView
                     )
                 ),
         ];
-    }
-
-    /// <summary>
-    /// The <c>--json</c> contract: the same data, in the same order, as an array of
-    /// <c>{id, version, scope, state, loadMs?, slow?, tools, commands, hooks, services,
-    /// hookTimings?, startMs?}</c> objects (load time and slow marker only on loaded extensions;
-    /// <c>hookTimings</c> — one <c>{hook, calls, totalMs, lastMs, maxMs, slowCount, completed,
-    /// timedOut, cancelled}</c> per timed hook — only on loaded extensions that dispatched, and
-    /// <c>startMs</c> only when a remote extension's most recent start is known).
-    /// </summary>
-    internal static string Json(
-        IReadOnlyList<ExtensionDescriptor> descriptors,
-        IReadOnlyList<ExtensionLoadResult> results,
-        Func<string, ExtensionCounts> registeredCounts,
-        Func<string, IReadOnlyList<HookTimings>>? hookTimings = null,
-        Func<string, TimeSpan?>? remoteStart = null
-    )
-    {
-        ArgumentNullException.ThrowIfNull(registeredCounts);
-        var array = new JsonArray();
-        foreach (
-            (ExtensionDescriptor descriptor, ExtensionLoadResult result) in Ordered(
-                descriptors,
-                results
-            )
-        )
-        {
-            var node = new JsonObject
-            {
-                ["id"] = descriptor.Id,
-                ["version"] = descriptor.Version,
-                ["scope"] = ScopeText(descriptor.Scope),
-                ["state"] = StateText(result.State),
-            };
-            if (result.State == ExtensionLoadState.Loaded)
-            {
-                node["loadMs"] = Milliseconds(result.Elapsed);
-                if (IsSlow(result.Elapsed))
-                {
-                    node["slow"] = true;
-                }
-
-                if (hookTimings?.Invoke(descriptor.Id) is { Count: > 0 } timed)
-                {
-                    var timings = new JsonArray();
-                    foreach (HookTimings entry in timed)
-                    {
-                        timings.Add(
-                            new JsonObject
-                            {
-                                ["hook"] = entry.Hook,
-                                ["calls"] = entry.Calls,
-                                ["totalMs"] = Milliseconds(entry.TotalMs),
-                                ["lastMs"] = Milliseconds(entry.LastMs),
-                                ["maxMs"] = Milliseconds(entry.MaxMs),
-                                ["slowCount"] = entry.SlowCount,
-                                ["completed"] = entry.Completed,
-                                ["timedOut"] = entry.TimedOut,
-                                ["cancelled"] = entry.Cancelled,
-                            }
-                        );
-                    }
-
-                    node["hookTimings"] = timings;
-                }
-            }
-
-            if (remoteStart?.Invoke(descriptor.Id) is { } start)
-            {
-                node["startMs"] = Milliseconds(start);
-            }
-
-            ExtensionCounts counts =
-                result.State == ExtensionLoadState.Loaded
-                    ? registeredCounts(descriptor.Id)
-                    : Declared(descriptor);
-            node["tools"] = counts.Tools;
-            node["commands"] = counts.Commands;
-            if (
-                result.State == ExtensionLoadState.Loaded
-                && counts.DeclaredNotProvidedCommands.Count > 0
-            )
-            {
-                var names = new JsonArray();
-                foreach (string name in counts.DeclaredNotProvidedCommands)
-                {
-                    names.Add(name);
-                }
-
-                node["commandsDeclaredNotProvided"] = names;
-            }
-
-            node["hooks"] = counts.Hooks;
-            node["services"] = counts.Services;
-            array.Add(node);
-        }
-
-        return array.ToJsonString(JsonOptions);
+        segments.AddRange(SingleFileSegments(singleFile));
+        return segments;
     }
 
     private static IEnumerable<(
