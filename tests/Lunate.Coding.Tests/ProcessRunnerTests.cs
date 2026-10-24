@@ -177,13 +177,19 @@ public sealed class ProcessRunnerTests
         // The answer is written with fs.writeSync: process.exit(0) drops a pipe write that is
         // still pending, which would look like "the child never answered" and cannot be told
         // apart from a pump bug after the fact.
+        //
+        // fs.readSync is deliberate too: the pump writes the answer and closes stdin, so with an
+        // event-based read ('data' + process.exit) that close can empty Node's event loop first
+        // and the child exits 0 having never answered — the handler then never sees "got:pong".
+        // A blocking read on fd 0 keeps the child alive until the answer is actually consumed.
         var request = NodeRequest(
             temp,
             "const fs = require('fs');"
                 + "process.stdout.write('ping\\n');"
-                + "process.stdin.once('data', chunk => {"
-                + "fs.writeSync(1, 'got:' + chunk.toString().trim() + '\\n');"
-                + "process.exit(0); });"
+                + "const buffer = Buffer.alloc(1024);"
+                + "const read = fs.readSync(0, buffer, 0, buffer.length, null);"
+                + "fs.writeSync(1, 'got:' + buffer.toString('utf8', 0, read).trim() + '\\n');"
+                + "process.exit(0);"
         ) with
         {
             LineHandler = (line, _) =>
