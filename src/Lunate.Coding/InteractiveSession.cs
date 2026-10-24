@@ -823,6 +823,9 @@ internal sealed partial class InteractiveSession : IDisposable
     /// <summary>Whether a turn (or its auto-run chain) is currently active.</summary>
     internal bool IsRunning => _turnActive;
 
+    /// <summary>The session's token totals as the footer shows them, for the accounting tests.</summary>
+    internal (long Input, long Output) TokenTotals => (_inputTokens, _outputTokens);
+
     /// <summary>The harness steering queue; nothing in the prompt writes to it (tests drive it directly).</summary>
     internal SteeringQueue Steering => _steering;
 
@@ -854,7 +857,15 @@ internal sealed partial class InteractiveSession : IDisposable
         // nothing else — the input line, a run's cancel, the model — sees them.
         if (_viewer.IsOpen)
         {
-            HandleViewerKey(key);
+            if (_viewer.IsPicking)
+            {
+                HandleTreeKey(key);
+            }
+            else
+            {
+                HandleViewerKey(key);
+            }
+
             return;
         }
 

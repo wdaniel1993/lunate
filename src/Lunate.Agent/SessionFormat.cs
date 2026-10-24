@@ -28,6 +28,8 @@ internal static partial class SessionFormat
     private const string PromptSectionType = "promptSection";
     private const string ChildSessionType = "childSession";
     private const string NestedCallsType = "nestedCalls";
+    private const string ActiveLeafType = "activeLeaf";
+    private const string BranchSummaryType = "branchSummary";
     private const string ExtensionPrefix = "ext/";
 
     /// <summary>The informational version of the Microsoft.Extensions.AI assembly, recorded in the header.</summary>
@@ -67,15 +69,7 @@ internal static partial class SessionFormat
             string type = RequiredString(root, "type");
             return type switch
             {
-                HeaderType => new SessionHeaderEntry(
-                    RequiredString(root, "id"),
-                    RequiredInt(root, "schema"),
-                    RequiredString(root, "cwd"),
-                    RequiredTimestamp(root, "created"),
-                    RequiredString(root, "meai"),
-                    OptionalString(root, "repo"),
-                    OptionalString(root, "worktree")
-                ),
+                HeaderType => ParseHeader(root),
                 MessageType => ParseMessage(root),
                 CompactionType => new SessionCompactionEntry(
                     RequiredString(root, "id"),
@@ -111,13 +105,76 @@ internal static partial class SessionFormat
                     RequiredString(root, "runId")
                 ),
                 NestedCallsType => ParseNestedCalls(root),
+                ActiveLeafType => new SessionActiveLeafEntry(
+                    RequiredString(root, "id"),
+                    OptionalString(root, "parentId"),
+                    RequiredTimestamp(root, "timestamp"),
+                    RequiredString(root, "leafId")
+                ),
+                BranchSummaryType => new SessionBranchSummaryEntry(
+                    RequiredString(root, "id"),
+                    OptionalString(root, "parentId"),
+                    RequiredTimestamp(root, "timestamp"),
+                    RequiredString(root, "fromLeafId"),
+                    RequiredString(root, "summary")
+                ),
                 _ => type.StartsWith(ExtensionPrefix, StringComparison.Ordinal)
                     ? ParseExtension(root, type)
                     : throw new InvalidDataException(
-                        $"Session line has unknown type '{type}'; expected '{HeaderType}', '{MessageType}', '{CompactionType}', '{ModelChangeType}', '{ActiveToolsType}', '{PromptSectionType}', '{ChildSessionType}', '{NestedCallsType}' or 'ext/<extension-id>/<type>'."
+                        $"Session line has unknown type '{type}'; expected '{HeaderType}', '{MessageType}', '{CompactionType}', '{ModelChangeType}', '{ActiveToolsType}', '{PromptSectionType}', '{ChildSessionType}', '{NestedCallsType}', '{ActiveLeafType}', '{BranchSummaryType}' or 'ext/<extension-id>/<type>'."
                     ),
             };
         }
+    }
+
+    /// <summary>
+    /// The header line, including the schema-3 provenance fields: <c>origin</c> names the session
+    /// and entry a fork or clone came from and <c>branched</c> marks the copy.
+    /// </summary>
+    private static SessionHeaderEntry ParseHeader(JsonElement root)
+    {
+        SessionOrigin? origin = null;
+        if (root.TryGetProperty("origin", out JsonElement originElement))
+        {
+            if (originElement.ValueKind != JsonValueKind.Object)
+            {
+                throw new InvalidDataException(
+                    "Session header property 'origin' is not an object."
+                );
+            }
+
+            origin = new SessionOrigin(
+                RequiredString(originElement, "sessionId"),
+                RequiredString(originElement, "entryId")
+            );
+        }
+
+        bool branched = false;
+        if (root.TryGetProperty("branched", out JsonElement branchedElement))
+        {
+            branched = branchedElement.ValueKind switch
+            {
+                JsonValueKind.True => true,
+                JsonValueKind.False => false,
+                _ => throw new InvalidDataException(
+                    "Session header property 'branched' is not a boolean."
+                ),
+            };
+        }
+
+        return new SessionHeaderEntry(
+            RequiredString(root, "id"),
+            RequiredInt(root, "schema"),
+            RequiredString(root, "cwd"),
+            RequiredTimestamp(root, "created"),
+            RequiredString(root, "meai"),
+            OptionalString(root, "repo"),
+            OptionalString(root, "worktree")
+        )
+        {
+            Origin = origin,
+            Branched = branched,
+        };
     }
 
     private static SessionMessageEntry ParseMessage(JsonElement root)

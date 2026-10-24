@@ -22,9 +22,10 @@ internal sealed partial class InteractiveSession
     /// Dispatches a submitted slash command through the composed registry. Commands are frontend
     /// control: they never reach the model and skip the input pipeline. A source may act through
     /// its own host callback (built-ins and skills) or return a message (extensions); an error
-    /// result is rendered as an error notice.
+    /// result is rendered as an error notice. Internal because it is the one dispatch path: the
+    /// key pump and the tests that drive a command while a turn is active both come through here.
     /// </summary>
-    private async Task DispatchCommandAsync(string text, CancellationToken ct)
+    internal async Task DispatchCommandAsync(string text, CancellationToken ct)
     {
         (string name, string argument) = Commands.Parse(text);
         string bare = name.StartsWith('/') ? name[1..] : name;

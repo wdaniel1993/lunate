@@ -1,0 +1,7 @@
+{"type":"header","schema":3,"id":"s_20261020-090000-b7c8","cwd":"/repo","created":"2026-10-20T09:00:00.0000000+00:00","meai":"10.10.1","repo":"github.com/acme/lunate","worktree":"/repo/trees/feature","origin":{"sessionId":"s_20261020-083000-a1b2","entryId":"e_02"},"branched":true}
+{"type":"message","id":"e_01","parentId":null,"timestamp":"2026-10-20T09:00:01.0000000+00:00","message":{"role":"user","contents":[{"$type":"text","text":"Compare two approaches."}]}}
+{"type":"message","id":"e_02","parentId":"e_01","timestamp":"2026-10-20T09:00:02.0000000+00:00","message":{"role":"assistant","contents":[{"$type":"text","text":"Approach A first."}]},"model":"claude-sonnet-5-5","usage":{"input":900,"output":40,"cacheRead":600,"cacheWrite":120}}
+{"type":"message","id":"e_03","parentId":"e_02","timestamp":"2026-10-20T09:00:03.0000000+00:00","message":{"role":"user","contents":[{"$type":"text","text":"Try approach B instead."}]}}
+{"type":"activeLeaf","id":"e_04","parentId":"e_03","timestamp":"2026-10-20T09:00:04.0000000+00:00","leafId":"e_02"}
+{"type":"branchSummary","id":"e_05","parentId":"e_02","timestamp":"2026-10-20T09:00:05.0000000+00:00","fromLeafId":"e_03","summary":"Approach B was started and abandoned."}
+{"type":"message","id":"e_06","parentId":"e_05","timestamp":"2026-10-20T09:00:06.0000000+00:00","message":{"role":"user","contents":[{"$type":"text","text":"Continue with approach A."}]}}
