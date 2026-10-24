@@ -36,6 +36,7 @@ spike report; this addendum records the decisions themselves.
   ```csharp
   #:extension acme.tools@1.0.0
   #:tool fetch_issue
+  #:command issues
   #:hook ToolCalling
   #:package Octokit@14.0.0
   ```
@@ -43,8 +44,12 @@ spike report; this addendum records the decisions themselves.
   The header is part of the source bytes, so it is covered by the trust digest: the declaration a
   user approved is the declaration that runs. Registration the header does not declare is
   **refused**; a declaration with no matching registration is **warned** — the same rule as every
-  other declaration surface. A sidecar `<name>.json` remains **optional** for a single file (for
-  metadata that is not a declaration); packaged extensions keep `extension.json`.
+  other declaration surface. The header mirrors every declaration field of `extension.json`
+  (`tools`, `commands`, `hooks`, `services`, `capabilities`, `modelProviders`) one to one, and a
+  test fails when the manifest grows a field that has no directive. Only the leading block is
+  scanned — directives, comments and blank lines before the first C# token, the SDK's own rule; a
+  `#:` line after code is an error naming its line. **There is no sidecar manifest for a single
+  file**: one declaration source, no conflict rules. Packaged extensions keep `extension.json`.
 - A packaged extension is a `.nupkg` with `extension.json`, an entry assembly and its dependencies;
   `lunate install <id>` installs it (its own card, after the single-file path).
 - Both formats produce the same `ExtensionDescriptor` and load through the same loop. Only the
@@ -77,10 +82,19 @@ spike report; this addendum records the decisions themselves.
   package the exact version, nupkg SHA-512, compile/runtime/native asset lists and dependency
   edges. Floating versions resolve once; later loads read the lock only; updating is explicit and
   rewrites the lock.
-- Compilation uses Roslyn with the targeting pack's reference assemblies for the host TFM, the
-  host contract assemblies, package `ref/` or `lib/` assets, and package analyzers and source
-  generators from the nearest `analyzers/dotnet/roslyn*/cs` folder. Framework assemblies and the
+- Compilation uses Roslyn with the .NET reference assemblies matching the running runtime, the
+  host contract assemblies, and package `ref/` or `lib/` assets. Framework assemblies and the
   shared contract assemblies always win over a package's copy.
+- **The reference pack comes from NuGet, not from an installed SDK.** A published self-contained
+  single-file binary has no SDK and no reference pack beside it, so `Microsoft.NETCore.App.Ref`
+  (runtime version, RID) is restored through the same in-process engine into the global packages
+  folder on first compile and reused. Shipping the pack inside the binary is the alternative;
+  phase 2 reports its size, and a test compiles with the published binary, an empty `HOME` and no
+  `dotnet` on `PATH`.
+- **Package analyzers and source generators are off by default.** They are build-time code
+  execution and most extensions never need them. `#:generators on` opts in, is part of the digest,
+  and only then does the prompt carry the build-time-code line; `/extensions` names a package whose
+  generators were skipped. This also removes the spike's 4.1 s analyzer cost from the common case.
 
 **Cache**
 
@@ -101,10 +115,19 @@ spike report; this addendum records the decisions themselves.
   before any compile:
   `sha256("lunate-extension-v1" | id | [package id@version] | source bytes | lock-file bytes)`.
   For a single file the source bytes **include the header directives** and any sidecar manifest.
-- The digest covers the dependency set through the lock: a changed lock re-prompts even when the
-  source is untouched. It covers bytes as written, never a re-serialization.
-- The prompt names the extension, its scope and that compiling it runs package analyzers and
-  source generators. A stale or absent approval stops before restore.
+- **The first trust has no lock yet.** It covers the id, the declared packages as written
+  (including ranges) and the source. The first successful restore writes the lock and **binds its
+  hash into the trust record automatically** — a restore downloads but executes nothing, so this is
+  safe as long as compile only ever runs against the bound lock. From then on the digest includes
+  the lock bytes, and a changed lock re-prompts even when the source is untouched. It covers bytes
+  as written, never a re-serialization.
+- The prompt names the extension, its declared packages **"and their dependencies"** — the
+  transitive set is unknowable before a restore — and, only when the header opted in, that
+  compiling runs package analyzers and source generators. A stale or absent approval stops before
+  restore. After a restore, `/extensions` shows the resolved graph from the lock.
+- **The model never approves trust.** It may write or edit the file and ask for a reload; no tool,
+  command or protocol path records a decision, suppresses a prompt, or loads a stale digest. A
+  model-initiated reload of a changed file ends at the prompt.
 - A cache hit re-checks the digest before loading the compiled assembly. Content-addressable
   caching does not weaken the trust decision.
 - **The stale-digest-zero-feed-requests measurement stays in the suite permanently**: it is the
