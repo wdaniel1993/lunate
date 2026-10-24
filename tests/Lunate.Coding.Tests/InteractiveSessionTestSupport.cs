@@ -555,9 +555,6 @@ internal sealed class InteractiveSessionHost : IDisposable
 
     public TestConsole Scrollback { get; }
 
-    /// <summary>The plain scrollback text as the goldens pin it (TestConsole renders without ANSI).</summary>
-    public string ScrollbackText => Session.ReadCommittedScrollback(() => Scrollback.Output);
-
     public InteractiveSession Session { get; }
 
     /// <summary>
@@ -610,6 +607,13 @@ internal sealed class InteractiveSessionHost : IDisposable
     public string Frames => string.Concat(Console.Writes);
 
     /// <summary>
+    /// The harness's bound for a wait on a rendered frame or committed scrollback: in-process
+    /// renders land in milliseconds, so a miss inside this window is a bug, not slowness.
+    /// Spawn-dependent waits pass their own wider window explicitly.
+    /// </summary>
+    private static readonly TimeSpan DefaultWait = TimeSpan.FromSeconds(10);
+
+    /// <summary>
     /// Waits for a frame that contains <paramref name="expected"/> while pumping the scheduler.
     /// A single <see cref="Advance"/> is not enough: the paint lands on a later pump tick, so a
     /// one-tick assert races the renderer (the one-generation-early read).
@@ -624,6 +628,86 @@ internal sealed class InteractiveSessionHost : IDisposable
             timeout ?? TimeSpan.FromSeconds(5)
         );
 
+    /// <summary>
+    /// Waits until the committed scrollback contains <paramref name="required"/> (ordinal) and
+    /// returns that snapshot. This is the only way to read scrollback: a bare read can land
+    /// before the command that renders the text has committed it, which is how the tree and
+    /// <c>/help</c> tests failed on slower runners.
+    /// </summary>
+    public Task<string> WaitForScrollbackAsync(string required, TimeSpan? timeout = null) =>
+        WaitForScrollbackAsync(
+            text => text.Contains(required, StringComparison.Ordinal),
+            $"the text \"{required}\"",
+            timeout
+        );
+
+    /// <summary>
+    /// Waits until the committed scrollback satisfies <paramref name="predicate"/> and returns
+    /// that snapshot — for assertions a single substring cannot express (row counts, ordering,
+    /// two markers that must share one frame). <paramref name="what"/> names the expectation in
+    /// the timeout's message.
+    /// </summary>
+    public async Task<string> WaitForScrollbackAsync(
+        Func<string, bool> predicate,
+        string what,
+        TimeSpan? timeout = null
+    )
+    {
+        ArgumentNullException.ThrowIfNull(predicate);
+        TimeSpan budget = timeout ?? DefaultWait;
+        DateTime deadline = DateTime.UtcNow + budget;
+        while (true)
+        {
+            // Read under the live area's paint gate: a multi-line commit is written line by line,
+            // so an unguarded read could observe a prefix of it.
+            string snapshot = Session.ReadCommittedScrollback(() => Scrollback.Output);
+            if (predicate(snapshot))
+            {
+                return snapshot;
+            }
+
+            if (DateTime.UtcNow > deadline)
+            {
+                throw new TimeoutException(
+                    $"The scrollback never showed {what} within {budget.TotalSeconds:0} seconds "
+                        + $"(running={Session.IsRunning} writes={Console.Writes.Count}). "
+                        + "Last rendered frame:"
+                        + Environment.NewLine
+                        + LastFrame
+                );
+            }
+
+            await Task.Delay(1, TestContext.Current.CancellationToken);
+        }
+    }
+
+    /// <summary>
+    /// Awaits <paramref name="action"/> to completion and only then reads the scrollback, so an
+    /// absence assertion is made against a frame a finished event produced instead of against a
+    /// read that merely happened to land after the previous commit. Use it for
+    /// <c>DoesNotContain</c>: waiting for the absent text itself would be a contradiction.
+    /// </summary>
+    public async Task<string> ScrollbackAfterAsync(Func<Task> action, TimeSpan? timeout = null)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+        TimeSpan budget = timeout ?? DefaultWait;
+        Task work = action();
+        try
+        {
+            await work.WaitAsync(budget, TestContext.Current.CancellationToken);
+        }
+        catch (TimeoutException) when (!work.IsCompleted)
+        {
+            throw new TimeoutException(
+                $"The event the scrollback read waits on did not finish within "
+                    + $"{budget.TotalSeconds:0} seconds (running={Session.IsRunning} "
+                    + $"writes={Console.Writes.Count})."
+            );
+        }
+
+        return Session.ReadCommittedScrollback(() => Scrollback.Output);
+    }
+
     public async Task WaitUntilAsync(Func<bool> condition, TimeSpan? timeout = null)
     {
         // Real-async waits: yield the thread (never a busy spin) so the session's run task and
@@ -631,7 +715,7 @@ internal sealed class InteractiveSessionHost : IDisposable
         // instead of hanging. The default suits in-process frames; spawn-dependent waits (a
         // child process starting on a cold CI runner) pass a wider window — the repo's
         // spawn-window idiom, mirroring the BashToolTests 30s windows.
-        DateTime deadline = DateTime.UtcNow + (timeout ?? TimeSpan.FromSeconds(10));
+        DateTime deadline = DateTime.UtcNow + (timeout ?? DefaultWait);
         while (!condition())
         {
             if (DateTime.UtcNow > deadline)
