@@ -413,6 +413,7 @@ public sealed class InteractiveSessionTreeTests
         // The prompt states the cost and writes nothing.
         await SendLineAsync(host, "/rewind e_01 summary");
         await InteractiveSessionCommandTests.WaitForFrameAsync(host, "one model call will be made");
+        Assert.Contains("model ", host.Frames, StringComparison.Ordinal);
 
         Assert.Contains("one model call will be made", host.Frames, StringComparison.Ordinal);
         Assert.Contains("input tokens", host.Frames, StringComparison.Ordinal);
@@ -458,6 +459,11 @@ public sealed class InteractiveSessionTreeTests
         Assert.Empty(after.Entries.OfType<SessionBranchSummaryEntry>());
         Assert.Empty(host.Client.SummaryRequests);
         Assert.Contains("active leaf moved to e_01", host.Frames, StringComparison.Ordinal);
+        Assert.Contains(
+            "the previous branch is still in /tree",
+            host.Frames,
+            StringComparison.Ordinal
+        );
 
         host.Console.Complete();
         await run;

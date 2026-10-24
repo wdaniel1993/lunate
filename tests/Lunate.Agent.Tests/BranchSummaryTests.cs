@@ -61,12 +61,23 @@ public sealed class BranchSummaryTests
     }
 
     [Fact]
-    public void The_confirmation_names_the_estimate_and_the_one_call()
+    public void The_confirmation_names_the_estimate_the_model_and_the_one_call()
     {
-        string line = BranchSummary.Confirmation("e_02", 1234);
+        string line = BranchSummary.Confirmation("e_02", 1234, "gpt-5.1", "<$0.0001");
 
         Assert.Contains("e_02", line, StringComparison.Ordinal);
         Assert.Contains("1234", line, StringComparison.Ordinal);
+        Assert.Contains("gpt-5.1", line, StringComparison.Ordinal);
+        Assert.Contains("<$0.0001", line, StringComparison.Ordinal);
         Assert.Contains("one model call will be made", line, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void An_unpriced_model_says_so_instead_of_inventing_a_cost()
+    {
+        string line = BranchSummary.Confirmation("e_02", 1234, "local-model", null);
+
+        Assert.Contains("local-model", line, StringComparison.Ordinal);
+        Assert.DoesNotContain("cost", line, StringComparison.Ordinal);
     }
 }

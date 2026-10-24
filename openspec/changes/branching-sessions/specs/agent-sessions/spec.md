@@ -114,7 +114,7 @@ When a branch switch is requested with the summary option enabled, the summarise
 
 ### Requirement: Fork and clone provenance
 
-`/fork` SHALL write a new session file containing the entries of the active path up to and including the picked entry, with `schema: 3` and an `origin` header naming the source session and entry. `/clone` SHALL write a new session file containing every entry of the source session, with the same `origin`, whose `entryId` SHALL be the source session's active leaf at the moment of cloning. Neither SHALL copy the follow-up queue, and a fork whose picked point is not a message boundary while a run is active SHALL be refused before any file is written.
+`/fork` SHALL write a new session file containing the picked entry's own chain — root to that entry, whether or not it lies on the active path — with `schema: 3` and an `origin` header naming the source session and that entry. `/clone` SHALL write a new session file containing every entry of the source session, with the same `origin`, whose `entryId` SHALL be the source session's active leaf at the moment of cloning. Neither SHALL copy the follow-up queue, and a fork whose picked point is not a message boundary while a run is active SHALL be refused before any file is written.
 
 #### Scenario: A fork starts at the picked entry
 

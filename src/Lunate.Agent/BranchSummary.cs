@@ -42,9 +42,19 @@ internal static class BranchSummary
     }
 
     /// <summary>The one-line confirmation the switch shows before it spends a model call.</summary>
-    internal static string Confirmation(string entryId, int estimateTokens) =>
-        string.Create(
-            CultureInfo.InvariantCulture,
-            $"rewind to {entryId} with a branch summary: ~{estimateTokens} input tokens, one model call will be made"
+    internal static string Confirmation(
+        string entryId,
+        int estimateTokens,
+        string? modelId,
+        string? estimatedInputCost
+    )
+    {
+        string head = FormattableString.Invariant(
+            $"rewind to {entryId} with a branch summary: model {modelId ?? "unknown"}, ~{estimateTokens} input tokens"
         );
+        string cost = estimatedInputCost is null
+            ? string.Empty
+            : $", ~{estimatedInputCost} input cost";
+        return head + cost + "; one model call will be made";
+    }
 }

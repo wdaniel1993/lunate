@@ -1,5 +1,6 @@
 using System.Globalization;
 using Lunate.Agent;
+using Lunate.Ai;
 using Microsoft.Extensions.AI;
 
 namespace Lunate.Coding;
@@ -49,7 +50,11 @@ internal sealed partial class InteractiveSession
             }
 
             _harness = BuildHarness(_model);
-            Notify(FormattableString.Invariant($"active leaf moved to {entryId}"));
+            Notify(
+                FormattableString.Invariant(
+                    $"active leaf moved to {entryId}; the previous branch is still in /tree"
+                )
+            );
             return;
         }
 
@@ -57,8 +62,14 @@ internal sealed partial class InteractiveSession
         int estimate = BranchSummary.EstimateTokens(transcript);
         if (!confirmed)
         {
+            decimal? inputCost = CostCalculator.Compute(_model, estimate, 0);
             Notify(
-                BranchSummary.Confirmation(entryId, estimate)
+                BranchSummary.Confirmation(
+                    entryId,
+                    estimate,
+                    _model.Id,
+                    inputCost is decimal cost ? CostCalculator.Format(cost) : null
+                )
                     + FormattableString.Invariant(
                         $"; run /rewind {entryId} summary {RewindConfirm} to proceed"
                     )
