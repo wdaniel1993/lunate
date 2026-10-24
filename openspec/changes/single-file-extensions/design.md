@@ -24,6 +24,57 @@ A packaged extension is a directory with a manifest and a prebuilt DLL. A single
 
 **Four phases, each a PR.** (1) discovery, scanner, trust, `/extensions` states — no compiler. (2) restore, lock, compile, cache. (3) reload through the lease path. (4) the loop end to end: the model writes a file with a package, the user trusts it, `/extensions reload` makes it live in the same session. Phase 1 alone is useful (a file is discoverable and refusable) and testable without NuGet.
 
+## Phase 2a implementation notes
+
+Phase 2a is restore, lock, trust binding and the reference pack: no compile, no build cache and no
+generators (those are 2b). Three decisions had to be made concretely, and two of them change what
+the ADR addendum says.
+
+**The lock lives in the cache entry, not beside the file.** The addendum says `<name>.lock.json`
+next to the extension. That contradicts the promise the file format exists for: a generated sidecar
+in the user's extensions directory makes "one file" false again, and the extensions directory is
+the one place the user edits while the host watches. The lock is written to
+`~/.lunate/cache/extensions/<id>/extension.lock.json` — keyed by id only, because the *build* key
+already includes the lock hash and the lock cannot live inside the directory it names.
+
+**The lock records the toolset, so a runtime change asks again.** The reference pack's version is
+part of what a compile resolves against, and "whatever the rule is, it goes into the lock" (task
+2.11) only means something if a different runtime rewrites it. A restored extension whose lock
+names 10.0.13 is therefore `stale` for a host on 10.0.14: the restore reports the toolset change
+and asks, exactly like any other lock change, rather than silently re-resolving. That is the price
+of a deterministic lock, and it is paid once per host update, not per session.
+
+**A lock is the file's lock only when it says so.** Every lock records the source-level digest it
+was resolved from. A lock whose digest is not the current file's is ignored for the trust digest
+(it belongs to an earlier version of the file) and is reported as a change by the next restore.
+This is what keeps a re-trusted, edited file from staling in a loop: the approval covers the source,
+the restore writes the new lock, and the bind moves the record to the lock-inclusive digest with no
+second question. A lock edited *without* touching the source keeps its digest, so the file is stale
+and the user is asked; approving adopts the edited lock without re-resolving, because that is
+exactly the resolution they approved.
+
+**Two assemblies, one seam.** `Lunate.Extensibility` owns the lock, the digest, the trust record
+and the restore *policy*; `Lunate.Extensibility.Restore` owns the NuGet client libraries and is the
+only project that references them. `Lunate.Coding` wires the engine as a factory
+(`SingleFileRestoreFactory.Engine`), so composing a session constructs nothing and loads no
+`NuGet.*` assembly; `SingleFileLazyRestoreTests` composes an all-built session in a child process
+and fails if one appears. Restore is not *triggered* in this phase: its callers are the compile step
+(2b) and `/extensions reload` (phase 3), which is why startup still reads declarations only.
+
+**Resolution rule.** A package takes the lowest version that satisfies every range asked of it, with
+the requirement set rebuilt from the current choices on each pass (declared ranges plus the edges of
+the chosen versions) until no choice moves. That is deterministic and it is "the highest of the
+minimums" for the ordinary cases; it is not NuGet's full resolver, and a graph whose ranges disagree
+fails with a message naming the package, the ranges and who asked, instead of silently picking a
+version.
+
+**MSBL001.** `NuGet.Frameworks` is a runtime asset of the restore engine and MSBuild ships its own
+copy, so `Microsoft.Build.Locator`'s build check fires in every project that references the app. The
+check cannot express the rule that matters ("no `Microsoft.Build.*` assembly is copied beside the
+app"), so it is disabled in `Directory.Build.props` and that rule is asserted by
+`AssemblyLayoutTests` instead. The overlap is real but bounded: MSBuild's copy is loaded only by the
+Roslyn workspace path, Lunate's only when a restore runs.
+
 ## Risks
 
 - **Analyzers and generators are code execution at build time.** Off unless `#:generators on`; the opt-in is in the digest, so toggling it re-asks, and the prompt only mentions build-time code when it applies.

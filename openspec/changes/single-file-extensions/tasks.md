@@ -15,17 +15,17 @@
 
 ## 2. Trust, restore, compile, cache (PR 2)
 
-- [ ] 2.1 Red: the digest covers id, packages, source bytes including the header, and lock bytes; editing any one of them changes it.
-- [ ] 2.2 Red: a stale digest stops before any restore and the test observes zero feed requests.
-- [ ] 2.3 Red: the trust prompt names the file, the packages, and that build-time analyzers and generators run.
-- [ ] 2.4 Red: no `NuGet.*` assembly is loaded in a session whose extensions are all built.
-- [ ] 2.5 In-process restore through the NuGet client libraries; packages resolve into `NUGET_PACKAGES` or the default global folder.
-- [ ] 2.6 `extension.lock.json`: exact versions, SHA-512, resolved assets; a restore that would change it reports and asks, never writes silently.
+- [x] 2.1 Red: the digest covers id, packages, source bytes including the header, and lock bytes; editing any one of them changes it.
+- [x] 2.2 Red: a stale digest stops before any restore and the test observes zero feed requests.
+- [x] 2.3 Red: the trust prompt names the file, the packages, and that build-time analyzers and generators run.
+- [x] 2.4 Red: no `NuGet.*` assembly is loaded in a session whose extensions are all built.
+- [x] 2.5 In-process restore through the NuGet client libraries; packages resolve into `NUGET_PACKAGES` or the default global folder.
+- [x] 2.6 `extension.lock.json`: exact versions, SHA-512, resolved assets; a restore that would change it reports and asks, never writes silently.
 - [ ] 2.7 Compile the file with the declared references; a failed compile reports the first diagnostic and leaves no build behind.
 - [ ] 2.8 Build cache keyed by source hash; last two builds kept; uninstall deletes the extension's builds; `lunate cache prune` removes orphans.
-- [ ] 2.9 Red: first trust → restore writes the lock and binds its hash into the trust record, with no second prompt; a compile afterwards uses that lock.
-- [ ] 2.10 Red: a hand-edited lock makes the extension `stale` and stops before any feed request.
-- [ ] 2.11 Reference pack: restore `Microsoft.NETCore.App.Ref` (runtime version, RID) through the same engine into the global packages folder on first compile; reuse it afterwards.
+- [x] 2.9 Red: first trust → restore writes the lock and binds its hash into the trust record, with no second prompt; a compile afterwards uses that lock.
+- [x] 2.10 Red: a hand-edited lock makes the extension `stale` and stops before any feed request.
+- [x] 2.11 Reference pack: restore `Microsoft.NETCore.App.Ref` (runtime version, RID) through the same engine into the global packages folder on first compile; reuse it afterwards.
 - [ ] 2.12 Red: the published self-contained `osx-arm64` binary compiles a single-file extension with `HOME` empty and no `dotnet` on `PATH`; a second run makes no feed request.
 - [ ] 2.13 Generators and analyzers are off by default; `#:generators on` opts in and is part of the digest; `/extensions` shows `generators skipped: <package>` when a package ships them and the file did not opt in.
 - [ ] 2.14 Red: toggling `#:generators on` changes the digest and the prompt gains the build-time-code line.
