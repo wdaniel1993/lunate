@@ -6,8 +6,11 @@ repository actually runs on, and this page is the path from a fresh clone to a m
 
 ## Prerequisites
 
-- [.NET 10 SDK](https://dotnet.microsoft.com/download) — the version is pinned in `global.json`
-  (10.0.401) and `rollForward: latestFeature` means a newer feature band works too
+- [.NET 10 SDK](https://dotnet.microsoft.com/download) — **exactly** the version pinned in
+  `global.json` (`10.0.402`, `rollForward: disable`, `allowPrerelease: false`). Install it with
+  `dotnet-install.sh --version 10.0.402` (`dotnet-install.ps1 -Version 10.0.402` on Windows).
+  A newer patch is not picked up automatically: Dependabot opens the bump as a PR against
+  `global.json`, and that PR runs the full gate.
 - [Node.js](https://nodejs.org/) — runs the documentation lint through a pinned `npx`
 - [hyperfine](https://github.com/sharkdp/hyperfine) — measures the startup budget
 - `jq` — reads the performance and memory samples (`scripts/perf.sh`, `scripts/memory.sh`)

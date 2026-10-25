@@ -1,0 +1,10 @@
+# The SDK pin is exact (global.json, rollForward: disable), because the pinned SDK decides the
+# runtime bundled into the self-contained binary as well as what the gate installs. Patches
+# therefore arrive as reviewed pull requests, each of which runs the full gate.
+version: 2
+updates:
+  - package-ecosystem: "dotnet-sdk"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 3
