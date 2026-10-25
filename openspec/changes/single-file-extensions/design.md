@@ -193,7 +193,7 @@ All sizes are the OS's own, taken with `du -sk` and `stat`; numbers in prose car
 | Published `osx-arm64` single-file binary with the four embedded contract assemblies | 364,267,911 bytes (347.4 MiB) |
 | The same binary without them (`-p:EmbedCompileContracts=false`) | 362,860,263 bytes (346.0 MiB) |
 | Difference the embedding costs | 1,407,648 bytes (1.34 MiB; the four assemblies themselves sum to 1,395,000 bytes, the rest is resource headers) |
-| Startup median after this phase (`scripts/verify.sh`'s budget step) | see the PR body; the gate prints it per run |
+| Startup median after this phase (`scripts/verify.sh`'s budget step) | 60 ms (budget 150 ms) |
 
 The cache entry is dominated by the lock (76% of it), not by the assembly: a one-package extension
 costs about 2.5 KiB of compiled code and 10 KiB of resolution. The reference pack is the real cost of
