@@ -30,7 +30,8 @@ public sealed class InteractiveSessionLaunchOptionsTests
         await InteractiveSessionCommandTests.WaitForFrameAsync(host, "gpt-4o · ");
 
         Assert.Equal("gpt-4o", factory.CreatedModel!.Id);
-        Assert.Contains("gpt-4o · 128,000 ctx", host.ScrollbackText, StringComparison.Ordinal);
+        // The model line commits after the frame that already showed the model: wait for it.
+        await host.WaitForScrollbackAsync("gpt-4o · 128,000 ctx");
         Assert.Contains("gpt-4o · 0/128.0k", host.LastFrame, StringComparison.Ordinal);
 
         host.Console.SendText("/quit");

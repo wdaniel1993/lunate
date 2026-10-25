@@ -25,12 +25,11 @@ public sealed class InteractiveSessionThinkingCommitTests
         host.Session.HandleEvent(new ReasoningEnd("run_parent", "msg_r"));
         host.Advance(40);
 
-        Assert.Contains("✦ thought for 12s\n", host.ScrollbackText, StringComparison.Ordinal);
-        Assert.DoesNotContain(
-            "weighing the options",
-            host.ScrollbackText,
-            StringComparison.Ordinal
-        );
+        // The wait is the assertion for the collapsed line; the absence the commit guarantees is
+        // asserted on the same snapshot.
+        string scrollback = await host.WaitForScrollbackAsync("✦ thought for 12s");
+        Assert.Contains("✦ thought for 12s\n", scrollback, StringComparison.Ordinal);
+        Assert.DoesNotContain("weighing the options", scrollback, StringComparison.Ordinal);
         Assert.DoesNotContain("thinking…", host.LastFrame, StringComparison.Ordinal);
 
         host.Console.Complete();
@@ -60,12 +59,15 @@ public sealed class InteractiveSessionThinkingCommitTests
         host.Session.HandleEvent(new ReasoningEnd("run_parent", "msg_r"));
         host.Advance(40);
 
+        // Wrapped at the commit's width: the first row is the marker, the whole shape is asserted
+        // on the snapshot that carries it.
+        string scrollback = await host.WaitForScrollbackAsync("  " + new string('a', 78) + "\n");
         Assert.Contains(
             "  " + new string('a', 78) + "\n  " + new string('a', 12) + "\n",
-            host.ScrollbackText,
+            scrollback,
             StringComparison.Ordinal
         );
-        Assert.DoesNotContain("thought for", host.ScrollbackText, StringComparison.Ordinal);
+        Assert.DoesNotContain("thought for", scrollback, StringComparison.Ordinal);
 
         host.Console.Complete();
         await run;
@@ -94,12 +96,14 @@ public sealed class InteractiveSessionThinkingCommitTests
         );
         host.Advance(40);
 
-        Assert.DoesNotContain("thought for", host.ScrollbackText, StringComparison.Ordinal);
-        Assert.DoesNotContain(
-            "secret child reasoning",
-            host.ScrollbackText,
-            StringComparison.Ordinal
+        // Nothing may commit, so there is no text to wait for: the child run's status in the live
+        // frame proves the injected events were handled, and the absence is asserted on the
+        // scrollback as it stands after that paint completed.
+        string scrollback = await host.ScrollbackAfterAsync(() =>
+            host.WaitForFrameAsync("subagent running")
         );
+        Assert.DoesNotContain("thought for", scrollback, StringComparison.Ordinal);
+        Assert.DoesNotContain("secret child reasoning", scrollback, StringComparison.Ordinal);
 
         host.Console.Complete();
         await run;

@@ -70,13 +70,12 @@ public sealed class CommandShadowTests
         await host.WaitForFrameAsync("shadowed by ext:alpha:ping");
 
         await host.SendLineAsync("/help");
-        await InteractiveSessionCommandTests.WaitForScrollbackAsync(
-            host,
-            "  /ping — Ping the server"
-        );
+        // The count needs the whole listing, so the wait's snapshot is the subject of the assert.
+        string scrollback = await host.WaitForScrollbackAsync("  /ping — Ping the server");
         Assert.Equal(
             1,
-            host.ScrollbackText.Split('\n')
+            scrollback
+                .Split('\n')
                 .Count(line => line.Contains("/ping — Ping the server", StringComparison.Ordinal))
         );
         Assert.Contains(

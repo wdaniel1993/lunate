@@ -17,11 +17,7 @@ public sealed class InteractiveSessionKeyTests
         // The committed scrollback is the race-free completion signal: when the run ends, the
         // live tail is cleared right after the commit, so a frame-based wait would race the
         // commit and lose deterministically on the slower Windows runners.
-        await host.WaitUntilAsync(() =>
-        {
-            host.Advance(33);
-            return host.ScrollbackText.Contains("ok", StringComparison.Ordinal);
-        });
+        await host.WaitForScrollbackAsync("ok");
 
         host.Console.Send(new KeyEvent(KeyKind.Up, null, false, false, false));
         await host.WaitUntilAsync(() =>

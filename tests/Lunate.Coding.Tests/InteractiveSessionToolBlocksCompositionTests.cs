@@ -50,38 +50,43 @@ public sealed class InteractiveSessionToolBlocksCompositionTests
         // The session drains the harness's event channel on its own task: once the provider is
         // parked, the earlier ToolCallResult is queued and the block commits while it stays
         // parked. Wait for that commit, then assert the turn is still active.
-        await host.WaitUntilAsync(() =>
-            host.ScrollbackText.Contains(Header, StringComparison.Ordinal)
-        );
-        string midRunScrollback = host.ScrollbackText;
+        string midRunScrollback = await host.WaitForScrollbackAsync(Header);
         Assert.True(host.Session.IsRunning);
         Assert.DoesNotContain(LastLine, midRunScrollback, StringComparison.Ordinal);
         gate.Release();
 
-        await host.WaitUntilAsync(() =>
-            !host.Session.IsRunning
-            && host.ScrollbackText.Contains("done", StringComparison.Ordinal)
+        string scrollback = await host.WaitForScrollbackAsync(
+            text => text.Contains("done", StringComparison.Ordinal) && !host.Session.IsRunning,
+            "the answer once the turn finishes"
         );
-        string scrollback = host.ScrollbackText;
 
         host.Console.SendCtrlO();
         await host.WaitUntilAsync(() => host.Console.InAlternateScreen);
         // The viewer opens on the latest content: the tail of the full read output, which the
-        // scrollback never showed, plus the key footer.
-        await host.WaitUntilAsync(() =>
-            host.Console.Writes.Any(write =>
-                write.Contains("line 20 of the file", StringComparison.Ordinal)
-                && write.Contains(LastLine, StringComparison.Ordinal)
-                && write.Contains("scroll", StringComparison.Ordinal)
-                && write.Contains("q close", StringComparison.Ordinal)
+        // scrollback never showed, plus the key footer. Reading only after that frame completed
+        // is what makes "the scrollback did not change" a statement about the open surface.
+        Assert.Equal(
+            scrollback,
+            await host.ScrollbackAfterAsync(() =>
+                host.WaitUntilAsync(() =>
+                    host.Console.Writes.Any(write =>
+                        write.Contains("line 20 of the file", StringComparison.Ordinal)
+                        && write.Contains(LastLine, StringComparison.Ordinal)
+                        && write.Contains("scroll", StringComparison.Ordinal)
+                        && write.Contains("q close", StringComparison.Ordinal)
+                    )
+                )
             )
         );
-        Assert.Equal(scrollback, host.ScrollbackText);
 
         host.Console.SendEscape();
-        await host.WaitUntilAsync(() => !host.Console.InAlternateScreen);
+        Assert.Equal(
+            scrollback,
+            await host.ScrollbackAfterAsync(() =>
+                host.WaitUntilAsync(() => !host.Console.InAlternateScreen)
+            )
+        );
         Assert.Equal("\u001b[?1049l", host.Console.Writes[^1]);
-        Assert.Equal(scrollback, host.ScrollbackText);
 
         Assert.Empty(EventSequenceValidator.Validate(host.Events));
         host.Console.SendText("/quit");
@@ -107,18 +112,18 @@ public sealed class InteractiveSessionToolBlocksCompositionTests
         await host.WaitUntilAsync(() => host.Session.PendingApproval is not null);
         Assert.Equal("bash", host.Session.PendingApproval!.ToolName);
         host.Console.SendText("y");
-        await host.WaitUntilAsync(() =>
-            !host.Session.IsRunning
-            && host.ScrollbackText.Contains("done", StringComparison.Ordinal)
+        string scrollback = await host.WaitForScrollbackAsync(
+            text => text.Contains("done", StringComparison.Ordinal) && !host.Session.IsRunning,
+            "the answer once the turn finishes"
         );
 
-        string[] lines = host.ScrollbackText.Split('\n');
+        string[] lines = scrollback.Split('\n');
         string header = Assert.Single(
             lines,
             line => line.StartsWith("✓ bash  cat bash-notes.txt", StringComparison.Ordinal)
         );
         Assert.Contains("ctrl+o", header, StringComparison.Ordinal);
-        Assert.DoesNotContain("hidden tool output", host.ScrollbackText, StringComparison.Ordinal);
+        Assert.DoesNotContain("hidden tool output", scrollback, StringComparison.Ordinal);
 
         host.Console.SendText("/quit");
         host.Console.SendEnter();

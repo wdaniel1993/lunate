@@ -128,7 +128,8 @@ public sealed class ExtensionToolCompositionTests
         host.Console.SendText("y");
         await host.Client.WaitForCallAsync(2);
         await InteractiveSessionCommandTests.WaitForScrollbackAsync(host, "echo: args=", SpawnWait);
-        Assert.Contains("\u2713 test__echo", host.ScrollbackText, StringComparison.Ordinal);
+        // The wait is the assertion: the ✓ header is only ever seen in a committed frame.
+        await host.WaitForScrollbackAsync("\u2713 test__echo", SpawnWait);
 
         host.Console.SendText("/quit");
         host.Console.SendEnter();

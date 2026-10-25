@@ -89,15 +89,22 @@ public sealed class InteractiveSessionViewerTests
         Task run = host.RunAsync();
         await host.WaitUntilAsync(() => host.Session.IsComposed);
 
-        string scrollback = host.ScrollbackText;
+        // Nothing commits later in this test, so the baseline is the welcome header — the first
+        // commit — and the comparison is read once the alternate screen is gone.
+        string scrollback = await host.WaitForScrollbackAsync($"v{ProductVersion.Build}");
         host.Console.SendCtrlO();
         await host.WaitUntilAsync(() => host.Console.InAlternateScreen);
 
         host.Console.Send(new KeyEvent(kind, text, ctrl, false, false));
-        await host.WaitUntilAsync(() => !host.Console.InAlternateScreen);
+
+        // The closed surface is the event: the restoring write and the untouched scrollback are
+        // both statements about that finished close.
+        string afterClose = await host.ScrollbackAfterAsync(() =>
+            host.WaitUntilAsync(() => !host.Console.InAlternateScreen)
+        );
 
         Assert.Equal("\u001b[?1049l", host.Console.Writes[^1]);
-        Assert.Equal(scrollback, host.ScrollbackText);
+        Assert.Equal(scrollback, afterClose);
 
         host.Console.Complete();
         await run;
@@ -177,23 +184,29 @@ public sealed class InteractiveSessionViewerTests
         await host.WaitUntilAsync(() => host.Session.IsComposed);
 
         host.Console.SendCtrlO();
-        await host.WaitUntilAsync(() => host.Console.InAlternateScreen);
 
-        string duringOpen = host.ScrollbackText;
+        // The surface being up is the event: read the scrollback it must leave alone.
+        string duringOpen = await host.ScrollbackAfterAsync(() =>
+            host.WaitUntilAsync(() => host.Console.InAlternateScreen)
+        );
         host.Session.HandleEvent(new RunStarted("run"));
         host.Session.HandleEvent(new TextMessageContent("run", "m1", "while you were looking"));
         host.Session.HandleEvent(new TextMessageEnd("run", "m1"));
         host.Advance(40);
 
-        // The commit queued: the live area is suspended below the alternate screen.
-        Assert.Equal(duringOpen, host.ScrollbackText);
-
-        host.Console.SendEscape();
-        await host.WaitUntilAsync(() =>
-            host.ScrollbackText.Contains("while you were looking", StringComparison.Ordinal)
+        // The commit queued: the live area is suspended below the alternate screen. The transcript
+        // entry proves the message end was handled (and so its commit already ran), which is the
+        // event this equality is about.
+        Assert.Equal(
+            duringOpen,
+            await host.ScrollbackAfterAsync(() =>
+                host.WaitUntilAsync(() => host.Session.Transcript.Count == 1)
+            )
         );
 
-        Assert.Contains("while you were looking", host.ScrollbackText, StringComparison.Ordinal);
+        host.Console.SendEscape();
+        // The wait is the assertion: closing flushes the queued commit into the scrollback.
+        await host.WaitForScrollbackAsync("while you were looking");
 
         host.Console.Complete();
         await run;
@@ -240,7 +253,7 @@ public sealed class InteractiveSessionViewerTests
         Task run = host.RunAsync();
         await host.WaitUntilAsync(() => host.Session.IsComposed);
 
-        Assert.Contains("ctrl+o transcript", host.ScrollbackText, StringComparison.Ordinal);
+        await host.WaitForScrollbackAsync("ctrl+o transcript");
 
         host.Console.Complete();
         await run;

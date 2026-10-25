@@ -45,7 +45,14 @@ public sealed class InteractiveSessionSettingsCommandTests
         }
 
         Assert.DoesNotContain(secret, host.Frames, StringComparison.Ordinal);
-        Assert.DoesNotContain(secret, host.ScrollbackText, StringComparison.Ordinal);
+        // The login task is the event: the secret must not have committed while it ran.
+        Assert.DoesNotContain(
+            secret,
+            await host.ScrollbackAfterAsync(() =>
+                host.WaitUntilAsync(() => host.Session.LoginTask?.IsCompletedSuccessfully == true)
+            ),
+            StringComparison.Ordinal
+        );
         foreach (
             string file in Directory.EnumerateFiles(
                 host.Temp.Root,
@@ -110,11 +117,15 @@ public sealed class InteractiveSessionSettingsCommandTests
         await host.WaitUntilAsync(() => host.Session.IsComposed);
 
         await host.SendLineAsync("/login groq " + secret);
-        await WaitForFrameAsync(host, "takes no key argument");
+
+        // The refusal notice is the event; the secret must not appear on the surface it settled.
+        string scrollback = await host.ScrollbackAfterAsync(() =>
+            WaitForFrameAsync(host, "takes no key argument")
+        );
 
         Assert.Contains("masked prompt", host.LastFrame, StringComparison.Ordinal);
         Assert.DoesNotContain(secret, host.Frames, StringComparison.Ordinal);
-        Assert.DoesNotContain(secret, host.ScrollbackText, StringComparison.Ordinal);
+        Assert.DoesNotContain(secret, scrollback, StringComparison.Ordinal);
         Assert.Empty(prompt.Prompts);
         Assert.False(File.Exists(authPath));
         Assert.False(File.Exists(historyPath));
@@ -140,11 +151,15 @@ public sealed class InteractiveSessionSettingsCommandTests
         await host.WaitUntilAsync(() => host.Session.IsComposed);
 
         await host.SendLineAsync("/login not-a-provider " + secret);
-        await WaitForFrameAsync(host, "unknown provider for /login");
+
+        // The refusal notice is the event; the secret must not appear on the surface it settled.
+        string scrollback = await host.ScrollbackAfterAsync(() =>
+            WaitForFrameAsync(host, "unknown provider for /login")
+        );
 
         Assert.DoesNotContain("not-a-provider", host.Frames, StringComparison.Ordinal);
         Assert.DoesNotContain(secret, host.Frames, StringComparison.Ordinal);
-        Assert.DoesNotContain(secret, host.ScrollbackText, StringComparison.Ordinal);
+        Assert.DoesNotContain(secret, scrollback, StringComparison.Ordinal);
         Assert.Empty(prompt.Prompts);
         Assert.False(File.Exists(host.Temp.File("auth.json")));
         Assert.False(File.Exists(historyPath));
@@ -202,11 +217,15 @@ public sealed class InteractiveSessionSettingsCommandTests
 
         host.Console.SendText("/login groq");
         host.Console.SendEnter();
-        await WaitForFrameAsync(host, "login failed: InvalidOperationException: the prompt broke");
+        // The failure notice is the event; the report stays on the live notice line, never the
+        // scrollback, so the absence is asserted on the surface that notice left behind.
+        string scrollback = await host.ScrollbackAfterAsync(() =>
+            WaitForFrameAsync(host, "login failed: InvalidOperationException: the prompt broke")
+        );
 
         Assert.True(host.Session.LoginTask?.IsCompletedSuccessfully);
         Assert.Equal(before, File.ReadAllBytes(authPath));
-        Assert.DoesNotContain("login failed", host.ScrollbackText, StringComparison.Ordinal);
+        Assert.DoesNotContain("login failed", scrollback, StringComparison.Ordinal);
 
         host.Console.SendText("/quit");
         host.Console.SendEnter();
@@ -233,11 +252,13 @@ public sealed class InteractiveSessionSettingsCommandTests
         {
             host.Console.SendText("/login groq");
             host.Console.SendEnter();
-            await WaitForFrameAsync(host, "could not save the key for 'groq'");
+            string scrollback = await host.ScrollbackAfterAsync(() =>
+                WaitForFrameAsync(host, "could not save the key for 'groq'")
+            );
 
             Assert.True(Directory.Exists(authPath));
             Assert.DoesNotContain(secret, host.Frames, StringComparison.Ordinal);
-            Assert.DoesNotContain(secret, host.ScrollbackText, StringComparison.Ordinal);
+            Assert.DoesNotContain(secret, scrollback, StringComparison.Ordinal);
             AssertNoFileContains(host, secret);
 
             // The in-memory key rolled back: logout has nothing to remove.
@@ -296,7 +317,6 @@ public sealed class InteractiveSessionSettingsCommandTests
 
             host.Console.SendText("/quit");
             host.Console.SendEnter();
-            await run;
 
             Assert.DoesNotContain(
                 "no stored key for 'groq'",
@@ -304,7 +324,12 @@ public sealed class InteractiveSessionSettingsCommandTests
                 StringComparison.Ordinal
             );
             Assert.DoesNotContain(stored, host.Frames, StringComparison.Ordinal);
-            Assert.DoesNotContain(stored, host.ScrollbackText, StringComparison.Ordinal);
+            // The run's end is the event: the key was stored, yet it never reached the scrollback.
+            Assert.DoesNotContain(
+                stored,
+                await host.ScrollbackAfterAsync(() => run),
+                StringComparison.Ordinal
+            );
             AssertNoFileContains(host, stored);
             Assert.True(Directory.Exists(authPath));
         }
@@ -690,9 +715,7 @@ public sealed class InteractiveSessionSettingsCommandTests
         // The key pump survived the refused write: the next command still runs.
         host.Console.SendText("/help");
         host.Console.SendEnter();
-        await host.WaitUntilAsync(() =>
-            host.ScrollbackText.Contains("/session", StringComparison.Ordinal)
-        );
+        await host.WaitForScrollbackAsync("/session");
 
         Assert.Empty(host.Client.Requests);
         host.Console.SendText("/quit");

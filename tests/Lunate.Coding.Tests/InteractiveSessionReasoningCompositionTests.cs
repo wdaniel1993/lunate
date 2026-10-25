@@ -46,15 +46,16 @@ public sealed class InteractiveSessionReasoningCompositionTests
         });
         gate.Release();
 
-        await host.WaitUntilAsync(() =>
-        {
-            host.Advance(33);
-            return host.ScrollbackText.Contains("✦ thought for", StringComparison.Ordinal)
-                && host.ScrollbackText.Contains(Answer, StringComparison.Ordinal);
-        });
+        // Both markers must share one frame: the collapsed line and the answer commit together,
+        // and waiting for either alone could read the other too early.
+        string scrollback = await host.WaitForScrollbackAsync(
+            text =>
+                text.Contains("✦ thought for", StringComparison.Ordinal)
+                && text.Contains(Answer, StringComparison.Ordinal),
+            "the collapsed thought line and the answer"
+        );
 
         // After ReasoningEnd: exactly one collapsed line, and the live block is gone.
-        string scrollback = host.ScrollbackText;
         Assert.Single(Regex.Matches(scrollback, "✦ thought for \\d+s"));
         Assert.DoesNotContain(ReasoningText, scrollback, StringComparison.Ordinal);
         host.Advance(40);
@@ -85,14 +86,10 @@ public sealed class InteractiveSessionReasoningCompositionTests
 
         host.Console.SendText(Prompt);
         host.Console.SendEnter();
-        await host.WaitUntilAsync(() =>
-        {
-            host.Advance(33);
-            return host.ScrollbackText.Contains(ReasoningText, StringComparison.Ordinal);
-        });
+        string scrollback = await host.WaitForScrollbackAsync(ReasoningText);
 
-        Assert.Contains("  " + ReasoningText, host.ScrollbackText, StringComparison.Ordinal);
-        Assert.DoesNotContain("thought for", host.ScrollbackText, StringComparison.Ordinal);
+        Assert.Contains("  " + ReasoningText, scrollback, StringComparison.Ordinal);
+        Assert.DoesNotContain("thought for", scrollback, StringComparison.Ordinal);
 
         await host.WaitUntilAsync(() => !host.Session.IsRunning);
         host.Console.SendText("/quit");

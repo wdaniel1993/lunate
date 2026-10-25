@@ -17,7 +17,8 @@ public sealed class ImageInputInteractiveTests
         host.Console.SendEnter();
         await host.Client.WaitForCallAsync(1);
 
-        Assert.Contains("[image 2x3]", host.ScrollbackText, StringComparison.Ordinal);
+        // The wait is the assertion: the echo is committed before the request that carries it.
+        await host.WaitForScrollbackAsync("[image 2x3]");
         ChatMessage user = host.Client.Requests[0][^1];
         Assert.Contains(user.Contents, content => content is DataContent);
         Assert.Contains(
@@ -37,14 +38,18 @@ public sealed class ImageInputInteractiveTests
 
         host.Console.SendText("@clipboard");
         host.Console.SendEnter();
-        await host.WaitUntilAsync(() =>
-        {
-            host.Advance(33);
-            return host.LastFrame.Contains("pngpaste", StringComparison.Ordinal);
-        });
+        // Nothing must be echoed, so there is no text to wait for: the notice that refused the
+        // paste is the event, and the absence is asserted on the scrollback it left behind.
+        string scrollback = await host.ScrollbackAfterAsync(() =>
+            host.WaitUntilAsync(() =>
+            {
+                host.Advance(33);
+                return host.LastFrame.Contains("pngpaste", StringComparison.Ordinal);
+            })
+        );
 
         Assert.Empty(host.Client.Requests);
-        Assert.DoesNotContain("[image", host.ScrollbackText, StringComparison.Ordinal);
+        Assert.DoesNotContain("[image", scrollback, StringComparison.Ordinal);
 
         host.Console.Complete();
         await run;
@@ -63,7 +68,8 @@ public sealed class ImageInputInteractiveTests
         host.Console.SendEnter();
         await host.Client.WaitForCallAsync(1);
 
-        Assert.Contains("[image 2x3]", host.ScrollbackText, StringComparison.Ordinal);
+        // The wait is the assertion: the echo is committed before the request that carries it.
+        await host.WaitForScrollbackAsync("[image 2x3]");
         ChatMessage user = host.Client.Requests[0][^1];
         DataContent image = Assert.Single(user.Contents.OfType<DataContent>());
         Assert.Equal("image/png", image.MediaType);
