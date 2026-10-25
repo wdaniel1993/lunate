@@ -28,8 +28,9 @@ fi
 
 # Assemblies that spawn processes or manipulate process-wide state keep a
 # serial lane inside a pass; see scripts/test-parallel.sh for the measurement
-# that backs the choice.
-SERIAL_TEST_PROJECTS="Lunate.Coding.Tests Lunate.Agent.Tests"
+# that backs the choice. The compile tests spawn the published single-file
+# binary and restore a reference pack with it, so they own their lane too.
+SERIAL_TEST_PROJECTS="Lunate.Coding.Tests Lunate.Agent.Tests Lunate.Extensibility.Compile.Tests"
 
 # English-first gate output: pin the dotnet CLI / test-runner UI language so
 # localized toolchain text never leaks into logs on non-English machines. Only

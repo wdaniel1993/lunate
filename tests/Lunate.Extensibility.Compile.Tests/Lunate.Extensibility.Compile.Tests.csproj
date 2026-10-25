@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <RootNamespace>Lunate.Extensibility.Compile.Tests</RootNamespace>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="../../src/Lunate.Extensibility/Lunate.Extensibility.csproj" />
+        <ProjectReference Include="../../src/Lunate.Extensibility.Compile/Lunate.Extensibility.Compile.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <!-- The published-binary proof builds real nupkgs for a local folder feed, so the restore
+             under test is NuGet's own code and nothing reaches the network. -->
+        <PackageReference Include="NuGet.Frameworks" Version="7.9.0" />
+        <PackageReference Include="NuGet.Packaging" Version="7.9.0" />
+        <PackageReference Include="NuGet.Versioning" Version="7.9.0" />
+        <PackageReference Include="xunit.v3" Version="4.0.1" />
+        <Using Include="Xunit" />
+    </ItemGroup>
+
+    <PropertyGroup>
+        <!-- Same advisory as the restore engine's: NuGet.Packaging's signing dependency, unused here. -->
+        <NoWarn>$(NoWarn);NU1902;NU1903</NoWarn>
+    </PropertyGroup>
+</Project>

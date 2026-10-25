@@ -42,6 +42,18 @@ public static class SingleFileExtensionDigest
     }
 
     /// <summary>
+    /// The digest a file that has never been restored has: the graph-bound layout with no graph
+    /// segment, which is the value discovery computes and therefore the value a first trust records.
+    /// It is what <see cref="ComputeSource"/> is not — that one keeps the older tag and is the
+    /// source-level identity a lock records, not the trust identity of the file.
+    /// </summary>
+    public static string ComputeUnrestored(
+        string id,
+        IReadOnlyList<ExtensionPackageReference> packages,
+        ReadOnlySpan<byte> source
+    ) => Compute(id, packages, source, []);
+
+    /// <summary>
     /// The digest of the bytes the user approved: fields NUL-separated, the source appended
     /// verbatim, and the lock's canonical graph bytes last. NUL is unambiguous because neither an
     /// id nor a package argument can contain it.

@@ -187,23 +187,76 @@ so the extension is `stale` and asks again. Editing the toolset block leaves its
 behind, so the lock is refused and the next restore rebuilds the block — no question, because the
 resolution did not change.
 
+## Building
+
+`lunate extensions build <id|path> [--json]` compiles one file now. It is the same service
+`/extensions reload` uses, so there is one order everywhere: trust, then a lock that answers for
+those bytes, then the cache, then the compiler. It never asks a trust question — trust is your
+decision, so a file whose bytes you have not approved reports `failed (trust)` and tells you to
+approve it in an interactive session first.
+
+```console
+$ lunate extensions build acme-tools
+acme-tools 1.0.0 built 7c2b0a9f3d51e8c4 — /Users/you/.lunate/cache/extensions/acme-tools/builds/7c2b0a9f3d51e8c4/acme-tools.dll
+```
+
+A compile failure names the first diagnostic in Roslyn's own form and exits non-zero, and it leaves
+the cache as it was — no half-built directory, and the previous build (if any) is still the one the
+entry points at:
+
+```console
+$ lunate extensions build acme-tools
+lunate: acme-tools failed (compile) — /Users/you/.lunate/extensions/acme.cs(12,9): error CS0103: The name 'Issue' does not exist in the current context
+```
+
+### The build cache
+
+```text
+~/.lunate/cache/extensions/<id>/
+  extension.lock.json
+  builds.json                  the current build and the ones kept, newest first
+  builds/<key>/
+    <id>.dll                   the compiled assembly
+    build.json                 what it was built from and what a load needs
+```
+
+The key is `sha256(sourceHash | lockHash | apiVersion | TFM | RID)`, lowercase hex truncated to its
+first 16 characters. `lockHash` covers the whole lock file, both halves, so a resolution change and
+a toolset change each produce a new key — and because the API version is in it too, a Lunate update
+rebuilds extensions on first use instead of loading an assembly compiled against another contract.
+The same source, lock and toolset always compile to byte-identical bytes, so a rebuild is a cache
+hit rather than a second artifact.
+
+A successful compile keeps the **last two** builds and deletes older ones: editing, failing and
+fixing never grows the cache past two assemblies. `builds.json` says which two and which one is
+current, so "the last two" is a written order, not a guess from timestamps.
+
+`lunate cache prune` removes the entries nothing points at — run it after deleting an extension's
+`.cs` file; that is how removing an extension deletes its builds. It only touches
+`~/.lunate/cache/extensions/` and never the shared NuGet packages folder, which is content-addressed
+and your SDK's too. It sees the extensions this machine can discover from the current directory: your
+user extensions and this project's.
+
 ## What `/extensions` shows
 
 | Output | Meaning |
 | --- | --- |
 | `<id> <version> (<scope>, single file) not-built, tools …` | Usable; nothing has built it. |
+| `… built, tools …` | An assembly exists for exactly these bytes, this lock and this toolset. |
 | `… not-built, …, resolved: <id> <version>, …` | Restored: the graph the lock records, which is what a compile would use. |
 | `… not-built, … — <reason>` | The lock on disk was refused (its toolset block no longer answers for itself) and will be rebuilt. |
 | `<file name> (<scope>, single file) invalid (no #:extension)` | The header declares no id. Never compiled. |
 | `<id> <version> (<scope>, single file) invalid (line N: …)` | The header refuses the file; the reason names the line. |
 | `<id> <version> (<scope>, single file) stale — …` | Trusted before, changed since. It must be trusted again before it is built. |
 | `<id> <version> (<scope>, single file) failed (trust) — …` | Trust could not be decided or verified; the reason says which. |
+| `<id> <version> (<scope>, single file) failed (compile) — <file>(line,col): error CSxxxx: …` | The compile failed at that position; nothing was written. |
 | `…, declared, not provided: <names>` | The header declares a name the code never registered. A warning, not a refusal. |
 
 A registration the header does not declare refuses the load and names the registration and the
 missing directive, because the header is what the user approved. The reverse — a declared name
 nothing provided — is a warning, and the name is shown as `declared, not provided`.
 
-Single-file entries are listed after the packaged ones, problems first, and `lunate extensions
---json` carries the same data with `singleFile` (the file name), `state`, `reason` and, on a failed
-trust step, `failure: "trust"`.
+Single-file entries are listed after the packaged ones, problems first and built entries last, and
+`lunate extensions --json` carries the same data with `singleFile` (the file name), `state`,
+`reason`, `build` (the key, once one exists) and `failure` (`trust`, `restore` or `compile`) on a
+failed step.

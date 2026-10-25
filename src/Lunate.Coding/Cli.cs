@@ -61,8 +61,14 @@ internal static class Cli
                 workingDirectory,
                 output,
                 errors,
-                noExtensions ? Suppress(extensions) : extensions
+                noExtensions ? Suppress(extensions) : extensions,
+                ct
             );
+        }
+
+        if (args.Length > 0 && args[0] == "cache")
+        {
+            return CacheCommand.Run(args[1..], workingDirectory, output, errors, extensions);
         }
 
         if (args.Length > 0 && args[0] == "--discover")

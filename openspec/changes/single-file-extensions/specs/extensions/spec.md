@@ -132,9 +132,31 @@ Compilation SHALL use the .NET reference assemblies matching the running runtime
 - **WHEN** a single-file extension declaring one package is trusted and compiled
 - **THEN** the reference pack is restored into the global packages folder, the compile succeeds, and a second run reuses the cache without a feed request
 
+### Requirement: Compiling a single file
+
+The host SHALL compile a trusted single-file extension in process with the Roslyn it already ships, against the reference pack restored for the running runtime, the host's contract assemblies and each locked package's compile assets — and against nothing else. A compile SHALL NOT re-resolve a lock, SHALL NOT reach a feed, and SHALL NOT load a package's analyzers or source generators unless the header opted in. A file whose digest is `stale` SHALL NOT be compiled, and a lock that does not answer for the trusted bytes SHALL NOT be used. Compilation SHALL be deterministic: the same source, the same lock and the same toolset SHALL produce a byte-identical assembly, so a rebuild is a cache hit rather than a new artifact. A failed compile SHALL report the **first** diagnostic — the file, the line, the column, the compiler id and the message — as `failed (compile) — <reason>`, and SHALL leave no build directory behind. The build SHALL be triggerable without a session through `lunate extensions build <id|path> [--json]`, which runs the same service `/extensions reload` uses; listing extensions SHALL NOT compile anything, and startup SHALL stay lazy.
+
+#### Scenario: A compile error leaves nothing behind
+
+- **GIVEN** a trusted, restored extension whose source has a compile error
+- **WHEN** `lunate extensions build <id>` runs
+- **THEN** it exits non-zero, the build reports `failed (compile)` with the first diagnostic in Roslyn's own form (`path(line,col): error CSxxxx: message`), and no build directory exists for it
+
+#### Scenario: The same inputs build once
+
+- **GIVEN** an extension built once
+- **WHEN** it is built again with the same source, lock and toolset
+- **THEN** the build is a cache hit, no compiler runs, and the assembly's bytes are unchanged
+
+#### Scenario: A package's copy of a contract is not compiled against
+
+- **GIVEN** a locked package that ships its own `Lunate.Extensibility.Abstractions.dll`
+- **WHEN** the extension is compiled
+- **THEN** the host's contract assembly is the one referenced, and the compile succeeds rather than failing on two assemblies with one identity
+
 ### Requirement: Restore, lock and compiled cache
 
-A restore SHALL run in process through the NuGet client libraries, which SHALL be loaded only when a restore runs. Resolved packages SHALL go to NuGet's global packages folder, respecting `NUGET_PACKAGES`, and SHALL NOT be copied into a Lunate-owned folder. Each extension SHALL keep only its compiled assembly, its `extension.lock.json` and a pointer to the current build under `~/.lunate/cache/extensions/<id>/`. The lock SHALL have two halves: a `graph` (the sources, and per package the exact version, nupkg SHA-512, the resolved asset list and the dependency edges) and a `toolset` (target framework, RID, exact runtime, and the reference pack's id, version and nupkg hash, with an integrity hash over the block). The build SHALL be keyed by `sha256(sourceHash | lockHash | apiVersion | TFM | RID)`, where `lockHash` covers both halves, so a graph change and a toolset change each produce a new build. A successful compile SHALL keep the last two builds and delete older ones; removing the extension SHALL delete its builds; `lunate cache prune` SHALL remove entries no extension points at. A restore that would change the lock's graph SHALL report and ask; a restore that would change only its toolset SHALL rewrite the lock and rebuild without asking.
+A restore SHALL run in process through the NuGet client libraries, which SHALL be loaded only when a restore runs. Resolved packages SHALL go to NuGet's global packages folder, respecting `NUGET_PACKAGES`, and SHALL NOT be copied into a Lunate-owned folder. Each extension SHALL keep only its compiled assembly, its `extension.lock.json` and a pointer to the current build under `~/.lunate/cache/extensions/<id>/`. The lock SHALL have two halves: a `graph` (the sources, and per package the exact version, nupkg SHA-512, the resolved asset list and the dependency edges) and a `toolset` (target framework, RID, exact runtime, and the reference pack's id, version and nupkg hash, with an integrity hash over the block). The build SHALL be keyed by `sha256(sourceHash | lockHash | apiVersion | TFM | RID)`, where `lockHash` covers both halves, so a graph change and a toolset change each produce a new build. A successful compile SHALL keep the last two builds and delete older ones; removing the extension SHALL delete its builds; `lunate cache prune` SHALL remove entries no extension points at. The builds SHALL live under `builds/<key>/`, each with the compiled assembly and a manifest that records its key's inputs and the resolution a load needs, and the entry SHALL carry a pointer file naming the current build. A restore that would change the lock's graph SHALL report and ask; a restore that would change only its toolset SHALL rewrite the lock and rebuild without asking.
 
 #### Scenario: A second compile leaves two builds
 

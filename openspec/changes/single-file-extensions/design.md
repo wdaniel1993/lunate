@@ -93,6 +93,59 @@ app"), so it is disabled in `Directory.Build.props` and that rule is asserted by
 `AssemblyLayoutTests` instead. The overlap is real but bounded: MSBuild's copy is loaded only by the
 Roslyn workspace path, Lunate's only when a restore runs.
 
+## Phase 2b implementation notes
+
+Phase 2b is the compile, the build cache and the published-binary proof: no generators, no
+measurements and no docs pass (those stay 2.13–2.16). Four decisions had to be made concretely.
+
+**The trigger is `lunate extensions build <id|path> [--json]`.** Listing extensions must not compile
+— `/extensions` is a state view, and its rows would start costing seconds — and startup must stay
+lazy, so a build needs a surface of its own. The CLI subcommand is the smallest honest one: it
+discovers declarations only, then calls the same `SingleFileExtensionBuilder` that `/extensions
+reload` calls in phase 3, so the order (trust, then the lock that answers for those bytes, then the
+cache, then the compiler) exists once. It never prompts: trust is the user's decision, so a file
+that is not trusted for its bytes reports `failed (trust)` and says to approve it in an interactive
+session. `--json` prints the build key and the assembly path on success, and the first diagnostic as
+`{file, line, column, id, message}` on a compile failure.
+
+**The compile-time contract travels inside the binary.** A published self-contained single-file app
+bundles its managed assemblies: `Assembly.Location` is empty and there is no `.dll` beside the
+executable to point a `MetadataReference` at — yet an extension has to compile against
+`Lunate.Extensibility.Abstractions` and the host assemblies its signatures use. `Lunate.Extensibility.Compile`
+therefore embeds the four shared contract assemblies (`Lunate.Extensibility.Abstractions`,
+`Lunate.Agent`, `Lunate.Ai`, `Microsoft.Extensions.AI.Abstractions`) from the build's own resolved
+references and hands the compiler those images. They are the same assemblies the host loads, so
+type identity survives the compile/load boundary; a fallback reads them from `Assembly.Location` or
+beside the host for a build that skipped the embedding target. This is also what makes the phase-3
+isolation rule real: a package that ships its own copy of a contract cannot displace the host's
+compile reference, because the host's is added first and the duplicate is dropped by simple name.
+
+**Determinism is a property of the emit, not a hope.** The compile uses `deterministic: true` and
+emits no PDB, so no source path, timestamp or machine identity can reach the image: the same source,
+lock and toolset produce byte-identical output, and a test compiles the same bytes from two
+directories to prove it. That is what lets the build key be a content address instead of a
+timestamp.
+
+**The cache is `builds/<key>/` plus one pointer.** The key is `sha256(sourceHash | lockHash |
+apiVersion | TFM | RID)`, fields NUL-separated, rendered as lowercase hex and truncated to its first
+16 characters — the manifest inside the build repeats the untruncated hashes, so the truncation loses
+nothing a reader needs. `lockHash` is the SHA-256 of the whole lock file, so a graph change and a
+toolset change each move the key. Each build directory holds `<id>.dll` and `build.json` — the key's
+inputs and, per package, the runtime and native assets a load resolves out of the packages folder, so
+phase 3 never has to pair a build with a lock that has since been rewritten. `builds.json` names the
+current build and the surviving builds, newest first; retention and the pointer are one document, and
+the order is written rather than inferred from mtimes, so "the last two builds" does not depend on a
+clock. A failed compile writes nothing at all — no directory, no pointer, no trim — which is what
+keeps the previous build the one the entry points at.
+
+**Two things the phase-2a code had to be read carefully for.** A never-restored file's trust digest is
+the graph-bound layout with an empty graph segment (`ComputeUnrestored` names it), not the older
+source-only tag, so anything that seeds a trust record for a test or a script has to use that value;
+the source-only digest stays the lock's `SourceDigest` and the build key's `sourceHash`. And Roslyn
+5.9 rejects a `#:` line with `CS9298` unless the file-based-program feature is on, so the parse
+options set it: the header is the host's declaration, and the compiler only has to stop refusing to
+read the rest of the file.
+
 ## Risks
 
 - **Analyzers and generators are code execution at build time.** Off unless `#:generators on`; the opt-in is in the digest, so toggling it re-asks, and the prompt only mentions build-time code when it applies.

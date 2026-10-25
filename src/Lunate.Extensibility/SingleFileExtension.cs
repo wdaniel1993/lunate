@@ -25,6 +25,15 @@ public enum SingleFileExtensionState
 
     /// <summary>A restore failed; <see cref="SingleFileExtension.Reason"/> carries the first reason.</summary>
     RestoreFailed,
+
+    /// <summary>
+    /// A compile failed; <see cref="SingleFileExtension.Reason"/> carries the first diagnostic in
+    /// Roslyn's own form (<c>path(line,col): error CSXXXX: message</c>), and no build was written.
+    /// </summary>
+    CompileFailed,
+
+    /// <summary>An assembly exists for exactly these bytes, this lock, this contract version and this toolset.</summary>
+    Built,
 }
 
 /// <summary>
@@ -72,6 +81,20 @@ public sealed record SingleFileExtension
     /// is not the trust digest, which covers the graph half only.
     /// </summary>
     public string? LockHash { get; init; }
+
+    /// <summary>
+    /// The build key these bytes, this lock, this contract version and this toolset produce when an
+    /// assembly exists for them; null when there is no build (or the one on disk is for another
+    /// toolset). <c>/extensions</c> reads <c>built</c> from it and phase 3 loads the assembly at
+    /// <see cref="AssemblyPath"/>.
+    /// </summary>
+    public string? BuildKey { get; init; }
+
+    /// <summary>The compiled assembly's path when <see cref="BuildKey"/> is set; null otherwise.</summary>
+    public string? AssemblyPath { get; init; }
+
+    /// <summary>True when an assembly exists for exactly these inputs.</summary>
+    public bool IsBuilt => AssemblyPath is not null;
 
     /// <summary>Declarations nothing provided (a warning, shown as <c>declared, not provided</c>).</summary>
     public IReadOnlyList<ExtensionDeclaration> DeclaredNotProvided { get; init; } = [];
