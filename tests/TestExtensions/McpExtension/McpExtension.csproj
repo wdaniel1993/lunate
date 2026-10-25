@@ -4,6 +4,25 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <ProjectReference Include="../../../src/Lunate.Extensibility.Abstractions/Lunate.Extensibility.Abstractions.csproj" />
+        <!--
+            The host owns the contract, Lunate.Agent and Lunate.Ai: Lunate loads them once and every
+            extension binds to those copies. Referencing them compile-only keeps them out of this
+            project's output, where a load would ignore them (and warn once) anyway.
+        -->
+        <ProjectReference
+            Include="../../../src/Lunate.Extensibility.Abstractions/Lunate.Extensibility.Abstractions.csproj"
+            Private="false"
+            ExcludeAssets="runtime"
+        />
+        <ProjectReference
+            Include="../../../src/Lunate.Agent/Lunate.Agent.csproj"
+            Private="false"
+            ExcludeAssets="runtime"
+        />
+        <ProjectReference
+            Include="../../../src/Lunate.Ai/Lunate.Ai.csproj"
+            Private="false"
+            ExcludeAssets="runtime"
+        />
     </ItemGroup>
 </Project>

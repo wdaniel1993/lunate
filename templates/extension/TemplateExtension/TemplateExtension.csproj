@@ -5,19 +5,27 @@
 
     <ItemGroup>
         <!--
-            The host owns Lunate.Extensibility.Abstractions: Lunate loads it once, and every extension
-            binds to that copy so contract types keep one identity. The three attributes are what make
-            that true of the build output — PrivateAssets="all" keeps the contract out of what your
-            extension exposes to its consumers, ExcludeAssets="runtime" keeps it from being treated as
-            a runtime asset, and Private="false" keeps the DLL out of your output directory, where a
-            load would ignore it (and warn once) anyway. A package that ships its own copy is treated
-            the same way: accepted, ignored, warned once.
+            The host owns the contract, Lunate.Agent and Lunate.Ai: Lunate loads them once and every
+            extension binds to those copies so their types keep one identity. Private="false" keeps
+            the DLLs out of your output directory and ExcludeAssets="runtime" keeps them out of the
+            deps file — both still compile against. A copy in your output would be ignored, with one
+            warning saying so. Do not reach for PrivateAssets="all" here: it also hides the Agent
+            types your signatures use.
         -->
         <ProjectReference
             Include="../../../src/Lunate.Extensibility.Abstractions/Lunate.Extensibility.Abstractions.csproj"
-            PrivateAssets="all"
-            ExcludeAssets="runtime"
             Private="false"
+            ExcludeAssets="runtime"
+        />
+        <ProjectReference
+            Include="../../../src/Lunate.Agent/Lunate.Agent.csproj"
+            Private="false"
+            ExcludeAssets="runtime"
+        />
+        <ProjectReference
+            Include="../../../src/Lunate.Ai/Lunate.Ai.csproj"
+            Private="false"
+            ExcludeAssets="runtime"
         />
     </ItemGroup>
 

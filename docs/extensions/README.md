@@ -43,10 +43,11 @@ rename its projects and namespaces. A new class library needs only the contract 
     <ItemGroup>
         <ProjectReference
             Include="../../src/Lunate.Extensibility.Abstractions/Lunate.Extensibility.Abstractions.csproj"
-            PrivateAssets="all"
-            ExcludeAssets="runtime"
             Private="false"
+            ExcludeAssets="runtime"
         />
+        <ProjectReference Include="../../src/Lunate.Agent/Lunate.Agent.csproj" Private="false" ExcludeAssets="runtime" />
+        <ProjectReference Include="../../src/Lunate.Ai/Lunate.Ai.csproj" Private="false" ExcludeAssets="runtime" />
     </ItemGroup>
     <ItemGroup>
         <None Update="extension.json" CopyToOutputDirectory="PreserveNewest" />
@@ -58,11 +59,12 @@ The contract is not published as a NuGet package in this version; reference the 
 local build of it). The path above assumes the extension lives two directories below the Lunate
 repository root.
 
-All three attributes matter: the host owns `Lunate.Extensibility.Abstractions` and loads it once,
-so `PrivateAssets="all"` stops the reference flowing to your consumers, `ExcludeAssets="runtime"`
-keeps it from being a runtime asset of your extension, and `Private="false"` keeps the DLL out of
-your output directory — where a load would ignore it and say so once. The template ships them set;
-keep them.
+The host owns `Lunate.Extensibility.Abstractions`, `Lunate.Agent` and `Lunate.Ai`, and loads them
+once, so every extension binds to those copies. `Private="false"` keeps them out of your output
+directory and `ExcludeAssets="runtime"` keeps them out of the deps file, while both still compile
+against. A copy in the output is ignored at load, with one line saying which copy and who shipped
+it — so keep these references as they are. `PrivateAssets="all"` is not a substitute: it also hides
+the `Lunate.Agent` types your signatures use.
 
 ### 2. Write the extension
 
