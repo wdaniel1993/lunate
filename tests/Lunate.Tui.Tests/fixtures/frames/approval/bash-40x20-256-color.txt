@@ -1,7 +1,7 @@
 \x1b[38;5;11m⚠ bash  dotnet test --project tests/Luna\x1b[0m
 \x1b[38;5;245m  Test run summary: Passed!\x1b[0m
 Allow bash\x1b[38;5;11m?\x1b[0m
-[\x1b[38;5;80my\x1b[0m]es  [\x1b[38;5;80mn\x1b[0m]o  [\x1b[38;5;80ma\x1b[0m]lways this session
+[\x1b[38;5;80my\x1b[0m]es  > [\x1b[38;5;80mn\x1b[0m]o  [\x1b[38;5;80ma\x1b[0m]lways this session
 ────────────────────────────────────────
 \x1b[38;5;110m> Ask anything, / for commands\x1b[0m
 ────────────────────────────────────────

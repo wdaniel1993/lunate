@@ -144,7 +144,7 @@ public sealed class InteractiveSessionViewerTests
 
         host.Console.SendText("go");
         host.Console.SendEnter();
-        await host.WaitUntilAsync(() => host.Session.PendingApproval is not null);
+        await host.WaitForApprovalAsync();
 
         host.Console.SendCtrlO();
         host.Advance(100);

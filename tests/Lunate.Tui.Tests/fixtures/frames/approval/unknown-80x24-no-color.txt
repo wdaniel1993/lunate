@@ -5,7 +5,7 @@
   "delta": 4,
   "epsilon": 5,
   ... +3 lines
-Allow unknown?  [y]es  [n]o  [a]lways this session
+Allow unknown?  [y]es  > [n]o  [a]lways this session
 ────────────────────────────────────────────────────────────────────────────────
 > Ask anything, / for commands
 ────────────────────────────────────────────────────────────────────────────────

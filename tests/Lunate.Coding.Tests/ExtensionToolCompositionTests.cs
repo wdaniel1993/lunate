@@ -123,7 +123,7 @@ public sealed class ExtensionToolCompositionTests
                 .Select(tool => tool.Description)
         );
 
-        await host.WaitUntilAsync(() => host.Session.PendingApproval is not null, SpawnWait);
+        await host.WaitForApprovalAsync(SpawnWait);
         Assert.Equal("test__echo", host.Session.PendingApproval!.ToolName);
         host.Console.SendText("y");
         await host.Client.WaitForCallAsync(2);

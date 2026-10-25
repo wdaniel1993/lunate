@@ -16,7 +16,7 @@ public sealed class InteractiveSessionBashExecutionTests
         await host.WaitUntilAsync(() => host.Session.IsBashMode);
         host.Console.SendEnter();
 
-        await host.WaitUntilAsync(() => host.Session.PendingApproval is not null);
+        await host.WaitForApprovalAsync();
         Assert.Equal("bash", host.Session.PendingApproval!.ToolName);
         Assert.False(File.Exists(host.Temp.File("bash-mode.txt")));
 
@@ -55,7 +55,7 @@ public sealed class InteractiveSessionBashExecutionTests
         host.Console.SendText("!exit 7");
         await host.WaitUntilAsync(() => host.Session.IsBashMode);
         host.Console.SendEnter();
-        await host.WaitUntilAsync(() => host.Session.PendingApproval is not null);
+        await host.WaitForApprovalAsync();
         host.Console.SendText("y");
         string scrollback = await host.WaitForScrollbackAsync(
             text =>
@@ -83,7 +83,7 @@ public sealed class InteractiveSessionBashExecutionTests
         host.Console.SendText("!echo timed");
         await host.WaitUntilAsync(() => host.Session.IsBashMode);
         host.Console.SendEnter();
-        await host.WaitUntilAsync(() => host.Session.PendingApproval is not null);
+        await host.WaitForApprovalAsync();
         host.Advance(400);
         host.Console.SendText("y");
         string scrollback = await host.WaitForScrollbackAsync(
@@ -122,7 +122,7 @@ public sealed class InteractiveSessionBashExecutionTests
         host.Console.SendText("!echo denied > denied.txt");
         await host.WaitUntilAsync(() => host.Session.IsBashMode);
         host.Console.SendEnter();
-        await host.WaitUntilAsync(() => host.Session.PendingApproval is not null);
+        await host.WaitForApprovalAsync();
         host.Console.SendEnter();
 
         string scrollback = await host.WaitForScrollbackAsync(
@@ -158,7 +158,7 @@ public sealed class InteractiveSessionBashExecutionTests
         host.Console.SendText("!" + LongRunningCommand());
         await host.WaitUntilAsync(() => host.Session.IsBashMode);
         host.Console.SendEnter();
-        await host.WaitUntilAsync(() => host.Session.PendingApproval is not null);
+        await host.WaitForApprovalAsync();
         host.Console.SendText("y");
         await host.WaitUntilAsync(() => host.Session.PendingApproval is null);
 

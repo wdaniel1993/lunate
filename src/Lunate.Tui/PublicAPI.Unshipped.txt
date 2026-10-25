@@ -172,6 +172,18 @@ Lunate.Tui.ApprovalPromptModel.<Clone>$() -> Lunate.Tui.ApprovalPromptModel!
 Lunate.Tui.ApprovalPromptModel.ArgsSummary.get -> string!
 Lunate.Tui.ApprovalPromptModel.ArgsSummary.init -> void
 Lunate.Tui.ApprovalPromptModel.Decide(Lunate.Tui.KeyEvent! key) -> Lunate.Tui.ApprovalChoice?
+const Lunate.Tui.ApprovalPromptModel.ChoiceCount = 3 -> int
+const Lunate.Tui.ApprovalPromptModel.DefaultSelected = 1 -> int
+Lunate.Tui.ApprovalPromptModel.Activate() -> Lunate.Tui.ApprovalChoice
+Lunate.Tui.ApprovalPromptModel.Move(int delta) -> Lunate.Tui.ApprovalPromptModel!
+Lunate.Tui.ApprovalPromptModel.Moves(Lunate.Tui.KeyEvent! key) -> bool
+Lunate.Tui.ApprovalPromptModel.Selected.get -> int
+Lunate.Tui.ApprovalPromptModel.Selected.init -> void
+Lunate.Tui.ApprovalPromptModel.Selection.get -> Lunate.Tui.ApprovalChoice
+Lunate.Tui.ApprovalPromptModel.ShowKeyLegend() -> Lunate.Tui.ApprovalPromptModel!
+Lunate.Tui.ApprovalPromptModel.ShowLegend.get -> bool
+Lunate.Tui.ApprovalPromptModel.ShowLegend.init -> void
+Lunate.Tui.ApprovalPromptModel.ShowsLegend(Lunate.Tui.KeyEvent! key) -> bool
 Lunate.Tui.ApprovalPromptModel.Equals(Lunate.Tui.ApprovalPromptModel? other) -> bool
 Lunate.Tui.ApprovalPromptModel.ToolName.get -> string!
 Lunate.Tui.ApprovalPromptModel.ToolName.init -> void

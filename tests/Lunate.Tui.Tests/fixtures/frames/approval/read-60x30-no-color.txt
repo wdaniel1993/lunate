@@ -1,5 +1,5 @@
 ⚠ read  src/Lunate.Tui/Interaction/ApprovalPanelLayout.cs (1
-Allow read?  [y]es  [n]o  [a]lways this session
+Allow read?  [y]es  > [n]o  [a]lways this session
 ────────────────────────────────────────────────────────────
 > Ask anything, / for commands
 ────────────────────────────────────────────────────────────

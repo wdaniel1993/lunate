@@ -20,7 +20,7 @@ public sealed class InteractiveSessionBashModeCompositionTests
         await host.WaitUntilAsync(() => host.Session.IsBashMode);
         host.Console.SendEnter();
 
-        await host.WaitUntilAsync(() => host.Session.PendingApproval is not null);
+        await host.WaitForApprovalAsync();
         Assert.Equal("bash", host.Session.PendingApproval!.ToolName);
         Assert.Contains(
             "echo hi",

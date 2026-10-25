@@ -5,7 +5,7 @@
 \x1b[38;5;245m  - JsonElement args\x1b[0m
 \x1b[38;5;245m  + JsonElement args,\x1b[0m
 \x1b[38;5;245m  + bool unicode\x1b[0m
-Allow edit\x1b[38;5;11m?\x1b[0m  [\x1b[38;5;80my\x1b[0m]es  [\x1b[38;5;80mn\x1b[0m]o  [\x1b[38;5;80ma\x1b[0m]lways this session
+Allow edit\x1b[38;5;11m?\x1b[0m  [\x1b[38;5;80my\x1b[0m]es  > [\x1b[38;5;80mn\x1b[0m]o  [\x1b[38;5;80ma\x1b[0m]lways this session
 ────────────────────────────────────────────────────────────────────────────────
 \x1b[38;5;110m> Ask anything, / for commands\x1b[0m
 ────────────────────────────────────────────────────────────────────────────────

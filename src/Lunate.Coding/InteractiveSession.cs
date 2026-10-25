@@ -117,6 +117,7 @@ internal sealed partial class InteractiveSession : IDisposable
 {
     private readonly InteractiveSessionOptions _options;
     private readonly IConsoleIO _console;
+    private readonly IScheduler _scheduler;
     private readonly TerminalCapabilities _capabilities;
     private readonly LiveArea _live;
     private InputPipeline _pipeline;
@@ -188,6 +189,8 @@ internal sealed partial class InteractiveSession : IDisposable
     private TaskCompletionSource<TrustChoice>? _trustDecision;
     private long _keySequence;
     private long _trustArmSequence;
+    private long _approvalArmSequence;
+    private DateTimeOffset _approvalArmAt;
     private int _trustAsked;
     private int _trustTotal;
     private SelectListModel? _picker;
@@ -253,6 +256,7 @@ internal sealed partial class InteractiveSession : IDisposable
         ArgumentNullException.ThrowIfNull(options);
         _options = options;
         _console = options.Console;
+        _scheduler = options.Scheduler;
         _capabilities = TerminalCapabilities.Detect(
             options.Console.IsInteractive,
             OperatingSystem.IsWindows(),
@@ -825,6 +829,30 @@ internal sealed partial class InteractiveSession : IDisposable
     /// <summary>The pending approval as shown in the live area; null when none is open.</summary>
     internal ApprovalPromptModel? PendingApproval => _approvalPrompt;
 
+    /// <summary>The key sequence at which the pending approval armed (test seam).</summary>
+    internal long ApprovalArmSequence => Interlocked.Read(ref _approvalArmSequence);
+
+    /// <summary>
+    /// The approval prompt's arm: a key read before the panel rendered never decides, and neither
+    /// does one read inside the 300 ms after it — the keystroke may already have been in flight
+    /// when the question appeared, and answering a question the user has not read is the failure
+    /// the window exists to prevent. Inside the window the keys are dropped, not queued.
+    /// </summary>
+    private bool ApprovalArmed(long sequence) =>
+        sequence > Interlocked.Read(ref _approvalArmSequence)
+        && _scheduler.Now - _approvalArmAt > ApprovalArmWindow;
+
+    /// <summary>
+    /// Ages the pending approval's arm past its in-flight window (test seam). The scheduler is also
+    /// the live area's own clock, so a test that advanced it just to get past the arm would age
+    /// every duration it then asserts; this says "the window has elapsed" without moving the frame.
+    /// </summary>
+    internal void ExpireApprovalArmWindow() =>
+        _approvalArmAt = _scheduler.Now - ApprovalArmWindow - TimeSpan.FromMilliseconds(1);
+
+    /// <summary>How long after the panel renders a key is still treated as in flight.</summary>
+    private static readonly TimeSpan ApprovalArmWindow = TimeSpan.FromMilliseconds(300);
+
     /// <summary>The session's approval seam, composed at session start; null before composition.</summary>
     internal IToolApprover? Approver => _approver;
 
@@ -935,9 +963,24 @@ internal sealed partial class InteractiveSession : IDisposable
                 return;
             }
 
-            if (_approvalPrompt?.Decide(key) is { } decision)
+            // Armed like the trust question, with the in-flight window on top: keys read before
+            // the panel rendered, or inside the 300 ms after it, decide nothing.
+            if (ApprovalArmed(sequence) && _approvalPrompt is { } prompt)
             {
-                ResolveApproval(pending, decision);
+                if (prompt.Moves(key))
+                {
+                    _approvalPrompt = prompt.Move(key.Kind == KeyKind.Up ? -1 : 1);
+                    _live.SetApproval(_approvalPrompt);
+                }
+                else if (prompt.ShowsLegend(key))
+                {
+                    _approvalPrompt = prompt.ShowKeyLegend();
+                    _live.SetApproval(_approvalPrompt);
+                }
+                else if (prompt.Decide(key) is { } decision)
+                {
+                    ResolveApproval(pending, decision);
+                }
             }
 
             return;
@@ -1918,6 +1961,8 @@ internal sealed partial class InteractiveSession : IDisposable
         );
         _approvalDecision = decision;
         _live.SetApproval(_approvalPrompt);
+        Interlocked.Exchange(ref _approvalArmSequence, Interlocked.Read(ref _keySequence));
+        _approvalArmAt = _scheduler.Now;
         using CancellationTokenRegistration registration = ct.Register(() =>
             decision.TrySetCanceled(ct)
         );

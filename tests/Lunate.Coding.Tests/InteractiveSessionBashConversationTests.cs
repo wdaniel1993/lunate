@@ -131,7 +131,7 @@ public sealed class InteractiveSessionBashConversationTests
         host.Console.SendText("!" + LongRunningCommand());
         await host.WaitUntilAsync(() => host.Session.IsBashMode);
         host.Console.SendEnter();
-        await host.WaitUntilAsync(() => host.Session.PendingApproval is not null);
+        await host.WaitForApprovalAsync();
         host.Console.SendText("y");
         await host.WaitUntilAsync(() =>
             host.Session.PendingApproval is null && host.Session.IsBashRunning
@@ -158,7 +158,7 @@ public sealed class InteractiveSessionBashConversationTests
         host.Console.SendText(line);
         await host.WaitUntilAsync(() => host.Session.IsBashMode);
         host.Console.SendEnter();
-        await host.WaitUntilAsync(() => host.Session.PendingApproval is not null);
+        await host.WaitForApprovalAsync();
         host.Console.SendText("y");
     }
 

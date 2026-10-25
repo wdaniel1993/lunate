@@ -12,7 +12,7 @@ public sealed class ApprovalPromptRendererTests
     [Fact]
     public void Headline_shows_the_summarized_action_when_no_detail_is_ready() =>
         Assert.Equal(
-            "\u26a0 bash  dotnet format\n" + "Allow bash?  [y]es  [n]o  [a]lways this session\n",
+            "\u26a0 bash  dotnet format\n" + "Allow bash?  [y]es  > [n]o  [a]lways this session\n",
             Render(new ApprovalPromptModel("bash", """{"command":"dotnet format"}"""))
         );
 
@@ -24,7 +24,7 @@ public sealed class ApprovalPromptRendererTests
         );
 
         Assert.Equal(
-            "\u26a0 bash  dotnet format\n" + "Allow bash?  [y]es  [n]o  [a]lways this session\n",
+            "\u26a0 bash  dotnet format\n" + "Allow bash?  [y]es  > [n]o  [a]lways this session\n",
             output
         );
     }
@@ -35,7 +35,7 @@ public sealed class ApprovalPromptRendererTests
             "\u26a0 bash  dotnet format\n"
                 + "  line one\n"
                 + "  line two\n"
-                + "Allow bash?  [y]es  [n]o  [a]lways this session\n",
+                + "Allow bash?  [y]es  > [n]o  [a]lways this session\n",
             Render(
                 new ApprovalPromptModel(
                     "bash",
@@ -56,7 +56,7 @@ public sealed class ApprovalPromptRendererTests
                 + "  five\n"
                 + "  six\n"
                 + "  seven\n"
-                + "Allow bash?  [y]es  [n]o  [a]lways this session\n",
+                + "Allow bash?  [y]es  > [n]o  [a]lways this session\n",
             Render(
                 new ApprovalPromptModel(
                     "bash",
@@ -76,7 +76,7 @@ public sealed class ApprovalPromptRendererTests
                 + "  four\n"
                 + "  five\n"
                 + "  six\n"
-                + "Allow bash?  [y]es  [n]o  [a]lways this session\n",
+                + "Allow bash?  [y]es  > [n]o  [a]lways this session\n",
             Render(
                 new ApprovalPromptModel(
                     "bash",
@@ -92,7 +92,7 @@ public sealed class ApprovalPromptRendererTests
             "\u26a0 bash  dotnet format\n"
                 + "  line one\n"
                 + "  in ~/worktree-b\n"
-                + "Allow bash?  [y]es  [n]o  [a]lways this session\n",
+                + "Allow bash?  [y]es  > [n]o  [a]lways this session\n",
             Render(
                 new ApprovalPromptModel(
                     "bash",
@@ -115,7 +115,7 @@ public sealed class ApprovalPromptRendererTests
     public void Subagent_asker_prefixes_the_question() =>
         Assert.Equal(
             "\u26a0 bash  dotnet format\n"
-                + "subagent (depth 1) asks: Allow bash?  [y]es  [n]o  [a]lways this session\n",
+                + "subagent (depth 1) asks: Allow bash?  [y]es  > [n]o  [a]lways this session\n",
             Render(
                 new ApprovalPromptModel(
                     "bash",
@@ -131,7 +131,7 @@ public sealed class ApprovalPromptRendererTests
         Assert.Equal(
             "\u26a0 [red]bash[/]  [red]echo[/]\n"
                 + "  [red]detail[/]\n"
-                + "[red]sub[/] asks: Allow [red]bash[/]?  [y]es  [n]o  [a]lways this session\n",
+                + "[red]sub[/] asks: Allow [red]bash[/]?  [y]es  > [n]o  [a]lways this session\n",
             Render(
                 new ApprovalPromptModel(
                     "[red]bash[/]",
@@ -157,7 +157,7 @@ public sealed class ApprovalPromptRendererTests
         );
 
         Assert.Contains(
-            "\u001b[38;2;95;215;215my\u001b[0m]es  ["
+            "\u001b[38;2;95;215;215my\u001b[0m]es  > ["
                 + "\u001b[38;2;95;215;215mn\u001b[0m]o  ["
                 + "\u001b[38;2;95;215;215ma\u001b[0m]lways this session",
             output
@@ -176,7 +176,7 @@ public sealed class ApprovalPromptRendererTests
         );
 
         Assert.Equal(
-            "! bash  dotnet format\nAllow bash?  [y]es  [n]o  [a]lways this session\n",
+            "! bash  dotnet format\nAllow bash?  [y]es  > [n]o  [a]lways this session\n",
             console.Output
         );
     }
@@ -208,7 +208,7 @@ public sealed class ApprovalPromptRendererTests
         Assert.Equal("  in ~/worktree-b", lines[2].Text);
         Assert.Equal(ApprovalPart.Question, lines[3].Part);
         Assert.Equal("Allow bash?", lines[3].Text);
-        Assert.Equal("[y]es  [n]o  [a]lways this session", lines[4].Text);
+        Assert.Equal("[y]es  > [n]o  [a]lways this session", lines[4].Text);
         Assert.Equal(ApprovalPart.Question, lines[4].Part);
         Assert.True(CellText.Width(lines[4].Text) <= 40);
     }
@@ -232,8 +232,8 @@ public sealed class ApprovalPromptRendererTests
         Assert.DoesNotContain(lines, line => line.Text == "  line two");
         Assert.DoesNotContain(lines, line => line.Text == "  line three");
         Assert.Equal("Allow bash?", lines[2].Text);
-        Assert.Equal("[y]es  [n]o  [a]lways this session", lines[3].Text);
-        Assert.Equal(34, CellText.Width(lines[3].Text));
+        Assert.Equal("[y]es  > [n]o  [a]lways this session", lines[3].Text);
+        Assert.Equal(36, CellText.Width(lines[3].Text));
     }
 
     [Fact]
@@ -254,8 +254,8 @@ public sealed class ApprovalPromptRendererTests
         Assert.Equal("  line one", lines[1].Text);
         Assert.Equal("  in ~/worktree-b", lines[2].Text);
         Assert.Equal("Allow bash?", lines[3].Text);
-        Assert.Equal("[y]es  [n]o  [a]lways this session", lines[4].Text);
-        Assert.Equal(34, CellText.Width(lines[4].Text));
+        Assert.Equal("[y]es  > [n]o  [a]lways this session", lines[4].Text);
+        Assert.Equal(36, CellText.Width(lines[4].Text));
     }
 
     [Fact]
@@ -293,8 +293,8 @@ public sealed class ApprovalPromptRendererTests
 
         Assert.StartsWith("\u26a0 bash  dotnet format", lines[0].Text, StringComparison.Ordinal);
         Assert.Equal(40, CellText.Width(lines[0].Text));
-        Assert.Equal("[y]es  [n]o  [a]lways this session", lines[^1].Text);
-        Assert.Equal(34, CellText.Width(lines[^1].Text));
+        Assert.Equal("[y]es  > [n]o  [a]lways this session", lines[^1].Text);
+        Assert.Equal(36, CellText.Width(lines[^1].Text));
     }
 
     [Fact]
@@ -338,7 +338,7 @@ public sealed class ApprovalPromptRendererTests
 
         string[] lines = console.Output.Split('\n', StringSplitOptions.RemoveEmptyEntries);
         Assert.Contains("Allow bash?", lines);
-        Assert.Contains("[y]es  [n]o  [a]lways this session", lines);
+        Assert.Contains("[y]es  > [n]o  [a]lways this session", lines);
     }
 
     [Fact]

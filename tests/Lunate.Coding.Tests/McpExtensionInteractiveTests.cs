@@ -195,7 +195,7 @@ public sealed class McpExtensionInteractiveTests
 
         host.Console.SendText("go");
         host.Console.SendEnter();
-        await host.WaitUntilAsync(() => host.Session.PendingApproval is not null);
+        await host.WaitForApprovalAsync();
         host.Console.SendText("y");
         await InteractiveSessionCommandTests.WaitForScrollbackAsync(host, "test__echo");
         await InteractiveSessionCommandTests.WaitForFrameAsync(

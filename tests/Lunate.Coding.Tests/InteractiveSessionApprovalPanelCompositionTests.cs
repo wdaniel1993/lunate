@@ -49,13 +49,13 @@ public sealed class InteractiveSessionApprovalPanelCompositionTests
 
         host.Console.SendText("go");
         host.Console.SendEnter();
-        await host.WaitUntilAsync(() => host.Session.PendingApproval is not null);
+        await host.WaitForApprovalAsync();
 
         string frame = await CaptureFrameAsync(host);
 
         Assert.Contains($"{Warning} edit  notes.txt +1 {Minus}1", frame, StringComparison.Ordinal);
         Assert.Contains("@@ -1,1 +1,1 @@", frame, StringComparison.Ordinal);
-        Assert.Contains("[y]es  [n]o  [a]lways this session", frame, StringComparison.Ordinal);
+        Assert.Contains("[y]es  > [n]o  [a]lways this session", frame, StringComparison.Ordinal);
 
         string[] lines = FrameLines(frame);
         for (var index = 0; index < lines.Length; index++)
@@ -103,7 +103,7 @@ public sealed class InteractiveSessionApprovalPanelCompositionTests
             host.Advance(33);
             frame = Sgr.Replace(host.LastFrame, string.Empty);
             return frame.Contains("@@ -1,1 +1,1 @@", StringComparison.Ordinal)
-                && frame.Contains("[y]es  [n]o  [a]lways this session", StringComparison.Ordinal);
+                && frame.Contains("[y]es  > [n]o  [a]lways this session", StringComparison.Ordinal);
         });
         return frame;
     }

@@ -648,6 +648,17 @@ internal sealed class InteractiveSessionHost : IDisposable
 
     public Task RunAsync() => Session.RunAsync(TestContext.Current.CancellationToken);
 
+    /// <summary>
+    /// Waits for the approval panel and then lets its type-ahead window expire: a key sent before
+    /// the window closes decides nothing, which is the rule under test elsewhere. Tests that press
+    /// keys on a prompt use this instead of a bare wait.
+    /// </summary>
+    public async Task WaitForApprovalAsync(TimeSpan? timeout = null)
+    {
+        await WaitUntilAsync(() => Session.PendingApproval is not null, timeout);
+        Session.ExpireApprovalArmWindow();
+    }
+
     public void Advance(int milliseconds) =>
         Scheduler.Advance(TimeSpan.FromMilliseconds(milliseconds));
 

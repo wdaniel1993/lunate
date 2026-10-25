@@ -571,7 +571,7 @@ public sealed class InteractiveSessionPickerTests
 
         host.Console.SendText("hi");
         host.Console.SendEnter();
-        await host.WaitUntilAsync(() => host.Session.PendingApproval is not null);
+        await host.WaitForApprovalAsync();
 
         host.Console.Send(
             new KeyEvent(KeyKind.Character, "p", Ctrl: false, Shift: false, Alt: true)
