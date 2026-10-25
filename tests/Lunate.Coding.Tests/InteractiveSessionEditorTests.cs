@@ -265,6 +265,11 @@ public sealed class InteractiveSessionEditorTests
                 environment: name =>
                     string.Equals(name, "VISUAL", StringComparison.Ordinal) ? Visual
                     : string.Equals(name, "EDITOR", StringComparison.Ordinal) ? null
+                    // A bare program name is resolved through PATH, so the fake environment has to
+                    // carry PATH and PATHEXT the way a user's machine does; without them `cmd.exe`
+                    // is reported as a program that does not exist (the POSIX fixture never noticed
+                    // because it names /bin/sh by absolute path).
+                    : name is "PATH" or "PATHEXT" ? System.Environment.GetEnvironmentVariable(name)
                     : PrintModeTestSupport.Environment()(name),
                 editorTempDirectory: DraftDirectory
             );
