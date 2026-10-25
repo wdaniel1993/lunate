@@ -7,7 +7,7 @@
 
 ## 2. Gate
 
-- [ ] 2.1 `openspec validate reference-pack-ahead-of-feed --strict` green, `openspec validate --all --strict` green.
-- [ ] 2.2 `dotnet csharpier check .` clean; `tests/Lunate.Extensibility.Restore.Tests` and `tests/Lunate.Extensibility.Compile.Tests` green.
-- [ ] 2.3 `scripts/verify.sh` green on both culture passes.
-- [ ] 2.4 All four CI legs green — the compile tests that failed on every leg are the ones this change exists for.
+- [x] 2.1 `openspec validate reference-pack-ahead-of-feed --strict` green, `openspec validate --all --strict` green.
+- [x] 2.2 `dotnet csharpier check .` clean (1,367 files); `tests/Lunate.Extensibility.Restore.Tests` 48/0 and `tests/Lunate.Extensibility.Compile.Tests` green — the latter through CI, which publishes the binary the published-binary test needs.
+- [x] 2.3 `scripts/verify.sh` green — run by every CI leg, which is the same script on four platforms, twice per culture.
+- [x] 2.4 All four CI legs green (#166) — the compile tests that failed on every leg are the ones this change exists for.

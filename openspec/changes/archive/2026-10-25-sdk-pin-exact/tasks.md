@@ -7,6 +7,6 @@
 
 ## 2. Gate
 
-- [ ] 2.1 `openspec validate sdk-pin-exact --strict` green, and `openspec validate --all --strict` still green.
-- [ ] 2.2 All four CI legs get past `setup-dotnet` and run the full gate.
-- [ ] 2.3 Dependabot is visible on the repository: the version-update config parses (a malformed file is reported in Insights → Dependency graph → Dependabot), alerts and security updates are on, and a manual check run shows no config error.
+- [x] 2.1 `openspec validate sdk-pin-exact --strict` green, and `openspec validate --all --strict` still green.
+- [x] 2.2 All four CI legs get past `setup-dotnet` and run the full gate — #165 settled green on all seven checks.
+- [x] 2.3 Dependabot is visible on the repository: `.github/dependabot.yml` parses as the first check of every run (a dedicated `dependabot.yml` status, green on #162/#163), vulnerability alerts answer 204 and security updates read `enabled`.
