@@ -441,6 +441,10 @@ internal sealed partial class InteractiveSession
             return ValueTask.CompletedTask;
         }
 
+        // Off the pump — the first step is a trust question the pump must stay free to answer — so
+        // the session declares itself busy for the same stretch: Enter then queues a follow-up
+        // instead of opening a turn whose tool list the swap would mutate underneath it.
+        _turnActive = true;
         _ = ReloadAsync(id, host, ct);
         return ValueTask.CompletedTask;
     }
@@ -488,6 +492,7 @@ internal sealed partial class InteractiveSession
         }
         finally
         {
+            _turnActive = false;
             Volatile.Write(ref _reloadGate, 0);
         }
     }
