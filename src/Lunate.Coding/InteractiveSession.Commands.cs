@@ -451,31 +451,31 @@ internal sealed partial class InteractiveSession
 
     private async Task ReloadAsync(string id, ExtensionSession host, CancellationToken ct)
     {
+        string? notice = null;
+        var level = NoticeLevel.Info;
+
         try
         {
             SingleFileReloadOutcome outcome = await host.ReloadSingleFileAsync(id, ct)
                 .ConfigureAwait(false);
             if (!outcome.Reloaded)
             {
-                Notify(
-                    FormattableString.Invariant(
-                        $"extension '{id}' was not reloaded: {outcome.Reason ?? "no reason recorded"}"
-                    ),
-                    NoticeLevel.Warning
+                notice = FormattableString.Invariant(
+                    $"extension '{id}' was not reloaded: {outcome.Reason ?? "no reason recorded"}"
                 );
-                return;
+                level = NoticeLevel.Warning;
             }
-
-            // The session's tool list is what the next request declares and what a tool call
-            // resolves against; the reload registered the new build's tools, so the session's
-            // registry is re-pointed at them here — the missing half that made a reloaded or
-            // freshly written extension invisible to the model until the next session.
-            SyncReloadedTools(id);
-            Notify(
-                FormattableString.Invariant(
+            else
+            {
+                // The session's tool list is what the next request declares and what a tool call
+                // resolves against; the reload registered the new build's tools, so the session's
+                // registry is re-pointed at them here — the missing half that made a reloaded or
+                // freshly written extension invisible to the model until the next session.
+                SyncReloadedTools(id);
+                notice = FormattableString.Invariant(
                     $"extension '{id}' reloaded — build {outcome.LoadedBuildKey}"
-                )
-            );
+                );
+            }
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
@@ -483,17 +483,23 @@ internal sealed partial class InteractiveSession
         }
         catch (Exception exception)
         {
-            Notify(
-                FormattableString.Invariant(
-                    $"extension '{id}' was not reloaded: {exception.Message}"
-                ),
-                NoticeLevel.Warning
+            notice = FormattableString.Invariant(
+                $"extension '{id}' was not reloaded: {exception.Message}"
             );
+            level = NoticeLevel.Warning;
         }
         finally
         {
+            // Idle before the notice: the notice is the session saying the swap is done, so it must
+            // not arrive while the session still looks busy and turn the next Enter into a queued
+            // follow-up nobody drains.
             _turnActive = false;
             Volatile.Write(ref _reloadGate, 0);
+        }
+
+        if (notice is not null)
+        {
+            Notify(notice, level);
         }
     }
 
