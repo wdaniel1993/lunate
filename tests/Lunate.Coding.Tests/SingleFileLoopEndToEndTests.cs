@@ -161,8 +161,10 @@ public sealed class SingleFileLoopEndToEndTests
 
         host.Console.SendText("use it");
         host.Console.SendEnter();
+        // Wait on the record itself, not the model's request count: the session appends events on
+        // its own pump thread, so the count can run ahead of the events this test about to read.
         await host.WaitUntilAsync(
-            () => scripted.Requests.Count == 4,
+            () => host.Events.OfType<ToolCallResult>().Count() == 2,
             SingleFileLoopSession.CompileWait
         );
 
