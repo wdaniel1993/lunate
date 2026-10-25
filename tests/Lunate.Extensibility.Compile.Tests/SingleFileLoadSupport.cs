@@ -63,7 +63,10 @@ internal sealed class GatedRestoreEngine(CompileFixture fixture) : ISingleFileRe
     internal void Release() => _gate.Set();
 
     /// <summary>Completes when a restore has been asked for and is waiting on the gate.</summary>
-    internal Task WaitEnteredAsync(TimeSpan timeout) => _entered.WaitAsync(timeout);
+    internal Task WaitEnteredAsync(
+        TimeSpan timeout,
+        CancellationToken cancellationToken = default
+    ) => _entered.WaitAsync(timeout, cancellationToken);
 
     public Task<SingleFileRestoreResult> RestoreAsync(
         SingleFileRestoreRequest request,
