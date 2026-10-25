@@ -65,5 +65,5 @@
 - [x] 4.1 Red: the model writes a single-file extension with one package reference, the user trusts it, `/extensions reload` makes its tool callable in the same session.
 - [x] 4.2 Red: the trust refusal path — an untrusted file's tool is not callable and `/extensions` says why.
 - [x] 4.3 A recorded end-to-end run in the suite using `ScriptedChatClient` and a built-in catalog model; verify under `HOME=/tmp/emptyhome`.
-- [ ] 4.4 Red: a model-initiated reload of a file it just edited ends at the trust prompt — the changed file is not compiled and the old build stays loaded.
+- [x] 4.4 Red: a model-initiated reload of a file it just edited ends at the trust prompt — the changed file is not compiled and the old build stays loaded.
 - [ ] 4.5 README and guide: the single-file promise, with the real timing measured in phase 2.

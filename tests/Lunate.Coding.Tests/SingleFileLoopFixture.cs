@@ -51,8 +51,13 @@ internal sealed class SingleFileLoopFixture : IDisposable
         Packages = packagesFolder;
         ReferencePack = referencePack;
         Target = SingleFileTarget.Current();
-        Store = temp.File("store");
-        Worktree = temp.File("worktree");
+        // Canonical roots, like the session's: a trust record is keyed by the file's full path, so
+        // a fixture that wrote one under a symlinked spelling (macOS `/var` → `/private/var`) would
+        // make the file the session discovers a different file from the one it approved.
+        Directory.CreateDirectory(temp.File("store"));
+        Directory.CreateDirectory(temp.File("worktree"));
+        Store = Workspace.Canonicalize(temp.File("store"));
+        Worktree = Workspace.Canonicalize(temp.File("worktree"));
         ExtensionsRoot = Path.Combine(Worktree, ".lunate", "extensions");
         Directory.CreateDirectory(ExtensionsRoot);
         _package = AddPackage(packVersion);
@@ -158,6 +163,32 @@ internal sealed class SingleFileLoopFixture : IDisposable
         );
         return SourcePath;
     }
+
+    /// <summary>
+    /// Writes, trusts and builds one source, the way an approving session would, so a session can
+    /// start with a file that is already `built` and load it without a question. The counters are
+    /// cleared afterwards: they measure what the session under test asked for, not what the
+    /// fixture prepared.
+    /// </summary>
+    internal async Task<SingleFileBuildOutcome> BuildAsync(string source)
+    {
+        WriteTrusted(source);
+        SingleFileBuildOutcome outcome = await Builder()
+            .BuildAsync(SourcePath, ExtensionScope.Project, prompt: null, CancellationToken.None)
+            .ConfigureAwait(false);
+        Assert.True(
+            outcome.Succeeded,
+            FormattableString.Invariant(
+                $"the fixture build failed: {outcome.Status} — {outcome.Reason}"
+            )
+        );
+        Restores = 0;
+        Compiles = 0;
+        return outcome;
+    }
+
+    /// <summary>The build cache over this fixture's store (what <c>builds.json</c> says is current).</summary>
+    internal SingleFileBuildCache BuildCache() => new(Store);
 
     /// <summary>The build service both the CLI and a reload use, over this fixture's seams.</summary>
     internal SingleFileExtensionBuilder Builder() =>
