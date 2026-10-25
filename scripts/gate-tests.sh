@@ -37,6 +37,78 @@ if ! BUDGET_MS=999999 PERF_RUNS=5 PERF_WARMUP=1 PERF_RESULTS=artifacts/perf-gate
   exit 1
 fi
 
+# The measurement itself: hyperfine 2.x writes its statistics under
+# .results[].summary.time_wall_clock, 1.x at the top level, and a JSON that fits
+# neither once sailed through as an empty string and an empty comparison — a gate
+# that could not read its own number passed. These three shims pin all of it down
+# without needing the real hyperfine.
+echo "gate-tests: perf.sh must read the hyperfine 2.x JSON, gate on its floor, and refuse a JSON it cannot read"
+SHIM_DIR="$(mktemp -d)"
+shim_hyperfine() {
+  cat >"${SHIM_DIR}/hyperfine" <<'SHIM'
+#!/usr/bin/env bash
+if [ "$1" = "--version" ]; then
+  echo "hyperfine 2.0.0"
+  exit 0
+fi
+out=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --export-json)
+      out="$2"
+      shift 2
+      ;;
+    *) shift ;;
+  esac
+done
+cat >"$out" <<'JSON'
+{"results":[{"command":"x","summary":{"time_wall_clock":{"unit":"second","count":3,"mean":0.011,"stddev":0.001,"median":0.012,"min":0.010,"max":0.013}}}]}
+JSON
+exit 0
+SHIM
+  chmod +x "${SHIM_DIR}/hyperfine"
+}
+shim_hyperfine
+if ! PATH="${SHIM_DIR}:$PATH" BUDGET_MS=100 PERF_RESULTS=artifacts/perf-shim-pass.json \
+  "${SCRIPT_DIR}/perf.sh" "$BINARY" >/dev/null; then
+  echo "gate-tests: FAIL: perf.sh did not read a hyperfine 2.x measurement" >&2
+  rm -rf "$SHIM_DIR"
+  exit 1
+fi
+if PATH="${SHIM_DIR}:$PATH" BUDGET_MS=5 PERF_RESULTS=artifacts/perf-shim-floor.json \
+  "${SCRIPT_DIR}/perf.sh" "$BINARY" >/dev/null 2>&1; then
+  echo "gate-tests: FAIL: perf.sh passed with a floor above the budget (10 ms against 5 ms)" >&2
+  rm -rf "$SHIM_DIR"
+  exit 1
+fi
+cat >"${SHIM_DIR}/hyperfine" <<'SHIM'
+#!/usr/bin/env bash
+if [ "$1" = "--version" ]; then
+  echo "hyperfine 2.0.0"
+  exit 0
+fi
+out=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --export-json)
+      out="$2"
+      shift 2
+      ;;
+    *) shift ;;
+  esac
+done
+printf '{"results":[{"command":"x"}]}' >"$out"
+exit 0
+SHIM
+chmod +x "${SHIM_DIR}/hyperfine"
+if PATH="${SHIM_DIR}:$PATH" PERF_RESULTS=artifacts/perf-shim-unreadable.json \
+  "${SCRIPT_DIR}/perf.sh" "$BINARY" >/dev/null 2>&1; then
+  echo "gate-tests: FAIL: perf.sh passed without a readable measurement" >&2
+  rm -rf "$SHIM_DIR"
+  exit 1
+fi
+rm -rf "$SHIM_DIR"
+
 FORMAT_DIR=""
 SHIPPED_DIR=""
 cleanup() {

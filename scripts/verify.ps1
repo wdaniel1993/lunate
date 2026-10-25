@@ -28,18 +28,33 @@ try {
         Write-Host "verify: benchmarking: $Bin --version"
         hyperfine --warmup 3 --runs 20 --export-json $File "$Bin --version" | Out-Null
         if ($LASTEXITCODE -ne 0) { throw 'verify: hyperfine failed' }
-        # StrictMode makes a missing property an error, and the two hyperfine JSON shapes
-        # differ; ask the object which properties it has instead of assuming either.
+        # Two JSON shapes are in the wild (hyperfine 2.x writes the statistics under
+        # .results[].summary.time_wall_clock, 1.x writes .min/.median at the top level), and
+        # StrictMode makes a missing property an error — ask the object which properties it
+        # has instead of assuming either. A shape that fits neither throws: a gate that cannot
+        # read its measurement must fail, never pass with an empty one.
         $result = (Get-Content $File -Raw | ConvertFrom-Json).results[0]
-        $floor = if ($result.PSObject.Properties['min']) {
-            $result.min
+        $wall = if ($result.PSObject.Properties['summary']) {
+            $result.summary.time_wall_clock
         } else {
-            ($result.times | Measure-Object -Minimum).Minimum
+            $result
         }
-        $median = if ($result.PSObject.Properties['median']) {
+        $floor = if ($wall.PSObject.Properties['min']) {
+            $wall.min
+        } elseif ($result.PSObject.Properties['times']) {
+            ($result.times | Measure-Object -Minimum).Minimum
+        } else {
+            $null
+        }
+        $median = if ($wall.PSObject.Properties['median']) {
+            $wall.median
+        } elseif ($result.PSObject.Properties['median']) {
             $result.median
         } else {
-            $result.summary.time_wall_clock.median
+            $null
+        }
+        if ($null -eq $floor -or $null -eq $median) {
+            throw 'verify: the hyperfine JSON carries no wall-clock timing'
         }
         return [pscustomobject]@{
             Floor  = [math]::Round($floor * 1000)

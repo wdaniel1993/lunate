@@ -61,22 +61,28 @@ echo "perf: $(hyperfine --version)"
 # floor with it, so nothing is hidden by the change.
 measure_startup() {
   hyperfine --warmup "$WARMUP" --runs "$RUNS" --export-json "$RESULTS_ABS" "$HYPERFINE_CMD" >/dev/null
-  # hyperfine 2.x moved the statistics into .results[].summary (wall clock =
-  # time_wall_clock) and keeps .min; 1.x exposes .median and .times at the top
-  # level. Read whichever the installed version wrote — runner images and
-  # developer machines drift.
+  # Two JSON shapes are in the wild: hyperfine 2.x writes the statistics under
+  # .results[].summary.time_wall_clock, 1.x writes .min/.median at the top level.
+  # Read whichever the installed version wrote — runner images and developer
+  # machines drift (the macOS runner already carries 2.0.0 while a dev machine can
+  # still have 1.20). A shape that fits neither is an error, never a silent pass.
   jq -r '
-    .results[0]
-    | [
-        (.min // (.times | min)),
-        (.median // .summary.time_wall_clock.median)
-      ]
-    | map(. * 1000 | round)
-    | "\(.[0]) \(.[1])"
+    .results[0] as $result
+    | ($result | .min // .summary.time_wall_clock.min // (if .times then (.times | min) else null end)) as $floor
+    | ($result | .median // .summary.time_wall_clock.median) as $median
+    | if $floor == null or $median == null then
+        error("perf: the hyperfine JSON carries no wall-clock timing")
+      else
+        "\($floor * 1000 | round) \($median * 1000 | round)"
+      end
   ' "$RESULTS_ABS"
 }
 
-read -r FLOOR_MS MEDIAN_MS <<<"$(measure_startup)"
+read -r FLOOR_MS MEDIAN_MS <<<"$(measure_startup || true)"
+if ! [[ "${FLOOR_MS:-}" =~ ^[0-9]+$ && "${MEDIAN_MS:-}" =~ ^[0-9]+$ ]]; then
+  echo "perf: could not read the startup measurement (floor='${FLOOR_MS:-}', median='${MEDIAN_MS:-}')" >&2
+  exit 1
+fi
 printf 'startup: floor %s ms (median %s ms, budget %s ms)\n' \
   "$FLOOR_MS" "$MEDIAN_MS" "$BUDGET_MS"
 
