@@ -209,6 +209,125 @@ public sealed class SingleFileLoopEndToEndTests
     }
 
     /// <summary>
+    /// The same loop as a recorded run: <see cref="ScriptedChatClient"/> drives the model, the
+    /// session's model is a built-in catalog id (so no provider is ever constructed), and the
+    /// assertion is the run's own record — the tool calls in order, each with its result, and the
+    /// model the factory was asked for after the harness was rebuilt. The suite runs this class
+    /// with <c>HOME</c> pointing at an empty directory: the fixture store, the packages folder and
+    /// the build are all under the temp root, which is what makes the numbers above reproducible.
+    /// </summary>
+    [Fact]
+    public async Task A_recorded_run_carries_the_write_the_trusted_reload_and_the_call_in_order()
+    {
+        using SingleFileLoopFixture fixture = SingleFileLoopFixture.Create();
+        string path = Path.Combine(".lunate", "extensions", "acme.cs");
+        string source = SingleFileLoopFixture.Source("\"recorded\"");
+        var scripted = new ScriptedChatClient()
+            .Enqueue(
+                Scripts.Call("call-1", "write", Scripts.Args(("path", path), ("content", source))),
+                Scripts.ToolCalls()
+            )
+            .Enqueue(Scripts.Text("written"), Scripts.Stop())
+            .Enqueue(
+                Scripts.Call("call-2", "acme-tools__whoami", Scripts.Args()),
+                Scripts.ToolCalls()
+            )
+            .Enqueue(Scripts.Text("done"), Scripts.Stop());
+        var factory = new FakeChatClientFactory(scripted);
+        using var host = new InteractiveSessionHost(
+            factory: factory,
+            extensions: fixture.Seams(),
+            workingDirectory: fixture.Worktree,
+            launch: new LaunchOptions { Model = "gpt-4o-mini" }
+        );
+        AutoEdit(host);
+        host.Console.Size = new ConsoleSize(600, 24);
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+
+        // A catalog id, resolved by the session, and a scripted client built for it: the run never
+        // touches a provider.
+        Assert.Equal("gpt-4o-mini", factory.CreatedModel?.Id);
+
+        await WriteAndApproveReloadAsync(host, fixture, source);
+        Assert.Equal("gpt-4o-mini", factory.CreatedModel?.Id);
+
+        host.Console.SendText("use it");
+        host.Console.SendEnter();
+        await host.WaitUntilAsync(() => scripted.Requests.Count == 4, CompileWait);
+
+        // The record: what ran, in the order the session ran it.
+        List<string> record = [];
+        foreach (AgentEvent recorded in host.Events)
+        {
+            switch (recorded)
+            {
+                case ToolCallStart start:
+                    record.Add("call " + start.ToolName);
+                    break;
+                case ToolCallResult result:
+                    record.Add((result.IsError ? "error " : "ok ") + result.CallId);
+                    break;
+            }
+        }
+
+        Assert.Equal(["call write", "ok call-1", "call acme-tools__whoami", "ok call-2"], record);
+        Assert.Equal(
+            "hello from the package: recorded",
+            Assert
+                .Single(host.Events.OfType<ToolCallResult>(), result => result.CallId == "call-2")
+                .Output
+        );
+
+        // Everything the run wrote is under the temp root it was given: the trust decision, the
+        // lock and the build, and the file the model wrote in the worktree.
+        Assert.True(File.Exists(Path.Combine(fixture.Store, "trust.json")));
+        string buildRoot = Path.Combine(
+            fixture.Store,
+            "cache",
+            "extensions",
+            SingleFileLoopFixture.Id
+        );
+        Assert.NotEmpty(
+            Directory.GetFiles(
+                Path.Combine(buildRoot, "builds"),
+                "*.dll",
+                SearchOption.AllDirectories
+            )
+        );
+        Assert.True(File.Exists(fixture.SourcePath));
+
+        host.Console.SendText("/quit");
+        host.Console.SendEnter();
+        await run;
+    }
+
+    /// <summary>
+    /// Turn one and the user's answer: the model writes the file, the user asks for the reload, the
+    /// question is approved, and the reload reports the build it loaded.
+    /// </summary>
+    private static async Task WriteAndApproveReloadAsync(
+        InteractiveSessionHost host,
+        SingleFileLoopFixture fixture,
+        string source
+    )
+    {
+        host.Console.SendText("write the extension");
+        host.Console.SendEnter();
+        await host.WaitUntilAsync(() => File.Exists(fixture.SourcePath), CompileWait);
+        Assert.Equal(source, File.ReadAllText(fixture.SourcePath));
+
+        host.Console.SendText("/extensions reload acme-tools");
+        host.Console.SendEnter();
+        await host.WaitForFrameAsync(
+            "Trust the single-file extension 'acme-tools' 1.0.0",
+            CompileWait
+        );
+        host.Console.SendText("y");
+        await host.WaitForFrameAsync("extension 'acme-tools' reloaded — build ", CompileWait);
+    }
+
+    /// <summary>
     /// The session's default approval policy asks before a write; these tests are about the
     /// extension loop, so the policy is the auto-edit one (writes inside the workspace run).
     /// </summary>
