@@ -21,8 +21,10 @@ public enum SingleFileRestoreStatus
 
 /// <summary>
 /// The outcome of <see cref="SingleFileExtensionRestorer.EnsureRestoredAsync"/>: the status, the
-/// freshly read candidate with its state updated, the lock that now answers for its bytes, and —
-/// when a lock had to change — the lines describing what changes.
+/// freshly read candidate with its state updated, the lock that now answers for its bytes, and the
+/// lines describing what changed. <see cref="Changes"/> is the trust-relevant half — the graph — and
+/// is what a question listed; <see cref="RebuildReasons"/> is why the lock was rebuilt, including a
+/// toolset difference that must never become a trust question.
 /// </summary>
 public sealed record SingleFileRestoreOutcome(
     SingleFileRestoreStatus Status,
@@ -32,4 +34,11 @@ public sealed record SingleFileRestoreOutcome(
     string? LockHash,
     string? Message,
     IReadOnlyList<string> Changes
-);
+)
+{
+    /// <summary>
+    /// Why the lock was rebuilt without asking: a toolset difference (runtime, reference pack), or a
+    /// graph difference the user had already approved. Empty when the lock was reused as it was.
+    /// </summary>
+    public IReadOnlyList<string> RebuildReasons { get; init; } = [];
+}

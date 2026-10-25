@@ -4,8 +4,9 @@ namespace Lunate.Extensibility.Tests;
 
 /// <summary>
 /// The trust/restore ordering (spec: "Trust before restore"): the first trust restores, writes the
-/// lock and binds its hash into the trust record without a second prompt; a source edit and a
-/// hand-edited lock both make the file stale and stop before any feed request.
+/// lock and binds its graph into the trust record without a second prompt; a source edit and a
+/// hand-edited <b>graph</b> both make the file stale and stop before any feed request; a
+/// <b>toolset</b> change rebuilds silently, because it is not part of what the user approved.
 /// </summary>
 public sealed class SingleFileExtensionRestoreTests
 {
@@ -61,14 +62,14 @@ public sealed class SingleFileExtensionRestoreTests
         Assert.False(File.Exists(Path.ChangeExtension(path, ".lock.json")));
         Assert.Equal("14.0.0", Assert.Single(outcome.Lock!.Packages).Version);
 
-        // The bind: the trust record now holds the digest that covers the lock bytes, and a fresh
+        // The bind: the trust record now holds the digest that covers the lock's graph, and a fresh
         // discovery agrees it is trusted (it reads NotBuilt, not Stale).
         byte[] lockBytes = File.ReadAllBytes(lockPath);
         string bound = SingleFileExtensionDigest.Compute(
             "acme-tools",
             [new ExtensionPackageReference("Octokit", "14.0.0", "Octokit@14.0.0")],
             File.ReadAllBytes(path),
-            lockBytes
+            ExtensionLockJson.GraphBytes(outcome.Lock)
         );
         Assert.Equal(bound, RecordedDigest(fixture, path));
         SingleFileExtension reread = Assert.Single(fixture.Discover());
@@ -145,7 +146,7 @@ public sealed class SingleFileExtensionRestoreTests
         Assert.Contains("\"14.1.0\"", File.ReadAllText(lockPath), StringComparison.Ordinal);
 
         // Approved, the edited lock is the decision: it is adopted without a second question and
-        // without a feed, because the user approved exactly these lock bytes.
+        // without a feed, because the user approved exactly this resolution.
         var prompt = new RecordingSingleFilePrompt(true);
         SingleFileRestoreOutcome accepted = await fixture
             .Restorer(factory, prompt)
@@ -159,60 +160,190 @@ public sealed class SingleFileExtensionRestoreTests
     }
 
     [Fact]
-    public async Task A_restore_that_would_change_an_existing_lock_reports_and_asks_first()
+    public async Task A_graph_change_changes_the_digest_and_still_asks()
     {
         using var temp = new TempDirectory();
         var fixture = new SingleFileFixture(temp);
         string path = fixture.WriteGlobal("acme.cs", WithPackage);
         SingleFileRestoreOutcome first = await RestoreOnce(fixture, path);
         string lockPath = first.LockPath!;
-        string locked = File.ReadAllText(lockPath);
+        string bound = RecordedDigest(fixture, path);
 
-        // A host update moves the runtime: the lock still resolves, but for another toolset.
-        var engine = new CountingRestoreEngine(_ => Result("Octokit", "14.0.0"));
-        var factory = new CountingEngineFactory(engine);
-        var prompt = new RecordingSingleFilePrompt(true);
-        SingleFileTarget updated = SingleFileTarget.Of(new Version(10, 0, 14), "osx-arm64");
-
-        SingleFileRestoreOutcome outcome = await fixture
-            .Restorer(factory, prompt, updated)
-            .EnsureRestoredAsync(path, ExtensionScope.Global, prompt, Ct);
-
-        Assert.Equal(SingleFileRestoreStatus.Restored, outcome.Status);
-        Assert.Equal(1, prompt.Calls);
-        Assert.Equal(1, factory.Creations);
-        Assert.Contains(
-            prompt.Requests[0].LockChanges,
-            change => change.Contains("-> 10.0.14", StringComparison.Ordinal)
+        // A hand edit to the resolution — the packages the user approved — with the toolset left
+        // exactly as it was.
+        string text = File.ReadAllText(lockPath);
+        File.WriteAllText(
+            lockPath,
+            text.Replace(
+                "\"version\": \"14.0.0\"",
+                "\"version\": \"14.1.0\"",
+                StringComparison.Ordinal
+            )
         );
-        Assert.Contains("10.0.14", File.ReadAllText(lockPath), StringComparison.Ordinal);
-        Assert.NotEqual(locked, File.ReadAllText(lockPath));
 
-        // The lock kept the resolved reference pack; only the toolset moved.
-        Assert.Equal(SingleFileTarget.Current().Runtime, first.Lock!.Toolset.Runtime);
-        Assert.Equal("10.0.5", first.Lock!.Toolset.ReferencePack.Version);
+        SingleFileExtension edited = Assert.Single(fixture.Discover());
+        Assert.NotEqual(bound, edited.Digest);
+        Assert.Equal(SingleFileExtensionState.Stale, edited.State);
+        Assert.NotNull(edited.Lock);
+
+        CountingEngineFactory factory = new(
+            new CountingRestoreEngine(_ => Result("Octokit", "14.0.0"))
+        );
+        SingleFileRestoreOutcome outcome = await fixture
+            .Restorer(factory, prompt: null)
+            .EnsureRestoredAsync(path, ExtensionScope.Global, prompt: null, Ct);
+
+        Assert.Equal(SingleFileRestoreStatus.TrustRequired, outcome.Status);
+        Assert.Equal(0, factory.Creations);
+        Assert.Contains("\"14.1.0\"", File.ReadAllText(lockPath), StringComparison.Ordinal);
     }
 
     [Fact]
-    public async Task A_refused_lock_change_leaves_the_lock_exactly_as_it_was()
+    public async Task A_toolset_change_rebuilds_the_lock_without_a_question()
+    {
+        using var temp = new TempDirectory();
+        var fixture = new SingleFileFixture(temp);
+        string path = fixture.WriteGlobal("acme.cs", WithPackage);
+        SingleFileTarget original = SingleFileTarget.Of(
+            new Version(10, 0, 13),
+            SingleFileTarget.Current().Rid
+        );
+        SingleFileRestoreOutcome first = await RestoreOnce(fixture, path, original);
+        string lockPath = first.LockPath!;
+        byte[] lockedBytes = File.ReadAllBytes(lockPath);
+        string bound = RecordedDigest(fixture, path);
+        DateTime trustedAt = File.GetLastWriteTimeUtc(fixture.TrustFile);
+
+        // The same file, the same resolution, on a host whose .NET patch moved the runtime.
+        var engine = new CountingRestoreEngine(_ => Result("Octokit", "14.0.0"));
+        var factory = new CountingEngineFactory(engine);
+        var prompt = new RecordingSingleFilePrompt();
+        SingleFileTarget patched = SingleFileTarget.Of(new Version(10, 0, 14), original.Rid);
+
+        SingleFileRestoreOutcome outcome = await fixture
+            .Restorer(factory, prompt, patched)
+            .EnsureRestoredAsync(path, ExtensionScope.Global, prompt, Ct);
+
+        // The assertion that matters is the prompt count: this prompt has no scripted answer, so a
+        // call is an exception as well as a count. A toolset change is not a trust question.
+        Assert.Equal(SingleFileRestoreStatus.Restored, outcome.Status);
+        Assert.Equal(0, prompt.Calls);
+
+        // It did rebuild, and the reason is the toolset — reported, never asked.
+        Assert.Equal(1, factory.Creations);
+        Assert.Equal(1, engine.Requests);
+        Assert.Empty(outcome.Changes);
+        Assert.Contains(
+            outcome.RebuildReasons,
+            reason => reason.Contains("10.0.14", StringComparison.Ordinal)
+        );
+
+        ExtensionLock rebuilt = ExtensionLockJson.TryParse(File.ReadAllText(lockPath), out _)!;
+        Assert.Equal("10.0.14", rebuilt.Toolset.Runtime);
+        Assert.NotEqual(lockedBytes, File.ReadAllBytes(lockPath));
+
+        // The graph half — what the user approved — is byte-identical under both toolsets, and the
+        // trust record was neither rewritten nor changed.
+        Assert.Equal(
+            ExtensionLockJson.GraphBytes(first.Lock!),
+            ExtensionLockJson.GraphBytes(rebuilt)
+        );
+        Assert.Equal(bound, RecordedDigest(fixture, path));
+        Assert.Equal(bound, outcome.Candidate.Digest);
+        Assert.Equal(trustedAt, File.GetLastWriteTimeUtc(fixture.TrustFile));
+    }
+
+    [Fact]
+    public async Task A_tampered_toolset_block_is_refused_and_rebuilt_without_a_question()
     {
         using var temp = new TempDirectory();
         var fixture = new SingleFileFixture(temp);
         string path = fixture.WriteGlobal("acme.cs", WithPackage);
         SingleFileRestoreOutcome first = await RestoreOnce(fixture, path);
         string lockPath = first.LockPath!;
-        string locked = File.ReadAllText(lockPath);
+        string bound = RecordedDigest(fixture, path);
 
+        // Edit the toolset half by hand and leave its integrity hash alone: the block no longer
+        // answers for itself, so it is refused — the graph is untouched, so nothing is re-asked.
+        string rid = first.Lock!.Toolset.Rid;
+        string text = File.ReadAllText(lockPath);
+        Assert.Contains($"\"rid\": \"{rid}\"", text, StringComparison.Ordinal);
+        File.WriteAllText(
+            lockPath,
+            text.Replace(
+                $"\"rid\": \"{rid}\"",
+                "\"rid\": \"tampered-rid\"",
+                StringComparison.Ordinal
+            )
+        );
+
+        SingleFileExtension refused = Assert.Single(fixture.Discover());
+        Assert.Null(refused.Lock);
+        Assert.Null(refused.LockHash);
+        Assert.Equal(SingleFileExtensionState.NotBuilt, refused.State);
+        Assert.Contains("toolset", refused.Reason!, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(bound, refused.Digest);
+
+        DateTime trustedAt = File.GetLastWriteTimeUtc(fixture.TrustFile);
         var engine = new CountingRestoreEngine(_ => Result("Octokit", "14.0.0"));
-        var prompt = new RecordingSingleFilePrompt(false);
-        SingleFileTarget updated = SingleFileTarget.Of(new Version(10, 0, 14), "osx-arm64");
+        var factory = new CountingEngineFactory(engine);
+        var prompt = new RecordingSingleFilePrompt();
 
         SingleFileRestoreOutcome outcome = await fixture
-            .Restorer(new CountingEngineFactory(engine), prompt, updated)
+            .Restorer(factory, prompt)
+            .EnsureRestoredAsync(path, ExtensionScope.Global, prompt, Ct);
+
+        Assert.Equal(SingleFileRestoreStatus.Restored, outcome.Status);
+        Assert.Equal(0, prompt.Calls);
+        Assert.Equal(1, factory.Creations);
+        Assert.NotEmpty(outcome.RebuildReasons);
+
+        // The rewrite put a block back that answers for itself, with the same graph the user
+        // approved.
+        ExtensionLock rebuilt = ExtensionLockJson.TryParse(
+            File.ReadAllText(lockPath),
+            out string? problem
+        )!;
+        Assert.Null(problem);
+        Assert.Equal(rid, rebuilt.Toolset.Rid);
+        Assert.Equal(
+            ExtensionLockJson.GraphBytes(first.Lock),
+            ExtensionLockJson.GraphBytes(rebuilt)
+        );
+        Assert.Equal(bound, RecordedDigest(fixture, path));
+        Assert.Equal(trustedAt, File.GetLastWriteTimeUtc(fixture.TrustFile));
+    }
+
+    [Fact]
+    public async Task A_refused_resolution_change_leaves_the_lock_exactly_as_it_was()
+    {
+        using var temp = new TempDirectory();
+        var fixture = new SingleFileFixture(temp);
+        string path = fixture.WriteGlobal("acme.cs", WithPackage);
+        SingleFileTarget original = SingleFileTarget.Of(
+            new Version(10, 0, 13),
+            SingleFileTarget.Current().Rid
+        );
+        SingleFileRestoreOutcome first = await RestoreOnce(fixture, path, original);
+        string lockPath = first.LockPath!;
+        string locked = File.ReadAllText(lockPath);
+
+        // A restore that would resolve another package version: a graph change, which is a trust
+        // question even when the toolset moved as well.
+        var engine = new CountingRestoreEngine(_ => Result("Octokit", "14.1.0"));
+        var prompt = new RecordingSingleFilePrompt(false);
+        SingleFileTarget patched = SingleFileTarget.Of(new Version(10, 0, 14), original.Rid);
+
+        SingleFileRestoreOutcome outcome = await fixture
+            .Restorer(new CountingEngineFactory(engine), prompt, patched)
             .EnsureRestoredAsync(path, ExtensionScope.Global, prompt, Ct);
 
         Assert.Equal(SingleFileRestoreStatus.Denied, outcome.Status);
         Assert.Equal(1, prompt.Calls);
+        Assert.Contains(
+            prompt.Requests[0].LockChanges,
+            change => change.Contains("14.1.0", StringComparison.Ordinal)
+        );
         Assert.Equal(locked, File.ReadAllText(lockPath));
     }
 
@@ -249,13 +380,14 @@ public sealed class SingleFileExtensionRestoreTests
 
     private static async Task<SingleFileRestoreOutcome> RestoreOnce(
         SingleFileFixture fixture,
-        string path
+        string path,
+        SingleFileTarget? target = null
     )
     {
         var engine = new CountingRestoreEngine(_ => Result("Octokit", "14.0.0"));
         var prompt = new RecordingSingleFilePrompt(true);
         SingleFileRestoreOutcome outcome = await fixture
-            .Restorer(new CountingEngineFactory(engine), prompt)
+            .Restorer(new CountingEngineFactory(engine), prompt, target)
             .EnsureRestoredAsync(path, ExtensionScope.Global, prompt, Ct);
         Assert.Equal(SingleFileRestoreStatus.Restored, outcome.Status);
         return outcome;

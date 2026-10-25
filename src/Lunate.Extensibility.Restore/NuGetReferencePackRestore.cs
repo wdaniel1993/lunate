@@ -88,8 +88,38 @@ internal static class NuGetReferencePackRestore
             Id = ReferencePackRule.PackageId,
             Version = version,
             Rule = rule,
+            Sha512 = Sha512(globalPackagesFolder, version),
             Assets = assets,
         };
+    }
+
+    /// <summary>
+    /// The pack nupkg's base64 SHA-512 — the same value the package loop records — so the lock names
+    /// the exact pack bytes its reference assemblies came from, not just a version. NuGet's own
+    /// <c>.nupkg.sha512</c> sidecar answers it; the nupkg itself is the fallback. Null when the
+    /// folder holds neither, which is a pack extracted by something that kept only the assemblies:
+    /// the compile still works, and the lock simply cannot name the pack's hash.
+    /// </summary>
+    private static string? Sha512(string globalPackagesFolder, string version)
+    {
+        NuGet.Packaging.VersionFolderPathResolver resolver = new(globalPackagesFolder);
+        NuGet.Versioning.NuGetVersion parsed = NuGet.Versioning.NuGetVersion.Parse(version);
+        string recorded = resolver.GetHashPath(ReferencePackRule.PackageId, parsed);
+        if (File.Exists(recorded))
+        {
+            string text = File.ReadAllText(recorded).Trim();
+            if (text.Length > 0)
+            {
+                return text;
+            }
+        }
+
+        string nupkg = resolver.GetPackageFilePath(ReferencePackRule.PackageId, parsed);
+        return File.Exists(nupkg)
+            ? Convert.ToBase64String(
+                System.Security.Cryptography.SHA512.HashData(File.ReadAllBytes(nupkg))
+            )
+            : null;
     }
 
     /// <summary>The versions already extracted in the global packages folder that carry a ref folder.</summary>

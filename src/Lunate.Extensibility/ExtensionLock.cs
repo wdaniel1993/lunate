@@ -43,7 +43,11 @@ public sealed record ExtensionLockPackage
 /// <summary>One dependency edge of a locked package: the id and the range the package declared.</summary>
 public sealed record ExtensionLockDependency(string Id, string Range);
 
-/// <summary>The reference pack a compile resolves against: its exact version and how it was chosen.</summary>
+/// <summary>
+/// The reference pack a compile resolves against: its exact version, how it was chosen and the
+/// hash of the nupkg it came from. The hash is what makes the toolset half answerable for itself:
+/// a pack at the same version with different bits is a different toolset.
+/// </summary>
 public sealed record ExtensionLockReferencePack
 {
     public required string Id { get; init; }
@@ -53,12 +57,22 @@ public sealed record ExtensionLockReferencePack
     /// <summary><see cref="ReferencePackRules.Exact"/> or <see cref="ReferencePackRules.NearestAtLeast"/>.</summary>
     public required string Rule { get; init; }
 
+    /// <summary>
+    /// Base64 SHA-512 of the pack's nupkg — the exact bytes its reference assemblies came from —
+    /// when the packages folder still holds it (or NuGet's <c>.nupkg.sha512</c> sidecar). Null for a
+    /// pack folder that kept only the assemblies: the version still names the toolset, and the block
+    /// still answers for itself through its integrity hash.
+    /// </summary>
+    public string? Sha512 { get; init; }
+
     public IReadOnlyList<string> Assets { get; init; } = [];
 }
 
 /// <summary>
-/// The toolset a lock was resolved for. A different runtime, TFM or RID can select different
-/// assets and a different reference pack, so a lock that names another toolset is not reusable.
+/// The toolset a lock was resolved for: the framework, RID and exact runtime, and the reference
+/// pack with its hash. This half is machine-local. A .NET patch moves the runtime and the pack
+/// without changing what the user approved, so it is integrity-checked and it keys the build cache,
+/// but it is <b>not</b> part of the trust digest and a change to it rebuilds without a question.
 /// </summary>
 public sealed record ExtensionLockToolset
 {
@@ -82,15 +96,19 @@ public static class ReferencePackRules
 }
 
 /// <summary>
-/// <c>extension.lock.json</c>: the resolution a single-file extension was restored to. It records
-/// the exact versions and hashes, so a later restore is a file read rather than a feed query, and
-/// so a hand edit is visible as a change to the bytes the trust digest covers. The file lives in
-/// the extension's cache entry, never beside the user's source: a single file stays one file.
+/// <c>extension.lock.json</c>: the resolution a single-file extension was restored to, in two
+/// halves. The <b>graph</b> — <see cref="Sources"/> and <see cref="Packages"/> — is what a trust
+/// decision covers: it records the exact versions, hashes and assets, so a later restore is a file
+/// read rather than a feed query, and so a change to it is a change to what the user approved. The
+/// <b>toolset</b> is the machine's half (framework, RID, runtime, reference pack and its hash): it
+/// is integrity-checked, it keys the build cache, and it is deliberately outside the trust digest,
+/// because a .NET patch must never ask the user about bytes they already approved. The file lives
+/// in the extension's cache entry, never beside the user's source: a single file stays one file.
 /// </summary>
 public sealed record ExtensionLock
 {
     /// <summary>The lock layout this version writes and reads; another value is refused, not guessed at.</summary>
-    public const int CurrentVersion = 1;
+    public const int CurrentVersion = 2;
 
     public const string FileName = "extension.lock.json";
 
@@ -106,9 +124,10 @@ public sealed record ExtensionLock
 
     public required ExtensionLockToolset Toolset { get; init; }
 
-    /// <summary>The feeds the resolution used, by source name, sorted.</summary>
+    /// <summary>The feeds the resolution used, by source name, sorted. Part of the graph.</summary>
     public required IReadOnlyList<string> Sources { get; init; }
 
+    /// <summary>The resolved packages, sorted by id then version. Part of the graph.</summary>
     public required IReadOnlyList<ExtensionLockPackage> Packages { get; init; }
 
     /// <summary>

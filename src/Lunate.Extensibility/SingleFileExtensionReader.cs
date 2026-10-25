@@ -102,18 +102,15 @@ internal sealed class SingleFileExtensionReader(ExtensionHostOptions options)
             header.Packages,
             bytes
         );
-        (ExtensionLock? bound, string? lockHash, byte[] lockBytes, string? lockProblem) = ReadLock(
-            header.Id,
-            sourceDigest
-        );
+        LockRead read = ReadLock(header.Id, sourceDigest);
         string digest = SingleFileExtensionDigest.Compute(
             header.Id,
             header.Packages,
             bytes,
-            lockBytes
+            read.GraphBytes
         );
 
-        if (lockProblem is not null)
+        if (read.Fatal is not null)
         {
             return new SingleFileExtension
             {
@@ -123,7 +120,7 @@ internal sealed class SingleFileExtensionReader(ExtensionHostOptions options)
                 State = SingleFileExtensionState.Stale,
                 Digest = digest,
                 SourceDigest = sourceDigest,
-                Reason = lockProblem,
+                Reason = read.Fatal,
             };
         }
 
@@ -142,8 +139,8 @@ internal sealed class SingleFileExtensionReader(ExtensionHostOptions options)
                 State = SingleFileExtensionState.TrustFailed,
                 Digest = digest,
                 SourceDigest = sourceDigest,
-                Lock = bound,
-                LockHash = lockHash,
+                Lock = read.Lock,
+                LockHash = read.Hash,
                 Reason = $"the trust store could not be read: {exception.Message}",
             };
         }
@@ -158,11 +155,11 @@ internal sealed class SingleFileExtensionReader(ExtensionHostOptions options)
                 State = SingleFileExtensionState.Stale,
                 Digest = digest,
                 SourceDigest = sourceDigest,
-                Lock = bound,
-                LockHash = lockHash,
+                Lock = read.Lock,
+                LockHash = read.Hash,
                 Reason =
-                    "the file, its declared packages or its lock changed since it was trusted; "
-                    + "it must be trusted again before it is restored",
+                    "the file, its declared packages or the resolution in its lock changed since "
+                    + "it was trusted; it must be trusted again before it is restored",
             },
             SingleFileExtensionTrust.Unreadable => new SingleFileExtension
             {
@@ -172,8 +169,8 @@ internal sealed class SingleFileExtensionReader(ExtensionHostOptions options)
                 State = SingleFileExtensionState.TrustFailed,
                 Digest = digest,
                 SourceDigest = sourceDigest,
-                Lock = bound,
-                LockHash = lockHash,
+                Lock = read.Lock,
+                LockHash = read.Hash,
                 Reason =
                     "the trust record for this file is unreadable; remove its entry from "
                     + "trust.json and trust the file again",
@@ -186,27 +183,44 @@ internal sealed class SingleFileExtensionReader(ExtensionHostOptions options)
                 State = SingleFileExtensionState.NotBuilt,
                 Digest = digest,
                 SourceDigest = sourceDigest,
-                Lock = bound,
-                LockHash = lockHash,
+                Lock = read.Lock,
+                LockHash = read.Hash,
+                Reason = read.Refused,
             },
         };
     }
 
     /// <summary>
-    /// The lock that answers for <paramref name="sourceDigest"/>, its hash and the bytes the digest
-    /// hashes. A lock resolved from other bytes belongs to an earlier version of the file: it is
-    /// not part of this file's digest and is not reused, and the next restore reports it instead of
-    /// overwriting it. A lock file that cannot be read is a problem, never a silent absence.
+    /// What one lock file yielded for a file: the lock when it answers for these source bytes and
+    /// its toolset block is intact, the graph bytes the trust digest covers, and the reasons it
+    /// cannot be used. <see cref="Fatal"/> means no graph could be read at all (nothing to trust
+    /// against); <see cref="Refused"/> means the graph is intact but the toolset block is not, so
+    /// the file stays trusted and the next restore rebuilds the block instead of asking.
     /// </summary>
-    private (ExtensionLock? Lock, string? Hash, byte[] Bytes, string? Problem) ReadLock(
-        string id,
-        string sourceDigest
+    private sealed record LockRead(
+        ExtensionLock? Lock,
+        string? Hash,
+        byte[] GraphBytes,
+        string? Fatal,
+        string? Refused
     )
+    {
+        internal static LockRead None { get; } = new(null, null, [], null, null);
+    }
+
+    /// <summary>
+    /// The lock that answers for <paramref name="sourceDigest"/>, its whole-file hash and the graph
+    /// bytes the digest hashes. A lock resolved from other bytes belongs to an earlier version of
+    /// the file: it is not part of this file's digest and is not reused, and the next restore reports
+    /// it instead of overwriting it. A lock file that cannot be read at all is a problem, never a
+    /// silent absence; one whose toolset block was modified keeps its graph and is refused.
+    /// </summary>
+    private LockRead ReadLock(string id, string sourceDigest)
     {
         string path = SingleFileExtensionPaths.LockPath(_options.StorePath, id);
         if (!File.Exists(path))
         {
-            return (null, null, [], null);
+            return LockRead.None;
         }
 
         byte[] bytes;
@@ -216,23 +230,37 @@ internal sealed class SingleFileExtensionReader(ExtensionHostOptions options)
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
-            return (null, null, [], $"extension.lock.json could not be read: {exception.Message}");
-        }
-
-        ExtensionLock? parsed = ExtensionLockJson.TryParse(Decode(bytes), out string? error);
-        if (parsed is null)
-        {
-            return (
+            return new LockRead(
                 null,
                 null,
                 [],
-                $"extension.lock.json is unusable ({error}); the next restore asks before replacing it"
+                $"extension.lock.json could not be read: {exception.Message}",
+                null
             );
         }
 
-        return parsed.IsCurrentFor(sourceDigest)
-            ? (parsed, ExtensionLockJson.Hash(bytes), bytes, null)
-            : (null, null, [], null);
+        ExtensionLockJson.Reading reading = ExtensionLockJson.Read(Decode(bytes));
+        if (reading.Problem is { } problem)
+        {
+            // A refused toolset block still leaves the graph the user approved: the file stays
+            // trusted for it, and the rebuild replaces the block without a question.
+            return reading.GraphBytes.Length == 0
+                ? new LockRead(
+                    null,
+                    null,
+                    [],
+                    $"extension.lock.json is unusable ({problem}); the next restore asks before "
+                        + "replacing it",
+                    null
+                )
+                : new LockRead(null, null, reading.GraphBytes, null, problem);
+        }
+
+        // A lock that resolved other source bytes belongs to an earlier version of the file: it is
+        // not reused and its graph is not part of this file's digest.
+        return reading.Lock is { } parsed && parsed.IsCurrentFor(sourceDigest)
+            ? new LockRead(parsed, ExtensionLockJson.Hash(bytes), reading.GraphBytes, null, null)
+            : LockRead.None;
     }
 
     private static SingleFileExtension Invalid(

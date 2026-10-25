@@ -31,8 +31,10 @@ public enum SingleFileExtensionState
 /// One discovered single-file extension candidate: the <c>.cs</c> file, its scope, the header it
 /// declares, the lock it is restored to (when one answers for these bytes) and the state
 /// <c>/extensions</c> shows. <see cref="Digest"/> is the trust identity of the bytes on disk:
-/// <c>sha256("lunate-extension-v1" | id | each package as written | source bytes | lock bytes)</c>,
-/// where the lock segment is empty until the first restore writes and binds one.
+/// <c>sha256("lunate-extension-v1" | id | each package as written | source bytes)</c> before the
+/// first restore, and <c>sha256("lunate-extension-v2" | id | each package as written | source bytes
+/// | the lock's graph bytes)</c> afterwards. The lock's toolset half is not an input, so a .NET
+/// patch never changes this digest.
 /// </summary>
 public sealed record SingleFileExtension
 {
@@ -64,7 +66,11 @@ public sealed record SingleFileExtension
     /// </summary>
     public ExtensionLock? Lock { get; init; }
 
-    /// <summary>The SHA-256 of the lock file's bytes when <see cref="Lock"/> is set.</summary>
+    /// <summary>
+    /// The SHA-256 of the whole lock file's bytes when <see cref="Lock"/> is set: the build cache's
+    /// identity for the resolution, so a graph change and a toolset change both make a new key. It
+    /// is not the trust digest, which covers the graph half only.
+    /// </summary>
     public string? LockHash { get; init; }
 
     /// <summary>Declarations nothing provided (a warning, shown as <c>declared, not provided</c>).</summary>

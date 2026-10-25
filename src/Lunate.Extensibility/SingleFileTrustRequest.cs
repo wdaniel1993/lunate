@@ -23,8 +23,9 @@ public sealed record SingleFileTrustRequest
     public bool Changed { get; init; }
 
     /// <summary>
-    /// The lock lines a restore would change, when the question is about an existing lock: the
-    /// user sees the resolution that would replace the one they approved, not a bare "different".
+    /// The resolution lines a restore would change, when the question is about an existing lock: the
+    /// user sees the packages that would replace the ones they approved, not a bare "different". A
+    /// toolset difference never reaches this list — it is a rebuild, not a decision.
     /// </summary>
     public IReadOnlyList<string> LockChanges { get; init; } = [];
 }
@@ -74,7 +75,8 @@ public static class SingleFileTrustQuestion
 
         details.Add(
             "Trust covers this file's bytes, the packages as written and, after the first restore, "
-                + "the lock file it writes. It is not a signature check."
+                + "the packages it resolves to. A .NET update does not change it. It is not a "
+                + "signature check."
         );
 
         if (request.Generators)

@@ -4,9 +4,11 @@ namespace Lunate.Extensibility;
 /// Turns a trusted single-file extension into a lock. The order is the contract: the bytes are
 /// re-read, the trust digest is checked, and only then is a restore engine obtained — so a stale
 /// file stops before a source repository or an HTTP client exists. The first successful restore
-/// writes <c>extension.lock.json</c> into the extension's cache entry and binds its hash into the
+/// writes <c>extension.lock.json</c> into the extension's cache entry and binds its graph into the
 /// trust record without a second question, because a restore downloads and executes nothing. A
-/// restore that would change an existing lock reports the change and asks first.
+/// restore that would change the <b>graph</b> of an existing lock reports the change and asks
+/// first. A restore that would only change the <b>toolset</b> — a .NET patch moved the runtime or
+/// the reference pack — rebuilds silently: that half is not part of what the user approved.
 /// </summary>
 public sealed partial class SingleFileExtensionRestorer
 {
@@ -126,6 +128,7 @@ public sealed partial class SingleFileExtensionRestorer
                 current,
                 SingleFileExtensionPaths.LockPath(_options.StorePath, candidate.Id),
                 currentHash,
+                [],
                 []
             );
         }
@@ -163,11 +166,12 @@ public sealed partial class SingleFileExtensionRestorer
 
         ExtensionLock resolved = Compose(candidate, target, result);
         string lockPath = SingleFileExtensionPaths.LockPath(_options.StorePath, candidate.Id);
-        IReadOnlyList<string> changes = Compare(lockPath, resolved);
+        Comparison comparison = Compare(lockPath, resolved);
 
-        // An existing lock is never rewritten behind the user's back: the question carries what
-        // would change, and a refusal leaves the file exactly as it was.
-        if (changes.Count > 0 && prompt is null)
+        // Only a graph difference is a trust question. A toolset difference is a rebuild: the bytes
+        // the user approved (the source, the packages, the resolution) did not change, so there is
+        // no decision for them to take, and a .NET patch must not manufacture one.
+        if (comparison.GraphChanges.Count > 0 && prompt is null)
         {
             return new SingleFileRestoreOutcome(
                 SingleFileRestoreStatus.TrustRequired,
@@ -175,17 +179,20 @@ public sealed partial class SingleFileExtensionRestorer
                 resolved,
                 lockPath,
                 null,
-                "restoring this file would change its lock file; the change must be approved before "
-                    + "it is written",
-                changes
-            );
+                "restoring this file would change the resolution it was trusted with; the change "
+                    + "must be approved before it is written",
+                comparison.GraphChanges
+            )
+            {
+                RebuildReasons = comparison.RebuildReasons,
+            };
         }
 
-        if (changes.Count > 0)
+        if (comparison.GraphChanges.Count > 0)
         {
             SingleFileTrustRequest request = Question(candidate, changed: true) with
             {
-                LockChanges = changes,
+                LockChanges = comparison.GraphChanges,
             };
             if (
                 !await prompt!
@@ -200,7 +207,7 @@ public sealed partial class SingleFileExtensionRestorer
                     lockPath,
                     null,
                     Denied(candidate),
-                    changes
+                    comparison.GraphChanges
                 );
             }
         }
@@ -234,10 +241,16 @@ public sealed partial class SingleFileExtensionRestorer
                 candidate.Id,
                 candidate.Header.Packages,
                 source,
-                bytes
+                ExtensionLockJson.GraphBytes(resolved)
             );
             ExtensionLockJson.WriteTo(lockPath, resolved);
-            if (!TryRecord(candidate.Path, binding))
+
+            // A toolset-only rebuild resolves the same graph, so the digest is already the one on
+            // record: nothing to bind, and no reason to touch the trust store at all.
+            if (
+                !string.Equals(binding, candidate.Digest, StringComparison.Ordinal)
+                && !TryRecord(candidate.Path, binding)
+            )
             {
                 return Fail(
                     candidate with
@@ -246,7 +259,7 @@ public sealed partial class SingleFileExtensionRestorer
                         LockHash = null,
                     },
                     SingleFileRestoreStatus.Failed,
-                    "the lock was written but its hash could not be bound into the trust record; "
+                    "the lock was written but its graph could not be bound into the trust record; "
                         + "the file will ask again"
                 );
             }
@@ -265,7 +278,14 @@ public sealed partial class SingleFileExtensionRestorer
         }
 
         SingleFileExtension restored = _reader.ReadOne(candidate.Path, candidate.Scope);
-        return Restored(restored, resolved, lockPath, lockHash, changes);
+        return Restored(
+            restored,
+            resolved,
+            lockPath,
+            lockHash,
+            comparison.GraphChanges,
+            comparison.RebuildReasons
+        );
     }
 
     /// <summary>

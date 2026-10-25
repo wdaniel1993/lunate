@@ -53,6 +53,10 @@ public sealed class SingleFileRestoreEndToEndTests
         Assert.Equal(["local"], @lock.Sources);
         Assert.Equal("10.0.4", @lock.Toolset.ReferencePack.Version);
         Assert.Equal(ReferencePackRules.Exact, @lock.Toolset.ReferencePack.Rule);
+        Assert.Equal(
+            feed.Sha512(ReferencePackRule.PackageId, "10.0.4"),
+            @lock.Toolset.ReferencePack.Sha512
+        );
         Assert.Equal(Target.Tfm, @lock.Toolset.Tfm);
         Assert.Equal(Target.Rid, @lock.Toolset.Rid);
 

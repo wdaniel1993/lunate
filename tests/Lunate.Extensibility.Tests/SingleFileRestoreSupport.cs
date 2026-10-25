@@ -86,6 +86,7 @@ internal static class FakePackage
             Id = "Microsoft.NETCore.App.Ref",
             Version = version,
             Rule = ReferencePackRules.Exact,
+            Sha512 = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes($"ref-{version}")),
             Assets = ["ref/net10.0/System.Runtime.dll"],
         };
 }

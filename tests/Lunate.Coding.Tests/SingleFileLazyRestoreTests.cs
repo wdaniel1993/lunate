@@ -107,6 +107,7 @@ public sealed class SingleFileLazyRestoreTests
                     Id = "Microsoft.NETCore.App.Ref",
                     Version = "10.0.13",
                     Rule = ReferencePackRules.Exact,
+                    Sha512 = "cmVmLXBhY2s=",
                     Assets = ["ref/net10.0/System.Runtime.dll"],
                 },
             },
@@ -123,7 +124,7 @@ public sealed class SingleFileLazyRestoreTests
                 "acme-tools",
                 [octokit],
                 bytes,
-                File.ReadAllBytes(lockPath)
+                ExtensionLockJson.GraphBytes(restored)
             )
         );
 

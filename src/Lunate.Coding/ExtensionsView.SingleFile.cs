@@ -43,7 +43,8 @@ internal static partial class ExtensionsView
             SingleFileExtensionState.NotBuilt => head
                 + " not-built"
                 + SingleFileCounts(candidate)
-                + SingleFileResolved(candidate),
+                + SingleFileResolved(candidate)
+                + SingleFileNote(candidate),
             SingleFileExtensionState.Restoring => head
                 + " restoring"
                 + SingleFileResolved(candidate),
@@ -96,6 +97,13 @@ internal static partial class ExtensionsView
 
     private static string Reason(SingleFileExtension candidate) =>
         candidate.Reason is { Length: > 0 } reason ? reason : "no reason recorded";
+
+    /// <summary>
+    /// The same-line note a not-built row carries when it has one: its lock on disk was refused (a
+    /// toolset block that no longer answers for itself) and the next restore rebuilds it.
+    /// </summary>
+    private static string SingleFileNote(SingleFileExtension candidate) =>
+        candidate.Reason is { Length: > 0 } note ? " — " + note : string.Empty;
 
     private static int SingleFileRank(SingleFileExtensionState state) =>
         state switch

@@ -28,6 +28,26 @@ public sealed class ExtensionsViewSingleFileTests
     }
 
     [Fact]
+    public void A_not_built_row_carries_a_refused_lock_on_the_same_line()
+    {
+        SingleFileExtension candidate = SingleFile(
+            state: SingleFileExtensionState.NotBuilt,
+            reason: "the lock file's toolset block was modified after it was written"
+        );
+
+        string segment = Assert.Single(
+            ExtensionsView.Segments([], [], NoCounts, singleFile: [candidate])
+        );
+
+        Assert.Equal(
+            "acme-tools 1.0.0 (global, single file) not-built, tools 0, commands 0, hooks 0, "
+                + "services 0 — the lock file's toolset block was modified after it was written",
+            segment
+        );
+        Assert.DoesNotContain('\n', segment);
+    }
+
+    [Fact]
     public void A_file_without_a_header_reads_invalid_no_extension()
     {
         SingleFileExtension candidate = SingleFile(
@@ -83,6 +103,7 @@ public sealed class ExtensionsViewSingleFileTests
                         Id = "Microsoft.NETCore.App.Ref",
                         Version = "10.0.13",
                         Rule = ReferencePackRules.Exact,
+                        Sha512 = "cmVmLXBhY2s=",
                     },
                 },
                 Sources = ["nuget.org"],

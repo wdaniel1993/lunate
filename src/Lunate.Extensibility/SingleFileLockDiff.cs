@@ -3,17 +3,20 @@ using System.Globalization;
 namespace Lunate.Extensibility;
 
 /// <summary>
-/// The lines a "this restore would change the lock" question shows. It compares the resolution a
-/// restore produces with the lock already on disk — package by package, then the toolset — so the
-/// user sees exactly what would change instead of a bare "the lock is different". Ordering is by id
-/// and the text is invariant, so the same pair of locks always reads the same.
+/// The lines two locks are compared by, split by what a difference means. <see cref="Between"/>
+/// reports the <b>graph</b> difference — packages, their hashes, the source bytes the resolution
+/// came from — and only that asks the user, because only that changes what they approved. The
+/// <b>toolset</b> difference is reported by <see cref="ToolsetBetween"/> as a rebuild reason: a
+/// .NET patch must rebuild silently, never re-ask. Ordering is by id and the text is invariant, so
+/// the same pair of locks always reads the same.
 /// </summary>
 public static class SingleFileLockDiff
 {
     /// <summary>
-    /// The change lines between <paramref name="existing"/> and <paramref name="resolved"/>; empty
-    /// when they say the same thing. <paramref name="existing"/> null means a lock file that could
-    /// not be read, which is reported as a replacement rather than as a diff.
+    /// The trust-relevant change lines between <paramref name="existing"/> and
+    /// <paramref name="resolved"/>; empty when they resolve the same graph. <paramref name="existing"/>
+    /// null means a lock file that could not be read, which is reported as a replacement rather than
+    /// as a diff. A difference in the toolset is deliberately not part of this list.
     /// </summary>
     public static IReadOnlyList<string> Between(ExtensionLock? existing, ExtensionLock resolved)
     {
@@ -56,6 +59,34 @@ public static class SingleFileLockDiff
             }
         }
 
+        if (!string.Equals(existing.SourceDigest, resolved.SourceDigest, StringComparison.Ordinal))
+        {
+            changes.Add(
+                "~ resolved from different source bytes (the file changed since it was trusted)"
+            );
+        }
+
+        return changes;
+    }
+
+    /// <summary>
+    /// The toolset lines between <paramref name="existing"/> and <paramref name="resolved"/>: why a
+    /// restore rebuilds the lock (and, through it, the build) without a trust question. Empty when the
+    /// two name the same framework, RID, runtime and reference pack.
+    /// </summary>
+    public static IReadOnlyList<string> ToolsetBetween(
+        ExtensionLock? existing,
+        ExtensionLock resolved
+    )
+    {
+        ArgumentNullException.ThrowIfNull(resolved);
+
+        if (existing is null)
+        {
+            return [];
+        }
+
+        List<string> changes = [];
         Add(changes, "target framework", existing.Toolset.Tfm, resolved.Toolset.Tfm);
         Add(changes, "RID", existing.Toolset.Rid, resolved.Toolset.Rid);
         Add(changes, "runtime", existing.Toolset.Runtime, resolved.Toolset.Runtime);
@@ -65,13 +96,6 @@ public static class SingleFileLockDiff
             existing.Toolset.ReferencePack.Version,
             resolved.Toolset.ReferencePack.Version
         );
-        if (!string.Equals(existing.SourceDigest, resolved.SourceDigest, StringComparison.Ordinal))
-        {
-            changes.Add(
-                "~ resolved from different source bytes (the file changed since it was trusted)"
-            );
-        }
-
         return changes;
     }
 
