@@ -1,3 +1,4 @@
+using System.Globalization;
 using Lunate.Agent;
 using Microsoft.Extensions.AI;
 
@@ -39,7 +40,15 @@ public sealed class SessionHtmlWriterTests
             StringComparison.Ordinal
         );
         Assert.Contains("<title>parser refactor</title>", html, StringComparison.Ordinal);
-        Assert.Contains("2026-10-24", html, StringComparison.Ordinal);
+        // The document carries the session's own creation time, so the expectation is derived from
+        // it. A literal date here passes only on the day the test was written.
+        Assert.Contains(
+            session
+                .Header.Created.ToUniversalTime()
+                .ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture),
+            html,
+            StringComparison.Ordinal
+        );
     }
 
     [Fact]
