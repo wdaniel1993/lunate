@@ -123,7 +123,7 @@ internal static class ExtensionBuildCommand
     /// over an id only when it is the path of a discovered candidate, so a typo never builds a file
     /// discovery has not seen.
     /// </summary>
-    private static SingleFileExtension? Resolve(
+    internal static SingleFileExtension? Resolve(
         IReadOnlyList<SingleFileExtension> candidates,
         string target
     )
@@ -205,7 +205,12 @@ internal static class ExtensionBuildCommand
         node["generatorsSkipped"] = skipped;
     }
 
-    private static int ReportFailure(SingleFileBuildOutcome outcome, TextWriter errors, bool json)
+    internal static int ReportFailure(
+        SingleFileBuildOutcome outcome,
+        TextWriter errors,
+        bool json,
+        string? reason = null
+    )
     {
         string step = outcome.Status switch
         {
@@ -214,7 +219,7 @@ internal static class ExtensionBuildCommand
             SingleFileBuildStatus.CompileFailed => "compile",
             _ => "invalid",
         };
-        string reason = outcome.Reason ?? outcome.Extension.Reason ?? "no reason recorded";
+        reason ??= outcome.Reason ?? outcome.Extension.Reason ?? "no reason recorded";
 
         if (json)
         {

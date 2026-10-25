@@ -125,6 +125,7 @@ public sealed partial class ExtensionLoader
             return;
         }
 
+        _singleFileKeys.Remove(id);
         IReadOnlyList<string> removedTools = _tools.Unregister(id);
         _hooks.Unregister(id);
         await _backgroundServices.DropAsync(id).ConfigureAwait(false);

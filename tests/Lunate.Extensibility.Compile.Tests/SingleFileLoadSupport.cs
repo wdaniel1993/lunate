@@ -131,6 +131,9 @@ internal sealed class SingleFileLoadFixture : IDisposable
 
     internal GatedRestoreEngine Engine { get; }
 
+    /// <summary>The compile factory, counted: a preflight that stops early must not reach it.</summary>
+    internal CountingCompilerFactory Compiler { get; } = new();
+
     internal RecordingLog Log { get; } = new();
 
     /// <summary>The one-line notices the host emitted (a cancelled invocation, in phase 3).</summary>
@@ -218,7 +221,7 @@ internal sealed class SingleFileLoadFixture : IDisposable
         new(
             _compile.Options(),
             () => Engine,
-            () => new Lunate.Extensibility.Compile.RoslynSingleFileCompiler(),
+            Compiler.Create,
             _compile.Target,
             _compile.PackagesFolder
         );
@@ -262,6 +265,9 @@ internal sealed class SingleFileLoadFixture : IDisposable
             ) + "\n"
         );
     }
+
+    /// <summary>The build cache over this fixture's store (what <c>builds.json</c> says is current).</summary>
+    internal SingleFileBuildCache BuildCache() => new(Store);
 
     internal ExtensionLoader Loader(HookRunnerOptions? hookOptions = null) =>
         new(

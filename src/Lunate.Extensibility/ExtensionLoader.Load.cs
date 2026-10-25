@@ -118,6 +118,7 @@ public sealed partial class ExtensionLoader
                     context,
                     ExtensionSecretsStore.Load(_options, descriptor.Id),
                     startSession,
+                    notifyToolsChanged: true,
                     toolCountBefore,
                     cancellationToken
                 )
@@ -153,6 +154,7 @@ public sealed partial class ExtensionLoader
         AssemblyLoadContext context,
         IExtensionSecrets secrets,
         bool startSession,
+        bool notifyToolsChanged,
         int toolCountBefore,
         CancellationToken cancellationToken
     )
@@ -175,7 +177,7 @@ public sealed partial class ExtensionLoader
                 await _backgroundServices.StartAsync(cancellationToken).ConfigureAwait(false);
             }
 
-            if (_tools.List().Count != toolCountBefore)
+            if (notifyToolsChanged && _tools.List().Count != toolCountBefore)
             {
                 await NotifyToolsChangedAsync().ConfigureAwait(false);
             }

@@ -1,6 +1,7 @@
 using System.Globalization;
 using Lunate.Agent;
 using Lunate.Ai;
+using Lunate.Extensibility;
 using Lunate.Extensibility.Abstractions;
 using Lunate.Tui;
 using Spectre.Console;
@@ -400,6 +401,45 @@ internal sealed partial class InteractiveSession
         {
             Notify($"extension '{id}' was not restarted: {exception.Message}", NoticeLevel.Warning);
         }
+    }
+
+    /// <summary>
+    /// The <c>/extensions reload &lt;id&gt;</c> action: builds the file again and swaps it in. A trust
+    /// or build refusal is a warning notice and the old build keeps answering; the success notice
+    /// names the build that is now live.
+    /// </summary>
+    private async ValueTask ReloadExtension(string id, CancellationToken ct)
+    {
+        if (id.Length == 0)
+        {
+            Notify("usage: /extensions reload <id>");
+            return;
+        }
+
+        if (_extensions is not { } host)
+        {
+            Notify(ExtensionsText());
+            return;
+        }
+
+        SingleFileReloadOutcome outcome = await host.ReloadSingleFileAsync(id, ct)
+            .ConfigureAwait(false);
+        if (!outcome.Reloaded)
+        {
+            Notify(
+                FormattableString.Invariant(
+                    $"extension '{id}' was not reloaded: {outcome.Reason ?? "no reason recorded"}"
+                ),
+                NoticeLevel.Warning
+            );
+            return;
+        }
+
+        Notify(
+            FormattableString.Invariant(
+                $"extension '{id}' reloaded — build {outcome.LoadedBuildKey}"
+            )
+        );
     }
 
     /// <summary>Switches to a catalog model by id; an unknown id produces a notice.</summary>

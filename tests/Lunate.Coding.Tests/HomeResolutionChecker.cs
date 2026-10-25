@@ -39,10 +39,13 @@ internal static class HomeResolutionChecker
             Resolution.UserProfile,
             "NuGet's default global packages folder (`~/.nuget/packages`), shared with the SDK"
         ),
+        // The same NuGet default, read by the one type that turns a build's package-relative asset
+        // into a path: the compile and the load must agree on the folder, so the rule lives there
+        // rather than twice (it moved here with SingleFileExtensionBuilder's copy).
         new(
-            "src/Lunate.Extensibility/SingleFileExtensionBuilder.cs",
+            "src/Lunate.Extensibility/SingleFilePackages.cs",
             Resolution.UserProfile,
-            "the same NuGet default, read for a lock-only compile so it can name a missing reference"
+            "the same NuGet default (`~/.nuget/packages`), read for a compile and for a load's assets"
         ),
         // Presentation: `~` shortening of whatever path is being printed. It reads no state and
         // writes none, and the TUI assembly deliberately does not depend on Lunate.Ai.

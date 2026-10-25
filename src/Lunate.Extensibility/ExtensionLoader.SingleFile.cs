@@ -8,6 +8,9 @@ public sealed partial class ExtensionLoader
 {
     private readonly List<SingleFileExtension> _singleFile = [];
 
+    /// <summary>The build key each loaded single-file extension was loaded from (the swap's record).</summary>
+    private readonly Dictionary<string, string> _singleFileKeys = new(StringComparer.Ordinal);
+
     /// <summary>
     /// The single-file candidates discovered beside the packaged extensions, global before project
     /// and each group in file-name order. A refused file stays in the list — <c>/extensions</c>
@@ -30,7 +33,8 @@ public sealed partial class ExtensionLoader
     public async Task<LoadedExtension> LoadSingleFileAsync(
         string id,
         CancellationToken cancellationToken = default,
-        bool startSession = true
+        bool startSession = true,
+        bool notifyToolsChanged = true
     )
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(id);
@@ -125,16 +129,19 @@ public sealed partial class ExtensionLoader
             }
 
             Assembly assembly = context.LoadFromAssemblyPath(build.AssemblyPath);
-            return await ActivateAsync(
+            LoadedExtension loaded = await ActivateAsync(
                     descriptor,
                     assembly,
                     context,
                     ExtensionSecretsStore.Load(_options, id),
                     startSession,
+                    notifyToolsChanged,
                     toolCountBefore,
                     cancellationToken
                 )
                 .ConfigureAwait(false);
+            _singleFileKeys[id] = build.Key;
+            return loaded;
         }
         catch (ExtensionLoadException)
         {

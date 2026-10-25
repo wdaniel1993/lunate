@@ -139,11 +139,21 @@ public sealed class CommandSourceRegistry
     /// and waits a bounded time for the handlers to return; false means the bound expired and the
     /// handlers are still running (design D3, sign-off Q2).
     /// </summary>
-    internal ValueTask<bool> CancelInFlightAsync(
+    internal async ValueTask<bool> CancelInFlightAsync(
         string extensionId,
         TimeSpan bound,
         CancellationToken cancellationToken
-    ) => CancelInFlightAsync(extensionId, bound, notify: true, cancellationToken);
+    ) =>
+        (
+            await CancelAndDrainAsync(
+                    extensionId,
+                    bound,
+                    notify: true,
+                    CommandDrainCause.Unload,
+                    cancellationToken
+                )
+                .ConfigureAwait(false)
+        ).Drained;
 
     /// <summary>
     /// The same, with the notice suppressed: the session-quit path cancels in flight commands
@@ -153,6 +163,43 @@ public sealed class CommandSourceRegistry
         string extensionId,
         TimeSpan bound,
         bool notify,
+        CancellationToken cancellationToken
+    ) =>
+        (
+            await CancelAndDrainAsync(
+                    extensionId,
+                    bound,
+                    notify,
+                    CommandDrainCause.Unload,
+                    cancellationToken
+                )
+                .ConfigureAwait(false)
+        ).Drained;
+
+    /// <summary>
+    /// The reload's half of the same path: cancel the old build's live invocations with a notice that
+    /// says the extension is being reloaded, drain them within <paramref name="bound"/>, and report
+    /// what was cancelled so the caller can say what it interrupted. One line is logged when a
+    /// handler ignores its token — once per reload, not once per caller.
+    /// </summary>
+    internal ValueTask<CommandDrain> DrainForReloadAsync(
+        string extensionId,
+        TimeSpan bound,
+        CancellationToken cancellationToken
+    ) =>
+        CancelAndDrainAsync(
+            extensionId,
+            bound,
+            notify: true,
+            CommandDrainCause.Reload,
+            cancellationToken
+        );
+
+    private async ValueTask<CommandDrain> CancelAndDrainAsync(
+        string extensionId,
+        TimeSpan bound,
+        bool notify,
+        CommandDrainCause cause,
         CancellationToken cancellationToken
     )
     {
@@ -164,7 +211,7 @@ public sealed class CommandSourceRegistry
             {
                 _notify?.Invoke(
                     FormattableString.Invariant(
-                        $"command {commandId} was cancelled because extension '{extensionId}' was unloaded"
+                        $"command {commandId} was cancelled because extension '{extensionId}' {CauseText(cause)}"
                     )
                 );
             }
@@ -175,16 +222,29 @@ public sealed class CommandSourceRegistry
             .ConfigureAwait(false);
         if (!drained && cancelled.Count > 0)
         {
-            // Once per unload: a second caller while the handler is still stuck reports nothing.
+            // Once per unload or reload: a second caller while the handler is still stuck reports
+            // nothing, because it cancelled nothing.
             _log.Warn(
                 FormattableString.Invariant(
-                    $"command {string.Join(", ", _leases.InFlight(extensionId))} did not return within {bound.TotalMilliseconds:0} ms of the unload; its result is discarded and extension '{extensionId}' unloads anyway."
+                    $"command {string.Join(", ", _leases.InFlight(extensionId))} did not return within {bound.TotalMilliseconds:0} ms of the {Noun(cause)}; its result is discarded and {Consequence(cause, extensionId)}."
                 )
             );
         }
 
-        return drained;
+        return new CommandDrain(cancelled, drained);
     }
+
+    /// <summary>How the notice reads the cause: the extension is going away, or coming back new.</summary>
+    private static string CauseText(CommandDrainCause cause) =>
+        cause == CommandDrainCause.Reload ? "is being reloaded" : "was unloaded";
+
+    private static string Noun(CommandDrainCause cause) =>
+        cause == CommandDrainCause.Reload ? "reload" : "unload";
+
+    private static string Consequence(CommandDrainCause cause, string extensionId) =>
+        cause == CommandDrainCause.Reload
+            ? "the extension is reloaded anyway"
+            : FormattableString.Invariant($"extension '{extensionId}' unloads anyway");
 
     private sealed record Registration(
         string ExtensionId,
@@ -202,3 +262,20 @@ public sealed record RegisteredCommandSource(
     ICommandSource Source,
     IReadOnlyList<CommandDescriptor> Descriptors
 );
+
+/// <summary>Why live invocations are being cancelled: the extension is unloading, or reloading.</summary>
+internal enum CommandDrainCause
+{
+    Unload,
+    Reload,
+}
+
+/// <summary>
+/// What one cancel-and-drain did: the command ids it cancelled (none when nothing was in flight) and
+/// whether they all left before the bound. A reload reports both, so its one line can name what it
+/// interrupted.
+/// </summary>
+internal sealed record CommandDrain(IReadOnlyList<string> Cancelled, bool Drained)
+{
+    internal static CommandDrain None { get; } = new([], true);
+}

@@ -44,6 +44,24 @@ internal sealed class CountingCompilerFactory
     }
 }
 
+/// <summary>Refuses the single-file question: what a user who will not trust the edited bytes does.</summary>
+internal sealed class DecliningPrompt : IExtensionTrustPrompt
+{
+    public ValueTask<bool> ApproveAsync(
+        ExtensionTrustRequest request,
+        CancellationToken cancellationToken
+    ) => throw new InvalidOperationException("a single file must not ask the packaged question");
+
+    public ValueTask<bool> ApproveSingleFileAsync(
+        SingleFileTrustRequest request,
+        CancellationToken cancellationToken
+    )
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return ValueTask.FromResult(false);
+    }
+}
+
 /// <summary>Approves every single-file question, so a test can state what an approving user did.</summary>
 internal sealed class ApprovingPrompt : IExtensionTrustPrompt
 {
