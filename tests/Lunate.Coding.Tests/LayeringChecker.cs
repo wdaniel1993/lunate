@@ -19,6 +19,11 @@ internal static class LayeringChecker
             ("Lunate.Extensibility.Compile", "Lunate.Extensibility"),
             ("Lunate.Extensibility.Compile.Tests", "Lunate.Extensibility"),
             ("Lunate.Extensibility.Compile.Tests", "Lunate.Extensibility.Compile"),
+            // The MSBL001 both-orders proof builds a real extension through the production restore
+            // engine and loads a real workspace through the production Roslyn loader, so it holds
+            // the one place where the two package graphs meet.
+            ("Lunate.Extensibility.Compile.Tests", "Lunate.Extensibility.Restore"),
+            ("Lunate.Extensibility.Compile.Tests", "Lunate.Roslyn"),
             ("Lunate.Extensibility.Restore.Tests", "Lunate.Extensibility"),
             ("Lunate.Extensibility.Restore.Tests", "Lunate.Extensibility.Restore"),
             ("Lunate.Extensibility.Remote", "Lunate.Extensibility.Abstractions"),
