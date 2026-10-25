@@ -192,12 +192,35 @@ public sealed class NuGetRestoreEngineTests
     }
 
     [Fact]
-    public async Task A_pack_older_than_the_runtime_is_not_used_as_the_reference_pack()
+    public async Task A_runtime_ahead_of_the_feed_uses_the_highest_pack_below_it()
     {
         using var temp = new TempDirectory();
         var feed = new TestPackageFeed(temp.Root)
             .Add("Acme.Tools", "2.0.0")
             .AddReferencePack("10.0.4");
+        List<string> requests = [];
+        (NuGetRestoreEngine engine, SingleFileRestoreRequest request) = Compose(
+            feed,
+            requests,
+            runtime: new Version(10, 0, 5)
+        );
+
+        SingleFileRestoreResult result = await engine.RestoreAsync(
+            request,
+            TestContext.Current.CancellationToken
+        );
+
+        Assert.Equal("10.0.4", result.ReferencePack.Version);
+        Assert.Equal(ReferencePackRules.NearestBelow, result.ReferencePack.Rule);
+    }
+
+    [Fact]
+    public async Task No_pack_of_the_runtime_s_minor_still_fails_and_names_the_runtime()
+    {
+        using var temp = new TempDirectory();
+        var feed = new TestPackageFeed(temp.Root)
+            .Add("Acme.Tools", "2.0.0")
+            .AddReferencePack("9.0.4");
         List<string> requests = [];
         (NuGetRestoreEngine engine, SingleFileRestoreRequest request) = Compose(
             feed,
