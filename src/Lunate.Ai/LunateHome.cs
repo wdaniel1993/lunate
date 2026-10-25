@@ -23,6 +23,18 @@ internal static class LunateHome
             Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)
         );
 
+    /// <summary>
+    /// The store for a caller that already holds a profile directory — a session option in a test, a
+    /// sandbox — so an explicit profile still wins over the environment, and the environment wins
+    /// over the real profile.
+    /// </summary>
+    internal static string In(string? profile)
+    {
+        return string.IsNullOrWhiteSpace(profile)
+            ? Store
+            : Path.Combine(profile, ".lunate");
+    }
+
     /// <summary>The rule itself, so a test can state it without moving the process's environment.</summary>
     internal static string Resolve(string? configured, string profile)
     {

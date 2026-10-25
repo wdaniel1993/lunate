@@ -47,32 +47,29 @@ public sealed class SessionExportTests
     {
         // Paths are built, never written as POSIX literals: on Windows the same code resolves to
         // D:\Users\ada\... and a literal expectation would fail only on that leg.
-        string home = Path.Combine(Path.GetTempPath(), "ada-home");
+        string store = Path.Combine(Path.GetTempPath(), "ada-home", ".lunate");
         string path = ExportTargets.Resolve(
             new ExportRequest(ExportFormat.Html, null, Force: false),
-            homeDirectory: home,
+            storeRoot: store,
             workingDirectory: Path.GetTempPath(),
             sessionNameOrId: "parser-refactor",
             Now
         );
 
-        Assert.Equal(
-            Path.Combine(home, ".lunate", "exports", "2026-10-24-parser-refactor.html"),
-            path
-        );
+        Assert.Equal(Path.Combine(store, "exports", "2026-10-24-parser-refactor.html"), path);
         Assert.True(Path.IsPathFullyQualified(path));
     }
 
     [Fact]
     public void A_jsonl_default_carries_the_jsonl_extension()
     {
-        string home = Path.Combine(Path.GetTempPath(), "ada-home");
+        string store = Path.Combine(Path.GetTempPath(), "ada-home", ".lunate");
 
         Assert.Equal(
-            Path.Combine(home, ".lunate", "exports", "2026-10-24-s_20261024-093000-abcd.jsonl"),
+            Path.Combine(store, "exports", "2026-10-24-s_20261024-093000-abcd.jsonl"),
             ExportTargets.Resolve(
                 new ExportRequest(ExportFormat.Jsonl, null, Force: false),
-                home,
+                store,
                 Path.GetTempPath(),
                 "s_20261024-093000-abcd",
                 Now
@@ -83,7 +80,7 @@ public sealed class SessionExportTests
     [Fact]
     public void A_path_argument_overrides_the_default_and_is_made_absolute()
     {
-        string home = Path.Combine(Path.GetTempPath(), "ada-home");
+        string store = Path.Combine(Path.GetTempPath(), "ada-home", ".lunate");
         string working = Path.GetTempPath();
         string absolute = Path.Combine(working, "session.html");
 
@@ -91,7 +88,7 @@ public sealed class SessionExportTests
             Path.Combine(working, "reports", "session.html"),
             ExportTargets.Resolve(
                 new ExportRequest(ExportFormat.Html, "reports/session.html", Force: false),
-                home,
+                store,
                 working,
                 "parser-refactor",
                 Now
@@ -101,7 +98,7 @@ public sealed class SessionExportTests
             absolute,
             ExportTargets.Resolve(
                 new ExportRequest(ExportFormat.Html, absolute, Force: false),
-                home,
+                store,
                 working,
                 "parser-refactor",
                 Now

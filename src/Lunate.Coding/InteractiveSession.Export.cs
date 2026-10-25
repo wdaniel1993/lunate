@@ -30,11 +30,9 @@ internal sealed partial class InteractiveSession
         }
 
         string title = SessionTitle.Read(session.Path) ?? session.SessionId;
-        string home =
-            _options.HomeDirectory
-            ?? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        string store = Lunate.Ai.LunateHome.In(_options.HomeDirectory);
         DateTimeOffset now = _options.Clock?.Invoke() ?? DateTimeOffset.Now;
-        string destination = ExportTargets.Resolve(request, home, _workingDirectory, title, now);
+        string destination = ExportTargets.Resolve(request, store, _workingDirectory, title, now);
         if (string.Equals(destination, Path.GetFullPath(session.Path), StringComparison.Ordinal))
         {
             Notify("refusing to export over the session file itself", NoticeLevel.Warning);

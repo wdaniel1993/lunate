@@ -215,11 +215,11 @@ commands already populate, so a package you have restored before costs nothing h
 copied into `~/.lunate`.** What Lunate owns is the compiled assembly, the lock and the pointer, and
 those live in the extension's cache entry (see [The build cache](#the-build-cache)).
 
-`~/.lunate` is the state root: extension files, the trust store, locks, builds, sessions and the
-model catalog all sit under it. Set `LUNATE_HOME` to an absolute path to move the whole root — a
-sandbox, a portable install, or a second profile. A relative path is refused when it is read rather
-than quietly ignored, because silently falling back to the real profile is how a sandboxed run ends
-up writing to your own state.
+`~/.lunate` is the state root: extension files, the trust store, locks, builds, sessions, the model
+catalog, credentials, settings, input history and exports all resolve under it. Set `LUNATE_HOME` to
+an absolute path to move the whole root — a sandbox, a portable install, or a second profile. A
+relative path is refused when it is read rather than quietly ignored, because silently falling back
+to the real profile is how a sandboxed run ends up writing to your own state.
 
 Consequences worth knowing:
 
