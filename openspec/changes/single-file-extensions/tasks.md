@@ -21,16 +21,16 @@
 - [x] 2.4 Red: no `NuGet.*` assembly is loaded in a session whose extensions are all built.
 - [x] 2.5 In-process restore through the NuGet client libraries; packages resolve into `NUGET_PACKAGES` or the default global folder.
 - [x] 2.6 `extension.lock.json`: exact versions, SHA-512, resolved assets; a restore that would change it reports and asks, never writes silently.
-- [ ] 2.7 Compile the file with the declared references; a failed compile reports the first diagnostic and leaves no build behind.
-- [ ] 2.8 Build cache keyed by source hash; last two builds kept; uninstall deletes the extension's builds; `lunate cache prune` removes orphans.
+- [x] 2.7 Compile the file with the declared references; a failed compile reports the first diagnostic and leaves no build behind.
+- [x] 2.8 Build cache keyed by source hash; last two builds kept; uninstall deletes the extension's builds; `lunate cache prune` removes orphans.
 - [x] 2.9 Red: first trust → restore writes the lock and binds its hash into the trust record, with no second prompt; a compile afterwards uses that lock.
 - [x] 2.10 Red: a hand-edited lock makes the extension `stale` and stops before any feed request.
 - [x] 2.11 Reference pack: restore `Microsoft.NETCore.App.Ref` (runtime version, RID) through the same engine into the global packages folder on first compile; reuse it afterwards.
-- [ ] 2.12 Red: the published self-contained `osx-arm64` binary compiles a single-file extension with `HOME` empty and no `dotnet` on `PATH`; a second run makes no feed request.
-- [ ] 2.13 Generators and analyzers are off by default; `#:generators on` opts in and is part of the digest; `/extensions` shows `generators skipped: <package>` when a package ships them and the file did not opt in.
-- [ ] 2.14 Red: toggling `#:generators on` changes the digest and the prompt gains the build-time-code line.
-- [ ] 2.15 Report the measured per-extension cache size, the ref-pack size, the binary-size alternative if shipped, and the startup median after this phase.
-- [ ] 2.16 Docs: what gets restored and where, what the lock is for, how to read a compile failure, and that a Lunate update rebuilds extensions on first use because the cache key includes the API version.
+- [x] 2.12 Red: the published self-contained `osx-arm64` binary compiles a single-file extension with `HOME` empty and no `dotnet` on `PATH`; a second run makes no feed request.
+- [x] 2.13 Generators and analyzers are off by default; `#:generators on` opts in and is part of the digest; `/extensions` shows `generators skipped: <package>` when a package ships them and the file did not opt in.
+- [x] 2.14 Red: toggling `#:generators on` changes the digest and the prompt gains the build-time-code line.
+- [x] 2.15 Report the measured per-extension cache size, the ref-pack size, the binary-size alternative if shipped, and the startup median after this phase.
+- [x] 2.16 Docs: what gets restored and where, what the lock is for, how to read a compile failure, and that a Lunate update rebuilds extensions on first use because the cache key includes the API version.
 
 ### Phase-2a corrections (maintainer ruling)
 
@@ -41,6 +41,15 @@
 - [x] 2a.5 Red: a toolset block edited without its integrity hash is refused (the graph stays trusted) and the rebuild replaces it without asking.
 - [x] 2a.6 The lock's canonical ordering and byte-identical output survive the split: a written lock parses and writes back identically, and two restores of the same source write the same bytes.
 - [x] 2a.7 The lock lives in `~/.lunate/cache/extensions/<id>/extension.lock.json` for both scopes; the ADR addendum, the design note and the authoring docs say so, and say that a lock is produced per machine and determinism comes from the resolution rule, not from a committed file.
+
+### Phase-2b maintainer additions (before merge)
+
+- [x] 2b.1 Refuse a `LUNATE_HOME` that resolves inside the workspace or its repository root, with `LUNATE_HOME points inside the workspace; trust records there could be written by the repository`; real-path containment (symlinks, `.`/`..`, trailing separators, the platform's case rule, equal-to-root counts as inside).
+- [x] 2b.2 Red: inside and equal-to-root refused at session composition, `lunate extensions build`, `lunate cache prune` and `lunate trust`; a sibling and an unrelated directory accepted.
+- [x] 2b.3 Red: when `LUNATE_HOME` is set, `lunate --version` and the interactive welcome header both print `home <path> (LUNATE_HOME)`; neither prints it when unset.
+- [x] 2b.4 Audit and document what follows the root and what does not; Lunate's own `~/.lunate/skills` was still resolving the profile and now follows the root; the docs state there are no log files.
+- [x] 2b.5 Red: a source scan fails on any second profile-resolution site, and asserts `LUNATE_HOME` is read from the process environment only (nothing loads `.env`).
+- [x] 2b.6 Red: a full session with `LUNATE_HOME` set and `HOME`/`USERPROFILE` pointing at a nonexistent directory exits successfully after a tool call and leaves that home nonexistent (child process).
 
 ## 3. Runtime: isolation, API gate, reload (PR 3)
 

@@ -17,16 +17,31 @@ internal static class ExtensionsCommand
     internal const int ExitFailure = 1;
     internal const int ExitUsage = 2;
 
-    internal const string Usage = "Usage: lunate extensions [--json]";
+    internal const string Usage =
+        "Usage: lunate extensions [--json] | lunate extensions build <id|path> [--json]";
 
     internal static int Run(
         string[] args,
         string? workingDirectory,
         TextWriter output,
         TextWriter errors,
-        ExtensionSeams? seams
+        ExtensionSeams? seams,
+        CancellationToken cancellationToken = default
     )
     {
+        // `build` is the headless compile trigger: one file, the same service the reload path uses.
+        if (args.Length > 0 && string.Equals(args[0], "build", StringComparison.Ordinal))
+        {
+            return ExtensionBuildCommand.Run(
+                args[1..],
+                workingDirectory,
+                output,
+                errors,
+                seams,
+                cancellationToken
+            );
+        }
+
         if (!TryParse(args, errors, out bool json))
         {
             return ExitUsage;

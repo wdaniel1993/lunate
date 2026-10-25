@@ -93,6 +93,160 @@ app"), so it is disabled in `Directory.Build.props` and that rule is asserted by
 `AssemblyLayoutTests` instead. The overlap is real but bounded: MSBuild's copy is loaded only by the
 Roslyn workspace path, Lunate's only when a restore runs.
 
+## Phase 2b implementation notes
+
+Phase 2b is the compile, the build cache and the published-binary proof: no generators, no
+measurements and no docs pass (those stay 2.13–2.16). Four decisions had to be made concretely.
+
+**One state root, and it can be moved.** Discovery, the trust store, the lock, the build cache, the
+sessions and the model catalog each resolved `~/.lunate` on their own, which is why a test that
+replaced `HOME` moved some of them and — on Windows, where .NET resolves the profile through the
+shell rather than `HOME` — none of them. `LunateHome.Store` is now the single rule: `LUNATE_HOME` when
+it names an absolute path, `~/.lunate` otherwise, a relative value refused by name. It lives in
+`Lunate.Ai` only because that is the lowest assembly every consumer already references; the public
+surface is the variable, not the type. Without it the published-binary proof cannot be hermetic on
+Windows at all, and a portable install has no way to keep its state out of the user profile.
+
+**The root is guarded, visible, and read only from the environment.** A `LUNATE_HOME` whose store
+resolves inside the workspace it governs is refused — `LUNATE_HOME points inside the workspace; trust
+records there could be written by the repository` — at every surface that knows a workspace: session
+composition, print mode, ACP, `lunate trust`, `lunate extensions build` and `lunate cache prune`. A
+repository that can write its own trust records answers no trust question. Containment compares real,
+symlink-resolved paths, and a store equal to the root counts as inside. Both `lunate --version` and
+the welcome header print the active home in one spelling, `home /tmp/state (LUNATE_HOME)`, so a
+sandboxed run is never invisible. The state audit: the trust store, the extension cache and user
+extensions, sessions, credentials, settings, history, exports, the model catalog and recordings all
+follow the root; `~/.agents/skills`, `~/.agents/mcp.json` and NuGet's packages folder stay at the real
+home on purpose, and Lunate's own user skills (`~/.lunate/skills`) were found still resolving the
+profile and now follow the root too. There are no log files — extension logging is the terminal via
+`IExtensionLog`, and the session file is the transcript — so no log path is promised. `LUNATE_HOME` is
+read from the process environment only: nothing loads `.env` today, a source test keeps it that way,
+and no settings file, `AGENTS.md` or project file can supply it.
+
+**The trigger is `lunate extensions build <id|path> [--json]`.** Listing extensions must not compile
+— `/extensions` is a state view, and its rows would start costing seconds — and startup must stay
+lazy, so a build needs a surface of its own. The CLI subcommand is the smallest honest one: it
+discovers declarations only, then calls the same `SingleFileExtensionBuilder` that `/extensions
+reload` calls in phase 3, so the order (trust, then the lock that answers for those bytes, then the
+cache, then the compiler) exists once. It never prompts: trust is the user's decision, so a file
+that is not trusted for its bytes reports `failed (trust)` and says to approve it in an interactive
+session. `--json` prints the build key and the assembly path on success, and the first diagnostic as
+`{file, line, column, id, message}` on a compile failure.
+
+**The compile-time contract travels inside the binary.** A published self-contained single-file app
+bundles its managed assemblies: `Assembly.Location` is empty and there is no `.dll` beside the
+executable to point a `MetadataReference` at — yet an extension has to compile against
+`Lunate.Extensibility.Abstractions` and the host assemblies its signatures use. `Lunate.Extensibility.Compile`
+therefore embeds the four shared contract assemblies (`Lunate.Extensibility.Abstractions`,
+`Lunate.Agent`, `Lunate.Ai`, `Microsoft.Extensions.AI.Abstractions`) from the build's own resolved
+references and hands the compiler those images. They are the same assemblies the host loads, so
+type identity survives the compile/load boundary; a fallback reads them from `Assembly.Location` or
+beside the host for a build that skipped the embedding target. This is also what makes the phase-3
+isolation rule real: a package that ships its own copy of a contract cannot displace the host's
+compile reference, because the host's is added first and the duplicate is dropped by simple name.
+
+**Determinism is a property of the emit, not a hope.** The compile uses `deterministic: true` and
+emits no PDB, so no source path, timestamp or machine identity can reach the image: the same source,
+lock and toolset produce byte-identical output, and a test compiles the same bytes from two
+directories to prove it. That is what lets the build key be a content address instead of a
+timestamp.
+
+**The cache is `builds/<key>/` plus one pointer.** The key is `sha256(sourceHash | lockHash |
+apiVersion | TFM | RID)`, fields NUL-separated, rendered as lowercase hex and truncated to its first
+16 characters — the manifest inside the build repeats the untruncated hashes, so the truncation loses
+nothing a reader needs. `lockHash` is the SHA-256 of the whole lock file, so a graph change and a
+toolset change each move the key. Each build directory holds `<id>.dll` and `build.json` — the key's
+inputs and, per package, the runtime and native assets a load resolves out of the packages folder, so
+phase 3 never has to pair a build with a lock that has since been rewritten. `builds.json` names the
+current build and the surviving builds, newest first; retention and the pointer are one document, and
+the order is written rather than inferred from mtimes, so "the last two builds" does not depend on a
+clock. A failed compile writes nothing at all — no directory, no pointer, no trim — which is what
+keeps the previous build the one the entry points at.
+
+**Two things the phase-2a code had to be read carefully for.** A never-restored file's trust digest is
+the graph-bound layout with an empty graph segment (`ComputeUnrestored` names it), not the older
+source-only tag, so anything that seeds a trust record for a test or a script has to use that value;
+the source-only digest stays the lock's `SourceDigest` and the build key's `sourceHash`. And Roslyn
+5.9 rejects a `#:` line with `CS9298` unless the file-based-program feature is on, so the parse
+options set it: the header is the host's declaration, and the compiler only has to stop refusing to
+read the rest of the file.
+
+## Phase 2c implementation notes
+
+Phase 2c makes the generators opt-in real, wires the omission into the views, records the phase's
+measurements and finishes the authoring page (tasks 2.13–2.16). The behaviour the design already
+promised did not need a new decision; what it needed was the mechanism, and the mechanism has two
+consequences worth writing down.
+
+**The opt-in is a decision because the header is hashed, not because a flag is stored.** `#:generators on`
+is a header line, and the header is inside the source bytes the digest covers — so the two files differ
+in the digest for both layouts that exist (`lunate-extension-v1` for a lock's `SourceDigest`,
+`lunate-extension-v2` for trust), toggling the line stales a trusted file exactly like editing code
+does, and no separate field can drift out of sync with the bytes the user approved. Nothing was added
+to the lock or the digest for it: the lock already records, per package, the analyzer assets and
+whether the package ships build-time code, which is what makes the omission reportable at all.
+
+**Generators are host code execution, so the difference is where the prompt line lives.** With the
+directive, the compile opens each locked package's `analyzers/` assemblies as
+`AnalyzerFileReference`s, runs their generators through `CSharpGeneratorDriver` (the emitted trees are
+compiled in), and runs their analyzers through `Compilation.WithAnalyzers`; an analyzer's error ends
+the compile the way it would in a project build, reported as the first diagnostic by position like
+every other compile failure. Without it nothing under `analyzers/` is opened — the test asserts the
+generator assembly is absent from the process afterwards, which is stronger than "the build worked".
+The loader is `Assembly.LoadFrom` on purpose: the packages folder is not a probing path, and a
+generator's dependency on `Microsoft.CodeAnalysis` has to bind to the Roslyn already in the process,
+because a second copy would hand the driver objects it cannot recognise. That is also the honest
+statement of the risk — a generator runs arbitrary code in the host — and it is why the prompt's
+build-time line is conditioned on the same directive rather than being boilerplate.
+
+**The omission is a row, not a log line.** `SingleFileExtension.GeneratorsSkipped` reads the lock
+(after a restore, before a build) and names the packages whose build-time code the compile will leave
+out; `/extensions` appends `, generators skipped: <package>` after the resolved graph, and both
+`--json` surfaces carry `generatorsSkipped`. Before a restore it is empty: no lock means no resolved
+package, and inventing a name from the declarations would guess at which package ships generators.
+The hint disappears the moment the file opts in, which is what makes the toggle legible in both
+directions.
+
+### Measurements (task 2.15, this machine: macOS 26.3.1, osx-arm64, .NET 10.0.13)
+
+All sizes are the OS's own, taken with `du -sk` and `stat`; numbers in prose carry their unit.
+
+| What | Measured |
+| --- | --- |
+| One-package extension's cache entry (`builds/<key>/` + `extension.lock.json` + `builds.json`) | 13,525 bytes logical, 24 KiB allocated — assembly 2,560 B, lock 10,342 B, pointer 78 B, manifest 545 B |
+| `Microsoft.NETCore.App.Ref` in the global packages folder (`10.0.5`, 359 files) | 51,000,217 bytes, 48.6 MiB (50,476 KiB allocated) — `ref/` 37,516 KiB, `analyzers/` 5,644 KiB, the nupkg 7,096 KiB |
+| Published `osx-arm64` single-file binary with the four embedded contract assemblies | 364,267,911 bytes (347.4 MiB) |
+| The same binary without them (`-p:EmbedCompileContracts=false`) | 362,860,263 bytes (346.0 MiB) |
+| Difference the embedding costs | 1,407,648 bytes (1.34 MiB; the four assemblies themselves sum to 1,395,000 bytes, the rest is resource headers) |
+| Startup median after this phase (`scripts/verify.sh`'s budget step) | 60 ms (budget 150 ms) |
+
+The cache entry is dominated by the lock (76% of it), not by the assembly: a one-package extension
+costs about 2.5 KiB of compiled code and 10 KiB of resolution. The reference pack is the real cost of
+the feature — 49 MiB in the user's NuGet cache, restored once and shared with the SDK — and the
+embedded contracts cost 1.34 MiB in the binary, which is why they are embedded rather than restored:
+a published single-file binary has no assembly on disk to point a `MetadataReference` at.
+
+### The both-orders MSBL001 proof
+
+`MsblBindingOrderTests` runs the two acts the design named — a single-file build (which loads
+`NuGet.Frameworks` through the restore stack) and a real C# workspace load through `Lunate.Roslyn`'s
+loader — in both orders, each order in its own child process because a loaded assembly cannot be
+unloaded. It is hermetic on all three legs: a temporary `HOME` and `NUGET_PACKAGES`, a local folder
+feed seeded from the machine's reference pack, and a package-free workspace restored against a
+cleared source list. Both halves are asserted by using them (the extension's own type is invoked, a
+symbol in the workspace is found through the backend), and both are re-asserted after the second act,
+so a conflict that breaks either side fails the test in both orders.
+
+No `AssemblyLoadContext` isolation was needed, and the reason is worth recording because it corrects
+the assumption behind MSBL001: after both orders, the process holds exactly one `NuGet.Frameworks`
+(7.9.0.0, the app's own) and `Microsoft.Build.Framework` 15.1.0.0 from the located SDK. MSBuild's
+design-time build runs in the Roslyn build host process — the out-of-process host whose DLLs the
+published binary must keep loose (ADR-0006) — so MSBuild's copy of `NuGet.Frameworks` never enters the
+host's binding context. The overlap that MSBL001 reacts to is therefore real in a project that
+*references* the restore engine, and bounded at run time to `Microsoft.Build.Framework`, which does
+not reference `NuGet.Frameworks`. The behavioural test stays the guard: if a future Roslyn loads
+MSBuild in process, this test is where it shows up.
+
 ## Risks
 
 - **Analyzers and generators are code execution at build time.** Off unless `#:generators on`; the opt-in is in the digest, so toggling it re-asks, and the prompt only mentions build-time code when it applies.

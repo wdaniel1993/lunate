@@ -257,11 +257,7 @@ public sealed class AuthStore
     }
 
     private static string DefaultFilePath() =>
-        Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-            ".lunate",
-            "auth.json"
-        );
+        Path.Combine(Lunate.Ai.LunateHome.Store, "auth.json");
 
     private sealed record AuthFile(int SchemaVersion, SortedDictionary<string, string> Keys);
 }

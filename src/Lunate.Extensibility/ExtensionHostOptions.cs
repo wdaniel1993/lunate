@@ -30,13 +30,7 @@ public sealed class ExtensionHostOptions
     public IReadOnlyList<string> ReservedCommands { get; init; } = [];
 
     public static ExtensionHostOptions Default { get; } =
-        new()
-        {
-            StorePath = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-                ".lunate"
-            ),
-        };
+        new() { StorePath = Lunate.Ai.LunateHome.Store };
 
     public string ExtensionsPath => Path.Combine(StorePath, "extensions");
 

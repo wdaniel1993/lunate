@@ -40,6 +40,7 @@ internal static class AcpMode
         try
         {
             var workspace = new Workspace(Environment.CurrentDirectory);
+            LunateHome.StoreOutsideWorkspace(workspace.WorktreeRoot, workspace.RepoRoot);
             IExtensionLog log = extensions?.Log ?? new StderrExtensionLog(errors);
             AgentSettings settings = SettingsStore.Resolve(null, null);
             WorkspaceServices configured = new(settings.Roslyn.MaxLoadedWorkspaces);
@@ -239,6 +240,9 @@ internal static class AcpMode
         IChatClientFactory clientFactory = factory ?? HarnessFactory.CreateFactory(null, null);
 
         var workspace = new Workspace(context.Cwd);
+        // Every editor session may name its own root, so the refusal is re-asked here rather than
+        // trusted from serve start.
+        LunateHome.StoreOutsideWorkspace(workspace.WorktreeRoot, workspace.RepoRoot);
         ToolRegistry tools = HarnessFactory.CreateTools(
             workspace,
             context.FileAccess,

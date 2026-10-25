@@ -15,8 +15,10 @@ namespace Lunate.Extensibility;
 public static class SingleFileExtensionDigest
 {
     /// <summary>
-    /// The source-only form's tag. Its layout is unchanged since the first release, so a file that
-    /// has never been restored keeps the digest the user already approved.
+    /// The source-only form's tag: the source-level identity a lock records (and the build key's
+    /// <c>sourceHash</c>), not the trust identity of a file. Its layout is unchanged since the first
+    /// release, so existing locks keep parsing; a file's trust digest is always the graph-bound form
+    /// (<see cref="ComputeUnrestored"/> before a restore, <see cref="Compute"/> after one).
     /// </summary>
     public const string FormatTag = "lunate-extension-v1";
 
@@ -40,6 +42,18 @@ public static class SingleFileExtensionDigest
         using IncrementalHash hash = Start(FormatTag, id, packages, source);
         return Convert.ToHexStringLower(hash.GetHashAndReset());
     }
+
+    /// <summary>
+    /// The digest a file that has never been restored has: the graph-bound layout with no graph
+    /// segment, which is the value discovery computes and therefore the value a first trust records.
+    /// It is what <see cref="ComputeSource"/> is not — that one keeps the older tag and is the
+    /// source-level identity a lock records, not the trust identity of the file.
+    /// </summary>
+    public static string ComputeUnrestored(
+        string id,
+        IReadOnlyList<ExtensionPackageReference> packages,
+        ReadOnlySpan<byte> source
+    ) => Compute(id, packages, source, []);
 
     /// <summary>
     /// The digest of the bytes the user approved: fields NUL-separated, the source appended

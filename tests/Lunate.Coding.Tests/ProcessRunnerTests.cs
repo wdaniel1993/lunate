@@ -188,8 +188,8 @@ public sealed class ProcessRunnerTests
                 + "process.stdout.write('ping\\n');"
                 + "const buffer = Buffer.alloc(1024);"
                 + "const read = fs.readSync(0, buffer, 0, buffer.length, null);"
-                + "fs.writeSync(1, 'got:' + buffer.toString('utf8', 0, read).trim() + '\\n');"
-                + "process.exit(0);"
+                + "process.stderr.write('read=' + read + '\\n');"
+                + "process.stdout.write('got:' + buffer.toString('utf8', 0, read).trim() + '\\n');"
         ) with
         {
             LineHandler = (line, _) =>

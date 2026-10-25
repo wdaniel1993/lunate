@@ -58,6 +58,7 @@ internal sealed partial class InteractiveSession
             ContextWindow = model?.ContextWindow ?? 0,
             Workspace = _workingDirectory,
             CSharpWorkspace = HarnessFactory.LooksLikeCSharpWorkspace(_workspace.WorktreeRoot),
+            Home = LunateHome.ActiveHomeLine,
             Counts = counts,
             Fix = FirstRunFix(model, configured),
         };

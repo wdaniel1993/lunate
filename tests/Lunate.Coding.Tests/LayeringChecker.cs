@@ -13,6 +13,17 @@ internal static class LayeringChecker
             // The restore engine is the only project that references the NuGet client libraries;
             // it implements the seam Extensibility declares, so it depends downward on it.
             ("Lunate.Extensibility.Restore", "Lunate.Extensibility"),
+            // The compile engine is the only project that references Roslyn for extensions; it
+            // implements Extensibility's compile seam, so it depends downward on it too. Both engines
+            // are factories in the composition, so neither is loaded until a restore or a compile runs.
+            ("Lunate.Extensibility.Compile", "Lunate.Extensibility"),
+            ("Lunate.Extensibility.Compile.Tests", "Lunate.Extensibility"),
+            ("Lunate.Extensibility.Compile.Tests", "Lunate.Extensibility.Compile"),
+            // The MSBL001 both-orders proof builds a real extension through the production restore
+            // engine and loads a real workspace through the production Roslyn loader, so it holds
+            // the one place where the two package graphs meet.
+            ("Lunate.Extensibility.Compile.Tests", "Lunate.Extensibility.Restore"),
+            ("Lunate.Extensibility.Compile.Tests", "Lunate.Roslyn"),
             ("Lunate.Extensibility.Restore.Tests", "Lunate.Extensibility"),
             ("Lunate.Extensibility.Restore.Tests", "Lunate.Extensibility.Restore"),
             ("Lunate.Extensibility.Remote", "Lunate.Extensibility.Abstractions"),
@@ -37,6 +48,8 @@ internal static class LayeringChecker
             // The composition owns the restore engine factory: it constructs the engine only when
             // a restore runs, so composing a session loads no NuGet assembly.
             ("Lunate.Coding", "Lunate.Extensibility.Restore"),
+            // The composition owns the compile factory as well: the first build loads the compiler.
+            ("Lunate.Coding", "Lunate.Extensibility.Compile"),
             ("Lunate.Coding", "Lunate.Protocols"),
             // The composition owns the per-workspace Roslyn services and composes the cs_* tools.
             ("Lunate.Coding", "Lunate.Roslyn"),

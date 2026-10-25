@@ -23,6 +23,12 @@ internal sealed record WelcomeHeaderState
 
     public bool CSharpWorkspace { get; init; }
 
+    /// <summary>
+    /// The active state root when <c>LUNATE_HOME</c> moved it, in the one spelling both surfaces use
+    /// (<c>home /tmp/state (LUNATE_HOME)</c>); null when the root is the default.
+    /// </summary>
+    public string? Home { get; init; }
+
     public WelcomeHeaderCounts? Counts { get; init; }
 
     public string? Fix { get; init; }
@@ -109,6 +115,7 @@ internal static class WelcomeHeaderRenderer
             // The first-run form: one actionable fix and the workspace, nothing else (D4).
             lines.Add(Line(colored, (fix, SpanStyle.Plain)));
             lines.Add(Line(colored, (state.Workspace, SpanStyle.Dim)));
+            AddHome(lines, state, colored);
             return lines;
         }
 
@@ -118,6 +125,7 @@ internal static class WelcomeHeaderRenderer
         }
 
         lines.Add(Line(colored, (state.Workspace, SpanStyle.Dim)));
+        AddHome(lines, state, colored);
         if (state.CSharpWorkspace)
         {
             lines.Add(Line(colored, (CSharp, SpanStyle.Dim)));
@@ -140,6 +148,12 @@ internal static class WelcomeHeaderRenderer
             tail.Append(' ').Append(unicode ? CSharpSegment : AsciiCSharpSegment);
         }
 
+        // A redirected or sandboxed run must never be invisible, even on the one-line form.
+        if (state.Home is { Length: > 0 } home)
+        {
+            tail.Append(unicode ? " · " : " - ").Append(home);
+        }
+
         tail.Append(unicode ? Separator : AsciiSeparator);
         tail.Append(state.Fix is { Length: > 0 } fix ? fix : HelpHint);
 
@@ -154,6 +168,15 @@ internal static class WelcomeHeaderRenderer
         state.ContextWindow > 0
             ? FormattableString.Invariant($"{state.ModelId} · {state.ContextWindow:N0} ctx")
             : state.ModelId;
+
+    /// <summary>The active home line, when <c>LUNATE_HOME</c> moved the root; nothing otherwise.</summary>
+    private static void AddHome(List<string> lines, WelcomeHeaderState state, bool colored)
+    {
+        if (state.Home is { Length: > 0 } home)
+        {
+            lines.Add(Line(colored, (home, SpanStyle.Dim)));
+        }
+    }
 
     private static string CountsText(WelcomeHeaderCounts? counts) =>
         counts is { } known

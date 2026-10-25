@@ -128,6 +128,9 @@ internal static class PrintMode
             try
             {
                 workspace = new Workspace(options.WorkingDirectory ?? Environment.CurrentDirectory);
+                // This run creates a session file and reads its own settings and credentials under
+                // the store, so a root inside the workspace is refused before any of them.
+                LunateHome.StoreOutsideWorkspace(workspace.WorktreeRoot, workspace.RepoRoot);
                 (Session? selected, string? selectionError) = ResolveSession(options, workspace);
                 if (selectionError is { } message)
                 {
@@ -156,7 +159,7 @@ internal static class PrintMode
                     new SkillScanRequest(
                         workspace.WorktreeRoot,
                         workspace.RepoRoot,
-                        options.HomeDirectory ?? DefaultHomeDirectory(),
+                        options.HomeDirectory,
                         extensions?.SkillContributions() ?? []
                     )
                 );
@@ -536,9 +539,6 @@ internal static class PrintMode
                 return false;
         }
     }
-
-    private static string DefaultHomeDirectory() =>
-        Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
 
     /// <summary>
     /// The launch selection: <c>--no-session</c> runs fileless, <c>--session</c> loads by id or

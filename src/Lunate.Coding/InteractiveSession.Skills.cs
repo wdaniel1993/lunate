@@ -18,7 +18,7 @@ internal sealed partial class InteractiveSession
             new SkillScanRequest(
                 _workspace.WorktreeRoot,
                 _workspace.RepoRoot,
-                _options.HomeDirectory ?? DefaultHomeDirectory(),
+                _options.HomeDirectory,
                 _extensions?.SkillContributions() ?? []
             )
         );
@@ -170,7 +170,4 @@ internal sealed partial class InteractiveSession
             )
             .ConfigureAwait(false);
     }
-
-    private static string DefaultHomeDirectory() =>
-        Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
 }

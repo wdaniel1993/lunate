@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Lunate.Ai;
 
 namespace Lunate.Coding;
 
@@ -40,10 +41,16 @@ internal static partial class SkillScanner
             projectBoundary: ProjectBoundary(request.WorktreeRoot, request.RepoRoot)
         );
 
+        // Lunate's own user scope follows the state root (LUNATE_HOME included); the .agents
+        // convention is shared with other agents and stays at the real profile.
         scan.Roots(
             [
-                (Path.Combine(request.HomeDirectory, ".lunate", "skills"), 0, 0),
-                (Path.Combine(request.HomeDirectory, ".agents", "skills"), 0, 1),
+                (Path.Combine(LunateHome.In(request.HomeDirectory), "skills"), 0, 0),
+                (
+                    Path.Combine(request.HomeDirectory ?? LunateHome.Profile, ".agents", "skills"),
+                    0,
+                    1
+                ),
             ],
             SkillScope.User,
             extensionId: null,

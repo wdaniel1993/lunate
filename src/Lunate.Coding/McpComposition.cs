@@ -1,3 +1,4 @@
+using Lunate.Ai;
 using Lunate.Extensibility;
 using Lunate.Extensibility.Abstractions;
 using Lunate.Protocols;
@@ -23,11 +24,7 @@ internal static class McpComposition
 
     /// <summary>The standard user-scope sibling: <c>~/.agents/mcp.json</c>.</summary>
     internal static string DefaultAgentsConfigPath { get; } =
-        Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-            ".agents",
-            "mcp.json"
-        );
+        Path.Combine(LunateHome.Profile, ".agents", "mcp.json");
 
     /// <summary>The project config path inside a worktree; mirroring <c>.lunate/extensions</c>.</summary>
     internal static string ProjectConfigPath(string worktreeRoot) =>

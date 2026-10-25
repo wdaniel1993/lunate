@@ -1066,9 +1066,5 @@ public static class SettingsStore
         : $"{subject} must be 'ask' or 'auto-edit', but was '{value}'";
 
     private static string DefaultFilePath() =>
-        Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-            ".lunate",
-            "settings.json"
-        );
+        Path.Combine(Lunate.Ai.LunateHome.Store, "settings.json");
 }

@@ -10,12 +10,7 @@ namespace Lunate.Coding;
 internal static class SessionSelection
 {
     /// <summary>The user profile's session store.</summary>
-    internal static string DefaultRoot =>
-        Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-            ".lunate",
-            "sessions"
-        );
+    internal static string DefaultRoot => Path.Combine(Lunate.Ai.LunateHome.Store, "sessions");
 
     /// <summary>The workspace path comparison: ordinal on Linux, ordinal-ignore-case elsewhere.</summary>
     internal static StringComparison PathComparison =>

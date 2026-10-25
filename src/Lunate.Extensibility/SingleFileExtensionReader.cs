@@ -1,4 +1,5 @@
 using System.Text;
+using Lunate.Extensibility.Abstractions;
 
 namespace Lunate.Extensibility;
 
@@ -8,10 +9,20 @@ namespace Lunate.Extensibility;
 /// restored or compiled. A file with no <c>#:extension</c> and a file whose header refuses it are
 /// candidates too — <c>/extensions</c> lists them with the reason instead of hiding them.
 /// </summary>
-internal sealed class SingleFileExtensionReader(ExtensionHostOptions options)
+internal sealed class SingleFileExtensionReader(
+    ExtensionHostOptions options,
+    SingleFileTarget? target = null
+)
 {
     private readonly ExtensionTrustStore _trust = new(options);
     private readonly ExtensionHostOptions _options = options;
+
+    /// <summary>
+    /// The toolset a build must have been made for to count: the current process's, unless a test
+    /// says otherwise. Reading it here keeps <c>built</c> honest — a build compiled for another
+    /// runtime is not this runtime's build, and the key says so.
+    /// </summary>
+    private readonly SingleFileTarget _target = target ?? SingleFileTarget.Current();
 
     /// <summary>
     /// The candidates of <paramref name="root"/> in file-name order; empty when the directory does
@@ -175,18 +186,66 @@ internal sealed class SingleFileExtensionReader(ExtensionHostOptions options)
                     "the trust record for this file is unreadable; remove its entry from "
                     + "trust.json and trust the file again",
             },
-            _ => new SingleFileExtension
+            _ => Built(fullPath, scope, header, digest, sourceDigest, read),
+        };
+    }
+
+    /// <summary>
+    /// The trusted row: <c>built</c> when an assembly exists for exactly these inputs (the source
+    /// digest, the whole lock, the host contract version and this toolset), <c>not-built</c>
+    /// otherwise. The check is a key computation and a file existence test — no compiler, no NuGet,
+    /// so discovery stays on the startup budget.
+    /// </summary>
+    private SingleFileExtension Built(
+        string fullPath,
+        ExtensionScope scope,
+        ExtensionHeader header,
+        string digest,
+        string sourceDigest,
+        LockRead read
+    )
+    {
+        string? buildKey = null;
+        string? assemblyPath = null;
+        if (read.Lock is not null && read.Hash is { } lockHash)
+        {
+            buildKey = SingleFileBuildKey.Compute(
+                sourceDigest,
+                lockHash,
+                ExtensionApi.Current,
+                _target.Tfm,
+                _target.Rid
+            );
+            string path = SingleFileExtensionPaths.AssemblyPath(
+                _options.StorePath,
+                header.Id!,
+                buildKey
+            );
+            if (File.Exists(path))
             {
-                Path = fullPath,
-                Scope = scope,
-                Header = header,
-                State = SingleFileExtensionState.NotBuilt,
-                Digest = digest,
-                SourceDigest = sourceDigest,
-                Lock = read.Lock,
-                LockHash = read.Hash,
-                Reason = read.Refused,
-            },
+                assemblyPath = path;
+            }
+            else
+            {
+                buildKey = null;
+            }
+        }
+
+        return new SingleFileExtension
+        {
+            Path = fullPath,
+            Scope = scope,
+            Header = header,
+            State = assemblyPath is null
+                ? SingleFileExtensionState.NotBuilt
+                : SingleFileExtensionState.Built,
+            Digest = digest,
+            SourceDigest = sourceDigest,
+            Lock = read.Lock,
+            LockHash = read.Hash,
+            BuildKey = buildKey,
+            AssemblyPath = assemblyPath,
+            Reason = assemblyPath is null ? read.Refused : null,
         };
     }
 

@@ -52,6 +52,12 @@ internal sealed record ExtensionSeams
     /// in a session whose extensions are all built); tests pass a fake so no test needs a feed.
     /// </summary>
     public Func<ISingleFileRestoreEngine?>? RestoreEngine { get; init; }
+
+    /// <summary>
+    /// The single-file compile factory; null uses the Roslyn-backed compiler. A factory for the same
+    /// reason: the compiler assemblies are loaded by the first build, never by composing a session.
+    /// </summary>
+    public Func<ISingleFileCompiler?>? Compiler { get; init; }
 }
 
 /// <summary>A discovery or load failure the session reported and continued past.</summary>
@@ -103,6 +109,7 @@ internal sealed class ExtensionSession : IAsyncDisposable
     private readonly FileChangeBus _fileChanges;
     private readonly AgentHookAdapter _hooks;
     private readonly SingleFileExtensionRestorer _singleFileRestorer;
+    private readonly SingleFileExtensionBuilder _singleFileBuilder;
     private ExtensionMcpServers? _mcpServers;
     private bool _disposed;
 
@@ -111,6 +118,7 @@ internal sealed class ExtensionSession : IAsyncDisposable
         IExtensionLog log,
         FileChangeBus fileChanges,
         SingleFileExtensionRestorer singleFileRestorer,
+        SingleFileExtensionBuilder singleFileBuilder,
         IReadOnlyList<ExtensionSessionError> errors,
         IReadOnlyList<ExtensionLoadResult> loadResults
     )
@@ -119,6 +127,7 @@ internal sealed class ExtensionSession : IAsyncDisposable
         _log = log;
         _fileChanges = fileChanges;
         _singleFileRestorer = singleFileRestorer;
+        _singleFileBuilder = singleFileBuilder;
         _hooks = new AgentHookAdapter(loader.Hooks);
         Errors = errors;
         LoadResults = loadResults;
@@ -145,7 +154,12 @@ internal sealed class ExtensionSession : IAsyncDisposable
         IExtensionTrustPrompt prompt = seams.Prompt ?? new NonInteractiveTrustPrompt(log);
         var options = new ExtensionHostOptions
         {
-            StorePath = seams.StorePath ?? ExtensionHostOptions.Default.StorePath,
+            // A composed host knows its workspace, so this is the one place every extension
+            // composition — interactive, print, ACP, a build subcommand — refuses a store the
+            // repository itself could write to.
+            StorePath =
+                seams.StorePath
+                ?? LunateHome.StoreOutsideWorkspace(workspace.WorktreeRoot, workspace.RepoRoot),
             Log = log,
             Notify = seams.Notice,
             ModelCatalog = seams.ModelCatalog,
@@ -158,6 +172,14 @@ internal sealed class ExtensionSession : IAsyncDisposable
         var singleFileRestorer = new SingleFileExtensionRestorer(
             options,
             seams.RestoreEngine ?? SingleFileRestoreFactory.Engine
+        );
+        // The build service both the CLI trigger and `/extensions reload` call: restore when the
+        // lock cannot answer, compile against that lock, keep the build. Also lazy in the same way —
+        // it holds two factories and touches neither until a build runs.
+        var singleFileBuilder = new SingleFileExtensionBuilder(
+            options,
+            seams.RestoreEngine ?? SingleFileRestoreFactory.Engine,
+            seams.Compiler ?? SingleFileCompileFactory.Compiler
         );
         // The session owns one bus, created before any extension loads so a subscriber
         // registering during load is subscribed for the whole session. The mutation queue
@@ -273,6 +295,7 @@ internal sealed class ExtensionSession : IAsyncDisposable
             log,
             fileChanges,
             singleFileRestorer,
+            singleFileBuilder,
             errors,
             loadResults
         );
@@ -404,6 +427,12 @@ internal sealed class ExtensionSession : IAsyncDisposable
     /// a lock before they build anything. Composing a session never calls it.
     /// </summary>
     internal SingleFileExtensionRestorer SingleFileRestorer => _singleFileRestorer;
+
+    /// <summary>
+    /// The session's single-file builder: the one service a build or a reload goes through, so the
+    /// order — trust, lock, cache, compiler — is the same everywhere.
+    /// </summary>
+    internal SingleFileExtensionBuilder SingleFileBuilder => _singleFileBuilder;
 
     /// <summary>The discovery and load failures this session continued past.</summary>
     internal IReadOnlyList<ExtensionSessionError> Errors { get; }

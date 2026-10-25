@@ -44,6 +44,7 @@ internal static partial class ExtensionsView
                 + " not-built"
                 + SingleFileCounts(candidate)
                 + SingleFileResolved(candidate)
+                + SingleFileGenerators(candidate)
                 + SingleFileNote(candidate),
             SingleFileExtensionState.Restoring => head
                 + " restoring"
@@ -51,11 +52,20 @@ internal static partial class ExtensionsView
             SingleFileExtensionState.Stale => head
                 + " stale — "
                 + Reason(candidate)
-                + SingleFileResolved(candidate),
+                + SingleFileResolved(candidate)
+                + SingleFileGenerators(candidate),
             SingleFileExtensionState.TrustFailed => head + " failed (trust) — " + Reason(candidate),
             SingleFileExtensionState.RestoreFailed => head
                 + " failed (restore) — "
                 + Reason(candidate),
+            SingleFileExtensionState.CompileFailed => head
+                + " failed (compile) — "
+                + Reason(candidate),
+            SingleFileExtensionState.Built => head
+                + " built"
+                + SingleFileCounts(candidate)
+                + SingleFileResolved(candidate)
+                + SingleFileGenerators(candidate),
             _ => head + " invalid (" + Reason(candidate) + ")",
         };
     }
@@ -77,6 +87,16 @@ internal static partial class ExtensionsView
                             FormattableString.Invariant($"{package.Id} {package.Version}")
                         )
                 );
+
+    /// <summary>
+    /// The packages whose build-time code the compile leaves out, named so the omission is visible:
+    /// <c>, generators skipped: Refit</c>. Only a resolved graph can say which packages ship them,
+    /// so the note appears once a lock exists and only while the header does not opt in.
+    /// </summary>
+    private static string SingleFileGenerators(SingleFileExtension candidate) =>
+        candidate.GeneratorsSkipped.Count == 0
+            ? string.Empty
+            : ", generators skipped: " + string.Join(", ", candidate.GeneratorsSkipped);
 
     /// <summary>
     /// The declared counts of a usable header, plus — when a declaration nothing provided is
@@ -105,15 +125,21 @@ internal static partial class ExtensionsView
     private static string SingleFileNote(SingleFileExtension candidate) =>
         candidate.Reason is { Length: > 0 } note ? " — " + note : string.Empty;
 
+    /// <summary>
+    /// Problems first, then what needs building, then what is live: a built extension is the
+    /// healthy end state and sorts last, so the rows that need the user's attention stay on top.
+    /// </summary>
     private static int SingleFileRank(SingleFileExtensionState state) =>
         state switch
         {
             SingleFileExtensionState.Invalid => 0,
             SingleFileExtensionState.TrustFailed => 1,
-            SingleFileExtensionState.RestoreFailed => 2,
-            SingleFileExtensionState.Stale => 3,
-            SingleFileExtensionState.Restoring => 4,
-            _ => 5,
+            SingleFileExtensionState.CompileFailed => 2,
+            SingleFileExtensionState.RestoreFailed => 3,
+            SingleFileExtensionState.Stale => 4,
+            SingleFileExtensionState.Restoring => 5,
+            SingleFileExtensionState.NotBuilt => 6,
+            _ => 7,
         };
 
     /// <summary>
@@ -224,8 +250,10 @@ internal static partial class ExtensionsView
     /// One single-file candidate as JSON: <c>id</c> (null when the header declares none),
     /// <c>version</c>, <c>scope</c>, <c>state</c> (<c>not-built</c>, <c>stale</c>, <c>failed</c> or
     /// <c>invalid</c>), <c>singleFile</c> (the file name), <c>reason</c> when there is one,
-    /// <c>failure</c> (<c>trust</c>) on a failed trust step, the declared counts of a usable header
-    /// and <c>declaredNotProvided</c> when declarations nothing provided are known.
+    /// <c>failure</c> (<c>trust</c>) on a failed trust step, the declared counts of a usable header,
+    /// <c>declaredNotProvided</c> when declarations nothing provided are known, and
+    /// <c>generatorsSkipped</c> when a locked package ships build-time code the header did not opt
+    /// in for.
     /// </summary>
     private static JsonObject SingleFileNode(SingleFileExtension candidate)
     {
@@ -250,6 +278,15 @@ internal static partial class ExtensionsView
         {
             node["failure"] = "restore";
         }
+        else if (candidate.State == SingleFileExtensionState.CompileFailed)
+        {
+            node["failure"] = "compile";
+        }
+
+        if (candidate.BuildKey is { Length: > 0 } buildKey)
+        {
+            node["build"] = buildKey;
+        }
 
         if (candidate.Lock is { Packages.Count: > 0 } @lock)
         {
@@ -265,6 +302,19 @@ internal static partial class ExtensionsView
             }
 
             node["resolved"] = resolved;
+        }
+
+        // The packages whose build-time code a compile leaves out, so a scripted surface can report
+        // what the human view says: `generators skipped: <package>`.
+        if (candidate.GeneratorsSkipped is { Count: > 0 } skippedPackages)
+        {
+            var skipped = new JsonArray();
+            foreach (string package in skippedPackages)
+            {
+                skipped.Add(package);
+            }
+
+            node["generatorsSkipped"] = skipped;
         }
 
         if (candidate.State != SingleFileExtensionState.Invalid)
@@ -295,7 +345,10 @@ internal static partial class ExtensionsView
             SingleFileExtensionState.NotBuilt => "not-built",
             SingleFileExtensionState.Restoring => "restoring",
             SingleFileExtensionState.Stale => "stale",
+            SingleFileExtensionState.Built => "built",
             SingleFileExtensionState.TrustFailed => "failed",
+            SingleFileExtensionState.RestoreFailed => "failed",
+            SingleFileExtensionState.CompileFailed => "failed",
             _ => "invalid",
         };
 }

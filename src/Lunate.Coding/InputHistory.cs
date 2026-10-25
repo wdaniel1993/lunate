@@ -22,12 +22,7 @@ internal sealed class InputHistory
     }
 
     /// <summary>The default history file under the user profile.</summary>
-    public static string DefaultPath { get; } =
-        Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-            ".lunate",
-            "history"
-        );
+    public static string DefaultPath { get; } = Path.Combine(Lunate.Ai.LunateHome.Store, "history");
 
     /// <summary>The stored entries, oldest first.</summary>
     public IReadOnlyList<string> Entries => _entries;

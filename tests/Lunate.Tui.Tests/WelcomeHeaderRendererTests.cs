@@ -115,6 +115,28 @@ public sealed class WelcomeHeaderRendererTests
             { 40, false },
         };
 
+    [Fact]
+    public void A_moved_state_root_prints_its_own_line_in_the_block()
+    {
+        WelcomeHeaderState moved = Full with { Home = "home /tmp/state (LUNATE_HOME)" };
+
+        string[] text = Text(moved, width: 80, Capabilities(unicode: true, colored: true));
+
+        // After the workspace, before the C# row: paths stay together, and the line is the same
+        // spelling `lunate --version` prints.
+        Assert.Equal("home /tmp/state (LUNATE_HOME)", text[4]);
+    }
+
+    [Fact]
+    public void A_moved_state_root_is_visible_on_the_one_line_form_too()
+    {
+        WelcomeHeaderState moved = Full with { Home = "home /tmp/state (LUNATE_HOME)" };
+
+        string[] text = Text(moved, width: 60, Capabilities(unicode: false, colored: false));
+
+        Assert.Contains("home /tmp/state (LUNATE_HOME)", text[0], StringComparison.Ordinal);
+    }
+
     [Theory]
     [MemberData(nameof(Matrix))]
     public void The_header_matches_the_snapshot_matrix_cell(

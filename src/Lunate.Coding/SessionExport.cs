@@ -79,7 +79,7 @@ internal sealed record ExportRequest(ExportFormat Format, string? Path, bool For
 /// </summary>
 internal static class ExportTargets
 {
-    /// <summary>The directory name under the profile's <c>.lunate</c> store.</summary>
+    /// <summary>The directory name under the state root.</summary>
     internal const string DirectoryName = "exports";
 
     /// <summary>The longest session-name fragment a file name carries.</summary>
@@ -88,14 +88,14 @@ internal static class ExportTargets
     /// <summary>The absolute destination for one request.</summary>
     internal static string Resolve(
         ExportRequest request,
-        string homeDirectory,
+        string storeRoot,
         string workingDirectory,
         string sessionNameOrId,
         DateTimeOffset now
     )
     {
         ArgumentNullException.ThrowIfNull(request);
-        ArgumentException.ThrowIfNullOrWhiteSpace(homeDirectory);
+        ArgumentException.ThrowIfNullOrWhiteSpace(storeRoot);
         ArgumentException.ThrowIfNullOrWhiteSpace(workingDirectory);
         ArgumentException.ThrowIfNullOrWhiteSpace(sessionNameOrId);
 
@@ -111,8 +111,7 @@ internal static class ExportTargets
         string date = now.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
         return System.IO.Path.GetFullPath(
             System.IO.Path.Combine(
-                homeDirectory,
-                ".lunate",
+                storeRoot,
                 DirectoryName,
                 date + "-" + FileName(sessionNameOrId) + extension
             )

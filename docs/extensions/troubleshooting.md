@@ -19,9 +19,12 @@ shows a summary.
 | `<id> — remote failed: <reason>` | A remote process crashed or exited. |
 | `<id> — remote refused: <reason>` | The remote handshake refused the extension (version mismatch or an undeclared surface). |
 | `<id> <version> (<scope>, single file) not-built, tools …` | A single `.cs` file with a usable header; nothing has built it. |
+| `<id> <version> (<scope>, single file) built, tools …` | An assembly exists for exactly these bytes, this lock and this toolset. |
+| `…, generators skipped: <package>` | A locked package ships analyzers or generators and the header did not opt in; see [single-file.md](single-file.md#generators-on). |
 | `<file name> (<scope>, single file) invalid (no #:extension)` | A `.cs` file with no header; it is never compiled. |
 | `<id> <version> (<scope>, single file) stale — …` | The file changed since it was trusted; see [single-file.md](single-file.md#trust). |
 | `<id> <version> (<scope>, single file) failed (trust) — …` | The trust decision could not be read or verified. |
+| `<id> <version> (<scope>, single file) failed (compile) — <file>(line,col): error CSxxxx: …` | The compile failed at that position; nothing was written and the previous build, if any, still loads. |
 
 The view orders failed entries first, then trust-denied, then loaded. `lunate extensions` exits `1`
 when any extension failed to load, `0` otherwise; a denied extension is expected without trust and

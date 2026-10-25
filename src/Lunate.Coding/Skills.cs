@@ -77,11 +77,16 @@ internal sealed record SkillDescriptor(
     }
 }
 
-/// <summary>The raw discovery input: the boundaries discovery may read and the extension sources.</summary>
+/// <summary>
+/// The raw discovery input: the boundaries discovery may read and the extension sources.
+/// <see cref="HomeDirectory"/> is a profile a caller already holds (a test's temp home); null means
+/// the real profile. Lunate's own user skills resolve under the state root, the shared
+/// <c>.agents</c> convention under the profile.
+/// </summary>
 internal sealed record SkillScanRequest(
     string WorktreeRoot,
     string? RepoRoot,
-    string HomeDirectory,
+    string? HomeDirectory,
     IReadOnlyList<ExtensionSkillSource> ExtensionSources
 );
 

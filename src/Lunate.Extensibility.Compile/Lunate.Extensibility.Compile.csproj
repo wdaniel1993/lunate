@@ -1,0 +1,52 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <ItemGroup>
+        <ProjectReference Include="../Lunate.Extensibility/Lunate.Extensibility.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <!-- The compiler the product already ships: the same 5.9.0 Lunate.Roslyn resolves, so the
+             host has one Roslyn. Nothing here references the workspace or MSBuild layers. -->
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.9.0" />
+    </ItemGroup>
+
+    <!--
+        The compile-time contract travels inside this assembly. A published self-contained
+        single-file binary has no .dll on disk to point a MetadataReference at — the managed
+        assemblies are bundled and Assembly.Location is empty — so the contract the host was built
+        against is embedded here and read from the manifest at compile time: the four shared
+        assemblies every extension may reference, as this build resolved them (the same metadata a
+        ProjectReference exposes to any other consumer).
+
+        The hook is SplitResourcesByCulture, and it depends on ResolveReferences: CoreBuild runs
+        ResolveReferences before PrepareResources, and SplitResourcesByCulture is the target that
+        snapshots EmbeddedResource into the lists the compiler is given — so the items have to exist
+        before it, not merely before CreateManifestResourceNames. ReferencePathWithRefAssemblies is
+        not available this early (it is filled by FindReferenceAssembliesForReferences, with
+        CoreCompile), so the resolved reference paths are used as they are.
+    -->
+    <!--
+        `<EmbedCompileContracts>false` publishes the same binary without them: that is how the
+        phase-2 measurement of what the embedding costs was taken (design.md, "Measurements"). It is
+        a measurement knob, not a supported configuration — a binary built that way has to read the
+        contracts from disk and only works beside them.
+    -->
+    <Target
+        Name="EmbedCompileContracts"
+        Condition="'$(EmbedCompileContracts)' != 'false'"
+        BeforeTargets="SplitResourcesByCulture"
+        DependsOnTargets="ResolveReferences"
+    >
+        <ItemGroup>
+            <EmbeddedResource
+                Include="@(ReferencePath)"
+                Condition="'%(Filename)' == 'Lunate.Extensibility.Abstractions' Or '%(Filename)' == 'Lunate.Agent' Or '%(Filename)' == 'Lunate.Ai' Or '%(Filename)' == 'Microsoft.Extensions.AI.Abstractions'"
+            >
+                <LogicalName>contracts/%(Filename).dll</LogicalName>
+            </EmbeddedResource>
+        </ItemGroup>
+    </Target>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="Lunate.Extensibility.Compile.Tests" />
+    </ItemGroup>
+</Project>

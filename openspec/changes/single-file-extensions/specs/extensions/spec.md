@@ -132,9 +132,31 @@ Compilation SHALL use the .NET reference assemblies matching the running runtime
 - **WHEN** a single-file extension declaring one package is trusted and compiled
 - **THEN** the reference pack is restored into the global packages folder, the compile succeeds, and a second run reuses the cache without a feed request
 
+### Requirement: Compiling a single file
+
+The host SHALL compile a trusted single-file extension in process with the Roslyn it already ships, against the reference pack restored for the running runtime, the host's contract assemblies and each locked package's compile assets — and against nothing else. A compile SHALL NOT re-resolve a lock, SHALL NOT reach a feed, and SHALL NOT load a package's analyzers or source generators unless the header opted in. A file whose digest is `stale` SHALL NOT be compiled, and a lock that does not answer for the trusted bytes SHALL NOT be used. Compilation SHALL be deterministic: the same source, the same lock and the same toolset SHALL produce a byte-identical assembly, so a rebuild is a cache hit rather than a new artifact. A failed compile SHALL report the **first** diagnostic — the file, the line, the column, the compiler id and the message — as `failed (compile) — <reason>`, and SHALL leave no build directory behind. The build SHALL be triggerable without a session through `lunate extensions build <id|path> [--json]`, which runs the same service `/extensions reload` uses; listing extensions SHALL NOT compile anything, and startup SHALL stay lazy.
+
+#### Scenario: A compile error leaves nothing behind
+
+- **GIVEN** a trusted, restored extension whose source has a compile error
+- **WHEN** `lunate extensions build <id>` runs
+- **THEN** it exits non-zero, the build reports `failed (compile)` with the first diagnostic in Roslyn's own form (`path(line,col): error CSxxxx: message`), and no build directory exists for it
+
+#### Scenario: The same inputs build once
+
+- **GIVEN** an extension built once
+- **WHEN** it is built again with the same source, lock and toolset
+- **THEN** the build is a cache hit, no compiler runs, and the assembly's bytes are unchanged
+
+#### Scenario: A package's copy of a contract is not compiled against
+
+- **GIVEN** a locked package that ships its own `Lunate.Extensibility.Abstractions.dll`
+- **WHEN** the extension is compiled
+- **THEN** the host's contract assembly is the one referenced, and the compile succeeds rather than failing on two assemblies with one identity
+
 ### Requirement: Restore, lock and compiled cache
 
-A restore SHALL run in process through the NuGet client libraries, which SHALL be loaded only when a restore runs. Resolved packages SHALL go to NuGet's global packages folder, respecting `NUGET_PACKAGES`, and SHALL NOT be copied into a Lunate-owned folder. Each extension SHALL keep only its compiled assembly, its `extension.lock.json` and a pointer to the current build under `~/.lunate/cache/extensions/<id>/`. The lock SHALL have two halves: a `graph` (the sources, and per package the exact version, nupkg SHA-512, the resolved asset list and the dependency edges) and a `toolset` (target framework, RID, exact runtime, and the reference pack's id, version and nupkg hash, with an integrity hash over the block). The build SHALL be keyed by `sha256(sourceHash | lockHash | apiVersion | TFM | RID)`, where `lockHash` covers both halves, so a graph change and a toolset change each produce a new build. A successful compile SHALL keep the last two builds and delete older ones; removing the extension SHALL delete its builds; `lunate cache prune` SHALL remove entries no extension points at. A restore that would change the lock's graph SHALL report and ask; a restore that would change only its toolset SHALL rewrite the lock and rebuild without asking.
+A restore SHALL run in process through the NuGet client libraries, which SHALL be loaded only when a restore runs. Resolved packages SHALL go to NuGet's global packages folder, respecting `NUGET_PACKAGES`, and SHALL NOT be copied into a Lunate-owned folder. Each extension SHALL keep only its compiled assembly, its `extension.lock.json` and a pointer to the current build under `~/.lunate/cache/extensions/<id>/`. The lock SHALL have two halves: a `graph` (the sources, and per package the exact version, nupkg SHA-512, the resolved asset list and the dependency edges) and a `toolset` (target framework, RID, exact runtime, and the reference pack's id, version and nupkg hash, with an integrity hash over the block). The build SHALL be keyed by `sha256(sourceHash | lockHash | apiVersion | TFM | RID)`, where `lockHash` covers both halves, so a graph change and a toolset change each produce a new build. A successful compile SHALL keep the last two builds and delete older ones; removing the extension SHALL delete its builds; `lunate cache prune` SHALL remove entries no extension points at. The builds SHALL live under `builds/<key>/`, each with the compiled assembly and a manifest that records its key's inputs and the resolution a load needs, and the entry SHALL carry a pointer file naming the current build. A restore that would change the lock's graph SHALL report and ask; a restore that would change only its toolset SHALL rewrite the lock and rebuild without asking. The state root SHALL be `~/.lunate` unless `LUNATE_HOME` names an absolute path, in which case the lock, the trust record, the build cache and the extension files SHALL all resolve under it; a relative value SHALL be refused by name rather than silently ignored, because a process that must not touch the user's state depends on the override taking effect.
 
 #### Scenario: A second compile leaves two builds
 
@@ -142,11 +164,45 @@ A restore SHALL run in process through the NuGet client libraries, which SHALL b
 - **WHEN** the third build succeeds
 - **THEN** two build directories remain under its cache entry and the oldest is gone
 
+#### Scenario: The state root can be moved
+
+- **GIVEN** `LUNATE_HOME` set to an absolute temporary directory
+- **WHEN** a single file is trusted, restored and compiled
+- **THEN** its lock, its trust record and its build are all under that directory, and nothing is written under the user's profile
+
 #### Scenario: No NuGet assembly before a restore
 
 - **GIVEN** a session whose extensions are all already built
 - **WHEN** the session starts
 - **THEN** no `NuGet.*` assembly is loaded into the process
+
+### Requirement: The state root is guarded, visible and environment-only
+
+The state root SHALL be read from the process environment only — no `.env` file, settings file, `AGENTS.md` or project file may supply `LUNATE_HOME` — because a repository that can choose the store can choose the directory its own trust records live in. A process that knows its workspace or repository root SHALL refuse a `LUNATE_HOME` whose store resolves inside it, before opening the store, with the message `LUNATE_HOME points inside the workspace; trust records there could be written by the repository`. Containment SHALL compare real paths (symlinks resolved, `.` and `..` resolved, trailing separators ignored, the platform's case rule), a store equal to the root SHALL count as inside, and a sibling or unrelated directory SHALL be accepted. When `LUNATE_HOME` is set, `lunate --version` and the interactive welcome header SHALL both print the active home as `home <path> (LUNATE_HOME)`, and neither SHALL print it when the variable is unset. The trust store, the extension cache, user extensions, sessions, `auth.json`, `settings.json`, history, exports, the model catalog, Lunate's own user skills and recordings SHALL follow the root; `~/.agents/skills`, `~/.agents/mcp.json` and NuGet's packages folder SHALL NOT, because they are shared conventions or content-addressed package storage rather than Lunate state. No log file is promised: extension logging is the terminal through `IExtensionLog`, and the session file is the transcript.
+
+#### Scenario: A store inside the workspace is refused
+
+- **GIVEN** `LUNATE_HOME` set to a directory inside the worktree, or equal to its root
+- **WHEN** a session composes, or `lunate extensions build`, `lunate cache prune` or `lunate trust` runs there
+- **THEN** the command fails with `LUNATE_HOME points inside the workspace; trust records there could be written by the repository`, and nothing is written to that path
+
+#### Scenario: A sibling or unrelated store is accepted
+
+- **GIVEN** `LUNATE_HOME` set to a sibling of the worktree, or to a directory inside no workspace
+- **WHEN** a session or a store-writing subcommand runs
+- **THEN** it proceeds and writes under that directory
+
+#### Scenario: A redirected run is visible
+
+- **GIVEN** `LUNATE_HOME` set to an absolute temporary directory
+- **WHEN** `lunate --version` runs and an interactive session starts
+- **THEN** both print `home <that directory> (LUNATE_HOME)` in the same spelling, and a run without the variable prints neither
+
+#### Scenario: A session with an unusable profile writes only the root
+
+- **GIVEN** `LUNATE_HOME` set to a temporary directory, and `HOME`/`USERPROFILE` pointing at a directory that does not exist
+- **WHEN** a full session runs one turn with a tool call
+- **THEN** it exits successfully, its session file is under the redirected root, and the nonexistent home is still nonexistent
 
 ### Requirement: Host assemblies win over the extension's copies
 
