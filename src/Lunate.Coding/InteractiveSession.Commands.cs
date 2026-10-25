@@ -330,8 +330,9 @@ internal sealed partial class InteractiveSession
     /// The <c>/extensions</c> notice: one segment per discovered extension ordered failed →
     /// trust-denied → loaded, then by id (design D2), joined <c>; </c> under the
     /// <c>extensions: </c> prefix; no extensions reads as such and a <c>--no-extensions</c>
-    /// session (no host) reads disabled. Read-only, so it is allowed while a turn runs, and it
-    /// never prints settings values, secrets or environment values.
+    /// session (no host) reads disabled. It re-reads the single-file candidates first — a file the
+    /// model wrote mid-session is state, not stale discovery — and it writes nothing, prompts
+    /// nothing and prints no settings values, secrets or environment values.
     /// </summary>
     private string ExtensionsText()
     {
@@ -353,7 +354,7 @@ internal sealed partial class InteractiveSession
                 id => host.RegisteredCounts(id, _commands.Shadowed),
                 hookTimings: host.HookTimings,
                 remoteStart: host.RemoteStartDuration,
-                singleFile: host.SingleFileExtensions,
+                singleFile: host.RefreshSingleFileExtensions(),
                 ignoredCopies: host.IgnoredHostCopyOf
             ),
         ];
@@ -408,39 +409,136 @@ internal sealed partial class InteractiveSession
     /// The <c>/extensions reload &lt;id&gt;</c> action: builds the file again and swaps it in. A trust
     /// or build refusal is a warning notice and the old build keeps answering; the success notice
     /// names the build that is now live.
+    /// <para>
+    /// The work runs on its own task, not on the caller's: the caller is the key pump, and the
+    /// reload's first step is a trust question — awaiting it here would leave nobody to read the
+    /// answer, which is a session that asks and cannot be answered. One reload at a time, so two
+    /// Enter presses cannot race for the same cache entry.
+    /// </para>
     /// </summary>
-    private async ValueTask ReloadExtension(string id, CancellationToken ct)
+    private ValueTask ReloadExtension(string id, CancellationToken ct)
     {
         if (id.Length == 0)
         {
             Notify("usage: /extensions reload <id>");
-            return;
+            return ValueTask.CompletedTask;
         }
 
         if (_extensions is not { } host)
         {
             Notify(ExtensionsText());
-            return;
+            return ValueTask.CompletedTask;
         }
 
-        SingleFileReloadOutcome outcome = await host.ReloadSingleFileAsync(id, ct)
-            .ConfigureAwait(false);
-        if (!outcome.Reloaded)
+        if (_reloadRunning)
         {
             Notify(
                 FormattableString.Invariant(
-                    $"extension '{id}' was not reloaded: {outcome.Reason ?? "no reason recorded"}"
+                    $"a reload is already running — '{id}' was not started"
                 ),
                 NoticeLevel.Warning
             );
-            return;
+            return ValueTask.CompletedTask;
         }
 
-        Notify(
-            FormattableString.Invariant(
-                $"extension '{id}' reloaded — build {outcome.LoadedBuildKey}"
+        _ = ReloadAsync(id, host, ct);
+        return ValueTask.CompletedTask;
+    }
+
+    private async Task ReloadAsync(string id, ExtensionSession host, CancellationToken ct)
+    {
+        _reloadRunning = true;
+        try
+        {
+            SingleFileReloadOutcome outcome = await host.ReloadSingleFileAsync(id, ct)
+                .ConfigureAwait(false);
+            if (!outcome.Reloaded)
+            {
+                Notify(
+                    FormattableString.Invariant(
+                        $"extension '{id}' was not reloaded: {outcome.Reason ?? "no reason recorded"}"
+                    ),
+                    NoticeLevel.Warning
+                );
+                return;
+            }
+
+            // The session's tool list is what the next request declares and what a tool call
+            // resolves against; the reload registered the new build's tools, so the session's
+            // registry is re-pointed at them here — the missing half that made a reloaded or
+            // freshly written extension invisible to the model until the next session.
+            SyncReloadedTools(id);
+            Notify(
+                FormattableString.Invariant(
+                    $"extension '{id}' reloaded — build {outcome.LoadedBuildKey}"
+                )
+            );
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            // The session is quitting: the reload's own report is not news any more.
+        }
+        catch (Exception exception)
+        {
+            Notify(
+                FormattableString.Invariant(
+                    $"extension '{id}' was not reloaded: {exception.Message}"
+                ),
+                NoticeLevel.Warning
+            );
+        }
+        finally
+        {
+            _reloadRunning = false;
+        }
+    }
+
+    /// <summary>
+    /// Re-points the session's tool registry at the build a reload just loaded: the previous
+    /// build's adapters are dropped (their context is unloaded, so keeping them would call into
+    /// code that is gone) and the new build's are added, then the harness is rebuilt so the system
+    /// prompt names the same set the declarations carry. Names a core or MCP tool already owns stay
+    /// with their owner — the composition rule, applied again after the swap.
+    /// </summary>
+    private void SyncReloadedTools(string id)
+    {
+        foreach (
+            ITool stale in _tools
+                .Tools.OfType<ExtensionToolAdapter>()
+                .Where(tool => string.Equals(tool.ExtensionId, id, StringComparison.Ordinal))
+                .ToList()
+        )
+        {
+            _tools.Remove(stale.Name);
+            _inheritedTools.Remove(stale);
+        }
+
+        if (_extensions is { } host)
+        {
+            foreach (
+                ITool tool in host.Tools.Where(tool =>
+                    tool is ExtensionToolAdapter adapter
+                    && string.Equals(adapter.ExtensionId, id, StringComparison.Ordinal)
+                )
             )
-        );
+            {
+                if (_tools.Find(tool.Name) is not null)
+                {
+                    Notify(
+                        FormattableString.Invariant(
+                            $"extension tool '{tool.Name}' not added: the name is already taken"
+                        ),
+                        NoticeLevel.Warning
+                    );
+                    continue;
+                }
+
+                _tools.Add(tool);
+                _inheritedTools.Add(tool);
+            }
+        }
+
+        _harness = BuildHarness(_model);
     }
 
     /// <summary>Switches to a catalog model by id; an unknown id produces a notice.</summary>

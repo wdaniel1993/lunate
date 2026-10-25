@@ -31,6 +31,8 @@ public sealed partial class ExtensionLoader
     private readonly Dictionary<string, List<IDisposable>> _subscriptions = new(
         StringComparer.Ordinal
     );
+    private string? _globalSingleFileRoot;
+    private string? _projectSingleFileRoot;
     private bool _sessionBegan;
     private bool _sessionStarted;
     private bool _sessionEnded;
@@ -107,9 +109,32 @@ public sealed partial class ExtensionLoader
             "extensions"
         );
         ScanDirectory(projectExtensions, ExtensionScope.Project);
-        DiscoverSingleFileExtensions(_options.ExtensionsPath, projectExtensions);
+        _globalSingleFileRoot = _options.ExtensionsPath;
+        _projectSingleFileRoot = projectExtensions;
+        DiscoverSingleFileExtensions(_options.ExtensionsPath, projectExtensions, _discoveryErrors);
 
         return Descriptors;
+    }
+
+    /// <summary>
+    /// Re-reads the single-file candidates of the roots the last <see cref="Discover"/> scanned, so
+    /// a file the model wrote or edited during the session is what <c>/extensions</c> lists and what
+    /// a reload acts on — discovery-time is not the last word once a session can author a file. It
+    /// reads a handful of small files and nothing else: no manifest rescan, no restore, no compile,
+    /// no prompt. The rows carry each candidate's state and reason, so a refusal is still visible;
+    /// the composition's discovery errors are not re-reported, because they belong to session start.
+    /// </summary>
+    public IReadOnlyList<SingleFileExtension> RefreshSingleFileExtensions()
+    {
+        if (_globalSingleFileRoot is not { } global || _projectSingleFileRoot is not { } project)
+        {
+            return SingleFileExtensions;
+        }
+
+        _singleFile.Clear();
+        DiscoverSingleFileExtensions(global, project, []);
+
+        return SingleFileExtensions;
     }
 
     /// <summary>

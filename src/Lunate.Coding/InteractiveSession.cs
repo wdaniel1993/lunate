@@ -168,6 +168,7 @@ internal sealed partial class InteractiveSession : IDisposable
     private ThinkingLevel _thinkingLevel;
     private AgentHarness? _harness;
     private SessionApprover? _approver;
+    private bool _reloadRunning;
     private InputLineState _input = InputLine.Empty;
     private string? _historyDraft;
     private Task? _run;
