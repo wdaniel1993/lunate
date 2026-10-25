@@ -49,6 +49,14 @@ public sealed class SingleFileIsolationTests
                 )
         );
 
+        // The load records the same fact for the row: both packages, once.
+        IgnoredHostCopy copy = Assert.IsType<IgnoredHostCopy>(loader.IgnoredHostCopyOf(fixture.Id));
+        Assert.Equal(["Lunate.Extensibility.Abstractions"], copy.Names);
+        Assert.Equal(
+            new[] { "Acme.Contracts", "Acme.Extra" },
+            copy.Owners.Order(StringComparer.Ordinal)
+        );
+
         // One line for both packages: the user is told once which copies were dropped and whose
         // copy is live, not once per package per load attempt.
         string warning = Assert.Single(

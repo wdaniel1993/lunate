@@ -11,6 +11,33 @@ namespace Lunate.Coding.Tests;
 public sealed class ExtensionsViewJsonTests
 {
     [Fact]
+    public void Json_carries_the_ignored_copy_on_the_extension_that_had_one()
+    {
+        IReadOnlyList<ExtensionDescriptor> descriptors = [Descriptor("acme-tools")];
+        IReadOnlyList<ExtensionLoadResult> results = [Loaded("acme-tools")];
+
+        using JsonDocument document = JsonDocument.Parse(
+            ExtensionsView.Json(
+                descriptors,
+                results,
+                NoCounts,
+                ignoredCopies: id =>
+                    string.Equals(id, "acme-tools", StringComparison.Ordinal)
+                        ? new IgnoredHostCopy(
+                            ["Lunate.Extensibility.Abstractions"],
+                            ["Acme.Contracts"]
+                        )
+                        : null
+            )
+        );
+
+        Assert.Equal(
+            "Lunate.Extensibility.Abstractions from Acme.Contracts",
+            document.RootElement[0].GetProperty("ignoredCopy").GetString()
+        );
+    }
+
+    [Fact]
     public void Json_carries_the_ordered_fields_with_load_time_only_on_loaded_extensions()
     {
         IReadOnlyList<ExtensionDescriptor> descriptors =

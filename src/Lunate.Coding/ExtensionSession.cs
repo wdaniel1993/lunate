@@ -439,6 +439,13 @@ internal sealed class ExtensionSession : IAsyncDisposable
     internal SingleFileExtensionBuilder SingleFileBuilder => _singleFileBuilder;
 
     /// <summary>
+    /// What the load of one extension ignored because the host owns it (a package's or the
+    /// directory's copy of the contract), or null when it shipped none: the row and the JSON's note.
+    /// </summary>
+    internal IgnoredHostCopy? IgnoredHostCopyOf(string extensionId) =>
+        _loader.IgnoredHostCopyOf(extensionId);
+
+    /// <summary>
     /// Reloads one single-file extension (<c>/extensions reload &lt;id&gt;</c>): the session's builder
     /// and the session's own trust prompt, so the question the preflight asks is the one this session
     /// has been asking all along. The old build stays loaded when trust or the build refuses.

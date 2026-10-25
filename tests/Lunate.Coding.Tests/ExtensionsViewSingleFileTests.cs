@@ -28,6 +28,47 @@ public sealed class ExtensionsViewSingleFileTests
     }
 
     [Fact]
+    public void A_built_file_that_ignored_a_packages_copy_says_so_on_its_row()
+    {
+        SingleFileExtension candidate = SingleFile(state: SingleFileExtensionState.Built);
+
+        string segment = Assert.Single(
+            ExtensionsView.Segments(
+                [],
+                [],
+                NoCounts,
+                singleFile: [candidate],
+                ignoredCopies: id =>
+                    string.Equals(id, "acme-tools", StringComparison.Ordinal)
+                        ? new IgnoredHostCopy(
+                            ["Lunate.Extensibility.Abstractions"],
+                            ["Acme.Contracts"]
+                        )
+                        : null
+            )
+        );
+
+        Assert.Contains(
+            ", ignored its copy of Lunate.Extensibility.Abstractions from Acme.Contracts",
+            segment,
+            StringComparison.Ordinal
+        );
+        Assert.DoesNotContain('\n', segment);
+    }
+
+    [Fact]
+    public void A_row_without_an_ignored_copy_says_nothing_about_one()
+    {
+        SingleFileExtension candidate = SingleFile(state: SingleFileExtensionState.Built);
+
+        string segment = Assert.Single(
+            ExtensionsView.Segments([], [], NoCounts, singleFile: [candidate])
+        );
+
+        Assert.DoesNotContain("ignored its copy", segment, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void A_not_built_row_carries_a_refused_lock_on_the_same_line()
     {
         SingleFileExtension candidate = SingleFile(

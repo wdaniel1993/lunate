@@ -7,6 +7,17 @@ namespace Lunate.Extensibility;
 /// load binds by; the substitution is reported once per extension, naming who shipped the copy,
 /// which is the one thing the user cannot see for themselves.
 /// </summary>
+/// <summary>
+/// What one load ignored because the host owns it: the assemblies, and who shipped the copies — a
+/// locked package's id, or the extension's own directory. <see cref="ToString"/> is the phrase a view
+/// appends, so the log line and the row cannot describe the same event differently.
+/// </summary>
+public sealed record IgnoredHostCopy(IReadOnlyList<string> Names, IReadOnlyList<string> Owners)
+{
+    public override string ToString() =>
+        FormattableString.Invariant($"{string.Join(", ", Names)} from {string.Join(", ", Owners)}");
+}
+
 public static class HostOwnedAssemblies
 {
     /// <summary>

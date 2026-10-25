@@ -157,6 +157,17 @@ public sealed partial class ExtensionLoader
         };
     }
 
+    /// <summary>
+    /// What the load of <paramref name="id"/> ignored because the host owns it, or null when the
+    /// extension shipped no copy. The view shows it on the extension's row.
+    /// </summary>
+    public IgnoredHostCopy? IgnoredHostCopyOf(string id)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(id);
+
+        return _ignoredCopies.TryGetValue(id, out IgnoredHostCopy? copy) ? copy : null;
+    }
+
     /// <summary>The build key currently loaded for <paramref name="id"/>, or null when it is not loaded.</summary>
     public string? LoadedSingleFileKey(string id)
     {

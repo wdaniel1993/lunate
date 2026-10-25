@@ -12,6 +12,15 @@ public sealed partial class ExtensionLoader
     private readonly Dictionary<string, string> _singleFileKeys = new(StringComparer.Ordinal);
 
     /// <summary>
+    /// Per loaded extension, what the load ignored because the host owns it: a locked package's id for
+    /// a single-file build, or the extension's directory for a packaged one. The view reads it so the
+    /// warning is a line where the user looks, not only a log line they may have missed.
+    /// </summary>
+    private readonly Dictionary<string, IgnoredHostCopy> _ignoredCopies = new(
+        StringComparer.Ordinal
+    );
+
+    /// <summary>
     /// The single-file candidates discovered beside the packaged extensions, global before project
     /// and each group in file-name order. A refused file stays in the list — <c>/extensions</c>
     /// shows why instead of hiding it — and its id never displaces a packaged extension.
@@ -141,6 +150,14 @@ public sealed partial class ExtensionLoader
                 )
                 .ConfigureAwait(false);
             _singleFileKeys[id] = build.Key;
+            if (context.ShadowedPackages.Count > 0)
+            {
+                _ignoredCopies[id] = new IgnoredHostCopy(
+                    context.ShadowedNames,
+                    context.ShadowedPackages
+                );
+            }
+
             return loaded;
         }
         catch (ExtensionLoadException)

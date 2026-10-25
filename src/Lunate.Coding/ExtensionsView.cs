@@ -53,7 +53,8 @@ internal static partial class ExtensionsView
         bool cliMeasured = false,
         Func<string, IReadOnlyList<HookTimings>>? hookTimings = null,
         Func<string, TimeSpan?>? remoteStart = null,
-        IReadOnlyList<SingleFileExtension>? singleFile = null
+        IReadOnlyList<SingleFileExtension>? singleFile = null,
+        Func<string, IgnoredHostCopy?>? ignoredCopies = null
     )
     {
         ArgumentNullException.ThrowIfNull(registeredCounts);
@@ -68,12 +69,20 @@ internal static partial class ExtensionsView
                         cliMeasured,
                         hookTimings,
                         remoteStart
-                    )
+                    ) + IgnoredCopy(ignoredCopies?.Invoke(entry.Descriptor.Id))
                 ),
         ];
-        segments.AddRange(SingleFileSegments(singleFile));
+        segments.AddRange(SingleFileSegments(singleFile, ignoredCopies));
         return segments;
     }
+
+    /// <summary>
+    /// The one-line note a load's ignored copy leaves on its row: what was dropped and who shipped it.
+    /// Empty when nothing was ignored, so a clean extension stays one line. The same sentence the load
+    /// logged, shortened to the row's shape.
+    /// </summary>
+    private static string IgnoredCopy(IgnoredHostCopy? copy) =>
+        copy is null ? string.Empty : ", ignored its copy of " + copy;
 
     private static IEnumerable<(
         ExtensionDescriptor Descriptor,

@@ -99,6 +99,14 @@ public sealed partial class ExtensionLoader
         var context = new ExtensionLoadContext(descriptor.Id, descriptor.Directory);
         if (context.ShadowedNames.Count > 0)
         {
+            _ignoredCopies[descriptor.Id] = new IgnoredHostCopy(
+                context.ShadowedNames,
+                [descriptor.Directory]
+            );
+        }
+
+        if (context.ShadowedNames.Count > 0)
+        {
             (_options.Log ?? NullExtensionLog.Instance).Warn(
                 HostOwnedAssemblies.Describe(
                     descriptor.Id,
