@@ -52,28 +52,46 @@ esac
 echo "perf: benchmarking: $HYPERFINE_CMD"
 echo "perf: $(hyperfine --version)"
 
-measure_median() {
+# The gate is the FLOOR: the fastest of the runs, printed beside the median for
+# context (ADR-0005 addendum, 2026-10-25). Interference on a shared runner only
+# ever adds time, so the fastest run estimates what the binary costs and the
+# median estimates what the machine was doing; a budget taken on the median was
+# reading the runner's thermal and scheduler state (identical code measured 81 to
+# 364 ms on macOS legs). A real regression sits on the startup path and moves the
+# floor with it, so nothing is hidden by the change.
+measure_startup() {
   hyperfine --warmup "$WARMUP" --runs "$RUNS" --export-json "$RESULTS_ABS" "$HYPERFINE_CMD" >/dev/null
   # hyperfine 2.x moved the statistics into .results[].summary (wall clock =
-  # time_wall_clock); 1.x exposes .median at the top level. Read whichever the
-  # installed version wrote — runner images and developer machines drift.
-  jq -r '(.results[0].median // .results[0].summary.time_wall_clock.median) * 1000 | round' "$RESULTS_ABS"
+  # time_wall_clock) and keeps .min; 1.x exposes .median and .times at the top
+  # level. Read whichever the installed version wrote — runner images and
+  # developer machines drift.
+  jq -r '
+    .results[0]
+    | [
+        (.min // (.times | min)),
+        (.median // .summary.time_wall_clock.median)
+      ]
+    | map(. * 1000 | round)
+    | "\(.[0]) \(.[1])"
+  ' "$RESULTS_ABS"
 }
 
-MEDIAN_MS="$(measure_median)"
-printf 'startup median: %s ms (budget %s ms)\n' "$MEDIAN_MS" "$BUDGET_MS"
+read -r FLOOR_MS MEDIAN_MS <<<"$(measure_startup)"
+printf 'startup: floor %s ms (median %s ms, budget %s ms)\n' \
+  "$FLOOR_MS" "$MEDIAN_MS" "$BUDGET_MS"
 
 # Noise policy (ADR-0005): a single budget miss re-runs the measurement once
 # before failing, so a shared-runner noise burst does not redden the gate while
 # a material regression still misses both attempts. Consecutive misses are a
 # re-calibration (or regression) signal.
-if [ "$MEDIAN_MS" -gt "$BUDGET_MS" ]; then
-  echo "startup median ${MEDIAN_MS} ms exceeds budget ${BUDGET_MS} ms; re-running once (noise policy)"
-  MEDIAN_MS="$(measure_median)"
-  printf 'startup median (retry): %s ms (budget %s ms)\n' "$MEDIAN_MS" "$BUDGET_MS"
+if [ "$FLOOR_MS" -gt "$BUDGET_MS" ]; then
+  echo "startup floor ${FLOOR_MS} ms exceeds budget ${BUDGET_MS} ms; re-running once (noise policy)"
+  read -r FLOOR_MS MEDIAN_MS <<<"$(measure_startup)"
+  printf 'startup: floor %s ms (median %s ms, budget %s ms; retry)\n' \
+    "$FLOOR_MS" "$MEDIAN_MS" "$BUDGET_MS"
 fi
 
-if [ "$MEDIAN_MS" -gt "$BUDGET_MS" ]; then
-  echo "startup budget exceeded: ${MEDIAN_MS} ms > ${BUDGET_MS} ms (two consecutive measurements)" >&2
+if [ "$FLOOR_MS" -gt "$BUDGET_MS" ]; then
+  echo "startup budget exceeded: fastest of ${RUNS} runs ${FLOOR_MS} ms > ${BUDGET_MS} ms (median ${MEDIAN_MS} ms)" >&2
   exit 1
 fi
