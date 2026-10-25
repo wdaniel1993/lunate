@@ -32,6 +32,16 @@
 - [ ] 2.15 Report the measured per-extension cache size, the ref-pack size, the binary-size alternative if shipped, and the startup median after this phase.
 - [ ] 2.16 Docs: what gets restored and where, what the lock is for, how to read a compile failure, and that a Lunate update rebuilds extensions on first use because the cache key includes the API version.
 
+### Phase-2a corrections (maintainer ruling)
+
+- [x] 2a.1 The lock is two halves: a `graph` (sources, packages, exact versions, SHA-512, assets, edges) and a `toolset` (TFM, RID, runtime, reference pack, pack hash). Only the graph is in the trust digest (tag `lunate-extension-v2`); the source-only form keeps tag `lunate-extension-v1`, so an untouched file keeps its decision.
+- [x] 2a.2 Red: the same source and the same graph under two toolset versions produce the same trust digest.
+- [x] 2a.3 Red: a toolset change rebuilds the lock with **no** prompt — the prompt is never called (an unscripted prompt throws), the engine runs, and the trust record's digest and mtime do not move.
+- [x] 2a.4 Red: a graph change still changes the digest and still asks; a stale digest still makes zero feed requests.
+- [x] 2a.5 Red: a toolset block edited without its integrity hash is refused (the graph stays trusted) and the rebuild replaces it without asking.
+- [x] 2a.6 The lock's canonical ordering and byte-identical output survive the split: a written lock parses and writes back identically, and two restores of the same source write the same bytes.
+- [x] 2a.7 The lock lives in `~/.lunate/cache/extensions/<id>/extension.lock.json` for both scopes; the ADR addendum, the design note and the authoring docs say so, and say that a lock is produced per machine and determinism comes from the resolution rule, not from a committed file.
+
 ## 3. Runtime: isolation, API gate, reload (PR 3)
 
 - [ ] 3.1 Red: a package shipping its own `Lunate.Extensibility.Abstractions.dll` loads against the host's copy and warns once.

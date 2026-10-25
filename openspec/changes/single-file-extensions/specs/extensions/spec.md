@@ -74,19 +74,31 @@ The host SHALL parse directives with its own scanner and SHALL NOT call SDK code
 
 ### Requirement: Trust before restore
 
-A single-file extension SHALL be trusted before it is restored or compiled. The **first** trust SHALL cover the id, the declared packages as written (including version ranges) and the source bytes including the header; no lock exists yet. The first successful restore SHALL write the lock file and bind its hash into the trust record automatically — a restore downloads but executes nothing, so this needs no second prompt, provided compilation only ever runs against the bound lock. From then on the digest SHALL include the lock bytes, and any change to the lock SHALL make the extension `stale` and require a new decision. When the digest differs from the trusted one, the host SHALL stop before any feed request and ask again. A trust decision SHALL be per file, stored under `~/.lunate/trust.json`, and SHALL NOT be inherited from another file or path. The prompt SHALL name the file and its declared packages "and their dependencies", because the transitive set is not known before restore; after a restore `/extensions` SHALL show the resolved graph from the lock.
+A single-file extension SHALL be trusted before it is restored or compiled. The **first** trust SHALL cover the id, the declared packages as written (including version ranges) and the source bytes including the header; no lock exists yet. The first successful restore SHALL write the lock file and bind its **graph** into the trust record automatically — a restore downloads but executes nothing, so this needs no second prompt, provided compilation only ever runs against the bound lock. From then on the digest SHALL include the lock's graph half — the sources, and per package the exact version, SHA-512, resolved assets and dependency edges — and any change to that half SHALL make the extension `stale` and require a new decision. The lock's **toolset** half — target framework, RID, exact runtime, and the reference pack's version and nupkg hash — SHALL NOT be part of the digest: it SHALL be integrity-checked on restore, refused when it no longer matches its contents, included in the build cache key, and a change to it SHALL trigger a rebuild without a trust question. When the digest differs from the trusted one, the host SHALL stop before any feed request and ask again. A trust decision SHALL be per file, stored under `~/.lunate/trust.json`, and SHALL NOT be inherited from another file or path. The prompt SHALL name the file and its declared packages "and their dependencies", because the transitive set is not known before restore; after a restore `/extensions` SHALL show the resolved graph from the lock.
 
 #### Scenario: First trust, restore, lock bound, compile
 
 - **GIVEN** a new single-file extension declaring `#:package Octokit@14.0.0`
 - **WHEN** the user trusts it and the first restore succeeds
-- **THEN** the lock is written, its hash is bound into the trust record without a second prompt, and the compile runs against that lock
+- **THEN** the lock is written, its graph is bound into the trust record without a second prompt, and the compile runs against that lock
 
-#### Scenario: A lock edited by hand is stale and makes no feed request
+#### Scenario: A lock's graph edited by hand is stale and makes no feed request
 
-- **GIVEN** a trusted, built extension whose `extension.lock.json` is edited by hand
+- **GIVEN** a trusted, built extension whose `extension.lock.json` graph half is edited by hand
 - **WHEN** the session composes with no network available
 - **THEN** the extension is `stale`, the user is asked again, and the test observes zero HTTP requests to any feed
+
+#### Scenario: A toolset change rebuilds without asking
+
+- **GIVEN** a trusted, restored extension whose lock records runtime `10.0.13` and its reference pack
+- **WHEN** it is restored on a host whose runtime is `10.0.14`, with the same source and the same resolution
+- **THEN** the lock is rewritten for the new toolset and the resolution rebuilt, the trust digest is unchanged, and the trust prompt is never called
+
+#### Scenario: A tampered toolset block is refused
+
+- **GIVEN** a restored extension whose `extension.lock.json` toolset block is edited without its integrity hash being recomputed
+- **WHEN** the extension is discovered and then restored
+- **THEN** the lock is refused rather than used, the graph the user approved is still recognized as trusted, and the restore rewrites the block without asking
 
 #### Scenario: A stale digest from a source edit makes no feed request
 
@@ -122,7 +134,7 @@ Compilation SHALL use the .NET reference assemblies matching the running runtime
 
 ### Requirement: Restore, lock and compiled cache
 
-A restore SHALL run in process through the NuGet client libraries, which SHALL be loaded only when a restore runs. Resolved packages SHALL go to NuGet's global packages folder, respecting `NUGET_PACKAGES`, and SHALL NOT be copied into a Lunate-owned folder. Each extension SHALL keep only its compiled assembly, its `extension.lock.json` (exact versions, SHA-512 per package, resolved asset list) and a pointer to the current build under `~/.lunate/cache/extensions/<id>/`, keyed by `sha256(sourceHash | lockHash | apiVersion | TFM | RID)[..16]`. A successful compile SHALL keep the last two builds and delete older ones; removing the extension SHALL delete its builds; `lunate cache prune` SHALL remove entries no extension points at. The lock SHALL NOT be updated implicitly — a restore that would change it SHALL report and ask.
+A restore SHALL run in process through the NuGet client libraries, which SHALL be loaded only when a restore runs. Resolved packages SHALL go to NuGet's global packages folder, respecting `NUGET_PACKAGES`, and SHALL NOT be copied into a Lunate-owned folder. Each extension SHALL keep only its compiled assembly, its `extension.lock.json` and a pointer to the current build under `~/.lunate/cache/extensions/<id>/`. The lock SHALL have two halves: a `graph` (the sources, and per package the exact version, nupkg SHA-512, the resolved asset list and the dependency edges) and a `toolset` (target framework, RID, exact runtime, and the reference pack's id, version and nupkg hash, with an integrity hash over the block). The build SHALL be keyed by `sha256(sourceHash | lockHash | apiVersion | TFM | RID)`, where `lockHash` covers both halves, so a graph change and a toolset change each produce a new build. A successful compile SHALL keep the last two builds and delete older ones; removing the extension SHALL delete its builds; `lunate cache prune` SHALL remove entries no extension points at. A restore that would change the lock's graph SHALL report and ask; a restore that would change only its toolset SHALL rewrite the lock and rebuild without asking.
 
 #### Scenario: A second compile leaves two builds
 
