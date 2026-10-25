@@ -127,20 +127,7 @@ internal sealed partial class SingleFileLoopFixture
         }
 
         Version runtime = Version.Parse(SingleFileTarget.Current().Runtime);
-        (string Parent, string Version)? chosen = packs.FirstOrDefault(pack =>
-            Version.Parse(pack.Version) == runtime
-        );
-        chosen ??= packs
-            .Where(pack => Version.Parse(pack.Version) >= runtime)
-            .OrderBy(pack => Version.Parse(pack.Version))
-            .Select(pack => ((string, string)?)pack)
-            .FirstOrDefault();
-        chosen ??= packs
-            .OrderBy(pack => Version.Parse(pack.Version))
-            .Select(pack => ((string, string)?)pack)
-            .LastOrDefault();
-
-        if (chosen is not { } pack)
+        if (ChoosePack(packs, runtime) is not { } pack)
         {
             reason =
                 "no Microsoft.NETCore.App.Ref with ref/net10.0 was found in the NuGet cache or the "
@@ -162,12 +149,16 @@ internal sealed partial class SingleFileLoopFixture
         }
 
         string tfm = SingleFileTarget.Current().Tfm;
+        string rule =
+            Version.Parse(pack.Version) == runtime ? ReferencePackRules.Exact
+            : Version.Parse(pack.Version) > runtime ? ReferencePackRules.NearestAtLeast
+            : ReferencePackRules.NearestBelow;
         string refRoot = Path.Combine(link, pack.Version.ToLowerInvariant(), "ref", tfm);
         var referencePack = new ExtensionLockReferencePack
         {
             Id = ReferencePackId,
             Version = pack.Version,
-            Rule = ReferencePackRules.Exact,
+            Rule = rule,
             Assets =
             [
                 .. Directory
@@ -181,6 +172,64 @@ internal sealed partial class SingleFileLoopFixture
 
         fixture = new SingleFileLoopFixture(temp, packages, pack.Version, referencePack);
         return true;
+    }
+
+    /// <summary>
+    /// The pack the product's rule would pick for this runtime: the exact version, else the lowest at
+    /// or above it, else the highest below it (the runtime is ahead of the feed), else none. None is
+    /// spelled as a null nullable on purpose — FirstOrDefault over value tuples returns (null, null),
+    /// which a `is not { } pack` check would read as found and then hand a null path to the linker.
+    /// </summary>
+    internal static (string Parent, string Version)? ChoosePack(
+        IReadOnlyList<(string Parent, string Version)> packs,
+        Version runtime
+    )
+    {
+        static bool SameMinor(Version candidate, Version wanted) =>
+            candidate.Major == wanted.Major && candidate.Minor == wanted.Minor;
+
+        foreach ((string parent, string version) in packs)
+        {
+            if (Version.Parse(version) == runtime)
+            {
+                return (parent, version);
+            }
+        }
+
+        (string Parent, string Version)? above = null;
+        foreach ((string parent, string version) in packs)
+        {
+            Version parsed = Version.Parse(version);
+            if (
+                SameMinor(parsed, runtime)
+                && parsed > runtime
+                && (above is null || parsed < Version.Parse(above.Value.Version))
+            )
+            {
+                above = (parent, version);
+            }
+        }
+
+        if (above is not null)
+        {
+            return above;
+        }
+
+        (string Parent, string Version)? below = null;
+        foreach ((string parent, string version) in packs)
+        {
+            Version parsed = Version.Parse(version);
+            if (
+                SameMinor(parsed, runtime)
+                && parsed < runtime
+                && (below is null || parsed > Version.Parse(below.Value.Version))
+            )
+            {
+                below = (parent, version);
+            }
+        }
+
+        return below;
     }
 
     /// <summary>Where a reference pack may live: NuGet's cache first, then the SDK's packs.</summary>
