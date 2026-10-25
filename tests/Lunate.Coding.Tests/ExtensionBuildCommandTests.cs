@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Lunate.Extensibility;
 
 namespace Lunate.Coding.Tests;
@@ -141,6 +142,140 @@ public sealed class ExtensionBuildCommandTests
         Assert.Equal(CacheCommand.ExitOk, exit);
         Assert.Equal("{\"removed\":[]}", output.ToString().Trim());
         Assert.True(File.Exists(live));
+    }
+
+    [Fact]
+    public void A_json_build_names_the_packages_whose_generators_the_file_did_not_opt_in_for()
+    {
+        using var temp = new TempDirectory();
+        string store = Path.Combine(temp.Root, "store");
+        string file = WriteFile(store);
+        RecordTrust(store, file);
+
+        (int exit, string output, string errors) = Build(store);
+
+        Assert.Equal(ExtensionBuildCommand.ExitOk, exit);
+        Assert.Empty(errors);
+        using JsonDocument document = JsonDocument.Parse(output.Trim());
+        Assert.Equal(
+            ["Refit"],
+            document
+                .RootElement.GetProperty("generatorsSkipped")
+                .EnumerateArray()
+                .Select(node => node.GetString())
+        );
+    }
+
+    [Fact]
+    public void A_json_build_says_nothing_about_generators_once_the_file_opts_in()
+    {
+        using var temp = new TempDirectory();
+        string store = Path.Combine(temp.Root, "store");
+        string file = WriteFile(
+            store,
+            Source.Replace(
+                "#:tool fetch_issue",
+                "#:tool fetch_issue\n        #:generators on",
+                StringComparison.Ordinal
+            )
+        );
+        RecordTrust(store, file);
+
+        (int exit, string output, string errors) = Build(store);
+
+        Assert.Equal(ExtensionBuildCommand.ExitOk, exit);
+        Assert.Empty(errors);
+        using JsonDocument document = JsonDocument.Parse(output.Trim());
+        Assert.False(document.RootElement.TryGetProperty("generatorsSkipped", out _));
+    }
+
+    /// <summary>One build with the CLI's own routing, a lock that ships generators and a compiler that writes bytes.</summary>
+    private static (int Exit, string Output, string Errors) Build(string store)
+    {
+        using var output = new StringWriter();
+        using var errors = new StringWriter();
+        int exit = Cli.Run(
+            ["extensions", "build", "acme-tools", "--json"],
+            output,
+            errors,
+            TestContext.Current.CancellationToken,
+            extensions: new ExtensionSeams
+            {
+                StorePath = store,
+                RestoreEngine = () => new GeneratorShippingEngine(),
+                Compiler = () => new BytesCompiler(),
+            }
+        );
+        return (exit, output.ToString(), errors.ToString());
+    }
+
+    /// <summary>The first-trust record an approving session writes; the CLI never writes one.</summary>
+    private static void RecordTrust(string store, string file)
+    {
+        ExtensionHeader header = ExtensionHeaderScanner.Scan(File.ReadAllText(file));
+        new ExtensionTrustStore(
+            new ExtensionHostOptions { StorePath = store }
+        ).RecordSingleFileTrust(
+            file,
+            SingleFileExtensionDigest.ComputeUnrestored(
+                header.Id!,
+                header.Packages,
+                File.ReadAllBytes(file)
+            )
+        );
+    }
+
+    /// <summary>A restore whose one package ships build-time code and does not contribute compile assets.</summary>
+    private sealed class GeneratorShippingEngine : ISingleFileRestoreEngine
+    {
+        public Task<SingleFileRestoreResult> RestoreAsync(
+            SingleFileRestoreRequest request,
+            CancellationToken cancellationToken
+        )
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(
+                new SingleFileRestoreResult
+                {
+                    Packages =
+                    [
+                        new ExtensionLockPackage
+                        {
+                            Id = "Refit",
+                            Version = "8.0.0",
+                            Sha512 = "ZmFrZQ==",
+                            Requested = "Refit@8.0.0",
+                            Direct = true,
+                            Files = ["analyzers/dotnet/cs/Refit.Generator.dll"],
+                            Analyzers = ["analyzers/dotnet/cs/Refit.Generator.dll"],
+                            Generators = true,
+                        },
+                    ],
+                    ReferencePack = new ExtensionLockReferencePack
+                    {
+                        Id = "Microsoft.NETCore.App.Ref",
+                        Version = "10.0.13",
+                        Rule = ReferencePackRules.Exact,
+                        Assets = ["ref/net10.0/System.Runtime.dll"],
+                    },
+                    Sources = ["local"],
+                    GlobalPackagesFolder = Path.Combine(Path.GetTempPath(), "unused-packages"),
+                }
+            );
+        }
+    }
+
+    /// <summary>The compiler seam without Roslyn: the build shape is what these tests read.</summary>
+    private sealed class BytesCompiler : ISingleFileCompiler
+    {
+        public SingleFileCompileResult Compile(
+            SingleFileCompileRequest request,
+            CancellationToken cancellationToken
+        )
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return SingleFileCompileResult.Ok([0x4d, 0x5a]);
+        }
     }
 
     /// <summary>

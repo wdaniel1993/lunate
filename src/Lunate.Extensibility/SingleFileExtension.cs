@@ -96,8 +96,35 @@ public sealed record SingleFileExtension
     /// <summary>True when an assembly exists for exactly these inputs.</summary>
     public bool IsBuilt => AssemblyPath is not null;
 
-    /// <summary>Declarations nothing provided (a warning, shown as <c>declared, not provided</c>).</summary>
+    /// <summary>
+    /// Declarations nothing provided (a warning, shown as <c>declared, not provided</c>).
+    /// </summary>
     public IReadOnlyList<ExtensionDeclaration> DeclaredNotProvided { get; init; } = [];
+
+    /// <summary>
+    /// The locked packages that ship build-time code (analyzers or source generators) while the
+    /// header did not opt in, sorted by id. A compile leaves them out, and naming them is what keeps
+    /// the omission visible instead of silent. Empty when the file opted in, and empty before a
+    /// restore — without a lock no package has been resolved, so there is nothing to name.
+    /// </summary>
+    public IReadOnlyList<string> GeneratorsSkipped
+    {
+        get
+        {
+            if (Header.Generators || Lock is not { } @lock)
+            {
+                return [];
+            }
+
+            return
+            [
+                .. @lock
+                    .Packages.Where(package => package.Generators)
+                    .Select(package => package.Id)
+                    .Order(StringComparer.OrdinalIgnoreCase),
+            ];
+        }
+    }
 
     /// <summary>The declared id, or null when the header declares none.</summary>
     public string? Id => Header.Id;

@@ -138,22 +138,22 @@ internal static class ExtensionBuildCommand
         SingleFileBuild build = outcome.Build!;
         if (json)
         {
-            output.WriteLine(
-                new JsonObject
-                {
-                    ["id"] = outcome.Extension.Id,
-                    ["version"] = outcome.Extension.Version,
-                    ["path"] = outcome.Extension.Path,
-                    ["state"] =
-                        outcome.Build is null ? "failed"
-                        : outcome.Status == SingleFileBuildStatus.CacheHit ? "up-to-date"
-                        : "built",
-                    ["build"] = build.Key,
-                    ["assembly"] = build.AssemblyPath,
-                    ["tfm"] = build.Manifest.Tfm,
-                    ["rid"] = build.Manifest.Rid,
-                }.ToJsonString()
-            );
+            var node = new JsonObject
+            {
+                ["id"] = outcome.Extension.Id,
+                ["version"] = outcome.Extension.Version,
+                ["path"] = outcome.Extension.Path,
+                ["state"] =
+                    outcome.Build is null ? "failed"
+                    : outcome.Status == SingleFileBuildStatus.CacheHit ? "up-to-date"
+                    : "built",
+                ["build"] = build.Key,
+                ["assembly"] = build.AssemblyPath,
+                ["tfm"] = build.Manifest.Tfm,
+                ["rid"] = build.Manifest.Rid,
+            };
+            GeneratorsSkipped(outcome, node);
+            output.WriteLine(node.ToJsonString());
         }
         else
         {
@@ -165,6 +165,28 @@ internal static class ExtensionBuildCommand
         }
 
         return ExitOk;
+    }
+
+    /// <summary>
+    /// The JSON form of what <c>/extensions</c> says on the row: the locked packages whose build-time
+    /// code this build left out because the header did not opt in. Present only when there are some
+    /// — a file that opted in, or one with no lock, says nothing rather than "none".
+    /// </summary>
+    private static void GeneratorsSkipped(SingleFileBuildOutcome outcome, JsonObject node)
+    {
+        IReadOnlyList<string> packages = outcome.Extension.GeneratorsSkipped;
+        if (packages.Count == 0)
+        {
+            return;
+        }
+
+        var skipped = new JsonArray();
+        foreach (string package in packages)
+        {
+            skipped.Add(package);
+        }
+
+        node["generatorsSkipped"] = skipped;
     }
 
     private static int ReportFailure(SingleFileBuildOutcome outcome, TextWriter errors, bool json)
@@ -201,6 +223,7 @@ internal static class ExtensionBuildCommand
                 };
             }
 
+            GeneratorsSkipped(outcome, node);
             errors.WriteLine(node.ToJsonString());
         }
         else if (outcome.Status == SingleFileBuildStatus.Invalid)

@@ -44,6 +44,7 @@ internal static partial class ExtensionsView
                 + " not-built"
                 + SingleFileCounts(candidate)
                 + SingleFileResolved(candidate)
+                + SingleFileGenerators(candidate)
                 + SingleFileNote(candidate),
             SingleFileExtensionState.Restoring => head
                 + " restoring"
@@ -51,7 +52,8 @@ internal static partial class ExtensionsView
             SingleFileExtensionState.Stale => head
                 + " stale — "
                 + Reason(candidate)
-                + SingleFileResolved(candidate),
+                + SingleFileResolved(candidate)
+                + SingleFileGenerators(candidate),
             SingleFileExtensionState.TrustFailed => head + " failed (trust) — " + Reason(candidate),
             SingleFileExtensionState.RestoreFailed => head
                 + " failed (restore) — "
@@ -62,7 +64,8 @@ internal static partial class ExtensionsView
             SingleFileExtensionState.Built => head
                 + " built"
                 + SingleFileCounts(candidate)
-                + SingleFileResolved(candidate),
+                + SingleFileResolved(candidate)
+                + SingleFileGenerators(candidate),
             _ => head + " invalid (" + Reason(candidate) + ")",
         };
     }
@@ -84,6 +87,16 @@ internal static partial class ExtensionsView
                             FormattableString.Invariant($"{package.Id} {package.Version}")
                         )
                 );
+
+    /// <summary>
+    /// The packages whose build-time code the compile leaves out, named so the omission is visible:
+    /// <c>, generators skipped: Refit</c>. Only a resolved graph can say which packages ship them,
+    /// so the note appears once a lock exists and only while the header does not opt in.
+    /// </summary>
+    private static string SingleFileGenerators(SingleFileExtension candidate) =>
+        candidate.GeneratorsSkipped.Count == 0
+            ? string.Empty
+            : ", generators skipped: " + string.Join(", ", candidate.GeneratorsSkipped);
 
     /// <summary>
     /// The declared counts of a usable header, plus — when a declaration nothing provided is
@@ -237,8 +250,10 @@ internal static partial class ExtensionsView
     /// One single-file candidate as JSON: <c>id</c> (null when the header declares none),
     /// <c>version</c>, <c>scope</c>, <c>state</c> (<c>not-built</c>, <c>stale</c>, <c>failed</c> or
     /// <c>invalid</c>), <c>singleFile</c> (the file name), <c>reason</c> when there is one,
-    /// <c>failure</c> (<c>trust</c>) on a failed trust step, the declared counts of a usable header
-    /// and <c>declaredNotProvided</c> when declarations nothing provided are known.
+    /// <c>failure</c> (<c>trust</c>) on a failed trust step, the declared counts of a usable header,
+    /// <c>declaredNotProvided</c> when declarations nothing provided are known, and
+    /// <c>generatorsSkipped</c> when a locked package ships build-time code the header did not opt
+    /// in for.
     /// </summary>
     private static JsonObject SingleFileNode(SingleFileExtension candidate)
     {
@@ -287,6 +302,19 @@ internal static partial class ExtensionsView
             }
 
             node["resolved"] = resolved;
+        }
+
+        // The packages whose build-time code a compile leaves out, so a scripted surface can report
+        // what the human view says: `generators skipped: <package>`.
+        if (candidate.GeneratorsSkipped is { Count: > 0 } skippedPackages)
+        {
+            var skipped = new JsonArray();
+            foreach (string package in skippedPackages)
+            {
+                skipped.Add(package);
+            }
+
+            node["generatorsSkipped"] = skipped;
         }
 
         if (candidate.State != SingleFileExtensionState.Invalid)

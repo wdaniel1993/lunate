@@ -302,6 +302,97 @@ public sealed class ExtensionsViewSingleFileTests
         );
     }
 
+    [Fact]
+    public void A_restored_file_names_the_packages_whose_generators_it_skips()
+    {
+        SingleFileExtension candidate = SingleFile(restored: LockWithGenerators());
+
+        string segment = Assert.Single(
+            ExtensionsView.Segments([], [], NoCounts, singleFile: [candidate])
+        );
+
+        Assert.EndsWith(", generators skipped: Refit", segment, StringComparison.Ordinal);
+        // The resolved graph still reads first: the note is about what the compile leaves out of it.
+        Assert.Contains(", resolved: Refit 8.0.0", segment, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void An_opted_in_file_names_no_skipped_generators()
+    {
+        SingleFileExtension candidate = SingleFile(
+            restored: LockWithGenerators(),
+            generators: true
+        );
+
+        string segment = Assert.Single(
+            ExtensionsView.Segments([], [], NoCounts, singleFile: [candidate])
+        );
+
+        Assert.DoesNotContain("generators skipped", segment, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Json_carries_the_skipped_generators_only_when_the_file_did_not_opt_in()
+    {
+        using JsonDocument document = JsonDocument.Parse(
+            ExtensionsView.Json(
+                [],
+                [],
+                NoCounts,
+                singleFile:
+                [
+                    SingleFile(restored: LockWithGenerators()),
+                    SingleFile(
+                        id: "opted-in",
+                        fileName: "opted-in.cs",
+                        restored: LockWithGenerators(),
+                        generators: true
+                    ),
+                ]
+            )
+        );
+
+        Assert.Equal(
+            ["Refit"],
+            Node(document, "acme.cs")
+                .GetProperty("generatorsSkipped")
+                .EnumerateArray()
+                .Select(node => node.GetString())
+        );
+        Assert.False(Node(document, "opted-in.cs").TryGetProperty("generatorsSkipped", out _));
+    }
+
+    /// <summary>A restored lock with one package that ships build-time code.</summary>
+    private static ExtensionLock LockWithGenerators() =>
+        new()
+        {
+            ExtensionId = "acme-tools",
+            ExtensionVersion = "1.0.0",
+            SourceDigest = "digest",
+            PackagesWritten = ["Refit@8.0.0"],
+            Toolset = new ExtensionLockToolset
+            {
+                Tfm = "net10.0",
+                Rid = "osx-arm64",
+                Runtime = "10.0.13",
+                ReferencePack = new ExtensionLockReferencePack
+                {
+                    Id = "Microsoft.NETCore.App.Ref",
+                    Version = "10.0.13",
+                    Rule = ReferencePackRules.Exact,
+                },
+            },
+            Sources = ["nuget.org"],
+            Packages =
+            [
+                FakePackage("Refit", "8.0.0") with
+                {
+                    Analyzers = ["analyzers/dotnet/cs/Refit.Generator.dll"],
+                    Generators = true,
+                },
+            ],
+        };
+
     private static ExtensionLockPackage FakePackage(string id, string version) =>
         new()
         {
@@ -332,7 +423,8 @@ public sealed class ExtensionsViewSingleFileTests
         IReadOnlyList<string>? tools = null,
         IReadOnlyList<ExtensionDeclaration>? declaredNotProvided = null,
         ExtensionLock? restored = null,
-        string fileName = "acme.cs"
+        string fileName = "acme.cs",
+        bool generators = false
     ) =>
         new()
         {
@@ -343,6 +435,7 @@ public sealed class ExtensionsViewSingleFileTests
                 Id = id,
                 Version = id is null ? null : version,
                 Tools = tools ?? [],
+                Generators = generators,
             },
             State = state,
             Reason = reason,

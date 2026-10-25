@@ -256,7 +256,109 @@ internal sealed class CompileFixture : IDisposable
         };
     }
 
-    /// <summary>A lock over the reference pack and the given packages, for a direct compile.</summary>
+    /// <summary>
+    /// Roslyn itself as a locked package: a source generator's own dependency, which has to be in the
+    /// lock for the generator to compile at all. The package folder gets the assembly this process
+    /// runs, so the generator binds to the same Roslyn the compile under test uses.
+    /// </summary>
+    internal ExtensionLockPackage AddRoslynPackage()
+    {
+        const string Id = "Microsoft.CodeAnalysis";
+        string version = typeof(Microsoft.CodeAnalysis.Compilation)
+            .Assembly.GetName()
+            .Version!.ToString(3);
+        string asset = FormattableString.Invariant($"lib/{Target.Tfm}/{Id}.dll");
+        string directory = Path.Combine(
+            PackagesFolder,
+            Id.ToLowerInvariant(),
+            version.ToLowerInvariant(),
+            "lib",
+            Target.Tfm
+        );
+        Directory.CreateDirectory(directory);
+        byte[] image = File.ReadAllBytes(
+            typeof(Microsoft.CodeAnalysis.Compilation).Assembly.Location
+        );
+        File.WriteAllBytes(Path.Combine(directory, Id + ".dll"), image);
+
+        return new ExtensionLockPackage
+        {
+            Id = Id,
+            Version = version,
+            Sha512 = Convert.ToBase64String(System.Security.Cryptography.SHA512.HashData(image)),
+            Requested = FormattableString.Invariant($"{Id}@{version}"),
+            Direct = true,
+            Files = [asset],
+            Compile = [asset],
+            Runtime = [asset],
+            Native = [],
+            Analyzers = [],
+            Generators = false,
+        };
+    }
+
+    /// <summary>
+    /// A locked package that ships build-time code: the assembly compiled from
+    /// <paramref name="code"/> is installed under <c>analyzers/dotnet/cs</c> and recorded in the lock
+    /// the way a restore records it. The package contributes no compile assets — an extension does
+    /// not reference a generator, it runs one — so the only thing that reads the assembly is the
+    /// compile's opt-in path.
+    /// </summary>
+    internal ExtensionLockPackage AddAnalyzerPackage(
+        string id,
+        string version,
+        string code,
+        CancellationToken cancellationToken
+    )
+    {
+        string name = id + ".dll";
+        string asset = FormattableString.Invariant($"analyzers/dotnet/cs/{name}");
+        string directory = Path.Combine(
+            PackagesFolder,
+            id.ToLowerInvariant(),
+            version.ToLowerInvariant(),
+            "analyzers",
+            "dotnet",
+            "cs"
+        );
+        Directory.CreateDirectory(directory);
+        byte[] image = Assembly(
+            Compile(
+                new SingleFileCompileRequest
+                {
+                    ExtensionId = id,
+                    ExtensionVersion = version,
+                    SourcePath = Path.Combine(_temp.Root, id + ".cs"),
+                    SourceText = code,
+                    AssemblyName = id,
+                    Target = Target,
+                    GlobalPackagesFolder = PackagesFolder,
+                    Lock = Lock(AddRoslynPackage()),
+                },
+                cancellationToken
+            )
+        );
+        File.WriteAllBytes(Path.Combine(directory, name), image);
+
+        return new ExtensionLockPackage
+        {
+            Id = id,
+            Version = version,
+            Sha512 = Convert.ToBase64String(System.Security.Cryptography.SHA512.HashData(image)),
+            Requested = FormattableString.Invariant($"{id}@{version}"),
+            Direct = true,
+            Files = [asset],
+            Compile = [],
+            Runtime = [],
+            Native = [],
+            Analyzers = [asset],
+            Generators = true,
+        };
+    }
+
+    /// <summary>
+    /// A lock over the reference pack and the given packages, for a direct compile.
+    /// </summary>
     internal ExtensionLock Lock(params ExtensionLockPackage[] packages) =>
         new()
         {
