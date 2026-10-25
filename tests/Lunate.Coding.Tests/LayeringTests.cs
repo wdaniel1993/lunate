@@ -17,8 +17,14 @@ public sealed class LayeringTests
     {
         var references = ReadProjectReferences().ToHashSet();
 
+        // An extension's host references are a rule, not a list: every extension may reach for the
+        // contract and the host types it exposes, and the set test still catches every other edge.
+        var allowed = LayeringChecker
+            .AllowedReferences.Concat(references.Where(LayeringChecker.IsAllowedExtensionReference))
+            .ToHashSet();
+
         Assert.True(
-            LayeringChecker.AllowedReferences.SetEquals(references),
+            allowed.SetEquals(references),
             $"Actual edges: {string.Join(", ", references.Order())}"
         );
     }
