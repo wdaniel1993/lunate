@@ -162,6 +162,17 @@ internal static class ExtensionBuildCommand
                     $"{outcome.Extension.Id} {outcome.Extension.Version} {(outcome.Status == SingleFileBuildStatus.CacheHit ? "up-to-date" : "built")} {build.Key} — {build.AssemblyPath}"
                 )
             );
+
+            // The build succeeded, but a package shipped build-time code this file did not opt in
+            // for: say so here too, so a headless build is not the one surface that hides it.
+            if (outcome.Extension.GeneratorsSkipped is { Count: > 0 } skipped)
+            {
+                output.WriteLine(
+                    FormattableString.Invariant(
+                        $"generators skipped: {string.Join(", ", skipped)} — add '#:generators on' to the header to compile with them"
+                    )
+                );
+            }
         }
 
         return ExitOk;

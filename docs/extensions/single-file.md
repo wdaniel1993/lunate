@@ -121,9 +121,9 @@ project build.
 The opt-in is part of the trust digest — it is a header line, so the source bytes that are hashed
 contain it. Toggling it makes a trusted file `stale` and re-asks; the prompt only mentions build-time
 code when the directive is there. A package that ships generators while the file did not opt in is
-named by `/extensions` as `generators skipped: <package>` (and as `generatorsSkipped` in `--json`),
-so the omission is visible rather than silent. Before a restore there is no resolved graph, so
-nothing is named yet.
+named by `/extensions` as `generators skipped: <package>`, by `lunate extensions build` on stdout
+after the built line, and as `generatorsSkipped` in either `--json` — so the omission is visible
+rather than silent. Before a restore there is no resolved graph, so nothing is named yet.
 
 ## Trust
 

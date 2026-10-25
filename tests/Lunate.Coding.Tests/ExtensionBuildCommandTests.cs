@@ -189,6 +189,34 @@ public sealed class ExtensionBuildCommandTests
         Assert.False(document.RootElement.TryGetProperty("generatorsSkipped", out _));
     }
 
+    [Fact]
+    public void A_build_says_on_stdout_which_packages_generators_it_skipped()
+    {
+        using var temp = new TempDirectory();
+        string store = Path.Combine(temp.Root, "store");
+        string file = WriteFile(store);
+        RecordTrust(store, file);
+
+        using var output = new StringWriter();
+        using var errors = new StringWriter();
+        int exit = Cli.Run(
+            ["extensions", "build", "acme-tools"],
+            output,
+            errors,
+            TestContext.Current.CancellationToken,
+            extensions: new ExtensionSeams
+            {
+                StorePath = store,
+                RestoreEngine = () => new GeneratorShippingEngine(),
+                Compiler = () => new BytesCompiler(),
+            }
+        );
+
+        Assert.Equal(ExtensionBuildCommand.ExitOk, exit);
+        Assert.Contains("generators skipped: Refit", output.ToString(), StringComparison.Ordinal);
+        Assert.Contains("#:generators on", output.ToString(), StringComparison.Ordinal);
+    }
+
     /// <summary>One build with the CLI's own routing, a lock that ships generators and a compiler that writes bytes.</summary>
     private static (int Exit, string Output, string Errors) Build(string store)
     {
