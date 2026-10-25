@@ -16,6 +16,7 @@ public sealed class KeyRouterTests
         (Key(KeyKind.Character, "p", ctrl: true), RoutedKey.Edit),
         (Key(KeyKind.Character, "o", ctrl: true), RoutedKey.TranscriptViewer),
         (Key(KeyKind.Character, "x", ctrl: true), RoutedKey.Copy),
+        (Key(KeyKind.Character, "g", ctrl: true), RoutedKey.Editor),
         (Key(KeyKind.Tab), RoutedKey.Complete),
         (Key(KeyKind.Up), RoutedKey.HistoryPrevious),
         (Key(KeyKind.Down), RoutedKey.HistoryNext),
@@ -46,6 +47,7 @@ public sealed class KeyRouterTests
         (Key(KeyKind.Character, "p", ctrl: true), RoutedKey.Edit),
         (Key(KeyKind.Character, "o", ctrl: true), RoutedKey.TranscriptViewer),
         (Key(KeyKind.Character, "x", ctrl: true), RoutedKey.Copy),
+        (Key(KeyKind.Character, "g", ctrl: true), RoutedKey.Editor),
         (Key(KeyKind.Tab), RoutedKey.Complete),
         (Key(KeyKind.Up), RoutedKey.HistoryPrevious),
         (Key(KeyKind.Down), RoutedKey.HistoryNext),
@@ -214,6 +216,40 @@ public sealed class KeyRouterTests
         Assert.Equal(
             RoutedKey.KillWordForward,
             KeyRouter.Route(Key(KeyKind.Character, "d", alt: true))
+        );
+    }
+
+    [Fact]
+    public void Ctrl_G_opens_the_editor_and_no_neighbour_does()
+    {
+        Assert.Equal(RoutedKey.Editor, KeyRouter.Route(Key(KeyKind.Character, "g", ctrl: true)));
+        Assert.Equal(RoutedKey.Edit, KeyRouter.Route(Key(KeyKind.Character, "g", alt: true)));
+        Assert.Equal(
+            RoutedKey.Edit,
+            KeyRouter.Route(Key(KeyKind.Character, "g", ctrl: true, shift: true))
+        );
+        Assert.Equal(RoutedKey.Edit, KeyRouter.Route(Key(KeyKind.Character, "g")));
+    }
+
+    [Fact]
+    public void Ctrl_G_routes_to_the_editor_in_every_prompt_context()
+    {
+        KeyContext[] contexts =
+        [
+            KeyContext.Idle,
+            KeyContext.Running,
+            KeyContext.Bash,
+            KeyContext.Idle | KeyContext.HasQueue,
+            KeyContext.Running | KeyContext.HasQueue,
+        ];
+
+        Assert.All(
+            contexts,
+            context =>
+                Assert.Equal(
+                    RoutedKey.Editor,
+                    KeyRouter.Route(Key(KeyKind.Character, "g", ctrl: true), context)
+                )
         );
     }
 

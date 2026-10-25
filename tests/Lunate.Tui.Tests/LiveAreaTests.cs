@@ -448,6 +448,8 @@ public sealed class LiveAreaTests
 
         public IDisposable EnterRawMode() => _inner.EnterRawMode();
 
+        public IDisposable SuspendTerminal() => _inner.SuspendTerminal();
+
         public IDisposable EnterAlternateScreen() => _inner.EnterAlternateScreen();
     }
 }

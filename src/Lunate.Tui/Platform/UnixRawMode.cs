@@ -19,7 +19,7 @@ internal static class UnixRawMode
     [DllImport("libc", SetLastError = true)]
     private static extern int tcsetattr(int fd, int optionalActions, byte[] termios);
 
-    public static IDisposable Enter()
+    public static ITerminalMode Enter()
     {
         var state = new byte[TermiosBufferSize];
         if (tcgetattr(StandardInputFd, state) != 0)
@@ -39,11 +39,36 @@ internal static class UnixRawMode
             );
         }
 
-        return new Restore(original);
+        return new Restore(original, state);
     }
 
-    private sealed class Restore(byte[] original) : IDisposable
+    /// <summary>The original and the raw attribute blocks; suspending swaps one for the other.</summary>
+    private sealed class Restore(byte[] original, byte[] raw) : ITerminalMode
     {
+        private bool _suspended;
+
+        public void Suspend()
+        {
+            if (_suspended)
+            {
+                return;
+            }
+
+            tcsetattr(StandardInputFd, ActionNow, original);
+            _suspended = true;
+        }
+
+        public void Resume()
+        {
+            if (!_suspended)
+            {
+                return;
+            }
+
+            tcsetattr(StandardInputFd, ActionNow, raw);
+            _suspended = false;
+        }
+
         public void Dispose() => tcsetattr(StandardInputFd, ActionNow, original);
     }
 }

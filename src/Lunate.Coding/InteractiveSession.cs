@@ -73,6 +73,12 @@ internal sealed record InteractiveSessionOptions
     /// <summary>The wall clock the export file name reads; null uses the local time.</summary>
     public Func<DateTimeOffset>? Clock { get; init; }
 
+    /// <summary>
+    /// Where <c>Ctrl+G</c>'s draft file is written; null uses the process temporary directory.
+    /// A test pins an isolated directory so it can prove nothing is left behind.
+    /// </summary>
+    public string? EditorTempDirectory { get; init; }
+
     /// <summary>Where composition errors are reported; null uses stderr.</summary>
     public TextWriter? Diagnostics { get; init; }
 
@@ -1069,6 +1075,9 @@ internal sealed partial class InteractiveSession : IDisposable
                 break;
             case RoutedKey.HistorySearch:
                 BeginHistorySearch();
+                break;
+            case RoutedKey.Editor:
+                await RunEditorAsync(ct);
                 break;
             case RoutedKey.LineStart:
                 ApplyEdit(InputLine.MoveHome(_input));

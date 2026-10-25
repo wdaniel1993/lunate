@@ -346,6 +346,8 @@ public sealed class TranscriptViewerTests
 
         public IDisposable EnterRawMode() => new Noop();
 
+        public IDisposable SuspendTerminal() => new Noop();
+
         public IDisposable EnterAlternateScreen()
         {
             Write("\u001b[?1049h");

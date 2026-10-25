@@ -183,6 +183,12 @@ internal static class KeyBindingCatalog
             "Search the history"
         ),
         new(
+            new KeyPattern(KeyKind.Character, Ctrl: true, Alt: false, Shift: false, Text: "g"),
+            RoutedKey.Editor,
+            KeyContext.None,
+            "Open the draft in your editor"
+        ),
+        new(
             new KeyPattern(KeyKind.Character, Ctrl: true, Alt: false, Text: "a"),
             RoutedKey.LineStart,
             KeyContext.None,

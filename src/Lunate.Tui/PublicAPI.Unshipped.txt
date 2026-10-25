@@ -16,6 +16,7 @@ Lunate.Tui.IConsoleIO.IsInteractive.get -> bool
 Lunate.Tui.IConsoleIO.ReadKeysAsync(System.Threading.CancellationToken cancellationToken) -> System.Collections.Generic.IAsyncEnumerable<Lunate.Tui.KeyEvent!>!
 Lunate.Tui.IConsoleIO.Resized.get -> System.IObservable<Lunate.Tui.ConsoleSize>!
 Lunate.Tui.IConsoleIO.Size.get -> Lunate.Tui.ConsoleSize
+Lunate.Tui.IConsoleIO.SuspendTerminal() -> System.IDisposable!
 Lunate.Tui.IConsoleIO.Write(string! text) -> void
 Lunate.Tui.KeyEvent
 Lunate.Tui.KeyEvent.<Clone>$() -> Lunate.Tui.KeyEvent!
@@ -432,3 +433,4 @@ static Lunate.Tui.InputLine.MoveWordRight(Lunate.Tui.InputLineState! state) -> L
 Lunate.Tui.RoutedKey.HistorySearch = 24 -> Lunate.Tui.RoutedKey
 Lunate.Tui.RoutedKey.Stash = 25 -> Lunate.Tui.RoutedKey
 Lunate.Tui.RoutedKey.Copy = 26 -> Lunate.Tui.RoutedKey
+Lunate.Tui.RoutedKey.Editor = 27 -> Lunate.Tui.RoutedKey
