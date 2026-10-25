@@ -223,7 +223,10 @@ public sealed class PublishedBinaryCompileTests
             start.ArgumentList.Add(argument);
         }
 
+        // .NET resolves the user profile from HOME on Unix and from USERPROFILE on Windows; setting
+        // only HOME left a Windows child reading the runner's real profile and finding no extension.
         start.Environment["HOME"] = home;
+        start.Environment["USERPROFILE"] = home;
         start.Environment["NUGET_PACKAGES"] = packages;
         start.Environment["PATH"] = tools;
         start.Environment.Remove("DOTNET_ROOT");

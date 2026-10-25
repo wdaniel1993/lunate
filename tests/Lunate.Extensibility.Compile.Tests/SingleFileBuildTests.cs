@@ -139,9 +139,11 @@ public sealed class SingleFileBuildTests
             package,
             new CountingCompilerFactory(),
             prompt: prompt,
+            // Any RID but the one this machine reports: a literal would be a cache hit on the
+            // runner whose RID it is, which is how this first failed on linux-x64.
             target: fixture.Target with
             {
-                Rid = "linux-x64",
+                Rid = fixture.Target.Rid == "linux-x64" ? "win-x64" : "linux-x64",
             }
         );
 
