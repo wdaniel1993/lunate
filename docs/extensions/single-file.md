@@ -215,11 +215,39 @@ commands already populate, so a package you have restored before costs nothing h
 copied into `~/.lunate`.** What Lunate owns is the compiled assembly, the lock and the pointer, and
 those live in the extension's cache entry (see [The build cache](#the-build-cache)).
 
-`~/.lunate` is the state root: extension files, the trust store, locks, builds, sessions, the model
-catalog, credentials, settings, input history and exports all resolve under it. Set `LUNATE_HOME` to
-an absolute path to move the whole root — a sandbox, a portable install, or a second profile. A
-relative path is refused when it is read rather than quietly ignored, because silently falling back
-to the real profile is how a sandboxed run ends up writing to your own state.
+`~/.lunate` is the state root. Set `LUNATE_HOME` to an absolute path to move the whole root — a
+sandbox, a portable install, or a second profile. A relative path is refused when it is read rather
+than quietly ignored, because silently falling back to the real profile is how a sandboxed run ends
+up writing to your own state.
+
+Lunate reads `LUNATE_HOME` from the process environment and nowhere else: no `.env` file, no
+`settings.json`, no `AGENTS.md` and no project file can supply it. A repository that could choose the
+store could choose the directory its own trust records live in.
+
+### What follows the root, and what does not
+
+| State | Where it lives | Why |
+| --- | --- | --- |
+| `<root>/trust.json` and the per-extension cache entry (`cache/extensions/<id>/` — lock, builds, pointer) | the root | it is the state the guard below is about |
+| `<root>/extensions/` (user extensions) | the root | yours, not the project's |
+| `<root>/sessions/`, `auth.json`, `settings.json`, `history`, `exports/`, `models.json`, `models.catalog.json`, `recordings/` | the root | all resolve through one rule |
+| `<root>/skills/` (Lunate's own user skill scope) | the root | it was `<profile>/.lunate/skills` and did not follow `LUNATE_HOME`; fixed in this phase |
+| `~/.agents/skills` and `~/.agents/mcp.json` | the real home | a convention shared with other agents; not Lunate state |
+| restored packages | `NUGET_PACKAGES` when set, else `~/.nuget/packages` | content-addressed package storage the SDK shares, not Lunate state |
+
+There are no log files today: extension logging goes to the terminal through `IExtensionLog`, and a
+session's transcript is the session file under the root. Nothing writes a log of its own.
+
+If `LUNATE_HOME` resolves inside the workspace a session starts in — or the repository that worktree
+belongs to — Lunate refuses it: `LUNATE_HOME points inside the workspace; trust records there could
+be written by the repository`. The refusal runs wherever a workspace exists: starting an interactive
+session, print mode, ACP, `lunate trust`, `lunate extensions build` and `lunate cache prune`. A store
+equal to the root counts as inside; a sibling directory does not. Containment is compared on real
+paths (symlinks resolved), so `/var/…` and `/private/var/…` cannot disagree on macOS.
+
+When `LUNATE_HOME` is set, both `lunate --version` and the interactive welcome header print the active
+home, in one spelling: `home /tmp/state (LUNATE_HOME)`. A redirected or sandboxed run is never
+invisible.
 
 Consequences worth knowing:
 

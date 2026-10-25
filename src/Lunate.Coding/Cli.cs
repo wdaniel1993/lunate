@@ -34,6 +34,13 @@ internal static class Cli
         if (args is ["--version"])
         {
             output.WriteLine(GetProductVersion());
+            // A redirected or sandboxed run is never invisible: the active root prints on its own
+            // line, in the same spelling the welcome header uses.
+            if (LunateHome.ActiveHomeLine is { } home)
+            {
+                output.WriteLine(home);
+            }
+
             return 0;
         }
 

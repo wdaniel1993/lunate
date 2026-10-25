@@ -154,7 +154,12 @@ internal sealed class ExtensionSession : IAsyncDisposable
         IExtensionTrustPrompt prompt = seams.Prompt ?? new NonInteractiveTrustPrompt(log);
         var options = new ExtensionHostOptions
         {
-            StorePath = seams.StorePath ?? ExtensionHostOptions.Default.StorePath,
+            // A composed host knows its workspace, so this is the one place every extension
+            // composition — interactive, print, ACP, a build subcommand — refuses a store the
+            // repository itself could write to.
+            StorePath =
+                seams.StorePath
+                ?? LunateHome.StoreOutsideWorkspace(workspace.WorktreeRoot, workspace.RepoRoot),
             Log = log,
             Notify = seams.Notice,
             ModelCatalog = seams.ModelCatalog,

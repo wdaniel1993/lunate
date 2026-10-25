@@ -1,4 +1,5 @@
 using System.Text.Json.Nodes;
+using Lunate.Ai;
 using Lunate.Extensibility;
 
 namespace Lunate.Coding;
@@ -77,6 +78,11 @@ internal static class ExtensionBuildCommand
     )
     {
         ExtensionSeams resolved = seams ?? new ExtensionSeams();
+        string working = workingDirectory ?? Environment.CurrentDirectory;
+        // A build writes the lock, the cache and the trust lookup under the store, so the refusal
+        // comes before any of them.
+        var workspace = new Workspace(working);
+        LunateHome.StoreOutsideWorkspace(workspace.WorktreeRoot, workspace.RepoRoot);
         var options = new ExtensionHostOptions
         {
             StorePath = resolved.StorePath ?? ExtensionHostOptions.Default.StorePath,
@@ -84,7 +90,6 @@ internal static class ExtensionBuildCommand
             ReservedCommands = Commands.BuiltinNames,
         };
 
-        string working = workingDirectory ?? Environment.CurrentDirectory;
         var loader = new ExtensionLoader(options);
         loader.Discover(working, working);
 

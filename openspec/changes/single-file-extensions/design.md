@@ -107,6 +107,22 @@ it names an absolute path, `~/.lunate` otherwise, a relative value refused by na
 surface is the variable, not the type. Without it the published-binary proof cannot be hermetic on
 Windows at all, and a portable install has no way to keep its state out of the user profile.
 
+**The root is guarded, visible, and read only from the environment.** A `LUNATE_HOME` whose store
+resolves inside the workspace it governs is refused — `LUNATE_HOME points inside the workspace; trust
+records there could be written by the repository` — at every surface that knows a workspace: session
+composition, print mode, ACP, `lunate trust`, `lunate extensions build` and `lunate cache prune`. A
+repository that can write its own trust records answers no trust question. Containment compares real,
+symlink-resolved paths, and a store equal to the root counts as inside. Both `lunate --version` and
+the welcome header print the active home in one spelling, `home /tmp/state (LUNATE_HOME)`, so a
+sandboxed run is never invisible. The state audit: the trust store, the extension cache and user
+extensions, sessions, credentials, settings, history, exports, the model catalog and recordings all
+follow the root; `~/.agents/skills`, `~/.agents/mcp.json` and NuGet's packages folder stay at the real
+home on purpose, and Lunate's own user skills (`~/.lunate/skills`) were found still resolving the
+profile and now follow the root too. There are no log files — extension logging is the terminal via
+`IExtensionLog`, and the session file is the transcript — so no log path is promised. `LUNATE_HOME` is
+read from the process environment only: nothing loads `.env` today, a source test keeps it that way,
+and no settings file, `AGENTS.md` or project file can supply it.
+
 **The trigger is `lunate extensions build <id|path> [--json]`.** Listing extensions must not compile
 — `/extensions` is a state view, and its rows would start costing seconds — and startup must stay
 lazy, so a build needs a surface of its own. The CLI subcommand is the smallest honest one: it

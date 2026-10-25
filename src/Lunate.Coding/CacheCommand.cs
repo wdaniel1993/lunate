@@ -1,4 +1,5 @@
 using System.Text.Json.Nodes;
+using Lunate.Ai;
 using Lunate.Extensibility;
 
 namespace Lunate.Coding;
@@ -57,13 +58,17 @@ internal static class CacheCommand
     )
     {
         ExtensionSeams resolved = seams ?? new ExtensionSeams();
+        string working = workingDirectory ?? Environment.CurrentDirectory;
+        // This command writes the store it resolves, so a LUNATE_HOME inside the working tree or
+        // its repository is refused before the store is opened.
+        var workspace = new Workspace(working);
+        LunateHome.StoreOutsideWorkspace(workspace.WorktreeRoot, workspace.RepoRoot);
         var options = new ExtensionHostOptions
         {
             StorePath = resolved.StorePath ?? ExtensionHostOptions.Default.StorePath,
             Log = resolved.Log ?? new StderrExtensionLog(errors),
         };
 
-        string working = workingDirectory ?? Environment.CurrentDirectory;
         var loader = new ExtensionLoader(options);
         loader.Discover(working, working);
         HashSet<string> live = new(StringComparer.Ordinal);

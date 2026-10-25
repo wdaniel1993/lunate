@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Lunate.Ai;
 using Lunate.Extensibility;
 
 namespace Lunate.Coding;
@@ -41,6 +42,9 @@ internal static class TrustCommand
         try
         {
             var workspace = new Workspace(workingDirectory ?? Environment.CurrentDirectory);
+            // Approving writes trust records; a store inside the repository it governs could have
+            // those records written by that repository.
+            LunateHome.StoreOutsideWorkspace(workspace.WorktreeRoot, workspace.RepoRoot);
             TrustInventory inventory = TrustInventory.Create(workspace, seams);
             if (options.Clear)
             {

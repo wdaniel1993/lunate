@@ -408,6 +408,9 @@ internal sealed partial class InteractiveSession : IDisposable
         _auth = AuthStore.Load(_options.AuthPath, _options.Environment);
         _factory = _options.Factory ?? HarnessFactory.CreateFactory(_auth);
         _workspace = new Workspace(_options.WorkingDirectory ?? Environment.CurrentDirectory);
+        // Before anything of this session's own state is created: a store inside the tree this
+        // session governs could have its trust records written by that tree.
+        LunateHome.StoreOutsideWorkspace(_workspace.WorktreeRoot, _workspace.RepoRoot);
         _workspaceServices = new WorkspaceServices(_settings.Roslyn.MaxLoadedWorkspaces);
         _sessionDirectory =
             _options.SessionDirectory ?? HarnessFactory.DefaultSessionDirectory(_workspace);
@@ -2044,7 +2047,7 @@ internal sealed partial class InteractiveSession : IDisposable
 
     private static string DisplayDirectory(string path)
     {
-        string home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        string home = LunateHome.Profile;
         return path.StartsWith(home, StringComparison.Ordinal) ? "~" + path[home.Length..] : path;
     }
 

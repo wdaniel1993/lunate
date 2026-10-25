@@ -323,7 +323,7 @@ internal sealed class TrustInventory
         [
             .. SkillScanner
                 .ScanProject(
-                    new SkillScanRequest(worktree, workspace.RepoRoot, HomeDirectory: "", [])
+                    new SkillScanRequest(worktree, workspace.RepoRoot, HomeDirectory: null, [])
                 )
                 .Skills.Where(skill => skill is { Valid: true, Scope: SkillScope.Project }),
         ];
