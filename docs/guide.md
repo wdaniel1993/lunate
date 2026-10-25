@@ -504,7 +504,7 @@ Queued messages run after the current turn finishes, in submission order, one at
 
 **Approvals**
 
-A pending approval renders as a panel in the live area. The warning headline names the tool and the concrete action — the command for `bash`, the path with its `+N −M` change counts for `edit` and `write` — and the muted detail block below it shows the command's lines, the edit's diff, or the tool's key arguments, clipped rather than wrapped and bounded to six lines with a `… +N lines` marker. The question is `Allow <tool>?  [y]es  > [n]o  [a]lways this session` with the key letters accented and a `> ` gutter marking the selection; a subagent's ask is prefixed with its depth. Below 60 columns the detail drops to its first line, the headline clips its action, and the choices move to their own line — every choice stays fully visible. At 40 columns the three choices and the marker still fit one 36-cell row; narrower, they stack one per row with the gutter kept, and a label clips only after its key letter. `Up` and `Down` move the selection and wrap at both ends, `Space` activates it, and every repaint — a resize, a redraw, a notice — shows the same choice because the selection is prompt state. A new prompt starts on `[n]o`, so `Space` on an untouched prompt denies exactly like Enter; approving takes a deliberate `y` or a move to Yes. Bare `y`, `n` and `a` decide wherever the selection sits, Enter and `Esc` deny, `?` shows the panel's key legend without deciding anything, and `a` covers that tool for the whole run tree for the rest of the session. The prompt arms like the trust question: keys already buffered, and keys arriving within 300 ms of it appearing, decide nothing. The frame cap trims the detail first, then the headline, never a choice.
+A pending approval renders as a panel in the live area. The warning headline names the tool and the concrete action — the command for `bash`, the path with its `+N −M` change counts for `edit` and `write` — and the muted detail block below it shows the command's lines, the edit's diff, or the tool's key arguments, clipped rather than wrapped and bounded to six lines with a `… +N lines` marker. The question is `Allow <tool>?  [y]es  > [n]o  [a]lways this session` with the key letters accented and a `>` gutter marking the selection; a subagent's ask is prefixed with its depth. Below 60 columns the detail drops to its first line, the headline clips its action, and the choices move to their own line — every choice stays fully visible. At 40 columns the three choices and the marker still fit one 36-cell row; narrower, they stack one per row with the gutter kept, and a label clips only after its key letter. `Up` and `Down` move the selection and wrap at both ends, `Space` activates it, and every repaint — a resize, a redraw, a notice — shows the same choice because the selection is prompt state. A new prompt starts on `[n]o`, so `Space` on an untouched prompt denies exactly like Enter; approving takes a deliberate `y` or a move to Yes. Bare `y`, `n` and `a` decide wherever the selection sits, Enter and `Esc` deny, `?` shows the panel's key legend without deciding anything, and `a` covers that tool for the whole run tree for the rest of the session. The prompt arms like the trust question: keys already buffered, and keys arriving within 300 ms of it appearing, decide nothing. The frame cap trims the detail first, then the headline, never a choice.
 
 **Input box and autocomplete**
 
@@ -558,11 +558,12 @@ Both box rules are drawn at every width; autocomplete descriptions keep their 60
 | Key | Action |
 | --- | --- |
 | `Enter` | Send; with the autocomplete list open, accept the selected item first (an exact token sends instead); in bash mode, run the line through the `bash` tool; while a turn runs, queue the line as a follow-up (the footer shows `N queued`). Never steers or interrupts a turn |
-| `Alt+Enter` | New line in every state, also `Shift+Enter` (where the terminal reports extended keys) and `Ctrl+J`; the autocomplete triggers re-run afterwards. Never submits or queues |
+| `Alt+Enter` / `Shift+Enter` / `Ctrl+J` / `Ctrl+Enter` | New line in every state (the alternatives are for terminals that report extended keys or send the control byte); the autocomplete triggers re-run afterwards. Never submits or queues |
 | `Esc` | Close the autocomplete list first; in bash mode, leave without running and restore the line with its prefix; otherwise interrupt the running turn, whose queued follow-ups then run next; with nothing running, leave the queue alone |
 | `Ctrl+C` | Interrupt the running turn (a queued follow-up then runs next); with the prompt idle it clears the input, and on an empty idle prompt a second press within 2 s quits |
 | `Ctrl+D` | Quit on a second press within 800 ms, only from an empty idle prompt — never mid-turn |
 | `Ctrl+L` | Force a full redraw of the prompt area, keeping the input and the conversation |
+| `Ctrl+P` | Unbound: nothing happens. It is deliberately left free (the model picker is `Alt+P`), and the guide lists it so a reader does not have to guess |
 | `Alt+P` | Model picker and search; typing filters the catalog, Backspace edits the filter, Esc clears it before closing |
 | `Ctrl+R` | History search: typing narrows, `Ctrl+R`/`Down` moves to the next match, `Enter` places it in the input, `Esc` cancels |
 | `Ctrl+S` | Stash the draft, or restore it when the prompt is empty |
@@ -576,9 +577,9 @@ Both box rules are drawn at every width; autocomplete descriptions keep their 60
 | `Up` / `Down` | Move the autocomplete selection; with the list closed, history (bash mode recalls its own command stream). With queued follow-ups, `Up` takes the whole queue back into the editor instead |
 | `Ctrl+A` / `Ctrl+E` | Move to the start / end of the line |
 | `Ctrl+K` / `Ctrl+U` | Kill from the cursor to the end / to the start of the line |
-| `Ctrl+W` / `Alt+D` | Kill the word before / after the cursor |
+| `Ctrl+W` / `Alt+D` / `Ctrl+Delete` | Kill the word before / after the cursor (`Ctrl+Delete` is the Alt-free form of `Alt+D`) |
 | `Ctrl+Y` | Yank the most recent kill |
-| `Alt+B` / `Alt+F` | Move back / forward by word |
+| `Alt+B` / `Alt+F` / `Ctrl+Left` / `Ctrl+Right` | Move back / forward by word (`Ctrl+Left`/`Ctrl+Right` are the Alt-free forms) |
 
 **Platform rules**
 
