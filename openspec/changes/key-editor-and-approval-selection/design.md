@@ -87,15 +87,15 @@ Every failure mode posts exactly one notice, and the notice carries the fact tha
 
 Nothing here can crash the session: the child runs inside the same `try`/`finally` that resumes the live area and deletes the file.
 
-### D5 — A draft that changed under the editor loses the prompt, not its text
+### D5 — The editor's text wins; a draft that changed meanwhile goes to the stash
 
 While the child runs, no key reaches the session, so an ordinary user cannot change the draft. Programmatic paths can (an extension's contribution, a queue take-back, a future background write). The rules that were available:
 
-1. Editor's text always wins — a change that arrived later is silently reverted.
-2. The newer draft wins and the editor's text is discarded — the user loses what they just typed in the editor.
-3. The newer draft wins the prompt and the editor's text goes to the stash — nothing is lost, and the prompt shows the newest state.
+1. The editor's text wins, and a change that arrived meanwhile is shelved with a notice — nothing is lost, and the text the user just deliberately wrote is the prompt.
+2. The newer draft wins and the editor's text is stashed — the prompt shows a state the user did not just write in the editor.
+3. The newer draft wins and the editor's text is discarded — the user loses what they just typed in the editor.
 
-(3), with one notice naming where the edited text went. It reuses the stash slot `Ctrl+S` already ships rather than inventing a second holding area, and it is testable without a race: the fake case writes into the draft while the scripted child is "running".
+(1), with one notice naming the stash slot the earlier text went to. The editor is the deliberate act — the user opened it, typed, and saved — so it takes priority over a write that arrived while their attention was elsewhere; and because the other text is shelved rather than dropped, the choice never costs anything. It reuses the stash slot `Ctrl+S` already ships rather than inventing a second holding area, and it is testable without a race: the fake case writes into the draft while the scripted child is "running".
 
 ### D6 — The approval selection is prompt state, not focus
 
@@ -103,7 +103,11 @@ While the child runs, no key reaches the session, so an ordinary user cannot cha
 
 **Why state and not focus.** A focus lives in the renderer or the window and dies on the next paint; the approval panel is repainted whenever a turn event, a spinner tick or a resize lands, which is to say constantly. A selection stored in the model survives all of it and is restored by the same code path that draws the panel at a new width. This is also the honest answer to "does the selection survive a redraw": it is not that the renderer remembers, it is that there is nothing to remember.
 
-**Why every new prompt starts on `[y]es`.** The shipped scenario already pins it (`Down`, `Down`, `Space` → always), and a remembered selection across prompts would make Space mean something different on the next question without the user looking at it. The default is not a hazard: `Space` is a deliberate key, `Enter` still denies, and nothing approves on a stray return.
+**Why every new prompt starts on `[n]o`.** A prompt can appear in the middle of a sentence — a tool call lands, the panel opens, and the next Space the user types belongs to the word they were writing, not to the question they have not read yet. Starting on `[n]o` makes that Space deny, which is the same outcome as Enter and a stray return: the failure mode is a refused tool call, never an approved command. Approving then always takes either a deliberate `y` or a navigation to Yes followed by Space or Enter, and that is the asymmetry the panel wants. A remembered selection across prompts is refused for the same reason a default of Yes is refused: Space would mean something different on the next question without the user looking at it.
+
+**Type-ahead arming.** The prompt is armed the way the trust question already is: the session records the key sequence when the panel renders, and only keys read after it can decide — a key that was already buffered when the question appeared never answers it. On top of the sequence, a 300 ms window covers the keystroke that is *in flight* rather than buffered: the user is mid-word, the terminal delivers the byte a few milliseconds after the panel appears, and no sequence comparison can tell it from a deliberate press. Inside the window the keys are dropped, not queued: answering a question with a keystroke the user did not aim at it is the failure this rule exists to prevent. The same rule applies to the trust question, so a future reader finds one arming story rather than two.
+
+**`?` shows the prompt's own legend.** The panel prints `[y]es [n]o [a]lways this session` and a `> ` marker, which says what can be chosen but not what the keys do — and `Ctrl+P`, documented as unbound, looks like an omission. `?` renders the legend (`y` approves, `n` denies, `a` approves for the session, Space activates the selection, Enter and Escape deny), decides nothing, and leaves the selection where it was. That is also what makes the guide's `?` row truthful: it has behaviour behind it at exactly the place the row describes, instead of being exempted as a key with nothing there.
 
 **Why `j`/`k` are not added.** The overlay and the pickers use them because their lists are long and vim-shaped. A three-choice question prints its own `[y]`/`[n]`/`[a]`, and adding two more letters would need a spec sentence each while making `k` ambiguous with a future "kill" binding in the panel. Up/Down are the keys the requirement names; that is enough.
 
@@ -130,7 +134,7 @@ Both directions, because they catch different mistakes: catalog→doc catches a 
 | Key | Why it has no catalog row |
 | --- | --- |
 | `y`, `n`, `a` | the approval panel owns its keys; the session returns before the router while a prompt is pending |
-| `?` | gated on an empty idle prompt, a condition the context flags cannot express — it stays a character while typing |
+| `?` | gated on an empty idle prompt, a condition the context flags cannot express — it stays a character while typing; in the approval prompt it shows the panel's key legend, so the guide's row has behaviour behind it |
 | `Ctrl+P` | deliberately unbound since #124; documented so a reader knows it does nothing |
 
 The requirement names the list, so adding a fourth exemption is a spec change, not a convenient edit in a test file.
@@ -149,12 +153,13 @@ Today: 25 documented keys, 30 catalog keys. The check cannot go green without th
 - **The marker's two cells** shift the choices row from 34 to 36. Golden frames for the 40-column panel change; regenerate them once, deliberately, in the layout commit.
 - **`IConsoleIO` is public.** The suspend member and `ApprovalPromptModel`'s new members need `PublicAPI.Unshipped.txt` entries; a missed entry fails the API gate, not the review.
 
-## Open questions
+## Settled at sign-off
 
-1. **Is exempting `?` acceptable, or should the catalog grow an `Empty` context?** The card named two exemptions (the approval letters, `Ctrl+P`); the shipped doc table also documents `?`, which has no catalog row because its gate is "the prompt is empty", not a context flag. Recommendation: keep the exemption now, exactly as tabled, and treat a `KeyContext.Empty` flag as the cleanup that would let `?` (and an "editor only on an empty draft" rule, if anyone wants one) become catalog rows. Adding the flag here would touch routing, the overlay and every row's context for one key.
-2. **Does `Ctrl+G` need an Alt-free or terminal-proof route?** Recommendation: not in this change. If terminals eating `BEL` become a support burden, add a `/editor` command that runs the same flow — same code path, one registry entry — as its own card, and keep the catalog row as the only key.
-3. **Default selection `[y]es` or `[n]o`?** Recommendation: keep `[y]es`; the shipped scenario (`Down`×2 → always) pins it, and Space-approves is deliberate while Enter denies. Flipping to `[n]o` would mean editing that scenario and re-teaching the muscle memory the panel just gained.
-4. **Changed-draft rule: newer draft keeps the prompt, editor's text to the stash.** Recommendation: as designed. The alternative (editor always wins) silently reverts whatever wrote later, and the other alternative (discard the editor's text) throws away typing the user just did.
+1. **`?` is implemented, not merely exempted.** In the approval prompt it renders the panel's key legend (`y`, `n`, `a`, Space, Enter, Escape) and decides nothing; the exemption row stays for the empty-idle case and is now truthful, because the documented key has behaviour behind it. A key with nothing behind it must never be exempted — that is what the drift check is for.
+2. **`/editor` is its own card.** Terminals that eat `BEL` cannot deliver `Ctrl+G`, and nothing can recover a key the terminal swallows; the command runs the same flow through one registry entry.
+3. **The default selection is `[n]o`, and the prompt arms like the trust question.** Space on an untouched prompt denies, the same as Enter; approving takes a deliberate `y` or a navigation to Yes. Buffered keys and keys arriving within 300 ms of the panel rendering decide nothing. The shipped `Down`×2 scenario is updated to match.
+4. **The editor's text wins over a draft that changed meanwhile**, and the earlier text goes to the stash with a notice naming it. The editor is the deliberate act; the other text is shelved rather than dropped.
+5. **The six undocumented catalog keys get their guide rows in this change** (`Ctrl+J`, `Shift+Enter`, `Ctrl+Enter`, `Ctrl+Delete`, `Ctrl+Left`, `Ctrl+Right`), because the check cannot go green honestly without them.
 
 ## Deferred
 

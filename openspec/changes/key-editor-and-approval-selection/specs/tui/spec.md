@@ -46,11 +46,11 @@
 - **WHEN** keys are typed at it
 - **THEN** the session reads none of them, and the draft and the history are unchanged by them
 
-#### Scenario: A draft changed under the editor is not lost
+#### Scenario: The editor's text wins over a draft that changed meanwhile
 
 - **GIVEN** a draft that changed while the editor was open
 - **WHEN** the editor exits 0
-- **THEN** the newer draft keeps the prompt, the editor's text is in the stash slot, and one notice says where it went
+- **THEN** the editor's text is in the prompt, the draft that changed meanwhile is in the stash slot, and one notice names the slot the earlier text went to
 
 #### Scenario: The temporary file never stays behind
 
@@ -90,7 +90,7 @@
 
 - **GIVEN** `y`, `n`, `a`, `?` and `Ctrl+P` in the table with no catalog row
 - **WHEN** the check runs
-- **THEN** they pass with their stated reasons, and any other table key without a catalog row fails
+- **THEN** they pass with their stated reasons — the approval letters decide locally, `?` shows the approval legend and the empty-prompt help, `Ctrl+P` is deliberately unbound — and any other table key without a catalog row fails
 
 #### Scenario: A deleted table fails instead of passing vacuously
 
@@ -102,7 +102,7 @@
 
 ### Requirement: Approval prompt
 
-A pending approval SHALL render as a live-area prompt naming the tool and its argument summary with `[y]es`, `[n]o`, `[a]lways this session`. The prompt SHALL be a panel: a warning headline with the concrete action (the command for `bash`, the path with its change counts for `edit` and `write`), a bounded detail block (the command's lines, the edit's diff, or the tool's key arguments, clipped never wrapped), and the question with its choices; below 60 columns the detail shortens first and every choice SHALL stay visible, never clipped mid-option. Bare `y`, `n` and `a` SHALL decide directly, wherever the selection sits. Up and Down SHALL move a selection across the three choices, wrapping from the last to the first and back, and Space SHALL activate the selected choice. The selection SHALL be prompt state carried by the prompt model, not a rendering focus: every repaint of the same prompt — a resize, a redraw, a notice arriving — SHALL show the same choice selected, and a new prompt SHALL start on `[y]es`. The selection SHALL be legible without colour: a `> ` marker immediately before the selected choice's bracket — the same gutter the autocomplete uses — which grows the inline row from 34 to 36 cells and keeps every choice fully visible. A letter SHALL decide immediately whatever the selection shows; Space is the only key that acts on the selection. The choice list SHALL be the three fixed decisions, so the choice block fits any frame that can show the question: the trimming order (detail first, then headline) SHALL never reach a choice row, and a longer list is a layout change this requirement does not have. Where the three choices and the marker do not fit one row, the block SHALL stack them one per row with the gutter column kept, each choice fully visible; below the longest choice row a label SHALL clip only after its key letter, so every decision stays identifiable and selectable. Escape SHALL deny. A stray Enter SHALL deny (nothing runs by accident); all other keys SHALL neither decide nor move the selection. The prompt SHALL produce a choice; session memory for "always" is the wiring layer's concern and SHALL apply across the whole run tree — a grant given while a subagent asked covers every run of the session. When the asking run is a subagent, the prompt SHALL label it (its depth relative to the top-level run).
+A pending approval SHALL render as a live-area prompt naming the tool and its argument summary with `[y]es`, `[n]o`, `[a]lways this session`. The prompt SHALL be a panel: a warning headline with the concrete action (the command for `bash`, the path with its change counts for `edit` and `write`), a bounded detail block (the command's lines, the edit's diff, or the tool's key arguments, clipped never wrapped), and the question with its choices; below 60 columns the detail shortens first and every choice SHALL stay visible, never clipped mid-option. Bare `y`, `n` and `a` SHALL decide directly, wherever the selection sits. Up and Down SHALL move a selection across the three choices, wrapping from the last to the first and back, and Space SHALL activate the selected choice. The selection SHALL be prompt state carried by the prompt model, not a rendering focus: every repaint of the same prompt — a resize, a redraw, a notice arriving — SHALL show the same choice selected, and a new prompt SHALL start on `[n]o`, so Space on an untouched prompt denies, the same as Enter; approving always takes a deliberate `y`, or moving to Yes and then Space or Enter. The selection SHALL be legible without colour: a `> ` marker immediately before the selected choice's bracket — the same gutter the autocomplete uses — which grows the inline row from 34 to 36 cells and keeps every choice fully visible. A letter SHALL decide immediately whatever the selection shows; Space is the only key that acts on the selection. The choice list SHALL be the three fixed decisions, so the choice block fits any frame that can show the question: the trimming order (detail first, then headline) SHALL never reach a choice row, and a longer list is a layout change this requirement does not have. Where the three choices and the marker do not fit one row, the block SHALL stack them one per row with the gutter column kept, each choice fully visible; below the longest choice row a label SHALL clip only after its key letter, so every decision stays identifiable and selectable. The prompt SHALL arm its decisions the way the trust question does: a key read before the prompt rendered SHALL never decide, and a key read within 300 ms of it rendering SHALL decide nothing — a keystroke already in flight when the panel appeared, or a Space typed mid-word, never answers a question the user has not read. `?` SHALL render the prompt's key legend (`y` approves, `n` denies, `a` approves for the session, Space activates the selection, Enter and Escape deny) and SHALL NOT decide anything itself. Escape SHALL deny. A stray Enter SHALL deny (nothing runs by accident); all other keys SHALL neither decide nor move the selection. The prompt SHALL produce a choice; session memory for "always" is the wiring layer's concern and SHALL apply across the whole run tree — a grant given while a subagent asked covers every run of the session. When the asking run is a subagent, the prompt SHALL label it (its depth relative to the top-level run).
 
 #### Scenario: Explicit keys decide
 
@@ -118,9 +118,27 @@ A pending approval SHALL render as a live-area prompt naming the tool and its ar
 
 #### Scenario: Selection activates with Space
 
-- **GIVEN** a pending approval
+- **GIVEN** a pending approval whose selection starts on `[n]o`
 - **WHEN** Down is pressed twice and Space once
-- **THEN** the selection has moved to `[a]lways this session` and the choice is always
+- **THEN** the selection has moved through `[a]lways this session` to `[y]es` and the choice is approve
+
+#### Scenario: Space on an untouched prompt denies
+
+- **GIVEN** a pending approval that has just rendered and whose selection is on `[n]o`
+- **WHEN** Space is pressed
+- **THEN** the choice is deny, the same as Enter
+
+#### Scenario: Type-ahead never answers the prompt
+
+- **GIVEN** a pending approval
+- **WHEN** `y` was read before the prompt rendered, or `y` arrives within 300 ms of it rendering
+- **THEN** nothing is decided and the prompt is still waiting
+
+#### Scenario: The legend answers `?` without deciding
+
+- **GIVEN** a pending approval
+- **WHEN** `?` is pressed
+- **THEN** the panel shows the key legend for `y`, `n`, `a`, Space, Enter and Escape, and nothing is decided
 
 #### Scenario: Escape denies
 
@@ -154,9 +172,9 @@ A pending approval SHALL render as a live-area prompt naming the tool and its ar
 
 #### Scenario: The selection wraps at both ends
 
-- **GIVEN** a pending approval whose selection is on `[y]es`
+- **GIVEN** a pending approval whose selection is on `[n]o`
 - **WHEN** Up is pressed and then Down twice
-- **THEN** the selection visits `[a]lways this session` and returns to `[y]es`
+- **THEN** the selection visits `[y]es`, then `[a]lways this session`, and returns to `[n]o`
 
 #### Scenario: A letter decides over the selection
 

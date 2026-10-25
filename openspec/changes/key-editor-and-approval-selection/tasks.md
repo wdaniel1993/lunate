@@ -13,15 +13,15 @@ One PR, four commits: the editor, the approval selection, the drift check, and t
 - [ ] 1.7 Red: the temp file is UTF-8 without a BOM, owner-only on POSIX, and gone after a zero exit, a non-zero exit, a launch that throws and a read-back that throws.
 - [ ] 1.8 Red: a zero exit reloads the file with CRLF normalised and exactly one trailing newline removed, places the cursor at the end, and repaints the box at its new height; an empty draft opens an empty file, and an empty file leaves the draft empty.
 - [ ] 1.9 Red: a non-zero exit, a missing program, a throwing start and a failing read-back each post exactly one notice naming the variable and value, the exit code, or the read that failed, and leave the draft, the cursor and the stash untouched; a set-but-unlaunchable `VISUAL` is *not* replaced by `EDITOR`.
-- [ ] 1.10 Red: a draft changed while the child ran keeps the prompt, the editor's text lands in the stash slot, and one notice says so.
+- [ ] 1.10 Red: a draft changed while the child ran loses the prompt to the editor's text, the earlier draft lands in the stash slot, and one notice names the slot it went to.
 - [ ] 1.11 The session dispatch: `RoutedKey.Editor` takes the suspend scope and the live-area suspend, snapshots the draft and cursor, writes, runs the child with inherited handles and no redirection, reads back, applies D5, resumes both scopes in a `finally`.
 - [ ] 1.12 Tests use a scripted child (an inline script or a test executable), never a real editor, and cover each row of D4's table plus 1.1–1.10.
 - [ ] 1.13 `docs/guide.md`: a `Ctrl+G` row (what it does, that the program must wait — `code --wait`), and the key-table section's prose says where the draft goes on failure.
 
 ## 2. The approval selection
 
-- [ ] 2.1 Red: `ApprovalPromptModel` starts on `[y]es`; Up from it lands on `[a]lways this session`, Down from the last lands on `[y]es`; Left, Right, Tab, PageDown and `k` leave both the selection and the decision untouched.
-- [ ] 2.2 Red: `y`, `n` and `a` decide wherever the selection sits; Space activates the selected choice; Enter and Esc still deny; `Decide` still returns `null` for every unhandled key.
+- [ ] 2.1 Red: `ApprovalPromptModel` starts on `[n]o`; Up lands on `[y]es`, Down from `[y]es` lands on `[n]o`, and Down from `[a]lways this session` wraps to `[y]es`; Left, Right, Tab, PageDown and `k` leave both the selection and the decision untouched.
+- [ ] 2.2 Red: `y`, `n` and `a` decide wherever the selection sits; Space on an untouched prompt denies; Space after a move activates the selected choice; Enter and Esc still deny; `Decide` still returns `null` for every unhandled key.
 - [ ] 2.3 `ApprovalPromptModel` gains the selection index, the move (wrapping) and the activation; the model stays a record so a repost is a value, not a mutation.
 - [ ] 2.4 Red: the panel renders `> ` before the selected choice's bracket, the inline row is 36 cells with all three choices visible, and the row is identical under `NO_COLOR` and the ASCII fallback.
 - [ ] 2.5 Red: below 36 columns the choices stack one per row with a stable gutter; below 22 cells a label clips only after its key letter; no rendered line exceeds the width at 40, 60, 80 and 120.
@@ -30,7 +30,9 @@ One PR, four commits: the editor, the approval selection, the drift check, and t
 - [ ] 2.8 The session's approval branch reposts the prompt when the model moved and keeps its early return for every other key; `Ctrl+C`'s quit path is unchanged.
 - [ ] 2.9 Golden frames: regenerate the approval panel at 40 and 80 columns, deliberately, in this commit.
 - [ ] 2.10 `docs/guide.md`: the approvals paragraph gains Up/Down, Space, the wrap and the marker; the table gains the `y` / `n` / `a` row.
-- [ ] 2.11 `PublicAPI.Unshipped.txt` for the model's new members.
+- [ ] 2.11 Red: the prompt arms on render — a key whose sequence was read before it rendered decides nothing, and a key delivered within 300 ms of it rendering decides nothing; the arm uses the same seam as the trust question (`TrustArmSequence`'s shape) rather than a second mechanism.
+- [ ] 2.12 Red: `?` renders the panel's key legend (`y`, `n`, `a`, Space, Enter, Escape) and decides nothing; the selection and the pending question are unchanged after it.
+- [ ] 2.13 `PublicAPI.Unshipped.txt` for the model's new members.
 
 ## 3. The guide-table drift check
 
