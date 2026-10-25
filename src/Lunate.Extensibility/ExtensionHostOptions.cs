@@ -29,6 +29,14 @@ public sealed class ExtensionHostOptions
     /// </summary>
     public IReadOnlyList<string> ReservedCommands { get; init; } = [];
 
+    /// <summary>
+    /// Where locked packages are read from — the compile and the load must agree, or a build would
+    /// compile against files the load cannot find. Null means NuGet's own folder
+    /// (<c>NUGET_PACKAGES</c>, else <c>~/.nuget/packages</c>); a test or a portable install sets it
+    /// explicitly.
+    /// </summary>
+    public string? GlobalPackagesFolder { get; init; }
+
     public static ExtensionHostOptions Default { get; } =
         new() { StorePath = Lunate.Ai.LunateHome.Store };
 

@@ -97,9 +97,12 @@ public sealed class SingleFileExtensionBuilder
         _restorer = new SingleFileExtensionRestorer(options, engine, target);
         _compiler = compiler ?? (static () => null);
         _target = target ?? SingleFileTarget.Current();
-        _packagesFolder = string.IsNullOrWhiteSpace(globalPackagesFolder)
-            ? DefaultPackagesFolder()
-            : Path.GetFullPath(globalPackagesFolder);
+        string? configured = string.IsNullOrWhiteSpace(globalPackagesFolder)
+            ? options.GlobalPackagesFolder
+            : globalPackagesFolder;
+        _packagesFolder = string.IsNullOrWhiteSpace(configured)
+            ? SingleFilePackages.DefaultFolder()
+            : Path.GetFullPath(configured);
     }
 
     /// <summary>The toolset every build is keyed by and compiled for.</summary>
@@ -430,32 +433,6 @@ public sealed class SingleFileExtensionBuilder
             // The pointer is an optimisation for the next reader; a build that exists is still
             // usable, and the next successful build rewrites the pointer anyway.
         }
-    }
-
-    /// <summary>
-    /// NuGet's default packages folder, the same precedence the restore engine uses for the value
-    /// it is handed: <c>NUGET_PACKAGES</c>, else <c>~/.nuget/packages</c>. The engine additionally
-    /// honours <c>globalPackagesFolder</c> from a <c>nuget.config</c> chain; this path does not read
-    /// that chain, because reading it means loading <c>NuGet.Configuration</c> — so a machine that
-    /// sets the folder only in a config file must also set <c>NUGET_PACKAGES</c> for a lock-only
-    /// compile. A missing reference is reported as a compile failure naming the file, never guessed
-    /// at.
-    /// </summary>
-    private static string DefaultPackagesFolder()
-    {
-        string? configured = Environment.GetEnvironmentVariable("NUGET_PACKAGES");
-        return Path.GetFullPath(
-            configured is { Length: > 0 } && !string.IsNullOrWhiteSpace(configured)
-                ? configured
-                : Path.Combine(
-                    Environment.GetFolderPath(
-                        Environment.SpecialFolder.UserProfile,
-                        Environment.SpecialFolderOption.DoNotVerify
-                    ),
-                    ".nuget",
-                    "packages"
-                )
-        );
     }
 
     /// <summary>The source text, without a byte-order mark the compiler would read as content.</summary>
