@@ -64,9 +64,14 @@ public sealed class PublishedBinaryCompileTests
         string packages = Path.Combine(temp.Root, "nuget");
         string extensions = Path.Combine(home, ".lunate", "extensions");
         string tools = Path.Combine(temp.Root, "bin");
+        // The session's root and the workspace it runs in are siblings, as they are for a user:
+        // LUNATE_HOME inside the working directory is refused by design (the trust store there
+        // could be written by that directory).
+        string work = Path.Combine(temp.Root, "work");
         Directory.CreateDirectory(extensions);
         Directory.CreateDirectory(packages);
         Directory.CreateDirectory(tools);
+        Directory.CreateDirectory(work);
         string file = Path.Combine(extensions, "acme.cs");
         File.WriteAllText(file, Source);
 
@@ -90,7 +95,7 @@ public sealed class PublishedBinaryCompileTests
                 )
             );
 
-            Run first = await LaunchAsync(binary!, tools, home, packages, temp.Root);
+            Run first = await LaunchAsync(binary!, tools, home, packages, work);
             Assert.True(
                 first.Exit == 0,
                 $"the published binary failed to build:\n{first.Output}\n{first.Error}"
@@ -127,7 +132,7 @@ public sealed class PublishedBinaryCompileTests
             try
             {
                 Assert.False(Directory.Exists(feed.FeedDirectory));
-                second = await LaunchAsync(binary!, tools, home, packages, temp.Root);
+                second = await LaunchAsync(binary!, tools, home, packages, work);
             }
             finally
             {
