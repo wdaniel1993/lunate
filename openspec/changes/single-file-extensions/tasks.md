@@ -53,12 +53,12 @@
 
 ## 3. Runtime: isolation, API gate, reload (PR 3)
 
-- [ ] 3.1 Red: a package shipping its own `Lunate.Extensibility.Abstractions.dll` loads against the host's copy and warns once.
-- [ ] 3.2 Red: an extension referencing an Abstractions above the host's `ExtensionApi` is refused with `requires Lunate ≥ x.y`.
-- [ ] 3.3 Red: `/extensions reload <id>` preflights trust, builds before touching the running extension, and leaves the old build loaded when the build fails.
-- [ ] 3.4 Red: a live invocation is cancelled with a notice and drained within the bound before the context disposes; a handler that ignores cancellation is logged once.
-- [ ] 3.5 Wire reload into the existing command leases; `ToolsChanged` after the new build loads.
-- [ ] 3.6 The template and docs show `PrivateAssets="all"` / `ExcludeAssets="runtime"`.
+- [x] 3.1 Red: a package shipping its own `Lunate.Extensibility.Abstractions.dll` loads against the host's copy and warns once.
+- [x] 3.2 Red: an extension referencing an Abstractions above the host's `ExtensionApi` is refused with `requires Lunate ≥ x.y`.
+- [x] 3.3 Red: `/extensions reload <id>` preflights trust, builds before touching the running extension, and leaves the old build loaded when the build fails.
+- [x] 3.4 Red: a live invocation is cancelled with a notice and drained within the bound before the context disposes; a handler that ignores cancellation is logged once.
+- [x] 3.5 Wire reload into the existing command leases; `ToolsChanged` after the new build loads.
+- [x] 3.6 The template and docs show `PrivateAssets="all"` / `ExcludeAssets="runtime"`.
 
 ## 4. The loop, end to end (PR 4)
 

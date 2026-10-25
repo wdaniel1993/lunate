@@ -204,37 +204,83 @@ The state root SHALL be read from the process environment only — no `.env` fil
 - **WHEN** a full session runs one turn with a tool call
 - **THEN** it exits successfully, its session file is under the redirected root, and the nonexistent home is still nonexistent
 
-### Requirement: Host assemblies win over the extension's copies
+### Requirement: Host assemblies are the ones an extension loads
 
-A single-file extension SHALL load into its own collectible context, and `Lunate.Extensibility.Abstractions`, `Lunate.Agent`, `Lunate.Ai`, `Microsoft.Extensions.AI*` and `System.Text.Json` SHALL always resolve to the host's copies, including when a package ships its own. Compatibility SHALL be decided by the Abstractions version the extension references: a reference above the host's `ExtensionApi` version SHALL refuse the load with `requires Lunate ≥ x.y`. When a copy was ignored, `/extensions` SHALL show a one-line warning naming the assembly, and the authoring template and docs SHALL show the reference as `PrivateAssets="all"` with `ExcludeAssets="runtime"`.
+A built single-file extension SHALL load into its own collectible context, with every dependency resolved from the exact asset its build manifest records for a locked package — never re-resolved — and from the build directory otherwise. `Lunate.Extensibility.Abstractions`, `Lunate.Agent`, `Microsoft.Extensions.AI.Abstractions` and `System.Text.Json` SHALL always resolve to the host's copies, including when a locked package ships its own and when a packaged extension's directory carries one: the copy SHALL be ignored, the load SHALL succeed, and exactly one line SHALL name what was dropped and who shipped it. That line SHALL be logged and SHALL appear on the extension's `/extensions` row (and as `ignoredCopy` in `--json`), because which copy is live is not something a user can see for themselves. The authoring template and the authoring page SHALL show the contract reference as `PrivateAssets="all"`, `ExcludeAssets="runtime"` and `Private="false"`, with one sentence saying the host owns that assembly.
 
 #### Scenario: A copied Abstractions is ignored, not loaded twice
 
-- **GIVEN** a package that ships `Lunate.Extensibility.Abstractions.dll`
+- **GIVEN** a locked package that ships `Lunate.Extensibility.Abstractions.dll`, and a second package that ships another copy
 - **WHEN** the extension loads
-- **THEN** the host's copy is used, `/extensions` warns once, and the load succeeds
+- **THEN** the contract types in the loaded extension are the host's (the extension reports `typeof(IExtensionFactory).Assembly.Location` as the host's file, and its context holds no second Abstractions), the load succeeds, and exactly one line names both packages
 
-#### Scenario: A newer contract is refused by version
+#### Scenario: A packaged extension's own copy is ignored too
 
-- **GIVEN** an extension referencing Abstractions 2.0 while the host implements 1.7
+- **GIVEN** a packaged extension directory that contains a copy of the contract
 - **WHEN** it loads
-- **THEN** the load is refused with `requires Lunate ≥ 2.0`
+- **THEN** the host's copy is used and the row and the log name the directory once
+
+#### Scenario: The template keeps the contract out of the output
+
+- **GIVEN** the packaged-extension template
+- **WHEN** its project file is read
+- **THEN** the `Lunate.Extensibility.Abstractions` reference carries `PrivateAssets="all"`, `ExcludeAssets="runtime"` and `Private="false"`, and no copy of the DLL is written to the extension's output
+
+### Requirement: The API gate is the version the build saw
+
+An extension's compatibility SHALL be decided by the API version its build saw — the `apiVersion` a single-file build records in `build.json`, the `Lunate.Extensibility.Abstractions` assembly reference a packaged DLL carries, and the range a manifest declares — never by the presence of a DLL and never at the first call. A version above the host's `ExtensionApi.Current` SHALL refuse the load before any type of the extension is opened, with `requires Lunate ≥ x.y` naming both the required version and the running one; a version at or below it SHALL load, so a file compiled before an API bump keeps working. Discovery SHALL refuse a packaged manifest whose declared range the host cannot meet using the same wording when the range's floor is above the host. The contract assembly's own version SHALL equal `ExtensionApi.Current`, because a refusal that names a version no Lunate ships is worse than no refusal.
+
+#### Scenario: At or below the host loads
+
+- **GIVEN** a build recording `apiVersion` equal to the host's, and another recording an older one
+- **WHEN** each loads
+- **THEN** both load and neither reports `requires Lunate`
+
+#### Scenario: Above the host is refused, naming both versions
+
+- **GIVEN** a build recording `apiVersion` above the host's `ExtensionApi.Current`
+- **WHEN** it loads
+- **THEN** the load is refused with `requires Lunate ≥ <required> but this is Lunate <running>`, and no tool or command of the extension was registered
+
+#### Scenario: A packaged DLL built against a newer contract is refused
+
+- **GIVEN** a packaged extension whose assembly references `Lunate.Extensibility.Abstractions` at a version above the host's, while its manifest declares a compatible range
+- **WHEN** it loads
+- **THEN** the load is refused with `requires Lunate ≥ <that version>` before the factory is looked for, so a manifest cannot talk the host into opening code it cannot support
 
 ### Requirement: Extension states and reload
 
-`/extensions` SHALL show each single-file extension in one of `not-built`, `restoring`, `built`, `stale`, `failed (trust|restore|compile)` or `invalid (no #:extension)`, with the reason on the same line for a failure. `/extensions reload <id>` SHALL preflight trust, build before touching the running extension, then cancel its live invocations, show a notice, drain for a bounded time, dispose and unload the context, load the new build and raise `ToolsChanged`; a running turn SHALL NOT be interrupted mid-call, and a failed reload SHALL leave the previously loaded build in place.
+`/extensions` SHALL show each single-file extension in one of `not-built`, `restoring`, `built`, `stale`, `failed (trust|restore|compile)` or `invalid (no #:extension)`, with the reason on the same line for a failure. `/extensions reload <id>` — and the non-interactive `lunate extensions reload <id|path>`, which runs the same preflight, build and a register-only load — SHALL, in this order: preflight trust for the bytes on disk (asking the user, and stopping if they refuse); build against the lock bound to those bytes; and only then swap. A trust or build failure SHALL return with the old build still loaded, still callable, and still the build `builds.json` names. The swap SHALL cancel the old build's live invocations with a notice naming the extension, drain them within `ReloadDrainBound`, unload the old context, load the new build, and raise `ToolsChanged` exactly once after the new tool set is registered, so the list a model sees is never half-swapped.
 
 #### Scenario: A reload that fails to compile keeps the old build
 
 - **GIVEN** a loaded extension that is edited into a compile error
 - **WHEN** `/extensions reload <id>` runs
-- **THEN** the extension stays loaded at its previous build and `/extensions` reports `failed (compile)` with the first error
+- **THEN** the extension stays loaded at its previous build, its tool still answers, `builds.json` still names that build, and the reload reports the first diagnostic
+
+#### Scenario: A refused trust question stops before the compiler
+
+- **GIVEN** a loaded extension whose file was edited and whose trust question the user declines
+- **WHEN** `/extensions reload <id>` runs
+- **THEN** no compile runs, the old build stays loaded and callable, and the reload reports the refusal
 
 #### Scenario: A live invocation is drained, not cut
 
-- **GIVEN** an extension tool call in flight
+- **GIVEN** an extension command in flight
 - **WHEN** `/extensions reload <id>` runs
-- **THEN** the call finishes or is cancelled with a notice, the context is disposed within the bounded drain, and only then does the new build load
+- **THEN** the invocation is cancelled with a notice naming the extension, it leaves before the context is disposed, and its cancelled result is discarded
+
+#### Scenario: A handler that ignores its token cannot hold the reload
+
+- **GIVEN** a handler blocked on a manual reset event with its token unobserved
+- **WHEN** `/extensions reload <id>` runs
+- **THEN** the drain expires at `ReloadDrainBound`, exactly one log line names the command and says it did not return within the bound, and the reload completes anyway
+
+#### Scenario: A command that runs during the build finishes on the old build
+
+- **GIVEN** a command executing while a reload is still inside its build
+- **WHEN** the build finishes and the swap runs
+- **THEN** the command's result came from the old build and is kept, `ToolsChanged` fires once after the new build is loaded, and the next call answers from the new build
 
 ### Requirement: The model never approves trust
 
