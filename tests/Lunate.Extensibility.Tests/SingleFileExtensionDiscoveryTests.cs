@@ -31,7 +31,9 @@ public sealed class SingleFileExtensionDiscoveryTests
         Assert.Equal(path, candidate.Path);
         Assert.Equal("acme.cs", candidate.FileName);
         Assert.Equal(SingleFileExtensionState.NotBuilt, candidate.State);
-        Assert.Null(candidate.Reason);
+        // The row says what is missing rather than reading like a broken file: nothing has
+        // approved these bytes yet, and the reload is the command that asks.
+        Assert.Equal("not trusted yet; /extensions reload asks before it builds", candidate.Reason);
         Assert.Equal(64, candidate.Digest.Length);
         // Nothing was built, restored or trusted: no cache directory and no trust record exist.
         Assert.False(Directory.Exists(Path.Combine(fixture.Store, "cache")));

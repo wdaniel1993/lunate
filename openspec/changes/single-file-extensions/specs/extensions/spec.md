@@ -264,6 +264,12 @@ An extension's compatibility SHALL be decided by the API version its build saw â
 - **WHEN** `/extensions reload <id>` runs
 - **THEN** no compile runs, the old build stays loaded and callable, and the reload reports the refusal
 
+#### Scenario: An untrusted file says what is missing
+
+- **GIVEN** a single-file extension whose current bytes have no trust decision
+- **WHEN** `/extensions` lists it
+- **THEN** its row reads `not-built` and says it is not trusted yet and that `/extensions reload` asks before it builds, so a file that provides nothing reads as a decision rather than a defect
+
 #### Scenario: A live invocation is drained, not cut
 
 - **GIVEN** an extension command in flight

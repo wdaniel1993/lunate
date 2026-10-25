@@ -114,6 +114,101 @@ public sealed class SingleFileLoopEndToEndTests
     }
 
     /// <summary>
+    /// The refusal side of the same loop: a file whose bytes nobody approved cannot be called, and
+    /// the listing says that trust is what stands in the way rather than leaving the reader to
+    /// guess why a discovered file provides nothing. Declining the question changes nothing:
+    /// nothing is restored, nothing is compiled, and the tool is still absent afterwards.
+    /// </summary>
+    [Fact]
+    public async Task An_untrusted_files_tool_is_not_callable_and_the_listing_says_why()
+    {
+        using SingleFileLoopFixture fixture = SingleFileLoopFixture.Create();
+        // The file is there; no decision was ever taken for these bytes.
+        fixture.Write(SingleFileLoopFixture.Source("\"never\""));
+        using var host = new InteractiveSessionHost(
+            extensions: fixture.Seams(),
+            workingDirectory: fixture.Worktree
+        );
+        AutoEdit(host);
+        host.Console.Size = new ConsoleSize(600, 24);
+        host.Client.Enqueue(
+            Scripts.Call("call-1", "acme-tools__whoami", Scripts.Args()),
+            Scripts.ToolCalls()
+        );
+        host.Client.Enqueue(Scripts.Text("no tool"), Scripts.Stop());
+        host.Client.Enqueue(Scripts.Text("still no tool"), Scripts.Stop());
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+
+        // The row is `not-built` and says why nothing is live: an untrusted file is not a broken
+        // one, and the sentence names the command that asks.
+        host.Console.SendText("/extensions");
+        host.Console.SendEnter();
+        await host.WaitForFrameAsync(
+            "acme-tools 1.0.0 (project, single file) not-built, tools 1, commands 0, hooks 0, services 0",
+            CompileWait
+        );
+        Assert.Contains(
+            "not trusted yet; /extensions reload asks before it builds",
+            host.LastFrame,
+            StringComparison.Ordinal
+        );
+
+        // The model sees no such tool — and a call it invents anyway is refused by name, with the
+        // list it could have chosen from.
+        host.Console.SendText("use the tool");
+        host.Console.SendEnter();
+        await host.Client.WaitForCallAsync(1);
+        Assert.DoesNotContain(
+            host.Client.RequestOptions[0]!.Tools!.OfType<AIFunction>(),
+            tool => tool.Name == "acme-tools__whoami"
+        );
+        await host.WaitUntilAsync(
+            () => host.Events.OfType<ToolCallResult>().Any(result => result.CallId == "call-1"),
+            CompileWait
+        );
+        ToolCallResult refusal = Assert.Single(
+            host.Events.OfType<ToolCallResult>(),
+            result => result.CallId == "call-1"
+        );
+        Assert.True(refusal.IsError);
+        Assert.Contains(
+            "Unknown tool 'acme-tools__whoami'.",
+            refusal.Output,
+            StringComparison.Ordinal
+        );
+
+        // The user declines the question the reload asks: nothing is restored, nothing is compiled,
+        // and the answer is reported with the reason the preflight stopped.
+        host.Console.SendText("/extensions reload acme-tools");
+        host.Console.SendEnter();
+        await host.WaitForFrameAsync(
+            "Trust the single-file extension 'acme-tools' 1.0.0",
+            CompileWait
+        );
+        host.Console.SendText("n");
+        await host.WaitForFrameAsync(
+            "extension 'acme-tools' was not reloaded: the user did not trust 'acme-tools'",
+            CompileWait
+        );
+        Assert.Equal(0, fixture.Restores);
+        Assert.Equal(0, fixture.Compiles);
+
+        // And the next request still cannot see the tool: a refusal is not a partial load.
+        host.Console.SendText("try again");
+        host.Console.SendEnter();
+        await host.Client.WaitForCallAsync(3);
+        Assert.DoesNotContain(
+            host.Client.RequestOptions[2]!.Tools!.OfType<AIFunction>(),
+            tool => tool.Name == "acme-tools__whoami"
+        );
+
+        host.Console.SendText("/quit");
+        host.Console.SendEnter();
+        await run;
+    }
+
+    /// <summary>
     /// The session's default approval policy asks before a write; these tests are about the
     /// extension loop, so the policy is the auto-edit one (writes inside the workspace run).
     /// </summary>

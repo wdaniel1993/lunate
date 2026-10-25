@@ -186,6 +186,18 @@ internal sealed class SingleFileExtensionReader(
                     "the trust record for this file is unreadable; remove its entry from "
                     + "trust.json and trust the file again",
             },
+            // Untrusted is not broken: the file is usable and nothing has approved it yet, so the
+            // row says what is missing and which command asks for it. Without the sentence a
+            // discovered file that provides nothing reads like a defect instead of a decision.
+            SingleFileExtensionTrust.Untrusted => Built(
+                fullPath,
+                scope,
+                header,
+                digest,
+                sourceDigest,
+                read,
+                "not trusted yet; /extensions reload asks before it builds"
+            ),
             _ => Built(fullPath, scope, header, digest, sourceDigest, read),
         };
     }
@@ -194,7 +206,8 @@ internal sealed class SingleFileExtensionReader(
     /// The trusted row: <c>built</c> when an assembly exists for exactly these inputs (the source
     /// digest, the whole lock, the host contract version and this toolset), <c>not-built</c>
     /// otherwise. The check is a key computation and a file existence test — no compiler, no NuGet,
-    /// so discovery stays on the startup budget.
+    /// so discovery stays on the startup budget. <paramref name="note"/> is what a not-built row
+    /// says when the reason is not a refused lock (an untrusted file's missing decision).
     /// </summary>
     private SingleFileExtension Built(
         string fullPath,
@@ -202,7 +215,8 @@ internal sealed class SingleFileExtensionReader(
         ExtensionHeader header,
         string digest,
         string sourceDigest,
-        LockRead read
+        LockRead read,
+        string? note = null
     )
     {
         string? buildKey = null;
@@ -245,7 +259,7 @@ internal sealed class SingleFileExtensionReader(
             LockHash = read.Hash,
             BuildKey = buildKey,
             AssemblyPath = assemblyPath,
-            Reason = assemblyPath is null ? read.Refused : null,
+            Reason = assemblyPath is null ? note ?? read.Refused : null,
         };
     }
 

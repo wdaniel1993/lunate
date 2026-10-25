@@ -131,6 +131,14 @@ internal sealed class SingleFileLoopFixture : IDisposable
     internal static string Source(string probeLiteral) =>
         Template.Replace("__PROBE__", probeLiteral, StringComparison.Ordinal);
 
+    /// <summary>Writes the file without recording a decision: the untrusted case.</summary>
+    internal string Write(string source)
+    {
+        Directory.CreateDirectory(ExtensionsRoot);
+        File.WriteAllText(SourcePath, source);
+        return SourcePath;
+    }
+
     /// <summary>Writes the file and records the first-trust decision, the way an approving session does.</summary>
     internal string WriteTrusted(string source)
     {
