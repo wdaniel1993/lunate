@@ -11,6 +11,12 @@
     </ItemGroup>
 
     <ItemGroup>
+        <!-- The dependency walker's rules are the restore's rules; the tests assert a version
+             choice at that seam, without an install or a reference pack in the way. -->
+        <InternalsVisibleTo Include="Lunate.Extensibility.Restore.Tests" />
+    </ItemGroup>
+
+    <ItemGroup>
         <PackageReference Include="NuGet.Configuration" Version="7.9.0" />
         <PackageReference Include="NuGet.Frameworks" Version="7.9.0" />
         <PackageReference Include="NuGet.Packaging" Version="7.9.0" />
