@@ -20,12 +20,46 @@ try {
         Where-Object { $_.LastWriteTime -lt (Get-Date).AddHours(-4) } |
         Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
 
-    function Measure-StartupMedian {
+    # The gate is the FLOOR, the fastest of the runs, with the median reported beside it
+    # (ADR-0005 addendum, 2026-10-25): interference on a shared runner only ever adds
+    # time, so the fastest run estimates the binary and the median estimates the machine.
+    function Measure-Startup {
         param($Bin, $File)
         Write-Host "verify: benchmarking: $Bin --version"
         hyperfine --warmup 3 --runs 20 --export-json $File "$Bin --version" | Out-Null
         if ($LASTEXITCODE -ne 0) { throw 'verify: hyperfine failed' }
-        return [math]::Round(((Get-Content $File -Raw | ConvertFrom-Json).results[0].median) * 1000)
+        # Two JSON shapes are in the wild (hyperfine 2.x writes the statistics under
+        # .results[].summary.time_wall_clock, 1.x writes .min/.median at the top level), and
+        # StrictMode makes a missing property an error — ask the object which properties it
+        # has instead of assuming either. A shape that fits neither throws: a gate that cannot
+        # read its measurement must fail, never pass with an empty one.
+        $result = (Get-Content $File -Raw | ConvertFrom-Json).results[0]
+        $wall = if ($result.PSObject.Properties['summary']) {
+            $result.summary.time_wall_clock
+        } else {
+            $result
+        }
+        $floor = if ($wall.PSObject.Properties['min']) {
+            $wall.min
+        } elseif ($result.PSObject.Properties['times']) {
+            ($result.times | Measure-Object -Minimum).Minimum
+        } else {
+            $null
+        }
+        $median = if ($wall.PSObject.Properties['median']) {
+            $wall.median
+        } elseif ($result.PSObject.Properties['median']) {
+            $result.median
+        } else {
+            $null
+        }
+        if ($null -eq $floor -or $null -eq $median) {
+            throw 'verify: the hyperfine JSON carries no wall-clock timing'
+        }
+        return [pscustomobject]@{
+            Floor  = [math]::Round($floor * 1000)
+            Median = [math]::Round($median * 1000)
+        }
     }
 
     function Invoke-Tests {
@@ -119,18 +153,18 @@ try {
     & $binaryFull --version | Out-Null
     if ($LASTEXITCODE -ne 0) { throw "verify: binary failed to run: $binaryFull" }
 
-    $medianMs = Measure-StartupMedian -Bin $binaryFull -File $resultsFile
-    Write-Host "startup median: $medianMs ms (budget $budgetMs ms)"
+    $startup = Measure-Startup -Bin $binaryFull -File $resultsFile
+    Write-Host "startup: floor $($startup.Floor) ms (median $($startup.Median) ms, budget $budgetMs ms)"
     # Noise policy (ADR-0005, mirrors scripts/perf.sh): a single budget miss re-runs
     # the measurement once before failing, so a shared-runner noise burst does not
     # redden the gate while a material regression still misses both attempts.
-    if ($medianMs -gt $budgetMs) {
-        Write-Host "startup median $medianMs ms exceeds budget $budgetMs ms; re-running once (noise policy)"
-        $medianMs = Measure-StartupMedian -Bin $binaryFull -File $resultsFile
-        Write-Host "startup median (retry): $medianMs ms (budget $budgetMs ms)"
+    if ($startup.Floor -gt $budgetMs) {
+        Write-Host "startup floor $($startup.Floor) ms exceeds budget $budgetMs ms; re-running once (noise policy)"
+        $startup = Measure-Startup -Bin $binaryFull -File $resultsFile
+        Write-Host "startup: floor $($startup.Floor) ms (median $($startup.Median) ms, budget $budgetMs ms; retry)"
     }
-    if ($medianMs -gt $budgetMs) {
-        Write-Error "startup budget exceeded: $medianMs ms > $budgetMs ms (two consecutive measurements)" -ErrorAction Continue
+    if ($startup.Floor -gt $budgetMs) {
+        Write-Error "startup budget exceeded: fastest of 20 runs $($startup.Floor) ms > $budgetMs ms (median $($startup.Median) ms)" -ErrorAction Continue
         exit 1
     }
 
