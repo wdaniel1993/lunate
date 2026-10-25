@@ -7,6 +7,10 @@
     <ItemGroup>
         <ProjectReference Include="../../src/Lunate.Extensibility/Lunate.Extensibility.csproj" />
         <ProjectReference Include="../../src/Lunate.Extensibility.Compile/Lunate.Extensibility.Compile.csproj" />
+        <!-- The restore engine the product uses, for the extension the MSBL order test builds. -->
+        <ProjectReference Include="../../src/Lunate.Extensibility.Restore/Lunate.Extensibility.Restore.csproj" />
+        <!-- The workspace loader the product uses, for the other half of the MSBL order test. -->
+        <ProjectReference Include="../../src/Lunate.Roslyn/Lunate.Roslyn.csproj" />
     </ItemGroup>
 
     <ItemGroup>
