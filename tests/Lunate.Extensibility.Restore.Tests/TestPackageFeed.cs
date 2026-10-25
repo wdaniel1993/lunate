@@ -28,8 +28,9 @@ internal sealed class TestPackageFeed
     internal SingleFilePackageSource Source => new("local", FeedDirectory);
 
     /// <summary>
-    /// Adds <c>&lt;id&gt;.&lt;version&gt;.nupkg</c>. A dependency string is <c>Id@version</c>; the
-    /// range becomes <c>[version, )</c>, which is what a real package's nuspec carries.
+    /// Adds <c>&lt;id&gt;.&lt;version&gt;.nupkg</c>. A dependency string is <c>Id@version</c>; a
+    /// bare version becomes <c>[version, )</c>, which is what a real package's nuspec carries, and
+    /// a bracketed text is used as the range itself.
     /// </summary>
     internal TestPackageFeed Add(
         string id,
@@ -55,14 +56,7 @@ internal sealed class TestPackageFeed
             builder.DependencyGroups.Add(
                 new PackageDependencyGroup(
                     NuGetFramework.Parse(framework),
-                    [
-                        .. dependencies.Select(dependency => new PackageDependency(
-                            dependency.Split('@')[0],
-                            VersionRange.Parse(
-                                FormattableString.Invariant($"[{dependency.Split('@')[1]}, )")
-                            )
-                        )),
-                    ]
+                    [.. dependencies.Select(Edge)]
                 )
             );
         }
@@ -138,6 +132,22 @@ internal sealed class TestPackageFeed
     /// <summary>The nupkg's version folder in the global packages folder, NuGet's lowercase layout.</summary>
     internal string InstallPath(string id, string version) =>
         Path.Combine(GlobalPackages, id.ToLowerInvariant(), version.ToLowerInvariant());
+
+    /// <summary>
+    /// One nuspec dependency: <c>Id@version</c> means <c>&gt;= version</c> like a PackageReference,
+    /// and <c>Id@[1.0.0,2.0.0)</c> is the range as written.
+    /// </summary>
+    private static PackageDependency Edge(string dependency)
+    {
+        int at = dependency.IndexOf('@', StringComparison.Ordinal);
+        string id = dependency[..at];
+        string text = dependency[(at + 1)..].Trim();
+        VersionRange range =
+            text.StartsWith('[') || text.StartsWith('(')
+                ? VersionRange.Parse(text)
+                : VersionRange.Parse(FormattableString.Invariant($"[{text}, )"));
+        return new PackageDependency(id, range);
+    }
 
     private static void Add(PackageBuilder builder, string targetPath, string content)
     {
