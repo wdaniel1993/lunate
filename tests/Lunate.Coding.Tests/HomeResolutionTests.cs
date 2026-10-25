@@ -58,7 +58,11 @@ public sealed class HomeResolutionTests
                 || text.Contains("GetEnvironmentVariable(Variable)", StringComparison.Ordinal)
             )
             {
-                readers.Add(Path.GetRelativePath(repositoryRoot, file));
+                // The constant is written with forward slashes; Windows produces backslashes.
+                readers.Add(
+                    Path.GetRelativePath(repositoryRoot, file)
+                        .Replace(Path.DirectorySeparatorChar, '/')
+                );
             }
         }
 
