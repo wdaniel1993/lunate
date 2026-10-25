@@ -47,6 +47,11 @@ The manifest the host reads before loading anything. Every field matters:
 
 Registration is registration only: do not start processes, sockets or timers from `Create`.
 
+The project reference to `Lunate.Extensibility.Abstractions` carries `PrivateAssets="all"`,
+`ExcludeAssets="runtime"` and `Private="false"`: the host owns that assembly and loads it once, so the
+contract must not flow to your consumers, must not count as a runtime asset, and must not be copied
+into your output directory (a copy there is ignored at load, with one warning).
+
 ## Testing with the kit
 
 `TemplateExtension.Tests` uses `Lunate.Extensibility.Testing`. The test installs the built

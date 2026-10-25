@@ -47,7 +47,10 @@ no later in-process load.
 
 `AssemblyLoadContext` isolates dependencies, not permissions. `Lunate.Extensibility.Abstractions`,
 `Lunate.Agent`, `Microsoft.Extensions.AI.Abstractions` and `System.Text.Json` are shared with the
-default context; every other dependency loads from the extension's own directory. In-process
+default context; every other dependency loads from the extension's own directory or, for a
+single-file extension, from the exact package asset its build recorded. A copy of a shared assembly
+shipped beside the entry assembly — or inside a package a single-file extension locked — is ignored,
+and the load reports it once, naming the package, so the copy is never a second identity. In-process
 extensions are fully trusted.
 
 Long-lived resources start later: a registered background service starts as the extension loads,

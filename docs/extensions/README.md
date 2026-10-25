@@ -41,7 +41,12 @@ rename its projects and namespaces. A new class library needs only the contract 
         <RootNamespace>HelloExtension</RootNamespace>
     </PropertyGroup>
     <ItemGroup>
-        <ProjectReference Include="../../src/Lunate.Extensibility.Abstractions/Lunate.Extensibility.Abstractions.csproj" />
+        <ProjectReference
+            Include="../../src/Lunate.Extensibility.Abstractions/Lunate.Extensibility.Abstractions.csproj"
+            PrivateAssets="all"
+            ExcludeAssets="runtime"
+            Private="false"
+        />
     </ItemGroup>
     <ItemGroup>
         <None Update="extension.json" CopyToOutputDirectory="PreserveNewest" />
@@ -52,6 +57,12 @@ rename its projects and namespaces. A new class library needs only the contract 
 The contract is not published as a NuGet package in this version; reference the project (or a
 local build of it). The path above assumes the extension lives two directories below the Lunate
 repository root.
+
+All three attributes matter: the host owns `Lunate.Extensibility.Abstractions` and loads it once,
+so `PrivateAssets="all"` stops the reference flowing to your consumers, `ExcludeAssets="runtime"`
+keeps it from being a runtime asset of your extension, and `Private="false"` keeps the DLL out of
+your output directory — where a load would ignore it and say so once. The template ships them set;
+keep them.
 
 ### 2. Write the extension
 
@@ -125,7 +136,8 @@ cp bin/Release/net10.0/HelloExtension.dll \
 
 Copy any further dependencies next to the assembly. `Lunate.Extensibility.Abstractions`,
 `Lunate.Agent`, `Microsoft.Extensions.AI.Abstractions` and `System.Text.Json` are shared from the
-host and are never loaded from the extension folder.
+host and are never loaded from the extension folder: a copy shipped there anyway is ignored, and
+`/extensions` and the log say so once, naming what was dropped.
 
 There are two installation scopes:
 

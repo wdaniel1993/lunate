@@ -4,7 +4,21 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <ProjectReference Include="../../../src/Lunate.Extensibility.Abstractions/Lunate.Extensibility.Abstractions.csproj" />
+        <!--
+            The host owns Lunate.Extensibility.Abstractions: Lunate loads it once, and every extension
+            binds to that copy so contract types keep one identity. The three attributes are what make
+            that true of the build output — PrivateAssets="all" keeps the contract out of what your
+            extension exposes to its consumers, ExcludeAssets="runtime" keeps it from being treated as
+            a runtime asset, and Private="false" keeps the DLL out of your output directory, where a
+            load would ignore it (and warn once) anyway. A package that ships its own copy is treated
+            the same way: accepted, ignored, warned once.
+        -->
+        <ProjectReference
+            Include="../../../src/Lunate.Extensibility.Abstractions/Lunate.Extensibility.Abstractions.csproj"
+            PrivateAssets="all"
+            ExcludeAssets="runtime"
+            Private="false"
+        />
     </ItemGroup>
 
     <ItemGroup>
