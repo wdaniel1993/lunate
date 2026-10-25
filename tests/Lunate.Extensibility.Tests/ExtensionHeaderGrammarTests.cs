@@ -14,6 +14,10 @@ public sealed class ExtensionHeaderGrammarTests
     [InlineData("Polly@[8.0.0,)", "Polly", "[8.0.0,)")]
     [InlineData("Serilog@(3.0.0,4.0.0]", "Serilog", "(3.0.0,4.0.0]")]
     [InlineData("Refit@[8.0.0, 9.0.0)", "Refit", "[8.0.0, 9.0.0)")]
+    [InlineData("Octokit@14.*", "Octokit", "14.*")]
+    [InlineData("Polly@8.*", "Polly", "8.*")]
+    [InlineData("Serilog@*", "Serilog", "*")]
+    [InlineData("xunit@2.9.3-*", "xunit", "2.9.3-*")]
     [InlineData(
         "System.Text.Json@9.0.0-preview.1.24080.9",
         "System.Text.Json",
@@ -40,7 +44,10 @@ public sealed class ExtensionHeaderGrammarTests
     [InlineData("Newtonsoft.Json")]
     [InlineData("Newtonsoft.Json@")]
     [InlineData("@13.0.3")]
-    [InlineData("Newtonsoft.Json@1.*")]
+    [InlineData("Newtonsoft.Json@1.*.0")]
+    [InlineData("Newtonsoft.Json@.*")]
+    [InlineData("Newtonsoft.Json@1..*")]
+    [InlineData("Newtonsoft.Json@14*x")]
     [InlineData("Newtonsoft.Json@[13.0.0")]
     [InlineData("Newtonsoft.Json@[13.0.0,14.0.0,15.0.0]")]
     [InlineData("Newtonsoft.Json@latest")]

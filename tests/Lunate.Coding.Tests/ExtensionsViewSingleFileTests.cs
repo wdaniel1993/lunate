@@ -28,6 +28,26 @@ public sealed class ExtensionsViewSingleFileTests
     }
 
     [Fact]
+    public void A_not_built_row_carries_a_refused_lock_on_the_same_line()
+    {
+        SingleFileExtension candidate = SingleFile(
+            state: SingleFileExtensionState.NotBuilt,
+            reason: "the lock file's toolset block was modified after it was written"
+        );
+
+        string segment = Assert.Single(
+            ExtensionsView.Segments([], [], NoCounts, singleFile: [candidate])
+        );
+
+        Assert.Equal(
+            "acme-tools 1.0.0 (global, single file) not-built, tools 0, commands 0, hooks 0, "
+                + "services 0 — the lock file's toolset block was modified after it was written",
+            segment
+        );
+        Assert.DoesNotContain('\n', segment);
+    }
+
+    [Fact]
     public void A_file_without_a_header_reads_invalid_no_extension()
     {
         SingleFileExtension candidate = SingleFile(
@@ -61,6 +81,79 @@ public sealed class ExtensionsViewSingleFileTests
             segment
         );
         Assert.DoesNotContain('\n', segment);
+    }
+
+    [Fact]
+    public void A_restored_file_shows_the_resolved_graph_from_its_lock()
+    {
+        SingleFileExtension candidate = SingleFile(
+            restored: new ExtensionLock
+            {
+                ExtensionId = "acme-tools",
+                ExtensionVersion = "1.0.0",
+                SourceDigest = "digest",
+                PackagesWritten = ["Octokit@14.0.0"],
+                Toolset = new ExtensionLockToolset
+                {
+                    Tfm = "net10.0",
+                    Rid = "osx-arm64",
+                    Runtime = "10.0.13",
+                    ReferencePack = new ExtensionLockReferencePack
+                    {
+                        Id = "Microsoft.NETCore.App.Ref",
+                        Version = "10.0.13",
+                        Rule = ReferencePackRules.Exact,
+                        Sha512 = "cmVmLXBhY2s=",
+                    },
+                },
+                Sources = ["nuget.org"],
+                Packages =
+                [
+                    FakePackage("Octokit", "14.0.0"),
+                    FakePackage("Octokit.Dependency", "1.2.0"),
+                ],
+            }
+        );
+
+        string segment = Assert.Single(
+            ExtensionsView.Segments([], [], NoCounts, singleFile: [candidate])
+        );
+
+        Assert.EndsWith(
+            ", resolved: Octokit 14.0.0, Octokit.Dependency 1.2.0",
+            segment,
+            StringComparison.Ordinal
+        );
+    }
+
+    [Fact]
+    public void A_restore_in_flight_reads_restoring_rather_than_a_stale_row()
+    {
+        SingleFileExtension candidate = SingleFile(state: SingleFileExtensionState.Restoring);
+
+        string segment = Assert.Single(
+            ExtensionsView.Segments([], [], NoCounts, singleFile: [candidate])
+        );
+
+        Assert.Equal("acme-tools 1.0.0 (global, single file) restoring", segment);
+    }
+
+    [Fact]
+    public void A_restore_failure_reads_failed_restore_with_its_reason()
+    {
+        SingleFileExtension candidate = SingleFile(
+            state: SingleFileExtensionState.RestoreFailed,
+            reason: "restore failed: package 'Octokit' was not found on any configured feed (nuget.org)."
+        );
+
+        string segment = Assert.Single(
+            ExtensionsView.Segments([], [], NoCounts, singleFile: [candidate])
+        );
+
+        Assert.Equal(
+            "acme-tools 1.0.0 (global, single file) failed (restore) — restore failed: package 'Octokit' was not found on any configured feed (nuget.org).",
+            segment
+        );
     }
 
     [Fact]
@@ -209,6 +302,16 @@ public sealed class ExtensionsViewSingleFileTests
         );
     }
 
+    private static ExtensionLockPackage FakePackage(string id, string version) =>
+        new()
+        {
+            Id = id,
+            Version = version,
+            Sha512 = "ZmFrZQ==",
+            Requested = FormattableString.Invariant($"{id}@{version}"),
+            Direct = true,
+        };
+
     private static JsonElement Node(JsonDocument document, string fileName) =>
         document
             .RootElement.EnumerateArray()
@@ -228,6 +331,7 @@ public sealed class ExtensionsViewSingleFileTests
         string? reason = null,
         IReadOnlyList<string>? tools = null,
         IReadOnlyList<ExtensionDeclaration>? declaredNotProvided = null,
+        ExtensionLock? restored = null,
         string fileName = "acme.cs"
     ) =>
         new()
@@ -242,6 +346,7 @@ public sealed class ExtensionsViewSingleFileTests
             },
             State = state,
             Reason = reason,
+            Lock = restored,
             DeclaredNotProvided = declaredNotProvided ?? [],
         };
 }

@@ -25,9 +25,9 @@ Discovery reads every candidate, parses its header before anything else happens,
 `invalid (no #:extension)` and is never compiled; a file whose header is refused is listed with the
 reason on the same line. Nothing is restored, compiled or trusted during discovery.
 
-> **Current state.** This version discovers and validates single files; it does not compile them
-> yet. `/extensions` therefore reports `not-built` for a usable file — no build exists — and the
-> restore, lock and compile arrive with the next change.
+> **Current state.** This version discovers, validates, restores and locks single files; it does not
+> compile them yet. `/extensions` therefore reports `not-built` for a usable file — no build exists —
+> and the compile arrives with the next change.
 
 ## The header is the leading block
 
@@ -102,8 +102,11 @@ reads the same here:
 
 A bare version or a bracketed range is accepted: `[1.0.0]` is exact, `[1.0.0,2.0.0)` mixes an
 inclusive lower bound with an exclusive upper bound, `(1.0.0,)` is a lower bound only. A floating
-version (`1.*`) and a missing version are refused with the line number, because the version the user
-approves must be the version that is restored.
+version is accepted too — `*` for the latest stable, `14.*`, `1.2.*`, or `1.2.3-*` for a prerelease
+wildcard — and resolves to the highest published match **at lock time**. The lock then records the
+exact versions that were resolved, and the trust digest covers that graph, so what you approve is
+still a set of exact packages; the floating part only decides what "latest" meant on the day of the
+restore. A missing version is refused with the line number.
 
 ### `#:generators on`
 
@@ -121,9 +124,22 @@ A single-file extension is trusted before it is restored or compiled. The **firs
 sha256("lunate-extension-v1" | id | each declared package as written | source bytes)
 ```
 
-The tag names the format, so a later digest that also covers the lock file cannot be mistaken for
-this one. Because the header is part of the source bytes, adding a `#:tool` line changes the digest
-exactly like changing the code does — the declaration and the code are one approved unit.
+Once a restore has written a lock, the digest also covers the lock's **graph** — the packages it
+resolved, with their exact versions, hashes and assets — under its own tag:
+
+```text
+sha256("lunate-extension-v2" | id | each declared package as written | source bytes | the lock's graph)
+```
+
+The tag names the format, so the two layouts can never be mistaken for one another, and a file that
+has never been restored keeps the decision it already has. Because the header is part of the source
+bytes, adding a `#:tool` line changes the digest exactly like changing the code does — the
+declaration and the code are one approved unit. Changing a resolved package (a hand-edited lock, a
+re-resolved range the user approves) is part of the same decision.
+
+What the digest deliberately does **not** cover is the lock's toolset half — your runtime, its
+reference pack and their hashes. A .NET patch moves those on your machine without moving anything
+you approved, so it rebuilds quietly instead of asking again.
 
 The decision is stored in `~/.lunate/trust.json` under a `singleFile` section, keyed by the file's
 full path:
@@ -140,11 +156,44 @@ The record is per file and is never inherited from another file, another path or
 extension. When the computed digest differs from the recorded one the file is `stale`, and the stale
 check stops before anything is built — a changed file makes no feed request.
 
+## The lock file
+
+A restore writes `extension.lock.json` into the extension's cache entry, for a project extension
+exactly like a user one:
+
+```text
+~/.lunate/cache/extensions/<id>/extension.lock.json
+```
+
+It is never written next to your `.cs` file: a single-file extension stays one file.
+
+The lock has two halves with two different jobs:
+
+| Half | What it records | What a change does |
+| --- | --- | --- |
+| `graph` | the feeds used, and per package the exact version, the nupkg's SHA-512, the resolved compile/runtime/native assets and the dependency edges | it is part of the trust digest, so a change is a change to what you approved and asks before it is written |
+| `toolset` | the target framework, the RID, the exact runtime, and the reference pack's version and nupkg hash (when the packages folder still holds it) | it is not part of the digest; it is integrity-checked and triggers a silent rebuild |
+
+**A lock is produced by a restore, on the machine that runs it.** It is not a file you commit, and
+nothing copies it from machine to machine: a teammate's first run restores and trusts on their own
+machine, and their lock names their runtime and their reference pack. Two machines still get the
+same packages, because the resolution algorithm is deterministic — it picks the lowest version that
+satisfies every declared range, and that lowest applicable version does not move when newer versions
+are published. The lock records that answer so a later run reads a file instead of asking a feed; it
+is not what makes the answer stable.
+
+A hand edit to either half is visible. Editing the graph changes the bytes the trust digest covers,
+so the extension is `stale` and asks again. Editing the toolset block leaves its integrity hash
+behind, so the lock is refused and the next restore rebuilds the block — no question, because the
+resolution did not change.
+
 ## What `/extensions` shows
 
 | Output | Meaning |
 | --- | --- |
 | `<id> <version> (<scope>, single file) not-built, tools …` | Usable; nothing has built it. |
+| `… not-built, …, resolved: <id> <version>, …` | Restored: the graph the lock records, which is what a compile would use. |
+| `… not-built, … — <reason>` | The lock on disk was refused (its toolset block no longer answers for itself) and will be rebuilt. |
 | `<file name> (<scope>, single file) invalid (no #:extension)` | The header declares no id. Never compiled. |
 | `<id> <version> (<scope>, single file) invalid (line N: …)` | The header refuses the file; the reason names the line. |
 | `<id> <version> (<scope>, single file) stale — …` | Trusted before, changed since. It must be trusted again before it is built. |

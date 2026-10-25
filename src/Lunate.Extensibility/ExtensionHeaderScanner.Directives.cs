@@ -242,8 +242,9 @@ public static partial class ExtensionHeaderScanner
             {
                 Error(
                     line,
-                    $"'#:package' version '{range}' is not a version or a range; write "
-                        + "'Octokit@14.0.0' or 'Octokit@[14.0.0,15.0.0)'."
+                    $"'#:package' version '{range}' is not a version, a range or a floating "
+                        + "version; write 'Octokit@14.0.0', 'Octokit@[14.0.0,15.0.0)' or "
+                        + "'Octokit@14.*'."
                 );
                 return;
             }

@@ -40,12 +40,43 @@ internal static partial class ExtensionsView
             );
         return candidate.State switch
         {
-            SingleFileExtensionState.NotBuilt => head + " not-built" + SingleFileCounts(candidate),
-            SingleFileExtensionState.Stale => head + " stale — " + Reason(candidate),
+            SingleFileExtensionState.NotBuilt => head
+                + " not-built"
+                + SingleFileCounts(candidate)
+                + SingleFileResolved(candidate)
+                + SingleFileNote(candidate),
+            SingleFileExtensionState.Restoring => head
+                + " restoring"
+                + SingleFileResolved(candidate),
+            SingleFileExtensionState.Stale => head
+                + " stale — "
+                + Reason(candidate)
+                + SingleFileResolved(candidate),
             SingleFileExtensionState.TrustFailed => head + " failed (trust) — " + Reason(candidate),
+            SingleFileExtensionState.RestoreFailed => head
+                + " failed (restore) — "
+                + Reason(candidate),
             _ => head + " invalid (" + Reason(candidate) + ")",
         };
     }
+
+    /// <summary>
+    /// The resolved graph the lock records, once there is one: the packages and exact versions the
+    /// extension will compile against, which is the half of the decision no prompt can show before
+    /// the restore ran.
+    /// </summary>
+    private static string SingleFileResolved(SingleFileExtension candidate) =>
+        candidate.Lock is not { } @lock || @lock.Packages.Count == 0
+            ? string.Empty
+            : ", resolved: "
+                + string.Join(
+                    ", ",
+                    @lock
+                        .Packages.OrderBy(package => package.Id, StringComparer.OrdinalIgnoreCase)
+                        .Select(package =>
+                            FormattableString.Invariant($"{package.Id} {package.Version}")
+                        )
+                );
 
     /// <summary>
     /// The declared counts of a usable header, plus — when a declaration nothing provided is
@@ -67,13 +98,22 @@ internal static partial class ExtensionsView
     private static string Reason(SingleFileExtension candidate) =>
         candidate.Reason is { Length: > 0 } reason ? reason : "no reason recorded";
 
+    /// <summary>
+    /// The same-line note a not-built row carries when it has one: its lock on disk was refused (a
+    /// toolset block that no longer answers for itself) and the next restore rebuilds it.
+    /// </summary>
+    private static string SingleFileNote(SingleFileExtension candidate) =>
+        candidate.Reason is { Length: > 0 } note ? " — " + note : string.Empty;
+
     private static int SingleFileRank(SingleFileExtensionState state) =>
         state switch
         {
             SingleFileExtensionState.Invalid => 0,
             SingleFileExtensionState.TrustFailed => 1,
-            SingleFileExtensionState.Stale => 2,
-            _ => 3,
+            SingleFileExtensionState.RestoreFailed => 2,
+            SingleFileExtensionState.Stale => 3,
+            SingleFileExtensionState.Restoring => 4,
+            _ => 5,
         };
 
     /// <summary>
@@ -206,6 +246,26 @@ internal static partial class ExtensionsView
         {
             node["failure"] = "trust";
         }
+        else if (candidate.State == SingleFileExtensionState.RestoreFailed)
+        {
+            node["failure"] = "restore";
+        }
+
+        if (candidate.Lock is { Packages.Count: > 0 } @lock)
+        {
+            var resolved = new JsonArray();
+            foreach (
+                ExtensionLockPackage package in @lock.Packages.OrderBy(
+                    entry => entry.Id,
+                    StringComparer.OrdinalIgnoreCase
+                )
+            )
+            {
+                resolved.Add($"{package.Id} {package.Version}");
+            }
+
+            node["resolved"] = resolved;
+        }
 
         if (candidate.State != SingleFileExtensionState.Invalid)
         {
@@ -233,6 +293,7 @@ internal static partial class ExtensionsView
         state switch
         {
             SingleFileExtensionState.NotBuilt => "not-built",
+            SingleFileExtensionState.Restoring => "restoring",
             SingleFileExtensionState.Stale => "stale",
             SingleFileExtensionState.TrustFailed => "failed",
             _ => "invalid",

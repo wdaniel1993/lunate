@@ -21,7 +21,7 @@ public sealed partial class ExtensionLoader
     /// </summary>
     private void DiscoverSingleFileExtensions(string globalRoot, string projectRoot)
     {
-        var reader = new SingleFileExtensionReader(new ExtensionTrustStore(_options));
+        var reader = new SingleFileExtensionReader(_options);
         _singleFile.AddRange(reader.Read(globalRoot, ExtensionScope.Global, _discoveryErrors));
         _singleFile.AddRange(reader.Read(projectRoot, ExtensionScope.Project, _discoveryErrors));
 

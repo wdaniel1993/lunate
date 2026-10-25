@@ -287,23 +287,31 @@ public sealed class SingleFileExtensionDiscoveryTests
             "#:extension acme-tools@1.0.0\n#:package Octokit@14.0.0\n// edited\n"
         );
 
-        string baseline = SingleFileExtensionDigest.Compute("acme-tools", [octokit], source);
+        string baseline = SingleFileExtensionDigest.ComputeSource("acme-tools", [octokit], source);
 
-        // Pinned: the format is a contract, so a silent change to it must fail here.
-        Assert.Equal("8948713b04319850831da7187667bdff46b6fa2bab41d781712bdbb35185e47c", baseline);
-        Assert.Equal(baseline, SingleFileExtensionDigest.Compute("acme-tools", [octokit], source));
-        Assert.NotEqual(
+        // Pinned: the format is a contract, so a silent change to it must fail here. Phase 1
+        // pinned the pre-lock prefix; the lock segment completes the documented v1 layout, so the
+        // value moved once, deliberately, with the lock work.
+        Assert.Equal("d988110c8db9c543e28f399211bb86d4220e829e97a8bbd2ffe77b87ffedf9bd", baseline);
+        Assert.Equal(
             baseline,
-            SingleFileExtensionDigest.Compute("other-tools", [octokit], source)
+            SingleFileExtensionDigest.ComputeSource("acme-tools", [octokit], source)
         );
         Assert.NotEqual(
             baseline,
-            SingleFileExtensionDigest.Compute("acme-tools", [ranged], source)
+            SingleFileExtensionDigest.ComputeSource("other-tools", [octokit], source)
         );
         Assert.NotEqual(
             baseline,
-            SingleFileExtensionDigest.Compute("acme-tools", [octokit], edited)
+            SingleFileExtensionDigest.ComputeSource("acme-tools", [ranged], source)
         );
-        Assert.NotEqual(baseline, SingleFileExtensionDigest.Compute("acme-tools", [], source));
+        Assert.NotEqual(
+            baseline,
+            SingleFileExtensionDigest.ComputeSource("acme-tools", [octokit], edited)
+        );
+        Assert.NotEqual(
+            baseline,
+            SingleFileExtensionDigest.ComputeSource("acme-tools", [], source)
+        );
     }
 }

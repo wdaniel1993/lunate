@@ -77,11 +77,14 @@ spike report; this addendum records the decisions themselves.
   Credentials come from `packageSourceCredentials` (including environment-expanded values) and,
   later, non-interactive credential-provider plugins. There is no interactive credential prompt in
   the host.
-- A lock file is written next to the extension at install (`extension.lock.json`, or
-  `<name>.lock.json` for a single file). It records the target TFM and RID, the sources, and per
-  package the exact version, nupkg SHA-512, compile/runtime/native asset lists and dependency
-  edges. Floating versions resolve once; later loads read the lock only; updating is explicit and
-  rewrites the lock.
+- A lock file is written at install. For a packaged extension it sits beside the installed package;
+  for a single file it is `~/.lunate/cache/extensions/<id>/extension.lock.json` — the extension's
+  cache entry, in **both** scopes (project and user), never beside the user's source, because a
+  sidecar in the extensions directory would make "one file" false again. The lock has two halves:
+  the **graph** (the sources, and per package the exact version, nupkg SHA-512, compile/runtime/
+  native asset lists and dependency edges) and the **toolset** (the target TFM and RID, the exact
+  runtime, and the reference pack's version and nupkg hash). Floating versions resolve once; later
+  loads read the lock only; updating is explicit and rewrites the lock.
 - Compilation uses Roslyn with the .NET reference assemblies matching the running runtime, the
   host contract assemblies, and package `ref/` or `lib/` assets. Framework assemblies and the
   shared contract assemblies always win over a package's copy.
@@ -102,8 +105,9 @@ spike report; this addendum records the decisions themselves.
   `~/.nuget/packages`). It is content-addressed and immutable, so it is shared across extensions and
   with the user's SDK cache, and it is not Lunate's to prune by size.
 - **Per extension Lunate keeps only the compiled assembly and the lock file**, under
-  `~/.lunate/cache/extensions/<id>/<key>/`, keyed by source hash, lock hash, API version, TFM and
-  RID.
+  `~/.lunate/cache/extensions/<id>/` — the builds in a `<key>/` subdirectory, the lock beside them.
+  The key is a hash of the source, the lock (both halves), the API version, the TFM and the RID, so
+  a graph change and a toolset change both produce a new build rather than reusing an old one.
 - A successful compile **keeps the last two builds per extension** and deletes older ones, because
   every edit in the agent loop would otherwise leave a build behind.
 - **Uninstall or removal deletes that extension's compiled outputs.** `lunate cache prune` removes
@@ -113,14 +117,21 @@ spike report; this addendum records the decisions themselves.
 
 - Discovery parses the declaration and computes the trust digest before any network request and
   before any compile:
-  `sha256("lunate-extension-v1" | id | [package id@version] | source bytes | lock-file bytes)`.
-  For a single file the source bytes **include the header directives** and any sidecar manifest.
+  `sha256("lunate-extension-v2" | id | [package id@version] | source bytes | the lock's graph)`.
+  A file with no lock yet uses the same layout with no graph segment under the older tag
+  `lunate-extension-v1`, so an unchanged file keeps the decision it already has. For a single file
+  the source bytes **include the header directives** and any sidecar manifest.
 - **The first trust has no lock yet.** It covers the id, the declared packages as written
   (including ranges) and the source. The first successful restore writes the lock and **binds its
-  hash into the trust record automatically** — a restore downloads but executes nothing, so this is
-  safe as long as compile only ever runs against the bound lock. From then on the digest includes
-  the lock bytes, and a changed lock re-prompts even when the source is untouched. It covers bytes
-  as written, never a re-serialization.
+  graph into the trust record automatically** — a restore downloads but executes nothing, so this
+  is safe as long as compile only ever runs against the bound lock. From then on the digest
+  includes the lock's **graph** half — the packages with their exact versions, hashes, resolved
+  assets and edges — so changing the resolution re-prompts even when the source is untouched. The
+  lock's **toolset** half (TFM, RID, runtime, reference pack and its hash) is deliberately outside
+  the digest: it is integrity-checked, it keys the build cache, and a .NET patch that moves it
+  causes a silent rebuild rather than a trust question with no decision in it. Source bytes are
+  covered as written, never re-serialized; the graph is covered by its canonical bytes, which are
+  the writer's own.
 - The prompt names the extension, its declared packages **"and their dependencies"** — the
   transitive set is unknowable before a restore — and, only when the header opted in, that
   compiling runs package analyzers and source generators. A stale or absent approval stops before

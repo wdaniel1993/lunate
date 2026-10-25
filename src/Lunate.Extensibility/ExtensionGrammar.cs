@@ -109,8 +109,10 @@ internal static class ExtensionGrammar
     }
 
     /// <summary>
-    /// A version or a NuGet range: <c>1.0.0</c>, <c>[1.0.0]</c>, <c>[1.0.0,2.0.0)</c>,
-    /// <c>(1.0.0,)</c>. Spaces inside the brackets are allowed; a floating <c>*</c> is not.
+    /// A version, a NuGet range or a floating version: <c>1.0.0</c>, <c>[1.0.0]</c>,
+    /// <c>[1.0.0,2.0.0)</c>, <c>(1.0.0,)</c>, <c>14.*</c>, <c>1.2.*</c>. Spaces inside the brackets
+    /// are allowed. A floating version resolves to the highest published match at lock time, which
+    /// the lock then pins, so the approved graph still names exact versions.
     /// </summary>
     internal static bool IsVersionRange(string value)
     {
@@ -118,6 +120,11 @@ internal static class ExtensionGrammar
         if (text.Length == 0)
         {
             return false;
+        }
+
+        if (IsFloatingVersion(text))
+        {
+            return true;
         }
 
         if (text[0] is not ('[' or '('))
@@ -151,6 +158,46 @@ internal static class ExtensionGrammar
 
         return (lower.Length == 0 || IsExactVersion(lower))
             && (upper.Length == 0 || IsExactVersion(upper));
+    }
+
+    /// <summary>
+    /// A floating version: <c>*</c> (the latest stable), a numeric prefix with a trailing wildcard
+    /// (<c>14.*</c>, <c>1.2.*</c>, <c>1.2.3.*</c>), or a numbered version with a prerelease wildcard
+    /// (<c>1.2.3-*</c>). Anything else — <c>1.*.0</c>, <c>14*x</c>, a wildcard with no numeric part —
+    /// is refused, so a typo cannot quietly become "latest".
+    /// </summary>
+    private static bool IsFloatingVersion(string text)
+    {
+        if (text == "*")
+        {
+            return true;
+        }
+
+        if (text.EndsWith("-*", StringComparison.Ordinal))
+        {
+            return IsExactVersion(text[..^2]);
+        }
+
+        if (!text.EndsWith(".*", StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        string[] parts = text[..^2].Split('.');
+        if (parts.Length is 0 or > 3)
+        {
+            return false;
+        }
+
+        foreach (string part in parts)
+        {
+            if (part.Length == 0 || !part.All(char.IsAsciiDigit))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /// <summary>One or more dot-separated <c>[0-9A-Za-z-]</c> identifiers (prerelease or metadata).</summary>

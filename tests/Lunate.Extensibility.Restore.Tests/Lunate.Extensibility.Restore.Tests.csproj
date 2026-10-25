@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <RootNamespace>Lunate.Extensibility.Restore.Tests</RootNamespace>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="../../src/Lunate.Extensibility/Lunate.Extensibility.csproj" />
+        <ProjectReference Include="../../src/Lunate.Extensibility.Restore/Lunate.Extensibility.Restore.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <!-- The feed fixture builds real nupkgs, so the engine is exercised through NuGet's own code. -->
+        <PackageReference Include="NuGet.Frameworks" Version="7.9.0" />
+        <PackageReference Include="NuGet.Packaging" Version="7.9.0" />
+        <PackageReference Include="NuGet.Versioning" Version="7.9.0" />
+        <PackageReference Include="xunit.v3" Version="4.0.1" />
+        <Using Include="Xunit" />
+    </ItemGroup>
+
+    <PropertyGroup>
+        <!-- Same advisory as the engine: NuGet.Packaging's signing dependency, unused here. -->
+        <NoWarn>$(NoWarn);NU1902;NU1903</NoWarn>
+    </PropertyGroup>
+</Project>

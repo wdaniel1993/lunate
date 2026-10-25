@@ -13,6 +13,7 @@
     <ItemGroup>
         <ProjectReference Include="../Lunate.Agent/Lunate.Agent.csproj" />
         <ProjectReference Include="../Lunate.Extensibility/Lunate.Extensibility.csproj" />
+        <ProjectReference Include="../Lunate.Extensibility.Restore/Lunate.Extensibility.Restore.csproj" />
         <ProjectReference Include="../Lunate.Protocols/Lunate.Protocols.csproj" />
         <ProjectReference Include="../Lunate.Roslyn/Lunate.Roslyn.csproj" />
         <ProjectReference Include="../Lunate.Tui/Lunate.Tui.csproj" />

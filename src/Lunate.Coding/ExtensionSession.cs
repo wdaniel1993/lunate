@@ -45,6 +45,13 @@ internal sealed record ExtensionSeams
     /// default.
     /// </summary>
     public bool Inspect { get; init; }
+
+    /// <summary>
+    /// The single-file restore engine factory; null uses the production NuGet-backed engine. It is
+    /// a factory because the engine must not exist until a restore runs (no <c>NuGet.*</c> assembly
+    /// in a session whose extensions are all built); tests pass a fake so no test needs a feed.
+    /// </summary>
+    public Func<ISingleFileRestoreEngine?>? RestoreEngine { get; init; }
 }
 
 /// <summary>A discovery or load failure the session reported and continued past.</summary>
@@ -95,6 +102,7 @@ internal sealed class ExtensionSession : IAsyncDisposable
     private readonly IExtensionLog _log;
     private readonly FileChangeBus _fileChanges;
     private readonly AgentHookAdapter _hooks;
+    private readonly SingleFileExtensionRestorer _singleFileRestorer;
     private ExtensionMcpServers? _mcpServers;
     private bool _disposed;
 
@@ -102,6 +110,7 @@ internal sealed class ExtensionSession : IAsyncDisposable
         ExtensionLoader loader,
         IExtensionLog log,
         FileChangeBus fileChanges,
+        SingleFileExtensionRestorer singleFileRestorer,
         IReadOnlyList<ExtensionSessionError> errors,
         IReadOnlyList<ExtensionLoadResult> loadResults
     )
@@ -109,6 +118,7 @@ internal sealed class ExtensionSession : IAsyncDisposable
         _loader = loader;
         _log = log;
         _fileChanges = fileChanges;
+        _singleFileRestorer = singleFileRestorer;
         _hooks = new AgentHookAdapter(loader.Hooks);
         Errors = errors;
         LoadResults = loadResults;
@@ -133,16 +143,21 @@ internal sealed class ExtensionSession : IAsyncDisposable
         string repositoryIdentity = workspace.GitCommonDir ?? workspace.WorktreeRoot;
         IExtensionLog log = seams.Log ?? new StderrExtensionLog(Console.Error);
         IExtensionTrustPrompt prompt = seams.Prompt ?? new NonInteractiveTrustPrompt(log);
-        var loader = new ExtensionLoader(
-            new ExtensionHostOptions
-            {
-                StorePath = seams.StorePath ?? ExtensionHostOptions.Default.StorePath,
-                Log = log,
-                Notify = seams.Notice,
-                ModelCatalog = seams.ModelCatalog,
-                ClientFactory = seams.ClientFactory,
-                ReservedCommands = Commands.BuiltinNames,
-            }
+        var options = new ExtensionHostOptions
+        {
+            StorePath = seams.StorePath ?? ExtensionHostOptions.Default.StorePath,
+            Log = log,
+            Notify = seams.Notice,
+            ModelCatalog = seams.ModelCatalog,
+            ClientFactory = seams.ClientFactory,
+            ReservedCommands = Commands.BuiltinNames,
+        };
+        var loader = new ExtensionLoader(options);
+        // Created eagerly, but it only holds the factory: nothing NuGet-shaped exists until a
+        // restore runs, which is why composing an all-built session loads no NuGet assembly.
+        var singleFileRestorer = new SingleFileExtensionRestorer(
+            options,
+            seams.RestoreEngine ?? SingleFileRestoreFactory.Engine
         );
         // The session owns one bus, created before any extension loads so a subscriber
         // registering during load is subscribed for the whole session. The mutation queue
@@ -253,7 +268,14 @@ internal sealed class ExtensionSession : IAsyncDisposable
             }
         }
 
-        return new ExtensionSession(loader, log, fileChanges, errors, loadResults);
+        return new ExtensionSession(
+            loader,
+            log,
+            fileChanges,
+            singleFileRestorer,
+            errors,
+            loadResults
+        );
     }
 
     /// <summary>The harness hook seam over the loaded extensions' hook runner.</summary>
@@ -376,6 +398,12 @@ internal sealed class ExtensionSession : IAsyncDisposable
     /// </summary>
     internal IReadOnlyList<SingleFileExtension> SingleFileExtensions =>
         _loader.SingleFileExtensions;
+
+    /// <summary>
+    /// The session's single-file restorer: the compile step and <c>/extensions reload</c> ask it for
+    /// a lock before they build anything. Composing a session never calls it.
+    /// </summary>
+    internal SingleFileExtensionRestorer SingleFileRestorer => _singleFileRestorer;
 
     /// <summary>The discovery and load failures this session continued past.</summary>
     internal IReadOnlyList<ExtensionSessionError> Errors { get; }

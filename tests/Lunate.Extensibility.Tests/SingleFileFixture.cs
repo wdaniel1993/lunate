@@ -40,6 +40,16 @@ internal sealed class SingleFileFixture(TempDirectory temp)
 
     internal ExtensionTrustStore Trust() => new(TestExtensions.Options(Store));
 
+    /// <summary>
+    /// The restorer over this fixture's store, with the engine factory and prompt supplied by the
+    /// test (the production factory constructs the NuGet engine only when a restore runs).
+    /// </summary>
+    internal SingleFileExtensionRestorer Restorer(
+        CountingEngineFactory factory,
+        IExtensionTrustPrompt? prompt,
+        SingleFileTarget? target = null
+    ) => new(TestExtensions.Options(Store), factory.Create, target);
+
     internal IReadOnlyList<SingleFileExtension> Discover(
         ExtensionLoader? loader = null,
         IExtensionLog? log = null
