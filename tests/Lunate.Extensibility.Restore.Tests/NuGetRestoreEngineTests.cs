@@ -218,7 +218,9 @@ public sealed class NuGetRestoreEngineTests
     public async Task No_pack_of_the_runtime_s_minor_still_fails_and_names_the_runtime()
     {
         using var temp = new TempDirectory();
-        var feed = new TestPackageFeed(temp.Root).Add("Acme.Tools", "2.0.0").AddReferencePack("9.0.4");
+        var feed = new TestPackageFeed(temp.Root)
+            .Add("Acme.Tools", "2.0.0")
+            .AddReferencePack("9.0.4");
         List<string> requests = [];
         (NuGetRestoreEngine engine, SingleFileRestoreRequest request) = Compose(
             feed,
