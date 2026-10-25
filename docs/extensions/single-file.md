@@ -102,8 +102,11 @@ reads the same here:
 
 A bare version or a bracketed range is accepted: `[1.0.0]` is exact, `[1.0.0,2.0.0)` mixes an
 inclusive lower bound with an exclusive upper bound, `(1.0.0,)` is a lower bound only. A floating
-version (`1.*`) and a missing version are refused with the line number, because the version the user
-approves must be the version that is restored.
+version is accepted too — `*` for the latest stable, `14.*`, `1.2.*`, or `1.2.3-*` for a prerelease
+wildcard — and resolves to the highest published match **at lock time**. The lock then records the
+exact versions that were resolved, and the trust digest covers that graph, so what you approve is
+still a set of exact packages; the floating part only decides what "latest" meant on the day of the
+restore. A missing version is refused with the line number.
 
 ### `#:generators on`
 

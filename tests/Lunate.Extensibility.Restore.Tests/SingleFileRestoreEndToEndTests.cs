@@ -166,6 +166,32 @@ public sealed class SingleFileRestoreEndToEndTests
         Assert.Contains("\"2.0.1\"", File.ReadAllText(lockPath), StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task A_floating_declaration_restores_to_the_highest_match_and_the_lock_pins_it()
+    {
+        using var temp = new TempDirectory();
+        var feed = new TestPackageFeed(temp.Root)
+            .Add("Acme.Tools", "2.0.0")
+            .Add("Acme.Tools", "2.4.1")
+            .Add("Acme.Tools", "3.0.0")
+            .AddReferencePack("10.0.4");
+        string store = System.IO.Path.Combine(temp.Root, "store");
+        string file = WriteFile(
+            store,
+            Header.Replace("Acme.Tools@[2.0.0,3.0.0)", "Acme.Tools@2.*", StringComparison.Ordinal),
+            "floating.cs"
+        );
+
+        SingleFileRestoreOutcome outcome = await Restorer(feed, store)
+            .EnsureRestoredAsync(file, ExtensionScope.Global, new ApprovingPrompt(), Ct);
+
+        Assert.Equal(SingleFileRestoreStatus.Restored, outcome.Status);
+        Assert.Equal("Acme.Tools@2.*", Assert.Single(outcome.Lock!.PackagesWritten));
+        // Highest match inside the declared prefix, not the newest package on the feed.
+        Assert.Equal("2.4.1", Assert.Single(outcome.Lock.Packages).Version);
+        Assert.Contains("\"2.4.1\"", File.ReadAllText(outcome.LockPath!), StringComparison.Ordinal);
+    }
+
     /// <summary>The restorer with the production engine, wired to one local feed and a temp packages folder.</summary>
     private static SingleFileExtensionRestorer Restorer(TestPackageFeed feed, string store) =>
         new(
@@ -181,12 +207,12 @@ public sealed class SingleFileRestoreEndToEndTests
             Target
         );
 
-    private static string WriteFile(string store)
+    private static string WriteFile(string store, string? header = null, string name = "acme.cs")
     {
         string directory = System.IO.Path.Combine(store, "extensions");
         Directory.CreateDirectory(directory);
-        string path = System.IO.Path.Combine(directory, "acme.cs");
-        File.WriteAllText(path, Header);
+        string path = System.IO.Path.Combine(directory, name);
+        File.WriteAllText(path, header ?? Header);
         return path;
     }
 

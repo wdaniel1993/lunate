@@ -71,12 +71,20 @@ only project that references them. `Lunate.Coding` wires the engine as a factory
 and fails if one appears. Restore is not *triggered* in this phase: its callers are the compile step
 (2b) and `/extensions reload` (phase 3), which is why startup still reads declarations only.
 
-**Resolution rule.** A package takes the lowest version that satisfies every range asked of it, with
-the requirement set rebuilt from the current choices on each pass (declared ranges plus the edges of
-the chosen versions) until no choice moves. That is deterministic and it is "the highest of the
-minimums" for the ordinary cases; it is not NuGet's full resolver, and a graph whose ranges disagree
-fails with a message naming the package, the ranges and who asked, instead of silently picking a
-version.
+**Resolution rule.** The walker reproduces NuGet's PackageReference answer where NuGet answers
+without a warning: a transitively required package takes the lowest version that satisfies every
+range asked of it — the highest of the range minimums when they overlap — a directly declared
+package stays inside its own declaration and is not dragged out of it by an edge, and a floating
+version resolves to the highest published match at lock time. The requirement set is rebuilt from
+the current choices on each pass, so an edge that disappears with a version change does not linger,
+and the answer is deterministic: the same declarations always serialize to the same lock.
+
+It refuses exactly where NuGet warns or fails — a downgrade (NU1605), a version outside a dependency
+range (NU1608), a conflict no single version satisfies (NU1107) — naming the package, the ranges and
+every asker, and ending with the fix: `add #:package <id>@<version> satisfying all ranges`. The one
+place the code differs is a cousin conflict NuGet only warns about: we refuse rather than choose a
+version nobody asked for. `NuGetConformanceTests` holds the walker to `dotnet restore` on real
+graphs, so this paragraph is checked rather than asserted.
 
 **MSBL001.** `NuGet.Frameworks` is a runtime asset of the restore engine and MSBuild ships its own
 copy, so `Microsoft.Build.Locator`'s build check fires in every project that references the app. The
