@@ -319,6 +319,7 @@ internal sealed class SingleFileLoadFixture : IDisposable
         #:command ping
         #:package Acme.Tools@2.0.0
 
+        using System;
         using System.Collections.Generic;
         using System.Text.Json;
         using System.Threading;
@@ -339,7 +340,7 @@ internal sealed class SingleFileLoadFixture : IDisposable
                         Handler = new WhoAmI(),
                     }
                 );
-                context.RegisterCommandSource(new Ping());
+                context.RegisterCommandSource(new Ping(context.Log));
                 return new Shell();
             }
         }
@@ -353,7 +354,7 @@ internal sealed class SingleFileLoadFixture : IDisposable
             ) => Task.FromResult(new ToolResult(Probe.Value, false));
         }
 
-        internal sealed class Ping : ICommandSource
+        internal sealed class Ping(IExtensionLog log) : ICommandSource
         {
             private static readonly IReadOnlyList<CommandDescriptor> Descriptors =
             [
@@ -371,6 +372,7 @@ internal sealed class SingleFileLoadFixture : IDisposable
                 CancellationToken cancellationToken
             )
             {
+                log.Info("ping invoked");
                 __COMMAND_BODY__
             }
         }
