@@ -48,5 +48,5 @@ One PR, four commits: the editor, the approval selection, the drift check, and t
 
 - [x] 4.1 `openspec validate key-editor-and-approval-selection --strict` green, and `openspec validate --all --strict` still green.
 - [x] 4.2 `dotnet csharpier check .` clean; `tests/Lunate.Tui.Tests` and `tests/Lunate.Coding.Tests` green.
-- [ ] 4.3 `scripts/verify.sh` green on both culture passes; the public-API gate green on the new `IConsoleIO` and `ApprovalPromptModel` members.
+- [x] 4.3 `scripts/verify.sh` green on both culture passes — 5,518/0 in each, startup floor 59 ms (median 62, budget 150) — and the public-API gate green on the new `IConsoleIO` and `ApprovalPromptModel` members.
 - [x] 4.4 Manual smoke on a real terminal: `Ctrl+G` with `vim`, with a missing `VISUAL`, and with `EDITOR="vim -u NONE"`; a resize while the approval panel is open keeps the selection.
