@@ -58,6 +58,14 @@ internal sealed record ExtensionSeams
     /// reason: the compiler assemblies are loaded by the first build, never by composing a session.
     /// </summary>
     public Func<ISingleFileCompiler?>? Compiler { get; init; }
+
+    /// <summary>
+    /// Where locked packages and the reference pack are read from; null uses NuGet's own folder
+    /// (<c>NUGET_PACKAGES</c>, else <c>~/.nuget/packages</c>). A build and the load of its result
+    /// must agree on this folder, so composing a session hands one value to both; a test points it
+    /// at a temporary folder so no run reads the user's cache.
+    /// </summary>
+    public string? GlobalPackagesFolder { get; init; }
 }
 
 /// <summary>A discovery or load failure the session reported and continued past.</summary>
@@ -167,6 +175,7 @@ internal sealed class ExtensionSession : IAsyncDisposable
             Notify = seams.Notice,
             ModelCatalog = seams.ModelCatalog,
             ClientFactory = seams.ClientFactory,
+            GlobalPackagesFolder = seams.GlobalPackagesFolder,
             ReservedCommands = Commands.BuiltinNames,
         };
         var loader = new ExtensionLoader(options);
@@ -427,6 +436,14 @@ internal sealed class ExtensionSession : IAsyncDisposable
         _loader.SingleFileExtensions;
 
     /// <summary>
+    /// Re-reads the single-file candidates of this session's roots, so a file the model wrote or
+    /// edited mid-session is what <c>/extensions</c> lists and what a reload acts on. Reads small
+    /// files only: no restore, no compile, no prompt.
+    /// </summary>
+    internal IReadOnlyList<SingleFileExtension> RefreshSingleFileExtensions() =>
+        _loader.RefreshSingleFileExtensions();
+
+    /// <summary>
     /// The session's single-file restorer: the compile step and <c>/extensions reload</c> ask it for
     /// a lock before they build anything. Composing a session never calls it.
     /// </summary>
@@ -448,12 +465,20 @@ internal sealed class ExtensionSession : IAsyncDisposable
     /// <summary>
     /// Reloads one single-file extension (<c>/extensions reload &lt;id&gt;</c>): the session's builder
     /// and the session's own trust prompt, so the question the preflight asks is the one this session
-    /// has been asking all along. The old build stays loaded when trust or the build refuses.
+    /// has been asking all along. The candidates are re-read first, because the file may have been
+    /// written or edited since composition — a model-written file is the case this exists for. The
+    /// old build stays loaded when trust or the build refuses.
     /// </summary>
     internal ValueTask<SingleFileReloadOutcome> ReloadSingleFileAsync(
         string id,
         CancellationToken cancellationToken = default
-    ) => new(_loader.ReloadSingleFileAsync(id, _singleFileBuilder, _prompt, cancellationToken));
+    )
+    {
+        _loader.RefreshSingleFileExtensions();
+        return new(
+            _loader.ReloadSingleFileAsync(id, _singleFileBuilder, _prompt, cancellationToken)
+        );
+    }
 
     /// <summary>The discovery and load failures this session continued past.</summary>
     internal IReadOnlyList<ExtensionSessionError> Errors { get; }

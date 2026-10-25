@@ -25,10 +25,12 @@ Discovery reads every candidate, parses its header before anything else happens,
 `invalid (no #:extension)` and is never compiled; a file whose header is refused is listed with the
 reason on the same line. Nothing is restored, compiled or trusted during discovery.
 
-> **Current state.** This version discovers, validates, trusts, restores, locks and compiles single
-> files, and caches the build. `/extensions` reports `built` once an assembly exists for exactly these
-> bytes, this lock, this contract version and this toolset; `not-built` means the file is usable but
-> nothing has compiled it yet. Reload and unload are the next change.
+> **Current state.** This version discovers, validates, trusts, restores, locks, compiles and caches
+> single files, and loads a build into a running session: `/extensions` reports `built` once an
+> assembly exists for exactly these bytes, this lock, this contract version and this toolset;
+> `not-built` means the file is usable but nothing has compiled it yet; `/extensions reload <id>`
+> builds the bytes on disk and swaps the result in (`lunate extensions reload <id|path>` does the
+> same preflight and load without a session).
 
 ## The header is the leading block
 
@@ -341,11 +343,38 @@ compile, not the restore.
 and your SDK's too. It sees the extensions this machine can discover from the current directory: your
 user extensions and this project's.
 
+## The loop: the model writes, you trust, it goes live
+
+The format exists for one loop, and it runs inside a single session:
+
+1. The model writes `<worktree>/.lunate/extensions/acme.cs` (or you do) with the `write` tool. The
+   file is live session state, not next-session state: `/extensions` re-reads the candidates
+   every time it lists them, so the row appears immediately — `not-built` and, because nothing has
+   approved these bytes yet, `— not trusted yet; /extensions reload asks before it builds`.
+2. You ask for it: `/extensions reload acme-tools`. Trust is the first step and it is yours: the
+   question names the file, the id and version, every declared package "and their dependencies",
+   and says what the decision covers. Nothing is restored or compiled before you answer.
+3. On approval the restore writes the lock, the file compiles against it, and the new build is
+   loaded, registered and announced once (`ToolsChanged`). The model's **next request** declares
+   `acme-tools__whoami` and calling it answers from the extension — no restart, no new session.
+4. Editing the file later stales it. The next reload ends at the same question with the old build
+   still loaded and answering; the row reads `stale — …`, and the changed bytes reach neither a
+   feed nor a compiler until you answer. Declining leaves everything as it was.
+
+The model can write the file and can ask for the reload; it can never answer the question. No tool,
+command or protocol path records a trust decision, suppresses the prompt or loads a stale digest.
+
+`lunate extensions reload <id|path>` is the same preflight, build and a register-only load without a
+session: it can prove the build this host produced is one this host will load. It never prompts — a
+file whose bytes you have not approved reports `failed (trust)` and tells you to approve it in an
+interactive session.
+
 ## What `/extensions` shows
 
 | Output | Meaning |
 | --- | --- |
 | `<id> <version> (<scope>, single file) not-built, tools …` | Usable; nothing has built it. |
+| `…, tools … — not trusted yet; /extensions reload asks before it builds` | No decision exists for these bytes. The listing says so rather than leaving it to look broken; `/extensions reload <id>` asks. |
 | `… built, tools …` | An assembly exists for exactly these bytes, this lock and this toolset. |
 | `… not-built, …, resolved: <id> <version>, …` | Restored: the graph the lock records, which is what a compile would use. |
 | `…, generators skipped: <package>` | A locked package ships analyzers or generators and the header did not opt in (`#:generators on`), so the compile leaves them out. |

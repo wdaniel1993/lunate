@@ -60,15 +60,17 @@ public sealed class SingleFileReloadDrainTests
     [Fact]
     public async Task A_handler_that_ignores_its_token_is_logged_once_and_does_not_hold_the_reload()
     {
-        // Derived from the bound, so a change to the bound moves the test with it: the handler
-        // outlives the drain by a wide margin and the reload must not wait for it.
-        int ignoreMs = (int)(ExtensionLoader.ReloadDrainBound.TotalMilliseconds * 4);
+        // The handler waits for a file this test writes when it is done, not for a fixed stretch:
+        // a loaded runner can spend longer than any such stretch on fixture setup, and a handler
+        // that has already returned proves nothing about a reload that must not wait for it.
         using SingleFileLoadFixture fixture = SingleFileLoadFixture.Create();
+        string release = Path.Combine(fixture.Store, "release-stuck-handler");
+        string releaseLiteral = release.Replace("\"", "\"\"", StringComparison.Ordinal);
         fixture.AddToolPackage(SingleFileLoadFixture.Lib, Ct);
         await fixture.BuildAsync(
             SingleFileLoadFixture.Source(
                 probe: "\"first\"",
-                commandBody: $"using var gate = new ManualResetEventSlim(false); gate.Wait(TimeSpan.FromMilliseconds({ignoreMs}), CancellationToken.None); return CommandResult.Notice(Probe.Value);"
+                commandBody: $"while (!System.IO.File.Exists(@\"{releaseLiteral}\")) {{ System.Threading.Thread.Sleep(25); }} return CommandResult.Notice(Probe.Value);"
             ),
             cancellationToken: Ct
         );
@@ -80,33 +82,37 @@ public sealed class SingleFileReloadDrainTests
         );
         await WaitForPing(fixture);
 
-        long started = Environment.TickCount64;
-        SingleFileReloadOutcome outcome = await loader
-            .ReloadSingleFileAsync(fixture.Id, fixture.Builder(), new ApprovingPrompt(), Ct)
-            .WaitAsync(TimeSpan.FromSeconds(30), Ct);
-        long elapsed = Environment.TickCount64 - started;
+        CommandResult? finished = null;
+        try
+        {
+            SingleFileReloadOutcome outcome = await loader
+                .ReloadSingleFileAsync(fixture.Id, fixture.Builder(), new ApprovingPrompt(), Ct)
+                .WaitAsync(TimeSpan.FromSeconds(30), Ct);
 
-        // The reload finished long before the handler would have; the bound is what makes that true.
-        Assert.True(outcome.Reloaded, outcome.Reason);
-        Assert.False(outcome.Drained);
-        Assert.True(
-            elapsed < ignoreMs,
-            FormattableString.Invariant(
-                $"the reload waited {elapsed} ms for a handler that ignores its token"
-            )
-        );
-        // Exactly one line for the stuck handler, naming it and the extension, and the reload
-        // carried on regardless.
-        string line = Assert.Single(
-            fixture.Log.Matching("did not return within"),
-            message => message.Contains("ext:acme-tools:ping", StringComparison.Ordinal)
-        );
-        Assert.Contains("reload", line, StringComparison.Ordinal);
-        Assert.Contains("acme-tools", line, StringComparison.Ordinal);
-        Assert.Equal(1, fixture.Log.Count("did not return within"));
+            // The reload finished while the handler was still in it — the handler cannot have returned,
+            // because only this test releases it, and it has not yet. No wall-clock assertion here: the
+            // reload's total also carries the new build's restore and compile, which is not this test's
+            // subject and grows on a loaded runner.
+            Assert.True(outcome.Reloaded, outcome.Reason);
+            Assert.False(outcome.Drained);
+            // Exactly one line for the stuck handler, naming it and the extension, and the reload
+            // carried on regardless.
+            string line = Assert.Single(
+                fixture.Log.Matching("did not return within"),
+                message => message.Contains("ext:acme-tools:ping", StringComparison.Ordinal)
+            );
+            Assert.Contains("reload", line, StringComparison.Ordinal);
+            Assert.Contains("acme-tools", line, StringComparison.Ordinal);
+            Assert.Equal(1, fixture.Log.Count("did not return within"));
+        }
+        finally
+        {
+            File.WriteAllText(release, string.Empty);
+            finished = await invocation.WaitAsync(TimeSpan.FromSeconds(30), Ct);
+        }
 
         // The handler finishes later; its result is discarded, never rendered.
-        Assert.Null((await invocation.WaitAsync(TimeSpan.FromSeconds(30), Ct)).Message);
+        Assert.Null(finished.Message);
     }
 
     private static Task<CommandResult> InvokeAsync(ExtensionLoader loader)

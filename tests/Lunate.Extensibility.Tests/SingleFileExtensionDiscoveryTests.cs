@@ -31,11 +31,43 @@ public sealed class SingleFileExtensionDiscoveryTests
         Assert.Equal(path, candidate.Path);
         Assert.Equal("acme.cs", candidate.FileName);
         Assert.Equal(SingleFileExtensionState.NotBuilt, candidate.State);
-        Assert.Null(candidate.Reason);
+        // The row says what is missing rather than reading like a broken file: nothing has
+        // approved these bytes yet, and the reload is the command that asks.
+        Assert.Equal("not trusted yet; /extensions reload asks before it builds", candidate.Reason);
         Assert.Equal(64, candidate.Digest.Length);
         // Nothing was built, restored or trusted: no cache directory and no trust record exist.
         Assert.False(Directory.Exists(Path.Combine(fixture.Store, "cache")));
         Assert.False(File.Exists(fixture.TrustFile));
+    }
+
+    [Fact]
+    public void A_refresh_reports_the_rows_but_does_not_repeat_the_header_warning()
+    {
+        using var temp = new TempDirectory();
+        var fixture = new SingleFileFixture(temp);
+        fixture.WriteGlobal(
+            "acme.cs",
+            "#:extension acme-tools@1.0.0\n#:tool fetch_issue\n#:unheard thing\n"
+        );
+        var log = new RecordingExtensionLog();
+        ExtensionLoader loader = fixture.Loader(log);
+
+        loader.Discover(fixture.Worktree, "repo");
+        Assert.Single(
+            log.Messages,
+            message => message.Contains("unknown directive", StringComparison.Ordinal)
+        );
+
+        // The listing and a reload re-read the candidates; the header warning belongs to discovery,
+        // and repeating it on every render would drown the log the user reads.
+        loader.RefreshSingleFileExtensions();
+        loader.RefreshSingleFileExtensions();
+
+        Assert.Single(loader.SingleFileExtensions);
+        Assert.Single(
+            log.Messages,
+            message => message.Contains("unknown directive", StringComparison.Ordinal)
+        );
     }
 
     [Fact]

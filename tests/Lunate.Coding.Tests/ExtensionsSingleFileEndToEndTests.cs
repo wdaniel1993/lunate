@@ -51,6 +51,11 @@ public sealed class ExtensionsSingleFileEndToEndTests
             host.LastFrame,
             StringComparison.Ordinal
         );
+        Assert.Contains(
+            "not trusted yet; /extensions reload asks before it builds",
+            host.LastFrame,
+            StringComparison.Ordinal
+        );
         Assert.Empty(host.Client.Requests);
         Assert.Empty(Directory.GetFiles(extensionsRoot, "*.dll"));
         Assert.False(Directory.Exists(Path.Combine(store, "cache")));
@@ -167,7 +172,8 @@ public sealed class ExtensionsSingleFileEndToEndTests
         Assert.Equal(ExtensionsCommand.ExitOk, exitCode);
         Assert.Equal(string.Empty, errors.ToString());
         Assert.Equal(
-            "acme-tools 1.0.0 (project, single file) not-built, tools 1, commands 0, hooks 0, services 0",
+            "acme-tools 1.0.0 (project, single file) not-built, tools 1, commands 0, hooks 0, services 0"
+                + " — not trusted yet; /extensions reload asks before it builds",
             output.ToString().Trim()
         );
     }
