@@ -1,15 +1,15 @@
 ## 1. The package format and its reader (PR 1, no network)
 
-- [ ] 1.1 Red: a nupkg carrying `lunate.package.json` with `extension` and `skills` parses into a model that names both folders, in the order the manifest declares them.
-- [ ] 1.2 Red: a nupkg without `lunate.package.json` is refused, naming the package and what the file is for; a manifest with no declarable kind is refused naming both.
-- [ ] 1.3 Red: a manifest naming `templates` or `themes` is refused, naming the kind and saying this version does not install it.
-- [ ] 1.4 Red: every manifest path and every archive entry is confined to the package root — a rooted path, a `..` segment and an entry that resolves outside are each refused, naming the entry.
-- [ ] 1.5 Red: the `extension` folder must hold an `extension.json` the existing parser accepts, whose `apiVersion` range this host meets (`requires Lunate ≥ x.y` when above), and whose `entryAssembly` exists in the folder.
-- [ ] 1.6 Red: each skill folder must hold a `SKILL.md` whose frontmatter parses and whose name equals the directory; a malformed one is refused with the reason, and two skills with one name are refused.
-- [ ] 1.7 Red: in this phase a package that declares a NuGet dependency is refused, naming the dependency and saying that dependency-declaring packages arrive in phase 4; a package carrying `build/` or `buildTransitive/` installs and names the ignored folder once.
-- [ ] 1.8 Red: entry count above 20,000 or expanded size above 512 MiB is refused before extraction, naming the limit and the observed value.
-- [ ] 1.9 `--dry-run` reads the archive and prints the identity and contents, writing nothing.
-- [ ] 1.10 Gate: the new test classes pass, `dotnet csharpier check .` is clean, `openspec validate package-install --strict` is green, and a fixture nupkg built by the test helper parses from a local folder feed.
+- [x] 1.1 Red: a nupkg carrying `lunate.package.json` with `extension` and `skills` parses into a model that names both folders, in the order the manifest declares them.
+- [x] 1.2 Red: a nupkg without `lunate.package.json` is refused, naming the package and what the file is for; a manifest with no declarable kind is refused naming both.
+- [x] 1.3 Red: a manifest naming `templates` or `themes` is refused, naming the kind and saying this version does not install it.
+- [x] 1.4 Red: every manifest path and every archive entry is confined to the package root — a rooted path, a `..` segment and an entry that resolves outside are each refused, naming the entry.
+- [x] 1.5 Red: the `extension` folder must hold an `extension.json` the existing parser accepts, whose `apiVersion` range this host meets (`requires Lunate ≥ x.y` when above), and whose `entryAssembly` exists in the folder.
+- [x] 1.6 Red: each skill folder must hold a `SKILL.md` whose frontmatter parses and whose name equals the directory; a malformed one is refused with the reason, and two skills with one name are refused.
+- [x] 1.7 Red: in this phase a package that declares a NuGet dependency is refused, naming the dependency and saying that dependency-declaring packages arrive in phase 4; a package carrying `build/` or `buildTransitive/` installs and names the ignored folder once.
+- [x] 1.8 Red: entry count above 20,000 or expanded size above 512 MiB is refused before extraction, naming the limit and the observed value.
+- [x] 1.9 `--dry-run` reads the archive and prints the identity and contents, writing nothing.
+- [x] 1.10 Gate: the new test classes pass, `dotnet csharpier check .` is clean, `openspec validate package-install --strict` is green, and a fixture nupkg built by the test helper parses from a local folder feed.
 
 ## 2. Download, record and verify (PR 2)
 

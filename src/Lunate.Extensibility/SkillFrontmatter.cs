@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace Lunate.Coding;
+namespace Lunate.Extensibility;
 
 /// <summary>The parsed frontmatter of a <c>SKILL.md</c>: the required name and description, the
 /// command-only flag and the body after the closing fence. A null error means the frontmatter is
