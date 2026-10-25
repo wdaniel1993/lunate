@@ -5,4 +5,13 @@
         <ProjectReference Include="../Lunate.Extensibility.Abstractions/Lunate.Extensibility.Abstractions.csproj" />
         <ProjectReference Include="../Lunate.Extensibility.Remote/Lunate.Extensibility.Remote.csproj" />
     </ItemGroup>
+
+    <ItemGroup>
+        <!-- The SKILL.md frontmatter reader is one parser: the skill scanner in Lunate.Coding
+             (assembly name "lunate") and the package reader in Lunate.Extensibility.Restore both
+             read a skill with it, so a package's skill is judged by the same rules a hand-placed
+             one is. -->
+        <InternalsVisibleTo Include="lunate" />
+        <InternalsVisibleTo Include="Lunate.Extensibility.Restore" />
+    </ItemGroup>
 </Project>

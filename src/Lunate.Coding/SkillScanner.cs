@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using Lunate.Ai;
+using Lunate.Extensibility;
 
 namespace Lunate.Coding;
 
