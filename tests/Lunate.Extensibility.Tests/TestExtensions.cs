@@ -42,6 +42,27 @@ internal static class TestExtensions
     public static string FixtureFile(string fixture, string fileName) =>
         Path.Combine(AppContext.BaseDirectory, "TestExtensions", fixture, fileName);
 
+    /// <summary>
+    /// A host assembly from the test's own output directory. An extension's build no longer carries
+    /// one (the host owns it), so a fixture that deliberately ships a copy — to prove the load
+    /// ignores it — must take the host's.
+    /// </summary>
+    public static string HostAssembly(string fileName) =>
+        Path.Combine(AppContext.BaseDirectory, fileName);
+
+    public static void CopyHostAssembly(string destinationDirectory, params string[] fileNames)
+    {
+        Directory.CreateDirectory(destinationDirectory);
+        foreach (string fileName in fileNames)
+        {
+            File.Copy(
+                HostAssembly(fileName),
+                Path.Combine(destinationDirectory, fileName),
+                overwrite: true
+            );
+        }
+    }
+
     public static void CopyFixture(string destinationDirectory, params string[] fileNames)
     {
         Directory.CreateDirectory(destinationDirectory);
