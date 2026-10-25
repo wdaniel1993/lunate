@@ -42,6 +42,15 @@
 - [x] 2a.6 The lock's canonical ordering and byte-identical output survive the split: a written lock parses and writes back identically, and two restores of the same source write the same bytes.
 - [x] 2a.7 The lock lives in `~/.lunate/cache/extensions/<id>/extension.lock.json` for both scopes; the ADR addendum, the design note and the authoring docs say so, and say that a lock is produced per machine and determinism comes from the resolution rule, not from a committed file.
 
+### Phase-2b maintainer additions (before merge)
+
+- [x] 2b.1 Refuse a `LUNATE_HOME` that resolves inside the workspace or its repository root, with `LUNATE_HOME points inside the workspace; trust records there could be written by the repository`; real-path containment (symlinks, `.`/`..`, trailing separators, the platform's case rule, equal-to-root counts as inside).
+- [x] 2b.2 Red: inside and equal-to-root refused at session composition, `lunate extensions build`, `lunate cache prune` and `lunate trust`; a sibling and an unrelated directory accepted.
+- [x] 2b.3 Red: when `LUNATE_HOME` is set, `lunate --version` and the interactive welcome header both print `home <path> (LUNATE_HOME)`; neither prints it when unset.
+- [x] 2b.4 Audit and document what follows the root and what does not; Lunate's own `~/.lunate/skills` was still resolving the profile and now follows the root; the docs state there are no log files.
+- [x] 2b.5 Red: a source scan fails on any second profile-resolution site, and asserts `LUNATE_HOME` is read from the process environment only (nothing loads `.env`).
+- [x] 2b.6 Red: a full session with `LUNATE_HOME` set and `HOME`/`USERPROFILE` pointing at a nonexistent directory exits successfully after a tool call and leaves that home nonexistent (child process).
+
 ## 3. Runtime: isolation, API gate, reload (PR 3)
 
 - [ ] 3.1 Red: a package shipping its own `Lunate.Extensibility.Abstractions.dll` loads against the host's copy and warns once.
