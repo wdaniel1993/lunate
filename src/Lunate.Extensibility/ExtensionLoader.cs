@@ -132,7 +132,7 @@ public sealed partial class ExtensionLoader
         }
 
         _singleFile.Clear();
-        DiscoverSingleFileExtensions(global, project, []);
+        DiscoverSingleFileExtensions(global, project, [], warnAboutHeaders: false);
 
         return SingleFileExtensions;
     }

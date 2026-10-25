@@ -255,19 +255,25 @@ public sealed partial class ExtensionLoader
     private void DiscoverSingleFileExtensions(
         string globalRoot,
         string projectRoot,
-        List<ExtensionDiscoveryError> errors
+        List<ExtensionDiscoveryError> errors,
+        bool warnAboutHeaders = true
     )
     {
         var reader = new SingleFileExtensionReader(_options);
         _singleFile.AddRange(reader.Read(globalRoot, ExtensionScope.Global, errors));
         _singleFile.AddRange(reader.Read(projectRoot, ExtensionScope.Project, errors));
 
-        IExtensionLog log = _options.Log ?? NullExtensionLog.Instance;
-        foreach (SingleFileExtension candidate in _singleFile)
+        if (warnAboutHeaders)
         {
-            foreach (ExtensionHeaderIssue warning in candidate.Header.Warnings)
+            // Discovery says each ignored directive once; a refresh (a listing, a reload) reads the
+            // same rows without repeating the warning on every render.
+            IExtensionLog log = _options.Log ?? NullExtensionLog.Instance;
+            foreach (SingleFileExtension candidate in _singleFile)
             {
-                log.Warn($"{candidate.Path}: {warning}");
+                foreach (ExtensionHeaderIssue warning in candidate.Header.Warnings)
+                {
+                    log.Warn($"{candidate.Path}: {warning}");
+                }
             }
         }
 

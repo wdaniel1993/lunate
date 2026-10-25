@@ -41,6 +41,36 @@ public sealed class SingleFileExtensionDiscoveryTests
     }
 
     [Fact]
+    public void A_refresh_reports_the_rows_but_does_not_repeat_the_header_warning()
+    {
+        using var temp = new TempDirectory();
+        var fixture = new SingleFileFixture(temp);
+        fixture.WriteGlobal(
+            "acme.cs",
+            "#:extension acme-tools@1.0.0\n#:tool fetch_issue\n#:unheard thing\n"
+        );
+        var log = new RecordingExtensionLog();
+        ExtensionLoader loader = fixture.Loader(log);
+
+        loader.Discover(fixture.Worktree, "repo");
+        Assert.Single(
+            log.Messages,
+            message => message.Contains("unknown directive", StringComparison.Ordinal)
+        );
+
+        // The listing and a reload re-read the candidates; the header warning belongs to discovery,
+        // and repeating it on every render would drown the log the user reads.
+        loader.RefreshSingleFileExtensions();
+        loader.RefreshSingleFileExtensions();
+
+        Assert.Single(loader.SingleFileExtensions);
+        Assert.Single(
+            log.Messages,
+            message => message.Contains("unknown directive", StringComparison.Ordinal)
+        );
+    }
+
+    [Fact]
     public void A_file_without_the_extension_directive_is_listed_invalid_and_writes_nothing()
     {
         using var temp = new TempDirectory();

@@ -430,7 +430,7 @@ internal sealed partial class InteractiveSession
             return ValueTask.CompletedTask;
         }
 
-        if (_reloadRunning)
+        if (Interlocked.CompareExchange(ref _reloadGate, 1, 0) != 0)
         {
             Notify(
                 FormattableString.Invariant(
@@ -447,7 +447,6 @@ internal sealed partial class InteractiveSession
 
     private async Task ReloadAsync(string id, ExtensionSession host, CancellationToken ct)
     {
-        _reloadRunning = true;
         try
         {
             SingleFileReloadOutcome outcome = await host.ReloadSingleFileAsync(id, ct)
@@ -489,7 +488,7 @@ internal sealed partial class InteractiveSession
         }
         finally
         {
-            _reloadRunning = false;
+            Volatile.Write(ref _reloadGate, 0);
         }
     }
 
