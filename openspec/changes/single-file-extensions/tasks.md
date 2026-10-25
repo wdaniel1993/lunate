@@ -27,10 +27,10 @@
 - [x] 2.10 Red: a hand-edited lock makes the extension `stale` and stops before any feed request.
 - [x] 2.11 Reference pack: restore `Microsoft.NETCore.App.Ref` (runtime version, RID) through the same engine into the global packages folder on first compile; reuse it afterwards.
 - [x] 2.12 Red: the published self-contained `osx-arm64` binary compiles a single-file extension with `HOME` empty and no `dotnet` on `PATH`; a second run makes no feed request.
-- [ ] 2.13 Generators and analyzers are off by default; `#:generators on` opts in and is part of the digest; `/extensions` shows `generators skipped: <package>` when a package ships them and the file did not opt in.
-- [ ] 2.14 Red: toggling `#:generators on` changes the digest and the prompt gains the build-time-code line.
-- [ ] 2.15 Report the measured per-extension cache size, the ref-pack size, the binary-size alternative if shipped, and the startup median after this phase.
-- [ ] 2.16 Docs: what gets restored and where, what the lock is for, how to read a compile failure, and that a Lunate update rebuilds extensions on first use because the cache key includes the API version.
+- [x] 2.13 Generators and analyzers are off by default; `#:generators on` opts in and is part of the digest; `/extensions` shows `generators skipped: <package>` when a package ships them and the file did not opt in.
+- [x] 2.14 Red: toggling `#:generators on` changes the digest and the prompt gains the build-time-code line.
+- [x] 2.15 Report the measured per-extension cache size, the ref-pack size, the binary-size alternative if shipped, and the startup median after this phase.
+- [x] 2.16 Docs: what gets restored and where, what the lock is for, how to read a compile failure, and that a Lunate update rebuilds extensions on first use because the cache key includes the API version.
 
 ### Phase-2a corrections (maintainer ruling)
 

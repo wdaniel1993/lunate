@@ -25,9 +25,10 @@ Discovery reads every candidate, parses its header before anything else happens,
 `invalid (no #:extension)` and is never compiled; a file whose header is refused is listed with the
 reason on the same line. Nothing is restored, compiled or trusted during discovery.
 
-> **Current state.** This version discovers, validates, restores and locks single files; it does not
-> compile them yet. `/extensions` therefore reports `not-built` for a usable file — no build exists —
-> and the compile arrives with the next change.
+> **Current state.** This version discovers, validates, trusts, restores, locks and compiles single
+> files, and caches the build. `/extensions` reports `built` once an assembly exists for exactly these
+> bytes, this lock, this contract version and this toolset; `not-built` means the file is usable but
+> nothing has compiled it yet. Reload and unload are the next change.
 
 ## The header is the leading block
 
@@ -111,10 +112,18 @@ restore. A missing version is refused with the line number.
 ### `#:generators on`
 
 Compiling against a package's compile-time assemblies does not need its analyzers or source
-generators. Those execute at build time, so they are off unless the header opts in. The opt-in is
-part of the trust digest: toggling it re-asks, and the prompt only mentions build-time code when it
-applies. A package that ships generators while the file did not opt in is named by `/extensions` as
-`generators skipped: <package>` once compiling exists.
+generators. Those execute at build time — inside Lunate's own process — so they are off unless the
+header opts in. With the directive the compiler loads the locked packages' `analyzers/` assemblies,
+runs their generators and compiles the trees they emit, and runs their analyzers; an analyzer that
+reports an error fails the compile with that error as the first diagnostic, exactly as it would in a
+project build.
+
+The opt-in is part of the trust digest — it is a header line, so the source bytes that are hashed
+contain it. Toggling it makes a trusted file `stale` and re-asks; the prompt only mentions build-time
+code when the directive is there. A package that ships generators while the file did not opt in is
+named by `/extensions` as `generators skipped: <package>` (and as `generatorsSkipped` in `--json`),
+so the omission is visible rather than silent. Before a restore there is no resolved graph, so
+nothing is named yet.
 
 ## Trust
 
@@ -167,6 +176,11 @@ exactly like a user one:
 
 It is never written next to your `.cs` file: a single-file extension stays one file.
 
+**What the lock is for.** It is the compile's whole input: every reference the compiler uses comes
+from the packages and reference pack the lock names, so building never re-resolves a graph and never
+asks a feed. It is also what a later run reads instead of querying a server for versions, and what
+`/extensions` shows as `resolved: …` — the exact set of packages you are running.
+
 The lock has two halves with two different jobs:
 
 | Half | What it records | What a change does |
@@ -186,6 +200,32 @@ A hand edit to either half is visible. Editing the graph changes the bytes the t
 so the extension is `stale` and asks again. Editing the toolset block leaves its integrity hash
 behind, so the lock is refused and the next restore rebuilds the block — no question, because the
 resolution did not change.
+
+## What gets restored, and where
+
+Two kinds of package are restored, and both go to the same place: NuGet's **global packages folder**.
+
+| What | Where |
+| --- | --- |
+| the packages your header declares, and every dependency the resolution pulled in | `NUGET_PACKAGES` when that variable is set, otherwise `~/.nuget/packages` |
+| `Microsoft.NETCore.App.Ref` — the reference assemblies the compile needs for your runtime | the same folder, restored on the first compile and reused afterwards |
+
+That folder is NuGet's, not Lunate's: it is content-addressed, immutable, and the one your `dotnet`
+commands already populate, so a package you have restored before costs nothing here. **Nothing is
+copied into `~/.lunate`.** What Lunate owns is the compiled assembly, the lock and the pointer, and
+those live in the extension's cache entry (see [The build cache](#the-build-cache)).
+
+Consequences worth knowing:
+
+- A machine with a warm cache needs no feed at all — the lock names the exact versions, so a compile
+  reads files instead of asking a server.
+- A cold cache needs a reachable feed: the `nuget.config` chain above the extension (machine, user,
+  project), and `NUGET_PACKAGES` if you keep your packages somewhere other than the default.
+- The reference pack is the largest thing a first build downloads: about 49 MiB for one .NET 10
+  version, restored once per machine and shared with the SDK. That is why Lunate does not bundle it —
+  the published binary would carry every byte of it.
+- Lunate never edits your `.cs` file. Restoring, locking, compiling and pruning all write under
+  `~/.lunate` only.
 
 ## Building
 
@@ -209,6 +249,27 @@ $ lunate extensions build acme-tools
 lunate: acme-tools failed (compile) — /Users/you/.lunate/extensions/acme.cs(12,9): error CS0103: The name 'Issue' does not exist in the current context
 ```
 
+### Reading a compile failure
+
+Three things are worth knowing about that line:
+
+- **It is the first error by position**, not the first error the compiler happened to produce, so the
+  file, line and column are the place to look first. The shape is Roslyn's own — `path(line,column):
+  error CSxxxx: message` — which is the same text a compiler or an IDE would print, so a search for
+  the id and the message finds the language documentation.
+- **It is also what `/extensions` shows** on the row (`failed (compile) — …`), and with `--json` the
+  same failure carries a `diagnostic` object (`{file, line, column, id, message}`) beside the reason,
+  so a script reads fields instead of parsing the sentence.
+- **Nothing was written.** A failed compile leaves the cache exactly as it was: no build directory, no
+  pointer, no trimmed history. If the file had a working build before the edit, that build is still
+  the one the entry points at — editing a file into a compile error never costs you the last good
+  assembly.
+
+Two other failures look similar and are not compile failures: `failed (trust)` means the bytes (or
+the lock's graph) are not the ones you approved — nothing is restored or compiled, and the CLI tells
+you to approve the file in an interactive session because trust is your decision, never the CLI's;
+`failed (restore)` means a package could not be resolved, with the package and the feed in the reason.
+
 ### The build cache
 
 ```text
@@ -231,6 +292,15 @@ A successful compile keeps the **last two** builds and deletes older ones: editi
 fixing never grows the cache past two assemblies. `builds.json` says which two and which one is
 current, so "the last two" is a written order, not a guess from timestamps.
 
+### After a Lunate update
+
+The first `/extensions` (or `extensions build`) after you update Lunate **rebuilds every single-file
+extension on first use**. That is deliberate, not a bug: the build key includes the extension API
+version, the target framework and the RID, so an assembly compiled against another contract can never
+be reused by a newer host. The rebuild is a local compile against the lock you already approved — no
+trust question, no new resolution, and a warm packages folder means no feed either — so it costs the
+compile, not the restore.
+
 `lunate cache prune` removes the entries nothing points at — run it after deleting an extension's
 `.cs` file; that is how removing an extension deletes its builds. It only touches
 `~/.lunate/cache/extensions/` and never the shared NuGet packages folder, which is content-addressed
@@ -244,6 +314,7 @@ user extensions and this project's.
 | `<id> <version> (<scope>, single file) not-built, tools …` | Usable; nothing has built it. |
 | `… built, tools …` | An assembly exists for exactly these bytes, this lock and this toolset. |
 | `… not-built, …, resolved: <id> <version>, …` | Restored: the graph the lock records, which is what a compile would use. |
+| `…, generators skipped: <package>` | A locked package ships analyzers or generators and the header did not opt in (`#:generators on`), so the compile leaves them out. |
 | `… not-built, … — <reason>` | The lock on disk was refused (its toolset block no longer answers for itself) and will be rebuilt. |
 | `<file name> (<scope>, single file) invalid (no #:extension)` | The header declares no id. Never compiled. |
 | `<id> <version> (<scope>, single file) invalid (line N: …)` | The header refuses the file; the reason names the line. |
@@ -258,5 +329,6 @@ nothing provided — is a warning, and the name is shown as `declared, not provi
 
 Single-file entries are listed after the packaged ones, problems first and built entries last, and
 `lunate extensions --json` carries the same data with `singleFile` (the file name), `state`,
-`reason`, `build` (the key, once one exists) and `failure` (`trust`, `restore` or `compile`) on a
-failed step.
+`reason`, `build` (the key, once one exists), `resolved` (the locked graph), `generatorsSkipped`
+(the packages whose build-time code the compile leaves out) and `failure` (`trust`, `restore` or
+`compile`) on a failed step.
