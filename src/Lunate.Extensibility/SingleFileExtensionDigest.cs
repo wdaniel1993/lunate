@@ -15,8 +15,10 @@ namespace Lunate.Extensibility;
 public static class SingleFileExtensionDigest
 {
     /// <summary>
-    /// The source-only form's tag. Its layout is unchanged since the first release, so a file that
-    /// has never been restored keeps the digest the user already approved.
+    /// The source-only form's tag: the source-level identity a lock records (and the build key's
+    /// <c>sourceHash</c>), not the trust identity of a file. Its layout is unchanged since the first
+    /// release, so existing locks keep parsing; a file's trust digest is always the graph-bound form
+    /// (<see cref="ComputeUnrestored"/> before a restore, <see cref="Compute"/> after one).
     /// </summary>
     public const string FormatTag = "lunate-extension-v1";
 
