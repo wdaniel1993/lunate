@@ -96,6 +96,14 @@ public sealed partial class ExtensionLoader
                 $"single-file extension '{id}': the build '{candidate.BuildKey}' recorded for '{candidate.Path}' could not be read at '{candidate.AssemblyPath}'; build it again."
             );
 
+        // The gate the build record makes possible: the apiVersion the compile ran against is
+        // recorded in the build, so a build made by a newer host is refused here rather than at the
+        // first call that reaches a member this host does not have.
+        if (ExtensionApiGate.Refuse(id, build.Manifest.ApiVersion) is { } refusal)
+        {
+            throw new ExtensionLoadException(refusal);
+        }
+
         var descriptor = Describe(candidate, build);
         var context = new SingleFileExtensionLoadContext(
             id,

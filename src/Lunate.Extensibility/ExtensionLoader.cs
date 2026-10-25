@@ -350,14 +350,9 @@ public sealed partial class ExtensionLoader
                 continue;
             }
 
-            if (!ExtensionApi.IsCompatible(manifest.ApiVersion))
+            if (ExtensionApiGate.RefuseRange(manifest.Id, manifest.ApiVersion) is { } apiRefusal)
             {
-                _discoveryErrors.Add(
-                    new ExtensionDiscoveryError(
-                        manifestPath,
-                        $"extension '{manifest.Id}' requires apiVersion '{manifest.ApiVersion}' but the current API version is {ExtensionApi.Current}."
-                    )
-                );
+                _discoveryErrors.Add(new ExtensionDiscoveryError(manifestPath, apiRefusal));
                 continue;
             }
 

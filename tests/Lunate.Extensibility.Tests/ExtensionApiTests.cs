@@ -8,6 +8,18 @@ public sealed class ExtensionApiTests
     public void Current_is_the_released_contract_version() =>
         Assert.Equal("1.11.0", ExtensionApi.Current);
 
+    /// <summary>
+    /// The gate compares an extension's referenced <c>Lunate.Extensibility.Abstractions</c> version
+    /// with <see cref="ExtensionApi.Current"/>, so the contract assembly's own version has to be that
+    /// number: two scales would make the refusal name a version no Lunate ships.
+    /// </summary>
+    [Fact]
+    public void The_contract_assembly_version_is_the_api_version() =>
+        Assert.Equal(
+            ExtensionApi.Current,
+            typeof(ExtensionApi).Assembly.GetName().Version!.ToString(3)
+        );
+
     [Theory]
     [InlineData("1.11.0")]
     [InlineData("^1.11.0")]

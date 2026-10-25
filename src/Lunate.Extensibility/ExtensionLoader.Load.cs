@@ -74,6 +74,26 @@ public sealed partial class ExtensionLoader
             );
         }
 
+        // The contract gate, before any of the assembly's types are opened: the manifest declares
+        // the API the code needs, and a DLL built against a newer contract says so in its own
+        // metadata even when the declaration is optimistic.
+        if (ExtensionApiGate.RefuseRange(id, descriptor.Manifest.ApiVersion) is { } declared)
+        {
+            throw new ExtensionLoadException(declared);
+        }
+
+        if (ExtensionApiGate.ReferencedVersion(entryPath) is { } referenced)
+        {
+            if (ExtensionApiGate.Refuse(id, referenced) is { } refusal)
+            {
+                throw new ExtensionLoadException(
+                    FormattableString.Invariant(
+                        $"{refusal} Its '{entryAssembly}' was built against Lunate.Extensibility.Abstractions {referenced}."
+                    )
+                );
+            }
+        }
+
         cancellationToken.ThrowIfCancellationRequested();
 
         var context = new ExtensionLoadContext(descriptor.Id, descriptor.Directory);

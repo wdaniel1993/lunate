@@ -243,6 +243,26 @@ internal sealed class SingleFileLoadFixture : IDisposable
         return outcome;
     }
 
+    /// <summary>
+    /// Rewrites the apiVersion one build recorded, the way a cache written by another host (or a
+    /// hand-edited record) would read: the directory and its key stay, the version the compile saw
+    /// changes. Only that field moves, so the test is about the record and nothing else.
+    /// </summary>
+    internal void RewriteBuildApiVersion(string key, string apiVersion)
+    {
+        string path = SingleFileExtensionPaths.BuildManifestPath(Store, Id, key);
+        System.Text.Json.Nodes.JsonNode document = System.Text.Json.Nodes.JsonNode.Parse(
+            File.ReadAllText(path)
+        )!;
+        document["apiVersion"] = apiVersion;
+        File.WriteAllText(
+            path,
+            document.ToJsonString(
+                new System.Text.Json.JsonSerializerOptions { WriteIndented = true }
+            ) + "\n"
+        );
+    }
+
     internal ExtensionLoader Loader(HookRunnerOptions? hookOptions = null) =>
         new(
             new ExtensionHostOptions
