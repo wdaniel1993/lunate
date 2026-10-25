@@ -93,6 +93,12 @@ public static class ReferencePackRules
 
     /// <summary>The lowest published 10.0.x pack at or above the running runtime.</summary>
     public const string NearestAtLeast = "nearest-at-least";
+
+    /// <summary>
+    /// The highest published 10.0.x pack below the running runtime, chosen only when the runtime's
+    /// own pack is not published at all (a staged patch the feed does not serve yet).
+    /// </summary>
+    public const string NearestBelow = "nearest-below-runtime";
 }
 
 /// <summary>
