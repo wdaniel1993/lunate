@@ -98,6 +98,15 @@ Roslyn workspace path, Lunate's only when a restore runs.
 Phase 2b is the compile, the build cache and the published-binary proof: no generators, no
 measurements and no docs pass (those stay 2.13–2.16). Four decisions had to be made concretely.
 
+**One state root, and it can be moved.** Discovery, the trust store, the lock, the build cache, the
+sessions and the model catalog each resolved `~/.lunate` on their own, which is why a test that
+replaced `HOME` moved some of them and — on Windows, where .NET resolves the profile through the
+shell rather than `HOME` — none of them. `LunateHome.Store` is now the single rule: `LUNATE_HOME` when
+it names an absolute path, `~/.lunate` otherwise, a relative value refused by name. It lives in
+`Lunate.Ai` only because that is the lowest assembly every consumer already references; the public
+surface is the variable, not the type. Without it the published-binary proof cannot be hermetic on
+Windows at all, and a portable install has no way to keep its state out of the user profile.
+
 **The trigger is `lunate extensions build <id|path> [--json]`.** Listing extensions must not compile
 — `/extensions` is a state view, and its rows would start costing seconds — and startup must stay
 lazy, so a build needs a surface of its own. The CLI subcommand is the smallest honest one: it

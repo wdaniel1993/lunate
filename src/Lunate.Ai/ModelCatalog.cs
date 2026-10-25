@@ -131,18 +131,10 @@ public sealed class ModelCatalog
     }
 
     internal static string DefaultManagedFilePath() =>
-        Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-            ".lunate",
-            "models.catalog.json"
-        );
+        Path.Combine(LunateHome.Store, "models.catalog.json");
 
     private static string DefaultUserFilePath() =>
-        Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-            ".lunate",
-            "models.json"
-        );
+        Path.Combine(LunateHome.Store, "models.json");
 
     private static CatalogLayer? ParseOptional(string? path)
     {

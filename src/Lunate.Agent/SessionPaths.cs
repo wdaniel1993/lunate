@@ -51,11 +51,7 @@ public static class SessionPaths
     }
 
     private static string SessionsRoot =>
-        System.IO.Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-            ".lunate",
-            "sessions"
-        );
+        System.IO.Path.Combine(Lunate.Ai.LunateHome.Store, "sessions");
 
     private static string Hash8(string value) =>
         Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(value)))[..8];

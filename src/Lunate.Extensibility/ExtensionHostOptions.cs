@@ -32,10 +32,7 @@ public sealed class ExtensionHostOptions
     public static ExtensionHostOptions Default { get; } =
         new()
         {
-            StorePath = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-                ".lunate"
-            ),
+            StorePath = Lunate.Ai.LunateHome.Store,
         };
 
     public string ExtensionsPath => Path.Combine(StorePath, "extensions");

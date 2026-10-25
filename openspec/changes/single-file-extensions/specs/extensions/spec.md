@@ -156,13 +156,19 @@ The host SHALL compile a trusted single-file extension in process with the Rosly
 
 ### Requirement: Restore, lock and compiled cache
 
-A restore SHALL run in process through the NuGet client libraries, which SHALL be loaded only when a restore runs. Resolved packages SHALL go to NuGet's global packages folder, respecting `NUGET_PACKAGES`, and SHALL NOT be copied into a Lunate-owned folder. Each extension SHALL keep only its compiled assembly, its `extension.lock.json` and a pointer to the current build under `~/.lunate/cache/extensions/<id>/`. The lock SHALL have two halves: a `graph` (the sources, and per package the exact version, nupkg SHA-512, the resolved asset list and the dependency edges) and a `toolset` (target framework, RID, exact runtime, and the reference pack's id, version and nupkg hash, with an integrity hash over the block). The build SHALL be keyed by `sha256(sourceHash | lockHash | apiVersion | TFM | RID)`, where `lockHash` covers both halves, so a graph change and a toolset change each produce a new build. A successful compile SHALL keep the last two builds and delete older ones; removing the extension SHALL delete its builds; `lunate cache prune` SHALL remove entries no extension points at. The builds SHALL live under `builds/<key>/`, each with the compiled assembly and a manifest that records its key's inputs and the resolution a load needs, and the entry SHALL carry a pointer file naming the current build. A restore that would change the lock's graph SHALL report and ask; a restore that would change only its toolset SHALL rewrite the lock and rebuild without asking.
+A restore SHALL run in process through the NuGet client libraries, which SHALL be loaded only when a restore runs. Resolved packages SHALL go to NuGet's global packages folder, respecting `NUGET_PACKAGES`, and SHALL NOT be copied into a Lunate-owned folder. Each extension SHALL keep only its compiled assembly, its `extension.lock.json` and a pointer to the current build under `~/.lunate/cache/extensions/<id>/`. The lock SHALL have two halves: a `graph` (the sources, and per package the exact version, nupkg SHA-512, the resolved asset list and the dependency edges) and a `toolset` (target framework, RID, exact runtime, and the reference pack's id, version and nupkg hash, with an integrity hash over the block). The build SHALL be keyed by `sha256(sourceHash | lockHash | apiVersion | TFM | RID)`, where `lockHash` covers both halves, so a graph change and a toolset change each produce a new build. A successful compile SHALL keep the last two builds and delete older ones; removing the extension SHALL delete its builds; `lunate cache prune` SHALL remove entries no extension points at. The builds SHALL live under `builds/<key>/`, each with the compiled assembly and a manifest that records its key's inputs and the resolution a load needs, and the entry SHALL carry a pointer file naming the current build. A restore that would change the lock's graph SHALL report and ask; a restore that would change only its toolset SHALL rewrite the lock and rebuild without asking. The state root SHALL be `~/.lunate` unless `LUNATE_HOME` names an absolute path, in which case the lock, the trust record, the build cache and the extension files SHALL all resolve under it; a relative value SHALL be refused by name rather than silently ignored, because a process that must not touch the user's state depends on the override taking effect.
 
 #### Scenario: A second compile leaves two builds
 
 - **GIVEN** an extension built once, then edited and built again, then edited and built a third time
 - **WHEN** the third build succeeds
 - **THEN** two build directories remain under its cache entry and the oldest is gone
+
+#### Scenario: The state root can be moved
+
+- **GIVEN** `LUNATE_HOME` set to an absolute temporary directory
+- **WHEN** a single file is trusted, restored and compiled
+- **THEN** its lock, its trust record and its build are all under that directory, and nothing is written under the user's profile
 
 #### Scenario: No NuGet assembly before a restore
 

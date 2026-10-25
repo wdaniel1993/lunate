@@ -301,8 +301,7 @@ public sealed class ChatClientFactory : IChatClientFactory
 
     internal static string DefaultRecordingPath() =>
         Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-            ".lunate",
+            LunateHome.Store,
             "recordings",
             string.Concat(
                 DateTimeOffset.UtcNow.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture),

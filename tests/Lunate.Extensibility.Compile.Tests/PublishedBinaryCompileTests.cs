@@ -223,8 +223,10 @@ public sealed class PublishedBinaryCompileTests
             start.ArgumentList.Add(argument);
         }
 
-        // .NET resolves the user profile from HOME on Unix and from USERPROFILE on Windows; setting
-        // only HOME left a Windows child reading the runner's real profile and finding no extension.
+        // The state root is what discovery, trust and the cache read. HOME does not move it on
+        // Windows — .NET resolves the profile through the shell — so the child is pointed at a
+        // store directly; HOME and USERPROFILE move whatever else honours them.
+        start.Environment["LUNATE_HOME"] = Path.Combine(home, ".lunate");
         start.Environment["HOME"] = home;
         start.Environment["USERPROFILE"] = home;
         start.Environment["NUGET_PACKAGES"] = packages;
