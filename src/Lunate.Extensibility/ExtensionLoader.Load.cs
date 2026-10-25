@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Runtime.Loader;
 using Lunate.Extensibility.Abstractions;
 
 namespace Lunate.Extensibility;
@@ -73,85 +74,159 @@ public sealed partial class ExtensionLoader
             );
         }
 
+        // The contract gate, before any of the assembly's types are opened: the manifest declares
+        // the API the code needs, and a DLL built against a newer contract says so in its own
+        // metadata even when the declaration is optimistic.
+        if (ExtensionApiGate.RefuseRange(id, descriptor.Manifest.ApiVersion) is { } declared)
+        {
+            throw new ExtensionLoadException(declared);
+        }
+
+        if (ExtensionApiGate.ReferencedVersion(entryPath) is { } referenced)
+        {
+            if (ExtensionApiGate.Refuse(id, referenced) is { } refusal)
+            {
+                throw new ExtensionLoadException(
+                    FormattableString.Invariant(
+                        $"{refusal} Its '{entryAssembly}' was built against Lunate.Extensibility.Abstractions {referenced}."
+                    )
+                );
+            }
+        }
+
         cancellationToken.ThrowIfCancellationRequested();
 
         var context = new ExtensionLoadContext(descriptor.Id, descriptor.Directory);
+        if (context.ShadowedNames.Count > 0)
+        {
+            _ignoredCopies[descriptor.Id] = new IgnoredHostCopy(
+                context.ShadowedNames,
+                [descriptor.Directory]
+            );
+        }
+
+        if (context.ShadowedNames.Count > 0)
+        {
+            (_options.Log ?? NullExtensionLog.Instance).Warn(
+                HostOwnedAssemblies.Describe(
+                    descriptor.Id,
+                    context.ShadowedNames,
+                    FormattableString.Invariant($"its directory '{descriptor.Directory}'")
+                )
+            );
+        }
+
         int toolCountBefore = _tools.List().Count;
         try
         {
             Assembly assembly = context.LoadFromAssemblyPath(entryPath);
-            IExtensionFactory factory = FindFactory(assembly, descriptor);
-            IExtensionSecrets secrets = ExtensionSecretsStore.Load(_options, descriptor.Id);
-            var extensionContext = CreateExtensionContext(descriptor, secrets);
-            _extensionContexts[descriptor.Id] = extensionContext;
-            IExtension extension = factory.Create(extensionContext);
-            CrossCheckManifestTools(descriptor);
-            await CrossCheckManifestCommandsAsync(descriptor, cancellationToken)
+            return await ActivateAsync(
+                    descriptor,
+                    assembly,
+                    context,
+                    ExtensionSecretsStore.Load(_options, descriptor.Id),
+                    startSession,
+                    notifyToolsChanged: true,
+                    toolCountBefore,
+                    cancellationToken
+                )
                 .ConfigureAwait(false);
-            _modelRegistry.RegisterDeclared(
-                descriptor.Id,
-                descriptor.Manifest.ModelProviders,
-                secrets
-            );
-            var loaded = new LoadedExtension(descriptor.Id, extension, descriptor);
-            _loaded[descriptor.Id] = loaded;
-            _contexts[descriptor.Id] = context;
-            if (startSession)
-            {
-                if (!_sessionEnded)
-                {
-                    _sessionBegan = true;
-                    await _backgroundServices.StartAsync(cancellationToken).ConfigureAwait(false);
-                }
-
-                if (_tools.List().Count != toolCountBefore)
-                {
-                    await NotifyToolsChangedAsync().ConfigureAwait(false);
-                }
-            }
-
-            return loaded;
         }
         catch (ExtensionLoadException)
         {
-            _extensionContexts.Remove(descriptor.Id);
-            _tools.Unregister(descriptor.Id);
-            await _backgroundServices.DropAsync(descriptor.Id).ConfigureAwait(false);
-            _modelRegistry.Unregister(descriptor.Id);
-            _toolResultRenderers.Unregister(descriptor.Id);
-            _statusWidgets.Unregister(descriptor.Id);
-            _mcpServers.Unregister(descriptor.Id);
-            _skillSources.Unregister(descriptor.Id);
-            _commandSources.Unregister(descriptor.Id);
-            _declaredNotProvidedCommands.Remove(descriptor.Id);
-            DropSubscriptions(descriptor.Id);
-            context.Unload();
+            await RollbackAsync(descriptor.Id, context).ConfigureAwait(false);
             throw;
         }
         catch (OperationCanceledException)
         {
-            _extensionContexts.Remove(descriptor.Id);
-            _tools.Unregister(descriptor.Id);
-            _commandSources.Unregister(descriptor.Id);
-            _declaredNotProvidedCommands.Remove(descriptor.Id);
+            Rollback(descriptor.Id, context);
             throw;
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            _extensionContexts.Remove(descriptor.Id);
-            _tools.Unregister(descriptor.Id);
-            await _backgroundServices.DropAsync(descriptor.Id).ConfigureAwait(false);
-            _modelRegistry.Unregister(descriptor.Id);
-            _toolResultRenderers.Unregister(descriptor.Id);
-            _statusWidgets.Unregister(descriptor.Id);
-            _mcpServers.Unregister(descriptor.Id);
-            _skillSources.Unregister(descriptor.Id);
-            _commandSources.Unregister(descriptor.Id);
-            _declaredNotProvidedCommands.Remove(descriptor.Id);
-            DropSubscriptions(descriptor.Id);
-            context.Unload();
+            await RollbackAsync(descriptor.Id, context).ConfigureAwait(false);
             throw WrapLoadFailure(descriptor, exception);
         }
+    }
+
+    /// <summary>
+    /// The tail every runtime kind shares once its assembly is loaded: find the factory, create the
+    /// extension against a fresh context, cross-check the manifest declarations, publish the
+    /// registrations and — for a session load — start the background services and tell the session
+    /// the tool set changed. Deliberately free of rollback: the caller owns the try/catch so each
+    /// runtime kind reports its own failure in its own words.
+    /// </summary>
+    private async Task<LoadedExtension> ActivateAsync(
+        ExtensionDescriptor descriptor,
+        Assembly assembly,
+        AssemblyLoadContext context,
+        IExtensionSecrets secrets,
+        bool startSession,
+        bool notifyToolsChanged,
+        int toolCountBefore,
+        CancellationToken cancellationToken
+    )
+    {
+        IExtensionFactory factory = FindFactory(assembly, descriptor);
+        var extensionContext = CreateExtensionContext(descriptor, secrets);
+        _extensionContexts[descriptor.Id] = extensionContext;
+        IExtension extension = factory.Create(extensionContext);
+        CrossCheckManifestTools(descriptor);
+        await CrossCheckManifestCommandsAsync(descriptor, cancellationToken).ConfigureAwait(false);
+        _modelRegistry.RegisterDeclared(descriptor.Id, descriptor.Manifest.ModelProviders, secrets);
+        var loaded = new LoadedExtension(descriptor.Id, extension, descriptor);
+        _loaded[descriptor.Id] = loaded;
+        _contexts[descriptor.Id] = context;
+        if (startSession)
+        {
+            if (!_sessionEnded)
+            {
+                _sessionBegan = true;
+                await _backgroundServices.StartAsync(cancellationToken).ConfigureAwait(false);
+            }
+
+            if (notifyToolsChanged && _tools.List().Count != toolCountBefore)
+            {
+                await NotifyToolsChangedAsync().ConfigureAwait(false);
+            }
+        }
+
+        return loaded;
+    }
+
+    /// <summary>
+    /// Removes everything one failed load may have registered and unloads its context. The
+    /// synchronous half is the cancellation path, where awaiting would be a second cancellation
+    /// point for a load that is already ending.
+    /// </summary>
+    private async Task RollbackAsync(string id, AssemblyLoadContext context)
+    {
+        DropRegistrations(id);
+        await _backgroundServices.DropAsync(id).ConfigureAwait(false);
+        context.Unload();
+    }
+
+    private void Rollback(string id, AssemblyLoadContext context)
+    {
+        _extensionContexts.Remove(id);
+        _tools.Unregister(id);
+        _commandSources.Unregister(id);
+        _declaredNotProvidedCommands.Remove(id);
+        context.Unload();
+    }
+
+    private void DropRegistrations(string id)
+    {
+        _extensionContexts.Remove(id);
+        _tools.Unregister(id);
+        _modelRegistry.Unregister(id);
+        _toolResultRenderers.Unregister(id);
+        _statusWidgets.Unregister(id);
+        _mcpServers.Unregister(id);
+        _skillSources.Unregister(id);
+        _commandSources.Unregister(id);
+        _declaredNotProvidedCommands.Remove(id);
+        DropSubscriptions(id);
     }
 
     /// <summary>The per-extension context both runtime kinds register through.</summary>

@@ -47,6 +47,13 @@ The manifest the host reads before loading anything. Every field matters:
 
 Registration is registration only: do not start processes, sockets or timers from `Create`.
 
+The project references to `Lunate.Extensibility.Abstractions`, `Lunate.Agent` and `Lunate.Ai` carry
+`Private="false"` and `ExcludeAssets="runtime"`: the host owns those assemblies and loads them once, so
+they must not be copied into your output directory (a copy there is ignored at load, with one
+warning) and must not sit in your deps file as runtime assets. Both attributes still compile. Do not
+replace them with `PrivateAssets="all"` — that also hides the `Lunate.Agent` types your signatures
+use, and the extension stops compiling.
+
 ## Testing with the kit
 
 `TemplateExtension.Tests` uses `Lunate.Extensibility.Testing`. The test installs the built

@@ -109,6 +109,17 @@ internal sealed partial class InteractiveSession
                     );
                     return CommandResult.None;
                 case "/extensions":
+                    if (invocation.Argument.StartsWith("reload ", StringComparison.Ordinal))
+                    {
+                        await session
+                            .ReloadExtension(
+                                invocation.Argument["reload ".Length..].Trim(),
+                                cancellationToken
+                            )
+                            .ConfigureAwait(false);
+                        return CommandResult.None;
+                    }
+
                     if (invocation.Argument.StartsWith("restart ", StringComparison.Ordinal))
                     {
                         await session
@@ -122,7 +133,9 @@ internal sealed partial class InteractiveSession
 
                     if (invocation.Argument.Length > 0)
                     {
-                        session.Notify("usage: /extensions or /extensions restart <id>");
+                        session.Notify(
+                            "usage: /extensions or /extensions reload <id> or /extensions restart <id>"
+                        );
                         return CommandResult.None;
                     }
 

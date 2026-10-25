@@ -110,6 +110,7 @@ internal sealed class ExtensionSession : IAsyncDisposable
     private readonly AgentHookAdapter _hooks;
     private readonly SingleFileExtensionRestorer _singleFileRestorer;
     private readonly SingleFileExtensionBuilder _singleFileBuilder;
+    private readonly IExtensionTrustPrompt _prompt;
     private ExtensionMcpServers? _mcpServers;
     private bool _disposed;
 
@@ -119,6 +120,7 @@ internal sealed class ExtensionSession : IAsyncDisposable
         FileChangeBus fileChanges,
         SingleFileExtensionRestorer singleFileRestorer,
         SingleFileExtensionBuilder singleFileBuilder,
+        IExtensionTrustPrompt prompt,
         IReadOnlyList<ExtensionSessionError> errors,
         IReadOnlyList<ExtensionLoadResult> loadResults
     )
@@ -128,6 +130,7 @@ internal sealed class ExtensionSession : IAsyncDisposable
         _fileChanges = fileChanges;
         _singleFileRestorer = singleFileRestorer;
         _singleFileBuilder = singleFileBuilder;
+        _prompt = prompt;
         _hooks = new AgentHookAdapter(loader.Hooks);
         Errors = errors;
         LoadResults = loadResults;
@@ -296,6 +299,7 @@ internal sealed class ExtensionSession : IAsyncDisposable
             fileChanges,
             singleFileRestorer,
             singleFileBuilder,
+            prompt,
             errors,
             loadResults
         );
@@ -433,6 +437,23 @@ internal sealed class ExtensionSession : IAsyncDisposable
     /// order — trust, lock, cache, compiler — is the same everywhere.
     /// </summary>
     internal SingleFileExtensionBuilder SingleFileBuilder => _singleFileBuilder;
+
+    /// <summary>
+    /// What the load of one extension ignored because the host owns it (a package's or the
+    /// directory's copy of the contract), or null when it shipped none: the row and the JSON's note.
+    /// </summary>
+    internal IgnoredHostCopy? IgnoredHostCopyOf(string extensionId) =>
+        _loader.IgnoredHostCopyOf(extensionId);
+
+    /// <summary>
+    /// Reloads one single-file extension (<c>/extensions reload &lt;id&gt;</c>): the session's builder
+    /// and the session's own trust prompt, so the question the preflight asks is the one this session
+    /// has been asking all along. The old build stays loaded when trust or the build refuses.
+    /// </summary>
+    internal ValueTask<SingleFileReloadOutcome> ReloadSingleFileAsync(
+        string id,
+        CancellationToken cancellationToken = default
+    ) => new(_loader.ReloadSingleFileAsync(id, _singleFileBuilder, _prompt, cancellationToken));
 
     /// <summary>The discovery and load failures this session continued past.</summary>
     internal IReadOnlyList<ExtensionSessionError> Errors { get; }

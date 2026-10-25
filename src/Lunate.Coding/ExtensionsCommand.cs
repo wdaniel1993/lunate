@@ -18,7 +18,7 @@ internal static class ExtensionsCommand
     internal const int ExitUsage = 2;
 
     internal const string Usage =
-        "Usage: lunate extensions [--json] | lunate extensions build <id|path> [--json]";
+        "Usage: lunate extensions [--json] | lunate extensions build <id|path> [--json] | lunate extensions reload <id|path> [--json]";
 
     internal static int Run(
         string[] args,
@@ -33,6 +33,20 @@ internal static class ExtensionsCommand
         if (args.Length > 0 && string.Equals(args[0], "build", StringComparison.Ordinal))
         {
             return ExtensionBuildCommand.Run(
+                args[1..],
+                workingDirectory,
+                output,
+                errors,
+                seams,
+                cancellationToken
+            );
+        }
+
+        // `reload` is the same service plus the load, so a headless run can prove the file it built is
+        // one this host can actually load.
+        if (args.Length > 0 && string.Equals(args[0], "reload", StringComparison.Ordinal))
+        {
+            return ExtensionReloadCommand.Run(
                 args[1..],
                 workingDirectory,
                 output,
@@ -103,7 +117,8 @@ internal static class ExtensionsCommand
                         descriptors,
                         results,
                         id => host.RegisteredCounts(id),
-                        singleFile: singleFile
+                        singleFile: singleFile,
+                        ignoredCopies: host.IgnoredHostCopyOf
                     )
                 );
                 output.Write('\n');
@@ -120,7 +135,8 @@ internal static class ExtensionsCommand
                         results,
                         id => host.RegisteredCounts(id),
                         cliMeasured: true,
-                        singleFile: singleFile
+                        singleFile: singleFile,
+                        ignoredCopies: host.IgnoredHostCopyOf
                     )
                 )
                 {

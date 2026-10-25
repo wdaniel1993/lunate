@@ -1,3 +1,4 @@
+using Lunate.Extensibility;
 using Lunate.Tui;
 
 namespace Lunate.Coding.Tests;
@@ -86,6 +87,49 @@ public sealed class ExtensionsSingleFileEndToEndTests
 
         Assert.Contains(
             "broken.cs (project, single file) invalid (no #:extension)",
+            host.LastFrame,
+            StringComparison.Ordinal
+        );
+        Assert.Empty(host.Client.Requests);
+
+        host.Console.SendText("/quit");
+        host.Console.SendEnter();
+        await run;
+    }
+
+    [Fact]
+    public async Task Extensions_reload_answers_for_an_id_no_file_declares()
+    {
+        using var temp = new TempDirectory();
+        string worktree = temp.File("worktree");
+        string extensionsRoot = Path.Combine(worktree, ".lunate", "extensions");
+        Directory.CreateDirectory(extensionsRoot);
+        File.WriteAllText(Path.Combine(extensionsRoot, "acme.cs"), Header);
+        using var host = new InteractiveSessionHost(
+            extensions: new ExtensionSeams
+            {
+                StorePath = temp.File("store"),
+                Log = new RecordingExtensionLog(),
+            },
+            workingDirectory: worktree
+        );
+        host.Console.Size = new ConsoleSize(600, 24);
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+
+        // The command is wired to the reload service and reports what the service reported, naming
+        // the extension: an id no file declares is a refusal, not a crash or a silent no-op.
+        host.Console.SendText("/extensions reload absent");
+        host.Console.SendEnter();
+        await InteractiveSessionCommandTests.WaitForFrameAsync(host, "was not reloaded");
+
+        Assert.Contains(
+            "extension 'absent' was not reloaded",
+            host.LastFrame,
+            StringComparison.Ordinal
+        );
+        Assert.Contains(
+            "is not a discovered single-file extension",
             host.LastFrame,
             StringComparison.Ordinal
         );

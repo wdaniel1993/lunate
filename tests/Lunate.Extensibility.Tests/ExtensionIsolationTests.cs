@@ -1,0 +1,53 @@
+using Lunate.Extensibility.Abstractions;
+
+namespace Lunate.Extensibility.Tests;
+
+/// <summary>
+/// Task 3.1 for the packaged runtime kind: an extension directory that carries a copy of a
+/// host-owned assembly loads against the host's copy (the contract types keep one identity) and the
+/// substitution is reported once, naming the copy. The single-file half of the same rule — a locked
+/// package that ships the contract — is held by <c>SingleFileIsolationTests</c>.
+/// </summary>
+public sealed class ExtensionIsolationTests
+{
+    private static readonly CancellationToken Ct = TestContext.Current.CancellationToken;
+
+    [Fact]
+    public async Task A_packaged_extension_that_ships_the_contract_loads_and_warns_once()
+    {
+        using var temp = new TempDirectory();
+        string directory = TestExtensions.InstallHelloExtension(temp, "hello");
+        File.Copy(
+            typeof(IExtensionFactory).Assembly.Location,
+            Path.Combine(directory, "Lunate.Extensibility.Abstractions.dll")
+        );
+        var log = new RecordingExtensionLog();
+        var loader = new ExtensionLoader(TestExtensions.Options(temp.Subdirectory("store"), log));
+        loader.Discover(temp.Root, "repo");
+
+        LoadedExtension loaded = await loader.Load(
+            "hello",
+            temp.Root,
+            "repo",
+            new FakeExtensionTrustPrompt(approve: true),
+            Ct
+        );
+
+        // The factory was found through the host's IExtensionFactory, which is the identity proof:
+        // a copy loaded beside it would have implemented a different interface. The instance is
+        // held to the same rule explicitly.
+        Assert.NotNull(loaded.Extension);
+        Assert.Contains(typeof(IExtension), loaded.Extension.GetType().GetInterfaces());
+
+        string warning = Assert.Single(
+            log.Messages,
+            message =>
+                message.Contains(
+                    "ignored the copy of Lunate.Extensibility.Abstractions",
+                    StringComparison.Ordinal
+                )
+        );
+        Assert.Contains("hello", warning, StringComparison.Ordinal);
+        Assert.Contains(directory, warning, StringComparison.Ordinal);
+    }
+}

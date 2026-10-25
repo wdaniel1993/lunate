@@ -122,7 +122,7 @@ public sealed class ExtensionLoadingTests
     {
         using var temp = new TempDirectory();
         string directory = TestExtensions.GlobalExtensionDirectory(temp, "empty");
-        TestExtensions.CopyFixture(directory, "Lunate.Extensibility.Abstractions.dll");
+        TestExtensions.CopyHostAssembly(directory, "Lunate.Extensibility.Abstractions.dll");
         TestExtensions.WriteManifest(
             directory,
             "empty",
@@ -150,11 +150,8 @@ public sealed class ExtensionLoadingTests
     {
         using var temp = new TempDirectory();
         string directory = TestExtensions.GlobalExtensionDirectory(temp, "many");
-        TestExtensions.CopyFixture(
-            directory,
-            "HelloExtension.Support.dll",
-            "Lunate.Extensibility.Abstractions.dll"
-        );
+        TestExtensions.CopyFixture(directory, "HelloExtension.Support.dll");
+        TestExtensions.CopyHostAssembly(directory, "Lunate.Extensibility.Abstractions.dll");
         TestExtensions.WriteManifest(
             directory,
             "many",

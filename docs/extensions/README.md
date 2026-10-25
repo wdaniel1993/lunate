@@ -41,7 +41,13 @@ rename its projects and namespaces. A new class library needs only the contract 
         <RootNamespace>HelloExtension</RootNamespace>
     </PropertyGroup>
     <ItemGroup>
-        <ProjectReference Include="../../src/Lunate.Extensibility.Abstractions/Lunate.Extensibility.Abstractions.csproj" />
+        <ProjectReference
+            Include="../../src/Lunate.Extensibility.Abstractions/Lunate.Extensibility.Abstractions.csproj"
+            Private="false"
+            ExcludeAssets="runtime"
+        />
+        <ProjectReference Include="../../src/Lunate.Agent/Lunate.Agent.csproj" Private="false" ExcludeAssets="runtime" />
+        <ProjectReference Include="../../src/Lunate.Ai/Lunate.Ai.csproj" Private="false" ExcludeAssets="runtime" />
     </ItemGroup>
     <ItemGroup>
         <None Update="extension.json" CopyToOutputDirectory="PreserveNewest" />
@@ -52,6 +58,13 @@ rename its projects and namespaces. A new class library needs only the contract 
 The contract is not published as a NuGet package in this version; reference the project (or a
 local build of it). The path above assumes the extension lives two directories below the Lunate
 repository root.
+
+The host owns `Lunate.Extensibility.Abstractions`, `Lunate.Agent` and `Lunate.Ai`, and loads them
+once, so every extension binds to those copies. `Private="false"` keeps them out of your output
+directory and `ExcludeAssets="runtime"` keeps them out of the deps file, while both still compile
+against. A copy in the output is ignored at load, with one line saying which copy and who shipped
+it — so keep these references as they are. `PrivateAssets="all"` is not a substitute: it also hides
+the `Lunate.Agent` types your signatures use.
 
 ### 2. Write the extension
 
@@ -125,7 +138,8 @@ cp bin/Release/net10.0/HelloExtension.dll \
 
 Copy any further dependencies next to the assembly. `Lunate.Extensibility.Abstractions`,
 `Lunate.Agent`, `Microsoft.Extensions.AI.Abstractions` and `System.Text.Json` are shared from the
-host and are never loaded from the extension folder.
+host and are never loaded from the extension folder: a copy shipped there anyway is ignored, and
+`/extensions` and the log say so once, naming what was dropped.
 
 There are two installation scopes:
 

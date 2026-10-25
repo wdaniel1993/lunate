@@ -17,8 +17,25 @@ internal static partial class ExtensionsView
     /// usable header carries the counts it declares.
     /// </summary>
     private static IEnumerable<string> SingleFileSegments(
-        IReadOnlyList<SingleFileExtension>? singleFile
-    ) => OrderedSingleFile(singleFile).Select(SingleFileSegment);
+        IReadOnlyList<SingleFileExtension>? singleFile,
+        Func<string, IgnoredHostCopy?>? ignoredCopies
+    ) =>
+        OrderedSingleFile(singleFile)
+            .Select(candidate =>
+                SingleFileSegment(candidate) + IgnoredCopyOf(candidate, ignoredCopies)
+            );
+
+    /// <summary>
+    /// The ignored-copy note on a single-file row, keyed by the id the loader loaded. Only a loaded
+    /// extension has one — a file that is built but not loaded has not met its packages yet.
+    /// </summary>
+    private static string IgnoredCopyOf(
+        SingleFileExtension candidate,
+        Func<string, IgnoredHostCopy?>? ignoredCopies
+    ) =>
+        candidate.Id is { } id && ignoredCopies?.Invoke(id) is { } copy
+            ? ", ignored its copy of " + copy
+            : string.Empty;
 
     private static IEnumerable<SingleFileExtension> OrderedSingleFile(
         IReadOnlyList<SingleFileExtension>? singleFile
@@ -156,7 +173,8 @@ internal static partial class ExtensionsView
         Func<string, ExtensionCounts> registeredCounts,
         Func<string, IReadOnlyList<HookTimings>>? hookTimings = null,
         Func<string, TimeSpan?>? remoteStart = null,
-        IReadOnlyList<SingleFileExtension>? singleFile = null
+        IReadOnlyList<SingleFileExtension>? singleFile = null,
+        Func<string, IgnoredHostCopy?>? ignoredCopies = null
     )
     {
         ArgumentNullException.ThrowIfNull(registeredCounts);
@@ -235,12 +253,23 @@ internal static partial class ExtensionsView
 
             node["hooks"] = counts.Hooks;
             node["services"] = counts.Services;
+            if (ignoredCopies?.Invoke(descriptor.Id) is { } ignored)
+            {
+                node["ignoredCopy"] = ignored.ToString();
+            }
+
             array.Add(node);
         }
 
         foreach (SingleFileExtension candidate in OrderedSingleFile(singleFile))
         {
-            array.Add(SingleFileNode(candidate));
+            JsonObject node = SingleFileNode(candidate);
+            if (candidate.Id is { } id && ignoredCopies?.Invoke(id) is { } ignored)
+            {
+                node["ignoredCopy"] = ignored.ToString();
+            }
+
+            array.Add(node);
         }
 
         return array.ToJsonString(JsonOptions);

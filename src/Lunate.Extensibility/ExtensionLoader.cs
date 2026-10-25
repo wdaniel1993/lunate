@@ -1,3 +1,4 @@
+using System.Runtime.Loader;
 using Lunate.Extensibility.Abstractions;
 using Lunate.Extensibility.Remote;
 
@@ -12,7 +13,7 @@ public sealed partial class ExtensionLoader
     );
     private readonly List<ExtensionDiscoveryError> _discoveryErrors = [];
     private readonly Dictionary<string, LoadedExtension> _loaded = new(StringComparer.Ordinal);
-    private readonly Dictionary<string, ExtensionLoadContext> _contexts = new(
+    private readonly Dictionary<string, AssemblyLoadContext> _contexts = new(
         StringComparer.Ordinal
     );
     private readonly Dictionary<string, ExtensionContext> _extensionContexts = new(
@@ -124,6 +125,8 @@ public sealed partial class ExtensionLoader
             return;
         }
 
+        _singleFileKeys.Remove(id);
+        _ignoredCopies.Remove(id);
         IReadOnlyList<string> removedTools = _tools.Unregister(id);
         _hooks.Unregister(id);
         await _backgroundServices.DropAsync(id).ConfigureAwait(false);
@@ -142,7 +145,7 @@ public sealed partial class ExtensionLoader
         _commandSources.Unregister(id);
         _declaredNotProvidedCommands.Remove(id);
         DropSubscriptions(id);
-        if (_contexts.Remove(id, out ExtensionLoadContext? context))
+        if (_contexts.Remove(id, out AssemblyLoadContext? context))
         {
             context.Unload();
         }
@@ -349,14 +352,9 @@ public sealed partial class ExtensionLoader
                 continue;
             }
 
-            if (!ExtensionApi.IsCompatible(manifest.ApiVersion))
+            if (ExtensionApiGate.RefuseRange(manifest.Id, manifest.ApiVersion) is { } apiRefusal)
             {
-                _discoveryErrors.Add(
-                    new ExtensionDiscoveryError(
-                        manifestPath,
-                        $"extension '{manifest.Id}' requires apiVersion '{manifest.ApiVersion}' but the current API version is {ExtensionApi.Current}."
-                    )
-                );
+                _discoveryErrors.Add(new ExtensionDiscoveryError(manifestPath, apiRefusal));
                 continue;
             }
 

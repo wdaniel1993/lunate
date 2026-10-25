@@ -164,6 +164,27 @@ internal static class LayeringChecker
             ("UiShowcaseExtension.Tests", "UiShowcaseExtension"),
         };
 
+    /// <summary>
+    /// The assemblies the host loads once and every extension binds to: the contract, and the host
+    /// types its signatures expose (<c>ToolContext</c>, <c>ToolResult</c>, the provider surface).
+    /// An extension may reference them — compile-only, never copied — and nothing else of the host.
+    /// </summary>
+    public static IReadOnlySet<string> ExtensionHostAssemblies { get; } =
+        new HashSet<string> { "Lunate.Extensibility.Abstractions", "Lunate.Agent", "Lunate.Ai" };
+
+    /// <summary>
+    /// An extension is a project outside the host's own <c>Lunate.*</c> set — a sample, the template,
+    /// a test extension. Its own test project is not: it runs the extension in-process, so it needs
+    /// the host's assemblies on disk.
+    /// </summary>
+    public static bool IsExtensionProject(string name) =>
+        !name.StartsWith("Lunate.", StringComparison.Ordinal)
+        && !name.EndsWith(".Tests", StringComparison.Ordinal);
+
+    /// <summary>Whether an edge is an extension reaching for one of the host's shared assemblies.</summary>
+    public static bool IsAllowedExtensionReference((string From, string To) reference) =>
+        IsExtensionProject(reference.From) && ExtensionHostAssemblies.Contains(reference.To);
+
     public static IReadOnlySet<string> AllowedAgentRuntimePackages { get; } =
         new HashSet<string> { "Microsoft.Extensions.AI.Abstractions" };
 
@@ -175,7 +196,7 @@ internal static class LayeringChecker
 
         foreach (var reference in references)
         {
-            if (!AllowedReferences.Contains(reference))
+            if (!AllowedReferences.Contains(reference) && !IsAllowedExtensionReference(reference))
             {
                 violations.Add($"{reference.From} -> {reference.To} is not an allowed reference");
             }

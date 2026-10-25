@@ -247,6 +247,71 @@ host's binding context. The overlap that MSBL001 reacts to is therefore real in 
 not reference `NuGet.Frameworks`. The behavioural test stays the guard: if a future Roslyn loads
 MSBuild in process, this test is where it shows up.
 
+## Phase 3 implementation notes
+
+Phase 3 is the runtime: loading a built file, the isolation rule made mechanical, the API gate, and
+reload through the lease path (tasks 3.1–3.6). Five decisions had to be made concretely.
+
+**One activation path, two ways in.** A realistic reload has to register everything a load registers
+— factory, cross-checks, tools, commands, hooks, services, secrets, the tool-set notification — or a
+swapped-in build behaves differently from a loaded one. The tail of `ExtensionLoader.Load` therefore
+moved into `ActivateAsync`, and `LoadSingleFileAsync` calls it too: the single-file path differs only
+in *where the assembly and its dependencies come from*. An extension descriptor for a single file is
+synthesized from its header (id, version, tools, commands, hooks, services, capabilities), so the
+existing manifest cross-checks and the registries see one kind of extension; the directory is the
+build's, because that is where the assembly and its companions live. Model providers stay empty: the
+header declares provider ids, and the descriptors are the code's to register.
+
+**The isolation rule needed a map, not a `Load` method.** `ExtensionLoadContext` already answered
+`null` for host-owned names, which is why a packaged copy was never loaded — but it could not say
+*what* it dropped, and a single-file build has to resolve its dependencies from the assets a lock
+recorded rather than from a directory. `SingleFileExtensionLoadContext` builds a probe map from the
+build's manifest (runtime assets by simple name, native assets by file name, all package-relative),
+records the host-owned names it refused to map and who shipped them, and falls back to the build
+directory. The packaged context gained the same record by checking its directory once. One record,
+`IgnoredHostCopy`, is spoken twice: the load logs one line and `/extensions` appends it to the row
+(`ignoredCopy` in `--json`) — the spec asks for the warning where the user looks, and a log line a
+terminal has scrolled past is not that.
+
+**The gate's evidence is a version, and the two numbers had to be one.** A single-file build records
+the `ExtensionApi` it compiled against in `build.json`; a packaged DLL carries its Abstractions
+assembly reference in metadata; a manifest declares a range. All three reach `ExtensionApiGate`, which
+refuses anything above `ExtensionApi.Current` with `requires Lunate ≥ x.y but this is Lunate x.z` and
+accepts at or below — so a file built before a bump still loads. That comparison only means something
+if the contract assembly's version *is* the API version, which it was not: `Lunate.Extensibility.
+Abstractions` was versioned 1.2.0 while `ExtensionApi.Current` was 1.11.0, so every real reference
+compared below the gate and only a synthetic one could trip it. The assembly is now 1.11.0 and
+`ExtensionApiTests` holds the two equal; an API bump is one step, not two.
+
+A note for whoever writes the next packaged-gate test: **a `const` from another assembly is inlined
+and leaves no AssemblyRef**. The first version of `PackagedApiGateTests` returned
+`ExtensionApi.Current`, compiled cleanly, and produced an assembly with no reference to the contract
+at all — the gate correctly found nothing. It now returns `typeof(ContractMarker)`, which is the
+reference real code has.
+
+**Reload builds first because the user is looking.** `/extensions reload <id>` calls
+`SingleFileExtensionBuilder` — the same service `lunate extensions build` calls — before it cancels,
+unloads or loads anything. A failed compile writes no build directory and does not move `builds.json`,
+so the old build is still the one the entry names; the reload returns the diagnostic and the extension
+keeps answering. Only a successful build reaches the swap, which cancels through
+`CommandSourceRegistry` (one notice per command id, "is being reloaded"), drains for
+`ReloadDrainBound` (2 s, one named constant the tests derive from), unloads, loads, and fires
+`ToolsChanged` once. The 2 s is shorter than the 5 s unload bound on purpose: a reload happens while
+the user waits and has a build to report, while an unload is a session ending and can afford to be
+patient with a handler that is finishing.
+
+**`ToolsChanged` fires on every reload, not on a changed count.** An unload-with-load that keeps the
+same tool count registers *different* tool objects, so the count is the wrong test — the harness's
+snapshot would keep pointing at the unloaded context. The reload suppresses the load's own
+notification and fires afterwards unconditionally; a test observes the hook and asserts that at
+dispatch the loader already reports the new build key and a registered tool for the extension.
+
+The headless `lunate extensions reload <id|path>` is deliberately a *verifying* load: it preflights,
+builds, loads in register-only mode (`startSession: false`, so nothing starts and nothing is
+notified), unloads, and reports the key. It cannot swap anything — there is no session — but it can
+prove that the build a headless run produced is one this host will load, which `extensions build`
+cannot.
+
 ## Risks
 
 - **Analyzers and generators are code execution at build time.** Off unless `#:generators on`; the opt-in is in the digest, so toggling it re-asks, and the prompt only mentions build-time code when it applies.
