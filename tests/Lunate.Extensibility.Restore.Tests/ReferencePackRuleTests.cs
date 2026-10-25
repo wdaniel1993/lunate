@@ -5,8 +5,8 @@ namespace Lunate.Extensibility.Restore.Tests;
 /// <summary>
 /// The reference-pack version rule (spec: "Reference assemblies for compilation"): the exact
 /// runtime version when the feed publishes it, otherwise the lowest published pack of the same
-/// major/minor at or above the runtime. A pack older than the runtime is never chosen, because it
-/// cannot describe the runtime the host is running on.
+/// major/minor at or above the runtime, and as a last resort the highest pack below it when the
+/// runtime is ahead of the feed (a staged patch whose pack is not published yet).
 /// </summary>
 public sealed class ReferencePackRuleTests
 {
@@ -37,9 +37,35 @@ public sealed class ReferencePackRuleTests
     }
 
     [Fact]
-    public void A_pack_older_than_the_runtime_is_never_chosen()
+    public void A_runtime_ahead_of_the_feed_falls_back_to_the_highest_pack_below_it()
     {
-        Assert.Null(ReferencePackRule.Select(new Version(10, 0, 9), ["10.0.4", "10.0.8"]));
+        (string Version, string Rule)? selected = ReferencePackRule.Select(
+            new Version(10, 0, 14),
+            ["10.0.4", "10.0.8", "10.0.13"]
+        );
+
+        Assert.NotNull(selected);
+        Assert.Equal("10.0.13", selected.Value.Version);
+        Assert.Equal(ReferencePackRules.NearestBelow, selected.Value.Rule);
+    }
+
+    [Fact]
+    public void A_pack_below_the_runtime_loses_to_one_at_or_above_it()
+    {
+        (string Version, string Rule)? selected = ReferencePackRule.Select(
+            new Version(10, 0, 14),
+            ["10.0.13", "10.0.15"]
+        );
+
+        Assert.NotNull(selected);
+        Assert.Equal("10.0.15", selected.Value.Version);
+        Assert.Equal(ReferencePackRules.NearestAtLeast, selected.Value.Rule);
+    }
+
+    [Fact]
+    public void An_older_pack_of_another_minor_is_not_a_last_resort()
+    {
+        Assert.Null(ReferencePackRule.Select(new Version(10, 0, 14), ["10.1.2", "9.9.9"]));
     }
 
     [Fact]
