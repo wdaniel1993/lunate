@@ -1,6 +1,6 @@
 ## Purpose
 
-Installing, updating and removing distributed packages: what a package has to contain, where its content lands for each scope, how an install is recorded and verified, and what the four `lunate` commands print. A package carries extensions and skills; it is never a second trust decision.
+Installing, upgrading and removing distributed packages: what a package has to contain, how its dependencies are resolved, where its content lands for each scope, how an install is recorded and verified, and what the three `lunate` commands print. A package carries extensions and skills; it is never a second trust decision.
 
 ## ADDED Requirements
 
@@ -34,7 +34,7 @@ A package SHALL be identified by a NuGet package id and, when given, one exact v
 
 ### Requirement: A package's layout
 
-The package manifest SHALL accept `schema` (the integer `1`), `extension` (one package-relative directory) and `skills` (one package-relative directory), SHALL ignore unknown fields, and SHALL refuse a known field of the wrong type naming the field. Every path a manifest names, and every entry the archive yields, SHALL resolve inside the package root: a rooted path, a `..` segment or an entry whose resolved path leaves the root SHALL be refused, naming the entry. The `extension` directory SHALL contain an `extension.json` that parses under the existing manifest rules, whose `apiVersion` range the running host meets, and whose `entryAssembly` exists in that directory; a violation SHALL be refused with the existing wording (including `requires Lunate ≥ x.y` for a version above the host). Each immediate subdirectory of `skills` SHALL be one skill holding a `SKILL.md` whose frontmatter parses and whose name equals the directory name; a malformed one SHALL be refused, naming the directory and the reason, and two skills with one name SHALL be refused. A package that declares NuGet dependencies SHALL be refused, naming them, because a packaged extension is self-contained and a dependency that is not installed must not look installed. Folders outside the declared kinds — `lib/`, `build/`, `buildTransitive/` — SHALL NOT be installed and SHALL be named once in the output. A package SHALL be refused, before extraction, when it holds more than 20,000 entries or expands beyond 512 MiB, naming both the limit and the observed value.
+The package manifest SHALL accept `schema` (the integer `1`), `extension` (one package-relative directory) and `skills` (one package-relative directory), SHALL ignore unknown fields, and SHALL refuse a known field of the wrong type naming the field. Every path a manifest names, and every entry the archive yields, SHALL resolve inside the package root: a rooted path, a `..` segment or an entry whose resolved path leaves the root SHALL be refused, naming the entry. The `extension` directory SHALL contain an `extension.json` that parses under the existing manifest rules, whose `apiVersion` range the running host meets, and whose `entryAssembly` exists in that directory; a violation SHALL be refused with the existing wording (including `requires Lunate ≥ x.y` for a version above the host). Each immediate subdirectory of `skills` SHALL be one skill holding a `SKILL.md` whose frontmatter parses and whose name equals the directory name; a malformed one SHALL be refused, naming the directory and the reason, and two skills with one name SHALL be refused. Folders outside the declared kinds — `lib/`, `build/`, `buildTransitive/` — SHALL NOT be installed and SHALL be named once in the output. A package SHALL be refused, before extraction, when it holds more than 20,000 entries or expands beyond 512 MiB, naming both the limit and the observed value.
 
 #### Scenario: An entry that escapes the package is refused
 
@@ -48,12 +48,6 @@ The package manifest SHALL accept `schema` (the integer `1`), `extension` (one p
 - **WHEN** it is installed on a `1.x` host
 - **THEN** it is refused with `requires Lunate ≥ 2.0.0 but this is Lunate <version>`, and nothing is written
 
-#### Scenario: A declared dependency is refused, not ignored
-
-- **GIVEN** a bundle package that declares a NuGet dependency on `Octokit`
-- **WHEN** it is installed
-- **THEN** it is refused, naming `Octokit` and saying that a package must carry its own files
-
 #### Scenario: Undeclared folders are ignored and named
 
 - **GIVEN** a package that carries a `build/` folder beside its declared content
@@ -66,15 +60,43 @@ The package manifest SHALL accept `schema` (the integer `1`), `extension` (one p
 - **WHEN** it is installed
 - **THEN** it is refused, naming the limit and the observed size, and no file is extracted
 
+### Requirement: Dependency resolution
+
+A package's declared NuGet dependencies SHALL be resolved through the existing restore pipeline — the same resolver, conformance corpus and global packages folder, the same lock format with its graph and toolset halves, and the same exclusion of host-owned assemblies from the graph — and the resolved assemblies SHALL be materialised in the extension directory beside the entry assembly, which is the layout the packaged loader binds. The lock SHALL be written as `<root>/cache/extensions/<extension-id>/extension.lock.json`, the location every single-file lock already uses, and SHALL NOT be a second file type or a second location. Install SHALL NOT compile anything and SHALL write no build. A dependency that no configured feed serves, or a graph the resolver cannot settle, SHALL be refused before anything is written, naming the dependency and the feeds tried, and a package SHALL NOT be reported installed with a partial closure.
+
+#### Scenario: A declared dependency is resolved and materialised
+
+- **GIVEN** a packaged extension that declares `Octokit` and a feed that serves it
+- **WHEN** it is installed
+- **THEN** `Octokit` and its own dependencies are materialised beside the entry assembly, the lock names the exact versions, and a session loads the extension
+
+#### Scenario: An unresolvable dependency is refused, not half-installed
+
+- **GIVEN** a packaged extension declaring a dependency that no configured feed serves
+- **WHEN** it is installed
+- **THEN** it is refused naming the dependency and the feeds tried, and no extension directory and no record exist
+
+#### Scenario: Host-owned assemblies stay out of the graph
+
+- **GIVEN** a package whose dependency closure would include the host's own contract assembly
+- **WHEN** it is installed
+- **THEN** the lock's graph does not name that assembly and the load uses the host's copy
+
+#### Scenario: Offline resolves the whole closure or nothing
+
+- **GIVEN** the package nupkg and one of its dependencies in the global packages folder, and another dependency missing
+- **WHEN** `lunate install --offline` runs
+- **THEN** it fails naming the missing dependency, and no content or record is written
+
 ### Requirement: Install runs no package code and records no trust
 
-`lunate install` SHALL download, verify and write files, and SHALL NOT load an assembly, run a factory, start a process, dispatch a hook or write any trust section of the trust store. A user-scope install SHALL be trusted the way a global extension and a user skill already are, so it prompts nothing. A project-scope install SHALL stay untrusted until the existing questions are answered: the project extension question for the extension directory and the project skills question for the installed skills. Install SHALL only change the pending set that `lunate trust` lists.
+`lunate install` SHALL download, resolve, verify and write files, and SHALL NOT load an assembly, run a factory, start a process, dispatch a hook or write any trust section of the trust store. A user-scope install SHALL be trusted the way a global extension and a user skill already are, so it prompts nothing. A project-scope install SHALL stay untrusted until the existing questions are answered: the project extension question for the extension directory and the project skills question for the installed skills. Install SHALL only change the pending set that `lunate trust` lists, and that pending set SHALL carry the provenance the questions show.
 
 #### Scenario: A project install leaves the extension untrusted
 
 - **GIVEN** a repository with no trust record and a project install of a bundle carrying an extension
 - **WHEN** `lunate install --project` runs and then a session starts
-- **THEN** the install wrote no trust record, the session asks the existing extension question naming the id, version and directory, and `/extensions` reads `trust-denied` until it is answered
+- **THEN** the install wrote no trust record, the session asks the existing extension question naming the id, version, directory and source package, and `/extensions` reads `trust-denied` until it is answered
 
 #### Scenario: Install never runs the extension's code
 
@@ -86,7 +108,7 @@ The package manifest SHALL accept `schema` (the integer `1`), `extension` (one p
 
 - **GIVEN** a project install of a bundle carrying an extension and two skills
 - **WHEN** `lunate trust` runs
-- **THEN** the extension and the skills appear among the pending decisions, and `lunate trust --yes` records them so a later session asks nothing
+- **THEN** the extension and the skills appear among the pending decisions with the source package, and `lunate trust --yes` records them so a later session asks nothing
 
 #### Scenario: A user install asks nothing
 
@@ -96,7 +118,7 @@ The package manifest SHALL accept `schema` (the integer `1`), `extension` (one p
 
 ### Requirement: Where installed content lands
 
-A user-scope install SHALL write under the state root: the record at `<root>/packages/<package-id>/install.json`, the extension at `<root>/extensions/<extension-id>/`, and each skill at `<root>/skills/<name>/`. A project-scope install SHALL write the same three kinds under `<worktree>/.lunate/`. Install SHALL NOT write to `~/.agents/skills`, SHALL NOT write under `<root>/cache/`, and SHALL NOT copy anything into the global packages folder beyond the nupkg the download put there. The package-id directory name SHALL be the lowercased package id, because NuGet ids are case-insensitive and filesystems may be too, while the record SHALL carry the canonical spelling. With `LUNATE_HOME` set, every user-scope path SHALL resolve under it and nothing SHALL be written under the profile, and the existing store guard SHALL run before the first write, exactly as it does for every command that writes the store.
+A user-scope install SHALL write under the state root: the record at `<root>/packages/<package-id>/install.json`, the extension at `<root>/extensions/<extension-id>/`, and each skill at `<root>/skills/<name>/`. A project-scope install SHALL write the content into the repository — the extension at `<worktree>/.lunate/extensions/<extension-id>/` and each skill at `<worktree>/.agents/skills/<name>/` — so the content can be committed and reaches teammates through version control, while its record SHALL stay in the state root at `<root>/packages/<package-id>/install.json` and SHALL name the worktree it belongs to. A project install SHALL NOT write to `<root>/skills`, SHALL NOT write under `<root>/cache/extensions/<extension-id>/builds/`, and SHALL NOT copy anything into the global packages folder beyond the nupkgs the download and the dependency walk put there. The package-id directory name SHALL be the lowercased package id, because NuGet ids are case-insensitive and filesystems may be too, while the record SHALL carry the canonical spelling. With `LUNATE_HOME` set, every user-scope path SHALL resolve under it and nothing SHALL be written under the profile, and the existing store guard SHALL run before the first write, exactly as it does for every command that writes the store.
 
 #### Scenario: A user install follows the state root
 
@@ -104,23 +126,23 @@ A user-scope install SHALL write under the state root: the record at `<root>/pac
 - **WHEN** a user-scope install runs
 - **THEN** the record, the extension and the skills are all under that directory and nothing is written under the profile
 
-#### Scenario: A project install writes only under the worktree
+#### Scenario: A project install writes committable content and a local record
 
-- **GIVEN** a repository worktree with no `.lunate/` directory
+- **GIVEN** a repository worktree with no `.lunate/` directory and a state root outside it
 - **WHEN** `lunate install --project` runs
-- **THEN** every written path is under `<worktree>/.lunate/`, the record included
+- **THEN** the extension and the skills are under `<worktree>/.lunate/extensions/` and `<worktree>/.agents/skills/`, the record is under the state root and names the worktree, and `git status` shows the content as untracked additions
 
-#### Scenario: The shared skill convention is untouched
+#### Scenario: A project record does not follow the content to another worktree
 
-- **GIVEN** a user install of a bundle carrying skills
-- **WHEN** `~/.agents/skills` is compared before and after
-- **THEN** it is unchanged
+- **GIVEN** a project install in one worktree
+- **WHEN** `lunate packages` runs in a second worktree of the same repository
+- **THEN** the package is not listed as installed there
 
 #### Scenario: The build cache is untouched
 
 - **GIVEN** a user install
-- **WHEN** `<root>/cache/` is compared before and after
-- **THEN** it is unchanged, and `lunate cache prune` leaves the install alone
+- **WHEN** `<root>/cache/extensions/<extension-id>/builds/` is compared before and after
+- **THEN** it is unchanged, and `lunate cache prune` leaves the install's lock and content alone
 
 #### Scenario: A store inside the workspace is refused
 
@@ -130,13 +152,13 @@ A user-scope install SHALL write under the state root: the record at `<root>/pac
 
 ### Requirement: The install record
 
-Each installed package SHALL have one record at `<scope>/packages/<package-id>/install.json` with two halves: `package` — the sources used, the canonical package id, the exact version, the nupkg's SHA-512 and the archive's file list — and `content` — the extension id and version when one was installed, the skill names, and every written path relative to the scope root with its size and SHA-256. It SHALL also carry the scope, the install time (ISO 8601, invariant) and an integrity hash over its own canonical bytes, computed with that field empty. Every path in the record SHALL be relative to the scope root; a record naming an absolute path or a path that resolves outside the root SHALL be refused as `broken`. A record whose integrity hash does not answer for its contents SHALL be reported as `broken` and SHALL NOT be used to uninstall, update or trust anything, except that `--force` may act on one whose paths are all confined. Writing SHALL be atomic per file, and the record SHALL be written last, so a record that exists names content that exists. There SHALL be no separate lock file: the single-file lock exists so a compile never re-resolves, and nothing here compiles.
+Each installed package SHALL have one record at `<root>/packages/<package-id>/install.json` with two halves: `package` — the sources used, the canonical package id, the exact version, the nupkg's SHA-512, the archive's file list and the extension id whose cache entry holds the dependency lock — and `content` — the extension id and version when one was installed, the skill names, and every written path relative to the scope root with its size and SHA-256. It SHALL also carry the scope, the worktree when the scope is project, the install time (ISO 8601, invariant) and an integrity hash over its own canonical bytes, computed with that field empty. Every path in the record SHALL be relative to the scope root; a record naming an absolute path or a path that resolves outside the root SHALL be refused as `broken`. A record whose integrity hash does not answer for its contents SHALL be reported as `broken` and SHALL NOT be used to uninstall or trust anything, except that `--force` may act on one whose paths are all confined. Writing SHALL be atomic per file, and the record SHALL be written last, so a record that exists names content that exists. The dependency lock SHALL NOT be duplicated into the record: the record names the lock's location, and the lock remains the existing `extension.lock.json`.
 
 #### Scenario: The record names everything that was written
 
 - **GIVEN** a completed install of a bundle carrying an extension and two skills
 - **WHEN** the record is read
-- **THEN** `content` lists the extension directory and every file under it, both skill directories and their files, each with a size and a hash
+- **THEN** `content` lists the extension directory and every file under it, both skill directories and their files, each with a size and a hash, and `package` names the lock's cache entry
 
 #### Scenario: A hand-edited record is refused
 
@@ -172,49 +194,43 @@ The default scope SHALL be user and `--project` SHALL select the current worktre
 - **WHEN** the project install runs
 - **THEN** it succeeds, warns once naming the winner, and the skill index lists one `review`
 
-### Requirement: Pinning and update
+### Requirement: Pinning and upgrade
 
-An install SHALL record the exact version it resolved and SHALL never re-resolve on its own. Installing a different version of an installed package SHALL behave exactly like a pinned update: staging, replace, record last. A bare `install` or `update` SHALL resolve the latest stable version only; an explicit prerelease version SHALL be accepted when named exactly. There SHALL be no automatic update, no background version check and no version check at session start. `lunate update <id>` SHALL resolve the latest stable version on the configured feeds, download it, and replace the installed content; `lunate update <id>@<version>` SHALL move to that exact version, including a downgrade; `lunate update --all` SHALL update every package in the selected scope. An update SHALL download and verify into a staging directory, replace the recorded paths, and write the record last, so a failure at any point before the record write leaves the previous install's content and record byte-identical. A package that is no longer on any feed SHALL fail the update, naming the package and the feeds tried, and SHALL remove nothing. An update that would collide under the scope rules SHALL be refused before anything is replaced.
+An install SHALL record the exact version it resolved and SHALL never re-resolve on its own. There SHALL be no automatic update, no background version check and no version check at session start, and no separate update command in this version: installing a different version of an installed package SHALL be the upgrade, and SHALL behave as a pinned replacement — download, verify and resolve into `<root>/packages/<package-id>/staging/`, remove the previously recorded paths through the old record, write the new content, then write the lock and the record, record last — so a failure at any point before the record write leaves the previous install's content and record byte-identical. A bare `install` SHALL resolve the latest stable version only; an explicit prerelease version SHALL be accepted when named exactly. A package that is no longer on any feed SHALL fail, naming the package and the feeds tried, and SHALL remove nothing. An install that would collide under the scope rules SHALL be refused before anything is replaced. An upgrade that changes the package identity or the content SHALL change the trust digest and therefore re-prompt at the project scope.
 
-#### Scenario: An update replaces the content and the record
-
-- **GIVEN** `Acme.Toolkit@1.4.2` installed
-- **WHEN** `lunate update Acme.Toolkit` finds `1.5.0`
-- **THEN** the content and the record name `1.5.0`, and the record's integrity hash answers for the new bytes
-
-#### Scenario: A failed update keeps the previous install
-
-- **GIVEN** `Acme.Toolkit@1.4.2` installed
-- **WHEN** an update fails while downloading
-- **THEN** the installed content and the record are unchanged, and the failure names the package and the reason
-
-#### Scenario: A vanished package removes nothing
-
-- **GIVEN** an installed package that the feed no longer serves
-- **WHEN** `lunate update` runs for it
-- **THEN** it fails naming the package and the feeds tried, and the install is untouched
-
-#### Scenario: A pinned update may go backwards
-
-- **GIVEN** `Acme.Toolkit@1.5.0` installed
-- **WHEN** `lunate update Acme.Toolkit@1.4.2` runs
-- **THEN** `1.4.2` is installed and recorded, with no question asked
-
-#### Scenario: Installing a different version is an update
+#### Scenario: A newer version replaces the old one in place
 
 - **GIVEN** `Acme.Toolkit@1.4.2` installed
 - **WHEN** `lunate install Acme.Toolkit@1.5.0` runs
-- **THEN** `1.5.0` replaces the content and the record under the same staging and commit rules as an update
+- **THEN** the 1.4.2 content is removed through its record, the 1.5.0 content and record are written, and no file from 1.4.2 remains
+
+#### Scenario: A failed upgrade keeps the previous install
+
+- **GIVEN** `Acme.Toolkit@1.4.2` installed
+- **WHEN** the upgrade fails while downloading or resolving dependencies
+- **THEN** the installed content and the record are unchanged, and the failure names the package and the reason
+
+#### Scenario: A pinned upgrade may go backwards
+
+- **GIVEN** `Acme.Toolkit@1.5.0` installed
+- **WHEN** `lunate install Acme.Toolkit@1.4.2` runs
+- **THEN** `1.4.2` is installed and recorded
+
+#### Scenario: An upgraded package re-prompts at the project scope
+
+- **GIVEN** a trusted project install of `Acme.Toolkit@1.4.2`
+- **WHEN** `lunate install Acme.Toolkit@1.5.0 --project` runs and a session starts
+- **THEN** the trust question is asked again, naming `Acme.Toolkit@1.5.0`
 
 ### Requirement: Uninstall
 
-`lunate uninstall <package-id | extension-id>` SHALL delete exactly the paths the record lists and the record's own directory, then remove the directories the install created that are now empty, and SHALL NOT delete anything else. It SHALL accept an extension id the record names when exactly one record matches, and SHALL refuse an ambiguous one, naming the candidates. It SHALL refuse, naming the files, when a recorded file's hash no longer matches, and SHALL proceed with `--force`. Files inside a directory the package created but did not write SHALL be left and named, with a line saying the directory is not empty and where it is. Trust records SHALL NOT be touched: trust is a decision about bytes at a path, so removing the content does not revoke it and an identical reinstall keeps it. A session that already loaded the extension SHALL keep it until the process exits; the next session sees the content gone.
+`lunate uninstall <package-id | extension-id>` SHALL delete exactly the paths the record lists and the record's own directory, then remove the directories the install created that are now empty, and SHALL NOT delete anything else. It SHALL accept an extension id the record names when exactly one record matches, and SHALL refuse an ambiguous one, naming the candidates. It SHALL refuse, naming the files, when a recorded file's hash no longer matches, and SHALL proceed with `--force`. Files inside a directory the package created but did not write SHALL be left and named, with a line saying the directory is not empty and where it is. The dependency lock SHALL be left in place: it is the record of a resolution, not installed content, and a reinstall reuses it. Trust records SHALL NOT be touched: trust is a decision about bytes at a path, so removing the content does not revoke it and an identical reinstall keeps it. A session that already loaded the extension SHALL keep it until the process exits; the next session sees the content gone.
 
 #### Scenario: Uninstall removes what was written and nothing else
 
 - **GIVEN** an installed bundle carrying an extension and two skills
 - **WHEN** `lunate uninstall Acme.Toolkit` runs
-- **THEN** the extension directory, the two skill directories and the record are gone, and the nupkg in the packages folder is untouched
+- **THEN** the extension directory, the two skill directories and the record are gone, and the nupkgs and the lock are untouched
 
 #### Scenario: A hand-added file is left and named
 
@@ -236,11 +252,11 @@ An install SHALL record the exact version it resolved and SHALL never re-resolve
 
 ### Requirement: Failure, offline and private feeds
 
-Install and update SHALL be all-or-nothing per command: the record is the commit point, and a failed command SHALL leave no content that no record names. Uninstall SHALL delete the record last, so a failed uninstall still leaves a record that describes what remains. `--offline` SHALL resolve only from the global packages folder, SHALL make no feed request, and SHALL fail naming the package and the packages folder (`NUGET_PACKAGES` when set, the default otherwise) when the exact version is not there. Feeds and credentials SHALL come from NuGet's own configuration chain rooted at the working directory, so a repository's `nuget.config` applies to a project install and the user's applies to a user install; there SHALL be no interactive credential prompt. An authentication failure SHALL name the source and the configuration file to fix. An id that no configured feed serves, or a version that id does not publish, SHALL fail naming the id, the version and the feeds tried, and SHALL write nothing. `--force` SHALL repair an install whose content is partial or changed by rewriting the recorded paths from the recorded version's nupkg.
+Install and upgrade SHALL be all-or-nothing per command: the record is the commit point, and a failed command SHALL leave no content that no record names. Uninstall SHALL delete the record last, so a failed uninstall still leaves a record that describes what remains. `--offline` SHALL resolve the package and its whole dependency closure from the global packages folder only, SHALL make no feed request, and SHALL fail naming the package, the missing dependency and the packages folder (`NUGET_PACKAGES` when set, the default otherwise) when the exact versions are not all there. Feeds and credentials SHALL come from NuGet's own configuration chain rooted at the working directory, so a repository's `nuget.config` applies to a project install and the user's applies to a user install; there SHALL be no interactive credential prompt. An authentication failure SHALL name the source and the configuration file to fix. An id that no configured feed serves, or a version that id does not publish, SHALL fail naming the id, the version and the feeds tried, and SHALL write nothing. `--force` SHALL repair an install whose content is partial or changed by rewriting the recorded paths from the recorded version's nupkg and lock.
 
 #### Scenario: Offline installs from a warm packages folder
 
-- **GIVEN** the exact nupkg already in `NUGET_PACKAGES` and the observer on the feed seam
+- **GIVEN** the exact nupkg and every dependency nupkg already in `NUGET_PACKAGES` and the observer on the feed seam
 - **WHEN** `lunate install --offline` runs
 - **THEN** the install completes and the observer records zero feed requests
 
@@ -270,13 +286,13 @@ Install and update SHALL be all-or-nothing per command: the record is the commit
 
 ### Requirement: Install output and `--dry-run`
 
-`lunate install` SHALL print, before writing: the package id in its canonical spelling, the exact version, the source it came from, the nupkg's SHA-512, the size, the extension id and version when one is carried, and the skill names — then one line saying what was written and where. Install SHALL print nothing to stdout on a failure, the reason on stderr, and exit 1; when the package's identity was resolved before the failure, the reason SHALL carry the id, the version and the source. A usage error SHALL exit 2; a successful install and an already-installed version SHALL exit 0. `--dry-run` SHALL print the same identity and contents, write nothing, and exit 0. `--json` SHALL print one object carrying the same fields, canonical newlines, invariant numbers and no colour. `lunate update` and `lunate uninstall` SHALL follow the same printing and exit-code rules for what they did, with `--json` printing one object naming what changed.
+`lunate install` SHALL print, before writing: the package id in its canonical spelling, the exact version, the source it came from, the nupkg's SHA-512, the size, the extension id and version when one is carried, the skill names, and the dependency closure with each resolved version — then one line saying what was written and where. Install SHALL print nothing to stdout on a failure, the reason on stderr, and exit 1; when the package's identity was resolved before the failure, the reason SHALL carry the id, the version and the source. A usage error SHALL exit 2; a successful install and an already-installed version SHALL exit 0. `--dry-run` SHALL print the same identity, contents and closure, resolve nothing into the store, write nothing, and exit 0. `--json` SHALL print one object carrying the same fields, canonical newlines, invariant numbers and no colour. `lunate uninstall` SHALL follow the same printing and exit-code rules for what it did, with `--json` printing one object naming what changed.
 
 #### Scenario: Dry-run prints the identity and writes nothing
 
 - **GIVEN** a bundle reachable on a configured feed
 - **WHEN** `lunate install --dry-run` runs
-- **THEN** the id, version, source, SHA-512, extension id and skill names print, and no file or record is written
+- **THEN** the id, version, source, SHA-512, extension id, skill names and dependency versions print, and no file or record is written
 
 #### Scenario: A refusal carries the identity it resolved
 
@@ -288,11 +304,11 @@ Install and update SHALL be all-or-nothing per command: the record is the commit
 
 - **GIVEN** a completed install
 - **WHEN** the same install runs a second time with `--json` and nothing has changed
-- **THEN** the object carries the id, version, source, SHA-512, extension id, skill names, scope, the written paths and that it was already installed
+- **THEN** the object carries the id, version, source, SHA-512, extension id, skill names, dependency versions, scope, the written paths and that it was already installed
 
 ### Requirement: The `lunate packages` view
 
-`lunate packages [--json] [--verify]` SHALL list every installed package this working directory can see — the user scope and the current worktree's project scope — one line each, ordered by scope then package id, carrying the canonical id, the version, the scope, and what it provides (the extension id and the skill names). `--verify` SHALL recompute each recorded file's hash and append the count of changed and missing files, and SHALL exit 3 when any record is `broken`, lists a file whose hash changed, or names content that is gone; without `--verify` the command SHALL hash nothing. `--json` SHALL print one array of objects carrying the line's fields plus `installedAt`, `verified` and the changed and missing counts. With nothing installed it SHALL print `packages: none installed` and `--json` SHALL print `[]`. A store that cannot be read SHALL exit 1 with the reason on stderr; a usage error SHALL exit 2.
+`lunate packages [--json] [--verify]` SHALL list every installed package this working directory can see — the user scope and the project installs whose worktree is the current one — one line each, ordered by scope then package id, carrying the canonical id, the version, the scope, and what it provides (the extension id and the skill names). `--verify` SHALL recompute each recorded file's hash and append the count of changed and missing files, and SHALL exit 3 when any record is `broken`, lists a file whose hash changed, or names content that is gone; without `--verify` the command SHALL hash nothing. `--json` SHALL print one array of objects carrying the line's fields plus `installedAt`, `verified` and the changed and missing counts. With nothing installed it SHALL print `packages: none installed` and `--json` SHALL print `[]`. A store that cannot be read SHALL exit 1 with the reason on stderr; a usage error SHALL exit 2.
 
 #### Scenario: The view lists both scopes
 
