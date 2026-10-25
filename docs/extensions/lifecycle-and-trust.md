@@ -65,8 +65,10 @@ and a provider's client are lazier still: they start on first use (a remote exte
 start in the background after the interactive UI is ready).
 
 There is no per-extension lazy assembly load in this version: every discovered in-process
-extension loads when the session composes, whether or not a run uses it. There is also no
-in-process hot reload; changing an in-process extension's files takes effect in a new session.
+extension loads when the session composes, whether or not a run uses it. There is also no file
+watcher that reloads an in-process extension: a packaged extension's changed files take effect in a
+new session, and a single-file extension is reloaded explicitly with `/extensions reload <id>`
+(which trusts, builds and swaps, in that order — see [single-file.md](single-file.md)).
 
 ## Project trust
 

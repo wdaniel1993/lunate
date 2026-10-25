@@ -26,8 +26,10 @@
   ([`docs/eval/t35-head-to-head.md`](docs/eval/t35-head-to-head.md)).
 - **Yours, in the language it is written in.** Extensions load at runtime and add tools
   (`context.RegisterTool(...)`), hook handlers, terminal UI renderers and widgets, MCP servers,
-  model providers and skills. Start from [`templates/extension/`](templates/extension/README.md);
-  the contract is [`docs/spec/extensibility.md`](docs/spec/extensibility.md).
+  model providers and skills. Start from [`templates/extension/`](templates/extension/README.md) —
+  or from **one `.cs` file**: a header declares its tools and the NuGet packages it needs, you
+  approve it once, and it compiles and goes live in the running session. The contract is
+  [`docs/spec/extensibility.md`](docs/spec/extensibility.md).
 - **Open protocols.** An MCP client for servers you already run, an ACP server so an editor such as
   Zed or JetBrains drives it, Agent Skills (`SKILL.md`) and `AGENTS.md` for project rules.
 - **A daily driver.** Every write and command asks first — edits show you their diff — repository
@@ -297,6 +299,21 @@ A directory with an `extension.json` manifest in `~/.lunate/extensions/` (global
 `.lunate/extensions/` (project) is discovered at session start and loaded on first use. Per-extension
 settings go in `~/.lunate/extensions-settings/<id>.json` and secrets in
 `~/.lunate/extensions-secrets/`. `lunate --no-extensions` starts any mode without loading them.
+
+One `.cs` file is an extension too. A header at the top of the file — `#:extension acme-tools@1.0.0`,
+`#:tool fetch_issue`, `#:package Octokit@14.0.0` — declares what it provides and what it needs, and
+Lunate restores and compiles it itself: no project, no manifest beside it, no SDK on your `PATH`.
+You approve the file once, and the header is inside the bytes that decision covers.
+`/extensions reload <id>` builds it and swaps it into the running session, so a tool the model just
+wrote is callable in the same session; a changed file stops at the trust question and keeps the build
+that was already answering.
+
+The declared packages resolve into your NuGet cache and the build is cached by content, so the cost
+stays local: measured on this machine (macOS, arm64, .NET 10.0.13), a one-package extension's cache
+entry is 13,525 bytes, the compiler contract the published binary carries costs 1,407,648 bytes
+(1.34 MiB) of its size, the .NET reference assemblies are restored once on the first compile (about
+49 MiB, shared with your SDK), and startup stays at a 60 ms median against its 150 ms budget.
+[`docs/extensions/single-file.md`](docs/extensions/single-file.md) is the authoring reference.
 
 ### Skills
 
