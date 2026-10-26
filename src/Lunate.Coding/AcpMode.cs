@@ -236,13 +236,17 @@ internal static class AcpMode
         WorkspaceServices workspaceServices,
         LaunchOptions? launch,
         IChatClientFactory? factory = null,
-        string? sessionDirectory = null
+        string? sessionDirectory = null,
+        AgentSettings? settings = null,
+        ModelCatalog? catalog = null
     )
     {
-        AgentSettings settings = SettingsStore.Resolve(null, null);
-        settings = SettingsStore.ApplyLaunch(settings, launch ?? new LaunchOptions());
-        ModelCatalog catalog = ModelCatalog.Load(null);
-        ModelInfo model = HarnessFactory.ResolveModel(settings.Model, catalog);
+        AgentSettings effective = SettingsStore.ApplyLaunch(
+            settings ?? SettingsStore.Resolve(null, null),
+            launch ?? new LaunchOptions()
+        );
+        ModelCatalog models = catalog ?? ModelCatalog.Load(null);
+        ModelInfo model = HarnessFactory.ResolveModel(effective.Model, models);
         IChatClientFactory clientFactory = factory ?? HarnessFactory.CreateFactory(null, null);
 
         var workspace = new Workspace(context.Cwd);
@@ -254,7 +258,7 @@ internal static class AcpMode
             context.FileAccess,
             workspaceServices,
             log: host?.Log,
-            extraTools: settings.Tools.Extra
+            extraTools: effective.Tools.Extra
         );
         foreach (ITool tool in mcpTools)
         {
@@ -294,12 +298,12 @@ internal static class AcpMode
                 SystemPrompt.Directives(directives, session)
             ),
             WorkingDirectory = workspace.WorktreeRoot,
-            ToolOutputLimit = settings.ToolOutputLimit,
-            SubagentLimits = settings.Subagents,
-            ThinkingLevel = settings.Thinking,
+            ToolOutputLimit = effective.ToolOutputLimit,
+            SubagentLimits = effective.Subagents,
+            ThinkingLevel = effective.Thinking,
             Approver = context.ClientApprover is { } clientApprover
-                ? new AcpApprover(settings.Approval, clientApprover)
-                : new NonInteractiveApprover(settings.Approval, yolo: false),
+                ? new AcpApprover(effective.Approval, clientApprover)
+                : new NonInteractiveApprover(effective.Approval, yolo: false),
             Hooks = host?.Hooks,
             Session = session,
             FileChanges = (IFileChangeSink?)host?.FileChanges ?? NullFileChangeSink.Instance,
@@ -311,7 +315,7 @@ internal static class AcpMode
                 workspaceServices,
                 inheritedTools,
                 log: host?.Log,
-                extraTools: settings.Tools.Extra
+                extraTools: effective.Tools.Extra
             ),
         };
 

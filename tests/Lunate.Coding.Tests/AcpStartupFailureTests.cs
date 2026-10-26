@@ -88,6 +88,14 @@ public sealed class AcpStartupFailureTests
             TestContext.Current.CancellationToken
         );
 
+        // The harness resolves a model before it is built; a test must not borrow the machine's
+        // settings or catalog, or it passes where a developer has a model configured and fails on
+        // a clean runner.
+        string catalogPath = temp.File("models.json");
+        File.WriteAllText(
+            catalogPath,
+            """{"schemaVersion":1,"models":[{"id":"acp-test","provider":"openai","contextWindow":1000,"supportsTools":true}]}"""
+        );
         AgentHarness harness = AcpMode.CreateHarness(
             new AcpSessionContext(worktree, null, null),
             host,
@@ -95,7 +103,9 @@ public sealed class AcpStartupFailureTests
             [],
             new WorkspaceServices(1),
             launch: null,
-            factory: new FakeChatClientFactory(new FakeChatClient())
+            factory: new FakeChatClientFactory(new FakeChatClient()),
+            settings: new AgentSettings { Model = "acp-test" },
+            catalog: Lunate.Ai.ModelCatalog.Load(catalogPath)
         );
 
         // Without this the session resolves only catalog models: anything a loaded extension
