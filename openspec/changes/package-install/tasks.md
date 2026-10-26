@@ -57,7 +57,7 @@
 - [x] 5.5 Red: an edited recorded file refuses uninstall without `--force` and is removed with it; `--force` on install repairs a missing file from the recorded version.
 - [x] 5.6 Red: `uninstall` accepts an extension id when exactly one record names it and refuses an ambiguous one, naming the candidates.
 - [x] 5.7 `lunate --help` gains `install`, `uninstall` and `packages` in the same shape as `extensions` and `trust`, one usage line and one description line each.
-- [ ] 5.8 Gate: upgrade and uninstall fixtures pass, a record diff proves the failed-upgrade case wrote nothing, `lunate --help` lists the three commands, the trust prompt renders exactly one `?`, and `scripts/verify.sh` passes.
+- [x] 5.8 Gate: upgrade/downgrade/repair/uninstall are proved against a full store hash diff (a failed upgrade leaves every byte and the record identical), `--help` lists the three commands, the single-file title carries exactly one `?`, and `scripts/verify.sh` passes — 5,658 tests per culture, 0 failures; startup floor 59 ms (median 61, budget 150 ms); public API clean.
 - [x] 5.9 Red: the single-file trust prompt's title renders with exactly one `?` at the end — the prompt surface appends the marker only when the title does not already end with one, so the title stays the only owner — and the packaged-extension question (`TrustFormat.ExtensionQuestion`) is checked for the same mistake.
 
 ## 6. Docs, the ADR addendum and the end-to-end run (PR 6)
