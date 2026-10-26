@@ -19,7 +19,13 @@ public static partial class PackageInstallRecordJson
     /// <summary>The record's file name inside <c>&lt;root&gt;/packages/&lt;package-id&gt;/</c>.</summary>
     public const string FileName = "install.json";
 
-    private static readonly JsonSerializerOptions Indented = new() { WriteIndented = true };
+    // NewLine is pinned: the default follows Environment.NewLine, which would make the same record
+    // two different byte sequences on Windows and POSIX — and the integrity hash covers those bytes.
+    private static readonly JsonSerializerOptions Indented = new()
+    {
+        WriteIndented = true,
+        NewLine = "\n",
+    };
 
     /// <summary>The canonical JSON text of <paramref name="record"/>, with a trailing newline.</summary>
     public static string Write(PackageInstallRecord record)

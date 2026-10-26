@@ -342,7 +342,7 @@ public sealed class PackagesCommandTests
         );
 
         Assert.Equal(PackagesCommand.ExitOk, exitCode);
-        Assert.Equal("packages: none installed\n", output.ToString());
+        Assert.Equal("packages: none installed\n", output.ToString().ReplaceLineEndings("\n"));
         Assert.Empty(errors.ToString());
     }
 
@@ -356,7 +356,7 @@ public sealed class PackagesCommandTests
 
         Assert.Equal(PackagesCommand.ExitUsage, result.ExitCode);
         Assert.Empty(result.Output);
-        Assert.Equal(PackagesCommand.Usage + "\n", result.Errors);
+        Assert.Equal(PackagesCommand.Usage + "\n", result.Errors.ReplaceLineEndings("\n"));
     }
 
     /// <summary>A store and a worktree for one test, with records written the way an install writes them.</summary>
