@@ -1,0 +1,38 @@
+name: Process
+
+# Process rules that must not depend on anyone remembering them. They are cheap by design: seconds,
+# not the verify suite's twenty minutes, so a rule about how work is delivered never becomes the
+# reason a pull request waits.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled, edited]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  archive-only:
+    name: archive-only
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The file list comes from the API rather than `git diff`: a pull request from a fork does not
+      # have its head commit in this clone, and the merge ref's history depth is not ours to assume.
+      - name: List the pull request's files
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api --paginate \
+            "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files" \
+            --jq '.[].filename' > "$RUNNER_TEMP/files.txt"
+          echo "changed files: $(wc -l < "$RUNNER_TEMP/files.txt")"
+
+      - name: Decide
+        env:
+          LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+        run: |
+          bash scripts/archive-only-check.sh --self-test
+          bash scripts/archive-only-check.sh --paths-file "$RUNNER_TEMP/files.txt" --labels "$LABELS"
