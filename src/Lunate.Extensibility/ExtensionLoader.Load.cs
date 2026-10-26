@@ -384,23 +384,15 @@ public sealed partial class ExtensionLoader
                         cancellationToken
                     )
                     .ConfigureAwait(false);
+                // A handler is a veto, never an approver: `deny` refuses the load, anything else
+                // (an explicit allow included) leaves the decision with the prompt. Trust is a user
+                // decision, and print and ACP reach the same prompt — which refuses — rather than a
+                // handler's allow silently recording it.
                 if (trust.Result is ProjectTrustResult.Deny deny)
                 {
                     throw new ExtensionTrustDeniedException(
                         $"extension '{descriptor.Id}' was not trusted for repository '{repositoryIdentity}': {deny.Reason} It was not loaded."
                     );
-                }
-
-                if (trust.HasHandlers)
-                {
-                    store.RecordTrusted(
-                        repositoryIdentity,
-                        worktreePath,
-                        descriptor.Id,
-                        contentHash,
-                        DateTimeOffset.UtcNow
-                    );
-                    return;
                 }
 
                 bool filesChanged = store
