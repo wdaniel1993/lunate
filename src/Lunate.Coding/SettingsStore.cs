@@ -179,7 +179,7 @@ public static class SettingsStore
         JsonNode? node;
         try
         {
-            node = JsonNode.Parse(File.ReadAllText(path));
+            node = JsonNode.Parse(ReadAllTextShared(path));
             if (node is JsonObject root)
             {
                 // JsonNode.Parse is lazy: a duplicate property surfaces only when the object is
@@ -202,6 +202,51 @@ public static class SettingsStore
             );
     }
 
+    /// <summary>
+    /// Replaces a settings file another thread or process may be reading. On Windows a reader that
+    /// did not open with delete sharing makes the replace fail with access-denied for as long as it
+    /// holds the handle, so the move is retried briefly; a settings write is short and the reader
+    /// closes in milliseconds.
+    /// </summary>
+    private static void ReplaceWithRetry(string source, string destination)
+    {
+        for (var attempt = 1; ; attempt++)
+        {
+            try
+            {
+                File.Move(source, destination, overwrite: true);
+                return;
+            }
+            catch (Exception exception)
+                when (exception is IOException or UnauthorizedAccessException)
+            {
+                if (attempt >= 5)
+                {
+                    throw;
+                }
+
+                Thread.Sleep(20 * attempt);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Reads a settings file without holding a share mode that would block a concurrent replace:
+    /// on Windows the default read share denies delete, which turns another thread's save into an
+    /// access-denied. Reading and writing the same small file must not be mutually exclusive.
+    /// </summary>
+    private static string ReadAllTextShared(string path)
+    {
+        using var stream = new FileStream(
+            path,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.ReadWrite | FileShare.Delete
+        );
+        using var reader = new StreamReader(stream);
+        return reader.ReadToEnd();
+    }
+
     private static void WriteAtomically(string path, string content)
     {
         string? directory = Path.GetDirectoryName(path);
@@ -220,7 +265,7 @@ public static class SettingsStore
                 File.SetUnixFileMode(temp, File.GetUnixFileMode(path));
             }
 
-            File.Move(temp, path, overwrite: true);
+            ReplaceWithRetry(temp, path);
         }
         finally
         {
@@ -243,7 +288,7 @@ public static class SettingsStore
             return new AgentSettings();
         }
 
-        return ParseJson(File.ReadAllText(path), problems);
+        return ParseJson(ReadAllTextShared(path), problems);
     }
 
     private static AgentSettings ParseJson(string json, List<string> problems)
