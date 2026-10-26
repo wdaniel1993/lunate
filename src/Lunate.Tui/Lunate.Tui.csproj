@@ -19,6 +19,14 @@
     </ItemGroup>
 
     <ItemGroup>
+        <!--
+            The keymap is data, not code: the router, the in-app help and docs/guide.md's key table
+            all read this file, and scripts/docs-sync generates the table from it.
+        -->
+        <EmbeddedResource Include="keys.json" />
+    </ItemGroup>
+
+    <ItemGroup>
         <AdditionalFiles Include="PublicAPI.Shipped.txt" />
         <AdditionalFiles Include="PublicAPI.Unshipped.txt" />
     </ItemGroup>
