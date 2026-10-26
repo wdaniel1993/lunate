@@ -275,10 +275,32 @@ public sealed class InteractiveSessionEditorTests
             );
 
         public string RecordedDraftPath() =>
-            File.Exists(Record) ? File.ReadAllText(Record).Trim() : Temp.File("absent");
+            File.Exists(Record) ? ReadWhenClosed(Record).Trim() : Temp.File("absent");
 
         public string BeforeFileContent() =>
-            File.Exists(Before) ? File.ReadAllText(Before) : "<the editor never ran>";
+            File.Exists(Before) ? ReadWhenClosed(Before) : "<the editor never ran>";
+
+        /// <summary>
+        /// Reads a file a child process writes. On Windows the child's redirection holds the handle
+        /// for a moment after the file appears, so a reader that polls for existence and reads
+        /// immediately loses the race — the same sharing window the settings store hit, and here it
+        /// is the test's own reader. Bounded, so a genuinely stuck child still fails.
+        /// </summary>
+        private static string ReadWhenClosed(string path)
+        {
+            DateTime deadline = DateTime.UtcNow.AddSeconds(5);
+            while (true)
+            {
+                try
+                {
+                    return File.ReadAllText(path);
+                }
+                catch (IOException) when (DateTime.UtcNow < deadline)
+                {
+                    Thread.Sleep(5);
+                }
+            }
+        }
 
         public IReadOnlyList<string> TempFiles() => Directory.GetFiles(DraftDirectory);
 
