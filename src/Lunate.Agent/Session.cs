@@ -16,9 +16,9 @@ internal sealed record SessionHistoryItem(ChatMessage Message, string? EntryId, 
 /// <summary>
 /// An append-only JSONL session. Create one, append messages, compaction and model changes; load it
 /// to resume. The store assigns entry ids, the parent chain and the timestamps, so callers pass
-/// payloads only. The byte format is frozen by the golden tests in tests/fixtures/sessions.
-/// Sessions assume a single writer (one harness or process per file); concurrent writers are not
-/// supported.
+/// The byte format is frozen by the golden tests in tests/fixtures/sessions.
+/// A session file has one writer, enforced across processes by <see cref="SessionWriterClaims"/>:
+/// a second process that appends is refused instead of minting duplicate ids and stale parents.
 /// </summary>
 public sealed partial class Session
 {
@@ -554,6 +554,8 @@ public sealed partial class Session
 
     private void AddEntry(SessionEntry entry)
     {
+        // The claim comes before the line it protects: a refused writer appends nothing.
+        SessionWriterClaims.Claim(Path);
         // The line lands first: an append that throws leaves the session's entries exactly as the
         // file has them, so a caller that carries on does not hold an entry nothing can reload.
         SessionFiles.AppendText(Path, Redactor.Redact(SessionFormat.Serialize(entry) + "\n"));

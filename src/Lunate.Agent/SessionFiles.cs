@@ -108,6 +108,55 @@ internal static class SessionFiles
     }
 
     /// <summary>
+    /// The claim a writer holds on a session file: <c>&lt;stem&gt;.lock</c> beside it, the naming
+    /// the title sidecar already uses. A file of its own rather than the session file, because a
+    /// writer that held the session file exclusively would also refuse the readers that list,
+    /// summarise and resume from it.
+    /// </summary>
+    internal static string WriterLockPath(string path)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        return Path.ChangeExtension(path, ".lock");
+    }
+
+    /// <summary>
+    /// Opens a session file's writer lock and holds it exclusively. Windows enforces the share mode
+    /// and POSIX does not once a writer admits readers, so the claim is a separate file opened with
+    /// <see cref="FileShare.None"/> — the one share mode both platforms refuse to hand out twice,
+    /// in this process or another.
+    /// </summary>
+    internal static FileStream OpenWriterLock(string path)
+    {
+        string lockPath = WriterLockPath(path);
+        string? directory = Path.GetDirectoryName(Path.GetFullPath(lockPath));
+        if (!string.IsNullOrEmpty(directory))
+        {
+            SecureFiles.CreateOwnerOnlyDirectory(directory);
+        }
+
+        try
+        {
+            FileStream stream = SecureFiles.OpenOwnerOnly(
+                lockPath,
+                FileMode.OpenOrCreate,
+                FileAccess.ReadWrite,
+                FileShare.None
+            );
+            SecureFiles.RestrictToOwner(lockPath);
+            return stream;
+        }
+        catch (IOException exception) when (File.Exists(lockPath))
+        {
+            throw new InvalidOperationException(
+                $"the session file '{path}' is being written by another Lunate process (writer lock "
+                    + $"'{lockPath}'); a session file has one writer, so finish that session or pass "
+                    + "a different --session.",
+                exception
+            );
+        }
+    }
+
+    /// <summary>
     /// Cuts a session file after its last line terminator, dropping the bytes of a record whose
     /// append never finished. The cut is found in the bytes, not in the decoded text: a fragment
     /// that ended mid-sequence decodes to a replacement character, whose width says nothing about

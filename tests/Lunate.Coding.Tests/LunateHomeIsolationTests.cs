@@ -1,3 +1,4 @@
+using Lunate.TestSupport;
 using Microsoft.Extensions.AI;
 
 namespace Lunate.Coding.Tests;
