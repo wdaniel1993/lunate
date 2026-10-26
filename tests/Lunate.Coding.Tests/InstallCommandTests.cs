@@ -81,11 +81,16 @@ public sealed class InstallCommandTests
         // The record is machine state, under the state root, and names the worktree it belongs to.
         string record = Path.Combine(feed.Store, "packages", "acme.toolkit", "install.json");
         Assert.True(File.Exists(record));
-        Assert.Contains(
-            $"\"worktree\": \"{Workspace.Canonicalize(feed.Worktree)}\"",
-            File.ReadAllText(record),
-            StringComparison.Ordinal
-        );
+        // Compare the value, not its serialized text: a Windows path arrives with escaped
+        // backslashes, so a substring of the raw file is a test of the serializer's escaping
+        // rather than of what the record says.
+        using (JsonDocument document = JsonDocument.Parse(File.ReadAllText(record)))
+        {
+            Assert.Equal(
+                Workspace.Canonicalize(feed.Worktree),
+                document.RootElement.GetProperty("worktree").GetString()
+            );
+        }
         Assert.False(Directory.Exists(Path.Combine(feed.Worktree, "packages")));
 
         // The content is the repository's: git sees it as untracked additions.
