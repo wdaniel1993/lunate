@@ -13,14 +13,14 @@
 
 ## 2. Download, record and verify (PR 2)
 
-- [ ] 2.1 `NuGetRestoreEngine`'s assembly gains the download (an exact id and version through `NuGetPackageFeed`, returning the nupkg path and the SHA-512 NuGet computed) — with the bundle reader, the record and the installer beside it. No reference pack, no extension lock in this phase, no compile, and nothing new in `Lunate.Extensibility` referencing `NuGet.*`.
-- [ ] 2.2 Red: an exact version installs from a local folder feed; the nupkg is in the packages folder; the record's `package` half carries the sources, canonical id, version, SHA-512 and the archive file list.
-- [ ] 2.3 Red: the record's `content` half lists every written path with size and SHA-256, and the record's integrity hash answers for its canonical bytes; re-reading and re-writing the record produces identical bytes.
-- [ ] 2.4 Red: a record edited by hand reads `broken`, and `lunate packages` and `uninstall` refuse to act on it, naming the file.
-- [ ] 2.5 Red: the same version installed twice reports already-installed, exits 0, and moves no file's modification time.
-- [ ] 2.6 Red: `--offline` with the nupkg already in the packages folder completes and the feed observer records zero requests; with a cold folder it fails naming the package and the folder, and writes nothing.
-- [ ] 2.7 Red: a download, verification or extraction failure leaves no content and no record; a second run succeeds; staging is gone.
-- [ ] 2.8 `lunate packages`, `--json` and `--verify` — the line shape, the ordering by scope then id, `packages: none installed`, `[]`, and exit 3 when a record fails.
+- [x] 2.1 `NuGetRestoreEngine`'s assembly gains the download (an exact id and version through `NuGetPackageFeed`, returning the nupkg path and the SHA-512 NuGet computed) — with the bundle reader, the record and the installer beside it. No reference pack, no extension lock in this phase, no compile, and nothing new in `Lunate.Extensibility` referencing `NuGet.*`.
+- [x] 2.2 Red: an exact version installs from a local folder feed; the nupkg is in the packages folder; the record's `package` half carries the sources, canonical id, version, SHA-512 and the archive file list.
+- [x] 2.3 Red: the record's `content` half lists every written path with size and SHA-256, and the record's integrity hash answers for its canonical bytes; re-reading and re-writing the record produces identical bytes.
+- [x] 2.4 Red: a record edited by hand reads `broken`, and `lunate packages` and `uninstall` refuse to act on it, naming the file.
+- [x] 2.5 Red: the same version installed twice reports already-installed, exits 0, and moves no file's modification time.
+- [x] 2.6 Red: `--offline` with the nupkg already in the packages folder completes and the feed observer records zero requests; with a cold folder it fails naming the package and the folder, and writes nothing.
+- [x] 2.7 Red: a download, verification or extraction failure leaves no content and no record; a second run succeeds; staging is gone.
+- [x] 2.8 `lunate packages`, `--json` and `--verify` — the line shape, the ordering by scope then id, `packages: none installed`, `[]`, and exit 3 when a record fails.
 - [ ] 2.9 Gate: local-feed tests pass, the zero-request test is in the suite permanently (the same shape as the stale-digest test), `lunate packages --json` on a fixture store matches the documented object, and `scripts/verify.sh` passes.
 
 ## 3. Content, scope and trust integration (PR 3)
