@@ -41,13 +41,17 @@ public sealed class InteractiveSessionFooterCostTests
 
         host.Console.SendText("go");
         host.Console.SendEnter();
+        // Capture the frame the wait accepted: LastFrame is a moving surface, and under load the
+        // next paint can replace it between the wait returning and the assertion reading it again.
+        string frame = string.Empty;
         await host.WaitUntilAsync(() =>
         {
             host.Advance(33);
-            return host.LastFrame.Contains("$0.0075", StringComparison.Ordinal);
+            frame = host.LastFrame;
+            return frame.Contains("$0.0075", StringComparison.Ordinal);
         });
 
-        Assert.Contains("1.5k/128.0k", host.LastFrame, StringComparison.Ordinal);
+        Assert.Contains("1.5k/128.0k", frame, StringComparison.Ordinal);
         host.Console.Complete();
         await run;
     }

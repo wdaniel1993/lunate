@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using Lunate.Ai;
 
 namespace Lunate.Agent;
 
@@ -43,7 +44,9 @@ internal static class ToolOutputSpill
         ArgumentNullException.ThrowIfNull(session);
         ArgumentNullException.ThrowIfNull(output);
         ArgumentException.ThrowIfNullOrWhiteSpace(runId);
-        if (Encoding.UTF8.GetByteCount(output) > MaxBytes)
+        // The file is at rest; the live tool result the model saw keeps the value.
+        string redacted = session.Redactor.Redact(output);
+        if (Encoding.UTF8.GetByteCount(redacted) > MaxBytes)
         {
             return new(Path: null, TooLarge: true, Error: null);
         }
@@ -65,15 +68,8 @@ internal static class ToolOutputSpill
         );
         try
         {
-            Directory.CreateDirectory(directory);
-            using (
-                var stream = new FileStream(
-                    temp,
-                    FileMode.CreateNew,
-                    FileAccess.Write,
-                    FileShare.None
-                )
-            )
+            SecureFiles.CreateOwnerOnlyDirectory(directory);
+            using (FileStream stream = SessionFiles.CreateNewOwnerOnly(temp))
             using (
                 var writer = new StreamWriter(
                     stream,
@@ -83,7 +79,7 @@ internal static class ToolOutputSpill
                 )
             )
             {
-                writer.Write(output);
+                writer.Write(redacted);
                 writer.Flush();
                 stream.Flush(flushToDisk: true);
             }

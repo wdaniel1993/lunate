@@ -149,11 +149,17 @@ public sealed class PackageInstallHostTests
         string installed = Path.Combine(worktree, ".lunate", "extensions", "hello");
         string plain = ExtensionTrustStore.ComputeContentHash(installed);
         var store2 = new ExtensionTrustStore(options);
-        Assert.Equal(ExtensionTrustDecision.Prompt, store2.Evaluate(worktree, worktree, plain));
+        Assert.Equal(
+            ExtensionTrustDecision.Prompt,
+            store2.Evaluate(worktree, worktree, "hello", plain)
+        );
         string bound = InstalledPackages
             .Read(store)
             .BindTrustDigest(plain, InstalledPackages.Read(store).ForExtension(installed));
-        Assert.Equal(ExtensionTrustDecision.Trusted, store2.Evaluate(worktree, worktree, bound));
+        Assert.Equal(
+            ExtensionTrustDecision.Trusted,
+            store2.Evaluate(worktree, worktree, "hello", bound)
+        );
     }
 
     [Fact]

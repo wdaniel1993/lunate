@@ -11,9 +11,9 @@ public sealed class TrustRecordTests
     {
         using var temp = new TempDirectory();
         var store = new ExtensionTrustStore(TestExtensions.Options(temp.Subdirectory("store")));
-        store.RecordTrusted("repo-1", "/w1", "ext-hash", DateTimeOffset.UtcNow);
+        store.RecordTrusted("repo-1", "/w1", "hello", "ext-hash", DateTimeOffset.UtcNow);
         store.RecordMcpConfigTrusted("repo-1", "/w1", "mcp-hash", DateTimeOffset.UtcNow);
-        store.RecordTrusted("repo-2", "/w2", "other-hash", DateTimeOffset.UtcNow);
+        store.RecordTrusted("repo-2", "/w2", "hello", "other-hash", DateTimeOffset.UtcNow);
 
         IReadOnlyList<TrustRecord> records = store.Records("repo-1");
 
@@ -31,8 +31,8 @@ public sealed class TrustRecordTests
     {
         using var temp = new TempDirectory();
         var store = new ExtensionTrustStore(TestExtensions.Options(temp.Subdirectory("store")));
-        store.RecordTrusted("repo-1", "/b", "hash-b", DateTimeOffset.UtcNow);
-        store.RecordTrusted("repo-1", "/a", "hash-a", DateTimeOffset.UtcNow);
+        store.RecordTrusted("repo-1", "/b", "hello", "hash-b", DateTimeOffset.UtcNow);
+        store.RecordTrusted("repo-1", "/a", "hello", "hash-a", DateTimeOffset.UtcNow);
 
         Assert.Equal(["/a", "/b"], store.Records("repo-1").Select(record => record.WorktreePath));
     }
@@ -51,19 +51,45 @@ public sealed class TrustRecordTests
     {
         using var temp = new TempDirectory();
         var store = new ExtensionTrustStore(TestExtensions.Options(temp.Subdirectory("store")));
-        store.RecordTrusted("repo-1", "/w1", "ext-hash", DateTimeOffset.UtcNow);
+        store.RecordTrusted("repo-1", "/w1", "hello", "ext-hash", DateTimeOffset.UtcNow);
         store.RecordMcpConfigTrusted("repo-1", "/w1", "mcp-hash", DateTimeOffset.UtcNow);
-        store.RecordTrusted("repo-2", "/w2", "keep", DateTimeOffset.UtcNow);
+        store.RecordTrusted("repo-2", "/w2", "hello", "keep", DateTimeOffset.UtcNow);
 
         store.ClearRepository("repo-1");
 
         Assert.Empty(store.Records("repo-1"));
-        Assert.Equal(ExtensionTrustDecision.Prompt, store.Evaluate("repo-1", "/w1", "ext-hash"));
+        Assert.Equal(
+            ExtensionTrustDecision.Prompt,
+            store.Evaluate("repo-1", "/w1", "hello", "ext-hash")
+        );
         Assert.Equal(
             ExtensionTrustDecision.Prompt,
             store.EvaluateMcpConfig("repo-1", "/w1", "mcp-hash")
         );
-        Assert.Equal(ExtensionTrustDecision.Trusted, store.Evaluate("repo-2", "/w2", "keep"));
+        Assert.Equal(
+            ExtensionTrustDecision.Trusted,
+            store.Evaluate("repo-2", "/w2", "hello", "keep")
+        );
+    }
+
+    [Fact]
+    public void The_trust_file_is_owner_only_on_posix()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            Assert.Skip("Unix file modes do not exist on Windows.");
+            return;
+        }
+
+        using var temp = new TempDirectory();
+        string storePath = temp.Subdirectory("store");
+        var store = new ExtensionTrustStore(TestExtensions.Options(storePath));
+        store.RecordTrusted("repo-1", "/w1", "hello", "hash", DateTimeOffset.UtcNow);
+
+        Assert.Equal(
+            UnixFileMode.UserRead | UnixFileMode.UserWrite,
+            File.GetUnixFileMode(Path.Combine(storePath, "trust.json"))
+        );
     }
 
     [Fact]
@@ -83,14 +109,17 @@ public sealed class TrustRecordTests
     {
         using var temp = new TempDirectory();
         var store = new ExtensionTrustStore(TestExtensions.Options(temp.Subdirectory("store")));
-        store.RecordTrusted("repo-1", "/main", "hash-v1", DateTimeOffset.UtcNow);
+        store.RecordTrusted("repo-1", "/main", "hello", "hash-v1", DateTimeOffset.UtcNow);
 
         // NewWorktree is the loader's no-prompt path: the new worktree is recorded silently.
         Assert.Equal(
             ExtensionTrustDecision.NewWorktree,
-            store.Evaluate("repo-1", "/wt-new", "hash-v1")
+            store.Evaluate("repo-1", "/wt-new", "hello", "hash-v1")
         );
-        Assert.Equal(ExtensionTrustDecision.Trusted, store.Evaluate("repo-1", "/main", "hash-v1"));
+        Assert.Equal(
+            ExtensionTrustDecision.Trusted,
+            store.Evaluate("repo-1", "/main", "hello", "hash-v1")
+        );
     }
 
     [Fact]
@@ -98,13 +127,22 @@ public sealed class TrustRecordTests
     {
         using var temp = new TempDirectory();
         var store = new ExtensionTrustStore(TestExtensions.Options(temp.Subdirectory("store")));
-        store.RecordTrusted("repo-1", "/main", "hash-v1", DateTimeOffset.UtcNow);
-        store.RecordTrusted("repo-1", "/wt", "hash-v1", DateTimeOffset.UtcNow);
+        store.RecordTrusted("repo-1", "/main", "hello", "hash-v1", DateTimeOffset.UtcNow);
+        store.RecordTrusted("repo-1", "/wt", "hello", "hash-v1", DateTimeOffset.UtcNow);
 
         // The extension changed: the worktree that saw the change re-prompts...
-        Assert.Equal(ExtensionTrustDecision.Prompt, store.Evaluate("repo-1", "/main", "hash-v2"));
+        Assert.Equal(
+            ExtensionTrustDecision.Prompt,
+            store.Evaluate("repo-1", "/main", "hello", "hash-v2")
+        );
         // ...while the other worktree's own hash check is untouched by that.
-        Assert.Equal(ExtensionTrustDecision.Trusted, store.Evaluate("repo-1", "/wt", "hash-v1"));
-        Assert.Equal(ExtensionTrustDecision.Prompt, store.Evaluate("repo-1", "/wt", "hash-v2"));
+        Assert.Equal(
+            ExtensionTrustDecision.Trusted,
+            store.Evaluate("repo-1", "/wt", "hello", "hash-v1")
+        );
+        Assert.Equal(
+            ExtensionTrustDecision.Prompt,
+            store.Evaluate("repo-1", "/wt", "hello", "hash-v2")
+        );
     }
 }

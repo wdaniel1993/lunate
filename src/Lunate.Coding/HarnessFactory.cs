@@ -1,6 +1,7 @@
 using System.Runtime.CompilerServices;
 using Lunate.Agent;
 using Lunate.Ai;
+using Lunate.Extensibility;
 using Lunate.Extensibility.Abstractions;
 using Lunate.Roslyn;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -240,6 +241,39 @@ internal static class HarnessFactory
         workspace.GitCommonDir is { } identity
             ? SessionPaths.ForRepository(identity, workspace.WorktreeRoot)
             : SessionPaths.ForProject(workspace.WorktreeRoot);
+
+    /// <summary>
+    /// Gives a session the redactor its persistence boundary uses. The values come from the same
+    /// places the session reads credentials from — the auth store, the provider environment, the
+    /// extension secret files and the MCP config files — so a key the model or a tool echoes is
+    /// replaced in the file while the in-memory result keeps what the model saw.
+    /// </summary>
+    internal static void AttachRedaction(
+        Session session,
+        string? authPath,
+        Func<string, string?>? environment,
+        string? storePath,
+        string worktreeRoot,
+        string? mcpConfigPath = null,
+        string? mcpAgentsConfigPath = null
+    )
+    {
+        ArgumentNullException.ThrowIfNull(session);
+        ArgumentException.ThrowIfNullOrWhiteSpace(worktreeRoot);
+
+        List<string> configPaths =
+        [
+            mcpAgentsConfigPath ?? McpComposition.DefaultAgentsConfigPath,
+            mcpConfigPath ?? McpComposition.DefaultConfigPath,
+            .. McpComposition.ProjectConfigPaths(worktreeRoot),
+        ];
+        session.Redactor = CredentialRedactorSource.Collect(
+            AuthStore.Load(authPath, environment),
+            environment ?? Environment.GetEnvironmentVariable,
+            storePath ?? ExtensionHostOptions.Default.StorePath,
+            configPaths
+        );
+    }
 
     /// <summary>
     /// Creates the session file under the directory with its id as the file name (the store names

@@ -206,7 +206,8 @@ public sealed class TrustCommandTests
         store.RecordTrusted(
             fixture.Identity(),
             Path.Combine(fixture.Worktree, "another-worktree"),
-            "a-previous-hash",
+            "hello",
+            ExtensionTrustStore.ComputeContentHash(fixture.ExtensionDirectory),
             DateTimeOffset.UtcNow
         );
 
@@ -218,7 +219,7 @@ public sealed class TrustCommandTests
         string hash = ExtensionTrustStore.ComputeContentHash(fixture.ExtensionDirectory);
         Assert.Equal(
             ExtensionTrustDecision.Trusted,
-            store.Evaluate(fixture.Identity(), fixture.Worktree, hash)
+            store.Evaluate(fixture.Identity(), fixture.Worktree, "hello", hash)
         );
     }
 
@@ -544,6 +545,7 @@ public sealed class TrustCommandTests
             store.RecordTrusted(
                 Identity(),
                 Worktree,
+                "hello",
                 ExtensionTrustStore.ComputeContentHash(ExtensionDirectory),
                 DateTimeOffset.UtcNow
             );

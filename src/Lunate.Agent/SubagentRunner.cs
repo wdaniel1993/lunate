@@ -498,7 +498,7 @@ internal sealed class SubagentRunner : ISubagentRunner
             ?? throw new InvalidOperationException(
                 $"The parent session path '{parent.Path}' has no directory to place a child session in."
             );
-        return SessionProvisioning.Create(
+        Session child = SessionProvisioning.Create(
             directory,
             provisional =>
                 workspace is { } target
@@ -510,6 +510,9 @@ internal sealed class SubagentRunner : ISubagentRunner
                         parent.Header.Worktree
                     )
         );
+        // A child persists what the parent persists: the same credentials are redacted in its file.
+        child.Redactor = parent.Redactor;
+        return child;
     }
 
     /// <summary>The canonical root and git-common-dir of a child running in another worktree.</summary>

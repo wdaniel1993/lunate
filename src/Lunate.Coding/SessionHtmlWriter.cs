@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using Lunate.Agent;
+using Lunate.Ai;
 using Microsoft.Extensions.AI;
 
 namespace Lunate.Coding;

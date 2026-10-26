@@ -42,12 +42,46 @@ public sealed partial class ExtensionLoader
             );
         }
 
+        // A directory that is a symlink out of its scope is refused by name: the scope is the trust
+        // boundary, and a link that leaves it would load code from somewhere the user never chose.
+        string extensionScopeRoot =
+            descriptor.Scope is ExtensionScope.Project
+                ? ProjectScope.Under(
+                    Path.GetFullPath(workingDirectory),
+                    ProjectScope.ExtensionsDirectory
+                )
+                : _options.ExtensionsPath;
+        try
+        {
+            ScopePaths.RequireInside(extensionScopeRoot, descriptor.Directory, "load");
+        }
+        catch (InvalidOperationException exception)
+        {
+            throw new ExtensionLoadException(exception.Message, exception);
+        }
+
         // Project extensions always ask; an installed one asks in either scope, because installing
         // is not trusting (addendum, phase 6). A hand-placed user-scope extension is still trusted
         // by placement and never reaches this.
         InstalledPackageProvenance? installedProvenance = Installed.ForExtension(
             descriptor.Directory
         );
+
+        // Fail closed: a store holding a record that cannot be read or no longer answers for itself
+        // cannot tell a hand-placed user extension from one whose package record was damaged, so a
+        // user-scope extension with no provenance is not loaded while that is true.
+        if (
+            descriptor.Scope is ExtensionScope.Global
+            && installedProvenance is null
+            && Installed.Broken.FirstOrDefault() is { } broken
+        )
+        {
+            throw new ExtensionLoadException(
+                $"extension '{id}' is not loaded: the install record '{broken.RecordPath}' is broken ({broken.Reason}), so it cannot be shown to be hand-placed."
+                    + " Run 'lunate packages --verify' to see the broken record, then reinstall the package it belongs to."
+            );
+        }
+
         if (descriptor.Scope is ExtensionScope.Project || installedProvenance is not null)
         {
             await EnsureTrustedAsync(
@@ -324,7 +358,7 @@ public sealed partial class ExtensionLoader
         );
         var store = new ExtensionTrustStore(_options);
 
-        switch (store.Evaluate(repositoryIdentity, worktreePath, contentHash))
+        switch (store.Evaluate(repositoryIdentity, worktreePath, descriptor.Id, contentHash))
         {
             case ExtensionTrustDecision.Trusted:
                 return;
@@ -332,6 +366,7 @@ public sealed partial class ExtensionLoader
                 store.RecordTrusted(
                     repositoryIdentity,
                     worktreePath,
+                    descriptor.Id,
                     contentHash,
                     DateTimeOffset.UtcNow
                 );
@@ -361,6 +396,7 @@ public sealed partial class ExtensionLoader
                     store.RecordTrusted(
                         repositoryIdentity,
                         worktreePath,
+                        descriptor.Id,
                         contentHash,
                         DateTimeOffset.UtcNow
                     );
@@ -389,6 +425,7 @@ public sealed partial class ExtensionLoader
                 store.RecordTrusted(
                     repositoryIdentity,
                     worktreePath,
+                    descriptor.Id,
                     contentHash,
                     DateTimeOffset.UtcNow
                 );

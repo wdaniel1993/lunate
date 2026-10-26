@@ -94,7 +94,7 @@ internal sealed partial class InteractiveSession
     {
         try
         {
-            return Session.Load(path);
+            return WithRedaction(Session.Load(path));
         }
         catch (Exception exception)
             when (exception is IOException or InvalidDataException or UnauthorizedAccessException)
@@ -140,7 +140,27 @@ internal sealed partial class InteractiveSession
     private Session CreateFreshSession()
     {
         Session created = HarnessFactory.CreateSession(_sessionDirectory, _workspace);
+        WithRedaction(created);
         SystemPrompt.Record(created, _options.Launch);
         return created;
+    }
+
+    /// <summary>
+    /// Attaches the persistence redactor to a session this host created or resumed: what the model
+    /// sees in memory stays as it was, while every line the session file and spill files receive
+    /// has the credentials this host knows replaced.
+    /// </summary>
+    private Session WithRedaction(Session session)
+    {
+        HarnessFactory.AttachRedaction(
+            session,
+            _options.AuthPath,
+            _options.Environment,
+            _options.Extensions?.StorePath,
+            _workspace.WorktreeRoot,
+            _options.McpConfigPath,
+            _options.McpAgentsConfigPath
+        );
+        return session;
     }
 }

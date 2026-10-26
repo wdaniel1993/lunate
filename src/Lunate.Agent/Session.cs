@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Lunate.Ai;
 using Microsoft.Extensions.AI;
 
 namespace Lunate.Agent;
@@ -51,6 +52,13 @@ public sealed partial class Session
 
     /// <summary>The session file path.</summary>
     public string Path { get; }
+
+    /// <summary>
+    /// What the persistence boundary redacts: every line written to this file goes through it, so a
+    /// credential a tool echoed is not stored at rest. The live in-memory entries keep the value the
+    /// model saw — redaction belongs to the file, not to the conversation.
+    /// </summary>
+    internal CredentialRedactor Redactor { get; set; } = CredentialRedactor.Empty;
 
     /// <summary>
     /// The header's format schema (1, 2 or 3), so consumers can tell replay formats apart: schema 3
@@ -502,16 +510,16 @@ public sealed partial class Session
         string? directory = System.IO.Path.GetDirectoryName(System.IO.Path.GetFullPath(Path));
         if (!string.IsNullOrEmpty(directory))
         {
-            Directory.CreateDirectory(directory);
+            SecureFiles.CreateOwnerOnlyDirectory(directory);
         }
 
-        SessionFiles.WriteText(Path, SessionFormat.Serialize(header) + "\n");
+        SessionFiles.WriteText(Path, Redactor.Redact(SessionFormat.Serialize(header) + "\n"));
     }
 
     private void AddEntry(SessionEntry entry)
     {
         _entries.Add(entry);
-        SessionFiles.AppendText(Path, SessionFormat.Serialize(entry) + "\n");
+        SessionFiles.AppendText(Path, Redactor.Redact(SessionFormat.Serialize(entry) + "\n"));
     }
 
     /// <summary>

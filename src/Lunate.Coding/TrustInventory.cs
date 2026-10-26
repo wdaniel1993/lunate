@@ -298,7 +298,12 @@ internal sealed class TrustInventory
                     ExtensionTrustStore.ComputeContentHash(descriptor.Directory),
                     provenance
                 );
-                ExtensionTrustDecision decision = store.Evaluate(identity, worktree, hash);
+                ExtensionTrustDecision decision = store.Evaluate(
+                    identity,
+                    worktree,
+                    descriptor.Id,
+                    hash
+                );
                 if (decision is ExtensionTrustDecision.Trusted)
                 {
                     continue;
@@ -373,7 +378,13 @@ internal sealed class TrustInventory
                 workspace.RepoRoot ?? worktree,
                 installed
             );
-            ExtensionTrustDecision decision = store.EvaluateSkills(identity, worktree, hash);
+            ExtensionTrustDecision decision = SkillTrust.Evaluate(
+                store,
+                identity,
+                worktree,
+                SkillTrust.Names(discovered),
+                hash
+            );
             if (decision is not ExtensionTrustDecision.Trusted)
             {
                 projectSkills = new PendingProjectSkills(

@@ -73,7 +73,116 @@ public sealed class ExtensionTrustTests
             .GetProperty("repo-1")
             .GetProperty("worktrees");
         Assert.True(worktrees.TryGetProperty(first, out _));
-        Assert.True(worktrees.TryGetProperty(second, out _));
+        Assert.True(worktrees.TryGetProperty(second, out JsonElement secondEntry));
+        Assert.True(secondEntry.TryGetProperty("hello", out _));
+    }
+
+    [Fact]
+    public async Task Two_project_extensions_in_one_worktree_keep_their_own_decision()
+    {
+        using var temp = new TempDirectory();
+        string store = temp.Subdirectory("store");
+        string worktree = temp.Subdirectory("worktree");
+        TestExtensions.InstallProjectHelloExtension(worktree, "alpha");
+        TestExtensions.InstallProjectHelloExtension(worktree, "beta");
+        var loader = new ExtensionLoader(TestExtensions.Options(store));
+        loader.Discover(worktree, "repo-1");
+        var prompt = new FakeExtensionTrustPrompt(approve: true);
+
+        await loader.Load(
+            "alpha",
+            worktree,
+            "repo-1",
+            prompt,
+            TestContext.Current.CancellationToken
+        );
+        await loader.Unload("alpha");
+        await loader.Load(
+            "beta",
+            worktree,
+            "repo-1",
+            prompt,
+            TestContext.Current.CancellationToken
+        );
+        await loader.Unload("beta");
+
+        Assert.Equal(2, prompt.Calls);
+
+        // Keyed by id: the second decision did not overwrite the first, and both hold their own
+        // digest (the two directories differ in their manifest).
+        using JsonDocument document = JsonDocument.Parse(
+            File.ReadAllText(Path.Combine(store, "trust.json"))
+        );
+        JsonElement entries = document
+            .RootElement.GetProperty("repositories")
+            .GetProperty("repo-1")
+            .GetProperty("worktrees")
+            .GetProperty(worktree);
+        string alpha = entries.GetProperty("alpha").GetString()!;
+        string beta = entries.GetProperty("beta").GetString()!;
+        Assert.NotEqual(alpha, beta);
+
+        await loader.Load(
+            "alpha",
+            worktree,
+            "repo-1",
+            prompt,
+            TestContext.Current.CancellationToken
+        );
+        Assert.Equal(2, prompt.Calls);
+    }
+
+    [Fact]
+    public async Task A_second_worktree_with_different_content_for_the_same_extension_prompts()
+    {
+        using var temp = new TempDirectory();
+        string store = temp.Subdirectory("store");
+        string first = temp.Subdirectory("worktree-1");
+        string second = temp.Subdirectory("worktree-2");
+        TestExtensions.InstallProjectHelloExtension(first, "hello");
+        string changed = TestExtensions.InstallProjectHelloExtension(second, "hello");
+        var prompt = new FakeExtensionTrustPrompt(approve: true);
+        var loader = new ExtensionLoader(TestExtensions.Options(store));
+
+        loader.Discover(first, "repo-1");
+        await loader.Load("hello", first, "repo-1", prompt, TestContext.Current.CancellationToken);
+        await loader.Unload("hello");
+        File.WriteAllText(Path.Combine(changed, "changed.txt"), "changed");
+        loader.Discover(second, "repo-1");
+        await loader.Load("hello", second, "repo-1", prompt, TestContext.Current.CancellationToken);
+
+        Assert.Equal(2, prompt.Calls);
+        Assert.True(prompt.LastFilesChanged);
+    }
+
+    [Fact]
+    public void A_flat_worktree_entry_from_the_old_layout_prompts_once()
+    {
+        using var temp = new TempDirectory();
+        string store = temp.Subdirectory("store");
+        Directory.CreateDirectory(store);
+        File.WriteAllText(
+            Path.Combine(store, "trust.json"),
+            """
+            {
+              "repositories": {
+                "repo-1": {
+                  "trustedAt": "2026-01-02T03:04:05.0000000+00:00",
+                  "worktrees": {
+                    "/work": "hash-1"
+                  }
+                }
+              }
+            }
+            """
+        );
+        var trust = new ExtensionTrustStore(TestExtensions.Options(store));
+
+        // The flat digest cannot say which extension it approved: no silent migration by guesswork.
+        Assert.Equal(
+            ExtensionTrustDecision.Prompt,
+            trust.Evaluate("repo-1", "/work", "hello", "hash-1")
+        );
     }
 
     [Fact]
@@ -181,14 +290,23 @@ public sealed class ExtensionTrustTests
         using var temp = new TempDirectory();
         var store = new ExtensionTrustStore(TestExtensions.Options(temp.Subdirectory("store")));
 
-        Assert.Equal(ExtensionTrustDecision.Prompt, store.Evaluate("repo-1", "/work", "hash-1"));
+        Assert.Equal(
+            ExtensionTrustDecision.Prompt,
+            store.Evaluate("repo-1", "/work", "hello", "hash-1")
+        );
 
-        store.RecordTrusted("repo-1", "/work", "hash-1", DateTimeOffset.UnixEpoch);
-        Assert.Equal(ExtensionTrustDecision.Trusted, store.Evaluate("repo-1", "/work", "hash-1"));
-        Assert.Equal(ExtensionTrustDecision.Prompt, store.Evaluate("repo-1", "/work", "hash-2"));
+        store.RecordTrusted("repo-1", "/work", "hello", "hash-1", DateTimeOffset.UnixEpoch);
+        Assert.Equal(
+            ExtensionTrustDecision.Trusted,
+            store.Evaluate("repo-1", "/work", "hello", "hash-1")
+        );
+        Assert.Equal(
+            ExtensionTrustDecision.Prompt,
+            store.Evaluate("repo-1", "/work", "hello", "hash-2")
+        );
         Assert.Equal(
             ExtensionTrustDecision.NewWorktree,
-            store.Evaluate("repo-1", "/other", "hash-1")
+            store.Evaluate("repo-1", "/other", "hello", "hash-1")
         );
     }
 }

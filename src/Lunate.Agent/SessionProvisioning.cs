@@ -1,3 +1,5 @@
+using Lunate.Ai;
+
 namespace Lunate.Agent;
 
 /// <summary>
@@ -22,7 +24,7 @@ internal static class SessionProvisioning
         ArgumentException.ThrowIfNullOrWhiteSpace(directory);
         ArgumentNullException.ThrowIfNull(create);
 
-        Directory.CreateDirectory(directory);
+        SecureFiles.CreateOwnerOnlyDirectory(directory);
         string provisional = Path.Combine(directory, Path.GetRandomFileName());
         bool renamed = false;
         try

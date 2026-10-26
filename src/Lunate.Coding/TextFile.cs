@@ -1,4 +1,5 @@
 using System.Text;
+using Lunate.Ai;
 
 namespace Lunate.Coding;
 
@@ -27,15 +28,86 @@ internal static class TextFile
         return (Encoding.UTF8.GetString(bytes, start, bytes.Length - start), hasBom);
     }
 
+    /// <summary>
+    /// Writes a file's text without ever truncating the destination: the bytes go to a temporary file
+    /// beside it, are flushed to disk, take the original's permissions, and are moved into place in
+    /// one step. A crash, a full disk or a replace another process blocks leaves the original file
+    /// intact. A path that is a symlink writes through to its target; the link itself is kept.
+    /// </summary>
     public static void WriteRaw(string path, string text, bool hasBom)
     {
-        using var stream = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.Read);
-        if (hasBom)
+        // Canonicalizing resolves a symlink — and a symlinked ancestor — so the write replaces the
+        // real file rather than the link, and a dangling link's target is written instead of the link.
+        string target = PathCanonical.Canonicalize(path);
+        string directory = Path.GetDirectoryName(target) ?? ".";
+        string temporary = Path.Combine(
+            directory,
+            "." + Path.GetFileName(target) + "." + Guid.NewGuid().ToString("N") + ".tmp"
+        );
+        try
         {
-            stream.Write([0xEF, 0xBB, 0xBF]);
+            using (
+                var stream = new FileStream(
+                    temporary,
+                    FileMode.CreateNew,
+                    FileAccess.Write,
+                    FileShare.None
+                )
+            )
+            {
+                if (hasBom)
+                {
+                    stream.Write([0xEF, 0xBB, 0xBF]);
+                }
+
+                stream.Write(Encoding.UTF8.GetBytes(text));
+                stream.Flush(flushToDisk: true);
+            }
+
+            CopyPermissions(target, temporary);
+            try
+            {
+                FileReplacement.Replace(temporary, target, preserveTarget: true);
+            }
+            catch (Exception exception)
+                when (exception is IOException or UnauthorizedAccessException)
+            {
+                throw new IOException(
+                    $"the file '{target}' could not be replaced because another process may have it open or it is not writable. The original file is unchanged.",
+                    exception
+                );
+            }
+        }
+        catch
+        {
+            TryDelete(temporary);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// The original's mode, when the destination already exists. Windows keeps the target's ACLs and
+    /// attributes through <see cref="File.Replace(string, string, string?)"/>, so there is nothing to
+    /// copy; POSIX replaces the inode, so the temporary file takes the mode before the rename.
+    /// </summary>
+    private static void CopyPermissions(string target, string temporary)
+    {
+        if (OperatingSystem.IsWindows() || !File.Exists(target))
+        {
+            return;
         }
 
-        stream.Write(Encoding.UTF8.GetBytes(text));
+        File.SetUnixFileMode(temporary, File.GetUnixFileMode(target));
+    }
+
+    private static void TryDelete(string path)
+    {
+        try
+        {
+            File.Delete(path);
+        }
+        catch (IOException) { }
+        catch (UnauthorizedAccessException) { }
     }
 
     /// <summary>

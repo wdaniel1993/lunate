@@ -66,6 +66,70 @@ internal static class SkillTrust
                 .OrderBy(name => name, StringComparer.Ordinal),
         ];
 
+    /// <summary>
+    /// One decision for the discovered skill set: every name is looked up under its own key, so two
+    /// skills in one worktree never overwrite each other's digest. Any prompt wins (a changed skill
+    /// asks), otherwise a name the worktree has not decided yet makes the set a new decision.
+    /// </summary>
+    internal static ExtensionTrustDecision Evaluate(
+        ExtensionTrustStore store,
+        string repositoryIdentity,
+        string worktreePath,
+        IReadOnlyList<string> names,
+        string contentHash
+    )
+    {
+        ArgumentNullException.ThrowIfNull(store);
+        ArgumentNullException.ThrowIfNull(names);
+
+        var decision = ExtensionTrustDecision.Trusted;
+        foreach (string name in names)
+        {
+            ExtensionTrustDecision entry = store.EvaluateSkills(
+                repositoryIdentity,
+                worktreePath,
+                name,
+                contentHash
+            );
+            if (entry is ExtensionTrustDecision.Prompt)
+            {
+                return ExtensionTrustDecision.Prompt;
+            }
+
+            if (entry is ExtensionTrustDecision.NewWorktree)
+            {
+                decision = ExtensionTrustDecision.NewWorktree;
+            }
+        }
+
+        return decision;
+    }
+
+    /// <summary>Records the same decision for every discovered skill, keyed by its name.</summary>
+    internal static void Record(
+        ExtensionTrustStore store,
+        string repositoryIdentity,
+        string worktreePath,
+        IReadOnlyList<string> names,
+        string contentHash,
+        DateTimeOffset trustedAt
+    )
+    {
+        ArgumentNullException.ThrowIfNull(store);
+        ArgumentNullException.ThrowIfNull(names);
+
+        foreach (string name in names)
+        {
+            store.RecordSkillsTrusted(
+                repositoryIdentity,
+                worktreePath,
+                name,
+                contentHash,
+                trustedAt
+            );
+        }
+    }
+
     /// <summary>The question's detail lines: the discovered project skill names.</summary>
     internal static IReadOnlyList<string> QuestionDetails(IReadOnlyList<string> names) =>
         [$"skills: {string.Join(", ", names)}"];

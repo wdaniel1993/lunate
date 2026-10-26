@@ -35,7 +35,13 @@ public sealed class TrustInventoryTests
         string worktree = InstallExtension(temp);
         string store = temp.File("store");
         Store(store)
-            .RecordTrusted(Identity(worktree), worktree, "a-previous-hash", DateTimeOffset.UtcNow);
+            .RecordTrusted(
+                Identity(worktree),
+                worktree,
+                "hello",
+                "a-previous-hash",
+                DateTimeOffset.UtcNow
+            );
 
         TrustInventory inventory = Create(worktree, store);
 
@@ -71,7 +77,10 @@ public sealed class TrustInventoryTests
             .RecordTrusted(
                 Identity(worktree),
                 Path.Combine(worktree, "another-worktree"),
-                "a-previous-hash",
+                "hello",
+                ExtensionTrustStore.ComputeContentHash(
+                    Path.Combine(worktree, ".lunate", "extensions", "hello")
+                ),
                 DateTimeOffset.UtcNow
             );
 
@@ -95,6 +104,7 @@ public sealed class TrustInventoryTests
             .RecordTrusted(
                 Identity(worktree),
                 worktree,
+                "hello",
                 ExtensionTrustStore.ComputeContentHash(directory),
                 DateTimeOffset.UtcNow
             );

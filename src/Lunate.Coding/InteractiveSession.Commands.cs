@@ -879,7 +879,7 @@ internal sealed partial class InteractiveSession
         Session resumed;
         try
         {
-            resumed = Session.Load(path);
+            resumed = WithRedaction(Session.Load(path));
         }
         catch (Exception exception)
             when (exception is IOException or InvalidDataException or UnauthorizedAccessException)

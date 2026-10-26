@@ -222,13 +222,16 @@ public sealed class SkillExtensionTests
         var scan = SkillScanner.ScanProject(
             new SkillScanRequest(temp.Worktree, workspace.RepoRoot, "", [])
         );
-        string hash = SkillTrust.ComputeContentHash(
-            [.. scan.Skills.Where(skill => skill is { Valid: true, Scope: SkillScope.Project })],
-            workspace.RepoRoot ?? temp.Worktree
-        );
-        new ExtensionTrustStore(new ExtensionHostOptions { StorePath = store }).RecordSkillsTrusted(
+        List<SkillDescriptor> project =
+        [
+            .. scan.Skills.Where(skill => skill is { Valid: true, Scope: SkillScope.Project }),
+        ];
+        string hash = SkillTrust.ComputeContentHash(project, workspace.RepoRoot ?? temp.Worktree);
+        SkillTrust.Record(
+            new ExtensionTrustStore(new ExtensionHostOptions { StorePath = store }),
             workspace.GitCommonDir ?? temp.Worktree,
             workspace.WorktreeRoot,
+            SkillTrust.Names(project),
             hash,
             DateTimeOffset.UtcNow
         );

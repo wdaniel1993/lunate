@@ -51,6 +51,17 @@ internal sealed record InstalledPackageProvenance
 }
 
 /// <summary>
+/// One install record that cannot be believed (design D8): the record's path, the package directory
+/// it sits in (the only name left when the document cannot be read) and the parser's one-line
+/// reason. A broken record is a fact the trust boundary acts on, not a record it ignores.
+/// </summary>
+internal sealed record BrokenInstallRecord(
+    string RecordPath,
+    string PackageDirectory,
+    string Reason
+);
+
+/// <summary>
 /// What this machine has installed, read from the records under <c>&lt;root&gt;/packages/</c>
 /// (design D7, D8). It answers two questions the rest of the host asks: which package provided a
 /// directory that discovery found, and what digest a trust decision has to bind so an upgraded
@@ -58,7 +69,9 @@ internal sealed record InstalledPackageProvenance
 /// <para>
 /// A record is machine state, not repository content, so a project install of another worktree is
 /// simply not about the directory in front of us: matching is by the path the record's scope and
-/// worktree imply, and a record that cannot be read contributes nothing rather than a guess.
+/// worktree imply. A record that cannot be read, or whose integrity hash does not answer for its
+/// bytes, is collected as <see cref="Broken"/> rather than dropped: a load must never mistake a
+/// damaged record for a hand-placed extension.
 /// </para>
 /// </summary>
 internal sealed class InstalledPackages
@@ -69,21 +82,34 @@ internal sealed class InstalledPackages
 
     private readonly string _storeRoot;
     private readonly IReadOnlyList<InstalledPackageProvenance> _all;
+    private readonly IReadOnlyList<BrokenInstallRecord> _broken;
 
-    private InstalledPackages(string storeRoot, IReadOnlyList<InstalledPackageProvenance> all)
+    private InstalledPackages(
+        string storeRoot,
+        IReadOnlyList<InstalledPackageProvenance> all,
+        IReadOnlyList<BrokenInstallRecord> broken
+    )
     {
         _storeRoot = storeRoot;
         _all = all;
+        _broken = broken;
     }
 
     /// <summary>No installs: what a store without records answers.</summary>
-    internal static InstalledPackages Empty { get; } = new(string.Empty, []);
+    internal static InstalledPackages Empty { get; } = new(string.Empty, [], []);
 
     internal IReadOnlyList<InstalledPackageProvenance> All => _all;
 
     /// <summary>
-    /// Every readable record under <paramref name="storeRoot"/>, ordered by package id. A missing
-    /// store, an unreadable directory and a malformed record each contribute no entry.
+    /// Every record under the store that cannot be read or no longer answers for itself, ordered by
+    /// package directory. Readable records are not here; a missing record file names nothing and is
+    /// not a broken record either.
+    /// </summary>
+    internal IReadOnlyList<BrokenInstallRecord> Broken => _broken;
+
+    /// <summary>
+    /// Every readable record under <paramref name="storeRoot"/>, ordered by package id, and every
+    /// record that cannot be believed. A missing store or an unreadable directory yields neither.
     /// </summary>
     internal static InstalledPackages Read(string storeRoot)
     {
@@ -94,9 +120,10 @@ internal sealed class InstalledPackages
 
         string packages = Path.Combine(storeRoot, "packages");
         List<InstalledPackageProvenance> found = [];
+        List<BrokenInstallRecord> broken = [];
         if (!Directory.Exists(packages))
         {
-            return new InstalledPackages(storeRoot, found);
+            return new InstalledPackages(storeRoot, found, broken);
         }
 
         IEnumerable<string> directories;
@@ -106,23 +133,55 @@ internal sealed class InstalledPackages
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
-            return new InstalledPackages(storeRoot, found);
+            return new InstalledPackages(storeRoot, found, broken);
         }
 
         foreach (string directory in directories)
         {
-            string path = Path.Combine(directory, "install.json");
-            if (TryRead(path, out InstalledPackageProvenance? provenance))
+            string path = Path.Combine(directory, PackageInstallRecordJson.FileName);
+            if (!File.Exists(path))
             {
-                found.Add(provenance!);
+                // A directory without a record is a half-cleaned install: it names no content.
+                continue;
             }
+
+            PackageInstallRecord? record = PackageInstallRecordJson.TryRead(
+                path,
+                out string? problem
+            );
+            if (record is null)
+            {
+                broken.Add(
+                    new BrokenInstallRecord(
+                        path,
+                        Path.GetFileName(directory),
+                        problem ?? "the record could not be read"
+                    )
+                );
+                continue;
+            }
+
+            found.Add(
+                new InstalledPackageProvenance
+                {
+                    PackageId = record.Package.Id,
+                    Version = record.Package.Version,
+                    Sha512 = record.Package.Sha512,
+                    Sources = record.Package.Sources,
+                    ExtensionId = record.Content.ExtensionId,
+                    Skills = record.Content.Skills,
+                    IsProject = record.Scope is PackageScope.Project,
+                    Worktree = record.Worktree,
+                    RecordPath = path,
+                }
+            );
         }
 
         found.Sort(
             (left, right) =>
                 StringComparer.OrdinalIgnoreCase.Compare(left.PackageId, right.PackageId)
         );
-        return new InstalledPackages(storeRoot, found);
+        return new InstalledPackages(storeRoot, found, broken);
     }
 
     /// <summary>The install that provides an extension directory, or null when it is hand-placed.</summary>
@@ -220,98 +279,6 @@ internal sealed class InstalledPackages
                 name
             )
             : Path.Combine(_storeRoot, "skills", name);
-
-    private static bool TryRead(string path, out InstalledPackageProvenance? provenance)
-    {
-        provenance = null;
-        string text;
-        try
-        {
-            if (!File.Exists(path))
-            {
-                return false;
-            }
-
-            using FileStream stream = new(
-                path,
-                FileMode.Open,
-                FileAccess.Read,
-                FileShare.ReadWrite | FileShare.Delete
-            );
-            using var reader = new StreamReader(stream, Encoding.UTF8, true);
-            text = reader.ReadToEnd();
-        }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
-        {
-            return false;
-        }
-
-        try
-        {
-            using JsonDocument document = JsonDocument.Parse(text);
-            JsonElement root = document.RootElement;
-            if (
-                root.ValueKind != JsonValueKind.Object
-                || root.TryGetProperty("package", out JsonElement package) is false
-                || package.ValueKind != JsonValueKind.Object
-                || Text(package, "id") is not { Length: > 0 } id
-                || Text(package, "version") is not { Length: > 0 } version
-                || Text(package, "sha512") is not { Length: > 0 } sha512
-                || root.TryGetProperty("content", out JsonElement content) is false
-                || content.ValueKind != JsonValueKind.Object
-            )
-            {
-                return false;
-            }
-
-            provenance = new InstalledPackageProvenance
-            {
-                PackageId = id,
-                Version = version,
-                Sha512 = sha512,
-                Sources = Strings(package, "sources"),
-                ExtensionId =
-                    content.TryGetProperty("extension", out JsonElement extension)
-                    && extension.ValueKind == JsonValueKind.Object
-                        ? Text(extension, "id")
-                        : null,
-                Skills = Strings(content, "skills"),
-                IsProject = string.Equals(Text(root, "scope"), "project", StringComparison.Ordinal),
-                Worktree = Text(root, "worktree"),
-                RecordPath = path,
-            };
-            return true;
-        }
-        catch (JsonException)
-        {
-            return false;
-        }
-    }
-
-    private static string? Text(JsonElement node, string key) =>
-        node.TryGetProperty(key, out JsonElement value) && value.ValueKind == JsonValueKind.String
-            ? value.GetString()
-            : null;
-
-    private static IReadOnlyList<string> Strings(JsonElement node, string key)
-    {
-        if (
-            !node.TryGetProperty(key, out JsonElement value)
-            || value.ValueKind != JsonValueKind.Array
-        )
-        {
-            return [];
-        }
-
-        return
-        [
-            .. value
-                .EnumerateArray()
-                .Where(item => item.ValueKind == JsonValueKind.String)
-                .Select(item => item.GetString()!)
-                .Where(item => item.Length > 0),
-        ];
-    }
 
     /// <summary>
     /// Two paths naming one place, canonicalized the way discovery canonicalizes (existing symlink

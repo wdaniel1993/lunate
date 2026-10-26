@@ -140,6 +140,7 @@ internal static class TrustCommand
             store.RecordTrusted(
                 inventory.RepositoryIdentity,
                 inventory.WorktreePath,
+                extension.Descriptor.Id,
                 extension.ContentHash,
                 now
             );
@@ -176,9 +177,11 @@ internal static class TrustCommand
 
         if (inventory.ProjectSkills is { } skills)
         {
-            store.RecordSkillsTrusted(
+            SkillTrust.Record(
+                store,
                 inventory.RepositoryIdentity,
                 inventory.WorktreePath,
+                skills.Names,
                 skills.ContentHash,
                 now
             );

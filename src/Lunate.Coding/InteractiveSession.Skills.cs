@@ -72,14 +72,17 @@ internal sealed partial class InteractiveSession
             _workspace.RepoRoot ?? _workspace.WorktreeRoot,
             Installed
         );
-        switch (store.EvaluateSkills(identity, _workspace.WorktreeRoot, hash))
+        IReadOnlyList<string> names = SkillTrust.Names(project);
+        switch (SkillTrust.Evaluate(store, identity, _workspace.WorktreeRoot, names, hash))
         {
             case ExtensionTrustDecision.Trusted:
                 return true;
             case ExtensionTrustDecision.NewWorktree:
-                store.RecordSkillsTrusted(
+                SkillTrust.Record(
+                    store,
                     identity,
                     _workspace.WorktreeRoot,
+                    names,
                     hash,
                     DateTimeOffset.UtcNow
                 );
@@ -93,9 +96,11 @@ internal sealed partial class InteractiveSession
                     .ConfigureAwait(false);
                 if (approved)
                 {
-                    store.RecordSkillsTrusted(
+                    SkillTrust.Record(
+                        store,
                         identity,
                         _workspace.WorktreeRoot,
+                        names,
                         hash,
                         DateTimeOffset.UtcNow
                     );

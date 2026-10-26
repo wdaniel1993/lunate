@@ -2,8 +2,9 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Lunate.Ai;
 
-namespace Lunate.Extensibility.Restore;
+namespace Lunate.Extensibility;
 
 /// <summary>
 /// Reads, writes and hashes <c>install.json</c> (design D8, D9). The writer is canonical — sources,
@@ -55,7 +56,19 @@ public static partial class PackageInstallRecordJson
         string temporary = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
         try
         {
-            File.WriteAllBytes(temporary, ToBytes(record));
+            using (
+                FileStream stream = SecureFiles.OpenOwnerOnly(
+                    temporary,
+                    FileMode.Create,
+                    FileAccess.Write,
+                    FileShare.None
+                )
+            )
+            {
+                stream.Write(ToBytes(record));
+            }
+
+            SecureFiles.RestrictToOwner(temporary);
             File.Move(temporary, path, overwrite: true);
         }
         catch

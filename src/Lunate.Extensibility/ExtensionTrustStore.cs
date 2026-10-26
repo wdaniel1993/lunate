@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Lunate.Ai;
 
 namespace Lunate.Extensibility;
 
@@ -96,9 +97,18 @@ public sealed class ExtensionTrustStore
         return Convert.ToHexStringLower(hash.GetHashAndReset());
     }
 
+    /// <summary>
+    /// The extension trust record: one entry per repository, worktree and extension id. Keying by
+    /// the extension's own id is what lets two project extensions in one worktree hold their own
+    /// decision; a worktree alone cannot say which of them a digest belongs to. When the worktree
+    /// has no entry for this id, the digest the same id was trusted with in another worktree of
+    /// this repository answers the new-worktree question — trust travels with the extension, never
+    /// with the path alone.
+    /// </summary>
     public ExtensionTrustDecision Evaluate(
         string repositoryIdentity,
         string worktreePath,
+        string extensionId,
         string contentHash
     ) =>
         EvaluateIn(
@@ -106,6 +116,7 @@ public sealed class ExtensionTrustStore
             RepositoriesSection,
             repositoryIdentity,
             worktreePath,
+            extensionId,
             contentHash
         );
 
@@ -121,17 +132,27 @@ public sealed class ExtensionTrustStore
         string repositoryIdentity,
         string configPath,
         string contentHash
-    ) => EvaluateIn(FilesKey, McpConfigSection, repositoryIdentity, configPath, contentHash);
+    ) => EvaluateFile(FilesKey, McpConfigSection, repositoryIdentity, configPath, contentHash);
 
     /// <summary>
-    /// The project-skill trust record: the same per-repository/worktree/hash semantics as
-    /// extension trust, kept in a distinct section so skill trust is never shared with it.
+    /// The project-skill trust record: one entry per repository, worktree and skill name, in a
+    /// section distinct from extension trust so a skill's decision is never inherited from an
+    /// extension (or another skill) that happens to share the worktree.
     /// </summary>
     public ExtensionTrustDecision EvaluateSkills(
         string repositoryIdentity,
         string worktreePath,
+        string skillName,
         string contentHash
-    ) => EvaluateIn(WorktreesKey, SkillsSection, repositoryIdentity, worktreePath, contentHash);
+    ) =>
+        EvaluateIn(
+            WorktreesKey,
+            SkillsSection,
+            repositoryIdentity,
+            worktreePath,
+            skillName,
+            contentHash
+        );
 
     /// <summary>
     /// The per-server approval record: keyed by repository identity and the canonical hash of the
@@ -164,6 +185,7 @@ public sealed class ExtensionTrustStore
     public void RecordTrusted(
         string repositoryIdentity,
         string worktreePath,
+        string extensionId,
         string contentHash,
         DateTimeOffset trustedAt
     ) =>
@@ -172,6 +194,7 @@ public sealed class ExtensionTrustStore
             RepositoriesSection,
             repositoryIdentity,
             worktreePath,
+            extensionId,
             contentHash,
             trustedAt
         );
@@ -183,7 +206,7 @@ public sealed class ExtensionTrustStore
         string contentHash,
         DateTimeOffset trustedAt
     ) =>
-        RecordIn(
+        RecordFile(
             FilesKey,
             McpConfigSection,
             repositoryIdentity,
@@ -192,10 +215,11 @@ public sealed class ExtensionTrustStore
             trustedAt
         );
 
-    /// <summary>Records one worktree's project-skill trust decision, keyed like extension trust.</summary>
+    /// <summary>Records one worktree's project-skill trust decision, keyed by the skill's name.</summary>
     public void RecordSkillsTrusted(
         string repositoryIdentity,
         string worktreePath,
+        string skillName,
         string contentHash,
         DateTimeOffset trustedAt
     ) =>
@@ -204,6 +228,7 @@ public sealed class ExtensionTrustStore
             SkillsSection,
             repositoryIdentity,
             worktreePath,
+            skillName,
             contentHash,
             trustedAt
         );
@@ -294,30 +319,21 @@ public sealed class ExtensionTrustStore
 
         JsonObject document = ReadDocument();
         List<TrustRecord> records = [];
-        Collect(
+        CollectWorktrees(
             document,
-            WorktreesKey,
             RepositoriesSection,
             TrustSection.Extensions,
             repositoryIdentity,
             records
         );
-        Collect(
+        CollectFiles(
             document,
-            FilesKey,
             McpConfigSection,
             TrustSection.McpConfig,
             repositoryIdentity,
             records
         );
-        Collect(
-            document,
-            WorktreesKey,
-            SkillsSection,
-            TrustSection.Skills,
-            repositoryIdentity,
-            records
-        );
+        CollectWorktrees(document, SkillsSection, TrustSection.Skills, repositoryIdentity, records);
         CollectDefinitions(
             document,
             McpServerSection,
@@ -373,9 +389,14 @@ public sealed class ExtensionTrustStore
         }
     }
 
-    private static void Collect(
+    /// <summary>
+    /// The worktree-keyed collectors (extension trust and project skills): each worktree holds one
+    /// map from entry id to digest. A flat string under a worktree is the layout before the id was
+    /// part of the key; it cannot say which extension or skill it approved, so it is not reported as
+    /// a record (and the prompt still asks).
+    /// </summary>
+    private static void CollectWorktrees(
         JsonObject document,
-        string entriesKey,
         string section,
         TrustSection kind,
         string repositoryIdentity,
@@ -385,20 +406,55 @@ public sealed class ExtensionTrustStore
         if (
             document[section] is not JsonObject repositories
             || repositories[repositoryIdentity] is not JsonObject repository
-            || repository[entriesKey] is not JsonObject entries
+            || repository[WorktreesKey] is not JsonObject worktrees
         )
         {
             return;
         }
 
-        foreach (KeyValuePair<string, JsonNode?> entry in entries)
+        foreach ((string worktree, JsonNode? entries) in worktrees)
         {
-            if (
-                entry.Value is JsonValue value
-                && value.TryGetValue<string>(out string? recordedHash)
-            )
+            if (entries is not JsonObject decided)
             {
-                records.Add(new TrustRecord(kind, entry.Key, recordedHash));
+                continue;
+            }
+
+            foreach ((string _, JsonNode? recorded) in decided)
+            {
+                if (
+                    recorded is JsonValue value
+                    && value.TryGetValue<string>(out string? recordedHash)
+                )
+                {
+                    records.Add(new TrustRecord(kind, worktree, recordedHash));
+                }
+            }
+        }
+    }
+
+    /// <summary>The file-keyed collector: the project <c>mcp.json</c> records, one per file path.</summary>
+    private static void CollectFiles(
+        JsonObject document,
+        string section,
+        TrustSection kind,
+        string repositoryIdentity,
+        List<TrustRecord> records
+    )
+    {
+        if (
+            document[section] is not JsonObject repositories
+            || repositories[repositoryIdentity] is not JsonObject repository
+            || repository[FilesKey] is not JsonObject files
+        )
+        {
+            return;
+        }
+
+        foreach ((string path, JsonNode? recorded) in files)
+        {
+            if (recorded is JsonValue value && value.TryGetValue<string>(out string? recordedHash))
+            {
+                records.Add(new TrustRecord(kind, path, recordedHash));
             }
         }
     }
@@ -433,7 +489,12 @@ public sealed class ExtensionTrustStore
         }
     }
 
-    private ExtensionTrustDecision EvaluateIn(
+    /// <summary>
+    /// The project <c>mcp.json</c> record keeps its own flat shape — one config-file path per
+    /// digest, never nested under a worktree — so it gets its own reader rather than sharing the
+    /// worktree-keyed one. A missing entry is the new-worktree decision it always was.
+    /// </summary>
+    private ExtensionTrustDecision EvaluateFile(
         string entriesKey,
         string section,
         string repositoryIdentity,
@@ -449,12 +510,8 @@ public sealed class ExtensionTrustStore
         if (
             document[section] is not JsonObject repositories
             || repositories[repositoryIdentity] is not JsonObject repository
+            || repository[entriesKey] is not JsonObject entries
         )
-        {
-            return ExtensionTrustDecision.Prompt;
-        }
-
-        if (repository[entriesKey] is not JsonObject entries)
         {
             return ExtensionTrustDecision.Prompt;
         }
@@ -472,7 +529,7 @@ public sealed class ExtensionTrustStore
             : ExtensionTrustDecision.Prompt;
     }
 
-    private void RecordIn(
+    private void RecordFile(
         string entriesKey,
         string section,
         string repositoryIdentity,
@@ -500,6 +557,143 @@ public sealed class ExtensionTrustStore
         WriteAtomically(document);
     }
 
+    private ExtensionTrustDecision EvaluateIn(
+        string entriesKey,
+        string section,
+        string repositoryIdentity,
+        string worktreePath,
+        string entryId,
+        string contentHash
+    )
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(repositoryIdentity);
+        ArgumentException.ThrowIfNullOrWhiteSpace(worktreePath);
+        ArgumentException.ThrowIfNullOrWhiteSpace(entryId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(contentHash);
+
+        JsonObject document = ReadDocument();
+        if (
+            document[section] is not JsonObject repositories
+            || repositories[repositoryIdentity] is not JsonObject repository
+            || repository[entriesKey] is not JsonObject entries
+        )
+        {
+            return ExtensionTrustDecision.Prompt;
+        }
+
+        if (Decide(entries, worktreePath, entryId, contentHash) is { } decision)
+        {
+            return decision;
+        }
+
+        // The worktree has no entry for this id. The same extension id trusted with these bytes in
+        // another worktree of this repository is the same decision, so it does not ask again; any
+        // other digest is a change and takes the normal question.
+        return TrustedElsewhere(entries, worktreePath, entryId, contentHash)
+            ? ExtensionTrustDecision.NewWorktree
+            : ExtensionTrustDecision.Prompt;
+    }
+
+    /// <summary>
+    /// This worktree's answer for one entry id, or null when this worktree has no entry for it. A
+    /// worktree still stored as a flat digest predates keying by id, so it cannot say which
+    /// extension or skill it approved: it prompts rather than being guessed at.
+    /// </summary>
+    private static ExtensionTrustDecision? Decide(
+        JsonObject worktrees,
+        string worktreePath,
+        string entryId,
+        string contentHash
+    )
+    {
+        if (!worktrees.TryGetPropertyValue(worktreePath, out JsonNode? node))
+        {
+            return null;
+        }
+
+        if (node is not JsonObject entries)
+        {
+            return ExtensionTrustDecision.Prompt;
+        }
+
+        if (!entries.TryGetPropertyValue(entryId, out JsonNode? recorded))
+        {
+            return null;
+        }
+
+        return
+            recorded is JsonValue value
+            && value.TryGetValue<string>(out string? recordedHash)
+            && string.Equals(recordedHash, contentHash, StringComparison.Ordinal)
+            ? ExtensionTrustDecision.Trusted
+            : ExtensionTrustDecision.Prompt;
+    }
+
+    /// <summary>Whether another worktree of this repository trusted this id with these exact bytes.</summary>
+    private static bool TrustedElsewhere(
+        JsonObject worktrees,
+        string worktreePath,
+        string entryId,
+        string contentHash
+    )
+    {
+        foreach ((string path, JsonNode? node) in worktrees)
+        {
+            if (
+                string.Equals(path, worktreePath, StringComparison.Ordinal)
+                || node is not JsonObject entries
+                || !entries.TryGetPropertyValue(entryId, out JsonNode? recorded)
+            )
+            {
+                continue;
+            }
+
+            if (
+                recorded is JsonValue value
+                && value.TryGetValue<string>(out string? recordedHash)
+                && string.Equals(recordedHash, contentHash, StringComparison.Ordinal)
+            )
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private void RecordIn(
+        string entriesKey,
+        string section,
+        string repositoryIdentity,
+        string worktreePath,
+        string entryId,
+        string contentHash,
+        DateTimeOffset trustedAt
+    )
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(repositoryIdentity);
+        ArgumentException.ThrowIfNullOrWhiteSpace(worktreePath);
+        ArgumentException.ThrowIfNullOrWhiteSpace(entryId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(contentHash);
+
+        JsonObject document = ReadDocument();
+        JsonObject repositories = document[section] as JsonObject ?? new JsonObject();
+        document[section] = repositories;
+
+        JsonObject repository = repositories[repositoryIdentity] as JsonObject ?? new JsonObject();
+        repositories[repositoryIdentity] = repository;
+        repository["trustedAt"] ??= trustedAt.ToString("O", CultureInfo.InvariantCulture);
+
+        JsonObject worktrees = repository[entriesKey] as JsonObject ?? new JsonObject();
+        repository[entriesKey] = worktrees;
+
+        JsonObject entries = worktrees[worktreePath] as JsonObject ?? new JsonObject();
+        worktrees[worktreePath] = entries;
+        entries[entryId] = contentHash;
+
+        WriteAtomically(document);
+    }
+
     private JsonObject ReadDocument()
     {
         if (!File.Exists(_options.TrustFilePath))
@@ -522,11 +716,23 @@ public sealed class ExtensionTrustStore
     {
         Directory.CreateDirectory(_options.StorePath);
         string temporary = _options.TrustFilePath + "." + Guid.NewGuid().ToString("N") + ".tmp";
-        File.WriteAllText(
-            temporary,
-            document.ToJsonString(new JsonSerializerOptions { WriteIndented = true }),
-            new UTF8Encoding(encoderShouldEmitUTF8Identifier: false)
-        );
+        using (
+            FileStream stream = SecureFiles.OpenOwnerOnly(
+                temporary,
+                FileMode.Create,
+                FileAccess.Write,
+                FileShare.None
+            )
+        )
+        {
+            stream.Write(
+                Encoding.UTF8.GetBytes(
+                    document.ToJsonString(new JsonSerializerOptions { WriteIndented = true })
+                )
+            );
+        }
+
+        SecureFiles.RestrictToOwner(temporary);
         File.Move(temporary, _options.TrustFilePath, overwrite: true);
     }
 }

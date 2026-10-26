@@ -271,6 +271,13 @@ internal static class AcpMode
             sessionDirectory ?? HarnessFactory.DefaultSessionDirectory(workspace),
             workspace
         );
+        HarnessFactory.AttachRedaction(
+            session,
+            authPath: null,
+            environment: null,
+            storePath: null,
+            workspace.WorktreeRoot
+        );
         LaunchOptions directives = launch ?? new LaunchOptions();
         SystemPrompt.Record(session, directives);
         var options = new AgentHarnessOptions
