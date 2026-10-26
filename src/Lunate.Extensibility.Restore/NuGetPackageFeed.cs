@@ -18,17 +18,20 @@ internal sealed class NuGetPackageFeed
 {
     private readonly List<(PackageSource Source, SourceRepository Repository)> _sources;
     private readonly Action<string>? _observer;
+    private readonly bool _offline;
     private readonly Dictionary<string, IReadOnlyList<NuGetVersion>> _versions = new(
         StringComparer.OrdinalIgnoreCase
     );
 
     private NuGetPackageFeed(
         List<(PackageSource, SourceRepository)> sources,
-        Action<string>? observer
+        Action<string>? observer,
+        bool offline
     )
     {
         _sources = sources;
         _observer = observer;
+        _offline = offline;
     }
 
     /// <summary>
@@ -36,10 +39,15 @@ internal sealed class NuGetPackageFeed
     /// (machine, user and project <c>nuget.config</c>) rooted at the extension's directory. A feed
     /// that appears twice under one URL is used once.
     /// </summary>
+    /// <summary>
+    /// The same feeds, in offline mode: the configured names stay known — they are what a record
+    /// calls its sources — and no call reaches a feed, because every one of them refuses first.
+    /// </summary>
     internal static NuGetPackageFeed Create(
         string settingsRoot,
         IReadOnlyList<SingleFilePackageSource> explicitSources,
-        Action<string>? observer
+        Action<string>? observer,
+        bool offline = false
     )
     {
         IEnumerable<PackageSource> configured =
@@ -62,7 +70,7 @@ internal sealed class NuGetPackageFeed
             sources.Add((source, Repository.Factory.GetCoreV3(source)));
         }
 
-        return new NuGetPackageFeed(sources, observer);
+        return new NuGetPackageFeed(sources, observer, offline);
     }
 
     /// <summary>The feed names, sorted, as the lock records them.</summary>
@@ -80,6 +88,7 @@ internal sealed class NuGetPackageFeed
             return cached;
         }
 
+        RefuseOffline($"look up the versions of '{id}'");
         SortedSet<NuGetVersion> versions = [];
         using var cache = new SourceCacheContext();
         foreach ((PackageSource source, SourceRepository repository) in _sources)
@@ -114,6 +123,7 @@ internal sealed class NuGetPackageFeed
         CancellationToken cancellationToken
     )
     {
+        RefuseOffline($"read the metadata of '{id}' {version.ToNormalizedString()}");
         using var cache = new SourceCacheContext();
         foreach ((PackageSource source, SourceRepository repository) in _sources)
         {
@@ -166,6 +176,11 @@ internal sealed class NuGetPackageFeed
         if (File.Exists(nupkg))
         {
             return installPath;
+        }
+
+        if (_offline)
+        {
+            throw new InvalidOperationException(OfflineMessage(id, version, globalPackagesFolder));
         }
 
         using var cache = new SourceCacheContext();
@@ -223,6 +238,115 @@ internal sealed class NuGetPackageFeed
         );
     }
 
+    /// <summary>
+    /// The exact package's nupkg in the packages folder and the SHA-512 NuGet recorded for it
+    /// (design D3, D11). A warm folder is hashed where it lies and makes no feed request. A nupkg
+    /// whose bytes do not match that recorded hash is refused before anything is extracted: the
+    /// folder holds something NuGet did not install, and an install must not vouch for it.
+    /// </summary>
+    internal async Task<PackageDownload> DownloadAsync(
+        string id,
+        NuGetVersion version,
+        string globalPackagesFolder,
+        CancellationToken cancellationToken
+    )
+    {
+        VersionFolderPathResolver resolver = new(globalPackagesFolder);
+        string nupkg = resolver.GetPackageFilePath(id, version);
+        string hashPath = resolver.GetHashPath(id, version);
+        string label = FormattableString.Invariant(
+            $"package '{id}' {version.ToNormalizedString()}"
+        );
+
+        if (!File.Exists(nupkg) || !File.Exists(hashPath))
+        {
+            if (_offline)
+            {
+                throw new InvalidOperationException(
+                    OfflineMessage(id, version, globalPackagesFolder)
+                );
+            }
+
+            try
+            {
+                await InstallAsync(id, version, globalPackagesFolder, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch (Exception exception) when (exception is not OperationCanceledException)
+            {
+                throw new InvalidOperationException(
+                    $"{label} could not be downloaded from {string.Join(", ", Names)}: {exception.Message}",
+                    exception
+                );
+            }
+        }
+
+        string recorded = File.Exists(hashPath) ? ReadText(hashPath).Trim() : string.Empty;
+        string computed = Sha512(nupkg);
+        if (recorded.Length > 0 && !string.Equals(recorded, computed, StringComparison.Ordinal))
+        {
+            throw new InvalidDataException(
+                $"{label}: the nupkg at '{nupkg}' does not match the SHA-512 NuGet recorded in "
+                    + $"'{hashPath}'; the packages folder holds bytes NuGet did not install, so "
+                    + "nothing was written. Delete "
+                    + $"'{Path.GetDirectoryName(nupkg)}' and run the install again."
+            );
+        }
+
+        return new PackageDownload(
+            Path.GetFullPath(nupkg),
+            recorded.Length > 0 ? recorded : computed
+        );
+    }
+
+    /// <summary>The refusal every feed call makes in offline mode, naming what could not be answered.</summary>
+    private void RefuseOffline(string wanted)
+    {
+        if (_offline)
+        {
+            throw new InvalidOperationException(
+                $"an offline install cannot {wanted}: it reads only the packages folder and makes no "
+                    + "feed request. Run the install once without --offline, or set NUGET_PACKAGES to "
+                    + "a folder that already holds the packages."
+            );
+        }
+    }
+
+    /// <summary>The one message a cold packages folder produces, naming the package and the folder.</summary>
+    private static string OfflineMessage(
+        string id,
+        NuGetVersion version,
+        string globalPackagesFolder
+    ) =>
+        FormattableString.Invariant(
+            $"package '{id}' {version.ToNormalizedString()} is not in the packages folder "
+        )
+        + $"'{globalPackagesFolder}'; an offline install reads only packages that are already there, "
+        + "so download it once with a feed or point NUGET_PACKAGES at a folder that holds it.";
+
+    private static string Sha512(string nupkgPath)
+    {
+        using FileStream stream = new(
+            nupkgPath,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.ReadWrite | FileShare.Delete
+        );
+        return Convert.ToBase64String(System.Security.Cryptography.SHA512.HashData(stream));
+    }
+
+    private static string ReadText(string path)
+    {
+        using FileStream stream = new(
+            path,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.ReadWrite | FileShare.Delete
+        );
+        using var reader = new StreamReader(stream);
+        return reader.ReadToEnd();
+    }
+
     private static IEnumerable<PackageSource> LoadConfiguredSources(string settingsRoot)
     {
         ISettings settings = Settings.LoadDefaultSettings(settingsRoot);
@@ -231,3 +355,9 @@ internal sealed class NuGetPackageFeed
             .Where(source => source.IsEnabled);
     }
 }
+
+/// <summary>
+/// One downloaded package: the nupkg in the packages folder and the SHA-512 NuGet recorded for it —
+/// transport integrity against the feed, not a signature (design D11).
+/// </summary>
+internal sealed record PackageDownload(string NupkgPath, string Sha512);

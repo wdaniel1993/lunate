@@ -1,6 +1,5 @@
 using System.Security.Cryptography;
 using Lunate.Extensibility;
-using NuGet.Configuration;
 using NuGet.Frameworks;
 using NuGet.Packaging;
 
@@ -46,10 +45,9 @@ public sealed class NuGetRestoreEngine : ISingleFileRestoreEngine
             );
         }
 
-        string globalPackagesFolder = GlobalPackagesFolder.Resolve(
-            _options.GlobalPackagesFolder ?? ConfiguredGlobalPackagesFolder(settingsRoot),
-            Environment.GetEnvironmentVariable("NUGET_PACKAGES"),
-            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)
+        string globalPackagesFolder = GlobalPackagesFolder.ResolveFor(
+            _options.GlobalPackagesFolder,
+            settingsRoot
         );
         NuGetFramework target = NuGetFramework.Parse(request.Target.Tfm);
 
@@ -117,17 +115,5 @@ public sealed class NuGetRestoreEngine : ISingleFileRestoreEngine
             Sources = feed.Names,
             GlobalPackagesFolder = globalPackagesFolder,
         };
-    }
-
-    /// <summary><c>globalPackagesFolder</c> from the configuration chain, or null when unset.</summary>
-    private static string? ConfiguredGlobalPackagesFolder(string settingsRoot)
-    {
-        ISettings settings = Settings.LoadDefaultSettings(settingsRoot);
-        string? configured = SettingsUtility.GetConfigValue(
-            settings,
-            "globalPackagesFolder",
-            isPath: true
-        );
-        return string.IsNullOrWhiteSpace(configured) ? null : configured;
     }
 }

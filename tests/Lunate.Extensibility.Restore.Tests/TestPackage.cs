@@ -13,6 +13,8 @@ internal sealed class TestPackage
     internal const string FullManifest =
         """{"schema":1,"extension":"extension","skills":"skills"}""";
 
+    internal const string SkillsManifest = """{"schema":1,"skills":"skills"}""";
+
     private readonly string _id;
     private readonly string _version;
     private readonly string _feed;
@@ -127,6 +129,86 @@ internal sealed class TestPackage
         using Stream stream = entry.Open();
         stream.Write(content);
     }
+
+    /// <summary>
+    /// A copy of <paramref name="nupkgPath"/> at <paramref name="destination"/> whose entry
+    /// <paramref name="entryName"/> has its compressed bytes replaced, so reading that entry fails the
+    /// way a damaged archive does — an extraction failure that is not a missing file.
+    /// </summary>
+    internal static void CorruptEntry(string nupkgPath, string entryName, string destination)
+    {
+        byte[] bytes = System.IO.File.ReadAllBytes(nupkgPath);
+        (int data, int length) = EntryData(bytes, entryName);
+        if (length < 3)
+        {
+            throw new InvalidOperationException(
+                $"entry '{entryName}' compresses to {length} bytes, too few to corrupt usefully."
+            );
+        }
+
+        Array.Fill(bytes, (byte)0xFF, data, length);
+        System.IO.File.WriteAllBytes(destination, bytes);
+    }
+
+    /// <summary>Where one entry's compressed bytes start and how many there are, from the zip's own directory.</summary>
+    private static (int Data, int Length) EntryData(byte[] bytes, string entryName)
+    {
+        int end = -1;
+        for (var index = bytes.Length - 22; index >= 0; index--)
+        {
+            if (ReadUInt32(bytes, index) == 0x06054b50)
+            {
+                end = index;
+                break;
+            }
+        }
+
+        if (end < 0)
+        {
+            throw new InvalidOperationException(
+                "the archive has no end-of-central-directory record."
+            );
+        }
+
+        int directory = (int)ReadUInt32(bytes, end + 16);
+        int count = ReadUInt16(bytes, end + 10);
+        int cursor = directory;
+        for (var entry = 0; entry < count; entry++)
+        {
+            if (ReadUInt32(bytes, cursor) != 0x02014b50)
+            {
+                throw new InvalidOperationException(
+                    FormattableString.Invariant(
+                        $"central directory record {entry} is not a header."
+                    )
+                );
+            }
+
+            int compressed = (int)ReadUInt32(bytes, cursor + 20);
+            int nameLength = ReadUInt16(bytes, cursor + 28);
+            int extraLength = ReadUInt16(bytes, cursor + 30);
+            int commentLength = ReadUInt16(bytes, cursor + 32);
+            int local = (int)ReadUInt32(bytes, cursor + 42);
+            string name = Encoding.UTF8.GetString(bytes, cursor + 46, nameLength);
+            if (string.Equals(name, entryName, StringComparison.Ordinal))
+            {
+                int localName = ReadUInt16(bytes, local + 26);
+                int localExtra = ReadUInt16(bytes, local + 28);
+                return (local + 30 + localName + localExtra, compressed);
+            }
+
+            cursor += 46 + nameLength + extraLength + commentLength;
+        }
+
+        throw new InvalidOperationException($"the archive holds no entry '{entryName}'.");
+    }
+
+    private static int ReadUInt16(byte[] bytes, int offset) =>
+        bytes[offset] | (bytes[offset + 1] << 8);
+
+    private static uint ReadUInt32(byte[] bytes, int offset) =>
+        (uint)(bytes[offset] | (bytes[offset + 1] << 8) | (bytes[offset + 2] << 16))
+        | ((uint)bytes[offset + 3] << 24);
 
     /// <summary>The smallest nuspec NuGet reads, optionally with one dependency group.</summary>
     internal static string Nuspec(
