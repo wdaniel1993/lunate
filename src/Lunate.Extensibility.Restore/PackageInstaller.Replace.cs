@@ -66,7 +66,8 @@ public sealed partial class PackageInstaller
     private static List<string> RemovePrevious(
         PackageInstallRecord record,
         PackageInstallTarget target,
-        IReadOnlyList<PackageContentStager.Staged> staged
+        IReadOnlyList<PackageContentStager.Staged> staged,
+        List<string> leftBehind
     )
     {
         string root = ScopeRoot(record, target.StoreRoot);
@@ -86,7 +87,12 @@ public sealed partial class PackageInstaller
             string path = Path.Combine(root, file.Path.Replace('/', Path.DirectorySeparatorChar));
             if (File.Exists(path))
             {
-                TryDeleteFile(path);
+                // A file Windows still has mapped is not silently dropped: the new record cannot
+                // name it, so the run says it stayed behind instead of claiming to have removed it.
+                if (!TryDeleteFile(path))
+                {
+                    leftBehind.Add(file.Path);
+                }
             }
 
             removed.Add(file.Path);

@@ -182,10 +182,12 @@ public sealed class PackageInstallHostTests
         );
 
         var options = new ExtensionHostOptions { StorePath = store };
-        await LoadAsync(options, worktree, new RecordingPrompt(decisions: [true]));
+        await ReleaseAsync(
+            await LoadAsync(options, worktree, new RecordingPrompt(decisions: [true]))
+        );
 
         // The decision stands while nothing changed.
-        await LoadAsync(options, worktree, new RecordingPrompt(decisions: []));
+        await ReleaseAsync(await LoadAsync(options, worktree, new RecordingPrompt(decisions: [])));
 
         // A newer version is a different package identity and a different digest: the extension is
         // untrusted until it is approved again, which is what "a package change re-prompts" means.
@@ -201,7 +203,7 @@ public sealed class PackageInstallHostTests
         );
 
         var prompt = new RecordingPrompt(decisions: [true]);
-        await LoadAsync(options, worktree, prompt);
+        await ReleaseAsync(await LoadAsync(options, worktree, prompt));
 
         Assert.Single(prompt.Requests);
         Assert.Equal("from package Acme.Toolkit@1.5.0 (local)", prompt.Requests[0].FromPackage);
@@ -212,7 +214,7 @@ public sealed class PackageInstallHostTests
     }
 
     /// <summary>Loads <c>hello</c> from a fresh loader, the way a new session does.</summary>
-    private static async Task LoadAsync(
+    private static async Task<ExtensionLoader> LoadAsync(
         ExtensionHostOptions options,
         string worktree,
         IExtensionTrustPrompt prompt
@@ -221,6 +223,23 @@ public sealed class PackageInstallHostTests
         var loader = new ExtensionLoader(options);
         loader.Discover(worktree, worktree);
         await loader.Load("hello", worktree, worktree, prompt, Ct);
+        return loader;
+    }
+
+    /// <summary>
+    /// Unloads what a load bound and lets the runtime collect it. Windows keeps a loaded assembly
+    /// mapped until its context is gone, and an upgrade replaces the file the loader read: a test
+    /// that upgrades over a live load is asking the filesystem for something the OS forbids.
+    /// </summary>
+    private static async Task ReleaseAsync(ExtensionLoader loader)
+    {
+        await loader.Unload("hello", notifyToolsChanged: false);
+        for (var i = 0; i < 3; i++)
+        {
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            await Task.Delay(25, Ct);
+        }
     }
 
     [Fact]

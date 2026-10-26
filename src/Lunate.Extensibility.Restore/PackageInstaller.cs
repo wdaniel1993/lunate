@@ -163,9 +163,10 @@ public sealed partial class PackageInstaller
                 : PreviousContent.Capture(installed, target, target.StagingDirectory);
 
             Commit(staged, target.ScopeRoot, written, created);
+            List<string> leftBehind = [];
             List<string> removed = installed is null
                 ? []
-                : RemovePrevious(installed, target, staged);
+                : RemovePrevious(installed, target, staged, leftBehind);
 
             // The lock, then the record: a record that exists names content that exists, and a lock
             // no record names cannot survive a failure.
@@ -196,6 +197,7 @@ public sealed partial class PackageInstaller
                 Dependencies = [.. closure.Dependencies],
                 PreviousVersion = installed?.Package.Version,
                 RemovedPaths = removed,
+                LeftBehind = leftBehind,
             };
         }
         catch

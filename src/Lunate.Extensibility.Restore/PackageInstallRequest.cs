@@ -74,6 +74,14 @@ public sealed record PackageInstallResult
     public IReadOnlyList<string> RemovedPaths { get; init; } = [];
 
     /// <summary>
+    /// Paths the old version left behind because the file could not be deleted — Windows keeps a
+    /// loaded assembly mapped. The new record does not name them, so the command says so instead
+    /// of claiming the upgrade removed everything; a later reinstall or <c>uninstall --force</c>
+    /// clears them once nothing holds the file.
+    /// </summary>
+    public IReadOnlyList<string> LeftBehind { get; init; } = [];
+
+    /// <summary>
     /// What the install noticed without refusing (design D10): a same-named skill in another scope
     /// that the existing shadowing rule resolves. Empty when there is nothing to say.
     /// </summary>

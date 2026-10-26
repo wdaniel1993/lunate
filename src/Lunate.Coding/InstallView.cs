@@ -43,6 +43,16 @@ internal static class InstallView
                 ),
             }
         );
+
+        foreach (string path in result.LeftBehind)
+        {
+            lines.Add(
+                Invariant(
+                    $"left behind (in use): '{path}' — the previous version's file could not be deleted; stop the session that loaded it and run the install again to clear it"
+                )
+            );
+        }
+
         return Lines(lines);
     }
 
@@ -80,6 +90,7 @@ internal static class InstallView
         document["repaired"] = result.Status == PackageInstallStatus.Repaired;
         document["previousVersion"] = result.PreviousVersion;
         document["removed"] = Strings(result.RemovedPaths);
+        document["leftBehind"] = Strings(result.LeftBehind);
         document["dryRun"] = false;
         return document.ToJsonString();
     }
