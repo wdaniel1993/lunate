@@ -257,6 +257,130 @@ public sealed class GrepToolTests
     }
 
     [Fact]
+    public async Task A_file_symlink_is_not_searched()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        using var temp = new TempDirectory();
+        using var outside = new TempDirectory();
+        File.WriteAllText(outside.File("auth.json"), "needle\n");
+        try
+        {
+            File.CreateSymbolicLink(temp.File("auth.json"), outside.File("auth.json"));
+        }
+        catch (IOException)
+        {
+            return;
+        }
+
+        ToolResult result = await GrepAsync(temp, """{"pattern":"needle"}""");
+
+        Assert.False(result.IsError);
+        Assert.Equal("No matches for 'needle' in .", result.Output);
+    }
+
+    [Fact]
+    public async Task A_symlinked_file_named_as_the_search_path_is_refused_and_named()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        using var temp = new TempDirectory();
+        using var outside = new TempDirectory();
+        File.WriteAllText(outside.File("auth.json"), "needle\n");
+        try
+        {
+            File.CreateSymbolicLink(temp.File("auth.json"), outside.File("auth.json"));
+        }
+        catch (IOException)
+        {
+            return;
+        }
+
+        ToolResult result = await GrepAsync(temp, """{"pattern":"needle","path":"auth.json"}""");
+
+        Assert.True(result.IsError);
+        Assert.Contains("'auth.json'", result.Output, StringComparison.Ordinal);
+        Assert.Contains("outside the workspace", result.Output, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// <c>RIPGREP_CONFIG_PATH</c> is read by every <c>rg</c> process, so a config that injects
+    /// <c>--follow</c> would otherwise let the engine search through a symlink out of the workspace
+    /// while the fallback does not. The proof runs in a child process because the variable is
+    /// process-wide.
+    /// </summary>
+    [Fact]
+    public async Task A_ripgrep_config_with_follow_does_not_change_the_results()
+    {
+        const string Method = nameof(A_ripgrep_config_with_follow_does_not_change_the_results);
+        if (TestChildProcess.IsChild(Method))
+        {
+            if (RipgrepGrepEngine.TryCreate() is not { } ripgrep)
+            {
+                return;
+            }
+
+            using var temp = new TempDirectory();
+            using var outside = new TempDirectory();
+            File.WriteAllText(outside.File("secret.txt"), "needle\n");
+            try
+            {
+                File.CreateSymbolicLink(temp.File("link.txt"), outside.File("secret.txt"));
+                Directory.CreateSymbolicLink(temp.File("linkdir"), outside.Root);
+            }
+            catch (IOException)
+            {
+                return;
+            }
+
+            string config = temp.File("rg.conf");
+            File.WriteAllText(config, "--follow\n");
+            Environment.SetEnvironmentVariable("RIPGREP_CONFIG_PATH", config);
+            try
+            {
+                var request = new GrepRequest(
+                    Pattern: "needle",
+                    Root: temp.Root,
+                    RelativeRoot: ".",
+                    SearchIsFile: false,
+                    Glob: null,
+                    CaseSensitive: true,
+                    MaxResults: 100
+                );
+
+                GrepSearch expected = await new FallbackGrepEngine().SearchAsync(
+                    request,
+                    CancellationToken.None
+                );
+                GrepSearch actual = await ripgrep.SearchAsync(request, CancellationToken.None);
+
+                Assert.Null(actual.Error);
+                Assert.Empty(expected.Matches);
+                Assert.Equal(expected.Matches, actual.Matches);
+                Assert.Equal(expected.More, actual.More);
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable("RIPGREP_CONFIG_PATH", null);
+            }
+
+            return;
+        }
+
+        (int exitCode, string output) = await TestChildProcess.RunAsync(
+            typeof(GrepToolTests),
+            Method
+        );
+        Assert.True(exitCode == 0, $"the child probe failed (exit {exitCode}):{output}");
+    }
+
+    [Fact]
     public async Task The_ripgrep_engine_agrees_with_the_fallback()
     {
         if (RipgrepGrepEngine.TryCreate() is not { } ripgrep)

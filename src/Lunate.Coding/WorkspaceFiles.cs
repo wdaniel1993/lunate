@@ -19,8 +19,10 @@ internal interface IWorkspaceFiles
 
 /// <summary>
 /// The production walk: recursive over the workspace root, relative forward-slash paths for files
-/// and directories, directory symlinks not followed and not listed, `.git` skipped, unreadable
-/// directories skipped (best effort, never throwing).
+/// and directories, symlinks neither followed nor listed, `.git` skipped, unreadable directories
+/// skipped (best effort, never throwing). A symlinked file is left out for the same reason a
+/// symlinked directory is: its bytes are not the workspace's, and the index feeds a tool the
+/// approval policy classifies as read-only.
 /// </summary>
 internal sealed class SystemWorkspaceFiles : IWorkspaceFiles
 {
@@ -74,7 +76,11 @@ internal sealed class SystemWorkspaceFiles : IWorkspaceFiles
             string childRelative = relative.Length == 0 ? child.Name : relative + "/" + child.Name;
             if (child is not DirectoryInfo directory)
             {
-                entries.Add(new WorkspaceEntry(childRelative, IsDirectory: false));
+                if (child.LinkTarget is null)
+                {
+                    entries.Add(new WorkspaceEntry(childRelative, IsDirectory: false));
+                }
+
                 continue;
             }
 

@@ -93,6 +93,59 @@ public sealed class TrustRecordTests
     }
 
     [Fact]
+    public void ClearRepository_clears_single_file_records_inside_the_repository()
+    {
+        using var temp = new TempDirectory();
+        var store = new ExtensionTrustStore(TestExtensions.Options(temp.Subdirectory("store")));
+        string repository = temp.Subdirectory("repo");
+        string inside = Path.Combine(repository, ".lunate", "extensions", "acme.cs");
+        string other = Path.Combine(temp.Subdirectory("elsewhere"), "other.cs");
+        string sibling = Path.Combine(repository, "..", "sibling", "acme.cs");
+        store.RecordSingleFileTrust(inside, "digest-inside");
+        store.RecordSingleFileTrust(sibling, "digest-sibling");
+        store.RecordSingleFileTrust(other, "digest-other");
+
+        IReadOnlyList<string> cleared = store.ClearRepository(
+            Path.Combine(repository, ".git"),
+            repository
+        );
+
+        Assert.Equal([inside], cleared);
+        Assert.Equal(
+            SingleFileExtensionTrust.Untrusted,
+            store.EvaluateSingleFileTrust(inside, "digest-inside")
+        );
+        Assert.Equal(
+            SingleFileExtensionTrust.Trusted,
+            store.EvaluateSingleFileTrust(sibling, "digest-sibling")
+        );
+        // A file outside the repository is another repository's decision and stays.
+        Assert.Equal(
+            SingleFileExtensionTrust.Trusted,
+            store.EvaluateSingleFileTrust(other, "digest-other")
+        );
+    }
+
+    [Fact]
+    public void ClearRepository_clears_a_single_file_record_with_no_other_records()
+    {
+        using var temp = new TempDirectory();
+        string storePath = temp.Subdirectory("store");
+        var store = new ExtensionTrustStore(TestExtensions.Options(storePath));
+        string repository = temp.Subdirectory("repo");
+        string path = Path.Combine(repository, ".lunate", "extensions", "acme.cs");
+        store.RecordSingleFileTrust(path, "digest");
+
+        Assert.Empty(store.Records(repository));
+        store.ClearRepository(repository, repository);
+
+        Assert.Equal(
+            SingleFileExtensionTrust.Untrusted,
+            store.EvaluateSingleFileTrust(path, "digest")
+        );
+    }
+
+    [Fact]
     public void Clearing_an_unknown_repository_writes_nothing()
     {
         using var temp = new TempDirectory();

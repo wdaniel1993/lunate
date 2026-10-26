@@ -86,6 +86,12 @@ public sealed partial class ExtensionLoader
 
         switch (Trust(candidate))
         {
+            // A build record in the cache is proof the file was built, never proof that these bytes
+            // were approved: a warm cache must not stand in for a trust decision.
+            case SingleFileExtensionTrust.Untrusted:
+                throw new ExtensionTrustDeniedException(
+                    $"single-file extension '{id}' at '{candidate.Path}' has no trust decision for its current bytes; approve it in an interactive session before it is loaded. It was not loaded."
+                );
             case SingleFileExtensionTrust.Unreadable:
                 throw new ExtensionTrustDeniedException(
                     $"single-file extension '{id}' at '{candidate.Path}': the trust record for this file is unreadable; remove its entry from trust.json and trust the file again. It was not loaded."

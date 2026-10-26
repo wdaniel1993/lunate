@@ -189,15 +189,20 @@ internal sealed class SingleFileExtensionReader(
             // Untrusted is not broken: the file is usable and nothing has approved it yet, so the
             // row says what is missing and which command asks for it. Without the sentence a
             // discovered file that provides nothing reads like a defect instead of a decision.
-            SingleFileExtensionTrust.Untrusted => Built(
-                fullPath,
-                scope,
-                header,
-                digest,
-                sourceDigest,
-                read,
-                "not trusted yet; /extensions reload asks before it builds"
-            ),
+            // No build is named either — a build the cache holds for these bytes must not make an
+            // unapproved file look loadable, and the load path refuses it before the key is read.
+            SingleFileExtensionTrust.Untrusted => new SingleFileExtension
+            {
+                Path = fullPath,
+                Scope = scope,
+                Header = header,
+                State = SingleFileExtensionState.NotBuilt,
+                Digest = digest,
+                SourceDigest = sourceDigest,
+                Lock = read.Lock,
+                LockHash = read.Hash,
+                Reason = "not trusted yet; /extensions reload asks before it builds",
+            },
             _ => Built(fullPath, scope, header, digest, sourceDigest, read),
         };
     }
@@ -206,8 +211,8 @@ internal sealed class SingleFileExtensionReader(
     /// The trusted row: <c>built</c> when an assembly exists for exactly these inputs (the source
     /// digest, the whole lock, the host contract version and this toolset), <c>not-built</c>
     /// otherwise. The check is a key computation and a file existence test — no compiler, no NuGet,
-    /// so discovery stays on the startup budget. <paramref name="note"/> is what a not-built row
-    /// says when the reason is not a refused lock (an untrusted file's missing decision).
+    /// so discovery stays on the startup budget. Without a lock there is no key to compute, and a
+    /// refused toolset block is the reason the row carries.
     /// </summary>
     private SingleFileExtension Built(
         string fullPath,
@@ -215,8 +220,7 @@ internal sealed class SingleFileExtensionReader(
         ExtensionHeader header,
         string digest,
         string sourceDigest,
-        LockRead read,
-        string? note = null
+        LockRead read
     )
     {
         string? buildKey = null;
@@ -259,7 +263,7 @@ internal sealed class SingleFileExtensionReader(
             LockHash = read.Hash,
             BuildKey = buildKey,
             AssemblyPath = assemblyPath,
-            Reason = assemblyPath is null ? note ?? read.Refused : null,
+            Reason = assemblyPath is null ? read.Refused : null,
         };
     }
 

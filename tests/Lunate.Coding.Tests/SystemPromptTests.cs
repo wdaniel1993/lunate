@@ -108,6 +108,37 @@ public sealed class SystemPromptTests
         Assert.True(rulesIndex >= 0 && agentsIndex > rulesIndex);
         Assert.Contains("### AGENTS.md (AGENTS.md)", prompt, StringComparison.Ordinal);
     }
+
+    /// <summary>
+    /// The ancestor file is the repository's, so a session launched from a subdirectory still gets
+    /// it — headed by its repo-relative path, not by a bare name that would hide where it came from.
+    /// </summary>
+    [Fact]
+    public void A_subdirectory_launch_reads_the_repository_agents_file()
+    {
+        using var temp = new TempDirectory();
+        Directory.CreateDirectory(Path.Combine(temp.Root, ".git"));
+        File.WriteAllText(Path.Combine(temp.Root, "AGENTS.md"), "repository rules");
+        string subdirectory = Path.Combine(temp.Root, "src", "App");
+        Directory.CreateDirectory(subdirectory);
+        File.WriteAllText(Path.Combine(subdirectory, "AGENTS.md"), "app rules");
+        var workspace = new Workspace(subdirectory);
+
+        string prompt = SystemPrompt.Compose(
+            workspace,
+            DefaultTools,
+            new ShellResolver("/bin/bash")
+        );
+
+        Assert.Contains("### AGENTS.md (AGENTS.md)", prompt, StringComparison.Ordinal);
+        Assert.Contains("repository rules", prompt, StringComparison.Ordinal);
+        Assert.Contains("### AGENTS.md (src/App/AGENTS.md)", prompt, StringComparison.Ordinal);
+        Assert.Contains("app rules", prompt, StringComparison.Ordinal);
+        Assert.True(
+            prompt.IndexOf("repository rules", StringComparison.Ordinal)
+                < prompt.IndexOf("app rules", StringComparison.Ordinal)
+        );
+    }
 }
 
 /// <summary>

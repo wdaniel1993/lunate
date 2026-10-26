@@ -203,19 +203,28 @@ internal static class TrustCommand
         return ExitOk;
     }
 
-    /// <summary>Clear: removes this repository's records from both sections and prints them.</summary>
+    /// <summary>
+    /// Clear: removes this repository's records from every section — including the single-file
+    /// records whose paths lie inside it — and prints them.
+    /// </summary>
     private static int Clear(TrustInventory inventory, ExtensionSeams? seams, TextWriter output)
     {
-        if (inventory.Records.Count == 0)
+        IReadOnlyList<string> singleFile = Store(seams)
+            .ClearRepository(inventory.RepositoryIdentity, inventory.WorktreePath);
+        if (inventory.Records.Count == 0 && singleFile.Count == 0)
         {
             output.WriteLine("trust: no records to clear");
             return ExitOk;
         }
 
-        Store(seams).ClearRepository(inventory.RepositoryIdentity);
         foreach (TrustRecord record in inventory.Records)
         {
             output.WriteLine($"trust: cleared {TrustFormat.RecordText(record)}");
+        }
+
+        foreach (string path in singleFile)
+        {
+            output.WriteLine($"trust: cleared single-file extension {path}");
         }
 
         return ExitOk;

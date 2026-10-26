@@ -355,14 +355,20 @@ public sealed class ExtensionTrustStore
 
     /// <summary>
     /// Removes every record for the repository from all sections (file records and per-server
-    /// approvals), so the next load asks again. Other repositories and unrelated keys are
-    /// untouched; nothing is written when there is no record to clear.
+    /// approvals) and every single-file record whose path lies inside the repository — the root its
+    /// identity names, the worktree the caller passes, and any worktree the store already recorded
+    /// for it — so the next load asks again. A single-file record carries only a file path, so
+    /// containment is what decides which repository it belongs to; a record outside every one of
+    /// those roots is another repository's and is kept. Other repositories and unrelated keys are
+    /// untouched, nothing is written when there is nothing to clear, and the single-file paths that
+    /// were removed are returned so a caller can report them.
     /// </summary>
-    public void ClearRepository(string repositoryIdentity)
+    public IReadOnlyList<string> ClearRepository(string repositoryIdentity, string? worktree = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(repositoryIdentity);
 
         JsonObject document = ReadDocument();
+        IReadOnlyList<string> roots = ClearedRoots(document, repositoryIdentity, worktree);
         var changed = false;
         foreach (
             string section in new[]
@@ -383,13 +389,118 @@ public sealed class ExtensionTrustStore
             }
         }
 
+        List<string> clearedFiles = [];
+        if (document[SingleFileSection] is JsonObject files)
+        {
+            foreach (string path in files.Select(entry => entry.Key).ToArray())
+            {
+                if (!roots.Any(root => IsInside(root, path)))
+                {
+                    continue;
+                }
+
+                files.Remove(path);
+                clearedFiles.Add(path);
+                changed = true;
+            }
+        }
+
         if (changed)
         {
             WriteAtomically(document);
         }
+
+        return clearedFiles;
     }
 
     /// <summary>
+    /// The directories whose single-file records this repository owns: the root the identity names
+    /// (the parent of a <c>.git</c> common dir, or the identity itself), the caller's worktree, and
+    /// every worktree the store already recorded for the repository.
+    /// </summary>
+    private static IReadOnlyList<string> ClearedRoots(
+        JsonObject document,
+        string repositoryIdentity,
+        string? worktree
+    )
+    {
+        List<string> roots = [];
+        if (RepositoryRoot(repositoryIdentity) is { } root)
+        {
+            roots.Add(root);
+        }
+
+        if (!string.IsNullOrWhiteSpace(worktree))
+        {
+            roots.Add(worktree);
+        }
+
+        foreach (string section in new[] { RepositoriesSection, SkillsSection })
+        {
+            if (
+                document[section] is JsonObject repositories
+                && repositories[repositoryIdentity] is JsonObject repository
+                && repository[WorktreesKey] is JsonObject worktrees
+            )
+            {
+                roots.AddRange(worktrees.Select(entry => entry.Key));
+            }
+        }
+
+        return roots;
+    }
+
+    /// <summary>The worktree root an identity names: its parent for a <c>.git</c> common dir, else itself.</summary>
+    private static string? RepositoryRoot(string repositoryIdentity)
+    {
+        string trimmed = Path.TrimEndingDirectorySeparator(repositoryIdentity);
+        return string.Equals(Path.GetFileName(trimmed), ".git", StringComparison.Ordinal)
+            ? Path.GetDirectoryName(trimmed)
+            : trimmed;
+    }
+
+    /// <summary>
+    /// Containment for the single-file records: both paths are canonicalized the way discovery
+    /// canonicalizes (existing symlink components resolved, so <c>/var/…</c> and
+    /// <c>/private/var/…</c> agree on macOS), a trailing separator is ignored, the comparison
+    /// follows the platform's case rule, and a path equal to the root counts as inside.
+    /// </summary>
+    private static bool IsInside(string root, string path)
+    {
+        string boundary = Normalize(root);
+        string candidate = Normalize(path);
+        if (string.Equals(candidate, boundary, PathComparison))
+        {
+            return true;
+        }
+
+        string prefix = Path.EndsInDirectorySeparator(boundary)
+            ? boundary
+            : boundary + Path.DirectorySeparatorChar;
+        return candidate.StartsWith(prefix, PathComparison);
+    }
+
+    private static string Normalize(string path)
+    {
+        try
+        {
+            return Path.TrimEndingDirectorySeparator(PathCanonical.Canonicalize(path));
+        }
+        catch (Exception exception)
+            when (exception
+                    is ArgumentException
+                        or IOException
+                        or NotSupportedException
+                        or PathTooLongException
+            )
+        {
+            return path;
+        }
+    }
+
+    private static StringComparison PathComparison =>
+        OperatingSystem.IsLinux() ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
+
     /// The worktree-keyed collectors (extension trust and project skills): each worktree holds one
     /// map from entry id to digest. A flat string under a worktree is the layout before the id was
     /// part of the key; it cannot say which extension or skill it approved, so it is not reported as

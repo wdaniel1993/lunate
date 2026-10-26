@@ -3,8 +3,9 @@ namespace Lunate.Tui;
 /// <summary>
 /// Reads the current branch from <c>.git</c> by file access only — no process is spawned, because a
 /// branch read can happen per frame. Handles a normal repository, a worktree <c>.git</c> file
-/// (<c>gitdir:</c>, relative or absolute), and a detached HEAD (first seven SHA characters). Any
-/// failure degrades to no branch.
+/// (<c>gitdir:</c>, relative or absolute), and a detached HEAD (first seven SHA characters). The
+/// nearest ancestor with a <c>.git</c> entry wins, so a session started in a subdirectory still shows
+/// its repository's branch. Any failure degrades to no branch.
 /// </summary>
 public static class GitBranchReader
 {
@@ -22,13 +23,25 @@ public static class GitBranchReader
 
         try
         {
-            string gitPath = Path.Combine(workingDirectory, ".git");
-            string? headPath =
-                Directory.Exists(gitPath) ? Path.Combine(gitPath, "HEAD")
-                : File.Exists(gitPath) ? HeadPathFromGitFile(gitPath, workingDirectory)
-                : null;
+            for (
+                string? directory = Path.GetFullPath(workingDirectory);
+                directory is not null;
+                directory = Path.GetDirectoryName(directory)
+            )
+            {
+                string gitPath = Path.Combine(directory, ".git");
+                string? headPath =
+                    Directory.Exists(gitPath) ? Path.Combine(gitPath, "HEAD")
+                    : File.Exists(gitPath) ? HeadPathFromGitFile(gitPath, directory)
+                    : null;
 
-            return headPath is null ? null : ParseHead(File.ReadAllText(headPath));
+                if (headPath is not null)
+                {
+                    return ParseHead(File.ReadAllText(headPath));
+                }
+            }
+
+            return null;
         }
         catch (Exception exception)
             when (exception is IOException or UnauthorizedAccessException or ArgumentException)
