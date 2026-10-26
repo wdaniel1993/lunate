@@ -2,15 +2,16 @@ using System.Security.Cryptography;
 using System.Text;
 using Lunate.Extensibility.Abstractions;
 using NuGet.Packaging;
-using NuGet.Packaging.Core;
+using NuGet.Versioning;
 
 namespace Lunate.Extensibility.Restore;
 
 /// <summary>
-/// Reads a nupkg as a Lunate package without extracting it (design D2, D12): the nuspec's identity,
-/// the <c>lunate.package.json</c> at the root, the extension and skills it declares, and the folder
-/// bounds — every refusal naming the package, the entry and what to change. No feed, no download, no
-/// dependency walk and no write: this is the reader the installer and the dry run share.
+/// Reads a nupkg as a Lunate package without extracting it (design D2, D3): the nuspec's identity
+/// and its dependency groups, the <c>lunate.package.json</c> at the root, the extension and skills it
+/// declares, and the folder bounds — every refusal naming the package, the entry and what to change.
+/// No feed, no download, no walk and no write: this is the reader the installer, the dependency walk
+/// and the dry run share.
 /// </summary>
 public static class PackageReader
 {
@@ -24,7 +25,7 @@ public static class PackageReader
         string fileLabel = $"package file '{fileName}'";
         using PackageArchive archive = PackageArchive.Open(nupkgPath, fileLabel);
 
-        (string id, string version, IReadOnlyList<PackageDependency> dependencies) = Identity(
+        (string id, string version, IReadOnlyList<PackageDependencyGroup> groups) = Identity(
             archive,
             fileLabel
         );
@@ -41,7 +42,6 @@ public static class PackageReader
         }
 
         PackageManifest manifest = PackageManifest.Parse(manifestJson, ManifestFileName);
-        RefuseDependencies(dependencies, label);
 
         PackageExtension? extension = manifest.Extension is { } extensionFolder
             ? PackageContentReader.ReadExtension(archive, extensionFolder, label)
@@ -62,17 +62,19 @@ public static class PackageReader
             IgnoredFolders = PackageContentReader.IgnoredFolders(archive, manifest),
             Files = archive.Files,
             ExpandedBytes = archive.ExpandedBytes,
+            DeclaredDependencies = Declared(groups),
+            DependencyGroups = groups,
         };
     }
 
     /// <summary>
-    /// The nuspec's identity and its declared dependencies. Exactly one nuspec at the root is a NuGet
-    /// package; none is a zip somebody renamed.
+    /// The nuspec's identity and its declared dependency groups. Exactly one nuspec at the root is a
+    /// NuGet package; none is a zip somebody renamed.
     /// </summary>
     private static (
         string Id,
         string Version,
-        IReadOnlyList<PackageDependency> Dependencies
+        IReadOnlyList<PackageDependencyGroup> Groups
     ) Identity(PackageArchive archive, string label)
     {
         List<string> nuspecs =
@@ -104,11 +106,8 @@ public static class PackageReader
             using var nuspecBytes = new MemoryStream(Encoding.UTF8.GetBytes(json!));
             NuspecReader nuspec = new(nuspecBytes);
             var identity = nuspec.GetIdentity();
-            List<PackageDependency> dependencies =
-            [
-                .. nuspec.GetDependencyGroups().SelectMany(group => group.Packages),
-            ];
-            return (identity.Id, identity.Version.ToNormalizedString(), dependencies);
+            IReadOnlyList<PackageDependencyGroup> groups = [.. nuspec.GetDependencyGroups()];
+            return (identity.Id, identity.Version.ToNormalizedString(), groups);
         }
         catch (Exception exception)
             when (exception is InvalidDataException or ArgumentException or FormatException)
@@ -121,34 +120,22 @@ public static class PackageReader
     }
 
     /// <summary>
-    /// TEMPORARY (design D12): phase 1 refuses a package that declares a NuGet dependency by name,
-    /// because the walk that resolves it arrives with phase 4. Phase 4 flips this refusal into the
-    /// existing restore walk — the message text goes away, the manifest handling does not.
+    /// Every declared edge, sorted by id and with the range as NuGet normalises it: the reader's
+    /// public answer to "what does this package depend on". The walk itself asks
+    /// <see cref="PackageInfo.DependencyGroups"/> for the group this framework applies.
     /// </summary>
-    private static void RefuseDependencies(
-        IReadOnlyList<PackageDependency> dependencies,
-        string label
-    )
-    {
-        if (dependencies.Count == 0)
-        {
-            return;
-        }
-
-        PackageDependency first = dependencies[0];
-        string more =
-            dependencies.Count == 1
-                ? string.Empty
-                : FormattableString.Invariant($" (and {dependencies.Count - 1} more)");
-        throw new InvalidDataException(
-            FormattableString.Invariant(
-                $"{label} declares the NuGet dependency '{first.Id}' {first.VersionRange.ToNormalizedString()}{more}; "
-            )
-                + "dependency-declaring packages arrive in phase 4, so this version installs "
-                + "packages without dependencies. Remove the dependency and republish, or install "
-                + "a Lunate version that resolves them."
-        );
-    }
+    private static IReadOnlyList<ExtensionLockDependency> Declared(
+        IReadOnlyList<PackageDependencyGroup> groups
+    ) =>
+        [
+            .. groups
+                .SelectMany(group => group.Packages)
+                .Select(dependency => new ExtensionLockDependency(
+                    dependency.Id,
+                    (dependency.VersionRange ?? VersionRange.All).ToNormalizedString()
+                ))
+                .OrderBy(dependency => dependency.Id, StringComparer.OrdinalIgnoreCase),
+        ];
 
     /// <summary>The SHA-512 of the nupkg's bytes, base64, streamed so a large package is not read twice.</summary>
     private static string Sha512(string nupkgPath)

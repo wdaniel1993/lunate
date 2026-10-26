@@ -47,8 +47,18 @@ public sealed class PackageScopeTests
     public void Cache_prune_leaves_an_installed_package_alone()
     {
         using var feed = new PackageFeedFixture();
-        feed.Bundle(skills: ["greek"]);
+        feed.Dependency("Acme.Lib", "1.0.0");
+        feed.Bundle(skills: ["greek"], dependencies: ["Acme.Lib"]);
         Assert.Equal(0, feed.Run(["Acme.Toolkit@1.4.2"], out _, out _));
+
+        string lockPath = Path.Combine(
+            feed.Store,
+            "cache",
+            "extensions",
+            "acme-tools",
+            ExtensionLock.FileName
+        );
+        Assert.True(File.Exists(lockPath), "an install writes its lock");
 
         StringWriter output = new();
         StringWriter errors = new();
@@ -62,6 +72,10 @@ public sealed class PackageScopeTests
 
         Assert.Equal(CacheCommand.ExitOk, exit);
         Assert.Empty(errors.ToString());
+
+        // The lock is a resolution, not a build: nothing regenerates it, so a prune leaves it and
+        // the installed content alone — only a reinstall repairs them.
+        Assert.True(File.Exists(lockPath), "an installed package's lock survives a prune");
         Assert.False(
             Directory.Exists(
                 Path.Combine(feed.Store, "cache", "extensions", "acme-tools", "builds")
@@ -70,6 +84,10 @@ public sealed class PackageScopeTests
         );
         Assert.True(
             File.Exists(Path.Combine(feed.Store, "extensions", "acme-tools", "acme-tools.dll"))
+        );
+        Assert.True(
+            File.Exists(Path.Combine(feed.Store, "extensions", "acme-tools", "Acme.Lib.dll")),
+            "the materialised closure is content, not cache"
         );
         Assert.True(File.Exists(Path.Combine(feed.Store, "skills", "greek", "SKILL.md")));
         Assert.True(

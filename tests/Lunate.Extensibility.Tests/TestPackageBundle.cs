@@ -14,6 +14,7 @@ internal sealed class TestPackageBundle
 {
     private readonly string _root;
     private readonly List<(string Path, byte[] Content)> _files = [];
+    private readonly List<string> _dependencies = [];
 
     internal TestPackageBundle(string root)
     {
@@ -25,6 +26,43 @@ internal sealed class TestPackageBundle
     internal string Feed { get; }
 
     internal string GlobalPackages => Path.Combine(_root, "packages");
+
+    /// <summary>
+    /// One NuGet dependency the nuspec declares as <c>[1.0.0, )</c>, so the install has a closure to
+    /// resolve; <see cref="Dependency"/> is the package it resolves to.
+    /// </summary>
+    internal TestPackageBundle DependsOn(params string[] ids)
+    {
+        _dependencies.AddRange(ids);
+        return this;
+    }
+
+    /// <summary>A dependency package in the same feed: <c>lib/net10.0/&lt;id&gt;.dll</c>, no bundle.</summary>
+    internal TestPackageBundle Dependency(string id, string version = "1.0.0")
+    {
+        string path = Path.Combine(Feed, $"{id}.{version}.nupkg");
+        using FileStream stream = File.Create(path);
+        using var zip = new ZipArchive(stream, ZipArchiveMode.Create);
+        Entry(
+            zip,
+            $"{id}.nuspec",
+            Encoding.UTF8.GetBytes(
+                $"""
+                <?xml version="1.0" encoding="utf-8"?>
+                <package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
+                  <metadata>
+                    <id>{id}</id>
+                    <version>{version}</version>
+                    <authors>lunate-tests</authors>
+                    <description>A dependency for the package install tests.</description>
+                  </metadata>
+                </package>
+                """
+            )
+        );
+        Entry(zip, $"lib/net10.0/{id}.dll", Encoding.UTF8.GetBytes($"lib bytes of {id} {version}"));
+        return this;
+    }
 
     /// <summary>The extension folder, built from <paramref name="sourceDirectory"/>'s DLLs.</summary>
     internal TestPackageBundle Extension(
@@ -72,7 +110,11 @@ internal sealed class TestPackageBundle
         string path = Path.Combine(Feed, $"{packageId}.{version}.nupkg");
         using FileStream stream = File.Create(path);
         using var zip = new ZipArchive(stream, ZipArchiveMode.Create);
-        Entry(zip, $"{packageId}.nuspec", Encoding.UTF8.GetBytes(Nuspec(packageId, version)));
+        Entry(
+            zip,
+            $"{packageId}.nuspec",
+            Encoding.UTF8.GetBytes(Nuspec(packageId, version, _dependencies))
+        );
         foreach ((string entry, byte[] content) in _files)
         {
             Entry(zip, entry, content);
@@ -93,8 +135,27 @@ internal sealed class TestPackageBundle
         stream.Write(content);
     }
 
-    private static string Nuspec(string id, string version) =>
-        $"""
+    private static string Nuspec(string id, string version, IReadOnlyList<string> dependencies)
+    {
+        string declared =
+            dependencies.Count == 0
+                ? string.Empty
+                : $"""
+                  <dependencies>
+                    <group targetFramework="net10.0">
+                {string.Join(
+                    "\n        ",
+                    dependencies.Select(dependency =>
+                        FormattableString.Invariant(
+                            $"<dependency id=\"{dependency}\" version=\"[1.0.0, )\" />"
+                        )
+                    )
+                )}
+                    </group>
+                  </dependencies>
+                """;
+
+        return $"""
             <?xml version="1.0" encoding="utf-8"?>
             <package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
               <metadata>
@@ -102,7 +163,9 @@ internal sealed class TestPackageBundle
                 <version>{version}</version>
                 <authors>lunate-tests</authors>
                 <description>A bundle for the install scope and trust tests.</description>
+                {declared}
               </metadata>
             </package>
             """;
+    }
 }

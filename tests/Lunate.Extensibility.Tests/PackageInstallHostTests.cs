@@ -87,11 +87,84 @@ public sealed class PackageInstallHostTests
         string plain = ExtensionTrustStore.ComputeContentHash(installed);
         var store2 = new ExtensionTrustStore(options);
         Assert.Equal(ExtensionTrustDecision.Prompt, store2.Evaluate(worktree, worktree, plain));
-        string bound = InstalledPackages.BindTrustDigest(
-            plain,
-            InstalledPackages.Read(store).ForExtension(installed)
-        );
+        string bound = InstalledPackages
+            .Read(store)
+            .BindTrustDigest(plain, InstalledPackages.Read(store).ForExtension(installed));
         Assert.Equal(ExtensionTrustDecision.Trusted, store2.Evaluate(worktree, worktree, bound));
+    }
+
+    [Fact]
+    public async Task The_lock_graph_is_part_of_the_project_trust_digest()
+    {
+        using var temp = new TempDirectory();
+        string store = Path.Combine(temp.Root, "store");
+        string worktree = Path.Combine(temp.Root, "worktree");
+        Directory.CreateDirectory(worktree);
+        TestPackageBundle bundle = HelloBundle(temp.Root).DependsOn("Acme.Lib");
+        bundle.Dependency("Acme.Lib", "1.0.0");
+        bundle.Save();
+        var installer = new PackageInstaller(
+            new PackageInstallOptions
+            {
+                Sources = [new SingleFilePackageSource("local", bundle.Feed)],
+                GlobalPackagesFolder = bundle.GlobalPackages,
+            }
+        );
+        await installer.InstallAsync(
+            new PackageInstallRequest
+            {
+                Id = "Acme.Toolkit",
+                Version = "1.4.2",
+                Target = PackageInstallTarget.ForProject(worktree, store, "Acme.Toolkit"),
+            },
+            Ct
+        );
+
+        var options = new ExtensionHostOptions { StorePath = store };
+        await LoadAsync(options, worktree, new RecordingPrompt(decisions: [true]));
+
+        // The decision stands while the resolution does: a load with no decision queued asks nothing.
+        await LoadAsync(options, worktree, new RecordingPrompt(decisions: []));
+
+        // The lock's canonical graph answers for the dependency resolution the user approved, so a
+        // graph that differs — the same package, a dependency that resolved to another version — is
+        // a different digest and asks again.
+        string lockPath = Path.Combine(
+            store,
+            "cache",
+            "extensions",
+            "hello",
+            ExtensionLock.FileName
+        );
+        string text = File.ReadAllText(lockPath);
+        Assert.Contains("\"version\": \"1.0.0\"", text, StringComparison.Ordinal);
+        File.WriteAllText(
+            lockPath,
+            text.Replace(
+                "\"version\": \"1.0.0\"",
+                "\"version\": \"1.1.0\"",
+                StringComparison.Ordinal
+            ),
+            new System.Text.UTF8Encoding(encoderShouldEmitUTF8Identifier: false)
+        );
+
+        var prompt = new RecordingPrompt(decisions: [true]);
+        await LoadAsync(options, worktree, prompt);
+
+        Assert.Single(prompt.Requests);
+        Assert.Equal("from package Acme.Toolkit@1.4.2 (local)", prompt.Requests[0].FromPackage);
+    }
+
+    /// <summary>Loads <c>hello</c> from a fresh loader, the way a new session does.</summary>
+    private static async Task LoadAsync(
+        ExtensionHostOptions options,
+        string worktree,
+        IExtensionTrustPrompt prompt
+    )
+    {
+        var loader = new ExtensionLoader(options);
+        loader.Discover(worktree, worktree);
+        await loader.Load("hello", worktree, worktree, prompt, Ct);
     }
 
     [Fact]

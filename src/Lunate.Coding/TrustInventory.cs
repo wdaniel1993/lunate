@@ -291,7 +291,7 @@ internal sealed class TrustInventory
                 InstalledPackageProvenance? provenance = installed.ForExtension(
                     descriptor.Directory
                 );
-                string hash = InstalledPackages.BindTrustDigest(
+                string hash = installed.BindTrustDigest(
                     ExtensionTrustStore.ComputeContentHash(descriptor.Directory),
                     provenance
                 );

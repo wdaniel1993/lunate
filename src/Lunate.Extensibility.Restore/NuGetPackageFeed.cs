@@ -14,11 +14,12 @@ namespace Lunate.Extensibility.Restore;
 /// the seam rather than an inference from timing: the observer is invoked immediately before the
 /// NuGet client is asked for versions or bits.
 /// </summary>
-internal sealed class NuGetPackageFeed
+internal sealed partial class NuGetPackageFeed
 {
     private readonly List<(PackageSource Source, SourceRepository Repository)> _sources;
     private readonly Action<string>? _observer;
     private readonly bool _offline;
+    private readonly string? _globalPackagesFolder;
     private readonly Dictionary<string, IReadOnlyList<NuGetVersion>> _versions = new(
         StringComparer.OrdinalIgnoreCase
     );
@@ -26,12 +27,14 @@ internal sealed class NuGetPackageFeed
     private NuGetPackageFeed(
         List<(PackageSource, SourceRepository)> sources,
         Action<string>? observer,
-        bool offline
+        bool offline,
+        string? globalPackagesFolder
     )
     {
         _sources = sources;
         _observer = observer;
         _offline = offline;
+        _globalPackagesFolder = globalPackagesFolder;
     }
 
     /// <summary>
@@ -41,13 +44,16 @@ internal sealed class NuGetPackageFeed
     /// </summary>
     /// <summary>
     /// The same feeds, in offline mode: the configured names stay known — they are what a record
-    /// calls its sources — and no call reaches a feed, because every one of them refuses first.
+    /// calls its sources — and no call reaches a feed, because every one of them reads the global
+    /// packages folder instead, which is where an offline resolution finds its versions and the
+    /// dependency groups of the packages it already holds.
     /// </summary>
     internal static NuGetPackageFeed Create(
         string settingsRoot,
         IReadOnlyList<SingleFilePackageSource> explicitSources,
         Action<string>? observer,
-        bool offline = false
+        bool offline = false,
+        string? globalPackagesFolder = null
     )
     {
         IEnumerable<PackageSource> configured =
@@ -70,14 +76,19 @@ internal sealed class NuGetPackageFeed
             sources.Add((source, Repository.Factory.GetCoreV3(source)));
         }
 
-        return new NuGetPackageFeed(sources, observer, offline);
+        return new NuGetPackageFeed(sources, observer, offline, globalPackagesFolder);
     }
 
     /// <summary>The feed names, sorted, as the lock records them.</summary>
     internal IReadOnlyList<string> Names =>
         [.. _sources.Select(entry => entry.Source.Name).Order(StringComparer.Ordinal)];
 
-    /// <summary>Every version of <paramref name="id"/> any feed offers, oldest first.</summary>
+    /// <summary>
+    /// Every version of <paramref name="id"/> any feed offers, oldest first. Offline, the answer is
+    /// the versions the global packages folder holds — the walk sees the same shape of answer and
+    /// makes no request, so a closure nobody cached is a refusal naming the dependency rather than a
+    /// feed call.
+    /// </summary>
     internal async Task<IReadOnlyList<NuGetVersion>> VersionsAsync(
         string id,
         CancellationToken cancellationToken
@@ -88,7 +99,13 @@ internal sealed class NuGetPackageFeed
             return cached;
         }
 
-        RefuseOffline($"look up the versions of '{id}'");
+        if (_offline)
+        {
+            IReadOnlyList<NuGetVersion> installed = InstalledVersions(id);
+            _versions[id] = installed;
+            return installed;
+        }
+
         SortedSet<NuGetVersion> versions = [];
         using var cache = new SourceCacheContext();
         foreach ((PackageSource source, SourceRepository repository) in _sources)
@@ -116,14 +133,22 @@ internal sealed class NuGetPackageFeed
         return result;
     }
 
-    /// <summary>The dependency groups a package declares, from the first feed that carries it.</summary>
+    /// <summary>
+    /// The dependency groups a package declares, from the first feed that carries it. Offline, they
+    /// come from the nupkg in the global packages folder: the package is already resolved, so its
+    /// own metadata is on disk and no feed is asked.
+    /// </summary>
     internal async Task<IReadOnlyList<PackageDependencyGroup>> DependencyGroupsAsync(
         string id,
         NuGetVersion version,
         CancellationToken cancellationToken
     )
     {
-        RefuseOffline($"read the metadata of '{id}' {version.ToNormalizedString()}");
+        if (_offline)
+        {
+            return InstalledDependencyGroups(id, version);
+        }
+
         using var cache = new SourceCacheContext();
         foreach ((PackageSource source, SourceRepository repository) in _sources)
         {
@@ -297,19 +322,6 @@ internal sealed class NuGetPackageFeed
             Path.GetFullPath(nupkg),
             recorded.Length > 0 ? recorded : computed
         );
-    }
-
-    /// <summary>The refusal every feed call makes in offline mode, naming what could not be answered.</summary>
-    private void RefuseOffline(string wanted)
-    {
-        if (_offline)
-        {
-            throw new InvalidOperationException(
-                $"an offline install cannot {wanted}: it reads only the packages folder and makes no "
-                    + "feed request. Run the install once without --offline, or set NUGET_PACKAGES to "
-                    + "a folder that already holds the packages."
-            );
-        }
     }
 
     /// <summary>The one message a cold packages folder produces, naming the package and the folder.</summary>

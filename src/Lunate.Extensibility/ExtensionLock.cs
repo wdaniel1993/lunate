@@ -99,17 +99,28 @@ public static class ReferencePackRules
     /// own pack is not published at all (a staged patch the feed does not serve yet).
     /// </summary>
     public const string NearestBelow = "nearest-below-runtime";
+
+    /// <summary>
+    /// No pack was resolved because nothing compiles: a package install writes a lock for its
+    /// dependency graph and publishes output, so the toolset half records the runtime the graph was
+    /// resolved for and says plainly that no reference pack was needed. Downloading a pack nobody
+    /// will compile against would make an install depend on a feed the closure does not.
+    /// </summary>
+    public const string NotCompiled = "not-compiled";
 }
 
 /// <summary>
-/// <c>extension.lock.json</c>: the resolution a single-file extension was restored to, in two
-/// halves. The <b>graph</b> — <see cref="Sources"/> and <see cref="Packages"/> — is what a trust
-/// decision covers: it records the exact versions, hashes and assets, so a later restore is a file
-/// read rather than a feed query, and so a change to it is a change to what the user approved. The
-/// <b>toolset</b> is the machine's half (framework, RID, runtime, reference pack and its hash): it
-/// is integrity-checked, it keys the build cache, and it is deliberately outside the trust digest,
-/// because a .NET patch must never ask the user about bytes they already approved. The file lives
-/// in the extension's cache entry, never beside the user's source: a single file stays one file.
+/// <c>extension.lock.json</c>: the resolution an extension was restored or installed to, in two
+/// halves. A single-file extension's compile resolves it; a package's graph is resolved by the same
+/// walk at install time, so both write this one file, in the same cache entry. The <b>graph</b> —
+/// <see cref="Sources"/> and <see cref="Packages"/> — is what a trust decision covers: it records the
+/// exact versions, hashes and assets, so a later restore is a file read rather than a feed query, and
+/// so a change to it is a change to what the user approved. The <b>toolset</b> is the machine's half
+/// (framework, RID, runtime, reference pack and its hash): it is integrity-checked, it keys the build
+/// cache, and it is deliberately outside the trust digest, because a .NET patch must never ask the
+/// user about bytes they already approved. A package install writes the same file and resolves no
+/// reference pack, because it compiles nothing. The file lives in the extension's cache entry, never
+/// beside the user's source: a single file stays one file.
 /// </summary>
 public sealed record ExtensionLock
 {

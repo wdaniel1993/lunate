@@ -8,11 +8,14 @@ namespace Lunate.Extensibility.Restore;
 /// Puts one exact package version on the machine (design D3, D9, D11). The order is fixed: read a
 /// record that is already there, download and verify the exact package through
 /// <see cref="NuGetPackageFeed"/>, read it with <see cref="PackageReader"/> without running anything,
-/// extract into staging, commit the files, and write the record last — so a failure at any point
-/// before the record leaves no content that no record names and the next run starts clean.
+/// resolve the dependencies it declares through the existing walk, extract into staging, materialise
+/// the closure beside the entry assembly, commit the files, write the lock and write the record last
+/// — so a failure at any point before the record leaves no content that no record names and the next
+/// run starts clean.
 /// <para>
-/// An install writes no trust, compiles nothing and resolves no dependency in this phase: it is a
-/// download plus a scope-aware content write, and the graph walk joins it through the same feed.
+/// An install writes no trust, compiles nothing and writes no build: it is a download, a graph walk
+/// and a scope-aware content write. The graph's lock is the single-file lock, in the same cache entry
+/// a single-file extension uses, because it is the same resolution machinery.
 /// </para>
 /// </summary>
 public sealed partial class PackageInstaller
@@ -59,6 +62,7 @@ public sealed partial class PackageInstaller
                     Status = PackageInstallStatus.AlreadyInstalled,
                     Record = installed,
                     RecordPath = target.RecordPath,
+                    Dependencies = DependenciesFromLock(target, installed),
                 };
             }
 
@@ -79,7 +83,8 @@ public sealed partial class PackageInstaller
             settingsRoot,
             _options.Sources,
             _options.OnFeedRequest,
-            _options.Offline
+            _options.Offline,
+            packagesFolder
         );
         if (feed.Names.Count == 0 && !_options.Offline)
         {
@@ -98,6 +103,7 @@ public sealed partial class PackageInstaller
 
         List<string> written = [];
         List<string> created = [];
+        LockSnapshot? lockSnapshot = null;
         try
         {
             PackageDownload download = await feed.DownloadAsync(
@@ -113,13 +119,31 @@ public sealed partial class PackageInstaller
             RequireExtensionIdFree(package, target, worktree);
             List<string> warnings = PlaceSkills(package, target, worktree);
 
+            // The walk runs before a file lands: a closure no feed serves is a refusal with nothing
+            // written, not a half-installed package.
+            PackageClosure closure = await ClosureAsync(
+                    package,
+                    feed,
+                    packagesFolder,
+                    label,
+                    cancellationToken
+                )
+                .ConfigureAwait(false);
+
             Delete(target.StagingDirectory);
             IReadOnlyList<PackageContentStager.Staged> staged = PackageContentStager.Stage(
                 package,
                 target,
                 target.StagingDirectory
             );
+            staged = Materialise(closure, package, target, target.StagingDirectory, staged);
             Commit(staged, target.ScopeRoot, written, created);
+
+            // The lock, then the record: a record that exists names content that exists, and a lock
+            // no record names cannot survive a failure.
+            lockSnapshot = package.Extension is null
+                ? null
+                : WriteLock(package, closure, feed.Names, target);
 
             PackageInstallRecord record = new()
             {
@@ -160,10 +184,12 @@ public sealed partial class PackageInstaller
                 WrittenPaths = [.. written],
                 Warnings = warnings,
                 Resolved = package,
+                Dependencies = [.. closure.Dependencies],
             };
         }
         catch
         {
+            lockSnapshot?.Restore();
             Rollback(written, created, target);
             throw;
         }
@@ -171,61 +197,6 @@ public sealed partial class PackageInstaller
         {
             Delete(target.StagingDirectory);
         }
-    }
-
-    /// <summary>
-    /// The exact version, or null when the request names none and the latest stable version is
-    /// resolved from the feeds (design D1). A range or a wildcard is refused here, before any feed
-    /// is asked.
-    /// </summary>
-    private static NuGetVersion? TryExactVersion(string version)
-    {
-        if (string.IsNullOrWhiteSpace(version))
-        {
-            return null;
-        }
-
-        if (
-            version.Contains(',', StringComparison.Ordinal)
-            || version.Contains('*', StringComparison.Ordinal)
-            || !NuGetVersion.TryParse(version, out NuGetVersion? parsed)
-        )
-        {
-            throw new ArgumentException(
-                $"'{version}' is not an exact version; install an exact version such as 1.4.2 — a "
-                    + "range or a wildcard belongs to a dependency's declaration, not to an install.",
-                nameof(version)
-            );
-        }
-
-        return parsed;
-    }
-
-    /// <summary>
-    /// The latest stable version the feeds serve, resolved once and recorded exactly (design D1):
-    /// a bare install never re-resolves, and a package no feed serves names the id and the feeds.
-    /// </summary>
-    private static async Task<NuGetVersion> LatestStableAsync(
-        NuGetPackageFeed feed,
-        string id,
-        CancellationToken cancellationToken
-    )
-    {
-        IReadOnlyList<NuGetVersion> versions = await feed.VersionsAsync(id, cancellationToken)
-            .ConfigureAwait(false);
-        NuGetVersion? latest = versions
-            .Where(version => !version.IsPrerelease)
-            .OrderByDescending(version => version)
-            .FirstOrDefault();
-        if (latest is null)
-        {
-            throw new InvalidOperationException(
-                $"package '{id}' publishes no stable version on {string.Join(", ", feed.Names)}; "
-                    + "name an exact prerelease version to install one."
-            );
-        }
-
-        return latest;
     }
 
     /// <summary>

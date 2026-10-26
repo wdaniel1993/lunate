@@ -56,4 +56,11 @@ public sealed record PackageInstallResult
     /// was downloaded (an already-installed version answers from its record).
     /// </summary>
     public PackageInfo? Resolved { get; init; }
+
+    /// <summary>
+    /// The dependency closure in the versions it resolved to, ordered by id (spec: "Install output
+    /// and <c>--dry-run</c>"). An already-installed version answers from the lock its record names,
+    /// so the same command reports the same closure without touching a feed.
+    /// </summary>
+    public IReadOnlyList<ResolvedDependency> Dependencies { get; init; } = [];
 }

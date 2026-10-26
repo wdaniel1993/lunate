@@ -312,7 +312,7 @@ public sealed partial class ExtensionLoader
     {
         string worktreePath = Path.GetFullPath(workingDirectory);
         InstalledPackageProvenance? provenance = Installed.ForExtension(descriptor.Directory);
-        string contentHash = InstalledPackages.BindTrustDigest(
+        string contentHash = Installed.BindTrustDigest(
             ExtensionTrustStore.ComputeContentHash(descriptor.Directory),
             provenance
         );

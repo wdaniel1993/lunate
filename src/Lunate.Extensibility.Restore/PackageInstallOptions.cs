@@ -29,8 +29,9 @@ public sealed class PackageInstallOptions
     public Action<string>? OnFeedRequest { get; init; }
 
     /// <summary>
-    /// True resolves from the global packages folder only and makes no feed request at all — not
-    /// even a version lookup (design D11, spec: "Failure, offline and private feeds").
+    /// True resolves from the global packages folder only and makes no feed request at all: the
+    /// package, every dependency's version and every dependency's own metadata come from what NuGet
+    /// already cached there (design D11, spec: "Failure, offline and private feeds").
     /// </summary>
     public bool Offline { get; init; }
 

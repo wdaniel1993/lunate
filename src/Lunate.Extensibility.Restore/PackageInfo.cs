@@ -1,4 +1,5 @@
 using Lunate.Extensibility.Abstractions;
+using NuGet.Packaging;
 
 namespace Lunate.Extensibility.Restore;
 
@@ -37,6 +38,20 @@ public sealed record PackageInfo
 
     /// <summary>Top-level folders that are neither NuGet metadata nor a declared kind, sorted.</summary>
     public IReadOnlyList<string> IgnoredFolders { get; init; } = [];
+
+    /// <summary>
+    /// The NuGet dependencies the nuspec declares, across every group, sorted by id: what the walk
+    /// resolves (design D3). The group that applies to a framework is chosen when the walk runs, not
+    /// here, because the reader has no target framework.
+    /// </summary>
+    public IReadOnlyList<ExtensionLockDependency> DeclaredDependencies { get; init; } = [];
+
+    /// <summary>
+    /// The nuspec's dependency groups as NuGet read them, for the walk's nearest-framework choice.
+    /// Internal because the group type is NuGet's, and this assembly is the only place that may know
+    /// it: a caller outside gets <see cref="DeclaredDependencies"/>.
+    /// </summary>
+    internal IReadOnlyList<PackageDependencyGroup> DependencyGroups { get; init; } = [];
 
     /// <summary>Every file entry in the archive, package-relative and sorted.</summary>
     public IReadOnlyList<string> Files { get; init; } = [];
