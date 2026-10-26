@@ -57,6 +57,7 @@ public sealed class ExtensionReloadCompositionTests
         Assert.DoesNotContain("reloaded — build", host.Frames, StringComparison.Ordinal);
 
         host.Client.Release(1);
+        await host.WaitUntilAsync(() => !host.Session.IsRunning, TimeSpan.FromSeconds(30));
         host.Console.SendText("/quit");
         host.Console.SendEnter();
         await run;

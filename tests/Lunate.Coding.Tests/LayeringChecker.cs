@@ -97,6 +97,7 @@ internal static class LayeringChecker
             ("Lunate.Extensibility.Tests", "McpExtension"),
             ("Lunate.Extensibility.Tests", "ModelExtension"),
             ("Lunate.Extensibility.Tests", "ToolExtension"),
+            ("Lunate.Extensibility.Tests", "LeakExtension"),
             ("Lunate.Extensibility.Testing.Tests", "Lunate.Coding"),
             ("Lunate.Extensibility.Testing.Tests", "Lunate.Extensibility"),
             ("Lunate.Extensibility.Testing.Tests", "Lunate.Extensibility.Testing"),
