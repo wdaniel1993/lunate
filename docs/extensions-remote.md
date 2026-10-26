@@ -3,7 +3,7 @@
 Lunate hosts an extension whose manifest declares a `runtime` as a child process instead of an
 in-process assembly load, speaking newline-delimited JSON-RPC 2.0 over stdio. The full JSON
 Schema of every payload and result is checked in at
-[`extensions-remote.schema.json`](extensions-remote.schema.json) and is generated from the same
+[`schemas/extensions-remote.schema.json`](../schemas/extensions-remote.schema.json) and is generated from the same
 DTOs the host uses (the generator ships in `Lunate.Extensibility.Testing`, together with
 `RemoteJsonSchema.Build()` and the conformance runner below). Background on the decision: [ADR-0017](../adr/0017-extensibility-architecture.md) and its
 [remote host addendum](../adr/0017-addendum-remote-host.md).
