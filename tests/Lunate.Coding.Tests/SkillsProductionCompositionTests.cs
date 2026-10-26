@@ -1,5 +1,6 @@
 using Lunate.Agent;
 using Lunate.Extensibility;
+using Lunate.TestSupport;
 using Lunate.Tui;
 
 namespace Lunate.Coding.Tests;
@@ -11,28 +12,10 @@ namespace Lunate.Coding.Tests;
 /// </summary>
 public sealed class SkillsProductionCompositionTests
 {
-    private static string RepositoryRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null)
-        {
-            if (File.Exists(Path.Combine(directory.FullName, "lunate.slnx")))
-            {
-                return Workspace.Canonicalize(directory.FullName);
-            }
-
-            directory = directory.Parent;
-        }
-
-        throw new InvalidOperationException(
-            $"Could not find lunate.slnx above {AppContext.BaseDirectory}."
-        );
-    }
-
     [Fact]
     public async Task The_composed_prompt_carries_the_repositorys_nine_skills_and_an_invocation_reaches_the_model()
     {
-        string repository = RepositoryRoot();
+        string repository = Workspace.Canonicalize(RepositoryRoot.Find());
         string[] names =
         [
             "acceptance-test-authoring",

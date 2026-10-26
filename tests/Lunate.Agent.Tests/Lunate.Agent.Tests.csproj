@@ -8,6 +8,7 @@
         <ProjectReference Include="../../src/Lunate.Agent/Lunate.Agent.csproj" />
         <!-- Deliberate upward test edge: the prefix test composes the real Coding prompt; src edges are unchanged. -->
         <ProjectReference Include="../../src/Lunate.Coding/Lunate.Coding.csproj" />
+        <ProjectReference Include="../Lunate.TestSupport/Lunate.TestSupport.csproj" />
     </ItemGroup>
 
     <ItemGroup>

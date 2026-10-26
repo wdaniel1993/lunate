@@ -11,6 +11,7 @@
         <ProjectReference Include="../../src/Lunate.Extensibility.Restore/Lunate.Extensibility.Restore.csproj" />
         <!-- The workspace loader the product uses, for the other half of the MSBL order test. -->
         <ProjectReference Include="../../src/Lunate.Roslyn/Lunate.Roslyn.csproj" />
+        <ProjectReference Include="../Lunate.TestSupport/Lunate.TestSupport.csproj" />
     </ItemGroup>
 
     <ItemGroup>

@@ -20,7 +20,7 @@ internal sealed class FixtureSolution(string root) : IDisposable
 
 internal static class Fixtures
 {
-    public static string RepositoryRoot { get; } = FindRepositoryRoot();
+    public static string RepositoryRoot { get; } = Lunate.TestSupport.RepositoryRoot.Find();
 
     public static FixtureSolution CopySolution(string name)
     {
@@ -129,24 +129,5 @@ internal static class Fixtures
 
             CopyDirectory(directory, Path.Combine(destination, name));
         }
-    }
-
-    private static string FindRepositoryRoot()
-    {
-        for (
-            var directory = new DirectoryInfo(AppContext.BaseDirectory);
-            directory is not null;
-            directory = directory.Parent
-        )
-        {
-            if (File.Exists(Path.Combine(directory.FullName, "lunate.slnx")))
-            {
-                return directory.FullName;
-            }
-        }
-
-        throw new InvalidOperationException(
-            $"Could not find lunate.slnx above {AppContext.BaseDirectory}."
-        );
     }
 }

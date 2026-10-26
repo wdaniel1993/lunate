@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
 using Lunate.Agent;
+using Lunate.TestSupport;
 using Lunate.Tui;
 
 namespace Lunate.Coding.Tests;
@@ -13,24 +14,13 @@ internal static class InteractiveGoldens
         Environment.GetEnvironmentVariable("LUNATE_CODING_UPDATE_GOLDENS") == "1";
 
     public static string Directory =>
-        Path.Combine(RepositoryRoot(), "tests", "Lunate.Coding.Tests", "fixtures", "interactive");
-
-    private static string RepositoryRoot()
-    {
-        for (
-            var directory = new DirectoryInfo(AppContext.BaseDirectory);
-            directory is not null;
-            directory = directory.Parent
-        )
-        {
-            if (File.Exists(Path.Combine(directory.FullName, "lunate.slnx")))
-            {
-                return directory.FullName;
-            }
-        }
-
-        throw new InvalidOperationException("Could not find lunate.slnx.");
-    }
+        Path.Combine(
+            RepositoryRoot.Find(),
+            "tests",
+            "Lunate.Coding.Tests",
+            "fixtures",
+            "interactive"
+        );
 
     public static void AssertMatchesText(string name, string actual)
     {

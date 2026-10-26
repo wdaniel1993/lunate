@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using Lunate.Extensibility;
+using Lunate.TestSupport;
 
 namespace Lunate.Extensibility.Compile.Tests;
 
@@ -271,26 +272,7 @@ public sealed class PublishedBinaryCompileTests
     {
         string rid = RuntimeInformation.RuntimeIdentifier;
         string name = rid.StartsWith("win", StringComparison.Ordinal) ? "lunate.exe" : "lunate";
-        string path = Path.Combine(RepositoryRoot(), "artifacts", "publish", rid, name);
+        string path = Path.Combine(RepositoryRoot.Find(), "artifacts", "publish", rid, name);
         return File.Exists(path) ? path : null;
-    }
-
-    private static string RepositoryRoot()
-    {
-        for (
-            DirectoryInfo? directory = new(AppContext.BaseDirectory);
-            directory is not null;
-            directory = directory.Parent
-        )
-        {
-            if (File.Exists(Path.Combine(directory.FullName, "lunate.slnx")))
-            {
-                return directory.FullName;
-            }
-        }
-
-        throw new InvalidOperationException(
-            $"could not find lunate.slnx above {AppContext.BaseDirectory}"
-        );
     }
 }

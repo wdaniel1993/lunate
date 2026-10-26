@@ -1,3 +1,5 @@
+using Lunate.TestSupport;
+
 namespace Lunate.Coding.Tests;
 
 /// <summary>
@@ -11,7 +13,7 @@ public sealed class HomeResolutionTests
     [Fact]
     public void Only_the_state_root_resolves_the_user_profile()
     {
-        var violations = HomeResolutionChecker.FindViolations(FindRepositoryRoot());
+        var violations = HomeResolutionChecker.FindViolations(RepositoryRoot.Find());
 
         Assert.True(
             violations.Count == 0,
@@ -32,7 +34,7 @@ public sealed class HomeResolutionTests
                 $"{site.File} ({site.Resolution}) is allow-listed without a reason"
             );
             Assert.True(
-                File.Exists(Path.Combine(FindRepositoryRoot(), site.File)),
+                File.Exists(Path.Combine(RepositoryRoot.Find(), site.File)),
                 $"{site.File} is allow-listed but does not exist"
             );
         }
@@ -46,7 +48,7 @@ public sealed class HomeResolutionTests
     [Fact]
     public void The_root_variable_is_read_from_the_process_environment_only()
     {
-        string repositoryRoot = FindRepositoryRoot();
+        string repositoryRoot = RepositoryRoot.Find();
         string stateRoot = Path.Combine(repositoryRoot, HomeResolutionChecker.StateRootFile);
 
         var readers = new List<string>();
@@ -82,7 +84,7 @@ public sealed class HomeResolutionTests
     [Fact]
     public void No_production_file_loads_a_dotenv_file()
     {
-        string repositoryRoot = FindRepositoryRoot();
+        string repositoryRoot = RepositoryRoot.Find();
 
         Assert.DoesNotContain(
             HomeResolutionChecker.SourceFiles(repositoryRoot),
@@ -102,25 +104,6 @@ public sealed class HomeResolutionTests
                 SearchOption.AllDirectories
             ),
             file => File.ReadAllText(file).Contains("DotNetEnv", StringComparison.Ordinal)
-        );
-    }
-
-    private static string FindRepositoryRoot()
-    {
-        for (
-            var directory = new DirectoryInfo(AppContext.BaseDirectory);
-            directory is not null;
-            directory = directory.Parent
-        )
-        {
-            if (File.Exists(Path.Combine(directory.FullName, "lunate.slnx")))
-            {
-                return directory.FullName;
-            }
-        }
-
-        throw new InvalidOperationException(
-            $"Could not find lunate.slnx above {AppContext.BaseDirectory}."
         );
     }
 }

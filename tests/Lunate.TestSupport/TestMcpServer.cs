@@ -7,7 +7,7 @@ namespace Lunate.TestSupport;
 public static class TestMcpServer
 {
     /// <summary>The repository root, found by walking up to the solution file.</summary>
-    public static string RepositoryRoot { get; } = FindRepositoryRoot();
+    public static string RepositoryRoot { get; } = Lunate.TestSupport.RepositoryRoot.Find();
 
     /// <summary>The build configuration the tests run under (their output directory's parent).</summary>
     public static string Configuration { get; } =
@@ -124,24 +124,5 @@ public static class TestMcpServer
         using var process = Process.GetProcessById(pid);
         process.Kill();
         await process.WaitForExitAsync();
-    }
-
-    private static string FindRepositoryRoot()
-    {
-        for (
-            var directory = new DirectoryInfo(AppContext.BaseDirectory);
-            directory is not null;
-            directory = directory.Parent
-        )
-        {
-            if (File.Exists(Path.Combine(directory.FullName, "lunate.slnx")))
-            {
-                return directory.FullName;
-            }
-        }
-
-        throw new InvalidOperationException(
-            $"Could not find lunate.slnx above {AppContext.BaseDirectory}."
-        );
     }
 }

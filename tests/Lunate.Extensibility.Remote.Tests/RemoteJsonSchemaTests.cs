@@ -3,6 +3,7 @@ using System.Text.Json.Nodes;
 using Lunate.Extensibility.Abstractions;
 using Lunate.Extensibility.Remote;
 using Lunate.Extensibility.Testing;
+using Lunate.TestSupport;
 
 namespace Lunate.Extensibility.Remote.Tests;
 
@@ -94,7 +95,7 @@ public sealed class RemoteJsonSchemaTests
     public void The_published_schema_matches_the_generator()
     {
         string path = Path.Combine(
-            FindRepositoryRoot(),
+            RepositoryRoot.Find(),
             "schemas",
             "extensions-remote.schema.json"
         );
@@ -103,25 +104,6 @@ public sealed class RemoteJsonSchemaTests
         Assert.Equal(
             RemoteJsonSchema.Build().ReplaceLineEndings("\n"),
             File.ReadAllText(path).ReplaceLineEndings("\n").TrimEnd('\n')
-        );
-    }
-
-    private static string FindRepositoryRoot()
-    {
-        for (
-            var directory = new DirectoryInfo(AppContext.BaseDirectory);
-            directory is not null;
-            directory = directory.Parent
-        )
-        {
-            if (File.Exists(Path.Combine(directory.FullName, "lunate.slnx")))
-            {
-                return directory.FullName;
-            }
-        }
-
-        throw new InvalidOperationException(
-            $"Could not find lunate.slnx above {AppContext.BaseDirectory}."
         );
     }
 }

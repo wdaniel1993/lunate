@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
+using Lunate.TestSupport;
 using Microsoft.Extensions.AI;
 
 namespace Lunate.Ai.Tests;
@@ -116,7 +117,7 @@ public sealed class CommittedFixtureTests
     }
 
     private static string FixtureDirectory() =>
-        Path.Combine(TestPaths.FindRepositoryRoot(), "tests", "fixtures", "streams");
+        Path.Combine(RepositoryRoot.Find(), "tests", "fixtures", "streams");
 
     private static string CommittedSamplePath() =>
         Path.Combine(FixtureDirectory(), SampleScript.FileName);

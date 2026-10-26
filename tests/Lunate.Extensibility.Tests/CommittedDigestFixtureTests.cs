@@ -1,4 +1,5 @@
 using System.Text;
+using Lunate.TestSupport;
 
 namespace Lunate.Extensibility.Tests;
 
@@ -43,14 +44,6 @@ public sealed class CommittedDigestFixtureTests
         Assert.DoesNotContain((byte)'\r', ExtensionLockJson.GraphBytes(parsed));
     }
 
-    private static string Fixture(string name)
-    {
-        string root = AppContext.BaseDirectory;
-        while (!File.Exists(Path.Combine(root, "lunate.slnx")))
-        {
-            root = Path.GetDirectoryName(root)!;
-        }
-
-        return Path.Combine(root, "tests", "fixtures", "digests", name);
-    }
+    private static string Fixture(string name) =>
+        Path.Combine(RepositoryRoot.Find(), "tests", "fixtures", "digests", name);
 }

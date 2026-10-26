@@ -1,4 +1,5 @@
 using System.Xml.Linq;
+using Lunate.TestSupport;
 
 namespace Lunate.Coding.Tests;
 
@@ -54,7 +55,7 @@ public sealed class LayeringTests
     private static IReadOnlyList<(string From, string To)> ReadProjectReferences()
     {
         var references = new List<(string From, string To)>();
-        string repositoryRoot = FindRepositoryRoot();
+        string repositoryRoot = RepositoryRoot.Find();
 
         foreach (var directoryName in new[] { "src", "templates", "samples", "tests" })
         {
@@ -108,7 +109,7 @@ public sealed class LayeringTests
     private static IReadOnlyList<(string Package, bool IsBuildOnly)> ReadAgentPackages()
     {
         var projectFile = Path.Combine(
-            FindRepositoryRoot(),
+            RepositoryRoot.Find(),
             "src",
             "Lunate.Agent",
             "Lunate.Agent.csproj"
@@ -134,24 +135,5 @@ public sealed class LayeringTests
                 )
             )
             .ToList();
-    }
-
-    private static string FindRepositoryRoot()
-    {
-        for (
-            var directory = new DirectoryInfo(AppContext.BaseDirectory);
-            directory is not null;
-            directory = directory.Parent
-        )
-        {
-            if (File.Exists(Path.Combine(directory.FullName, "lunate.slnx")))
-            {
-                return directory.FullName;
-            }
-        }
-
-        throw new InvalidOperationException(
-            $"Could not find lunate.slnx above {AppContext.BaseDirectory}."
-        );
     }
 }
