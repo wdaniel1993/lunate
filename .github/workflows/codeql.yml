@@ -1,10 +1,20 @@
 name: CodeQL
 
 on:
+  # Prose cannot introduce a code-scanning finding, and the analysis builds the whole solution: a
+  # docs-only change skipped CodeQL for seven minutes and proved nothing. The ignore list mirrors the
+  # docs profile's allow-list in scripts/ci-plan.sh; a pull request that mixes prose with code still
+  # runs, because paths-ignore only applies when every path matches.
   push:
     branches: [main]
+    paths-ignore: &prose
+      - '*.md'
+      - 'docs/**'
+      - 'adr/**'
+      - 'openspec/**'
   pull_request:
     branches: [main]
+    paths-ignore: *prose
   schedule:
     # Weekly, Monday 01:30 UTC.
     - cron: '30 1 * * 1'
