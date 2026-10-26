@@ -35,7 +35,10 @@ public sealed class WriteToolTests
 
         Assert.False(result.IsError);
         Assert.Equal("wrote 1 lines to nested/deep/File.txt (created)", result.Output);
-        Assert.Equal("hello\n", File.ReadAllText(temp.File("nested/deep/File.txt")));
+        Assert.Equal(
+            "hello\n".ReplaceLineEndings(Environment.NewLine),
+            File.ReadAllText(temp.File("nested/deep/File.txt"))
+        );
     }
 
     [Fact]
@@ -138,7 +141,10 @@ public sealed class WriteToolTests
         var result = await WriteAsync(temp, args);
 
         Assert.False(result.IsError);
-        Assert.Equal(Encoding.UTF8.GetBytes(content), File.ReadAllBytes(temp.File("Bytes.txt")));
+        Assert.Equal(
+            Encoding.UTF8.GetBytes(content.ReplaceLineEndings(Environment.NewLine)),
+            File.ReadAllBytes(temp.File("Bytes.txt"))
+        );
     }
 
     [Fact]

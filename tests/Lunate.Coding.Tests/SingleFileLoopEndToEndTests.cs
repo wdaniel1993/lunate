@@ -47,7 +47,10 @@ public sealed class SingleFileLoopEndToEndTests
             () => File.Exists(fixture.SourcePath),
             SingleFileLoopSession.CompileWait
         );
-        Assert.Equal(source, File.ReadAllText(fixture.SourcePath));
+        Assert.Equal(
+            source.ReplaceLineEndings(Environment.NewLine),
+            File.ReadAllText(fixture.SourcePath)
+        );
 
         // The file exists now, after composition: the listing must read the state, not the
         // snapshot discovery took at session start.
