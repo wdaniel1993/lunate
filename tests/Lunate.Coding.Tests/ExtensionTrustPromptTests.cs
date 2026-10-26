@@ -90,6 +90,29 @@ public sealed class ExtensionTrustPromptTests
         );
     }
 
+    [Fact]
+    public async Task Non_interactive_prompt_does_not_call_a_user_scope_install_a_project_extension()
+    {
+        var log = new RecordingExtensionLog();
+        var prompt = new NonInteractiveTrustPrompt(log);
+
+        await prompt.ApproveAsync(
+            new ExtensionTrustRequest(
+                Descriptor("hello", "/root/.lunate/extensions/hello") with
+                {
+                    Scope = ExtensionScope.Global,
+                },
+                FilesChanged: false
+            ),
+            TestContext.Current.CancellationToken
+        );
+
+        Assert.Contains(
+            "extension 'hello' installed at the user scope was not trusted; run an interactive session or 'lunate trust' to approve it.",
+            log.Messages
+        );
+    }
+
     internal static ExtensionDescriptor Descriptor(string id, string directory, bool remote = false)
     {
         string runtime = remote
