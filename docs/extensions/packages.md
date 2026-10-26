@@ -93,7 +93,7 @@ An upgrade changes the bytes and the graph, so the trust digest changes and the 
 
 A file that cannot be deleted — on Windows, an assembly a running session still has mapped — is reported as **left behind (in use)** and appears in `--json` as `leftBehind`. It is not counted as removed, and the message says which file and what to do: stop the session and run the install again.
 
-`--force` on `install` repairs an install whose recorded files are missing or changed: each recorded path is rewritten from the recorded version's own archive, and the record is left byte-identical. It does not bypass an integrity-broken record.
+`--force` on `install` repairs an install whose recorded files are missing or changed: each recorded path is rewritten from the recorded version's own archive, and the record is left byte-identical. A record that cannot be read at all needs no flag — a plain reinstall replaces it and names the bytes it could not account for.
 
 ## Uninstall
 
