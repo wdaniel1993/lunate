@@ -117,8 +117,9 @@ public sealed class ExtensionLoadRollbackTests
             );
 
             // Nothing of the failed load says "already loaded": repairing the manifest and loading
-            // again is a first load.
-            TestExtensions.InstallLeakExtension(temp, "leak");
+            // again is a first load. Only the manifest changes — the first load left the assembly
+            // mapped, and Windows refuses to overwrite a mapped DLL.
+            TestExtensions.RepairLeakManifest(temp, "leak");
             loader.Discover(temp.Root, "repo");
             LoadedExtension loaded = await loader.Load(
                 "leak",

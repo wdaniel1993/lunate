@@ -136,6 +136,29 @@ internal static class TestExtensions
         return directory;
     }
 
+    /// <summary>
+    /// Rewrites the leak fixture's manifest without touching its assembly: after a failed load the
+    /// CLR may still have the DLL mapped, and Windows refuses to overwrite it. A repair that only
+    /// changes the manifest is the honest way to make the retry a first load again.
+    /// </summary>
+    public static string RepairLeakManifest(
+        TempDirectory temp,
+        string id,
+        string tools = """["leak_probe"]""",
+        string commands = """["leak-probe"]"""
+    )
+    {
+        string directory = GlobalExtensionDirectory(temp, id);
+        WriteManifest(
+            directory,
+            id,
+            entryAssembly: "LeakExtension.dll",
+            tools: tools,
+            commands: commands
+        );
+        return directory;
+    }
+
     public static string InstallToolExtension(
         TempDirectory temp,
         string id,
