@@ -28,7 +28,7 @@ public sealed class CredentialRedactorTests
                 + McpSecret
                 + "\"}}}}"
         );
-        CredentialRedactor redactor = CredentialRedactor.Collect(
+        CredentialRedactor redactor = CredentialRedactorSource.Collect(
             AuthStore.Load(temp.File("auth.json"), Environment.Of()),
             Environment.Of(("ANTHROPIC_API_KEY", ProviderKey)),
             temp.Root,
@@ -111,7 +111,7 @@ public sealed class CredentialRedactorTests
         Directory.CreateDirectory(Path.Combine(temp.Root, "extensions-secrets"));
         File.WriteAllText(Path.Combine(temp.Root, "extensions-secrets", "broken.json"), "{");
 
-        CredentialRedactor redactor = CredentialRedactor.Collect(
+        CredentialRedactor redactor = CredentialRedactorSource.Collect(
             AuthStore.Load(temp.File("auth.json"), Environment.Of()),
             Environment.Of(),
             temp.Root,

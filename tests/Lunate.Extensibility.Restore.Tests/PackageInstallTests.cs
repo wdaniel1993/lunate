@@ -97,6 +97,29 @@ public sealed class PackageInstallTests
     }
 
     [Fact]
+    public async Task The_install_record_is_owner_only_on_posix()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            Assert.Skip("Unix file modes do not exist on Windows.");
+            return;
+        }
+
+        using var temp = new TempDirectory();
+        var feed = new BundleFeed(temp.Root);
+        feed.Bundle().Manifest(TestPackage.FullManifest).Extension().Skill("greek").Save();
+        string store = Path.Combine(temp.Root, "store");
+
+        PackageInstallResult result = await feed.Installer(now: Installed)
+            .InstallAsync(Request(store, "Acme.Toolkit", "1.4.2"), Ct);
+
+        Assert.Equal(
+            UnixFileMode.UserRead | UnixFileMode.UserWrite,
+            File.GetUnixFileMode(result.RecordPath)
+        );
+    }
+
+    [Fact]
     public async Task A_skills_only_bundle_records_no_extension()
     {
         using var temp = new TempDirectory();

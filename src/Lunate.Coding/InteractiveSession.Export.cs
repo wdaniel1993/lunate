@@ -1,4 +1,5 @@
 using Lunate.Agent;
+using Lunate.Ai;
 using Lunate.Extensibility;
 using Lunate.Tui;
 using Spectre.Console;
@@ -50,7 +51,7 @@ internal sealed partial class InteractiveSession
 
         try
         {
-            CredentialRedactor redactor = CredentialRedactor.Collect(
+            CredentialRedactor redactor = CredentialRedactorSource.Collect(
                 _auth,
                 _environment,
                 _options.Extensions?.StorePath ?? ExtensionHostOptions.Default.StorePath,

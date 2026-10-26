@@ -623,9 +623,21 @@ internal static class PrintMode
             throw new ToolFilterException(error!);
         }
 
-        if (session is { } active && skills.Index.Text.Length > 0)
+        if (session is { } active)
         {
-            RecordSkillsSection(active, skills.Index.Text);
+            HarnessFactory.AttachRedaction(
+                active,
+                options.AuthPath,
+                options.Environment,
+                options.Extensions?.StorePath,
+                workspace.WorktreeRoot,
+                options.McpConfigPath,
+                options.McpAgentsConfigPath
+            );
+            if (skills.Index.Text.Length > 0)
+            {
+                RecordSkillsSection(active, skills.Index.Text);
+            }
         }
 
         var harnessOptions = new AgentHarnessOptions

@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Lunate.Ai;
 
 namespace Lunate.Extensibility;
 
@@ -715,11 +716,23 @@ public sealed class ExtensionTrustStore
     {
         Directory.CreateDirectory(_options.StorePath);
         string temporary = _options.TrustFilePath + "." + Guid.NewGuid().ToString("N") + ".tmp";
-        File.WriteAllText(
-            temporary,
-            document.ToJsonString(new JsonSerializerOptions { WriteIndented = true }),
-            new UTF8Encoding(encoderShouldEmitUTF8Identifier: false)
-        );
+        using (
+            FileStream stream = SecureFiles.OpenOwnerOnly(
+                temporary,
+                FileMode.Create,
+                FileAccess.Write,
+                FileShare.None
+            )
+        )
+        {
+            stream.Write(
+                Encoding.UTF8.GetBytes(
+                    document.ToJsonString(new JsonSerializerOptions { WriteIndented = true })
+                )
+            );
+        }
+
+        SecureFiles.RestrictToOwner(temporary);
         File.Move(temporary, _options.TrustFilePath, overwrite: true);
     }
 }

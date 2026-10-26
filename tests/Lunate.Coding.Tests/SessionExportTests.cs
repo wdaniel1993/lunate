@@ -1,5 +1,6 @@
 using System.Text;
 using Lunate.Agent;
+using Lunate.Ai;
 using Microsoft.Extensions.AI;
 
 namespace Lunate.Coding.Tests;

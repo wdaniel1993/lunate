@@ -73,6 +73,26 @@ public sealed class TrustRecordTests
     }
 
     [Fact]
+    public void The_trust_file_is_owner_only_on_posix()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            Assert.Skip("Unix file modes do not exist on Windows.");
+            return;
+        }
+
+        using var temp = new TempDirectory();
+        string storePath = temp.Subdirectory("store");
+        var store = new ExtensionTrustStore(TestExtensions.Options(storePath));
+        store.RecordTrusted("repo-1", "/w1", "hello", "hash", DateTimeOffset.UtcNow);
+
+        Assert.Equal(
+            UnixFileMode.UserRead | UnixFileMode.UserWrite,
+            File.GetUnixFileMode(Path.Combine(storePath, "trust.json"))
+        );
+    }
+
+    [Fact]
     public void Clearing_an_unknown_repository_writes_nothing()
     {
         using var temp = new TempDirectory();

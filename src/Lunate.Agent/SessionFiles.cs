@@ -1,4 +1,5 @@
 using System.Text;
+using Lunate.Ai;
 
 namespace Lunate.Agent;
 
@@ -44,28 +45,38 @@ internal static class SessionFiles
         );
 
     /// <summary>Opens a session file to append to it; the caller owns the stream.</summary>
-    internal static FileStream OpenAppend(string path) =>
-        new(
+    internal static FileStream OpenAppend(string path)
+    {
+        var stream = SecureFiles.OpenOwnerOnly(
             path,
-            new FileStreamOptions
-            {
-                Mode = FileMode.Append,
-                Access = FileAccess.Write,
-                Share = WriterShare,
-            }
+            FileMode.Append,
+            FileAccess.Write,
+            WriterShare
         );
+        SecureFiles.RestrictToOwner(path);
+        return stream;
+    }
 
     /// <summary>Creates (or truncates) a session file for writing; the caller owns the stream.</summary>
-    internal static FileStream Create(string path) =>
-        new(
+    internal static FileStream Create(string path)
+    {
+        var stream = SecureFiles.OpenOwnerOnly(
             path,
-            new FileStreamOptions
-            {
-                Mode = FileMode.Create,
-                Access = FileAccess.Write,
-                Share = WriterShare,
-            }
+            FileMode.Create,
+            FileAccess.Write,
+            WriterShare
         );
+        // An older session file predates the owner-only mode; every rewrite repairs it.
+        SecureFiles.RestrictToOwner(path);
+        return stream;
+    }
+
+    /// <summary>
+    /// Creates a session-owned file that must be new (a spill file's temporary copy): 0600 on POSIX,
+    /// the profile's inherited ACL on Windows, and no sharing with a second writer.
+    /// </summary>
+    internal static FileStream CreateNewOwnerOnly(string path) =>
+        SecureFiles.OpenOwnerOnly(path, FileMode.CreateNew, FileAccess.Write, FileShare.None);
 
     /// <summary>
     /// Opens a session file as a text reader with the invariant's share mode. The reader detects a
