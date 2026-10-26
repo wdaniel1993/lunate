@@ -34,12 +34,21 @@ packs and reinstalls the `dotnet tool`, checks the packaging files, formats (CSh
 `dotnet format style` / `dotnet format analyzers`), lints the Markdown and diffs the public API. A
 change is not done until it is green — on the CI matrix, all three operating systems count.
 
+A docs-only or proposal-only pull request runs `bash scripts/verify.sh --profile docs` instead:
+markdownlint, `openspec validate --all --strict`, `scripts/docs-sync --check` and
+`scripts/no-docs-references.sh` (which fails if anything under `docs/` becomes a build input or a
+test's subject). `scripts/ci-plan.sh` picks the profile from the PR's changed paths, deny-by-default:
+only `docs/`, `adr/`, `openspec/` and root-level `*.md` qualify, and a change to the workflows, a
+rename out of those trees or anything else means the full gate. The default `--profile full` is the
+whole gate above, unchanged.
+
 Useful narrower commands while working:
 
 ```bash
 dotnet test --project tests/Lunate.Coding.Tests/Lunate.Coding.Tests.csproj -c Release
 dotnet csharpier format .                # never hand-format C#
 npx --yes markdownlint-cli2@0.23.3       # documentation lint only
+bash scripts/verify.sh --profile docs    # the prose gate: lint, OpenSpec, generated regions
 bash scripts/perf.sh artifacts/publish/<rid>/lunate   # startup budget only
 bash scripts/gate-tests.sh               # the gate's own self-tests (needs a published binary)
 ```
