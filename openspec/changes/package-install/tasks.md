@@ -62,11 +62,11 @@
 
 ## 6. Docs, the ADR addendum and the end-to-end run (PR 6)
 
-- [ ] 6.1 `adr/0017-addendum-packages.md`: the bundle format, dependency resolution through the existing pipeline, the trust digest, the record/lock split, a project install's committable content with a local record, and the deferred list. Immutable once accepted, like every ADR.
-- [ ] 6.2 `docs/extensions/packages.md`: the manifest reference, the folder layout, dependency resolution and its lock, the two scopes (what a project install commits and what it leaves in the state root), the record, what each command prints and exits with, offline and private feeds, and the trust sentence. Add its row to `docs/README.md` and link it from `single-file.md` and `manifest.md`.
-- [ ] 6.3 `README.md` and `docs/guide.md`: one paragraph on install — what a package is, the two scopes, that a project install commits content and keeps its record locally, and that it is trusted through the existing question.
+- [x] 6.1 `adr/0017-addendum-packages.md`: the bundle format, dependency resolution through the existing pipeline, the trust digest, the record/lock split, a project install's committable content with a local record, and the deferred list. Immutable once accepted, like every ADR.
+- [x] 6.2 `docs/extensions/packages.md`: the manifest reference, the folder layout, dependency resolution and its lock, the two scopes (what a project install commits and what it leaves in the state root), the record, what each command prints and exits with, offline and private feeds, and the trust sentence. Add its row to `docs/README.md` and link it from `single-file.md` and `manifest.md`.
+- [x] 6.3 `README.md` and `docs/guide.md`: one paragraph on install — what a package is, the two scopes, that a project install commits content and keeps its record locally, and that it is trusted through the existing question.
 - [x] 6.4 Red: an end-to-end run on a fixture feed — install a bundle with one tool, one skill and one dependency, start a session, see the tool declared and the skill listed with its provenance, `lunate packages --verify` exit 0, `uninstall`, and see all of it gone. The same run with `--project` prompts once (with the `from package …` line) and loads after approval.
-- [ ] 6.5 No new NuGet package: the ADR-0017 set covers the download, the walk and the archive reader. If something else looks necessary, stop and ask rather than adding it.
+- [x] 6.5 No new NuGet package: the ADR-0017 set covers the download, the walk and the archive reader. If something else looks necessary, stop and ask rather than adding it.
 - [x] 6.6 Public API: new public types appear in `PublicAPI.Unshipped.txt`; nothing existing changes shape.
 - [ ] 6.7 Gate: `scripts/verify.sh` green, `openspec validate package-install --strict` green, docs lint green, and the end-to-end run recorded with its output in the change's notes.
 

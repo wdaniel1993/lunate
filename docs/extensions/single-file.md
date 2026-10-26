@@ -399,6 +399,8 @@ A registration the header does not declare refuses the load and names the regist
 missing directive, because the header is what the user approved. The reverse — a declared name
 nothing provided — is a warning, and the name is shown as `declared, not provided`.
 
+A single file is for an extension that fits in one file. When it needs several files, its own tests or NuGet dependencies of its own, package it and install it by id — [packages.md](packages.md) — which resolves its dependencies through the same walk this page's `#:package` directives use.
+
 Single-file entries are listed after the packaged ones, problems first and built entries last, and
 `lunate extensions --json` carries the same data with `singleFile` (the file name), `state`,
 `reason`, `build` (the key, once one exists), `resolved` (the locked graph), `generatorsSkipped`
