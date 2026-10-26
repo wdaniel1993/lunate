@@ -124,7 +124,9 @@ public sealed class ManualSchedulerChainProbe
 
         using var stop = new CancellationTokenSource();
         CancellationToken ct = TestContext.Current.CancellationToken;
-        var firstStimulus = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var firstStimulus = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously
+        );
         Task poster = Task.Run(
             async () =>
             {
