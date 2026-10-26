@@ -112,6 +112,12 @@ require maintainer sign-off: propose and stop.
 
 ## Pull requests
 
+A pull request that changes only prose — `docs/`, `adr/`, `openspec/`, or a root-level Markdown
+file — runs the docs profile: markdownlint, the generated-region check, the "no test reads `docs/`"
+guard and `openspec validate --all --strict`, in seconds. Anything that touches source, tests,
+templates or workflows runs the full matrix. The decision lives in `scripts/ci-plan.sh` and is
+deny-by-default, so a path nobody thought about runs the full gate rather than the cheap one.
+
 Pull requests use the [pull request template](.github/pull_request_template.md): what the change is,
 what lands, where to look first, and the verification you ran. Keep commits small and conventional
 (`feat`, `fix`, `docs`, `test`, `chore`). Public API changes belong in
