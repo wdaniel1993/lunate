@@ -325,7 +325,8 @@ Three things are worth knowing about that line:
 
 Two other failures look similar and are not compile failures: `failed (trust)` means the bytes (or
 the lock's graph) are not the ones you approved — nothing is restored or compiled, and the CLI tells
-you to approve the file in an interactive session because trust is your decision, never the CLI's;
+you to approve the file in an interactive session (or record it with `lunate trust`), because a build
+never decides trust;
 `failed (restore)` means a package could not be resolved, with the package and the feed in the reason.
 
 ### The build cache
@@ -383,8 +384,11 @@ The format exists for one loop, and it runs inside a single session:
    still loaded and answering; the row reads `stale — …`, and the changed bytes reach neither a
    feed nor a compiler until you answer. Declining leaves everything as it was.
 
-The model can write the file and can ask for the reload; it can never answer the question. No tool,
-command or protocol path records a trust decision, suppresses the prompt or loads a stale digest.
+The model can write the file and can ask for the reload. No surface of the product answers the
+question for you: `/extensions reload` never suppresses it, and a stale digest never loads. That is a
+limit of those surfaces, not a boundary against a process with your shell — the bash tool can run
+`lunate trust` with the marker removed and `--yes --digest`, which is why the approval panel, not the
+record, is the boundary in default mode and `--yolo` removes it.
 
 `lunate extensions reload <id|path>` is the same preflight, build and a register-only load without a
 session: it can prove the build this host produced is one this host will load. It never prompts — a

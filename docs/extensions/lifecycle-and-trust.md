@@ -112,8 +112,8 @@ dispatching hooks or starting servers:
 ```bash
 lunate trust                       # current records and pending decisions; exit 3 when something is pending
 lunate trust --json                # the same as one JSON document
-lunate trust --yes                 # record every pending decision
-lunate trust --yes --digest <sha>  # record only when the pending digest matches
+lunate trust --yes                 # record every pending decision (needs a terminal)
+lunate trust --yes --digest <sha>  # record only when the pending digest matches (the CI path)
 lunate trust --clear               # remove this repository's records
 ```
 
