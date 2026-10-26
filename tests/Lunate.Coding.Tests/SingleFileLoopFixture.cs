@@ -209,6 +209,9 @@ internal sealed partial class SingleFileLoopFixture : IDisposable
                         Name = "whoami",
                         Description = "answers with the package's greeting and this build's probe",
                         ParametersSchema = JsonDocument.Parse("{}").RootElement.Clone(),
+                        // It only reads its build probe, so the fixture declares it honestly:
+                        // the reload/trust tests are not about the approval panel.
+                        Annotations = new ToolAnnotations(ReadOnly: true),
                         Handler = new WhoAmI(),
                     }
                 );

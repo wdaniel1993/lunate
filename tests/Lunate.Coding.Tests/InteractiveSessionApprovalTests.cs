@@ -182,6 +182,40 @@ public sealed class InteractiveSessionApprovalTests
         await run;
     }
 
+    [Fact]
+    public async Task Always_on_bash_does_not_cover_a_state_changing_lunate_command()
+    {
+        using var host = new InteractiveSessionHost();
+        host.Client.Enqueue(BashCall("call-1", "echo one"), Scripts.ToolCalls());
+        host.Client.Enqueue(BashCall("call-2", "lunate trust --yes"), Scripts.ToolCalls());
+        host.Client.Enqueue(Scripts.Text("done"), Scripts.Stop());
+        Task run = host.RunAsync();
+
+        host.Console.SendText("go");
+        host.Console.SendEnter();
+        await host.WaitForApprovalAsync();
+        Assert.Equal("bash", host.Session.PendingApproval!.ToolName);
+
+        // "Always" grants the tool for the session; a state-changing lunate command still asks.
+        host.Console.SendText("a");
+        await host.Client.WaitForCallAsync(2);
+        await host.WaitForApprovalAsync();
+        Assert.Equal("bash", host.Session.PendingApproval!.ToolName);
+
+        host.Console.SendText("n");
+        await host.Client.WaitForCallAsync(3);
+
+        string result = Assert
+            .Single(host.Client.Requests[2][^1].Contents.OfType<FunctionResultContent>())
+            .Result!.ToString()!;
+        Assert.Contains("Denied", result, StringComparison.Ordinal);
+        host.Console.Complete();
+        await run;
+    }
+
     private static ChatResponseUpdate WriteCall(string callId, string path, string content) =>
         Scripts.Call(callId, "write", Scripts.Args(("path", path), ("content", content)));
+
+    private static ChatResponseUpdate BashCall(string callId, string command) =>
+        Scripts.Call(callId, "bash", Scripts.Args(("command", command)));
 }

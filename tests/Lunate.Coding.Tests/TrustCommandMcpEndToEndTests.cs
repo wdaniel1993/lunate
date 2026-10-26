@@ -124,7 +124,8 @@ public sealed class TrustCommandMcpEndToEndTests
             errors,
             TestContext.Current.CancellationToken,
             extensions: new ExtensionSeams { StorePath = store },
-            workingDirectory: worktree
+            workingDirectory: worktree,
+            stdinIsTerminal: true
         );
 
         return (exitCode, output.ToString(), errors.ToString());

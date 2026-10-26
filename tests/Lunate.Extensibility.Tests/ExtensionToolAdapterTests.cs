@@ -42,11 +42,12 @@ public sealed class ExtensionToolAdapterTests
         Assert.Equal(new ToolAnnotations(Destructive: true), tool.Annotations);
         Assert.Equal(AgentToolExposure.Programmatic, tool.Exposure);
         Assert.Equal("spawner", tool.Namespace?.Name);
-        Assert.Equal(ToolRisk.Write, tool.Risk);
+        // A destructive hint is an execute: the adapter must not report it as a mere write.
+        Assert.Equal(ToolRisk.Execute, tool.Risk);
     }
 
     [Fact]
-    public void No_annotations_derive_a_write_risk_and_an_explicit_risk_wins()
+    public void No_annotations_derive_an_execute_risk_and_an_explicit_risk_wins()
     {
         var registry = new ExtensionToolRegistry();
         registry.Register(
@@ -74,7 +75,7 @@ public sealed class ExtensionToolAdapterTests
 
         IReadOnlyList<ExtensionToolAdapter> tools = registry.List();
 
-        Assert.Equal(ToolRisk.Write, tools[0].Risk);
+        Assert.Equal(ToolRisk.Execute, tools[0].Risk);
         Assert.Equal(ToolRisk.ReadOnly, tools[1].Risk);
     }
 

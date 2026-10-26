@@ -408,6 +408,9 @@ public sealed partial class ExtensionLoader
                     );
                 }
 
+                // A handler is a veto, never an approval: Allow changes nothing here, and only the
+                // person answering the prompt below records a decision. A global extension must
+                // not be able to say yes on the user's behalf.
                 bool filesChanged = store
                     .Records(repositoryIdentity)
                     .Any(record => record.Section is TrustSection.Extensions);

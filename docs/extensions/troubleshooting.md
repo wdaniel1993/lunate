@@ -61,8 +61,9 @@ The extension is project-scoped and this repository (or worktree) has not truste
 content. Approve it interactively, or record it ahead of time:
 
 ```bash
-lunate trust
-lunate trust --yes
+lunate trust                        # inspect: the records, the pending decisions and their digest
+lunate trust --yes                  # at a terminal: record every pending decision
+lunate trust --yes --digest <sha>   # in CI: record only when the pending digest matches
 ```
 
 Print and ACP modes never auto-approve. Their log says:

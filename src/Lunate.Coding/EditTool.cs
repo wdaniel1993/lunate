@@ -16,6 +16,9 @@ public sealed class EditTool(
     ITextFileAccess? files = null
 ) : ITool
 {
+    /// <summary>The model-facing name; also what <see cref="HighRiskCall"/> classifies.</summary>
+    internal const string ToolName = "edit";
+
     private readonly IFileMutationQueue _mutations = mutations ?? FileMutationQueue.Shared;
 
     private readonly ITextFileAccess _files = files ?? LocalTextFileAccess.Instance;
@@ -50,7 +53,7 @@ public sealed class EditTool(
         )
         .RootElement.Clone();
 
-    public string Name => "edit";
+    public string Name => ToolName;
 
     public string Description =>
         "Replace old_text with new_text in a workspace text file; matching tolerates line-ending, "

@@ -7,8 +7,8 @@ namespace Lunate.Extensibility.Tests;
 
 /// <summary>
 /// The extension tool through the real agent pipeline: the registration's annotations reach the
-/// ToolCalling hook, a tool without hints is a write the approver sees, an approved call runs with
-/// the model's arguments, a throwing handler becomes a teaching error result and the run
+/// ToolCalling hook, a tool without hints is an execute the approver sees, an approved call runs
+/// with the model's arguments, a throwing handler becomes a teaching error result and the run
 /// continues, and results are bounded (design D5, D7, D10).
 /// </summary>
 public sealed class ExtensionToolPipelineTests
@@ -46,7 +46,7 @@ public sealed class ExtensionToolPipelineTests
     }
 
     [Fact]
-    public async Task A_tool_without_hints_is_a_write_and_the_approver_decides()
+    public async Task A_tool_without_hints_is_an_execute_and_the_approver_decides()
     {
         var approver = new RecordingApprover(approve: false);
         ExtensionToolAdapter tool = Register("spawn", annotations: null, Echo("done"));
@@ -54,7 +54,7 @@ public sealed class ExtensionToolPipelineTests
 
         List<AgentEvent> events = await AdapterTestSupport.Run(harness, Ct);
 
-        Assert.Equal(ToolRisk.Write, Assert.Single(approver.Seen).Risk);
+        Assert.Equal(ToolRisk.Execute, Assert.Single(approver.Seen).Risk);
         ToolCallResult result = Assert.Single(events.OfType<ToolCallResult>());
         Assert.True(result.IsError);
         Assert.Contains("Denied", result.Output, StringComparison.Ordinal);

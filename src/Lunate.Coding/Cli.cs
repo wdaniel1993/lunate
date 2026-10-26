@@ -16,7 +16,10 @@ internal static class Cli
         ExtensionSeams? extensions = null,
         // The trust command's repository root; null uses the process working directory.
         string? workingDirectory = null,
-        CatalogUpdateSeams? catalogUpdate = null
+        CatalogUpdateSeams? catalogUpdate = null,
+        // The trust command's terminal check; null reads the real stdin. Tests supply it so the
+        // requirement does not depend on how the test host was started.
+        bool? stdinIsTerminal = null
     )
     {
         var noExtensions = false;
@@ -57,7 +60,8 @@ internal static class Cli
                 workingDirectory,
                 output,
                 errors,
-                noExtensions ? Suppress(extensions) : extensions
+                noExtensions ? Suppress(extensions) : extensions,
+                stdinIsTerminal: stdinIsTerminal
             );
         }
 

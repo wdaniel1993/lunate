@@ -48,7 +48,8 @@ public sealed class TrustCliTests
             TextWriter.Null,
             TestContext.Current.CancellationToken,
             extensions: seams,
-            workingDirectory: worktree
+            workingDirectory: worktree,
+            stdinIsTerminal: true
         );
         int inspected = Cli.Run(
             ["trust"],
@@ -82,7 +83,8 @@ public sealed class TrustCliTests
             TextWriter.Null,
             TestContext.Current.CancellationToken,
             extensions: new ExtensionSeams { StorePath = store },
-            workingDirectory: worktree
+            workingDirectory: worktree,
+            stdinIsTerminal: true
         );
 
         Assert.Equal(TrustCommand.ExitOk, exitCode);

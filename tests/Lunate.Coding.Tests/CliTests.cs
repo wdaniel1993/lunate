@@ -399,7 +399,7 @@ public sealed class CliTests
             output.ToString(),
             StringComparison.Ordinal
         );
-        Assert.Empty(error.ToString());
+        Assert.Equal($"lunate: {PrintMode.YoloWarning}\n", error.ToString());
     }
 
     [Fact]
@@ -515,7 +515,7 @@ public sealed class CliTests
             output.ToString(),
             StringComparison.Ordinal
         );
-        Assert.Empty(error.ToString());
+        Assert.Equal($"lunate: {PrintMode.YoloWarning}\n", error.ToString());
     }
 
     [Fact]

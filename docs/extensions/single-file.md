@@ -170,6 +170,11 @@ The record is per file and is never inherited from another file, another path or
 extension. When the computed digest differs from the recorded one the file is `stale`, and the stale
 check stops before anything is built — a changed file makes no feed request.
 
+`trust.json` records decisions; it is not a boundary. A command running with your shell can write it,
+so the file proves what was asked and answered, not what cannot run. In default mode the approval panel
+is the boundary (see [What follows the root](#what-follows-the-root-and-what-does-not)); `--yolo`
+removes it.
+
 ## The lock file
 
 A restore writes `extension.lock.json` into the extension's cache entry, for a project extension
@@ -248,6 +253,14 @@ running inside a session can tell that it is inside one. `lunate install` reads 
 the install refuses without `--yes` (exit 2) — an install started from a command puts code on the
 machine that runs at the next load, so the flag has to be visible in the command you approved. Outside
 a session the marker is absent and nothing changes.
+
+The marker is a **visibility guard, not a boundary**. A bash command runs with your shell, and
+`env -u LUNATE_SESSION …` removes the marker; `trust.json` is a record of your decisions and a command
+with your shell can write it. Neither stops code the model chose. In default mode the approval panel
+is the boundary: `lunate install`, `lunate trust` and a write into `<root>` always appear in it, even
+after "always" was answered for that tool, and `--yolo` removes it. Nothing here is an OS sandbox:
+0.1.0 runs commands with your user's rights on every platform, Windows included; the guard profile is
+scheduled for 0.2.
 
 If `LUNATE_HOME` resolves inside the workspace a session starts in — or the repository that worktree
 belongs to — Lunate refuses it: `LUNATE_HOME points inside the workspace; trust records there could
