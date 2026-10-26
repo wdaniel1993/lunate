@@ -168,11 +168,6 @@ internal static class HighRiskCall
     )
     {
         string expanded = Expand(word, storeRoot, homeRoot);
-        if (!LooksLikePath(expanded))
-        {
-            return false;
-        }
-
         try
         {
             return LunateHome.IsInside(Path.GetFullPath(expanded, workspaceRoot), storeRoot);
@@ -213,11 +208,6 @@ internal static class HighRiskCall
                     ? StringComparison.OrdinalIgnoreCase
                     : StringComparison.Ordinal
             ) || Path.GetFileName(word).Equals("lunate.exe", StringComparison.OrdinalIgnoreCase);
-
-    private static bool LooksLikePath(string word) =>
-        word.Contains('/', StringComparison.Ordinal)
-        || word.Contains('\\', StringComparison.Ordinal)
-        || word is "." or "..";
 
     /// <summary>
     /// Splits one command line into words: whitespace, quotes and the shell's metacharacters

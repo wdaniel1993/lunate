@@ -66,6 +66,22 @@ public sealed class HighRiskCallTests
     }
 
     [Fact]
+    public void A_bare_relative_name_in_the_state_root_itself_is_high_risk()
+    {
+        // The bash tool runs in the workspace root; when that is the store, "trust.json" is in it.
+        Assert.True(IsWrite(WriteTool.ToolName, "trust.json", workspace: Store));
+        Assert.True(
+            HighRiskCall.Is(
+                BashTool.ToolName,
+                Args("""{"command":"echo x > trust.json"}"""),
+                Store,
+                Store,
+                Home
+            )
+        );
+    }
+
+    [Fact]
     public void An_edit_into_the_state_root_is_high_risk() =>
         Assert.True(IsWrite(EditTool.ToolName, Path.Combine(Store, "settings.json"), Workspace));
 
