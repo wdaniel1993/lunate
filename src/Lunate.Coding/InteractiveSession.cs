@@ -878,6 +878,13 @@ internal sealed partial class InteractiveSession : IDisposable
     /// </summary>
     internal T ReadCommittedScrollback<T>(Func<T> read) => _live.ReadScrollback(read);
 
+    /// <summary>
+    /// The live area's notice-slot history (the tests' view): every post, clear and paint with the
+    /// slot's generation, so a clear that takes a notice no frame has shown reads as data instead
+    /// of a wait that times out with no write containing the text.
+    /// </summary>
+    internal void ObserveNotices(Action<NoticeSlotEntry> observe) => _live.ObserveNotices(observe);
+
     /// <summary>The exit code composition's failure implies; 0 when the session ran normally.</summary>
     internal int ExitCode { get; private set; }
 
