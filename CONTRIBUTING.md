@@ -88,8 +88,13 @@ Work happens through OpenSpec changes, and the artifacts are the source of truth
 2. **Apply** — implement the tasks on a branch from `main`, test-first, ticking tasks as they land.
 3. **Verify** — check the implementation against the change's artifacts before archiving
    (`openspec validate <change> --type change --strict`).
-4. **Archive** — merge the implementation, sync the delta specs into `openspec/specs/` and archive
-   the change.
+4. **Archive** — sync the delta specs into `openspec/specs/` and archive the change as the *final
+   commit of the implementation pull request*, added after review and before merge, so one reviewer
+   sees the work and the bookkeeping that closes it.
+
+A pull request that only archives a change is refused by the `archive-only` check. A standalone
+archive is still legitimate when a change merged before its archive existed: label the pull request
+`standalone-archive` and say why in the body.
 
 One change per session. Do only what the change's `tasks.md` asks; anything else becomes a follow-up
 change. `openspec/specs/` is the source of truth for behaviour — if code and spec disagree, stop and
