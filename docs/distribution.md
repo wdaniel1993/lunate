@@ -122,20 +122,33 @@ The `packaging/winget/` manifests are the reference for the answers (`Identifier
 
 ### 7. NuGet
 
-Create an API key on nuget.org (scope: push new packages and package versions, glob `lunate`) and push the package from the release.
+Publishing is passwordless. A Trusted Publishing policy on nuget.org names
+`wdaniel1993/lunate`, the `release.yml` workflow and the `production` environment; the
+`pack` job asks GitHub for an OIDC token, trades it for a key valid for minutes, and pushes
+the tool. There is no API key in the repository and nothing to rotate. The tag does it, so
+the only manual step is proving the result:
 
 ```sh
-gh release download v0.1.0 --pattern '*.nupkg' --dir /tmp/lunate-release
-dotnet nuget push /tmp/lunate-release/lunate.0.1.0.nupkg \
-  --source https://api.nuget.org/v3/index.json \
-  --api-key <NUGET_API_KEY>
 dotnet tool install --global lunate --version 0.1.0
 lunate --version
 ```
 
+If the policy's repository, workflow file or environment ever stops matching the job, the
+login step fails before anything is pushed — fix the policy on nuget.org rather than
+reaching for an API key. A failed release is retried by re-running the *tag* run, which
+carries the `push` event the publishing steps require:
+
+```sh
+gh run list --workflow release.yml --limit 5
+gh run rerun <run-id>
+```
+
+`--skip-duplicate` makes the retry safe: a package version that already landed is a no-op,
+and a version number is never reused for different bytes.
+
 ## Later releases
 
 - Tag the new version; the gate, publish, pack and attach jobs do the rest.
-- Fill the three sha values again (step 3), update the tap copy (step 4) and push the new `.nupkg` (step 7).
+- Fill the three sha values again (step 3) and update the tap copy (step 4); the tag pushes the `.nupkg` itself (step 7).
 - The Scoop bucket autoupdates itself; winget needs a new `wingetcreate update wdaniel1993.lunate --version <v> --urls <zip-url>` submission.
 - Future work: automate the placeholder rewrite and the tap/bucket updates from the release workflow (a follow-up change); until then the steps above stay manual.
