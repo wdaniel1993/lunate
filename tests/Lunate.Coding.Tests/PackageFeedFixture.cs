@@ -158,6 +158,23 @@ internal sealed class PackageFeedFixture : IDisposable
         return exitCode;
     }
 
+    /// <summary>The <c>lunate uninstall</c> command against this fixture's feed and store.</summary>
+    internal int RunUninstall(string[] args, out string output, out string errors)
+    {
+        StringWriter outWriter = new();
+        StringWriter errorWriter = new();
+        int exitCode = UninstallCommand.Run(
+            args,
+            Worktree,
+            outWriter,
+            errorWriter,
+            new ExtensionSeams { StorePath = Store }
+        );
+        output = outWriter.ToString().ReplaceLineEndings("\n");
+        errors = errorWriter.ToString().ReplaceLineEndings("\n");
+        return exitCode;
+    }
+
     public void Dispose() => _temp.Dispose();
 
     private void File(string path, string content) =>

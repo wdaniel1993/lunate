@@ -86,6 +86,20 @@ internal static class CliHelp
             "                                 CI with --digest <sha>; --json for scripts; --clear"
         );
         output.WriteLine("                                 removes this repository's records");
+        output.WriteLine(
+            "  lunate install <package-id>[@<version>] [--project] [--dry-run] [--json] [--offline] [--force]"
+        );
+        output.WriteLine(
+            "                                 download, resolve and install a package's extension and skills"
+        );
+        output.WriteLine("  lunate uninstall <package-id|extension-id> [--force] [--json]");
+        output.WriteLine(
+            "                                 delete exactly what an install's record lists, and nothing else"
+        );
+        output.WriteLine("  lunate packages [--json] [--verify]");
+        output.WriteLine(
+            "                                 list the installed packages this working directory can see"
+        );
         output.WriteLine();
         output.WriteLine("Session and per-run options (interactive and print):");
         output.WriteLine(

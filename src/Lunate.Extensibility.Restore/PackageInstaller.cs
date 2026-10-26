@@ -44,6 +44,10 @@ public sealed partial class PackageInstaller
             throw new InvalidDataException(problem);
         }
 
+        // The same version in the same scope is nothing to resolve — unless --force asks for a
+        // repair, which rewrites the recorded paths from the recorded version's own archive. A
+        // different exact version is the upgrade: a pinned replacement, never a second install.
+        bool sameVersion = false;
         if (installed is not null)
         {
             if (!IsSameScope(installed, target))
@@ -55,7 +59,8 @@ public sealed partial class PackageInstaller
                 );
             }
 
-            if (exact is null || IsSameRequest(installed, request.Id, exact))
+            sameVersion = exact is null || IsSameRequest(installed, request.Id, exact);
+            if (sameVersion && !request.Force)
             {
                 return new PackageInstallResult
                 {
@@ -65,16 +70,6 @@ public sealed partial class PackageInstaller
                     Dependencies = DependenciesFromLock(target, installed),
                 };
             }
-
-            throw new InvalidOperationException(
-                FormattableString.Invariant(
-                    $"package '{request.Id}' is already installed at {installed.Package.Version} "
-                )
-                    + $"(record '{target.RecordPath}'); this version installs one version at a "
-                    + FormattableString.Invariant(
-                        $"time, so {exact.ToNormalizedString()} cannot replace it — remove the installed package and install the version you want."
-                    )
-            );
         }
 
         string settingsRoot = _options.SettingsRoot ?? Environment.CurrentDirectory;
@@ -94,9 +89,11 @@ public sealed partial class PackageInstaller
             );
         }
 
-        NuGetVersion version =
-            exact
-            ?? await LatestStableAsync(feed, request.Id, cancellationToken).ConfigureAwait(false);
+        NuGetVersion version = sameVersion
+            ? NuGetVersion.Parse(installed!.Package.Version)
+            : exact
+                ?? await LatestStableAsync(feed, request.Id, cancellationToken)
+                    .ConfigureAwait(false);
         string label = FormattableString.Invariant(
             $"package '{request.Id}' {version.ToNormalizedString()}"
         );
@@ -104,6 +101,7 @@ public sealed partial class PackageInstaller
         List<string> written = [];
         List<string> created = [];
         LockSnapshot? lockSnapshot = null;
+        PreviousContent? previous = null;
         try
         {
             PackageDownload download = await feed.DownloadAsync(
@@ -116,8 +114,11 @@ public sealed partial class PackageInstaller
             PackageInfo package = PackageReader.Read(download.NupkgPath);
             RequireIdentity(package, request.Id, version, label);
             string? worktree = request.Worktree ?? target.Worktree;
-            RequireExtensionIdFree(package, target, worktree);
-            List<string> warnings = PlaceSkills(package, target, worktree);
+
+            // An install replaces its own previous content, so the paths and directories the old
+            // record names are not a collision — they are what this run takes back.
+            RequireExtensionIdFree(package, target, worktree, installed);
+            List<string> warnings = PlaceSkills(package, target, worktree, installed);
 
             // The walk runs before a file lands: a closure no feed serves is a refusal with nothing
             // written, not a half-installed package.
@@ -137,7 +138,35 @@ public sealed partial class PackageInstaller
                 target.StagingDirectory
             );
             staged = Materialise(closure, package, target, target.StagingDirectory, staged);
+
+            if (installed is not null && sameVersion)
+            {
+                // --force on an installed version repairs it: the archive and the closure are
+                // staged, the record is not rewritten, and only the files that no longer answer for
+                // their recorded hash are copied back.
+                return new PackageInstallResult
+                {
+                    Status = PackageInstallStatus.Repaired,
+                    Record = installed,
+                    RecordPath = target.RecordPath,
+                    WrittenPaths = Repair(installed, target, staged, label),
+                    Warnings = warnings,
+                    Resolved = package,
+                    Dependencies = [.. closure.Dependencies],
+                };
+            }
+
+            // Before the first file moves, keep what the old record names, so a failure after this
+            // point puts the previous install back rather than leaving a package with no content.
+            previous = installed is null
+                ? null
+                : PreviousContent.Capture(installed, target, target.StagingDirectory);
+
             Commit(staged, target.ScopeRoot, written, created);
+            List<string> leftBehind = [];
+            List<string> removed = installed is null
+                ? []
+                : RemovePrevious(installed, target, staged, leftBehind);
 
             // The lock, then the record: a record that exists names content that exists, and a lock
             // no record names cannot survive a failure.
@@ -145,52 +174,36 @@ public sealed partial class PackageInstaller
                 ? null
                 : WriteLock(package, closure, feed.Names, target);
 
-            PackageInstallRecord record = new()
-            {
-                Package = new InstalledPackage
-                {
-                    Id = package.Id,
-                    Version = package.Version,
-                    Sha512 = download.Sha512,
-                    Sources = feed.Names,
-                    Files = package.Files,
-                    ExtensionId = package.Extension?.Manifest.Id,
-                },
-                Content = new InstalledContent
-                {
-                    ExtensionId = package.Extension?.Manifest.Id,
-                    ExtensionVersion = package.Extension?.Manifest.Version,
-                    Skills = [.. package.Skills.Select(skill => skill.Name)],
-                    Paths =
-                    [
-                        .. staged.Select(file => new InstalledFile(
-                            file.RelativePath,
-                            file.Size,
-                            file.Sha256
-                        )),
-                    ],
-                },
-                Scope = target.Scope,
-                Worktree = target.Worktree,
-                InstalledAt = Now(),
-            };
+            PackageInstallRecord record = NewRecord(
+                package,
+                staged,
+                download.Sha512,
+                feed.Names,
+                target,
+                Now()
+            );
             PackageInstallRecordJson.WriteTo(target.RecordPath, record);
 
             return new PackageInstallResult
             {
-                Status = PackageInstallStatus.Installed,
+                Status = installed is null
+                    ? PackageInstallStatus.Installed
+                    : PackageInstallStatus.Upgraded,
                 Record = record,
                 RecordPath = target.RecordPath,
                 WrittenPaths = [.. written],
                 Warnings = warnings,
                 Resolved = package,
                 Dependencies = [.. closure.Dependencies],
+                PreviousVersion = installed?.Package.Version,
+                RemovedPaths = removed,
+                LeftBehind = leftBehind,
             };
         }
         catch
         {
             lockSnapshot?.Restore();
-            Rollback(written, created, target);
+            Rollback(written, created, target, previous);
             throw;
         }
         finally

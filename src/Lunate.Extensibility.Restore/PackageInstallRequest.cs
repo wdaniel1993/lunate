@@ -19,6 +19,13 @@ public sealed record PackageInstallRequest
     /// current one for a user install, and implied by <see cref="Target"/> for a project install.
     /// </summary>
     public string? Worktree { get; init; }
+
+    /// <summary>
+    /// Rewrites the recorded paths of an installed version that are missing or changed, from that
+    /// version's own archive (spec: "Failure, offline and private feeds"). Repairs an install; it
+    /// never turns a refusal into a replacement.
+    /// </summary>
+    public bool Force { get; init; }
 }
 
 public enum PackageInstallStatus
@@ -28,6 +35,18 @@ public enum PackageInstallStatus
 
     /// <summary>The same version was already installed and verified as recorded; nothing moved.</summary>
     AlreadyInstalled,
+
+    /// <summary>
+    /// A different exact version replaced the installed one: the old content went through the old
+    /// record, and the new content and record are this run's (spec: "Pinning and upgrade").
+    /// </summary>
+    Upgraded,
+
+    /// <summary>
+    /// <c>--force</c> rewrote the recorded paths that were missing or changed from the recorded
+    /// version's nupkg; the record itself is unchanged (spec: "Failure, offline and private feeds").
+    /// </summary>
+    Repaired,
 }
 
 /// <summary>
@@ -44,6 +63,23 @@ public sealed record PackageInstallResult
     public required string RecordPath { get; init; }
 
     public IReadOnlyList<string> WrittenPaths { get; init; } = [];
+
+    /// <summary>
+    /// The version an upgrade replaced, so the command can say what changed; null when this run
+    /// installed a package that was not installed before (spec: "Pinning and upgrade").
+    /// </summary>
+    public string? PreviousVersion { get; init; }
+
+    /// <summary>The signs of the old version an upgrade took back, relative to the scope root.</summary>
+    public IReadOnlyList<string> RemovedPaths { get; init; } = [];
+
+    /// <summary>
+    /// Paths the old version left behind because the file could not be deleted — Windows keeps a
+    /// loaded assembly mapped. The new record does not name them, so the command says so instead
+    /// of claiming the upgrade removed everything; a later reinstall or <c>uninstall --force</c>
+    /// clears them once nothing holds the file.
+    /// </summary>
+    public IReadOnlyList<string> LeftBehind { get; init; } = [];
 
     /// <summary>
     /// What the install noticed without refusing (design D10): a same-named skill in another scope

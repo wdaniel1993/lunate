@@ -155,8 +155,66 @@ public sealed class PackageInstallHostTests
         Assert.Equal("from package Acme.Toolkit@1.4.2 (local)", prompt.Requests[0].FromPackage);
     }
 
+    [Fact]
+    public async Task An_upgrade_changes_the_digest_so_the_next_session_asks_again()
+    {
+        using var temp = new TempDirectory();
+        string store = Path.Combine(temp.Root, "store");
+        string worktree = Path.Combine(temp.Root, "worktree");
+        Directory.CreateDirectory(worktree);
+        TestPackageBundle bundle = HelloBundle(temp.Root);
+        bundle.Save();
+        var installer = new PackageInstaller(
+            new PackageInstallOptions
+            {
+                Sources = [new SingleFilePackageSource("local", bundle.Feed)],
+                GlobalPackagesFolder = bundle.GlobalPackages,
+            }
+        );
+        await installer.InstallAsync(
+            new PackageInstallRequest
+            {
+                Id = "Acme.Toolkit",
+                Version = "1.4.2",
+                Target = PackageInstallTarget.ForProject(worktree, store, "Acme.Toolkit"),
+            },
+            Ct
+        );
+
+        var options = new ExtensionHostOptions { StorePath = store };
+        await ReleaseAsync(
+            await LoadAsync(options, worktree, new RecordingPrompt(decisions: [true]))
+        );
+
+        // The decision stands while nothing changed.
+        await ReleaseAsync(await LoadAsync(options, worktree, new RecordingPrompt(decisions: [])));
+
+        // A newer version is a different package identity and a different digest: the extension is
+        // untrusted until it is approved again, which is what "a package change re-prompts" means.
+        HelloBundle(temp.Root).Save(version: "1.5.0");
+        await installer.InstallAsync(
+            new PackageInstallRequest
+            {
+                Id = "Acme.Toolkit",
+                Version = "1.5.0",
+                Target = PackageInstallTarget.ForProject(worktree, store, "Acme.Toolkit"),
+            },
+            Ct
+        );
+
+        var prompt = new RecordingPrompt(decisions: [true]);
+        await ReleaseAsync(await LoadAsync(options, worktree, prompt));
+
+        Assert.Single(prompt.Requests);
+        Assert.Equal("from package Acme.Toolkit@1.5.0 (local)", prompt.Requests[0].FromPackage);
+        Assert.True(
+            prompt.Requests[0].FilesChanged,
+            "an upgrade's question says the files changed since this repository trusted them"
+        );
+    }
+
     /// <summary>Loads <c>hello</c> from a fresh loader, the way a new session does.</summary>
-    private static async Task LoadAsync(
+    private static async Task<ExtensionLoader> LoadAsync(
         ExtensionHostOptions options,
         string worktree,
         IExtensionTrustPrompt prompt
@@ -165,6 +223,23 @@ public sealed class PackageInstallHostTests
         var loader = new ExtensionLoader(options);
         loader.Discover(worktree, worktree);
         await loader.Load("hello", worktree, worktree, prompt, Ct);
+        return loader;
+    }
+
+    /// <summary>
+    /// Unloads what a load bound and lets the runtime collect it. Windows keeps a loaded assembly
+    /// mapped until its context is gone, and an upgrade replaces the file the loader read: a test
+    /// that upgrades over a live load is asking the filesystem for something the OS forbids.
+    /// </summary>
+    private static async Task ReleaseAsync(ExtensionLoader loader)
+    {
+        await loader.Unload("hello", notifyToolsChanged: false);
+        for (var i = 0; i < 3; i++)
+        {
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            await Task.Delay(25, Ct);
+        }
     }
 
     [Fact]

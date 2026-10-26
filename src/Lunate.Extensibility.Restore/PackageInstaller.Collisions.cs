@@ -14,12 +14,15 @@ public sealed partial class PackageInstaller
     /// <summary>
     /// Refuses an install whose extension id already has a provider (design D10). The set is the
     /// records under the state root, the two extensions roots and the <c>*.cs</c> candidates in
-    /// them — what a session would discover, plus the project installs of other worktrees.
+    /// them — what a session would discover, plus the project installs of other worktrees. The
+    /// directory an upgrade is replacing is its own provider, so the old record's paths are not a
+    /// collision.
     /// </summary>
     private static void RequireExtensionIdFree(
         PackageInfo package,
         PackageInstallTarget target,
-        string? worktree
+        string? worktree,
+        PackageInstallRecord? replacing
     )
     {
         if (package.Extension is not { } extension)
@@ -51,7 +54,10 @@ public sealed partial class PackageInstaller
         foreach ((string directory, string scope) in ExtensionRoots(target, worktree))
         {
             string handPlaced = Path.Combine(directory, id);
-            if (File.Exists(Path.Combine(handPlaced, "extension.json")))
+            if (
+                File.Exists(Path.Combine(handPlaced, "extension.json"))
+                && !Owns(replacing, target, handPlaced)
+            )
             {
                 throw new InvalidOperationException(
                     $"{label}: extension '{id}' is already provided by the {scope} extension "

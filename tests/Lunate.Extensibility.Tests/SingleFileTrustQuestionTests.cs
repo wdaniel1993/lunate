@@ -46,6 +46,21 @@ public sealed class SingleFileTrustQuestionTests
     }
 
     [Fact]
+    public void The_title_ends_with_exactly_one_question_mark()
+    {
+        foreach (bool changed in new[] { false, true })
+        {
+            string title = SingleFileTrustQuestion.Title(Request(changed: changed));
+
+            Assert.True(title.EndsWith('?'), $"the title '{title}' does not ask a question");
+            Assert.False(
+                title.EndsWith("??", StringComparison.Ordinal),
+                $"the title '{title}' carries two question marks"
+            );
+        }
+    }
+
+    [Fact]
     public void Build_time_code_is_named_only_when_the_header_opted_in()
     {
         string plain = string.Join("\n", SingleFileTrustQuestion.Details(Request()));

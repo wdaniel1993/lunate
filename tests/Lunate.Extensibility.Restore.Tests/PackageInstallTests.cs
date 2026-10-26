@@ -196,37 +196,6 @@ public sealed class PackageInstallTests
     }
 
     [Fact]
-    public async Task A_different_version_is_refused_without_touching_the_installed_content()
-    {
-        using var temp = new TempDirectory();
-        var feed = new BundleFeed(temp.Root);
-        feed.Bundle().Manifest(TestPackage.FullManifest).Extension().Skill("greek").Save();
-        feed.Bundle(version: "1.5.0")
-            .Manifest(TestPackage.FullManifest)
-            .Extension()
-            .Skill("greek")
-            .Save();
-        string store = Path.Combine(temp.Root, "store");
-        PackageInstaller installer = feed.Installer(now: Installed);
-        PackageInstallResult first = await installer.InstallAsync(
-            Request(store, "Acme.Toolkit", "1.4.2"),
-            Ct
-        );
-        Dictionary<string, DateTime> before = Timestamps(store);
-
-        InvalidOperationException refusal = await Assert.ThrowsAsync<InvalidOperationException>(
-            () =>
-                installer.InstallAsync(Request(store, "Acme.Toolkit", "1.5.0"), Ct)
-        );
-
-        Assert.Contains("Acme.Toolkit", refusal.Message, StringComparison.Ordinal);
-        Assert.Contains("1.4.2", refusal.Message, StringComparison.Ordinal);
-        Assert.Contains("1.5.0", refusal.Message, StringComparison.Ordinal);
-        Assert.Contains(first.RecordPath, refusal.Message, StringComparison.Ordinal);
-        Assert.Equal(before, Timestamps(store));
-    }
-
-    [Fact]
     public async Task A_hand_edited_record_is_refused_and_nothing_is_written()
     {
         using var temp = new TempDirectory();

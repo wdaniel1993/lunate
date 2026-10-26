@@ -36,7 +36,7 @@ public sealed partial class PackageInstaller
             try
             {
                 File.Copy(file.Path, temporary, overwrite: true);
-                File.Move(temporary, destination, overwrite: true);
+                MoveIntoPlace(temporary, destination);
             }
             catch
             {
@@ -46,6 +46,40 @@ public sealed partial class PackageInstaller
             }
 
             written.Add(destination);
+        }
+    }
+
+    /// <summary>
+    /// Replaces a destination that a running session may have loaded. Windows keeps a loaded
+    /// assembly mapped until its load context is unloaded and collected, so the replace can fail
+    /// for a moment while the previous owner lets go; it is retried briefly and then reported as
+    /// "in use" — a fact the user can act on — instead of as an access-denied from the filesystem.
+    /// </summary>
+    private static void MoveIntoPlace(string temporary, string destination)
+    {
+        for (var attempt = 1; ; attempt++)
+        {
+            try
+            {
+                File.Move(temporary, destination, overwrite: true);
+                return;
+            }
+            catch (Exception exception)
+                when (exception is IOException or UnauthorizedAccessException)
+            {
+                if (attempt < 3)
+                {
+                    Thread.Sleep(50);
+                    continue;
+                }
+
+                throw new InvalidOperationException(
+                    FormattableString.Invariant(
+                        $"'{destination}' could not be replaced because another process — or the session that loaded it — has the file open. Stop that session and run the install again."
+                    ),
+                    exception
+                );
+            }
         }
     }
 
@@ -66,18 +100,23 @@ public sealed partial class PackageInstaller
 
     /// <summary>
     /// Takes back what a failed install wrote: the files, the directories it created and the staging.
-    /// Nothing else is touched — an installed package's content is not this path's to remove.
+    /// An upgrade's rollback hands back the previous install's own bytes first, so a failure after
+    /// the first destructive step leaves the install the record describes. Nothing else is touched —
+    /// an installed package's content is not this path's to remove.
     /// </summary>
     private static void Rollback(
         IReadOnlyList<string> written,
         IReadOnlyList<string> created,
-        PackageInstallTarget target
+        PackageInstallTarget target,
+        PreviousContent? previous
     )
     {
         foreach (string path in written)
         {
             TryDeleteFile(path);
         }
+
+        previous?.Restore();
 
         foreach (string directory in created)
         {
@@ -104,7 +143,7 @@ public sealed partial class PackageInstaller
         }
     }
 
-    private static void TryDeleteFile(string path)
+    private static bool TryDeleteFile(string path)
     {
         try
         {
@@ -112,10 +151,14 @@ public sealed partial class PackageInstaller
             {
                 File.Delete(path);
             }
+
+            return true;
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
-            // The record is not written, so the file is unrecorded content either way.
+            // Windows holds a loaded assembly mapped until its load context is gone. Callers that
+            // are replacing content must say so rather than leave the file behind silently.
+            return false;
         }
     }
 

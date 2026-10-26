@@ -75,7 +75,23 @@ public static partial class PackageInstallRecordJson
     /// edited record yields null and the reason, naming the file — the caller reports it and acts on
     /// nothing. The read shares the file, so it never races the writer or a replace.
     /// </summary>
-    public static PackageInstallRecord? TryRead(string path, out string? problem)
+    public static PackageInstallRecord? TryRead(string path, out string? problem) =>
+        TryRead(path, acceptModified: false, out problem);
+
+    /// <summary>
+    /// Reads a record for <c>--force</c>: an integrity hash that no longer answers for the bytes is
+    /// reported as the problem instead of withholding the record, because a forced uninstall may act
+    /// on content whose paths are all confined (spec: "The install record"). Every other problem
+    /// still yields null: a record this version cannot read is one nothing acts on.
+    /// </summary>
+    public static PackageInstallRecord? TryReadForForce(string path, out string? problem) =>
+        TryRead(path, acceptModified: true, out problem);
+
+    private static PackageInstallRecord? TryRead(
+        string path,
+        bool acceptModified,
+        out string? problem
+    )
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
 
@@ -107,7 +123,7 @@ public static partial class PackageInstallRecordJson
             return null;
         }
 
-        return TryParse(text, $"the record file '{path}'", out problem);
+        return TryParse(text, $"the record file '{path}'", acceptModified, out problem);
     }
 
     /// <summary>The two halves, the scope, the worktree and the install time, with the integrity hash last.</summary>

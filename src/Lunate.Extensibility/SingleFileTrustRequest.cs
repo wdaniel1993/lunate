@@ -36,6 +36,10 @@ public sealed record SingleFileTrustRequest
 /// declared package "and their dependencies" — nothing has resolved the graph yet, so pretending
 /// to list it would be a lie — and, only when the header opted in, that compiling runs build-time
 /// code from those packages.
+/// <para>
+/// The title ends with exactly one question mark and owns it: the prompt surface adds one only when
+/// the title does not already end with one, so a phrased question is never asked twice.
+/// </para>
 /// </summary>
 public static class SingleFileTrustQuestion
 {
@@ -44,13 +48,13 @@ public static class SingleFileTrustQuestion
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        string head = FormattableString.Invariant(
-            $"Trust the single-file extension '{request.Id}' {request.Version} at '{request.Path}'?"
-        );
         return request.Changed
-            ? head
-                + " It changed since it was trusted last, so the earlier decision does not apply."
-            : head;
+            ? FormattableString.Invariant(
+                $"Trust the single-file extension '{request.Id}' {request.Version} at '{request.Path}' again — it changed since it was trusted last, so the earlier decision does not apply?"
+            )
+            : FormattableString.Invariant(
+                $"Trust the single-file extension '{request.Id}' {request.Version} at '{request.Path}'?"
+            );
     }
 
     /// <summary>

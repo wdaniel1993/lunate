@@ -185,7 +185,7 @@ public sealed class SingleFileLoopRefusalTests
             SingleFileLoopSession.CompileWait
         );
         Assert.Contains(
-            "It changed since it was trusted last",
+            "changed since it was trusted last",
             host.LastFrame,
             StringComparison.Ordinal
         );
