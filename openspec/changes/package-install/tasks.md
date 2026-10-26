@@ -46,7 +46,7 @@
 - [x] 4.6 Red: the phase-1 refusal is gone (the package from 1.7 now installs) and the lock's canonical graph is part of the project trust digest, so a package change re-prompts.
 - [x] 4.7 Red: `lunate cache prune` leaves an installed package's lock and content alone.
 - [x] 4.8 Install prints the dependency closure with each resolved version before writing, and `--dry-run` prints the same without resolving into the store.
-- [ ] 4.9 Gate: the walk's tests reuse the phase-2a fixtures where they fit, the zero-request test covers the closure, and `scripts/verify.sh` passes. The change does not ship before this phase is merged.
+- [x] 4.9 Gate: the walk's tests reuse the phase-2a fixtures where they fit (Acme.Lib -> Acme.Core, no network), the zero-request test covers the closure (`--offline` from a warm folder, and a cold folder failing by name), and `scripts/verify.sh` passes — 5,621 tests per culture, 0 failures; startup floor 58 ms (median 59, budget 150 ms); public API clean.
 
 ## 5. Upgrade and uninstall (PR 5)
 
