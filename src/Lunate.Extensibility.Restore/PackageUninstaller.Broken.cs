@@ -1,3 +1,4 @@
+using Lunate.Ai;
 using Lunate.Extensibility;
 
 namespace Lunate.Extensibility.Restore;
@@ -77,6 +78,10 @@ public sealed partial class PackageUninstaller
                 )
             );
         }
+
+        // The same claim a plain uninstall takes: a reinstall (which is the repair) must not be
+        // staging content into the directory this is deleting.
+        using FileLock lease = PackageOperationLock.Acquire(path, request.Id);
 
         PackageInstallRecord? record = PackageInstallRecordJson.TryReadForForce(
             path,

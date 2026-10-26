@@ -37,8 +37,14 @@ public sealed record PackageInstallTarget
             $"the record directory '{RecordDirectory}' is not under a state root."
         );
 
-    /// <summary>Where a download is written and verified before any recorded content exists.</summary>
-    public string StagingDirectory => Path.Combine(RecordDirectory, "staging");
+    /// <summary>
+    /// A staging directory for one operation alone: two installs never share one, so neither can
+    /// extract over, or delete, a file the other is still staging. Named without a fixed spelling so
+    /// a crashed run's leftover is distinguishable from a live one and cleared under the claim
+    /// before the next run stages anything.
+    /// </summary>
+    internal string NewStagingDirectory() =>
+        Path.Combine(RecordDirectory, "staging-" + Guid.NewGuid().ToString("N"));
 
     /// <summary>
     /// A user-scope install: the record, the extension and the skills all under the state root, the

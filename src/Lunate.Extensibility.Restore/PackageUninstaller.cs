@@ -1,3 +1,4 @@
+using Lunate.Ai;
 using Lunate.Extensibility;
 
 namespace Lunate.Extensibility.Restore;
@@ -71,7 +72,11 @@ public sealed partial class PackageUninstaller
             );
         }
 
+        // Which record the id names, and then the record again under the package's own claim: the
+        // state this removes is what the last writer left, not what was there before waiting.
         Found found = Resolve(store, request.Id, request.Force);
+        using FileLock lease = PackageOperationLock.Acquire(found.Path, request.Id);
+        found = Resolve(store, request.Id, request.Force);
         PackageInstallRecord record = found.Record;
         string label = FormattableString.Invariant(
             $"package '{record.Package.Id}' {record.Package.Version}"
@@ -159,10 +164,10 @@ public sealed partial class PackageUninstaller
         }
 
         // The record last: a run that stopped before this still has a record describing what is
-        // left, and a record that is gone means the content it named is gone.
+        // left, and a record that is gone means the content it named is gone. The claim is held, so
+        // every staging directory here belongs to a run that stopped rather than one mid-extract.
         string recordDirectory = Path.GetDirectoryName(found.Path)!;
-        string staging = Path.Combine(recordDirectory, "staging");
-        if (Directory.Exists(staging))
+        foreach (string staging in Directory.EnumerateDirectories(recordDirectory, "staging-*"))
         {
             Directory.Delete(staging, recursive: true);
         }

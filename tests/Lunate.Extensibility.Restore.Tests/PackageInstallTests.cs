@@ -91,8 +91,10 @@ public sealed class PackageInstallTests
         Assert.Null(problem);
         Assert.Equal(PackageInstallRecordJson.Write(record), PackageInstallRecordJson.Write(read!));
         Assert.False(
-            Directory.Exists(Path.Combine(store, "packages", "acme.toolkit", "staging")),
-            "staging is deleted once the record is written"
+            Directory
+                .EnumerateDirectories(Path.Combine(store, "packages", "acme.toolkit"), "staging-*")
+                .Any(),
+            "the run's own staging is deleted once the record is written"
         );
     }
 
