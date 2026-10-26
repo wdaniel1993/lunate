@@ -66,6 +66,22 @@ public sealed partial class ExtensionLoader
         InstalledPackageProvenance? installedProvenance = Installed.ForExtension(
             descriptor.Directory
         );
+
+        // Fail closed: a store holding a record that cannot be read or no longer answers for itself
+        // cannot tell a hand-placed user extension from one whose package record was damaged, so a
+        // user-scope extension with no provenance is not loaded while that is true.
+        if (
+            descriptor.Scope is ExtensionScope.Global
+            && installedProvenance is null
+            && Installed.Broken.FirstOrDefault() is { } broken
+        )
+        {
+            throw new ExtensionLoadException(
+                $"extension '{id}' is not loaded: the install record '{broken.RecordPath}' is broken ({broken.Reason}), so it cannot be shown to be hand-placed."
+                    + " Run 'lunate packages --verify' to see the broken record, then reinstall the package it belongs to."
+            );
+        }
+
         if (descriptor.Scope is ExtensionScope.Project || installedProvenance is not null)
         {
             await EnsureTrustedAsync(

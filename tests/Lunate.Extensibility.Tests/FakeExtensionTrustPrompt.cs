@@ -8,6 +8,8 @@ internal sealed class FakeExtensionTrustPrompt(bool approve) : IExtensionTrustPr
 
     public bool? LastFilesChanged { get; private set; }
 
+    public string? LastFromPackage { get; private set; }
+
     public ValueTask<bool> ApproveAsync(
         ExtensionTrustRequest request,
         CancellationToken cancellationToken
@@ -15,6 +17,7 @@ internal sealed class FakeExtensionTrustPrompt(bool approve) : IExtensionTrustPr
     {
         Calls++;
         LastFilesChanged = request.FilesChanged;
+        LastFromPackage = request.FromPackage;
         return ValueTask.FromResult(approve);
     }
 }

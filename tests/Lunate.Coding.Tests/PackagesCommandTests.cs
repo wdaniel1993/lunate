@@ -272,6 +272,28 @@ public sealed class PackagesCommandTests
     }
 
     [Fact]
+    public void An_unreadable_record_is_listed_with_its_reason()
+    {
+        using var temp = new TempDirectory();
+        Store store = new(temp);
+        string recordPath = Path.Combine(
+            store.StoreRoot,
+            "packages",
+            "acme.toolkit",
+            PackageInstallRecordJson.FileName
+        );
+        Directory.CreateDirectory(Path.GetDirectoryName(recordPath)!);
+        File.WriteAllText(recordPath, "{ this is not json");
+
+        Result verify = store.Run(store.Worktree, "--verify");
+
+        Assert.Equal(PackagesCommand.ExitVerificationFailed, verify.ExitCode);
+        Assert.Contains("packages: acme.toolkit — broken", verify.Output, StringComparison.Ordinal);
+        Assert.Contains(recordPath, verify.Output, StringComparison.Ordinal);
+        Assert.Contains("not valid JSON", verify.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void A_store_that_does_not_exist_yet_reports_nothing()
     {
         using var temp = new TempDirectory();
