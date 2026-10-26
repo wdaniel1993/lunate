@@ -139,6 +139,63 @@ public sealed class TrustCliTests
         Assert.Contains("--digest", help, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// <c>--clear</c> is the whole repository's decision, single-file extensions included: their
+    /// record is removed here, and the next load of the same bytes has nothing to stand on.
+    /// </summary>
+    [Fact]
+    public void Trust_clear_removes_a_single_file_record_and_the_next_load_asks()
+    {
+        using var temp = new TempDirectory();
+        string worktree = temp.File("worktree");
+        Directory.CreateDirectory(Path.Combine(worktree, ".git"));
+        string extensions = Path.Combine(worktree, ".lunate", "extensions");
+        Directory.CreateDirectory(extensions);
+        string path = Path.Combine(extensions, "acme.cs");
+        File.WriteAllText(path, "#:extension acme-tools@1.0.0\n#:tool fetch_issue\n");
+        string store = temp.File("store");
+        var options = new ExtensionHostOptions { StorePath = store };
+        string digest = SingleFileExtensionDigest.ComputeUnrestored(
+            "acme-tools",
+            [],
+            File.ReadAllBytes(path)
+        );
+        var trust = new ExtensionTrustStore(options);
+        trust.RecordSingleFileTrust(path, digest);
+        Assert.Equal(SingleFileExtensionTrust.Trusted, trust.EvaluateSingleFileTrust(path, digest));
+
+        using var output = new StringWriter();
+        using var errors = new StringWriter();
+        int exitCode = Cli.Run(
+            ["trust", "--clear"],
+            output,
+            errors,
+            TestContext.Current.CancellationToken,
+            extensions: new ExtensionSeams { StorePath = store },
+            workingDirectory: worktree
+        );
+
+        Assert.Equal(TrustCommand.ExitOk, exitCode);
+        Assert.Empty(errors.ToString());
+        Assert.Contains(
+            "trust: cleared single-file extension " + path,
+            output.ToString(),
+            StringComparison.Ordinal
+        );
+        Assert.Equal(
+            SingleFileExtensionTrust.Untrusted,
+            trust.EvaluateSingleFileTrust(path, digest)
+        );
+
+        // The next load asks: discovery finds the same bytes and reports the missing decision.
+        var loader = new ExtensionLoader(options);
+        loader.Discover(worktree, Path.Combine(worktree, ".git"));
+        SingleFileExtension row = Assert.Single(loader.SingleFileExtensions);
+        Assert.Equal(SingleFileExtensionState.NotBuilt, row.State);
+        Assert.Equal("not trusted yet; /extensions reload asks before it builds", row.Reason);
+        Assert.Null(row.BuildKey);
+    }
+
     private static (string Worktree, string Store) ConfigOnly(TempDirectory temp)
     {
         string worktree = temp.File("worktree");

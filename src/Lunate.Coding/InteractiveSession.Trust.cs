@@ -92,7 +92,7 @@ internal sealed partial class InteractiveSession
 
         if (string.Equals(argument, "clear", StringComparison.Ordinal))
         {
-            store.ClearRepository(identity);
+            store.ClearRepository(identity, _workspace.WorktreeRoot);
             Notify("trust records cleared for this repository — the next load asks again");
             return;
         }
