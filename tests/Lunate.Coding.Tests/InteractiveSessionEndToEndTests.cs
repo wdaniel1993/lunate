@@ -23,13 +23,13 @@ internal static class InteractiveGoldens
             directory = directory.Parent
         )
         {
-            if (File.Exists(Path.Combine(directory.FullName, "lunate.sln")))
+            if (File.Exists(Path.Combine(directory.FullName, "lunate.slnx")))
             {
                 return directory.FullName;
             }
         }
 
-        throw new InvalidOperationException("Could not find lunate.sln.");
+        throw new InvalidOperationException("Could not find lunate.slnx.");
     }
 
     public static void AssertMatchesText(string name, string actual)

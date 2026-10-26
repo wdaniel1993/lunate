@@ -12,14 +12,14 @@ internal static class TestPaths
             directory = directory.Parent
         )
         {
-            if (File.Exists(Path.Combine(directory.FullName, "lunate.sln")))
+            if (File.Exists(Path.Combine(directory.FullName, "lunate.slnx")))
             {
                 return directory.FullName;
             }
         }
 
         throw new InvalidOperationException(
-            $"Could not find lunate.sln above {AppContext.BaseDirectory}."
+            $"Could not find lunate.slnx above {AppContext.BaseDirectory}."
         );
     }
 }

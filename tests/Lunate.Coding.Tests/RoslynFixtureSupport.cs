@@ -147,12 +147,12 @@ internal static class RoslynFixtureSupport
             directory = directory.Parent
         )
         {
-            if (File.Exists(Path.Combine(directory.FullName, "lunate.sln")))
+            if (File.Exists(Path.Combine(directory.FullName, "lunate.slnx")))
             {
                 return directory.FullName;
             }
         }
 
-        throw new InvalidOperationException("the repository root (lunate.sln) was not found");
+        throw new InvalidOperationException("the repository root (lunate.slnx) was not found");
     }
 }

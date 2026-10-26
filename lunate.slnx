@@ -1,0 +1,84 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Folder Name="/samples/">
+    <Project Path="samples/extensions/node-remote/NodeRemoteExtension.Tests/NodeRemoteExtension.Tests.csproj" />
+  </Folder>
+  <Folder Name="/samples/extensions/" />
+  <Folder Name="/samples/extensions/code-mode/">
+    <Project Path="samples/extensions/code-mode/CodeModeExtension.Tests/CodeModeExtension.Tests.csproj" />
+    <Project Path="samples/extensions/code-mode/CodeModeExtension/CodeModeExtension.csproj" />
+  </Folder>
+  <Folder Name="/samples/extensions/lsp-diagnostics/">
+    <Project Path="samples/extensions/lsp-diagnostics/LspDiagnosticsExtension.Tests/FakeLspServer/FakeLspServer.csproj" />
+    <Project Path="samples/extensions/lsp-diagnostics/LspDiagnosticsExtension.Tests/LspDiagnosticsExtension.Tests.csproj" />
+    <Project Path="samples/extensions/lsp-diagnostics/LspDiagnosticsExtension/LspDiagnosticsExtension.csproj" />
+  </Folder>
+  <Folder Name="/samples/extensions/mcp-from-extension/">
+    <Project Path="samples/extensions/mcp-from-extension/McpFromExtensionExtension.Tests/FakeMcpServer/FakeMcpServer.csproj" />
+    <Project Path="samples/extensions/mcp-from-extension/McpFromExtensionExtension.Tests/McpFromExtensionExtension.Tests.csproj" />
+    <Project Path="samples/extensions/mcp-from-extension/McpFromExtensionExtension/McpFromExtensionExtension.csproj" />
+  </Folder>
+  <Folder Name="/samples/extensions/memory-provider/">
+    <Project Path="samples/extensions/memory-provider/MemoryProviderExtension.Tests/MemoryProviderExtension.Tests.csproj" />
+    <Project Path="samples/extensions/memory-provider/MemoryProviderExtension/MemoryProviderExtension.csproj" />
+  </Folder>
+  <Folder Name="/samples/extensions/permission-gate/">
+    <Project Path="samples/extensions/permission-gate/PermissionGateExtension.Tests/PermissionGateExtension.Tests.csproj" />
+    <Project Path="samples/extensions/permission-gate/PermissionGateExtension/PermissionGateExtension.csproj" />
+  </Folder>
+  <Folder Name="/samples/extensions/subagents/">
+    <Project Path="samples/extensions/subagents/SubagentsExtension.Tests/SubagentsExtension.Tests.csproj" />
+    <Project Path="samples/extensions/subagents/SubagentsExtension/SubagentsExtension.csproj" />
+  </Folder>
+  <Folder Name="/samples/extensions/ui-showcase/">
+    <Project Path="samples/extensions/ui-showcase/UiShowcaseExtension.Tests/UiShowcaseExtension.Tests.csproj" />
+    <Project Path="samples/extensions/ui-showcase/UiShowcaseExtension/UiShowcaseExtension.csproj" />
+  </Folder>
+  <Folder Name="/samples/extensions/worktree-tasks/">
+    <Project Path="samples/extensions/worktree-tasks/WorktreeTasksExtension.Tests/WorktreeTasksExtension.Tests.csproj" />
+    <Project Path="samples/extensions/worktree-tasks/WorktreeTasksExtension/WorktreeTasksExtension.csproj" />
+  </Folder>
+  <Folder Name="/samples/model-router/">
+    <Project Path="samples/extensions/model-router/ModelRouterExtension.Tests/ModelRouterExtension.Tests.csproj" />
+    <Project Path="samples/extensions/model-router/ModelRouterExtension/ModelRouterExtension.csproj" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/Lunate.Agent/Lunate.Agent.csproj" />
+    <Project Path="src/Lunate.Ai/Lunate.Ai.csproj" />
+    <Project Path="src/Lunate.Coding/Lunate.Coding.csproj" />
+    <Project Path="src/Lunate.Extensibility.Abstractions/Lunate.Extensibility.Abstractions.csproj" />
+    <Project Path="src/Lunate.Extensibility.Compile/Lunate.Extensibility.Compile.csproj" />
+    <Project Path="src/Lunate.Extensibility.Remote/Lunate.Extensibility.Remote.csproj" />
+    <Project Path="src/Lunate.Extensibility.Restore/Lunate.Extensibility.Restore.csproj" />
+    <Project Path="src/Lunate.Extensibility.Testing/Lunate.Extensibility.Testing.csproj" />
+    <Project Path="src/Lunate.Extensibility/Lunate.Extensibility.csproj" />
+    <Project Path="src/Lunate.Protocols/Lunate.Protocols.csproj" />
+    <Project Path="src/Lunate.Roslyn/Lunate.Roslyn.csproj" />
+    <Project Path="src/Lunate.Tui/Lunate.Tui.csproj" />
+  </Folder>
+  <Folder Name="/templates/">
+    <Project Path="templates/extension/TemplateExtension.Tests/TemplateExtension.Tests.csproj" />
+    <Project Path="templates/extension/TemplateExtension/TemplateExtension.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Lunate.Agent.Tests/Lunate.Agent.Tests.csproj" />
+    <Project Path="tests/Lunate.Ai.Tests/Lunate.Ai.Tests.csproj" />
+    <Project Path="tests/Lunate.Coding.Tests/Lunate.Coding.Tests.csproj" />
+    <Project Path="tests/Lunate.Extensibility.Compile.Tests/Lunate.Extensibility.Compile.Tests.csproj" />
+    <Project Path="tests/Lunate.Extensibility.Remote.Tests/Lunate.Extensibility.Remote.Tests.csproj" />
+    <Project Path="tests/Lunate.Extensibility.Restore.Tests/Lunate.Extensibility.Restore.Tests.csproj" />
+    <Project Path="tests/Lunate.Extensibility.Testing.Tests/Lunate.Extensibility.Testing.Tests.csproj" />
+    <Project Path="tests/Lunate.Extensibility.Tests/Lunate.Extensibility.Tests.csproj" />
+    <Project Path="tests/Lunate.Protocols.Tests/Lunate.Protocols.Tests.csproj" />
+    <Project Path="tests/Lunate.Roslyn.Tests/Lunate.Roslyn.Tests.csproj" />
+    <Project Path="tests/Lunate.TestSupport/Lunate.TestSupport.csproj" />
+    <Project Path="tests/Lunate.Tui.Tests/Lunate.Tui.Tests.csproj" />
+  </Folder>
+  <Folder Name="/tests/tools/">
+    <Project Path="tests/tools/TestMcpServer/TestMcpServer.csproj" />
+  </Folder>
+</Solution>

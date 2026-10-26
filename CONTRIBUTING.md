@@ -22,8 +22,8 @@ repository actually runs on, and this page is the path from a fresh clone to a m
 git clone https://github.com/wdaniel1993/lunate
 cd lunate
 dotnet tool restore                       # CSharpier, pinned as a local tool
-dotnet build lunate.sln -c Release
-dotnet test --solution lunate.sln -c Release
+dotnet build lunate.slnx -c Release
+dotnet test --solution lunate.slnx -c Release
 bash scripts/verify.sh                    # the full gate (Windows: scripts/verify.ps1)
 ```
 

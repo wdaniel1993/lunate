@@ -31,7 +31,7 @@
 # assembly check in verify.sh uses the same list, so a project that was not
 # built cannot silently drop out of the gate.
 verify_test_projects() {
-  sed -n 's/^Project([^)]*) = "[^"]*", "\([^"]*\.Tests\.csproj\)", .*/\1/p' lunate.sln |
+  sed -n 's/^Project([^)]*) = "[^"]*", "\([^"]*\.Tests\.csproj\)", .*/\1/p' lunate.slnx |
     tr '\\' '/' |
     LC_ALL=C sort
 }

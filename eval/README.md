@@ -12,7 +12,7 @@ Each task is a directory under `tasks/`:
 | `check.sh` | Runs inside the task's working copy with `bash`; exit 0 = pass, anything else = fail. |
 | `repo/` | The fixture files copied into a fresh temp workdir before the run. |
 
-The fixtures are intentionally flawed: the agent's job is to make `check.sh` pass. Fixture projects set their own `TargetFramework`; `tasks/Directory.Build.props` is an empty stub that stops MSBuild's walk-up, so the repository's warnings-as-errors settings do not apply. `eval/` is excluded from CSharpier, is not part of `lunate.sln`, and is out of every repository gate.
+The fixtures are intentionally flawed: the agent's job is to make `check.sh` pass. Fixture projects set their own `TargetFramework`; `tasks/Directory.Build.props` is an empty stub that stops MSBuild's walk-up, so the repository's warnings-as-errors settings do not apply. `eval/` is excluded from CSharpier, is not part of `lunate.slnx`, and is out of every repository gate.
 
 Check scripts use no live APIs and need no network, except `csharp-failing-test`: its `dotnet test` restores `xunit.v3` from NuGet on a cold cache (warm caches run offline). C# tasks use `dotnet test`, `dotnet run` or `dotnet build`; the Python task uses `python3 -m unittest` (stdlib only, no pytest). A fixture must fail its check before the fix and pass after it.
 

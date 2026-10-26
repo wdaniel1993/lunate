@@ -77,14 +77,14 @@ public sealed class EditCorpusTests
             directory = directory.Parent
         )
         {
-            if (File.Exists(Path.Combine(directory.FullName, "lunate.sln")))
+            if (File.Exists(Path.Combine(directory.FullName, "lunate.slnx")))
             {
                 return Path.Combine(directory.FullName, "tests", "fixtures", "edit-corpus");
             }
         }
 
         throw new InvalidOperationException(
-            $"Could not find lunate.sln above {AppContext.BaseDirectory}."
+            $"Could not find lunate.slnx above {AppContext.BaseDirectory}."
         );
     }
 }

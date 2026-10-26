@@ -16,7 +16,7 @@ public sealed class SkillsProductionCompositionTests
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
         while (directory is not null)
         {
-            if (File.Exists(Path.Combine(directory.FullName, "lunate.sln")))
+            if (File.Exists(Path.Combine(directory.FullName, "lunate.slnx")))
             {
                 return Workspace.Canonicalize(directory.FullName);
             }
@@ -25,7 +25,7 @@ public sealed class SkillsProductionCompositionTests
         }
 
         throw new InvalidOperationException(
-            $"Could not find lunate.sln above {AppContext.BaseDirectory}."
+            $"Could not find lunate.slnx above {AppContext.BaseDirectory}."
         );
     }
 

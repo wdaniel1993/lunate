@@ -113,7 +113,7 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'verify: csharpier not found; install it with: dotnet tool restore' }
 
     Write-Host "`n==> build"
-    dotnet build lunate.sln -c $configuration --nologo
+    dotnet build lunate.slnx -c $configuration --nologo
     if ($LASTEXITCODE -ne 0) { throw 'verify: build failed' }
 
     Write-Host "`n==> provider runtime assets"
@@ -171,7 +171,7 @@ try {
     Write-Host "`n==> test"
     # The Category=Perf budget check is excluded from the main pass and runs as
     # its own step below, so the pass stays fast and the budget is still enforced.
-    Invoke-Tests -Label 'test' -TestArgs @('test', '--solution', 'lunate.sln', '-c', $configuration, '--filter-not-trait', 'Category=Perf')
+    Invoke-Tests -Label 'test' -TestArgs @('test', '--solution', 'lunate.slnx', '-c', $configuration, '--filter-not-trait', 'Category=Perf')
 
     Write-Host "`n==> path index budget"
     Invoke-Tests -Label 'path index budget' -TestArgs @('test', '--project', 'tests/Lunate.Coding.Tests/Lunate.Coding.Tests.csproj', '-c', $configuration, '--no-build', '--filter-trait', 'Category=Perf')
@@ -315,10 +315,10 @@ try {
     dotnet csharpier check .
     if ($LASTEXITCODE -ne 0) { throw 'verify: format check failed (dotnet csharpier check .)' }
 
-    dotnet format style lunate.sln --verify-no-changes --no-restore
+    dotnet format style lunate.slnx --verify-no-changes --no-restore
     if ($LASTEXITCODE -ne 0) { throw 'verify: style check failed' }
 
-    dotnet format analyzers lunate.sln --verify-no-changes --no-restore
+    dotnet format analyzers lunate.slnx --verify-no-changes --no-restore
     if ($LASTEXITCODE -ne 0) { throw 'verify: analyzers check failed' }
 
     Write-Host "`n==> docs lint"

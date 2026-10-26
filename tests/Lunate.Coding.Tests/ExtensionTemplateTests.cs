@@ -100,38 +100,31 @@ public sealed class ExtensionTemplateTests
     /// The template must be compiled by something, or it rots exactly where it is most expensive:
     /// the file every extension author copies. No test builds it (that would restore and write build
     /// output from a test process), so the solution does — <c>scripts/verify.sh</c> builds
-    /// <c>lunate.sln</c> on every leg — and this test keeps it there, in every configuration the gate
-    /// uses.
+    /// <c>lunate.slnx</c> on every leg — and this test keeps both projects listed, because removing
+    /// them is a silent edit that leaves every other test green.
     /// </summary>
     [Fact]
-    public void The_solution_compiles_the_template_in_every_configuration_the_gate_builds()
+    public void The_solution_lists_the_template_so_the_gate_compiles_it()
     {
-        string solution = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "lunate.sln"))
-            .ReplaceLineEndings("\n");
+        XDocument solution = XDocument.Load(Path.Combine(FindRepositoryRoot(), "lunate.slnx"));
+        string[] projects =
+        [
+            .. solution
+                .Descendants("Project")
+                .Select(element => (string?)element.Attribute("Path"))
+                .OfType<string>(),
+        ];
 
-        foreach (
-            string project in new[]
-            {
-                @"templates\extension\TemplateExtension\TemplateExtension.csproj",
-                @"templates\extension\TemplateExtension.Tests\TemplateExtension.Tests.csproj",
-            }
-        )
-        {
-            string line = Assert.Single(
-                solution.Split('\n'),
-                candidate => candidate.Contains($"\"{project}\"", StringComparison.Ordinal)
-            );
-            string guid = line[(line.LastIndexOf('{') + 1)..line.LastIndexOf('}')];
-
-            foreach (string configuration in new[] { "Debug|Any CPU", "Release|Any CPU" })
-            {
-                Assert.Contains(
-                    FormattableString.Invariant($"{{{guid}}}.{configuration}.Build.0"),
-                    solution,
-                    StringComparison.Ordinal
-                );
-            }
-        }
+        Assert.Contains(
+            "templates/extension/TemplateExtension/TemplateExtension.csproj",
+            projects,
+            StringComparer.Ordinal
+        );
+        Assert.Contains(
+            "templates/extension/TemplateExtension.Tests/TemplateExtension.Tests.csproj",
+            projects,
+            StringComparer.Ordinal
+        );
     }
 
     private static string TemplateProject()
