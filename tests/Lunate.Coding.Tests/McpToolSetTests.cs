@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Lunate.Agent;
 using Lunate.Protocols;
 using Lunate.TestSupport;
@@ -215,5 +216,64 @@ public sealed class McpToolSetTests
         Assert.Contains("broken", statuses[0].Reason, StringComparison.Ordinal);
         Assert.Equal(McpServerState.Started, statuses[1].State);
         Assert.Equal(5, statuses[1].ToolCount);
+    }
+
+    [Fact]
+    public async Task A_tool_list_change_reaches_the_callback_and_the_sets_next_listing()
+    {
+        using var temp = new TempDirectory();
+        await using var set = new McpToolSet(
+            [
+                new McpServerOptions(
+                    "test",
+                    TestMcpServer.DotnetPath,
+                    ["exec", TestMcpServer.ServerDll],
+                    new Dictionary<string, string>
+                    {
+                        ["LUNATE_TEST_MCP_MARKER"] = temp.File("marker.txt"),
+                    },
+                    NamespaceName: "test"
+                ),
+            ],
+            log: static _ => { }
+        );
+        var changed = new TaskCompletionSource<(string Server, IReadOnlyList<ITool> Tools)>(
+            TaskCreationOptions.RunContinuationsAsynchronously
+        );
+        set.OnToolsChanged(
+            (server, tools) =>
+            {
+                if (tools.Any(tool => tool.Name == "test__late_tool"))
+                {
+                    changed.TrySetResult((server, tools));
+                }
+            }
+        );
+
+        IReadOnlyList<ITool> tools = await set.ListToolsAsync(Ct);
+        ITool spawn = tools.Single(tool => tool.Name == "test__spawn_tool");
+        ToolResult result = await spawn.ExecuteAsync(
+            JsonSerializer.SerializeToElement(new { }),
+            new ToolContext("run", new NullAgentEvents()),
+            Ct
+        );
+        Assert.False(result.IsError);
+
+        // The server's tools/list_changed notification reaches this set's consumer, named by server.
+        (string server, IReadOnlyList<ITool> updated) = await changed.Task.WaitAsync(
+            TimeSpan.FromSeconds(30),
+            Ct
+        );
+        Assert.Equal("test", server);
+        Assert.Contains(updated, tool => tool.Name == "test__late_tool");
+
+        // And the set's own view moved: a later listing and the workspace-independent lookup both
+        // carry the new tool without another ListToolsAsync call by the consumer.
+        IReadOnlyList<ITool> relisted = await set.ListToolsAsync(Ct);
+        Assert.Contains(relisted, tool => tool.Name == "test__late_tool");
+        Assert.Contains(
+            set.ListedToolsFrom(options => options.Name == "test"),
+            tool => tool.Name == "test__late_tool"
+        );
     }
 }

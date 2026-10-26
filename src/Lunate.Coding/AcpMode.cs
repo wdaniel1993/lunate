@@ -119,7 +119,13 @@ internal static class AcpMode
         }
         catch (Exception exception)
         {
+            // A composition failure is not a session: serving frames against a half-built host
+            // (no extension seam, no MCP tools, a workspace the state root guard refused) would
+            // answer every editor request with an agent that is missing what the user configured.
             errors.WriteLine($"lunate: the session composition failed: {exception.Message}");
+            DisposeComposition(host, mcp, errors);
+            workspaceServices.Dispose();
+            return 1;
         }
 
         try
@@ -299,6 +305,7 @@ internal static class AcpMode
             FileChanges = (IFileChangeSink?)host?.FileChanges ?? NullFileChangeSink.Instance,
             Model = model,
             ModelCatalog = catalog,
+            ModelRegistry = host?.ModelRegistry,
             ModelId = model.Id,
             WorkspaceTools = HarnessFactory.CreateWorkspaceTools(
                 workspaceServices,

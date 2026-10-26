@@ -42,10 +42,11 @@ internal sealed class McpToolSet : IAsyncDisposable
     /// <summary>The pinned failure reason of a server whose process exited after starting.</summary>
     internal const string ServerExitedReason = "the server process exited";
 
-    private readonly List<Server> _servers;
+    private readonly List<Server> _servers = [];
     private readonly Action<string> _log;
     private readonly Func<McpServerOptions, string> _describe;
     private Action<McpServerStatus>? _onServerExited;
+    private Action<string, IReadOnlyList<ITool>>? _onToolsChanged;
 
     internal McpToolSet(
         IReadOnlyList<McpServerOptions> servers,
@@ -59,14 +60,24 @@ internal sealed class McpToolSet : IAsyncDisposable
         ArgumentNullException.ThrowIfNull(log);
         _log = log;
         _describe = describe ?? (options => $"MCP server '{options.Name}'");
-        _servers =
-        [
-            .. servers.Select(options => new Server(
+        foreach (McpServerOptions options in servers)
+        {
+            Server? server = null;
+            var host = new McpServerHost(
                 options,
-                new McpServerHost(options, log: serverLog ?? log),
+                // A server that announces a tool-list change re-lists; the updated set replaces this
+                // set's view of that server and is reported through OnToolsChanged, so a consumer
+                // that owns the visible tool registry can re-point it instead of serving the old set.
+                onToolsChanged: tools => ToolsChanged(server, tools),
+                log: serverLog ?? log
+            );
+            server = new Server(
+                options,
+                host,
                 missingVariables?.GetValueOrDefault(options.Name) ?? []
-            )),
-        ];
+            );
+            _servers.Add(server);
+        }
     }
 
     /// <summary>The per-server statuses in configuration order; live as listings happen.</summary>
@@ -79,6 +90,15 @@ internal sealed class McpToolSet : IAsyncDisposable
     /// callback. Interactive mode wires it to its notice; other modes leave it null.
     /// </summary>
     internal void OnServerExited(Action<McpServerStatus>? callback) => _onServerExited = callback;
+
+    /// <summary>
+    /// Receives one callback per server whose tool list changed on the wire (its
+    /// <c>tools/list_changed</c> notification), with the server's name and the set it now lists.
+    /// Setting replaces the previous callback; a consumer that owns the visible tool registry uses
+    /// it to re-point the tools of that server.
+    /// </summary>
+    internal void OnToolsChanged(Action<string, IReadOnlyList<ITool>>? callback) =>
+        _onToolsChanged = callback;
 
     /// <summary>Lists every server's tools, starting each once; failures are isolated.</summary>
     internal async Task<IReadOnlyList<ITool>> ListToolsAsync(CancellationToken ct)
@@ -187,6 +207,19 @@ internal sealed class McpToolSet : IAsyncDisposable
                 );
             }
         }
+    }
+
+    private void ToolsChanged(Server? server, IReadOnlyList<ITool> tools)
+    {
+        if (server is null || server.ExitNotified)
+        {
+            // A subscription replaced before construction finished, or a server already reported
+            // dead: its tools are not part of this set any more.
+            return;
+        }
+
+        server.ListedTools = tools;
+        _onToolsChanged?.Invoke(server.Options.Name, tools);
     }
 
     private void MarkExited(Server server)
