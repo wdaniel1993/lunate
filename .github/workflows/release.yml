@@ -132,8 +132,14 @@ jobs:
     name: pack (dotnet tool)
     needs: gate
     runs-on: ubuntu-latest
+    # Trusted Publishing replaces the long-lived API key: the job asks GitHub for
+    # an OIDC token, nuget.org trades it for a key valid for minutes, and the
+    # policy on the other side names this repository, this workflow file and this
+    # environment. A dry run must not publish, so both steps below are guarded.
+    environment: production
     permissions:
       contents: read
+      id-token: write
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -150,6 +156,36 @@ jobs:
 
       - name: Pack tool
         run: dotnet pack src/Lunate.Coding/Lunate.Coding.csproj -c Release -o dist --nologo
+
+      - name: Sign in to nuget.org
+        id: nuget
+        if: github.event_name == 'push'
+        uses: NuGet/login@v1
+        with:
+          user: wdaniel1993
+
+      - name: Push the tool to nuget.org
+        if: github.event_name == 'push'
+        run: >-
+          dotnet nuget push dist/*.nupkg
+          --api-key "${{ steps.nuget.outputs.NUGET_API_KEY }}"
+          --source https://www.nuget.org/api/v2/package
+          --skip-duplicate
+
+      # A dry run must not publish, but it can prove the policy works: the exchange is the
+      # part that fails when the repository, workflow file or environment stops matching.
+      - name: Sign in to nuget.org (dry run)
+        id: nuget_dry_run
+        if: github.event_name == 'workflow_dispatch'
+        uses: NuGet/login@v1
+        with:
+          user: wdaniel1993
+
+      - name: Report the exchange
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          KEY: ${{ steps.nuget_dry_run.outputs.NUGET_API_KEY }}
+        run: echo "Trusted Publishing exchange succeeded; the key is ${#KEY} characters and nothing was pushed."
 
       - name: Upload tool package
         uses: actions/upload-artifact@v7
