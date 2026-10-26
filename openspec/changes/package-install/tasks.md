@@ -38,14 +38,14 @@
 
 ## 4. Dependencies: the walk, the lock and the digest (PR 4 — the release waits for this phase)
 
-- [ ] 4.1 The installer feeds the package's declared dependency set to the existing restore walker — same resolver, conformance corpus, packages folder and lock writer — and materialises the resolved assemblies beside the entry assembly. No new resolver, no compile, no build-cache write.
-- [ ] 4.2 Red: a package declaring `Octokit` installs against a local feed; `Octokit` and its own dependencies are materialised, and the lock at `<root>/cache/extensions/<extension-id>/extension.lock.json` names the exact versions in the existing graph/toolset shape.
-- [ ] 4.3 Red: host-owned assemblies are excluded from the lock's graph, and a package shipping a copy of the contract still installs and loads the host's copy.
-- [ ] 4.4 Red: a dependency no feed serves, and a graph the resolver cannot settle, each refuse the install naming the dependency and the feeds tried, with no content and no record written.
-- [ ] 4.5 Red: `--offline` resolves the entire closure from the packages folder with zero feed requests, and fails naming the missing dependency when one is absent.
-- [ ] 4.6 Red: the phase-1 refusal is gone (the package from 1.7 now installs) and the lock's canonical graph is part of the project trust digest, so a package change re-prompts.
-- [ ] 4.7 Red: `lunate cache prune` leaves an installed package's lock and content alone.
-- [ ] 4.8 Install prints the dependency closure with each resolved version before writing, and `--dry-run` prints the same without resolving into the store.
+- [x] 4.1 The installer feeds the package's declared dependency set to the existing restore walker — same resolver, conformance corpus, packages folder and lock writer — and materialises the resolved assemblies beside the entry assembly. No new resolver, no compile, no build-cache write.
+- [x] 4.2 Red: a package declaring `Octokit` installs against a local feed; `Octokit` and its own dependencies are materialised, and the lock at `<root>/cache/extensions/<extension-id>/extension.lock.json` names the exact versions in the existing graph/toolset shape.
+- [x] 4.3 Red: host-owned assemblies are excluded from the lock's graph, and a package shipping a copy of the contract still installs and loads the host's copy.
+- [x] 4.4 Red: a dependency no feed serves, and a graph the resolver cannot settle, each refuse the install naming the dependency and the feeds tried, with no content and no record written.
+- [x] 4.5 Red: `--offline` resolves the entire closure from the packages folder with zero feed requests, and fails naming the missing dependency when one is absent.
+- [x] 4.6 Red: the phase-1 refusal is gone (the package from 1.7 now installs) and the lock's canonical graph is part of the project trust digest, so a package change re-prompts.
+- [x] 4.7 Red: `lunate cache prune` leaves an installed package's lock and content alone.
+- [x] 4.8 Install prints the dependency closure with each resolved version before writing, and `--dry-run` prints the same without resolving into the store.
 - [ ] 4.9 Gate: the walk's tests reuse the phase-2a fixtures where they fit, the zero-request test covers the closure, and `scripts/verify.sh` passes. The change does not ship before this phase is merged.
 
 ## 5. Upgrade and uninstall (PR 5)
