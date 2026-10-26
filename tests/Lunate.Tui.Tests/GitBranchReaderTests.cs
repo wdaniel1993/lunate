@@ -45,6 +45,30 @@ public sealed class GitBranchReaderTests
     }
 
     [Fact]
+    public void A_subdirectory_of_a_repository_reads_its_branch()
+    {
+        using var dir = new TempDir();
+        WriteHead(dir.Path, ".git", "ref: refs/heads/from-subdirectory\n");
+        Directory.CreateDirectory(Path.Combine(dir.Path, "src", "App"));
+
+        Assert.Equal(
+            "from-subdirectory",
+            GitBranchReader.Read(Path.Combine(dir.Path, "src", "App"))
+        );
+    }
+
+    [Fact]
+    public void A_subdirectory_of_a_worktree_reads_the_worktree_branch()
+    {
+        using var dir = new TempDir();
+        WriteHead(dir.Path, "main/.git/worktrees/wt", "ref: refs/heads/wt-branch\n");
+        WriteAll(dir.Path, "wt/.git", "gitdir: ../main/.git/worktrees/wt\n");
+        Directory.CreateDirectory(Path.Combine(dir.Path, "wt", "src"));
+
+        Assert.Equal("wt-branch", GitBranchReader.Read(Path.Combine(dir.Path, "wt", "src")));
+    }
+
+    [Fact]
     public void No_repository_yields_no_branch()
     {
         using var dir = new TempDir();

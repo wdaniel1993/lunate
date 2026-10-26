@@ -128,7 +128,9 @@ internal sealed class RipgrepGrepEngine : IGrepEngine
         GrepScope? scope = GrepScope.Create(request.Root);
         if (scope is null)
         {
-            return Error($"could not search '{request.RelativeRoot}': the workspace root is unreadable");
+            return Error(
+                $"could not search '{request.RelativeRoot}': the workspace root is unreadable"
+            );
         }
 
         List<GrepMatch> matches = [];

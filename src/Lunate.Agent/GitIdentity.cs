@@ -18,42 +18,37 @@ public static class GitIdentity
     public static string Canonicalize(string path) => PathCanonical.Canonicalize(path);
 
     /// <summary>
-    /// Best-effort repository identity of a worktree root: a <c>.git</c> directory is the common
-    /// dir of a main checkout; a <c>.git</c> file points at a linked worktree's gitdir, whose
-    /// <c>commondir</c> file names the shared git directory. Worktrees of one repository share
-    /// <c>GitCommonDir</c>, which is what makes them the same repository. Returns (null, null)
-    /// outside a repository and for unreadable or malformed input.
+    /// Best-effort repository identity of a directory: the nearest ancestor that carries a
+    /// <c>.git</c> entry, so a session launched from <c>/repo/src/App</c> is the same repository as
+    /// one launched from <c>/repo</c>. A <c>.git</c> directory is the common dir of a main checkout;
+    /// a <c>.git</c> file points at a linked worktree's gitdir, whose <c>commondir</c> file names the
+    /// shared git directory. Worktrees of one repository share <c>GitCommonDir</c>, which is what
+    /// makes them the same repository. Returns (null, null) outside a repository and for unreadable
+    /// or malformed input.
     /// </summary>
     public static (string? RepoRoot, string? GitCommonDir) Detect(string worktreeRoot)
     {
         try
         {
-            var dotGit = Path.Combine(worktreeRoot, ".git");
-            if (Directory.Exists(dotGit))
+            for (
+                string? directory = Canonicalize(worktreeRoot);
+                directory is not null;
+                directory = Path.GetDirectoryName(directory)
+            )
             {
-                return (worktreeRoot, Canonicalize(dotGit));
+                var dotGit = Path.Combine(directory, ".git");
+                if (Directory.Exists(dotGit))
+                {
+                    return (directory, Canonicalize(dotGit));
+                }
+
+                if (File.Exists(dotGit))
+                {
+                    return FromGitFile(dotGit);
+                }
             }
 
-            if (!File.Exists(dotGit))
-            {
-                return (null, null);
-            }
-
-            var gitDir = ReadGitDirPointer(dotGit);
-            if (gitDir is null)
-            {
-                return (null, null);
-            }
-
-            var commonDir = ReadCommonDir(gitDir);
-            if (commonDir is null)
-            {
-                return (null, null);
-            }
-
-            var repoRoot =
-                Path.GetFileName(commonDir) == ".git" ? Path.GetDirectoryName(commonDir) : null;
-            return (repoRoot, commonDir);
+            return (null, null);
         }
         catch (Exception exception)
             when (exception
@@ -65,6 +60,31 @@ public static class GitIdentity
         {
             return (null, null);
         }
+    }
+
+    /// <summary>
+    /// The identity a linked worktree's <c>.git</c> file describes: the gitdir it names, and the
+    /// common dir that gitdir's <c>commondir</c> file names. The repository root is the parent of a
+    /// common dir called <c>.git</c>; a common dir that is not (a bare repository or a submodule's)
+    /// has no worktree root to report.
+    /// </summary>
+    private static (string? RepoRoot, string? GitCommonDir) FromGitFile(string dotGitPath)
+    {
+        var gitDir = ReadGitDirPointer(dotGitPath);
+        if (gitDir is null)
+        {
+            return (null, null);
+        }
+
+        var commonDir = ReadCommonDir(gitDir);
+        if (commonDir is null)
+        {
+            return (null, null);
+        }
+
+        var repoRoot =
+            Path.GetFileName(commonDir) == ".git" ? Path.GetDirectoryName(commonDir) : null;
+        return (repoRoot, commonDir);
     }
 
     private static string? ReadGitDirPointer(string dotGitPath)

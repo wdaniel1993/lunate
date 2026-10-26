@@ -549,6 +549,36 @@ public sealed class InstallCommandTests
         Assert.False(Directory.Exists(Path.Combine(feed.Worktree, ".lunate")));
     }
 
+    /// <summary>
+    /// The refusal above is for a directory outside a repository, not for one below its root: the
+    /// repository identity comes from the nearest ancestor <c>.git</c>, so a project install from a
+    /// subdirectory is a project install.
+    /// </summary>
+    [Fact]
+    public void Project_scope_from_a_subdirectory_finds_the_repository()
+    {
+        using var feed = new PackageFeedFixture();
+        GitTestRepo.Init(feed.Worktree);
+        feed.Bundle(skills: ["greek"]);
+        string subdirectory = Path.Combine(feed.Worktree, "src", "App");
+        Directory.CreateDirectory(subdirectory);
+
+        using var output = new StringWriter();
+        using var errors = new StringWriter();
+        int exit = InstallCommand.Run(
+            ["Acme.Toolkit@1.4.2", "--project", "--dry-run"],
+            subdirectory,
+            output,
+            errors,
+            new ExtensionSeams { StorePath = feed.Store },
+            TestContext.Current.CancellationToken
+        );
+
+        Assert.Equal(InstallCommand.ExitOk, exit);
+        Assert.Empty(errors.ToString());
+        Assert.Contains("scope: project", output.ToString(), StringComparison.Ordinal);
+    }
+
     [Fact]
     public void A_dry_run_prints_the_identity_and_writes_nothing()
     {

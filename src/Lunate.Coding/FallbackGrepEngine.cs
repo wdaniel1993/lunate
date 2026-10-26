@@ -68,7 +68,9 @@ internal sealed class FallbackGrepEngine(ITextFileAccess? files = null) : IGrepE
         if (scope is null)
         {
             return Task.FromResult(
-                Error($"could not search '{request.RelativeRoot}': the workspace root is unreadable")
+                Error(
+                    $"could not search '{request.RelativeRoot}': the workspace root is unreadable"
+                )
             );
         }
 

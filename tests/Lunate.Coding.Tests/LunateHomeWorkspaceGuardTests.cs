@@ -76,6 +76,38 @@ public sealed class LunateHomeWorkspaceGuardTests
     }
 
     [Fact]
+    public async Task A_store_inside_the_repository_is_refused_from_a_subdirectory()
+    {
+        const string Method = nameof(A_store_inside_the_repository_is_refused_from_a_subdirectory);
+        if (TestChildProcess.IsChild(Method))
+        {
+            using var temp = new TempDirectory();
+            string repository = temp.File("worktree");
+            Directory.CreateDirectory(Path.Combine(repository, ".git"));
+            string subdirectory = Path.Combine(repository, "src", "App");
+            Directory.CreateDirectory(subdirectory);
+            string store = Path.Combine(repository, ".state");
+
+            Environment.SetEnvironmentVariable(RootVariable, store);
+            try
+            {
+                (int code, string _, string errors) = CachePrune(subdirectory);
+                Assert.Equal(1, code);
+                Assert.Contains(Refusal, errors, StringComparison.Ordinal);
+                Assert.False(Directory.Exists(store));
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable(RootVariable, null);
+            }
+
+            return;
+        }
+
+        await AssertChildPassesAsync(Method);
+    }
+
+    [Fact]
     public async Task A_store_in_a_sibling_directory_is_accepted()
     {
         const string Method = nameof(A_store_in_a_sibling_directory_is_accepted);
