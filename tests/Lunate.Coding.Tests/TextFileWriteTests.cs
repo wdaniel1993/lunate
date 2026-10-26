@@ -50,6 +50,10 @@ public sealed class TextFileWriteTests
 
             if (failed)
             {
+                // The holder is what made the replace fail; reading the bytes while it is open
+                // would fail for the same reason and prove nothing about the write.
+                holder?.Dispose();
+                holder = null;
                 Assert.Equal(before, File.ReadAllBytes(path));
             }
             else
