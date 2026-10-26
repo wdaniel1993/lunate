@@ -14,7 +14,7 @@ namespace Lunate.Coding.Tests;
 public sealed class PackageInstallEndToEndTests
 {
     [Fact]
-    public async Task A_user_install_loads_its_tool_and_skill_verifies_and_uninstalls_completely()
+    public async Task A_user_install_loads_its_tool_and_skill_and_verifies_its_content()
     {
         using var feed = new PackageFeedFixture();
         feed.Dependency("Acme.Lib", "1.0.0");
@@ -65,11 +65,35 @@ public sealed class PackageInstallEndToEndTests
 
         Assert.Equal(PackagesCommand.ExitOk, Verify(feed));
 
-        // Windows keeps a loaded assembly mapped until the context that loaded it is gone, and this
-        // session has it loaded: uninstalling is something you do to code nothing is running.
         host.Console.SendText("/quit");
         host.Console.SendEnter();
         await run;
+    }
+
+    /// <summary>
+    /// Uninstall as it happens in practice: in a process that never loaded the extension. On Windows
+    /// a loaded assembly is mapped and cannot be deleted, which is the platform's rule and why the
+    /// uninstall reports such a file as in use instead of pretending — the POSIX half of that path is
+    /// asserted in the restore suite. Loading and removing in one process would be testing something
+    /// no user can do.
+    /// </summary>
+    [Fact]
+    public async Task An_install_uninstalls_completely_when_nothing_loaded_it()
+    {
+        using var feed = new PackageFeedFixture();
+        feed.Dependency("Acme.Lib", "1.0.0");
+        feed.Bundle(
+            skills: ["greek"],
+            dependencies: ["Acme.Lib"],
+            tools: """["echo"]""",
+            entryAssemblyFrom: "ToolExtension"
+        );
+
+        Assert.Equal(0, feed.Run(["Acme.Toolkit@1.4.2"], out _, out string installErrors));
+        Assert.Empty(installErrors);
+        string extension = Path.Combine(feed.Store, "extensions", "acme-tools");
+        Assert.True(File.Exists(Path.Combine(extension, "Acme.Lib.dll")));
+        Assert.Equal(PackagesCommand.ExitOk, Verify(feed));
 
         Assert.Equal(
             0,
