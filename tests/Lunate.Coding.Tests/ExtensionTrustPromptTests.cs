@@ -49,6 +49,24 @@ public sealed class ExtensionTrustPromptTests
     }
 
     [Fact]
+    public void The_packaged_extension_question_leaves_the_question_mark_to_the_prompt()
+    {
+        string question = TrustFormat.ExtensionQuestion(
+            Descriptor("hello", "/work/.work/x"),
+            filesChanged: false
+        );
+        string reprompt = TrustFormat.ExtensionQuestion(
+            Descriptor("hello", "/work/.work/x"),
+            filesChanged: true
+        );
+
+        // The prompt surface appends the marker for prompts phrased without one; a title that also
+        // ends with one renders "??" (the single-file question did exactly that).
+        Assert.False(question.EndsWith('?'));
+        Assert.False(reprompt.EndsWith('?'));
+    }
+
+    [Fact]
     public async Task The_non_interactive_prompt_refuses_a_single_file_and_names_it()
     {
         var log = new RecordingExtensionLog();

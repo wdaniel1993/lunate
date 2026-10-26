@@ -148,6 +148,38 @@ public sealed class TrustPromptRendererTests
         Assert.Equal("test — dotnet exec server.dll", lines[1]);
     }
 
+    [Fact]
+    public void A_title_that_already_ends_with_a_question_mark_keeps_exactly_one()
+    {
+        string rendered = Render(
+            new TrustPromptModel(
+                "Trust the single-file extension 'acme-tools' 1.0.0 at '/w/acme.cs'?",
+                [],
+                0,
+                0
+            )
+        );
+
+        Assert.Equal(
+            "Trust the single-file extension 'acme-tools' 1.0.0 at '/w/acme.cs'?  [y]es  [n]o\n",
+            rendered
+        );
+        Assert.Equal(1, rendered.Count(character => character == '?'));
+    }
+
+    [Fact]
+    public void Plain_lines_never_show_two_question_marks()
+    {
+        string[] lines =
+        [
+            .. TrustPromptRenderer.PlainLines(
+                new TrustPromptModel("Trust the single-file extension 'acme' 1.0.0?", [], 0, 0)
+            ),
+        ];
+
+        Assert.Equal("Trust the single-file extension 'acme' 1.0.0?  [y]es  [n]o", lines[0]);
+    }
+
     private static string Render(TrustPromptModel prompt)
     {
         var console = new TestConsole();
