@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Lunate.Agent;
 using Lunate.Extensibility.Abstractions;
 using Lunate.Extensibility.Testing;
 
@@ -117,6 +118,38 @@ public sealed class RemoteCommandHostTests
         Assert.Empty(loader.CommandSources.List());
         // The child was started to learn the capability; a refused load must not leave it running.
         Assert.True(workspace.Child.HasExited);
+    }
+
+    [Fact]
+    public async Task A_refused_manifest_leaves_no_proxy_registration_behind()
+    {
+        // A declared surface wide enough that every proxy kind registers before the command
+        // cross-check refuses the manifest: hooks, a service and a file-change subscription.
+        using var workspace = new RemoteTestWorkspace(
+            hooks: ["tool-calling", "file-changed"],
+            commands: ["help"],
+            services: ["greeter"]
+        );
+        ExtensionLoader loader = workspace.CreateLoader(reservedCommands: ["help"]);
+        using var bus = new FileChangeBus(workspace.Worktree, workspace.Log);
+        loader.Services.RegisterCore("core/file-bus", bus);
+
+        await Assert.ThrowsAsync<ExtensionLoadException>(() => workspace.LoadAsync(loader));
+
+        Assert.Equal(0, loader.Hooks.Count("remote-sample"));
+        Assert.Equal(0, loader.Services.Count("remote-sample"));
+        Assert.Empty(loader.CommandSources.List());
+        Assert.Empty(loader.Tools.List());
+        Assert.Null(loader.RemoteStatus("remote-sample"));
+        Assert.Null(loader.RemoteStartDuration("remote-sample"));
+
+        // The file-change subscription is gone with them: a published change reaches nothing.
+        int notifications = workspace.Child.Notifications.Count;
+        bus.Notify(
+            new FileChangeEvent("/work/a.cs", "a.cs", "/work", null, FileChangeKind.Modified)
+        );
+        await bus.DrainAsync(Ct);
+        Assert.Equal(notifications, workspace.Child.Notifications.Count);
     }
 
     [Fact]

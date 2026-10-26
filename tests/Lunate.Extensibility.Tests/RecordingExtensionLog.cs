@@ -23,21 +23,29 @@ internal sealed class RecordingExtensionLog : IExtensionLog
         }
     }
 
-    public void Info(string message) => Add($"info: {message}");
+    public void Info(string message) => Add(message, $"info: {message}");
 
-    public void Warn(string message) => Add($"warn: {message}");
+    public void Warn(string message) => Add(message, $"warn: {message}");
 
-    public void Error(string message) => Add($"error: {message}");
+    public void Error(string message) => Add(message, $"error: {message}");
+
+    /// <summary>
+    /// Observes each line as it is logged, before the level prefix. A test uses it to act at a
+    /// known point in a load (cancelling a token, for one).
+    /// </summary>
+    public Action<string>? OnMessage { get; init; }
 
     /// <summary>Whether any recorded line contains <paramref name="text"/> (ordinal).</summary>
     public bool Contains(string text) =>
         Messages.Any(message => message.Contains(text, StringComparison.Ordinal));
 
-    private void Add(string message)
+    private void Add(string raw, string message)
     {
         lock (_gate)
         {
             _messages.Add(message);
         }
+
+        OnMessage?.Invoke(raw);
     }
 }
