@@ -3,7 +3,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
-namespace Lunate.Extensibility.Restore;
+namespace Lunate.Extensibility;
 
 /// <summary>
 /// Reads, writes and hashes <c>install.json</c> (design D8, D9). The writer is canonical — sources,

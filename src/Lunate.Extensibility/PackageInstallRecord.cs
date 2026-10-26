@@ -1,4 +1,4 @@
-namespace Lunate.Extensibility.Restore;
+namespace Lunate.Extensibility;
 
 /// <summary>
 /// The scope an install wrote to (design D6). <c>user</c> content lives under the state root,

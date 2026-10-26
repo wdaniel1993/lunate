@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
-namespace Lunate.Extensibility.Restore;
+namespace Lunate.Extensibility;
 
 /// <summary>
 /// Reading <c>install.json</c>: the shape, the two halves, the scope and worktree rules, path
