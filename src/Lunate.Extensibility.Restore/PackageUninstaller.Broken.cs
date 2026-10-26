@@ -9,7 +9,7 @@ namespace Lunate.Extensibility.Restore;
 /// places only a readable record could have named. There is no <see cref="PackageInstallRecord"/> to
 /// carry, which is exactly why this is its own result.
 /// </summary>
-public sealed record PackageBrokenUninstallResult
+internal sealed record PackageBrokenUninstallResult
 {
     /// <summary>The package id the user named — the only identity an unreadable record leaves.</summary>
     public required string PackageId { get; init; }
@@ -45,7 +45,7 @@ public sealed record PackageBrokenUninstallResult
 /// method's job, and it says so.
 /// </para>
 /// </summary>
-public sealed partial class PackageUninstaller
+internal sealed partial class PackageUninstaller
 {
     public PackageBrokenUninstallResult UninstallBroken(PackageUninstallRequest request)
     {

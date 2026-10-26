@@ -5,7 +5,7 @@ namespace Lunate.Extensibility.Restore;
 /// the canonical spelling; the version is exact — a range or a wildcard belongs to a dependency's
 /// declaration, not to an install.
 /// </summary>
-public sealed record PackageInstallRequest
+internal sealed record PackageInstallRequest
 {
     public required string Id { get; init; }
 
@@ -28,7 +28,7 @@ public sealed record PackageInstallRequest
     public bool Force { get; init; }
 }
 
-public enum PackageInstallStatus
+internal enum PackageInstallStatus
 {
     /// <summary>The content and the record were written by this run.</summary>
     Installed,
@@ -54,7 +54,7 @@ public enum PackageInstallStatus
 /// wrote relative to the scope root. <see cref="PackageInstallStatus.AlreadyInstalled"/> writes
 /// nothing, so <see cref="WrittenPaths"/> is empty.
 /// </summary>
-public sealed record PackageInstallResult
+internal sealed record PackageInstallResult
 {
     public required PackageInstallStatus Status { get; init; }
 

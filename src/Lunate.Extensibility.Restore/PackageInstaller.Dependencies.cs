@@ -14,7 +14,7 @@ namespace Lunate.Extensibility.Restore;
 /// this run replaced.
 /// </para>
 /// </summary>
-public sealed partial class PackageInstaller
+internal sealed partial class PackageInstaller
 {
     /// <summary>
     /// The package's closure, or an empty one when it declares nothing. A skills-only package that

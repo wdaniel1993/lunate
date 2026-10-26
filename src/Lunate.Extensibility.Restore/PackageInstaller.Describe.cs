@@ -9,13 +9,13 @@ namespace Lunate.Extensibility.Restore;
 /// versions it resolves to. Nothing under the state root is written, and no record is created — a
 /// description is not an install, so it writes no lock either.
 /// </summary>
-public sealed record PackageDescription(PackageInfo Package, IReadOnlyList<string> Sources)
+internal sealed record PackageDescription(PackageInfo Package, IReadOnlyList<string> Sources)
 {
     /// <summary>The closure's exact versions, ordered by id; empty for a package with none.</summary>
     public IReadOnlyList<ResolvedDependency> Dependencies { get; init; } = [];
 }
 
-public sealed partial class PackageInstaller
+internal sealed partial class PackageInstaller
 {
     /// <summary>
     /// Resolves, downloads and reads one package without writing anything under the state root. The

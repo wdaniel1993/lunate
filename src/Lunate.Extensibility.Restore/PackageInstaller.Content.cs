@@ -6,7 +6,7 @@ namespace Lunate.Extensibility.Restore;
 /// the files, the directories it created, the staging and an empty package directory. Nothing an
 /// earlier install wrote is touched, because nothing here knows about it.
 /// </summary>
-public sealed partial class PackageInstaller
+internal sealed partial class PackageInstaller
 {
     /// <summary>
     /// Copies the staged files into the scope root, each through a temporary file beside its

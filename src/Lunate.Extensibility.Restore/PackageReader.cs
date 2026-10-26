@@ -13,7 +13,7 @@ namespace Lunate.Extensibility.Restore;
 /// No feed, no download, no walk and no write: this is the reader the installer, the dependency walk
 /// and the dry run share.
 /// </summary>
-public static class PackageReader
+internal static class PackageReader
 {
     public const string ManifestFileName = "lunate.package.json";
 

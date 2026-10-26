@@ -6,7 +6,7 @@ namespace Lunate.Extensibility.Restore;
 /// content roots the extension and the skills land in. A user install puts content under the state
 /// root; a project install puts it in the worktree while the record stays machine state.
 /// </summary>
-public sealed record PackageInstallTarget
+internal sealed record PackageInstallTarget
 {
     /// <summary>Every path in the record is relative to this directory.</summary>
     public required string ScopeRoot { get; init; }

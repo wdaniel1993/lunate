@@ -11,7 +11,7 @@ namespace Lunate.Extensibility.Restore;
 /// and hand back everything <c>extension.lock.json</c> records. Nothing here is loaded until a
 /// restore runs — the assembly is the only place that references <c>NuGet.*</c>.
 /// </summary>
-public sealed class NuGetRestoreEngine : ISingleFileRestoreEngine
+internal sealed class NuGetRestoreEngine : ISingleFileRestoreEngine
 {
     private readonly NuGetRestoreEngineOptions _options;
 

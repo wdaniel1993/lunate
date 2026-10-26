@@ -8,7 +8,7 @@ namespace Lunate.Extensibility.Restore;
 /// then <c>~/.nuget/packages</c>. Never a Lunate-owned folder — the cache is content-addressed and
 /// shared with the user's SDK, so two restores of the same package are one copy.
 /// </summary>
-public static class GlobalPackagesFolder
+internal static class GlobalPackagesFolder
 {
     /// <summary>The folder to restore into; every value is normalized to an absolute path.</summary>
     public static string Resolve(string? configured, string? environment, string userProfile)

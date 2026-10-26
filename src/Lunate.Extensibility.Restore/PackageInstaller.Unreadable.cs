@@ -9,7 +9,7 @@ namespace Lunate.Extensibility.Restore;
 /// not account for — because the only list of them was the record it could not read. Nothing here
 /// claims a removal that did not happen.
 /// </summary>
-public sealed partial class PackageInstaller
+internal sealed partial class PackageInstaller
 {
     /// <summary>
     /// What this run can say after replacing content whose previous record was unreadable: the

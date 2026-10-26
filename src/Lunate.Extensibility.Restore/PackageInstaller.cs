@@ -19,7 +19,7 @@ namespace Lunate.Extensibility.Restore;
 /// a single-file extension uses, because it is the same resolution machinery.
 /// </para>
 /// </summary>
-public sealed partial class PackageInstaller
+internal sealed partial class PackageInstaller
 {
     private readonly PackageInstallOptions _options;
 

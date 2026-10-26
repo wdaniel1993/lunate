@@ -9,7 +9,7 @@ namespace Lunate.Extensibility.Restore;
 /// extensions a session in this worktree would discover, so the duplicate the next session start
 /// would report becomes a refusal at the moment the user can act on it.
 /// </summary>
-public sealed partial class PackageInstaller
+internal sealed partial class PackageInstaller
 {
     /// <summary>
     /// Refuses an install whose extension id already has a provider (design D10). The set is the

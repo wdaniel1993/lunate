@@ -7,7 +7,7 @@ namespace Lunate.Extensibility.Restore;
 /// and gets the standard NuGet configuration chain and the global packages folder NuGet resolves.
 /// Tests pass a local folder feed and a temporary packages folder, so no test touches the network.
 /// </summary>
-public sealed class NuGetRestoreEngineOptions
+internal sealed class NuGetRestoreEngineOptions
 {
     /// <summary>
     /// Feeds to read instead of the configuration chain. Empty means machine, user and project

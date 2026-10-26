@@ -9,7 +9,7 @@ namespace Lunate.Extensibility.Restore;
 /// this one — is the existing shadowing rule, so the install proceeds and warns once, naming who
 /// wins and that the index keeps one.
 /// </summary>
-public sealed partial class PackageInstaller
+internal sealed partial class PackageInstaller
 {
     /// <summary>
     /// The project kinds the skill scanner reads, in its precedence order: the install's own target

@@ -4,10 +4,10 @@ using NuGet.Packaging;
 namespace Lunate.Extensibility.Restore;
 
 /// <summary>One packaged extension: the folder it lives in and the manifest the existing parser read.</summary>
-public sealed record PackageExtension(string Directory, ExtensionManifest Manifest);
+internal sealed record PackageExtension(string Directory, ExtensionManifest Manifest);
 
 /// <summary>One packaged skill: its folder, the name its frontmatter declares and its description.</summary>
-public sealed record PackageSkill(string Directory, string Name, string Description);
+internal sealed record PackageSkill(string Directory, string Name, string Description);
 
 /// <summary>
 /// A package read without extracting anything (phase 1): its identity from the nuspec, the manifest,
@@ -15,7 +15,7 @@ public sealed record PackageSkill(string Directory, string Name, string Descript
 /// archive facts a dry run prints. Writing files is not this type's job — the installer that lands
 /// in a later phase writes exactly what this describes.
 /// </summary>
-public sealed record PackageInfo
+internal sealed record PackageInfo
 {
     /// <summary>The nupkg the facts came from.</summary>
     public required string ArchivePath { get; init; }

@@ -8,7 +8,7 @@ namespace Lunate.Extensibility.Restore;
 /// a local folder feed, a temporary packages folder and a fixed clock, so no test touches the network
 /// and none depends on the time.
 /// </summary>
-public sealed class PackageInstallOptions
+internal sealed class PackageInstallOptions
 {
     /// <summary>
     /// Feeds to read instead of the configuration chain. Empty means machine, user and project

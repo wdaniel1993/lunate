@@ -14,7 +14,7 @@ namespace Lunate.Extensibility.Restore;
 /// an installed directory is never an upgrade's to delete.
 /// </para>
 /// </summary>
-public sealed partial class PackageInstaller
+internal sealed partial class PackageInstaller
 {
     /// <summary>
     /// The record one install commits (design D8): the package half from what was downloaded and

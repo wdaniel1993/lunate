@@ -3,7 +3,7 @@ using System.Text.Json;
 namespace Lunate.Extensibility.Restore;
 
 /// <summary>One content kind a package declares, and the package-relative folder it lives in.</summary>
-public sealed record PackageContent(string Kind, string Directory);
+internal sealed record PackageContent(string Kind, string Directory);
 
 /// <summary>
 /// A package's <c>lunate.package.json</c> (design D2): schema 1, one folder per content kind, in the
@@ -11,7 +11,7 @@ public sealed record PackageContent(string Kind, string Directory);
 /// Lunate still parses; a known field of the wrong type, a kind this version does not install, and a
 /// manifest that declares nothing are refusals that name what a package author has to change.
 /// </summary>
-public sealed record PackageManifest
+internal sealed record PackageManifest
 {
     public const int CurrentSchema = 1;
     public const string ExtensionKind = "extension";

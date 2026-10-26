@@ -7,7 +7,7 @@ namespace Lunate.Extensibility.Restore;
 /// One uninstall (spec: "Uninstall"): the package id or the extension id a record names, the state
 /// root the records live under, and whether a changed file may be removed anyway.
 /// </summary>
-public sealed record PackageUninstallRequest
+internal sealed record PackageUninstallRequest
 {
     /// <summary>A package id in any spelling, or an extension id exactly one record provides.</summary>
     public required string Id { get; init; }
@@ -23,7 +23,7 @@ public sealed record PackageUninstallRequest
 /// it left because the package did not write them, the directories it kept for the same reason, and
 /// whether the record itself is gone.
 /// </summary>
-public sealed record PackageUninstallResult
+internal sealed record PackageUninstallResult
 {
     public required PackageInstallRecord Record { get; init; }
 
@@ -57,7 +57,7 @@ public sealed record PackageUninstallResult
 /// reuses it. Trust records are untouched: removing bytes does not revoke a decision about a path.
 /// </para>
 /// </summary>
-public sealed partial class PackageUninstaller
+internal sealed partial class PackageUninstaller
 {
     public PackageUninstallResult Uninstall(PackageUninstallRequest request)
     {
