@@ -50,14 +50,15 @@
 
 ## 5. Upgrade and uninstall (PR 5)
 
-- [ ] 5.1 Red: `lunate install <id>@<newer>` on an installed package removes the old content through the old record, writes the new content and records the new version; no file from the old version remains.
-- [ ] 5.2 Red: an upgrade that fails while downloading or resolving leaves the installed content and the record byte-identical.
-- [ ] 5.3 Red: `lunate install <id>@<older>` downgrades and records it.
-- [ ] 5.4 Red: `uninstall` deletes exactly the recorded paths (extension, skills, record), leaves the nupkgs and the lock, and leaves a hand-added file while naming it.
-- [ ] 5.5 Red: an edited recorded file refuses uninstall without `--force` and is removed with it; `--force` on install repairs a missing file from the recorded version.
-- [ ] 5.6 Red: `uninstall` accepts an extension id when exactly one record names it and refuses an ambiguous one, naming the candidates.
-- [ ] 5.7 `lunate --help` gains `install`, `uninstall` and `packages` in the same shape as `extensions` and `trust`, one usage line and one description line each.
-- [ ] 5.8 Gate: upgrade and uninstall fixtures pass, a record diff proves the failed-upgrade case wrote nothing, `lunate --help` lists the three commands, and `scripts/verify.sh` passes.
+- [x] 5.1 Red: `lunate install <id>@<newer>` on an installed package removes the old content through the old record, writes the new content and records the new version; no file from the old version remains.
+- [x] 5.2 Red: an upgrade that fails while downloading or resolving leaves the installed content and the record byte-identical.
+- [x] 5.3 Red: `lunate install <id>@<older>` downgrades and records it.
+- [x] 5.4 Red: `uninstall` deletes exactly the recorded paths (extension, skills, record), leaves the nupkgs and the lock, and leaves a hand-added file while naming it.
+- [x] 5.5 Red: an edited recorded file refuses uninstall without `--force` and is removed with it; `--force` on install repairs a missing file from the recorded version.
+- [x] 5.6 Red: `uninstall` accepts an extension id when exactly one record names it and refuses an ambiguous one, naming the candidates.
+- [x] 5.7 `lunate --help` gains `install`, `uninstall` and `packages` in the same shape as `extensions` and `trust`, one usage line and one description line each.
+- [ ] 5.8 Gate: upgrade and uninstall fixtures pass, a record diff proves the failed-upgrade case wrote nothing, `lunate --help` lists the three commands, the trust prompt renders exactly one `?`, and `scripts/verify.sh` passes.
+- [x] 5.9 Red: the single-file trust prompt's title renders with exactly one `?` at the end — the prompt surface appends the marker only when the title does not already end with one, so the title stays the only owner — and the packaged-extension question (`TrustFormat.ExtensionQuestion`) is checked for the same mistake.
 
 ## 6. Docs, the ADR addendum and the end-to-end run (PR 6)
 
