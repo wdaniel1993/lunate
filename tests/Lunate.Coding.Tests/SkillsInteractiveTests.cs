@@ -79,11 +79,11 @@ public sealed class SkillsInteractiveTests
                     .Skills.Where(skill => skill is { Valid: true, Scope: SkillScope.Project }),
             ];
             string hash = SkillTrust.ComputeContentHash(project, workspace.RepoRoot ?? Worktree);
-            new ExtensionTrustStore(
-                new ExtensionHostOptions { StorePath = Store }
-            ).RecordSkillsTrusted(
+            SkillTrust.Record(
+                new ExtensionTrustStore(new ExtensionHostOptions { StorePath = Store }),
                 workspace.GitCommonDir ?? Worktree,
                 workspace.WorktreeRoot,
+                SkillTrust.Names(project),
                 hash,
                 DateTimeOffset.UtcNow
             );

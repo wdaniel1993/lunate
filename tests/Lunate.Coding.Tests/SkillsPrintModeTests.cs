@@ -36,13 +36,16 @@ public sealed class SkillsPrintModeTests
         var scan = SkillScanner.ScanProject(
             new SkillScanRequest(worktree, workspace.RepoRoot, "", [])
         );
-        string hash = SkillTrust.ComputeContentHash(
-            [.. scan.Skills.Where(skill => skill is { Valid: true, Scope: SkillScope.Project })],
-            workspace.RepoRoot ?? worktree
-        );
-        new ExtensionTrustStore(new ExtensionHostOptions { StorePath = store }).RecordSkillsTrusted(
+        List<SkillDescriptor> project =
+        [
+            .. scan.Skills.Where(skill => skill is { Valid: true, Scope: SkillScope.Project }),
+        ];
+        string hash = SkillTrust.ComputeContentHash(project, workspace.RepoRoot ?? worktree);
+        SkillTrust.Record(
+            new ExtensionTrustStore(new ExtensionHostOptions { StorePath = store }),
             workspace.GitCommonDir ?? worktree,
             workspace.WorktreeRoot,
+            SkillTrust.Names(project),
             hash,
             DateTimeOffset.UtcNow
         );
@@ -91,13 +94,16 @@ public sealed class SkillsPrintModeTests
         var scan = SkillScanner.ScanProject(
             new SkillScanRequest(worktree, workspace.RepoRoot, "", [])
         );
-        string hash = SkillTrust.ComputeContentHash(
-            [.. scan.Skills.Where(skill => skill is { Valid: true, Scope: SkillScope.Project })],
-            workspace.RepoRoot ?? worktree
-        );
-        new ExtensionTrustStore(new ExtensionHostOptions { StorePath = store }).RecordSkillsTrusted(
+        List<SkillDescriptor> project =
+        [
+            .. scan.Skills.Where(skill => skill is { Valid: true, Scope: SkillScope.Project }),
+        ];
+        string hash = SkillTrust.ComputeContentHash(project, workspace.RepoRoot ?? worktree);
+        SkillTrust.Record(
+            new ExtensionTrustStore(new ExtensionHostOptions { StorePath = store }),
             workspace.GitCommonDir ?? worktree,
             workspace.WorktreeRoot,
+            SkillTrust.Names(project),
             hash,
             DateTimeOffset.UtcNow
         );

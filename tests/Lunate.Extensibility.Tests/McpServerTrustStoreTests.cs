@@ -98,11 +98,17 @@ public sealed class McpServerTrustStoreTests
         );
         Assert.Equal(
             ExtensionTrustDecision.Prompt,
-            store.Evaluate("repo-1", "/worktree", "server-hash")
+            store.Evaluate("repo-1", "/worktree", "hello", "server-hash")
         );
 
         store.RecordMcpConfigTrusted("repo-1", "/worktree", "config-hash", DateTimeOffset.UtcNow);
-        store.RecordTrusted("repo-1", "/worktree", "extension-hash", DateTimeOffset.UtcNow);
+        store.RecordTrusted(
+            "repo-1",
+            "/worktree",
+            "hello",
+            "extension-hash",
+            DateTimeOffset.UtcNow
+        );
 
         Assert.Equal(
             ExtensionTrustDecision.Prompt,
@@ -124,7 +130,13 @@ public sealed class McpServerTrustStoreTests
     {
         using var temp = new TempDirectory();
         var store = new ExtensionTrustStore(TestExtensions.Options(temp.Subdirectory("store")));
-        store.RecordTrusted("repo-1", "/worktree", "extension-hash", DateTimeOffset.UtcNow);
+        store.RecordTrusted(
+            "repo-1",
+            "/worktree",
+            "hello",
+            "extension-hash",
+            DateTimeOffset.UtcNow
+        );
         store.RecordMcpConfigTrusted("repo-1", "/worktree", "config-hash", DateTimeOffset.UtcNow);
         store.RecordMcpServerTrusted("repo-1", "/worktree", "server-hash", DateTimeOffset.UtcNow);
         store.RecordMcpServerTrusted("repo-2", "/worktree", "other-hash", DateTimeOffset.UtcNow);

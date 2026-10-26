@@ -358,7 +358,7 @@ public sealed partial class ExtensionLoader
         );
         var store = new ExtensionTrustStore(_options);
 
-        switch (store.Evaluate(repositoryIdentity, worktreePath, contentHash))
+        switch (store.Evaluate(repositoryIdentity, worktreePath, descriptor.Id, contentHash))
         {
             case ExtensionTrustDecision.Trusted:
                 return;
@@ -366,6 +366,7 @@ public sealed partial class ExtensionLoader
                 store.RecordTrusted(
                     repositoryIdentity,
                     worktreePath,
+                    descriptor.Id,
                     contentHash,
                     DateTimeOffset.UtcNow
                 );
@@ -395,6 +396,7 @@ public sealed partial class ExtensionLoader
                     store.RecordTrusted(
                         repositoryIdentity,
                         worktreePath,
+                        descriptor.Id,
                         contentHash,
                         DateTimeOffset.UtcNow
                     );
@@ -423,6 +425,7 @@ public sealed partial class ExtensionLoader
                 store.RecordTrusted(
                     repositoryIdentity,
                     worktreePath,
+                    descriptor.Id,
                     contentHash,
                     DateTimeOffset.UtcNow
                 );

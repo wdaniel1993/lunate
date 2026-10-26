@@ -46,10 +46,16 @@ public sealed class McpConfigTrustStoreTests
         );
         Assert.Equal(
             ExtensionTrustDecision.Prompt,
-            store.Evaluate("repo-1", "/worktree", "config-hash")
+            store.Evaluate("repo-1", "/worktree", "hello", "config-hash")
         );
 
-        store.RecordTrusted("repo-1", "/worktree", "extension-hash", DateTimeOffset.UtcNow);
+        store.RecordTrusted(
+            "repo-1",
+            "/worktree",
+            "hello",
+            "extension-hash",
+            DateTimeOffset.UtcNow
+        );
 
         Assert.Equal(
             ExtensionTrustDecision.Prompt,
@@ -57,7 +63,7 @@ public sealed class McpConfigTrustStoreTests
         );
         Assert.Equal(
             ExtensionTrustDecision.Trusted,
-            store.Evaluate("repo-1", "/worktree", "extension-hash")
+            store.Evaluate("repo-1", "/worktree", "hello", "extension-hash")
         );
 
         using JsonDocument document = JsonDocument.Parse(

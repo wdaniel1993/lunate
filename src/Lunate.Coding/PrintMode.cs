@@ -517,14 +517,17 @@ internal static class PrintMode
             workspace.RepoRoot ?? workspace.WorktreeRoot,
             InstalledPackages.Read(options.StorePath)
         );
-        switch (store.EvaluateSkills(identity, workspace.WorktreeRoot, hash))
+        IReadOnlyList<string> names = SkillTrust.Names(project);
+        switch (SkillTrust.Evaluate(store, identity, workspace.WorktreeRoot, names, hash))
         {
             case ExtensionTrustDecision.Trusted:
                 return true;
             case ExtensionTrustDecision.NewWorktree:
-                store.RecordSkillsTrusted(
+                SkillTrust.Record(
+                    store,
                     identity,
                     workspace.WorktreeRoot,
+                    names,
                     hash,
                     DateTimeOffset.UtcNow
                 );
