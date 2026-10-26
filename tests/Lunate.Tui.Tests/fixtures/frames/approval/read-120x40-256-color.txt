@@ -1,5 +1,5 @@
 \x1b[38;5;11m⚠ read  src/Lunate.Tui/Interaction/ApprovalPanelLayout.cs (10-14)\x1b[0m
-Allow read\x1b[38;5;11m?\x1b[0m  [\x1b[38;5;80my\x1b[0m]es  [\x1b[38;5;80mn\x1b[0m]o  [\x1b[38;5;80ma\x1b[0m]lways this session
+Allow read\x1b[38;5;11m?\x1b[0m  [\x1b[38;5;80my\x1b[0m]es  > [\x1b[38;5;80mn\x1b[0m]o  [\x1b[38;5;80ma\x1b[0m]lways this session
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 \x1b[38;5;110m> Ask anything, / for commands\x1b[0m
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────

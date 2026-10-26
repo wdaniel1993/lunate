@@ -30,6 +30,7 @@ public enum RoutedKey
     HistorySearch,
     Stash,
     Copy,
+    Editor,
 }
 
 /// <summary>

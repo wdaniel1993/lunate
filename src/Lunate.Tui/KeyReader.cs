@@ -54,6 +54,22 @@ internal sealed class KeyReader : IDisposable
         }
     }
 
+    /// <summary>
+    /// Drops a partial sequence the decoder is still holding (a lone <c>Esc</c>, half an escape
+    /// sequence, an unfinished paste). The terminal is changing hands: a byte of the next reader's
+    /// would otherwise complete our sequence and both sides would see a wrong key.
+    /// </summary>
+    public void FlushPartial()
+    {
+        lock (_gate)
+        {
+            _escapeTimer?.Dispose();
+            _escapeTimer = null;
+            _buffer.Clear();
+            _inPaste = false;
+        }
+    }
+
     private void Process()
     {
         while (_buffer.Count > 0)

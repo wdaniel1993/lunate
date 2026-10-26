@@ -14,7 +14,7 @@ public sealed class InteractiveSessionApprovalTests
 
         host.Console.SendText("go");
         host.Console.SendEnter();
-        await host.WaitUntilAsync(() => host.Session.PendingApproval is not null);
+        await host.WaitForApprovalAsync();
 
         Assert.Equal("write", host.Session.PendingApproval!.ToolName);
         host.Console.SendText("y");
@@ -36,7 +36,7 @@ public sealed class InteractiveSessionApprovalTests
 
         host.Console.SendText("go");
         host.Console.SendEnter();
-        await host.WaitUntilAsync(() => host.Session.PendingApproval is not null);
+        await host.WaitForApprovalAsync();
         host.Console.SendEnter();
         await host.Client.WaitForCallAsync(2);
 
@@ -60,7 +60,7 @@ public sealed class InteractiveSessionApprovalTests
 
         host.Console.SendText("go");
         host.Console.SendEnter();
-        await host.WaitUntilAsync(() => host.Session.PendingApproval is not null);
+        await host.WaitForApprovalAsync();
         host.Console.SendText("a");
 
         // Reaching the third model call proves the second write ran without a prompt.
@@ -81,7 +81,7 @@ public sealed class InteractiveSessionApprovalTests
 
         host.Console.SendText("go");
         host.Console.SendEnter();
-        await host.WaitUntilAsync(() => host.Session.PendingApproval is not null);
+        await host.WaitForApprovalAsync();
         host.Console.SendText("abc");
         host.Console.SendText("y");
         await host.Client.WaitForCallAsync(2);
@@ -103,7 +103,7 @@ public sealed class InteractiveSessionApprovalTests
 
         host.Console.SendText("go");
         host.Console.SendEnter();
-        await host.WaitUntilAsync(() => host.Session.PendingApproval is not null);
+        await host.WaitForApprovalAsync();
         host.Console.SendCtrlC();
         host.Console.SendCtrlC();
         await run;
@@ -125,7 +125,7 @@ public sealed class InteractiveSessionApprovalTests
 
         host.Console.SendText("go");
         host.Console.SendEnter();
-        await host.WaitUntilAsync(() => host.Session.PendingApproval is not null);
+        await host.WaitForApprovalAsync();
         host.Console.SendText("a");
 
         // Reaching the third call proves the second write ran without a prompt.
@@ -137,7 +137,7 @@ public sealed class InteractiveSessionApprovalTests
 
         host.Console.SendText("go again");
         host.Console.SendEnter();
-        await host.WaitUntilAsync(() => host.Session.PendingApproval is not null);
+        await host.WaitForApprovalAsync();
         host.Console.SendText("y");
         await host.Client.WaitForCallAsync(5);
 
@@ -160,7 +160,7 @@ public sealed class InteractiveSessionApprovalTests
 
         host.Console.SendText("go");
         host.Console.SendEnter();
-        await host.WaitUntilAsync(() => host.Session.PendingApproval is not null);
+        await host.WaitForApprovalAsync();
         host.Console.SendText("a");
         await host.Client.WaitForCallAsync(3);
         await host.WaitUntilAsync(() => !host.Session.IsRunning);
@@ -173,7 +173,7 @@ public sealed class InteractiveSessionApprovalTests
 
         host.Console.SendText("go again");
         host.Console.SendEnter();
-        await host.WaitUntilAsync(() => host.Session.PendingApproval is not null);
+        await host.WaitForApprovalAsync();
         host.Console.SendText("y");
         await host.Client.WaitForCallAsync(5);
 

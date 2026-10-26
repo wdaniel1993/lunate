@@ -1,6 +1,6 @@
 ⚠ read  src/Lunate.Tui/Interaction/Appro
 Allow read?
-[y]es  [n]o  [a]lways this session
+[y]es  > [n]o  [a]lways this session
 ────────────────────────────────────────
 > Ask anything, / for commands
 ────────────────────────────────────────

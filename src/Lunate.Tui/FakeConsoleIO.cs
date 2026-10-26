@@ -11,8 +11,11 @@ internal sealed class FakeConsoleIO : IConsoleIO, IDisposable
     private readonly IObservable<ConsoleSize> _distinctSizes;
     private readonly List<KeyEvent> _keys = [];
     private readonly List<string> _writes = [];
+    private readonly List<string> _typedAtChild = [];
+    private readonly List<string> _terminalTransitions = [];
     private readonly KeyReader? _byteReader;
     private bool _rawMode;
+    private bool _suspended;
 
     public FakeConsoleIO(ConsoleSize size)
     {
@@ -42,6 +45,22 @@ internal sealed class FakeConsoleIO : IConsoleIO, IDisposable
 
     public IReadOnlyList<KeyEvent> Keys => _keys;
 
+    /// <summary>Keys typed while a child owned the terminal: they never reached the reader.</summary>
+    public IReadOnlyList<string> TypedAtChild => _typedAtChild;
+
+    /// <summary>
+    /// The suspend/resume transitions in order, each with the input mode at that point
+    /// (<c>suspend:cooked</c>, <c>resume:raw</c>), so a test can assert the child saw a cooked
+    /// terminal and that the session's read loop was quiesced around it.
+    /// </summary>
+    public IReadOnlyList<string> TerminalTransitions => _terminalTransitions;
+
+    /// <summary>How many times the terminal was handed to a child.</summary>
+    public int SuspendCount { get; private set; }
+
+    /// <summary>True while a child owns the terminal.</summary>
+    public bool IsTerminalSuspended => _suspended;
+
     public bool InRawMode => _rawMode;
 
     public int RawModeEntries { get; private set; }
@@ -54,9 +73,24 @@ internal sealed class FakeConsoleIO : IConsoleIO, IDisposable
         _resized.OnNext(size);
     }
 
-    public void EnqueueKey(KeyEvent key) => _keys.Add(key);
+    public void EnqueueKey(KeyEvent key)
+    {
+        if (_suspended)
+        {
+            _typedAtChild.Add(key.Text ?? key.Kind.ToString());
+            return;
+        }
 
-    public void EnqueueKeys(params KeyEvent[] keys) => _keys.AddRange(keys);
+        _keys.Add(key);
+    }
+
+    public void EnqueueKeys(params KeyEvent[] keys)
+    {
+        foreach (KeyEvent key in keys)
+        {
+            EnqueueKey(key);
+        }
+    }
 
     public void FeedBytes(params byte[] bytes)
     {
@@ -84,6 +118,19 @@ internal sealed class FakeConsoleIO : IConsoleIO, IDisposable
         AlternateScreenEntries++;
         InAlternateScreen = true;
         return new AlternateScreenScope(this, AlternateScreen.Enter(Write));
+    }
+
+    /// <summary>
+    /// Scripts the terminal handover: the fake goes cooked, records the transition, and any key
+    /// enqueued while the scope is held goes to <see cref="TypedAtChild"/> instead of the reader.
+    /// </summary>
+    public IDisposable SuspendTerminal()
+    {
+        SuspendCount++;
+        _suspended = true;
+        _rawMode = false;
+        _terminalTransitions.Add("suspend:cooked");
+        return new Suspension(this);
     }
 
     /// <summary>Whether the alternate screen is entered right now.</summary>
@@ -123,6 +170,24 @@ internal sealed class FakeConsoleIO : IConsoleIO, IDisposable
         {
             screen.Dispose();
             console.InAlternateScreen = false;
+        }
+    }
+
+    private sealed class Suspension(FakeConsoleIO console) : IDisposable
+    {
+        private bool _resumed;
+
+        public void Dispose()
+        {
+            if (_resumed)
+            {
+                return;
+            }
+
+            _resumed = true;
+            console._suspended = false;
+            console._rawMode = true;
+            console._terminalTransitions.Add("resume:raw");
         }
     }
 }

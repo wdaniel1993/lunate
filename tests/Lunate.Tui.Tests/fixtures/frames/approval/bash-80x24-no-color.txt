@@ -4,7 +4,7 @@
   failed: 0
   succeeded: 42
   skipped: 0
-Allow bash?  [y]es  [n]o  [a]lways this session
+Allow bash?  [y]es  > [n]o  [a]lways this session
 ────────────────────────────────────────────────────────────────────────────────
 > Ask anything, / for commands
 ────────────────────────────────────────────────────────────────────────────────

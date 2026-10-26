@@ -25,7 +25,7 @@ public sealed class InteractiveSessionSubagentApprovalTests
         );
 
         ValueTask<bool> decision = approver.ApproveAsync(child, Ct);
-        await host.WaitUntilAsync(() => host.Session.PendingApproval is not null);
+        await host.WaitForApprovalAsync();
         Assert.Equal("subagent (depth 1)", host.Session.PendingApproval!.Asker);
         host.Console.SendText("a");
 
@@ -61,7 +61,7 @@ public sealed class InteractiveSessionSubagentApprovalTests
         );
 
         ValueTask<bool> decision = approver.ApproveAsync(child, Ct);
-        await host.WaitUntilAsync(() => host.Session.PendingApproval is not null);
+        await host.WaitForApprovalAsync();
         // The model carries the request's root verbatim; the renderer abbreviates home paths.
         Assert.Equal(childRoot, host.Session.PendingApproval!.WorkspaceRoot);
         Assert.Equal("subagent (depth 1)", host.Session.PendingApproval.Asker);
@@ -94,7 +94,7 @@ public sealed class InteractiveSessionSubagentApprovalTests
         );
 
         ValueTask<bool> decision = approver.ApproveAsync(child, Ct);
-        await host.WaitUntilAsync(() => host.Session.PendingApproval is not null);
+        await host.WaitForApprovalAsync();
         Assert.Null(host.Session.PendingApproval!.WorkspaceRoot);
         host.Console.SendText("n");
 
@@ -124,7 +124,7 @@ public sealed class InteractiveSessionSubagentApprovalTests
         );
 
         ValueTask<bool> decision = approver.ApproveAsync(topLevel, Ct);
-        await host.WaitUntilAsync(() => host.Session.PendingApproval is not null);
+        await host.WaitForApprovalAsync();
         Assert.Equal(childRoot, host.Session.PendingApproval!.WorkspaceRoot);
         Assert.Null(host.Session.PendingApproval.Asker);
         host.Console.SendText("n");

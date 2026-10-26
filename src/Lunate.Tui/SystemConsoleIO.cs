@@ -16,6 +16,16 @@ internal sealed class SystemConsoleIO : IConsoleIO
         new UnboundedChannelOptions { SingleReader = true }
     );
 
+    /// <summary>Held by the pump across one readiness wait and its read, so a suspend can bar reads.</summary>
+    private readonly SemaphoreSlim _readGate = new(1, 1);
+
+    /// <summary>Set while the terminal belongs to a child; the pump parks on it instead of reading.</summary>
+    private readonly ManualResetEventSlim _resumed = new(initialState: true);
+
+    private volatile bool _suspended;
+    private KeyReader? _reader;
+    private ITerminalMode? _terminalMode;
+
     public SystemConsoleIO(IScheduler scheduler)
     {
         _scheduler = scheduler;
@@ -45,6 +55,7 @@ internal sealed class SystemConsoleIO : IConsoleIO
     )
     {
         using var reader = new KeyReader(_scheduler, key => _keys.Writer.TryWrite(key));
+        _reader = reader;
         var pump = PumpBytesAsync(reader, cancellationToken);
         try
         {
@@ -55,6 +66,7 @@ internal sealed class SystemConsoleIO : IConsoleIO
         }
         finally
         {
+            _reader = null;
             await pump.ConfigureAwait(false);
         }
     }
@@ -66,7 +78,82 @@ internal sealed class SystemConsoleIO : IConsoleIO
             return NoopDisposable.Instance;
         }
 
-        return OperatingSystem.IsWindows() ? WindowsConsoleMode.Enter() : UnixRawMode.Enter();
+        _terminalMode = OperatingSystem.IsWindows()
+            ? WindowsConsoleMode.Enter()
+            : UnixRawMode.Enter();
+        return _terminalMode;
+    }
+
+    /// <summary>
+    /// Quiesces the pump, returns the terminal to the mode it had before raw mode, and drops a
+    /// partial sequence the decoder still held. The key channel stays open: one read loop, one
+    /// lifetime, with only its blocking read set aside.
+    /// </summary>
+    public IDisposable SuspendTerminal()
+    {
+        if (!IsInteractive || _terminalMode is not { } mode)
+        {
+            return NoopDisposable.Instance;
+        }
+
+        // Taking the gate waits for at most one in-flight read; setting the flag under it
+        // guarantees no later read starts.
+        _resumed.Reset();
+        _readGate.Wait();
+        try
+        {
+            _suspended = true;
+        }
+        finally
+        {
+            _readGate.Release();
+        }
+
+        try
+        {
+            mode.Suspend();
+        }
+        catch
+        {
+            ResumeTerminal();
+            throw;
+        }
+
+        _reader?.FlushPartial();
+        return new Suspension(this);
+    }
+
+    private void ResumeTerminal()
+    {
+        _reader?.FlushPartial();
+        _terminalMode?.Resume();
+        _readGate.Wait();
+        try
+        {
+            _suspended = false;
+        }
+        finally
+        {
+            _readGate.Release();
+        }
+
+        _resumed.Set();
+    }
+
+    private sealed class Suspension(SystemConsoleIO console) : IDisposable
+    {
+        private bool _resumed;
+
+        public void Dispose()
+        {
+            if (_resumed)
+            {
+                return;
+            }
+
+            _resumed = true;
+            console.ResumeTerminal();
+        }
     }
 
     /// <summary>Enters the alternate screen; disposing the scope restores the primary screen.</summary>
@@ -90,25 +177,15 @@ internal sealed class SystemConsoleIO : IConsoleIO
         IScheduler scheduler
     ) => Observable.Interval(interval, scheduler).Select(_ => read()).DistinctUntilChanged();
 
-    private const short PollIn = 0x0001;
     private const int PollIntervalMs = 200;
 
-    [StructLayout(LayoutKind.Sequential)]
-    private struct PollFd
-    {
-        public int Fd;
-
-        public short Events;
-
-        public short Revents;
-    }
-
-    [DllImport("libc", SetLastError = true)]
-    private static extern int poll([In, Out] PollFd[] fds, uint nfds, int timeoutMs);
-
-    [DllImport("libc", EntryPoint = "read", SetLastError = true)]
-    private static extern nint PosixRead(int fd, byte[] buffer, nuint count);
-
+    /// <summary>
+    /// Reads stdin into the key reader, one readiness-checked read at a time, and parks while the
+    /// terminal belongs to a child. Raw descriptor reads, never the runtime's console stream: on
+    /// Unix the console stack re-applies its own terminal mode around console operations, which
+    /// silently overwrites the session's raw mode after it is entered (Enter then arrives as LF and
+    /// can never submit).
+    /// </summary>
     private async Task PumpBytesAsync(KeyReader reader, CancellationToken cancellationToken)
     {
         var buffer = new byte[4096];
@@ -119,48 +196,69 @@ internal sealed class SystemConsoleIO : IConsoleIO
                 var input = Console.OpenStandardInput();
                 while (!cancellationToken.IsCancellationRequested)
                 {
-                    int read = await input
-                        .ReadAsync(buffer, cancellationToken)
-                        .ConfigureAwait(false);
-                    if (read == 0)
+                    if (!AwaitInput())
                     {
-                        break;
+                        continue;
                     }
 
-                    reader.Feed(buffer.AsSpan(0, read));
+                    await _readGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+                    try
+                    {
+                        if (_suspended || cancellationToken.IsCancellationRequested)
+                        {
+                            continue;
+                        }
+
+                        int read = await input
+                            .ReadAsync(buffer, cancellationToken)
+                            .ConfigureAwait(false);
+                        if (read == 0)
+                        {
+                            break;
+                        }
+
+                        reader.Feed(buffer.AsSpan(0, read));
+                    }
+                    finally
+                    {
+                        _readGate.Release();
+                    }
                 }
             }
             else
             {
-                // Raw descriptor reads, never the runtime's console stream: on Unix the console
-                // stack re-applies its own terminal mode around console operations, which
-                // silently overwrites the session's raw mode after it is entered (Enter then
-                // arrives as LF and can never submit). poll() bounds the cancellation latency
-                // to one interval.
                 await Task.Run(
                         () =>
                         {
-                            PollFd[] fds = [new() { Fd = 0, Events = PollIn }];
                             while (!cancellationToken.IsCancellationRequested)
                             {
-                                int ready = poll(fds, 1, PollIntervalMs);
-                                if (ready < 0)
-                                {
-                                    break;
-                                }
-
-                                if (ready == 0)
+                                if (!AwaitInput())
                                 {
                                     continue;
                                 }
 
-                                nint read = PosixRead(0, buffer, (nuint)buffer.Length);
-                                if (read <= 0)
+                                _readGate.Wait();
+                                try
                                 {
-                                    break;
-                                }
+                                    if (_suspended || cancellationToken.IsCancellationRequested)
+                                    {
+                                        continue;
+                                    }
 
-                                reader.Feed(buffer.AsSpan(0, (int)read));
+                                    nint read = PosixRead(0, buffer, (nuint)buffer.Length);
+                                    if (read <= 0)
+                                    {
+                                        return;
+                                    }
+                                    else
+                                    {
+                                        reader.Feed(buffer.AsSpan(0, (int)read));
+                                    }
+                                }
+                                finally
+                                {
+                                    _readGate.Release();
+                                }
                             }
                         },
                         CancellationToken.None
@@ -174,4 +272,19 @@ internal sealed class SystemConsoleIO : IConsoleIO
             _keys.Writer.TryComplete();
         }
     }
+
+    /// <summary>True when stdin has bytes; parks while suspended and reports false on a timeout.</summary>
+    private bool AwaitInput()
+    {
+        if (_suspended)
+        {
+            _resumed.Wait(PollIntervalMs);
+            return false;
+        }
+
+        return ConsoleInputReadiness.IsReady(PollIntervalMs);
+    }
+
+    [DllImport("libc", EntryPoint = "read", SetLastError = true)]
+    private static extern nint PosixRead(int fd, byte[] buffer, nuint count);
 }

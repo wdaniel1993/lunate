@@ -93,11 +93,11 @@ public sealed class InteractiveSessionEndToEndTests
         // red leg costs another fifteen-minute CI cycle to guess at.
         try
         {
-            await host.WaitUntilAsync(() => host.Session.PendingApproval is not null);
+            await host.WaitForApprovalAsync();
             Assert.Equal("write", host.Session.PendingApproval!.ToolName);
             host.Console.SendText("y");
             await host.Client.WaitForCallAsync(3);
-            await host.WaitUntilAsync(() => host.Session.PendingApproval is not null);
+            await host.WaitForApprovalAsync();
             host.Console.SendText("a");
             await host.Client.WaitForCallAsync(5);
         }

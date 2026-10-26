@@ -1,2 +1,2 @@
 ⚠ bash  dotnet format
-Allow bash?  [y]es  [n]o  [a]lways this session
+Allow bash?  [y]es  > [n]o  [a]lways this session

@@ -1,7 +1,7 @@
 ⚠ edit  src/Lunate.Coding/ApprovalDetail
   @@ -10,4 +10,5 @@
 Allow edit?
-[y]es  [n]o  [a]lways this session
+[y]es  > [n]o  [a]lways this session
 ────────────────────────────────────────
 > Ask anything, / for commands
 ────────────────────────────────────────

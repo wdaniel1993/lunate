@@ -136,7 +136,7 @@ public sealed class LiveAreaRendererTests
             [
                 "retrying (attempt 2)",
                 "\u26a0 bash  ls",
-                "Allow bash?  [y]es  [n]o  [a]lways this session",
+                "Allow bash?  [y]es  > [n]o  [a]lways this session",
                 rule,
                 "> Ask anything, / for commands",
                 rule,
@@ -162,7 +162,7 @@ public sealed class LiveAreaRendererTests
             [
                 "\u26a0 bash  ls",
                 "  line one",
-                "Allow bash?  [y]es  [n]o  [a]lways this session",
+                "Allow bash?  [y]es  > [n]o  [a]lways this session",
                 rule,
                 "> go",
                 rule,
@@ -195,11 +195,11 @@ public sealed class LiveAreaRendererTests
         Assert.True(frame.Lines.Count <= rows);
         Assert.Contains("\u26a0 bash  ls", frame.Lines);
         Assert.Contains("  f", frame.Lines);
-        Assert.Contains("Allow bash?  [y]es  [n]o  [a]lways this session", frame.Lines);
+        Assert.Contains("Allow bash?  [y]es  > [n]o  [a]lways this session", frame.Lines);
     }
 
     private const string Headline = "\u26a0 bash  echo hi";
-    private const string Question = "Allow bash?  [y]es  [n]o  [a]lways this session";
+    private const string Question = "Allow bash?  [y]es  > [n]o  [a]lways this session";
     private const string Prompt = "> Ask anything, / for commands";
     private static readonly string Rule = new('\u2500', 80);
 
@@ -239,7 +239,7 @@ public sealed class LiveAreaRendererTests
     [Fact]
     public void A_narrow_frame_keeps_the_choices_line_whole()
     {
-        const string choices = "[y]es  [n]o  [a]lways this session";
+        const string choices = "[y]es  > [n]o  [a]lways this session";
         var state = new LiveAreaState
         {
             Input = new InputLineState("go", 2),
@@ -260,7 +260,7 @@ public sealed class LiveAreaRendererTests
             ],
             frame.Lines
         );
-        Assert.Equal(34, CellText.Width(frame.Lines[2]));
+        Assert.Equal(36, CellText.Width(frame.Lines[2]));
     }
 
     [Theory]

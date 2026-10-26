@@ -29,7 +29,7 @@ internal static class WindowsConsoleMode
         return handle != IntPtr.Zero && handle != new IntPtr(-1) && GetConsoleMode(handle, out _);
     }
 
-    public static IDisposable Enter()
+    public static ITerminalMode Enter()
     {
         var input = GetStdHandle(StandardInputHandle);
         if (!GetConsoleMode(input, out uint inputMode))
@@ -59,7 +59,7 @@ internal static class WindowsConsoleMode
             );
         }
 
-        return new Restore(input, inputMode, output, outputMode, outputChanged);
+        return new Restore(input, inputMode, rawInputMode, output, outputMode, outputChanged);
     }
 
     private static string ModeFailure(string message) =>
@@ -71,11 +71,38 @@ internal static class WindowsConsoleMode
     private sealed class Restore(
         IntPtr input,
         uint inputMode,
+        uint rawInputMode,
         IntPtr output,
         uint outputMode,
         bool outputChanged
-    ) : IDisposable
+    ) : ITerminalMode
     {
+        private bool _suspended;
+
+        /// <summary>
+        /// The child gets the console mode the process started with, and its own EDIT-mode line
+        /// input; resuming puts the virtual-terminal raw mode back.
+        /// </summary>
+        public void Suspend()
+        {
+            if (_suspended || !SetConsoleMode(input, inputMode))
+            {
+                return;
+            }
+
+            _suspended = true;
+        }
+
+        public void Resume()
+        {
+            if (!_suspended || !SetConsoleMode(input, rawInputMode))
+            {
+                return;
+            }
+
+            _suspended = false;
+        }
+
         // A failed restore leaves the user's terminal in raw mode, so Dispose surfaces
         // the failure instead of swallowing it.
         public void Dispose()

@@ -109,7 +109,7 @@ public sealed class InteractiveSessionToolBlocksCompositionTests
         await host.WaitUntilAsync(() => host.Session.IsComposed);
         host.Console.SendText("go");
         host.Console.SendEnter();
-        await host.WaitUntilAsync(() => host.Session.PendingApproval is not null);
+        await host.WaitForApprovalAsync();
         Assert.Equal("bash", host.Session.PendingApproval!.ToolName);
         host.Console.SendText("y");
         string scrollback = await host.WaitForScrollbackAsync(

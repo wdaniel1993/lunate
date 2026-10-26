@@ -19,6 +19,7 @@ internal sealed class ScriptedConsoleIO : IConsoleIO
     private readonly Channel<KeyEvent> _keys = Channel.CreateUnbounded<KeyEvent>();
     private readonly Subject<ConsoleSize> _resized = new();
     private readonly List<string> _writes = [];
+    private readonly List<string> _typedAtChild = [];
 
     public bool IsInteractive { get; set; }
 
@@ -43,7 +44,20 @@ internal sealed class ScriptedConsoleIO : IConsoleIO
         }
     }
 
-    public void Send(KeyEvent key) => _keys.Writer.TryWrite(key);
+    public void Send(KeyEvent key)
+    {
+        if (IsTerminalSuspended)
+        {
+            lock (_typedAtChild)
+            {
+                _typedAtChild.Add(key.Text ?? key.Kind.ToString());
+            }
+
+            return;
+        }
+
+        _keys.Writer.TryWrite(key);
+    }
 
     public void SendText(string text)
     {
@@ -132,6 +146,36 @@ internal sealed class ScriptedConsoleIO : IConsoleIO
     /// <summary>When set, entering the alternate screen throws the way a failing console write does.</summary>
     public bool FailAlternateScreen { get; set; }
 
+    /// <summary>True while a child owns the terminal (the editor handover).</summary>
+    public bool IsTerminalSuspended { get; private set; }
+
+    /// <summary>How many times the terminal was handed to a child.</summary>
+    public int SuspendCount { get; private set; }
+
+    /// <summary>Keys typed while a child owned the terminal; they never reached the reader.</summary>
+    public IReadOnlyList<string> TypedAtChild
+    {
+        get
+        {
+            lock (_typedAtChild)
+            {
+                return [.. _typedAtChild];
+            }
+        }
+    }
+
+    /// <summary>
+    /// Stands in for the real handover: the console goes cooked, the session's read loop sees no
+    /// further keys, and anything typed meanwhile is recorded as the child's input.
+    /// </summary>
+    public IDisposable SuspendTerminal()
+    {
+        SuspendCount++;
+        IsTerminalSuspended = true;
+        InRawMode = false;
+        return new SuspendScope(this);
+    }
+
     /// <summary>Whether the alternate screen is entered right now.</summary>
     public bool InAlternateScreen { get; private set; }
 
@@ -150,6 +194,23 @@ internal sealed class ScriptedConsoleIO : IConsoleIO
     private sealed class RawModeScope(ScriptedConsoleIO console) : IDisposable
     {
         public void Dispose() => console.InRawMode = false;
+    }
+
+    private sealed class SuspendScope(ScriptedConsoleIO console) : IDisposable
+    {
+        private bool _resumed;
+
+        public void Dispose()
+        {
+            if (_resumed)
+            {
+                return;
+            }
+
+            _resumed = true;
+            console.IsTerminalSuspended = false;
+            console.InRawMode = true;
+        }
     }
 
     private sealed class AlternateScreenScope(ScriptedConsoleIO console) : IDisposable
@@ -502,7 +563,8 @@ internal sealed class InteractiveSessionHost : IDisposable
         string? modelsPath = null,
         IClipboardImageSource? clipboard = null,
         ITextClipboard? textClipboard = null,
-        Func<DateTimeOffset>? clock = null
+        Func<DateTimeOffset>? clock = null,
+        string? editorTempDirectory = null
     )
     {
         Scrollback = new TestConsole();
@@ -541,6 +603,7 @@ internal sealed class InteractiveSessionHost : IDisposable
                 Clipboard = clipboard,
                 TextClipboard = textClipboard,
                 Clock = clock,
+                EditorTempDirectory = editorTempDirectory,
             }
         );
     }
@@ -584,6 +647,17 @@ internal sealed class InteractiveSessionHost : IDisposable
     }
 
     public Task RunAsync() => Session.RunAsync(TestContext.Current.CancellationToken);
+
+    /// <summary>
+    /// Waits for the approval panel and then lets its type-ahead window expire: a key sent before
+    /// the window closes decides nothing, which is the rule under test elsewhere. Tests that press
+    /// keys on a prompt use this instead of a bare wait.
+    /// </summary>
+    public async Task WaitForApprovalAsync(TimeSpan? timeout = null)
+    {
+        await WaitUntilAsync(() => Session.PendingApproval is not null, timeout);
+        Session.ExpireApprovalArmWindow();
+    }
 
     public void Advance(int milliseconds) =>
         Scheduler.Advance(TimeSpan.FromMilliseconds(milliseconds));

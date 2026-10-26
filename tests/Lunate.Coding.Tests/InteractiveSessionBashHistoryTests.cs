@@ -81,7 +81,7 @@ public sealed class InteractiveSessionBashHistoryTests
         host.Console.SendText(line);
         await host.WaitUntilAsync(() => host.Session.IsBashMode);
         host.Console.SendEnter();
-        await host.WaitUntilAsync(() => host.Session.PendingApproval is not null);
+        await host.WaitForApprovalAsync();
         host.Console.SendText("y");
         await host.WaitForScrollbackAsync(
             text =>

@@ -35,7 +35,7 @@ public sealed class McpInteractiveEndToEndTests
 
         host.Console.SendText("go");
         host.Console.SendEnter();
-        await host.WaitUntilAsync(() => host.Session.PendingApproval is not null, SpawnWait);
+        await host.WaitForApprovalAsync(SpawnWait);
         Assert.Equal("test__echo", host.Session.PendingApproval!.ToolName);
         host.Console.SendText("y");
         await host.Client.WaitForCallAsync(2);

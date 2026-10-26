@@ -1,6 +1,6 @@
 ⚠ bash  dotnet format --verify-no-changes
   Formatting check passed.
-subagent (depth 1) asks: Allow bash?  [y]es  [n]o  [a]lways this session
+subagent (depth 1) asks: Allow bash?  [y]es  > [n]o  [a]lways this session
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 > Ask anything, / for commands
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────

@@ -5,7 +5,7 @@
   - JsonElement args
   + JsonElement args,
   + bool unicode
-Allow edit?  [y]es  [n]o  [a]lways this session
+Allow edit?  [y]es  > [n]o  [a]lways this session
 ────────────────────────────────────────────────────────────
 > Ask anything, / for commands
 ────────────────────────────────────────────────────────────

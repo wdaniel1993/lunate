@@ -49,7 +49,8 @@ internal static class LiveAreaTrim
 
         int panelStart = Math.Max(0, approvalStart) - prefix;
         int questionLines = approval.Count(line => line.Part == ApprovalPart.Question);
-        int detailLines = approval.Count - 1 - questionLines;
+        int detailLines = approval.Count(line => line.Part == ApprovalPart.Detail);
+        int legendLines = approval.Count(line => line.Part == ApprovalPart.Legend);
         // The detail block follows the headline; drop its bottom lines so the first detail stays.
         int trimDetail = Math.Min(overflow, detailLines);
         if (trimDetail > 0)
@@ -57,6 +58,16 @@ internal static class LiveAreaTrim
             lines.RemoveRange(panelStart + 1 + (detailLines - trimDetail), trimDetail);
             cursorRow -= trimDetail;
             overflow -= trimDetail;
+        }
+
+        // Then the `?` legend, which sits after the choices; the question block stays.
+        int trimLegend = Math.Min(overflow, legendLines);
+        if (trimLegend > 0)
+        {
+            int legendStart = panelStart + 1 + (detailLines - trimDetail) + questionLines;
+            lines.RemoveRange(legendStart + (legendLines - trimLegend), trimLegend);
+            cursorRow -= trimLegend;
+            overflow -= trimLegend;
         }
 
         if (overflow > 0)
