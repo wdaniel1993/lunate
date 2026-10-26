@@ -17,9 +17,19 @@ public static partial class PackageInstallRecordJson
     /// <summary>
     /// Parses record text. Anything this version cannot vouch for yields null and a one-line reason
     /// naming <paramref name="label"/>: a shape it does not read, a path that leaves the scope root,
-    /// or an integrity hash that does not answer for the bytes.
+    /// or an integrity hash that does not answer for the bytes. <paramref name="acceptModified"/>
+    /// keeps the record when only its integrity hash disagrees, and still reports the reason — what
+    /// <c>--force</c> needs, and nothing else uses.
     /// </summary>
-    public static PackageInstallRecord? TryParse(string json, string label, out string? problem)
+    public static PackageInstallRecord? TryParse(string json, string label, out string? problem) =>
+        TryParse(json, label, acceptModified: false, out problem);
+
+    private static PackageInstallRecord? TryParse(
+        string json,
+        string label,
+        bool acceptModified,
+        out string? problem
+    )
     {
         ArgumentNullException.ThrowIfNull(json);
         ArgumentException.ThrowIfNullOrWhiteSpace(label);
@@ -144,7 +154,7 @@ public static partial class PackageInstallRecordJson
             problem =
                 $"{label} was modified after it was written (its integrity hash does not match); "
                 + BrokeMessage;
-            return null;
+            return acceptModified ? record : null;
         }
 
         problem = null;
