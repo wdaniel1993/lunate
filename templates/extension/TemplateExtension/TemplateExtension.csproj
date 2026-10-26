@@ -4,6 +4,7 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <!-- snippet:start — included by docs/extensions/README.md through scripts/docs-sync; keep the markers -->
         <!--
             The host owns the contract, Lunate.Agent and Lunate.Ai: Lunate loads them once and every
             extension binds to those copies so their types keep one identity. Private="false" keeps
@@ -27,6 +28,7 @@
             Private="false"
             ExcludeAssets="runtime"
         />
+        <!-- snippet:end -->
     </ItemGroup>
 
     <ItemGroup>

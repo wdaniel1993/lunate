@@ -93,7 +93,11 @@ public sealed class RemoteJsonSchemaTests
     [Fact]
     public void The_published_schema_matches_the_generator()
     {
-        string path = Path.Combine(FindRepositoryRoot(), "docs", "extensions-remote.schema.json");
+        string path = Path.Combine(
+            FindRepositoryRoot(),
+            "schemas",
+            "extensions-remote.schema.json"
+        );
 
         Assert.True(File.Exists(path), $"the published schema is missing: {path}");
         Assert.Equal(

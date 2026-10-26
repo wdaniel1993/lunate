@@ -555,6 +555,7 @@ Both box rules are drawn at every width; autocomplete descriptions keep their 60
 
 **Key bindings (one meaning each)**
 
+<!-- keys:start -->
 | Key | Action |
 | --- | --- |
 | `Enter` | Send; with the autocomplete list open, accept the selected item first (an exact token sends instead); in bash mode, run the line through the `bash` tool; while a turn runs, queue the line as a follow-up (the footer shows `N queued`). Never steers or interrupts a turn |
@@ -580,6 +581,7 @@ Both box rules are drawn at every width; autocomplete descriptions keep their 60
 | `Ctrl+W` / `Alt+D` / `Ctrl+Delete` | Kill the word before / after the cursor (`Ctrl+Delete` is the Alt-free form of `Alt+D`) |
 | `Ctrl+Y` | Yank the most recent kill |
 | `Alt+B` / `Alt+F` / `Ctrl+Left` / `Ctrl+Right` | Move back / forward by word (`Ctrl+Left`/`Ctrl+Right` are the Alt-free forms) |
+<!-- keys:end -->
 
 **Platform rules**
 

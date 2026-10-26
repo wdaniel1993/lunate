@@ -26,9 +26,55 @@ permissions:
   contents: read
 
 jobs:
+  # Which gate this change needs. Prose (docs, ADRs, OpenSpec proposals/specs, root Markdown) cannot
+  # break the build, so it gets the three-minute docs profile; anything else -- including any change
+  # to this workflow -- gets the full matrix. The rule lives in scripts/ci-plan.sh, deny-by-default,
+  # and its self-test runs here so a broken plan cannot silently downgrade a code pull request.
+  plan:
+    name: plan
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    outputs:
+      profile: ${{ steps.decide.outputs.profile }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          # The decision diffs the pull request against its base, so the history has to be there.
+          fetch-depth: 0
+
+      - name: Tooling self-tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash scripts/ci-plan.sh --self-test
+          python3 scripts/docs-sync --self-test
+          bash scripts/no-docs-references.sh --self-test
+
+      - name: Decide the profile
+        id: decide
+        shell: bash
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          set -euo pipefail
+          if [ "${GITHUB_EVENT_NAME}" != "pull_request" ]; then
+            # A push to main already filters prose-only changes (paths-ignore above), so whatever
+            # arrives here gets the whole gate.
+            echo "not a pull request: the full gate runs"
+            echo "profile=full" >>"${GITHUB_OUTPUT}"
+            exit 0
+          fi
+          git diff --name-status -M "origin/${BASE_REF}...HEAD" >changed.txt
+          echo "changed paths:"
+          cat changed.txt
+          bash scripts/ci-plan.sh --paths-file changed.txt >>"${GITHUB_OUTPUT}"
+          cat "${GITHUB_OUTPUT}"
+
   verify:
     name: verify (${{ matrix.os }})
-    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    needs: plan
+    if: needs.plan.outputs.profile == 'full'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -180,13 +226,39 @@ jobs:
           path: artifacts/
           if-no-files-found: warn
 
+  # The prose leg: markdownlint, the generated-region check, the "docs are not build inputs" guard and
+  # `openspec validate --all --strict`. No .NET, no build, no tests -- which is the point: a proposal
+  # or a page cannot be reddened by an unrelated flake in a suite it never runs.
+  verify-docs:
+    name: verify-docs
+    needs: plan
+    if: needs.plan.outputs.profile == 'docs'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      # The gate pins the CLI version it was checked against; the flake that ships with a runner is
+      # not that version.
+      - name: Install openspec
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --global --prefix "${RUNNER_TEMP}/openspec" @fission-ai/openspec@1.14.0
+          echo "${RUNNER_TEMP}/openspec/bin" >>"${GITHUB_PATH}"
+
+      - name: Verify (docs profile)
+        shell: bash
+        run: bash scripts/verify.sh --profile docs
+
   # The Windows PowerShell gate runs as its own job so it proceeds in parallel
   # with the bash matrix. Running it sequentially on the same runner made
   # Windows the ~16m critical path (bash ~9m40s + pwsh ~5m50s); in parallel the
   # pipeline lands around ~10m while both gates still run on every PR.
   verify-powershell:
     name: verify-powershell (windows)
-    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    needs: plan
+    if: needs.plan.outputs.profile == 'full'
     runs-on: windows-latest
     env:
       RID: win-x64
@@ -255,20 +327,54 @@ jobs:
   # success. No path filters exist on pull_request, so no path filter can
   # leave this check pending on a PR; new top-level verification jobs must be
   # added to "needs" here to stay covered.
+  #
+  # The plan decides WHICH legs run; this job decides whether the run that
+  # actually happened counts as success, and it fails closed on a profile it
+  # cannot read. The legs the profile does not select must be skipped, not
+  # green: a docs plan that also ran the full matrix means the plan lied.
   ci-ok:
     name: ci-ok
-    needs: [verify, verify-powershell]
+    needs: [plan, verify, verify-powershell, verify-docs]
     if: always() && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
     runs-on: ubuntu-latest
     steps:
       - name: Every required job succeeded
         run: |
           set -euo pipefail
+          plan='${{ needs.plan.result }}'
+          profile='${{ needs.plan.outputs.profile }}'
           verify='${{ needs.verify.result }}'
           powershell='${{ needs.verify-powershell.result }}'
-          echo "verify=$verify verify-powershell=$powershell"
-          if [ "$verify" != "success" ] || [ "$powershell" != "success" ]; then
-            echo "::error::ci-ok: a required job did not succeed (verify=$verify, verify-powershell=$powershell)"
+          docs='${{ needs.verify-docs.result }}'
+          echo "plan=$plan profile=$profile verify=$verify verify-powershell=$powershell verify-docs=$docs"
+          if [ "$plan" != "success" ]; then
+            echo "::error::ci-ok: the plan job did not succeed (plan=$plan)"
             exit 1
           fi
-          echo "ci-ok: all required jobs succeeded"
+          case "$profile" in
+            docs)
+              if [ "$docs" != "success" ]; then
+                echo "::error::ci-ok: the docs profile did not succeed (verify-docs=$docs)"
+                exit 1
+              fi
+              if [ "$verify" != "skipped" ] || [ "$powershell" != "skipped" ]; then
+                echo "::error::ci-ok: profile=docs, yet a full leg ran (verify=$verify, verify-powershell=$powershell)"
+                exit 1
+              fi
+              ;;
+            full)
+              if [ "$verify" != "success" ] || [ "$powershell" != "success" ]; then
+                echo "::error::ci-ok: a required job did not succeed (verify=$verify, verify-powershell=$powershell)"
+                exit 1
+              fi
+              if [ "$docs" != "skipped" ]; then
+                echo "::error::ci-ok: profile=full, yet the docs leg ran (verify-docs=$docs)"
+                exit 1
+              fi
+              ;;
+            *)
+              echo "::error::ci-ok: the plan produced no usable profile ('$profile'); refusing to pass"
+              exit 1
+              ;;
+          esac
+          echo "ci-ok: the $profile gate succeeded"

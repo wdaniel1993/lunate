@@ -7,6 +7,35 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 cd "${SCRIPT_DIR}/.."
 
+# Which gate to run. `full` is the whole thing (build, publish, both test passes, install/tool
+# roundtrips, formatting, public API); `docs` is the prose profile, and it deliberately runs no
+# build and no test. The two are a closed set: a typo must fail here rather than quietly run the
+# longest gate or, worse, the shortest one.
+PROFILE="full"
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --profile)
+      PROFILE="${2:-}"
+      shift 2
+      ;;
+    --profile=*)
+      PROFILE="${1#*=}"
+      shift
+      ;;
+    *)
+      echo "verify: unknown argument '$1' (usage: verify.sh [--profile docs|full])" >&2
+      exit 2
+      ;;
+  esac
+done
+case "$PROFILE" in
+  docs | full) ;;
+  *)
+    echo "verify: unknown profile '$PROFILE' (expected docs or full)" >&2
+    exit 2
+    ;;
+esac
+
 BUDGET_MS="${BUDGET_MS:-150}"
 CONFIGURATION="${CONFIGURATION:-Release}"
 PUBLISH_DIR="artifacts/publish"
@@ -117,6 +146,46 @@ trap verify_cleanup EXIT
 trap 'exit 129' HUP
 trap 'exit 130' INT
 trap 'exit 143' TERM
+
+# The docs profile: prose only. No build, no publish, no tests and no startup measurement, so a
+# docs or proposal pull request cannot go red on a flake in the suite it never runs. What prose can
+# break is (a) the generated regions drifting from the code they mirror, (b) the docs tree becoming
+# a build input or a test's subject, (c) Markdown lint, and (d) the OpenSpec tree. Those are the four
+# steps; `openspec validate` dominates the wall clock.
+docs_profile() {
+  step "tools"
+  if ! command -v python3 >/dev/null 2>&1; then
+    echo "verify: python3 is required for the docs profile (scripts/docs-sync); install Python 3 and re-run" >&2
+    exit 1
+  fi
+  if ! command -v node >/dev/null 2>&1; then
+    echo "verify: node is required for the documentation lint step; install Node.js (npx runs the pinned markdownlint-cli2)" >&2
+    exit 1
+  fi
+  if ! command -v openspec >/dev/null 2>&1; then
+    echo "verify: the openspec CLI is required for the docs profile; install the pinned version with: npm install -g @fission-ai/openspec@1.14.0" >&2
+    exit 1
+  fi
+
+  step "generated docs regions"
+  python3 "${SCRIPT_DIR}/docs-sync" --check
+
+  step "docs are not build inputs"
+  bash "${SCRIPT_DIR}/no-docs-references.sh"
+
+  step "docs lint"
+  npx --yes markdownlint-cli2@0.23.3
+
+  step "openspec"
+  openspec validate --all --strict
+
+  echo "verify: OK (docs profile)"
+}
+
+if [ "$PROFILE" = "docs" ]; then
+  docs_profile
+  exit 0
+fi
 
 # The release version, exactly as release.yml gates the tag against it.
 product_version() {
