@@ -1,0 +1,7 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/wdaniel1993/lunate/main/docs/extensions-remote.schema.json",
+  "title": "Moved to schemas/extensions-remote.schema.json",
+  "description": "This path is kept for one release so an existing $schema reference keeps resolving. The canonical schema is generated from the host DTOs: https://raw.githubusercontent.com/wdaniel1993/lunate/main/schemas/extensions-remote.schema.json",
+  "$ref": "https://raw.githubusercontent.com/wdaniel1993/lunate/main/schemas/extensions-remote.schema.json"
+}
