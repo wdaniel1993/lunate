@@ -60,6 +60,55 @@ public sealed class PackageUninstallTests
     }
 
     [Fact]
+    public async Task A_file_that_cannot_be_deleted_stops_the_uninstall_and_keeps_the_record()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            Assert.Skip(
+                "a read-only directory does not stop deletion on Windows; there it is a loaded assembly, which CI's Windows leg exercises end to end"
+            );
+            return;
+        }
+
+        using var temp = new TempDirectory();
+        var feed = new BundleFeed(temp.Root);
+        feed.Bundle().Manifest(TestPackage.FullManifest).Extension().Skill("greek").Save();
+        string store = Path.Combine(temp.Root, "store");
+        PackageInstallResult install = await feed.Installer(now: Installed)
+            .InstallAsync(Request(store, "Acme.Toolkit"), Ct);
+        string extension = Path.Combine(store, "extensions", "acme-tools");
+        string settings = Path.Combine(extension, "extension.json");
+        Assert.True(File.Exists(settings));
+
+        // No write bit on the directory: deleting a file inside it fails exactly as a mapped
+        // assembly does on Windows, which is the case this message exists for.
+        UnixFileMode original = File.GetUnixFileMode(extension);
+        File.SetUnixFileMode(extension, UnixFileMode.UserRead | UnixFileMode.UserExecute);
+        try
+        {
+            InvalidOperationException refused = Assert.Throws<InvalidOperationException>(() =>
+                Uninstall(store, "Acme.Toolkit")
+            );
+
+            Assert.Contains(settings, refused.Message, StringComparison.Ordinal);
+            Assert.Contains("could not be deleted", refused.Message, StringComparison.Ordinal);
+            // Nothing after it was deleted and the record still answers for the content, so the
+            // same command finishes the job once the reason is gone.
+            Assert.True(File.Exists(install.RecordPath));
+            Assert.True(File.Exists(settings));
+        }
+        finally
+        {
+            File.SetUnixFileMode(extension, original);
+        }
+
+        PackageUninstallResult result = Uninstall(store, "Acme.Toolkit");
+
+        Assert.True(result.RecordRemoved);
+        Assert.False(Directory.Exists(extension));
+    }
+
+    [Fact]
     public async Task Uninstall_removes_the_closure_it_materialised_and_keeps_the_lock()
     {
         using var temp = new TempDirectory();
@@ -257,6 +306,101 @@ public sealed class PackageUninstallTests
             Target = PackageInstallTarget.ForUser(store, id),
             Force = force,
         };
+
+    [Fact]
+    public async Task Force_removes_the_record_directory_and_the_extension_named_by_the_package_id()
+    {
+        using var temp = new TempDirectory();
+        var feed = new BundleFeed(temp.Root);
+        // The package id and the extension id are the same here, which is the one case an
+        // unreadable record still names: <root>/extensions/<package-id>/.
+        feed.Bundle(id: "acme-tools")
+            .Manifest(TestPackage.FullManifest)
+            .Extension(id: "acme-tools")
+            .Skill("greek")
+            .Save();
+        string store = Path.Combine(temp.Root, "store");
+        PackageInstallResult install = await feed.Installer(now: Installed)
+            .InstallAsync(Request(store, "acme-tools"), Ct);
+        File.WriteAllText(install.RecordPath, "{\"recordVersion\": 99}");
+
+        PackageBrokenUninstallResult result = new PackageUninstaller().UninstallBroken(
+            new PackageUninstallRequest
+            {
+                Id = "acme-tools",
+                StoreRoot = store,
+                Force = true,
+            }
+        );
+
+        Assert.Contains(install.RecordPath, result.RemovedFiles);
+        Assert.Contains(
+            Path.Combine(store, "extensions", "acme-tools", "acme-tools.dll"),
+            result.RemovedFiles
+        );
+        Assert.False(Directory.Exists(Path.Combine(store, "packages", "acme-tools")));
+        Assert.False(Directory.Exists(Path.Combine(store, "extensions", "acme-tools")));
+        Assert.Contains("recordVersion", result.Problem, StringComparison.Ordinal);
+
+        // What only a readable record could have named is named, and the skill it would have
+        // listed is untouched.
+        Assert.Contains(Path.Combine(store, "skills"), result.UnknownPaths);
+        Assert.Contains(Path.Combine(store, "extensions"), result.UnknownPaths);
+        Assert.True(File.Exists(Path.Combine(store, "skills", "greek", "SKILL.md")));
+    }
+
+    [Fact]
+    public async Task An_unreadable_record_still_refuses_without_force()
+    {
+        using var temp = new TempDirectory();
+        var feed = new BundleFeed(temp.Root);
+        feed.Bundle(id: "acme-tools")
+            .Manifest(TestPackage.FullManifest)
+            .Extension(id: "acme-tools")
+            .Skill("greek")
+            .Save();
+        string store = Path.Combine(temp.Root, "store");
+        PackageInstallResult install = await feed.Installer(now: Installed)
+            .InstallAsync(Request(store, "acme-tools"), Ct);
+        File.WriteAllText(install.RecordPath, "{\"recordVersion\": 99}");
+
+        InvalidDataException refusal = Assert.Throws<InvalidDataException>(() =>
+            Uninstall(store, "acme-tools")
+        );
+
+        Assert.Contains(install.RecordPath, refusal.Message, StringComparison.Ordinal);
+        Assert.True(File.Exists(install.RecordPath));
+        Assert.True(File.Exists(Path.Combine(store, "extensions", "acme-tools", "acme-tools.dll")));
+    }
+
+    [Fact]
+    public void A_broken_removal_without_force_is_refused()
+    {
+        using var temp = new TempDirectory();
+        string store = Path.Combine(temp.Root, "store");
+        Directory.CreateDirectory(Path.Combine(store, "packages", "acme-tools"));
+        string path = Path.Combine(
+            store,
+            "packages",
+            "acme-tools",
+            PackageInstallRecordJson.FileName
+        );
+        File.WriteAllText(path, "{ this is not a record");
+
+        InvalidOperationException refusal = Assert.Throws<InvalidOperationException>(() =>
+            new PackageUninstaller().UninstallBroken(
+                new PackageUninstallRequest
+                {
+                    Id = "acme-tools",
+                    StoreRoot = store,
+                    Force = false,
+                }
+            )
+        );
+
+        Assert.Contains("--force", refusal.Message, StringComparison.Ordinal);
+        Assert.True(File.Exists(path));
+    }
 
     /// <summary>
     /// A record written by hand, so a test can put two packages on one extension id — a state the

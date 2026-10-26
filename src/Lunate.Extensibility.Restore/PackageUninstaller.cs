@@ -95,6 +95,7 @@ public sealed partial class PackageUninstaller
         }
 
         List<string> removed = [];
+        List<string> inUse = [];
         foreach (InstalledFile file in record.Content.Paths)
         {
             string path = Resolve(scopeRoot, file.Path);
@@ -105,8 +106,30 @@ public sealed partial class PackageUninstaller
                 continue;
             }
 
-            File.Delete(path);
-            removed.Add(path);
+            try
+            {
+                File.Delete(path);
+                removed.Add(path);
+            }
+            catch (Exception exception)
+                when (exception is IOException or UnauthorizedAccessException)
+            {
+                // Windows keeps a loaded assembly mapped: the session that loaded this extension is
+                // the reason the file will not go, and saying "access denied" would hide that. The
+                // record stays, so the same command finishes the job once the session has stopped.
+                inUse.Add(path);
+            }
+        }
+
+        if (inUse.Count > 0)
+        {
+            throw new InvalidOperationException(
+                "uninstall stopped: "
+                    + string.Join(", ", inUse.Select(path => $"'{path}'"))
+                    + (inUse.Count == 1 ? " could not be deleted" : " could not be deleted")
+                    + " — it is in use or not writable; stop the session that loaded it and run the"
+                    + " uninstall again. The record still lists every path, so re-running finishes the job."
+            );
         }
 
         List<string> left = [];

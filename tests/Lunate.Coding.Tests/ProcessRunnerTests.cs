@@ -146,6 +146,53 @@ public sealed class ProcessRunnerTests
     }
 
     [Fact]
+    public async Task Extra_environment_is_applied_after_a_replaced_environment()
+    {
+        using var temp = new TempDirectory();
+        var environment = new Dictionary<string, string> { ["LUNATE_SESSION"] = "unset" };
+        if (OperatingSystem.IsWindows())
+        {
+            environment["SystemRoot"] =
+                Environment.GetEnvironmentVariable("SystemRoot") ?? @"C:\Windows";
+        }
+
+        var request = NodeRequest(
+            temp,
+            "console.log(process.env.LUNATE_SESSION ?? 'none');"
+                + "console.log(process.env.PATH ?? 'none');"
+        ) with
+        {
+            Environment = environment,
+            ExtraEnvironment = new Dictionary<string, string> { ["LUNATE_SESSION"] = "1" },
+        };
+
+        ProcessRunResult result = await RunAsync(temp, request);
+
+        // The extra value wins over the replaced environment's spelling of the same name, and the
+        // replacement still holds: the runner's own PATH never leaks in.
+        Assert.Equal("1\nnone\n", result.Stdout.ReplaceLineEndings("\n"));
+    }
+
+    [Fact]
+    public async Task Extra_environment_is_added_to_an_inherited_environment()
+    {
+        using var temp = new TempDirectory();
+        var request = NodeRequest(
+            temp,
+            "console.log(process.env.LUNATE_SESSION ?? 'none');"
+                + "console.log(process.env.PATH ? 'path' : 'none');"
+        ) with
+        {
+            ExtraEnvironment = new Dictionary<string, string> { ["LUNATE_SESSION"] = "1" },
+        };
+
+        ProcessRunResult result = await RunAsync(temp, request);
+
+        // Additive, not a replacement: the marker arrives and the inherited environment is intact.
+        Assert.Equal("1\npath\n", result.Stdout.ReplaceLineEndings("\n"));
+    }
+
+    [Fact]
     public async Task Output_over_the_cap_is_truncated_and_read_to_the_end()
     {
         using var temp = new TempDirectory();

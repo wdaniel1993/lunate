@@ -90,7 +90,7 @@ A package's declared NuGet dependencies SHALL be resolved through the existing r
 
 ### Requirement: Install runs no package code and records no trust
 
-`lunate install` SHALL download, resolve, verify and write files, and SHALL NOT load an assembly, run a factory, start a process, dispatch a hook or write any trust section of the trust store. A user-scope install SHALL be trusted the way a global extension and a user skill already are, so it prompts nothing. A project-scope install SHALL stay untrusted until the existing questions are answered: the project extension question for the extension directory and the project skills question for the installed skills. Install SHALL only change the pending set that `lunate trust` lists, and that pending set SHALL carry the provenance the questions show.
+`lunate install` SHALL download, resolve, verify and write files, and SHALL NOT load an assembly, run a factory, start a process, dispatch a hook or write any trust section of the trust store. Installing SHALL NOT be trusting in either scope: a descriptor whose directory an install record owns SHALL be pending wherever it landed, so a user-scope install asks before its extension loads, exactly as a project-scope install does — while a hand-placed user-scope extension stays trusted by placement and a hand-placed project extension still asks. Approving through the existing question or `lunate trust` SHALL be what makes an installed extension load, with no new trust record shape: the decision binds the package identity and the directory content hash in the existing extensions section. A project-scope install's skills SHALL stay untrusted until the project skills question is answered. Install SHALL only change the pending set that `lunate trust` lists, and that pending set SHALL carry the provenance the questions show.
 
 #### Scenario: A project install leaves the extension untrusted
 
@@ -110,10 +110,16 @@ A package's declared NuGet dependencies SHALL be resolved through the existing r
 - **WHEN** `lunate trust` runs
 - **THEN** the extension and the skills appear among the pending decisions with the source package, and `lunate trust --yes` records them so a later session asks nothing
 
-#### Scenario: A user install asks nothing
+#### Scenario: A user install asks before it loads
 
 - **GIVEN** no existing trust records
 - **WHEN** `lunate install Acme.Toolkit` runs at the user scope and a session starts
+- **THEN** the existing extension question names the package with `from package Acme.Toolkit@<version> (<source>)`, the extension does not load until it is approved, and a later session asks nothing
+
+#### Scenario: A hand-placed user-scope extension is still trusted by placement
+
+- **GIVEN** an extension directory under `<root>/extensions/` that no install record names
+- **WHEN** a session starts
 - **THEN** no question is asked and the extension loads
 
 ### Requirement: Where installed content lands
@@ -152,7 +158,7 @@ A user-scope install SHALL write under the state root: the record at `<root>/pac
 
 ### Requirement: The install record
 
-Each installed package SHALL have one record at `<root>/packages/<package-id>/install.json` with two halves: `package` — the sources used, the canonical package id, the exact version, the nupkg's SHA-512, the archive's file list and the extension id whose cache entry holds the dependency lock — and `content` — the extension id and version when one was installed, the skill names, and every written path relative to the scope root with its size and SHA-256. It SHALL also carry the scope, the worktree when the scope is project, the install time (ISO 8601, invariant) and an integrity hash over its own canonical bytes, computed with that field empty. Every path in the record SHALL be relative to the scope root; a record naming an absolute path or a path that resolves outside the root SHALL be refused as `broken`. A record whose integrity hash does not answer for its contents SHALL be reported as `broken` and SHALL NOT be used to uninstall or trust anything, except that `--force` may act on one whose paths are all confined. Writing SHALL be atomic per file, and the record SHALL be written last, so a record that exists names content that exists. The dependency lock SHALL NOT be duplicated into the record: the record names the lock's location, and the lock remains the existing `extension.lock.json`.
+Each installed package SHALL have one record at `<root>/packages/<package-id>/install.json` with two halves: `package` — the sources used, the canonical package id, the exact version, the nupkg's SHA-512, the archive's file list and the extension id whose cache entry holds the dependency lock — and `content` — the extension id and version when one was installed, the skill names, and every written path relative to the scope root with its size and SHA-256. It SHALL also carry the scope, the worktree when the scope is project, the install time (ISO 8601, invariant) and an integrity hash over its own canonical bytes, computed with that field empty. Every path in the record SHALL be relative to the scope root; a record naming an absolute path or a path that resolves outside the root SHALL be refused as `broken`. A record whose integrity hash does not answer for its contents SHALL be reported as `broken` and SHALL NOT be used to uninstall or trust anything. An install SHALL NOT be blocked by an unreadable record at its own path: a reinstall SHALL write the content and a new record over it, and SHALL name the bytes it could not account for instead of claiming to have removed them. `--force` SHALL remove the content of a broken record: the record's own directory and `<root>/extensions/<package-id>/` when it exists, printing every path it removed and naming what only a readable record could have known — the skill directories, and an extension id unlike the package id. Writing SHALL be atomic per file, and the record SHALL be written last, so a record that exists names content that exists. The dependency lock SHALL NOT be duplicated into the record: the record names the lock's location, and the lock remains the existing `extension.lock.json`.
 
 #### Scenario: The record names everything that was written
 
@@ -160,11 +166,29 @@ Each installed package SHALL have one record at `<root>/packages/<package-id>/in
 - **WHEN** the record is read
 - **THEN** `content` lists the extension directory and every file under it, both skill directories and their files, each with a size and a hash, and `package` names the lock's cache entry
 
-#### Scenario: A hand-edited record is refused
+#### Scenario: A hand-edited record is refused by the view and the uninstall
 
 - **GIVEN** an installed package whose record's version is edited by hand
 - **WHEN** `lunate packages` and `lunate uninstall` run
-- **THEN** the package reads `broken` and the commands refuse to act on the record, naming it
+- **THEN** the package reads `broken` and both commands refuse to act on the record, naming it
+
+#### Scenario: A reinstall is the repair
+
+- **GIVEN** an installed package whose record no longer answers for itself
+- **WHEN** the same version is installed again
+- **THEN** the content and a new record are written, the record reads `broken` no more, `lunate packages --verify` is clean, and the run names any file it left in place because the old record could not name it
+
+#### Scenario: Uninstall --force removes what a broken record cannot list
+
+- **GIVEN** an installed package whose record is unreadable, and a skill directory the record would have named
+- **WHEN** `lunate uninstall <package-id> --force` runs
+- **THEN** the record's directory and `<root>/extensions/<package-id>/` are removed, every removed path is printed, the run says that only a readable record could have named the skill directory, and the skill directory is left in place
+
+#### Scenario: Uninstall without --force still refuses a broken record
+
+- **GIVEN** an installed package whose record is unreadable
+- **WHEN** `lunate uninstall <package-id>` runs
+- **THEN** it refuses, naming the record, and deletes nothing
 
 #### Scenario: Installing the same version again writes nothing
 
@@ -224,7 +248,7 @@ An install SHALL record the exact version it resolved and SHALL never re-resolve
 
 ### Requirement: Uninstall
 
-`lunate uninstall <package-id | extension-id>` SHALL delete exactly the paths the record lists and the record's own directory, then remove the directories the install created that are now empty, and SHALL NOT delete anything else. It SHALL accept an extension id the record names when exactly one record matches, and SHALL refuse an ambiguous one, naming the candidates. It SHALL refuse, naming the files, when a recorded file's hash no longer matches, and SHALL proceed with `--force`. Files inside a directory the package created but did not write SHALL be left and named, with a line saying the directory is not empty and where it is. The dependency lock SHALL be left in place: it is the record of a resolution, not installed content, and a reinstall reuses it. Trust records SHALL NOT be touched: trust is a decision about bytes at a path, so removing the content does not revoke it and an identical reinstall keeps it. A session that already loaded the extension SHALL keep it until the process exits; the next session sees the content gone.
+`lunate uninstall <package-id | extension-id>` SHALL delete exactly the paths the record lists and the record's own directory, then remove the directories the install created that are now empty, and SHALL NOT delete anything else. It SHALL accept an extension id the record names when exactly one record matches, and SHALL refuse an ambiguous one, naming the candidates. It SHALL refuse, naming the files, when a recorded file's hash no longer matches, and SHALL proceed with `--force`. Files inside a directory the package created but did not write SHALL be left and named, with a line saying the directory is not empty and where it is. For a record that does not answer for itself, a plain uninstall SHALL still refuse, naming the file; `--force` SHALL remove the record's own directory and `<root>/extensions/<package-id>/` when it exists, print every path it removed, and name what only a readable record could have known. The dependency lock SHALL be left in place: it is the record of a resolution, not installed content, and a reinstall reuses it. Trust records SHALL NOT be touched: trust is a decision about bytes at a path, so removing the content does not revoke it and an identical reinstall keeps it. A session that already loaded the extension SHALL keep it until the process exits; the next session sees the content gone. A recorded file that cannot be deleted because a running process has it loaded SHALL stop the uninstall with exit 1, name that file and say it is in use, delete nothing after it and leave the record intact, so re-running the command once the session has stopped finishes the job.
 
 #### Scenario: Uninstall removes what was written and nothing else
 
@@ -286,7 +310,7 @@ Install and upgrade SHALL be all-or-nothing per command: the record is the commi
 
 ### Requirement: Install output and `--dry-run`
 
-`lunate install` SHALL print, before writing: the package id in its canonical spelling, the exact version, the source it came from, the nupkg's SHA-512, the size, the extension id and version when one is carried, the skill names, and the dependency closure with each resolved version — then one line saying what was written and where. Install SHALL print nothing to stdout on a failure, the reason on stderr, and exit 1; when the package's identity was resolved before the failure, the reason SHALL carry the id, the version and the source. A usage error SHALL exit 2; a successful install and an already-installed version SHALL exit 0. `--dry-run` SHALL print the same identity, contents and closure, resolve nothing into the store, write nothing, and exit 0. `--json` SHALL print one object carrying the same fields, canonical newlines, invariant numbers and no colour. `lunate uninstall` SHALL follow the same printing and exit-code rules for what it did, with `--json` printing one object naming what changed.
+`lunate install` SHALL print, before writing: the package id in its canonical spelling, the exact version, the source it came from, the nupkg's SHA-512, the size, the extension id and version when one is carried, the skill names, and the dependency closure with each resolved version — then the total content size it wrote (the entry assembly, the materialised dependencies and the skills, summed from the record) in both scopes, and one line saying what was written and where. A project-scope install whose total content exceeds 10 MiB SHALL warn once, naming the total and the largest entries, because that content is committed; a user-scope install SHALL NOT warn about size. Install SHALL print nothing to stdout on a failure, the reason on stderr, and exit 1; when the package's identity was resolved before the failure, the reason SHALL carry the id, the version and the source. A usage error SHALL exit 2; a successful install and an already-installed version SHALL exit 0. `--dry-run` SHALL print the same identity, contents and closure, resolve nothing into the store, write nothing, and exit 0. `--json` SHALL print one object carrying the same fields, canonical newlines, invariant numbers and no colour. `lunate uninstall` SHALL follow the same printing and exit-code rules for what it did, with `--json` printing one object naming what changed.
 
 #### Scenario: Dry-run prints the identity and writes nothing
 
@@ -300,11 +324,59 @@ Install and upgrade SHALL be all-or-nothing per command: the record is the commi
 - **WHEN** `lunate install` runs
 - **THEN** stderr names the package, the version and the colliding directory, stdout is empty, the exit code is 1, and nothing is written
 
+#### Scenario: The total content size is printed in both scopes
+
+- **GIVEN** a bundle carrying an extension, a skill and a dependency
+- **WHEN** it is installed at the user scope and at the project scope
+- **THEN** each run prints `content: <size>` for the files the record names, and `--json` carries `contentBytes`
+
+#### Scenario: A large project install warns about what it commits
+
+- **GIVEN** a bundle whose content totals more than 10 MiB
+- **WHEN** `lunate install --project` runs
+- **THEN** it completes, prints the total, and warns once naming the total and the largest entries; the same bundle at the user scope prints the total and warns nothing
+
 #### Scenario: JSON carries the same fields
 
 - **GIVEN** a completed install
 - **WHEN** the same install runs a second time with `--json` and nothing has changed
 - **THEN** the object carries the id, version, source, SHA-512, extension id, skill names, dependency versions, scope, the written paths and that it was already installed
+
+### Requirement: An install started inside a session
+
+The bash tool SHALL set `LUNATE_SESSION=1` in the environment of every child it starts, additively: the marker is added to what the child inherited, never a replacement for it. `lunate install` SHALL read the marker and, when it is set and `--yes` is absent, SHALL refuse with exit 2 and a message naming `--yes` and saying why — an install started from a command inside a session puts code on the machine that runs at the next load, so the flag has to be visible in the command the user approved. `--yes` SHALL be documented in the command's usage line and in `--help`. Outside a session the marker is absent and nothing changes.
+
+The marker is a visibility guard, not a security boundary: a caller can unset it, and no run that skips approval prompts shows anything. The guarantee that holds regardless SHALL be the pending trust decision: `lunate trust --yes` SHALL refuse with exit 2 inside a session and record nothing, because approval is the user's answer and `--yes` is exactly the flag that would make it silent. Clearing trust SHALL remain available inside a session: revoking a decision escalates nothing.
+
+#### Scenario: A session install without --yes is refused
+
+- **GIVEN** a command running inside a Lunate session
+- **WHEN** `lunate install Acme.Toolkit` runs without `--yes`
+- **THEN** it exits 2, the message names `--yes` and says that the code would run at the next load, and nothing is written
+
+#### Scenario: A session install with --yes proceeds
+
+- **GIVEN** the same session marker
+- **WHEN** `lunate install Acme.Toolkit --yes --dry-run` runs
+- **THEN** it resolves the identity and prints the dry run, and writes nothing
+
+#### Scenario: Outside a session nothing is gated
+
+- **GIVEN** no `LUNATE_SESSION` marker in the environment
+- **WHEN** `lunate install Acme.Toolkit` runs
+- **THEN** it installs, with no `--yes` needed
+
+#### Scenario: Approval is refused inside a session
+
+- **GIVEN** a session marker and a pending installed extension
+- **WHEN** `lunate trust --yes` runs
+- **THEN** it exits 2 with a message that approval belongs to the session's prompt, and no trust record is written
+
+#### Scenario: Revoking is allowed inside a session
+
+- **GIVEN** the same marker and an approved extension
+- **WHEN** `lunate trust --clear` runs
+- **THEN** the record is removed, so the next load asks again
 
 ### Requirement: The `lunate packages` view
 

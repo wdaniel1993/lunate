@@ -65,6 +65,13 @@ public sealed record PackageInstallResult
     public IReadOnlyList<string> WrittenPaths { get; init; } = [];
 
     /// <summary>
+    /// The total size of the content the record names, in bytes (spec: "Install output and
+    /// <c>--dry-run</c>"): the entry assembly, the materialised dependencies and the skills, summed
+    /// from the record rather than from the archive, so the number is what actually landed.
+    /// </summary>
+    public long ContentBytes { get; init; }
+
+    /// <summary>
     /// The version an upgrade replaced, so the command can say what changed; null when this run
     /// installed a package that was not installed before (spec: "Pinning and upgrade").
     /// </summary>

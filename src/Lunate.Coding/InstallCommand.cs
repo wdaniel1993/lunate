@@ -23,7 +23,7 @@ internal static class InstallCommand
     internal const int ExitUsage = 2;
 
     internal const string Usage =
-        "Usage: lunate install <package-id>[@<version>] [--project] [--dry-run] [--json] [--offline] [--force]";
+        "Usage: lunate install <package-id>[@<version>] [--project] [--dry-run] [--json] [--offline] [--force] [--yes]";
 
     internal static int Run(
         string[] args,
@@ -31,10 +31,16 @@ internal static class InstallCommand
         TextWriter output,
         TextWriter errors,
         ExtensionSeams? seams,
-        CancellationToken cancellationToken = default
+        CancellationToken cancellationToken = default,
+        Func<string, string?>? environment = null
     )
     {
         if (!TryParse(args, errors, out Request request))
+        {
+            return ExitUsage;
+        }
+
+        if (RefuseInsideSession(request, errors, environment))
         {
             return ExitUsage;
         }
@@ -133,6 +139,44 @@ internal static class InstallCommand
         target.Scope == PackageScope.Project ? "project" : "user";
 
     /// <summary>
+    /// The session gate: a command the bash tool runs carries <c>LUNATE_SESSION</c>, and an install
+    /// started from there would put code on the machine that the user never saw in the command they
+    /// approved. <c>--yes</c> is the explicit answer — the flag has to appear in the command line
+    /// the approval panel showed. Outside a session nothing changes.
+    /// </summary>
+    private static bool RefuseInsideSession(
+        Request request,
+        TextWriter errors,
+        Func<string, string?>? environment
+    )
+    {
+        if (request.Yes)
+        {
+            return false;
+        }
+
+        string? marker = (environment ?? Environment.GetEnvironmentVariable)(
+            LunateHome.SessionVariable
+        );
+        if (!string.Equals(marker, LunateHome.SessionMarker, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        errors.WriteLine(
+            "lunate: this install runs inside a Lunate session, so it needs --yes — an install "
+                + "started from a command puts code on the machine that runs at the next load, and "
+                + "that has to be visible in the command you approved. Run 'lunate install "
+                + $"{request.Id}{VersionSuffix(request.Version)} --yes', or run the install outside "
+                + "the session."
+        );
+        return true;
+    }
+
+    private static string VersionSuffix(string version) =>
+        version.Length == 0 ? string.Empty : FormattableString.Invariant($"@{version}");
+
+    /// <summary>
     /// Splits <c>&lt;id&gt;[@&lt;version&gt;]</c> and refuses every other input shape before a feed
     /// is asked (design D1, D11): a URL is not supported in this version and a path is not a
     /// distribution unit.
@@ -199,13 +243,14 @@ internal static class InstallCommand
 
     private static bool TryParse(string[] args, TextWriter errors, out Request request)
     {
-        request = new Request(string.Empty, string.Empty, false, false, false, false, false);
+        request = new Request(string.Empty, string.Empty, false, false, false, false, false, false);
         string? spec = null;
         var project = false;
         var dryRun = false;
         var json = false;
         var offline = false;
         var force = false;
+        var yes = false;
         foreach (string arg in args)
         {
             switch (arg)
@@ -224,6 +269,9 @@ internal static class InstallCommand
                     break;
                 case "--force" when !force:
                     force = true;
+                    break;
+                case "--yes" when !yes:
+                    yes = true;
                     break;
                 default:
                     if (spec is not null || arg.StartsWith("--", StringComparison.Ordinal))
@@ -246,7 +294,7 @@ internal static class InstallCommand
         try
         {
             (string id, string version) = Split(spec);
-            request = new Request(id, version, project, dryRun, json, offline, force);
+            request = new Request(id, version, project, dryRun, json, offline, force, yes);
             return true;
         }
         catch (ArgumentException exception)
@@ -264,6 +312,7 @@ internal static class InstallCommand
         bool DryRun,
         bool Json,
         bool Offline,
-        bool Force
+        bool Force,
+        bool Yes
     );
 }

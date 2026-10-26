@@ -182,3 +182,5 @@ extension 'hello': manifest declares tool 'greet' but no registration matched; t
 
 `/extensions` then shows the registered count and the declared count side by side, for example
 `tools 0 (1 declared)`.
+
+A manifest inside a NuGet package is this same file: a package adds distribution — an id, a version, dependencies, a record — not a second manifest format. See [packages.md](packages.md).

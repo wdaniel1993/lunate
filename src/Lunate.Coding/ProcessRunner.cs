@@ -122,6 +122,16 @@ internal sealed partial class ProcessRunner : IProcessRunner
             }
         }
 
+        // Additive, after the replacement above: a caller can mark a child without restating the
+        // environment it inherits, and a name in both is the more specific request.
+        if (request.ExtraEnvironment is { } extra)
+        {
+            foreach ((string name, string value) in extra)
+            {
+                startInfo.Environment[name] = value;
+            }
+        }
+
         return startInfo;
     }
 

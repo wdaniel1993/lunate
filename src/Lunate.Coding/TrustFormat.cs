@@ -37,16 +37,28 @@ internal static class TrustFormat
     /// <summary>
     /// The interactive extension question; a re-prompt says the files changed. An out-of-process
     /// extension additionally states that it runs with the user's privileges (the process
-    /// boundary is isolation, not a sandbox).
+    /// boundary is isolation, not a sandbox). A user-scope extension someone installed is not a
+    /// project extension and is not called one: it asks because an install is not a decision.
     /// </summary>
     internal static string ExtensionQuestion(ExtensionDescriptor descriptor, bool filesChanged)
     {
         string privileges = descriptor.Manifest.Runtime is not null
             ? " — it runs with your user privileges"
             : "";
+        string what =
+            descriptor.Scope is ExtensionScope.Global
+                ? $"extension '{descriptor.Id}' {descriptor.Version} installed in '{descriptor.Directory}'"
+                : $"project extension '{descriptor.Id}' {descriptor.Version} from {descriptor.Directory}";
+        if (descriptor.Scope is ExtensionScope.Project)
+        {
+            return filesChanged
+                ? $"Load {what} — its files changed since this repository trusted it{privileges}. Load the new version"
+                : $"Load {what}{privileges}";
+        }
+
         return filesChanged
-            ? $"Load project extension '{descriptor.Id}' {descriptor.Version} from {descriptor.Directory} — its files changed since this repository trusted it{privileges}. Load the new version"
-            : $"Load project extension '{descriptor.Id}' {descriptor.Version} from {descriptor.Directory}{privileges}";
+            ? $"Load {what} — its files changed since it was approved{privileges}. Load the new version"
+            : $"Load {what}{privileges}";
     }
 
     /// <summary>

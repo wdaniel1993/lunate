@@ -283,14 +283,17 @@ internal sealed class TrustInventory
             loader.Discover(worktree, identity);
             foreach (ExtensionDescriptor descriptor in loader.Descriptors)
             {
-                if (descriptor.Scope is not ExtensionScope.Project)
-                {
-                    continue;
-                }
-
                 InstalledPackageProvenance? provenance = installed.ForExtension(
                     descriptor.Directory
                 );
+
+                // Installing is not trusting, in either scope (addendum, phase 6): a descriptor an
+                // install record owns is pending wherever it landed, while a hand-placed user-scope
+                // extension stays trusted by placement and a hand-placed project one still asks.
+                if (descriptor.Scope is not ExtensionScope.Project && provenance is null)
+                {
+                    continue;
+                }
                 string hash = installed.BindTrustDigest(
                     ExtensionTrustStore.ComputeContentHash(descriptor.Directory),
                     provenance

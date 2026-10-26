@@ -58,6 +58,14 @@ public sealed record ProcessRunRequest(
 )
 {
     /// <summary>
+    /// Values applied on top of <see cref="Environment"/> — or on top of an inherited environment
+    /// when that is null — after the replacement above, so a caller can add a marker (the bash tool
+    /// adds <c>LUNATE_SESSION</c>) without restating the child's whole environment and without
+    /// losing it. A name in both wins here.
+    /// </summary>
+    public IReadOnlyDictionary<string, string>? ExtraEnvironment { get; init; }
+
+    /// <summary>
     /// Serves interactive children: when set, every stdout line is handed to it, in order, while
     /// the process runs, and a non-null return is written back to the child's stdin as one flushed
     /// line. Delivery is never capped; <see cref="ProcessRunResult.OutputCapped"/> only reports the

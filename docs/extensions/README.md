@@ -16,6 +16,7 @@ the spec wins.
 | --- | --- |
 | [manifest.md](manifest.md) | Every `extension.json` field, what is enforced, and the refusal messages |
 | [single-file.md](single-file.md) | One `.cs` file as an extension: the header grammar, the directive table, trust and the `/extensions` states |
+| [packages.md](packages.md) | Installing a package by id: the bundle, dependencies and the lock, the record, both scopes, upgrade, uninstall and trust |
 | [lifecycle-and-trust.md](lifecycle-and-trust.md) | Global and project scope, loading, content-hash trust, unload, `apiVersion` |
 | [contributions/](contributions/README.md) | One page per surface: API, constraints, a real example |
 | [testing.md](testing.md) | The test kit, fixtures, and the missing-primitive rule |

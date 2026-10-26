@@ -315,6 +315,14 @@ entry is 13,525 bytes, the compiler contract the published binary carries costs 
 49 MiB, shared with your SDK), and startup stays at a 60 ms median against its 150 ms budget.
 [`docs/extensions/single-file.md`](docs/extensions/single-file.md) is the authoring reference.
 
+When an extension outgrows one file, publish it as a NuGet package and install it by id:
+`lunate install acme-tools@1.2.0`. Its dependencies are resolved by the same walk a single-file
+header uses, its content lands in the same `extensions/` directory, and a record says exactly what
+was written so `lunate uninstall` can take back exactly that. `--project` puts the content in
+`.lunate/extensions/` for the repository to commit and keeps the record local to your machine. An
+installed extension is pending until you approve it, in either scope, and the question names the
+package it came from. [`docs/extensions/packages.md`](docs/extensions/packages.md) is the reference.
+
 ### Skills
 
 A skill is a directory with a `SKILL.md`. Project scope: `.lunate/skills`, `.agents/skills`,

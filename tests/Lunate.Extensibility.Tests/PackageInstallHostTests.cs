@@ -14,7 +14,7 @@ public sealed class PackageInstallHostTests
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
     [Fact]
-    public async Task A_user_install_loads_with_no_question_asked()
+    public async Task A_user_install_asks_before_it_loads()
     {
         using var temp = new TempDirectory();
         string store = Path.Combine(temp.Root, "store");
@@ -39,9 +39,72 @@ public sealed class PackageInstallHostTests
 
         var loader = new ExtensionLoader(new ExtensionHostOptions { StorePath = store });
         loader.Discover(temp.Root, temp.Root);
+        var prompt = new RecordingPrompt(decisions: [true]);
+        LoadedExtension loaded = await loader.Load("hello", temp.Root, temp.Root, prompt, Ct);
+
+        // Installing is not trusting in either scope: a user-scope install asks the one question,
+        // naming the package it came from, and only then loads.
+        Assert.Equal("hello", loaded.Descriptor.Id);
+        ExtensionTrustRequest request = Assert.Single(prompt.Requests);
+        Assert.Equal(ExtensionScope.Global, request.Descriptor.Scope);
+        Assert.Equal("from package Acme.Toolkit@1.4.2 (local)", request.FromPackage);
+
+        // After approval the next session asks nothing: the decision binds the package and the
+        // directory's content hash, like every other trust record.
+        var second = new ExtensionLoader(new ExtensionHostOptions { StorePath = store });
+        second.Discover(temp.Root, temp.Root);
+        var quiet = new RecordingPrompt(decisions: []);
+        LoadedExtension again = await second.Load("hello", temp.Root, temp.Root, quiet, Ct);
+        Assert.Equal("hello", again.Descriptor.Id);
+        Assert.Equal(0, quiet.Calls);
+    }
+
+    [Fact]
+    public async Task A_denied_user_install_does_not_load()
+    {
+        using var temp = new TempDirectory();
+        string store = Path.Combine(temp.Root, "store");
+        TestPackageBundle bundle = HelloBundle(temp.Root);
+        bundle.Save();
+        await new PackageInstaller(
+            new PackageInstallOptions
+            {
+                Sources = [new SingleFilePackageSource("local", bundle.Feed)],
+                GlobalPackagesFolder = bundle.GlobalPackages,
+            }
+        ).InstallAsync(
+            new PackageInstallRequest
+            {
+                Id = "Acme.Toolkit",
+                Version = "1.4.2",
+                Target = PackageInstallTarget.ForUser(store, "Acme.Toolkit"),
+            },
+            Ct
+        );
+
+        var loader = new ExtensionLoader(new ExtensionHostOptions { StorePath = store });
+        loader.Discover(temp.Root, temp.Root);
+        var prompt = new RecordingPrompt(decisions: [false]);
+
+        await Assert.ThrowsAsync<ExtensionTrustDeniedException>(() =>
+            loader.Load("hello", temp.Root, temp.Root, prompt, Ct)
+        );
+        Assert.Single(prompt.Requests);
+    }
+
+    [Fact]
+    public async Task A_hand_placed_user_scope_extension_still_loads_without_a_question()
+    {
+        using var temp = new TempDirectory();
+        string store = Path.Combine(temp.Root, "store");
+        TestExtensions.InstallHelloExtension(temp, "hello");
+
+        var loader = new ExtensionLoader(new ExtensionHostOptions { StorePath = store });
+        loader.Discover(temp.Root, temp.Root);
         var prompt = new RecordingPrompt(decisions: []);
         LoadedExtension loaded = await loader.Load("hello", temp.Root, temp.Root, prompt, Ct);
 
+        // Trusted by placement: no install record owns it, so nothing asks.
         Assert.Equal("hello", loaded.Descriptor.Id);
         Assert.Equal(0, prompt.Calls);
     }
@@ -288,7 +351,7 @@ public sealed class PackageInstallHostTests
         // The control: the markers are real, so their absence above means the code never ran.
         var loader = new ExtensionLoader(new ExtensionHostOptions { StorePath = store });
         loader.Discover(temp.Root, temp.Root);
-        await loader.Load("marker-tools", temp.Root, temp.Root, new RecordingPrompt([]), Ct);
+        await loader.Load("marker-tools", temp.Root, temp.Root, new RecordingPrompt([true]), Ct);
         Assert.True(File.Exists(Path.Combine(installed, "factory-ran.marker")));
         Assert.True(File.Exists(Path.Combine(installed, "assembly-loaded.marker")));
     }

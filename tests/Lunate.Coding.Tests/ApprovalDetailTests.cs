@@ -23,6 +23,18 @@ public sealed class ApprovalDetailTests
     }
 
     [Fact]
+    public void A_bash_command_renders_verbatim_including_a_yes_flag()
+    {
+        const string Command = "lunate install Acme.Toolkit --project --yes";
+
+        var detail = Build("bash", Args(("command", Command)), width: 80);
+
+        // The approval panel shows the command the user is approving, flag and all: the session gate
+        // rests on --yes being visible in that text.
+        Assert.Equal([Command], detail);
+    }
+
+    [Fact]
     public void Bash_command_keeps_its_tail_at_a_narrow_terminal_width()
     {
         var detail = Build("bash", Args(("command", new string('x', 80))), width: 60);

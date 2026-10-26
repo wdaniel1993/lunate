@@ -31,12 +31,32 @@ internal static class TrustCommand
         string? workingDirectory,
         TextWriter output,
         TextWriter errors,
-        ExtensionSeams? seams
+        ExtensionSeams? seams,
+        Func<string, string?>? environment = null
     )
     {
         if (!TryParse(args, errors, out Options options))
         {
             return ExitUsage;
+        }
+
+        // The marker the bash tool sets for its children. Approval is the user's answer, so a
+        // session cannot give it on their behalf — not even with --yes, because --yes is exactly
+        // the flag that would make it silent. Clearing is allowed: revoking trust escalates
+        // nothing. A human at a terminal outside a session never carries the marker.
+        if (options.Yes && !options.Clear)
+        {
+            string? marker = (environment ?? Environment.GetEnvironmentVariable)(
+                LunateHome.SessionVariable
+            );
+            if (string.Equals(marker, LunateHome.SessionMarker, StringComparison.Ordinal))
+            {
+                errors.WriteLine(
+                    "lunate: trust cannot be approved from inside a Lunate session; answer the "
+                        + "session's trust prompt, or run this from a terminal outside the session."
+                );
+                return ExitUsage;
+            }
         }
 
         try

@@ -50,10 +50,14 @@ internal sealed class PackageFeedFixture : IDisposable
         string extensionId = "acme-tools",
         string extensionVersion = "0.1.0",
         string[]? dependencies = null,
+        long padBytes = 0,
+        string? tools = null,
+        string? entryAssemblyFrom = null,
         params string[] skills
     )
     {
         _entries.Clear();
+        string declaredTools = tools is null ? string.Empty : $",\"tools\":{tools}";
         File(
             "lunate.package.json",
             """
@@ -67,11 +71,40 @@ internal sealed class PackageFeedFixture : IDisposable
               "id": "{{extensionId}}",
               "version": "{{extensionVersion}}",
               "apiVersion": "1.11.0",
-              "entryAssembly": "{{extensionId}}.dll"
+              "entryAssembly": "{{extensionId}}.dll"{{declaredTools}}
             }
             """
         );
-        File($"extension/{extensionId}.dll", "assembly bytes");
+        if (entryAssemblyFrom is null)
+        {
+            File($"extension/{extensionId}.dll", "assembly bytes");
+        }
+        else
+        {
+            // A real fixture extension's DLL, so a session can be started over the installed
+            // content and asked what the extension registers.
+            _entries.Add(
+                (
+                    $"extension/{extensionId}.dll",
+                    System.IO.File.ReadAllBytes(
+                        Path.Combine(
+                            AppContext.BaseDirectory,
+                            "TestExtensions",
+                            entryAssemblyFrom,
+                            entryAssemblyFrom + ".dll"
+                        )
+                    )
+                )
+            );
+        }
+
+        if (padBytes > 0)
+        {
+            // One zero-filled entry, so a package can cross a size threshold without the test
+            // writing megabytes of compressible text.
+            _entries.Add(("extension/pad.bin", new byte[padBytes]));
+        }
+
         foreach (string skill in skills.Length == 0 ? ["greek"] : skills)
         {
             File(
@@ -142,7 +175,12 @@ internal sealed class PackageFeedFixture : IDisposable
         return directory;
     }
 
-    internal int Run(string[] args, out string output, out string errors)
+    internal int Run(
+        string[] args,
+        out string output,
+        out string errors,
+        Func<string, string?>? environment = null
+    )
     {
         StringWriter outWriter = new();
         StringWriter errorWriter = new();
@@ -151,12 +189,16 @@ internal sealed class PackageFeedFixture : IDisposable
             Worktree,
             outWriter,
             errorWriter,
-            new ExtensionSeams { StorePath = Store }
+            new ExtensionSeams { StorePath = Store },
+            environment: environment
         );
         output = outWriter.ToString().ReplaceLineEndings("\n");
         errors = errorWriter.ToString().ReplaceLineEndings("\n");
         return exitCode;
     }
+
+    /// <summary>The environment a bash command started by a Lunate session sees.</summary>
+    internal static string? InsideSession(string name) => name == "LUNATE_SESSION" ? "1" : null;
 
     /// <summary>The <c>lunate uninstall</c> command against this fixture's feed and store.</summary>
     internal int RunUninstall(string[] args, out string output, out string errors)

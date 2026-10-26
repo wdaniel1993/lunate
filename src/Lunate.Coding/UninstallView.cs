@@ -81,6 +81,62 @@ internal static class UninstallView
             ? root
             : storeRoot;
 
+    /// <summary>
+    /// What a forced removal of a package whose record could not be read did (spec: "Uninstall"):
+    /// every path it removed, and the two places only a readable record could have searched.
+    /// </summary>
+    internal static string Text(PackageBrokenUninstallResult result)
+    {
+        ArgumentNullException.ThrowIfNull(result);
+
+        List<string> lines =
+        [
+            Invariant($"package: {result.PackageId} (the record could not be read)"),
+            Invariant($"record: '{result.RecordPath}' removed"),
+            Invariant($"removed: {result.RemovedFiles.Count} files"),
+        ];
+        foreach (string file in result.RemovedFiles)
+        {
+            lines.Add(Invariant($"removed file: '{file}'"));
+        }
+
+        foreach (string directory in result.RemovedDirectories)
+        {
+            lines.Add(Invariant($"removed directory: '{directory}'"));
+        }
+
+        lines.Add(
+            Invariant(
+                $"not known: '{result.UnknownPaths[0]}' (the skill directories) and '{result.UnknownPaths[1]}' (an extension id unlike the package id) — only a readable record could have named them"
+            )
+        );
+        lines.Add(
+            "forced: the record could not be read, so the package id named the paths it could"
+        );
+        return Lines(lines);
+    }
+
+    internal static string Json(PackageBrokenUninstallResult result)
+    {
+        ArgumentNullException.ThrowIfNull(result);
+
+        return new System.Text.Json.Nodes.JsonObject
+        {
+            ["id"] = result.PackageId,
+            ["version"] = null,
+            ["scope"] = null,
+            ["worktree"] = null,
+            ["record"] = result.RecordPath,
+            ["recordRemoved"] = true,
+            ["recordUnreadable"] = result.Problem,
+            ["forced"] = true,
+            ["removed"] = Strings(result.RemovedFiles),
+            ["directories"] = Strings(result.RemovedDirectories),
+            ["left"] = new System.Text.Json.Nodes.JsonArray(),
+            ["notKnown"] = Strings(result.UnknownPaths),
+        }.ToJsonString();
+    }
+
     private static string ScopeText(PackageScope scope) =>
         scope == PackageScope.Project ? "project" : "user";
 

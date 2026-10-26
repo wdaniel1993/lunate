@@ -45,18 +45,42 @@ internal static class UninstallCommand
             string storeRoot =
                 seams?.StorePath
                 ?? LunateHome.StoreOutsideWorkspace(workspace.WorktreeRoot, workspace.RepoRoot);
-            PackageUninstallResult result = new PackageUninstaller().Uninstall(
-                new PackageUninstallRequest
-                {
-                    Id = request.Id,
-                    StoreRoot = storeRoot,
-                    Force = request.Force,
-                }
-            );
+            PackageUninstallResult? result = null;
+            PackageBrokenUninstallResult? broken = null;
+            var uninstaller = new PackageUninstaller();
+            try
+            {
+                result = uninstaller.Uninstall(
+                    new PackageUninstallRequest
+                    {
+                        Id = request.Id,
+                        StoreRoot = storeRoot,
+                        Force = request.Force,
+                    }
+                );
+            }
+            catch (InvalidDataException) when (request.Force)
+            {
+                // --force is the answer to a record nothing may act on: the package id names the
+                // record's own directory and the extension directory beside the package id.
+                broken = uninstaller.UninstallBroken(
+                    new PackageUninstallRequest
+                    {
+                        Id = request.Id,
+                        StoreRoot = storeRoot,
+                        Force = true,
+                    }
+                );
+            }
+
             output.Write(
                 request.Json
-                    ? UninstallView.Json(result, storeRoot) + "\n"
-                    : UninstallView.Text(result, storeRoot)
+                    ? broken is not null
+                        ? UninstallView.Json(broken) + "\n"
+                        : UninstallView.Json(result!, storeRoot) + "\n"
+                    : broken is not null
+                        ? UninstallView.Text(broken)
+                        : UninstallView.Text(result!, storeRoot)
             );
             return ExitOk;
         }

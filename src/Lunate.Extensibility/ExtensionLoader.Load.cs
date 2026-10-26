@@ -42,7 +42,13 @@ public sealed partial class ExtensionLoader
             );
         }
 
-        if (descriptor.Scope == ExtensionScope.Project)
+        // Project extensions always ask; an installed one asks in either scope, because installing
+        // is not trusting (addendum, phase 6). A hand-placed user-scope extension is still trusted
+        // by placement and never reaches this.
+        InstalledPackageProvenance? installedProvenance = Installed.ForExtension(
+            descriptor.Directory
+        );
+        if (descriptor.Scope is ExtensionScope.Project || installedProvenance is not null)
         {
             await EnsureTrustedAsync(
                     descriptor,
