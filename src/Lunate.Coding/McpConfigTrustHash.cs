@@ -1,5 +1,3 @@
-using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json.Nodes;
 using Lunate.Protocols;
 
@@ -65,7 +63,7 @@ internal static class McpConfigTrustHash
         var arguments = new JsonArray();
         foreach (string argument in server.Arguments)
         {
-            arguments.Add(argument);
+            arguments.Add(Normalize(argument));
         }
 
         JsonNode environment;
@@ -81,7 +79,7 @@ internal static class McpConfigTrustHash
                     )
                 )
                 {
-                    values[entry.Key] = entry.Value;
+                    values[entry.Key] = Normalize(entry.Value);
                 }
             }
 
@@ -107,18 +105,23 @@ internal static class McpConfigTrustHash
         }
 
         double? callTimeoutSeconds = server.CallTimeout?.TotalSeconds;
+
+        // A definition's own line endings are the checkout's, not the author's: normalizing them
+        // keeps the hash of the same mcp.json equal on a Windows and a POSIX checkout, so a pure
+        // line-ending change does not re-prompt. Absent env stays an empty map.
         return new JsonObject
         {
-            ["name"] = server.Name,
-            ["command"] = server.Command,
+            ["name"] = Normalize(server.Name),
+            ["command"] = Normalize(server.Command),
             ["args"] = arguments,
             ["env"] = environment,
-            ["cwd"] = server.WorkingDirectory,
+            ["cwd"] = Normalize(server.WorkingDirectory),
             ["callTimeoutSeconds"] = callTimeoutSeconds,
             ["workspaceIndependent"] = server.WorkspaceIndependent,
         };
     }
 
-    internal static string Hash(JsonNode node) =>
-        Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(node.ToJsonString())));
+    private static string? Normalize(string? value) => value?.ReplaceLineEndings("\n");
+
+    internal static string Hash(JsonNode node) => CanonicalJson.Hash(node);
 }

@@ -71,7 +71,7 @@ public sealed class TextFileAccessSeamTests
         Assert.Equal("wrote 1 lines to New.txt (created)", result.Output);
         var write = Assert.Single(files.Writes);
         Assert.Equal(Path.Combine(root, "New.txt"), write.Path);
-        Assert.Equal("seam write\n", write.Text);
+        Assert.Equal("seam write\n".ReplaceLineEndings(Environment.NewLine), write.Text);
         Assert.False(File.Exists(temp.File("New.txt")));
     }
 

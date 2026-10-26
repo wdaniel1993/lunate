@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "files": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/work"],
+      "env": {
+        "LOG_LEVEL": "info"
+      }
+    }
+  }
+}

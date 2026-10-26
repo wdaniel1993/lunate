@@ -453,6 +453,25 @@ public sealed class EditToolTests
         Assert.Equal("ALPHA\nbeta\nGAMMA\n", File.ReadAllText(temp.File("Shared.txt")));
     }
 
+    [Fact]
+    public async Task A_file_with_mixed_endings_is_unified_to_its_dominant_ending()
+    {
+        using var temp = new TempDirectory();
+        string path = temp.File("Mixed.cs");
+        File.WriteAllText(path, "one\r\ntwo\nthree\r\nfour\r\nfive\r\n");
+
+        var result = await EditAsync(
+            temp,
+            """{"path":"Mixed.cs","old_text":"four","new_text":"FOUR"}"""
+        );
+
+        Assert.False(result.IsError);
+        Assert.Equal(
+            [.. Encoding.UTF8.GetBytes("one\r\ntwo\r\nthree\r\nFOUR\r\nfive\r\n")],
+            File.ReadAllBytes(path)
+        );
+    }
+
     private static Task<ToolResult> EditAsync(TempDirectory temp, string arguments) =>
         EditAsync(temp.Root, arguments);
 

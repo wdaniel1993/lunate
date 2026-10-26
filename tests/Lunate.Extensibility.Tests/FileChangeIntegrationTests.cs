@@ -160,7 +160,7 @@ public sealed class FileChangeIntegrationTests
         await bus.DrainAsync(Ct);
 
         Assert.False(result.IsError);
-        Assert.Equal("hello\nworld\n", observed);
+        Assert.Equal("hello\nworld\n".ReplaceLineEndings(Environment.NewLine), observed);
     }
 
     private static ToolContext For(

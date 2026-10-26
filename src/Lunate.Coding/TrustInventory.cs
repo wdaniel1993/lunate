@@ -1,5 +1,3 @@
-using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json.Nodes;
 using Lunate.Extensibility;
 using Lunate.Protocols;
@@ -238,9 +236,7 @@ internal sealed class TrustInventory
         }
 
         JsonArray canonical = BuildPendingNode(includeLocations: false, includeEnvValues: true);
-        return Convert.ToHexStringLower(
-            SHA256.HashData(Encoding.UTF8.GetBytes(canonical.ToJsonString()))
-        );
+        return CanonicalJson.Hash(canonical);
     }
 
     internal static TrustInventory Create(Workspace workspace, ExtensionSeams? seams)

@@ -243,6 +243,29 @@ public sealed class TrustInventoryTests
         Assert.NotEqual(first, changed);
     }
 
+    [Fact]
+    public void The_digest_ignores_a_pure_line_ending_change_in_a_project_extension()
+    {
+        using var temp = new TempDirectory();
+        string worktree = InstallExtension(temp);
+        string store = temp.File("store");
+        string manifest = Path.Combine(
+            worktree,
+            ".lunate",
+            "extensions",
+            "hello",
+            "extension.json"
+        );
+
+        string? before = Create(worktree, store).Digest;
+
+        File.WriteAllText(manifest, File.ReadAllText(manifest).ReplaceLineEndings("\r\n"));
+        string? after = Create(worktree, store).Digest;
+
+        Assert.NotNull(before);
+        Assert.Equal(before, after);
+    }
+
     private static TrustInventory Create(string worktree, string store) =>
         TrustInventory.Create(new Workspace(worktree), new ExtensionSeams { StorePath = store });
 

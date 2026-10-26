@@ -135,7 +135,10 @@ public sealed class AcpFileSystemTests
             ReadResults(model),
             result => result.Contains("disk content", StringComparison.Ordinal)
         );
-        Assert.Equal("local write\n", File.ReadAllText(temp.File("new.txt")));
+        Assert.Equal(
+            "local write\n".ReplaceLineEndings(Environment.NewLine),
+            File.ReadAllText(temp.File("new.txt"))
+        );
     }
 
     [Fact]

@@ -185,6 +185,19 @@ public sealed class McpConfigTrustHashTests
         }
     }
 
+    [Fact]
+    public void A_value_whose_only_change_is_its_line_endings_hashes_the_same()
+    {
+        var lf = new McpServerOptions("srv", "run", ["one\ntwo"], WorkingDirectory: "/work");
+        var crlf = new McpServerOptions("srv", "run", ["one\r\ntwo"], WorkingDirectory: "/work");
+
+        Assert.Equal(
+            McpConfigTrustHash.ComputeDefinition(lf),
+            McpConfigTrustHash.ComputeDefinition(crlf)
+        );
+        Assert.Equal(McpConfigTrustHash.Compute([lf]), McpConfigTrustHash.Compute([crlf]));
+    }
+
     private static string ConfigDefinition(TempDirectory temp, string name, string command)
     {
         string path = temp.File(name);
