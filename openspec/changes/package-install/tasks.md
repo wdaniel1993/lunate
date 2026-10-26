@@ -21,7 +21,7 @@
 - [x] 2.6 Red: `--offline` with the nupkg already in the packages folder completes and the feed observer records zero requests; with a cold folder it fails naming the package and the folder, and writes nothing.
 - [x] 2.7 Red: a download, verification or extraction failure leaves no content and no record; a second run succeeds; staging is gone.
 - [x] 2.8 `lunate packages`, `--json` and `--verify` — the line shape, the ordering by scope then id, `packages: none installed`, `[]`, and exit 3 when a record fails.
-- [ ] 2.9 Gate: local-feed tests pass, the zero-request test is in the suite permanently (the same shape as the stale-digest test), `lunate packages --json` on a fixture store matches the documented object, and `scripts/verify.sh` passes.
+- [x] 2.9 Gate: local-feed tests pass, the zero-request test is in the suite permanently (the same shape as the stale-digest test), `lunate packages --json` on a fixture store matches the documented object, and `scripts/verify.sh` passes — 5,550 tests per culture pass with 0 failures, startup floor 59 ms (median 60, budget 150).
 
 ## 3. Content, scope and trust integration (PR 3)
 
