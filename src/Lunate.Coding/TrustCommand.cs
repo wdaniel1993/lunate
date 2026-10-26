@@ -249,6 +249,11 @@ internal static class TrustCommand
             output.WriteLine(
                 TrustFormat.ExtensionQuestion(extension.Descriptor, extension.FilesChanged)
             );
+            if (extension.FromPackage is { Length: > 0 } fromPackage)
+            {
+                output.WriteLine($"  {fromPackage}");
+            }
+
             output.WriteLine($"hash: {extension.ContentHash}");
         }
 
@@ -280,6 +285,11 @@ internal static class TrustCommand
             foreach (string detail in SkillTrust.QuestionDetails(skills.Names))
             {
                 output.WriteLine($"  {detail}");
+            }
+
+            foreach (string fromPackage in skills.FromPackages)
+            {
+                output.WriteLine($"  {fromPackage}");
             }
 
             output.WriteLine($"hash: {skills.ContentHash}");

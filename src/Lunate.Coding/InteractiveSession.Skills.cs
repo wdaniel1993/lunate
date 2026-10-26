@@ -21,6 +21,9 @@ internal sealed partial class InteractiveSession
                 _options.HomeDirectory,
                 _extensions?.SkillContributions() ?? []
             )
+            {
+                Installed = Installed,
+            }
         );
         _skills.SetProjectTrusted(await EnsureSkillsTrustedAsync(ct).ConfigureAwait(false));
         _skills.BuildIndex(
@@ -66,7 +69,8 @@ internal sealed partial class InteractiveSession
         ExtensionTrustStore store = TrustStore();
         string hash = SkillTrust.ComputeContentHash(
             project,
-            _workspace.RepoRoot ?? _workspace.WorktreeRoot
+            _workspace.RepoRoot ?? _workspace.WorktreeRoot,
+            Installed
         );
         switch (store.EvaluateSkills(identity, _workspace.WorktreeRoot, hash))
         {
@@ -83,7 +87,7 @@ internal sealed partial class InteractiveSession
             default:
                 bool approved = await AskTrustAsync(
                         SkillTrust.QuestionTitle,
-                        SkillTrust.QuestionDetails(SkillTrust.Names(project)),
+                        SkillTrust.QuestionLines(project, Installed),
                         ct
                     )
                     .ConfigureAwait(false);

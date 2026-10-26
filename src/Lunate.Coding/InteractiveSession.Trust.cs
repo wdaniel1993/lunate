@@ -5,6 +5,8 @@ namespace Lunate.Coding;
 
 internal sealed partial class InteractiveSession
 {
+    private InstalledPackages? _installed;
+
     /// <summary>The key sequence at which the pending trust question armed (test seam).</summary>
     internal long TrustArmSequence => Interlocked.Read(ref _trustArmSequence);
 
@@ -99,6 +101,13 @@ internal sealed partial class InteractiveSession
     }
 
     private ExtensionTrustStore TrustStore() => new(TrustOptions());
+
+    /// <summary>
+    /// What this machine installed, read once per session: the trust digests bind the package a
+    /// directory came from, and <c>/skills</c> names it (design D7).
+    /// </summary>
+    private InstalledPackages Installed =>
+        _installed ??= InstalledPackages.Read(TrustOptions().StorePath);
 
     private ExtensionHostOptions TrustOptions() =>
         new()

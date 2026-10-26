@@ -507,15 +507,15 @@ internal static class PrintMode
         }
 
         string identity = workspace.GitCommonDir ?? workspace.WorktreeRoot;
-        var store = new ExtensionTrustStore(
-            new ExtensionHostOptions
-            {
-                StorePath = seams?.StorePath ?? ExtensionHostOptions.Default.StorePath,
-            }
-        );
+        var options = new ExtensionHostOptions
+        {
+            StorePath = seams?.StorePath ?? ExtensionHostOptions.Default.StorePath,
+        };
+        var store = new ExtensionTrustStore(options);
         string hash = SkillTrust.ComputeContentHash(
             project,
-            workspace.RepoRoot ?? workspace.WorktreeRoot
+            workspace.RepoRoot ?? workspace.WorktreeRoot,
+            InstalledPackages.Read(options.StorePath)
         );
         switch (store.EvaluateSkills(identity, workspace.WorktreeRoot, hash))
         {

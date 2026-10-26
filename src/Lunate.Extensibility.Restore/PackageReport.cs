@@ -15,13 +15,45 @@ public static class PackageReport
         ArgumentNullException.ThrowIfNull(package);
 
         StringBuilder text = new();
-        text.AppendLine(Invariant($"package: {package.Id} {package.Version}"));
-        text.AppendLine(Invariant($"source: {package.ArchivePath}"));
-        text.AppendLine(Invariant($"sha512: {package.Sha512}"));
-        text.AppendLine(
-            Invariant(
-                $"archive: {package.Files.Count} files, {package.ExpandedBytes} bytes expanded"
-            )
+        foreach (string line in Body(package, package.ArchivePath))
+        {
+            text.AppendLine(line);
+        }
+
+        text.AppendLine("dry-run: nothing was written");
+        return text.ToString().ReplaceLineEndings("\n");
+    }
+
+    /// <summary>
+    /// The same identity lines with the feed a real install read from and the scope it would write
+    /// to: what <c>lunate install</c> prints before writing, and what a dry run prints in place of
+    /// the archive path.
+    /// </summary>
+    public static IReadOnlyList<string> Identity(
+        PackageInfo package,
+        string source,
+        string scope,
+        string? worktree = null
+    )
+    {
+        ArgumentNullException.ThrowIfNull(package);
+
+        List<string> lines = [.. Body(package, source), Invariant($"scope: {scope}")];
+        if (worktree is { Length: > 0 })
+        {
+            lines.Add(Invariant($"worktree: {worktree}"));
+        }
+
+        return lines;
+    }
+
+    private static IEnumerable<string> Body(PackageInfo package, string source)
+    {
+        yield return Invariant($"package: {package.Id} {package.Version}");
+        yield return Invariant($"source: {source}");
+        yield return Invariant($"sha512: {package.Sha512}");
+        yield return Invariant(
+            $"archive: {package.Files.Count} files, {package.ExpandedBytes} bytes expanded"
         );
 
         if (package.Extension is { } extension)
@@ -29,33 +61,24 @@ public static class PackageReport
             string entry = extension.Manifest.EntryAssembly is { } assembly
                 ? Invariant($", entry {assembly}")
                 : string.Empty;
-            text.AppendLine(
-                Invariant(
-                    $"extension: {extension.Manifest.Id} {extension.Manifest.Version} (apiVersion {extension.Manifest.ApiVersion}{entry})"
-                )
+            yield return Invariant(
+                $"extension: {extension.Manifest.Id} {extension.Manifest.Version} (apiVersion {extension.Manifest.ApiVersion}{entry})"
             );
         }
 
         if (package.Skills.Count > 0)
         {
-            text.AppendLine(
-                Invariant(
-                    $"skills: {string.Join(", ", package.Skills.Select(skill => skill.Name))}"
-                )
+            yield return Invariant(
+                $"skills: {string.Join(", ", package.Skills.Select(skill => skill.Name))}"
             );
         }
 
         if (package.IgnoredFolders.Count > 0)
         {
-            text.AppendLine(
-                Invariant(
-                    $"ignored: {string.Join(", ", package.IgnoredFolders.Select(folder => folder + "/"))}"
-                )
+            yield return Invariant(
+                $"ignored: {string.Join(", ", package.IgnoredFolders.Select(folder => folder + "/"))}"
             );
         }
-
-        text.AppendLine("dry-run: nothing was written");
-        return text.ToString().ReplaceLineEndings("\n");
     }
 
     private static string Invariant(FormattableString text) =>

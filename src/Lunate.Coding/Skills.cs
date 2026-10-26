@@ -1,3 +1,5 @@
+using Lunate.Extensibility;
+
 namespace Lunate.Coding;
 
 /// <summary>Where a discovered skill comes from.</summary>
@@ -47,6 +49,12 @@ internal sealed record SkillDescriptor(
     /// <summary>Whether index composition cut this skill from the model index (overflow).</summary>
     public bool NotIndexed { get; init; }
 
+    /// <summary>
+    /// <c>&lt;package&gt;@&lt;version&gt;</c> when an install provided this skill (design D7);
+    /// null for a hand-written or extension-contributed one.
+    /// </summary>
+    internal string? FromPackage { get; init; }
+
     /// <summary>The scope label of this entry as <c>/skills</c> renders it.</summary>
     internal string ScopeLabel =>
         Scope switch
@@ -88,7 +96,15 @@ internal sealed record SkillScanRequest(
     string? RepoRoot,
     string? HomeDirectory,
     IReadOnlyList<ExtensionSkillSource> ExtensionSources
-);
+)
+{
+    /// <summary>
+    /// What this machine installed, for the <c>from &lt;package&gt;@&lt;version&gt;</c> provenance an
+    /// installed skill carries; null reads the state root the same walk resolves its user skills
+    /// under.
+    /// </summary>
+    internal InstalledPackages? Installed { get; init; }
+}
 
 /// <summary>The scan outcome: every discovered entry (resolved winners and invalid entries), the
 /// one-time warnings and the read-only allowance roots (every discovered skill directory).</summary>

@@ -24,8 +24,18 @@ public sealed record PackageInstallTarget
 
     /// <summary>The directory that holds <c>&lt;skill-name&gt;/</c>, relative to the scope root.</summary>
     public string SkillsDirectory { get; init; } = "skills";
-
     public string RecordPath => Path.Combine(RecordDirectory, PackageInstallRecordJson.FileName);
+
+    /// <summary>
+    /// The state root the record lives under. The record directory is
+    /// <c>&lt;root&gt;/packages/&lt;package-id&gt;/</c>, so the root is its grandparent; the install
+    /// reads it to find the other scope's content without carrying a second copy of the same path.
+    /// </summary>
+    public string StoreRoot =>
+        Path.GetDirectoryName(Path.GetDirectoryName(RecordDirectory))
+        ?? throw new InvalidOperationException(
+            $"the record directory '{RecordDirectory}' is not under a state root."
+        );
 
     /// <summary>Where a download is written and verified before any recorded content exists.</summary>
     public string StagingDirectory => Path.Combine(RecordDirectory, "staging");
@@ -58,8 +68,8 @@ public sealed record PackageInstallTarget
             RecordDirectory = PackageDirectory(storeRoot, packageId),
             Scope = PackageScope.Project,
             Worktree = Absolute(worktreeRoot),
-            ExtensionDirectory = ".lunate/extensions",
-            SkillsDirectory = ".agents/skills",
+            ExtensionDirectory = ProjectScope.ExtensionsDirectory,
+            SkillsDirectory = ProjectScope.SkillsDirectory,
         };
 
     /// <summary>

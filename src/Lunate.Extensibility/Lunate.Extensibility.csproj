@@ -13,5 +13,8 @@
              one is. -->
         <InternalsVisibleTo Include="lunate" />
         <InternalsVisibleTo Include="Lunate.Extensibility.Restore" />
+        <!-- The install/trust integration tests read the provenance index the loader reads, so a
+             record written by the installer and one read here can never drift apart silently. -->
+        <InternalsVisibleTo Include="Lunate.Extensibility.Tests" />
     </ItemGroup>
 </Project>

@@ -27,6 +27,10 @@
             ReferenceOutputAssembly="false"
         />
         <ProjectReference
+            Include="../TestExtensions/MarkerExtension/MarkerExtension.csproj"
+            ReferenceOutputAssembly="false"
+        />
+        <ProjectReference
             Include="../TestExtensions/ModelExtension/ModelExtension.csproj"
             ReferenceOutputAssembly="false"
         />
@@ -59,6 +63,11 @@
             Properties="Configuration=$(Configuration)"
         />
         <MSBuild
+            Projects="$(MSBuildThisFileDirectory)../TestExtensions/MarkerExtension/MarkerExtension.csproj"
+            Targets="Build"
+            Properties="Configuration=$(Configuration)"
+        />
+        <MSBuild
             Projects="$(MSBuildThisFileDirectory)../TestExtensions/ModelExtension/ModelExtension.csproj"
             Targets="Build"
             Properties="Configuration=$(Configuration)"
@@ -68,6 +77,7 @@
             <McpExtensionFiles Include="$(MSBuildThisFileDirectory)../TestExtensions/McpExtension/bin/$(Configuration)/$(TargetFramework)/**/*" />
             <ToolExtensionFiles Include="$(MSBuildThisFileDirectory)../TestExtensions/ToolExtension/bin/$(Configuration)/$(TargetFramework)/**/*" />
             <CommandExtensionFiles Include="$(MSBuildThisFileDirectory)../TestExtensions/CommandExtension/bin/$(Configuration)/$(TargetFramework)/**/*" />
+            <MarkerExtensionFiles Include="$(MSBuildThisFileDirectory)../TestExtensions/MarkerExtension/bin/$(Configuration)/$(TargetFramework)/**/*" />
             <ModelExtensionFiles Include="$(MSBuildThisFileDirectory)../TestExtensions/ModelExtension/bin/$(Configuration)/$(TargetFramework)/**/*" />
         </ItemGroup>
         <Copy
@@ -88,6 +98,11 @@
         <Copy
             SourceFiles="@(CommandExtensionFiles)"
             DestinationFolder="$(OutDir)TestExtensions/CommandExtension/%(RecursiveDir)"
+            SkipUnchangedFiles="true"
+        />
+        <Copy
+            SourceFiles="@(MarkerExtensionFiles)"
+            DestinationFolder="$(OutDir)TestExtensions/MarkerExtension/%(RecursiveDir)"
             SkipUnchangedFiles="true"
         />
         <Copy

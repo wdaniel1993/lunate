@@ -47,6 +47,31 @@ internal sealed class GitTestRepo : IDisposable
         );
     }
 
+    /// <summary>Runs one git command in <paramref name="root"/> and returns its standard output.</summary>
+    internal static string Output(string root, params string[] arguments)
+    {
+        var startInfo = new ProcessStartInfo("git")
+        {
+            WorkingDirectory = root,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+        };
+        foreach (string argument in arguments)
+        {
+            startInfo.ArgumentList.Add(argument);
+        }
+
+        using Process process = Process.Start(startInfo)!;
+        string stdout = process.StandardOutput.ReadToEnd();
+        string stderr = process.StandardError.ReadToEnd();
+        process.WaitForExit();
+        Assert.True(
+            process.ExitCode == 0,
+            $"git {string.Join(' ', arguments)} failed ({process.ExitCode}): {stderr}"
+        );
+        return stdout;
+    }
+
     /// <summary>Writes a file under the repo root (creating directories), returns its absolute path.</summary>
     internal string Write(string relativePath, string content)
     {

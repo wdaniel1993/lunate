@@ -83,6 +83,11 @@ internal static class Cli
             return PackagesCommand.Run(args[1..], workingDirectory, output, errors, extensions);
         }
 
+        if (args.Length > 0 && args[0] == "install")
+        {
+            return InstallCommand.Run(args[1..], workingDirectory, output, errors, extensions, ct);
+        }
+
         if (args.Length > 0 && args[0] == "--discover")
         {
             if (args.Length != 2 || string.IsNullOrWhiteSpace(args[1]))

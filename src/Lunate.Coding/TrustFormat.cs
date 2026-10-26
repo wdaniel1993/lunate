@@ -49,6 +49,13 @@ internal static class TrustFormat
             : $"Load project extension '{descriptor.Id}' {descriptor.Version} from {descriptor.Directory}{privileges}";
     }
 
+    /// <summary>
+    /// The question's detail lines: the one provenance line an installed extension carries (design
+    /// D7), so the prompt, the trust report and the tests read one wording.
+    /// </summary>
+    internal static IReadOnlyList<string> ProvenanceLine(string? fromPackage) =>
+        fromPackage is { Length: > 0 } ? [fromPackage] : [];
+
     internal static string McpQuestionTitle(string configPath, int serverCount) =>
         FormattableString.Invariant(
             $"Start {serverCount} {(serverCount == 1 ? "server" : "servers")} from project mcp.json '{configPath}'"
