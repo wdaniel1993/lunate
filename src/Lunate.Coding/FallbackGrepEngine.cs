@@ -62,6 +62,16 @@ internal sealed class FallbackGrepEngine(ITextFileAccess? files = null) : IGrepE
             );
         }
 
+        // The walk never yields a symlink; this re-check is what keeps a file that resolves out of
+        // the workspace — swapped for a link after the walk, or reached through one — unread.
+        GrepScope? scope = GrepScope.Create(request.Root);
+        if (scope is null)
+        {
+            return Task.FromResult(
+                Error($"could not search '{request.RelativeRoot}': the workspace root is unreadable")
+            );
+        }
+
         List<GrepMatch> matches = [];
         var more = 0;
         try
@@ -82,6 +92,11 @@ internal sealed class FallbackGrepEngine(ITextFileAccess? files = null) : IGrepE
                     request.Root,
                     entry.Path.Replace('/', Path.DirectorySeparatorChar)
                 );
+                if (!scope.Contains(absolute))
+                {
+                    continue;
+                }
+
                 if (IsBinary(absolute, out string text))
                 {
                     continue;

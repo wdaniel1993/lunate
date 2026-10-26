@@ -37,6 +37,9 @@ internal sealed class RipgrepGrepEngine : IGrepEngine
     {
         List<string> arguments =
         [
+            // A config file would let the environment inject flags — `--follow` reads through
+            // symlinks, `--pre` runs a program — into a tool the policy calls read-only.
+            "--no-config",
             "--json",
             "--color",
             "never",
@@ -120,8 +123,18 @@ internal sealed class RipgrepGrepEngine : IGrepEngine
 
     private GrepSearch Parse(string output, GrepRequest request)
     {
+        // ripgrep's own output is not proof of containment: `--no-config` closes the config door,
+        // and this closes the rest — a match whose path resolves outside the workspace is dropped.
+        GrepScope? scope = GrepScope.Create(request.Root);
+        if (scope is null)
+        {
+            return Error($"could not search '{request.RelativeRoot}': the workspace root is unreadable");
+        }
+
         List<GrepMatch> matches = [];
-        Dictionary<string, bool> binary = new(StringComparer.Ordinal);
+        // One probe per path: a match is dropped when the file is binary or resolves out of the
+        // workspace, and both answers are worth remembering for the file's remaining lines.
+        Dictionary<string, bool> skip = new(StringComparer.Ordinal);
         var more = 0;
         foreach (string line in output.Split('\n', StringSplitOptions.RemoveEmptyEntries))
         {
@@ -156,13 +169,15 @@ internal sealed class RipgrepGrepEngine : IGrepEngine
                 {
                     path = path[2..];
                 }
-                if (!binary.TryGetValue(path, out bool isBinary))
+                if (!skip.TryGetValue(path, out bool skipped))
                 {
-                    isBinary = ProbeBinary(path, request.Root);
-                    binary[path] = isBinary;
+                    skipped =
+                        !scope.Contains(Absolute(path, request.Root))
+                        || ProbeBinary(path, request.Root);
+                    skip[path] = skipped;
                 }
 
-                if (isBinary)
+                if (skipped)
                 {
                     continue;
                 }
@@ -194,8 +209,8 @@ internal sealed class RipgrepGrepEngine : IGrepEngine
     {
         try
         {
-            string absolute = Path.Combine(root, path.Replace('/', Path.DirectorySeparatorChar));
-            return _files.ReadPrefix(absolute, 8192) is { } probe && probe.Text.Contains('\0');
+            return _files.ReadPrefix(Absolute(path, root), 8192) is { } probe
+                && probe.Text.Contains('\0');
         }
         catch (Exception exception)
             when (exception is IOException or UnauthorizedAccessException or ArgumentException)
@@ -203,6 +218,10 @@ internal sealed class RipgrepGrepEngine : IGrepEngine
             return true;
         }
     }
+
+    /// <summary>The workspace-relative match path as an absolute path on this platform.</summary>
+    private static string Absolute(string path, string root) =>
+        Path.Combine(root, path.Replace('/', Path.DirectorySeparatorChar));
 
     private static GrepSearch Error(string message) => new([], 0, message);
 }

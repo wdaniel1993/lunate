@@ -262,4 +262,33 @@ public sealed class FileIndexTests
         Assert.Contains("real/x.txt", index.Match("real", 10));
         Assert.Empty(index.Match("link", 10));
     }
+
+    [Fact]
+    public void The_real_walk_does_not_index_file_symlinks()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        using var temp = new TempDirectory();
+        using var outside = new TempDirectory();
+        File.WriteAllText(outside.File("auth.json"), string.Empty);
+        File.WriteAllText(temp.File("own.txt"), string.Empty);
+        try
+        {
+            File.CreateSymbolicLink(temp.File("auth.json"), outside.File("auth.json"));
+        }
+        catch (IOException)
+        {
+            return;
+        }
+
+        var index = new FileIndex(new SystemWorkspaceFiles(temp.Root));
+        index.EnsureStarted();
+        WaitReady(index);
+
+        Assert.Contains("own.txt", index.Match("own", 10));
+        Assert.Empty(index.Match("auth", 10));
+    }
 }

@@ -12,7 +12,6 @@ public sealed class Workspace
 {
     private readonly string _workingDirectory;
     private readonly IReadOnlyList<string> _roots;
-    private readonly StringComparison _comparison;
 
     /// <summary>The canonical working directory of this run: the boundary's first allowed root.</summary>
     public string WorktreeRoot { get; }
@@ -44,9 +43,6 @@ public sealed class Workspace
         }
 
         _roots = roots;
-        _comparison = OperatingSystem.IsLinux()
-            ? StringComparison.Ordinal
-            : StringComparison.OrdinalIgnoreCase;
     }
 
     /// <summary>
@@ -99,19 +95,32 @@ public sealed class Workspace
 
     internal static string Canonicalize(string path) => GitIdentity.Canonicalize(path);
 
+    /// <summary>
+    /// True when the canonical <paramref name="path"/> equals <paramref name="root"/> or lies under
+    /// it, under the platform's case rule. A trailing separator on the root is tolerated; both
+    /// arguments must already be canonical, so a symlink cannot make an outsider look like a child.
+    /// </summary>
+    internal static bool IsInside(string root, string path)
+    {
+        var comparison = OperatingSystem.IsLinux()
+            ? StringComparison.Ordinal
+            : StringComparison.OrdinalIgnoreCase;
+        if (path.Equals(root, comparison))
+        {
+            return true;
+        }
+
+        var prefix = root.EndsWith(Path.DirectorySeparatorChar)
+            ? root
+            : root + Path.DirectorySeparatorChar;
+        return path.StartsWith(prefix, comparison);
+    }
+
     private string? FindRoot(string canonical)
     {
         foreach (var root in _roots)
         {
-            if (canonical.Equals(root, _comparison))
-            {
-                return root;
-            }
-
-            var prefix = root.EndsWith(Path.DirectorySeparatorChar)
-                ? root
-                : root + Path.DirectorySeparatorChar;
-            if (canonical.StartsWith(prefix, _comparison))
+            if (IsInside(root, canonical))
             {
                 return root;
             }
