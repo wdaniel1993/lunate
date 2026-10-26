@@ -105,6 +105,36 @@ public sealed class PackageTrustTests
         Assert.Contains("trust: nothing pending", trust.Output, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void An_upgrade_re_prompts_at_the_project_scope()
+    {
+        using var feed = new PackageFeedFixture();
+        GitTestRepo.Init(feed.Worktree);
+        feed.Bundle(version: "1.4.2", skills: ["greek"]);
+        feed.Bundle(version: "1.5.0", skills: ["greek"]);
+        Assert.Equal(0, feed.Run(["Acme.Toolkit@1.4.2", "--project"], out _, out _));
+        Assert.Equal(TrustCommand.ExitPending, Trust(feed, []).ExitCode);
+        Assert.Equal(TrustCommand.ExitOk, Trust(feed, ["--yes"]).ExitCode);
+        Assert.False(
+            TrustInventory
+                .Create(new Workspace(feed.Worktree), new ExtensionSeams { StorePath = feed.Store })
+                .HasPending
+        );
+
+        Assert.Equal(0, feed.Run(["Acme.Toolkit@1.5.0", "--project"], out _, out _));
+
+        // The upgrade changed the identity and the content hash, so the decision recorded for 1.4.2
+        // does not cover 1.5.0: a package change re-prompts, and the question names the new version.
+        Result trust = Trust(feed, []);
+        Assert.Equal(TrustCommand.ExitPending, trust.ExitCode);
+        Assert.Contains(
+            "from package Acme.Toolkit@1.5.0 (local)",
+            trust.Output,
+            StringComparison.Ordinal
+        );
+        Assert.DoesNotContain("Acme.Toolkit@1.4.2", trust.Output, StringComparison.Ordinal);
+    }
+
     private static Result Trust(PackageFeedFixture feed, string[] args)
     {
         StringWriter output = new();

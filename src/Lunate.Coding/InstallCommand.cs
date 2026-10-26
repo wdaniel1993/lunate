@@ -23,7 +23,7 @@ internal static class InstallCommand
     internal const int ExitUsage = 2;
 
     internal const string Usage =
-        "Usage: lunate install <package-id>[@<version>] [--project] [--dry-run] [--json] [--offline]";
+        "Usage: lunate install <package-id>[@<version>] [--project] [--dry-run] [--json] [--offline] [--force]";
 
     internal static int Run(
         string[] args,
@@ -97,6 +97,7 @@ internal static class InstallCommand
             Version = request.Version,
             Target = target,
             Worktree = workspace.WorktreeRoot,
+            Force = request.Force,
         };
 
         if (request.DryRun)
@@ -198,12 +199,13 @@ internal static class InstallCommand
 
     private static bool TryParse(string[] args, TextWriter errors, out Request request)
     {
-        request = new Request(string.Empty, string.Empty, false, false, false, false);
+        request = new Request(string.Empty, string.Empty, false, false, false, false, false);
         string? spec = null;
         var project = false;
         var dryRun = false;
         var json = false;
         var offline = false;
+        var force = false;
         foreach (string arg in args)
         {
             switch (arg)
@@ -219,6 +221,9 @@ internal static class InstallCommand
                     break;
                 case "--offline" when !offline:
                     offline = true;
+                    break;
+                case "--force" when !force:
+                    force = true;
                     break;
                 default:
                     if (spec is not null || arg.StartsWith("--", StringComparison.Ordinal))
@@ -241,7 +246,7 @@ internal static class InstallCommand
         try
         {
             (string id, string version) = Split(spec);
-            request = new Request(id, version, project, dryRun, json, offline);
+            request = new Request(id, version, project, dryRun, json, offline, force);
             return true;
         }
         catch (ArgumentException exception)
@@ -258,6 +263,7 @@ internal static class InstallCommand
         bool Project,
         bool DryRun,
         bool Json,
-        bool Offline
+        bool Offline,
+        bool Force
     );
 }

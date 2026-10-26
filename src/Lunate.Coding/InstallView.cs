@@ -25,11 +25,23 @@ internal static class InstallView
 
         List<string> lines = [.. Identity(result, scope, worktree)];
         lines.Add(
-            result.Status == PackageInstallStatus.AlreadyInstalled
-                ? $"already installed: {result.Record.Package.Version} is unchanged (record '{result.RecordPath}')"
-                : Invariant(
+            result.Status switch
+            {
+                PackageInstallStatus.AlreadyInstalled =>
+                    $"already installed: {result.Record.Package.Version} is unchanged (record '{result.RecordPath}')",
+                PackageInstallStatus.Upgraded => Invariant(
+                    $"upgraded: {result.PreviousVersion} to {result.Record.Package.Version}, {result.WrittenPaths.Count} files under '{scopeRoot}' (record '{result.RecordPath}')"
+                ),
+                PackageInstallStatus.Repaired when result.WrittenPaths.Count == 0 => Invariant(
+                    $"unchanged: every recorded file under '{scopeRoot}' matches the record (record '{result.RecordPath}')"
+                ),
+                PackageInstallStatus.Repaired => Invariant(
+                    $"repaired: {result.WrittenPaths.Count} of {result.Record.Content.Paths.Count} files under '{scopeRoot}' (record '{result.RecordPath}')"
+                ),
+                _ => Invariant(
                     $"installed: {result.WrittenPaths.Count} files under '{scopeRoot}' (record '{result.RecordPath}')"
-                )
+                ),
+            }
         );
         return Lines(lines);
     }
@@ -65,6 +77,9 @@ internal static class InstallView
         document["record"] = result.RecordPath;
         document["written"] = Strings(result.WrittenPaths);
         document["alreadyInstalled"] = result.Status == PackageInstallStatus.AlreadyInstalled;
+        document["repaired"] = result.Status == PackageInstallStatus.Repaired;
+        document["previousVersion"] = result.PreviousVersion;
+        document["removed"] = Strings(result.RemovedPaths);
         document["dryRun"] = false;
         return document.ToJsonString();
     }

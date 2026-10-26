@@ -25,7 +25,8 @@ public sealed partial class PackageInstaller
     private static List<string> PlaceSkills(
         PackageInfo package,
         PackageInstallTarget target,
-        string? worktree
+        string? worktree,
+        PackageInstallRecord? replacing
     )
     {
         List<string> warnings = [];
@@ -37,7 +38,7 @@ public sealed partial class PackageInstaller
                 target.SkillsDirectory.Replace('/', Path.DirectorySeparatorChar),
                 skill.Name
             );
-            if (Directory.Exists(destination))
+            if (Directory.Exists(destination) && !Owns(replacing, target, destination))
             {
                 throw new InvalidOperationException(
                     $"{Label(package, null, null)}: the skill directory '{destination}' already "
@@ -188,6 +189,33 @@ public sealed partial class PackageInstaller
         record.Scope == PackageScope.Project && record.Worktree is { Length: > 0 } worktree
             ? worktree
             : storeRoot;
+
+    /// <summary>
+    /// Whether <paramref name="directory"/> is filled by the record's own content: the install an
+    /// upgrade replaces, whose extension folder and skill directories are not a collision with
+    /// themselves.
+    /// </summary>
+    private static bool Owns(
+        PackageInstallRecord? record,
+        PackageInstallTarget target,
+        string directory
+    )
+    {
+        if (record is null)
+        {
+            return false;
+        }
+
+        string root = ScopeRoot(record, target.StoreRoot);
+        string prefix = Path.TrimEndingDirectorySeparator(directory) + Path.DirectorySeparatorChar;
+        StringComparison comparison = OperatingSystem.IsLinux()
+            ? StringComparison.Ordinal
+            : StringComparison.OrdinalIgnoreCase;
+        return record.Content.Paths.Any(file =>
+            Path.Combine(root, file.Path.Replace('/', Path.DirectorySeparatorChar))
+                .StartsWith(prefix, comparison)
+        );
+    }
 
     /// <summary>Every record under the state root; a record that does not answer for itself is skipped.</summary>
     private static IEnumerable<PackageInstallRecord> Records(string storeRoot)

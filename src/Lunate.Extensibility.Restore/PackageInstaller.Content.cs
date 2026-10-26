@@ -66,18 +66,23 @@ public sealed partial class PackageInstaller
 
     /// <summary>
     /// Takes back what a failed install wrote: the files, the directories it created and the staging.
-    /// Nothing else is touched — an installed package's content is not this path's to remove.
+    /// An upgrade's rollback hands back the previous install's own bytes first, so a failure after
+    /// the first destructive step leaves the install the record describes. Nothing else is touched —
+    /// an installed package's content is not this path's to remove.
     /// </summary>
     private static void Rollback(
         IReadOnlyList<string> written,
         IReadOnlyList<string> created,
-        PackageInstallTarget target
+        PackageInstallTarget target,
+        PreviousContent? previous
     )
     {
         foreach (string path in written)
         {
             TryDeleteFile(path);
         }
+
+        previous?.Restore();
 
         foreach (string directory in created)
         {

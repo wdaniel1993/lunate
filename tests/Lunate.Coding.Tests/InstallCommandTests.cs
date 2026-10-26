@@ -183,6 +183,81 @@ public sealed class InstallCommandTests
     }
 
     [Fact]
+    public void An_upgrade_replaces_the_installed_version_and_prints_what_changed()
+    {
+        using var feed = new PackageFeedFixture();
+        feed.Bundle(version: "1.4.2", skills: ["greek", "roman"]);
+        feed.Bundle(version: "1.5.0", skills: ["greek"]);
+        Assert.Equal(0, feed.Run(["Acme.Toolkit@1.4.2"], out _, out _));
+
+        int exit = feed.Run(["Acme.Toolkit@1.5.0"], out string output, out string errors);
+
+        Assert.Equal(InstallCommand.ExitOk, exit);
+        Assert.Empty(errors);
+        Assert.Contains("package: Acme.Toolkit 1.5.0", output, StringComparison.Ordinal);
+        Assert.Contains("upgraded: 1.4.2 to 1.5.0", output, StringComparison.Ordinal);
+        Assert.Contains($"under '{feed.Store}'", output, StringComparison.Ordinal);
+
+        string record = Path.Combine(feed.Store, "packages", "acme.toolkit", "install.json");
+        using (JsonDocument document = JsonDocument.Parse(File.ReadAllText(record)))
+        {
+            Assert.Equal(
+                "1.5.0",
+                document.RootElement.GetProperty("package").GetProperty("version").GetString()
+            );
+        }
+
+        Assert.False(
+            Directory.Exists(Path.Combine(feed.Store, "skills", "roman")),
+            "a skill the new version does not carry is gone"
+        );
+        Assert.True(File.Exists(Path.Combine(feed.Store, "skills", "greek", "SKILL.md")));
+    }
+
+    [Fact]
+    public void A_failed_upgrade_exits_one_and_leaves_the_record_identical()
+    {
+        using var feed = new PackageFeedFixture();
+        feed.Bundle(version: "1.4.2", skills: ["greek"]);
+        Assert.Equal(0, feed.Run(["Acme.Toolkit@1.4.2"], out _, out _));
+        string record = Path.Combine(feed.Store, "packages", "acme.toolkit", "install.json");
+        byte[] before = File.ReadAllBytes(record);
+
+        int exit = feed.Run(["Acme.Toolkit@9.9.9"], out string output, out string errors);
+
+        Assert.Equal(InstallCommand.ExitFailure, exit);
+        Assert.Empty(output);
+        Assert.Contains("9.9.9", errors, StringComparison.Ordinal);
+        Assert.Equal(before, File.ReadAllBytes(record));
+        Assert.True(File.Exists(Path.Combine(feed.Store, "skills", "greek", "SKILL.md")));
+    }
+
+    [Fact]
+    public void Force_repairs_a_missing_recorded_file_from_the_recorded_version()
+    {
+        using var feed = new PackageFeedFixture();
+        feed.Bundle(version: "1.4.2", skills: ["greek"]);
+        Assert.Equal(0, feed.Run(["Acme.Toolkit@1.4.2"], out _, out _));
+        string assembly = Path.Combine(feed.Store, "extensions", "acme-tools", "acme-tools.dll");
+        byte[] recorded = File.ReadAllBytes(assembly);
+        File.Delete(assembly);
+        string record = Path.Combine(feed.Store, "packages", "acme.toolkit", "install.json");
+        byte[] recordBefore = File.ReadAllBytes(record);
+
+        int exit = feed.Run(
+            ["Acme.Toolkit@1.4.2", "--force"],
+            out string output,
+            out string errors
+        );
+
+        Assert.Equal(InstallCommand.ExitOk, exit);
+        Assert.Empty(errors);
+        Assert.Contains("repaired: 1 of", output, StringComparison.Ordinal);
+        Assert.Equal(recorded, File.ReadAllBytes(assembly));
+        Assert.Equal(recordBefore, File.ReadAllBytes(record));
+    }
+
+    [Fact]
     public void The_same_version_twice_reports_already_installed_and_exits_zero()
     {
         using var feed = new PackageFeedFixture();
