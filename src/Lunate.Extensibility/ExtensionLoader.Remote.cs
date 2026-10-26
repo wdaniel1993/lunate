@@ -70,13 +70,12 @@ public sealed partial class ExtensionLoader
         catch
         {
             // A refused manifest (an undeclared provided name, a built-in collision) must not
-            // leave a running child or a half-registered source behind a load that failed: the
-            // listing may have started the child to learn its capability. The remote path returns
-            // before the in-process cleanup blocks, so it cleans up after itself.
-            _remoteExtensions.Remove(descriptor.Id);
-            _commandSources.Unregister(descriptor.Id);
-            _declaredNotProvidedCommands.Remove(descriptor.Id);
-            await remote.DisposeAsync().ConfigureAwait(false);
+            // leave a running child behind a load that failed — and its proxies registered the
+            // same way an in-process extension's contributions do (hooks, services, file
+            // subscriptions), so the one teardown drops them and disposes the host. The listing may
+            // have started the child to learn its capability, and the remote path returns before
+            // the in-process cleanup blocks.
+            await RollbackAsync(descriptor.Id, context: null).ConfigureAwait(false);
             throw;
         }
 

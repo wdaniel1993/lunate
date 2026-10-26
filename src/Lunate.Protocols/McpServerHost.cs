@@ -224,6 +224,9 @@ public sealed class McpServerHost : IAsyncDisposable
             }
 
             var updated = await ListToolsAsync(ct).ConfigureAwait(false);
+            // The host is the source `GetToolsAsync` answers from: a refresh that only reported the
+            // new set would still hand out the old one on every later call.
+            tools = updated;
             onToolsChanged?.Invoke(updated);
         }
         catch (Exception)

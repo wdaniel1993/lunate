@@ -34,6 +34,10 @@
             Include="../TestExtensions/ModelExtension/ModelExtension.csproj"
             ReferenceOutputAssembly="false"
         />
+        <ProjectReference
+            Include="../TestExtensions/LeakExtension/LeakExtension.csproj"
+            ReferenceOutputAssembly="false"
+        />
         <ProjectReference Include="../Lunate.TestSupport/Lunate.TestSupport.csproj" />
     </ItemGroup>
 
@@ -73,6 +77,11 @@
             Targets="Build"
             Properties="Configuration=$(Configuration)"
         />
+        <MSBuild
+            Projects="$(MSBuildThisFileDirectory)../TestExtensions/LeakExtension/LeakExtension.csproj"
+            Targets="Build"
+            Properties="Configuration=$(Configuration)"
+        />
         <ItemGroup>
             <HelloExtensionFiles Include="$(MSBuildThisFileDirectory)../TestExtensions/HelloExtension/bin/$(Configuration)/$(TargetFramework)/**/*" />
             <McpExtensionFiles Include="$(MSBuildThisFileDirectory)../TestExtensions/McpExtension/bin/$(Configuration)/$(TargetFramework)/**/*" />
@@ -80,6 +89,7 @@
             <CommandExtensionFiles Include="$(MSBuildThisFileDirectory)../TestExtensions/CommandExtension/bin/$(Configuration)/$(TargetFramework)/**/*" />
             <MarkerExtensionFiles Include="$(MSBuildThisFileDirectory)../TestExtensions/MarkerExtension/bin/$(Configuration)/$(TargetFramework)/**/*" />
             <ModelExtensionFiles Include="$(MSBuildThisFileDirectory)../TestExtensions/ModelExtension/bin/$(Configuration)/$(TargetFramework)/**/*" />
+            <LeakExtensionFiles Include="$(MSBuildThisFileDirectory)../TestExtensions/LeakExtension/bin/$(Configuration)/$(TargetFramework)/**/*" />
         </ItemGroup>
         <Copy
             SourceFiles="@(HelloExtensionFiles)"
@@ -109,6 +119,11 @@
         <Copy
             SourceFiles="@(ModelExtensionFiles)"
             DestinationFolder="$(OutDir)TestExtensions/ModelExtension/%(RecursiveDir)"
+            SkipUnchangedFiles="true"
+        />
+        <Copy
+            SourceFiles="@(LeakExtensionFiles)"
+            DestinationFolder="$(OutDir)TestExtensions/LeakExtension/%(RecursiveDir)"
             SkipUnchangedFiles="true"
         />
     </Target>

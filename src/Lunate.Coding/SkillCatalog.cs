@@ -10,6 +10,7 @@ namespace Lunate.Coding;
 internal sealed class SkillCatalog
 {
     private readonly SkillScanRequest _request;
+    private bool _projectTrusted = true;
 
     private SkillCatalog(SkillScanRequest request, SkillScanResult scan)
     {
@@ -37,16 +38,18 @@ internal sealed class SkillCatalog
 
     /// <summary>
     /// Applies the project trust decision: untrusted project skills stay listed but leave the
-    /// model index and cannot be invoked.
+    /// model index, cannot be invoked, and leave the read allowance.
     /// </summary>
     internal void SetProjectTrusted(bool trusted)
     {
+        _projectTrusted = trusted;
         Skills =
         [
             .. Skills.Select(skill =>
                 skill.Scope is SkillScope.Project ? skill with { Untrusted = !trusted } : skill
             ),
         ];
+        ReadRoots = SkillScanner.ReadRoots(Skills);
     }
 
     /// <summary>
@@ -72,9 +75,10 @@ internal sealed class SkillCatalog
     }
 
     /// <summary>
-    /// The read allowance of a run in the given root: every skill directory discovered from that
-    /// root's own walk plus the user and extension directories, so child worktree runs resolve
-    /// their own allowance the same way.
+    /// The read allowance of a run in the given root: every valid, trusted skill directory discovered
+    /// from that root's own walk plus the user and extension directories, so child worktree runs
+    /// resolve their own allowance the same way — and a run in another worktree never licenses a
+    /// project skill this session's trust decision refused.
     /// </summary>
     internal IReadOnlyList<string> ReadRootsFor(string worktreeRoot)
     {
@@ -85,7 +89,12 @@ internal sealed class SkillCatalog
                 RepoRoot = GitIdentity.Detect(worktreeRoot).RepoRoot,
             }
         );
-        return [.. ReadRoots.Union(scan.ReadRoots, StringComparer.Ordinal)];
+        IEnumerable<SkillDescriptor> eligible = _projectTrusted
+            ? scan.Skills
+            : scan.Skills.Select(skill =>
+                skill.Scope is SkillScope.Project ? skill with { Untrusted = true } : skill
+            );
+        return [.. ReadRoots.Union(SkillScanner.ReadRoots(eligible), StringComparer.Ordinal)];
     }
 
     /// <summary>

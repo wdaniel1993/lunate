@@ -173,7 +173,7 @@ public sealed partial class ExtensionLoader
         }
         catch (OperationCanceledException)
         {
-            Rollback(id, context);
+            await RollbackAsync(id, context).ConfigureAwait(false);
             throw;
         }
         catch (Exception exception) when (exception is not OperationCanceledException)

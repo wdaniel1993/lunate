@@ -102,35 +102,58 @@ public sealed class ExtensionLoaderHookTests
     }
 
     [Fact]
-    public async Task A_global_allow_handler_approved_the_project_extension_without_prompting()
+    public async Task A_global_allow_handler_does_not_replace_the_prompt()
     {
         using var temp = new TempDirectory();
         string store = temp.Subdirectory("store");
+        string worktree = temp.Subdirectory("worktree");
         TestExtensions.InstallHelloExtension(temp, "authorizer");
-        TestExtensions.InstallProjectHelloExtension(temp.Subdirectory("worktree"), "target");
+        TestExtensions.InstallProjectHelloExtension(worktree, "target");
         var loader = new ExtensionLoader(TestExtensions.Options(store));
-        loader.Discover(temp.Subdirectory("worktree"), "repo-1");
-        await loader.Load(
-            "authorizer",
-            temp.Subdirectory("worktree"),
-            "repo-1",
-            new FakeExtensionTrustPrompt(true),
-            Ct
-        );
+        loader.Discover(worktree, "repo-1");
+        await loader.Load("authorizer", worktree, "repo-1", new FakeExtensionTrustPrompt(true), Ct);
         loader.Hooks.Register("authorizer", Allow());
         var prompt = new FakeExtensionTrustPrompt(true);
 
-        LoadedExtension loaded = await loader.Load(
-            "target",
-            temp.Subdirectory("worktree"),
-            "repo-1",
-            prompt,
-            Ct
+        LoadedExtension loaded = await loader.Load("target", worktree, "repo-1", prompt, Ct);
+
+        // Veto only: an allow is not an approval, so the user is still asked and the record is
+        // written by the answer, not by the handler.
+        Assert.Equal("target", loaded.Id);
+        Assert.Equal(1, prompt.Calls);
+        Assert.True(File.Exists(Path.Combine(store, "trust.json")));
+
+        static TestProjectTrustHandler Allow() =>
+            new((_, _) => ValueTask.FromResult<ProjectTrustResult>(new ProjectTrustResult.Allow()));
+    }
+
+    [Fact]
+    public async Task A_global_allow_handler_does_not_load_an_extension_the_prompt_refuses()
+    {
+        using var temp = new TempDirectory();
+        string store = temp.Subdirectory("store");
+        string worktree = temp.Subdirectory("worktree");
+        TestExtensions.InstallHelloExtension(temp, "authorizer");
+        TestExtensions.InstallProjectHelloExtension(worktree, "target");
+        var loader = new ExtensionLoader(TestExtensions.Options(store));
+        loader.Discover(worktree, "repo-1");
+        await loader.Load("authorizer", worktree, "repo-1", new FakeExtensionTrustPrompt(true), Ct);
+        loader.Hooks.Register("authorizer", Allow());
+        var prompt = new FakeExtensionTrustPrompt(false);
+
+        await Assert.ThrowsAsync<ExtensionTrustDeniedException>(() =>
+            loader.Load("target", worktree, "repo-1", prompt, Ct)
         );
 
+        Assert.Equal(1, prompt.Calls);
+        Assert.Equal(0, loader.Hooks.Count("target"));
+
+        // Nothing was recorded by the handler's allow: the next load asks again and loads on the
+        // user's answer.
+        var approving = new FakeExtensionTrustPrompt(true);
+        LoadedExtension loaded = await loader.Load("target", worktree, "repo-1", approving, Ct);
         Assert.Equal("target", loaded.Id);
-        Assert.Equal(0, prompt.Calls);
-        Assert.True(File.Exists(Path.Combine(store, "trust.json")));
+        Assert.Equal(1, approving.Calls);
 
         static TestProjectTrustHandler Allow() =>
             new((_, _) => ValueTask.FromResult<ProjectTrustResult>(new ProjectTrustResult.Allow()));

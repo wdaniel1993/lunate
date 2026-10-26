@@ -114,6 +114,15 @@ public sealed class McpServerHostTests
 
         Assert.Contains(updated, tool => tool.Name == "server__late_tool");
         Assert.Same(echoBefore, updated.Single(tool => tool.Name == "server__echo"));
+
+        // The host is what GetToolsAsync answers from, so the refreshed set has to be the host's
+        // set: a refresh that only reported the change would keep handing out the old tools.
+        var relisted = await host.GetToolsAsync(Ct);
+        Assert.Contains(relisted, tool => tool.Name == "server__late_tool");
+        Assert.Same(
+            updated.Single(tool => tool.Name == "server__echo"),
+            relisted.Single(tool => tool.Name == "server__echo")
+        );
     }
 
     [Fact]

@@ -430,6 +430,14 @@ internal sealed partial class InteractiveSession
             return ValueTask.CompletedTask;
         }
 
+        // A reload swaps the extension's build under whatever is running: a turn whose tools and
+        // command sources were resolved against the old build must finish first, exactly like
+        // /model, /new and every other command that changes the running composition.
+        if (RefusedWhileBusy())
+        {
+            return ValueTask.CompletedTask;
+        }
+
         if (Interlocked.CompareExchange(ref _reloadGate, 1, 0) != 0)
         {
             Notify(
@@ -472,6 +480,10 @@ internal sealed partial class InteractiveSession
                 // registry is re-pointed at them here — the missing half that made a reloaded or
                 // freshly written extension invisible to the model until the next session.
                 SyncReloadedTools(id);
+                // Same for the command registry: the old build's sources are gone the moment its
+                // context unloads, and the new build's are registered, so recomposing is what makes
+                // a new or changed slash command dispatchable (and /help and autocomplete agree).
+                await ComposeCommandsAsync(ct).ConfigureAwait(false);
                 notice = FormattableString.Invariant(
                     $"extension '{id}' reloaded — build {outcome.LoadedBuildKey}"
                 );

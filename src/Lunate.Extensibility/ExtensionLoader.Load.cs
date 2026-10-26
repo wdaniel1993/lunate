@@ -1,6 +1,7 @@
 using System.Reflection;
 using System.Runtime.Loader;
 using Lunate.Extensibility.Abstractions;
+using Lunate.Extensibility.Remote;
 
 namespace Lunate.Extensibility;
 
@@ -179,7 +180,7 @@ public sealed partial class ExtensionLoader
         }
         catch (OperationCanceledException)
         {
-            Rollback(descriptor.Id, context);
+            await RollbackAsync(descriptor.Id, context).ConfigureAwait(false);
             throw;
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
@@ -235,30 +236,39 @@ public sealed partial class ExtensionLoader
     }
 
     /// <summary>
-    /// Removes everything one failed load may have registered and unloads its context. The
-    /// synchronous half is the cancellation path, where awaiting would be a second cancellation
-    /// point for a load that is already ending.
+    /// The one teardown every failed load takes: everything the extension registered is dropped,
+    /// its started background services are stopped, a remote extension's host is disposed, its
+    /// context is marked disposed and the load context (when there is one) is unloaded. The stop is
+    /// deliberately not cancellable: it never observes the load's token, so a load that ends on
+    /// cancellation still tears down completely.
     /// </summary>
-    private async Task RollbackAsync(string id, AssemblyLoadContext context)
+    private async Task RollbackAsync(string id, AssemblyLoadContext? context)
     {
-        DropRegistrations(id);
+        ExtensionContext? extensionContext = DropRegistrations(id);
         await _backgroundServices.DropAsync(id).ConfigureAwait(false);
-        context.Unload();
+        if (_remoteExtensions.Remove(id, out RemoteExtension? remote))
+        {
+            await remote.DisposeAsync().ConfigureAwait(false);
+        }
+
+        // Marked after the stop and the remote teardown, like Unload: their own logging paths still
+        // make host calls.
+        extensionContext?.MarkDisposed();
+        context?.Unload();
     }
 
-    private void Rollback(string id, AssemblyLoadContext context)
+    /// <summary>
+    /// Unregisters everything one extension may have contributed, including its hooks and its
+    /// background-service registrations, and forgets that it ever loaded. Symmetric with
+    /// <see cref="Unload"/> minus the parts that need an interactive session (the in-flight command
+    /// drain; a failed load never dispatched one).
+    /// </summary>
+    private ExtensionContext? DropRegistrations(string id)
     {
-        _extensionContexts.Remove(id);
+        _loaded.Remove(id);
+        _contexts.Remove(id);
         _tools.Unregister(id);
-        _commandSources.Unregister(id);
-        _declaredNotProvidedCommands.Remove(id);
-        context.Unload();
-    }
-
-    private void DropRegistrations(string id)
-    {
-        _extensionContexts.Remove(id);
-        _tools.Unregister(id);
+        _hooks.Unregister(id);
         _modelRegistry.Unregister(id);
         _toolResultRenderers.Unregister(id);
         _statusWidgets.Unregister(id);
@@ -267,6 +277,9 @@ public sealed partial class ExtensionLoader
         _commandSources.Unregister(id);
         _declaredNotProvidedCommands.Remove(id);
         DropSubscriptions(id);
+        return _extensionContexts.Remove(id, out ExtensionContext? extensionContext)
+            ? extensionContext
+            : null;
     }
 
     /// <summary>The per-extension context both runtime kinds register through.</summary>
@@ -384,23 +397,15 @@ public sealed partial class ExtensionLoader
                         cancellationToken
                     )
                     .ConfigureAwait(false);
+                // A handler is a veto, never an approver: `deny` refuses the load, anything else
+                // (an explicit allow included) leaves the decision with the prompt. Trust is a user
+                // decision, and print and ACP reach the same prompt — which refuses — rather than a
+                // handler's allow silently recording it.
                 if (trust.Result is ProjectTrustResult.Deny deny)
                 {
                     throw new ExtensionTrustDeniedException(
                         $"extension '{descriptor.Id}' was not trusted for repository '{repositoryIdentity}': {deny.Reason} It was not loaded."
                     );
-                }
-
-                if (trust.HasHandlers)
-                {
-                    store.RecordTrusted(
-                        repositoryIdentity,
-                        worktreePath,
-                        descriptor.Id,
-                        contentHash,
-                        DateTimeOffset.UtcNow
-                    );
-                    return;
                 }
 
                 bool filesChanged = store

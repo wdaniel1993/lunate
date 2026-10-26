@@ -105,6 +105,60 @@ internal static class TestExtensions
         return directory;
     }
 
+    /// <summary>
+    /// The every-registration fixture: its factory contributes one of each kind, then logs a
+    /// cancellation marker, so a test can make its load fail (a declared model id that the code
+    /// already serves) or cancel it (the marker fires the test's own token source).
+    /// </summary>
+    public static string InstallLeakExtension(
+        TempDirectory temp,
+        string id,
+        string tools = """["leak_probe"]""",
+        string commands = """["leak-probe"]""",
+        string modelProviders = ""
+    )
+    {
+        string directory = GlobalExtensionDirectory(temp, id);
+        Directory.CreateDirectory(directory);
+        File.Copy(
+            FixtureFile("LeakExtension", "LeakExtension.dll"),
+            Path.Combine(directory, "LeakExtension.dll"),
+            overwrite: true
+        );
+        WriteManifest(
+            directory,
+            id,
+            entryAssembly: "LeakExtension.dll",
+            tools: tools,
+            commands: commands,
+            modelProviders: modelProviders
+        );
+        return directory;
+    }
+
+    /// <summary>
+    /// Rewrites the leak fixture's manifest without touching its assembly: after a failed load the
+    /// CLR may still have the DLL mapped, and Windows refuses to overwrite it. A repair that only
+    /// changes the manifest is the honest way to make the retry a first load again.
+    /// </summary>
+    public static string RepairLeakManifest(
+        TempDirectory temp,
+        string id,
+        string tools = """["leak_probe"]""",
+        string commands = """["leak-probe"]"""
+    )
+    {
+        string directory = GlobalExtensionDirectory(temp, id);
+        WriteManifest(
+            directory,
+            id,
+            entryAssembly: "LeakExtension.dll",
+            tools: tools,
+            commands: commands
+        );
+        return directory;
+    }
+
     public static string InstallToolExtension(
         TempDirectory temp,
         string id,

@@ -31,10 +31,8 @@ internal static partial class SkillScanner
         var warnings = new List<string>();
         List<SkillDescriptor> candidates = [];
         List<SkillDescriptor> invalid = [];
-        var readRoots = new List<string>();
-        var readSeen = new HashSet<string>(PathComparer());
         InstalledPackages installed = InstalledFor(request);
-        var scan = new ScanState(candidates, invalid, warnings, readRoots, readSeen, installed);
+        var scan = new ScanState(candidates, invalid, warnings, installed);
 
         scan.Roots(
             ProjectRoots(request.WorktreeRoot, request.RepoRoot),
@@ -66,7 +64,33 @@ internal static partial class SkillScanner
 
         List<SkillDescriptor> skills = Resolve(candidates, warnings);
         skills.AddRange(invalid);
-        return new SkillScanResult(skills, warnings, readRoots);
+        return new SkillScanResult(skills, warnings, ReadRoots(skills));
+    }
+
+    /// <summary>
+    /// The directories a scan licenses the read tool to open: the valid, trusted skills only. An
+    /// invalid directory (a malformed <c>SKILL.md</c>, a name that does not match) is not a read root,
+    /// and neither is a project directory the user has not trusted — the allowance follows what
+    /// discovery actually accepted and what trust approved, not what merely looked like a skill.
+    /// </summary>
+    internal static IReadOnlyList<string> ReadRoots(IEnumerable<SkillDescriptor> skills)
+    {
+        List<string> roots = [];
+        HashSet<string> seen = new(PathComparer());
+        foreach (SkillDescriptor skill in skills)
+        {
+            if (!skill.Valid || skill.Untrusted)
+            {
+                continue;
+            }
+
+            if (seen.Add(skill.Directory))
+            {
+                roots.Add(skill.Directory);
+            }
+        }
+
+        return roots;
     }
 
     /// <summary>
@@ -79,7 +103,7 @@ internal static partial class SkillScanner
         var warnings = new List<string>();
         List<SkillDescriptor> candidates = [];
         List<SkillDescriptor> invalid = [];
-        var scan = new ScanState(candidates, invalid, warnings, [], [], InstalledFor(request));
+        var scan = new ScanState(candidates, invalid, warnings, InstalledFor(request));
         scan.Roots(
             ProjectRoots(request.WorktreeRoot, request.RepoRoot),
             SkillScope.Project,
@@ -200,8 +224,6 @@ internal static partial class SkillScanner
         List<SkillDescriptor> candidates,
         List<SkillDescriptor> invalid,
         List<string> warnings,
-        List<string> readRoots,
-        HashSet<string> readSeen,
         InstalledPackages installed
     )
     {
@@ -397,11 +419,6 @@ internal static partial class SkillScanner
             if (!File.Exists(skillFile))
             {
                 return;
-            }
-
-            if (readSeen.Add(canonical))
-            {
-                readRoots.Add(canonical);
             }
 
             string directoryName = Path.GetFileName(canonical);
