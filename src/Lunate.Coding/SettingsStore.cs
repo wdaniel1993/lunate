@@ -203,34 +203,6 @@ public static class SettingsStore
     }
 
     /// <summary>
-    /// Replaces a settings file another thread or process may be reading. On Windows a reader that
-    /// did not open with delete sharing makes the replace fail with access-denied for as long as it
-    /// holds the handle, so the move is retried briefly; a settings write is short and the reader
-    /// closes in milliseconds.
-    /// </summary>
-    private static void ReplaceWithRetry(string source, string destination)
-    {
-        for (var attempt = 1; ; attempt++)
-        {
-            try
-            {
-                File.Move(source, destination, overwrite: true);
-                return;
-            }
-            catch (Exception exception)
-                when (exception is IOException or UnauthorizedAccessException)
-            {
-                if (attempt >= 5)
-                {
-                    throw;
-                }
-
-                Thread.Sleep(20 * attempt);
-            }
-        }
-    }
-
-    /// <summary>
     /// Reads a settings file without holding a share mode that would block a concurrent replace:
     /// on Windows the default read share denies delete, which turns another thread's save into an
     /// access-denied. Reading and writing the same small file must not be mutually exclusive.
@@ -265,7 +237,7 @@ public static class SettingsStore
                 File.SetUnixFileMode(temp, File.GetUnixFileMode(path));
             }
 
-            ReplaceWithRetry(temp, path);
+            FileReplacement.Replace(temp, path);
         }
         finally
         {
