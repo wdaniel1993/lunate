@@ -41,28 +41,6 @@ internal sealed class ThrowingChatClient : IChatClient
     public void Dispose() { }
 }
 
-internal static class TestPaths
-{
-    public static string FindRepositoryRoot()
-    {
-        for (
-            var directory = new DirectoryInfo(AppContext.BaseDirectory);
-            directory is not null;
-            directory = directory.Parent
-        )
-        {
-            if (File.Exists(Path.Combine(directory.FullName, "lunate.slnx")))
-            {
-                return directory.FullName;
-            }
-        }
-
-        throw new InvalidOperationException(
-            $"Could not find lunate.slnx above {AppContext.BaseDirectory}."
-        );
-    }
-}
-
 internal sealed class EnvironmentScope : IDisposable
 {
     private readonly (string Name, string? Value)[] _previous;

@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using Lunate.TestSupport;
 
 namespace Lunate.Ai.Tests;
 
@@ -344,13 +345,7 @@ public sealed class ModelsDevCatalogTests
 
     private static string SnapshotJson() =>
         File.ReadAllText(
-            Path.Combine(
-                TestPaths.FindRepositoryRoot(),
-                "tests",
-                "fixtures",
-                "models-dev",
-                "sample.json"
-            )
+            Path.Combine(RepositoryRoot.Find(), "tests", "fixtures", "models-dev", "sample.json")
         );
 
     private static IReadOnlyList<ProviderPreset> TwoPresets() =>

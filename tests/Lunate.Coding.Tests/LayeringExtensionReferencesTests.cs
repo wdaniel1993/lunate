@@ -1,4 +1,5 @@
 using System.Xml.Linq;
+using Lunate.TestSupport;
 
 namespace Lunate.Coding.Tests;
 
@@ -71,7 +72,7 @@ public sealed class LayeringExtensionReferencesTests
     {
         foreach (var directoryName in new[] { "templates", "samples", "tests" })
         {
-            var projectRoot = Path.Combine(FindRepositoryRoot(), directoryName);
+            var projectRoot = Path.Combine(RepositoryRoot.Find(), directoryName);
             if (!Directory.Exists(projectRoot))
             {
                 continue;
@@ -105,24 +106,5 @@ public sealed class LayeringExtensionReferencesTests
                 }
             }
         }
-    }
-
-    private static string FindRepositoryRoot()
-    {
-        for (
-            var directory = new DirectoryInfo(AppContext.BaseDirectory);
-            directory is not null;
-            directory = directory.Parent
-        )
-        {
-            if (File.Exists(Path.Combine(directory.FullName, "lunate.slnx")))
-            {
-                return directory.FullName;
-            }
-        }
-
-        throw new InvalidOperationException(
-            $"Could not find lunate.slnx above {AppContext.BaseDirectory}."
-        );
     }
 }

@@ -1,3 +1,4 @@
+using Lunate.TestSupport;
 using Microsoft.Extensions.AI;
 
 namespace Lunate.Ai.Tests;
@@ -6,7 +7,7 @@ namespace Lunate.Ai.Tests;
 public sealed class AnthropicTurnMergeTests
 {
     private static string FixturesDirectory =>
-        Path.Combine(TestPaths.FindRepositoryRoot(), "tests", "fixtures", "streams");
+        Path.Combine(RepositoryRoot.Find(), "tests", "fixtures", "streams");
 
     [Fact]
     public void Consecutive_tool_and_user_messages_merge_into_one_wire_user_turn()

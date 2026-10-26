@@ -22,7 +22,7 @@ internal sealed class RoslynFixture(string root) : IDisposable
 /// <summary>Copies fixture solutions and restores them offline (package-free fixtures).</summary>
 internal static class RoslynFixtureSupport
 {
-    internal static string RepositoryRoot { get; } = FindRepositoryRoot();
+    internal static string RepositoryRoot { get; } = Lunate.TestSupport.RepositoryRoot.Find();
 
     internal static RoslynFixture CopySolution(string name)
     {
@@ -137,22 +137,5 @@ internal static class RoslynFixtureSupport
         {
             CopyDirectory(directory, Path.Combine(destination, Path.GetFileName(directory)));
         }
-    }
-
-    private static string FindRepositoryRoot()
-    {
-        for (
-            var directory = new DirectoryInfo(AppContext.BaseDirectory);
-            directory is not null;
-            directory = directory.Parent
-        )
-        {
-            if (File.Exists(Path.Combine(directory.FullName, "lunate.slnx")))
-            {
-                return directory.FullName;
-            }
-        }
-
-        throw new InvalidOperationException("the repository root (lunate.slnx) was not found");
     }
 }

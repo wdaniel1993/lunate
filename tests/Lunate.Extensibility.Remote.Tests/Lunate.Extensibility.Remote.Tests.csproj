@@ -9,6 +9,7 @@
         <ProjectReference Include="../../src/Lunate.Extensibility.Remote/Lunate.Extensibility.Remote.csproj" />
         <ProjectReference Include="../../src/Lunate.Extensibility/Lunate.Extensibility.csproj" />
         <ProjectReference Include="../../src/Lunate.Extensibility.Testing/Lunate.Extensibility.Testing.csproj" />
+        <ProjectReference Include="../Lunate.TestSupport/Lunate.TestSupport.csproj" />
     </ItemGroup>
 
     <ItemGroup>

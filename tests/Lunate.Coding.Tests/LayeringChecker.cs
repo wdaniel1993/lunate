@@ -71,6 +71,16 @@ internal static class LayeringChecker
             ("Lunate.Coding.Tests", "UiShowcaseExtension"),
             // The shared TestMcpServer path/marker/process helpers are a BCL-only support project.
             ("Lunate.Coding.Tests", "Lunate.TestSupport"),
+            // The shared repository-root locator is a BCL-only support project, so every suite
+            // that reads committed fixtures references it instead of carrying its own walk.
+            ("Lunate.Agent.Tests", "Lunate.TestSupport"),
+            ("Lunate.Ai.Tests", "Lunate.TestSupport"),
+            ("Lunate.Extensibility.Compile.Tests", "Lunate.TestSupport"),
+            ("Lunate.Extensibility.Remote.Tests", "Lunate.TestSupport"),
+            ("Lunate.Extensibility.Restore.Tests", "Lunate.TestSupport"),
+            ("Lunate.Extensibility.Tests", "Lunate.TestSupport"),
+            ("Lunate.Roslyn.Tests", "Lunate.TestSupport"),
+            ("Lunate.Tui.Tests", "Lunate.TestSupport"),
             ("Lunate.Protocols.Tests", "Lunate.Protocols"),
             ("Lunate.Protocols.Tests", "Lunate.Coding"),
             ("Lunate.Protocols.Tests", "TestMcpServer"),

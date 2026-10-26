@@ -1,3 +1,5 @@
+using Lunate.TestSupport;
+
 namespace Lunate.Coding.Tests;
 
 /// <summary>Resuming a parent session surfaces its child-session link as one informational line.</summary>
@@ -9,7 +11,7 @@ public sealed class InteractiveSessionResumeSubagentTests
         using var host = new InteractiveSessionHost();
         string directory = host.Temp.File("sessions");
         Directory.CreateDirectory(directory);
-        string fixtures = Path.Combine(RepositoryRoot(), "tests", "fixtures", "sessions");
+        string fixtures = Path.Combine(RepositoryRoot.Find(), "tests", "fixtures", "sessions");
         string parentPath = Path.Combine(directory, "s_20261013-090000-a1b2.jsonl");
         string childPath = Path.Combine(directory, "s_20261013-090100-c3d4.jsonl");
         File.Copy(Path.Combine(fixtures, "s_20261013-090000-a1b2.jsonl"), parentPath);
@@ -33,24 +35,5 @@ public sealed class InteractiveSessionResumeSubagentTests
         host.Console.SendText("/quit");
         host.Console.SendEnter();
         await run;
-    }
-
-    private static string RepositoryRoot()
-    {
-        for (
-            var directory = new DirectoryInfo(AppContext.BaseDirectory);
-            directory is not null;
-            directory = directory.Parent
-        )
-        {
-            if (File.Exists(Path.Combine(directory.FullName, "lunate.slnx")))
-            {
-                return directory.FullName;
-            }
-        }
-
-        throw new InvalidOperationException(
-            $"Could not find lunate.slnx above {AppContext.BaseDirectory}."
-        );
     }
 }

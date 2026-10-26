@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Lunate.Agent;
+using Lunate.TestSupport;
 
 namespace Lunate.Coding.Tests;
 
@@ -67,24 +68,6 @@ public sealed class EditCorpusTests
         }
     }
 
-    private static string CorpusRoot { get; } = FindCorpusRoot();
-
-    private static string FindCorpusRoot()
-    {
-        for (
-            var directory = new DirectoryInfo(AppContext.BaseDirectory);
-            directory is not null;
-            directory = directory.Parent
-        )
-        {
-            if (File.Exists(Path.Combine(directory.FullName, "lunate.slnx")))
-            {
-                return Path.Combine(directory.FullName, "tests", "fixtures", "edit-corpus");
-            }
-        }
-
-        throw new InvalidOperationException(
-            $"Could not find lunate.slnx above {AppContext.BaseDirectory}."
-        );
-    }
+    private static string CorpusRoot { get; } =
+        Path.Combine(RepositoryRoot.Find(), "tests", "fixtures", "edit-corpus");
 }

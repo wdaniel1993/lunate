@@ -34,6 +34,7 @@
             Include="../TestExtensions/ModelExtension/ModelExtension.csproj"
             ReferenceOutputAssembly="false"
         />
+        <ProjectReference Include="../Lunate.TestSupport/Lunate.TestSupport.csproj" />
     </ItemGroup>
 
     <ItemGroup>

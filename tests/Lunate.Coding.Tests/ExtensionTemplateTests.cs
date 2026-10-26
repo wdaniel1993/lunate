@@ -1,4 +1,5 @@
 using System.Xml.Linq;
+using Lunate.TestSupport;
 
 namespace Lunate.Coding.Tests;
 
@@ -106,7 +107,7 @@ public sealed class ExtensionTemplateTests
     [Fact]
     public void The_solution_lists_the_template_so_the_gate_compiles_it()
     {
-        XDocument solution = XDocument.Load(Path.Combine(FindRepositoryRoot(), "lunate.slnx"));
+        XDocument solution = XDocument.Load(Path.Combine(RepositoryRoot.Find(), "lunate.slnx"));
         string[] projects =
         [
             .. solution
@@ -130,7 +131,7 @@ public sealed class ExtensionTemplateTests
     private static string TemplateProject()
     {
         string path = Path.Combine(
-            FindRepositoryRoot(),
+            RepositoryRoot.Find(),
             "templates",
             "extension",
             "TemplateExtension",
@@ -138,24 +139,5 @@ public sealed class ExtensionTemplateTests
         );
         Assert.True(File.Exists(path), $"the template project is missing: {path}");
         return path;
-    }
-
-    /// <summary>The repository root, found from the test binary: the folder that holds the templates.</summary>
-    private static string FindRepositoryRoot()
-    {
-        string? directory = AppContext.BaseDirectory;
-        while (directory is not null)
-        {
-            if (Directory.Exists(Path.Combine(directory, "templates", "extension")))
-            {
-                return directory;
-            }
-
-            directory = Path.GetDirectoryName(directory);
-        }
-
-        throw new DirectoryNotFoundException(
-            $"no templates/extension above '{AppContext.BaseDirectory}'"
-        );
     }
 }
