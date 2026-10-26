@@ -106,4 +106,48 @@ internal static class SessionFiles
         using FileStream stream = OpenAppend(path);
         stream.Write(Utf8NoBom.GetBytes(text));
     }
+
+    /// <summary>
+    /// Cuts a session file after its last line terminator, dropping the bytes of a record whose
+    /// append never finished. The cut is found in the bytes, not in the decoded text: a fragment
+    /// that ended mid-sequence decodes to a replacement character, whose width says nothing about
+    /// how many bytes are there.
+    /// </summary>
+    internal static void CutToLastRecord(string path)
+    {
+        // Opened, not created: the file exists and already carries the session's mode, and
+        // SecureFiles' create-time mode applies only to a file a call creates.
+        using FileStream stream = new(
+            path,
+            new FileStreamOptions
+            {
+                Mode = FileMode.Open,
+                Access = FileAccess.ReadWrite,
+                Share = WriterShare,
+            }
+        );
+        stream.SetLength(LastTerminator(stream));
+    }
+
+    private static long LastTerminator(FileStream stream)
+    {
+        byte[] buffer = new byte[8192];
+        long position = stream.Length;
+        while (position > 0)
+        {
+            int take = (int)Math.Min(buffer.Length, position);
+            position -= take;
+            stream.Seek(position, SeekOrigin.Begin);
+            stream.ReadExactly(buffer, 0, take);
+            for (int index = take - 1; index >= 0; index--)
+            {
+                if (buffer[index] == (byte)'\n')
+                {
+                    return position + index + 1;
+                }
+            }
+        }
+
+        return 0;
+    }
 }
