@@ -148,6 +148,9 @@ bytes, adding a `#:tool` line changes the digest exactly like changing the code 
 declaration and the code are one approved unit. Changing a resolved package (a hand-edited lock, a
 re-resolved range the user approves) is part of the same decision.
 
+The source is hashed with CRLF normalized to LF, so a pure line-ending change does not re-prompt:
+the same file checked out on Windows and on POSIX has one digest.
+
 What the digest deliberately does **not** cover is the lock's toolset half — your runtime, its
 reference pack and their hashes. A .NET patch moves those on your machine without moving anything
 you approved, so it rebuilds quietly instead of asking again.
