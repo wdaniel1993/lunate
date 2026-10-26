@@ -26,7 +26,8 @@ public sealed partial class PackageInstaller
         PackageInfo package,
         PackageInstallTarget target,
         string? worktree,
-        PackageInstallRecord? replacing
+        PackageInstallRecord? replacing,
+        bool replacingUnreadable
     )
     {
         List<string> warnings = [];
@@ -38,7 +39,14 @@ public sealed partial class PackageInstaller
                 target.SkillsDirectory.Replace('/', Path.DirectorySeparatorChar),
                 skill.Name
             );
-            if (Directory.Exists(destination) && !Owns(replacing, target, destination))
+            if (
+                Directory.Exists(destination)
+                && !Owns(replacing, target, destination)
+                && !(
+                    replacingUnreadable
+                    && IsInstallPath(target, target.SkillsDirectory, skill.Name, destination)
+                )
+            )
             {
                 throw new InvalidOperationException(
                     $"{Label(package, null, null)}: the skill directory '{destination}' already "
@@ -216,6 +224,33 @@ public sealed partial class PackageInstaller
                 .StartsWith(prefix, comparison)
         );
     }
+
+    /// <summary>
+    /// Whether <paramref name="directory"/> is exactly where this install writes the item called
+    /// <paramref name="name"/> under <paramref name="holder"/> — the extension folder or one skill
+    /// folder. With a record that does not answer for itself these are the only paths a reinstall
+    /// may take back, because they are the ones it is about to write.
+    /// </summary>
+    private static bool IsInstallPath(
+        PackageInstallTarget target,
+        string holder,
+        string name,
+        string directory
+    ) =>
+        SamePath(
+            Path.Combine(target.ScopeRoot, holder.Replace('/', Path.DirectorySeparatorChar), name),
+            directory
+        );
+
+    /// <summary>Two paths naming one directory, under the platform's case rule.</summary>
+    private static bool SamePath(string left, string right) =>
+        string.Equals(
+            Path.TrimEndingDirectorySeparator(Path.GetFullPath(left)),
+            Path.TrimEndingDirectorySeparator(Path.GetFullPath(right)),
+            OperatingSystem.IsLinux()
+                ? StringComparison.Ordinal
+                : StringComparison.OrdinalIgnoreCase
+        );
 
     /// <summary>Every record under the state root; a record that does not answer for itself is skipped.</summary>
     private static IEnumerable<PackageInstallRecord> Records(string storeRoot)

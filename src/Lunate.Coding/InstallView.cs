@@ -25,6 +25,11 @@ internal static class InstallView
 
         List<string> lines = [.. Identity(result, scope, worktree)];
         lines.Add(
+            Invariant(
+                $"content: {PackageContentSize.Format(result.ContentBytes)} in {result.Record.Content.Paths.Count} files"
+            )
+        );
+        lines.Add(
             result.Status switch
             {
                 PackageInstallStatus.AlreadyInstalled =>
@@ -86,6 +91,7 @@ internal static class InstallView
         );
         document["record"] = result.RecordPath;
         document["written"] = Strings(result.WrittenPaths);
+        document["contentBytes"] = result.ContentBytes;
         document["alreadyInstalled"] = result.Status == PackageInstallStatus.AlreadyInstalled;
         document["repaired"] = result.Status == PackageInstallStatus.Repaired;
         document["previousVersion"] = result.PreviousVersion;

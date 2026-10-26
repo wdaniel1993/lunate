@@ -22,7 +22,8 @@ public sealed partial class PackageInstaller
         PackageInfo package,
         PackageInstallTarget target,
         string? worktree,
-        PackageInstallRecord? replacing
+        PackageInstallRecord? replacing,
+        bool replacingUnreadable
     )
     {
         if (package.Extension is not { } extension)
@@ -57,6 +58,10 @@ public sealed partial class PackageInstaller
             if (
                 File.Exists(Path.Combine(handPlaced, "extension.json"))
                 && !Owns(replacing, target, handPlaced)
+                && !(
+                    replacingUnreadable
+                    && IsInstallPath(target, target.ExtensionDirectory, id, handPlaced)
+                )
             )
             {
                 throw new InvalidOperationException(

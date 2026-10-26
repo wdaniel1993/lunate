@@ -1,5 +1,7 @@
 using System.Security.Cryptography;
 using System.Text.Json;
+using Lunate.Extensibility;
+using Lunate.Extensibility.Restore;
 
 namespace Lunate.Coding.Tests;
 
@@ -12,6 +14,191 @@ namespace Lunate.Coding.Tests;
 /// </summary>
 public sealed class InstallCommandTests
 {
+    [Fact]
+    public void An_install_started_inside_a_session_is_refused_without_yes()
+    {
+        using var feed = new PackageFeedFixture();
+        feed.Bundle(skills: ["greek"]);
+
+        int exit = feed.Run(
+            ["Acme.Toolkit@1.4.2"],
+            out string output,
+            out string errors,
+            PackageFeedFixture.InsideSession
+        );
+
+        Assert.Equal(InstallCommand.ExitUsage, exit);
+        Assert.Empty(output);
+        Assert.Contains("--yes", errors, StringComparison.Ordinal);
+        Assert.Contains("runs at the next load", errors, StringComparison.Ordinal);
+        Assert.False(Directory.Exists(Path.Combine(feed.Store, "packages")));
+        Assert.False(Directory.Exists(Path.Combine(feed.Store, "extensions")));
+    }
+
+    [Fact]
+    public void A_session_install_with_yes_proceeds()
+    {
+        using var feed = new PackageFeedFixture();
+        feed.Bundle(skills: ["greek"]);
+
+        int exit = feed.Run(
+            ["Acme.Toolkit@1.4.2", "--yes", "--dry-run"],
+            out string output,
+            out string errors,
+            PackageFeedFixture.InsideSession
+        );
+
+        Assert.Equal(InstallCommand.ExitOk, exit);
+        Assert.Empty(errors);
+        Assert.Contains("dry-run: nothing was written", output, StringComparison.Ordinal);
+        Assert.False(Directory.Exists(Path.Combine(feed.Store, "packages")));
+    }
+
+    [Fact]
+    public void Outside_a_session_the_install_is_ungated()
+    {
+        using var feed = new PackageFeedFixture();
+        feed.Bundle(skills: ["greek"]);
+
+        int exit = feed.Run(
+            ["Acme.Toolkit@1.4.2"],
+            out string output,
+            out string errors,
+            name => null
+        );
+
+        Assert.Equal(InstallCommand.ExitOk, exit);
+        Assert.Empty(errors);
+        Assert.Contains("installed: ", output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void The_usage_line_names_yes()
+    {
+        using var feed = new PackageFeedFixture();
+
+        int exit = feed.Run(["--yes-and-nothing-else"], out _, out string errors);
+
+        Assert.Equal(InstallCommand.ExitUsage, exit);
+        Assert.Contains("[--yes]", errors, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Reinstalling_repairs_an_unreadable_record_and_the_view_verifies_clean()
+    {
+        using var feed = new PackageFeedFixture();
+        feed.Bundle(skills: ["greek"]);
+        Assert.Equal(0, feed.Run(["Acme.Toolkit@1.4.2"], out _, out _));
+        string record = Path.Combine(
+            feed.Store,
+            "packages",
+            "acme.toolkit",
+            PackageInstallRecordJson.FileName
+        );
+        File.WriteAllText(record, "{ this is not a record");
+        string leftover = Path.Combine(feed.Store, "extensions", "acme-tools", "old.dll");
+        File.WriteAllText(leftover, "bytes a previous version wrote");
+
+        int exit = feed.Run(["Acme.Toolkit@1.4.2"], out string output, out string errors);
+
+        Assert.Equal(InstallCommand.ExitOk, exit);
+        Assert.Contains("installed: ", output, StringComparison.Ordinal);
+        // The run says what it could not read and what it therefore did not remove.
+        Assert.Contains(record, errors, StringComparison.Ordinal);
+        Assert.Contains(leftover, errors, StringComparison.Ordinal);
+        Assert.True(File.Exists(leftover));
+
+        using var view = new StringWriter();
+        using var viewErrors = new StringWriter();
+        int verify = PackagesCommand.Run(
+            ["--verify"],
+            feed.Worktree,
+            view,
+            viewErrors,
+            new ExtensionSeams { StorePath = feed.Store }
+        );
+        Assert.Equal(PackagesCommand.ExitOk, verify);
+        Assert.Empty(viewErrors.ToString());
+        Assert.Contains("Acme.Toolkit 1.4.2", view.ToString(), StringComparison.Ordinal);
+        Assert.DoesNotContain("broken", view.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void An_install_prints_the_total_content_size_in_both_scopes()
+    {
+        using var user = new PackageFeedFixture();
+        user.Bundle(skills: ["greek"]);
+        Assert.Equal(0, user.Run(["Acme.Toolkit@1.4.2"], out string userText, out _));
+        long userBytes = Total(user.Store, "extensions/acme-tools", "skills/greek");
+        Assert.Contains(
+            $"content: {PackageContentSize.Format(userBytes)} in 3 files",
+            userText,
+            StringComparison.Ordinal
+        );
+
+        using var project = new PackageFeedFixture();
+        GitTestRepo.Init(project.Worktree);
+        project.Bundle(skills: ["greek"]);
+        Assert.Equal(
+            0,
+            project.Run(["Acme.Toolkit@1.4.2", "--project"], out string projectText, out _)
+        );
+        long projectBytes = Total(
+            project.Worktree,
+            ".lunate/extensions/acme-tools",
+            ".agents/skills/greek"
+        );
+        Assert.Contains(
+            $"content: {PackageContentSize.Format(projectBytes)} in 3 files",
+            projectText,
+            StringComparison.Ordinal
+        );
+    }
+
+    [Fact]
+    public void A_project_install_over_the_threshold_warns_and_names_the_largest_entries()
+    {
+        using var feed = new PackageFeedFixture();
+        GitTestRepo.Init(feed.Worktree);
+        feed.Bundle(skills: ["greek"], padBytes: 11L * 1024 * 1024);
+
+        int exit = feed.Run(
+            ["Acme.Toolkit@1.4.2", "--project"],
+            out string output,
+            out string errors
+        );
+
+        Assert.Equal(InstallCommand.ExitOk, exit);
+        Assert.Contains("content: 11 MiB", output, StringComparison.Ordinal);
+        Assert.Contains("above the 10 MiB this version warns at", errors, StringComparison.Ordinal);
+        Assert.Contains("pad.bin' (11 MiB)", errors, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_user_install_reports_the_total_and_never_warns_about_committing_it()
+    {
+        using var feed = new PackageFeedFixture();
+        feed.Bundle(skills: ["greek"], padBytes: 11L * 1024 * 1024);
+
+        int exit = feed.Run(["Acme.Toolkit@1.4.2"], out string output, out string errors);
+
+        Assert.Equal(InstallCommand.ExitOk, exit);
+        Assert.Empty(errors);
+        Assert.Contains("content: 11 MiB", output, StringComparison.Ordinal);
+    }
+
+    /// <summary>The recorded content's total, read from the files the install wrote.</summary>
+    private static long Total(string root, params string[] folders) =>
+        folders.Sum(folder =>
+            Directory
+                .EnumerateFiles(
+                    Path.Combine(root, folder.Replace('/', Path.DirectorySeparatorChar)),
+                    "*",
+                    SearchOption.AllDirectories
+                )
+                .Sum(file => new FileInfo(file).Length)
+        );
+
     [Fact]
     public void A_user_install_writes_the_state_root_scope_and_prints_the_identity()
     {

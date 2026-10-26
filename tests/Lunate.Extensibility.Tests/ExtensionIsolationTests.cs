@@ -83,8 +83,9 @@ public sealed class ExtensionIsolationTests
             Ct
         );
 
-        // The package's copy is content — install refuses nothing, and a user-scope install asks
-        // nothing — but the load binds the host's copy, which is what the warning reports.
+        // The package's copy is content — install refuses nothing, and a user-scope install asks the
+        // one question a package always asks — but the load binds the host's copy, which is what
+        // the warning reports.
         string installed = Path.Combine(store, "extensions", "hello");
         Assert.True(
             File.Exists(Path.Combine(installed, "Lunate.Extensibility.Abstractions.dll")),
@@ -97,7 +98,7 @@ public sealed class ExtensionIsolationTests
         var prompt = new FakeExtensionTrustPrompt(approve: true);
         LoadedExtension loaded = await loader.Load("hello", temp.Root, temp.Root, prompt, Ct);
 
-        Assert.Equal(0, prompt.Calls);
+        Assert.Equal(1, prompt.Calls);
         Assert.Contains(typeof(IExtension), loaded.Extension.GetType().GetInterfaces());
         string warning = Assert.Single(
             log.Messages,

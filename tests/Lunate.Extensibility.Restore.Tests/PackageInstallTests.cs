@@ -196,7 +196,7 @@ public sealed class PackageInstallTests
     }
 
     [Fact]
-    public async Task A_hand_edited_record_is_refused_and_nothing_is_written()
+    public async Task A_hand_edited_record_is_replaced_by_a_reinstall()
     {
         using var temp = new TempDirectory();
         var feed = new BundleFeed(temp.Root);
@@ -216,15 +216,29 @@ public sealed class PackageInstallTests
                     StringComparison.Ordinal
                 )
         );
-        Dictionary<string, DateTime> before = Timestamps(store);
 
-        InvalidDataException refusal = await Assert.ThrowsAsync<InvalidDataException>(() =>
-            installer.InstallAsync(Request(store, "Acme.Toolkit", "1.4.2"), Ct)
+        // A record that no longer answers for itself does not block its own repair (addendum,
+        // phase 6): the reinstall writes the content and a record that answers, and says that it
+        // could not account for what the old one named.
+        PackageInstallResult repaired = await installer.InstallAsync(
+            Request(store, "Acme.Toolkit", "1.4.2"),
+            Ct
         );
 
-        Assert.Contains(first.RecordPath, refusal.Message, StringComparison.Ordinal);
-        Assert.Contains("modified", refusal.Message, StringComparison.Ordinal);
-        Assert.Equal(before, Timestamps(store));
+        Assert.Equal(PackageInstallStatus.Installed, repaired.Status);
+        Assert.Empty(repaired.RemovedPaths);
+        Assert.Contains(
+            repaired.Warnings,
+            warning => warning.Contains(first.RecordPath, StringComparison.Ordinal)
+        );
+        PackageInstallRecord? reread = PackageInstallRecordJson.TryRead(
+            first.RecordPath,
+            out string? problem
+        );
+        Assert.NotNull(reread);
+        Assert.Null(problem);
+        Assert.Equal("1.4.2", reread!.Package.Version);
+        Assert.True(PackageContentVerifier.Verify(reread, store).Clean);
     }
 
     [Fact]
@@ -247,6 +261,59 @@ public sealed class PackageInstallTests
             File.Exists(
                 Path.Combine(store, "packages", "acme.toolkit", PackageInstallRecordJson.FileName)
             )
+        );
+    }
+
+    /// <summary>
+    /// A reinstall is the repair (spec: "The install record"): a record that cannot be read does not
+    /// refuse the install, the run writes the content and a record that answers for itself, and it
+    /// names the bytes it could not account for instead of claiming to have removed them.
+    /// </summary>
+    [Fact]
+    public async Task A_reinstall_over_an_unreadable_record_writes_one_that_answers_for_itself()
+    {
+        using var temp = new TempDirectory();
+        var feed = new BundleFeed(temp.Root);
+        feed.Bundle().Manifest(TestPackage.FullManifest).Extension().Skill("greek").Save();
+        string store = Path.Combine(temp.Root, "store");
+        PackageInstallResult first = await feed.Installer(now: Installed)
+            .InstallAsync(Request(store, "Acme.Toolkit", "1.4.2"), Ct);
+        string recordPath = first.RecordPath;
+        string extension = Path.Combine(store, "extensions", "acme-tools");
+
+        // A record edited into nonsense, and a file a previous version of the package wrote that
+        // nothing in the new archive corresponds to.
+        File.WriteAllText(recordPath, "{ this is not a record");
+        string leftover = Path.Combine(extension, "old-dependency.dll");
+        File.WriteAllText(leftover, "bytes a previous version wrote");
+
+        PackageInstallResult repaired = await feed.Installer(now: Installed)
+            .InstallAsync(Request(store, "Acme.Toolkit", "1.4.2"), Ct);
+
+        Assert.Equal(PackageInstallStatus.Installed, repaired.Status);
+        // Nothing claims a removal: the record that named the old files could not be read.
+        Assert.Empty(repaired.RemovedPaths);
+        PackageInstallRecord? reread = PackageInstallRecordJson.TryRead(
+            recordPath,
+            out string? problem
+        );
+        Assert.NotNull(reread);
+        Assert.Null(problem);
+        Assert.True(PackageContentVerifier.Verify(reread!, store).Clean);
+
+        // The bytes it could not account for are named, and they are still there.
+        Assert.Contains(
+            repaired.Warnings,
+            warning => warning.Contains(leftover, StringComparison.Ordinal)
+        );
+        Assert.Contains(
+            repaired.Warnings,
+            warning => warning.Contains(recordPath, StringComparison.Ordinal)
+        );
+        Assert.True(File.Exists(leftover));
+        Assert.True(
+            File.Exists(Path.Combine(store, "skills", "greek", "SKILL.md")),
+            "the skill this version provides landed"
         );
     }
 

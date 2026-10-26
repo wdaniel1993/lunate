@@ -896,6 +896,8 @@ Lunate.Extensibility.Abstractions.ProcessRunRequest.Deconstruct(out string! File
 Lunate.Extensibility.Abstractions.ProcessRunRequest.Environment.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>?
 Lunate.Extensibility.Abstractions.ProcessRunRequest.Environment.init -> void
 Lunate.Extensibility.Abstractions.ProcessRunRequest.Equals(Lunate.Extensibility.Abstractions.ProcessRunRequest? other) -> bool
+Lunate.Extensibility.Abstractions.ProcessRunRequest.ExtraEnvironment.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>?
+Lunate.Extensibility.Abstractions.ProcessRunRequest.ExtraEnvironment.init -> void
 Lunate.Extensibility.Abstractions.ProcessRunRequest.FileName.get -> string!
 Lunate.Extensibility.Abstractions.ProcessRunRequest.FileName.init -> void
 Lunate.Extensibility.Abstractions.ProcessRunRequest.LineHandler.get -> System.Func<string!, System.Threading.CancellationToken, System.Threading.Tasks.Task<string?>!>?

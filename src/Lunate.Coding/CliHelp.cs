@@ -87,10 +87,10 @@ internal static class CliHelp
         );
         output.WriteLine("                                 removes this repository's records");
         output.WriteLine(
-            "  lunate install <package-id>[@<version>] [--project] [--dry-run] [--json] [--offline] [--force]"
+            "  lunate install <package-id>[@<version>] [--project] [--dry-run] [--json] [--offline] [--force] [--yes]"
         );
         output.WriteLine(
-            "                                 download, resolve and install a package's extension and skills"
+            "                                 download, resolve and install a package's extension and skills; --yes inside a session"
         );
         output.WriteLine("  lunate uninstall <package-id|extension-id> [--force] [--json]");
         output.WriteLine(

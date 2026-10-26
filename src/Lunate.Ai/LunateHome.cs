@@ -21,6 +21,17 @@ internal static class LunateHome
     public const string Variable = "LUNATE_HOME";
 
     /// <summary>
+    /// The marker every child the bash tool spawns carries, and the value it carries: one
+    /// environment variable, read from the process environment only, so a command running inside a
+    /// session can tell it is inside one (the reason <c>lunate install</c> refuses without
+    /// <c>--yes</c> from there). A command run by a human, a script or CI does not carry it.
+    /// </summary>
+    internal const string SessionVariable = "LUNATE_SESSION";
+
+    /// <summary>The marker's value; only this value means "inside a Lunate session".</summary>
+    internal const string SessionMarker = "1";
+
+    /// <summary>
     /// The refusal a caller with a workspace reports when the configured root would put the trust
     /// store — and sessions, credentials and settings — inside the tree it governs. A repository can
     /// write anything under itself, so records there answer to the repository, not to the user.

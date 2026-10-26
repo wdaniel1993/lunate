@@ -243,6 +243,12 @@ store could choose the directory its own trust records live in.
 There are no log files today: extension logging goes to the terminal through `IExtensionLog`, and a
 session's transcript is the session file under the root. Nothing writes a log of its own.
 
+Lunate also sets `LUNATE_SESSION=1` in every child the bash tool starts, and nowhere else: a command
+running inside a session can tell that it is inside one. `lunate install` reads it, and when it is set
+the install refuses without `--yes` (exit 2) — an install started from a command puts code on the
+machine that runs at the next load, so the flag has to be visible in the command you approved. Outside
+a session the marker is absent and nothing changes.
+
 If `LUNATE_HOME` resolves inside the workspace a session starts in — or the repository that worktree
 belongs to — Lunate refuses it: `LUNATE_HOME points inside the workspace; trust records there could
 be written by the repository`. The refusal runs wherever a workspace exists: starting an interactive

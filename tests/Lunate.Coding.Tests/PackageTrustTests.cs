@@ -11,6 +11,57 @@ namespace Lunate.Coding.Tests;
 public sealed class PackageTrustTests
 {
     [Fact]
+    public void A_user_install_is_pending_in_the_trust_inventory_too()
+    {
+        using var feed = new PackageFeedFixture();
+        GitTestRepo.Init(feed.Worktree);
+        feed.Bundle(skills: ["greek"]);
+        Assert.Equal(0, feed.Run(["Acme.Toolkit@1.4.2"], out _, out _));
+
+        Result trust = Trust(feed, []);
+
+        // Installing is not trusting in either scope: the pending set lists a user-scope install
+        // with the question and the provenance line a project install gets.
+        Assert.Equal(TrustCommand.ExitPending, trust.ExitCode);
+        Assert.Contains("installed in", trust.Output, StringComparison.Ordinal);
+        Assert.Contains(
+            "  from package Acme.Toolkit@1.4.2 (local)",
+            trust.Output,
+            StringComparison.Ordinal
+        );
+        Assert.False(
+            File.Exists(Path.Combine(feed.Store, "trust.json")),
+            "an install writes no trust record"
+        );
+
+        TrustInventory pending = TrustInventory.Create(
+            new Workspace(feed.Worktree),
+            new ExtensionSeams { StorePath = feed.Store }
+        );
+        Assert.True(pending.HasPending);
+
+        Assert.Equal(TrustCommand.ExitOk, Trust(feed, ["--yes"]).ExitCode);
+        Assert.False(
+            TrustInventory
+                .Create(new Workspace(feed.Worktree), new ExtensionSeams { StorePath = feed.Store })
+                .HasPending
+        );
+    }
+
+    [Fact]
+    public void A_hand_placed_user_scope_extension_is_still_trusted_by_placement()
+    {
+        using var feed = new PackageFeedFixture();
+        GitTestRepo.Init(feed.Worktree);
+        feed.HandPlacedExtension("hand-placed");
+
+        Result trust = Trust(feed, []);
+
+        Assert.Equal(TrustCommand.ExitOk, trust.ExitCode);
+        Assert.Contains("trust: nothing pending", trust.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void A_project_install_shows_up_in_the_trust_inventory_with_its_package()
     {
         using var feed = new PackageFeedFixture();
@@ -88,21 +139,27 @@ public sealed class PackageTrustTests
     }
 
     [Fact]
-    public void A_user_install_is_trusted_by_installing_and_asks_nothing()
+    public void A_user_install_is_pending_until_it_is_approved()
     {
         using var feed = new PackageFeedFixture();
         feed.Bundle(skills: ["greek"]);
         Assert.Equal(0, feed.Run(["Acme.Toolkit@1.4.2"], out _, out _));
 
-        Result trust = Trust(feed, []);
+        Result pending = Trust(feed, []);
 
-        Assert.Equal(TrustCommand.ExitOk, trust.ExitCode);
+        // The addendum's rule in phase 6: an install is not a decision, in either scope. The
+        // user-scope extension is pending with the package named, and approving it settles it.
+        Assert.Equal(TrustCommand.ExitPending, pending.ExitCode);
         Assert.Contains(
-            "trust: no records for this repository",
-            trust.Output,
+            "from package Acme.Toolkit@1.4.2 (local)",
+            pending.Output,
             StringComparison.Ordinal
         );
-        Assert.Contains("trust: nothing pending", trust.Output, StringComparison.Ordinal);
+
+        Assert.Equal(TrustCommand.ExitOk, Trust(feed, ["--yes"]).ExitCode);
+        Result settled = Trust(feed, []);
+        Assert.Equal(TrustCommand.ExitOk, settled.ExitCode);
+        Assert.Contains("trust: nothing pending", settled.Output, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Lunate.Extensibility;
+using Lunate.Extensibility.Restore;
 
 namespace Lunate.Coding.Tests;
 
@@ -10,6 +11,72 @@ namespace Lunate.Coding.Tests;
 /// </summary>
 public sealed class UninstallCommandTests
 {
+    [Fact]
+    public void Uninstall_force_removes_a_record_nobody_can_read_and_names_what_it_cannot_know()
+    {
+        using var feed = new PackageFeedFixture();
+        feed.Bundle(id: "acme-tools", extensionId: "acme-tools", skills: ["greek"]);
+        Assert.Equal(0, feed.Run(["acme-tools@1.4.2"], out _, out _));
+        string record = Path.Combine(
+            feed.Store,
+            "packages",
+            "acme-tools",
+            PackageInstallRecordJson.FileName
+        );
+        File.WriteAllText(record, "{ this is not a record");
+
+        int exit = feed.RunUninstall(
+            ["acme-tools", "--force"],
+            out string output,
+            out string errors
+        );
+
+        Assert.Equal(UninstallCommand.ExitOk, exit);
+        Assert.Empty(errors);
+        Assert.Contains($"record: '{record}' removed", output, StringComparison.Ordinal);
+        // Every path it removed is printed, not a count to take on trust.
+        Assert.Contains(
+            Path.Combine(feed.Store, "extensions", "acme-tools", "acme-tools.dll"),
+            output,
+            StringComparison.Ordinal
+        );
+        Assert.Contains(
+            $"not known: '{Path.Combine(feed.Store, "skills")}'",
+            output,
+            StringComparison.Ordinal
+        );
+        Assert.False(Directory.Exists(Path.Combine(feed.Store, "packages", "acme-tools")));
+        Assert.False(Directory.Exists(Path.Combine(feed.Store, "extensions", "acme-tools")));
+        // A skill directory is exactly what only a readable record could have named.
+        Assert.True(File.Exists(Path.Combine(feed.Store, "skills", "greek", "SKILL.md")));
+    }
+
+    [Fact]
+    public void Uninstall_without_force_still_refuses_an_unreadable_record()
+    {
+        using var feed = new PackageFeedFixture();
+        feed.Bundle(id: "acme-tools", extensionId: "acme-tools", skills: ["greek"]);
+        Assert.Equal(0, feed.Run(["acme-tools@1.4.2"], out _, out _));
+        string record = Path.Combine(
+            feed.Store,
+            "packages",
+            "acme-tools",
+            PackageInstallRecordJson.FileName
+        );
+        File.WriteAllText(record, "{ this is not a record");
+
+        int exit = feed.RunUninstall(["acme-tools"], out string output, out string errors);
+
+        Assert.Equal(UninstallCommand.ExitFailure, exit);
+        Assert.Empty(output);
+        Assert.Contains(record, errors, StringComparison.Ordinal);
+        Assert.Contains("nothing acts on it", errors, StringComparison.Ordinal);
+        Assert.True(File.Exists(record));
+        Assert.True(
+            File.Exists(Path.Combine(feed.Store, "extensions", "acme-tools", "acme-tools.dll"))
+        );
+    }
+
     [Fact]
     public void Uninstall_prints_what_it_removed_and_keeps_the_nupkg_and_the_lock()
     {

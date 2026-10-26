@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using Lunate.Agent;
+using Lunate.Ai;
 using Lunate.Extensibility.Abstractions;
 
 namespace Lunate.Coding;
@@ -13,6 +14,14 @@ public sealed class BashTool : ITool
     private const int CaptureCap = 1_000_000;
 
     private static readonly ProcessRunner Runner = new();
+
+    /// <summary>
+    /// What every child this tool spawns carries besides its inherited environment: the session
+    /// marker (design D7's line about install being visible in the command the user approved). It
+    /// is additive, so the shell still sees PATH, HOME and whatever else it inherited.
+    /// </summary>
+    internal static readonly IReadOnlyDictionary<string, string> SessionEnvironment =
+        new Dictionary<string, string> { [LunateHome.SessionVariable] = LunateHome.SessionMarker };
 
     internal static readonly string CapMarker = string.Create(
         CultureInfo.InvariantCulture,
@@ -110,7 +119,10 @@ public sealed class BashTool : ITool
                     _workspace.WorktreeRoot,
                     Timeout: _timeout,
                     OutputCapBytes: CaptureCap
-                ),
+                )
+                {
+                    ExtraEnvironment = SessionEnvironment,
+                },
                 ct
             );
         }

@@ -258,6 +258,101 @@ public sealed class PackageUninstallTests
             Force = force,
         };
 
+    [Fact]
+    public async Task Force_removes_the_record_directory_and_the_extension_named_by_the_package_id()
+    {
+        using var temp = new TempDirectory();
+        var feed = new BundleFeed(temp.Root);
+        // The package id and the extension id are the same here, which is the one case an
+        // unreadable record still names: <root>/extensions/<package-id>/.
+        feed.Bundle(id: "acme-tools")
+            .Manifest(TestPackage.FullManifest)
+            .Extension(id: "acme-tools")
+            .Skill("greek")
+            .Save();
+        string store = Path.Combine(temp.Root, "store");
+        PackageInstallResult install = await feed.Installer(now: Installed)
+            .InstallAsync(Request(store, "acme-tools"), Ct);
+        File.WriteAllText(install.RecordPath, "{\"recordVersion\": 99}");
+
+        PackageBrokenUninstallResult result = new PackageUninstaller().UninstallBroken(
+            new PackageUninstallRequest
+            {
+                Id = "acme-tools",
+                StoreRoot = store,
+                Force = true,
+            }
+        );
+
+        Assert.Contains(install.RecordPath, result.RemovedFiles);
+        Assert.Contains(
+            Path.Combine(store, "extensions", "acme-tools", "acme-tools.dll"),
+            result.RemovedFiles
+        );
+        Assert.False(Directory.Exists(Path.Combine(store, "packages", "acme-tools")));
+        Assert.False(Directory.Exists(Path.Combine(store, "extensions", "acme-tools")));
+        Assert.Contains("recordVersion", result.Problem, StringComparison.Ordinal);
+
+        // What only a readable record could have named is named, and the skill it would have
+        // listed is untouched.
+        Assert.Contains(Path.Combine(store, "skills"), result.UnknownPaths);
+        Assert.Contains(Path.Combine(store, "extensions"), result.UnknownPaths);
+        Assert.True(File.Exists(Path.Combine(store, "skills", "greek", "SKILL.md")));
+    }
+
+    [Fact]
+    public async Task An_unreadable_record_still_refuses_without_force()
+    {
+        using var temp = new TempDirectory();
+        var feed = new BundleFeed(temp.Root);
+        feed.Bundle(id: "acme-tools")
+            .Manifest(TestPackage.FullManifest)
+            .Extension(id: "acme-tools")
+            .Skill("greek")
+            .Save();
+        string store = Path.Combine(temp.Root, "store");
+        PackageInstallResult install = await feed.Installer(now: Installed)
+            .InstallAsync(Request(store, "acme-tools"), Ct);
+        File.WriteAllText(install.RecordPath, "{\"recordVersion\": 99}");
+
+        InvalidDataException refusal = Assert.Throws<InvalidDataException>(() =>
+            Uninstall(store, "acme-tools")
+        );
+
+        Assert.Contains(install.RecordPath, refusal.Message, StringComparison.Ordinal);
+        Assert.True(File.Exists(install.RecordPath));
+        Assert.True(File.Exists(Path.Combine(store, "extensions", "acme-tools", "acme-tools.dll")));
+    }
+
+    [Fact]
+    public void A_broken_removal_without_force_is_refused()
+    {
+        using var temp = new TempDirectory();
+        string store = Path.Combine(temp.Root, "store");
+        Directory.CreateDirectory(Path.Combine(store, "packages", "acme-tools"));
+        string path = Path.Combine(
+            store,
+            "packages",
+            "acme-tools",
+            PackageInstallRecordJson.FileName
+        );
+        File.WriteAllText(path, "{ this is not a record");
+
+        InvalidOperationException refusal = Assert.Throws<InvalidOperationException>(() =>
+            new PackageUninstaller().UninstallBroken(
+                new PackageUninstallRequest
+                {
+                    Id = "acme-tools",
+                    StoreRoot = store,
+                    Force = false,
+                }
+            )
+        );
+
+        Assert.Contains("--force", refusal.Message, StringComparison.Ordinal);
+        Assert.True(File.Exists(path));
+    }
+
     /// <summary>
     /// A record written by hand, so a test can put two packages on one extension id — a state the
     /// installer itself refuses, and the ambiguity an uninstall by extension id has to survive.

@@ -39,10 +39,11 @@ public sealed partial class PackageInstaller
             target.RecordPath,
             out string? problem
         );
-        if (problem is not null)
-        {
-            throw new InvalidDataException(problem);
-        }
+
+        // A record that cannot be read is not a refusal: the addendum makes a reinstall the repair,
+        // so this run writes the content and a new record over it and names, afterwards, the bytes
+        // it could not account for. Nothing here claims to have removed what it cannot name.
+        string? unreadable = problem;
 
         // The same version in the same scope is nothing to resolve — unless --force asks for a
         // repair, which rewrites the recorded paths from the recorded version's own archive. A
@@ -68,6 +69,8 @@ public sealed partial class PackageInstaller
                     Record = installed,
                     RecordPath = target.RecordPath,
                     Dependencies = DependenciesFromLock(target, installed),
+                    ContentBytes = PackageContentSize.Total(installed.Content.Paths),
+                    Warnings = SizeWarnings(target.Scope, installed.Content.Paths),
                 };
             }
         }
@@ -116,9 +119,12 @@ public sealed partial class PackageInstaller
             string? worktree = request.Worktree ?? target.Worktree;
 
             // An install replaces its own previous content, so the paths and directories the old
-            // record names are not a collision — they are what this run takes back.
-            RequireExtensionIdFree(package, target, worktree, installed);
-            List<string> warnings = PlaceSkills(package, target, worktree, installed);
+            // record names are not a collision — they are what this run takes back. An unreadable
+            // record names nothing, and the paths this install writes at this scope are still its
+            // own to replace.
+            bool broken = unreadable is not null;
+            RequireExtensionIdFree(package, target, worktree, installed, broken);
+            List<string> warnings = PlaceSkills(package, target, worktree, installed, broken);
 
             // The walk runs before a file lands: a closure no feed serves is a refusal with nothing
             // written, not a half-installed package.
@@ -150,9 +156,14 @@ public sealed partial class PackageInstaller
                     Record = installed,
                     RecordPath = target.RecordPath,
                     WrittenPaths = Repair(installed, target, staged, label),
-                    Warnings = warnings,
+                    Warnings =
+                    [
+                        .. warnings,
+                        .. SizeWarnings(target.Scope, installed.Content.Paths),
+                    ],
                     Resolved = package,
                     Dependencies = [.. closure.Dependencies],
+                    ContentBytes = PackageContentSize.Total(installed.Content.Paths),
                 };
             }
 
@@ -184,6 +195,13 @@ public sealed partial class PackageInstaller
             );
             PackageInstallRecordJson.WriteTo(target.RecordPath, record);
 
+            if (unreadable is not null)
+            {
+                warnings.AddRange(Unaccounted(unreadable, target, package, staged));
+            }
+
+            warnings.AddRange(SizeWarnings(target.Scope, record.Content.Paths));
+
             return new PackageInstallResult
             {
                 Status = installed is null
@@ -198,6 +216,7 @@ public sealed partial class PackageInstaller
                 PreviousVersion = installed?.Package.Version,
                 RemovedPaths = removed,
                 LeftBehind = leftBehind,
+                ContentBytes = PackageContentSize.Total(record.Content.Paths),
             };
         }
         catch
