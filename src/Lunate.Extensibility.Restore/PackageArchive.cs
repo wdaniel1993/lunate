@@ -130,6 +130,53 @@ internal sealed class PackageArchive : IDisposable
         return reader.ReadToEnd();
     }
 
+    /// <summary>
+    /// Copies one entry to a new file, returning the bytes written. The zip's own checksum is checked
+    /// as the stream is read, so a corrupt entry fails here — named, because an install that cannot
+    /// extract a file has to say which one.
+    /// </summary>
+    internal long CopyTo(string path, string destination)
+    {
+        if (!_entries.TryGetValue(path, out ZipArchiveEntry? entry))
+        {
+            throw new InvalidDataException($"{path}: the archive holds no such entry.");
+        }
+
+        string? directory = Path.GetDirectoryName(Path.GetFullPath(destination));
+        if (directory is { Length: > 0 })
+        {
+            Directory.CreateDirectory(directory);
+        }
+
+        using FileStream target = new(
+            destination,
+            FileMode.Create,
+            FileAccess.Write,
+            FileShare.None
+        );
+        long written = 0;
+        try
+        {
+            using Stream source = entry.Open();
+            byte[] buffer = new byte[80 * 1024];
+            int read;
+            while ((read = source.Read(buffer, 0, buffer.Length)) > 0)
+            {
+                target.Write(buffer, 0, read);
+                written += read;
+            }
+        }
+        catch (Exception exception) when (exception is InvalidDataException or IOException)
+        {
+            throw new InvalidDataException(
+                $"archive entry '{path}' could not be read: {exception.Message}",
+                exception
+            );
+        }
+
+        return written;
+    }
+
     /// <summary>The file entries under <paramref name="folder"/>, prefix included.</summary>
     internal List<string> FilesUnder(string folder)
     {

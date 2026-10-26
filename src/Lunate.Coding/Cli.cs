@@ -78,6 +78,11 @@ internal static class Cli
             return CacheCommand.Run(args[1..], workingDirectory, output, errors, extensions);
         }
 
+        if (args.Length > 0 && args[0] == "packages")
+        {
+            return PackagesCommand.Run(args[1..], workingDirectory, output, errors, extensions);
+        }
+
         if (args.Length > 0 && args[0] == "--discover")
         {
             if (args.Length != 2 || string.IsNullOrWhiteSpace(args[1]))

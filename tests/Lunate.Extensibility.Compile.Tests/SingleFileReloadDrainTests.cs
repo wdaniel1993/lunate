@@ -47,10 +47,13 @@ public sealed class SingleFileReloadDrainTests
         );
         Assert.Contains("ext:acme-tools:ping", notice, StringComparison.Ordinal);
         Assert.Contains("extension 'acme-tools'", notice, StringComparison.Ordinal);
-        // Drained before the context disposed: the invocation had already left when the swap ended,
-        // and its cancelled result is discarded rather than rendered.
-        Assert.True(invocation.IsCompleted);
-        Assert.Null((await invocation).Message);
+        // Drained before the context disposed: the invocation leaves, and its cancelled result is
+        // discarded rather than rendered. The wait is bounded but not instantaneous: the drain sees
+        // the lease released inside the handler's own finally, and the Task's completion is
+        // observable a moment later — asserting IsCompleted here raced that gap, which only ever
+        // showed on the faster Linux and Windows runners.
+        CommandResult drainedResult = await invocation.WaitAsync(TimeSpan.FromSeconds(5), Ct);
+        Assert.Null(drainedResult.Message);
         Assert.DoesNotContain(
             fixture.Log.Messages,
             message => message.Contains("did not return", StringComparison.Ordinal)

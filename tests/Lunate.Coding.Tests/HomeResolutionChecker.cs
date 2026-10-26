@@ -34,8 +34,10 @@ internal static class HomeResolutionChecker
     [
         // NuGet's default global packages folder: content-addressed package storage the SDK shares,
         // not Lunate state. Moving it would make a sandbox restore into a second package cache.
+        // GlobalPackagesFolder is the one type that states the precedence, so the restore, the
+        // package install and the walk agree on the folder instead of each resolving it again.
         new(
-            "src/Lunate.Extensibility.Restore/NuGetRestoreEngine.cs",
+            "src/Lunate.Extensibility.Restore/GlobalPackagesFolder.cs",
             Resolution.UserProfile,
             "NuGet's default global packages folder (`~/.nuget/packages`), shared with the SDK"
         ),
