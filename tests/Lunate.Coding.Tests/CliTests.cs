@@ -151,6 +151,55 @@ public sealed class CliTests
     }
 
     [Fact]
+    public void Run_with_help_lists_install_uninstall_and_packages_with_one_line_each()
+    {
+        using var writer = new StringWriter();
+
+        var exitCode = Cli.Run(
+            ["--help"],
+            writer,
+            TextWriter.Null,
+            TestContext.Current.CancellationToken
+        );
+
+        Assert.Equal(0, exitCode);
+        string[] lines = writer.ToString().ReplaceLineEndings("\n").Split('\n');
+        foreach (
+            string usage in new[]
+            {
+                "  lunate install <package-id>[@<version>]",
+                "  lunate uninstall <package-id|extension-id>",
+                "  lunate packages [",
+            }
+        )
+        {
+            int index = Array.FindIndex(
+                lines,
+                line => line.StartsWith(usage, StringComparison.Ordinal)
+            );
+            Assert.True(index >= 0, $"the help does not document '{usage}'");
+            string description = lines[index + 1];
+            Assert.StartsWith(
+                "                                 ",
+                description,
+                StringComparison.Ordinal
+            );
+            Assert.False(string.IsNullOrWhiteSpace(description), $"'{usage}' has no description");
+
+            // One description line: what follows the entry is a blank line or the next entry, never
+            // a second indented line belonging to the same command.
+            string following = lines[index + 2];
+            Assert.True(
+                following.Length == 0
+                    || following.StartsWith("  lunate", StringComparison.Ordinal)
+                    || following.StartsWith("  -", StringComparison.Ordinal)
+                    || following.StartsWith("Session", StringComparison.Ordinal),
+                $"'{usage}' has more than one description line: '{following}'"
+            );
+        }
+    }
+
+    [Fact]
     public void Run_with_unknown_arg_is_a_usage_error()
     {
         using var output = new StringWriter();
