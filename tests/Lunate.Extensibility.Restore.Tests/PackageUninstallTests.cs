@@ -60,6 +60,55 @@ public sealed class PackageUninstallTests
     }
 
     [Fact]
+    public async Task A_file_that_cannot_be_deleted_stops_the_uninstall_and_keeps_the_record()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            Assert.Skip(
+                "a read-only directory does not stop deletion on Windows; there it is a loaded assembly, which CI's Windows leg exercises end to end"
+            );
+            return;
+        }
+
+        using var temp = new TempDirectory();
+        var feed = new BundleFeed(temp.Root);
+        feed.Bundle().Manifest(TestPackage.FullManifest).Extension().Skill("greek").Save();
+        string store = Path.Combine(temp.Root, "store");
+        PackageInstallResult install = await feed.Installer(now: Installed)
+            .InstallAsync(Request(store, "Acme.Toolkit"), Ct);
+        string extension = Path.Combine(store, "extensions", "acme-tools");
+        string settings = Path.Combine(extension, "extension.json");
+        Assert.True(File.Exists(settings));
+
+        // No write bit on the directory: deleting a file inside it fails exactly as a mapped
+        // assembly does on Windows, which is the case this message exists for.
+        UnixFileMode original = File.GetUnixFileMode(extension);
+        File.SetUnixFileMode(extension, UnixFileMode.UserRead | UnixFileMode.UserExecute);
+        try
+        {
+            InvalidOperationException refused = Assert.Throws<InvalidOperationException>(() =>
+                Uninstall(store, "Acme.Toolkit")
+            );
+
+            Assert.Contains(settings, refused.Message, StringComparison.Ordinal);
+            Assert.Contains("could not be deleted", refused.Message, StringComparison.Ordinal);
+            // Nothing after it was deleted and the record still answers for the content, so the
+            // same command finishes the job once the reason is gone.
+            Assert.True(File.Exists(install.RecordPath));
+            Assert.True(File.Exists(settings));
+        }
+        finally
+        {
+            File.SetUnixFileMode(extension, original);
+        }
+
+        PackageUninstallResult result = Uninstall(store, "Acme.Toolkit");
+
+        Assert.True(result.RecordRemoved);
+        Assert.False(Directory.Exists(extension));
+    }
+
+    [Fact]
     public async Task Uninstall_removes_the_closure_it_materialised_and_keeps_the_lock()
     {
         using var temp = new TempDirectory();

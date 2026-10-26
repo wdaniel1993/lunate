@@ -65,6 +65,12 @@ public sealed class PackageInstallEndToEndTests
 
         Assert.Equal(PackagesCommand.ExitOk, Verify(feed));
 
+        // Windows keeps a loaded assembly mapped until the context that loaded it is gone, and this
+        // session has it loaded: uninstalling is something you do to code nothing is running.
+        host.Console.SendText("/quit");
+        host.Console.SendEnter();
+        await run;
+
         Assert.Equal(
             0,
             feed.RunUninstall(["Acme.Toolkit"], out string removed, out string uninstallErrors)
@@ -78,10 +84,6 @@ public sealed class PackageInstallEndToEndTests
         Assert.False(
             File.Exists(Path.Combine(feed.Store, "packages", "acme.toolkit", "install.json"))
         );
-
-        host.Console.SendText("/quit");
-        host.Console.SendEnter();
-        await run;
     }
 
     [Fact]

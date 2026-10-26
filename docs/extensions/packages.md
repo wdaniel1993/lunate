@@ -107,11 +107,17 @@ Uninstall deletes exactly the paths the record lists, then the directories the i
 
 An ambiguous extension id is refused with the candidates. There is no `--project`: the record's scope decides.
 
+A file a running process has loaded — on Windows every assembly — stops the uninstall: the command names it as in use, deletes nothing after it and leaves the record intact, so running it again once the session has stopped finishes the job.
+
 ## Trust
 
 Installing is not trusting. An installed extension is pending in **both** scopes — user and project — until the existing question is answered at first load, and that question names where the code came from: `from package acme-tools@1.2.0 (nuget.org)`. Hand-placed extensions keep their current rule: a hand-placed user-scope extension is trusted by placement, a hand-placed project one is pending.
 
 The decision binds the package identity, the canonical lock graph and the directory's content hash, so an upgrade re-prompts and an edited file re-prompts. Install writes no trust record; it changes the pending set `lunate trust` prints.
+
+Only a person can answer. No tool, slash command or protocol path records a decision; `lunate trust --yes` exists for scripts and refuses when it detects a Lunate session, so the bash tool cannot approve on your behalf; and print, ACP and any other run without a terminal refuse a pending extension and name it instead of guessing — which means it does not load there. `lunate trust --clear` works everywhere, because revoking escalates nothing.
+
+The `LUNATE_SESSION` marker is a visibility guard, not a boundary: a caller can unset it, and a run that skips approval prompts shows nothing. What holds regardless is the question above — code that arrived with a package does not execute until you answer it.
 
 ## What a package cannot do
 

@@ -248,7 +248,7 @@ An install SHALL record the exact version it resolved and SHALL never re-resolve
 
 ### Requirement: Uninstall
 
-`lunate uninstall <package-id | extension-id>` SHALL delete exactly the paths the record lists and the record's own directory, then remove the directories the install created that are now empty, and SHALL NOT delete anything else. It SHALL accept an extension id the record names when exactly one record matches, and SHALL refuse an ambiguous one, naming the candidates. It SHALL refuse, naming the files, when a recorded file's hash no longer matches, and SHALL proceed with `--force`. Files inside a directory the package created but did not write SHALL be left and named, with a line saying the directory is not empty and where it is. For a record that does not answer for itself, a plain uninstall SHALL still refuse, naming the file; `--force` SHALL remove the record's own directory and `<root>/extensions/<package-id>/` when it exists, print every path it removed, and name what only a readable record could have known. The dependency lock SHALL be left in place: it is the record of a resolution, not installed content, and a reinstall reuses it. Trust records SHALL NOT be touched: trust is a decision about bytes at a path, so removing the content does not revoke it and an identical reinstall keeps it. A session that already loaded the extension SHALL keep it until the process exits; the next session sees the content gone.
+`lunate uninstall <package-id | extension-id>` SHALL delete exactly the paths the record lists and the record's own directory, then remove the directories the install created that are now empty, and SHALL NOT delete anything else. It SHALL accept an extension id the record names when exactly one record matches, and SHALL refuse an ambiguous one, naming the candidates. It SHALL refuse, naming the files, when a recorded file's hash no longer matches, and SHALL proceed with `--force`. Files inside a directory the package created but did not write SHALL be left and named, with a line saying the directory is not empty and where it is. For a record that does not answer for itself, a plain uninstall SHALL still refuse, naming the file; `--force` SHALL remove the record's own directory and `<root>/extensions/<package-id>/` when it exists, print every path it removed, and name what only a readable record could have known. The dependency lock SHALL be left in place: it is the record of a resolution, not installed content, and a reinstall reuses it. Trust records SHALL NOT be touched: trust is a decision about bytes at a path, so removing the content does not revoke it and an identical reinstall keeps it. A session that already loaded the extension SHALL keep it until the process exits; the next session sees the content gone. A recorded file that cannot be deleted because a running process has it loaded SHALL stop the uninstall with exit 1, name that file and say it is in use, delete nothing after it and leave the record intact, so re-running the command once the session has stopped finishes the job.
 
 #### Scenario: Uninstall removes what was written and nothing else
 
@@ -346,6 +346,8 @@ Install and upgrade SHALL be all-or-nothing per command: the record is the commi
 
 The bash tool SHALL set `LUNATE_SESSION=1` in the environment of every child it starts, additively: the marker is added to what the child inherited, never a replacement for it. `lunate install` SHALL read the marker and, when it is set and `--yes` is absent, SHALL refuse with exit 2 and a message naming `--yes` and saying why — an install started from a command inside a session puts code on the machine that runs at the next load, so the flag has to be visible in the command the user approved. `--yes` SHALL be documented in the command's usage line and in `--help`. Outside a session the marker is absent and nothing changes.
 
+The marker is a visibility guard, not a security boundary: a caller can unset it, and no run that skips approval prompts shows anything. The guarantee that holds regardless SHALL be the pending trust decision: `lunate trust --yes` SHALL refuse with exit 2 inside a session and record nothing, because approval is the user's answer and `--yes` is exactly the flag that would make it silent. Clearing trust SHALL remain available inside a session: revoking a decision escalates nothing.
+
 #### Scenario: A session install without --yes is refused
 
 - **GIVEN** a command running inside a Lunate session
@@ -363,6 +365,18 @@ The bash tool SHALL set `LUNATE_SESSION=1` in the environment of every child it 
 - **GIVEN** no `LUNATE_SESSION` marker in the environment
 - **WHEN** `lunate install Acme.Toolkit` runs
 - **THEN** it installs, with no `--yes` needed
+
+#### Scenario: Approval is refused inside a session
+
+- **GIVEN** a session marker and a pending installed extension
+- **WHEN** `lunate trust --yes` runs
+- **THEN** it exits 2 with a message that approval belongs to the session's prompt, and no trust record is written
+
+#### Scenario: Revoking is allowed inside a session
+
+- **GIVEN** the same marker and an approved extension
+- **WHEN** `lunate trust --clear` runs
+- **THEN** the record is removed, so the next load asks again
 
 ### Requirement: The `lunate packages` view
 

@@ -434,6 +434,32 @@ public sealed class TrustCommandTests
         Assert.Single(fixture.Records());
     }
 
+    [Fact]
+    public void Approval_is_refused_inside_a_session_and_records_nothing()
+    {
+        using var temp = new TempDirectory();
+        Fixture fixture = Fixture.Create(temp);
+
+        // The bash tool marks its children; --yes is not an answer a model can give on the user's
+        // behalf, because --yes is exactly the flag that would make the approval silent.
+        (int exitCode, _, string errors) = fixture.RunInsideSession("--yes");
+
+        Assert.Equal(TrustCommand.ExitUsage, exitCode);
+        Assert.Contains(
+            "cannot be approved from inside a Lunate session",
+            errors,
+            StringComparison.Ordinal
+        );
+        Assert.Empty(fixture.Records());
+        Assert.False(File.Exists(fixture.TrustFile));
+
+        // The same command outside a session still approves, so the gate is the marker, not --yes.
+        (int outside, _, _) = fixture.Run("--yes");
+
+        Assert.Equal(TrustCommand.ExitOk, outside);
+        Assert.Single(fixture.Records());
+    }
+
     private sealed class Fixture
     {
         private Fixture(string worktree, string store, bool withConfig)
@@ -479,7 +505,18 @@ public sealed class TrustCommandTests
             );
         }
 
-        public (int ExitCode, string Output, string Errors) Run(params string[] args)
+        public (int ExitCode, string Output, string Errors) Run(params string[] args) =>
+            RunWith(args, environment: null);
+
+        /// <summary>Runs as a command the bash tool spawned: the session marker is in the environment.</summary>
+        public (int ExitCode, string Output, string Errors) RunInsideSession(
+            params string[] args
+        ) => RunWith(args, name => name == "LUNATE_SESSION" ? "1" : null);
+
+        private (int ExitCode, string Output, string Errors) RunWith(
+            string[] args,
+            Func<string, string?>? environment
+        )
         {
             using var output = new StringWriter();
             using var errors = new StringWriter();
@@ -488,7 +525,8 @@ public sealed class TrustCommandTests
                 Worktree,
                 output,
                 errors,
-                new ExtensionSeams { StorePath = Store, Log = Log }
+                new ExtensionSeams { StorePath = Store, Log = Log },
+                environment
             );
             return (exitCode, Normalize(output.ToString()), Normalize(errors.ToString()));
         }
