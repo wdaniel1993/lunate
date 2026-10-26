@@ -278,6 +278,22 @@ internal sealed class ManualScheduler : IScheduler
         Func<IScheduler, TState, IDisposable> action
     ) => Enqueue(state, dueTime, action);
 
+    /// <summary>
+    /// How much work is still queued. A scheduled chain that re-arms itself (the live area's frame
+    /// interval) must never reach zero while it is subscribed: zero means the chain is dead and the
+    /// surface it paints will not change again.
+    /// </summary>
+    public int PendingWorkCount
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _queue.Count;
+            }
+        }
+    }
+
     public void Advance(TimeSpan by)
     {
         DateTimeOffset target = Now + by;
@@ -653,10 +669,29 @@ internal sealed class InteractiveSessionHost : IDisposable
     /// the window closes decides nothing, which is the rule under test elsewhere. Tests that press
     /// keys on a prompt use this instead of a bare wait.
     /// </summary>
+    /// <remarks>
+    /// The expire is a write into the session's own arm stamp, so it must be observed to have
+    /// landed, not merely issued: when the session published the panel before stamping the arm, an
+    /// expire that landed in between was overwritten by the stamp, and every key the test then sent
+    /// was dropped by the 300 ms in-flight window — which a virtual clock never closes. The session
+    /// now stamps before it publishes (so the reading is final); re-expiring until the seam reads
+    /// armed keeps this helper honest even if that ordering ever changes back.
+    /// </remarks>
     public async Task WaitForApprovalAsync(TimeSpan? timeout = null)
     {
         await WaitUntilAsync(() => Session.PendingApproval is not null, timeout);
-        Session.ExpireApprovalArmWindow();
+        await WaitUntilAsync(
+            () =>
+            {
+                if (!Session.ApprovalArmedForNextKey)
+                {
+                    Session.ExpireApprovalArmWindow();
+                }
+
+                return Session.ApprovalArmedForNextKey;
+            },
+            timeout
+        );
     }
 
     public void Advance(int milliseconds) =>
@@ -679,6 +714,62 @@ internal sealed class InteractiveSessionHost : IDisposable
     public string LastFrame => Console.Writes.Count == 0 ? string.Empty : Console.Writes[^1];
 
     public string Frames => string.Concat(Console.Writes);
+
+    /// <summary>
+    /// Everything a timed-out wait needs to be readable after the fact. The message used to print
+    /// only the last frame, so a sighting said "writes=2" and nothing about whether the session was
+    /// mid-approval, refused, or stranded on a dead paint chain.
+    /// </summary>
+    public string Snapshot()
+    {
+        IReadOnlyList<string> writes = Console.Writes;
+        var text = new System.Text.StringBuilder();
+        text.Append(
+                FormattableString.Invariant(
+                    $"running={Session.IsRunning} bashMode={Session.IsBashMode}"
+                )
+            )
+            .Append(
+                FormattableString.Invariant(
+                    $" bashSilent={Session.IsBashSilent} bashRunning={Session.IsBashRunning}"
+                )
+            )
+            .Append(FormattableString.Invariant($" writes={writes.Count}"))
+            .Append(FormattableString.Invariant($" input=\"{Escape(Session.Input.Text)}\""))
+            .Append(
+                FormattableString.Invariant(
+                    $" pendingApproval={Session.PendingApproval?.ToolName ?? "<none>"}"
+                )
+            )
+            .Append(
+                FormattableString.Invariant($" approvalArmed={Session.ApprovalArmedForNextKey}")
+            )
+            .Append(FormattableString.Invariant($" scheduledVt={Scheduler.PendingWorkCount}"));
+
+        text.AppendLine().Append("writes:");
+        for (var i = 0; i < writes.Count; i++)
+        {
+            string body = Escape(writes[i]);
+            if (body.Length > 400)
+            {
+                body = body[..400] + $"…(+{writes[i].Length - 400} chars)";
+            }
+
+            text.AppendLine().Append(FormattableString.Invariant($"  [{i}] {body}"));
+        }
+
+        string scrollback = Scrollback.Output;
+        string tail = scrollback.Length <= 600 ? scrollback : scrollback[^600..];
+        text.AppendLine().Append("scrollback:").Append(Escape(tail));
+
+        return text.ToString();
+    }
+
+    /// <summary>Escapes a rendered write so a terminal frame is legible in one log line.</summary>
+    private static string Escape(string text) =>
+        text.Replace("\u001b", "\\e", StringComparison.Ordinal)
+            .Replace("\r", "\\r", StringComparison.Ordinal)
+            .Replace("\n", "\\n", StringComparison.Ordinal);
 
     /// <summary>
     /// The harness's bound for a wait on a rendered frame or committed scrollback: in-process
@@ -743,11 +834,9 @@ internal sealed class InteractiveSessionHost : IDisposable
             if (DateTime.UtcNow > deadline)
             {
                 throw new TimeoutException(
-                    $"The scrollback never showed {what} within {budget.TotalSeconds:0} seconds "
-                        + $"(running={Session.IsRunning} writes={Console.Writes.Count}). "
-                        + "Last rendered frame:"
+                    $"The scrollback never showed {what} within {budget.TotalSeconds:0} seconds."
                         + Environment.NewLine
-                        + LastFrame
+                        + Snapshot()
                 );
             }
 
@@ -795,8 +884,10 @@ internal sealed class InteractiveSessionHost : IDisposable
             if (DateTime.UtcNow > deadline)
             {
                 throw new TimeoutException(
-                    "The condition never became true "
-                        + $"(running={Session.IsRunning} writes={Console.Writes.Count})."
+                    "The condition never became true within "
+                        + $"{((timeout ?? DefaultWait).TotalSeconds):0} seconds."
+                        + Environment.NewLine
+                        + Snapshot()
                 );
             }
 

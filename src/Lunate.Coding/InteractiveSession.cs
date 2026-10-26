@@ -827,10 +827,20 @@ internal sealed partial class InteractiveSession : IDisposable
     }
 
     /// <summary>The pending approval as shown in the live area; null when none is open.</summary>
-    internal ApprovalPromptModel? PendingApproval => _approvalPrompt;
+    internal ApprovalPromptModel? PendingApproval => Volatile.Read(ref _approvalPrompt);
 
     /// <summary>The key sequence at which the pending approval armed (test seam).</summary>
     internal long ApprovalArmSequence => Interlocked.Read(ref _approvalArmSequence);
+
+    /// <summary>
+    /// Whether the next key read would decide the pending approval (test seam). A harness that
+    /// waits for the panel and then presses a key needs this: the question must be stamped and past
+    /// its in-flight window, not merely visible, before a key counts.
+    /// </summary>
+    internal bool ApprovalArmedForNextKey =>
+        _approvalDecision is not null
+        && _approvalArmAt != default
+        && ApprovalArmed(Interlocked.Read(ref _keySequence) + 1);
 
     /// <summary>
     /// The approval prompt's arm: a key read before the panel rendered never decides, and neither
@@ -1952,17 +1962,25 @@ internal sealed partial class InteractiveSession : IDisposable
             _capabilities.Unicode,
             _console.Size.Columns
         );
-        _approvalPrompt = new ApprovalPromptModel(
+        var prompt = new ApprovalPromptModel(
             toolName,
             request.Args.GetRawText(),
             Asker: AskerLabel(request),
             Detail: detail,
             WorkspaceRoot: workspaceRoot
         );
-        _approvalDecision = decision;
-        _live.SetApproval(_approvalPrompt);
+
+        // The arm is stamped *before* the panel is published. Anyone who watches the panel from
+        // another thread — the test harness does, then ages the window with
+        // ExpireApprovalArmWindow() — must not be able to observe "the question is up" while the
+        // stamp is still unwritten: their expire would be overwritten by the two writes below, and
+        // the key they send next would be dropped by a 300 ms window that a virtual clock never
+        // closes. The release store publishes the decision and both stamps together.
         Interlocked.Exchange(ref _approvalArmSequence, Interlocked.Read(ref _keySequence));
         _approvalArmAt = _scheduler.Now;
+        _approvalDecision = decision;
+        _live.SetApproval(prompt);
+        Volatile.Write(ref _approvalPrompt, prompt);
         using CancellationTokenRegistration registration = ct.Register(() =>
             decision.TrySetCanceled(ct)
         );
@@ -1973,7 +1991,7 @@ internal sealed partial class InteractiveSession : IDisposable
         }
         finally
         {
-            _approvalPrompt = null;
+            Volatile.Write(ref _approvalPrompt, null);
             _approvalDecision = null;
             _live.SetApproval(null);
         }
@@ -2021,7 +2039,7 @@ internal sealed partial class InteractiveSession : IDisposable
         ApprovalChoice choice
     )
     {
-        _approvalPrompt = null;
+        Volatile.Write(ref _approvalPrompt, null);
         _approvalDecision = null;
         _live.SetApproval(null);
         pending.TrySetResult(choice);
