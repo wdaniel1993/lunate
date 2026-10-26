@@ -18,7 +18,14 @@ namespace Lunate.Extensibility;
 /// </summary>
 public static class ExtensionLockJson
 {
-    private static readonly JsonSerializerOptions Indented = new() { WriteIndented = true };
+    private static readonly JsonSerializerOptions Indented = new()
+    {
+        WriteIndented = true,
+
+        // Pinned: the default follows Environment.NewLine, so the same resolution would be CRLF on
+        // Windows and LF on POSIX — and the graph's bytes are the trust digest's input.
+        NewLine = "\n",
+    };
 
     /// <summary>
     /// One lock file's text, read once: the graph bytes the trust digest covers, the lock when it is

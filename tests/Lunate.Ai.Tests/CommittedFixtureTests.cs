@@ -15,6 +15,9 @@ public sealed class CommittedFixtureTests
         foreach (string path in files)
         {
             string[] lines = File.ReadAllLines(path);
+            byte[] bytes = File.ReadAllBytes(path);
+            Assert.DoesNotContain((byte)'\r', bytes);
+            Assert.EndsWith("\n", File.ReadAllText(path), StringComparison.Ordinal);
             FixtureDocument document = FixtureFormat.ReadFile(path);
             DateTimeOffset recordedAt = DateTimeOffset.Parse(
                 document.Header.RecordedAt,

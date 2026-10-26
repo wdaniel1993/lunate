@@ -4,7 +4,12 @@ using Lunate.Agent;
 
 namespace Lunate.Coding;
 
-/// <summary>Replaces one unique occurrence of <c>old_text</c> with <c>new_text</c> in a workspace text file.</summary>
+/// <summary>
+/// Replaces one unique occurrence of <c>old_text</c> with <c>new_text</c> in a workspace text file.
+/// The file is written back in the form it already has: its byte-order mark stays, and every line —
+/// not only the edited one — uses the file's dominant ending, so a file with mixed endings is
+/// unified to the one it leans towards rather than gaining a third.
+/// </summary>
 public sealed class EditTool(
     Workspace workspace,
     IFileMutationQueue? mutations = null,

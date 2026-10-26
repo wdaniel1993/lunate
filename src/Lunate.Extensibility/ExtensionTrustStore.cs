@@ -36,6 +36,12 @@ public sealed class ExtensionTrustStore
         _options = options;
     }
 
+    /// <summary>
+    /// The content hash of an extension directory: every file's relative path and its bytes, sorted
+    /// and NUL-separated. The bytes are text with CRLF normalized to LF, so the same source tree
+    /// checked out on Windows and on POSIX hashes the same and a line-ending-only change does not
+    /// re-prompt.
+    /// </summary>
     public static string ComputeContentHash(string directory)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(directory);
@@ -55,19 +61,11 @@ public sealed class ExtensionTrustStore
                 (left, right) => StringComparer.Ordinal.Compare(left.Relative, right.Relative)
             );
             byte[] separator = [0];
-            byte[] buffer = new byte[81920];
             foreach ((string relative, string fullPath) in files)
             {
                 hash.AppendData(Encoding.UTF8.GetBytes(relative));
                 hash.AppendData(separator);
-
-                using FileStream stream = File.OpenRead(fullPath);
-                int read;
-                while ((read = stream.Read(buffer, 0, buffer.Length)) > 0)
-                {
-                    hash.AppendData(buffer, 0, read);
-                }
-
+                hash.AppendData(LineEndings.ToLf(File.ReadAllBytes(fullPath)));
                 hash.AppendData(separator);
             }
         }
@@ -78,7 +76,8 @@ public sealed class ExtensionTrustStore
     /// <summary>
     /// The equivalent of <see cref="ComputeContentHash(string)"/> for a single file: the file name
     /// plays the relative-path role. The two hash families feed disjoint trust sections, so a
-    /// coincidence between them can never cross-approve.
+    /// coincidence between them can never cross-approve. The bytes are text with CRLF normalized to
+    /// LF, for the same reason the directory hash normalizes.
     /// </summary>
     public static string ComputeFileContentHash(string path)
     {
@@ -90,15 +89,7 @@ public sealed class ExtensionTrustStore
             byte[] separator = [0];
             hash.AppendData(Encoding.UTF8.GetBytes(Path.GetFileName(path)));
             hash.AppendData(separator);
-
-            byte[] buffer = new byte[81920];
-            using FileStream stream = File.OpenRead(path);
-            int read;
-            while ((read = stream.Read(buffer, 0, buffer.Length)) > 0)
-            {
-                hash.AppendData(buffer, 0, read);
-            }
-
+            hash.AppendData(LineEndings.ToLf(File.ReadAllBytes(path)));
             hash.AppendData(separator);
         }
 

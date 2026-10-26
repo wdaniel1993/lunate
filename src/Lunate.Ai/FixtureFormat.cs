@@ -25,6 +25,11 @@ internal static class FixtureFormat
         {
             WriteIndented = false,
             TypeInfoResolver = new DefaultJsonTypeInfoResolver(),
+
+            // Pinned: a fixture line is hashed as the request digest's counterpart and committed as
+            // bytes, so its newline must not follow Environment.NewLine. Unindented output never
+            // emits one today; the pin is what keeps a fixture recorded on Windows LF.
+            NewLine = "\n",
         };
         AIJsonUtilities.AddAIContentType<ImageDigestContent>(options, ImageDigestDiscriminator);
         return options;

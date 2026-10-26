@@ -82,6 +82,10 @@ public sealed class RecordingChatClient : DelegatingChatClient
             }
 
             using var writer = new StreamWriter(_fixturePath, append: true);
+
+            // A fixture is committed bytes: one recorded on Windows must be the same file as one
+            // recorded on POSIX, so the writer never follows Environment.NewLine.
+            writer.NewLine = "\n";
             if (writer.BaseStream.Length == 0)
             {
                 writer.WriteLine(

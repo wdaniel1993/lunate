@@ -1,0 +1,57 @@
+{
+  "lockVersion": 2,
+  "extension": {
+    "id": "acme-tools",
+    "version": "1.0.0"
+  },
+  "source": {
+    "digest": "source-digest",
+    "packages": [
+      "Octokit@14.0.0"
+    ]
+  },
+  "graph": {
+    "sources": [
+      "nuget.org"
+    ],
+    "packages": [
+      {
+        "id": "Octokit",
+        "version": "14.0.0",
+        "sha512": "cGFja2FnZQ==",
+        "requested": "Octokit@14.0.0",
+        "direct": true,
+        "dependencies": [],
+        "files": [
+          "lib/net10.0/Octokit.dll"
+        ],
+        "assets": {
+          "compile": [
+            "lib/net10.0/Octokit.dll"
+          ],
+          "runtime": [
+            "lib/net10.0/Octokit.dll"
+          ],
+          "native": [],
+          "analyzers": []
+        },
+        "generators": false
+      }
+    ]
+  },
+  "toolset": {
+    "tfm": "net10.0",
+    "rid": "osx-arm64",
+    "runtime": "10.0.13",
+    "referencePack": {
+      "id": "Microsoft.NETCore.App.Ref",
+      "version": "10.0.13",
+      "rule": "exact",
+      "sha512": "cmVmLXBhY2s=",
+      "assets": [
+        "ref/net10.0/System.Runtime.dll"
+      ]
+    },
+    "integrity": "02508e9ab39b9373a3565fe9578514109c9d4cc3a2833c9c3b2b89f69e5a0018"
+  }
+}

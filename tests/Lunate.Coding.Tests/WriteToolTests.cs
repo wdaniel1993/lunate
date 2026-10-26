@@ -35,7 +35,10 @@ public sealed class WriteToolTests
 
         Assert.False(result.IsError);
         Assert.Equal("wrote 1 lines to nested/deep/File.txt (created)", result.Output);
-        Assert.Equal("hello\n", File.ReadAllText(temp.File("nested/deep/File.txt")));
+        Assert.Equal(
+            "hello\n".ReplaceLineEndings(Environment.NewLine),
+            File.ReadAllText(temp.File("nested/deep/File.txt"))
+        );
     }
 
     [Fact]
@@ -127,10 +130,10 @@ public sealed class WriteToolTests
     }
 
     [Theory]
-    [InlineData("a\r\nb\r\n")]
+    [InlineData("a\nb\n")]
     [InlineData("a\nb")]
     [InlineData("Gr\u00fc\u00dfe, \u4e16\u754c\n")]
-    public async Task Content_is_written_exactly_without_a_BOM(string content)
+    public async Task Content_is_written_without_a_BOM(string content)
     {
         using var temp = new TempDirectory();
         var args = JsonSerializer.Serialize(new { path = "Bytes.txt", content });
@@ -138,7 +141,10 @@ public sealed class WriteToolTests
         var result = await WriteAsync(temp, args);
 
         Assert.False(result.IsError);
-        Assert.Equal(Encoding.UTF8.GetBytes(content), File.ReadAllBytes(temp.File("Bytes.txt")));
+        Assert.Equal(
+            Encoding.UTF8.GetBytes(content.ReplaceLineEndings(Environment.NewLine)),
+            File.ReadAllBytes(temp.File("Bytes.txt"))
+        );
     }
 
     [Fact]
@@ -223,7 +229,10 @@ public sealed class WriteToolTests
         string path = Assert.Single(queue.Paths);
         Assert.Equal("Queued.txt", Path.GetFileName(path));
         Assert.True(Path.IsPathFullyQualified(path));
-        Assert.Equal("x\n", File.ReadAllText(temp.File("Queued.txt")));
+        Assert.Equal(
+            "x\n".ReplaceLineEndings(Environment.NewLine),
+            File.ReadAllText(temp.File("Queued.txt"))
+        );
     }
 
     private static Task<ToolResult> WriteAsync(TempDirectory temp, string arguments) =>

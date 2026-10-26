@@ -79,7 +79,9 @@ so the host asks once per repository before loading it.
   root outside a repository) and by worktree path, against a content hash of the extension
   directory.
 - **Content hash.** Every file under the extension directory, recursively, contributes its relative
-  path and bytes in sorted order. Editing any file changes the hash.
+  path and bytes in sorted order. Editing any file changes the hash. The bytes are normalized to LF
+  before hashing, so the same source checked out with CRLF and with LF has one hash — a pure
+  line-ending change does not re-prompt.
 - **First decision.** The interactive prompt names the extension id, version and directory (and
   says that it runs with your user privileges for a remote extension). Answering yes records the
   decision in `~/.lunate/trust.json`.

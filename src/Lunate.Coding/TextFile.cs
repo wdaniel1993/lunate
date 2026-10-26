@@ -10,7 +10,17 @@ internal static class TextFile
 
     public static (string Text, bool HasBom) ReadRaw(string path)
     {
-        var bytes = File.ReadAllBytes(path);
+        // The share mode admits a concurrent writer and a replace: Windows enforces it, so a bare
+        // File.ReadAllBytes (FileShare.Read) would refuse a rename that is already in flight.
+        using var stream = new FileStream(
+            path,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.ReadWrite | FileShare.Delete
+        );
+        using var buffer = new MemoryStream();
+        stream.CopyTo(buffer);
+        var bytes = buffer.ToArray();
         var hasBom = bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF;
         var start = hasBom ? 3 : 0;
 
@@ -28,7 +38,41 @@ internal static class TextFile
         stream.Write(Encoding.UTF8.GetBytes(text));
     }
 
+    /// <summary>
+    /// The ending a text mostly uses: CRLF when it has more CRLF line breaks than bare ones, LF when
+    /// it has more of those, and the first line's ending on a tie — so a file with mixed endings is
+    /// rewritten as one file in the form it already leans towards, not as a mixture again.
+    /// </summary>
     public static string DominantEnding(string text)
+    {
+        var crlf = 0;
+        var lf = 0;
+        for (var index = 0; index < text.Length; index++)
+        {
+            if (text[index] != '\n')
+            {
+                continue;
+            }
+
+            if (index > 0 && text[index - 1] == '\r')
+            {
+                crlf++;
+            }
+            else
+            {
+                lf++;
+            }
+        }
+
+        if (crlf == lf)
+        {
+            return FirstEnding(text);
+        }
+
+        return crlf > lf ? "\r\n" : "\n";
+    }
+
+    private static string FirstEnding(string text)
     {
         var newline = text.IndexOf('\n');
 

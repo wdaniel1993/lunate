@@ -1,0 +1,41 @@
+# Line endings are part of a file's contract (AGENTS.md, Rules): a file Lunate owns or generates is
+# the same bytes on every checkout, whatever the platform's core.autocrlf says. A file that is hashed,
+# compared or generated must never arrive with different bytes than it was committed with.
+
+# Machine-owned text: always LF.
+*.cs text eol=lf
+*.csproj text eol=lf
+*.props text eol=lf
+*.targets text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.sh text eol=lf
+*.ps1 text eol=lf
+*.txt text eol=lf
+
+# The trees whose text is machine-owned end to end. Listed by directory as well as by extension, so a
+# new extension in one of them does not quietly escape the rule.
+src/** text eol=lf
+tests/** text eol=lf
+openspec/** text eol=lf
+adr/** text eol=lf
+docs/** text eol=lf
+templates/** text eol=lf
+scripts/** text eol=lf
+
+# Byte-exact test inputs: the line ending is the subject under test. The corpus contains CRLF files on
+# purpose; converting them would silently delete the test's subject. -text tells git to leave the bytes
+# alone on every platform.
+tests/fixtures/edit-corpus/** -text
+
+# Recorded terminal evidence: the escape sequences and the CRLF pairs are exactly what the terminal
+# emitted. Rewriting them would be editing the evidence.
+docs/spikes/**/evidence/*.ansi -text
+
+# Binaries must never be converted or diffed as text.
+*.png binary
+*.gif binary
+*.jpg binary
+*.ico binary

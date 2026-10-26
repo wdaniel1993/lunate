@@ -4,7 +4,11 @@ using Lunate.Agent;
 
 namespace Lunate.Coding;
 
-/// <summary>Writes text files inside the workspace, creating parent directories as needed.</summary>
+/// <summary>
+/// Writes text files inside the workspace, creating parent directories as needed. An existing file
+/// keeps its dominant line ending and its byte-order mark; a new file follows
+/// <c>.editorconfig</c>, then <c>.gitattributes</c>, else the platform default.
+/// </summary>
 public sealed class WriteTool(
     Workspace workspace,
     IFileMutationQueue? mutations = null,
@@ -36,7 +40,8 @@ public sealed class WriteTool(
     public string Name => "write";
 
     public string Description =>
-        "Write a text file into the workspace; creates parent directories and replaces existing files exactly.";
+        "Write a text file into the workspace; creates parent directories. An existing file keeps "
+        + "its line endings and byte-order mark, and a new file follows the project's convention.";
 
     public JsonElement ParametersSchema => Schema;
 
@@ -88,10 +93,22 @@ public sealed class WriteTool(
             {
                 bool created;
                 string oldText;
+                string ending;
+                bool hasBom;
                 try
                 {
                     created = !_files.Exists(target);
-                    oldText = created ? string.Empty : _files.ReadAllText(target);
+                    if (created)
+                    {
+                        oldText = string.Empty;
+                        ending = LineEndingPolicy.ResolveEnding(target);
+                        hasBom = LineEndingPolicy.ResolveBom(target);
+                    }
+                    else
+                    {
+                        (oldText, hasBom) = _files.ReadRaw(target);
+                        ending = TextFile.DominantEnding(oldText);
+                    }
                 }
                 catch (Exception exception)
                     when (exception is IOException or UnauthorizedAccessException)
@@ -99,9 +116,17 @@ public sealed class WriteTool(
                     return Task.FromResult(Error($"could not be read: {exception.Message}"));
                 }
 
+                // The file's own convention wins over the text as given: a CRLF file stays CRLF
+                // and a byte-order mark survives, so a rewrite never turns into a whole-file diff.
+                var written = content.ReplaceLineEndings(ending);
                 try
                 {
-                    _files.WriteAllText(target, content);
+                    if (created)
+                    {
+                        Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+                    }
+
+                    _files.WriteRaw(target, written, hasBom);
                 }
                 catch (Exception exception)
                     when (exception is IOException or UnauthorizedAccessException)
@@ -119,12 +144,12 @@ public sealed class WriteTool(
                     )
                 );
 
-                var lines = CountLines(content);
+                var lines = CountLines(written);
                 var details = new WriteDetails(
                     relative,
                     created,
                     lines,
-                    LineDiff.Unified(oldText, content, relative)
+                    LineDiff.Unified(oldText, written, relative)
                 );
                 var output = string.Create(
                     CultureInfo.InvariantCulture,

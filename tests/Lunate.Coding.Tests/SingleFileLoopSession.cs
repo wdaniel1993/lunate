@@ -43,7 +43,12 @@ internal static class SingleFileLoopSession
         host.Console.SendText("write the extension");
         host.Console.SendEnter();
         await host.WaitUntilAsync(() => File.Exists(fixture.SourcePath), CompileWait);
-        Assert.Equal(source, File.ReadAllText(fixture.SourcePath));
+        // The workspace has no .editorconfig, so a new file follows the platform default: the
+        // expectation names that default instead of assuming POSIX.
+        Assert.Equal(
+            source.ReplaceLineEndings(Environment.NewLine),
+            File.ReadAllText(fixture.SourcePath)
+        );
 
         host.Console.SendText("/extensions reload acme-tools");
         host.Console.SendEnter();
