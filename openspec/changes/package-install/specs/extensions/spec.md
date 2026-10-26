@@ -2,7 +2,7 @@
 
 ### Requirement: Project extension trust
 
-Project extensions SHALL require a one-time trust decision per repository identity (host-provided, `GitCommonDir` per the worktree architecture), re-prompted when the extension content hash changes for a worktree. New worktrees of a trusted repository SHALL not re-prompt. Denial SHALL refuse the load. Global extensions SHALL not be gated. Content hashes SHALL be computed over the extension directory's files deterministically, and trust records SHALL be written atomically. An extension installed by `lunate install` SHALL bind, besides the directory content hash, the package that provided it — the canonical package id, the exact version, the nupkg's SHA-512 and the canonical dependency-lock graph — so an upgraded package re-prompts exactly as changed files do, and an edit inside the installed directory still re-prompts through the content hash. The question for such an extension SHALL name its source package on one line, `from package <id>@<version> (<source>)`. In interactive sessions the decision SHALL be asked as a live-area prompt answered with keys through the normal key path (deny by default); print and ACP sessions SHALL refuse an untrusted project extension with a logged hint naming the approval paths — an interactive session or the `lunate trust` command. A re-prompt caused by changed files SHALL say so. After any answer, one notice SHALL state that the decision is remembered for this repository and how to change it: `/trust` lists this repository's records and `/trust clear` clears them, so the next load asks again.
+Project extensions SHALL require a one-time trust decision per repository identity (host-provided, `GitCommonDir` per the worktree architecture), re-prompted when the extension content hash changes for a worktree. New worktrees of a trusted repository SHALL not re-prompt. Denial SHALL refuse the load. Hand-placed global extensions SHALL not be gated, while an extension whose directory an install record owns SHALL be pending in either scope: approving it through the existing question or `lunate trust` SHALL be what makes it load, and the decision SHALL bind the package identity beside the directory content hash, in the existing extensions section rather than a new record shape. Content hashes SHALL be computed over the extension directory's files deterministically, and trust records SHALL be written atomically. An extension installed by `lunate install` SHALL bind, besides the directory content hash, the package that provided it — the canonical package id, the exact version, the nupkg's SHA-512 and the canonical dependency-lock graph — so an upgraded package re-prompts exactly as changed files do, and an edit inside the installed directory still re-prompts through the content hash. The question for such an extension SHALL name its source package on one line, `from package <id>@<version> (<source>)`. In interactive sessions the decision SHALL be asked as a live-area prompt answered with keys through the normal key path (deny by default); print and ACP sessions SHALL refuse an untrusted project extension with a logged hint naming the approval paths — an interactive session or the `lunate trust` command. A re-prompt caused by changed files SHALL say so. After any answer, one notice SHALL state that the decision is remembered for this repository and how to change it: `/trust` lists this repository's records and `/trust clear` clears them, so the next load asks again.
 
 #### Scenario: An untrusted project extension prompts once
 
@@ -63,3 +63,15 @@ Project extensions SHALL require a one-time trust decision per repository identi
 - **GIVEN** a trusted project install whose recorded entry assembly is edited by hand
 - **WHEN** a session starts
 - **THEN** the content hash no longer matches and the question is asked again
+
+#### Scenario: A user-scope install asks before it loads
+
+- **GIVEN** an extension installed at the user scope by `lunate install`, and no decision for it
+- **WHEN** a session starts
+- **THEN** the extension question is asked for it in the user scope with `from package <id>@<version> (<source>)`, the extension does not load until it is approved, and a later session asks nothing
+
+#### Scenario: A hand-placed user-scope extension is not gated
+
+- **GIVEN** an extension directory under `<root>/extensions/` that no install record names
+- **WHEN** a session starts
+- **THEN** it loads with no question
