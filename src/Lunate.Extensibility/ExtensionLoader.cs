@@ -33,6 +33,7 @@ public sealed partial class ExtensionLoader
     );
     private string? _globalSingleFileRoot;
     private string? _projectSingleFileRoot;
+    private InstalledPackages? _installed;
     private bool _sessionBegan;
     private bool _sessionStarted;
     private bool _sessionEnded;
@@ -86,6 +87,14 @@ public sealed partial class ExtensionLoader
     public ModelRegistry ModelRegistry => _modelRegistry;
 
     public IReadOnlyList<ExtensionDescriptor> Descriptors => [.. _descriptors];
+
+    /// <summary>
+    /// What <c>&lt;root&gt;/packages/</c> says this machine installed: the trust digest of an
+    /// installed extension binds the package it came from (design D7). Read once per loader, because
+    /// installs are a separate command and never race a session.
+    /// </summary>
+    private InstalledPackages Installed =>
+        _installed ??= InstalledPackages.Read(_options.StorePath);
 
     public IReadOnlyList<ExtensionDiscoveryError> DiscoveryErrors => [.. _discoveryErrors];
 

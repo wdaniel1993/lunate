@@ -33,7 +33,8 @@ internal static partial class SkillScanner
         List<SkillDescriptor> invalid = [];
         var readRoots = new List<string>();
         var readSeen = new HashSet<string>(PathComparer());
-        var scan = new ScanState(candidates, invalid, warnings, readRoots, readSeen);
+        InstalledPackages installed = InstalledFor(request);
+        var scan = new ScanState(candidates, invalid, warnings, readRoots, readSeen, installed);
 
         scan.Roots(
             ProjectRoots(request.WorktreeRoot, request.RepoRoot),
@@ -78,7 +79,7 @@ internal static partial class SkillScanner
         var warnings = new List<string>();
         List<SkillDescriptor> candidates = [];
         List<SkillDescriptor> invalid = [];
-        var scan = new ScanState(candidates, invalid, warnings, [], []);
+        var scan = new ScanState(candidates, invalid, warnings, [], [], InstalledFor(request));
         scan.Roots(
             ProjectRoots(request.WorktreeRoot, request.RepoRoot),
             SkillScope.Project,
@@ -89,6 +90,14 @@ internal static partial class SkillScanner
         skills.AddRange(invalid);
         return new SkillScanResult(skills, warnings, []);
     }
+
+    /// <summary>
+    /// The installed-package index the scan reads provenance from: the session's store when the
+    /// caller has one, otherwise the state root the user skills resolve under — the same root an
+    /// install writes to, so `<c>/skills</c>` names the package for a skill a session can see.
+    /// </summary>
+    private static InstalledPackages InstalledFor(SkillScanRequest request) =>
+        request.Installed ?? InstalledPackages.Read(LunateHome.In(request.HomeDirectory));
 
     /// <summary>
     /// The project skill roots in ranking order: the worktree root first, then each ancestor up to
@@ -192,7 +201,8 @@ internal static partial class SkillScanner
         List<SkillDescriptor> invalid,
         List<string> warnings,
         List<string> readRoots,
-        HashSet<string> readSeen
+        HashSet<string> readSeen,
+        InstalledPackages installed
     )
     {
         internal void Roots(
@@ -469,6 +479,13 @@ internal static partial class SkillScanner
                     Valid: true,
                     InvalidReason: null
                 )
+                {
+                    // A scope skill an install put here names its package; an extension's own
+                    // contributed skill is the extension's, not a package's.
+                    FromPackage = scope is SkillScope.Project or SkillScope.User
+                        ? installed.ForSkill(canonical)?.PackageText
+                        : null,
+                }
             );
         }
     }

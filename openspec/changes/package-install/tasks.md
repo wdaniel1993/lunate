@@ -25,15 +25,15 @@
 
 ## 3. Content, scope and trust integration (PR 3)
 
-- [ ] 3.1 Red: a user install lands `extensions/<id>/` and `skills/<name>/` under `LUNATE_HOME`, and a session loads the extension with no question asked.
-- [ ] 3.2 Red: a project install lands the extension under `<worktree>/.lunate/extensions/` and the skills under `<worktree>/.agents/skills/`, while the record stays under the state root and names the worktree; the files show up as untracked in `git status`.
-- [ ] 3.3 Red: a second worktree's `lunate packages` does not list the first worktree's project install, and a session there discovers no project content from it.
-- [ ] 3.4 Red: `lunate trust` lists a project install's pending extension and skills decisions with the source package, and `lunate trust --yes` records them, after which a session asks nothing.
-- [ ] 3.5 Red: the extension question for a project install carries the line `from package <id>@<version> (<source>)` (a requirement delta in `extensions`), the project skills question carries the same line (a delta in `skills`), and `/skills` shows `from <package>@<version>` for an installed skill.
-- [ ] 3.6 Red: a marker written by a bundle's factory is absent after install — no assembly was loaded and no factory ran.
-- [ ] 3.7 Red: `<root>/skills` is unchanged by a project install, `~/.agents/skills` is unchanged by a user install, and `lunate cache prune` leaves an install alone.
-- [ ] 3.8 Red: a duplicate extension id — against another install, a hand-placed packaged extension, or a single-file extension — is refused at install, naming both providers and the uninstall that clears one.
-- [ ] 3.9 Red: an existing skill directory is never written into, and a same-named skill in the other scope warns once and follows the existing shadowing rule.
+- [x] 3.1 Red: a user install lands `extensions/<id>/` and `skills/<name>/` under `LUNATE_HOME`, and a session loads the extension with no question asked.
+- [x] 3.2 Red: a project install lands the extension under `<worktree>/.lunate/extensions/` and the skills under `<worktree>/.agents/skills/`, while the record stays under the state root and names the worktree; the files show up as untracked in `git status`.
+- [x] 3.3 Red: a second worktree's `lunate packages` does not list the first worktree's project install, and a session there discovers no project content from it.
+- [x] 3.4 Red: `lunate trust` lists a project install's pending extension and skills decisions with the source package, and `lunate trust --yes` records them, after which a session asks nothing.
+- [x] 3.5 Red: the extension question for a project install carries the line `from package <id>@<version> (<source>)` (a requirement delta in `extensions`), the project skills question carries the same line (a delta in `skills`), and `/skills` shows `from <package>@<version>` for an installed skill.
+- [x] 3.6 Red: a marker written by a bundle's factory is absent after install — no assembly was loaded and no factory ran.
+- [x] 3.7 Red: `<root>/skills` is unchanged by a project install, `~/.agents/skills` is unchanged by a user install, and `lunate cache prune` leaves an install alone.
+- [x] 3.8 Red: a duplicate extension id — against another install, a hand-placed packaged extension, or a single-file extension — is refused at install, naming both providers and the uninstall that clears one.
+- [x] 3.9 Red: an existing skill directory is never written into, and a same-named skill in the other scope warns once and follows the existing shadowing rule.
 - [ ] 3.10 Gate: the trust tests never prompt (an unscripted prompt throws), the discovery test shows the installed extension with its scope, and `scripts/verify.sh` passes.
 
 ## 4. Dependencies: the walk, the lock and the digest (PR 4 — the release waits for this phase)

@@ -311,7 +311,11 @@ public sealed partial class ExtensionLoader
     )
     {
         string worktreePath = Path.GetFullPath(workingDirectory);
-        string contentHash = ExtensionTrustStore.ComputeContentHash(descriptor.Directory);
+        InstalledPackageProvenance? provenance = Installed.ForExtension(descriptor.Directory);
+        string contentHash = InstalledPackages.BindTrustDigest(
+            ExtensionTrustStore.ComputeContentHash(descriptor.Directory),
+            provenance
+        );
         var store = new ExtensionTrustStore(_options);
 
         switch (store.Evaluate(repositoryIdentity, worktreePath, contentHash))
@@ -362,7 +366,10 @@ public sealed partial class ExtensionLoader
                     .Any(record => record.Section is TrustSection.Extensions);
                 bool approved = await prompt
                     .ApproveAsync(
-                        new ExtensionTrustRequest(descriptor, filesChanged),
+                        new ExtensionTrustRequest(descriptor, filesChanged)
+                        {
+                            FromPackage = provenance?.QuestionLine,
+                        },
                         cancellationToken
                     )
                     .ConfigureAwait(false);

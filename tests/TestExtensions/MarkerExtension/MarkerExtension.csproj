@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <RootNamespace>MarkerExtension</RootNamespace>
+        <!--
+            CA2255 says a module initializer belongs in application code. Here it is the point: the
+            initializer is how a test observes that loading this assembly ran its code, so an install
+            that wrote the file proves it loaded nothing by leaving the marker absent.
+        -->
+        <NoWarn>$(NoWarn);CA2255</NoWarn>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <!--
+            Compile-only, like every extension: the host owns the contract assembly, so this project's
+            output is one DLL with nothing beside it — exactly what a test package carries.
+        -->
+        <ProjectReference
+            Include="../../../src/Lunate.Extensibility.Abstractions/Lunate.Extensibility.Abstractions.csproj"
+            Private="false"
+            ExcludeAssets="runtime"
+        />
+    </ItemGroup>
+</Project>

@@ -44,6 +44,11 @@ internal static class SkillsView
                 marks.Add("untrusted");
             }
 
+            if (skill.FromPackage is { Length: > 0 } fromPackage)
+            {
+                marks.Add($"from {fromPackage}");
+            }
+
             segments.Add(
                 $"{skill.Name} ({string.Join(", ", marks)}) — {Collapse(skill.Description)}"
             );

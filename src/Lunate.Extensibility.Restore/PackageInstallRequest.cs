@@ -9,9 +9,16 @@ public sealed record PackageInstallRequest
 {
     public required string Id { get; init; }
 
+    /// <summary>The exact version; empty resolves the latest stable version once (design D1).</summary>
     public required string Version { get; init; }
 
     public required PackageInstallTarget Target { get; init; }
+
+    /// <summary>
+    /// The worktree the install is judged against for cross-scope collisions (design D10): the
+    /// current one for a user install, and implied by <see cref="Target"/> for a project install.
+    /// </summary>
+    public string? Worktree { get; init; }
 }
 
 public enum PackageInstallStatus
@@ -37,4 +44,16 @@ public sealed record PackageInstallResult
     public required string RecordPath { get; init; }
 
     public IReadOnlyList<string> WrittenPaths { get; init; } = [];
+
+    /// <summary>
+    /// What the install noticed without refusing (design D10): a same-named skill in another scope
+    /// that the existing shadowing rule resolves. Empty when there is nothing to say.
+    /// </summary>
+    public IReadOnlyList<string> Warnings { get; init; } = [];
+
+    /// <summary>
+    /// The package as the archive described it, for the command's identity lines; null when nothing
+    /// was downloaded (an already-installed version answers from its record).
+    /// </summary>
+    public PackageInfo? Resolved { get; init; }
 }

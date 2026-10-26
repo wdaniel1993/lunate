@@ -12,7 +12,7 @@ namespace Lunate.Extensibility.Restore;
 /// before the record leaves no content that no record names and the next run starts clean.
 /// <para>
 /// An install writes no trust, compiles nothing and resolves no dependency in this phase: it is a
-/// download plus a content write, and the graph walk joins it through the same feed.
+/// download plus a scope-aware content write, and the graph walk joins it through the same feed.
 /// </para>
 /// </summary>
 public sealed partial class PackageInstaller
@@ -29,11 +29,8 @@ public sealed partial class PackageInstaller
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        NuGetVersion version = ExactVersion(request.Version);
+        NuGetVersion? exact = TryExactVersion(request.Version);
         PackageInstallTarget target = request.Target;
-        string label = FormattableString.Invariant(
-            $"package '{request.Id}' {version.ToNormalizedString()}"
-        );
 
         PackageInstallRecord? installed = PackageInstallRecordJson.TryRead(
             target.RecordPath,
@@ -46,25 +43,34 @@ public sealed partial class PackageInstaller
 
         if (installed is not null)
         {
-            if (!IsSameRequest(installed, request.Id, version))
+            if (!IsSameScope(installed, target))
             {
                 throw new InvalidOperationException(
                     FormattableString.Invariant(
-                        $"package '{request.Id}' is already installed at {installed.Package.Version} "
-                    )
-                        + $"(record '{target.RecordPath}'); this version installs one version at a "
-                        + FormattableString.Invariant(
-                            $"time, so {version.ToNormalizedString()} cannot replace it — remove the installed package and install the version you want."
-                        )
+                        $"package '{request.Id}' {installed.Package.Version} is already installed for the {ScopeText(installed)} scope (record '{target.RecordPath}'); a package has one record and one set of content, so installing it for the other scope needs 'lunate uninstall "
+                    ) + $"{installed.Package.Id}' first."
                 );
             }
 
-            return new PackageInstallResult
+            if (exact is null || IsSameRequest(installed, request.Id, exact))
             {
-                Status = PackageInstallStatus.AlreadyInstalled,
-                Record = installed,
-                RecordPath = target.RecordPath,
-            };
+                return new PackageInstallResult
+                {
+                    Status = PackageInstallStatus.AlreadyInstalled,
+                    Record = installed,
+                    RecordPath = target.RecordPath,
+                };
+            }
+
+            throw new InvalidOperationException(
+                FormattableString.Invariant(
+                    $"package '{request.Id}' is already installed at {installed.Package.Version} "
+                )
+                    + $"(record '{target.RecordPath}'); this version installs one version at a "
+                    + FormattableString.Invariant(
+                        $"time, so {exact.ToNormalizedString()} cannot replace it — remove the installed package and install the version you want."
+                    )
+            );
         }
 
         string settingsRoot = _options.SettingsRoot ?? Environment.CurrentDirectory;
@@ -83,6 +89,13 @@ public sealed partial class PackageInstaller
             );
         }
 
+        NuGetVersion version =
+            exact
+            ?? await LatestStableAsync(feed, request.Id, cancellationToken).ConfigureAwait(false);
+        string label = FormattableString.Invariant(
+            $"package '{request.Id}' {version.ToNormalizedString()}"
+        );
+
         List<string> written = [];
         List<string> created = [];
         try
@@ -96,6 +109,9 @@ public sealed partial class PackageInstaller
                 .ConfigureAwait(false);
             PackageInfo package = PackageReader.Read(download.NupkgPath);
             RequireIdentity(package, request.Id, version, label);
+            string? worktree = request.Worktree ?? target.Worktree;
+            RequireExtensionIdFree(package, target, worktree);
+            List<string> warnings = PlaceSkills(package, target, worktree);
 
             Delete(target.StagingDirectory);
             IReadOnlyList<PackageContentStager.Staged> staged = PackageContentStager.Stage(
@@ -142,6 +158,8 @@ public sealed partial class PackageInstaller
                 Record = record,
                 RecordPath = target.RecordPath,
                 WrittenPaths = [.. written],
+                Warnings = warnings,
+                Resolved = package,
             };
         }
         catch
@@ -155,12 +173,20 @@ public sealed partial class PackageInstaller
         }
     }
 
-    /// <summary>The exact version, or a refusal naming what an install accepts (design D1).</summary>
-    private static NuGetVersion ExactVersion(string version)
+    /// <summary>
+    /// The exact version, or null when the request names none and the latest stable version is
+    /// resolved from the feeds (design D1). A range or a wildcard is refused here, before any feed
+    /// is asked.
+    /// </summary>
+    private static NuGetVersion? TryExactVersion(string version)
     {
+        if (string.IsNullOrWhiteSpace(version))
+        {
+            return null;
+        }
+
         if (
-            string.IsNullOrWhiteSpace(version)
-            || version.Contains(',', StringComparison.Ordinal)
+            version.Contains(',', StringComparison.Ordinal)
             || version.Contains('*', StringComparison.Ordinal)
             || !NuGetVersion.TryParse(version, out NuGetVersion? parsed)
         )
@@ -173,6 +199,33 @@ public sealed partial class PackageInstaller
         }
 
         return parsed;
+    }
+
+    /// <summary>
+    /// The latest stable version the feeds serve, resolved once and recorded exactly (design D1):
+    /// a bare install never re-resolves, and a package no feed serves names the id and the feeds.
+    /// </summary>
+    private static async Task<NuGetVersion> LatestStableAsync(
+        NuGetPackageFeed feed,
+        string id,
+        CancellationToken cancellationToken
+    )
+    {
+        IReadOnlyList<NuGetVersion> versions = await feed.VersionsAsync(id, cancellationToken)
+            .ConfigureAwait(false);
+        NuGetVersion? latest = versions
+            .Where(version => !version.IsPrerelease)
+            .OrderByDescending(version => version)
+            .FirstOrDefault();
+        if (latest is null)
+        {
+            throw new InvalidOperationException(
+                $"package '{id}' publishes no stable version on {string.Join(", ", feed.Names)}; "
+                    + "name an exact prerelease version to install one."
+            );
+        }
+
+        return latest;
     }
 
     /// <summary>
@@ -210,6 +263,36 @@ public sealed partial class PackageInstaller
             version.ToNormalizedString(),
             StringComparison.Ordinal
         );
+
+    /// <summary>
+    /// Whether a record describes an install into this target's scope: the same scope, and for a
+    /// project install the same worktree. A record lives at one path per package id, so a second
+    /// scope cannot be represented and is refused rather than silently reported installed.
+    /// </summary>
+    private static bool IsSameScope(PackageInstallRecord record, PackageInstallTarget target)
+    {
+        if (record.Scope != target.Scope)
+        {
+            return false;
+        }
+
+        if (record.Scope != PackageScope.Project)
+        {
+            return true;
+        }
+
+        StringComparison comparison = OperatingSystem.IsLinux()
+            ? StringComparison.Ordinal
+            : StringComparison.OrdinalIgnoreCase;
+        return string.Equals(
+            record.Worktree ?? string.Empty,
+            target.Worktree ?? string.Empty,
+            comparison
+        );
+    }
+
+    private static string ScopeText(PackageInstallRecord record) =>
+        record.Scope == PackageScope.Project ? "project" : "user";
 
     private string Now() =>
         (_options.Clock ?? TimeProvider.System)

@@ -10,7 +10,11 @@ internal sealed record PendingExtension(
     string ContentHash,
     bool FilesChanged,
     ExtensionTrustDecision Decision
-);
+)
+{
+    /// <summary><c>from package &lt;id&gt;@&lt;version&gt; (&lt;source&gt;)</c> when an install provided it.</summary>
+    internal string? FromPackage { get; init; }
+}
 
 /// <summary>The project <c>mcp.json</c>'s trust state in a worktree.</summary>
 internal sealed record PendingMcpConfig(
@@ -20,13 +24,20 @@ internal sealed record PendingMcpConfig(
     ExtensionTrustDecision Decision
 );
 
-/// <summary>The project skills' trust state in a worktree: the discovered names and the combined
-/// directory-content hash.</summary>
+/// <summary>The project skills' trust state in a worktree: the discovered names, the combined
+/// directory-content hash, and the provenance line of each package that provided one.</summary>
 internal sealed record PendingProjectSkills(
     IReadOnlyList<string> Names,
     string ContentHash,
     ExtensionTrustDecision Decision
-);
+)
+{
+    /// <summary>
+    /// <c>from package &lt;id&gt;@&lt;version&gt; (&lt;source&gt;)</c> for each package that
+    /// provided one of the discovered skills, ordinal-sorted; empty for hand-written skills.
+    /// </summary>
+    internal IReadOnlyList<string> FromPackages { get; init; } = [];
+}
 
 /// <summary>
 /// One project-scoped server definition without its per-server approval: the raw definition as
@@ -156,6 +167,10 @@ internal sealed class TrustInventory
             if (includeLocations)
             {
                 node["directory"] = extension.Descriptor.Directory;
+                if (extension.FromPackage is { Length: > 0 } fromPackage)
+                {
+                    node["fromPackage"] = fromPackage;
+                }
             }
 
             node["filesChanged"] = extension.FilesChanged;
@@ -219,6 +234,16 @@ internal sealed class TrustInventory
             if (includeLocations)
             {
                 node["worktree"] = WorktreePath;
+                if (skills.FromPackages.Count > 0)
+                {
+                    var packages = new JsonArray();
+                    foreach (string fromPackage in skills.FromPackages)
+                    {
+                        packages.Add(fromPackage);
+                    }
+
+                    node["fromPackages"] = packages;
+                }
             }
 
             node["hash"] = skills.ContentHash;
@@ -251,6 +276,7 @@ internal sealed class TrustInventory
         bool filesChanged = records.Any(record => record.Section is TrustSection.Extensions);
 
         List<PendingExtension> extensions = [];
+        InstalledPackages installed = InstalledPackages.Read(storePath);
         if (seams?.NoExtensions is not true)
         {
             var loader = new ExtensionLoader(new ExtensionHostOptions { StorePath = storePath });
@@ -262,14 +288,25 @@ internal sealed class TrustInventory
                     continue;
                 }
 
-                string hash = ExtensionTrustStore.ComputeContentHash(descriptor.Directory);
+                InstalledPackageProvenance? provenance = installed.ForExtension(
+                    descriptor.Directory
+                );
+                string hash = InstalledPackages.BindTrustDigest(
+                    ExtensionTrustStore.ComputeContentHash(descriptor.Directory),
+                    provenance
+                );
                 ExtensionTrustDecision decision = store.Evaluate(identity, worktree, hash);
                 if (decision is ExtensionTrustDecision.Trusted)
                 {
                     continue;
                 }
 
-                extensions.Add(new PendingExtension(descriptor, hash, filesChanged, decision));
+                extensions.Add(
+                    new PendingExtension(descriptor, hash, filesChanged, decision)
+                    {
+                        FromPackage = provenance?.QuestionLine,
+                    }
+                );
             }
 
             extensions.Sort(
@@ -320,12 +357,19 @@ internal sealed class TrustInventory
             .. SkillScanner
                 .ScanProject(
                     new SkillScanRequest(worktree, workspace.RepoRoot, HomeDirectory: null, [])
+                    {
+                        Installed = installed,
+                    }
                 )
                 .Skills.Where(skill => skill is { Valid: true, Scope: SkillScope.Project }),
         ];
         if (discovered.Count > 0)
         {
-            string hash = SkillTrust.ComputeContentHash(discovered, workspace.RepoRoot ?? worktree);
+            string hash = SkillTrust.ComputeContentHash(
+                discovered,
+                workspace.RepoRoot ?? worktree,
+                installed
+            );
             ExtensionTrustDecision decision = store.EvaluateSkills(identity, worktree, hash);
             if (decision is not ExtensionTrustDecision.Trusted)
             {
@@ -333,7 +377,10 @@ internal sealed class TrustInventory
                     SkillTrust.Names(discovered),
                     hash,
                     decision
-                );
+                )
+                {
+                    FromPackages = SkillTrust.FromPackages(discovered, installed),
+                };
             }
         }
 
