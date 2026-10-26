@@ -28,6 +28,11 @@ Lunate keeps each kind of document in exactly one home. Start here, then jump to
   (`npx --yes markdownlint-cli2@0.23.3`, configured in `.markdownlint-cli2.yaml`). `openspec/` is
   tool-managed and excluded.
 - **One home per fact.** Link to the owning document instead of copying it; a fact that exists twice drifts.
+- **Generated regions are not hand-written.** `scripts/docs-sync` fills
+  `<!-- keys:start --> … <!-- keys:end -->` in `guide.md` from `src/Lunate.Tui/keys.json` (the file
+  the router and the in-app help read), and expands `<!-- snippet: <path> -->` into a fenced block
+  taken from that real file — the marker owns the block below it. Edit the source, then run
+  `scripts/docs-sync`; `--check` is what the gate runs.
 - **Behaviour changes update the specs first.** `openspec/specs/` is the source of truth; when prose and spec disagree, the spec wins.
 - **Keep it current.** A change updates the documents it invalidates; stale documentation is a bug.
 - **New documents land in a home above.** If none fits, propose a new home in an OpenSpec change first.

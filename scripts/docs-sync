@@ -1,0 +1,449 @@
+#!/usr/bin/env python3
+"""Regenerates the parts of the docs that mirror something else in the repository.
+
+Two mechanisms, both driven by markers in a Markdown file:
+
+  <!-- keys:start --> ... <!-- keys:end -->
+      replaced with the key table built from src/Lunate.Tui/keys.json -- the same file the router
+      and the in-app help read, so the guide's legend cannot describe a binding the product does
+      not have. docs/guide.md must carry this pair; a missing marker is a failure, not a page
+      without a generated region.
+
+  <!-- snippet: <repo-relative path> -->
+      replaced with a fenced code block holding that file's text. If the file carries a
+      `snippet:start` / `snippet:end` comment pair, only the lines between them are included, so a
+      page can show the part of a real file that matters. The fence's language comes from the
+      file's extension. The marker stands alone on its line.
+
+Usage:
+  scripts/docs-sync            # write the regions
+  scripts/docs-sync --check    # write nothing; exit 1 when a region is stale
+  scripts/docs-sync --self-test
+
+Python 3 only (standard library); every CI runner and macOS ships it.
+"""
+
+import io
+import json
+import pathlib
+import shutil
+import sys
+import tempfile
+from contextlib import redirect_stderr, redirect_stdout
+
+KEYS_PAGE = "docs/guide.md"
+KEYS_SOURCE = "src/Lunate.Tui/keys.json"
+KEYS_START = "<!-- keys:start -->"
+KEYS_END = "<!-- keys:end -->"
+
+SNIPPET_PREFIX = "<!-- snippet:"
+SNIPPET_SUFFIX = "-->"
+REGION_START = "snippet:start"
+REGION_END = "snippet:end"
+
+LANGUAGES = {
+    ".cs": "csharp",
+    ".csproj": "xml",
+    ".json": "json",
+    ".md": "markdown",
+    ".props": "xml",
+    ".ps1": "powershell",
+    ".sh": "bash",
+    ".sln": "text",
+    ".targets": "xml",
+    ".toml": "toml",
+    ".xml": "xml",
+    ".yaml": "yaml",
+    ".yml": "yaml",
+}
+
+
+class DocsSyncError(Exception):
+    """A marker, a source or a snippet that cannot be resolved."""
+
+
+def read_text(path):
+    with open(path, "r", encoding="utf-8", newline="") as file:
+        text = file.read()
+    if "\r" in text:
+        raise DocsSyncError(
+            f"{path}: uses CRLF line endings; the repository checks out LF, so a region there "
+            "would always read as stale"
+        )
+    return text
+
+
+def write_text(path, text):
+    with open(path, "w", encoding="utf-8", newline="") as file:
+        file.write(text)
+
+
+def lines_of(text):
+    return text[:-1].split("\n") if text.endswith("\n") else text.split("\n")
+
+
+def table_lines(root):
+    source = root / KEYS_SOURCE
+    document = json.loads(read_text(source))
+    if document.get("version") != 1:
+        raise DocsSyncError(f"{KEYS_SOURCE}: unsupported 'version'; docs-sync understands 1")
+
+    rows = document.get("guideRows") or []
+    if not rows:
+        raise DocsSyncError(
+            f"{KEYS_SOURCE}: 'guideRows' is empty, so the key table would be empty; a check that "
+            "cannot fail is worse than no check"
+        )
+
+    lines = ["| Key | Action |", "| --- | --- |"]
+    for row in rows:
+        keys = row.get("keys") or []
+        if not keys:
+            raise DocsSyncError(f"{KEYS_SOURCE}: guide row '{row.get('id')}' lists no keys")
+        action = (row.get("action") or "").strip()
+        if not action:
+            raise DocsSyncError(f"{KEYS_SOURCE}: guide row '{row.get('id')}' has no action text")
+        cell = " / ".join(f"`{key}`" for key in keys)
+        lines.append(f"| {cell} | {action} |")
+    return lines
+
+
+def replace_keys_region(root, path, text):
+    """Swaps the lines between the keys markers for the table built from keys.json."""
+    lines = lines_of(text)
+    starts = [index for index, line in enumerate(lines) if line.strip() == KEYS_START]
+    ends = [index for index, line in enumerate(lines) if line.strip() == KEYS_END]
+    if len(starts) != 1 or len(ends) != 1:
+        raise DocsSyncError(
+            f"{path}: expected exactly one '{KEYS_START}' and one '{KEYS_END}', found "
+            f"{len(starts)} and {len(ends)}; the markers say where the generated table goes"
+        )
+    if starts[0] > ends[0]:
+        raise DocsSyncError(f"{path}: '{KEYS_END}' comes before '{KEYS_START}'")
+
+    return "\n".join(lines[: starts[0] + 1] + table_lines(root) + lines[ends[0] :])
+
+
+def dedent(lines):
+    """Removes the region's common indentation so a nested block reads as a block in the page."""
+    widths = [len(line) - len(line.lstrip(" ")) for line in lines if line.strip()]
+    cut = min(widths) if widths else 0
+    return [line[cut:] if line.strip() else "" for line in lines]
+
+
+def snippet_lines(root, path, number, target_text):
+    relative = target_text.strip()
+    parts = pathlib.PurePosixPath(relative).parts
+    if not relative or relative.startswith("/") or ".." in parts:
+        raise DocsSyncError(
+            f"{path}:{number}: '{relative}' is not a repository-relative path"
+        )
+
+    target = root / relative
+    if not target.is_file():
+        raise DocsSyncError(f"{path}:{number}: no such file to include: {relative}")
+
+    language = LANGUAGES.get(target.suffix.lower())
+    if language is None:
+        raise DocsSyncError(
+            f"{path}:{number}: no fence language for '{target.suffix}'; add it to LANGUAGES in "
+            "scripts/docs-sync"
+        )
+
+    body = lines_of(read_text(target))
+    starts = [index for index, line in enumerate(body) if REGION_START in line]
+    ends = [index for index, line in enumerate(body) if REGION_END in line]
+    if starts or ends:
+        if len(starts) != 1 or len(ends) != 1 or starts[0] >= ends[0]:
+            raise DocsSyncError(
+                f"{relative}: expected one '{REGION_START}' line above one '{REGION_END}' line, "
+                f"found {len(starts)} and {len(ends)}"
+            )
+        body = dedent(body[starts[0] + 1 : ends[0]])
+    else:
+        body = dedent(body)
+
+    return [f"```{language}"] + body + ["```"]
+
+
+def expand_snippets(root, path, lines):
+    """Expands each snippet marker and the fenced block it owns; the marker line stays."""
+    expanded = []
+    index = 0
+    while index < len(lines):
+        line = lines[index]
+        index += 1
+        stripped = line.strip()
+        # A marker has to begin its line; a page may still document the syntax in a sentence.
+        if not stripped.startswith("<!-- snippet"):
+            expanded.append(line)
+            continue
+        if not stripped.startswith(SNIPPET_PREFIX) or not stripped.endswith(SNIPPET_SUFFIX):
+            raise DocsSyncError(
+                f"{path}:{index}: a snippet marker is '<!-- snippet: <path> -->' on a line of its "
+                "own"
+            )
+        number = index
+        target = stripped[len(SNIPPET_PREFIX) : -len(SNIPPET_SUFFIX)]
+        expanded.append(line)
+        # The marker owns the fenced block that follows it: that is what makes a second run a
+        # no-op instead of appending a duplicate block.
+        if index < len(lines) and lines[index].lstrip().startswith("```"):
+            index += 1
+            while index < len(lines) and lines[index].strip() != "```":
+                index += 1
+            index += 1
+        expanded.extend(snippet_lines(root, path, number, target))
+    return expanded
+
+
+def page(root, path):
+    """The page's expected text: its key region regenerated and its snippets expanded."""
+    relative = path.relative_to(root).as_posix()
+    text = read_text(path)
+    if relative == KEYS_PAGE or any(line.strip() == KEYS_START for line in lines_of(text)):
+        text = replace_keys_region(root, relative, text)
+    return "\n".join(expand_snippets(root, relative, lines_of(text))) + "\n"
+
+
+def pages(root):
+    docs = root / "docs"
+    if not docs.is_dir():
+        raise DocsSyncError(f"no docs/ directory under {root}")
+    if not (root / KEYS_PAGE).is_file():
+        raise DocsSyncError(f"{KEYS_PAGE} is missing; the key table has nowhere to go")
+    return sorted(path for path in docs.rglob("*.md") if path.is_file())
+
+
+def plan(root):
+    """Every generated page whose text differs from what is on disk."""
+    changes = []
+    for path in pages(root):
+        text = page(root, path)
+        if text != read_text(path):
+            changes.append((path, text))
+    return changes
+
+
+def differences(before, after, limit=10):
+    old = lines_of(before)
+    new = lines_of(after)
+    shown = []
+    for number in range(max(len(old), len(new))):
+        left = old[number] if number < len(old) else "<end of file>"
+        right = new[number] if number < len(new) else "<end of file>"
+        if left != right:
+            shown.append(f"  line {number + 1}\n  - {left}\n  + {right}")
+            if len(shown) == limit:
+                shown.append("  ...")
+                break
+    return "\n".join(shown)
+
+
+def run(root, write):
+    changes = plan(root)
+    if not changes:
+        print("docs-sync: up to date")
+        return 0
+
+    if write:
+        for path, text in changes:
+            write_text(path, text)
+            print(f"docs-sync: wrote {path.relative_to(root)}")
+        return 0
+
+    for path, text in changes:
+        print(
+            f"docs-sync: {path.relative_to(root)} is stale; run scripts/docs-sync to regenerate it",
+            file=sys.stderr,
+        )
+        print(differences(read_text(path), text), file=sys.stderr)
+    return 1
+
+
+def capture(root, write):
+    """Runs the real report path with its two streams captured, as main() reports them."""
+    out = io.StringIO()
+    err = io.StringIO()
+    with redirect_stdout(out), redirect_stderr(err):
+        try:
+            status = run(root, write)
+        except (DocsSyncError, json.JSONDecodeError, OSError) as failure:
+            print(f"docs-sync: {failure}", file=sys.stderr)
+            status = 1
+    return status, out.getvalue(), err.getvalue()
+
+
+def self_test():
+    scratch = pathlib.Path(tempfile.mkdtemp(prefix="docs-sync-self-test."))
+    cases = 0
+    try:
+        (scratch / "src" / "Lunate.Tui").mkdir(parents=True)
+        (scratch / "docs" / "extensions").mkdir(parents=True)
+        (scratch / "templates").mkdir()
+        write_text(
+            scratch / KEYS_SOURCE,
+            json.dumps(
+                {
+                    "version": 1,
+                    "bindings": [],
+                    "guideRows": [
+                        {"id": "one", "keys": ["Ctrl+A", "Ctrl+B"], "action": "First thing"},
+                        {"id": "two", "keys": ["Esc"], "action": "Leave"},
+                    ],
+                }
+            ),
+        )
+        write_text(
+            scratch / "templates" / "sample.csproj",
+            "<Project>\n    <ItemGroup>\n        <!-- snippet:start -->\n"
+            '        <ProjectReference Private="false" />\n'
+            "        <!-- snippet:end -->\n    </ItemGroup>\n</Project>\n",
+        )
+        guide = scratch / KEYS_PAGE
+        write_text(
+            guide,
+            "# Guide\n\n**Keys**\n\n<!-- keys:start -->\nstale row\n<!-- keys:end -->\n\n"
+            "## Next\n",
+        )
+        page_path = scratch / "docs" / "extensions" / "README.md"
+        marked_page = "# Page\n\n<!-- snippet: templates/sample.csproj -->\n\nDone.\n"
+        write_text(page_path, marked_page)
+
+        # 1. Writing a stale tree regenerates the table.
+        cases += 1
+        status, _, _ = capture(scratch, write=True)
+        if status != 0:
+            raise DocsSyncError(f"self-test: writing a stale tree must succeed, exited {status}")
+        table = read_text(guide)
+        if "| `Ctrl+A` / `Ctrl+B` | First thing |" not in table or "stale row" in table:
+            raise DocsSyncError("self-test: the key table was not generated from keys.json")
+        if "| `Esc` | Leave |" not in table:
+            raise DocsSyncError("self-test: the table lost its last row")
+
+        # 2. The snippet is the marked region of the real file, fenced by its extension.
+        cases += 1
+        snippet = read_text(page_path)
+        if snippet.count("```xml") != 1 or 'ProjectReference Private="false"' not in snippet:
+            raise DocsSyncError("self-test: the snippet did not expand into a fenced block")
+        if "snippet:start" in snippet or "<Project>" in snippet:
+            raise DocsSyncError("self-test: the snippet included lines outside its region")
+        if '\n        <ProjectReference' in snippet:
+            raise DocsSyncError("self-test: the region kept the source file's indentation")
+
+        # 3. The marker survives, so a second run is a no-op and edits to the source flow through.
+        cases += 1
+        if "<!-- snippet: templates/sample.csproj -->" not in snippet:
+            raise DocsSyncError("self-test: the snippet marker must stay in the page")
+        second = read_text(page_path)
+        status, out, _ = capture(scratch, write=True)
+        if status != 0 or read_text(page_path) != second or "up to date" not in out:
+            raise DocsSyncError("self-test: a second run must leave a generated page unchanged")
+        write_text(
+            scratch / "templates" / "sample.csproj",
+            read_text(scratch / "templates" / "sample.csproj").replace(
+                'Private="false"', 'Private="true"'
+            ),
+        )
+        status, _, _ = capture(scratch, write=False)
+        if status != 1:
+            raise DocsSyncError("self-test: --check must notice a changed snippet source")
+        write_text(
+            scratch / "templates" / "sample.csproj",
+            read_text(scratch / "templates" / "sample.csproj").replace(
+                'Private="true"', 'Private="false"'
+            ),
+        )
+
+        # 4. --check passes on a tree that was just written.
+        cases += 1
+        status, _, _ = capture(scratch, write=False)
+        if status != 0:
+            raise DocsSyncError(f"self-test: --check must pass on a clean tree, exited {status}")
+
+        # 5. --check fails on a stale page, names it, and writes nothing.
+        cases += 1
+        clean = read_text(guide)
+        write_text(guide, clean.replace("First thing", "Something else"))
+        stale = read_text(guide)
+        status, _, err = capture(scratch, write=False)
+        if status != 1:
+            raise DocsSyncError(f"self-test: --check on a stale table must exit 1, exited {status}")
+        if "guide.md" not in err:
+            raise DocsSyncError("self-test: the failure must name the stale page")
+        if read_text(guide) != stale:
+            raise DocsSyncError("self-test: --check wrote to the tree")
+        write_text(guide, clean)
+
+        # 6. A deleted region marker fails instead of passing vacuously.
+        cases += 1
+        write_text(guide, clean.replace(KEYS_END + "\n", ""))
+        status, _, err = capture(scratch, write=False)
+        if status != 1 or "keys:end" not in err:
+            raise DocsSyncError("self-test: a missing region marker must fail and name the marker")
+        write_text(guide, clean)
+
+        # 7. A snippet whose file is missing fails and names the path.
+        cases += 1
+        write_text(page_path, marked_page.replace("sample.csproj", "gone.csproj"))
+        status, _, err = capture(scratch, write=False)
+        if status != 1 or "no such file" not in err:
+            raise DocsSyncError("self-test: a missing snippet source must fail and name the path")
+
+        # 8. An unknown extension fails with a hint instead of guessing a language.
+        cases += 1
+        write_text(scratch / "templates" / "sample.unknownext", "x\n")
+        write_text(page_path, marked_page.replace("sample.csproj", "sample.unknownext"))
+        status, _, err = capture(scratch, write=False)
+        if status != 1 or "LANGUAGES" not in err:
+            raise DocsSyncError("self-test: an unknown fence language must fail with a hint")
+
+        # 9. A page may document the syntax in a sentence; only a marker beginning the line counts.
+        cases += 1
+        write_text(page_path, second)
+        notes = scratch / "docs" / "notes.md"
+        write_text(
+            notes,
+            "# Notes\n\nA marker looks like `<!-- snippet: templates/sample.csproj -->` in prose.\n",
+        )
+        status, _, _ = capture(scratch, write=False)
+        if status != 0:
+            raise DocsSyncError("self-test: a sentence mentioning a marker must not be one")
+
+        # 10. A malformed marker at the start of a line fails instead of silently generating nothing.
+        cases += 1
+        write_text(notes, "# Notes\n\n<!-- snippet templates/sample.csproj -->\n")
+        status, _, err = capture(scratch, write=False)
+        if status != 1 or "on a line of its own" not in err:
+            raise DocsSyncError("self-test: a malformed marker must fail and show the shape")
+
+        print(f"self-test: {cases}/{cases}")
+        return 0
+    finally:
+        shutil.rmtree(scratch, ignore_errors=True)
+
+
+def main(arguments):
+    root = pathlib.Path(__file__).resolve().parent.parent
+    write = True
+    for argument in arguments:
+        if argument == "--check":
+            write = False
+        elif argument == "--self-test":
+            return self_test()
+        elif argument in ("--help", "-h"):
+            print(__doc__.strip())
+            return 0
+        else:
+            print(f"docs-sync: unknown argument '{argument}'", file=sys.stderr)
+            return 2
+
+    try:
+        return run(root, write)
+    except (DocsSyncError, json.JSONDecodeError, OSError) as failure:
+        print(f"docs-sync: {failure}", file=sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

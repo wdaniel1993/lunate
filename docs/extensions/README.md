@@ -30,34 +30,42 @@ the spec wins.
 ### 1. Create the project
 
 The fastest start is to copy [`templates/extension/`](../../templates/extension/README.md) and
-rename its projects and namespaces. A new class library needs only the contract project reference:
+rename its projects and namespaces. The references that matter are the template's own —
+`templates/extension/TemplateExtension/TemplateExtension.csproj`, generated into this page so it
+cannot drift from the file:
 
+<!-- snippet: templates/extension/TemplateExtension/TemplateExtension.csproj -->
 ```xml
-<Project Sdk="Microsoft.NET.Sdk">
-    <PropertyGroup>
-        <TargetFramework>net10.0</TargetFramework>
-        <Nullable>enable</Nullable>
-        <ImplicitUsings>enable</ImplicitUsings>
-        <RootNamespace>HelloExtension</RootNamespace>
-    </PropertyGroup>
-    <ItemGroup>
-        <ProjectReference
-            Include="../../src/Lunate.Extensibility.Abstractions/Lunate.Extensibility.Abstractions.csproj"
-            Private="false"
-            ExcludeAssets="runtime"
-        />
-        <ProjectReference Include="../../src/Lunate.Agent/Lunate.Agent.csproj" Private="false" ExcludeAssets="runtime" />
-        <ProjectReference Include="../../src/Lunate.Ai/Lunate.Ai.csproj" Private="false" ExcludeAssets="runtime" />
-    </ItemGroup>
-    <ItemGroup>
-        <None Update="extension.json" CopyToOutputDirectory="PreserveNewest" />
-    </ItemGroup>
-</Project>
+<!--
+    The host owns the contract, Lunate.Agent and Lunate.Ai: Lunate loads them once and every
+    extension binds to those copies so their types keep one identity. Private="false" keeps
+    the DLLs out of your output directory and ExcludeAssets="runtime" keeps them out of the
+    deps file — both still compile against. A copy in your output would be ignored, with one
+    warning saying so. Do not reach for PrivateAssets="all" here: it also hides the Agent
+    types your signatures use.
+-->
+<ProjectReference
+    Include="../../../src/Lunate.Extensibility.Abstractions/Lunate.Extensibility.Abstractions.csproj"
+    Private="false"
+    ExcludeAssets="runtime"
+/>
+<ProjectReference
+    Include="../../../src/Lunate.Agent/Lunate.Agent.csproj"
+    Private="false"
+    ExcludeAssets="runtime"
+/>
+<ProjectReference
+    Include="../../../src/Lunate.Ai/Lunate.Ai.csproj"
+    Private="false"
+    ExcludeAssets="runtime"
+/>
 ```
 
 The contract is not published as a NuGet package in this version; reference the project (or a
-local build of it). The path above assumes the extension lives two directories below the Lunate
-repository root.
+local build of it). The paths above are the template's, whose project sits three directories below
+the repository root (`templates/extension/TemplateExtension/`); adjust them for where yours lives.
+The template inherits its target framework, nullability and implicit usings from the repository's
+`Directory.Build.props`, so a project of your own declares those itself.
 
 The host owns `Lunate.Extensibility.Abstractions`, `Lunate.Agent` and `Lunate.Ai`, and loads them
 once, so every extension binds to those copies. `Private="false"` keeps them out of your output
