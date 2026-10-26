@@ -34,7 +34,7 @@
 - [x] 3.7 Red: `<root>/skills` is unchanged by a project install, `~/.agents/skills` is unchanged by a user install, and `lunate cache prune` leaves an install alone.
 - [x] 3.8 Red: a duplicate extension id — against another install, a hand-placed packaged extension, or a single-file extension — is refused at install, naming both providers and the uninstall that clears one.
 - [x] 3.9 Red: an existing skill directory is never written into, and a same-named skill in the other scope warns once and follows the existing shadowing rule.
-- [ ] 3.10 Gate: the trust tests never prompt (an unscripted prompt throws), the discovery test shows the installed extension with its scope, and `scripts/verify.sh` passes.
+- [x] 3.10 Gate: the trust tests never prompt (an unscripted prompt throws), discovery shows the installed extension with its scope, and `scripts/verify.sh` passes — 5,607 tests per culture, 0 failures; startup floor 58 ms (median 59, budget 150 ms); public API clean.
 
 ## 4. Dependencies: the walk, the lock and the digest (PR 4 — the release waits for this phase)
 
