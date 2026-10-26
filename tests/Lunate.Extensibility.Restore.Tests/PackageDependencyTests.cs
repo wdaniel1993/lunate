@@ -242,20 +242,6 @@ public sealed class PackageDependencyTests
     private static (string Id, string Version)[] Versions(ExtensionLock @lock) =>
         [.. @lock.Packages.Select(package => (package.Id, package.Version))];
 
-    /// <summary>A refusal writes no content, no record, no staging and no lock.</summary>
-    private static void NothingWritten(string store)
-    {
-        Assert.False(Directory.Exists(Path.Combine(store, "extensions")), "no extension content");
-        Assert.False(Directory.Exists(Path.Combine(store, "skills")), "no skill content");
-        Assert.False(Directory.Exists(Path.Combine(store, "cache")), "no lock");
-        Assert.False(
-            File.Exists(
-                Path.Combine(store, "packages", "acme.toolkit", PackageInstallRecordJson.FileName)
-            ),
-            "no record"
-        );
-    }
-
     private static int CountOccurrences(string text, string value)
     {
         var count = 0;
