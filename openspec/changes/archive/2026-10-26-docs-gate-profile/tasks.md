@@ -35,4 +35,4 @@
 
 ## 5. Review
 
-- [ ] 5.1 Archive this change as the final commit once the PR is reviewed and `ci-ok` is green (the archive lands before the merge, not in a separate PR).
+- [x] 5.1 Archive this change as the final commit — `ci-ok` was green on the implementation head (`431bee97`: plan=full, three verify legs and verify-powershell passed, verify-docs skipped by design); the archive commit follows as the last commit before merge.
