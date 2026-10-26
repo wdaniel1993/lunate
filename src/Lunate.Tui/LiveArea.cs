@@ -6,7 +6,7 @@ using Spectre.Console;
 
 namespace Lunate.Tui;
 
-internal sealed class LiveArea : IDisposable
+internal sealed partial class LiveArea : IDisposable
 {
     internal static readonly TimeSpan FrameInterval = TimeSpan.FromMilliseconds(33);
     internal static readonly TimeSpan SpinnerInterval = TimeSpan.FromMilliseconds(120);
@@ -120,8 +120,6 @@ internal sealed class LiveArea : IDisposable
 
     public void SetInput(InputLineState state, bool bashMode) =>
         Post(new InputStateInput(state, bashMode));
-
-    public void SetNotice(string? notice) => Post(new NoticeInput(notice));
 
     /// <summary>Sets the open masked secret prompt; null closes it.</summary>
     public void SetSecretPrompt(SecretPromptState? prompt) => Post(new SecretPromptInput(prompt));
@@ -292,6 +290,7 @@ internal sealed class LiveArea : IDisposable
     /// </summary>
     private void Post(LiveAreaInput input)
     {
+        NoticeSlotEntry? entry = null;
         lock (_postGate)
         {
             if (_disposed)
@@ -299,14 +298,30 @@ internal sealed class LiveArea : IDisposable
                 return;
             }
 
-            LiveAreaState next = Reduce(_state, input);
-            if (next == _state)
+            if (input is NoticeInput notice)
             {
-                return;
+                // The notice slot is applied here rather than in the reducer: its generation and a
+                // clear that arrives before the paint need the slot's own bookkeeping.
+                entry = ApplyNotice(notice);
             }
+            else
+            {
+                LiveAreaState next = Reduce(_state, input);
+                if (next == _state)
+                {
+                    return;
+                }
 
-            _state = next;
-            _dirty = true;
+                _state = next;
+                _dirty = true;
+            }
+        }
+
+        // Journal outside the gate: a recorder appends from the test thread and must never run
+        // under the lock the session posts with.
+        if (entry is { } recorded)
+        {
+            _noticeObserver?.Invoke(recorded);
         }
     }
 
@@ -340,6 +355,7 @@ internal sealed class LiveArea : IDisposable
             RenderedFrame frame = LiveAreaRenderer.Render(state);
             _lastFrame = frame;
             _writer.Paint(frame);
+            CompleteNoticePaint(state);
         }
     }
 
@@ -358,6 +374,8 @@ internal sealed class LiveArea : IDisposable
     private static LiveAreaState Reduce(LiveAreaState state, LiveAreaInput input) =>
         input switch
         {
+            // NoticeInput never reaches the reducer: Post applies it, because the slot's generation
+            // and a clear held for a notice no frame has shown yet need the slot's own bookkeeping.
             KeyInput key => state with { Input = InputLine.Apply(state.Input, key.Key) },
             InputStateInput inputState => state with
             {
@@ -393,7 +411,6 @@ internal sealed class LiveArea : IDisposable
                     }
                     : new ThinkingState { Text = text, StartedAt = at },
             },
-            NoticeInput notice => state with { Notice = notice.Notice },
             SecretPromptInput secret => state with { SecretPrompt = secret.Prompt },
             ApprovalInput approval => state with { Approval = approval.Prompt },
             TrustPromptInput trust => state with { Trust = trust.Prompt },
@@ -480,7 +497,8 @@ internal sealed class LiveArea : IDisposable
 
     private sealed record ThinkingInput(string? Text, DateTimeOffset At) : LiveAreaInput;
 
-    private sealed record NoticeInput(string? Notice) : LiveAreaInput;
+    private sealed record NoticeInput(string? Notice, int Generation, string Origin)
+        : LiveAreaInput;
 
     private sealed record SecretPromptInput(SecretPromptState? Prompt) : LiveAreaInput;
 

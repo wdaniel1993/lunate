@@ -42,6 +42,13 @@ internal sealed record LiveAreaState
 
     public string? Notice { get; init; }
 
+    /// <summary>
+    /// The slot generation of <see cref="Notice"/> (0 when there is none): a post starts one, a
+    /// paint records the generation it showed, and a clear of a generation no paint has shown yet
+    /// is held for one frame instead of discarding a notice the user was meant to see.
+    /// </summary>
+    public int NoticeGeneration { get; init; }
+
     /// <summary>The open masked secret prompt; null while none is open.</summary>
     public SecretPromptState? SecretPrompt { get; init; }
 
