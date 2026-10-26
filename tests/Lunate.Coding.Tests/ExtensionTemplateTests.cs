@@ -96,6 +96,44 @@ public sealed class ExtensionTemplateTests
         }
     }
 
+    /// <summary>
+    /// The template must be compiled by something, or it rots exactly where it is most expensive:
+    /// the file every extension author copies. No test builds it (that would restore and write build
+    /// output from a test process), so the solution does — <c>scripts/verify.sh</c> builds
+    /// <c>lunate.sln</c> on every leg — and this test keeps it there, in every configuration the gate
+    /// uses.
+    /// </summary>
+    [Fact]
+    public void The_solution_compiles_the_template_in_every_configuration_the_gate_builds()
+    {
+        string solution = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "lunate.sln"))
+            .ReplaceLineEndings("\n");
+
+        foreach (
+            string project in new[]
+            {
+                @"templates\extension\TemplateExtension\TemplateExtension.csproj",
+                @"templates\extension\TemplateExtension.Tests\TemplateExtension.Tests.csproj",
+            }
+        )
+        {
+            string line = Assert.Single(
+                solution.Split('\n'),
+                candidate => candidate.Contains($"\"{project}\"", StringComparison.Ordinal)
+            );
+            string guid = line[(line.LastIndexOf('{') + 1)..line.LastIndexOf('}')];
+
+            foreach (string configuration in new[] { "Debug|Any CPU", "Release|Any CPU" })
+            {
+                Assert.Contains(
+                    FormattableString.Invariant($"{{{guid}}}.{configuration}.Build.0"),
+                    solution,
+                    StringComparison.Ordinal
+                );
+            }
+        }
+    }
+
     private static string TemplateProject()
     {
         string path = Path.Combine(
