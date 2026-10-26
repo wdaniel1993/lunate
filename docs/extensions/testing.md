@@ -56,7 +56,7 @@ ExtensionRunResult result = await host.RunAsync(
 Assert.Contains(result.Events.OfType<ToolCallResult>(), toolResult => !toolResult.IsError);
 ```
 
-`TestPaths` is the template's helper; it walks up from the test output directory to `lunate.sln`.
+`TestPaths` is the template's helper; it walks up from the test output directory to `lunate.slnx`.
 What the host does:
 
 - copies `ExtensionDirectory` (or writes `SourceFiles`) into

@@ -212,7 +212,7 @@ if ! dotnet csharpier --version >/dev/null 2>&1; then
 fi
 
 step "build"
-dotnet build lunate.sln -c "$CONFIGURATION" --nologo
+dotnet build lunate.slnx -c "$CONFIGURATION" --nologo
 
 step "provider runtime assets"
 # Providers are compile-private to Lunate.Ai, but their runtime assets must reach
@@ -257,9 +257,9 @@ step "test"
 # used; three timing-sensitive suites proved flaky under the pooled load on the Windows
 # runner (see the PR), so the default stays the proven path.
 if [ "$JOBS" -eq 0 ]; then
-  run_tests "test" dotnet test --solution lunate.sln -c "$CONFIGURATION" --filter-not-trait Category=Perf
+  run_tests "test" dotnet test --solution lunate.slnx -c "$CONFIGURATION" --filter-not-trait Category=Perf
   step "test (de-AT culture)"
-  LANG=de_AT.UTF-8 LC_ALL=de_AT.UTF-8 run_tests "test (de-AT culture)" dotnet test --solution lunate.sln -c "$CONFIGURATION" --no-build --filter-not-trait Category=Perf
+  LANG=de_AT.UTF-8 LC_ALL=de_AT.UTF-8 run_tests "test (de-AT culture)" dotnet test --solution lunate.slnx -c "$CONFIGURATION" --no-build --filter-not-trait Category=Perf
 else
 test_missing=""
 while IFS= read -r project; do
@@ -270,7 +270,7 @@ while IFS= read -r project; do
 done < <(verify_test_projects)
 if [ -n "$test_missing" ]; then
   echo "verify: test assemblies missing from the ${CONFIGURATION} build:${test_missing}" >&2
-  echo "verify: run the build step first (dotnet build lunate.sln -c ${CONFIGURATION})" >&2
+  echo "verify: run the build step first (dotnet build lunate.slnx -c ${CONFIGURATION})" >&2
   exit 1
 fi
 
@@ -283,7 +283,7 @@ while IFS= read -r item; do
   culture_queue+=("$item")
 done < <(verify_test_queue serial-last)
 if [ "${#test_queue[@]}" -eq 0 ]; then
-  echo "verify: no test projects found in lunate.sln — test discovery regression?" >&2
+  echo "verify: no test projects found in lunate.slnx — test discovery regression?" >&2
   exit 1
 fi
 
@@ -471,8 +471,8 @@ done
 step "format"
 # CSharpier owns formatting; dotnet format keeps style and analyzer duties.
 dotnet csharpier check .
-dotnet format style lunate.sln --verify-no-changes --no-restore
-dotnet format analyzers lunate.sln --verify-no-changes --no-restore
+dotnet format style lunate.slnx --verify-no-changes --no-restore
+dotnet format analyzers lunate.slnx --verify-no-changes --no-restore
 
 step "docs lint"
 if ! command -v node >/dev/null 2>&1; then

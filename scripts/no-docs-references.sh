@@ -9,7 +9,7 @@
 #
 # What counts as a read:
 #   1. a *.csproj / *.props / *.targets item or a *.sln line naming a docs path -- a build input;
-#   2. a test file that resolves the repository root (lunate.sln, FindRepositoryRoot,
+#   2. a test file that resolves the repository root (lunate.slnx, FindRepositoryRoot,
 #      RepositoryRoot) and names a docs path -- the shape every docs-reading test takes;
 #   3. a File/Directory call on the same line as a docs path, root or no root.
 #

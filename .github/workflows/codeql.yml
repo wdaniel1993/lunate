@@ -57,8 +57,8 @@ jobs:
       - name: Build
         run: |
           set -euo pipefail
-          dotnet restore lunate.sln
-          dotnet build lunate.sln --no-restore -c Release
+          dotnet restore lunate.slnx
+          dotnet build lunate.slnx --no-restore -c Release
 
       - name: Perform CodeQL analysis
         uses: github/codeql-action/analyze@v4

@@ -4,6 +4,7 @@
 
 # Machine-owned text: always LF.
 *.cs text eol=lf
+*.slnx text eol=lf
 *.csproj text eol=lf
 *.props text eol=lf
 *.targets text eol=lf

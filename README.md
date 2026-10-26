@@ -49,7 +49,7 @@ Prerequisite: the [.NET 10 SDK](https://dotnet.microsoft.com/download), pinned i
 git clone https://github.com/wdaniel1993/lunate
 cd lunate
 dotnet tool restore                      # CSharpier, pinned as a local tool
-dotnet build lunate.sln -c Release
+dotnet build lunate.slnx -c Release
 src/Lunate.Coding/bin/Release/net10.0/lunate --version   # lunate.exe on Windows
 ```
 

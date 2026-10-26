@@ -46,7 +46,7 @@ public sealed class CommittedDigestFixtureTests
     private static string Fixture(string name)
     {
         string root = AppContext.BaseDirectory;
-        while (!File.Exists(Path.Combine(root, "lunate.sln")))
+        while (!File.Exists(Path.Combine(root, "lunate.slnx")))
         {
             root = Path.GetDirectoryName(root)!;
         }

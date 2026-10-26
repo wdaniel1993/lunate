@@ -50,7 +50,7 @@ DEMO_PATH="/usr/local/share/dotnet:/usr/bin:/bin:/usr/sbin:/sbin"
 
 command -v ffmpeg >/dev/null || { echo "ffmpeg missing"; exit 1; }
 [ -x "$VHS" ] || { echo "vhs missing: brew install vhs"; exit 1; }
-[ -x "$BIN" ] || { echo "build first: dotnet build lunate.sln -c Release"; exit 1; }
+[ -x "$BIN" ] || { echo "build first: dotnet build lunate.slnx -c Release"; exit 1; }
 [ -f "$MEDIA/fixtures/demo-session.jsonl" ] || { echo "missing $MEDIA/fixtures/demo-session.jsonl"; exit 1; }
 
 write_demo_workspace() {
