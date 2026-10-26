@@ -85,6 +85,7 @@ public sealed partial class PackageInstaller
             }
 
             string path = Path.Combine(root, file.Path.Replace('/', Path.DirectorySeparatorChar));
+            ScopePaths.RequireInside(root, path, "delete");
             if (File.Exists(path))
             {
                 // A file Windows still has mapped is not silently dropped: the new record cannot
@@ -158,6 +159,7 @@ public sealed partial class PackageInstaller
             }
 
             string? directory = Path.GetDirectoryName(destination);
+            ScopePaths.RequireInside(root, destination, "write");
             if (directory is { Length: > 0 })
             {
                 Directory.CreateDirectory(directory);

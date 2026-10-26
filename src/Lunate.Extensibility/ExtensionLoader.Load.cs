@@ -42,6 +42,24 @@ public sealed partial class ExtensionLoader
             );
         }
 
+        // A directory that is a symlink out of its scope is refused by name: the scope is the trust
+        // boundary, and a link that leaves it would load code from somewhere the user never chose.
+        string extensionScopeRoot =
+            descriptor.Scope is ExtensionScope.Project
+                ? ProjectScope.Under(
+                    Path.GetFullPath(workingDirectory),
+                    ProjectScope.ExtensionsDirectory
+                )
+                : _options.ExtensionsPath;
+        try
+        {
+            ScopePaths.RequireInside(extensionScopeRoot, descriptor.Directory, "load");
+        }
+        catch (InvalidOperationException exception)
+        {
+            throw new ExtensionLoadException(exception.Message, exception);
+        }
+
         // Project extensions always ask; an installed one asks in either scope, because installing
         // is not trusting (addendum, phase 6). A hand-placed user-scope extension is still trusted
         // by placement and never reaches this.

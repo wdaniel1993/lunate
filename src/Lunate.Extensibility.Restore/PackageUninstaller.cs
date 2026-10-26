@@ -78,6 +78,13 @@ public sealed partial class PackageUninstaller
         );
         string scopeRoot = ScopeRoot(record, store);
 
+        // Every recorded path is confined before anything is deleted: a symlinked ancestor inside
+        // the scope root would otherwise carry the uninstall outside it.
+        foreach (InstalledFile file in record.Content.Paths)
+        {
+            ScopePaths.RequireInside(scopeRoot, Resolve(scopeRoot, file.Path), "delete");
+        }
+
         PackageContentState state = PackageContentVerifier.Verify(record, scopeRoot);
         if (state.Changed.Count > 0 && !request.Force)
         {

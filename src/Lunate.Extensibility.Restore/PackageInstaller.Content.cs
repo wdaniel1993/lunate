@@ -26,6 +26,10 @@ public sealed partial class PackageInstaller
                 scopeRoot,
                 file.RelativePath.Replace('/', Path.DirectorySeparatorChar)
             );
+
+            // Before the first directory exists: a symlinked ancestor inside the scope root would
+            // otherwise carry every file this loop writes outside it.
+            ScopePaths.RequireInside(scopeRoot, destination, "write");
             string? directory = Path.GetDirectoryName(destination);
             if (directory is { Length: > 0 })
             {
