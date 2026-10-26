@@ -40,7 +40,8 @@ internal static class InstallView
                 description.Package,
                 string.Join(", ", description.Sources),
                 scope,
-                worktree
+                worktree,
+                description.Dependencies
             ),
             "dry-run: nothing was written",
         ]);
@@ -57,6 +58,7 @@ internal static class InstallView
             result.Record.Content.ExtensionId,
             result.Record.Content.ExtensionVersion,
             result.Record.Content.Skills,
+            result.Dependencies,
             scope,
             worktree
         );
@@ -80,6 +82,7 @@ internal static class InstallView
             package.Extension?.Manifest.Id,
             package.Extension?.Manifest.Version,
             [.. package.Skills.Select(skill => skill.Name)],
+            description.Dependencies,
             scope,
             worktree
         );
@@ -98,10 +101,20 @@ internal static class InstallView
         string? extensionId,
         string? extensionVersion,
         IReadOnlyList<string> skills,
+        IReadOnlyList<ResolvedDependency> dependencies,
         string scope,
         string? worktree
-    ) =>
-        new()
+    )
+    {
+        var closure = new JsonArray();
+        foreach (ResolvedDependency dependency in dependencies)
+        {
+            closure.Add(
+                new JsonObject { ["id"] = dependency.Id, ["version"] = dependency.Version }
+            );
+        }
+
+        return new()
         {
             ["id"] = id,
             ["version"] = version,
@@ -111,9 +124,11 @@ internal static class InstallView
                 ? null
                 : new JsonObject { ["id"] = extensionId, ["version"] = extensionVersion },
             ["skills"] = Strings(skills),
+            ["dependencies"] = closure,
             ["scope"] = scope,
             ["worktree"] = worktree,
         };
+    }
 
     private static List<string> Identity(
         PackageInstallResult result,
@@ -127,7 +142,8 @@ internal static class InstallView
                     package,
                     string.Join(", ", result.Record.Package.Sources),
                     scope,
-                    worktree
+                    worktree,
+                    result.Dependencies
                 ),
             ]
             :
@@ -135,6 +151,11 @@ internal static class InstallView
                 Invariant($"package: {result.Record.Package.Id} {result.Record.Package.Version}"),
                 Invariant($"source: {string.Join(", ", result.Record.Package.Sources)}"),
                 Invariant($"sha512: {result.Record.Package.Sha512}"),
+                result.Dependencies.Count == 0
+                    ? "dependencies: none"
+                    : Invariant(
+                        $"dependencies: {string.Join(", ", result.Dependencies.Select(dependency => $"{dependency.Id} {dependency.Version}"))}"
+                    ),
                 Invariant($"scope: {scope}"),
             ];
 

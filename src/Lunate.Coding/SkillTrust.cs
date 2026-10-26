@@ -35,13 +35,12 @@ internal static class SkillTrust
         {
             string relative = Path.GetRelativePath(repoRoot, skill.Directory)
                 .Replace(Path.DirectorySeparatorChar, '/');
+            string content = ExtensionTrustStore.ComputeContentHash(skill.Directory);
             entries.Add(
                 (
                     relative,
-                    InstalledPackages.BindTrustDigest(
-                        ExtensionTrustStore.ComputeContentHash(skill.Directory),
-                        installed?.ForSkill(skill.Directory)
-                    )
+                    installed?.BindTrustDigest(content, installed.ForSkill(skill.Directory))
+                        ?? content
                 )
             );
         }

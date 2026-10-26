@@ -30,7 +30,8 @@ internal sealed class TestPackageFeed
     /// <summary>
     /// Adds <c>&lt;id&gt;.&lt;version&gt;.nupkg</c>. A dependency string is <c>Id@version</c>; a
     /// bare version becomes <c>[version, )</c>, which is what a real package's nuspec carries, and
-    /// a bracketed text is used as the range itself.
+    /// a bracketed text is used as the range itself. <paramref name="files"/> adds entries a
+    /// package would not normally carry — a copy of a host assembly, say — beside its assets.
     /// </summary>
     internal TestPackageFeed Add(
         string id,
@@ -39,7 +40,8 @@ internal sealed class TestPackageFeed
         bool analyzers = false,
         bool referenceAssemblies = false,
         string? nativeRid = null,
-        string? tfm = null
+        string? tfm = null,
+        IReadOnlyList<(string Path, string Content)>? files = null
     )
     {
         string framework = tfm ?? "net10.0";
@@ -83,6 +85,11 @@ internal sealed class TestPackageFeed
                 $"runtimes/{nativeRid}/native/lib{id}.dylib",
                 Payload(id, version, "native")
             );
+        }
+
+        foreach ((string entryPath, string entryContent) in files ?? [])
+        {
+            Add(builder, entryPath, entryContent);
         }
 
         string path = System.IO.Path.Combine(FeedDirectory, $"{id}.{version}.nupkg");

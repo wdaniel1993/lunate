@@ -19,7 +19,7 @@ internal sealed class TestPackage
     private readonly string _version;
     private readonly string _feed;
     private readonly List<(string Path, byte[] Content)> _files = [];
-    private readonly List<string> _dependencies = [];
+    private readonly List<(string Id, string Range)> _dependencies = [];
 
     internal TestPackage(string root, string id = "Acme.Toolkit", string version = "1.4.2")
     {
@@ -75,7 +75,18 @@ internal sealed class TestPackage
     /// <summary>One NuGet dependency the nuspec declares, as <c>[1.0.0, )</c>.</summary>
     internal TestPackage DependsOn(params string[] ids)
     {
-        _dependencies.AddRange(ids);
+        foreach (string id in ids)
+        {
+            _dependencies.Add((id, "[1.0.0, )"));
+        }
+
+        return this;
+    }
+
+    /// <summary>One NuGet dependency with the range as written, for a graph a test wants to move.</summary>
+    internal TestPackage Dependency(string id, string range)
+    {
+        _dependencies.Add((id, range));
         return this;
     }
 
@@ -214,7 +225,7 @@ internal sealed class TestPackage
     internal static string Nuspec(
         string id = "Acme.Toolkit",
         string version = "1.4.2",
-        IReadOnlyList<string>? dependencies = null
+        IReadOnlyList<(string Id, string Range)>? dependencies = null
     )
     {
         string declared = dependencies is not { Count: > 0 }
@@ -226,7 +237,7 @@ internal sealed class TestPackage
                             "\n        ",
                             dependencies.Select(dependency =>
                                 FormattableString.Invariant(
-                                    $"<dependency id=\"{dependency}\" version=\"[1.0.0, )\" />"
+                                    $"<dependency id=\"{dependency.Id}\" version=\"{dependency.Range}\" />"
                                 )
                             )
                         )}

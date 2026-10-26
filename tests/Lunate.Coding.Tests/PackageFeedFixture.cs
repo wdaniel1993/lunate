@@ -49,6 +49,7 @@ internal sealed class PackageFeedFixture : IDisposable
         string version = "1.4.2",
         string extensionId = "acme-tools",
         string extensionVersion = "0.1.0",
+        string[]? dependencies = null,
         params string[] skills
     )
     {
@@ -89,11 +90,37 @@ internal sealed class PackageFeedFixture : IDisposable
         Nupkg = Path.Combine(Feed, $"{id}.{version}.nupkg");
         using FileStream stream = System.IO.File.Create(Nupkg);
         using var zip = new ZipArchive(stream, ZipArchiveMode.Create);
-        Entry(zip, $"{id}.nuspec", Nuspec(id, version));
+        Entry(zip, $"{id}.nuspec", Nuspec(id, version, dependencies));
         foreach ((string path, byte[] content) in _entries)
         {
             ZipArchiveEntry entry = zip.CreateEntry(path, CompressionLevel.Fastest);
             using Stream target = entry.Open();
+            target.Write(content);
+        }
+
+        return this;
+    }
+
+    /// <summary>
+    /// A dependency package in the same feed: <c>lib/net10.0/&lt;id&gt;.dll</c> and the dependency
+    /// group <paramref name="dependencies"/> names, so a bundle's closure has something to resolve.
+    /// </summary>
+    internal PackageFeedFixture Dependency(
+        string id,
+        string version = "1.0.0",
+        params string[] dependencies
+    )
+    {
+        _entries.Clear();
+        _entries.Add(($"lib/net10.0/{id}.dll", Encoding.UTF8.GetBytes($"lib bytes of {id}")));
+        string path = Path.Combine(Feed, $"{id}.{version}.nupkg");
+        using FileStream stream = System.IO.File.Create(path);
+        using var zip = new ZipArchive(stream, ZipArchiveMode.Create);
+        Entry(zip, $"{id}.nuspec", Nuspec(id, version, dependencies));
+        foreach ((string entry, byte[] content) in _entries)
+        {
+            ZipArchiveEntry zipEntry = zip.CreateEntry(entry, CompressionLevel.Fastest);
+            using Stream target = zipEntry.Open();
             target.Write(content);
         }
 
@@ -160,8 +187,26 @@ internal sealed class PackageFeedFixture : IDisposable
         stream.Write(Encoding.UTF8.GetBytes(content));
     }
 
-    private static string Nuspec(string id, string version) =>
-        $"""
+    private static string Nuspec(string id, string version, string[]? dependencies = null)
+    {
+        string declared = dependencies is not { Length: > 0 }
+            ? string.Empty
+            : $"""
+                  <dependencies>
+                    <group targetFramework="net10.0">
+                {string.Join(
+                    "\n        ",
+                    dependencies.Select(dependency =>
+                        FormattableString.Invariant(
+                            $"<dependency id=\"{dependency}\" version=\"[1.0.0, )\" />"
+                        )
+                    )
+                )}
+                    </group>
+                  </dependencies>
+                """;
+
+        return $"""
             <?xml version="1.0" encoding="utf-8"?>
             <package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
               <metadata>
@@ -169,7 +214,9 @@ internal sealed class PackageFeedFixture : IDisposable
                 <version>{version}</version>
                 <authors>lunate-tests</authors>
                 <description>A package for the install command tests.</description>
+                {declared}
               </metadata>
             </package>
             """;
+    }
 }

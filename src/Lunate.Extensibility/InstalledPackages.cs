@@ -140,15 +140,12 @@ internal sealed class InstalledPackages
 
     /// <summary>
     /// The trust digest a decision records for content that came from a package (design D7): the
-    /// directory content hash plus the identity the user chose, so an upgraded package changes the
-    /// digest and asks again, while an identical reinstall keeps the decision. The one marker keeps
-    /// this family disjoint from a plain content hash. The canonical lock graph joins in a later
-    /// phase through this same function.
+    /// directory content hash, the identity the user chose, and the canonical graph of the
+    /// resolution the install wrote, so an upgraded package — or the same package whose dependencies
+    /// now resolve differently — changes the digest and asks again, while an identical reinstall
+    /// keeps the decision. The one marker keeps this family disjoint from a plain content hash.
     /// </summary>
-    internal static string BindTrustDigest(
-        string contentHash,
-        InstalledPackageProvenance? provenance
-    )
+    internal string BindTrustDigest(string contentHash, InstalledPackageProvenance? provenance)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(contentHash);
         if (provenance is null)
@@ -172,7 +169,38 @@ internal sealed class InstalledPackages
             hash.AppendData([0]);
         }
 
+        // The resolution's graph, not the toolset half: a .NET patch must never ask the user about
+        // bytes they already approved, and a dependency that resolved elsewhere must.
+        byte[] graph = LockGraph(provenance);
+        hash.AppendData(graph);
+        hash.AppendData([0]);
+
         return Convert.ToHexStringLower(hash.GetHashAndReset());
+    }
+
+    /// <summary>
+    /// The canonical graph bytes of the lock an install wrote for this package's extension, or empty
+    /// when the package carries no extension or its lock is gone — so a record without a lock binds
+    /// the same bytes it did before the lock existed instead of failing the load.
+    /// </summary>
+    private byte[] LockGraph(InstalledPackageProvenance provenance)
+    {
+        if (provenance.ExtensionId is not { Length: > 0 } extensionId)
+        {
+            return [];
+        }
+
+        string path = SingleFileExtensionPaths.LockPath(_storeRoot, extensionId);
+        try
+        {
+            return File.Exists(path)
+                ? ExtensionLockJson.Read(File.ReadAllText(path)).GraphBytes
+                : [];
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            return [];
+        }
     }
 
     private string ExtensionDirectory(InstalledPackageProvenance provenance, string id) =>

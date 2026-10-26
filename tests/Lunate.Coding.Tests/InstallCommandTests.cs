@@ -49,6 +49,84 @@ public sealed class InstallCommandTests
     }
 
     [Fact]
+    public void Install_prints_the_dependency_closure_before_what_it_wrote()
+    {
+        using var feed = new PackageFeedFixture();
+        feed.Dependency("Acme.Lib", "1.0.0", "Acme.Core").Dependency("Acme.Core", "1.2.0");
+        feed.Bundle(skills: ["greek"], dependencies: ["Acme.Lib"]);
+
+        int exit = feed.Run(["Acme.Toolkit@1.4.2"], out string output, out string errors);
+
+        Assert.Equal(InstallCommand.ExitOk, exit);
+        Assert.Empty(errors);
+        Assert.Contains(
+            "dependencies: Acme.Core 1.2.0, Acme.Lib 1.0.0",
+            output,
+            StringComparison.Ordinal
+        );
+        Assert.True(
+            output.IndexOf("dependencies:", StringComparison.Ordinal)
+                < output.IndexOf("installed:", StringComparison.Ordinal),
+            "the closure prints before the line saying what was written"
+        );
+        Assert.True(
+            File.Exists(Path.Combine(feed.Store, "extensions", "acme-tools", "Acme.Lib.dll"))
+        );
+        Assert.True(
+            File.Exists(Path.Combine(feed.Store, "extensions", "acme-tools", "Acme.Core.dll"))
+        );
+    }
+
+    [Fact]
+    public void A_dry_run_prints_the_closure_and_resolves_nothing_into_the_store()
+    {
+        using var feed = new PackageFeedFixture();
+        feed.Dependency("Acme.Lib", "1.0.0");
+        feed.Bundle(skills: ["greek"], dependencies: ["Acme.Lib"]);
+
+        int exit = feed.Run(
+            ["--dry-run", "Acme.Toolkit@1.4.2"],
+            out string output,
+            out string errors
+        );
+
+        Assert.Equal(InstallCommand.ExitOk, exit);
+        Assert.Empty(errors);
+        Assert.Contains("dependencies: Acme.Lib 1.0.0", output, StringComparison.Ordinal);
+        Assert.Contains("dry-run: nothing was written", output, StringComparison.Ordinal);
+
+        // Nothing under the state root — not even the lock: a description is not an install. The
+        // closure was resolved into the packages folder, which is NuGet's cache and not the store.
+        Assert.False(Directory.Exists(Path.Combine(feed.Store, "extensions")));
+        Assert.False(Directory.Exists(Path.Combine(feed.Store, "packages")));
+        Assert.False(Directory.Exists(Path.Combine(feed.Store, "cache")));
+        Assert.True(
+            File.Exists(
+                Path.Combine(feed.GlobalPackages, "acme.lib", "1.0.0", "acme.lib.1.0.0.nupkg")
+            )
+        );
+    }
+
+    [Fact]
+    public void Json_carries_the_dependency_closure()
+    {
+        using var feed = new PackageFeedFixture();
+        feed.Dependency("Acme.Lib", "1.0.0");
+        feed.Bundle(skills: ["greek"], dependencies: ["Acme.Lib"]);
+
+        int exit = feed.Run(["Acme.Toolkit@1.4.2", "--json"], out string output, out string errors);
+
+        Assert.Equal(InstallCommand.ExitOk, exit);
+        Assert.Empty(errors);
+        using JsonDocument document = JsonDocument.Parse(output);
+        JsonElement dependency = Assert.Single(
+            document.RootElement.GetProperty("dependencies").EnumerateArray()
+        );
+        Assert.Equal("Acme.Lib", dependency.GetProperty("id").GetString());
+        Assert.Equal("1.0.0", dependency.GetProperty("version").GetString());
+    }
+
+    [Fact]
     public void A_project_install_writes_the_worktree_and_its_content_is_untracked()
     {
         using var feed = new PackageFeedFixture();
