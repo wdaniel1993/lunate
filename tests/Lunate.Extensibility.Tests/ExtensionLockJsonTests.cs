@@ -1,3 +1,5 @@
+using System.Text;
+
 namespace Lunate.Extensibility.Tests;
 
 /// <summary>
@@ -93,6 +95,19 @@ public sealed class ExtensionLockJsonTests
             )
         );
         Assert.Contains("lockVersion", version!, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void The_lock_bytes_carry_no_carriage_return_and_rewriting_them_is_byte_identical()
+    {
+        ExtensionLock @lock = Locked();
+
+        byte[] first = ExtensionLockJson.ToBytes(@lock);
+
+        Assert.DoesNotContain((byte)'\r', first);
+        Assert.DoesNotContain((byte)'\r', ExtensionLockJson.GraphBytes(@lock));
+        ExtensionLock parsed = ExtensionLockJson.TryParse(Encoding.UTF8.GetString(first), out _)!;
+        Assert.Equal(first, ExtensionLockJson.ToBytes(parsed));
     }
 
     [Fact]

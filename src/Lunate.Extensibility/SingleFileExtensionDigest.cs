@@ -56,9 +56,11 @@ public static class SingleFileExtensionDigest
     ) => Compute(id, packages, source, []);
 
     /// <summary>
-    /// The digest of the bytes the user approved: fields NUL-separated, the source appended
-    /// verbatim, and the lock's canonical graph bytes last. NUL is unambiguous because neither an
-    /// id nor a package argument can contain it.
+    /// The digest of the bytes the user approved: fields NUL-separated, the source appended with
+    /// CRLF normalized to LF, and the lock's canonical graph bytes last. NUL is unambiguous because
+    /// neither an id nor a package argument can contain it. Normalizing the source is what keeps one
+    /// file's digest the same on a Windows checkout and a POSIX one — and a pure line-ending change
+    /// therefore does not re-prompt.
     /// </summary>
     public static string Compute(
         string id,
@@ -96,7 +98,7 @@ public static class SingleFileExtensionDigest
             hash.AppendData(separator);
         }
 
-        hash.AppendData(source);
+        hash.AppendData(LineEndings.ToLf(source));
         hash.AppendData(separator);
         return hash;
     }

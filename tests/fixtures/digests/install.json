@@ -1,0 +1,43 @@
+{
+  "recordVersion": 1,
+  "package": {
+    "id": "Acme.Toolkit",
+    "version": "1.4.2",
+    "sha512": "c2hhNTEy",
+    "sources": [
+      "local",
+      "nuget.org"
+    ],
+    "files": [
+      "extension/extension.json",
+      "lunate.package.json",
+      "skills/greek/SKILL.md"
+    ],
+    "extension": "acme-tools"
+  },
+  "content": {
+    "extension": {
+      "id": "acme-tools",
+      "version": "0.1.0"
+    },
+    "skills": [
+      "greek",
+      "roman"
+    ],
+    "paths": [
+      {
+        "path": "extensions/acme-tools/extension.json",
+        "size": 10,
+        "sha256": "aaaa"
+      },
+      {
+        "path": "skills/roman/SKILL.md",
+        "size": 12,
+        "sha256": "bbbb"
+      }
+    ]
+  },
+  "scope": "user",
+  "installedAt": "2026-01-02T03:04:05.0000000\u002B00:00",
+  "integrity": "4b9b24c4d0bf3258572942af569fe102b200225b08f393ee8fa143828361049e"
+}
