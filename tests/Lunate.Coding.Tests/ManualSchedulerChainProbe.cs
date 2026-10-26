@@ -124,14 +124,20 @@ public sealed class ManualSchedulerChainProbe
 
         using var stop = new CancellationTokenSource();
         CancellationToken ct = TestContext.Current.CancellationToken;
+        var firstStimulus = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         Task poster = Task.Run(
             async () =>
             {
                 var n = 0;
                 while (!stop.IsCancellationRequested)
                 {
-                    area.SetInput(new InputLineState($"line {n++}", 0));
+                    area.SetInput(new InputLineState($"line {n}", 0));
                     area.SetNotice($"notice {n}");
+                    if (n++ == 0)
+                    {
+                        firstStimulus.TrySetResult();
+                    }
+
                     await Task.Delay(1, CancellationToken.None);
                 }
             },
@@ -140,6 +146,11 @@ public sealed class ManualSchedulerChainProbe
 
         try
         {
+            // 300 advances take microseconds, so without this the loop can finish before the
+            // poster's first write exists: the live area then has nothing to repaint and the
+            // assertion fails on scheduling luck (Ubuntu CI lost that race, macOS won it).
+            await firstStimulus.Task;
+
             int before = console.Writes.Count;
             for (var i = 0; i < 300; i++)
             {
