@@ -89,6 +89,26 @@ public sealed class FixtureFormatTests
     }
 
     [Fact]
+    public void The_serializer_is_pinned_to_LF_and_re_serializing_a_line_is_byte_identical()
+    {
+        Assert.Equal("\n", FixtureFormat.JsonOptions.NewLine);
+
+        string header = FixtureFormat.SerializeHeader(
+            "gpt-4o-mini",
+            new DateTimeOffset(2026, 10, 5, 12, 0, 0, TimeSpan.Zero)
+        );
+        string line = FixtureFormat.SerializeExchange(
+            "deadbeef",
+            [new ChatResponseUpdate(ChatRole.Assistant, [new TextContent("a\r\nb")])]
+        );
+
+        Assert.DoesNotContain('\r', header);
+        Assert.DoesNotContain('\r', line);
+        FixtureExchange parsed = FixtureFormat.ParseExchange(line, "fixture.jsonl", 2);
+        Assert.Equal(line, FixtureFormat.SerializeExchange(parsed.RequestDigest, parsed.Updates));
+    }
+
+    [Fact]
     public void ReadFile_parses_header_and_exchanges_in_order()
     {
         using var temp = new TempDirectory();
