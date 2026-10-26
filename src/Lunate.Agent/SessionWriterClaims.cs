@@ -1,3 +1,5 @@
+using Lunate.Ai;
+
 namespace Lunate.Agent;
 
 /// <summary>
@@ -21,7 +23,7 @@ internal static class SessionWriterClaims
     // Process-lifetime claims, never released: the handle is the claim, and closing it would let
     // another process in while this one still appends. One handle per session file this process
     // writes, which is a handful in a session and bounded by the suite in a test run.
-    private static readonly Dictionary<string, FileStream> Claims = new(StringComparer.Ordinal);
+    private static readonly Dictionary<string, FileLock> Claims = new(StringComparer.Ordinal);
 
     /// <summary>
     /// Claims <paramref name="path"/> for this process, or refuses when another process holds it.
@@ -39,7 +41,14 @@ internal static class SessionWriterClaims
                 return;
             }
 
-            Claims[key] = SessionFiles.OpenWriterLock(path);
+            string lockPath = SessionFiles.WriterLockPath(path);
+            Claims[key] =
+                FileLock.TryAcquire(lockPath)
+                ?? throw new InvalidOperationException(
+                    $"the session file '{path}' is being written by another Lunate process (writer "
+                        + $"lock '{lockPath}'); a session file has one writer, so finish that session "
+                        + "or pass a different --session."
+                );
         }
     }
 }

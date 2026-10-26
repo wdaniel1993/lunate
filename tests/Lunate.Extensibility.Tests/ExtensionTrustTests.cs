@@ -26,7 +26,12 @@ public sealed class ExtensionTrustTests
         Assert.Equal(1, prompt.Calls);
         Assert.False(prompt.LastFilesChanged);
         string trustPath = Path.Combine(store, "trust.json");
-        Assert.Equal(["trust.json"], Directory.GetFiles(store).Select(Path.GetFileName));
+        // The store is one document and its write claim, which every approval's read-modify-write
+        // holds: one file per decision would be a second thing to keep consistent.
+        Assert.Equal(
+            ["trust.json", "trust.lock"],
+            Directory.GetFiles(store).Select(Path.GetFileName).Order(StringComparer.Ordinal)
+        );
 
         await loader.Unload("hello");
         await loader.Load(
