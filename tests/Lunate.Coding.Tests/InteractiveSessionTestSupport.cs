@@ -669,10 +669,29 @@ internal sealed class InteractiveSessionHost : IDisposable
     /// the window closes decides nothing, which is the rule under test elsewhere. Tests that press
     /// keys on a prompt use this instead of a bare wait.
     /// </summary>
+    /// <remarks>
+    /// The expire is a write into the session's own arm stamp, so it must be observed to have
+    /// landed, not merely issued: when the session published the panel before stamping the arm, an
+    /// expire that landed in between was overwritten by the stamp, and every key the test then sent
+    /// was dropped by the 300 ms in-flight window — which a virtual clock never closes. The session
+    /// now stamps before it publishes (so the reading is final); re-expiring until the seam reads
+    /// armed keeps this helper honest even if that ordering ever changes back.
+    /// </remarks>
     public async Task WaitForApprovalAsync(TimeSpan? timeout = null)
     {
         await WaitUntilAsync(() => Session.PendingApproval is not null, timeout);
-        Session.ExpireApprovalArmWindow();
+        await WaitUntilAsync(
+            () =>
+            {
+                if (!Session.ApprovalArmedForNextKey)
+                {
+                    Session.ExpireApprovalArmWindow();
+                }
+
+                return Session.ApprovalArmedForNextKey;
+            },
+            timeout
+        );
     }
 
     public void Advance(int milliseconds) =>
@@ -705,19 +724,27 @@ internal sealed class InteractiveSessionHost : IDisposable
     {
         IReadOnlyList<string> writes = Console.Writes;
         var text = new System.Text.StringBuilder();
-        text.Append(FormattableString.Invariant(
-            $"running={Session.IsRunning} bashMode={Session.IsBashMode}"))
-            .Append(FormattableString.Invariant(
-                $" bashSilent={Session.IsBashSilent} bashRunning={Session.IsBashRunning}"))
+        text.Append(
+                FormattableString.Invariant(
+                    $"running={Session.IsRunning} bashMode={Session.IsBashMode}"
+                )
+            )
+            .Append(
+                FormattableString.Invariant(
+                    $" bashSilent={Session.IsBashSilent} bashRunning={Session.IsBashRunning}"
+                )
+            )
             .Append(FormattableString.Invariant($" writes={writes.Count}"))
-            .Append(FormattableString.Invariant(
-                $" input=\"{Escape(Session.Input.Text)}\""))
-            .Append(FormattableString.Invariant(
-                $" pendingApproval={Session.PendingApproval?.ToolName ?? "<none>"}"))
-            .Append(FormattableString.Invariant(
-                $" approvalArmed={Session.ApprovalArmedForNextKey}"))
-            .Append(FormattableString.Invariant(
-                $" scheduledVt={Scheduler.PendingWorkCount}"));
+            .Append(FormattableString.Invariant($" input=\"{Escape(Session.Input.Text)}\""))
+            .Append(
+                FormattableString.Invariant(
+                    $" pendingApproval={Session.PendingApproval?.ToolName ?? "<none>"}"
+                )
+            )
+            .Append(
+                FormattableString.Invariant($" approvalArmed={Session.ApprovalArmedForNextKey}")
+            )
+            .Append(FormattableString.Invariant($" scheduledVt={Scheduler.PendingWorkCount}"));
 
         text.AppendLine().Append("writes:");
         for (var i = 0; i < writes.Count; i++)
@@ -733,9 +760,7 @@ internal sealed class InteractiveSessionHost : IDisposable
 
         string scrollback = Scrollback.Output;
         string tail = scrollback.Length <= 600 ? scrollback : scrollback[^600..];
-        text.AppendLine()
-            .Append("scrollback:")
-            .Append(Escape(tail));
+        text.AppendLine().Append("scrollback:").Append(Escape(tail));
 
         return text.ToString();
     }

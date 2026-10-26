@@ -1970,11 +1970,17 @@ internal sealed partial class InteractiveSession : IDisposable
             WorkspaceRoot: workspaceRoot
         );
 
-        Volatile.Write(ref _approvalPrompt, prompt);
-        _approvalDecision = decision;
-        _live.SetApproval(prompt);
+        // The arm is stamped *before* the panel is published. Anyone who watches the panel from
+        // another thread — the test harness does, then ages the window with
+        // ExpireApprovalArmWindow() — must not be able to observe "the question is up" while the
+        // stamp is still unwritten: their expire would be overwritten by the two writes below, and
+        // the key they send next would be dropped by a 300 ms window that a virtual clock never
+        // closes. The release store publishes the decision and both stamps together.
         Interlocked.Exchange(ref _approvalArmSequence, Interlocked.Read(ref _keySequence));
         _approvalArmAt = _scheduler.Now;
+        _approvalDecision = decision;
+        _live.SetApproval(prompt);
+        Volatile.Write(ref _approvalPrompt, prompt);
         using CancellationTokenRegistration registration = ct.Register(() =>
             decision.TrySetCanceled(ct)
         );
