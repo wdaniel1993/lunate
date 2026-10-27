@@ -1,0 +1,76 @@
+name: Smoke
+
+# Verifies a *published* release, not a branch: the documented install channels, the tool
+# package, and that the binary starts. Run it after the tag exists:
+#
+#   gh workflow run smoke.yml --ref <branch-that-has-this-file> -f tag=v0.1.0-rc.1
+#
+# It is deliberately keyless: a run with a real model needs a provider key, which belongs to
+# the maintainer's machine, not to a CI runner.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to install and check, for example v0.1.0-rc.1'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: smoke (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - name: Checkout the installer scripts
+        uses: actions/checkout@v7
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Install with install.sh
+        if: runner.os != 'Windows'
+        shell: bash
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          sh install.sh --version "$TAG" --prefix "$RUNNER_TEMP/lunate"
+          "$RUNNER_TEMP/lunate/lunate" --version | tee version.txt
+          grep -qF "${TAG#v}" version.txt
+
+      - name: Install with install.ps1
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          ./install.ps1 -Version $env:TAG -Prefix "$env:RUNNER_TEMP\lunate"
+          & "$env:RUNNER_TEMP\lunate\lunate.exe" --version | Tee-Object version.txt
+          if (-not (Select-String -Path version.txt -SimpleMatch $env:TAG.Substring(1))) {
+            throw "version.txt does not contain $env:TAG"
+          }
+
+      - name: The binary starts and lists its surface
+        shell: pwsh
+        env:
+          LUNATE: ${{ runner.os == 'Windows' && format('{0}/lunate/lunate.exe', runner.temp) || format('{0}/lunate/lunate', runner.temp) }}
+        run: |
+          & $env:LUNATE --help
+          & $env:LUNATE packages list
+
+      - name: Install the dotnet tool
+        shell: pwsh
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          dotnet tool install --global lunate --version $env:TAG.Substring(1)
+          lunate --version
