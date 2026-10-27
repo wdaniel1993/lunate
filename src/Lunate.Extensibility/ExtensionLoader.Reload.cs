@@ -37,8 +37,13 @@ public sealed partial class ExtensionLoader
     /// Bounded rather than unlimited: a handler that ignores its token must not hold a session open,
     /// and the drain is what makes "the context disposes only after its invocations ended" true for
     /// every handler that does honour it.
+    /// <para>
+    /// Five seconds, not two: the wait ends the moment the last handler leaves, so the bound is only
+    /// ever spent on a handler that is genuinely stuck — and two seconds were not enough slack for a
+    /// loaded two-core CI runner to schedule a cancelled handler's continuation.
+    /// </para>
     /// </summary>
-    public static TimeSpan ReloadDrainBound { get; } = TimeSpan.FromSeconds(2);
+    public static TimeSpan ReloadDrainBound { get; } = TimeSpan.FromSeconds(5);
 
     /// <summary>
     /// Reloads one single-file extension in the order the feature exists for: the file's current
