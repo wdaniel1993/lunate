@@ -25,8 +25,20 @@ internal static class RestoreCache
     /// <summary>Longer than any restore takes; a lock that cannot be had is not fatal (see <see cref="Lock"/>).</summary>
     private static readonly TimeSpan LockTimeout = TimeSpan.FromMinutes(3);
 
-    /// <summary>What a restore writes, and therefore what an entry holds and a hit copies.</summary>
-    private static readonly string[] Written = ["obj", "bin", ".packages", ".nuget-http-cache"];
+    /// <summary>
+    /// Directories the address never reads and a restore never writes: the restore output itself,
+    /// and the repository metadata. Git rewrites <c>.git</c> while a test runs — maintenance, index
+    /// and ref locks — so hashing it made two identical trees disagree, and it could stat a lock
+    /// file that git had just deleted.
+    /// </summary>
+    private static readonly string[] Excluded =
+    [
+        "obj",
+        "bin",
+        ".packages",
+        ".nuget-http-cache",
+        ".git",
+    ];
 
     /// <summary>
     /// The content address of the tree at <paramref name="root"/>. Trees that share it are
@@ -45,14 +57,26 @@ internal static class RestoreCache
         hash.AppendData(Encoding.UTF8.GetBytes(Environment.Version.ToString()));
         foreach (string file in files)
         {
+            byte[] content;
+            try
+            {
+                content = File.ReadAllBytes(file);
+            }
+            catch (Exception exception)
+                when (exception is FileNotFoundException or DirectoryNotFoundException)
+            {
+                // A file that vanished mid-walk cannot be part of a stable address.
+                continue;
+            }
+
             string relative = Path.GetRelativePath(root, file).Replace('\\', '/');
             hash.AppendData(Encoding.UTF8.GetBytes(relative));
             hash.AppendData(
                 Encoding.UTF8.GetBytes(
-                    string.Create(CultureInfo.InvariantCulture, $"\0{new FileInfo(file).Length}\0")
+                    string.Create(CultureInfo.InvariantCulture, $"\0{content.LongLength}\0")
                 )
             );
-            hash.AppendData(File.ReadAllBytes(file));
+            hash.AppendData(content);
         }
 
         return Convert.ToHexStringLower(hash.GetHashAndReset());
@@ -181,7 +205,7 @@ internal static class RestoreCache
             {
                 string name = Path.GetFileName(directory);
                 string childRelative = relative.Length == 0 ? name : Path.Combine(relative, name);
-                if (Written.Contains(name, StringComparer.OrdinalIgnoreCase))
+                if (Excluded.Contains(name, StringComparer.OrdinalIgnoreCase))
                 {
                     yield return (directory, childRelative);
                     continue;
@@ -192,22 +216,29 @@ internal static class RestoreCache
         }
     }
 
-    /// <summary>Every file the restore reads — everything except what it writes.</summary>
+    /// <summary>Every file the restore reads — everything except what it writes or git owns.</summary>
     private static void Collect(string directory, List<string> files)
     {
-        foreach (string file in Directory.EnumerateFiles(directory))
+        try
         {
-            files.Add(file);
-        }
-
-        foreach (string child in Directory.EnumerateDirectories(directory))
-        {
-            if (Written.Contains(Path.GetFileName(child), StringComparer.OrdinalIgnoreCase))
+            foreach (string file in Directory.EnumerateFiles(directory))
             {
-                continue;
+                files.Add(file);
             }
 
-            Collect(child, files);
+            foreach (string child in Directory.EnumerateDirectories(directory))
+            {
+                if (Excluded.Contains(Path.GetFileName(child), StringComparer.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                Collect(child, files);
+            }
+        }
+        catch (DirectoryNotFoundException)
+        {
+            // A directory that vanished under the walk has nothing to contribute to the address.
         }
     }
 

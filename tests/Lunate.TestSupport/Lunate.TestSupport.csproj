@@ -2,4 +2,7 @@
     <PropertyGroup>
         <RootNamespace>Lunate.TestSupport</RootNamespace>
     </PropertyGroup>
+    <ItemGroup>
+        <InternalsVisibleTo Include="Lunate.Coding.Tests" />
+    </ItemGroup>
 </Project>
