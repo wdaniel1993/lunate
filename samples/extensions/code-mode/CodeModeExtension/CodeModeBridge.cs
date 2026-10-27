@@ -51,6 +51,10 @@ internal sealed class CodeModeBridge(ToolContext context, CodeModeSettings setti
     /// <summary>True when the script threw or set a failing exit code.</summary>
     public bool ScriptFailed => _failed;
 
+    /// <summary>What this run observed, for <see cref="CodeModeOutcome.Compose"/>.</summary>
+    public CodeModeRunFacts Snapshot() =>
+        new([.. _calls], _logs.ToString(), _result, _failed, _helloSeen, _protocolError);
+
     /// <summary>Handles one stdout line; returns the stdin answer to write, or null for none.</summary>
     public async Task<string?> OnLineAsync(string line, CancellationToken ct)
     {

@@ -10,6 +10,17 @@ Notable changes to Lunate, one section per release. The format follows
 
 ### Fixed
 
+- A code-mode run that produced nothing at all was reported as "The script timed out", which hid
+  the cause. A run that never reached the `hello` handshake now says so, naming the runtime, the
+  elapsed time and the missing handshake, and every failure path (timeout, runtime that died, failed
+  script) reports the child's exit code and stderr. `StructuredContent` carries `helloSeen` and
+  `elapsedMs`, so a loaded runner's slow spawn is visible instead of masquerading as a slow script.
+- Three `CodeModeExtension.Tests` cases failed together on a loaded Windows runner: the `node`
+  child was started and stayed silent past the 30 s default deadline, so the invitation, the bridged
+  ask and the pid never arrived. The tests that are not about the deadline now run with a ceiling
+  (120 s) rather than the product default, the kill test yields once so its pid frame is flushed
+  before the script blocks the event loop, and an empty pid or ask fails with the run's own report
+  instead of a bare assertion.
 - The release smoke waits for nuget.org to index the tag's extension package before installing it —
   polling the flatcontainer index, the package content and the registration resource under one
   ten-minute budget — instead of retrying the install five times into the lag. `v0.1.0`'s smoke went
