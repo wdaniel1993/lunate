@@ -47,9 +47,10 @@
 - [x] 6.1 A real `dotnet pack` nupkg installs, lists, verifies and uninstalls with the built binary
       from a folder feed on macOS (recorded in the PR).
 - [x] 6.2 `openspec validate release-extension-package --strict` green.
-- [ ] 6.3 `scripts/verify.sh` green on the final head (macOS), and CI green on ubuntu and windows.
+- [x] 6.3 `scripts/verify.sh` green on the final head (macOS), and CI green on ubuntu and windows
+      (run `40459888237`).
 - [x] 6.4 The maintainer approves the package id/namespace (`Lunate.Extensions.Subagents`, approved
       2026-10-27).
-- [ ] 6.5 The first tag that carries the change publishes the package, and `smoke.yml` runs against
-      that tag on all three operating systems. This half needs a release, so it is proved and
-      archived after that tag rather than before the merge.
+- [x] 6.5 The first tag that carries the change publishes the package, and `smoke.yml` runs against
+      that tag on all three operating systems (`v0.1.0-rc.2`, smoke run `40476409820`: install, verify,
+      discover and uninstall from nuget.org on ubuntu, macOS and windows).
