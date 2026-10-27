@@ -38,8 +38,7 @@
 
 ## Install
 
-The first release candidate is published: `v0.1.0-rc.2`. It exists so the package channels can be
-verified against a real build — the first stable release is `0.1.0`.
+`0.1.0` is the first stable release.
 
 macOS (arm64) and Linux (x64), through Homebrew:
 
@@ -48,33 +47,32 @@ brew tap wdaniel1993/tap
 brew install lunate
 ```
 
-Any platform, through the installer (add `--version v0.1.0-rc.2` because a candidate is not
-`latest`):
+Any platform, through the installer:
 
 ```bash
 # macOS arm64, Linux x64
-curl -fsSL https://raw.githubusercontent.com/wdaniel1993/lunate/main/install.sh | sh -s -- --version v0.1.0-rc.2
+curl -fsSL https://raw.githubusercontent.com/wdaniel1993/lunate/main/install.sh | sh
 ```
 
 ```powershell
 # Windows x64
 irm https://raw.githubusercontent.com/wdaniel1993/lunate/main/install.ps1 -OutFile install.ps1
-./install.ps1 -Version v0.1.0-rc.2
+./install.ps1
 ```
 
 Or as a .NET tool:
 
 ```bash
-dotnet tool install --global lunate --version 0.1.0-rc.2
+dotnet tool install --global lunate
 ```
 
-Scoop and winget follow once their manifests are verified. Then `lunate --version`, and `lunate`
-inside a repository.
+Scoop carries the same build; winget follows once its manifest is accepted. Then `lunate --version`,
+and `lunate` inside a repository.
 
 One extension is published with the tool — an officially supported one, not a sample:
 
 ```bash
-lunate install Lunate.Extensions.Subagents@0.1.0-rc.2   # pin a candidate; a stable tag needs no version
+lunate install Lunate.Extensions.Subagents
 lunate packages --verify
 ```
 

@@ -6,6 +6,15 @@ Notable changes to Lunate, one section per release. The format follows
 [GitHub Releases](https://github.com/wdaniel1993/lunate/releases); the release process itself is in
 [`docs/distribution.md`](docs/distribution.md).
 
+## [0.1.0] - 2026-10-27
+
+The first stable release. It is `0.1.0-rc.2` plus one fix found on a loaded runner: `ProcessRunner`
+abandoned a child's stdout when a write to its stdin hit a closed pipe, so a child that exited while
+an answer was in flight looked like one that never answered.
+
+A release candidate is not `latest`, so both installers resolve this build when no version is given.
+The `lunate` tool and `Lunate.Extensions.Subagents` publish from the same tag.
+
 ## [0.1.0-rc.2] - 2026-10-27
 
 ### Added
@@ -54,5 +63,6 @@ verified against a real, versioned build; the first stable release is `0.1.0`.
   shell can write the state root. There is no sandbox in this release; 0.2 adds a bash guard
   profile for macOS and Linux.
 
+[0.1.0]: https://github.com/wdaniel1993/lunate/compare/v0.1.0-rc.2...v0.1.0
 [0.1.0-rc.2]: https://github.com/wdaniel1993/lunate/compare/v0.1.0-rc.1...v0.1.0-rc.2
 [0.1.0-rc.1]: https://github.com/wdaniel1993/lunate/compare/v0.1.0-rc.1...v0.1.0-rc.2
