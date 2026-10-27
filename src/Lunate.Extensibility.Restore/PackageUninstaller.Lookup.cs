@@ -8,7 +8,7 @@ namespace Lunate.Extensibility.Restore;
 /// installed, and more than one names the candidates — an extension id must never pick a package by
 /// accident of ordering.
 /// </summary>
-public sealed partial class PackageUninstaller
+internal sealed partial class PackageUninstaller
 {
     /// <summary>
     /// The one record the id names. A record that does not answer for itself is named rather than

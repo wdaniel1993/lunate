@@ -9,7 +9,7 @@ namespace Lunate.Extensibility.Restore;
 /// One resolved dependency and the exact version the walk chose, as the identity lines print it
 /// (spec: "Install output and <c>--dry-run</c>").
 /// </summary>
-public sealed record ResolvedDependency(string Id, string Version);
+internal sealed record ResolvedDependency(string Id, string Version);
 
 /// <summary>
 /// One assembly the closure contributes: the package that ships it, where it lands relative to the

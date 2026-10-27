@@ -1,23 +1,23 @@
 using System.Diagnostics;
 
-namespace Lunate.Coding.Tests;
+namespace Lunate.TestSupport;
 
 /// <summary>
-/// Runs one test method in its own process, the pattern <c>MsblBindingOrderTests</c> uses: the
-/// process-wide environment cannot be mutated under the tests running beside this one, and a child
-/// that sets <c>HOME</c> to a directory that does not exist proves nothing writes there.
+/// Runs one test method in its own process: the process-wide environment cannot be mutated under
+/// the tests running beside this one, and some rules — a lock another process holds, a spill file a
+/// child writes — can only be proved from a second process.
 /// <para>
 /// The parent calls the same method; <see cref="IsChild"/> tells the two halves apart. The marker is
 /// the method name, so a child spawned for one proof can never run another's body.
 /// </para>
 /// </summary>
-internal static class TestChildProcess
+public static class TestChildProcess
 {
     private const string MarkerVariable = "LUNATE_TEST_CHILD_METHOD";
 
     private static readonly TimeSpan Timeout = TimeSpan.FromMinutes(3);
 
-    internal static bool IsChild(string method) =>
+    public static bool IsChild(string method) =>
         string.Equals(
             Environment.GetEnvironmentVariable(MarkerVariable),
             method,
@@ -28,7 +28,7 @@ internal static class TestChildProcess
     /// Spawns <paramref name="method"/> of <paramref name="testClass"/> in a fresh process. A null
     /// value in <paramref name="environment"/> removes the variable from the child.
     /// </summary>
-    internal static async Task<(int ExitCode, string Output)> RunAsync(
+    public static async Task<(int ExitCode, string Output)> RunAsync(
         Type testClass,
         string method,
         IReadOnlyDictionary<string, string?>? environment = null

@@ -11,6 +11,16 @@
     </ItemGroup>
 
     <ItemGroup>
+        <!--
+            Every type here is internal: this assembly is the NuGet half of the CLI's install,
+            uninstall and single-file restore, not a contract. Nothing outside Lunate references it,
+            and a surface nobody can consume is a surface nothing should promise — so the only
+            external access is the in-repo consumer and the suites that test it.
+        -->
+        <InternalsVisibleTo Include="lunate" />
+        <InternalsVisibleTo Include="Lunate.Coding.Tests" />
+        <InternalsVisibleTo Include="Lunate.Extensibility.Compile.Tests" />
+        <InternalsVisibleTo Include="Lunate.Extensibility.Tests" />
         <!-- The dependency walker's rules are the restore's rules; the tests assert a version
              choice at that seam, without an install or a reference pack in the way. -->
         <InternalsVisibleTo Include="Lunate.Extensibility.Restore.Tests" />

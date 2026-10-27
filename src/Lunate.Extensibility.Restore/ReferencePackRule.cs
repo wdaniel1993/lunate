@@ -12,7 +12,7 @@ namespace Lunate.Extensibility.Restore;
 /// against a subset of the API rather than not compiling at all, and the lock records the rule so
 /// the compromise is visible.
 /// </summary>
-public static class ReferencePackRule
+internal static class ReferencePackRule
 {
     /// <summary>The package whose <c>ref/&lt;tfm&gt;</c> folder is the compile's framework reference set.</summary>
     public const string PackageId = "Microsoft.NETCore.App.Ref";

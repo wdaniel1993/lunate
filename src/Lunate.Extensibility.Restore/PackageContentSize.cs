@@ -13,7 +13,7 @@ namespace Lunate.Extensibility.Restore;
 /// culture: CI runs under a non-English culture and a decimal comma in a size is a bug.
 /// </para>
 /// </summary>
-public static class PackageContentSize
+internal static class PackageContentSize
 {
     /// <summary>
     /// The size above which a project install warns: 10 MiB. It is not a limit — an install above it

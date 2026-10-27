@@ -7,7 +7,7 @@ namespace Lunate.Extensibility.Restore;
 /// paths whose bytes changed and the ones that are gone. A clean state is the only one in which a
 /// record still describes the machine.
 /// </summary>
-public sealed record PackageContentState(
+internal sealed record PackageContentState(
     IReadOnlyList<string> Changed,
     IReadOnlyList<string> Missing
 )
@@ -20,7 +20,7 @@ public sealed record PackageContentState(
 /// and this is how the machine checks that it is still there and still those bytes. A file that
 /// cannot be read counts as changed — it cannot be shown intact.
 /// </summary>
-public static class PackageContentVerifier
+internal static class PackageContentVerifier
 {
     public static PackageContentState Verify(PackageInstallRecord record, string scopeRoot)
     {

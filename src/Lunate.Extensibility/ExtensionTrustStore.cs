@@ -29,6 +29,9 @@ public sealed class ExtensionTrustStore
     private const string WorktreesKey = "worktrees";
     private const string FilesKey = "files";
 
+    /// <summary>How long a read-modify-write waits for another writer before it refuses.</summary>
+    private static readonly TimeSpan LockTimeout = TimeSpan.FromSeconds(10);
+
     private readonly ExtensionHostOptions _options;
 
     public ExtensionTrustStore(ExtensionHostOptions options)
@@ -36,6 +39,13 @@ public sealed class ExtensionTrustStore
         ArgumentNullException.ThrowIfNull(options);
         _options = options;
     }
+
+    /// <summary>
+    /// The write claim, beside the store: <c>trust.lock</c> for <c>trust.json</c>. Every
+    /// read-modify-write holds it, so two approvals merge instead of each writing the document it
+    /// read before the other one landed.
+    /// </summary>
+    internal string LockPath => Path.ChangeExtension(_options.TrustFilePath, ".lock");
 
     /// <summary>
     /// The content hash of an extension directory: every file's relative path and its bytes, sorted
@@ -248,6 +258,7 @@ public sealed class ExtensionTrustStore
         ArgumentException.ThrowIfNullOrWhiteSpace(worktreePath);
         ArgumentException.ThrowIfNullOrWhiteSpace(definitionHash);
 
+        using FileLock lease = AcquireLock();
         JsonObject document = ReadDocument();
         JsonObject repositories = document[McpServerSection] as JsonObject ?? new JsonObject();
         document[McpServerSection] = repositories;
@@ -300,6 +311,7 @@ public sealed class ExtensionTrustStore
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
         ArgumentException.ThrowIfNullOrWhiteSpace(digest);
 
+        using FileLock lease = AcquireLock();
         JsonObject document = ReadDocument();
         JsonObject files = document[SingleFileSection] as JsonObject ?? new JsonObject();
         document[SingleFileSection] = files;
@@ -367,6 +379,7 @@ public sealed class ExtensionTrustStore
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(repositoryIdentity);
 
+        using FileLock lease = AcquireLock();
         JsonObject document = ReadDocument();
         IReadOnlyList<string> roots = ClearedRoots(document, repositoryIdentity, worktree);
         var changed = false;
@@ -653,6 +666,7 @@ public sealed class ExtensionTrustStore
         ArgumentException.ThrowIfNullOrWhiteSpace(entryKey);
         ArgumentException.ThrowIfNullOrWhiteSpace(contentHash);
 
+        using FileLock lease = AcquireLock();
         JsonObject document = ReadDocument();
         JsonObject repositories = document[section] as JsonObject ?? new JsonObject();
         document[section] = repositories;
@@ -787,6 +801,7 @@ public sealed class ExtensionTrustStore
         ArgumentException.ThrowIfNullOrWhiteSpace(entryId);
         ArgumentException.ThrowIfNullOrWhiteSpace(contentHash);
 
+        using FileLock lease = AcquireLock();
         JsonObject document = ReadDocument();
         JsonObject repositories = document[section] as JsonObject ?? new JsonObject();
         document[section] = repositories;
@@ -805,6 +820,12 @@ public sealed class ExtensionTrustStore
         WriteAtomically(document);
     }
 
+    /// <summary>
+    /// The store's document, or a refusal naming the file. A store that cannot be read is never
+    /// reported as an empty one: every caller that then wrote would replace every decision the
+    /// bytes still hold with the single one it was recording, so a damaged file stays exactly as
+    /// it is until a person repairs or removes it.
+    /// </summary>
     private JsonObject ReadDocument()
     {
         if (!File.Exists(_options.TrustFilePath))
@@ -812,14 +833,60 @@ public sealed class ExtensionTrustStore
             return new JsonObject();
         }
 
+        string text;
         try
         {
-            return JsonNode.Parse(File.ReadAllText(_options.TrustFilePath)) as JsonObject
-                ?? new JsonObject();
+            text = File.ReadAllText(_options.TrustFilePath);
         }
-        catch (JsonException)
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
-            return new JsonObject();
+            throw Unreadable($"it could not be read: {exception.Message}", exception);
+        }
+
+        try
+        {
+            return JsonNode.Parse(text) is JsonObject document
+                ? document
+                : throw Unreadable("it does not hold a JSON object", inner: null);
+        }
+        catch (JsonException exception)
+        {
+            throw Unreadable($"it is not valid JSON: {exception.Message}", exception);
+        }
+    }
+
+    /// <summary>
+    /// One message for every way the store can be unreadable: what is wrong with it, that nothing
+    /// was changed, and the two things a person can do about it.
+    /// </summary>
+    private InvalidOperationException Unreadable(string problem, Exception? inner) =>
+        new(
+            $"the trust store '{_options.TrustFilePath}' cannot be read ({problem}); nothing was "
+                + "changed and no decision in it was lost. Repair the file, or delete it to start "
+                + "with an empty store and be asked again.",
+            inner
+        );
+
+    /// <summary>
+    /// The store's write claim, held across the read, the change and the write: two processes that
+    /// each read first would otherwise each write a document that lacks the other's decision, and
+    /// the later one wins silently. A claim that cannot be taken is a refusal, not a write without
+    /// it — the decisions in the file are worth more than this one approval.
+    /// </summary>
+    private FileLock AcquireLock()
+    {
+        try
+        {
+            return FileLock.Acquire(LockPath, LockTimeout);
+        }
+        catch (TimeoutException exception)
+        {
+            throw new InvalidOperationException(
+                $"the trust store '{_options.TrustFilePath}' is being written by another Lunate "
+                    + $"process (lock '{LockPath}'); nothing was changed and nothing in it was lost, "
+                    + "so try the approval again.",
+                exception
+            );
         }
     }
 

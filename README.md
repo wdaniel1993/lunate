@@ -146,7 +146,7 @@ elapsed seconds.
 
 Below 60 columns the layout switches to its compact band: tool headers drop the argument summary
 (`✓ read · 13 lines`), the footer shrinks to the model and the context percent, the input box keeps
-its upper rule but drops the lower one, and the autocomplete list keeps only the names. The full
+both rules, and the autocomplete list keeps only the names. The full
 layout returns from 100 columns; the guide's
 [Narrow terminals](docs/guide.md#terminal-ui-lunatetui) section has the per-band rules.
 

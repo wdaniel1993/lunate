@@ -8,7 +8,7 @@ namespace Lunate.Extensibility.Restore;
 /// error here — a range belongs to a dependency's declaration, not to a user's install, and "which
 /// version am I running" must have one answer.
 /// </summary>
-public sealed partial class PackageInstaller
+internal sealed partial class PackageInstaller
 {
     /// <summary>
     /// The exact version, or null when the request names none and the latest stable version is

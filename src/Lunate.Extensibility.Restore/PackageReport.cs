@@ -10,7 +10,7 @@ namespace Lunate.Extensibility.Restore;
 /// and the closure is resolved into the packages folder, never into the store — and every number is
 /// invariant.
 /// </summary>
-public static class PackageReport
+internal static class PackageReport
 {
     public static string Describe(
         PackageInfo package,

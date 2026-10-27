@@ -45,5 +45,7 @@
         <!-- The state root is one rule: the agent, the extensions host and its files all read it. -->
         <InternalsVisibleTo Include="Lunate.Agent" />
         <InternalsVisibleTo Include="Lunate.Extensibility" />
+        <!-- The package install and uninstall claim one package's record with the same lock. -->
+        <InternalsVisibleTo Include="Lunate.Extensibility.Restore" />
     </ItemGroup>
 </Project>

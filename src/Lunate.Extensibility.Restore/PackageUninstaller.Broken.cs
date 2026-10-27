@@ -1,3 +1,4 @@
+using Lunate.Ai;
 using Lunate.Extensibility;
 
 namespace Lunate.Extensibility.Restore;
@@ -8,7 +9,7 @@ namespace Lunate.Extensibility.Restore;
 /// places only a readable record could have named. There is no <see cref="PackageInstallRecord"/> to
 /// carry, which is exactly why this is its own result.
 /// </summary>
-public sealed record PackageBrokenUninstallResult
+internal sealed record PackageBrokenUninstallResult
 {
     /// <summary>The package id the user named — the only identity an unreadable record leaves.</summary>
     public required string PackageId { get; init; }
@@ -44,7 +45,7 @@ public sealed record PackageBrokenUninstallResult
 /// method's job, and it says so.
 /// </para>
 /// </summary>
-public sealed partial class PackageUninstaller
+internal sealed partial class PackageUninstaller
 {
     public PackageBrokenUninstallResult UninstallBroken(PackageUninstallRequest request)
     {
@@ -77,6 +78,10 @@ public sealed partial class PackageUninstaller
                 )
             );
         }
+
+        // The same claim a plain uninstall takes: a reinstall (which is the repair) must not be
+        // staging content into the directory this is deleting.
+        using FileLock lease = PackageOperationLock.Acquire(path, request.Id);
 
         PackageInstallRecord? record = PackageInstallRecordJson.TryReadForForce(
             path,

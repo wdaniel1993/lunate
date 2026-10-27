@@ -1,4 +1,5 @@
 using System.Globalization;
+using Lunate.Ai;
 using Lunate.Extensibility;
 using NuGet.Versioning;
 
@@ -18,7 +19,7 @@ namespace Lunate.Extensibility.Restore;
 /// a single-file extension uses, because it is the same resolution machinery.
 /// </para>
 /// </summary>
-public sealed partial class PackageInstaller
+internal sealed partial class PackageInstaller
 {
     private readonly PackageInstallOptions _options;
 
@@ -34,6 +35,12 @@ public sealed partial class PackageInstaller
 
         NuGetVersion? exact = TryExactVersion(request.Version);
         PackageInstallTarget target = request.Target;
+
+        // One mutation at a time for this package, from the record this run reads to the record it
+        // writes: an install and an uninstall take the same claim, so neither stages, commits or
+        // records while the other is half-way through its own.
+        using FileLock lease = PackageOperationLock.Acquire(target.RecordPath, request.Id);
+        ClearStaging(target);
 
         PackageInstallRecord? installed = PackageInstallRecordJson.TryRead(
             target.RecordPath,
@@ -105,6 +112,7 @@ public sealed partial class PackageInstaller
         List<string> created = [];
         LockSnapshot? lockSnapshot = null;
         PreviousContent? previous = null;
+        string staging = target.NewStagingDirectory();
         try
         {
             PackageDownload download = await feed.DownloadAsync(
@@ -137,13 +145,12 @@ public sealed partial class PackageInstaller
                 )
                 .ConfigureAwait(false);
 
-            Delete(target.StagingDirectory);
             IReadOnlyList<PackageContentStager.Staged> staged = PackageContentStager.Stage(
                 package,
                 target,
-                target.StagingDirectory
+                staging
             );
-            staged = Materialise(closure, package, target, target.StagingDirectory, staged);
+            staged = Materialise(closure, package, target, staging, staged);
 
             if (installed is not null && sameVersion)
             {
@@ -171,7 +178,7 @@ public sealed partial class PackageInstaller
             // point puts the previous install back rather than leaving a package with no content.
             previous = installed is null
                 ? null
-                : PreviousContent.Capture(installed, target, target.StagingDirectory);
+                : PreviousContent.Capture(installed, target, staging);
 
             Commit(staged, target.ScopeRoot, written, created);
             List<string> leftBehind = [];
@@ -222,12 +229,12 @@ public sealed partial class PackageInstaller
         catch
         {
             lockSnapshot?.Restore();
-            Rollback(written, created, target, previous);
+            Rollback(written, created, target, staging, previous);
             throw;
         }
         finally
         {
-            Delete(target.StagingDirectory);
+            Delete(staging);
         }
     }
 

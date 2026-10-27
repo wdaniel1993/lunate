@@ -6,7 +6,7 @@ namespace Lunate.Extensibility.Restore;
 /// the files, the directories it created, the staging and an empty package directory. Nothing an
 /// earlier install wrote is touched, because nothing here knows about it.
 /// </summary>
-public sealed partial class PackageInstaller
+internal sealed partial class PackageInstaller
 {
     /// <summary>
     /// Copies the staged files into the scope root, each through a temporary file beside its
@@ -112,6 +112,7 @@ public sealed partial class PackageInstaller
         IReadOnlyList<string> written,
         IReadOnlyList<string> created,
         PackageInstallTarget target,
+        string stagingDirectory,
         PreviousContent? previous
     )
     {
@@ -127,8 +128,28 @@ public sealed partial class PackageInstaller
             TryDeleteEmptyDirectory(directory);
         }
 
-        Delete(target.StagingDirectory);
+        Delete(stagingDirectory);
         TryDeleteEmptyDirectory(target.RecordDirectory);
+    }
+
+    /// <summary>
+    /// Removes the staging directories a stopped run left behind. Only called while the package's
+    /// claim is held, so every one of them belongs to a run that will never continue: a live run's
+    /// staging is its own directory and no other operation can be between its first and last file.
+    /// </summary>
+    private static void ClearStaging(PackageInstallTarget target)
+    {
+        if (!Directory.Exists(target.RecordDirectory))
+        {
+            return;
+        }
+
+        foreach (
+            string directory in Directory.EnumerateDirectories(target.RecordDirectory, "staging-*")
+        )
+        {
+            Delete(directory);
+        }
     }
 
     private static void Delete(string directory)

@@ -197,7 +197,11 @@ public sealed class PackageDownloadTests
         );
         Assert.False(Directory.Exists(Path.Combine(store, "extensions")), "no extension content");
         Assert.False(Directory.Exists(Path.Combine(store, "skills")), "no skill content");
-        Assert.False(Directory.Exists(Path.Combine(directory, "staging")), "staging is gone");
+        Assert.False(
+            Directory.Exists(directory)
+                && Directory.EnumerateDirectories(directory, "staging-*").Any(),
+            "no staging directory survives a failed install"
+        );
         Assert.False(
             Directory.Exists(directory),
             "the package directory is gone when it holds nothing"

@@ -16,9 +16,9 @@ internal sealed record SessionHistoryItem(ChatMessage Message, string? EntryId, 
 /// <summary>
 /// An append-only JSONL session. Create one, append messages, compaction and model changes; load it
 /// to resume. The store assigns entry ids, the parent chain and the timestamps, so callers pass
-/// payloads only. The byte format is frozen by the golden tests in tests/fixtures/sessions.
-/// Sessions assume a single writer (one harness or process per file); concurrent writers are not
-/// supported.
+/// The byte format is frozen by the golden tests in tests/fixtures/sessions.
+/// A session file has one writer, enforced across processes by <see cref="SessionWriterClaims"/>:
+/// a second process that appends is refused instead of minting duplicate ids and stale parents.
 /// </summary>
 public sealed partial class Session
 {
@@ -169,12 +169,18 @@ public sealed partial class Session
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
         ArgumentNullException.ThrowIfNull(timeProvider);
 
-        string[] lines = SessionFiles.ReadText(path).Split('\n');
+        string text = SessionFiles.ReadText(path);
+        string[] lines = text.Split('\n');
         int count = lines.Length;
         if (count > 0 && lines[^1].Length == 0)
         {
             count--;
         }
+
+        // A file that does not end with that newline ends in a record whose append did not finish.
+        // It is the only line load may leave out: every earlier line is complete by construction,
+        // and a malformed one among them is corruption, not an interrupted write.
+        bool unterminated = text.Length > 0 && text[^1] != '\n';
 
         if (count == 0)
         {
@@ -197,9 +203,27 @@ public sealed partial class Session
         }
 
         var session = new Session(path, header.Id, timeProvider) { _header = header };
+
+        // The final record is the one an interrupted append can leave half-written: it is dropped
+        // and its bytes cut from the file, while a complete record that only lost its newline is
+        // kept and terminated. Both happen after the session validates, so a load that refuses
+        // the file never rewrites it.
+        bool torn = false;
+        bool terminate = unterminated && count == 1;
         for (int index = 1; index < count; index++)
         {
-            SessionEntry entry = ParseLine(lines[index], path, index + 1);
+            bool last = index == count - 1;
+            SessionEntry entry;
+            try
+            {
+                entry = ParseLine(lines[index], path, index + 1);
+            }
+            catch (InvalidDataException) when (last && unterminated)
+            {
+                torn = true;
+                break;
+            }
+
             if (entry is SessionHeaderEntry)
             {
                 throw new InvalidDataException(
@@ -208,6 +232,7 @@ public sealed partial class Session
             }
 
             session._entries.Add(entry);
+            terminate = last && unterminated;
         }
 
         ValidateLeaves(session._entries, path);
@@ -228,6 +253,17 @@ public sealed partial class Session
             SessionImages.ReferencedDigests(session._entries),
             timeProvider.GetUtcNow()
         );
+
+        if (torn)
+        {
+            SessionFiles.CutToLastRecord(path);
+        }
+        else if (terminate)
+        {
+            // The record is whole; only the byte that ends it was never written.
+            SessionFiles.AppendText(path, "\n");
+        }
+
         return session;
     }
 
@@ -518,8 +554,12 @@ public sealed partial class Session
 
     private void AddEntry(SessionEntry entry)
     {
-        _entries.Add(entry);
+        // The claim comes before the line it protects: a refused writer appends nothing.
+        SessionWriterClaims.Claim(Path);
+        // The line lands first: an append that throws leaves the session's entries exactly as the
+        // file has them, so a caller that carries on does not hold an entry nothing can reload.
         SessionFiles.AppendText(Path, Redactor.Redact(SessionFormat.Serialize(entry) + "\n"));
+        _entries.Add(entry);
     }
 
     /// <summary>

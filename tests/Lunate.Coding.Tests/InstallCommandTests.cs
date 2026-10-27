@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using Lunate.Extensibility;
 using Lunate.Extensibility.Restore;
+using Lunate.TestSupport;
 
 namespace Lunate.Coding.Tests;
 
