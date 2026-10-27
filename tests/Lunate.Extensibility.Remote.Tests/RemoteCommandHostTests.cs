@@ -153,6 +153,100 @@ public sealed class RemoteCommandHostTests
     }
 
     [Fact]
+    public async Task A_cancelled_start_leaves_no_registration_no_child_and_no_host()
+    {
+        // A load cancelled while the child starts: the handshake is the last place the remote start
+        // reads the load's token, so cancelling from its answer ends a load that got as far as
+        // spawning the child and registering every one of its proxies.
+        using var workspace = new RemoteTestWorkspace(
+            hooks: ["tool-calling", "file-changed"],
+            commands: ["ping"],
+            services: ["greeter"]
+        );
+        using var cancellation = new CancellationTokenSource();
+        workspace.Child.Handshake = request =>
+        {
+            cancellation.Cancel();
+            return new InitializeResult(request.ProtocolVersion, request.Hooks, request.Services);
+        };
+        ExtensionLoader loader = workspace.CreateLoader();
+        using var bus = new FileChangeBus(workspace.Worktree, workspace.Log);
+        loader.Services.RegisterCore("core/file-bus", bus);
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            loader.Load(
+                "remote-sample",
+                workspace.Worktree,
+                "repo",
+                new ScriptedTrustPrompt(true),
+                cancellation.Token
+            )
+        );
+
+        // The child the start spawned is stopped, not left running behind a load that ended.
+        Assert.True(workspace.Child.HasExited);
+
+        // Every registry the load touched is empty, and the remote host went with the load: no
+        // status and no start duration answers for it any more.
+        Assert.Equal(0, loader.Hooks.Count("remote-sample"));
+        Assert.Equal(0, loader.Services.Count("remote-sample"));
+        Assert.Empty(loader.CommandSources.List());
+        Assert.Empty(loader.Tools.List());
+        Assert.Null(loader.RemoteStatus("remote-sample"));
+        Assert.Null(loader.RemoteStartDuration("remote-sample"));
+
+        // The file-change subscription is gone with them: a published change reaches nothing.
+        int notifications = workspace.Child.Notifications.Count;
+        bus.Notify(
+            new FileChangeEvent("/work/a.cs", "a.cs", "/work", null, FileChangeKind.Modified)
+        );
+        await bus.DrainAsync(Ct);
+        Assert.Equal(notifications, workspace.Child.Notifications.Count);
+
+        // The cancelled load forgot itself: loading again is a first load.
+        workspace.Child.Handshake = request => new InitializeResult(
+            request.ProtocolVersion,
+            request.Hooks,
+            request.Services
+        )
+        {
+            Commands = true,
+        };
+        LoadedExtension loaded = await workspace.LoadAsync(loader);
+
+        Assert.Equal("remote-sample", loaded.Id);
+        Assert.Equal(RemoteExtensionState.Ready, loader.RemoteStatus("remote-sample")!.State);
+    }
+
+    [Fact]
+    public async Task A_child_that_fails_to_start_while_listing_commands_is_contained()
+    {
+        // The other side of the same branch: a start that fails for its own reasons is still
+        // contained — a cancelled load is not, because the caller asked for no load at all.
+        using var workspace = new RemoteTestWorkspace(commands: ["ping"]);
+        workspace.Child.Handshake = _ =>
+            throw new InvalidOperationException("the child refused to initialize");
+        ExtensionLoader loader = workspace.CreateLoader();
+
+        LoadedExtension loaded = await workspace.LoadAsync(loader);
+
+        Assert.Equal("remote-sample", loaded.Id);
+        Assert.Equal(RemoteExtensionState.Failed, loader.RemoteStatus("remote-sample")!.State);
+        Assert.Contains(
+            workspace.Log.Warnings,
+            warning =>
+                warning.Contains(
+                    "could not start while its declared commands were being listed",
+                    StringComparison.Ordinal
+                )
+        );
+        Assert.Equal(["ping"], loader.DeclaredNotProvidedCommands("remote-sample"));
+        // The source is registered, but it offers nothing: the command it declares is reported,
+        // not offered and dead.
+        Assert.Empty(loader.CommandSources.List().SelectMany(registered => registered.Descriptors));
+    }
+
+    [Fact]
     public async Task A_version_2_child_that_does_not_advertise_commands_is_not_offered_them()
     {
         using var workspace = new RemoteTestWorkspace(commands: ["ghost"]);
