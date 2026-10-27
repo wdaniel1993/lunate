@@ -56,12 +56,14 @@ public sealed class SessionWriterClaimTests
     {
         using var temp = new TempDirectory();
         string directory = temp.File("sessions");
-        string path = temp.File("sessions/s.jsonl");
+        // Built with Path.Combine: the assertion compares a returned path, and a literal '/'
+        // would read as a different string on Windows for the same file.
+        string path = Path.Combine(directory, "s.jsonl");
         Session session = Session.Create(path, "/work", new FixedTimeProvider(Start));
         session.AppendMessage(new ChatMessage(ChatRole.User, "one"));
 
         string lockPath = SessionFiles.WriterLockPath(path);
-        Assert.Equal(temp.File("sessions/s.lock"), lockPath);
+        Assert.Equal(Path.Combine(directory, "s.lock"), lockPath);
         Assert.True(File.Exists(lockPath), $"the writer lock '{lockPath}' must exist");
         Assert.Equal(path, Assert.Single(Session.List(directory)).Path);
     }
