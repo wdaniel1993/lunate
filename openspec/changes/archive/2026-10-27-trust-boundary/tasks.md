@@ -25,5 +25,5 @@
 ## 5. Gate
 
 - [x] Targeted suites and format checks
-- [ ] Full `scripts/verify.sh` (queue 2)
-- [ ] Archive (queue 2, final commit of the PR)
+- [x] Full `scripts/verify.sh` (queue 2)
+- [x] Archive (queue 2, final commit of the PR)
