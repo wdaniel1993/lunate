@@ -57,40 +57,45 @@ public sealed partial class ExtensionLoader
             }
         );
         _remoteExtensions[descriptor.Id] = remote;
-        if (startSession && descriptor.Manifest.Commands.Count > 0)
-        {
-            await StartForDeclaredCommandsAsync(remote, descriptor).ConfigureAwait(false);
-        }
-
         try
         {
+            if (startSession && descriptor.Manifest.Commands.Count > 0)
+            {
+                // The start observes the load's token — the start gate, the spawn and the
+                // initialize handshake all take it — so a cancellation while the child starts ends
+                // the load here instead of leaving it to finish under a token nobody reads.
+                await StartForDeclaredCommandsAsync(remote, descriptor, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+
             await CrossCheckManifestCommandsAsync(descriptor, cancellationToken)
                 .ConfigureAwait(false);
+
+            var loaded = new LoadedExtension(descriptor.Id, remote, descriptor);
+            _loaded[descriptor.Id] = loaded;
+            if (startSession)
+            {
+                if (!_sessionEnded)
+                {
+                    _sessionBegan = true;
+                    await _backgroundServices.StartAsync(cancellationToken).ConfigureAwait(false);
+                }
+            }
+
+            return loaded;
         }
         catch
         {
-            // A refused manifest (an undeclared provided name, a built-in collision) must not
-            // leave a running child behind a load that failed — and its proxies registered the
-            // same way an in-process extension's contributions do (hooks, services, file
-            // subscriptions), so the one teardown drops them and disposes the host. The listing may
-            // have started the child to learn its capability, and the remote path returns before
-            // the in-process cleanup blocks.
+            // Everything after the host registered itself takes the one teardown: a refused
+            // manifest (an undeclared provided name, a built-in collision), a cancelled child start
+            // and a cancelled session start must not leave a running child, a half-registered proxy
+            // set or a loaded mark behind — the proxies registered the same way an in-process
+            // extension's contributions do (hooks, services, file subscriptions), so the one
+            // teardown drops them and disposes the host. The rollback never observes the load's
+            // token, so a load that ends on cancellation still tears down completely.
             await RollbackAsync(descriptor.Id, context: null).ConfigureAwait(false);
             throw;
         }
-
-        var loaded = new LoadedExtension(descriptor.Id, remote, descriptor);
-        _loaded[descriptor.Id] = loaded;
-        if (startSession)
-        {
-            if (!_sessionEnded)
-            {
-                _sessionBegan = true;
-                await _backgroundServices.StartAsync(cancellationToken).ConfigureAwait(false);
-            }
-        }
-
-        return loaded;
     }
 
     /// <summary>
@@ -99,16 +104,24 @@ public sealed partial class ExtensionLoader
     /// exists after the handshake: a declared command is either offered and dispatchable, or
     /// reported as declared, not provided — never offered and dead. Contained: a child that
     /// cannot start leaves the extension's commands declarations and the load continues. The
+    /// caller's own cancellation is not contained — it ends the load, which rolls back. The
     /// register-only inspect mode passes <c>startSession: false</c> and starts nothing.
     /// </summary>
     private async Task StartForDeclaredCommandsAsync(
         RemoteExtension remote,
-        ExtensionDescriptor descriptor
+        ExtensionDescriptor descriptor,
+        CancellationToken cancellationToken
     )
     {
         try
         {
-            await remote.EnsureStartedAsync(CancellationToken.None).ConfigureAwait(false);
+            await remote.EnsureStartedAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // A load that was cancelled is not a load whose child merely could not start: the
+            // start has already stopped what it spawned, and the caller's teardown ends the load.
+            throw;
         }
         catch (Exception exception)
         {
