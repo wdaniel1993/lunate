@@ -6,6 +6,17 @@ Notable changes to Lunate, one section per release. The format follows
 [GitHub Releases](https://github.com/wdaniel1993/lunate/releases); the release process itself is in
 [`docs/distribution.md`](docs/distribution.md).
 
+## [Unreleased]
+
+### Fixed
+
+- The release smoke waits for nuget.org to index the tag's extension package before installing it —
+  polling the flatcontainer index, the package content and the registration resource under one
+  ten-minute budget — instead of retrying the install five times into the lag. `v0.1.0`'s smoke went
+  red on all three operating systems because the package had been pushed but not yet indexed; an
+  exhausted budget now fails naming the version and the state of each feed resource, which tells a
+  missing package apart from a slow feed.
+
 ## [0.1.0] - 2026-10-27
 
 The first stable release. It is `0.1.0-rc.2` plus one fix found on a loaded runner: `ProcessRunner`
