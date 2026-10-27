@@ -321,7 +321,8 @@ header uses, its content lands in the same `extensions/` directory, and a record
 was written so `lunate uninstall` can take back exactly that. `--project` puts the content in
 `.lunate/extensions/` for the repository to commit and keeps the record local to your machine. An
 installed extension is pending until you approve it, in either scope, and the question names the
-package it came from. [`docs/extensions/packages.md`](docs/extensions/packages.md) is the reference.
+package it came from. The reference extension ships this way — `lunate install
+Lunate.Samples.Subagents` installs the subagent tool described above. [`docs/extensions/packages.md`](docs/extensions/packages.md) is the reference.
 
 ### Skills
 

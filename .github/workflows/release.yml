@@ -157,6 +157,12 @@ jobs:
       - name: Pack tool
         run: dotnet pack src/Lunate.Coding/Lunate.Coding.csproj -c Release -o dist --nologo
 
+      # The extension package is a release artifact on the same tag as the tool: the release smoke
+      # installs it by id from nuget.org, and `lunate install` is only as proven as the last package
+      # a feed actually served. The sample is the reference extension — the one a user wants first.
+      - name: Pack the extension package
+        run: dotnet pack samples/extensions/subagents/SubagentsExtension/SubagentsExtension.csproj -c Release -o dist --nologo
+
       - name: Sign in to nuget.org
         id: nuget
         if: github.event_name == 'push'
@@ -164,7 +170,7 @@ jobs:
         with:
           user: wdaniel1993
 
-      - name: Push the tool to nuget.org
+      - name: Push the packages to nuget.org
         if: github.event_name == 'push'
         run: >-
           dotnet nuget push dist/*.nupkg
@@ -187,7 +193,7 @@ jobs:
           KEY: ${{ steps.nuget_dry_run.outputs.NUGET_API_KEY }}
         run: echo "Trusted Publishing exchange succeeded; the key is ${#KEY} characters and nothing was pushed."
 
-      - name: Upload tool package
+      - name: Upload the packages
         uses: actions/upload-artifact@v7
         with:
           name: release-nupkg
@@ -212,7 +218,8 @@ jobs:
       - name: Write checksums
         run: |
           set -euo pipefail
-          (cd dist && sha256sum lunate-* > SHA256SUMS && cat SHA256SUMS)
+          # Every attached asset is covered: the three archives and both packages.
+          (cd dist && sha256sum lunate-* *.nupkg > SHA256SUMS && cat SHA256SUMS)
 
       - name: Attach archives to the GitHub release
         env:

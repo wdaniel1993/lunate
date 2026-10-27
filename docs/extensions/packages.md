@@ -35,6 +35,15 @@ lunate install <package-id> --json          # machine-readable result
 
 A range, a wildcard, a floating version, a path or a git URL is a usage error. "Which version am I running" has exactly one answer, and a range belongs to a dependency someone declared, not to a user's install.
 
+The reference extension is published as a real package on the same tag as the tool, so the command can be tried without writing one:
+
+```bash
+lunate install Lunate.Samples.Subagents     # the subagents sample: one tool, subagents__spawn
+lunate install Lunate.Samples.Subagents@0.1.0-rc.1   # pinned, for a tag that publishes prereleases
+```
+
+It installs the sample from [`samples/extensions/subagents`](../../samples/extensions/subagents/README.md) exactly as it would install yours, and `lunate uninstall Lunate.Samples.Subagents` takes it back. `lunate packages --verify` recomputes the record afterwards.
+
 Before anything is written, the command prints what it is about to install: canonical id, exact version, source, the nupkg's SHA-512, size, the contents, and the dependency closure with each resolved version. The SHA-512 is transport integrity against the feed — it says the bytes arrived intact, not who wrote them.
 
 ### Inside a session

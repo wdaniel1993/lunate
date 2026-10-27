@@ -48,10 +48,22 @@ model client — no live APIs.
 
 ## Install
 
-Copy the extension's output directory (`SubagentsExtension.dll`, `extension.json`, its
-dependencies) under `<worktree>/.lunate/extensions/subagents/` and trust it on first load, exactly
-like the other samples. Nothing runs until the model calls `subagents__spawn`; the call asks for
-approval.
+The sample is published with every release, so installing it is one command:
+
+```sh
+lunate install Lunate.Samples.Subagents
+```
+
+The package carries this extension's build output, `extension.json` and its `lunate.package.json`;
+the content lands in `~/.lunate/extensions/subagents/` with a record beside it, and the extension is
+pending until you answer its first-load question — installing is not trusting. `lunate packages
+--verify` re-hashes the record, and `lunate uninstall Lunate.Samples.Subagents` removes exactly what
+the install wrote.
+
+Without a feed, copy the extension's output directory (`SubagentsExtension.dll`, `extension.json`,
+its dependencies) under `<worktree>/.lunate/extensions/subagents/` and trust it on first load,
+exactly like the other samples. Nothing runs until the model calls `subagents__spawn`; the call asks
+for approval.
 
 ## Copy and extend
 

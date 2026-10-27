@@ -1,7 +1,8 @@
 name: Smoke
 
 # Verifies a *published* release, not a branch: the two installers the docs name, the tool
-# package, and that the binary starts. Run it after the tag exists:
+# package, and the extension package the release publishes beside it — install, verify, discover,
+# uninstall. Run it after the tag exists:
 #
 #   gh workflow run smoke.yml -f tag=v0.1.0-rc.1
 #
@@ -19,6 +20,13 @@ on:
 
 permissions:
   contents: read
+
+env:
+  # The sample the release packs and pushes beside the tool (release.yml). Installing it by id is
+  # the only part of the release smoke that exercises a published *package* rather than a binary:
+  # version resolution against the feed, the download's SHA-512, extraction, the record and the
+  # content check. The feed is whatever the runner's NuGet configuration names — nuget.org.
+  LUNATE_SAMPLE_PACKAGE: Lunate.Samples.Subagents
 
 jobs:
   smoke:
@@ -44,9 +52,7 @@ jobs:
           TAG: ${{ inputs.tag }}
         run: |
           set -euo pipefail
-          prefix="$RUNNER_TEMP/lunate"
-          sh install.sh --version "$TAG" --prefix "$prefix"
-          echo "LUNATE=$prefix/lunate" >> "$GITHUB_ENV"
+          sh install.sh --version "$TAG" --prefix "$RUNNER_TEMP/lunate"
 
       - name: Install with install.ps1
         if: runner.os == 'Windows'
@@ -56,7 +62,25 @@ jobs:
         run: |
           $prefix = Join-Path $env:RUNNER_TEMP 'lunate'
           ./install.ps1 -Version $env:TAG -Prefix $prefix
-          "LUNATE=$prefix\lunate.exe" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      # The package steps run in bash on every runner, so the Windows path is resolved to the
+      # mixed form Git Bash can execute, and the state root is a throwaway directory: the smoke
+      # must not read or write a maintainer's real store, and a dirty store must not make it pass.
+      - name: Resolve the binary and the state root
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="$RUNNER_TEMP"
+          if command -v cygpath >/dev/null 2>&1; then
+            root="$(cygpath -m "$RUNNER_TEMP")"
+          fi
+          case "$RUNNER_OS" in
+            Windows) binary="$root/lunate/lunate.exe" ;;
+            *) binary="$root/lunate/lunate" ;;
+          esac
+          echo "LUNATE_TMP=$root" >> "$GITHUB_ENV"
+          echo "LUNATE=$binary" >> "$GITHUB_ENV"
+          echo "LUNATE_HOME=$root/lunate-home" >> "$GITHUB_ENV"
 
       - name: Install with Homebrew
         if: runner.os == 'macOS'
@@ -100,3 +124,77 @@ jobs:
           esac
           "$LUNATE" --help
           "$LUNATE" packages
+
+      - name: Install the extension package from the feed
+        shell: bash
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          version="${TAG#v}"
+          # A bare install asks for the latest *stable* version, and a prerelease tag publishes
+          # none, so the tag's exact version is pinned here. The bare form has its own step.
+          out=""
+          for attempt in 1 2 3 4 5; do
+            if out="$("$LUNATE" install "$LUNATE_SAMPLE_PACKAGE@$version" 2>"$LUNATE_TMP/install.err")"; then
+              break
+            fi
+            if [ "$attempt" -eq 5 ]; then
+              cat "$LUNATE_TMP/install.err" >&2
+              echo "lunate install did not succeed after $attempt attempts" >&2
+              exit 1
+            fi
+            # A freshly pushed package is invisible for a moment while the feed indexes it.
+            sleep $((attempt * 20))
+          done
+          printf '%s\n' "$out"
+          grep -qx "package: $LUNATE_SAMPLE_PACKAGE $version" <<<"$out"
+          grep -q '^extension: subagents ' <<<"$out"
+
+      - name: The package is listed, verifies, and its extension is discovered
+        shell: bash
+        run: |
+          set -euo pipefail
+          listed="$("$LUNATE" packages --json)"
+          printf '%s\n' "$listed"
+          grep -q "\"id\":\"$LUNATE_SAMPLE_PACKAGE\"" <<<"$listed"
+          verified="$("$LUNATE" packages --verify)"
+          printf '%s\n' "$verified"
+          grep -q ', verified$' <<<"$verified"
+          # The install wrote the extension where the loader looks, and it is pending trust — the
+          # documented state after an install. Discovery proves the manifest the package carried.
+          discovered="$("$LUNATE" extensions)"
+          printf '%s\n' "$discovered"
+          grep -qE '^subagents ' <<<"$discovered"
+
+      - name: Uninstall leaves nothing behind
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$LUNATE" uninstall "$LUNATE_SAMPLE_PACKAGE"
+          remaining="$("$LUNATE" packages)"
+          [ "$remaining" = 'packages: none installed' ]
+          if [ -e "$LUNATE_HOME/extensions/subagents" ]; then
+            echo "the uninstall left $LUNATE_HOME/extensions/subagents behind" >&2
+            exit 1
+          fi
+          if [ -d "$LUNATE_HOME/packages" ] && find "$LUNATE_HOME/packages" -name install.json | grep -q .; then
+            echo "the uninstall left an install record behind" >&2
+            exit 1
+          fi
+
+      # A stable tag publishes a stable package, so the documented command — no version — has to
+      # resolve one. It is a separate store because it installs whatever the feed serves as latest,
+      # which is not necessarily this tag when the smoke is re-run later.
+      - name: A bare install resolves the latest stable version
+        if: ${{ !contains(inputs.tag, '-') }}
+        shell: bash
+        env:
+          LUNATE_HOME: ${{ runner.temp }}/lunate-home-latest
+        run: |
+          set -euo pipefail
+          out="$("$LUNATE" install "$LUNATE_SAMPLE_PACKAGE")"
+          printf '%s\n' "$out"
+          grep -q "^package: $LUNATE_SAMPLE_PACKAGE " <<<"$out"
+          "$LUNATE" packages --verify
+          "$LUNATE" uninstall "$LUNATE_SAMPLE_PACKAGE"

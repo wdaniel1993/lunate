@@ -310,6 +310,61 @@ try {
         Remove-Item -Recurse -Force -Path $toolTmp -ErrorAction SilentlyContinue
     }
 
+    Write-Host "`n==> extension package roundtrip"
+    # The release ships an extension package beside the tool, so the bundle `dotnet pack` writes is a
+    # product artifact, not a test fixture. Pack the sample, install it from a folder feed with the
+    # published binary, verify the record and uninstall — the same cycle the release smoke runs
+    # against nuget.org, so a layout change fails on every commit instead of at a tag.
+    $packageTmp = Join-Path ([System.IO.Path]::GetTempPath()) ('lunate-verify-package-' + [guid]::NewGuid().ToString('N'))
+    $packageFeed = Join-Path $packageTmp 'feed'
+    $packageTree = Join-Path $packageTmp 'worktree'
+    $packageHome = Join-Path $packageTmp 'home'
+    New-Item -ItemType Directory -Force -Path $packageFeed, $packageTree, $packageHome | Out-Null
+    try {
+        dotnet pack samples/extensions/subagents/SubagentsExtension/SubagentsExtension.csproj -c $configuration -o $packageFeed --nologo
+        if ($LASTEXITCODE -ne 0) { throw 'verify: dotnet pack of the extension sample failed' }
+        $nugetConfig = @"
+<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+  <packageSources>
+    <clear />
+    <add key="local" value="$($packageFeed -replace '\\', '/')" />
+  </packageSources>
+  <config>
+    <add key="globalPackagesFolder" value="$((Join-Path $packageTmp 'packages') -replace '\\', '/')" />
+  </config>
+</configuration>
+"@
+        Set-Content -Path (Join-Path $packageTree 'nuget.config') -Value $nugetConfig -Encoding utf8
+        $package = 'Lunate.Samples.Subagents'
+        # $binary is relative to the repository root, and the cycle below runs from $packageTree
+        # so the folder feed's nuget.config is found: resolve it first, or cmd cannot find the exe.
+        $packageBinary = (Resolve-Path $binary).Path
+        Push-Location $packageTree
+        try {
+            $env:LUNATE_HOME = $packageHome
+            & $packageBinary install "$package@$version"
+            if ($LASTEXITCODE -ne 0) { throw 'verify: lunate install of the extension sample failed' }
+            & $packageBinary packages --verify
+            if ($LASTEXITCODE -ne 0) { throw 'verify: lunate packages --verify failed for the extension sample' }
+            & $packageBinary uninstall $package
+            if ($LASTEXITCODE -ne 0) { throw 'verify: lunate uninstall of the extension sample failed' }
+            if (Test-Path (Join-Path $packageHome 'extensions/subagents')) {
+                throw 'verify: the extension package roundtrip left the extension behind'
+            }
+            if (Get-ChildItem -Path $packageHome -Filter install.json -Recurse -ErrorAction SilentlyContinue) {
+                throw 'verify: the extension package roundtrip left an install record behind'
+            }
+        }
+        finally {
+            Pop-Location
+            Remove-Item Env:LUNATE_HOME -ErrorAction SilentlyContinue
+        }
+    }
+    finally {
+        Remove-Item -Recurse -Force -Path $packageTmp -ErrorAction SilentlyContinue
+    }
+
     Write-Host "`n==> format"
     # CSharpier owns formatting; dotnet format keeps style and analyzer duties.
     dotnet csharpier check .

@@ -1,6 +1,6 @@
 # Distribution runbook
 
-How Lunate reaches users: what a release carries, how the one-command installers work, and the exact steps that take each channel live. The mechanics are proven by the verify gate on all three CI runners (`scripts/verify.sh` and `scripts/verify.ps1` build a fixture release, install from it and run the binary); this document drives the ops part that runs once per release.
+How Lunate reaches users: what a release carries, how the one-command installers work, and the exact steps that take each channel live. The mechanics are proven by the verify gate on all three CI runners (`scripts/verify.sh` and `scripts/verify.ps1` build a fixture release, install from it and run the binary; both also pack the extension package and install it from a folder feed, verify and uninstall it); this document drives the ops part that runs once per release.
 
 ## Asset contract
 
@@ -9,16 +9,29 @@ How Lunate reaches users: what a release carries, how the one-command installers
 | `lunate-osx-arm64.tar.gz` | macOS Apple Silicon single-file binary (`lunate` at the archive root) |
 | `lunate-linux-x64.tar.gz` | Linux x86_64 binary |
 | `lunate-win-x64.zip` | Windows x64 binary (`lunate.exe`) |
-| `SHA256SUMS` | `<hash>  <filename>` lines covering the three archives |
 | `lunate.<version>.nupkg` | framework-dependent `dotnet tool` (package and command `lunate`) |
+| `Lunate.Samples.Subagents.<version>.nupkg` | the reference subagents extension, installed with `lunate install Lunate.Samples.Subagents` |
+| `SHA256SUMS` | `<hash>  <filename>` lines covering every other asset |
 
 - Installers: [`install.sh`](../install.sh) (`curl | sh`, macOS arm64 + Linux x64) and [`install.ps1`](../install.ps1) (`irm | iex`, Windows x64). Both verify SHA-256 before installing, never need `sudo`/admin, and are served from the repository (`raw.githubusercontent.com/wdaniel1993/lunate/main/...`), not from the release assets.
 - Channel artifacts live in [`packaging/`](../packaging): Homebrew formula, Scoop manifest, winget manifests. Their `SHA256_PLACEHOLDER_*`/sha values are filled per release (step 3).
+- The extension package is the distribution channel for extensions: the same tag that publishes the tool pushes it to nuget.org, so `lunate install <package-id>` installs the version the tag names. It is attached to the release as well, so a machine without feed access can point a `nuget.config` at the downloaded folder.
 - Release asset names, the installer platform map and the `LUNATE_INSTALL_*` environment seams are pinned in the distribution spec (`openspec/specs/distribution/spec.md` after archive).
 
 ## Pre-release checks (manual, T-33)
 
 Before tagging, run the terminal matrix from the guide: Windows Terminal, conhost, Git Bash, macOS Terminal, one Linux terminal, and tmux over SSH. The tag itself runs the full verify gate on ubuntu, macos and windows before anything is published.
+
+## Release smoke
+
+[`smoke.yml`](../.github/workflows/smoke.yml) verifies a *published* release rather than a branch, on ubuntu, macos and windows: both installers install the tag's archive, the binary prints that version and starts, and the extension package the same tag published is installed by id from nuget.org, listed by `lunate packages`, verified, discovered by `lunate extensions` (pending trust) and uninstalled with nothing left behind. Run it after the Release workflow finishes:
+
+```sh
+gh workflow run smoke.yml -f tag=v0.1.0
+gh run list --workflow smoke.yml --limit 1
+```
+
+It is keyless by design: a session against a real model needs the maintainer's provider key, so that part of the smoke stays on a machine that has one. A tag cut before the extension package existed has no package to install; the step fails by name, which is the honest answer for that tag.
 
 ## First-release checklist
 
@@ -44,7 +57,7 @@ git push origin v0.1.0
 
 ### 2. Verify the release assets
 
-Wait for the Release workflow, then verify all five release assets are attached — the three archives, `SHA256SUMS` and the `.nupkg` — and that the checksums verify.
+Wait for the Release workflow, then verify all six release assets are attached — the three archives, `SHA256SUMS`, the tool `.nupkg` and the extension `.nupkg` — and that the checksums verify.
 
 ```sh
 gh release view v0.1.0
@@ -125,13 +138,21 @@ The `packaging/winget/` manifests are the reference for the answers (`Identifier
 Publishing is passwordless. A Trusted Publishing policy on nuget.org names
 `wdaniel1993/lunate`, the `release.yml` workflow and the `production` environment; the
 `pack` job asks GitHub for an OIDC token, trades it for a key valid for minutes, and pushes
-the tool. There is no API key in the repository and nothing to rotate. The tag does it, so
-the only manual step is proving the result:
+both packages — the `lunate` tool and `Lunate.Samples.Subagents`. There is no API key in the
+repository and nothing to rotate. The tag does it, so the only manual step is proving the
+result:
 
 ```sh
 dotnet tool install --global lunate --version 0.1.0
 lunate --version
+lunate install Lunate.Samples.Subagents@0.1.0 --dry-run
 ```
+
+The `--dry-run` prints the identical identity the install would write — canonical id, exact
+version, source and the nupkg's SHA-512 — without touching the store, so it proves the feed
+serves the version the tag published without leaving an extension behind in the operator's
+home. The full install is `smoke.yml`'s job (see *Release smoke* above), which runs it in a
+throwaway state root on all three operating systems.
 
 If the policy's repository, workflow file or environment ever stops matching the job, the
 login step fails before anything is pushed — fix the policy on nuget.org rather than
@@ -149,6 +170,7 @@ and a version number is never reused for different bytes.
 ## Later releases
 
 - Tag the new version; the gate, publish, pack and attach jobs do the rest.
-- Fill the three sha values again (step 3) and update the tap copy (step 4); the tag pushes the `.nupkg` itself (step 7).
+- Fill the three sha values again (step 3) and update the tap copy (step 4); the tag pushes both `.nupkg` files itself (step 7).
+- Run the release smoke against the tag (see *Release smoke*) before calling the release done.
 - The Scoop bucket autoupdates itself; winget needs a new `wingetcreate update wdaniel1993.lunate --version <v> --urls <zip-url>` submission.
 - Future work: automate the placeholder rewrite and the tap/bucket updates from the release workflow (a follow-up change); until then the steps above stay manual.
