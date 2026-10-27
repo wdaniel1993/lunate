@@ -1,8 +1,10 @@
 using System.Collections.Concurrent;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Threading.Channels;
 using Lunate.Agent;
 using Lunate.TestSupport;
+using ModelContextProtocol.Client;
 using ModelContextProtocol.Protocol;
 
 namespace Lunate.Protocols.Tests;
@@ -100,18 +102,53 @@ public sealed class McpToolAdapterTests
     {
         using var temp = new TempDirectory();
         var log = new ConcurrentQueue<string>();
-        await using var host = new McpServerHost(
-            McpTestEnvironment.Options(temp.File("marker.txt")),
-            log: log.Enqueue
+        var options = McpTestEnvironment.Options(temp.File("marker.txt"));
+
+        // A real client over a transport that refuses the cancel notification: the write fails the
+        // way a closed stdio pipe does, on every platform and without timing or file-system
+        // dependencies. Disposing the host did not do this — on Windows the pipe still accepted the
+        // write, so the case never happened there.
+        var transport = new RefuseCancelledNoticesTransport(
+            new StdioClientTransport(
+                new StdioClientTransportOptions
+                {
+                    Name = options.Name,
+                    Command = options.Command,
+                    Arguments = [.. options.Arguments],
+                    EnvironmentVariables = options.Environment?.ToDictionary(
+                        pair => pair.Key,
+                        pair => (string?)pair.Value
+                    ),
+                }
+            )
         );
-        var slow = Assert.IsType<McpToolAdapter>(
-            (await host.GetToolsAsync(Ct)).Single(tool => tool.Name == "server__slow")
+        await using var client = await McpClient.CreateAsync(
+            transport,
+            new McpClientOptions
+            {
+                ClientInfo = new Implementation { Name = "lunate-tests", Version = "1.0.0" },
+                ProtocolVersion = "2025-11-25",
+            },
+            loggerFactory: null,
+            cancellationToken: Ct
         );
-        await host.DisposeAsync();
+        var slow = (await client.ListToolsAsync(cancellationToken: Ct)).Single(tool =>
+            tool.Name == "slow"
+        );
+        var adapter = new McpToolAdapter(
+            client,
+            "server",
+            "server",
+            ToolExposure.Direct,
+            slow,
+            TimeSpan.FromSeconds(60),
+            log.Enqueue
+        );
 
         // The server is gone by the time the turn is cancelled: nobody is left to notify, and the
         // call it is still running has nobody waiting for it — the case that must not be silent.
-        var sent = await slow.NotifyCancellationAsync(new RequestId("gone"))
+        var sent = await adapter
+            .NotifyCancellationAsync(new RequestId("gone"))
             .WaitAsync(TimeSpan.FromSeconds(10), Ct);
 
         Assert.False(sent);
@@ -119,6 +156,38 @@ public sealed class McpToolAdapterTests
             log,
             line => line.Contains("notifications/cancelled", StringComparison.Ordinal)
         );
+    }
+
+    /// <summary>
+    /// Refuses <c>notifications/cancelled</c> at the transport and passes everything else through,
+    /// which is what a torn-down connection does: the client is connected, and the one write that
+    /// matters fails.
+    /// </summary>
+    private sealed class RefuseCancelledNoticesTransport(IClientTransport inner) : IClientTransport
+    {
+        public string Name => inner.Name;
+
+        public async Task<ITransport> ConnectAsync(CancellationToken cancellationToken) =>
+            new RefuseCancelledNoticesSession(
+                await inner.ConnectAsync(cancellationToken).ConfigureAwait(false)
+            );
+
+        private sealed class RefuseCancelledNoticesSession(ITransport inner) : ITransport
+        {
+            public string? SessionId => inner.SessionId;
+
+            public ChannelReader<JsonRpcMessage> MessageReader => inner.MessageReader;
+
+            public Task SendMessageAsync(
+                JsonRpcMessage message,
+                CancellationToken cancellationToken
+            ) =>
+                message is JsonRpcNotification { Method: NotificationMethods.CancelledNotification }
+                    ? Task.FromException(new IOException("The transport is closed."))
+                    : inner.SendMessageAsync(message, cancellationToken);
+
+            public ValueTask DisposeAsync() => inner.DisposeAsync();
+        }
     }
 
     /// <summary>
