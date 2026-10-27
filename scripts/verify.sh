@@ -132,6 +132,17 @@ verify_tmp() {
   printf '%s\n' "$dir"
 }
 
+# A path that crosses into a native Windows process — a nuget.config value, LUNATE_HOME — has to
+# be written the way Windows sees it: MSYS rewrites command arguments, never file contents or the
+# environment, so a `/tmp/...` value points the CLI at C:\tmp and at a feed that is not there.
+native_path() {
+  if command -v cygpath >/dev/null 2>&1; then
+    cygpath -m "$1"
+  else
+    printf '%s\n' "$1"
+  fi
+}
+
 verify_cleanup() {
   if [ -n "$VERIFY_TMP_ROOT" ] && [ -d "$VERIFY_TMP_ROOT" ]; then
     rm -rf "$VERIFY_TMP_ROOT"
@@ -450,6 +461,50 @@ if [ "${tool_version%%+*}" != "$version" ]; then
   echo "verify: tool roundtrip reports ${tool_version}, expected ${version}" >&2
   exit 1
 fi
+
+step "extension package roundtrip"
+# The release ships an extension package beside the tool, so the bundle `dotnet pack` writes —
+# lunate.package.json at the root, the extension under extension/, no lib/ — is a product artifact,
+# not a test fixture. Pack the sample, then install it from a folder feed with the published binary
+# exactly as the release smoke installs it from nuget.org: version pin, record, verification,
+# uninstall. The smoke proves the feed; this proves the artifact on every commit, on every OS.
+package_tmp="$(verify_tmp)"
+package_id="Lunate.Extensions.Subagents"
+repo_root="$(pwd)"
+binary="$(cd "$(dirname "$BINARY")" && pwd)/$(basename "$BINARY")"
+# The feed and the store are read by the native binary, so both are written in its dialect:
+# Pack also gets the native feed, so bash and the CLI agree on one directory.
+feed="$(native_path "${package_tmp}/feed")"
+store="$(native_path "${package_tmp}/home")"
+dotnet pack samples/extensions/subagents/SubagentsExtension/SubagentsExtension.csproj \
+  -c "$CONFIGURATION" -o "$feed" --nologo
+mkdir -p "${package_tmp}/worktree"
+cat >"${package_tmp}/worktree/nuget.config" <<XML
+<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+  <packageSources>
+    <clear />
+    <add key="local" value="${feed}" />
+  </packageSources>
+  <config>
+    <add key="globalPackagesFolder" value="$(native_path "${package_tmp}/packages")" />
+  </config>
+</configuration>
+XML
+cd "${package_tmp}/worktree"
+LUNATE_HOME="$store" "$binary" install "${package_id}@${version}"
+LUNATE_HOME="$store" "$binary" packages --verify
+LUNATE_HOME="$store" "$binary" uninstall "$package_id"
+# The assertions look at the scratch directory through bash, where it is still a POSIX path.
+if [ -e "${package_tmp}/home/extensions/subagents" ]; then
+  echo "verify: the extension package roundtrip left ${package_tmp}/home/extensions/subagents behind" >&2
+  exit 1
+fi
+if [ -n "$(find "${package_tmp}/home" -name install.json 2>/dev/null)" ]; then
+  echo "verify: the extension package roundtrip left an install record behind" >&2
+  exit 1
+fi
+cd "$repo_root"
 
 step "packaging files"
 for packaging_file in \
