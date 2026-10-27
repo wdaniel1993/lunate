@@ -136,9 +136,11 @@ spike report; this addendum records the decisions themselves.
   transitive set is unknowable before a restore — and, only when the header opted in, that
   compiling runs package analyzers and source generators. A stale or absent approval stops before
   restore. After a restore, `/extensions` shows the resolved graph from the lock.
-- **The model never approves trust.** It may write or edit the file and ask for a reload; no tool,
-  command or protocol path records a decision, suppresses a prompt, or loads a stale digest. A
-  model-initiated reload of a changed file ends at the prompt.
+- **No tool of the extension surface approves trust.** It may write or edit the file and ask for a
+  reload; the reload path records nothing, suppresses no prompt, and loads no stale digest, so a
+  model-initiated reload of a changed file ends at the prompt. `lunate trust` is the CLI path that
+  records a decision, and a process with the user's shell can run it — the approval panel, not the
+  record, is what stands in front of that command (ADR 0017, amendment 2026-10-26).
 - A cache hit re-checks the digest before loading the compiled assembly. Content-addressable
   caching does not weaken the trust decision.
 - **The stale-digest-zero-feed-requests measurement stays in the suite permanently**: it is the

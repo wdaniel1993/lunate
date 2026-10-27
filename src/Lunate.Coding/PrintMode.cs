@@ -72,6 +72,13 @@ internal sealed record PrintModeOptions
 /// </summary>
 internal static class PrintMode
 {
+    /// <summary>
+    /// The startup line <c>--yolo</c> prints: one sentence that names the boundary the flag
+    /// removes. Tests assert the exact text, so it stays one string.
+    /// </summary>
+    internal const string YoloWarning =
+        "--yolo disables the approval boundary: no tool call is shown before it runs, so the trust boundary goes with it.";
+
     /// <summary>Runs one prompt; returns the process exit code (0 stop, 1 error, 2 launch usage error or length/step limit, 130 cancelled).</summary>
     internal static async Task<int> RunAsync(
         PrintModeOptions options,
@@ -84,6 +91,13 @@ internal static class PrintMode
         ArgumentNullException.ThrowIfNull(output);
         ArgumentNullException.ThrowIfNull(errors);
         var interaction = new PrintUserInteraction(errors);
+
+        // The one flag that removes the panel says so before anything runs: with no panel there is
+        // no approval boundary, and the trust boundary it carries is gone with it.
+        if (options.Yolo)
+        {
+            interaction.Notify(new UserNotice(NoticeLevel.Warning, YoloWarning));
+        }
 
         AgentSettings settings;
         ModelInfo model;

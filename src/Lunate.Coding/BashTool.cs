@@ -11,6 +11,9 @@ namespace Lunate.Coding;
 /// <summary>Runs one non-interactive command in the resolved shell, in the workspace root.</summary>
 public sealed class BashTool : ITool
 {
+    /// <summary>The model-facing name; also what <see cref="HighRiskCall"/> classifies.</summary>
+    internal const string ToolName = "bash";
+
     private const int CaptureCap = 1_000_000;
 
     private static readonly ProcessRunner Runner = new();
@@ -75,7 +78,7 @@ public sealed class BashTool : ITool
             : $"Run a command in {_shell.DisplayName} ({Dialect(_shell.Kind)}). {Rules}";
     }
 
-    public string Name => "bash";
+    public string Name => ToolName;
 
     public string Description { get; }
 

@@ -4,9 +4,9 @@ namespace Lunate.Coding;
 
 /// <summary>
 /// The ACP-mode approver: it composes the configured policy with the client's permission request.
-/// Calls the policy already allows (see <see cref="NonInteractiveApprover.IsAllowed"/>) run without
-/// prompting; everything else — commands under every policy — asks the client. There is no yolo in
-/// ACP mode.
+/// Only a read-only call the policy already allows runs without asking; a write and a command
+/// always reach the client's permission panel, whatever the policy level says — an editor's
+/// request is never auto-approved. There is no yolo in ACP mode.
 /// </summary>
 internal sealed class AcpApprover(ApprovalPolicy policy, IToolApprover client) : IToolApprover
 {
@@ -14,7 +14,11 @@ internal sealed class AcpApprover(ApprovalPolicy policy, IToolApprover client) :
     public ValueTask<bool> ApproveAsync(ApprovalRequest request, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(request);
-        return NonInteractiveApprover.IsAllowed(policy, request.Tool.Risk)
+        // The policy can only widen what runs silently for observation. Anything that changes
+        // files or runs a process is the editor's decision, so it asks even under auto-edit.
+        return
+            NonInteractiveApprover.IsAllowed(policy, request.Tool.Risk)
+            && request.Tool.Risk is ToolRisk.ReadOnly
             ? ValueTask.FromResult(true)
             : client.ApproveAsync(request, ct);
     }

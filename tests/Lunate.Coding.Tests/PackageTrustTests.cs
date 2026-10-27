@@ -201,7 +201,8 @@ public sealed class PackageTrustTests
             feed.Worktree,
             output,
             errors,
-            new ExtensionSeams { StorePath = feed.Store }
+            new ExtensionSeams { StorePath = feed.Store },
+            stdinIsTerminal: true
         );
         return new Result(
             exitCode,

@@ -95,14 +95,14 @@ so the host asks once per repository before loading it.
   'lunate trust' to approve it.` The extension appears as `trust-denied` in `/extensions`.
 - **Denial.** A denied extension is not loaded and not recorded. `/extensions` reads
   `trust-denied`; the session continues without it.
+- **The record is not a boundary.** `trust.json` records what was asked and answered; it does not
+  stop a process that can write the file. The approval panel is the boundary in default mode, and
+  `--yolo` removes it. Nothing here is an OS sandbox: 0.1.0 runs commands with your user's rights on
+  every platform, Windows included; the guard profile is scheduled for 0.2.
 
 ### The `ProjectTrust` hook
 
-A global extension can register `IProjectTrustHandler` to decide before the prompt. Only global
-extensions that are already loaded participate. The first `Deny` wins; a handler exception or
-timeout denies fail-safe. If at least one handler participates and none denies, the host records
-the extension as trusted without showing the prompt. This is how a policy extension can implement
-its own allow-list.
+A global extension can register an `IProjectTrustHandler` to **veto** a project extension before the prompt. Only global extensions that are already loaded participate. The first `Deny` wins; a handler exception or timeout denies fail-safe. `Allow` approves nothing: a handler cannot answer the question on the user's behalf, so the prompt still runs and still records the decision — the same rule that keeps an installed package pending (see [packages.md](packages.md)). A policy extension can therefore block what it does not recognise, never grant what the person was not asked.
 
 ### `lunate trust`
 
@@ -112,15 +112,18 @@ dispatching hooks or starting servers:
 ```bash
 lunate trust                       # current records and pending decisions; exit 3 when something is pending
 lunate trust --json                # the same as one JSON document
-lunate trust --yes                 # record every pending decision
-lunate trust --yes --digest <sha>  # record only when the pending digest matches
+lunate trust --yes                 # record every pending decision (needs a terminal)
+lunate trust --yes --digest <sha>  # record only when the pending digest matches (the CI path)
 lunate trust --clear               # remove this repository's records
 ```
 
 Exit codes: `0` success, `1` unexpected failure, `2` usage, `3` pending decisions found, `4` the
 pinned digest does not match. `--yes` records exactly what it prints: use it for checkouts you
-control, never for an untrusted pull request. In an interactive session, `/trust` lists the
-records.
+control, never for an untrusted pull request. A bare `--yes` needs a terminal at stdin; the
+non-interactive path is `--yes --digest <sha>`, which names the exact decision being approved. Both
+still refuse inside a Lunate session (`LUNATE_SESSION`), and that marker is a visibility guard rather
+than a lock: a command running with your shell can remove it, and under `--yolo` no panel is shown.
+In an interactive session, `/trust` lists the records.
 
 A project extension's trust record is independent of project skill trust and of `mcp.json` trust;
 those have their own sections in the same store.

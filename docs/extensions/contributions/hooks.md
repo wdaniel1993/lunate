@@ -19,7 +19,7 @@ receive a `CancellationToken`.
 
 | Interface | Fires | Handler result |
 | --- | --- | --- |
-| `IProjectTrustHandler` | Before a project extension loads | `ProjectTrustResult` (`Allow` / `Deny`) |
+| `IProjectTrustHandler` | Before a project extension loads | `ProjectTrustResult` (`Allow` / `Deny`); only `Deny` acts — `Allow` is a veto that did not fire, and the prompt still runs |
 | `ISessionStartedHandler` | Once after every extension loaded at session start | none |
 | `ISessionEndingHandler` | At session end | none |
 | `IInputReceivedHandler` | Raw user input, before anything queues | `InputReceivedResult` (`PassThrough` / `Transform` / `Consume`) |

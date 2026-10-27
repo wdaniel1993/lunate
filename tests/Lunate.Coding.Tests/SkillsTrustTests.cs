@@ -73,7 +73,8 @@ public sealed class SkillsTrustTests
             TextWriter.Null,
             TestContext.Current.CancellationToken,
             extensions: seams,
-            workingDirectory: worktree
+            workingDirectory: worktree,
+            stdinIsTerminal: true
         );
         using var inspected = new StringWriter();
         int later = Cli.Run(
@@ -131,7 +132,8 @@ public sealed class SkillsTrustTests
             TextWriter.Null,
             TestContext.Current.CancellationToken,
             extensions: seams,
-            workingDirectory: worktree
+            workingDirectory: worktree,
+            stdinIsTerminal: true
         );
         Assert.Equal(TrustCommand.ExitOk, approved);
 
@@ -163,7 +165,8 @@ public sealed class SkillsTrustTests
                 TextWriter.Null,
                 TestContext.Current.CancellationToken,
                 extensions: seams,
-                workingDirectory: worktree
+                workingDirectory: worktree,
+                stdinIsTerminal: true
             )
         );
 

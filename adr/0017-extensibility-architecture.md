@@ -51,7 +51,7 @@ Pi's extension API is the bar: transforming and blocking hooks, tool exposure mo
 
 **Trust**
 
-- Project extensions load with a one-time trust prompt per repository identity (re-prompted when their files change — content hash); global extensions are trusted by installation and are not gated. The `/extensions` view shows scope and state.
+- Project extensions load with a one-time trust prompt per repository identity (re-prompted when their files change — content hash); a hand-placed user-scope extension is trusted by placement, while a packaged or installed one is pending in both scopes until the question is answered (ADR 0017 addendum — Packages, P7). The `/extensions` view shows scope and state.
 
 **Out-of-process (constraint now, build later)**
 
@@ -63,3 +63,14 @@ Pi's extension API is the bar: transforming and blocking hooks, tool exposure mo
 - The core stays small: subagents, memory, LSP, code mode and model routing ship as reference extensions; "subagent-ready core" replaces "no subagents" as the honest framing.
 - An extension that needs a workaround means the core is missing a primitive — the fitness suite makes that visible in CI.
 - In-process trust means a malicious extension is as powerful as Lunate itself; the mitigation is the trust prompt, scope visibility and, later, the out-of-process host — not the ALC.
+
+## Amendment 2026-10-26 — the approval panel is the boundary
+
+The decisions above say what Lunate asks and records. They do not confine a process that already has the user's shell. This amendment states the position the code and the documentation implement, so no later reader takes a record for a wall:
+
+- **In default mode the approval panel is the boundary.** Every `bash` command, every MCP tool and every write outside tracked files is shown before it runs. A high-risk call — `lunate trust`, `lunate install`, `lunate uninstall`, or a command or write aimed at the state root — always shows, even after "always" was granted for that tool.
+- **`--yolo` removes it.** The flag is per run, never a saved setting, and the run prints one line saying that the approval boundary — and therefore the trust boundary — is off.
+- **The state root is not a security boundary.** `LUNATE_HOME` (default `~/.lunate`) holds `trust.json` and the install records, and a command running with the user's shell can write it. The `LUNATE_SESSION` marker is a visibility guard a command can remove (`env -u`), and `trust.json` is a record of answers, not a lock. Neither is a security boundary against the bash tool.
+- **0.1.0 has no OS sandbox, on any platform including Windows.** The guard profile is scheduled for 0.2; this version claims no confinement.
+
+What does not change: **installing is not trusting.** An installed extension stays pending in both scopes until its question is answered, and `IProjectTrustHandler` is a veto — `Allow` approves nothing and the prompt still runs.

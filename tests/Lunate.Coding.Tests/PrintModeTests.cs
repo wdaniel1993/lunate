@@ -129,6 +129,47 @@ public sealed class PrintModeTests
     }
 
     [Fact]
+    public async Task Yolo_announces_that_it_removes_the_approval_boundary()
+    {
+        using var temp = new TempDirectory();
+        var client = new ScriptedChatClient().Enqueue(Scripts.Text("ok"), Scripts.Stop());
+        PrintModeOptions options = PrintModeTestSupport.BaseOptions(
+            temp,
+            new FakeChatClientFactory(client)
+        ) with
+        {
+            Prompt = "Hi",
+            Yolo = true,
+        };
+
+        (int exitCode, string output, string errors) = await PrintModeTestSupport.RunAsync(options);
+
+        Assert.Equal(0, exitCode);
+        Assert.Equal("ok", output);
+        Assert.Equal($"lunate: {PrintMode.YoloWarning}\n", errors);
+    }
+
+    [Fact]
+    public async Task Without_yolo_no_boundary_notice_is_printed()
+    {
+        using var temp = new TempDirectory();
+        var client = new ScriptedChatClient().Enqueue(Scripts.Text("ok"), Scripts.Stop());
+        PrintModeOptions options = PrintModeTestSupport.BaseOptions(
+            temp,
+            new FakeChatClientFactory(client)
+        ) with
+        {
+            Prompt = "Hi",
+        };
+
+        (int exitCode, string output, string errors) = await PrintModeTestSupport.RunAsync(options);
+
+        Assert.Equal(0, exitCode);
+        Assert.Equal("ok", output);
+        Assert.Empty(errors);
+    }
+
+    [Fact]
     public async Task Json_mode_streams_every_event_in_arrival_order_with_the_session_id()
     {
         using var temp = new TempDirectory();
@@ -156,7 +197,7 @@ public sealed class PrintModeTests
         (int exitCode, string output, string errors) = await PrintModeTestSupport.RunAsync(options);
 
         Assert.Equal(0, exitCode);
-        Assert.Empty(errors);
+        Assert.Equal($"lunate: {PrintMode.YoloWarning}\n", errors);
         List<JsonElement> lines = PrintModeTestSupport.ParseLines(output);
         Assert.Equal(
             [
@@ -585,7 +626,7 @@ public sealed class PrintModeTests
 
         Assert.Equal(0, exitCode);
         Assert.Equal("Done.", output);
-        Assert.Empty(errors);
+        Assert.Equal($"lunate: {PrintMode.YoloWarning}\n", errors);
         Assert.Equal("hi", File.ReadAllText(temp.File("note.txt")));
     }
 

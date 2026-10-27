@@ -67,7 +67,7 @@ public sealed class McpApprovalProofTests
         (int exitCode, string output, string errors) = await PrintModeTestSupport.RunAsync(options);
 
         Assert.Equal(0, exitCode);
-        Assert.Empty(errors);
+        Assert.Equal($"lunate: {PrintMode.YoloWarning}\n", errors);
         JsonElement result = Assert.Single(
             PrintModeTestSupport.ParseLines(output),
             line => PrintModeTestSupport.TypeOf(line) == "tool_call_result"

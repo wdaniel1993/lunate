@@ -133,19 +133,22 @@ public sealed class AcpPermissionTests
     }
 
     [Fact]
-    public async Task AutoEdit_runs_writes_without_asking()
+    public async Task AutoEdit_still_asks_the_editor_for_a_write()
     {
         using var temp = new TempDirectory();
         var tool = new RecordingRiskTool("write-probe", ToolRisk.Write);
         var model = Scripted("write-probe");
         await using AcpRuntime runtime = Start(model, ApprovalPolicy.AutoEdit, tool);
         NewSessionResponse session = await NewSession(runtime, temp);
+        runtime.State.PermissionHandler = (request, _) =>
+            Task.FromResult(Answer(request, PermissionOptionKind.AllowOnce));
 
         PromptResponse response = await Prompt(runtime, session, "edit it");
 
         Assert.Equal(StopReason.EndTurn, response.StopReason);
         Assert.Equal(1, tool.Executions);
-        Assert.Empty(runtime.State.PermissionRequests);
+        // An editor's request is never auto-approved, whatever the policy level allows in print.
+        Assert.Single(runtime.State.PermissionRequests);
     }
 
     [Theory]

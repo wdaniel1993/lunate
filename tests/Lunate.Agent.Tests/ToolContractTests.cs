@@ -15,7 +15,8 @@ public sealed class ToolContractTests
         Assert.Null(tool.Annotations);
         Assert.Null(tool.OutputSchema);
         Assert.Equal(ToolConcurrency.Parallel, tool.Concurrency);
-        Assert.Equal(ToolRisk.Write, tool.Risk);
+        // No annotations means unknown code: the default is the cautious one.
+        Assert.Equal(ToolRisk.Execute, tool.Risk);
     }
 
     [Fact]

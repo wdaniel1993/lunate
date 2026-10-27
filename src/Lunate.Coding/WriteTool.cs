@@ -15,6 +15,9 @@ public sealed class WriteTool(
     ITextFileAccess? files = null
 ) : ITool
 {
+    /// <summary>The model-facing name; also what <see cref="HighRiskCall"/> classifies.</summary>
+    internal const string ToolName = "write";
+
     private readonly IFileMutationQueue _mutations = mutations ?? FileMutationQueue.Shared;
 
     private readonly ITextFileAccess _files = files ?? LocalTextFileAccess.Instance;
@@ -37,7 +40,7 @@ public sealed class WriteTool(
         )
         .RootElement.Clone();
 
-    public string Name => "write";
+    public string Name => ToolName;
 
     public string Description =>
         "Write a text file into the workspace; creates parent directories. An existing file keeps "

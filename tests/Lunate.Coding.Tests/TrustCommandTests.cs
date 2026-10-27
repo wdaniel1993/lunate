@@ -461,6 +461,61 @@ public sealed class TrustCommandTests
         Assert.Single(fixture.Records());
     }
 
+    [Fact]
+    public void Yes_without_a_terminal_is_refused_and_records_nothing()
+    {
+        using var temp = new TempDirectory();
+        Fixture fixture = Fixture.Create(temp);
+
+        // The script path: stdin is closed or piped, so a bare --yes has no person behind it.
+        (int exitCode, _, string errors) = fixture.RunWithoutTerminal("--yes");
+
+        Assert.Equal(TrustCommand.ExitUsage, exitCode);
+        Assert.Contains("trust --yes needs a terminal", errors, StringComparison.Ordinal);
+        Assert.Empty(fixture.Records());
+        Assert.False(File.Exists(fixture.TrustFile));
+    }
+
+    [Fact]
+    public void A_pinned_digest_is_the_non_interactive_yes()
+    {
+        using var temp = new TempDirectory();
+        Fixture fixture = Fixture.Create(temp);
+        string digest = fixture.PrintedDigest();
+
+        // Naming the exact decision is what makes the scripted path reviewed rather than silent.
+        (int exitCode, string output, string errors) = fixture.RunWithoutTerminal(
+            "--yes",
+            "--digest",
+            digest
+        );
+
+        Assert.Equal(TrustCommand.ExitOk, exitCode);
+        Assert.Empty(errors);
+        Assert.Contains("trust: recorded extensions — ", output, StringComparison.Ordinal);
+        Assert.Single(fixture.Records());
+    }
+
+    [Fact]
+    public void A_pinned_digest_is_still_refused_inside_a_session()
+    {
+        using var temp = new TempDirectory();
+        Fixture fixture = Fixture.Create(temp);
+        string digest = fixture.PrintedDigest();
+
+        // The digest does not turn a session into a person: the marker refusal comes first.
+        (int exitCode, _, string errors) = fixture.RunInsideSession("--yes", "--digest", digest);
+
+        Assert.Equal(TrustCommand.ExitUsage, exitCode);
+        Assert.Contains(
+            "cannot be approved from inside a Lunate session",
+            errors,
+            StringComparison.Ordinal
+        );
+        Assert.Empty(fixture.Records());
+        Assert.False(File.Exists(fixture.TrustFile));
+    }
+
     private sealed class Fixture
     {
         private Fixture(string worktree, string store, bool withConfig)
@@ -507,16 +562,22 @@ public sealed class TrustCommandTests
         }
 
         public (int ExitCode, string Output, string Errors) Run(params string[] args) =>
-            RunWith(args, environment: null);
+            RunWith(args, environment: null, stdinIsTerminal: true);
 
         /// <summary>Runs as a command the bash tool spawned: the session marker is in the environment.</summary>
         public (int ExitCode, string Output, string Errors) RunInsideSession(
             params string[] args
-        ) => RunWith(args, name => name == "LUNATE_SESSION" ? "1" : null);
+        ) => RunWith(args, name => name == "LUNATE_SESSION" ? "1" : null, stdinIsTerminal: true);
+
+        /// <summary>Runs with stdin closed or piped: no terminal, so a bare --yes cannot record.</summary>
+        public (int ExitCode, string Output, string Errors) RunWithoutTerminal(
+            params string[] args
+        ) => RunWith(args, environment: null, stdinIsTerminal: false);
 
         private (int ExitCode, string Output, string Errors) RunWith(
             string[] args,
-            Func<string, string?>? environment
+            Func<string, string?>? environment,
+            bool stdinIsTerminal
         )
         {
             using var output = new StringWriter();
@@ -527,7 +588,8 @@ public sealed class TrustCommandTests
                 output,
                 errors,
                 new ExtensionSeams { StorePath = Store, Log = Log },
-                environment
+                environment,
+                stdinIsTerminal
             );
             return (exitCode, Normalize(output.ToString()), Normalize(errors.ToString()));
         }

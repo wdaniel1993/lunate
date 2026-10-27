@@ -49,6 +49,9 @@ internal sealed partial class InteractiveSession
 
             if (failure.Length > 0)
             {
+                // Delete before the notice: a caller who reads the notice and looks at the
+                // directory must not find the draft the notice says was not kept.
+                DraftEditor.TryDelete(path);
                 Notify(failure);
                 return;
             }
@@ -61,6 +64,7 @@ internal sealed partial class InteractiveSession
             catch (Exception exception)
                 when (exception is IOException or UnauthorizedAccessException)
             {
+                DraftEditor.TryDelete(path);
                 Notify(DraftEditor.ReadFailureNotice(exception));
                 return;
             }

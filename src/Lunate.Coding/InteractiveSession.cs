@@ -1942,15 +1942,21 @@ internal sealed partial class InteractiveSession : IDisposable
 
     private async ValueTask<bool> RequestApprovalAsync(
         ApprovalRequest request,
-        CancellationToken ct
+        CancellationToken ct,
+        bool allowAlways = true
     )
     {
         string toolName = request.Tool.Name;
-        lock (_alwaysApproved)
+        // A high-risk call never inherits the session's grant: the grant is about the tool, and
+        // this call would write the root the grant is recorded against.
+        if (allowAlways)
         {
-            if (_alwaysApproved.Contains(toolName))
+            lock (_alwaysApproved)
             {
-                return true;
+                if (_alwaysApproved.Contains(toolName))
+                {
+                    return true;
+                }
             }
         }
 
@@ -2003,7 +2009,7 @@ internal sealed partial class InteractiveSession : IDisposable
             _live.SetApproval(null);
         }
 
-        if (choice is ApprovalChoice.Always)
+        if (choice is ApprovalChoice.Always && allowAlways)
         {
             lock (_alwaysApproved)
             {
@@ -2133,13 +2139,22 @@ internal sealed partial class InteractiveSession : IDisposable
 
     /// <summary>The approval seam: policy-allowed calls run silently; the rest prompt in the live
     /// area, with "always" remembered per tool name for the session — one grant covers the tool in
-    /// every run of the tree, including subagents.</summary>
+    /// every run of the tree, including subagents. A high-risk call (a state-changing
+    /// <c>lunate</c> command or a write into the state root) always prompts and never inherits
+    /// that grant.</summary>
     private sealed class SessionApprover(InteractiveSession session, ApprovalPolicy policy)
         : IToolApprover
     {
-        public ValueTask<bool> ApproveAsync(ApprovalRequest request, CancellationToken ct) =>
-            NonInteractiveApprover.IsAllowed(policy, request.Tool.Risk)
+        public ValueTask<bool> ApproveAsync(ApprovalRequest request, CancellationToken ct)
+        {
+            if (HighRiskCall.Is(request))
+            {
+                return session.RequestApprovalAsync(request, ct, allowAlways: false);
+            }
+
+            return NonInteractiveApprover.IsAllowed(policy, request.Tool.Risk)
                 ? ValueTask.FromResult(true)
                 : session.RequestApprovalAsync(request, ct);
+        }
     }
 }

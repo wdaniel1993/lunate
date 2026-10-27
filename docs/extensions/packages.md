@@ -39,7 +39,7 @@ Before anything is written, the command prints what it is about to install: cano
 
 ### Inside a session
 
-`lunate install` is a CLI command; no tool, slash command or protocol path wraps it. But the bash tool can run it, so a session can start one — including one a prompt injection asked for. When `lunate install` detects it is running inside a Lunate session (the `LUNATE_SESSION` marker the bash tool sets for its children), it refuses without `--yes`. The approval prompt that lets the command run shows the full command, `--yes` included, so an install started from a session is never silent and the command the user approved is the command that runs.
+`lunate install` is a CLI command; no tool, slash command or protocol path wraps it. But the bash tool can run it, so a session can start one — including one a prompt injection asked for. When `lunate install` detects it is running inside a Lunate session (the `LUNATE_SESSION` marker the bash tool sets for its children), it refuses without `--yes`. The approval prompt that lets the command run shows the full command, `--yes` included, so an install started from a session is never silent and the command the user approved is the command that runs. This is visibility, not a boundary: a command can remove the marker with `env -u LUNATE_SESSION …`, and under `--yolo` no prompt is shown at all.
 
 ## Where the content goes
 
@@ -115,9 +115,9 @@ Installing is not trusting. An installed extension is pending in **both** scopes
 
 The decision binds the package identity, the canonical lock graph and the directory's content hash, so an upgrade re-prompts and an edited file re-prompts. Install writes no trust record; it changes the pending set `lunate trust` prints.
 
-Only a person can answer. No tool, slash command or protocol path records a decision; `lunate trust --yes` exists for scripts and refuses when it detects a Lunate session, so the bash tool cannot approve on your behalf; and print, ACP and any other run without a terminal refuse a pending extension and name it instead of guessing — which means it does not load there. `lunate trust --clear` works everywhere, because revoking escalates nothing.
+Only a person answers the extension question, and only at the prompt. No tool, slash command or protocol path answers it; print, ACP and any other run without a terminal refuse a pending extension and name it instead of guessing, so it does not load there. `lunate trust` is the CLI path for recording a decision outside a session: a bare `--yes` needs a terminal at stdin, while `--yes --digest <sha>` is the scripted path that names the exact decision being approved. `lunate trust --clear` works everywhere, because revoking escalates nothing.
 
-The `LUNATE_SESSION` marker is a visibility guard, not a boundary: a caller can unset it, and a run that skips approval prompts shows nothing. What holds regardless is the question above — code that arrived with a package does not execute until you answer it.
+None of that is a security boundary. `LUNATE_SESSION` is a visibility guard: `env -u LUNATE_SESSION …` removes it, and `--yolo` shows no panel at all. `trust.json` is a record of your decisions, and a command running with your shell can write it — including `lunate trust --yes --digest <sha>`. In default mode the approval panel is what stands between the model and those commands, and under `--yolo` nothing does; 0.1.0 has no OS sandbox on any platform, Windows included (the guard profile is 0.2). What holds is the rule above — an installed extension is pending until the question is answered — not a promise that only you can answer it.
 
 ## What a package cannot do
 

@@ -104,7 +104,7 @@ Tool calls SHALL propagate the turn's cancellation as `OperationCanceledExceptio
 
 ### Requirement: ACP approvals, editor file system and resource links
 
-In ACP mode, tool approvals SHALL compose the configured policy with the client's `session/request_permission`: calls the policy already allows SHALL run without prompting; everything else SHALL ask the editor with allow-once, allow-always and reject options — allow-once executes, allow-always executes and is remembered per tool for the session, reject declines as a tool error, and a cancel or request error resolves as a decline. Every client round trip SHALL be bounded: a file request that outlives its timeout SHALL fail as an I/O error, and a permission request that outlives its timeout SHALL decline (both logged) — a stalled editor degrades, it does not hang. A session cancel SHALL also stop an in-flight file round trip: the call fails promptly instead of waiting out its timeout, and the run ends cancelled. A timed-out request that is abandoned SHALL be observed, so a late failure cannot surface as an unobserved exception. A missing file SHALL surface as a not-found failure and other client failures as I/O errors — never masked into one another. Commands SHALL prompt under every policy. When the client advertises the file-system capability, the read, write and edit tools SHALL route file access through the client's `fs/read_text_file`/`fs/write_text_file` so editor buffers are respected (the client owns byte-order marks); without the capability they SHALL use the local disk. Prompt `ResourceLinkContent` blocks SHALL map to model-readable text: a `file://` URI inside the workspace becomes `@<relative path>`, anything else becomes `<name> (<uri>)`, in prompt order.
+In ACP mode, tool approvals SHALL compose the configured policy with the client's `session/request_permission`: only `ReadOnly` calls SHALL run without prompting; every other call — a write under any policy, and every command — SHALL ask the editor with allow-once, allow-always and reject options — allow-once executes, allow-always executes and is remembered per tool for the session, reject declines as a tool error, and a cancel or request error resolves as a decline. Every client round trip SHALL be bounded: a file request that outlives its timeout SHALL fail as an I/O error, and a permission request that outlives its timeout SHALL decline (both logged) — a stalled editor degrades, it does not hang. A session cancel SHALL also stop an in-flight file round trip: the call fails promptly instead of waiting out its timeout, and the run ends cancelled. A timed-out request that is abandoned SHALL be observed, so a late failure cannot surface as an unobserved exception. A missing file SHALL surface as a not-found failure and other client failures as I/O errors — never masked into one another. Commands SHALL prompt under every policy. When the client advertises the file-system capability, the read, write and edit tools SHALL route file access through the client's `fs/read_text_file`/`fs/write_text_file` so editor buffers are respected (the client owns byte-order marks); without the capability they SHALL use the local disk. Prompt `ResourceLinkContent` blocks SHALL map to model-readable text: a `file://` URI inside the workspace becomes `@<relative path>`, anything else becomes `<name> (<uri>)`, in prompt order.
 
 #### Scenario: Policy-allowed calls run unprompted
 
@@ -189,6 +189,11 @@ In ACP mode, tool approvals SHALL compose the configured policy with the client'
 - **GIVEN** a file request that timed out and was abandoned
 - **WHEN** the client's late answer fails the request
 - **THEN** the failure is observed and does not surface as an unobserved task exception
+
+#### Scenario: Auto-edit still asks the editor for a write
+- **GIVEN** an ACP session under the auto-edit policy and a write tool call
+- **WHEN** the run executes it
+- **THEN** a permission request is sent to the client
 
 ### Requirement: MCP servers from mcp.json
 

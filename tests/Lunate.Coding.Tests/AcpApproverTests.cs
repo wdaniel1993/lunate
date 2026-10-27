@@ -5,14 +5,19 @@ namespace Lunate.Coding.Tests;
 
 public sealed class AcpApproverTests
 {
+    /// <summary>
+    /// Only a read-only call runs without the editor's permission request. A write is a change to
+    /// the user's files, and an editor's request is never auto-approved (docs/guide.md, "Security
+    /// and safety"), whatever the configured policy allows in print mode.
+    /// </summary>
     [Theory]
     [InlineData(ApprovalPolicy.Ask, ToolRisk.ReadOnly, true, 0)]
     [InlineData(ApprovalPolicy.Ask, ToolRisk.Write, true, 1)]
     [InlineData(ApprovalPolicy.Ask, ToolRisk.Execute, true, 1)]
     [InlineData(ApprovalPolicy.AutoEdit, ToolRisk.ReadOnly, true, 0)]
-    [InlineData(ApprovalPolicy.AutoEdit, ToolRisk.Write, true, 0)]
+    [InlineData(ApprovalPolicy.AutoEdit, ToolRisk.Write, true, 1)]
     [InlineData(ApprovalPolicy.AutoEdit, ToolRisk.Execute, true, 1)]
-    public async Task The_policy_runs_first_and_everything_else_asks_the_client(
+    public async Task Only_a_read_only_call_bypasses_the_client(
         ApprovalPolicy policy,
         ToolRisk risk,
         bool expected,

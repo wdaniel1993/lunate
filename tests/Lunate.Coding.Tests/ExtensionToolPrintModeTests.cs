@@ -37,7 +37,7 @@ public sealed class ExtensionToolPrintModeTests
         (int exitCode, string output, string errors) = await PrintModeTestSupport.RunAsync(options);
 
         Assert.Equal(0, exitCode);
-        Assert.Empty(errors);
+        Assert.Equal($"lunate: {PrintMode.YoloWarning}\n", errors);
         List<JsonElement> lines = PrintModeTestSupport.ParseLines(output);
         JsonElement call = Assert.Single(
             lines,

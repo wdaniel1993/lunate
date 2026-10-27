@@ -32,7 +32,8 @@ internal static class TrustCommand
         TextWriter output,
         TextWriter errors,
         ExtensionSeams? seams,
-        Func<string, string?>? environment = null
+        Func<string, string?>? environment = null,
+        bool? stdinIsTerminal = null
     )
     {
         if (!TryParse(args, errors, out Options options))
@@ -54,6 +55,18 @@ internal static class TrustCommand
                 errors.WriteLine(
                     "lunate: trust cannot be approved from inside a Lunate session; answer the "
                         + "session's trust prompt, or run this from a terminal outside the session."
+                );
+                return ExitUsage;
+            }
+
+            // --yes is a person's answer, typed at a terminal. --yes --digest names the exact
+            // decision being approved, so it stays the reviewed non-interactive path (CI);
+            // a bare --yes from a script or a closed stdin does not record anything.
+            if (options.Digest is null && !(stdinIsTerminal ?? !Console.IsInputRedirected))
+            {
+                errors.WriteLine(
+                    "lunate: trust --yes needs a terminal at stdin; run it from a terminal, or "
+                        + "name the exact digest with 'lunate trust --yes --digest <sha>'."
                 );
                 return ExitUsage;
             }

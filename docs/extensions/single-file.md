@@ -170,6 +170,11 @@ The record is per file and is never inherited from another file, another path or
 extension. When the computed digest differs from the recorded one the file is `stale`, and the stale
 check stops before anything is built — a changed file makes no feed request.
 
+`trust.json` records decisions; it is not a boundary. A command running with your shell can write it,
+so the file proves what was asked and answered, not what cannot run. In default mode the approval panel
+is the boundary (see [What follows the root](#what-follows-the-root-and-what-does-not)); `--yolo`
+removes it.
+
 ## The lock file
 
 A restore writes `extension.lock.json` into the extension's cache entry, for a project extension
@@ -249,6 +254,14 @@ the install refuses without `--yes` (exit 2) — an install started from a comma
 machine that runs at the next load, so the flag has to be visible in the command you approved. Outside
 a session the marker is absent and nothing changes.
 
+The marker is a **visibility guard, not a boundary**. A bash command runs with your shell, and
+`env -u LUNATE_SESSION …` removes the marker; `trust.json` is a record of your decisions and a command
+with your shell can write it. Neither stops code the model chose. In default mode the approval panel
+is the boundary: `lunate install`, `lunate trust` and a write into `<root>` always appear in it, even
+after "always" was answered for that tool, and `--yolo` removes it. Nothing here is an OS sandbox:
+0.1.0 runs commands with your user's rights on every platform, Windows included; the guard profile is
+scheduled for 0.2.
+
 If `LUNATE_HOME` resolves inside the workspace a session starts in — or the repository that worktree
 belongs to — Lunate refuses it: `LUNATE_HOME points inside the workspace; trust records there could
 be written by the repository`. The refusal runs wherever a workspace exists: starting an interactive
@@ -312,7 +325,8 @@ Three things are worth knowing about that line:
 
 Two other failures look similar and are not compile failures: `failed (trust)` means the bytes (or
 the lock's graph) are not the ones you approved — nothing is restored or compiled, and the CLI tells
-you to approve the file in an interactive session because trust is your decision, never the CLI's;
+you to approve the file in an interactive session (or record it with `lunate trust`), because a build
+never decides trust;
 `failed (restore)` means a package could not be resolved, with the package and the feed in the reason.
 
 ### The build cache
@@ -370,8 +384,11 @@ The format exists for one loop, and it runs inside a single session:
    still loaded and answering; the row reads `stale — …`, and the changed bytes reach neither a
    feed nor a compiler until you answer. Declining leaves everything as it was.
 
-The model can write the file and can ask for the reload; it can never answer the question. No tool,
-command or protocol path records a trust decision, suppresses the prompt or loads a stale digest.
+The model can write the file and can ask for the reload. No surface of the product answers the
+question for you: `/extensions reload` never suppresses it, and a stale digest never loads. That is a
+limit of those surfaces, not a boundary against a process with your shell — the bash tool can run
+`lunate trust` with the marker removed and `--yes --digest`, which is why the approval panel, not the
+record, is the boundary in default mode and `--yolo` removes it.
 
 `lunate extensions reload <id|path>` is the same preflight, build and a register-only load without a
 session: it can prove the build this host produced is one this host will load. It never prompts — a
