@@ -382,7 +382,9 @@ public sealed class InteractiveSessionEndToEndTests
         BuildToken.Replace(text, "v<version>+<build>");
 
     private static readonly Regex BuildToken = new(
-        @"\bv\d+\.\d+\.\d+\+[0-9a-fA-F]{7}\b",
+        // SemVer puts an arbitrary prerelease after a hyphen: 0.1.0-rc.1 must normalise
+        // like the stable version does.
+        @"\bv\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?\+[0-9a-fA-F]{7}\b",
         RegexOptions.Compiled
     );
 
