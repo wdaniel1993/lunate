@@ -54,6 +54,5 @@ verified against a real, versioned build; the first stable release is `0.1.0`.
   shell can write the state root. There is no sandbox in this release; 0.2 adds a bash guard
   profile for macOS and Linux.
 
-[Unreleased]: https://github.com/wdaniel1993/lunate/compare/v0.1.0-rc.2...HEAD
 [0.1.0-rc.2]: https://github.com/wdaniel1993/lunate/compare/v0.1.0-rc.1...v0.1.0-rc.2
 [0.1.0-rc.1]: https://github.com/wdaniel1993/lunate/compare/v0.1.0-rc.1...v0.1.0-rc.2
