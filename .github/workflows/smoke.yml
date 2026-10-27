@@ -26,7 +26,7 @@ env:
   # the only part of the release smoke that exercises a published *package* rather than a binary:
   # version resolution against the feed, the download's SHA-512, extraction, the record and the
   # content check. The feed is whatever the runner's NuGet configuration names — nuget.org.
-  LUNATE_SAMPLE_PACKAGE: Lunate.Extensions.Subagents
+  LUNATE_EXTENSION_PACKAGE: Lunate.Extensions.Subagents
 
 jobs:
   smoke:
@@ -136,7 +136,7 @@ jobs:
           # none, so the tag's exact version is pinned here. The bare form has its own step.
           out=""
           for attempt in 1 2 3 4 5; do
-            if out="$("$LUNATE" install "$LUNATE_SAMPLE_PACKAGE@$version" 2>"$LUNATE_TMP/install.err")"; then
+            if out="$("$LUNATE" install "$LUNATE_EXTENSION_PACKAGE@$version" 2>"$LUNATE_TMP/install.err")"; then
               break
             fi
             if [ "$attempt" -eq 5 ]; then
@@ -148,7 +148,7 @@ jobs:
             sleep $((attempt * 20))
           done
           printf '%s\n' "$out"
-          grep -qx "package: $LUNATE_SAMPLE_PACKAGE $version" <<<"$out"
+          grep -qx "package: $LUNATE_EXTENSION_PACKAGE $version" <<<"$out"
           grep -q '^extension: subagents ' <<<"$out"
 
       - name: The package is listed, verifies, and its extension is discovered
@@ -157,7 +157,7 @@ jobs:
           set -euo pipefail
           listed="$("$LUNATE" packages --json)"
           printf '%s\n' "$listed"
-          grep -q "\"id\":\"$LUNATE_SAMPLE_PACKAGE\"" <<<"$listed"
+          grep -q "\"id\":\"$LUNATE_EXTENSION_PACKAGE\"" <<<"$listed"
           verified="$("$LUNATE" packages --verify)"
           printf '%s\n' "$verified"
           grep -q ', verified$' <<<"$verified"
@@ -171,7 +171,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          "$LUNATE" uninstall "$LUNATE_SAMPLE_PACKAGE"
+          "$LUNATE" uninstall "$LUNATE_EXTENSION_PACKAGE"
           remaining="$("$LUNATE" packages)"
           [ "$remaining" = 'packages: none installed' ]
           if [ -e "$LUNATE_HOME/extensions/subagents" ]; then
@@ -193,8 +193,8 @@ jobs:
           LUNATE_HOME: ${{ runner.temp }}/lunate-home-latest
         run: |
           set -euo pipefail
-          out="$("$LUNATE" install "$LUNATE_SAMPLE_PACKAGE")"
+          out="$("$LUNATE" install "$LUNATE_EXTENSION_PACKAGE")"
           printf '%s\n' "$out"
-          grep -q "^package: $LUNATE_SAMPLE_PACKAGE " <<<"$out"
+          grep -q "^package: $LUNATE_EXTENSION_PACKAGE " <<<"$out"
           "$LUNATE" packages --verify
-          "$LUNATE" uninstall "$LUNATE_SAMPLE_PACKAGE"
+          "$LUNATE" uninstall "$LUNATE_EXTENSION_PACKAGE"
