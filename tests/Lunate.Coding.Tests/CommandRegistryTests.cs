@@ -36,7 +36,7 @@ public sealed class CommandRegistryTests
     [Fact]
     public void Name_and_session_are_registered_session_commands()
     {
-        foreach (string name in new[] { "/name", "/session" })
+        foreach (string name in new[] { "/name", "/session", "/editor" })
         {
             BuiltinCommandDescriptor descriptor = Assert.Single(
                 Commands.Descriptors,

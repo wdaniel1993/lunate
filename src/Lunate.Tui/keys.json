@@ -155,7 +155,7 @@
             "bindings": [
                 "ctrl-g.editor"
             ],
-            "action": "Open the draft in your editor: `$VISUAL`, else `$EDITOR`, else `vi` on POSIX and `notepad` on Windows — arguments are split on whitespace, with no shell and no quoting. A zero exit replaces the draft with the file's text and puts the cursor at its end; the program must wait for the file (`code --wait`), or the draft is read before the edit lands"
+            "action": "Open the draft in your editor: `$VISUAL`, else `$EDITOR`, else `vi` on POSIX and `notepad` on Windows — arguments are split on whitespace, with no shell and no quoting. A zero exit replaces the draft with the file's text and puts the cursor at its end; the program must wait for the file (`code --wait`), or the draft is read before the edit lands. Some terminals and tmux configurations swallow `Ctrl+G` (it is `BEL`, `0x07`); there `/editor` runs the same round-trip, on the draft the command leaves — an empty one"
         },
         {
             "id": "ctrl-underscore",

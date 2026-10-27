@@ -19,6 +19,7 @@ public sealed class HelpViewTests
           /compact  — compact the conversation now, optionally focusing on <text>
           /context  — show the context window and subagent budgets
           /copy     — copy the last answer to the clipboard
+          /editor   — open the draft in your external editor
           /export   — write the session as html or jsonl
           /fork     — start a new session file at a picked entry
           /help     — list the commands

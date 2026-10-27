@@ -77,6 +77,11 @@ internal sealed partial class InteractiveSession
                 case "/copy":
                     await session.CopyLastAnswerAsync(cancellationToken).ConfigureAwait(false);
                     return CommandResult.None;
+                case "/editor":
+                    // The same round-trip Ctrl+G runs: the command is the way in when the terminal
+                    // does not deliver BEL or a keybindings file claims the chord.
+                    await session.RunEditorAsync(cancellationToken).ConfigureAwait(false);
+                    return CommandResult.None;
                 case "/export":
                     session.ExportSession(invocation.Argument);
                     return CommandResult.None;
