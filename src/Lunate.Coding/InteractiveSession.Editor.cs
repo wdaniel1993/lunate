@@ -10,11 +10,12 @@ internal sealed partial class InteractiveSession
     private string EditorTempDirectory => _options.EditorTempDirectory ?? Path.GetTempPath();
 
     /// <summary>
-    /// <c>Ctrl+G</c>: writes the draft to a temporary file, hands the terminal to the editor, and
-    /// puts the result back. The child owns the terminal for its whole life — the key pump is
-    /// quiesced and the live area suspended — so a key typed at the editor belongs to the editor.
-    /// A failure leaves the draft, the cursor and the stash exactly as they were and posts one
-    /// notice naming what failed; the file is deleted on every path.
+    /// <c>Ctrl+G</c> and <c>/editor</c>: writes the draft to a temporary file, hands the terminal to
+    /// the editor, and puts the result back. The child owns the terminal for its whole life — the
+    /// key pump is quiesced and the live area suspended — so a key typed at the editor belongs to
+    /// the editor. A failure leaves the draft, the cursor and the stash exactly as they were and
+    /// posts one notice naming what failed; the file is deleted on every path. One flow, two entry
+    /// points: the command exists because a terminal that eats <c>BEL</c> never delivers the key.
     /// </summary>
     private async Task RunEditorAsync(CancellationToken ct)
     {

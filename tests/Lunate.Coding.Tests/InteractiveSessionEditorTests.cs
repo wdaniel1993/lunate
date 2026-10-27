@@ -3,9 +3,10 @@ using Lunate.Tui;
 namespace Lunate.Coding.Tests;
 
 /// <summary>
-/// <c>Ctrl+G</c> end to end over a scripted child (a shell script on POSIX, a <c>.cmd</c> on
+/// The external editor end to end over a scripted child (a shell script on POSIX, a <c>.cmd</c> on
 /// Windows), never a real editor: what the draft file contains, what comes back, what a failure
-/// does to the draft, cursor and stash, and who owns the terminal while the child runs.
+/// does to the draft, cursor and stash, and who owns the terminal while the child runs — reached
+/// through <c>Ctrl+G</c> and through the <c>/editor</c> command.
 /// </summary>
 public sealed class InteractiveSessionEditorTests
 {
@@ -197,6 +198,47 @@ public sealed class InteractiveSessionEditorTests
         await host.WaitUntilAsync(() => host.Session.Input.Text == "x");
 
         Assert.Equal("x", host.Session.Input.Text);
+        host.Console.Complete();
+        await run;
+    }
+
+    [Fact]
+    public async Task The_editor_command_round_trips_through_the_same_path()
+    {
+        using var editor = new ScriptedEditor();
+        using var host = editor.Host();
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+
+        await host.SendLineAsync("/editor");
+        await editor.WaitForRunAsync(host, SpawnWindow);
+        await host.WaitForFrameAsync("line two", SpawnWindow);
+
+        // The command cleared the line before it dispatched, so the editor opened an empty buffer.
+        Assert.Equal(string.Empty, editor.BeforeFileContent());
+        Assert.Equal("line one\nline two", host.Session.Input.Text);
+        Assert.Equal(host.Session.Input.Text.Length, host.Session.Input.CursorPosition);
+        Assert.Empty(host.Client.Requests);
+        host.Console.Complete();
+        await run;
+    }
+
+    [Fact]
+    public async Task The_editor_command_reports_a_failure_and_leaves_the_draft_alone()
+    {
+        using var editor = new ScriptedEditor(exitCode: 1);
+        using var host = editor.Host();
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+
+        await host.SendLineAsync("/editor");
+        await editor.WaitForRunAsync(host, SpawnWindow);
+        await host.WaitForFrameAsync("editor exited 1", SpawnWindow);
+
+        Assert.Equal(string.Empty, host.Session.Input.Text);
+        Assert.False(File.Exists(editor.RecordedDraftPath()), "the temp file outlived the run");
+        Assert.Empty(editor.TempFiles());
+        Assert.Empty(host.Client.Requests);
         host.Console.Complete();
         await run;
     }

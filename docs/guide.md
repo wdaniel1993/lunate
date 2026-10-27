@@ -451,7 +451,7 @@ The session is a tree, and four commands expose it: `/tree` opens the session's 
 
 **Frontends**
 
-- **Interactive mode** (`lunate`): the Lunate.Tui frontend (see Terminal UI) with streaming view, multi-line editor, `Esc` to cancel, slash commands from the session's one command registry (`/model`, `/new`, `/resume`, `/name`, `/session`, `/compact [instructions]`, `/copy`, `/export`, `/tree`, `/fork`, `/clone`, `/rewind`, `/help`, `/quit`).
+- **Interactive mode** (`lunate`): the Lunate.Tui frontend (see Terminal UI) with streaming view, multi-line editor, `Esc` to cancel, slash commands from the session's one command registry (`/model`, `/new`, `/resume`, `/name`, `/session`, `/compact [instructions]`, `/copy`, `/editor`, `/export`, `/tree`, `/fork`, `/clone`, `/rewind`, `/help`, `/quit`).
 - **Print mode** (`lunate -p "prompt"`): writes the final answer to stdout and exits; `--json` writes every event as JSON lines for scripts and CI.
 - **ACP mode** (`lunate --acp`): speaks the Agent Client Protocol over stdio, so editors like Zed or JetBrains start Lunate as their agent. Editor file reads, writes and permission prompts map onto Lunate's tools and approval policy. Nothing may write to stdout except the protocol.
 
@@ -570,7 +570,7 @@ Both box rules are drawn at every width; autocomplete descriptions keep their 60
 | `Alt+P` | Model picker and search; typing filters the catalog, Backspace edits the filter, Esc clears it before closing |
 | `Ctrl+R` | History search: typing narrows, `Ctrl+R`/`Down` moves to the next match, `Enter` places it in the input, `Esc` cancels |
 | `Ctrl+S` | Stash the draft, or restore it when the prompt is empty |
-| `Ctrl+G` | Open the draft in your editor: `$VISUAL`, else `$EDITOR`, else `vi` on POSIX and `notepad` on Windows — arguments are split on whitespace, with no shell and no quoting. A zero exit replaces the draft with the file's text and puts the cursor at its end; the program must wait for the file (`code --wait`), or the draft is read before the edit lands |
+| `Ctrl+G` | Open the draft in your editor: `$VISUAL`, else `$EDITOR`, else `vi` on POSIX and `notepad` on Windows — arguments are split on whitespace, with no shell and no quoting. A zero exit replaces the draft with the file's text and puts the cursor at its end; the program must wait for the file (`code --wait`), or the draft is read before the edit lands. Some terminals and tmux configurations swallow `Ctrl+G` (it is `BEL`, `0x07`); there `/editor` runs the same round-trip, on the draft the command leaves — an empty one |
 | `Ctrl+_` | Undo the last input edit |
 | `?` | On an empty idle prompt, open the key-help overlay: the bindings that apply here, grouped by state; `j`/`k` move, `/` filters, `Tab` shows every binding, `Esc` or `?` closes without touching the draft. In an approval prompt it shows that panel's key legend — `y` approves, `n` denies, `a` approves for the session, `Space` activates the selection, Enter and Esc deny — and decides nothing. With text in the prompt it is a literal character |
 | `y` / `n` / `a` | Answer a pending approval: approve, deny, or approve for the whole session. The panel owns these letters, so nothing else sees them while a question is open |
@@ -587,7 +587,7 @@ Both box rules are drawn at every width; autocomplete descriptions keep their 60
 
 **Platform rules**
 
-- `Ctrl+G` writes the draft to a temporary file in the system temp directory (UTF-8, no BOM, owner-only on POSIX), hands the terminal to the child in cooked mode and deletes the file on every exit path, so no draft text is left behind. A missing program, a non-zero exit or a read that fails leaves the draft, the cursor and the stash untouched and posts one notice naming what failed — and a `$VISUAL` that cannot be launched is reported, never silently swapped for `$EDITOR`.
+- `Ctrl+G` writes the draft to a temporary file in the system temp directory (UTF-8, no BOM, owner-only on POSIX), hands the terminal to the child in cooked mode and deletes the file on every exit path, so no draft text is left behind. A missing program, a non-zero exit or a read that fails leaves the draft, the cursor and the stash untouched and posts one notice naming what failed — and a `$VISUAL` that cannot be launched is reported, never silently swapped for `$EDITOR`. `/editor` is the same round-trip through the command registry, for a terminal that never delivers the key: it acts on the prompt as the command finds it, which is empty because submitting the command cleared the line, so a bare `/editor` opens an empty buffer and what you save becomes the draft.
 - Enable VT processing on Windows at startup; test in Windows Terminal and classic conhost.
 - If stdout is not a terminal or `TERM=dumb`, interactive mode exits with a hint to use `-p`.
 - All terminal access goes through `IConsoleIO` (read keys, write, size, resize event), so tests run without a real terminal.
