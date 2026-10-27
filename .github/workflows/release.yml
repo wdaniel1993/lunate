@@ -221,5 +221,13 @@ jobs:
         run: |
           set -euo pipefail
           tag="${GITHUB_REF_NAME}"
-          gh release view "$tag" >/dev/null 2>&1 || gh release create "$tag" --title "$tag" --generate-notes
+          if ! gh release view "$tag" >/dev/null 2>&1; then
+            gh release create "$tag" --title "$tag" --generate-notes
+          fi
+          # A candidate must never be "latest": install.sh and install.ps1 resolve latest/download
+          # when no version is given, and v0.1.0-rc.1 was served as the stable release until this
+          # line existed.
+          case "$tag" in
+            *-*) gh release edit "$tag" --prerelease --latest=false ;;
+          esac
           gh release upload "$tag" dist/* --clobber

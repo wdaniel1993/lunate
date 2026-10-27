@@ -1,0 +1,75 @@
+name: Smoke
+
+# Verifies a *published* release, not a branch: the two installers the docs name, the tool
+# package, and that the binary starts. Run it after the tag exists:
+#
+#   gh workflow run smoke.yml -f tag=v0.1.0-rc.1
+#
+# It is deliberately keyless: a session against a real model needs a provider key, which
+# belongs on the maintainer's machine, not in a CI secret. That part of the release smoke
+# stays local.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to install and check, for example v0.1.0-rc.1'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: smoke (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - name: Checkout the installer scripts
+        uses: actions/checkout@v7
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Install with install.sh
+        if: runner.os != 'Windows'
+        shell: bash
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          prefix="$RUNNER_TEMP/lunate"
+          sh install.sh --version "$TAG" --prefix "$prefix"
+          echo "LUNATE=$prefix/lunate" >> "$GITHUB_ENV"
+
+      - name: Install with install.ps1
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          $prefix = Join-Path $env:RUNNER_TEMP 'lunate'
+          ./install.ps1 -Version $env:TAG -Prefix $prefix
+          "LUNATE=$prefix\lunate.exe" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: The installed binary is the tag, and starts
+        shell: bash
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          version="$("$LUNATE" --version)"
+          echo "$version"
+          # The tag carries a leading v; the binary prints the package version plus build metadata.
+          case "$version" in
+            "${TAG#v}"*) ;;
+            *) echo "lunate --version printed '$version', which does not start with ${TAG#v}" >&2; exit 1 ;;
+          esac
+          "$LUNATE" --help
+          "$LUNATE" packages
