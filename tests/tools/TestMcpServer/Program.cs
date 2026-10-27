@@ -26,7 +26,32 @@ void Mark(string line)
 
     lock (markerLock)
     {
-        File.AppendAllText(markerPath, line + Environment.NewLine);
+        // The tests poll this file while the server runs, so an append can collide with a reader
+        // that holds the file with a narrower share mode (a sharing violation on Windows). Retry a
+        // bounded number of times, and if it still fails say so on stderr instead of losing the
+        // line silently: a lost marker is indistinguishable from a server that never got there.
+        for (var attempt = 0; ; attempt++)
+        {
+            try
+            {
+                File.AppendAllText(markerPath, line + Environment.NewLine);
+                return;
+            }
+            catch (IOException) when (attempt < 20)
+            {
+                Thread.Sleep(20);
+            }
+            catch (IOException exception)
+            {
+                Console.Error.WriteLine(
+                    string.Create(
+                        CultureInfo.InvariantCulture,
+                        $"test-mcp-server: marker line '{line}' was not written: {exception.Message}"
+                    )
+                );
+                return;
+            }
+        }
     }
 }
 
@@ -91,6 +116,23 @@ var serverOptions = new McpServerOptions
     ServerInfo = new Implementation { Name = "test-mcp-server", Version = "1.0.0" },
     Capabilities = new ServerCapabilities { Tools = new ToolsCapability { ListChanged = true } },
     ToolCollection = tools,
+    // Records that the notification reached the server at all, separately from the tool's own
+    // `slow_cancelled` line: a failure then names the leg that lost the message — never sent,
+    // or sent but not acted on.
+    Handlers = new McpServerHandlers
+    {
+        NotificationHandlers =
+        [
+            new(
+                NotificationMethods.CancelledNotification,
+                (_, _) =>
+                {
+                    Mark("cancel_notice");
+                    return default;
+                }
+            ),
+        ],
+    },
 };
 if (slowListMs > 0)
 {

@@ -1,7 +1,11 @@
+using System.Collections.Concurrent;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Threading.Channels;
 using Lunate.Agent;
 using Lunate.TestSupport;
+using ModelContextProtocol.Client;
+using ModelContextProtocol.Protocol;
 
 namespace Lunate.Protocols.Tests;
 
@@ -65,7 +69,11 @@ public sealed class McpToolAdapterTests
     {
         using var temp = new TempDirectory();
         var marker = temp.File("marker.txt");
-        await using var host = new McpServerHost(McpTestEnvironment.Options(marker));
+        var log = new ConcurrentQueue<string>();
+        await using var host = new McpServerHost(
+            McpTestEnvironment.Options(marker),
+            log: log.Enqueue
+        );
         var slow = (await host.GetToolsAsync(Ct)).Single(tool => tool.Name == "server__slow");
 
         using var cancellation = new CancellationTokenSource();
@@ -84,11 +92,134 @@ public sealed class McpToolAdapterTests
         cancellation.Cancel();
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => call);
-        await TestMcpServer.WaitForMarkerLineAsync(
-            marker,
-            "slow_cancelled",
-            TimeSpan.FromSeconds(15)
+        await AssertCancellationObservedAsync(marker, log);
+        // A cancellation that lands is not news: nothing is reported for it.
+        Assert.Empty(log);
+    }
+
+    [Fact]
+    public async Task Cancellation_notice_that_cannot_be_written_is_reported()
+    {
+        using var temp = new TempDirectory();
+        var log = new ConcurrentQueue<string>();
+        var options = McpTestEnvironment.Options(temp.File("marker.txt"));
+
+        // A real client over a transport that refuses the cancel notification: the write fails the
+        // way a closed stdio pipe does, on every platform and without timing or file-system
+        // dependencies. Disposing the host did not do this — on Windows the pipe still accepted the
+        // write, so the case never happened there.
+        var transport = new RefuseCancelledNoticesTransport(
+            new StdioClientTransport(
+                new StdioClientTransportOptions
+                {
+                    Name = options.Name,
+                    Command = options.Command,
+                    Arguments = [.. options.Arguments],
+                    EnvironmentVariables = options.Environment?.ToDictionary(
+                        pair => pair.Key,
+                        pair => (string?)pair.Value
+                    ),
+                }
+            )
         );
+        await using var client = await McpClient.CreateAsync(
+            transport,
+            new McpClientOptions
+            {
+                ClientInfo = new Implementation { Name = "lunate-tests", Version = "1.0.0" },
+                ProtocolVersion = "2025-11-25",
+            },
+            loggerFactory: null,
+            cancellationToken: Ct
+        );
+        var slow = (await client.ListToolsAsync(cancellationToken: Ct)).Single(tool =>
+            tool.Name == "slow"
+        );
+        var adapter = new McpToolAdapter(
+            client,
+            "server",
+            "server",
+            ToolExposure.Direct,
+            slow,
+            TimeSpan.FromSeconds(60),
+            log.Enqueue
+        );
+
+        // The server is gone by the time the turn is cancelled: nobody is left to notify, and the
+        // call it is still running has nobody waiting for it — the case that must not be silent.
+        var sent = await adapter
+            .NotifyCancellationAsync(new RequestId("gone"))
+            .WaitAsync(TimeSpan.FromSeconds(10), Ct);
+
+        Assert.False(sent);
+        Assert.Contains(
+            log,
+            line => line.Contains("notifications/cancelled", StringComparison.Ordinal)
+        );
+    }
+
+    /// <summary>
+    /// Refuses <c>notifications/cancelled</c> at the transport and passes everything else through,
+    /// which is what a torn-down connection does: the client is connected, and the one write that
+    /// matters fails.
+    /// </summary>
+    private sealed class RefuseCancelledNoticesTransport(IClientTransport inner) : IClientTransport
+    {
+        public string Name => inner.Name;
+
+        public async Task<ITransport> ConnectAsync(CancellationToken cancellationToken) =>
+            new RefuseCancelledNoticesSession(
+                await inner.ConnectAsync(cancellationToken).ConfigureAwait(false)
+            );
+
+        private sealed class RefuseCancelledNoticesSession(ITransport inner) : ITransport
+        {
+            public string? SessionId => inner.SessionId;
+
+            public ChannelReader<JsonRpcMessage> MessageReader => inner.MessageReader;
+
+            public Task SendMessageAsync(
+                JsonRpcMessage message,
+                CancellationToken cancellationToken
+            ) =>
+                message is JsonRpcNotification { Method: NotificationMethods.CancelledNotification }
+                    ? Task.FromException(new IOException("The transport is closed."))
+                    : inner.SendMessageAsync(message, cancellationToken);
+
+            public ValueTask DisposeAsync() => inner.DisposeAsync();
+        }
+    }
+
+    /// <summary>
+    /// Both legs of the cancellation, checked separately: <c>cancel_notice</c> proves the
+    /// notification reached the server, <c>slow_cancelled</c> proves the server then stopped the
+    /// call. A timeout names the leg that lost the message, with whatever the client logged about
+    /// the write — a server that never answers must not read as an unexplained 15 s wait.
+    /// </summary>
+    private static async Task AssertCancellationObservedAsync(
+        string marker,
+        ConcurrentQueue<string> log
+    )
+    {
+        try
+        {
+            await TestMcpServer.WaitForMarkerLineAsync(
+                marker,
+                "cancel_notice",
+                TimeSpan.FromSeconds(15)
+            );
+            await TestMcpServer.WaitForMarkerLineAsync(
+                marker,
+                "slow_cancelled",
+                TimeSpan.FromSeconds(15)
+            );
+        }
+        catch (TimeoutException exception)
+        {
+            Assert.Fail(
+                $"{exception.Message} | client log: {(log.IsEmpty ? "<none>" : string.Join(" | ", log))}"
+            );
+        }
     }
 
     [Fact]
