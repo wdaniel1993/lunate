@@ -111,12 +111,16 @@ rm -rf "$SHIM_DIR"
 
 FORMAT_DIR=""
 SHIPPED_DIR=""
+WAIT_DIR=""
 cleanup() {
   if [ -n "$FORMAT_DIR" ]; then
     rm -rf "$FORMAT_DIR"
   fi
   if [ -n "$SHIPPED_DIR" ]; then
     rm -rf "$SHIPPED_DIR"
+  fi
+  if [ -n "$WAIT_DIR" ]; then
+    rm -rf "$WAIT_DIR"
   fi
 }
 trap cleanup EXIT
@@ -197,5 +201,108 @@ if ! (cd "$SHIPPED_DIR" && . "${SCRIPT_DIR}/lib.sh" && check_shipped_api_unchang
   echo "gate-tests: FAIL: shipped-API gate failed on a clean main tree" >&2
   exit 1
 fi
+
+echo "gate-tests: wait-for-nuget.sh must wait for a version the fixture feed indexes late"
+# A file:// URL is read by curl, which may be the native build: on Windows an MSYS path (/tmp/...)
+# is not a path it can open, so every fixture URL is written the way Windows sees it.
+fixture_url() {
+  if command -v cygpath >/dev/null 2>&1; then
+    printf 'file://%s\n' "$(cygpath -m "$1")"
+  else
+    printf 'file://%s\n' "$1"
+  fi
+}
+wait_for_nuget="${SCRIPT_DIR}/wait-for-nuget.sh"
+WAIT_DIR="$(mktemp -d)"
+fc="${WAIT_DIR}/flatcontainer"
+reg="${WAIT_DIR}/registration"
+fixture_id="lunate.fixture.pkg"
+fc_url="$(fixture_url "$fc")"
+reg_url="$(fixture_url "$reg")"
+mkdir -p "${fc}/${fixture_id}" "${reg}/${fixture_id}"
+# The feed starts with an older version only: index, content and registration page all lack the
+# version the run asks for.
+printf '{"versions":["0.1.0"]}\n' >"${fc}/${fixture_id}/index.json"
+printf '{"items":[{"@id":"%s/%s/page1.json","items":[{"catalogEntry":{"version":"0.1.0"}}]},' \
+  "$reg_url" "$fixture_id" >"${reg}/${fixture_id}/index.json"
+printf '{"@id":"%s/%s/page2.json","@type":"catalog:CatalogPage"}]}\n' \
+  "$reg_url" "$fixture_id" >>"${reg}/${fixture_id}/index.json"
+printf '{"items":[{"catalogEntry":{"version":"0.1.0"}}]}\n' >"${reg}/${fixture_id}/page2.json"
+# The version appears while the script polls — index, then content, then the linked registration
+# page — which is how nuget.org indexes a fresh push.
+(
+  sleep 2
+  printf '{"versions":["0.1.0","0.2.0"]}\n' >"${fc}/${fixture_id}/index.json"
+  mkdir -p "${fc}/${fixture_id}/0.2.0"
+  printf 'nupkg\n' >"${fc}/${fixture_id}/0.2.0/${fixture_id}.0.2.0.nupkg"
+  printf '{"items":[{"catalogEntry":{"version":"0.1.0"}},{"catalogEntry":{"version":"0.2.0"}}]}\n' \
+    >"${reg}/${fixture_id}/page2.json"
+) &
+indexer=$!
+wait_log="${WAIT_DIR}/wait.log"
+wait_rc=0
+bash "$wait_for_nuget" --package Lunate.Fixture.Pkg --version 0.2.0 \
+  --budget-seconds 30 --interval-seconds 1 \
+  --flatcontainer-base "$fc_url" --registration-base "$reg_url" >"$wait_log" 2>&1 || wait_rc=$?
+wait "$indexer"
+if [ "$wait_rc" -ne 0 ]; then
+  echo "gate-tests: FAIL: wait-for-nuget.sh gave up on a version the feed indexed mid-budget:" >&2
+  cat "$wait_log" >&2
+  exit 1
+fi
+if ! grep -q 'not listed yet after' "$wait_log"; then
+  echo "gate-tests: FAIL: wait-for-nuget.sh reported no wait, so the fixture was already indexed:" >&2
+  cat "$wait_log" >&2
+  exit 1
+fi
+if ! grep -q 'lists Lunate.Fixture.Pkg 0.2.0 after' "$wait_log"; then
+  echo "gate-tests: FAIL: wait-for-nuget.sh does not name the package and version it waited for:" >&2
+  cat "$wait_log" >&2
+  exit 1
+fi
+if ! grep -q 'registration .*3 version(s) across 1 linked page(s)' "$wait_log"; then
+  echo "gate-tests: FAIL: wait-for-nuget.sh did not read the linked registration page:" >&2
+  cat "$wait_log" >&2
+  exit 1
+fi
+
+echo "gate-tests: wait-for-nuget.sh must fail naming the feed state when the version never appears"
+printf '{"versions":["0.1.0"]}\n' >"${fc}/${fixture_id}/index.json"
+wait_rc=0
+bash "$wait_for_nuget" --package Lunate.Fixture.Pkg --version 0.3.0 \
+  --budget-seconds 3 --interval-seconds 1 \
+  --flatcontainer-base "$fc_url" --registration-base "$reg_url" >"$wait_log" 2>&1 || wait_rc=$?
+if [ "$wait_rc" -eq 0 ]; then
+  echo "gate-tests: FAIL: wait-for-nuget.sh passed although the feed never listed the version" >&2
+  cat "$wait_log" >&2
+  exit 1
+fi
+for expected in 'did not list Lunate.Fixture.Pkg 0.3.0 within 3s' '0.3.0 absent' \
+  'not checked (the index does not list the version)'; do
+  if ! grep -qF "$expected" "$wait_log"; then
+    echo "gate-tests: FAIL: wait-for-nuget.sh budget report does not name '$expected':" >&2
+    cat "$wait_log" >&2
+    exit 1
+  fi
+done
+
+echo "gate-tests: wait-for-nuget.sh must not pass a listed version whose content is missing"
+printf '{"versions":["0.1.0","0.4.0"]}\n' >"${fc}/${fixture_id}/index.json"
+wait_rc=0
+bash "$wait_for_nuget" --package Lunate.Fixture.Pkg --version 0.4.0 \
+  --budget-seconds 3 --interval-seconds 1 \
+  --flatcontainer-base "$fc_url" --registration-base "$reg_url" >"$wait_log" 2>&1 || wait_rc=$?
+if [ "$wait_rc" -eq 0 ]; then
+  echo "gate-tests: FAIL: wait-for-nuget.sh passed although the .nupkg was not downloadable" >&2
+  cat "$wait_log" >&2
+  exit 1
+fi
+if ! grep -qF 'the .nupkg is not downloadable' "$wait_log"; then
+  echo "gate-tests: FAIL: wait-for-nuget.sh budget report does not name the missing content:" >&2
+  cat "$wait_log" >&2
+  exit 1
+fi
+rm -rf "$WAIT_DIR"
+WAIT_DIR=""
 
 echo "gate-tests: OK"

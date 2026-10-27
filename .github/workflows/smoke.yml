@@ -125,6 +125,22 @@ jobs:
           "$LUNATE" --help
           "$LUNATE" packages
 
+      # A freshly pushed package is invisible until the feed indexes it: the flatcontainer index,
+      # the package content and the registration resource trail each other by minutes, and the
+      # v0.1.0 smoke failed on all three OSes because the install fired first and then retried a
+      # fixed five times (about 3.3 minutes) into that lag. Wait on the feed instead, with a budget
+      # long enough for a real indexing run, and let a dead tag fail with the feed state named.
+      - name: Wait for nuget.org to index the extension version
+        shell: bash
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          bash scripts/wait-for-nuget.sh \
+            --package "$LUNATE_EXTENSION_PACKAGE" \
+            --version "${TAG#v}" \
+            --budget-seconds 600
+
       - name: Install the extension package from the feed
         shell: bash
         env:
@@ -134,19 +150,14 @@ jobs:
           version="${TAG#v}"
           # A bare install asks for the latest *stable* version, and a prerelease tag publishes
           # none, so the tag's exact version is pinned here. The bare form has its own step.
-          out=""
-          for attempt in 1 2 3 4 5; do
-            if out="$("$LUNATE" install "$LUNATE_EXTENSION_PACKAGE@$version" 2>"$LUNATE_TMP/install.err")"; then
-              break
-            fi
-            if [ "$attempt" -eq 5 ]; then
-              cat "$LUNATE_TMP/install.err" >&2
-              echo "lunate install did not succeed after $attempt attempts" >&2
-              exit 1
-            fi
-            # A freshly pushed package is invisible for a moment while the feed indexes it.
-            sleep $((attempt * 20))
-          done
+          #
+          # The step above already waited for the feed to list this version, so a failure here is
+          # not indexing lag: install once, print what the client said, and say which fact changed.
+          if ! out="$("$LUNATE" install "$LUNATE_EXTENSION_PACKAGE@$version" 2>"$LUNATE_TMP/install.err")"; then
+            cat "$LUNATE_TMP/install.err" >&2
+            echo "lunate install failed for $LUNATE_EXTENSION_PACKAGE $version although nuget.org listed it" >&2
+            exit 1
+          fi
           printf '%s\n' "$out"
           grep -qx "package: $LUNATE_EXTENSION_PACKAGE $version" <<<"$out"
           grep -q '^extension: subagents ' <<<"$out"

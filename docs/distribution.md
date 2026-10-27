@@ -33,6 +33,8 @@ gh run list --workflow smoke.yml --limit 1
 
 It is keyless by design: a session against a real model needs the maintainer's provider key, so that part of the smoke stays on a machine that has one. A tag cut before the extension package existed has no package to install; the step fails by name, which is the honest answer for that tag.
 
+nuget.org indexes a fresh push asynchronously, so the extension step waits for the feed before it installs: `scripts/wait-for-nuget.sh` polls the flatcontainer index, the package content and the registration resource under one ten-minute budget, installs once the version is visible everywhere, and on exhaustion fails naming the version and what each resource served — an indexing lag looks different from a tag that never pushed a package. Do not answer a red smoke by re-running it immediately; read the feed state in the step's log first.
+
 ## First-release checklist
 
 The commands below use `0.1.0`; substitute the version from `Directory.Build.props` for later releases.
