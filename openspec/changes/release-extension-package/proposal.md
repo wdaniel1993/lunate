@@ -16,7 +16,7 @@ promise nobody can act on.
 
 ## What changes
 
-- `samples/extensions/subagents` becomes packable as `Lunate.Samples.Subagents`: a bundle nupkg
+- `samples/extensions/subagents` becomes packable as `Lunate.Extensions.Subagents`: a bundle nupkg
   (`lunate.package.json` at the root, the extension under `extension/`) whose version is the
   repository version, packed from the build output after the build that produced it.
 - `release.yml` packs it beside the tool, pushes both through the same Trusted Publishing login,
@@ -33,7 +33,7 @@ promise nobody can act on.
 
 ## Impact
 
-- One new public package id, `Lunate.Samples.Subagents`, published under the maintainer's nuget.org
+- One new public package id, `Lunate.Extensions.Subagents`, published under the maintainer's nuget.org
   account on every `v*` tag. The id is the one decision this change asks for; `design.md` records
   the alternatives.
 - No product code, no public API: the packaging is MSBuild metadata on a sample, and the workflows

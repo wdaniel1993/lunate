@@ -8,7 +8,7 @@ extension: it is the subagent tool the guide describes, it references only the c
 `Lunate.Agent` and `Lunate.Ai` (so the bundle ships no host assembly), and it is the first thing a
 new user asks for.
 
-Decision: **`Lunate.Samples.Subagents`**, published under `wdaniel1993` — the account that already
+Decision: **`Lunate.Extensions.Subagents`**, published under `wdaniel1993` — the account that already
 owns `lunate` and the Trusted Publishing policy this repository's `release.yml` uses.
 
 Alternatives, and why not:

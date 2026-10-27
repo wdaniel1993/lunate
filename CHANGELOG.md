@@ -10,8 +10,8 @@ Notable changes to Lunate, one section per release. The format follows
 
 ### Added
 
-- `Lunate.Samples.Subagents`, the reference subagents extension published as a real NuGet package
-  with every release: `lunate install Lunate.Samples.Subagents` installs the tool that runs a child
+- `Lunate.Extensions.Subagents`, the reference subagents extension published as a real NuGet package
+  with every release: `lunate install Lunate.Extensions.Subagents` installs the tool that runs a child
   agent, and the release smoke installs, verifies and uninstalls it on all three operating systems.
 
 ## [0.1.0-rc.1] - 2026-10-27

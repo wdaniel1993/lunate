@@ -10,7 +10,7 @@ How Lunate reaches users: what a release carries, how the one-command installers
 | `lunate-linux-x64.tar.gz` | Linux x86_64 binary |
 | `lunate-win-x64.zip` | Windows x64 binary (`lunate.exe`) |
 | `lunate.<version>.nupkg` | framework-dependent `dotnet tool` (package and command `lunate`) |
-| `Lunate.Samples.Subagents.<version>.nupkg` | the reference subagents extension, installed with `lunate install Lunate.Samples.Subagents` |
+| `Lunate.Extensions.Subagents.<version>.nupkg` | the reference subagents extension, installed with `lunate install Lunate.Extensions.Subagents` |
 | `SHA256SUMS` | `<hash>  <filename>` lines covering every other asset |
 
 - Installers: [`install.sh`](../install.sh) (`curl | sh`, macOS arm64 + Linux x64) and [`install.ps1`](../install.ps1) (`irm | iex`, Windows x64). Both verify SHA-256 before installing, never need `sudo`/admin, and are served from the repository (`raw.githubusercontent.com/wdaniel1993/lunate/main/...`), not from the release assets.
@@ -138,14 +138,14 @@ The `packaging/winget/` manifests are the reference for the answers (`Identifier
 Publishing is passwordless. A Trusted Publishing policy on nuget.org names
 `wdaniel1993/lunate`, the `release.yml` workflow and the `production` environment; the
 `pack` job asks GitHub for an OIDC token, trades it for a key valid for minutes, and pushes
-both packages — the `lunate` tool and `Lunate.Samples.Subagents`. There is no API key in the
+both packages — the `lunate` tool and `Lunate.Extensions.Subagents`. There is no API key in the
 repository and nothing to rotate. The tag does it, so the only manual step is proving the
 result:
 
 ```sh
 dotnet tool install --global lunate --version 0.1.0
 lunate --version
-lunate install Lunate.Samples.Subagents@0.1.0 --dry-run
+lunate install Lunate.Extensions.Subagents@0.1.0 --dry-run
 ```
 
 The `--dry-run` prints the identical identity the install would write — canonical id, exact

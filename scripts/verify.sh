@@ -469,7 +469,7 @@ step "extension package roundtrip"
 # exactly as the release smoke installs it from nuget.org: version pin, record, verification,
 # uninstall. The smoke proves the feed; this proves the artifact on every commit, on every OS.
 package_tmp="$(verify_tmp)"
-package_id="Lunate.Samples.Subagents"
+package_id="Lunate.Extensions.Subagents"
 repo_root="$(pwd)"
 binary="$(cd "$(dirname "$BINARY")" && pwd)/$(basename "$BINARY")"
 # The feed and the store are read by the native binary, so both are written in its dialect:

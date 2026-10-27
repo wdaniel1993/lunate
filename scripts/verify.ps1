@@ -336,7 +336,7 @@ try {
 </configuration>
 "@
         Set-Content -Path (Join-Path $packageTree 'nuget.config') -Value $nugetConfig -Encoding utf8
-        $package = 'Lunate.Samples.Subagents'
+        $package = 'Lunate.Extensions.Subagents'
         # $binary is relative to the repository root, and the cycle below runs from $packageTree
         # so the folder feed's nuget.config is found: resolve it first, or cmd cannot find the exe.
         $packageBinary = (Resolve-Path $binary).Path

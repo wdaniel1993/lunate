@@ -26,7 +26,7 @@ env:
   # the only part of the release smoke that exercises a published *package* rather than a binary:
   # version resolution against the feed, the download's SHA-512, extraction, the record and the
   # content check. The feed is whatever the runner's NuGet configuration names — nuget.org.
-  LUNATE_SAMPLE_PACKAGE: Lunate.Samples.Subagents
+  LUNATE_SAMPLE_PACKAGE: Lunate.Extensions.Subagents
 
 jobs:
   smoke:

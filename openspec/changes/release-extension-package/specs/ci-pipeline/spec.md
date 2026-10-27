@@ -38,4 +38,4 @@ On `v*` tags, CI SHALL run the full verification gate before publishing and SHAL
 
 - **GIVEN** a `v*` tag that passes the gate
 - **WHEN** the release completes
-- **THEN** the `Lunate.Samples.Subagents` `.nupkg` is attached next to the archives and that version was pushed to nuget.org
+- **THEN** the `Lunate.Extensions.Subagents` `.nupkg` is attached next to the archives and that version was pushed to nuget.org
