@@ -1,12 +1,13 @@
 name: Smoke
 
-# Verifies a *published* release, not a branch: the documented install channels, the tool
+# Verifies a *published* release, not a branch: the two installers the docs name, the tool
 # package, and that the binary starts. Run it after the tag exists:
 #
-#   gh workflow run smoke.yml --ref <branch-that-has-this-file> -f tag=v0.1.0-rc.1
+#   gh workflow run smoke.yml -f tag=v0.1.0-rc.1
 #
-# It is deliberately keyless: a run with a real model needs a provider key, which belongs to
-# the maintainer's machine, not to a CI runner.
+# It is deliberately keyless: a session against a real model needs a provider key, which
+# belongs on the maintainer's machine, not in a CI secret. That part of the release smoke
+# stays local.
 
 on:
   workflow_dispatch:
@@ -43,9 +44,9 @@ jobs:
           TAG: ${{ inputs.tag }}
         run: |
           set -euo pipefail
-          sh install.sh --version "$TAG" --prefix "$RUNNER_TEMP/lunate"
-          "$RUNNER_TEMP/lunate/lunate" --version | tee version.txt
-          grep -qF "${TAG#v}" version.txt
+          prefix="$RUNNER_TEMP/lunate"
+          sh install.sh --version "$TAG" --prefix "$prefix"
+          echo "LUNATE=$prefix/lunate" >> "$GITHUB_ENV"
 
       - name: Install with install.ps1
         if: runner.os == 'Windows'
@@ -53,24 +54,22 @@ jobs:
         env:
           TAG: ${{ inputs.tag }}
         run: |
-          ./install.ps1 -Version $env:TAG -Prefix "$env:RUNNER_TEMP\lunate"
-          & "$env:RUNNER_TEMP\lunate\lunate.exe" --version | Tee-Object version.txt
-          if (-not (Select-String -Path version.txt -SimpleMatch $env:TAG.Substring(1))) {
-            throw "version.txt does not contain $env:TAG"
-          }
+          $prefix = Join-Path $env:RUNNER_TEMP 'lunate'
+          ./install.ps1 -Version $env:TAG -Prefix $prefix
+          "LUNATE=$prefix\lunate.exe" | Out-File -FilePath $env:GITHUB_ENV -Append
 
-      - name: The binary starts and lists its surface
-        shell: pwsh
-        env:
-          LUNATE: ${{ runner.os == 'Windows' && format('{0}/lunate/lunate.exe', runner.temp) || format('{0}/lunate/lunate', runner.temp) }}
-        run: |
-          & $env:LUNATE --help
-          & $env:LUNATE packages list
-
-      - name: Install the dotnet tool
-        shell: pwsh
+      - name: The installed binary is the tag, and starts
+        shell: bash
         env:
           TAG: ${{ inputs.tag }}
         run: |
-          dotnet tool install --global lunate --version $env:TAG.Substring(1)
-          lunate --version
+          set -euo pipefail
+          version="$("$LUNATE" --version)"
+          echo "$version"
+          # The tag carries a leading v; the binary prints the package version plus build metadata.
+          case "$version" in
+            "${TAG#v}"*) ;;
+            *) echo "lunate --version printed '$version', which does not start with ${TAG#v}" >&2; exit 1 ;;
+          esac
+          "$LUNATE" --help
+          "$LUNATE" packages
