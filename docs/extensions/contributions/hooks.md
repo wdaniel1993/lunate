@@ -44,7 +44,10 @@ File changes are a subscription rather than `context.Register`; see
   `ProviderStreamEvent` has a 100 ms fast path (`ProviderStreamEventTimeout`) and must stay cheap.
 - **Slow hooks.** The first dispatch above 500 ms (`SlowHookThreshold`) logs one warning naming the
   extension, hook, elapsed time and threshold; later crossings are counted. `/extensions` shows the
-  slowest hook above the threshold as `hook <Hook> max <ms> ms, <slow>/<calls> slow`.
+  slowest hook above the threshold as `hook <Hook> max <ms> ms, <slow>/<calls> slow`. The time is the
+  dispatch's own wall clock, so a crossing is only called slow when the machine is not the reason it
+  crossed: while the thread pool has more work waiting than it has workers, a continuation — yours
+  included — is waiting for a thread, and such a dispatch is counted but never reported.
 - **Context budget.** `ContextBuilding` additions and `RunStarting` section *additions* are
   counted per extension against `ContextBudgetPerExtension` (default 2000 estimated tokens, one
   token per four characters rounded up). An addition that would cross the budget is dropped and

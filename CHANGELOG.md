@@ -10,6 +10,13 @@ Notable changes to Lunate, one section per release. The format follows
 
 ### Fixed
 
+- The slow-hook warning accused an extension of time the machine spent. A dispatch was timed with a
+  wall clock around the handler, so a loaded thread pool — where a queued continuation waits for a
+  worker — inflated the number: a hook whose own work is nothing reported 648–1392 ms past a 20 ms
+  threshold. A crossing is now only called slow when the pool is not the reason it crossed: while
+  more work waits for the pool than it has workers, the dispatch is counted but never feeds the
+  maximum, the slow count, the warning or the warn-once latch, so a loaded machine cannot name an
+  extension for the scheduler's delay and the first crossing on an idle machine still warns.
 - A code-mode run that produced nothing at all was reported as "The script timed out", which hid
   the cause. A run that never reached the `hello` handshake now says so, naming the runtime, the
   elapsed time and the missing handshake, and every failure path (timeout, runtime that died, failed
