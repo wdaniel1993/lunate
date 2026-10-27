@@ -25,7 +25,9 @@ public sealed class SubagentsRegistrationTests
         Assert.NotNull(spawn.Annotations);
         Assert.False(spawn.Annotations.ReadOnly);
         Assert.True(spawn.Annotations.Destructive);
-        Assert.Equal(ToolRisk.Write, spawn.Risk);
+        // Destructive is execute risk: the new derivation treats a destructive tool as one the
+        // approval panel must always see, not as an ordinary write.
+        Assert.Equal(ToolRisk.Execute, spawn.Risk);
         // Loading succeeded with the tool registered: the manifest declares it (D6 refuses
         // registrations the manifest does not cover).
         Assert.Single(host.Runner.Tools.List());
