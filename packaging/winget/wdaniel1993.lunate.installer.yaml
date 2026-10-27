@@ -9,6 +9,6 @@ NestedInstallerFiles:
 Installers:
   - Architecture: x64
     InstallerUrl: https://github.com/wdaniel1993/lunate/releases/download/v0.1.0/lunate-win-x64.zip
-    InstallerSha256: SHA256_PLACEHOLDER_WIN_X64
+    InstallerSha256: 8C17B0AA6E62102C0FD425B07FB6E0BBF4983BDED552DE93F6EEAEF0242EB12C
 ManifestType: installer
 ManifestVersion: 1.10.0
