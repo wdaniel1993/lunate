@@ -1,4 +1,4 @@
-using System.Diagnostics;
+using Lunate.TestSupport;
 
 namespace Lunate.Roslyn.Tests;
 
@@ -37,79 +37,12 @@ internal static class Fixtures
         return new FixtureSolution(PathIdentity.Canonicalize(root));
     }
 
-    /// <summary>Restores the copied solution offline: package-free fixtures and a cleared source list.</summary>
-    public static void Restore(FixtureSolution fixture, string solutionFileName)
-    {
-        var configPath = Path.Combine(fixture.Root, "NuGet.config");
-        File.WriteAllText(
-            configPath,
-            """
-            <?xml version="1.0" encoding="utf-8"?>
-            <configuration>
-              <packageSources>
-                <clear />
-              </packageSources>
-            </configuration>
-            """
-        );
-
-        var solutionPath = Path.Combine(fixture.Root, solutionFileName);
-        var (exitCode, output) = RunDotnet(
-            fixture.Root,
-            ["restore", solutionPath, "--configfile", configPath, "-p:NuGetAudit=false", "--nologo"]
-        );
-
-        if (exitCode != 0)
-        {
-            throw new InvalidOperationException(
-                $"dotnet restore failed with exit code {exitCode}:\n{output}"
-            );
-        }
-    }
-
-    private static (int ExitCode, string Output) RunDotnet(
-        string workingDirectory,
-        IReadOnlyList<string> arguments
-    )
-    {
-        var dotnet = Environment.GetEnvironmentVariable("DOTNET_HOST_PATH");
-        if (string.IsNullOrEmpty(dotnet) || !File.Exists(dotnet))
-        {
-            dotnet = "dotnet";
-        }
-
-        var startInfo = new ProcessStartInfo(dotnet)
-        {
-            WorkingDirectory = workingDirectory,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-        };
-        foreach (var argument in arguments)
-        {
-            startInfo.ArgumentList.Add(argument);
-        }
-
-        startInfo.Environment["NUGET_PACKAGES"] = Path.Combine(workingDirectory, ".packages");
-        startInfo.Environment["NUGET_HTTP_CACHE_PATH"] = Path.Combine(
-            workingDirectory,
-            ".nuget-http-cache"
-        );
-        startInfo.Environment["MSBUILDDISABLENODEREUSE"] = "1";
-        startInfo.Environment["DOTNET_NOLOGO"] = "1";
-        startInfo.Environment["DOTNET_CLI_TELEMETRY_OPTOUT"] = "1";
-        startInfo.Environment["DOTNET_SKIP_FIRST_TIME_EXPERIENCE"] = "1";
-
-        using var process = Process.Start(startInfo)!;
-        var output = process.StandardOutput.ReadToEnd() + process.StandardError.ReadToEnd();
-        if (!process.WaitForExit(TimeSpan.FromSeconds(120)))
-        {
-            process.Kill(entireProcessTree: true);
-            throw new TimeoutException($"dotnet {string.Join(' ', arguments)} timed out");
-        }
-
-        return (process.ExitCode, output);
-    }
+    /// <summary>
+    /// Restores the copied solution offline (package-free fixtures, cleared source list), reusing the
+    /// artifacts of an identical tree restored earlier in this run instead of one child per test.
+    /// </summary>
+    public static void Restore(FixtureSolution fixture, string solutionFileName) =>
+        FixtureRestore.Restore(fixture.Root, solutionFileName);
 
     private static void CopyDirectory(string source, string destination)
     {
