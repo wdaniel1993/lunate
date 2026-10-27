@@ -38,9 +38,38 @@
 
 ## Install
 
-No release is tagged yet, so build from source. The package-manager channels — Homebrew, Scoop,
-winget, the `curl | sh` and `irm | iex` installers and the `dotnet tool` package — land with the
-first release.
+The first release candidate is published: `v0.1.0-rc.1`. It exists so the package channels can be
+verified against a real build — the first stable release is `0.1.0`.
+
+macOS (arm64) and Linux (x64), through Homebrew:
+
+```bash
+brew tap wdaniel1993/tap
+brew install lunate
+```
+
+Any platform, through the installer (add `--version v0.1.0-rc.1` because a candidate is not
+`latest`):
+
+```bash
+# macOS arm64, Linux x64
+curl -fsSL https://raw.githubusercontent.com/wdaniel1993/lunate/main/install.sh | sh -s -- --version v0.1.0-rc.1
+```
+
+```powershell
+# Windows x64
+irm https://raw.githubusercontent.com/wdaniel1993/lunate/main/install.ps1 -OutFile install.ps1
+./install.ps1 -Version v0.1.0-rc.1
+```
+
+Or as a .NET tool:
+
+```bash
+dotnet tool install --global lunate --version 0.1.0-rc.1
+```
+
+Scoop and winget follow once their manifests are verified. Then `lunate --version`, and `lunate`
+inside a repository.
 
 Prerequisite: the [.NET 10 SDK](https://dotnet.microsoft.com/download), pinned in
 [`global.json`](global.json) at 10.0.401.
