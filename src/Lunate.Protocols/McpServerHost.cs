@@ -273,7 +273,8 @@ public sealed class McpServerHost : IAsyncDisposable
                     namespaceName,
                     exposure,
                     tool,
-                    callTimeout
+                    callTimeout,
+                    log
                 );
                 adapters[key] = adapter;
             }

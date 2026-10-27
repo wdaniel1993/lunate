@@ -1,7 +1,9 @@
+using System.Collections.Concurrent;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Lunate.Agent;
 using Lunate.TestSupport;
+using ModelContextProtocol.Protocol;
 
 namespace Lunate.Protocols.Tests;
 
@@ -65,7 +67,11 @@ public sealed class McpToolAdapterTests
     {
         using var temp = new TempDirectory();
         var marker = temp.File("marker.txt");
-        await using var host = new McpServerHost(McpTestEnvironment.Options(marker));
+        var log = new ConcurrentQueue<string>();
+        await using var host = new McpServerHost(
+            McpTestEnvironment.Options(marker),
+            log: log.Enqueue
+        );
         var slow = (await host.GetToolsAsync(Ct)).Single(tool => tool.Name == "server__slow");
 
         using var cancellation = new CancellationTokenSource();
@@ -84,11 +90,67 @@ public sealed class McpToolAdapterTests
         cancellation.Cancel();
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => call);
-        await TestMcpServer.WaitForMarkerLineAsync(
-            marker,
-            "slow_cancelled",
-            TimeSpan.FromSeconds(15)
+        await AssertCancellationObservedAsync(marker, log);
+        // A cancellation that lands is not news: nothing is reported for it.
+        Assert.Empty(log);
+    }
+
+    [Fact]
+    public async Task Cancellation_notice_that_cannot_be_written_is_reported()
+    {
+        using var temp = new TempDirectory();
+        var log = new ConcurrentQueue<string>();
+        await using var host = new McpServerHost(
+            McpTestEnvironment.Options(temp.File("marker.txt")),
+            log: log.Enqueue
         );
+        var slow = Assert.IsType<McpToolAdapter>(
+            (await host.GetToolsAsync(Ct)).Single(tool => tool.Name == "server__slow")
+        );
+        await host.DisposeAsync();
+
+        // The server is gone by the time the turn is cancelled: nobody is left to notify, and the
+        // call it is still running has nobody waiting for it — the case that must not be silent.
+        var sent = await slow.NotifyCancellationAsync(new RequestId("gone"))
+            .WaitAsync(TimeSpan.FromSeconds(10), Ct);
+
+        Assert.False(sent);
+        Assert.Contains(
+            log,
+            line => line.Contains("notifications/cancelled", StringComparison.Ordinal)
+        );
+    }
+
+    /// <summary>
+    /// Both legs of the cancellation, checked separately: <c>cancel_notice</c> proves the
+    /// notification reached the server, <c>slow_cancelled</c> proves the server then stopped the
+    /// call. A timeout names the leg that lost the message, with whatever the client logged about
+    /// the write — a server that never answers must not read as an unexplained 15 s wait.
+    /// </summary>
+    private static async Task AssertCancellationObservedAsync(
+        string marker,
+        ConcurrentQueue<string> log
+    )
+    {
+        try
+        {
+            await TestMcpServer.WaitForMarkerLineAsync(
+                marker,
+                "cancel_notice",
+                TimeSpan.FromSeconds(15)
+            );
+            await TestMcpServer.WaitForMarkerLineAsync(
+                marker,
+                "slow_cancelled",
+                TimeSpan.FromSeconds(15)
+            );
+        }
+        catch (TimeoutException exception)
+        {
+            Assert.Fail(
+                $"{exception.Message} | client log: {(log.IsEmpty ? "<none>" : string.Join(" | ", log))}"
+            );
+        }
     }
 
     [Fact]

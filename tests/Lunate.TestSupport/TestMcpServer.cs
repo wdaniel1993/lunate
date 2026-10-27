@@ -43,7 +43,29 @@ public static class TestMcpServer
         {
             try
             {
-                return File.Exists(markerPath) ? File.ReadAllLines(markerPath) : [];
+                if (!File.Exists(markerPath))
+                {
+                    return [];
+                }
+
+                // Read with a share mode that permits the server's own append. A read that denies
+                // writing — what File.ReadAllLines asks for — makes the server's next marker write
+                // fail with a sharing violation on Windows, which loses the very line being waited
+                // for; the server keeps running, so the test only sees a timeout.
+                using var stream = new FileStream(
+                    markerPath,
+                    FileMode.Open,
+                    FileAccess.Read,
+                    FileShare.ReadWrite | FileShare.Delete
+                );
+                using var reader = new StreamReader(stream);
+                var lines = new List<string>();
+                while (reader.ReadLine() is { } line)
+                {
+                    lines.Add(line);
+                }
+
+                return lines;
             }
             catch (IOException) when (attempt < 20)
             {

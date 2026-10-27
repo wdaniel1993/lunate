@@ -18,7 +18,9 @@ namespace Lunate.Protocols;
 /// <c>notifications/cancelled</c>
 /// (the SDK does not yet send it for an in-flight call; see modelcontextprotocol/csharp-sdk#1365),
 /// a timeout becomes an error result, and transport or protocol failures become error results
-/// naming the server.
+/// naming the server. The notification goes out on the cancel path, after the pending request has
+/// unwound and while the server is still running the call, so a write that fails leaves the server
+/// running it — that failure is reported through the host's log delegate instead of being dropped.
 /// </summary>
 public sealed class McpToolAdapter : ITool
 {
@@ -28,6 +30,7 @@ public sealed class McpToolAdapter : ITool
     private readonly TimeSpan callTimeout;
     private readonly ToolNamespace toolNamespace;
     private readonly LunateAnnotations? annotations;
+    private readonly Action<string>? log;
 
     internal McpToolAdapter(
         McpClient client,
@@ -35,12 +38,14 @@ public sealed class McpToolAdapter : ITool
         string namespaceName,
         ToolExposure exposure,
         McpClientTool tool,
-        TimeSpan callTimeout
+        TimeSpan callTimeout,
+        Action<string>? log
     )
     {
         this.client = client;
         this.serverName = serverName;
         this.callTimeout = callTimeout;
+        this.log = log;
         toolName = tool.ProtocolTool.Name;
         Description = tool.ProtocolTool.Description ?? string.Empty;
         ParametersSchema = tool.ProtocolTool.InputSchema.Clone();
@@ -91,7 +96,7 @@ public sealed class McpToolAdapter : ITool
         {
             if (ct.IsCancellationRequested)
             {
-                await NotifyCancellationAsync(request.Id).ConfigureAwait(false);
+                _ = await NotifyCancellationAsync(request.Id).ConfigureAwait(false);
                 throw new OperationCanceledException(
                     $"The call to MCP tool '{Name}' was cancelled.",
                     exception,
@@ -101,7 +106,7 @@ public sealed class McpToolAdapter : ITool
 
             if (timeout.IsCancellationRequested)
             {
-                await NotifyCancellationAsync(request.Id).ConfigureAwait(false);
+                _ = await NotifyCancellationAsync(request.Id).ConfigureAwait(false);
                 return Error(
                     string.Create(
                         CultureInfo.InvariantCulture,
@@ -181,7 +186,12 @@ public sealed class McpToolAdapter : ITool
             $"MCP server '{serverName}' returned a malformed result for '{toolName}': {reason}. Check the server; the call result could not be read."
         );
 
-    private async Task NotifyCancellationAsync(RequestId requestId)
+    /// <summary>
+    /// Tells the server the call was cancelled. Returns <see langword="false"/> when the write
+    /// failed, which leaves the server running a call nobody is waiting for — reported to the log
+    /// because the only other trace would be a cancelled turn that never ends.
+    /// </summary>
+    internal async Task<bool> NotifyCancellationAsync(RequestId requestId)
     {
         try
         {
@@ -197,10 +207,14 @@ public sealed class McpToolAdapter : ITool
                     }
                 )
                 .ConfigureAwait(false);
+            return true;
         }
-        catch (Exception)
+        catch (Exception exception)
         {
-            // The server or transport is already gone; there is nobody left to notify.
+            log?.Invoke(
+                $"MCP server '{serverName}': could not send notifications/cancelled for '{toolName}' ({exception.Message}). The call is cancelled on this side; the server may keep running it — check the server if it does not stop."
+            );
+            return false;
         }
     }
 
