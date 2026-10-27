@@ -8,7 +8,7 @@
         <Deterministic>true</Deterministic>
         <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
         <IsPackable>false</IsPackable>
-        <Version>0.1.0</Version>
+        <Version>0.1.0-rc.1</Version>
 
         <!--
             The in-process restore engine ships NuGet.Frameworks as a runtime asset — it parses the
