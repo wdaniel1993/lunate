@@ -58,6 +58,33 @@ jobs:
           ./install.ps1 -Version $env:TAG -Prefix $prefix
           "LUNATE=$prefix\lunate.exe" | Out-File -FilePath $env:GITHUB_ENV -Append
 
+      - name: Install with Homebrew
+        if: runner.os == 'macOS'
+        run: |
+          set -euo pipefail
+          brew tap wdaniel1993/tap
+          HOMEBREW_NO_AUTO_UPDATE=1 brew install wdaniel1993/tap/lunate
+          "$(brew --prefix)/bin/lunate" --version | tee brew-version.txt
+          grep -F "${TAG#v}" brew-version.txt
+        env:
+          TAG: ${{ inputs.tag }}
+
+      - name: Install with Scoop
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          Set-ExecutionPolicy Bypass -Scope Process -Force
+          Invoke-RestMethod https://get.scoop.sh | Invoke-Expression
+          scoop bucket add wdaniel1993 https://github.com/wdaniel1993/scoop-bucket
+          scoop install lunate
+          $version = lunate --version
+          $version
+          if (-not $version.StartsWith($env:TAG.Substring(1))) {
+            throw "scoop's lunate prints '$version', which does not start with $($env:TAG.Substring(1))"
+          }
+
       - name: The installed binary is the tag, and starts
         shell: bash
         env:
