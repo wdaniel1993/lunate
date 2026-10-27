@@ -23,3 +23,6 @@ TestResults/
 
 # opencode local cache
 .opencode/node_modules/
+
+# Per-task worker worktrees (kanban dispatcher creates <repo>/.worktrees/<task-id>)
+.worktrees/
