@@ -1,5 +1,5 @@
 using System.ComponentModel;
-using System.Globalization;
+using System.Diagnostics;
 using System.Text.Json;
 using Lunate.Agent;
 using Lunate.Extensibility.Abstractions;
@@ -85,6 +85,7 @@ internal sealed class CodeModeToolHandler(CodeModeSettings settings, IProcessRun
     {
         var bridge = new CodeModeBridge(context, settings);
         ProcessRunResult run;
+        var elapsed = Stopwatch.StartNew();
         try
         {
             run = await processRunner
@@ -120,74 +121,17 @@ internal sealed class CodeModeToolHandler(CodeModeSettings settings, IProcessRun
                 $"Could not start the code-mode runtime '{settings.Runtime}': {exception.Message}. Install Node.js or point the extension's 'runtime' setting at one; the call was not run."
             );
         }
-
-        return ComposeResult(bridge, run, timeoutSeconds);
-    }
-
-    private ToolResult ComposeResult(
-        CodeModeBridge bridge,
-        ProcessRunResult run,
-        int timeoutSeconds
-    )
-    {
-        string output = bridge.Logs;
-        string stderr = run.Stderr;
-        bool protocolBroken = bridge.ProtocolError is not null || !bridge.HelloSeen;
-        bool failed = bridge.ScriptFailed || (run.ExitCode is { } code && code != 0);
-
-        string text;
-        bool isError;
-        if (run.TimedOut)
+        finally
         {
-            isError = true;
-            text =
-                $"The script timed out after {timeoutSeconds.ToString(CultureInfo.InvariantCulture)}s and its process tree was killed. Simplify the script or raise the timeoutSeconds setting (a call may only tighten it).\nOutput so far:\n{output}";
-        }
-        else if (protocolBroken)
-        {
-            isError = true;
-            string detail = bridge.ProtocolError ?? "the runtime produced no hello handshake";
-            text =
-                $"The script runtime broke the codemode protocol: {detail}. Point the extension's 'runtime' setting at a working Node.js.{StderrSuffix(stderr)}";
-        }
-        else if (failed)
-        {
-            isError = true;
-            text =
-                $"The script failed (exit code {(run.ExitCode ?? 0).ToString(CultureInfo.InvariantCulture)}). Fix the script and retry.\nOutput:\n{output}{StderrSuffix(stderr)}";
-        }
-        else
-        {
-            isError = false;
-            text = bridge.Result is { } result
-                ? result.ValueKind == JsonValueKind.String
-                    ? result.GetString()!
-                    : result.GetRawText()
-                : output;
+            elapsed.Stop();
         }
 
-        JsonElement structured = JsonSerializer.SerializeToElement(
-            new
-            {
-                exitCode = run.ExitCode,
-                timedOut = run.TimedOut,
-                result = bridge.Result,
-                output,
-                stderr,
-                toolCalls = bridge.Calls.Select(call => new
-                {
-                    callId = call.CallId,
-                    tool = call.Tool,
-                    isError = call.IsError,
-                }),
-            }
-        );
-
-        return new ToolResult(
-            text,
-            isError,
-            Details: new CodeModeRunDetails(output, stderr),
-            StructuredContent: structured
+        return CodeModeOutcome.Compose(
+            settings,
+            bridge.Snapshot(),
+            run,
+            timeoutSeconds,
+            elapsed.Elapsed
         );
     }
 
@@ -210,9 +154,6 @@ internal sealed class CodeModeToolHandler(CodeModeSettings settings, IProcessRun
         timeoutSeconds = settings.ClampTimeout(requested);
         return true;
     }
-
-    private static string StderrSuffix(string stderr) =>
-        stderr.Length > 0 ? $"\nstderr:\n{stderr}" : string.Empty;
 
     private static void TryDelete(string path)
     {

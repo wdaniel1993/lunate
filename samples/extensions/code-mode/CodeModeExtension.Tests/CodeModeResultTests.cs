@@ -69,7 +69,7 @@ public sealed class CodeModeResultTests
             bridged: [fixture]
         );
 
-        Assert.False(result.IsError);
+        Assert.False(result.IsError, result.Output);
         Assert.Equal("real", result.Output);
         JsonElement structured = Structured(result);
         Assert.Equal("real", structured.GetProperty("result").GetString());
@@ -84,24 +84,37 @@ public sealed class CodeModeResultTests
     public async Task A_timeout_kills_the_tree_and_reports_timed_out()
     {
         using var temp = new TempDirectory();
-        await using ExtensionTestHost host = TestSupport.CreateHost(temp, timeoutSeconds: 5);
+        // A child that has to be started, run and killed: 20 s leaves room for the spawn on a
+        // loaded runner (the other tests use a ceiling — see TestSupport.DefaultBudgetSeconds).
+        // The script yields once after the pid frame so it is flushed before the loop starves the
+        // event loop: a write to a pipe is asynchronous, and without the yield the pid can still
+        // be queued when the kill lands.
+        await using ExtensionTestHost host = TestSupport.CreateHost(temp, timeoutSeconds: 20);
 
         ToolResult result = await InvokeAsync(
             host,
             """
             console.log(process.pid);
+            await new Promise((resolve) => setTimeout(resolve, 250));
             while (true) {}
             """
         );
 
-        Assert.True(result.IsError);
+        Assert.True(result.IsError, result.Output);
         Assert.Contains("timed out", result.Output, StringComparison.Ordinal);
         JsonElement structured = Structured(result);
         Assert.True(structured.GetProperty("timedOut").GetBoolean());
+        Assert.True(structured.GetProperty("helloSeen").GetBoolean());
         Assert.Equal(JsonValueKind.Null, structured.GetProperty("exitCode").ValueKind);
-        int pid = int.Parse(
-            structured.GetProperty("output").GetString()!.Trim(),
-            CultureInfo.InvariantCulture
+        string output = structured.GetProperty("output").GetString()!;
+        Assert.True(
+            int.TryParse(
+                output.Trim(),
+                NumberStyles.Integer,
+                CultureInfo.InvariantCulture,
+                out int pid
+            ),
+            $"the script never reported its pid before the deadline; the run said:\n{result.Output}"
         );
         await AssertEventuallyDeadAsync(pid);
     }
@@ -216,6 +229,43 @@ public sealed class CodeModeResultTests
         Assert.True(result.IsError);
         Assert.Contains("protocol", result.Output, StringComparison.Ordinal);
         Assert.False(Structured(result).GetProperty("timedOut").GetBoolean());
+    }
+
+    [Fact]
+    public async Task A_runtime_that_stays_silent_is_reported_as_a_runtime_that_never_spoke()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            // There is no shell script to point `runtime` at here; the composition of this case is
+            // covered on every platform by CodeModeOutcomeTests.
+            Assert.Skip("A silent runtime is a shell script here.");
+            return;
+        }
+
+        using var temp = new TempDirectory();
+        string runtime = temp.File("silent-runtime");
+        File.WriteAllText(runtime, "#!/bin/sh\nexec sleep 300\n");
+        File.SetUnixFileMode(
+            runtime,
+            UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute
+        );
+        await using ExtensionTestHost host = TestSupport.CreateHost(
+            temp,
+            runtime: runtime,
+            timeoutSeconds: 5
+        );
+
+        ToolResult result = await InvokeAsync(host, "return 1;");
+
+        // Not one frame, not even the handshake: the run says that instead of folding it into a
+        // script timeout, and the structured result carries the evidence.
+        Assert.True(result.IsError, result.Output);
+        Assert.Contains("wrote nothing", result.Output, StringComparison.Ordinal);
+        Assert.Contains("no hello handshake", result.Output, StringComparison.Ordinal);
+        Assert.DoesNotContain("The script timed out", result.Output, StringComparison.Ordinal);
+        JsonElement structured = Structured(result);
+        Assert.True(structured.GetProperty("timedOut").GetBoolean());
+        Assert.False(structured.GetProperty("helloSeen").GetBoolean());
     }
 
     [Fact]

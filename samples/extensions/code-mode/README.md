@@ -18,7 +18,7 @@ asks before a run.
 | The bridge pipeline | `CodeModeBridge` answers `call` frames with `ToolContext.ExecuteToolAsync`: nested events and session records carry the canonical `"<parent>/<n>"` ids, and a declined destructive nested call is a catchable script error. |
 | Approval isolation | An "always" grant on `codemode__run` covers that tool only; a bridged destructive tool still asks. |
 | The process boundary | `core/process` runs the child with a deadline, a scrubbed environment allow-list, an output cap and a tree kill on timeout or cancel (`CodeModeToolHandler`). |
-| Structured result | `StructuredContent` carries `exitCode`, `timedOut`, the script's `result`, the captured output, `stderr` and the bridged-call list. |
+| Structured result | `StructuredContent` carries `exitCode`, `timedOut`, `helloSeen`, the run's `elapsedMs`, the script's `result`, the captured output, `stderr` and the bridged-call list. |
 | Protocol ownership | The embedded runtime footer emits the `hello` handshake first and turns `console.*` and `process.stdout.write` into `log` frames, so script output can never be mistaken for protocol. |
 
 ## Layout

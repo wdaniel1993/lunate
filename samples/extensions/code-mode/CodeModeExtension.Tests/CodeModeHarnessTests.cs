@@ -145,10 +145,15 @@ public sealed class CodeModeHarnessTests
         ExtensionRunResult result = await host.RunAsync(client, "go", Ct);
 
         // The always grant covers codemode__run silently; the bridged destructive call still asked
-        // and its decline reached the script.
-        ApprovalRequest ask = Assert.Single(approver.Requests);
-        Assert.Equal("destructive-fixture", ask.Tool.Name);
-        Assert.Equal("caught", TestSupport.LastToolResult(client, 1));
+        // and its decline reached the script. The assertion carries the run's own report, so a
+        // spawn that never reached the ask reads as the runtime's diagnostic, not an empty list.
+        string toolResult = TestSupport.LastToolResult(client, 1);
+        Assert.True(
+            approver.Requests.Count == 1,
+            $"the bridged destructive call must ask exactly once; the run said:\n{toolResult}"
+        );
+        Assert.Equal("destructive-fixture", approver.Requests[0].Tool.Name);
+        Assert.Equal("caught", toolResult);
         Assert.Single(Session.Load(result.SessionPath).Entries.OfType<SessionNestedCallsEntry>());
     }
 
@@ -157,10 +162,12 @@ public sealed class CodeModeHarnessTests
     {
         using var temp = new TempDirectory();
         var approver = new BlockingApprover("destructive-fixture");
+        // The budget has to cover the spawn and the bridged ask before it expires (see
+        // TestSupport.DefaultBudgetSeconds).
         await using ExtensionTestHost host = TestSupport.CreateHost(
             temp,
             approver,
-            timeoutSeconds: 8
+            timeoutSeconds: 20
         );
         await host.StartAsync(Ct);
         host.ComposeTools();
@@ -190,8 +197,11 @@ public sealed class CodeModeHarnessTests
         // The child timed out while the bridged ask was pending: the run reported it, and the
         // pending call was cancelled with the child.
         string toolResult = TestSupport.LastToolResult(client, 1);
+        Assert.True(
+            approver.Asked.Task.IsCompleted,
+            $"the script never reached the bridged ask before the deadline; the run said:\n{toolResult}"
+        );
         Assert.Contains("timed out", toolResult, StringComparison.Ordinal);
-        Assert.True(approver.Asked.Task.IsCompleted);
         // A late approval must not run the tool: the ask was cancelled with the child.
         approver.Release(approved: true);
         await Task.Delay(500, Ct);

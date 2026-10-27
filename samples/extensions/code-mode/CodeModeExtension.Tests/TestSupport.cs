@@ -13,6 +13,15 @@ internal static class TestSupport
         Path.Combine(AppContext.BaseDirectory, "CodeModeExtension");
 
     /// <summary>
+    /// The deadline every test that is not itself about the deadline gets. A budget is a ceiling,
+    /// not a measurement: starting a `node` child on a loaded CI runner can take tens of seconds
+    /// (the runner runs every test assembly of the solution at once), and the product's 30 s
+    /// default then turns a slow spawn into a red gate. A generous ceiling costs nothing when the
+    /// child starts at once.
+    /// </summary>
+    internal const int DefaultBudgetSeconds = 120;
+
+    /// <summary>
     /// Creates a host over the built sample extension; the settings file is written before the host
     /// loads the extension (missing keys keep their defaults).
     /// </summary>
@@ -34,7 +43,13 @@ internal static class TestSupport
                 Approver = approver,
             }
         );
-        WriteSettings(host, runtime, timeoutSeconds, maxOutputBytes, maxToolCalls);
+        WriteSettings(
+            host,
+            runtime,
+            timeoutSeconds ?? DefaultBudgetSeconds,
+            maxOutputBytes,
+            maxToolCalls
+        );
         return host;
     }
 
