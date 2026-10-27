@@ -36,6 +36,14 @@ public sealed class InteractiveSessionAutocompleteTests
         );
     }
 
+    /// <summary>
+    /// Waits for the list to close after an edit. The input line and the list are separate fields
+    /// written by one handler, so a poll can land between them and read the new text beside the old
+    /// list; the edit has taken effect when the list has followed it.
+    /// </summary>
+    private static Task WaitUntilClosedAsync(InteractiveSessionHost host) =>
+        host.WaitUntilAsync(() => host.Session.Autocomplete is null);
+
     [Fact]
     public async Task Typing_a_slash_opens_the_command_list()
     {
@@ -90,6 +98,7 @@ public sealed class InteractiveSessionAutocompleteTests
 
         await SendAsync(host, "/help ");
 
+        await WaitUntilClosedAsync(host);
         Assert.Null(host.Session.Autocomplete);
 
         host.Console.Complete();
@@ -101,6 +110,7 @@ public sealed class InteractiveSessionAutocompleteTests
         using InteractiveSessionHost host = await StartAsync();
 
         await SendAsync(host, "/help x");
+        await WaitUntilClosedAsync(host);
         Assert.Null(host.Session.Autocomplete);
 
         host.Console.Send(new KeyEvent(KeyKind.Home, null, false, false, false));
@@ -243,6 +253,7 @@ public sealed class InteractiveSessionAutocompleteTests
         await SendAsync(host, "/comp");
         host.Console.Send(Tab);
         await host.WaitUntilAsync(() => host.Session.Input.Text == "/compact ");
+        await WaitUntilClosedAsync(host);
 
         Assert.Null(host.Session.Autocomplete);
         Assert.Empty(host.Client.Requests);
@@ -258,6 +269,7 @@ public sealed class InteractiveSessionAutocompleteTests
         await SendAsync(host, "/comp");
         host.Console.SendEnter();
         await host.WaitUntilAsync(() => host.Session.Input.Text == "/compact ");
+        await WaitUntilClosedAsync(host);
 
         Assert.Null(host.Session.Autocomplete);
         Assert.Empty(host.Client.Requests);
@@ -354,6 +366,7 @@ public sealed class InteractiveSessionAutocompleteTests
 
         host.Console.Send(Tab);
         await host.WaitUntilAsync(() => host.Session.Input.Text == "/compact ");
+        await WaitUntilClosedAsync(host);
 
         Assert.Null(host.Session.Autocomplete);
         host.Console.Complete();
