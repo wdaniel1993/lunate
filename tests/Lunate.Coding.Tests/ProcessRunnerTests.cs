@@ -221,9 +221,12 @@ public sealed class ProcessRunnerTests
     {
         using var temp = new TempDirectory();
         var seen = new List<string>();
-        // The answer is written with fs.writeSync: process.exit(0) drops a pipe write that is
-        // still pending, which would look like "the child never answered" and cannot be told
-        // apart from a pump bug after the fact.
+        // Every write in this child is fs.writeSync, and that is load-bearing: process.stdout and
+        // process.stderr are asynchronous on a pipe, and a write still queued when the child
+        // exits is dropped. That drops the last line, which looks exactly like "the pump never
+        // got the answer" and cannot be told apart from a pump bug after the fact — this is how
+        // the test lost "got:pong" on a loaded ubuntu runner. writeSync hands the bytes to the
+        // kernel before the statement returns, so no exit path can swallow them.
         //
         // fs.readSync is deliberate too: the pump writes the answer and closes stdin, so with an
         // event-based read ('data' + process.exit) that close can empty Node's event loop first
@@ -232,11 +235,11 @@ public sealed class ProcessRunnerTests
         var request = NodeRequest(
             temp,
             "const fs = require('fs');"
-                + "process.stdout.write('ping\\n');"
+                + "fs.writeSync(1, 'ping\\n');"
                 + "const buffer = Buffer.alloc(1024);"
                 + "const read = fs.readSync(0, buffer, 0, buffer.length, null);"
-                + "process.stderr.write('read=' + read + '\\n');"
-                + "process.stdout.write('got:' + buffer.toString('utf8', 0, read).trim() + '\\n');"
+                + "fs.writeSync(2, 'read=' + read + '\\n');"
+                + "fs.writeSync(1, 'got:' + buffer.toString('utf8', 0, read).trim() + '\\n');"
         ) with
         {
             LineHandler = (line, _) =>
@@ -256,6 +259,39 @@ public sealed class ProcessRunnerTests
                 + $"stderr=[{result.Stderr.ReplaceLineEndings("|")}]"
         );
         Assert.Contains("got:pong", result.Stdout);
+    }
+
+    [Fact]
+    public async Task A_child_that_stops_reading_answers_still_has_every_line_delivered()
+    {
+        using var temp = new TempDirectory();
+        var seen = new List<string>();
+        // The child's stdin is gone before it prints, so the pump's answer write lands on a
+        // broken pipe. That ends the answers, not the transcript: the lines the child wrote are
+        // the run's output. This is the shape a fast child produces on a loaded runner — it
+        // exits between the answer and the newline that follows it (the ubuntu flake reported
+        // stderr read=4 and then lost the second line), and abandoning stdout there makes a
+        // healthy child look like one that never answered.
+        var request = NodeRequest(
+            temp,
+            "const fs = require('fs');"
+                + "fs.closeSync(0);"
+                + "fs.writeSync(1, 'ping\\n');"
+                + "fs.writeSync(1, 'got:no-answer\\n');"
+        ) with
+        {
+            LineHandler = (line, _) =>
+            {
+                seen.Add(line);
+                return Task.FromResult<string?>(line == "ping" ? "pong" : null);
+            },
+        };
+
+        ProcessRunResult result = await RunAsync(temp, request);
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal("ping\ngot:no-answer\n", result.Stdout.ReplaceLineEndings("\n"));
+        Assert.Equal(["ping", "got:no-answer"], seen);
     }
 
     [Fact]

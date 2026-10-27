@@ -138,7 +138,9 @@ internal sealed partial class ProcessRunner : IProcessRunner
     /// <summary>
     /// Serves every stdout line to the handler in order and writes each non-null answer back to
     /// the child's stdin as one flushed line. Delivery is never capped; only the accumulated text
-    /// is. A closed pipe on either side ends the pump.
+    /// is. A closed stdout ends the pump. A closed stdin only ends the answers: a child that exits
+    /// (or stops reading) while an answer is in flight still has every line it wrote delivered,
+    /// because its output is the run's result and the pipe it closed is not evidence about it.
     /// </summary>
     private static async Task<(string Text, bool Capped)> PumpLinesAsync(
         StreamReader reader,
@@ -151,6 +153,7 @@ internal sealed partial class ProcessRunner : IProcessRunner
         var builder = new StringBuilder();
         var bytes = 0;
         var capped = false;
+        var stdinOpen = true;
         while (true)
         {
             string? line;
@@ -200,7 +203,7 @@ internal sealed partial class ProcessRunner : IProcessRunner
                 break;
             }
 
-            if (response is null)
+            if (response is null || !stdinOpen)
             {
                 continue;
             }
@@ -213,7 +216,11 @@ internal sealed partial class ProcessRunner : IProcessRunner
             }
             catch (Exception exception) when (IsPipeClosed(exception))
             {
-                break;
+                // The child closed its stdin — usually because it exited while the answer was in
+                // flight (two writes: the answer, then the newline). Keep draining stdout: the
+                // lines it wrote before exiting are the run's output, and abandoning the pump
+                // here loses them, which is indistinguishable from a child that never answered.
+                stdinOpen = false;
             }
         }
 
