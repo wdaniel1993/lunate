@@ -181,14 +181,11 @@ public sealed class InteractiveSessionEndToEndTests
         // eventually consistent on NTFS under a scanning agent: wait for the second file rather
         // than assume the move is visible in the same frame. A missing file still fails, with the
         // directory contents in the message.
-        await host.WaitUntilAsync(
-            () =>
-            {
-                host.Advance(33);
-                return Directory.GetFiles(host.Temp.File("sessions"), "*.jsonl").Length == 2;
-            },
-            TimeSpan.FromSeconds(10)
-        );
+        await host.WaitUntilAsync(() =>
+        {
+            host.Advance(33);
+            return Directory.GetFiles(host.Temp.File("sessions"), "*.jsonl").Length == 2;
+        });
         string[] sessionFiles = Directory.GetFiles(host.Temp.File("sessions"), "*.jsonl");
         Assert.True(
             sessionFiles.Length == 2,
@@ -266,13 +263,14 @@ public sealed class InteractiveSessionEndToEndTests
     /// </summary>
     private static async Task<string> CaptureFrameAsync(InteractiveSessionHost host)
     {
-        string previous = string.Empty;
-        for (var attempt = 0; attempt < 100; attempt++)
+        string? previous = null;
+        DateTime deadline = DateTime.UtcNow + WaitBudgets.InProcess;
+        while (DateTime.UtcNow < deadline)
         {
             host.Advance(33);
             await Task.Delay(1, TestContext.Current.CancellationToken);
             string current = Escape(CanonicalFrame(host.LastFrame));
-            if (attempt > 0 && string.Equals(current, previous, StringComparison.Ordinal))
+            if (previous is not null && string.Equals(current, previous, StringComparison.Ordinal))
             {
                 return current;
             }
@@ -280,7 +278,7 @@ public sealed class InteractiveSessionEndToEndTests
             previous = current;
         }
 
-        return previous;
+        return previous ?? string.Empty;
     }
 
     /// <summary>

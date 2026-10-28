@@ -56,7 +56,7 @@ public sealed class SettingsStoreReadRaceTests
         // The first read must land before the first save, so at least one read overlaps the writes
         // instead of every read racing a finished file.
         Assert.True(
-            firstRead.Wait(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken),
+            firstRead.Wait(WaitBudgets.InProcess, TestContext.Current.CancellationToken),
             "the reader never completed a read"
         );
 

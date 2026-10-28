@@ -46,10 +46,7 @@ public sealed class ApprovalArmSeamProbe
                 }
 
                 host.Console.Complete();
-                await run.WaitAsync(
-                    TimeSpan.FromSeconds(10),
-                    TestContext.Current.CancellationToken
-                );
+                await run.WaitAsync(WaitBudgets.CrossTurn, TestContext.Current.CancellationToken);
             }
         }
     }
@@ -81,10 +78,7 @@ public sealed class ApprovalArmSeamProbe
                 host.Console.SendText("y");
                 await host.WaitUntilAsync(() => host.Session.PendingApproval is null);
                 host.Console.Complete();
-                await run.WaitAsync(
-                    TimeSpan.FromSeconds(10),
-                    TestContext.Current.CancellationToken
-                );
+                await run.WaitAsync(WaitBudgets.CrossTurn, TestContext.Current.CancellationToken);
             }
         }
     }
@@ -95,7 +89,7 @@ public sealed class ApprovalArmSeamProbe
     /// </summary>
     private static Task WaitForPanelAsync(InteractiveSessionHost host)
     {
-        DateTime deadline = DateTime.UtcNow + TimeSpan.FromSeconds(10);
+        DateTime deadline = DateTime.UtcNow + WaitBudgets.CrossTurn;
         while (host.Session.PendingApproval is null)
         {
             if (DateTime.UtcNow > deadline)

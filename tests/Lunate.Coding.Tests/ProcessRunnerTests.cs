@@ -300,11 +300,10 @@ public sealed class ProcessRunnerTests
         string pidFile = temp.File("grandchild.pid");
         DateTime commandStarted = DateTime.Now;
 
-        // Windows needs a longer window: PowerShell's cold start on a loaded runner can exceed
-        // the short Unix timeout, so the pid would never be written before the tree is killed.
-        TimeSpan timeout = OperatingSystem.IsWindows()
-            ? TimeSpan.FromSeconds(30)
-            : TimeSpan.FromSeconds(2);
+        // The timeout that makes the kill fire is a tree-kill budget: it outlasts a cold
+        // PowerShell start on a loaded runner while staying short enough that the assertion, not
+        // the timeout, is what the test spends its time on.
+        TimeSpan timeout = WaitBudgets.TreeKillTimeout;
 
         // Pinned while the command still runs: read after the kill, the number in the file can
         // already name a process this test never started (see ChildProcessProbe).
@@ -333,7 +332,7 @@ public sealed class ProcessRunnerTests
         DateTime commandStarted = DateTime.Now;
 
         Task<ProcessRunResult> execution = runner.RunAsync(
-            TreeRequest(temp, TimeSpan.FromSeconds(60)),
+            TreeRequest(temp, WaitBudgets.CommandRun),
             cts.Token
         );
         ChildProcess grandchild = await ChildProcessProbe.AwaitWrittenAsync(
@@ -361,7 +360,7 @@ public sealed class ProcessRunnerTests
         TempDirectory temp,
         string script,
         TimeSpan? timeout = null
-    ) => new("node", ["-e", script], temp.Root, Timeout: timeout ?? TimeSpan.FromSeconds(60));
+    ) => new("node", ["-e", script], temp.Root, Timeout: timeout ?? WaitBudgets.CommandRun);
 
     private static ProcessRunRequest TreeRequest(TempDirectory temp, TimeSpan timeout) =>
         OperatingSystem.IsWindows()

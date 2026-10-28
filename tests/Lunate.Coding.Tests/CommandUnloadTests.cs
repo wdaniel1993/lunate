@@ -56,9 +56,9 @@ public sealed class CommandUnloadTests
         );
         await WaitUntilAsync(() => log.Contains("command ping invoked with 'now'"));
 
-        await host.UnloadAsync("alpha").AsTask().WaitAsync(TimeSpan.FromSeconds(10), Ct);
+        await host.UnloadAsync("alpha").AsTask().WaitAsync(WaitBudgets.InProcess, Ct);
 
-        CommandResult cancelled = await invocation.WaitAsync(TimeSpan.FromSeconds(10), Ct);
+        CommandResult cancelled = await invocation.WaitAsync(WaitBudgets.InProcess, Ct);
         Assert.Null(cancelled.Message);
         Assert.Contains(
             notices,
@@ -110,16 +110,16 @@ public sealed class CommandUnloadTests
         await WaitUntilAsync(() => log.Contains("command ping invoked with 'quit'"));
 
         // The quit path: the TUI is torn down, then the host stops.
-        await host.DisposeAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(10), Ct);
+        await host.DisposeAsync().AsTask().WaitAsync(WaitBudgets.InProcess, Ct);
 
-        CommandResult result = await invocation.WaitAsync(TimeSpan.FromSeconds(10), Ct);
+        CommandResult result = await invocation.WaitAsync(WaitBudgets.InProcess, Ct);
         Assert.Null(result.Message);
         Assert.Empty(notices);
     }
 
     private static async Task WaitUntilAsync(Func<bool> condition)
     {
-        DateTime deadline = DateTime.UtcNow + TimeSpan.FromSeconds(10);
+        DateTime deadline = DateTime.UtcNow + WaitBudgets.InProcess;
         while (!condition())
         {
             if (DateTime.UtcNow > deadline)

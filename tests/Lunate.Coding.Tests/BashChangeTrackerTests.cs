@@ -9,13 +9,6 @@ namespace Lunate.Coding.Tests;
 /// </summary>
 public sealed class BashChangeTrackerTests
 {
-    /// <summary>
-    /// The git window for these tests: a cold git start on a loaded CI runner can exceed the
-    /// product's two-second default, and scan trouble yields an empty result that would fail
-    /// these diff-rule assertions for the wrong reason.
-    /// </summary>
-    private static readonly TimeSpan ScanWindow = TimeSpan.FromSeconds(30);
-
     private static readonly CancellationToken Ct = TestContext.Current.CancellationToken;
 
     [Fact]
@@ -45,7 +38,7 @@ public sealed class BashChangeTrackerTests
         repo.Write("a.cs", "class A { }\n");
         repo.CommitAll();
         repo.Write("a.cs", "class A { int x; }\n");
-        var tracker = new BashChangeTracker(scanTimeout: ScanWindow);
+        var tracker = new BashChangeTracker(scanTimeout: WaitBudgets.CommandRun);
 
         IReadOnlyList<BashChangeTracker.Change> first = await tracker.ObserveAsync(
             "run_1",
@@ -68,7 +61,7 @@ public sealed class BashChangeTrackerTests
         using var repo = new GitTestRepo();
         repo.Write("a.cs", "class A { }\n");
         repo.CommitAll();
-        var tracker = new BashChangeTracker(scanTimeout: ScanWindow);
+        var tracker = new BashChangeTracker(scanTimeout: WaitBudgets.CommandRun);
         await tracker.ObserveAsync("run_1", repo.Root, Ct);
 
         repo.Write("b.cs", "class B { }\n");
@@ -94,7 +87,7 @@ public sealed class BashChangeTrackerTests
         repo.Write("a.cs", "class A { }\n");
         repo.CommitAll();
         repo.Write("a.cs", "class A { int dirty; }\n");
-        var tracker = new BashChangeTracker(scanTimeout: ScanWindow);
+        var tracker = new BashChangeTracker(scanTimeout: WaitBudgets.CommandRun);
         await tracker.ObserveAsync("run_1", repo.Root, Ct);
 
         repo.Write("unrelated.cs", "class U { }\n");
@@ -117,7 +110,7 @@ public sealed class BashChangeTrackerTests
         repo.Write("a.cs", "class A { }\n");
         repo.CommitAll();
         string file = repo.Write("a.cs", "class A { int x; }\n");
-        var tracker = new BashChangeTracker(scanTimeout: ScanWindow);
+        var tracker = new BashChangeTracker(scanTimeout: WaitBudgets.CommandRun);
         await tracker.ObserveAsync("run_1", repo.Root, Ct);
 
         DateTime stamp = File.GetLastWriteTimeUtc(file);
@@ -139,7 +132,7 @@ public sealed class BashChangeTrackerTests
         repo.Write("a.cs", "class A { }\n");
         repo.CommitAll();
         repo.Write("a.cs", "class A { int dirty; }\n");
-        var tracker = new BashChangeTracker(scanTimeout: ScanWindow);
+        var tracker = new BashChangeTracker(scanTimeout: WaitBudgets.CommandRun);
         await tracker.ObserveAsync("run_1", repo.Root, Ct);
 
         repo.Run("checkout", "--", "a.cs");
@@ -159,7 +152,7 @@ public sealed class BashChangeTrackerTests
         repo.Write("a.cs", "class A { }\n");
         repo.CommitAll();
         repo.Write("a.cs", "class A { int committed; }\n");
-        var tracker = new BashChangeTracker(scanTimeout: ScanWindow);
+        var tracker = new BashChangeTracker(scanTimeout: WaitBudgets.CommandRun);
         await tracker.ObserveAsync("run_1", repo.Root, Ct);
 
         repo.CommitAll("the dirty file");
@@ -182,7 +175,7 @@ public sealed class BashChangeTrackerTests
         repo.Run("checkout", "-q", "-b", "feature");
         repo.Write("a.cs", "class A { int feature; }\n");
         repo.CommitAll("feature work");
-        var tracker = new BashChangeTracker(scanTimeout: ScanWindow);
+        var tracker = new BashChangeTracker(scanTimeout: WaitBudgets.CommandRun);
         await tracker.ObserveAsync("run_1", repo.Root, Ct);
 
         repo.Run("checkout", "-q", "-");
@@ -201,7 +194,7 @@ public sealed class BashChangeTrackerTests
         using var repo = new GitTestRepo();
         repo.Write("a.cs", "class A { }\n");
         repo.CommitAll();
-        var tracker = new BashChangeTracker(scanTimeout: ScanWindow);
+        var tracker = new BashChangeTracker(scanTimeout: WaitBudgets.CommandRun);
         await tracker.ObserveAsync("run_1", repo.Root, Ct);
 
         repo.Write("newdir/inner.cs", "class Inner { }\n");
@@ -221,7 +214,7 @@ public sealed class BashChangeTrackerTests
         using var repo = new GitTestRepo();
         repo.Write("a.cs", "class A { }\n");
         repo.CommitAll();
-        var tracker = new BashChangeTracker(scanTimeout: ScanWindow);
+        var tracker = new BashChangeTracker(scanTimeout: WaitBudgets.CommandRun);
         await tracker.ObserveAsync("run_1", repo.Root, Ct);
 
         File.Move(Path.Combine(repo.Root, "a.cs"), Path.Combine(repo.Root, "b.cs"));
@@ -246,7 +239,7 @@ public sealed class BashChangeTrackerTests
         using var repo = new GitTestRepo();
         repo.Write("a.cs", "class A { }\n");
         repo.CommitAll();
-        var tracker = new BashChangeTracker(scanTimeout: ScanWindow);
+        var tracker = new BashChangeTracker(scanTimeout: WaitBudgets.CommandRun);
         await tracker.ObserveAsync("run_1", repo.Root, Ct);
 
         repo.Run("mv", "a.cs", "renamed.cs");
@@ -270,7 +263,7 @@ public sealed class BashChangeTrackerTests
     public async Task A_non_repository_root_yields_nothing()
     {
         using var temp = new TempDirectory();
-        var tracker = new BashChangeTracker(scanTimeout: ScanWindow);
+        var tracker = new BashChangeTracker(scanTimeout: WaitBudgets.CommandRun);
 
         IReadOnlyList<BashChangeTracker.Change> changes = await tracker.ObserveAsync(
             "run_1",
@@ -289,7 +282,7 @@ public sealed class BashChangeTrackerTests
         repo.Write("outside.cs", "class Outside { }\n");
         repo.CommitAll();
         string sub = Path.Combine(repo.Root, "sub");
-        var tracker = new BashChangeTracker(scanTimeout: ScanWindow);
+        var tracker = new BashChangeTracker(scanTimeout: WaitBudgets.CommandRun);
         await tracker.ObserveAsync("run_1", sub, Ct);
 
         repo.Write("sub/a.cs", "class A { int changed; }\n");
@@ -309,7 +302,7 @@ public sealed class BashChangeTrackerTests
         using var repo = new GitTestRepo();
         repo.Write("a.cs", "class A { }\n");
         repo.CommitAll();
-        var tracker = new BashChangeTracker(scanTimeout: ScanWindow);
+        var tracker = new BashChangeTracker(scanTimeout: WaitBudgets.CommandRun);
         await tracker.ObserveAsync("run_1", repo.Root, Ct);
         repo.Write("a.cs", "class A { int x; }\n");
         Assert.Single(await tracker.ObserveAsync("run_1", repo.Root, Ct));
@@ -331,7 +324,7 @@ public sealed class BashChangeTrackerTests
         using var repo = new GitTestRepo();
         repo.Write("a.cs", "class A { }\n");
         repo.CommitAll();
-        var tracker = new BashChangeTracker(scanTimeout: ScanWindow);
+        var tracker = new BashChangeTracker(scanTimeout: WaitBudgets.CommandRun);
         await tracker.ObserveAsync("run_1", repo.Root, Ct);
         repo.Write("a.cs", "class A { int x; }\n");
         Assert.Single(await tracker.ObserveAsync("run_1", repo.Root, Ct));
@@ -362,7 +355,7 @@ public sealed class BashChangeTrackerTests
         using var repo = new GitTestRepo();
         repo.Write("a.cs", "class A { }\n");
         repo.CommitAll();
-        var tracker = new BashChangeTracker(scanTimeout: ScanWindow);
+        var tracker = new BashChangeTracker(scanTimeout: WaitBudgets.CommandRun);
         await tracker.ObserveAsync("run_1", repo.Root, Ct);
 
         repo.Run("mv", "a.cs", "b.cs");
@@ -388,7 +381,7 @@ public sealed class BashChangeTrackerTests
         using var repo = new GitTestRepo();
         repo.Write("a.cs", "class A { }\n");
         repo.CommitAll();
-        var tracker = new BashChangeTracker(scanTimeout: ScanWindow);
+        var tracker = new BashChangeTracker(scanTimeout: WaitBudgets.CommandRun);
         await tracker.ObserveAsync("run_old", repo.Root, Ct);
         repo.Write("a.cs", "class A { int x; }\n");
         Assert.Single(await tracker.ObserveAsync("run_old", repo.Root, Ct));

@@ -58,7 +58,7 @@ public sealed class RoslynWorkspaceTests
         JsonElement args = JsonSerializer.SerializeToElement(new { scope = "solution" });
         return await diagnostics
             .ExecuteAsync(args, new ToolContext(root, events), Ct)
-            .WaitAsync(TimeSpan.FromMinutes(2), Ct);
+            .WaitAsync(WaitBudgets.Diagnostics, Ct);
     }
 
     private sealed class NullAgentEvents : IAgentEvents

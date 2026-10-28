@@ -51,7 +51,7 @@ public sealed class McpToolSetTests
         );
 
         await set.DisposeAsync();
-        await TestMcpServer.WaitForProcessExitAsync(pid, TimeSpan.FromSeconds(10));
+        await TestMcpServer.WaitForProcessExitAsync(pid, WaitBudgets.ProcessExit);
     }
 
     [Fact]
@@ -261,7 +261,7 @@ public sealed class McpToolSetTests
 
         // The server's tools/list_changed notification reaches this set's consumer, named by server.
         (string server, IReadOnlyList<ITool> updated) = await changed.Task.WaitAsync(
-            TimeSpan.FromSeconds(30),
+            WaitBudgets.SpawnWindow,
             Ct
         );
         Assert.Equal("test", server);

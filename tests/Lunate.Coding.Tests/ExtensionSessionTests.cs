@@ -177,7 +177,7 @@ public sealed class ExtensionSessionTests
             },
             Ct
         );
-        await entered.Task.WaitAsync(TimeSpan.FromSeconds(5), Ct);
+        await entered.Task.WaitAsync(WaitBudgets.InProcess, Ct);
 
         Task<ToolResult> write = new WriteTool(workspace).ExecuteAsync(
             Args("""{"path":"shared.txt","content":"core\n"}"""),
@@ -192,8 +192,8 @@ public sealed class ExtensionSessionTests
         Assert.Equal("start\n", File.ReadAllText(path));
 
         release.SetResult();
-        await scheduled.WaitAsync(TimeSpan.FromSeconds(5), Ct);
-        ToolResult result = await write.WaitAsync(TimeSpan.FromSeconds(5), Ct);
+        await scheduled.WaitAsync(WaitBudgets.InProcess, Ct);
+        ToolResult result = await write.WaitAsync(WaitBudgets.InProcess, Ct);
         Assert.False(result.IsError);
         Assert.Equal("core\n", File.ReadAllText(path));
     }
@@ -588,7 +588,7 @@ public sealed class ExtensionSessionTests
 
     private static async Task WaitUntilAsync(Func<bool> condition)
     {
-        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(30);
+        DateTime deadline = DateTime.UtcNow + WaitBudgets.InProcess;
         while (DateTime.UtcNow < deadline)
         {
             if (condition())
@@ -599,7 +599,7 @@ public sealed class ExtensionSessionTests
             await Task.Delay(50, Ct);
         }
 
-        Assert.Fail("condition not reached within 30s");
+        Assert.Fail($"condition not reached within {WaitBudgets.InProcess.TotalSeconds:0}s");
     }
 
     private static JsonElement Args(string json) => JsonDocument.Parse(json).RootElement.Clone();

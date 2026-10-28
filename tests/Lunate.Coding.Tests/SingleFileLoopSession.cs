@@ -10,10 +10,10 @@ namespace Lunate.Coding.Tests;
 internal static class SingleFileLoopSession
 {
     /// <summary>
-    /// The window for waits that depend on a compile: two Roslyn compiles against a reference
-    /// pack run inside these tests, and a cold CI runner needs more than a frame's 5 s.
+    /// The window for waits that depend on a compile. The number lives in
+    /// <see cref="WaitBudgets.Compile"/>, with the other ceilings; this name is the fixture's.
     /// </summary>
-    internal static readonly TimeSpan CompileWait = TimeSpan.FromSeconds(90);
+    internal static readonly TimeSpan CompileWait = WaitBudgets.Compile;
 
     /// <summary>
     /// The session's default approval policy asks before a write; these tests are about the

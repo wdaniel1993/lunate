@@ -58,7 +58,7 @@ public sealed class InteractiveSessionActivityTests
         host.Console.SendText("go");
         host.Console.SendEnter();
         await gate.Reached.Task.WaitAsync(
-            TimeSpan.FromSeconds(10),
+            WaitBudgets.InProcess,
             TestContext.Current.CancellationToken
         );
         await host.WaitUntilAsync(() =>
@@ -99,7 +99,7 @@ public sealed class InteractiveSessionActivityTests
         host.Console.SendText("two");
         host.Console.SendEnter();
         await gate.Reached.Task.WaitAsync(
-            TimeSpan.FromSeconds(10),
+            WaitBudgets.InProcess,
             TestContext.Current.CancellationToken
         );
         await host.WaitUntilAsync(() =>
@@ -163,7 +163,7 @@ public sealed class InteractiveSessionActivityTests
         host.Console.SendEnter();
 
         await gate.ReasoningReached.Task.WaitAsync(
-            TimeSpan.FromSeconds(10),
+            WaitBudgets.InProcess,
             TestContext.Current.CancellationToken
         );
         await host.WaitUntilAsync(() =>
@@ -178,7 +178,7 @@ public sealed class InteractiveSessionActivityTests
 
         gate.ReleaseReasoning();
         await gate.ToolReached.Task.WaitAsync(
-            TimeSpan.FromSeconds(10),
+            WaitBudgets.InProcess,
             TestContext.Current.CancellationToken
         );
         await host.WaitUntilAsync(() =>

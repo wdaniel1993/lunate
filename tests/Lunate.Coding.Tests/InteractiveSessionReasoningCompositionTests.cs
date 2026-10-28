@@ -35,7 +35,7 @@ public sealed class InteractiveSessionReasoningCompositionTests
         // The harness awaits the provider-stream hook per update, so the stream parks inside the
         // reasoning span: the live frame is asserted while the block is deterministically live.
         await gate.Reached.Task.WaitAsync(
-            TimeSpan.FromSeconds(10),
+            WaitBudgets.InProcess,
             TestContext.Current.CancellationToken
         );
         await host.WaitUntilAsync(() =>

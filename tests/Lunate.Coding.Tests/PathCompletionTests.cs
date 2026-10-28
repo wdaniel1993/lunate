@@ -39,7 +39,7 @@ public sealed class PathCompletionTests
     /// <summary>Nudges the cursor (a no-op at the end) until the lazily built index publishes.</summary>
     private static async Task<AutocompleteState> WaitForFileListAsync(InteractiveSessionHost host)
     {
-        DateTime deadline = DateTime.UtcNow + TimeSpan.FromSeconds(10);
+        DateTime deadline = DateTime.UtcNow + WaitBudgets.IndexReady;
         while (DateTime.UtcNow < deadline)
         {
             host.Console.Send(Right);
@@ -124,7 +124,7 @@ public sealed class PathCompletionTests
 
         // The lazily built index publishes after the cursor settled; each Left/Right pair
         // re-runs the trigger at the same position until the list opens.
-        DateTime deadline = DateTime.UtcNow + TimeSpan.FromSeconds(10);
+        DateTime deadline = DateTime.UtcNow + WaitBudgets.IndexReady;
         while (host.Session.Autocomplete is null && DateTime.UtcNow < deadline)
         {
             host.Console.Send(Left);

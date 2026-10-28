@@ -16,8 +16,6 @@ public sealed class ExtensionReloadCompositionTests
 {
     private static readonly CancellationToken Ct = TestContext.Current.CancellationToken;
 
-    private static readonly TimeSpan Wait = TimeSpan.FromSeconds(30);
-
     /// <summary>A single-file extension whose build contributes one command, <c>/ping</c>.</summary>
     private const string Source = """
         #:extension acme-tools@1.0.0
@@ -57,7 +55,7 @@ public sealed class ExtensionReloadCompositionTests
         Assert.DoesNotContain("reloaded — build", host.Frames, StringComparison.Ordinal);
 
         host.Client.Release(1);
-        await host.WaitUntilAsync(() => !host.Session.IsRunning, TimeSpan.FromSeconds(30));
+        await host.WaitUntilAsync(() => !host.Session.IsRunning);
         host.Console.SendText("/quit");
         host.Console.SendEnter();
         await run;
@@ -82,19 +80,19 @@ public sealed class ExtensionReloadCompositionTests
         // Before the reload the extension is not loaded, so the command is not a command.
         host.Console.SendText("/ping");
         host.Console.SendEnter();
-        await host.WaitForFrameAsync("unknown command", Wait);
+        await host.WaitForFrameAsync("unknown command");
 
         host.Console.SendText("/extensions reload acme-tools");
         host.Console.SendEnter();
-        await host.WaitForFrameAsync("Trust the single-file extension 'acme-tools'", Wait);
+        await host.WaitForFrameAsync("Trust the single-file extension 'acme-tools'");
         host.Console.SendText("y");
-        await host.WaitForFrameAsync("extension 'acme-tools' reloaded — build ", Wait);
+        await host.WaitForFrameAsync("extension 'acme-tools' reloaded — build ");
 
         // The reloaded build's command source is in the registry the session dispatches against —
         // the half that made a newly live command invisible until the next session.
         host.Console.SendText("/ping");
         host.Console.SendEnter();
-        await host.WaitForFrameAsync("ping acme-tools:", Wait);
+        await host.WaitForFrameAsync("ping acme-tools:");
 
         host.Console.SendText("/quit");
         host.Console.SendEnter();

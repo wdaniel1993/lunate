@@ -23,9 +23,8 @@ public sealed class InteractiveSessionRemoteTests
         host.Console.Size = new ConsoleSize(600, 24);
         Task run = host.RunAsync();
 
-        await host.WaitUntilAsync(
-            () => host.Session.IsComposed || host.Diagnostics.Length > 0 || run.IsFaulted,
-            timeout: TimeSpan.FromSeconds(5)
+        await host.WaitUntilAsync(() =>
+            host.Session.IsComposed || host.Diagnostics.Length > 0 || run.IsFaulted
         );
         Assert.False(run.IsFaulted, $"run faulted: {run.Exception}");
         Assert.True(host.Session.IsComposed, $"compose failed: {host.Diagnostics}");
@@ -33,7 +32,7 @@ public sealed class InteractiveSessionRemoteTests
         // asynchronously, so the marker appears in the spawn window.
         try
         {
-            await host.WaitUntilAsync(() => File.Exists(marker), timeout: TimeSpan.FromSeconds(15));
+            await host.WaitUntilAsync(() => File.Exists(marker), WaitBudgets.SpawnWindow);
         }
         catch (TimeoutException)
         {

@@ -42,30 +42,29 @@ public sealed class SlowHookNoticeTests
         await host.Client.WaitForCallAsync(1);
         host.Console.SendText("steer");
         host.Console.SendEnter();
-        // The de-AT pass runs the whole solution's process-spawning suites in parallel; on a loaded
-        // runner the 80 ms hook plus the frame pump can starve well past the in-process default, so
-        // this wait uses the spawn-window idiom rather than the 10 s in-process one.
-        await host.WaitUntilAsync(
-            () =>
-            {
-                host.Advance(33);
-                return host.Frames.Contains("above the slow threshold", StringComparison.Ordinal);
-            },
-            TimeSpan.FromSeconds(30)
-        );
+        // The notice is an event on the journal, not a number in this file: the wait pumps a frame
+        // per poll and ends on the paint the slot records. The frame literal it replaces was the
+        // one that failed the de-AT pass of #255 at 30.49 s — the runner spent forty-odd seconds
+        // starting this turn behind the rest of the solution's process-spawning suites, so the
+        // clock expired while the session was doing exactly what the test asked.
+        await host.WaitUntilAsync(() =>
+        {
+            host.Advance(33);
+            return log.Changes(NoticeSlotChange.Painted).Count == 1;
+        });
 
         // The slot's own history, so a red says whether the notice was never raised or raised and
-        // then taken: one post, one paint, and the frame carried the text.
+        // then taken: one post, one paint, and the paint carried the text.
         Assert.Single(log.Changes(NoticeSlotChange.Posted));
-        Assert.Single(log.Changes(NoticeSlotChange.Painted));
+        NoticeSlotEntry painted = Assert.Single(log.Changes(NoticeSlotChange.Painted));
+        Assert.Contains("above the slow threshold", painted.Text, StringComparison.Ordinal);
         Assert.Contains("hook InputReceived", host.Frames, StringComparison.Ordinal);
         Assert.Contains("ext-slow", host.Frames, StringComparison.Ordinal);
         Assert.Contains("/extensions", host.Frames, StringComparison.Ordinal);
 
         host.Client.Release(1);
-        // The queued follow-up starts after the turn unwinds; a loaded runner has starved that
-        // handover past 30 s, so it gets the spawn-window idiom too.
-        await host.Client.WaitForCallAsync(2, TimeSpan.FromSeconds(30));
+        // The queued follow-up starts after the turn unwinds.
+        await host.Client.WaitForCallAsync(2);
         host.Console.Complete();
         await run;
     }

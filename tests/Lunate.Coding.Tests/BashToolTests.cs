@@ -131,7 +131,7 @@ public sealed class BashToolTests
     {
         using var temp = new TempDirectory();
 
-        var result = await RunAsync(temp, "cat; echo after", TimeSpan.FromSeconds(10));
+        var result = await RunAsync(temp, "cat; echo after", WaitBudgets.CommandRun);
 
         Assert.False(result.IsError);
         Assert.Equal("after\nexit code: 0", result.Output);
@@ -160,7 +160,7 @@ public sealed class BashToolTests
         var result = await RunAsync(
             temp,
             "(sleep 2) & yes 'filler' | head -c 1200000; wait",
-            TimeSpan.FromSeconds(30)
+            WaitBudgets.CommandRun
         );
 
         Assert.False(result.IsError);
@@ -185,13 +185,11 @@ public sealed class BashToolTests
         var pidFile = temp.File("grandchild.pid");
         DateTime commandStarted = DateTime.Now;
 
-        // Windows needs a longer window: PowerShell's cold start on a loaded runner can exceed
-        // the short Unix timeout, so the pid would never be written before the tree is killed.
-        // 10s was not enough under CI load (the spawn-heavy suite starves process startup); the
-        // window only lengthens the test, it does not weaken the kill assertion.
-        var timeout = OperatingSystem.IsWindows()
-            ? TimeSpan.FromSeconds(30)
-            : TimeSpan.FromSeconds(2);
+        // The timeout that makes the kill fire is a tree-kill budget, never a wait: it has to
+        // outlast a cold PowerShell start on a loaded runner (the spawn-heavy suite starves
+        // process startup, which is why ten seconds was not enough) while staying short enough
+        // that the test spends its time asserting the kill, not waiting for a timeout.
+        var timeout = WaitBudgets.TreeKillTimeout;
 
         // The grandchild is pinned while the command is still running. Read after the kill, the
         // number in the file may already name a process this test never started; see
@@ -217,7 +215,7 @@ public sealed class BashToolTests
         using var temp = new TempDirectory();
         var pidFile = temp.File("grandchild.pid");
         using var cts = new CancellationTokenSource();
-        var tool = new BashTool(new Workspace(temp.Root), null, TimeSpan.FromSeconds(60));
+        var tool = new BashTool(new Workspace(temp.Root), null, WaitBudgets.CommandRun);
         DateTime commandStarted = DateTime.Now;
 
         var execution = tool.ExecuteAsync(CommandArgs(TreeCommand()), Context, cts.Token);

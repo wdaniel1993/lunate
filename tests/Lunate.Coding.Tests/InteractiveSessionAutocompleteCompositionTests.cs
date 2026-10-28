@@ -102,7 +102,7 @@ public sealed class InteractiveSessionAutocompleteCompositionTests
         host.Client.Enqueue(Scripts.Text("indexed"), Scripts.Stop());
         host.Console.SendEnter();
         await gate.Reached.Task.WaitAsync(
-            TimeSpan.FromSeconds(10),
+            WaitBudgets.InProcess,
             TestContext.Current.CancellationToken
         );
         Assert.True(host.Session.IsRunning);
@@ -132,7 +132,7 @@ public sealed class InteractiveSessionAutocompleteCompositionTests
     /// <summary>Nudges the cursor (a no-op at the end) until the lazily built index publishes.</summary>
     private static async Task<AutocompleteState> WaitForFileListAsync(InteractiveSessionHost host)
     {
-        DateTime deadline = DateTime.UtcNow + TimeSpan.FromSeconds(10);
+        DateTime deadline = DateTime.UtcNow + WaitBudgets.IndexReady;
         while (DateTime.UtcNow < deadline)
         {
             host.Console.Send(new KeyEvent(KeyKind.Right, null, false, false, false));
@@ -153,13 +153,14 @@ public sealed class InteractiveSessionAutocompleteCompositionTests
     /// </summary>
     private static async Task<string> CaptureFrameAsync(InteractiveSessionHost host)
     {
-        string previous = string.Empty;
-        for (var attempt = 0; attempt < 100; attempt++)
+        string? previous = null;
+        DateTime deadline = DateTime.UtcNow + WaitBudgets.InProcess;
+        while (DateTime.UtcNow < deadline)
         {
             host.Advance(33);
             await Task.Delay(1, TestContext.Current.CancellationToken);
             string current = Escape(CanonicalFrame(host.LastFrame));
-            if (attempt > 0 && string.Equals(current, previous, StringComparison.Ordinal))
+            if (previous is not null && string.Equals(current, previous, StringComparison.Ordinal))
             {
                 return current;
             }
@@ -167,7 +168,7 @@ public sealed class InteractiveSessionAutocompleteCompositionTests
             previous = current;
         }
 
-        return previous;
+        return previous ?? string.Empty;
     }
 
     private static string CanonicalFrame(string write)

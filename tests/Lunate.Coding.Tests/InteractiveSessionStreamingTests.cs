@@ -23,14 +23,11 @@ public sealed class InteractiveSessionStreamingTests
         // The tail is painted on the sampled tick the test pumps; one advance is not enough when
         // the tick was enqueued from the session thread between the advance's read and its run.
         // Wait on any frame that carried the tail, with the suite's wide budget.
-        await host.WaitUntilAsync(
-            () =>
-            {
-                host.Advance(33);
-                return host.LastFrame.Contains("two", StringComparison.Ordinal);
-            },
-            TimeSpan.FromSeconds(30)
-        );
+        await host.WaitUntilAsync(() =>
+        {
+            host.Advance(33);
+            return host.LastFrame.Contains("two", StringComparison.Ordinal);
+        });
 
         client.Release();
         await host.WaitUntilAsync(() => !host.Session.IsRunning);

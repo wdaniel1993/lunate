@@ -41,13 +41,6 @@ internal readonly record struct ChildProcess(int Pid, string Name, DateTime Star
 internal static class ChildProcessProbe
 {
     /// <summary>
-    /// How long a pid file that is there but unusable is given before the test says why: a
-    /// half-written number and a number released between the write and the read are both fixed by
-    /// the next read, and neither is worth a red.
-    /// </summary>
-    private static readonly TimeSpan PinGrace = TimeSpan.FromSeconds(2);
-
-    /// <summary>
     /// Waits for the pid a spawned child writes to <paramref name="pidFile"/>, and pins the process
     /// it names. <paramref name="commandStarted"/> is when the test started the command that spawns
     /// the child: a process created before that cannot be the child, so the number in the file is
@@ -61,7 +54,7 @@ internal static class ChildProcessProbe
         CancellationToken window
     )
     {
-        DateTime deadline = DateTime.UtcNow + WaitBudgets.ChildReport;
+        DateTime deadline = DateTime.UtcNow + WaitBudgets.SpawnWindow;
         DateTime? unusableSince = null;
         var unusable = string.Empty;
         while (true)
@@ -92,7 +85,7 @@ internal static class ChildProcessProbe
                 // between the write and the read; both are fixed by the next read of the file, so
                 // the refusal is only reported once it has outlived the writer.
                 unusableSince ??= DateTime.UtcNow;
-                if (DateTime.UtcNow - unusableSince.Value > PinGrace)
+                if (DateTime.UtcNow - unusableSince.Value > WaitBudgets.RefusalGrace)
                 {
                     Assert.Fail(unusable);
                 }
@@ -114,7 +107,7 @@ internal static class ChildProcessProbe
                 Assert.Fail(
                     string.Create(
                         CultureInfo.InvariantCulture,
-                        $"no pid was written to {pidFile} within {WaitBudgets.ChildReport.TotalSeconds:0} seconds"
+                        $"no pid was written to {pidFile} within {WaitBudgets.SpawnWindow.TotalSeconds:0} seconds"
                     )
                 );
             }

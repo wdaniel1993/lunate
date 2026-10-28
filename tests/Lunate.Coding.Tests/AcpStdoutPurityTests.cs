@@ -90,7 +90,10 @@ public sealed class AcpStdoutPurityTests
             Assert.Equal(-32601, responses[3].GetProperty("error").GetProperty("code").GetInt32());
 
             stdin.Close();
-            Assert.True(process.WaitForExit(15000), "lunate --acp did not exit after stdin closed");
+            Assert.True(
+                process.WaitForExit((int)WaitBudgets.ProcessExit.TotalMilliseconds),
+                "lunate --acp did not exit after stdin closed"
+            );
             Assert.Equal(0, process.ExitCode);
             Assert.Equal("", await process.StandardOutput.ReadToEndAsync(ct));
             Assert.Contains("lunate:", await stderr, StringComparison.Ordinal);
@@ -109,7 +112,7 @@ public sealed class AcpStdoutPurityTests
         string? line = await reader
             .ReadLineAsync(ct)
             .AsTask()
-            .WaitAsync(TimeSpan.FromSeconds(30), ct);
+            .WaitAsync(WaitBudgets.SpawnWindow, ct);
         Assert.NotNull(line);
         return line;
     }

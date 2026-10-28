@@ -224,7 +224,8 @@ public sealed class PackageInstallEndToEndTests
     /// </summary>
     private static async Task ComposeAnsweringTrustAsync(InteractiveSessionHost host)
     {
-        for (var attempt = 0; attempt < 500 && !host.Session.IsComposed; attempt++)
+        DateTime deadline = DateTime.UtcNow + WaitBudgets.CrossTurn;
+        while (!host.Session.IsComposed && DateTime.UtcNow < deadline)
         {
             if (host.Session.PendingTrustPrompt is not null)
             {
