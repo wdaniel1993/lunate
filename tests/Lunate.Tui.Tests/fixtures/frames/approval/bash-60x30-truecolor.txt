@@ -1,4 +1,5 @@
-\x1b[38;2;255;255;0m⚠ bash  dotnet test --project tests/Lunate.Coding.Tests --fi\x1b[0m
+\x1b[38;2;255;255;0m⚠ bash  dotnet test --project tests/Lunate.Coding.Tests \x1b[0m
+\x1b[38;2;255;255;0m--filter Approval\x1b[0m
 \x1b[38;2;138;138;138m  Test run summary: Passed!\x1b[0m
 \x1b[38;2;138;138;138m  total: 42\x1b[0m
 \x1b[38;2;138;138;138m  failed: 0\x1b[0m

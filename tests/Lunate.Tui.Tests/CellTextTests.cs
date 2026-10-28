@@ -76,4 +76,48 @@ public sealed class CellTextTests
         string text,
         string expected
     ) => Assert.Equal(expected, CellText.SingleLine(text));
+
+    [Fact]
+    public void Wrap_returns_text_that_fits_unchanged() =>
+        Assert.Equal(["abc"], CellText.Wrap("abc", 5));
+
+    [Fact]
+    public void Wrap_keeps_every_character_and_respects_the_cell_width()
+    {
+        const string Path = "/srv/trusted/../untrusted/ext";
+
+        IReadOnlyList<string> lines = CellText.Wrap(Path, 10);
+
+        Assert.Equal(Path, string.Concat(lines));
+        Assert.All(
+            lines,
+            line => Assert.True(CellText.Width(line) <= 10, $"'{line}' exceeds 10 cells")
+        );
+    }
+
+    [Fact]
+    public void Wrap_breaks_at_a_space_before_a_path_separator()
+    {
+        IReadOnlyList<string> lines = CellText.Wrap("/one/two and three", 12);
+
+        Assert.Equal(["/one/two ", "and three"], lines);
+    }
+
+    [Fact]
+    public void Wrap_breaks_a_segment_at_its_path_separators()
+    {
+        IReadOnlyList<string> lines = CellText.Wrap("/aaaa/bbbb/cccc", 6);
+
+        Assert.Equal(["/aaaa/", "bbbb/", "cccc"], lines);
+        Assert.Equal("/aaaa/bbbb/cccc", string.Concat(lines));
+    }
+
+    [Fact]
+    public void Wrap_keeps_wide_runes_whole()
+    {
+        IReadOnlyList<string> lines = CellText.Wrap("日本語abc", 5);
+
+        Assert.Equal(["日本", "語abc"], lines);
+        Assert.All(lines, line => Assert.True(CellText.Width(line) <= 5));
+    }
 }

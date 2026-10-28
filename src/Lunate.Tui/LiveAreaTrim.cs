@@ -48,14 +48,16 @@ internal static class LiveAreaTrim
         }
 
         int panelStart = Math.Max(0, approvalStart) - prefix;
+        int headlineLines = approval.Count(line => line.Part == ApprovalPart.Headline);
         int questionLines = approval.Count(line => line.Part == ApprovalPart.Question);
         int detailLines = approval.Count(line => line.Part == ApprovalPart.Detail);
         int legendLines = approval.Count(line => line.Part == ApprovalPart.Legend);
+        int detailStart = panelStart + headlineLines;
         // The detail block follows the headline; drop its bottom lines so the first detail stays.
         int trimDetail = Math.Min(overflow, detailLines);
         if (trimDetail > 0)
         {
-            lines.RemoveRange(panelStart + 1 + (detailLines - trimDetail), trimDetail);
+            lines.RemoveRange(detailStart + (detailLines - trimDetail), trimDetail);
             cursorRow -= trimDetail;
             overflow -= trimDetail;
         }
@@ -64,7 +66,7 @@ internal static class LiveAreaTrim
         int trimLegend = Math.Min(overflow, legendLines);
         if (trimLegend > 0)
         {
-            int legendStart = panelStart + 1 + (detailLines - trimDetail) + questionLines;
+            int legendStart = detailStart + (detailLines - trimDetail) + questionLines;
             lines.RemoveRange(legendStart + (legendLines - trimLegend), trimLegend);
             cursorRow -= trimLegend;
             overflow -= trimLegend;

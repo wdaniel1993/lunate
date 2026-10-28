@@ -70,6 +70,28 @@ internal static class ToolArgsSummary
 
     private static bool IsPathTool(string? toolName) => toolName is "read" or "write" or "edit";
 
+    /// <summary>
+    /// The full first line of a bash call's <c>command</c>, for surfaces that wrap rather than
+    /// elide: an approval headline must show the command it asks about. Null when the arguments
+    /// carry no command.
+    /// </summary>
+    internal static string? BashCommand(string? args)
+    {
+        if (string.IsNullOrWhiteSpace(args) || !TryParseObject(args, out var root))
+        {
+            return null;
+        }
+
+        string? command = ToolField("bash", root);
+        if (command is null)
+        {
+            return null;
+        }
+
+        string line = FirstLine(command).Trim();
+        return line.Length > 0 ? line : null;
+    }
+
     private static bool LooksLikePath(string value) =>
         value.Contains('/') || value.Contains('\\') || value.StartsWith('~');
 

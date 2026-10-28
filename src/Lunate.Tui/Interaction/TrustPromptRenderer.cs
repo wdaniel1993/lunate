@@ -14,10 +14,10 @@ namespace Lunate.Tui;
 /// and packaged-extension questions are not, and a title must never show two.
 /// </para>
 /// <para>
-/// At narrow widths the choices are kept visible: the <c>n of m</c> label is dropped first, then
-/// the title is middle-clipped with an ellipsis so its end (including the question mark) sits
-/// immediately before the choices. At very narrow widths the choices drop to their own line
-/// instead of being squeezed out.
+/// At narrow widths the title and every detail line wrap instead of being clipped, so the part
+/// that decides the answer — a path segment, a package name — is always visible. The choices are
+/// appended to the last title line when they fit, else they get a line of their own; the
+/// <c>n of m</c> label is dropped first when the single-line headline does not fit.
 /// </para>
 /// </summary>
 public sealed class TrustPromptRenderer
@@ -43,7 +43,8 @@ public sealed class TrustPromptRenderer
 
     /// <summary>
     /// The question's plain (unstyled) lines as shown in the live area, fitted to
-    /// <paramref name="width"/>. The default width keeps the whole headline on one line.
+    /// <paramref name="width"/> by wrapping the title and the details. The default width keeps the
+    /// whole headline on one line and every detail as written.
     /// </summary>
     internal static IReadOnlyList<string> PlainLines(
         TrustPromptModel prompt,
@@ -55,27 +56,36 @@ public sealed class TrustPromptRenderer
 
         string title = Question(prompt.Title);
         string count = CountLabel(prompt);
-        int titleWidth = CellText.Width(title);
-        int choicesWidth = CellText.Width(Choices);
         List<string> lines;
-        if (titleWidth + CellText.Width(count) + choicesWidth <= width)
+        if (
+            width == int.MaxValue
+            || CellText.Width(title) + CellText.Width(count) + CellText.Width(Choices) <= width
+        )
         {
             lines = [HeadlineText(prompt)];
         }
-        else if (titleWidth + choicesWidth <= width)
-        {
-            lines = [title + Choices];
-        }
-        else if (width - choicesWidth >= 8)
-        {
-            lines = [CellText.MiddleClip(title, width - choicesWidth, unicode) + Choices];
-        }
         else
         {
-            lines = [CellText.MiddleClip(title, width, unicode), CellText.Clip(Choices, width)];
+            // The label is dropped before the title; the title itself never loses a character.
+            lines = [.. CellText.Wrap(title, width)];
+            if (
+                CellText.Width(Choices) <= width
+                && CellText.Width(lines[^1]) + CellText.Width(Choices) <= width
+            )
+            {
+                lines[^1] += Choices;
+            }
+            else
+            {
+                lines.Add(CellText.Clip(Choices, width));
+            }
         }
 
-        lines.AddRange(prompt.Details);
+        foreach (string detail in prompt.Details)
+        {
+            lines.AddRange(width == int.MaxValue ? [detail] : CellText.Wrap(detail, width));
+        }
+
         return lines;
     }
 

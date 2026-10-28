@@ -103,6 +103,32 @@ public sealed class SingleFileTrustQuestionTests
     }
 
     [Fact]
+    public void The_path_is_resolved_before_it_is_shown()
+    {
+        SingleFileTrustRequest request = Request() with
+        {
+            Path = Path.Combine(
+                Path.GetTempPath(),
+                "lunate-trust",
+                "trusted",
+                "..",
+                "untrusted",
+                "ext",
+                "acme.cs"
+            ),
+        };
+
+        string title = SingleFileTrustQuestion.Title(request);
+
+        Assert.Contains(
+            Path.Combine("untrusted", "ext", "acme.cs"),
+            title,
+            StringComparison.Ordinal
+        );
+        Assert.DoesNotContain("..", title, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task A_prompt_that_does_not_know_about_single_files_never_approves_one()
     {
         IExtensionTrustPrompt packagedOnly = new PackagedOnlyPrompt();

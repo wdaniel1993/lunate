@@ -4,8 +4,8 @@ namespace Lunate.Tui.Tests;
 
 /// <summary>
 /// The trust prompt's committed frames at 80 and 118 columns: a realistic extension path is long
-/// enough to need a middle-clipped title, so the choices must stay visible. Regenerate deliberately
-/// with
+/// enough to need a wrapped title, so every path segment and the choices must stay visible.
+/// Regenerate deliberately with
 /// <c>LUNATE_TUI_UPDATE_GOLDENS=1 dotnet test tests/Lunate.Tui.Tests/Lunate.Tui.Tests.csproj --filter "FullyQualifiedName~TrustPromptFrameGoldenTests"</c>.
 /// </summary>
 public sealed class TrustPromptFrameGoldenTests

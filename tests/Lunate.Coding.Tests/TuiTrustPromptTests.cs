@@ -167,4 +167,125 @@ public sealed class TuiTrustPromptTests
         Assert.EndsWith("…", detail, StringComparison.Ordinal);
         Assert.Equal("alpha — ".Length + 61, detail.Length);
     }
+
+    [Fact]
+    public async Task Extension_question_shows_the_resolved_directory()
+    {
+        string? title = null;
+        var prompt = new TuiExtensionTrustPrompt(
+            (askedTitle, _, _) =>
+            {
+                title = askedTitle;
+                return ValueTask.FromResult(true);
+            }
+        );
+        string directory = Path.Combine(
+            Path.GetTempPath(),
+            "lunate-trust",
+            "trusted",
+            "..",
+            "untrusted",
+            "ext"
+        );
+        string expected = Workspace.Canonicalize(directory);
+
+        await prompt.ApproveAsync(
+            new ExtensionTrustRequest(
+                ExtensionTrustPromptTests.Descriptor("hello", directory),
+                FilesChanged: false
+            ),
+            TestContext.Current.CancellationToken
+        );
+
+        Assert.Contains(expected, title!, StringComparison.Ordinal);
+        Assert.DoesNotContain("..", title!, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Extension_question_shows_the_target_of_a_symlinked_directory()
+    {
+        using var temp = new TempDirectory();
+        string real = temp.File("untrusted/ext");
+        Directory.CreateDirectory(real);
+        string link = temp.File("trusted-link");
+        if (!TryCreateDirectoryLink(link, real))
+        {
+            Assert.Skip("Symbolic links are not available in this environment.");
+            return;
+        }
+
+        string? title = null;
+        var prompt = new TuiExtensionTrustPrompt(
+            (askedTitle, _, _) =>
+            {
+                title = askedTitle;
+                return ValueTask.FromResult(true);
+            }
+        );
+
+        await prompt.ApproveAsync(
+            new ExtensionTrustRequest(
+                ExtensionTrustPromptTests.Descriptor("hello", link),
+                FilesChanged: false
+            ),
+            TestContext.Current.CancellationToken
+        );
+
+        Assert.Contains(Workspace.Canonicalize(real), title!, StringComparison.Ordinal);
+        Assert.DoesNotContain("trusted-link", title!, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Single_file_question_shows_the_resolved_path()
+    {
+        string? title = null;
+        var prompt = new TuiExtensionTrustPrompt(
+            (askedTitle, _, _) =>
+            {
+                title = askedTitle;
+                return ValueTask.FromResult(true);
+            }
+        );
+        string path = Path.Combine(
+            Path.GetTempPath(),
+            "lunate-trust",
+            "trusted",
+            "..",
+            "untrusted",
+            "ext",
+            "acme.cs"
+        );
+        string expected = Workspace.Canonicalize(path);
+
+        await prompt.ApproveSingleFileAsync(
+            new SingleFileTrustRequest
+            {
+                Path = path,
+                Id = "acme-tools",
+                Version = "1.0.0",
+            },
+            TestContext.Current.CancellationToken
+        );
+
+        Assert.Contains(expected, title!, StringComparison.Ordinal);
+        Assert.DoesNotContain("..", title!, StringComparison.Ordinal);
+    }
+
+    private static bool TryCreateDirectoryLink(string linkPath, string targetPath)
+    {
+        try
+        {
+            Directory.CreateSymbolicLink(linkPath, targetPath);
+            return true;
+        }
+        catch (Exception exception)
+            when (exception
+                    is IOException
+                        or UnauthorizedAccessException
+                        or PlatformNotSupportedException
+            )
+        {
+            return false;
+        }
+    }
 }

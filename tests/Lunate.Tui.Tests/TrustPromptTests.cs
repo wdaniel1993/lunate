@@ -184,36 +184,60 @@ public sealed class TrustPromptRendererTests
         "Load project extension 'hello-world' 0.1.0 from /Users/danielwallner/dev/lunate/demo/extensions/hello-world";
 
     [Fact]
-    public void A_long_title_is_middle_clipped_at_118_columns_so_the_choices_stay_visible()
+    public void A_long_title_wraps_at_118_columns_without_losing_text()
     {
         string[] lines =
         [
             .. TrustPromptRenderer.PlainLines(new TrustPromptModel(LongTitle, [], 0, 0), 118),
         ];
 
-        Assert.Equal(
-            "Load project extension 'hello-world' 0.1.0 from /Use…anielwallner/dev/lunate/demo/extensions/hello-world?  [y]es  [n]o",
-            Assert.Single(lines)
-        );
-        Assert.StartsWith("Load project extension", lines[0], StringComparison.Ordinal);
-        Assert.EndsWith("?  [y]es  [n]o", lines[0], StringComparison.Ordinal);
-        Assert.True(CellText.Width(lines[0]) <= 118);
+        Assert.True(lines.Length > 1);
+        Assert.Equal(Question(LongTitle), string.Concat(lines[..^1]));
+        Assert.Equal("  [y]es  [n]o", lines[^1]);
+        Assert.DoesNotContain("\u2026", string.Concat(lines));
+        Assert.All(lines, line => Assert.True(CellText.Width(line) <= 118));
     }
 
     [Fact]
-    public void A_long_title_is_middle_clipped_at_80_columns_without_clipping_the_choices()
+    public void A_long_title_wraps_at_80_columns_without_clipping_the_choices()
     {
         string[] lines =
         [
             .. TrustPromptRenderer.PlainLines(new TrustPromptModel(LongTitle, [], 0, 0), 80),
         ];
 
-        Assert.Equal(
-            "Load project extension 'hello-wor…nate/demo/extensions/hello-world?  [y]es  [n]o",
-            Assert.Single(lines)
+        Assert.True(lines.Length > 1);
+        Assert.Contains(Question(LongTitle), string.Concat(lines), StringComparison.Ordinal);
+        Assert.Contains("[y]es  [n]o", string.Concat(lines), StringComparison.Ordinal);
+        Assert.DoesNotContain("\u2026", string.Concat(lines));
+        Assert.All(lines, line => Assert.True(CellText.Width(line) <= 80));
+    }
+
+    [Fact]
+    public void The_deciding_path_segment_survives_every_width_from_sixty_to_one_hundred_forty()
+    {
+        const string Path = "/srv/trusted/../untrusted/ext";
+        var prompt = new TrustPromptModel(
+            "Load project extension 'hello-world' 0.1.0 from " + Path,
+            [],
+            0,
+            0
         );
-        Assert.Contains("[y]es  [n]o", lines[0], StringComparison.Ordinal);
-        Assert.True(CellText.Width(lines[0]) <= 80);
+
+        for (var width = 60; width <= 140; width++)
+        {
+            string[] lines = [.. TrustPromptRenderer.PlainLines(prompt, width)];
+
+            Assert.All(
+                lines,
+                line =>
+                    Assert.True(CellText.Width(line) <= width, $"'{line}' exceeds {width} cells")
+            );
+            string joined = string.Concat(lines);
+            Assert.Contains(Path, joined, StringComparison.Ordinal);
+            Assert.Contains("untrusted", joined, StringComparison.Ordinal);
+            Assert.Contains("[y]es  [n]o", joined, StringComparison.Ordinal);
+        }
     }
 
     [Fact]
@@ -235,14 +259,15 @@ public sealed class TrustPromptRendererTests
             .. TrustPromptRenderer.PlainLines(new TrustPromptModel(LongTitle, [], 0, 0), 20),
         ];
 
-        Assert.Equal(2, lines.Length);
-        Assert.Contains("\u2026", lines[0], StringComparison.Ordinal);
-        Assert.True(CellText.Width(lines[0]) <= 20);
-        Assert.Equal("  [y]es  [n]o", lines[1]);
+        Assert.True(lines.Length > 2);
+        Assert.Equal(Question(LongTitle), string.Concat(lines[..^1]));
+        Assert.Equal("  [y]es  [n]o", lines[^1]);
+        Assert.DoesNotContain("\u2026", string.Concat(lines));
+        Assert.All(lines, line => Assert.True(CellText.Width(line) <= 20));
     }
 
     [Fact]
-    public void The_ascii_fallback_uses_three_dots_for_the_middle_clip()
+    public void The_ascii_fallback_wraps_without_an_ellipsis()
     {
         string[] lines =
         [
@@ -253,11 +278,15 @@ public sealed class TrustPromptRendererTests
             ),
         ];
 
-        Assert.Contains("...", lines[0], StringComparison.Ordinal);
-        Assert.DoesNotContain("\u2026", lines[0], StringComparison.Ordinal);
-        Assert.EndsWith("?  [y]es  [n]o", lines[0], StringComparison.Ordinal);
-        Assert.True(CellText.Width(lines[0]) <= 118);
+        string joined = string.Concat(lines);
+        Assert.DoesNotContain("...", joined, StringComparison.Ordinal);
+        Assert.DoesNotContain("\u2026", joined, StringComparison.Ordinal);
+        Assert.Contains(Question(LongTitle), joined, StringComparison.Ordinal);
+        Assert.Contains("[y]es  [n]o", joined, StringComparison.Ordinal);
+        Assert.All(lines, line => Assert.True(CellText.Width(line) <= 118));
     }
+
+    private static string Question(string title) => TrustPromptRenderer.Question(title);
 
     private static string Render(TrustPromptModel prompt)
     {
