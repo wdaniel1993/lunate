@@ -17,6 +17,23 @@ _ = int.TryParse(
     out var slowListMs
 );
 
+// LUNATE_TEST_MCP_SLOW_START_MS delays the initialize handshake by the given milliseconds, so a
+// client meets a live but slow server. LUNATE_TEST_MCP_START_HEARTBEAT_MS additionally writes a
+// stderr line at that interval while the delay runs: stderr is the only child output a client can
+// observe before the handshake completes. Zero or absent heartbeat means silence.
+_ = int.TryParse(
+    Environment.GetEnvironmentVariable("LUNATE_TEST_MCP_SLOW_START_MS"),
+    NumberStyles.Integer,
+    CultureInfo.InvariantCulture,
+    out var slowStartMs
+);
+_ = int.TryParse(
+    Environment.GetEnvironmentVariable("LUNATE_TEST_MCP_START_HEARTBEAT_MS"),
+    NumberStyles.Integer,
+    CultureInfo.InvariantCulture,
+    out var startHeartbeatMs
+);
+
 void Mark(string line)
 {
     if (string.IsNullOrEmpty(markerPath))
@@ -150,9 +167,41 @@ if (slowListMs > 0)
     };
 }
 
+if (slowStartMs > 0)
+{
+    // Hold the initialize request back without touching stdout: the protocol stream must stay
+    // silent, while stderr carries the heartbeat that proves the process is still working.
+    serverOptions.Filters.Message.IncomingFilters.Add(next =>
+        async (context, cancellationToken) =>
+        {
+            if (context.JsonRpcMessage is JsonRpcRequest { Method: RequestMethods.Initialize })
+            {
+                await DelayStartAsync(cancellationToken);
+            }
+
+            await next(context, cancellationToken);
+        }
+    );
+}
+
 var server = McpServer.Create(new StdioServerTransport("test-mcp-server"), serverOptions);
 
 await server.RunAsync();
+
+async Task DelayStartAsync(CancellationToken cancellationToken)
+{
+    var remaining = slowStartMs;
+    while (remaining > 0)
+    {
+        var slice = startHeartbeatMs > 0 ? Math.Min(startHeartbeatMs, remaining) : remaining;
+        await Task.Delay(slice, cancellationToken);
+        remaining -= slice;
+        if (startHeartbeatMs > 0)
+        {
+            Console.Error.WriteLine("test-mcp-server: handshake in progress");
+        }
+    }
+}
 
 string Echo(string text) => text;
 
