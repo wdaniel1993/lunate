@@ -20,6 +20,7 @@ Lunate keeps each kind of document in exactly one home. Start here, then jump to
 | In-flight proposals | [`../openspec/changes/`](../openspec/changes/) | Proposals, deltas, designs and tasks being implemented |
 | Decisions with context | [`../adr/`](../adr/) | Durable architectural decisions, immutable once accepted |
 | Evidence | [`spikes/`](spikes/) | Spike code and reports that back an ADR |
+| Evaluation and audits | [`eval/`](eval/) | Head-to-head results and surface audits that back a positioning claim |
 
 ## Writing guideline
 
