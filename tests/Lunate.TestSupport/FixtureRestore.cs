@@ -9,8 +9,22 @@ namespace Lunate.TestSupport;
 /// MSBuild graphs at once on a loaded runner: that is where the gate flaked, with twelve empty
 /// "restore failed" errors in one run. A restore is a function of its tree, so the artifacts of one
 /// are reused by every test with the same tree (<see cref="RestoreCache"/>); the gate's two culture
-/// passes and its parallel assemblies share them too. Nothing is retried: a failing restore keeps the
-/// child's output and fails the test.
+/// passes and its parallel assemblies share them too. A failure that says something is never retried:
+/// only a child that exits without a byte on either stream gets one retry, and both attempts are
+/// reported when that fails too.
+/// <para>
+/// The rest of the fix is isolation, because the failures outlived the first two attempts. Per-tree
+/// packages (<c>NUGET_PACKAGES</c>, now also an explicit <c>--packages</c>) and one restore per test
+/// process were already in place when CI 40676059477 failed: the twelve restore children in that log
+/// start five to ten seconds apart, so they were not running together, and the retry still said
+/// <c>Build FAILED. 0 Error(s)</c> immediately after <c>ValidateSolutionConfiguration</c> — the shape
+/// of a build that was disturbed, not one that found a defect in the fixture. So every machine-wide
+/// folder and process the child could share with another test is pinned to the fixture: the CLI home,
+/// the package folder, the HTTP cache and the temp directory; the long-lived MSBuild server is turned
+/// off; and the restore is limited to one node. On top of that, <see cref="RestoreCache.MachineLock"/>
+/// bounds fixture restores to one at a time across every test process on the machine, which the
+/// in-process semaphore beside it cannot see.
+/// </para>
 /// </remarks>
 public static class FixtureRestore
 {
@@ -56,6 +70,13 @@ public static class FixtureRestore
                 return;
             }
 
+            // Bound the child restores of every test assembly on the machine, not just this one.
+            using IDisposable? machineGate = RestoreCache.MachineLock();
+            if (RestoreCache.TryReuse(key, root))
+            {
+                return;
+            }
+
             using IDisposable? machineLock = RestoreCache.Lock(key);
             if (machineLock is not null && RestoreCache.TryReuse(key, root))
             {
@@ -63,15 +84,8 @@ public static class FixtureRestore
             }
 
             Interlocked.Increment(ref _restores);
-            string[] arguments =
-            [
-                "restore",
-                solutionPath,
-                "--configfile",
-                configPath,
-                "-p:NuGetAudit=false",
-                "--nologo",
-            ];
+            Directory.CreateDirectory(ScratchDirectory(root));
+            string[] arguments = RestoreArguments(root, solutionPath, configPath);
             ChildProcessResult result = DotnetCli.Run(
                 root,
                 arguments,
@@ -124,6 +138,32 @@ public static class FixtureRestore
         }
     }
 
+    /// <summary>The exact argument list the restore child is given; a test asserts its bounds.</summary>
+    internal static string[] RestoreArguments(
+        string root,
+        string solutionPath,
+        string configPath
+    ) =>
+        [
+            "restore",
+            solutionPath,
+            "--configfile",
+            configPath,
+            // Explicit as well as in the environment: a caller that scrubs the child's environment
+            // still gets a per-fixture package folder instead of the machine's.
+            "--packages",
+            Path.Combine(root, ".packages"),
+            "-p:NuGetAudit=false",
+            // One node, no reuse: a restore of two projects does not need a fan-out, and a node is
+            // another process a loaded runner can fail to schedule.
+            "-maxcpucount:1",
+            "-nodeReuse:false",
+            "--nologo",
+        ];
+
+    /// <summary>The private temp directory (NuGet scratch, MSBuild response files) for one fixture.</summary>
+    internal static string ScratchDirectory(string root) => Path.Combine(root, ".tmp");
+
     internal static Dictionary<string, string?> ChildEnvironment(string root) =>
         new(StringComparer.Ordinal)
         {
@@ -133,6 +173,15 @@ public static class FixtureRestore
             ["DOTNET_CLI_HOME"] = Path.Combine(root, ".dotnet-home"),
             ["NUGET_PACKAGES"] = Path.Combine(root, ".packages"),
             ["NUGET_HTTP_CACHE_PATH"] = Path.Combine(root, ".nuget-http-cache"),
+            // NuGet's scratch files and MSBuild's response files live under the temp directory.
+            // Sharing it with every other restore on the machine is the last place they can collide.
+            ["TMPDIR"] = ScratchDirectory(root),
+            ["TMP"] = ScratchDirectory(root),
+            ["TEMP"] = ScratchDirectory(root),
+            // The build server outlives the command and is shared by every caller that finds its
+            // pipe. A fixture restore has nothing to gain from it and something to lose.
+            ["MSBUILDUSESERVER"] = "0",
+            ["DOTNET_CLI_USE_MSBUILD_SERVER"] = "false",
             ["MSBUILDDISABLENODEREUSE"] = "1",
             ["DOTNET_NOLOGO"] = "1",
             ["DOTNET_CLI_TELEMETRY_OPTOUT"] = "1",

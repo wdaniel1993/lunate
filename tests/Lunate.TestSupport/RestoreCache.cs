@@ -20,7 +20,7 @@ internal static class RestoreCache
     /// <summary>
     /// Bumped when the artifacts, their layout or the restore recipe change: it retires every entry.
     /// </summary>
-    private const string Format = "v1";
+    private const string Format = "v2";
 
     /// <summary>Longer than any restore takes; a lock that cannot be had is not fatal (see <see cref="Lock"/>).</summary>
     private static readonly TimeSpan LockTimeout = TimeSpan.FromMinutes(3);
@@ -37,6 +37,7 @@ internal static class RestoreCache
         "bin",
         ".packages",
         ".nuget-http-cache",
+        ".tmp",
         ".git",
     ];
 
@@ -87,9 +88,18 @@ internal static class RestoreCache
     /// Null when the lock could not be had, which is not a reason to fail a test — the caller restores
     /// anyway and a duplicate costs time, not correctness.
     /// </summary>
-    public static IDisposable? Lock(string key)
+    public static IDisposable? Lock(string key) => LockFile(Path.Combine(Root(), key + ".lock"));
+
+    /// <summary>
+    /// Takes the one gate every fixture restore on the machine shares, so the number of child
+    /// restores running at once stays bounded no matter how many test assemblies start together.
+    /// Null when the gate could not be had — the caller restores anyway rather than fail a test on
+    /// a lock.
+    /// </summary>
+    public static IDisposable? MachineLock() => LockFile(Path.Combine(Root(), "restore-gate.lock"));
+
+    private static IDisposable? LockFile(string path)
     {
-        string path = Path.Combine(Root(), key + ".lock");
         var waited = Stopwatch.StartNew();
         while (waited.Elapsed < LockTimeout)
         {
