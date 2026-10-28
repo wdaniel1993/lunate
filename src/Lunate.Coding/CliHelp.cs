@@ -86,6 +86,28 @@ internal static class CliHelp
             "                                 CI with --digest <sha>; --json for scripts; --clear"
         );
         output.WriteLine("                                 removes this repository's records");
+        output.WriteLine("  lunate auth <list|login|logout|status>");
+        output.WriteLine(
+            "                                 list providers and whether each credential comes"
+        );
+        output.WriteLine(
+            "                                 from the environment or the auth store; login stores"
+        );
+        output.WriteLine(
+            "                                 a key, prompted masked on a terminal or read from a"
+        );
+        output.WriteLine(
+            "                                 pipe with --key-stdin; logout removes a stored key;"
+        );
+        output.WriteLine(
+            "                                 --custom adds an OpenAI-compatible endpoint (id, base"
+        );
+        output.WriteLine(
+            "                                 URL, model, key; https or loopback http); status reports"
+        );
+        output.WriteLine(
+            "                                 the default provider and whether a credential exists"
+        );
         output.WriteLine(
             "  lunate install <package-id>[@<version>] [--project] [--dry-run] [--json] [--offline] [--force] [--yes]"
         );

@@ -291,6 +291,21 @@ internal static class HarnessFactory
                 )
         );
 
+    /// <summary>
+    /// Loads the model catalog with the stored custom providers layered over the files, so
+    /// <c>/model</c> and model resolution see them through the same lookup as a preset entry.
+    /// </summary>
+    internal static ModelCatalog LoadCatalog(AgentSettings settings, string? modelsPath)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+        ModelCatalog catalog = ModelCatalog.Load(modelsPath);
+        return settings.Providers.Count == 0
+            ? catalog
+            : catalog.WithAdditionalModels([
+                .. settings.Providers.Select(provider => provider.ToModelInfo()),
+            ]);
+    }
+
     internal static ModelInfo ResolveModel(string? modelId, ModelCatalog catalog)
     {
         if (string.IsNullOrWhiteSpace(modelId))

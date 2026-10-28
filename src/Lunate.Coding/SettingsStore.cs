@@ -52,6 +52,9 @@ public sealed record AgentSettings
 
     /// <summary>The resolved optional-tool settings (the <c>tools</c> section).</summary>
     public ToolsSettings Tools { get; init; } = new();
+
+    /// <summary>The stored custom OpenAI-compatible endpoints (the <c>providers</c> section).</summary>
+    public IReadOnlyList<CustomProvider> Providers { get; init; } = [];
 }
 
 /// <summary>The optional tools enabled beside the core set (the <c>tools</c> settings section).</summary>
@@ -85,7 +88,7 @@ public sealed record RoslynSettings
 /// <c>LUNATE_SUBAGENTS_TREE_TOKEN_BUDGET</c>) overrides file values. Both
 /// the path and the environment lookup are injectable.
 /// </summary>
-public static class SettingsStore
+public static partial class SettingsStore
 {
     /// <summary>The schema this build writes.</summary>
     public const int SupportedSchemaVersion = 2;
@@ -388,6 +391,12 @@ public static class SettingsStore
                         break;
                     case "tools":
                         settings = settings with { Tools = ReadTools(property.Value, problems) };
+                        break;
+                    case "providers":
+                        settings = settings with
+                        {
+                            Providers = ReadProviders(property.Value, problems),
+                        };
                         break;
                     default:
                         problems.Add($"unknown key '{property.Name}'");

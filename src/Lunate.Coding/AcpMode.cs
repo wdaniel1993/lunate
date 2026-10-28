@@ -245,7 +245,7 @@ internal static class AcpMode
             settings ?? SettingsStore.Resolve(null, null),
             launch ?? new LaunchOptions()
         );
-        ModelCatalog models = catalog ?? ModelCatalog.Load(null);
+        ModelCatalog models = catalog ?? HarnessFactory.LoadCatalog(effective, null);
         ModelInfo model = HarnessFactory.ResolveModel(effective.Model, models);
         IChatClientFactory clientFactory = factory ?? HarnessFactory.CreateFactory(null, null);
 
