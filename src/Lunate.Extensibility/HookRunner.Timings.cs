@@ -102,7 +102,8 @@ public sealed partial class HookRunner
     /// </para>
     /// </summary>
     private bool MachineIsBehind() =>
-        _options.MachineBehind?.Invoke() ?? ThreadPool.PendingWorkItemCount > ThreadPool.ThreadCount;
+        _options.MachineBehind?.Invoke()
+        ?? ThreadPool.PendingWorkItemCount > ThreadPool.ThreadCount;
 
     private void RecordCancelled(string hook, Registration registration, TimeSpan measured)
     {
