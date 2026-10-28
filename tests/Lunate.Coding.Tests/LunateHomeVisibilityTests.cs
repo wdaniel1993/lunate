@@ -100,7 +100,7 @@ public sealed class LunateHomeVisibilityTests
         // assertion is about the whole line, not Spectre's wrapping.
         host.Scrollback.Profile.Width = 400;
         host.Console.Complete();
-        await host.RunAsync().WaitAsync(TimeSpan.FromSeconds(30));
+        await host.RunAsync().WaitAsync(WaitBudgets.CrossTurn);
         string scrollback = host.Scrollback.Output;
         Assert.Contains("lunate", scrollback, StringComparison.Ordinal);
         return scrollback;

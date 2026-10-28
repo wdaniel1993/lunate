@@ -37,7 +37,7 @@ public sealed class SingleFileLazyRestoreTests
             using Process child = LaunchProbe(marker);
             string output = child.StandardOutput.ReadToEnd() + child.StandardError.ReadToEnd();
             Assert.True(
-                child.WaitForExit(TimeSpan.FromSeconds(180)),
+                child.WaitForExit(WaitBudgets.ChildRun),
                 "the probe process timed out:\n" + output
             );
             Assert.True(

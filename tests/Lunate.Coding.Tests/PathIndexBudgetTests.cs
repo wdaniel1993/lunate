@@ -57,7 +57,7 @@ public sealed class PathIndexBudgetTests
 
     private static void WaitReady(FileIndex index)
     {
-        DateTime deadline = DateTime.UtcNow + TimeSpan.FromSeconds(60);
+        DateTime deadline = DateTime.UtcNow + WaitBudgets.IndexReady;
         while (!index.IsReady)
         {
             if (DateTime.UtcNow > deadline)

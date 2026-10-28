@@ -300,11 +300,10 @@ public sealed class ProcessRunnerTests
         using var temp = new TempDirectory();
         string pidFile = temp.File("grandchild.pid");
 
-        // Windows needs a longer window: PowerShell's cold start on a loaded runner can exceed
-        // the short Unix timeout, so the pid would never be written before the tree is killed.
-        TimeSpan timeout = OperatingSystem.IsWindows()
-            ? TimeSpan.FromSeconds(30)
-            : TimeSpan.FromSeconds(2);
+        // The timeout that makes the kill fire is a tree-kill budget: it outlasts a cold
+        // PowerShell start on a loaded runner while staying short enough that the assertion, not
+        // the timeout, is what the test spends its time on.
+        TimeSpan timeout = WaitBudgets.TreeKillTimeout;
 
         ProcessRunResult result = await RunAsync(temp, TreeRequest(temp, timeout));
 
@@ -323,7 +322,7 @@ public sealed class ProcessRunnerTests
         var runner = new ProcessRunner();
 
         Task<ProcessRunResult> execution = runner.RunAsync(
-            TreeRequest(temp, TimeSpan.FromSeconds(60)),
+            TreeRequest(temp, WaitBudgets.CommandRun),
             cts.Token
         );
         int pid = await WaitForPidAsync(pidFile);
@@ -347,7 +346,7 @@ public sealed class ProcessRunnerTests
         TempDirectory temp,
         string script,
         TimeSpan? timeout = null
-    ) => new("node", ["-e", script], temp.Root, Timeout: timeout ?? TimeSpan.FromSeconds(60));
+    ) => new("node", ["-e", script], temp.Root, Timeout: timeout ?? WaitBudgets.CommandRun);
 
     private static ProcessRunRequest TreeRequest(TempDirectory temp, TimeSpan timeout) =>
         OperatingSystem.IsWindows()
@@ -370,7 +369,8 @@ public sealed class ProcessRunnerTests
 
     private static async Task<int> WaitForPidAsync(string pidFile)
     {
-        for (var attempt = 0; attempt < 600; attempt++)
+        DateTime deadline = DateTime.UtcNow + WaitBudgets.SpawnWindow;
+        while (DateTime.UtcNow < deadline)
         {
             if (File.Exists(pidFile))
             {
@@ -402,23 +402,26 @@ public sealed class ProcessRunnerTests
             await Task.Delay(100, Ct);
         }
 
-        Assert.Fail($"no pid was written to {pidFile} within 60 seconds");
+        Assert.Fail(
+            $"no pid was written to {pidFile} within {WaitBudgets.SpawnWindow.TotalSeconds:0} seconds"
+        );
         return 0;
     }
 
     private static async Task AssertEventuallyDeadAsync(int pid)
     {
-        for (var attempt = 0; attempt < 300; attempt++)
+        DateTime deadline = DateTime.UtcNow + WaitBudgets.ProcessExit;
+        while (IsAlive(pid))
         {
-            if (!IsAlive(pid))
+            if (DateTime.UtcNow > deadline)
             {
-                return;
+                Assert.Fail(
+                    $"pid {pid} was still alive {WaitBudgets.ProcessExit.TotalSeconds:0} seconds after the tree kill"
+                );
             }
 
             await Task.Delay(100, Ct);
         }
-
-        Assert.Fail($"pid {pid} was still alive 30 seconds after the tree kill");
     }
 
     private static bool IsAlive(int pid)

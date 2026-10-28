@@ -82,10 +82,10 @@ public sealed class RuntimeReplaySessionTests
         {
             // The recorder appends the exchange after the model stream ended, so the written
             // fixture is the record run's completion signal.
-            await host.WaitUntilAsync(() => RecordedExchanges(target) > 0, TimeSpan.FromMinutes(5));
+            await host.WaitUntilAsync(() => RecordedExchanges(target) > 0, WaitBudgets.Recording);
         }
 
-        await host.WaitForScrollbackAsync(RecordedAnswer, TimeSpan.FromMinutes(1));
+        await host.WaitForScrollbackAsync(RecordedAnswer);
 
         host.Console.SendText("/quit");
         host.Console.SendEnter();

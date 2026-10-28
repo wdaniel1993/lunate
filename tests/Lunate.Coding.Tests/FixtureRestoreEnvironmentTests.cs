@@ -72,7 +72,7 @@ public sealed class FixtureRestoreEnvironmentTests
             temp.Root,
             ["restore", "--definitely-not-a-real-option"],
             new Dictionary<string, string?>(),
-            TimeSpan.FromSeconds(60)
+            WaitBudgets.CommandRun
         );
 
         Assert.False(result.Succeeded);

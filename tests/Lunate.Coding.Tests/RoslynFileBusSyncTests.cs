@@ -185,7 +185,7 @@ public sealed class RoslynFileBusSyncTests
             () =>
             {
                 entered.TrySetResult();
-                release.Task.Wait(TimeSpan.FromSeconds(30));
+                release.Task.Wait(WaitBudgets.InProcess);
                 return MsBuildBootstrap.EnsureInitialized();
             }
         );
@@ -200,7 +200,7 @@ public sealed class RoslynFileBusSyncTests
         Task<ToolResult> running = Task.Run(() => RunDiagnosticsAsync(tools, fixture.Root), Ct);
         try
         {
-            await entered.Task.WaitAsync(TimeSpan.FromSeconds(10), Ct);
+            await entered.Task.WaitAsync(WaitBudgets.InProcess, Ct);
 
             // The load holds the backend gate: the bus mark must land without waiting for it.
             var calculator = Path.Combine(fixture.Root, "src", "ConsoleApp", "Calculator.cs");
@@ -221,7 +221,7 @@ public sealed class RoslynFileBusSyncTests
             release.TrySetResult();
         }
 
-        ToolResult result = await running.WaitAsync(TimeSpan.FromMinutes(2), Ct);
+        ToolResult result = await running.WaitAsync(WaitBudgets.Diagnostics, Ct);
 
         Assert.False(result.IsError, result.Output);
         Assert.Contains("CS0103", result.Output, StringComparison.Ordinal);

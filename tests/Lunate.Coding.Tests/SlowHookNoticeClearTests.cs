@@ -60,14 +60,11 @@ public sealed class SlowHookNoticeClearTests
         Assert.True(clear.Deferred, $"the next turn took a notice no frame had shown:\n{log}");
         Assert.Empty(log.LostNotices);
 
-        await host.WaitUntilAsync(
-            () =>
-            {
-                host.Advance(33);
-                return host.Frames.Contains(Notice, StringComparison.Ordinal);
-            },
-            TimeSpan.FromSeconds(10)
-        );
+        await host.WaitUntilAsync(() =>
+        {
+            host.Advance(33);
+            return log.Changes(NoticeSlotChange.Painted).Count == 1;
+        });
 
         // The queued follow-up's own turn, still on the far side of the boundary above.
         await host.Client.WaitForCallAsync(2, WaitBudgets.CrossTurn);
@@ -105,14 +102,11 @@ public sealed class SlowHookNoticeClearTests
         Assert.Empty(log.LostNotices);
 
         // Shown once, then the held clear takes it away: announced once, not repeatedly.
-        await host.WaitUntilAsync(
-            () =>
-            {
-                host.Advance(33);
-                return host.Frames.Contains(Notice, StringComparison.Ordinal);
-            },
-            TimeSpan.FromSeconds(10)
-        );
+        await host.WaitUntilAsync(() =>
+        {
+            host.Advance(33);
+            return log.Changes(NoticeSlotChange.Painted).Count == 1;
+        });
         host.Advance(33);
 
         Assert.DoesNotContain(Notice, host.LastFrame, StringComparison.Ordinal);

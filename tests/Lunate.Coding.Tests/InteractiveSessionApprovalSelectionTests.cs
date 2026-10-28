@@ -124,10 +124,7 @@ public sealed class InteractiveSessionApprovalSelectionTests
         );
 
         approval.Host.Console.PushResize(new ConsoleSize(60, 24));
-        await approval.Host.WaitForFrameAsync(
-            "Allow write?  [y]es  [n]o  > [a]lways this session",
-            TimeSpan.FromSeconds(10)
-        );
+        await approval.Host.WaitForFrameAsync("Allow write?  [y]es  [n]o  > [a]lways this session");
 
         Assert.Equal(2, approval.Host.Session.PendingApproval!.Selected);
         Assert.Contains(
@@ -182,7 +179,7 @@ public sealed class InteractiveSessionApprovalSelectionTests
         );
 
         approval.Host.Console.SendText("?");
-        await approval.Host.WaitForFrameAsync("Space choose", TimeSpan.FromSeconds(10));
+        await approval.Host.WaitForFrameAsync("Space choose");
 
         Assert.Contains(
             "y approve  n deny  a always for this session",

@@ -10,8 +10,6 @@ namespace Lunate.Coding.Tests;
 /// </summary>
 public sealed class InteractiveSessionEditorTests
 {
-    private static readonly TimeSpan SpawnWindow = TimeSpan.FromSeconds(30);
-
     [Fact]
     public async Task A_multi_line_draft_round_trips_and_the_cursor_lands_at_the_end()
     {
@@ -28,8 +26,8 @@ public sealed class InteractiveSessionEditorTests
 
         await host.WaitUntilAsync(() => host.Session.Input.CursorPosition == 4);
         host.Console.SendCtrl("g");
-        await editor.WaitForRunAsync(host, SpawnWindow);
-        await host.WaitForFrameAsync("line two", SpawnWindow);
+        await editor.WaitForRunAsync(host, WaitBudgets.SpawnWindow);
+        await host.WaitForFrameAsync("line two");
 
         Assert.Equal("line one\nline two", host.Session.Input.Text);
         Assert.Equal(host.Session.Input.Text.Length, host.Session.Input.CursorPosition);
@@ -46,8 +44,8 @@ public sealed class InteractiveSessionEditorTests
         await host.WaitUntilAsync(() => host.Session.IsComposed);
 
         host.Console.SendCtrl("g");
-        await editor.WaitForRunAsync(host, SpawnWindow);
-        await host.WaitForFrameAsync("line two", SpawnWindow);
+        await editor.WaitForRunAsync(host, WaitBudgets.SpawnWindow);
+        await host.WaitForFrameAsync("line two");
 
         Assert.Equal(string.Empty, editor.BeforeFileContent());
         Assert.Equal("line one\nline two", host.Session.Input.Text);
@@ -65,8 +63,8 @@ public sealed class InteractiveSessionEditorTests
         host.Console.SendText("erase me");
         await host.WaitUntilAsync(() => host.Session.Input.Text == "erase me");
         host.Console.SendCtrl("g");
-        await editor.WaitForRunAsync(host, SpawnWindow);
-        await host.WaitUntilAsync(() => host.Session.Input.Text.Length == 0, SpawnWindow);
+        await editor.WaitForRunAsync(host, WaitBudgets.SpawnWindow);
+        await host.WaitUntilAsync(() => host.Session.Input.Text.Length == 0);
 
         Assert.Equal(string.Empty, host.Session.Input.Text);
         host.Console.Complete();
@@ -86,7 +84,7 @@ public sealed class InteractiveSessionEditorTests
         await host.WaitUntilAsync(() => host.Session.Input.CursorPosition == 9);
 
         host.Console.SendCtrl("g");
-        await host.WaitForFrameAsync("no such program", SpawnWindow);
+        await host.WaitForFrameAsync("no such program");
 
         Assert.Contains(
             "VISUAL=\"no-such-editor-anywhere\"",
@@ -110,8 +108,8 @@ public sealed class InteractiveSessionEditorTests
         host.Console.SendText("draft text");
         await host.WaitUntilAsync(() => host.Session.Input.Text == "draft text");
         host.Console.SendCtrl("g");
-        await editor.WaitForRunAsync(host, SpawnWindow);
-        await host.WaitForFrameAsync("editor exited 1", SpawnWindow);
+        await editor.WaitForRunAsync(host, WaitBudgets.SpawnWindow);
+        await host.WaitForFrameAsync("editor exited 1");
 
         Assert.Equal("draft text", host.Session.Input.Text);
         Assert.False(File.Exists(editor.RecordedDraftPath()), "the temp file outlived the run");
@@ -130,7 +128,7 @@ public sealed class InteractiveSessionEditorTests
         host.Console.SendText("draft text");
         await host.WaitUntilAsync(() => host.Session.Input.Text == "draft text");
         host.Console.SendCtrl("g");
-        await host.WaitForFrameAsync("could not start", SpawnWindow);
+        await host.WaitForFrameAsync("could not start");
 
         Assert.Equal("draft text", host.Session.Input.Text);
         Assert.Empty(editor.TempFiles());
@@ -146,7 +144,7 @@ public sealed class InteractiveSessionEditorTests
         Task run = host.RunAsync();
 
         host.Console.SendCtrl("g");
-        await editor.WaitForStartAsync(SpawnWindow);
+        await editor.WaitForStartAsync(WaitBudgets.SpawnWindow);
 
         // The handover: cooked for the child, and nothing of ours reads while it holds stdin.
         Assert.True(host.Console.IsTerminalSuspended);
@@ -156,7 +154,7 @@ public sealed class InteractiveSessionEditorTests
         Assert.Equal(["z", "z", "z"], host.Console.TypedAtChild);
 
         editor.Release();
-        await host.WaitForFrameAsync("line two", SpawnWindow);
+        await host.WaitForFrameAsync("line two");
 
         Assert.Equal("line one\nline two", host.Session.Input.Text);
         Assert.DoesNotContain("zzz", host.Session.Input.Text, StringComparison.Ordinal);
@@ -175,7 +173,7 @@ public sealed class InteractiveSessionEditorTests
         await host.WaitUntilAsync(() => host.Session.IsComposed);
 
         host.Console.SendCtrl("g");
-        await editor.WaitForStartAsync(SpawnWindow);
+        await editor.WaitForStartAsync(WaitBudgets.SpawnWindow);
 
         // A programmatic write while the child runs: a queue take-back, an extension, a future
         // background write — the case the rule exists for.
@@ -187,7 +185,7 @@ public sealed class InteractiveSessionEditorTests
         Assert.Equal("x", host.Session.Input.Text);
 
         editor.Release();
-        await host.WaitForFrameAsync("the editor's text wins", SpawnWindow);
+        await host.WaitForFrameAsync("the editor's text wins");
 
         Assert.Equal("line one\nline two", host.Session.Input.Text);
 
@@ -211,8 +209,8 @@ public sealed class InteractiveSessionEditorTests
         await host.WaitUntilAsync(() => host.Session.IsComposed);
 
         await host.SendLineAsync("/editor");
-        await editor.WaitForRunAsync(host, SpawnWindow);
-        await host.WaitForFrameAsync("line two", SpawnWindow);
+        await editor.WaitForRunAsync(host, WaitBudgets.SpawnWindow);
+        await host.WaitForFrameAsync("line two");
 
         // The command cleared the line before it dispatched, so the editor opened an empty buffer.
         Assert.Equal(string.Empty, editor.BeforeFileContent());
@@ -232,8 +230,8 @@ public sealed class InteractiveSessionEditorTests
         await host.WaitUntilAsync(() => host.Session.IsComposed);
 
         await host.SendLineAsync("/editor");
-        await editor.WaitForRunAsync(host, SpawnWindow);
-        await host.WaitForFrameAsync("editor exited 1", SpawnWindow);
+        await editor.WaitForRunAsync(host, WaitBudgets.SpawnWindow);
+        await host.WaitForFrameAsync("editor exited 1");
 
         Assert.Equal(string.Empty, host.Session.Input.Text);
         Assert.False(File.Exists(editor.RecordedDraftPath()), "the temp file outlived the run");
@@ -330,7 +328,7 @@ public sealed class InteractiveSessionEditorTests
         /// </summary>
         private static string ReadWhenClosed(string path)
         {
-            DateTime deadline = DateTime.UtcNow.AddSeconds(5);
+            DateTime deadline = DateTime.UtcNow + WaitBudgets.SpawnWindow;
             while (true)
             {
                 try

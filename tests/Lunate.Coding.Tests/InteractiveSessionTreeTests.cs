@@ -69,14 +69,11 @@ public sealed class InteractiveSessionTreeTests
 
         // The tree paints over the ticks after the alternate screen opens: wait for the first row
         // instead of reading whatever frame happened to be current on a slower runner.
-        await host.WaitUntilAsync(
-            () =>
-            {
-                host.Advance(33);
-                return host.Frames.Contains("* e_01 one", StringComparison.Ordinal);
-            },
-            TimeSpan.FromSeconds(10)
-        );
+        await host.WaitUntilAsync(() =>
+        {
+            host.Advance(33);
+            return host.Frames.Contains("* e_01 one", StringComparison.Ordinal);
+        });
 
         // File order, indented by depth: the abandoned branch stays in the tree, unmarked.
         string frames = host.Frames;
@@ -534,15 +531,12 @@ public sealed class InteractiveSessionTreeTests
         // The alternate screen is entered before the first tree frame is painted: wait for the
         // footer hint, which only exists once the viewer has rendered, so a slower runner cannot
         // hand the test the frame that came before the rows.
-        await host.WaitUntilAsync(
-            () =>
-            {
-                host.Advance(33);
-                return host.Console.InAlternateScreen
-                    && host.Frames.Contains("j/k move", StringComparison.Ordinal);
-            },
-            TimeSpan.FromSeconds(10)
-        );
+        await host.WaitUntilAsync(() =>
+        {
+            host.Advance(33);
+            return host.Console.InAlternateScreen
+                && host.Frames.Contains("j/k move", StringComparison.Ordinal);
+        });
     }
 
     /// <summary>

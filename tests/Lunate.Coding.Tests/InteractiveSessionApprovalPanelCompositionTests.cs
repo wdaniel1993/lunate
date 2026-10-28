@@ -73,9 +73,7 @@ public sealed class InteractiveSessionApprovalPanelCompositionTests
 
         // Reaching the third model call proves the second edit ran without a prompt; the file
         // contents prove both edits landed, and the final text proves the turn finished.
-        await host
-            .Client.WaitForCallAsync(3)
-            .WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        await host.Client.WaitForCallAsync(3);
         await host.WaitForScrollbackAsync(
             text => text.Contains("done", StringComparison.Ordinal) && !host.Session.IsRunning,
             "the answer once the turn finishes"

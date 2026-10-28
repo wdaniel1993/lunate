@@ -43,7 +43,7 @@ public sealed class InteractiveSessionToolBlocksCompositionTests
         // The harness awaits the provider-stream hook per update, so the second stream parks on
         // its final "done" update: the read block has committed while the turn is still active.
         await gate.Reached.Task.WaitAsync(
-            TimeSpan.FromSeconds(10),
+            WaitBudgets.InProcess,
             TestContext.Current.CancellationToken
         );
 

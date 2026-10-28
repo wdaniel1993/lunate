@@ -16,7 +16,7 @@ public sealed class FileIndexTests
 
     private static void WaitReady(FileIndex index)
     {
-        DateTime deadline = DateTime.UtcNow + TimeSpan.FromSeconds(10);
+        DateTime deadline = DateTime.UtcNow + WaitBudgets.IndexReady;
         while (!index.IsReady)
         {
             if (DateTime.UtcNow > deadline)

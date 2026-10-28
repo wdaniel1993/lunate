@@ -10,13 +10,6 @@ namespace Lunate.Coding.Tests;
 [Collection("mcp-processes")]
 public sealed class ExtensionToolCompositionTests
 {
-    /// <summary>
-    /// The frame-wait window for frames that depend on a child process starting: the first spawn
-    /// in a run is cold (dotnet exec on a loaded CI runner), and 10 seconds is not enough there —
-    /// the repo's spawn-window idiom (BashToolTests uses 30s for the same race).
-    /// </summary>
-    private static readonly TimeSpan SpawnWait = TimeSpan.FromSeconds(30);
-
     [Fact]
     public async Task Extension_tools_are_declared_before_mcp_tools()
     {
@@ -92,7 +85,7 @@ public sealed class ExtensionToolCompositionTests
         await InteractiveSessionCommandTests.WaitForFrameAsync(
             host,
             "first composition wins",
-            SpawnWait
+            WaitBudgets.SpawnWindow
         );
         Assert.Contains("mcp.json", host.LastFrame, StringComparison.Ordinal);
         Assert.Contains("(test)", host.LastFrame, StringComparison.Ordinal);
@@ -123,13 +116,17 @@ public sealed class ExtensionToolCompositionTests
                 .Select(tool => tool.Description)
         );
 
-        await host.WaitForApprovalAsync(SpawnWait);
+        await host.WaitForApprovalAsync(WaitBudgets.SpawnWindow);
         Assert.Equal("test__echo", host.Session.PendingApproval!.ToolName);
         host.Console.SendText("y");
         await host.Client.WaitForCallAsync(2);
-        await InteractiveSessionCommandTests.WaitForScrollbackAsync(host, "echo: args=", SpawnWait);
+        await InteractiveSessionCommandTests.WaitForScrollbackAsync(
+            host,
+            "echo: args=",
+            WaitBudgets.SpawnWindow
+        );
         // The wait is the assertion: the ✓ header is only ever seen in a committed frame.
-        await host.WaitForScrollbackAsync("\u2713 test__echo", SpawnWait);
+        await host.WaitForScrollbackAsync("\u2713 test__echo", WaitBudgets.SpawnWindow);
 
         host.Console.SendText("/quit");
         host.Console.SendEnter();

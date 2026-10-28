@@ -220,7 +220,7 @@ public sealed class CommandRegistryTests
             .InvokeAsync(new CommandInvocation("wait", string.Empty), cancellation.Token)
             .AsTask();
         await source.Started.Task.WaitAsync(
-            TimeSpan.FromSeconds(10),
+            WaitBudgets.InProcess,
             TestContext.Current.CancellationToken
         );
         await cancellation.CancelAsync();

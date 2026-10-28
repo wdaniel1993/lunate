@@ -209,7 +209,8 @@ public sealed class ProcessSessionTests
 
     private static async Task<int> WaitForPidAsync(string pidFile)
     {
-        for (var attempt = 0; attempt < 600; attempt++)
+        DateTime deadline = DateTime.UtcNow + WaitBudgets.SpawnWindow;
+        while (DateTime.UtcNow < deadline)
         {
             if (File.Exists(pidFile))
             {
@@ -241,23 +242,26 @@ public sealed class ProcessSessionTests
             await Task.Delay(100, Ct);
         }
 
-        Assert.Fail($"no pid was written to {pidFile} within 60 seconds");
+        Assert.Fail(
+            $"no pid was written to {pidFile} within {WaitBudgets.SpawnWindow.TotalSeconds:0} seconds"
+        );
         return 0;
     }
 
     private static async Task AssertEventuallyDeadAsync(int pid)
     {
-        for (var attempt = 0; attempt < 300; attempt++)
+        DateTime deadline = DateTime.UtcNow + WaitBudgets.ProcessExit;
+        while (IsAlive(pid))
         {
-            if (!IsAlive(pid))
+            if (DateTime.UtcNow > deadline)
             {
-                return;
+                Assert.Fail(
+                    $"pid {pid} was still alive {WaitBudgets.ProcessExit.TotalSeconds:0} seconds after the tree kill"
+                );
             }
 
             await Task.Delay(100, Ct);
         }
-
-        Assert.Fail($"pid {pid} was still alive 30 seconds after the tree kill");
     }
 
     private static bool IsAlive(int pid)

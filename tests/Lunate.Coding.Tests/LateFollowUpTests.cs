@@ -34,14 +34,11 @@ public sealed class LateFollowUpTests
         // against an empty queue before the entry exists.
         host.Client.Release(1);
 
-        await host.WaitUntilAsync(
-            () =>
-            {
-                host.Advance(33);
-                return host.Client.Requests.Count >= 2;
-            },
-            TimeSpan.FromSeconds(15)
-        );
+        await host.WaitUntilAsync(() =>
+        {
+            host.Advance(33);
+            return host.Client.Requests.Count >= 2;
+        });
 
         host.Console.Complete();
         await run;

@@ -451,7 +451,7 @@ public sealed class InteractiveSessionAutocompleteTests
     /// <summary>Nudges the cursor (a no-op at the end) until the lazily built index publishes.</summary>
     private static async Task<AutocompleteState> WaitForFileListAsync(InteractiveSessionHost host)
     {
-        DateTime deadline = DateTime.UtcNow + TimeSpan.FromSeconds(10);
+        DateTime deadline = DateTime.UtcNow + WaitBudgets.IndexReady;
         while (DateTime.UtcNow < deadline)
         {
             host.Console.Send(new KeyEvent(KeyKind.Right, null, false, false, false));
@@ -554,15 +554,12 @@ public sealed class InteractiveSessionAutocompleteTests
         // The notice is a live-area state painted on a sampled tick the test pumps by hand; wait
         // on any frame that carried it (not just the last write, which may already be a later
         // paint) with the wider budget the load-sensitive waits in this suite use.
-        await host.WaitUntilAsync(
-            () =>
-            {
-                host.Advance(33);
-                return files.EnumerateCalls == 1
-                    && host.Frames.Contains(notice, StringComparison.Ordinal);
-            },
-            TimeSpan.FromSeconds(30)
-        );
+        await host.WaitUntilAsync(() =>
+        {
+            host.Advance(33);
+            return files.EnumerateCalls == 1
+                && host.Frames.Contains(notice, StringComparison.Ordinal);
+        });
         Assert.Null(host.Session.Autocomplete);
         Assert.Equal(1, files.EnumerateCalls);
 

@@ -85,7 +85,7 @@ public sealed class WorkspaceServicesTests
             .BackendFor(a)
             .GetDiagnosticsAsync(DiagnosticsScope.Solution, Ct)
             .AsTask();
-        await backendA.Started.Task.WaitAsync(TimeSpan.FromSeconds(10), Ct);
+        await backendA.Started.Task.WaitAsync(WaitBudgets.InProcess, Ct);
         // The load blocks its calling thread while waiting, so it must start on another thread.
         Task<WorkspaceLoadResult> loadB = Task.Run(
             async () => await services.BackendFor(b).LoadAsync(Ct).ConfigureAwait(false),
@@ -95,8 +95,8 @@ public sealed class WorkspaceServicesTests
         Assert.False(loadB.IsCompleted, "an all-pinned cap must wait for the in-flight call");
 
         backendA.Hold!.TrySetResult();
-        await pinned.WaitAsync(TimeSpan.FromSeconds(10), Ct);
-        await loadB.WaitAsync(TimeSpan.FromSeconds(10), Ct);
+        await pinned.WaitAsync(WaitBudgets.InProcess, Ct);
+        await loadB.WaitAsync(WaitBudgets.InProcess, Ct);
 
         Assert.Equal([GitIdentity.Canonicalize(a)], services.Evictions);
     }
@@ -162,19 +162,19 @@ public sealed class WorkspaceServicesTests
             .BackendFor(a)
             .GetDiagnosticsAsync(DiagnosticsScope.Solution, Ct)
             .AsTask();
-        await backendA.Started.Task.WaitAsync(TimeSpan.FromSeconds(10), Ct);
+        await backendA.Started.Task.WaitAsync(WaitBudgets.InProcess, Ct);
         // B's load builds its backend first and then waits: the cap is held by the pinned call.
         Task<WorkspaceLoadResult> loadB = Task.Run(
             async () => await services.BackendFor(b).LoadAsync(Ct).ConfigureAwait(false),
             Ct
         );
-        await bBuilt.Task.WaitAsync(TimeSpan.FromSeconds(10), Ct);
+        await bBuilt.Task.WaitAsync(WaitBudgets.InProcess, Ct);
 
         services.Dispose();
         backendA.Hold!.TrySetResult();
 
         await Assert.ThrowsAnyAsync<ObjectDisposedException>(() => loadB);
-        await pinned.WaitAsync(TimeSpan.FromSeconds(10), Ct);
+        await pinned.WaitAsync(WaitBudgets.InProcess, Ct);
         FakeWorkspaceBackend[] constructed;
         lock (backends)
         {

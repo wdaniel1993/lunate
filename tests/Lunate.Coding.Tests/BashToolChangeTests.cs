@@ -118,7 +118,7 @@ public sealed class BashToolChangeTests
 
     private static async Task WaitUntilAsync(Func<bool> condition)
     {
-        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(30);
+        DateTime deadline = DateTime.UtcNow + WaitBudgets.SpawnWindow;
         while (DateTime.UtcNow < deadline)
         {
             if (condition())
@@ -129,7 +129,7 @@ public sealed class BashToolChangeTests
             await Task.Delay(50, Ct);
         }
 
-        Assert.Fail("condition not reached within 30s");
+        Assert.Fail($"condition not reached within {WaitBudgets.SpawnWindow.TotalSeconds:0}s");
     }
 
     private static JsonElement CommandArgs(string command) =>
