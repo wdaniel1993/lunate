@@ -100,6 +100,11 @@ internal static class Cli
             return PackagesCommand.Run(args[1..], workingDirectory, output, errors, extensions);
         }
 
+        if (args.Length > 0 && args[0] == "mcp")
+        {
+            return McpCommand.Run(args[1..], errors, ct);
+        }
+
         if (args.Length > 0 && args[0] == "install")
         {
             return InstallCommand.Run(args[1..], workingDirectory, output, errors, extensions, ct);

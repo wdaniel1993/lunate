@@ -35,6 +35,13 @@ internal static class CliHelp
         output.WriteLine(
             "                                 editors (nothing but protocol on stdout)"
         );
+        output.WriteLine(
+            "  lunate mcp roslyn              serve the read-only Roslyn C# tools over"
+        );
+        output.WriteLine(
+            "                                 stdio to another MCP client (nothing but protocol"
+        );
+        output.WriteLine("                                 on stdout)");
         output.WriteLine("  lunate --version               print the version");
         output.WriteLine("  lunate --help                  show this help");
         output.WriteLine("  lunate --discover <name-or-url>");
