@@ -48,8 +48,8 @@ public sealed class SlowHookNoticeClearTests
         // The turn unwinds, the queue drains and the next turn opens: its RunStarted clears the
         // notice area, still with no frame in between. This wait spans the turn boundary — the
         // run writes its session and history before the queue drains — so it takes the
-        // loaded-runner budget; a 10 s window is what timed out on the Windows leg of #225
-        // while the session was doing exactly this.
+        // loaded-runner ceiling; a 10 s window is what timed out on the Windows leg of #225 and
+        // again on the macOS leg of #231 while the session was doing exactly this.
         host.Client.Release(1);
         await host.WaitUntilAsync(
             () => log.Changes(NoticeSlotChange.Cleared).Count == 1,
