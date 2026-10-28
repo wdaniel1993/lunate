@@ -432,6 +432,67 @@ public sealed class FollowUpQueueSessionTests
         await run;
     }
 
+    [Fact]
+    public async Task A_follow_up_queued_as_the_turn_hands_over_is_not_parked()
+    {
+        using var host = new InteractiveSessionHost();
+        host.Client.Enqueue(Scripts.Text("first"), Scripts.Stop());
+        host.Client.Enqueue(Scripts.Text("late"), Scripts.Stop());
+        host.Client.Gate(1);
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+
+        using var atHandoff = new ManualResetEventSlim();
+        var queued = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var held = 0;
+        // The handoff is the one instant the queue and the turn can disagree about who owns the next
+        // turn: the run has returned, the queue has not been read since, and the session has not gone
+        // idle. Suspending the turn there makes a follow-up arriving in that window land the same way
+        // on every run — the seam stands in for the scheduler's preemption, not for the code, which
+        // is why the assertion below is the spec's rule and not a replay of statements.
+        host.Session.TurnHandoffSeam = async () =>
+        {
+            if (Interlocked.Exchange(ref held, 1) != 0)
+            {
+                return;
+            }
+
+            atHandoff.Set();
+            await queued.Task.WaitAsync(WaitBudgets.CrossTurn);
+        };
+
+        host.Console.SendText("hi");
+        host.Console.SendEnter();
+        await host.Client.WaitForCallAsync(1);
+        host.Client.Release(1);
+        await host.WaitUntilAsync(() => atHandoff.IsSet);
+
+        // Submitted while the turn still reads as running, so the queue takes it and leaves the
+        // handover to the turn — the path the spec promises and the window makes racy.
+        host.Console.SendText("late");
+        await host.WaitUntilAsync(() => host.Session.Input.Text == "late");
+        host.Console.SendEnter();
+        await host.WaitUntilAsync(() => host.Session.QueuedFollowUpCount == 1);
+        queued.SetResult();
+
+        // "When the turn completes the queued messages run": the handoff either took the entry (the
+        // session still reads running) or found nothing (the queue is empty). Idle with the entry
+        // still queued is the state the spec forbids — nothing would ever drain it.
+        await host.WaitUntilAsync(() =>
+            !host.Session.IsRunning || host.Session.QueuedFollowUpCount == 0
+        );
+        Assert.False(
+            !host.Session.IsRunning && host.Session.QueuedFollowUpCount > 0,
+            "the handoff left the session idle with the follow-up still queued"
+        );
+
+        await host.Client.WaitForCallAsync(2);
+        Assert.Equal("late", host.Client.Requests[1][^1].Text);
+
+        host.Console.Complete();
+        await run;
+    }
+
     private static async Task QueueAsync(InteractiveSessionHost host, string text, int expected)
     {
         host.Console.SendText(text);
