@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Diagnostics.Metrics;
 using System.Globalization;
 using Lunate.Extensibility.Abstractions;
@@ -63,17 +64,37 @@ public sealed partial class HookRunner
             Interlocked.Increment(ref entry.TimedOut);
         }
 
-        UpdateMaximum(entry, elapsed.Ticks);
-        if (milliseconds > _options.SlowHookThreshold.TotalMilliseconds)
+        if (milliseconds <= _options.SlowHookThreshold.TotalMilliseconds)
         {
-            Interlocked.Increment(ref entry.SlowCount);
-            if (Interlocked.Exchange(ref entry.Warned, 1) == 0)
-            {
-                LogSlowHook(hook, registration, elapsed);
-                RaiseSlowHook(registration.ExtensionId, hook, elapsed);
-            }
+            UpdateMaximum(entry, elapsed.Ticks);
+            return;
+        }
+
+        if (MachineIsBehind())
+        {
+            // Counted as a call, like a cancelled dispatch: the queue's time, not the hook's.
+            return;
+        }
+
+        UpdateMaximum(entry, elapsed.Ticks);
+        Interlocked.Increment(ref entry.SlowCount);
+        if (Interlocked.Exchange(ref entry.Warned, 1) == 0)
+        {
+            LogSlowHook(hook, registration, elapsed);
+            RaiseSlowHook(registration.ExtensionId, hook, elapsed);
         }
     }
+
+    /// <summary>
+    /// Whether the machine, rather than the handler, is what a continuation is waiting for. The pool
+    /// is the only witness a handler's continuations leave: while more work is waiting for it than it
+    /// has workers, a queued continuation — the handler's own included — waits for a thread instead
+    /// of running, so a dispatch that took long there measured the queue and not the hook. This is
+    /// the whole of the rule on purpose: a clock the runner could start to measure the pool would be
+    /// queued on the very worker that is asking, and would measure that worker's own queue instead.
+    /// </summary>
+    private static bool MachineIsBehind() =>
+        ThreadPool.PendingWorkItemCount > ThreadPool.ThreadCount;
 
     private void RecordCancelled(string hook, Registration registration, TimeSpan measured)
     {
