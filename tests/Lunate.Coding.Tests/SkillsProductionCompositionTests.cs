@@ -90,6 +90,56 @@ public sealed class SkillsProductionCompositionTests
     }
 
     [Fact]
+    public async Task A_session_started_in_a_subdirectory_indexes_the_repositorys_skill()
+    {
+        using var temp = new TempDirectory();
+        string repository = temp.File("repo");
+        Directory.CreateDirectory(Path.Combine(repository, ".git"));
+        string skillDirectory = Path.Combine(repository, ".agents", "skills", "greek");
+        Directory.CreateDirectory(skillDirectory);
+        File.WriteAllText(
+            Path.Combine(skillDirectory, "SKILL.md"),
+            "---\nname: greek\ndescription: From the repository root\n---\n\nBody of greek.\n"
+        );
+        string subdirectory = Path.Combine(repository, "src", "inner");
+        Directory.CreateDirectory(subdirectory);
+
+        using var host = new InteractiveSessionHost(
+            extensions: new ExtensionSeams
+            {
+                StorePath = Path.Combine(temp.Root, "store"),
+                Log = new RecordingExtensionLog(),
+            },
+            workingDirectory: subdirectory
+        );
+        host.Console.Size = new ConsoleSize(600, 24);
+        Task run = host.RunAsync();
+        await InteractiveSessionCommandTests.WaitForFrameAsync(
+            host,
+            "Load project skills from this repository"
+        );
+        host.Console.SendText("y");
+        await InteractiveSessionCommandTests.WaitForFrameAsync(
+            host,
+            "remembered for this repository"
+        );
+
+        host.Client.Enqueue(Scripts.Text("hello"), Scripts.Stop());
+        host.Console.SendText("hi");
+        host.Console.SendEnter();
+        await host.Client.WaitForCallAsync(1);
+        string system = host
+            .Client.Requests[0]
+            .Single(message => message.Role == Microsoft.Extensions.AI.ChatRole.System)
+            .Text;
+        Assert.Contains("- greek: From the repository root", system, StringComparison.Ordinal);
+
+        host.Console.SendText("/quit");
+        host.Console.SendEnter();
+        await run;
+    }
+
+    [Fact]
     public void The_base_prompt_stays_under_the_core_cap_with_the_index_counted_separately()
     {
         using var temp = new TempDirectory();
