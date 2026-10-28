@@ -45,7 +45,8 @@ public sealed partial class HookRunner
         string hook,
         Registration registration,
         TimeSpan measured,
-        HandlerStatus status
+        HandlerStatus status,
+        bool startedBehind
     )
     {
         TimingEntry entry = Entry(hook, registration.ExtensionId);
@@ -70,9 +71,11 @@ public sealed partial class HookRunner
             return;
         }
 
-        if (MachineIsBehind())
+        if (startedBehind || MachineIsBehind())
         {
-            // Counted as a call, like a cancelled dispatch: the queue's time, not the hook's.
+            // Counted as a call, like a cancelled dispatch: the queue's time, not the hook's. The
+            // start sample matters because a pool that was behind when the dispatch began and has
+            // caught up by now still made this call wait -- the handler never had the machine.
             return;
         }
 
@@ -92,9 +95,14 @@ public sealed partial class HookRunner
     /// of running, so a dispatch that took long there measured the queue and not the hook. This is
     /// the whole of the rule on purpose: a clock the runner could start to measure the pool would be
     /// queued on the very worker that is asking, and would measure that worker's own queue instead.
+    /// <para>
+    /// Sampled twice per dispatch — before the handler runs and when the result is recorded — because
+    /// one sample is a verdict on an instant: a pool that starved the dispatch and injected threads
+    /// before it finished would otherwise read as caught up and charge the queue's delay to the hook.
+    /// </para>
     /// </summary>
-    private static bool MachineIsBehind() =>
-        ThreadPool.PendingWorkItemCount > ThreadPool.ThreadCount;
+    private bool MachineIsBehind() =>
+        _options.MachineBehind?.Invoke() ?? ThreadPool.PendingWorkItemCount > ThreadPool.ThreadCount;
 
     private void RecordCancelled(string hook, Registration registration, TimeSpan measured)
     {

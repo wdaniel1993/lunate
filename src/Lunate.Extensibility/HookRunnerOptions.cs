@@ -24,4 +24,11 @@ public sealed record HookRunnerOptions
     /// increment the hook's slow count.
     /// </summary>
     public TimeSpan SlowHookThreshold { get; init; } = TimeSpan.FromMilliseconds(500);
+
+    /// <summary>
+    /// Answers whether the machine is behind for one dispatch. Production leaves this null and the
+    /// runner reads the thread pool; a test that needs a deterministic verdict sets it, because a
+    /// real pool's state cannot be held still while a handler runs.
+    /// </summary>
+    internal Func<bool>? MachineBehind { get; init; }
 }

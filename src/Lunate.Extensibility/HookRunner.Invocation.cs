@@ -54,11 +54,21 @@ public sealed partial class HookRunner
     )
     {
         long start = Stopwatch.GetTimestamp();
+        // Sampled before the handler runs: a pool that was already behind when the dispatch began
+        // made this call wait for a thread, and it may have caught up again by the time the result
+        // is recorded -- an end-only sample then blames the handler for the queue's delay.
+        bool startedBehind = MachineIsBehind();
         try
         {
             HandlerOutcome<T> outcome = await CallCoreAsync(call, timeout, ct)
                 .ConfigureAwait(false);
-            RecordTiming(hook, registration, Stopwatch.GetElapsedTime(start), outcome.Status);
+            RecordTiming(
+                hook,
+                registration,
+                Stopwatch.GetElapsedTime(start),
+                outcome.Status,
+                startedBehind
+            );
             return outcome;
         }
         catch (OperationCanceledException)
