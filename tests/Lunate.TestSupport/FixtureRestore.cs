@@ -63,19 +63,53 @@ public static class FixtureRestore
             }
 
             Interlocked.Increment(ref _restores);
+            string[] arguments =
+            [
+                "restore",
+                solutionPath,
+                "--configfile",
+                configPath,
+                "-p:NuGetAudit=false",
+                "--nologo",
+            ];
             ChildProcessResult result = DotnetCli.Run(
                 root,
-                [
-                    "restore",
-                    solutionPath,
-                    "--configfile",
-                    configPath,
-                    "-p:NuGetAudit=false",
-                    "--nologo",
-                ],
+                arguments,
                 ChildEnvironment(root),
                 RestoreTimeout
             );
+
+            // A restore that fails without a byte on either stream is not a broken fixture, it is a
+            // child that died before it could speak. One retry separates "the fixture is wrong" from
+            // "this process could not start": a real fixture defect fails twice with a reason, while a
+            // transient start failure passes and leaves the suite honest. Both attempts are reported
+            // when the retry fails too, so the next reader gets the second attempt's words as well.
+            if (
+                !result.Succeeded
+                && string.IsNullOrEmpty(result.StandardOutput)
+                && string.IsNullOrEmpty(result.StandardError)
+            )
+            {
+                ChildProcessResult retry = DotnetCli.Run(
+                    root,
+                    [.. arguments, "--verbosity", "normal"],
+                    ChildEnvironment(root),
+                    RestoreTimeout
+                );
+                if (retry.Succeeded)
+                {
+                    RestoreCache.Store(key, root);
+                    return;
+                }
+
+                throw new InvalidOperationException(
+                    result.Describe("dotnet restore failed, silently, then failed again on a retry")
+                        + Environment.NewLine
+                        + retry.Describe("the retry")
+                        + Environment.NewLine
+                        + ChildProcessDiagnostics.Describe(root)
+                );
+            }
 
             if (!result.Succeeded)
             {
@@ -90,9 +124,13 @@ public static class FixtureRestore
         }
     }
 
-    private static Dictionary<string, string?> ChildEnvironment(string root) =>
+    internal static Dictionary<string, string?> ChildEnvironment(string root) =>
         new(StringComparer.Ordinal)
         {
+            // The child must not depend on the caller's home: a runner whose HOME is missing or
+            // read-only makes dotnet exit 1 before it prints anything, which is indistinguishable
+            // from a broken fixture.
+            ["DOTNET_CLI_HOME"] = Path.Combine(root, ".dotnet-home"),
             ["NUGET_PACKAGES"] = Path.Combine(root, ".packages"),
             ["NUGET_HTTP_CACHE_PATH"] = Path.Combine(root, ".nuget-http-cache"),
             ["MSBUILDDISABLENODEREUSE"] = "1",

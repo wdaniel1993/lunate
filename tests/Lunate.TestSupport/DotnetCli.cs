@@ -183,7 +183,9 @@ public static class DotnetCli
 
     /// <summary>
     /// The streams close when the child exits; a build server the child left behind can hold them
-    /// open, and a diagnostic helper must not hang on that.
+    /// open, and a diagnostic helper must not hang on that. A read that fails is reported as such:
+    /// swallowing it would turn a real error into "the child printed nothing", which sends a reader
+    /// looking for a silent crash that never happened.
     /// </summary>
     private static string Drain(Task<string> stream)
     {
@@ -191,9 +193,12 @@ public static class DotnetCli
         {
             return stream.Wait(DrainTimeout) ? stream.Result : string.Empty;
         }
-        catch (AggregateException)
+        catch (AggregateException exception)
         {
-            return string.Empty;
+            return string.Create(
+                CultureInfo.InvariantCulture,
+                $"<the stream could not be read: {exception.GetBaseException().Message}>"
+            );
         }
     }
 }
