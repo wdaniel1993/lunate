@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.Text.Json;
@@ -222,6 +223,29 @@ public sealed class BashToolTests
     }
 
     [Fact]
+    public void A_survivor_is_judged_by_start_time_not_by_the_pid_alone()
+    {
+        // The kill assertions end when the pid is gone — or, since the wait pins the process, when
+        // the pid now names a different process. Both halves of that rule are load-bearing: a
+        // start-time read that never matched would make the wait pass vacuously and a child the
+        // tool leaked would go unseen, and a read that only compared pids would fail on a runner
+        // that recycled the number. The mismatch is simulated by shifting the captured stamp: a
+        // process wearing the same pid but created a second later is exactly what recycling hands
+        // back.
+        if (TryRead(Environment.ProcessId) is not { } self)
+        {
+            Assert.Fail("the test process must be readable from its own pid");
+            return;
+        }
+        Assert.True(IsStillAlive(Environment.ProcessId, self), "a live process read as alive");
+        Assert.False(
+            IsStillAlive(Environment.ProcessId, (self.Name, self.StartedAt.AddSeconds(1))),
+            "another process wearing the pid read as the survivor"
+        );
+        Assert.False(IsStillAlive(int.MaxValue, self), "a pid nobody holds read as the survivor");
+    }
+
+    [Fact]
     public async Task A_missing_shell_is_a_clear_error()
     {
         using var temp = new TempDirectory();
@@ -314,35 +338,71 @@ public sealed class BashToolTests
         return 0;
     }
 
+    /// <summary>
+    /// Waits until the process the tool killed is gone. A pid is not a name for that process: the
+    /// Windows runner recycles pids while the suite keeps spawning children, and a recycled number
+    /// reads as a survivor the tool never left behind — no budget can fix that, it only waits
+    /// longer for a process that will never die. The start time is pinned while the process is
+    /// still ours, so the question is "did <em>that</em> process die?" and the budget only has to
+    /// cover the teardown itself (<see cref="WaitBudgets.ProcessExit"/> says why it is wide there).
+    /// </summary>
     private static async Task AssertEventuallyDeadAsync(int pid)
     {
-        for (var attempt = 0; attempt < 300; attempt++)
+        if (TryRead(pid) is not { } killed)
         {
-            if (!IsAlive(pid))
+            // Nothing to compare: the pid held no process by the time the test read it.
+            return;
+        }
+
+        DateTime deadline = DateTime.UtcNow + WaitBudgets.ProcessExit;
+        while (IsStillAlive(pid, killed))
+        {
+            if (DateTime.UtcNow > deadline)
             {
-                return;
+                Assert.Fail(
+                    string.Create(
+                        CultureInfo.InvariantCulture,
+                        $"pid {pid} ({killed.Name}, started {killed.StartedAt:HH:mm:ss.fff}) was still alive {WaitBudgets.ProcessExit.TotalSeconds:0} seconds after the tree kill"
+                    )
+                );
             }
 
             await Task.Delay(100);
         }
-
-        Assert.Fail($"pid {pid} was still alive 30 seconds after the tree kill");
     }
 
-    private static bool IsAlive(int pid)
+    /// <summary>
+    /// Alive means a process still holds this pid <em>and</em> it started when ours did: the start
+    /// time is the creation stamp, so a recycled pid cannot match it. A pid nobody holds — or one
+    /// this process may no longer inspect — is not the survivor the kill under test left behind.
+    /// </summary>
+    private static bool IsStillAlive(int pid, (string Name, DateTime StartedAt) killed) =>
+        TryRead(pid) is { } current && current.StartedAt == killed.StartedAt;
+
+    /// <summary>
+    /// The name and creation stamp behind a pid, or null when no process we may inspect holds it
+    /// any more — which is the answer a killed child is expected to give.
+    /// </summary>
+    private static (string Name, DateTime StartedAt)? TryRead(int pid)
     {
         try
         {
-            using var process = Process.GetProcessById(pid);
-            return !process.HasExited;
+            using Process process = Process.GetProcessById(pid);
+            return process.HasExited ? null : (process.ProcessName, process.StartTime);
         }
         catch (ArgumentException)
         {
-            return false;
+            return null;
         }
         catch (InvalidOperationException)
         {
-            return false;
+            return null;
+        }
+        catch (Win32Exception)
+        {
+            // Exited between the lookup and the read, or a pid this process may not inspect:
+            // neither is a survivor of the kill under test.
+            return null;
         }
     }
 
