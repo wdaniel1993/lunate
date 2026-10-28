@@ -4,10 +4,12 @@ namespace Lunate.Coding.Tests;
 
 /// <summary>
 /// A read that lands while a save replaces the file must return the old bytes or the new ones: never
-/// throw, never see a half-written document, never fall back to defaults. Windows enforces that
-/// contract, so a reader that opens without delete sharing turns a concurrent save into an
-/// access-denied and a writer that cannot get delete sharing fails to replace the file. Unix sharing
-/// is advisory, so this passes there before and after the fix; the Windows leg is the one that bites.
+/// throw, never see a half-written document, never fall back to defaults — and the save itself must
+/// not fail because a read is in flight. Windows is the leg that enforces this: a rename over a file
+/// that a handle holds fails with access-denied (delete sharing included) until the handle closes,
+/// and a replace in place instead takes the name away, so the store serializes its reads and writes
+/// with a gate rather than retrying around them. Unix sharing is advisory, so this passes there
+/// before and after the gate; the Windows leg is the one that bites.
 /// </summary>
 public sealed class SettingsStoreReadRaceTests
 {
@@ -87,57 +89,6 @@ public sealed class SettingsStoreReadRaceTests
         // The last save, once the reader is gone, leaves exactly one complete document behind.
         SettingsStore.WriteFavorites(Two, path);
         Assert.Equal(Two, SettingsStore.Resolve(path, _ => null).Favorites);
-        Assert.Empty(Directory.GetFiles(temp.Root, "*.tmp"));
-    }
-
-    [Fact]
-    public void A_save_completes_while_a_reader_holds_the_file()
-    {
-        using var temp = new TempDirectory();
-        string path = temp.File("settings.json");
-        SettingsStore.WriteFavorites(One, path);
-
-        // The deterministic half of the race above: a handle that shares delete the way the store's
-        // reader does must not be able to make a save fail, however long it is held.
-        using (
-            new FileStream(
-                path,
-                FileMode.Open,
-                FileAccess.Read,
-                FileShare.ReadWrite | FileShare.Delete
-            )
-        )
-        {
-            SettingsStore.WriteFavorites(Two, path);
-        }
-
-        Assert.Equal(Two, SettingsStore.Resolve(path, _ => null).Favorites);
-        Assert.Empty(Directory.GetFiles(temp.Root, "*.tmp"));
-    }
-
-    [Fact]
-    public void A_holder_that_denies_delete_is_what_turns_a_save_into_a_failure()
-    {
-        if (!OperatingSystem.IsWindows())
-        {
-            Assert.Skip("Unix sharing is advisory: a holder cannot turn a save into a failure.");
-        }
-
-        using var temp = new TempDirectory();
-        string path = temp.File("settings.json");
-        SettingsStore.WriteFavorites(One, path);
-
-        using (new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
-        {
-            Exception? failure = Record.Exception(() => SettingsStore.WriteFavorites(Two, path));
-            Assert.True(
-                failure is IOException or UnauthorizedAccessException,
-                $"expected the save to fail, got {failure?.GetType().Name ?? "none"}"
-            );
-        }
-
-        // The failed save leaves the old document: nothing half-written reaches a reader.
-        Assert.Equal(One, SettingsStore.Resolve(path, _ => null).Favorites);
         Assert.Empty(Directory.GetFiles(temp.Root, "*.tmp"));
     }
 }

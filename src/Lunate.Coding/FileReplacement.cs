@@ -5,15 +5,16 @@ namespace Lunate.Coding;
 /// implementation serves every replace Lunate makes over a file it may share:
 /// <see cref="TextFile.WriteRaw"/> and the settings store.
 /// <para>
-/// On Windows the two replacements differ, and only one of them survives a live reader. Renaming
-/// over the destination (<see cref="File.Move(string, string, bool)"/> with overwrite) fails with
-/// access-denied for as long as any handle holds it, delete sharing included, and the pause the
-/// retry adds cannot outlast a reader that keeps reopening the file.
-/// <see cref="File.Replace(string, string, string?)"/> replaces the target in place instead: it
-/// succeeds while a reader holds it with delete sharing, and fails with a sharing violation while
-/// one holds it without — which is why the settings reader opens with
-/// <see cref="FileShare.Delete"/>. Pass <paramref name="preserveTarget"/> for any target a reader
-/// may hold; it also keeps the target's ACLs and attributes.
+/// On Windows the two replacements cost different things, measured on a windows-latest runner.
+/// Renaming over the destination (<see cref="File.Move(string, string, bool)"/> with overwrite)
+/// keeps the name continuously present, which a reader needs, but fails with access-denied for as
+/// long as any handle holds the destination — delete sharing included — so the retry below only
+/// outlasts a brief lock, never a reader. <see cref="File.Replace(string, string, string?)"/>
+/// survives a held handle that shares delete, but it takes the destination's name away while it
+/// works: a reader racing it sees a missing file. So a caller that a reader may race must keep the
+/// two sides from overlapping in the first place (the settings store holds a gate) and leave the
+/// retry to transient locks; <paramref name="preserveTarget"/> is for callers whose reader is not
+/// this process.
 /// </para>
 /// </summary>
 internal static class FileReplacement
@@ -25,9 +26,8 @@ internal static class FileReplacement
     /// Moves <paramref name="source"/> onto <paramref name="destination"/>, retrying while the
     /// destination is transiently locked. <paramref name="preserveTarget"/> replaces an existing
     /// target in place on Windows (<see cref="File.Replace(string, string, string?)"/> keeps its
-    /// ACLs and attributes, and is the only one of the two that a live reader does not block); on
-    /// POSIX a move is a rename either way, so the caller copies the mode first. The last failure
-    /// is rethrown unchanged, so each caller can word its own report.
+    /// ACLs and attributes); on POSIX a move is a rename either way, so the caller copies the mode
+    /// first. The last failure is rethrown unchanged, so each caller can word its own report.
     /// </summary>
     internal static void Replace(string source, string destination, bool preserveTarget = false)
     {

@@ -113,6 +113,16 @@ public static class SettingsStore
 
     private static readonly JsonSerializerOptions WriteOptions = new() { WriteIndented = true };
 
+    /// <summary>
+    /// Serializes every read and write of a settings file in this process. Windows refuses to rename
+    /// a file over a destination that any handle holds — delete sharing included — so a save that
+    /// overlaps a read fails with access-denied however long it retries, and a read that overlaps a
+    /// save would otherwise see the replacement mid-flight. Reads are short and settings change
+    /// rarely, so one gate costs nothing and makes the two sides of this store mutual exclusion.
+    /// Another process's reader is still best effort: the replace retries briefly and reports.
+    /// </summary>
+    private static readonly Lock Gate = new();
+
     /// <summary>Resolves the effective settings; throws one <see cref="InvalidDataException"/> naming every problem.</summary>
     public static AgentSettings Resolve(
         string? filePath = null,
@@ -121,7 +131,12 @@ public static class SettingsStore
     {
         string path = filePath ?? DefaultFilePath();
         var problems = new List<string>();
-        AgentSettings settings = ParseFile(path, problems);
+        AgentSettings settings;
+        lock (Gate)
+        {
+            settings = ParseFile(path, problems);
+        }
+
         settings = ApplyEnvironment(
             settings,
             environment ?? Environment.GetEnvironmentVariable,
@@ -140,33 +155,37 @@ public static class SettingsStore
     /// <summary>
     /// Writes the favourites through read-modify-write: every other value in the existing JSON is
     /// preserved, the result is validated by the same parser, and the file is replaced atomically
-    /// with <c>schemaVersion: 2</c>. On any failure the old file is left untouched.
+    /// with <c>schemaVersion: 2</c>. On any failure the old file is left untouched. The read and the
+    /// replace happen under one gate, so no read in this process can see the file between them.
     /// </summary>
     public static void WriteFavorites(IReadOnlyList<string> favorites, string? filePath = null)
     {
         ArgumentNullException.ThrowIfNull(favorites);
         string path = filePath ?? DefaultFilePath();
-        JsonObject root = ReadRoot(path);
-        root["schemaVersion"] = SupportedSchemaVersion;
-        var list = new JsonArray();
-        foreach (string id in favorites)
+        lock (Gate)
         {
-            list.Add(id.Trim());
+            JsonObject root = ReadRoot(path);
+            root["schemaVersion"] = SupportedSchemaVersion;
+            var list = new JsonArray();
+            foreach (string id in favorites)
+            {
+                list.Add(id.Trim());
+            }
+
+            root["favorites"] = list;
+
+            string json = root.ToJsonString(WriteOptions) + "\n";
+            var problems = new List<string>();
+            _ = ParseJson(json, problems);
+            if (problems.Count > 0)
+            {
+                throw new InvalidDataException(
+                    $"Invalid settings in '{path}': {string.Join("; ", problems)}. No settings were written."
+                );
+            }
+
+            WriteAtomically(path, json);
         }
-
-        root["favorites"] = list;
-
-        string json = root.ToJsonString(WriteOptions) + "\n";
-        var problems = new List<string>();
-        _ = ParseJson(json, problems);
-        if (problems.Count > 0)
-        {
-            throw new InvalidDataException(
-                $"Invalid settings in '{path}': {string.Join("; ", problems)}. No settings were written."
-            );
-        }
-
-        WriteAtomically(path, json);
     }
 
     private static JsonObject ReadRoot(string path)
@@ -203,9 +222,10 @@ public static class SettingsStore
     }
 
     /// <summary>
-    /// Reads a settings file without holding a share mode that would block a concurrent replace:
-    /// on Windows the default read share denies delete, which turns another thread's save into a
-    /// sharing violation. Reading and writing the same small file must not be mutually exclusive.
+    /// Reads a settings file without holding a share mode that would block a replace elsewhere: on
+    /// Windows the default read share denies delete, so another process could not replace the file
+    /// while this read is open. Reads in this process take <see cref="Gate"/> first, so a save never
+    /// has to wait for the reader that is inside this method.
     /// </summary>
     private static string ReadAllTextShared(string path)
     {
@@ -237,11 +257,11 @@ public static class SettingsStore
                 File.SetUnixFileMode(temp, File.GetUnixFileMode(path));
             }
 
-            // In place, not a rename over the target: on Windows a rename fails for as long as a
-            // reader holds the file, delete sharing included, while replacing in place succeeds
-            // with such a reader and fails only with one that denies delete. Retrying cannot
-            // outlast a reader that keeps reopening the file, so the primitive is what decides.
-            FileReplacement.Replace(temp, path, preserveTarget: true);
+            // A rename, not a replace in place: File.Replace (ReplaceFile) survives a held handle
+            // but takes the target's name away while it works, so a racing reader sees a missing
+            // file. The rename keeps the name continuously present; the store's gate is what keeps
+            // this process from holding the file in the first place.
+            FileReplacement.Replace(temp, path);
         }
         finally
         {
