@@ -78,7 +78,7 @@ Alternatives: mask only at request build (the session would still hold raw text,
 
 ### D2 — The spill trigger is estimated tokens; the character cap stays
 
-`AgentHarnessOptions.SpillThresholdTokens` (default **2,000** estimated tokens, exposed as `output.spillThresholdTokens`) decides when a result is spilled. The estimate is the loop's existing one: UTF-8 bytes / 4 (`CompactionReducer.cs:253-283`). `ToolOutputLimit` (chars, default 30,000) stays as the absolute fallback cap when there is no session, when a write fails, or when the result is too large to spill. Whichever limit is hit first applies.
+`AgentHarnessOptions.SpillThresholdTokens` (default **2,000** estimated tokens, exposed as `output.spillThresholdTokens` and `LUNATE_TOOL_SPILL_THRESHOLD`) decides when a result is spilled. The estimate is the loop's existing one: UTF-8 bytes / 4 (`CompactionReducer.cs:253-283`). `ToolOutputLimit` (chars, default 30,000) stays as the absolute fallback cap when there is no session, when a write fails, or when the result is too large to spill. Whichever limit is hit first applies.
 
 Why not keep one character limit: 30,000 characters allows a 7,500-token result through, and lowering the user-facing `toolResultLimit` would change what it means for every existing settings file. Why not a percentage of the model window: the same result should spill on a 32k and a 200k model; the threshold is about one result's usefulness, not the whole window. Why not always spill: a one-line answer must not cost a file read.
 

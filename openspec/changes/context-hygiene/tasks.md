@@ -13,7 +13,7 @@
 ## 2. Spills
 
 - [ ] 2.1 Add `ToolOutput.EstimateTokens` (UTF-8 bytes / 4) and the pointer renderer (10 head and 10 tail lines, at most 2,000 characters, counts culture-invariant, path, next action). Unit tests for: under both limits unchanged; over the token threshold; over the character cap; surrogate-safe cut; tiny limit degrades.
-- [ ] 2.2 Add `AgentHarnessOptions.SpillThresholdTokens` (default 2,000) and `SettingsStore`'s `output.spillThresholdTokens` (positive integer, unknown-key and invalid-value problems named). Tests: default, file value, environment override naming, invalid value.
+- [ ] 2.2 Add `AgentHarnessOptions.SpillThresholdTokens` (default 2,000) and `SettingsStore`'s `output.spillThresholdTokens` (positive integer, `LUNATE_TOOL_SPILL_THRESHOLD`, unknown-key and invalid-value problems named). Tests: default, file value, environment override, invalid value.
 - [ ] 2.3 Route the loop's admission through the threshold: mask first (section 5), then spill `FullOutput` or the big `Output` with the existing `ToolOutputSpill`, then render the pointer. Keep `ToolOutput.Truncate` for the no-session and failed-spill path. Tests: the red test from 1.2 plus the existing `ToolOutputSpillTests` and `AgentToolOutputLimitTests` stay green.
 - [ ] 2.4 Grant `read` the session's canonical `tool-output` directory for the run and on resume (extend the existing read allowance; do not accept arbitrary absolute paths). Tests: the marker's path reads back in full; a sibling path outside the directory is still refused; a resume reads it too; a no-session run writes nothing.
 - [ ] 2.5 Commit: `feat(agent): spill a large tool result as a readable pointer`.
