@@ -32,7 +32,12 @@ jobs:
 
       - name: Decide
         env:
-          LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
+          # The labels are read through the API at run time, not from the event payload: a label
+          # added after the triggering event (standalone-archive, for instance) has to count on a
+          # plain rerun, and a rerun replays the original payload.
+          labels="$(gh pr view "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --json labels -q '[.labels[].name]|join(",")')"
           bash scripts/archive-only-check.sh --self-test
-          bash scripts/archive-only-check.sh --paths-file "$RUNNER_TEMP/files.txt" --labels "$LABELS"
+          bash scripts/archive-only-check.sh --paths-file "$RUNNER_TEMP/files.txt" --labels "$labels"
