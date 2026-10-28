@@ -428,7 +428,9 @@ internal sealed class GatedChatClient : IChatClient
 
     public async Task WaitForCallAsync(int call, TimeSpan? timeout = null)
     {
-        TimeSpan budget = timeout ?? TimeSpan.FromSeconds(10);
+        // The omitted budget is the host's unnamed wait, not this class's own literal: a model call
+        // that has not started yet is waiting on the same runner as everything else the session does.
+        TimeSpan budget = timeout ?? InteractiveSessionHost.DefaultWait;
         Task started;
         int observed;
         lock (_started)
@@ -773,11 +775,20 @@ internal sealed class InteractiveSessionHost : IDisposable
             .Replace("\n", "\\n", StringComparison.Ordinal);
 
     /// <summary>
-    /// The harness's bound for a wait on a rendered frame or committed scrollback: in-process
-    /// renders land in milliseconds, so a miss inside this window is a bug, not slowness.
-    /// Spawn-dependent waits pass their own wider window explicitly.
+    /// The budget a wait takes when its caller does not name one: the gate's cross-turn ceiling,
+    /// never a window written for an idle machine. A caller that omits the argument is a caller
+    /// that cannot say how long the thing it waits on takes — a render, a scrollback commit, a run
+    /// writing its session before the follow-up queue drains — and a tight default turns a loaded
+    /// runner into a failure that reads like a broken session. On PR #225's Windows leg two
+    /// unrelated waits in this assembly missed a 10 s and a 30 s window on the same tick, and on
+    /// PR #231's macOS leg the slow-hook notice wait missed a 10 s window — the inherited default
+    /// of this helper — while the session was doing exactly what the test asked.
+    /// <para>
+    /// Every wait here polls, so the ceiling costs nothing when the machine is fast: the poll exits
+    /// the moment its condition holds. The price is that a genuine hang reports itself later.
+    /// </para>
     /// </summary>
-    private static readonly TimeSpan DefaultWait = TimeSpan.FromSeconds(10);
+    internal static readonly TimeSpan DefaultWait = WaitBudgets.CrossTurn;
 
     /// <summary>
     /// Waits for a frame that contains <paramref name="expected"/> while pumping the scheduler.
@@ -791,7 +802,7 @@ internal sealed class InteractiveSessionHost : IDisposable
                 Advance(33);
                 return LastFrame.Contains(expected, StringComparison.Ordinal);
             },
-            timeout ?? TimeSpan.FromSeconds(5)
+            timeout ?? DefaultWait
         );
 
     /// <summary>
@@ -876,9 +887,9 @@ internal sealed class InteractiveSessionHost : IDisposable
     {
         // Real-async waits: yield the thread (never a busy spin) so the session's run task and
         // event pump get scheduled; bounded by wall time so slow runners fail with diagnostics
-        // instead of hanging. The default suits in-process frames; spawn-dependent waits (a
-        // child process starting on a cold CI runner) pass a wider window — the repo's
-        // spawn-window idiom, mirroring the BashToolTests 30s windows.
+        // instead of hanging. The unnamed budget is <see cref="DefaultWait"/>, the ceiling the
+        // gate's runners are sized for on every leg; a caller waiting on work it schedules itself
+        // may pass a tighter window, but no wait here inherits one written for an idle machine.
         DateTime deadline = DateTime.UtcNow + (timeout ?? DefaultWait);
         while (!condition())
         {
