@@ -27,13 +27,15 @@ internal sealed record ApprovalPanelLine(IReadOnlyList<ApprovalSpan> Spans, Appr
 
 /// <summary>
 /// The approval panel's pure layout: a warning headline naming the tool and its action, a muted
-/// detail block prepared and bounded by the Coding builder, which the layout only indents and
-/// clips (only its first line in the compact band), and the question with its choices. The choices
-/// carry a textual <c>&gt; </c> gutter on the selected one — text, not colour, so the selection
-/// survives <c>NO_COLOR</c> and the ASCII fallback; below the 36 cells the inline row needs they
-/// stack one per row with the gutter kept, and a label clips only after its key letter. Spans carry
-/// tones only; the markup renderer and the live frame map them to their own colour forms. Widths
-/// are terminal cells; clipping keeps whole runes, like <see cref="StyledLine.Clip"/>.
+/// detail block prepared and bounded by the Coding builder, and the question with its choices. The
+/// layout only indents; a bash command's headline and detail lines wrap across physical lines
+/// rather than being clipped, while other tools keep the clip (and, in the compact band, only the
+/// first detail line). The choices carry a textual <c>&gt; </c> gutter on the selected one — text,
+/// not colour, so the selection survives <c>NO_COLOR</c> and the ASCII fallback; below the 36 cells
+/// the inline row needs they stack one per row with the gutter kept, and a label clips only after
+/// its key letter. Spans carry tones only; the markup renderer and the live frame map them to their
+/// own colour forms. Widths are terminal cells; clipping keeps whole runes, like
+/// <see cref="StyledLine.Clip"/>.
 /// </summary>
 internal static class ApprovalPanelLayout
 {
@@ -58,18 +60,45 @@ internal static class ApprovalPanelLayout
     {
         ArgumentNullException.ThrowIfNull(prompt);
 
-        var lines = new List<ApprovalPanelLine>
-        {
-            Clip(
-                [new ApprovalSpan(Headline(prompt, unicode), ApprovalTone.Warning)],
-                ApprovalPart.Headline,
-                width
-            ),
-        };
+        var lines = new List<ApprovalPanelLine>();
+        AppendHeadline(lines, prompt, width, unicode);
         AppendDetail(lines, prompt, width, compact: WidthBands.IsCompact(width));
         AppendQuestion(lines, prompt, width);
         return lines;
     }
+
+    private static void AppendHeadline(
+        List<ApprovalPanelLine> lines,
+        ApprovalPromptModel prompt,
+        int width,
+        bool unicode
+    )
+    {
+        string headline = Headline(prompt, unicode);
+        if (IsBash(prompt) && width != int.MaxValue)
+        {
+            // A command is never ellipsised: the whole headline wraps, so the user can read the
+            // exact command they are asked to approve.
+            foreach (string line in CellText.Wrap(headline, width))
+            {
+                lines.Add(
+                    new ApprovalPanelLine(
+                        [new ApprovalSpan(line, ApprovalTone.Warning)],
+                        ApprovalPart.Headline
+                    )
+                );
+            }
+
+            return;
+        }
+
+        lines.Add(
+            Clip([new ApprovalSpan(headline, ApprovalTone.Warning)], ApprovalPart.Headline, width)
+        );
+    }
+
+    private static bool IsBash(ApprovalPromptModel prompt) =>
+        CellText.SingleLine(prompt.ToolName) == "bash";
 
     private static string Headline(ApprovalPromptModel prompt, bool unicode)
     {
@@ -79,12 +108,25 @@ internal static class ApprovalPanelLayout
         return action.Length > 0 ? $"{glyph} {tool}  {action}" : $"{glyph} {tool}";
     }
 
-    private static string Action(ApprovalPromptModel prompt, bool unicode) =>
-        CellText.SingleLine(
-            prompt.Detail is { Count: > 0 } detail
-                ? detail[0]
-                : ToolArgsSummary.Summarize(prompt.ToolName, prompt.ArgsSummary, unicode: unicode)
+    private static string Action(ApprovalPromptModel prompt, bool unicode)
+    {
+        if (prompt.Detail is { Count: > 0 } detail)
+        {
+            return CellText.SingleLine(detail[0]);
+        }
+
+        if (
+            IsBash(prompt)
+            && ToolArgsSummary.BashCommand(prompt.ArgsSummary) is { Length: > 0 } command
+        )
+        {
+            return CellText.SingleLine(command);
+        }
+
+        return CellText.SingleLine(
+            ToolArgsSummary.Summarize(prompt.ToolName, prompt.ArgsSummary, unicode: unicode)
         );
+    }
 
     private static void AppendDetail(
         List<ApprovalPanelLine> lines,
@@ -95,25 +137,41 @@ internal static class ApprovalPanelLayout
     {
         foreach (string line in DetailBody(prompt, compact))
         {
-            lines.Add(
-                Clip(
-                    [new ApprovalSpan("  " + line, ApprovalTone.Muted)],
-                    ApprovalPart.Detail,
-                    width
-                )
-            );
+            AppendDetailLine(lines, line, prompt, width);
         }
 
         if (WorkspaceRoot(prompt) is { Length: > 0 } root)
         {
-            lines.Add(
-                Clip(
-                    [new ApprovalSpan("  in " + root, ApprovalTone.Muted)],
-                    ApprovalPart.Detail,
-                    width
-                )
-            );
+            AppendDetailLine(lines, "in " + root, prompt, width);
         }
+    }
+
+    private static void AppendDetailLine(
+        List<ApprovalPanelLine> lines,
+        string line,
+        ApprovalPromptModel prompt,
+        int width
+    )
+    {
+        if (IsBash(prompt) && width > 2)
+        {
+            // The command block wraps with its indent kept, instead of clipping its tail.
+            foreach (string wrapped in CellText.Wrap(line, width - 2))
+            {
+                lines.Add(
+                    new ApprovalPanelLine(
+                        [new ApprovalSpan("  " + wrapped, ApprovalTone.Muted)],
+                        ApprovalPart.Detail
+                    )
+                );
+            }
+
+            return;
+        }
+
+        lines.Add(
+            Clip([new ApprovalSpan("  " + line, ApprovalTone.Muted)], ApprovalPart.Detail, width)
+        );
     }
 
     /// <summary>

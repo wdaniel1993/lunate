@@ -1,0 +1,5 @@
+Load project extension 'hello-world' 0.1.0 from 
+/Users/danielwallner/dev/lunate/demo/extensions/hello-world?  [y]es  [n]o
+────────────────────────────────────────────────────────────────────────────────
+> Ask anything, / for commands
+────────────────────────────────────────────────────────────────────────────────

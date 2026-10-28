@@ -182,7 +182,7 @@ public sealed class ApprovalPromptRendererTests
     }
 
     [Fact]
-    public void Plain_lines_clip_to_forty_columns_and_keep_every_choice()
+    public void Plain_lines_wrap_to_forty_columns_and_keep_every_choice()
     {
         var lines = ApprovalPromptRenderer.PlainLines(
             new ApprovalPromptModel(
@@ -202,15 +202,29 @@ public sealed class ApprovalPromptRendererTests
 
         Assert.Equal(ApprovalPart.Headline, lines[0].Part);
         Assert.StartsWith("\u26a0 bash  dotnet format", lines[0].Text, StringComparison.Ordinal);
-        Assert.True(CellText.Width(lines[0].Text) <= 40);
-        Assert.Equal(ApprovalPart.Detail, lines[1].Part);
-        Assert.True(CellText.Width(lines[1].Text) <= 40);
-        Assert.Equal("  in ~/worktree-b", lines[2].Text);
-        Assert.Equal(ApprovalPart.Question, lines[3].Part);
-        Assert.Equal("Allow bash?", lines[3].Text);
-        Assert.Equal("[y]es  > [n]o  [a]lways this session", lines[4].Text);
-        Assert.Equal(ApprovalPart.Question, lines[4].Part);
-        Assert.True(CellText.Width(lines[4].Text) <= 40);
+        string headline = string.Concat(
+            lines.Where(line => line.Part == ApprovalPart.Headline).Select(line => line.Text)
+        );
+        Assert.Contains(
+            "dotnet format --verify-no-changes --include src/Lunate/Tui/Approval.cs",
+            headline,
+            StringComparison.Ordinal
+        );
+        Assert.All(lines, line => Assert.True(CellText.Width(line.Text) <= 40));
+        Assert.Contains(
+            lines,
+            line => line.Part == ApprovalPart.Detail && line.Text == "  in ~/worktree-b"
+        );
+        Assert.Contains(
+            lines,
+            line => line.Part == ApprovalPart.Question && line.Text == "Allow bash?"
+        );
+        Assert.Contains(
+            lines,
+            line =>
+                line.Part == ApprovalPart.Question
+                && line.Text == "[y]es  > [n]o  [a]lways this session"
+        );
     }
 
     [Fact]
@@ -278,7 +292,7 @@ public sealed class ApprovalPromptRendererTests
     }
 
     [Fact]
-    public void Plain_lines_at_forty_columns_clip_the_headline_not_the_choices()
+    public void Plain_lines_at_forty_columns_wrap_the_headline_not_the_choices()
     {
         var lines = ApprovalPromptRenderer.PlainLines(
             new ApprovalPromptModel(
@@ -291,10 +305,58 @@ public sealed class ApprovalPromptRendererTests
             unicode: true
         );
 
-        Assert.StartsWith("\u26a0 bash  dotnet format", lines[0].Text, StringComparison.Ordinal);
-        Assert.Equal(40, CellText.Width(lines[0].Text));
+        string headline = string.Concat(
+            lines.Where(line => line.Part == ApprovalPart.Headline).Select(line => line.Text)
+        );
+        Assert.Contains(
+            "dotnet format --verify-no-changes --include src/Lunate/Tui/Approval.cs",
+            headline,
+            StringComparison.Ordinal
+        );
+        Assert.DoesNotContain("…", headline, StringComparison.Ordinal);
+        Assert.All(lines, line => Assert.True(CellText.Width(line.Text) <= 40));
         Assert.Equal("[y]es  > [n]o  [a]lways this session", lines[^1].Text);
         Assert.Equal(36, CellText.Width(lines[^1].Text));
+    }
+
+    [Fact]
+    public void A_long_bash_command_from_raw_arguments_wraps_across_lines()
+    {
+        string command = new string('x', 100);
+        var lines = ApprovalPromptRenderer.PlainLines(
+            new ApprovalPromptModel("bash", $$"""{"command":"{{command}}"}"""),
+            width: 40,
+            ColorSystemSupport.NoColors,
+            unicode: true
+        );
+
+        string headline = string.Concat(
+            lines.Where(line => line.Part == ApprovalPart.Headline).Select(line => line.Text)
+        );
+        Assert.Contains(command, headline, StringComparison.Ordinal);
+        Assert.DoesNotContain("…", headline, StringComparison.Ordinal);
+        Assert.All(lines, line => Assert.True(CellText.Width(line.Text) <= 40));
+    }
+
+    [Fact]
+    public void A_long_bash_detail_line_wraps_with_the_two_space_indent()
+    {
+        string detail = "echo " + new string('a', 100);
+        var lines = ApprovalPromptRenderer.PlainLines(
+            new ApprovalPromptModel("bash", "{}", Detail: ["placeholder", detail]),
+            width: 40,
+            ColorSystemSupport.NoColors,
+            unicode: true
+        );
+
+        string[] body =
+        [
+            .. lines.Where(line => line.Part == ApprovalPart.Detail).Select(line => line.Text),
+        ];
+        Assert.NotEmpty(body);
+        Assert.All(body, line => Assert.StartsWith("  ", line, StringComparison.Ordinal));
+        Assert.Equal(detail, string.Concat(body.Select(line => line[2..])));
+        Assert.All(lines, line => Assert.True(CellText.Width(line.Text) <= 40));
     }
 
     [Fact]

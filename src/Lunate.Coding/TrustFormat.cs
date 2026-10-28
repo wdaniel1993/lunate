@@ -42,13 +42,14 @@ internal static class TrustFormat
     /// </summary>
     internal static string ExtensionQuestion(ExtensionDescriptor descriptor, bool filesChanged)
     {
+        string directory = RealPath(descriptor.Directory);
         string privileges = descriptor.Manifest.Runtime is not null
             ? " — it runs with your user privileges"
             : "";
         string what =
             descriptor.Scope is ExtensionScope.Global
-                ? $"extension '{descriptor.Id}' {descriptor.Version} installed in '{descriptor.Directory}'"
-                : $"project extension '{descriptor.Id}' {descriptor.Version} from {descriptor.Directory}";
+                ? $"extension '{descriptor.Id}' {descriptor.Version} installed in '{directory}'"
+                : $"project extension '{descriptor.Id}' {descriptor.Version} from {directory}";
         if (descriptor.Scope is ExtensionScope.Project)
         {
             return filesChanged
@@ -62,6 +63,49 @@ internal static class TrustFormat
     }
 
     /// <summary>
+    /// The real path shown in a trust question: absolute, with <c>..</c> and symbolic links
+    /// resolved, so the deciding segment cannot hide behind a spelling. A path that is not rooted,
+    /// cannot be resolved, or is a clean spelling that does not exist yet (a cosmetic
+    /// <c>/home</c>, <c>/var</c> or placeholder path) is shown as given.
+    /// </summary>
+    internal static string RealPath(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path) || !Path.IsPathRooted(path))
+        {
+            return path;
+        }
+
+        // A missing path has nothing to resolve; canonicalizing would only rewrite a system
+        // alias (macOS /home, /var) and make the cosmetic path worse.
+        if (!HasParentSegment(path) && !Path.Exists(path))
+        {
+            return path;
+        }
+
+        try
+        {
+            return Workspace.Canonicalize(path);
+        }
+        catch (Exception exception)
+            when (exception
+                    is IOException
+                        or UnauthorizedAccessException
+                        or ArgumentException
+                        or NotSupportedException
+            )
+        {
+            return path;
+        }
+    }
+
+    private static bool HasParentSegment(string path) =>
+        path.Split(
+                [Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar],
+                StringSplitOptions.RemoveEmptyEntries
+            )
+            .Contains("..");
+
+    /// <summary>
     /// The question's detail lines: the one provenance line an installed extension carries (design
     /// D7), so the prompt, the trust report and the tests read one wording.
     /// </summary>
@@ -70,7 +114,7 @@ internal static class TrustFormat
 
     internal static string McpQuestionTitle(string configPath, int serverCount) =>
         FormattableString.Invariant(
-            $"Start {serverCount} {(serverCount == 1 ? "server" : "servers")} from project mcp.json '{configPath}'"
+            $"Start {serverCount} {(serverCount == 1 ? "server" : "servers")} from project mcp.json '{RealPath(configPath)}'"
         );
 
     internal static IReadOnlyList<string> McpQuestionDetails(
@@ -83,7 +127,7 @@ internal static class TrustFormat
     /// truncation does not apply to what is being approved).
     /// </summary>
     internal static string McpServerQuestion(McpServerOptions server) =>
-        $"Run project MCP server '{server.Name}' from '{server.Source}'";
+        $"Run project MCP server '{server.Name}' from '{RealPath(server.Source ?? string.Empty)}'";
 
     internal static string Command(McpServerOptions server) =>
         server.Arguments.Count == 0

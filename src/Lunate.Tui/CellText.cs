@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.Globalization;
 using System.Text;
 
@@ -89,6 +90,152 @@ internal static class CellText
             }
 
             builder.Append(rune);
+            used += runeWidth;
+        }
+
+        return builder.ToString();
+    }
+
+    /// <summary>
+    /// Clips text in the middle so both its start and its end survive: the result is the head, an
+    /// ellipsis and the tail, measured in cells and never wider than <paramref name="width"/>. The
+    /// head takes the extra cell when the budget is odd. Whole runes only.
+    /// </summary>
+    internal static string MiddleClip(string text, int width, bool unicode = true)
+    {
+        if (width <= 0)
+        {
+            return string.Empty;
+        }
+
+        if (Width(text) <= width)
+        {
+            return text;
+        }
+
+        string ellipsis = unicode ? "\u2026" : "...";
+        int ellipsisWidth = Width(ellipsis);
+        if (ellipsisWidth >= width)
+        {
+            return Clip(text, width);
+        }
+
+        int available = width - ellipsisWidth;
+        int headWidth = (available + 1) / 2;
+        int tailWidth = available / 2;
+        return Clip(text, headWidth) + ellipsis + Tail(text, tailWidth);
+    }
+
+    /// <summary>
+    /// Splits text into physical lines no wider than <paramref name="width"/> cells, preferring a
+    /// space, then a path separator, then a rune boundary. No character is dropped, so the
+    /// concatenation of the lines is always the input; a rune wider than the width still gets a
+    /// line of its own so the wrap can make progress. <see cref="int.MaxValue"/> returns the text
+    /// unchanged on one line.
+    /// </summary>
+    internal static IReadOnlyList<string> Wrap(string text, int width)
+    {
+        if (string.IsNullOrEmpty(text) || width == int.MaxValue)
+        {
+            return [text];
+        }
+
+        if (width <= 0)
+        {
+            return [string.Empty];
+        }
+
+        var lines = new List<string>();
+        var start = 0;
+        while (start < text.Length)
+        {
+            int used = 0;
+            int index = start;
+            int spaceBreak = -1;
+            int pathBreak = -1;
+            int overflow = text.Length;
+            while (index < text.Length)
+            {
+                if (
+                    Rune.DecodeFromUtf16(text.AsSpan(index), out var rune, out int consumed)
+                    != OperationStatus.Done
+                )
+                {
+                    break;
+                }
+
+                int runeWidth = Width(rune);
+                if (used + runeWidth > width)
+                {
+                    overflow = index;
+                    break;
+                }
+
+                used += runeWidth;
+                index += consumed;
+                if (rune.Value == ' ')
+                {
+                    spaceBreak = index;
+                }
+                else if (rune.Value is '/' or '\\')
+                {
+                    pathBreak = index;
+                }
+            }
+
+            if (index >= text.Length)
+            {
+                lines.Add(text[start..]);
+                break;
+            }
+
+            int end = overflow;
+            if (spaceBreak > start)
+            {
+                end = spaceBreak;
+            }
+            else if (pathBreak > start)
+            {
+                end = pathBreak;
+            }
+
+            if (end <= start)
+            {
+                // A rune wider than the whole frame cannot fit anywhere; it still makes progress.
+                end = start + RuneLength(text, start);
+            }
+
+            lines.Add(text[start..end]);
+            start = end;
+        }
+
+        return lines;
+    }
+
+    private static int RuneLength(string text, int index) =>
+        Rune.DecodeFromUtf16(text.AsSpan(index), out _, out int consumed) == OperationStatus.Done
+            ? consumed
+            : 1;
+
+    private static string Tail(string text, int width)
+    {
+        if (width <= 0)
+        {
+            return string.Empty;
+        }
+
+        var runes = text.EnumerateRunes().ToArray();
+        var builder = new StringBuilder();
+        var used = 0;
+        for (var i = runes.Length - 1; i >= 0; i--)
+        {
+            int runeWidth = Width(runes[i]);
+            if (used + runeWidth > width)
+            {
+                break;
+            }
+
+            builder.Insert(0, runes[i].ToString());
             used += runeWidth;
         }
 

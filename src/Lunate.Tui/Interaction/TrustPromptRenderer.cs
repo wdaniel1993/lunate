@@ -13,6 +13,12 @@ namespace Lunate.Tui;
 /// single-file question is phrased with it (<c>SingleFileTrustQuestion.Title</c>), the tool-approval
 /// and packaged-extension questions are not, and a title must never show two.
 /// </para>
+/// <para>
+/// At narrow widths the title and every detail line wrap instead of being clipped, so the part
+/// that decides the answer — a path segment, a package name — is always visible. The choices are
+/// appended to the last title line when they fit, else they get a line of their own; the
+/// <c>n of m</c> label is dropped first when the single-line headline does not fit.
+/// </para>
 /// </summary>
 public sealed class TrustPromptRenderer
 {
@@ -33,18 +39,58 @@ public sealed class TrustPromptRenderer
         return new Markup(builder.ToString());
     }
 
-    /// <summary>The question's plain (unstyled) lines as shown in the live area.</summary>
-    internal static IReadOnlyList<string> PlainLines(TrustPromptModel prompt)
+    private const string Choices = "  [y]es  [n]o";
+
+    /// <summary>
+    /// The question's plain (unstyled) lines as shown in the live area, fitted to
+    /// <paramref name="width"/> by wrapping the title and the details. The default width keeps the
+    /// whole headline on one line and every detail as written.
+    /// </summary>
+    internal static IReadOnlyList<string> PlainLines(
+        TrustPromptModel prompt,
+        int width = int.MaxValue,
+        bool unicode = true
+    )
     {
         ArgumentNullException.ThrowIfNull(prompt);
 
-        List<string> lines = [HeadlineText(prompt)];
-        lines.AddRange(prompt.Details);
+        string title = Question(prompt.Title);
+        string count = CountLabel(prompt);
+        List<string> lines;
+        if (
+            width == int.MaxValue
+            || CellText.Width(title) + CellText.Width(count) + CellText.Width(Choices) <= width
+        )
+        {
+            lines = [HeadlineText(prompt)];
+        }
+        else
+        {
+            // The label is dropped before the title; the title itself never loses a character.
+            lines = [.. CellText.Wrap(title, width)];
+            if (
+                CellText.Width(Choices) <= width
+                && CellText.Width(lines[^1]) + CellText.Width(Choices) <= width
+            )
+            {
+                lines[^1] += Choices;
+            }
+            else
+            {
+                lines.Add(CellText.Clip(Choices, width));
+            }
+        }
+
+        foreach (string detail in prompt.Details)
+        {
+            lines.AddRange(width == int.MaxValue ? [detail] : CellText.Wrap(detail, width));
+        }
+
         return lines;
     }
 
     internal static string HeadlineText(TrustPromptModel prompt) =>
-        FormattableString.Invariant($"{Question(prompt.Title)}{CountLabel(prompt)}  [y]es  [n]o");
+        FormattableString.Invariant($"{Question(prompt.Title)}{CountLabel(prompt)}{Choices}");
 
     private static string CountLabel(TrustPromptModel prompt) =>
         prompt.Total > 1

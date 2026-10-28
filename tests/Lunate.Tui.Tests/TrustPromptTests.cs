@@ -180,6 +180,114 @@ public sealed class TrustPromptRendererTests
         Assert.Equal("Trust the single-file extension 'acme' 1.0.0?  [y]es  [n]o", lines[0]);
     }
 
+    private const string LongTitle =
+        "Load project extension 'hello-world' 0.1.0 from /Users/danielwallner/dev/lunate/demo/extensions/hello-world";
+
+    [Fact]
+    public void A_long_title_wraps_at_118_columns_without_losing_text()
+    {
+        string[] lines =
+        [
+            .. TrustPromptRenderer.PlainLines(new TrustPromptModel(LongTitle, [], 0, 0), 118),
+        ];
+
+        Assert.True(lines.Length > 1);
+        Assert.Equal(Question(LongTitle), string.Concat(lines[..^1]));
+        Assert.Equal("  [y]es  [n]o", lines[^1]);
+        Assert.DoesNotContain("\u2026", string.Concat(lines));
+        Assert.All(lines, line => Assert.True(CellText.Width(line) <= 118));
+    }
+
+    [Fact]
+    public void A_long_title_wraps_at_80_columns_without_clipping_the_choices()
+    {
+        string[] lines =
+        [
+            .. TrustPromptRenderer.PlainLines(new TrustPromptModel(LongTitle, [], 0, 0), 80),
+        ];
+
+        Assert.True(lines.Length > 1);
+        Assert.Contains(Question(LongTitle), string.Concat(lines), StringComparison.Ordinal);
+        Assert.Contains("[y]es  [n]o", string.Concat(lines), StringComparison.Ordinal);
+        Assert.DoesNotContain("\u2026", string.Concat(lines));
+        Assert.All(lines, line => Assert.True(CellText.Width(line) <= 80));
+    }
+
+    [Fact]
+    public void The_deciding_path_segment_survives_every_width_from_sixty_to_one_hundred_forty()
+    {
+        const string Path = "/srv/trusted/../untrusted/ext";
+        var prompt = new TrustPromptModel(
+            "Load project extension 'hello-world' 0.1.0 from " + Path,
+            [],
+            0,
+            0
+        );
+
+        for (var width = 60; width <= 140; width++)
+        {
+            string[] lines = [.. TrustPromptRenderer.PlainLines(prompt, width)];
+
+            Assert.All(
+                lines,
+                line =>
+                    Assert.True(CellText.Width(line) <= width, $"'{line}' exceeds {width} cells")
+            );
+            string joined = string.Concat(lines);
+            Assert.Contains(Path, joined, StringComparison.Ordinal);
+            Assert.Contains("untrusted", joined, StringComparison.Ordinal);
+            Assert.Contains("[y]es  [n]o", joined, StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
+    public void A_count_label_that_overflows_is_dropped_before_the_title()
+    {
+        string[] lines =
+        [
+            .. TrustPromptRenderer.PlainLines(new TrustPromptModel("Load extension", [], 2, 2), 30),
+        ];
+
+        Assert.Equal("Load extension?  [y]es  [n]o", Assert.Single(lines));
+    }
+
+    [Fact]
+    public void A_very_narrow_width_puts_the_choices_on_their_own_line()
+    {
+        string[] lines =
+        [
+            .. TrustPromptRenderer.PlainLines(new TrustPromptModel(LongTitle, [], 0, 0), 20),
+        ];
+
+        Assert.True(lines.Length > 2);
+        Assert.Equal(Question(LongTitle), string.Concat(lines[..^1]));
+        Assert.Equal("  [y]es  [n]o", lines[^1]);
+        Assert.DoesNotContain("\u2026", string.Concat(lines));
+        Assert.All(lines, line => Assert.True(CellText.Width(line) <= 20));
+    }
+
+    [Fact]
+    public void The_ascii_fallback_wraps_without_an_ellipsis()
+    {
+        string[] lines =
+        [
+            .. TrustPromptRenderer.PlainLines(
+                new TrustPromptModel(LongTitle, [], 0, 0),
+                118,
+                unicode: false
+            ),
+        ];
+
+        string joined = string.Concat(lines);
+        Assert.DoesNotContain("...", joined, StringComparison.Ordinal);
+        Assert.DoesNotContain("\u2026", joined, StringComparison.Ordinal);
+        Assert.Contains(Question(LongTitle), joined, StringComparison.Ordinal);
+        Assert.Contains("[y]es  [n]o", joined, StringComparison.Ordinal);
+        Assert.All(lines, line => Assert.True(CellText.Width(line) <= 118));
+    }
+
+    private static string Question(string title) => TrustPromptRenderer.Question(title);
+
     private static string Render(TrustPromptModel prompt)
     {
         var console = new TestConsole();

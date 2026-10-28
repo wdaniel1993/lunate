@@ -1,3 +1,5 @@
+using Lunate.Ai;
+
 namespace Lunate.Extensibility;
 
 /// <summary>
@@ -48,14 +50,58 @@ public static class SingleFileTrustQuestion
     {
         ArgumentNullException.ThrowIfNull(request);
 
+        string path = RealPath(request.Path);
         return request.Changed
             ? FormattableString.Invariant(
-                $"Trust the single-file extension '{request.Id}' {request.Version} at '{request.Path}' again — it changed since it was trusted last, so the earlier decision does not apply?"
+                $"Trust the single-file extension '{request.Id}' {request.Version} at '{path}' again — it changed since it was trusted last, so the earlier decision does not apply?"
             )
             : FormattableString.Invariant(
-                $"Trust the single-file extension '{request.Id}' {request.Version} at '{request.Path}'?"
+                $"Trust the single-file extension '{request.Id}' {request.Version} at '{path}'?"
             );
     }
+
+    /// <summary>
+    /// The real path shown in the question: absolute, with <c>..</c> and symbolic links resolved,
+    /// so the deciding segment cannot hide behind a spelling. A path that is not rooted, cannot be
+    /// resolved, or is a clean spelling that does not exist yet (a cosmetic <c>/home</c>,
+    /// <c>/var</c> or placeholder path) is shown as given.
+    /// </summary>
+    private static string RealPath(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path) || !Path.IsPathRooted(path))
+        {
+            return path;
+        }
+
+        // A missing path has nothing to resolve; canonicalizing would only rewrite a system
+        // alias (macOS /home, /var) and make the cosmetic path worse.
+        if (!HasParentSegment(path) && !Path.Exists(path))
+        {
+            return path;
+        }
+
+        try
+        {
+            return PathCanonical.Canonicalize(path);
+        }
+        catch (Exception exception)
+            when (exception
+                    is IOException
+                        or UnauthorizedAccessException
+                        or ArgumentException
+                        or NotSupportedException
+            )
+        {
+            return path;
+        }
+    }
+
+    private static bool HasParentSegment(string path) =>
+        path.Split(
+                [Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar],
+                StringSplitOptions.RemoveEmptyEntries
+            )
+            .Contains("..");
 
     /// <summary>
     /// The question's details, one line each: the declared packages (or that there are none), the

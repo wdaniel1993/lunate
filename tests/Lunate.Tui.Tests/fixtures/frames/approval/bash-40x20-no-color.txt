@@ -1,4 +1,6 @@
-⚠ bash  dotnet test --project tests/Luna
+⚠ bash  dotnet test --project 
+tests/Lunate.Coding.Tests --filter 
+Approval
   Test run summary: Passed!
 Allow bash?
 [y]es  > [n]o  [a]lways this session
