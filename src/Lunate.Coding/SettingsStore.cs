@@ -204,8 +204,8 @@ public static class SettingsStore
 
     /// <summary>
     /// Reads a settings file without holding a share mode that would block a concurrent replace:
-    /// on Windows the default read share denies delete, which turns another thread's save into an
-    /// access-denied. Reading and writing the same small file must not be mutually exclusive.
+    /// on Windows the default read share denies delete, which turns another thread's save into a
+    /// sharing violation. Reading and writing the same small file must not be mutually exclusive.
     /// </summary>
     private static string ReadAllTextShared(string path)
     {
@@ -237,7 +237,11 @@ public static class SettingsStore
                 File.SetUnixFileMode(temp, File.GetUnixFileMode(path));
             }
 
-            FileReplacement.Replace(temp, path);
+            // In place, not a rename over the target: on Windows a rename fails for as long as a
+            // reader holds the file, delete sharing included, while replacing in place succeeds
+            // with such a reader and fails only with one that denies delete. Retrying cannot
+            // outlast a reader that keeps reopening the file, so the primitive is what decides.
+            FileReplacement.Replace(temp, path, preserveTarget: true);
         }
         finally
         {
