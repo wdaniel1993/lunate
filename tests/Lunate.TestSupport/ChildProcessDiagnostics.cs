@@ -41,6 +41,7 @@ internal static class ChildProcessDiagnostics
             lines.Add("free space: unknown");
         }
 
+        Dictionary<string, string?> child = FixtureRestore.ChildEnvironment(root);
         foreach (
             string name in new[]
             {
@@ -49,15 +50,17 @@ internal static class ChildProcessDiagnostics
                 "DOTNET_ROOT",
                 "DOTNET_HOST_PATH",
                 "NUGET_PACKAGES",
+                "NUGET_HTTP_CACHE_PATH",
+                "TMPDIR",
             }
         )
         {
-            lines.Add(
-                string.Create(
-                    CultureInfo.InvariantCulture,
-                    $"{name}={Environment.GetEnvironmentVariable(name) ?? "<unset>"}"
-                )
-            );
+            // The child's own value wins: this report explains a restore failure, so it must show
+            // the folders that child used, not the ones the test host happens to inherit.
+            string? value = child.TryGetValue(name, out string? own)
+                ? own
+                : Environment.GetEnvironmentVariable(name);
+            lines.Add(string.Create(CultureInfo.InvariantCulture, $"{name}={value ?? "<unset>"}"));
         }
 
         return string.Join(Environment.NewLine, lines);

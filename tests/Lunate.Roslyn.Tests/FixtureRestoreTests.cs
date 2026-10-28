@@ -28,6 +28,7 @@ public sealed class FixtureRestoreTests
         Assert.Contains("exit code: 1", failure.Message, StringComparison.Ordinal);
         Assert.Contains("MSB4025", failure.Message, StringComparison.Ordinal);
         Assert.Contains("stdout", failure.Message, StringComparison.Ordinal);
+        Assert.Contains("stderr", failure.Message, StringComparison.Ordinal);
         Assert.Contains("directory:", failure.Message, StringComparison.Ordinal);
     }
 
