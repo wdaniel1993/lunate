@@ -11,14 +11,25 @@ namespace Lunate.Coding.Tests;
 /// </summary>
 public sealed class SlowHookNoticeTests
 {
+    /// <summary>
+    /// The runner these tests drive: a 20 ms threshold so the 80 ms hook crosses it, and the
+    /// machine-behind verdict pinned to "not behind". A crossing the machine took is counted and
+    /// deliberately not reported, and the gate's loaded legs read as behind — on run 40731375207
+    /// the turn ran for 30 s and not one of its 688 frames carried the notice, because the pool
+    /// dismissed the crossing before the slot heard of it. What is under test is the notice the
+    /// handler's own crossing raises, so the verdict is the test's to set.
+    /// </summary>
+    private static HookRunnerOptions Options() =>
+        new() { SlowHookThreshold = TimeSpan.FromMilliseconds(20), MachineBehind = () => false };
+
     [Fact]
     public async Task A_first_slow_dispatch_renders_one_notice()
     {
-        var runner = new HookRunner(
-            new HookRunnerOptions { SlowHookThreshold = TimeSpan.FromMilliseconds(20) }
-        );
+        var runner = new HookRunner(Options());
         runner.Register("ext-slow", new SlowInputHandler(TimeSpan.FromMilliseconds(80)));
         using var host = new InteractiveSessionHost(hooks: runner);
+        var log = new NoticeSlotLog();
+        host.Session.ObserveNotices(log.Record);
         host.Console.Size = new ConsoleSize(600, 24);
         host.Client.Enqueue(Scripts.Text("ok"), Scripts.Stop());
         host.Client.Enqueue(Scripts.Text("queued"), Scripts.Stop());
@@ -43,6 +54,10 @@ public sealed class SlowHookNoticeTests
             TimeSpan.FromSeconds(30)
         );
 
+        // The slot's own history, so a red says whether the notice was never raised or raised and
+        // then taken: one post, one paint, and the frame carried the text.
+        Assert.Single(log.Changes(NoticeSlotChange.Posted));
+        Assert.Single(log.Changes(NoticeSlotChange.Painted));
         Assert.Contains("hook InputReceived", host.Frames, StringComparison.Ordinal);
         Assert.Contains("ext-slow", host.Frames, StringComparison.Ordinal);
         Assert.Contains("/extensions", host.Frames, StringComparison.Ordinal);

@@ -16,5 +16,10 @@
         <!-- The install/trust integration tests read the provenance index the loader reads, so a
              record written by the installer and one read here can never drift apart silently. -->
         <InternalsVisibleTo Include="Lunate.Extensibility.Tests" />
+        <!-- The interactive slow-hook notice tests drive the same slow-hook verdict through a real
+             session, and the pool's state is no more theirs to hold than the timing tests': they
+             inject HookRunnerOptions.MachineBehind so a loaded runner cannot change the verdict
+             the notice depends on. -->
+        <InternalsVisibleTo Include="Lunate.Coding.Tests" />
     </ItemGroup>
 </Project>
