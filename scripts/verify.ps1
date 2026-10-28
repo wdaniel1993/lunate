@@ -94,6 +94,41 @@ try {
         }
     }
 
+    # Fails when a packed nuspec cannot render a complete feed page (parity with
+    # scripts/check-package-metadata.sh): 0.1.0 shipped with "License missing" and "Readme
+    # missing", and the nuspec is the file `dotnet pack` writes before zipping it.
+    function Assert-PackageMetadata {
+        param([string]$Nuspec, [string]$PackageId)
+        if (-not (Test-Path $Nuspec)) {
+            throw "verify: no nuspec at $Nuspec (dotnet pack writes obj/<Configuration>/<id>.<version>.nuspec)"
+        }
+        $text = Get-Content -Raw $Nuspec
+        $failures = @()
+        # Read each field once: every -match/-notmatch overwrites the automatic $Matches.
+        $id = if ($text -match '<id>([^<]+)</id>') { $Matches[1] } else { '' }
+        $readme = if ($text -match '<readme>([^<]+)</readme>') { $Matches[1] } else { '' }
+        if ($id -ne $PackageId) {
+            $failures += "package id is '$id', expected '$PackageId'"
+        }
+        if ($text -notmatch '<license[^>]*>[^<]+</license>') {
+            $failures += 'no licence (set PackageLicenseExpression)'
+        }
+        if ($readme -eq '') {
+            $failures += 'no readme (set PackageReadmeFile)'
+        }
+        elseif ($text -notmatch ('target="/' + [regex]::Escape($readme) + '"')) {
+            $failures += "readme '$readme' is declared but no <file> packs it"
+        }
+        if ($text -notmatch '<repository\s+[^>]*type="git"[^>]*url="http' -and
+            $text -notmatch '<repository\s+[^>]*url="http[^>]*type="git"') {
+            $failures += 'no repository url and type (set RepositoryUrl and RepositoryType)'
+        }
+        if ($failures.Count -ne 0) {
+            throw "verify: $Nuspec does not carry complete package metadata: $($failures -join '; ')"
+        }
+        Write-Host "verify: $PackageId declares a licence, a packed readme and a git repository"
+    }
+
     if (-not $env:RID) {
         $arch = switch ([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString()) {
             'X64' { 'x64' }
@@ -299,6 +334,7 @@ try {
     try {
         dotnet pack src/Lunate.Coding/Lunate.Coding.csproj -c $configuration -o $feed --nologo
         if ($LASTEXITCODE -ne 0) { throw 'verify: dotnet pack failed' }
+        Assert-PackageMetadata -Nuspec "src/Lunate.Coding/obj/$configuration/lunate.$version.nuspec" -PackageId 'lunate'
         dotnet tool install --tool-path $toolPath --add-source $feed lunate --version $version
         if ($LASTEXITCODE -ne 0) { throw 'verify: dotnet tool install failed' }
         $toolVersion = & (Join-Path $toolPath 'lunate.exe') --version
@@ -323,6 +359,9 @@ try {
     try {
         dotnet pack samples/extensions/subagents/SubagentsExtension/SubagentsExtension.csproj -c $configuration -o $packageFeed --nologo
         if ($LASTEXITCODE -ne 0) { throw 'verify: dotnet pack of the extension sample failed' }
+        Assert-PackageMetadata `
+            -Nuspec "samples/extensions/subagents/SubagentsExtension/obj/$configuration/Lunate.Extensions.Subagents.$version.nuspec" `
+            -PackageId 'Lunate.Extensions.Subagents'
         $nugetConfig = @"
 <?xml version="1.0" encoding="utf-8"?>
 <configuration>

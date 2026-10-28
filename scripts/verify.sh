@@ -451,6 +451,11 @@ fi
 step "tool package roundtrip"
 tool_tmp="$(verify_tmp)"
 dotnet pack src/Lunate.Coding/Lunate.Coding.csproj -c "$CONFIGURATION" -o "${tool_tmp}/feed" --nologo
+# The feed page is a product surface: 0.1.0 shipped with "License missing" and "Readme missing",
+# so the nuspec `pack` just wrote — the file that becomes the package's metadata — has to declare
+# a licence, a readme it packs, and the repository. Same check for the extension package below.
+"${SCRIPT_DIR}/check-package-metadata.sh" \
+  "src/Lunate.Coding/obj/${CONFIGURATION}/lunate.${version}.nuspec" --id lunate
 dotnet tool install --tool-path "${tool_tmp}/tools" --add-source "${tool_tmp}/feed" lunate --version "$version"
 tool_bin="${tool_tmp}/tools/lunate"
 if [ "${RID#win}" != "$RID" ]; then
@@ -478,6 +483,11 @@ feed="$(native_path "${package_tmp}/feed")"
 store="$(native_path "${package_tmp}/home")"
 dotnet pack samples/extensions/subagents/SubagentsExtension/SubagentsExtension.csproj \
   -c "$CONFIGURATION" -o "$feed" --nologo
+# The extension's feed page is part of the release too, and its metadata must survive changes to
+# the tool's: this is the same nuspec contract, asserted on the package the release ships.
+"${SCRIPT_DIR}/check-package-metadata.sh" \
+  "samples/extensions/subagents/SubagentsExtension/obj/${CONFIGURATION}/Lunate.Extensions.Subagents.${version}.nuspec" \
+  --id Lunate.Extensions.Subagents
 mkdir -p "${package_tmp}/worktree"
 cat >"${package_tmp}/worktree/nuget.config" <<XML
 <?xml version="1.0" encoding="utf-8"?>

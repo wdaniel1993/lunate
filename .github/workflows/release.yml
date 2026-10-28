@@ -163,6 +163,18 @@ jobs:
       - name: Pack the extension package
         run: dotnet pack samples/extensions/subagents/SubagentsExtension/SubagentsExtension.csproj -c Release -o dist --nologo
 
+      # The page a user reads on nuget.org is a release artifact: 0.1.0 shipped without a licence
+      # and without a readme. The gate checks this on every commit; this checks the two nuspecs the
+      # push is about to publish, before any of them leaves the runner.
+      - name: Check package metadata
+        run: |
+          set -euo pipefail
+          version="$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' Directory.Build.props)"
+          bash scripts/check-package-metadata.sh "src/Lunate.Coding/obj/Release/lunate.${version}.nuspec" --id lunate
+          bash scripts/check-package-metadata.sh \
+            "samples/extensions/subagents/SubagentsExtension/obj/Release/Lunate.Extensions.Subagents.${version}.nuspec" \
+            --id Lunate.Extensions.Subagents
+
       - name: Sign in to nuget.org
         id: nuget
         if: github.event_name == 'push'
