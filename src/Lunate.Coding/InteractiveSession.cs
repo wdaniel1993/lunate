@@ -414,7 +414,7 @@ internal sealed partial class InteractiveSession : IDisposable
         _settings = SettingsStore.Resolve(_options.SettingsPath, _options.Environment);
         _settings = SettingsStore.ApplyLaunch(_settings, _options.Launch);
         _thinkingLevel = _settings.Thinking;
-        _catalog = ModelCatalog.Load(_options.ModelsPath);
+        _catalog = HarnessFactory.LoadCatalog(_settings, _options.ModelsPath);
         _environment = _options.Environment ?? Environment.GetEnvironmentVariable;
         _auth = AuthStore.Load(_options.AuthPath, _options.Environment);
         _factory = _options.Factory ?? HarnessFactory.CreateFactory(_auth);

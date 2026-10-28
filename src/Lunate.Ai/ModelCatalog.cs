@@ -103,6 +103,24 @@ public sealed class ModelCatalog
         );
     }
 
+    /// <summary>
+    /// Layers extra in-memory entries over this catalog. The nearest layer wins by id, exactly as a
+    /// schema-2 catalog file does; this is how stored custom providers join the model picker without
+    /// a file on disk.
+    /// </summary>
+    internal ModelCatalog WithAdditionalModels(IReadOnlyList<ModelInfo> models)
+    {
+        ArgumentNullException.ThrowIfNull(models);
+        if (models.Count == 0)
+        {
+            return this;
+        }
+
+        return new ModelCatalog(
+            Merge([.. _models], new CatalogLayer(SupportedSchemaVersion, [.. models]))
+        );
+    }
+
     private static ModelInfo? Single(string id, ModelInfo[] matches) =>
         matches switch
         {

@@ -100,9 +100,14 @@ internal static class CliHelp
             "                                 pipe with --key-stdin; logout removes a stored key;"
         );
         output.WriteLine(
-            "                                 status reports the default provider and whether a"
+            "                                 --custom adds an OpenAI-compatible endpoint (id, base"
         );
-        output.WriteLine("                                 credential exists");
+        output.WriteLine(
+            "                                 URL, model, key; https or loopback http); status reports"
+        );
+        output.WriteLine(
+            "                                 the default provider and whether a credential exists"
+        );
         output.WriteLine(
             "  lunate install <package-id>[@<version>] [--project] [--dry-run] [--json] [--offline] [--force] [--yes]"
         );

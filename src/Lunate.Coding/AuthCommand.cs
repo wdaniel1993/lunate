@@ -19,7 +19,7 @@ internal sealed record AuthCommandSeams(
 /// pipe is the same secret as one typed at the masked prompt, so neither is echoed. Exit codes: 0
 /// success, 1 the command failed or nothing is configured, 2 usage.
 /// </summary>
-internal static class AuthCommand
+internal static partial class AuthCommand
 {
     internal const int ExitOk = 0;
     internal const int ExitFailure = 1;
@@ -27,7 +27,9 @@ internal static class AuthCommand
 
     internal const string Usage = "Usage: lunate auth <list|login|logout|status>";
 
-    internal const string LoginUsage = "Usage: lunate auth login <provider> [--key-stdin]";
+    internal const string LoginUsage =
+        "Usage: lunate auth login <provider> [--key-stdin]\n"
+        + "       lunate auth login --custom [--id <id> --base-url <url> --model <model>] [--key-stdin]";
 
     internal static int Run(
         string[] args,
@@ -36,7 +38,11 @@ internal static class AuthCommand
         AuthCommandSeams? seams = null
     ) => new Runner(output, errors, seams ?? new AuthCommandSeams()).Run(args);
 
-    private sealed class Runner(TextWriter output, TextWriter errors, AuthCommandSeams seams)
+    private sealed partial class Runner(
+        TextWriter output,
+        TextWriter errors,
+        AuthCommandSeams seams
+    )
     {
         public int Run(string[] args)
         {
@@ -103,108 +109,6 @@ internal static class AuthCommand
             return ExitOk;
         }
 
-        private int Login(string[] args)
-        {
-            bool keyStdin = false;
-            string? providerToken = null;
-            foreach (string arg in args)
-            {
-                if (string.Equals(arg, "--key-stdin", StringComparison.Ordinal) && !keyStdin)
-                {
-                    keyStdin = true;
-                    continue;
-                }
-
-                if (arg.StartsWith('-') || providerToken is not null)
-                {
-                    return UsageError();
-                }
-
-                providerToken = arg;
-            }
-
-            if (providerToken is null)
-            {
-                bool terminal = IsTerminal;
-                TextWriter target = terminal ? output : errors;
-                foreach (ProviderPreset entry in ProviderPresets.All)
-                {
-                    target.WriteLine($"{entry.Id}  {entry.Name}");
-                }
-
-                target.WriteLine(LoginUsage);
-                return terminal ? ExitOk : ExitUsage;
-            }
-
-            // The token may be a pasted key, so an unknown provider error never echoes it.
-            if (ProviderPresets.Find(providerToken) is not { } preset)
-            {
-                errors.WriteLine($"lunate: unknown provider; providers: {Supported}");
-                return ExitUsage;
-            }
-
-            AuthStore auth = AuthStore.Load(seams.AuthPath, Environment);
-            string? secret;
-            if (keyStdin)
-            {
-                secret = (seams.Input ?? Console.In).ReadLine()?.Trim();
-                if (string.IsNullOrWhiteSpace(secret))
-                {
-                    errors.WriteLine(
-                        "lunate: --key-stdin read no key; pipe the key on a single line, then run it again"
-                    );
-                    return ExitUsage;
-                }
-            }
-            else if (!IsTerminal)
-            {
-                errors.WriteLine(
-                    "lunate: stdin is not a terminal; pipe the key and pass --key-stdin"
-                );
-                return ExitUsage;
-            }
-            else
-            {
-                ISecretPrompt prompt = seams.SecretPrompt ?? new ConsoleSecretPrompt(errors);
-                secret = prompt
-                    .ReadAsync($"API key for {preset.Id}", CancellationToken.None)
-                    .GetAwaiter()
-                    .GetResult();
-                if (string.IsNullOrWhiteSpace(secret))
-                {
-                    errors.WriteLine("auth: login cancelled");
-                    return ExitFailure;
-                }
-            }
-
-            string? previous = auth.Keys.GetValueOrDefault(preset.Id);
-            auth.Set(preset.Id, secret);
-            try
-            {
-                auth.Save();
-            }
-            catch (Exception exception)
-                when (exception is IOException or UnauthorizedAccessException)
-            {
-                if (previous is null)
-                {
-                    auth.Remove(preset.Id);
-                }
-                else
-                {
-                    auth.Set(preset.Id, previous);
-                }
-
-                errors.WriteLine(
-                    $"lunate: could not save the key for '{preset.Id}': {exception.Message}"
-                );
-                return ExitFailure;
-            }
-
-            output.WriteLine($"auth: stored the key for '{preset.Id}'");
-            return ExitOk;
-        }
-
         private int Logout(string[] args)
         {
             if (args.Length != 1 || args[0].StartsWith('-'))
@@ -265,11 +169,23 @@ internal static class AuthCommand
 
             ModelInfo model = HarnessFactory.ResolveModel(
                 settings.Model,
-                ModelCatalog.Load(seams.ModelsPath)
+                HarnessFactory.LoadCatalog(settings, seams.ModelsPath)
             );
             output.WriteLine($"default provider: {model.Provider}");
 
             AuthStore auth = AuthStore.Load(seams.AuthPath, Environment);
+            if (!string.IsNullOrWhiteSpace(model.AuthRef))
+            {
+                if (auth.TryGet(model.AuthRef) is not null)
+                {
+                    output.WriteLine("credential: stored");
+                    return ExitOk;
+                }
+
+                output.WriteLine("credential: missing");
+                return ExitFailure;
+            }
+
             string? variable = ProviderPresets.Find(model.Provider) is { } preset
                 ? Variable(preset, Environment)
                 : null;

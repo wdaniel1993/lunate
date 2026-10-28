@@ -107,7 +107,7 @@ internal static class PrintMode
         {
             settings = SettingsStore.Resolve(options.SettingsPath, options.Environment);
             settings = SettingsStore.ApplyLaunch(settings, options.Launch);
-            catalog = ModelCatalog.Load(options.ModelsPath);
+            catalog = HarnessFactory.LoadCatalog(settings, options.ModelsPath);
             model = HarnessFactory.ResolveModel(settings.Model, catalog);
             factory =
                 options.Factory
