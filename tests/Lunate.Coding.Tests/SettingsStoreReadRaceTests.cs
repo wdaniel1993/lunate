@@ -89,4 +89,55 @@ public sealed class SettingsStoreReadRaceTests
         Assert.Equal(Two, SettingsStore.Resolve(path, _ => null).Favorites);
         Assert.Empty(Directory.GetFiles(temp.Root, "*.tmp"));
     }
+
+    [Fact]
+    public void A_save_completes_while_a_reader_holds_the_file()
+    {
+        using var temp = new TempDirectory();
+        string path = temp.File("settings.json");
+        SettingsStore.WriteFavorites(One, path);
+
+        // The deterministic half of the race above: a handle that shares delete the way the store's
+        // reader does must not be able to make a save fail, however long it is held.
+        using (
+            new FileStream(
+                path,
+                FileMode.Open,
+                FileAccess.Read,
+                FileShare.ReadWrite | FileShare.Delete
+            )
+        )
+        {
+            SettingsStore.WriteFavorites(Two, path);
+        }
+
+        Assert.Equal(Two, SettingsStore.Resolve(path, _ => null).Favorites);
+        Assert.Empty(Directory.GetFiles(temp.Root, "*.tmp"));
+    }
+
+    [Fact]
+    public void A_holder_that_denies_delete_is_what_turns_a_save_into_a_failure()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            Assert.Skip("Unix sharing is advisory: a holder cannot turn a save into a failure.");
+        }
+
+        using var temp = new TempDirectory();
+        string path = temp.File("settings.json");
+        SettingsStore.WriteFavorites(One, path);
+
+        using (new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+        {
+            Exception? failure = Record.Exception(() => SettingsStore.WriteFavorites(Two, path));
+            Assert.True(
+                failure is IOException or UnauthorizedAccessException,
+                $"expected the save to fail, got {failure?.GetType().Name ?? "none"}"
+            );
+        }
+
+        // The failed save leaves the old document: nothing half-written reaches a reader.
+        Assert.Equal(One, SettingsStore.Resolve(path, _ => null).Favorites);
+        Assert.Empty(Directory.GetFiles(temp.Root, "*.tmp"));
+    }
 }
