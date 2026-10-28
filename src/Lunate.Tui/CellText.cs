@@ -95,6 +95,61 @@ internal static class CellText
         return builder.ToString();
     }
 
+    /// <summary>
+    /// Clips text in the middle so both its start and its end survive: the result is the head, an
+    /// ellipsis and the tail, measured in cells and never wider than <paramref name="width"/>. The
+    /// head takes the extra cell when the budget is odd. Whole runes only.
+    /// </summary>
+    internal static string MiddleClip(string text, int width, bool unicode = true)
+    {
+        if (width <= 0)
+        {
+            return string.Empty;
+        }
+
+        if (Width(text) <= width)
+        {
+            return text;
+        }
+
+        string ellipsis = unicode ? "\u2026" : "...";
+        int ellipsisWidth = Width(ellipsis);
+        if (ellipsisWidth >= width)
+        {
+            return Clip(text, width);
+        }
+
+        int available = width - ellipsisWidth;
+        int headWidth = (available + 1) / 2;
+        int tailWidth = available / 2;
+        return Clip(text, headWidth) + ellipsis + Tail(text, tailWidth);
+    }
+
+    private static string Tail(string text, int width)
+    {
+        if (width <= 0)
+        {
+            return string.Empty;
+        }
+
+        var runes = text.EnumerateRunes().ToArray();
+        var builder = new StringBuilder();
+        var used = 0;
+        for (var i = runes.Length - 1; i >= 0; i--)
+        {
+            int runeWidth = Width(runes[i]);
+            if (used + runeWidth > width)
+            {
+                break;
+            }
+
+            builder.Insert(0, runes[i].ToString());
+            used += runeWidth;
+        }
+
+        return builder.ToString();
+    }
+
     private static bool IsWide(int value) =>
         value
             is >= 0x1100

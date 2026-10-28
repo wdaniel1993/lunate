@@ -1,0 +1,4 @@
+Load project extension 'hello-wor…nate/demo/extensions/hello-world?  [y]es  [n]o
+────────────────────────────────────────────────────────────────────────────────
+> Ask anything, / for commands
+────────────────────────────────────────────────────────────────────────────────

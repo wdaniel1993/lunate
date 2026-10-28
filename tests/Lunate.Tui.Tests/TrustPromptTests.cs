@@ -180,6 +180,85 @@ public sealed class TrustPromptRendererTests
         Assert.Equal("Trust the single-file extension 'acme' 1.0.0?  [y]es  [n]o", lines[0]);
     }
 
+    private const string LongTitle =
+        "Load project extension 'hello-world' 0.1.0 from /Users/danielwallner/dev/lunate/demo/extensions/hello-world";
+
+    [Fact]
+    public void A_long_title_is_middle_clipped_at_118_columns_so_the_choices_stay_visible()
+    {
+        string[] lines =
+        [
+            .. TrustPromptRenderer.PlainLines(new TrustPromptModel(LongTitle, [], 0, 0), 118),
+        ];
+
+        Assert.Equal(
+            "Load project extension 'hello-world' 0.1.0 from /Use…anielwallner/dev/lunate/demo/extensions/hello-world?  [y]es  [n]o",
+            Assert.Single(lines)
+        );
+        Assert.StartsWith("Load project extension", lines[0], StringComparison.Ordinal);
+        Assert.EndsWith("?  [y]es  [n]o", lines[0], StringComparison.Ordinal);
+        Assert.True(CellText.Width(lines[0]) <= 118);
+    }
+
+    [Fact]
+    public void A_long_title_is_middle_clipped_at_80_columns_without_clipping_the_choices()
+    {
+        string[] lines =
+        [
+            .. TrustPromptRenderer.PlainLines(new TrustPromptModel(LongTitle, [], 0, 0), 80),
+        ];
+
+        Assert.Equal(
+            "Load project extension 'hello-wor…nate/demo/extensions/hello-world?  [y]es  [n]o",
+            Assert.Single(lines)
+        );
+        Assert.Contains("[y]es  [n]o", lines[0], StringComparison.Ordinal);
+        Assert.True(CellText.Width(lines[0]) <= 80);
+    }
+
+    [Fact]
+    public void A_count_label_that_overflows_is_dropped_before_the_title()
+    {
+        string[] lines =
+        [
+            .. TrustPromptRenderer.PlainLines(new TrustPromptModel("Load extension", [], 2, 2), 30),
+        ];
+
+        Assert.Equal("Load extension?  [y]es  [n]o", Assert.Single(lines));
+    }
+
+    [Fact]
+    public void A_very_narrow_width_puts_the_choices_on_their_own_line()
+    {
+        string[] lines =
+        [
+            .. TrustPromptRenderer.PlainLines(new TrustPromptModel(LongTitle, [], 0, 0), 20),
+        ];
+
+        Assert.Equal(2, lines.Length);
+        Assert.Contains("\u2026", lines[0], StringComparison.Ordinal);
+        Assert.True(CellText.Width(lines[0]) <= 20);
+        Assert.Equal("  [y]es  [n]o", lines[1]);
+    }
+
+    [Fact]
+    public void The_ascii_fallback_uses_three_dots_for_the_middle_clip()
+    {
+        string[] lines =
+        [
+            .. TrustPromptRenderer.PlainLines(
+                new TrustPromptModel(LongTitle, [], 0, 0),
+                118,
+                unicode: false
+            ),
+        ];
+
+        Assert.Contains("...", lines[0], StringComparison.Ordinal);
+        Assert.DoesNotContain("\u2026", lines[0], StringComparison.Ordinal);
+        Assert.EndsWith("?  [y]es  [n]o", lines[0], StringComparison.Ordinal);
+        Assert.True(CellText.Width(lines[0]) <= 118);
+    }
+
     private static string Render(TrustPromptModel prompt)
     {
         var console = new TestConsole();

@@ -49,7 +49,7 @@ internal static class LiveAreaRenderer
             : ApprovalPromptRenderer.PlainLines(state.Approval, width, state.Color, state.Unicode);
         IReadOnlyList<string> trustLines = state.Trust is null
             ? []
-            : TrustPromptRenderer.PlainLines(state.Trust);
+            : TrustPromptRenderer.PlainLines(state.Trust, width, state.Unicode);
         IReadOnlyList<string> pickerLines = state.Picker is null
             ? []
             : SelectListRenderer.PlainLines(state.Picker);
