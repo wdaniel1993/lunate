@@ -8,6 +8,22 @@ internal sealed partial class InteractiveSession
 {
     private readonly FollowUpQueue _followUps = new();
 
+    /// <summary>
+    /// Guards the one decision that hands a turn on: enqueue-or-take-the-turn (the queueing
+    /// continuation) and drain-or-go-idle (the turn's own flow) are the same step, so the queue and
+    /// the turn can never both leave an entry to the other. Held for that decision only — the turn
+    /// is opened in the transcript after it, with the turn already claimed.
+    /// </summary>
+    private readonly object _handoffGate = new();
+
+    /// <summary>
+    /// Test seam: awaited on the turn's own flow at its handoff — the run has returned and the
+    /// turn's ownership is still undecided, before the queue is read and before the session can go
+    /// idle. Production leaves this null; a test suspends the turn here to interleave a follow-up
+    /// with that decision, the one window it cannot hold still from outside the session.
+    /// </summary>
+    internal Func<Task>? TurnHandoffSeam { get; set; }
+
     /// <summary>How many follow-ups wait behind the running turn (the tests' view).</summary>
     internal int QueuedFollowUpCount => _followUps.Count;
 
@@ -85,20 +101,70 @@ internal sealed partial class InteractiveSession
 
         SetInput(string.Empty);
         UpdateFollowUpIndicator();
-        // The turn may have ended while this line was still running its input hooks: the drain
-        // checked an empty queue and returned, so nothing would ever start this entry. Take it and
-        // open the turn here instead of leaving it parked.
-        if (
-            !_turnActive
-            && _followUps.TryDequeue(out QueuedFollowUp? pending)
-            && pending is not null
-        )
+        // The turn may have ended while this line was still running its input hooks: its drain found
+        // an empty queue and released the turn, so nothing would ever start this entry. Taking the
+        // entry and releasing the turn are the two halves of one decision and share the handoff gate,
+        // so an entry queued as a turn hands over either starts its own turn here or is drained by the
+        // turn that has not released yet.
+        QueuedFollowUp? pending = null;
+        lock (_handoffGate)
+        {
+            if (!_turnActive && _followUps.TryDequeue(out pending) && pending is not null)
+            {
+                // Claimed under the gate, before the transcript opens: the next queueing
+                // continuation queues behind this turn instead of starting a second one, and the
+                // release that freed the turn has already nulled the handle this assigns below.
+                _turnActive = true;
+            }
+        }
+
+        if (pending is not null)
         {
             UpdateFollowUpIndicator();
             _history.Add(pending.Input.Text);
             PrepareTurn(pending.Input);
             _run = RunTurnsAsync(pending.Input, skill: null, ct);
         }
+    }
+
+    /// <summary>
+    /// The turn's drain-or-go-idle, as one step under the handoff gate: the head of the queue becomes
+    /// the next turn, or the turn is released and the session reads idle. Returns the entry the
+    /// running turn takes, or null when it released the turn.
+    /// </summary>
+    private QueuedFollowUp? TakeNextTurn()
+    {
+        lock (_handoffGate)
+        {
+            if (_followUps.TryDequeue(out QueuedFollowUp? next) && next is not null)
+            {
+                // The turn stays this flow's: it still reads active, so a follow-up queued in the
+                // meantime waits for the turn being opened instead of taking it a second time.
+                return next;
+            }
+
+            ReleaseTurnLocked();
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Releases the turn and its run handle together, so a session that reads idle holds no handle a
+    /// handed-off turn could null out from under the new one.
+    /// </summary>
+    private void ReleaseTurn()
+    {
+        lock (_handoffGate)
+        {
+            ReleaseTurnLocked();
+        }
+    }
+
+    /// <summary>Releases the turn; the caller holds the handoff gate.</summary>
+    private void ReleaseTurnLocked()
+    {
+        _turnActive = false;
+        _run = null;
     }
 
     /// <summary>

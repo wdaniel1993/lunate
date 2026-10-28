@@ -1377,6 +1377,10 @@ internal sealed partial class InteractiveSession : IDisposable
         CancellationToken ct
     )
     {
+        // Set once this flow has released the turn. The finally must not release a second time: that
+        // second release would be a second step in the very window the handoff gate closes, and it
+        // would null the run handle a queueing continuation had just assigned.
+        bool released = false;
         try
         {
             while (true)
@@ -1385,11 +1389,23 @@ internal sealed partial class InteractiveSession : IDisposable
                 // A quit cancels the lifetime token: the queue is dropped, never drained.
                 if (ct.IsCancellationRequested)
                 {
+                    ReleaseTurn();
+                    released = true;
                     return;
                 }
 
-                if (!_followUps.TryDequeue(out QueuedFollowUp? followUp) || followUp is null)
+                if (TurnHandoffSeam is { } handoff)
                 {
+                    await handoff();
+                }
+
+                // Drain-or-go-idle is one step under the gate the enqueue path also holds, so a
+                // follow-up queued at this instant is either taken here or starts its own turn there;
+                // it can never be parked behind an idle session.
+                QueuedFollowUp? followUp = TakeNextTurn();
+                if (followUp is null)
+                {
+                    released = true;
                     return;
                 }
 
@@ -1402,8 +1418,11 @@ internal sealed partial class InteractiveSession : IDisposable
         }
         finally
         {
-            _turnActive = false;
-            _run = null;
+            if (!released)
+            {
+                ReleaseTurn();
+            }
+
             _live.SetTool(null);
         }
     }

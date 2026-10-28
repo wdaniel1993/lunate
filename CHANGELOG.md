@@ -10,6 +10,12 @@ Notable changes to Lunate, one section per release. The format follows
 
 ### Fixed
 
+- A follow-up queued in the instant a turn ended could be left behind: the turn's drain found the
+  queue empty and the queueing continuation read the turn as still running, so neither started the
+  entry — it sat in the queue until another turn ended, though the spec says a queued message runs
+  when the turn completes. Taking the queue's head and releasing the turn now happen in one step
+  under the gate the enqueue path holds too, so the queue and the turn can no longer both leave the
+  entry to the other, and a handed-off turn can no longer clear the new turn's run handle.
 - The `lunate` tool package shipped its nuget.org page with no licence and no rendered readme:
   `0.1.0` packed with "License missing" and "Readme missing" while the extension package carried
   both. The tool's project now declares the MIT expression, packs the repository README at the
