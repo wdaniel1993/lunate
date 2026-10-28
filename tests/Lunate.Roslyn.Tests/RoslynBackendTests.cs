@@ -67,7 +67,7 @@ public sealed class RoslynBackendTests
     public async Task A_library_with_a_test_project_loads_both_projects()
     {
         using var fixture = Fixtures.CopySolution("lib-with-tests");
-        Fixtures.Restore(fixture, "LibWithTests.sln");
+        Fixtures.Restore(fixture, "LibWithTests.slnx");
         using var backend = new RoslynBackend(fixture.Root);
 
         var result = await backend.LoadAsync(CancellationToken.None);

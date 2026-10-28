@@ -13,6 +13,17 @@ namespace Lunate.TestSupport;
 /// only a child that exits without a byte on either stream gets one retry, and both attempts are
 /// reported when that fails too.
 /// <para>
+/// Every fixture the gate restores is an XML solution (<c>.slnx</c>), and a legacy <c>.sln</c> is
+/// refused by name. The two formats do not restore the same way: MSBuild's legacy solution parser
+/// writes a generated metaproject under the temp directory and builds that file, while <c>.slnx</c>
+/// is expanded in memory. The signature CI kept producing for the one fixture that was still a
+/// legacy <c>.sln</c> — <c>ValidateSolutionConfiguration</c> entered, not one per-project restore
+/// line, <c>Build FAILED. 0 Warning(s) 0 Error(s)</c> — is what a generated metaproject without a
+/// readable project list looks like, and its <c>.slnx</c> neighbour passed on the same runner. A
+/// fixture that needs a real package graph still gets one from <c>.slnx</c>; nothing needs the legacy
+/// parser to be restored, so the gate does not restore it.
+/// </para>
+/// <para>
 /// The rest of the fix is isolation, because the failures outlived the first two attempts. Per-tree
 /// packages (<c>NUGET_PACKAGES</c>, now also an explicit <c>--packages</c>) and one restore per test
 /// process were already in place when CI 40676059477 failed: the twelve restore children in that log
@@ -51,12 +62,35 @@ public static class FixtureRestore
     /// Restores <paramref name="solutionFileName"/> in <paramref name="root"/>, or copies the artifacts
     /// of an identical tree restored earlier.
     /// </summary>
+    /// <exception cref="ArgumentException">
+    /// <paramref name="solutionFileName"/> is not a <c>.slnx</c> solution.
+    /// </exception>
     /// <exception cref="InvalidOperationException">
     /// The restore failed; the message names the command, the directory, the exit code and the tail of
     /// what the child printed.
     /// </exception>
     public static void Restore(string root, string solutionFileName)
     {
+        // A legacy .sln restore writes a generated metaproject into the temp directory and restores
+        // that; .slnx is expanded in memory. Every gate fixture is .slnx (see the remarks), so a .sln
+        // argument is a fixture that reintroduced the failure this helper exists to avoid — refused
+        // here, at the call site, instead of on a loaded runner.
+        if (
+            !string.Equals(
+                Path.GetExtension(solutionFileName),
+                ".slnx",
+                StringComparison.OrdinalIgnoreCase
+            )
+        )
+        {
+            throw new ArgumentException(
+                $"the gate restores .slnx fixtures only; '{solutionFileName}' is not one. A legacy .sln "
+                    + "restore writes a generated solution metaproject into the temp directory, the shape "
+                    + "this suite failed in with 'Build FAILED. 0 Error(s)'; convert the fixture to .slnx.",
+                nameof(solutionFileName)
+            );
+        }
+
         string configPath = Path.Combine(root, "NuGet.config");
         File.WriteAllText(configPath, Config);
         string solutionPath = Path.Combine(root, solutionFileName);

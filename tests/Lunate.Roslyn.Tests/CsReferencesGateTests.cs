@@ -11,7 +11,7 @@ public sealed class CsReferencesGateTests(ITestOutputHelper output)
     public async Task References_across_projects_exclude_the_declaration()
     {
         using var fixture = Fixtures.CopySolution("lib-with-tests");
-        Fixtures.Restore(fixture, "LibWithTests.sln");
+        Fixtures.Restore(fixture, "LibWithTests.slnx");
         using var backend = new RoslynBackend(fixture.Root);
         await backend.LoadAsync(CancellationToken.None);
 
@@ -56,7 +56,7 @@ public sealed class CsReferencesGateTests(ITestOutputHelper output)
     public async Task An_ambiguous_simple_name_lists_candidates_instead_of_guessing()
     {
         using var fixture = Fixtures.CopySolution("lib-with-tests");
-        Fixtures.Restore(fixture, "LibWithTests.sln");
+        Fixtures.Restore(fixture, "LibWithTests.slnx");
         using var backend = new RoslynBackend(fixture.Root);
         await backend.LoadAsync(CancellationToken.None);
 
@@ -98,7 +98,7 @@ public sealed class CsReferencesGateTests(ITestOutputHelper output)
     public async Task A_dotted_path_disambiguates_a_name()
     {
         using var fixture = Fixtures.CopySolution("lib-with-tests");
-        Fixtures.Restore(fixture, "LibWithTests.sln");
+        Fixtures.Restore(fixture, "LibWithTests.slnx");
         using var backend = new RoslynBackend(fixture.Root);
         await backend.LoadAsync(CancellationToken.None);
 
@@ -119,7 +119,7 @@ public sealed class CsReferencesGateTests(ITestOutputHelper output)
     public async Task A_symbol_without_usages_is_empty_with_a_note()
     {
         using var fixture = Fixtures.CopySolution("lib-with-tests");
-        Fixtures.Restore(fixture, "LibWithTests.sln");
+        Fixtures.Restore(fixture, "LibWithTests.slnx");
         using var backend = new RoslynBackend(fixture.Root);
         await backend.LoadAsync(CancellationToken.None);
 
@@ -186,7 +186,7 @@ public sealed class CsReferencesGateTests(ITestOutputHelper output)
     public async Task The_tool_finds_references_on_the_fixture()
     {
         using var fixture = Fixtures.CopySolution("lib-with-tests");
-        Fixtures.Restore(fixture, "LibWithTests.sln");
+        Fixtures.Restore(fixture, "LibWithTests.slnx");
         var tool = new CsFindReferencesTool(() => new RoslynBackend(fixture.Root));
 
         var result = await tool.ExecuteAsync(
@@ -214,7 +214,7 @@ public sealed class CsReferencesGateTests(ITestOutputHelper output)
     public async Task A_warm_reference_search_is_fast()
     {
         using var fixture = Fixtures.CopySolution("lib-with-tests");
-        Fixtures.Restore(fixture, "LibWithTests.sln");
+        Fixtures.Restore(fixture, "LibWithTests.slnx");
         using var backend = new RoslynBackend(fixture.Root);
         await backend.LoadAsync(CancellationToken.None);
         await backend.FindReferencesAsync("Divide", CancellationToken.None);
