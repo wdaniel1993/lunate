@@ -1,9 +1,9 @@
-namespace Lunate.Coding;
+namespace Lunate.Ai;
 
 /// <summary>
 /// Replaces a file that another thread or process may be reading (design: atomic writes). One
-/// implementation serves every replace Lunate makes over a file it may share:
-/// <see cref="TextFile.WriteRaw"/> and the settings store.
+/// implementation serves every replace Lunate makes over a file it may share: the session store's
+/// whole-file writes, the editor's file writes and the settings store.
 /// <para>
 /// On Windows the two replacements cost different things, measured on a windows-latest runner.
 /// Renaming over the destination (<see cref="File.Move(string, string, bool)"/> with overwrite)
@@ -14,7 +14,7 @@ namespace Lunate.Coding;
 /// works: a reader racing it sees a missing file. So a caller that a reader may race must keep the
 /// two sides from overlapping in the first place (the settings store holds a gate) and leave the
 /// retry to transient locks; <paramref name="preserveTarget"/> is for callers whose reader is not
-/// this process.
+/// this process, such as a session file another process holds while the store replaces it.
 /// </para>
 /// </summary>
 internal static class FileReplacement

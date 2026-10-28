@@ -73,11 +73,12 @@ public static class SessionTitle
     }
 
     /// <summary>
-    /// Writes the normalized title as one UTF-8 line without a BOM, in place, through the session
-    /// file seam. Rewriting by renaming a temp file over the sidecar is refused on Windows while a
-    /// reader holds it, so a title is replaced where it lives; a reader that lands between the
-    /// truncate and the write sees an empty sidecar and reads no title, which is a worse frame but
-    /// never a wrong one, and the next read is correct. The session file itself is never touched.
+    /// Writes the normalized title as one UTF-8 line without a BOM, atomically through the session
+    /// file seam: a temporary sidecar is replaced over the old one, so a reader sees the old title
+    /// or the new one. On Windows that replace survives a reader that holds the sidecar with delete
+    /// sharing; a reader that lands inside the replacement may see no sidecar for a moment and
+    /// reads no title, never a partial one, and the next read is correct. The session file itself
+    /// is never touched.
     /// </summary>
     public static void Write(string sessionPath, string title)
     {
