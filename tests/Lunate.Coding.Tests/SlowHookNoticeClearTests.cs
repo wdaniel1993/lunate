@@ -16,6 +16,16 @@ public sealed class SlowHookNoticeClearTests
     private const string Notice = "above the slow threshold";
 
     /// <summary>
+    /// The runner these tests drive: a 20 ms threshold so the 80 ms hook crosses it, and the
+    /// machine-behind verdict pinned to "not behind". A crossing the machine took is counted and
+    /// deliberately not reported, so a loaded runner's pool would dismiss the very notice these
+    /// tests hold still before the slot ever heard of it (the same reason the extension timing
+    /// tests pin the verdict).
+    /// </summary>
+    private static HookRunnerOptions Options() =>
+        new() { SlowHookThreshold = TimeSpan.FromMilliseconds(20), MachineBehind = () => false };
+
+    /// <summary>
     /// The shipped flake's own path with the clock held still: the queued follow-up's slow hook
     /// posts the notice, the turn ends, and the next turn's <c>RunStarted</c> clears it before any
     /// frame has painted it.
@@ -23,9 +33,7 @@ public sealed class SlowHookNoticeClearTests
     [Fact]
     public async Task A_queued_follow_up_notice_survives_the_turn_that_starts_next()
     {
-        var runner = new HookRunner(
-            new HookRunnerOptions { SlowHookThreshold = TimeSpan.FromMilliseconds(20) }
-        );
+        var runner = new HookRunner(Options());
         runner.Register("ext-slow", new SlowInputHandler(TimeSpan.FromMilliseconds(80), "steer"));
         using var host = new InteractiveSessionHost(hooks: runner);
         var log = new NoticeSlotLog();
@@ -79,9 +87,7 @@ public sealed class SlowHookNoticeClearTests
     [Fact]
     public async Task A_notice_posted_by_a_submission_survives_the_turn_it_starts()
     {
-        var runner = new HookRunner(
-            new HookRunnerOptions { SlowHookThreshold = TimeSpan.FromMilliseconds(20) }
-        );
+        var runner = new HookRunner(Options());
         runner.Register("ext-slow", new SlowInputHandler(TimeSpan.FromMilliseconds(80)));
         using var host = new InteractiveSessionHost(hooks: runner);
         var log = new NoticeSlotLog();

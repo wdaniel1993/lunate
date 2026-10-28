@@ -262,8 +262,17 @@ public sealed class HookRunnerTimingTests
         );
     }
 
+    /// <summary>
+    /// The runner these tests time: a 10 ms threshold, and the machine-behind verdict pinned to
+    /// "not behind" so every crossing is judged the way the rule reads. A crossing the machine
+    /// took is counted and deliberately not reported, and a real pool's state is not a test's to
+    /// hold still: on a loaded runner the same dispatch would stop feeding the maximum, the slow
+    /// count and the warning, and these assertions would fail on the machine's mood instead of the
+    /// rule. <see cref="HookRunnerStarvationTests"/> pins the other verdict, where the dismissal
+    /// is the subject.
+    /// </summary>
     private static HookRunnerOptions Options() =>
-        new() { SlowHookThreshold = TimeSpan.FromMilliseconds(10) };
+        new() { SlowHookThreshold = TimeSpan.FromMilliseconds(10), MachineBehind = () => false };
 
     private static ValueTask<ToolCallingResult> Fast() =>
         ValueTask.FromResult<ToolCallingResult>(new ToolCallingResult.Proceed(null));
