@@ -54,6 +54,7 @@ internal static class Commands
         new("/clone", CommandGroup.Session, "copy the whole session into a new session file"),
         new("/context", CommandGroup.Session, "show the context window and subagent budgets"),
         new("/copy", CommandGroup.Session, "copy the last answer to the clipboard"),
+        new("/debug", CommandGroup.Session, "write a diagnostic bundle for a bug report"),
         new("/editor", CommandGroup.Session, "open the draft in your external editor"),
         new("/export", CommandGroup.Session, "write the session as html or jsonl"),
         new("/fork", CommandGroup.Session, "start a new session file at a picked entry"),

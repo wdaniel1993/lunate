@@ -70,7 +70,7 @@ internal sealed record InteractiveSessionOptions
     /// <summary>The text clipboard behind <c>/copy</c>; null composes the platform transport.</summary>
     public ITextClipboard? TextClipboard { get; init; }
 
-    /// <summary>The wall clock the export file name reads; null uses the local time.</summary>
+    /// <summary>The wall clock the export and diagnostic file names read; null uses the local time.</summary>
     public Func<DateTimeOffset>? Clock { get; init; }
 
     /// <summary>

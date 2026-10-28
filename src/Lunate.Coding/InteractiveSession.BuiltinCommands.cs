@@ -85,6 +85,9 @@ internal sealed partial class InteractiveSession
                 case "/export":
                     session.ExportSession(invocation.Argument);
                     return CommandResult.None;
+                case "/debug":
+                    session.WriteDiagnosticBundle(invocation.Argument);
+                    return CommandResult.None;
                 case "/fork":
                     session.ForkSession(invocation.Argument);
                     return CommandResult.None;

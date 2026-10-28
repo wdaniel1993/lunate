@@ -17,6 +17,7 @@ internal sealed partial class InteractiveSession
     /// </summary>
     internal void HandleEvent(AgentEvent agentEvent)
     {
+        RecordDiagnosticEvent(agentEvent);
         bool child = agentEvent.ParentRunId is not null;
         switch (agentEvent)
         {
