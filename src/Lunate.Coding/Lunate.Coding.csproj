@@ -8,6 +8,18 @@
         <ToolCommandName>lunate</ToolCommandName>
         <PackageId>lunate</PackageId>
         <Description>A native C# coding agent for the terminal.</Description>
+        <!--
+            The feed page is the tool's front door, and a package without these renders as a
+            stripped page: 0.1.0 shipped with "License missing" and "Readme missing". The licence is
+            the expression NuGet renders, the readme is the repository's entry point packed at the
+            package root, and the repository links the page back to the source it was built from.
+            `scripts/check-package-metadata.sh` fails the gate when any of them leaves the nuspec.
+        -->
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <PackageProjectUrl>https://github.com/wdaniel1993/lunate</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/wdaniel1993/lunate</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
     </PropertyGroup>
 
     <ItemGroup>
@@ -32,5 +44,7 @@
 
     <ItemGroup>
         <EmbeddedResource Include="system-prompt.md" LogicalName="Lunate.Coding.system-prompt.md" />
+        <!-- The package page a reader lands on from the feed is the repository's README. -->
+        <None Include="../../README.md" Pack="true" PackagePath="/" />
     </ItemGroup>
 </Project>

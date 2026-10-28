@@ -94,6 +94,38 @@ try {
         }
     }
 
+    # Git Bash is the bash Windows has, and the runner does not always put it on PATH: its own
+    # `shell: bash` resolves the executable from the Git installation, so do the same.
+    function Resolve-Bash {
+        $onPath = Get-Command bash -CommandType Application -ErrorAction SilentlyContinue |
+            Select-Object -First 1
+        if ($onPath) { return $onPath.Source }
+        foreach ($root in @($env:ProgramFiles, ${env:ProgramFiles(x86)})) {
+            if (-not $root) { continue }
+            $candidate = Join-Path $root 'Git/bin/bash.exe'
+            if (Test-Path $candidate) { return $candidate }
+        }
+        throw 'verify: bash is required to run scripts/check-package-metadata.sh; install Git Bash (Windows) or run the bash gate'
+    }
+
+    # Fails when the packed .nupkg cannot render a complete feed page (licence, readme,
+    # repository). The rule lives in one script so bash and PowerShell cannot disagree about what
+    # "complete metadata" means: 0.1.0 shipped with "License missing" and "Readme missing", and an
+    # inline copy here read the intermediate nuspec in obj/, which pack writes differently on
+    # Windows — the Windows legs went red for a package that was fine (PR #235).
+    function Assert-PackageMetadata {
+        param([string]$Package, [string]$PackageId)
+        if (-not (Test-Path $Package)) {
+            throw "verify: no package at $Package (dotnet pack writes <id>.<version>.nupkg to the -o directory)"
+        }
+        # Git Bash reads a native path in its own dialect best.
+        $native = ($Package -replace '\\', '/')
+        & (Resolve-Bash) (Join-Path $PSScriptRoot 'check-package-metadata.sh') $native --id $PackageId
+        if ($LASTEXITCODE -ne 0) {
+            throw "verify: $Package does not carry the package metadata a feed page needs"
+        }
+    }
+
     if (-not $env:RID) {
         $arch = switch ([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString()) {
             'X64' { 'x64' }
@@ -299,6 +331,7 @@ try {
     try {
         dotnet pack src/Lunate.Coding/Lunate.Coding.csproj -c $configuration -o $feed --nologo
         if ($LASTEXITCODE -ne 0) { throw 'verify: dotnet pack failed' }
+        Assert-PackageMetadata -Package (Join-Path $feed "lunate.$version.nupkg") -PackageId 'lunate'
         dotnet tool install --tool-path $toolPath --add-source $feed lunate --version $version
         if ($LASTEXITCODE -ne 0) { throw 'verify: dotnet tool install failed' }
         $toolVersion = & (Join-Path $toolPath 'lunate.exe') --version
@@ -323,6 +356,9 @@ try {
     try {
         dotnet pack samples/extensions/subagents/SubagentsExtension/SubagentsExtension.csproj -c $configuration -o $packageFeed --nologo
         if ($LASTEXITCODE -ne 0) { throw 'verify: dotnet pack of the extension sample failed' }
+        Assert-PackageMetadata `
+            -Package (Join-Path $packageFeed "Lunate.Extensions.Subagents.$version.nupkg") `
+            -PackageId 'Lunate.Extensions.Subagents'
         $nugetConfig = @"
 <?xml version="1.0" encoding="utf-8"?>
 <configuration>
