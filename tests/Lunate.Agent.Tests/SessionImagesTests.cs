@@ -95,6 +95,57 @@ public sealed class SessionImagesTests
     }
 
     [Fact]
+    public void A_blob_a_peer_completed_is_kept_instead_of_removed_as_unusable()
+    {
+        using var temp = new TempDirectory();
+        Session session = SessionImageTestData.CreateSession(temp);
+        ImageContentReference reference = session.Images.Store(PngBytes, "image/png", 2, 3);
+        string target = Path.Combine(session.Images.DirectoryPath!, $"{reference.Digest}.png");
+
+        // What a concurrent store of the same bytes does between this store's check and its remove: it
+        // finishes the blob. The remove must keep it — deleting a completed blob leaves the peer that
+        // renamed it to the target to find nothing there and fail with "already exists".
+        SessionImages.RemoveUnusableBlob(target, PngBytes.Length);
+
+        Assert.True(File.Exists(target));
+        Assert.Equal(PngBytes, File.ReadAllBytes(target));
+        Assert.True(session.Images.TryRead(reference, out ReadOnlyMemory<byte> read));
+        Assert.Equal(PngBytes, read.ToArray());
+    }
+
+    [Fact]
+    public void A_short_blob_is_removed_as_unusable()
+    {
+        using var temp = new TempDirectory();
+        Session session = SessionImageTestData.CreateSession(temp);
+        string target = Path.Combine(
+            session.Images.DirectoryPath!,
+            $"{SessionImageTestData.PngDigest}.png"
+        );
+        Directory.CreateDirectory(session.Images.DirectoryPath!);
+        File.WriteAllBytes(target, [1, 2, 3]);
+
+        SessionImages.RemoveUnusableBlob(target, PngBytes.Length);
+
+        Assert.False(File.Exists(target));
+    }
+
+    [Fact]
+    public void A_missing_blob_is_left_alone()
+    {
+        using var temp = new TempDirectory();
+        Session session = SessionImageTestData.CreateSession(temp);
+        string target = Path.Combine(
+            session.Images.DirectoryPath!,
+            $"{SessionImageTestData.PngDigest}.png"
+        );
+
+        SessionImages.RemoveUnusableBlob(target, PngBytes.Length);
+
+        Assert.False(File.Exists(target));
+    }
+
+    [Fact]
     public void A_symlink_at_the_target_is_replaced_with_the_real_blob()
     {
         if (OperatingSystem.IsWindows())
