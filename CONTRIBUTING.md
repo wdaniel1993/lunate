@@ -30,8 +30,8 @@ bash scripts/verify.sh                    # the full gate (Windows: scripts/veri
 `scripts/verify.sh` is the done-gate: it restores the tools, builds, runs every test (including a
 `de-AT` culture pass and the performance-trait tests), publishes the single-file binary for this
 platform, measures the startup budget, exercises the install scripts against a fixture release,
-packs and reinstalls the `dotnet tool`, checks the packaging files and both packages' nuspec
-metadata (licence, readme, repository), formats (CSharpier plus
+packs and reinstalls the `dotnet tool`, checks the packaging files and both shipped packages'
+metadata (licence, readme, repository) inside the `.nupkg` itself, formats (CSharpier plus
 `dotnet format style` / `dotnet format analyzers`), lints the Markdown and diffs the public API. A
 change is not done until it is green — on the CI matrix, all three operating systems count.
 

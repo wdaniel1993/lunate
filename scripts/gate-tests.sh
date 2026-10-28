@@ -305,9 +305,9 @@ fi
 rm -rf "$WAIT_DIR"
 WAIT_DIR=""
 
-echo "gate-tests: the package metadata check must reject a nuspec missing licence, readme or repository"
+echo "gate-tests: the package metadata check must reject a package missing licence, readme or repository"
 if ! bash "${SCRIPT_DIR}/check-package-metadata.sh" --self-test >/dev/null; then
-  echo "gate-tests: FAIL: check-package-metadata.sh accepted or misreported an incomplete nuspec" >&2
+  echo "gate-tests: FAIL: check-package-metadata.sh accepted or misreported an incomplete package" >&2
   exit 1
 fi
 

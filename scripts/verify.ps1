@@ -94,39 +94,36 @@ try {
         }
     }
 
-    # Fails when a packed nuspec cannot render a complete feed page (parity with
-    # scripts/check-package-metadata.sh): 0.1.0 shipped with "License missing" and "Readme
-    # missing", and the nuspec is the file `dotnet pack` writes before zipping it.
+    # Git Bash is the bash Windows has, and the runner does not always put it on PATH: its own
+    # `shell: bash` resolves the executable from the Git installation, so do the same.
+    function Resolve-Bash {
+        $onPath = Get-Command bash -CommandType Application -ErrorAction SilentlyContinue |
+            Select-Object -First 1
+        if ($onPath) { return $onPath.Source }
+        foreach ($root in @($env:ProgramFiles, ${env:ProgramFiles(x86)})) {
+            if (-not $root) { continue }
+            $candidate = Join-Path $root 'Git/bin/bash.exe'
+            if (Test-Path $candidate) { return $candidate }
+        }
+        throw 'verify: bash is required to run scripts/check-package-metadata.sh; install Git Bash (Windows) or run the bash gate'
+    }
+
+    # Fails when the packed .nupkg cannot render a complete feed page (licence, readme,
+    # repository). The rule lives in one script so bash and PowerShell cannot disagree about what
+    # "complete metadata" means: 0.1.0 shipped with "License missing" and "Readme missing", and an
+    # inline copy here read the intermediate nuspec in obj/, which pack writes differently on
+    # Windows — the Windows legs went red for a package that was fine (PR #235).
     function Assert-PackageMetadata {
-        param([string]$Nuspec, [string]$PackageId)
-        if (-not (Test-Path $Nuspec)) {
-            throw "verify: no nuspec at $Nuspec (dotnet pack writes obj/<Configuration>/<id>.<version>.nuspec)"
+        param([string]$Package, [string]$PackageId)
+        if (-not (Test-Path $Package)) {
+            throw "verify: no package at $Package (dotnet pack writes <id>.<version>.nupkg to the -o directory)"
         }
-        $text = Get-Content -Raw $Nuspec
-        $failures = @()
-        # Read each field once: every -match/-notmatch overwrites the automatic $Matches.
-        $id = if ($text -match '<id>([^<]+)</id>') { $Matches[1] } else { '' }
-        $readme = if ($text -match '<readme>([^<]+)</readme>') { $Matches[1] } else { '' }
-        if ($id -ne $PackageId) {
-            $failures += "package id is '$id', expected '$PackageId'"
+        # Git Bash reads a native path in its own dialect best.
+        $native = ($Package -replace '\\', '/')
+        & (Resolve-Bash) (Join-Path $PSScriptRoot 'check-package-metadata.sh') $native --id $PackageId
+        if ($LASTEXITCODE -ne 0) {
+            throw "verify: $Package does not carry the package metadata a feed page needs"
         }
-        if ($text -notmatch '<license[^>]*>[^<]+</license>') {
-            $failures += 'no licence (set PackageLicenseExpression)'
-        }
-        if ($readme -eq '') {
-            $failures += 'no readme (set PackageReadmeFile)'
-        }
-        elseif ($text -notmatch ('target="/' + [regex]::Escape($readme) + '"')) {
-            $failures += "readme '$readme' is declared but no <file> packs it"
-        }
-        if ($text -notmatch '<repository\s+[^>]*type="git"[^>]*url="http' -and
-            $text -notmatch '<repository\s+[^>]*url="http[^>]*type="git"') {
-            $failures += 'no repository url and type (set RepositoryUrl and RepositoryType)'
-        }
-        if ($failures.Count -ne 0) {
-            throw "verify: $Nuspec does not carry complete package metadata: $($failures -join '; ')"
-        }
-        Write-Host "verify: $PackageId declares a licence, a packed readme and a git repository"
     }
 
     if (-not $env:RID) {
@@ -334,7 +331,7 @@ try {
     try {
         dotnet pack src/Lunate.Coding/Lunate.Coding.csproj -c $configuration -o $feed --nologo
         if ($LASTEXITCODE -ne 0) { throw 'verify: dotnet pack failed' }
-        Assert-PackageMetadata -Nuspec "src/Lunate.Coding/obj/$configuration/lunate.$version.nuspec" -PackageId 'lunate'
+        Assert-PackageMetadata -Package (Join-Path $feed "lunate.$version.nupkg") -PackageId 'lunate'
         dotnet tool install --tool-path $toolPath --add-source $feed lunate --version $version
         if ($LASTEXITCODE -ne 0) { throw 'verify: dotnet tool install failed' }
         $toolVersion = & (Join-Path $toolPath 'lunate.exe') --version
@@ -360,7 +357,7 @@ try {
         dotnet pack samples/extensions/subagents/SubagentsExtension/SubagentsExtension.csproj -c $configuration -o $packageFeed --nologo
         if ($LASTEXITCODE -ne 0) { throw 'verify: dotnet pack of the extension sample failed' }
         Assert-PackageMetadata `
-            -Nuspec "samples/extensions/subagents/SubagentsExtension/obj/$configuration/Lunate.Extensions.Subagents.$version.nuspec" `
+            -Package (Join-Path $packageFeed "Lunate.Extensions.Subagents.$version.nupkg") `
             -PackageId 'Lunate.Extensions.Subagents'
         $nugetConfig = @"
 <?xml version="1.0" encoding="utf-8"?>

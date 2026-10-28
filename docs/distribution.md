@@ -141,10 +141,11 @@ Publishing is passwordless. A Trusted Publishing policy on nuget.org names
 `wdaniel1993/lunate`, the `release.yml` workflow and the `production` environment; the
 `pack` job asks GitHub for an OIDC token, trades it for a key valid for minutes, and pushes
 both packages — the `lunate` tool and `Lunate.Extensions.Subagents`. There is no API key in the
-repository and nothing to rotate. Both nuspecs carry a licence, the packed readme and a
+repository and nothing to rotate. Both packages carry a licence, the readme at their root and a
 repository link: [`scripts/check-package-metadata.sh`](../scripts/check-package-metadata.sh)
-fails the verify gate, and the pack job before the push, when either package loses one — the
-0.1.0 pages rendered with no licence and no introduction because nothing checked it. The tag
+opens the packed `.nupkg` and fails the verify gate, and the pack job before the push, when either
+package loses one — the 0.1.0 pages rendered with no licence and no introduction because nothing
+checked it. The tag
 does it, so the only manual step is proving the result:
 
 ```sh
