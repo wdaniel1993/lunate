@@ -90,9 +90,13 @@ public static class FixtureRestore
         }
     }
 
-    private static Dictionary<string, string?> ChildEnvironment(string root) =>
+    internal static Dictionary<string, string?> ChildEnvironment(string root) =>
         new(StringComparer.Ordinal)
         {
+            // The child must not depend on the caller's home: a runner whose HOME is missing or
+            // read-only makes dotnet exit 1 before it prints anything, which is indistinguishable
+            // from a broken fixture.
+            ["DOTNET_CLI_HOME"] = Path.Combine(root, ".dotnet-home"),
             ["NUGET_PACKAGES"] = Path.Combine(root, ".packages"),
             ["NUGET_HTTP_CACHE_PATH"] = Path.Combine(root, ".nuget-http-cache"),
             ["MSBUILDDISABLENODEREUSE"] = "1",
