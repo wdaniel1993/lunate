@@ -113,7 +113,7 @@ internal sealed partial class SessionImages
 
         // A target that exists but is a link, short or otherwise unusable is corrupt: remove it and
         // write the real blob. A directory is left alone so the move below fails with its own error.
-        RemoveUnusableBlob(target);
+        RemoveUnusableBlob(target, data.Length);
 
         string temp = Path.Combine(
             directory,
@@ -271,12 +271,19 @@ internal sealed partial class SessionImages
         }
     }
 
-    private static void RemoveUnusableBlob(string path)
+    /// <summary>
+    /// Removes the blob at <paramref name="path"/> only when it is corrupt: a link, or a file whose
+    /// length is not the one the caller is about to write. A file of the expected length is the blob
+    /// a concurrent store of the same bytes completed between this store's check and this call —
+    /// removing it would take the blob out from under that store's rename, whose <see cref="Store"/>
+    /// then finds nothing at the target and rethrows instead of accepting the peer's blob.
+    /// </summary>
+    internal static void RemoveUnusableBlob(string path, long expectedLength)
     {
         try
         {
             FileInfo info = new(path);
-            if (info.LinkTarget is null && !info.Exists)
+            if (info.LinkTarget is null && (!info.Exists || info.Length == expectedLength))
             {
                 return;
             }
