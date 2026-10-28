@@ -47,4 +47,16 @@ public sealed class FixtureRestoreEnvironmentTests
             StringComparison.Ordinal
         );
     }
+
+    [Fact]
+    public void The_machine_report_names_the_cores_and_the_disk()
+    {
+        using var temp = new TempDirectory();
+
+        string description = ChildProcessDiagnostics.Describe(temp.Root);
+
+        Assert.Contains("processors:", description, StringComparison.Ordinal);
+        Assert.Contains("free space", description, StringComparison.Ordinal);
+        Assert.Contains("HOME=", description, StringComparison.Ordinal);
+    }
 }
