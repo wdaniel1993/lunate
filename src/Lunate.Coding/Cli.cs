@@ -19,7 +19,9 @@ internal static class Cli
         CatalogUpdateSeams? catalogUpdate = null,
         // The trust command's terminal check; null reads the real stdin. Tests supply it so the
         // requirement does not depend on how the test host was started.
-        bool? stdinIsTerminal = null
+        bool? stdinIsTerminal = null,
+        // The auth command's paths and boundaries; null uses the production defaults.
+        AuthCommandSeams? authSeams = null
     )
     {
         var noExtensions = false;
@@ -75,6 +77,17 @@ internal static class Cli
                 noExtensions ? Suppress(extensions) : extensions,
                 ct
             );
+        }
+
+        if (args.Length > 0 && args[0] == "auth")
+        {
+            AuthCommandSeams auth = authSeams ?? new AuthCommandSeams();
+            if (auth.StdinIsTerminal is null && stdinIsTerminal is { } terminal)
+            {
+                auth = auth with { StdinIsTerminal = terminal };
+            }
+
+            return AuthCommand.Run(args[1..], output, errors, auth);
         }
 
         if (args.Length > 0 && args[0] == "cache")
