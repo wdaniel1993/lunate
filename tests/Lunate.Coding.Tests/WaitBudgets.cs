@@ -93,6 +93,14 @@ internal static class WaitBudgets
         : TimeSpan.FromSeconds(30);
 
     /// <summary>
+    /// How long a child's pid file that is there but unusable is tolerated before the test refuses
+    /// it: a half-written number and a number released between the write and the read are both fixed
+    /// by the next read, and neither is worth a red. This is a tolerance rather than a ceiling — the
+    /// refusal it leads to is the answer, so the window stays short instead of waiting a runner out.
+    /// </summary>
+    public static readonly TimeSpan RefusalGrace = TimeSpan.FromSeconds(2);
+
+    /// <summary>
     /// A shell command the tool runs to completion — this is the timeout the test hands the tool, not
     /// a wait the test performs: the tool's own kill must be given room not to fire. Sixty seconds is
     /// the value the process-runner tests already used for exactly this, and a command that finishes

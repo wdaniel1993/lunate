@@ -1,5 +1,3 @@
-using System.Diagnostics;
-using System.Globalization;
 using Lunate.Extensibility.Abstractions;
 
 namespace Lunate.Coding.Tests;
@@ -106,12 +104,17 @@ public sealed class ProcessSessionTests
     {
         using var temp = new TempDirectory();
         string pidFile = temp.File("grandchild.pid");
+        DateTime commandStarted = DateTime.Now;
         IProcessSession session = await StartAsync(temp, TreeScript, maxLineBytes: null);
 
-        int pid = await WaitForPidAsync(pidFile);
+        ChildProcess grandchild = await ChildProcessProbe.AwaitWrittenAsync(
+            pidFile,
+            commandStarted,
+            CancellationToken.None
+        );
         await session.KillAsync();
 
-        await AssertEventuallyDeadAsync(pid);
+        await ChildProcessProbe.AssertEventuallyDeadAsync(grandchild);
         await session.DisposeAsync();
     }
 
@@ -120,12 +123,17 @@ public sealed class ProcessSessionTests
     {
         using var temp = new TempDirectory();
         string pidFile = temp.File("grandchild.pid");
+        DateTime commandStarted = DateTime.Now;
         IProcessSession session = await StartAsync(temp, TreeScript, maxLineBytes: null);
 
-        int pid = await WaitForPidAsync(pidFile);
+        ChildProcess grandchild = await ChildProcessProbe.AwaitWrittenAsync(
+            pidFile,
+            commandStarted,
+            CancellationToken.None
+        );
         await session.DisposeAsync();
 
-        await AssertEventuallyDeadAsync(pid);
+        await ChildProcessProbe.AssertEventuallyDeadAsync(grandchild);
     }
 
     [Fact]
@@ -205,79 +213,5 @@ public sealed class ProcessSessionTests
         }
 
         return environment;
-    }
-
-    private static async Task<int> WaitForPidAsync(string pidFile)
-    {
-        DateTime deadline = DateTime.UtcNow + WaitBudgets.SpawnWindow;
-        while (DateTime.UtcNow < deadline)
-        {
-            if (File.Exists(pidFile))
-            {
-                try
-                {
-                    string text = File.ReadAllText(pidFile).Trim();
-                    if (
-                        int.TryParse(
-                            text,
-                            NumberStyles.Integer,
-                            CultureInfo.InvariantCulture,
-                            out int pid
-                        )
-                    )
-                    {
-                        return pid;
-                    }
-                }
-                catch (IOException)
-                {
-                    // The writer may still hold the file briefly (Windows sharing); retry.
-                }
-                catch (UnauthorizedAccessException)
-                {
-                    // Momentarily unreadable; retry.
-                }
-            }
-
-            await Task.Delay(100, Ct);
-        }
-
-        Assert.Fail(
-            $"no pid was written to {pidFile} within {WaitBudgets.SpawnWindow.TotalSeconds:0} seconds"
-        );
-        return 0;
-    }
-
-    private static async Task AssertEventuallyDeadAsync(int pid)
-    {
-        DateTime deadline = DateTime.UtcNow + WaitBudgets.ProcessExit;
-        while (IsAlive(pid))
-        {
-            if (DateTime.UtcNow > deadline)
-            {
-                Assert.Fail(
-                    $"pid {pid} was still alive {WaitBudgets.ProcessExit.TotalSeconds:0} seconds after the tree kill"
-                );
-            }
-
-            await Task.Delay(100, Ct);
-        }
-    }
-
-    private static bool IsAlive(int pid)
-    {
-        try
-        {
-            using Process process = Process.GetProcessById(pid);
-            return !process.HasExited;
-        }
-        catch (ArgumentException)
-        {
-            return false;
-        }
-        catch (InvalidOperationException)
-        {
-            return false;
-        }
     }
 }
