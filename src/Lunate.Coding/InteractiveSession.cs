@@ -316,6 +316,13 @@ internal sealed partial class InteractiveSession : IDisposable
                 {
                     OpenSessionPicker();
                 }
+                else if (OffersFirstRunAuth())
+                {
+                    // One offer per session start: composition is done and the live area accepts
+                    // picker keys. Esc dismisses it and the ordinary path (a run reports the
+                    // missing credential) takes over; nothing reopens it.
+                    OpenAuthPicker();
+                }
                 // Background remote extensions start only now, after the UI is ready; the startup
                 // path and its budget never touch them.
                 if (_extensions is { } backgroundHost)
@@ -799,9 +806,28 @@ internal sealed partial class InteractiveSession : IDisposable
 
         IChatClient client = _extensionModelId is { } extensionModelId
             ? _extensions!.ModelRegistry.Resolve(extensionModelId)
-            : _factory.Create(model);
+            : CreateSessionClient(model);
         return new AgentHarness(client, _tools, harnessOptions);
     }
+
+    /// <summary>
+    /// The client for the session's model. An interactive session with no usable credential defers
+    /// creation to the first request, so composition finishes and the first-run auth picker can
+    /// open; a saved key is then what the deferred factory resolves. Every other path creates
+    /// eagerly, so a missing credential stays the explicit composition error it has always been.
+    /// </summary>
+    private IChatClient CreateSessionClient(ModelInfo model) =>
+        HasMissingCredential(model)
+            ? new DeferredChatClient(() => _factory.Create(model))
+            : _factory.Create(model);
+
+    /// <summary>
+    /// Whether this terminal session's model has no usable credential, so the deferred client and
+    /// the first-run offer apply. A non-terminal session keeps the eager creation and its explicit
+    /// composition error.
+    /// </summary>
+    private bool HasMissingCredential(ModelInfo model) =>
+        _console.IsInteractive && ProviderKeyProbe.FixFor(model, _auth, _environment) is not null;
 
     /// <summary>
     /// The footer's model segment: for an extension-registered session model it shortens the

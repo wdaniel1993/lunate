@@ -205,24 +205,18 @@ public sealed class WelcomeHeaderSessionTests
     }
 
     [Fact]
-    public async Task A_first_run_names_one_fix_and_no_counts_or_hint()
+    public async Task A_first_run_names_auth_as_the_one_fix_and_no_counts_or_hint()
     {
         using var host = new InteractiveSessionHost();
         Task run = host.RunAsync();
 
         await host.WaitUntilAsync(() => host.Session.IsComposed);
 
-        string scrollback = await host.WaitForScrollbackAsync(
-            "add the 'openai' key to ~/.lunate/auth.json"
-        );
-        Assert.Contains(
-            "add the 'openai' key to ~/.lunate/auth.json",
-            scrollback,
-            StringComparison.Ordinal
-        );
+        string scrollback = await host.WaitForScrollbackAsync("run /auth to configure a provider");
+        Assert.Equal(1, Occurrences(scrollback, "run /auth to configure a provider"));
+        Assert.DoesNotContain("auth.json", scrollback, StringComparison.Ordinal);
         Assert.DoesNotContain("extensions", scrollback, StringComparison.Ordinal);
         Assert.DoesNotContain("Esc cancels", scrollback, StringComparison.Ordinal);
-        Assert.Equal(1, Occurrences(scrollback, "auth.json"));
         Assert.Equal(1, Occurrences(scrollback, Mark));
 
         host.Console.SendText("/quit");
@@ -251,7 +245,7 @@ public sealed class WelcomeHeaderSessionTests
     }
 
     [Fact]
-    public async Task A_first_run_without_a_model_names_the_model_setting_and_no_counts_or_hint()
+    public async Task A_first_run_without_a_model_names_auth_and_no_counts_or_hint()
     {
         using var host = new InteractiveSessionHost(
             environment: PrintModeTestSupport.Environment(model: null)
@@ -261,12 +255,8 @@ public sealed class WelcomeHeaderSessionTests
         // Nothing resolves without a model, so composition fails right after the header printed:
         // the run ends on its own and the header is the whole first frame.
         string scrollback = await host.ScrollbackAfterAsync(() => run);
-        Assert.Contains(
-            "set 'model' in ~/.lunate/settings.json",
-            scrollback,
-            StringComparison.Ordinal
-        );
-        Assert.Equal(1, Occurrences(scrollback, "settings.json"));
+        Assert.Equal(1, Occurrences(scrollback, "run /auth to configure a provider"));
+        Assert.DoesNotContain("settings.json", scrollback, StringComparison.Ordinal);
         Assert.DoesNotContain("extensions", scrollback, StringComparison.Ordinal);
         Assert.DoesNotContain("Esc cancels", scrollback, StringComparison.Ordinal);
         Assert.Equal(1, Occurrences(scrollback, Mark));
