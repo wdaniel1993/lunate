@@ -21,7 +21,7 @@ Four behaviours now meet on the same path: a large result must leave the window 
 
 ## Consequences
 
-- Public API grows by `ToolResult.FullOutput`, `ToolContext.Reads`/`IReadLedger`, `AgentHarnessOptions.SpillThresholdTokens` and `AgentHarnessOptions.ToolOutputMask`; a settings key is added; `PublicAPI.Unshipped.txt` and the guide change.
+- Public API grows by `ToolResult.FullOutput`, `AgentHarnessOptions.SpillThresholdTokens` and `AgentHarnessOptions.ToolOutputMask`; the read ledger stays internal between `Lunate.Agent` and the `lunate` executable, so it adds no public surface. A settings key is added; `PublicAPI.Unshipped.txt` and the guide change.
 - A model that needs a secret's literal value can no longer read it from a tool result; the marker names what was redacted and the user supplies the value.
 - Resume keeps correctness (the seeded ledger requires a re-read) but loses the projection until that re-read; the stale copy is stubbed then.
 - Context estimates fall, so compaction fires later. That is the product effect, and the tests measure it through the provider's usage rather than a hand-written count.

@@ -15,6 +15,6 @@ concision, the read ledger, and masking before the context. The prior ADR and th
 stay as written history; the addendum is the live commitment once accepted.
 
 **Why an ADR rather than a tactical choice:** the change moves where the loop decides what enters
-the model's context, adds two public contract members and two options, and reverses a boundary the repository
+the model's context, adds one public result member and two options, and reverses a boundary the repository
 documents ("the in-memory result keeps what the model saw"). Future changes inherit that order. It
 is not reversible by reverting one helper.

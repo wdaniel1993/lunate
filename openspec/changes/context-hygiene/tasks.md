@@ -27,8 +27,8 @@
 
 ## 4. Stale reads
 
-- [ ] 4.1 Add `IReadLedger` and the harness `ReadLedger`: canonical path, SHA-256 of LF-normalised text, call id; newest read live, older reads superseded; invalidate on every published `FileChangeEvent`; seed unknown versions from the loaded history on resume. Unit tests for each transition, including a same-content edit (digest unchanged) and an out-of-band change.
-- [ ] 4.2 Stamp `ToolContext.Reads` per call (null outside a run) and have `read` record the digest of the text it already reads. Test: the loop-run context has a ledger, a hand-built context has null.
+- [ ] 4.1 Add the internal `IReadLedger` and the harness `ReadLedger`: canonical path, SHA-256 of LF-normalised text, call id; newest read live, older reads superseded; invalidate on every published `FileChangeEvent`; seed unknown versions from the loaded history on resume. Unit tests for each transition, including a same-content edit (digest unchanged) and an out-of-band change.
+- [ ] 4.2 Stamp the internal `ToolContext.Reads` per call (null outside a run) and have `read` record the digest of the text it already reads. Test: the loop-run context has a ledger, a hand-built context has null.
 - [ ] 4.3 Check the live version in `edit` and `write` inside the mutation queue, before matching or writing. Tests: the second edit from the old text is refused with the path and the re-read instruction and the file is untouched; a re-read allows it; a never-read path still edits; a digest mismatch (out-of-band write) refuses; direct-tool tests with a hand-built context are unchanged.
 - [ ] 4.4 Stub superseded read results in the request and adjust `_historyUtf8` exactly; leave the session entry alone. Tests: the request carries the one-line notice and is at least 4,000 estimated tokens smaller; the session still loads the original; a resume seeds the ledger and the first edit asks for a re-read.
 - [ ] 4.5 Commit: `feat(agent): refuse a stale read and stub its old copy`.
@@ -41,7 +41,7 @@
 
 ## 6. Contracts, documentation and gate
 
-- [ ] 6.1 Add the public entries to `src/Lunate.Agent/PublicAPI.Unshipped.txt` and confirm no other public type moved. The new public surface is exactly `ToolResult.FullOutput`, `ToolContext.Reads`, `IReadLedger`, `AgentHarnessOptions.SpillThresholdTokens` and `AgentHarnessOptions.ToolOutputMask`.
+- [ ] 6.1 Add the public entries to `src/Lunate.Agent/PublicAPI.Unshipped.txt` and confirm no other public type moved. The new public surface is exactly `ToolResult.FullOutput`, `AgentHarnessOptions.SpillThresholdTokens` and `AgentHarnessOptions.ToolOutputMask`; the ledger stays internal.
 - [ ] 6.2 Update `docs/guide.md` where it describes tool-output truncation, redaction and the read-before-edit rule; name the new setting and the pointer. Do not touch `AGENTS.md`, `docs/architecture.md` or the ADRs other than the new addendum.
 - [ ] 6.3 Present `design.md` and `adr/0012-addendum-context-hygiene.md` for maintainer sign-off. If either is rejected, stop apply and record the decision on the PR; do not merge a partial version of the boundary.
 - [ ] 6.4 Run `openspec validate context-hygiene --strict` and `openspec validate --all`, then the fast gate: `dotnet csharpier format .`, `dotnet build Lunate.slnx -c Release`, the Agent and Coding test projects (both cultures), `dotnet csharpier check .`.

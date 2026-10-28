@@ -30,8 +30,8 @@ The inventory also found a promise that is not kept: the spill marker names an a
 
 ## Impact
 
-- **Public API:** `ToolResult.FullOutput`, `ToolContext.Reads` with `IReadLedger`, `AgentHarnessOptions.ToolOutputMask` and `AgentHarnessOptions.SpillThresholdTokens`; entries in `src/Lunate.Agent/PublicAPI.Unshipped.txt`.
+- **Public API:** `ToolResult.FullOutput`, `AgentHarnessOptions.ToolOutputMask` and `AgentHarnessOptions.SpillThresholdTokens`; entries in `src/Lunate.Agent/PublicAPI.Unshipped.txt`. The read ledger is internal between the loop and the core file tools, which share internals access.
 - **Settings:** new `output.spillThresholdTokens` and `LUNATE_TOOL_SPILL_THRESHOLD`; `output.toolResultLimit` keeps its meaning and default. All three format culture-invariantly.
 - **Code:** `Lunate.Agent` (`AgentHarness.Tools.cs`, `ToolOutput.cs`, `ToolOutputSpill.cs`, a new read ledger and context-admission type), `Lunate.Coding` (`ReadTool`, `EditTool`, `WriteTool`, `BashTool`, `HarnessFactory`, `SettingsStore`, the interactive/print wiring), `docs/guide.md`, and `adr/0012-addendum-context-hygiene.md`.
 - **Tests:** `Lunate.Agent.Tests` and `Lunate.Coding.Tests`, using a fixture provider that reports the request's own estimated size as usage. No live APIs, no new packages, no session schema change, no golden session update.
-- **Risk to review:** two public contract additions, two options and one reversed boundary (the model now sees masked text). They are flagged in `design.md` and the ADR for maintainer sign-off.
+- **Risk to review:** one public contract addition, two options and one reversed boundary (the model now sees masked text). They are flagged in `design.md` and the ADR for maintainer sign-off.

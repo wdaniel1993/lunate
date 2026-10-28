@@ -112,7 +112,7 @@ Alternatives: error-keyword heuristics in the loop (they silently drop the one l
 
 ### D6 — Reads are versioned; a stale version is refused and its copy is stubbed
 
-A harness-level `ReadLedger` (one per session history, stamped into each run's `ToolContext`) records every text `read` as `(canonical path, SHA-256 of the LF-normalised text, call id)`. The digest is computed from the text `ReadTool` already reads (`ReadTool.cs:143`), so recording costs no extra I/O.
+A harness-level `ReadLedger` (one per session history, stamped into each run's `ToolContext`; internal to `Lunate.Agent` and the `lunate` assembly) records every text `read` as `(canonical path, SHA-256 of the LF-normalised text, call id)`. The digest is computed from the text `ReadTool` already reads (`ReadTool.cs:143`), so recording costs no extra I/O.
 
 - The **newest** read of a path is the live version. Every older read result of that path is superseded: the harness replaces its tool-result text in the in-memory history with one line, e.g. `[stale: superseded by a later read of src/Foo.cs; this copy is no longer current]`. The session entry keeps the original text (append-only); only the request shrinks.
 - `edit` and `write` compute the digest of the text they already read inside the mutation queue (`EditTool.cs:154-170`, `WriteTool.cs:100-130`) and ask the ledger for the live version. A matching live digest allows the mutation. An invalidated record — a `FileChangeEvent` from any source, including bash's git scan (`BashTool.cs:178-214`) — or a digest mismatch (an out-of-band change) refuses with: `src/Foo.cs changed after your last read (an edit, bash, or another process). Re-read it and base old_text on the current text.` The refusal is an error result, not an exception, and names what to do.
@@ -148,8 +148,8 @@ The first three deltas are large enough to be the product effect; masking's delt
 | File | Change |
 | --- | --- |
 | `src/Lunate.Agent/ToolResult.cs` | `FullOutput` (optional) with the contract doc. |
-| `src/Lunate.Agent/ToolContext.cs` | `Reads` (the per-call ledger view), null outside a run. |
-| `src/Lunate.Agent/IReadLedger.cs` (new) | `Record(path, digest)` and `Check(path, digest)` returning an instructing refusal or null. |
+| `src/Lunate.Agent/ToolContext.cs` | Internal `Reads` (the per-call ledger view), null outside a run. |
+| `src/Lunate.Agent/IReadLedger.cs` (new, internal) | `Record(path, digest)` and `Check(path, digest)` returning an instructing refusal or null. |
 | `src/Lunate.Agent/ReadLedger.cs` (new) | Live/superseded records per canonical path, invalidation, resume seeding, superseded call ids for the projection. |
 | `src/Lunate.Agent/ToolOutput.cs` | `EstimateTokens` and the pointer rendering; `Truncate` stays for the fallback. |
 | `src/Lunate.Agent/ToolOutputSpill.cs` | Reuse `DirectoryFor` for the read grant; no format change. |
@@ -161,13 +161,13 @@ The first three deltas are large enough to be the product effect; masking's delt
 | `src/Lunate.Coding/BashTool.cs` | `FullOutput` (stdout transcript) and the concise `Output`. |
 | `src/Lunate.Coding/HarnessFactory.cs`, `InteractiveSession.cs`, `PrintMode.cs` | Wire the masker and the threshold; grant the spill root. |
 | `src/Lunate.Coding/SettingsStore.cs` | `output.spillThresholdTokens` (positive integer, culture-invariant). |
-| `src/Lunate.Agent/PublicAPI.Unshipped.txt` | The five public additions (`FullOutput`, `Reads`, `IReadLedger`, `SpillThresholdTokens`, `ToolOutputMask`). |
+| `src/Lunate.Agent/PublicAPI.Unshipped.txt` | The three public additions (`FullOutput`, `SpillThresholdTokens`, `ToolOutputMask`); the ledger stays internal. |
 | `docs/guide.md` | What is now true about truncation, redaction and reads (implementation task). |
 | `adr/0012-addendum-context-hygiene.md` (new, proposed) | The admission boundary and the contract additions. |
 
 ## Risks / Trade-offs
 
-- **Two public contract additions, two options and a reversed redaction boundary** → they are the reason this is a proposal, not a patch; ADR-0012 addendum is marked proposed and the PR asks for sign-off. Nothing merges before that.
+- **One public contract addition (`FullOutput`), two options and a reversed redaction boundary** → they are the reason this is a proposal, not a patch; ADR-0012 addendum is marked proposed and the PR asks for sign-off. Nothing merges before that.
 - **A 2,000-token threshold is aggressive** → the setting is configurable; the preview keeps both ends; the pointer names the path and the next action. A user who wants today's behaviour raises `output.spillThresholdTokens`.
 - **The model can no longer copy a secret it reads** → that is the point of masking; the marker names the credential, so the model can ask the user or use a placeholder. If a workflow needs the literal value, the user supplies it.
 - **A formatter or watcher that rewrites a file between read and edit refuses every edit** → the content digest is honest: the text really changed, so a re-read is required. The refusal names the source, and the re-read is one call.
@@ -183,7 +183,7 @@ Defaults on, no session schema change, no golden update expected. A session writ
 
 ## Open Questions
 
-- **Sign-off:** `ToolResult.FullOutput`, `ToolContext.Reads`/`IReadLedger`, and masking before the context reverse part of the #196 decision. ADR-0012 addendum records them as proposed; the maintainer accepts or rejects before apply.
+- **Sign-off:** `ToolResult.FullOutput` and masking before the context reverse part of the #196 decision. ADR-0012 addendum records them as proposed; the maintainer accepts or rejects before apply. The read ledger is internal between the loop and the core file tools (both in the `lunate` assembly via internals access), so it adds no public surface.
 - **Pattern-based masking** for secrets Lunate does not hold (a `.env` read): a follow-up change with its own ADR, or never? This design keeps exact-value only, matching the written rule.
 - **Persisting read versions** in the session would keep the stale-read projection across resume and remove the seeded re-read. It needs a session format bump and golden work; not this change.
 - **Masking `Details`** (a diff of a secret file) for the UI: the diff is UI-only, but a terminal scrollback is still a leak surface.
