@@ -48,6 +48,7 @@ jobs:
         run: |
           set -euo pipefail
           bash scripts/ci-plan.sh --self-test
+          bash scripts/ci-ok.sh --self-test
           python3 scripts/docs-sync --self-test
           bash scripts/no-docs-references.sh --self-test
 
@@ -332,49 +333,30 @@ jobs:
   # actually happened counts as success, and it fails closed on a profile it
   # cannot read. The legs the profile does not select must be skipped, not
   # green: a docs plan that also ran the full matrix means the plan lied.
+  #
+  # This job must never be skipped on a draft: branch protection reads a
+  # skipped required check as satisfied, so a head whose only run was the draft
+  # run would show "All checks have passed" with no gate behind it. The draft
+  # check is a failing step in scripts/ci-ok.sh instead -- a failure cannot
+  # satisfy a required context -- while `plan` keeps its draft gate so a draft
+  # push still costs no matrix. scripts/ci-ok.sh --self-test pins both halves.
   ci-ok:
     name: ci-ok
     needs: [plan, verify, verify-powershell, verify-docs]
-    if: always() && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    if: always()
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
       - name: Every required job succeeded
-        run: |
-          set -euo pipefail
-          plan='${{ needs.plan.result }}'
-          profile='${{ needs.plan.outputs.profile }}'
-          verify='${{ needs.verify.result }}'
-          powershell='${{ needs.verify-powershell.result }}'
-          docs='${{ needs.verify-docs.result }}'
-          echo "plan=$plan profile=$profile verify=$verify verify-powershell=$powershell verify-docs=$docs"
-          if [ "$plan" != "success" ]; then
-            echo "::error::ci-ok: the plan job did not succeed (plan=$plan)"
-            exit 1
-          fi
-          case "$profile" in
-            docs)
-              if [ "$docs" != "success" ]; then
-                echo "::error::ci-ok: the docs profile did not succeed (verify-docs=$docs)"
-                exit 1
-              fi
-              if [ "$verify" != "skipped" ] || [ "$powershell" != "skipped" ]; then
-                echo "::error::ci-ok: profile=docs, yet a full leg ran (verify=$verify, verify-powershell=$powershell)"
-                exit 1
-              fi
-              ;;
-            full)
-              if [ "$verify" != "success" ] || [ "$powershell" != "success" ]; then
-                echo "::error::ci-ok: a required job did not succeed (verify=$verify, verify-powershell=$powershell)"
-                exit 1
-              fi
-              if [ "$docs" != "skipped" ]; then
-                echo "::error::ci-ok: profile=full, yet the docs leg ran (verify-docs=$docs)"
-                exit 1
-              fi
-              ;;
-            *)
-              echo "::error::ci-ok: the plan produced no usable profile ('$profile'); refusing to pass"
-              exit 1
-              ;;
-          esac
-          echo "ci-ok: the $profile gate succeeded"
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          DRAFT: ${{ github.event.pull_request.draft }}
+          PLAN: ${{ needs.plan.result }}
+          PROFILE: ${{ needs.plan.outputs.profile }}
+          VERIFY: ${{ needs.verify.result }}
+          POWERSHELL: ${{ needs.verify-powershell.result }}
+          DOCS: ${{ needs.verify-docs.result }}
+        run: bash scripts/ci-ok.sh
