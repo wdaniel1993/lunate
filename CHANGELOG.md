@@ -10,6 +10,12 @@ Notable changes to Lunate, one section per release. The format follows
 
 ### Fixed
 
+- The `lunate` tool package shipped its nuget.org page with no licence and no rendered readme:
+  `0.1.0` packed with "License missing" and "Readme missing" while the extension package carried
+  both. The tool's project now declares the MIT expression, packs the repository README at the
+  package root, and names its project and git repository, and
+  `scripts/check-package-metadata.sh` — run by the verify gate on both shipped packages and by the
+  pack job before the push — fails when a nuspec loses one of the three.
 - The slow-hook warning accused an extension of time the machine spent. A dispatch was timed with a
   wall clock around the handler, so a loaded thread pool — where a queued continuation waits for a
   worker — inflated the number: a hook whose own work is nothing reported 648–1392 ms past a 20 ms
