@@ -12,6 +12,7 @@ Lunate keeps each kind of document in exactly one home. Start here, then jump to
 | Architecture overview | [`architecture.md`](architecture.md) | Component map, model pipeline, one run and the event path, as diagrams |
 | Extensibility spec | [`spec/extensibility.md`](spec/extensibility.md) | Contract and hooks, tool model, services, UI by mode, fitness suite (under ADR-0017) |
 | Export contract | [`spec/export.md`](spec/export.md) | `/export` and `/copy`: destination, credential redaction, the HTML document's CSP and escaping guarantees |
+| Diagnostic bundle | [`spec/diagnostics.md`](spec/diagnostics.md) | `/debug`: destination, sections, the event window, and what the bundle never carries |
 | Extension authoring | [`extensions/`](extensions/README.md) | Quickstart, manifest reference, single-file headers, per-surface API and constraints, lifecycle and trust, testing, troubleshooting |
 | Installing packages | [`extensions/packages.md`](extensions/packages.md) | The bundle manifest, dependency resolution and its lock, the install record, both scopes, upgrade and uninstall, offline and private feeds, trust after install |
 | Remote extensions | [`extensions-remote.md`](extensions-remote.md) | The out-of-process manifest and wire reference for extension authors (schema: [`schemas/extensions-remote.schema.json`](../schemas/extensions-remote.schema.json)) |
