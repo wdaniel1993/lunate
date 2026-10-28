@@ -327,6 +327,10 @@ expand when the file loads. Within a scope `.lunate/` wins over `.agents/` wins 
 and a project file wins over a user file. Servers start on first use, their tools arrive as
 `server__tool`, and a project file and each of its servers needs its own trust decision.
 
+Lunate can also be the server: `lunate mcp roslyn` serves the five read-only `cs_*` C# tools over
+stdio to another MCP host, with no approvals or write path behind them.
+[`docs/mcp-roslyn.md`](docs/mcp-roslyn.md) covers the configuration and what it leaves out by design.
+
 ### Extensions
 
 A directory with an `extension.json` manifest in `~/.lunate/extensions/` (global) or
