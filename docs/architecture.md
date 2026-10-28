@@ -11,14 +11,14 @@ flowchart TD
     Coding --> Tui["Lunate.Tui<br/>terminal UI"]
     Protocols --> Agent
     Agent --> Ai["Lunate.Ai<br/>model pipeline, catalog"]
-    Coding -. "loads on first use" .-> Roslyn["Lunate.Roslyn<br/>semantic C# extension"]
-    Roslyn -. "implements the extension contract" .-> Agent
+    Coding --> Roslyn["Lunate.Roslyn<br/>semantic C# tools"]
+    Roslyn -->|"tool model"| Agent
     Ai --> Providers(["Provider APIs<br/>OpenAI-compatible, Anthropic"])
     Protocols -. "stdio / HTTP" .-> Mcp(["MCP servers<br/>separate process"])
     Protocols -. "ACP" .-> Editor(["Editor (ACP client)<br/>separate process"])
 ```
 
-Arrows point from a project to what it depends on or calls; dashed edges are runtime-only connections — the lazily loaded extension and separate processes. `Lunate.Coding` is the composition root: it wires the TUI, the protocols and the agent, and loads `Lunate.Roslyn` on first use. The layering rule and its enforcement live in the [repo-foundation spec](../openspec/specs/repo-foundation/spec.md); the extension contract arrives with T-36 in the [guide](guide.md) (see the [extensibility spec](spec/extensibility.md)).
+Arrows point from a project to what it depends on or calls; dashed edges are runtime-only connections — separate processes. `Lunate.Coding` is the composition root: it wires the TUI, the protocols and the agent, and composes the five `cs_*` tools from `Lunate.Roslyn`, which references `Lunate.Agent` for the tool model. `Lunate.Roslyn` is not loaded through the extension loader today; the [surface audit](eval/roslyn-surface-audit.md) records where it leaves the contract and 0.2 closes the gap. The layering rule and its enforcement live in the [repo-foundation spec](../openspec/specs/repo-foundation/spec.md); the extension contract arrives with T-36 in the [guide](guide.md) (see the [extensibility spec](spec/extensibility.md)).
 
 ## The model pipeline
 

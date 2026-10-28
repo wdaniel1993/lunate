@@ -16,9 +16,13 @@ Three consequences follow, and they decide priorities:
 
 - **The core stays language-agnostic.** Nothing in the loop, the tools or the session model may
   assume C# semantics; TypeScript, Python and Go repositories are first-class citizens.
-- **.NET depth lives in `Lunate.Roslyn` as the flagship extension**, built only on the public
-  extension API — so it proves the extensibility story instead of bypassing it. An internal
-  shortcut in the flagship is a defect in the surface, not a convenience.
+- **.NET depth lives in `Lunate.Roslyn`**, the semantic C# layer behind the five `cs_*` tools.
+  Today the composition root wires those tools in directly rather than loading them through the
+  extension contract, and `Lunate.Roslyn` references `Lunate.Agent` for the tool model; the
+  [surface audit](eval/roslyn-surface-audit.md) records every such point with a `file:line`. The
+  extensibility story is proven by the reference-extension fitness suite, not by the flagship.
+  Moving `Lunate.Roslyn` onto the contract is 0.2 work, and the positioning claim returns when the
+  audit's gaps are closed — not before.
 - **Decision models enter through a Jev-compatible API**, so Lunate does not care which model or
   provider sits behind a decision.
 
@@ -61,11 +65,11 @@ Every feature request and every OpenCode plan is checked against these seven rul
 
 ## Architecture
 
-Three core projects with strict downward dependencies, like Tau's `tau_coding → tau_agent → tau_ai`, built on Microsoft.Extensions.AI. Around them: a TUI library, a protocols project on the MCP and ACP SDKs, and Roslyn as a built-in extension that loads on first use.
+Three core projects with strict downward dependencies, like Tau's `tau_coding → tau_agent → tau_ai`, built on Microsoft.Extensions.AI. Around them: a TUI library, a protocols project on the MCP and ACP SDKs, and Roslyn for the C# tools.
 
 The architecture overview lives in [`architecture.md`](architecture.md) — the component map, the model pipeline, one run and the event path as diagrams.
 
-Arrows point from a project to what it depends on or calls; dashed edges are runtime-only connections (the lazily loaded extension and separate processes). `Lunate.Protocols` references `Lunate.Agent` (MCP tools become `ITool`s, ACP drives the loop); `Lunate.Tui` references no other Lunate project; `Lunate.Roslyn` is loaded through the extension loader, so Roslyn and MSBuild assemblies are not touched until the first C# tool call.
+Arrows point from a project to what it depends on or calls; dashed edges are runtime-only connections — separate processes. `Lunate.Protocols` references `Lunate.Agent` (MCP tools become `ITool`s, ACP drives the loop); `Lunate.Tui` references no other Lunate project; `Lunate.Coding` is the composition root and constructs the five `cs_*` tools from `Lunate.Roslyn` at startup, and the Roslyn backend behind them is created per workspace on the first C# tool call. `Lunate.Roslyn` is not loaded through the extension loader today — the [surface audit](eval/roslyn-surface-audit.md) records the gap and 0.2 closes it.
 
 **Solution layout**
 
@@ -91,7 +95,7 @@ lunate/
   src/Lunate.Agent/            # loop on IChatClient, events, ITool, sessions, compaction, extension contract
   src/Lunate.Tui/              # Spectre output, own input line and live area
   src/Lunate.Protocols/        # MCP client and ACP server on the SDKs
-  src/Lunate.Roslyn/           # built-in extension: semantic C# tools, loaded on first use
+  src/Lunate.Roslyn/           # semantic C# tools; composed by the host today (audit: docs/eval)
   src/Lunate.Coding/           # exe: lunate (self-contained single file): TUI, print and ACP modes, extension loader
   tests/Lunate.*.Tests/        # one test project per src project
   tests/Lunate.TestSupport/    # shared test helpers (TestMcpServer resolution); no tests of its own
@@ -464,7 +468,7 @@ An extension is an assembly implementing the `Lunate.Extensibility.Abstractions`
 - An extension registers tools through `IExtensionContext.RegisterTool`; the model-facing name is `<extension-id>__<name>`, the manifest `tools` list must declare every registered tool, and unloading the extension removes its tools and cancels in-flight calls.
 - An extension registers commands through `IExtensionContext.RegisterCommandSource`; the manifest `commands` list must declare every provided command. A declared command with no provider reads `declared, not provided` in `/extensions` and is never offered or dispatched, and a command name that collides with a built-in refuses the load. Commands from every source — built-ins, skills and extensions — compose into the session's one registry with the built-in commands first; `/help` lists them all (built-in groups first, then a `skills`, `extensions` and `templates` section when non-empty) and every diagnostic names a command by its source-qualified id (`builtin:help`, `skill:review`, `ext:<id>:<name>`), never in the typed text. Unloading an extension with a command still running cancels it, says so in a notice naming the command's id, waits up to five seconds for the handler to return and then unloads, so a stuck handler is logged instead of hanging teardown.
 - Project-local extensions run code from the repository: one-time trust per repository, re-prompted when the extension files change.
-- `Lunate.Roslyn` ships as a built-in extension and uses the same mechanism.
+- `Lunate.Roslyn` does not use this mechanism yet: the host composes its five `cs_*` tools directly, and the [surface audit](eval/roslyn-surface-audit.md) lists the four contract gaps that keep it out. Closing them is 0.2 work; until then this section describes the sample extensions, not the flagship.
 - External tools can also come through MCP (`~/.lunate/mcp.json`, see Protocols).
 - The architecture is proven by a fitness suite of reference extensions (permission gates, memory, LSP, MCP, subagents, code mode, model routing, UI, worktree tasks) running in CI — a sample that needs a workaround means the core is missing a primitive.
 
@@ -682,7 +686,7 @@ public interface IAcpServer
 
 ## Roslyn extension (the .NET edge)
 
-`Lunate.Roslyn` is a built-in extension that gives the model **agent-shaped C# tools**: name-based lookup, compile checks after every edit, refactors returned as diffs. C# language servers run Roslyn underneath too — the difference this project bets on is tool design, not the engine: no plugin or server to set up, diagnostics straight from the compilation, and load problems reported as clear messages. That edge depends on implementing ADR 0006's operational rules well (restore check, SDK mismatch, partial loads), not on Roslyn itself.
+`Lunate.Roslyn` gives the model **agent-shaped C# tools**: name-based lookup, compile checks after every edit, refactors returned as diffs. The host composes those tools directly today rather than loading them through the extension contract (see the [surface audit](eval/roslyn-surface-audit.md)); C# language servers run Roslyn underneath too — the difference this project bets on is tool design, not the engine: no plugin or server to set up, diagnostics straight from the compilation, and load problems reported as clear messages. That edge depends on implementing ADR 0006's operational rules well (restore check, SDK mismatch, partial loads), not on Roslyn itself.
 
 **Loading model**
 
@@ -957,7 +961,7 @@ These decisions are settled; the foundational ones are recorded as durable ADRs 
 | Native AOT | No; self-contained single file with ReadyToRun, held to performance budgets | Models and network dominate latency; JIT keeps runtime extensions, in-process Roslyn and all SDKs |
 | Model types | IChatClient and Microsoft.Extensions.AI types everywhere; own types only for tools and events | Microsoft-maintained .NET standard; MCP SDK fits directly |
 | Agent events | Own AgentEvent, named and sequenced like AG-UI | Thin mappings to TUI, ACP and a possible web UI; no dependency on a moving protocol |
-| Roslyn | In process as a built-in extension, loaded on first use | No sidecar needed without AOT |
+| Roslyn | In process, composed by the host; moving onto the extension contract is the 0.2 target | No sidecar needed without AOT |
 | Extensions | Loaded at runtime from global and project folders | Pi-style extensibility |
 
 **Resolved after review**
