@@ -12,7 +12,7 @@ internal sealed partial class InteractiveSession
     /// secret prompt and saves it under the preset id. Empty input cancels; no network call
     /// validates the key, and no notice, frame or session line ever carries the typed value.
     /// </summary>
-    private async Task LoginAsync(string argument, CancellationToken ct)
+    private async Task LoginAsync(string argument, CancellationToken ct, string command = "/login")
     {
         if (RefusedWhileBusy())
         {
@@ -25,7 +25,7 @@ internal sealed partial class InteractiveSession
         string provider = separator < 0 ? argument : argument[..separator];
         // A single token that is not a preset may itself be a pasted key, so the login error
         // never echoes it; /logout keeps naming the provider it could not find.
-        if (ResolvePreset("/login", provider, echoArgument: false) is not { } preset)
+        if (ResolvePreset(command, provider, echoArgument: false) is not { } preset)
         {
             return;
         }
@@ -33,23 +33,30 @@ internal sealed partial class InteractiveSession
         if (separator >= 0)
         {
             Notify(
-                "/login takes no key argument; the key is read from the masked prompt",
+                command + " takes no key argument; the key is read from the masked prompt",
                 NoticeLevel.Warning
             );
             return;
         }
 
+        await BeginPresetLogin(preset, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Starts the masked prompt for one preset and keeps the save observable through
+    /// <see cref="LoginTask"/>. A prompt that completes synchronously is awaited here so a scripted
+    /// or already-cancelled read stays on the caller's thread; the live TUI prompt is driven by the
+    /// key pump this command already runs on, so awaiting it before its first key would deadlock and
+    /// the continuation saves and notifies on the thread pool instead.
+    /// </summary>
+    private async Task BeginPresetLogin(ProviderPreset preset, CancellationToken ct)
+    {
         Task<string?> pending = _secretPrompt.ReadAsync($"API key for {preset.Id}", ct);
         LoginTask = FinishLoginAsync(preset, pending, ct);
         if (pending.IsCompleted)
         {
             await LoginTask.ConfigureAwait(false);
-            return;
         }
-
-        // The TUI prompt is driven by the key pump this command already runs on: awaiting the
-        // pending read here would deadlock. The continuation saves and notifies on the thread pool;
-        // the field keeps it observable.
     }
 
     /// <summary>
@@ -99,7 +106,8 @@ internal sealed partial class InteractiveSession
                 return;
             }
 
-            Notify("logged in: " + preset.Id);
+            Notify("logged in: " + preset.Id + " — /model to choose a model");
+            OfferVerification(preset.Id, VerificationModel(preset.Id));
         }
         catch (OperationCanceledException)
         {

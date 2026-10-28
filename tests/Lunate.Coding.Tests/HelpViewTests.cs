@@ -31,6 +31,7 @@ public sealed class HelpViewTests
           /thinking — set the reasoning level (off|low|medium|high)
           /tree     — browse the session tree and pick a message
         model
+          /auth       — choose a provider and store its API key
           /favorite   — add the active or named model to favorites
           /login      — store an API key for a provider preset
           /logout     — remove the stored API key for a provider preset

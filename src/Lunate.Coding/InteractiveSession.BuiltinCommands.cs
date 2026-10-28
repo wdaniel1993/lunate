@@ -173,6 +173,19 @@ internal sealed partial class InteractiveSession
                 case "/unfavorite":
                     session.Unfavorite(invocation.Argument);
                     return CommandResult.None;
+                case "/auth":
+                    if (invocation.Argument.Length == 0)
+                    {
+                        session.OpenAuthPicker();
+                    }
+                    else
+                    {
+                        await session
+                            .LoginAsync(invocation.Argument, cancellationToken, "/auth")
+                            .ConfigureAwait(false);
+                    }
+
+                    return CommandResult.None;
                 case "/login":
                     await session
                         .LoginAsync(invocation.Argument, cancellationToken)

@@ -7,3 +7,5 @@ Select model
   gpt-5 (openai)
   o4-mini (openai)
   gemini-3-pro (google)
+  hidden-below (test)
+  hidden-too (test)
