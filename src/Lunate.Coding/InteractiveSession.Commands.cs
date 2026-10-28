@@ -14,6 +14,8 @@ internal sealed partial class InteractiveSession
     {
         Model,
         Session,
+        AuthProvider,
+        AuthVerify,
     }
 
     /// <summary>The cap on <c>/compact</c> focus instructions; a longer argument is refused.</summary>
@@ -799,7 +801,19 @@ internal sealed partial class InteractiveSession
                 DismissPicker();
                 break;
             case KeyKind.Character when plain && key.Text is { Length: > 0 } text:
-                AppendPickerFilter(text);
+                if (_pickerKind is PickerKind.Model)
+                {
+                    AppendPickerFilter(text);
+                }
+                else if (text == "j")
+                {
+                    MovePicker(1);
+                }
+                else if (text == "k")
+                {
+                    MovePicker(-1);
+                }
+
                 break;
             case KeyKind.Space when plain:
                 AppendPickerFilter(key.Text ?? " ");
@@ -875,13 +889,32 @@ internal sealed partial class InteractiveSession
         }
 
         DismissPicker();
-        if (kind is PickerKind.Model)
+        switch (kind)
         {
-            await SwitchModel(value, ct).ConfigureAwait(false);
-        }
-        else
-        {
-            ResumeSession(value);
+            case PickerKind.Model:
+                await SwitchModel(value, ct).ConfigureAwait(false);
+                break;
+            case PickerKind.Session:
+                ResumeSession(value);
+                break;
+            case PickerKind.AuthProvider:
+                if (value == AuthCustomValue)
+                {
+                    BeginCustomLogin(ct);
+                }
+                else if (ProviderPresets.Find(value) is { } preset)
+                {
+                    await BeginPresetLogin(preset, ct).ConfigureAwait(false);
+                }
+
+                break;
+            case PickerKind.AuthVerify:
+                if (value == "yes")
+                {
+                    StartVerification(ct);
+                }
+
+                break;
         }
     }
 

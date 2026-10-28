@@ -30,7 +30,7 @@ public sealed record SelectListModel(string Title, IReadOnlyList<string> Items, 
 /// </summary>
 public sealed class SelectListRenderer
 {
-    internal const int VisibleItems = 8;
+    internal const int VisibleItems = 13;
 
     public IRenderable Render(SelectListModel model)
     {

@@ -50,7 +50,7 @@ public sealed class CommandRegistryTests
     [Fact]
     public void Provider_and_favourite_commands_are_registered_model_commands()
     {
-        foreach (string name in new[] { "/login", "/logout", "/favorite", "/unfavorite" })
+        foreach (string name in new[] { "/auth", "/login", "/logout", "/favorite", "/unfavorite" })
         {
             BuiltinCommandDescriptor descriptor = Assert.Single(
                 Commands.Descriptors,

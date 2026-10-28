@@ -65,6 +65,7 @@ internal static class Commands
         new("/session", CommandGroup.Session, "show the session file, messages and tokens"),
         new("/thinking", CommandGroup.Session, "set the reasoning level (off|low|medium|high)"),
         new("/tree", CommandGroup.Session, "browse the session tree and pick a message"),
+        new("/auth", CommandGroup.Model, "choose a provider and store its API key"),
         new("/favorite", CommandGroup.Model, "add the active or named model to favorites"),
         new("/login", CommandGroup.Model, "store an API key for a provider preset"),
         new("/logout", CommandGroup.Model, "remove the stored API key for a provider preset"),

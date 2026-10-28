@@ -32,6 +32,7 @@ public sealed class InteractiveSessionSettingsCommandTests
             return File.Exists(authPath)
                 && host.LastFrame.Contains("logged in: groq", StringComparison.Ordinal);
         });
+        await DismissVerificationAsync(host, "groq");
 
         Assert.Equal(["API key for groq"], prompt.Prompts);
         AuthStore store = AuthStore.Load(authPath, _ => null);
@@ -190,6 +191,7 @@ public sealed class InteractiveSessionSettingsCommandTests
         host.Console.SendText("/login groq");
         host.Console.SendEnter();
         await WaitForFrameAsync(host, "logged in: groq");
+        await DismissVerificationAsync(host, "groq");
 
         Assert.Equal(["/help"], new InputHistory(historyPath).Entries);
         Assert.DoesNotContain("/login", File.ReadAllText(historyPath), StringComparison.Ordinal);
@@ -747,6 +749,21 @@ public sealed class InteractiveSessionSettingsCommandTests
             host.Advance(33);
             return SettingsStore.Resolve(settingsPath, _ => null).Favorites.SequenceEqual(expected);
         });
+
+    private static async Task DismissVerificationAsync(
+        InteractiveSessionHost host,
+        string providerId
+    )
+    {
+        string question = $"Verify {providerId} with one request?";
+        await WaitForFrameAsync(host, question);
+        host.Console.SendEscape();
+        await host.WaitUntilAsync(() =>
+        {
+            host.Advance(33);
+            return !host.LastFrame.Contains(question, StringComparison.Ordinal);
+        });
+    }
 
     private static Task WaitForFrameAsync(InteractiveSessionHost host, string text) =>
         host.WaitUntilAsync(() =>

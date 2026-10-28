@@ -62,6 +62,7 @@ public sealed class InteractiveSessionSecretPromptTests
         Assert.Equal(string.Empty, host.Session.Input.Text);
         Assert.Empty(host.Client.Requests);
 
+        await DismissVerificationAsync(host, "groq");
         await QuitAsync(host, run);
     }
 
@@ -135,6 +136,7 @@ public sealed class InteractiveSessionSecretPromptTests
         Assert.Equal(string.Empty, host.Session.Input.Text);
         Assert.Empty(host.Client.Requests);
 
+        await DismissVerificationAsync(host, "groq");
         await QuitAsync(host, run);
     }
 
@@ -166,6 +168,7 @@ public sealed class InteractiveSessionSecretPromptTests
         Assert.Equal("abcdefg", store.TryGet("groq"));
         Assert.DoesNotContain("abcdefg", host.Frames, StringComparison.Ordinal);
 
+        await DismissVerificationAsync(host, "groq");
         await QuitAsync(host, run);
     }
 
@@ -199,6 +202,7 @@ public sealed class InteractiveSessionSecretPromptTests
         Assert.DoesNotContain(Secret, scrollback, StringComparison.Ordinal);
         AssertSecretOnlyInAuth(host, authPath);
 
+        await DismissVerificationAsync(host, "groq");
         await QuitAsync(host, run);
     }
 
@@ -239,6 +243,21 @@ public sealed class InteractiveSessionSecretPromptTests
         host.Console.SendText("/login groq");
         host.Console.SendEnter();
         await WaitForFrameAsync(host, "API key for groq");
+    }
+
+    private static async Task DismissVerificationAsync(
+        InteractiveSessionHost host,
+        string providerId
+    )
+    {
+        string question = $"Verify {providerId} with one request?";
+        await WaitForFrameAsync(host, question);
+        host.Console.SendEscape();
+        await host.WaitUntilAsync(() =>
+        {
+            host.Advance(33);
+            return !host.LastFrame.Contains(question, StringComparison.Ordinal);
+        });
     }
 
     private static async Task QuitAsync(InteractiveSessionHost host, Task run)

@@ -36,6 +36,12 @@ public sealed class InteractiveSessionCommandTests
         host.Console.SendEscape();
         await WaitForFrameGoneAsync(host, "Select model");
 
+        host.Console.SendText("/auth");
+        host.Console.SendEnter();
+        await WaitForFrameAsync(host, "Select provider");
+        host.Console.SendEscape();
+        await WaitForFrameGoneAsync(host, "Select provider");
+
         host.Console.SendText("/login groq");
         host.Console.SendEnter();
         await WaitForFrameAsync(host, "login cancelled");
@@ -114,6 +120,7 @@ public sealed class InteractiveSessionCommandTests
               /thinking — set the reasoning level (off|low|medium|high)
               /tree     — browse the session tree and pick a message
             model
+              /auth       — choose a provider and store its API key
               /favorite   — add the active or named model to favorites
               /login      — store an API key for a provider preset
               /logout     — remove the stored API key for a provider preset
@@ -206,7 +213,7 @@ public sealed class InteractiveSessionCommandTests
         host.Console.SendEnter();
         await host.Client.WaitForCallAsync(1);
 
-        foreach (string command in new[] { "/new", "/resume", "/model", "/compact" })
+        foreach (string command in new[] { "/new", "/resume", "/model", "/auth", "/compact" })
         {
             host.Console.SendText(command);
             await host.WaitUntilAsync(() => host.Session.Input.Text == command);
@@ -226,6 +233,7 @@ public sealed class InteractiveSessionCommandTests
         Assert.Contains("slash command cannot be queued", host.LastFrame, StringComparison.Ordinal);
         Assert.DoesNotContain("Select model", host.LastFrame, StringComparison.Ordinal);
         Assert.DoesNotContain("Select session", host.LastFrame, StringComparison.Ordinal);
+        Assert.DoesNotContain("Select provider", host.LastFrame, StringComparison.Ordinal);
         Assert.True(host.Session.IsRunning);
         Assert.Single(host.Client.Requests);
         string sessions = host.Temp.File("sessions");

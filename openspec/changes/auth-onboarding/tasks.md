@@ -26,15 +26,15 @@
 
 ## 3. `/auth` in the TUI
 
-- [ ] 3.1 `/auth` opens a picker in the live area: the twelve presets in file order, then "Custom
+- [x] 3.1 `/auth` opens a picker in the live area: the twelve presets in file order, then "Custom
       OpenAI-compatible endpoint…", Esc cancels, Enter selects, arrows/j-k move.
-- [ ] 3.2 Selecting a preset opens the existing masked prompt and saves through `AuthStore`; `/login
+- [x] 3.2 Selecting a preset opens the existing masked prompt and saves through `AuthStore`; `/login
       <provider>` remains an alias that skips the picker.
-- [ ] 3.3 After a successful save the notice names the provider and points at `/model`; it never contains
+- [x] 3.3 After a successful save the notice names the provider and points at `/model`; it never contains
       the key.
-- [ ] 3.4 An optional verification asks before it runs, performs one minimal request, and reports
+- [x] 3.4 An optional verification asks before it runs, performs one minimal request, and reports
       success or the failure without discarding the saved key.
-- [ ] 3.5 While the picker is open, ordinary input is inert and a running turn refuses the command, as
+- [x] 3.5 While the picker is open, ordinary input is inert and a running turn refuses the command, as
       `/login` does today.
 
 ## 4. First run

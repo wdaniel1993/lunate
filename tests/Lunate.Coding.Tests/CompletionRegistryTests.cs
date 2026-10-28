@@ -72,7 +72,7 @@ public sealed class CompletionRegistryTests
             Commands.PublicDescriptors
         );
 
-        foreach (string name in new[] { "/login", "/logout", "/favorite", "/unfavorite" })
+        foreach (string name in new[] { "/auth", "/login", "/logout", "/favorite", "/unfavorite" })
         {
             BuiltinCommandDescriptor descriptor = Commands.Descriptors.Single(entry =>
                 entry.Name == name

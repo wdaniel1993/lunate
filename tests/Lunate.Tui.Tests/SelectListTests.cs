@@ -25,19 +25,59 @@ public sealed class SelectListTests
     }
 
     [Fact]
-    public void The_window_keeps_the_selection_visible()
+    public void A_list_inside_the_visible_window_shows_every_item()
     {
         var items = Enumerable.Range(1, 10).Select(index => $"item {index}").ToArray();
 
         var top = new SelectListModel("Pick", items, 0);
+        Assert.Equal(items, SelectListRenderer.PlainItems(top));
+
+        var bottom = new SelectListModel("Pick", items, 9);
+        Assert.Equal(items, SelectListRenderer.PlainItems(bottom));
+    }
+
+    [Fact]
+    public void The_window_keeps_the_selection_visible_past_the_visible_count()
+    {
+        var items = Enumerable.Range(1, 20).Select(index => $"item {index}").ToArray();
+
+        var top = new SelectListModel("Pick", items, 0);
         Assert.Equal(
-            ["item 1", "item 2", "item 3", "item 4", "item 5", "item 6", "item 7", "item 8"],
+            [
+                "item 1",
+                "item 2",
+                "item 3",
+                "item 4",
+                "item 5",
+                "item 6",
+                "item 7",
+                "item 8",
+                "item 9",
+                "item 10",
+                "item 11",
+                "item 12",
+                "item 13",
+            ],
             SelectListRenderer.PlainItems(top)
         );
 
-        var bottom = new SelectListModel("Pick", items, 9);
+        var bottom = new SelectListModel("Pick", items, 19);
         Assert.Equal(
-            ["item 3", "item 4", "item 5", "item 6", "item 7", "item 8", "item 9", "item 10"],
+            [
+                "item 8",
+                "item 9",
+                "item 10",
+                "item 11",
+                "item 12",
+                "item 13",
+                "item 14",
+                "item 15",
+                "item 16",
+                "item 17",
+                "item 18",
+                "item 19",
+                "item 20",
+            ],
             SelectListRenderer.PlainItems(bottom)
         );
     }
