@@ -37,6 +37,14 @@ internal static class WaitBudgets
     public static readonly TimeSpan CrossTurn = TimeSpan.FromSeconds(60);
 
     /// <summary>
+    /// A spawned child reporting its own pid, which every tree-kill test in <c>Lunate.Coding.Tests</c>
+    /// waits for before it kills anything. The file is the child's first statement, so the wait is
+    /// really for the child to start: on a loaded runner that is a shell cold start (Windows
+    /// PowerShell is the slowest of them) queued behind everything else the suite is spawning.
+    /// </summary>
+    public static readonly TimeSpan ChildReport = TimeSpan.FromSeconds(60);
+
+    /// <summary>
     /// A child process the tool has just killed, observed dead. This one stays split by platform,
     /// because the split is about teardown and not about load: a Windows tree kill is handed to the
     /// OS and settles behind whatever the runner is spawning, while a POSIX kill is immediate and no

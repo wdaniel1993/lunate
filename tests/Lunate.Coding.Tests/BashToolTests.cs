@@ -1,5 +1,3 @@
-using System.ComponentModel;
-using System.Diagnostics;
 using System.Globalization;
 using System.Text.Json;
 using Lunate.Agent;
@@ -185,6 +183,7 @@ public sealed class BashToolTests
     {
         using var temp = new TempDirectory();
         var pidFile = temp.File("grandchild.pid");
+        DateTime commandStarted = DateTime.Now;
 
         // Windows needs a longer window: PowerShell's cold start on a loaded runner can exceed
         // the short Unix timeout, so the pid would never be written before the tree is killed.
@@ -194,7 +193,14 @@ public sealed class BashToolTests
             ? TimeSpan.FromSeconds(30)
             : TimeSpan.FromSeconds(2);
 
+        // The grandchild is pinned while the command is still running. Read after the kill, the
+        // number in the file may already name a process this test never started; see
+        // ChildProcessProbe for the failure that came from reading it late.
+        using var window = new CancellationTokenSource();
+        var watched = ChildProcessProbe.AwaitWrittenAsync(pidFile, commandStarted, window.Token);
         var result = await RunAsync(temp, TreeCommand(), timeout);
+        window.Cancel();
+        var grandchild = await watched;
 
         Assert.True(result.IsError);
         Assert.Null(result.Details);
@@ -202,8 +208,7 @@ public sealed class BashToolTests
             $"timed out after {timeout.TotalSeconds.ToString("0.###", CultureInfo.InvariantCulture)}s; process tree killed",
             result.Output
         );
-        var pid = await WaitForPidAsync(pidFile);
-        await AssertEventuallyDeadAsync(pid);
+        await ChildProcessProbe.AssertEventuallyDeadAsync(grandchild);
     }
 
     [Fact]
@@ -213,36 +218,18 @@ public sealed class BashToolTests
         var pidFile = temp.File("grandchild.pid");
         using var cts = new CancellationTokenSource();
         var tool = new BashTool(new Workspace(temp.Root), null, TimeSpan.FromSeconds(60));
+        DateTime commandStarted = DateTime.Now;
 
         var execution = tool.ExecuteAsync(CommandArgs(TreeCommand()), Context, cts.Token);
-        var pid = await WaitForPidAsync(pidFile);
+        var grandchild = await ChildProcessProbe.AwaitWrittenAsync(
+            pidFile,
+            commandStarted,
+            CancellationToken.None
+        );
         cts.Cancel();
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => execution);
-        await AssertEventuallyDeadAsync(pid);
-    }
-
-    [Fact]
-    public void A_survivor_is_judged_by_start_time_not_by_the_pid_alone()
-    {
-        // The kill assertions end when the pid is gone — or, since the wait pins the process, when
-        // the pid now names a different process. Both halves of that rule are load-bearing: a
-        // start-time read that never matched would make the wait pass vacuously and a child the
-        // tool leaked would go unseen, and a read that only compared pids would fail on a runner
-        // that recycled the number. The mismatch is simulated by shifting the captured stamp: a
-        // process wearing the same pid but created a second later is exactly what recycling hands
-        // back.
-        if (TryRead(Environment.ProcessId) is not { } self)
-        {
-            Assert.Fail("the test process must be readable from its own pid");
-            return;
-        }
-        Assert.True(IsStillAlive(Environment.ProcessId, self), "a live process read as alive");
-        Assert.False(
-            IsStillAlive(Environment.ProcessId, (self.Name, self.StartedAt.AddSeconds(1))),
-            "another process wearing the pid read as the survivor"
-        );
-        Assert.False(IsStillAlive(int.MaxValue, self), "a pid nobody holds read as the survivor");
+        await ChildProcessProbe.AssertEventuallyDeadAsync(grandchild);
     }
 
     [Fact]
@@ -299,112 +286,6 @@ public sealed class BashToolTests
         OperatingSystem.IsWindows()
             ? "powershell.exe -NoProfile -Command 'Set-Content -Path grandchild.pid -Value $PID; Start-Sleep 300' & sleep 300"
             : "sh -c 'echo $$ > grandchild.pid; exec sleep 300' & sleep 300";
-
-    private static async Task<int> WaitForPidAsync(string pidFile)
-    {
-        for (var attempt = 0; attempt < 600; attempt++)
-        {
-            if (File.Exists(pidFile))
-            {
-                try
-                {
-                    var text = File.ReadAllText(pidFile).Trim();
-                    if (
-                        int.TryParse(
-                            text,
-                            NumberStyles.Integer,
-                            CultureInfo.InvariantCulture,
-                            out var pid
-                        )
-                    )
-                    {
-                        return pid;
-                    }
-                }
-                catch (IOException)
-                {
-                    // The writer may still hold the file briefly (Windows sharing); retry.
-                }
-                catch (UnauthorizedAccessException)
-                {
-                    // The file exists but is momentarily unreadable; retry.
-                }
-            }
-
-            await Task.Delay(100);
-        }
-
-        Assert.Fail($"no pid was written to {pidFile} within 60 seconds");
-        return 0;
-    }
-
-    /// <summary>
-    /// Waits until the process the tool killed is gone. A pid is not a name for that process: the
-    /// Windows runner recycles pids while the suite keeps spawning children, and a recycled number
-    /// reads as a survivor the tool never left behind — no budget can fix that, it only waits
-    /// longer for a process that will never die. The start time is pinned while the process is
-    /// still ours, so the question is "did <em>that</em> process die?" and the budget only has to
-    /// cover the teardown itself (<see cref="WaitBudgets.ProcessExit"/> says why it is wide there).
-    /// </summary>
-    private static async Task AssertEventuallyDeadAsync(int pid)
-    {
-        if (TryRead(pid) is not { } killed)
-        {
-            // Nothing to compare: the pid held no process by the time the test read it.
-            return;
-        }
-
-        DateTime deadline = DateTime.UtcNow + WaitBudgets.ProcessExit;
-        while (IsStillAlive(pid, killed))
-        {
-            if (DateTime.UtcNow > deadline)
-            {
-                Assert.Fail(
-                    string.Create(
-                        CultureInfo.InvariantCulture,
-                        $"pid {pid} ({killed.Name}, started {killed.StartedAt:HH:mm:ss.fff}) was still alive {WaitBudgets.ProcessExit.TotalSeconds:0} seconds after the tree kill"
-                    )
-                );
-            }
-
-            await Task.Delay(100);
-        }
-    }
-
-    /// <summary>
-    /// Alive means a process still holds this pid <em>and</em> it started when ours did: the start
-    /// time is the creation stamp, so a recycled pid cannot match it. A pid nobody holds — or one
-    /// this process may no longer inspect — is not the survivor the kill under test left behind.
-    /// </summary>
-    private static bool IsStillAlive(int pid, (string Name, DateTime StartedAt) killed) =>
-        TryRead(pid) is { } current && current.StartedAt == killed.StartedAt;
-
-    /// <summary>
-    /// The name and creation stamp behind a pid, or null when no process we may inspect holds it
-    /// any more — which is the answer a killed child is expected to give.
-    /// </summary>
-    private static (string Name, DateTime StartedAt)? TryRead(int pid)
-    {
-        try
-        {
-            using Process process = Process.GetProcessById(pid);
-            return process.HasExited ? null : (process.ProcessName, process.StartTime);
-        }
-        catch (ArgumentException)
-        {
-            return null;
-        }
-        catch (InvalidOperationException)
-        {
-            return null;
-        }
-        catch (Win32Exception)
-        {
-            // Exited between the lookup and the read, or a pid this process may not inspect:
-            // neither is a survivor of the kill under test.
-            return null;
-        }
-    }
 
     private static JsonElement Args(string arguments) =>
         JsonDocument.Parse(arguments).RootElement.Clone();

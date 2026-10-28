@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Globalization;
 using Lunate.Extensibility.Abstractions;
 
@@ -299,6 +298,7 @@ public sealed class ProcessRunnerTests
     {
         using var temp = new TempDirectory();
         string pidFile = temp.File("grandchild.pid");
+        DateTime commandStarted = DateTime.Now;
 
         // Windows needs a longer window: PowerShell's cold start on a loaded runner can exceed
         // the short Unix timeout, so the pid would never be written before the tree is killed.
@@ -306,12 +306,21 @@ public sealed class ProcessRunnerTests
             ? TimeSpan.FromSeconds(30)
             : TimeSpan.FromSeconds(2);
 
+        // Pinned while the command still runs: read after the kill, the number in the file can
+        // already name a process this test never started (see ChildProcessProbe).
+        using var window = new CancellationTokenSource();
+        Task<ChildProcess> watched = ChildProcessProbe.AwaitWrittenAsync(
+            pidFile,
+            commandStarted,
+            window.Token
+        );
         ProcessRunResult result = await RunAsync(temp, TreeRequest(temp, timeout));
+        window.Cancel();
+        ChildProcess grandchild = await watched;
 
         Assert.True(result.TimedOut);
         Assert.Null(result.ExitCode);
-        int pid = await WaitForPidAsync(pidFile);
-        await AssertEventuallyDeadAsync(pid);
+        await ChildProcessProbe.AssertEventuallyDeadAsync(grandchild);
     }
 
     [Fact]
@@ -321,16 +330,21 @@ public sealed class ProcessRunnerTests
         string pidFile = temp.File("grandchild.pid");
         using var cts = new CancellationTokenSource();
         var runner = new ProcessRunner();
+        DateTime commandStarted = DateTime.Now;
 
         Task<ProcessRunResult> execution = runner.RunAsync(
             TreeRequest(temp, TimeSpan.FromSeconds(60)),
             cts.Token
         );
-        int pid = await WaitForPidAsync(pidFile);
+        ChildProcess grandchild = await ChildProcessProbe.AwaitWrittenAsync(
+            pidFile,
+            commandStarted,
+            CancellationToken.None
+        );
         cts.Cancel();
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => execution);
-        await AssertEventuallyDeadAsync(pid);
+        await ChildProcessProbe.AssertEventuallyDeadAsync(grandchild);
     }
 
     private static async Task<ProcessRunResult> RunAsync(
@@ -367,74 +381,4 @@ public sealed class ProcessRunnerTests
                 temp.Root,
                 Timeout: timeout
             );
-
-    private static async Task<int> WaitForPidAsync(string pidFile)
-    {
-        for (var attempt = 0; attempt < 600; attempt++)
-        {
-            if (File.Exists(pidFile))
-            {
-                try
-                {
-                    var text = File.ReadAllText(pidFile).Trim();
-                    if (
-                        int.TryParse(
-                            text,
-                            NumberStyles.Integer,
-                            CultureInfo.InvariantCulture,
-                            out var pid
-                        )
-                    )
-                    {
-                        return pid;
-                    }
-                }
-                catch (IOException)
-                {
-                    // The writer may still hold the file briefly (Windows sharing); retry.
-                }
-                catch (UnauthorizedAccessException)
-                {
-                    // The file exists but is momentarily unreadable; retry.
-                }
-            }
-
-            await Task.Delay(100, Ct);
-        }
-
-        Assert.Fail($"no pid was written to {pidFile} within 60 seconds");
-        return 0;
-    }
-
-    private static async Task AssertEventuallyDeadAsync(int pid)
-    {
-        for (var attempt = 0; attempt < 300; attempt++)
-        {
-            if (!IsAlive(pid))
-            {
-                return;
-            }
-
-            await Task.Delay(100, Ct);
-        }
-
-        Assert.Fail($"pid {pid} was still alive 30 seconds after the tree kill");
-    }
-
-    private static bool IsAlive(int pid)
-    {
-        try
-        {
-            using var process = Process.GetProcessById(pid);
-            return !process.HasExited;
-        }
-        catch (ArgumentException)
-        {
-            return false;
-        }
-        catch (InvalidOperationException)
-        {
-            return false;
-        }
-    }
 }
