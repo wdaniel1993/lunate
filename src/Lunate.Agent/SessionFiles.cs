@@ -18,7 +18,9 @@ namespace Lunate.Agent;
 /// Readers here admit other readers, a live appending writer and a concurrent delete. Writers
 /// admit readers and a concurrent delete (a rename over or of the file), but never a second
 /// writer: a session has exactly one writer, and refusing the second one is the invariant, not an
-/// accident.
+/// accident. A whole-file write does not open the destination for writing at all: it replaces the
+/// name through <see cref="FileReplacement"/>, so a reader that admits a delete cannot block it,
+/// while an append still requests write access and is refused by a reader that denies write.
 /// </para>
 /// </remarks>
 internal static class SessionFiles
@@ -57,20 +59,6 @@ internal static class SessionFiles
         return stream;
     }
 
-    /// <summary>Creates (or truncates) a session file for writing; the caller owns the stream.</summary>
-    internal static FileStream Create(string path)
-    {
-        var stream = SecureFiles.OpenOwnerOnly(
-            path,
-            FileMode.Create,
-            FileAccess.Write,
-            WriterShare
-        );
-        // An older session file predates the owner-only mode; every rewrite repairs it.
-        SecureFiles.RestrictToOwner(path);
-        return stream;
-    }
-
     /// <summary>
     /// Creates a session-owned file that must be new (a spill file's temporary copy): 0600 on POSIX,
     /// the profile's inherited ACL on Windows, and no sharing with a second writer.
@@ -93,11 +81,45 @@ internal static class SessionFiles
         return reader.ReadToEnd();
     }
 
-    /// <summary>Writes a whole session file as UTF-8 without a BOM; the handle closes before this returns.</summary>
+    /// <summary>
+    /// Writes a whole session file as UTF-8 without a BOM by replacing it atomically: the bytes go
+    /// to a temporary file beside the target, are flushed to disk and take the session file's mode,
+    /// then are moved into place in one step. A reader in another process that holds the file with
+    /// delete sharing keeps reading the old bytes; on Windows the replace survives that handle,
+    /// while truncating the file in place would be refused because the holder denies a write. A
+    /// holder that denies delete makes the replace fail with its own sharing violation and leaves
+    /// the original file exactly as it was. The handle closes before this returns.
+    /// </summary>
     internal static void WriteText(string path, string text)
     {
-        using FileStream stream = Create(path);
-        stream.Write(Utf8NoBom.GetBytes(text));
+        string target = PathCanonical.Canonicalize(path);
+        string directory = Path.GetDirectoryName(target) ?? ".";
+        string temporary = Path.Combine(
+            directory,
+            "." + Path.GetFileName(target) + "." + Guid.NewGuid().ToString("N") + ".tmp"
+        );
+        try
+        {
+            using (
+                FileStream stream = SecureFiles.OpenOwnerOnly(
+                    temporary,
+                    FileMode.CreateNew,
+                    FileAccess.Write,
+                    FileShare.None
+                )
+            )
+            {
+                stream.Write(Utf8NoBom.GetBytes(text));
+                stream.Flush(flushToDisk: true);
+            }
+
+            FileReplacement.Replace(temporary, target, preserveTarget: true);
+        }
+        catch
+        {
+            TryDelete(temporary);
+            throw;
+        }
     }
 
     /// <summary>Appends UTF-8 without a BOM; the handle closes before this returns, so a following rename succeeds.</summary>
@@ -139,6 +161,16 @@ internal static class SessionFiles
             }
         );
         stream.SetLength(LastTerminator(stream));
+    }
+
+    private static void TryDelete(string path)
+    {
+        try
+        {
+            File.Delete(path);
+        }
+        catch (IOException) { }
+        catch (UnauthorizedAccessException) { }
     }
 
     private static long LastTerminator(FileStream stream)
