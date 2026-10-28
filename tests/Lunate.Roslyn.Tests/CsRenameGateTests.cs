@@ -13,7 +13,7 @@ public sealed class CsRenameGateTests(ITestOutputHelper output)
     public async Task A_rename_is_planned_for_both_projects_and_disk_stays_untouched()
     {
         using var fixture = Fixtures.CopySolution("lib-with-tests");
-        Fixtures.Restore(fixture, "LibWithTests.sln");
+        Fixtures.Restore(fixture, "LibWithTests.slnx");
         using var backend = new RoslynBackend(fixture.Root);
         var load = await backend.LoadAsync(CancellationToken.None);
         Assert.Equal(WorkspaceStatus.Loaded, load.Status);
@@ -105,7 +105,7 @@ public sealed class CsRenameGateTests(ITestOutputHelper output)
     public async Task An_ambiguous_name_lists_candidates_and_no_plan()
     {
         using var fixture = Fixtures.CopySolution("lib-with-tests");
-        Fixtures.Restore(fixture, "LibWithTests.sln");
+        Fixtures.Restore(fixture, "LibWithTests.slnx");
         using var backend = new RoslynBackend(fixture.Root);
         await backend.LoadAsync(CancellationToken.None);
 
@@ -168,7 +168,7 @@ public sealed class CsRenameGateTests(ITestOutputHelper output)
     public async Task The_tool_plans_a_rename_and_says_nothing_changed()
     {
         using var fixture = Fixtures.CopySolution("lib-with-tests");
-        Fixtures.Restore(fixture, "LibWithTests.sln");
+        Fixtures.Restore(fixture, "LibWithTests.slnx");
         var tool = new CsRenameTool(() => new RoslynBackend(fixture.Root));
 
         var result = await tool.ExecuteAsync(
@@ -196,7 +196,7 @@ public sealed class CsRenameGateTests(ITestOutputHelper output)
     public async Task A_warm_rename_plan_is_fast()
     {
         using var fixture = Fixtures.CopySolution("lib-with-tests");
-        Fixtures.Restore(fixture, "LibWithTests.sln");
+        Fixtures.Restore(fixture, "LibWithTests.slnx");
         using var backend = new RoslynBackend(fixture.Root);
         await backend.LoadAsync(CancellationToken.None);
         await backend.PlanRenameAsync("Divide", "Quotient", CancellationToken.None);

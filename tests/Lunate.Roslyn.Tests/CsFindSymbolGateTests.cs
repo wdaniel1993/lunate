@@ -228,7 +228,7 @@ public sealed class CsFindSymbolGateTests(ITestOutputHelper output)
     public async Task A_metadata_type_is_listed_once_across_projects()
     {
         using var fixture = Fixtures.CopySolution("lib-with-tests");
-        Fixtures.Restore(fixture, "LibWithTests.sln");
+        Fixtures.Restore(fixture, "LibWithTests.slnx");
         using var backend = new RoslynBackend(fixture.Root);
         await backend.LoadAsync(CancellationToken.None);
 

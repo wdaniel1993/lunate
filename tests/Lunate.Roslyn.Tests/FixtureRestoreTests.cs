@@ -54,6 +54,23 @@ public sealed class FixtureRestoreTests
     }
 
     [Fact]
+    public void A_legacy_solution_is_refused_by_name()
+    {
+        // The gate restores .slnx fixtures only: a legacy .sln restore builds a generated metaproject
+        // from the temp directory, and that is the shape CI failed in. Refusing here names the fix at
+        // the call site instead of leaving a loaded runner to find it.
+        using var temp = new TempDirectory();
+
+        var failure = Assert.Throws<ArgumentException>(() =>
+            FixtureRestore.Restore(temp.Root, "LibWithTests.sln")
+        );
+
+        Assert.Contains(".slnx", failure.Message, StringComparison.Ordinal);
+        Assert.Contains("metaproject", failure.Message, StringComparison.Ordinal);
+        Assert.False(File.Exists(Path.Combine(temp.Root, "NuGet.config")));
+    }
+
+    [Fact]
     public void Restores_of_one_solution_do_not_fan_out()
     {
         var fixtures = Enumerable

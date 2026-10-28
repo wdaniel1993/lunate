@@ -87,6 +87,91 @@ public sealed class FixtureRestoreEnvironmentTests
     }
 
     [Fact]
+    public void A_stream_that_does_not_close_is_not_reported_as_silence()
+    {
+        // The pipe, not the child, was silent: the child exited but something it started — a build
+        // server, a node — still holds the stream open. An empty string here would accuse the child
+        // of a silent crash that never happened.
+        var stalled = new TaskCompletionSource<string>(
+            TaskCreationOptions.RunContinuationsAsynchronously
+        );
+
+        string output = DotnetCli.Drain(stalled.Task, TimeSpan.FromMilliseconds(100));
+
+        Assert.Contains("had not closed", output, StringComparison.Ordinal);
+
+        var result = new ChildProcessResult(
+            Command: "dotnet restore App.slnx",
+            WorkingDirectory: "/tmp/fixture",
+            ExitCode: 1,
+            Duration: TimeSpan.FromSeconds(3),
+            StandardOutput: output,
+            StandardError: string.Empty
+        );
+
+        string message = result.Describe("dotnet restore failed");
+
+        Assert.DoesNotContain("printed nothing", message, StringComparison.Ordinal);
+        Assert.Contains("had not closed", message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_failure_that_reported_no_error_names_the_target_it_was_in()
+    {
+        // The words CI printed for a disturbed solution restore, verbatim: the metaproject was
+        // entered, no project restore line followed, and MSBuild reported zero errors. The target is
+        // the only fact in that output that says where the restore gave up.
+        var result = new ChildProcessResult(
+            Command: "dotnet restore LibWithTests.slnx",
+            WorkingDirectory: "/tmp/lunate-roslyn-tests/abc",
+            ExitCode: 1,
+            Duration: TimeSpan.FromSeconds(3.1),
+            StandardOutput: """
+            Build started 10/28/2026 11:34:02.
+             1>Project "/tmp/lunate-roslyn-tests/abc/LibWithTests.slnx" on node 1 (Restore target(s)).
+             1>ValidateSolutionConfiguration:
+             1>Done Building Project "/tmp/lunate-roslyn-tests/abc/LibWithTests.slnx" (Restore target(s)) -- FAILED.
+            Build FAILED.
+             0 Warning(s)
+             0 Error(s)
+            """,
+            StandardError: string.Empty
+        );
+
+        string message = result.Describe("the retry");
+
+        Assert.Contains(
+            "last target: ValidateSolutionConfiguration",
+            message,
+            StringComparison.Ordinal
+        );
+        Assert.Contains("0 Error(s)", message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_successful_child_names_no_failing_target()
+    {
+        var result = new ChildProcessResult(
+            Command: "dotnet restore App.slnx",
+            WorkingDirectory: "/tmp/fixture",
+            ExitCode: 0,
+            Duration: TimeSpan.FromSeconds(1),
+            StandardOutput: """
+            Build started 10/28/2026 11:34:02.
+            ValidateSolutionConfiguration:
+            Build succeeded.
+            """,
+            StandardError: string.Empty
+        );
+
+        Assert.DoesNotContain(
+            "last target",
+            result.Describe("dotnet restore failed"),
+            StringComparison.Ordinal
+        );
+    }
+
+    [Fact]
     public void The_machine_report_names_the_cores_and_the_disk()
     {
         using var temp = new TempDirectory();
