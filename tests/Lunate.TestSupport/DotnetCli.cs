@@ -39,6 +39,16 @@ public sealed record ChildProcessResult(
             )
         );
 
+        // A disturbed solution restore reports "Build FAILED" with zero errors and no project line,
+        // so "0 Error(s)" can be the whole account of the failure. MSBuild still named every target
+        // it entered; the last one is where the child was when it gave up.
+        if (LastTarget() is { } target)
+        {
+            text.AppendLine(
+                string.Create(CultureInfo.InvariantCulture, $"  last target: {target}")
+            );
+        }
+
         string output = Tail(StandardOutput);
         string error = Tail(StandardError);
         if (output.Length == 0 && error.Length == 0)
@@ -61,6 +71,69 @@ public sealed record ChildProcessResult(
         ExitCode > 128 && !OperatingSystem.IsWindows()
             ? string.Create(CultureInfo.InvariantCulture, $" (killed by signal {ExitCode - 128})")
             : string.Empty;
+
+    /// <summary>
+    /// The last MSBuild target a failed child entered, read from the child's own console lines:
+    /// MSBuild prints <c>TargetName:</c>, prefixed with the node number when it fanned out. Null when
+    /// the child succeeded or printed no target line.
+    /// </summary>
+    private string? LastTarget()
+    {
+        if (Succeeded)
+        {
+            return null;
+        }
+
+        string[] lines = StandardOutput.Split('\n');
+        for (int index = lines.Length - 1; index >= 0; index--)
+        {
+            if (TryTargetName(lines[index], out string name))
+            {
+                return name;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>Whether <paramref name="line"/> is an MSBuild target line, and which target it names.</summary>
+    private static bool TryTargetName(string line, out string name)
+    {
+        name = string.Empty;
+        string trimmed = line.Trim();
+        if (!trimmed.EndsWith(':'))
+        {
+            return false;
+        }
+
+        string candidate = trimmed[..^1];
+        int node = candidate.IndexOf('>');
+        if (node >= 0)
+        {
+            if (node == 0 || !candidate[..node].All(char.IsAsciiDigit))
+            {
+                return false;
+            }
+
+            candidate = candidate[(node + 1)..];
+        }
+
+        if (candidate.Length == 0 || (!char.IsAsciiLetter(candidate[0]) && candidate[0] != '_'))
+        {
+            return false;
+        }
+
+        foreach (char character in candidate)
+        {
+            if (!char.IsAsciiLetterOrDigit(character) && character is not ('_' or '.'))
+            {
+                return false;
+            }
+        }
+
+        name = candidate;
+        return true;
+    }
 
     private static void Append(StringBuilder text, string name, string raw, string tail)
     {
@@ -185,13 +258,23 @@ public static class DotnetCli
     /// The streams close when the child exits; a build server the child left behind can hold them
     /// open, and a diagnostic helper must not hang on that. A read that fails is reported as such:
     /// swallowing it would turn a real error into "the child printed nothing", which sends a reader
-    /// looking for a silent crash that never happened.
+    /// looking for a silent crash that never happened. A wait that expires is reported the same way
+    /// and for the same reason — an empty string would say the child was silent when it was the pipe
+    /// that never closed.
     /// </summary>
-    private static string Drain(Task<string> stream)
+    private static string Drain(Task<string> stream) => Drain(stream, DrainTimeout);
+
+    /// <summary>The drain above, with its budget exposed so a test can prove what an expiry says.</summary>
+    internal static string Drain(Task<string> stream, TimeSpan timeout)
     {
         try
         {
-            return stream.Wait(DrainTimeout) ? stream.Result : string.Empty;
+            return stream.Wait(timeout)
+                ? stream.Result
+                : string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"<the stream had not closed {timeout.TotalSeconds:0.#} s after the child exited; its output is missing from this report>"
+                );
         }
         catch (AggregateException exception)
         {
