@@ -1,3 +1,4 @@
+using System.Globalization;
 using Lunate.Agent;
 using ModelContextProtocol.Client;
 using ModelContextProtocol.Protocol;
@@ -24,12 +25,19 @@ public sealed class McpServerHost : IAsyncDisposable
     private static readonly TimeSpan ShutdownTimeout = TimeSpan.FromSeconds(5);
 
     /// <summary>
+    /// How long a starting server may produce no output before it counts as hung. It is a stall
+    /// bound, not a total startup budget: child output shows the process is alive and restarts it.
+    /// </summary>
+    internal static readonly TimeSpan DefaultStartupStallBound = TimeSpan.FromSeconds(60);
+
+    /// <summary>
     /// The bound of one liveness probe, short enough for command and call paths. It is a UI bound
     /// only: a probe that outlives it is <see cref="McpProbeOutcome.Unresponsive"/>, not a dead server.
     /// </summary>
     private static readonly TimeSpan ProbeTimeout = TimeSpan.FromSeconds(2);
 
     private readonly McpServerOptions options;
+    private readonly TimeSpan startupStallBound;
     private readonly Action<IReadOnlyList<ITool>>? onToolsChanged;
     private readonly Action<string>? log;
     private readonly SemaphoreSlim gate = new(1, 1);
@@ -50,9 +58,19 @@ public sealed class McpServerHost : IAsyncDisposable
         Action<IReadOnlyList<ITool>>? onToolsChanged = null,
         Action<string>? log = null
     )
+        : this(options, DefaultStartupStallBound, onToolsChanged, log) { }
+
+    /// <summary>Test seam: the startup stall bound is otherwise the production default.</summary>
+    internal McpServerHost(
+        McpServerOptions options,
+        TimeSpan startupStallBound,
+        Action<IReadOnlyList<ITool>>? onToolsChanged = null,
+        Action<string>? log = null
+    )
     {
         ArgumentNullException.ThrowIfNull(options);
         this.options = options;
+        this.startupStallBound = startupStallBound;
         this.onToolsChanged = onToolsChanged;
         this.log = log;
     }
@@ -149,6 +167,7 @@ public sealed class McpServerHost : IAsyncDisposable
 
     private async Task StartAsync(CancellationToken ct)
     {
+        using var liveness = new StartupLiveness(startupStallBound, ct);
         var transport = new StdioClientTransport(
             new StdioClientTransportOptions
             {
@@ -161,6 +180,11 @@ public sealed class McpServerHost : IAsyncDisposable
                     pair => (string?)pair.Value
                 ),
                 ShutdownTimeout = ShutdownTimeout,
+                // stderr is the only child output the client can observe while it waits on the
+                // protocol stream, so each line is the liveness signal that restarts the stall
+                // bound. A slow server that keeps talking therefore outlives the bound; only a
+                // silent one is reported hung.
+                StandardErrorLines = _ => liveness.Touch(),
             }
         );
 
@@ -178,12 +202,18 @@ public sealed class McpServerHost : IAsyncDisposable
                             Version = ClientVersion,
                         },
                         ProtocolVersion = StableProtocolVersion,
+                        // The SDK's fixed wall-clock window is replaced by our stall bound: it
+                        // counts silence, not total elapsed time, so a live but slow server is
+                        // never reported failed. See StartupLiveness.
+                        InitializationTimeout = Timeout.InfiniteTimeSpan,
                     },
                     loggerFactory: null,
-                    cancellationToken: ct
+                    cancellationToken: liveness.Token
                 )
                 .ConfigureAwait(false);
 
+            // The handshake is done: a late timer must not cancel the listing or anything after it.
+            liveness.Complete();
             listChangedRegistration = started.RegisterNotificationHandler(
                 NotificationMethods.ToolListChangedNotification,
                 (notification, token) =>
@@ -199,9 +229,17 @@ public sealed class McpServerHost : IAsyncDisposable
         catch (Exception exception)
         {
             await DisposeClientAsync().ConfigureAwait(false);
-            if (exception is OperationCanceledException)
+            if (ct.IsCancellationRequested)
             {
                 throw;
+            }
+
+            if (liveness.Stalled)
+            {
+                throw new InvalidOperationException(
+                    $"MCP server '{options.Name}' stopped responding while starting: it produced no output for {Describe(startupStallBound)}. Check that the configured command starts a server that does not wait for input, credentials or a lock before it answers the handshake.",
+                    exception
+                );
             }
 
             throw new InvalidOperationException(
@@ -210,6 +248,10 @@ public sealed class McpServerHost : IAsyncDisposable
             );
         }
     }
+
+    /// <summary>Culture-invariant span text for a message a model or a person reads.</summary>
+    private static string Describe(TimeSpan span) =>
+        string.Create(CultureInfo.InvariantCulture, $"{span.TotalSeconds:0.###} seconds");
 
     private async Task RefreshAsync(CancellationToken ct)
     {

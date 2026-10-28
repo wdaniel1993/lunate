@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.Text.Json;
 using Lunate.Agent;
 using Lunate.TestSupport;
@@ -223,6 +224,71 @@ public sealed class McpServerHostTests
         );
 
         Assert.True(result.IsError);
+    }
+
+    [Fact]
+    public async Task A_slow_server_that_keeps_talking_starts_instead_of_failing()
+    {
+        using var temp = new TempDirectory();
+        var marker = temp.File("marker.txt");
+        var stallBound = TimeSpan.FromSeconds(5);
+        var options = McpTestEnvironment.Options(marker) with
+        {
+            Environment = new Dictionary<string, string>
+            {
+                ["LUNATE_TEST_MCP_MARKER"] = marker,
+                ["LUNATE_TEST_MCP_SLOW_START_MS"] = "8000",
+                ["LUNATE_TEST_MCP_START_HEARTBEAT_MS"] = "250",
+            },
+        };
+        await using var host = new McpServerHost(options, stallBound);
+
+        var elapsed = Stopwatch.StartNew();
+        var tools = await host.GetToolsAsync(Ct);
+        elapsed.Stop();
+
+        Assert.NotEmpty(tools);
+        Assert.True(host.Started);
+        Assert.True(
+            elapsed.Elapsed > stallBound,
+            string.Create(
+                CultureInfo.InvariantCulture,
+                $"the handshake took {elapsed.Elapsed}, not more than the {stallBound} stall bound"
+            )
+        );
+    }
+
+    [Fact]
+    public async Task A_hung_server_fails_once_no_output_arrives_within_the_stall_bound()
+    {
+        using var temp = new TempDirectory();
+        var marker = temp.File("marker.txt");
+        var stallBound = TimeSpan.FromSeconds(5);
+        var options = McpTestEnvironment.Options(marker) with
+        {
+            Environment = new Dictionary<string, string>
+            {
+                ["LUNATE_TEST_MCP_MARKER"] = marker,
+                ["LUNATE_TEST_MCP_SLOW_START_MS"] = "60000",
+            },
+        };
+        await using var host = new McpServerHost(options, stallBound);
+
+        var elapsed = Stopwatch.StartNew();
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            host.GetToolsAsync(Ct).AsTask()
+        );
+        elapsed.Stop();
+
+        Assert.Contains("stopped responding", exception.Message, StringComparison.Ordinal);
+        Assert.True(
+            elapsed.Elapsed < TimeSpan.FromSeconds(20),
+            string.Create(
+                CultureInfo.InvariantCulture,
+                $"the start took {elapsed.Elapsed} before reporting the stall"
+            )
+        );
+        Assert.False(host.Started);
     }
 
     private static IReadOnlyList<string> StartedLines(string markerPath) =>
