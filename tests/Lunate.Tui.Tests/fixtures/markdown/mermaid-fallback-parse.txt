@@ -1,0 +1,6 @@
+mermaid
+sequenceDiagram
+    participant A as
+    A->>B: hi
+mermaid: line 2: a participant needs a display name after 'as' — showing the 
+source

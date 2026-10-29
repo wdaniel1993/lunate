@@ -1,0 +1,15 @@
+A bold answer and a diagram below it.
+
+mermaid
+╭─────╮
+│ One │
+╰─────╯
+   │
+   │
+   ▾
+╭─────╮
+│ Two │
+╰─────╯
+
+csharp
+var x = 1;
