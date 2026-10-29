@@ -1207,3 +1207,6 @@ override Lunate.Extensibility.Abstractions.ExtensionWorkspaceService.GetHashCode
 override Lunate.Extensibility.Abstractions.ExtensionWorkspaceService.ToString() -> string!
 static Lunate.Extensibility.Abstractions.ExtensionWorkspaceService.operator !=(Lunate.Extensibility.Abstractions.ExtensionWorkspaceService? left, Lunate.Extensibility.Abstractions.ExtensionWorkspaceService? right) -> bool
 static Lunate.Extensibility.Abstractions.ExtensionWorkspaceService.operator ==(Lunate.Extensibility.Abstractions.ExtensionWorkspaceService? left, Lunate.Extensibility.Abstractions.ExtensionWorkspaceService? right) -> bool
+Lunate.Extensibility.Abstractions.ToolActivationEvaluator
+static Lunate.Extensibility.Abstractions.ToolActivationEvaluator.Evaluate(Lunate.Extensibility.Abstractions.ExtensionToolActivationRule? rule, string! worktreeRoot) -> bool
+static Lunate.Extensibility.Abstractions.ToolActivationEvaluator.Evaluate(Lunate.Extensibility.Abstractions.ExtensionToolActivationRule? rule, string! worktreeRoot, string? gitCommonDir) -> bool

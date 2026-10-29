@@ -26,7 +26,19 @@ public sealed class ExtensionToolRegistry
     );
 
     /// <summary>Registers one tool for the extension; refusals throw naming the extension and field.</summary>
-    public void Register(string extensionId, ExtensionToolRegistration registration)
+    public void Register(string extensionId, ExtensionToolRegistration registration) =>
+        Register(extensionId, registration, activationRule: null);
+
+    /// <summary>
+    /// Registers one tool with the manifest's <c>toolActivation</c> rule for it, stamped by the
+    /// loader from the cross-checked manifest: the rule rides the adapter so the composition can
+    /// filter per run root without touching the registration contract.
+    /// </summary>
+    internal void Register(
+        string extensionId,
+        ExtensionToolRegistration registration,
+        ExtensionToolActivationRule? activationRule
+    )
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(extensionId);
         ArgumentNullException.ThrowIfNull(registration);
@@ -52,7 +64,8 @@ public sealed class ExtensionToolRegistry
             var tool = new ExtensionToolAdapter(
                 extensionId,
                 registration,
-                Lifetime(extensionId).Token
+                Lifetime(extensionId).Token,
+                activationRule
             );
             _tools.Add(tool);
             _byName[name] = tool;

@@ -322,7 +322,8 @@ public sealed partial class ExtensionLoader
             _toolResultRenderers.Register,
             _statusWidgets.Register,
             _mcpServers.Register,
-            _tools.Register,
+            (extensionId, registration) =>
+                _tools.Register(extensionId, registration, ActivationRule(descriptor, registration.Name)),
             _modelRegistry.RegisterProvider,
             _modelRegistry.RegisterModelMiddleware,
             _modelRegistry.RegisterVirtualModel,
@@ -338,6 +339,25 @@ public sealed partial class ExtensionLoader
         _backgroundServices.Services.TryGet(name, out IBackgroundService? service) ? service : null;
 
     private object? FindCoreService(string name) => _backgroundServices.Services.FindCore(name);
+
+    /// <summary>
+    /// The manifest's <c>toolActivation</c> rule for one declared tool: the explicit key wins, then
+    /// the <c>*</c> blanket key, and no key at all is null — the composition reads null as always
+    /// active. The rule comes from the parsed manifest, so it is stamped before any registration.
+    /// </summary>
+    private static ExtensionToolActivationRule? ActivationRule(
+        ExtensionDescriptor descriptor,
+        string localName
+    )
+    {
+        IReadOnlyDictionary<string, ExtensionToolActivationRule> rules =
+            descriptor.Manifest.ToolActivation;
+        return rules.TryGetValue(localName, out ExtensionToolActivationRule? explicitKey)
+            ? explicitKey
+            : rules.TryGetValue("*", out ExtensionToolActivationRule? blanket)
+                ? blanket
+                : null;
+    }
 
     /// <summary>
     /// The asymmetric manifest rule (design D6): the manifest is what the user trusted before any

@@ -20,17 +20,26 @@ public sealed class ExtensionToolAdapter : ITool
     internal ExtensionToolAdapter(
         string extensionId,
         ExtensionToolRegistration registration,
-        CancellationToken lifetime
+        CancellationToken lifetime,
+        ExtensionToolActivationRule? activationRule
     )
     {
         ExtensionId = extensionId;
         _registration = registration;
         _lifetime = lifetime;
+        ActivationRule = activationRule;
         Name = ExtensionToolNaming.ModelFacing(extensionId, registration.Name);
     }
 
     /// <summary>The extension that registered the tool; also its namespace name.</summary>
     public string ExtensionId { get; }
+
+    /// <summary>
+    /// The manifest's <c>toolActivation</c> rule for this tool, or null when the manifest declared
+    /// none — null is always active. Stamped by the loader at registration; the composition
+    /// evaluates it once per run root and filters the tool out of the offered set when it is false.
+    /// </summary>
+    internal ExtensionToolActivationRule? ActivationRule { get; }
 
     /// <summary>The registration's local name, as the manifest declares it.</summary>
     public string LocalName => _registration.Name;
