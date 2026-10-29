@@ -141,8 +141,8 @@ This order is visible to hooks and to alias/tool collision resolution.
   built-in's factory does not touch Roslyn or MSBuild before the first call
   (`src/Lunate.Coding/WorkspaceServices.cs:275-280`).
 - A built-in is not unloaded or reloaded in v1: there is no ALC to collect and reloading would
-  re-run a factory against process-wide state. Session end stops its background services; `/extensions
-  reload` refuses a built-in with a teaching message.
+  re-run a factory against process-wide state. Session end stops its background services;
+  `/extensions reload` refuses a built-in with a teaching message.
 
 ### 3.5 Failure modes
 
@@ -162,30 +162,30 @@ This order is visible to hooks and to alias/tool collision resolution.
 
 ```csharp
 public interface IWorkspaceServiceFactory<T>
-    where T : class
+    where T : class, IAsyncDisposable
 {
     ValueTask<T> CreateAsync(string worktreeRoot, CancellationToken cancellationToken);
 }
 
 public interface IWorkspaceServiceLease<out T> : IAsyncDisposable
-    where T : class
+    where T : class, IAsyncDisposable
 {
     T Value { get; }
 }
 
 // on IExtensionContext
 void RegisterWorkspaceService<T>(string name, IWorkspaceServiceFactory<T> factory)
-    where T : class;
+    where T : class, IAsyncDisposable;
 
 ValueTask<IWorkspaceServiceLease<T>> AcquireWorkspaceServiceAsync<T>(
     string name,
     string worktreeRoot,
     CancellationToken cancellationToken)
-    where T : class;
+    where T : class, IAsyncDisposable;
 ```
 
-- `T` must implement `IAsyncDisposable`; an `IDisposable`-only value is wrapped by the extension.
-  The host disposes on eviction and shutdown.
+- `T` is constrained to `IAsyncDisposable`; an `IDisposable`-only value is wrapped by the
+  extension. The host disposes on eviction and shutdown.
 - `worktreeRoot` is the key. The host canonicalizes it exactly as `WorkspaceServices.BackendFor`
   does (`src/Lunate.Coding/WorkspaceServices.cs:75-79`) and compares it with the platform rule
   already used (`src/Lunate.Coding/WorkspaceServices.cs:259-260`).
@@ -250,7 +250,7 @@ The registry is a per-extension generalization of `WorkspaceServices`
   pinned or not, and releases waiters. A call that resumes after shutdown fails with
   `ObjectDisposedException`; the tool adapter turns that into a cancelled/teaching result rather
   than a crash (the equivalent current path is `src/Lunate.Extensibility/ExtensionToolAdapter.cs:61-78`).
-  Family: the service's `DisposeAsync` must be idempotent and must not throw.
+  Finally: the service's `DisposeAsync` must be idempotent and must not throw.
 
 ### 4.4 The data-loss rule (the `SessionImages` failure class)
 
@@ -288,8 +288,9 @@ Therefore:
 
 - The built-in Roslyn service is named `roslyn`; its manifest declares
   `{ "name": "roslyn", "maxLoadedWorkspaces": 2 }`.
-- Each `cs_*` handler acquires the lease for `ctx.WorkingDirectory` (the run's workspace root) per
-  call, calls the backend, and disposes the lease. It never holds the lease across calls.
+- Each `cs_*` handler acquires the lease for `ctx.WorkingDirectory` (the run's workspace root,
+  `src/Lunate.Agent/ToolContext.cs:7`) per call, calls the backend, and disposes the lease. It never
+  holds the lease across calls.
 - The cap, pinning, wait and dispose paths are the ones already implemented
   (`src/Lunate.Coding/WorkspaceServices.cs:116-167`, `:235-257`); the current `BackendFor` handle
   (`:75-79`, `:319-375`) is the shape the generic lease generalizes.
@@ -382,7 +383,9 @@ lets `/extensions` report a stable reason. It also keeps `FunctionInvokingChatCl
   the manifest, the tool and the field.
 - An unreadable root is inactive with a reason, never a crash; the session continues.
 - The activation result is cached per composition; `ToolsChanged` fires only when a load/unload or
-  reload actually changes the registered set, not on every composition.
+  reload actually changes the registered set, not on every composition
+  (`src/Lunate.Extensibility/ExtensionLoader.Load.cs:229-232`,
+  `src/Lunate.Extensibility/ExtensionLoader.cs:201-204`).
 
 ## 6. (d) `cs_*` stays stable: the mechanism
 
@@ -447,7 +450,9 @@ on what the manifest declares, and the audit's contract goal is the opposite
   extension-vs-core collisions are load failures, not first-wins, because the losing extension
   would silently lose a model-facing surface.
 - `toolAliases` keys must be declared in `tools`; an alias for an undeclared or unregistered tool is
-  a manifest error. Duplicate keys are refused by the JSON object itself; duplicate local names are
+  a manifest error. Duplicate alias keys are refused by the manifest parser with the same
+  duplicate-declaration rule `tools` uses
+  (`src/Lunate.Extensibility.Abstractions/ExtensionManifest.cs:166-182`); duplicate local names are
   already refused (`src/Lunate.Extensibility/ExtensionToolRegistry.cs:35-58`).
 - An alias is part of the extension's published surface. Changing or removing one is a breaking
   change to every prompt and template that names it; the host cannot enforce that, so the contract
