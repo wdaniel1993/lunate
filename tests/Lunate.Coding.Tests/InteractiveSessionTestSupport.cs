@@ -583,7 +583,8 @@ internal sealed class InteractiveSessionHost : IDisposable
         IClipboardImageSource? clipboard = null,
         ITextClipboard? textClipboard = null,
         Func<DateTimeOffset>? clock = null,
-        string? editorTempDirectory = null
+        string? editorTempDirectory = null,
+        UpdateCheckSeams? updateCheck = null
     )
     {
         Scrollback = new TestConsole();
@@ -623,6 +624,7 @@ internal sealed class InteractiveSessionHost : IDisposable
                 TextClipboard = textClipboard,
                 Clock = clock,
                 EditorTempDirectory = editorTempDirectory,
+                UpdateCheck = updateCheck,
             }
         );
     }
@@ -912,5 +914,37 @@ internal sealed class InteractiveSessionHost : IDisposable
         Session.Dispose();
         _diagnostics.Dispose();
         Temp.Dispose();
+    }
+}
+
+/// <summary>A recording transport: every request is kept for the assertion after the check.</summary>
+internal sealed class RecordingHandler(
+    Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> respond
+) : HttpMessageHandler
+{
+    private readonly List<HttpRequestMessage> _requests = [];
+
+    public IReadOnlyList<HttpRequestMessage> Requests
+    {
+        get
+        {
+            lock (_requests)
+            {
+                return [.. _requests];
+            }
+        }
+    }
+
+    protected override async Task<HttpResponseMessage> SendAsync(
+        HttpRequestMessage request,
+        CancellationToken cancellationToken
+    )
+    {
+        lock (_requests)
+        {
+            _requests.Add(request);
+        }
+
+        return await respond(request, cancellationToken).ConfigureAwait(false);
     }
 }

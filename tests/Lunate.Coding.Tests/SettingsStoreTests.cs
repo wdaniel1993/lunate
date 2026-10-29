@@ -13,6 +13,7 @@ public sealed class SettingsStoreTests
     private const string SubagentTreeTokenBudgetVariable = "LUNATE_SUBAGENTS_TREE_TOKEN_BUDGET";
     private const string StartupHeaderVariable = "LUNATE_STARTUP_HEADER";
     private const string ToolDetailsVariable = "LUNATE_TOOL_DETAILS";
+    private const string UpdateCheckVariable = "LUNATE_UPDATE_CHECK";
 
     [Fact]
     public void Missing_file_yields_defaults()
@@ -26,6 +27,7 @@ public sealed class SettingsStoreTests
         Assert.Equal(30_000, settings.ToolOutputLimit);
         Assert.Equal(new SubagentLimits(), settings.Subagents);
         Assert.True(settings.StartupHeader);
+        Assert.True(settings.UpdateCheck);
         Assert.Empty(settings.Favorites);
     }
 
@@ -235,6 +237,75 @@ public sealed class SettingsStoreTests
         );
 
         Assert.Contains(StartupHeaderVariable, exception.Message, StringComparison.Ordinal);
+        Assert.Contains("maybe", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_file_can_disable_the_update_check()
+    {
+        using var temp = new TempDirectory();
+        File.WriteAllText(
+            temp.File("settings.json"),
+            """
+            {
+              "schemaVersion": 1,
+              "updateCheck": false
+            }
+            """
+        );
+
+        AgentSettings settings = SettingsStore.Resolve(temp.File("settings.json"), _ => null);
+
+        Assert.False(settings.UpdateCheck);
+    }
+
+    [Fact]
+    public void The_update_check_environment_override_disables_it()
+    {
+        using var temp = new TempDirectory();
+
+        AgentSettings settings = SettingsStore.Resolve(
+            temp.File("missing.json"),
+            name => name == UpdateCheckVariable ? "0" : null
+        );
+
+        Assert.False(settings.UpdateCheck);
+    }
+
+    [Fact]
+    public void A_non_boolean_update_check_in_the_file_is_reported()
+    {
+        using var temp = new TempDirectory();
+        File.WriteAllText(
+            temp.File("settings.json"),
+            """
+            {
+              "schemaVersion": 1,
+              "updateCheck": "yes"
+            }
+            """
+        );
+
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+            SettingsStore.Resolve(temp.File("settings.json"), _ => null)
+        );
+
+        Assert.Contains("'updateCheck' must be true or false", exception.Message);
+    }
+
+    [Fact]
+    public void An_invalid_update_check_environment_value_names_its_variable()
+    {
+        using var temp = new TempDirectory();
+
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+            SettingsStore.Resolve(
+                temp.File("missing.json"),
+                name => name == UpdateCheckVariable ? "maybe" : null
+            )
+        );
+
+        Assert.Contains(UpdateCheckVariable, exception.Message, StringComparison.Ordinal);
         Assert.Contains("maybe", exception.Message, StringComparison.Ordinal);
     }
 

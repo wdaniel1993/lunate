@@ -174,6 +174,96 @@ public sealed class WelcomeHeaderRendererTests
         );
 
     [Fact]
+    public void The_update_line_is_one_dim_link() =>
+        Assert.Equal(
+            "[dim link=https://example.test/CHANGELOG.md]v9.9.9 available · changelog[/]",
+            WelcomeHeaderRenderer.UpdateLine(
+                "9.9.9",
+                "https://example.test/CHANGELOG.md",
+                Capabilities(unicode: true, colored: true)
+            )
+        );
+
+    [Fact]
+    public void The_update_line_keeps_its_link_without_color() =>
+        Assert.Equal(
+            "[link=https://example.test/CHANGELOG.md]v9.9.9 available · changelog[/]",
+            WelcomeHeaderRenderer.UpdateLine(
+                "9.9.9",
+                "https://example.test/CHANGELOG.md",
+                Capabilities(unicode: true, colored: false)
+            )
+        );
+
+    [Fact]
+    public void The_update_line_uses_ascii_punctuation_on_an_ascii_terminal() =>
+        Assert.Equal(
+            "[dim link=https://example.test/CHANGELOG.md]v9.9.9 available - changelog[/]",
+            WelcomeHeaderRenderer.UpdateLine(
+                "9.9.9",
+                "https://example.test/CHANGELOG.md",
+                Capabilities(unicode: false, colored: true)
+            )
+        );
+
+    [Fact]
+    public void The_block_puts_the_update_line_between_counts_and_hint()
+    {
+        WelcomeHeaderState withUpdate = Full with
+        {
+            UpdateVersion = "9.9.9",
+            UpdateUrl = "https://example.test/CHANGELOG.md",
+        };
+
+        string[] markup = Markup(withUpdate, width: 80, Capabilities(unicode: true, colored: true));
+
+        Assert.Equal(
+            "[dim link=https://example.test/CHANGELOG.md]v9.9.9 available · changelog[/]",
+            markup[6]
+        );
+        Assert.Equal(
+            "[dim]/help · /model · /skills · /extensions · ctrl+o transcript · Esc cancels · /quit[/]",
+            markup[7]
+        );
+    }
+
+    [Fact]
+    public void The_first_run_block_never_shows_the_update_line()
+    {
+        WelcomeHeaderState firstRunWithUpdate = FirstRun with
+        {
+            UpdateVersion = "9.9.9",
+            UpdateUrl = "https://example.test/CHANGELOG.md",
+        };
+
+        string[] markup = Markup(
+            firstRunWithUpdate,
+            width: 120,
+            Capabilities(unicode: true, colored: true)
+        );
+
+        Assert.Equal(4, markup.Length);
+        Assert.DoesNotContain(markup, line => line.Contains("available", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void The_single_line_form_keeps_the_update_segment_before_the_hint()
+    {
+        WelcomeHeaderState withUpdate = Full with
+        {
+            UpdateVersion = "9.9.9",
+            UpdateUrl = "https://example.test/CHANGELOG.md",
+        };
+
+        Assert.Equal(
+            [
+                "[bold]lunate[/][dim] v0.1.0 (C# · Roslyn)[/][dim link=https://example.test/CHANGELOG.md] · v9.9.9 available[/][dim] — /help for commands[/]",
+            ],
+            Markup(withUpdate, width: 40, Capabilities(unicode: true, colored: true))
+        );
+    }
+
+    [Fact]
     public void Counts_replace_the_placeholder_when_they_are_known() =>
         Assert.Equal(
             "extensions 4 · MCP 2 · skills 7",

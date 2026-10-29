@@ -156,6 +156,9 @@ internal static class CliHelp
         );
         output.WriteLine("  --no-tools                     expose no tools for the run");
         output.WriteLine(
+            "  --offline                      skip the daily update check for this run"
+        );
+        output.WriteLine(
             "  --system-prompt <text>         replace the composed system prompt wholesale,"
         );
         output.WriteLine(

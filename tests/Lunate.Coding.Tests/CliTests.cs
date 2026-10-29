@@ -772,6 +772,13 @@ public sealed class CliTests
         Assert.Equal("Hi", options.Prompt);
     }
 
+    [Fact]
+    public void Launch_options_parse_offline()
+    {
+        Assert.False(Parse().Offline);
+        Assert.True(Parse("--offline").Offline);
+    }
+
     [Theory]
     [MemberData(nameof(ConflictingLaunchFlags))]
     public void Run_with_conflicting_launch_flags_is_a_usage_error(
@@ -882,6 +889,7 @@ public sealed class CliTests
     [InlineData("--resume=x", "--resume")]
     [InlineData("--no-session=x", "--no-session")]
     [InlineData("--no-tools=x", "--no-tools")]
+    [InlineData("--offline=x", "--offline")]
     public void Run_with_an_inline_value_on_a_boolean_flag_is_a_usage_error(string arg, string flag)
     {
         using var output = new StringWriter();
@@ -972,6 +980,7 @@ public sealed class CliTests
         Assert.Contains("--thinking <level>", help, StringComparison.Ordinal);
         Assert.Contains("--tools <list>", help, StringComparison.Ordinal);
         Assert.Contains("--no-tools", help, StringComparison.Ordinal);
+        Assert.Contains("--offline", help, StringComparison.Ordinal);
         Assert.Contains("--system-prompt <text>", help, StringComparison.Ordinal);
         Assert.Contains("--append-system-prompt <text>", help, StringComparison.Ordinal);
         Assert.Contains("--flag=value", help, StringComparison.Ordinal);

@@ -56,8 +56,18 @@ internal sealed partial class InteractiveSession
     /// plain text, so they are markup-escaped on the way in. Read-only, so it is allowed while a
     /// turn runs.
     /// </summary>
-    private void ShowHelp() =>
-        WriteScrollbackLines([.. HelpView.Lines(_commands.Descriptors).Select(Markup.Escape)]);
+    private void ShowHelp()
+    {
+        List<string> lines = [.. HelpView.Lines(_commands.Descriptors).Select(Markup.Escape)];
+        if (_availableUpdate is { } update)
+        {
+            lines.Add(
+                WelcomeHeaderRenderer.UpdateLine(update.Version, update.ChangelogUrl, _capabilities)
+            );
+        }
+
+        WriteScrollbackLines(lines);
+    }
 
     /// <summary>
     /// The <c>/context</c> notice: the context usage (the footer's own format), the resolved

@@ -13,7 +13,11 @@ internal enum TextStyle
     Underline = 8,
 }
 
-internal readonly record struct SpanStyle(TextStyle Text = TextStyle.None, string? Color = null)
+internal readonly record struct SpanStyle(
+    TextStyle Text = TextStyle.None,
+    string? Color = null,
+    string? Link = null
+)
 {
     public static readonly SpanStyle Plain = new();
     public static readonly SpanStyle Bold = new(TextStyle.Bold);
@@ -53,6 +57,11 @@ internal readonly record struct SpanStyle(TextStyle Text = TextStyle.None, strin
         if (style.Color is not null)
         {
             parts.Add(style.Color);
+        }
+
+        if (style.Link is { Length: > 0 } link)
+        {
+            parts.Add($"link={link}");
         }
 
         return string.Join(' ', parts);
