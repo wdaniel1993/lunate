@@ -937,7 +937,7 @@ static Lunate.Extensibility.Abstractions.ProcessRunRequest.operator !=(Lunate.Ex
 static Lunate.Extensibility.Abstractions.ProcessRunRequest.operator ==(Lunate.Extensibility.Abstractions.ProcessRunRequest? left, Lunate.Extensibility.Abstractions.ProcessRunRequest? right) -> bool
 static Lunate.Extensibility.Abstractions.ProcessRunResult.operator !=(Lunate.Extensibility.Abstractions.ProcessRunResult? left, Lunate.Extensibility.Abstractions.ProcessRunResult? right) -> bool
 static Lunate.Extensibility.Abstractions.ProcessRunResult.operator ==(Lunate.Extensibility.Abstractions.ProcessRunResult? left, Lunate.Extensibility.Abstractions.ProcessRunResult? right) -> bool
-const Lunate.Extensibility.Abstractions.ExtensionApi.Current = "1.11.0" -> string!
+const Lunate.Extensibility.Abstractions.ExtensionApi.Current = "1.12.0" -> string!
 Lunate.Extensibility.Abstractions.CommandKind
 Lunate.Extensibility.Abstractions.CommandKind.Builtin = 0 -> Lunate.Extensibility.Abstractions.CommandKind
 Lunate.Extensibility.Abstractions.CommandKind.Skill = 1 -> Lunate.Extensibility.Abstractions.CommandKind
@@ -1161,3 +1161,42 @@ static Lunate.Extensibility.Abstractions.RemoteExtensionStatus.operator !=(Lunat
 static Lunate.Extensibility.Abstractions.RemoteExtensionStatus.operator ==(Lunate.Extensibility.Abstractions.RemoteExtensionStatus? left, Lunate.Extensibility.Abstractions.RemoteExtensionStatus? right) -> bool
 Lunate.Extensibility.Abstractions.IPreparationTimeReporter
 Lunate.Extensibility.Abstractions.IPreparationTimeReporter.ConsumePreparationTime() -> System.TimeSpan
+Lunate.Extensibility.Abstractions.ExtensionManifest.BuiltIn.get -> bool
+Lunate.Extensibility.Abstractions.ExtensionManifest.BuiltIn.init -> void
+Lunate.Extensibility.Abstractions.ExtensionManifest.ToolActivation.get -> System.Collections.Generic.IReadOnlyDictionary<string!, Lunate.Extensibility.Abstractions.ExtensionToolActivationRule!>!
+Lunate.Extensibility.Abstractions.ExtensionManifest.ToolActivation.init -> void
+Lunate.Extensibility.Abstractions.ExtensionManifest.ToolAliases.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>!
+Lunate.Extensibility.Abstractions.ExtensionManifest.ToolAliases.init -> void
+Lunate.Extensibility.Abstractions.ExtensionManifest.WorkspaceServices.get -> System.Collections.Generic.IReadOnlyList<Lunate.Extensibility.Abstractions.ExtensionWorkspaceService!>!
+Lunate.Extensibility.Abstractions.ExtensionManifest.WorkspaceServices.init -> void
+Lunate.Extensibility.Abstractions.ExtensionToolActivationRule
+Lunate.Extensibility.Abstractions.ExtensionToolActivationRule.<Clone>$() -> Lunate.Extensibility.Abstractions.ExtensionToolActivationRule!
+const Lunate.Extensibility.Abstractions.ExtensionToolActivationRule.Always = "always" -> string!
+const Lunate.Extensibility.Abstractions.ExtensionToolActivationRule.WorkspaceIsGitRepository = "workspace-is-git-repository" -> string!
+const Lunate.Extensibility.Abstractions.ExtensionToolActivationRule.WorkspaceRootHasFile = "workspace-root-has-file" -> string!
+Lunate.Extensibility.Abstractions.ExtensionToolActivationRule.Equals(Lunate.Extensibility.Abstractions.ExtensionToolActivationRule? other) -> bool
+Lunate.Extensibility.Abstractions.ExtensionToolActivationRule.ExtensionToolActivationRule(string! When, System.Collections.Generic.IReadOnlyList<string!>! Patterns) -> void
+Lunate.Extensibility.Abstractions.ExtensionToolActivationRule.Deconstruct(out string! When, out System.Collections.Generic.IReadOnlyList<string!>! Patterns) -> void
+Lunate.Extensibility.Abstractions.ExtensionToolActivationRule.Patterns.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Lunate.Extensibility.Abstractions.ExtensionToolActivationRule.Patterns.init -> void
+Lunate.Extensibility.Abstractions.ExtensionToolActivationRule.When.get -> string!
+Lunate.Extensibility.Abstractions.ExtensionToolActivationRule.When.init -> void
+override Lunate.Extensibility.Abstractions.ExtensionToolActivationRule.Equals(object? obj) -> bool
+override Lunate.Extensibility.Abstractions.ExtensionToolActivationRule.GetHashCode() -> int
+override Lunate.Extensibility.Abstractions.ExtensionToolActivationRule.ToString() -> string!
+static Lunate.Extensibility.Abstractions.ExtensionToolActivationRule.operator !=(Lunate.Extensibility.Abstractions.ExtensionToolActivationRule? left, Lunate.Extensibility.Abstractions.ExtensionToolActivationRule? right) -> bool
+static Lunate.Extensibility.Abstractions.ExtensionToolActivationRule.operator ==(Lunate.Extensibility.Abstractions.ExtensionToolActivationRule? left, Lunate.Extensibility.Abstractions.ExtensionToolActivationRule? right) -> bool
+Lunate.Extensibility.Abstractions.ExtensionWorkspaceService
+Lunate.Extensibility.Abstractions.ExtensionWorkspaceService.<Clone>$() -> Lunate.Extensibility.Abstractions.ExtensionWorkspaceService!
+Lunate.Extensibility.Abstractions.ExtensionWorkspaceService.Equals(Lunate.Extensibility.Abstractions.ExtensionWorkspaceService? other) -> bool
+Lunate.Extensibility.Abstractions.ExtensionWorkspaceService.ExtensionWorkspaceService(string! Name, int MaxLoadedWorkspaces = 2) -> void
+Lunate.Extensibility.Abstractions.ExtensionWorkspaceService.Deconstruct(out string! Name, out int MaxLoadedWorkspaces) -> void
+Lunate.Extensibility.Abstractions.ExtensionWorkspaceService.MaxLoadedWorkspaces.get -> int
+Lunate.Extensibility.Abstractions.ExtensionWorkspaceService.MaxLoadedWorkspaces.init -> void
+Lunate.Extensibility.Abstractions.ExtensionWorkspaceService.Name.get -> string!
+Lunate.Extensibility.Abstractions.ExtensionWorkspaceService.Name.init -> void
+override Lunate.Extensibility.Abstractions.ExtensionWorkspaceService.Equals(object? obj) -> bool
+override Lunate.Extensibility.Abstractions.ExtensionWorkspaceService.GetHashCode() -> int
+override Lunate.Extensibility.Abstractions.ExtensionWorkspaceService.ToString() -> string!
+static Lunate.Extensibility.Abstractions.ExtensionWorkspaceService.operator !=(Lunate.Extensibility.Abstractions.ExtensionWorkspaceService? left, Lunate.Extensibility.Abstractions.ExtensionWorkspaceService? right) -> bool
+static Lunate.Extensibility.Abstractions.ExtensionWorkspaceService.operator ==(Lunate.Extensibility.Abstractions.ExtensionWorkspaceService? left, Lunate.Extensibility.Abstractions.ExtensionWorkspaceService? right) -> bool

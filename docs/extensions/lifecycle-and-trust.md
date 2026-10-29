@@ -150,11 +150,11 @@ restarted in place.
 
 ## Incompatible `apiVersion`
 
-`ExtensionApi.Current` is `1.10.0`. A manifest whose range is syntactically valid but does not
+`ExtensionApi.Current` is `1.12.0`. A manifest whose range is syntactically valid but does not
 match is refused at discovery:
 
 ```text
-extension 'future' requires apiVersion '2.0.0' but the current API version is 1.10.0.
+extension 'future' requires Lunate ≥ 2.0.0 but this is Lunate 1.12.0; it was not loaded.
 ```
 
 The extension is not listed by `/extensions` and nothing loads. A malformed range is a parse error

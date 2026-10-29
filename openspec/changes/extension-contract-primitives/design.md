@@ -23,6 +23,7 @@
 | Activation application point | `ExtensionToolAdapter` gains an internal `ActivationRule`; the loader stamps each adapter's rule from the manifest cross-check. Composition sites filter with one shared helper. |
 | Core gate through the evaluator | `ToolActivationEvaluator` replaces `HarnessFactory.LooksLikeCSharpWorkspace`'s inline scan with the same first-party rule (`workspace-root-has-file` over `*.sln|*.slnx|*.csproj`); `AddCSharpTools` stays `[NoInlining]` and Roslyn-free before first call. |
 | `--no-extensions` | The three skip sites keep skipping store scans/trust/third-party loads and compose only `BuiltIns`. Skips live at `src/Lunate.Coding/ExtensionSession.cs:34-39`, `PrintMode.cs:157`, `InteractiveSession.cs:579`. |
+| Built-in manifest's entry point | `extension.json` requires exactly one of `entryAssembly`/`runtime` today (`src/Lunate.Extensibility.Abstractions/ExtensionManifest.cs:95-104`); a built-in has neither to name — its code is the host's own assemblies, loaded in the default ALC (`src/Lunate.Extensibility/ExtensionLoader.Load.cs:140` is the third-party path it never takes). So the exactly-one rule applies to non-built-in manifests only; a built-in manifest declaring `runtime` or `entryAssembly` is refused (out-of-process is not a provenance a built-in carries, and naming a host assembly would be meaningless), and `apiVersion` stays required (same gate). |
 
 ## 2. Component view
 

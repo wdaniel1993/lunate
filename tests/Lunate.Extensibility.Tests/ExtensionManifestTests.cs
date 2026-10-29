@@ -23,6 +23,10 @@ public sealed class ExtensionManifestTests
         Assert.Empty(manifest.Services);
         Assert.Empty(manifest.Capabilities);
         Assert.Null(manifest.SettingsSchema);
+        Assert.False(manifest.BuiltIn);
+        Assert.Empty(manifest.WorkspaceServices);
+        Assert.Empty(manifest.ToolActivation);
+        Assert.Empty(manifest.ToolAliases);
     }
 
     [Fact]
@@ -501,5 +505,352 @@ public sealed class ExtensionManifestTests
         );
 
         Assert.Contains("'runtime'", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_builtin_manifest_declares_builtin_true()
+    {
+        const string json =
+            """{"id":"hello","version":"0.1.0","apiVersion":"^1.0.0","entryAssembly":"HelloExtension.dll","builtin":true}""";
+
+        ExtensionManifest manifest = ExtensionManifest.Parse(json, "extension.json");
+
+        Assert.True(manifest.BuiltIn);
+    }
+
+    [Fact]
+    public void A_manifest_declaring_builtin_false_is_not_builtin()
+    {
+        const string json =
+            """{"id":"hello","version":"0.1.0","apiVersion":"^1.0.0","entryAssembly":"HelloExtension.dll","builtin":false}""";
+
+        ExtensionManifest manifest = ExtensionManifest.Parse(json, "extension.json");
+
+        Assert.False(manifest.BuiltIn);
+    }
+
+    [Fact]
+    public void A_builtin_field_that_is_not_a_boolean_is_refused()
+    {
+        const string json =
+            """{"id":"hello","version":"0.1.0","apiVersion":"^1.0.0","entryAssembly":"HelloExtension.dll","builtin":"yes"}""";
+
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+            ExtensionManifest.Parse(json, "extension.json")
+        );
+
+        Assert.Equal(
+            "extension.json: field 'builtin' must be true or false.",
+            exception.Message
+        );
+    }
+
+    [Fact]
+    public void Parses_workspace_services_with_the_default_maxLoadedWorkspaces()
+    {
+        const string json =
+            """{"id":"hello","version":"0.1.0","apiVersion":"^1.0.0","entryAssembly":"e.dll","workspaceServices":[{"name":"store"}]}""";
+
+        ExtensionManifest manifest = ExtensionManifest.Parse(json, "extension.json");
+
+        Assert.Equal(
+            [new ExtensionWorkspaceService("store", 2)],
+            manifest.WorkspaceServices
+        );
+    }
+
+    [Fact]
+    public void Parses_workspace_services_with_an_explicit_maxLoadedWorkspaces()
+    {
+        const string json =
+            """{"id":"hello","version":"0.1.0","apiVersion":"^1.0.0","entryAssembly":"e.dll","workspaceServices":[{"name":"indexer","maxLoadedWorkspaces":5}]}""";
+
+        ExtensionManifest manifest = ExtensionManifest.Parse(json, "extension.json");
+
+        Assert.Equal(
+            [new ExtensionWorkspaceService("indexer", 5)],
+            manifest.WorkspaceServices
+        );
+    }
+
+    [Fact]
+    public void A_duplicate_workspace_service_name_is_refused()
+    {
+        const string json =
+            """{"id":"hello","version":"0.1.0","apiVersion":"^1.0.0","entryAssembly":"e.dll","workspaceServices":[{"name":"store"},{"name":"store"}]}""";
+
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+            ExtensionManifest.Parse(json, "extension.json")
+        );
+
+        Assert.Equal(
+            "extension.json: field 'workspaceServices' declares 'store' more than once.",
+            exception.Message
+        );
+    }
+
+    [Theory]
+    [InlineData("0")]
+    [InlineData("-1")]
+    [InlineData("2.5")]
+    [InlineData("\"many\"")]
+    public void A_maxLoadedWorkspaces_that_is_not_a_positive_integer_is_refused(string value)
+    {
+        string json =
+            $$"""{"id":"hello","version":"0.1.0","apiVersion":"^1.0.0","entryAssembly":"e.dll","workspaceServices":[{"name":"store","maxLoadedWorkspaces":{{value}}}]}""";
+
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+            ExtensionManifest.Parse(json, "extension.json")
+        );
+
+        Assert.Equal(
+            "extension.json: field 'workspaceServices' service 'store': maxLoadedWorkspaces must be a positive integer.",
+            exception.Message
+        );
+    }
+
+    [Theory]
+    [InlineData("""{"maxLoadedWorkspaces":3}""")]
+    [InlineData("""{"name":""}""")]
+    [InlineData("""{"name":"   "}""")]
+    [InlineData("""{"name":2}""")]
+    public void A_workspace_service_without_a_non_empty_name_is_refused(string service)
+    {
+        string json =
+            $$"""{"id":"hello","version":"0.1.0","apiVersion":"^1.0.0","entryAssembly":"e.dll","workspaceServices":[{{service}}]}""";
+
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+            ExtensionManifest.Parse(json, "extension.json")
+        );
+
+        Assert.Equal(
+            "extension.json: field 'workspaceServices': service 'name' must be a non-empty string.",
+            exception.Message
+        );
+    }
+
+    [Fact]
+    public void Parses_tool_activation_rules_for_star_and_declared_tools()
+    {
+        const string json =
+            """
+            {"id":"hello","version":"0.1.0","apiVersion":"^1.0.0","entryAssembly":"e.dll",
+             "tools":["greet","read","commit"],
+             "toolActivation":{
+               "*":{"when":"always"},
+               "greet":{"when":"workspace-root-has-file","patterns":["*.sln","*.csproj"]},
+               "commit":{"when":"workspace-is-git-repository"}}}
+            """;
+
+        ExtensionManifest manifest = ExtensionManifest.Parse(json, "extension.json");
+
+        Assert.Equal(
+            new ExtensionToolActivationRule("always", []),
+            manifest.ToolActivation["*"]
+        );
+        Assert.Equal(
+            new ExtensionToolActivationRule(
+                "workspace-root-has-file",
+                ["*.sln", "*.csproj"]
+            ),
+            manifest.ToolActivation["greet"]
+        );
+        Assert.Equal(
+            new ExtensionToolActivationRule("workspace-is-git-repository", []),
+            manifest.ToolActivation["commit"]
+        );
+        Assert.False(manifest.ToolActivation.ContainsKey("read"));
+    }
+
+    [Fact]
+    public void A_rule_for_an_undeclared_tool_is_refused()
+    {
+        const string json =
+            """{"id":"hello","version":"0.1.0","apiVersion":"^1.0.0","entryAssembly":"e.dll","tools":["greet"],"toolActivation":{"write":{"when":"always"}}}""";
+
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+            ExtensionManifest.Parse(json, "extension.json")
+        );
+
+        Assert.Equal(
+            "extension.json: field 'toolActivation' declares a rule for 'write', which is not a declared tool.",
+            exception.Message
+        );
+    }
+
+    [Fact]
+    public void An_unknown_condition_is_refused()
+    {
+        const string json =
+            """{"id":"hello","version":"0.1.0","apiVersion":"^1.0.0","entryAssembly":"e.dll","tools":["greet"],"toolActivation":{"greet":{"when":"sometimes"}}}""";
+
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+            ExtensionManifest.Parse(json, "extension.json")
+        );
+
+        Assert.Equal(
+            "extension.json: field 'toolActivation' rule for 'greet': unknown condition 'sometimes'; the supported conditions are always, workspace-root-has-file and workspace-is-git-repository.",
+            exception.Message
+        );
+    }
+
+    [Fact]
+    public void A_rule_without_a_condition_is_refused()
+    {
+        const string json =
+            """{"id":"hello","version":"0.1.0","apiVersion":"^1.0.0","entryAssembly":"e.dll","tools":["greet"],"toolActivation":{"greet":{}}}""";
+
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+            ExtensionManifest.Parse(json, "extension.json")
+        );
+
+        Assert.Equal(
+            "extension.json: field 'toolActivation' rule for 'greet': a rule must declare 'when'.",
+            exception.Message
+        );
+    }
+
+    [Theory]
+    [InlineData("""{"when":"always","patterns":["a"]}""")]
+    [InlineData("""{"when":"workspace-is-git-repository","note":"why"}""")]
+    public void A_condition_that_takes_no_fields_refuses_the_additional_field(string rule)
+    {
+        string json =
+            $$"""{"id":"hello","version":"0.1.0","apiVersion":"^1.0.0","entryAssembly":"e.dll","tools":["greet"],"toolActivation":{"greet":{{rule}} } }""";
+
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+            ExtensionManifest.Parse(json, "extension.json")
+        );
+
+        Assert.Contains(
+            "extension.json: field 'toolActivation' rule for 'greet': the '",
+            exception.Message,
+            StringComparison.Ordinal
+        );
+        Assert.Contains(
+            "' condition takes no additional fields.",
+            exception.Message,
+            StringComparison.Ordinal
+        );
+    }
+
+    [Theory]
+    [InlineData("""{"when":"workspace-root-has-file"}""")]
+    [InlineData("""{"when":"workspace-root-has-file","patterns":[]}""")]
+    [InlineData("""{"when":"workspace-root-has-file","patterns":[1]}""")]
+    public void A_rule_requires_non_empty_string_patterns(string rule)
+    {
+        string json =
+            $$"""{"id":"hello","version":"0.1.0","apiVersion":"^1.0.0","entryAssembly":"e.dll","tools":["greet"],"toolActivation":{"greet":{{rule}} } }""";
+
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+            ExtensionManifest.Parse(json, "extension.json")
+        );
+
+        Assert.Equal(
+            "extension.json: field 'toolActivation' rule for 'greet': patterns must be a non-empty array of file names.",
+            exception.Message
+        );
+    }
+
+    [Fact]
+    public void An_empty_pattern_entry_is_refused()
+    {
+        const string json =
+            """{"id":"hello","version":"0.1.0","apiVersion":"^1.0.0","entryAssembly":"e.dll","tools":["greet"],"toolActivation":{"greet":{"when":"workspace-root-has-file","patterns":[""]}}}""";
+
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+            ExtensionManifest.Parse(json, "extension.json")
+        );
+
+        Assert.Equal(
+            "extension.json: field 'toolActivation' rule for 'greet': patterns must be a non-empty array of file names.",
+            exception.Message
+        );
+    }
+
+    [Theory]
+    [InlineData("sub/*.sln")]
+    [InlineData("sub\\*.sln")]
+    public void A_pattern_with_a_path_separator_is_refused(string pattern)
+    {
+        string json =
+            $$"""{"id":"hello","version":"0.1.0","apiVersion":"^1.0.0","entryAssembly":"e.dll","tools":["greet"],"toolActivation":{"greet":{"when":"workspace-root-has-file","patterns":[{{JsonSerializer.Serialize(pattern)}}] } } }""";
+
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+            ExtensionManifest.Parse(json, "extension.json")
+        );
+
+        Assert.Equal(
+            $"extension.json: field 'toolActivation' rule for 'greet': pattern '{pattern}' contains a path separator; patterns match direct children only.",
+            exception.Message
+        );
+    }
+
+    [Fact]
+    public void An_unknown_field_for_the_file_condition_is_refused()
+    {
+        const string json =
+            """{"id":"hello","version":"0.1.0","apiVersion":"^1.0.0","entryAssembly":"e.dll","tools":["greet"],"toolActivation":{"greet":{"when":"workspace-root-has-file","patterns":["*.sln"],"directories":true}}}""";
+
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+            ExtensionManifest.Parse(json, "extension.json")
+        );
+
+        Assert.Equal(
+            "extension.json: field 'toolActivation' rule for 'greet': unknown field 'directories' for the 'workspace-root-has-file' condition.",
+            exception.Message
+        );
+    }
+
+    [Fact]
+    public void A_duplicate_tool_activation_key_is_refused()
+    {
+        const string json =
+            """{"id":"hello","version":"0.1.0","apiVersion":"^1.0.0","entryAssembly":"e.dll","tools":["greet"],"toolActivation":{"greet":{"when":"always"},"greet":{"when":"workspace-is-git-repository"}}}""";
+
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+            ExtensionManifest.Parse(json, "extension.json")
+        );
+
+        Assert.Equal(
+            "extension.json: field 'toolActivation' declares 'greet' more than once.",
+            exception.Message
+        );
+    }
+
+    [Theory]
+    [InlineData(
+        """{"id":"hello","version":"0.1.0","apiVersion":"^1.0.0","entryAssembly":"e.dll","toolActivation":[{"greet":{"when":"always"}}]}"""
+    )]
+    [InlineData(
+        """{"id":"hello","version":"0.1.0","apiVersion":"^1.0.0","entryAssembly":"e.dll","tools":["greet"],"toolActivation":"always"}"""
+    )]
+    public void Tool_activation_must_be_an_object(string json)
+    {
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+            ExtensionManifest.Parse(json, "extension.json")
+        );
+
+        Assert.Equal(
+            "extension.json: field 'toolActivation' must be an object.",
+            exception.Message
+        );
+    }
+
+    [Fact]
+    public void A_rule_that_is_not_an_object_is_refused()
+    {
+        const string json =
+            """{"id":"hello","version":"0.1.0","apiVersion":"^1.0.0","entryAssembly":"e.dll","tools":["greet"],"toolActivation":{"greet":"always"}}""";
+
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+            ExtensionManifest.Parse(json, "extension.json")
+        );
+
+        Assert.Equal(
+            "extension.json: field 'toolActivation' rule for 'greet' must be an object.",
+            exception.Message
+        );
     }
 }

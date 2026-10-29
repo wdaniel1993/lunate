@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using System.Text.Json;
 
 namespace Lunate.Extensibility.Abstractions;
@@ -33,6 +34,29 @@ public sealed partial record ExtensionManifest
     public IReadOnlyList<string> Capabilities { get; init; } = [];
 
     public IReadOnlyList<ModelProviderDescriptor> ModelProviders { get; init; } = [];
+
+    /// <summary>
+    /// True when the manifest asserts built-in provenance: the extension ships with the host and its
+    /// code runs in the default <c>AssemblyLoadContext</c>. Defaults to <see langword="false"/>;
+    /// a normal manifest omits the field. Who may set it is enforced at load (see the built-in
+    /// provenance requirement), not here.
+    /// </summary>
+    public bool BuiltIn { get; init; }
+
+    /// <summary>The per-workspace services the extension declares, in declaration order.</summary>
+    public IReadOnlyList<ExtensionWorkspaceService> WorkspaceServices { get; init; } = [];
+
+    /// <summary>
+    /// The activation rules by tool local name, plus the default rule under the <c>*</c> key; a
+    /// declared tool absent from the dictionary is always available.
+    /// </summary>
+    public IReadOnlyDictionary<string, ExtensionToolActivationRule> ToolActivation { get; init; } =
+        FrozenDictionary<string, ExtensionToolActivationRule>.Empty;
+
+    /// <summary>The model-facing aliases by tool local name; a tool absent here keeps its canonical
+    /// <c>&lt;id&gt;__&lt;local&gt;</c> name.</summary>
+    public IReadOnlyDictionary<string, string> ToolAliases { get; init; } =
+        FrozenDictionary<string, string>.Empty;
 
     public JsonElement? SettingsSchema { get; init; }
 
@@ -103,6 +127,8 @@ public sealed partial record ExtensionManifest
                 );
             }
 
+            IReadOnlyList<string> tools = DeclarationArray(root, fileName, "tools");
+
             return new ExtensionManifest
             {
                 Id = id,
@@ -110,8 +136,10 @@ public sealed partial record ExtensionManifest
                 ApiVersion = apiVersion,
                 EntryAssembly = entryAssembly,
                 Runtime = runtime,
-                Tools = DeclarationArray(root, fileName, "tools"),
-                Commands = DeclarationArray(root, fileName, "commands"),
+                BuiltIn = OptionalBuiltIn(root, fileName),
+                Tools = tools,
+                WorkspaceServices = WorkspaceServiceArray(root, fileName),
+                ToolActivation = ToolActivationObject(root, fileName, tools),                Commands = DeclarationArray(root, fileName, "commands"),
                 Hooks = DeclarationArray(root, fileName, "hooks"),
                 Services = DeclarationArray(root, fileName, "services"),
                 Capabilities = StringArray(root, fileName, "capabilities"),
