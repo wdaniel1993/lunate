@@ -17,8 +17,8 @@ global and project descriptors, SHALL run in the default load context (no collec
 copy of a host assembly), and SHALL use the process-wide MSBuild bootstrap exactly once. A built-in
 SHALL NOT be reloadable or unloadable in this version; session end stops its background services.
 `--no-extensions` SHALL still compose the built-in set and its contributions, while skipping
-discovery, trust, third-party loads, extension MCP servers, renderers and widgets, so the
-model-facing behaviour the host ships stays available.
+discovery, trust, third-party loads, and third-party extension MCP servers, renderers and widgets,
+so the model-facing behaviour the host ships stays available.
 
 #### Scenario: A built-in loads through the shared activation path
 
@@ -225,8 +225,8 @@ paths, and a discovered id equal to a built-in id SHALL be skipped naming both s
 dependencies SHALL yield an actionable error. The CLI SHALL compose the host when a session starts —
 the host's first use — for interactive, print and ACP sessions; `--version`, `--help` and
 non-session commands SHALL NOT read the extension store. `--no-extensions` SHALL compose only the
-built-in set, with no store scan, no third-party extension, and no extension MCP server, renderer or
-widget; configured `mcp.json` servers are unaffected. A discovery or load failure SHALL be logged
+built-in set, with no store scan, no third-party extension, and no third-party extension MCP server,
+renderer or widget; configured `mcp.json` servers are unaffected. A discovery or load failure SHALL be logged
 through the host log and SHALL NOT abort the session.
 
 #### Scenario: Manifests are read without loading assemblies

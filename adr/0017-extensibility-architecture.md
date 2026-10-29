@@ -118,8 +118,8 @@ and the order in which they may be published. It records no implementation.
   not reloadable or unloadable in this version; session end stops their background services.
 - `--no-extensions` still composes the built-in set: the C# tools are present today because they
   are core (`src/Lunate.Coding/HarnessFactory.cs:36-39`), and preserving that is part of the
-  ordering rule. The flag still skips store discovery, trust, third-party loads and extension MCP
-  servers/renderers/widgets (`src/Lunate.Coding/InteractiveSession.cs:579`,
+  ordering rule. The flag still skips store discovery, trust, third-party loads and third-party
+  extension MCP servers/renderers/widgets (`src/Lunate.Coding/InteractiveSession.cs:579`,
   `src/Lunate.Coding/PrintMode.cs:157`, `src/Lunate.Coding/ExtensionSession.cs:34-39`).
 
 ### (b) Per-workspace services

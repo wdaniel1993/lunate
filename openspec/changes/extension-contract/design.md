@@ -86,9 +86,10 @@ the trust story intact: a user cannot promote a directory extension to built-in 
 - Built-ins have no install record, no content hash and no trust prompt. `/extensions` shows scope
   `builtin`, never `pending` or `trust-denied`, and offers no uninstall/reload action for them.
 - `--no-extensions` still composes the built-in set, because what the product ships with is not a
-  user extension. It continues to skip discovery, trust, third-party loads, extension MCP servers,
-  renderers and widgets; a built-in that contributes any of those must keep its behaviour identical
-  to today (the flagship contributes tools only). This preserves the current C# behaviour under
+  user extension. It continues to skip discovery, trust, third-party loads and third-party extension
+  MCP servers, renderers and widgets; a built-in that contributes any of those would change
+  `--no-extensions` behaviour and is not allowed until a later decision (the flagship contributes
+  tools only). This preserves the current C# behaviour under
   `--no-extensions`: the C# tools are present today because they are core
   (`src/Lunate.Coding/HarnessFactory.cs:36-39`), and they remain present after migration. The
   current `--no-extensions` skip is at `src/Lunate.Coding/InteractiveSession.cs:579`,
