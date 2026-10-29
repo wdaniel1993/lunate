@@ -21,6 +21,8 @@ namespace Lunate.Tui.Tests;
 /// </remarks>
 public sealed class GuideKeyTableTests
 {
+    private const string GuideHeading = "**Key bindings (one meaning each)**";
+
     /// <summary>
     /// The keys a guide-table row may document without a catalog binding. A fourth kind — a row
     /// for a key no binding has and nothing exempts — is what this file exists to refuse. The
@@ -30,7 +32,9 @@ public sealed class GuideKeyTableTests
     /// </summary>
     private static readonly string[] ExemptUnboundKeys = ["y", "n", "a", "?", "Ctrl+P"];
 
-    private static readonly string[] PageKeys = GuideKeyTableKeys();
+    private static readonly GuideRow[] PageRows = GuideKeyTableRows();
+
+    private static readonly string[] PageKeys = [.. PageRows.SelectMany(row => row.Keys)];
 
     /// <summary>
     /// Every binding the router will answer to must also be in the reader-facing table: a binding
@@ -44,8 +48,8 @@ public sealed class GuideKeyTableTests
             string spelled = KeyPatternFormatter.Describe(binding.Key);
             Assert.True(
                 PageKeys.Contains(spelled, StringComparer.Ordinal),
-                $"the guide key table has no row for the binding '{binding.Description}' ({spelled}); "
-                    + "add its row to keys.json's guideRows and run scripts/docs-sync"
+                $"KeyBindingCatalog's '{spelled}' ({binding.Description}) has no docs/guide.md row; "
+                    + "add it to keys.json's guideRows and run scripts/docs-sync"
             );
         }
     }
@@ -69,14 +73,17 @@ public sealed class GuideKeyTableTests
         Assert.All(
             unbound,
             key =>
+            {
+                GuideRow row = PageRows.First(candidate =>
+                    candidate.Keys.Contains(key, StringComparer.Ordinal)
+                );
                 Assert.True(
                     ExemptUnboundKeys.Contains(key, StringComparer.Ordinal),
-                    $"the guide table keys '{key}', which matches no KeyBindingCatalog binding and is "
-                        + "not one of the exempt rows (the approval letters y, n, a; the help key ?, "
-                        + "gated on an empty idle prompt the context flags cannot express; and the "
-                        + "deliberately-unbound Ctrl+P); if it is meant to route, add it to keys.json "
-                        + "and run scripts/docs-sync, otherwise remove the row from docs/guide.md"
-                )
+                    $"docs/guide.md documents '{key}' and no catalog row has it "
+                        + $"(row: '{row.KeyCell}' — {row.ActionCell}); if it is meant to route, add it "
+                        + "to keys.json and run scripts/docs-sync, otherwise remove the row"
+                );
+            }
         );
     }
 
@@ -85,10 +92,26 @@ public sealed class GuideKeyTableTests
     /// shape the page carries a generated region in, so their disappearance is a failure, not an
     /// empty pass.
     /// </summary>
-    private static string[] GuideKeyTableKeys()
+    private static GuideRow[] GuideKeyTableRows()
     {
         string page = File.ReadAllText(Path.Combine(TestPaths.RepositoryRoot, "docs", "guide.md"));
         string[] lines = page.Split('\n');
+        // The heading is part of the requirement, not decoration: a table moved under another heading is
+        // no longer the guide's key table, and a check that never looks for it passes on a page that lost
+        // the section entirely.
+        int[] headings =
+        [
+            .. lines
+                .Select(line => line.Trim())
+                .Select((trimmed, index) => (trimmed, index))
+                .Where(pair => pair.trimmed == GuideHeading)
+                .Select(pair => pair.index),
+        ];
+        Assert.True(
+            headings.Length == 1,
+            $"docs/guide.md must carry exactly one '{GuideHeading}' heading (found {headings.Length}); "
+                + "it is what makes the table below it the key table and not a table"
+        );
         int[] starts =
         [
             .. lines
@@ -111,6 +134,23 @@ public sealed class GuideKeyTableTests
                 + $"'<!-- keys:end -->' (found {starts.Length} and {ends.Length}); the markers say "
                 + "where the generated key table goes"
         );
+        Assert.True(
+            headings[0] < starts[0],
+            $"'{GuideHeading}' must be above the keys region: the table is read only from under it"
+        );
+        // No other heading may sit between: the nearest heading above the region is the key table's.
+        string? nearest = lines[..starts[0]]
+            .Select(line => line.Trim())
+            .Where(line =>
+                line.StartsWith("**", StringComparison.Ordinal)
+                && line.EndsWith("**", StringComparison.Ordinal)
+                && line.Length > 4
+            )
+            .LastOrDefault();
+        Assert.True(
+            nearest == GuideHeading,
+            $"the keys region must sit under '{GuideHeading}', not under '{nearest}'"
+        );
 
         string[] rows =
         [
@@ -122,26 +162,31 @@ public sealed class GuideKeyTableTests
             "the region between the keys markers is not the generated table shape; run scripts/docs-sync"
         );
 
-        string[] keys = [.. rows[2..].SelectMany(KeyCellKeys)];
+        GuideRow[] parsed = [.. rows[2..].Select(ParseRow)];
         Assert.True(
-            keys.Length > 0,
+            parsed.Length > 0 && parsed.Any(row => row.Keys.Length > 0),
             "the guide key table holds no key cell; the table is empty and no key is documented"
         );
-        return keys;
+        return parsed;
     }
 
-    /// <summary>A key cell spells its keys as the help overlay does, backticked and ' / '-joined.</summary>
-    private static string[] KeyCellKeys(string row)
+    private static GuideRow ParseRow(string row)
     {
         string[] cells = row.Trim().Trim('|').Split(" | ");
         Assert.True(
             cells.Length == 2,
             $"the guide row '{row}' is not a two-column table row; the key table is fixed-shaped"
         );
-        return cells[0]
-            .Split(" / ")
-            .Select(key => key.Trim().Trim('`'))
-            .Where(key => key.Length > 0)
-            .ToArray();
+        string[] keys =
+        [
+            .. cells[0]
+                .Split(" / ")
+                .Select(key => key.Trim().Trim('`'))
+                .Where(key => key.Length > 0),
+        ];
+        return new GuideRow(cells[0], cells[1], keys);
     }
+
+    /// <summary>One table row, kept whole so a failure can quote it back.</summary>
+    private sealed record GuideRow(string KeyCell, string ActionCell, string[] Keys);
 }
