@@ -8,7 +8,8 @@ namespace Lunate.Tui.Tests;
 /// <c>guideRows</c> by <c>scripts/docs-sync</c>. These tests hold the file together on its own terms
 /// — every binding well formed and documented once, every guide row's key cell the rendering of the
 /// bindings it names, and every row that documents a key nothing routes stating why. The document's
-/// copy of the table is checked by <c>scripts/docs-sync --check</c>, so no test reads <c>docs/</c>.
+/// copy of the table is checked by <c>scripts/docs-sync --check</c> and by
+/// <see cref="GuideKeyTableTests"/>, which reads <c>docs/guide.md</c> itself.
 /// </summary>
 public sealed class KeysFileTests
 {
