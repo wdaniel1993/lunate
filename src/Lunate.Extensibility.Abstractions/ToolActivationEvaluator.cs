@@ -74,8 +74,7 @@ public static class ToolActivationEvaluator
                 }
             }
         }
-        catch (Exception exception)
-            when (exception is IOException or UnauthorizedAccessException)
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
             // An unreadable root activates nothing, as it would outside any condition.
         }

@@ -31,11 +31,7 @@ internal static class ExtensionToolActivationFilter
         {
             if (
                 tool is ExtensionToolAdapter adapter
-                && !ToolActivationEvaluator.Evaluate(
-                    adapter.ActivationRule,
-                    root,
-                    gitCommonDir
-                )
+                && !ToolActivationEvaluator.Evaluate(adapter.ActivationRule, root, gitCommonDir)
             )
             {
                 continue;

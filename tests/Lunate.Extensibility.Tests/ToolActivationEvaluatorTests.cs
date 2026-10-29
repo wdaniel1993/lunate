@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using Lunate.Extensibility.Abstractions;
 
 namespace Lunate.Extensibility.Tests;
@@ -217,7 +216,7 @@ public sealed class ToolActivationEvaluatorTests
     {
         using var temp = new TempDirectory();
         string repo = temp.Subdirectory("repo");
-        InitGitRepository(repo);
+        GitTestRepo.Init(repo);
 
         Assert.True(Evaluate(IsGitRepository(), repo), "the repository root itself");
         string nested = temp.Subdirectory("repo/src");
@@ -232,9 +231,9 @@ public sealed class ToolActivationEvaluatorTests
     {
         using var temp = new TempDirectory();
         string repo = temp.Subdirectory("repo");
-        InitGitRepository(repo);
+        GitTestRepo.Init(repo);
         string worktree = temp.Subdirectory("worktree");
-        Git(repo, "worktree", "add", worktree, "--detach");
+        GitTestRepo.Git(repo, "worktree", "add", worktree, "--detach");
 
         // A linked worktree's .git file points at the shared common dir.
         Assert.True(Evaluate(IsGitRepository(), worktree));
@@ -271,47 +270,4 @@ public sealed class ToolActivationEvaluatorTests
 
     private static ExtensionToolActivationRule IsGitRepository() =>
         new(ExtensionToolActivationRule.WorkspaceIsGitRepository, []);
-
-    /// <summary>Initializes a real repository at <paramref name="root"/> with one commit, so
-    /// <c>git worktree add</c> has a stable HEAD.</summary>
-    private static void InitGitRepository(string root)
-    {
-        Git(root, "init", "-q", ".");
-        File.WriteAllText(Path.Combine(root, "README.md"), "readme");
-        Git(root, "add", "-A");
-        Git(
-            root,
-            "-c",
-            "user.email=tests@lunate.local",
-            "-c",
-            "user.name=Lunate Tests",
-            "commit",
-            "-qm",
-            "init"
-        );
-    }
-
-    /// <summary>Runs one git command in <paramref name="root"/>; a non-zero exit fails the test.</summary>
-    private static void Git(string root, params string[] arguments)
-    {
-        var startInfo = new ProcessStartInfo("git")
-        {
-            WorkingDirectory = root,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-        };
-        foreach (string argument in arguments)
-        {
-            startInfo.ArgumentList.Add(argument);
-        }
-
-        using Process process = Process.Start(startInfo)!;
-        string stderr = process.StandardError.ReadToEnd();
-        process.StandardOutput.ReadToEnd();
-        process.WaitForExit();
-        Assert.True(
-            process.ExitCode == 0,
-            $"git {string.Join(' ', arguments)} failed ({process.ExitCode}): {stderr}"
-        );
-    }
 }

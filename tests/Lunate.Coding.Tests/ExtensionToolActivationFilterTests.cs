@@ -22,6 +22,7 @@ public sealed class ExtensionToolActivationFilterTests
         ITool first = Adapter("first", HasFile("first.md"), schema);
         ITool inactive = Adapter("inactive", HasFile("*.sln"), schema);
         ITool unruled = Adapter("unruled", null, schema);
+        File.WriteAllText(temp.File("first.md"), "marker");
         var workspace = new Workspace(temp.Root);
 
         IReadOnlyList<ITool> active = ExtensionToolActivationFilter.ActiveOnly(
@@ -29,7 +30,7 @@ public sealed class ExtensionToolActivationFilterTests
             workspace
         );
 
-        Assert.Equal(["first", "unruled"], active.Select(tool => tool.Name));
+        Assert.Equal(["peak__first", "peak__unruled"], active.Select(tool => tool.Name));
     }
 
     [Fact]
@@ -42,7 +43,7 @@ public sealed class ExtensionToolActivationFilterTests
         var workspace = new Workspace(temp.Root);
 
         Assert.Equal(
-            ["on-mode"],
+            ["peak__on-mode"],
             ExtensionToolActivationFilter.ActiveOnly([tool], workspace).Select(tool => tool.Name)
         );
     }
@@ -68,7 +69,7 @@ public sealed class ExtensionToolActivationFilterTests
         Directory.CreateDirectory(Path.Combine(repo, ".git"));
         var inside = new Workspace(repo);
         Assert.Equal(
-            ["git-mode"],
+            ["peak__git-mode"],
             ExtensionToolActivationFilter.ActiveOnly([tool], inside).Select(tool => tool.Name)
         );
     }

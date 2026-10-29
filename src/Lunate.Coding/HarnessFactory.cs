@@ -132,29 +132,19 @@ internal static class HarnessFactory
     }
 
     /// <summary>
-    /// Whether the workspace root looks like a C# workspace: a <c>.sln</c>, <c>.slnx</c> or
-    /// <c>.csproj</c> file at the root. A cheap bounded enumeration; no Roslyn and no MSBuild is
-    /// touched, so the tools can be composed before anything loads.
+    /// Whether the workspace root looks like a C# workspace: the flagship first-party activation
+    /// rule — a <c>.sln</c>, <c>.slnx</c> or <c>.csproj</c> file at the root — evaluated once,
+    /// through the same evaluator the extension rules go through. One evaluator owns both readings,
+    /// so matching can never drift between the gate and the extension tools. A bounded enumeration;
+    /// no Roslyn and no MSBuild is touched, so the tools can be composed before anything loads.
     /// </summary>
-    internal static bool LooksLikeCSharpWorkspace(string worktreeRoot)
-    {
-        try
-        {
-            foreach (string file in Directory.EnumerateFiles(worktreeRoot))
-            {
-                if (Path.GetExtension(file) is ".sln" or ".slnx" or ".csproj")
-                {
-                    return true;
-                }
-            }
-        }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
-        {
-            // An unreadable root offers no C# tools; the call fails as it would outside a solution.
-        }
+    private static readonly ExtensionToolActivationRule CSharpWorkspaceGateRule = new(
+        ExtensionToolActivationRule.WorkspaceRootHasFile,
+        ["*.sln", "*.slnx", "*.csproj"]
+    );
 
-        return false;
-    }
+    internal static bool LooksLikeCSharpWorkspace(string worktreeRoot) =>
+        ToolActivationEvaluator.Evaluate(CSharpWorkspaceGateRule, worktreeRoot);
 
     /// <summary>
     /// Composes the five <c>cs_*</c> tools, each bound to the workspace root through the registry.
