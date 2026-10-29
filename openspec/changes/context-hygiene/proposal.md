@@ -12,7 +12,8 @@ The inventory also found a promise that is not kept: the spill marker names an a
 - **Concise results.** `ToolResult` gains `FullOutput`: a tool whose answer is a projection of a larger transcript returns the answer in `Output` and the transcript in `FullOutput`; the loop spills the transcript and sends the answer plus its pointer. `bash` adopts it (exit code and stderr as the answer, stdout as the transcript); the other core tools keep today's behaviour.
 - **Stale reads.** A harness-level read ledger records the version a `read` saw (canonical path plus a digest of the LF-normalised text). `edit` and `write` refuse when the version they are based on is no longer current — mutated by the run or changed on disk — and tell the model what changed and that it must re-read. When a read is invalidated, the loop replaces that read result in its in-memory history with a one-line notice, so the next request and the compaction estimate see it; the session file keeps the original entry.
 - **Masking.** `AgentHarnessOptions.ToolOutputMask` makes masking the first step of admission: every tool result is masked before it enters the history, the session entry, the emitted event and the spill file. `HarnessFactory` wires the session's existing exact-value `CredentialRedactor` for session and `--no-session` runs. Redaction at rest stays as defence in depth.
-- Spec deltas for `agent-tools`, `agent-loop` and `agent-sessions`; a new addendum to ADR-0012 records the admission boundary and the contract additions (proposed, awaiting maintainer sign-off).
+- **Placeholder write-back guards.** Because the model now reads `[redacted:<name>]` instead of the value, a result it echoes back into `write` or `edit` would replace the credential with the placeholder and destroy it. `write` refuses content whose placeholder targets a file still holding that name's real value (file byte-identical after refusal); `edit` refuses any placeholder on either side of the edit (deliberately blunt: a marker cannot be mapped back). Child workspace tool sets receive the same redactor, so a spawned workspace carries the same guards.
+- Spec deltas for `agent-tools`, `agent-loop`, `agent-sessions` and `agent-files`; a new addendum to ADR-0012 records the admission boundary and the contract additions (proposed, awaiting maintainer sign-off).
 
 **Not in this change:** pattern-based secret detection (the repository's written rule is exact value only; reversing it needs its own decision), a session format change, model-summarised tool results, sweeping spill files, and any change to image handling.
 
@@ -27,6 +28,7 @@ The inventory also found a promise that is not kept: the spill marker names an a
 - `agent-tools`: the tool result contract (`FullOutput`), token-threshold spill with a pointer, spill files readable through `read`, and the read ledger with its stale-read refusal.
 - `agent-loop`: context admission (masking, concise/spill projection, stale-read projection), tool execution safety, and the compaction trigger measured over the request as built.
 - `agent-sessions`: what a tool entry stores (the model-facing result, not the raw transcript), session-owned spill files, and recorded usage that is the provider's count for the request as built.
+- `agent-files`: the `write` tool's refusal of a placeholder written over a credential value the file still holds, and the `edit` tool's refusal of any placeholder travelling through `old_text` or `new_text`.
 
 ## Impact
 
