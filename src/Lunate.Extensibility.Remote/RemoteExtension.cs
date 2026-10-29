@@ -388,8 +388,7 @@ public sealed partial class RemoteExtension : IExtension, IAsyncDisposable
             manifest.Services
         );
 
-        JsonElement? result = await wire
-            .CallAsync(
+        JsonElement? result = await wire.CallAsync(
                 RemoteProtocol.InitializeMethod,
                 JsonSerializer.SerializeToElement(request, WireJson.Options),
                 timeout: _options.InitializeTimeout,
