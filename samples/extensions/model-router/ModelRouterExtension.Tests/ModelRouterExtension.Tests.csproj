@@ -9,7 +9,7 @@
         <ProjectReference Include="../../../../src/Lunate.Extensibility.Testing/Lunate.Extensibility.Testing.csproj" />
         <ProjectReference Include="../ModelRouterExtension/ModelRouterExtension.csproj" />
         <ProjectReference
-            Include="../../subagents/SubagentsExtension/SubagentsExtension.csproj"
+            Include="../../../../extensions/subagents/SubagentsExtension/SubagentsExtension.csproj"
             ReferenceOutputAssembly="false"
         />
     </ItemGroup>
@@ -26,13 +26,13 @@
             Properties="Configuration=$(Configuration)"
         />
         <MSBuild
-            Projects="$(MSBuildThisFileDirectory)../../subagents/SubagentsExtension/SubagentsExtension.csproj"
+            Projects="$(MSBuildThisFileDirectory)../../../../extensions/subagents/SubagentsExtension/SubagentsExtension.csproj"
             Targets="Build"
             Properties="Configuration=$(Configuration)"
         />
         <ItemGroup>
             <ModelRouterFiles Include="$(MSBuildThisFileDirectory)../ModelRouterExtension/bin/$(Configuration)/$(TargetFramework)/**/*" />
-            <SubagentsFiles Include="$(MSBuildThisFileDirectory)../../subagents/SubagentsExtension/bin/$(Configuration)/$(TargetFramework)/**/*" />
+            <SubagentsFiles Include="$(MSBuildThisFileDirectory)../../../../extensions/subagents/SubagentsExtension/bin/$(Configuration)/$(TargetFramework)/**/*" />
         </ItemGroup>
         <Copy
             SourceFiles="@(ModelRouterFiles)"
