@@ -57,7 +57,12 @@ public sealed class LayeringTests
         var references = new List<(string From, string To)>();
         string repositoryRoot = RepositoryRoot.Find();
 
-        foreach (var directoryName in new[] { "src", "templates", "samples", "tests" })
+        // `extensions` is the supported tier (#242): its projects are extensions like the samples are,
+        // and a graph test that skips the tier would let the supported set drift from every rule the
+        // samples are held to.
+        foreach (
+            var directoryName in new[] { "src", "templates", "samples", "extensions", "tests" }
+        )
         {
             var projectRoot = Path.Combine(repositoryRoot, directoryName);
             if (!Directory.Exists(projectRoot))
