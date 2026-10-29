@@ -389,27 +389,43 @@ lets `/extensions` report a stable reason. It also keeps `FunctionInvokingChatCl
   (`src/Lunate.Extensibility/ExtensionLoader.Load.cs:229-232`,
   `src/Lunate.Extensibility/ExtensionLoader.cs:201-204`).
 
-### 5.5 The MCP server applies the same rule
+### 5.5 The MCP server applies the same rule, through the same evaluator
 
 `lunate mcp roslyn` (#274) lists the five `cs_*` tools today whether or not the workspace has a
 solution, and answers a call with a tool error naming the missing `.sln`/`.slnx`
-(`docs/mcp-roslyn.md`). Left as it is, the same five tools would have two availability models: one
-in chat, one over MCP, and `toolActivation` would mean whatever composed the registry.
+(`docs/mcp-roslyn.md`). Left as it is, the same five tools would have two availability models: one in
+chat, one over MCP, and `toolActivation` would mean whatever composed the registry.
 
-**The server evaluates the rule at startup, as the chat path does.** In a workspace with no
-matching file it lists no `cs_*` tool and writes **one line to stderr** naming the rule and the
-patterns it looked for; stdout stays protocol-pure (`McpRoslynStdoutPurityTests`). A solution
-removed after startup is not re-evaluated — the listed tool stays listed and answers with the
-existing fix-it error, because the rule is a composition-time decision and the call path must still
-explain itself.
+**One evaluator, two callers.** The server does not reimplement the rule; it calls the host evaluator
+of §5.2–5.3, for the root it is answering for:
 
-Rationale: an MCP client cannot ask why a tool is missing, and five tools that are guaranteed to
-error cost the calling model turns before it learns something a startup line says once. Absence plus
-one honest line is the better signal; the per-call error is kept for the case the rule cannot cover.
+- **Which root.** The client's MCP `roots` when it declares them (the `roots` capability and its
+  `roots/list` answer); otherwise the server's working directory. A client that declares no roots is
+  answered for the directory the server was launched in, which is the deployment the docs already
+  recommend (`docs/mcp-roslyn.md:22-24`).
+- **No matching root.** If no root matches — no `.sln`, `.slnx` or `.csproj` at that root — no `cs_*`
+  tool is listed, and the server writes one line to stderr naming the rule and the patterns it looked
+  for. stdout stays protocol-pure (`McpRoslynStdoutPurityTests`). The absence is the same answer the
+  chat path gives in that directory, which is the point.
+- **A root changes.** On `notifications/roots/list_changed` the server re-evaluates every root and,
+  when the offered set changed, sends `notifications/tools/list_changed`. A client that did not
+  declare `listChanged` support keeps the snapshot it received at `initialize`: its tool list cannot
+  be updated without a restart, and the server does not pretend otherwise.
+- **A solution disappears with no roots event.** The listed tool stays listed and answers with the
+  existing fix-it error, because the call path must still explain itself when the composition it was
+  built from has gone stale.
 
-This deliberately changes what #274's test asserts: "a repo with no solution still lists all five"
-becomes "lists none, says why on stderr, keeps stdout pure" — and the fix-it error is asserted on a
-tool listed before its solution was removed.
+Rationale: with `list_changed` the absence is correctable, so the server can be honest at
+`initialize` — a client that adds a solution gets the tools without restarting. Where the client
+cannot receive the notification, the snapshot *is* the contract, and the per-call error remains for
+the stale case. That is better than the startup-only ruling this design first carried, which made
+the absence permanent until a restart; the per-call error is kept as the explanation of a stale
+composition, not as the primary availability signal.
+
+This changes what #274's test asserts: "a repo with no solution still lists all five" becomes "lists
+none, says why on stderr, keeps stdout pure", plus "adding the solution announces
+`tools/list_changed`", and the fix-it error is asserted on a tool listed before its solution was
+removed with no roots event.
 
 ## 6. (d) `cs_*` stays stable: the mechanism
 
@@ -490,7 +506,38 @@ The TUI's name-based summaries (`src/Lunate.Tui/ToolBlocks/ToolArgsSummary.cs:12
 the model-facing string is still `cs_*`. Whether renderers should receive structured result data is
 the open question below, deliberately not decided here.
 
-## 7. Rollout
+## 7. Structured results: `StructuredContent` and the renderer contract
+
+The audit's P1 renderer-parity item (`docs/eval/roslyn-surface-audit.md:118-121`): `ToolResult.Details`
+is UI-only and typed (`src/Lunate.Roslyn/CsDiagnosticsTool.cs:79`, `:96`), while extension renderers
+receive only `ResultText` (`docs/eval/roslyn-surface-audit.md:69-70`). Publishing Abstractions stable
+without a structured channel would freeze a renderer surface that can only parse text.
+
+**Decision: defined and populated now, not reserved empty.**
+
+- `ToolResultView` gains `StructuredContent` (a JSON object, JSON-serializable per ADR-0017
+  principle 3) and `ContentKind` (for example `lunate.diagnostics/v1`, `lunate.diff/v1`,
+  `lunate.command-result/v1`). A renderer dispatches on the kind and reads the payload; it never
+  parses `ResultText` to rebuild what the tool already knew.
+- Tool declarations gain an **optional output schema**, so a consumer can version-check or reject a
+  payload it does not understand instead of rendering it wrongly.
+- The names and shape mirror MCP's `structuredContent` and `outputSchema`, so the MCP adapter maps in
+  both directions: a configured MCP server's structured result arrives in `StructuredContent`, and
+  `lunate mcp roslyn` emits `structuredContent` for every `cs_*` result.
+- **Populated now for what already has typed details:** the five `cs_*` tools (diagnostics, symbol,
+  references, outline, rename plan), the edit and write diffs, and bash exit status with the command
+  line and duration. The projection is mechanical, and `Details` itself stays internal — it is a
+  handle, not a published shape.
+- **The model still sees `ResultText`, unchanged.** `StructuredContent` is for renderers, export,
+  `--json` and MCP; prompt behaviour does not move, so this cannot change what a model is told.
+- **The renderer API may stay minimal for 0.2**, but it receives `StructuredContent` from day one, so
+  no text-only surface is frozen and a richer renderer later needs no contract change.
+
+**What this does not decide.** The JSON schemas themselves (field lists per kind) belong with the
+implementation change; this contract fixes the channel, the kind names and the alignment with MCP,
+which is what #237's stability promise needs.
+
+## 8. Rollout
 
 | Phase | Change | Contract state |
 | --- | --- | --- |
@@ -503,7 +550,7 @@ Phase 2 and 3 are separate OpenSpec changes and separate PRs. The API version mo
 for the additive contract in phase 2 (`ExtensionApi.Current`, `src/Lunate.Extensibility.Abstractions/ExtensionApi.cs:7`);
 the exact version is set in that change.
 
-## 8. Deliberate non-goals and open questions
+## 9. Deliberate non-goals and open questions
 
 **Not done here (and not implied by the contract):**
 
@@ -518,15 +565,10 @@ the exact version is set in that change.
 - No remote/out-of-process per-workspace service lifecycle in v1 (4.1).
 - No `FunctionInvokingChatClient`, no `AIFunctionFactory`, no parallel tool-execution layer.
 
-**Open question for the maintainer — structured result data for renderers.** `ToolResult.Details`
-is UI-only and typed today (`src/Lunate.Roslyn/CsDiagnosticsTool.cs:79`, `:96`), and extension
-renderers receive only `ResultText` (`docs/eval/roslyn-surface-audit.md:69-70`). Should
-`ToolResultView` carry `StructuredContent` so a renderer can render a result without parsing text?
-That is the audit's P1 renderer-parity item (`docs/eval/roslyn-surface-audit.md:118-121`). It is
-recorded here as **open**; this design does not decide the data shape, the JSON contract or the
-renderer API.
+**Decided — structured result data for renderers.** The maintainer ruled it part of the stable
+contract, defined and populated now; §7 carries the shape, the populated set and the MCP alignment.
 
-## 9. Verification of this change
+## 10. Verification of this change
 
 - `openspec validate --all --strict` passes.
 - `python3 scripts/docs-sync --check` passes (no generated regions change).

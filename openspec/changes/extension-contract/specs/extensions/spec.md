@@ -167,19 +167,85 @@ registered/declared counts SHALL be unchanged.
 - **WHEN** it is parsed
 - **THEN** the error names the manifest, the tool key and the field, and the extension does not load
 
-#### Scenario: The MCP server applies the same rule at startup
+#### Scenario: The MCP server evaluates the rule through the same evaluator
 
-- **GIVEN** a workspace with no file matching the built-in's activation patterns
-- **WHEN** `lunate mcp roslyn` starts
-- **THEN** `tools/list` contains no `cs_*` tool, stderr carries exactly one line naming the rule and
-  the patterns it looked for, and stdout carries nothing but protocol messages
+- **GIVEN** `lunate mcp roslyn` running against a root, and the chat path's activation evaluator
+- **WHEN** the server composes its tool list
+- **THEN** it asks that evaluator rather than a copy of the rule, and a client's declared MCP `roots`
+  are the roots evaluated; a client that declares no roots is answered for the server's working
+  directory
 
-#### Scenario: A solution removed after startup keeps the fix-it error
+#### Scenario: A root with no solution lists no cs_* tool
 
-- **GIVEN** an MCP server started in a workspace whose tool was listed because a `.sln` was present
-- **WHEN** the file is removed and the tool is called
-- **THEN** the call returns a tool error naming the missing file, and the tool remains listed
-  because activation is a composition-time decision
+- **GIVEN** a root with no `.sln`, `.slnx` or `.csproj`
+- **WHEN** `tools/list` is answered
+- **THEN** it contains no `cs_*` tool, stderr carries exactly one line naming the rule and the
+  patterns it looked for, and stdout carries nothing but protocol messages
+
+#### Scenario: A new root announces tools/list_changed
+
+- **GIVEN** a client that declared `listChanged` support, connected to a root that matched no rule
+- **WHEN** the root gains a `.csproj` and the client sends `notifications/roots/list_changed`
+- **THEN** the server re-evaluates, sends `notifications/tools/list_changed`, and a following
+  `tools/list` contains the `cs_*` tools
+
+#### Scenario: A client without listChanged keeps its snapshot
+
+- **GIVEN** a client that did not declare `listChanged` support
+- **WHEN** its roots change
+- **THEN** the server sends no `tools/list_changed`, and the list the client received at
+  `initialize` remains what it is served until it reconnects
+
+#### Scenario: A solution removed without a roots event keeps the fix-it error
+
+- **GIVEN** a listed `cs_*` tool whose root no longer holds the `.sln`/`.slnx` and no roots event was
+  sent
+- **WHEN** the tool is called
+- **THEN** the call returns a tool error naming the missing file, and the tool stays listed because
+  the composition it was built from has gone stale
+
+### Requirement: Structured tool results
+
+`ToolResultView` SHALL carry `StructuredContent` — a JSON object, JSON-serializable per ADR-0017
+principle 3 — together with a `ContentKind` naming its schema (for example `lunate.diagnostics/v1`,
+`lunate.diff/v1`, `lunate.command-result/v1`). A tool declaration SHALL be able to state an optional
+output schema for its structured payload. The field names and shape SHALL mirror MCP's
+`structuredContent` and `outputSchema`, so the MCP adapter maps structured results in both
+directions. Built-in tools that already produce typed details SHALL project them into
+`StructuredContent`; the internal `Details` handle SHALL NOT be published. The model SHALL continue
+to receive `ResultText` exactly as before, and `StructuredContent` SHALL be the channel for
+renderers, export, `--json` and MCP. The extension renderer surface SHALL receive
+`StructuredContent` from the first stable release even if the renderer API itself stays minimal.
+
+#### Scenario: A diagnostics result carries a typed payload
+
+- **GIVEN** a `cs_diagnostics` call that returns two compiler errors
+- **WHEN** the result is projected
+- **THEN** `StructuredContent` holds the diagnostics and `ContentKind` is `lunate.diagnostics/v1`, and
+  no consumer needs to parse `ResultText` to count or locate them
+
+#### Scenario: An extension renderer renders from StructuredContent
+
+- **GIVEN** an extension renderer for `lunate.diagnostics/v1`
+- **WHEN** it is handed a `cs_diagnostics` result view
+- **THEN** it dispatches on `ContentKind` and renders from `StructuredContent` without reading
+  `ResultText`, and a result whose kind it does not know is rendered as text with a note rather than
+  misrendered
+
+#### Scenario: The model's prompt is unchanged
+
+- **GIVEN** a tool result that carries `StructuredContent`
+- **WHEN** the loop builds the next model request
+- **THEN** the model receives the same `ResultText` it received before this contract, and the
+  structured payload appears nowhere in the prompt
+
+#### Scenario: MCP structured results map in both directions
+
+- **GIVEN** a configured MCP server that returns `structuredContent`, and `lunate mcp roslyn` serving
+  `cs_diagnostics`
+- **WHEN** each result crosses the adapter
+- **THEN** the former arrives as `StructuredContent` with a kind derived from its schema, and the
+  latter is emitted as MCP `structuredContent` alongside its text content
 
 ### Requirement: Stable tool aliases
 
