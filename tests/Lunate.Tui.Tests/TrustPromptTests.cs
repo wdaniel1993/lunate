@@ -240,6 +240,27 @@ public sealed class TrustPromptRendererTests
         }
     }
 
+    [Theory]
+    [InlineData(80)]
+    [InlineData(100)]
+    [InlineData(120)]
+    public void Both_choices_render_at_the_issue_widths(int width)
+    {
+        string[] lines =
+        [
+            .. TrustPromptRenderer.PlainLines(new TrustPromptModel(LongTitle, [], 0, 0), width),
+        ];
+
+        string joined = string.Concat(lines);
+        Assert.Contains(Question(LongTitle), joined, StringComparison.Ordinal);
+        Assert.Contains("[y]es", joined, StringComparison.Ordinal);
+        Assert.Contains("[n]o", joined, StringComparison.Ordinal);
+        Assert.All(
+            lines,
+            line => Assert.True(CellText.Width(line) <= width, $"'{line}' exceeds {width} cells")
+        );
+    }
+
     [Fact]
     public void A_count_label_that_overflows_is_dropped_before_the_title()
     {
