@@ -10,7 +10,7 @@ namespace Lunate.Coding.Tests;
 /// </summary>
 public sealed class BashGuardTests
 {
-    private static readonly ResolvedShell Shell = new(ShellKind.Bash, "/bin/bash", "bash", ["-c"]);
+    internal static readonly ResolvedShell Shell = new(ShellKind.Bash, "/bin/bash", "bash", ["-c"]);
 
     [Fact]
     public void The_macos_plan_wraps_the_shell_in_sandbox_exec_and_denies_the_targets()
@@ -33,10 +33,7 @@ public sealed class BashGuardTests
         string canonicalAuth = PathCanonical.Canonicalize(Path.Combine(state, "auth.json"));
         Assert.Contains($@"(deny file-write* (subpath ""{canonicalState}""))", ProfileArg(launch));
         Assert.Contains($@"(deny file-write* (subpath ""{canonicalPrefix}""))", ProfileArg(launch));
-        Assert.Contains(
-            $@"(deny file-read* (literal ""{canonicalAuth}""))",
-            ProfileArg(launch)
-        );
+        Assert.Contains($@"(deny file-read* (literal ""{canonicalAuth}""))", ProfileArg(launch));
         Assert.Null(launch.Notice);
     }
 
@@ -49,7 +46,10 @@ public sealed class BashGuardTests
         string auth = Path.Combine(state, "auth.json");
         string ws = Path.Combine(temp.Root, "ws");
         var target = new GuardTarget(state, auth, prefix, temp.Root);
-        var guard = new BashGuard(target, Fake.Unix(macOs: false, bwrap: "/usr/bin/bwrap", authExists: true));
+        var guard = new BashGuard(
+            target,
+            Fake.Unix(macOs: false, bwrap: "/usr/bin/bwrap", authExists: true)
+        );
 
         var launch = guard.Wrap(Shell, ws);
 
@@ -114,7 +114,10 @@ public sealed class BashGuardTests
     public void Linux_without_bwrap_or_setpriv_says_the_guard_is_unavailable()
     {
         using var temp = new TempDirectory();
-        var guard = new BashGuard(Target(temp.Root), Fake.Unix(macOs: false, bwrap: null, setpriv: null));
+        var guard = new BashGuard(
+            Target(temp.Root),
+            Fake.Unix(macOs: false, bwrap: null, setpriv: null)
+        );
 
         var launch = guard.Wrap(Shell, temp.Root);
 
@@ -146,7 +149,10 @@ public sealed class BashGuardTests
                 Path.Combine(profile, ".local"),
             ],
             localChildren:
-            [Path.Combine(profile, ".local", "bin"), Path.Combine(profile, ".local", "share")]
+            [
+                Path.Combine(profile, ".local", "bin"),
+                Path.Combine(profile, ".local", "share"),
+            ]
         );
         var guard = new BashGuard(target, probe);
 
@@ -202,6 +208,42 @@ public sealed class BashGuardTests
         Assert.Contains("unconfined", launch.Notice ?? "");
     }
 
+    [Fact]
+    public void A_guard_does_not_wrap_a_shell_that_does_not_exist()
+    {
+        using var temp = new TempDirectory();
+        var guard = new BashGuard(
+            Target(temp.Root),
+            Fake.Unix(macOs: true, sandboxExec: true, shellExists: false)
+        );
+
+        var launch = guard.Wrap(Shell, Path.Combine(temp.Root, "ws"));
+
+        Assert.False(launch.Wrapped);
+        Assert.Equal("none", launch.Mechanism);
+        Assert.Equal("/bin/bash", launch.FileName);
+        Assert.Equal(["-c"], launch.ArgumentsPrefix);
+        Assert.Null(launch.Notice);
+    }
+
+    [Fact]
+    public void The_linux_plan_does_not_wrap_a_shell_that_does_not_exist_either()
+    {
+        using var temp = new TempDirectory();
+        var guard = new BashGuard(
+            Target(temp.Root),
+            Fake.Unix(macOs: false, bwrap: "/usr/bin/bwrap", shellExists: false)
+        );
+
+        var launch = guard.Wrap(Shell, temp.Root);
+
+        Assert.False(launch.Wrapped);
+        Assert.Equal("none", launch.Mechanism);
+        Assert.Equal("/bin/bash", launch.FileName);
+        Assert.Equal(["-c"], launch.ArgumentsPrefix);
+        Assert.Null(launch.Notice);
+    }
+
     [Theory]
     [InlineData("macOS sandbox-exec")]
     [InlineData("Linux bubblewrap")]
@@ -211,7 +253,12 @@ public sealed class BashGuardTests
     {
         using var temp = new TempDirectory();
         string state = Path.Combine(temp.Root, "state");
-        var target = new GuardTarget(state, Path.Combine(state, "auth.json"), Path.Combine(temp.Root, "prefix"), temp.Root);
+        var target = new GuardTarget(
+            state,
+            Path.Combine(state, "auth.json"),
+            Path.Combine(temp.Root, "prefix"),
+            temp.Root
+        );
         var probe = mechanism switch
         {
             "macOS sandbox-exec" => Fake.Unix(macOs: true, sandboxExec: true),
@@ -305,60 +352,102 @@ public sealed class BashGuardTests
     }
 
     private static GuardTarget Target(string root) =>
-        new(Path.Combine(root, "state"), Path.Combine(root, "state", "auth.json"), Path.Combine(root, "prefix"), root);
+        new(
+            Path.Combine(root, "state"),
+            Path.Combine(root, "state", "auth.json"),
+            Path.Combine(root, "prefix"),
+            root
+        );
 
     private static string ProfileArg(GuardCommand launch) => launch.ArgumentsPrefix[1];
+}
 
-    private static class Fake
+/// <summary>The probe fake, file-scope so sibling guard test classes reuse it.</summary>
+internal static class Fake
+{
+    internal static GuardProbe Unix(
+        bool macOs,
+        bool sandboxExec = false,
+        string? bwrap = null,
+        string? setpriv = null,
+        string bwrapOutput = "",
+        string setprivOutput = "",
+        bool? apparmorRestrictsUserns = null,
+        IReadOnlyList<string>? profileChildren = null,
+        IReadOnlyList<string>? localChildren = null,
+        bool authExists = false,
+        bool shellExists = true,
+        bool isWindows = false
+    )
     {
-        internal static GuardProbe Unix(
-            bool macOs,
-            bool sandboxExec = false,
-            string? bwrap = null,
-            string? setpriv = null,
-            string bwrapOutput = "",
-            string setprivOutput = "",
-            bool? apparmorRestrictsUserns = null,
-            IReadOnlyList<string>? profileChildren = null,
-            IReadOnlyList<string>? localChildren = null,
-            bool authExists = false,
-            bool isWindows = false
-        )
-        {
-            string? byName(string name) =>
-                (name, sandboxExec, bwrap, setpriv) switch
-                {
-                    ("sandbox-exec", true, _, _) => "/usr/bin/sandbox-exec",
-                    ("bwrap", _, not null, _) => "/usr/bin/bwrap",
-                    ("setpriv", _, _, not null) => "/usr/bin/setpriv",
-                    _ => null,
-                };
+        string? byName(string name) =>
+            (name, sandboxExec, bwrap, setpriv) switch
+            {
+                ("sandbox-exec", true, _, _) => "/usr/bin/sandbox-exec",
+                ("bwrap", _, not null, _) => "/usr/bin/bwrap",
+                ("setpriv", _, _, not null) => "/usr/bin/setpriv",
+                _ => null,
+            };
 
-            return new GuardProbe(
-                IsWindows: isWindows,
-                IsMacOs: macOs,
-                IsLinux: !macOs && !isWindows,
-                FindOnPath: byName,
-                FileExists: path =>
-                    sandboxExec && path == "/usr/bin/sandbox-exec"
-                    || authExists && path.EndsWith("auth.json", StringComparison.Ordinal),
-                DirectoryExists: _ => true,
-                GetEnvironmentVariable: _ => null,
-                ReadTextFile: _ =>
-                    apparmorRestrictsUserns is not { } value ? null : value ? "1" : "0",
-                ListDirectories: path =>
-                    path.EndsWith(".local", StringComparison.Ordinal)
-                        ? localChildren ?? []
-                        : path is "/tmp" or "/var/tmp"
-                            ? []
-                            : profileChildren ?? [],
-                Run: (fileName, _) =>
-                    fileName.Contains("bwrap", StringComparison.Ordinal)
-                        ? (bwrapOutput.Length == 0 ? 0 : 1, bwrapOutput)
-                        : fileName.Contains("setpriv", StringComparison.Ordinal)
-                            ? (setprivOutput.Length == 0 ? 0 : 1, setprivOutput)
-                            : (0, "")
-            );
+        return new GuardProbe(
+            IsWindows: isWindows,
+            IsMacOs: macOs,
+            IsLinux: !macOs && !isWindows,
+            FindOnPath: byName,
+            FileExists: path =>
+                path == BashGuardTests.Shell.ExecutablePath
+                    ? shellExists
+                    : sandboxExec && path == "/usr/bin/sandbox-exec"
+                        || authExists && path.EndsWith("auth.json", StringComparison.Ordinal),
+            DirectoryExists: _ => true,
+            GetEnvironmentVariable: _ => null,
+            ReadTextFile: _ =>
+                apparmorRestrictsUserns is not { } value ? null
+                : value ? "1"
+                : "0",
+            ListDirectories: path =>
+                path.EndsWith(".local", StringComparison.Ordinal) ? localChildren ?? []
+                : path is "/tmp" or "/var/tmp" ? []
+                : profileChildren ?? [],
+            Run: (fileName, _) =>
+                fileName.Contains("bwrap", StringComparison.Ordinal)
+                    ? (bwrapOutput.Length == 0 ? 0 : 1, bwrapOutput)
+                : fileName.Contains("setpriv", StringComparison.Ordinal)
+                    ? (setprivOutput.Length == 0 ? 0 : 1, setprivOutput)
+                : (0, "")
+        );
+    }
+}
+
+/// <summary>
+/// The refusal's relative-path decision must anchor to the workspace, not to the process's current
+/// directory (which in production is the workspace): the chdir test mutates process state, so it
+/// never runs in parallel with another collection.
+/// </summary>
+[Collection(BashGuardCwdCollection.Name)]
+public sealed class BashGuardProcessDirectoryTests
+{
+    [Fact]
+    public void A_relative_redirect_is_never_refused_even_when_the_process_directory_is_denied()
+    {
+        using var temp = new TempDirectory();
+        string state = Path.Combine(temp.Root, "state");
+        string prefix = Path.Combine(temp.Root, "prefix");
+        Directory.CreateDirectory(prefix);
+        var target = new GuardTarget(state, Path.Combine(state, "auth.json"), prefix, temp.Root);
+        var guard = new BashGuard(target, Fake.Unix(macOs: true, sandboxExec: true));
+        var launch = guard.Wrap(BashGuardTests.Shell, Path.Combine(temp.Root, "ws"));
+
+        string previous = Environment.CurrentDirectory;
+        try
+        {
+            Environment.CurrentDirectory = prefix;
+
+            Assert.Null(guard.Refusal("echo hi > rel/out.txt", launch));
+        }
+        finally
+        {
+            Environment.CurrentDirectory = previous;
         }
     }
 }
