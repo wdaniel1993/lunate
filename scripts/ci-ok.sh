@@ -19,6 +19,7 @@
 #   VERIFY      needs.verify.result
 #   POWERSHELL  needs.verify-powershell.result
 #   DOCS        needs.verify-docs.result
+#   PERF        needs.perf.result
 #
 # Exits 0 only when the run that actually happened is the gate the profile selected. Every other
 # outcome -- a draft, a skipped plan, a failed or skipped leg, a leg the profile did not select, an
@@ -38,9 +39,9 @@ fail() {
 decide() {
     local event="${EVENT_NAME:-}" draft="${DRAFT:-}" plan="${PLAN:-}"
     local profile="${PROFILE:-}" verify="${VERIFY:-}" powershell="${POWERSHELL:-}"
-    local docs="${DOCS:-}"
+    local docs="${DOCS:-}" perf="${PERF:-}"
 
-    echo "ci-ok: event=$event draft=$draft plan=$plan profile=$profile verify=$verify verify-powershell=$powershell verify-docs=$docs"
+    echo "ci-ok: event=$event draft=$draft plan=$plan profile=$profile verify=$verify verify-powershell=$powershell verify-docs=$docs perf=$perf"
 
     if [ "$event" = "pull_request" ] && [ "$draft" != "false" ]; then
         fail "the head is a draft (draft=$draft), so no gate ran; a draft push costs no matrix, but the required check still has to report. Mark the pull request ready for review and this check runs again."
@@ -53,13 +54,13 @@ decide() {
             if [ "$docs" != "success" ]; then
                 fail "the docs profile did not succeed (verify-docs=$docs)"
             fi
-            if [ "$verify" != "skipped" ] || [ "$powershell" != "skipped" ]; then
-                fail "profile=docs, yet a full leg ran (verify=$verify, verify-powershell=$powershell)"
+            if [ "$verify" != "skipped" ] || [ "$powershell" != "skipped" ] || [ "$perf" != "skipped" ]; then
+                fail "profile=docs, yet a full leg ran (verify=$verify, verify-powershell=$powershell, perf=$perf)"
             fi
             ;;
         full)
-            if [ "$verify" != "success" ] || [ "$powershell" != "success" ]; then
-                fail "a required job did not succeed (verify=$verify, verify-powershell=$powershell)"
+            if [ "$verify" != "success" ] || [ "$powershell" != "success" ] || [ "$perf" != "success" ]; then
+                fail "a required job did not succeed (verify=$verify, verify-powershell=$powershell, perf=$perf)"
             fi
             if [ "$docs" != "skipped" ]; then
                 fail "profile=full, yet the docs leg ran (verify-docs=$docs)"
@@ -83,7 +84,7 @@ _job_block() {
 
 _run_from_env() {
     env EVENT_NAME="$1" DRAFT="$2" PLAN="$3" PROFILE="$4" \
-        VERIFY="$5" POWERSHELL="$6" DOCS="$7" \
+        VERIFY="$5" POWERSHELL="$6" DOCS="$7" PERF="$8" \
         bash "${SCRIPT_DIR}/ci-ok.sh"
 }
 
@@ -134,39 +135,45 @@ self_test() {
 
     # The required context must never be skipped on a head that can be merged.
     _self_case "a draft pull request fails instead of skipping" 1 "draft" \
-        pull_request true skipped "" skipped skipped skipped
+        pull_request true skipped "" skipped skipped skipped skipped
     _self_case "a draft with no job results still fails for the draft" 1 "draft" \
-        pull_request true skipped "" "" "" ""
+        pull_request true skipped "" "" "" "" ""
     _self_case "a pull request whose draft flag did not render fails closed" 1 "draft" \
-        pull_request "" success full success success skipped
+        pull_request "" success full success success success skipped success
 
     # The profiles that can pass.
     _self_case "a full gate that passed" 0 "the full gate succeeded" \
-        pull_request false success full success success skipped
+        pull_request false success full success success skipped success
     _self_case "a docs gate that passed" 0 "the docs gate succeeded" \
-        pull_request false success docs skipped skipped success
+        pull_request false success docs skipped skipped success skipped
     _self_case "a push to main" 0 "the full gate succeeded" \
-        push "" success full success success skipped
+        push "" success full success success skipped success
     _self_case "a manual dispatch" 0 "the full gate succeeded" \
-        workflow_dispatch "" success full success success skipped
+        workflow_dispatch "" success full success success skipped success
 
     # Every way the run that happened can fail to be the gate:
     _self_case "a failed verify leg" 1 "did not succeed" \
-        pull_request false success full failure success skipped
+        pull_request false success full failure success skipped success
     _self_case "a failed windows leg" 1 "did not succeed" \
-        pull_request false success full success failure skipped
+        pull_request false success full success failure skipped success
+    _self_case "a failed perf leg" 1 "did not succeed" \
+        pull_request false success full success success skipped failure
     _self_case "a failed docs leg" 1 "did not succeed" \
-        pull_request false success docs skipped skipped failure
+        pull_request false success docs skipped skipped failure skipped
     _self_case "a skipped verify leg on the full profile" 1 "did not succeed" \
-        pull_request false success full skipped success skipped
+        pull_request false success full skipped success skipped success
+    _self_case "a skipped perf leg on the full profile" 1 "did not succeed" \
+        pull_request false success full success success skipped skipped
     _self_case "the docs leg ran on a full profile" 1 "docs leg ran" \
-        pull_request false success full success success success
+        pull_request false success full success success success success
     _self_case "the matrix ran on a docs profile" 1 "full leg ran" \
-        pull_request false success docs success skipped success
+        pull_request false success docs success skipped success success
+    _self_case "the perf leg ran on a docs profile" 1 "full leg ran" \
+        pull_request false success docs skipped skipped success success
     _self_case "a skipped plan on a non-draft head" 1 "plan job did not succeed" \
-        pull_request false skipped "" skipped skipped skipped
+        pull_request false skipped "" skipped skipped skipped skipped
     _self_case "an unreadable profile" 1 "no usable profile" \
-        pull_request false success "" skipped skipped skipped
+        pull_request false success "" skipped skipped skipped skipped
 
     # The wiring this script's decisions rely on.
     _self_workflow "ci-ok must not gate itself on draft (a skip reads as satisfied)" \
@@ -177,6 +184,12 @@ self_test() {
         ci-ok 'scripts/ci-ok\.sh' 1
     _self_workflow "plan must keep the draft gate, so a draft push costs no matrix" \
         plan '^    if:.*draft' 1
+    _self_workflow "ci-ok must take the perf leg as a needed job" \
+        ci-ok '^    needs: \[plan, verify, verify-powershell, verify-docs, perf\]' 1
+    _self_workflow "the perf leg must run the dedicated startup measurement" \
+        perf 'scripts/perf\.sh' 1
+    _self_workflow "the perf leg must run on the full profile only" \
+        perf "^    if: needs\.plan\.outputs\.profile == 'full'" 1
 
     if [ "$FAILURES" -ne 0 ]; then
         echo "self-test: FAIL: ${FAILURES} of ${CASES} checks failed" >&2
