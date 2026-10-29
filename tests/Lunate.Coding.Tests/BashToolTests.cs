@@ -195,8 +195,14 @@ public sealed class BashToolTests
         // number in the file may already name a process this test never started; see
         // ChildProcessProbe for the failure that came from reading it late.
         using var window = new CancellationTokenSource();
-        var watched = ChildProcessProbe.AwaitWrittenAsync(pidFile, commandStarted, window.Token);
-        var result = await RunAsync(temp, TreeCommand(), timeout);
+        Task<ToolResult> execution = RunAsync(temp, TreeCommand(), timeout);
+        var watched = ChildProcessProbe.AwaitWrittenAsync(
+            pidFile,
+            commandStarted,
+            window.Token,
+            ToolWatch(temp, execution)
+        );
+        var result = await execution;
         window.Cancel();
         var grandchild = await watched;
 
@@ -222,8 +228,13 @@ public sealed class BashToolTests
         // read after the kill no longer names the process the kill ended. The normal path here is
         // the pin landing before the cancellation, so the run cannot end first unless it failed.
         using var window = new CancellationTokenSource();
-        var watched = ChildProcessProbe.AwaitWrittenAsync(pidFile, commandStarted, window.Token);
         var execution = tool.ExecuteAsync(CommandArgs(TreeCommand()), Context, cts.Token);
+        var watched = ChildProcessProbe.AwaitWrittenAsync(
+            pidFile,
+            commandStarted,
+            window.Token,
+            ToolWatch(temp, execution)
+        );
         if (await Task.WhenAny(watched, execution) == execution)
         {
             window.Cancel();
@@ -297,6 +308,17 @@ public sealed class BashToolTests
 
     private static JsonElement CommandArgs(string command) =>
         Args(JsonSerializer.Serialize(new { command }));
+
+    /// <summary>
+    /// The tool run's own state, for a probe failure that has to say whether the shell that should
+    /// write the pid ever ran and what the tool ended with.
+    /// </summary>
+    private static CommandUnderTest ToolWatch(TempDirectory temp, Task<ToolResult> run) =>
+        new(temp.Root)
+        {
+            Run = run,
+            DescribeOutcome = () => run.Result.Output.ReplaceLineEndings(" ").Trim(),
+        };
 
     private static async Task<ToolResult> RunAsync(
         TempDirectory temp,

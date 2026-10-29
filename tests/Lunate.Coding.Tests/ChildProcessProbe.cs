@@ -38,7 +38,7 @@ internal readonly record struct ChildProcess(int Pid, string Name, DateTime Star
 /// naming a provider host where the shell that wrote the file should have been. So: an identity is
 /// taken before the kill, and it has to be a process the command started.
 /// </remarks>
-internal static class ChildProcessProbe
+internal static partial class ChildProcessProbe
 {
     /// <summary>
     /// Waits for the pid a spawned child writes to <paramref name="pidFile"/>, and pins the process
@@ -48,18 +48,46 @@ internal static class ChildProcessProbe
     /// <paramref name="window"/> closes when the command under test is over, because a pid read
     /// after the kill no longer says which process the kill ended.
     /// </summary>
+    /// <remarks>
+    /// A missing file on the way to the deadline has three explanations, and they need different
+    /// fixes: the command never started, the child wrote its relative path in another working
+    /// directory, or a starved runner was slow. The expiry message carries what is known about all
+    /// three — the command's state and outcome (<paramref name="command"/>), where the file exists
+    /// if it exists at all, and whether any pid was ever read — so the next occurrence answers the
+    /// question instead of only restating the timeout (#286).
+    /// <paramref name="budget"/> is the spawn window; only a test that drives the probe to its own
+    /// expiry names one.
+    /// </remarks>
     public static async Task<ChildProcess> AwaitWrittenAsync(
         string pidFile,
         DateTime commandStarted,
-        CancellationToken window
+        CancellationToken window,
+        CommandUnderTest? command = null,
+        TimeSpan? budget = null
     )
     {
-        DateTime deadline = DateTime.UtcNow + WaitBudgets.SpawnWindow;
+        TimeSpan spawnWindow = budget ?? WaitBudgets.SpawnWindow;
+        DateTime deadline = DateTime.UtcNow + spawnWindow;
         DateTime? unusableSince = null;
-        var unusable = string.Empty;
+        string? observedText = null;
         while (true)
         {
-            if (TryReadFile(pidFile) is { } pid)
+            string? text = TryReadText(pidFile);
+            if (text is not null)
+            {
+                observedText = text;
+            }
+
+            var unusable = string.Empty;
+            if (
+                text is not null
+                && int.TryParse(
+                    text,
+                    NumberStyles.Integer,
+                    CultureInfo.InvariantCulture,
+                    out int pid
+                )
+            )
             {
                 if (TryRead(pid) is { } child)
                 {
@@ -80,10 +108,14 @@ internal static class ChildProcessProbe
                         $"{pidFile} names pid {pid}, which no process holds any more: the grandchild exited before the test could pin it, so the pid says nothing about what the kill did"
                     );
                 }
+            }
 
-                // A half-written file can name a shorter number, and a number can be released
-                // between the write and the read; both are fixed by the next read of the file, so
-                // the refusal is only reported once it has outlived the writer.
+            // A half-written file can name a shorter number, and a number can be released between
+            // the write and the read; both are fixed by the next read of the file, so the refusal
+            // is only reported once it has outlived the writer. Text that is not a number yet is a
+            // partial write, not a refusal: it waits, and the expiry message reports what it held.
+            if (unusable.Length > 0)
+            {
                 unusableSince ??= DateTime.UtcNow;
                 if (DateTime.UtcNow - unusableSince.Value > WaitBudgets.RefusalGrace)
                 {
@@ -95,21 +127,27 @@ internal static class ChildProcessProbe
                 unusableSince = null;
             }
 
+            // A command that faulted or was cancelled is over, so no pid can arrive now: report
+            // that instead of spending the rest of the window on a process that never ran.
+            if (
+                command is not null
+                && (command.Run?.IsFaulted == true || command.Run?.IsCanceled == true)
+            )
+            {
+                Assert.Fail($"no pid was pinned from {pidFile}: {command.Describe()}");
+            }
+
             if (window.IsCancellationRequested)
             {
                 Assert.Fail(
                     $"no pid was pinned from {pidFile}: the command ended before the grandchild reported a pid this test could pin, so the kill happened before the test could name the process it ended"
+                        + (command is null ? string.Empty : $"; {command.Describe()}")
                 );
             }
 
             if (DateTime.UtcNow > deadline)
             {
-                Assert.Fail(
-                    string.Create(
-                        CultureInfo.InvariantCulture,
-                        $"no pid was written to {pidFile} within {WaitBudgets.SpawnWindow.TotalSeconds:0} seconds"
-                    )
-                );
+                Assert.Fail(DescribeExpiry(pidFile, spawnWindow, observedText, command));
             }
 
             try
@@ -193,7 +231,7 @@ internal static class ChildProcessProbe
         }
     }
 
-    private static int? TryReadFile(string pidFile)
+    private static string? TryReadText(string pidFile)
     {
         if (!File.Exists(pidFile))
         {
@@ -202,15 +240,7 @@ internal static class ChildProcessProbe
 
         try
         {
-            string text = File.ReadAllText(pidFile).Trim();
-            return int.TryParse(
-                text,
-                NumberStyles.Integer,
-                CultureInfo.InvariantCulture,
-                out int pid
-            )
-                ? pid
-                : null;
+            return File.ReadAllText(pidFile).Trim();
         }
         catch (IOException)
         {

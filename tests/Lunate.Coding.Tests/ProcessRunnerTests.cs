@@ -308,12 +308,14 @@ public sealed class ProcessRunnerTests
         // Pinned while the command still runs: read after the kill, the number in the file can
         // already name a process this test never started (see ChildProcessProbe).
         using var window = new CancellationTokenSource();
+        Task<ProcessRunResult> execution = RunAsync(temp, TreeRequest(temp, timeout));
         Task<ChildProcess> watched = ChildProcessProbe.AwaitWrittenAsync(
             pidFile,
             commandStarted,
-            window.Token
+            window.Token,
+            ProcessWatch(temp, execution)
         );
-        ProcessRunResult result = await RunAsync(temp, TreeRequest(temp, timeout));
+        ProcessRunResult result = await execution;
         window.Cancel();
         ChildProcess grandchild = await watched;
 
@@ -335,11 +337,25 @@ public sealed class ProcessRunnerTests
             TreeRequest(temp, WaitBudgets.CommandRun),
             cts.Token
         );
-        ChildProcess grandchild = await ChildProcessProbe.AwaitWrittenAsync(
+
+        // The pin and the run race: if the run ends first there is no pid left to pin, so the
+        // window closes and the probe reports what the run did (it timed out, or never started)
+        // instead of waiting out the spawn window. #286 is this race: the run's own timeout and
+        // the spawn window were both 60 s, so a starved start produced "no pid was written"
+        // exactly when the tree kill fired, and the message could not say which had happened.
+        using var window = new CancellationTokenSource();
+        Task<ChildProcess> watched = ChildProcessProbe.AwaitWrittenAsync(
             pidFile,
             commandStarted,
-            CancellationToken.None
+            window.Token,
+            ProcessWatch(temp, execution)
         );
+        if (await Task.WhenAny(watched, execution) == execution)
+        {
+            window.Cancel();
+        }
+
+        ChildProcess grandchild = await watched;
         cts.Cancel();
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => execution);
@@ -380,4 +396,24 @@ public sealed class ProcessRunnerTests
                 temp.Root,
                 Timeout: timeout
             );
+
+    /// <summary>
+    /// The command's own state, for a probe failure that has to say whether the shell that should
+    /// write the pid ever ran and what it ended with.
+    /// </summary>
+    private static CommandUnderTest ProcessWatch(TempDirectory temp, Task<ProcessRunResult> run) =>
+        new(temp.Root)
+        {
+            Run = run,
+            DescribeOutcome = () =>
+                run.Result switch
+                {
+                    { TimedOut: true } => "it timed out and the tree kill fired",
+                    { ExitCode: { } code } => string.Create(
+                        CultureInfo.InvariantCulture,
+                        $"exit code {code}"
+                    ),
+                    _ => "it exited",
+                },
+        };
 }
