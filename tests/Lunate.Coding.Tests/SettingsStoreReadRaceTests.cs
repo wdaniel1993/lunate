@@ -11,6 +11,13 @@ namespace Lunate.Coding.Tests;
 /// with a gate rather than retrying around them. Unix sharing is advisory, so this passes there
 /// before and after the gate; the Windows leg is the one that bites.
 /// </summary>
+/// <remarks>
+/// What the test requires is the race's invariant — every observed read holds one of the complete
+/// documents — not that the reader glimpsed <em>both</em> of them. A reader starved by runner load
+/// can land every read after the last save and see one value the whole time, which violates nothing
+/// (observed on windows-latest: GitHub run 40642592292). A sample that only stops early is not
+/// evidence; a complete-document observance every time is.
+/// </remarks>
 public sealed class SettingsStoreReadRaceTests
 {
     private const int Writes = 200;
@@ -81,9 +88,16 @@ public sealed class SettingsStoreReadRaceTests
 
         Assert.True(Interlocked.Read(ref reads) > 0, "the reader never completed a read");
         Assert.Empty(failures);
-        Assert.Equal(
-            [string.Join(", ", One), string.Join(", ", Two)],
-            observed.Keys.Order(StringComparer.Ordinal)
+
+        // The invariant the race must hold, and all the sampling may require: every read that
+        // landed saw one of the two complete documents. The defaults would mean a name the store
+        // should have kept continuously present vanished mid-save; anything else would mean a
+        // partial document. Both saves being observed is deliberately not required — a reader
+        // starved by load may only ever read the last save's value.
+        Assert.DoesNotContain("<defaults>", observed.Keys);
+        Assert.All(
+            observed.Keys,
+            key => Assert.Contains(key, new[] { string.Join(", ", One), string.Join(", ", Two) })
         );
 
         // The last save, once the reader is gone, leaves exactly one complete document behind.
