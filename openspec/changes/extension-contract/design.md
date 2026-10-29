@@ -103,7 +103,7 @@ built-in status without saying so in the manifest.
 The loader's activation tail is shared, not duplicated
 (`src/Lunate.Extensibility/ExtensionLoader.Load.cs:200-236`):
 
-```
+```text
 Discover() ──> descriptor (Builtin | Global | Project)
                    │
                    ├─ Builtin: factory supplied in-process, no directory, no ALC
@@ -203,6 +203,7 @@ declared-but-unregistered service is logged and dropped. `maxLoadedWorkspaces` i
 integer; absent means **2** (ADR-0021's default, `adr/0021-per-run-workspaces.md:23`). The cap is
 per (extension, service name). The host may lower it through its own budget; an extension cannot
 raise it above the host maximum.
+
 - A lease is the pinning unit. A tool handler acquires per call and disposes the lease in a `using`
   or `await using`; holding a lease across model turns is legal but pins the entry and can stall
   another workspace (see 4.3).
@@ -388,6 +389,28 @@ lets `/extensions` report a stable reason. It also keeps `FunctionInvokingChatCl
   (`src/Lunate.Extensibility/ExtensionLoader.Load.cs:229-232`,
   `src/Lunate.Extensibility/ExtensionLoader.cs:201-204`).
 
+### 5.5 The MCP server applies the same rule
+
+`lunate mcp roslyn` (#274) lists the five `cs_*` tools today whether or not the workspace has a
+solution, and answers a call with a tool error naming the missing `.sln`/`.slnx`
+(`docs/mcp-roslyn.md`). Left as it is, the same five tools would have two availability models: one
+in chat, one over MCP, and `toolActivation` would mean whatever composed the registry.
+
+**The server evaluates the rule at startup, as the chat path does.** In a workspace with no
+matching file it lists no `cs_*` tool and writes **one line to stderr** naming the rule and the
+patterns it looked for; stdout stays protocol-pure (`McpRoslynStdoutPurityTests`). A solution
+removed after startup is not re-evaluated — the listed tool stays listed and answers with the
+existing fix-it error, because the rule is a composition-time decision and the call path must still
+explain itself.
+
+Rationale: an MCP client cannot ask why a tool is missing, and five tools that are guaranteed to
+error cost the calling model turns before it learns something a startup line says once. Absence plus
+one honest line is the better signal; the per-call error is kept for the case the rule cannot cover.
+
+This deliberately changes what #274's test asserts: "a repo with no solution still lists all five"
+becomes "lists none, says why on stderr, keeps stdout pure" — and the fix-it error is asserted on a
+tool listed before its solution was removed.
+
 ## 6. (d) `cs_*` stays stable: the mechanism
 
 ### 6.1 The two options
@@ -488,6 +511,9 @@ the exact version is set in that change.
 - No moving of `roslyn.maxLoadedWorkspaces` out of core settings; it stays the host override during
   migration (`src/Lunate.Coding/SettingsStore.cs:68`, `:564`).
 - No live mid-run activation re-evaluation; conditions are read at composition (5.3).
+- No `never` condition in v1. `always` and two positive conditions cover the flagship; an extension
+  that needs to withdraw a tool from a workspace has no honest way to say so, and adding a fourth
+  value later is additive.
 - No built-in reload or unload; built-ins are process-lifetime code (3.4).
 - No remote/out-of-process per-workspace service lifecycle in v1 (4.1).
 - No `FunctionInvokingChatClient`, no `AIFunctionFactory`, no parallel tool-execution layer.

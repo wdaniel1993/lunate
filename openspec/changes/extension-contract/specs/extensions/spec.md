@@ -167,6 +167,20 @@ registered/declared counts SHALL be unchanged.
 - **WHEN** it is parsed
 - **THEN** the error names the manifest, the tool key and the field, and the extension does not load
 
+#### Scenario: The MCP server applies the same rule at startup
+
+- **GIVEN** a workspace with no file matching the built-in's activation patterns
+- **WHEN** `lunate mcp roslyn` starts
+- **THEN** `tools/list` contains no `cs_*` tool, stderr carries exactly one line naming the rule and
+  the patterns it looked for, and stdout carries nothing but protocol messages
+
+#### Scenario: A solution removed after startup keeps the fix-it error
+
+- **GIVEN** an MCP server started in a workspace whose tool was listed because a `.sln` was present
+- **WHEN** the file is removed and the tool is called
+- **THEN** the call returns a tool error naming the missing file, and the tool remains listed
+  because activation is a composition-time decision
+
 ### Requirement: Stable tool aliases
 
 A manifest SHALL accept an optional `toolAliases` object mapping a declared tool's local name to a
