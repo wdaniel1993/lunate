@@ -11,6 +11,7 @@ Lunate keeps each kind of document in exactly one home. Start here, then jump to
 | Changelog | [`../CHANGELOG.md`](../CHANGELOG.md) | Notable changes, one section per release |
 | Plan and status | [`guide.md`](guide.md) | The implementation plan, phases and roadmap |
 | Architecture overview | [`architecture.md`](architecture.md) | Component map, model pipeline, one run and the event path, as diagrams |
+| Working the backlog | [`workflow-two-queues.md`](workflow-two-queues.md) | How an issue becomes a draft PR (three parallel workers) and a draft PR becomes a merge (one worker): states, labels, invariants |
 | Extensibility spec | [`spec/extensibility.md`](spec/extensibility.md) | Contract and hooks, tool model, services, UI by mode, fitness suite (under ADR-0017) |
 | Export contract | [`spec/export.md`](spec/export.md) | `/export` and `/copy`: destination, credential redaction, the HTML document's CSP and escaping guarantees |
 | Diagnostic bundle | [`spec/diagnostics.md`](spec/diagnostics.md) | `/debug`: destination, sections, the event window, and what the bundle never carries |
