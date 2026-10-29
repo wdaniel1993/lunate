@@ -106,6 +106,10 @@ jobs:
           - os: macos-latest
             rid: osx-arm64
             budget_ms: 300
+            # The shared macOS runner's floor is bimodal (~80-240 ms quiet, ~310-330 ms loaded), so a
+            # breach here is measured and printed, not fatal; `perf (macos-latest)` enforces the budget
+            # on a leg that runs nothing else.
+            budget_enforce: 0
             memory_gate_mb: 150
           - os: windows-latest
             rid: win-x64
@@ -219,6 +223,7 @@ jobs:
         shell: bash
         env:
           BUDGET_MS: ${{ matrix.budget_ms }}
+          STARTUP_BUDGET_ENFORCE: ${{ matrix.budget_enforce }}
         run: bash scripts/verify.sh
 
       - name: Gate self-tests

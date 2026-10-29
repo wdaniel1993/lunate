@@ -37,6 +37,11 @@ case "$PROFILE" in
 esac
 
 BUDGET_MS="${BUDGET_MS:-150}"
+# Whether a budget breach fails this leg. macOS shared runners are bimodal: the floor is ~80-240 ms
+# when the machine is quiet and ~310-330 ms when it is not, which no single budget separates from a
+# real regression. The leg still measures and prints (and uploads) the number; enforcement belongs to
+# a leg that does nothing else, which is what `perf (macos-latest)` in ci.yml exists for.
+STARTUP_BUDGET_ENFORCE="${STARTUP_BUDGET_ENFORCE:-1}"
 CONFIGURATION="${CONFIGURATION:-Release}"
 PUBLISH_DIR="artifacts/publish"
 
@@ -249,7 +254,12 @@ dotnet publish src/Lunate.Coding/Lunate.Coding.csproj \
   --nologo
 
 step "startup budget"
-BUDGET_MS="$BUDGET_MS" "${SCRIPT_DIR}/perf.sh" "$BINARY"
+if ! BUDGET_MS="$BUDGET_MS" "${SCRIPT_DIR}/perf.sh" "$BINARY"; then
+  if [ "$STARTUP_BUDGET_ENFORCE" = "1" ]; then
+    exit 1
+  fi
+  echo "startup: measured but not enforced on this leg (STARTUP_BUDGET_ENFORCE=0)"
+fi
 
 step "test"
 # The Category=Perf budget check is excluded here (and from the culture pass) and
