@@ -45,13 +45,16 @@ internal static class WorkspaceServiceSupport
 
     /// <summary>
     /// A zero-trust loader whose built-in <paramref name="factory"/> registers everything its
-    /// manifest declares; <paramref name="configure"/> sets the host seams a test needs.
+    /// manifest declares; <paramref name="workspaceServiceCapLimit"/> and <paramref name="log"/>
+    /// set the host seams tests need. ( <c>ExtensionHostOptions</c> is init-only, so a mutate
+    /// callback cannot set them.)
     /// </summary>
     public static ExtensionLoader Loader(
         TempDirectory temp,
         ExtensionManifest manifest,
         ServicefulExtensionFactory factory,
-        Action<ExtensionHostOptions>? configure = null
+        int? workspaceServiceCapLimit = null,
+        IExtensionLog? log = null
     )
     {
         var options = new ExtensionHostOptions
@@ -61,8 +64,9 @@ internal static class WorkspaceServiceSupport
             [
                 new BuiltInExtension($"host/{manifest.Id}/extension.json", manifest, () => factory),
             ],
+            WorkspaceServiceCapLimit = workspaceServiceCapLimit,
+            Log = log,
         };
-        configure?.Invoke(options);
         return new ExtensionLoader(options);
     }
 }

@@ -46,8 +46,10 @@ public sealed class ExtensionWorkspaceServiceLifecycleTests
         string b = WorkspaceServiceSupport.CreateRoot(temp, "b");
         string c = WorkspaceServiceSupport.CreateRoot(temp, "c");
 
-        _ = await Acquire(extension, a);
-        using var leaseB = await Acquire(extension, b);
+        // a carries a live lease (pinned); b's lease was released, so b is the only unpinned
+        // entry — and a is also the least-recently-used one, so the pin is what saves it.
+        using var leaseA = await Acquire(extension, a);
+        (await Acquire(extension, b)).Dispose();
         await Acquire(extension, c);
 
         Assert.Equal(
@@ -129,10 +131,7 @@ public sealed class ExtensionWorkspaceServiceLifecycleTests
 
         await loader.EndSessionAsync(Ct);
 
-        Assert.Equal(
-            2,
-            extension.Factory("tracker").Disposals.Count
-        );
+        Assert.Equal(2, extension.Factory("tracker").Disposals.Count);
         await Assert.ThrowsAsync<ObjectDisposedException>(async () => await Acquire(extension, b));
     }
 
