@@ -54,7 +54,8 @@ internal static partial class ExtensionsView
         Func<string, IReadOnlyList<HookTimings>>? hookTimings = null,
         Func<string, TimeSpan?>? remoteStart = null,
         IReadOnlyList<SingleFileExtension>? singleFile = null,
-        Func<string, IgnoredHostCopy?>? ignoredCopies = null
+        Func<string, IgnoredHostCopy?>? ignoredCopies = null,
+        Func<string, IReadOnlyList<ExtensionInactiveTool>>? inactiveTools = null
     )
     {
         ArgumentNullException.ThrowIfNull(registeredCounts);
@@ -68,8 +69,10 @@ internal static partial class ExtensionsView
                         registeredCounts,
                         cliMeasured,
                         hookTimings,
-                        remoteStart
-                    ) + IgnoredCopy(ignoredCopies?.Invoke(entry.Descriptor.Id))
+                        remoteStart,
+                        inactiveTools,
+                        ignoredCopies?.Invoke(entry.Descriptor.Id)
+                    )
                 ),
         ];
         segments.AddRange(SingleFileSegments(singleFile, ignoredCopies));
@@ -121,7 +124,9 @@ internal static partial class ExtensionsView
         Func<string, ExtensionCounts> registeredCounts,
         bool cliMeasured,
         Func<string, IReadOnlyList<HookTimings>>? hookTimings,
-        Func<string, TimeSpan?>? remoteStart
+        Func<string, TimeSpan?>? remoteStart,
+        Func<string, IReadOnlyList<ExtensionInactiveTool>>? inactiveTools,
+        IgnoredHostCopy? ignoredCopy
     )
     {
         string head = FormattableString.Invariant(
@@ -133,9 +138,14 @@ internal static partial class ExtensionsView
                 + FormattableString.Invariant(
                     $" loaded in {Milliseconds(result.Elapsed)} ms{LoadMarkers(result.Elapsed, cliMeasured)}"
                 )
-                + RegisteredCounts(descriptor, registeredCounts(descriptor.Id))
+                + RegisteredCounts(
+                    descriptor,
+                    registeredCounts(descriptor.Id),
+                    inactiveTools?.Invoke(descriptor.Id)
+                )
                 + SlowestHook(hookTimings?.Invoke(descriptor.Id))
-                + StartMarker(remoteStart?.Invoke(descriptor.Id)),
+                + StartMarker(remoteStart?.Invoke(descriptor.Id))
+                + IgnoredCopy(ignoredCopy),
             ExtensionLoadState.TrustDenied => head + " trust-denied" + DeclaredCounts(descriptor),
             _ => head + " failed: " + FailedMessage(result.Message) + DeclaredCounts(descriptor),
         };
@@ -169,11 +179,36 @@ internal static partial class ExtensionsView
     /// <summary>The registered counts; a field differing from the manifest's list reads <c>(N declared)</c>.</summary>
     private static string RegisteredCounts(
         ExtensionDescriptor descriptor,
-        ExtensionCounts counts
-    ) =>
-        FormattableString.Invariant(
-            $", tools {Field(counts.Tools, descriptor.Manifest.Tools.Count)}, commands {CommandsField(descriptor, counts)}, hooks {Field(counts.Hooks, descriptor.Manifest.Hooks.Count)}, services {Field(counts.Services, descriptor.Manifest.Services.Count)}"
+        ExtensionCounts counts,
+        IReadOnlyList<ExtensionInactiveTool>? inactive
+    )
+    {
+        string reports = InactiveReports(inactive);
+        return FormattableString.Invariant(
+            $", tools {Field(counts.Tools, descriptor.Manifest.Tools.Count)}{reports}, commands {CommandsField(descriptor, counts)}, hooks {Field(counts.Hooks, descriptor.Manifest.Hooks.Count)}, services {Field(counts.Services, descriptor.Manifest.Services.Count)}"
         );
+    }
+
+    /// <summary>
+    /// The inactive tools after the tool counts, one piece per tool:
+    /// <c>inactive '&lt;name&gt;' (&lt;condition&gt;): &lt;reason&gt;</c> — empty without one.
+    /// </summary>
+    private static string InactiveReports(IReadOnlyList<ExtensionInactiveTool>? inactive)
+    {
+        if (inactive is not { Count: > 0 })
+        {
+            return string.Empty;
+        }
+
+        List<string> pieces = inactive
+            .Select(report =>
+                FormattableString.Invariant(
+                    $"inactive '{report.Tool}' ({report.Condition}): {report.Reason}"
+                )
+            )
+            .ToList();
+        return ", " + string.Join(", ", pieces);
+    }
 
     /// <summary>
     /// The commands field: the registered count against the declared list, with the declared names

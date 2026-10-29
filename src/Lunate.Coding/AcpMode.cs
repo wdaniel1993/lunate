@@ -77,11 +77,9 @@ internal static class AcpMode
             {
                 // Extension tools first, in registration order, then the MCP tools (design D7);
                 // the activation filter runs once per composition, so an inactive tool never
-                // enters the served lists, the model declarations or the inherited snapshot.
-                IReadOnlyList<ITool> extensionTools = ExtensionToolActivationFilter.ActiveOnly(
-                    host.Tools,
-                    workspace
-                );
+                // enters the served lists, the model declarations or the inherited snapshot, and
+                // the withheld ones are recorded for the /extensions view.
+                IReadOnlyList<ITool> extensionTools = host.ComposeTools(workspace);
                 mcpTools.AddRange(extensionTools);
                 inheritedTools.AddRange(extensionTools);
                 // The configured names are the collision baseline: a same-named registration is

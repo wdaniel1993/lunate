@@ -174,7 +174,8 @@ internal static partial class ExtensionsView
         Func<string, IReadOnlyList<HookTimings>>? hookTimings = null,
         Func<string, TimeSpan?>? remoteStart = null,
         IReadOnlyList<SingleFileExtension>? singleFile = null,
-        Func<string, IgnoredHostCopy?>? ignoredCopies = null
+        Func<string, IgnoredHostCopy?>? ignoredCopies = null,
+        Func<string, IReadOnlyList<ExtensionInactiveTool>>? inactiveTools = null
     )
     {
         ArgumentNullException.ThrowIfNull(registeredCounts);
@@ -237,6 +238,27 @@ internal static partial class ExtensionsView
                     : Declared(descriptor);
             node["tools"] = counts.Tools;
             node["commands"] = counts.Commands;
+            if (
+                result.State == ExtensionLoadState.Loaded
+                && inactiveTools?.Invoke(descriptor.Id) is { Count: > 0 } withheld
+            )
+            {
+                var entries = new JsonArray();
+                foreach (ExtensionInactiveTool report in withheld)
+                {
+                    entries.Add(
+                        new JsonObject
+                        {
+                            ["tool"] = report.Tool,
+                            ["condition"] = report.Condition,
+                            ["reason"] = report.Reason,
+                        }
+                    );
+                }
+
+                node["inactive"] = entries;
+            }
+
             if (
                 result.State == ExtensionLoadState.Loaded
                 && counts.DeclaredNotProvidedCommands.Count > 0

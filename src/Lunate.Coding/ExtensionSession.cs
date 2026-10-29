@@ -127,6 +127,9 @@ internal sealed class ExtensionSession : IAsyncDisposable
     private readonly SingleFileExtensionRestorer _singleFileRestorer;
     private readonly SingleFileExtensionBuilder _singleFileBuilder;
     private readonly IExtensionTrustPrompt _prompt;
+    private readonly Dictionary<string, List<ExtensionInactiveTool>> _inactiveTools = new(
+        StringComparer.Ordinal
+    );
     private ExtensionMcpServers? _mcpServers;
     private bool _disposed;
 
@@ -335,6 +338,41 @@ internal sealed class ExtensionSession : IAsyncDisposable
     /// the MCP tools, so extension tools come first (design D7).
     /// </summary>
     internal IReadOnlyList<ITool> Tools => [.. _loader.Tools.List()];
+
+    /// <summary>
+    /// Filters the extension tools down to the active ones at <paramref name="workspace"/>'s root —
+    /// the one activation evaluation of a composition — and records the withheld tools per
+    /// extension with their condition and reason, the <c>/extensions</c> view's data. A later call
+    /// (the next composition) replaces the record; a mid-session root change waits for it.
+    /// </summary>
+    internal IReadOnlyList<ITool> ComposeTools(Workspace workspace)
+    {
+        ArgumentNullException.ThrowIfNull(workspace);
+        (IReadOnlyList<ITool> active, IReadOnlyList<ExtensionInactiveTool> inactive) =
+            ExtensionToolActivationFilter.Split(_loader.Tools.List(), workspace);
+        _inactiveTools.Clear();
+        foreach (
+            IGrouping<string, ExtensionInactiveTool> group in inactive.GroupBy(
+                report => report.ExtensionId,
+                StringComparer.Ordinal
+            )
+        )
+        {
+            _inactiveTools[group.Key] = [.. group];
+        }
+
+        return active;
+    }
+
+    /// <summary>
+    /// The tools of one extension the composition withheld at the run root, each with the
+    /// <c>inactive (&lt;condition&gt;): &lt;reason&gt;</c> report; empty when none or before the
+    /// first composition.
+    /// </summary>
+    internal IReadOnlyList<ExtensionInactiveTool> InactiveTools(string extensionId) =>
+        _inactiveTools.TryGetValue(extensionId, out List<ExtensionInactiveTool>? reports)
+            ? [.. reports]
+            : [];
 
     /// <summary>The raw hook runner behind the input pipeline.</summary>
     internal HookRunner HookRunner => _loader.Hooks;

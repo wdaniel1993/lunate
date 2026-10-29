@@ -735,13 +735,9 @@ internal sealed partial class InteractiveSession : IDisposable
             {
                 // Extension tools first, in registration order, then the MCP tools (design D7);
                 // the activation filter runs once per composition, so an inactive tool never
-                // enters the registry, the model declarations or the inherited snapshot.
-                foreach (
-                    ITool tool in ExtensionToolActivationFilter.ActiveOnly(
-                        extensions.Tools,
-                        _workspace
-                    )
-                )
+                // enters the registry, the model declarations or the inherited snapshot, and the
+                // withheld ones are recorded for the /extensions view.
+                foreach (ITool tool in extensions.ComposeTools(_workspace))
                 {
                     _tools.Add(tool);
                     _inheritedTools.Add(tool);

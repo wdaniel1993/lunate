@@ -10,6 +10,40 @@ namespace Lunate.Coding.Tests;
 public sealed class ExtensionsInteractiveEndToEndTests
 {
     [Fact]
+    public async Task Extensions_reports_an_inactive_tool_of_a_session_with_its_reason()
+    {
+        using var temp = new TempDirectory();
+        string worktree = temp.File("worktree");
+        Directory.CreateDirectory(worktree);
+        string store = temp.File("store");
+        ToolFixture.Install(
+            store,
+            toolActivation: """{"echo":{"when":"workspace-root-has-file","patterns":["*.md"]}}"""
+        );
+        using var host = new InteractiveSessionHost(
+            extensions: new ExtensionSeams { StorePath = store, Log = new RecordingExtensionLog() },
+            workingDirectory: worktree
+        );
+        host.Console.Size = new ConsoleSize(600, 24);
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+
+        host.Console.SendText("/extensions");
+        host.Console.SendEnter();
+        await InteractiveSessionCommandTests.WaitForFrameAsync(host, "inactive");
+
+        Assert.Contains(
+            "tools 1, inactive 'tools__echo' (workspace-root-has-file): no file matching '*.md' at the workspace root, commands 0, hooks 0, services 0",
+            host.LastFrame,
+            StringComparison.Ordinal
+        );
+
+        host.Console.SendText("/quit");
+        host.Console.SendEnter();
+        await run;
+    }
+
+    [Fact]
     public async Task Extensions_lists_the_denied_project_before_the_loaded_global_extension()
     {
         using var temp = new TempDirectory();

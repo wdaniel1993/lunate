@@ -323,7 +323,11 @@ public sealed partial class ExtensionLoader
             _statusWidgets.Register,
             _mcpServers.Register,
             (extensionId, registration) =>
-                _tools.Register(extensionId, registration, ActivationRule(descriptor, registration.Name)),
+                _tools.Register(
+                    extensionId,
+                    registration,
+                    ActivationRule(descriptor, registration.Name)
+                ),
             _modelRegistry.RegisterProvider,
             _modelRegistry.RegisterModelMiddleware,
             _modelRegistry.RegisterVirtualModel,
@@ -350,13 +354,13 @@ public sealed partial class ExtensionLoader
         string localName
     )
     {
-        IReadOnlyDictionary<string, ExtensionToolActivationRule> rules =
-            descriptor.Manifest.ToolActivation;
+        IReadOnlyDictionary<string, ExtensionToolActivationRule> rules = descriptor
+            .Manifest
+            .ToolActivation;
         return rules.TryGetValue(localName, out ExtensionToolActivationRule? explicitKey)
-            ? explicitKey
-            : rules.TryGetValue("*", out ExtensionToolActivationRule? blanket)
-                ? blanket
-                : null;
+                ? explicitKey
+            : rules.TryGetValue("*", out ExtensionToolActivationRule? blanket) ? blanket
+            : null;
     }
 
     /// <summary>

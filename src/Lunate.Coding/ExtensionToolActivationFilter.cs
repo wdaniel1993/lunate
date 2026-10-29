@@ -16,7 +16,15 @@ namespace Lunate.Coding;
 /// </summary>
 internal static class ExtensionToolActivationFilter
 {
-    internal static IReadOnlyList<ITool> ActiveOnly(IEnumerable<ITool> tools, Workspace workspace)
+    internal static IReadOnlyList<ITool> ActiveOnly(
+        IEnumerable<ITool> tools,
+        Workspace workspace
+    ) => Split(tools, workspace).Active;
+
+    internal static (
+        IReadOnlyList<ITool> Active,
+        IReadOnlyList<ExtensionInactiveTool> Inactive
+    ) Split(IEnumerable<ITool> tools, Workspace workspace)
     {
         ArgumentNullException.ThrowIfNull(tools);
         ArgumentNullException.ThrowIfNull(workspace);
@@ -27,6 +35,7 @@ internal static class ExtensionToolActivationFilter
         string? gitCommonDir = workspace.GitCommonDir;
 
         List<ITool> active = [];
+        List<ExtensionInactiveTool> inactive = [];
         foreach (ITool tool in tools)
         {
             if (
@@ -34,12 +43,44 @@ internal static class ExtensionToolActivationFilter
                 && !ToolActivationEvaluator.Evaluate(adapter.ActivationRule, root, gitCommonDir)
             )
             {
+                // Withheld at this root; the report names the condition and the reason.
+                inactive.Add(Report(adapter));
                 continue;
             }
 
             active.Add(tool);
         }
 
-        return active;
+        return (active, inactive);
+    }
+
+    /// <summary>The withheld tool's view report: its condition and the reason the rule answered false.</summary>
+    private static ExtensionInactiveTool Report(ExtensionToolAdapter adapter)
+    {
+        ExtensionToolActivationRule rule = adapter.ActivationRule!;
+        string reason = rule.When switch
+        {
+            ExtensionToolActivationRule.WorkspaceRootHasFile => FormattableString.Invariant(
+                $"no file matching {string.Join(", ", rule.Patterns.Select(pattern => $"'{pattern}'"))} at the workspace root"
+            ),
+            ExtensionToolActivationRule.WorkspaceIsGitRepository =>
+                "the workspace root is not a git repository",
+            // The manifest parser produces the closed condition set; an unknown condition never
+            // activates a tool, and the report says so rather than inventing a behaviour.
+            _ => "the condition is not one this host evaluates",
+        };
+        return new ExtensionInactiveTool(adapter.ExtensionId, adapter.Name, rule.When, reason);
     }
 }
+
+/// <summary>
+/// One tool the activation filter withheld at the run root: the model-facing name, the manifest
+/// condition, and the one-line reason (the <c>/extensions</c> view's
+/// <c>inactive (&lt;condition&gt;): &lt;reason&gt;</c> report).
+/// </summary>
+internal sealed record ExtensionInactiveTool(
+    string ExtensionId,
+    string Tool,
+    string Condition,
+    string Reason
+);

@@ -130,7 +130,8 @@ internal static class ToolFixture
         string storePath,
         string id = "tools",
         string tools = """["echo"]""",
-        string? settings = """{"tools":[{"name":"echo"}]}"""
+        string? settings = """{"tools":[{"name":"echo"}]}""",
+        string? toolActivation = null
     )
     {
         string directory = Path.Combine(storePath, "extensions", id);
@@ -142,7 +143,7 @@ internal static class ToolFixture
         );
         File.WriteAllText(
             Path.Combine(directory, "extension.json"),
-            $$"""{"id":"{{id}}","version":"0.1.0","apiVersion":"^1.5.0","entryAssembly":"ToolExtension.dll","tools":{{tools}}}"""
+            $$"""{"id":"{{id}}","version":"0.1.0","apiVersion":"^1.5.0","entryAssembly":"ToolExtension.dll","tools":{{tools}}{{(toolActivation is null ? "" : $", \"toolActivation\":{toolActivation}")}}}"""
         );
         if (settings is not null)
         {

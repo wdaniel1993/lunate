@@ -128,6 +128,72 @@ public sealed class ExtensionToolActivationFilterTests
     private static ExtensionToolActivationRule IsGitRepository() =>
         new(ExtensionToolActivationRule.WorkspaceIsGitRepository, []);
 
+    [Fact]
+    public void Split_reports_each_inactive_tool_with_its_condition_and_reason()
+    {
+        using var temp = new TempDirectory();
+        var schema = JsonSerializer.SerializeToElement(new { type = "object" });
+        ITool first = Adapter("first", HasFile("first.md"), schema);
+        ITool gitOnly = Adapter("git-only", IsGitRepository(), schema);
+        ITool unruled = Adapter("unruled", null, schema);
+        // The temp root carries neither 'first.md' nor a .git entry, so both rules are false.
+        var workspace = new Workspace(temp.Root);
+
+        (IReadOnlyList<ITool> active, IReadOnlyList<ExtensionInactiveTool> inactive) =
+            ExtensionToolActivationFilter.Split([first, gitOnly, unruled], workspace);
+
+        Assert.Equal(["peak__unruled"], active.Select(tool => tool.Name));
+        ExtensionInactiveTool hasFile = Assert.Single(
+            inactive,
+            entry => entry.Tool == "peak__first"
+        );
+        Assert.Equal("peak", hasFile.ExtensionId);
+        Assert.Equal("workspace-root-has-file", hasFile.Condition);
+        Assert.Equal("no file matching 'first.md' at the workspace root", hasFile.Reason);
+        ExtensionInactiveTool gitOnlyReport = Assert.Single(
+            inactive,
+            entry => entry.Tool == "peak__git-only"
+        );
+        Assert.Equal("workspace-is-git-repository", gitOnlyReport.Condition);
+        Assert.Equal("the workspace root is not a git repository", gitOnlyReport.Reason);
+    }
+
+    [Fact]
+    public void Split_keeps_registration_order_in_both_halves_and_agrees_with_active_only()
+    {
+        using var temp = new TempDirectory();
+        var schema = JsonSerializer.SerializeToElement(new { type = "object" });
+        ITool active = Adapter("active-has", HasFile("keep.txt"), schema);
+        ITool inactive = Adapter("z-last", HasFile("*.sln"), schema);
+        ITool alsoActive = Adapter("active-two", null, schema);
+        File.WriteAllText(temp.File("keep.txt"), "marker");
+        var workspace = new Workspace(temp.Root);
+
+        (IReadOnlyList<ITool> activeHalf, IReadOnlyList<ExtensionInactiveTool> inactiveHalf) =
+            ExtensionToolActivationFilter.Split([active, inactive, alsoActive], workspace);
+
+        Assert.Equal(
+            ExtensionToolActivationFilter.ActiveOnly([active, inactive, alsoActive], workspace),
+            activeHalf
+        );
+        Assert.Equal("peak__z-last", Assert.Single(inactiveHalf).Tool);
+    }
+
+    [Fact]
+    public void The_has_file_reason_names_every_pattern_the_rule_looks_for()
+    {
+        using var temp = new TempDirectory();
+        var schema = JsonSerializer.SerializeToElement(new { type = "object" });
+        ITool tool = Adapter("sol", HasFile("*.sln", "*.slnx"), schema);
+        var workspace = new Workspace(temp.Root);
+
+        ExtensionInactiveTool report = Assert.Single(
+            ExtensionToolActivationFilter.Split([tool], workspace).Inactive
+        );
+
+        Assert.Equal("no file matching '*.sln', '*.slnx' at the workspace root", report.Reason);
+    }
+
     /// <summary>A handler the adapter can bind; the probe never executes.</summary>
     private sealed class TestToolHandler : IExtensionToolHandler
     {

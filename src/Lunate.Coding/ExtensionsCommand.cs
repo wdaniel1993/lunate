@@ -108,6 +108,9 @@ internal static class ExtensionsCommand
         IReadOnlyList<ExtensionDescriptor> descriptors = host.Descriptors;
         IReadOnlyList<ExtensionLoadResult> results = host.LoadResults;
         IReadOnlyList<SingleFileExtension> singleFile = host.SingleFileExtensions;
+        // The listing root IS this run's workspace: the activation verdict of the listing is
+        // recorded here, once, before the view renders it.
+        host.ComposeTools(workspace);
         try
         {
             if (json)
@@ -118,7 +121,8 @@ internal static class ExtensionsCommand
                         results,
                         id => host.RegisteredCounts(id),
                         singleFile: singleFile,
-                        ignoredCopies: host.IgnoredHostCopyOf
+                        ignoredCopies: host.IgnoredHostCopyOf,
+                        inactiveTools: host.InactiveTools
                     )
                 );
                 output.Write('\n');
@@ -136,7 +140,8 @@ internal static class ExtensionsCommand
                         id => host.RegisteredCounts(id),
                         cliMeasured: true,
                         singleFile: singleFile,
-                        ignoredCopies: host.IgnoredHostCopyOf
+                        ignoredCopies: host.IgnoredHostCopyOf,
+                        inactiveTools: host.InactiveTools
                     )
                 )
                 {

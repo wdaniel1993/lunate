@@ -150,6 +150,115 @@ public sealed class ExtensionsCommandTests
     }
 
     [Fact]
+    public void The_listing_reports_an_inactive_tool_with_its_condition_and_reason()
+    {
+        using var temp = new TempDirectory();
+        string worktree = temp.File("worktree");
+        Directory.CreateDirectory(worktree);
+        string store = temp.File("store");
+        ToolFixture.Install(
+            store,
+            toolActivation: """{"echo":{"when":"workspace-root-has-file","patterns":["*.md"]}}"""
+        );
+        using var output = new StringWriter();
+        using var errors = new StringWriter();
+
+        int exitCode = Cli.Run(
+            ["extensions"],
+            output,
+            errors,
+            TestContext.Current.CancellationToken,
+            extensions: new ExtensionSeams { StorePath = store, Log = new RecordingExtensionLog() },
+            workingDirectory: worktree
+        );
+
+        Assert.Equal(ExtensionsCommand.ExitOk, exitCode);
+        string line = Assert.Single(
+            output.ToString().Split('\n', StringSplitOptions.RemoveEmptyEntries),
+            candidate => candidate.StartsWith("tools ", StringComparison.Ordinal)
+        );
+        Assert.Contains(
+            ", tools 1, inactive 'tools__echo' (workspace-root-has-file): no file matching '*.md' at the workspace root, commands 0, hooks 0, services 0",
+            line,
+            StringComparison.Ordinal
+        );
+    }
+
+    [Fact]
+    public void A_true_rule_leaves_the_count_row_untouched_at_the_listing_root()
+    {
+        using var temp = new TempDirectory();
+        string worktree = temp.File("worktree");
+        Directory.CreateDirectory(worktree);
+        string store = temp.File("store");
+        ToolFixture.Install(
+            store,
+            toolActivation: """{"echo":{"when":"workspace-root-has-file","patterns":["*.md"]}}"""
+        );
+        File.WriteAllText(Path.Combine(worktree, "marker.md"), "marker");
+        using var output = new StringWriter();
+        using var errors = new StringWriter();
+
+        int exitCode = Cli.Run(
+            ["extensions"],
+            output,
+            errors,
+            TestContext.Current.CancellationToken,
+            extensions: new ExtensionSeams { StorePath = store, Log = new RecordingExtensionLog() },
+            workingDirectory: worktree
+        );
+
+        Assert.Equal(ExtensionsCommand.ExitOk, exitCode);
+        string line = Assert.Single(
+            output.ToString().Split('\n', StringSplitOptions.RemoveEmptyEntries),
+            candidate => candidate.StartsWith("tools ", StringComparison.Ordinal)
+        );
+        Assert.Contains(
+            ", tools 1, commands 0, hooks 0, services 0",
+            line,
+            StringComparison.Ordinal
+        );
+        Assert.DoesNotContain("inactive", line, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Json_names_the_inactive_tools_of_the_listing_root()
+    {
+        using var temp = new TempDirectory();
+        string worktree = temp.File("worktree");
+        Directory.CreateDirectory(worktree);
+        string store = temp.File("store");
+        ToolFixture.Install(
+            store,
+            toolActivation: """{"echo":{"when":"workspace-root-has-file","patterns":["*.md"]}}"""
+        );
+        using var output = new StringWriter();
+        using var errors = new StringWriter();
+
+        int exitCode = Cli.Run(
+            ["extensions", "--json"],
+            output,
+            errors,
+            TestContext.Current.CancellationToken,
+            extensions: new ExtensionSeams { StorePath = store, Log = new RecordingExtensionLog() },
+            workingDirectory: worktree
+        );
+
+        Assert.Equal(ExtensionsCommand.ExitOk, exitCode);
+        using JsonDocument document = JsonDocument.Parse(output.ToString());
+        JsonElement node = Assert.Single(document.RootElement.EnumerateArray());
+        JsonElement inactive = node.GetProperty("inactive");
+        JsonElement entry = Assert.Single(inactive.EnumerateArray());
+        Assert.Equal("tools__echo", entry.GetProperty("tool").GetString());
+        Assert.Equal("workspace-root-has-file", entry.GetProperty("condition").GetString());
+        Assert.Equal(
+            "no file matching '*.md' at the workspace root",
+            entry.GetProperty("reason").GetString()
+        );
+        Assert.Equal(1, node.GetProperty("tools").GetInt32());
+    }
+
+    [Fact]
     public void Json_lists_the_same_fields_as_an_array()
     {
         using var temp = new TempDirectory();

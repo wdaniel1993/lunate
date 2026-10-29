@@ -58,18 +58,18 @@ implementation (senior-dev subagent batches; one batch per section, interleaved 
 
 ## 5. The activation evaluator
 
-- [ ] 5.1 Red→green: the evaluator in `Lunate.Extensibility.Abstractions` — `always` true,
+- [x] 5.1 Red→green: the evaluator in `Lunate.Extensibility.Abstractions` — `always` true,
       `workspace-root-has-file` matches direct children only (no recursion, ordinal, no path
       separator), unreadable root is false without throwing, `workspace-is-git-repository` follows
       `GitCommonDir`.
-- [ ] 5.2 Red→green: the loader stamps each registered tool's rule from the manifest; composition
+- [x] 5.2 Red→green: the loader stamps each registered tool's rule from the manifest; composition
       filters per run root through one shared helper, so an inactive tool never enters the
       registry, the model declarations, nested calls or `ToolContext.ToolStubs`, and a mid-session
       change waits for the next composition.
-- [ ] 5.3 Red→green: the core gate in `HarnessFactory` expresses the flagship rule through the
+- [x] 5.3 Red→green: the core gate in `HarnessFactory` expresses the flagship rule through the
       evaluator (same matching, unreadable root false, Roslyn still not loaded before first use per
       `tests/Lunate.Roslyn.Tests/LazyLoadingTests.cs`).
-- [ ] 5.4 Red→green: `/extensions` reports `inactive (<condition>): <reason>` for a false rule, an
+- [x] 5.4 Red→green: `/extensions` reports `inactive (<condition>): <reason>` for a false rule, an
       active rule changes no counts, and registered/declared counts stay equal.
 
 ## 6. Stable aliases

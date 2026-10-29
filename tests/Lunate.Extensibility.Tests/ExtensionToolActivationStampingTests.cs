@@ -37,12 +37,18 @@ public sealed class ExtensionToolActivationStampingTests
     public async Task The_star_key_stamps_a_blanket_rule()
     {
         using var temp = new TempDirectory();
-        var loader = Loader(temp, Manifest("echo", ["ping", "pong"], """{"*":{"when":"always"}}"""));
+        var loader = Loader(
+            temp,
+            Manifest("echo", ["ping", "pong"], """{"*":{"when":"always"}}""")
+        );
 
         loader.Discover(temp.Root, "repo");
         await loader.Load("echo", temp.Root, "repo", Prompt(), Ct);
 
-        Assert.All(Tools(loader, "echo"), tool => Assert.Equal("always", tool.ActivationRule!.When));
+        Assert.All(
+            Tools(loader, "echo"),
+            tool => Assert.Equal("always", tool.ActivationRule!.When)
+        );
     }
 
     [Fact]
@@ -82,14 +88,15 @@ public sealed class ExtensionToolActivationStampingTests
     }
 
     private static ExtensionToolAdapter Tool(ExtensionLoader loader, string name) =>
-        Tools(loader, "echo").Single(tool => string.Equals(tool.Name, name, StringComparison.Ordinal));
+        Tools(loader, "echo")
+            .Single(tool => string.Equals(tool.Name, name, StringComparison.Ordinal));
 
     private static IReadOnlyList<ExtensionToolAdapter> Tools(ExtensionLoader loader, string id) =>
-    [
-        .. loader
-            .Tools.List()
-            .Where(tool => string.Equals(tool.ExtensionId, id, StringComparison.Ordinal)),
-    ];
+        [
+            .. loader
+                .Tools.List()
+                .Where(tool => string.Equals(tool.ExtensionId, id, StringComparison.Ordinal)),
+        ];
 
     private static ExtensionManifest Manifest(string id, string[] tools, string activation)
     {
@@ -107,7 +114,14 @@ public sealed class ExtensionToolActivationStampingTests
             new ExtensionHostOptions
             {
                 StorePath = temp.Subdirectory("store"),
-                BuiltIns = [new BuiltInExtension($"host/{manifest.Id}/extension.json", manifest, () => new RegisteringFactory([.. manifest.Tools]))],
+                BuiltIns =
+                [
+                    new BuiltInExtension(
+                        $"host/{manifest.Id}/extension.json",
+                        manifest,
+                        () => new RegisteringFactory([.. manifest.Tools])
+                    ),
+                ],
             }
         );
 
