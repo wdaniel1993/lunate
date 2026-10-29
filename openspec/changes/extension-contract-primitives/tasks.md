@@ -5,7 +5,7 @@ implementation (senior-dev subagent batches; one batch per section, interleaved 
 
 ## 1. The API version
 
-- [ ] 1.1 Red→green: `tests/Lunate.Extensibility.Tests/ExtensionApiTests.cs` pins
+- [x] 1.1 Red→green: `tests/Lunate.Extensibility.Tests/ExtensionApiTests.cs` pins
       `ExtensionApi.Current == "1.12.0"` and the contract-assembly version equality; update
       `src/Lunate.Extensibility.Abstractions/PublicAPI.Unshipped.txt`; the three docs that still name
       1.10.0 (`docs/extensions/manifest.md`, `lifecycle-and-trust.md`, `troubleshooting.md`) name
@@ -13,33 +13,33 @@ implementation (senior-dev subagent batches; one batch per section, interleaved 
 
 ## 2. Manifest fields parse and validate
 
-- [ ] 2.1 Red→green: `builtin` (default false) parses; a directory manifest declaring it is a
+- [x] 2.1 Red→green: `builtin` (default false) parses; a directory manifest declaring it is a
       discovery error naming the path and the reason; a built-in list manifest without it is refused
       naming the manifest and the field.
-- [ ] 2.2 Red→green: `workspaceServices` parses name + optional positive `maxLoadedWorkspaces`
+- [x] 2.2 Red→green: `workspaceServices` parses name + optional positive `maxLoadedWorkspaces`
       (default 2); duplicates and non-positive/non-integer values refuse with the manifest name and
       field.
-- [ ] 2.3 Red→green: `toolActivation` parses the closed set `always`, `workspace-root-has-file`
+- [x] 2.3 Red→green: `toolActivation` parses the closed set `always`, `workspace-root-has-file`
       (non-empty `patterns`, no `/` or `\`), `workspace-is-git-repository`; unknown `when`, unknown or
       missing condition fields, and a key outside `*` ∪ declared tools refuse naming the manifest, the
       tool key and the field.
-- [ ] 2.4 Red→green: `toolAliases` parses `[A-Za-z0-9_-]{1,64}` aliases without `__`, keys ⊆ declared
+- [x] 2.4 Red→green: `toolAliases` parses `[A-Za-z0-9_-]{1,64}` aliases without `__`, keys ⊆ declared
       tools, duplicate keys refuse with the manifest-parser's duplicate style.
 
 ## 3. The built-in path
 
-- [ ] 3.1 `ExtensionScope.Builtin`, a `BuiltInExtension` (manifest + `Func<IExtensionFactory>`) and
+- [x] 3.1 `ExtensionScope.Builtin`, a `BuiltInExtension` (manifest + `Func<IExtensionFactory>`) and
       `ExtensionHostOptions.BuiltIns` / `ExtensionTestHostOptions.BuiltIns`; red→green: built-ins
       fold in before store scans, in declared order, on `Discover` with no directory.
-- [ ] 3.2 Red→green: a discovered id equal to a built-in id is skipped with one discovery error naming
+- [x] 3.2 Red→green: a discovered id equal to a built-in id is skipped with one discovery error naming
       both sources; the built-in wins.
-- [ ] 3.3 Red→green: the built-in front door runs the same activation tail (factory in hand, no
+- [x] 3.3 Red→green: the built-in front door runs the same activation tail (factory in hand, no
       collectible ALC created, no trust, no install record, no content hash), refuses cross-check
       failures like a discovered extension and fails one built-in without aborting the session.
-- [ ] 3.4 `--no-extensions` composes only the built-in set; red→green prove the three skip sites
+- [x] 3.4 `--no-extensions` composes only the built-in set; red→green prove the three skip sites
       (`ExtensionSession`, `PrintMode`, `InteractiveSession`) leave discovery, trust and third-party
       loads off while the built-in's tools register and run.
-- [ ] 3.5 Red→green: `/extensions` shows scope `builtin` (never `pending`/`trust-denied`), and
+- [x] 3.5 Red→green: `/extensions` shows scope `builtin` (never `pending`/`trust-denied`), and
       unload/`extensions reload <id>` of a built-in is refused with a teaching message.
 
 ## 4. Per-workspace services
