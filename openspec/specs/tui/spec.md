@@ -1814,9 +1814,11 @@ as the next step whenever nothing is configured.
 `~/.lunate` or `LUNATE_HOME`; the working directory SHALL NOT be the default destination. A path
 argument SHALL override the default, a relative path resolving against the session's working
 directory; more than one token SHALL be a usage error, and an existing file SHALL never be
-overwritten. The command SHALL print the absolute destination it wrote on the next scrollback line,
-followed by the notice `may contain paths and configuration; review before sharing`. The file SHALL
-be UTF-8 without a BOM with LF line endings, and owner-only on POSIX. The command SHALL be read-only
+overwritten. The command SHALL print the absolute destination it wrote, then one line stating the
+files it wrote — always the single bundle — and the bundle's byte size, followed by the notice
+`may contain paths and configuration; review before sharing`. The path, the file count and the size
+are on screen before anything could leave the machine, and the command never uploads anything. The
+file SHALL be UTF-8 without a BOM with LF line endings, and owner-only on POSIX. The command SHALL be read-only
 with respect to the session — no model call and no session write — so it works while a turn runs.
 Print mode and ACP SHALL NOT dispatch it as a command.
 
@@ -1843,6 +1845,23 @@ The bundle SHALL carry these sections:
   never the text, arguments or output. That rule covers the turn's own content: message text, tool
   arguments, tool output. A message an event carries *about* an infrastructure failure — a spill
   failure, an extension load reason — is not turn content and stays as that event's message field.
+  Such a message, and every other host diagnostic the bundle reports — a spill-failure reason, an
+  extension load reason, an OS error message — SHALL enter only through one scrubbing path, while
+  the turn's own content never enters the bundle at all:
+  - A failure's code stands in for its prose. An `IOException` (and its subclasses) SHALL carry its
+    HResult category next to the message: `disk_full` (0x80070070), `access_denied` (0x80070005),
+    `sharing_violation` (0x80070020), `not_found` (0x80070002, 0x80070003), `path_too_long`
+    (0x800700CE), `invalid_name` (0x8007007B), `handle_disk_full` (0x80070027); any other value
+    prints as `0x<hex>`. The category is a short stable token, so a reader can tell a full disk from
+    a permission problem even when the message is scrubbed to nothing.
+  - Every message SHALL pass the one scrubbing implementation before it reaches the file:
+    exact-value credential redaction first, then URL userinfo and query stripped so a link is
+    scheme, authority and path only, then the home directory replaced by `~`, then the user name
+    removed from paths (`/Users/<name>/…` becomes `~/…`, and a bare `<name>` left inside a path is
+    removed) — and no diagnostic site scrubs on its own.
+  - An exception whose message echoes its input (`FormatException`, `JsonException`, `XmlException`,
+    `DecoderFallbackException`) SHALL be reduced to its type name and the position it carries — a
+    line number, a byte or character position, a source path — and never its message.
 
 Every rendered byte SHALL pass `CredentialRedactor` before the file is opened: a credential value
 Lunate holds SHALL be replaced by `[redacted:<name>]` by exact match, and the bundle SHALL add no
@@ -1899,6 +1918,15 @@ not know.
 - **WHEN** `/debug` is submitted
 - **THEN** the output warns that the file may contain paths and configuration and must be reviewed
   before sharing
+
+#### Scenario: No sentinel survives the scrubbing path
+
+- **GIVEN** a host diagnostic message that carries a fake credential, a URL with userinfo and a
+  query, a home path containing the user name, and echoed input from a malformed-text exception
+- **WHEN** `/debug` is submitted
+- **THEN** the file's bytes contain none of them: the credential is `[redacted:<name>]`, the URL is
+  scheme, authority and path only, the path reads `~/…` and no longer carries the user name, and the
+  echoed message is reduced to an exception type and a position
 
 #### Scenario: An existing file is not overwritten
 

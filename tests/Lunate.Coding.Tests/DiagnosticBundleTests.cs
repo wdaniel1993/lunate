@@ -127,6 +127,51 @@ public sealed class DiagnosticBundleTests
     }
 
     [Fact]
+    public async Task Debug_names_the_file_count_and_size()
+    {
+        using var host = new InteractiveSessionHost(clock: Clock);
+        host.Console.Size = new ConsoleSize(200, 24);
+        host.Scrollback.Profile.Width = 400;
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+        await TurnAsync(host, "hello", "hi there");
+
+        await host.SendLineAsync("/debug");
+        string notice = await host.WaitForScrollbackAsync("wrote 1 file, ");
+
+        string directory = Path.Combine(host.Temp.File("home"), ".lunate", "diagnostics");
+        string file = Assert.Single(Directory.GetFiles(directory, "*.txt"));
+        string size = new FileInfo(file).Length.ToString("N0", CultureInfo.InvariantCulture);
+        Assert.Contains($"diagnostic bundle written to {file}", notice, StringComparison.Ordinal);
+        Assert.Contains($"wrote 1 file, {size} bytes", notice, StringComparison.Ordinal);
+        Assert.Contains("review before sharing", notice, StringComparison.Ordinal);
+
+        host.Console.Complete();
+        await run;
+    }
+
+    [Fact]
+    public async Task Debug_failure_carries_code_not_a_raw_message()
+    {
+        using var host = new InteractiveSessionHost(clock: Clock);
+        host.Console.Size = new ConsoleSize(200, 24);
+        host.Scrollback.Profile.Width = 400;
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+        string taken = host.Temp.File("taken");
+        Directory.CreateDirectory(taken);
+
+        await host.SendLineAsync("/debug " + taken);
+        await host.WaitForFrameAsync("diagnostic bundle failed: IOException (");
+        string notice = host.Frames;
+
+        Assert.False(File.Exists(taken), "the destination directory must remain untouched");
+
+        host.Console.Complete();
+        await run;
+    }
+
+    [Fact]
     public async Task Debug_with_more_than_one_token_reports_the_usage()
     {
         using var host = new InteractiveSessionHost(clock: Clock);
@@ -190,7 +235,7 @@ public sealed class DiagnosticBundleTests
         string message = "upstream exploded: " + Sentinel + " with a long tail of detail";
         var error = new RunError("run_1", message);
 
-        string line = DiagnosticBundle.Describe(error);
+        string line = DiagnosticBundle.Describe(error, DiagnosticScrubber.Empty);
 
         Assert.Contains(
             "message chars=" + message.Length.ToString(CultureInfo.InvariantCulture),
@@ -207,7 +252,7 @@ public sealed class DiagnosticBundleTests
         string reason = "rate limited: " + Sentinel + " retry after backoff";
         var retrying = new Retrying("run_1", 2, reason);
 
-        string line = DiagnosticBundle.Describe(retrying);
+        string line = DiagnosticBundle.Describe(retrying, DiagnosticScrubber.Empty);
 
         Assert.Contains(
             "attempt=2 reason chars=" + reason.Length.ToString(CultureInfo.InvariantCulture),

@@ -1,3 +1,4 @@
+using System.Globalization;
 using Lunate.Agent;
 using Lunate.Ai;
 using Lunate.Extensibility;
@@ -10,6 +11,14 @@ internal sealed partial class InteractiveSession
     /// <summary>The recent events the bundle can list; older ones are dropped as new ones arrive.</summary>
     private readonly List<DiagnosticEvent> _diagnosticEvents = [];
 
+    /// <summary>
+    /// The scrubber the session's own host diagnostics take before they are recorded for the
+    /// bundle: spill-failure reasons and later exceptions never reach the record unscrubbed.
+    /// </summary>
+    private readonly DiagnosticScrubber _eventScrubber = DiagnosticScrubber.FromEnvironment(
+        CredentialRedactor.Empty
+    );
+
     /// <summary>Every event the session has seen, including those trimmed from the ring.</summary>
     private int _diagnosticEventCount;
 
@@ -17,8 +26,10 @@ internal sealed partial class InteractiveSession
     /// <c>/debug [path]</c>: writes one diagnostic bundle and names the absolute path. Read-only
     /// with respect to the session — no model call, no session write — so it is available while a
     /// turn runs. The default destination is under the state root, never the working directory.
-    /// Credential redaction is the session's one rule: the whole document is rendered and then
-    /// scrubbed against the values <see cref="CredentialRedactorSource"/> collects.
+    /// Every host diagnostic inside the bundle — a spill-failure reason, an extension load reason,
+    /// an OS error message — enters through the one scrubbing path, and the whole document is then
+    /// redacted against the values <see cref="CredentialRedactorSource"/> collects; the turn's own
+    /// content never enters the bundle at all.
     /// </summary>
     private void WriteDiagnosticBundle(string argument)
     {
@@ -48,6 +59,7 @@ internal sealed partial class InteractiveSession
             return;
         }
 
+        DiagnosticScrubber scrubber = DiagnosticScrubber.FromEnvironment(CredentialRedactor.Empty);
         try
         {
             CredentialRedactor redactor = CredentialRedactorSource.Collect(
@@ -56,12 +68,21 @@ internal sealed partial class InteractiveSession
                 _options.Extensions?.StorePath ?? ExtensionHostOptions.Default.StorePath,
                 McpConfigPaths()
             );
-            DiagnosticBundleInput input = DiagnosticInput(destination, now, store);
-            string written = DiagnosticBundle.Write(input, redactor);
+            scrubber = DiagnosticScrubber.FromEnvironment(redactor);
+            DiagnosticBundleInput input = DiagnosticInput(destination, now, store) with
+            {
+                Scrubber = scrubber,
+            };
+            DiagnosticBundleWritten written = DiagnosticBundle.Write(input, redactor);
             WriteScrollbackLines([
                 .. new[]
                 {
-                    FormattableString.Invariant($"diagnostic bundle written to {written}"),
+                    FormattableString.Invariant(
+                        $"diagnostic bundle written to {written.Destination}"
+                    ),
+                    FormattableString.Invariant(
+                        $"wrote {written.Files} file, {written.Bytes.ToString("N0", CultureInfo.InvariantCulture)} bytes"
+                    ),
                     "may contain paths and configuration; review before sharing",
                 }.Select(Markup.Escape),
             ]);
@@ -69,7 +90,7 @@ internal sealed partial class InteractiveSession
         catch (Exception exception)
             when (exception is IOException or UnauthorizedAccessException or NotSupportedException)
         {
-            Notify("diagnostic bundle failed: " + exception.Message, NoticeLevel.Error);
+            Notify("diagnostic bundle failed: " + scrubber.Describe(exception), NoticeLevel.Error);
         }
     }
 
@@ -159,7 +180,10 @@ internal sealed partial class InteractiveSession
     /// </summary>
     private void RecordDiagnosticEvent(AgentEvent agentEvent)
     {
-        DiagnosticEvent entry = new(_scheduler.Now, DiagnosticBundle.Describe(agentEvent));
+        DiagnosticEvent entry = new(
+            _scheduler.Now,
+            DiagnosticBundle.Describe(agentEvent, _eventScrubber)
+        );
         lock (_diagnosticEvents)
         {
             _diagnosticEvents.Add(entry);

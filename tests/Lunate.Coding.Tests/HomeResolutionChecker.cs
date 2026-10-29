@@ -49,6 +49,13 @@ internal static class HomeResolutionChecker
             Resolution.UserProfile,
             "the same NuGet default (`~/.nuget/packages`), read for a compile and for a load's assets"
         ),
+        // Scrubbing: the diagnostic path replaces the real home with `~` in a message it is about to
+        // write. Same shape as PathText below — presentation only, it resolves no state.
+        new(
+            "src/Lunate.Coding/DiagnosticScrubber.cs",
+            Resolution.UserProfile,
+            "scrubbing only: replaces the real home with `~` in a diagnostic message; resolves no state"
+        ),
         // Presentation: `~` shortening of whatever path is being printed. It reads no state and
         // writes none, and the TUI assembly deliberately does not depend on Lunate.Ai.
         new(
