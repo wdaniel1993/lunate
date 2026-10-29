@@ -71,6 +71,24 @@ public sealed class DiagnosticScrubberTests
         Assert.Equal("IOException (0x80131620)", form, ignoreCase: false);
     }
 
+    /// <summary>
+    /// On Windows a write into a directory answers with permission denied, not an IOException, and a
+    /// test that waited for the I/O shape timed out there while passing on macOS and Linux. Both are
+    /// one failure to the reader, so both take one shape.
+    /// </summary>
+    [Fact]
+    public void Describe_normalises_an_operating_system_access_denial_to_the_io_shape()
+    {
+        var scrubber = new DiagnosticScrubber(CredentialRedactor.Empty, "/Users/tester", "tester");
+
+        string form = scrubber.Describe(
+            new UnauthorizedAccessException("/Users/tester/taken: Access is denied.")
+        );
+
+        Assert.StartsWith("IOException (access_denied)", form, StringComparison.Ordinal);
+        Assert.EndsWith("): ~/taken: Access is denied.", form, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void Scrub_takes_the_credential_the_url_the_home_and_the_user_name_out_of_a_message()
     {

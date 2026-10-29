@@ -66,7 +66,12 @@ internal sealed class DiagnosticScrubber
             JsonException json => JsonForm(json),
             XmlException xml => XmlForm(xml),
             DecoderFallbackException decoder => DecoderForm(decoder),
+            // Windows answers a write into a directory with UnauthorizedAccessException, not IOException.
+            // The reader cares about the category, not the .NET type, so both take the same shape —
+            // otherwise the same failure reads differently per platform and a test that waits for
+            // "IOException (" times out on Windows only.
             IOException io => IOExceptionForm(io),
+            UnauthorizedAccessException denied => IOExceptionForm(denied),
             _ => GeneralForm(exception),
         };
 
@@ -112,7 +117,7 @@ internal sealed class DiagnosticScrubber
                 + exception.Index.ToString(CultureInfo.InvariantCulture)
             : "DecoderFallbackException";
 
-    private string IOExceptionForm(IOException exception)
+    private string IOExceptionForm(Exception exception)
     {
         string form = "IOException (" + Category(exception.HResult) + ")";
         string message = Scrub(exception.Message);
