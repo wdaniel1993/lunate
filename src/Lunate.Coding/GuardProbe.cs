@@ -96,20 +96,27 @@ internal sealed record GuardProbe(
 
     /// <summary>
     /// Runs one mechanism once: it is the probe that separates "looks installed" from "works".
-    /// Output is trimmed and newlines collapsed, so a notice can quote it on one line.
+    /// The arguments go into <see cref="ProcessStartInfo.ArgumentList"/>, so the probe execs the
+    /// same command line the guard would. Output is trimmed and newlines collapsed, so a notice
+    /// can quote it on one line.
     /// </summary>
     private static (int ExitCode, string Output) RunMechanism(string fileName, string[] arguments)
     {
         try
         {
-            using var process = Process.Start(
-                new ProcessStartInfo(fileName)
-                {
-                    UseShellExecute = false,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                }
-            );
+            var start = new ProcessStartInfo
+            {
+                FileName = fileName,
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+            };
+            foreach (string argument in arguments)
+            {
+                start.ArgumentList.Add(argument);
+            }
+
+            using var process = Process.Start(start);
             if (process is null)
             {
                 return (-1, "the probe process did not start");

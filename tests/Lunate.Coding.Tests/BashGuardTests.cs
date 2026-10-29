@@ -13,6 +13,24 @@ public sealed class BashGuardTests
     internal static readonly ResolvedShell Shell = new(ShellKind.Bash, "/bin/bash", "bash", ["-c"]);
 
     [Fact]
+    public void The_mechanism_probe_passes_arguments_to_the_process_it_starts()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            return; // /bin/echo below; the Windows leg covers the guard when it exists at all.
+        }
+
+        (int exit, string output) = GuardProbe.Current.Run(
+            "/bin/echo",
+            ["guard-arg-one", "guard-arg-two"]
+        );
+
+        Assert.Equal(0, exit);
+        Assert.Contains("guard-arg-one", output);
+        Assert.Contains("guard-arg-two", output);
+    }
+
+    [Fact]
     public void The_macos_plan_wraps_the_shell_in_sandbox_exec_and_denies_the_targets()
     {
         using var temp = new TempDirectory();
