@@ -23,7 +23,7 @@ public sealed class TrustInventoryTests
         Assert.Equal(ExtensionTrustDecision.Prompt, extension.Decision);
         Assert.False(extension.FilesChanged);
         Assert.Equal(
-            ExtensionTrustStore.ComputeContentHash(extension.Descriptor.Directory),
+            ExtensionTrustStore.ComputeContentHash(extension.Descriptor.Directory!),
             extension.ContentHash
         );
     }

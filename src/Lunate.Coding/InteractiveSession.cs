@@ -631,18 +631,12 @@ internal sealed partial class InteractiveSession : IDisposable
     /// already isolated by the host. The configured MCP servers are already composed, so a
     /// registration sharing a configured server's name is skipped before listing and shown as
     /// shadowed by `/mcp`. The host's MCP tools are listed once, here, and a server whose process
-    /// exits later fires one notice. With <c>--no-extensions</c> the host is not composed at all.
+    /// exits later fires one notice. With <c>--no-extensions</c> the host composes only the
+    /// built-in set: no store is scanned, no trust question is asked and no third-party load runs.
     /// </summary>
     private async Task ComposeExtensionsAsync(CancellationToken ct)
     {
         TextWriter diagnostics = _options.Diagnostics ?? Console.Error;
-        if (_options.Extensions?.NoExtensions is true)
-        {
-            _toolResultRenderers = _options.ToolResultRenderers;
-            _statusWidgets = _options.StatusWidgets;
-            return;
-        }
-
         try
         {
             ExtensionSeams seams = (_options.Extensions ?? new ExtensionSeams()) with

@@ -30,6 +30,19 @@ public sealed class ExtensionHostOptions
     public IReadOnlyList<string> ReservedCommands { get; init; } = [];
 
     /// <summary>
+    /// The extensions the host composition supplies (manifest plus factory), in composition order;
+    /// discovery folds them in before the store scans. Empty by default.
+    /// </summary>
+    public IReadOnlyList<BuiltInExtension> BuiltIns { get; init; } = [];
+
+    /// <summary>
+    /// True composes only the built-in set (the <c>--no-extensions</c> composition): discovery
+    /// skips the store scans and the single-file candidates, so no third-party extension is
+    /// discovered, trusted or loaded. Built-ins from <see cref="BuiltIns"/> still load.
+    /// </summary>
+    public bool BuiltInsOnly { get; init; }
+
+    /// <summary>
     /// Where locked packages are read from — the compile and the load must agree, or a build would
     /// compile against files the load cannot find. Null means NuGet's own folder
     /// (<c>NUGET_PACKAGES</c>, else <c>~/.nuget/packages</c>); a test or a portable install sets it

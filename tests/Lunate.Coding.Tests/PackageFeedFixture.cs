@@ -70,7 +70,7 @@ internal sealed class PackageFeedFixture : IDisposable
             {
               "id": "{{extensionId}}",
               "version": "{{extensionVersion}}",
-              "apiVersion": "1.11.0",
+              "apiVersion": "1.12.0",
               "entryAssembly": "{{extensionId}}.dll"{{declaredTools}}
             }
             """

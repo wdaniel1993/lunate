@@ -152,6 +152,17 @@ internal static class ExtensionsCommand
         {
             foreach (ExtensionLoadResult result in results)
             {
+                // A built-in refuses unloading by design: its code runs in the host's own
+                // assemblies, so the teardown skips it — loading never created a context to
+                // release and session end stops its background services.
+                ExtensionDescriptor? descriptor = descriptors.FirstOrDefault(entry =>
+                    string.Equals(entry.Id, result.Id, StringComparison.Ordinal)
+                );
+                if (descriptor?.Scope is ExtensionScope.Builtin)
+                {
+                    continue;
+                }
+
                 await host.UnloadAsync(result.Id, notifyToolsChanged: false).ConfigureAwait(false);
             }
         }

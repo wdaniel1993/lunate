@@ -285,7 +285,12 @@ internal static partial class ExtensionsView
     }
 
     private static string ScopeText(ExtensionScope scope) =>
-        scope == ExtensionScope.Project ? "project" : "global";
+        scope switch
+        {
+            ExtensionScope.Project => "project",
+            ExtensionScope.Builtin => "builtin",
+            _ => "global",
+        };
 
     private static string StateText(ExtensionLoadState state) =>
         state switch

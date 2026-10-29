@@ -43,6 +43,22 @@ public sealed partial class ExtensionLoader
             );
         }
 
+        // The built-in front door (design §3): the host composition supplied the factory, so no
+        // assembly load, no collectible context, no scope, install-record or trust step runs —
+        // the shared activation tail is the directory door's.
+        if (descriptor.Scope is ExtensionScope.Builtin)
+        {
+            if (!_builtInById.TryGetValue(id, out BuiltInExtension? builtIn))
+            {
+                throw new ExtensionLoadException(
+                    $"extension '{id}' composes as a built-in, but the host supplied no factory for it."
+                );
+            }
+
+            return await LoadBuiltInAsync(descriptor, builtIn, startSession, cancellationToken)
+                .ConfigureAwait(false);
+        }
+
         // A directory that is a symlink out of its scope is refused by name: the scope is the trust
         // boundary, and a link that leaves it would load code from somewhere the user never chose.
         string extensionScopeRoot =
@@ -54,7 +70,7 @@ public sealed partial class ExtensionLoader
                 : _options.ExtensionsPath;
         try
         {
-            ScopePaths.RequireInside(extensionScopeRoot, descriptor.Directory, "load");
+            ScopePaths.RequireInside(extensionScopeRoot, descriptor.Directory!, "load");
         }
         catch (InvalidOperationException exception)
         {
@@ -65,7 +81,7 @@ public sealed partial class ExtensionLoader
         // is not trusting (addendum, phase 6). A hand-placed user-scope extension is still trusted
         // by placement and never reaches this.
         InstalledPackageProvenance? installedProvenance = Installed.ForExtension(
-            descriptor.Directory
+            descriptor.Directory!
         );
 
         // Fail closed: a store holding a record that cannot be read or no longer answers for itself
@@ -107,7 +123,7 @@ public sealed partial class ExtensionLoader
         }
 
         string entryAssembly = descriptor.Manifest.EntryAssembly!;
-        string entryPath = Path.Combine(descriptor.Directory, entryAssembly);
+        string entryPath = Path.Combine(descriptor.Directory!, entryAssembly);
         if (!File.Exists(entryPath))
         {
             throw new ExtensionLoadException(
@@ -137,12 +153,12 @@ public sealed partial class ExtensionLoader
 
         cancellationToken.ThrowIfCancellationRequested();
 
-        var context = new ExtensionLoadContext(descriptor.Id, descriptor.Directory);
+        var context = new ExtensionLoadContext(descriptor.Id, descriptor.Directory!);
         if (context.ShadowedNames.Count > 0)
         {
             _ignoredCopies[descriptor.Id] = new IgnoredHostCopy(
                 context.ShadowedNames,
-                [descriptor.Directory]
+                [descriptor.Directory!]
             );
         }
 
@@ -163,7 +179,7 @@ public sealed partial class ExtensionLoader
             Assembly assembly = context.LoadFromAssemblyPath(entryPath);
             return await ActivateAsync(
                     descriptor,
-                    assembly,
+                    () => FindFactory(assembly, descriptor),
                     context,
                     ExtensionSecretsStore.Load(_options, descriptor.Id),
                     startSession,
@@ -191,16 +207,17 @@ public sealed partial class ExtensionLoader
     }
 
     /// <summary>
-    /// The tail every runtime kind shares once its assembly is loaded: find the factory, create the
-    /// extension against a fresh context, cross-check the manifest declarations, publish the
-    /// registrations and — for a session load — start the background services and tell the session
-    /// the tool set changed. Deliberately free of rollback: the caller owns the try/catch so each
-    /// runtime kind reports its own failure in its own words.
+    /// The tail every runtime kind shares once its factory is in hand: create the extension against
+    /// a fresh context, cross-check the manifest declarations, publish the registrations and — for
+    /// a session load — start the background services and tell the session the tool set changed.
+    /// Deliberately free of rollback: the caller owns the try/catch so each runtime kind reports its
+    /// own failure in its own words. A builtin door passes no context: its factory already lives in
+    /// the default load context, so there is nothing collectible to build or unload.
     /// </summary>
     private async Task<LoadedExtension> ActivateAsync(
         ExtensionDescriptor descriptor,
-        Assembly assembly,
-        AssemblyLoadContext context,
+        Func<IExtensionFactory> factory,
+        AssemblyLoadContext? context,
         IExtensionSecrets secrets,
         bool startSession,
         bool notifyToolsChanged,
@@ -208,16 +225,19 @@ public sealed partial class ExtensionLoader
         CancellationToken cancellationToken
     )
     {
-        IExtensionFactory factory = FindFactory(assembly, descriptor);
+        IExtensionFactory implementation = factory();
         var extensionContext = CreateExtensionContext(descriptor, secrets);
         _extensionContexts[descriptor.Id] = extensionContext;
-        IExtension extension = factory.Create(extensionContext);
+        IExtension extension = implementation.Create(extensionContext);
         CrossCheckManifestTools(descriptor);
         await CrossCheckManifestCommandsAsync(descriptor, cancellationToken).ConfigureAwait(false);
         _modelRegistry.RegisterDeclared(descriptor.Id, descriptor.Manifest.ModelProviders, secrets);
         var loaded = new LoadedExtension(descriptor.Id, extension, descriptor);
         _loaded[descriptor.Id] = loaded;
-        _contexts[descriptor.Id] = context;
+        if (context is { } collectible)
+        {
+            _contexts[descriptor.Id] = collectible;
+        }
         if (startSession)
         {
             if (!_sessionEnded)
@@ -364,9 +384,9 @@ public sealed partial class ExtensionLoader
     )
     {
         string worktreePath = Path.GetFullPath(workingDirectory);
-        InstalledPackageProvenance? provenance = Installed.ForExtension(descriptor.Directory);
+        InstalledPackageProvenance? provenance = Installed.ForExtension(descriptor.Directory!);
         string contentHash = Installed.BindTrustDigest(
-            ExtensionTrustStore.ComputeContentHash(descriptor.Directory),
+            ExtensionTrustStore.ComputeContentHash(descriptor.Directory!),
             provenance
         );
         var store = new ExtensionTrustStore(_options);
@@ -389,7 +409,7 @@ public sealed partial class ExtensionLoader
                     .RunProjectTrustAsync(
                         new ProjectTrustPayload(
                             descriptor.Id,
-                            descriptor.Directory,
+                            descriptor.Directory!,
                             repositoryIdentity,
                             worktreePath
                         ),

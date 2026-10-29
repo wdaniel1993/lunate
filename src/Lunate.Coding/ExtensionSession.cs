@@ -25,6 +25,13 @@ internal sealed record ExtensionSeams
     /// <summary>The one-line user notice sink (a remote extension crash); null logs only.</summary>
     public Action<string>? Notice { get; init; }
 
+    /// <summary>
+    /// The extensions the host composes out of its own assemblies (manifest plus factory), in
+    /// composition order, before anything found in the store; empty by default. A
+    /// <c>--no-extensions</c> session composes only these.
+    /// </summary>
+    public IReadOnlyList<BuiltInExtension>? BuiltIns { get; init; }
+
     /// <summary>The session catalog the model registry falls back to; null disables the fallback.</summary>
     public ModelCatalog? ModelCatalog { get; init; }
 
@@ -32,8 +39,9 @@ internal sealed record ExtensionSeams
     public IChatClientFactory? ClientFactory { get; init; }
 
     /// <summary>
-    /// True skips composing the extension host entirely (the <c>--no-extensions</c> flag):
-    /// extension hooks, renderers, widgets and extension MCP servers are absent. Configured
+    /// True composes only the built-in set (the <c>--no-extensions</c> flag): the host still loads
+    /// what <see cref="BuiltIns"/> declares, but extension hooks, renderers, widgets and extension
+    /// MCP servers beyond it are absent — no store scan, no trust, no third-party load. Configured
     /// <c>mcp.json</c> servers are unaffected.
     /// </summary>
     public bool NoExtensions { get; init; }
@@ -177,6 +185,8 @@ internal sealed class ExtensionSession : IAsyncDisposable
             ClientFactory = seams.ClientFactory,
             GlobalPackagesFolder = seams.GlobalPackagesFolder,
             ReservedCommands = Commands.BuiltinNames,
+            BuiltIns = seams.BuiltIns ?? [],
+            BuiltInsOnly = seams.NoExtensions,
         };
         var loader = new ExtensionLoader(options);
         // Created eagerly, but it only holds the factory: nothing NuGet-shaped exists until a
@@ -348,14 +358,17 @@ internal sealed class ExtensionSession : IAsyncDisposable
                                 StringComparison.Ordinal
                             )
                     );
-                    return descriptor is null
-                        ? null
-                        : new ExtensionSkillSource(
+                    // A built-in has no own folder to bound a contributed skill directory to, so
+                    // it contributes the source only through a real folder — a built-in cannot
+                    // name one, and none does.
+                    return descriptor?.Directory is { } directory
+                        ? new ExtensionSkillSource(
                             registered.ExtensionId,
                             registered.Source.Id,
-                            descriptor.Directory,
+                            directory,
                             registered.Source.SkillDirectories
-                        );
+                        )
+                        : null;
                 })
                 .OfType<ExtensionSkillSource>(),
         ];

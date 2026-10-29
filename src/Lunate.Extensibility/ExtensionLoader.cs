@@ -13,6 +13,9 @@ public sealed partial class ExtensionLoader
     );
     private readonly List<ExtensionDiscoveryError> _discoveryErrors = [];
     private readonly Dictionary<string, LoadedExtension> _loaded = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, BuiltInExtension> _builtInById = new(
+        StringComparer.Ordinal
+    );
     private readonly Dictionary<string, AssemblyLoadContext> _contexts = new(
         StringComparer.Ordinal
     );
@@ -54,6 +57,12 @@ public sealed partial class ExtensionLoader
         _skillSources = new SkillSourceRegistry(options.Log);
         _commandSources = new CommandSourceRegistry(options.Log, options.Notify);
         _modelRegistry = new ModelRegistry(options.ModelCatalog, options.ClientFactory);
+        foreach (BuiltInExtension builtIn in options.BuiltIns)
+        {
+            // The supplied list is a host invariant; the first entry wins and the fold's refusal
+            // path (design §4) reports anything the composition cannot keep.
+            _builtInById.TryAdd(builtIn.Manifest.Id, builtIn);
+        }
     }
 
     /// <summary>The hook runner handlers registered through extension contexts dispatch to.</summary>
@@ -96,6 +105,12 @@ public sealed partial class ExtensionLoader
     private InstalledPackages Installed =>
         _installed ??= InstalledPackages.Read(_options.StorePath);
 
+    /// <summary>The collectible load contexts of the loaded extensions, by extension id.</summary>
+    internal IReadOnlyDictionary<string, AssemblyLoadContext> LoadContexts => _contexts;
+
+    /// <summary>Whether one id is loaded right now (test and reload paths read it).</summary>
+    internal bool IsLoaded(string id) => _loaded.ContainsKey(id);
+
     public IReadOnlyList<ExtensionDiscoveryError> DiscoveryErrors => [.. _discoveryErrors];
 
     public IReadOnlyList<ExtensionDescriptor> Discover(
@@ -110,6 +125,14 @@ public sealed partial class ExtensionLoader
         _descriptorsById.Clear();
         _discoveryErrors.Clear();
         _singleFile.Clear();
+
+        FoldBuiltIns();
+        if (_options.BuiltInsOnly)
+        {
+            // The --no-extensions composition: no store scan, no single-file candidates, so no
+            // third-party extension is ever discovered, trusted or loaded (design §1).
+            return Descriptors;
+        }
 
         ScanDirectory(_options.ExtensionsPath, ExtensionScope.Global);
         string projectExtensions = Path.Combine(
@@ -149,11 +172,22 @@ public sealed partial class ExtensionLoader
     /// <summary>
     /// Unloads one extension and removes its contributions. <paramref name="notifyToolsChanged"/>
     /// false unloads silently — the register-only inspect teardown (design D3) — skipping the
-    /// <c>ToolsChanged</c> dispatch.
+    /// <c>ToolsChanged</c> dispatch. A built-in cannot be unloaded: its code lives in the host's
+    /// own assemblies and there is no context to release; the message teaches that.
     /// </summary>
     public async ValueTask Unload(string id, bool notifyToolsChanged = true)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(id);
+        if (
+            _descriptorsById.TryGetValue(id, out ExtensionDescriptor? descriptor)
+            && descriptor.Scope is ExtensionScope.Builtin
+        )
+        {
+            throw new ExtensionLoadException(
+                $"extension '{id}' is a built-in; built-ins load with the host and cannot be reloaded or unloaded."
+            );
+        }
+
         if (!_loaded.Remove(id))
         {
             return;
@@ -392,13 +426,31 @@ public sealed partial class ExtensionLoader
                 continue;
             }
 
-            if (_descriptorsById.TryGetValue(manifest.Id, out ExtensionDescriptor? existing))
+            if (manifest.BuiltIn)
             {
+                // A directory manifest cannot claim built-in provenance (spec scenario); the field
+                // is the host's, and the discovery error names the path nothing loaded from.
                 _discoveryErrors.Add(
                     new ExtensionDiscoveryError(
                         manifestPath,
-                        $"extension '{manifest.Id}' is declared more than once: '{existing.Directory}' and '{directory}'."
+                        $"{manifestPath}: field 'builtin' of a discovered manifest cannot be enabled; built-ins are supplied by the host."
                     )
+                );
+                continue;
+            }
+
+            if (_descriptorsById.TryGetValue(manifest.Id, out ExtensionDescriptor? existing))
+            {
+                _discoveryErrors.Add(
+                    existing.Scope is ExtensionScope.Builtin
+                        ? new ExtensionDiscoveryError(
+                            manifestPath,
+                            $"extension '{manifest.Id}' was skipped: the id is supplied by the host as a built-in ('{_builtInById[manifest.Id].ManifestPath}'), the discovered manifest ('{manifestPath}') is not loaded, and a built-in is never shadowed."
+                        )
+                        : new ExtensionDiscoveryError(
+                            manifestPath,
+                            $"extension '{manifest.Id}' is declared more than once: '{existing.Directory}' and '{directory}'."
+                        )
                 );
                 continue;
             }

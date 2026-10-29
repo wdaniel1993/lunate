@@ -1,5 +1,6 @@
 using Lunate.Agent;
 using Lunate.Ai;
+using Lunate.Extensibility;
 
 namespace Lunate.Extensibility.Testing;
 
@@ -51,4 +52,11 @@ public sealed record ExtensionTestHostOptions
 
     /// <summary>The hook runner options; null uses the runner's defaults.</summary>
     public HookRunnerOptions? HookRunnerOptions { get; init; }
+
+    /// <summary>
+    /// The built-in extensions the host folds into discovery before the store scan, in composition
+    /// order; empty by default. The host still loads and exposes only <see cref="ExtensionId"/> —
+    /// call the loader for the built-ins a test needs.
+    /// </summary>
+    public IReadOnlyList<BuiltInExtension>? BuiltIns { get; init; }
 }

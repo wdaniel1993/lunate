@@ -154,18 +154,18 @@ internal static class PrintMode
 
                 session = selected;
                 IExtensionLog log = options.Extensions?.Log ?? new StderrExtensionLog(errors);
-                if (options.Extensions?.NoExtensions is not true)
-                {
-                    extensions = await ComposeExtensionsAsync(
-                            options.Extensions,
-                            workspace,
-                            catalog,
-                            factory,
-                            errors,
-                            ct
-                        )
-                        .ConfigureAwait(false);
-                }
+                // The host composes in every mode: with --no-extensions it composes only the
+                // built-in set — the loader skips the store scans, so nothing third-party is
+                // discovered, trusted or loaded (design §1).
+                extensions = await ComposeExtensionsAsync(
+                        options.Extensions,
+                        workspace,
+                        catalog,
+                        factory,
+                        errors,
+                        ct
+                    )
+                    .ConfigureAwait(false);
 
                 // Same discovery + index path as the interactive session; the terminal-less run
                 // never approves repository skills, so a prompt decision stays untrusted.
