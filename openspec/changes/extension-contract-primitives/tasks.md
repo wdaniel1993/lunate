@@ -74,27 +74,27 @@ implementation (senior-dev subagent batches; one batch per section, interleaved 
 
 ## 6. Stable aliases
 
-- [ ] 6.1 Red→green: the model-facing name is the alias when declared (declarations, nested calls,
+- [x] 6.1 Red→green: the model-facing name is the alias when declared (declarations, nested calls,
       result views), and the canonical `<id>__<local>` remains the identity for grouping, `/extensions`
       and unload; a tool without an alias keeps the canonical name.
-- [ ] 6.2 Red→green: collisions refuse the later load naming both owners — alias vs alias, alias vs
+- [x] 6.2 Red→green: collisions refuse the later load naming both owners — alias vs alias, alias vs
       another extension's canonical name, alias vs core name (via `ReservedToolNames` from the
       composition); MCP-tool collisions keep the existing first-composition-wins rule with one
       diagnostic.
 
 ## 7. The fitness suite
 
-- [ ] 7.1 A test-host extension (fixtures, not `Lunate.Roslyn`) proves the built-in path end to end:
+- [x] 7.1 A test-host extension (fixtures, not `Lunate.Roslyn`) proves the built-in path end to end:
       manifest with `builtIn`, `tools`, `toolActivation`, `toolAliases`, `workspaceServices`; tools
       declared, aliased, activated by the host; the workspace service acquired/evicted across two
       roots through the extension contract; no collects and no second ALC; `/extensions` reports it
       correctly.
-- [ ] 7.2 Docs: `docs/extensions/manifest.md` gains the four-field reference and refusal messages,
+- [x] 7.2 Docs: `docs/extensions/manifest.md` gains the four-field reference and refusal messages,
       `contributions/services.md` gains per-workspace services, `contributions/tools.md` the alias and
       activation paragraphs; `python3 scripts/docs-sync --check` green.
 
 ## 8. Verification
 
-- [ ] 8.1 `openspec validate extension-contract-primitives --strict` passes; final gate:
+- [x] 8.1 `openspec validate extension-contract-primitives --strict` passes; final gate:
       `dotnet build Lunate.slnx -c Release`, the touched test projects green in Release,
       `dotnet csharpier check .` (after the last edit); `scripts/verify.sh` is CI's job in this run.

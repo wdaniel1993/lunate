@@ -18,6 +18,10 @@ Known fields with the wrong type or shape fail the parse.
 | `entryAssembly` | one of two | string | Yes. A file name inside the extension directory. |
 | `runtime` | one of two | object | Yes. The out-of-process host; see [remote extensions](../extensions-remote.md). |
 | `tools` | no | string array | Yes. Must list every registered tool's local name. |
+| `toolAliases` | no | object | Yes. Maps declared local tool names to model-facing aliases; see [tool aliases](#toolaliases). |
+| `toolActivation` | no | object | Yes. Maps declared tools (or `*`) to host-evaluated activation rules; see [tool activation](#toolactivation). |
+| `workspaceServices` | no | object array | Yes. Declares per-workspace services and their optional loaded-workspace cap; see [services](contributions/services.md#per-workspace-services). |
+| `builtin` | no | boolean | Yes. Provenance assertion reserved for host-supplied built-ins; directory manifests cannot enable it. |
 | `commands` | no | string array | Parsed and displayed only. No command registration API exists; see [commands and keybindings](contributions/README.md#commands-and-keybindings). |
 | `hooks` | no | string array | Declaration. `/extensions` compares registered count with declared count; in-process registrations are not cross-checked. Remote extensions enforce it at the handshake. |
 | `services` | no | string array | Declaration, same as `hooks`. |
@@ -30,6 +34,47 @@ both refused with a message that names the conflict.
 
 `tools`, `commands`, `hooks` and `services` must be arrays of strings and may not repeat a value.
 `capabilities` may repeat values; it is informational.
+
+`workspaceServices` must be an array of objects with a unique, non-empty `name`. Each object may
+set `maxLoadedWorkspaces` to a positive integer; the default is 2. `toolActivation` is keyed by `*`
+or a declared local tool name; `toolAliases` is keyed only by declared local tool names.
+
+### `toolAliases`
+
+Map a declared local tool name to the stable name the model sees:
+
+```json
+"toolAliases": {
+  "diagnostics": "cs_diagnostics"
+}
+```
+
+An alias is 1–64 characters from `[A-Za-z0-9_-]` and cannot contain `__`. The host refuses an
+alias that is a reserved core tool name or collides with another extension's alias or canonical
+tool name. A collision refuses the later extension and names both owners. An alias for an
+undeclared tool is a manifest error. Without an alias, the model-facing name remains
+`<extension-id>__<local-name>`; the canonical name remains the extension's identity even when an
+alias is published. An MCP tool with the same model-facing name follows the existing first-composed
+rule: the extension tool stays and the MCP tool is skipped with one diagnostic.
+
+### `toolActivation`
+
+Map a declared local tool name, or `*` for every tool without a specific rule, to one condition:
+
+```json
+"toolActivation": {
+  "diagnostics": { "when": "workspace-root-has-file", "patterns": ["*.sln", "*.csproj"] },
+  "*": { "when": "workspace-is-git-repository" }
+}
+```
+
+The closed `when` set is `always`, `workspace-root-has-file` and `workspace-is-git-repository`.
+`always` and `workspace-is-git-repository` take no extra fields. The file condition requires a
+non-empty `patterns` array; patterns match direct children of the workspace root only, and cannot
+contain `/` or `\\`. A tool with no rule is always active. The host evaluates rules at composition
+for each run's worktree root; a false rule keeps the registered count unchanged but withholds the
+tool from model declarations, nested calls and tool stubs. `/extensions` reports the inactive
+condition and reason.
 
 ### `id`
 
@@ -166,12 +211,33 @@ extension.json: the manifest declares neither 'entryAssembly' nor 'runtime'; dec
 extension.json: the manifest declares both 'entryAssembly' and 'runtime'; declare exactly one runtime kind.
 extension.json: field 'tools' must be an array of strings.
 extension.json: field 'tools' declares 'greet' more than once.
+extension.json: field 'toolAliases' for 'diagnostics': alias 'bad__alias' must be 1-64 characters of [A-Za-z0-9_-] and must not contain '__'.
+extension.json: field 'toolAliases' declares an alias for 'unknown', which is not a declared tool.
+extension.json: field 'toolActivation' rule for 'greet': unknown condition 'sometimes'; the supported conditions are always, workspace-root-has-file and workspace-is-git-repository.
+extension.json: field 'workspaceServices' service 'roslyn': maxLoadedWorkspaces must be a positive integer.
+extension.json: field 'builtin' must be true or false.
 extension.json: field 'settingsSchema' must be an object.
 extension.json: field 'modelProviders[0].endpoint' must be an absolute http(s) URL but is 'ftp://x/v1'.
 extension.json: field 'modelProviders[0].contextWindow' must be a positive integer.
 extension.json: field 'modelProviders' declares id 'acme' more than once.
 extension 'hello' is declared more than once: '/…/extensions/hello' and '/repo/.lunate/extensions/hello'.
 extension directory '/…/extensions/hello' has no extension.json manifest.
+```
+
+Built-in provenance refusals name the manifest and explain which side of the host-only contract was
+violated:
+
+```text
+/…/extensions/hello/extension.json: field 'builtin' of a discovered manifest cannot be enabled; built-ins are supplied by the host.
+the built-in manifest 'host/hello/extension.json' does not declare "builtin": true; the host composition refused it.
+host/hello/extension.json: field 'entryAssembly' of a built-in manifest is refused; a built-in runs in the default load context.
+```
+
+A tool-alias ownership collision or a core-name refusal happens at load, after the manifest parses:
+
+```text
+extension 'second': tool 'inspect' was refused: the model-facing name 'shared' is already registered by extension 'first' tool 'diagnostics'.
+extension 'hello': tool 'greet' was refused: model-facing name 'read' is reserved by core tool 'read'.
 ```
 
 A declared-but-unregistered tool is not a refusal: it is logged and dropped from the offered set.

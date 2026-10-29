@@ -24,7 +24,7 @@ context.RegisterTool(new ExtensionToolRegistration
 
 | Field | Required | Meaning |
 | --- | --- | --- |
-| `Name` | yes | The local name, `[A-Za-z0-9_-]+`. The model sees `<extension-id>__<name>`. |
+| `Name` | yes | The local name, `[A-Za-z0-9_-]+`. The model sees the manifest alias when declared, otherwise `<extension-id>__<name>`. |
 | `Description` | yes | The text the model reads. |
 | `ParametersSchema` | yes | A hand-written JSON Schema; must be a JSON object. |
 | `OutputSchema` | no | The structured result's schema; a JSON object or null. |
@@ -46,14 +46,23 @@ public interface IExtensionToolHandler
 ## Constraints
 
 - **Name.** The local name must be non-empty and contain only `[A-Za-z0-9_-]`. The model-facing
-  name is `<extension-id>__<local name>` and may not exceed 64 characters.
+  name is `<extension-id>__<local name>` without an alias, and may not exceed 64 characters.
+- **Alias.** The manifest's optional `toolAliases` maps a declared local name to a 1–64 character
+  `[A-Za-z0-9_-]` alias (no `__`). The alias is the name in model declarations, nested calls,
+  renderer lookups and tool result views; `ExtensionId` and the canonical `<id>__<local>` remain the
+  tool's identity for grouping, `/extensions` and unload. See [manifest.md](../manifest.md#toolaliases).
+- **Activation.** The optional `toolActivation` manifest field gates offering a tool per run root.
+  A false rule keeps the registration and counts but removes the tool from declarations, nested
+  calls and stubs for that composition. See [manifest.md](../manifest.md#toolactivation).
 - **Cap.** At most 32 tools per extension.
 - **Description and schema.** The description must be non-empty; `ParametersSchema` must be a JSON
   object; `OutputSchema` must be a JSON object or null.
 - **Manifest coverage.** The manifest `tools` array must list every registered local name. A
   registered-but-undeclared tool refuses the load; a declared-but-unregistered name is logged and
   dropped from the offered set.
-- **Collision.** A model-facing name already registered by another extension refuses the load.
+- **Collision.** An alias cannot be a reserved core name or collide with another extension's alias
+  or canonical name; the later load is refused with both owners named. A matching MCP tool keeps the
+  extension's first-composition win: the MCP tool is skipped with one diagnostic.
 - **Registration only.** `Create` registers the handler; it must not run the tool or start
   resources. The handler runs on first call.
 
