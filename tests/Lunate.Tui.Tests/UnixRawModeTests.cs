@@ -102,6 +102,29 @@ public sealed class UnixRawModeTests
         Assert.NotEqual(0u, TermiosLayout.Linux.IFlagClearMask & IcrNl);
     }
 
+    /// <summary>
+    /// The pin that answers "is Ctrl+S still XOFF?": IXON is part of the applied clear mask on
+    /// both platforms, so after <c>Enter</c> writes the attributes back, Ctrl+S cannot freeze the
+    /// terminal's output and is delivered to the decoder as an ordinary character. The byte window
+    /// filled with 1s is the stand-in for a tcgetattr buffer, and the assert is over the same
+    /// buffer tcsetattr writes back (the real path in <see cref="UnixRawMode.Enter"/>).
+    /// </summary>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void ApplyRaw_clears_ixon_so_ctrl_s_is_not_xoff(bool macOs)
+    {
+        TermiosLayout layout = macOs ? TermiosLayout.MacOs : TermiosLayout.Linux;
+        uint ixon = macOs ? IxOnMacOs : IxOnLinux;
+        var state = new byte[UnixRawMode.TermiosBufferSize];
+        state.AsSpan(layout.IFlagOffset, 4).Fill(0xFF);
+
+        layout.ApplyRaw(state);
+
+        uint iflag = BinaryPrimitives.ReadUInt32LittleEndian(state.AsSpan(layout.IFlagOffset));
+        Assert.Equal(0u, iflag & ixon);
+    }
+
     [Fact]
     public void Current_picks_the_layout_for_the_running_platform()
     {
