@@ -440,6 +440,9 @@ internal sealed class ExtensionSession : IAsyncDisposable
     /// <summary>The live model registry of the loaded extensions.</summary>
     internal ModelRegistry ModelRegistry => _loader.ModelRegistry;
 
+    /// <summary>The collectible contexts currently owned by this session's extension loader.</summary>
+    internal int LoadContextCount => _loader.LoadContexts.Count;
+
     /// <summary>
     /// The extension MCP mapping built by <see cref="ComposeMcpServers"/>; null until composed.
     /// </summary>
