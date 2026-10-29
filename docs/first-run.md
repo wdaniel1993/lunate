@@ -110,4 +110,7 @@ over the key stored in the file. `lunate auth list` shows which source is in use
 - `set <VARIABLE> to a valid key` — the variable is present but empty or unusable. Set a non-empty
   value or store the key with `lunate auth login`.
 
-The same messages appear in print mode, where there is no picker to open.
+Those are the interactive header's fixes. Print mode has no picker: a run that cannot resolve a
+credential exits 1 with the client factory's message, which names the variable and the missing key
+(for example `The OPENAI_API_KEY environment variable is not set and no 'openai' key is stored. Set
+OPENAI_API_KEY or add the key to auth.json.`).

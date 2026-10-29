@@ -49,9 +49,9 @@
 - [x] 5.1 `docs/` gains a "First run" page: `lunate auth login`, the picker, the custom endpoint, and the
       environment-variable override stated once.
 - [x] 5.2 `README.md` install section links that page instead of the bare auth.json sentence.
-- [ ] 5.3 Tests: CLI subcommands × (TTY, pipe, missing provider, unknown provider), picker navigation,
+- [x] 5.3 Tests: CLI subcommands × (TTY, pipe, missing provider, unknown provider), picker navigation,
       first-run trigger and its non-interactive absence, custom-endpoint validation, and one test that the
       key never reaches a notice/history/session file on each path.
-- [ ] 5.4 `scripts/verify.sh` unchanged; the suites carry the new tests.
+- [x] 5.4 `scripts/verify.sh` unchanged; the suites carry the new tests.
 - [ ] 5.5 A recording for the media set: fresh install → `/auth` → picker → key → `/model` → first prompt.
 - [ ] 5.6 Archive the change into `openspec/specs/{agent-config,tui}/spec.md` in the same PR's last commit.
