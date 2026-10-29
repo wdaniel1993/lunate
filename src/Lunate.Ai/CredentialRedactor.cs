@@ -14,10 +14,13 @@ namespace Lunate.Ai;
 /// session's config files; <c>Lunate.Coding</c> collects them and both the coding host and the agent
 /// loop use this one implementation.
 /// Replacement is one left-to-right scan: at each position a pre-existing
-/// <c>[redacted:&lt;name&gt;]</c> marker is copied verbatim (so re-redacting text that already
-/// carries markers changes nothing), otherwise the longest matching value is replaced by that
-/// value's own marker without rescanning what was written, otherwise one character is copied.
-/// A value that names another credential therefore cannot nest inside a written marker.
+/// <c>[redacted:&lt;name&gt;]</c> marker is copied verbatim only when the bracketed name is exactly
+/// one of the credential names this redactor knows — any other bracketed span is not treated as a
+/// marker and falls through to value matching (adversarial or accidental text shaped like
+/// <c>[redacted:&lt;known-value&gt;]</c> therefore loses the raw value like any other
+/// occurrence) — otherwise the longest matching value is replaced by that value's own marker
+/// without rescanning what was written, otherwise one character is copied. A value that names
+/// another credential therefore cannot nest inside a written marker.
 /// </summary>
 internal sealed class CredentialRedactor
 {
@@ -30,6 +33,8 @@ internal sealed class CredentialRedactor
     private static readonly UTF8Encoding Utf8NoBom = new(encoderShouldEmitUTF8Identifier: false);
 
     private readonly IReadOnlyList<(string Name, string Value)> _values;
+    private readonly string[] _names;
+    private readonly byte[][] _nameBytes;
 
     /// <summary>A redactor that knows nothing; the export still writes the review notice.</summary>
     internal static CredentialRedactor Empty { get; } = new([]);
@@ -49,6 +54,8 @@ internal sealed class CredentialRedactor
                 // the rest of the longer secret in place.
                 .OrderByDescending(entry => entry.Value.Length),
         ];
+        _names = [.. _values.Select(entry => entry.Name).Distinct(StringComparer.Ordinal)];
+        _nameBytes = [.. _names.Select(Utf8NoBom.GetBytes)];
     }
 
     /// <summary>How many distinct values the redactor will replace.</summary>
@@ -96,8 +103,10 @@ internal sealed class CredentialRedactor
 
     /// <summary>
     /// The text with every known credential value replaced by its marker. A marker already present
-    /// in <paramref name="text"/> is passed through untouched, so re-redacting redacted text is
-    /// identity.
+    /// in <paramref name="text"/> is passed through untouched only when its name names a credential
+    /// this redactor knows; a bracketed <c>[redacted:…]</c> span with any other content falls
+    /// through to value matching, so a known value inside it is replaced like any other occurrence.
+    /// Re-redacting redacted text is therefore identity.
     /// </summary>
     internal string Redact(string text)
     {
@@ -106,16 +115,24 @@ internal sealed class CredentialRedactor
         int index = 0;
         while (index < text.Length)
         {
-            // A pre-existing marker is copied verbatim and never re-matched: scanning resumes after
-            // it, so a name that is also some other credential's value cannot nest inside it.
+            // A pre-existing marker is copied verbatim and never re-matched, but only when the name
+            // between the brackets names a credential this redactor knows — otherwise text shaped
+            // like a marker whose content is itself a known value would smuggle the raw secret
+            // through; such a span falls through to the value matching below. Scanning resumes
+            // after a passed-through marker, so a name that is also some other credential's value
+            // cannot nest inside it.
             if (text.AsSpan(index).StartsWith(MarkerPrefix, StringComparison.Ordinal))
             {
                 int close = text.IndexOf(']', index + MarkerPrefix.Length);
                 if (close > index + MarkerPrefix.Length)
                 {
-                    builder.Append(text, index, close + 1 - index);
-                    index = close + 1;
-                    continue;
+                    int nameStart = index + MarkerPrefix.Length;
+                    if (_names.Contains(text[nameStart..close], StringComparer.Ordinal))
+                    {
+                        builder.Append(text, index, close + 1 - index);
+                        index = close + 1;
+                        continue;
+                    }
                 }
             }
 
@@ -146,8 +163,9 @@ internal sealed class CredentialRedactor
 
     /// <summary>
     /// The byte-level form, for the JSONL export: the session file is edited in place byte for
-    /// byte, so a line without a credential stays exactly the bytes it was. The single marker-safe
-    /// scan of <see cref="Redact"/> applies here too, so written markers are never nested.
+    /// byte, so a line without a credential stays exactly the bytes it was. The name-checked,
+    /// marker-safe scan of <see cref="Redact"/> applies here too, so written markers are never
+    /// nested and a bracketed known value is still replaced.
     /// </summary>
     internal byte[] RedactUtf8(byte[] source)
     {
@@ -182,9 +200,12 @@ internal sealed class CredentialRedactor
                 int close = remaining.IndexOf(closeMarker);
                 if (close > prefixBytes.Length)
                 {
-                    CopySpan(builder, remaining[..(close + 1)]);
-                    index += close + 1;
-                    continue;
+                    if (IsKnownName(remaining[prefixBytes.Length..close]))
+                    {
+                        CopySpan(builder, remaining[..(close + 1)]);
+                        index += close + 1;
+                        continue;
+                    }
                 }
             }
 
@@ -216,6 +237,19 @@ internal sealed class CredentialRedactor
     internal static string Marker(string name) => "[redacted:" + name + "]";
 
     private const string MarkerPrefix = "[redacted:";
+
+    private bool IsKnownName(ReadOnlySpan<byte> name)
+    {
+        foreach (byte[] known in _nameBytes)
+        {
+            if (name.SequenceEqual(known))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     private static void CopySpan(List<byte> builder, ReadOnlySpan<byte> span)
     {

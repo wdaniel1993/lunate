@@ -193,6 +193,62 @@ public sealed class CredentialRedactorTests
         Assert.Equal("[redacted:ANTHROPIC_API_KEY]", redactor.Redact(ProviderKey));
     }
 
+    [Fact]
+    public void A_bracketed_known_secret_is_masked_not_passed_through_as_a_marker()
+    {
+        var redactor = new CredentialRedactor([("OPENAI_API_KEY", "sk-live-9f8e7d6c5b4a")]);
+        const string input = "[redacted:sk-live-9f8e7d6c5b4a]";
+
+        string redacted = redactor.Redact(input);
+
+        Assert.DoesNotContain("sk-live-9f8e7d6c5b4a", redacted, StringComparison.Ordinal);
+        Assert.Contains("[redacted:OPENAI_API_KEY]", redacted, StringComparison.Ordinal);
+        Assert.Equal(redacted, redactor.Redact(redacted), StringComparer.Ordinal);
+    }
+
+    [Fact]
+    public void A_bracketed_known_secret_is_masked_in_the_jsonl_bytes_too()
+    {
+        var redactor = new CredentialRedactor([("OPENAI_API_KEY", "sk-live-9f8e7d6c5b4a")]);
+        byte[] source = System.Text.Encoding.UTF8.GetBytes(
+            "{\"text\":\"[redacted:sk-live-9f8e7d6c5b4a]\"}\n"
+        );
+
+        byte[] redacted = redactor.RedactUtf8(source);
+
+        string first = System.Text.Encoding.UTF8.GetString(redacted);
+        Assert.Equal(
+            "{\"text\":\"[redacted:[redacted:OPENAI_API_KEY]]\"}\n",
+            first,
+            StringComparer.Ordinal
+        );
+        Assert.Equal(
+            first,
+            System.Text.Encoding.UTF8.GetString(redactor.RedactUtf8(redacted)),
+            StringComparer.Ordinal
+        );
+    }
+
+    [Fact]
+    public void A_marker_with_an_unknown_name_passes_through_unchanged()
+    {
+        var redactor = new CredentialRedactor([("openai", AuthKey)]);
+
+        const string input = "password: [redacted:SOMETHING_ELSE] untouched";
+
+        Assert.Equal(input, redactor.Redact(input), StringComparer.Ordinal);
+    }
+
+    [Fact]
+    public void An_unknown_marker_and_a_known_marker_share_one_text_unchanged()
+    {
+        var redactor = new CredentialRedactor([("openai", AuthKey)]);
+
+        const string input = "a [redacted:X] b [redacted:openai] c";
+
+        Assert.Equal(input, redactor.Redact(input), StringComparer.Ordinal);
+    }
+
     private static void WriteAuth(TempDirectory temp, string key) =>
         File.WriteAllText(
             temp.File("auth.json"),
