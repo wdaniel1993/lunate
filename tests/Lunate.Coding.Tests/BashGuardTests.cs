@@ -170,6 +170,8 @@ public sealed class BashGuardTests
                     StringComparer.Ordinal
                 )
                 {
+                    ["/"] = [temp.Root, "/tmp"],
+                    ["/tmp"] = [],
                     [temp.Root] = [profile],
                     [profile] = [Path.Combine(profile, "projects"), Path.Combine(profile, "state")],
                     [state] = [Path.Combine(state, "sessions")],
@@ -195,6 +197,61 @@ public sealed class BashGuardTests
     }
 
     [Fact]
+    public void The_landlock_fallback_keeps_normal_access_outside_the_targets_alive()
+    {
+        // The pre-fix fallback walked only temp/profile roots, so every other directory —
+        // /etc below, and files directly in the profile — was dragged into the deny. A guard
+        // must leave ordinary access alone.
+        using var temp = new TempDirectory();
+        string home = Path.Combine(temp.Root, "home");
+        string state = Path.Combine(home, "dev", ".lunate");
+        string auth = Path.Combine(state, "auth.json");
+        string prefix = Path.Combine(home, "dev", ".local", "bin");
+        var target = new GuardTarget(state, auth, prefix, home);
+        var guard = new BashGuard(
+            target,
+            Fake.Unix(
+                macOs: false,
+                setpriv: "/usr/bin/setpriv",
+                directoryChildren: new Dictionary<string, IReadOnlyList<string>>(
+                    StringComparer.Ordinal
+                )
+                {
+                    ["/"] = ["/etc", "/usr", home],
+                    ["/etc"] = [],
+                    ["/usr"] = [],
+                    [home] = [Path.Combine(home, "dev"), Path.Combine(home, "other")],
+                    [Path.Combine(home, "other")] = [],
+                    [Path.Combine(home, "dev")] =
+                    [
+                        Path.Combine(home, "dev", "projects"),
+                        Path.Combine(home, "dev", ".local"),
+                    ],
+                    [Path.Combine(home, "dev", "projects")] = [],
+                    [Path.Combine(home, "dev", ".local")] = [prefix],
+                    [prefix] = [],
+                },
+                fileChildren: new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal)
+                {
+                    [home] = [Path.Combine(home, ".gitconfig")],
+                }
+            )
+        );
+
+        var launch = guard.Wrap(Shell, Path.Combine(home, "dev", "ws"));
+
+        Assert.True(launch.Wrapped);
+        var args = string.Join(' ', launch.ArgumentsPrefix);
+        // Ordinary directories, however far from the profile, are granted whole...
+        Assert.Contains("path-beneath::/etc", args);
+        Assert.Contains("path-beneath::/usr", args);
+        Assert.Contains($"path-beneath::{Path.Combine(home, "other")}", args);
+        // ...and so are reads of files that sit directly on the path to a target.
+        Assert.Contains($"path-beneath:read-file:{Path.Combine(home, ".gitconfig")}", args);
+        Assert.DoesNotContain($"path-beneath::{state}", args);
+    }
+
+    [Fact]
     public void The_landlock_fallback_allowlists_the_workspace_but_never_the_state_root()
     {
         using var temp = new TempDirectory();
@@ -209,6 +266,9 @@ public sealed class BashGuardTests
             setpriv: "/usr/bin/setpriv",
             directoryChildren: new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal)
             {
+                ["/"] = [temp.Root, "/tmp"],
+                ["/tmp"] = [],
+                [temp.Root] = [profile],
                 [profile] =
                 [
                     Path.Combine(profile, "projects"),

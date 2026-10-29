@@ -10,9 +10,14 @@ internal sealed partial class BashGuard
 {
     private const string SandboxExecutable = "/usr/bin/sandbox-exec";
     private const string AppArmorSysctl = "/proc/sys/kernel/apparmor_restrict_unprivileged_userns";
-    private const int LandlockRuleCap = 64;
 
-    private static readonly IReadOnlyList<string> TempRoots = ["/tmp", "/var/tmp"];
+    /// <summary>
+    /// The rule budget. A typical Linux system lands in the low hundreds of allow rules (one per
+    /// top-level directory, plus the branches past a denied target), about 30 KB of argv per
+    /// spawn; past the cap the mechanism reports unavailable instead of ballooning every spawn
+    /// or silently tightening the profile.
+    /// </summary>
+    private const int LandlockRuleCap = 256;
 
     // macOS ------------------------------------------------------------------
 
@@ -147,10 +152,12 @@ internal sealed partial class BashGuard
 
     /// <summary>
     /// The Landlock fallback: Landlock has no deny rules, so the profile is written as allow rules
-    /// with rights per rule — everything outside the denied targets is granted in one full rule
-    /// per directory, while the state root and the install prefix are granted read-only (prefix
-    /// also executable, so its binaries still run). The paths' rights are spelled in setpriv's
-    /// rule syntax; an empty access field (<c>path-beneath::path</c>) means every handled access.
+    /// with rights per rule. The walk starts at the filesystem root: every directory that holds no
+    /// denied target gets one full rule, and its subtree keeps working normally as a result; the
+    /// branches leading down to the targets stay minimal (listing plus the files directly in
+    /// them), the state root and the install prefix are granted read-only (prefix also
+    /// executable, so its binaries still run). The rights are spelled in setpriv's rule syntax; an
+    /// empty access field (<c>path-beneath::path</c>) means every handled access.
     /// <c>auth.json</c> gets no rule at all: nothing beneath the state root grants
     /// <c>read-file</c> on it, so its reads are denied along with its writes.
     /// </summary>
@@ -158,14 +165,12 @@ internal sealed partial class BashGuard
     {
         var rules = new List<string>();
         var visited = new HashSet<string>(StringComparer.Ordinal);
-        foreach (string root in WalkRoots().Prepend(workspace).Distinct(StringComparer.Ordinal))
+        foreach (string root in new[] { "/", workspace }.Distinct(StringComparer.Ordinal))
         {
-            if (_target.IsDenied(root) || !visited.Add(root))
+            if (visited.Add(root))
             {
-                continue;
+                Walk(root, self: root != "/", rules, visited);
             }
-
-            Walk(root, self: true, rules, visited);
         }
 
         List<string> ordered = rules.Distinct(StringComparer.Ordinal).ToList();
@@ -275,46 +280,6 @@ internal sealed partial class BashGuard
             Path.TrimEndingDirectorySeparator(PathCanonical.Canonicalize(root)),
             StringComparison.Ordinal
         );
-
-    private IEnumerable<string> WalkRoots()
-    {
-        string? runtimeDirectory = _probe.GetEnvironmentVariable("XDG_RUNTIME_DIR");
-        IEnumerable<string> roots = TempRoots;
-        if (!string.IsNullOrWhiteSpace(_target.ProfileBase))
-        {
-            roots = roots.Append(_target.ProfileBase);
-        }
-
-        if (!string.IsNullOrWhiteSpace(runtimeDirectory))
-        {
-            roots = roots.Append(runtimeDirectory);
-        }
-
-        return roots.Distinct(StringComparer.Ordinal);
-    }
-
-    private IReadOnlyList<string> Walk(string root)
-    {
-        List<string> allowed = [];
-        foreach (string child in _probe.ListDirectories(root))
-        {
-            if (_target.IsDenied(child))
-            {
-                continue;
-            }
-
-            if (_target.ContainsDenied(child))
-            {
-                allowed.AddRange(Walk(child));
-            }
-            else
-            {
-                allowed.Add(child);
-            }
-        }
-
-        return allowed;
-    }
 
     private string Notice(IReadOnlyList<string> reasons)
     {

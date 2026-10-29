@@ -49,13 +49,17 @@ read-deny on `auth.json`.**
   (`mv`, `cp`) are left to the mechanism, and on that path the tool appends a hint naming
   the guard to a result that failed with a filesystem denial. Both secrets are known to
   the model, not to the shell's raw errno.
-- **Landlock's shape is honest.** Landlock has no deny rules, so the fallback allow-lists
-  the subtraction walk: every sibling of every denied target at every level, plus the
-  workspace, the temp roots and `/dev/null`. Its gaps are stated, not hidden: files
-  directly in `$HOME` (e.g. `~/.gitconfig`) stay unwritable when a denied target is a
-  `$HOME` child, `auth.json` stays readable (Linux Landlock cannot handle read rights, so
-  the write-deny is what the fallback buys), and the mechanism caps itself at 64 allow
-  rules and reports instead of ballooning the argv of a command spawn.
+- **Landlock's shape is honest.** Landlock has no deny rules, so the fallback is written as
+  allow rules with rights per rule, starting the walk at the filesystem root: every directory
+  that holds no denied target gets one full rule and its whole subtree stays normal; the
+  branches leading down to the state root and the install prefix grant listing and reads of
+  the files directly in them, and inside the targets the grants narrow to reads (plus execute
+  in the prefix, so `lunate` still runs). `auth.json` gets no rule anywhere, so its reads are
+  denied along with its writes. Landlock can only refuse writes it did not grant: creating a
+  new file directly inside a directory on the path to a target (for example `$HOME`) stays
+  denied rather than granting make rights that would reach beneath the target — the gaps, like
+  every Landlock limit, are inherited from allow-only semantics, and the mechanism caps itself
+  at 256 allow rules and reports instead of ballooning the argv of a command spawn.
 - **Where it is wired:** inside `BashTool`, which owns the shell spawn and the tool
   result text; `ProcessRunner` and the tree kill are untouched (sandbox-exec execs in
   place, so exit codes and kills behave; observed in the spike and covered by the
