@@ -221,7 +221,10 @@ public sealed class BashToolTests
         using var temp = new TempDirectory();
         var pidFile = temp.File("grandchild.pid");
         using var cts = new CancellationTokenSource();
-        var tool = new BashTool(new Workspace(temp.Root), null, WaitBudgets.CommandRun);
+        // The tool's own command timeout is a guard here, not the subject: the tree kill the test
+        // observes has to be the one its cancellation fires, so the guard sits above the spawn
+        // window the pin probe waits and cannot end the command while the window is open.
+        var tool = new BashTool(new Workspace(temp.Root), null, WaitBudgets.TreeKillGuard);
         DateTime commandStarted = DateTime.Now;
 
         // Pinned while the command still runs, and the window closes if the run ends first: a pid
