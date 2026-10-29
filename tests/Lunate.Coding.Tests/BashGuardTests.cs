@@ -56,7 +56,7 @@ public sealed class BashGuardTests
     }
 
     [Fact]
-    public void The_bwrap_plan_binds_the_root_read_only_and_the_workspace_writable()
+    public void The_bwrap_plan_keeps_the_root_writable_and_denies_only_the_targets()
     {
         using var temp = new TempDirectory();
         string state = Path.Combine(temp.Root, "state");
@@ -76,13 +76,17 @@ public sealed class BashGuardTests
         Assert.Equal("/usr/bin/bwrap", launch.FileName);
         Assert.Null(launch.Notice);
         var args = string.Join(' ', launch.ArgumentsPrefix);
-        Assert.Contains("--ro-bind / /", args);
-        Assert.Contains($"--bind {ws} {ws}", args);
-        Assert.Contains("--tmpfs /tmp", args);
-        Assert.Contains("--dev-bind /dev /dev", args);
+        // The guard property: normal writes survive, only the denied targets are read-only...
+        Assert.Contains("--bind / /", args);
+        Assert.DoesNotContain("--ro-bind / /", args);
         Assert.Contains($"--ro-bind {state} {state}", args);
         Assert.Contains($"--ro-bind {prefix} {prefix}", args);
         Assert.Contains($"--ro-bind /dev/null {auth}", args);
+        // ...and normal work is not reshaped: the workspace already sits in the writable root
+        // and /tmp keeps whatever a previous command left there.
+        Assert.DoesNotContain("--tmpfs /tmp", args);
+        Assert.DoesNotContain($"--bind {ws}", args);
+        Assert.Contains("--dev-bind /dev /dev", args);
         Assert.Contains("--die-with-parent", args);
         Assert.EndsWith("/bin/bash -c", args);
     }

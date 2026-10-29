@@ -66,13 +66,13 @@ internal sealed partial class BashGuard
         {
             (int probeExit, string probeOutput) = _probe.Run(
                 found,
-                [.. BwrapBase(workspace), "/bin/true"]
+                [.. BwrapBase(), "/bin/true"]
             );
             if (probeExit == 0)
             {
                 IReadOnlyList<string> prefix =
                 [
-                    .. BwrapBase(workspace),
+                    .. BwrapBase(),
                     shell.ExecutablePath,
                     .. shell.ArgumentsPrefix,
                 ];
@@ -118,23 +118,17 @@ internal sealed partial class BashGuard
         return Unwrapped(shell, "unavailable", Notice(reasons));
     }
 
-    private List<string> BwrapBase(string workspace)
+    /// <summary>
+    /// The guard argument list: the root stays as writable as it is outside, and only the denied
+    /// targets — the state root, the install prefix, and <c>auth.json</c> as a read-only overlay —
+    /// are bound read-only on top. Ordering matters: the specific binds mount over the writable
+    /// root bind, which is the same stacking the rename in bwrap's own <c>--bind</c> semantics
+    /// allows. <c>/dev</c> is re-bound so device access behaves outside the mount namespace, and
+    /// the sandbox dies with the parent so an orphaned child cannot outlive the tool call.
+    /// </summary>
+    private List<string> BwrapBase()
     {
-        var arguments = new List<string>
-        {
-            "--ro-bind",
-            "/",
-            "/",
-            "--bind",
-            workspace,
-            workspace,
-            "--tmpfs",
-            "/tmp",
-            "--dev-bind",
-            "/dev",
-            "/dev",
-            "--die-with-parent",
-        };
+        List<string> arguments = ["--bind", "/", "/"];
         arguments.AddRange(TargetBind("--ro-bind", _target.StateRoot));
         arguments.AddRange(TargetBind("--ro-bind", _target.Prefix));
         if (_probe.FileExists(_target.AuthPath))
@@ -144,10 +138,12 @@ internal sealed partial class BashGuard
             arguments.AddRange(["--ro-bind", "/dev/null", _target.AuthPath]);
         }
 
+        arguments.AddRange(["--dev-bind", "/dev", "/dev", "--die-with-parent"]);
         return arguments;
 
-        // A missing source is a bwrap failure, not a protection; the ro-bind of / already makes a
-        // missing state root un-writable, so skip rather than break the mechanism.
+        // A missing source is a bwrap failure, not a protection; skip rather than break the
+        // mechanism, and let the write land — the next resolution picks the directory up so the
+        // following spawn denies writes under it.
         IEnumerable<string> TargetBind(string flag, string path) =>
             _probe.DirectoryExists(path) ? [flag, path, path] : [];
     }
