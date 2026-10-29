@@ -61,6 +61,8 @@ public sealed class BashTool : ITool
     private readonly ResolvedShell? _shell;
     private readonly TimeSpan _timeout;
     private readonly BashChangeTracker _changes;
+    private readonly BashGuard _guard;
+    private bool _noticeShown;
 
     public BashTool(
         Workspace workspace,
@@ -68,11 +70,25 @@ public sealed class BashTool : ITool
         TimeSpan? timeout = null,
         IExtensionLog? log = null
     )
+        : this(workspace, resolver, timeout, log, new BashGuard()) { }
+
+    /// <summary>
+    /// The seam for the guard: tests substitute a guard whose targets point at a fixture's
+    /// directories; the public constructor resolves the live ones.
+    /// </summary>
+    internal BashTool(
+        Workspace workspace,
+        ShellResolver? resolver,
+        TimeSpan? timeout,
+        IExtensionLog? log,
+        BashGuard guard
+    )
     {
         _workspace = workspace;
         _shell = (resolver ?? new ShellResolver()).Resolve();
         _timeout = timeout ?? DefaultTimeout;
         _changes = new BashChangeTracker(log);
+        _guard = guard;
         Description = _shell is null
             ? $"Run a command in the platform shell (no shell was found on this machine). {Rules}"
             : $"Run a command in {_shell.DisplayName} ({Dialect(_shell.Kind)}). {Rules}";
@@ -112,13 +128,22 @@ public sealed class BashTool : ITool
 
         ct.ThrowIfCancellationRequested();
 
+        GuardCommand launch = _guard.Wrap(_shell, _workspace.WorktreeRoot);
+
+        // A refused command never spawns: the refusal states what the guard would have done,
+        // in the guard's own words, before the OS error has to say it for it.
+        if (_guard.Refusal(commandElement.GetString()!, launch) is { } refusal)
+        {
+            return new ToolResult(refusal, IsError: true);
+        }
+
         ProcessRunResult run;
         try
         {
             run = await Runner.RunAsync(
                 new ProcessRunRequest(
-                    _shell.ExecutablePath,
-                    [.. _shell.ArgumentsPrefix, commandElement.GetString()!],
+                    launch.FileName,
+                    [.. launch.ArgumentsPrefix, commandElement.GetString()!],
                     _workspace.WorktreeRoot,
                     Timeout: _timeout,
                     OutputCapBytes: CaptureCap
@@ -155,19 +180,36 @@ public sealed class BashTool : ITool
         // The command ran (success, non-zero exit or timeout): report what it changed.
         await PublishChangesAsync(ctx).ConfigureAwait(false);
 
+        string? notice = NoticeOnce(launch);
+        string? hint = _guard.Hint(commandElement.GetString()!, run.Stderr, launch);
         var stdout = WithCapMarker(run.Stdout, run.StdoutCapped);
         var stderr = WithCapMarker(run.Stderr, run.StderrCapped);
         if (run.TimedOut)
         {
-            return Error(ComposeText(stdout, stderr, TimeoutFooter()));
+            return Error(ComposeText(stdout, stderr, TimeoutFooter(), notice, hint));
         }
 
         var exitCode = run.ExitCode!.Value;
         return new ToolResult(
-            ComposeText(stdout, stderr, ExitFooter(exitCode)),
+            ComposeText(stdout, stderr, ExitFooter(exitCode), notice, hint),
             exitCode != 0,
             new BashDetails(exitCode)
         );
+    }
+
+    /// <summary>
+    /// The guard's notice, once per tool (a run without a guard is never silent, but never
+    /// per-command noise either). Null when the guard is active and quiet.
+    /// </summary>
+    private string? NoticeOnce(GuardCommand launch)
+    {
+        if (launch.Notice is not { } notice || _noticeShown)
+        {
+            return null;
+        }
+
+        _noticeShown = true;
+        return notice;
     }
 
     /// <summary>
@@ -216,9 +258,20 @@ public sealed class BashTool : ITool
     private static string WithCapMarker(string text, bool capped) =>
         capped ? text + "\n" + CapMarker : text;
 
-    private static string ComposeText(string stdout, string stderr, string footer)
+    private static string ComposeText(
+        string stdout,
+        string stderr,
+        string footer,
+        string? notice,
+        string? hint
+    )
     {
         var text = new StringBuilder();
+        if (notice is not null)
+        {
+            text.Append(notice).Append('\n');
+        }
+
         text.Append(stdout);
         if (stderr.Length > 0)
         {
@@ -235,7 +288,13 @@ public sealed class BashTool : ITool
             text.Append('\n');
         }
 
-        return text.Append(footer).ToString();
+        text.Append(footer);
+        if (hint is not null)
+        {
+            text.Append('\n').Append(hint).Append('\n');
+        }
+
+        return text.ToString();
     }
 
     private static string ExitFooter(int exitCode) =>
