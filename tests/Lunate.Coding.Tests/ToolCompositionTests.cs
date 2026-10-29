@@ -1,5 +1,7 @@
 using System.Text.Json;
 using Lunate.Agent;
+using Lunate.Extensibility;
+using Lunate.Extensibility.Abstractions;
 
 namespace Lunate.Coding.Tests;
 
@@ -32,6 +34,40 @@ public sealed class ToolCompositionTests
     }
 
     [Fact]
+    public void A_later_mcp_collision_keeps_the_extension_alias_and_one_diagnostic()
+    {
+        var extensionTools = new ExtensionToolRegistry();
+        extensionTools.Register(
+            "extension",
+            new ExtensionToolRegistration
+            {
+                Name = "echo",
+                Description = "Extension echo.",
+                ParametersSchema = JsonDocument.Parse("""{"type":"object"}""").RootElement.Clone(),
+                Handler = new EchoHandler(),
+            },
+            activationRule: null,
+            alias: "friendly_echo"
+        );
+        ExtensionToolAdapter extension = Assert.Single(extensionTools.List());
+        var tools = new ToolRegistry();
+        tools.Add(extension);
+        var warnings = new List<string>();
+
+        ToolComposition.AddSkippingTaken(
+            tools,
+            [Stub("friendly_echo", "mcp")],
+            "mcp.json",
+            warnings.Add
+        );
+
+        Assert.Same(extension, tools.Find("friendly_echo"));
+        string warning = Assert.Single(warnings);
+        Assert.Contains("friendly_echo", warning, StringComparison.Ordinal);
+        Assert.Contains("first composition wins", warning, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void The_list_overload_keeps_first_composition_wins()
     {
         var tools = new List<ITool> { Stub("x__y", "ext") };
@@ -49,6 +85,15 @@ public sealed class ToolCompositionTests
     }
 
     private static ITool Stub(string name, string? group) => new StubTool(name, group);
+
+    private sealed class EchoHandler : IExtensionToolHandler
+    {
+        public Task<ToolResult> InvokeAsync(
+            JsonElement arguments,
+            ToolContext context,
+            CancellationToken ct
+        ) => Task.FromResult(new ToolResult("extension", IsError: false));
+    }
 
     private sealed class StubTool : ITool
     {
