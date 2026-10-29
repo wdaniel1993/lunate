@@ -395,6 +395,12 @@ public sealed partial class RemoteExtension : IExtension, IAsyncDisposable
                 cancellationToken
             )
             .ConfigureAwait(false);
+
+        // The answer is the last point the start can still abort. A caller that cancelled while the
+        // child was answering must not be handed a fully registered extension, and whether the token
+        // was checked before or after the reply is otherwise a race the caller cannot see.
+        cancellationToken.ThrowIfCancellationRequested();
+
         if (result is null)
         {
             throw Refuse("the initialize call answered with no result.");
