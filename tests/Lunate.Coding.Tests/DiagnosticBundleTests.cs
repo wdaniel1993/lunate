@@ -1,3 +1,4 @@
+using System.Globalization;
 using Lunate.Agent;
 using Lunate.Ai;
 using Lunate.Extensibility;
@@ -141,6 +142,79 @@ public sealed class DiagnosticBundleTests
 
         host.Console.Complete();
         await run;
+    }
+
+    [Fact]
+    public void Write_to_an_existing_destination_never_overwrites_it()
+    {
+        using var temp = new TempDirectory();
+        string destination = temp.File("bundle.txt");
+        byte[] existing = "existing content\n"u8.ToArray();
+        File.WriteAllBytes(destination, existing);
+        DiagnosticBundleInput input = Input(temp) with { Destination = destination };
+
+        Assert.ThrowsAny<IOException>(() =>
+            DiagnosticBundle.Write(input, CredentialRedactor.Empty)
+        );
+
+        Assert.Equal(existing, File.ReadAllBytes(destination));
+    }
+
+    [Fact]
+    public void Write_never_writes_the_model_endpoint_userinfo_or_query()
+    {
+        using var temp = new TempDirectory();
+        string destination = temp.File("endpoint-bundle.txt");
+        DiagnosticBundleInput anonymous = Input(temp);
+        DiagnosticBundleInput input = anonymous with
+        {
+            Destination = destination,
+            Model = anonymous.Model with
+            {
+                Endpoint = new Uri("https://user:password@host:8080/v1?api_key=abc"),
+            },
+        };
+
+        DiagnosticBundle.Write(input, CredentialRedactor.Empty);
+
+        string bundle = File.ReadAllText(destination);
+        Assert.Contains("https://host:8080/v1", bundle, StringComparison.Ordinal);
+        Assert.DoesNotContain("user:password", bundle, StringComparison.Ordinal);
+        Assert.DoesNotContain("api_key=abc", bundle, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Describe_renders_a_run_error_message_as_a_length_not_text()
+    {
+        const string Sentinel = "SECRET-SENTINEL-RUN-ERROR";
+        string message = "upstream exploded: " + Sentinel + " with a long tail of detail";
+        var error = new RunError("run_1", message);
+
+        string line = DiagnosticBundle.Describe(error);
+
+        Assert.Contains(
+            "message chars=" + message.Length.ToString(CultureInfo.InvariantCulture),
+            line,
+            StringComparison.Ordinal
+        );
+        Assert.DoesNotContain(Sentinel, line, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Describe_renders_a_retrying_reason_as_a_length_not_text()
+    {
+        const string Sentinel = "SECRET-SENTINEL-RETRY-REASON";
+        string reason = "rate limited: " + Sentinel + " retry after backoff";
+        var retrying = new Retrying("run_1", 2, reason);
+
+        string line = DiagnosticBundle.Describe(retrying);
+
+        Assert.Contains(
+            "attempt=2 reason chars=" + reason.Length.ToString(CultureInfo.InvariantCulture),
+            line,
+            StringComparison.Ordinal
+        );
+        Assert.DoesNotContain(Sentinel, line, StringComparison.Ordinal);
     }
 
     [Fact]

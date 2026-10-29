@@ -138,7 +138,7 @@ internal static partial class DiagnosticBundle
         using (
             FileStream stream = SecureFiles.OpenOwnerOnly(
                 input.Destination,
-                FileMode.Create,
+                FileMode.CreateNew,
                 FileAccess.Write,
                 FileShare.None
             )
