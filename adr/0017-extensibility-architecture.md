@@ -75,7 +75,7 @@ The decisions above say what Lunate asks and records. They do not confine a proc
 
 What does not change: **installing is not trusting.** An installed extension stays pending in both scopes until its question is answered, and `IProjectTrustHandler` is a veto — `Allow` approves nothing and the prompt still runs.
 
-## Addendum 2026-10-29 — the four contract gaps before stable (proposed)
+## Addendum 2026-10-29 — the four contract gaps before stable (accepted 2026-10-29)
 
 - Status: **Proposed — 2026-10-29** (awaiting maintainer sign-off; change `extension-contract`, #268 step 2)
 - Relates to: this ADR (contract and loading, workspaces and repository identity), ADR-0021 (per-workspace services), ADR-0006 (Roslyn placement), ADR-0012 (tool contract)
@@ -176,6 +176,14 @@ and the order in which they may be published. It records no implementation.
 - Why the host: the rule is in the trusted, content-hashed manifest; one evaluator serves core,
   built-in and third-party tools; the decision is deterministic and auditable; and it keeps
   `FunctionInvokingChatClient`/`AIFunctionFactory` out of the design.
+- **The MCP server calls the same evaluator, not a copy.** `lunate mcp roslyn` answers for the
+  client's declared MCP `roots`, and for its own working directory when the client declares none. No
+  matching root means no `cs_*` tool in `tools/list`, with one line on stderr naming the rule and its
+  patterns; stdout stays protocol-pure. On `notifications/roots/list_changed` the server re-evaluates
+  and, when the offered set changed, sends `notifications/tools/list_changed`. A client that did not
+  declare `listChanged` support keeps the snapshot from `initialize`. A tool listed before its
+  solution vanished with no roots event still answers with the fix-it error: the call path explains a
+  stale composition rather than pretending it is current.
 
 ### (d) `cs_*` stays stable
 
@@ -199,6 +207,24 @@ and the order in which they may be published. It records no implementation.
   `cs_outline` and `cs_rename` — the names in `src/Lunate.Roslyn/CsDiagnosticsTool.cs:36` and its
   four siblings. No prompt, doc or template changes.
 
+### (e) Structured results are part of the stable contract
+
+- **Decision: `ToolResultView` carries `StructuredContent`, defined and populated now — not a
+  reserved empty field.** It is a JSON object, JSON-serializable per principle 3, plus a `ContentKind`
+  naming its schema (`lunate.diagnostics/v1`, `lunate.diff/v1`, `lunate.command-result/v1`). Tool
+  declarations may state an optional output schema for it.
+- **Aligned with MCP.** The names and shape mirror MCP's `structuredContent` and `outputSchema`, so the
+  adapter maps in both directions: a configured MCP server's structured result arrives structured, and
+  `lunate mcp roslyn` emits `structuredContent` for `cs_*`.
+- **Populated now for what already has typed details:** the five `cs_*` tools, the edit and write
+  diffs, and bash exit status with the command line and duration. `Details` stays internal; the
+  projection is the published shape.
+- **The model still sees `ResultText`, unchanged.** `StructuredContent` serves renderers, export,
+  `--json` and MCP, so prompt behaviour cannot drift with a renderer feature.
+- **The renderer API may stay minimal for 0.2**, but it receives `StructuredContent` from day one, so
+  no text-only renderer surface is frozen. Without this, #237's stability promise would freeze the
+  wrong shape: a renderer that can only parse text.
+
 ### The ordering rule
 
 The contract is published as **stable only after** the flagship migrates onto it and the migration
@@ -214,11 +240,6 @@ first.
 - No `FunctionInvokingChatClient` and no `AIFunctionFactory` anywhere in the design: tools stay
   `ITool` and the loop executes them (`adr/0012-tool-contract.md:11-13`); activation is a host-side
   filter and workspace services are acquired inside handlers.
-- **Open question, deliberately not decided:** structured result data for renderers. `ToolResult.Details`
-  is UI-only today (`src/Lunate.Roslyn/CsDiagnosticsTool.cs:79`, `:96`) and renderers receive only
-  `ResultText` (`docs/eval/roslyn-surface-audit.md:69-70`, `:118-121`). Whether `ToolResultView`
-  should carry `StructuredContent` is for the maintainer; this addendum does not decide the data
-  shape, the JSON contract or the renderer API.
 - No move of `roslyn.maxLoadedWorkspaces`; no built-in reload; no live mid-run activation; no
   remote per-workspace service lifecycle in v1.
 
