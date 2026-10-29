@@ -95,6 +95,6 @@ implementation (senior-dev subagent batches; one batch per section, interleaved 
 
 ## 8. Verification
 
-- [x] 8.1 `openspec validate extension-contract-primitives --strict` passes; final gate:
+- [ ] 8.1 `openspec validate extension-contract-primitives --strict` passes; final gate:
       `dotnet build Lunate.slnx -c Release`, the touched test projects green in Release,
       `dotnet csharpier check .` (after the last edit); `scripts/verify.sh` is CI's job in this run.
