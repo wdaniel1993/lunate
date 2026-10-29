@@ -13,34 +13,34 @@ must pass unchanged at their new paths, and the two new packages must survive
 
 ## 2. The tier exists
 
-- [ ] 2.1 `git mv samples/extensions/subagents extensions/subagents`,
+- [x] 2.1 `git mv samples/extensions/subagents extensions/subagents`,
       `git mv samples/extensions/lsp-diagnostics extensions/lsp-diagnostics`,
       `git mv samples/extensions/permission-gate extensions/permission-gate`; project references and
       the three `.csproj` internals follow the depth change.
-- [ ] 2.2 `lsp-diagnostics` and `permission-gate` adopt the subagents bundle packaging: `IsPackable`,
+- [x] 2.2 `lsp-diagnostics` and `permission-gate` adopt the subagents bundle packaging: `IsPackable`,
       `PackageId=Lunate.Extensions.LspDiagnostics` / `Lunate.Extensions.PermissionGate`, no host
       assembly in the package, package readme, licence, repository metadata, NU5100/NU5128 notes; each
       gains a `lunate.package.json` naming its extension directory. `subagents`' csproj content is
       unchanged except paths; the tier README it packs one level up is the new product page.
-- [ ] 2.3 `lunate.slnx` folders and paths follow the move.
+- [x] 2.3 `lunate.slnx` folders and paths follow the move.
 
 ## 3. The gate and the tools follow
 
-- [ ] 3.1 `scripts/verify.sh` and `scripts/verify.ps1` pack the subagents extension from its new path
+- [x] 3.1 `scripts/verify.sh` and `scripts/verify.ps1` pack the subagents extension from its new path
       (the roundtrip and the metadata check unchanged otherwise).
-- [ ] 3.2 `scripts/render-media.sh` follows the moved `permission-gate` path.
-- [ ] 3.3 The whole-tree grep sweep: no live reference names the moved `samples/extensions/…` paths
+- [x] 3.2 `scripts/render-media.sh` follows the moved `permission-gate` path.
+- [x] 3.3 The whole-tree grep sweep: no live reference names the moved `samples/extensions/…` paths
       (records under `openspec/changes/archive/**`, `docs/spikes/**`, `CHANGELOG.md` keep theirs; the
       release workflow's publishing step is #237's and is only reported, not edited here).
 
 ## 4. Product pages
 
-- [ ] 4.1 `extensions/README.md`: what the tier means, the promotion bar, what "supported" does not
+- [x] 4.1 `extensions/README.md`: what the tier means, the promotion bar, what "supported" does not
       mean, and the unpromoted extensions with the maintainer's reasons.
-- [ ] 4.2 The three READMEs become product pages: what the extension does for a user, install,
+- [x] 4.2 The three READMEs become product pages: what the extension does for a user, install,
       configuration (settings, defaults, examples), support surface; the API-proof material stays in
       `docs/extensions/contributions/*` and `docs/spec/extensibility.md`.
-- [ ] 4.3 Docs that referenced the moved paths are re-pointed (`docs/extensions/contributions/*/`'s
+- [x] 4.3 Docs that referenced the moved paths are re-pointed (`docs/extensions/contributions/*/`'s
       subagents, lsp-diagnostics and permission-gate links, `docs/extensions/testing.md`,
       `docs/extensions/packages.md`, `docs/extensions-remote.md`, `docs/spec/extensibility.md` — the
       fitness-suite section keeps the samples'capability rows and moves the three promoted ones onto
