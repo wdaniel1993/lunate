@@ -55,7 +55,8 @@ host-side filter and workspace services are acquired inside a handler.
 
 ### 3.1 What "built-in" means in the manifest
 
-A manifest may declare `"builtin": true` (optional boolean, default `false`). It means:
+A normal manifest omits `"builtin"` (default `false`). A host-supplied built-in manifest **must**
+declare `"builtin": true`. It means:
 
 - the extension ships with the host and its assembly is already part of the host's default
   `AssemblyLoadContext`;
@@ -67,9 +68,11 @@ A manifest may declare `"builtin": true` (optional boolean, default `false`). It
   cross-checks apply (`src/Lunate.Extensibility/ExtensionLoader.Load.cs:322-356`).
 
 `builtin: true` is a provenance assertion, not a privilege a directory can claim. The parser accepts
-it only on a manifest supplied through `ExtensionHostOptions.BuiltIns`; a manifest found by
-`ScanDirectory` with `builtin: true` is a discovery error naming the path and the reason. This keeps
-the trust story intact: a user cannot promote a directory extension to built-in by editing JSON.
+it only on a manifest supplied through `ExtensionHostOptions.BuiltIns`; a host-supplied manifest
+without it is refused, and a manifest found by `ScanDirectory` with `builtin: true` is a discovery
+error naming the path and the reason. This keeps the trust story intact: a user cannot promote a
+directory extension to built-in by editing JSON, and a host list entry cannot silently claim
+built-in status without saying so in the manifest.
 
 ### 3.2 Discovery differs from installation
 

@@ -93,12 +93,13 @@ and the order in which they may be published. It records no implementation.
 
 ### (a) Built-ins register through the same path
 
-- A manifest may declare `builtin: true`. It means the extension ships with the host: its assembly
-  is already in the default `AssemblyLoadContext`; its lifecycle and version are the host's; it is
-  never installed, content-hash trusted, upgraded or uninstalled; and it is supplied by the host
-  composition, not discovered from a directory. A directory manifest claiming `builtin: true` is a
-  discovery error, and a discovered id equal to a built-in id is skipped naming both — a user cannot
-  shadow a built-in.
+- A host-supplied built-in manifest must declare `builtin: true`; a normal manifest omits it. It
+  means the extension ships with the host: its assembly is already in the default
+  `AssemblyLoadContext`; its lifecycle and version are the host's; it is never installed,
+  content-hash trusted, upgraded or uninstalled; and it is supplied by the host composition, not
+  discovered from a directory. A directory manifest claiming `builtin: true` is a discovery error,
+  a host-supplied manifest without it is refused, and a discovered id equal to a built-in id is
+  skipped naming both — a user cannot shadow a built-in.
 - Discovery differs from installation: installation writes a store directory and asks the trust
   question (`src/Lunate.Extensibility/ExtensionLoader.Load.cs:64-96`); built-in discovery folds a
   host-supplied descriptor list into the loader before the global and project scans

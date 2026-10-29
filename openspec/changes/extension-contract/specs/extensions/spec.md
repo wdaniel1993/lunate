@@ -4,14 +4,15 @@
 
 ### Requirement: Built-in extension provenance
 
-A manifest SHALL accept an optional boolean `builtin` (default `false`). `builtin: true` SHALL mean
-the extension ships with the host: its assembly is already in the default `AssemblyLoadContext`, its
-lifecycle and version are the host's, and it is never installed, content-hash trusted, upgraded or
-uninstalled independently. A built-in SHALL be supplied by the host composition (manifest plus an
-`IExtensionFactory`) and SHALL load through the same `IExtensionContext`, registries, manifest
-cross-checks, background-services lifecycle and teardown as a discovered extension. A manifest found
-by directory discovery that declares `builtin: true` SHALL be refused with a message naming the file
-and the reason. A discovered extension whose id equals a built-in id SHALL be skipped with one
+A normal manifest SHALL omit `builtin` (default `false`); a host-supplied built-in manifest SHALL
+declare `builtin: true`. `builtin: true` SHALL mean the extension ships with the host: its assembly
+is already in the default `AssemblyLoadContext`, its lifecycle and version are the host's, and it is
+never installed, content-hash trusted, upgraded or uninstalled independently. A built-in SHALL be
+supplied by the host composition (manifest plus an `IExtensionFactory`) and SHALL load through the
+same `IExtensionContext`, registries, manifest cross-checks, background-services lifecycle and
+teardown as a discovered extension. A host-supplied manifest without `builtin: true`, and a manifest
+found by directory discovery that declares `builtin: true`, SHALL be refused with a message naming
+the file and the reason. A discovered extension whose id equals a built-in id SHALL be skipped with one
 discovery error naming both sources; a built-in SHALL never be shadowed. Built-ins SHALL load before
 global and project descriptors, SHALL run in the default load context (no collectible ALC, no second
 copy of a host assembly), and SHALL use the process-wide MSBuild bootstrap exactly once. A built-in
@@ -33,6 +34,12 @@ so the model-facing behaviour the host ships stays available.
 - **GIVEN** a manifest under `~/.lunate/extensions/` or `.lunate/extensions/` with `builtin: true`
 - **WHEN** discovery reads it
 - **THEN** it is refused with a discovery error naming the path, and no built-in path is taken
+
+#### Scenario: A host-supplied manifest must say it is built-in
+
+- **GIVEN** a manifest supplied through the host's built-in list without `builtin: true`
+- **WHEN** the composition loads built-ins
+- **THEN** the composition refuses it with a message naming the manifest and the field
 
 #### Scenario: A discovered extension cannot shadow a built-in
 
