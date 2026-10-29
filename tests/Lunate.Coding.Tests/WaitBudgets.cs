@@ -75,9 +75,26 @@ internal static class WaitBudgets
     /// A child process this test spawns becoming usable: the pid marker written by a grandchild, the
     /// first protocol frame of an ACP or MCP child, the first build of a cold <c>dotnet exec</c>.
     /// The cold start is the whole difficulty — a loaded runner starts a shell or a host in tens of
-    /// seconds, and thirty was the number this idiom used before one leg starved past it.
+    /// seconds.
+    /// <para>
+    /// Thirty was the number a leg starved past first. #286 then reached the number itself: on
+    /// run 40812065881's Windows leg the pin probe for
+    /// <c>ProcessRunnerTests.Cancellation_kills_the_tree_and_propagates</c> expired at 60.08 s with
+    /// a message that could not say whether the shell had never reported or was still reporting,
+    /// while other spawns on the same leg pinned inside the 30 s tree-kill timeout — so a shell
+    /// slower than any spawn measured before and a start that never completed were both inside the
+    /// margin of that occurrence. The expiry message names the three cases since (PR #288); the
+    /// Windows legs after it have been green, so the second occurrence that would size this number
+    /// by measurement has not arrived. This widening carries the one solid reading of that occurrence
+    /// — the pin missed at exactly the number — and applies the step this file's family took at each
+    /// earlier reach, doubling: thirty to sixty here, ten to thirty in <see cref="TreeKillTimeout"/>.
+    /// A hundred and twenty stays under <see cref="ChildRun"/>, the nearest wider wall. A ceiling
+    /// costs nothing when the shell is fast; a real spawn starved beyond the old window is now a
+    /// pass, and a shell that never reports still fails the leg at this number, with the message
+    /// saying which kind of miss it was.
+    /// </para>
     /// </summary>
-    public static readonly TimeSpan SpawnWindow = TimeSpan.FromSeconds(60);
+    public static readonly TimeSpan SpawnWindow = TimeSpan.FromSeconds(120);
 
     /// <summary>
     /// A child process observed gone: killed by the tool, or asked to exit (<c>lunate --acp</c> after
@@ -111,8 +128,11 @@ internal static class WaitBudgets
     /// <summary>
     /// A shell command the tool runs to completion — this is the timeout the test hands the tool, not
     /// a wait the test performs: the tool's own kill must be given room not to fire. Sixty seconds is
-    /// the value the process-runner tests already used for exactly this, and a command that finishes
-    /// exits the wait, so the ceiling only lengthens a failure.
+    /// the value the finishing-command tests used for exactly this, and a command that finishes
+    /// exits the wait, so the ceiling only lengthens a failure. The tests about a cancellation that
+    /// kills a tree name
+    /// <see cref="TreeKillGuard"/> instead: their guard has to outlast the spawn window, not a
+    /// finishing command.
     /// </summary>
     public static readonly TimeSpan CommandRun = TimeSpan.FromSeconds(60);
 
@@ -125,6 +145,19 @@ internal static class WaitBudgets
     public static readonly TimeSpan TreeKillTimeout = OperatingSystem.IsWindows()
         ? TimeSpan.FromSeconds(30)
         : TimeSpan.FromSeconds(2);
+
+    /// <summary>
+    /// A command under test that the test cancels itself — the two
+    /// <c>Cancellation_kills_the_tree_and_propagates</c> tests (runner and bash tool). The tree kill
+    /// the test observes has to be the one its own cancellation fires, so nothing ends the command
+    /// while the pin probe is still waiting. It sits <see cref="SpawnWindow"/> above
+    /// <see cref="TreeKillTimeout"/> so a spawn starved to the window's edge is reported by the
+    /// probe, with the message naming which miss it was, and the guard's own tree kill only fires
+    /// behind it. It composed this way rather than carrying a literal so the relation the #286 shape
+    /// depends on — guard above window — is checked where the window itself moves
+    /// (<c>ProcessRunnerTests.The_cancellation_guard_outlasts_the_spawn_window</c>).
+    /// </summary>
+    public static readonly TimeSpan TreeKillGuard = SpawnWindow + TreeKillTimeout;
 
     /// <summary>
     /// A compile landing inside the session: the single-file loop's extension build, whose result the

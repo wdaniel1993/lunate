@@ -325,6 +325,26 @@ public sealed class ProcessRunnerTests
     }
 
     [Fact]
+    public void The_cancellation_guard_outlasts_the_spawn_window()
+    {
+        // #286's shape: the run's own guard and the spawn window expired together, so the guard's
+        // tree kill fired at the instant the window closed, and the failure read as a tree kill
+        // whether it had been a slow spawn or a shell that never reported at all. The guard behind
+        // a command the test cancels itself has to stay above the window the probe waits: the
+        // window's expiry is then the probe's own decision, with the message that says which kind
+        // of miss it was, and a tree kill only ever names itself.
+        Assert.True(
+            WaitBudgets.TreeKillGuard > WaitBudgets.SpawnWindow,
+            string.Create(
+                CultureInfo.InvariantCulture,
+                $"the guard behind a command the test cancels itself is "
+                    + $"{WaitBudgets.TreeKillGuard.TotalSeconds:0.###}s and must outlast the "
+                    + $"{WaitBudgets.SpawnWindow.TotalSeconds:0.###}s spawn window"
+            )
+        );
+    }
+
+    [Fact]
     public async Task Cancellation_kills_the_tree_and_propagates()
     {
         using var temp = new TempDirectory();
@@ -334,15 +354,17 @@ public sealed class ProcessRunnerTests
         DateTime commandStarted = DateTime.Now;
 
         Task<ProcessRunResult> execution = runner.RunAsync(
-            TreeRequest(temp, WaitBudgets.CommandRun),
+            TreeRequest(temp, WaitBudgets.TreeKillGuard),
             cts.Token
         );
 
         // The pin and the run race: if the run ends first there is no pid left to pin, so the
         // window closes and the probe reports what the run did (it timed out, or never started)
-        // instead of waiting out the spawn window. #286 is this race: the run's own timeout and
-        // the spawn window were both 60 s, so a starved start produced "no pid was written"
-        // exactly when the tree kill fired, and the message could not say which had happened.
+        // instead of waiting out the spawn window. #286's shape — the run's own timeout and the
+        // spawn window both 60 s, a starved start reported by the tree kill that ended it rather
+        // than by the probe — is closed by the guard above the window: a command the test cancels
+        // itself only ends when the test ends it (or when the guard retires a sleeper), so the
+        // window's expiry is the probe's own call and a slow spawn reads as one.
         using var window = new CancellationTokenSource();
         Task<ChildProcess> watched = ChildProcessProbe.AwaitWrittenAsync(
             pidFile,
