@@ -13,6 +13,12 @@
 #      RepositoryRoot) and names a docs path -- the shape every docs-reading test takes;
 #   3. a File/Directory call on the same line as a docs path, root or no root.
 #
+# The single allowance is a test file named in ALLOWED_DOCS_READERS below: the guide key-table
+# drift test, requested by issue #267, which checks docs/guide.md's key cells against
+# Lunate.Tui's KeyBindingCatalog so a binding cannot lose its doc row in a suite run. Name the
+# test here and print the allowance -- never quietly bypass the shape checks above. A second
+# reader means the rule should become data-driven, with the home of each read named in the list.
+#
 # What does not: a docs path handed to an in-memory fixture or a rendered value -- AddFile,
 # AddDirectory, AddTree, CompletionItem.File. That is a workspace or a display string, not a file
 # the test reads from the repository, and the allowance is printed so it is never silent.
@@ -29,6 +35,12 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 DOCS_PATH='"docs[/"\\]'
 ROOT_MARKERS='lunate\.sln|FindRepositoryRoot|RepositoryRoot'
 FILESYSTEM_CALL='(File|Directory)\.[A-Za-z]+\([^;]*"docs[/"\\]'
+
+# The one test allowed to read the docs tree, repository-relative. Issue #267's card asks the
+# guide's key table to be checked against the key binding catalog; that check reads
+# docs/guide.md and is the guide's page-level guard inside `dotnet test`, where the docs-sync
+# region check does not run (it is a docs-profile step, not a full-matrix one).
+ALLOWED_DOCS_READERS=(tests/Lunate.Tui.Tests/GuideKeyTableTests.cs)
 
 findings=0
 scanned=0
@@ -66,6 +78,11 @@ scan_test_file() {
   local root="$1" file="$2" hit number text
   local candidates rootish=0
   scanned=$((scanned + 1))
+  if [ "${file#"$root"/}" = "${ALLOWED_DOCS_READERS[0]}" ]; then
+    printf 'no-docs-references: note: %s is the allowed docs reader (the guide key-table drift test)\n' \
+      "${file#"$root"/}"
+    return 0
+  fi
   candidates="$(grep -nE "$DOCS_PATH" "$file" || true)"
   [ -n "$candidates" ] || return 0
   if grep -qE "$ROOT_MARKERS" "$file"; then
@@ -257,7 +274,36 @@ _self_test_cases() {
       ;;
   esac
 
-  echo "self-test: 8/8"
+  # 9. The allowlisted drift test reads the docs tree, and the allowance is printed so it is
+  #    never silent. The list names the path exactly, so the fixture tree carries the same one.
+  case_dir="${scratch}/allowed-reader"
+  mkdir -p "$case_dir/src/App" "$case_dir/tests/Lunate.Tui.Tests" "$case_dir/docs"
+  printf '<Project>\n</Project>\n' >"$case_dir/src/App/App.csproj"
+  printf 'public sealed class GuideKeyTableTests\n{\n    string M() => File.ReadAllText(Path.Combine(TestPaths.RepositoryRoot, "docs", "guide.md"));\n}\n' \
+    >"$case_dir/tests/Lunate.Tui.Tests/GuideKeyTableTests.cs"
+  if ! out="$(check_tree "$case_dir" 2>&1)"; then
+    printf 'self-test: the allowlisted drift test must pass, said: %s\n' "$out" >&2
+    return 1
+  fi
+  case "$out" in
+    *"allowed docs reader"*) ;;
+    *)
+      printf 'self-test: the allowance must be printed, said: %s\n' "$out" >&2
+      return 1
+      ;;
+  esac
+
+  # 10. A copy of the same test under another name is not the allowance: the list names one file.
+  case_dir="${scratch}/lookalike"
+  _fixture_tree "$case_dir"
+  printf 'public sealed class T\n{\n    string M() => File.ReadAllText(Path.Combine(TestPaths.RepositoryRoot, "docs", "guide.md"));\n}\n' \
+    >"$case_dir/tests/App.Tests/GuideKeyTableTests2.cs"
+  if check_tree "$case_dir" >/dev/null 2>&1; then
+    echo "self-test: a reader outside the allowlist must fail" >&2
+    return 1
+  fi
+
+  echo "self-test: 10/10"
 }
 
 case "${1:-}" in
