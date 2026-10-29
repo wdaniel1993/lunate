@@ -31,7 +31,7 @@ public sealed class BashGuardToolTests
     }
 
     [Fact]
-    public async Task On_linux_a_state_root_write_is_refused_or_the_restriction_is_named()
+    public async Task On_linux_a_state_root_write_is_refused_and_is_never_left_on_disk()
     {
         if (!OperatingSystem.IsLinux())
         {
@@ -39,18 +39,26 @@ public sealed class BashGuardToolTests
         }
 
         using var fixture = new GuardFixture();
+        if (!fixture.GuardReady)
+        {
+            // A broken guard must fail this test, not pass it: the runner might lack a
+            // mechanism, but then the resolution says so and the platform matrix is wrong.
+            Assert.Fail(
+                $"the guard did not resolve on this Linux runner; its report: {fixture.Notice}"
+            );
+        }
+
         var result = await RunAsync(fixture, $"echo pwn > {fixture.State}/trust.json");
 
-        Assert.False(string.IsNullOrWhiteSpace(result.Output));
         Assert.True(
-            result.IsError || result.Output.Contains("runs unconfined", StringComparison.Ordinal),
-            $"expected a refusal or the unavailability report, got: {result.Output}"
+            result.IsError,
+            $"expected the guard to refuse the state-root write, got: {result.Output}"
         );
-        Assert.True(
-            result.Output.Contains("refused by the bash guard", StringComparison.Ordinal)
-                || result.Output.Contains("the bash guard is unavailable", StringComparison.Ordinal)
-                || result.Output.Contains("does not support", StringComparison.Ordinal),
-            $"the output does not name the guard or its state: {result.Output}"
+        Assert.Contains("refused by the bash guard", result.Output);
+        Assert.Contains(fixture.State, result.Output);
+        Assert.False(
+            File.Exists(Path.Combine(fixture.State, "trust.json")),
+            "the state root must not hold the file the refused command would have written"
         );
     }
 
@@ -155,9 +163,18 @@ public sealed class BashGuardToolTests
             Target = new GuardTarget(State, Auth, Prefix, Root);
 
             var shell = new ShellResolver().Resolve();
-            GuardReady =
-                shell is { } resolved
-                && new BashGuard(Target, GuardProbe.Current).Wrap(resolved, Workspace).Wrapped;
+            if (shell is { } resolved)
+            {
+                GuardCommand command = new BashGuard(Target, GuardProbe.Current)
+                    .Wrap(resolved, Workspace);
+                GuardReady = command.Wrapped;
+                Notice = command.Notice ?? "(no report)";
+            }
+            else
+            {
+                GuardReady = false;
+                Notice = "the shell did not resolve";
+            }
         }
 
         public string Root { get; }
@@ -167,6 +184,7 @@ public sealed class BashGuardToolTests
         public string Auth { get; }
         public GuardTarget Target { get; }
         public bool GuardReady { get; }
+        public string Notice { get; }
 
         public void Dispose()
         {
