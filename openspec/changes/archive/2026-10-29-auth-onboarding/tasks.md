@@ -2,26 +2,26 @@
 
 ## 1. The store grows a CLI
 
-- [ ] 1.1 `lunate auth list` prints one line per selectable provider: preset id, whether the credential
+- [x] 1.1 `lunate auth list` prints one line per selectable provider: preset id, whether the credential
       comes from the environment or the file, and no value. Exits 0 even when nothing is stored.
-- [ ] 1.2 `lunate auth login <provider>` reads the key from a masked prompt when stdin is a terminal;
+- [x] 1.2 `lunate auth login <provider>` reads the key from a masked prompt when stdin is a terminal;
       `--key-stdin` reads it as a single line from the pipe otherwise. Neither path echoes the value.
-- [ ] 1.3 `lunate auth login` without a provider lists the presets on a TTY, or exits 2 with the list on
+- [x] 1.3 `lunate auth login` without a provider lists the presets on a TTY, or exits 2 with the list on
       stderr when non-interactive — never hangs waiting for a key nobody can type.
-- [ ] 1.4 `lunate auth logout <provider>` removes the entry, states when the environment variable is still
+- [x] 1.4 `lunate auth logout <provider>` removes the entry, states when the environment variable is still
       set (naming it, never its value), and exits non-zero when nothing was stored.
-- [ ] 1.5 `lunate auth status` reports the resolved default provider and whether a credential exists,
+- [x] 1.5 `lunate auth status` reports the resolved default provider and whether a credential exists,
       exit 0/1, so a bootstrap script can branch on it.
-- [ ] 1.6 A key passed through a pipe appears in no log, error, notice or process argument list.
+- [x] 1.6 A key passed through a pipe appears in no log, error, notice or process argument list.
 
 ## 2. Custom OpenAI-compatible endpoint
 
-- [ ] 2.1 `lunate auth login --custom` (and the picker's last row) asks for id, base URL, model id and key.
-- [ ] 2.2 The entry is stored as a settings provider (base URL, model, catalog name) that points at an
+- [x] 2.1 `lunate auth login --custom` (and the picker's last row) asks for id, base URL, model id and key.
+- [x] 2.2 The entry is stored as a settings provider (base URL, model, catalog name) that points at an
       auth-store key name — one place a secret lives, no second store.
-- [ ] 2.3 Validation at save time: `https`, or `http` only for loopback hosts; a missing model id is
+- [x] 2.3 Validation at save time: `https`, or `http` only for loopback hosts; a missing model id is
       refused with the reason. The refused input is never echoed.
-- [ ] 2.4 A stored custom provider resolves through the same `ChatClientFactory` path as a preset, with a
+- [x] 2.4 A stored custom provider resolves through the same `ChatClientFactory` path as a preset, with a
       test that builds the client from it (no network).
 
 ## 3. `/auth` in the TUI
@@ -46,12 +46,12 @@
 
 ## 5. Documentation and proof
 
-- [ ] 5.1 `docs/` gains a "First run" page: `lunate auth login`, the picker, the custom endpoint, and the
+- [x] 5.1 `docs/` gains a "First run" page: `lunate auth login`, the picker, the custom endpoint, and the
       environment-variable override stated once.
-- [ ] 5.2 `README.md` install section links that page instead of the bare auth.json sentence.
-- [ ] 5.3 Tests: CLI subcommands × (TTY, pipe, missing provider, unknown provider), picker navigation,
+- [x] 5.2 `README.md` install section links that page instead of the bare auth.json sentence.
+- [x] 5.3 Tests: CLI subcommands × (TTY, pipe, missing provider, unknown provider), picker navigation,
       first-run trigger and its non-interactive absence, custom-endpoint validation, and one test that the
       key never reaches a notice/history/session file on each path.
-- [ ] 5.4 `scripts/verify.sh` unchanged; the suites carry the new tests.
+- [x] 5.4 `scripts/verify.sh` unchanged; the suites carry the new tests.
 - [ ] 5.5 A recording for the media set: fresh install → `/auth` → picker → key → `/model` → first prompt.
-- [ ] 5.6 Archive the change into `openspec/specs/{agent-config,tui}/spec.md` in the same PR's last commit.
+- [x] 5.6 Archive the change into `openspec/specs/{agent-config,tui}/spec.md` in the same PR's last commit.
