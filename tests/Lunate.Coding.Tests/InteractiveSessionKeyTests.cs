@@ -369,6 +369,9 @@ public sealed class InteractiveSessionKeyTests
         // replaces the older one in the slot, and the prompt shows exactly one draft.
         host.Console.SendCtrl("s");
         await host.WaitUntilAsync(() => host.Session.Input.Text.Length == 0);
+        // The prompt clears before the notice is posted, so read the log by count, not by timing:
+        // the first stash above waits for its count for exactly this reason.
+        await host.WaitUntilAsync(() => log.Changes(NoticeSlotChange.Posted).Count == 2);
         IReadOnlyList<NoticeSlotEntry> afterSecondStash = log.Changes(NoticeSlotChange.Posted);
         Assert.Equal(2, afterSecondStash.Count);
         Assert.Contains(
@@ -381,6 +384,7 @@ public sealed class InteractiveSessionKeyTests
         // newer one — never the two drafts joined together.
         host.Console.SendCtrl("s");
         await host.WaitUntilAsync(() => host.Session.Input.Text == "second draft");
+        await host.WaitUntilAsync(() => log.Changes(NoticeSlotChange.Posted).Count == 3);
         IReadOnlyList<NoticeSlotEntry> afterRestore = log.Changes(NoticeSlotChange.Posted);
         Assert.Equal(3, afterRestore.Count);
         Assert.Contains(
