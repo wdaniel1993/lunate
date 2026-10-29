@@ -61,7 +61,7 @@ internal static partial class DiagnosticBundle
         {
             RunStarted => string.Empty,
             RunFinished finished => " stop=" + finished.StopReason,
-            RunError error => " message=" + Truncate(error.Message),
+            RunError error => Count(" message", error.Message),
             TextMessageStart start => " msg=" + Short(start.MessageId),
             TextMessageContent content => Count(" msg=" + Short(content.MessageId), content.Text),
             TextMessageEnd end => " msg=" + Short(end.MessageId),
@@ -84,10 +84,10 @@ internal static partial class DiagnosticBundle
                 + routed.RequestedModel
                 + " resolved="
                 + routed.ResolvedModel,
-            Retrying retrying => " attempt="
-                + retrying.Attempt.ToString(CultureInfo.InvariantCulture)
-                + " reason="
-                + Truncate(retrying.Reason),
+            Retrying retrying => Count(
+                " attempt=" + retrying.Attempt.ToString(CultureInfo.InvariantCulture) + " reason",
+                retrying.Reason
+            ),
             CompactionApplied compaction => " replaced="
                 + compaction.ReplacedEntryIds.Count.ToString(CultureInfo.InvariantCulture)
                 + " after="
