@@ -182,15 +182,23 @@ The loop SHALL keep one read ledger per harness, covering the history it carries
 - **WHEN** the model edits it with text that matches
 - **THEN** the edit succeeds exactly as before
 
+## MODIFIED Requirements
+
 ### Requirement: Masking tool results
 
-With `AgentHarnessOptions.ToolOutputMask` set, the loop SHALL apply it to `Output` and `FullOutput` before the result enters the history, the emitted `ToolCallResult`, the session entry or the spill file. The mask SHALL be exact-value only: a value Lunate holds is replaced by `[redacted:<name>]`, and a value Lunate does not hold SHALL be left unchanged. A null mask SHALL be identity. The host SHALL supply the same exact-value redactor for session and `--no-session` runs, and the mask SHALL be idempotent with the redaction at rest.
+With `AgentHarnessOptions.ToolOutputMask` set, the loop SHALL apply it to every tool result's model-facing text before the result is truncated, so a value that crosses a truncation boundary cannot send a fragment. The masked text SHALL be what enters the history, the emitted `ToolCallResult`, the session entry and the spill file. The mask SHALL be exact-value only: a value Lunate holds is replaced by `[redacted:<name>]`, and a value Lunate does not hold SHALL be left unchanged. A null mask SHALL be identity. The host SHALL supply the same exact-value redactor for session and `--no-session` runs, and the mask SHALL be idempotent with the redaction at rest.
 
 #### Scenario: A known credential never reaches the provider
 
 - **GIVEN** a session whose redactor holds `OPENAI_API_KEY` and a tool that echoes that value
 - **WHEN** the result is admitted
 - **THEN** the request, the `ToolCallResult` event, the session entry and the spill file carry `[redacted:OPENAI_API_KEY]`, and the raw value appears in none of them
+
+#### Scenario: A value across a truncation boundary is masked before the cut
+
+- **GIVEN** a tool result over the character cap whose known credential value straddles the head or the tail cut
+- **WHEN** the result is masked and then truncated
+- **THEN** the truncated text carries the marker and no fragment of the value, in the request and in the event
 
 #### Scenario: A no-session run masks too
 

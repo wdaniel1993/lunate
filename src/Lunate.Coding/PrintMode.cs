@@ -618,12 +618,21 @@ internal static class PrintMode
         SkillCatalog skills
     )
     {
+        CredentialRedactor redaction = HarnessFactory.CollectRedaction(
+            options.AuthPath,
+            options.Environment,
+            options.Extensions?.StorePath,
+            workspace.WorktreeRoot,
+            options.McpConfigPath,
+            options.McpAgentsConfigPath
+        );
         ToolRegistry tools = HarnessFactory.CreateTools(
             workspace,
             services: workspaceServices,
             skillReadAllowance: new SkillReadAllowance(skills.ReadRoots),
             log: extensions?.Log,
-            extraTools: settings.Tools.Extra
+            extraTools: settings.Tools.Extra,
+            redaction: redaction
         );
         foreach (ITool tool in mcpTools)
         {
@@ -639,15 +648,7 @@ internal static class PrintMode
 
         if (session is { } active)
         {
-            HarnessFactory.AttachRedaction(
-                active,
-                options.AuthPath,
-                options.Environment,
-                options.Extensions?.StorePath,
-                workspace.WorktreeRoot,
-                options.McpConfigPath,
-                options.McpAgentsConfigPath
-            );
+            HarnessFactory.AttachRedaction(active, redaction);
             if (skills.Index.Text.Length > 0)
             {
                 RecordSkillsSection(active, skills.Index.Text);
@@ -667,6 +668,8 @@ internal static class PrintMode
                     : null,
             WorkingDirectory = workspace.WorktreeRoot,
             ToolOutputLimit = settings.ToolOutputLimit,
+            // The same redactor masks the model-facing text whether or not a session exists.
+            ToolOutputMask = redaction.Redact,
             SubagentLimits = settings.Subagents,
             ThinkingLevel = settings.Thinking,
             Approver = new NonInteractiveApprover(settings.Approval, options.Yolo),
@@ -682,7 +685,8 @@ internal static class PrintMode
                 inheritedTools,
                 root => skills.ReadRootsFor(root),
                 log: extensions?.Log,
-                extraTools: settings.Tools.Extra
+                extraTools: settings.Tools.Extra,
+                redaction: redaction
             ),
         };
 

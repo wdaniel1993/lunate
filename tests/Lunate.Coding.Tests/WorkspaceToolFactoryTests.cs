@@ -1,6 +1,9 @@
 using System.Runtime.CompilerServices;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using Lunate.Agent;
+using Lunate.Ai;
 using Microsoft.Extensions.AI;
 
 namespace Lunate.Coding.Tests;
@@ -12,6 +15,8 @@ namespace Lunate.Coding.Tests;
 /// </summary>
 public sealed class WorkspaceToolFactoryTests
 {
+    private const string Secret = "sk-ant-abcdef-123456";
+    private const string Marker = "[redacted:ANTHROPIC_API_KEY]";
     private static readonly CancellationToken Ct = TestContext.Current.CancellationToken;
 
     [Fact]
@@ -98,6 +103,48 @@ public sealed class WorkspaceToolFactoryTests
         ToolRegistry csharp = factory(csharpRoot);
         Assert.Contains("cs_diagnostics", csharp.Tools.Select(tool => tool.Name));
         Assert.Contains("ext-tool", csharp.Tools.Select(tool => tool.Name));
+    }
+
+    [Fact]
+    public async Task A_child_workspace_write_refuses_a_placeholder_over_the_real_value()
+    {
+        using var temp = new TempDirectory();
+        string childRoot = temp.File("child");
+        Directory.CreateDirectory(childRoot);
+        string envPath = Path.Combine(childRoot, ".env");
+        string original = $"ANTHROPIC_API_KEY={Secret}\n";
+        File.WriteAllText(envPath, original);
+        byte[] before = SHA256.HashData(Encoding.UTF8.GetBytes(original));
+        using var services = new WorkspaceServices(2, root => new FakeWorkspaceBackend(root));
+        var redactor = new CredentialRedactor([("ANTHROPIC_API_KEY", Secret)]);
+        // The child factory inherits the write/edit guard: a child session runs with the same
+        // redactor, so its write tool refuses the placeholder over the value it stands for.
+        Func<string, ToolRegistry> factory = HarnessFactory.CreateWorkspaceTools(
+            services,
+            [],
+            redaction: redactor
+        );
+        var context = new ToolContext(childRoot, new NullAgentEvents());
+
+        ToolResult result = await factory(childRoot)
+            .Find("write")!
+            .ExecuteAsync(
+                JsonSerializer.SerializeToElement(
+                    new { path = ".env", content = $"ANTHROPIC_API_KEY={Marker}\n" }
+                ),
+                context,
+                Ct
+            );
+
+        // The refusal names the credential (through its marker the write would destroy).
+        Assert.True(result.IsError);
+        Assert.Contains(Marker, result.Output, StringComparison.Ordinal);
+        Assert.Equal(
+            "ANTHROPIC_API_KEY",
+            Assert.Single(CredentialRedactor.PlaceholderNamesIn(result.Output))
+        );
+        // Byte-identical, compared as a hash: the refused child write is no write at all.
+        Assert.Equal(before, SHA256.HashData(File.ReadAllBytes(envPath)));
     }
 
     [Fact]

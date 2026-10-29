@@ -253,12 +253,19 @@ internal static class AcpMode
         // Every editor session may name its own root, so the refusal is re-asked here rather than
         // trusted from serve start.
         LunateHome.StoreOutsideWorkspace(workspace.WorktreeRoot, workspace.RepoRoot);
+        CredentialRedactor redaction = HarnessFactory.CollectRedaction(
+            authPath: null,
+            environment: null,
+            storePath: null,
+            workspace.WorktreeRoot
+        );
         ToolRegistry tools = HarnessFactory.CreateTools(
             workspace,
             context.FileAccess,
             workspaceServices,
             log: host?.Log,
-            extraTools: effective.Tools.Extra
+            extraTools: effective.Tools.Extra,
+            redaction: redaction
         );
         foreach (ITool tool in mcpTools)
         {
@@ -281,13 +288,7 @@ internal static class AcpMode
             sessionDirectory ?? HarnessFactory.DefaultSessionDirectory(workspace),
             workspace
         );
-        HarnessFactory.AttachRedaction(
-            session,
-            authPath: null,
-            environment: null,
-            storePath: null,
-            workspace.WorktreeRoot
-        );
+        HarnessFactory.AttachRedaction(session, redaction);
         LaunchOptions directives = launch ?? new LaunchOptions();
         SystemPrompt.Record(session, directives);
         var options = new AgentHarnessOptions
@@ -299,6 +300,8 @@ internal static class AcpMode
             ),
             WorkingDirectory = workspace.WorktreeRoot,
             ToolOutputLimit = effective.ToolOutputLimit,
+            // The same redactor masks the model-facing text for ACP runs, which always have a session.
+            ToolOutputMask = redaction.Redact,
             SubagentLimits = effective.Subagents,
             ThinkingLevel = effective.Thinking,
             Approver = context.ClientApprover is { } clientApprover
@@ -315,7 +318,8 @@ internal static class AcpMode
                 workspaceServices,
                 inheritedTools,
                 log: host?.Log,
-                extraTools: effective.Tools.Extra
+                extraTools: effective.Tools.Extra,
+                redaction: redaction
             ),
         };
 

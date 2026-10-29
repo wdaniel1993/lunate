@@ -98,6 +98,34 @@ A `ToolRegistry` SHALL hold tools by name in registration order, SHALL reject du
 - **WHEN** a result over the limit is truncated
 - **THEN** the tool result is still delivered with the count-only marker and the failure is reported as a notice, not a tool error
 
+### Requirement: Masking tool results
+
+With `AgentHarnessOptions.ToolOutputMask` set, the loop SHALL apply it to every tool result's model-facing text before the result is truncated, so a value that crosses a truncation boundary cannot send a fragment. The masked text SHALL be what enters the history, the emitted `ToolCallResult`, the session entry and the spill file. The mask SHALL be exact-value only: a value Lunate holds is replaced by `[redacted:<name>]`, and a value Lunate does not hold SHALL be left unchanged. A null mask SHALL be identity. The host SHALL supply the same exact-value redactor for session and `--no-session` runs, and the mask SHALL be idempotent with the redaction at rest.
+
+#### Scenario: A known credential never reaches the provider
+
+- **GIVEN** a redactor that holds `OPENAI_API_KEY` and a tool that echoes that value
+- **WHEN** the result is admitted
+- **THEN** the request, the `ToolCallResult` event, the session entry and the spill file carry `[redacted:OPENAI_API_KEY]`, and the raw value appears in none of them
+
+#### Scenario: A value across a truncation boundary is masked before the cut
+
+- **GIVEN** a tool result over the character cap whose known credential value straddles the head or the tail cut
+- **WHEN** the result is masked and then truncated
+- **THEN** the truncated text carries the marker and no fragment of the value, in the request and in the event
+
+#### Scenario: A no-session run masks too
+
+- **GIVEN** a `--no-session` run on a machine whose environment holds a provider key and a tool that echoes it
+- **WHEN** the result is admitted
+- **THEN** the request carries the marker, even though no session file exists
+
+#### Scenario: Exact value only
+
+- **GIVEN** a tool result containing a token-shaped string that is not a credential Lunate holds
+- **WHEN** the result is admitted
+- **THEN** the string is unchanged
+
 ### Requirement: Tool exposure and registry declarations
 
 `ITool` SHALL gain an `Exposure` (`Direct`, `ModelOnly`, `Programmatic`, `Deferred`, `Hidden`, default `Direct`) as a default interface member. `ToolRegistry.Declarations` SHALL expose only `Direct` and `ModelOnly` tools to the model; `Deferred` tools are never declared and are discoverable through the run's tool stubs. Nested/programmatic execution SHALL allow `Direct`, `Programmatic` and `Deferred` tools and refuse `ModelOnly` and `Hidden` with an instructing error.

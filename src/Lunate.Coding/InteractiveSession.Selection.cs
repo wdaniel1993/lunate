@@ -146,21 +146,13 @@ internal sealed partial class InteractiveSession
     }
 
     /// <summary>
-    /// Attaches the persistence redactor to a session this host created or resumed: what the model
-    /// sees in memory stays as it was, while every line the session file and spill files receive
-    /// has the credentials this host knows replaced.
+    /// Attaches the redactor this host collected once at composition to a session it created or
+    /// resumed: the session file and spill files keep their credentials replaced, and the same
+    /// values back the write/edit guards against a placeholder written back over the real one.
     /// </summary>
     private Session WithRedaction(Session session)
     {
-        HarnessFactory.AttachRedaction(
-            session,
-            _options.AuthPath,
-            _options.Environment,
-            _options.Extensions?.StorePath,
-            _workspace.WorktreeRoot,
-            _options.McpConfigPath,
-            _options.McpAgentsConfigPath
-        );
+        HarnessFactory.AttachRedaction(session, _redaction);
         return session;
     }
 }

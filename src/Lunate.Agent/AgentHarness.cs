@@ -753,6 +753,16 @@ public sealed partial class AgentHarness
         return new ChatMessage(ChatRole.User, contents);
     }
 
+    /// <summary>
+    /// The admission mask, the first step of a tool result's joining the conversation: the
+    /// host-supplied <see cref="AgentHarnessOptions.ToolOutputMask"/> replaces the values it
+    /// holds before the result is truncated, emitted, appended or spilled. The host owns the
+    /// wiring — it stands in for the same redactor for session and no-session runs; the
+    /// session's redactor keeps its persistence role at rest, and a null mask is the identity.
+    /// </summary>
+    private string RedactForContext(string output) =>
+        _options.ToolOutputMask?.Invoke(output) ?? output;
+
     /// <summary>Every image reference a message carries.</summary>
     private static IEnumerable<ImageContentReference> ImageReferences(
         IEnumerable<ChatMessage> messages

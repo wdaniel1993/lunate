@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using Lunate.Agent;
+using Lunate.Ai;
 
 namespace Lunate.Coding;
 
@@ -22,6 +23,19 @@ public sealed class EditTool(
     private readonly IFileMutationQueue _mutations = mutations ?? FileMutationQueue.Shared;
 
     private readonly ITextFileAccess _files = files ?? LocalTextFileAccess.Instance;
+
+    private readonly CredentialRedactor? _redaction;
+
+    internal EditTool(
+        Workspace workspace,
+        IFileMutationQueue? mutations,
+        ITextFileAccess? files,
+        CredentialRedactor? redaction
+    )
+        : this(workspace, mutations, files)
+    {
+        _redaction = redaction;
+    }
 
     private static readonly JsonElement Schema = JsonDocument
         .Parse(
@@ -149,6 +163,13 @@ public sealed class EditTool(
         if (oldText == newText)
         {
             return Error("old_text and new_text are identical; nothing to change");
+        }
+
+        // Blunt v1 refusal before any file mutation: a placeholder on either side cannot be mapped
+        // back, so the edit is refused whole.
+        if (RedactionRefusal.ForEdit(oldText, newText, _redaction) is { } refusal)
+        {
+            return refusal;
         }
 
         return await _mutations.RunAsync(

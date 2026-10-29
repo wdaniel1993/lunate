@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using Lunate.Agent;
+using Lunate.Ai;
 
 namespace Lunate.Coding;
 
@@ -21,6 +22,19 @@ public sealed class WriteTool(
     private readonly IFileMutationQueue _mutations = mutations ?? FileMutationQueue.Shared;
 
     private readonly ITextFileAccess _files = files ?? LocalTextFileAccess.Instance;
+
+    private readonly CredentialRedactor? _redaction;
+
+    internal WriteTool(
+        Workspace workspace,
+        IFileMutationQueue? mutations,
+        ITextFileAccess? files,
+        CredentialRedactor? redaction
+    )
+        : this(workspace, mutations, files)
+    {
+        _redaction = redaction;
+    }
 
     private static readonly JsonElement Schema = JsonDocument
         .Parse(
@@ -117,6 +131,21 @@ public sealed class WriteTool(
                     when (exception is IOException or UnauthorizedAccessException)
                 {
                     return Task.FromResult(Error($"could not be read: {exception.Message}"));
+                }
+
+                // Under the same mutation lock the write itself uses: refused means the file's
+                // bytes are untouched.
+                if (
+                    RedactionRefusal.ForWrite(
+                        content,
+                        created ? null : oldText,
+                        relative,
+                        _redaction
+                    ) is
+                    { } refusal
+                )
+                {
+                    return Task.FromResult(refusal);
                 }
 
                 // The file's own convention wins over the text as given: a CRLF file stays CRLF

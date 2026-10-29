@@ -62,7 +62,15 @@ public sealed partial class AgentHarness
         }
 
         toolActivity?.SetTag(AgentTelemetry.ToolIsErrorAttribute, result.IsError);
-        string output = TruncateToolOutput(runId, callId, result.Output ?? string.Empty, channel);
+        // Masking is admission's first step and truncation's predecessor: a value that crosses
+        // the cut cannot send a fragment. The event, the history and the spill all carry this
+        // one masked-and-bounded text.
+        string output = TruncateToolOutput(
+            runId,
+            callId,
+            RedactForContext(result.Output ?? string.Empty),
+            channel
+        );
         channel.Emit(
             new ToolCallResult(runId, callId, output, result.IsError, result.Details)
             {
@@ -302,14 +310,15 @@ public sealed partial class AgentHarness
             throw;
         }
 
+        // The nested result takes the same admission path: masked first, then bounded.
+        string output = TruncateToolOutput(
+            runId,
+            nestedCallId,
+            RedactForContext(result.Output ?? string.Empty),
+            channel
+        );
         channel.Emit(
-            new ToolCallResult(
-                runId,
-                nestedCallId,
-                TruncateToolOutput(runId, nestedCallId, result.Output ?? string.Empty, channel),
-                result.IsError,
-                result.Details
-            )
+            new ToolCallResult(runId, nestedCallId, output, result.IsError, result.Details)
             {
                 ParentToolCallId = parentCallId,
                 HasImages = result.Images is { Count: > 0 },

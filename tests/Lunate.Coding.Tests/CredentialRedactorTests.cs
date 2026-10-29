@@ -78,6 +78,34 @@ public sealed class CredentialRedactorTests
     }
 
     [Fact]
+    public void Two_overlapping_values_resolve_to_the_longest_one()
+    {
+        var redactor = new CredentialRedactor([("short", "abcd"), ("long", "bcdefghi")]);
+
+        string redacted = redactor.Redact("abcdefghi");
+
+        Assert.Equal("a[redacted:long]", redacted, StringComparer.Ordinal);
+        Assert.DoesNotContain("abcd", redacted, StringComparison.Ordinal);
+        Assert.Equal(redacted, redactor.Redact(redacted), StringComparer.Ordinal);
+    }
+
+    [Fact]
+    public void Overlapping_values_resolve_to_the_longest_in_the_jsonl_bytes_too()
+    {
+        var redactor = new CredentialRedactor([("short", "abcd"), ("long", "bcdefghi")]);
+        byte[] source = System.Text.Encoding.UTF8.GetBytes("{\"t\":\"abcdefghi\"}\n");
+
+        byte[] redacted = redactor.RedactUtf8(source);
+
+        Assert.Equal(
+            "{\"t\":\"a[redacted:long]\"}\n",
+            System.Text.Encoding.UTF8.GetString(redacted),
+            StringComparer.Ordinal
+        );
+        Assert.Equal(redacted, redactor.RedactUtf8(redacted));
+    }
+
+    [Fact]
     public void A_value_shorter_than_four_characters_is_skipped()
     {
         var redactor = new CredentialRedactor([("tiny", "ab"), ("key", AuthKey)]);
@@ -105,6 +133,116 @@ public sealed class CredentialRedactorTests
     }
 
     [Fact]
+    public void An_emitted_marker_label_that_is_a_known_value_leaves_no_raw_value()
+    {
+        var redactor = new CredentialRedactor([
+            ("MY_API_KEY", "sk-1234567890"),
+            ("placeholder", "MY_API_KEY"),
+        ]);
+        const string input = "MY_API_KEY=sk-1234567890";
+
+        string first = redactor.Redact(input);
+
+        Assert.DoesNotContain("sk-1234567890", first, StringComparison.Ordinal);
+        Assert.DoesNotContain("MY_API_KEY", first, StringComparison.Ordinal);
+        Assert.Equal(first, redactor.Redact(first), StringComparer.Ordinal);
+    }
+
+    [Fact]
+    public void A_written_marker_whose_label_is_a_known_value_is_not_passed_through()
+    {
+        var redactor = new CredentialRedactor([
+            ("MY_API_KEY", "sk-1234567890"),
+            ("placeholder", "MY_API_KEY"),
+        ]);
+        const string input = "[redacted:MY_API_KEY]";
+
+        string first = redactor.Redact(input);
+
+        Assert.DoesNotContain("MY_API_KEY", first, StringComparison.Ordinal);
+        Assert.Equal(first, redactor.Redact(first), StringComparer.Ordinal);
+    }
+
+    [Fact]
+    public void The_jsonl_bytes_leave_no_known_value_in_a_marker_label()
+    {
+        var redactor = new CredentialRedactor([
+            ("MY_API_KEY", "sk-1234567890"),
+            ("placeholder", "MY_API_KEY"),
+        ]);
+        byte[] source = System.Text.Encoding.UTF8.GetBytes(
+            "{\"text\":\"MY_API_KEY=sk-1234567890\"}\n"
+        );
+
+        byte[] firstBytes = redactor.RedactUtf8(source);
+        string first = System.Text.Encoding.UTF8.GetString(firstBytes);
+
+        Assert.DoesNotContain("sk-1234567890", first, StringComparison.Ordinal);
+        Assert.DoesNotContain("MY_API_KEY", first, StringComparison.Ordinal);
+        Assert.Equal(firstBytes, redactor.RedactUtf8(firstBytes));
+    }
+
+    [Fact]
+    public void The_jsonl_bytes_do_not_pass_through_a_marker_whose_label_is_a_known_value()
+    {
+        var redactor = new CredentialRedactor([
+            ("MY_API_KEY", "sk-1234567890"),
+            ("placeholder", "MY_API_KEY"),
+        ]);
+        byte[] source = System.Text.Encoding.UTF8.GetBytes("[redacted:MY_API_KEY]\n");
+
+        byte[] firstBytes = redactor.RedactUtf8(source);
+        string first = System.Text.Encoding.UTF8.GetString(firstBytes);
+
+        Assert.DoesNotContain("MY_API_KEY", first, StringComparison.Ordinal);
+        Assert.Equal(firstBytes, redactor.RedactUtf8(firstBytes));
+    }
+
+    [Fact]
+    public void Redacting_an_already_redacted_text_is_identity()
+    {
+        var redactor = new CredentialRedactor([
+            ("KEY_TOKEN", "KEY_TOKEN"),
+            ("other", "second-value-9999"),
+        ]);
+        const string input = "KEY_TOKEN=KEY_TOKEN value=second-value-9999";
+
+        string first = redactor.Redact(input);
+
+        // The label of the KEY_TOKEN marker is a known value itself, so it is written encoded;
+        // no raw known value may survive anywhere, and re-redacting stays identity.
+        Assert.DoesNotContain("KEY_TOKEN", first, StringComparison.Ordinal);
+        Assert.DoesNotContain("second-value-9999", first, StringComparison.Ordinal);
+        Assert.Equal(first, redactor.Redact(first), StringComparer.Ordinal);
+    }
+
+    [Fact]
+    public void The_byte_level_scan_never_nests_markers()
+    {
+        var redactor = new CredentialRedactor([
+            ("MY_API_KEY", "sk-1234567890"),
+            ("placeholder", "MY_API_KEY"),
+            ("KEY_TOKEN", "KEY_TOKEN"),
+            ("other", "second-value-9999"),
+        ]);
+        byte[] source = System.Text.Encoding.UTF8.GetBytes(
+            "{\"text\":\"MY_API_KEY=sk-1234567890\"}\n"
+                + "{\"text\":\"KEY_TOKEN=KEY_TOKEN value=second-value-9999\"}\n"
+        );
+
+        byte[] firstBytes = redactor.RedactUtf8(source);
+        string first = System.Text.Encoding.UTF8.GetString(firstBytes);
+        string second = System.Text.Encoding.UTF8.GetString(redactor.RedactUtf8(firstBytes));
+
+        // Marked labels that are themselves known values carry no raw secret; the scan never makes
+        // the text drift away from identity on a second pass.
+        Assert.DoesNotContain("MY_API_KEY", first, StringComparison.Ordinal);
+        Assert.DoesNotContain("KEY_TOKEN", first, StringComparison.Ordinal);
+        Assert.DoesNotContain("second-value-9999", first, StringComparison.Ordinal);
+        Assert.Equal(first, second, StringComparer.Ordinal);
+    }
+
+    [Fact]
     public void A_secret_file_that_does_not_parse_contributes_nothing_and_does_not_throw()
     {
         using var temp = new TempDirectory();
@@ -128,6 +266,62 @@ public sealed class CredentialRedactorTests
 
         Assert.Contains("ANTHROPIC_API_KEY", ProviderPresets.All.Select(p => p.KeyVariable));
         Assert.Equal("[redacted:ANTHROPIC_API_KEY]", redactor.Redact(ProviderKey));
+    }
+
+    [Fact]
+    public void A_bracketed_known_secret_is_masked_not_passed_through_as_a_marker()
+    {
+        var redactor = new CredentialRedactor([("OPENAI_API_KEY", "sk-live-9f8e7d6c5b4a")]);
+        const string input = "[redacted:sk-live-9f8e7d6c5b4a]";
+
+        string redacted = redactor.Redact(input);
+
+        Assert.DoesNotContain("sk-live-9f8e7d6c5b4a", redacted, StringComparison.Ordinal);
+        Assert.Contains("[redacted:OPENAI_API_KEY]", redacted, StringComparison.Ordinal);
+        Assert.Equal(redacted, redactor.Redact(redacted), StringComparer.Ordinal);
+    }
+
+    [Fact]
+    public void A_bracketed_known_secret_is_masked_in_the_jsonl_bytes_too()
+    {
+        var redactor = new CredentialRedactor([("OPENAI_API_KEY", "sk-live-9f8e7d6c5b4a")]);
+        byte[] source = System.Text.Encoding.UTF8.GetBytes(
+            "{\"text\":\"[redacted:sk-live-9f8e7d6c5b4a]\"}\n"
+        );
+
+        byte[] redacted = redactor.RedactUtf8(source);
+
+        string first = System.Text.Encoding.UTF8.GetString(redacted);
+        Assert.Equal(
+            "{\"text\":\"[redacted:[redacted:OPENAI_API_KEY]]\"}\n",
+            first,
+            StringComparer.Ordinal
+        );
+        Assert.Equal(
+            first,
+            System.Text.Encoding.UTF8.GetString(redactor.RedactUtf8(redacted)),
+            StringComparer.Ordinal
+        );
+    }
+
+    [Fact]
+    public void A_marker_with_an_unknown_name_passes_through_unchanged()
+    {
+        var redactor = new CredentialRedactor([("openai", AuthKey)]);
+
+        const string input = "password: [redacted:SOMETHING_ELSE] untouched";
+
+        Assert.Equal(input, redactor.Redact(input), StringComparer.Ordinal);
+    }
+
+    [Fact]
+    public void An_unknown_marker_and_a_known_marker_share_one_text_unchanged()
+    {
+        var redactor = new CredentialRedactor([("openai", AuthKey)]);
+
+        const string input = "a [redacted:X] b [redacted:openai] c";
+
+        Assert.Equal(input, redactor.Redact(input), StringComparer.Ordinal);
     }
 
     private static void WriteAuth(TempDirectory temp, string key) =>

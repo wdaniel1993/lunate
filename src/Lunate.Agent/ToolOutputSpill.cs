@@ -44,7 +44,8 @@ internal static class ToolOutputSpill
         ArgumentNullException.ThrowIfNull(session);
         ArgumentNullException.ThrowIfNull(output);
         ArgumentException.ThrowIfNullOrWhiteSpace(runId);
-        // The file is at rest; the live tool result the model saw keeps the value.
+        // The admission mask runs first in the harness, so this text is already masked; the
+        // redaction here is the persistence boundary for the bytes on disk, defence in depth.
         string redacted = session.Redactor.Redact(output);
         if (Encoding.UTF8.GetByteCount(redacted) > MaxBytes)
         {
