@@ -50,7 +50,14 @@ public sealed class RedactionGuardLoopTests
         var harness = new AgentHarness(
             client,
             tools,
-            new AgentHarnessOptions { WorkingDirectory = temp.Root, Session = session }
+            new AgentHarnessOptions
+            {
+                WorkingDirectory = temp.Root,
+                // The mask is the harness's admission step now: the session redactor is wired by
+                // the host, so the loop keeps masking without a hidden fallback.
+                Session = session,
+                ToolOutputMask = redactor.Redact,
+            }
         );
         List<AgentEvent> events = [];
 

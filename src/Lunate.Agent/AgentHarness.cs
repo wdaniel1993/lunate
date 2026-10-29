@@ -754,12 +754,14 @@ public sealed partial class AgentHarness
     }
 
     /// <summary>
-    /// The session's known credential values are replaced in a tool result before it joins the
-    /// conversation: the model reads [redacted:name], not the secret a write-back would destroy.
-    /// Events and the spill file keep their own handling; masking here is the context's change.
+    /// The admission mask, the first step of a tool result's joining the conversation: the
+    /// host-supplied <see cref="AgentHarnessOptions.ToolOutputMask"/> replaces the values it
+    /// holds before the result is truncated, emitted, appended or spilled. The host owns the
+    /// wiring — it stands in for the same redactor for session and no-session runs; the
+    /// session's redactor keeps its persistence role at rest, and a null mask is the identity.
     /// </summary>
     private string RedactForContext(string output) =>
-        _options.Session is { } session ? session.Redactor.Redact(output) : output;
+        _options.ToolOutputMask?.Invoke(output) ?? output;
 
     /// <summary>Every image reference a message carries.</summary>
     private static IEnumerable<ImageContentReference> ImageReferences(

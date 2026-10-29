@@ -668,6 +668,8 @@ internal static class PrintMode
                     : null,
             WorkingDirectory = workspace.WorktreeRoot,
             ToolOutputLimit = settings.ToolOutputLimit,
+            // The same redactor masks the model-facing text whether or not a session exists.
+            ToolOutputMask = redaction.Redact,
             SubagentLimits = settings.Subagents,
             ThinkingLevel = settings.Thinking,
             Approver = new NonInteractiveApprover(settings.Approval, options.Yolo),
@@ -683,7 +685,8 @@ internal static class PrintMode
                 inheritedTools,
                 root => skills.ReadRootsFor(root),
                 log: extensions?.Log,
-                extraTools: settings.Tools.Extra
+                extraTools: settings.Tools.Extra,
+                redaction: redaction
             ),
         };
 

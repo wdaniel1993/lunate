@@ -53,6 +53,15 @@ public sealed record AgentHarnessOptions
     /// <summary>The character budget for one tool result before truncation; the resolved setting threads here.</summary>
     public int ToolOutputLimit { get; init; } = ToolOutput.DefaultLimit;
 
+    /// <summary>
+    /// The exact-value mask applied to a tool result's model-facing output at admission, before
+    /// truncation, so a value that crosses a cut cannot send a fragment. The masked text is what
+    /// enters the emitted <c>ToolCallResult</c>, the history, the session entry and the spill
+    /// file; null is the identity. The host supplies it for session and no-session runs alike,
+    /// standing in for the redactor it built, and it must be idempotent with the redaction at rest.
+    /// </summary>
+    public Func<string, string>? ToolOutputMask { get; init; }
+
     /// <summary>The file mutation queue shared with tools through <see cref="ToolContext"/>.</summary>
     public IFileMutationQueue FileMutations { get; init; } = FileMutationQueue.Shared;
 

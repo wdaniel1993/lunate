@@ -93,14 +93,16 @@ internal static class HarnessFactory
     /// bound to the child root, plus the inherited tools that are safe in any root (the parent
     /// session's extension tools as-is and the MCP tools whose server is marked
     /// workspace-independent). Project MCP tools and their servers stay in the parent's directory
-    /// and are not offered.
+    /// and are not offered. The child session inherits the run's redactor, so the parent passes it
+    /// here and the child's write/edit tools refuse a placeholder over the value it stands for.
     /// </summary>
     internal static Func<string, ToolRegistry> CreateWorkspaceTools(
         WorkspaceServices services,
         IReadOnlyList<ITool> inheritedTools,
         Func<string, IReadOnlyList<string>>? skillReadRoots = null,
         IExtensionLog? log = null,
-        IReadOnlyList<string>? extraTools = null
+        IReadOnlyList<string>? extraTools = null,
+        CredentialRedactor? redaction = null
     )
     {
         ArgumentNullException.ThrowIfNull(services);
@@ -114,7 +116,8 @@ internal static class HarnessFactory
                     ? null
                     : new SkillReadAllowance(skillReadRoots(root)),
                 log: log,
-                extraTools: extraTools
+                extraTools: extraTools,
+                redaction: redaction
             );
             foreach (ITool tool in inheritedTools)
             {

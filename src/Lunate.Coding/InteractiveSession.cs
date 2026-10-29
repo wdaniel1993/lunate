@@ -548,7 +548,8 @@ internal sealed partial class InteractiveSession : IDisposable
             _inheritedTools,
             root => _skills?.ReadRootsFor(root) ?? [],
             log: _extensions?.Log,
-            extraTools: _settings.Tools.Extra
+            extraTools: _settings.Tools.Extra,
+            redaction: _redaction
         );
         // The model resolves after the extension host: the configured id may name a virtual or
         // extension-registered model, which only the registry knows.
@@ -845,6 +846,8 @@ internal sealed partial class InteractiveSession : IDisposable
                 : null,
             WorkingDirectory = _workspace.WorktreeRoot,
             ToolOutputLimit = _settings.ToolOutputLimit,
+            // The same redactor masks the model-facing text; the interactive session always has one.
+            ToolOutputMask = _redaction.Redact,
             SubagentLimits = _settings.Subagents,
             Approver = _approver,
             Hooks = _extensions?.Hooks,

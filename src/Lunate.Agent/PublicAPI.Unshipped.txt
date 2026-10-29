@@ -399,6 +399,8 @@ Lunate.Agent.AgentHarnessOptions.ThinkingLevel.get -> Lunate.Ai.ThinkingLevel
 Lunate.Agent.AgentHarnessOptions.ThinkingLevel.init -> void
 Lunate.Agent.AgentHarnessOptions.ToolOutputLimit.get -> int
 Lunate.Agent.AgentHarnessOptions.ToolOutputLimit.init -> void
+Lunate.Agent.AgentHarnessOptions.ToolOutputMask.get -> System.Func<string!, string!>?
+Lunate.Agent.AgentHarnessOptions.ToolOutputMask.init -> void
 Lunate.Agent.AgentHarnessOptions.WorkingDirectory.get -> string!
 Lunate.Agent.AgentHarnessOptions.WorkingDirectory.init -> void
 Lunate.Agent.AgentHarnessOptions.WorkspaceTools.get -> System.Func<string!, Lunate.Agent.ToolRegistry!>?

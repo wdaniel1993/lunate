@@ -5,10 +5,11 @@ using static Lunate.Agent.Tests.AgentTestSupport;
 namespace Lunate.Agent.Tests;
 
 /// <summary>
-/// Secrets at rest after the context mask: masking moved before the context, so a known credential
-/// never reaches the conversation, the session mirror or any file, and the persistence pass now
-/// stands as a second, unchanged line of defense. The files that carry session content, spill
-/// output, trust records and install records are also owner-only where the platform has modes.
+/// Secrets at rest after the context mask: the loop masks before the context, so a known credential
+/// never reaches the conversation, the event stream, the session mirror or any file, and the
+/// persistence pass still runs behind it as defence in depth. The files that carry session
+/// content, spill output, trust records and install records are also owner-only where the
+/// platform has modes.
 /// </summary>
 public sealed class SecretAtRestTests
 {
@@ -19,12 +20,13 @@ public sealed class SecretAtRestTests
     public async Task A_known_credential_never_reaches_the_context_the_session_or_the_spill_files()
     {
         using var temp = new TempDirectory();
+        var redactor = new CredentialRedactor([("OPENAI_API_KEY", Secret)]);
         Session session = Session.Create(
             temp.File("sessions/s.jsonl"),
             "/work",
             new FixedTimeProvider(Start)
         );
-        session.Redactor = new CredentialRedactor([("OPENAI_API_KEY", Secret)]);
+        session.Redactor = redactor;
         string full = Secret + "\n" + string.Join("\n", Enumerable.Repeat("line", 200));
         var client = new ScriptedChatClient()
             .Enqueue(
@@ -35,14 +37,21 @@ public sealed class SecretAtRestTests
         var harness = new AgentHarness(
             client,
             Registry(ReadTool(full)),
-            new AgentHarnessOptions { Session = session, ToolOutputLimit = 100 }
+            new AgentHarnessOptions
+            {
+                Session = session,
+                ToolOutputLimit = 100,
+                ToolOutputMask = redactor.Redact,
+            }
         );
 
         List<AgentEvent> events = await Run(harness);
 
-        // The display event keeps what the tool produced; masking is the context's change.
+        // The display event carries the same masked text the model saw: the admission mask runs
+        // before the result is emitted or truncated.
         ToolCallResult result = Assert.Single(events.OfType<ToolCallResult>());
-        Assert.Contains(Secret, result.Output, StringComparison.Ordinal);
+        Assert.DoesNotContain(Secret, result.Output, StringComparison.Ordinal);
+        Assert.Contains("[redacted:OPENAI_API_KEY]", result.Output, StringComparison.Ordinal);
         // The session mirrors the conversation, so a resumed run reads what the model read: the
         // mirrored FunctionResultContent carries the placeholder, not the value.
         Assert.Contains(

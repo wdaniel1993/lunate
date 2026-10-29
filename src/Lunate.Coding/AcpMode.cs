@@ -300,6 +300,8 @@ internal static class AcpMode
             ),
             WorkingDirectory = workspace.WorktreeRoot,
             ToolOutputLimit = effective.ToolOutputLimit,
+            // The same redactor masks the model-facing text for ACP runs, which always have a session.
+            ToolOutputMask = redaction.Redact,
             SubagentLimits = effective.Subagents,
             ThinkingLevel = effective.Thinking,
             Approver = context.ClientApprover is { } clientApprover
@@ -316,7 +318,8 @@ internal static class AcpMode
                 workspaceServices,
                 inheritedTools,
                 log: host?.Log,
-                extraTools: effective.Tools.Extra
+                extraTools: effective.Tools.Extra,
+                redaction: redaction
             ),
         };
 
