@@ -33,6 +33,25 @@ asks for. Tests first (RED), then implementation (GREEN).
   permitted / Permission denied / Read-only file system) and whose command mentions a
   denied target, append a hint naming the guard and the mechanism.
 
+## Resume (session 2)
+The stalled session left the implementation green but in a `wip(` commit; rewritten as
+`feat(coding): bash guard profile for the shell tool`. A full local test run surfaced two
+branch-caused regressions, fixed test-first (RED → GREEN) via the senior-dev subagent:
+- The guard wrapped a missing shell, so sandbox-exec's `execvp` stderr replaced the tool's
+  pinned "could not start" spawn error. Fix: `Wrap` never wraps a shell that does not exist
+  (RED: `A_shell_that_cannot_start_is_a_spawn_error`, plus new `A_guard_does_not_wrap_a_shell_*`
+  unit tests).
+- The pre-run scan resolved relative redirect tokens against the process's current directory
+  (the testhost bin dir = the install prefix in tests), refusing a legitimate workspace write.
+  Fix: relative tokens anchor to the shell's workspace stored at `Wrap` (RED:
+  `RoslynFileBusSyncTests.A_new_file_in_an_untracked_directory_...`, plus
+  `BashGuardProcessDirectoryTests` with a chdir'd denied directory, in the silenced
+  `bash-guard-cwd` collection).
+- `BashGuard.cs` (545 lines) split into partials (`Platforms`, `Scan`) under the ~300-line
+  guideline, zero behaviour change. Right after the first full run, the
+  `PathIndexBudgetTests` budget test failed once and passed everywhere after; read as load,
+  not the guard.
+
 ## Rulings
 - Ruling: the Landlock fallback cannot express "deny only the state root" (allow-list only,
   per spike/notes-sandbox-feasibility.md), so the fallback allow-lists the subtraction walk
