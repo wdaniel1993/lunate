@@ -64,6 +64,42 @@ public sealed class InteractiveSessionApprovalSelectionTests
     }
 
     [Fact]
+    public async Task Enter_denies_even_with_the_selection_on_yes()
+    {
+        using var approval = new Approval();
+        await approval.Host.WaitForApprovalAsync();
+        approval.Up();
+        await approval.Host.WaitUntilAsync(() =>
+            approval.Host.Session.PendingApproval?.Selected == 0
+        );
+
+        approval.Enter();
+        await approval.Host.Client.WaitForCallAsync(2);
+
+        Assert.False(File.Exists(approval.Host.Temp.File("note.txt")));
+        Assert.Contains("Denied", approval.DenialResult(), StringComparison.Ordinal);
+        await approval.FinishAsync();
+    }
+
+    [Fact]
+    public async Task Escape_denies_even_with_the_selection_on_always()
+    {
+        using var approval = new Approval();
+        await approval.Host.WaitForApprovalAsync();
+        approval.Down();
+        await approval.Host.WaitUntilAsync(() =>
+            approval.Host.Session.PendingApproval?.Selected == 2
+        );
+
+        approval.Escape();
+        await approval.Host.Client.WaitForCallAsync(2);
+
+        Assert.False(File.Exists(approval.Host.Temp.File("note.txt")));
+        Assert.Contains("Denied", approval.DenialResult(), StringComparison.Ordinal);
+        await approval.FinishAsync();
+    }
+
+    [Fact]
     public async Task A_letter_decides_over_the_selection()
     {
         using var approval = new Approval();
@@ -227,6 +263,12 @@ public sealed class InteractiveSessionApprovalSelectionTests
 
         public void Space() =>
             Host.Console.Send(new KeyEvent(KeyKind.Space, null, false, false, false));
+
+        public void Enter() =>
+            Host.Console.Send(new KeyEvent(KeyKind.Enter, null, false, false, false));
+
+        public void Escape() =>
+            Host.Console.Send(new KeyEvent(KeyKind.Escape, null, false, false, false));
 
         /// <summary>The model's answer after a denial, as the harness passed it back.</summary>
         public string DenialResult() =>
