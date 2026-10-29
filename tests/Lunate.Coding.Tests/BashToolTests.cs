@@ -218,12 +218,19 @@ public sealed class BashToolTests
         var tool = new BashTool(new Workspace(temp.Root), null, WaitBudgets.CommandRun);
         DateTime commandStarted = DateTime.Now;
 
+        // Pinned while the command still runs, and the window closes if the run ends first: a pid
+        // read after the kill no longer names the process the kill ended. The normal path here is
+        // the pin landing before the cancellation, so the run cannot end first unless it failed.
+        using var window = new CancellationTokenSource();
+        var watched = ChildProcessProbe.AwaitWrittenAsync(pidFile, commandStarted, window.Token);
         var execution = tool.ExecuteAsync(CommandArgs(TreeCommand()), Context, cts.Token);
-        var grandchild = await ChildProcessProbe.AwaitWrittenAsync(
-            pidFile,
-            commandStarted,
-            CancellationToken.None
-        );
+        if (await Task.WhenAny(watched, execution) == execution)
+        {
+            window.Cancel();
+            await execution;
+        }
+
+        var grandchild = await watched;
         cts.Cancel();
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => execution);
