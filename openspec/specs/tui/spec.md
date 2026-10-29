@@ -1840,7 +1840,9 @@ The bundle SHALL carry these sections:
 - recent events: the last 64 events, oldest first, with `t+` milliseconds since the first listed event
   and `Δ` milliseconds since the line above; each line carries, as they apply, the event type, short
   run, message and call ids, tool name, stop reason, usage counts, result status and a text length —
-  never the text, arguments or output.
+  never the text, arguments or output. That rule covers the turn's own content: message text, tool
+  arguments, tool output. A message an event carries *about* an infrastructure failure — a spill
+  failure, an extension load reason — is not turn content and stays as that event's message field.
 
 Every rendered byte SHALL pass `CredentialRedactor` before the file is opened: a credential value
 Lunate holds SHALL be replaced by `[redacted:<name>]` by exact match, and the bundle SHALL add no
