@@ -62,7 +62,8 @@ internal sealed record GuardProbe(
                     is IOException
                         or UnauthorizedAccessException
                         or ArgumentException
-                        or DirectoryNotFoundException)
+                        or DirectoryNotFoundException
+            )
         {
             return [];
         }
@@ -97,10 +98,7 @@ internal sealed record GuardProbe(
     /// Runs one mechanism once: it is the probe that separates "looks installed" from "works".
     /// Output is trimmed and newlines collapsed, so a notice can quote it on one line.
     /// </summary>
-    private static (int ExitCode, string Output) RunMechanism(
-        string fileName,
-        string[] arguments
-    )
+    private static (int ExitCode, string Output) RunMechanism(string fileName, string[] arguments)
     {
         try
         {
@@ -136,8 +134,7 @@ internal sealed record GuardProbe(
 
     private static string Collapse(string text) =>
         string.Concat(
-            text
-                .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            text.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                 .Take(1)
         );
 }

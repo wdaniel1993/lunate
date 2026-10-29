@@ -70,10 +70,7 @@ public sealed class BashGuardToolTests
 
         var result = await RunAsync(fixture, "echo hello");
 
-        Assert.True(
-            !result.IsError,
-            $"expected a clean run, got: {result.Output}"
-        );
+        Assert.True(!result.IsError, $"expected a clean run, got: {result.Output}");
         Assert.Equal("hello\nexit code: 0", result.Output);
     }
 
@@ -106,12 +103,20 @@ public sealed class BashGuardToolTests
         using var temp = new TempDirectory();
         var tool = new BashTool(new Workspace(temp.Root));
 
-        var first = await tool.ExecuteAsync(CommandArgs("echo first"), Context, CancellationToken.None);
+        var first = await tool.ExecuteAsync(
+            CommandArgs("echo first"),
+            Context,
+            CancellationToken.None
+        );
 
         Assert.Contains("unconfined", first.Output);
         Assert.Contains("Windows", first.Output);
 
-        var second = await tool.ExecuteAsync(CommandArgs("echo second"), Context, CancellationToken.None);
+        var second = await tool.ExecuteAsync(
+            CommandArgs("echo second"),
+            Context,
+            CancellationToken.None
+        );
 
         Assert.DoesNotContain("unconfined", second.Output);
     }
@@ -150,7 +155,8 @@ public sealed class BashGuardToolTests
             Target = new GuardTarget(State, Auth, Prefix, Root);
 
             var shell = new ShellResolver().Resolve();
-            GuardReady = shell is { } resolved
+            GuardReady =
+                shell is { } resolved
                 && new BashGuard(Target, GuardProbe.Current).Wrap(resolved, Workspace).Wrapped;
         }
 
