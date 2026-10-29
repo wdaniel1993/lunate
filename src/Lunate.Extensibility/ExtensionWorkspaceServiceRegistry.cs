@@ -69,24 +69,25 @@ internal sealed class ExtensionWorkspaceServiceRegistry
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(extensionId);
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        Service service;
         lock (_gate)
         {
-            Service? service = _services.FirstOrDefault(entry => entry.Is(extensionId, name));
-            if (service is null)
-            {
-                throw new InvalidOperationException(
+            service =
+                _services.FirstOrDefault(entry => entry.Is(extensionId, name))
+                ?? throw new InvalidOperationException(
                     $"extension '{extensionId}': workspace service '{name}' is not registered; access it through the extension that registered it."
                 );
-            }
-            if (!Type.Equals(service.ServiceType, serviceType))
+            if (service.ServiceType != serviceType)
             {
                 throw new InvalidOperationException(
                     $"extension '{extensionId}': workspace service '{name}' produces '{service.ServiceType.Name}'; acquire it as that type, not as '{serviceType.Name}'."
                 );
             }
-
-            return service.Registry.Acquire(worktreeRoot, ct);
         }
+
+        // The wait slices happen outside the aggregator's gate: an acquisition that waits for a pin
+        // must never hold the gate a registration or the session end needs.
+        return service.Registry.Acquire(worktreeRoot, ct);
     }
 
     /// <summary>The canonical roots whose values are loaded for one pair; observable for tests.</summary>
