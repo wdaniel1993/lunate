@@ -48,7 +48,7 @@ public sealed partial class ExtensionLoader
             new RemoteExtensionOptions
             {
                 Manifest = descriptor.Manifest,
-                Directory = descriptor.Directory,
+                Directory = descriptor.Directory!,
                 Workspace = workspace,
                 ProcessRunner = runner,
                 Context = CreateExtensionContext(descriptor, secrets),

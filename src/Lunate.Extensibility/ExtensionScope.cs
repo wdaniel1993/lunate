@@ -4,4 +4,5 @@ public enum ExtensionScope
 {
     Global,
     Project,
+    Builtin,
 }

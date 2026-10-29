@@ -342,20 +342,18 @@ internal sealed partial class InteractiveSession
     /// The <c>/extensions</c> notice: one segment per discovered extension ordered failed →
     /// trust-denied → loaded, then by id (design D2), joined <c>; </c> under the
     /// <c>extensions: </c> prefix; no extensions reads as such and a <c>--no-extensions</c>
-    /// session (no host) reads disabled. It re-reads the single-file candidates first — a file the
-    /// model wrote mid-session is state, not stale discovery — and it writes nothing, prompts
-    /// nothing and prints no settings values, secrets or environment values.
+    /// session (no host) reads disabled. A built-in composed under the flag is listed like any
+    /// other segment. It re-reads the single-file candidates first — a file the model wrote
+    /// mid-session is state, not stale discovery — and it writes nothing, prompts nothing and
+    /// prints no settings values, secrets or environment values.
     /// </summary>
     private string ExtensionsText()
     {
-        if (_options.Extensions?.NoExtensions is true)
-        {
-            return ExtensionsView.DisabledText;
-        }
-
         if (_extensions is not { } host)
         {
-            return ExtensionsView.NoneText;
+            return _options.Extensions?.NoExtensions is true
+                ? ExtensionsView.DisabledText
+                : ExtensionsView.NoneText;
         }
 
         List<string> segments =
@@ -377,9 +375,14 @@ internal sealed partial class InteractiveSession
             );
         }
 
-        return segments.Count == 0
-            ? ExtensionsView.NoneText
-            : "extensions: " + string.Join("; ", segments);
+        if (segments.Count == 0)
+        {
+            return _options.Extensions?.NoExtensions is true
+                ? ExtensionsView.DisabledText
+                : ExtensionsView.NoneText;
+        }
+
+        return "extensions: " + string.Join("; ", segments);
     }
 
     /// <summary>
@@ -439,6 +442,25 @@ internal sealed partial class InteractiveSession
         if (_extensions is not { } host)
         {
             Notify(ExtensionsText());
+            return ValueTask.CompletedTask;
+        }
+
+        // A built-in is process-lifetime code loaded with the host: there is no build to run and
+        // no collectible context to swap, so the reload refuses with the teaching message and the
+        // built-in keeps answering (spec: Built-in extension provenance).
+        if (
+            host.Descriptors.Any(descriptor =>
+                descriptor.Scope is ExtensionScope.Builtin
+                && string.Equals(descriptor.Id, id, StringComparison.Ordinal)
+            )
+        )
+        {
+            Notify(
+                FormattableString.Invariant(
+                    $"extension '{id}' is a built-in; built-ins load with the host and cannot be reloaded or unloaded."
+                ),
+                NoticeLevel.Warning
+            );
             return ValueTask.CompletedTask;
         }
 

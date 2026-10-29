@@ -78,10 +78,27 @@ internal static class ExtensionReloadCommand
             StorePath = resolved.StorePath ?? ExtensionHostOptions.Default.StorePath,
             Log = resolved.Log ?? new StderrExtensionLog(errors),
             ReservedCommands = Commands.BuiltinNames,
+            BuiltIns = resolved.BuiltIns ?? [],
         };
 
         var loader = new ExtensionLoader(options);
         loader.Discover(working, working);
+
+        // A built-in cannot be reloaded: its code ran with the host (no build, no collectible
+        // context to swap), so the headless reload refuses with the session's teaching message.
+        if (
+            loader.Descriptors.FirstOrDefault(descriptor =>
+                descriptor.Scope is ExtensionScope.Builtin
+                && string.Equals(descriptor.Id, target, StringComparison.Ordinal)
+            )
+            is not null
+        )
+        {
+            errors.WriteLine(
+                $"lunate: extension '{target}' is a built-in; built-ins load with the host and cannot be reloaded or unloaded."
+            );
+            return ExitFailure;
+        }
 
         string? id = ExtensionBuildCommand.Resolve(loader.SingleFileExtensions, target)?.Id;
         if (id is null)

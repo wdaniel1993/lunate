@@ -47,10 +47,10 @@ internal static class AcpMode
             workspaceServices.Dispose();
             workspaceServices = configured;
 
-            if (extensions?.NoExtensions is not true)
-            {
-                host = ComposeExtensions(extensions, workspace, errors, ct);
-            }
+            // The host composes in every mode: with --no-extensions it composes only the built-in
+            // set — the loader skips the store scans, so nothing third-party is discovered,
+            // trusted or loaded (design §1).
+            host = ComposeExtensions(extensions, workspace, errors, ct);
 
             // The bus exists only when the extension host composed; scan-only without extensions.
             if (host is not null)

@@ -88,9 +88,14 @@ public sealed class ExtensionHeaderManifestMirrorTests
     }
 
     /// <summary>
-    /// The manifest's declaration lists: public instance properties of a list type. Scalars (id,
-    /// version, apiVersion, entryAssembly, runtime, settingsSchema) are not declarations of a
-    /// contribution and need no directive.
+    /// The directive-backed declaration lists: the fields the header requirement enumerates
+    /// (<c>tools</c>, <c>commands</c>, <c>hooks</c>, <c>services</c>, <c>capabilities</c>,
+    /// <c>modelProviders</c>), each mirrored one to one by a <c>#:</c> directive.
+    /// <c>WorkspaceServices</c> is structured config — a name plus an optional cap per entry — not
+    /// a contribution a single-file header can declare as a name list; a single-file extension
+    /// registers services through its factory and the loader cross-checks it like any other.
+    /// Scalars (id, version, apiVersion, entryAssembly, runtime, settingsSchema) are not
+    /// declarations of a contribution and need no directive.
     /// </summary>
     private static IReadOnlyList<PropertyInfo> DeclarationLists() =>
         [
@@ -99,6 +104,7 @@ public sealed class ExtensionHeaderManifestMirrorTests
                 .Where(property =>
                     property.PropertyType.IsGenericType
                     && property.PropertyType.GetGenericTypeDefinition() == typeof(IReadOnlyList<>)
+                    && property.Name != "WorkspaceServices"
                 )
                 .OrderBy(property => property.Name, StringComparer.Ordinal),
         ];

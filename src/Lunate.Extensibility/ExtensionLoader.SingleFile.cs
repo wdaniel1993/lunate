@@ -146,7 +146,7 @@ public sealed partial class ExtensionLoader
             Assembly assembly = context.LoadFromAssemblyPath(build.AssemblyPath);
             LoadedExtension loaded = await ActivateAsync(
                     descriptor,
-                    assembly,
+                    () => FindFactory(assembly, descriptor),
                     context,
                     ExtensionSecretsStore.Load(_options, id),
                     startSession,

@@ -42,7 +42,7 @@ Check, in this order:
    contains `extension.json`. Nested directories are not scanned; a hidden directory is skipped.
 2. The manifest parses. A missing required field, a wrong type and a malformed `apiVersion` range
    are parse errors.
-3. The `apiVersion` is compatible with `ExtensionApi.Current` (`1.10.0`).
+3. The `apiVersion` is compatible with `ExtensionApi.Current` (`1.12.0`).
 4. No other directory declares the same id. Global is scanned before project, so a project
    duplicate loses.
 
@@ -51,7 +51,7 @@ The messages:
 ```text
 extension directory '/…/extensions/hello' has no extension.json manifest.
 extension 'hello' is declared more than once: '/…/.lunate/extensions/hello' and '/repo/.lunate/extensions/hello'.
-extension 'future' requires apiVersion '2.0.0' but the current API version is 1.10.0.
+extension 'future' requires Lunate ≥ 2.0.0 but this is Lunate 1.12.0; it was not loaded.
 extension.json: field 'id' must match [a-z0-9-]+ but is 'Hello'.
 ```
 

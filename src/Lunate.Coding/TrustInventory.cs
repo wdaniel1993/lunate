@@ -283,8 +283,15 @@ internal sealed class TrustInventory
             loader.Discover(worktree, identity);
             foreach (ExtensionDescriptor descriptor in loader.Descriptors)
             {
+                // A built-in is never pending: it is supplied by the host composition and never
+                // enters the trust flow.
+                if (descriptor.Scope is ExtensionScope.Builtin)
+                {
+                    continue;
+                }
+
                 InstalledPackageProvenance? provenance = installed.ForExtension(
-                    descriptor.Directory
+                    descriptor.Directory!
                 );
 
                 // Installing is not trusting, in either scope (addendum, phase 6): a descriptor an
@@ -295,7 +302,7 @@ internal sealed class TrustInventory
                     continue;
                 }
                 string hash = installed.BindTrustDigest(
-                    ExtensionTrustStore.ComputeContentHash(descriptor.Directory),
+                    ExtensionTrustStore.ComputeContentHash(descriptor.Directory!),
                     provenance
                 );
                 ExtensionTrustDecision decision = store.Evaluate(

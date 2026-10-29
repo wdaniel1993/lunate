@@ -142,6 +142,43 @@ public sealed class ExtensionsViewTests
     }
 
     [Fact]
+    public void A_composed_builtin_reads_scope_builtin_and_is_never_pending_or_denied()
+    {
+        IReadOnlyList<ExtensionDescriptor> descriptors =
+        [
+            Descriptor("pinboard", ExtensionScope.Builtin),
+        ];
+        IReadOnlyList<ExtensionLoadResult> results = [Loaded("pinboard", milliseconds: 3)];
+
+        string segment = Assert.Single(ExtensionsView.Segments(descriptors, results, NoCounts));
+
+        Assert.StartsWith(
+            "pinboard 0.1.0 (builtin) loaded in 3 ms, tools 0, commands 0, hooks 0, services 0",
+            segment,
+            StringComparison.Ordinal
+        );
+        Assert.DoesNotContain("trust-denied", segment, StringComparison.Ordinal);
+        Assert.DoesNotContain("pending", segment, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void The_json_view_reports_the_builtin_scope_and_its_loaded_state()
+    {
+        IReadOnlyList<ExtensionDescriptor> descriptors =
+        [
+            Descriptor("pinboard", ExtensionScope.Builtin),
+        ];
+        IReadOnlyList<ExtensionLoadResult> results = [Loaded("pinboard")];
+
+        string json = ExtensionsView.Json(descriptors, results, NoCounts);
+
+        Assert.Contains("\"scope\": \"builtin\"", json, StringComparison.Ordinal);
+        Assert.Contains("\"state\": \"loaded\"", json, StringComparison.Ordinal);
+        Assert.DoesNotContain("\"state\": \"trust-denied\"", json, StringComparison.Ordinal);
+        Assert.DoesNotContain("\"state\": \"pending\"", json, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void A_failed_message_truncates_to_its_first_sentence_with_the_log_pointer()
     {
         IReadOnlyList<ExtensionDescriptor> descriptors = [Descriptor("broken")];

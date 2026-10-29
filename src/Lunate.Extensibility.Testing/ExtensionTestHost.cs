@@ -66,6 +66,7 @@ public sealed class ExtensionTestHost : IAsyncDisposable
                         Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance
                     ),
                 ReservedCommands = Commands.BuiltinNames,
+                BuiltIns = options.BuiltIns ?? [],
             },
             options.HookRunnerOptions is { } hookOptions ? new HookRunner(hookOptions, Log) : null
         );

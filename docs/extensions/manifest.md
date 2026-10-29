@@ -60,13 +60,13 @@ conformance runner are documented in [remote extensions](../extensions-remote.md
 
 ## API version
 
-`ExtensionApi.Current` is `1.10.0` in this version. The manifest may name:
+`ExtensionApi.Current` is `1.12.0` in this version. The manifest may name:
 
-| `apiVersion` | Loads on 1.10.0 | Meaning |
+| `apiVersion` | Loads on 1.12.0 | Meaning |
 | --- | --- | --- |
-| `"1.10.0"` | yes | Exactly this contract version. |
-| `"^1.10.0"` | yes | This version or any later `1.x`. |
-| `"^1.9.0"` | yes | Any `1.x` at or above `1.9.0`. |
+| `"1.12.0"` | yes | Exactly this contract version. |
+| `"^1.12.0"` | yes | This version or any later `1.x`. |
+| `"^1.11.0"` | yes | Any `1.x` at or above `1.11.0`. |
 | `"^2.0.0"` | no | A different major version is refused. |
 | `"2.0.0"` | no | A different major version is refused. |
 
@@ -80,7 +80,7 @@ extension.json: field 'apiVersion': unsupported apiVersion range '>=1.0.0'
 A syntactically valid but incompatible range parses and is then refused at discovery:
 
 ```text
-extension 'future' requires apiVersion '2.0.0' but the current API version is 1.10.0.
+extension 'future' requires Lunate ≥ 2.0.0 but this is Lunate 1.12.0; it was not loaded.
 ```
 
 The extension is not listed by `/extensions`; the message is in the session log. A new session is

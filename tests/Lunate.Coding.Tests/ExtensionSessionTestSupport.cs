@@ -1,4 +1,6 @@
 using System.Globalization;
+using System.Text.Json;
+using Lunate.Agent;
 using Lunate.Extensibility;
 using Lunate.Extensibility.Abstractions;
 
@@ -243,3 +245,68 @@ internal static class TestExtensionSeams
     internal static ExtensionSeams Empty(TempDirectory temp) =>
         new() { StorePath = temp.File("extensions-store"), Log = new RecordingExtensionLog() };
 }
+
+/// <summary>
+/// A built-in extension the host composition supplies directly (no store, no assembly): its
+/// factory registers one tool, <c>ping</c>, whose every call appends the marker path the caller
+/// named and answers a fixed text line.
+/// </summary>
+internal static class BuiltinFixture
+{
+    internal static BuiltInExtension Marker(string id, string markerPath)
+    {
+        const string path = "host/{0}/extension.json";
+        return new BuiltInExtension(
+            string.Format(System.Globalization.CultureInfo.InvariantCulture, path, id),
+            Lunate.Extensibility.Abstractions.ExtensionManifest.Parse(
+                $$"""{"id":"{{id}}","version":"0.1.0","apiVersion":"^1.0.0","builtin":true,"tools":["ping"]}""",
+                string.Format(System.Globalization.CultureInfo.InvariantCulture, path, id)
+            ),
+            () => new MarkerToolFactory(markerPath)
+        );
+    }
+}
+
+/// <summary>The factory the composed built-in runs: one tool, registered by local name.</summary>
+internal sealed class MarkerToolFactory : IExtensionFactory
+{
+    private readonly string _markerPath;
+
+    public MarkerToolFactory(string markerPath) => _markerPath = markerPath;
+
+    public IExtension Create(IExtensionContext context)
+    {
+        context.RegisterTool(
+            new ExtensionToolRegistration
+            {
+                Name = "ping",
+                Description = "Appends the shared marker and answers a fixed line.",
+                ParametersSchema = JsonSerializer.SerializeToElement(
+                    new { type = "object", properties = Array.Empty<object>() }
+                ),
+                Annotations = new ToolAnnotations(ReadOnly: true),
+                Handler = new MarkerToolHandler(_markerPath),
+            }
+        );
+        return new MarkerExtensionShell();
+    }
+}
+
+internal sealed class MarkerToolHandler : IExtensionToolHandler
+{
+    private readonly string _markerPath;
+
+    public MarkerToolHandler(string markerPath) => _markerPath = markerPath;
+
+    public Task<ToolResult> InvokeAsync(
+        JsonElement arguments,
+        ToolContext context,
+        CancellationToken ct
+    )
+    {
+        File.AppendAllText(_markerPath, "builtin ping ran" + Environment.NewLine);
+        return Task.FromResult(new ToolResult("ping answered", IsError: false));
+    }
+}
+
+internal sealed class MarkerExtensionShell : IExtension { }

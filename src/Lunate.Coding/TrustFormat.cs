@@ -42,7 +42,7 @@ internal static class TrustFormat
     /// </summary>
     internal static string ExtensionQuestion(ExtensionDescriptor descriptor, bool filesChanged)
     {
-        string directory = RealPath(descriptor.Directory);
+        string directory = RealPath(descriptor.Directory!);
         string privileges = descriptor.Manifest.Runtime is not null
             ? " — it runs with your user privileges"
             : "";
