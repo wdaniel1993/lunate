@@ -1,6 +1,32 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <RootNamespace>LspDiagnosticsExtension</RootNamespace>
+
+        <!--
+            lsp-diagnostics ships as a real package (Lunate.Extensions.LspDiagnostics), so a user gets
+            language-server diagnostics with `lunate install`. The package is a bundle, not a library:
+            its layout is the bundle contract (`lunate.package.json` plus `extension/`), so the build
+            output is packed under `extension/` rather than in `lib/`, and the project declares no
+            package dependencies — the host owns the contract and every assembly it references.
+        -->
+        <IsPackable>true</IsPackable>
+        <PackageId>Lunate.Extensions.LspDiagnostics</PackageId>
+        <Description>The lsp-diagnostics extension for Lunate: language-server diagnostics attached to write and edit tool results after the call. Officially supported.</Description>
+        <PackageTags>lunate;extension;lsp-diagnostics</PackageTags>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PackageProjectUrl>https://github.com/wdaniel1993/lunate</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/wdaniel1993/lunate</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+        <IncludeBuildOutput>false</IncludeBuildOutput>
+        <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
+        <!--
+            A bundle is not a library: assemblies live under extension/, where Lunate loads them, so
+            NU5100 ("not inside lib/") describes the layout this package exists to have. NU5128 is the
+            matching "no dependency group" warning. Neither can be fixed without breaking the bundle.
+        -->
+        <NoWarn>$(NoWarn);NU5100;NU5128</NoWarn>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <TargetsForTfmSpecificContentInPackage>$(TargetsForTfmSpecificContentInPackage);PackBundleContent</TargetsForTfmSpecificContentInPackage>
     </PropertyGroup>
 
     <ItemGroup>
@@ -28,5 +54,30 @@
 
     <ItemGroup>
         <None Update="extension.json" CopyToOutputDirectory="PreserveNewest" />
+        <None Include="lunate.package.json" Pack="true" PackagePath="/" />
+        <!-- The page a reader lands on from the feed is the extension's own README. -->
+        <None Include="../README.md" Pack="true" PackagePath="/" />
     </ItemGroup>
+
+    <!--
+        The bundle's content is the build output, packed under extension/. It is read after Build so
+        the nupkg holds what this build produced, and it is staged into a directory that is emptied
+        first so a file an older build left in bin/ can never ride along into a package.
+    -->
+    <Target Name="PackBundleContent" DependsOnTargets="Build">
+        <ItemGroup>
+            <_BundleFile Include="$(TargetDir)**/*" />
+        </ItemGroup>
+        <RemoveDir Directories="$(IntermediateOutputPath)bundle" />
+        <Copy
+            SourceFiles="@(_BundleFile)"
+            DestinationFiles="@(_BundleFile->'$(IntermediateOutputPath)bundle/extension/%(RecursiveDir)%(Filename)%(Extension)')"
+        />
+        <ItemGroup>
+            <TfmSpecificPackageFile
+                Include="$(IntermediateOutputPath)bundle/extension/**/*"
+                PackagePath="extension/%(RecursiveDir)"
+            />
+        </ItemGroup>
+    </Target>
 </Project>
