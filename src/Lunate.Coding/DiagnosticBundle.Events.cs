@@ -54,7 +54,7 @@ internal static partial class DiagnosticBundle
     /// One event's one-line summary. Text, reasoning, command arguments and tool output are
     /// measured, never copied: the bundle is about timing and shape, not content.
     /// </summary>
-    internal static string Describe(AgentEvent agentEvent)
+    internal static string Describe(AgentEvent agentEvent, DiagnosticScrubber scrubber)
     {
         ArgumentNullException.ThrowIfNull(agentEvent);
         string detail = agentEvent switch
@@ -101,7 +101,7 @@ internal static partial class DiagnosticBundle
                 " call=" + Short(progress.CallId),
                 progress.Message
             ),
-            ToolOutputSpillFailed failed => " message=" + Truncate(failed.Message),
+            ToolOutputSpillFailed failed => " message=" + Truncate(scrubber.Scrub(failed.Message)),
             _ => string.Empty,
         };
 

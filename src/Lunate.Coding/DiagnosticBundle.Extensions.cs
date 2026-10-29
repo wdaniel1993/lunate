@@ -19,7 +19,7 @@ internal static partial class DiagnosticBundle
         {
             foreach (SingleFileExtension extension in input.SingleFileExtensions)
             {
-                AppendSingleFile(text, extension);
+                AppendSingleFile(text, extension, input.Scrubber);
             }
         }
 
@@ -32,11 +32,20 @@ internal static partial class DiagnosticBundle
 
         foreach (ExtensionSessionError error in input.ExtensionErrors)
         {
-            text.Line("  " + (error.ExtensionId ?? "session") + ": " + Truncate(error.Message));
+            text.Line(
+                "  "
+                    + (error.ExtensionId ?? "session")
+                    + ": "
+                    + Truncate(input.Scrubber.Scrub(error.Message))
+            );
         }
     }
 
-    private static void AppendSingleFile(StringBuilder text, SingleFileExtension extension)
+    private static void AppendSingleFile(
+        StringBuilder text,
+        SingleFileExtension extension,
+        DiagnosticScrubber scrubber
+    )
     {
         text.Line("  " + extension.Path);
         text.Line(
@@ -52,7 +61,7 @@ internal static partial class DiagnosticBundle
                 + Lower(extension.State)
                 + (
                     extension.Reason is { Length: > 0 } reason
-                        ? ", reason: " + reason
+                        ? ", reason: " + Truncate(scrubber.Scrub(reason))
                         : string.Empty
                 )
         );

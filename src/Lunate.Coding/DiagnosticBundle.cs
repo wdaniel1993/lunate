@@ -40,6 +40,9 @@ internal sealed record DiagnosticBundleInput
 
     public required IReadOnlyList<string> AuthKeys { get; init; }
 
+    /// <summary>The one scrubbing path the bundle's host diagnostics take into the document.</summary>
+    public DiagnosticScrubber Scrubber { get; init; } = DiagnosticScrubber.Empty;
+
     public required ModelInfo Model { get; init; }
 
     /// <summary>Where the session model came from: <c>catalog</c> or <c>extension</c>.</summary>
@@ -61,6 +64,9 @@ internal sealed record DiagnosticBundleInput
     /// <summary>How many events the session has recorded, including the ones trimmed from the ring.</summary>
     public int RecordedEvents { get; init; }
 }
+
+/// <summary>What one <c>Write</c> produced: the destination, the files and its UTF-8 byte size.</summary>
+internal sealed record DiagnosticBundleWritten(string Destination, int Files, long Bytes);
 
 /// <summary>
 /// The <c>/debug</c> bundle: one UTF-8 (no BOM, LF) text file a reporter can attach to an issue
@@ -120,10 +126,16 @@ internal static partial class DiagnosticBundle
 
     /// <summary>
     /// Renders the bundle, applies the session's exact-value credential redaction, and writes it
-    /// owner-only on POSIX. The full document is built before the file is opened, so a rendering
-    /// failure never leaves a partial bundle behind.
+    /// owner-only on POSIX. Each host diagnostic inside the document — a spill-failure reason, an
+    /// extension load reason, an OS error message — is already reduced by the per-message scrubbing
+    /// path in <c>input.Scrubber</c>; redaction runs once more over the whole rendered document.
+    /// The full document is built before the file is opened, so a rendering failure never leaves a
+    /// partial bundle behind.
     /// </summary>
-    internal static string Write(DiagnosticBundleInput input, CredentialRedactor redactor)
+    internal static DiagnosticBundleWritten Write(
+        DiagnosticBundleInput input,
+        CredentialRedactor redactor
+    )
     {
         ArgumentNullException.ThrowIfNull(input);
         ArgumentNullException.ThrowIfNull(redactor);
@@ -149,7 +161,7 @@ internal static partial class DiagnosticBundle
         }
 
         SecureFiles.RestrictToOwner(input.Destination);
-        return input.Destination;
+        return new(input.Destination, Files: 1, Bytes: Utf8NoBom.GetByteCount(text));
     }
 
     /// <summary>The one document. Newlines are always LF so the bytes do not depend on the platform.</summary>
