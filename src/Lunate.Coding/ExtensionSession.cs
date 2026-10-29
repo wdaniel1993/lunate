@@ -120,6 +120,9 @@ internal readonly record struct ExtensionCounts(int Tools, int Commands, int Hoo
 /// </summary>
 internal sealed class ExtensionSession : IAsyncDisposable
 {
+    internal static IReadOnlyList<string> CoreToolNames { get; } =
+    ["read", "write", "edit", "bash", "grep", "find", "ls"];
+
     private readonly ExtensionLoader _loader;
     private readonly IExtensionLog _log;
     private readonly FileChangeBus _fileChanges;
@@ -188,6 +191,7 @@ internal sealed class ExtensionSession : IAsyncDisposable
             ClientFactory = seams.ClientFactory,
             GlobalPackagesFolder = seams.GlobalPackagesFolder,
             ReservedCommands = Commands.BuiltinNames,
+            ReservedToolNames = CoreToolNames,
             BuiltIns = seams.BuiltIns ?? [],
             BuiltInsOnly = seams.NoExtensions,
         };

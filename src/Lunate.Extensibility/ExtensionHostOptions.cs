@@ -29,6 +29,9 @@ public sealed class ExtensionHostOptions
     /// </summary>
     public IReadOnlyList<string> ReservedCommands { get; init; } = [];
 
+    /// <summary>The core model-facing tool names extension aliases may not shadow.</summary>
+    internal IReadOnlyList<string> ReservedToolNames { get; init; } = [];
+
     /// <summary>
     /// The extensions the host composition supplies (manifest plus factory), in composition order;
     /// discovery folds them in before the store scans. Empty by default.

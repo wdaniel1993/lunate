@@ -326,7 +326,8 @@ public sealed partial class ExtensionLoader
                 _tools.Register(
                     extensionId,
                     registration,
-                    ActivationRule(descriptor, registration.Name)
+                    ActivationRule(descriptor, registration.Name),
+                    ToolAlias(descriptor, registration.Name)
                 ),
             _modelRegistry.RegisterProvider,
             _modelRegistry.RegisterModelMiddleware,
@@ -362,6 +363,9 @@ public sealed partial class ExtensionLoader
             : rules.TryGetValue("*", out ExtensionToolActivationRule? blanket) ? blanket
             : null;
     }
+
+    private static string? ToolAlias(ExtensionDescriptor descriptor, string localName) =>
+        descriptor.Manifest.ToolAliases.TryGetValue(localName, out string? alias) ? alias : null;
 
     /// <summary>
     /// The asymmetric manifest rule (design D6): the manifest is what the user trusted before any

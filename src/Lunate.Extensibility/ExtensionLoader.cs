@@ -30,7 +30,7 @@ public sealed partial class ExtensionLoader
     private readonly McpServerRegistry _mcpServers;
     private readonly SkillSourceRegistry _skillSources;
     private readonly CommandSourceRegistry _commandSources;
-    private readonly ExtensionToolRegistry _tools = new();
+    private readonly ExtensionToolRegistry _tools;
     private readonly ExtensionWorkspaceServiceRegistry _workspaceServices;
     private readonly Dictionary<string, List<IDisposable>> _subscriptions = new(
         StringComparer.Ordinal
@@ -50,6 +50,7 @@ public sealed partial class ExtensionLoader
     {
         ArgumentNullException.ThrowIfNull(options);
         _options = options;
+        _tools = new ExtensionToolRegistry(options.ReservedToolNames);
         _hooks = hooks ?? new HookRunner(null, options.Log);
         _backgroundServices = new BackgroundServiceHost(options.Log);
         _toolResultRenderers = new ToolResultRendererRegistry(options.Log);

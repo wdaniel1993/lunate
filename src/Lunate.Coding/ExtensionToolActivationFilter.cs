@@ -69,7 +69,7 @@ internal static class ExtensionToolActivationFilter
             // activates a tool, and the report says so rather than inventing a behaviour.
             _ => "the condition is not one this host evaluates",
         };
-        return new ExtensionInactiveTool(adapter.ExtensionId, adapter.Name, rule.When, reason);
+        return new ExtensionInactiveTool(adapter.ExtensionId, adapter.CanonicalName, rule.When, reason);
     }
 }
 

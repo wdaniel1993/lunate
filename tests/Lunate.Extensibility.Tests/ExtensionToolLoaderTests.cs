@@ -16,6 +16,31 @@ public sealed class ExtensionToolLoaderTests
     private static readonly CancellationToken Ct = TestContext.Current.CancellationToken;
 
     [Fact]
+    public async Task A_manifest_alias_is_the_registered_model_facing_name()
+    {
+        using var temp = new TempDirectory();
+        TestExtensions.InstallToolExtension(
+            temp,
+            "tools",
+            tools: "[\"echo\"]",
+            settings: "{\"tools\":[{\"name\":\"echo\"}]}",
+            toolAliases: "{\"echo\":\"speak\"}"
+        );
+        var loader = new ExtensionLoader(
+            TestExtensions.Options(temp.Subdirectory("store"), new RecordingExtensionLog())
+        );
+        loader.Discover(temp.Root, "repo");
+
+        await loader.Load("tools", temp.Root, "repo", new FakeExtensionTrustPrompt(true), Ct);
+
+        ExtensionToolAdapter tool = Assert.Single(loader.Tools.List());
+        Assert.Equal("speak", tool.Name);
+        Assert.Equal("tools__echo", tool.CanonicalName);
+        Assert.Equal("tools", tool.ExtensionId);
+        Assert.Equal("echo", tool.LocalName);
+    }
+
+    [Fact]
     public async Task Loading_a_tool_extension_registers_its_tools_and_fires_tools_changed()
     {
         using var temp = new TempDirectory();
@@ -39,6 +64,40 @@ public sealed class ExtensionToolLoaderTests
         Assert.Equal("tools", tool.Namespace?.Name);
         ToolsChangedPayload change = Assert.Single(changes);
         Assert.Equal(["tools__echo"], change.Tools);
+    }
+
+    [Fact]
+    public async Task A_manifest_alias_is_published_and_unload_removes_the_aliased_tool()
+    {
+        using var temp = new TempDirectory();
+        string directory = TestExtensions.InstallToolExtension(
+            temp,
+            "tools",
+            tools: """["echo"]""",
+            settings: """{"tools":[{"name":"echo"}]}"""
+        );
+        File.WriteAllText(
+            Path.Combine(directory, "extension.json"),
+            """{"id":"tools","version":"0.1.0","apiVersion":"^1.0.0","entryAssembly":"ToolExtension.dll","tools":["echo"],"toolAliases":{"echo":"friendly_echo"}}"""
+        );
+        var loader = new ExtensionLoader(
+            TestExtensions.Options(temp.Subdirectory("store"), new RecordingExtensionLog())
+        );
+        List<ToolsChangedPayload> changes = ObserveToolChanges(loader);
+        loader.Discover(temp.Root, "repo");
+
+        await loader.Load("tools", temp.Root, "repo", new FakeExtensionTrustPrompt(true), Ct);
+
+        ExtensionToolAdapter tool = Assert.Single(loader.Tools.List());
+        Assert.Equal("friendly_echo", tool.Name);
+        Assert.Equal("tools", tool.ExtensionId);
+        Assert.Equal("echo", tool.LocalName);
+        Assert.Equal(["friendly_echo"], Assert.Single(changes).Tools);
+
+        await loader.Unload("tools");
+
+        Assert.Empty(loader.Tools.List());
+        Assert.Empty(Assert.IsType<ToolsChangedPayload>(changes[1]).Tools);
     }
 
     [Fact]

@@ -22,7 +22,8 @@ internal static class TestExtensions
         string settingsSchema = "",
         string modelProviders = "",
         string tools = "",
-        string commands = ""
+        string commands = "",
+        string toolAliases = ""
     )
     {
         Directory.CreateDirectory(extensionDirectory);
@@ -32,8 +33,9 @@ internal static class TestExtensions
             modelProviders.Length == 0 ? null : $",\"modelProviders\":{modelProviders}";
         string? declaredTools = tools.Length == 0 ? null : $",\"tools\":{tools}";
         string? declaredCommands = commands.Length == 0 ? null : $",\"commands\":{commands}";
+        string? aliases = toolAliases.Length == 0 ? null : $",\"toolAliases\":{toolAliases}";
         string json =
-            $$"""{"id":"{{id}}","version":"0.1.0","apiVersion":"{{apiVersion}}","entryAssembly":"{{entryAssembly}}"{{schema}}{{providers}}{{declaredTools}}{{declaredCommands}}}""";
+            $$"""{"id":"{{id}}","version":"0.1.0","apiVersion":"{{apiVersion}}","entryAssembly":"{{entryAssembly}}"{{schema}}{{providers}}{{declaredTools}}{{declaredCommands}}{{aliases}}}""";
         File.WriteAllText(Path.Combine(extensionDirectory, "extension.json"), json);
     }
 
@@ -163,7 +165,8 @@ internal static class TestExtensions
         TempDirectory temp,
         string id,
         string tools,
-        string? settings = null
+        string? settings = null,
+        string toolAliases = ""
     )
     {
         string directory = GlobalExtensionDirectory(temp, id);
@@ -173,7 +176,13 @@ internal static class TestExtensions
             Path.Combine(directory, "ToolExtension.dll"),
             overwrite: true
         );
-        WriteManifest(directory, id, entryAssembly: "ToolExtension.dll", tools: tools);
+        WriteManifest(
+            directory,
+            id,
+            entryAssembly: "ToolExtension.dll",
+            tools: tools,
+            toolAliases: toolAliases
+        );
         if (settings is not null)
         {
             WriteSettings(temp, id, settings);

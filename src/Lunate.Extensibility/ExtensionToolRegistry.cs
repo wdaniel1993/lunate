@@ -17,7 +17,11 @@ public sealed class ExtensionToolRegistry
     private readonly object _gate = new();
     private readonly List<ExtensionToolAdapter> _tools = [];
     private readonly Dictionary<string, ExtensionToolAdapter> _byName = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, ExtensionToolAdapter> _byCanonicalName = new(
+        StringComparer.Ordinal
+    );
     private readonly Dictionary<string, int> _countByExtension = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _reservedToolNames;
 
     // The lifetime source is cancelled, never disposed: an adapter may be mid-construction or
     // mid-call while the extension unloads, and a cancelled token keeps working from any snapshot.
@@ -25,9 +29,15 @@ public sealed class ExtensionToolRegistry
         StringComparer.Ordinal
     );
 
+    public ExtensionToolRegistry()
+        : this([]) { }
+
+    internal ExtensionToolRegistry(IEnumerable<string> reservedToolNames) =>
+        _reservedToolNames = new HashSet<string>(reservedToolNames, StringComparer.Ordinal);
+
     /// <summary>Registers one tool for the extension; refusals throw naming the extension and field.</summary>
     public void Register(string extensionId, ExtensionToolRegistration registration) =>
-        Register(extensionId, registration, activationRule: null);
+        Register(extensionId, registration, activationRule: null, alias: null);
 
     /// <summary>
     /// Registers one tool with the manifest's <c>toolActivation</c> rule for it, stamped by the
@@ -37,7 +47,8 @@ public sealed class ExtensionToolRegistry
     internal void Register(
         string extensionId,
         ExtensionToolRegistration registration,
-        ExtensionToolActivationRule? activationRule
+        ExtensionToolActivationRule? activationRule,
+        string? alias = null
     )
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(extensionId);
@@ -46,11 +57,32 @@ public sealed class ExtensionToolRegistry
 
         lock (_gate)
         {
-            string name = ExtensionToolNaming.ModelFacing(extensionId, registration.Name);
-            if (_byName.TryGetValue(name, out ExtensionToolAdapter? existing))
+            string canonicalName = ExtensionToolNaming.ModelFacing(extensionId, registration.Name);
+            string name = alias ?? canonicalName;
+            if (_reservedToolNames.Contains(name))
+            {
+                throw new InvalidOperationException(
+                    $"extension '{extensionId}': tool '{registration.Name}' was refused: model-facing name '{name}' is reserved by core tool '{name}'."
+                );
+            }
+
+            if (
+                _byName.TryGetValue(name, out ExtensionToolAdapter? existing)
+                || _byCanonicalName.TryGetValue(name, out existing)
+            )
             {
                 throw new InvalidOperationException(
                     $"extension '{extensionId}': tool '{registration.Name}' was refused: the model-facing name '{name}' is already registered by extension '{existing.ExtensionId}' tool '{existing.LocalName}'."
+                );
+            }
+
+            if (
+                _byName.TryGetValue(canonicalName, out existing)
+                || _byCanonicalName.TryGetValue(canonicalName, out existing)
+            )
+            {
+                throw new InvalidOperationException(
+                    $"extension '{extensionId}': canonical tool name '{canonicalName}' was refused because it is already the model-facing name of extension '{existing.ExtensionId}' tool '{existing.LocalName}'."
                 );
             }
 
@@ -65,10 +97,12 @@ public sealed class ExtensionToolRegistry
                 extensionId,
                 registration,
                 Lifetime(extensionId).Token,
-                activationRule
+                activationRule,
+                alias
             );
             _tools.Add(tool);
             _byName[name] = tool;
+            _byCanonicalName[canonicalName] = tool;
             _countByExtension[extensionId] = _countByExtension.GetValueOrDefault(extensionId) + 1;
         }
     }
@@ -99,6 +133,7 @@ public sealed class ExtensionToolRegistry
                 {
                     removed.Add(_tools[index].Name);
                     _byName.Remove(_tools[index].Name);
+                    _byCanonicalName.Remove(_tools[index].CanonicalName);
                     _tools.RemoveAt(index);
                 }
                 else

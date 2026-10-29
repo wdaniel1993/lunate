@@ -101,10 +101,26 @@ public sealed class ExtensionToolActivationFilterTests
         }
     }
 
+    [Fact]
+    public void An_inactive_alias_reports_the_canonical_tool_identity()
+    {
+        using var temp = new TempDirectory();
+        var schema = JsonSerializer.SerializeToElement(new { type = "object" });
+        ITool tool = Adapter("offline-mode", HasFile("*.sln"), schema, alias: "short");
+        Assert.Equal("short", tool.Name);
+
+        ExtensionInactiveTool report = Assert.Single(
+            ExtensionToolActivationFilter.Split([tool], new Workspace(temp.Root)).Inactive
+        );
+
+        Assert.Equal("peak__offline-mode", report.Tool);
+    }
+
     private static ExtensionToolAdapter Adapter(
         string name,
         ExtensionToolActivationRule? rule,
-        JsonElement schema
+        JsonElement schema,
+        string? alias = null
     )
     {
         var registry = new ExtensionToolRegistry();
@@ -117,7 +133,8 @@ public sealed class ExtensionToolActivationFilterTests
                 ParametersSchema = schema,
                 Handler = new TestToolHandler(),
             },
-            rule
+            rule,
+            alias
         );
         return Assert.Single(registry.List());
     }

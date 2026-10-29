@@ -88,6 +88,7 @@ internal static class ExtensionBuildCommand
             StorePath = resolved.StorePath ?? ExtensionHostOptions.Default.StorePath,
             Log = resolved.Log ?? new StderrExtensionLog(errors),
             ReservedCommands = Commands.BuiltinNames,
+            ReservedToolNames = ExtensionSession.CoreToolNames,
         };
 
         var loader = new ExtensionLoader(options);
