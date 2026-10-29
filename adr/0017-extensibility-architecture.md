@@ -75,7 +75,7 @@ The decisions above say what Lunate asks and records. They do not confine a proc
 
 What does not change: **installing is not trusting.** An installed extension stays pending in both scopes until its question is answered, and `IProjectTrustHandler` is a veto — `Allow` approves nothing and the prompt still runs.
 
-## Addendum 2026-10-29 — the four contract gaps before stable (proposed)
+## Addendum 2026-10-29 — the four contract gaps before stable (accepted 2026-10-29)
 
 - Status: **Proposed — 2026-10-29** (awaiting maintainer sign-off; change `extension-contract`, #268 step 2)
 - Relates to: this ADR (contract and loading, workspaces and repository identity), ADR-0021 (per-workspace services), ADR-0006 (Roslyn placement), ADR-0012 (tool contract)
