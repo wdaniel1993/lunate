@@ -40,6 +40,36 @@ public sealed class InteractiveSessionViewerTests
         await run;
     }
 
+    /// <summary>
+    /// The <c>/fullscreen</c> twin of <c>Ctrl+O</c>: the same open — the command is the way in
+    /// when the terminal does not deliver the chord or a keybindings file claims it — the same
+    /// refusal rules, and the same alt-screen restore.
+    /// </summary>
+    [Fact]
+    public async Task Fullscreen_command_opens_the_same_full_screen_viewer()
+    {
+        using var host = new InteractiveSessionHost();
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+        await CommitBuildBlockAsync(host);
+
+        host.Console.SendText("/fullscreen");
+        host.Console.SendEnter();
+        await host.WaitUntilAsync(() => host.Console.InAlternateScreen);
+        await host.WaitUntilAsync(() =>
+            host.Console.Writes.Any(write =>
+                write.Contains("step 30 finished", StringComparison.Ordinal)
+            )
+        );
+        Assert.Equal(1, host.Console.AlternateScreenEntries);
+        Assert.Contains("\u001b[?1049h", host.Frames, StringComparison.Ordinal);
+
+        host.Console.SendEscape();
+        await host.WaitUntilAsync(() => !host.Console.InAlternateScreen);
+        host.Console.Complete();
+        await run;
+    }
+
     [Fact]
     public async Task Keys_while_open_never_reach_the_model()
     {
