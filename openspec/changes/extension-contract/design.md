@@ -67,7 +67,7 @@ declare `"builtin": true`. It means:
   `toolActivation` and `toolAliases` exactly like any other extension, and the same asymmetric
   cross-checks apply (`src/Lunate.Extensibility/ExtensionLoader.Load.cs:322-356`).
 
-`builtin: true` is a provenance assertion, not a privilege a directory can claim. The parser accepts
+`builtin: true` is a provenance assertion, not a privilege a directory can claim. The loader accepts
 it only on a manifest supplied through `ExtensionHostOptions.BuiltIns`; a host-supplied manifest
 without it is refused, and a manifest found by `ScanDirectory` with `builtin: true` is a discovery
 error naming the path and the reason. This keeps the trust story intact: a user cannot promote a
@@ -207,8 +207,9 @@ raise it above the host maximum.
   or `await using`; holding a lease across model turns is legal but pins the entry and can stall
   another workspace (see 4.3).
 - v1 is in-process only. An out-of-process extension serves a workspace service through the existing
-  `IJsonService` handle shape; the host-side lifecycle messages (`workspace/acquire`,
-  `workspace/evict`, `workspace/stop`) are a later remote change, not part of this contract.
+  `IJsonService` handle shape (`src/Lunate.Extensibility.Abstractions/IJsonService.cs:13-20`); the
+  host-side lifecycle messages (`workspace/acquire`, `workspace/evict`, `workspace/stop`) are a
+  later remote change, not part of this contract.
 
 ### 4.2 Lifecycle
 
