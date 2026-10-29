@@ -44,16 +44,16 @@ implementation (senior-dev subagent batches; one batch per section, interleaved 
 
 ## 4. Per-workspace services
 
-- [ ] 4.1 Red→green: `IWorkspaceServiceFactory<T>` / `IWorkspaceServiceLease<T>` and
+- [x] 4.1 Red→green: `IWorkspaceServiceFactory<T>` / `IWorkspaceServiceLease<T>` and
       `IExtensionContext.RegisterWorkspaceService` / `AcquireWorkspaceServiceAsync` compile against a
       failing consumer and appear in `PublicAPI.Unshipped.txt`.
-- [ ] 4.2 Red→green: the host-side registry lifecycle — lazy create per canonical root outside the
+- [x] 4.2 Red→green: the host-side registry lifecycle — lazy create per canonical root outside the
       lock, dispose on eviction/shutdown, pinned lease never evicted while an unpinned LRU candidate
       is, all-pinned acquisition waits cancellation-aware, `ObjectDisposedException` after shutdown,
       lease dispose wakes waiters.
-- [ ] 4.3 Red→green: the cap binds per (extension, service) from the manifest with default 2, the host
+- [x] 4.3 Red→green: the cap binds per (extension, service) from the manifest with default 2, the host
       may lower it, and evictions never sweep or delete files (dispose of the value only).
-- [ ] 4.4 Red→green: registered-but-undeclared service refuses the load; declared-but-unregistered is
+- [x] 4.4 Red→green: registered-but-undeclared service refuses the load; declared-but-unregistered is
       logged and dropped — the tool rule extended to services.
 
 ## 5. The activation evaluator
