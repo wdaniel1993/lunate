@@ -21,6 +21,7 @@ internal sealed record GuardProbe(
     Func<string, string?> GetEnvironmentVariable,
     Func<string, string?> ReadTextFile,
     Func<string, IReadOnlyList<string>> ListDirectories,
+    Func<string, IReadOnlyList<string>> ListFiles,
     GuardRun Run
 )
 {
@@ -35,6 +36,7 @@ internal sealed record GuardProbe(
             Environment.GetEnvironmentVariable,
             ReadTextFileAtPath,
             ListDirectoriesAt,
+            ListFilesAt,
             RunMechanism
         );
 
@@ -56,6 +58,24 @@ internal sealed record GuardProbe(
         try
         {
             return [.. Directory.EnumerateDirectories(path).Order(StringComparer.Ordinal)];
+        }
+        catch (Exception exception)
+            when (exception
+                    is IOException
+                        or UnauthorizedAccessException
+                        or ArgumentException
+                        or DirectoryNotFoundException
+            )
+        {
+            return [];
+        }
+    }
+
+    private static IReadOnlyList<string> ListFilesAt(string path)
+    {
+        try
+        {
+            return [.. Directory.EnumerateFiles(path).Order(StringComparer.Ordinal)];
         }
         catch (Exception exception)
             when (exception

@@ -41,6 +41,10 @@ internal sealed record GuardTarget(
     internal bool IsDenied(string path) =>
         LunateHome.IsInside(path, StateRoot) || LunateHome.IsInside(path, Prefix);
 
+    /// <summary>Whether <paramref name="path"/> is, or lies beneath, the credential file — the
+    /// one target deniable at file level, read and write both.</summary>
+    internal bool IsDeniedFile(string path) => LunateHome.IsInside(path, AuthPath);
+
     /// <summary>Whether a denied target lies at or beneath <paramref name="path"/>.</summary>
     internal bool ContainsDenied(string path) =>
         LunateHome.IsInside(StateRoot, path) || LunateHome.IsInside(Prefix, path);

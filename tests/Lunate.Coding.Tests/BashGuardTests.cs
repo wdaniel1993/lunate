@@ -152,6 +152,49 @@ public sealed class BashGuardTests
     }
 
     [Fact]
+    public void The_landlock_fallback_never_grants_access_to_auth_json()
+    {
+        using var temp = new TempDirectory();
+        string profile = Path.Combine(temp.Root, "profile");
+        string state = Path.Combine(profile, "state");
+        string auth = Path.Combine(state, "auth.json");
+        string settings = Path.Combine(state, "settings.json");
+        string ws = Path.Combine(temp.Root, "ws");
+        var target = new GuardTarget(state, auth, Path.Combine(temp.Root, "prefix"), temp.Root);
+        var guard = new BashGuard(
+            target,
+            Fake.Unix(
+                macOs: false,
+                setpriv: "/usr/bin/setpriv",
+                directoryChildren: new Dictionary<string, IReadOnlyList<string>>(
+                    StringComparer.Ordinal
+                )
+                {
+                    [temp.Root] = [profile],
+                    [profile] = [Path.Combine(profile, "projects"), Path.Combine(profile, "state")],
+                    [state] = [Path.Combine(state, "sessions")],
+                },
+                fileChildren: new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal)
+                {
+                    [state] = [auth, settings],
+                }
+            )
+        );
+
+        var launch = guard.Wrap(Shell, ws);
+
+        Assert.True(launch.Wrapped);
+        var args = string.Join(' ', launch.ArgumentsPrefix);
+        // The target itself stays listable, and the files beside auth.json stay readable...
+        Assert.Contains($"path-beneath:read-dir:{state}", args);
+        Assert.Contains($"path-beneath:read-file,read-dir:{Path.Combine(state, "sessions")}", args);
+        Assert.Contains($"path-beneath:read-file:{settings}", args);
+        // ...but nothing grants anything for auth.json: no rule covers it, so its reads and its
+        // writes are both denied.
+        Assert.DoesNotContain(auth, args);
+    }
+
+    [Fact]
     public void The_landlock_fallback_allowlists_the_workspace_but_never_the_state_root()
     {
         using var temp = new TempDirectory();
@@ -164,17 +207,24 @@ public sealed class BashGuardTests
             macOs: false,
             bwrap: null,
             setpriv: "/usr/bin/setpriv",
-            profileChildren:
-            [
-                Path.Combine(profile, "projects"),
-                Path.Combine(profile, "state"),
-                Path.Combine(profile, ".local"),
-            ],
-            localChildren:
-            [
-                Path.Combine(profile, ".local", "bin"),
-                Path.Combine(profile, ".local", "share"),
-            ]
+            directoryChildren: new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal)
+            {
+                [profile] =
+                [
+                    Path.Combine(profile, "projects"),
+                    Path.Combine(profile, "state"),
+                    Path.Combine(profile, ".local"),
+                ],
+                [Path.Combine(profile, "projects")] = [],
+                [state] = [],
+                [Path.Combine(profile, ".local")] =
+                [
+                    Path.Combine(profile, ".local", "bin"),
+                    Path.Combine(profile, ".local", "share"),
+                ],
+                [Path.Combine(profile, ".local", "bin")] = [],
+                [Path.Combine(profile, ".local", "share")] = [],
+            }
         );
         var guard = new BashGuard(target, probe);
 
@@ -395,6 +445,8 @@ internal static class Fake
         string bwrapOutput = "",
         string setprivOutput = "",
         bool? apparmorRestrictsUserns = null,
+        IReadOnlyDictionary<string, IReadOnlyList<string>>? directoryChildren = null,
+        IReadOnlyDictionary<string, IReadOnlyList<string>>? fileChildren = null,
         IReadOnlyList<string>? profileChildren = null,
         IReadOnlyList<string>? localChildren = null,
         bool authExists = false,
@@ -428,9 +480,15 @@ internal static class Fake
                 : value ? "1"
                 : "0",
             ListDirectories: path =>
-                path.EndsWith(".local", StringComparison.Ordinal) ? localChildren ?? []
+                directoryChildren is not null && directoryChildren.TryGetValue(path, out var mapped)
+                    ? mapped
+                : path.EndsWith(".local", StringComparison.Ordinal) ? localChildren ?? []
                 : path is "/tmp" or "/var/tmp" ? []
                 : profileChildren ?? [],
+            ListFiles: path =>
+                fileChildren is not null && fileChildren.TryGetValue(path, out var mapped)
+                    ? mapped
+                    : [],
             Run: (fileName, _) =>
                 fileName.Contains("bwrap", StringComparison.Ordinal)
                     ? (bwrapOutput.Length == 0 ? 0 : 1, bwrapOutput)

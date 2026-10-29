@@ -64,10 +64,7 @@ internal sealed partial class BashGuard
         string? bwrap = _probe.FindOnPath("bwrap");
         if (bwrap is { } found)
         {
-            (int probeExit, string probeOutput) = _probe.Run(
-                found,
-                [.. BwrapBase(), "/bin/true"]
-            );
+            (int probeExit, string probeOutput) = _probe.Run(found, [.. BwrapBase(), "/bin/true"]);
             if (probeExit == 0)
             {
                 IReadOnlyList<string> prefix =
@@ -149,39 +146,135 @@ internal sealed partial class BashGuard
     }
 
     /// <summary>
-    /// The Landlock fallback: Landlock has no deny rules, so "everything except the targets" is
-    /// written as allow rules — every sibling of every denied target, all the way down. The
-    /// workspace, <c>/tmp</c> bases and <c>/dev/null</c> are allowed outright.
+    /// The Landlock fallback: Landlock has no deny rules, so the profile is written as allow rules
+    /// with rights per rule — everything outside the denied targets is granted in one full rule
+    /// per directory, while the state root and the install prefix are granted read-only (prefix
+    /// also executable, so its binaries still run). The paths' rights are spelled in setpriv's
+    /// rule syntax; an empty access field (<c>path-beneath::path</c>) means every handled access.
+    /// <c>auth.json</c> gets no rule at all: nothing beneath the state root grants
+    /// <c>read-file</c> on it, so its reads are denied along with its writes.
     /// </summary>
     private List<string>? LandlockBase(string workspace, out int ruleCount)
     {
-        var allowed = new List<string> { workspace, "/dev/null" };
-        foreach (string root in WalkRoots())
+        var rules = new List<string>();
+        var visited = new HashSet<string>(StringComparer.Ordinal);
+        foreach (string root in WalkRoots().Prepend(workspace).Distinct(StringComparer.Ordinal))
         {
-            if (!_target.ContainsDenied(root))
+            if (_target.IsDenied(root) || !visited.Add(root))
             {
-                allowed.Add(root);
                 continue;
             }
 
-            allowed.AddRange(Walk(root));
+            Walk(root, self: true, rules, visited);
         }
 
-        ruleCount = allowed.Count;
-        if (allowed.Count > LandlockRuleCap)
+        List<string> ordered = rules.Distinct(StringComparer.Ordinal).ToList();
+        ruleCount = ordered.Count;
+        if (ruleCount > LandlockRuleCap)
         {
             return null;
         }
 
         var arguments = new List<string> { "--landlock-access", "fs" };
-        foreach (string path in allowed.Distinct(StringComparer.Ordinal))
+        foreach (string rule in ordered)
         {
             arguments.Add("--landlock-rule");
-            arguments.Add($"path-beneath::{path}");
+            arguments.Add(rule);
         }
 
         return arguments;
     }
+
+    /// <summary>Grants the rights beneath <paramref name="directory"/>. <paramref name="self"/>
+    /// is true for a walk root that contains no denied target: the whole subtree stays normal. On
+    /// the path to a denied target, and inside the targets, grants narrow to reads (plus execute
+    /// in the prefix): Landlock is allow-only, so the deny comes from what no rule grants.</summary>
+    private void Walk(string directory, bool self, List<string> rules, HashSet<string> visited)
+    {
+        if (DirectoryEquals(directory, _target.StateRoot))
+        {
+            // Read-only subtree: listable here, readable beneath each child, never writable —
+            // and the files directly in it stay readable except auth.json, which gets nothing.
+            rules.Add($"path-beneath:read-dir:{directory}");
+            foreach (string child in _probe.ListDirectories(directory))
+            {
+                if (!visited.Add(child))
+                {
+                    continue;
+                }
+
+                rules.Add($"path-beneath:read-file,read-dir:{child}");
+            }
+
+            GrantFiles(directory, "read-file", rules, visited);
+            return;
+        }
+
+        if (DirectoryEquals(directory, _target.Prefix))
+        {
+            // The install dir: running lunate must keep working, writing into it must not.
+            rules.Add($"path-beneath:execute,read-file,read-dir:{directory}");
+            GrantFiles(directory, "execute,read-file", rules, visited);
+            return;
+        }
+
+        bool onPath = _target.ContainsDenied(directory);
+        if (onPath)
+        {
+            rules.Add($"path-beneath:read-dir:{directory}");
+            GrantFiles(directory, "read-file", rules, visited);
+        }
+        else if (self)
+        {
+            rules.Add($"path-beneath::{directory}");
+            return;
+        }
+
+        foreach (string child in _probe.ListDirectories(directory))
+        {
+            if (!visited.Add(child))
+            {
+                continue;
+            }
+
+            if (_target.ContainsDenied(child))
+            {
+                Walk(child, self: false, rules, visited);
+            }
+            else
+            {
+                rules.Add($"path-beneath::{child}");
+            }
+        }
+    }
+
+    /// <summary>Reads for the files directly inside a directory whose own rule does not cover
+    /// them (rule rights apply beneath a directory rule, so a file rule is needed per file).
+    /// <c>auth.json</c> is skipped everywhere it can appear.</summary>
+    private void GrantFiles(
+        string directory,
+        string rights,
+        List<string> rules,
+        HashSet<string> visited
+    )
+    {
+        foreach (string file in _probe.ListFiles(directory))
+        {
+            if (_target.IsDeniedFile(file) || !visited.Add(file))
+            {
+                continue;
+            }
+
+            rules.Add($"path-beneath:{rights}:{file}");
+        }
+    }
+
+    private static bool DirectoryEquals(string path, string root) =>
+        string.Equals(
+            Path.TrimEndingDirectorySeparator(PathCanonical.Canonicalize(path)),
+            Path.TrimEndingDirectorySeparator(PathCanonical.Canonicalize(root)),
+            StringComparison.Ordinal
+        );
 
     private IEnumerable<string> WalkRoots()
     {
