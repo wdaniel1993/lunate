@@ -17,6 +17,8 @@ internal static class Cli
         // The trust command's repository root; null uses the process working directory.
         string? workingDirectory = null,
         CatalogUpdateSeams? catalogUpdate = null,
+        // The interactive session's update-check seams; null uses the production cache and transport.
+        UpdateCheckSeams? updateCheck = null,
         // The trust command's terminal check; null reads the real stdin. Tests supply it so the
         // requirement does not depend on how the test host was started.
         bool? stdinIsTerminal = null,
@@ -180,7 +182,7 @@ internal static class Cli
 
         if (!launch.Print)
         {
-            return RunInteractive(errors, ct, interactiveOptions, seams, launch);
+            return RunInteractive(errors, ct, interactiveOptions, seams, launch, updateCheck);
         }
 
         PrintModeOptions options = (printOptions ?? new PrintModeOptions()) with
@@ -279,11 +281,20 @@ internal static class Cli
         CancellationToken ct,
         InteractiveSessionOptions? options,
         ExtensionSeams? extensions,
-        LaunchOptions launch
+        LaunchOptions launch,
+        UpdateCheckSeams? updateCheck
     )
     {
         IConsoleIO console;
         InteractiveSessionOptions resolved;
+        UpdateCheckSeams? updateSeams = options is null
+            ? updateCheck ?? new UpdateCheckSeams()
+            : updateCheck ?? options.UpdateCheck;
+        if (launch.Offline)
+        {
+            updateSeams = null;
+        }
+
         if (options is null)
         {
             console = new SystemConsoleIO(Scheduler.Default);
@@ -303,6 +314,7 @@ internal static class Cli
         {
             Extensions = extensions ?? options?.Extensions,
             Launch = launch,
+            UpdateCheck = updateSeams,
         };
 
         if (ConsoleSupport.Check(console) is not null)

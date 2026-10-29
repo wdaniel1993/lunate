@@ -74,6 +74,12 @@ internal sealed record InteractiveSessionOptions
     public Func<DateTimeOffset>? Clock { get; init; }
 
     /// <summary>
+    /// The update-check seams; null never checks. Production passes the defaults, while the CLI
+    /// clears them for <c>--offline</c> and every non-interactive mode.
+    /// </summary>
+    public UpdateCheckSeams? UpdateCheck { get; init; }
+
+    /// <summary>
     /// Where <c>Ctrl+G</c>'s draft file is written; null uses the process temporary directory.
     /// A test pins an isolated directory so it can prove nothing is left behind.
     /// </summary>
@@ -179,6 +185,9 @@ internal sealed partial class InteractiveSession : IDisposable
     private InputLineState _input = InputLine.Empty;
     private string? _historyDraft;
     private Task? _run;
+    private UpdateInfo? _availableUpdate;
+    private Task? _updateTask;
+    private bool _headerHasUpdateLine;
     private KeyHelpModel? _keyHelp;
     private bool _keyHelpFiltering;
     private volatile bool _turnActive;
@@ -356,6 +365,15 @@ internal sealed partial class InteractiveSession : IDisposable
             finally
             {
                 _lifetime.Cancel();
+                if (_updateTask is { } updateTask)
+                {
+                    try
+                    {
+                        await updateTask;
+                    }
+                    catch (OperationCanceledException) { }
+                }
+
                 if (_run is { } run)
                 {
                     try
@@ -435,9 +453,38 @@ internal sealed partial class InteractiveSession : IDisposable
         StartInitialSession();
         _workingDirectory = DisplayDirectory(_workspace.WorktreeRoot);
         _branch = GitBranchReader.Read(_workspace.WorktreeRoot);
+        // The cached answer is known before the header so a fresh cache is one line in it; the
+        // request itself starts after the header and is never awaited on the startup path.
+        UpdateCheckSeams? updateSeams = _options.UpdateCheck;
+        if (
+            updateSeams is not null
+            && !UpdateCheckPolicy.Enabled(
+                _settings,
+                _environment,
+                _options.Launch,
+                UpdateCheckMode.Interactive
+            )
+        )
+        {
+            updateSeams = null;
+        }
+
+        if (updateSeams is not null)
+        {
+            _availableUpdate = UpdateCheck.IsNewer(
+                UpdateCheck.Cached(updateSeams, UpdateCheck.Now(updateSeams)),
+                ProductVersion.Display
+            );
+        }
+
         // The welcome header prints here, on the first frame and before any composition output:
         // the loading line keeps running underneath and nothing blocks on it (design D1).
         PrintWelcomeHeader(counts: null);
+        if (updateSeams is not null)
+        {
+            _updateTask = AnnounceUpdateAsync(updateSeams, ct);
+        }
+
         _trustTotal = CountPendingTrustQuestions();
         _approver = new SessionApprover(this, _settings.Approval);
         await ComposeExtensionsAsync(ct);

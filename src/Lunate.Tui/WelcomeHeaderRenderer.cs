@@ -32,6 +32,12 @@ internal sealed record WelcomeHeaderState
     public WelcomeHeaderCounts? Counts { get; init; }
 
     public string? Fix { get; init; }
+
+    /// <summary>The newer release's version without a leading <c>v</c>; null when none is known.</summary>
+    public string? UpdateVersion { get; init; }
+
+    /// <summary>The changelog URL the update line links; null without a known release.</summary>
+    public string? UpdateUrl { get; init; }
 }
 
 /// <summary>
@@ -132,6 +138,19 @@ internal static class WelcomeHeaderRenderer
         }
 
         lines.Add(CountsLine(state.Counts, capabilities));
+        if (state.UpdateVersion is { Length: > 0 } updateVersion)
+        {
+            lines.Add(
+                Line(
+                    colored,
+                    (
+                        string.Concat("v", updateVersion, " available · changelog"),
+                        new SpanStyle(TextStyle.Dim, Link: state.UpdateUrl)
+                    )
+                )
+            );
+        }
+
         lines.Add(Line(colored, (Hint, SpanStyle.Dim)));
         return lines;
     }
@@ -141,26 +160,63 @@ internal static class WelcomeHeaderRenderer
         // A terminal without Unicode gets the same line in ASCII punctuation: LUNATE_ASCII and
         // TERM=dumb mean the session's output stays printable on a legacy console.
         bool unicode = capabilities.Unicode;
-        var tail = new System.Text.StringBuilder();
-        tail.Append(' ').Append('v').Append(state.Version);
+        var head = new System.Text.StringBuilder();
+        head.Append(' ').Append('v').Append(state.Version);
         if (state.CSharpWorkspace)
         {
-            tail.Append(' ').Append(unicode ? CSharpSegment : AsciiCSharpSegment);
+            head.Append(' ').Append(unicode ? CSharpSegment : AsciiCSharpSegment);
         }
 
         // A redirected or sandboxed run must never be invisible, even on the one-line form.
         if (state.Home is { Length: > 0 } home)
         {
-            tail.Append(unicode ? " · " : " - ").Append(home);
+            head.Append(unicode ? " · " : " - ").Append(home);
         }
 
-        tail.Append(unicode ? Separator : AsciiSeparator);
-        tail.Append(state.Fix is { Length: > 0 } fix ? fix : HelpHint);
+        string action = state.Fix is { Length: > 0 } fix ? fix : HelpHint;
+        string separator = unicode ? Separator : AsciiSeparator;
+        if (state.UpdateVersion is { Length: > 0 } updateVersion)
+        {
+            return Line(
+                Colored(capabilities),
+                ("lunate", SpanStyle.Bold),
+                (head.ToString(), SpanStyle.Dim),
+                (
+                    string.Concat(unicode ? " · " : " - ", "v", updateVersion, " available"),
+                    new SpanStyle(TextStyle.Dim, Link: state.UpdateUrl)
+                ),
+                (separator + action, SpanStyle.Dim)
+            );
+        }
 
+        head.Append(separator);
+        head.Append(action);
         return Line(
             Colored(capabilities),
             ("lunate", SpanStyle.Bold),
-            (tail.ToString(), SpanStyle.Dim)
+            (head.ToString(), SpanStyle.Dim)
+        );
+    }
+
+    /// <summary>
+    /// The one dim linked line that names a newer release: used both under the header when a
+    /// background check finds it and at the end of <c>/help</c>. The link survives NO_COLOR.
+    /// </summary>
+    internal static string UpdateLine(
+        string version,
+        string? url,
+        TerminalCapabilities capabilities
+    )
+    {
+        ArgumentNullException.ThrowIfNull(version);
+        ArgumentNullException.ThrowIfNull(capabilities);
+        string separator = capabilities.Unicode ? " · " : " - ";
+        return Line(
+            Colored(capabilities),
+            (
+                string.Concat("v", version, " available", separator, "changelog"),
+                new SpanStyle(TextStyle.Dim, Link: url)
+            )
         );
     }
 
@@ -189,13 +245,16 @@ internal static class WelcomeHeaderRenderer
     private static bool Colored(TerminalCapabilities capabilities) =>
         capabilities.Color != ColorSystemSupport.NoColors;
 
-    /// <summary>One line of markup; colourless capabilities keep the text, never the styling.</summary>
+    /// <summary>
+    /// One line of markup; colourless capabilities keep the text, never the styling, but the
+    /// update line's link stays so the changelog is still clickable under NO_COLOR.
+    /// </summary>
     private static string Line(bool colored, params (string Text, SpanStyle Style)[] spans)
     {
         var line = new StyledLine();
         foreach ((string text, SpanStyle style) in spans)
         {
-            line.Add(text, colored ? style : SpanStyle.Plain);
+            line.Add(text, colored ? style : new SpanStyle(Link: style.Link));
         }
 
         return line.ToMarkup();

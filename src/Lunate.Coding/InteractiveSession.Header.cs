@@ -15,18 +15,46 @@ internal sealed partial class InteractiveSession
     private void PrintWelcomeHeader(WelcomeHeaderCounts? counts)
     {
         _headerCountsPending = false;
+        _headerHasUpdateLine = false;
         if (!_settings.StartupHeader)
         {
             return;
         }
 
         WelcomeHeaderState state = HeaderState(counts);
+        _headerHasUpdateLine = state.Fix is null;
         int width = _console.Size.Columns;
         WriteScrollbackLines(WelcomeHeaderRenderer.Render(state, _capabilities, width));
         _headerCountsPending =
             counts is null
             && state.Fix is null
             && WelcomeHeaderRenderer.ShowsBlock(_capabilities, width);
+    }
+
+    /// <summary>
+    /// The background check behind the first frame: a fresh cache returns without a request, a
+    /// newly found release becomes the header's line only when the header did not already carry it,
+    /// and a failure prints nothing at all.
+    /// </summary>
+    private async Task AnnounceUpdateAsync(UpdateCheckSeams seams, CancellationToken ct)
+    {
+        UpdateInfo? found = await UpdateCheck.CheckAsync(seams, ct).ConfigureAwait(false);
+        UpdateInfo? newer = UpdateCheck.IsNewer(found, ProductVersion.Display);
+        if (newer is null)
+        {
+            return;
+        }
+
+        bool first = _availableUpdate is null;
+        _availableUpdate = newer;
+        if (!first || !_headerHasUpdateLine)
+        {
+            return;
+        }
+
+        WriteScrollbackLines([
+            WelcomeHeaderRenderer.UpdateLine(newer.Version, newer.ChangelogUrl, _capabilities),
+        ]);
     }
 
     /// <summary>The one counts update line after composition finished; never a redraw of the block.</summary>
@@ -61,6 +89,8 @@ internal sealed partial class InteractiveSession
             Home = LunateHome.ActiveHomeLine,
             Counts = counts,
             Fix = FirstRunFix(model, configured),
+            UpdateVersion = _availableUpdate?.Version,
+            UpdateUrl = _availableUpdate?.ChangelogUrl,
         };
     }
 

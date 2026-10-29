@@ -54,6 +54,9 @@ internal sealed record LaunchOptions
     /// <summary>Approve every tool call for this run.</summary>
     public bool Yolo { get; init; }
 
+    /// <summary>Skip the daily update check for this run.</summary>
+    public bool Offline { get; init; }
+
     /// <summary>The print-mode prompt; null outside print mode.</summary>
     public string? Prompt { get; init; }
 
@@ -73,6 +76,7 @@ internal sealed record LaunchOptions
         var print = false;
         var json = false;
         var yolo = false;
+        var offline = false;
         var resume = false;
         var noSession = false;
         var noTools = false;
@@ -114,6 +118,9 @@ internal sealed record LaunchOptions
                     break;
                 case "--yolo":
                     yolo = true;
+                    break;
+                case "--offline":
+                    offline = true;
                     break;
                 case "-c" or "--continue":
                     options = options with { Continue = true };
@@ -293,6 +300,7 @@ internal sealed record LaunchOptions
             Print = print,
             Json = json,
             Yolo = yolo,
+            Offline = offline,
             Prompt = print ? positional[0] : null,
         };
         return true;
@@ -347,6 +355,7 @@ internal sealed record LaunchOptions
                 or "--print"
                 or "--json"
                 or "--yolo"
+                or "--offline"
                 or "-c"
                 or "--continue"
                 or "-r"

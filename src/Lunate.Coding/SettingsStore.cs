@@ -41,6 +41,9 @@ public sealed record AgentSettings
     /// <summary>Whether the interactive session prints the welcome header; defaults to on.</summary>
     public bool StartupHeader { get; init; } = true;
 
+    /// <summary>Whether the interactive session checks for a newer release once a day; defaults to on.</summary>
+    public bool UpdateCheck { get; init; } = true;
+
     /// <summary>The session thinking level; defaults to <see cref="ThinkingLevel.Off"/>.</summary>
     public ThinkingLevel Thinking { get; init; } = ThinkingLevel.Off;
 
@@ -83,7 +86,7 @@ public sealed record RoslynSettings
 /// favourites). A missing file yields defaults; a present file is validated with every problem
 /// collected into one error, and no partial settings are applied. The environment
 /// (<c>LUNATE_MODEL</c>, <c>LUNATE_APPROVAL</c>, <c>LUNATE_TOOL_DETAILS</c>,
-/// <c>LUNATE_TOOL_OUTPUT_LIMIT</c>, <c>LUNATE_STARTUP_HEADER</c>,
+/// <c>LUNATE_TOOL_OUTPUT_LIMIT</c>, <c>LUNATE_STARTUP_HEADER</c>, <c>LUNATE_UPDATE_CHECK</c>,
 /// <c>LUNATE_SUBAGENTS_CONCURRENCY</c>, <c>LUNATE_SUBAGENTS_TOKEN_BUDGET</c>,
 /// <c>LUNATE_SUBAGENTS_TREE_TOKEN_BUDGET</c>) overrides file values. Both
 /// the path and the environment lookup are injectable.
@@ -103,6 +106,7 @@ public static partial class SettingsStore
     private const string ToolDetailsVariable = "LUNATE_TOOL_DETAILS";
     private const string ToolOutputLimitVariable = "LUNATE_TOOL_OUTPUT_LIMIT";
     private const string StartupHeaderVariable = "LUNATE_STARTUP_HEADER";
+    private const string UpdateCheckVariable = "LUNATE_UPDATE_CHECK";
     private const string SubagentConcurrencyVariable = "LUNATE_SUBAGENTS_CONCURRENCY";
     private const string SubagentTokenBudgetVariable = "LUNATE_SUBAGENTS_TOKEN_BUDGET";
     private const string SubagentTreeTokenBudgetVariable = "LUNATE_SUBAGENTS_TREE_TOKEN_BUDGET";
@@ -371,6 +375,12 @@ public static partial class SettingsStore
                             StartupHeader = ReadStartupHeader(property.Value, problems),
                         };
                         break;
+                    case "updateCheck":
+                        settings = settings with
+                        {
+                            UpdateCheck = ReadUpdateCheck(property.Value, problems),
+                        };
+                        break;
                     case "thinking":
                         settings = settings with
                         {
@@ -606,6 +616,21 @@ public static partial class SettingsStore
         }
 
         problems.Add("'startupHeader' must be true or false");
+        return true;
+    }
+
+    /// <summary>
+    /// Reads <c>updateCheck</c>: a JSON boolean; a missing key keeps the documented default
+    /// (on).
+    /// </summary>
+    private static bool ReadUpdateCheck(JsonElement value, List<string> problems)
+    {
+        if (value.ValueKind is JsonValueKind.True or JsonValueKind.False)
+        {
+            return value.GetBoolean();
+        }
+
+        problems.Add("'updateCheck' must be true or false");
         return true;
     }
 
@@ -868,6 +893,21 @@ public static partial class SettingsStore
             {
                 problems.Add(
                     $"{StartupHeaderVariable} must be {SwitchLiterals}, but was '{startupHeader}'"
+                );
+            }
+        }
+
+        string? updateCheck = environment(UpdateCheckVariable);
+        if (!string.IsNullOrEmpty(updateCheck))
+        {
+            if (TryParseSwitch(updateCheck, out bool parsedUpdateCheck))
+            {
+                settings = settings with { UpdateCheck = parsedUpdateCheck };
+            }
+            else
+            {
+                problems.Add(
+                    $"{UpdateCheckVariable} must be {SwitchLiterals}, but was '{updateCheck}'"
                 );
             }
         }

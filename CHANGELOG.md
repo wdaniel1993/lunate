@@ -8,6 +8,14 @@ Notable changes to Lunate, one section per release. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- The interactive session checks GitHub Releases at most once a day, in the background, and names a
+  newer release as one dim linked line in the welcome header (`v0.2.0 available · changelog`). The
+  answer is cached under the state root for 24 hours; the request carries no telemetry beyond
+  `User-Agent: lunate/<version>`. Opt out with `updateCheck: false` or `LUNATE_UPDATE_CHECK=0`;
+  `--offline`, print mode, ACP and CI never check (#238).
+
 ### Fixed
 
 - A follow-up queued in the instant a turn ended could be left behind: the turn's drain found the

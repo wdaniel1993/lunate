@@ -293,15 +293,23 @@ naming every problem, and nothing partial is applied.
 | `subagents.treeTokenBudget` | `500000` | tokens per top-level run tree, or `unlimited` |
 | `roslyn.maxLoadedWorkspaces` | `2` | C# workspaces kept loaded across roots |
 | `startupHeader` | `true` | print the welcome header when a session starts |
+| `updateCheck` | `true` | check GitHub Releases once a day and link a newer release's changelog |
 | `thinking` | `off` | reasoning level: `off`, `low`, `medium` or `high` (`/thinking` sets it per session) |
 | `thinkingFull` | `false` | commit the full reasoning text instead of the collapsed thought line |
 | `tools.extra` | `[]` | optional search tools to register beside the core set: `grep`, `find`, `ls` |
 
 Environment variables override the file: `LUNATE_MODEL`, `LUNATE_APPROVAL`,
 `LUNATE_TOOL_OUTPUT_LIMIT`, `LUNATE_STARTUP_HEADER` (`true`, `false`, `1` or `0`),
-`LUNATE_SUBAGENTS_CONCURRENCY`, `LUNATE_SUBAGENTS_TOKEN_BUDGET`,
-`LUNATE_SUBAGENTS_TREE_TOKEN_BUDGET` and `LUNATE_EXTRA_TOOLS` (`grep,find,ls`). `yolo` is not a setting: it exists only as the per-run flag
+`LUNATE_UPDATE_CHECK` (`true`, `false`, `1` or `0`), `LUNATE_SUBAGENTS_CONCURRENCY`,
+`LUNATE_SUBAGENTS_TOKEN_BUDGET`, `LUNATE_SUBAGENTS_TREE_TOKEN_BUDGET` and `LUNATE_EXTRA_TOOLS`
+(`grep,find,ls`). `yolo` is not a setting: it exists only as the per-run flag
 `lunate -p --yolo`.
+
+The interactive session checks GitHub Releases at most once a day, in the background after the
+welcome header, and names a newer release as one dim linked line: `v0.2.0 available · changelog`.
+The answer is cached under `~/.lunate/update-check.json` and reused for 24 hours without a request.
+There is no telemetry: the only header sent is `User-Agent: lunate/<version>`. Turn it off with
+`updateCheck: false` or `LUNATE_UPDATE_CHECK=0`; `--offline`, print mode, ACP and CI never check.
 
 The welcome header names the running build: `lunate  v0.1.0+0c96dc6`. The seven characters after `+` are the commit
 it was built from, so two installs can be told apart without running `lunate --version`; a working-tree build
