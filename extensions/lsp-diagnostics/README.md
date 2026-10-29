@@ -1,77 +1,73 @@
-# Sample: lsp-diagnostics
+# lsp-diagnostics
 
-An extension that attaches language-server diagnostics to the tool result right after a successful
-`write` or `edit` of a C# file. The path comes from the call's arguments (never parsed from output
-text) and resolves through the `core/workspace` identity. The extension owns one language server
-process per session, started lazily on the first eligible result and stopped at session end.
+A first-party Lunate extension that shows the model what a language server thinks about the file it
+just wrote: after every successful `write` or `edit` of a C# file, the tool result carries the file's
+errors and warnings from its language server.
 
-## Core capabilities proven
+The model no longer guesses whether the code it wrote compiles or contains obvious problems — the
+diagnostics arrive in the same tool result the next turn reads, before the model reasons about its
+own change.
 
-| Capability | Where |
-| --- | --- |
-| `ToolResultReady` with the call's arguments | `LspDiagnosticsToolResultReadyHandler` acts when `ToolName` is `write`/`edit` and `payload.Arguments` carries a `.cs` `path`; the payload's arguments are the call's as approved, so a `ToolCalling` handler's mutation is what the handler sees. |
-| Model-facing structured content | The same diagnostics are attached as typed `StructuredContent` (`{"path","diagnostics":[…]}`); the harness carries it on the tool result. UI-only details stay untouched. |
-| `core/workspace` resolution | The handler resolves relative paths against the workspace identity registered by the host and refuses paths that leave the worktree. |
-| Background service lifecycle | `LspServerService` is registered as `ext/lsp-diagnostics/server`: lazy start, restart after a dead process, idempotent stop (shutdown → exit → kill fallback → dispose). |
-| Bounded hooks | The whole round trip is bounded by `timeoutMs` (default 2000, strictly under the runner's 5 s per-handler timeout); every failure keeps the original result and is logged. |
-| Version-matched documents | `didOpen` (v1) and `didChange` (vN, full text) per file; only the `publishDiagnostics` notification with the version just sent is accepted, stale versions are ignored. |
-| Testing kit against a real process | `LspDiagnosticsExtension.Tests` drives the real loader, harness, `write`/`edit` tools and hook runner against `FakeLspServer`, a real console process speaking stdio JSON-RPC. |
+## What it looks like
 
-## Layout
+A labeled section is appended to a `write`/`edit` result's output:
 
 ```text
-samples/extensions/lsp-diagnostics/
-  LspDiagnosticsExtension/              the extension: manifest, factory, handler, LSP client
-  LspDiagnosticsExtension.Tests/        kit-based tests, the scripted model client and the probe
-  LspDiagnosticsExtension.Tests/FakeLspServer/  the deterministic fake language server
-  README.md
+lsp-diagnostics (csharp-ls): 2 diagnostics for src/Foo.cs
+error 5:1 FIXME left on line 5 (fixme-check)
+warning 9:1 TODO left on line 9 (todo-check)
 ```
+
+The same capped list is attached as structured content on the result, so tooling that reads
+structured data sees the diagnostics typed (`path` plus one entry per diagnostic) instead of parsing
+the text.
 
 ## Behaviour
 
-- **Applicability** — `write`/`edit` calls whose `path` ends in `.cs` and resolves inside the
-  worktree. Everything else (other tools, non-C# paths, a missing `path`, a missing workspace
-  identity) passes through untouched and silent.
-- **Attachment** — a labeled text section appended to the output:
+- **Applies to** `write` and `edit` calls whose `path` argument ends in `.cs` and resolves inside the
+  worktree. Everything else — other tools, non-C# files, a missing path, no workspace — passes
+  through untouched and silent.
+- **Path resolution** uses the call's arguments, never text scraped from the output, and refuses
+  paths that leave the worktree.
+- **One server process** per session, started lazily on the first eligible `write`/`edit`, stopped at
+  session end, and restarted on the next call after a crash.
+- **Errors and warnings only** (LSP severity 1–2), capped at `maxDiagnostics` with a
+  `+n more diagnostics` line. Nothing to report → nothing is attached.
+- **Failure stays quiet**: a server that is missing, crashes, hangs or answers garbage never blocks or
+  breaks the tool call — the original result stands unchanged, the failure is logged, and the next
+  eligible call gets a fresh process. The whole round trip is bounded by `timeoutMs`.
 
-  ```text
-  lsp-diagnostics (csharp-ls): 2 diagnostics for src/Foo.cs
-  error 5:1 FIXME left on line 5 (fixme-check)
-  warning 9:1 TODO left on line 9 (todo-check)
-  ```
+## Install
 
-  Errors and warnings only (LSP severity 1–2), capped at `maxDiagnostics` with a
-  `+n more diagnostics` line, positions converted from LSP's 0-based units once. The same capped
-  list is attached as `StructuredContent`; `Details` is never touched. No errors or warnings after
-  filtering → nothing attached, one info log.
-- **Failure policy** — keep the original result: a server that is missing, crashes, hangs or
-  answers garbage is logged and the next eligible call starts a fresh process.
-- **Process ownership** — the process starts with the first eligible result, is keyed to the
-  session, and stops at `SessionEnding`; a crash mid-round-trip is restarted on the next call.
+```sh
+lunate install Lunate.Extensions.LspDiagnostics
+```
 
-## Settings
+The package carries the extension's build output, `extension.json` and its `lunate.package.json`;
+content lands in `~/.lunate/extensions/lsp-diagnostics/` with an install record beside it, and the
+extension stays pending until you answer its first-load question — installing is not trusting.
 
-`serverCommand` (string, default `csharp-ls`), `serverArgs` (array), `timeoutMs` (number, default
-2000 — the whole round trip budget), `maxDiagnostics` (number, default 5). The fake server tests
-point `serverCommand` at `dotnet` with the fake's dll in `serverArgs`.
+Project use goes the same way through a repository-local feed. Without a feed, copy the extension's
+output directory (`LspDiagnosticsExtension.dll`, `extension.json`, its dependencies) under
+`<worktree>/.lunate/extensions/lsp-diagnostics/` and trust it on first load. Nothing runs until a
+`write`/`edit` of a C# file succeeds.
 
-## The fake server
+## Configuration
 
-`FakeLspServer` derives diagnostics from the document text (first match per line wins): a line
-with `FIXME` yields an error, `TODO` a warning, `INFO` an information and `HINT` a hint. Modes:
-`--silent` never publishes, `--marker <path>` appends the PID on start, `--crash-after <n>` exits
-after n messages, `--stale-first` publishes a stale version before the matching one. A second
-`didOpen` for an open document answers with a protocol-error diagnostic, so the `didChange` path is
-observable.
+Settings live in `~/.lunate/extensions-settings/lsp-diagnostics.json`; all are optional:
 
-## Copy and extend
+| Setting | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `serverCommand` | string | `csharp-ls` | The language server executable to run. |
+| `serverArgs` | array | `[]` | Arguments passed to the language server. |
+| `timeoutMs` | number | `2000` | The whole round-trip budget per `write`/`edit`, in milliseconds. |
+| `maxDiagnostics` | number | `5` | The most errors and warnings one tool result carries. |
 
-1. Copy this directory, rename the projects and namespaces, and update `extension.json`
-   (`id`, `entryAssembly`, `apiVersion`, `hooks`, `services`, `settingsSchema`).
-2. Keep the tests: they install the built extension into a temp directory, point it at
-   `FakeLspServer` and drive the real stack; the recorded model client asserts the diagnostics text
-   lands in the exact next model request.
-3. Swap `LspServerService` for your own server command and language id; the handler's shaping,
-   resolution and failure policy carry over unchanged.
+See `extension.json`'s `settingsSchema` for the enforced shape.
 
-See `templates/extension/README.md` for the full manifest and hook wiring reference.
+## Support
+
+Officially supported for bugs and API compatibility at the `apiVersion` the manifest declares — see
+[`extensions/`](../README.md) for what the tier promises. Report issues on the repository; the
+background-service surface it runs on is documented in
+[`docs/extensions/contributions/background-services.md`](../docs/extensions/contributions/background-services.md).

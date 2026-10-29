@@ -1,78 +1,63 @@
-# Sample: subagents
+# subagents
 
-An extension that contributes one tool, `subagents__spawn`, which runs a child agent through
-`ToolContext.Subagents` — the per-run subagent seam the core stamps into every tool context. The
-child runs on the same client, workspace, hooks, approver and file-change sink as the parent, in a
-child session linked beside the parent's; its events are forwarded onto the parent's stream with
-`ParentRunId`, and the core enforces depth (fixed at 1), tree-wide concurrency and the per-child /
-per-tree token budgets. The annotations are not read-only and destructive-capable, so the approval
-policy asks before a spawn.
+A first-party Lunate extension that gives the model one tool, `subagents__spawn`, for delegating a
+focused subtask to a child agent: the model writes a prompt, Lunate runs it as a separate agent run
+in a child session beside the current one, and the child's final answer comes back to the parent
+model as the tool result.
 
-## What it proves (T-47, part 2)
+The child runs on the same client, workspace, hooks, approver and file-change sink as the parent. Its
+events are forwarded onto the parent's stream tagged with the parent run, its usage rolls up into the
+session, and its child session file is linked beside the parent's. Core enforces the budgets: a child
+cannot spawn a further child, tree-wide concurrency is bounded, and each — and every — child run
+carries a token budget.
 
-| Capability | Where |
-| --- | --- |
-| Parent/child runs | `SpawnToolHandler` calls `ToolContext.Subagents.RunAsync`; the child's final text becomes the tool result the parent model reads. |
-| Child session linking | The child session file sits beside the parent's and the parent carries the `AppendChildSession` link (asserted through the real loader in `SubagentsRunTests`). |
-| Event forwarding | Child events reach the parent stream with `ParentRunId` and their own run/session ids; child usage rolls up. |
-| Approvals | A child's ask goes through the parent's approver with the child's run id, the parent run id and depth 1; the interactive prompt labels it `subagent (depth 1)`. |
-| Cancel | Cancelling the parent run cancels the child (`cancelled`), and the spawn call joins it. |
-| Limits | A child cannot spawn (`depth_limit`); a spawn while the tree concurrency is held is refused (`concurrency_limit`); an over-budget child stops with `token_limit` and returns its partial result. |
-| Hooks | Hook payloads fired during the child run carry the child's run id and the parent run id (the harness seam). |
+## What it looks like
 
-## Layout
+The model calls:
 
-```text
-samples/extensions/subagents/
-  SubagentsExtension/            the extension: manifest, factory, settings, spawn handler
-  SubagentsExtension.Tests/      kit-based tests, scripted model client, concurrency probe
-  README.md
+```json
+{"prompt": "Find every use of CultureInfo.CurrentCulture in this repo and list file, line and call", "maxSteps": 8}
 ```
 
-## Settings
+and reads back the child agent's answer. Because spawning is not a read-only operation, the approval
+policy asks before a spawn runs; the prompt labels it `subagent (depth 1)`, and saying yes at that
+prompt covers the child's work, its tool calls ask for approval like any other tool call.
 
-- `defaultMaxSteps` (integer ≥ 1, optional): the step ceiling the tool passes when the model omits
-  `maxSteps`; the run's own `MaxSteps` still clamps it (per-spawn values only tighten).
-- `description` (string, optional): overrides the tool description the model reads.
-
-## Build and test
-
-```sh
-dotnet build samples/extensions/subagents/SubagentsExtension/SubagentsExtension.csproj -c Release
-dotnet test samples/extensions/subagents/SubagentsExtension.Tests/SubagentsExtension.Tests.csproj
-```
-
-The tests install the built extension into a temp store through `Lunate.Extensibility.Testing`'s
-`ExtensionTestHost` (real manifest, real load context, real harness) and drive it with a scripted
-model client — no live APIs.
+Cancelling the parent run cancels the child and joins it. A refused spawn is not an error tone: one
+of `depth_limit`, `concurrency_limit` or `token_limit` comes back as the tool result so the model can
+adjust (an over-budget child returns its partial result instead of nothing).
 
 ## Install
-
-The extension is published with every release and officially supported, so installing it
-is one command:
 
 ```sh
 lunate install Lunate.Extensions.Subagents
 ```
 
-The package carries this extension's build output, `extension.json` and its `lunate.package.json`;
-the content lands in `~/.lunate/extensions/subagents/` with a record beside it, and the extension is
-pending until you answer its first-load question — installing is not trusting. `lunate packages
---verify` re-hashes the record, and `lunate uninstall Lunate.Extensions.Subagents` removes exactly what
-the install wrote.
+The package carries the extension's build output, `extension.json` and its `lunate.package.json`;
+content lands in `~/.lunate/extensions/subagents/` with an install record beside it, and the
+extension stays pending until you answer its first-load question — installing is not trusting.
+`lunate packages --verify` re-hashes the record, and `lunate uninstall Lunate.Extensions.Subagents`
+removes exactly what the install wrote.
 
 Without a feed, copy the extension's output directory (`SubagentsExtension.dll`, `extension.json`,
-its dependencies) under `<worktree>/.lunate/extensions/subagents/` and trust it on first load,
-exactly like the other samples. Nothing runs until the model calls `subagents__spawn`; the call asks
-for approval.
+its dependencies) under `<worktree>/.lunate/extensions/subagents/` and trust it on first load.
+Nothing runs until the model calls `subagents__spawn`; the call asks for approval.
 
-## Copy and extend
+## Configuration
 
-1. Copy this directory, rename the projects and namespaces, and update `extension.json`
-   (`id`, `entryAssembly`, `apiVersion`, `tools`).
-2. Keep the handler shape: read `ToolContext.Subagents`, validate the model's arguments, call
-   `RunAsync` and return the child's text — refusals already arrive as teaching error results.
-3. Keep the tests: they prove the four behaviours (events/link/hooks, approvals, cancel, limits)
-   through the real composition.
+Settings live in `~/.lunate/extensions-settings/subagents.json` (inside your Lunate home); both are
+optional:
 
-See `docs/spec/extensibility.md` for the subagent seam and `docs/guide.md` for T-47.
+| Setting | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `defaultMaxSteps` | integer ≥ 1 | unset | The step ceiling the spawn tool passes when the model omits `maxSteps`; the run's own ceiling still clamps it (a per-spawn value only tightens). |
+| `description` | string | the built-in text | Overrides the tool description the model reads. |
+
+See `extension.json`'s `settingsSchema` for the enforced shape.
+
+## Support
+
+Officially supported for bugs and API compatibility at the `apiVersion` the manifest declares
+(`^1.7.0`) — see [`extensions/`](../README.md) for what the tier promises. Report issues on the
+repository; the platform seam and its tests are documented in
+[`docs/extensions/contributions/tools.md`](../docs/extensions/contributions/tools.md).

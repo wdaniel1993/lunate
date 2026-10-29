@@ -1,47 +1,61 @@
-# Sample: permission-gate
+# permission-gate
 
-An extension that enforces a settings-driven policy on tool calls before the approval prompt:
-destructive tools are blocked outright (`block`, the default) or fall through to the normal
-approval prompt (`confirm`). Everything else proceeds unchanged.
+A first-party Lunate extension that enforces a settings-driven policy on destructive tool calls
+before the approval prompt: in `block` mode (the default) a destructive tool call is denied outright
+— the tool never runs and the model reads why; in `confirm` mode the call falls through to the normal
+approval prompt, where you decide each time.
 
-## Core capabilities proven
+Use it when you want a hard rule about destructive operations — for example on an unattended or
+agent-only session — instead of relying on answering every prompt correctly.
 
-| Capability | Where |
-| --- | --- |
-| `ToolCalling` hook with block semantics | `PermissionGateToolCallingHandler` returns `ToolCallingResult.Block` with a reason; the agent loop turns it into a denial-style result and never runs the tool. |
-| Tool annotations reaching extensions | `ToolCallingPayload.Annotations` carries the resolved tool's lowercase kebab wire names (`read-only`, `destructive`, `idempotent`, `open-world`), mapped once by `Lunate.Agent.ToolAnnotationNames`. |
-| Pre-approval ordering | The hook fires before `IToolApprover`; in `block` mode the approver is never consulted. |
-| Settings | `mode` is read through `IExtensionSettings.TryGet` from `~/.lunate/extensions-settings/permission-gate.json`; absent means `block`. |
-| Testing kit | `PermissionGateExtension.Tests` loads the built extension through the real loader in a temp directory, replays committed fixtures and drives a `ScriptedApprover`. |
+## What it looks like
 
-## Layout
+A `bash` call whose tool annotations mark it `destructive` is returned to the model as:
 
 ```text
-samples/extensions/permission-gate/
-  PermissionGateExtension/        the extension: manifest, factory, ToolCalling policy
-  PermissionGateExtension.Tests/  kit-based tests and the replay fixtures
-  README.md
+permission-gate: destructive tool 'bash' blocked - set mode=confirm to approve interactively
 ```
 
-## Policy
+`confirm` mode runs no policy of its own: the call reaches the approval prompt exactly as it would
+without the extension.
 
-For a call whose annotations include `destructive`:
+## Behaviour
 
-- `mode=block` (default): `ToolCallingResult.Block` with
-  `permission-gate: destructive tool '<name>' blocked - set mode=confirm to approve interactively`.
-- `mode=confirm`: `ToolCallingResult.Proceed(null)` — arguments unchanged, the call reaches the
-  normal approval prompt.
+- The gate decides on the tool call's **annotations** (the resolved `read-only`, `destructive`,
+  `idempotent`, `open-world` wire names), never on a hard-coded tool-name list, so a custom tool that
+  declares itself destructive is gated like `bash`.
+- Anything without a `destructive` annotation, and every non-tool situation, proceeds unchanged.
+- The hook runs **before** the approver: in `block` mode the approval prompt is never reached for a
+  blocked call.
+- The handler logs its decisions through the extension's log.
 
-All other calls proceed unchanged. The handler logs its decisions through `IExtensionLog`.
+## Install
 
-## Copy and extend
+```sh
+lunate install Lunate.Extensions.PermissionGate
+```
 
-1. Copy this directory, rename the projects and namespaces, and update `extension.json`
-   (`id`, `entryAssembly`, `apiVersion`, `hooks`, `settingsSchema`).
-2. Keep the tests: `PermissionGateExtension.Tests` installs the built extension into a temp
-   directory, so tests never touch the real `~/.lunate`. Add your own annotated test tools and
-   record a fixture for the model side (see `Lunate.Ai` fixtures); do not weaken the assertions.
-3. Policy handlers should decide on the payload's annotations, never on tool-name lists — the
-   annotations are the contract the model-side tool declarations carry.
+The package carries the extension's build output, `extension.json` and its `lunate.package.json`;
+content lands in `~/.lunate/extensions/permission-gate/` with an install record beside it, and the
+extension stays pending until you answer its first-load question — installing is not trusting.
 
-See `templates/extension/README.md` for the full manifest and hook wiring reference.
+Without a feed, copy the extension's output directory (`PermissionGateExtension.dll`,
+`extension.json`, its dependencies) under `<worktree>/.lunate/extensions/permission-gate/` and trust
+it on first load; nothing registers until the extension is trusted.
+
+## Configuration
+
+One setting, in `~/.lunate/extensions-settings/permission-gate.json`:
+
+| Setting | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `mode` | `block` or `confirm` | `block` | `block` denies destructive tool calls before approval; `confirm` falls through to the approval prompt. |
+
+See `extension.json`'s `settingsSchema` for the enforced shape.
+
+## Support
+
+Officially supported for bugs and API compatibility at the `apiVersion` the manifest declares — see
+[`extensions/`](../README.md) for what the tier promises. Report issues on the repository; the
+hook surface it builds on is documented in
+[`docs/extensions/contributions/hooks.md`](../docs/extensions/contributions/hooks.md).
