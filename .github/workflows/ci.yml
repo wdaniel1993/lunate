@@ -51,6 +51,18 @@ jobs:
           bash scripts/ci-ok.sh --self-test
           python3 scripts/docs-sync --self-test
           bash scripts/no-docs-references.sh --self-test
+          bash scripts/no-wip-commits.sh --self-test
+
+      # A wip commit is the queue driver's safety net for a stalled session: it preserves work that
+      # would otherwise be lost, and it belongs in a draft. This job only runs for a pull request
+      # that is ready for review, so reaching it with a wip subject means the draft flag came off
+      # before the commit was rewritten -- the one thing the safety net must never allow.
+      - name: No wip commits in a ready pull request
+        if: github.event_name == 'pull_request'
+        shell: bash
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: bash scripts/no-wip-commits.sh
 
       - name: Decide the profile
         id: decide
