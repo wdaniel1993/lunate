@@ -154,6 +154,17 @@ jobs:
         if: runner.os == 'Linux'
         run: sudo locale-gen de_AT.UTF-8
 
+      # The bash guard's platform matrix: the Linux leg runs the bubblewrap refusal (or, when the
+      # runtime refuses user namespaces — Ubuntu AppArmor — the detection notice) for real.
+      # ADR 0024.
+      - name: Install bubblewrap (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          set -euo pipefail
+          sudo apt-get update -q
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends bubblewrap
+          bwrap --version
+
       - name: Install hyperfine (Linux)
         if: runner.os == 'Linux'
         run: |
