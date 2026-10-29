@@ -12,6 +12,7 @@ This repo is developed with OpenCode and OpenSpec (schema: `intent-driven`).
 - OpenSpec specs are the source of truth for behaviour. If spec and code disagree, stop and report — fix the spec first.
 - One change per session. Do only what the change's `tasks.md` asks; anything else becomes a follow-up change.
 - src work goes through the `senior-dev` subagent (test-first, `test-driven-development` skill); acceptance-test work through `senior-qa`.
+  - In an unattended run no one can observe a subagent: wait at most 20 minutes for its result, then continue the work directly and record in the PR that you did.
 
 ## Build
 
