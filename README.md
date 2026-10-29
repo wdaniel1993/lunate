@@ -67,7 +67,9 @@ dotnet tool install --global lunate
 ```
 
 Scoop carries the same build; winget follows once its manifest is accepted. Then `lunate --version`,
-and `lunate` inside a repository.
+and `lunate` inside a repository. The first prompt needs a credential:
+[`docs/first-run.md`](docs/first-run.md) walks through the CLI, the first-run picker and local
+OpenAI-compatible endpoints.
 
 One extension is published with the tool — an officially supported one, not a sample:
 
@@ -109,20 +111,17 @@ Contributor setup — the gate, the repository map and the OpenSpec workflow —
 { "schemaVersion": 1, "model": "claude-sonnet-5-5" }
 ```
 
-Then give that provider a key — exported, or stored under the provider's name (`openai`,
-`anthropic`) in `~/.lunate/auth.json`:
+Then store that provider's key with the auth command:
 
 ```bash
-export ANTHROPIC_API_KEY=sk-ant-...
+lunate auth login anthropic
 ```
 
-```json
-{ "schemaVersion": 1, "keys": { "anthropic": "sk-ant-..." } }
-```
-
-An environment variable wins over the file. A model with a declared `endpoint` — a local server or
-any OpenAI-compatible API — needs no key at all; `lunate --discover <name-or-url>` drafts a catalog
-entry for one.
+The prompt is masked. `lunate auth login` with no provider lists every preset, and
+[`docs/first-run.md`](docs/first-run.md) covers the first-run `/auth` picker, custom
+OpenAI-compatible endpoints and the environment-variable override. A model with a declared
+`endpoint` — a local server or any OpenAI-compatible API — needs no key at all;
+`lunate --discover <name-or-url>` drafts a catalog entry for one.
 
 **2. Run it in a repository.**
 
@@ -141,7 +140,7 @@ id, and `/quit` leaves. The rest of the built-ins: `/new`, `/resume`, `/compact`
 `/copy`, `/export`, `/mcp`, `/extensions`, `/skills`, `/skill:<name>` and `/trust`.
 
 If nothing resolves a model or a key, the first run prints exactly one fix, for example
-`set 'model' in ~/.lunate/settings.json` or `add the 'anthropic' key to ~/.lunate/auth.json`.
+`set 'model' in ~/.lunate/settings.json` or `run /auth to configure a provider`.
 
 ## Features
 
@@ -274,8 +273,10 @@ you get the defaults below.
   `reasoning` declares the model's reasoning style — `effort` (OpenAI-compatible reasoning
   effort), `budget` (Anthropic extended thinking) or `inline` (the model embeds thinking
   markers in its text stream); absent means no reasoning support.
-- `~/.lunate/auth.json` — named API keys under `keys`; `OPENAI_API_KEY` and `ANTHROPIC_API_KEY`
-  override the `openai` and `anthropic` entries.
+- `~/.lunate/auth.json` — named API keys under `keys`, written by `lunate auth login`; every
+  preset's environment variable (for example `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`; Google also
+  accepts `GEMINI_API_KEY`) overrides its stored entry.
+  [`docs/first-run.md`](docs/first-run.md) owns the onboarding path.
 
 ### Settings
 

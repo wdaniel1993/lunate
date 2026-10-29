@@ -5,6 +5,7 @@ Lunate keeps each kind of document in exactly one home. Start here, then jump to
 | Document kind | Home | What it owns |
 | --- | --- | --- |
 | Project entry point | [`../README.md`](../README.md) | What Lunate is, install, quick start, features, configuration and modes |
+| First run | [`first-run.md`](first-run.md) | Choosing a provider, `lunate auth`, the `/auth` picker, custom OpenAI-compatible endpoints and where credentials live |
 | Contributor guide | [`../CONTRIBUTING.md`](../CONTRIBUTING.md) | Prerequisites, build, the verify gate, the repository map, the OpenSpec workflow |
 | Security policy | [`../SECURITY.md`](../SECURITY.md) | How to report a vulnerability, the trust model, secrets |
 | Changelog | [`../CHANGELOG.md`](../CHANGELOG.md) | Notable changes, one section per release |
