@@ -45,6 +45,27 @@ public interface IExtensionContext
     void RegisterTool(ExtensionToolRegistration registration);
 
     /// <summary>
+    /// Registers a per-workspace service under its manifest <c>workspaceServices</c> name.
+    /// Registration is registration only: the factory must not start processes, sockets or timers.
+    /// Duplicate names are refused; the service must be declared in the manifest list, which is
+    /// what binds its loaded-workspace cap (the host may lower the cap; it never raises it).
+    /// </summary>
+    void RegisterWorkspaceService<TService>(string name, IWorkspaceServiceFactory<TService> factory)
+        where TService : notnull;
+
+    /// <summary>
+    /// Acquires this extension's named workspace service for one canonical worktree root. The value
+    /// is created lazily per root; the lease that comes back pins the entry until disposal, and a
+    /// registry the session shut down refuses with <see cref="ObjectDisposedException"/>.
+    /// </summary>
+    ValueTask<IWorkspaceServiceLease<TService>> AcquireWorkspaceServiceAsync<TService>(
+        string name,
+        string canonicalWorktreeRoot,
+        CancellationToken ct = default
+    )
+        where TService : notnull;
+
+    /// <summary>
     /// Registers an MCP server. Registration is registration only: it must not start processes,
     /// sockets or timers. The first registration per server name wins; a duplicate is refused and
     /// logged. The process starts on the first tool listing.

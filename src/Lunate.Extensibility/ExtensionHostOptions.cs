@@ -43,6 +43,13 @@ public sealed class ExtensionHostOptions
     public bool BuiltInsOnly { get; init; }
 
     /// <summary>
+    /// The ceiling the host puts over every workspace service's loaded-workspace cap: the manifest
+    /// may declare any positive cap, the host may lower it, and it never raises it. Null leaves the
+    /// manifest's declared cap (default 2) the effective one.
+    /// </summary>
+    public int? WorkspaceServiceCapLimit { get; init; }
+
+    /// <summary>
     /// Where locked packages are read from — the compile and the load must agree, or a build would
     /// compile against files the load cannot find. Null means NuGet's own folder
     /// (<c>NUGET_PACKAGES</c>, else <c>~/.nuget/packages</c>); a test or a portable install sets it

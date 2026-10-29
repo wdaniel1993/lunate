@@ -28,6 +28,13 @@ Lunate.Extensibility.Abstractions.IExtensionContext
 Lunate.Extensibility.Abstractions.IExtensionContext.Id.get -> string!
 Lunate.Extensibility.Abstractions.IExtensionContext.Log.get -> Lunate.Extensibility.Abstractions.IExtensionLog!
 Lunate.Extensibility.Abstractions.IExtensionContext.RegisterTool(Lunate.Extensibility.Abstractions.ExtensionToolRegistration! registration) -> void
+Lunate.Extensibility.Abstractions.IExtensionContext.RegisterWorkspaceService<TService>(string! name, Lunate.Extensibility.Abstractions.IWorkspaceServiceFactory<TService>! factory) -> void
+Lunate.Extensibility.Abstractions.IExtensionContext.AcquireWorkspaceServiceAsync<TService>(string! name, string! canonicalWorktreeRoot, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<Lunate.Extensibility.Abstractions.IWorkspaceServiceLease<TService>!>
+Lunate.Extensibility.Abstractions.IWorkspaceServiceFactory<TService>
+Lunate.Extensibility.Abstractions.IWorkspaceServiceFactory<TService>.Create(string! canonicalWorktreeRoot) -> TService
+Lunate.Extensibility.Abstractions.IWorkspaceServiceLease<TService>
+Lunate.Extensibility.Abstractions.IWorkspaceServiceLease<TService>.Value.get -> TService
+Lunate.Extensibility.Abstractions.IWorkspaceServiceLease<TService>.WorktreeRoot.get -> string!
 Lunate.Extensibility.Abstractions.IExtensionContext.Secrets.get -> Lunate.Extensibility.Abstractions.IExtensionSecrets!
 Lunate.Extensibility.Abstractions.IExtensionContext.Settings.get -> Lunate.Extensibility.Abstractions.IExtensionSettings!
 Lunate.Extensibility.Abstractions.IExtensionFactory

@@ -230,6 +230,7 @@ public sealed partial class ExtensionLoader
         _extensionContexts[descriptor.Id] = extensionContext;
         IExtension extension = implementation.Create(extensionContext);
         CrossCheckManifestTools(descriptor);
+        CrossCheckManifestWorkspaceServices(descriptor);
         await CrossCheckManifestCommandsAsync(descriptor, cancellationToken).ConfigureAwait(false);
         _modelRegistry.RegisterDeclared(descriptor.Id, descriptor.Manifest.ModelProviders, secrets);
         var loaded = new LoadedExtension(descriptor.Id, extension, descriptor);
@@ -288,6 +289,7 @@ public sealed partial class ExtensionLoader
         _loaded.Remove(id);
         _contexts.Remove(id);
         _tools.Unregister(id);
+        _workspaceServices.Unregister(id);
         _hooks.Unregister(id);
         _modelRegistry.Unregister(id);
         _toolResultRenderers.Unregister(id);
@@ -325,7 +327,11 @@ public sealed partial class ExtensionLoader
             _modelRegistry.RegisterModelMiddleware,
             _modelRegistry.RegisterVirtualModel,
             _skillSources.Register,
-            _commandSources.Register
+            _commandSources.Register,
+            (extensionId, name, serviceType, createValue) =>
+                RegisterWorkspaceService(descriptor, name, serviceType, createValue),
+            (extensionId, name, serviceType, worktreeRoot, ct) =>
+                _workspaceServices.Acquire(extensionId, name, serviceType, worktreeRoot, ct)
         );
 
     private IBackgroundService? FindService(string name) =>
