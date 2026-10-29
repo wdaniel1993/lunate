@@ -417,6 +417,7 @@ sources register the same way.
   one page per contribution, lifecycle and trust, testing and troubleshooting
 - Contract and hook catalogue: [`docs/spec/extensibility.md`](docs/spec/extensibility.md)
 - Reference extensions that run in CI: [`samples/extensions/`](samples/extensions/)
+- Supported extensions (`Lunate.Extensions.*`): [`extensions/`](extensions/)
 
 ## Security model
 

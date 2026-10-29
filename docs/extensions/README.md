@@ -25,6 +25,7 @@ the spec wins.
 | [Contract and hook catalogue](../spec/extensibility.md) | The normative behaviour |
 | [Extension template](../../templates/extension/README.md) | A working starting project |
 | [Reference extensions](../../samples/extensions/) | The fitness suite that runs in CI |
+| [Supported extensions](../../extensions/) | The first-party tier users install and rely on |
 
 ## Quickstart
 
