@@ -32,7 +32,9 @@ public sealed class RedactionRefusalTests
         byte[] before = Hash(EnvText);
 
         ToolResult result = await tool.ExecuteAsync(
-            JsonSerializer.SerializeToElement(new { path = ".env", content = $"ANTHROPIC_API_KEY={Marker}\nOTHER=1\n" }),
+            JsonSerializer.SerializeToElement(
+                new { path = ".env", content = $"ANTHROPIC_API_KEY={Marker}\nOTHER=1\n" }
+            ),
             Context,
             Ct
         );
@@ -58,11 +60,7 @@ public sealed class RedactionRefusalTests
         );
 
         Assert.False(result.IsError);
-        Assert.Contains(
-            Marker,
-            File.ReadAllText(temp.File("notes.md")),
-            StringComparison.Ordinal
-        );
+        Assert.Contains(Marker, File.ReadAllText(temp.File("notes.md")), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -163,7 +161,12 @@ public sealed class RedactionRefusalTests
 
         ToolResult result = await tool.ExecuteAsync(
             JsonSerializer.SerializeToElement(
-                new { path = ".env", old_text = "OTHER=1", new_text = "OTHER=2 [redacted:SOMETHING_ELSE]" }
+                new
+                {
+                    path = ".env",
+                    old_text = "OTHER=1",
+                    new_text = "OTHER=2 [redacted:SOMETHING_ELSE]",
+                }
             ),
             Context,
             Ct
@@ -182,7 +185,12 @@ public sealed class RedactionRefusalTests
 
         ToolResult result = await tool.ExecuteAsync(
             JsonSerializer.SerializeToElement(
-                new { path = ".env", old_text = "OTHER=1", new_text = $"OTHER={Marker}" }
+                new
+                {
+                    path = ".env",
+                    old_text = "OTHER=1",
+                    new_text = $"OTHER={Marker}",
+                }
             ),
             Context,
             Ct
@@ -196,8 +204,7 @@ public sealed class RedactionRefusalTests
     [Fact]
     public void The_placeholder_survives_the_persistence_pass_unchanged()
     {
-        string text =
-            $"KEY={Marker}\nTOK=[redacted:openai]\nUNMAPPED=[redacted:SOMETHING_ELSE]\n";
+        string text = $"KEY={Marker}\nTOK=[redacted:openai]\nUNMAPPED=[redacted:SOMETHING_ELSE]\n";
         CredentialRedactor persistence = Redactor();
 
         Assert.Equal(text, persistence.Redact(text), StringComparer.Ordinal);

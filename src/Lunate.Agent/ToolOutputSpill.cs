@@ -44,7 +44,9 @@ internal static class ToolOutputSpill
         ArgumentNullException.ThrowIfNull(session);
         ArgumentNullException.ThrowIfNull(output);
         ArgumentException.ThrowIfNullOrWhiteSpace(runId);
-        // The file is at rest; the live tool result the model saw keeps the value.
+        // The spill writes redacted bytes when it doesn't already have redacted input; the live
+        // tool result keeps the value in the event stream, while the model's context and the files
+        // at rest both hold the marker.
         string redacted = session.Redactor.Redact(output);
         if (Encoding.UTF8.GetByteCount(redacted) > MaxBytes)
         {

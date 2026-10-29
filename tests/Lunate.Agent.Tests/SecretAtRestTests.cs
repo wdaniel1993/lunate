@@ -5,9 +5,10 @@ using static Lunate.Agent.Tests.AgentTestSupport;
 namespace Lunate.Agent.Tests;
 
 /// <summary>
-/// Secrets at rest: what a tool echoes reaches the model, but the session file and the spill file
-/// hold a marker instead of the known credential; and the files that carry session content,
-/// spill output, trust records and install records are owner-only where the platform has modes.
+/// Secrets at rest after the context mask: masking moved before the context, so a known credential
+/// never reaches the conversation, the session mirror or any file, and the persistence pass now
+/// stands as a second, unchanged line of defense. The files that carry session content, spill
+/// output, trust records and install records are also owner-only where the platform has modes.
 /// </summary>
 public sealed class SecretAtRestTests
 {
@@ -15,7 +16,7 @@ public sealed class SecretAtRestTests
     private static readonly DateTimeOffset Start = new(2026, 10, 21, 12, 0, 0, TimeSpan.Zero);
 
     [Fact]
-    public async Task A_known_credential_is_absent_from_the_session_and_spill_files_but_kept_in_memory()
+    public async Task A_known_credential_never_reaches_the_context_the_session_or_the_spill_files()
     {
         using var temp = new TempDirectory();
         Session session = Session.Create(
@@ -39,10 +40,22 @@ public sealed class SecretAtRestTests
 
         List<AgentEvent> events = await Run(harness);
 
-        // The live result is what the model sees: the value is still there.
+        // The display event keeps what the tool produced; masking is the context's change.
         ToolCallResult result = Assert.Single(events.OfType<ToolCallResult>());
         Assert.Contains(Secret, result.Output, StringComparison.Ordinal);
+        // The session mirrors the conversation, so a resumed run reads what the model read: the
+        // mirrored FunctionResultContent carries the placeholder, not the value.
         Assert.Contains(
+            session.Entries.OfType<SessionMessageEntry>(),
+            entry =>
+                entry.Message.Contents.Any(content =>
+                    content is FunctionResultContent function
+                    && function
+                        .Result?.ToString()
+                        ?.Contains("[redacted:OPENAI_API_KEY]", StringComparison.Ordinal) == true
+                )
+        );
+        Assert.DoesNotContain(
             session.Entries.OfType<SessionMessageEntry>(),
             entry =>
                 entry.Message.Contents.Any(content =>

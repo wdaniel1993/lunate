@@ -753,6 +753,14 @@ public sealed partial class AgentHarness
         return new ChatMessage(ChatRole.User, contents);
     }
 
+    /// <summary>
+    /// The session's known credential values are replaced in a tool result before it joins the
+    /// conversation: the model reads [redacted:name], not the secret a write-back would destroy.
+    /// Events and the spill file keep their own handling; masking here is the context's change.
+    /// </summary>
+    private string RedactForContext(string output) =>
+        _options.Session is { } session ? session.Redactor.Redact(output) : output;
+
     /// <summary>Every image reference a message carries.</summary>
     private static IEnumerable<ImageContentReference> ImageReferences(
         IEnumerable<ChatMessage> messages

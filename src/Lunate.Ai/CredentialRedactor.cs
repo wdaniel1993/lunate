@@ -5,6 +5,8 @@ namespace Lunate.Ai;
 /// <summary>
 /// Replaces the credential values Lunate itself holds with <c>[redacted:&lt;name&gt;]</c> at every
 /// boundary where content leaves the live process: a session file, a spill file, an export.
+/// The agent loop also applies the same redactor on the way into the context, so the model reads
+/// the marker instead of the secret it would otherwise echo back.
 /// Replacement is by exact value only: no pattern that "looks like a key" is touched, because a
 /// guess produces both false negatives and false positives and teaches the reader to trust a filter
 /// that cannot be trusted. What Lunate knows comes from the auth store and the provider
@@ -46,6 +48,43 @@ internal sealed class CredentialRedactor
 
     /// <summary>How many distinct values the redactor will replace.</summary>
     internal int Count => _values.Count;
+
+    /// <summary>Every value stored under one credential name (a name may carry several, e.g. a variable and its alias).</summary>
+    internal IReadOnlyList<string> ValuesFor(string name)
+    {
+        ArgumentNullException.ThrowIfNull(name);
+        return [.. _values.Where(entry => entry.Name == name).Select(entry => entry.Value)];
+    }
+
+    /// <summary>
+    /// The credential names a text carries as written, distinct and in order: the scanner owns the
+    /// marker shape because <see cref="Marker"/> writes it.
+    /// </summary>
+    internal static IReadOnlyList<string> PlaceholderNamesIn(string text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        const string prefix = "[redacted:";
+        List<string> names = [];
+        int start = text.IndexOf(prefix, StringComparison.Ordinal);
+        while (start >= 0)
+        {
+            int end = text.IndexOf(']', start + prefix.Length);
+            if (end < 0)
+            {
+                break;
+            }
+
+            string name = text[(start + prefix.Length)..end];
+            if (name.Length > 0 && !names.Contains(name, StringComparer.Ordinal))
+            {
+                names.Add(name);
+            }
+
+            start = text.IndexOf(prefix, end + 1, StringComparison.Ordinal);
+        }
+
+        return names;
+    }
 
     /// <summary>The exact value/name pairs, longest value first (the tests read this).</summary>
     internal IReadOnlyList<(string Name, string Value)> Values => _values;

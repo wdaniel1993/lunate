@@ -84,10 +84,11 @@ public sealed class SecretInContextTests
     private static string ResultText(ScriptedRequest request) =>
         Assert
             .IsType<FunctionResultContent>(
-                Assert.Single(request.Messages.Single(message => message.Role == ChatRole.Tool).Contents)
+                Assert.Single(
+                    request.Messages.Single(message => message.Role == ChatRole.Tool).Contents
+                )
             )
-            .Result!
-            .ToString()!;
+            .Result!.ToString()!;
 
     private static string MirroredResultText(Session session) =>
         string.Join(

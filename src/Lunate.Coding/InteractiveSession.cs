@@ -166,6 +166,7 @@ internal sealed partial class InteractiveSession : IDisposable
     private Func<string, string?> _environment = Environment.GetEnvironmentVariable;
     private IChatClientFactory _factory = null!;
     private Workspace _workspace = null!;
+    private CredentialRedactor _redaction = null!;
     private ToolRegistry _tools = null!;
     private WorkspaceServices? _workspaceServices;
     private Func<string, ToolRegistry>? _workspaceTools;
@@ -444,6 +445,16 @@ internal sealed partial class InteractiveSession : IDisposable
         _auth = AuthStore.Load(_options.AuthPath, _options.Environment);
         _factory = _options.Factory ?? HarnessFactory.CreateFactory(_auth);
         _workspace = new Workspace(_options.WorkingDirectory ?? Environment.CurrentDirectory);
+        // Collected exactly once, the collection the session persistence and the write/edit guards
+        // both use, before anything of this session adds a credential to it.
+        _redaction = HarnessFactory.CollectRedaction(
+            _options.AuthPath,
+            _options.Environment,
+            _options.Extensions?.StorePath,
+            _workspace.WorktreeRoot,
+            _options.McpConfigPath,
+            _options.McpAgentsConfigPath
+        );
         // Before anything of this session's own state is created: a store inside the tree this
         // session governs could have its trust records written by that tree.
         LunateHome.StoreOutsideWorkspace(_workspace.WorktreeRoot, _workspace.RepoRoot);
@@ -513,7 +524,8 @@ internal sealed partial class InteractiveSession : IDisposable
             services: _workspaceServices,
             skillReadAllowance: _skillAllowance,
             log: _extensions?.Log,
-            extraTools: _settings.Tools.Extra
+            extraTools: _settings.Tools.Extra,
+            redaction: _redaction
         );
         await ComposeMcpConfigAsync(ct);
         await ComposeMcpToolsAsync(ct);

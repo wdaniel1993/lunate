@@ -24,13 +24,22 @@ internal static class HarnessFactory
         WorkspaceServices? services = null,
         SkillReadAllowance? skillReadAllowance = null,
         IExtensionLog? log = null,
-        IReadOnlyList<string>? extraTools = null
+        IReadOnlyList<string>? extraTools = null,
+        CredentialRedactor? redaction = null
     )
     {
         var tools = new ToolRegistry();
         tools.Add(new ReadTool(workspace, files, skillReadAllowance));
-        tools.Add(new WriteTool(workspace, files: files));
-        tools.Add(new EditTool(workspace, files: files));
+        tools.Add(
+            redaction is null
+                ? new WriteTool(workspace, files: files)
+                : new WriteTool(workspace, null, files, redaction)
+        );
+        tools.Add(
+            redaction is null
+                ? new EditTool(workspace, files: files)
+                : new EditTool(workspace, null, files, redaction)
+        );
         tools.Add(new BashTool(workspace, log: log));
         AddOptionalTools(tools, workspace, extraTools);
         if (services is not null && LooksLikeCSharpWorkspace(workspace.WorktreeRoot))
@@ -243,13 +252,12 @@ internal static class HarnessFactory
             : SessionPaths.ForProject(workspace.WorktreeRoot);
 
     /// <summary>
-    /// Gives a session the redactor its persistence boundary uses. The values come from the same
-    /// places the session reads credentials from — the auth store, the provider environment, the
-    /// extension secret files and the MCP config files — so a key the model or a tool echoes is
-    /// replaced in the file while the in-memory result keeps what the model saw.
+    /// The values the session's persistence boundary needs: the auth store, the provider
+    /// environment, the extension secret files and the MCP config files. Collected exactly once and
+    /// then handed to both the tools (the write/edit guards) and the session (persistence), so both
+    /// see the same values.
     /// </summary>
-    internal static void AttachRedaction(
-        Session session,
+    internal static CredentialRedactor CollectRedaction(
         string? authPath,
         Func<string, string?>? environment,
         string? storePath,
@@ -258,21 +266,30 @@ internal static class HarnessFactory
         string? mcpAgentsConfigPath = null
     )
     {
-        ArgumentNullException.ThrowIfNull(session);
         ArgumentException.ThrowIfNullOrWhiteSpace(worktreeRoot);
-
         List<string> configPaths =
         [
             mcpAgentsConfigPath ?? McpComposition.DefaultAgentsConfigPath,
             mcpConfigPath ?? McpComposition.DefaultConfigPath,
             .. McpComposition.ProjectConfigPaths(worktreeRoot),
         ];
-        session.Redactor = CredentialRedactorSource.Collect(
+        return CredentialRedactorSource.Collect(
             AuthStore.Load(authPath, environment),
             environment ?? Environment.GetEnvironmentVariable,
             storePath ?? ExtensionHostOptions.Default.StorePath,
             configPaths
         );
+    }
+
+    /// <summary>
+    /// Gives a session the redactor its persistence boundary uses: every line the session file and
+    /// spill files receive has the credentials this host knows replaced. The same redactor backs
+    /// the write/edit guards, so the placeholder the context holds is the one the guards refuse.
+    /// </summary>
+    internal static void AttachRedaction(Session session, CredentialRedactor redactor)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+        session.Redactor = redactor;
     }
 
     /// <summary>

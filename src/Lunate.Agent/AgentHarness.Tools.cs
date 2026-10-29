@@ -70,7 +70,10 @@ public sealed partial class AgentHarness
             }
         );
         AppendHistoryMessage(
-            new ChatMessage(ChatRole.Tool, [new FunctionResultContent(callId, output)])
+            new ChatMessage(
+                ChatRole.Tool,
+                [new FunctionResultContent(callId, RedactForContext(output))]
+            )
         );
         if (result.Images is { Count: > 0 } images)
         {

@@ -65,7 +65,10 @@ public sealed class RedactionGuardLoopTests
         Assert.DoesNotContain(Secret, context, StringComparison.Ordinal);
 
         // The write-back is refused, naming the credential.
-        ToolCallResult write = Assert.Single(events.OfType<ToolCallResult>(), call => call.CallId == "call-2");
+        ToolCallResult write = Assert.Single(
+            events.OfType<ToolCallResult>(),
+            call => call.CallId == "call-2"
+        );
         Assert.True(write.IsError);
         Assert.Contains(Marker, write.Output, StringComparison.Ordinal);
 
