@@ -43,7 +43,7 @@ PINNED_DATE=2026-10-18
 # The request digest of the thinking tape (see the fixture block below): the digest of that
 # tape's own request in this pinned environment, not the digest committed in the 6.1 fixture.
 THINKING_DIGEST=25b80a3855b5ab46969063548319b68b9dd1c6ebcccf9d13ab245fa80a488597
-GATE_EXT="$REPO/samples/extensions/permission-gate/PermissionGateExtension"
+GATE_EXT="$REPO/extensions/permission-gate/PermissionGateExtension"
 VHS=/opt/homebrew/bin/vhs
 # The tapes normalize their own PATH to this value before launching lunate (recording parity).
 DEMO_PATH="/usr/local/share/dotnet:/usr/bin:/bin:/usr/sbin:/sbin"

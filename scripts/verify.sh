@@ -491,7 +491,7 @@ binary="$(cd "$(dirname "$BINARY")" && pwd)/$(basename "$BINARY")"
 # Pack also gets the native feed, so bash and the CLI agree on one directory.
 feed="$(native_path "${package_tmp}/feed")"
 store="$(native_path "${package_tmp}/home")"
-dotnet pack samples/extensions/subagents/SubagentsExtension/SubagentsExtension.csproj \
+dotnet pack extensions/subagents/SubagentsExtension/SubagentsExtension.csproj \
   -c "$CONFIGURATION" -o "$feed" --nologo
 # The extension's feed page is part of the release too, and its metadata must survive changes to
 # the tool's: this is the same contract, asserted on the package the release ships.
