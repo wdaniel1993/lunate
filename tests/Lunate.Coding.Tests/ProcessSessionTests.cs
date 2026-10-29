@@ -110,7 +110,8 @@ public sealed class ProcessSessionTests
         ChildProcess grandchild = await ChildProcessProbe.AwaitWrittenAsync(
             pidFile,
             commandStarted,
-            CancellationToken.None
+            CancellationToken.None,
+            new CommandUnderTest(temp.Root)
         );
         await session.KillAsync();
 
@@ -129,7 +130,8 @@ public sealed class ProcessSessionTests
         ChildProcess grandchild = await ChildProcessProbe.AwaitWrittenAsync(
             pidFile,
             commandStarted,
-            CancellationToken.None
+            CancellationToken.None,
+            new CommandUnderTest(temp.Root)
         );
         await session.DisposeAsync();
 

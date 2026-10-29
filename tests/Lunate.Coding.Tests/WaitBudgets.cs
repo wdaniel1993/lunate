@@ -101,6 +101,14 @@ internal static class WaitBudgets
     public static readonly TimeSpan RefusalGrace = TimeSpan.FromSeconds(2);
 
     /// <summary>
+    /// How long a test that drives <see cref="ChildProcessProbe"/> at a path no child writes to
+    /// waits before the probe reports. There is no spawned process to outlast here: the diagnostic
+    /// message is the subject, and the wait only has to cover a few poll intervals so the deadline
+    /// is reached on the machine rather than in a fake clock.
+    /// </summary>
+    public static readonly TimeSpan ProbeExpiry = TimeSpan.FromMilliseconds(500);
+
+    /// <summary>
     /// A shell command the tool runs to completion — this is the timeout the test hands the tool, not
     /// a wait the test performs: the tool's own kill must be given room not to fire. Sixty seconds is
     /// the value the process-runner tests already used for exactly this, and a command that finishes
