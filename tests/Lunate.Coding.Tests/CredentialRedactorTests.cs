@@ -78,6 +78,34 @@ public sealed class CredentialRedactorTests
     }
 
     [Fact]
+    public void Two_overlapping_values_resolve_to_the_longest_one()
+    {
+        var redactor = new CredentialRedactor([("short", "abcd"), ("long", "bcdefghi")]);
+
+        string redacted = redactor.Redact("abcdefghi");
+
+        Assert.Equal("a[redacted:long]", redacted, StringComparer.Ordinal);
+        Assert.DoesNotContain("abcd", redacted, StringComparison.Ordinal);
+        Assert.Equal(redacted, redactor.Redact(redacted), StringComparer.Ordinal);
+    }
+
+    [Fact]
+    public void Overlapping_values_resolve_to_the_longest_in_the_jsonl_bytes_too()
+    {
+        var redactor = new CredentialRedactor([("short", "abcd"), ("long", "bcdefghi")]);
+        byte[] source = System.Text.Encoding.UTF8.GetBytes("{\"t\":\"abcdefghi\"}\n");
+
+        byte[] redacted = redactor.RedactUtf8(source);
+
+        Assert.Equal(
+            "{\"t\":\"a[redacted:long]\"}\n",
+            System.Text.Encoding.UTF8.GetString(redacted),
+            StringComparer.Ordinal
+        );
+        Assert.Equal(redacted, redactor.RedactUtf8(redacted));
+    }
+
+    [Fact]
     public void A_value_shorter_than_four_characters_is_skipped()
     {
         var redactor = new CredentialRedactor([("tiny", "ab"), ("key", AuthKey)]);

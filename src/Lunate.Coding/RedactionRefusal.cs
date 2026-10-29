@@ -13,8 +13,10 @@ internal static class RedactionRefusal
 {
     /// <summary>
     /// A refused write: content carries a known placeholder while its target file currently holds
-    /// one of that name's known values. Anything else — no placeholder, an unknown name, a fresh
-    /// file — writes normally (null).
+    /// one of that credential's known values. The placeholder's label resolves to a credential
+    /// name first — a plain label is the name itself, an encoded label through the redactor's
+    /// label map — so an encoded label is guarded exactly like a plain one. Anything else — no
+    /// placeholder, an unknown label, a fresh file — writes normally (null).
     /// </summary>
     internal static ToolResult? ForWrite(
         string content,
@@ -28,19 +30,22 @@ internal static class RedactionRefusal
             return null;
         }
 
-        List<string> held = [];
-        foreach (string name in CredentialRedactor.PlaceholderNamesIn(content))
+        List<(string Name, string Placeholder)> held = [];
+        foreach (string label in CredentialRedactor.PlaceholderNamesIn(content))
         {
+            string name = redactor.CredentialNameForLabel(label) ?? label;
             IReadOnlyList<string> values = redactor.ValuesFor(name);
             if (values.Count == 0 || fileText is null || !HoldsAny(fileText, values))
             {
                 continue;
             }
 
-            held.Add(name);
+            held.Add((name, CredentialRedactor.Marker(label)));
         }
 
-        return held is { Count: > 0 } ? Refuse(held[0], relativePath) : null;
+        return held is { Count: > 0 }
+            ? Refuse(held[0].Name, held[0].Placeholder, relativePath)
+            : null;
     }
 
     /// <summary>
@@ -88,12 +93,12 @@ internal static class RedactionRefusal
     private static bool HoldsAny(string fileText, IReadOnlyList<string> values) =>
         values.Any(value => fileText.Contains(value, StringComparison.Ordinal));
 
-    private static ToolResult Refuse(string name, string relativePath) =>
-        new(WriteMessage(name, relativePath), IsError: true);
+    private static ToolResult Refuse(string name, string placeholder, string relativePath) =>
+        new(WriteMessage(name, placeholder, relativePath), IsError: true);
 
-    private static string WriteMessage(string name, string relativePath) =>
+    private static string WriteMessage(string name, string placeholder, string relativePath) =>
         $"Refused: {relativePath} currently holds the real {name} credential and the content would "
-        + $"place \"{CredentialRedactor.Marker(name)}\" in that position. Writing this would "
-        + "destroy the credential — edit around that line, or leave this write out; the file "
-        + "already has the value the model cannot see.";
+        + $"place \"{placeholder}\" in that position. Writing this would destroy the credential — "
+        + "edit around that line, or leave this write out; the file already has the value the "
+        + "model cannot see.";
 }

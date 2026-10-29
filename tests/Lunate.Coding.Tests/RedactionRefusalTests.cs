@@ -46,6 +46,34 @@ public sealed class RedactionRefusalTests
     }
 
     [Fact]
+    public async Task A_write_of_an_encoded_label_over_its_credential_is_refused()
+    {
+        var redactor = new CredentialRedactor([
+            ("MY_API_KEY", "sk-1234567890"),
+            ("placeholder", "MY_API_KEY"),
+        ]);
+        const string fileText = "MY_API_KEY=sk-1234567890\n";
+        using var temp = new TempDirectory();
+        File.WriteAllText(temp.File(".env"), fileText);
+        var tool = new WriteTool(new Workspace(temp.Root), null, null, redactor);
+        byte[] before = Hash(fileText);
+        // The label the redactor itself emitted for the credential; no hardcoded hash.
+        string placeholder = redactor.Redact("sk-1234567890");
+
+        ToolResult result = await tool.ExecuteAsync(
+            JsonSerializer.SerializeToElement(
+                new { path = ".env", content = $"MY_API_KEY={placeholder}" }
+            ),
+            Context,
+            Ct
+        );
+
+        Assert.True(result.IsError);
+        Assert.Contains(placeholder, result.Output, StringComparison.Ordinal);
+        Assert.Equal(before, HashOf(temp.File(".env")));
+    }
+
+    [Fact]
     public async Task A_write_into_a_file_that_does_not_hold_the_value_writes_normally()
     {
         using var temp = new TempDirectory();
