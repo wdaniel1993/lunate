@@ -118,7 +118,11 @@ public sealed partial record ExtensionManifest
 
             string? entryAssembly = OptionalName(root, fileName, "entryAssembly");
             ExtensionRuntime? runtime = ExtensionRuntime.Parse(root, fileName);
-            if ((entryAssembly is null) == (runtime is null))
+            // A built-in's code is the host's own assemblies, so the exactly-one rule between
+            // 'entryAssembly' and 'runtime' applies to non-built-in manifests only (design §1);
+            // the provenance checks that keep 'builtin' in its lane are the loader's decisions,
+            // made where the manifest's source is known.
+            if (!OptionalBuiltIn(root, fileName) && (entryAssembly is null) == (runtime is null))
             {
                 throw new InvalidDataException(
                     entryAssembly is null
@@ -139,7 +143,9 @@ public sealed partial record ExtensionManifest
                 BuiltIn = OptionalBuiltIn(root, fileName),
                 Tools = tools,
                 WorkspaceServices = WorkspaceServiceArray(root, fileName),
-                ToolActivation = ToolActivationObject(root, fileName, tools),                Commands = DeclarationArray(root, fileName, "commands"),
+                ToolActivation = ToolActivationObject(root, fileName, tools),
+                ToolAliases = ToolAliasesObject(root, fileName, tools),
+                Commands = DeclarationArray(root, fileName, "commands"),
                 Hooks = DeclarationArray(root, fileName, "hooks"),
                 Services = DeclarationArray(root, fileName, "services"),
                 Capabilities = StringArray(root, fileName, "capabilities"),

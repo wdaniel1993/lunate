@@ -511,7 +511,7 @@ public sealed class ExtensionManifestTests
     public void A_builtin_manifest_declares_builtin_true()
     {
         const string json =
-            """{"id":"hello","version":"0.1.0","apiVersion":"^1.0.0","entryAssembly":"HelloExtension.dll","builtin":true}""";
+            """{"id":"hello","version":"0.1.0","apiVersion":"^1.0.0","builtin":true}""";
 
         ExtensionManifest manifest = ExtensionManifest.Parse(json, "extension.json");
 
@@ -530,6 +530,33 @@ public sealed class ExtensionManifestTests
     }
 
     [Fact]
+    public void A_builtin_manifest_requires_neither_entryAssembly_nor_runtime()
+    {
+        const string json =
+            """{"id":"builtin","version":"0.1.0","apiVersion":"^1.0.0","builtin":true}""";
+
+        ExtensionManifest manifest = ExtensionManifest.Parse(json, "extension.json");
+
+        Assert.True(manifest.BuiltIn);
+        Assert.Null(manifest.EntryAssembly);
+        Assert.Null(manifest.Runtime);
+    }
+
+    [Fact]
+    public void A_builtin_manifest_records_the_runtime_kind_fields_it_declares()
+    {
+        const string json =
+            """{"id":"builtin","version":"0.1.0","apiVersion":"^1.0.0","builtin":true,"entryAssembly":"e.dll"}""";
+
+        ExtensionManifest manifest = ExtensionManifest.Parse(json, "extension.json");
+
+        Assert.True(manifest.BuiltIn);
+        // The parse keeps what the manifest declared; a built-in with out-of-process provenance is
+        // refused where its source is known (the host composition or discovery), not here.
+        Assert.Equal("e.dll", manifest.EntryAssembly);
+    }
+
+    [Fact]
     public void A_builtin_field_that_is_not_a_boolean_is_refused()
     {
         const string json =
@@ -539,10 +566,7 @@ public sealed class ExtensionManifestTests
             ExtensionManifest.Parse(json, "extension.json")
         );
 
-        Assert.Equal(
-            "extension.json: field 'builtin' must be true or false.",
-            exception.Message
-        );
+        Assert.Equal("extension.json: field 'builtin' must be true or false.", exception.Message);
     }
 
     [Fact]
@@ -553,10 +577,7 @@ public sealed class ExtensionManifestTests
 
         ExtensionManifest manifest = ExtensionManifest.Parse(json, "extension.json");
 
-        Assert.Equal(
-            [new ExtensionWorkspaceService("store", 2)],
-            manifest.WorkspaceServices
-        );
+        Assert.Equal([new ExtensionWorkspaceService("store", 2)], manifest.WorkspaceServices);
     }
 
     [Fact]
@@ -567,10 +588,7 @@ public sealed class ExtensionManifestTests
 
         ExtensionManifest manifest = ExtensionManifest.Parse(json, "extension.json");
 
-        Assert.Equal(
-            [new ExtensionWorkspaceService("indexer", 5)],
-            manifest.WorkspaceServices
-        );
+        Assert.Equal([new ExtensionWorkspaceService("indexer", 5)], manifest.WorkspaceServices);
     }
 
     [Fact]
@@ -632,8 +650,7 @@ public sealed class ExtensionManifestTests
     [Fact]
     public void Parses_tool_activation_rules_for_star_and_declared_tools()
     {
-        const string json =
-            """
+        const string json = """
             {"id":"hello","version":"0.1.0","apiVersion":"^1.0.0","entryAssembly":"e.dll",
              "tools":["greet","read","commit"],
              "toolActivation":{
@@ -644,21 +661,11 @@ public sealed class ExtensionManifestTests
 
         ExtensionManifest manifest = ExtensionManifest.Parse(json, "extension.json");
 
-        Assert.Equal(
-            new ExtensionToolActivationRule("always", []),
-            manifest.ToolActivation["*"]
-        );
-        Assert.Equal(
-            new ExtensionToolActivationRule(
-                "workspace-root-has-file",
-                ["*.sln", "*.csproj"]
-            ),
-            manifest.ToolActivation["greet"]
-        );
-        Assert.Equal(
-            new ExtensionToolActivationRule("workspace-is-git-repository", []),
-            manifest.ToolActivation["commit"]
-        );
+        Assert.Equal("always", manifest.ToolActivation["*"].When);
+        Assert.Equal([], manifest.ToolActivation["*"].Patterns);
+        Assert.Equal("workspace-root-has-file", manifest.ToolActivation["greet"].When);
+        Assert.Equal(["*.sln", "*.csproj"], manifest.ToolActivation["greet"].Patterns);
+        Assert.Equal("workspace-is-git-repository", manifest.ToolActivation["commit"].When);
         Assert.False(manifest.ToolActivation.ContainsKey("read"));
     }
 
@@ -852,5 +859,116 @@ public sealed class ExtensionManifestTests
             "extension.json: field 'toolActivation' rule for 'greet' must be an object.",
             exception.Message
         );
+    }
+
+    [Fact]
+    public void Parses_tool_aliases_for_declared_tools()
+    {
+        const string json = """
+            {"id":"hello","version":"0.1.0","apiVersion":"^1.0.0","entryAssembly":"e.dll",
+             "tools":["read","commit"],"toolAliases":{"read":"reader"}}
+            """;
+
+        ExtensionManifest manifest = ExtensionManifest.Parse(json, "extension.json");
+
+        Assert.Equal("reader", manifest.ToolAliases["read"]);
+        Assert.False(manifest.ToolAliases.ContainsKey("commit"));
+    }
+
+    [Fact]
+    public void An_alias_for_an_undeclared_tool_is_refused()
+    {
+        const string json =
+            """{"id":"hello","version":"0.1.0","apiVersion":"^1.0.0","entryAssembly":"e.dll","tools":["read"],"toolAliases":{"write":"writer"}}""";
+
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+            ExtensionManifest.Parse(json, "extension.json")
+        );
+
+        Assert.Equal(
+            "extension.json: field 'toolAliases' declares an alias for 'write', which is not a declared tool.",
+            exception.Message
+        );
+    }
+
+    [Theory]
+    [InlineData("bad.alias")]
+    [InlineData("a__b")]
+    [InlineData("")]
+    [InlineData("way-too-long-alias-name-that-is-sixty-five-characters-long-aaaaaaaaaaaaa")]
+    [InlineData("imalias with a space")]
+    public void An_alias_outside_the_allowed_shape_is_refused(string alias)
+    {
+        string json =
+            $$"""{"id":"hello","version":"0.1.0","apiVersion":"^1.0.0","entryAssembly":"e.dll","tools":["read"],"toolAliases":{"read":{{JsonSerializer.Serialize(alias)}} } }""";
+
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+            ExtensionManifest.Parse(json, "extension.json")
+        );
+
+        Assert.Equal(
+            $"extension.json: field 'toolAliases' for 'read': alias '{alias}' must be 1-64 characters of [A-Za-z0-9_-] and must not contain '__'.",
+            exception.Message
+        );
+    }
+
+    [Fact]
+    public void An_alias_value_that_is_not_a_string_is_refused()
+    {
+        const string json =
+            """{"id":"hello","version":"0.1.0","apiVersion":"^1.0.0","entryAssembly":"e.dll","tools":["read"],"toolAliases":{"read":4}}""";
+
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+            ExtensionManifest.Parse(json, "extension.json")
+        );
+
+        Assert.Equal(
+            "extension.json: field 'toolAliases' for 'read': alias '4' must be 1-64 characters of [A-Za-z0-9_-] and must not contain '__'.",
+            exception.Message
+        );
+    }
+
+    [Fact]
+    public void A_duplicate_alias_key_is_refused()
+    {
+        const string json =
+            """{"id":"hello","version":"0.1.0","apiVersion":"^1.0.0","entryAssembly":"e.dll","tools":["read"],"toolAliases":{"read":"one","read":"two"}}""";
+
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+            ExtensionManifest.Parse(json, "extension.json")
+        );
+
+        Assert.Equal(
+            "extension.json: field 'toolAliases' declares 'read' more than once.",
+            exception.Message
+        );
+    }
+
+    [Theory]
+    [InlineData(
+        """{"id":"hello","version":"0.1.0","apiVersion":"^1.0.0","entryAssembly":"e.dll","toolAliases":["read"]}"""
+    )]
+    [InlineData(
+        """{"id":"hello","version":"0.1.0","apiVersion":"^1.0.0","entryAssembly":"e.dll","tools":["read"],"toolAliases":"reader"}"""
+    )]
+    public void Tool_aliases_must_be_an_object(string json)
+    {
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+            ExtensionManifest.Parse(json, "extension.json")
+        );
+
+        Assert.Equal("extension.json: field 'toolAliases' must be an object.", exception.Message);
+    }
+
+    [Fact]
+    public void An_alias_at_the_shape_boundaries_is_accepted()
+    {
+        string longAlias = new('y', 64);
+        string json =
+            $$"""{"id":"hello","version":"0.1.0","apiVersion":"^1.0.0","entryAssembly":"e.dll","tools":["read"],"toolAliases":{"read":{{JsonSerializer.Serialize(longAlias)}} } }""";
+
+        ExtensionManifest manifest = ExtensionManifest.Parse(json, "extension.json");
+
+        Assert.Equal(longAlias, manifest.ToolAliases["read"]);
     }
 }

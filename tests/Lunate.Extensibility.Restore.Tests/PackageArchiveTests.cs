@@ -180,7 +180,7 @@ public sealed class PackageArchiveTests
             {
               "id": "acme-tools",
               "version": "0.1.0",
-              "apiVersion": "1.11.0",
+              "apiVersion": "1.12.0",
               "entryAssembly": "acme-tools.dll"
             }
             """;
