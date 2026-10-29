@@ -73,8 +73,8 @@ internal static class RedactionRefusal
                     + "placeholders cannot be mapped back to the real value. Edit around the "
                     + "credential line instead of through it."
                 : $"Refused: the edit carries the placeholder \"{marker}\", which is not a credential "
-                    + "this session knows. Placeholders must not travel through edits; use the real "
-                    + "text or leave that part out.",
+                    + "this session knows. Placeholders must not travel through edits; edit around "
+                    + "the credential line instead of through it.",
             IsError: true
         );
     }

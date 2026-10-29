@@ -105,20 +105,69 @@ public sealed class CredentialRedactorTests
     }
 
     [Fact]
-    public void A_value_that_names_another_credential_does_not_corrupt_the_marker()
+    public void An_emitted_marker_label_that_is_a_known_value_leaves_no_raw_value()
     {
         var redactor = new CredentialRedactor([
             ("MY_API_KEY", "sk-1234567890"),
             ("placeholder", "MY_API_KEY"),
         ]);
+        const string input = "MY_API_KEY=sk-1234567890";
 
-        string redacted = redactor.Redact("MY_API_KEY=sk-1234567890");
+        string first = redactor.Redact(input);
 
-        Assert.Equal(
-            "[redacted:placeholder]=[redacted:MY_API_KEY]",
-            redacted,
-            StringComparer.Ordinal
+        Assert.DoesNotContain("sk-1234567890", first, StringComparison.Ordinal);
+        Assert.DoesNotContain("MY_API_KEY", first, StringComparison.Ordinal);
+        Assert.Equal(first, redactor.Redact(first), StringComparer.Ordinal);
+    }
+
+    [Fact]
+    public void A_written_marker_whose_label_is_a_known_value_is_not_passed_through()
+    {
+        var redactor = new CredentialRedactor([
+            ("MY_API_KEY", "sk-1234567890"),
+            ("placeholder", "MY_API_KEY"),
+        ]);
+        const string input = "[redacted:MY_API_KEY]";
+
+        string first = redactor.Redact(input);
+
+        Assert.DoesNotContain("MY_API_KEY", first, StringComparison.Ordinal);
+        Assert.Equal(first, redactor.Redact(first), StringComparer.Ordinal);
+    }
+
+    [Fact]
+    public void The_jsonl_bytes_leave_no_known_value_in_a_marker_label()
+    {
+        var redactor = new CredentialRedactor([
+            ("MY_API_KEY", "sk-1234567890"),
+            ("placeholder", "MY_API_KEY"),
+        ]);
+        byte[] source = System.Text.Encoding.UTF8.GetBytes(
+            "{\"text\":\"MY_API_KEY=sk-1234567890\"}\n"
         );
+
+        byte[] firstBytes = redactor.RedactUtf8(source);
+        string first = System.Text.Encoding.UTF8.GetString(firstBytes);
+
+        Assert.DoesNotContain("sk-1234567890", first, StringComparison.Ordinal);
+        Assert.DoesNotContain("MY_API_KEY", first, StringComparison.Ordinal);
+        Assert.Equal(firstBytes, redactor.RedactUtf8(firstBytes));
+    }
+
+    [Fact]
+    public void The_jsonl_bytes_do_not_pass_through_a_marker_whose_label_is_a_known_value()
+    {
+        var redactor = new CredentialRedactor([
+            ("MY_API_KEY", "sk-1234567890"),
+            ("placeholder", "MY_API_KEY"),
+        ]);
+        byte[] source = System.Text.Encoding.UTF8.GetBytes("[redacted:MY_API_KEY]\n");
+
+        byte[] firstBytes = redactor.RedactUtf8(source);
+        string first = System.Text.Encoding.UTF8.GetString(firstBytes);
+
+        Assert.DoesNotContain("MY_API_KEY", first, StringComparison.Ordinal);
+        Assert.Equal(firstBytes, redactor.RedactUtf8(firstBytes));
     }
 
     [Fact]
@@ -132,11 +181,10 @@ public sealed class CredentialRedactorTests
 
         string first = redactor.Redact(input);
 
-        Assert.Equal(
-            "[redacted:KEY_TOKEN]=[redacted:KEY_TOKEN] value=[redacted:other]",
-            first,
-            StringComparer.Ordinal
-        );
+        // The label of the KEY_TOKEN marker is a known value itself, so it is written encoded;
+        // no raw known value may survive anywhere, and re-redacting stays identity.
+        Assert.DoesNotContain("KEY_TOKEN", first, StringComparison.Ordinal);
+        Assert.DoesNotContain("second-value-9999", first, StringComparison.Ordinal);
         Assert.Equal(first, redactor.Redact(first), StringComparer.Ordinal);
     }
 
@@ -158,12 +206,11 @@ public sealed class CredentialRedactorTests
         string first = System.Text.Encoding.UTF8.GetString(firstBytes);
         string second = System.Text.Encoding.UTF8.GetString(redactor.RedactUtf8(firstBytes));
 
-        Assert.Equal(
-            "{\"text\":\"[redacted:placeholder]=[redacted:MY_API_KEY]\"}\n"
-                + "{\"text\":\"[redacted:KEY_TOKEN]=[redacted:KEY_TOKEN] value=[redacted:other]\"}\n",
-            first,
-            StringComparer.Ordinal
-        );
+        // Marked labels that are themselves known values carry no raw secret; the scan never makes
+        // the text drift away from identity on a second pass.
+        Assert.DoesNotContain("MY_API_KEY", first, StringComparison.Ordinal);
+        Assert.DoesNotContain("KEY_TOKEN", first, StringComparison.Ordinal);
+        Assert.DoesNotContain("second-value-9999", first, StringComparison.Ordinal);
         Assert.Equal(first, second, StringComparer.Ordinal);
     }
 

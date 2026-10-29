@@ -173,6 +173,11 @@ public sealed class RedactionRefusalTests
         );
 
         Assert.True(result.IsError);
+        Assert.Contains(
+            "edit around the credential line instead of through it",
+            result.Output,
+            StringComparison.Ordinal
+        );
         Assert.Equal(before, HashOf(temp.File(".env")));
     }
 
