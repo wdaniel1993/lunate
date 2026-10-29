@@ -31,9 +31,9 @@ public sealed class ProviderKeyProbeTests
         Assert.Null(ProviderKeyProbe.FixFor(OpenAiModel, StoreWith("openai"), _ => null));
 
     [Fact]
-    public void A_missing_key_names_the_auth_store_entry() =>
+    public void A_missing_key_names_auth_as_the_next_step() =>
         Assert.Equal(
-            "add the 'openai' key to ~/.lunate/auth.json",
+            "run /auth to configure a provider",
             ProviderKeyProbe.FixFor(OpenAiModel, EmptyStore(), _ => null)
         );
 
@@ -64,7 +64,7 @@ public sealed class ProviderKeyProbeTests
     [Fact]
     public void An_endpoint_equal_to_the_presets_base_url_probes_the_preset_key() =>
         Assert.Equal(
-            "add the 'groq' key to ~/.lunate/auth.json",
+            "run /auth to configure a provider",
             ProviderKeyProbe.FixFor(
                 GroqModel() with
                 {
@@ -125,9 +125,9 @@ public sealed class ProviderKeyProbeTests
         Assert.Null(ProviderKeyProbe.FixFor(GroqModel(), StoreWith("groq"), _ => null));
 
     [Fact]
-    public void A_missing_preset_key_names_the_preset_store_entry() =>
+    public void A_missing_preset_key_names_auth_as_the_next_step() =>
         Assert.Equal(
-            "add the 'groq' key to ~/.lunate/auth.json",
+            "run /auth to configure a provider",
             ProviderKeyProbe.FixFor(GroqModel(), EmptyStore(), _ => null)
         );
 
@@ -153,9 +153,9 @@ public sealed class ProviderKeyProbeTests
         );
 
     [Fact]
-    public void A_whitespace_stored_preset_key_names_the_store_entry() =>
+    public void A_whitespace_stored_preset_key_names_auth_as_the_next_step() =>
         Assert.Equal(
-            "add the 'groq' key to ~/.lunate/auth.json",
+            "run /auth to configure a provider",
             ProviderKeyProbe.FixFor(GroqModel(), StoreWithValue("groq", "   "), _ => null)
         );
 
@@ -194,9 +194,9 @@ public sealed class ProviderKeyProbeTests
         );
 
     [Fact]
-    public void A_missing_google_key_names_the_google_store_entry() =>
+    public void A_missing_google_key_names_auth_as_the_next_step() =>
         Assert.Equal(
-            "add the 'google' key to ~/.lunate/auth.json",
+            "run /auth to configure a provider",
             ProviderKeyProbe.FixFor(GoogleModel(), EmptyStore(), _ => null)
         );
 

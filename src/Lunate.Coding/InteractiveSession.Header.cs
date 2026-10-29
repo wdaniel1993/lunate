@@ -66,8 +66,8 @@ internal sealed partial class InteractiveSession
 
     /// <summary>
     /// The one actionable fix of the first-run state, or null when the session is configured (design
-    /// D4). Nothing configured has no model to probe, so the header names the setting that fills the
-    /// gap and still prints no counts or hint block (D8 #9); a configured id the catalog does not
+    /// D4). Nothing configured has no model to probe, so the header names <c>/auth</c> as the next
+    /// step and still prints no counts or hint block (D8 #9); a configured id the catalog does not
     /// know yet — an extension-registered model on the first frame — keeps the normal block (D8 #6).
     /// </summary>
     private string? FirstRunFix(ModelInfo? model, string configured)
@@ -77,7 +77,7 @@ internal sealed partial class InteractiveSession
             return ProviderKeyProbe.FixFor(model, _auth, _environment);
         }
 
-        return configured.Length == 0 ? ProviderKeyProbe.MissingModelFix : null;
+        return configured.Length == 0 ? ProviderKeyProbe.ConfigureProviderFix : null;
     }
 
     private ModelInfo? HeaderModel() =>

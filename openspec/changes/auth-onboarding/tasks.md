@@ -39,10 +39,10 @@
 
 ## 4. First run
 
-- [ ] 4.1 Starting the TUI with no usable credential and a TTY opens the picker once; Esc dismisses it.
-- [ ] 4.2 Print mode, `--yolo`-style non-interactive runs and piped stdin keep the explicit error and never
+- [x] 4.1 Starting the TUI with no usable credential and a TTY opens the picker once; Esc dismisses it.
+- [x] 4.2 Print mode, `--yolo`-style non-interactive runs and piped stdin keep the explicit error and never
       prompt.
-- [ ] 4.3 The empty-session banner names `/auth` as the next step when nothing is configured.
+- [x] 4.3 The empty-session banner names `/auth` as the next step when nothing is configured.
 
 ## 5. Documentation and proof
 

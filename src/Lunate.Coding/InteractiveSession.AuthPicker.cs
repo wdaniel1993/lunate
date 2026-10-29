@@ -21,6 +21,13 @@ internal sealed partial class InteractiveSession
     internal Task? VerifyTask { get; private set; }
 
     /// <summary>
+    /// Whether the first-run offer applies: a terminal session whose model has no usable
+    /// credential. It fires once, after composition, so picker keys are accepted; Esc dismisses it
+    /// and nothing reopens it.
+    /// </summary>
+    private bool OffersFirstRunAuth() => HasMissingCredential(_model);
+
+    /// <summary>
     /// <c>/auth</c>: the live-area picker over every preset in file order followed by the custom
     /// endpoint row. Esc cancels without a write; selecting a preset starts the same masked prompt
     /// and save path as <c>/login</c>.

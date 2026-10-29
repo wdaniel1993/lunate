@@ -8,17 +8,18 @@ namespace Lunate.Coding;
 /// a foreign declared endpoint uses the placeholder credential and needs no key; otherwise the
 /// preset's environment variable (or its alias), then the auth store's key under the preset id,
 /// resolves it. When nothing resolves the probe answers with exactly one actionable fix, never a
-/// list of alternatives: the name the auth store wants, or the environment variable that is set
+/// list of alternatives: <c>/auth</c> when the picker can configure the provider, the named auth
+/// store entry for a reference <c>/auth</c> cannot write, or the environment variable that is set
 /// but does not resolve. A session with no model configured at all has nothing to probe and uses
-/// <see cref="MissingModelFix"/>.
+/// <see cref="ConfigureProviderFix"/>.
 /// </summary>
 internal static class ProviderKeyProbe
 {
     /// <summary>
-    /// The one fix when nothing is configured at all: the first action of the shipped resolution
-    /// error (<c>HarnessFactory.ResolveModel</c>), kept to one line and one action (design D4/D8 #9).
+    /// The one fix when nothing usable is configured at all: name the picker that configures a
+    /// provider, kept to one line and one action (design D4/D8 #9).
     /// </summary>
-    internal const string MissingModelFix = "set 'model' in ~/.lunate/settings.json";
+    internal const string ConfigureProviderFix = "run /auth to configure a provider";
 
     private const string AuthFileName = "~/.lunate/auth.json";
 
@@ -66,9 +67,11 @@ internal static class ProviderKeyProbe
             return null;
         }
 
+        // /auth stores a key under the preset id, so the picker is the one action that fixes a
+        // missing preset credential; the variable is named only when it is set but unusable.
         return blankValueWasSet
             ? FormattableString.Invariant($"set {preset.KeyVariable} to a valid key")
-            : MissingKeyFix(preset.Id);
+            : ConfigureProviderFix;
     }
 
     private static string MissingKeyFix(string name) => $"add the '{name}' key to {AuthFileName}";
