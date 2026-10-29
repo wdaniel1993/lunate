@@ -54,4 +54,4 @@
       key never reaches a notice/history/session file on each path.
 - [x] 5.4 `scripts/verify.sh` unchanged; the suites carry the new tests.
 - [ ] 5.5 A recording for the media set: fresh install → `/auth` → picker → key → `/model` → first prompt.
-- [ ] 5.6 Archive the change into `openspec/specs/{agent-config,tui}/spec.md` in the same PR's last commit.
+- [x] 5.6 Archive the change into `openspec/specs/{agent-config,tui}/spec.md` in the same PR's last commit.
