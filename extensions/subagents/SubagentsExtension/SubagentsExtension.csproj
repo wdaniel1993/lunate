@@ -37,17 +37,17 @@
             project's output, where a load would ignore them (and warn once) anyway.
         -->
         <ProjectReference
-            Include="../../../../src/Lunate.Extensibility.Abstractions/Lunate.Extensibility.Abstractions.csproj"
+            Include="../../../src/Lunate.Extensibility.Abstractions/Lunate.Extensibility.Abstractions.csproj"
             Private="false"
             ExcludeAssets="runtime"
         />
         <ProjectReference
-            Include="../../../../src/Lunate.Agent/Lunate.Agent.csproj"
+            Include="../../../src/Lunate.Agent/Lunate.Agent.csproj"
             Private="false"
             ExcludeAssets="runtime"
         />
         <ProjectReference
-            Include="../../../../src/Lunate.Ai/Lunate.Ai.csproj"
+            Include="../../../src/Lunate.Ai/Lunate.Ai.csproj"
             Private="false"
             ExcludeAssets="runtime"
         />

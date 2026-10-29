@@ -5,7 +5,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <ProjectReference Include="../../../../src/Lunate.Extensibility.Testing/Lunate.Extensibility.Testing.csproj" />
+        <ProjectReference Include="../../../src/Lunate.Extensibility.Testing/Lunate.Extensibility.Testing.csproj" />
         <ProjectReference Include="../SubagentsExtension/SubagentsExtension.csproj" />
     </ItemGroup>
 
