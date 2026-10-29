@@ -13,6 +13,11 @@ namespace Lunate.Ai;
 /// environment variables, the extension secret files and the MCP server environment values of the
 /// session's config files; <c>Lunate.Coding</c> collects them and both the coding host and the agent
 /// loop use this one implementation.
+/// Replacement is one left-to-right scan: at each position a pre-existing
+/// <c>[redacted:&lt;name&gt;]</c> marker is copied verbatim (so re-redacting text that already
+/// carries markers changes nothing), otherwise the longest matching value is replaced by that
+/// value's own marker without rescanning what was written, otherwise one character is copied.
+/// A value that names another credential therefore cannot nest inside a written marker.
 /// </summary>
 internal sealed class CredentialRedactor
 {
@@ -89,65 +94,134 @@ internal sealed class CredentialRedactor
     /// <summary>The exact value/name pairs, longest value first (the tests read this).</summary>
     internal IReadOnlyList<(string Name, string Value)> Values => _values;
 
-    /// <summary>The text with every known credential value replaced by its marker.</summary>
+    /// <summary>
+    /// The text with every known credential value replaced by its marker. A marker already present
+    /// in <paramref name="text"/> is passed through untouched, so re-redacting redacted text is
+    /// identity.
+    /// </summary>
     internal string Redact(string text)
     {
         ArgumentNullException.ThrowIfNull(text);
-        string redacted = text;
-        foreach ((string name, string value) in _values)
+        var builder = new StringBuilder(text.Length);
+        int index = 0;
+        while (index < text.Length)
         {
-            if (redacted.Contains(value, StringComparison.Ordinal))
+            // A pre-existing marker is copied verbatim and never re-matched: scanning resumes after
+            // it, so a name that is also some other credential's value cannot nest inside it.
+            if (text.AsSpan(index).StartsWith(MarkerPrefix, StringComparison.Ordinal))
             {
-                redacted = redacted.Replace(value, Marker(name), StringComparison.Ordinal);
+                int close = text.IndexOf(']', index + MarkerPrefix.Length);
+                if (close > index + MarkerPrefix.Length)
+                {
+                    builder.Append(text, index, close + 1 - index);
+                    index = close + 1;
+                    continue;
+                }
             }
+
+            // Values are longest first, so the first match here is the longest one at this index.
+            (string Name, string Value)? match = null;
+            foreach ((string name, string value) in _values)
+            {
+                if (text.AsSpan(index).StartsWith(value, StringComparison.Ordinal))
+                {
+                    match = (name, value);
+                    break;
+                }
+            }
+
+            if (match is { } found)
+            {
+                builder.Append(Marker(found.Name));
+                index += found.Value.Length;
+                continue;
+            }
+
+            builder.Append(text[index]);
+            index++;
         }
 
-        return redacted;
+        return builder.ToString();
     }
 
     /// <summary>
     /// The byte-level form, for the JSONL export: the session file is edited in place byte for
-    /// byte, so a line without a credential stays exactly the bytes it was.
+    /// byte, so a line without a credential stays exactly the bytes it was. The single marker-safe
+    /// scan of <see cref="Redact"/> applies here too, so written markers are never nested.
     /// </summary>
     internal byte[] RedactUtf8(byte[] source)
     {
         ArgumentNullException.ThrowIfNull(source);
-        byte[] redacted = source;
-        foreach ((string name, string value) in _values)
+        byte[] prefixBytes = Utf8NoBom.GetBytes(MarkerPrefix);
+        (string Name, byte[] Value, byte[] Marker)[] replacements =
+        [
+            .. _values.Select(entry =>
+                (
+                    entry.Name,
+                    Utf8NoBom.GetBytes(entry.Value),
+                    Utf8NoBom.GetBytes(Marker(entry.Name))
+                )
+            ),
+        ];
+        if (
+            source.AsSpan().IndexOf(prefixBytes) < 0
+            && replacements.All(replacement => source.AsSpan().IndexOf(replacement.Value) < 0)
+        )
         {
-            byte[] pattern = Utf8NoBom.GetBytes(value);
-            if (redacted.AsSpan().IndexOf(pattern) < 0)
+            return source;
+        }
+
+        const byte closeMarker = (byte)']';
+        var builder = new List<byte>(source.Length);
+        int index = 0;
+        while (index < source.Length)
+        {
+            ReadOnlySpan<byte> remaining = source.AsSpan(index);
+            if (remaining.StartsWith(prefixBytes))
+            {
+                int close = remaining.IndexOf(closeMarker);
+                if (close > prefixBytes.Length)
+                {
+                    CopySpan(builder, remaining[..(close + 1)]);
+                    index += close + 1;
+                    continue;
+                }
+            }
+
+            bool matched = false;
+            foreach ((_, byte[] value, byte[] marker) in replacements)
+            {
+                if (remaining.StartsWith(value))
+                {
+                    CopySpan(builder, marker);
+                    index += value.Length;
+                    matched = true;
+                    break;
+                }
+            }
+
+            if (matched)
             {
                 continue;
             }
 
-            redacted = ReplaceBytes(redacted, pattern, Utf8NoBom.GetBytes(Marker(name)));
+            builder.Add(source[index]);
+            index++;
         }
 
-        return redacted;
+        return [.. builder];
     }
 
     /// <summary>The marker the session's export writes in place of a known value.</summary>
     internal static string Marker(string name) => "[redacted:" + name + "]";
 
-    private static byte[] ReplaceBytes(byte[] source, byte[] pattern, byte[] replacement)
+    private const string MarkerPrefix = "[redacted:";
+
+    private static void CopySpan(List<byte> builder, ReadOnlySpan<byte> span)
     {
-        var builder = new List<byte>(source.Length);
-        var index = 0;
-        while (index < source.Length)
+        foreach (byte b in span)
         {
-            int match = source.AsSpan(index).IndexOf(pattern);
-            if (match < 0)
-            {
-                builder.AddRange(source.AsSpan(index).ToArray());
-                break;
-            }
-
-            builder.AddRange(source.AsSpan(index, match).ToArray());
-            builder.AddRange(replacement);
-            index += match + pattern.Length;
+            builder.Add(b);
         }
-
-        return [.. builder];
     }
 }

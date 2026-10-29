@@ -105,6 +105,69 @@ public sealed class CredentialRedactorTests
     }
 
     [Fact]
+    public void A_value_that_names_another_credential_does_not_corrupt_the_marker()
+    {
+        var redactor = new CredentialRedactor([
+            ("MY_API_KEY", "sk-1234567890"),
+            ("placeholder", "MY_API_KEY"),
+        ]);
+
+        string redacted = redactor.Redact("MY_API_KEY=sk-1234567890");
+
+        Assert.Equal(
+            "[redacted:placeholder]=[redacted:MY_API_KEY]",
+            redacted,
+            StringComparer.Ordinal
+        );
+    }
+
+    [Fact]
+    public void Redacting_an_already_redacted_text_is_identity()
+    {
+        var redactor = new CredentialRedactor([
+            ("KEY_TOKEN", "KEY_TOKEN"),
+            ("other", "second-value-9999"),
+        ]);
+        const string input = "KEY_TOKEN=KEY_TOKEN value=second-value-9999";
+
+        string first = redactor.Redact(input);
+
+        Assert.Equal(
+            "[redacted:KEY_TOKEN]=[redacted:KEY_TOKEN] value=[redacted:other]",
+            first,
+            StringComparer.Ordinal
+        );
+        Assert.Equal(first, redactor.Redact(first), StringComparer.Ordinal);
+    }
+
+    [Fact]
+    public void The_byte_level_scan_never_nests_markers()
+    {
+        var redactor = new CredentialRedactor([
+            ("MY_API_KEY", "sk-1234567890"),
+            ("placeholder", "MY_API_KEY"),
+            ("KEY_TOKEN", "KEY_TOKEN"),
+            ("other", "second-value-9999"),
+        ]);
+        byte[] source = System.Text.Encoding.UTF8.GetBytes(
+            "{\"text\":\"MY_API_KEY=sk-1234567890\"}\n"
+                + "{\"text\":\"KEY_TOKEN=KEY_TOKEN value=second-value-9999\"}\n"
+        );
+
+        byte[] firstBytes = redactor.RedactUtf8(source);
+        string first = System.Text.Encoding.UTF8.GetString(firstBytes);
+        string second = System.Text.Encoding.UTF8.GetString(redactor.RedactUtf8(firstBytes));
+
+        Assert.Equal(
+            "{\"text\":\"[redacted:placeholder]=[redacted:MY_API_KEY]\"}\n"
+                + "{\"text\":\"[redacted:KEY_TOKEN]=[redacted:KEY_TOKEN] value=[redacted:other]\"}\n",
+            first,
+            StringComparer.Ordinal
+        );
+        Assert.Equal(first, second, StringComparer.Ordinal);
+    }
+
+    [Fact]
     public void A_secret_file_that_does_not_parse_contributes_nothing_and_does_not_throw()
     {
         using var temp = new TempDirectory();
