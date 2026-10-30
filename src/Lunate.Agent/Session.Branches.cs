@@ -124,7 +124,7 @@ public sealed partial class Session
     }
 
     /// <summary>
-    /// Writes a branch file: a fresh header (schema 3, this session's cwd, repo and worktree, the
+    /// Writes a branch file: a fresh header (the current schema, this session's cwd, repo and worktree, the
     /// new id) carrying <c>origin</c> and <c>branched</c>, then the chosen entries verbatim, then
     /// loads it back so the returned session is the file's own truth.
     /// </summary>

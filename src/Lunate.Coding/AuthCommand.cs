@@ -10,12 +10,14 @@ internal sealed record AuthCommandSeams(
     Func<string, string?>? Environment = null,
     TextReader? Input = null,
     ISecretPrompt? SecretPrompt = null,
-    bool? StdinIsTerminal = null
+    bool? StdinIsTerminal = null,
+    HttpMessageHandler? ProviderProbeHandler = null,
+    TimeSpan? ProviderProbeTimeout = null
 );
 
 /// <summary>
-/// The <c>lunate auth</c> command: list, login, logout and status without the TUI and without a
-/// network call. Every path reports names and sources, never a credential value; a key read from a
+/// The <c>lunate auth</c> command: list, login, logout and status without the TUI and without an
+/// unbounded network wait. Every path reports names and sources, never a credential value; a key read from a
 /// pipe is the same secret as one typed at the masked prompt, so neither is echoed. Exit codes: 0
 /// success, 1 the command failed or nothing is configured, 2 usage.
 /// </summary>
@@ -78,32 +80,57 @@ internal static partial class AuthCommand
             }
 
             AuthStore auth = AuthStore.Load(seams.AuthPath, Environment);
-            var rows = new List<(string Name, string Source)>(ProviderPresets.All.Count);
-            var presetIds = new HashSet<string>(StringComparer.Ordinal);
+            AgentSettings settings = SettingsStore.Resolve(
+                seams.SettingsPath ?? AuthStore.SettingsFilePath(seams.AuthPath),
+                _ => null
+            );
+            ProviderStore providers = ProviderStore.Load(
+                AuthStore.ProviderStoreFilePath(seams.AuthPath),
+                auth,
+                settings.Providers
+            );
+            var rows =
+                new List<(string Name, string Source, string Credential, string Reachability)>();
+            using var client = new HttpClient(
+                seams.ProviderProbeHandler ?? new SocketsHttpHandler(),
+                disposeHandler: seams.ProviderProbeHandler is null
+            )
+            {
+                Timeout = Timeout.InfiniteTimeSpan,
+            };
+
             foreach (ProviderPreset preset in ProviderPresets.All)
             {
-                presetIds.Add(preset.Id);
+                if (providers.Entries.FirstOrDefault(entry => entry.Name == preset.Id) is { } entry)
+                {
+                    rows.Add(ProviderRow(entry, auth, client));
+                    continue;
+                }
+
                 string? variable = Variable(preset, Environment);
                 string source =
                     variable is not null ? $"environment ({variable})"
                     : auth.Keys.ContainsKey(preset.Id) ? "stored"
                     : "not set";
-                rows.Add((preset.Id, source));
+                string credential = source == "not set" ? "absent" : "present";
+                rows.Add((preset.Id, source, credential, "unknown"));
             }
 
             foreach (
-                string name in auth
-                    .Keys.Keys.Where(name => !presetIds.Contains(name))
-                    .OrderBy(name => name, StringComparer.Ordinal)
+                ProviderEntry entry in providers
+                    .Entries.Where(entry => ProviderPresets.Find(entry.Name) is null)
+                    .OrderBy(entry => entry.Name, StringComparer.Ordinal)
             )
             {
-                rows.Add((name, "stored"));
+                rows.Add(ProviderRow(entry, auth, client));
             }
 
             int width = rows.Max(row => row.Name.Length);
-            foreach ((string name, string source) in rows)
+            foreach ((string name, string source, string credential, string reachability) in rows)
             {
-                output.WriteLine($"{name.PadRight(width)}  {source}");
+                output.WriteLine(
+                    $"{name.PadRight(width)}  {source}; credential: {credential}; reachability: {reachability}"
+                );
             }
 
             return ExitOk;
@@ -207,6 +234,55 @@ internal static partial class AuthCommand
 
         private Func<string, string?> Environment =>
             seams.Environment ?? System.Environment.GetEnvironmentVariable;
+
+        private (string Name, string Source, string Credential, string Reachability) ProviderRow(
+            ProviderEntry entry,
+            AuthStore auth,
+            HttpClient client
+        )
+        {
+            (string credential, string source) = CredentialStatus(entry, auth);
+            string name = ProviderPresets.Find(entry.Name) is null
+                ? $"{entry.Name} ({entry.Kind})"
+                : entry.Name;
+            ProviderReachability reachability = ProviderReachabilityProbe.Check(
+                client,
+                entry.BaseUrl,
+                seams.ProviderProbeTimeout ?? TimeSpan.FromSeconds(2)
+            );
+            return (name, source, credential, reachability.ToString().ToLowerInvariant());
+        }
+
+        private (string Credential, string Source) CredentialStatus(
+            ProviderEntry entry,
+            AuthStore auth
+        )
+        {
+            string reference = entry.CredentialReference;
+            if (reference.StartsWith("auth:", StringComparison.Ordinal))
+            {
+                string key = reference["auth:".Length..];
+                if (
+                    ProviderPresets.Find(key) is { } preset
+                    && Variable(preset, Environment) is { } variable
+                )
+                {
+                    return ("present", $"environment ({variable})");
+                }
+
+                return auth.TryGet(key) is null ? ("absent", "not set") : ("present", "stored");
+            }
+
+            if (reference.StartsWith("env:", StringComparison.Ordinal))
+            {
+                string variable = reference["env:".Length..];
+                return string.IsNullOrWhiteSpace(Environment(variable))
+                    ? ("absent", "not set")
+                    : ("present", $"environment ({variable})");
+            }
+
+            return ("present", "helper");
+        }
 
         private bool IsTerminal => seams.StdinIsTerminal ?? !Console.IsInputRedirected;
 

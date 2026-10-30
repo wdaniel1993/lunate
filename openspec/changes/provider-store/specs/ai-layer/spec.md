@@ -20,19 +20,49 @@ The twelve built-in provider presets SHALL be provider-kind templates that suppl
 
 ### Requirement: Model capability metadata
 
-The model/provider catalog SHALL expose whether a resolved model supports structured output and declares decision capability. A provider MAY register the decision capability through the provider capability contract; capability resolution SHALL follow the selected provider/model metadata and SHALL NOT inspect vendor names. Missing metadata SHALL mean the capability is not declared.
+Each model descriptor SHALL carry an extensible capability set with API names (`chat`, `decision`, `image-generation`, `embeddings`, and future strings), input modalities, output modalities, and features (`tools`, `structured-output`, `reasoning`, and future strings). These names SHALL be strings, not a closed enum. Each category MAY be unknown; an omitted category SHALL NOT be interpreted as unsupported. Capability facts SHALL layer in this order: catalog, provider discovery, then the user's profile override. A later source SHALL replace only categories it explicitly supplies; omitted categories retain the previous fact or remain unknown.
 
-#### Scenario: Capability declaration is vendor-neutral
+#### Scenario: A future API needs no enum change
 
-- **GIVEN** a Jev-compatible provider registered with decision capability and structured output
-- **WHEN** its model is resolved
-- **THEN** the resolved metadata declares decision capability without a vendor-name check
+- **GIVEN** a catalog model descriptor that includes API `embeddings`
+- **WHEN** the descriptor is loaded
+- **THEN** the API name is retained without changing a closed enum
 
-#### Scenario: Missing capability is not inferred
+#### Scenario: Capability sources layer in order
 
-- **GIVEN** a catalog model with no structured-output or decision-capability declaration
-- **WHEN** the model is resolved
-- **THEN** neither capability is inferred from its id or provider name
+- **GIVEN** catalog, provider-discovery and user-profile facts for the same capability category
+- **WHEN** the profile resolves
+- **THEN** the user-profile fact overrides discovery, discovery overrides catalog, and omitted categories remain inherited or unknown
+
+#### Scenario: Unknown capability is allowed
+
+- **GIVEN** a model whose capability category is unknown from every source
+- **WHEN** a usage profile resolves
+- **THEN** the host allows it rather than inferring that the capability is absent
+
+#### Scenario: A chat model can serve a user-selected decision usage
+
+- **GIVEN** a user assigns a chat model with known `structured-output` feature to decision
+- **WHEN** the profile resolves
+- **THEN** it is accepted and the request method is labelled `adapter`
+
+#### Scenario: API metadata labels but does not gate decision use
+
+- **GIVEN** a user-selected model with API `chat` and the required `structured-output` feature
+- **WHEN** it serves decision usage
+- **THEN** it is labelled `adapter` and is not rejected by its API name
+
+#### Scenario: Image input is checked only when an image is attached
+
+- **GIVEN** an image attachment and a chat model whose known input modalities exclude `image`
+- **WHEN** the request is prepared
+- **THEN** it is refused before sending with a notice naming the model and saying to switch profile or remove the image
+
+#### Scenario: Unknown image input is attempted and provider rejection is translated
+
+- **GIVEN** an image attachment and a chat model whose input modalities are unknown
+- **WHEN** the request is sent and the provider rejects the image
+- **THEN** the user receives the same clear model-named switch-profile-or-remove-image notice, not a raw provider error
 
 ### Requirement: Profile options are validated against resolved models
 

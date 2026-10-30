@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "keys": {
+    "openai": "fixture-only-openai-key",
+    "local": "fixture-only-local-key"
+  }
+}

@@ -102,7 +102,7 @@ public sealed class SessionBranchTests
         Session fork = session.Fork(directory, "e_01");
 
         Assert.NotEqual(session.SessionId, fork.SessionId);
-        Assert.Equal(3, fork.Schema);
+        Assert.Equal(4, fork.Schema);
         Assert.Equal(new SessionOrigin(session.SessionId, "e_01"), fork.Header.Origin);
         Assert.True(fork.Header.Branched);
         Assert.Equal(session.Header.Cwd, fork.Header.Cwd);

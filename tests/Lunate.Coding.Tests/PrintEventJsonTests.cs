@@ -90,6 +90,18 @@ public sealed class PrintEventJsonTests
                 """{"type":"usage_updated","runId":"run_1","usage":{"inputTokenCount":11,"outputTokenCount":5,"totalTokenCount":16}}"""
             },
             {
+                new DecisionEvaluated("run_1", "model-x", "adapter", "approve", 0.8d),
+                """{"type":"decision_evaluated","runId":"run_1","modelId":"model-x","method":"adapter","option":"approve","probability":0.8}"""
+            },
+            {
+                new DecisionUnavailable("run_1"),
+                """{"type":"decision_unavailable","runId":"run_1"}"""
+            },
+            {
+                new DecisionFailed("run_1", "model-x", "invalid JSON"),
+                """{"type":"decision_failed","runId":"run_1","modelId":"model-x","reason":"invalid JSON"}"""
+            },
+            {
                 new Retrying("run_1", 2, "transient"),
                 """{"type":"retrying","runId":"run_1","attempt":2,"reason":"transient"}"""
             },

@@ -62,12 +62,29 @@ internal sealed record ModelCostLine(string ModelId, UsageLanes Lanes, decimal C
 /// <summary>A session's or a turn's cost per model plus the total; only fully priced input.</summary>
 internal sealed record CostReport(IReadOnlyList<ModelCostLine> Models, decimal Total);
 
+/// <summary>One usage or provider subtotal, with the models that contributed to it.</summary>
+internal sealed record UsageCostLine(
+    string Name,
+    string? ProviderKind,
+    IReadOnlyList<string> ModelIds,
+    UsageLanes Lanes,
+    decimal? Cost
+);
+
+/// <summary>Cost totals by usage and provider; an unpriced group keeps a null cost.</summary>
+internal sealed record UsageCostReport(
+    IReadOnlyList<UsageCostLine> ByUsage,
+    IReadOnlyList<UsageCostLine> ByProvider,
+    decimal? Total,
+    bool HasUnpriced
+);
+
 /// <summary>
 /// Display-only cost aggregation over the catalog's prices: per record, per turn, per model and per
 /// lane. A record whose model is unknown, unpriced or missing a rate for a used lane is not fully
 /// priced, so the whole report is absent rather than a partial or zero amount (design D6).
 /// </summary>
-internal static class UsageCost
+internal static partial class UsageCost
 {
     /// <summary>
     /// One record's cost, or null when the model id is absent, the model is unknown or unpriced, a

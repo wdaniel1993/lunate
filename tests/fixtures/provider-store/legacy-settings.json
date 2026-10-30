@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 2,
+  "providers": {
+    "local": {
+      "baseUrl": "https://custom.example.test/v1",
+      "model": "fixture-model",
+      "catalogName": "local/fixture-model"
+    }
+  }
+}

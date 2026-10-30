@@ -4,7 +4,7 @@
 
 ### Requirement: User-scoped provider entries
 
-The provider store SHALL define providers only in user scope. Each provider entry SHALL have a unique user-facing name, a kind selected from the twelve existing templates (`openai`, `anthropic`, `openrouter`, `deepseek`, `moonshotai`, `zai`, `opencode`, `opencode-go`, `groq`, `togetherai`, `xai`, or `google`), a base URL, a credential reference, optional headers, and optional region (`eu`, `us`, or `local`). Multiple entries MAY use the same kind. A credential reference SHALL identify an auth-store key, environment variable, or configured helper; provider and project settings SHALL never contain the resolved secret. The `region` value SHALL be preserved as metadata; this change SHALL NOT route data or enforce a region policy.
+The provider store SHALL define providers only in user scope. Each provider entry SHALL have a unique user-facing name, a kind selected from the twelve existing templates (`openai`, `anthropic`, `openrouter`, `deepseek`, `moonshotai`, `zai`, `opencode`, `opencode-go`, `groq`, `togetherai`, `xai`, or `google`), a base URL, a credential reference, optional headers, and optional region (`eu`, `us`, or `local`). Multiple entries MAY use the same kind. A credential reference SHALL identify an auth-store key, environment variable, or configured helper. Header values SHALL be credential references of the same forms, never literal secret values. Provider and project settings SHALL never contain resolved credentials or header values. The `region` value SHALL be preserved as metadata; this change SHALL NOT route data or enforce a region policy.
 
 #### Scenario: Multiple entries share a template kind
 
@@ -20,9 +20,9 @@ The provider store SHALL define providers only in user scope. Each provider entr
 
 #### Scenario: Provider files contain references, never secrets
 
-- **GIVEN** an auth key, environment variable, or helper resolves to a credential value
+- **GIVEN** an auth key, environment variable, or helper resolves to a credential or header value
 - **WHEN** provider settings are written or listed
-- **THEN** only the reference is stored or shown and the credential value is absent
+- **THEN** only references are stored or shown and neither resolved value is present
 
 ### Requirement: Provider listing and credential migration
 
@@ -102,33 +102,33 @@ Core selection SHALL resolve usages to profiles and profiles to providers; it SH
 - **WHEN** a usage resolves to its profile
 - **THEN** core selects that provider once and does not apply a routing DSL or per-request provider selection
 
-### Requirement: Decision capability, adapter, and degradation
+### Requirement: User-selected decision profiles and contract safety
 
-The `decision` usage SHALL accept a native profile only when its provider and model declare decision capability and structured output. A Jev-compatible provider SHALL register that capability through the provider capability contract; core SHALL NOT use a vendor identity allowlist. A chat-model adapter MAY be used only when explicitly declared as `adapter:<provider>/<model>` and the model supports structured output; it SHALL be marked uncalibrated. Every decision and shadow metric SHALL carry provider kind (`native` or `adapter`) and model id, and shadow metrics SHALL be reported separately per kind. The capability validator SHALL report `This model cannot decide` when structured output or required capability is missing. A separate decision-output validator SHALL report `invalid decision` when a capable model returns output that violates the decision contract; provider limitations SHALL never be reported as product decision bugs. If no decision profile is configured, the decision layer SHALL report unavailable and remain off; it SHALL NOT silently use the chat profile.
+Any model profile SHALL be accepted for `decision` when the user assigns it; model capability is the user's judgement, not a product gate. Catalog/discovery `apiType` MAY label the call method but SHALL NOT reject a profile. A provider decision API SHALL be labelled `native`; a chat-model path SHALL be labelled `adapter`, directly or through the explicit wrapper. Every response SHALL contain one of the defined options and well-formed probabilities: one finite value in [0, 1] per option, summing to 1 within the contract tolerance. A malformed response SHALL be retried once; if the retry is also malformed, the decision SHALL fail with an error naming the model. This is a transient technical failure and SHALL NOT create a persistent model-capability state. Decision provenance SHALL carry model id, method (`native` or `adapter`) and probability, in addition to normal usage/profile/provider-name-and-kind attribution. Shadow mode SHALL be an opt-in user setting, not a per-model promotion gate. A decision MAY only tighten the approval result: it SHALL NOT override a deny or approve outside the user's allow envelope. If no decision profile is configured, the decision layer SHALL report unavailable and remain off; it SHALL NOT implicitly borrow chat.
 
-#### Scenario: A capable provider is accepted without vendor matching
+#### Scenario: A user-selected model is accepted regardless of metadata
 
-- **GIVEN** a provider/model that declares decision capability and structured output
-- **WHEN** it is assigned to the decision usage
-- **THEN** it is accepted regardless of provider name
+- **GIVEN** a model profile explicitly assigned to decision, including one whose `apiType` is `chat`
+- **WHEN** the decision usage resolves
+- **THEN** the profile is accepted and labelled `native` for a provider decision API or `adapter` for a chat-model path, without capability, vendor or id inference
 
-#### Scenario: A model without decision capability is refused by name
+#### Scenario: One provider instance backs chat and decision profiles
 
-- **GIVEN** a model without structured output or the required native decision capability
-- **WHEN** it is assigned to decision
-- **THEN** the capability validator reports `This model cannot decide` and identifies the missing capability
+- **GIVEN** an OpenRouter-shaped preset with chat and decision API endpoints and one provider entry with one credential reference
+- **WHEN** the user assigns profiles using that provider entry to chat and decision
+- **THEN** both profiles resolve through the same provider entry and credential, using the endpoint for each API
 
-#### Scenario: The declared chat adapter is explicit and uncalibrated
+#### Scenario: A malformed contract is retried once then fails with model named
 
-- **GIVEN** a structured-output chat model declared as `adapter:provider-a/model-x`
-- **WHEN** it is selected for decision use
-- **THEN** each decision is labelled `adapter`, carries model id `model-x`, and is marked uncalibrated
+- **GIVEN** a model returns malformed decision contracts on the initial call and the retry
+- **WHEN** the second response is validated
+- **THEN** the decision fails with an error naming the model and no persistent capability verdict is stored
 
-#### Scenario: Invalid decision output is distinct from provider limitation
+#### Scenario: A valid contract is accepted
 
-- **GIVEN** a capable decision model returns a response that violates the decision schema
-- **WHEN** decision output is validated
-- **THEN** the result is `invalid decision`, not `This model cannot decide`
+- **GIVEN** a model returns one defined option and a well-formed probability distribution
+- **WHEN** the response is validated
+- **THEN** the decision is accepted and records only its model id, `native`/`adapter` method and probability
 
 #### Scenario: No decision profile leaves the layer unavailable
 
@@ -136,15 +136,21 @@ The `decision` usage SHALL accept a native profile only when its provider and mo
 - **WHEN** the decision layer initializes or is requested
 - **THEN** it reports unavailable and stays off without invoking the chat profile
 
-#### Scenario: Shadow metrics separate native and adapter kinds
+#### Scenario: Shadow mode is explicitly opt-in
 
-- **GIVEN** shadow decisions from one native profile and one adapter profile
-- **WHEN** shadow metrics are reported
-- **THEN** each result and aggregate is grouped by provider kind and model id
+- **GIVEN** a user has not enabled shadow mode
+- **WHEN** a decision profile is configured
+- **THEN** the decision consumer does not enter shadow mode or require a calibration gate
+
+#### Scenario: A decision cannot override deny or exceed the allow envelope
+
+- **GIVEN** a deny outcome or an action outside the user's allow envelope
+- **WHEN** the decision result is applied
+- **THEN** the denial remains final and the out-of-envelope action remains unapproved
 
 ### Requirement: Usage and provider cost attribution
 
-Every recorded model usage SHALL identify its usage (`chat`, `fast`, `decision`, `subagents`, or `compaction`), provider, resolved model id, and token lanes. Decision records SHALL additionally carry provider kind and model id. `/cost` SHALL report priced totals grouped by usage and by provider, retaining the existing rule that unknown pricing is unpriced rather than zero. Session schema 4 SHALL write this attribution and SHALL read schemas 1–3 without changing their interpretation; no credential reference or secret SHALL be written to a session.
+Every recorded model usage SHALL identify its usage (`chat`, `fast`, `decision`, `subagents`, or `compaction`), profile name, provider name and kind, resolved model id, and token lanes. Decision records SHALL additionally carry decision method (`native` or `adapter`) and probability. `/cost` SHALL report priced totals grouped by usage and by provider, retaining the existing rule that unknown pricing is unpriced rather than zero. Session schema 4 SHALL write this attribution and SHALL read schemas 1–3 without changing their interpretation; no provider configuration, credential reference or secret SHALL be written to a session.
 
 #### Scenario: Cost is split by usage and provider
 

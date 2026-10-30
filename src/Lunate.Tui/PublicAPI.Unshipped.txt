@@ -446,3 +446,49 @@ Lunate.Tui.RoutedKey.HistorySearch = 24 -> Lunate.Tui.RoutedKey
 Lunate.Tui.RoutedKey.Stash = 25 -> Lunate.Tui.RoutedKey
 Lunate.Tui.RoutedKey.Copy = 26 -> Lunate.Tui.RoutedKey
 Lunate.Tui.RoutedKey.Editor = 27 -> Lunate.Tui.RoutedKey
+Lunate.Tui.CostGroupView
+Lunate.Tui.CostGroupView.CacheRead.get -> long
+Lunate.Tui.CostGroupView.CacheRead.init -> void
+Lunate.Tui.CostGroupView.CacheWrite.get -> long
+Lunate.Tui.CostGroupView.CacheWrite.init -> void
+Lunate.Tui.CostGroupView.Cost.get -> string?
+Lunate.Tui.CostGroupView.Cost.init -> void
+Lunate.Tui.CostGroupView.CostGroupView(string! Name, string? ProviderKind, System.Collections.Generic.IReadOnlyList<string!>! ModelIds, long Input, long Output, long CacheRead, long CacheWrite, string? Cost) -> void
+Lunate.Tui.CostGroupView.Deconstruct(out string! Name, out string? ProviderKind, out System.Collections.Generic.IReadOnlyList<string!>! ModelIds, out long Input, out long Output, out long CacheRead, out long CacheWrite, out string? Cost) -> void
+Lunate.Tui.CostGroupView.Equals(Lunate.Tui.CostGroupView? other) -> bool
+Lunate.Tui.CostGroupView.Input.get -> long
+Lunate.Tui.CostGroupView.Input.init -> void
+Lunate.Tui.CostGroupView.ModelIds.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Lunate.Tui.CostGroupView.ModelIds.init -> void
+Lunate.Tui.CostGroupView.Name.get -> string!
+Lunate.Tui.CostGroupView.Name.init -> void
+Lunate.Tui.CostGroupView.Output.get -> long
+Lunate.Tui.CostGroupView.Output.init -> void
+Lunate.Tui.CostGroupView.ProviderKind.get -> string?
+Lunate.Tui.CostGroupView.ProviderKind.init -> void
+Lunate.Tui.CostGroupView.<Clone>$() -> Lunate.Tui.CostGroupView!
+override Lunate.Tui.CostGroupView.Equals(object? obj) -> bool
+override Lunate.Tui.CostGroupView.GetHashCode() -> int
+override Lunate.Tui.CostGroupView.ToString() -> string!
+static Lunate.Tui.CostGroupView.operator !=(Lunate.Tui.CostGroupView? left, Lunate.Tui.CostGroupView? right) -> bool
+static Lunate.Tui.CostGroupView.operator ==(Lunate.Tui.CostGroupView? left, Lunate.Tui.CostGroupView? right) -> bool
+Lunate.Tui.CostReportView
+Lunate.Tui.CostReportView.ByProvider.get -> System.Collections.Generic.IReadOnlyList<Lunate.Tui.CostGroupView!>!
+Lunate.Tui.CostReportView.ByProvider.init -> void
+Lunate.Tui.CostReportView.ByUsage.get -> System.Collections.Generic.IReadOnlyList<Lunate.Tui.CostGroupView!>!
+Lunate.Tui.CostReportView.ByUsage.init -> void
+Lunate.Tui.CostReportView.CostReportView(System.Collections.Generic.IReadOnlyList<Lunate.Tui.CostGroupView!>! ByUsage, System.Collections.Generic.IReadOnlyList<Lunate.Tui.CostGroupView!>! ByProvider, string? Total, bool HasUnpriced) -> void
+Lunate.Tui.CostReportView.Deconstruct(out System.Collections.Generic.IReadOnlyList<Lunate.Tui.CostGroupView!>! ByUsage, out System.Collections.Generic.IReadOnlyList<Lunate.Tui.CostGroupView!>! ByProvider, out string? Total, out bool HasUnpriced) -> void
+Lunate.Tui.CostReportView.Equals(Lunate.Tui.CostReportView? other) -> bool
+Lunate.Tui.CostReportView.HasUnpriced.get -> bool
+Lunate.Tui.CostReportView.HasUnpriced.init -> void
+Lunate.Tui.CostReportView.Total.get -> string?
+Lunate.Tui.CostReportView.Total.init -> void
+Lunate.Tui.CostReportView.<Clone>$() -> Lunate.Tui.CostReportView!
+override Lunate.Tui.CostReportView.Equals(object? obj) -> bool
+override Lunate.Tui.CostReportView.GetHashCode() -> int
+override Lunate.Tui.CostReportView.ToString() -> string!
+static Lunate.Tui.CostReportView.operator !=(Lunate.Tui.CostReportView? left, Lunate.Tui.CostReportView? right) -> bool
+static Lunate.Tui.CostReportView.operator ==(Lunate.Tui.CostReportView? left, Lunate.Tui.CostReportView? right) -> bool
+Lunate.Tui.UsageCostRenderer
+static Lunate.Tui.UsageCostRenderer.Render(Lunate.Tui.CostReportView! report) -> System.Collections.Generic.IReadOnlyList<string!>!

@@ -16,7 +16,12 @@ public sealed class ImageInputResolverTests
         SupportsVision = true,
     };
 
-    private static readonly ModelInfo TextModel = new("text-test", "openai", null, 128_000, true);
+    private static readonly ModelInfo TextModel = new("text-test", "openai", null, 128_000, true)
+    {
+        Capabilities = new ModelCapabilityDescriptor(
+            inputModalities: new HashSet<string>(["text"], StringComparer.Ordinal)
+        ),
+    };
 
     [Fact]
     public async Task A_referenced_image_attaches_with_the_placeholder()
@@ -186,7 +191,7 @@ public sealed class ImageInputResolverTests
     }
 
     [Fact]
-    public async Task A_model_without_vision_is_refused_by_id()
+    public async Task A_known_text_only_model_is_refused_with_a_next_step()
     {
         using var temp = new TempDirectory();
         File.WriteAllBytes(temp.File("diagram.png"), ImageSamples.Png(64, 32));
@@ -195,8 +200,27 @@ public sealed class ImageInputResolverTests
         ImageInputResult result = await ResolveAsync(resolver, "@diagram.png");
 
         Assert.Equal(ImageInputOutcome.Refused, result.Outcome);
-        Assert.Contains("text-test", result.Error, StringComparison.Ordinal);
-        Assert.Contains("does not support images", result.Error, StringComparison.Ordinal);
+        Assert.Equal(
+            "model text-test doesn't accept images; switch profile or remove the image.",
+            result.Error
+        );
+    }
+
+    [Fact]
+    public async Task Unknown_image_support_is_allowed_to_reach_the_provider()
+    {
+        using var temp = new TempDirectory();
+        File.WriteAllBytes(temp.File("diagram.png"), ImageSamples.Png(64, 32));
+        var resolver = new ImageInputResolver(
+            temp.Root,
+            new ModelInfo("unknown-test", "openai", null, 128_000, true)
+        );
+
+        ImageInputResult result = await ResolveAsync(resolver, "@diagram.png");
+
+        Assert.Equal(ImageInputOutcome.Ready, result.Outcome);
+        Assert.Equal("[image 64x32]", result.Text);
+        Assert.Single(result.Images!);
     }
 
     [Fact]

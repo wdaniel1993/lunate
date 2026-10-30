@@ -61,8 +61,7 @@ public sealed partial class Session
     internal CredentialRedactor Redactor { get; set; } = CredentialRedactor.Empty;
 
     /// <summary>
-    /// The header's format schema (1, 2 or 3), so consumers can tell replay formats apart: schema 3
-    /// may carry both cache token lanes and image reference parts, older schemas never do.
+    /// The header's format schema (1–4), so consumers can tell replay formats apart.
     /// </summary>
     public int Schema => Header.Schema;
 
@@ -195,10 +194,10 @@ public sealed partial class Session
                 $"Session file '{path}' line 1 is not a header; expected a 'header' entry with schema {SessionFormat.SchemaVersion}."
             );
 
-        if (header.Schema is not (1 or 2 or SessionFormat.SchemaVersion))
+        if (header.Schema is not (1 or 2 or 3 or SessionFormat.SchemaVersion))
         {
             throw new InvalidDataException(
-                $"Session file '{path}' declares schema '{header.Schema}' but this build supports schema 1, 2 and {SessionFormat.SchemaVersion}."
+                $"Session file '{path}' declares schema '{header.Schema}' but this build supports schema 1, 2, 3 and {SessionFormat.SchemaVersion}."
             );
         }
 
@@ -228,6 +227,13 @@ public sealed partial class Session
             {
                 throw new InvalidDataException(
                     $"Session file '{path}' line {index + 1} is an unexpected second header."
+                );
+            }
+
+            if (header.Schema < 4 && entry is SessionMessageEntry { Usage.Attribution: not null })
+            {
+                throw new InvalidDataException(
+                    $"Session file '{path}' line {index + 1} has schema-4 usage attribution under schema {header.Schema}."
                 );
             }
 
@@ -278,7 +284,7 @@ public sealed partial class Session
                 _timeProvider.GetUtcNow(),
                 message,
                 model,
-                usage
+                NormalizeUsage(usage)
             )
         );
     }
@@ -303,13 +309,16 @@ public sealed partial class Session
                 _timeProvider.GetUtcNow(),
                 message,
                 model,
-                usage
+                NormalizeUsage(usage)
             )
             {
                 Skill = skill,
             }
         );
     }
+
+    private SessionUsage? NormalizeUsage(SessionUsage? usage) =>
+        Header.Schema >= 4 || usage is null ? usage : usage with { Attribution = null };
 
     /// <summary>Appends a compaction entry that replaces the listed earlier entries.</summary>
     public void AppendCompaction(string summary, IReadOnlyList<string> replaces)

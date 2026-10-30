@@ -16,14 +16,14 @@ public sealed class InteractiveSessionFooterCostTests
           "models": [
             {
               "id": "fixture-priced",
-              "provider": "fixture",
+              "provider": "openai",
               "contextWindow": 128000,
               "supportsTools": true,
               "pricing": { "input": 2.5, "output": 10, "cacheRead": 1.25, "cacheWrite": 3.75 }
             },
             {
               "id": "fixture-unpriced",
-              "provider": "fixture",
+              "provider": "openai",
               "contextWindow": 128000,
               "supportsTools": true
             }

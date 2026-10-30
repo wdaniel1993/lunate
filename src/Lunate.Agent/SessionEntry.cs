@@ -54,6 +54,17 @@ public sealed record SessionMessageEntry(
     public SessionSkillMetadata? Skill { get; init; }
 }
 
+/// <summary>A model call whose response is not part of the conversation transcript.</summary>
+public sealed record SessionModelUsageEntry(
+    string Id,
+    string? ParentId,
+    DateTimeOffset Timestamp,
+    string? Model,
+    SessionUsage? Usage,
+    ModelUsageAttribution? Attribution,
+    string? DecisionOption = null
+) : SessionEntry(Id);
+
 /// <summary>The skill metadata recorded on an invoked skill's user turn.</summary>
 public sealed record SessionSkillMetadata(string Name, string Dir);
 
@@ -160,4 +171,8 @@ public sealed record SessionUsage(
     int Output,
     int? CacheRead = null,
     int? CacheWrite = null
-);
+)
+{
+    /// <summary>The model usage attribution added in session schema 4; null for schemas 1–3.</summary>
+    public ModelUsageAttribution? Attribution { get; init; }
+}

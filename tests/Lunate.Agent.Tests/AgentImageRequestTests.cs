@@ -196,17 +196,7 @@ public sealed class AgentImageRequestTests
 
         RunError error = Assert.Single(events.OfType<RunError>());
         Assert.Contains(
-            "model text-only-test does not support images",
-            error.Message,
-            StringComparison.Ordinal
-        );
-        Assert.Contains(
-            "1 image in the request cannot be sent",
-            error.Message,
-            StringComparison.Ordinal
-        );
-        Assert.Contains(
-            "Use a vision model to continue this session.",
+            "model text-only-test doesn't accept images; switch profile or remove the image",
             error.Message,
             StringComparison.Ordinal
         );
@@ -229,27 +219,58 @@ public sealed class AgentImageRequestTests
 
         RunError error = Assert.Single(events.OfType<RunError>());
         Assert.Contains(
-            "model text-only-test does not support images",
-            error.Message,
-            StringComparison.Ordinal
-        );
-        Assert.Contains(
-            "1 image in the request cannot be sent",
-            error.Message,
-            StringComparison.Ordinal
-        );
-        Assert.Contains(
-            "Use a vision model to continue this session.",
+            "model text-only-test doesn't accept images; switch profile or remove the image",
             error.Message,
             StringComparison.Ordinal
         );
         Assert.Empty(client.Requests);
     }
 
+    [Fact]
+    public async Task Unknown_image_support_provider_rejection_names_the_model_and_next_step()
+    {
+        var client = new ScriptedChatClient().EnqueueFailure(
+            new InvalidOperationException("400 Bad Request: image input is not supported")
+        );
+        var model = new ModelInfo("unknown-image-test", "openai", null, 100000, true)
+        {
+            Capabilities = new ModelCapabilityDescriptor(),
+        };
+        var harness = new AgentHarness(
+            client,
+            new ToolRegistry(),
+            new AgentHarnessOptions { Model = model }
+        );
+
+        List<AgentEvent> events = await harness
+            .RunAsync(new UserInput("look", [Image(2, 3)]), Ct)
+            .ToListAsync(Ct);
+
+        RunError error = Assert.Single(events.OfType<RunError>());
+        Assert.Contains(
+            "model unknown-image-test doesn't accept images; switch profile or remove the image",
+            error.Message,
+            StringComparison.Ordinal
+        );
+        Assert.Single(client.Requests);
+        Assert.Single(
+            client
+                .Requests[0]
+                .Messages.SelectMany(message => message.Contents)
+                .OfType<DataContent>()
+        );
+    }
+
     private static ModelInfo VisionModel() =>
         new("vision-test", "openai", null, 100000, true) { SupportsVision = true };
 
-    private static ModelInfo TextOnlyModel() => new("text-only-test", "openai", null, 100000, true);
+    private static ModelInfo TextOnlyModel() =>
+        new("text-only-test", "openai", null, 100000, true)
+        {
+            Capabilities = new ModelCapabilityDescriptor(
+                inputModalities: new HashSet<string>(["text"], StringComparer.Ordinal)
+            ),
+        };
 
     private static ImageAttachment Image(int width, int height) =>
         new("image/png", width, height, PngBytes);

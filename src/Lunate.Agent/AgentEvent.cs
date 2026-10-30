@@ -92,7 +92,36 @@ public sealed record UsageUpdated(string RunId, UsageDetails Usage) : ExtensionE
     /// otherwise; null when the emitter does not know (older streams and test fixtures).
     /// </summary>
     public string? ModelId { get; init; }
+
+    /// <summary>The usage, profile, and provider that produced these tokens; null for legacy callers.</summary>
+    public ModelUsageAttribution? Attribution { get; init; }
 }
+
+/// <summary>A validated approval recommendation from the configured decision model.</summary>
+public sealed record DecisionEvaluated(
+    string RunId,
+    string ModelId,
+    string Method,
+    string Option,
+    double Probability
+) : ExtensionEvent(RunId);
+
+/// <summary>A decision consumer was enabled without a configured decision profile.</summary>
+public sealed record DecisionUnavailable(string RunId) : ExtensionEvent(RunId);
+
+/// <summary>A decision model returned a malformed contract twice; this is not a model verdict.</summary>
+public sealed record DecisionFailed(string RunId, string ModelId, string Reason)
+    : ExtensionEvent(RunId);
+
+/// <summary>Usage/profile/provider attribution for one recorded model call.</summary>
+public sealed record ModelUsageAttribution(
+    string Usage,
+    string ProfileName,
+    string ProviderName,
+    string ProviderKind,
+    string? DecisionMethod = null,
+    double? Probability = null
+);
 
 /// <summary>
 /// A call routed through a virtual model: the requested (virtual) model id and the resolved
