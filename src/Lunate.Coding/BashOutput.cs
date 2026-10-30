@@ -57,7 +57,7 @@ internal static class BashOutput
         int end = stdout.EndsWith('\n') ? lines.Length - 1 : lines.Length;
         int start = Math.Max(0, end - AnswerLineLimit);
         string selected = string.Join('\n', lines[start..end]);
-        if (stdout.EndsWith('\n') && selected.Length > 0)
+        if (stdout.EndsWith('\n'))
         {
             selected += '\n';
         }
