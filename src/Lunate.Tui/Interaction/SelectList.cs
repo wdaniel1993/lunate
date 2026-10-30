@@ -57,11 +57,11 @@ public sealed class SelectListRenderer
         return new Markup(builder.ToString());
     }
 
-    internal IRenderable Render(SelectListQuestionModel question)
+    internal IRenderable Render(SelectListQuestionModel question, int width = int.MaxValue)
     {
         ArgumentNullException.ThrowIfNull(question);
         var builder = new StringBuilder();
-        foreach (string line in QuestionLines(question))
+        foreach (string line in QuestionLines(question, width))
         {
             builder.Append(Markup.Escape(line)).Append('\n');
         }
@@ -70,10 +70,17 @@ public sealed class SelectListRenderer
     }
 
     /// <summary>The question picker's plain lines, including its selection and free-text state.</summary>
-    internal static IReadOnlyList<string> QuestionLines(SelectListQuestionModel question)
+    internal static IReadOnlyList<string> QuestionLines(
+        SelectListQuestionModel question,
+        int width = int.MaxValue
+    )
     {
         ArgumentNullException.ThrowIfNull(question);
-        List<string> lines = [question.Title, question.Description];
+        int availableWidth = Math.Max(1, width);
+        int descriptionIndent = WidthBands.Of(availableWidth) == WidthBand.Compact ? 2 : 4;
+        List<string> lines = [];
+        AddWrapped(lines, question.Title, string.Empty, availableWidth);
+        AddWrapped(lines, question.Description, string.Empty, availableWidth);
         for (int index = 0; index < question.Options.Count; index++)
         {
             SelectListQuestionOption option = question.Options[index];
@@ -85,16 +92,33 @@ public sealed class SelectListRenderer
                 : string.Empty;
             string recommended =
                 question.RecommendedLabel == option.Label ? " (recommended)" : string.Empty;
-            lines.Add(current + selected + option.Label + recommended);
+            AddWrapped(lines, option.Label + recommended, current + selected, availableWidth);
             if (option.Description.Length > 0)
             {
-                lines.Add("    " + option.Description);
+                AddWrapped(
+                    lines,
+                    option.Description,
+                    new string(' ', descriptionIndent),
+                    availableWidth
+                );
             }
         }
 
         string freeTextPrefix = question.FreeTextFocused ? "> Free text: " : "  Free text (Tab): ";
-        lines.Add(freeTextPrefix + question.FreeText);
+        AddWrapped(lines, question.FreeText ?? string.Empty, freeTextPrefix, availableWidth);
         return lines;
+    }
+
+    private static void AddWrapped(List<string> lines, string text, string prefix, int width)
+    {
+        int prefixWidth = CellText.Width(prefix);
+        int available = Math.Max(1, width - prefixWidth);
+        IReadOnlyList<string> wrapped = CellText.Wrap(text, available);
+        for (int index = 0; index < wrapped.Count; index++)
+        {
+            string linePrefix = index == 0 ? prefix : new string(' ', prefixWidth);
+            lines.Add(linePrefix + wrapped[index].TrimEnd());
+        }
     }
 
     /// <summary>The picker's plain lines as shown in the live area: title, then the marked items.</summary>
