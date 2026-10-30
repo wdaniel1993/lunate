@@ -15,29 +15,31 @@ public sealed class WriteVerifierPipelineTests
     {
         using var temp = new TempDirectory();
         var order = new List<string>();
-        var verifier = new RecordingVerifier((_, _) =>
-        {
-            Assert.Equal(["approved"], order);
-            order.Add("verified");
-            return Verified();
-        });
+        var verifier = new RecordingVerifier(
+            (_, _) =>
+            {
+                Assert.Equal(["approved"], order);
+                order.Add("verified");
+                return Verified();
+            }
+        );
         var tools = new ToolRegistry();
         tools.Add(new WriteTool(new Workspace(temp.Root), verifierSelector: _ => verifier));
         var approver = new OrderedApprover(order);
         var client = new ScriptedChatClient()
             .Enqueue(
-                Scripts.Call("call-1", "write", Scripts.Args(("path", "code.cs"), ("content", "class C {}\n"))),
+                Scripts.Call(
+                    "call-1",
+                    "write",
+                    Scripts.Args(("path", "code.cs"), ("content", "class C {}\n"))
+                ),
                 Scripts.ToolCalls()
             )
             .Enqueue(Scripts.Text("done"), Scripts.Stop());
         var harness = new AgentHarness(
             client,
             tools,
-            new AgentHarnessOptions
-            {
-                WorkingDirectory = temp.Root,
-                Approver = approver,
-            }
+            new AgentHarnessOptions { WorkingDirectory = temp.Root, Approver = approver }
         );
 
         await foreach (AgentEvent _ in harness.RunAsync("write code", Ct)) { }
@@ -52,17 +54,18 @@ public sealed class WriteVerifierPipelineTests
         using var temp = new TempDirectory();
         File.WriteAllText(temp.File("code.cs"), "old\r\n");
         WriteVerificationRequest? captured = null;
-        var verifier = new RecordingVerifier((request, _) =>
-        {
-            captured = request;
-            return Verified();
-        });
+        var verifier = new RecordingVerifier(
+            (request, _) =>
+            {
+                captured = request;
+                return Verified();
+            }
+        );
 
         ToolResult result = await new WriteTool(
-                new Workspace(temp.Root),
-                verifierSelector: _ => verifier
-            )
-            .ExecuteAsync(Args(new { path = "code.cs", content = "new\n" }), Context(temp.Root), Ct);
+            new Workspace(temp.Root),
+            verifierSelector: _ => verifier
+        ).ExecuteAsync(Args(new { path = "code.cs", content = "new\n" }), Context(temp.Root), Ct);
 
         Assert.False(result.IsError);
         Assert.Equal("code.cs", captured!.RelativePath);
@@ -76,21 +79,29 @@ public sealed class WriteVerifierPipelineTests
         using var temp = new TempDirectory();
         File.WriteAllText(temp.File("code.cs"), "first\r\nsecond\r\n");
         WriteVerificationRequest? captured = null;
-        var verifier = new RecordingVerifier((request, _) =>
-        {
-            captured = request;
-            return Verified();
-        });
+        var verifier = new RecordingVerifier(
+            (request, _) =>
+            {
+                captured = request;
+                return Verified();
+            }
+        );
 
         ToolResult result = await new EditTool(
-                new Workspace(temp.Root),
-                verifierSelector: _ => verifier
-            )
-            .ExecuteAsync(
-                Args(new { path = "code.cs", old_text = "second", new_text = "changed" }),
-                Context(temp.Root),
-                Ct
-            );
+            new Workspace(temp.Root),
+            verifierSelector: _ => verifier
+        ).ExecuteAsync(
+            Args(
+                new
+                {
+                    path = "code.cs",
+                    old_text = "second",
+                    new_text = "changed",
+                }
+            ),
+            Context(temp.Root),
+            Ct
+        );
 
         Assert.False(result.IsError);
         Assert.Equal("first\r\nsecond\r\n", captured!.BaselineContent);
@@ -104,14 +115,13 @@ public sealed class WriteVerifierPipelineTests
         var verifier = new RecordingVerifier((_, _) => Verified());
 
         ToolResult result = await new WriteTool(
-                new Workspace(temp.Root),
-                verifierSelector: _ => verifier
-            )
-            .ExecuteAsync(
-                Args(new { path = "code.cs", content = "original staged text\n" }),
-                Context(temp.Root),
-                Ct
-            );
+            new Workspace(temp.Root),
+            verifierSelector: _ => verifier
+        ).ExecuteAsync(
+            Args(new { path = "code.cs", content = "original staged text\n" }),
+            Context(temp.Root),
+            Ct
+        );
 
         Assert.False(result.IsError);
         Assert.Equal("original staged text\n", File.ReadAllText(temp.File("code.cs")));
@@ -123,19 +133,19 @@ public sealed class WriteVerifierPipelineTests
         using var temp = new TempDirectory();
         const string original = "class C {}\n";
         File.WriteAllText(temp.File("code.cs"), original);
-        var verifier = new RecordingVerifier((_, _) =>
-            new WriteVerificationResult(WriteVerificationStatus.Refused, "introduced error")
+        var verifier = new RecordingVerifier(
+            (_, _) =>
+                new WriteVerificationResult(WriteVerificationStatus.Refused, "introduced error")
         );
 
         ToolResult result = await new WriteTool(
-                new Workspace(temp.Root),
-                verifierSelector: _ => verifier
-            )
-            .ExecuteAsync(
-                Args(new { path = "code.cs", content = "class C { invalid }\n" }),
-                Context(temp.Root),
-                Ct
-            );
+            new Workspace(temp.Root),
+            verifierSelector: _ => verifier
+        ).ExecuteAsync(
+            Args(new { path = "code.cs", content = "class C { invalid }\n" }),
+            Context(temp.Root),
+            Ct
+        );
 
         Assert.True(result.IsError);
         Assert.Contains("introduced error", result.Output, StringComparison.Ordinal);
@@ -178,10 +188,7 @@ public sealed class WriteVerifierPipelineTests
         File.WriteAllText(temp.File("code.cs"), original);
         using var cancellation = new CancellationTokenSource();
         var verifier = new WaitingVerifier();
-        var tool = new WriteTool(
-            new Workspace(temp.Root),
-            verifierSelector: _ => verifier
-        );
+        var tool = new WriteTool(new Workspace(temp.Root), verifierSelector: _ => verifier);
         Task<ToolResult> execution = tool.ExecuteAsync(
             Args(new { path = "code.cs", content = "staged\n" }),
             Context(temp.Root),
@@ -202,22 +209,20 @@ public sealed class WriteVerifierPipelineTests
         var verifier = new RecordingVerifier((_, _) => Verified());
 
         ToolResult result = await new WriteTool(
-                new Workspace(temp.Root),
-                verifierSelector: _ => null
-            )
-            .ExecuteAsync(
-                Args(new { path = "code.txt", content = "ordinary text\n" }),
-                Context(temp.Root),
-                Ct
-            );
+            new Workspace(temp.Root),
+            verifierSelector: _ => null
+        ).ExecuteAsync(
+            Args(new { path = "code.txt", content = "ordinary text\n" }),
+            Context(temp.Root),
+            Ct
+        );
 
         Assert.False(result.IsError);
         Assert.Equal(0, verifier.Calls);
         Assert.Equal("ordinary text\n", File.ReadAllText(temp.File("code.txt")));
     }
 
-    private static WriteVerificationResult Verified() =>
-        new(WriteVerificationStatus.Verified);
+    private static WriteVerificationResult Verified() => new(WriteVerificationStatus.Verified);
 
     private static ToolContext Context(string root) => new(root, new QuietEvents());
 
@@ -250,9 +255,8 @@ public sealed class WriteVerifierPipelineTests
 
     private sealed class WaitingVerifier : IWriteVerifier
     {
-        public TaskCompletionSource Started { get; } = new(
-            TaskCreationOptions.RunContinuationsAsynchronously
-        );
+        public TaskCompletionSource Started { get; } =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         public async ValueTask<WriteVerificationResult> VerifyAsync(
             WriteVerificationRequest request,
@@ -314,9 +318,10 @@ public sealed class WriteVerifierPipelineTests
                 }
 
                 _period = period;
-                _dueAt = dueTime == Timeout.InfiniteTimeSpan
-                    ? long.MaxValue
-                    : owner.GetTimestamp() + dueTime.Ticks;
+                _dueAt =
+                    dueTime == Timeout.InfiniteTimeSpan
+                        ? long.MaxValue
+                        : owner.GetTimestamp() + dueTime.Ticks;
                 return true;
             }
 
@@ -335,9 +340,8 @@ public sealed class WriteVerifierPipelineTests
                     return;
                 }
 
-                _dueAt = _period > TimeSpan.Zero
-                    ? owner.GetTimestamp() + _period.Ticks
-                    : long.MaxValue;
+                _dueAt =
+                    _period > TimeSpan.Zero ? owner.GetTimestamp() + _period.Ticks : long.MaxValue;
                 callback(state);
             }
         }

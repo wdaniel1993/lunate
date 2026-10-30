@@ -69,7 +69,10 @@ public sealed partial record ExtensionManifest
         HashSet<string> unique = new(StringComparer.OrdinalIgnoreCase);
         foreach (JsonElement pattern in patterns.EnumerateArray())
         {
-            if (pattern.ValueKind != JsonValueKind.String || string.IsNullOrWhiteSpace(pattern.GetString()))
+            if (
+                pattern.ValueKind != JsonValueKind.String
+                || string.IsNullOrWhiteSpace(pattern.GetString())
+            )
             {
                 throw InvalidWriteVerifiers(fileName, "patterns must be non-empty filename globs");
             }
@@ -77,7 +80,10 @@ public sealed partial record ExtensionManifest
             string value = pattern.GetString()!;
             if (value.Contains('/') || value.Contains('\\'))
             {
-                throw InvalidWriteVerifiers(fileName, $"pattern '{value}' must not contain a path separator");
+                throw InvalidWriteVerifiers(
+                    fileName,
+                    $"pattern '{value}' must not contain a path separator"
+                );
             }
 
             if (!unique.Add(value))

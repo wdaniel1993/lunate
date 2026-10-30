@@ -21,7 +21,9 @@ public sealed class WriteVerifierContractTests
     [InlineData("""[{"name":"csharp","patterns":[""]}]""")]
     [InlineData("""[{"name":"csharp","patterns":["src/*.cs"]}]""")]
     [InlineData("""[{"name":"csharp","patterns":["*.cs","*.cs"]}]""")]
-    [InlineData("""[{"name":"csharp","patterns":["*.cs"]},{"name":"csharp","patterns":["*.csx"]}]""")]
+    [InlineData(
+        """[{"name":"csharp","patterns":["*.cs"]},{"name":"csharp","patterns":["*.csx"]}]"""
+    )]
     public void Manifest_rejects_invalid_or_duplicate_verifier_patterns(string declarations)
     {
         InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
@@ -40,14 +42,15 @@ public sealed class WriteVerifierContractTests
         var loader = Loader(temp, manifest, new RegisteringVerifierFactory("csharp", verifier));
         loader.Discover(temp.Root, "repo");
 
-        ExtensionLoadException exception = await Assert.ThrowsAsync<ExtensionLoadException>(async () =>
-            await loader.Load(
-                "echo",
-                temp.Root,
-                "repo",
-                new FakeExtensionTrustPrompt(approve: false),
-                TestContext.Current.CancellationToken
-            )
+        ExtensionLoadException exception = await Assert.ThrowsAsync<ExtensionLoadException>(
+            async () =>
+                await loader.Load(
+                    "echo",
+                    temp.Root,
+                    "repo",
+                    new FakeExtensionTrustPrompt(approve: false),
+                    TestContext.Current.CancellationToken
+                )
         );
 
         Assert.Contains("write verifier 'csharp'", exception.Message, StringComparison.Ordinal);
@@ -120,7 +123,14 @@ public sealed class WriteVerifierContractTests
             {
                 StorePath = temp.Subdirectory("store"),
                 Log = log,
-                BuiltIns = [new BuiltInExtension($"host/{manifest.Id}/extension.json", manifest, () => factory)],
+                BuiltIns =
+                [
+                    new BuiltInExtension(
+                        $"host/{manifest.Id}/extension.json",
+                        manifest,
+                        () => factory
+                    ),
+                ],
             }
         );
 

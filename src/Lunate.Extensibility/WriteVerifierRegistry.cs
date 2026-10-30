@@ -31,9 +31,11 @@ public sealed class WriteVerifierRegistry
             );
         }
 
-        string[] patterns = declarations
-            .FirstOrDefault(declaration => declaration.Name == registration.Name)
-            ?.Patterns.ToArray() ?? [];
+        string[] patterns =
+            declarations
+                .FirstOrDefault(declaration => declaration.Name == registration.Name)
+                ?.Patterns.ToArray()
+            ?? [];
         entries.Add(new Entry(registration, patterns));
     }
 

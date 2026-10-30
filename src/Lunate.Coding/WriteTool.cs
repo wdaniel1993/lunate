@@ -182,9 +182,7 @@ public sealed class WriteTool(
                         _timeProvider
                     )
                     .ConfigureAwait(false);
-                if (
-                    verification?.Refusal is { } verificationRefusal
-                )
+                if (verification?.Refusal is { } verificationRefusal)
                 {
                     return verificationRefusal;
                 }

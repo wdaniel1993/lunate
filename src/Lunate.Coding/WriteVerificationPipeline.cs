@@ -32,7 +32,12 @@ internal static class WriteVerificationPipeline
             CancellationTokenSource.CreateLinkedTokenSource(ct, timeout.Token);
         Task<WriteVerificationResult> verification = verifier
             .VerifyAsync(
-                new WriteVerificationRequest(relativePath, baselineContent, stagedContent, workspace),
+                new WriteVerificationRequest(
+                    relativePath,
+                    baselineContent,
+                    stagedContent,
+                    workspace
+                ),
                 verifierCancellation.Token
             )
             .AsTask();
@@ -46,7 +51,8 @@ internal static class WriteVerificationPipeline
             _ = verification.ContinueWith(
                 task => _ = task.Exception,
                 CancellationToken.None,
-                TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
+                TaskContinuationOptions.OnlyOnFaulted
+                    | TaskContinuationOptions.ExecuteSynchronously,
                 TaskScheduler.Default
             );
 
