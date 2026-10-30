@@ -992,6 +992,7 @@ public sealed partial class AgentHarness
     private List<ChatMessage> BuildRequest(IReadOnlyList<AgentPromptSection> sections)
     {
         StubStaleReadResults();
+        EnsureUsageCapabilities();
         EnsureImagesSupported();
 
         List<ChatMessage> request = [];

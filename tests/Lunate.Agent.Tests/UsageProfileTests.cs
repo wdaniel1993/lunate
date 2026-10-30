@@ -66,6 +66,92 @@ public sealed class UsageProfileTests
     }
 
     [Fact]
+    public async Task Decision_usage_refuses_known_missing_structured_output_before_request()
+    {
+        var fallback = new ScriptedChatClient();
+        var decision = new ScriptedChatClient().Enqueue(
+            LoopScripts.Text("unexpected"),
+            LoopScripts.Stop()
+        );
+        var harness = new AgentHarness(
+            fallback,
+            new ToolRegistry(),
+            new AgentHarnessOptions
+            {
+                Usage = "decision",
+                UsageModels = new Dictionary<string, UsageModelClient>(StringComparer.Ordinal)
+                {
+                    ["decision"] = new(
+                        decision,
+                        "decision-profile",
+                        "local",
+                        new ModelInfo("decision-model", "openai", null, 64000, SupportsTools: true)
+                        {
+                            Capabilities = new ModelCapabilityDescriptor(
+                                features: new HashSet<string>(StringComparer.Ordinal)
+                            ),
+                        }
+                    ),
+                },
+            }
+        );
+
+        List<AgentEvent> events = await AgentTestSupport.Run(harness);
+
+        Assert.Empty(decision.Requests);
+        Assert.Contains(
+            events.OfType<RunError>(),
+            error => error.Message.Contains("structured-output", StringComparison.Ordinal)
+        );
+    }
+
+    [Theory]
+    [InlineData("text")]
+    [InlineData("tools")]
+    public async Task Chat_usage_refuses_known_missing_requirement_before_request(
+        string missingCapability
+    )
+    {
+        var fallback = new ScriptedChatClient();
+        var selected = new ScriptedChatClient().Enqueue(
+            LoopScripts.Text("unexpected"),
+            LoopScripts.Stop()
+        );
+        var model = new ModelInfo("chat-model", "openai", null, 64000, SupportsTools: true)
+        {
+            Capabilities = missingCapability switch
+            {
+                "text" => new ModelCapabilityDescriptor(
+                    inputModalities: new HashSet<string>(StringComparer.Ordinal)
+                ),
+                "tools" => new ModelCapabilityDescriptor(
+                    features: new HashSet<string>(StringComparer.Ordinal)
+                ),
+                _ => throw new ArgumentOutOfRangeException(nameof(missingCapability)),
+            },
+        };
+        var harness = new AgentHarness(
+            fallback,
+            new ToolRegistry(),
+            new AgentHarnessOptions
+            {
+                UsageModels = new Dictionary<string, UsageModelClient>(StringComparer.Ordinal)
+                {
+                    ["chat"] = new(selected, "chat-profile", "openai", model),
+                },
+            }
+        );
+
+        List<AgentEvent> events = await AgentTestSupport.Run(harness);
+
+        Assert.Empty(selected.Requests);
+        Assert.Contains(
+            events.OfType<RunError>(),
+            error => error.Message.Contains(missingCapability, StringComparison.Ordinal)
+        );
+    }
+
+    [Fact]
     public async Task Configured_subagent_profile_is_used_for_child_model_calls()
     {
         var parent = new ScriptedChatClient()

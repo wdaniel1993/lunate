@@ -430,6 +430,45 @@ public sealed partial class AgentHarness
         try
         {
             if (
+                _options.Approver is not null
+                && _options.DecisionMode is DecisionMode.Shadow or DecisionMode.Enforce
+            )
+            {
+                ApprovalDecisionResult decision = await EvaluateApprovalDecisionAsync(
+                    runId,
+                    new ApprovalRequest(
+                        tool,
+                        approvedArgs,
+                        runId,
+                        ParentRunId,
+                        SpawnDepth,
+                        WorkspaceRoot: _options.WorkingDirectory
+                    ),
+                    channel,
+                    ct
+                );
+                if (
+                    _options.DecisionMode == DecisionMode.Enforce
+                    && decision.Failure is { } failure
+                )
+                {
+                    return new ToolResult(failure + " The call was not run.", IsError: true);
+                }
+
+                if (
+                    _options.DecisionMode == DecisionMode.Enforce
+                    && decision.Evaluation is not null
+                    && !decision.Approve
+                )
+                {
+                    return new ToolResult(
+                        $"Denied: the decision model did not approve '{tool.Name}'. The call was not run.",
+                        IsError: true
+                    );
+                }
+            }
+
+            if (
                 _options.Approver is { } approver
                 && !await approver.ApproveAsync(
                     new ApprovalRequest(

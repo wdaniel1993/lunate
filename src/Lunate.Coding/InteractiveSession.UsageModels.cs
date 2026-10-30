@@ -58,7 +58,8 @@ internal sealed partial class InteractiveSession
                 new DeferredChatClient(() => CreateUsageClient(profile)),
                 profile.Profile.Name,
                 profile.Provider.Name,
-                profile.Model
+                profile.Model,
+                profile.Profile.DecisionThreshold
             );
             clientsByProfile.Add(key, client);
             return client;

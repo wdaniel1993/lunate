@@ -12,6 +12,9 @@ public sealed record AgentHarnessOptions
     /// <summary>The resolved client/profile/provider for each configured model usage.</summary>
     public IReadOnlyDictionary<string, UsageModelClient>? UsageModels { get; init; }
 
+    /// <summary>Whether the configured decision profile observes or can veto approval asks.</summary>
+    public DecisionMode DecisionMode { get; init; } = DecisionMode.Off;
+
     /// <summary>The maximum number of model calls per run.</summary>
     public int MaxSteps { get; init; } = 50;
 
@@ -123,7 +126,8 @@ public sealed record UsageModelClient(
     IChatClient Client,
     string ProfileName,
     string ProviderName,
-    ModelInfo Model
+    ModelInfo Model,
+    double? DecisionThreshold = null
 )
 {
     /// <summary>The provider template kind of <see cref="Model"/>.</summary>

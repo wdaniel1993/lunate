@@ -104,6 +104,25 @@ internal sealed partial class InteractiveSession
             case UsageUpdated usage:
                 AddUsage(usage, root: !child);
                 break;
+            case DecisionEvaluated decision when !child:
+                Notify(
+                    FormattableString.Invariant(
+                        $"decision {decision.ModelId} ({decision.Method}): {decision.Option} ({decision.Probability.ToString("P0", CultureInfo.InvariantCulture)})"
+                    )
+                );
+                break;
+            case DecisionUnavailable when !child:
+                Notify(
+                    "decision unavailable: configure a decision profile; normal approval remains active.",
+                    NoticeLevel.Warning
+                );
+                break;
+            case DecisionFailed failed when !child:
+                Notify(
+                    $"decision failed for model {failed.ModelId}: {failed.Reason}",
+                    NoticeLevel.Warning
+                );
+                break;
             case ModelRouted routed when !child:
                 // Only the session's own extension-registered/virtual model shows routing; a
                 // catalog model's footer is untouched even when a nested call routes.

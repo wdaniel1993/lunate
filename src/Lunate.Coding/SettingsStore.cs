@@ -26,6 +26,9 @@ public sealed record AgentSettings
     /// <summary>The approval policy; defaults to <see cref="ApprovalPolicy.Ask"/>.</summary>
     public ApprovalPolicy Approval { get; init; } = ApprovalPolicy.Ask;
 
+    /// <summary>The optional approval decision consumer; defaults to off.</summary>
+    public DecisionMode DecisionMode { get; init; } = DecisionMode.Off;
+
     /// <summary>How much of a tool call the scrollback shows; defaults to collapsed.</summary>
     public ToolDetails ToolDetails { get; init; } = ToolDetails.Collapsed;
 
@@ -434,6 +437,12 @@ public static partial class SettingsStore
                         break;
                     case "usages":
                         settings = settings with { Usages = ReadUsages(property.Value, problems) };
+                        break;
+                    case "decisionMode":
+                        settings = settings with
+                        {
+                            DecisionMode = ReadDecisionMode(property.Value, problems),
+                        };
                         break;
                     case "tui":
                         settings = settings with { Tui = ReadTui(property.Value, problems) };

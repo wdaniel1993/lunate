@@ -888,6 +888,7 @@ internal sealed partial class InteractiveSession : IDisposable
             // The same redactor masks the model-facing text; the interactive session always has one.
             ToolOutputMask = _redaction.Redact,
             SubagentLimits = _settings.Subagents,
+            DecisionMode = _settings.DecisionMode,
             Approver = _approver,
             Hooks = _extensions?.Hooks,
             Session = _session,

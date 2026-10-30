@@ -1,9 +1,52 @@
+using Lunate.Agent;
 using Lunate.Ai;
 
 namespace Lunate.Coding.Tests;
 
 public sealed class SettingsProfileCapabilitiesTests
 {
+    [Fact]
+    public void Decision_consumer_is_off_by_default_and_user_can_opt_into_enforcement()
+    {
+        using var temp = new TempDirectory();
+        File.WriteAllText(
+            temp.File("settings.json"),
+            """
+            { "schemaVersion": 2, "decisionMode": "enforce" }
+            """
+        );
+
+        AgentSettings defaults = SettingsStore.Resolve(null, _ => null);
+        AgentSettings configured = SettingsStore.Resolve(temp.File("settings.json"), _ => null);
+
+        Assert.Equal(DecisionMode.Off, defaults.DecisionMode);
+        Assert.Equal(DecisionMode.Enforce, configured.DecisionMode);
+    }
+
+    [Fact]
+    public void Project_settings_cannot_enable_decision_consumer()
+    {
+        using var temp = new TempDirectory();
+        File.WriteAllText(
+            temp.File("project-settings.json"),
+            """
+            { "schemaVersion": 2, "decisionMode": "enforce" }
+            """
+        );
+
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+            SettingsStore.ResolveWithProject(
+                null,
+                temp.File("project-settings.json"),
+                [],
+                _ => null
+            )
+        );
+
+        Assert.Contains("decisionMode", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("not allowed", exception.Message, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void User_profile_can_override_open_capability_categories()
     {

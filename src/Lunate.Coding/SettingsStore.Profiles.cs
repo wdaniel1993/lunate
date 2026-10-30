@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Lunate.Agent;
 using Lunate.Ai;
 
 namespace Lunate.Coding;
@@ -157,6 +158,25 @@ public static partial class SettingsStore
         }
 
         return usages;
+    }
+
+    private static DecisionMode ReadDecisionMode(JsonElement value, List<string> problems)
+    {
+        if (value.ValueKind == JsonValueKind.String)
+        {
+            switch (value.GetString())
+            {
+                case "off":
+                    return DecisionMode.Off;
+                case "shadow":
+                    return DecisionMode.Shadow;
+                case "enforce":
+                    return DecisionMode.Enforce;
+            }
+        }
+
+        problems.Add("'decisionMode' must be 'off', 'shadow', or 'enforce'");
+        return DecisionMode.Off;
     }
 
     private static string? ReadProfileString(
