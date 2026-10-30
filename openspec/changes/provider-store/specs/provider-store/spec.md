@@ -172,13 +172,19 @@ Every recorded model usage SHALL identify its usage (`chat`, `fast`, `decision`,
 
 ### Requirement: Project provider-definition security boundary
 
-Project settings MAY reference existing user providers and profiles, define project profiles on top of those providers, and lower user-configured limits. Project settings SHALL NOT define a provider, endpoint/base URL, or credential reference. A refused definition SHALL name the offending key and SHALL fail closed before resolving a secret or opening a connection. Providers SHALL be user-scoped because otherwise a repository could direct a provider to an attacker-controlled URL and receive the user's credential.
+Project settings MAY reference existing user providers and profiles, define project profiles on top of existing user providers, and lower user-configured limits. A project profile MAY reference an existing user profile. Project settings SHALL NOT define a provider, endpoint/base URL, or credential reference. A refused definition SHALL name the offending key and SHALL fail closed before resolving a secret or opening a connection. Providers SHALL be user-scoped because otherwise a repository could direct a provider to an attacker-controlled URL and receive the user's credential.
 
 #### Scenario: Project profile references an existing provider
 
 - **GIVEN** a project profile that references an existing user provider and lowers an output limit
 - **WHEN** project settings load
 - **THEN** the profile is accepted and the effective limit is the lower value
+
+#### Scenario: Project settings reference an existing user profile
+
+- **GIVEN** project settings that assign a usage to an existing user-defined profile
+- **WHEN** project settings load
+- **THEN** the reference resolves to that profile without creating or changing its provider definition
 
 #### Scenario: Project cannot raise a user limit
 
