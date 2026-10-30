@@ -3,7 +3,9 @@
 # VHS tapes. Keyless and deterministic: every tape replays a committed fixture through
 # LUNATE_REPLAY with a pinned LUNATE_DATE, so no provider is called and no run varies.
 # The demo tapes replay docs/media/fixtures/demo-session.jsonl; the thinking tape (see its
-# fixture block below) replays tests/fixtures/streams/scripted-reasoning.jsonl.
+# fixture block below) replays tests/fixtures/streams/scripted-reasoning.jsonl. The scratch
+# home gets an inert auth.json entry so the first-run auth offer stays closed (see that
+# block below).
 #
 # The fixture embeds the demo workspace path, the tool set and the model id in its request
 # digests — it is only valid for exactly this setup. When the demo workspace, the prompt, the
@@ -90,9 +92,15 @@ Console.WriteLine($"{list.Items.Count} item(s)");
 EOF
 }
 
-# --- scratch home: replay needs settings + catalog only (the seam skips credentials) ---
+# --- scratch home: replay needs settings + catalog only (the seam skips credentials). The
+# auth.json entry is a value the replay seam never reads — it exists so the first-run auth
+# offer (an interactive session whose model has no usable credential) does not open and
+# swallow the tapes' keystrokes. ---
 rm -rf "$DEMO_HOME" "$TRUST" "$SCRATCH"
 mkdir -p "$DEMO_HOME/.lunate" "$SCRATCH/bin"
+cat > "$DEMO_HOME/.lunate/auth.json" <<'JSON'
+{ "schemaVersion": 1, "keys": { "openrouter": "sk-replay" } }
+JSON
 cat > "$DEMO_HOME/.lunate/settings.json" <<'JSON'
 { "schemaVersion": 1, "model": "deepseek/deepseek-v4.1-flash" }
 JSON
@@ -113,8 +121,12 @@ cat > "$DEMO_HOME/.lunate/models.json" <<'JSON'
 JSON
 
 # --- pre-warm the SDK first-run state in the scratch home: the first dotnet use prints
-# telemetry / certificate / workload notices that would otherwise vary between runs ---
+# telemetry / certificate / workload notices that would otherwise vary between runs. The
+# `--list-sdks` pass matters beyond notices: MSBuildLocator's SDK probe runs `dotnet` against
+# the resolved home, and on a cold home it was slow enough for the demo build to outlive the
+# tape's sleeps, leaving the capture mid-turn ---
 (cd /tmp && HOME="$DEMO_HOME" "$DOTNET_ROOT/dotnet" --info >/dev/null 2>&1 || true)
+(cd /tmp && HOME="$DEMO_HOME" "$DOTNET_ROOT/dotnet" --list-sdks >/dev/null 2>&1 || true)
 (cd /tmp && HOME="$DEMO_HOME" "$DOTNET_ROOT/dotnet" workload list >/dev/null 2>&1 || true)
 (cd /tmp && HOME="$DEMO_HOME" "$DOTNET_ROOT/dotnet" dev-certs https >/dev/null 2>&1 || true)
 
