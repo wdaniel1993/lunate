@@ -731,6 +731,22 @@ internal sealed partial class InteractiveSession
         List<string> labels = [];
         List<string> values = [];
         var added = new HashSet<string>(StringComparer.Ordinal);
+        foreach (
+            (string name, ModelProfile profile) in _settings.Profiles.OrderBy(
+                static item => item.Key,
+                StringComparer.Ordinal
+            )
+        )
+        {
+            if (!added.Add(name))
+            {
+                continue;
+            }
+
+            labels.Add($"{name} — {profile.Provider}/{profile.Model}");
+            values.Add(name);
+        }
+
         foreach (string favorite in _settings.Favorites)
         {
             if (
@@ -760,7 +776,13 @@ internal sealed partial class InteractiveSession
         string title = _extensionModelId is not null
             ? "Select model — current " + DisplayModel()
             : "Select model";
-        int current = values.IndexOf(_modelId);
+        string currentSelection = _settings.Usages.GetValueOrDefault("chat") ?? _modelId;
+        int current = values.IndexOf(currentSelection);
+        if (current < 0)
+        {
+            current = values.IndexOf(_modelId);
+        }
+
         OpenPicker(PickerKind.Model, title, labels, values, current < 0 ? 0 : current);
     }
 

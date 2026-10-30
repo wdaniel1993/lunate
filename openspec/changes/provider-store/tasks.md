@@ -32,7 +32,7 @@
 
 ## 6. User surfaces and documentation
 
-- [ ] 6.1 Test-first in `Lunate.Coding.Tests` and `Lunate.Tui.Tests`: prove `/model` exposes chat profiles and qualified model selection without changing other usage assignments, and `/cost` is read-only and makes no model call.
+- [x] 6.1 Test-first in `Lunate.Coding.Tests` and `Lunate.Tui.Tests`: prove `/model` exposes chat profiles and qualified model selection without changing other usage assignments, and `/cost` is read-only and makes no model call.
 - [ ] 6.2 Update `docs/first-run.md` and the auth/`/model`/cost sections of `docs/guide.md` to describe provider instances, credential references, migration, project restrictions, profile settings, decision degradation, and region as metadata only.
 
 ## 7. Verification
