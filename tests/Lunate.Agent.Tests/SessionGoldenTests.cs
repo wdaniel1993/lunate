@@ -71,6 +71,46 @@ public sealed class SessionGoldenTests
             entry => entry.Message.Role == ChatRole.Assistant
         );
         Assert.Equal(new SessionUsage(1500, 50, 1200, 300), assistant.Usage);
+        Assert.Null(assistant.Usage!.Attribution);
+    }
+
+    [Fact]
+    public void Schema_four_fixture_round_trips_usage_attribution_and_decision_provenance()
+    {
+        string path = Path.Combine(SessionsDirectory, "schema4-usage.jsonl");
+        byte[] original = File.ReadAllBytes(path);
+        Session loaded = Session.Load(path);
+        SessionMessageEntry assistant = Assert.Single(
+            loaded.Entries.OfType<SessionMessageEntry>(),
+            entry => entry.Message.Role == ChatRole.Assistant
+        );
+
+        Assert.Equal(4, loaded.Schema);
+        Assert.Equal("router/model-x", assistant.Model);
+        Assert.Equal(1500, assistant.Usage!.Input);
+        Assert.Equal(50, assistant.Usage.Output);
+        Assert.Equal(1200, assistant.Usage.CacheRead);
+        Assert.Equal(300, assistant.Usage.CacheWrite);
+        Assert.Equal(
+            new ModelUsageAttribution(
+                "decision",
+                "decision-profile",
+                "router",
+                "openrouter",
+                "adapter",
+                0.9d
+            ),
+            assistant.Usage.Attribution
+        );
+
+        string text = Encoding.UTF8.GetString(original);
+        string[] lines = text.Split('\n');
+        string roundTripped =
+            string.Join(
+                "\n",
+                lines[..^1].Select(line => SessionFormat.Serialize(SessionFormat.Parse(line)))
+            ) + "\n";
+        Assert.Equal(original, Encoding.UTF8.GetBytes(roundTripped));
     }
 
     [Fact]

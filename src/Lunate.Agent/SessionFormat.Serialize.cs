@@ -7,7 +7,7 @@ using System.Text.Json;
 namespace Lunate.Agent;
 
 /// <summary>
-/// The write path of <see cref="SessionFormat"/>: schema 1, 2 and 3 lines on a single
+/// The write path of <see cref="SessionFormat"/>: schema 1–4 lines on a single
 /// <see cref="Utf8JsonWriter"/> so raw-preserved parts embed with <c>WriteRawValue</c>.
 /// </summary>
 internal static partial class SessionFormat
@@ -143,6 +143,27 @@ internal static partial class SessionFormat
             if (usage.CacheWrite is > 0 and int cacheWrite)
             {
                 writer.WriteNumber("cacheWrite", cacheWrite);
+            }
+
+            if (usage.Attribution is { } attribution)
+            {
+                writer.WritePropertyName("attribution");
+                writer.WriteStartObject();
+                writer.WriteString("usage", attribution.Usage);
+                writer.WriteString("profileName", attribution.ProfileName);
+                writer.WriteString("providerName", attribution.ProviderName);
+                writer.WriteString("providerKind", attribution.ProviderKind);
+                if (attribution.DecisionMethod is { } method)
+                {
+                    writer.WriteString("decisionMethod", method);
+                }
+
+                if (attribution.Probability is { } probability)
+                {
+                    writer.WriteNumber("probability", probability);
+                }
+
+                writer.WriteEndObject();
             }
 
             writer.WriteEndObject();

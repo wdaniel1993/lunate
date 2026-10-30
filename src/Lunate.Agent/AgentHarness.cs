@@ -653,14 +653,15 @@ public sealed partial class AgentHarness
 
         if (usageDetails is { } reportedUsage)
         {
+            ModelUsageAttribution? attribution = UsageAttribution(_options.Usage, usageModel);
             AccumulateUsage(
                 runId,
                 channel,
                 reportedUsage,
                 routedModelId ?? modelId ?? usageModel?.Model.Id ?? _options.ModelId,
-                UsageAttribution(_options.Usage, usageModel)
+                attribution
             );
-            usage = RecordedUsage(reportedUsage);
+            usage = RecordedUsage(reportedUsage, attribution);
             _lastInputTokens = usage.Input;
             _lastRequestUtf8 = requestUtf8;
         }
@@ -715,14 +716,21 @@ public sealed partial class AgentHarness
             : null;
     }
 
-    private static ModelUsageAttribution? UsageAttribution(string usage, UsageModelClient? model) =>
+    private static ModelUsageAttribution? UsageAttribution(
+        string usage,
+        UsageModelClient? model,
+        string? decisionMethod = null,
+        double? probability = null
+    ) =>
         model is null
             ? null
             : new ModelUsageAttribution(
                 usage,
                 model.ProfileName,
                 model.ProviderName,
-                model.ProviderKind
+                model.ProviderKind,
+                decisionMethod,
+                probability
             );
 
     /// <summary>
@@ -730,7 +738,10 @@ public sealed partial class AgentHarness
     /// the provider's counts; a cache lane is recorded only when the provider reports a positive
     /// count, so an unreported lane stays unknown rather than zero.
     /// </summary>
-    private static SessionUsage RecordedUsage(UsageDetails details)
+    private static SessionUsage RecordedUsage(
+        UsageDetails details,
+        ModelUsageAttribution? attribution = null
+    )
     {
         int? cacheRead = details.CachedInputTokenCount is > 0 and long reportedRead
             ? (int)reportedRead
@@ -750,7 +761,10 @@ public sealed partial class AgentHarness
             (int)(details.OutputTokenCount ?? 0),
             cacheRead,
             cacheWrite
-        );
+        )
+        {
+            Attribution = attribution,
+        };
     }
 
     /// <summary>

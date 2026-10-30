@@ -15,10 +15,9 @@ namespace Lunate.Agent;
 internal static partial class SessionFormat
 {
     /// <summary>
-    /// The schema this build writes: 3 adds cache token lanes and image reference parts on top of
-    /// the schema 2 entries; older schemas never carry either.
+    /// The schema this build writes: 4 adds model usage attribution on top of schema 3.
     /// </summary>
-    internal const int SchemaVersion = 3;
+    internal const int SchemaVersion = 4;
 
     private const string HeaderType = "header";
     private const string MessageType = "message";
@@ -199,6 +198,11 @@ internal static partial class SessionFormat
             && usageElement.ValueKind == JsonValueKind.Object
                 ? usageElement.Deserialize<SessionUsage>(SessionJson.Options)
                 : null;
+        if (usage is not null && usageElement.TryGetProperty("attribution", out _))
+        {
+            usage = usage with { Attribution = ParseUsageAttribution(usageElement) };
+        }
+
         SessionSkillMetadata? skill = null;
         if (root.TryGetProperty("skill", out JsonElement skillElement))
         {
@@ -236,6 +240,41 @@ internal static partial class SessionFormat
             {
                 RawMessageJson = rawMessageJson,
             };
+    }
+
+    private static ModelUsageAttribution ParseUsageAttribution(JsonElement usage)
+    {
+        JsonElement attribution = usage.GetProperty("attribution");
+        if (attribution.ValueKind != JsonValueKind.Object)
+        {
+            throw new InvalidDataException("Session usage attribution is not an object.");
+        }
+
+        string? decisionMethod = OptionalString(attribution, "decisionMethod");
+        double? probability = null;
+        if (attribution.TryGetProperty("probability", out JsonElement probabilityElement))
+        {
+            if (
+                probabilityElement.ValueKind != JsonValueKind.Number
+                || !probabilityElement.TryGetDouble(out double parsed)
+                || !double.IsFinite(parsed)
+                || parsed is < 0d or > 1d
+            )
+            {
+                throw new InvalidDataException("Session usage attribution probability is invalid.");
+            }
+
+            probability = parsed;
+        }
+
+        return new ModelUsageAttribution(
+            RequiredString(attribution, "usage"),
+            RequiredString(attribution, "profileName"),
+            RequiredString(attribution, "providerName"),
+            RequiredString(attribution, "providerKind"),
+            decisionMethod,
+            probability
+        );
     }
 
     private static SessionNestedCallsEntry ParseNestedCalls(JsonElement root)

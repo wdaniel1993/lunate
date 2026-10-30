@@ -26,6 +26,15 @@ public sealed class SessionFormatTests
     }
 
     [Fact]
+    public void A_new_session_uses_schema_four()
+    {
+        using var temp = new TempDirectory();
+        Session session = Session.Create(temp.File("session.jsonl"), "/work");
+
+        Assert.Equal(4, session.Schema);
+    }
+
+    [Fact]
     public void Message_entry_serializes_the_envelope_and_the_meai_message_node()
     {
         var entry = new SessionMessageEntry(
@@ -105,6 +114,38 @@ public sealed class SessionFormatTests
         );
 
         Assert.Equal(new SessionUsage(1500, 50, 1200, 300), parsed.Usage);
+    }
+
+    [Fact]
+    public void Schema_four_usage_round_trips_profile_provider_and_decision_provenance()
+    {
+        var attribution = new ModelUsageAttribution(
+            "decision",
+            "decision-profile",
+            "router",
+            "openrouter",
+            "adapter",
+            0.9d
+        );
+        var entry = new SessionMessageEntry(
+            "e_02",
+            "e_01",
+            Recorded,
+            new ChatMessage(ChatRole.Assistant, "decision result"),
+            "router/model-x",
+            new SessionUsage(1500, 50, 1200, 300) { Attribution = attribution }
+        );
+
+        string line = SessionFormat.Serialize(entry);
+        SessionMessageEntry parsed = Assert.IsType<SessionMessageEntry>(SessionFormat.Parse(line));
+
+        Assert.Equal("router/model-x", parsed.Model);
+        Assert.Equal(attribution, parsed.Usage!.Attribution);
+        Assert.Contains(
+            "\"usage\":{\"input\":1500,\"output\":50,\"cacheRead\":1200,\"cacheWrite\":300,\"attribution\":{\"usage\":\"decision\",\"profileName\":\"decision-profile\",\"providerName\":\"router\",\"providerKind\":\"openrouter\",\"decisionMethod\":\"adapter\",\"probability\":0.9}}",
+            line,
+            StringComparison.Ordinal
+        );
     }
 
     [Fact]

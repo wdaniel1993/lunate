@@ -55,6 +55,11 @@ public sealed partial class AgentHarness
             }
 
             string resolvedModelId = response.ModelId ?? modelId;
+            bool valid = TryReadDecision(
+                response.Text,
+                out DecisionContract? contract,
+                out failure
+            );
             if (response.Usage is { } usage)
             {
                 AccumulateUsage(
@@ -62,11 +67,16 @@ public sealed partial class AgentHarness
                     channel,
                     usage,
                     resolvedModelId,
-                    UsageAttribution("decision", model)
+                    UsageAttribution(
+                        "decision",
+                        model,
+                        valid ? method : null,
+                        valid ? contract!.Probability : null
+                    )
                 );
             }
 
-            if (TryReadDecision(response.Text, out DecisionContract? contract, out failure))
+            if (valid)
             {
                 var evaluated = new DecisionEvaluated(
                     runId,

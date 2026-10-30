@@ -118,7 +118,9 @@ public sealed record ModelUsageAttribution(
     string Usage,
     string ProfileName,
     string ProviderName,
-    string ProviderKind
+    string ProviderKind,
+    string? DecisionMethod = null,
+    double? Probability = null
 );
 
 /// <summary>

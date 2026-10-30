@@ -160,4 +160,8 @@ public sealed record SessionUsage(
     int Output,
     int? CacheRead = null,
     int? CacheWrite = null
-);
+)
+{
+    /// <summary>The model usage attribution added in session schema 4; null for schemas 1–3.</summary>
+    public ModelUsageAttribution? Attribution { get; init; }
+}

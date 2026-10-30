@@ -519,6 +519,8 @@ Lunate.Agent.SessionUsage.Input.get -> int
 Lunate.Agent.SessionUsage.Input.init -> void
 Lunate.Agent.SessionUsage.Output.get -> int
 Lunate.Agent.SessionUsage.Output.init -> void
+Lunate.Agent.SessionUsage.Attribution.get -> Lunate.Agent.ModelUsageAttribution?
+Lunate.Agent.SessionUsage.Attribution.init -> void
 Lunate.Agent.SessionUsage.SessionUsage(int Input, int Output, int? CacheRead = null, int? CacheWrite = null) -> void
 override Lunate.Agent.SessionCompactionEntry.<Clone>$() -> Lunate.Agent.SessionCompactionEntry!
 override Lunate.Agent.SessionCompactionEntry.Equals(object? obj) -> bool
@@ -1233,17 +1235,21 @@ static Lunate.Agent.UsageModelClient.operator !=(Lunate.Agent.UsageModelClient? 
 static Lunate.Agent.UsageModelClient.operator ==(Lunate.Agent.UsageModelClient? left, Lunate.Agent.UsageModelClient? right) -> bool
 Lunate.Agent.ModelUsageAttribution
 Lunate.Agent.ModelUsageAttribution.<Clone>$() -> Lunate.Agent.ModelUsageAttribution!
-Lunate.Agent.ModelUsageAttribution.Deconstruct(out string! Usage, out string! ProfileName, out string! ProviderName, out string! ProviderKind) -> void
+Lunate.Agent.ModelUsageAttribution.Deconstruct(out string! Usage, out string! ProfileName, out string! ProviderName, out string! ProviderKind, out string? DecisionMethod, out double? Probability) -> void
 Lunate.Agent.ModelUsageAttribution.Equals(Lunate.Agent.ModelUsageAttribution? other) -> bool
 Lunate.Agent.ModelUsageAttribution.ProfileName.get -> string!
 Lunate.Agent.ModelUsageAttribution.ProfileName.init -> void
 Lunate.Agent.ModelUsageAttribution.ProviderKind.get -> string!
 Lunate.Agent.ModelUsageAttribution.ProviderKind.init -> void
+Lunate.Agent.ModelUsageAttribution.DecisionMethod.get -> string?
+Lunate.Agent.ModelUsageAttribution.DecisionMethod.init -> void
+Lunate.Agent.ModelUsageAttribution.Probability.get -> double?
+Lunate.Agent.ModelUsageAttribution.Probability.init -> void
 Lunate.Agent.ModelUsageAttribution.ProviderName.get -> string!
 Lunate.Agent.ModelUsageAttribution.ProviderName.init -> void
 Lunate.Agent.ModelUsageAttribution.Usage.get -> string!
 Lunate.Agent.ModelUsageAttribution.Usage.init -> void
-Lunate.Agent.ModelUsageAttribution.ModelUsageAttribution(string! Usage, string! ProfileName, string! ProviderName, string! ProviderKind) -> void
+Lunate.Agent.ModelUsageAttribution.ModelUsageAttribution(string! Usage, string! ProfileName, string! ProviderName, string! ProviderKind, string? DecisionMethod = null, double? Probability = null) -> void
 override Lunate.Agent.ModelUsageAttribution.Equals(object? obj) -> bool
 override Lunate.Agent.ModelUsageAttribution.GetHashCode() -> int
 override Lunate.Agent.ModelUsageAttribution.ToString() -> string!

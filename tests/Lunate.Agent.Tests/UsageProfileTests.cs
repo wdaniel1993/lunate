@@ -105,6 +105,63 @@ public sealed class UsageProfileTests
         );
     }
 
+    [Fact]
+    public async Task Assistant_usage_attribution_is_persisted_in_schema_four()
+    {
+        using var temp = new TempDirectory();
+        Session session = Session.Create(temp.File("session.jsonl"), "/work");
+        var client = new ScriptedChatClient().Enqueue(
+            new ChatResponseUpdate(
+                ChatRole.Assistant,
+                [
+                    new TextContent("answer"),
+                    new UsageContent(
+                        new UsageDetails { InputTokenCount = 6, OutputTokenCount = 2 }
+                    ),
+                ]
+            ),
+            LoopScripts.Stop()
+        );
+        var harness = new AgentHarness(
+            client,
+            new ToolRegistry(),
+            new AgentHarnessOptions
+            {
+                Session = session,
+                UsageModels = new Dictionary<string, UsageModelClient>(StringComparer.Ordinal)
+                {
+                    ["chat"] = new(
+                        client,
+                        "chat-profile",
+                        "router",
+                        new ModelInfo(
+                            "router/model-x",
+                            "openrouter",
+                            null,
+                            64000,
+                            SupportsTools: true
+                        )
+                    ),
+                },
+            }
+        );
+
+        await AgentTestSupport.Run(harness);
+
+        SessionMessageEntry assistant = Assert.Single(
+            session.Entries.OfType<SessionMessageEntry>(),
+            entry => entry.Message.Role == ChatRole.Assistant
+        );
+        Assert.Equal(4, session.Schema);
+        Assert.Equal("router/model-x", assistant.Model);
+        Assert.Equal(6, assistant.Usage!.Input);
+        Assert.Equal(2, assistant.Usage.Output);
+        Assert.Equal(
+            new ModelUsageAttribution("chat", "chat-profile", "router", "openrouter"),
+            assistant.Usage.Attribution
+        );
+    }
+
     [Theory]
     [InlineData("text")]
     [InlineData("tools")]
