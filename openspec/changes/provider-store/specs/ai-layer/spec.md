@@ -20,31 +20,49 @@ The twelve built-in provider presets SHALL be provider-kind templates that suppl
 
 ### Requirement: Model capability metadata
 
-The model/provider catalog SHALL expose an optional structured-output capability flag and optional `apiType` metadata (`chat` or `decision`). At configuration time, only an explicit structured-output=false flag SHALL refuse decision assignment; unknown capability SHALL proceed to runtime validation. `apiType` SHALL be a labelling hint only and SHALL NOT gate decision usage. A provider MAY declare a provider-calibrated decision API through metadata. An explicitly assigned chat model with structured-output support MAY serve decision usage as an `adapter`, directly or through a wrapper. Capability SHALL NOT be inferred from vendor names or ids. Decision method, probability method and calibrated state SHALL be distinct: every model starts uncalibrated and only per-model shadow evidence plus maintainer sign-off may mark it calibrated.
+Each model descriptor SHALL carry an extensible capability set with API names (`chat`, `decision`, `image-generation`, `embeddings`, and future strings), input modalities, output modalities, and features (`tools`, `structured-output`, `reasoning`, and future strings). These names SHALL be strings, not a closed enum. Each category MAY be unknown; an omitted category SHALL NOT be interpreted as unsupported. Capability facts SHALL layer in this order: catalog, provider discovery, then the user's profile override. A later source SHALL replace only categories it explicitly supplies; omitted categories retain the previous fact or remain unknown.
 
-#### Scenario: A provider-calibrated decision API is labelled vendor-neutrally
+#### Scenario: A future API needs no enum change
 
-- **GIVEN** a Jev-compatible provider whose API metadata declares a provider-calibrated decision API and structured output
-- **WHEN** its model is resolved
-- **THEN** the resolved metadata labels it as `native` without a vendor-name check
+- **GIVEN** a catalog model descriptor that includes API `embeddings`
+- **WHEN** the descriptor is loaded
+- **THEN** the API name is retained without changing a closed enum
 
-#### Scenario: Explicitly absent structured output refuses decision assignment
+#### Scenario: Capability sources layer in order
 
-- **GIVEN** a catalog model with structured-output=false
-- **WHEN** it is assigned to decision
-- **THEN** assignment is refused by the explicit capability flag, without vendor, id or API-type inference
+- **GIVEN** catalog, provider-discovery and user-profile facts for the same capability category
+- **WHEN** the profile resolves
+- **THEN** the user-profile fact overrides discovery, discovery overrides catalog, and omitted categories remain inherited or unknown
 
-#### Scenario: Unknown structured-output capability is allowed
+#### Scenario: Unknown capability is allowed
 
-- **GIVEN** a catalog model whose structured-output capability is unknown
-- **WHEN** it is assigned to decision
-- **THEN** configuration allows it and runtime validates its response contract
+- **GIVEN** a model whose capability category is unknown from every source
+- **WHEN** a usage profile resolves
+- **THEN** the host allows it rather than inferring that the capability is absent
 
-#### Scenario: A chat model with structured output can be an adapter
+#### Scenario: A chat model can serve a user-selected decision usage
 
-- **GIVEN** a chat-typed catalog model that supports structured output
-- **WHEN** it is explicitly assigned to decision
-- **THEN** it is labelled `adapter` and uncalibrated rather than refused by its API type
+- **GIVEN** a user assigns a chat model with known `structured-output` feature to decision
+- **WHEN** the profile resolves
+- **THEN** it is accepted and the request method is labelled `adapter`
+
+#### Scenario: API metadata labels but does not gate decision use
+
+- **GIVEN** a user-selected model with API `chat` and the required `structured-output` feature
+- **WHEN** it serves decision usage
+- **THEN** it is labelled `adapter` and is not rejected by its API name
+
+#### Scenario: Image input is checked only when an image is attached
+
+- **GIVEN** an image attachment and a chat model whose known input modalities exclude `image`
+- **WHEN** the request is prepared
+- **THEN** it is refused before sending with a notice naming the model and saying to switch profile or remove the image
+
+#### Scenario: Unknown image input is attempted and provider rejection is translated
+
+- **GIVEN** an image attachment and a chat model whose input modalities are unknown
+- **WHEN** the request is sent and the provider rejects the image
+- **THEN** the user receives the same clear model-named switch-profile-or-remove-image notice, not a raw provider error
 
 ### Requirement: Profile options are validated against resolved models
 

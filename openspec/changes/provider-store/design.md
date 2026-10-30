@@ -15,7 +15,7 @@ The change introduces user-owned provider instances, named profiles, and usage s
 - Make provider instances user-owned data, with credentials represented only by references.
 - Validate named profiles against provider and catalog capabilities before a client is used.
 - Resolve all model calls through an explicit usage, profile, and provider assignment.
-- Make decision capability and adapter provenance visible, and make the no-profile case explicitly unavailable.
+- Make decision method provenance visible, validate the response contract, and make the no-profile case explicitly unavailable.
 - Attribute persisted usage and `/cost` to usage and provider while retaining model id and token-lane pricing behavior.
 - Reject project settings that could redirect user credentials, while allowing project profile references and only-tightening limits.
 
@@ -24,7 +24,7 @@ The change introduces user-owned provider instances, named profiles, and usage s
 - Defining a region-based data-routing or residency policy; `region` is retained metadata only.
 - Adding a core per-request routing DSL or changing how a declared provider routes internally.
 - Adding provider kinds beyond the twelve existing templates or new NuGet dependencies.
-- Silently adapting unsupported settings, implicitly falling back to the chat model for decisions, or treating adapter results as calibrated.
+- Silently adapting unsupported profile settings, implicitly falling back to the chat model for decisions, or applying decisions outside the user's allow envelope.
 
 ## Decisions
 
@@ -50,11 +50,9 @@ Keep the selection graph explicit: `chat`, `fast`, `decision`, `subagents`, or `
 
 ### Decision capability is declared and degradation is explicit
 
-At configuration time, assignment to `decision` is refused only if the selected model's metadata explicitly says structured output is unsupported. Unknown capability proceeds to runtime validation; neither `apiType`, provider name nor model id is a refusal signal. A Jev-compatible provider exposes a provider-calibrated decision API and is labelled `native`; a structured-output chat model explicitly assigned to decision is labelled `adapter`, directly or through the `adapter:<provider>/<model>` wrapper. These are method labels, not calibration states. Every model starts uncalibrated; calibration is per model id and is earned only through shadow metrics and maintainer sign-off under #183. A model never borrows another model's metrics. The exact distinction is: Capability is about the contract, calibration is about trust, and trust is earned per model.
+Any model may serve `decision` when the user explicitly assigns it. Model ability is the user's judgement, not a product capability gate; catalog `apiType` may label `native` provider-decision calls versus `adapter` chat-model calls but never refuses a profile. No model is marked calibrated or “cannot decide.” Each response is checked against the defined options and well-formed probabilities (one finite value in [0, 1] per option, summing to 1 within contract tolerance). A malformed response is retried once; a second malformed response fails the decision and names the model. Probability extraction from logprobs may be used when cheaply available, but is an implementation detail and is not persisted as policy or provenance. With no decision profile, the layer is unavailable and off rather than implicitly borrowing chat. Shadow mode is an opt-in user setting for trying a model, not a promotion gate.
 
-Every adapter response is checked against the defined options and probability contract. A well-formed probability result has one finite value in [0, 1] per option and sums to 1 within the contract tolerance. When the provider exposes logprobs, they supply probability provenance; otherwise a chat adapter may use a self-reported probability. Native decision APIs record probability method `native`. The probability method (`logprobs`, `self-reported`, or `native`) is separate from the decision method (`native` or `adapter`). Three consecutive contract failures mark that profile `cannot decide` for the rest of the session and name the model. The capability error says `This model cannot decide` and names the model and missing structured-output capability only when the catalog explicitly says support is absent; malformed output after capability passes remains `invalid decision`. No decision profile means the decision layer is unavailable and off, never an implicit chat fallback.
-
-Decision and shadow metrics are keyed by model id and remain separate; method alone never aggregates models or grants calibration. Decisions may tighten an outcome but SHALL never override a deny, regardless of calibration, per #183.
+Every decision records only its model id and `native`/`adapter` method beyond the normal usage/provider attribution. A decision may only tighten the approval result: it cannot override a deny or grant permission outside the user's allow envelope. This invariant applies to every model and is the prompt-injection boundary.
 
 **Alternative considered:** Fall back to chat when decision is unset. Rejected because it makes a hidden model choice and treats ordinary chat capability as decision capability.
 
@@ -105,10 +103,10 @@ The user configures provider definitions and profiles; project config can only r
 - [Provider instance schema overlaps with existing custom provider settings] -> Migrate existing custom endpoints into named instances idempotently; preserve their endpoint and auth reference, and test both legacy and explicit new configuration.
 - [Reachability checks can hang or trigger endpoint behavior] -> Use a strict timeout, connect without auth or headers, and report unknown separately from credential presence when no probe can be completed.
 - [Project settings smuggle endpoint/credential data through aliases or nested fields] -> Validate allowed project keys structurally and reject each forbidden key before merge or secret resolution; test the attacker URL plus credential-reference case.
-- [Catalog metadata omits a provider limitation] -> Default missing capabilities to unsupported and return the capability-specific error; do not reinterpret the failure as an invalid decision.
+- [A model returns malformed decision data] -> Validate the contract, retry once, then report a model-named failure; do not convert a technical failure into a model-capability verdict.
 - [Schema 4 changes session bytes] -> Require maintainer sign-off before apply, retain read compatibility for schemas 1–3, add new golden fixtures, and never rewrite existing goldens.
 - [Usage and provider subtotals double-count shared profiles] -> Attribute each model call once to its semantic usage and provider; test a shared profile serving multiple usages.
-- [Adapter metrics are mistaken for native calibration] -> Require explicit `adapter:` naming and carry provider kind on every decision and shadow metric.
+- [A decision is treated as a grant] -> Enforce the user's allow envelope after every decision; decisions can only tighten and never override deny.
 - [Region metadata is mistaken for a residency guarantee] -> Document the field as descriptive only and add no endpoint selection or routing behavior from it.
 
 ## Migration Plan
