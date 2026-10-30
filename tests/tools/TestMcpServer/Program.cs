@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
+using ModelContextProtocol;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 
@@ -136,6 +137,17 @@ tools.Add(
         {
             Name = "elicit_form",
             Description = "Requests a flat form elicitation and reports the response.",
+        }
+    )
+);
+tools.Add(
+    McpServerTool.Create(
+        (Func<RequestContext<CallToolRequestParams>, CancellationToken, Task<string>>)
+            ElicitUrlAsync,
+        new McpServerToolCreateOptions
+        {
+            Name = "elicit_url",
+            Description = "Requests a URL-mode elicitation and reports the response.",
         }
     )
 );
@@ -322,6 +334,36 @@ async Task<string> ElicitFormAsync(
     string serializedContent = JsonSerializer.Serialize(response.Content);
     Mark($"elicitation response={response.Action};content={serializedContent}");
     return JsonSerializer.Serialize(new { response.Action, response.Content });
+}
+
+async Task<string> ElicitUrlAsync(
+    RequestContext<CallToolRequestParams> context,
+    CancellationToken cancellationToken
+)
+{
+    try
+    {
+        ElicitResult response = await context.Server.ElicitAsync(
+            new ElicitRequestParams
+            {
+                Mode = "url",
+                ElicitationId = "test-url-elicitation",
+                Url = "https://example.invalid/elicitation",
+                Message = "Complete the external setup.",
+            },
+            cancellationToken
+        );
+        Mark($"url elicitation action={response.Action}");
+        return $"url elicitation action={response.Action}";
+    }
+    catch (Exception exception)
+    {
+        string errorCode = exception is McpProtocolException protocolException
+            ? protocolException.ErrorCode.ToString()
+            : exception.GetType().Name;
+        Mark($"url elicitation error={errorCode};{exception.Message}");
+        return $"url elicitation error={errorCode};{exception.Message}";
+    }
 }
 
 string SpawnTool()

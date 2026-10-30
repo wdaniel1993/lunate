@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using Lunate.Agent;
+using ModelContextProtocol;
 using ModelContextProtocol.Protocol;
 
 namespace Lunate.Protocols;
@@ -18,6 +19,14 @@ internal static class McpElicitationHandler
         if (request is null)
         {
             return Result("decline");
+        }
+
+        if (!string.Equals(request.Mode, "form", StringComparison.Ordinal))
+        {
+            throw new McpProtocolException(
+                "URL mode is not supported by Lunate; send a form elicitation with mode 'form' and requestedSchema. No URL was opened.",
+                McpErrorCode.InvalidParams
+            );
         }
 
         var interaction = outcome.CurrentInteraction;
