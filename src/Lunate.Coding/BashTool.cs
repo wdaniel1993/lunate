@@ -1,6 +1,5 @@
 using System.ComponentModel;
 using System.Globalization;
-using System.Text;
 using System.Text.Json;
 using Lunate.Agent;
 using Lunate.Ai;
@@ -188,12 +187,15 @@ public sealed class BashTool : ITool
         var stderr = WithCapMarker(run.Stderr, run.StderrCapped);
         if (run.TimedOut)
         {
-            return Error(ComposeText(stdout, stderr, TimeoutFooter(), hint));
+            return Result(stdout, stderr, TimeoutFooter(), hint, isError: true);
         }
 
         var exitCode = run.ExitCode!.Value;
-        return new ToolResult(
-            ComposeText(stdout, stderr, ExitFooter(exitCode), hint),
+        return Result(
+            stdout,
+            stderr,
+            ExitFooter(exitCode),
+            hint,
             exitCode != 0,
             new BashDetails(exitCode)
         );
@@ -262,33 +264,18 @@ public sealed class BashTool : ITool
     private static string WithCapMarker(string text, bool capped) =>
         capped ? text + "\n" + CapMarker : text;
 
-    private static string ComposeText(string stdout, string stderr, string footer, string? hint)
-    {
-        var text = new StringBuilder();
-        text.Append(stdout);
-        if (stderr.Length > 0)
+    private static ToolResult Result(
+        string stdout,
+        string stderr,
+        string footer,
+        string? hint,
+        bool isError,
+        object? details = null
+    ) =>
+        new(BashOutput.Answer(stdout, stderr, footer, hint), isError, details)
         {
-            if (text.Length > 0 && text[^1] != '\n')
-            {
-                text.Append('\n');
-            }
-
-            text.Append("stderr:\n").Append(stderr);
-        }
-
-        if (text.Length > 0 && text[^1] != '\n')
-        {
-            text.Append('\n');
-        }
-
-        text.Append(footer);
-        if (hint is not null)
-        {
-            text.Append('\n').Append(hint).Append('\n');
-        }
-
-        return text.ToString();
-    }
+            FullOutput = BashOutput.Transcript(stdout, stderr),
+        };
 
     private static string ExitFooter(int exitCode) =>
         string.Create(CultureInfo.InvariantCulture, $"exit code: {exitCode}");

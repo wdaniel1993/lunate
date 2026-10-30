@@ -270,7 +270,15 @@ public sealed record ToolContext(string WorkingDirectory, IAgentEvents Events);
 internal sealed class ToolDeclaration(ITool tool) : AIFunction { /* Name, Description, JsonSchema */ }
 ```
 
-`Details` is for the UI (for example a diff) and is never sent to the model. Tool output sent to the model is truncated by the loop (default 30,000 characters, cut in the middle with a marker). When the run has a session, the full output is also spilled to `<sessions-dir>/<session-id>/tool-output/<run>-<seq>.txt` and the marker names the absolute path, so the model can read the file; `--no-session` runs keep the count-only marker, and a failed spill never fails the tool (the marker stays count-only and the run reports a notice). MCP tools arrive from the SDK as functions and are wrapped as `ITool`s, so they go through the same approval policy. Do not use `AIFunctionFactory`: it builds tools by reflection and hides the schema.
+`Details` is for the UI (for example a diff) and is never sent to the model. A result over `output.spillThresholdTokens` (default 2,000 estimated tokens; `LUNATE_TOOL_SPILL_THRESHOLD` overrides it) or the character limit is spilled in a session to `<sessions-dir>/<session-id>/tool-output/<run>-<seq>.txt`; the bounded preview and pointer give the absolute path and tell the model to use `read` with `offset` and `limit`. That session-owned path is readable during the run and after resume. Without a session, output uses the existing character limit and never points to a missing file; when truncation is needed, the marker gives the omitted count. A failed spill also falls back and reports a notice.
+
+`bash` sends a concise answer—stderr, the exit footer and the last 20 stdout lines within 2,000 characters—and keeps the composed stdout and stderr as the full transcript. In a session, a large transcript is spilled and the answer carries its pointer; without a session, the bounded transcript follows the answer so no output is silently lost.
+
+After a file changes, a later edit or write based on an earlier read is refused until the model reads the current version. The next request replaces superseded read text with a one-line stale notice, while the session retains the original transcript.
+
+Known credential values in tool-result text are replaced with `[redacted:<name>]` before the text reaches the model, event stream, session or spill file. Masking is exact-value only; the existing redaction at rest remains defense in depth.
+
+MCP tools arrive from the SDK as functions and are wrapped as `ITool`s, so they go through the same approval policy. Do not use `AIFunctionFactory`: it builds tools by reflection and hides the schema.
 
 **Events (the only output of the core)**
 
@@ -427,7 +435,7 @@ First draft of `system-prompt.md` (T-16 refines it and asserts the token budget)
 ```markdown
 You are Lunate, a coding agent working in the user's repository at {cwd} on {os}, shell {shell}.
 Tools: read, write, edit, bash{extra_tools}.
-- Read a file before you edit it. Prefer edit over write for existing files.
+- Read a file before you edit it; after a stale-read refusal, read the changed file before retrying. Prefer edit over write for existing files.
 - Keep old_text in edit short but unique; include start_line if the text repeats.
 - After changing code, build or run the relevant tests and report the result.
 - Never touch files outside the repository. Ask before destructive commands.

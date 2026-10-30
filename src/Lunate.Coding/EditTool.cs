@@ -188,6 +188,14 @@ public sealed class EditTool(
                     return Task.FromResult(Error($"could not be read: {exception.Message}"));
                 }
 
+                if (
+                    ctx.Reads?.Check(resolved.AbsolutePath, fileText, resolved.RelativePath) is
+                    { } staleRead
+                )
+                {
+                    return Task.FromResult(Error(staleRead));
+                }
+
                 var (fileLines, fileEndsWithNewline) = SplitRaw(fileText);
                 var (oldLines, _) = SplitRaw(oldText);
                 var (newRawLines, _) = SplitRaw(newText);

@@ -32,6 +32,9 @@ public sealed record AgentSettings
     /// <summary>The character budget for one tool result before truncation.</summary>
     public int ToolOutputLimit { get; init; } = ToolOutput.DefaultLimit;
 
+    /// <summary>The estimated-token threshold above which a tool result is spilled.</summary>
+    public int SpillThresholdTokens { get; init; } = 2_000;
+
     /// <summary>The resolved subagent limits (the <c>subagents</c> section; defaults 4/100000/500000).</summary>
     public SubagentLimits Subagents { get; init; } = new();
 
@@ -89,7 +92,7 @@ public sealed record RoslynSettings
 /// favourites). A missing file yields defaults; a present file is validated with every problem
 /// collected into one error, and no partial settings are applied. The environment
 /// (<c>LUNATE_MODEL</c>, <c>LUNATE_APPROVAL</c>, <c>LUNATE_TOOL_DETAILS</c>,
-/// <c>LUNATE_TOOL_OUTPUT_LIMIT</c>, <c>LUNATE_STARTUP_HEADER</c>, <c>LUNATE_UPDATE_CHECK</c>,
+/// <c>LUNATE_TOOL_OUTPUT_LIMIT</c>, <c>LUNATE_TOOL_SPILL_THRESHOLD</c>, <c>LUNATE_STARTUP_HEADER</c>, <c>LUNATE_UPDATE_CHECK</c>,
 /// <c>LUNATE_SUBAGENTS_CONCURRENCY</c>, <c>LUNATE_SUBAGENTS_TOKEN_BUDGET</c>,
 /// <c>LUNATE_SUBAGENTS_TREE_TOKEN_BUDGET</c>) overrides file values. Both
 /// the path and the environment lookup are injectable.
@@ -108,6 +111,7 @@ public static partial class SettingsStore
     private const string ApprovalVariable = "LUNATE_APPROVAL";
     private const string ToolDetailsVariable = "LUNATE_TOOL_DETAILS";
     private const string ToolOutputLimitVariable = "LUNATE_TOOL_OUTPUT_LIMIT";
+    private const string ToolSpillThresholdVariable = "LUNATE_TOOL_SPILL_THRESHOLD";
     private const string StartupHeaderVariable = "LUNATE_STARTUP_HEADER";
     private const string UpdateCheckVariable = "LUNATE_UPDATE_CHECK";
     private const string SubagentConcurrencyVariable = "LUNATE_SUBAGENTS_CONCURRENCY";
@@ -358,9 +362,14 @@ public static partial class SettingsStore
                         };
                         break;
                     case "output":
+                        (int toolOutputLimit, int spillThresholdTokens) = ReadOutput(
+                            property.Value,
+                            problems
+                        );
                         settings = settings with
                         {
-                            ToolOutputLimit = ReadOutput(property.Value, problems),
+                            ToolOutputLimit = toolOutputLimit,
+                            SpillThresholdTokens = spillThresholdTokens,
                         };
                         break;
                     case "subagents":
@@ -486,18 +495,38 @@ public static partial class SettingsStore
         return ToolDetails.Collapsed;
     }
 
-    private static int ReadOutput(JsonElement value, List<string> problems)
+    private static (int ToolOutputLimit, int SpillThresholdTokens) ReadOutput(
+        JsonElement value,
+        List<string> problems
+    )
     {
         if (value.ValueKind != JsonValueKind.Object)
         {
             problems.Add("'output' must be an object");
-            return ToolOutput.DefaultLimit;
+            return (ToolOutput.DefaultLimit, 2_000);
         }
 
         int limit = ToolOutput.DefaultLimit;
+        int spillThresholdTokens = 2_000;
         foreach (JsonProperty property in value.EnumerateObject())
         {
-            if (property.Name != "toolResultLimit")
+            if (property.Name == "toolResultLimit")
+            {
+                if (
+                    property.Value.ValueKind != JsonValueKind.Number
+                    || !property.Value.TryGetInt32(out int parsedLimit)
+                    || parsedLimit < 1
+                )
+                {
+                    problems.Add("'output.toolResultLimit' must be a positive integer");
+                    continue;
+                }
+
+                limit = parsedLimit;
+                continue;
+            }
+
+            if (property.Name != "spillThresholdTokens")
             {
                 problems.Add($"unknown key 'output.{property.Name}'");
                 continue;
@@ -505,18 +534,18 @@ public static partial class SettingsStore
 
             if (
                 property.Value.ValueKind != JsonValueKind.Number
-                || !property.Value.TryGetInt32(out int parsed)
-                || parsed < 1
+                || !property.Value.TryGetInt32(out int parsedThreshold)
+                || parsedThreshold < 1
             )
             {
-                problems.Add("'output.toolResultLimit' must be a positive integer");
+                problems.Add("'output.spillThresholdTokens' must be a positive integer");
                 continue;
             }
 
-            limit = parsed;
+            spillThresholdTokens = parsedThreshold;
         }
 
-        return limit;
+        return (limit, spillThresholdTokens);
     }
 
     /// <summary>
@@ -884,6 +913,29 @@ public static partial class SettingsStore
             {
                 problems.Add(
                     $"{ToolOutputLimitVariable} must be a positive integer, but was '{limit}'"
+                );
+            }
+        }
+
+        string? spillThreshold = environment(ToolSpillThresholdVariable);
+        if (!string.IsNullOrEmpty(spillThreshold))
+        {
+            if (
+                int.TryParse(
+                    spillThreshold,
+                    NumberStyles.Integer,
+                    CultureInfo.InvariantCulture,
+                    out int parsed
+                )
+                && parsed >= 1
+            )
+            {
+                settings = settings with { SpillThresholdTokens = parsed };
+            }
+            else
+            {
+                problems.Add(
+                    $"{ToolSpillThresholdVariable} must be a positive integer, but was '{spillThreshold}'"
                 );
             }
         }

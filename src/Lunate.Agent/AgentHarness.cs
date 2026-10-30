@@ -26,6 +26,7 @@ public sealed partial class AgentHarness
     private readonly ToolRegistry _tools;
     private readonly AgentHarnessOptions _options;
     private readonly SessionImages _images;
+    private readonly ReadLedger _reads = new();
     private readonly List<ChatMessage> _history = [];
     private readonly List<FunctionCallContent> _danglingCalls = [];
     private readonly ConcurrentDictionary<string, int> _spillSequenceByCallId = new(
@@ -58,6 +59,7 @@ public sealed partial class AgentHarness
                 _historyModels.Add(item.Model);
             }
 
+            SeedReadLedger(_history);
             _images.ValidateReferences(ImageReferences(_history));
 
             if (session.ActiveCompaction is { } compaction)
@@ -932,6 +934,7 @@ public sealed partial class AgentHarness
 
     private List<ChatMessage> BuildRequest(IReadOnlyList<AgentPromptSection> sections)
     {
+        StubStaleReadResults();
         EnsureImagesSupported();
 
         List<ChatMessage> request = [];

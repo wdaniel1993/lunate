@@ -30,21 +30,26 @@ internal sealed class SkillReadAllowance
             : StringComparison.OrdinalIgnoreCase;
         foreach (string root in _roots)
         {
-            if (canonicalPath.Equals(root, comparison))
-            {
-                return true;
-            }
-
-            string prefix = root.EndsWith(Path.DirectorySeparatorChar)
-                ? root
-                : root + Path.DirectorySeparatorChar;
-            if (canonicalPath.StartsWith(prefix, comparison))
+            if (IsWithinRoot(canonicalPath, root, comparison))
             {
                 return true;
             }
         }
 
         return false;
+    }
+
+    private static bool IsWithinRoot(string canonicalPath, string root, StringComparison comparison)
+    {
+        if (canonicalPath.Equals(root, comparison))
+        {
+            return true;
+        }
+
+        string prefix = root.EndsWith(Path.DirectorySeparatorChar)
+            ? root
+            : root + Path.DirectorySeparatorChar;
+        return canonicalPath.StartsWith(prefix, comparison);
     }
 
     private static IReadOnlyList<string> Canonical(IReadOnlyList<string>? roots) =>

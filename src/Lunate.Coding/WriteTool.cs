@@ -133,6 +133,11 @@ public sealed class WriteTool(
                     return Task.FromResult(Error($"could not be read: {exception.Message}"));
                 }
 
+                if (ctx.Reads?.Check(target, oldText, relative) is { } staleRead)
+                {
+                    return Task.FromResult(Error(staleRead));
+                }
+
                 // Under the same mutation lock the write itself uses: refused means the file's
                 // bytes are untouched.
                 if (

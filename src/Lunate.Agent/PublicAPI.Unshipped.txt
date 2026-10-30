@@ -205,6 +205,8 @@ Lunate.Agent.ToolResult.Deconstruct(out string! Output, out bool IsError, out ob
 Lunate.Agent.ToolResult.Details.get -> object?
 Lunate.Agent.ToolResult.Details.init -> void
 Lunate.Agent.ToolResult.Equals(Lunate.Agent.ToolResult? other) -> bool
+Lunate.Agent.ToolResult.FullOutput.get -> string?
+Lunate.Agent.ToolResult.FullOutput.init -> void
 Lunate.Agent.ToolResult.IsError.get -> bool
 Lunate.Agent.ToolResult.IsError.init -> void
 Lunate.Agent.ToolResult.Output.get -> string!
@@ -399,6 +401,8 @@ Lunate.Agent.AgentHarnessOptions.ThinkingLevel.get -> Lunate.Ai.ThinkingLevel
 Lunate.Agent.AgentHarnessOptions.ThinkingLevel.init -> void
 Lunate.Agent.AgentHarnessOptions.ToolOutputLimit.get -> int
 Lunate.Agent.AgentHarnessOptions.ToolOutputLimit.init -> void
+Lunate.Agent.AgentHarnessOptions.SpillThresholdTokens.get -> int
+Lunate.Agent.AgentHarnessOptions.SpillThresholdTokens.init -> void
 Lunate.Agent.AgentHarnessOptions.ToolOutputMask.get -> System.Func<string!, string!>?
 Lunate.Agent.AgentHarnessOptions.ToolOutputMask.init -> void
 Lunate.Agent.AgentHarnessOptions.WorkingDirectory.get -> string!

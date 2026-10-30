@@ -179,6 +179,30 @@ public sealed class BashToolTests
     }
 
     [Fact]
+    public async Task A_blank_stdout_line_is_preserved()
+    {
+        using var temp = new TempDirectory();
+        var resolver = new ShellResolver();
+        ResolvedShell shell = Assert.IsType<ResolvedShell>(resolver.Resolve());
+        string command = shell.Kind switch
+        {
+            ShellKind.Bash or ShellKind.GitBash or ShellKind.Sh => "printf '\\n'",
+            ShellKind.Pwsh7 or ShellKind.WindowsPowerShell => "[Console]::WriteLine()",
+            ShellKind.Cmd => "echo.",
+            _ => throw new ArgumentOutOfRangeException(nameof(shell.Kind)),
+        };
+        var tool = new BashTool(new Workspace(temp.Root), resolver);
+
+        ToolResult result = await tool.ExecuteAsync(
+            CommandArgs(command),
+            Context,
+            CancellationToken.None
+        );
+
+        Assert.Equal("\nexit code: 0", result.Output);
+    }
+
+    [Fact]
     public async Task A_timeout_kills_the_process_tree()
     {
         using var temp = new TempDirectory();
@@ -208,6 +232,7 @@ public sealed class BashToolTests
 
         Assert.True(result.IsError);
         Assert.Null(result.Details);
+        Assert.NotNull(result.FullOutput);
         Assert.Contains(
             $"timed out after {timeout.TotalSeconds.ToString("0.###", CultureInfo.InvariantCulture)}s; process tree killed",
             result.Output

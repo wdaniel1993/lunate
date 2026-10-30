@@ -53,6 +53,9 @@ public sealed record AgentHarnessOptions
     /// <summary>The character budget for one tool result before truncation; the resolved setting threads here.</summary>
     public int ToolOutputLimit { get; init; } = ToolOutput.DefaultLimit;
 
+    /// <summary>The estimated-token threshold above which a tool result is spilled.</summary>
+    public int SpillThresholdTokens { get; init; } = 2_000;
+
     /// <summary>
     /// The exact-value mask applied to a tool result's model-facing output at admission, before
     /// truncation, so a value that crosses a cut cannot send a fragment. The masked text is what

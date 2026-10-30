@@ -228,6 +228,36 @@ public sealed class AgentSessionMirrorTests
     }
 
     [Fact]
+    public async Task A_sessioned_run_records_request_size_from_the_accounting_client()
+    {
+        using var temp = new TempDirectory();
+        Session session = Session.Create(
+            temp.File("s.jsonl"),
+            "/work",
+            new FixedTimeProvider(Start)
+        );
+        var scripted = new ScriptedChatClient().Enqueue(
+            LoopScripts.Text("Done"),
+            LoopScripts.Stop()
+        );
+        var client = new ContextAccountingChatClient(scripted);
+        var harness = new AgentHarness(
+            client,
+            new ToolRegistry(),
+            new AgentHarnessOptions { Session = session }
+        );
+
+        List<AgentEvent> events = await harness
+            .RunAsync("go", TestContext.Current.CancellationToken)
+            .ToListAsync(TestContext.Current.CancellationToken);
+
+        long expected = CompactionReducer.Utf8Length(scripted.Requests[0].Messages) / 4;
+        SessionUsage usage = Assert.IsType<SessionUsage>(Entry(session, 1).Usage);
+        Assert.Equal(expected, usage.Input);
+        Assert.Equal(expected, Assert.Single(events.OfType<UsageUpdated>()).Usage.InputTokenCount);
+    }
+
+    [Fact]
     public async Task A_sessioned_run_leaves_the_cache_lanes_unknown_without_provider_counts()
     {
         using var temp = new TempDirectory();
