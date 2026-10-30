@@ -2,9 +2,9 @@
 
 ## 1. Freeze the pre-migration baseline
 
-- [ ] 1.1 Before changing composition, capture the current five `cs_*` names, exact tool outputs and error flags, published startup measurements, idle RSS, and Roslyn RSS after reference-solution load and ten edit-to-diagnostics cycles. Record commit, SDK/runtime, OS/RID, fixture identity and reproducible commands; add deterministic result fixtures under `tests/fixtures/`.
-- [ ] 1.2 Verify the baseline fixtures reproduce the recorded tool results and that the existing startup and memory budgets are represented without changing their thresholds.
-- [ ] 1.3 Commit: `test(roslyn): capture the pre-migration parity baseline`.
+- [x] 1.1 Before changing composition, capture the current five `cs_*` names, exact tool outputs and error flags, published startup measurements, idle RSS, and Roslyn RSS after reference-solution load and ten edit-to-diagnostics cycles. Record commit, SDK/runtime, OS/RID, fixture identity and reproducible commands; add deterministic result fixtures under `tests/fixtures/`.
+- [x] 1.2 Verify the baseline fixtures reproduce the recorded tool results and that the existing startup and memory budgets are represented without changing their thresholds.
+- [x] 1.3 Commit: `test(roslyn): capture the pre-migration parity baseline`.
 
 ## 2. Load Roslyn as a built-in
 
