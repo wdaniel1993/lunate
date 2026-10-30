@@ -448,15 +448,31 @@ internal sealed partial class InteractiveSession : IDisposable
 
     private async Task ComposeAsync(CancellationToken ct)
     {
-        _settings = SettingsStore.Resolve(_options.SettingsPath, _options.Environment);
+        _workspace = new Workspace(_options.WorkingDirectory ?? Environment.CurrentDirectory);
+        string projectSettingsPath = SettingsStore.ProjectFilePath(_workspace.WorktreeRoot);
+        SettingsStore.ValidateProjectScope(projectSettingsPath);
+        AgentSettings userSettings = SettingsStore.Resolve(
+            _options.SettingsPath,
+            _options.Environment
+        );
+        _auth = AuthStore.Load(_options.AuthPath, _options.Environment);
+        ProviderStore userProviders = ProviderStore.Load(
+            AuthStore.ProviderStoreFilePath(_options.AuthPath),
+            _auth,
+            userSettings.Providers
+        );
+        _settings = SettingsStore.ResolveWithProject(
+            _options.SettingsPath,
+            projectSettingsPath,
+            userProviders.Entries,
+            _options.Environment
+        );
         _settings = SettingsStore.ApplyLaunch(_settings, _options.Launch);
         ApplyTuiPresentation();
         _thinkingLevel = _settings.Thinking;
         _catalog = HarnessFactory.LoadCatalog(_settings, _options.ModelsPath);
         _environment = _options.Environment ?? Environment.GetEnvironmentVariable;
-        _auth = AuthStore.Load(_options.AuthPath, _options.Environment);
         _factory = _options.Factory ?? HarnessFactory.CreateFactory(_auth);
-        _workspace = new Workspace(_options.WorkingDirectory ?? Environment.CurrentDirectory);
         // Collected exactly once, the collection the session persistence and the write/edit guards
         // both use, before anything of this session adds a credential to it.
         _redaction = HarnessFactory.CollectRedaction(

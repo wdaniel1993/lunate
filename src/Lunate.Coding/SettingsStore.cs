@@ -64,6 +64,12 @@ public sealed record AgentSettings
 
     /// <summary>The stored custom OpenAI-compatible endpoints (the <c>providers</c> section).</summary>
     public IReadOnlyList<CustomProvider> Providers { get; init; } = [];
+
+    internal IReadOnlyDictionary<string, ModelProfile> Profiles { get; init; } =
+        new Dictionary<string, ModelProfile>(StringComparer.Ordinal);
+
+    internal IReadOnlyDictionary<string, string> Usages { get; init; } =
+        new Dictionary<string, string>(StringComparer.Ordinal);
 }
 
 /// <summary>The optional tools enabled beside the core set (the <c>tools</c> settings section).</summary>
@@ -419,6 +425,15 @@ public static partial class SettingsStore
                         {
                             Providers = ReadProviders(property.Value, problems),
                         };
+                        break;
+                    case "profiles":
+                        settings = settings with
+                        {
+                            Profiles = ReadProfiles(property.Value, problems),
+                        };
+                        break;
+                    case "usages":
+                        settings = settings with { Usages = ReadUsages(property.Value, problems) };
                         break;
                     case "tui":
                         settings = settings with { Tui = ReadTui(property.Value, problems) };

@@ -54,7 +54,7 @@ public sealed class ProviderReachabilityTests
                 SettingsPath: temp.File("settings.json"),
                 Environment: _ => null,
                 ProviderProbeHandler: handler,
-                ProviderProbeTimeout: TimeSpan.FromMilliseconds(50)
+                ProviderProbeTimeout: WaitBudgets.ProviderProbeTimeout
             )
         );
         string text = output.ToString();

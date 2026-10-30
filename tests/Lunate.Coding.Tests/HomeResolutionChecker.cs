@@ -81,6 +81,11 @@ internal static class HomeResolutionChecker
             "project-scoped: `.lunate` is one of the worktree skill-root conventions"
         ),
         new(
+            "src/Lunate.Coding/SettingsStore.Project.cs",
+            Resolution.LunateDirectory,
+            "project-scoped: `.lunate/settings.json` contains only references and tightened limits"
+        ),
+        new(
             "src/Lunate.Extensibility.Testing/ExtensionTestHost.cs",
             Resolution.LunateDirectory,
             "test kit: a temporary worktree's project extension directory"
