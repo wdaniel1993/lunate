@@ -21,7 +21,7 @@ only when its focused tests pass.
       files keep existing behavior. Confirm failure first; then implement selection/invocation after
       approval between read/normalize and apply/write. Keep `ICSharpBackend` out of core; rerun the
       focused class and require all tests to pass.
-- [ ] 2.2 Add failing pipeline tests for a verifier exceeding 10 s using an injected deadline/fake
+- [x] 2.2 Add failing pipeline tests for a verifier exceeding 10 s using an injected deadline/fake
       clock, and Esc during verification. Confirm failure first; implement timeout as
       unverified-with-reason plus write, and distinguish run cancellation as a cancelled run with no
       write. Rerun `dotnet test tests/Lunate.Coding.Tests/Lunate.Coding.Tests.csproj -c Release --filter FullyQualifiedName~WriteVerifierPipelineTests`; all tests must pass.
