@@ -14,6 +14,28 @@ public sealed class TrustPromptWidthTests
     private const string LongTitle =
         "Load project extension 'hello-world' 0.1.0 from /Users/danielwallner/dev/lunate/demo/extensions/hello-world";
 
+    /// <summary>
+    /// Issue #324: at 40, 30 and 20 columns both choices must still be in the frame, complete,
+    /// with details present; a truncated choice makes a security prompt unanswerable.
+    /// </summary>
+    [Theory]
+    [InlineData(40)]
+    [InlineData(30)]
+    [InlineData(20)]
+    public void Both_choices_survive_the_issue_widths(int width)
+    {
+        TrustPromptModel prompt = new(LongTitle, ["test — dotnet exec server.dll"], 2, 3);
+
+        string[] lines = Frame(prompt, width);
+        string joined = string.Join('\n', lines);
+
+        Assert.Contains("?", joined, StringComparison.Ordinal);
+        Assert.Contains("[y]es", joined, StringComparison.Ordinal);
+        Assert.Contains("[n]o", joined, StringComparison.Ordinal);
+        Assert.DoesNotContain("\u2026", joined, StringComparison.Ordinal);
+        AssertWithin(lines, width);
+    }
+
     [Theory]
     [InlineData(80)]
     [InlineData(100)]
@@ -43,12 +65,15 @@ public sealed class TrustPromptWidthTests
     }
 
     private static string[] Frame(int width) =>
+        Frame(new TrustPromptModel(LongTitle, [], 0, 0), width);
+
+    private static string[] Frame(TrustPromptModel prompt, int width) =>
         [
             .. LiveAreaRenderer
                 .Render(
                     new LiveAreaState
                     {
-                        Trust = new TrustPromptModel(LongTitle, [], 0, 0),
+                        Trust = prompt,
                         Color = ColorSystemSupport.NoColors,
                         Unicode = true,
                         Size = new ConsoleSize(width, 24),
