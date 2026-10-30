@@ -46,12 +46,19 @@ public sealed class BashGuardTests
         Assert.Equal("/usr/bin/sandbox-exec", launch.FileName);
         Assert.Equal(["-p", ProfileArg(launch), "/bin/bash", "-c"], launch.ArgumentsPrefix);
         Assert.Contains("(allow default)", ProfileArg(launch));
-        string canonicalState = PathCanonical.Canonicalize(state);
-        string canonicalPrefix = PathCanonical.Canonicalize(prefix);
-        string canonicalAuth = PathCanonical.Canonicalize(Path.Combine(state, "auth.json"));
+
+        // The profile is read by sandbox-exec, which knows one separator: the plan must render POSIX
+        // paths even when the test runs on a host that spells them with backslashes.
+        string canonicalState = Posix(PathCanonical.Canonicalize(state));
+        string canonicalPrefix = Posix(PathCanonical.Canonicalize(prefix));
+        string canonicalAuth = Posix(PathCanonical.Canonicalize(Path.Combine(state, "auth.json")));
         Assert.Contains($@"(deny file-write* (subpath ""{canonicalState}""))", ProfileArg(launch));
         Assert.Contains($@"(deny file-write* (subpath ""{canonicalPrefix}""))", ProfileArg(launch));
         Assert.Contains($@"(deny file-read* (literal ""{canonicalAuth}""))", ProfileArg(launch));
+
+        // A backslash anywhere in the scheme means a host spelling leaked into a macOS profile; this
+        // assertion holds on every runner, including the one whose paths are the reason it exists.
+        Assert.DoesNotContain("\\", ProfileArg(launch));
         Assert.Null(launch.Notice);
     }
 
@@ -492,6 +499,8 @@ public sealed class BashGuardTests
         );
 
     private static string ProfileArg(GuardCommand launch) => launch.ArgumentsPrefix[1];
+
+    private static string Posix(string path) => path.Replace('\\', '/');
 }
 
 /// <summary>The probe fake, file-scope so sibling guard test classes reuse it.</summary>
@@ -590,6 +599,4 @@ public sealed class BashGuardProcessDirectoryTests
             Environment.CurrentDirectory = previous;
         }
     }
-
-    private static string Posix(string path) => path.Replace('\\', '/');
 }
