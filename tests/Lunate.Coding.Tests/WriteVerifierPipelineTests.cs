@@ -143,6 +143,59 @@ public sealed class WriteVerifierPipelineTests
     }
 
     [Fact]
+    public async Task Verification_timeout_writes_unverified_with_elapsed_and_reason()
+    {
+        using var temp = new TempDirectory();
+        var time = new ManualTimeProvider();
+        var verifier = new WaitingVerifier();
+        var tool = new WriteTool(
+            new Workspace(temp.Root),
+            verifierSelector: _ => verifier,
+            timeProvider: time
+        );
+        Task<ToolResult> execution = tool.ExecuteAsync(
+            Args(new { path = "code.cs", content = "staged\n" }),
+            Context(temp.Root),
+            Ct
+        );
+        await verifier.Started.Task.WaitAsync(TimeSpan.FromSeconds(5), Ct);
+
+        time.Advance(TimeSpan.FromSeconds(10));
+        ToolResult result = await execution.WaitAsync(TimeSpan.FromSeconds(5), Ct);
+
+        Assert.False(result.IsError);
+        Assert.Contains("unverified", result.Output, StringComparison.Ordinal);
+        Assert.Contains("10.0 s", result.Output, StringComparison.Ordinal);
+        Assert.Contains("timeout", result.Output, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal("staged\n", File.ReadAllText(temp.File("code.cs")));
+    }
+
+    [Fact]
+    public async Task Run_cancellation_during_verification_cancels_without_writing()
+    {
+        using var temp = new TempDirectory();
+        const string original = "before\n";
+        File.WriteAllText(temp.File("code.cs"), original);
+        using var cancellation = new CancellationTokenSource();
+        var verifier = new WaitingVerifier();
+        var tool = new WriteTool(
+            new Workspace(temp.Root),
+            verifierSelector: _ => verifier
+        );
+        Task<ToolResult> execution = tool.ExecuteAsync(
+            Args(new { path = "code.cs", content = "staged\n" }),
+            Context(temp.Root),
+            cancellation.Token
+        );
+        await verifier.Started.Task.WaitAsync(TimeSpan.FromSeconds(5), Ct);
+
+        cancellation.Cancel();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => execution);
+        Assert.Equal(original, File.ReadAllText(temp.File("code.cs")));
+    }
+
+    [Fact]
     public async Task A_file_without_a_matching_verifier_keeps_existing_write_behavior()
     {
         using var temp = new TempDirectory();
@@ -192,6 +245,101 @@ public sealed class WriteVerifierPipelineTests
         {
             order.Add("approved");
             return ValueTask.FromResult(true);
+        }
+    }
+
+    private sealed class WaitingVerifier : IWriteVerifier
+    {
+        public TaskCompletionSource Started { get; } = new(
+            TaskCreationOptions.RunContinuationsAsynchronously
+        );
+
+        public async ValueTask<WriteVerificationResult> VerifyAsync(
+            WriteVerificationRequest request,
+            CancellationToken cancellationToken
+        )
+        {
+            Started.TrySetResult();
+            await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+            return Verified();
+        }
+    }
+
+    private sealed class ManualTimeProvider : TimeProvider
+    {
+        private readonly List<ManualTimer> _timers = [];
+        private long _timestamp;
+
+        public override long TimestampFrequency => TimeSpan.TicksPerSecond;
+
+        public override long GetTimestamp() => _timestamp;
+
+        public override ITimer CreateTimer(
+            TimerCallback callback,
+            object? state,
+            TimeSpan dueTime,
+            TimeSpan period
+        )
+        {
+            var timer = new ManualTimer(this, callback, state);
+            _timers.Add(timer);
+            timer.Change(dueTime, period);
+            return timer;
+        }
+
+        public void Advance(TimeSpan elapsed)
+        {
+            _timestamp += elapsed.Ticks;
+            foreach (ManualTimer timer in _timers.ToArray())
+            {
+                timer.FireIfDue();
+            }
+        }
+
+        private sealed class ManualTimer(
+            ManualTimeProvider owner,
+            TimerCallback callback,
+            object? state
+        ) : ITimer
+        {
+            private long _dueAt = long.MaxValue;
+            private TimeSpan _period;
+            private bool _disposed;
+
+            public bool Change(TimeSpan dueTime, TimeSpan period)
+            {
+                if (_disposed)
+                {
+                    return false;
+                }
+
+                _period = period;
+                _dueAt = dueTime == Timeout.InfiniteTimeSpan
+                    ? long.MaxValue
+                    : owner.GetTimestamp() + dueTime.Ticks;
+                return true;
+            }
+
+            public void Dispose() => _disposed = true;
+
+            public ValueTask DisposeAsync()
+            {
+                Dispose();
+                return ValueTask.CompletedTask;
+            }
+
+            public void FireIfDue()
+            {
+                if (_disposed || owner.GetTimestamp() < _dueAt)
+                {
+                    return;
+                }
+
+                _dueAt = _period > TimeSpan.Zero
+                    ? owner.GetTimestamp() + _period.Ticks
+                    : long.MaxValue;
+                callback(state);
+            }
         }
     }
 
