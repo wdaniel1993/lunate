@@ -62,6 +62,7 @@ public sealed class BashTool : ITool
     private readonly TimeSpan _timeout;
     private readonly BashChangeTracker _changes;
     private readonly BashGuard _guard;
+    private readonly IExtensionLog? _log;
     private bool _noticeShown;
 
     public BashTool(
@@ -89,6 +90,7 @@ public sealed class BashTool : ITool
         _timeout = timeout ?? DefaultTimeout;
         _changes = new BashChangeTracker(log);
         _guard = guard;
+        _log = log;
         Description = _shell is null
             ? $"Run a command in the platform shell (no shell was found on this machine). {Rules}"
             : $"Run a command in {_shell.DisplayName} ({Dialect(_shell.Kind)}). {Rules}";
@@ -180,36 +182,38 @@ public sealed class BashTool : ITool
         // The command ran (success, non-zero exit or timeout): report what it changed.
         await PublishChangesAsync(ctx).ConfigureAwait(false);
 
-        string? notice = NoticeOnce(launch);
+        NoticeOnce(launch);
         string? hint = _guard.Hint(commandElement.GetString()!, run.Stderr, launch);
         var stdout = WithCapMarker(run.Stdout, run.StdoutCapped);
         var stderr = WithCapMarker(run.Stderr, run.StderrCapped);
         if (run.TimedOut)
         {
-            return Error(ComposeText(stdout, stderr, TimeoutFooter(), notice, hint));
+            return Error(ComposeText(stdout, stderr, TimeoutFooter(), hint));
         }
 
         var exitCode = run.ExitCode!.Value;
         return new ToolResult(
-            ComposeText(stdout, stderr, ExitFooter(exitCode), notice, hint),
+            ComposeText(stdout, stderr, ExitFooter(exitCode), hint),
             exitCode != 0,
             new BashDetails(exitCode)
         );
     }
 
     /// <summary>
-    /// The guard's notice, once per tool (a run without a guard is never silent, but never
-    /// per-command noise either). Null when the guard is active and quiet.
+    /// The guard's notice goes to the log, once, and never into the command's output: stdout belongs
+    /// to the command, and a prefix on the first result changed the bytes a caller sees (the Windows
+    /// pass-through broke UTF-8 and stream-order tests exactly that way). A run without a guard is
+    /// still never silent — it is recorded as a warning — but the transcript stays byte-faithful.
     /// </summary>
-    private string? NoticeOnce(GuardCommand launch)
+    private void NoticeOnce(GuardCommand launch)
     {
         if (launch.Notice is not { } notice || _noticeShown)
         {
-            return null;
+            return;
         }
 
         _noticeShown = true;
-        return notice;
+        _log?.Warn(notice);
     }
 
     /// <summary>
@@ -258,20 +262,9 @@ public sealed class BashTool : ITool
     private static string WithCapMarker(string text, bool capped) =>
         capped ? text + "\n" + CapMarker : text;
 
-    private static string ComposeText(
-        string stdout,
-        string stderr,
-        string footer,
-        string? notice,
-        string? hint
-    )
+    private static string ComposeText(string stdout, string stderr, string footer, string? hint)
     {
         var text = new StringBuilder();
-        if (notice is not null)
-        {
-            text.Append(notice).Append('\n');
-        }
-
         text.Append(stdout);
         if (stderr.Length > 0)
         {

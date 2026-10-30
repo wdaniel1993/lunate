@@ -45,7 +45,9 @@ internal sealed partial class BashGuard
     /// Profile A from the spike: allow everything, deny the two targets plus <c>auth.json</c>
     /// reads. The paths are written canonically — Seatbelt matches resolved paths, and a
     /// symlinked spelling of the same directory (e.g. <c>/var/…</c> for <c>/private/var/…</c> on
-    /// macOS) would otherwise be silently un-denied.
+    /// macOS) would otherwise be silently un-denied — and always with forward slashes: a Seatbelt
+    /// scheme is read by <c>sandbox-exec</c>, which knows one separator, so a host that spells its
+    /// paths with backslashes must not leak that spelling into the profile.
     /// </summary>
     private string MacProfile() =>
         string.Create(
@@ -53,11 +55,19 @@ internal sealed partial class BashGuard
             $"""
             (version 1)
             (allow default)
-            (deny file-write* (subpath "{Escape(PathCanonical.Canonicalize(_target.StateRoot))}"))
-            (deny file-write* (subpath "{Escape(PathCanonical.Canonicalize(_target.Prefix))}"))
-            (deny file-read* (literal "{Escape(PathCanonical.Canonicalize(_target.AuthPath))}"))
+            (deny file-write* (subpath "{Escape(
+                Posix(PathCanonical.Canonicalize(_target.StateRoot))
+            )}"))
+            (deny file-write* (subpath "{Escape(
+                Posix(PathCanonical.Canonicalize(_target.Prefix))
+            )}"))
+            (deny file-read* (literal "{Escape(
+                Posix(PathCanonical.Canonicalize(_target.AuthPath))
+            )}"))
             """
         );
+
+    private static string Posix(string path) => path.Replace('\\', '/');
 
     private static string Escape(string path) => path.Replace("\\", "\\\\").Replace("\"", "\\\"");
 

@@ -109,7 +109,8 @@ public sealed class BashGuardToolTests
         }
 
         using var temp = new TempDirectory();
-        var tool = new BashTool(new Workspace(temp.Root));
+        var log = new RecordingExtensionLog();
+        var tool = new BashTool(new Workspace(temp.Root), log: log);
 
         var first = await tool.ExecuteAsync(
             CommandArgs("echo first"),
@@ -117,8 +118,11 @@ public sealed class BashGuardToolTests
             CancellationToken.None
         );
 
-        Assert.Contains("unconfined", first.Output);
-        Assert.Contains("Windows", first.Output);
+        // The warning is recorded where a user can find it, and the command's own bytes are untouched:
+        // a notice prefixed to stdout is a change to every script's output on this platform.
+        Assert.DoesNotContain("unconfined", first.Output);
+        Assert.Contains(log.Messages, m => m.Contains("unconfined", StringComparison.Ordinal));
+        Assert.Contains(log.Messages, m => m.Contains("Windows", StringComparison.Ordinal));
 
         var second = await tool.ExecuteAsync(
             CommandArgs("echo second"),
@@ -126,7 +130,10 @@ public sealed class BashGuardToolTests
             CancellationToken.None
         );
 
-        Assert.DoesNotContain("unconfined", second.Output);
+        Assert.Equal(
+            1,
+            log.Messages.Count(m => m.Contains("unconfined", StringComparison.Ordinal))
+        );
     }
 
     private static async Task<ToolResult> RunAsync(GuardFixture fixture, string command)

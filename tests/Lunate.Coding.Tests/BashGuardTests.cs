@@ -590,4 +590,6 @@ public sealed class BashGuardProcessDirectoryTests
             Environment.CurrentDirectory = previous;
         }
     }
+
+    private static string Posix(string path) => path.Replace('\\', '/');
 }
