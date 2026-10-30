@@ -42,6 +42,7 @@ internal readonly record struct KeyPattern(
 
 /// <summary>One row of the keymap: what a key means, where it means it, and how to describe it.</summary>
 internal sealed record KeyBinding(
+    string Id,
     KeyPattern Key,
     RoutedKey Intent,
     KeyContext Contexts,
