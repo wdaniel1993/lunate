@@ -6,9 +6,17 @@ public sealed partial class AgentHarness
 {
     private void SeedReadLedger(IEnumerable<ChatMessage> history)
     {
-        foreach (FunctionCallContent call in history.SelectMany(message => message.Contents).OfType<FunctionCallContent>())
+        foreach (
+            FunctionCallContent call in history
+                .SelectMany(message => message.Contents)
+                .OfType<FunctionCallContent>()
+        )
         {
-            if (call.Name != "read" || string.IsNullOrEmpty(call.CallId) || ReadPath(call) is not { } path)
+            if (
+                call.Name != "read"
+                || string.IsNullOrEmpty(call.CallId)
+                || ReadPath(call) is not { } path
+            )
             {
                 continue;
             }
@@ -25,7 +33,12 @@ public sealed partial class AgentHarness
                 );
             }
             catch (Exception exception)
-                when (exception is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+                when (exception
+                        is IOException
+                            or UnauthorizedAccessException
+                            or ArgumentException
+                            or NotSupportedException
+                )
             {
                 // An unresolvable historical path cannot identify a file to protect.
             }
@@ -49,13 +62,18 @@ public sealed partial class AgentHarness
             }
 
             bool changed = false;
-            AIContent[] contents = [
+            AIContent[] contents =
+            [
                 .. message.Contents.Select(content =>
                 {
                     if (
                         content is FunctionResultContent result
                         && notices.TryGetValue(result.CallId, out string? notice)
-                        && !string.Equals(result.Result?.ToString(), notice, StringComparison.Ordinal)
+                        && !string.Equals(
+                            result.Result?.ToString(),
+                            notice,
+                            StringComparison.Ordinal
+                        )
                     )
                     {
                         changed = true;
@@ -72,15 +90,18 @@ public sealed partial class AgentHarness
 
             ChatMessage replacement = message.Clone();
             replacement.Contents = contents;
-            _historyUtf8 += CompactionReducer.Utf8Length(replacement)
-                - CompactionReducer.Utf8Length(message);
+            _historyUtf8 +=
+                CompactionReducer.Utf8Length(replacement) - CompactionReducer.Utf8Length(message);
             _history[index] = replacement;
         }
     }
 
     private static string? ReadPath(FunctionCallContent call)
     {
-        if (call.Arguments is not { } arguments || !arguments.TryGetValue("path", out object? value))
+        if (
+            call.Arguments is not { } arguments
+            || !arguments.TryGetValue("path", out object? value)
+        )
         {
             return null;
         }
@@ -88,7 +109,10 @@ public sealed partial class AgentHarness
         return value switch
         {
             string path => path,
-            System.Text.Json.JsonElement { ValueKind: System.Text.Json.JsonValueKind.String } element => element.GetString(),
+            System.Text.Json.JsonElement
+            {
+                ValueKind: System.Text.Json.JsonValueKind.String
+            } element => element.GetString(),
             _ => null,
         };
     }

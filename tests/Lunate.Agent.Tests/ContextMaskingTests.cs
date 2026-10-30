@@ -21,12 +21,17 @@ public sealed class ContextMaskingTests
         );
         session.Redactor = redactor;
         string output = Secret + "\n" + string.Join('\n', Enumerable.Repeat("build output", 100));
-        var tool = new ScriptedTool("read", "Returns a credential-bearing transcript.", """{"type":"object"}""")
+        var tool = new ScriptedTool(
+            "read",
+            "Returns a credential-bearing transcript.",
+            """{"type":"object"}"""
+        )
         {
-            OnExecute = (_, _) => new ToolResult(output, IsError: false)
-            {
-                FullOutput = output + "\nfull transcript " + Secret,
-            },
+            OnExecute = (_, _) =>
+                new ToolResult(output, IsError: false)
+                {
+                    FullOutput = output + "\nfull transcript " + Secret,
+                },
         };
         var scripted = new ScriptedChatClient()
             .Enqueue(
@@ -101,7 +106,10 @@ public sealed class ContextMaskingTests
             OnExecute = (_, _) => new ToolResult(raw, IsError: false) { FullOutput = raw },
         };
         var client = new ScriptedChatClient()
-            .Enqueue(LoopScripts.Call("call_1", "answer", LoopScripts.Args()), LoopScripts.ToolCalls())
+            .Enqueue(
+                LoopScripts.Call("call_1", "answer", LoopScripts.Args()),
+                LoopScripts.ToolCalls()
+            )
             .Enqueue(LoopScripts.Text("Done"), LoopScripts.Stop());
         var harness = new AgentHarness(
             client,

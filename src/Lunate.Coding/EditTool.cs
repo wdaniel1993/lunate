@@ -189,8 +189,8 @@ public sealed class EditTool(
                 }
 
                 if (
-                    ctx.Reads?.Check(resolved.AbsolutePath, fileText, resolved.RelativePath)
-                    is { } staleRead
+                    ctx.Reads?.Check(resolved.AbsolutePath, fileText, resolved.RelativePath) is
+                    { } staleRead
                 )
                 {
                     return Task.FromResult(Error(staleRead));

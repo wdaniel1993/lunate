@@ -27,7 +27,10 @@ public sealed class ReadLedgerTests
         ledger.Invalidate(path);
 
         Assert.Contains("changed after this read", ledger.StaleReadNotices["read-1"]);
-        Assert.Contains("changed after your last read", ledger.Check(path, "line\n", "src/file.txt"));
+        Assert.Contains(
+            "changed after your last read",
+            ledger.Check(path, "line\n", "src/file.txt")
+        );
     }
 
     [Fact]
@@ -51,7 +54,10 @@ public sealed class ReadLedgerTests
         string path = Path.GetFullPath("src/file.txt");
         ledger.Seed(path, "read-1", "src/file.txt");
 
-        Assert.Contains("changed after your last read", ledger.Check(path, "contents", "src/file.txt"));
+        Assert.Contains(
+            "changed after your last read",
+            ledger.Check(path, "contents", "src/file.txt")
+        );
         Assert.Contains("src/file.txt", ledger.StaleReadNotices["read-1"]);
     }
 

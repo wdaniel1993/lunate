@@ -108,10 +108,11 @@ public sealed class ContextStaleReadTests
             .OfType<FunctionResultContent>()
             .Single(result => result.CallId == "read-call")
             .Result!.ToString()!;
-        long savedTokens = (
-            Encoding.UTF8.GetByteCount(originalRead)
-            - Encoding.UTF8.GetByteCount(priorRead.Result!.ToString()!)
-        ) / 4;
+        long savedTokens =
+            (
+                Encoding.UTF8.GetByteCount(originalRead)
+                - Encoding.UTF8.GetByteCount(priorRead.Result!.ToString()!)
+            ) / 4;
         Assert.True(savedTokens >= 4_000, $"the stale read saves {savedTokens} estimated tokens");
     }
 
@@ -129,7 +130,11 @@ public sealed class ContextStaleReadTests
                 LoopScripts.Call(
                     "edit-1",
                     "edit",
-                    LoopScripts.Args(("path", "small.txt"), ("old_text", "first"), ("new_text", "changed"))
+                    LoopScripts.Args(
+                        ("path", "small.txt"),
+                        ("old_text", "first"),
+                        ("new_text", "changed")
+                    )
                 ),
                 LoopScripts.ToolCalls()
             )
@@ -141,14 +146,21 @@ public sealed class ContextStaleReadTests
                 LoopScripts.Call(
                     "edit-2",
                     "edit",
-                    LoopScripts.Args(("path", "small.txt"), ("old_text", "second"), ("new_text", "updated"))
+                    LoopScripts.Args(
+                        ("path", "small.txt"),
+                        ("old_text", "second"),
+                        ("new_text", "updated")
+                    )
                 ),
                 LoopScripts.ToolCalls()
             )
             .Enqueue(LoopScripts.Text("Done"), LoopScripts.Stop());
         var harness = new AgentHarness(
             scripted,
-            Registry(new ReadTool(new Workspace(temp.Root)), new EditTool(new Workspace(temp.Root))),
+            Registry(
+                new ReadTool(new Workspace(temp.Root)),
+                new EditTool(new Workspace(temp.Root))
+            ),
             new AgentHarnessOptions { WorkingDirectory = temp.Root }
         );
 
@@ -167,7 +179,11 @@ public sealed class ContextStaleReadTests
     {
         using var temp = new TempDirectory();
         File.WriteAllText(temp.File("small.txt"), "before\n");
-        var external = new ScriptedTool("external", "Changes a file without publishing an event.", """{"type":"object"}""")
+        var external = new ScriptedTool(
+            "external",
+            "Changes a file without publishing an event.",
+            """{"type":"object"}"""
+        )
         {
             OnExecute = (_, _) =>
             {
@@ -180,12 +196,19 @@ public sealed class ContextStaleReadTests
                 LoopScripts.Call("read", "read", LoopScripts.Args(("path", "small.txt"))),
                 LoopScripts.ToolCalls()
             )
-            .Enqueue(LoopScripts.Call("external-call", "external", LoopScripts.Args()), LoopScripts.ToolCalls())
+            .Enqueue(
+                LoopScripts.Call("external-call", "external", LoopScripts.Args()),
+                LoopScripts.ToolCalls()
+            )
             .Enqueue(
                 LoopScripts.Call(
                     "edit",
                     "edit",
-                    LoopScripts.Args(("path", "small.txt"), ("old_text", "before"), ("new_text", "after"))
+                    LoopScripts.Args(
+                        ("path", "small.txt"),
+                        ("old_text", "before"),
+                        ("new_text", "after")
+                    )
                 ),
                 LoopScripts.ToolCalls()
             )
@@ -204,7 +227,11 @@ public sealed class ContextStaleReadTests
             result => result.CallId == "edit"
         );
         Assert.True(refused.IsError);
-        Assert.Contains("small.txt changed after your last read", refused.Output, StringComparison.Ordinal);
+        Assert.Contains(
+            "small.txt changed after your last read",
+            refused.Output,
+            StringComparison.Ordinal
+        );
         Assert.Equal("outside\n", File.ReadAllText(temp.File("small.txt")));
     }
 
@@ -234,7 +261,11 @@ public sealed class ContextStaleReadTests
                 LoopScripts.Call(
                     "resume-edit",
                     "edit",
-                    LoopScripts.Args(("path", "small.txt"), ("old_text", "before"), ("new_text", "after"))
+                    LoopScripts.Args(
+                        ("path", "small.txt"),
+                        ("old_text", "before"),
+                        ("new_text", "after")
+                    )
                 ),
                 LoopScripts.ToolCalls()
             )
@@ -252,7 +283,11 @@ public sealed class ContextStaleReadTests
             result => result.CallId == "resume-edit"
         );
         Assert.True(refused.IsError);
-        Assert.Contains("small.txt changed after your last read", refused.Output, StringComparison.Ordinal);
+        Assert.Contains(
+            "small.txt changed after your last read",
+            refused.Output,
+            StringComparison.Ordinal
+        );
         Assert.Equal("before\n", File.ReadAllText(temp.File("small.txt")));
     }
 
@@ -297,7 +332,11 @@ public sealed class ContextStaleReadTests
             result => result.CallId == "write-2"
         );
         Assert.True(refused.IsError);
-        Assert.Contains("small.txt changed after your last read", refused.Output, StringComparison.Ordinal);
+        Assert.Contains(
+            "small.txt changed after your last read",
+            refused.Output,
+            StringComparison.Ordinal
+        );
         Assert.Equal("first\n", File.ReadAllText(temp.File("small.txt")));
     }
 

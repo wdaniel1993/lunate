@@ -68,7 +68,10 @@ internal sealed class ReadLedger : IReadLedger
                 return null;
             }
 
-            if (version.Digest is not null && string.Equals(version.Digest, digest, StringComparison.Ordinal))
+            if (
+                version.Digest is not null
+                && string.Equals(version.Digest, digest, StringComparison.Ordinal)
+            )
             {
                 return null;
             }
@@ -111,9 +114,8 @@ internal sealed class ReadLedger : IReadLedger
     private static string ChangedNotice(string path) =>
         $"[stale: {path} changed after this read; this copy is no longer current]";
 
-    private static StringComparer PathComparer => OperatingSystem.IsLinux()
-        ? StringComparer.Ordinal
-        : StringComparer.OrdinalIgnoreCase;
+    private static StringComparer PathComparer =>
+        OperatingSystem.IsLinux() ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase;
 
     private sealed record ReadVersion(string? Digest, string CallId, string DisplayPath);
 }

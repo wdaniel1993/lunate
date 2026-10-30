@@ -271,10 +271,11 @@ public sealed class BashTool : ITool
         string? hint,
         bool isError,
         object? details = null
-    ) => new(BashOutput.Answer(stdout, stderr, footer, hint), isError, details)
-    {
-        FullOutput = BashOutput.Transcript(stdout, stderr),
-    };
+    ) =>
+        new(BashOutput.Answer(stdout, stderr, footer, hint), isError, details)
+        {
+            FullOutput = BashOutput.Transcript(stdout, stderr),
+        };
 
     private static string ExitFooter(int exitCode) =>
         string.Create(CultureInfo.InvariantCulture, $"exit code: {exitCode}");

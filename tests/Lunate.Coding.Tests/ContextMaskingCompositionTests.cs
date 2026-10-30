@@ -42,13 +42,15 @@ public sealed class ContextMaskingCompositionTests
         Assert.Equal(0, exitCode);
         Assert.Empty(errors);
         Assert.DoesNotContain(ProviderKey, output, StringComparison.Ordinal);
-        string eventOutput = PrintModeTestSupport.ParseLines(output)
+        string eventOutput = PrintModeTestSupport
+            .ParseLines(output)
             .Single(line => PrintModeTestSupport.TypeOf(line) == "tool_call_result")
             .GetProperty("output")
             .GetString()!;
         Assert.Contains(Marker, eventOutput, StringComparison.Ordinal);
         Assert.Contains(UnknownKey, eventOutput, StringComparison.Ordinal);
-        string requestOutput = client.Requests[1]
+        string requestOutput = client
+            .Requests[1]
             .SelectMany(message => message.Contents)
             .OfType<FunctionResultContent>()
             .Single()

@@ -57,8 +57,7 @@ internal sealed class RunFileChangeSink(
     string workspaceId,
     string runId,
     IReadLedger reads
-)
-    : IFileChangeSink
+) : IFileChangeSink
 {
     public void Notify(FileChangeEvent change)
     {
