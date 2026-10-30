@@ -1,6 +1,6 @@
 # 0012 — Addendum: context admission
 
-- Status: proposed — drafted with the `context-hygiene` change (#187); awaiting maintainer sign-off
+- Status: accepted — 2026-10-30 (maintainer sign-off with conditions (a)–(f), recorded below; change `context-hygiene`)
 - Date: 2026-10-28
 - Relates to: ADR-0012 (tool contract), ADR-0003 (own loop), ADR-0013 (agent loop), ADR-0015 (session format), ADR-0016 (workspace boundary)
 
@@ -18,6 +18,39 @@ Four behaviours now meet on the same path: a large result must leave the window 
 4. **Reads are versioned.** The newest read of a path is live; older read results are superseded and stubbed in the in-memory history that builds the next request. `edit`/`write` refuse when the live version was invalidated or its content digest differs, and say why. The rule is "do not trust an invalidated read", not "you must have read it": a path the ledger never saw behaves as before. The session keeps the original entry; the projection is request-time.
 5. **Masking before context is exact-value only.** The host supplies one exact-value redactor for session and `--no-session` runs. Pattern detection stays out: a filter that guesses is a filter readers learn to trust, and this repository has already decided not to build one.
 6. **No session format change.** The session stores the admitted text and the provider's usage for the request as sent. Persisting read versions, which would keep the stale projection across a resume, is a later decision that needs a schema bump.
+
+## Constraints accepted with the sign-off (2026-10-30)
+
+Sign-off was given **with six conditions**. (a)–(e) are behaviour this boundary must have and the current
+implementation does not yet; each is a 0.2.0 card, because the change above had already been applied. (f) is an
+acceptance criterion, not a new mechanism.
+
+- **(a) A spill read is never spilled again — #349.** `read` owns pagination: it returns a bounded page plus an
+  explicit continuation (next offset/line), and reads of the session's `tool-output/` paths are exempt from the spill
+  step. A 50,000-token output must be reachable in full through successive reads, and no `read` result may itself be a
+  spill pointer. The exemption keys on the resolved absolute path of a known spill file, not a prefix a model could
+  forge.
+- **(b) Projection rewrites happen only at batch points — #350.** Stubbing an older read the moment a newer one arrives
+  rewrites history behind the model and invalidates the provider's prompt cache from that point on every following
+  request. Read stubs and masking therefore apply at a compaction or every N turns (`projection.batchTurns`,
+  configurable), never per request. Between batch points an invalidated older read stays as it is; correctness rests on
+  decision 4's guard, not on the stub. The PR reports **cache-read ratio before and after** on the eval run.
+- **(c) Observation masking at batch points — #351.** Item 4 of the agreed card, missing from the six decisions above
+  and not optional: at a batch point a tool result older than N turns (`projection.maskTurns`) becomes a one-line stub
+  carrying its spill pointer where one exists, with error results kept longer (`projection.maskErrorTurns`).
+- **(d) An own successful write refreshes the live version — #352.** A successful `edit`/`write` by the agent updates
+  the live read version for that path, so consecutive edits of one file work without an intervening re-read. An
+  *external* change still invalidates and still demands a re-read; the distinction is the origin of the change. A
+  refused write changes nothing.
+- **(e) The write guard exists twice — #353.** Decision 5 and the earlier 4a ruling require *both* halves: `write`
+  refuses content containing a redaction placeholder **where the target file currently holds the real value**, and
+  `edit` refuses an `old_string`/`new_string` containing a placeholder. Only the edit half shipped.
+- **(f) Acceptance includes the eval — #351.** The same task success with fewer input tokens, both numbers reported,
+  and `/context` showing tokens saved separately by spills, masking and read stubs. Fewer tokens with worse success is
+  a rejection.
+
+The public surface this addendum adds (`ToolResult.FullOutput`, `AgentHarnessOptions.SpillThresholdTokens`,
+`AgentHarnessOptions.ToolOutputMask`, the settings key) is accepted as written and lands before #237's stable publish.
 
 ## Consequences
 
