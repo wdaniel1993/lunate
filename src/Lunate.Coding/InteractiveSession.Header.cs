@@ -1,4 +1,5 @@
 using Lunate.Ai;
+using Lunate.Extensibility;
 using Lunate.Tui;
 using Spectre.Console;
 
@@ -116,13 +117,16 @@ internal sealed partial class InteractiveSession
         : _catalog.Find(_settings.Model);
 
     /// <summary>
-    /// The counts the header shows: discovered extensions, the configured and extension-registered
-    /// MCP servers (a shadowed registration is not a server the session runs) and the valid
-    /// discovered skills. A kind that found nothing stays an honest zero.
+    /// The counts the header shows: discovered installed extensions, the configured and
+    /// extension-registered MCP servers (a shadowed registration is not a server the session runs)
+    /// and the valid discovered skills. Built-ins remain available through extension surfaces but
+    /// are not installed extensions. A kind that found nothing stays an honest zero.
     /// </summary>
     private WelcomeHeaderCounts HeaderCounts() =>
         new(
-            Extensions: _extensions?.Descriptors.Count ?? 0,
+            Extensions: _extensions?.Descriptors.Count(descriptor =>
+                descriptor.Scope != ExtensionScope.Builtin
+            ) ?? 0,
             McpServers: (_mcp?.Statuses.Count ?? 0)
                 + (_extensions?.McpServers?.Statuses.Count ?? 0),
             Skills: _skills?.Skills.Count(skill => skill.Valid) ?? 0
