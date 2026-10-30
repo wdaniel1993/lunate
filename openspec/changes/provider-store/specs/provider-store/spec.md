@@ -104,7 +104,7 @@ Core selection SHALL resolve usages to profiles and profiles to providers; it SH
 
 ### Requirement: User-selected decision profiles and contract safety
 
-Any model profile SHALL be accepted for `decision` when the user assigns it; model capability is the user's judgement, not a product gate. Catalog/discovery `apiType` MAY label the call method but SHALL NOT reject a profile. A provider decision API SHALL be labelled `native`; a chat-model path SHALL be labelled `adapter`, directly or through the explicit wrapper. Every response SHALL contain one of the defined options and well-formed probabilities: one finite value in [0, 1] per option, summing to 1 within the contract tolerance. A malformed response SHALL be retried once; if the retry is also malformed, the decision SHALL fail with an error naming the model. This is a transient technical failure and SHALL NOT create a persistent model-capability state. Decision provenance SHALL carry only model id and method (`native` or `adapter`), in addition to normal usage/provider attribution. Shadow mode SHALL be an opt-in user setting, not a per-model promotion gate. A decision MAY only tighten the approval result: it SHALL NOT override a deny or approve outside the user's allow envelope. If no decision profile is configured, the decision layer SHALL report unavailable and remain off; it SHALL NOT implicitly borrow chat.
+Any model profile SHALL be accepted for `decision` when the user assigns it; model capability is the user's judgement, not a product gate. Catalog/discovery `apiType` MAY label the call method but SHALL NOT reject a profile. A provider decision API SHALL be labelled `native`; a chat-model path SHALL be labelled `adapter`, directly or through the explicit wrapper. Every response SHALL contain one of the defined options and well-formed probabilities: one finite value in [0, 1] per option, summing to 1 within the contract tolerance. A malformed response SHALL be retried once; if the retry is also malformed, the decision SHALL fail with an error naming the model. This is a transient technical failure and SHALL NOT create a persistent model-capability state. Decision provenance SHALL carry model id, method (`native` or `adapter`) and probability, in addition to normal usage/profile/provider-name-and-kind attribution. Shadow mode SHALL be an opt-in user setting, not a per-model promotion gate. A decision MAY only tighten the approval result: it SHALL NOT override a deny or approve outside the user's allow envelope. If no decision profile is configured, the decision layer SHALL report unavailable and remain off; it SHALL NOT implicitly borrow chat.
 
 #### Scenario: A user-selected model is accepted regardless of metadata
 
@@ -128,7 +128,7 @@ Any model profile SHALL be accepted for `decision` when the user assigns it; mod
 
 - **GIVEN** a model returns one defined option and a well-formed probability distribution
 - **WHEN** the response is validated
-- **THEN** the decision is accepted and records only its model id and `native`/`adapter` method
+- **THEN** the decision is accepted and records only its model id, `native`/`adapter` method and probability
 
 #### Scenario: No decision profile leaves the layer unavailable
 
@@ -150,7 +150,7 @@ Any model profile SHALL be accepted for `decision` when the user assigns it; mod
 
 ### Requirement: Usage and provider cost attribution
 
-Every recorded model usage SHALL identify its usage (`chat`, `fast`, `decision`, `subagents`, or `compaction`), provider, resolved model id, and token lanes. Decision records SHALL additionally carry model id and method (`native` or `adapter`). `/cost` SHALL report priced totals grouped by usage and by provider, retaining the existing rule that unknown pricing is unpriced rather than zero. Session schema 4 SHALL write this attribution and SHALL read schemas 1–3 without changing their interpretation; no credential reference or secret SHALL be written to a session.
+Every recorded model usage SHALL identify its usage (`chat`, `fast`, `decision`, `subagents`, or `compaction`), profile name, provider name and kind, resolved model id, and token lanes. Decision records SHALL additionally carry decision method (`native` or `adapter`) and probability. `/cost` SHALL report priced totals grouped by usage and by provider, retaining the existing rule that unknown pricing is unpriced rather than zero. Session schema 4 SHALL write this attribution and SHALL read schemas 1–3 without changing their interpretation; no provider configuration, credential reference or secret SHALL be written to a session.
 
 #### Scenario: Cost is split by usage and provider
 

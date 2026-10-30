@@ -52,7 +52,7 @@ Keep the selection graph explicit: `chat`, `fast`, `decision`, `subagents`, or `
 
 Any model may serve `decision` when the user explicitly assigns it. Model ability is the user's judgement, not a product capability gate; catalog `apiType` may label `native` provider-decision calls versus `adapter` chat-model calls but never refuses a profile. No model is marked calibrated or “cannot decide.” Each response is checked against the defined options and well-formed probabilities (one finite value in [0, 1] per option, summing to 1 within contract tolerance). A malformed response is retried once; a second malformed response fails the decision and names the model. Probability extraction from logprobs may be used when cheaply available, but is an implementation detail and is not persisted as policy or provenance. With no decision profile, the layer is unavailable and off rather than implicitly borrowing chat. Shadow mode is an opt-in user setting for trying a model, not a promotion gate.
 
-Every decision records only its model id and `native`/`adapter` method beyond the normal usage/provider attribution. A decision may only tighten the approval result: it cannot override a deny or grant permission outside the user's allow envelope. This invariant applies to every model and is the prompt-injection boundary.
+Every decision records only its model id, `native`/`adapter` method and probability beyond the normal usage/profile/provider-name-and-kind attribution. A decision may only tighten the approval result: it cannot override a deny or grant permission outside the user's allow envelope. This invariant applies to every model and is the prompt-injection boundary.
 
 **Alternative considered:** Fall back to chat when decision is unset. Rejected because it makes a hidden model choice and treats ordinary chat capability as decision capability.
 
@@ -66,7 +66,7 @@ The reason is a credential-exfiltration path: if a repository could define a pro
 
 ### Persist usage attribution in session schema 4
 
-Add usage and provider identity to schema-4 model usage records, and provider kind/model id to decision provenance. Preserve schemas 1–3 and their original meaning; never infer missing usage or provider data from old entries. Add schema-4 golden fixtures while leaving every existing golden byte-for-byte unchanged. This is an intentional session-format change under ADR-0015 and requires maintainer approval before apply.
+Add only usage, profile name, provider name/kind and resolved model id to schema-4 model usage attribution, with decision method (`native` or `adapter`) and probability for decisions. Never persist provider configuration (base URLs, headers or credential references), capabilities or secrets in a session. Preserve schemas 1–3 and their original meaning; never infer missing usage or provider data from old entries. Add schema-4 golden fixtures while leaving every existing golden byte-for-byte unchanged. This is an intentional session-format change under ADR-0015 and requires maintainer approval before apply.
 
 `/cost` reads the same recorded accounting data and groups prices by usage and provider. Pricing remains display-only: unknown positive token lanes remain unpriced, and neither attribution nor cost changes budgets or approvals.
 

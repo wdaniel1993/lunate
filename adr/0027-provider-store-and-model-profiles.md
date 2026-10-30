@@ -60,8 +60,8 @@ one-line notice names the missing profile, and subsequent turns resolve the curr
 
 **Sessions persist attribution, not configuration.** Schema 4 records only model-call attribution:
 usage, profile name, provider name and kind, resolved model id, and for decisions method
-(`native` or `adapter`). It never records base URLs, headers, credential references, capabilities
-or secrets.
+(`native` or `adapter`) and probability. It never records base URLs, headers, credential references,
+capabilities or secrets.
 The schema bump is needed so provenance and per-usage cost survive a resume. Readers accept schemas
 1–4; older schemas retain their original interpretation without inferred attribution. A reader
 that encounters a schema newer than it supports refuses at the header with a clear instruction to
