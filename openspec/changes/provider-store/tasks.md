@@ -2,7 +2,7 @@
 
 ## 1. Approval checkpoint
 
-- [ ] 1.1 Land this proposal on `main`, record maintainer approval of the user-only provider boundary, profile/usage selection, decision capability and adapter semantics, and schema 4; write the next sequential repository ADR (0027 based on this review) superseding ADR-0022 and addressing ADR-0015 before implementation. Do not apply without the proposal and sign-off on `main`.
+- [x] 1.1 Land this proposal on `main`, record maintainer approval of the user-only provider boundary, profile/usage selection, decision capability and adapter semantics, and schema 4; write the next sequential repository ADR (0027 based on this review) superseding ADR-0022 and addressing ADR-0015 before implementation. Do not apply without the proposal and sign-off on `main`.
 
 ## 2. Provider store and migration
 
