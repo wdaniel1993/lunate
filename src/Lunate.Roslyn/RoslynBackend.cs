@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Globalization;
+using System.Text.Json;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.MSBuild;
@@ -220,6 +221,144 @@ public sealed class RoslynBackend : ICSharpBackend, IDisposable
 
     /// <summary>How often a solution was actually loaded; observable for tests.</summary>
     internal int LoadCount => Volatile.Read(ref _loadCount);
+
+    internal async ValueTask<WriteVerificationResult> VerifyStagedTextAsync(
+        string absolutePath,
+        string baselineContent,
+        string stagedContent,
+        CancellationToken ct
+    )
+    {
+        await _gate.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            if (
+                _loadedSolution is not { } solutionPath
+                || !_workspaces.TryGet(solutionPath, out WorkspaceEntry? entry)
+            )
+            {
+                return new(
+                    WriteVerificationStatus.Unverified,
+                    "workspace-not-loaded: call a cs_* tool to load the C# workspace before asking for compiler verification"
+                );
+            }
+
+            var failures = new CappedList<WorkspaceFailure>(MaxFailures);
+            Solution solution = SyncChangedDocuments(entry, failures).Solution;
+            string canonicalPath = PathIdentity.Canonicalize(absolutePath);
+            DocumentId? documentId = solution
+                .GetDocumentIdsWithFilePath(canonicalPath)
+                .OrderBy(id => id.ProjectId.Id)
+                .FirstOrDefault();
+            if (documentId is null)
+            {
+                return new(
+                    WriteVerificationStatus.Unverified,
+                    "document-not-in-workspace: the edited file is not part of the loaded C# workspace"
+                );
+            }
+
+            Document? originalDocument = solution.GetDocument(documentId);
+            if (originalDocument is null)
+            {
+                return new(
+                    WriteVerificationStatus.Unverified,
+                    "document-not-in-workspace: the edited file is not part of the loaded C# workspace"
+                );
+            }
+
+            string targetFramework = TargetFrameworkName(originalDocument.Project);
+            Solution baselineSolution = solution.WithDocumentText(
+                documentId,
+                SourceText.From(baselineContent),
+                PreservationMode.PreserveIdentity
+            );
+            Solution stagedSolution = solution.WithDocumentText(
+                documentId,
+                SourceText.From(stagedContent),
+                PreservationMode.PreserveIdentity
+            );
+            Compilation? baselineCompilation = await baselineSolution
+                .GetProject(documentId.ProjectId)!
+                .GetCompilationAsync(ct)
+                .ConfigureAwait(false);
+            Compilation? stagedCompilation = await stagedSolution
+                .GetProject(documentId.ProjectId)!
+                .GetCompilationAsync(ct)
+                .ConfigureAwait(false);
+            if (baselineCompilation is null || stagedCompilation is null)
+            {
+                return new(
+                    WriteVerificationStatus.Unverified,
+                    $"compilation-unavailable: the loaded project for {targetFramework} did not produce a compiler compilation"
+                );
+            }
+
+            Dictionary<ErrorKey, int> baselineErrors = ErrorCounts(
+                baselineCompilation,
+                canonicalPath,
+                ct
+            );
+            List<IntroducedError> introduced = [];
+            foreach (
+                IGrouping<ErrorKey, Diagnostic> group in stagedCompilation
+                    .GetDiagnostics(ct)
+                    .Where(diagnostic =>
+                        diagnostic.Severity == DiagnosticSeverity.Error
+                        && IsForFile(diagnostic, canonicalPath)
+                    )
+                    .GroupBy(diagnostic => new ErrorKey(
+                        diagnostic.Id,
+                        diagnostic.GetMessage(CultureInfo.InvariantCulture)
+                    ))
+            )
+            {
+                baselineErrors.TryGetValue(group.Key, out int baselineCount);
+                int addedCount = group.Count() - baselineCount;
+                if (addedCount > 0)
+                {
+                    introduced.Add(
+                        new IntroducedError(group.Key.Code, group.Key.Message, addedCount)
+                    );
+                }
+            }
+
+            string scope =
+                $"checked {targetFramework} only; other target frameworks and dependent projects are not checked";
+            if (introduced.Count == 0)
+            {
+                return new(WriteVerificationStatus.Verified, scope);
+            }
+
+            string details = string.Join(
+                Environment.NewLine,
+                introduced.Select(error =>
+                    $"{error.Code}: {error.Message} (introduced {error.Count})"
+                )
+            );
+            JsonElement structuredContent = JsonSerializer.SerializeToElement(introduced);
+            return new(
+                WriteVerificationStatus.Refused,
+                $"introduced compiler errors in {Path.GetFileName(canonicalPath)} ({targetFramework}):{Environment.NewLine}{details}",
+                structuredContent
+            );
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            return new(
+                WriteVerificationStatus.Unverified,
+                $"verification-failed: {exception.Message}"
+            );
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
 
     public void NotifyFileChanged(string absolutePath)
     {
@@ -881,6 +1020,36 @@ public sealed class RoslynBackend : ICSharpBackend, IDisposable
 
         return compilations;
     }
+
+    private static Dictionary<ErrorKey, int> ErrorCounts(
+        Compilation compilation,
+        string canonicalPath,
+        CancellationToken ct
+    ) =>
+        compilation
+            .GetDiagnostics(ct)
+            .Where(diagnostic =>
+                diagnostic.Severity == DiagnosticSeverity.Error
+                && IsForFile(diagnostic, canonicalPath)
+            )
+            .GroupBy(diagnostic => new ErrorKey(
+                diagnostic.Id,
+                diagnostic.GetMessage(CultureInfo.InvariantCulture)
+            ))
+            .ToDictionary(group => group.Key, group => group.Count());
+
+    private static bool IsForFile(Diagnostic diagnostic, string canonicalPath) =>
+        diagnostic.Location.SourceTree?.FilePath is { Length: > 0 } filePath
+        && PathIdentity.Comparer.Equals(PathIdentity.Canonicalize(filePath), canonicalPath);
+
+    private static string TargetFrameworkName(Project project) =>
+        project.OutputFilePath is { Length: > 0 } outputPath
+            ? Path.GetFileName(Path.GetDirectoryName(outputPath))
+            : project.Name;
+
+    private readonly record struct ErrorKey(string Code, string Message);
+
+    private sealed record IntroducedError(string Code, string Message, int Count);
 
     private static bool IsDeclarationLocation(ISymbol symbol, SyntaxTree tree, TextSpan span)
     {
