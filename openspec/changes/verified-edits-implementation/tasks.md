@@ -60,7 +60,7 @@ only when its focused tests pass.
 - [x] 5.1 In `tests/Lunate.Tui.Tests/LiveAreaTests.cs`, add failing `VerificationShowsElapsedLine`
       and narrow-width tests using `TestScheduler`. Confirm failure first; implement the live
       `verifying… <elapsed>` activity line and rerun `dotnet test tests/Lunate.Tui.Tests/Lunate.Tui.Tests.csproj -c Release --filter FullyQualifiedName~LiveAreaTests`; all tests must pass.
-- [ ] 5.2 Add a failing TUI-to-host cancellation test proving Esc uses normal run cancellation and
+- [x] 5.2 Add a failing TUI-to-host cancellation test proving Esc uses normal run cancellation and
       produces no write while verification is active. Confirm failure first; pass the existing run
       cancellation token through the verifier call and rerun the focused TUI and coding tests.
 
