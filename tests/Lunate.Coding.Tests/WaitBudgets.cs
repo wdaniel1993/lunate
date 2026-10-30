@@ -126,6 +126,12 @@ internal static class WaitBudgets
     public static readonly TimeSpan ProbeExpiry = TimeSpan.FromMilliseconds(500);
 
     /// <summary>
+    /// The provider probe fixture's delayed endpoint: it waits for cancellation so the `unknown`
+    /// reachability result is deterministic without introducing a live endpoint.
+    /// </summary>
+    public static readonly TimeSpan ProviderProbeTimeout = TimeSpan.FromMilliseconds(50);
+
+    /// <summary>
     /// A shell command the tool runs to completion — this is the timeout the test hands the tool, not
     /// a wait the test performs: the tool's own kill must be given room not to fire. Sixty seconds is
     /// the value the finishing-command tests used for exactly this, and a command that finishes

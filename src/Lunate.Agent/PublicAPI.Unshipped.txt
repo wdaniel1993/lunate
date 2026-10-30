@@ -226,6 +226,8 @@ Lunate.Agent.UsageUpdated.Equals(Lunate.Agent.UsageUpdated? other) -> bool
 Lunate.Agent.UsageUpdated.Usage.get -> Microsoft.Extensions.AI.UsageDetails!
 Lunate.Agent.UsageUpdated.Usage.init -> void
 Lunate.Agent.UsageUpdated.UsageUpdated(string! RunId, Microsoft.Extensions.AI.UsageDetails! Usage) -> void
+Lunate.Agent.UsageUpdated.Attribution.get -> Lunate.Agent.ModelUsageAttribution?
+Lunate.Agent.UsageUpdated.Attribution.init -> void
 override abstract Lunate.Agent.ExtensionEvent.<Clone>$() -> Lunate.Agent.ExtensionEvent!
 override Lunate.Agent.AgentEvent.Equals(object? obj) -> bool
 override Lunate.Agent.AgentEvent.GetHashCode() -> int
@@ -409,6 +411,10 @@ Lunate.Agent.AgentHarnessOptions.WorkingDirectory.get -> string!
 Lunate.Agent.AgentHarnessOptions.WorkingDirectory.init -> void
 Lunate.Agent.AgentHarnessOptions.WorkspaceTools.get -> System.Func<string!, Lunate.Agent.ToolRegistry!>?
 Lunate.Agent.AgentHarnessOptions.WorkspaceTools.init -> void
+Lunate.Agent.AgentHarnessOptions.Usage.get -> string!
+Lunate.Agent.AgentHarnessOptions.Usage.init -> void
+Lunate.Agent.AgentHarnessOptions.UsageModels.get -> System.Collections.Generic.IReadOnlyDictionary<string!, Lunate.Agent.UsageModelClient!>?
+Lunate.Agent.AgentHarnessOptions.UsageModels.init -> void
 Lunate.Agent.IToolApprover
 override Lunate.Agent.AgentHarnessOptions.Equals(object? obj) -> bool
 override Lunate.Agent.AgentHarnessOptions.GetHashCode() -> int
@@ -420,6 +426,7 @@ Lunate.Agent.Session
 Lunate.Agent.Session.AppendCompaction(string! summary, System.Collections.Generic.IReadOnlyList<string!>! replaces) -> void
 Lunate.Agent.Session.AppendMessage(Microsoft.Extensions.AI.ChatMessage! message, string? model = null, Lunate.Agent.SessionUsage? usage = null) -> void
 Lunate.Agent.Session.AppendModelChange(string! model) -> void
+Lunate.Agent.Session.AppendModelUsage(string? model, Lunate.Agent.SessionUsage? usage, Lunate.Agent.ModelUsageAttribution? attribution, string? decisionOption = null) -> void
 Lunate.Agent.Session.Entries.get -> System.Collections.Generic.IReadOnlyList<Lunate.Agent.SessionEntry!>!
 Lunate.Agent.Session.Path.get -> string!
 Lunate.Agent.Session.SessionId.get -> string!
@@ -469,6 +476,22 @@ Lunate.Agent.SessionMessageEntry.Timestamp.get -> System.DateTimeOffset
 Lunate.Agent.SessionMessageEntry.Timestamp.init -> void
 Lunate.Agent.SessionMessageEntry.Usage.get -> Lunate.Agent.SessionUsage?
 Lunate.Agent.SessionMessageEntry.Usage.init -> void
+Lunate.Agent.SessionModelUsageEntry
+Lunate.Agent.SessionModelUsageEntry.Attribution.get -> Lunate.Agent.ModelUsageAttribution?
+Lunate.Agent.SessionModelUsageEntry.Attribution.init -> void
+Lunate.Agent.SessionModelUsageEntry.DecisionOption.get -> string?
+Lunate.Agent.SessionModelUsageEntry.DecisionOption.init -> void
+Lunate.Agent.SessionModelUsageEntry.Deconstruct(out string! Id, out string? ParentId, out System.DateTimeOffset Timestamp, out string? Model, out Lunate.Agent.SessionUsage? Usage, out Lunate.Agent.ModelUsageAttribution? Attribution, out string? DecisionOption) -> void
+Lunate.Agent.SessionModelUsageEntry.Equals(Lunate.Agent.SessionModelUsageEntry? other) -> bool
+Lunate.Agent.SessionModelUsageEntry.Model.get -> string?
+Lunate.Agent.SessionModelUsageEntry.Model.init -> void
+Lunate.Agent.SessionModelUsageEntry.ParentId.get -> string?
+Lunate.Agent.SessionModelUsageEntry.ParentId.init -> void
+Lunate.Agent.SessionModelUsageEntry.SessionModelUsageEntry(string! Id, string? ParentId, System.DateTimeOffset Timestamp, string? Model, Lunate.Agent.SessionUsage? Usage, Lunate.Agent.ModelUsageAttribution? Attribution, string? DecisionOption = null) -> void
+Lunate.Agent.SessionModelUsageEntry.Timestamp.get -> System.DateTimeOffset
+Lunate.Agent.SessionModelUsageEntry.Timestamp.init -> void
+Lunate.Agent.SessionModelUsageEntry.Usage.get -> Lunate.Agent.SessionUsage?
+Lunate.Agent.SessionModelUsageEntry.Usage.init -> void
 Lunate.Agent.SessionModelChangeEntry
 Lunate.Agent.SessionModelChangeEntry.Deconstruct(out string! Id, out string? ParentId, out System.DateTimeOffset Timestamp, out string! Model) -> void
 Lunate.Agent.SessionModelChangeEntry.Equals(Lunate.Agent.SessionModelChangeEntry? other) -> bool
@@ -513,6 +536,8 @@ Lunate.Agent.SessionUsage.Input.get -> int
 Lunate.Agent.SessionUsage.Input.init -> void
 Lunate.Agent.SessionUsage.Output.get -> int
 Lunate.Agent.SessionUsage.Output.init -> void
+Lunate.Agent.SessionUsage.Attribution.get -> Lunate.Agent.ModelUsageAttribution?
+Lunate.Agent.SessionUsage.Attribution.init -> void
 Lunate.Agent.SessionUsage.SessionUsage(int Input, int Output, int? CacheRead = null, int? CacheWrite = null) -> void
 override Lunate.Agent.SessionCompactionEntry.<Clone>$() -> Lunate.Agent.SessionCompactionEntry!
 override Lunate.Agent.SessionCompactionEntry.Equals(object? obj) -> bool
@@ -529,6 +554,10 @@ override Lunate.Agent.SessionMessageEntry.<Clone>$() -> Lunate.Agent.SessionMess
 override Lunate.Agent.SessionMessageEntry.Equals(object? obj) -> bool
 override Lunate.Agent.SessionMessageEntry.GetHashCode() -> int
 override Lunate.Agent.SessionMessageEntry.ToString() -> string!
+override Lunate.Agent.SessionModelUsageEntry.<Clone>$() -> Lunate.Agent.SessionModelUsageEntry!
+override Lunate.Agent.SessionModelUsageEntry.Equals(object? obj) -> bool
+override Lunate.Agent.SessionModelUsageEntry.GetHashCode() -> int
+override Lunate.Agent.SessionModelUsageEntry.ToString() -> string!
 override Lunate.Agent.SessionModelChangeEntry.<Clone>$() -> Lunate.Agent.SessionModelChangeEntry!
 override Lunate.Agent.SessionModelChangeEntry.Equals(object? obj) -> bool
 override Lunate.Agent.SessionModelChangeEntry.GetHashCode() -> int
@@ -539,6 +568,7 @@ override Lunate.Agent.SessionUsage.ToString() -> string!
 override sealed Lunate.Agent.SessionCompactionEntry.Equals(Lunate.Agent.SessionEntry? other) -> bool
 override sealed Lunate.Agent.SessionHeaderEntry.Equals(Lunate.Agent.SessionEntry? other) -> bool
 override sealed Lunate.Agent.SessionMessageEntry.Equals(Lunate.Agent.SessionEntry? other) -> bool
+override sealed Lunate.Agent.SessionModelUsageEntry.Equals(Lunate.Agent.SessionEntry? other) -> bool
 override sealed Lunate.Agent.SessionModelChangeEntry.Equals(Lunate.Agent.SessionEntry? other) -> bool
 static Lunate.Agent.Session.Load(string! path) -> Lunate.Agent.Session!
 static Lunate.Agent.SessionCompactionEntry.operator !=(Lunate.Agent.SessionCompactionEntry? left, Lunate.Agent.SessionCompactionEntry? right) -> bool
@@ -549,6 +579,8 @@ static Lunate.Agent.SessionHeaderEntry.operator !=(Lunate.Agent.SessionHeaderEnt
 static Lunate.Agent.SessionHeaderEntry.operator ==(Lunate.Agent.SessionHeaderEntry? left, Lunate.Agent.SessionHeaderEntry? right) -> bool
 static Lunate.Agent.SessionMessageEntry.operator !=(Lunate.Agent.SessionMessageEntry? left, Lunate.Agent.SessionMessageEntry? right) -> bool
 static Lunate.Agent.SessionMessageEntry.operator ==(Lunate.Agent.SessionMessageEntry? left, Lunate.Agent.SessionMessageEntry? right) -> bool
+static Lunate.Agent.SessionModelUsageEntry.operator !=(Lunate.Agent.SessionModelUsageEntry? left, Lunate.Agent.SessionModelUsageEntry? right) -> bool
+static Lunate.Agent.SessionModelUsageEntry.operator ==(Lunate.Agent.SessionModelUsageEntry? left, Lunate.Agent.SessionModelUsageEntry? right) -> bool
 static Lunate.Agent.SessionModelChangeEntry.operator !=(Lunate.Agent.SessionModelChangeEntry? left, Lunate.Agent.SessionModelChangeEntry? right) -> bool
 static Lunate.Agent.SessionModelChangeEntry.operator ==(Lunate.Agent.SessionModelChangeEntry? left, Lunate.Agent.SessionModelChangeEntry? right) -> bool
 static Lunate.Agent.SessionPaths.ForProject(string! cwd) -> string!
@@ -1200,8 +1232,53 @@ Lunate.Agent.AgentContextBuildingContext.ParentRunId.init -> void
 Lunate.Agent.AgentHarness.SubagentUsage.get -> Lunate.Agent.SubagentUsage
 Lunate.Agent.AgentHarnessOptions.SubagentLimits.get -> Lunate.Agent.SubagentLimits!
 Lunate.Agent.AgentHarnessOptions.SubagentLimits.init -> void
+Lunate.Agent.AgentHarnessOptions.DecisionMode.get -> Lunate.Agent.DecisionMode
+Lunate.Agent.AgentHarnessOptions.DecisionMode.init -> void
 Lunate.Agent.AgentHarnessOptions.TokenBudget.get -> long?
 Lunate.Agent.AgentHarnessOptions.TokenBudget.init -> void
+Lunate.Agent.UsageModelClient
+Lunate.Agent.UsageModelClient.<Clone>$() -> Lunate.Agent.UsageModelClient!
+Lunate.Agent.UsageModelClient.Client.get -> Microsoft.Extensions.AI.IChatClient!
+Lunate.Agent.UsageModelClient.Client.init -> void
+Lunate.Agent.UsageModelClient.DecisionThreshold.get -> double?
+Lunate.Agent.UsageModelClient.DecisionThreshold.init -> void
+Lunate.Agent.UsageModelClient.Deconstruct(out Microsoft.Extensions.AI.IChatClient! Client, out string! ProfileName, out string! ProviderName, out Lunate.Ai.ModelInfo! Model, out double? DecisionThreshold) -> void
+Lunate.Agent.UsageModelClient.Equals(Lunate.Agent.UsageModelClient? other) -> bool
+Lunate.Agent.UsageModelClient.Model.get -> Lunate.Ai.ModelInfo!
+Lunate.Agent.UsageModelClient.Model.init -> void
+Lunate.Agent.UsageModelClient.ProfileName.get -> string!
+Lunate.Agent.UsageModelClient.ProfileName.init -> void
+Lunate.Agent.UsageModelClient.ProviderKind.get -> string!
+Lunate.Agent.UsageModelClient.ProviderName.get -> string!
+Lunate.Agent.UsageModelClient.ProviderName.init -> void
+Lunate.Agent.UsageModelClient.UsageModelClient(Microsoft.Extensions.AI.IChatClient! Client, string! ProfileName, string! ProviderName, Lunate.Ai.ModelInfo! Model, double? DecisionThreshold = null) -> void
+override Lunate.Agent.UsageModelClient.Equals(object? obj) -> bool
+override Lunate.Agent.UsageModelClient.GetHashCode() -> int
+override Lunate.Agent.UsageModelClient.ToString() -> string!
+static Lunate.Agent.UsageModelClient.operator !=(Lunate.Agent.UsageModelClient? left, Lunate.Agent.UsageModelClient? right) -> bool
+static Lunate.Agent.UsageModelClient.operator ==(Lunate.Agent.UsageModelClient? left, Lunate.Agent.UsageModelClient? right) -> bool
+Lunate.Agent.ModelUsageAttribution
+Lunate.Agent.ModelUsageAttribution.<Clone>$() -> Lunate.Agent.ModelUsageAttribution!
+Lunate.Agent.ModelUsageAttribution.Deconstruct(out string! Usage, out string! ProfileName, out string! ProviderName, out string! ProviderKind, out string? DecisionMethod, out double? Probability) -> void
+Lunate.Agent.ModelUsageAttribution.Equals(Lunate.Agent.ModelUsageAttribution? other) -> bool
+Lunate.Agent.ModelUsageAttribution.ProfileName.get -> string!
+Lunate.Agent.ModelUsageAttribution.ProfileName.init -> void
+Lunate.Agent.ModelUsageAttribution.ProviderKind.get -> string!
+Lunate.Agent.ModelUsageAttribution.ProviderKind.init -> void
+Lunate.Agent.ModelUsageAttribution.DecisionMethod.get -> string?
+Lunate.Agent.ModelUsageAttribution.DecisionMethod.init -> void
+Lunate.Agent.ModelUsageAttribution.Probability.get -> double?
+Lunate.Agent.ModelUsageAttribution.Probability.init -> void
+Lunate.Agent.ModelUsageAttribution.ProviderName.get -> string!
+Lunate.Agent.ModelUsageAttribution.ProviderName.init -> void
+Lunate.Agent.ModelUsageAttribution.Usage.get -> string!
+Lunate.Agent.ModelUsageAttribution.Usage.init -> void
+Lunate.Agent.ModelUsageAttribution.ModelUsageAttribution(string! Usage, string! ProfileName, string! ProviderName, string! ProviderKind, string? DecisionMethod = null, double? Probability = null) -> void
+override Lunate.Agent.ModelUsageAttribution.Equals(object? obj) -> bool
+override Lunate.Agent.ModelUsageAttribution.GetHashCode() -> int
+override Lunate.Agent.ModelUsageAttribution.ToString() -> string!
+static Lunate.Agent.ModelUsageAttribution.operator !=(Lunate.Agent.ModelUsageAttribution? left, Lunate.Agent.ModelUsageAttribution? right) -> bool
+static Lunate.Agent.ModelUsageAttribution.operator ==(Lunate.Agent.ModelUsageAttribution? left, Lunate.Agent.ModelUsageAttribution? right) -> bool
 Lunate.Agent.AgentMessageCompletedContext.ParentRunId.get -> string?
 Lunate.Agent.AgentMessageCompletedContext.ParentRunId.init -> void
 Lunate.Agent.AgentRunSettledContext.ParentRunId.get -> string?
@@ -1240,6 +1317,55 @@ Lunate.Agent.SubagentRequest.WorkspaceRoot.get -> string?
 Lunate.Agent.SubagentRequest.WorkspaceRoot.init -> void
 Lunate.Agent.SubagentRequest.Prompt.get -> string!
 Lunate.Agent.SubagentRequest.Prompt.init -> void
+Lunate.Agent.DecisionMode
+Lunate.Agent.DecisionMode.Enforce = 2 -> Lunate.Agent.DecisionMode
+Lunate.Agent.DecisionMode.Off = 0 -> Lunate.Agent.DecisionMode
+Lunate.Agent.DecisionMode.Shadow = 1 -> Lunate.Agent.DecisionMode
+Lunate.Agent.DecisionEvaluated
+Lunate.Agent.DecisionEvaluated.DecisionEvaluated(string! RunId, string! ModelId, string! Method, string! Option, double Probability) -> void
+Lunate.Agent.DecisionEvaluated.Deconstruct(out string! RunId, out string! ModelId, out string! Method, out string! Option, out double Probability) -> void
+Lunate.Agent.DecisionEvaluated.Equals(Lunate.Agent.DecisionEvaluated? other) -> bool
+override sealed Lunate.Agent.DecisionEvaluated.Equals(Lunate.Agent.ExtensionEvent? other) -> bool
+Lunate.Agent.DecisionEvaluated.Method.get -> string!
+Lunate.Agent.DecisionEvaluated.Method.init -> void
+Lunate.Agent.DecisionEvaluated.ModelId.get -> string!
+Lunate.Agent.DecisionEvaluated.ModelId.init -> void
+Lunate.Agent.DecisionEvaluated.Option.get -> string!
+Lunate.Agent.DecisionEvaluated.Option.init -> void
+Lunate.Agent.DecisionEvaluated.Probability.get -> double
+Lunate.Agent.DecisionEvaluated.Probability.init -> void
+override Lunate.Agent.DecisionEvaluated.<Clone>$() -> Lunate.Agent.DecisionEvaluated!
+override Lunate.Agent.DecisionEvaluated.Equals(object? obj) -> bool
+override Lunate.Agent.DecisionEvaluated.GetHashCode() -> int
+override Lunate.Agent.DecisionEvaluated.ToString() -> string!
+static Lunate.Agent.DecisionEvaluated.operator !=(Lunate.Agent.DecisionEvaluated? left, Lunate.Agent.DecisionEvaluated? right) -> bool
+static Lunate.Agent.DecisionEvaluated.operator ==(Lunate.Agent.DecisionEvaluated? left, Lunate.Agent.DecisionEvaluated? right) -> bool
+Lunate.Agent.DecisionUnavailable
+Lunate.Agent.DecisionUnavailable.DecisionUnavailable(string! RunId) -> void
+Lunate.Agent.DecisionUnavailable.Deconstruct(out string! RunId) -> void
+Lunate.Agent.DecisionUnavailable.Equals(Lunate.Agent.DecisionUnavailable? other) -> bool
+override sealed Lunate.Agent.DecisionUnavailable.Equals(Lunate.Agent.ExtensionEvent? other) -> bool
+override Lunate.Agent.DecisionUnavailable.<Clone>$() -> Lunate.Agent.DecisionUnavailable!
+override Lunate.Agent.DecisionUnavailable.Equals(object? obj) -> bool
+override Lunate.Agent.DecisionUnavailable.GetHashCode() -> int
+override Lunate.Agent.DecisionUnavailable.ToString() -> string!
+static Lunate.Agent.DecisionUnavailable.operator !=(Lunate.Agent.DecisionUnavailable? left, Lunate.Agent.DecisionUnavailable? right) -> bool
+static Lunate.Agent.DecisionUnavailable.operator ==(Lunate.Agent.DecisionUnavailable? left, Lunate.Agent.DecisionUnavailable? right) -> bool
+Lunate.Agent.DecisionFailed
+Lunate.Agent.DecisionFailed.DecisionFailed(string! RunId, string! ModelId, string! Reason) -> void
+Lunate.Agent.DecisionFailed.Deconstruct(out string! RunId, out string! ModelId, out string! Reason) -> void
+Lunate.Agent.DecisionFailed.Equals(Lunate.Agent.DecisionFailed? other) -> bool
+override sealed Lunate.Agent.DecisionFailed.Equals(Lunate.Agent.ExtensionEvent? other) -> bool
+Lunate.Agent.DecisionFailed.ModelId.get -> string!
+Lunate.Agent.DecisionFailed.ModelId.init -> void
+Lunate.Agent.DecisionFailed.Reason.get -> string!
+Lunate.Agent.DecisionFailed.Reason.init -> void
+override Lunate.Agent.DecisionFailed.<Clone>$() -> Lunate.Agent.DecisionFailed!
+override Lunate.Agent.DecisionFailed.Equals(object? obj) -> bool
+override Lunate.Agent.DecisionFailed.GetHashCode() -> int
+override Lunate.Agent.DecisionFailed.ToString() -> string!
+static Lunate.Agent.DecisionFailed.operator !=(Lunate.Agent.DecisionFailed? left, Lunate.Agent.DecisionFailed? right) -> bool
+static Lunate.Agent.DecisionFailed.operator ==(Lunate.Agent.DecisionFailed? left, Lunate.Agent.DecisionFailed? right) -> bool
 Lunate.Agent.SubagentRequest.SubagentRequest(string! Prompt, int? MaxSteps = null, System.Collections.Generic.IReadOnlyList<string!>? AllowedTools = null, string? WorkspaceRoot = null) -> void
 Lunate.Agent.SubagentResult
 Lunate.Agent.SubagentResult.<Clone>$() -> Lunate.Agent.SubagentResult!

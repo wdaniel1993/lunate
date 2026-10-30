@@ -15,13 +15,13 @@ namespace Lunate.Agent;
 internal static partial class SessionFormat
 {
     /// <summary>
-    /// The schema this build writes: 3 adds cache token lanes and image reference parts on top of
-    /// the schema 2 entries; older schemas never carry either.
+    /// The schema this build writes: 4 adds model usage attribution on top of schema 3.
     /// </summary>
-    internal const int SchemaVersion = 3;
+    internal const int SchemaVersion = 4;
 
     private const string HeaderType = "header";
     private const string MessageType = "message";
+    private const string ModelUsageType = "modelUsage";
     private const string CompactionType = "compaction";
     private const string ModelChangeType = "modelChange";
     private const string ActiveToolsType = "activeTools";
@@ -71,6 +71,7 @@ internal static partial class SessionFormat
             {
                 HeaderType => ParseHeader(root),
                 MessageType => ParseMessage(root),
+                ModelUsageType => ParseModelUsage(root),
                 CompactionType => new SessionCompactionEntry(
                     RequiredString(root, "id"),
                     OptionalString(root, "parentId"),
@@ -121,7 +122,7 @@ internal static partial class SessionFormat
                 _ => type.StartsWith(ExtensionPrefix, StringComparison.Ordinal)
                     ? ParseExtension(root, type)
                     : throw new InvalidDataException(
-                        $"Session line has unknown type '{type}'; expected '{HeaderType}', '{MessageType}', '{CompactionType}', '{ModelChangeType}', '{ActiveToolsType}', '{PromptSectionType}', '{ChildSessionType}', '{NestedCallsType}', '{ActiveLeafType}', '{BranchSummaryType}' or 'ext/<extension-id>/<type>'."
+                        $"Session line has unknown type '{type}'; expected '{HeaderType}', '{MessageType}', '{ModelUsageType}', '{CompactionType}', '{ModelChangeType}', '{ActiveToolsType}', '{PromptSectionType}', '{ChildSessionType}', '{NestedCallsType}', '{ActiveLeafType}', '{BranchSummaryType}' or 'ext/<extension-id>/<type>'."
                     ),
             };
         }
@@ -199,6 +200,14 @@ internal static partial class SessionFormat
             && usageElement.ValueKind == JsonValueKind.Object
                 ? usageElement.Deserialize<SessionUsage>(SessionJson.Options)
                 : null;
+        if (usage is not null && usageElement.TryGetProperty("attribution", out _))
+        {
+            usage = usage with
+            {
+                Attribution = ParseUsageAttribution(usageElement.GetProperty("attribution")),
+            };
+        }
+
         SessionSkillMetadata? skill = null;
         if (root.TryGetProperty("skill", out JsonElement skillElement))
         {
@@ -236,6 +245,40 @@ internal static partial class SessionFormat
             {
                 RawMessageJson = rawMessageJson,
             };
+    }
+
+    private static ModelUsageAttribution ParseUsageAttribution(JsonElement attribution)
+    {
+        if (attribution.ValueKind != JsonValueKind.Object)
+        {
+            throw new InvalidDataException("Session usage attribution is not an object.");
+        }
+
+        string? decisionMethod = OptionalString(attribution, "decisionMethod");
+        double? probability = null;
+        if (attribution.TryGetProperty("probability", out JsonElement probabilityElement))
+        {
+            if (
+                probabilityElement.ValueKind != JsonValueKind.Number
+                || !probabilityElement.TryGetDouble(out double parsed)
+                || !double.IsFinite(parsed)
+                || parsed is < 0d or > 1d
+            )
+            {
+                throw new InvalidDataException("Session usage attribution probability is invalid.");
+            }
+
+            probability = parsed;
+        }
+
+        return new ModelUsageAttribution(
+            RequiredString(attribution, "usage"),
+            RequiredString(attribution, "profileName"),
+            RequiredString(attribution, "providerName"),
+            RequiredString(attribution, "providerKind"),
+            decisionMethod,
+            probability
+        );
     }
 
     private static SessionNestedCallsEntry ParseNestedCalls(JsonElement root)

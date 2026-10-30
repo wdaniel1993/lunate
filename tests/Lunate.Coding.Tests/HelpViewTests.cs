@@ -7,7 +7,7 @@ namespace Lunate.Coding.Tests;
 /// The <c>/help</c> listing over the whole registry: the built-in groups print first and
 /// unchanged, then one section per non-built-in kind present (<c>skills</c>, <c>extensions</c>,
 /// <c>templates</c>), each sorted by name and omitted when empty; a registry with nothing but
-/// built-ins prints exactly the pre-change listing, and the <c>/skill:&lt;name&gt;</c> placeholder
+/// built-ins prints exactly the built-in listing, and the <c>/skill:&lt;name&gt;</c> placeholder
 /// stays in its built-in group.
 /// </summary>
 public sealed class HelpViewTests
@@ -19,6 +19,7 @@ public sealed class HelpViewTests
           /compact    — compact the conversation now, optionally focusing on <text>
           /context    — show the context window and subagent budgets
           /copy       — copy the last answer to the clipboard
+          /cost       — show usage cost by usage and provider
           /debug      — write a diagnostic bundle for a bug report
           /editor     — open the draft in your external editor
           /export     — write the session as html or jsonl

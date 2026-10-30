@@ -164,6 +164,7 @@ internal sealed partial class InteractiveSession : IDisposable
     private readonly WriteVerificationRefusalTracker _writeVerificationRefusals = new();
     private ModelCatalog _catalog = null!;
     private AuthStore _auth = null!;
+    private IReadOnlyList<ProviderEntry> _providerEntries = [];
     private Func<string, string?> _environment = Environment.GetEnvironmentVariable;
     private IChatClientFactory _factory = null!;
     private Workspace _workspace = null!;
@@ -452,15 +453,32 @@ internal sealed partial class InteractiveSession : IDisposable
 
     private async Task ComposeAsync(CancellationToken ct)
     {
-        _settings = SettingsStore.Resolve(_options.SettingsPath, _options.Environment);
+        _workspace = new Workspace(_options.WorkingDirectory ?? Environment.CurrentDirectory);
+        string projectSettingsPath = SettingsStore.ProjectFilePath(_workspace.WorktreeRoot);
+        SettingsStore.ValidateProjectScope(projectSettingsPath);
+        AgentSettings userSettings = SettingsStore.Resolve(
+            _options.SettingsPath,
+            _options.Environment
+        );
+        _auth = AuthStore.Load(_options.AuthPath, _options.Environment);
+        ProviderStore userProviders = ProviderStore.Load(
+            AuthStore.ProviderStoreFilePath(_options.AuthPath),
+            _auth,
+            userSettings.Providers
+        );
+        _providerEntries = userProviders.Entries;
+        _settings = SettingsStore.ResolveWithProject(
+            _options.SettingsPath,
+            projectSettingsPath,
+            userProviders.Entries,
+            _options.Environment
+        );
         _settings = SettingsStore.ApplyLaunch(_settings, _options.Launch);
         ApplyTuiPresentation();
         _thinkingLevel = _settings.Thinking;
         _catalog = HarnessFactory.LoadCatalog(_settings, _options.ModelsPath);
         _environment = _options.Environment ?? Environment.GetEnvironmentVariable;
-        _auth = AuthStore.Load(_options.AuthPath, _options.Environment);
         _factory = _options.Factory ?? HarnessFactory.CreateFactory(_auth);
-        _workspace = new Workspace(_options.WorkingDirectory ?? Environment.CurrentDirectory);
         // Collected exactly once, the collection the session persistence and the write/edit guards
         // both use, before anything of this session adds a credential to it.
         _redaction = HarnessFactory.CollectRedaction(
@@ -635,6 +653,14 @@ internal sealed partial class InteractiveSession : IDisposable
                 resolved.ContextWindow,
                 resolved.SupportsTools
             );
+        }
+        else if (_settings.Usages.TryGetValue("chat", out string? chatProfile))
+        {
+            _extensionModelId = null;
+            _modelRoute = null;
+            _model = ModelSelectionResolver
+                .ResolveChatModel(chatProfile, _settings, _providerEntries, _catalog)
+                .Model;
         }
         else
         {
@@ -854,6 +880,9 @@ internal sealed partial class InteractiveSession : IDisposable
     /// </summary>
     private AgentHarness BuildHarness(ModelInfo model)
     {
+        IReadOnlyDictionary<string, UsageModelClient>? usageModels = ResolveUsageModels(model);
+        UsageModelClient? chatModel = usageModels?.GetValueOrDefault("chat");
+        ModelInfo resolvedModel = chatModel?.Model ?? model;
         var harnessOptions = new AgentHarnessOptions
         {
             SystemPrompt = SystemPrompt.Compose(
@@ -870,15 +899,17 @@ internal sealed partial class InteractiveSession : IDisposable
             // The same redactor masks the model-facing text; the interactive session always has one.
             ToolOutputMask = _redaction.Redact,
             SubagentLimits = _settings.Subagents,
+            DecisionMode = _settings.DecisionMode,
             Approver = _approver,
             AskUserAsync = AskUserAsync,
             Hooks = _extensions?.Hooks,
             Session = _session,
             Steering = _steering,
             FileChanges = (IFileChangeSink?)_extensions?.FileChanges ?? NullFileChangeSink.Instance,
-            Model = model,
+            Model = resolvedModel,
             ModelCatalog = _catalog,
-            ModelId = model.Id,
+            ModelId = resolvedModel.Id,
+            UsageModels = usageModels,
             ThinkingLevel = _thinkingLevel,
             ModelRegistry = _extensions?.ModelRegistry,
             WorkspaceTools = _workspaceTools,
@@ -890,7 +921,7 @@ internal sealed partial class InteractiveSession : IDisposable
 
         IChatClient client = _extensionModelId is { } extensionModelId
             ? _extensions!.ModelRegistry.Resolve(extensionModelId)
-            : CreateSessionClient(model);
+            : chatModel?.Client ?? CreateSessionClient(model);
         return new AgentHarness(client, _tools, harnessOptions);
     }
 

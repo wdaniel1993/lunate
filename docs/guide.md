@@ -23,8 +23,9 @@ Three consequences follow, and they decide priorities:
   extensibility story is proven by the reference-extension fitness suite, not by the flagship.
   Moving `Lunate.Roslyn` onto the contract is 0.2 work, and the positioning claim returns when the
   audit's gaps are closed — not before.
-- **Decision models enter through a Jev-compatible API**, so Lunate does not care which model or
-  provider sits behind a decision.
+- **Any configured model can serve a decision.** The user chooses the model; Lunate checks the
+  response contract, retries one malformed response, and ensures decisions can only tighten the
+  approval result.
 
 **Why it should exist next to Pi and OpenCode**
 
@@ -206,7 +207,7 @@ public sealed class RecordingChatClient(IChatClient inner, string fixturePath) :
 public sealed class ReplayChatClient(string fixturePath) : IChatClient { }
 ```
 
-- `ModelCatalog`: the embedded `models.json` (schema 2: id, provider, qualified wire id, context and max-output windows, tool and vision support, reasoning style and per-million-token pricing), merged in order with the managed cache `~/.lunate/models.catalog.json` and the user file `~/.lunate/models.json`; the user file wins by id. A schema-1 override keeps the embedded entry's pricing, maximum output, vision support and wire id, because schema 1 cannot express them; a schema-2 override replaces the entry completely. Adding a model never needs a code change.
+- `ModelCatalog`: the embedded `models.json` (schema 2: id, provider, qualified wire id, context and max-output windows, tool and vision support, extensible API/modality/feature capability sets, reasoning style and per-million-token pricing), merged in order with the managed cache `~/.lunate/models.catalog.json` and the user file `~/.lunate/models.json`; the user file wins by id. A schema-1 override keeps the embedded entry's pricing, maximum output, vision support and wire id, because schema 1 cannot express them; a schema-2 override replaces the entry completely. Adding a model never needs a code change.
 - `RecordingChatClient` and `ReplayChatClient`: record and replay `ChatResponseUpdate` streams as JSONL, serialized with `AIJsonUtilities` options.
 - `StreamAccumulator` (internal): one `DelegatingChatClient` between logging and the recorder that assembles streamed function-call argument fragments per call id, so consumers only ever see complete calls; recordings stay raw and replay still passes through the accumulator.
 - `ProviderErrors`: classifies exceptions as retryable or not.
@@ -314,7 +315,7 @@ The harness exposes them as `IAsyncEnumerable<AgentEvent>` from `AgentHarness.Ru
 
 - Cancellation: `Esc` in the UI cancels the `CancellationToken`; the loop records a cancelled tool result so the history stays valid.
 - Retries: transient provider errors retry 3 times with backoff, each attempt raising `Retrying`.
-- Compaction: our strategy implements `IChatReducer` and runs when estimated tokens pass 80% of the model's context window. The first version summarizes old turns with the same model and keeps the last N turns verbatim.
+- Compaction: our strategy implements `IChatReducer` and runs when estimated tokens pass 80% of the selected model's context window. It uses the chat profile by default; fast is an explicit opt-in. The summarizer keeps the last N turns verbatim.
 - Steering: the harness accepts steering messages through its queue and injects them before the next model call; the interactive prompt has no steering key. `Enter` while a turn runs queues a follow-up for after the turn instead, and the two paths are separate.
 
 **Telemetry in the loop**
@@ -381,7 +382,7 @@ prevents the write on verifier refusal, `warn` writes and reports `unverified` w
 to `unverified` and the staged content is written. Pressing Esc during verification cancels the run
 and does not write that content.
 
-`read` also accepts PNG, JPEG, GIF and WebP images when the active model declares vision support. It returns the placeholder `[image <width>x<height>]` and carries the bytes to the model; a text-only model gets an error naming itself. Images are capped at 5 MB and 4,096 pixels per side, and downscaling is not available yet.
+`read` also accepts PNG, JPEG, GIF and WebP images. When image input is known to be unsupported, the active model is named and the user is told to switch profile or remove the image before a request is sent. Unknown image support is attempted; a provider rejection becomes the same clear notice. Images are capped at 5 MB and 4,096 pixels per side, and downscaling is not available yet.
 
 **Optional search tools**
 
@@ -453,13 +454,43 @@ Tools: read, write, edit, bash{extra_tools}.
 
 **Config**
 
-`~/.lunate/settings.json` (default model, approval policy, output limits and verification mode) and
-`~/.lunate/auth.json` (API keys, file permissions restricted). Environment variables override
-supported settings; `verify` has no environment-variable override. `toolDetails` chooses how much of
-a tool call the scrollback commits: `"collapsed"` (the default) writes the header line only,
-`"expanded"` adds the bounded output excerpt and the diff panel; `LUNATE_TOOL_DETAILS` overrides it.
-The optional `tui` section carries the interactive presentation: `tui.theme` (the colour-depth
-policy) and `tui.keys` (persisted key remaps), both editable in `/settings`.
+`~/.lunate/settings.json` holds profiles, usage assignments, approval policy, output limits and the
+write-verification mode; `~/.lunate/providers.json` holds named provider instances; and
+`~/.lunate/auth.json` holds stored keys. Provider instances select one of the twelve built-in kinds
+as a template and may override its endpoint. Credentials and optional header values are references
+(`auth:`, `env:`, or `helper:`), not literal values. Legacy stored keys migrate idempotently, without
+copying secrets; environment credentials retain precedence. Project settings may reference existing
+user providers/profiles and lower limits, but cannot define endpoints or credential references.
+Provider `region` is metadata, not a routing or residency policy. See [first run](first-run.md) for
+setup and examples.
+
+Profiles bind a name to a provider and catalog model with validated reasoning, output, temperature,
+context-window, decision-threshold and capability-override settings. Capability sets are open strings
+for APIs, input/output modalities and features, layered catalog → provider discovery → profile;
+unknown facts remain allowed. The host checks only existing-usage requirements: chat needs text and
+tools, decision needs structured output, and an attached image is rejected before sending only when
+image input is known to be unsupported. Unknown image support is attempted; a provider rejection
+becomes a model-named switch-profile-or-remove-image notice. `/model` lists profiles and catalog
+models and switches chat only; qualified
+`provider/model` selection uses that provider's defaults, and bare ids must be unique. No new model
+usages are introduced here.
+
+Decision use is opt-in through user settings and off by default. Any configured model can serve it;
+there are no per-model calibration states or inferred “cannot decide” verdicts, and logprobs are not
+a policy. Responses must contain a defined option and well-formed probabilities; malformed output is
+retried once, then reported as a failed decision naming the model. `apiType` records `native` versus
+`adapter` provenance but does not assess suitability. Decisions never override deny or approve beyond
+the user's allow envelope.
+
+The top-level `verify` setting selects how staged writes are verified: `block` (default) prevents a
+write on verifier refusal, `warn` writes and reports `unverified` with diagnostics, and `off` skips
+verifier selection and execution. It has no environment-variable override.
+
+`toolDetails` chooses how much of a tool call the scrollback commits: `"collapsed"` (the default)
+writes the header line only, `"expanded"` adds the bounded output excerpt and the diff panel;
+`LUNATE_TOOL_DETAILS` overrides it. The optional `tui` section carries the interactive presentation:
+`tui.theme` (the colour-depth policy) and `tui.keys` (persisted key remaps), both editable in
+`/settings`.
 
 **Sessions on disk**
 
@@ -467,7 +498,7 @@ One JSONL file per session under `~/.lunate/sessions/<project-hash>/`. Session a
 
 System-prompt directives are recorded as prompt sections on a new session and replayed on resume; an explicit CLI directive wins over the recorded one. Warning: `--system-prompt` replaces the composed prompt wholesale, including the tool-call conventions, so the caller owns them and a model may call tools incorrectly. Prefer `--append-system-prompt` when the conventions should stay.
 
-`/name <title>` stores a title in `<sessionId>.title` beside the session file (the picker labels the row `<title> — <id>`; bare `/name` reports it), and `/session` prints the session path, id, message count and input/output tokens reconstructed from the recorded usages — never a model call. A cost line appears only when the active model's catalog entry carries pricing.
+`/name <title>` stores a title in `<sessionId>.title` beside the session file (the picker labels the row `<title> — <id>`; bare `/name` reports it), and `/session` prints the session path, id, message count and input/output tokens reconstructed from the recorded usages — never a model call. `/cost` is also read-only: it groups priced session usage by usage and provider, lists contributing model ids, and marks unknown positive token lanes unpriced instead of showing zero. Shared profiles do not double-count calls because each call is attributed once to its semantic usage. Schema-4 sessions store usage/profile/provider/model attribution and decision method/probability, never capabilities or provider configuration; schemas 1–3 retain their old meaning.
 
 `/copy` (also `Ctrl+X`) writes the last completed answer to the clipboard. Over ssh (`SSH_CONNECTION` or `SSH_TTY`) it sends the OSC 52 sequence and starts no local tool; locally it runs the platform tool first (`pbcopy`, `wl-copy`/`xclip`/`xsel`, `clip.exe`/`Set-Clipboard` under WSL, the Win32 clipboard API on Windows — never `clip.exe`) and falls back to the sequence. The notice distinguishes evidence from intent — `copied 1,842 characters via pbcopy` versus `sent 1,842 characters to the terminal clipboard (OSC 52)` — names tmux's `set-clipboard on` when `TMUX` is set, and says the terminal may truncate a copy above 100 KB; the text is never cut by Lunate. A cancelled or failed turn is not an answer, so the previous completed one is copied, and with no completed turn the command says so and writes nothing.
 
@@ -552,7 +583,7 @@ Typing `/` at the start of the first line opens the autocomplete list from the s
 
 `@<path>` attaches an image to the prompt after the input hooks run: `explain @screens/diagram.png`, `@"screens/login page.png"` for a path with spaces, or a path dropped or pasted as the whole submission. `@clipboard` reads one image from the clipboard instead of a file. A relative path resolves against the working directory; an absolute path is allowed. `~` is not expanded, so `@~/shot.png` looks for a literal `~/shot.png`; and unlike `read`, `@path` has no workspace boundary — `@../outside.png` attaches a file outside the workspace. Only existing PNG, JPEG, GIF or WebP files attach — magic bytes decide the format, not the extension — and the token becomes the placeholder `[image <width>x<height>]` in the user block and the transcript. Any other `@file` stays text for the model to `read`.
 
-Limits are shared with the `read` tool: 5 MB per image, 4,096 pixels per side, four images per message. Every refusal names the actual value, the limit and the next step; oversize images say `downscaling is not available yet`. The active model must declare `supportsVision`; otherwise the submission is refused before any request and names the model id. Repeated references to one file attach it once.
+Limits are shared with the `read` tool: 5 MB per image, 4,096 pixels per side, four images per message. Every refusal names the actual value, the limit and the next step; oversize images say `downscaling is not available yet`. If the active model's known input modalities exclude `image`, the submission is refused before sending with the model named and a prompt to switch profile or remove the image. Unknown image support is allowed to reach the provider; a provider rejection is translated to that same notice. Repeated references to one file attach it once.
 
 The clipboard chain is `pngpaste` on macOS, `wl-paste --type image/png` on Wayland and PowerShell `Get-Clipboard -Format Image` on Windows. A missing helper shows one notice per interactive session and is an error in print mode; an empty clipboard shows a notice and starts no run. Print mode resolves the same syntax and exits 2 on a refusal, with the error on stderr.
 
@@ -963,7 +994,7 @@ Lunate runs model-chosen shell commands with your user's rights, so the defaults
 - **Installing is not trusting.** `lunate install` writes no trust record: an installed extension stays pending, in both scopes, until you answer its question at first load.
 - **Workspace boundary:** file tools resolve real paths (including symlinks) and refuse anything outside the working directory unless `--allow-path` is given.
 - **Edit safety:** ambiguous matches are refused, never guessed; every edit shows its diff and match tier.
-- **Secrets:** API keys only in `auth.json` (owner-only file permissions) or environment variables; the credential values Lunate itself holds — provider keys, extension secrets and MCP server environment values — are replaced by exact value with `[redacted:<name>]` in session files, spill files and exports (never by guessing at a pattern), and session files, spill files, the trust store and install records are owner-only (`0600`; session directories `0700`) where the platform has file modes.
+- **Secrets:** provider keys live in `auth.json`, environment variables or configured helpers; `providers.json` stores only credential references, and optional header values are references too. The credential values Lunate itself holds — provider keys, extension secrets and MCP server environment values — are replaced by exact value with `[redacted:<name>]` in session files, spill files and exports (never by guessing at a pattern), and session files, spill files, the trust store and install records are owner-only (`0600`; session directories `0700`) where the platform has file modes.
 - **Prompt injection:** file contents, command output and MCP results are data. The system prompt says so; approval is the real guard.
 - **MCP servers** are third-party code: only servers listed in `mcp.json` start, and their output is truncated like any tool output. Extensions are third-party code too: project-local ones need a one-time approval per repository, an installed package is pending until its first-load question is answered, and lunate --no-extensions starts without any.
 - **ACP mode** uses the editor's permission prompts; only a read-only call runs without one, so a request coming from an editor is never auto-approved.

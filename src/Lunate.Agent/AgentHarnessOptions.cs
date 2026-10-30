@@ -1,10 +1,20 @@
 using Lunate.Ai;
+using Microsoft.Extensions.AI;
 
 namespace Lunate.Agent;
 
 /// <summary>Configuration for an <see cref="AgentHarness"/>.</summary>
 public sealed record AgentHarnessOptions
 {
+    /// <summary>The usage identity of this harness's primary model calls; defaults to <c>chat</c>.</summary>
+    public string Usage { get; init; } = "chat";
+
+    /// <summary>The resolved client/profile/provider for each configured model usage.</summary>
+    public IReadOnlyDictionary<string, UsageModelClient>? UsageModels { get; init; }
+
+    /// <summary>Whether the configured decision profile observes or can veto approval asks.</summary>
+    public DecisionMode DecisionMode { get; init; } = DecisionMode.Off;
+
     /// <summary>The maximum number of model calls per run.</summary>
     public int MaxSteps { get; init; } = 50;
 
@@ -116,4 +126,17 @@ public sealed record AgentHarnessOptions
 
     /// <summary>The resolved subagent limits of the run tree; the runner threads the tree state down.</summary>
     public SubagentLimits SubagentLimits { get; init; } = new();
+}
+
+/// <summary>The host-resolved chat client and attribution identity for one model usage.</summary>
+public sealed record UsageModelClient(
+    IChatClient Client,
+    string ProfileName,
+    string ProviderName,
+    ModelInfo Model,
+    double? DecisionThreshold = null
+)
+{
+    /// <summary>The provider template kind of <see cref="Model"/>.</summary>
+    public string ProviderKind => Model.Provider;
 }

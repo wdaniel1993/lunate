@@ -108,6 +108,7 @@ public sealed class InteractiveSessionCommandTests
               /compact    — compact the conversation now, optionally focusing on <text>
               /context    — show the context window and subagent budgets
               /copy       — copy the last answer to the clipboard
+              /cost       — show usage cost by usage and provider
               /debug      — write a diagnostic bundle for a bug report
               /editor     — open the draft in your external editor
               /export     — write the session as html or jsonl
@@ -725,6 +726,30 @@ public sealed class InteractiveSessionCommandTests
     }
 
     [Fact]
+    public async Task Cost_reports_by_usage_and_provider_without_a_model_call()
+    {
+        using var host = new InteractiveSessionHost();
+        host.Scrollback.Profile.Width = 400;
+        host.Client.Enqueue(Usage(1000, 500), Scripts.Text("done"), Scripts.Stop());
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+
+        await RunOneTurnAsync(host);
+        host.Console.SendText("/cost");
+        host.Console.SendEnter();
+        string report = await WaitForScrollbackAsync(host, "cost by usage:");
+
+        Assert.Contains("chat", report, StringComparison.Ordinal);
+        Assert.Contains("openai (openai)", report, StringComparison.Ordinal);
+        Assert.Contains("gpt-4o-mini", report, StringComparison.Ordinal);
+        Assert.Contains("total: $0.0005", report, StringComparison.Ordinal);
+        Assert.Single(host.Client.Requests);
+
+        host.Console.Complete();
+        await run;
+    }
+
+    [Fact]
     public async Task Session_with_one_unpriced_model_prints_tokens_without_any_cost()
     {
         using var temp = new TempDirectory();
@@ -970,15 +995,15 @@ public sealed class InteractiveSessionCommandTests
     }
 
     private const string PricedModel = """
-        { "id": "fixture-priced", "provider": "fixture", "contextWindow": 1000, "supportsTools": true, "pricing": { "input": 1, "output": 2 } }
+        { "id": "fixture-priced", "provider": "openai", "contextWindow": 1000, "supportsTools": true, "pricing": { "input": 1, "output": 2 } }
         """;
 
     private const string OtherPricedModel = """
-        { "id": "fixture-other", "provider": "fixture", "contextWindow": 1000, "supportsTools": true, "pricing": { "input": 1, "output": 2 } }
+        { "id": "fixture-other", "provider": "openai", "contextWindow": 1000, "supportsTools": true, "pricing": { "input": 1, "output": 2 } }
         """;
 
     private const string UnpricedModel = """
-        { "id": "fixture-unpriced", "provider": "fixture", "contextWindow": 1000, "supportsTools": true }
+        { "id": "fixture-unpriced", "provider": "openai", "contextWindow": 1000, "supportsTools": true }
         """;
 
     /// <summary>

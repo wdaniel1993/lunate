@@ -232,6 +232,47 @@ internal sealed partial class InteractiveSession
         WriteScrollbackLines([.. lines.Select(Markup.Escape)]);
     }
 
+    /// <summary>Shows priced usage grouped by semantic usage and provider; read-only, no model call.</summary>
+    private void ShowCostReport()
+    {
+        if (_session is not { } session)
+        {
+            WriteScrollbackLines(["no recorded usage"]);
+            return;
+        }
+
+        UsageCostReport? report = UsageCost.SummarizeAttributedSession(
+            _catalog,
+            session,
+            _model.Id
+        );
+        if (report is null)
+        {
+            WriteScrollbackLines(["no recorded usage"]);
+            return;
+        }
+
+        static CostGroupView View(UsageCostLine line) =>
+            new(
+                line.Name,
+                line.ProviderKind,
+                line.ModelIds,
+                line.Lanes.Input,
+                line.Lanes.Output,
+                line.Lanes.CacheRead,
+                line.Lanes.CacheWrite,
+                line.Cost is decimal cost ? CostCalculator.Format(cost) : null
+            );
+
+        var view = new CostReportView(
+            [.. report.ByUsage.Select(View)],
+            [.. report.ByProvider.Select(View)],
+            report.Total is decimal total ? CostCalculator.Format(total) : null,
+            report.HasUnpriced
+        );
+        WriteScrollbackLines([.. UsageCostRenderer.Render(view).Select(Markup.Escape)]);
+    }
+
     /// <summary>
     /// The bare <c>/thinking</c> notice: the session's current level plus the active model's
     /// mapping (design D7/D3). Read-only, so it is allowed while a turn runs.
@@ -607,25 +648,39 @@ internal sealed partial class InteractiveSession
     /// <summary>Switches to a catalog model by id; an unknown id produces a notice.</summary>
     private async ValueTask SwitchModel(string id, CancellationToken ct)
     {
-        ModelInfo? model;
+        ResolvedModelProfile selected;
         try
         {
-            model = _catalog.Find(id);
+            selected = ModelSelectionResolver.ResolveChatModel(
+                id,
+                _settings,
+                _providerEntries,
+                _catalog
+            );
         }
-        catch (InvalidOperationException exception)
-        {
-            // An ambiguous bare id names its candidates; the switch reports, never guesses.
-            Notify(exception.Message, NoticeLevel.Warning);
-            return;
-        }
-
-        if (model is null)
+        catch (UnknownModelException)
         {
             Notify("unknown model: " + id, NoticeLevel.Warning);
             return;
         }
+        catch (InvalidOperationException exception)
+        {
+            Notify(exception.Message, NoticeLevel.Warning);
+            return;
+        }
+        catch (InvalidDataException exception)
+        {
+            Notify(exception.Message, NoticeLevel.Warning);
+            return;
+        }
 
-        await SwitchToModel(model, ct).ConfigureAwait(false);
+        if (!_providerEntries.Any(provider => provider.Name == selected.Provider.Name))
+        {
+            _providerEntries = [.. _providerEntries, selected.Provider];
+        }
+
+        _settings = ModelSelectionResolver.SelectChatProfile(_settings, selected);
+        await SwitchToModel(selected.Model, ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -676,6 +731,22 @@ internal sealed partial class InteractiveSession
         List<string> labels = [];
         List<string> values = [];
         var added = new HashSet<string>(StringComparer.Ordinal);
+        foreach (
+            (string name, ModelProfile profile) in _settings.Profiles.OrderBy(
+                static item => item.Key,
+                StringComparer.Ordinal
+            )
+        )
+        {
+            if (!added.Add(name))
+            {
+                continue;
+            }
+
+            labels.Add($"{name} — {profile.Provider}/{profile.Model}");
+            values.Add(name);
+        }
+
         foreach (string favorite in _settings.Favorites)
         {
             if (
@@ -705,7 +776,13 @@ internal sealed partial class InteractiveSession
         string title = _extensionModelId is not null
             ? "Select model — current " + DisplayModel()
             : "Select model";
-        int current = values.IndexOf(_modelId);
+        string currentSelection = _settings.Usages.GetValueOrDefault("chat") ?? _modelId;
+        int current = values.IndexOf(currentSelection);
+        if (current < 0)
+        {
+            current = values.IndexOf(_modelId);
+        }
+
         OpenPicker(PickerKind.Model, title, labels, values, current < 0 ? 0 : current);
     }
 

@@ -15,7 +15,13 @@ public sealed class AuthCommandTests
         StoreKey(temp, "openai", StoredOpenAi);
         var environment = new Dictionary<string, string?> { ["GROQ_API_KEY"] = GroqSecret };
 
-        (int exit, string output, string errors) = Run(["list"], Seams(temp, environment));
+        (int exit, string output, string errors) = Run(
+            ["list"],
+            Seams(temp, environment) with
+            {
+                ProviderProbeHandler = new StatusHandler(),
+            }
+        );
 
         Assert.Equal(0, exit);
         Assert.Contains("openai", output, StringComparison.Ordinal);
@@ -243,7 +249,10 @@ public sealed class AuthCommandTests
             output,
             errors,
             TestContext.Current.CancellationToken,
-            authSeams: Seams(temp)
+            authSeams: Seams(temp) with
+            {
+                ProviderProbeHandler = new StatusHandler(),
+            }
         );
 
         Assert.Equal(0, exit);
@@ -302,5 +311,13 @@ public sealed class AuthCommandTests
             Prompts.Add(prompt);
             return Task.FromResult(_values.Count > 0 ? _values.Dequeue() : null);
         }
+    }
+
+    private sealed class StatusHandler : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken
+        ) => Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK));
     }
 }

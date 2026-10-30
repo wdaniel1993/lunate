@@ -22,7 +22,7 @@ public sealed class SessionTests
             SessionFormat.Parse(Assert.Single(ReadLines(path)))
         );
         Assert.Equal(session.SessionId, header.Id);
-        Assert.Equal(3, header.Schema);
+        Assert.Equal(4, header.Schema);
         Assert.Equal("/work", header.Cwd);
         Assert.Equal(Start, header.Created);
         Assert.False(string.IsNullOrWhiteSpace(header.Meai));
@@ -120,8 +120,8 @@ public sealed class SessionTests
 
         Session loaded = Session.Load(path, new FixedTimeProvider(Start));
 
-        Assert.Equal(3, created.Schema);
-        Assert.Equal(3, loaded.Schema);
+        Assert.Equal(4, created.Schema);
+        Assert.Equal(4, loaded.Schema);
     }
 
     [Fact]
@@ -147,7 +147,7 @@ public sealed class SessionTests
         string path = temp.File("s.jsonl");
         File.WriteAllText(
             path,
-            """{"type":"header","schema":4,"id":"s_x","cwd":"/work","created":"2026-10-06T12:00:00.0000000+00:00","meai":"10.10.1"}"""
+            """{"type":"header","schema":5,"id":"s_x","cwd":"/work","created":"2026-10-06T12:00:00.0000000+00:00","meai":"10.10.1"}"""
                 + "\n"
         );
 
@@ -155,8 +155,8 @@ public sealed class SessionTests
             Session.Load(path)
         );
 
-        Assert.Contains("'4'", exception.Message);
-        Assert.Contains("schema 1, 2 and 3", exception.Message);
+        Assert.Contains("'5'", exception.Message);
+        Assert.Contains("schema 1, 2, 3 and 4", exception.Message);
         Assert.Contains(path, exception.Message);
     }
 

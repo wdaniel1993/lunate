@@ -180,7 +180,7 @@ public sealed class SessionTreeFormatTests
     }
 
     [Fact]
-    public void A_new_session_still_writes_schema_3_and_no_provenance()
+    public void A_new_session_writes_schema_4_and_no_provenance()
     {
         using var temp = new TempDirectory();
         Session session = Session.Create(
@@ -191,7 +191,7 @@ public sealed class SessionTreeFormatTests
 
         SessionHeaderEntry header = session.Header;
 
-        Assert.Equal(3, header.Schema);
+        Assert.Equal(4, header.Schema);
         Assert.Null(header.Origin);
         Assert.False(header.Branched);
     }
