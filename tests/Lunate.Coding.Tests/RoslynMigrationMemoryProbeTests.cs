@@ -74,7 +74,7 @@ public sealed class RoslynMigrationMemoryProbeTests
                 }
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(4), Ct);
+            await Task.Delay(WaitBudgets.MemoryProbeSettle, Ct);
         }
         finally
         {
