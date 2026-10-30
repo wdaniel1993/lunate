@@ -18,4 +18,4 @@ ADR review completed for this change. The typed Roslyn built-in adapter is a maj
 
 ## New Durable ADRs Created
 
-- [ADR-0025: Roslyn built-in composition boundary](../../../adr/0025-roslyn-built-in-boundary.md) — proposed; awaits maintainer sign-off.
+- [ADR-0026: Roslyn built-in composition boundary](../../../adr/0026-roslyn-built-in-boundary.md) — proposed; awaits maintainer sign-off.
