@@ -7,8 +7,9 @@ namespace Lunate.Coding;
 
 /// <summary>
 /// <c>lunate mcp roslyn</c>: the five <c>cs_*</c> tools as a stdio MCP server, for clients such as
-/// Claude Code, OpenCode or any MCP host. The server is bound to the directory it starts in, loads
-/// the solution on the first call, and exposes only tools whose contract is read-only —
+/// Claude Code, OpenCode or any MCP host. The server uses client-declared roots when available and
+/// otherwise its launch directory, loads the solution on the first call, and exposes only tools
+/// whose contract is read-only —
 /// <c>cs_rename</c> returns a plan and never writes, so verified edits stay in Lunate, behind the
 /// approval panel.
 /// </summary>
@@ -17,7 +18,7 @@ internal static class McpRoslynCommand
     internal const string ServerName = "lunate-roslyn";
 
     private const string Instructions =
-        "Lunate's read-only C# tools for the directory this server was started in. "
+        "Lunate's read-only C# tools for client-declared workspace roots, or the directory this server was started in when no roots are declared. "
         + "cs_rename returns a plan of per-file edits and never writes; apply verified edits in "
         + "Lunate, where they go through its approval panel.";
 
@@ -57,7 +58,29 @@ internal static class McpRoslynCommand
                     root,
                     input,
                     output,
-                    ct
+                    ct,
+                    roots =>
+                    {
+                        // MCP roots can name directories other than the process launch directory.
+                        // Compose through the shared manifest activation filter for each declared
+                        // root; the selected active root also becomes the tool call's workspace.
+                        foreach (string clientRoot in roots ?? [])
+                        {
+                            Workspace clientWorkspace = new(clientRoot);
+                            IReadOnlyList<ITool> clientTools = extensions!.ComposeTools(
+                                clientWorkspace
+                            );
+                            if (clientTools.Count > 0)
+                            {
+                                return new McpWorkspaceToolSet(
+                                    clientTools,
+                                    clientWorkspace.WorktreeRoot
+                                );
+                            }
+                        }
+
+                        return new McpWorkspaceToolSet([], root);
+                    }
                 )
                 .ConfigureAwait(false);
             return 0;

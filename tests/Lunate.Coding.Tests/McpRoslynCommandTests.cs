@@ -121,7 +121,8 @@ public sealed class McpRoslynCommandTests
         StreamWriter writer,
         int id,
         string method,
-        object parameters
+        object parameters,
+        IReadOnlyList<string>? roots = null
     )
     {
         await writer
@@ -148,6 +149,33 @@ public sealed class McpRoslynCommandTests
             using JsonDocument document = JsonDocument.Parse(line);
             JsonElement frame = document.RootElement.Clone();
             Assert.Equal("2.0", frame.GetProperty("jsonrpc").GetString());
+            if (
+                frame.TryGetProperty("method", out JsonElement serverMethod)
+                && serverMethod.GetString() == "roots/list"
+            )
+            {
+                await writer.WriteLineAsync(
+                    JsonSerializer.Serialize(
+                        new
+                        {
+                            jsonrpc = "2.0",
+                            id = frame.GetProperty("id"),
+                            result = new
+                            {
+                                roots = roots
+                                    ?.Select(uri => new Dictionary<string, string>
+                                    {
+                                        ["uri"] = uri,
+                                    })
+                                    .ToArray()
+                                    ?? [],
+                            },
+                        }
+                    )
+                );
+                continue;
+            }
+
             if (frame.TryGetProperty("id", out JsonElement frameId) && frameId.GetInt32() == id)
             {
                 return frame;
