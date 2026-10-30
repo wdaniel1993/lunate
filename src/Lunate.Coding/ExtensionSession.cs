@@ -381,15 +381,11 @@ internal sealed class ExtensionSession : IAsyncDisposable
         return active;
     }
 
-    internal bool RoslynIsActive(string workspaceRoot) =>
-        _loader
-            .Tools.List()
-            .OfType<ExtensionToolAdapter>()
-            .Any(tool =>
-                tool.Name.StartsWith("cs_", StringComparison.Ordinal)
-                && tool.ActivationRule is { } rule
-                && ToolActivationEvaluator.Evaluate(rule, workspaceRoot)
-            );
+    internal static bool RoslynIsActive(string workspaceRoot) =>
+        ToolActivationEvaluator.Evaluate(
+            RoslynBuiltInFactory.Manifest.ToolActivation["*"],
+            workspaceRoot
+        );
 
     /// <summary>
     /// Whether a tool registered by this host carries a manifest activation rule and therefore
