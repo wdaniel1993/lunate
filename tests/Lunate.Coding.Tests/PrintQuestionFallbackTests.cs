@@ -62,7 +62,7 @@ public sealed class PrintQuestionFallbackTests
         {
             run = await PrintModeTestSupport
                 .RunAsync(options)
-                .WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+                .WaitAsync(WaitBudgets.InProcess, TestContext.Current.CancellationToken);
         }
         finally
         {

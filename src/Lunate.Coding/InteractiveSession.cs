@@ -195,6 +195,9 @@ internal sealed partial class InteractiveSession : IDisposable
     private CancellationTokenSource? _runCancellation;
     private ApprovalPromptModel? _approvalPrompt;
     private TaskCompletionSource<ApprovalChoice>? _approvalDecision;
+    private SelectListQuestionModel? _questionPrompt;
+    private SelectListQuestionInteraction? _questionInteraction;
+    private TaskCompletionSource<SelectListQuestionModel>? _questionDecision;
     private TrustPromptModel? _trustPrompt;
     private TaskCompletionSource<TrustChoice>? _trustDecision;
     private long _keySequence;
@@ -539,6 +542,7 @@ internal sealed partial class InteractiveSession : IDisposable
             extraTools: _settings.Tools.Extra,
             redaction: _redaction
         );
+        _tools.Add(new AskUserTool());
         await ComposeMcpConfigAsync(ct);
         await ComposeMcpToolsAsync(ct);
         // The launch tool selection narrows the fully composed registry (base, extension and MCP
@@ -860,6 +864,7 @@ internal sealed partial class InteractiveSession : IDisposable
             ToolOutputMask = _redaction.Redact,
             SubagentLimits = _settings.Subagents,
             Approver = _approver,
+            AskUserAsync = AskUserAsync,
             Hooks = _extensions?.Hooks,
             Session = _session,
             Steering = _steering,
@@ -1046,6 +1051,32 @@ internal sealed partial class InteractiveSession : IDisposable
             else
             {
                 _secretPrompt.HandleKey(key);
+            }
+
+            return;
+        }
+
+        if (
+            _questionDecision is { } questionPending
+            && _questionInteraction is { } questionInteraction
+        )
+        {
+            if (KeyRouter.Route(key) == RoutedKey.ClearOrQuit)
+            {
+                HandleCtrlC();
+                return;
+            }
+
+            SelectListQuestionModel question = questionInteraction.Handle(key, sequence);
+            if (!ReferenceEquals(question, _questionPrompt))
+            {
+                _questionPrompt = question;
+                _live.SetQuestion(question);
+            }
+
+            if (question.Status != QuestionPromptStatus.Pending)
+            {
+                questionPending.TrySetResult(question);
             }
 
             return;
@@ -2064,6 +2095,62 @@ internal sealed partial class InteractiveSession : IDisposable
         _input = new InputLineState(text, text.Length);
         _historyDraft = null;
         _live.SetInput(_input);
+    }
+
+    private async Task<UserQuestionResult> AskUserAsync(
+        IReadOnlyList<UserQuestion> questions,
+        CancellationToken ct
+    )
+    {
+        List<UserQuestionAnswer> answers = [];
+        foreach (UserQuestion question in questions)
+        {
+            SelectListQuestionModel model = SelectListQuestionModel.Create(
+                question.Header,
+                question.Question,
+                question
+                    .Options.Select(option => new SelectListQuestionOption(
+                        option.Label,
+                        option.Description
+                    ))
+                    .ToArray(),
+                question.MultiSelect,
+                question.Options.FirstOrDefault(option => option.Recommended)?.Label
+            );
+            var interaction = new SelectListQuestionInteraction(_scheduler);
+            var decision = new TaskCompletionSource<SelectListQuestionModel>(
+                TaskCreationOptions.RunContinuationsAsynchronously
+            );
+            interaction.BeginQuestion(model, Interlocked.Read(ref _keySequence));
+            _questionPrompt = model;
+            _questionInteraction = interaction;
+            _questionDecision = decision;
+            _live.SetQuestion(model);
+            using CancellationTokenRegistration registration = ct.Register(() =>
+                decision.TrySetCanceled(ct)
+            );
+
+            try
+            {
+                model = await decision.Task.ConfigureAwait(false);
+            }
+            finally
+            {
+                _questionPrompt = null;
+                _questionInteraction = null;
+                _questionDecision = null;
+                _live.SetQuestion(null);
+            }
+
+            if (model.Status != QuestionPromptStatus.Submitted || model.Answer is not { } answer)
+            {
+                return new UserQuestionResult(UserQuestionStatus.Skipped, []);
+            }
+
+            answers.Add(new UserQuestionAnswer(answer.SelectedOptions, answer.FreeText));
+        }
+
+        return new UserQuestionResult(UserQuestionStatus.Answered, answers);
     }
 
     private async ValueTask<bool> RequestApprovalAsync(

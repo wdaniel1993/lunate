@@ -50,6 +50,9 @@ internal static class LiveAreaRenderer
         IReadOnlyList<string> trustLines = state.Trust is null
             ? []
             : TrustPromptRenderer.PlainLines(state.Trust, width, state.Unicode);
+        IReadOnlyList<string> questionLines = state.Question is null
+            ? []
+            : QuestionLines(state.Question, width);
         IReadOnlyList<string> pickerLines = state.Picker is null
             ? []
             : SelectListRenderer.PlainLines(state.Picker);
@@ -80,6 +83,7 @@ internal static class LiveAreaRenderer
             + (secretPromptLine is null ? 0 : 1)
             + approvalLines.Count
             + trustLines.Count
+            + questionLines.Count
             + pickerLines.Count
             + keyHelpLines.Count
             + autocompleteLines.Count
@@ -103,6 +107,7 @@ internal static class LiveAreaRenderer
             // The picker is modal: while it is open it owns the area above the input.
             state.Picker
                 is null
+            && state.Question is null
             && state.KeyHelp is null
                 ? Math.Max(0, MaxLines - fixedLines - inputLines.Count)
                 : 0,
@@ -141,6 +146,11 @@ internal static class LiveAreaRenderer
         foreach (string trustLine in trustLines)
         {
             lines.Add(CellText.Clip(trustLine, width));
+        }
+
+        foreach (string questionLine in questionLines)
+        {
+            lines.Add(CellText.Clip(questionLine, width));
         }
 
         foreach (string pickerLine in pickerLines)
@@ -191,6 +201,15 @@ internal static class LiveAreaRenderer
 
     private static string RuleLine(int width, bool unicode) =>
         new(unicode ? UnicodeRule : AsciiRule, width);
+
+    private static IReadOnlyList<string> QuestionLines(
+        SelectListQuestionModel question,
+        int width
+    ) =>
+        [
+            .. SelectListRenderer.QuestionLines(question, width),
+            "↑/↓ move · number selects · Space toggles · Tab enters free text · Enter submits · Esc skips",
+        ];
 
     private static string PlaceholderLine(int width, ColorSystemSupport color)
     {

@@ -35,11 +35,11 @@ public sealed class McpToolSetTests
 
         IReadOnlyList<ITool> tools = await set.ListToolsAsync(Ct);
 
-        Assert.Equal(5, tools.Count);
+        Assert.Equal(8, tools.Count);
         Assert.All(tools, tool => Assert.StartsWith("test__", tool.Name, StringComparison.Ordinal));
         McpServerStatus after = Assert.Single(set.Statuses);
         Assert.Equal(McpServerState.Started, after.State);
-        Assert.Equal(5, after.ToolCount);
+        Assert.Equal(8, after.ToolCount);
         Assert.Null(after.Reason);
         Assert.Equal("test-source", after.Source);
 
@@ -81,11 +81,11 @@ public sealed class McpToolSetTests
 
         IReadOnlyList<ITool> tools = await set.ListToolsAsync(Ct);
 
-        Assert.Equal(10, tools.Count);
+        Assert.Equal(16, tools.Count);
         IReadOnlyList<ITool> independent = set.ListedToolsFrom(options =>
             options.WorkspaceIndependent
         );
-        Assert.Equal(5, independent.Count);
+        Assert.Equal(8, independent.Count);
         Assert.All(
             independent,
             tool => Assert.StartsWith("global__", tool.Name, StringComparison.Ordinal)
@@ -114,7 +114,7 @@ public sealed class McpToolSetTests
         );
         set.OnServerExited(status => notified.Add(status));
 
-        Assert.Equal(5, (await set.ListToolsAsync(Ct)).Count);
+        Assert.Equal(8, (await set.ListToolsAsync(Ct)).Count);
         int pid = TestMcpServer.StartedPid(marker);
         await TestMcpServer.KillAsync(pid);
 
@@ -168,13 +168,13 @@ public sealed class McpToolSetTests
         );
         set.OnServerExited(status => notified.Add(status));
 
-        Assert.Equal(5, (await set.ListToolsAsync(Ct)).Count);
+        Assert.Equal(8, (await set.ListToolsAsync(Ct)).Count);
 
         IReadOnlyList<McpServerStatus> observed = await set.ObserveStatusesAsync(Ct);
 
         McpServerStatus status = Assert.Single(observed);
         Assert.Equal(McpServerState.Started, status.State);
-        Assert.Equal(5, status.ToolCount);
+        Assert.Equal(8, status.ToolCount);
         Assert.Null(status.Reason);
         Assert.Empty(notified);
         Assert.Empty(log);
@@ -208,14 +208,14 @@ public sealed class McpToolSetTests
 
         IReadOnlyList<ITool> tools = await set.ListToolsAsync(Ct);
 
-        Assert.Equal(5, tools.Count);
+        Assert.Equal(8, tools.Count);
         Assert.All(tools, tool => Assert.StartsWith("test__", tool.Name, StringComparison.Ordinal));
         List<McpServerStatus> statuses = [.. set.Statuses];
         Assert.Equal(McpServerState.Failed, statuses[0].State);
         Assert.Equal("broken", statuses[0].Name);
         Assert.Contains("broken", statuses[0].Reason, StringComparison.Ordinal);
         Assert.Equal(McpServerState.Started, statuses[1].State);
-        Assert.Equal(5, statuses[1].ToolCount);
+        Assert.Equal(8, statuses[1].ToolCount);
     }
 
     [Fact]

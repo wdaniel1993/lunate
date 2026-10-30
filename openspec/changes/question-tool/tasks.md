@@ -31,4 +31,4 @@
 
 ## 7. Final verification
 
-- [ ] 7.1 Run `PATH="/opt/homebrew/bin:$PATH" /opt/homebrew/bin/openspec validate question-tool --type change --strict`, the touched test projects in Release, `dotnet build Lunate.slnx -c Release`, `dotnet csharpier check .`, and the required docs-profile checks; resolve failures before marking the change ready for review.
+- [x] 7.1 Run `PATH="/opt/homebrew/bin:$PATH" /opt/homebrew/bin/openspec validate question-tool --type change --strict`, the touched test projects in Release, `dotnet build Lunate.slnx -c Release`, `dotnet csharpier check .`, and the required docs-profile checks; resolve failures before marking the change ready for review. Strict validation passed. Release suites passed: Agent 648 (647 passed, 1 platform skip), Coding 2,215, Protocols 117 and TUI 1,909. The solution build had 0 warnings/errors; CSharpier checked 1,651 files; docs profile passed generated-doc checks, no-doc references, markdownlint (98 files, 0 issues) and all 28 OpenSpec items. Style/analyzer verification also exited 0 (workspace-load warnings only).
