@@ -22,7 +22,6 @@ internal sealed record TuiTheme(string Name)
     internal static TuiTheme Mono { get; } = new("mono");
 
     /// <summary>Parses the exact theme literal; the error message lists <see cref="Literals"/>.</summary>
-    /// <summary>Parses the exact theme literal; the error message lists <see cref="Literals"/>.</summary>
     internal static bool TryGet(string? name, out TuiTheme theme)
     {
         theme = Default;

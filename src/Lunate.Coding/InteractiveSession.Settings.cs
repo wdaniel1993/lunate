@@ -262,12 +262,14 @@ internal sealed partial class InteractiveSession
             ? "none"
             : string.Join(
                 ", ",
-                keys.Select(entry => string.Format(
-                    CultureInfo.InvariantCulture,
-                    "{0}={1}",
-                    entry.Key,
-                    string.Join("+", entry.Value)
-                ))
+                keys.Select(entry =>
+                    string.Format(
+                        CultureInfo.InvariantCulture,
+                        "{0}={1}",
+                        entry.Key,
+                        string.Join("+", entry.Value)
+                    )
+                )
             );
 
     /// <summary>
@@ -324,7 +326,10 @@ internal sealed partial class InteractiveSession
         }
         catch (Exception exception) when (exception is InvalidDataException or IOException)
         {
-            Notify($"{what} (this session; saving failed: {exception.Message})", NoticeLevel.Warning);
+            Notify(
+                $"{what} (this session; saving failed: {exception.Message})",
+                NoticeLevel.Warning
+            );
         }
     }
 

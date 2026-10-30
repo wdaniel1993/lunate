@@ -26,16 +26,10 @@ public static partial class SettingsStore
             switch (property.Name)
             {
                 case "theme":
-                    settings = settings with
-                    {
-                        Theme = ReadTuiTheme(property.Value, problems),
-                    };
+                    settings = settings with { Theme = ReadTuiTheme(property.Value, problems) };
                     break;
                 case "keys":
-                    settings = settings with
-                    {
-                        Keys = ReadRemaps(property.Value, problems),
-                    };
+                    settings = settings with { Keys = ReadRemaps(property.Value, problems) };
                     break;
                 default:
                     problems.Add($"unknown key 'tui.{property.Name}'");
@@ -57,7 +51,9 @@ public static partial class SettingsStore
         }
 
         string got =
-            value.ValueKind == JsonValueKind.String ? $"but was '{value.GetString()}'" : "but was not a string";
+            value.ValueKind == JsonValueKind.String
+                ? $"but was '{value.GetString()}'"
+                : "but was not a string";
         problems.Add($"'tui.theme' must be {TuiTheme.Literals}, {got}");
         return TuiTheme.Default.Name;
     }
@@ -129,8 +125,7 @@ public static partial class SettingsStore
         var canonical = new List<string>();
         foreach (JsonElement item in value.EnumerateArray())
         {
-            string? spec =
-                item.ValueKind == JsonValueKind.String ? item.GetString() : null;
+            string? spec = item.ValueKind == JsonValueKind.String ? item.GetString() : null;
             if (spec is null)
             {
                 return $"{subject} must be an array of key specs";
