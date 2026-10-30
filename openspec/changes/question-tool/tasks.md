@@ -12,7 +12,7 @@
 ## 3. Interactive question picker
 
 - [x] 3.1 Test-first in `tests/Lunate.Tui.Tests`: cover recommended display, arrows, number-key selection/toggle, Space multi-select, Enter, free-text alongside labels, Esc skip/discard, and state across repaint; confirm failure, implement the shared `SelectList` question presentation, then rerun the focused tests. `SelectListQuestionTests` failed before implementation because the question model/renderer were missing; the built TUI test assembly class-filter run passed 10/10 (the `dotnet test` wrapper exited 5 on test-platform handshake failure).
-- [ ] 3.2 Test-first in the TUI/interactive-host tests: prove buffered keys and keys in the first 300 ms cannot select, change text or submit; prove Esc skips without producing partial answers; confirm failure, wire the approval-style arming rule through each question, then rerun the focused tests with virtual time.
+- [x] 3.2 Test-first in the TUI/interactive-host tests: prove buffered keys and keys in the first 300 ms cannot select, change text or submit; prove Esc skips without producing partial answers; confirm failure, wire the approval-style arming rule through each question, then rerun the focused tests with virtual time. `SelectListQuestionArmingTests` failed before implementation; its native xUnit class-filter run passed 8/8 with virtual time (the `dotnet test` wrapper exited 5 on test-platform handshake failure).
 - [ ] 3.3 Test-first in `tests/Lunate.Tui.Tests`: add width fixtures at 120, 80, 60 and 40 columns with long descriptions; confirm the 40-column Termux case fails, implement the width-band layout without clipping controls, then rerun the focused tests and review any updated TUI goldens.
 
 ## 4. No-user and ACP behavior
