@@ -15,7 +15,7 @@ only when its focused tests pass.
 
 ## 2. Host call between approval and apply
 
-- [ ] 2.1 In `tests/Lunate.Coding.Tests/WriteVerifierPipelineTests.cs`, add failing tests proving
+- [x] 2.1 In `tests/Lunate.Coding.Tests/WriteVerifierPipelineTests.cs`, add failing tests proving
       approval completes before invocation, the verifier receives exact normalized baseline/staged
       text, `VerifierCannotReplaceStagedContent`, refusal leaves bytes unchanged, and non-matching
       files keep existing behavior. Confirm failure first; then implement selection/invocation after
