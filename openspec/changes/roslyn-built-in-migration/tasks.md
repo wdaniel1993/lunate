@@ -24,9 +24,9 @@
 ## 4. Use the manifest activation rule in chat and MCP
 
 - [x] 4.1 Declare the existing root rule (`*.sln`, `*.slnx` or `*.csproj`) in the built-in manifest. Test matching and non-matching roots with the host `ToolActivationEvaluator`.
-- [ ] 4.2 Route chat, print, ACP, child-run and `lunate mcp roslyn` composition through the same evaluator; MCP uses declared client roots or its launch directory when none are declared. Test that a non-matching root offers no C# tools and that changed roots re-evaluate and notify only when supported.
-- [ ] 4.3 Keep MCP stdout protocol-only and test the stale-root call response when no roots-change notification was received.
-- [ ] 4.4 Commit: `feat(coding): evaluate Roslyn activation from its manifest`.
+- [x] 4.2 Route chat, print, ACP, child-run and `lunate mcp roslyn` composition through the same evaluator; MCP uses declared client roots or its launch directory when none are declared. Test that a non-matching root offers no C# tools and that changed roots re-evaluate and notify only when supported.
+- [x] 4.3 Keep MCP stdout protocol-only and test the stale-root call response when no roots-change notification was received.
+- [x] 4.4 Commit: `feat(coding): evaluate Roslyn activation from its manifest`.
 
 ## 5. Preserve the five `cs_*` aliases
 

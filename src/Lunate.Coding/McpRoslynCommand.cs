@@ -41,17 +41,16 @@ internal static class McpRoslynCommand
             extensions = await ExtensionSession
                 .StartAsync(workspace.Identity, new ExtensionSeams { NoExtensions = true }, ct)
                 .ConfigureAwait(false);
-            IReadOnlyList<ITool> tools = extensions.ComposeTools(workspace);
             errors.WriteLine(
                 string.Create(
                     CultureInfo.InvariantCulture,
-                    $"lunate mcp roslyn: serving {tools.Count} tools from '{root}' (protocol on stdout, diagnostics on stderr)"
+                    $"lunate mcp roslyn: serving tools from '{root}' (protocol on stdout, diagnostics on stderr)"
                 )
             );
 
             await McpToolServer
                 .RunAsync(
-                    tools,
+                    [],
                     ServerName,
                     ProductVersion.Display,
                     Instructions,
@@ -64,7 +63,18 @@ internal static class McpRoslynCommand
                         // MCP roots can name directories other than the process launch directory.
                         // Compose through the shared manifest activation filter for each declared
                         // root; the selected active root also becomes the tool call's workspace.
-                        foreach (string clientRoot in roots ?? [])
+                        if (roots is not { Count: > 0 })
+                        {
+                            // No roots channel, or no roots declared: use the server's launch
+                            // directory. This is the same manifest evaluator as every other
+                            // composition, and it runs only after the selected root is known.
+                            return new McpWorkspaceToolSet(
+                                extensions!.ComposeTools(workspace),
+                                root
+                            );
+                        }
+
+                        foreach (string clientRoot in roots)
                         {
                             Workspace clientWorkspace = new(clientRoot);
                             IReadOnlyList<ITool> clientTools = extensions!.ComposeTools(

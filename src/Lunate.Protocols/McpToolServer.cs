@@ -44,7 +44,7 @@ internal static class McpToolServer
 #pragma warning disable MCP9005 // Roots are retained for the pinned 2025-11-25 stdio protocol.
         async ValueTask EnsureRootsLoadedAsync(CancellationToken cancellationToken)
         {
-            if (rootsLoaded || resolveToolSet is null || server?.ClientCapabilities?.Roots is null)
+            if (rootsLoaded || resolveToolSet is null)
             {
                 return;
             }
@@ -57,11 +57,10 @@ internal static class McpToolServer
                     return;
                 }
 
-                IReadOnlyList<string> roots = await RequestClientRootsAsync(
-                        server,
-                        cancellationToken
-                    )
-                    .ConfigureAwait(false);
+                IReadOnlyList<string>? roots = server?.ClientCapabilities?.Roots is null
+                    ? null
+                    : await RequestClientRootsAsync(server, cancellationToken)
+                        .ConfigureAwait(false);
                 activeTools = Serve(resolveToolSet(roots));
                 rootsLoaded = true;
             }

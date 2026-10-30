@@ -94,6 +94,59 @@ public sealed class McpRoslynCommandTests
     }
 
     [Fact]
+    public async Task Empty_client_roots_fall_back_to_the_launch_directory()
+    {
+        using var temp = new TempDirectory();
+        File.WriteAllText(temp.File("App.slnx"), "<Solution />");
+        var toServer = new Pipe();
+        var toClient = new Pipe();
+        using var errors = new StringWriter();
+        Task<int> run = Task.Run(() =>
+            McpRoslynCommand.RunAsync(
+                temp.Root,
+                toServer.Reader.AsStream(),
+                toClient.Writer.AsStream(),
+                errors,
+                CancellationToken.None
+            )
+        );
+
+        using var reader = new StreamReader(toClient.Reader.AsStream(), Encoding.UTF8);
+        using var writer = new StreamWriter(toServer.Writer.AsStream(), new UTF8Encoding(false))
+        {
+            AutoFlush = true,
+        };
+
+        await RequestAsync(
+            reader,
+            writer,
+            1,
+            "initialize",
+            new
+            {
+                protocolVersion = "2025-11-25",
+                clientInfo = new { name = "test-client", version = "0.0.1" },
+                capabilities = new { roots = new { listChanged = false } },
+            },
+            []
+        );
+        JsonElement list = await RequestAsync(reader, writer, 2, "tools/list", new { }, []);
+
+        Assert.Equal(
+            ["cs_diagnostics", "cs_find_references", "cs_find_symbol", "cs_outline", "cs_rename"],
+            list.GetProperty("result")
+                .GetProperty("tools")
+                .EnumerateArray()
+                .Select(tool => tool.GetProperty("name").GetString())
+                .Order(StringComparer.Ordinal)
+        );
+
+        await writer.DisposeAsync();
+        await toServer.Writer.CompleteAsync();
+        Assert.Equal(0, await run.WaitAsync(WaitBudgets.InProcess, Ct));
+    }
+
+    [Fact]
     public void Usage_names_roslyn_and_rejects_an_unknown_server()
     {
         using var errors = new StringWriter();

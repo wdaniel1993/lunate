@@ -6,7 +6,7 @@ namespace Lunate.Coding.Tests;
 /// <summary>
 /// The <c>lunate mcp roslyn</c> contract on the built binary: initialize and tools/list answer, and
 /// only protocol frames reach stdout — the startup diagnostic goes to stderr. Runs in a directory
-/// with no solution, where the server still starts and lists every tool.
+/// with no solution, where the server starts and the manifest activation rule withholds C# tools.
 /// </summary>
 public sealed class McpRoslynStdoutPurityTests
 {
@@ -53,10 +53,13 @@ public sealed class McpRoslynStdoutPurityTests
             await stdin.WriteLineAsync(
                 """{"jsonrpc":"2.0","id":3,"method":"lunate/bogus","params":{}}"""
             );
+            await stdin.WriteLineAsync(
+                """{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"cs_outline","arguments":{"file":"Program.cs"}}}"""
+            );
             await stdin.FlushAsync(ct);
 
             var responses = new Dictionary<int, JsonElement>();
-            while (responses.Count < 3)
+            while (responses.Count < 4)
             {
                 string line = await ReadLineAsync(process.StandardOutput, ct);
                 using JsonDocument document = JsonDocument.Parse(line);
@@ -86,17 +89,13 @@ public sealed class McpRoslynStdoutPurityTests
                     .Select(tool => tool.GetProperty("name").GetString()!)
                     .Order(StringComparer.Ordinal),
             ];
-            Assert.Equal(
-                [
-                    "cs_diagnostics",
-                    "cs_find_references",
-                    "cs_find_symbol",
-                    "cs_outline",
-                    "cs_rename",
-                ],
-                tools
-            );
+            Assert.Empty(tools);
             Assert.Equal(-32601, responses[3].GetProperty("error").GetProperty("code").GetInt32());
+            Assert.Equal(-32602, responses[4].GetProperty("error").GetProperty("code").GetInt32());
+            Assert.Equal(
+                "Unknown tool: 'cs_outline'",
+                responses[4].GetProperty("error").GetProperty("message").GetString()
+            );
 
             stdin.Close();
             Assert.True(
