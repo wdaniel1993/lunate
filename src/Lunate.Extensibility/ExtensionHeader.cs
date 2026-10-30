@@ -46,6 +46,12 @@ public sealed record ExtensionHeader
     /// <summary>The declared model-provider ids (the manifest's <c>modelProviders[].id</c>).</summary>
     public IReadOnlyList<string> Providers { get; init; } = [];
 
+    /// <summary>
+    /// The declared write verifiers and the filename patterns each one handles (the manifest's
+    /// <c>writeVerifiers</c>).
+    /// </summary>
+    public IReadOnlyList<Abstractions.WriteVerifierDeclaration> WriteVerifiers { get; init; } = [];
+
     public IReadOnlyList<ExtensionPackageReference> Packages { get; init; } = [];
 
     /// <summary>True when the header carries <c>#:generators on</c>.</summary>

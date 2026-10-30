@@ -72,10 +72,11 @@ The rules:
 | `#:service <name>` | `services` | One service name. Repeatable. |
 | `#:capability <name>` | `capabilities` | One free-form capability. Repeatable. |
 | `#:provider <id>` | `modelProviders[].id` | One model-provider id, `[a-z0-9-]+`. Repeatable. |
+| `#:verifier <name> <pattern>…` | `writeVerifiers` | One verifier name and one or more filename globs, separated by spaces. Repeatable; names and patterns are unique. |
 | `#:package <id>@<version or range>` | — (restore input) | A package to restore. Repeatable, one declaration per package. |
 | `#:generators on` | — (build-time opt-in) | Opts in to the declared packages' analyzers and source generators. Off unless present. |
 
-The six declaration directives mirror the manifest field for field, so a single file can register
+The declaration directives mirror the manifest field for field, so a single file can register
 anything a package can. The mirror is enforced by a test that reflects over the manifest's
 declaration lists: a manifest field added without a directive fails the build rather than shipping
 as a silent gap.

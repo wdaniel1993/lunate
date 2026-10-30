@@ -16,6 +16,7 @@ public static partial class ExtensionHeaderScanner
         private readonly List<string> _services = [];
         private readonly List<string> _capabilities = [];
         private readonly List<string> _providers = [];
+        private readonly List<Abstractions.WriteVerifierDeclaration> _verifiers = [];
         private readonly List<ExtensionPackageReference> _packages = [];
         private string? _id;
         private string? _version;
@@ -39,6 +40,7 @@ public static partial class ExtensionHeaderScanner
                 Services = _services,
                 Capabilities = _capabilities,
                 Providers = _providers,
+                WriteVerifiers = _verifiers,
                 Packages = _packages,
                 Generators = _generators,
                 Errors = Errors,
@@ -90,6 +92,9 @@ public static partial class ExtensionHeaderScanner
                 case ExtensionDirectives.Provider:
                     Provider(value, line);
                     return;
+                case ExtensionDirectives.Verifier:
+                    Verifier(value, line);
+                    return;
                 case ExtensionDirectives.Package:
                     Package(value, line);
                     return;
@@ -112,7 +117,8 @@ public static partial class ExtensionHeaderScanner
                             line,
                             $"unknown directive '#:{name}' ignored; a single-file extension header "
                                 + "accepts #:extension, #:tool, #:command, #:hook, #:service, "
-                                + "#:capability, #:provider, #:package and #:generators."
+                                + "#:capability, #:provider, #:verifier, #:package and "
+                                + "#:generators."
                         )
                     );
                     return;
@@ -219,6 +225,63 @@ public static partial class ExtensionHeaderScanner
             }
 
             _providers.Add(value);
+        }
+
+        /// <summary>
+        /// Reads one verifier as <c>&lt;name&gt; &lt;pattern&gt;…</c>: the name is one token and the
+        /// rest are the filename globs it handles. The patterns follow the manifest's rule —
+        /// non-empty, no path separator, no duplicate within a verifier.
+        /// </summary>
+        private void Verifier(string value, int line)
+        {
+            string[] parts = value.Split(
+                (char[]?)null,
+                StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries
+            );
+            if (parts.Length < 2)
+            {
+                Error(
+                    line,
+                    "'#:verifier' needs a name and at least one filename pattern, for example "
+                        + "'#:verifier csharp *.cs'."
+                );
+                return;
+            }
+
+            string name = parts[0];
+            if (
+                _verifiers.Any(verifier =>
+                    string.Equals(verifier.Name, name, StringComparison.Ordinal)
+                )
+            )
+            {
+                Error(line, $"'#:verifier' declares '{name}' more than once.");
+                return;
+            }
+
+            List<string> patterns = [];
+            HashSet<string> unique = new(StringComparer.OrdinalIgnoreCase);
+            foreach (string pattern in parts.Skip(1))
+            {
+                if (pattern.Contains('/') || pattern.Contains('\\'))
+                {
+                    Error(
+                        line,
+                        $"'#:verifier' pattern '{pattern}' must not contain a path separator."
+                    );
+                    return;
+                }
+
+                if (!unique.Add(pattern))
+                {
+                    Error(line, $"'#:verifier' pattern '{pattern}' is duplicated.");
+                    return;
+                }
+
+                patterns.Add(pattern);
+            }
+
+            _verifiers.Add(new Abstractions.WriteVerifierDeclaration(name, patterns));
         }
 
         private void Package(string value, int line)
