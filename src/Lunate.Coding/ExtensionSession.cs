@@ -124,6 +124,15 @@ internal readonly record struct ExtensionCounts(int Tools, int Commands, int Hoo
 /// </summary>
 internal sealed class ExtensionSession : IAsyncDisposable
 {
+    private static IReadOnlyList<BuiltInExtension> DefaultBuiltIns { get; } =
+        RoslynBuiltInFactory
+            .BuiltInFactories.Select(factory => new BuiltInExtension(
+                factory.ManifestPath,
+                factory.Manifest,
+                factory.Factory
+            ))
+            .ToArray();
+
     internal static IReadOnlyList<string> CoreToolNames { get; } =
     ["read", "write", "edit", "bash", "grep", "find", "ls"];
 
@@ -196,15 +205,7 @@ internal sealed class ExtensionSession : IAsyncDisposable
             GlobalPackagesFolder = seams.GlobalPackagesFolder,
             ReservedCommands = Commands.BuiltinNames,
             ReservedToolNames = CoreToolNames,
-            BuiltIns =
-                seams.BuiltIns
-                ?? RoslynBuiltInFactory
-                    .BuiltInFactories.Select(factory => new BuiltInExtension(
-                        factory.ManifestPath,
-                        factory.Manifest,
-                        factory.Factory
-                    ))
-                    .ToArray(),
+            BuiltIns = seams.BuiltIns ?? DefaultBuiltIns,
             BuiltInsOnly = seams.NoExtensions,
             WorkspaceServiceCapLimit = seams.WorkspaceServiceCapLimit,
         };
@@ -381,11 +382,18 @@ internal sealed class ExtensionSession : IAsyncDisposable
         return active;
     }
 
-    internal static bool RoslynIsActive(string workspaceRoot) =>
-        ToolActivationEvaluator.Evaluate(
-            RoslynBuiltInFactory.Manifest.ToolActivation["*"],
-            workspaceRoot
+    internal static bool RoslynIsActive(
+        string workspaceRoot,
+        IReadOnlyList<BuiltInExtension>? builtIns = null
+    )
+    {
+        BuiltInExtension? roslyn = (builtIns ?? DefaultBuiltIns).FirstOrDefault(builtIn =>
+            builtIn.Manifest.Id == "roslyn"
         );
+        return roslyn is not null
+            && roslyn.Manifest.ToolActivation.TryGetValue("*", out var rule)
+            && ToolActivationEvaluator.Evaluate(rule, workspaceRoot);
+    }
 
     /// <summary>
     /// Whether a tool registered by this host carries a manifest activation rule and therefore

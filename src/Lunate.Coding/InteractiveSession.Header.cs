@@ -86,7 +86,10 @@ internal sealed partial class InteractiveSession
             ModelId = model?.Id ?? configured,
             ContextWindow = model?.ContextWindow ?? 0,
             Workspace = _workingDirectory,
-            CSharpWorkspace = ExtensionSession.RoslynIsActive(_workspace.WorktreeRoot),
+            CSharpWorkspace = ExtensionSession.RoslynIsActive(
+                _workspace.WorktreeRoot,
+                _options.Extensions?.BuiltIns
+            ),
             Home = LunateHome.ActiveHomeLine,
             Counts = counts,
             Fix = FirstRunFix(model, configured),
