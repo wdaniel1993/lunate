@@ -1,5 +1,6 @@
 namespace Lunate.Tui.Tests;
 
+[Collection("keymap-catalogue")]
 public sealed class KeyRouterTests
 {
     private static readonly (KeyEvent Key, RoutedKey Expected)[] IdleTable =

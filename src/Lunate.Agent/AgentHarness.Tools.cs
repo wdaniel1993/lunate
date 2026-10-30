@@ -431,6 +431,7 @@ public sealed partial class AgentHarness
         {
             if (
                 _options.Approver is { } approver
+                && tool is not AskUserTool
                 && !await approver.ApproveAsync(
                     new ApprovalRequest(
                         tool,
@@ -595,6 +596,7 @@ public sealed partial class AgentHarness
             Reads = _reads,
             Subagents = _subagentRunner,
             Session = _options.Session,
+            AskUserAsync = _options.AskUserAsync,
             ToolStubs = CallableToolStubs(),
             Models = _options.ModelRegistry is { } registry
                 ? new RunModelAccess(registry, this, channel, runId)

@@ -52,6 +52,7 @@ public sealed class RuntimeReplaySessionTests
         using var host = new InteractiveSessionHost(
             factory: HarnessFactory.CreateFactory(auth),
             environment: SessionEnvironment(),
+            launch: new LaunchOptions { Tools = ["read", "write", "edit", "bash"] },
             configureHarness: options => options with { SystemPrompt = ReplayPrompt }
         );
         WriteModelCatalog(host);

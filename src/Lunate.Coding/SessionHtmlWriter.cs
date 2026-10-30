@@ -430,6 +430,9 @@ internal static class SessionHtmlWriter
         {
             null => string.Empty,
             string text => text,
+            JsonElement { ValueKind: JsonValueKind.String } value => value.GetString()
+                ?? string.Empty,
+            JsonElement value => value.GetRawText(),
             var value => JsonSerializer.Serialize(value),
         };
 }

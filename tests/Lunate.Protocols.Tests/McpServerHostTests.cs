@@ -42,7 +42,16 @@ public sealed class McpServerHostTests
         var tools = await host.GetToolsAsync(Ct);
 
         Assert.Equal(
-            ["server__add", "server__boom", "server__echo", "server__slow", "server__spawn_tool"],
+            [
+                "server__add",
+                "server__boom",
+                "server__echo",
+                "server__elicit",
+                "server__elicit_form",
+                "server__elicit_url",
+                "server__slow",
+                "server__spawn_tool",
+            ],
             tools.Select(tool => tool.Name).Order(StringComparer.Ordinal)
         );
 

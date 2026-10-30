@@ -271,6 +271,7 @@ internal static class AcpMode
             extraTools: effective.Tools.Extra,
             redaction: redaction
         );
+        tools.Add(new AskUserTool());
         foreach (ITool tool in mcpTools)
         {
             tools.Add(tool);
