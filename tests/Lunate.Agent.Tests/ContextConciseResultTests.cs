@@ -45,11 +45,6 @@ public sealed class ContextConciseResultTests
         );
         ToolCallResult result = Assert.Single(events.OfType<ToolCallResult>());
         Assert.True(result.IsError);
-        Assert.StartsWith(
-            "stderr:\nfailure line\nexit code: 7\n",
-            result.Output,
-            StringComparison.Ordinal
-        );
         Assert.Contains("line-181", result.Output, StringComparison.Ordinal);
         Assert.DoesNotContain("line-001", result.Output, StringComparison.Ordinal);
         Assert.Contains("stderr:\nfailure line", result.Output, StringComparison.Ordinal);

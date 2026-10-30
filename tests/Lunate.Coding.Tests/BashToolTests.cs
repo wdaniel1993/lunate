@@ -208,6 +208,7 @@ public sealed class BashToolTests
 
         Assert.True(result.IsError);
         Assert.Null(result.Details);
+        Assert.NotNull(result.FullOutput);
         Assert.Contains(
             $"timed out after {timeout.TotalSeconds.ToString("0.###", CultureInfo.InvariantCulture)}s; process tree killed",
             result.Output
