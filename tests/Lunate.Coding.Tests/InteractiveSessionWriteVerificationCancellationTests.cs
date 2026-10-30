@@ -36,7 +36,7 @@ public sealed class InteractiveSessionWriteVerificationCancellationTests
         await host.WaitForApprovalAsync();
         host.Console.SendText("y");
         await verifier.Started.Task.WaitAsync(
-            TimeSpan.FromSeconds(5),
+            WaitBudgets.InProcess,
             TestContext.Current.CancellationToken
         );
         Assert.True(host.Session.IsRunning);
@@ -44,7 +44,7 @@ public sealed class InteractiveSessionWriteVerificationCancellationTests
         host.Console.SendEscape();
 
         await verifier.Canceled.Task.WaitAsync(
-            TimeSpan.FromSeconds(5),
+            WaitBudgets.InProcess,
             TestContext.Current.CancellationToken
         );
         await host.WaitUntilAsync(() => !host.Session.IsRunning);

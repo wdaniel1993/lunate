@@ -41,8 +41,12 @@ internal static class LayeringChecker
             ("Lunate.Extensibility.Testing", "Lunate.Extensibility.Remote"),
             ("Lunate.Protocols", "Lunate.Agent"),
             ("Lunate.Roslyn", "Lunate.Agent"),
+            // The C# write verifier implements the public verifier contract, so Roslyn and its
+            // tests bind to the same abstractions every extension does.
+            ("Lunate.Roslyn", "Lunate.Extensibility.Abstractions"),
             ("Lunate.Roslyn.Tests", "Lunate.Roslyn"),
             ("Lunate.Roslyn.Tests", "Lunate.Agent"),
+            ("Lunate.Roslyn.Tests", "Lunate.Extensibility.Abstractions"),
             ("Lunate.Coding", "Lunate.Agent"),
             ("Lunate.Coding", "Lunate.Extensibility"),
             // The composition owns the restore engine factory: it constructs the engine only when

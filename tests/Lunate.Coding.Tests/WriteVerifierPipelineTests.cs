@@ -286,10 +286,10 @@ public sealed class WriteVerifierPipelineTests
             Context(temp.Root),
             Ct
         );
-        await verifier.Started.Task.WaitAsync(TimeSpan.FromSeconds(5), Ct);
+        await verifier.Started.Task.WaitAsync(WaitBudgets.InProcess, Ct);
 
-        time.Advance(TimeSpan.FromSeconds(10));
-        ToolResult result = await execution.WaitAsync(TimeSpan.FromSeconds(5), Ct);
+        time.Advance(WriteVerificationPipeline.Deadline);
+        ToolResult result = await execution.WaitAsync(WaitBudgets.InProcess, Ct);
 
         Assert.False(result.IsError);
         Assert.Contains("unverified", result.Output, StringComparison.Ordinal);
@@ -312,7 +312,7 @@ public sealed class WriteVerifierPipelineTests
             Context(temp.Root),
             cancellation.Token
         );
-        await verifier.Started.Task.WaitAsync(TimeSpan.FromSeconds(5), Ct);
+        await verifier.Started.Task.WaitAsync(WaitBudgets.InProcess, Ct);
 
         cancellation.Cancel();
 
