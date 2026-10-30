@@ -431,6 +431,7 @@ public sealed partial class AgentHarness
         {
             if (
                 _options.Approver is { } approver
+                && tool is not AskUserTool
                 && !await approver.ApproveAsync(
                     new ApprovalRequest(
                         tool,
