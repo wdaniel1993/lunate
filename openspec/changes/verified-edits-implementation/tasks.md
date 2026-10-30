@@ -42,7 +42,7 @@ only when its focused tests pass.
 
 ## 4. Verification setting and refusal policy
 
-- [ ] 4.1 In `tests/Lunate.Coding.Tests/SettingsStoreVerifyTests.cs` (new file — `SettingsStore` lives in
+- [x] 4.1 In `tests/Lunate.Coding.Tests/SettingsStoreVerifyTests.cs` (new file — `SettingsStore` lives in
       `src/Lunate.Coding`, so its tests do too; `tests/Lunate.Agent.Tests/` has no `SettingsStoreTests.cs`), add failing
       tests `VerifyDefaultsToBlock`, `VerifyAcceptsWarnAndOff`, and
       `InvalidVerifySettingNamesAcceptedValues`. Confirm failure first; implement top-level
