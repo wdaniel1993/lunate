@@ -40,6 +40,9 @@ named. This transient failure never becomes a persistent verdict about the model
 decision API is labelled `native`; a chat-model path is labelled `adapter`. Every decision records
 only model id and this method label. Shadow mode is an optional user setting, not a per-model gate.
 
+Any model can decide if the user configures it; the contract is checked, the choice is the user's,
+and decisions can only tighten approvals.
+
 **Usage capability checks are scoped to the request.** Chat requires text input and tools when those
 capabilities are known; decision requires structured output when known; an image attachment requires
 image input when known. Unknown capability is allowed. When a known image limitation applies, the
