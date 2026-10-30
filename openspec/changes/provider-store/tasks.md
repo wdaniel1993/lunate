@@ -19,7 +19,7 @@
 ## 4. Usage selection and decision behavior
 
 - [x] 4.1 Test-first in `Lunate.Coding.Tests`: cover `/model` switching chat only, explicit `provider/model` resolution with provider defaults, unique bare model ids, and ambiguous bare ids refused with every candidate named.
-- [ ] 4.2 Test-first in `Lunate.Agent.Tests`: prove chat, fast, decision, subagents, and compaction usages resolve to their configured profiles and each call's usage/provider/model attribution is emitted exactly once; prove absent subagent assignment defaults to chat while retaining `subagents` attribution.
+- [x] 4.2 Test-first in `Lunate.Agent.Tests`: prove chat, fast, decision, subagents, and compaction usages resolve to their configured profiles and each call's usage/provider/model attribution is emitted exactly once; prove absent subagent assignment defaults to chat while retaining `subagents` attribution.
 - [ ] 4.3 Test-first in `Lunate.Agent.Tests`: prove malformed decision contracts are retried once then fail naming the model, decisions record only model id, `native`/`adapter` and probability, shadow mode is user-opt-in, and decisions never override deny or exceed the allow envelope.
 - [ ] 4.4 Test-first in `Lunate.Agent.Tests`: prove no decision profile reports unavailable and stays off without calling the chat profile; prove technical contract failure is not a persistent model-capability verdict.
 - [ ] 4.5 Test-first in `Lunate.Agent.Tests`: prove compaction uses chat by default even when fast exists, fast compaction occurs only after explicit opt-in, and summaries follow the selected profile while preserving existing tail, image, and replay behavior.
