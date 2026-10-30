@@ -199,6 +199,85 @@ public sealed class MarkdownGoldenTests
                     [dim]not markup[/]
                     """
             },
+            {
+                "mermaid-flowchart",
+                """
+                    ```mermaid
+                    flowchart TD
+                        Coding[The executable] --> Agent[Agent loop]
+                        Coding --> Tui[TUI]
+                        Agent --> Ai[Lunate.Ai]
+                        Prov(["Provider APIs"]) --> Agent
+                        Coding -."requests".-> Prov
+                    ```
+                    """
+            },
+            {
+                "mermaid-flowchart-lr",
+                """
+                    ```mermaid
+                    flowchart LR
+                        Loop["The harness<br/>the loop"] --> Rec["recorder"] -.->|"new events"| Acc[accumulator]
+                        Loop --> Log[logging]
+                    ```
+                    """
+            },
+            {
+                "mermaid-sequence",
+                """
+                    ```mermaid
+                    sequenceDiagram
+                        participant C as Consumer
+                        participant H as AgentHarness
+
+                        C->>H: RunAsync(userInput)
+                        H-->>C: TextMessageStart / Content / End
+                        Note over H: spans per run
+                    ```
+                    """
+            },
+            {
+                "mermaid-fallback-unsupported",
+                """
+                    ```mermaid
+                    stateDiagram-v2
+                        [*] --> q0
+                        q0 --> q1: input
+                    ```
+                    """
+            },
+            {
+                "mermaid-fallback-parse",
+                """
+                    ```mermaid
+                    sequenceDiagram
+                        participant A as
+                        A->>B: hi
+                    ```
+                    """
+            },
+            {
+                "mermaid-unrelated-fence",
+                """
+                    ```mermaid
+                    ```
+                    """
+            },
+            {
+                "mermaid-mixed",
+                """
+                    A **bold** answer and a diagram below it.
+
+                    ```mermaid
+                    flowchart TD
+                        A[One] --> B[Two]
+                    ```
+
+                    ```csharp
+                    var x = 1;
+                    ```
+                    """
+            },
         };
 
     [Theory]
@@ -207,7 +286,7 @@ public sealed class MarkdownGoldenTests
     {
         var console = new TestConsole();
         console.Profile.Width = 80;
-        console.Write(new MarkdownRenderer().Render(markdown));
+        console.Write(new MarkdownRenderer().Render(markdown, maxWidth: 80));
 
         GoldenFiles.AssertMatchesText(
             Path.Combine(GoldensDirectory, name + ".txt"),
@@ -235,6 +314,29 @@ public sealed class MarkdownGoldenTests
 
         GoldenFiles.AssertMatchesText(
             Path.Combine(GoldensDirectory, "ascii-lists-quote.txt"),
+            console.Output
+        );
+    }
+
+    [Fact]
+    public void Ascii_mode_replaces_mermaid_glyphs()
+    {
+        string markdown = """
+            ```mermaid
+            flowchart TD
+                A[One] --> B[Two]
+            ```
+            """;
+        var console = new TestConsole();
+        console.Profile.Width = 80;
+        console.Write(
+            new MarkdownRenderer(
+                new TerminalCapabilities(ColorSystemSupport.NoColors, Unicode: false)
+            ).Render(markdown, maxWidth: 80)
+        );
+
+        GoldenFiles.AssertMatchesText(
+            Path.Combine(GoldensDirectory, "ascii-mermaid-flowchart.txt"),
             console.Output
         );
     }

@@ -124,6 +124,93 @@ public sealed class MarkdownRendererTests
     public void Shell_variables_use_the_yellow_ansi_style() =>
         Assert.Contains("\u001b[38;5;11m", RenderAnsi("```sh\necho $HOME\n```"));
 
+    private const string WideDiagram = """
+        ```mermaid
+        flowchart TD
+            A[XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX] --> B[Two]
+        ```
+        """;
+
+    [Fact]
+    public void A_diagram_wider_than_the_terminal_falls_back_to_the_source()
+    {
+        var console = new TestConsole();
+        console.Profile.Width = 80;
+        console.Write(new MarkdownRenderer().Render(WideDiagram, maxWidth: 58));
+
+        string output = console.Output;
+        Assert.Contains(
+            "mermaid: diagram is 64 columns wide, this terminal has 58 — showing the source",
+            output
+        );
+        Assert.Contains("A[XXXX", output);
+        Assert.DoesNotContain("╭", output);
+    }
+
+    [Fact]
+    public void A_terminal_narrower_than_forty_columns_never_draws_a_diagram()
+    {
+        var console = new TestConsole();
+        console.Profile.Width = 80;
+        string thin = """
+            ```mermaid
+            flowchart TD
+                A[One] --> B[Two]
+            ```
+            """;
+        console.Write(new MarkdownRenderer().Render(thin, maxWidth: 39));
+
+        string output = console.Output;
+        Assert.Contains(
+            "mermaid: this terminal has 39 columns, 40 is the minimum — showing the source",
+            output
+        );
+        Assert.DoesNotContain("╭", output);
+    }
+
+    [Fact]
+    public void A_diagram_exactly_as_wide_as_the_terminal_renders()
+    {
+        // The label rounds to a 41-column box on a 41-column terminal: it fits.
+        string heading = "One Two Three Four Fiv"; // 22 chars
+        string markdown = $"""
+            ```mermaid
+            flowchart TD
+                A[{heading}XXXXXXXXXXXXXXX] --> B[Two]
+            ```
+            """;
+        var console = new TestConsole();
+        console.Profile.Width = 80;
+        console.Write(new MarkdownRenderer().Render(markdown, maxWidth: 41));
+
+        Assert.Contains("╭", console.Output);
+        Assert.DoesNotContain("mermaid:", console.Output);
+    }
+
+    [Fact]
+    public void An_unknown_fence_language_keeps_its_plain_rendering()
+    {
+        Assert.Equal("nix\nlet x = 1;\n", Render("```nix\nlet x = 1;\n```"));
+    }
+
+    [Fact]
+    public void A_bar_label_after_an_arrow_renders_as_the_edges_label()
+    {
+        // docs/architecture.md's system map writes `Roslyn -->|"tool model"| Agent`.
+        string markdown = """
+            ```mermaid
+            flowchart TD
+                Coding -->|"tool model"| Agent
+            ```
+            """;
+
+        string output = Render(markdown);
+
+        Assert.Contains("╭", output);
+        Assert.Contains("tool model", output);
+        Assert.DoesNotContain("mermaid:", output);
+    }
+
     private static string Render(string markdown)
     {
         var console = new TestConsole();

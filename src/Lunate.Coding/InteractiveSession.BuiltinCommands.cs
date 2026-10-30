@@ -82,6 +82,11 @@ internal sealed partial class InteractiveSession
                     // does not deliver BEL or a keybindings file claims the chord.
                     await session.RunEditorAsync(cancellationToken).ConfigureAwait(false);
                     return CommandResult.None;
+                case "/fullscreen":
+                    // The same round-trip Ctrl+O runs: the command is the way in when the terminal
+                    // does not deliver the chord or a keybindings file claims it.
+                    session.OpenViewer();
+                    return CommandResult.None;
                 case "/export":
                     session.ExportSession(invocation.Argument);
                     return CommandResult.None;
@@ -107,6 +112,15 @@ internal sealed partial class InteractiveSession
                     return CommandResult.None;
                 case "/session":
                     session.ShowSessionReport();
+                    return CommandResult.None;
+                case "/settings":
+                    if (invocation.Argument.Length == 0)
+                    {
+                        session.ShowSettings();
+                        return CommandResult.None;
+                    }
+
+                    session.SetSetting(invocation.Argument);
                     return CommandResult.None;
                 case "/skills":
                     session.Notify(session.SkillsText());

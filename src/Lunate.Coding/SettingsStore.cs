@@ -1081,7 +1081,11 @@ public static partial class SettingsStore
         }
     }
 
-    private static bool TryParseToolDetails(string? value, out ToolDetails parsed)
+    /// <summary>
+    /// The <c>toolDetails</c> literals; internal so the <c>/settings</c> edit shares one
+    /// vocabulary with the settings file, like <see cref="TryParseThinking"/>.
+    /// </summary>
+    internal static bool TryParseToolDetails(string? value, out ToolDetails parsed)
     {
         switch (value)
         {
@@ -1097,7 +1101,11 @@ public static partial class SettingsStore
         }
     }
 
-    private static bool TryParseApproval(string? value, out ApprovalPolicy parsed)
+    /// <summary>
+    /// The <c>approval</c> literals; internal so the <c>/settings</c> edit shares one vocabulary
+    /// with the settings file, like <see cref="TryParseThinking"/>.
+    /// </summary>
+    internal static bool TryParseApproval(string? value, out ApprovalPolicy parsed)
     {
         switch (value)
         {

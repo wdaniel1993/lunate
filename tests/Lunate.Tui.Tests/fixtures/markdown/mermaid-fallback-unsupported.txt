@@ -1,0 +1,5 @@
+mermaid
+stateDiagram-v2
+    [*] --> q0
+    q0 --> q1: input
+mermaid: unsupported diagram type 'stateDiagram-v2' — showing the source

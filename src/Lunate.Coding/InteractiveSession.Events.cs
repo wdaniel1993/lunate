@@ -211,7 +211,9 @@ internal sealed partial class InteractiveSession
 
         _transcript.Add(new TranscriptAssistantEntry(markdown));
         _turnWroteOutput = true;
-        _live.WriteScrollback(console => console.Write(_markdown.Render(markdown)));
+        _live.WriteScrollback(console =>
+            console.Write(_markdown.Render(markdown, _console.Size.Columns))
+        );
     }
 
     private void CommitToolBlock(ToolCallResult result, TimeSpan? duration)

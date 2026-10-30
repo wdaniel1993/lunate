@@ -8,9 +8,16 @@ namespace Lunate.Tui;
 
 internal static partial class MarkdownAstMapper
 {
-    public static string Map(MarkdownDocument document, TerminalCapabilities capabilities)
+    public static string Map(MarkdownDocument document, TerminalCapabilities capabilities) =>
+        Map(document, capabilities, int.MaxValue);
+
+    public static string Map(
+        MarkdownDocument document,
+        TerminalCapabilities capabilities,
+        int maxWidth
+    )
     {
-        var lines = MapLines(document, capabilities);
+        var lines = MapLines(document, capabilities, maxWidth);
         var builder = new StringBuilder();
         foreach (var line in lines)
         {
@@ -21,23 +28,31 @@ internal static partial class MarkdownAstMapper
     }
 
     /// <summary>
-    /// The document's styled lines with the leading and trailing blanks trimmed and blank runs
-    /// collapsed; the transcript viewer wraps these instead of re-rendering the markup.
+    /// The document's styled lines, diagrams gated to <paramref name="maxWidth"/> terminal
+    /// columns, with the leading and trailing blanks trimmed and blank runs collapsed; the
+    /// transcript viewer wraps these instead of re-rendering the markup.
     /// </summary>
     public static List<StyledLine> MapLines(
         MarkdownDocument document,
-        TerminalCapabilities capabilities
+        TerminalCapabilities capabilities,
+        int maxWidth
     )
     {
-        var lines = RenderBlocks(document, capabilities);
+        var lines = RenderBlocks(document, capabilities, maxWidth);
         int start = lines.FindIndex(static line => !line.IsBlank);
         int end = lines.FindLastIndex(static line => !line.IsBlank);
         return start < 0 ? [] : lines.GetRange(start, end - start + 1);
     }
 
+    public static List<StyledLine> MapLines(
+        MarkdownDocument document,
+        TerminalCapabilities capabilities
+    ) => MapLines(document, capabilities, int.MaxValue);
+
     private static List<StyledLine> RenderBlocks(
         IEnumerable<Block> blocks,
-        TerminalCapabilities capabilities
+        TerminalCapabilities capabilities,
+        int maxWidth
     )
     {
         var lines = new List<StyledLine>();
@@ -50,7 +65,7 @@ internal static partial class MarkdownAstMapper
             }
 
             first = false;
-            AppendBlock(block, lines, capabilities);
+            AppendBlock(block, lines, capabilities, maxWidth);
         }
 
         CollapseBlankLines(lines);
@@ -71,7 +86,8 @@ internal static partial class MarkdownAstMapper
     private static void AppendBlock(
         Block block,
         List<StyledLine> lines,
-        TerminalCapabilities capabilities
+        TerminalCapabilities capabilities,
+        int maxWidth
     )
     {
         switch (block)
@@ -88,13 +104,13 @@ internal static partial class MarkdownAstMapper
                 lines.AddRange(RenderBlockInlines(paragraph.Inline, SpanStyle.Plain));
                 break;
             case ListBlock list:
-                lines.AddRange(RenderList(list, capabilities));
+                lines.AddRange(RenderList(list, capabilities, maxWidth));
                 break;
             case QuoteBlock quote:
-                lines.AddRange(RenderQuote(quote, capabilities));
+                lines.AddRange(RenderQuote(quote, capabilities, maxWidth));
                 break;
             case FencedCodeBlock fenced:
-                AppendCode(fenced.Info, fenced.Lines, lines);
+                AppendFenced(fenced.Info, fenced.Lines, lines, capabilities, maxWidth);
                 break;
             case CodeBlock code:
                 AppendCode(null, code.Lines, lines);
@@ -111,18 +127,22 @@ internal static partial class MarkdownAstMapper
                 AppendRawLines(leaf.Lines, lines);
                 break;
             case ContainerBlock container:
-                lines.AddRange(RenderBlocks(container, capabilities));
+                lines.AddRange(RenderBlocks(container, capabilities, maxWidth));
                 break;
         }
     }
 
-    private static List<StyledLine> RenderList(ListBlock list, TerminalCapabilities capabilities)
+    private static List<StyledLine> RenderList(
+        ListBlock list,
+        TerminalCapabilities capabilities,
+        int maxWidth
+    )
     {
         var lines = new List<StyledLine>();
         int number = OrderedStart(list);
         foreach (var child in list)
         {
-            var content = RenderItem((ListItemBlock)child, capabilities);
+            var content = RenderItem((ListItemBlock)child, capabilities, maxWidth);
             string marker =
                 list.IsOrdered ? number.ToString(CultureInfo.InvariantCulture) + ". "
                 : capabilities.Unicode ? "• "
@@ -140,7 +160,8 @@ internal static partial class MarkdownAstMapper
 
     private static List<StyledLine> RenderItem(
         ListItemBlock item,
-        TerminalCapabilities capabilities
+        TerminalCapabilities capabilities,
+        int maxWidth
     )
     {
         var lines = new List<StyledLine>();
@@ -153,22 +174,56 @@ internal static partial class MarkdownAstMapper
             }
 
             first = false;
-            AppendBlock(child, lines, capabilities);
+            AppendBlock(child, lines, capabilities, maxWidth);
         }
 
         CollapseBlankLines(lines);
         return lines;
     }
 
-    private static List<StyledLine> RenderQuote(QuoteBlock quote, TerminalCapabilities capabilities)
+    private static List<StyledLine> RenderQuote(
+        QuoteBlock quote,
+        TerminalCapabilities capabilities,
+        int maxWidth
+    )
     {
         var lines = new List<StyledLine>();
-        foreach (var line in RenderBlocks(quote, capabilities))
+        foreach (var line in RenderBlocks(quote, capabilities, maxWidth))
         {
             lines.Add(PrefixLine(line, capabilities.Unicode ? "│ " : "| ", SpanStyle.Dim));
         }
 
         return lines;
+    }
+
+    /// <summary>
+    /// A fenced block: mermaid fences go to the diagram renderer (their width is the terminal's),
+    /// everything else keeps the plain code-block rendering untouched.
+    /// </summary>
+    private static void AppendFenced(
+        string? info,
+        StringLineGroup content,
+        List<StyledLine> lines,
+        TerminalCapabilities capabilities,
+        int maxWidth
+    )
+    {
+        if (
+            info is { Length: > 0 }
+            && info.Trim().Equals("mermaid", StringComparison.OrdinalIgnoreCase)
+        )
+        {
+            var source = new string[content.Count];
+            for (var i = 0; i < content.Count; i++)
+            {
+                source[i] = content.Lines[i].Slice.ToString();
+            }
+
+            lines.AddRange(MermaidDiagram.RenderFence(source, capabilities, maxWidth));
+            return;
+        }
+
+        AppendCode(info, content, lines);
     }
 
     private static void AppendCode(string? info, StringLineGroup content, List<StyledLine> lines)

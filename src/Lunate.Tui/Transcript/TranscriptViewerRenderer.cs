@@ -158,7 +158,7 @@ public sealed class TranscriptViewerRenderer
         entry switch
         {
             TranscriptUserEntry user => [Echo(user.Text)],
-            TranscriptAssistantEntry assistant => _markdown.Lines(assistant.Markdown),
+            TranscriptAssistantEntry assistant => _markdown.Lines(assistant.Markdown, columns),
             TranscriptThinkingEntry thinking => ThinkingLines(thinking.Commit, columns),
             TranscriptToolEntry tool => _blocks.Lines(tool.Block, fullOutput: true, width: columns),
             TranscriptTreeRowEntry row => [TreeRow(row)],

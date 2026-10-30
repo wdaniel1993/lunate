@@ -58,12 +58,22 @@ internal static class Commands
         new("/editor", CommandGroup.Session, "open the draft in your external editor"),
         new("/export", CommandGroup.Session, "write the session as html or jsonl"),
         new("/fork", CommandGroup.Session, "start a new session file at a picked entry"),
+        new(
+            "/fullscreen",
+            CommandGroup.Session,
+            "open the full-screen transcript (the Ctrl+O view)"
+        ),
         new("/help", CommandGroup.Session, "list the commands"),
         new("/name", CommandGroup.Session, "set or show the session title"),
         new("/new", CommandGroup.Session, "start a fresh session"),
         new("/resume", CommandGroup.Session, "open the session picker"),
         new("/rewind", CommandGroup.Session, "move the active leaf to a picked entry"),
         new("/session", CommandGroup.Session, "show the session file, messages and tokens"),
+        new(
+            "/settings",
+            CommandGroup.Session,
+            "show the resolved settings, or apply one to this session"
+        ),
         new("/thinking", CommandGroup.Session, "set the reasoning level (off|low|medium|high)"),
         new("/tree", CommandGroup.Session, "browse the session tree and pick a message"),
         new("/auth", CommandGroup.Model, "choose a provider and store its API key"),
