@@ -19,6 +19,11 @@ _ = int.TryParse(
     out var slowListMs
 );
 
+// LUNATE_TEST_MCP_ELICITATION=1 adds the three elicitation tools. They are opt-in on purpose: the
+// default server shape is what every existing consumer asserts (five tools), and a shared fixture
+// that grows under its consumers fails tests that never asked for the new surface.
+var elicitation = Environment.GetEnvironmentVariable("LUNATE_TEST_MCP_ELICITATION") == "1";
+
 // LUNATE_TEST_MCP_SLOW_START_MS delays the initialize handshake by the given milliseconds, so a
 // client meets a live but slow server. LUNATE_TEST_MCP_START_HEARTBEAT_MS additionally writes a
 // stderr line at that interval while the delay runs: stderr is the only child output a client can
@@ -119,38 +124,41 @@ tools.Add(
         new McpServerToolCreateOptions { Name = "boom", Description = "Always fails." }
     )
 );
-tools.Add(
-    McpServerTool.Create(
-        (Func<RequestContext<CallToolRequestParams>, CancellationToken, Task<string>>)ElicitAsync,
-        new McpServerToolCreateOptions
-        {
-            Name = "elicit",
-            Description = "Requests a form elicitation and reports the response shape.",
-        }
-    )
-);
-tools.Add(
-    McpServerTool.Create(
-        (Func<RequestContext<CallToolRequestParams>, CancellationToken, Task<string>>)
-            ElicitFormAsync,
-        new McpServerToolCreateOptions
-        {
-            Name = "elicit_form",
-            Description = "Requests a flat form elicitation and reports the response.",
-        }
-    )
-);
-tools.Add(
-    McpServerTool.Create(
-        (Func<RequestContext<CallToolRequestParams>, CancellationToken, Task<string>>)
-            ElicitUrlAsync,
-        new McpServerToolCreateOptions
-        {
-            Name = "elicit_url",
-            Description = "Requests a URL-mode elicitation and reports the response.",
-        }
-    )
-);
+if (elicitation)
+{
+    tools.Add(
+        McpServerTool.Create(
+            (Func<RequestContext<CallToolRequestParams>, CancellationToken, Task<string>>)ElicitAsync,
+            new McpServerToolCreateOptions
+            {
+                Name = "elicit",
+                Description = "Requests a form elicitation and reports the response shape.",
+            }
+        )
+    );
+    tools.Add(
+        McpServerTool.Create(
+            (Func<RequestContext<CallToolRequestParams>, CancellationToken, Task<string>>)
+                ElicitFormAsync,
+            new McpServerToolCreateOptions
+            {
+                Name = "elicit_form",
+                Description = "Requests a flat form elicitation and reports the response.",
+            }
+        )
+    );
+    tools.Add(
+        McpServerTool.Create(
+            (Func<RequestContext<CallToolRequestParams>, CancellationToken, Task<string>>)
+                ElicitUrlAsync,
+            new McpServerToolCreateOptions
+            {
+                Name = "elicit_url",
+                Description = "Requests a URL-mode elicitation and reports the response.",
+            }
+        )
+    );
+}
 tools.Add(
     McpServerTool.Create(
         (Func<string>)SpawnTool,
