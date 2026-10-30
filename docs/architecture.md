@@ -40,6 +40,7 @@ sequenceDiagram
     participant H as AgentHarness
     participant P as IChatClient pipeline
     participant T as ITool
+    participant V as IWriteVerifier (Extensibility.Abstractions)
 
     C->>H: RunAsync(userInput)
     H-->>C: RunStarted
@@ -50,6 +51,10 @@ sequenceDiagram
         opt tool calls
             H-->>C: ToolCallStart / Args / End
             H->>T: ExecuteAsync(args, context)
+            opt approved write/edit with a matching verifier
+                T->>V: VerifyAsync(immutable request, cancellation token)
+                V-->>T: verified / refused / unverified + diagnostics
+            end
             T-->>H: ToolResult
             H-->>C: ToolCallResult
         end
@@ -59,6 +64,13 @@ sequenceDiagram
 ```
 
 `AgentHarness.RunAsync` is the only entry point; the consumer is the TUI, print mode, the ACP mapper or a test. The loop keeps going until a model answer has no tool calls or `MaxSteps` (default 50) is reached — then `StepLimitReached` and `RunFinished(step_limit)`. One `invoke_agent` span wraps the run; `execute_tool` spans hang off it; model-call spans nest under it. Homes: [agent-loop spec](../openspec/specs/agent-loop/spec.md), [ADR-0003](../adr/0003-loop-own-vs-maf-harness.md), [ADR-0012](../adr/0012-tool-contract.md), [ADR-0013](../adr/0013-agent-loop.md).
+
+For a matched verifier, the `write`/`edit` tool calls it after approval and before applying staged
+content; the request cannot replace that content. `verify` defaults to `block`, which prevents a
+write on refusal; `warn` writes and reports unverified with diagnostics, while `off` skips the check.
+Verification is bounded to 10 seconds; a timeout writes as unverified. Esc cancels the run through
+the usual cancellation path and leaves the staged content unwritten. The verifier contract is
+`IWriteVerifier` in `Lunate.Extensibility.Abstractions`.
 
 ## The event path
 

@@ -28,7 +28,7 @@ Three consequences follow, and they decide priorities:
 
 **Why it should exist next to Pi and OpenCode**
 
-- **Agent-shaped C# tools with zero setup:** name-based lookup (find symbol, find references), compile checks after every edit, and refactors returned as diffs through the approval policy — no plugin or language server to install, and clear messages for restore, SDK and partial-load problems. The head-to-head suite shows outcome parity between lightweight agents on small tasks — what differs is cost and how each one extends: Lunate ran the suite at roughly a fifth of the tokens, and its harness is C# you can read and change.
+- **Agent-shaped C# tools with zero setup:** name-based lookup (find symbol, find references), on-demand compile diagnostics, and refactors returned as diffs through the approval policy — no plugin or language server to install, and clear messages for restore, SDK and partial-load problems. The head-to-head suite shows outcome parity between lightweight agents on small tasks — what differs is cost and how each one extends: Lunate ran the suite at roughly a fifth of the tokens, and its harness is C# you can read and change.
 - **One file, no runtime to install:** self-contained single file, fast start, no Node or Python runtime, and extensions loaded at runtime like Pi's.
 - **Editor and local-model friendly:** runs inside Zed or JetBrains via ACP and works with any OpenAI-compatible endpoint, including the home lab.
 
@@ -373,6 +373,14 @@ Tool results are written for the model: short, factual, and every error says wha
 | `edit` | `path`, `old_text`, `new_text`, optional `start_line` | `edited src/X.cs lines 40–48 (match: indent)`; diff in `Details` | Not found + closest region; ambiguous + line numbers of all matches; tier refused for whitespace-significant file; `old_text` equals `new_text` |
 | `bash` | `command`, `timeout_s` (default 120, max 600) | Exit code + combined stdout/stderr, cut in the middle when too long | Timeout (process tree killed); shell could not start. A non-zero exit code is reported, not treated as a tool error |
 
+After approval, `write` and `edit` pass staged content to a matching registered verifier through
+`IWriteVerifier` in `Lunate.Extensibility.Abstractions`. The host alone applies the staged content.
+The top-level `verify` setting in `~/.lunate/settings.json` selects the outcome: `block` (default)
+prevents the write on verifier refusal, `warn` writes and reports `unverified` with diagnostics, and
+`off` skips verifier selection and execution. A verifier that exceeds the 10-second ceiling degrades
+to `unverified` and the staged content is written. Pressing Esc during verification cancels the run
+and does not write that content.
+
 `read` also accepts PNG, JPEG, GIF and WebP images when the active model declares vision support. It returns the placeholder `[image <width>x<height>]` and carries the bytes to the model; a text-only model gets an error naming itself. Images are capped at 5 MB and 4,096 pixels per side, and downscaling is not available yet.
 
 **Optional search tools**
@@ -445,7 +453,13 @@ Tools: read, write, edit, bash{extra_tools}.
 
 **Config**
 
-`~/.lunate/settings.json` (default model, approval policy, output limits) and `~/.lunate/auth.json` (API keys, file permissions restricted). Environment variables override both. `toolDetails` chooses how much of a tool call the scrollback commits: `"collapsed"` (the default) writes the header line only, `"expanded"` adds the bounded output excerpt and the diff panel; `LUNATE_TOOL_DETAILS` overrides it. The optional `tui` section carries the interactive presentation: `tui.theme` (the colour-depth policy) and `tui.keys` (persisted key remaps), both editable in `/settings`.
+`~/.lunate/settings.json` (default model, approval policy, output limits and verification mode) and
+`~/.lunate/auth.json` (API keys, file permissions restricted). Environment variables override
+supported settings; `verify` has no environment-variable override. `toolDetails` chooses how much of
+a tool call the scrollback commits: `"collapsed"` (the default) writes the header line only,
+`"expanded"` adds the bounded output excerpt and the diff panel; `LUNATE_TOOL_DETAILS` overrides it.
+The optional `tui` section carries the interactive presentation: `tui.theme` (the colour-depth
+policy) and `tui.keys` (persisted key remaps), both editable in `/settings`.
 
 **Sessions on disk**
 
@@ -699,7 +713,7 @@ public interface IAcpServer
 
 ## Roslyn extension (the .NET edge)
 
-`Lunate.Roslyn` gives the model **agent-shaped C# tools**: name-based lookup, compile checks after every edit, refactors returned as diffs. The host composes those tools directly today rather than loading them through the extension contract (see the [surface audit](eval/roslyn-surface-audit.md)); C# language servers run Roslyn underneath too — the difference this project bets on is tool design, not the engine: no plugin or server to set up, diagnostics straight from the compilation, and load problems reported as clear messages. That edge depends on implementing ADR 0006's operational rules well (restore check, SDK mismatch, partial loads), not on Roslyn itself.
+`Lunate.Roslyn` gives the model **agent-shaped C# tools**: name-based lookup, on-demand compile diagnostics, and refactors returned as diffs. The host composes those tools directly today rather than loading them through the extension contract (see the [surface audit](eval/roslyn-surface-audit.md)); C# language servers run Roslyn underneath too — the difference this project bets on is tool design, not the engine: no plugin or server to set up, diagnostics straight from the compilation, and load problems reported as clear messages. That edge depends on implementing ADR 0006's operational rules well (restore check, SDK mismatch, partial loads), not on Roslyn itself.
 
 **Loading model**
 

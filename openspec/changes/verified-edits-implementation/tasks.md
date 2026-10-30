@@ -73,10 +73,10 @@ only when its focused tests pass.
 
 ## 7. Documentation and final verification
 
-- [ ] 7.1 After the behavior and tests are green, update `docs/guide.md`, `docs/architecture.md`,
+- [x] 7.1 After the behavior and tests are green, update `docs/guide.md`, `docs/architecture.md`,
       and the extension manifest/authoring pages to describe only shipped verifier, settings,
       timeout, cancellation and TUI behavior. Run `python3 scripts/docs-sync --check` and
       `npx --yes markdownlint-cli2@0.23.3`; both must pass.
-- [ ] 7.2 Run `openspec validate verified-edits-implementation --type change --strict`,
+- [x] 7.2 Run `openspec validate verified-edits-implementation --type change --strict`,
       `dotnet build Lunate.slnx -c Release`, the touched test projects in Release, and
       `dotnet csharpier check .`. Do not run `scripts/verify.sh` in this unattended run.
