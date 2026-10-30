@@ -118,6 +118,122 @@ public sealed class DecisionApprovalTests
         Assert.Equal(0, run.Executions);
     }
 
+    [Fact]
+    public async Task Missing_decision_profile_reports_unavailable_without_chat_fallback()
+    {
+        var chat = new ScriptedChatClient()
+            .Enqueue(
+                LoopScripts.Call("call_1", "write", LoopScripts.Args()),
+                LoopScripts.ToolCalls()
+            )
+            .Enqueue(LoopScripts.Text("done"), LoopScripts.Stop());
+        var approver = new RecordingApprover(decision: true);
+        var tool = new ScriptedTool(
+            "write",
+            "Writes a file.",
+            """{"type":"object"}""",
+            ToolRisk.Write
+        );
+        var registry = new ToolRegistry();
+        registry.Add(tool);
+        var harness = new AgentHarness(
+            chat,
+            registry,
+            new AgentHarnessOptions
+            {
+                DecisionMode = DecisionMode.Enforce,
+                Approver = approver,
+                UsageModels = new Dictionary<string, UsageModelClient>(StringComparer.Ordinal)
+                {
+                    ["chat"] = new(
+                        chat,
+                        "chat-profile",
+                        "openai",
+                        new ModelInfo("chat-model", "openai", null, 64000, SupportsTools: true)
+                    ),
+                },
+            }
+        );
+
+        List<AgentEvent> events = await AgentTestSupport.Run(harness);
+
+        Assert.Equal(2, chat.Requests.Count);
+        Assert.Single(events.OfType<DecisionUnavailable>());
+        Assert.Empty(events.OfType<DecisionEvaluated>());
+        Assert.Single(approver.Requests);
+    }
+
+    [Fact]
+    public async Task Contract_failure_does_not_disable_the_decision_profile_for_later_calls()
+    {
+        var chat = new ScriptedChatClient()
+            .Enqueue(
+                LoopScripts.Call("call_1", "write", LoopScripts.Args()),
+                LoopScripts.ToolCalls()
+            )
+            .Enqueue(
+                LoopScripts.Call("call_2", "write", LoopScripts.Args()),
+                LoopScripts.ToolCalls()
+            )
+            .Enqueue(LoopScripts.Text("done"), LoopScripts.Stop());
+        var decision = new ScriptedChatClient()
+            .Enqueue(LoopScripts.Text("not JSON"), LoopScripts.Stop())
+            .Enqueue(LoopScripts.Text("still not JSON"), LoopScripts.Stop())
+            .Enqueue(
+                LoopScripts.Text(
+                    """{"option":"approve","probabilities":{"approve":0.9,"deny":0.1}}"""
+                ),
+                LoopScripts.Stop()
+            );
+        var approver = new RecordingApprover(decision: true);
+        int executions = 0;
+        var tool = new ScriptedTool(
+            "write",
+            "Writes a file.",
+            """{"type":"object"}""",
+            ToolRisk.Write
+        );
+        tool.OnExecuteAsync = (_, _, _) =>
+        {
+            executions++;
+            return Task.FromResult(new ToolResult("written", IsError: false));
+        };
+        var registry = new ToolRegistry();
+        registry.Add(tool);
+        var harness = new AgentHarness(
+            chat,
+            registry,
+            new AgentHarnessOptions
+            {
+                DecisionMode = DecisionMode.Enforce,
+                Approver = approver,
+                UsageModels = new Dictionary<string, UsageModelClient>(StringComparer.Ordinal)
+                {
+                    ["chat"] = new(
+                        chat,
+                        "chat-profile",
+                        "openai",
+                        new ModelInfo("chat-model", "openai", null, 64000, SupportsTools: true)
+                    ),
+                    ["decision"] = new(
+                        decision,
+                        "decision-profile",
+                        "openai",
+                        new ModelInfo("decision-model", "openai", null, 64000, SupportsTools: false)
+                    ),
+                },
+            }
+        );
+
+        List<AgentEvent> events = await AgentTestSupport.Run(harness);
+
+        Assert.Equal(3, decision.Requests.Count);
+        Assert.Single(events.OfType<DecisionFailed>());
+        Assert.Single(events.OfType<DecisionEvaluated>());
+        Assert.Single(approver.Requests);
+        Assert.Equal(1, executions);
+    }
+
     private static async Task<DecisionRun> RunApprovalAsync(
         string response,
         DecisionMode mode,
