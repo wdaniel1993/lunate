@@ -56,6 +56,63 @@ public sealed class ContextMaskingTests
             Assert.Contains(Marker, text, StringComparison.Ordinal);
             Assert.DoesNotContain(Secret, text, StringComparison.Ordinal);
         }
+
+        Assert.Equal(Marker, redactor.Redact(Marker), StringComparer.Ordinal);
+    }
+
+    [Fact]
+    public async Task A_null_tool_output_mask_is_identity()
+    {
+        using var temp = new TempDirectory();
+        var client = new ScriptedChatClient()
+            .Enqueue(
+                LoopScripts.Call("call_1", "read", LoopScripts.Args(("path", "plain.txt"))),
+                LoopScripts.ToolCalls()
+            )
+            .Enqueue(LoopScripts.Text("Done"), LoopScripts.Stop());
+        var harness = new AgentHarness(
+            client,
+            Registry(ReadTool("ordinary output")),
+            new AgentHarnessOptions { WorkingDirectory = temp.Root }
+        );
+
+        List<AgentEvent> events = await Run(harness);
+
+        Assert.Equal("ordinary output", Assert.Single(events.OfType<ToolCallResult>()).Output);
+    }
+
+    [Fact]
+    public async Task The_tool_output_mask_runs_once_for_an_equal_full_output()
+    {
+        using var temp = new TempDirectory();
+        int calls = 0;
+        const string raw = "credential-sentinel";
+        const string masked = "[redacted:credential]";
+        var tool = new ScriptedTool("answer", "Returns output.", """{"type":"object"}""")
+        {
+            OnExecute = (_, _) => new ToolResult(raw, IsError: false) { FullOutput = raw },
+        };
+        var client = new ScriptedChatClient()
+            .Enqueue(LoopScripts.Call("call_1", "answer", LoopScripts.Args()), LoopScripts.ToolCalls())
+            .Enqueue(LoopScripts.Text("Done"), LoopScripts.Stop());
+        var harness = new AgentHarness(
+            client,
+            Registry(tool),
+            new AgentHarnessOptions
+            {
+                WorkingDirectory = temp.Root,
+                ToolOutputMask = text =>
+                {
+                    calls++;
+                    return text.Replace(raw, masked, StringComparison.Ordinal);
+                },
+            }
+        );
+
+        List<AgentEvent> events = await Run(harness);
+
+        Assert.Equal(masked, Assert.Single(events.OfType<ToolCallResult>()).Output);
+        Assert.Equal(1, calls);
     }
 
     private static string ResultText(ScriptedRequest request) =>
