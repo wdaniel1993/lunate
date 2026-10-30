@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using Lunate.Agent;
 using Lunate.Extensibility;
@@ -53,7 +54,7 @@ public sealed class RoslynMigrationMemoryProbeTests
                     string changed = string.Concat(
                         original,
                         "\n// lunate memory cycle ",
-                        iteration,
+                        iteration.ToString(CultureInfo.InvariantCulture),
                         "\n"
                     );
                     await File.WriteAllTextAsync(file, changed, Ct);
