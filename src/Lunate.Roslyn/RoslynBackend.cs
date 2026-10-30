@@ -1045,7 +1045,7 @@ public sealed class RoslynBackend : ICSharpBackend, IDisposable
 
     private static string TargetFrameworkName(Project project) =>
         project.OutputFilePath is { Length: > 0 } outputPath
-            ? Path.GetFileName(Path.GetDirectoryName(outputPath))
+            ? Path.GetFileName(Path.GetDirectoryName(outputPath)) ?? project.Name
             : project.Name;
 
     private readonly record struct ErrorKey(string Code, string Message);
