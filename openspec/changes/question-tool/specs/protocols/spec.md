@@ -4,7 +4,7 @@
 
 ### Requirement: MCP form elicitation uses the shared question interaction
 
-The MCP client SHALL advertise `elicitation.form` and handle MCP `elicitation/create` form requests through the same question interaction used by `ask_user`. It SHALL accept the protocol's `message` and flat-object `requestedSchema`, including supported primitive fields, single-select enums and multi-select enum arrays; answers SHALL be validated against the requested schema and returned using MCP's `accept`, `decline` or `cancel` response shape. It SHALL identify the requesting MCP server in the user-facing question and SHALL NOT create a second picker implementation. V1 SHALL NOT advertise URL-mode elicitation.
+The MCP client SHALL advertise `elicitation.form` and handle MCP `elicitation/create` form requests through the same question interaction used by `ask_user`. It SHALL accept the protocol's `message` and flat-object `requestedSchema`, including supported primitive fields, single-select enums and multi-select enum arrays; answers SHALL be validated against the requested schema and returned using MCP's `accept`, `decline` or `cancel` response shape. It SHALL identify the requesting MCP server in the user-facing question and SHALL NOT create a second picker implementation. If no user interaction is available, it SHALL return `cancel` immediately and record the unanswered outcome in the enclosing tool result so the model can state an assumption and continue. V1 SHALL NOT advertise URL-mode elicitation.
 
 #### Scenario: A server's form request is answered through the shared picker
 
@@ -23,6 +23,12 @@ The MCP client SHALL advertise `elicitation.form` and handle MCP `elicitation/cr
 - **GIVEN** an MCP server's form elicitation is open
 - **WHEN** the user presses Esc
 - **THEN** the client returns an MCP `cancel` response without content and no tool approval is granted
+
+#### Scenario: An unattended MCP form does not block
+
+- **GIVEN** an MCP server requests form elicitation during a print or unattended run
+- **WHEN** no user-input mechanism is available
+- **THEN** the client immediately returns `cancel` without content, records `unanswered: no user present` in the enclosing tool result, and the model is directed to state an assumption and continue
 
 #### Scenario: URL-mode elicitation is not advertised or presented as a form
 
