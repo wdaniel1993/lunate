@@ -115,6 +115,8 @@ Alternatives: error-keyword heuristics in the loop (they silently drop the one l
 A harness-level `ReadLedger` (one per session history, stamped into each run's `ToolContext`; internal to `Lunate.Agent` and the `lunate` assembly) records every text `read` as `(canonical path, SHA-256 of the LF-normalised text, call id)`. The digest is computed from the text `ReadTool` already reads (`ReadTool.cs:143`), so recording costs no extra I/O.
 
 - The **newest** read of a path is the live version. Every older read result of that path is superseded: the harness replaces its tool-result text in the in-memory history with one line, e.g. `[stale: superseded by a later read of src/Foo.cs; this copy is no longer current]`. The session entry keeps the original text (append-only); only the request shrinks.
+- That rewrite is applied at a **batch point only** — see D9. Rewriting history behind the model invalidates the provider's prompt cache from that message onward, and on a long session the cache miss costs more than the stub saves. Between batch points an invalidated older read stays as it is in the request; the mutation guard below is what makes that safe.
+- A successful `edit`/`write` **by the agent** refreshes the live version for that path (D12), so consecutive edits of one file need no re-read. A change from any other origin still invalidates.
 - `edit` and `write` compute the digest of the text they already read inside the mutation queue (`EditTool.cs:154-170`, `WriteTool.cs:100-130`) and ask the ledger for the live version. A matching live digest allows the mutation. An invalidated record — a `FileChangeEvent` from any source, including bash's git scan (`BashTool.cs:178-214`) — or a digest mismatch (an out-of-band change) refuses with: `src/Foo.cs changed after your last read (an edit, bash, or another process). Re-read it and base old_text on the current text.` The refusal is an error result, not an exception, and names what to do.
 - A path the ledger never saw is allowed, exactly as today. The rule is "do not trust a read that has been invalidated", not "you must have read it" — so tools and tests outside the loop, and the first edit of a file, keep their behaviour.
 - The sink wrapper (`IFileChangeSink.cs:55-60`) invalidates on every published mutation, whatever the source; the digest catches writers that publish nothing.
@@ -142,6 +144,36 @@ The tests use a fixture `IChatClient` that reports `InputTokenCount = Utf8Length
 | Masking | a known 2,048-character credential in a tool result | the request carries it (512 tokens) | `[redacted:<name>]` in the request, event and file; the recorded input count drops by the byte delta |
 
 The first three deltas are large enough to be the product effect; masking's delta is small by nature (a real key is tens of characters), so its test asserts the marker and that the recorded count equals the estimator over the masked request — the secret's bytes are not billed. Saying that plainly is better than pretending masking is a big token win.
+
+### D9 — Projection rewrites run at batch points, not per request
+
+Read stubs and masking change text **behind** the model. A provider caches on the prefix it has already seen; the first message whose text changes invalidates every cached token after it, so a rewrite that saves a few hundred tokens can cost the whole cached prefix on the next request — repeatedly, because each new read triggers another rewrite.
+
+So the projection is rebuilt at **batch points**: a compaction, or every `projection.batchTurns` turns (configurable, default chosen from the eval rather than taste). Between batch points the request carries the history as it stands, including reads that are no longer live. That is safe because correctness never depended on the stub: D6's guard refuses the mutation on the digest, regardless of what the copy in the window says.
+
+The measurement is the **cache-read ratio** the provider reports, before and after, on the eval run. If the ratio does not improve, the batching is not paying for itself and the default changes or the feature goes.
+
+Alternatives: rewrite per request (today's behaviour: correct, cache-hostile, and the cost grows with session length); never rewrite (the window fills with superseded copies); rewrite only at compaction (compaction is rare in short sessions, so most sessions would never see a stub).
+
+### D10 — Observation masking: old results become pointers
+
+At a batch point, a tool result older than `projection.maskTurns` turns becomes one line — the tool name, what it did, and the spill pointer when there is one — instead of its full text. Error results are kept for `projection.maskErrorTurns`, longer than successes: a failure the model learned from is context, not noise, and dropping it produces a model that repeats the mistake.
+
+Masking is the same machinery as the read stub (a request-time rewrite of a history message), so it obeys D9's cadence. `/context` reports tokens saved by spills, masking and read stubs as three separate numbers, because they answer three different questions and one aggregate number hides which mechanism is working.
+
+Acceptance is the eval, not the mechanism: the same task success rate with fewer input tokens, both reported. Fewer tokens with worse success is a rejection.
+
+### D11 — A spill is read through `read`, and never spilled again
+
+`read` on a spill path returns a bounded page plus an explicit continuation (the next offset or line) — never "the rest" — and a read of a known spill file is **exempt from the spill step**. Without both halves a 50,000-token output produces a pointer to a pointer, and the content is unreachable in practice.
+
+The exemption is keyed on the resolved absolute path of a file the session itself wrote (`tool-output/<run>-<seq>.txt`), not on a path prefix, so a model cannot name its way out of the boundary or into the exemption. The test reads a 50,000-token result to completion through successive calls, asserts every byte is reachable, that the pages join to the original text exactly, and that no `read` result is a spill pointer.
+
+### D12 — The agent's own write is authoritative
+
+An `edit`/`write` that succeeds updates the live version: the agent made the change, so the text it just wrote is what the file contains, and a second edit composed against it needs no re-read. A change of any other origin — another process, a build, a formatter, bash — still invalidates and still demands a re-read, because that is the case the guard exists for. A refused write changes nothing and leaves the live version alone.
+
+The distinction is the origin of the change, not the fact of it. Without it, a two-step edit becomes three tool calls and a re-read of a file the model already has, which is exactly the waste this change is meant to remove.
 
 ## Code touched
 
