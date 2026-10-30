@@ -5,7 +5,7 @@
 
 ## Review Summary
 
-ADR review completed for this change. The typed Roslyn built-in adapter is a major durable boundary decision and is recorded as proposed pending maintainer sign-off.
+ADR review completed for this change. The typed Roslyn built-in adapter is accepted with five maintainer conditions recorded in ADR-0026.
 
 ## In-Force ADRs Reviewed
 
@@ -18,4 +18,4 @@ ADR review completed for this change. The typed Roslyn built-in adapter is a maj
 
 ## New Durable ADRs Created
 
-- [ADR-0026: Roslyn built-in composition boundary](../../../adr/0026-roslyn-built-in-boundary.md) — proposed; awaits maintainer sign-off.
+- [ADR-0026: Roslyn built-in composition boundary](../../../adr/0026-roslyn-built-in-boundary.md) — accepted 2026-10-30 with five conditions.

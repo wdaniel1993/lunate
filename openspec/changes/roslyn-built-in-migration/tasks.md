@@ -10,8 +10,9 @@
 
 - [ ] 2.1 Add the internal, non-packable `Lunate.Roslyn.BuiltIn` adapter with the `roslyn` built-in manifest, typed `IExtensionFactory` and host-supplied descriptor. Test descriptor validation, manifest cross-checks and built-in lifecycle without a collectible load context.
 - [ ] 2.2 Supply the descriptor through the existing host seam in interactive, print, ACP and child-run composition, including when `--no-extensions` is set. Test that the built-in is present while third-party discovery remains disabled.
-- [ ] 2.3 Prove constructing and loading the built-in does not load Roslyn or MSBuild before the first C# tool call; keep the single-file build-host arrangement intact.
-- [ ] 2.4 Commit: `feat(coding): load Roslyn through the built-in extension path`.
+- [ ] 2.3 Add a startup test that asserts no `Microsoft.CodeAnalysis.*` or `Microsoft.Build.*` assembly is loaded before the first C# tool use.
+- [ ] 2.4 Keep the single-file build-host arrangement intact while constructing and loading the built-in.
+- [ ] 2.5 Commit: `feat(coding): load Roslyn through the built-in extension path`.
 
 ## 3. Acquire the Roslyn workspace service through the contract
 
@@ -41,12 +42,15 @@
 ## 7. Remove the direct project dependency
 
 - [ ] 7.1 Remove the `Lunate.Coding` reference to `Lunate.Roslyn` and the corresponding `LayeringChecker` allowance. Remove the superseded core `WorkspaceServices` implementation and event subscription after the extension service tests cover their behavior.
-- [ ] 7.2 Verify the solution graph and layering tests contain no direct `Lunate.Coding` → `Lunate.Roslyn` dependency; confirm both coding and MCP paths still load the same built-in.
-- [ ] 7.3 Commit: `refactor(coding): remove the direct Roslyn project reference`.
+- [ ] 7.2 Extend the layering test to enforce dependency closure for both `Lunate.Roslyn` and `Lunate.Roslyn.BuiltIn`: only `Lunate.Extensibility.Abstractions`, Roslyn/MSBuild packages and the BCL are allowed.
+- [ ] 7.3 Add a single-edge test asserting `Lunate.Coding` uses `Lunate.Roslyn.BuiltIn` only to supply the host's list of built-in factories and consumes no other adapter type.
+- [ ] 7.4 Verify the solution graph and layering tests contain no direct `Lunate.Coding` → `Lunate.Roslyn` dependency; confirm both coding and MCP paths still load the same built-in.
+- [ ] 7.5 Commit: `refactor(coding): remove the direct Roslyn project reference`.
 
 ## 8. Document, compare and verify the migration
 
 - [ ] 8.1 Update `docs/guide.md`, `docs/architecture.md` and `docs/mcp-roslyn.md` to describe the built-in, activation, workspace service, `/extensions` status and unchanged `--no-extensions` behavior. Document restart/resume and rollback for pre-migration sessions; do not imply a session-format change.
-- [ ] 8.2 Capture the migrated results using the baseline commands and fixtures; record before/after tool parity, startup and memory measurements, and confirm existing budgets and the two-workspace cap still hold.
-- [ ] 8.3 Run the relevant tests, `openspec validate roslyn-built-in-migration --type change --strict`, the Release solution build, formatting checks and `scripts/verify.sh`. Stop and report any golden-session diff; do not rewrite goldens unless an approved proposal changes the session format.
-- [ ] 8.4 Commit: `docs(coding): document the Roslyn built-in migration`.
+- [ ] 8.2 Restore the `docs/guide.md` positioning sentence “built only on the public extension API” only after dependency closure, the single-edge test, assembly-level lazy-loading test, and unchanged compatibility/golden/e2e tests are green; record that #237 may publish `Lunate.Extensibility.Abstractions` as stable only after this sentence is restored.
+- [ ] 8.3 Capture the migrated results using the baseline commands and fixtures; record before/after tool parity, startup and memory measurements, and confirm existing budgets and the two-workspace cap still hold.
+- [ ] 8.4 Run the relevant tests, `openspec validate roslyn-built-in-migration --type change --strict`, the Release solution build, formatting checks and `scripts/verify.sh`. Stop and report any golden-session diff; do not rewrite goldens unless an approved proposal changes the session format.
+- [ ] 8.5 Commit: `docs(coding): document the Roslyn built-in migration`.
