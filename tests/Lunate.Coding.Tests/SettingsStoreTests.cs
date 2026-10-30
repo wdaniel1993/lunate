@@ -28,7 +28,42 @@ public sealed class SettingsStoreTests
         Assert.Equal(new SubagentLimits(), settings.Subagents);
         Assert.True(settings.StartupHeader);
         Assert.True(settings.UpdateCheck);
+        Assert.False(settings.Tui.Fullscreen);
         Assert.Empty(settings.Favorites);
+    }
+
+    [Fact]
+    public void A_tui_section_can_opt_into_full_screen()
+    {
+        using var temp = new TempDirectory();
+        File.WriteAllText(
+            temp.File("settings.json"),
+            """{"schemaVersion": 2, "tui": {"fullscreen": true}}"""
+        );
+
+        AgentSettings settings = SettingsStore.Resolve(temp.File("settings.json"), _ => null);
+
+        Assert.True(settings.Tui.Fullscreen);
+    }
+
+    [Theory]
+    [InlineData(
+        """{"schemaVersion": 2, "tui": {"fullscreen": "yes"}}""",
+        "'tui.fullscreen' must be true or false"
+    )]
+    [InlineData("""{"schemaVersion": 2, "tui": {"width": 80}}""", "unknown key 'tui.width'")]
+    [InlineData("""{"schemaVersion": 2, "tui": true}""", "'tui' must be an object")]
+    public void An_invalid_tui_section_refuses_the_file(string json, string expected)
+    {
+        using var temp = new TempDirectory();
+        File.WriteAllText(temp.File("settings.json"), json);
+
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+            SettingsStore.Resolve(temp.File("settings.json"), _ => null)
+        );
+
+        Assert.Contains(expected, exception.Message, StringComparison.Ordinal);
+        Assert.Contains("No settings were applied", exception.Message, StringComparison.Ordinal);
     }
 
     [Fact]

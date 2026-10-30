@@ -779,6 +779,14 @@ public sealed class CliTests
         Assert.True(Parse("--offline").Offline);
     }
 
+    [Fact]
+    public void Launch_options_parse_fullscreen()
+    {
+        // Inline remains the default; the flag opts the one run into the alternate screen.
+        Assert.False(Parse().Fullscreen);
+        Assert.True(Parse("--fullscreen").Fullscreen);
+    }
+
     [Theory]
     [MemberData(nameof(ConflictingLaunchFlags))]
     public void Run_with_conflicting_launch_flags_is_a_usage_error(
@@ -890,6 +898,7 @@ public sealed class CliTests
     [InlineData("--no-session=x", "--no-session")]
     [InlineData("--no-tools=x", "--no-tools")]
     [InlineData("--offline=x", "--offline")]
+    [InlineData("--fullscreen=x", "--fullscreen")]
     public void Run_with_an_inline_value_on_a_boolean_flag_is_a_usage_error(string arg, string flag)
     {
         using var output = new StringWriter();

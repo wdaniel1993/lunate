@@ -161,6 +161,29 @@ public sealed class InteractiveSessionFullScreenTests
     private static async Task WaitFirstCtrlDAsync(InteractiveSessionHost host) =>
         await host.WaitForFrameAsync("press Ctrl+D again to quit");
 
+    [Fact]
+    public void The_fullscreen_flag_opts_a_run_in_whatever_the_file_had()
+    {
+        var inline = new AgentSettings();
+
+        AgentSettings underFlag = SettingsStore.ApplyLaunch(
+            inline,
+            new LaunchOptions { Fullscreen = true }
+        );
+        Assert.True(underFlag.Tui.Fullscreen);
+
+        AgentSettings withoutFlag = SettingsStore.ApplyLaunch(inline, new LaunchOptions());
+        // The inline default: nothing opted in, the file stays as it is.
+        Assert.False(withoutFlag.Tui.Fullscreen);
+        Assert.False(inline.Tui.Fullscreen);
+
+        AgentSettings fullScreenFile = SettingsStore.ApplyLaunch(
+            new AgentSettings { Tui = new TuiSettings { Fullscreen = true } },
+            new LaunchOptions()
+        );
+        Assert.True(fullScreenFile.Tui.Fullscreen);
+    }
+
     /// <summary>The writes that switched the buffer, in order — the enter/leave pairing tape.</summary>
     private static List<string> ScreenTransitions(IReadOnlyList<string> writes)
     {
