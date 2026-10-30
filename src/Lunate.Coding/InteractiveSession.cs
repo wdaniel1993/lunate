@@ -540,7 +540,8 @@ internal sealed partial class InteractiveSession : IDisposable
             skillReadAllowance: _skillAllowance,
             log: _extensions?.Log,
             extraTools: _settings.Tools.Extra,
-            redaction: _redaction
+            redaction: _redaction,
+            writeVerifiers: _extensions?.WriteVerifiers
         );
         _tools.Add(new AskUserTool());
         await ComposeMcpConfigAsync(ct);
@@ -565,7 +566,8 @@ internal sealed partial class InteractiveSession : IDisposable
             root => _skills?.ReadRootsFor(root) ?? [],
             log: _extensions?.Log,
             extraTools: _settings.Tools.Extra,
-            redaction: _redaction
+            redaction: _redaction,
+            writeVerifiers: _extensions?.WriteVerifiers
         );
         // The model resolves after the extension host: the configured id may name a virtual or
         // extension-registered model, which only the registry knows.

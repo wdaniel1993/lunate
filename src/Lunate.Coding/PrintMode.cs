@@ -636,7 +636,8 @@ internal static class PrintMode
             skillReadAllowance: new SkillReadAllowance(skills.ReadRoots),
             log: extensions?.Log,
             extraTools: settings.Tools.Extra,
-            redaction: redaction
+            redaction: redaction,
+            writeVerifiers: extensions?.WriteVerifiers
         );
         tools.Add(new AskUserTool());
         foreach (ITool tool in mcpTools)
@@ -692,7 +693,8 @@ internal static class PrintMode
                 root => skills.ReadRootsFor(root),
                 log: extensions?.Log,
                 extraTools: settings.Tools.Extra,
-                redaction: redaction
+                redaction: redaction,
+                writeVerifiers: extensions?.WriteVerifiers
             ),
         };
 

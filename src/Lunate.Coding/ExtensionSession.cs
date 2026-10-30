@@ -337,6 +337,9 @@ internal sealed class ExtensionSession : IAsyncDisposable
     /// <summary>The session's file change bus (the <c>core/file-bus</c> handle); the modes hand it to the harness.</summary>
     internal FileChangeBus FileChanges => _fileChanges;
 
+    /// <summary>The extensions' manifest-matched write verifiers.</summary>
+    internal WriteVerifierRegistry WriteVerifiers => _loader.WriteVerifiers;
+
     /// <summary>
     /// The loaded extensions' registered tools, in registration order; composition adds them before
     /// the MCP tools, so extension tools come first (design D7).

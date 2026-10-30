@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text.Json;
 using Lunate.Agent;
 using Lunate.Ai;
+using Lunate.Extensibility.Abstractions;
 
 namespace Lunate.Coding;
 
@@ -14,7 +15,8 @@ namespace Lunate.Coding;
 public sealed class EditTool(
     Workspace workspace,
     IFileMutationQueue? mutations = null,
-    ITextFileAccess? files = null
+    ITextFileAccess? files = null,
+    Func<string, IWriteVerifier?>? verifierSelector = null
 ) : ITool
 {
     /// <summary>The model-facing name; also what <see cref="HighRiskCall"/> classifies.</summary>
@@ -30,9 +32,10 @@ public sealed class EditTool(
         Workspace workspace,
         IFileMutationQueue? mutations,
         ITextFileAccess? files,
-        CredentialRedactor? redaction
+        CredentialRedactor? redaction,
+        Func<string, IWriteVerifier?>? verifierSelector = null
     )
-        : this(workspace, mutations, files)
+        : this(workspace, mutations, files, verifierSelector)
     {
         _redaction = redaction;
     }
@@ -174,7 +177,7 @@ public sealed class EditTool(
 
         return await _mutations.RunAsync(
             resolved.AbsolutePath,
-            _ =>
+            async mutationCt =>
             {
                 string fileText;
                 bool hasBom;
@@ -185,7 +188,7 @@ public sealed class EditTool(
                 catch (Exception exception)
                     when (exception is IOException or UnauthorizedAccessException)
                 {
-                    return Task.FromResult(Error($"could not be read: {exception.Message}"));
+                    return Error($"could not be read: {exception.Message}");
                 }
 
                 if (
@@ -193,7 +196,7 @@ public sealed class EditTool(
                     { } staleRead
                 )
                 {
-                    return Task.FromResult(Error(staleRead));
+                    return Error(staleRead);
                 }
 
                 var (fileLines, fileEndsWithNewline) = SplitRaw(fileText);
@@ -222,9 +225,7 @@ public sealed class EditTool(
 
                 if (matches.Count == 0)
                 {
-                    return Task.FromResult(
-                        Error(EditMatcher.NotFound(fileLines, oldLines, resolved.RelativePath))
-                    );
+                    return Error(EditMatcher.NotFound(fileLines, oldLines, resolved.RelativePath));
                 }
 
                 var selected = matches;
@@ -241,9 +242,7 @@ public sealed class EditTool(
 
                 if (selected.Count > 1)
                 {
-                    return Task.FromResult(
-                        Error(EditMatcher.Ambiguity(matches, resolved.RelativePath))
-                    );
+                    return Error(EditMatcher.Ambiguity(matches, resolved.RelativePath));
                 }
 
                 var start = selected[0];
@@ -267,6 +266,22 @@ public sealed class EditTool(
                     newFileText += ending;
                 }
 
+                if (
+                    await WriteVerificationPipeline.RefuseIfNeededAsync(
+                            verifierSelector,
+                            resolved.RelativePath,
+                            fileText,
+                            newFileText,
+                            workspace.Identity,
+                            mutationCt
+                        )
+                        .ConfigureAwait(false) is
+                    { } verificationRefusal
+                )
+                {
+                    return verificationRefusal;
+                }
+
                 try
                 {
                     _files.WriteRaw(resolved.AbsolutePath, newFileText, hasBom);
@@ -274,7 +289,7 @@ public sealed class EditTool(
                 catch (Exception exception)
                     when (exception is IOException or UnauthorizedAccessException)
                 {
-                    return Task.FromResult(Error($"could not be written: {exception.Message}"));
+                    return Error($"could not be written: {exception.Message}");
                 }
 
                 ctx.FileChanges.Notify(
@@ -301,7 +316,7 @@ public sealed class EditTool(
                     LineDiff.Unified(fileText, newFileText, resolved.RelativePath)
                 );
 
-                return Task.FromResult(new ToolResult(output, IsError: false, details));
+                return new ToolResult(output, IsError: false, details);
             },
             ct
         );

@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text.Json;
 using Lunate.Agent;
 using Lunate.Ai;
+using Lunate.Extensibility.Abstractions;
 
 namespace Lunate.Coding;
 
@@ -13,7 +14,8 @@ namespace Lunate.Coding;
 public sealed class WriteTool(
     Workspace workspace,
     IFileMutationQueue? mutations = null,
-    ITextFileAccess? files = null
+    ITextFileAccess? files = null,
+    Func<string, IWriteVerifier?>? verifierSelector = null
 ) : ITool
 {
     /// <summary>The model-facing name; also what <see cref="HighRiskCall"/> classifies.</summary>
@@ -29,9 +31,10 @@ public sealed class WriteTool(
         Workspace workspace,
         IFileMutationQueue? mutations,
         ITextFileAccess? files,
-        CredentialRedactor? redaction
+        CredentialRedactor? redaction,
+        Func<string, IWriteVerifier?>? verifierSelector = null
     )
-        : this(workspace, mutations, files)
+        : this(workspace, mutations, files, verifierSelector)
     {
         _redaction = redaction;
     }
@@ -106,7 +109,7 @@ public sealed class WriteTool(
         string relative = resolved.RelativePath;
         return await _mutations.RunAsync(
             target,
-            _ =>
+            async mutationCt =>
             {
                 bool created;
                 string oldText;
@@ -130,12 +133,12 @@ public sealed class WriteTool(
                 catch (Exception exception)
                     when (exception is IOException or UnauthorizedAccessException)
                 {
-                    return Task.FromResult(Error($"could not be read: {exception.Message}"));
+                    return Error($"could not be read: {exception.Message}");
                 }
 
                 if (ctx.Reads?.Check(target, oldText, relative) is { } staleRead)
                 {
-                    return Task.FromResult(Error(staleRead));
+                    return Error(staleRead);
                 }
 
                 // Under the same mutation lock the write itself uses: refused means the file's
@@ -150,12 +153,28 @@ public sealed class WriteTool(
                     { } refusal
                 )
                 {
-                    return Task.FromResult(refusal);
+                    return refusal;
                 }
 
                 // The file's own convention wins over the text as given: a CRLF file stays CRLF
                 // and a byte-order mark survives, so a rewrite never turns into a whole-file diff.
                 var written = content.ReplaceLineEndings(ending);
+                if (
+                    await WriteVerificationPipeline.RefuseIfNeededAsync(
+                            verifierSelector,
+                            resolved.RelativePath,
+                            oldText,
+                            written,
+                            workspace.Identity,
+                            mutationCt
+                        )
+                        .ConfigureAwait(false) is
+                    { } verificationRefusal
+                )
+                {
+                    return verificationRefusal;
+                }
+
                 try
                 {
                     if (created)
@@ -168,7 +187,7 @@ public sealed class WriteTool(
                 catch (Exception exception)
                     when (exception is IOException or UnauthorizedAccessException)
                 {
-                    return Task.FromResult(Error($"could not be written: {exception.Message}"));
+                    return Error($"could not be written: {exception.Message}");
                 }
 
                 ctx.FileChanges.Notify(
@@ -193,7 +212,7 @@ public sealed class WriteTool(
                     $"wrote {lines} lines to {relative} ({(created ? "created" : "replaced")})"
                 );
 
-                return Task.FromResult(new ToolResult(output, IsError: false, details));
+                return new ToolResult(output, IsError: false, details);
             },
             ct
         );

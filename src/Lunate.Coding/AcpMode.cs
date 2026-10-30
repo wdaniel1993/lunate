@@ -269,7 +269,8 @@ internal static class AcpMode
             workspaceServices,
             log: host?.Log,
             extraTools: effective.Tools.Extra,
-            redaction: redaction
+            redaction: redaction,
+            writeVerifiers: host?.WriteVerifiers
         );
         tools.Add(new AskUserTool());
         foreach (ITool tool in mcpTools)
@@ -325,7 +326,8 @@ internal static class AcpMode
                 inheritedTools,
                 log: host?.Log,
                 extraTools: effective.Tools.Extra,
-                redaction: redaction
+                redaction: redaction,
+                writeVerifiers: host?.WriteVerifiers
             ),
         };
 

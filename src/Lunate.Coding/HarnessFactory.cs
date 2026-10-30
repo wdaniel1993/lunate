@@ -25,20 +25,21 @@ internal static class HarnessFactory
         SkillReadAllowance? skillReadAllowance = null,
         IExtensionLog? log = null,
         IReadOnlyList<string>? extraTools = null,
-        CredentialRedactor? redaction = null
+        CredentialRedactor? redaction = null,
+        WriteVerifierRegistry? writeVerifiers = null
     )
     {
         var tools = new ToolRegistry();
         tools.Add(new ReadTool(workspace, files, skillReadAllowance));
         tools.Add(
             redaction is null
-                ? new WriteTool(workspace, files: files)
-                : new WriteTool(workspace, null, files, redaction)
+                ? new WriteTool(workspace, files: files, verifierSelector: writeVerifiers?.Find)
+                : new WriteTool(workspace, null, files, redaction, writeVerifiers?.Find)
         );
         tools.Add(
             redaction is null
-                ? new EditTool(workspace, files: files)
-                : new EditTool(workspace, null, files, redaction)
+                ? new EditTool(workspace, files: files, verifierSelector: writeVerifiers?.Find)
+                : new EditTool(workspace, null, files, redaction, writeVerifiers?.Find)
         );
         tools.Add(new BashTool(workspace, log: log));
         AddOptionalTools(tools, workspace, extraTools);
@@ -102,7 +103,8 @@ internal static class HarnessFactory
         Func<string, IReadOnlyList<string>>? skillReadRoots = null,
         IExtensionLog? log = null,
         IReadOnlyList<string>? extraTools = null,
-        CredentialRedactor? redaction = null
+        CredentialRedactor? redaction = null,
+        WriteVerifierRegistry? writeVerifiers = null
     )
     {
         ArgumentNullException.ThrowIfNull(services);
@@ -117,7 +119,8 @@ internal static class HarnessFactory
                     : new SkillReadAllowance(skillReadRoots(root)),
                 log: log,
                 extraTools: extraTools,
-                redaction: redaction
+                redaction: redaction,
+                writeVerifiers: writeVerifiers
             );
             foreach (ITool tool in inheritedTools)
             {
