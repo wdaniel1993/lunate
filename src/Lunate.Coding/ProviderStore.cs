@@ -18,6 +18,49 @@ internal sealed class ProviderStore
 
     public IReadOnlyList<ProviderEntry> Entries { get; }
 
+    public static void Save(string filePath, IReadOnlyList<ProviderEntry> entries)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
+        ArgumentNullException.ThrowIfNull(entries);
+
+        lock (Gate)
+        {
+            var validated = new List<ProviderEntry>(entries.Count);
+            var names = new HashSet<string>(StringComparer.Ordinal);
+            foreach (ProviderEntry entry in entries)
+            {
+                if (
+                    !ProviderEntry.TryCreate(
+                        entry.Name,
+                        entry.Kind,
+                        entry.BaseUrl,
+                        entry.CredentialReference,
+                        entry.Headers,
+                        entry.Region,
+                        out ProviderEntry? safeEntry,
+                        out string? error
+                    ) || safeEntry is null
+                )
+                {
+                    throw new InvalidDataException(
+                        $"Invalid provider entry '{entry.Name}': {error}. No provider settings were written."
+                    );
+                }
+
+                if (!names.Add(safeEntry.Name))
+                {
+                    throw new InvalidDataException(
+                        $"Duplicate provider name '{safeEntry.Name}'. No provider settings were written."
+                    );
+                }
+
+                validated.Add(safeEntry);
+            }
+
+            Write(filePath, validated.OrderBy(entry => entry.Name, StringComparer.Ordinal));
+        }
+    }
+
     public static ProviderStore Load(
         string filePath,
         AuthStore auth,
@@ -104,7 +147,42 @@ internal sealed class ProviderStore
                 );
             }
 
-            return file;
+            var entries = new List<ProviderEntry>(file.Providers.Length);
+            var names = new HashSet<string>(StringComparer.Ordinal);
+            foreach (ProviderEntry entry in file.Providers)
+            {
+                if (
+                    !ProviderEntry.TryCreate(
+                        entry.Name,
+                        entry.Kind,
+                        entry.BaseUrl,
+                        entry.CredentialReference,
+                        entry.Headers,
+                        entry.Region,
+                        out ProviderEntry? safeEntry,
+                        out string? error
+                    ) || safeEntry is null
+                )
+                {
+                    throw new InvalidDataException(
+                        $"Invalid provider store '{path}': {error}. No providers were loaded."
+                    );
+                }
+
+                if (!names.Add(safeEntry.Name))
+                {
+                    throw new InvalidDataException(
+                        $"Invalid provider store '{path}': duplicate provider name '{safeEntry.Name}'. No providers were loaded."
+                    );
+                }
+
+                entries.Add(safeEntry);
+            }
+
+            return file with
+            {
+                Providers = entries.ToArray(),
+            };
         }
         catch (JsonException exception)
         {
