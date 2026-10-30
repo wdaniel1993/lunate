@@ -2,6 +2,7 @@ using System.Text.Json;
 using Lunate.Agent;
 using Lunate.Extensibility;
 using Lunate.Extensibility.Abstractions;
+using Lunate.Roslyn.BuiltIn;
 
 namespace Lunate.Coding.Tests;
 
@@ -19,7 +20,7 @@ public sealed class CSharpWorkspaceGateTests
         using var temp = new TempDirectory();
         File.WriteAllText(temp.File("App.x.sln"), "solution");
 
-        Assert.True(ExtensionSession.RoslynIsActive(temp.Root));
+        Assert.True(RoslynIsActive(temp.Root));
     }
 
     [Fact]
@@ -30,7 +31,7 @@ public sealed class CSharpWorkspaceGateTests
 
         // The flagship rule names *.slnx separately, so a solution file with it activates; but a
         // rule naming only *.sln cannot treat .slnx as its extension.
-        Assert.True(ExtensionSession.RoslynIsActive(temp.Root));
+        Assert.True(RoslynIsActive(temp.Root));
         Assert.False(
             ToolActivationEvaluator.Evaluate(
                 new ExtensionToolActivationRule(
@@ -48,7 +49,7 @@ public sealed class CSharpWorkspaceGateTests
         using var temp = new TempDirectory();
         File.WriteAllText(temp.File("App.SLN"), "solution");
 
-        Assert.False(ExtensionSession.RoslynIsActive(temp.Root));
+        Assert.False(RoslynIsActive(temp.Root));
     }
 
     [Fact]
@@ -103,9 +104,15 @@ public sealed class CSharpWorkspaceGateTests
             .ActiveOnly([flagshipAdapter], workspace)
             .Any(tool => tool.Name == flagshipAdapter.Name);
 
-        Assert.Equal(expectedLooksLike, ExtensionSession.RoslynIsActive(root));
+        Assert.Equal(expectedLooksLike, RoslynIsActive(root));
         Assert.Equal(expectedLooksLike, kept);
     }
+
+    private static bool RoslynIsActive(string workspaceRoot) =>
+        ToolActivationEvaluator.Evaluate(
+            RoslynBuiltInFactory.Manifest.ToolActivation["*"],
+            workspaceRoot
+        );
 
     /// <summary>An adapter stamped with the flagship rule through the loader's registration seam.</summary>
     private static ITool FlagshipRuleAdapter()

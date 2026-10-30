@@ -42,6 +42,13 @@ internal sealed class RoslynBuiltInFactory : IExtensionFactory
             ManifestPath
         );
 
+    internal static IReadOnlyList<(
+        string ManifestPath,
+        ExtensionManifest Manifest,
+        Func<IExtensionFactory> Factory
+    )> BuiltInFactories { get; } =
+    [(ManifestPath, Manifest, static () => new RoslynBuiltInFactory())];
+
     public IExtension Create(IExtensionContext context)
     {
         var services = new RoslynWorkspaceServiceFactory(_createBackend);

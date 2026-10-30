@@ -198,14 +198,13 @@ internal sealed class ExtensionSession : IAsyncDisposable
             ReservedToolNames = CoreToolNames,
             BuiltIns =
                 seams.BuiltIns
-                ??
-                [
-                    new BuiltInExtension(
-                        "host/roslyn/extension.json",
-                        RoslynBuiltInFactory.Manifest,
-                        () => new RoslynBuiltInFactory()
-                    ),
-                ],
+                ?? RoslynBuiltInFactory
+                    .BuiltInFactories.Select(factory => new BuiltInExtension(
+                        factory.ManifestPath,
+                        factory.Manifest,
+                        factory.Factory
+                    ))
+                    .ToArray(),
             BuiltInsOnly = seams.NoExtensions,
             WorkspaceServiceCapLimit = seams.WorkspaceServiceCapLimit,
         };
@@ -382,11 +381,15 @@ internal sealed class ExtensionSession : IAsyncDisposable
         return active;
     }
 
-    internal static bool RoslynIsActive(string workspaceRoot) =>
-        ToolActivationEvaluator.Evaluate(
-            RoslynBuiltInFactory.Manifest.ToolActivation["*"],
-            workspaceRoot
-        );
+    internal bool RoslynIsActive(string workspaceRoot) =>
+        _loader
+            .Tools.List()
+            .OfType<ExtensionToolAdapter>()
+            .Any(tool =>
+                tool.Name.StartsWith("cs_", StringComparison.Ordinal)
+                && tool.ActivationRule is { } rule
+                && ToolActivationEvaluator.Evaluate(rule, workspaceRoot)
+            );
 
     /// <summary>
     /// Whether a tool registered by this host carries a manifest activation rule and therefore

@@ -2,6 +2,7 @@ using Lunate.Agent;
 using Lunate.Ai;
 using Lunate.Extensibility.Abstractions;
 using Lunate.Roslyn;
+using Lunate.Roslyn.BuiltIn;
 
 namespace Lunate.Coding.Tests;
 
@@ -52,7 +53,12 @@ internal static class RoslynTestHarness
 
     private static IReadOnlyList<ITool> CSharpTools(WorkspaceServices services, string root)
     {
-        if (!ExtensionSession.RoslynIsActive(root))
+        if (
+            !ToolActivationEvaluator.Evaluate(
+                RoslynBuiltInFactory.Manifest.ToolActivation["*"],
+                root
+            )
+        )
         {
             return [];
         }

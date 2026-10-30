@@ -95,6 +95,11 @@ public sealed class LayeringTests
             .ToArray();
 
         Assert.Equal(["RoslynBuiltInFactory"], usedAdapterTypes);
+        Assert.Single(Regex.Matches(codingSource, @"\bRoslynBuiltInFactory\b").Cast<Match>());
+        Assert.Matches(
+            @"BuiltIns\s*=\s*seams\.BuiltIns\s*\?\?\s*RoslynBuiltInFactory\s*\.BuiltInFactories",
+            codingSource
+        );
     }
 
     [Fact]
