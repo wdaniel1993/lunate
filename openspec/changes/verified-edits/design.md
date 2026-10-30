@@ -1,13 +1,13 @@
 # Design — verified edits: compile before write, diagnose before apply
 
-- Status: proposed — 2026-10-30
+- Status: approved — 2026-10-30 (maintainer sign-off; implementation tracked by #336)
 - Change: `verified-edits` (#184)
 - Evidence: measured timings on this repository (§1.2), the landed extension contract
   (`openspec/specs/extensions/spec.md`), and the supported `lsp-diagnostics` extension
   (`extensions/lsp-diagnostics/`) that already demonstrates the post-write half of the idea
-- Amends (proposed): ADR-0012 (tool contract — where a guard sits), with ADR-0006 (in-process
-  Roslyn), ADR-0014 (backend interface) and ADR-0021 (per-workspace services, laziness) as context;
-  see [`adr.md`](adr.md) and the proposed ADR-0025
+- Amends: ADR-0017 (public write-verifier extension point), with ADR-0006 (in-process
+  Roslyn), ADR-0014 (backend interface), ADR-0021 (per-workspace services, laziness), and ADR-0025
+  as context; see [`adr.md`](adr.md)
 - Design only: no production code, tests or fixtures are part of this change
 
 ## 1. Constraints and the measured baseline
@@ -27,7 +27,8 @@
   (`src/Lunate.Roslyn/DiagnosticsCollector.cs:12-21`). `ICSharpBackend.NotifyFileChanged` lets the
   backend re-read one file (`src/Lunate.Roslyn/ICSharpBackend.cs:48`).
 - **A guard precedent lives in the tools.** `BashGuard`/`BashChangeTracker` sit inside the bash
-  tool's own path in `Lunate.Coding` — core guards, not hooks, not extensions.
+  tool's own path in `Lunate.Coding` — core-internal guards. Verified edits deliberately use a
+  different placement: a public extension seam, not another core guard.
 - **The post-write half already exists as an extension.** The supported `lsp-diagnostics`
   extension attaches a language server's diagnostics to the result of every successful
   `write`/`edit` of a `.cs` file through a `ToolResultReady` hook — one lazy server process,
@@ -78,15 +79,10 @@ This repository is the slow end of the range; the budget rule absorbs that.
    decision, not an appendix).
 
 **Recommendation: option 1 alone in the first slice.** The measured cost of C# verification is
-2.6 s warm (§1.2); nothing is purchased for TypeScript with one slice's budget. The second
-language is not *out of the design* — it is out of the *first slice*, and its shape was just
-proven by the supported tier: generalize `lsp-diagnostics`'s `ToolResultReady` handler to accept a
-per-language server (`extensions/lsp-diagnostics/README.md` — today it filters `.cs` and assumes
-`csharp-ls`). A future change can make TypeScript diagnostics post-write through that extension
-**without** touching the write path's refusal semantics; pre-write gating for TypeScript would
-then follow C#'s measured precedent if it proves worth the server process. Explicitly out of the
-first slice: gating on analyzer warnings (§4), any second engine, any server-process management in
-core.
+2.6 s warm (§1.2); nothing is purchased for TypeScript with one slice's budget. TypeScript is
+tracked as **#340**: the LSP extension registers a verifier for `*.ts`/`*.tsx` through the same
+public seam. It is not part of this first slice. Explicitly out of the first slice: gating on
+analyzer warnings (§4), any second engine, any server-process management in core.
 
 ## 3. (b) Staged file or whole project — compile the project, check the file
 
@@ -109,11 +105,11 @@ of *type check* is the project; the unit of *diagnostic filtering* is the staged
 per check only what changes: 2.6 s worst warm case measured, ~1 s typical after an edit,
 milliseconds when the file's diagnostics are unchanged.
 
-**The named trade-off.** Editing a public API will break dependents, and this scope does not
-report those errors — they surface afterwards through `cs_diagnostics` (which is the existing,
-documented loop) rather than as a refused write. The refusal rule (§4) restates this margin:
-dependents' errors never refuse this file's write, which is what makes a 7.8 s solutions-wide
-per-edit check cost without a commensurate benefit.
+Source generators run as part of the in-memory compilation, so generated members are available to
+the candidate check. The workspace's loaded target framework moniker (TFM) is the one checked in a
+multi-targeted project; other target frameworks are not checked. Editing a public API can break
+dependents, and dependents' errors are out of scope: they surface through `cs_diagnostics` rather
+than refusing this file's write. This keeps the check scoped to the edited project and file.
 
 ## 4. (c) A diagnostic the model cannot fix — refuse only what the edit introduced
 
@@ -128,9 +124,9 @@ the diagnostic is *new*, not that one exists.**
 
 - **Baseline.** Before applying, compile the file's on-disk text in the loaded project (same
   mechanism as the candidate) and collect its errors; then compile the staged text and collect its
-  errors; a staged error refuses only when the baseline does not already carry the same error
-  (compared by code and message, line-independent — a moved line keeps an existing error
-  pre-existing; a brand-new code+message is introduced).
+  errors. Compare the baseline and staged diagnostics as multisets keyed by `(code, message)`,
+  line-independent. An error is introduced only when the count for its key increases; a second
+  identical error therefore refuses even when one identical error was already present.
 - **What refuses:** for a staged file, a new compiler error. The refusal is the error result the
   tool already returns (`new ToolResult(text, IsError: true)`) — the model reads the file, line,
   code and message, and what to do next.
@@ -138,14 +134,17 @@ the diagnostic is *new*, not that one exists.**
   proceeds), warnings and analyzer findings (always proceed), dependents' errors (always proceed),
   diagnostics the backend could not map to the staged file.
 - **The escape hatch.** After two refusals of the same file in one run, the next attempt writes
-  unverified with a notice. A stubborn non-deterministic diagnostic (rare, but real: flaky
-  analyzers, platform-specific misses) costs two tool calls, not a blocked turn — the refusal
-  stays a gate, never a lock.
+  unverified with a notice. The refusal message lists the introduced errors but does not advertise
+  the bypass. A stubborn non-deterministic diagnostic (rare, but real: platform-specific misses)
+  costs two tool calls, not a blocked turn — the refusal stays a gate, never a lock.
+- **The `verify` setting.** `verify: block | warn | off`, default `block`. `block` refuses
+  introduced errors. `warn` writes and reports the result as unverified with the diagnostics. `off`
+  skips verification entirely.
 - **The check cannot become an attack.** It compiles in memory; it runs no process, no network, no
   shell; it does not block on anything the model could poison; it reads only the workspace it is
   already trusted to read.
 
-## 5. (d) Staying invisible — a budget, a ceiling, and a loud degradation
+## 5. (d) Staying visible — a budget, a ceiling, and a loud degradation
 
 **The budget rule, in the ADR-0005 spirit** (`adr/0005-budget-calibration.md:10-13`): budgets are
 derived from measured medians with documented headroom, and re-checked when the baseline shifts.
@@ -157,37 +156,39 @@ an edit.
   on this repo 1–3 s after an edit, ~20 ms unchanged — and a **ceiling**. Recommended
   value: **ceiling 10 s** (≈4× the measured warm worst case); the implementation change
   recalibrates by the ADR-0005 rule and pins the value where it is enforced.
-- **What happens when it is exceeded.** The check is cancelled (the write is *not* cancelled); the
-  tool result says the write went out **unverified**, names the elapsed time and the ceiling, and
-  turns the turn back over to the model with diagnostics-visible errors expected. Degrade is from
-  verified to **unverified**, never from verified to **silence**.
-- **The cold first load.** ADR-0021's rule stands: nothing loads before the first `cs_*` call —
-  verification will not prime the backend at startup to hide 28.7 s of cold load
-  (`adr/0021-per-run-workspaces.md:25`). The first cold check either finishes within the same
-  ceiling (small repos: S-4 fixture 0.64 s, Polly 3.3 s) or runs past the ceiling and degrades to
-  unverified with the cold-load reason named; the next check is warm. **How the user learns:** the
-  tool result states the write's verification status explicitly — verified (no new errors),
-  verified with N existing diagnostics, or unverified + reason. There is no new TUI surface; the
-  result text already reaches the user's transcript.
+- **What happens when it is exceeded.** At the 10 s ceiling the verifier is cancelled and the
+  write proceeds unverified; its result names the elapsed time, ceiling, and timeout reason. This
+  timeout degradation is never silent. Esc during verification cancels the run as usual and does
+  not write the staged content.
+- **The cold first load.** ADR-0021: “Nothing loads before the first `cs_*` call.” A `.cs` read or
+  edit is not a `cs_*` call, so ADR-0021 as written forbids starting the C# workspace load in the
+  background from such a read or edit. Left out; it would need an ADR-0021 amendment, which the
+  maintainer gives. Verification does not prime the backend at startup or initiate its load. If no
+  earlier `cs_*` call loaded the workspace, verification degrades to unverified with a
+  workspace-not-loaded reason; after the explicit C# call, edits can use the loaded workspace.
+- **How the user learns.** The TUI live area shows `verifying… <elapsed>` while the bounded call is
+  active. The result states verified, verified with existing diagnostics, or unverified with its
+  reason. Esc during verification cancels the run as usual, with no write.
 
-## 6. (e) Where the check runs — in the `write`/`edit` tools
+## 6. (e) Where the check runs — the public write-verifier seam
 
 The extension contract just landed (built-ins, per-workspace services, host-evaluated activation,
 aliases, and the hook catalogs: `ToolCalling`/`ToolResultReady` among them) — that is exactly what
 makes the three candidate placements distinct, and one of them small:
 
-| Placement | Why it is not the smallest thing |
+| Placement | Assessment |
 | --- | --- |
-| A `ToolCalling` hook | The hook envelope is ≤ 500 ms configurable, slow-above default 500 ms; failure policy is fail-safe **block** — the opposite of the unverified-continue a seconds-long check requires (§5); and a hook is pre-approval: the user is asked for a call that may then block silently for seconds. Also a third-party hook can not reach the mutation queue or the allow-list. |
-| An extension tool | An extension cannot refuse a `write` the model already called for: the contract names no extension-side veto over another tool's call, and `lsp-diagnostics`'s own placement is *after* the write (`ToolResultReady`, keep-original on failure). Informing is compatible; gating is not. |
-| **A guard inside the tools** | The `BashGuard` precedent (`src/Lunate.Coding/BashGuard.cs`): a core guard sharing the mutation queue ordering, the workspace resolution, the allow-list and the per-workspace backend keyed by canonical root — the check is glue over what exists: acquire the backend, stage the text, compile, compare, refuse or write. |
+| A `ToolCalling` hook | Rejected. The hook envelope is ≤ 500 ms configurable, slow-above default 500 ms; failure policy is fail-safe **block** — the opposite of the unverified-continue a seconds-long check requires (§5). It also runs before approval and cannot own the mutation queue or allow-list. |
+| An extension tool | Rejected. An extension cannot veto a `write` the model already called for; the contract has no extension-side veto over another tool's call. `lsp-diagnostics` runs after the write (`ToolResultReady`): informing is compatible, gating is not. |
+| **A core guard calling `ICSharpBackend`** | Rejected. It recreates the core→Roslyn coupling the 0.2 migration removed and makes “built only on the public API” false. The `BashGuard` precedent remains core-internal and is not the placement for verified edits. |
+| **A write-verifier extension point** | Chosen. `Lunate.Extensibility.Abstractions` exposes registration of a verifier for manifest-declared file patterns. It is generic, can be implemented by `Lunate.Roslyn`, and does not put Roslyn in core. |
 
-**Recommendation: the guard inside the tools.** It is the smallest thing that works: one new
-additive `ICSharpBackend` member (staged-text diagnostics and a baseline variant), one seam in
-`WriteTool`/`EditTool` between "read and normalize" and "apply and write" (the exact point the
-mutation queue owns), and one acquisition of the *existing* backend
-(`src/Lunate.Coding/WorkspaceServices.cs:75`). No hook contract change, no manifest change, no
-extension surface change, no second Roslyn, no out-of-process engine (ADR-0006).
+The host calls the registered verifier **after approval**, inside the serialized write/edit
+operation, between “read and normalize” and “apply and write.” The call has a bounded duration. A
+verifier may return **verified**, **unverified** with a reason, or **refused** with diagnostics in
+`StructuredContent`; it has no write access and cannot modify staged content. The host alone applies
+or refuses the mutation. `Lunate.Roslyn` registers the C# verifier through this seam and uses the
+existing per-workspace backend. This is a public contract, not a core-internal guard.
 
 The flow:
 
@@ -195,58 +196,54 @@ The flow:
 Agent loop ──╶ tool call: write/edit (.cs) ╶──> [approval: risk Write as today]
                     │
                     ▼
-     ┌── write/edit tool (Lunate.Coding) ─────────────────────────────┐
-     │  resolve path, read + normalize, compute replacement text      │
-     │        (mutation queue: this is one atomic per-path step)      │
+     ┌── write/edit host path ───────────────────────────────────────┐
+     │  resolve, approve, read + normalize, compute staged content    │
+     │  (serialized mutation: exact read/check/apply sequence)         │
      │                    │                                          │
      │                    ▼                                          │
-     │  [.cs?] any .cs file ────── no ──> write as today              │
-     │        │ yes                                                  │
-     │        ▼                                                      │
-     │  acquire backend ── fails/slow ──> UNVERIFIED + reason        │
-     │        │                                                      │
-     │        ▼                                                      │
-     │  in-memory: baseline errors vs staged errors                  │
-     │        │                         │                            │
-     │   new compiler error?         none new                        │
-     │        │                         │                            │
-     │        ▼                         ▼                            │
-     │   REFUSE (error result,    write + status line                │
-     │   file/line/code/message,  (verified / existing N /           │
-     │   + what to do next)        unverified + reason)              │
-     │                                                               │
-     │  retry cap: 2 refusals/file/run ──> subsequent writes         │
-     │  unverified (never locked out)                                │
-     └───────────────────────────────────────────────────────────────┘
+     │  match manifest-declared verifier file patterns                │
+     │                    │                                          │
+     │                    ▼                                          │
+     │  bounded verifier call (no content write access)               │
+     │       ┌────────────┼─────────────────┐                         │
+     │       ▼            ▼                 ▼                         │
+     │    VERIFIED    UNVERIFIED         REFUSED                      │
+     │       │       + reason/status   + StructuredContent             │
+     │       │            │            (introduced diagnostics)        │
+     │       └──────┬─────┘                 │                         │
+     │              ▼                       └─> no write              │
+     │      apply and write                                           │
+     │      (host owns mutation)                                      │
+     │                                                                │
+     │  2 refusals/file/run ──> third attempt writes unverified        │
+     │  `verify: block|warn|off`; Esc cancels run with no write        │
+     └────────────────────────────────────────────────────────────────┘
                     │
                     ▼
         [file-change bus: existing marks ──> cs_diagnostics sees it
          (`WorkspaceServices.FileChanges.cs:104-108`)]
 ```
 
-Assumptions (per the C4 method, stated because they must hold): the per-workspace backend is the
-*same* one `cs_diagnostics` composes; the staged text is the post-normalization text the write
-would apply; the check's compile is in-memory and does not race the write it feeds. Open
-boundaries deliberately left for the implementation change: the refusal text format and the
-structured-content channel (already landed in the contract for `ToolResult` details) are chosen
-there, not here.
+The per-workspace backend is the same one `cs_diagnostics` composes; the verifier uses an already
+loaded workspace, the staged text is the post-normalization text the write would apply, and the
+check is in-memory and does not race the write it feeds. The existing hook and extension-tool
+rejections above remain in force; this seam is the third placement and avoids both problems. The
+implementation change specifies the concrete registration API while preserving the no-write-access
+contract.
 
 ## 7. Rollout
 
 | Phase | Change | Contract state |
 | --- | --- | --- |
-| 1 (this change) | Design only: proposal, delta spec, this design, proposed ADR-0025 | Not implemented; no production code |
-| 2 | Implement the additive backend member and the in-tool guard; red-green tests first: refusal, pre-existing pass-through, cold-overrun degradation; pin the budget in the perf suite; calibrate the ceiling by ADR-0005's rule | Feature lands behind tests; budget documented |
-| 3 | (optional, separate change) Generalize `lsp-diagnostics` to a per-language server for TypeScript post-write; a further change may then weigh pre-write gating for TS | TS unverified until then |
+| 1 (this change) | Design only: proposal, delta spec, this design, accepted ADR-0025 | Not implemented; no production code |
+| 2 | Implement the public verifier seam, host call after approval, and C# verifier registration; red-green tests first for contract, diagnostics, generators, TFM selection, settings, timeout/cancel and refusal escape; pin the recalibrated ceiling in the perf suite | Feature lands behind tests; budget documented |
+| 3 | #340: the LSP extension registers a verifier for `*.ts`/`*.tsx` | TypeScript remains unverified until then |
 
-## 8. Deliberate non-goals and open question
+## 8. Deliberate non-goals
 
-- No TypeScript/LSP, no other language servers, no MCP/protocol surface change in this change.
-- No whole-solution per-edit verification; no analyzer decision: which *analyzer* findings (if
-  any) should ever refuse is left to the maintainer — the recommendation is none, by the same
-  lock-out argument as §4.
-- No hook participation and no extension-surface change; a future extension-side mechanism stays a
-  separate change explicitly.
+- No TypeScript verifier, no other language verifiers, no MCP/protocol surface change in this slice.
+- No whole-solution per-edit verification and no analyzer gating; warnings and analyzer findings
+  never refuse, by the same lock-out argument as §4.
 - No priming of the Roslyn backend at startup (ADR-0021 laziness stands).
 
 ## 9. Verification of this change

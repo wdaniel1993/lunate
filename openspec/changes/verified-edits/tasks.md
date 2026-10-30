@@ -7,17 +7,18 @@
       rule, the invisibility budget, and the placement against the landed extension contract.
       C# first via the in-process Roslyn backend; staged text compiled against its project,
       changed-file scope; refuse only introduced compiler errors with a two-refusal cap; warm
-      p50 target and a 10 s ceiling with loud unverified degradation; guard inside the
-      `write`/`edit` tools.
+       p50 target and a 10 s ceiling with loud unverified degradation; public, manifest-declared
+       write-verifier extension point invoked by the host after approval.
 - [x] 1.2 Measure the numbers on this repository and record how each was taken (`design.md` §1.2):
       MSBuild project/solution builds (node reuse disabled) and Roslyn cold/warm checks driven
       through `lunate mcp roslyn`.
 - [x] 1.3 Add the delta spec: a new `verified-edits` capability covering staged-content
-      verification, the refusal rule, budget/degradation and the placement.
-- [x] 1.4 Record the decision as **proposed** ADR-0025 (`adr/0025-verified-edits.md`) and the
+       verification, the multiset refusal rule, setting, budget/degradation and verifier seam.
+- [x] 1.4 Record the decision as ADR-0025 (`adr/0025-verified-edits.md`) and the
       change-local ADR manifest (`adr.md`).
-- [x] 1.5 Record deliberate non-goals: no TypeScript/LSP in the first slice, no analyzer gating,
-      no whole-solution per-edit check, no hook or extension-surface change, no startup priming.
+- [x] 1.5 Record deliberate non-goals: no TypeScript verifier in the first slice, no analyzer
+       gating, no whole-solution per-edit check, no `ToolCalling` hook or extension tool, no
+       startup priming.
 
 ## 2. Validation
 
@@ -30,15 +31,15 @@
 
 ## 3. Sign-off (blocking)
 
-- [ ] 3.1 Maintainer sign-off on the five recommendations and proposed ADR-0025 — none yet; the
-      PR proposes and stops.
+- [x] 3.1 Maintainer sign-off 2026-10-30 on the five recommendations and ADR-0025, with amendments
+       folded in — a public verifier seam instead of a core guard (ADR-0017 addendum), a multiset
+       baseline, source generators and a named TFM, the `verify` setting, the live-area line and Esc.
 
 ## 4. Follow-up changes (not part of this change)
 
-- [ ] 4.1 `verified-edits-implementation`: the additive `ICSharpBackend` staged-diagnostics
-      member plus the in-tool guard in `WriteTool`/`EditTool`, test-first (refusal,
-      pre-existing pass-through, cold-overrun degradation, retry cap), budget ceiling
-      recalibrated by the ADR-0005 rule and pinned in the perf suite; docs (`docs/guide.md`,
-      `docs/architecture.md`) claim updated only when the behaviour is true.
-- [ ] 4.2 The second-language decision (likely `lsp-diagnostics` generalized to a per-language
-      server for TypeScript post-write diagnostics), explicitly out of the first slice.
+- [ ] 4.1 `verified-edits-implementation`: public manifest-declared verifier registration, host
+       invocation after approval, C# verifier registered by `Lunate.Roslyn`, the `verify` setting,
+       timeout/cancellation, refusal escape and TUI progress; test-first per its implementation
+       tasks, recalibrate the ceiling by ADR-0005 and pin it in the perf suite; update docs only when
+       the behavior is true.
+- [ ] 4.2 #340: the LSP extension registers a verifier for `*.ts`/`*.tsx`.

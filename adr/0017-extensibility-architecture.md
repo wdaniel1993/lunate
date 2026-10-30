@@ -255,3 +255,38 @@ first.
   global alias collision checks.
 - Until the migration is green, the contract is additive but not stable, and the audit's honest
   statement stands.
+
+## Addendum 2026-10-30 — public write-verifier extension point (accepted)
+
+- Status: maintainer sign-off 2026-10-30; change `verified-edits` (#184), implementation tracked by
+  #336
+- Relates to: ADR-0012 (tool contract), ADR-0021 (per-workspace services and laziness), ADR-0025
+  (verified edits)
+
+### Context
+
+Verified edits need to run after approval and between the host's read/normalize and apply/write
+steps. A core guard that calls `ICSharpBackend` would recreate the core-to-Roslyn coupling removed
+by the 0.2 migration and would make a build using only the public extension API impossible.
+
+### Decision
+
+- `Lunate.Extensibility.Abstractions` exposes a write-verifier registration point. Extensions
+  declare the file patterns they cover in their manifest; the host invokes a matching verifier
+  after approval with a bounded duration.
+- The result is verified, unverified with a reason, or refused with diagnostics in
+  `StructuredContent`. The verifier has no write access and cannot modify staged content; only the
+  host applies or refuses the file mutation.
+- `Lunate.Roslyn` registers the C# verifier through this public seam. This is not a core-internal
+  guard like `BashGuard`.
+- The `ToolCalling` hook remains rejected: its pre-approval timing, short timeout envelope and
+  fail-safe block policy do not fit bounded, unverified-continue verification. An extension tool
+  remains rejected because it cannot veto a separate `write`/`edit` call. The public verifier seam
+  is the third placement and avoids both problems.
+
+### Consequences
+
+- Extensions can provide language-specific write verification without giving the extension write
+  authority or adding a core dependency on a language engine.
+- Manifest declarations and the public contract must be validated together by the host; verifier
+  timeouts degrade visibly to unverified, while explicit refusals leave the file unchanged.
