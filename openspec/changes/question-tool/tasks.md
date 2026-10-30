@@ -17,7 +17,7 @@
 
 ## 4. No-user and ACP behavior
 
-- [ ] 4.1 Test-first in `tests/Lunate.Coding.Tests` and `tests/Lunate.Protocols.Tests`: prove print and unattended `ask_user` calls return `unanswered: no user present` immediately and MCP form requests cancel immediately while recording that outcome; direct the model to state an assumption and continue, and do not read stdin or write question diagnostics to stdout; confirm failure, wire the non-interactive results, then rerun the focused tests.
+- [x] 4.1 Test-first in `tests/Lunate.Coding.Tests` and `tests/Lunate.Protocols.Tests`: prove print and unattended `ask_user` calls return `unanswered: no user present` immediately and MCP form requests cancel immediately while recording that outcome; direct the model to state an assumption and continue, and do not read stdin or write question diagnostics to stdout; confirm failure, wire the non-interactive results, then rerun the focused tests. The parent-commit print fixture failed because `ask_user` was unknown, and the MCP fixture failed because the call returned an error instead of an unanswered cancel. After implementation, direct xUnit assembly runs passed 1/1 in each project. The `dotnet test` wrapper exited 5 on its test-platform handshake before running tests.
 - [ ] 4.2 Test-first in `tests/Lunate.Protocols.Tests`: prove ACP does not route questions through `session/request_permission` and returns the immediate unanswered result when no separate non-approval input mechanism is advertised; confirm failure, implement only an explicitly supported input route if the client contract provides one, then rerun the focused tests.
 
 ## 5. MCP form elicitation

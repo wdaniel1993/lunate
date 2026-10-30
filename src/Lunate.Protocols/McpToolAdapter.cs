@@ -31,6 +31,7 @@ public sealed class McpToolAdapter : ITool
     private readonly ToolNamespace toolNamespace;
     private readonly LunateAnnotations? annotations;
     private readonly Action<string>? log;
+    private readonly McpElicitationOutcome? elicitationOutcome;
 
     internal McpToolAdapter(
         McpClient client,
@@ -39,13 +40,15 @@ public sealed class McpToolAdapter : ITool
         ToolExposure exposure,
         McpClientTool tool,
         TimeSpan callTimeout,
-        Action<string>? log
+        Action<string>? log,
+        McpElicitationOutcome? elicitationOutcome = null
     )
     {
         this.client = client;
         this.serverName = serverName;
         this.callTimeout = callTimeout;
         this.log = log;
+        this.elicitationOutcome = elicitationOutcome;
         toolName = tool.ProtocolTool.Name;
         Description = tool.ProtocolTool.Description ?? string.Empty;
         ParametersSchema = tool.ProtocolTool.InputSchema.Clone();
@@ -74,6 +77,7 @@ public sealed class McpToolAdapter : ITool
         CancellationToken ct
     )
     {
+        int elicitationVersion = elicitationOutcome?.Version ?? 0;
         var request = new JsonRpcRequest
         {
             Id = new RequestId(Guid.NewGuid().ToString("N")),
@@ -120,7 +124,15 @@ public sealed class McpToolAdapter : ITool
             );
         }
 
-        return MapCallResult(serverName, toolName, response.Result);
+        ToolResult result = MapCallResult(serverName, toolName, response.Result);
+        return elicitationOutcome?.WasRecordedSince(elicitationVersion) is true
+            ? result with
+            {
+                Output = string.IsNullOrEmpty(result.Output)
+                    ? UnansweredElicitation
+                    : result.Output + "\n" + UnansweredElicitation,
+            }
+            : result;
     }
 
     internal static ToolResult MapCallResult(
@@ -243,4 +255,7 @@ public sealed class McpToolAdapter : ITool
             );
 
     private static ToolResult Error(string output) => new(output, IsError: true);
+
+    private const string UnansweredElicitation =
+        "unanswered: no user present. State an assumption and continue.";
 }

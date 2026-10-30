@@ -119,6 +119,16 @@ tools.Add(
 );
 tools.Add(
     McpServerTool.Create(
+        (Func<RequestContext<CallToolRequestParams>, CancellationToken, Task<string>>)ElicitAsync,
+        new McpServerToolCreateOptions
+        {
+            Name = "elicit",
+            Description = "Requests a form elicitation and reports the response shape.",
+        }
+    )
+);
+tools.Add(
+    McpServerTool.Create(
         (Func<string>)SpawnTool,
         new McpServerToolCreateOptions
         {
@@ -225,6 +235,22 @@ async Task<string> SlowAsync(int seconds, CancellationToken cancellationToken)
 
 string Boom() => throw new InvalidOperationException("boom: the tool failed on purpose");
 
+async Task<string> ElicitAsync(
+    RequestContext<CallToolRequestParams> context,
+    CancellationToken cancellationToken
+)
+{
+    ElicitResult<ElicitationResponse> response =
+        await context.Server.ElicitAsync<ElicitationResponse>(
+            "Choose a plan.",
+            cancellationToken: cancellationToken
+        );
+    string content = response.Content is null ? "empty" : "present";
+    string result = $"action={response.Action};content={content}";
+    Mark("elicitation " + result);
+    return result;
+}
+
 string SpawnTool()
 {
     tools.Add(
@@ -241,3 +267,8 @@ string SpawnTool()
 }
 
 internal sealed record AddResult(int Sum);
+
+internal sealed class ElicitationResponse
+{
+    public string? Choice { get; set; }
+}

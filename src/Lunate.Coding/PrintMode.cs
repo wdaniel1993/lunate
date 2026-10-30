@@ -638,6 +638,7 @@ internal static class PrintMode
             extraTools: settings.Tools.Extra,
             redaction: redaction
         );
+        tools.Add(new AskUserTool());
         foreach (ITool tool in mcpTools)
         {
             tools.Add(tool);
