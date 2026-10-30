@@ -30,7 +30,8 @@ public sealed partial class ExtensionLoader
     private readonly McpServerRegistry _mcpServers;
     private readonly SkillSourceRegistry _skillSources;
     private readonly CommandSourceRegistry _commandSources;
-    private readonly ExtensionToolRegistry _tools = new();
+    private readonly ExtensionToolRegistry _tools;
+    private readonly ExtensionWorkspaceServiceRegistry _workspaceServices;
     private readonly Dictionary<string, List<IDisposable>> _subscriptions = new(
         StringComparer.Ordinal
     );
@@ -49,6 +50,7 @@ public sealed partial class ExtensionLoader
     {
         ArgumentNullException.ThrowIfNull(options);
         _options = options;
+        _tools = new ExtensionToolRegistry(options.ReservedToolNames);
         _hooks = hooks ?? new HookRunner(null, options.Log);
         _backgroundServices = new BackgroundServiceHost(options.Log);
         _toolResultRenderers = new ToolResultRendererRegistry(options.Log);
@@ -57,6 +59,9 @@ public sealed partial class ExtensionLoader
         _skillSources = new SkillSourceRegistry(options.Log);
         _commandSources = new CommandSourceRegistry(options.Log, options.Notify);
         _modelRegistry = new ModelRegistry(options.ModelCatalog, options.ClientFactory);
+        _workspaceServices = new ExtensionWorkspaceServiceRegistry(
+            options.WorkspaceServiceCapLimit
+        );
         foreach (BuiltInExtension builtIn in options.BuiltIns)
         {
             // The supplied list is a host invariant; the first entry wins and the fold's refusal
@@ -85,6 +90,9 @@ public sealed partial class ExtensionLoader
 
     /// <summary>The tools the loaded extensions registered, in registration order.</summary>
     public ExtensionToolRegistry Tools => _tools;
+
+    /// <summary>The workspace services the loaded extensions registered, per (extension, name).</summary>
+    internal ExtensionWorkspaceServiceRegistry WorkspaceServices => _workspaceServices;
 
     /// <summary>
     /// The named service registry shared with extensions (core handles included). Register core
@@ -196,6 +204,7 @@ public sealed partial class ExtensionLoader
         _singleFileKeys.Remove(id);
         _ignoredCopies.Remove(id);
         IReadOnlyList<string> removedTools = _tools.Unregister(id);
+        _workspaceServices.Unregister(id);
         _hooks.Unregister(id);
         await _backgroundServices.DropAsync(id).ConfigureAwait(false);
         _modelRegistry.Unregister(id);
@@ -328,6 +337,7 @@ public sealed partial class ExtensionLoader
 
         await _backgroundServices.StopAsync(cancellationToken).ConfigureAwait(false);
         await ShutdownRemotesAsync(cancellationToken).ConfigureAwait(false);
+        _workspaceServices.EndSession();
 
         // The contexts are marked disposed only now: a session-ending hook or a background
         // service's stop still makes host calls, and those must not throw (design D3, sign-off Q2).

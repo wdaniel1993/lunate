@@ -21,5 +21,9 @@
              inject HookRunnerOptions.MachineBehind so a loaded runner cannot change the verdict
              the notice depends on. -->
         <InternalsVisibleTo Include="Lunate.Coding.Tests" />
+        <!-- The composition reads each adapter's stamped ActivationRule (the manifest's
+             toolActivation entry) to filter per run root, and /extensions reports the rule it
+             carried; the rule is loader-owned internal state, never extension-facing. -->
+        <InternalsVisibleTo Include="Lunate.Coding" />
     </ItemGroup>
 </Project>

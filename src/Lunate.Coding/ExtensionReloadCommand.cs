@@ -78,6 +78,7 @@ internal static class ExtensionReloadCommand
             StorePath = resolved.StorePath ?? ExtensionHostOptions.Default.StorePath,
             Log = resolved.Log ?? new StderrExtensionLog(errors),
             ReservedCommands = Commands.BuiltinNames,
+            ReservedToolNames = ExtensionSession.CoreToolNames,
             BuiltIns = resolved.BuiltIns ?? [],
         };
 

@@ -44,57 +44,57 @@ implementation (senior-dev subagent batches; one batch per section, interleaved 
 
 ## 4. Per-workspace services
 
-- [ ] 4.1 Red→green: `IWorkspaceServiceFactory<T>` / `IWorkspaceServiceLease<T>` and
+- [x] 4.1 Red→green: `IWorkspaceServiceFactory<T>` / `IWorkspaceServiceLease<T>` and
       `IExtensionContext.RegisterWorkspaceService` / `AcquireWorkspaceServiceAsync` compile against a
       failing consumer and appear in `PublicAPI.Unshipped.txt`.
-- [ ] 4.2 Red→green: the host-side registry lifecycle — lazy create per canonical root outside the
+- [x] 4.2 Red→green: the host-side registry lifecycle — lazy create per canonical root outside the
       lock, dispose on eviction/shutdown, pinned lease never evicted while an unpinned LRU candidate
       is, all-pinned acquisition waits cancellation-aware, `ObjectDisposedException` after shutdown,
       lease dispose wakes waiters.
-- [ ] 4.3 Red→green: the cap binds per (extension, service) from the manifest with default 2, the host
+- [x] 4.3 Red→green: the cap binds per (extension, service) from the manifest with default 2, the host
       may lower it, and evictions never sweep or delete files (dispose of the value only).
-- [ ] 4.4 Red→green: registered-but-undeclared service refuses the load; declared-but-unregistered is
+- [x] 4.4 Red→green: registered-but-undeclared service refuses the load; declared-but-unregistered is
       logged and dropped — the tool rule extended to services.
 
 ## 5. The activation evaluator
 
-- [ ] 5.1 Red→green: the evaluator in `Lunate.Extensibility.Abstractions` — `always` true,
+- [x] 5.1 Red→green: the evaluator in `Lunate.Extensibility.Abstractions` — `always` true,
       `workspace-root-has-file` matches direct children only (no recursion, ordinal, no path
       separator), unreadable root is false without throwing, `workspace-is-git-repository` follows
       `GitCommonDir`.
-- [ ] 5.2 Red→green: the loader stamps each registered tool's rule from the manifest; composition
+- [x] 5.2 Red→green: the loader stamps each registered tool's rule from the manifest; composition
       filters per run root through one shared helper, so an inactive tool never enters the
       registry, the model declarations, nested calls or `ToolContext.ToolStubs`, and a mid-session
       change waits for the next composition.
-- [ ] 5.3 Red→green: the core gate in `HarnessFactory` expresses the flagship rule through the
+- [x] 5.3 Red→green: the core gate in `HarnessFactory` expresses the flagship rule through the
       evaluator (same matching, unreadable root false, Roslyn still not loaded before first use per
       `tests/Lunate.Roslyn.Tests/LazyLoadingTests.cs`).
-- [ ] 5.4 Red→green: `/extensions` reports `inactive (<condition>): <reason>` for a false rule, an
+- [x] 5.4 Red→green: `/extensions` reports `inactive (<condition>): <reason>` for a false rule, an
       active rule changes no counts, and registered/declared counts stay equal.
 
 ## 6. Stable aliases
 
-- [ ] 6.1 Red→green: the model-facing name is the alias when declared (declarations, nested calls,
+- [x] 6.1 Red→green: the model-facing name is the alias when declared (declarations, nested calls,
       result views), and the canonical `<id>__<local>` remains the identity for grouping, `/extensions`
       and unload; a tool without an alias keeps the canonical name.
-- [ ] 6.2 Red→green: collisions refuse the later load naming both owners — alias vs alias, alias vs
+- [x] 6.2 Red→green: collisions refuse the later load naming both owners — alias vs alias, alias vs
       another extension's canonical name, alias vs core name (via `ReservedToolNames` from the
       composition); MCP-tool collisions keep the existing first-composition-wins rule with one
       diagnostic.
 
 ## 7. The fitness suite
 
-- [ ] 7.1 A test-host extension (fixtures, not `Lunate.Roslyn`) proves the built-in path end to end:
+- [x] 7.1 A test-host extension (fixtures, not `Lunate.Roslyn`) proves the built-in path end to end:
       manifest with `builtIn`, `tools`, `toolActivation`, `toolAliases`, `workspaceServices`; tools
       declared, aliased, activated by the host; the workspace service acquired/evicted across two
       roots through the extension contract; no collects and no second ALC; `/extensions` reports it
       correctly.
-- [ ] 7.2 Docs: `docs/extensions/manifest.md` gains the four-field reference and refusal messages,
+- [x] 7.2 Docs: `docs/extensions/manifest.md` gains the four-field reference and refusal messages,
       `contributions/services.md` gains per-workspace services, `contributions/tools.md` the alias and
       activation paragraphs; `python3 scripts/docs-sync --check` green.
 
 ## 8. Verification
 
-- [ ] 8.1 `openspec validate extension-contract-primitives --strict` passes; final gate:
+- [x] 8.1 `openspec validate extension-contract-primitives --strict` passes; final gate:
       `dotnet build Lunate.slnx -c Release`, the touched test projects green in Release,
       `dotnet csharpier check .` (after the last edit); `scripts/verify.sh` is CI's job in this run.

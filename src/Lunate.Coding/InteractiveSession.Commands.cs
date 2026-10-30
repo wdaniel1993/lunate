@@ -365,7 +365,8 @@ internal sealed partial class InteractiveSession
                 hookTimings: host.HookTimings,
                 remoteStart: host.RemoteStartDuration,
                 singleFile: host.RefreshSingleFileExtensions(),
-                ignoredCopies: host.IgnoredHostCopyOf
+                ignoredCopies: host.IgnoredHostCopyOf,
+                inactiveTools: host.InactiveTools
             ),
         ];
         foreach ((string id, RemoteExtensionStatus status) in host.FailedRemoteStatuses())
@@ -571,8 +572,14 @@ internal sealed partial class InteractiveSession
 
         if (_extensions is { } host)
         {
+            // A reload re-composes through the activation filter like the initial composition
+            // (task 5.2): the session's tool list is the next request's declaration surface, and a
+            // false rule keeps the tool out of it. Single-file headers cannot declare
+            // toolActivation today, so no reloaded tool can carry a rule yet — this keeps the
+            // composition's one-filter invariant true when they can.
+            IReadOnlyList<ITool> recomposed = host.ComposeTools(_workspace);
             foreach (
-                ITool tool in host.Tools.Where(tool =>
+                ITool tool in recomposed.Where(tool =>
                     tool is ExtensionToolAdapter adapter
                     && string.Equals(adapter.ExtensionId, id, StringComparison.Ordinal)
                 )

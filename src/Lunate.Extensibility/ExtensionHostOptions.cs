@@ -29,6 +29,9 @@ public sealed class ExtensionHostOptions
     /// </summary>
     public IReadOnlyList<string> ReservedCommands { get; init; } = [];
 
+    /// <summary>The core model-facing tool names extension aliases may not shadow.</summary>
+    internal IReadOnlyList<string> ReservedToolNames { get; init; } = [];
+
     /// <summary>
     /// The extensions the host composition supplies (manifest plus factory), in composition order;
     /// discovery folds them in before the store scans. Empty by default.
@@ -41,6 +44,13 @@ public sealed class ExtensionHostOptions
     /// discovered, trusted or loaded. Built-ins from <see cref="BuiltIns"/> still load.
     /// </summary>
     public bool BuiltInsOnly { get; init; }
+
+    /// <summary>
+    /// The ceiling the host puts over every workspace service's loaded-workspace cap: the manifest
+    /// may declare any positive cap, the host may lower it, and it never raises it. Null leaves the
+    /// manifest's declared cap (default 2) the effective one.
+    /// </summary>
+    public int? WorkspaceServiceCapLimit { get; init; }
 
     /// <summary>
     /// Where locked packages are read from — the compile and the load must agree, or a build would

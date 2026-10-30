@@ -72,6 +72,19 @@ internal sealed class FakeExtensionContext : IExtensionContext
 
     public void RegisterCommandSource(ICommandSource source) => CommandSources.Add(source);
 
+    public void RegisterWorkspaceService<TService>(
+        string name,
+        IWorkspaceServiceFactory<TService> factory
+    )
+        where TService : notnull => throw new NotSupportedException();
+
+    public ValueTask<IWorkspaceServiceLease<TService>> AcquireWorkspaceServiceAsync<TService>(
+        string name,
+        string canonicalWorktreeRoot,
+        CancellationToken ct = default
+    )
+        where TService : notnull => throw new NotSupportedException();
+
     private sealed class EmptySettings : IExtensionSettings
     {
         public bool TryGet(string path, out JsonElement value)

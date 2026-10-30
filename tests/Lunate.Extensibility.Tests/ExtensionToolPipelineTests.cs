@@ -144,11 +144,54 @@ public sealed class ExtensionToolPipelineTests
         Assert.Equal(schema.GetRawText(), declaration.JsonSchema.GetRawText());
     }
 
+    [Fact]
+    public async Task An_alias_is_declared_and_used_by_nested_calls_and_tool_events()
+    {
+        ExtensionToolAdapter outer = Register(
+            "outer",
+            annotations: null,
+            new DelegateToolHandler(
+                async (_, context, ct) =>
+                {
+                    ToolResult nested = await context.ExecuteToolAsync!(
+                        "friendly_echo",
+                        Schema(),
+                        ct
+                    );
+                    return new ToolResult($"nested result: {nested.Output}", nested.IsError);
+                }
+            )
+        );
+        ExtensionToolAdapter inner = Register(
+            "echo",
+            annotations: null,
+            Echo("echo result"),
+            alias: "friendly_echo"
+        );
+        (AgentHarness harness, FakeChatClient client) = Harness(outer, additionalTools: [inner]);
+
+        List<AgentEvent> events = await AdapterTestSupport.Run(harness, Ct);
+
+        Assert.Contains(client.RequestOptions[0]!.Tools!, tool => tool.Name == "friendly_echo");
+        Assert.Equal(
+            ["tools__outer", "friendly_echo"],
+            events.OfType<ToolCallStart>().Select(call => call.ToolName)
+        );
+        Assert.Contains(
+            client.Requests[1].SelectMany(message => message.Contents),
+            content =>
+                content is FunctionResultContent result
+                && result.Result?.ToString()?.Contains("echo result", StringComparison.Ordinal)
+                    == true
+        );
+    }
+
     private static (AgentHarness Harness, FakeChatClient Client) Harness(
         ITool tool,
         HookRunner? hooks = null,
         IToolApprover? approver = null,
-        int outputLimit = ToolOutput.DefaultLimit
+        int outputLimit = ToolOutput.DefaultLimit,
+        IReadOnlyList<ITool>? additionalTools = null
     )
     {
         var client = new FakeChatClient()
@@ -176,6 +219,10 @@ public sealed class ExtensionToolPipelineTests
             );
         var registry = new ToolRegistry();
         registry.Add(tool);
+        foreach (ITool additionalTool in additionalTools ?? [])
+        {
+            registry.Add(additionalTool);
+        }
         var harness = new AgentHarness(
             client,
             registry,
@@ -193,7 +240,8 @@ public sealed class ExtensionToolPipelineTests
     private static ExtensionToolAdapter Register(
         string name,
         ToolAnnotations? annotations,
-        IExtensionToolHandler handler
+        IExtensionToolHandler handler,
+        string? alias = null
     )
     {
         var registry = new ExtensionToolRegistry();
@@ -206,7 +254,9 @@ public sealed class ExtensionToolPipelineTests
                 ParametersSchema = Schema(),
                 Annotations = annotations,
                 Handler = handler,
-            }
+            },
+            activationRule: null,
+            alias: alias
         );
         return Assert.Single(registry.List());
     }

@@ -89,6 +89,44 @@ The `code-mode` and `worktree-tasks` samples are the reference consumers:
 and
 [`WorktreeTasksExtensionFactory.cs`](../../../samples/extensions/worktree-tasks/WorktreeTasksExtension/WorktreeTasksExtensionFactory.cs).
 
+## Per-workspace services
+
+Use a per-workspace service for state tied to one canonical worktree root, such as a workspace
+backend or language-server connection. Declare each name in the manifest's `workspaceServices`
+array, then register a factory during extension creation:
+
+```json
+"workspaceServices": [
+  { "name": "workspace-cache", "maxLoadedWorkspaces": 2 }
+]
+```
+
+```csharp
+context.RegisterWorkspaceService("workspace-cache", new WorkspaceCacheFactory());
+```
+
+The host creates a service lazily on its first acquire for a canonical root. `maxLoadedWorkspaces`
+is a positive per-service cap (default 2); the host may lower it. When the cap is reached, the least
+recently used unpinned workspace is evicted and its service is disposed. An active lease pins its
+workspace, so it is never evicted mid-call; if every entry is pinned, an acquire waits
+cancellation-aware. Disposing a lease releases that pin. Shutdown disposes the remaining values.
+Eviction disposes only the service value: the host does not sweep or delete files from the workspace.
+
+Acquire a typed lease where the worktree-specific operation runs:
+
+```csharp
+using IWorkspaceServiceLease<WorkspaceCache> lease = await context.AcquireWorkspaceServiceAsync<WorkspaceCache>(
+    "workspace-cache",
+    canonicalWorktreeRoot,
+    cancellationToken
+);
+lease.Value.Refresh();
+```
+
+The service name must be declared and registered by the same extension. A registered but undeclared
+service refuses the load; a declared but unregistered service is logged and dropped. The contract
+and lifecycle are also summarized in [the extensibility spec](../../spec/extensibility.md#workspaces-and-repository-identity).
+
 ## Example
 
 `memory-provider` registers its store and hands the same instance to its hook handlers:

@@ -209,9 +209,13 @@ internal static class PrintMode
                 List<ITool> inherited = [];
                 if (extensions is not null)
                 {
-                    // Extension tools first, in registration order, then the MCP tools (design D7).
-                    tools.AddRange(extensions.Tools);
-                    inherited.AddRange(extensions.Tools);
+                    // Extension tools first, in registration order, then the MCP tools (design D7);
+                    // the activation filter runs once per composition, so an inactive tool never
+                    // enters the registry, the model declarations or the inherited snapshot, and
+                    // the withheld ones are recorded for the /extensions view.
+                    IReadOnlyList<ITool> extensionTools = extensions.ComposeTools(workspace);
+                    tools.AddRange(extensionTools);
+                    inherited.AddRange(extensionTools);
                     // The configured names are the collision baseline: a same-named registration
                     // is skipped before listing (the configured server wins); nothing starts yet.
                     ExtensionMcpServers servers = extensions.ComposeMcpServers(

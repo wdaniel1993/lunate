@@ -230,6 +230,7 @@ public sealed partial class ExtensionLoader
         _extensionContexts[descriptor.Id] = extensionContext;
         IExtension extension = implementation.Create(extensionContext);
         CrossCheckManifestTools(descriptor);
+        CrossCheckManifestWorkspaceServices(descriptor);
         await CrossCheckManifestCommandsAsync(descriptor, cancellationToken).ConfigureAwait(false);
         _modelRegistry.RegisterDeclared(descriptor.Id, descriptor.Manifest.ModelProviders, secrets);
         var loaded = new LoadedExtension(descriptor.Id, extension, descriptor);
@@ -288,6 +289,7 @@ public sealed partial class ExtensionLoader
         _loaded.Remove(id);
         _contexts.Remove(id);
         _tools.Unregister(id);
+        _workspaceServices.Unregister(id);
         _hooks.Unregister(id);
         _modelRegistry.Unregister(id);
         _toolResultRenderers.Unregister(id);
@@ -320,18 +322,50 @@ public sealed partial class ExtensionLoader
             _toolResultRenderers.Register,
             _statusWidgets.Register,
             _mcpServers.Register,
-            _tools.Register,
+            (extensionId, registration) =>
+                _tools.Register(
+                    extensionId,
+                    registration,
+                    ActivationRule(descriptor, registration.Name),
+                    ToolAlias(descriptor, registration.Name)
+                ),
             _modelRegistry.RegisterProvider,
             _modelRegistry.RegisterModelMiddleware,
             _modelRegistry.RegisterVirtualModel,
             _skillSources.Register,
-            _commandSources.Register
+            _commandSources.Register,
+            (extensionId, name, serviceType, createValue) =>
+                RegisterWorkspaceService(descriptor, name, serviceType, createValue),
+            (extensionId, name, serviceType, worktreeRoot, ct) =>
+                _workspaceServices.Acquire(extensionId, name, serviceType, worktreeRoot, ct)
         );
 
     private IBackgroundService? FindService(string name) =>
         _backgroundServices.Services.TryGet(name, out IBackgroundService? service) ? service : null;
 
     private object? FindCoreService(string name) => _backgroundServices.Services.FindCore(name);
+
+    /// <summary>
+    /// The manifest's <c>toolActivation</c> rule for one declared tool: the explicit key wins, then
+    /// the <c>*</c> blanket key, and no key at all is null — the composition reads null as always
+    /// active. The rule comes from the parsed manifest, so it is stamped before any registration.
+    /// </summary>
+    private static ExtensionToolActivationRule? ActivationRule(
+        ExtensionDescriptor descriptor,
+        string localName
+    )
+    {
+        IReadOnlyDictionary<string, ExtensionToolActivationRule> rules = descriptor
+            .Manifest
+            .ToolActivation;
+        return rules.TryGetValue(localName, out ExtensionToolActivationRule? explicitKey)
+                ? explicitKey
+            : rules.TryGetValue("*", out ExtensionToolActivationRule? blanket) ? blanket
+            : null;
+    }
+
+    private static string? ToolAlias(ExtensionDescriptor descriptor, string localName) =>
+        descriptor.Manifest.ToolAliases.TryGetValue(localName, out string? alias) ? alias : null;
 
     /// <summary>
     /// The asymmetric manifest rule (design D6): the manifest is what the user trusted before any

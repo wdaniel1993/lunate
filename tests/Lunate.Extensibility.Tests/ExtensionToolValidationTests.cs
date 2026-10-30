@@ -194,6 +194,52 @@ public sealed class ExtensionToolValidationTests
     }
 
     [Fact]
+    public void A_duplicate_alias_is_refused_naming_both_extensions()
+    {
+        var registry = new ExtensionToolRegistry();
+        registry.Register("first", Valid("tool"), activationRule: null, alias: "shared");
+
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+            registry.Register("second", Valid("other"), activationRule: null, alias: "shared")
+        );
+
+        Assert.Contains("extension 'second'", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("extension 'first'", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("'shared'", exception.Message, StringComparison.Ordinal);
+        Assert.Single(registry.List());
+    }
+
+    [Fact]
+    public void An_alias_cannot_shadow_a_later_extensions_canonical_name()
+    {
+        var registry = new ExtensionToolRegistry();
+        registry.Register("first", Valid("owner"), activationRule: null, alias: "second__tool");
+
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+            registry.Register("second", Valid("tool"))
+        );
+
+        Assert.Contains("extension 'second'", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("extension 'first'", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("second__tool", exception.Message, StringComparison.Ordinal);
+        Assert.Single(registry.List());
+    }
+
+    [Fact]
+    public void An_alias_cannot_shadow_a_reserved_core_tool_name()
+    {
+        var registry = new ExtensionToolRegistry(["read"]);
+
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+            registry.Register("tools", Valid("echo"), activationRule: null, alias: "read")
+        );
+
+        Assert.Contains("extension 'tools'", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("core tool 'read'", exception.Message, StringComparison.Ordinal);
+        Assert.Empty(registry.List());
+    }
+
+    [Fact]
     public void The_32_tool_bound_is_per_extension_and_the_33rd_names_the_limit()
     {
         var registry = new ExtensionToolRegistry();
