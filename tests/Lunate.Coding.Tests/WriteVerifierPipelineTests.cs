@@ -67,7 +67,7 @@ public sealed class WriteVerifierPipelineTests
         Assert.False(result.IsError);
         Assert.Equal("code.cs", captured!.RelativePath);
         Assert.Equal("old\r\n", captured.BaselineContent);
-        Assert.Equal("new" + Environment.NewLine, captured.StagedContent);
+        Assert.Equal("new\r\n", captured.StagedContent);
     }
 
     [Fact]
