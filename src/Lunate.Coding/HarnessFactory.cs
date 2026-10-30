@@ -33,13 +33,33 @@ internal static class HarnessFactory
         tools.Add(new ReadTool(workspace, files, skillReadAllowance));
         tools.Add(
             redaction is null
-                ? new WriteTool(workspace, files: files, verifierSelector: writeVerifiers?.Find)
-                : new WriteTool(workspace, null, files, redaction, writeVerifiers?.Find)
+                ? new WriteTool(
+                    workspace,
+                    files: files,
+                    verifierSelector: writeVerifiers is null ? null : writeVerifiers.Find
+                )
+                : new WriteTool(
+                    workspace,
+                    null,
+                    files,
+                    redaction,
+                    writeVerifiers is null ? null : writeVerifiers.Find
+                )
         );
         tools.Add(
             redaction is null
-                ? new EditTool(workspace, files: files, verifierSelector: writeVerifiers?.Find)
-                : new EditTool(workspace, null, files, redaction, writeVerifiers?.Find)
+                ? new EditTool(
+                    workspace,
+                    files: files,
+                    verifierSelector: writeVerifiers is null ? null : writeVerifiers.Find
+                )
+                : new EditTool(
+                    workspace,
+                    null,
+                    files,
+                    redaction,
+                    writeVerifiers is null ? null : writeVerifiers.Find
+                )
         );
         tools.Add(new BashTool(workspace, log: log));
         AddOptionalTools(tools, workspace, extraTools);
