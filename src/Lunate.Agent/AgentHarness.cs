@@ -553,10 +553,11 @@ public sealed partial class AgentHarness
             ? new InlineThinkingSplitter()
             : null;
         UsageModelClient? usageModel = ResolveUsageModel(_options.Usage);
+        List<ChatMessage> request = [];
 
         try
         {
-            List<ChatMessage> request = BuildRequest(sections);
+            request = BuildRequest(sections);
             requestUtf8 = _historyUtf8 + SystemPromptUtf8(sections);
             if (_options.Hooks is { } hookPoints)
             {
@@ -636,6 +637,18 @@ public sealed partial class AgentHarness
                     }
                 }
             }
+        }
+        catch (Exception exception)
+            when (HasImageContent(request)
+                && HasUnknownImageSupport(DeclaredModel())
+                && IsImageInputRejection(exception)
+            )
+        {
+            ModelInfo model = DeclaredModel()!;
+            throw new InvalidDataException(
+                $"model {model.Id} doesn't accept images; switch profile or remove the image.",
+                exception
+            );
         }
         finally
         {
@@ -975,7 +988,7 @@ public sealed partial class AgentHarness
             return;
         }
 
-        ModelInfo? model = _options.Model ?? DeclaredModel();
+        ModelInfo? model = DeclaredModel();
         if (model is null)
         {
             return;
