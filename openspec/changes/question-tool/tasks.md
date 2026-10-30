@@ -6,7 +6,7 @@
 
 ## 2. Agent question contract
 
-- [ ] 2.1 Test-first in `tests/Lunate.Agent.Tests`: add focused failing tests for 1–4 questions, 2–4 options, descriptions, single/multi-select, recommended-option ordering, free text, answer output and invalid counts; confirm failure, implement the hand-authored `ask_user` tool and its decision-focused description, then rerun the focused tests.
+- [x] 2.1 Test-first in `tests/Lunate.Agent.Tests`: add focused failing tests for 1–4 questions, 2–4 options, descriptions, single/multi-select, recommended-option ordering, free text, answer output and invalid counts; confirm failure, implement the hand-authored `ask_user` tool and its decision-focused description, then rerun the focused tests. `AskUserToolTests` failed before implementation on the missing tool types; after implementation, the built assembly class-filter run passed 17/17 (the `dotnet test` wrapper exited 5 on test-platform handshake failure).
 - [ ] 2.2 Test-first in `tests/Lunate.Agent.Tests`: prove `ask_user` bypasses tool approval while a subsequent `bash` call still reaches a fresh approval prompt, and prove the tool is absent from a subagent registry with no parent bubbling; confirm failure, implement the exposure and approval boundary, then rerun the focused tests.
 
 ## 3. Interactive question picker
