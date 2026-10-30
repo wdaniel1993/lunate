@@ -53,6 +53,9 @@ public sealed record AgentSettings
     /// <summary>The ordered favourite model ids (at most eight, unique); schema 2 and later.</summary>
     public IReadOnlyList<string> Favorites { get; init; } = [];
 
+    /// <summary>The resolved TUI presentation settings (the <c>tui</c> section).</summary>
+    public TuiSettings Tui { get; init; } = new();
+
     /// <summary>The resolved optional-tool settings (the <c>tools</c> section).</summary>
     public ToolsSettings Tools { get; init; } = new();
 
@@ -411,6 +414,9 @@ public static partial class SettingsStore
                         {
                             Favorites = ReadFavorites(property.Value, problems),
                         };
+                        break;
+                    case "tui":
+                        settings = settings with { Tui = ReadTui(property.Value, problems) };
                         break;
                     case "tools":
                         settings = settings with { Tools = ReadTools(property.Value, problems) };

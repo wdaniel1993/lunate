@@ -14,6 +14,8 @@ internal sealed partial class InteractiveSession
         "thinkingFull",
         "toolDetails",
         "toolResultLimit",
+        "tui.theme",
+        "tui.keys",
     ];
 
     /// <summary>
@@ -30,6 +32,8 @@ internal sealed partial class InteractiveSession
         lines.Add(Row("thinkingFull", BooleanLiteral(_settings.ThinkingFull)));
         lines.Add(Row("toolDetails", ToolDetailsLiteral(_settings.ToolDetails)));
         lines.Add(Row("toolResultLimit", LimitText(_settings.ToolOutputLimit)));
+        lines.Add(Row("tui.theme", _settings.Tui.Theme));
+        lines.Add(Row("tui.keys", KeysText(_settings.Tui.Keys)));
         lines.Add(Row("startupHeader", BooleanLiteral(_settings.StartupHeader)));
         lines.Add(Row("updateCheck", BooleanLiteral(_settings.UpdateCheck)));
         lines.Add(Row("favorites", ListValue(_settings.Favorites)));
@@ -57,6 +61,8 @@ internal sealed partial class InteractiveSession
             "thinkingFull" => BooleanLiteral(_settings.ThinkingFull),
             "toolDetails" => ToolDetailsLiteral(_settings.ToolDetails),
             "toolResultLimit" => LimitText(_settings.ToolOutputLimit),
+            "tui.theme" => _settings.Tui.Theme,
+            "tui.keys" => KeysText(_settings.Tui.Keys),
             "startupHeader" => BooleanLiteral(_settings.StartupHeader),
             "updateCheck" => BooleanLiteral(_settings.UpdateCheck),
             "favorites" => ListValue(_settings.Favorites),
@@ -150,6 +156,20 @@ internal sealed partial class InteractiveSession
 
                 Notify("toolResultLimit must be a positive integer", NoticeLevel.Warning);
                 return;
+            case "tui.theme":
+                if (!TuiTheme.TryGet(value, out TuiTheme theme))
+                {
+                    Notify($"tui.theme must be {TuiTheme.Literals}", NoticeLevel.Warning);
+                    return;
+                }
+
+                SetTheme(theme);
+                _settings = _settings with { Tui = _settings.Tui with { Theme = theme.Name } };
+                PersistTui("tui.theme: " + theme.Name);
+                return;
+            case "tui.keys":
+                SetKeyRemap(value);
+                return;
             case "model":
                 Notify("the model has its own command — /model", NoticeLevel.Warning);
                 return;
@@ -184,6 +204,8 @@ internal sealed partial class InteractiveSession
                 or "thinkingFull"
                 or "toolDetails"
                 or "toolResultLimit"
+                or "tui.theme"
+                or "tui.keys"
                 or "startupHeader"
                 or "updateCheck"
                 or "favorites"
@@ -233,4 +255,114 @@ internal sealed partial class InteractiveSession
 
     private static string CellText(long? value) =>
         value is { } budget ? budget.ToString("N0", CultureInfo.InvariantCulture) : "unlimited";
+
+    /// <summary>The persisted remap table as one line: the remapped ids, or "none".</summary>
+    private static string KeysText(IReadOnlyDictionary<string, IReadOnlyList<string>> keys) =>
+        keys.Count == 0
+            ? "none"
+            : string.Join(
+                ", ",
+                keys.Select(entry => string.Format(
+                    CultureInfo.InvariantCulture,
+                    "{0}={1}",
+                    entry.Key,
+                    string.Join("+", entry.Value)
+                ))
+            );
+
+    /// <summary>
+    /// The <c>/settings tui.keys &lt;id&gt; &lt;key&gt;</c> remap: the binding's declared keys become
+    /// the one spec. The catalogue replaces its rows in place — same id, intent, context and
+    /// description, no second declaration — and the merged table persists. An unknown id is
+    /// refused with the closest ids named; a dead key (a earlier binding already answers it) is
+    /// refused with that binding named.
+    /// </summary>
+    private void SetKeyRemap(string value)
+    {
+        string[] parts = value.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length < 2)
+        {
+            Notify(
+                "tui.keys takes a binding id and a key — e.g. /settings tui.keys ctrl-d.quit ctrl+t",
+                NoticeLevel.Warning
+            );
+            return;
+        }
+
+        string id = parts[0];
+        if (!KeyString.TryParse(parts[1], out KeyPattern pattern, out string? parseError))
+        {
+            Notify(parseError ?? "the key could not be parsed", NoticeLevel.Warning);
+            return;
+        }
+
+        string? problem = KeyBindingCatalog.Remap(id, [pattern]);
+        if (problem is not null)
+        {
+            Notify(problem, NoticeLevel.Warning);
+            return;
+        }
+
+        var merged = new Dictionary<string, IReadOnlyList<string>>(_settings.Tui.Keys)
+        {
+            [id] = [KeyPatternFormatter.Describe(pattern)],
+        };
+        _settings = _settings with { Tui = _settings.Tui with { Keys = merged } };
+        PersistTui($"tui.keys: {id} → {KeyPatternFormatter.Describe(pattern)}");
+    }
+
+    /// <summary>
+    /// Persists the <c>tui</c> section through the read-modify-write store, then answers the
+    /// applied value; a file that cannot be saved keeps the session's own change and says so.
+    /// </summary>
+    private void PersistTui(string what)
+    {
+        try
+        {
+            SettingsStore.WriteTui(_settings.Tui, _options.SettingsPath);
+            Notify($"{what} (saved to {_options.SettingsPath})");
+        }
+        catch (Exception exception) when (exception is InvalidDataException or IOException)
+        {
+            Notify($"{what} (this session; saving failed: {exception.Message})", NoticeLevel.Warning);
+        }
+    }
+
+    /// <summary>Applies one theme's colour plan to the live surfaces, mid-session and at startup.</summary>
+    private void SetTheme(TuiTheme theme)
+    {
+        _theme = theme;
+        _color = theme.Plan(_capabilities.Color);
+        _live.SetColor(_color);
+        _viewer.SetColor(_color);
+    }
+
+    /// <summary>
+    /// The TUI presentation the resolved settings carry: the theme's colour plan over the detected
+    /// colour system and the persisted key remaps applied to the catalogue in place. Called once
+    /// when the settings resolve, before the welcome header and the first user echo render.
+    /// </summary>
+    private void ApplyTuiPresentation()
+    {
+        SetTheme(TuiTheme.Get(_settings.Tui.Theme));
+        foreach (KeyValuePair<string, IReadOnlyList<string>> remap in _settings.Tui.Keys)
+        {
+            var patterns = new List<KeyPattern>();
+            foreach (string spec in remap.Value)
+            {
+                if (KeyString.TryParse(spec, out KeyPattern pattern, out _))
+                {
+                    patterns.Add(pattern);
+                }
+            }
+
+            // The store validated every id and spec, so a problem here is a store or catalogue
+            // drift; the session says so and keeps the shipped key rather than silently dropping.
+            string? problem = KeyBindingCatalog.Remap(remap.Key, patterns);
+            if (problem is not null)
+            {
+                Notify(problem, NoticeLevel.Warning);
+            }
+        }
+    }
 }

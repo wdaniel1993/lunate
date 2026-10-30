@@ -12,10 +12,10 @@ namespace Lunate.Tui;
 internal sealed partial class TranscriptViewer : IDisposable
 {
     private readonly IConsoleIO _console;
-    private readonly TerminalCapabilities _capabilities;
+    private TerminalCapabilities _capabilities;
     private readonly TranscriptViewerRenderer _renderer;
     private readonly StringWriter _buffer = new();
-    private readonly IAnsiConsole _ansi;
+    private IAnsiConsole _ansi;
     private readonly object _gate = new();
     private IDisposable? _screen;
     private IDisposable? _resized;
@@ -36,6 +36,21 @@ internal sealed partial class TranscriptViewer : IDisposable
         // The frame's styled lines are markup; this console turns them into the ANSI the
         // alternate screen gets. The colour system adapts, so a colourless terminal emits none.
         _ansi = ConsoleColorSystem.Create(capabilities.Color, _buffer);
+    }
+
+    /// <summary>
+    /// Applies the theme's colour plan: the colour system the alternate screen's console resolves
+    /// and the one the viewer's renderers choose spans with. Called once, when the settings
+    /// resolve, before anything is painted.
+    /// </summary>
+    internal void SetColor(ColorSystemSupport color)
+    {
+        lock (_gate)
+        {
+            _capabilities = _capabilities with { Color = color };
+            _renderer.SetColor(color);
+            _ansi = ConsoleColorSystem.Create(color, _buffer);
+        }
     }
 
     /// <summary>Whether the viewer owns the terminal right now.</summary>
