@@ -26,6 +26,9 @@ public sealed record AgentSettings
     /// <summary>The approval policy; defaults to <see cref="ApprovalPolicy.Ask"/>.</summary>
     public ApprovalPolicy Approval { get; init; } = ApprovalPolicy.Ask;
 
+    /// <summary>The optional approval decision consumer; defaults to off.</summary>
+    public DecisionMode DecisionMode { get; init; } = DecisionMode.Off;
+
     /// <summary>How much of a tool call the scrollback shows; defaults to collapsed.</summary>
     public ToolDetails ToolDetails { get; init; } = ToolDetails.Collapsed;
 
@@ -64,6 +67,12 @@ public sealed record AgentSettings
 
     /// <summary>The stored custom OpenAI-compatible endpoints (the <c>providers</c> section).</summary>
     public IReadOnlyList<CustomProvider> Providers { get; init; } = [];
+
+    internal IReadOnlyDictionary<string, ModelProfile> Profiles { get; init; } =
+        new Dictionary<string, ModelProfile>(StringComparer.Ordinal);
+
+    internal IReadOnlyDictionary<string, string> Usages { get; init; } =
+        new Dictionary<string, string>(StringComparer.Ordinal);
 }
 
 /// <summary>The optional tools enabled beside the core set (the <c>tools</c> settings section).</summary>
@@ -418,6 +427,21 @@ public static partial class SettingsStore
                         settings = settings with
                         {
                             Providers = ReadProviders(property.Value, problems),
+                        };
+                        break;
+                    case "profiles":
+                        settings = settings with
+                        {
+                            Profiles = ReadProfiles(property.Value, problems),
+                        };
+                        break;
+                    case "usages":
+                        settings = settings with { Usages = ReadUsages(property.Value, problems) };
+                        break;
+                    case "decisionMode":
+                        settings = settings with
+                        {
+                            DecisionMode = ReadDecisionMode(property.Value, problems),
                         };
                         break;
                     case "tui":

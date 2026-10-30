@@ -261,7 +261,7 @@ public sealed class InteractiveSessionTreeTests
         SessionHeaderEntry header = Session.Load(fork).Header;
         Assert.Equal(new SessionOrigin(Session.Load(source).SessionId, "e_01"), header.Origin);
         Assert.True(header.Branched);
-        Assert.Equal(3, header.Schema);
+        Assert.Equal(4, header.Schema);
         Assert.Equal(["e_01"], Session.Load(fork).Entries.Select(entry => entry.Id));
 
         Assert.Contains(source, host.Frames, StringComparison.Ordinal);

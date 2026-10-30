@@ -41,6 +41,9 @@ internal static class PrintEventJson
             typeof(ToolCallResult),
             typeof(ApprovalRequested),
             typeof(UsageUpdated),
+            typeof(DecisionEvaluated),
+            typeof(DecisionUnavailable),
+            typeof(DecisionFailed),
             typeof(ModelRouted),
             typeof(Retrying),
             typeof(CompactionApplied),
@@ -121,6 +124,21 @@ internal static class PrintEventJson
             ToolCallResult e => ("tool_call_result", ToolResultBody(e)),
             ApprovalRequested e => ("approval_requested", ApprovalBody(e)),
             UsageUpdated e => ("usage_updated", UsageBody(e, catalog, fallbackModelId)),
+            DecisionEvaluated e => (
+                "decision_evaluated",
+                new JsonObject
+                {
+                    ["modelId"] = e.ModelId,
+                    ["method"] = e.Method,
+                    ["option"] = e.Option,
+                    ["probability"] = e.Probability,
+                }
+            ),
+            DecisionUnavailable => ("decision_unavailable", new JsonObject()),
+            DecisionFailed e => (
+                "decision_failed",
+                new JsonObject { ["modelId"] = e.ModelId, ["reason"] = e.Reason }
+            ),
             ModelRouted e => (
                 "model_routed",
                 new JsonObject

@@ -15,7 +15,7 @@ The change introduces user-owned provider instances, named profiles, and usage s
 - Make provider instances user-owned data, with credentials represented only by references.
 - Validate named profiles against provider and catalog capabilities before a client is used.
 - Resolve all model calls through an explicit usage, profile, and provider assignment.
-- Make decision capability and adapter provenance visible, and make the no-profile case explicitly unavailable.
+- Make decision method provenance visible, validate the response contract, and make the no-profile case explicitly unavailable.
 - Attribute persisted usage and `/cost` to usage and provider while retaining model id and token-lane pricing behavior.
 - Reject project settings that could redirect user credentials, while allowing project profile references and only-tightening limits.
 
@@ -24,13 +24,13 @@ The change introduces user-owned provider instances, named profiles, and usage s
 - Defining a region-based data-routing or residency policy; `region` is retained metadata only.
 - Adding a core per-request routing DSL or changing how a declared provider routes internally.
 - Adding provider kinds beyond the twelve existing templates or new NuGet dependencies.
-- Silently adapting unsupported settings, implicitly falling back to the chat model for decisions, or treating adapter results as calibrated.
+- Silently adapting unsupported profile settings, implicitly falling back to the chat model for decisions, or applying decisions outside the user's allow envelope.
 
 ## Decisions
 
 ### Provider templates and instances are separate
 
-Keep the existing twelve preset definitions as provider-kind templates for adapter selection and defaults. Store named provider instances in user settings, each with kind, base URL, credential reference, optional headers, and region. An instance may override its template endpoint and credential source; its secret is resolved only by the existing host-side credential path at request time. Existing stored keys are migrated idempotently into matching provider entries without copying the value or replacing explicit entries. The environment remains the highest-precedence credential source for CI overrides.
+Keep the existing twelve preset definitions as provider-kind templates for adapter selection and defaults. Store named provider instances in user settings, each with kind, base URL, credential reference, optional headers whose values are credential references, and region. An instance may override its template endpoint and credential source; its secret is resolved only by the existing host-side credential path at request time. Existing stored keys are migrated idempotently into matching provider entries without copying the value or replacing explicit entries. The environment remains the highest-precedence credential source for CI overrides.
 
 **Alternative considered:** Treat each preset as the provider instance. Rejected because it cannot express multiple endpoints or credential sources for one kind and conflates defaults with user-owned endpoints.
 
@@ -50,9 +50,9 @@ Keep the selection graph explicit: `chat`, `fast`, `decision`, `subagents`, or `
 
 ### Decision capability is declared and degradation is explicit
 
-The selected provider/model declares structured output and, for a native decision provider, decision capability. A Jev-compatible provider registers that capability through the metadata contract; core does not identify vendors. Native and adapter decisions share the decision interface but keep distinct provenance. A chat-model adapter is selected only through the literal `adapter:<provider>/<model>` declaration, requires structured output, and is marked uncalibrated. The capability precheck reports `This model cannot decide`; only after that passes does output validation report `invalid decision`. With no decision profile, initialization reports unavailable and the layer stays off rather than borrowing chat.
+Any model may serve `decision` when the user explicitly assigns it. Model ability is the user's judgement, not a product capability gate; catalog `apiType` may label `native` provider-decision calls versus `adapter` chat-model calls but never refuses a profile. No model is marked calibrated or “cannot decide.” Each response is checked against the defined options and well-formed probabilities (one finite value in [0, 1] per option, summing to 1 within contract tolerance). A malformed response is retried once; a second malformed response fails the decision and names the model. Probability extraction from logprobs may be used when cheaply available, but is an implementation detail and is not persisted as policy or provenance. With no decision profile, the layer is unavailable and off rather than implicitly borrowing chat. Shadow mode is an opt-in user setting for trying a model, not a promotion gate.
 
-Each decision and shadow metric carries provider kind (`native` or `adapter`) and model id; reports aggregate those kinds separately. This prevents an adapter measurement from being counted as native calibration.
+Every decision records only its model id, `native`/`adapter` method and probability beyond the normal usage/profile/provider-name-and-kind attribution. A decision may only tighten the approval result: it cannot override a deny or grant permission outside the user's allow envelope. This invariant applies to every model and is the prompt-injection boundary.
 
 **Alternative considered:** Fall back to chat when decision is unset. Rejected because it makes a hidden model choice and treats ordinary chat capability as decision capability.
 
@@ -66,7 +66,7 @@ The reason is a credential-exfiltration path: if a repository could define a pro
 
 ### Persist usage attribution in session schema 4
 
-Add usage and provider identity to schema-4 model usage records, and provider kind/model id to decision provenance. Preserve schemas 1–3 and their original meaning; never infer missing usage or provider data from old entries. Add schema-4 golden fixtures while leaving every existing golden byte-for-byte unchanged. This is an intentional session-format change under ADR-0015 and requires maintainer approval before apply.
+Add only usage, profile name, provider name/kind and resolved model id to schema-4 model usage attribution, with decision method (`native` or `adapter`) and probability for decisions. Never persist provider configuration (base URLs, headers or credential references), capabilities or secrets in a session. Preserve schemas 1–3 and their original meaning; never infer missing usage or provider data from old entries. Add schema-4 golden fixtures while leaving every existing golden byte-for-byte unchanged. This is an intentional session-format change under ADR-0015 and requires maintainer approval before apply.
 
 `/cost` reads the same recorded accounting data and groups prices by usage and provider. Pricing remains display-only: unknown positive token lanes remain unpriced, and neither attribution nor cost changes budgets or approvals.
 
@@ -103,10 +103,10 @@ The user configures provider definitions and profiles; project config can only r
 - [Provider instance schema overlaps with existing custom provider settings] -> Migrate existing custom endpoints into named instances idempotently; preserve their endpoint and auth reference, and test both legacy and explicit new configuration.
 - [Reachability checks can hang or trigger endpoint behavior] -> Use a strict timeout, connect without auth or headers, and report unknown separately from credential presence when no probe can be completed.
 - [Project settings smuggle endpoint/credential data through aliases or nested fields] -> Validate allowed project keys structurally and reject each forbidden key before merge or secret resolution; test the attacker URL plus credential-reference case.
-- [Catalog metadata omits a provider limitation] -> Default missing capabilities to unsupported and return the capability-specific error; do not reinterpret the failure as an invalid decision.
+- [A model returns malformed decision data] -> Validate the contract, retry once, then report a model-named failure; do not convert a technical failure into a model-capability verdict.
 - [Schema 4 changes session bytes] -> Require maintainer sign-off before apply, retain read compatibility for schemas 1–3, add new golden fixtures, and never rewrite existing goldens.
 - [Usage and provider subtotals double-count shared profiles] -> Attribute each model call once to its semantic usage and provider; test a shared profile serving multiple usages.
-- [Adapter metrics are mistaken for native calibration] -> Require explicit `adapter:` naming and carry provider kind on every decision and shadow metric.
+- [A decision is treated as a grant] -> Enforce the user's allow envelope after every decision; decisions can only tighten and never override deny.
 - [Region metadata is mistaken for a residency guarantee] -> Document the field as descriptive only and add no endpoint selection or routing behavior from it.
 
 ## Migration Plan

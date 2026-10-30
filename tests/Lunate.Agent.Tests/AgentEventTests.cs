@@ -77,7 +77,7 @@ public sealed class AgentEventTests
                 .Where(type => typeof(AgentEvent).IsAssignableFrom(type) && !type.IsAbstract),
         ];
 
-        Assert.Equal(22, concreteTypes.Length);
+        Assert.Equal(25, concreteTypes.Length);
         Assert.All(
             concreteTypes,
             type => Assert.True(type.IsSealed, $"{type.Name} must be sealed")

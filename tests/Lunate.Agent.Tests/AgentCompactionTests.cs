@@ -347,7 +347,7 @@ public sealed class AgentCompactionTests
     }
 
     [Fact]
-    public async Task The_summarization_usage_is_counted_internally_and_not_emitted()
+    public async Task The_summarization_usage_is_attributed_once()
     {
         using var temp = new TempDirectory();
         Session session = Session.Create(temp.File("s.jsonl"), "/work");
@@ -355,18 +355,134 @@ public sealed class AgentCompactionTests
         AppendTurn(session, "two", "noted two");
         AppendTurn(session, "three", "noted three");
         AppendTurn(session, "four", "noted four");
-        var client = new ScriptedChatClient()
-            .Enqueue(WithUsage("summary", 5000, 10))
-            .Enqueue(LoopScripts.Text("done"), LoopScripts.Stop());
-        AgentHarness harness = Harness(client, session);
+        var chat = new ScriptedChatClient().Enqueue(LoopScripts.Text("done"), LoopScripts.Stop());
+        var compaction = new ScriptedChatClient().Enqueue(WithUsage("summary", 5000, 10));
+        AgentHarness harness = Harness(
+            chat,
+            session,
+            usageModels: new Dictionary<string, UsageModelClient>(StringComparer.Ordinal)
+            {
+                ["chat"] = new(
+                    chat,
+                    "chat-profile",
+                    "openai",
+                    new ModelInfo("chat-model", "openai", null, Window, SupportsTools: true)
+                ),
+                ["compaction"] = new(
+                    compaction,
+                    "compact-profile",
+                    "router",
+                    new ModelInfo("summary-model", "openrouter", null, Window, SupportsTools: true)
+                ),
+            }
+        );
 
         List<AgentEvent> events = await AgentTestSupport.Run(harness);
 
-        Assert.DoesNotContain(
+        UsageUpdated usage = Assert.Single(
             events.OfType<UsageUpdated>(),
-            usage => usage.Usage.InputTokenCount == 5000
+            update => update.Usage.InputTokenCount == 5000
         );
+        Assert.Equal("summary-model", usage.ModelId);
+        Assert.Equal(
+            new ModelUsageAttribution("compaction", "compact-profile", "router", "openrouter"),
+            usage.Attribution
+        );
+        Assert.Single(chat.Requests);
+        Assert.Single(compaction.Requests);
         Assert.Equal((5000L, 10L), harness.CompactionUsageTotals);
+    }
+
+    [Fact]
+    public async Task Compaction_uses_chat_by_default_even_when_fast_is_configured()
+    {
+        using var temp = new TempDirectory();
+        Session session = Session.Create(temp.File("s.jsonl"), "/work");
+        AppendTurn(session, "one " + new string('x', 4000), "noted one");
+        AppendTurn(session, "two", "noted two");
+        AppendTurn(session, "three", "noted three");
+        AppendTurn(session, "four", "noted four");
+        var chat = new ScriptedChatClient()
+            .Enqueue(Summary("chat summary"))
+            .Enqueue(LoopScripts.Text("done"), LoopScripts.Stop());
+        var fast = new ScriptedChatClient();
+        AgentHarness harness = Harness(
+            chat,
+            session,
+            usageModels: new Dictionary<string, UsageModelClient>(StringComparer.Ordinal)
+            {
+                ["chat"] = new(
+                    chat,
+                    "chat-profile",
+                    "openai",
+                    new ModelInfo("chat-model", "openai", null, Window, SupportsTools: true)
+                ),
+                ["fast"] = new(
+                    fast,
+                    "fast-profile",
+                    "openai",
+                    new ModelInfo("fast-model", "openai", null, Window, SupportsTools: true)
+                ),
+            }
+        );
+
+        await AgentTestSupport.Run(harness);
+
+        Assert.Equal(2, chat.Requests.Count);
+        Assert.Equal(CompactionReducer.SummarizationPrompt, chat.Requests[0].Messages[0].Text);
+        Assert.Empty(fast.Requests);
+        Assert.Equal(
+            "chat summary",
+            Assert.Single(session.Entries.OfType<SessionCompactionEntry>()).Summary
+        );
+    }
+
+    [Fact]
+    public async Task Fast_compaction_requires_an_explicit_compaction_assignment()
+    {
+        using var temp = new TempDirectory();
+        Session session = Session.Create(temp.File("s.jsonl"), "/work");
+        AppendTurn(session, "one " + new string('x', 4000), "noted one");
+        AppendTurn(session, "two", "noted two");
+        AppendTurn(session, "three", "noted three");
+        AppendTurn(session, "four", "noted four");
+        var chat = new ScriptedChatClient().Enqueue(LoopScripts.Text("done"), LoopScripts.Stop());
+        var fast = new ScriptedChatClient().Enqueue(Summary("fast summary"));
+        AgentHarness harness = Harness(
+            chat,
+            session,
+            usageModels: new Dictionary<string, UsageModelClient>(StringComparer.Ordinal)
+            {
+                ["chat"] = new(
+                    chat,
+                    "chat-profile",
+                    "openai",
+                    new ModelInfo("chat-model", "openai", null, Window, SupportsTools: true)
+                ),
+                ["fast"] = new(
+                    fast,
+                    "fast-profile",
+                    "openai",
+                    new ModelInfo("fast-model", "openai", null, Window, SupportsTools: true)
+                ),
+                ["compaction"] = new(
+                    fast,
+                    "fast-profile",
+                    "openai",
+                    new ModelInfo("fast-model", "openai", null, Window, SupportsTools: true)
+                ),
+            }
+        );
+
+        await AgentTestSupport.Run(harness);
+
+        Assert.Single(chat.Requests);
+        Assert.Single(fast.Requests);
+        Assert.Equal(CompactionReducer.SummarizationPrompt, fast.Requests[0].Messages[0].Text);
+        Assert.Equal(
+            "fast summary",
+            Assert.Single(session.Entries.OfType<SessionCompactionEntry>()).Summary
+        );
     }
 
     [Fact]
@@ -465,7 +581,8 @@ public sealed class AgentCompactionTests
         Session? session = null,
         string? systemPrompt = null,
         string modelId = TestCatalog.ModelId,
-        ModelCatalog? catalog = null
+        ModelCatalog? catalog = null,
+        IReadOnlyDictionary<string, UsageModelClient>? usageModels = null
     ) =>
         new(
             client,
@@ -476,6 +593,7 @@ public sealed class AgentCompactionTests
                 SystemPrompt = systemPrompt,
                 ModelId = modelId,
                 ModelCatalog = catalog ?? TestCatalog.WithWindow(Window),
+                UsageModels = usageModels,
             }
         );
 

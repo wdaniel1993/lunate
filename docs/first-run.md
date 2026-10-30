@@ -1,7 +1,8 @@
 # First run
 
-Lunate needs two things before the first prompt: a model and a credential for that model's
-provider. Both can be set up before the TUI starts, or from the first-run picker inside it.
+Lunate needs a model profile and a credential source for its provider before the first prompt.
+Use the first-run picker for a built-in provider, or define a named provider instance and profile in
+your user configuration before starting the TUI.
 
 ## The shortest path
 
@@ -32,10 +33,75 @@ guessing.
 
 | Command | What it does |
 | --- | --- |
-| `lunate auth list` | One line per provider: `stored`, `environment (<VARIABLE>)` or `not set`. Never prints a value. Exits 0 even when nothing is stored. |
-| `lunate auth login <provider>` | Stores a key under the provider id. Use `--key-stdin` to read one line from a pipe. |
+| `lunate auth list` | One line per provider entry with credential presence and bounded reachability (`reachable`, `unreachable`, or `unknown`). Never prints a credential or header value. Exits 0 even when nothing is stored. |
+| `lunate auth login <provider>` | Stores a key under the provider entry name. Use `--key-stdin` to read one line from a pipe. |
 | `lunate auth logout <provider>` | Removes the stored entry, names a still-set environment variable without its value, and exits non-zero when nothing was stored. |
 | `lunate auth status` | Reports the resolved default provider and whether a credential exists; exits 0 when it does and 1 when it does not, so a bootstrap script can branch on it. |
+
+## Provider instances and credentials
+
+The twelve built-in provider kinds are templates for adapters and defaults. A user may define
+multiple named provider entries of one kind in `~/.lunate/providers.json`:
+
+```json
+{
+  "schemaVersion": 1,
+  "providers": [
+    {
+      "name": "work-openai",
+      "kind": "openai",
+      "baseUrl": "https://api.openai.com/v1",
+      "credentialReference": "auth:work-openai",
+      "region": "eu"
+    }
+  ]
+}
+```
+
+`credentialReference` and optional header values are references, never secret values. Supported
+sources are `auth:<key>`, `env:<VARIABLE>`, and `helper:<name>`. The credential itself stays in
+`auth.json`, the environment, or the configured helper. `region` (`eu`, `us`, or `local`) is
+descriptive metadata only: it does not choose an endpoint or guarantee data residency.
+
+On load, Lunate idempotently migrates legacy stored keys and custom endpoints into matching provider
+entries. An explicit provider entry wins, and migration never copies the secret out of `auth.json`.
+Environment credentials continue to take precedence over stored keys, including in CI. Reachability
+shown by `auth list` is a bounded unauthenticated probe; it sends neither credentials nor optional
+headers.
+
+Project settings may refer to user-defined providers and profiles or lower user limits. They cannot
+define a provider, endpoint, credential reference, or header secret. This prevents a repository from
+redirecting a user's credentials to its own server.
+
+## Profiles and usages
+
+`~/.lunate/settings.json` binds a profile name to a provider entry and catalog model, then assigns
+profiles to existing usages. For example:
+
+```json
+{
+  "schemaVersion": 2,
+  "profiles": {
+    "chat-main": { "provider": "work-openai", "model": "gpt-4o-mini" },
+    "reviewer": { "provider": "work-openai", "model": "gpt-4o-mini" }
+  },
+  "usages": { "chat": "chat-main", "decision": "reviewer" }
+}
+```
+
+Profiles may set supported reasoning, output, temperature, context-window, decision-threshold, and
+capability-override fields. Unsupported settings are refused by field and profile name before a
+request. `/model` changes only the chat profile; `provider/model` selects through a named provider,
+and a bare model id must be unique. Subagents and compaction default to chat when unassigned;
+compaction uses `fast` only when explicitly selected.
+
+Decision use is the user's choice, not a model-intelligence verdict. The consumer is off by default
+and must be enabled in user settings. Any configured model may be used; known structured-output
+support is checked as a technical requirement, while unknown capability facts are allowed. A
+decision response must name a defined option and provide valid probabilities; a malformed response
+is retried once and then fails with the model named. Provenance labels `native` or `adapter` and
+records the model id. Decisions can only tighten approvals: they never override deny or approve
+outside the user's allow envelope. See [`guide.md`](guide.md) for the full model and cost behavior.
 
 ## The in-session picker
 
@@ -86,15 +152,16 @@ Saving validates the entry:
 - The provider id must be non-empty, must not contain spaces or `/`, and must not shadow a built-in
   preset.
 
-A refused entry is not echoed and writes nothing. A stored custom provider keeps its key in
-`auth.json` under the provider id and its endpoint in `settings.json` as a `providers` entry — one
-secret store, not two. Its catalog name is `<id>/<model>` (for example `local/llama3`), so it
-appears in `/model` beside the presets.
+A refused entry is not echoed and writes nothing. `lunate auth login --custom` remains available for
+legacy single-endpoint setup. Its endpoint is migrated into the named provider store while the key
+remains in `auth.json`; new multi-provider setups should use `providers.json` and a profile in
+`settings.json`. The model can then be selected in `/model` by its qualified provider/model id.
 
 ## Where the credential lives
 
-The key is stored in `~/.lunate/auth.json` under `keys`, schema 1, owner-only permissions where the
-platform has file modes. That is the only place Lunate stores a provider secret.
+Stored keys live in `~/.lunate/auth.json` under `keys`, schema 1, with owner-only permissions where
+the platform has file modes. `providers.json` and `settings.json` contain only provider/profile
+configuration and credential references, never resolved secret values.
 
 Every preset also has a provider environment variable — `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`,
 `GROQ_API_KEY` and so on; Google also accepts `GEMINI_API_KEY`. When that variable is set it wins

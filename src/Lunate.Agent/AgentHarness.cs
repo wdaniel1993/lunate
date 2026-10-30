@@ -37,6 +37,7 @@ public sealed partial class AgentHarness
     private int _spillSequence;
     private SubagentTreeState? _treeState;
     private SubagentRunner? _subagentRunner;
+    private readonly UsageModelClient? _compactionModel;
     private long _tokenBudgetUsed;
     private string? _lastModelId;
 
@@ -49,7 +50,11 @@ public sealed partial class AgentHarness
         _options = options ?? new AgentHarnessOptions();
         ValidateOptions(_options);
         _images = _options.Session?.Images ?? SessionImages.InMemory();
-        _compactor = new CompactionReducer(_client, _options.CompactionKeepTurns);
+        _compactionModel = ResolveUsageModel("compaction");
+        _compactor = new CompactionReducer(
+            _compactionModel?.Client ?? _client,
+            _options.CompactionKeepTurns
+        );
         if (_options.Session is { } session)
         {
             foreach (SessionHistoryItem item in session.HistoryItems())
@@ -90,6 +95,8 @@ public sealed partial class AgentHarness
 
     /// <summary>The run's options; the subagent runner composes the child's options from them.</summary>
     internal AgentHarnessOptions Options => _options;
+
+    internal UsageModelClient? CompactionModel => _compactionModel;
 
     /// <summary>
     /// The subagent accounting of the current or most recent top-level run tree: tokens consumed
@@ -481,6 +488,10 @@ public sealed partial class AgentHarness
         string? modelId = null;
         string? routedModelId = null;
         SessionUsage? usage = null;
+        UsageDetails? usageDetails = null;
+        string? usageModelId = null;
+        bool usageReported = false;
+        long requestUtf8 = 0;
 
         void CloseText()
         {
@@ -543,11 +554,29 @@ public sealed partial class AgentHarness
         InlineThinkingSplitter? inlineSplitter = DeclaredModel() is { Reasoning: "inline" }
             ? new InlineThinkingSplitter()
             : null;
+        UsageModelClient? usageModel = ResolveUsageModel(_options.Usage);
+        List<ChatMessage> request = [];
+
+        void RecordUsage(UsageDetails details, string? resolvedModelId)
+        {
+            ModelUsageAttribution? attribution = UsageAttribution(_options.Usage, usageModel);
+            AccumulateUsage(
+                runId,
+                channel,
+                details,
+                resolvedModelId ?? usageModel?.Model.Id ?? _options.ModelId,
+                attribution
+            );
+            usage = RecordedUsage(details, attribution);
+            _lastInputTokens = usage.Input;
+            _lastRequestUtf8 = requestUtf8;
+            usageReported = true;
+        }
 
         try
         {
-            List<ChatMessage> request = BuildRequest(sections);
-            long requestUtf8 = _historyUtf8 + SystemPromptUtf8(sections);
+            request = BuildRequest(sections);
+            requestUtf8 = _historyUtf8 + SystemPromptUtf8(sections);
             if (_options.Hooks is { } hookPoints)
             {
                 AgentContextBuildingResult built = await hookPoints.ContextBuildingAsync(
@@ -571,11 +600,9 @@ public sealed partial class AgentHarness
             )
             {
                 await foreach (
-                    ChatResponseUpdate update in _client.GetStreamingResponseAsync(
-                        request,
-                        BuildOptions(activeTools),
-                        ct
-                    )
+                    ChatResponseUpdate update in (
+                        usageModel?.Client ?? _client
+                    ).GetStreamingResponseAsync(request, BuildOptions(activeTools), ct)
                 )
                 {
                     if (_options.Hooks is { } streamHook)
@@ -594,6 +621,9 @@ public sealed partial class AgentHarness
                         finishReason = reason;
                     }
 
+                    bool updateHasText = update.Contents.Any(content =>
+                        content is TextContent or TextReasoningContent
+                    );
                     foreach (AIContent content in update.Contents)
                     {
                         if (content is TextReasoningContent { Text: { Length: > 0 } reasoning })
@@ -620,22 +650,36 @@ public sealed partial class AgentHarness
                                 }
                             }
                         }
-                        else if (content is UsageContent usageContent)
+                        else if (content is UsageContent usageContent && !usageReported)
                         {
                             attempt.Emitted = true;
-                            AccumulateUsage(
-                                runId,
-                                channel,
-                                usageContent.Details,
-                                routedModelId ?? modelId ?? _options.ModelId
-                            );
-                            usage = RecordedUsage(usageContent.Details);
-                            _lastInputTokens = usage.Input;
-                            _lastRequestUtf8 = requestUtf8;
+                            usageDetails = usageContent.Details;
+                            usageModelId = routedModelId ?? update.ModelId ?? usageModel?.Model.Id;
+                            if (!updateHasText)
+                            {
+                                RecordUsage(usageDetails, usageModelId);
+                            }
                         }
                     }
                 }
             }
+
+            if (!usageReported && usageDetails is { } reportedUsage)
+            {
+                RecordUsage(reportedUsage, usageModelId ?? routedModelId ?? modelId);
+            }
+        }
+        catch (Exception exception)
+            when (HasImageContent(request)
+                && HasUnknownImageSupport(DeclaredModel())
+                && IsImageInputRejection(exception)
+            )
+        {
+            ModelInfo model = DeclaredModel()!;
+            throw new InvalidDataException(
+                $"model {model.Id} doesn't accept images; switch profile or remove the image.",
+                exception
+            );
         }
         finally
         {
@@ -655,7 +699,7 @@ public sealed partial class AgentHarness
             updates,
             finishReason,
             attempt.Emitted,
-            routedModelId ?? modelId,
+            routedModelId ?? modelId ?? usageModel?.Model.Id,
             usage
         );
     }
@@ -671,21 +715,62 @@ public sealed partial class AgentHarness
         string runId,
         AgentEventChannel channel,
         UsageDetails details,
-        string? modelId
+        string? modelId,
+        ModelUsageAttribution? attribution = null
     )
     {
-        channel.Emit(new UsageUpdated(runId, details) { ModelId = modelId });
+        channel.Emit(
+            new UsageUpdated(runId, details) { ModelId = modelId, Attribution = attribution }
+        );
         long used = (details.InputTokenCount ?? 0) + (details.OutputTokenCount ?? 0);
         _tokenBudgetUsed += used;
         InheritedTreeState?.AddTokens(used);
     }
+
+    private UsageModelClient? ResolveUsageModel(string usage)
+    {
+        IReadOnlyDictionary<string, UsageModelClient>? models = _options.UsageModels;
+        if (models is null)
+        {
+            return null;
+        }
+
+        if (models.TryGetValue(usage, out UsageModelClient? resolved))
+        {
+            return resolved;
+        }
+
+        return usage is "subagents" or "compaction" && models.TryGetValue("chat", out resolved)
+            ? resolved
+            : null;
+    }
+
+    private static ModelUsageAttribution? UsageAttribution(
+        string usage,
+        UsageModelClient? model,
+        string? decisionMethod = null,
+        double? probability = null
+    ) =>
+        model is null
+            ? null
+            : new ModelUsageAttribution(
+                usage,
+                model.ProfileName,
+                model.ProviderName,
+                model.ProviderKind,
+                decisionMethod,
+                probability
+            );
 
     /// <summary>
     /// Maps one provider usage record onto the session's token lanes. The input/output totals stay
     /// the provider's counts; a cache lane is recorded only when the provider reports a positive
     /// count, so an unreported lane stays unknown rather than zero.
     /// </summary>
-    private static SessionUsage RecordedUsage(UsageDetails details)
+    private static SessionUsage RecordedUsage(
+        UsageDetails details,
+        ModelUsageAttribution? attribution = null
+    )
     {
         int? cacheRead = details.CachedInputTokenCount is > 0 and long reportedRead
             ? (int)reportedRead
@@ -705,7 +790,10 @@ public sealed partial class AgentHarness
             (int)(details.OutputTokenCount ?? 0),
             cacheRead,
             cacheWrite
-        );
+        )
+        {
+            Attribution = attribution,
+        };
     }
 
     /// <summary>
@@ -916,25 +1004,38 @@ public sealed partial class AgentHarness
             return;
         }
 
-        ModelInfo? model = _options.Model ?? DeclaredModel();
-        if (model is { SupportsVision: true })
+        ModelInfo? model = DeclaredModel();
+        if (model is null)
+        {
+            return;
+        }
+
+        if (model.Capabilities?.InputModalities is { } modalities)
+        {
+            if (modalities.Contains("image"))
+            {
+                return;
+            }
+        }
+        else if (model.SupportsVision)
+        {
+            return;
+        }
+        else
         {
             return;
         }
 
         string id = KnownModelId(model?.Id) ?? KnownModelId(_options.ModelId) ?? "unknown";
-        string images = string.Create(
-            CultureInfo.InvariantCulture,
-            $"{count} {(count == 1 ? "image" : "images")}"
-        );
         throw new InvalidDataException(
-            $"model {id} does not support images; {images} in the request cannot be sent. Use a vision model to continue this session."
+            $"model {id} doesn't accept images; switch profile or remove the image."
         );
     }
 
     private List<ChatMessage> BuildRequest(IReadOnlyList<AgentPromptSection> sections)
     {
         StubStaleReadResults();
+        EnsureUsageCapabilities();
         EnsureImagesSupported();
 
         List<ChatMessage> request = [];
@@ -1107,5 +1208,7 @@ public sealed partial class AgentHarness
 
     /// <summary>The catalog entry of the harness's model; null when no catalog declares it.</summary>
     private ModelInfo? DeclaredModel() =>
-        _options.ModelId is { } id ? _options.ModelCatalog?.Find(id) : null;
+        ResolveUsageModel(_options.Usage)?.Model
+        ?? _options.Model
+        ?? (_options.ModelId is { } id ? _options.ModelCatalog?.Find(id) : null);
 }

@@ -405,9 +405,15 @@ internal sealed class SubagentRunner : ISubagentRunner
     )
     {
         AgentHarnessOptions parentOptions = _harness.Options;
+        UsageModelClient? subagentModel =
+            parentOptions.UsageModels?.GetValueOrDefault("subagents")
+            ?? parentOptions.UsageModels?.GetValueOrDefault("chat");
         AgentHarnessOptions childOptions = parentOptions with
         {
+            Usage = "subagents",
             Session = childSession,
+            Model = subagentModel?.Model ?? parentOptions.Model,
+            ModelId = subagentModel?.Model.Id ?? parentOptions.ModelId,
             Steering = null,
             MaxSteps = ClampSteps(request.MaxSteps),
             // The per-child ceiling. The tree's remaining budget is checked live by the child
