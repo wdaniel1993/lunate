@@ -88,7 +88,8 @@ public sealed class McpToolAdapter : ITool
             ),
         };
 
-        using IDisposable? interaction = elicitationOutcome?.UseInteraction(ctx.AskUserAsync);
+        using McpElicitationOutcome.InteractionLease? interaction =
+            elicitationOutcome?.UseInteraction(ctx.AskUserAsync);
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
         timeout.CancelAfter(callTimeout);
 
@@ -112,28 +113,29 @@ public sealed class McpToolAdapter : ITool
             if (timeout.IsCancellationRequested)
             {
                 _ = await NotifyCancellationAsync(request.Id).ConfigureAwait(false);
-                return Error(
-                    string.Create(
-                        CultureInfo.InvariantCulture,
-                        $"MCP server '{serverName}' tool '{toolName}' timed out after {callTimeout.TotalSeconds:0.###}s; the call was cancelled. Check the server or raise the call timeout."
-                    )
+                return AddElicitationOutcome(
+                    Error(
+                        string.Create(
+                            CultureInfo.InvariantCulture,
+                            $"MCP server '{serverName}' tool '{toolName}' timed out after {callTimeout.TotalSeconds:0.###}s; the call was cancelled. Check the server or raise the call timeout."
+                        )
+                    ),
+                    interaction,
+                    elicitationVersion
                 );
             }
 
-            return Error(
-                $"MCP server '{serverName}' call to '{toolName}' failed: {exception.Message}. Check the server configuration and try again; the tool was not executed."
+            return AddElicitationOutcome(
+                Error(
+                    $"MCP server '{serverName}' call to '{toolName}' failed: {exception.Message}. Check the server configuration and try again; the tool was not executed."
+                ),
+                interaction,
+                elicitationVersion
             );
         }
 
         ToolResult result = MapCallResult(serverName, toolName, response.Result);
-        return elicitationOutcome?.WasRecordedSince(elicitationVersion) is true
-            ? result with
-            {
-                Output = string.IsNullOrEmpty(result.Output)
-                    ? UnansweredElicitation
-                    : result.Output + "\n" + UnansweredElicitation,
-            }
-            : result;
+        return AddElicitationOutcome(result, interaction, elicitationVersion);
     }
 
     internal static ToolResult MapCallResult(
@@ -256,6 +258,38 @@ public sealed class McpToolAdapter : ITool
             );
 
     private static ToolResult Error(string output) => new(output, IsError: true);
+
+    private ToolResult AddElicitationOutcome(
+        ToolResult result,
+        McpElicitationOutcome.InteractionLease? interaction,
+        int previousElicitationVersion
+    )
+    {
+        List<string> additions = [];
+        if (elicitationOutcome?.WasRecordedSince(previousElicitationVersion) is true)
+        {
+            additions.Add(UnansweredElicitation);
+        }
+
+        if (interaction is { Elicitations.Count: > 0 })
+        {
+            additions.AddRange(interaction.Elicitations);
+        }
+
+        if (additions.Count == 0)
+        {
+            return result;
+        }
+
+        List<string> output = [];
+        if (!string.IsNullOrEmpty(result.Output))
+        {
+            output.Add(result.Output);
+        }
+
+        output.AddRange(additions);
+        return result with { Output = string.Join("\n", output) };
+    }
 
     private const string UnansweredElicitation =
         "unanswered: no user present. State an assumption and continue.";

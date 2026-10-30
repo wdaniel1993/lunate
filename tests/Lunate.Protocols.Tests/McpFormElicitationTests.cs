@@ -91,7 +91,7 @@ public sealed class McpFormElicitationTests
         Assert.Equal(["safe", "fast"], presented[4].Options.Select(option => option.Label));
         Assert.True(presented[4].MultiSelect);
 
-        using JsonDocument response = JsonDocument.Parse(result.Output);
+        using JsonDocument response = ParseMcpResponse(result.Output);
         Assert.Equal("accept", response.RootElement.GetProperty("Action").GetString());
         JsonElement content = response.RootElement.GetProperty("Content");
         Assert.Equal("new project", content.GetProperty("display").GetString());
@@ -137,11 +137,72 @@ public sealed class McpFormElicitationTests
         );
 
         Assert.False(result.IsError);
-        using JsonDocument response = JsonDocument.Parse(result.Output);
+        using JsonDocument response = ParseMcpResponse(result.Output);
         Assert.Equal("decline", response.RootElement.GetProperty("Action").GetString());
         Assert.True(
             !response.RootElement.TryGetProperty("Content", out JsonElement content)
                 || content.ValueKind == JsonValueKind.Null
         );
+    }
+
+    [Fact]
+    public async Task Form_question_and_answer_are_recorded_in_the_enclosing_tool_result()
+    {
+        using var temp = new TempDirectory();
+        string marker = temp.File("marker.txt");
+        await using var host = new McpServerHost(McpTestEnvironment.Options(marker));
+        ITool tool = (await host.GetToolsAsync(Ct)).Single(candidate =>
+            candidate.Name == "server__elicit_form"
+        );
+        ToolContext context = McpTestEnvironment.Context with
+        {
+            AskUserAsync = (_, _) =>
+                Task.FromResult(
+                    new UserQuestionResult(
+                        UserQuestionStatus.Answered,
+                        [
+                            new UserQuestionAnswer([], "new project"),
+                            new UserQuestionAnswer([], "3"),
+                            new UserQuestionAnswer([], "true"),
+                            new UserQuestionAnswer(["guided"], null),
+                            new UserQuestionAnswer(["safe", "fast"], null),
+                        ]
+                    )
+                ),
+        };
+
+        ToolResult result = await tool.ExecuteAsync(
+            JsonSerializer.SerializeToElement(new { }),
+            context,
+            Ct
+        );
+
+        Assert.False(result.IsError, result.Output);
+        Assert.Contains(
+            "MCP elicitation from server 'server'",
+            result.Output,
+            StringComparison.Ordinal
+        );
+        Assert.Contains(
+            "Question: Choose settings for the generated project.",
+            result.Output,
+            StringComparison.Ordinal
+        );
+        Assert.Contains(
+            "Fields:\n- server: Display name: Name shown in the project.",
+            result.Output,
+            StringComparison.Ordinal
+        );
+        Assert.Contains(
+            "Answer: {\"display\":\"new project\"",
+            result.Output,
+            StringComparison.Ordinal
+        );
+    }
+
+    private static JsonDocument ParseMcpResponse(string output)
+    {
+        int elicitation = output.IndexOf("\nMCP elicitation from server", StringComparison.Ordinal);
+        return JsonDocument.Parse(elicitation < 0 ? output : output[..elicitation]);
     }
 }

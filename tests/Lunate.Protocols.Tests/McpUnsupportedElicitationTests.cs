@@ -107,11 +107,17 @@ public sealed class McpUnsupportedElicitationTests
                     + string.Join(Environment.NewLine, TestMcpServer.MarkerLines(marker))
             );
         }
-        using JsonDocument response = JsonDocument.Parse(result.Output);
+        using JsonDocument response = ParseMcpResponse(result.Output);
         Assert.Equal("cancel", response.RootElement.GetProperty("Action").GetString());
         Assert.True(
             !response.RootElement.TryGetProperty("Content", out JsonElement content)
                 || content.ValueKind == JsonValueKind.Null
         );
+    }
+
+    private static JsonDocument ParseMcpResponse(string output)
+    {
+        int elicitation = output.IndexOf("\nMCP elicitation from server", StringComparison.Ordinal);
+        return JsonDocument.Parse(elicitation < 0 ? output : output[..elicitation]);
     }
 }

@@ -9,7 +9,7 @@ internal sealed class McpElicitationOutcome
     private long interactionId;
     private readonly System.Collections.Concurrent.ConcurrentDictionary<
         long,
-        Func<IReadOnlyList<UserQuestion>, CancellationToken, Task<UserQuestionResult>>
+        InteractionLease
     > interactions = new();
 
     internal int Version => Volatile.Read(ref version);
@@ -18,28 +18,44 @@ internal sealed class McpElicitationOutcome
 
     internal bool WasRecordedSince(int previousVersion) => Version > previousVersion;
 
-    internal IDisposable? UseInteraction(
+    internal InteractionLease UseInteraction(
         Func<IReadOnlyList<UserQuestion>, CancellationToken, Task<UserQuestionResult>>? interaction
     )
     {
-        if (interaction is null)
-        {
-            return null;
-        }
-
         long id = Interlocked.Increment(ref interactionId);
-        interactions[id] = interaction;
-        return new InteractionLease(this, id);
+        var lease = new InteractionLease(this, id, interaction);
+        interactions[id] = lease;
+        return lease;
     }
 
-    internal Func<
-        IReadOnlyList<UserQuestion>,
-        CancellationToken,
-        Task<UserQuestionResult>
-    >? CurrentInteraction => interactions.OrderBy(pair => pair.Key).FirstOrDefault().Value;
+    internal InteractionLease? CurrentInteraction =>
+        interactions.OrderBy(pair => pair.Key).FirstOrDefault().Value;
 
-    private sealed class InteractionLease(McpElicitationOutcome owner, long id) : IDisposable
+    internal sealed class InteractionLease(
+        McpElicitationOutcome owner,
+        long id,
+        Func<IReadOnlyList<UserQuestion>, CancellationToken, Task<UserQuestionResult>>? interaction
+    ) : IDisposable
     {
+        private readonly System.Collections.Concurrent.ConcurrentDictionary<
+            int,
+            string
+        > elicitations = new();
+        private int elicitationId;
+
+        internal Func<
+            IReadOnlyList<UserQuestion>,
+            CancellationToken,
+            Task<UserQuestionResult>
+        >? Interaction { get; } = interaction;
+
+        internal int BeginElicitation() => Interlocked.Increment(ref elicitationId);
+
+        internal void CompleteElicitation(int id, string exchange) => elicitations[id] = exchange;
+
+        internal IReadOnlyList<string> Elicitations =>
+            elicitations.OrderBy(pair => pair.Key).Select(pair => pair.Value).ToArray();
+
         public void Dispose() => owner.interactions.TryRemove(id, out _);
     }
 }

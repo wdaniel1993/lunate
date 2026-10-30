@@ -27,7 +27,7 @@
 
 ## 6. Session, transcript and export pairing
 
-- [ ] 6.1 Test-first in `tests/Lunate.Agent.Tests` and `tests/Lunate.Coding.Tests`: prove an `ask_user` call/result pair and an MCP server-labelled elicitation pair retain request order through session replay, the interactive transcript, JSONL export and HTML export; confirm failure, implement explicit paired rendering/recording through existing tool messages without changing the session schema, then rerun the focused tests. Do not update session golden files; stop and report any unrelated golden failure.
+- [x] 6.1 Test-first in `tests/Lunate.Agent.Tests` and `tests/Lunate.Coding.Tests`: prove an `ask_user` call/result pair and an MCP server-labelled elicitation pair retain request order through session replay, the interactive transcript, JSONL export and HTML export; confirm failure, implement explicit paired rendering/recording through existing tool messages without changing the session schema, then rerun the focused tests. Do not update session golden files; stop and report any unrelated golden failure. The fake-server regression failed before MCP pair recording; the session replay test passed 1/1, transcript/JSONL/HTML tests passed 3/3, and MCP no-user/form regressions passed 8/8. Session schema and goldens are unchanged.
 
 ## 7. Final verification
 

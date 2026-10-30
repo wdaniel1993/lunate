@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Text.Json;
 using Lunate.Agent;
 using ModelContextProtocol;
@@ -7,7 +6,7 @@ using ModelContextProtocol.Protocol;
 namespace Lunate.Protocols;
 
 /// <summary>Maps MCP form requests to the agent's shared question interaction.</summary>
-internal static class McpElicitationHandler
+internal static partial class McpElicitationHandler
 {
     internal static async ValueTask<ElicitResult> HandleAsync(
         ElicitRequestParams? request,
@@ -29,7 +28,7 @@ internal static class McpElicitationHandler
             );
         }
 
-        var interaction = outcome.CurrentInteraction;
+        McpElicitationOutcome.InteractionLease? interaction = outcome.CurrentInteraction;
         if (interaction is null)
         {
             outcome.RecordUnavailable();
@@ -41,8 +40,19 @@ internal static class McpElicitationHandler
             return Result("decline");
         }
 
+        int exchangeId = interaction.BeginElicitation();
         List<MappedQuestion> questions = mapped!;
-        UserQuestionResult answer = await interaction(
+        if (interaction.Interaction is not { } askUser)
+        {
+            outcome.RecordUnavailable();
+            interaction.CompleteElicitation(
+                exchangeId,
+                Exchange(serverName, request.Message, "unanswered: no user present", questions)
+            );
+            return Result("cancel");
+        }
+
+        UserQuestionResult answer = await askUser(
                 questions.Select(question => question.Question).ToArray(),
                 ct
             )
@@ -50,22 +60,61 @@ internal static class McpElicitationHandler
         if (answer.Status == UserQuestionStatus.Unavailable)
         {
             outcome.RecordUnavailable();
+            interaction.CompleteElicitation(
+                exchangeId,
+                Exchange(serverName, request.Message, "unanswered: no user present", questions)
+            );
             return Result("cancel");
         }
 
         if (answer.Status != UserQuestionStatus.Answered)
         {
+            interaction.CompleteElicitation(
+                exchangeId,
+                Exchange(serverName, request.Message, "cancelled by user", questions)
+            );
             return Result("cancel");
         }
 
-        return TryBuildContent(
-            questions,
-            answer.Answers,
-            out Dictionary<string, JsonElement>? content
+        if (
+            !TryBuildContent(
+                questions,
+                answer.Answers,
+                out Dictionary<string, JsonElement>? content
+            )
         )
-            ? new ElicitResult { Action = "accept", Content = content }
-            : Result("decline");
+        {
+            interaction.CompleteElicitation(
+                exchangeId,
+                Exchange(
+                    serverName,
+                    request.Message,
+                    "declined: answer did not match the requested schema",
+                    questions
+                )
+            );
+            return Result("decline");
+        }
+
+        interaction.CompleteElicitation(
+            exchangeId,
+            Exchange(
+                serverName,
+                request.Message,
+                "Answer: " + JsonSerializer.Serialize(content),
+                questions
+            )
+        );
+        return new ElicitResult { Action = "accept", Content = content };
     }
+
+    private static string Exchange(
+        string serverName,
+        string message,
+        string answer,
+        IReadOnlyList<MappedQuestion> questions
+    ) =>
+        $"MCP elicitation from server '{serverName}'\nQuestion: {message}\nFields:\n{string.Join("\n", questions.Select(question => $"- {question.Question.Header}{(question.Description.Length == 0 ? string.Empty : ": " + question.Description)}"))}\n{answer}";
 
     private static bool TryMapRequest(
         ElicitRequestParams request,
@@ -150,9 +199,10 @@ internal static class McpElicitationHandler
         }
 
         string title = string.IsNullOrWhiteSpace(schema.Title) ? name : schema.Title;
-        string question = string.IsNullOrWhiteSpace(schema.Description)
+        string description = schema.Description ?? string.Empty;
+        string question = string.IsNullOrWhiteSpace(description)
             ? message
-            : message + Environment.NewLine + schema.Description;
+            : message + Environment.NewLine + description;
         UserQuestion userQuestion = new(
             $"{serverName}: {title}",
             question,
@@ -165,6 +215,7 @@ internal static class McpElicitationHandler
             type,
             userQuestion,
             options,
+            description,
             required.Contains(name),
             isArray
         );
@@ -223,155 +274,6 @@ internal static class McpElicitationHandler
                 .Count() == options.Count;
     }
 
-    private static bool TryBuildContent(
-        IReadOnlyList<MappedQuestion> questions,
-        IReadOnlyList<UserQuestionAnswer> answers,
-        out Dictionary<string, JsonElement>? content
-    )
-    {
-        content = null;
-        if (answers.Count != questions.Count)
-        {
-            return false;
-        }
-
-        Dictionary<string, JsonElement> values = new(StringComparer.Ordinal);
-        for (int index = 0; index < questions.Count; index++)
-        {
-            MappedQuestion question = questions[index];
-            UserQuestionAnswer answer = answers[index];
-            if (question.IsArray)
-            {
-                if (
-                    answer.Text is not null
-                    || !TryGetSelectedValues(
-                        question,
-                        answer.SelectedOptions,
-                        out string[]? selected
-                    )
-                )
-                {
-                    return false;
-                }
-
-                values[question.Name] = JsonSerializer.SerializeToElement(selected);
-            }
-            else if (question.Options.Count > 0)
-            {
-                if (
-                    answer.Text is not null
-                    || !TryGetSelectedValues(
-                        question,
-                        answer.SelectedOptions,
-                        out string[]? selected
-                    )
-                    || selected is not { Length: 1 } selectedValues
-                )
-                {
-                    return false;
-                }
-
-                values[question.Name] = JsonSerializer.SerializeToElement(selectedValues[0]);
-            }
-            else
-            {
-                if (answer.SelectedOptions.Count > 0)
-                {
-                    return false;
-                }
-
-                if (answer.Text is null)
-                {
-                    if (question.Required)
-                    {
-                        return false;
-                    }
-
-                    continue;
-                }
-
-                if (!TryParsePrimitive(question.Type, answer.Text, out JsonElement value))
-                {
-                    return false;
-                }
-
-                values[question.Name] = value;
-            }
-        }
-
-        if (questions.Any(question => question.Required && !values.ContainsKey(question.Name)))
-        {
-            return false;
-        }
-
-        content = values;
-        return true;
-    }
-
-    private static bool TryGetSelectedValues(
-        MappedQuestion question,
-        IReadOnlyList<string> selected,
-        out string[]? values
-    )
-    {
-        values = null;
-        List<string> mapped = [];
-        foreach (string label in selected)
-        {
-            MappedOption? option = question.Options.FirstOrDefault(option =>
-                string.Equals(option.Option.Label, label, StringComparison.Ordinal)
-            );
-            if (option is null || mapped.Contains(option.Value, StringComparer.Ordinal))
-            {
-                return false;
-            }
-
-            mapped.Add(option.Value);
-        }
-
-        if (!question.IsArray && mapped.Count > 1)
-        {
-            return false;
-        }
-
-        values = [.. mapped];
-        return true;
-    }
-
-    private static bool TryParsePrimitive(string type, string text, out JsonElement value)
-    {
-        value = default;
-        switch (type)
-        {
-            case "string":
-                value = JsonSerializer.SerializeToElement(text);
-                return true;
-            case "number":
-            case "integer":
-                if (
-                    !double.TryParse(
-                        text,
-                        NumberStyles.Float,
-                        CultureInfo.InvariantCulture,
-                        out double number
-                    )
-                    || !double.IsFinite(number)
-                    || (type == "integer" && number != Math.Truncate(number))
-                )
-                {
-                    return false;
-                }
-
-                value = JsonSerializer.SerializeToElement(number);
-                return true;
-            case "boolean" when bool.TryParse(text, out bool boolean):
-                value = JsonSerializer.SerializeToElement(boolean);
-                return true;
-            default:
-                return false;
-        }
-    }
-
     private static ElicitResult Result(string action) => new() { Action = action };
 
     private sealed record MappedQuestion(
@@ -379,6 +281,7 @@ internal static class McpElicitationHandler
         string Type,
         UserQuestion Question,
         IReadOnlyList<MappedOption> Options,
+        string Description,
         bool Required,
         bool IsArray
     );
