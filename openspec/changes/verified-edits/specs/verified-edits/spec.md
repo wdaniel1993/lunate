@@ -4,12 +4,14 @@
 
 ### Requirement: Staged-content verification
 
-The `write` and `edit` tools SHALL verify staged content before it reaches disk. Verification SHALL
-apply only to `.cs` files: the staged text is compiled in memory as a replacement for the file's
-text in the workspace's loaded C# solution (the backend's own load, per ADR-0006). The check SHALL
-compile the exact text the write would apply — the post-normalization bytes, line endings and
-byte-order mark included — and SHALL NOT itself write, restore, or build. A file that is not `.cs`
-SHALL be written without a check.
+The `write` and `edit` tools SHALL offer staged content to a verifier registered through the public
+write-verifier extension point for the file patterns declared by that extension's manifest. The
+first slice registers a C# verifier for `.cs` files through `Lunate.Roslyn`. The verifier SHALL
+compile the exact post-normalization staged text in memory as a replacement in the workspace's
+loaded C# project, including source generators. In a multi-targeted project it SHALL check only the
+TFM loaded by the workspace; it SHALL NOT check dependents. Verification SHALL NOT write, restore,
+build, or modify content. The host calls it after approval between read/normalize and apply/write,
+with a bounded duration. A file with no registered verifier match SHALL be written without a check.
 
 #### Scenario: A C# write is compiled before it lands
 
@@ -26,14 +28,14 @@ SHALL be written without a check.
 
 ### Requirement: Only introduced errors refuse
 
-A write SHALL be refused only when verification finds compiler errors in the staged text that the
-same file's on-disk content does not already have (baseline-compared, same file). The refusal SHALL
-be an error result naming the file, the line, the code and the message, each with what to do next.
-Pre-existing errors, warnings and analyzer findings SHALL NOT refuse a write; they SHALL be reported
-in the result text and the write SHALL proceed. A dependent project's errors SHALL never refuse this
-file's write. After two verification refusals of the same file in one run, the next attempt SHALL
-proceed unverified with a notice instead of refusing — a refusal is a gate for fixable errors,
-never a lock-out.
+A write SHALL be refused only when the staged file has compiler errors whose `(code, message)`
+multiset count exceeds the baseline count for the same file's on-disk content. The refusal SHALL
+include the introduced diagnostics as `StructuredContent`, and its human-readable message SHALL
+list the errors without advertising the bypass. Pre-existing errors, warnings, analyzer findings,
+and dependent-project errors SHALL NOT refuse the write. After two refusals of the same file in one
+run, the next attempt SHALL write unverified with a notice. `verify: block | warn | off` SHALL
+default to `block`; `warn` SHALL write and report unverified with diagnostics, and `off` SHALL skip
+verification.
 
 #### Scenario: An introduced error refuses and teaches
 
@@ -47,6 +49,12 @@ never a lock-out.
 - **GIVEN** staged text with the same compiler errors the on-disk text already has
 - **WHEN** the tool runs
 - **THEN** the write proceeds and the result reports the existing diagnostics with their positions
+
+#### Scenario: A duplicate introduced error refuses
+
+- **GIVEN** the baseline has one error with key `(code, message)` and the staged file has two
+- **WHEN** the verifier compares the diagnostics
+- **THEN** the additional instance is treated as introduced and the write is refused
 
 #### Scenario: Warnings never refuse
 
@@ -63,15 +71,20 @@ never a lock-out.
 - **THEN** no file bytes were written: the checked text and the would-be written text are the same,
   because the queue serializes them into one read–check–write step
 
+#### Scenario: The third attempt escapes repeated refusals
+
+- **GIVEN** the same file has been refused twice in this run
+- **WHEN** it is attempted a third time
+- **THEN** it is written unverified with a notice and the refusal message itself did not advertise
+  this bypass
+
 ### Requirement: Budget and loud degradation
 
-Verification SHALL stay within a latency budget calibrated by the ADR-0005 rule (measure, then
-ceil); the operative budget is the warm check, not the cold first load. When verification cannot
-run (no solution, no SDK, restore required, a partial load without the file's project) or its
-ceiling is exceeded, the write SHALL proceed unverified; the tool result SHALL state one line naming
-the reason the check was skipped, so a model and a user always learn that a write went out
-unverified. A verified result SHALL say that it ran. The degraded path SHALL never be silent, and a
-cancelled check SHALL never cancel the write.
+Verification SHALL stay within a latency budget recalibrated by the ADR-0005 rule (measure, then
+ceil), with a ceiling no greater than 10 s. When verification cannot run or reaches the ceiling, the
+write SHALL proceed unverified with a named reason. The TUI live area SHALL show `verifying…
+<elapsed>` during verification. Esc during verification SHALL cancel the run as usual and SHALL
+NOT write staged content. A verifier timeout SHALL NOT silently degrade or cancel the write.
 
 #### Scenario: A cold backend does not block the turn
 
@@ -87,24 +100,43 @@ cancelled check SHALL never cancel the write.
 - **THEN** the write proceeds unverified with the elapsed time in the result, the write itself is
   never cancelled, and the reason is never silence
 
-### Requirement: Where verification lives
+#### Scenario: Esc cancels verification without writing
 
-Verification SHALL live in the `write`/`edit` tools (`Lunate.Coding`), acquiring the shared
-per-workspace C# backend; it SHALL NOT be a `ToolCalling`/`ToolResultReady` hook and SHALL NOT be a
-contribution of an extension tool. A hook- or extension-shaped variant SHALL be a separate OpenSpec
-change, not a fallback of this one.
+- **GIVEN** verification is running for a staged write
+- **WHEN** the user presses Esc
+- **THEN** the run is cancelled as usual and the staged content is not written
 
-#### Scenario: A seconds-long check is not a hook
+### Requirement: The public verifier seam
+
+The extension contract SHALL allow registration of verifiers for manifest-declared file patterns.
+The host SHALL invoke a matching verifier after approval between read/normalize and apply/write,
+with a bounded duration. A verifier SHALL return verified, unverified with a reason, or refused with
+diagnostics in `StructuredContent`; it SHALL have no write access and SHALL NOT modify content.
+The C# verifier SHALL be registered by `Lunate.Roslyn` through this seam. This is distinct from the
+core-internal `BashGuard` precedent.
+
+#### Scenario: Hook and extension tool are not verifier placements
 
 - **GIVEN** the hook contract's per-handler timeout and slow threshold (default 500 ms)
-- **WHEN** the ideas of placing verification into a `ToolCalling` hook are compared with placing it
-  in the tool
-- **THEN** the tool is chosen: a hook failure policy of block-fail-safe is the opposite of
-  unverified-continue, and the check's seconds do not fit the hook's timeout envelope
+- **WHEN** verification is placed
+- **THEN** neither a `ToolCalling` hook nor an extension tool is used; the host calls the public
+  verifier seam after approval
 
 #### Scenario: The workspace's own backend is reused
 
 - **GIVEN** the per-workspace registry the session's C# tools already use
 - **WHEN** a `write`/`edit` call verifies
-- **THEN** it acquires one backend per canonical root, and creates no second Roslyn load, no second
-  solution and no out-of-process server
+- **THEN** `Lunate.Roslyn`'s registered verifier reuses the workspace backend, creates no second
+  Roslyn load or solution, and starts no out-of-process server
+
+#### Scenario: Source generators contribute generated members
+
+- **GIVEN** a loaded C# project with a `[GeneratedRegex]` method
+- **WHEN** an edit introduces a call to that generated method
+- **THEN** source generators run in the in-memory compilation and the edit is verified, not refused
+
+#### Scenario: Only the workspace-loaded TFM is checked
+
+- **GIVEN** a multi-targeted project
+- **WHEN** the verifier compiles the staged file
+- **THEN** it checks the TFM loaded by the workspace, not the project's other target frameworks

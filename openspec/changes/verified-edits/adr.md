@@ -1,11 +1,13 @@
 # ADR index — verified edits
 
-The durable decision for this change is the **proposed** ADR-0025
-([`adr/0025-verified-edits.md`](../../../adr/0025-verified-edits.md)): C#-only first slice, staged
-content compiled against its project in memory, refuse-only-introduced-errors with a retry cap, a
-warm budget with a loud unverified degradation, and the guard living in the `write`/`edit` tools.
-It relates to ADR-0006 (in-process Roslyn), ADR-0012 (tool contract), ADR-0014 (backend
-interface) and ADR-0021 (per-workspace services, laziness); it does not supersede any of them.
+The durable decision for this change is ADR-0025
+([`adr/0025-verified-edits.md`](../../../adr/0025-verified-edits.md)), amended with maintainer
+sign-off on 2026-10-30: C#-only first slice, staged content compiled in memory with source
+generators and the workspace-loaded TFM, multiset refusal baseline, configurable verification,
+bounded visible progress, and a public manifest-declared verifier seam. ADR-0017's append-only
+addendum records the seam placement. These decisions do not supersede ADR-0006 (in-process
+Roslyn), ADR-0012 (tool contract), ADR-0014 (backend interface) or ADR-0021 (per-workspace services
+and laziness).
 
 In-force ADR context reviewed: 0005 (budget calibration — the latency-budget rule), 0006 (Roslyn
 in-process, no server process), 0012/0014 (tool contract and backend interface), 0017 and its

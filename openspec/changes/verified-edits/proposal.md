@@ -8,45 +8,39 @@ undoing it. Lunate already has everything the check needs — the `write`/`edit`
 backend that diagnoses the loaded solution without a build (`src/Lunate.Roslyn/CsDiagnosticsTool.cs`
 per ADR-0006/0014) — but the check is not connected: `write` and `edit` never consult it, so a
 change that cannot compile lands on disk and the model discovers it only by calling
-`cs_diagnostics` afterwards, if it calls it at all. The fix is not new tooling; it is wiring the
-staged content through the existing backend **before** the write. #184 asks the design to settle
-five open questions first: which languages, staged file or whole project, what happens with a
-diagnostic the model cannot fix, how the check stays invisible, and where the check runs.
+`cs_diagnostics` afterwards, if it calls it at all. The design settles five questions before the
+implementation: which languages, staged file or whole project, what happens with a diagnostic the
+model cannot fix, how verification stays bounded and visible, and where the check runs. #184
+originated the design; this signed-off implementation is tracked by #336.
 
 ## What changes
 
-This is a **design-only** change. It adds no production code, no tests and no migration. It records
-the five decisions in `design.md`, a delta that adds a `verified-edits` capability spec, and a
-**proposed** ADR-0025. The five decisions, each with its measured cost:
+This is a **design-only** change. It adds no production code, tests or migration. It records the
+five decisions in `design.md`, a delta that adds a `verified-edits` capability spec, and the
+maintainer-approved ADR-0025. The five decisions are:
 
-- **(a) Which languages — C# first, exactly what exists.** The first slice verifies `.cs` files
-  through the in-process Roslyn backend (`ICSharpBackend`, ADR-0014), reusing RenamePlanner's
-  fork-the-solution mechanism to type-check staged text without touching disk. TypeScript via an
-  LSP server is explicitly out of the first slice: it needs a server process, an LSP client and a
-  second lifecycle (ADR-0006 rejected that shape for C# on the same grounds).
-- **(b) Staged content, project compiled — not a file alone, not a build.** The check swaps the
-  staged text into the loaded project and compiles the changed project in memory. A file alone
-  does not typecheck; a `dotnet build` of the project is 10.7–13.7 s incremental (41–54 s for the
-  solution) and writes `obj`/`bin` artifacts that race with bash builds. The measured Roslyn
-  changed-file check on this repo is **0.01–2.6 s warm** over 59 Roslyn projects / 1 649 documents.
-- **(c) A diagnostic the model cannot fix — refuse only what the edit introduced.** Verification
-  reports a baseline of the file's existing diagnostics and refuses only **new compiler errors**
-  the staged text adds. Everything else — pre-existing errors, warnings, analyzer findings,
-  dependents' errors — is reported in the result and the write proceeds. When the check cannot
-  run (no solution, no SDK, cold load over budget) the write proceeds as an **unverified** write,
-  never blocked, and a successor refusal is cut off by a retry cap so a refusal is never a
-  lock-out.
-- **(d) Staying invisible — a budget, a ceiling, and a loud degradation.** In the ADR-0005 spirit
-  (median of measurements, then headroom): verification aims at the warm numbers, not the cold
-  ones, and the degraded path reports why the check was skipped in the tool result
-  text — degrade from verified to unverified, never to silence.
-- **(e) Where the check runs — in the `write`/`edit` tools.** The smallest thing that works with
-  the extension contract just landed (ADR-0017 addenda): a host-owned guard inside the write path,
-  glued to the existing per-workspace backend. The alternatives are a `ToolCalling` hook
-  (wrong timeout envelope — the hook slow threshold is 500 ms, the check needs seconds; and a
-  blocking hook is exactly the lock-out (c) rejects) or an extension (cannot reach the mutation
-  queue, file-change bus or allow-list; the contract the primitives just landed explicitly does not
-  wire a new hook from the extension side).
+- **(a) Which languages — C# first.** The first slice verifies `.cs` files through the C# verifier
+  registered by `Lunate.Roslyn` with the public write-verifier seam. TypeScript is tracked as #340:
+  the LSP extension registers a verifier for `*.ts`/`*.tsx`.
+- **(b) Staged content, project compiled — not a file alone, not a build.** The loaded project is
+  compiled in memory with source generators run; the diagnostic filter is the staged file. In a
+  multi-targeted project, only the TFM loaded by the workspace is checked. Dependents are out of
+  scope. A `dotnet build` writes artifacts and is slower; the measured Roslyn changed-file check on
+  this repo is **0.01–2.6 s warm**.
+- **(c) A diagnostic the model cannot fix — refuse only what the edit introduced.** Compare
+  baseline and staged errors as multisets keyed by `(code, message)`; refuse when a count increases.
+  The two-refusal escape hatch remains, but refusal text does not advertise it. `verify: block | warn
+  | off`, default `block`: `warn` writes and reports unverified with diagnostics; `off` skips checks.
+- **(d) Staying visible — a budget, a ceiling, and loud degradation.** The implementation
+  recalibrates the ceiling by ADR-0005 and pins it in the perf suite. The TUI live area shows
+  `verifying… <elapsed>`; Esc cancels the run with no write. A timeout degrades to unverified with
+  a named reason.
+- **(e) Where the check runs — a public verifier seam.** `Lunate.Extensibility.Abstractions`
+  registers file-pattern verifiers declared in the manifest. The host calls the verifier after
+  approval, between read/normalize and apply/write, with a bounded time. It returns verified,
+  unverified with reason, or refused with diagnostics in `StructuredContent`; it cannot write or
+  modify content. `Lunate.Roslyn` registers the C# verifier. The `ToolCalling` hook and extension
+  tool rejections remain; the public seam is the third option without their problems.
 
 ## Capabilities
 
@@ -61,26 +55,25 @@ _none_
 
 ## Impact
 
-- **Contract surface (later implementation):** one additive `ICSharpBackend` member for staged-text
-  diagnostics; `PublicAPI.Unshipped.txt` follows the existing single-file publish flow.
-- **Host (later implementation):** a verified-edit seam inside `WriteTool`/`EditTool` (the existing
-  `BashGuard`/`BashChangeTracker` pattern), acquiring the workspace's Roslyn backend through the
-  existing per-workspace services registry.
+- **Contract surface (later implementation):** a public, manifest-declared write-verifier
+  registration in `Lunate.Extensibility.Abstractions`, tracked in `PublicAPI.Unshipped.txt`.
+- **Host and verifier (later implementation):** the host invokes registered verifiers within the
+  write/edit mutation boundary; `Lunate.Roslyn` supplies the C# verifier through that API.
 - **Docs (later implementation):** `docs/guide.md` (the "agent knows before it writes" line the
   implementation changes) and `docs/architecture.md`'s write-path flow get an update.
-- **Tests:** none in this change. The later implementation change adds red-green tests first —
-  a staged-error write refuses, a pre-existing error writes, and a cold backend writes unverified.
-- **Risk:** low — design only; the one decision that needs maintainer sign-off (the refusal rule
-  (c) and where the check lives (e)) is proposed, not landed.
+- **Tests:** none in this design change. The implementation change adds red-green tests for the
+  verifier contract and registration, introduced diagnostics, generated members, the loaded TFM,
+  settings, refusal escape hatch, timeout and cancellation.
+- **Risk:** design only; the maintainer signed off the five recommendations and ADR-0025 on
+  2026-10-30 with the amendments recorded in this change.
 
 ## Out of scope
 
 - Production code, tests, fixtures and any migration (the later implementation change adds them).
-- **TypeScript/LSP and every third language** — the slicing rule (design §2) says what the first
-  slice is; adding a second language needs a new change and a decided placement for a server
-  process.
+- **TypeScript verifier** — tracked as #340; the LSP extension will register a verifier for
+  `*.ts`/`*.tsx`.
 - **Whole-solution verification per edit** — the 7.8 s measured cost buys dependents' errors that
   (c) not block anyway; dependent breakage stays visible through `cs_diagnostics`, which will be
   invoked and reported after.
-- **The `ToolCalling` hook as the mechanism** — the hook contract's timeout obsession is the
-  wrong envelope for a seconds-long check, and a hook block has no unverified-continue path.
+- A `ToolCalling` hook and an extension tool as mechanisms; their rejection reasons and the chosen
+  public verifier seam are recorded in design §6 and ADR-0017's addendum.
