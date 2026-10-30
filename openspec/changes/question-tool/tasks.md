@@ -22,7 +22,7 @@
 
 ## 5. MCP form elicitation
 
-- [ ] 5.1 Test-first in `tests/Lunate.Protocols.Tests`: add a fake-server test for form capability negotiation and `elicitation/create` mapping of message, flat primitive fields, enum choices, enum arrays, schema validation and server identity; confirm failure, connect the request to the shared question interaction, then rerun the focused tests.
+- [x] 5.1 Test-first in `tests/Lunate.Protocols.Tests`: add a fake-server test for form capability negotiation and `elicitation/create` mapping of message, flat primitive fields, enum choices, enum arrays, schema validation and server identity; confirm failure, connect the request to the shared question interaction, then rerun the focused tests. The fake-server suite verifies form-only capability negotiation, shared-question field mapping (including server labels and enum arrays), accepted schema-valid content, and rejection of an invalid enum answer; the focused Release run passed 3/3.
 - [ ] 5.2 Test-first in `tests/Lunate.Protocols.Tests`: prove Esc/no-user produces a content-free cancel response and URL mode is not advertised or opened; confirm failure, implement the protocol responses and actionable unsupported-mode handling, then rerun the focused tests.
 
 ## 6. Session, transcript and export pairing

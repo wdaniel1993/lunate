@@ -88,6 +88,7 @@ public sealed class McpToolAdapter : ITool
             ),
         };
 
+        using IDisposable? interaction = elicitationOutcome?.UseInteraction(ctx.AskUserAsync);
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
         timeout.CancelAfter(callTimeout);
 

@@ -209,11 +209,13 @@ public sealed class McpServerHost : IAsyncDisposable
                         },
                         Handlers = new McpClientHandlers
                         {
-                            ElicitationHandler = (_, _) =>
-                            {
-                                elicitationOutcome.RecordUnavailable();
-                                return ValueTask.FromResult(new ElicitResult { Action = "cancel" });
-                            },
+                            ElicitationHandler = (request, token) =>
+                                McpElicitationHandler.HandleAsync(
+                                    request,
+                                    options.Name,
+                                    elicitationOutcome,
+                                    token
+                                ),
                         },
                         // The SDK's fixed wall-clock window is replaced by our stall bound: it
                         // counts silence, not total elapsed time, so a live but slow server is
