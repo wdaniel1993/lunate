@@ -33,6 +33,48 @@ public sealed class SettingsStoreTests
     }
 
     [Fact]
+    public void Verify_defaults_to_block()
+    {
+        using var temp = new TempDirectory();
+
+        AgentSettings settings = SettingsStore.Resolve(temp.File("missing.json"), _ => null);
+
+        Assert.Equal(WriteVerificationMode.Block, settings.Verify);
+    }
+
+    [Theory]
+    [InlineData("warn", WriteVerificationMode.Warn)]
+    [InlineData("off", WriteVerificationMode.Off)]
+    public void Verify_accepts_warn_and_off(string value, WriteVerificationMode expected)
+    {
+        using var temp = new TempDirectory();
+        File.WriteAllText(
+            temp.File("settings.json"),
+            $$"""{"schemaVersion":2,"verify":"{{value}}"}"""
+        );
+
+        AgentSettings settings = SettingsStore.Resolve(temp.File("settings.json"), _ => null);
+
+        Assert.Equal(expected, settings.Verify);
+    }
+
+    [Fact]
+    public void Invalid_verify_setting_names_accepted_values()
+    {
+        using var temp = new TempDirectory();
+        File.WriteAllText(temp.File("settings.json"), """{"schemaVersion":2,"verify":"always"}""");
+
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+            SettingsStore.Resolve(temp.File("settings.json"), _ => null)
+        );
+
+        Assert.Contains("'verify'", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("block", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("warn", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("off", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void A_tui_section_can_opt_into_full_screen()
     {
         using var temp = new TempDirectory();
