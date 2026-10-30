@@ -120,45 +120,27 @@ internal sealed partial class NuGetPackageFeed
         foreach ((PackageSource source, SourceRepository repository) in _sources)
         {
             _observer?.Invoke($"versions {id} from {source.Name}");
-            FindPackageByIdResource? resource;
-            try
-            {
-                resource = await repository
-                    .GetResourceAsync<FindPackageByIdResource>(cancellationToken)
-                    .ConfigureAwait(false);
-            }
-            catch (Exception exception)
-                when (exception is not OperationCanceledException
-                    && IsAuthenticationFailure(exception)
+            FindPackageByIdResource? resource = await GuardedAsync(
+                    source,
+                    () => repository.GetResourceAsync<FindPackageByIdResource>(cancellationToken)
                 )
-            {
-                throw AuthenticationFailureFor(source, exception);
-            }
-
+                .ConfigureAwait(false);
             if (resource is null)
             {
                 continue;
             }
 
-            IEnumerable<NuGetVersion> found;
-            try
-            {
-                found = await resource
-                    .GetAllVersionsAsync(
-                        id,
-                        cache,
-                        NuGet.Common.NullLogger.Instance,
-                        cancellationToken
-                    )
-                    .ConfigureAwait(false);
-            }
-            catch (Exception exception)
-                when (exception is not OperationCanceledException
-                    && IsAuthenticationFailure(exception)
+            IEnumerable<NuGetVersion> found = await GuardedAsync(
+                    source,
+                    () =>
+                        resource.GetAllVersionsAsync(
+                            id,
+                            cache,
+                            NuGet.Common.NullLogger.Instance,
+                            cancellationToken
+                        )
                 )
-            {
-                throw AuthenticationFailureFor(source, exception);
-            }
+                .ConfigureAwait(false);
             foreach (NuGetVersion version in found)
             {
                 versions.Add(version);
@@ -190,47 +172,28 @@ internal sealed partial class NuGetPackageFeed
         foreach ((PackageSource source, SourceRepository repository) in _sources)
         {
             _observer?.Invoke($"metadata {id} {version.ToNormalizedString()} from {source.Name}");
-            FindPackageByIdResource? resource;
-            try
-            {
-                resource = await repository
-                    .GetResourceAsync<FindPackageByIdResource>(cancellationToken)
-                    .ConfigureAwait(false);
-            }
-            catch (Exception exception)
-                when (exception is not OperationCanceledException
-                    && IsAuthenticationFailure(exception)
+            FindPackageByIdResource? resource = await GuardedAsync(
+                    source,
+                    () => repository.GetResourceAsync<FindPackageByIdResource>(cancellationToken)
                 )
-            {
-                throw AuthenticationFailureFor(source, exception);
-            }
-
+                .ConfigureAwait(false);
             if (resource is null)
             {
                 continue;
             }
 
-            FindPackageByIdDependencyInfo? info;
-            try
-            {
-                info = await resource
-                    .GetDependencyInfoAsync(
-                        id,
-                        version,
-                        cache,
-                        NuGet.Common.NullLogger.Instance,
-                        cancellationToken
-                    )
-                    .ConfigureAwait(false);
-            }
-            catch (Exception exception)
-                when (exception is not OperationCanceledException
-                    && IsAuthenticationFailure(exception)
+            FindPackageByIdDependencyInfo? info = await GuardedAsync(
+                    source,
+                    () =>
+                        resource.GetDependencyInfoAsync(
+                            id,
+                            version,
+                            cache,
+                            NuGet.Common.NullLogger.Instance,
+                            cancellationToken
+                        )
                 )
-            {
-                throw AuthenticationFailureFor(source, exception);
-            }
-
+                .ConfigureAwait(false);
             if (info is not null)
             {
                 return info.DependencyGroups;
@@ -272,8 +235,10 @@ internal sealed partial class NuGetPackageFeed
         using var cache = new SourceCacheContext();
         foreach ((PackageSource source, SourceRepository repository) in _sources)
         {
-            FindPackageByIdResource? resource = await repository
-                .GetResourceAsync<FindPackageByIdResource>(cancellationToken)
+            FindPackageByIdResource? resource = await GuardedAsync(
+                    source,
+                    () => repository.GetResourceAsync<FindPackageByIdResource>(cancellationToken)
+                )
                 .ConfigureAwait(false);
             if (resource is null)
             {
@@ -288,26 +253,17 @@ internal sealed partial class NuGetPackageFeed
                 NuGet.Common.NullLogger.Instance
             );
             var identity = new PackageIdentity(id, version);
-            IPackageDownloader? downloader;
-            try
-            {
-                downloader = await resource
-                    .GetPackageDownloaderAsync(
-                        identity,
-                        cache,
-                        NuGet.Common.NullLogger.Instance,
-                        cancellationToken
-                    )
-                    .ConfigureAwait(false);
-            }
-            catch (Exception exception)
-                when (exception is not OperationCanceledException
-                    && IsAuthenticationFailure(exception)
+            IPackageDownloader? downloader = await GuardedAsync(
+                    source,
+                    () =>
+                        resource.GetPackageDownloaderAsync(
+                            identity,
+                            cache,
+                            NuGet.Common.NullLogger.Instance,
+                            cancellationToken
+                        )
                 )
-            {
-                throw AuthenticationFailureFor(source, exception);
-            }
-
+                .ConfigureAwait(false);
             if (downloader is null)
             {
                 continue;

@@ -66,6 +66,24 @@ internal sealed partial class NuGetPackageFeed
         return null;
     }
 
+    /// <summary>
+    /// One feed call, with the one case the seam recognises: a refusal the client's chain names as
+    /// 401 or 403 becomes the authentication diagnosis for the feed it was refused by. Everything
+    /// else propagates unchanged.
+    /// </summary>
+    private async Task<T> GuardedAsync<T>(PackageSource source, Func<Task<T>> feedCall)
+    {
+        try
+        {
+            return await feedCall().ConfigureAwait(false);
+        }
+        catch (Exception exception)
+            when (exception is not OperationCanceledException && IsAuthenticationFailure(exception))
+        {
+            throw AuthenticationFailureFor(source, exception);
+        }
+    }
+
     /// <summary>The diagnosis for a refused request against one configured feed.</summary>
     private FeedAuthenticationException AuthenticationFailureFor(
         PackageSource source,
