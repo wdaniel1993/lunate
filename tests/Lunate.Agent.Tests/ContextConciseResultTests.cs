@@ -80,8 +80,8 @@ public sealed class ContextConciseResultTests
         Assert.False(Directory.Exists(Path.Combine(temp.Root, session.SessionId, "tool-output")));
     }
 
+    // `bash` is the tool's shell on every platform — the Windows runners invoke Git Bash, so a
+    // PowerShell pipeline here would die with a bash syntax error before the transcript exists.
     private static string LongOutputCommand() =>
-        OperatingSystem.IsWindows()
-            ? "1..200 | ForEach-Object { 'line-{0:D3} {1:D90}' -f $_, $_ }; [Console]::Error.WriteLine('failure line'); exit 7"
-            : "i=1; while [ $i -le 200 ]; do printf 'line-%03d %090d\\n' $i $i; i=$((i + 1)); done; printf 'failure line\\n' >&2; exit 7";
+        "i=1; while [ $i -le 200 ]; do printf 'line-%03d %090d\\n' $i $i; i=$((i + 1)); done; printf 'failure line\\n' >&2; exit 7";
 }
