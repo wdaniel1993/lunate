@@ -13,6 +13,12 @@ public sealed record TuiSettings
     private static readonly IReadOnlyDictionary<string, IReadOnlyList<string>> NoKeys =
         new Dictionary<string, IReadOnlyList<string>>();
 
+    /// <summary>
+    /// Whether the interactive session runs on the alternate screen; <c>--fullscreen</c> turns it
+    /// on for one run. Inline rendering stays the default (the issue's rule: opt-in only).
+    /// </summary>
+    public bool Fullscreen { get; init; }
+
     /// <summary>The named theme; <c>default</c> keeps the terminal's detected colour system.</summary>
     public string Theme { get; init; } = "default";
 

@@ -25,6 +25,17 @@ public static partial class SettingsStore
         {
             switch (property.Name)
             {
+                case "fullscreen":
+                    if (property.Value.ValueKind is JsonValueKind.True or JsonValueKind.False)
+                    {
+                        settings = settings with { Fullscreen = property.Value.GetBoolean() };
+                    }
+                    else
+                    {
+                        problems.Add("'tui.fullscreen' must be true or false");
+                    }
+
+                    break;
                 case "theme":
                     settings = settings with { Theme = ReadTuiTheme(property.Value, problems) };
                     break;
