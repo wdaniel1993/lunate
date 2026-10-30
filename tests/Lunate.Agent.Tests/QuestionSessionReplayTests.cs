@@ -82,6 +82,6 @@ public sealed class QuestionSessionReplayTests
             "MCP elicitation from server 'catalog'\nQuestion: Choose a template.\nAnswer: {\"template\":\"starter\"}",
             mcpResult.Result?.ToString()
         );
-        Assert.Equal(3, replayed.Schema);
+        Assert.Equal(SessionFormat.SchemaVersion, replayed.Schema);
     }
 }
