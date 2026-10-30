@@ -28,7 +28,7 @@ only when its focused tests pass.
 
 ## 3. C# verifier and error comparison
 
-- [ ] 3.1 In `tests/Lunate.Roslyn.Tests/VerifiedWriteVerifierTests.cs`, add fixture projects under
+- [x] 3.1 In `tests/Lunate.Roslyn.Tests/VerifiedWriteVerifierTests.cs`, add fixture projects under
       `tests/fixtures/verified-edits/generated-regex/` and `multi-target/`, plus failing tests
       `EditIntroducingGeneratedRegexCallIsVerifiedNotRefused`, `ChecksOnlyWorkspaceLoadedTfm`, and
       `UnloadedWorkspaceReturnsUnverifiedWithoutLoad`. Confirm failure first; implement the
