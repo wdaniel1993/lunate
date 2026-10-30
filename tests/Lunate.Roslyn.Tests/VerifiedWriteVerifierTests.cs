@@ -30,7 +30,7 @@ public sealed class VerifiedWriteVerifierTests
             CancellationToken.None
         );
 
-        Assert.Equal(WriteVerificationStatus.Verified, result.Status);
+        Assert.True(result.Status is WriteVerificationStatus.Verified, result.Reason);
         Assert.Contains("net10.0", result.Reason, StringComparison.Ordinal);
     }
 
@@ -56,7 +56,7 @@ public sealed class VerifiedWriteVerifierTests
             CancellationToken.None
         );
 
-        Assert.Equal(WriteVerificationStatus.Verified, result.Status);
+        Assert.True(result.Status is WriteVerificationStatus.Verified, result.Reason);
         Assert.Contains("net10.0", result.Reason, StringComparison.Ordinal);
     }
 
