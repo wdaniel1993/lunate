@@ -8,4 +8,4 @@
   step 11 of the box
   step 12 of the box
 ────────────────────────────────────────────────────────────────────────────────
-deepseek-v4.1-flash · 2.1k/1.0M (0%) · ~/dev/lunate · main
+\x1b[90mdeepseek-v4.1-flash · 2.1k/1.0M (0%) · ~/dev/lunate · main\x1b[0m

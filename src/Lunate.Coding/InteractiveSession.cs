@@ -198,6 +198,10 @@ internal sealed partial class InteractiveSession : IDisposable
     private TrustPromptModel? _trustPrompt;
     private TaskCompletionSource<TrustChoice>? _trustDecision;
     private long _keySequence;
+    private TuiTheme _theme = TuiTheme.Default;
+
+    /// <summary>The colour system every surface renders with: the theme's plan over the detection.</summary>
+    private ColorSystemSupport _color = ColorSystemSupport.NoColors;
     private long _trustArmSequence;
     private long _approvalArmSequence;
     private DateTimeOffset _approvalArmAt;
@@ -272,6 +276,7 @@ internal sealed partial class InteractiveSession : IDisposable
             OperatingSystem.IsWindows(),
             options.Environment
         );
+        _color = _capabilities.Color;
         _live = new LiveArea(
             options.Console,
             options.Scheduler,
@@ -445,6 +450,7 @@ internal sealed partial class InteractiveSession : IDisposable
     {
         _settings = SettingsStore.Resolve(_options.SettingsPath, _options.Environment);
         _settings = SettingsStore.ApplyLaunch(_settings, _options.Launch);
+        ApplyTuiPresentation();
         _thinkingLevel = _settings.Thinking;
         _catalog = HarnessFactory.LoadCatalog(_settings, _options.ModelsPath);
         _environment = _options.Environment ?? Environment.GetEnvironmentVariable;

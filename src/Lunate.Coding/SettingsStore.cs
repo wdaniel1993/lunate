@@ -53,24 +53,14 @@ public sealed record AgentSettings
     /// <summary>The ordered favourite model ids (at most eight, unique); schema 2 and later.</summary>
     public IReadOnlyList<string> Favorites { get; init; } = [];
 
+    /// <summary>The resolved TUI presentation settings (the <c>tui</c> section).</summary>
+    public TuiSettings Tui { get; init; } = new();
+
     /// <summary>The resolved optional-tool settings (the <c>tools</c> section).</summary>
     public ToolsSettings Tools { get; init; } = new();
 
     /// <summary>The stored custom OpenAI-compatible endpoints (the <c>providers</c> section).</summary>
     public IReadOnlyList<CustomProvider> Providers { get; init; } = [];
-
-    /// <summary>The resolved interactive-terminal settings (the <c>tui</c> section).</summary>
-    public TuiSettings Tui { get; init; } = new();
-}
-
-/// <summary>The interactive-terminal settings (the <c>tui</c> settings section).</summary>
-public sealed record TuiSettings
-{
-    /// <summary>
-    /// Whether the interactive session runs on the alternate screen; <c>--fullscreen</c> turns it
-    /// on for one run. Inline rendering stays the default (the issue's rule: opt-in only).
-    /// </summary>
-    public bool Fullscreen { get; init; }
 }
 
 /// <summary>The optional tools enabled beside the core set (the <c>tools</c> settings section).</summary>
@@ -784,40 +774,6 @@ public static partial class SettingsStore
             }
 
             settings = settings with { Extra = extra };
-        }
-
-        return settings;
-    }
-
-    /// <summary>
-    /// Reads the <c>tui</c> section: only <c>fullscreen</c> is known, a JSON boolean. A missing key
-    /// keeps the documented default (off — inline rendering).
-    /// </summary>
-    private static TuiSettings ReadTui(JsonElement value, List<string> problems)
-    {
-        var settings = new TuiSettings();
-        if (value.ValueKind != JsonValueKind.Object)
-        {
-            problems.Add("'tui' must be an object");
-            return settings;
-        }
-
-        foreach (JsonProperty property in value.EnumerateObject())
-        {
-            if (property.Name != "fullscreen")
-            {
-                problems.Add($"unknown key 'tui.{property.Name}'");
-                continue;
-            }
-
-            if (property.Value.ValueKind is JsonValueKind.True or JsonValueKind.False)
-            {
-                settings = settings with { Fullscreen = property.Value.GetBoolean() };
-            }
-            else
-            {
-                problems.Add("'tui.fullscreen' must be true or false");
-            }
         }
 
         return settings;

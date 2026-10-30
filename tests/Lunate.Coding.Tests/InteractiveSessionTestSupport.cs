@@ -584,12 +584,17 @@ internal sealed class InteractiveSessionHost : IDisposable
         ITextClipboard? textClipboard = null,
         Func<DateTimeOffset>? clock = null,
         string? editorTempDirectory = null,
-        UpdateCheckSeams? updateCheck = null
+        UpdateCheckSeams? updateCheck = null,
+        bool interactiveConsole = false
     )
     {
         Scrollback = new TestConsole();
         Scrollback.Profile.Width = 80;
         Scrollback.Profile.Height = 24;
+        // Interactive before the session is constructed: the capability detection reads the
+        // console in the constructor, so the tests that need a colour-sensing session pass
+        // <c>interactiveConsole: true</c> and set their colour environment explicitly.
+        Console = new ScriptedConsoleIO { IsInteractive = interactiveConsole };
         Session = new InteractiveSession(
             new InteractiveSessionOptions
             {
@@ -631,7 +636,7 @@ internal sealed class InteractiveSessionHost : IDisposable
 
     public TempDirectory Temp { get; } = new();
 
-    public ScriptedConsoleIO Console { get; } = new();
+    public ScriptedConsoleIO Console { get; }
 
     public ManualScheduler Scheduler { get; } = new();
 

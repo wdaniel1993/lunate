@@ -27,6 +27,8 @@ public sealed class InteractiveSessionSettingsTests
         Assert.Contains("thinkingFull    off", scrollback, StringComparison.Ordinal);
         Assert.Contains("toolDetails     collapsed", scrollback, StringComparison.Ordinal);
         Assert.Contains("toolResultLimit 30,000 characters", scrollback, StringComparison.Ordinal);
+        Assert.Contains("tui.theme       default", scrollback, StringComparison.Ordinal);
+        Assert.Contains("tui.keys        none", scrollback, StringComparison.Ordinal);
         Assert.Contains("startupHeader   on", scrollback, StringComparison.Ordinal);
         Assert.Contains("updateCheck     on", scrollback, StringComparison.Ordinal);
         Assert.Contains("favorites       none", scrollback, StringComparison.Ordinal);
@@ -39,10 +41,12 @@ public sealed class InteractiveSessionSettingsTests
         );
         Assert.Contains("subagents       4 concurrent", scrollback, StringComparison.Ordinal);
         Assert.Contains(
-            "editable here: " + "approval, thinkingFull, toolDetails, toolResultLimit",
+            "editable here: approval, thinkingFull, toolDetails, toolResultLimit,",
             scrollback,
             StringComparison.Ordinal
         );
+        Assert.Contains("tui.theme,", scrollback, StringComparison.Ordinal);
+        Assert.Contains("tui.keys", scrollback, StringComparison.Ordinal);
 
         host.Console.SendText("/quit");
         host.Console.SendEnter();

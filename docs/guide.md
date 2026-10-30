@@ -437,7 +437,7 @@ Tools: read, write, edit, bash{extra_tools}.
 
 **Config**
 
-`~/.lunate/settings.json` (default model, approval policy, output limits) and `~/.lunate/auth.json` (API keys, file permissions restricted). Environment variables override both. `toolDetails` chooses how much of a tool call the scrollback commits: `"collapsed"` (the default) writes the header line only, `"expanded"` adds the bounded output excerpt and the diff panel; `LUNATE_TOOL_DETAILS` overrides it.
+`~/.lunate/settings.json` (default model, approval policy, output limits) and `~/.lunate/auth.json` (API keys, file permissions restricted). Environment variables override both. `toolDetails` chooses how much of a tool call the scrollback commits: `"collapsed"` (the default) writes the header line only, `"expanded"` adds the bounded output excerpt and the diff panel; `LUNATE_TOOL_DETAILS` overrides it. The optional `tui` section carries the interactive presentation: `tui.theme` (the colour-depth policy) and `tui.keys` (persisted key remaps), both editable in `/settings`.
 
 **Sessions on disk**
 
@@ -455,7 +455,7 @@ The session is a tree, and four commands expose it: `/tree` opens the session's 
 
 **Frontends**
 
-- **Interactive mode** (`lunate`): the Lunate.Tui frontend (see Terminal UI) with streaming view, multi-line editor, `Esc` to cancel, slash commands from the session's one command registry (`/model`, `/new`, `/resume`, `/name`, `/session`, `/settings`, `/compact [instructions]`, `/copy`, `/editor`, `/fullscreen`, `/export`, `/thinking`, `/tree`, `/fork`, `/clone`, `/rewind`, `/help`, `/quit`). `/settings` shows every resolved setting aligned with its settings-file key — model, approval, thinking, thinkingFull, toolDetails, toolResultLimit, startupHeader, updateCheck, favorites, tools.extra, providers, roslyn, subagents; `/settings <key> <value>` applies `approval`, `thinkingFull`, `toolDetails` or `toolResultLimit` to the running session only (the file stays as it is, so the next session starts as before), refuses keys that have their own command (`/model`, `/thinking`, `/favorite`), and refuses launch-time keys with where they change.
+- **Interactive mode** (`lunate`): the Lunate.Tui frontend (see Terminal UI) with streaming view, multi-line editor, `Esc` to cancel, slash commands from the session's one command registry (`/model`, `/new`, `/resume`, `/name`, `/session`, `/settings`, `/compact [instructions]`, `/copy`, `/editor`, `/fullscreen`, `/export`, `/thinking`, `/tree`, `/fork`, `/clone`, `/rewind`, `/help`, `/quit`). `/settings` shows every resolved setting aligned with its settings-file key — model, approval, thinking, thinkingFull, toolDetails, toolResultLimit, tui.theme, tui.keys, startupHeader, updateCheck, favorites, tools.extra, providers, roslyn, subagents; `/settings <key> <value>` applies `approval`, `thinkingFull`, `toolDetails` or `toolResultLimit` to the running session only (the file stays as it is, so the next session starts as before), applies and persists `tui.theme` (`default` keeps the terminal's detected colour system, `ansi16` pins the high-contrast sixteen-colour system, `mono` drops every attribute; `NO_COLOR` still wins because a theme can only lower the depth) and `tui.keys <binding id> <key>` (the binding's declared keys become that one key, in place, mid-session and persisted in the `tui` section so both survive a restart; an unknown id is refused with the closest ids named and a key an earlier row already answers is refused with that row named — `keys.json` never gains a second declaration), refuses keys that have their own command (`/model`, `/thinking`, `/favorite`), and refuses launch-time keys with where they change.
 - **Print mode** (`lunate -p "prompt"`): writes the final answer to stdout and exits; `--json` writes every event as JSON lines for scripts and CI.
 - **ACP mode** (`lunate --acp`): speaks the Agent Client Protocol over stdio, so editors like Zed or JetBrains start Lunate as their agent. Editor file reads, writes and permission prompts map onto Lunate's tools and approval policy. Nothing may write to stdout except the protocol.
 
@@ -588,6 +588,11 @@ Both box rules are drawn at every width; autocomplete descriptions keep their 60
 | `Ctrl+Y` | Yank the most recent kill |
 | `Alt+B` / `Alt+F` / `Ctrl+Left` / `Ctrl+Right` | Move back / forward by word (`Ctrl+Left`/`Ctrl+Right` are the Alt-free forms) |
 <!-- keys:end -->
+
+**Themes and remaps**
+
+- `/settings tui.theme` chooses the colour-depth policy applied to the transcript and the status line: `default` keeps the terminal's detection, `ansi16` pins the high-contrast sixteen-colour system, and `mono` drops every attribute. A theme can only lower the depth, so `NO_COLOR` still wins, and the choice persists in the settings file's `tui` section.
+- `/settings tui.keys <binding id> <key>` remaps a binding: the catalogue row keeps its id, intent, context and description and gains the one key — `keys.json` stays the only place a key is declared. An unknown id is refused with the closest ids named, a key an earlier row already answers is refused with that row named, and any remap persists so it survives a restart.
 
 **Platform rules**
 

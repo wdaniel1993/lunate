@@ -21,7 +21,7 @@ public sealed class TranscriptViewerRenderer
     /// <summary>The footer is one line; the content gets the rows above it.</summary>
     private const int FooterLines = 1;
 
-    private readonly TerminalCapabilities _capabilities;
+    private TerminalCapabilities _capabilities;
     private readonly ToolBlockRenderer _blocks;
     private readonly MarkdownRenderer _markdown;
     private readonly ThinkingCommitRenderer _thinking = new();
@@ -40,6 +40,10 @@ public sealed class TranscriptViewerRenderer
         _blocks = new ToolBlockRenderer(capabilities, homeDirectory);
         _markdown = new MarkdownRenderer(capabilities);
     }
+
+    /// <summary>Applies the theme's colour plan; the Unicode side of the capability is unchanged.</summary>
+    internal void SetColor(ColorSystemSupport color) =>
+        _capabilities = _capabilities with { Color = color };
 
     /// <summary>The frame as markup, opening at the latest content (<paramref name="scrolledLines"/> 0).</summary>
     public IRenderable Render(TranscriptModel transcript, ConsoleSize size, int scrolledLines = 0)

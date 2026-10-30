@@ -3,4 +3,4 @@
   so the selected row
   stays inside the box.
 ──────────────────────────────────────────────────
-deepseek-v4.1-flash · 0%
+\x1b[38;2;138;138;138mdeepseek-v4.1-flash · 0%\x1b[0m

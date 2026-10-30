@@ -13,7 +13,7 @@ internal sealed partial class LiveArea : IDisposable
 
     private readonly IConsoleIO _console;
     private readonly IScheduler _scheduler;
-    private readonly TerminalCapabilities _capabilities;
+    private TerminalCapabilities _capabilities;
     private readonly List<IDisposable> _subscriptions = [];
     private readonly FrameWriter _writer;
     private readonly CancellationTokenSource _cts = new();
@@ -146,6 +146,25 @@ internal sealed partial class LiveArea : IDisposable
     public void SetRunning(bool running) => Post(new RunningInput(running, _scheduler.Now));
 
     public void SetCancellable(bool cancellable) => Post(new CancellableInput(cancellable));
+
+    /// <summary>
+    /// Applies the theme's colour plan: the colour system the live frame paints with and the one
+    /// the scrollback console is created with. Called once at startup, when the settings resolve;
+    /// everything rendered before then colours by the detection, and the next painted frame —
+    /// including the input marker, the activity label, the thinking block and the status line —
+    /// follows the plan.
+    /// </summary>
+    public void SetColor(ColorSystemSupport color)
+    {
+        _capabilities = _capabilities with { Color = color };
+        Post(new ColorInput(color));
+        // An owned scrollback console has the plan from before; recreate it with the applied
+        // colour system (Spectre's profile colour is creation-time state). Keep an injected console.
+        if (_ownsScrollback)
+        {
+            _scrollback = null;
+        }
+    }
 
     public void SetRunUsage(long? inputTokens, long? outputTokens) =>
         Post(new RunUsageInput(inputTokens, outputTokens));
@@ -476,6 +495,7 @@ internal sealed partial class LiveArea : IDisposable
                 RunElapsedSeconds = 0,
             },
             CancellableInput cancellable => state with { Cancellable = cancellable.Cancellable },
+            ColorInput color => state with { Color = color.Color },
             RunUsageInput usage => state with
             {
                 RunInputTokens = usage.InputTokens,
@@ -548,6 +568,8 @@ internal sealed partial class LiveArea : IDisposable
     private sealed record RunningInput(bool Running, DateTimeOffset At) : LiveAreaInput;
 
     private sealed record CancellableInput(bool Cancellable) : LiveAreaInput;
+
+    private sealed record ColorInput(ColorSystemSupport Color) : LiveAreaInput;
 
     private sealed record RunUsageInput(long? InputTokens, long? OutputTokens) : LiveAreaInput;
 
