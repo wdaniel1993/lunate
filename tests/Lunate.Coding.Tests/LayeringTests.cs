@@ -14,6 +14,31 @@ public sealed class LayeringTests
     }
 
     [Fact]
+    public void Roslyn_projects_do_not_reference_upward_into_the_host()
+    {
+        var references = ReadProjectReferences();
+        var roslynReferences = references
+            .Where(reference =>
+                reference.From is "Lunate.Roslyn" or "Lunate.Roslyn.BuiltIn"
+            )
+            .ToArray();
+
+        Assert.DoesNotContain(
+            roslynReferences,
+            reference =>
+                reference.To is "Lunate.Agent" or "Lunate.Coding" or "Lunate.Extensibility"
+        );
+    }
+
+    [Fact]
+    public void Coding_has_no_direct_reference_to_the_Roslyn_backend()
+    {
+        var references = ReadProjectReferences();
+
+        Assert.DoesNotContain(("Lunate.Coding", "Lunate.Roslyn"), references);
+    }
+
+    [Fact]
     public void Project_reference_graph_matches_allowed_edges()
     {
         var references = ReadProjectReferences().ToHashSet();
