@@ -19,6 +19,7 @@ public sealed class SessionGoldenTests
     [InlineData("golden-reasoning.jsonl")]
     [InlineData("golden-v3-usage.jsonl")]
     [InlineData("golden-v3-image.jsonl")]
+    [InlineData("golden-v4-usage.jsonl")]
     [InlineData("golden-branch-tree.jsonl")]
     public void Golden_sessions_round_trip_byte_for_byte(string name)
     {
@@ -77,7 +78,7 @@ public sealed class SessionGoldenTests
     [Fact]
     public void Schema_four_fixture_round_trips_usage_attribution_and_decision_provenance()
     {
-        string path = Path.Combine(SessionsDirectory, "schema4-usage.jsonl");
+        string path = Path.Combine(SessionsDirectory, "golden-v4-usage.jsonl");
         byte[] original = File.ReadAllBytes(path);
         Session loaded = Session.Load(path);
         SessionMessageEntry assistant = Assert.Single(

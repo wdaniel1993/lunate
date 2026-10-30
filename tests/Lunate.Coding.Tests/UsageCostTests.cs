@@ -128,6 +128,60 @@ public sealed class UsageCostTests
     }
 
     [Fact]
+    public void Summarize_attributed_session_groups_by_usage_and_provider_once()
+    {
+        using var temp = new TempDirectory();
+        ModelCatalog catalog = Catalog(temp, PricedModel, OtherPricedModel);
+        Session session = Session.Create(temp.File("session.jsonl"), "/work");
+        AddUsage(session, "fixture-priced", "chat", "shared", "primary", "openai", 1_000_000);
+        AddUsage(session, "fixture-priced", "compaction", "shared", "primary", "openai", 1_000_000);
+        session.AppendModelUsage(
+            "fixture-other",
+            new SessionUsage(1_000_000, 0)
+            {
+                Attribution = new ModelUsageAttribution(
+                    "decision",
+                    "decision-profile",
+                    "router",
+                    "openrouter",
+                    "adapter",
+                    0.8d
+                ),
+            },
+            decisionOption: "deny"
+        );
+
+        UsageCostReport report = Assert.IsType<UsageCostReport>(
+            UsageCost.SummarizeAttributedSession(catalog, session)
+        );
+
+        Assert.Equal(6m, report.Total);
+        Assert.Equal(["chat", "compaction", "decision"], report.ByUsage.Select(row => row.Name));
+        Assert.Equal(2.5m, report.ByUsage[0].Cost);
+        Assert.Equal(["fixture-priced"], report.ByUsage[0].ModelIds);
+        Assert.Equal(["primary", "router"], report.ByProvider.Select(row => row.Name));
+        Assert.Equal(5m, report.ByProvider[0].Cost);
+        Assert.Equal(["fixture-priced"], report.ByProvider[0].ModelIds);
+    }
+
+    [Fact]
+    public void Summarize_attributed_session_marks_unknown_positive_lanes_unpriced()
+    {
+        using var temp = new TempDirectory();
+        ModelCatalog catalog = Catalog(temp, UnpricedModel);
+        Session session = Session.Create(temp.File("session.jsonl"), "/work");
+        AddUsage(session, "fixture-unpriced", "chat", "chat", "primary", "fixture", 1000);
+
+        UsageCostReport report = Assert.IsType<UsageCostReport>(
+            UsageCost.SummarizeAttributedSession(catalog, session)
+        );
+
+        Assert.True(report.HasUnpriced);
+        Assert.Null(Assert.Single(report.ByUsage).Cost);
+        Assert.Null(report.Total);
+    }
+
+    [Fact]
     public void Summarize_usage_events_falls_back_to_the_session_model()
     {
         using var temp = new TempDirectory();
@@ -199,4 +253,22 @@ public sealed class UsageCostTests
 
     private static UsageDetails Details(long input, long output) =>
         new() { InputTokenCount = input, OutputTokenCount = output };
+
+    private static void AddUsage(
+        Session session,
+        string model,
+        string usage,
+        string profile,
+        string provider,
+        string providerKind,
+        int input
+    ) =>
+        session.AppendMessage(
+            new ChatMessage(ChatRole.Assistant, "call"),
+            model,
+            new SessionUsage(input, 0)
+            {
+                Attribution = new ModelUsageAttribution(usage, profile, provider, providerKind),
+            }
+        );
 }

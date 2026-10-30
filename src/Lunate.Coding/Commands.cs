@@ -53,6 +53,7 @@ internal static class Commands
         ),
         new("/clone", CommandGroup.Session, "copy the whole session into a new session file"),
         new("/context", CommandGroup.Session, "show the context window and subagent budgets"),
+        new("/cost", CommandGroup.Session, "show usage cost by usage and provider"),
         new("/copy", CommandGroup.Session, "copy the last answer to the clipboard"),
         new("/debug", CommandGroup.Session, "write a diagnostic bundle for a bug report"),
         new("/editor", CommandGroup.Session, "open the draft in your external editor"),

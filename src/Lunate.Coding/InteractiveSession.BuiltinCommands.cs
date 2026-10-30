@@ -113,6 +113,9 @@ internal sealed partial class InteractiveSession
                 case "/session":
                     session.ShowSessionReport();
                     return CommandResult.None;
+                case "/cost":
+                    session.ShowCostReport();
+                    return CommandResult.None;
                 case "/settings":
                     if (invocation.Argument.Length == 0)
                     {

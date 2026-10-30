@@ -725,6 +725,30 @@ public sealed class InteractiveSessionCommandTests
     }
 
     [Fact]
+    public async Task Cost_reports_by_usage_and_provider_without_a_model_call()
+    {
+        using var host = new InteractiveSessionHost();
+        host.Scrollback.Profile.Width = 400;
+        host.Client.Enqueue(Usage(1000, 500), Scripts.Text("done"), Scripts.Stop());
+        Task run = host.RunAsync();
+        await host.WaitUntilAsync(() => host.Session.IsComposed);
+
+        await RunOneTurnAsync(host);
+        host.Console.SendText("/cost");
+        host.Console.SendEnter();
+        string report = await WaitForScrollbackAsync(host, "cost by usage:");
+
+        Assert.Contains("chat", report, StringComparison.Ordinal);
+        Assert.Contains("openai (openai)", report, StringComparison.Ordinal);
+        Assert.Contains("gpt-4o-mini", report, StringComparison.Ordinal);
+        Assert.Contains("total: $0.0005", report, StringComparison.Ordinal);
+        Assert.Single(host.Client.Requests);
+
+        host.Console.Complete();
+        await run;
+    }
+
+    [Fact]
     public async Task Session_with_one_unpriced_model_prints_tokens_without_any_cost()
     {
         using var temp = new TempDirectory();

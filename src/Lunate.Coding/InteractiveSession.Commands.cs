@@ -232,6 +232,47 @@ internal sealed partial class InteractiveSession
         WriteScrollbackLines([.. lines.Select(Markup.Escape)]);
     }
 
+    /// <summary>Shows priced usage grouped by semantic usage and provider; read-only, no model call.</summary>
+    private void ShowCostReport()
+    {
+        if (_session is not { } session)
+        {
+            WriteScrollbackLines(["no recorded usage"]);
+            return;
+        }
+
+        UsageCostReport? report = UsageCost.SummarizeAttributedSession(
+            _catalog,
+            session,
+            _model.Id
+        );
+        if (report is null)
+        {
+            WriteScrollbackLines(["no recorded usage"]);
+            return;
+        }
+
+        static CostGroupView View(UsageCostLine line) =>
+            new(
+                line.Name,
+                line.ProviderKind,
+                line.ModelIds,
+                line.Lanes.Input,
+                line.Lanes.Output,
+                line.Lanes.CacheRead,
+                line.Lanes.CacheWrite,
+                line.Cost is decimal cost ? CostCalculator.Format(cost) : null
+            );
+
+        var view = new CostReportView(
+            [.. report.ByUsage.Select(View)],
+            [.. report.ByProvider.Select(View)],
+            report.Total is decimal total ? CostCalculator.Format(total) : null,
+            report.HasUnpriced
+        );
+        WriteScrollbackLines([.. UsageCostRenderer.Render(view).Select(Markup.Escape)]);
+    }
+
     /// <summary>
     /// The bare <c>/thinking</c> notice: the session's current level plus the active model's
     /// mapping (design D7/D3). Read-only, so it is allowed while a turn runs.

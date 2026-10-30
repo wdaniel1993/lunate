@@ -54,6 +54,17 @@ public sealed record SessionMessageEntry(
     public SessionSkillMetadata? Skill { get; init; }
 }
 
+/// <summary>A model call whose response is not part of the conversation transcript.</summary>
+public sealed record SessionModelUsageEntry(
+    string Id,
+    string? ParentId,
+    DateTimeOffset Timestamp,
+    string? Model,
+    SessionUsage? Usage,
+    ModelUsageAttribution? Attribution,
+    string? DecisionOption = null
+) : SessionEntry(Id);
+
 /// <summary>The skill metadata recorded on an invoked skill's user turn.</summary>
 public sealed record SessionSkillMetadata(string Name, string Dir);
 

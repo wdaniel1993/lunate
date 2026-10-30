@@ -38,6 +38,9 @@ internal static partial class SessionFormat
             case SessionMessageEntry message:
                 WriteMessage(writer, message);
                 break;
+            case SessionModelUsageEntry modelUsage:
+                WriteModelUsage(writer, modelUsage);
+                break;
             case SessionCompactionEntry compaction:
                 WriteCompaction(writer, compaction);
                 break;

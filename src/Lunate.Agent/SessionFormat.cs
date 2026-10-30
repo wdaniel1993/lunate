@@ -21,6 +21,7 @@ internal static partial class SessionFormat
 
     private const string HeaderType = "header";
     private const string MessageType = "message";
+    private const string ModelUsageType = "modelUsage";
     private const string CompactionType = "compaction";
     private const string ModelChangeType = "modelChange";
     private const string ActiveToolsType = "activeTools";
@@ -70,6 +71,7 @@ internal static partial class SessionFormat
             {
                 HeaderType => ParseHeader(root),
                 MessageType => ParseMessage(root),
+                ModelUsageType => ParseModelUsage(root),
                 CompactionType => new SessionCompactionEntry(
                     RequiredString(root, "id"),
                     OptionalString(root, "parentId"),
@@ -120,7 +122,7 @@ internal static partial class SessionFormat
                 _ => type.StartsWith(ExtensionPrefix, StringComparison.Ordinal)
                     ? ParseExtension(root, type)
                     : throw new InvalidDataException(
-                        $"Session line has unknown type '{type}'; expected '{HeaderType}', '{MessageType}', '{CompactionType}', '{ModelChangeType}', '{ActiveToolsType}', '{PromptSectionType}', '{ChildSessionType}', '{NestedCallsType}', '{ActiveLeafType}', '{BranchSummaryType}' or 'ext/<extension-id>/<type>'."
+                        $"Session line has unknown type '{type}'; expected '{HeaderType}', '{MessageType}', '{ModelUsageType}', '{CompactionType}', '{ModelChangeType}', '{ActiveToolsType}', '{PromptSectionType}', '{ChildSessionType}', '{NestedCallsType}', '{ActiveLeafType}', '{BranchSummaryType}' or 'ext/<extension-id>/<type>'."
                     ),
             };
         }
@@ -200,7 +202,10 @@ internal static partial class SessionFormat
                 : null;
         if (usage is not null && usageElement.TryGetProperty("attribution", out _))
         {
-            usage = usage with { Attribution = ParseUsageAttribution(usageElement) };
+            usage = usage with
+            {
+                Attribution = ParseUsageAttribution(usageElement.GetProperty("attribution")),
+            };
         }
 
         SessionSkillMetadata? skill = null;
@@ -242,9 +247,8 @@ internal static partial class SessionFormat
             };
     }
 
-    private static ModelUsageAttribution ParseUsageAttribution(JsonElement usage)
+    private static ModelUsageAttribution ParseUsageAttribution(JsonElement attribution)
     {
-        JsonElement attribution = usage.GetProperty("attribution");
         if (attribution.ValueKind != JsonValueKind.Object)
         {
             throw new InvalidDataException("Session usage attribution is not an object.");
