@@ -70,7 +70,7 @@ internal sealed class TestPackageBundle
         string sourceDirectory,
         string entryAssembly,
         string version = "0.1.0",
-        string apiVersion = "1.12.0"
+        string apiVersion = "^1.12.0"
     )
     {
         Text(
