@@ -11,7 +11,6 @@ ADR review completed for this change. The typed Roslyn built-in adapter is a maj
 
 - ADR-0002 — layering and MEAI model types
 - ADR-0006 — in-process Roslyn and build-host placement
-- ADR-0014 — C# backend interface
 - ADR-0016 — workspace boundary
 - ADR-0017 — extensibility architecture and its accepted addenda
 - ADR-0021 — per-run workspaces and per-workspace services

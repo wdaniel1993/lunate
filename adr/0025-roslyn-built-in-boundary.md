@@ -10,7 +10,13 @@ The extension contract now provides host-supplied built-ins, per-workspace servi
 
 ## Decision
 
-Place the Roslyn built-in adapter in a small, internal `Lunate.Roslyn.BuiltIn` project. It owns the `roslyn` manifest, the `IExtensionFactory` and the typed references to `Lunate.Roslyn`; the host supplies its descriptor through the existing built-in seam. `Lunate.Coding` composes that descriptor and uses the extension host for activation, aliases and workspace-service acquisition. Chat and MCP use the same built-in and activation evaluator. `Lunate.Coding` does not reference Roslyn implementation types directly.
+**Adapter ownership.** Place the Roslyn built-in adapter in a small, internal `Lunate.Roslyn.BuiltIn` project. It owns the `roslyn` manifest, the `IExtensionFactory` and the typed references to `Lunate.Roslyn`. It is host-supplied, not a user-installed or separately trusted extension, and does not create a collectible load context.
+
+**Host composition.** `Lunate.Coding` supplies the adapter's descriptor through the existing built-in seam. The adapter is the only integration point that names Roslyn implementation types; `Lunate.Coding` references the adapter, not `Lunate.Roslyn`.
+
+**Contract and lifecycle.** The adapter declares the existing five tools, the `roslyn` workspace service, the current root activation patterns and the stable `cs_*` aliases through the extension contract. Each tool acquires a per-workspace service lease for its call. The extension host remains the sole owner of activation and workspace-service lifecycle; service creation and Roslyn/MSBuild loading remain lazy.
+
+**Frontends.** Chat and `lunate mcp roslyn` use the same host-supplied built-in and `ToolActivationEvaluator`. MCP does not construct a second set of Roslyn tools or maintain a separate copy of the root rule.
 
 This keeps feature ownership with the adapter while preserving compile-time validation of the factory and the existing lazy, per-workspace Roslyn lifecycle. Reflection or string-based factory lookup would hide the dependency rather than remove it; placing Roslyn ownership in the generic extension host would invert the dependency direction.
 
