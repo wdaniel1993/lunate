@@ -21,12 +21,7 @@ public sealed class McpToolSetTests
                     "test",
                     TestMcpServer.DotnetPath,
                     ["exec", TestMcpServer.ServerDll],
-                    new Dictionary<string, string>
-                    {
-                        ["LUNATE_TEST_MCP_MARKER"] = marker,
-                        ["LUNATE_TEST_MCP_ELICITATION"] = "1",
-                        ["LUNATE_TEST_MCP_ELICITATION"] = "1",
-                    },
+                    new Dictionary<string, string> { ["LUNATE_TEST_MCP_MARKER"] = marker },
                     NamespaceName: "test",
                     Source: "test-source"
                 ),
@@ -69,10 +64,6 @@ public sealed class McpToolSetTests
                     "project",
                     TestMcpServer.DotnetPath,
                     ["exec", TestMcpServer.ServerDll],
-                    Environment: new Dictionary<string, string>
-                    {
-                        ["LUNATE_TEST_MCP_ELICITATION"] = "1",
-                    },
                     NamespaceName: "project",
                     Source: "mcp.json"
                 ),
@@ -80,10 +71,6 @@ public sealed class McpToolSetTests
                     "global",
                     TestMcpServer.DotnetPath,
                     ["exec", TestMcpServer.ServerDll],
-                    Environment: new Dictionary<string, string>
-                    {
-                        ["LUNATE_TEST_MCP_ELICITATION"] = "1",
-                    },
                     NamespaceName: "global",
                     Source: "mcp.json",
                     WorkspaceIndependent: true
@@ -118,12 +105,7 @@ public sealed class McpToolSetTests
                     "test",
                     TestMcpServer.DotnetPath,
                     ["exec", TestMcpServer.ServerDll],
-                    new Dictionary<string, string>
-                    {
-                        ["LUNATE_TEST_MCP_MARKER"] = marker,
-                        ["LUNATE_TEST_MCP_ELICITATION"] = "1",
-                        ["LUNATE_TEST_MCP_ELICITATION"] = "1",
-                    },
+                    new Dictionary<string, string> { ["LUNATE_TEST_MCP_MARKER"] = marker },
                     NamespaceName: "test",
                     Source: "test-source"
                 ),
@@ -176,7 +158,6 @@ public sealed class McpToolSetTests
                     new Dictionary<string, string>
                     {
                         ["LUNATE_TEST_MCP_MARKER"] = marker,
-                        ["LUNATE_TEST_MCP_ELICITATION"] = "1",
                         ["LUNATE_TEST_MCP_SLOW_LIST_MS"] = "2500",
                     },
                     NamespaceName: "test",
@@ -218,7 +199,6 @@ public sealed class McpToolSetTests
                     new Dictionary<string, string>
                     {
                         ["LUNATE_TEST_MCP_MARKER"] = temp.File("marker.txt"),
-                        ["LUNATE_TEST_MCP_ELICITATION"] = "1",
                     },
                     NamespaceName: "test"
                 ),
@@ -251,7 +231,6 @@ public sealed class McpToolSetTests
                     new Dictionary<string, string>
                     {
                         ["LUNATE_TEST_MCP_MARKER"] = temp.File("marker.txt"),
-                        ["LUNATE_TEST_MCP_ELICITATION"] = "1",
                     },
                     NamespaceName: "test"
                 ),

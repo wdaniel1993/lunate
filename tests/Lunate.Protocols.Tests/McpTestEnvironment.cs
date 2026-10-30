@@ -21,11 +21,7 @@ internal static class McpTestEnvironment
             name,
             TestMcpServer.DotnetPath,
             ["exec", TestMcpServer.ServerDll],
-            new Dictionary<string, string>
-            {
-                ["LUNATE_TEST_MCP_MARKER"] = markerPath,
-                ["LUNATE_TEST_MCP_ELICITATION"] = "1",
-            },
+            new Dictionary<string, string> { ["LUNATE_TEST_MCP_MARKER"] = markerPath },
             WorkingDirectory: null,
             callTimeout
         );
