@@ -158,9 +158,12 @@ internal sealed partial class LiveArea : IDisposable
     {
         _capabilities = _capabilities with { Color = color };
         Post(new ColorInput(color));
-        // The scrollback console has the plan from before; drop it so the next commit re-creates
-        // it with the applied colour system (Spectre's profile colour is creation-time state).
-        _scrollback = null;
+        // An owned scrollback console has the plan from before; recreate it with the applied
+        // colour system (Spectre's profile colour is creation-time state). Keep an injected console.
+        if (_ownsScrollback)
+        {
+            _scrollback = null;
+        }
     }
 
     public void SetRunUsage(long? inputTokens, long? outputTokens) =>

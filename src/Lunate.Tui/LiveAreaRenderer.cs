@@ -166,7 +166,9 @@ internal static class LiveAreaRenderer
 
         if (footerLine is not null)
         {
-            lines.Add(CellText.Clip(footerLine, width));
+            // The status line takes the theme's tone: muted in the colour modes, plain under
+            // mono. Width math happens before styling, so the SGR bytes must not count as columns.
+            lines.Add(LivePalette.Muted(CellText.Clip(footerLine, width), state.Color));
         }
 
         int cursorRow = tail.Count + preInputLines + input.CursorRow;
