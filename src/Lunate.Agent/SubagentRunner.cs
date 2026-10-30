@@ -449,7 +449,10 @@ internal sealed class SubagentRunner : ISubagentRunner
         {
             foreach (ITool tool in source.Tools)
             {
-                registry.Add(tool);
+                if (tool is not AskUserTool)
+                {
+                    registry.Add(tool);
+                }
             }
 
             return registry;
@@ -458,7 +461,7 @@ internal sealed class SubagentRunner : ISubagentRunner
         HashSet<string> selected = new(allowedTools, StringComparer.Ordinal);
         foreach (ITool tool in source.Tools)
         {
-            if (selected.Contains(tool.Name))
+            if (tool is not AskUserTool && selected.Contains(tool.Name))
             {
                 registry.Add(tool);
             }

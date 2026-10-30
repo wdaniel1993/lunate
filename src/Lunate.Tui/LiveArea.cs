@@ -128,6 +128,8 @@ internal sealed partial class LiveArea : IDisposable
 
     public void SetTrustPrompt(TrustPromptModel? prompt) => Post(new TrustPromptInput(prompt));
 
+    public void SetQuestion(SelectListQuestionModel? question) => Post(new QuestionInput(question));
+
     public void SetLoading(string? text) => Post(new LoadingInput(text));
 
     public void SetPicker(SelectListModel? picker) => Post(new PickerInput(picker));
@@ -460,6 +462,7 @@ internal sealed partial class LiveArea : IDisposable
             SecretPromptInput secret => state with { SecretPrompt = secret.Prompt },
             ApprovalInput approval => state with { Approval = approval.Prompt },
             TrustPromptInput trust => state with { Trust = trust.Prompt },
+            QuestionInput question => state with { Question = question.Question },
             LoadingInput loading => state with { Loading = loading.Text },
             PickerInput picker => state with { Picker = picker.Picker },
             KeyHelpInput help => state with { KeyHelp = help.KeyHelp },
@@ -552,6 +555,8 @@ internal sealed partial class LiveArea : IDisposable
     private sealed record ApprovalInput(ApprovalPromptModel? Prompt) : LiveAreaInput;
 
     private sealed record TrustPromptInput(TrustPromptModel? Prompt) : LiveAreaInput;
+
+    private sealed record QuestionInput(SelectListQuestionModel? Question) : LiveAreaInput;
 
     private sealed record LoadingInput(string? Text) : LiveAreaInput;
 

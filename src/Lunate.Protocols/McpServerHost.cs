@@ -40,6 +40,7 @@ public sealed class McpServerHost : IAsyncDisposable
     private readonly TimeSpan startupStallBound;
     private readonly Action<IReadOnlyList<ITool>>? onToolsChanged;
     private readonly Action<string>? log;
+    private readonly McpElicitationOutcome elicitationOutcome = new();
     private readonly SemaphoreSlim gate = new(1, 1);
     private readonly Dictionary<string, McpToolAdapter> adapters = new(StringComparer.Ordinal);
     private McpClient? client;
@@ -202,6 +203,20 @@ public sealed class McpServerHost : IAsyncDisposable
                             Version = ClientVersion,
                         },
                         ProtocolVersion = StableProtocolVersion,
+                        Capabilities = new ClientCapabilities
+                        {
+                            Elicitation = new ElicitationCapability { Form = new() },
+                        },
+                        Handlers = new McpClientHandlers
+                        {
+                            ElicitationHandler = (request, token) =>
+                                McpElicitationHandler.HandleAsync(
+                                    request,
+                                    options.Name,
+                                    elicitationOutcome,
+                                    token
+                                ),
+                        },
                         // The SDK's fixed wall-clock window is replaced by our stall bound: it
                         // counts silence, not total elapsed time, so a live but slow server is
                         // never reported failed. See StartupLiveness.
@@ -316,7 +331,8 @@ public sealed class McpServerHost : IAsyncDisposable
                     exposure,
                     tool,
                     callTimeout,
-                    log
+                    log,
+                    elicitationOutcome
                 );
                 adapters[key] = adapter;
             }

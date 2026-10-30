@@ -61,6 +61,13 @@ public sealed record ToolContext(string WorkingDirectory, IAgentEvents Events)
     /// </summary>
     public IModelAccess? Models { get; init; }
 
+    /// <summary>The interactive question handler for this run; null when no user is present.</summary>
+    internal Func<
+        IReadOnlyList<UserQuestion>,
+        CancellationToken,
+        Task<UserQuestionResult>
+    >? AskUserAsync { get; init; }
+
     /// <summary>The session whose spill files this run may read; null without a session.</summary>
     internal Session? Session { get; init; }
 

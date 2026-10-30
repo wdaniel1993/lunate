@@ -31,7 +31,7 @@ public sealed class McpExtensionInteractiveTests
         host.Console.SendEnter();
         await InteractiveSessionCommandTests.WaitForFrameAsync(
             host,
-            "fake — started, 5 tools (extension 'mcp')"
+            "fake — started, 8 tools (extension 'mcp')"
         );
 
         Assert.DoesNotContain("no servers configured", host.LastFrame, StringComparison.Ordinal);
@@ -73,7 +73,7 @@ public sealed class McpExtensionInteractiveTests
         await InteractiveSessionCommandTests.WaitForFrameAsync(host, "shadowed by");
 
         Assert.Contains(
-            $"test — started, 5 tools ({config})",
+            $"test — started, 8 tools ({config})",
             host.LastFrame,
             StringComparison.Ordinal
         );

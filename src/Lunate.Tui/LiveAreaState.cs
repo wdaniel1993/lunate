@@ -56,6 +56,8 @@ internal sealed record LiveAreaState
 
     public TrustPromptModel? Trust { get; init; }
 
+    public SelectListQuestionModel? Question { get; init; }
+
     public SelectListModel? Picker { get; init; }
 
     /// <summary>The open key-help overlay; null while none is open.</summary>

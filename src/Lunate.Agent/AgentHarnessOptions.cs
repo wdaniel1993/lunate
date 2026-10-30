@@ -54,6 +54,13 @@ public sealed record AgentHarnessOptions
     /// <summary>The session to resume from and mirror into; null keeps the history in memory only.</summary>
     public Session? Session { get; init; }
 
+    /// <summary>The run's interactive question handler; null when no user-input mechanism is present.</summary>
+    internal Func<
+        IReadOnlyList<UserQuestion>,
+        CancellationToken,
+        Task<UserQuestionResult>
+    >? AskUserAsync { get; init; }
+
     /// <summary>The steering queue the loop drains before each model request; null disables steering.</summary>
     public SteeringQueue? Steering { get; init; }
 

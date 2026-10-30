@@ -6,6 +6,7 @@ namespace Lunate.Tui.Tests;
 /// catalogue, so a remap is visible to both the help overlay and the key table's source of truth.
 /// Every test restores the catalogue's shipped keys afterwards; the catalogue is static.
 /// </summary>
+[Collection("keymap-catalogue")]
 public sealed class KeyBindingCatalogRemapTests
 {
     private static (string Id, KeyPattern[] Keys)[] Before() => [.. KeyBindingCatalog.Snapshot()];

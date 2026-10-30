@@ -19,6 +19,8 @@
 
     <ItemGroup>
         <InternalsVisibleTo Include="Lunate.Agent.Tests" />
+        <InternalsVisibleTo Include="Lunate.Protocols" />
+        <InternalsVisibleTo Include="Lunate.Protocols.Tests" />
         <!-- The coding harness ("lunate") creates its store through SessionProvisioning. -->
         <InternalsVisibleTo Include="lunate" />
         <!-- The Coding production-composition proofs validate a session run's event stream. -->

@@ -1,4 +1,6 @@
 using System.Globalization;
+using System.Text.Json;
+using ModelContextProtocol;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 
@@ -119,6 +121,38 @@ tools.Add(
 );
 tools.Add(
     McpServerTool.Create(
+        (Func<RequestContext<CallToolRequestParams>, CancellationToken, Task<string>>)ElicitAsync,
+        new McpServerToolCreateOptions
+        {
+            Name = "elicit",
+            Description = "Requests a form elicitation and reports the response shape.",
+        }
+    )
+);
+tools.Add(
+    McpServerTool.Create(
+        (Func<RequestContext<CallToolRequestParams>, CancellationToken, Task<string>>)
+            ElicitFormAsync,
+        new McpServerToolCreateOptions
+        {
+            Name = "elicit_form",
+            Description = "Requests a flat form elicitation and reports the response.",
+        }
+    )
+);
+tools.Add(
+    McpServerTool.Create(
+        (Func<RequestContext<CallToolRequestParams>, CancellationToken, Task<string>>)
+            ElicitUrlAsync,
+        new McpServerToolCreateOptions
+        {
+            Name = "elicit_url",
+            Description = "Requests a URL-mode elicitation and reports the response.",
+        }
+    )
+);
+tools.Add(
+    McpServerTool.Create(
         (Func<string>)SpawnTool,
         new McpServerToolCreateOptions
         {
@@ -225,6 +259,113 @@ async Task<string> SlowAsync(int seconds, CancellationToken cancellationToken)
 
 string Boom() => throw new InvalidOperationException("boom: the tool failed on purpose");
 
+async Task<string> ElicitAsync(
+    RequestContext<CallToolRequestParams> context,
+    CancellationToken cancellationToken
+)
+{
+    ElicitResult<ElicitationResponse> response =
+        await context.Server.ElicitAsync<ElicitationResponse>(
+            "Choose a plan.",
+            cancellationToken: cancellationToken
+        );
+    string content = response.Content is null ? "empty" : "present";
+    string result = $"action={response.Action};content={content}";
+    Mark("elicitation " + result);
+    return result;
+}
+
+async Task<string> ElicitFormAsync(
+    RequestContext<CallToolRequestParams> context,
+    CancellationToken cancellationToken
+)
+{
+    bool form = context.Server.ClientCapabilities?.Elicitation?.Form is not null;
+    bool url = context.Server.ClientCapabilities?.Elicitation?.Url is not null;
+    Mark($"elicitation capability=form:{form};url:{url}");
+
+    ElicitResult response = await context.Server.ElicitAsync(
+        new ElicitRequestParams
+        {
+            Mode = "form",
+            Message = "Choose settings for the generated project.",
+            RequestedSchema = new ElicitRequestParams.RequestSchema
+            {
+                Properties = new Dictionary<string, ElicitRequestParams.PrimitiveSchemaDefinition>
+                {
+                    ["display"] = new ElicitRequestParams.StringSchema
+                    {
+                        Title = "Display name",
+                        Description = "Name shown in the project.",
+                    },
+                    ["count"] = new ElicitRequestParams.NumberSchema
+                    {
+                        Type = "integer",
+                        Title = "Worker count",
+                        Description = "Number of workers.",
+                    },
+                    ["enabled"] = new ElicitRequestParams.BooleanSchema
+                    {
+                        Title = "Enable feature",
+                        Description = "Whether the feature is enabled.",
+                    },
+                    ["plan"] = new ElicitRequestParams.UntitledSingleSelectEnumSchema
+                    {
+                        Title = "Plan",
+                        Description = "Choose the project plan.",
+                        Enum = ["guided", "manual"],
+                    },
+                    ["tags"] = new ElicitRequestParams.UntitledMultiSelectEnumSchema
+                    {
+                        Title = "Tags",
+                        Description = "Choose project tags.",
+                        Items = new ElicitRequestParams.UntitledEnumItemsSchema
+                        {
+                            Type = "string",
+                            Enum = ["safe", "fast"],
+                        },
+                    },
+                },
+                Required = ["display", "count", "enabled", "plan", "tags"],
+            },
+        },
+        cancellationToken
+    );
+    string serializedContent = JsonSerializer.Serialize(response.Content);
+    Mark($"elicitation response={response.Action};content={serializedContent}");
+    return JsonSerializer.Serialize(new { response.Action, response.Content });
+}
+
+async Task<string> ElicitUrlAsync(
+    RequestContext<CallToolRequestParams> context,
+    CancellationToken cancellationToken
+)
+{
+    try
+    {
+        ElicitResult response = await context.Server.ElicitAsync(
+            new ElicitRequestParams
+            {
+                Mode = "url",
+                ElicitationId = "test-url-elicitation",
+                Url = "https://example.invalid/elicitation",
+                Message = "Complete the external setup.",
+            },
+            cancellationToken
+        );
+        Mark($"url elicitation action={response.Action}");
+        return $"url elicitation action={response.Action}";
+    }
+    catch (Exception exception)
+    {
+        string errorCode = exception is McpProtocolException protocolException
+            ? protocolException.ErrorCode.ToString()
+            : exception.GetType().Name;
+        Mark($"url elicitation error={errorCode};{exception.Message}");
+        return $"url elicitation error={errorCode};{exception.Message}";
+    }
+}
+
 string SpawnTool()
 {
     tools.Add(
@@ -241,3 +382,8 @@ string SpawnTool()
 }
 
 internal sealed record AddResult(int Sum);
+
+internal sealed class ElicitationResponse
+{
+    public string? Choice { get; set; }
+}
