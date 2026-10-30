@@ -340,7 +340,7 @@ public sealed class RoslynBackend : ICSharpBackend, IDisposable
             JsonElement structuredContent = JsonSerializer.SerializeToElement(introduced);
             return new(
                 WriteVerificationStatus.Refused,
-                $"introduced compiler errors in {Path.GetFileName(canonicalPath)} ({targetFramework}):{Environment.NewLine}{details}",
+                $"introduced compiler errors in {Path.GetFileName(canonicalPath)} ({targetFramework}); {scope}:{Environment.NewLine}{details}",
                 structuredContent
             );
         }

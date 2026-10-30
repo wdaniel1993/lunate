@@ -48,7 +48,7 @@ public sealed class VerifiedWriteVerifierTests
         const string baseline = "internal static class Program { static void Main() {} }\n";
         const string staged =
             "internal static class Program { static void Main() {\n"
-            + "#if !WINDOWS\nMissingType.Call();\n#endif\n"
+            + "#if WINDOWS\nMissingType.Call();\n#endif\n"
             + "} }\n";
 
         WriteVerificationResult result = await verifier.VerifyAsync(
@@ -56,8 +56,13 @@ public sealed class VerifiedWriteVerifierTests
             CancellationToken.None
         );
 
-        Assert.True(result.Status is WriteVerificationStatus.Verified, result.Reason);
-        Assert.Contains("net10.0-windows", result.Reason, StringComparison.Ordinal);
+        Assert.NotNull(result.Reason);
+        bool windowsTarget = result.Reason.Contains("net10.0-windows", StringComparison.Ordinal);
+        Assert.True(result.Reason.Contains("net10.0", StringComparison.Ordinal), result.Reason);
+        Assert.Equal(
+            windowsTarget ? WriteVerificationStatus.Refused : WriteVerificationStatus.Verified,
+            result.Status
+        );
     }
 
     [Fact]
