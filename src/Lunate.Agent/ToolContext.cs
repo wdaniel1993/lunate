@@ -60,4 +60,7 @@ public sealed record ToolContext(string WorkingDirectory, IAgentEvents Events)
     /// its routing. Null outside a run or when the run has no model registry.
     /// </summary>
     public IModelAccess? Models { get; init; }
+
+    /// <summary>The session whose spill files this run may read; null without a session.</summary>
+    internal Session? Session { get; init; }
 }

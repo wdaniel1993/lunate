@@ -97,7 +97,7 @@ public sealed partial class ReadTool : ITool
 
         if (!_workspace.TryResolve(pathElement.GetString()!, out var resolved, out var error))
         {
-            if (!TryResolveAllowed(pathElement.GetString()!, out resolved))
+            if (!TryResolveAllowed(pathElement.GetString()!, ctx.Session, out resolved))
             {
                 return Task.FromResult(Error(error));
             }
@@ -231,10 +231,10 @@ public sealed partial class ReadTool : ITool
     /// Resolves a path outside the workspace against the run's skill allowance: the canonical
     /// target must equal an allowed skill directory or lie under one.
     /// </summary>
-    private bool TryResolveAllowed(string path, out ResolvedPath resolved)
+    private bool TryResolveAllowed(string path, Session? session, out ResolvedPath resolved)
     {
         resolved = null!;
-        if (_allowance is null || _allowance.Roots.Count == 0)
+        if ((_allowance is null || _allowance.Roots.Count == 0) && session is null)
         {
             return false;
         }
@@ -257,7 +257,7 @@ public sealed partial class ReadTool : ITool
             return false;
         }
 
-        if (!_allowance.Contains(canonical))
+        if (!(_allowance?.Contains(canonical) ?? false) && !ContainsSpillPath(canonical, session))
         {
             return false;
         }
@@ -267,6 +267,36 @@ public sealed partial class ReadTool : ITool
             SkillPaths.Display(canonical, _workspace.WorktreeRoot)
         );
         return true;
+    }
+
+    private static bool ContainsSpillPath(string canonicalPath, Session? session)
+    {
+        if (session is null)
+        {
+            return false;
+        }
+
+        try
+        {
+            string root = Workspace.Canonicalize(ToolOutputSpill.DirectoryFor(session));
+            string prefix = root.EndsWith(Path.DirectorySeparatorChar)
+                ? root
+                : root + Path.DirectorySeparatorChar;
+            StringComparison comparison = OperatingSystem.IsLinux()
+                ? StringComparison.Ordinal
+                : StringComparison.OrdinalIgnoreCase;
+            return canonicalPath.StartsWith(prefix, comparison);
+        }
+        catch (Exception exception)
+            when (exception
+                    is IOException
+                        or UnauthorizedAccessException
+                        or ArgumentException
+                        or NotSupportedException
+            )
+        {
+            return false;
+        }
     }
 
     private static ToolResult Result(string output) => new(output, IsError: false);

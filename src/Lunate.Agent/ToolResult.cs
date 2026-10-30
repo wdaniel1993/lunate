@@ -32,4 +32,12 @@ public sealed record ToolResult(
     /// the only model-facing text of the result.
     /// </summary>
     public IReadOnlyList<ImageAttachment>? Images { get; init; }
+
+    /// <summary>
+    /// The complete transcript behind a concise <see cref="Output"/>. A value equal to
+    /// <see cref="Output"/> behaves as absent; a distinct value is spilled when it exceeds the
+    /// admission threshold, including on error results. Without a session, the bounded transcript
+    /// follows the answer in-band.
+    /// </summary>
+    public string? FullOutput { get; init; }
 }

@@ -62,15 +62,7 @@ public sealed partial class AgentHarness
         }
 
         toolActivity?.SetTag(AgentTelemetry.ToolIsErrorAttribute, result.IsError);
-        // Masking is admission's first step and truncation's predecessor: a value that crosses
-        // the cut cannot send a fragment. The event, the history and the spill all carry this
-        // one masked-and-bounded text.
-        string output = TruncateToolOutput(
-            runId,
-            callId,
-            RedactForContext(result.Output ?? string.Empty),
-            channel
-        );
+        string output = AdmitToolOutput(runId, callId, result, channel);
         channel.Emit(
             new ToolCallResult(runId, callId, output, result.IsError, result.Details)
             {
@@ -89,28 +81,101 @@ public sealed partial class AgentHarness
     }
 
     /// <summary>
-    /// Bounds one tool result for the model and, when it is over the budget and the run has a
-    /// session, spills the full output beside that session before naming the file in the marker.
-    /// The spill is best-effort: a failed write keeps the count-only marker.
+    /// Masks every model-facing value before it can be emitted or persisted, then admits either the
+    /// concise output or its transcript through the same token-and-character threshold.
     /// </summary>
-    private string TruncateToolOutput(
+    private string AdmitToolOutput(
+        string runId,
+        string callId,
+        ToolResult result,
+        AgentEventChannel channel
+    )
+    {
+        string rawOutput = result.Output ?? string.Empty;
+        string output = RedactForContext(rawOutput);
+        string? fullOutput = result.FullOutput is { } rawFullOutput
+            ? string.Equals(rawOutput, rawFullOutput, StringComparison.Ordinal)
+                ? output
+                : RedactForContext(rawFullOutput)
+            : null;
+        if (string.Equals(output, fullOutput, StringComparison.Ordinal))
+        {
+            fullOutput = null;
+        }
+
+        return fullOutput is { } transcript
+            ? AdmitTranscript(runId, callId, output, transcript, channel)
+            : AdmitOutput(runId, callId, output, channel);
+    }
+
+    private string AdmitOutput(
         string runId,
         string callId,
         string output,
         AgentEventChannel channel
     )
     {
-        int limit = _options.ToolOutputLimit;
-        if (output.Length <= limit)
+        if (_options.Session is not { } session)
+        {
+            return ToolOutput.Truncate(output, _options.ToolOutputLimit);
+        }
+
+        if (
+            !ToolOutput.ExceedsSpillLimits(
+                output,
+                _options.SpillThresholdTokens,
+                _options.ToolOutputLimit
+            )
+        )
         {
             return output;
         }
 
+        return Spill(runId, callId, output, session, channel, includePreview: true);
+    }
+
+    private string AdmitTranscript(
+        string runId,
+        string callId,
+        string answer,
+        string transcript,
+        AgentEventChannel channel
+    )
+    {
         if (_options.Session is not { } session)
         {
-            return ToolOutput.Truncate(output, limit);
+            return JoinAnswerAndTranscript(
+                answer,
+                ToolOutput.Truncate(transcript, _options.ToolOutputLimit)
+            );
         }
 
+        if (
+            !ToolOutput.ExceedsSpillLimits(
+                transcript,
+                _options.SpillThresholdTokens,
+                _options.ToolOutputLimit
+            )
+        )
+        {
+            return answer;
+        }
+
+        return JoinAnswerAndTranscript(
+            answer,
+            Spill(runId, callId, transcript, session, channel, includePreview: false)
+        );
+    }
+
+    private string Spill(
+        string runId,
+        string callId,
+        string output,
+        Session session,
+        AgentEventChannel channel,
+        bool includePreview
+    )
+    {
         int sequence = _spillSequenceByCallId.GetOrAdd(
             callId,
             _ => Interlocked.Increment(ref _spillSequence)
@@ -121,13 +186,13 @@ public sealed partial class AgentHarness
             channel.Emit(new ToolOutputSpillFailed(runId, error));
         }
 
-        return spill switch
-        {
-            { Path: { } path } => ToolOutput.Truncate(output, limit, path),
-            { TooLarge: true } => ToolOutput.Truncate(output, limit, tooLarge: true),
-            _ => ToolOutput.Truncate(output, limit),
-        };
+        return spill.Path is { } path
+            ? ToolOutput.RenderPointer(output, path, includePreview)
+            : ToolOutput.Truncate(output, _options.ToolOutputLimit, spill.TooLarge);
     }
+
+    private static string JoinAnswerAndTranscript(string answer, string transcript) =>
+        answer.Length == 0 ? transcript : answer + "\n\n" + transcript;
 
     /// <summary>
     /// The one user-role message that carries a tool result's images. The tool-role message holds
@@ -310,13 +375,7 @@ public sealed partial class AgentHarness
             throw;
         }
 
-        // The nested result takes the same admission path: masked first, then bounded.
-        string output = TruncateToolOutput(
-            runId,
-            nestedCallId,
-            RedactForContext(result.Output ?? string.Empty),
-            channel
-        );
+        string output = AdmitToolOutput(runId, nestedCallId, result, channel);
         channel.Emit(
             new ToolCallResult(runId, nestedCallId, output, result.IsError, result.Details)
             {
@@ -533,6 +592,7 @@ public sealed partial class AgentHarness
                 runId
             ),
             Subagents = _subagentRunner,
+            Session = _options.Session,
             ToolStubs = CallableToolStubs(),
             Models = _options.ModelRegistry is { } registry
                 ? new RunModelAccess(registry, this, channel, runId)

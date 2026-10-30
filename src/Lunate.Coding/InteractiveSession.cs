@@ -855,6 +855,7 @@ internal sealed partial class InteractiveSession : IDisposable
                 : null,
             WorkingDirectory = _workspace.WorktreeRoot,
             ToolOutputLimit = _settings.ToolOutputLimit,
+            SpillThresholdTokens = _settings.SpillThresholdTokens,
             // The same redactor masks the model-facing text; the interactive session always has one.
             ToolOutputMask = _redaction.Redact,
             SubagentLimits = _settings.Subagents,

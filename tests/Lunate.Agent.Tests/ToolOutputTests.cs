@@ -10,6 +10,89 @@ public sealed class ToolOutputTests
         Assert.Equal(30_000, ToolOutput.DefaultLimit);
     }
 
+    [Fact]
+    public void EstimateTokens_uses_utf8_bytes_divided_by_four()
+    {
+        Assert.Equal(2, ToolOutput.EstimateTokens("😀😀"));
+    }
+
+    [Fact]
+    public void Output_under_both_spill_limits_is_unchanged()
+    {
+        const string output = "short output";
+
+        Assert.False(ToolOutput.ExceedsSpillLimits(output, tokenThreshold: 4, characterLimit: 100));
+        Assert.Equal(output, ToolOutput.Truncate(output, limit: 100));
+    }
+
+    [Fact]
+    public void Output_over_the_token_threshold_exceeds_spill_limits()
+    {
+        Assert.True(
+            ToolOutput.ExceedsSpillLimits("12345678", tokenThreshold: 1, characterLimit: 100)
+        );
+    }
+
+    [Fact]
+    public void Output_over_the_character_cap_exceeds_spill_limits()
+    {
+        Assert.True(
+            ToolOutput.ExceedsSpillLimits("123456789", tokenThreshold: 10, characterLimit: 8)
+        );
+    }
+
+    [Fact]
+    public void Spill_pointer_keeps_ten_head_and_tail_lines_with_invariant_counts()
+    {
+        CultureInfo original = CultureInfo.CurrentCulture;
+        try
+        {
+            CultureInfo.CurrentCulture = new CultureInfo("de-AT");
+            string output = string.Join('\n', Enumerable.Range(1, 25).Select(i => $"line-{i:D2}"));
+
+            string pointer = ToolOutput.RenderPointer(output, "/sessions/tool-output/run-1.txt");
+
+            Assert.Contains("line-01", pointer, StringComparison.Ordinal);
+            Assert.Contains("line-10", pointer, StringComparison.Ordinal);
+            Assert.DoesNotContain("line-11", pointer, StringComparison.Ordinal);
+            Assert.Contains("line-16", pointer, StringComparison.Ordinal);
+            Assert.Contains("line-25", pointer, StringComparison.Ordinal);
+            Assert.Contains("40 characters omitted", pointer, StringComparison.Ordinal);
+            Assert.Contains("/sessions/tool-output/run-1.txt", pointer, StringComparison.Ordinal);
+            Assert.Contains("read it with offset and limit", pointer, StringComparison.Ordinal);
+            Assert.Contains("25 lines", pointer, StringComparison.Ordinal);
+            Assert.DoesNotContain("2.000", pointer, StringComparison.Ordinal);
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = original;
+        }
+    }
+
+    [Fact]
+    public void Spill_pointer_preview_is_at_most_two_thousand_characters()
+    {
+        string line = new('x', 300);
+        string output = string.Join('\n', Enumerable.Repeat(line, 30));
+
+        string pointer = ToolOutput.RenderPointer(output, "/spill.txt");
+        int markerStart = pointer.IndexOf("\n\n... [", StringComparison.Ordinal);
+
+        Assert.InRange(markerStart, 0, 2_000);
+        Assert.Contains("characters omitted", pointer, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Spill_pointer_preview_never_splits_a_surrogate_pair()
+    {
+        string output =
+            new string('x', 999) + "😀" + new string('x', 998) + "😀" + new string('x', 1_000);
+
+        string pointer = ToolOutput.RenderPointer(output, "/spill.txt");
+
+        AssertNoLoneSurrogates(pointer);
+    }
+
     [Theory]
     [InlineData("")]
     [InlineData("short output")]
