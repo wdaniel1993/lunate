@@ -338,6 +338,74 @@ jobs:
           path: artifacts/
           if-no-files-found: warn
 
+  # The dedicated cold-startup leg (#240). The floor measured inside verify is still noisy on
+  # the shared macOS runner: across 29 successful `main` runs (2026-10-28/29, post-#135,
+  # post-ADR-0005 floor gate) the macOS floor read 77-275 ms, p95 256 ms against a 300 ms
+  # budget — a bimodal runner, not a binary change — while Ubuntu (26-41 ms) and Windows
+  # (60-139 ms) stayed tight. So the measurement gets its own quiet job: restore, build
+  # Release, publish, run scripts/perf.sh, nothing else. Budgets are unchanged (ADR-0005);
+  # do not raise them here. The verify legs keep measuring startup after their publish —
+  # the verify gate's behaviour is intact; this leg adds an independent, quiet measurement
+  # on the runner class the evidence named. A quiet Ubuntu or windows measurement is what
+  # the same evidence showed, so those legs are not duplicated here; add a matrix entry
+  # below only when a runner's numbers ask for it.
+  perf:
+    name: perf (${{ matrix.os }})
+    needs: plan
+    if: needs.plan.outputs.profile == 'full'
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            rid: osx-arm64
+            budget_ms: 300
+    env:
+      RID: ${{ matrix.rid }}
+      DOTNET_CLI_UI_LANGUAGE: en
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: |
+            global.json
+            Directory.Build.props
+            **/*.csproj
+
+      - name: Install hyperfine (macOS)
+        run: |
+          set -euo pipefail
+          brew install hyperfine
+          hyperfine --version
+          jq --version
+
+      # Build and publish what verify.sh's startup step measures — same configuration, same
+      # publish flags (ADR-0008 release shape) — on a runner that runs nothing else first.
+      - name: Build (Release)
+        run: dotnet build lunate.slnx -c Release --nologo
+
+      - name: Publish
+        run: |
+          dotnet publish src/Lunate.Coding/Lunate.Coding.csproj \
+            -c Release \
+            -r "${{ matrix.rid }}" \
+            --self-contained true \
+            -p:PublishSingleFile=true \
+            -p:PublishReadyToRun=true \
+            -o "artifacts/publish/${{ matrix.rid }}" \
+            --nologo
+
+      - name: Startup budget (dedicated measurement)
+        env:
+          BUDGET_MS: ${{ matrix.budget_ms }}
+        run: bash scripts/perf.sh "artifacts/publish/${{ matrix.rid }}/lunate"
+
   # Single aggregate check for branch protection: the ruleset requires only
   # "ci-ok", so renaming, adding or removing a matrix leg cannot silently drop
   # a required check. always() so a failed leg produces a definitive red
@@ -359,7 +427,7 @@ jobs:
   # push still costs no matrix. scripts/ci-ok.sh --self-test pins both halves.
   ci-ok:
     name: ci-ok
-    needs: [plan, verify, verify-powershell, verify-docs]
+    needs: [plan, verify, verify-powershell, verify-docs, perf]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -376,4 +444,5 @@ jobs:
           VERIFY: ${{ needs.verify.result }}
           POWERSHELL: ${{ needs.verify-powershell.result }}
           DOCS: ${{ needs.verify-docs.result }}
+          PERF: ${{ needs.perf.result }}
         run: bash scripts/ci-ok.sh
