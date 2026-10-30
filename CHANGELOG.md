@@ -10,6 +10,12 @@ Notable changes to Lunate, one section per release. The format follows
 
 ### Added
 
+- The bash guard: a bash command is wrapped in an OS-level deny that refuses writes under the state
+  root (`LUNATE_HOME`) and the install prefix and read-denies `auth.json` — `sandbox-exec` on macOS,
+  bubblewrap on Linux with `setpriv`'s Landlock rules as the fallback, Windows reported unsupported
+  rather than run unconfined silently. The mechanism is probed once per session, so a restricted
+  setup (Ubuntu 23.10+'s AppArmor user-namespace restriction) is detected and reported, never
+  assumed away (#241).
 - The interactive session checks GitHub Releases at most once a day, in the background, and names a
   newer release as one dim linked line in the welcome header (`v0.2.0 available · changelog`). The
   answer is cached under the state root for 24 hours; the request carries no telemetry beyond
