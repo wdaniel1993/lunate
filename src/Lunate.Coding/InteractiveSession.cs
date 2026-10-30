@@ -320,6 +320,9 @@ internal sealed partial class InteractiveSession : IDisposable
                 _live.SetLoading(null);
                 FlushPendingNotices();
                 UpdateStatus();
+                // --fullscreen / tui.fullscreen: the mode enters now that the first frame is on
+                // the terminal; a failed enter keeps the session inline (fail soft, raw-mode rules).
+                EnterFullScreen();
                 // --resume (or the injected seam) opens the existing picker once composition
                 // finished: the listing needs the session directory and the live area is ready.
                 if (_options.StartWithPicker || _options.Launch.Resume)
@@ -398,6 +401,9 @@ internal sealed partial class InteractiveSession : IDisposable
                 _workspaceServices = null;
                 // Every exit path leaves the viewer's alternate screen, exceptions included.
                 _viewer.Close();
+                // The full-screen mode's screen goes back after the viewer's, so the pairing
+                // stays one enter for one leave on every terminal.
+                LeaveFullScreen();
                 _live.Dispose();
             }
         }
@@ -1274,12 +1280,18 @@ internal sealed partial class InteractiveSession : IDisposable
         _live.SetSuspended(true);
         try
         {
+            // A terminal shows one alternate screen: the full-screen session leaves its own so the
+            // viewer's enter/leave stays paired, then enters again once the viewer is closed.
+            LeaveFullScreen();
             _viewer.Open(new TranscriptModel(_transcript));
         }
         catch
         {
             // The screen never became the viewer's: resume the live area before the failure
-            // surfaces, so a broken console write does not leave the session suspended.
+            // surfaces, so a broken console write does not leave the session suspended. The
+            // full-screen mode takes its buffer back first, whatever the viewer left behind.
+            LeaveFullScreen();
+            EnterFullScreen();
             _live.SetSuspended(false);
             throw;
         }
@@ -1293,6 +1305,9 @@ internal sealed partial class InteractiveSession : IDisposable
             return;
         }
 
+        // The viewer left the screen; the mode re-enters before the live area resumes, so the
+        // scrollback queued while the viewer was open keeps landing in the alternate buffer.
+        EnterFullScreen();
         _live.SetSuspended(false);
     }
 

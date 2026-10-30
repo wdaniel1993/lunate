@@ -103,9 +103,11 @@ public sealed class InteractiveSessionFullScreenTests
         string writes = string.Concat(host.Console.Writes);
         Assert.Equal(0, CountAll(writes, AlternateScreen.EnterSequence));
 
-        // Still usable inline: a draft and the same quit keys behave as always.
+        // Still usable inline: the composer paints and the same quit keys behave as always.
         host.Console.SendText("draft stays");
         await host.WaitForFrameAsync("> draft stays");
+        host.Console.SendCtrlC();
+        await host.WaitForFrameAsync("Ask anything");
         host.Console.SendCtrlD();
         await WaitFirstCtrlDAsync(host);
         host.Console.SendCtrlD();

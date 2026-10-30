@@ -35,6 +35,7 @@ internal sealed partial class InteractiveSession
         lines.Add(Row("favorites", ListValue(_settings.Favorites)));
         lines.Add(Row("tools.extra", ListValue(_settings.Tools.Extra)));
         lines.Add(Row("providers", ListCount("endpoint", _settings.Providers)));
+        lines.Add(Row("tui.fullscreen", BooleanLiteral(_settings.Tui.Fullscreen)));
         lines.Add(Row("roslyn", RoslynText()));
         lines.Add(Row("subagents", SubagentsText(_settings.Subagents)));
         lines.Add(
@@ -61,6 +62,7 @@ internal sealed partial class InteractiveSession
             "favorites" => ListValue(_settings.Favorites),
             "tools.extra" => ListValue(_settings.Tools.Extra),
             "providers" => ListCount("endpoint", _settings.Providers),
+            "tui.fullscreen" => BooleanLiteral(_settings.Tui.Fullscreen),
             "roslyn" => RoslynText(),
             "subagents" => SubagentsText(_settings.Subagents),
             _ => "(unknown key)",
@@ -188,7 +190,8 @@ internal sealed partial class InteractiveSession
                 or "tools.extra"
                 or "providers"
                 or "roslyn"
-                or "subagents";
+                or "subagents"
+                or "tui.fullscreen";
 
     private static string Row(string key, string value) => key.PadRight(16) + value;
 

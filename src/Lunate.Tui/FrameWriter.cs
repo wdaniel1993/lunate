@@ -86,6 +86,17 @@ internal sealed class FrameWriter
         _console.Write(builder.ToString());
     }
 
+    /// <summary>
+    /// Forgets the painted region without erasing it: the buffer those rows were painted on is
+    /// being discarded wholesale (the alternate screen the full-screen mode leaves), so erasing on
+    /// the current buffer would damage whatever stands there now.
+    /// </summary>
+    public void Forget()
+    {
+        _cursorRow = 0;
+        _height = 0;
+    }
+
     private static string Escape(int value) =>
         "\u001b[" + value.ToString(CultureInfo.InvariantCulture);
 }
