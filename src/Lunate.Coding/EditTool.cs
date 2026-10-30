@@ -19,6 +19,8 @@ public sealed class EditTool(
     Func<string, IWriteVerifier?>? verifierSelector = null
 ) : ITool
 {
+    private readonly TimeProvider _timeProvider = TimeProvider.System;
+
     /// <summary>The model-facing name; also what <see cref="HighRiskCall"/> classifies.</summary>
     internal const string ToolName = "edit";
 
@@ -27,6 +29,16 @@ public sealed class EditTool(
     private readonly ITextFileAccess _files = files ?? LocalTextFileAccess.Instance;
 
     private readonly CredentialRedactor? _redaction;
+
+    internal EditTool(
+        Workspace workspace,
+        Func<string, IWriteVerifier?>? verifierSelector,
+        TimeProvider timeProvider
+    )
+        : this(workspace, verifierSelector: verifierSelector)
+    {
+        _timeProvider = timeProvider;
+    }
 
     internal EditTool(
         Workspace workspace,
@@ -266,17 +278,19 @@ public sealed class EditTool(
                     newFileText += ending;
                 }
 
+                WriteVerificationOutcome? verification = await WriteVerificationPipeline
+                    .RefuseIfNeededAsync(
+                        verifierSelector,
+                        resolved.RelativePath,
+                        fileText,
+                        newFileText,
+                        workspace.Identity,
+                        mutationCt,
+                        _timeProvider
+                    )
+                    .ConfigureAwait(false);
                 if (
-                    await WriteVerificationPipeline.RefuseIfNeededAsync(
-                            verifierSelector,
-                            resolved.RelativePath,
-                            fileText,
-                            newFileText,
-                            workspace.Identity,
-                            mutationCt
-                        )
-                        .ConfigureAwait(false) is
-                    { } verificationRefusal
+                    verification?.Refusal is { } verificationRefusal
                 )
                 {
                     return verificationRefusal;
@@ -308,6 +322,10 @@ public sealed class EditTool(
                     CultureInfo.InvariantCulture,
                     $"edited {resolved.RelativePath} lines {firstLine}\u2013{lastLine} (match: {tier})"
                 );
+                if (verification?.Notice is { } notice)
+                {
+                    output += $"; {notice}";
+                }
                 var details = new EditDetails(
                     resolved.RelativePath,
                     firstLine,

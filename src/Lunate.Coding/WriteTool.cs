@@ -18,6 +18,8 @@ public sealed class WriteTool(
     Func<string, IWriteVerifier?>? verifierSelector = null
 ) : ITool
 {
+    private readonly TimeProvider _timeProvider = TimeProvider.System;
+
     /// <summary>The model-facing name; also what <see cref="HighRiskCall"/> classifies.</summary>
     internal const string ToolName = "write";
 
@@ -26,6 +28,16 @@ public sealed class WriteTool(
     private readonly ITextFileAccess _files = files ?? LocalTextFileAccess.Instance;
 
     private readonly CredentialRedactor? _redaction;
+
+    internal WriteTool(
+        Workspace workspace,
+        Func<string, IWriteVerifier?>? verifierSelector,
+        TimeProvider timeProvider
+    )
+        : this(workspace, verifierSelector: verifierSelector)
+    {
+        _timeProvider = timeProvider;
+    }
 
     internal WriteTool(
         Workspace workspace,
@@ -159,21 +171,25 @@ public sealed class WriteTool(
                 // The file's own convention wins over the text as given: a CRLF file stays CRLF
                 // and a byte-order mark survives, so a rewrite never turns into a whole-file diff.
                 var written = content.ReplaceLineEndings(ending);
+                WriteVerificationOutcome? verification = await WriteVerificationPipeline
+                    .RefuseIfNeededAsync(
+                        verifierSelector,
+                        resolved.RelativePath,
+                        oldText,
+                        written,
+                        workspace.Identity,
+                        mutationCt,
+                        _timeProvider
+                    )
+                    .ConfigureAwait(false);
                 if (
-                    await WriteVerificationPipeline.RefuseIfNeededAsync(
-                            verifierSelector,
-                            resolved.RelativePath,
-                            oldText,
-                            written,
-                            workspace.Identity,
-                            mutationCt
-                        )
-                        .ConfigureAwait(false) is
-                    { } verificationRefusal
+                    verification?.Refusal is { } verificationRefusal
                 )
                 {
                     return verificationRefusal;
                 }
+
+                string? verificationNotice = verification?.Notice;
 
                 try
                 {
@@ -211,6 +227,10 @@ public sealed class WriteTool(
                     CultureInfo.InvariantCulture,
                     $"wrote {lines} lines to {relative} ({(created ? "created" : "replaced")})"
                 );
+                if (verificationNotice is not null)
+                {
+                    output += $"; {verificationNotice}";
+                }
 
                 return new ToolResult(output, IsError: false, details);
             },
