@@ -489,6 +489,8 @@ public sealed partial class AgentHarness
         string? routedModelId = null;
         SessionUsage? usage = null;
         UsageDetails? usageDetails = null;
+        string? usageModelId = null;
+        bool usageReported = false;
         long requestUtf8 = 0;
 
         void CloseText()
@@ -555,6 +557,22 @@ public sealed partial class AgentHarness
         UsageModelClient? usageModel = ResolveUsageModel(_options.Usage);
         List<ChatMessage> request = [];
 
+        void RecordUsage(UsageDetails details, string? resolvedModelId)
+        {
+            ModelUsageAttribution? attribution = UsageAttribution(_options.Usage, usageModel);
+            AccumulateUsage(
+                runId,
+                channel,
+                details,
+                resolvedModelId ?? usageModel?.Model.Id ?? _options.ModelId,
+                attribution
+            );
+            usage = RecordedUsage(details, attribution);
+            _lastInputTokens = usage.Input;
+            _lastRequestUtf8 = requestUtf8;
+            usageReported = true;
+        }
+
         try
         {
             request = BuildRequest(sections);
@@ -603,6 +621,9 @@ public sealed partial class AgentHarness
                         finishReason = reason;
                     }
 
+                    bool updateHasText = update.Contents.Any(content =>
+                        content is TextContent or TextReasoningContent
+                    );
                     foreach (AIContent content in update.Contents)
                     {
                         if (content is TextReasoningContent { Text: { Length: > 0 } reasoning })
@@ -629,13 +650,23 @@ public sealed partial class AgentHarness
                                 }
                             }
                         }
-                        else if (content is UsageContent usageContent)
+                        else if (content is UsageContent usageContent && !usageReported)
                         {
                             attempt.Emitted = true;
                             usageDetails = usageContent.Details;
+                            usageModelId = routedModelId ?? update.ModelId ?? usageModel?.Model.Id;
+                            if (!updateHasText)
+                            {
+                                RecordUsage(usageDetails, usageModelId);
+                            }
                         }
                     }
                 }
+            }
+
+            if (!usageReported && usageDetails is { } reportedUsage)
+            {
+                RecordUsage(reportedUsage, usageModelId ?? routedModelId ?? modelId);
             }
         }
         catch (Exception exception)
@@ -662,21 +693,6 @@ public sealed partial class AgentHarness
 
             CloseReasoning();
             CloseText();
-        }
-
-        if (usageDetails is { } reportedUsage)
-        {
-            ModelUsageAttribution? attribution = UsageAttribution(_options.Usage, usageModel);
-            AccumulateUsage(
-                runId,
-                channel,
-                reportedUsage,
-                routedModelId ?? modelId ?? usageModel?.Model.Id ?? _options.ModelId,
-                attribution
-            );
-            usage = RecordedUsage(reportedUsage, attribution);
-            _lastInputTokens = usage.Input;
-            _lastRequestUtf8 = requestUtf8;
         }
 
         return new ModelStreamResult(

@@ -11,6 +11,8 @@ public sealed class PublicApiTests
         "Lunate.Tui.ApprovalPromptRenderer",
         "Lunate.Tui.ConsoleSize",
         "Lunate.Tui.ConsoleSupport",
+        "Lunate.Tui.CostGroupView",
+        "Lunate.Tui.CostReportView",
         "Lunate.Tui.GitBranchReader",
         "Lunate.Tui.IConsoleIO",
         "Lunate.Tui.InputLine",
@@ -44,6 +46,7 @@ public sealed class PublicApiTests
         "Lunate.Tui.TrustChoice",
         "Lunate.Tui.TrustPromptModel",
         "Lunate.Tui.TrustPromptRenderer",
+        "Lunate.Tui.UsageCostRenderer",
     ];
 
     [Fact]

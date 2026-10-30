@@ -157,7 +157,7 @@ public sealed class SingleFileLoopEndToEndTests
 
         // A catalog id, resolved by the session, and a scripted client built for it: the run never
         // touches a provider.
-        Assert.Equal("gpt-4o-mini", factory.CreatedModel?.Id);
+        Assert.Null(factory.CreatedModel);
 
         await SingleFileLoopSession.WriteAndApproveReloadAsync(host, fixture, source);
         Assert.Equal("gpt-4o-mini", factory.CreatedModel?.Id);

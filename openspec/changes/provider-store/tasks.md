@@ -37,5 +37,5 @@
 
 ## 7. Verification
 
-- [ ] 7.1 Run all touched test projects with fixture-only provider streams; confirm no test requires a live API and no NuGet package was added.
+- [x] 7.1 Run all touched test projects with fixture-only provider streams; confirm no test requires a live API and no NuGet package was added.
 - [ ] 7.2 Run `PATH="/opt/homebrew/bin:$PATH" /opt/homebrew/bin/openspec validate provider-store --type change --strict`, `dotnet build Lunate.slnx -c Release`, `dotnet csharpier check .`, and the repository docs-profile checks; fix failures before review.

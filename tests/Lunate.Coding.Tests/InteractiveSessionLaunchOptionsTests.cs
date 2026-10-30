@@ -14,7 +14,8 @@ public sealed class InteractiveSessionLaunchOptionsTests
     public async Task A_launch_model_wins_over_the_resolved_settings()
     {
         // The settings file names one model and LUNATE_MODEL another; the launch flag wins over both.
-        var factory = new FakeChatClientFactory(new ScriptedChatClient());
+        var client = new ScriptedChatClient().Enqueue(Scripts.Text("ok"), Scripts.Stop());
+        var factory = new FakeChatClientFactory(client);
         using var host = new InteractiveSessionHost(
             factory: factory,
             environment: Environment(("OPENAI_API_KEY", "test-key")),
@@ -29,10 +30,12 @@ public sealed class InteractiveSessionLaunchOptionsTests
         await host.WaitUntilAsync(() => host.Session.IsComposed);
         await InteractiveSessionCommandTests.WaitForFrameAsync(host, "gpt-4o · ");
 
+        Assert.Null(factory.CreatedModel);
+        host.Console.SendText("go");
+        host.Console.SendEnter();
+        await host.WaitUntilAsync(() => factory.CreatedModel is not null);
         Assert.Equal("gpt-4o", factory.CreatedModel!.Id);
-        // The model line commits after the frame that already showed the model: wait for it.
-        await host.WaitForScrollbackAsync("gpt-4o · 128,000 ctx");
-        Assert.Contains("gpt-4o · 0/128.0k", host.LastFrame, StringComparison.Ordinal);
+        await host.WaitUntilAsync(() => !host.Session.IsRunning);
 
         host.Console.SendText("/quit");
         host.Console.SendEnter();

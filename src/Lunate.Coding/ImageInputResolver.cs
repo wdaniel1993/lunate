@@ -278,10 +278,14 @@ internal sealed class ImageInputResolver
             resolved = Placeholder(attachment);
         }
 
-        if (attachments.Count > 0 && _model is not { SupportsVision: true })
+        if (
+            attachments.Count > 0
+            && _model?.Capabilities?.InputModalities is { } modalities
+            && !modalities.Contains("image")
+        )
         {
             return ImageInputResult.Refused(
-                $"model {_model?.Id ?? "unknown"} does not support images; use a vision model to attach images."
+                $"model {_model.Id} doesn't accept images; switch profile or remove the image."
             );
         }
 

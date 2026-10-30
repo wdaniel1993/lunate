@@ -108,6 +108,7 @@ public sealed class InteractiveSessionCommandTests
               /compact    — compact the conversation now, optionally focusing on <text>
               /context    — show the context window and subagent budgets
               /copy       — copy the last answer to the clipboard
+              /cost       — show usage cost by usage and provider
               /debug      — write a diagnostic bundle for a bug report
               /editor     — open the draft in your external editor
               /export     — write the session as html or jsonl
@@ -994,15 +995,15 @@ public sealed class InteractiveSessionCommandTests
     }
 
     private const string PricedModel = """
-        { "id": "fixture-priced", "provider": "fixture", "contextWindow": 1000, "supportsTools": true, "pricing": { "input": 1, "output": 2 } }
+        { "id": "fixture-priced", "provider": "openai", "contextWindow": 1000, "supportsTools": true, "pricing": { "input": 1, "output": 2 } }
         """;
 
     private const string OtherPricedModel = """
-        { "id": "fixture-other", "provider": "fixture", "contextWindow": 1000, "supportsTools": true, "pricing": { "input": 1, "output": 2 } }
+        { "id": "fixture-other", "provider": "openai", "contextWindow": 1000, "supportsTools": true, "pricing": { "input": 1, "output": 2 } }
         """;
 
     private const string UnpricedModel = """
-        { "id": "fixture-unpriced", "provider": "fixture", "contextWindow": 1000, "supportsTools": true }
+        { "id": "fixture-unpriced", "provider": "openai", "contextWindow": 1000, "supportsTools": true }
         """;
 
     /// <summary>
