@@ -46,6 +46,7 @@ public static partial class SettingsStore
             decimal? temperature = null;
             int? contextWindow = null;
             double? decisionThreshold = null;
+            ModelCapabilityDescriptor? capabilities = null;
             foreach (JsonProperty field in property.Value.EnumerateObject())
             {
                 switch (field.Name)
@@ -79,6 +80,9 @@ public static partial class SettingsStore
                             problems
                         );
                         break;
+                    case "capabilities":
+                        capabilities = ReadProfileCapabilities(field.Value, name, problems);
+                        break;
                     default:
                         problems.Add($"unknown key 'profiles.{name}.{field.Name}'");
                         break;
@@ -108,7 +112,8 @@ public static partial class SettingsStore
                         maxOutput,
                         temperature,
                         contextWindow,
-                        decisionThreshold
+                        decisionThreshold,
+                        capabilities
                     )
                 );
             }

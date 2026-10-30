@@ -3,6 +3,70 @@ namespace Lunate.Ai.Tests;
 public sealed class ModelCatalogSchemaTests
 {
     [Fact]
+    public void Load_schema_2_entry_reads_open_model_capability_sets()
+    {
+        using var temp = new TempDirectory();
+        string userFile = WriteJson(
+            temp.File("models.json"),
+            """
+            {
+              "schemaVersion": 2,
+              "models": [
+                {
+                  "id": "open-capability-model",
+                  "provider": "openrouter",
+                  "contextWindow": 32000,
+                  "supportsTools": true,
+                  "capabilities": {
+                    "apis": ["chat", "future-api"],
+                    "inputModalities": ["text", "image"],
+                    "outputModalities": ["text"],
+                    "features": ["tools", "structured-output"]
+                  }
+                }
+              ]
+            }
+            """
+        );
+
+        ModelCatalog catalog = ModelCatalog.Load(userFile);
+
+        ModelCapabilityDescriptor capabilities = catalog
+            .Find("open-capability-model")!
+            .Capabilities!;
+        Assert.Contains("future-api", capabilities.Apis!);
+        Assert.Contains("image", capabilities.InputModalities!);
+        Assert.Contains("text", capabilities.OutputModalities!);
+        Assert.Contains("structured-output", capabilities.Features!);
+    }
+
+    [Fact]
+    public void Load_schema_2_entry_rejects_unknown_api_type_label()
+    {
+        using var temp = new TempDirectory();
+        string userFile = WriteJson(
+            temp.File("models.json"),
+            """
+            {
+              "schemaVersion": 2,
+              "models": [
+                { "id": "invalid-api-type", "provider": "openai", "contextWindow": 32000,
+                  "supportsTools": true, "apiType": "cannot-decide" }
+              ]
+            }
+            """
+        );
+
+        InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+            ModelCatalog.Load(userFile)
+        );
+
+        Assert.Contains("apiType", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("native", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("adapter", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Load_schema_1_entry_keeps_the_existing_fields_and_has_no_schema_2_metadata()
     {
         using var temp = new TempDirectory();

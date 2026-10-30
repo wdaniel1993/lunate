@@ -20,6 +20,11 @@ public static partial class SettingsStore
         );
         foreach ((string name, ModelProfile overlay) in project.Profiles)
         {
+            if (overlay.CapabilitiesOverride is not null)
+            {
+                throw ProjectProblem(projectPath, $"profiles.{name}.capabilities is user-only");
+            }
+
             if (!providerNames.Contains(overlay.Provider))
             {
                 throw ProjectProblem(
@@ -100,6 +105,8 @@ public static partial class SettingsStore
                 Temperature = overlay.Temperature ?? existing.Temperature,
                 ContextWindow = overlay.ContextWindow ?? existing.ContextWindow,
                 DecisionThreshold = overlay.DecisionThreshold ?? existing.DecisionThreshold,
+                CapabilitiesOverride =
+                    overlay.CapabilitiesOverride ?? existing.CapabilitiesOverride,
             };
 
     private static void EnsureProjectLimitDoesNotRise(

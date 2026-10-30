@@ -26,6 +26,12 @@ public sealed record ModelInfo(
 
     public bool SupportsVision { get; init; }
 
+    /// <summary>Open API, modality, and feature facts; omitted categories remain unknown.</summary>
+    public ModelCapabilityDescriptor? Capabilities { get; init; }
+
+    /// <summary>Decision request path label: <c>native</c> or <c>adapter</c>; it is not a gate.</summary>
+    public string? ApiType { get; init; }
+
     internal bool SupportsTemperature { get; init; }
 
     public string? WireId { get; init; }

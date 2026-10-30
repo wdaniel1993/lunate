@@ -10,7 +10,8 @@ internal sealed record ModelProfile(
     int? MaxOutput = null,
     decimal? Temperature = null,
     int? ContextWindow = null,
-    double? DecisionThreshold = null
+    double? DecisionThreshold = null,
+    ModelCapabilityDescriptor? CapabilitiesOverride = null
 );
 
 /// <summary>A profile resolved to one user provider entry and one catalog model.</summary>
@@ -18,7 +19,8 @@ internal sealed record ResolvedModelProfile(
     ModelProfile Profile,
     ProviderEntry Provider,
     ModelInfo Model,
-    int ContextWindow
+    int ContextWindow,
+    ModelCapabilityDescriptor Capabilities
 );
 
 /// <summary>Resolves and validates a profile before any model client can be constructed.</summary>
@@ -27,7 +29,8 @@ internal static class ModelProfileResolver
     public static ResolvedModelProfile Resolve(
         ModelProfile profile,
         IReadOnlyList<ProviderEntry> providers,
-        ModelCatalog catalog
+        ModelCatalog catalog,
+        ModelCapabilityDescriptor? discoveredCapabilities = null
     )
     {
         ArgumentNullException.ThrowIfNull(profile);
@@ -71,7 +74,12 @@ internal static class ModelProfileResolver
         ValidateTemperature(profile, model);
         int contextWindow = ValidateContextWindow(profile, model);
         ValidateDecisionThreshold(profile);
-        return new ResolvedModelProfile(profile, provider, model, contextWindow);
+        ModelCapabilityDescriptor capabilities = (
+            model.Capabilities ?? new ModelCapabilityDescriptor()
+        )
+            .Overlay(discoveredCapabilities)
+            .Overlay(profile.CapabilitiesOverride);
+        return new ResolvedModelProfile(profile, provider, model, contextWindow, capabilities);
     }
 
     private static void ValidateReasoning(ModelProfile profile, ModelInfo model)

@@ -24,6 +24,10 @@ Lunate.Ai.ModelInfo.Id.init -> void
 Lunate.Ai.ModelInfo.ModelInfo(string! Id, string! Provider, System.Uri? Endpoint, int ContextWindow, bool SupportsTools, string? AuthRef = null, string? Reasoning = null) -> void
 Lunate.Ai.ModelInfo.MaxOutput.get -> int?
 Lunate.Ai.ModelInfo.MaxOutput.init -> void
+Lunate.Ai.ModelInfo.ApiType.get -> string?
+Lunate.Ai.ModelInfo.ApiType.init -> void
+Lunate.Ai.ModelInfo.Capabilities.get -> Lunate.Ai.ModelCapabilityDescriptor?
+Lunate.Ai.ModelInfo.Capabilities.init -> void
 Lunate.Ai.ModelInfo.Pricing.get -> Lunate.Ai.ModelPricing?
 Lunate.Ai.ModelInfo.Pricing.init -> void
 Lunate.Ai.ModelInfo.SupportsVision.get -> bool
@@ -160,6 +164,16 @@ Lunate.Ai.ModelsDevCatalog
 const Lunate.Ai.ModelsDevCatalog.SourceName = "models.dev" -> string!
 const Lunate.Ai.ModelsDevCatalog.SourceUrl = "https://models.dev/api.json" -> string!
 static Lunate.Ai.ModelsDevCatalog.Generate(string! json, System.Collections.Generic.IReadOnlyList<Lunate.Ai.ProviderPreset!>! presets) -> Lunate.Ai.CatalogSnapshot!
+Lunate.Ai.ModelCapabilityDescriptor
+Lunate.Ai.ModelCapabilityDescriptor.ModelCapabilityDescriptor(System.Collections.Generic.IReadOnlySet<string!>? apis = null, System.Collections.Generic.IReadOnlySet<string!>? inputModalities = null, System.Collections.Generic.IReadOnlySet<string!>? outputModalities = null, System.Collections.Generic.IReadOnlySet<string!>? features = null) -> void
+Lunate.Ai.ModelCapabilityDescriptor.Apis.get -> System.Collections.Generic.IReadOnlySet<string!>?
+Lunate.Ai.ModelCapabilityDescriptor.Apis.init -> void
+Lunate.Ai.ModelCapabilityDescriptor.Features.get -> System.Collections.Generic.IReadOnlySet<string!>?
+Lunate.Ai.ModelCapabilityDescriptor.Features.init -> void
+Lunate.Ai.ModelCapabilityDescriptor.InputModalities.get -> System.Collections.Generic.IReadOnlySet<string!>?
+Lunate.Ai.ModelCapabilityDescriptor.InputModalities.init -> void
+Lunate.Ai.ModelCapabilityDescriptor.OutputModalities.get -> System.Collections.Generic.IReadOnlySet<string!>?
+Lunate.Ai.ModelCapabilityDescriptor.OutputModalities.init -> void
 Lunate.Ai.CostCalculator
 static Lunate.Ai.CostCalculator.Compute(Lunate.Ai.ModelInfo? model, long inputTokens, long outputTokens, long cacheReadTokens = 0, long cacheWriteTokens = 0) -> decimal?
 static Lunate.Ai.CostCalculator.Format(decimal cost) -> string!

@@ -14,7 +14,7 @@
 
 - [x] 3.1 Test-first in `Lunate.Ai.Tests`: cover profile-to-provider/model resolution and validation for reasoning level/budget, maximum output, temperature, context-window override, and decision thresholds; prove every unsupported setting is refused by field and profile name before a client call.
 - [x] 3.2 Test-first in `Lunate.Coding.Tests`: prove project profiles can reference existing user providers and lower limits, while a project provider with an attacker URL and credential reference is refused by the offending key before secret lookup or network access; also prove project settings cannot raise user limits.
-- [ ] 3.3 Test-first in `Lunate.Ai.Tests`: prove any user-configured model can serve decision, `apiType` only labels `native` versus `adapter`, and an OpenRouter-shaped single provider entry can back chat and decision profiles without vendor-name matching.
+- [x] 3.3 Test-first in `Lunate.Ai.Tests`: prove any user-configured model can serve decision, `apiType` only labels `native` versus `adapter`, and an OpenRouter-shaped single provider entry can back chat and decision profiles without vendor-name matching.
 
 ## 4. Usage selection and decision behavior
 

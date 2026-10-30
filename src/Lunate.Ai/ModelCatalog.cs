@@ -223,6 +223,13 @@ public sealed class ModelCatalog
             );
         }
 
+        if (entry.ApiType is not null and not ("native" or "adapter"))
+        {
+            throw new InvalidDataException(
+                $"Model '{entry.Id}' in {source} has invalid apiType '{entry.ApiType}'; expected 'native' or 'adapter'."
+            );
+        }
+
         return new ModelInfo(
             entry.Id,
             entry.Provider,
@@ -236,6 +243,8 @@ public sealed class ModelCatalog
             Pricing = entry.Pricing,
             MaxOutput = entry.MaxOutput,
             SupportsVision = entry.SupportsVision,
+            Capabilities = entry.Capabilities,
+            ApiType = entry.ApiType,
             SupportsTemperature = entry.SupportsTemperature,
             WireId = string.IsNullOrEmpty(entry.WireId) ? null : entry.WireId,
         };
@@ -245,9 +254,9 @@ public sealed class ModelCatalog
     /// Layers <paramref name="upper"/> over <paramref name="lower"/>. A schema-2 upper entry replaces
     /// the lower entry completely (pricing and capabilities included); a schema-1 upper entry cannot
     /// express <see cref="ModelInfo.Pricing"/>, <see cref="ModelInfo.MaxOutput"/>,
-    /// <see cref="ModelInfo.SupportsVision"/> or <see cref="ModelInfo.WireId"/>, so overriding an
-    /// existing id keeps those values from the lower entry while taking the upper entry's routing
-    /// fields.
+    /// <see cref="ModelInfo.SupportsVision"/>, <see cref="ModelInfo.Capabilities"/>,
+    /// <see cref="ModelInfo.ApiType"/> or <see cref="ModelInfo.WireId"/>, so overriding an existing
+    /// id keeps those values from the lower entry while taking the upper entry's routing fields.
     /// </summary>
     private static List<ModelInfo> Merge(List<ModelInfo> lower, CatalogLayer? upper)
     {
@@ -274,6 +283,8 @@ public sealed class ModelCatalog
                         Pricing = model.Pricing,
                         MaxOutput = model.MaxOutput,
                         SupportsVision = model.SupportsVision,
+                        Capabilities = model.Capabilities,
+                        ApiType = model.ApiType,
                         WireId = model.WireId,
                     }
                 );
@@ -321,6 +332,10 @@ public sealed class ModelCatalog
         public bool SupportsVision { get; set; }
 
         public bool SupportsTemperature { get; set; }
+
+        public ModelCapabilityDescriptor? Capabilities { get; set; }
+
+        public string? ApiType { get; set; }
 
         public string? WireId { get; set; }
     }
