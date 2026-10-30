@@ -24,9 +24,10 @@ Start it from the repository root, or let the client declare workspaces through 
 `*.sln`, `*.slnx` or `*.csproj`; the host's `ToolActivationEvaluator` is the same one used by chat,
 print, ACP and child runs. When roots are declared, the server selects the first matching root. If
 the client has no roots channel or returns an empty roots list, the server uses its launch directory;
-declared but non-matching roots do not fall back to the launch directory. The built-in is host-owned,
-not installed or trust-gated, and `--no-extensions` does not disable built-ins. No Roslyn workspace
-is loaded until the first C# tool call; the initial listing only evaluates the manifest rule.
+declared but non-matching roots do not fall back to the launch directory. The server composes only the
+host-owned built-in (it never reads the extension store): it is not installed or trust-gated. No
+Roslyn workspace is loaded until the first C# tool call; the initial listing only evaluates the
+manifest rule.
 
 ## Tools
 

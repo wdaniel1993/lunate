@@ -154,9 +154,9 @@ internal static class PrintMode
 
                 session = selected;
                 IExtensionLog log = options.Extensions?.Log ?? new StderrExtensionLog(errors);
-                // The host composes in every mode: with --no-extensions it composes only the
-                // built-in set — the loader skips the store scans, so nothing third-party is
-                // discovered, trusted or loaded (design §1).
+                // The host composes in every mode: with --no-extensions it composes nothing at
+                // all — built-ins included — so no store scan, trust question or third-party
+                // load runs (design §1).
                 extensions = await ComposeExtensionsAsync(
                         options.Extensions,
                         workspace,

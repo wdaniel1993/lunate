@@ -42,9 +42,9 @@ internal static class AcpMode
             LunateHome.StoreOutsideWorkspace(workspace.WorktreeRoot, workspace.RepoRoot);
             IExtensionLog log = extensions?.Log ?? new StderrExtensionLog(errors);
             AgentSettings settings = SettingsStore.Resolve(null, null);
-            // The host composes in every mode: with --no-extensions it composes only the built-in
-            // set — the loader skips the store scans, so nothing third-party is discovered,
-            // trusted or loaded (design §1).
+            // The host composes in every mode: with --no-extensions it composes nothing at all —
+            // built-ins included — so no store scan, trust question or third-party load runs
+            // (design §1).
             host = ComposeExtensions(
                 (extensions ?? new ExtensionSeams()) with
                 {

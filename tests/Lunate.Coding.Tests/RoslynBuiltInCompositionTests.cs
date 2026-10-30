@@ -43,7 +43,6 @@ public sealed class RoslynBuiltInCompositionTests
                 {
                     StorePath = temp.File("store"),
                     BuiltIns = [descriptor],
-                    NoExtensions = true,
                     Log = new RecordingExtensionLog(),
                 },
                 ct

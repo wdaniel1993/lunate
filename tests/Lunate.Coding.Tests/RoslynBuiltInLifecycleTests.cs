@@ -165,7 +165,6 @@ public sealed class RoslynBuiltInLifecycleTests
             {
                 StorePath = temp.File("store"),
                 BuiltIns = [builtIn],
-                NoExtensions = true,
                 WorkspaceServiceCapLimit = capLimit,
                 Log = new RecordingExtensionLog(),
             },

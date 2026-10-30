@@ -39,7 +39,12 @@ internal static class McpRoslynCommand
         {
             LunateHome.StoreOutsideWorkspace(root, workspace.RepoRoot);
             extensions = await ExtensionSession
-                .StartAsync(workspace.Identity, new ExtensionSeams { NoExtensions = true }, ct)
+                .StartAsync(
+                    workspace.Identity,
+                    // Built-ins only: the C# tools serve from this process, the store is not read.
+                    new ExtensionSeams { BuiltInsOnly = true },
+                    ct
+                )
                 .ConfigureAwait(false);
             errors.WriteLine(
                 string.Create(

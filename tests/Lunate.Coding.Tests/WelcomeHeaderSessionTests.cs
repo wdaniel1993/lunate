@@ -213,7 +213,6 @@ public sealed class WelcomeHeaderSessionTests
             extensions: new ExtensionSeams
             {
                 StorePath = temp.File("store"),
-                NoExtensions = true,
                 Log = new RecordingExtensionLog(),
             }
         );
@@ -222,6 +221,7 @@ public sealed class WelcomeHeaderSessionTests
         await host.WaitUntilAsync(() => host.Session.IsComposed);
 
         string scrollback = await host.WaitForScrollbackAsync("skills 0");
+        // roslyn composes; it is host-owned code, so the count of installed extensions stays 0.
         Assert.Contains("extensions 0 · MCP 0 · skills 0", scrollback, StringComparison.Ordinal);
 
         host.Console.SendText("/quit");

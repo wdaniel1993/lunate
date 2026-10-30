@@ -234,7 +234,6 @@ public sealed class RoslynBuiltInFileChangeTests
             {
                 StorePath = temp.File("store"),
                 BuiltIns = [builtIn],
-                NoExtensions = true,
                 WorkspaceServiceCapLimit = capLimit,
                 Log = new RecordingExtensionLog(),
             },

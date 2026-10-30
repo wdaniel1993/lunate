@@ -581,7 +581,7 @@ internal sealed partial class InteractiveSession : IDisposable
     /// <summary>
     /// Resolves the configured model: an extension-registered id (virtual models included) comes
     /// from the registry with its derived capabilities; everything else stays a catalog lookup.
-    /// With <c>--no-extensions</c> the registry never exists, so extension ids fail as unknown.
+    /// With <c>--no-extensions</c> the registry is empty, so extension ids fail as unknown.
     /// </summary>
     private void ResolveSessionModel()
     {
@@ -636,8 +636,9 @@ internal sealed partial class InteractiveSession : IDisposable
     /// already isolated by the host. The configured MCP servers are already composed, so a
     /// registration sharing a configured server's name is skipped before listing and shown as
     /// shadowed by `/mcp`. The host's MCP tools are listed once, here, and a server whose process
-    /// exits later fires one notice. With <c>--no-extensions</c> the host composes only the
-    /// built-in set: no store is scanned, no trust question is asked and no third-party load runs.
+    /// exits later fires one notice. With <c>--no-extensions</c> the host composes nothing at all —
+    /// built-ins included: no store is scanned, no trust question is asked and no third-party load
+    /// runs.
     /// </summary>
     private async Task ComposeExtensionsAsync(CancellationToken ct)
     {
