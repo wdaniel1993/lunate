@@ -42,11 +42,12 @@ only when its focused tests pass.
 
 ## 4. Verification setting and refusal policy
 
-- [ ] 4.1 In `tests/Lunate.Agent.Tests/SettingsStoreTests.cs`, add failing tests
-      `VerifyDefaultsToBlock`, `VerifyAcceptsWarnAndOff`, and
+- [ ] 4.1 In `tests/Lunate.Coding.Tests/SettingsStoreVerifyTests.cs` (new file — `SettingsStore` lives in
+      `src/Lunate.Coding`, so its tests do too; `tests/Lunate.Agent.Tests/` has no `SettingsStoreTests.cs`), add failing
+      tests `VerifyDefaultsToBlock`, `VerifyAcceptsWarnAndOff`, and
       `InvalidVerifySettingNamesAcceptedValues`. Confirm failure first; implement top-level
       `verify` in `~/.lunate/settings.json` (no environment override), then rerun
-      `dotnet test tests/Lunate.Agent.Tests/Lunate.Agent.Tests.csproj -c Release --filter FullyQualifiedName~SettingsStoreTests`; all tests must pass.
+      `dotnet test tests/Lunate.Coding.Tests/Lunate.Coding.Tests.csproj -c Release --filter FullyQualifiedName~SettingsStoreVerifyTests`; all tests must pass.
 - [ ] 4.2 In `tests/Lunate.Coding.Tests/WriteVerifierPipelineTests.cs`, add failing tests
       `WarnWritesUnverifiedWithDiagnostics`, `OffSkipsVerifier`, and
       `ThirdAttemptWritesUnverifiedAfterTwoRefusals`. Confirm failure first; implement block/warn/off
